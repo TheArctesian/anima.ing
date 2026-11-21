@@ -1,4 +1,4 @@
-//! The process tree of a server (Section 9; R-NEW-containment): the set of processes that the
+//! The process tree of a server (Section 9; R-331): the set of processes that the
 //! loopback check reads and that a stop ends.
 //!
 //! On Linux the tree is one cgroup v2 per server below the cgroup of the daemon ([`linux`]):

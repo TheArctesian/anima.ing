@@ -1,4 +1,4 @@
-//! The tree of a server (R-NEW-containment): the identity check before a signal, the walk of
+//! The tree of a server (R-331): the identity check before a signal, the walk of
 //! the descendants on macOS, and the sweep of the records at the start of the daemon.
 
 use std::process::{Child, Command, Stdio};

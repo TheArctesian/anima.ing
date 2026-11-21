@@ -319,7 +319,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (101)
+## 4. Checks that only the operator can do (105)
 
 | Check | What |
 | --- | --- |
@@ -329,6 +329,9 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-001 | `anima snapshot` against GitHub |
 | HT-002 | the tool inventory from a daemon to the command line |
 | HT-003 | the tool inventory in an MCP client |
+| HT-119 | the cgroup of each model server on `pop-os` |
+| HT-120 | the model work of the daemon on the Mac and on `pop-os` |
+| HT-121 | the hardware values agree with what each system shows |
 | HT-004 | no window of Apple on a Mac without the developer tools |
 | HT-005 | the tool inventory of a daemon that runs as a system unit |
 | HT-006 | the probes of `claude` and `codex` leave the account alone |
@@ -360,6 +363,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-059 | the application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) |
 | HT-083 | the sign-out of a hosted hub takes the daemon off this computer and revokes it (HMD-056; task HM-T21) |
 | HT-112 | a newer application replaces the daemon of this computer and keeps its enrolment (HMD-055; task HM-T20) |
+| HT-117 | the daemon of this Mac waits for the person in the Keychain and does not stop (MET-013, MET-019; R-322) |
 | HT-068 | a Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon (DEF-007) |
 | HT-050 | the device link runs as a unit of the user (HMD-058, task HM-T24 part a) |
 | HT-049 | the application carries `anima-daemon` (HMD-052, task HM-T16) |

@@ -1,5 +1,5 @@
 -- The model library of the compute domain: the models, their variants and files, the aliases
--- and the approved sources (K2 1040-1059, ruling R-NEW-modellibrary; LIBM-001 to
+-- and the approved sources (K2 1040-1059, ruling R-343; LIBM-001 to
 -- LIBM-008, SEL-003).
 --
 -- `approved_sources` holds the Hugging Face organisations from which a variant can come
@@ -12,7 +12,7 @@
 -- name such as `coder` at one model; the hub refuses an alias that is the name of a model.
 --
 -- `library_settings` holds one row: how the publisher of a base model gets onto the approved
--- list (`base_model`, the operator's choice, or `by_hand`; R-NEW-modellibrary).
+-- list (`base_model`, the operator's choice, or `by_hand`; R-343).
 --
 -- Deleting a model deletes its variants, their files and its aliases.
 --

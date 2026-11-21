@@ -1,8 +1,8 @@
 # Model work: the work types of the model service, the copies and the runtime report
 
-Status: **Draft, waits for a ruling (R-NEW-modelwork) and the security review (SEC-C-012).** Version 0.3,
-2026-11-20 (version 0.3 takes the answers of the operator to OD-C22 to OD-C25: R-NEW-sandboxrisk,
-R-NEW-hubhash, R-NEW-mlxcommunity, R-NEW-agentmodelwork; each stricter form is a setting at the machine,
+Status: **Draft, waits for a ruling (R-344) and the security review (SEC-C-012).** Version 0.3,
+2026-11-20 (version 0.3 takes the answers of the operator to OD-C22 to OD-C25: R-346,
+R-339, R-342, R-326; each stricter form is a setting at the machine,
 Section 10.1. Version 0.1, 2026-11-20, was the text of the first security read; version 0.2 has the corrections of
 its 14 plain findings, and the safe default of its 4 findings that wait for the operator, marked "until the
 operator decides"; [security-findings.md](../../docs/security-findings.md), the section of the model work).
@@ -24,14 +24,14 @@ This file holds no secret, no token, no key and no example value of a secret.
   (R-172) is in K8 Section 1. Thus this contract does not make a narrow route of its own, as OD-C9 option (a) and
   the pattern of `agent_install` (R-153) would need without K10. It adds the model work types to the fixed list of
   K10, with a new kind `model`. K10 Section 13, point W1-P5, says: "Each is one more type of the fixed list, added
-  with a ruling." R-NEW-modelwork is that ruling.
-- **Changes to K10 that wait for R-NEW-modelwork.** The text of this contract is the change. K10 itself is not
+  with a ruling." R-344 is that ruling.
+- **Changes to K10 that wait for R-344.** The text of this contract is the change. K10 itself is not
   edited before the ruling. The changes are: the list of work types of K10 Section 1 and Section 6 gets the ten
   types of Section 2 below; the kind `model` (Section 1 below); the purpose `hf_token` of K10 Section 8
   (Section 7 below); the causes of refusal of Section 5 below; the order of the claim (Section 3 below).
-- **Changes to K8 that wait for R-NEW-modelwork.** The optional member `runtimes` of the `Batch` of K8 Section 4
+- **Changes to K8 that wait for R-344.** The optional member `runtimes` of the `Batch` of K8 Section 4
   (Section 8 below). It is an optional member, so it needs no `/daemon/v2/` (K8 Section 1).
-- **A change of the design specification that waits for R-NEW-modelwork.** MET-020 says that the daemon connects
+- **A change of the design specification that waits for R-344.** MET-020 says that the daemon connects
   only to the hub and sends no request to a TCP port of its own computer. A pull (PULL-004), a runtime install
   (CAG-008) and a measure or a validation (PULL-011) need more. Section 4 gives the rule; open point MW-P1 asks
   the operator for the text.
@@ -163,7 +163,7 @@ daemon, and the daemon refuses each other file of `files` (`file_type`) before i
   switch and the policy again before each item (K10 Section 3: `switch_off`, `policy`). `server_stop`,
   `model_unload`, `model_drain`, `copy_delete` and `model_report` are never refused for `policy` or `switch_off`:
   they only reduce the work of the machine.
-- **Who may ask (R-NEW-agentmodelwork).** The hub makes each of the ten types for an API key or an AI agent,
+- **Who may ask (R-326).** The hub makes each of the ten types for an API key or an AI agent,
   with the MCP state of its tool, as R-153 does for `agent_install`. Each model item has the member `actor`:
   `User`, `Agent` or `Hub` (LOG-012). The setting `agentTypes` at the machine (Section 10.1) lists the types
   that the machine takes from an item whose `actor` is `Agent`; by default it has the ten types. The daemon
@@ -218,7 +218,7 @@ standard input as JSON from the daemon, and give back fixed codes and numbers. T
 to the hub makes no other connection. This follows K10 point W1-P1. MET-020 must get this exception in its text
 (open point MW-P1).
 
-**For task L1-6 only (R-NEW-fetchprocess).** The build of task L1-6 downloads a runtime archive in the daemon
+**For task L1-6 only (R-336).** The build of task L1-6 downloads a runtime archive in the daemon
 process, with a client of its own that holds no token, no hub origin and no proxy, and verifies the SHA-256 before it
 opens the archive. This is permitted for `runtime_install` of task L1-6 only. The child fetch process of this section
 is built before task L1-7 (task L1-6b of the compute plan), and task L1-7 does not start without it.
@@ -253,8 +253,8 @@ larger than `sizeBytes`), `source_failed` (the source refused or did not answer 
 `load_crash` (the server ended while it loaded a copy), `hash_mismatch` (Section 7), `start_failed` (the server did not become ready in 120 seconds), `probe_failed` (the fixed request got
 no correct answer), `limit_disk`, `program_mismatch` (the SHA-256 of a runtime file), `archive_rejected` (a
 `runtime_install` whose archive breaks a rule of the unpack of Section 6, or has no server program at the path of its
-release source entry; R-NEW-archiverejected), `containment_failed` (Linux: the tree of the server cannot be contained,
-Section 9; R-NEW-containment). A `containment_failed` result also has the member `detail`, one of `no_delegation`,
+release source entry; R-328), `containment_failed` (Linux: the tree of the server cannot be contained,
+Section 9; R-331). A `containment_failed` result also has the member `detail`, one of `no_delegation`,
 `no_nsdelegate`, `cgroup_join_failed`, `backstop_failed`, `parent_gone`, `userns_denied`, `exec_failed`. The launcher
 gives each of its steps its own exit code (120 to 124) and writes that code to a failure file in the folder of the
 server before it exits; the daemon takes an exit code as the launcher's only when that file holds it.
@@ -267,7 +267,7 @@ server before it exits; the daemon takes an exit code as the launcher's only whe
   release signs (K8 Section 8); a value of the operator replaces a default entry.
 - Each entry also has `sizeBytes`, the largest size of the archive. The fetch process reads no more.
 - The archive is a `.tar.gz` (or `.tgz`) or a `.zip`, by the end of the path of its address; another form is
-  `runtime_not_configured` (R-NEW-archivezip). Each rule of the unpack below applies to both forms in the same way;
+  `runtime_not_configured` (R-329). Each rule of the unpack below applies to both forms in the same way;
   a `.zip` entry that is a symbolic link, or that is encrypted, is refused, and the declared size of an entry
   counts in the limit before a byte is read. A break of a rule fails the item with `archive_rejected`.
 - The daemon downloads the archive with the fetch process and verifies the SHA-256 before it opens the archive.
@@ -295,11 +295,11 @@ server before it exits; the daemon takes an exit code as the launcher's only whe
   `https://huggingface.co/<organisation>/<repository>/resolve/<revision>/<file>`, made by the fetch process from
   the parameters; each part is encoded as a path segment.
 - **The approved organisations.** The hub holds the approved list (LIBM-003). The machine holds its own list too,
-  and refuses a pull from an organisation that is not in it (`source_not_permitted`). By R-NEW-mlxcommunity, the default list of the machine (the setting `organisations`, Section 10.1) is `unsloth`,
+  and refuses a pull from an organisation that is not in it (`source_not_permitted`). By R-342, the default list of the machine (the setting `organisations`, Section 10.1) is `unsloth`,
   `mlx-community` and the publishers that the release of the daemon names; the owner of the machine changes it
   at the machine. The hub cannot write it. See open
   point MW-P2.
-- **A second source of each hash (R-NEW-hubhash; off by default).** The SHA-256 of an item comes from the hub,
+- **A second source of each hash (R-339; off by default).** The SHA-256 of an item comes from the hub,
   so it proves nothing against a hub that is taken over. The check against the hub value is always done. When
   the setting `secondHash` is on (Section 10.1), the fetch process also reads, from Hugging Face,
   the SHA-256 that the repository publishes for each LFS file at that `revision` (the file list of the commit),
@@ -373,7 +373,7 @@ of the batches between.
 ```
 
 - `state` of a server is `starting`, `ready`, `draining`, `restarting`, `failed` or `stopped`.
-- `installed` is the list of the installed model runtimes (CAP-003, R-NEW-runtimelist). It is the only list of
+- `installed` is the list of the installed model runtimes (CAP-003, R-345). It is the only list of
   the runtimes; the tool inventory of K8 Section 4 does not hold them. It holds at most 16 entries with unique
   names. Each entry has a `runtime` and either a `version` of 1 to 64 bytes of `[0-9A-Za-z.+_-]` or a `state`,
   never both. The `state` is a fixed code, never text from the device: `timed_out`, `exited` or `no_version`,
@@ -415,7 +415,7 @@ of the batches between.
 
 ## 9. Start, the isolation, the loopback check and the supervision (SEC-C-001, CAG-005)
 
-- **The isolation (R-NEW-sandboxrisk; off by default).** A runtime reads files that the hub chose, and its parsers
+- **The isolation (R-346; off by default).** A runtime reads files that the hub chose, and its parsers
   have faults (SEC-C-009). With no isolation, a malicious model file can take the account of the user of the
   daemon; the operator accepted that risk. When the setting `sandbox` is on (Section 10.1), the daemon starts
   each runtime in an isolation that denies each thing by default:
@@ -426,20 +426,20 @@ of the batches between.
   start fails (`isolation_failed`); there is no start with less isolation. With the setting off, the environment
   and the flags of Section 2.1 still apply, and the loopback check below is the only control of the network.
 
-- **The tree of a server, and what the loopback check binds (R-NEW-containment).** Without the sandbox, the
+- **The tree of a server, and what the loopback check binds (R-331).** Without the sandbox, the
   loopback check below constrains an honest runtime only: a runtime that is not honest can make outgoing
   connections and can hide a listener for the time between two checks.
   - On Linux the tree of a server is one cgroup v2 below the cgroup of the daemon, which its unit delegates. The
     server joins that cgroup before its program runs: the daemon starts the daemon program in the fixed mode
     `__model-launch`, which writes its own process id to `cgroup.procs`, sets the parent-death signal (`SIGKILL`) as a
     backstop, checks that the daemon is still its parent, makes a new cgroup namespace (in a user namespace of
-    its own that maps the user and the group of the daemon to themselves; R-NEW-cgroupns), and then runs the
+    its own that maps the user and the group of the daemon to themselves; R-330), and then runs the
     runtime with `exec`. The root of the cgroups of the runtime is then the cgroup of its server: it cannot see
     the cgroup of the daemon or move a process out of its cgroup. When the namespaces cannot be made, the start
     fails (`containment_failed`), with no fallback. On a system that restricts user namespaces with AppArmor
     (`kernel.apparmor_restrict_unprivileged_userns=1`, the default of Ubuntu 24.04 and later and its family), each
     start fails with the detail `userns_denied` until the AppArmor profile of task L1-6c is installed
-    (R-NEW-appuserns); that is the expected result, not a fault. At each poll the main process, while it runs, must be in the
+    (R-327); that is the expected result, not a fault. At each poll the main process, while it runs, must be in the
     cgroup of its server; when it is not, the server ends with `listener`. The loopback check
     reads the sockets of each process of `cgroup.procs` of the cgroup of the server and of each cgroup below it, in
     the network tables of each network namespace that a
@@ -463,11 +463,11 @@ of the batches between.
     and removes the records (the sweep), because it starts no server by itself (MW-P5). The sweep ends only a
     cgroup named `anima-model-` directly below the cgroup of the daemon, because the runtime can write the record
     when the sandbox is off.
-- **How the socket table is read (R-NEW-archivezip).** On macOS the daemon runs `/usr/sbin/lsof` by its absolute
+- **How the socket table is read (R-329).** On macOS the daemon runs `/usr/sbin/lsof` by its absolute
   path, with an empty environment, for the processes of the tree, with a limit of 5 seconds. A read that does not
   end in time or does not read counts as a listener that is not on loopback (it fails closed). `proc_pidinfo` would
   need code that the workspace forbids (`unsafe`).
-- **Ready (R-NEW-archivezip).** A server is `ready` when the socket table shows a TCP listener of its tree on
+- **Ready (R-329).** A server is `ready` when the socket table shows a TCP listener of its tree on
   loopback on its port. The daemon sends no request to the server for this. The HTTP probe, with the owner check
   of the listener right before it, comes with task L1-9 or `model_measure` (task L1-8).
 - **The port.** The daemon starts the runtime with port 0 where the runtime permits it and reads the port from
@@ -523,7 +523,7 @@ setting, no file of a user, no package, no service unit.
   symbolic link.
 - MET-002 gets one more exception, which R-165 decided (OD-C9): "the daemon does the model work of the fixed list
   of CAG-003, and with it changes only its own folders (CAG-009)". The text of MET-002 changes with
-  R-NEW-modelwork.
+  R-344.
 
 ### 10.1 Settings at the machine
 
@@ -533,11 +533,11 @@ stricter value is permitted; the defaults are the answers of the operator.
 
 | Setting | Default | Stricter form |
 | --- | --- | --- |
-| `sandbox` | `false` (R-NEW-sandboxrisk) | `true`: Section 9, the isolation |
-| `secondHash` | `false` (R-NEW-hubhash) | `true`: Section 7, the hash of Hugging Face |
-| `revisionAgeDays` | `0` (R-NEW-hubhash) | Days, for example 7: Section 7 |
-| `organisations` | `unsloth`, `mlx-community`, the publishers of the release (R-NEW-mlxcommunity) | A shorter list |
-| `agentTypes` | The ten types (R-NEW-agentmodelwork) | A shorter list, for example `model_report`, `server_stop`, `model_unload`, `model_drain` |
+| `sandbox` | `false` (R-346) | `true`: Section 9, the isolation |
+| `secondHash` | `false` (R-339) | `true`: Section 7, the hash of Hugging Face |
+| `revisionAgeDays` | `0` (R-339) | Days, for example 7: Section 7 |
+| `organisations` | `unsloth`, `mlx-community`, the publishers of the release (R-342) | A shorter list |
+| `agentTypes` | The ten types (R-326) | A shorter list, for example `model_report`, `server_stop`, `model_unload`, `model_drain` |
 
 The daemon reports the values in `model_report`, so the hub can show them. The plain controls (Section 2.2, the
 hash of the hub, Sections 4, 6 and 10) are not settings.
@@ -570,23 +570,23 @@ The daemon keeps the state of each copy in its state folder. The hub keeps the r
 
 | Point | Question | Proposal |
 | --- | --- | --- |
-| MW-P1 | MET-020 permits the daemon only the hub. A pull, an install and a measure need Hugging Face, a release host and loopback | A child fetch process and a child probe process, with no token and fixed hosts (Section 4); MET-020 gets that exception in its text with R-NEW-modelwork |
-| MW-P7 | The SHA-256 comes from the hub (F4) | Decided (R-NEW-hubhash): the hub hash only; `secondHash` and `revisionAgeDays` are settings at the machine, off |
-| MW-P8 | Is `mlx-community` in the default list? (F5) | Decided (R-NEW-mlxcommunity): yes; `organisations` is a setting at the machine |
-| MW-P9 | A runtime runs with the rights of the user of the daemon (F2) | Decided (R-NEW-sandboxrisk): no required isolation; `sandbox` is a setting at the machine, off |
+| MW-P1 | MET-020 permits the daemon only the hub. A pull, an install and a measure need Hugging Face, a release host and loopback | A child fetch process and a child probe process, with no token and fixed hosts (Section 4); MET-020 gets that exception in its text with R-344 |
+| MW-P7 | The SHA-256 comes from the hub (F4) | Decided (R-339): the hub hash only; `secondHash` and `revisionAgeDays` are settings at the machine, off |
+| MW-P8 | Is `mlx-community` in the default list? (F5) | Decided (R-342): yes; `organisations` is a setting at the machine |
+| MW-P9 | A runtime runs with the rights of the user of the daemon (F2) | Decided (R-346): no required isolation; `sandbox` is a setting at the machine, off |
 | MW-P2 | Does the machine hold its own list of approved organisations, or does it trust the list of the hub? | The machine holds its own list (Section 7), as the list of repositories of R-185 |
 | MW-P3 | Is the runtime report a member of the push batch or a report of the work route? | The push batch (Section 8) |
 | MW-P4 | How is an archive of `mlx_lm` or `vllm` with its Python environment made and signed? | Anima builds it with the release (task L1-6 decides the recipe); until then only `llama_server` from its upstream releases |
 | MW-P5 | Does the daemon start its servers again by itself after its own restart? | No: the hub sends `server_start` again, so that the machine runs nothing that the hub does not know |
-| MW-P6 | Can an AI agent through an API key make a model item? (F15) | Decided (R-NEW-agentmodelwork): each type; `agentTypes` is a setting at the machine |
+| MW-P6 | Can an AI agent through an API key make a model item? (F15) | Decided (R-326): each type; `agentTypes` is a setting at the machine |
 
 ## 13. What a person who controls the hub can do with this contract
 
 On a machine that takes work, a person who controls the hub can: install a runtime from a release source that the
 machine holds; download files of the permitted types from an approved organisation of the machine (by default
-also `mlx-community`), at a commit of their choice and with their own hash (R-NEW-hubhash), and fill the disk
+also `mlx-community`), at a commit of their choice and with their own hash (R-339), and fill the disk
 share; load such a file in a runtime, whose parser can have faults (SEC-C-009), with the rights of the user of
-the daemon when `sandbox` is off (R-NEW-sandboxrisk), and so take that account; use memory and power
+the daemon when `sandbox` is off (R-346), and so take that account; use memory and power
 within the device policy; stop each model server. The person cannot name a command, a flag that the daemon owns,
 an address, a path or a host outside the lists of the machine. The security review (SEC-C-012) reads this
 section.

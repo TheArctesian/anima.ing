@@ -11,6 +11,7 @@ mod accounts;
 mod calls;
 pub mod codex;
 mod holder_events;
+mod listings;
 pub mod log;
 pub mod login;
 pub mod peer;
@@ -97,6 +98,8 @@ pub struct Runner {
     asked_again: Option<std::time::Instant>,
     threads: BTreeMap<Uuid, Thread>,
     limits: Limits,
+    /// How the person lists each thread (TH46).
+    listings: BTreeMap<Uuid, agent_threads::control::Listing>,
     watchers: Vec<Client>,
     waits: BTreeMap<u64, Waits>,
     /// The commands that change a program and that the holder did not answer yet: a new link
@@ -106,6 +109,8 @@ pub struct Runner {
     /// again is not read twice.
     read_up_to: BTreeMap<Uuid, u64>,
     log: log::RunnerLog,
+    /// How many refusals the daemon's log took this minute (MET-019).
+    refusal_lines: calls::RefusalLines,
     /// The copies that were asked for their version and the threads that wait for their first
     /// line (TH97).
     silence: silence::Silence,
@@ -165,11 +170,17 @@ pub async fn run(
         asked_again: None,
         threads: BTreeMap::new(),
         limits: saved.limits,
+        listings: saved
+            .listings
+            .into_iter()
+            .map(|listing| (listing.thread, listing))
+            .collect(),
         watchers: Vec::new(),
         waits: BTreeMap::new(),
         unanswered: BTreeMap::new(),
         read_up_to: BTreeMap::new(),
         log: log::RunnerLog::at(&dir),
+        refusal_lines: calls::RefusalLines::default(),
         silence: silence::Silence::default(),
         asks: start::Asks::default(),
         sign_in_told: BTreeMap::new(),
@@ -355,6 +366,7 @@ impl Runner {
         let record = record::Record {
             limits: self.limits,
             threads: self.threads.values().map(Thread::saved).collect(),
+            listings: self.listings.values().cloned().collect(),
         };
         if let Err(error) = record::write(&self.dir, &record) {
             tracing::warn!(%error, "the record of the runner was not written");

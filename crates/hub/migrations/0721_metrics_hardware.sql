@@ -1,5 +1,5 @@
 -- The hardware values of each device (K2 0710-0729; CAP-001 to CAP-005, CAP-032, K8 Section 4;
--- R-165 approves the optional member `hardware` of the push batch; R-NEW-hardwaretable approves
+-- R-165 approves the optional member `hardware` of the push batch; R-338 approves
 -- this change of K2).
 --
 -- `hardware` holds one row per device whose daemon sent its hardware values: the system,

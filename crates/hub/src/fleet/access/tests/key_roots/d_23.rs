@@ -63,9 +63,9 @@ pub(super) const D_23: [&str; 60] = [
     "containerDetail",
     "createLocationIngestToken",
     "connectDawarich",
-    // The approved model sources: only a person changes them (R-NEW-modellibrary).
+    // The approved model sources: only a person changes them (R-343).
     "addApprovedModelSource",
     "setModelPublisherApproval",
-    // The device policy: closed until a key permission for it exists (R-NEW-devicepolicy).
+    // The device policy: closed until a key permission for it exists (R-335).
     "setDevicePolicy",
 ];

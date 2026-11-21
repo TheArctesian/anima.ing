@@ -1,4 +1,4 @@
-//! One cgroup v2 for each server (Linux; R-NEW-containment). The cgroup is below the cgroup of
+//! One cgroup v2 for each server (Linux; R-331). The cgroup is below the cgroup of
 //! the daemon, which its unit must delegate. The server joins it through the launcher: the
 //! daemon program in the fixed mode `__model-launch`, which writes its own id to
 //! `cgroup.procs`, sets the parent-death signal as a backstop, and then becomes the runtime
@@ -156,7 +156,7 @@ pub fn sweep_cgroups() {
 }
 
 /// Moves the launcher into a new cgroup namespace whose root is the cgroup of its server
-/// (R-NEW-cgroupns): the runtime then sees `/` as its cgroup, and the kernel refuses a move of
+/// (R-330): the runtime then sees `/` as its cgroup, and the kernel refuses a move of
 /// a process to a cgroup outside that root, such as the cgroup of the daemon. A user of the
 /// system may make a cgroup namespace only inside a user namespace of its own, so both are made
 /// in one call; the user namespace maps the user and the group of the daemon to themselves.
@@ -201,6 +201,17 @@ fn fail(failure: &str, step: Containment) -> ! {
         let _ = file.write_all(code.to_string().as_bytes());
     }
     std::process::exit(code);
+}
+
+/// Becomes the launcher when the first argument is [`LAUNCH_MODE`]; otherwise returns. The
+/// launcher (R-331, R-330) joins the cgroup of the server, hides the cgroups
+/// above it and becomes the runtime; it never returns. `main` calls this first, before the async
+/// runtime or any thread starts, because a new namespace needs one thread.
+pub fn dispatch_if_launch() {
+    let arguments: Vec<String> = std::env::args().skip(1).collect();
+    if arguments.first().map(String::as_str) == Some(LAUNCH_MODE) {
+        launch(&arguments[1..]);
+    }
 }
 
 /// The launcher: `__model-launch <cgroup.procs> <daemon pid> <failure file> <program>

@@ -1,4 +1,4 @@
-//! The files of a server's tree (R-NEW-containment; SF-NEW-l1workw1 to SF-NEW-l1workw7): reads
+//! The files of a server's tree (R-331; SF-287 to SF-293): reads
 //! that refuse a link, a FIFO or an oversized file, and records written in place, never through one.
 
 use std::process::Command;

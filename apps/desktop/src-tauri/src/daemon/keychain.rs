@@ -1,5 +1,5 @@
 //! Whether the daemon of this computer waits for the person to allow it in the macOS Keychain
-//! (R-NEW-keychainwait). The daemon cannot tell the hub (without its token it cannot reach
+//! (R-322). The daemon cannot tell the hub (without its token it cannot reach
 //! it), so it puts the empty file [`MARK`] in its own folder while it waits and deletes it when
 //! the Keychain answers; `anima-daemon install` puts it too when its read of the token waits.
 //! The app only looks for the file: the client then shows that the daemon needs the person.

@@ -1,4 +1,4 @@
-//! The tree of a server as the walk of the parent processes (macOS; R-NEW-containment): the
+//! The tree of a server as the walk of the parent processes (macOS; R-331): the
 //! process table of `/bin/ps`, and the descendants of the roots. A root is the server, and each
 //! process that an earlier poll saw and that still has its identity: a child that a double
 //! fork gave to `launchd` stays in the tree once it was seen. Best effort: a process that

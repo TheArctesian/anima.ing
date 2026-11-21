@@ -1,4 +1,4 @@
-//! The fetch process of model work (Section 4, R-NEW-fetchprocess, task L1-6b). The download
+//! The fetch process of model work (Section 4, R-336, task L1-6b). The download
 //! runs in a child of the daemon, made from the same program in the mode
 //! [`child::FETCH_MODE`], with an empty environment and no token, hub origin or proxy. The rules
 //! are pure, in `daemon_core::model_work::releases::fetch`.

@@ -36,7 +36,7 @@ pub struct Launch {
     pub place: PathBuf,
     /// The server, which names its cgroup on Linux.
     pub server: uuid::Uuid,
-    /// The daemon program, which is the launcher on Linux (R-NEW-containment).
+    /// The daemon program, which is the launcher on Linux (R-331).
     pub launcher: PathBuf,
 }
 

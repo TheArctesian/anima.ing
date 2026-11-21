@@ -1,4 +1,4 @@
-//! The unpack of a `.zip` (R-NEW-archivezip) with the rules of the `.tar.gz`, against hostile
+//! The unpack of a `.zip` (R-329) with the rules of the `.tar.gz`, against hostile
 //! archives made in the test.
 
 use std::io::{Seek as _, Write as _};

@@ -7,16 +7,16 @@ use serde_json::{Map, Value};
 use super::names::{Actor, is_source_name};
 use crate::wire::{MODEL_TYPES, WorkType};
 
-/// The organisations of the default list (R-NEW-mlxcommunity). The publishers that a release
+/// The organisations of the default list (R-342). The publishers that a release
 /// of the daemon names join this list with that release; this release names none.
 pub const DEFAULT_ORGANISATIONS: [&str; 2] = ["unsloth", "mlx-community"];
 
 /// The values of `model-work.json`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MachineSettings {
-    /// Start each runtime in an isolation (Section 9; default off, R-NEW-sandboxrisk).
+    /// Start each runtime in an isolation (Section 9; default off, R-346).
     pub sandbox: bool,
-    /// Check each LFS hash against Hugging Face too (Section 7; default off, R-NEW-hubhash).
+    /// Check each LFS hash against Hugging Face too (Section 7; default off, R-339).
     pub second_hash: bool,
     /// The lowest age of a revision in days; 0 is no check (Section 7).
     pub revision_age_days: u32,
@@ -109,7 +109,7 @@ impl MachineSettings {
     }
 
     /// Whether the machine takes an item of `work_type` that `actor` asked for (Section 3,
-    /// R-NEW-agentmodelwork). The hub writes `actor`, so this limits an honest hub only.
+    /// R-326). The hub writes `actor`, so this limits an honest hub only.
     #[must_use]
     pub fn actor_permits(&self, actor: Actor, work_type: WorkType) -> bool {
         actor != Actor::Agent || self.agent_types.contains(&work_type)

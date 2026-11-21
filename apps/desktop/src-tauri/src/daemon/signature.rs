@@ -1,5 +1,5 @@
 //! Whether the daemon that the app carries keeps its identity in the macOS Keychain from one
-//! build to the next (R-NEW-adhocswap). The Keychain lets a program read an item when the
+//! build to the next (R-321). The Keychain lets a program read an item when the
 //! program satisfies the designated requirement that the item recorded. A Developer ID build
 //! names its team, so each later build of the team satisfies it; an ad hoc build names the
 //! hash of its own code, so each build is a new program, and its first read of the token waits

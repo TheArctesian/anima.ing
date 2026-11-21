@@ -7,10 +7,19 @@ import pin from './windows.pin.json' with { type: 'json' };
 
 interface Archive { url: string; sha256: string }
 
-function checked(program: string, args: string[]): void {
-  const result = spawnSync(program, args, { stdio: 'inherit', windowsHide: true });
+const MINUTE = 60_000;
+// The whole build takes about a minute; a run that hung here once held the runner for hours.
+const WHOLE_BUILD_MINUTES = 25;
+const ATTEMPTS = 2;
+
+/** Runs one step of the build, and stops it when it takes more than `minutes`. */
+function checked(step: string, minutes: number, program: string, args: string[]): void {
+  const result = spawnSync(program, args, { stdio: 'inherit', windowsHide: true, timeout: minutes * MINUTE });
+  if ((result.error as NodeJS.ErrnoException | undefined)?.code === 'ETIMEDOUT') {
+    throw new Error(`database-tree: ${step} took more than ${minutes} minutes and was stopped`);
+  }
   if (result.error !== undefined) throw result.error;
-  if (result.status !== 0) throw new Error(`database-tree: ${program} did not finish successfully`);
+  if (result.status !== 0) throw new Error(`database-tree: ${step} (${program}) did not finish successfully`);
 }
 
 async function archive(source: Archive, path: string, provided: string | undefined): Promise<Uint8Array> {
@@ -46,10 +55,10 @@ async function visualCpp(work: string, tree: string, expand: string): Promise<vo
   const bootstrapCab = join(work, 'bootstrap.cab');
   await cabinet(bytes, runtime.payloadOffset, runtime.payloadBytes, payloadCab);
   await cabinet(bytes, runtime.bootstrapOffset, runtime.bootstrapBytes, bootstrapCab);
-  checked(expand, ['-F:*', payloadCab, payload]);
-  checked(expand, ['-F:u4', bootstrapCab, bootstrap]);
+  checked('the expansion of the Visual C++ payload', 5, expand, ['-F:*', payloadCab, payload]);
+  checked('the expansion of the Visual C++ bootstrap', 5, expand, ['-F:u4', bootstrapCab, bootstrap]);
   // These member names are part of the hash-pinned Microsoft 14.44.35211 distribution.
-  checked(expand, ['-F:*', join(payload, 'a12'), dlls]);
+  checked('the expansion of the Visual C++ libraries', 5, expand, ['-F:*', join(payload, 'a12'), dlls]);
   const names = await readdir(dlls);
   if (names.length !== 12 || names.some((name) => !name.endsWith('.dll_amd64'))) {
     throw new Error('database-tree: the pinned x64 CRT cabinet has unexpected members');
@@ -73,15 +82,21 @@ async function build(work: string, output: string): Promise<void> {
   try {
     const zip = join(temporary, 'postgresql.zip');
     await archive(pin.postgresql, zip, process.env['ANIMA_POSTGRESQL_WINDOWS_ARCHIVE']);
-    checked(join(system, 'tar.exe'), ['-xf', zip, '-C', temporary,
+    checked('the extraction of PostgreSQL', 10, join(system, 'tar.exe'), ['-xf', zip, '-C', temporary,
       'pgsql/bin', 'pgsql/lib', 'pgsql/share', 'pgsql/server_license.txt', 'pgsql/commandlinetools_3rd_party_licenses.txt']);
     const tree = join(temporary, 'pgsql');
     await visualCpp(temporary, tree, join(system, 'expand.exe'));
-    checked(join(tree, 'bin/postgres.exe'), ['--version']);
+    checked('the version check of PostgreSQL', 2, join(tree, 'bin/postgres.exe'), ['--version']);
     await Bun.write(join(tree, 'anima-runtime.json'), `${JSON.stringify(pin, null, 2)}\n`);
     // Fail if output exists: never merge stale runtime DLLs into a new runtime tree.
     await mkdir(output);
-    for (const name of await readdir(tree)) await rename(join(tree, name), join(output, name));
+    try {
+      for (const name of await readdir(tree)) await rename(join(tree, name), join(output, name));
+    } catch (error) {
+      // A partly moved tree is removed, so that a second attempt does not find the output.
+      await rm(output, { recursive: true, force: true });
+      throw error;
+    }
   } finally {
     await rm(temporary, { recursive: true, force: true });
   }
@@ -89,4 +104,18 @@ async function build(work: string, output: string): Promise<void> {
 
 const [work, output] = process.argv.slice(2);
 if (work === undefined || output === undefined) throw new Error('usage: bun windows.ts <work-folder> <output-folder>');
-await build(resolve(work), resolve(output));
+// spawnSync blocks the timers, so each step has its own limit; this one bounds the waits between them.
+setTimeout(() => {
+  console.error(`database-tree: the build took more than ${WHOLE_BUILD_MINUTES} minutes and was stopped`);
+  process.exit(1);
+}, WHOLE_BUILD_MINUTES * MINUTE).unref();
+// One more attempt: a run hung here once for a cause that is not known, and three runs in four passed.
+for (let attempt = 1; ; attempt += 1) {
+  try {
+    await build(resolve(work), resolve(output));
+    break;
+  } catch (error) {
+    if (attempt === ATTEMPTS) throw error;
+    console.error(`database-tree: attempt ${attempt} failed (${error instanceof Error ? error.message : String(error)}); trying once more`);
+  }
+}

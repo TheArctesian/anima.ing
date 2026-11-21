@@ -13,7 +13,7 @@ use async_graphql::Enum;
 pub enum Capability {
     // Text
     Chat,
-    /// Calls tools that the request names (R-NEW-modellibrary).
+    /// Calls tools that the request names (R-343).
     Tools,
     Coding,
     Reasoning,

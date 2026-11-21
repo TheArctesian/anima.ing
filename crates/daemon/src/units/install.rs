@@ -165,7 +165,7 @@ fn read_text(path: &Path) -> Result<String, InstallError> {
 
 /// The user unit's daemon must find a token that has not expired, in the folder this shell
 /// found: else it fails and restarts for ever. A read that waits for the person in the
-/// Keychain is no failure (R-NEW-keychainwait): the mark tells the app, the unit goes in, and
+/// Keychain is no failure (R-322): the mark tells the app, the unit goes in, and
 /// its daemon waits for the person.
 fn check_user_ready(plan: &Plan, host: &Host<'_>) -> Result<(), InstallError> {
     ready::same_home(host.home.dir(), &plan.home)?;

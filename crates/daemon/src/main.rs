@@ -25,10 +25,8 @@ fn main() -> ExitCode {
     // The fixed modes (the Linux launcher first, then the fetch child) run before any
     // runtime or thread; each never returns.
     anima_daemon::model::modes::dispatch();
-    match tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-    {
+    // The same runtime as `Builder::new_multi_thread().enable_all()`.
+    match tokio::runtime::Runtime::new() {
         Ok(runtime) => runtime.block_on(daemon()),
         Err(error) => failure(&error),
     }

@@ -23,7 +23,7 @@ fn entry(action: AuditAction, message: String, change: serde_json::Value) -> Tra
 }
 
 /// The message and the change name the publisher that joined the list, or that stayed out
-/// because an API key or an agent added the model (R-NEW-modellibrary).
+/// because an API key or an agent added the model (R-343).
 pub(super) fn model_added(model: &Model, repository: &str, widening: &Widening) -> TrailEntry {
     let tags: Vec<&str> = model
         .variants

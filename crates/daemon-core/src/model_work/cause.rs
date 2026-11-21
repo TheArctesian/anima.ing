@@ -41,10 +41,10 @@ pub enum Cause {
     ProbeFailed,
     LimitDisk,
     ProgramMismatch,
-    /// An archive of a runtime breaks a rule of the unpack (R-NEW-archiverejected).
+    /// An archive of a runtime breaks a rule of the unpack (R-328).
     ArchiveRejected,
     /// Linux: the tree of a server cannot be contained; the detail says which step failed.
-    /// There is no start with less containment (R-NEW-containment, R-NEW-cgroupns).
+    /// There is no start with less containment (R-331, R-330).
     ContainmentFailed(Containment),
 }
 

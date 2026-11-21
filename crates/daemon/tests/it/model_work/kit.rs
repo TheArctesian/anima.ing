@@ -55,7 +55,7 @@ pub fn contained() -> bool {
             anima_daemon::model::tree::linux::end_cgroup(&path);
             true
         } else {
-            eprintln!("skipped: no delegated cgroup v2 here; HT-NEW-l1containment covers pop-os");
+            eprintln!("skipped: no delegated cgroup v2 here; HT-119 covers pop-os");
             false
         }
     }

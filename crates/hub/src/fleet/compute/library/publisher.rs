@@ -1,4 +1,4 @@
-//! How the publisher of a base model gets onto the approved list (LIBM-003, R-NEW-modellibrary).
+//! How the publisher of a base model gets onto the approved list (LIBM-003, R-343).
 //! Pure rules: the hub setting and the actor come in as values.
 #![expect(
     clippy::unused_async_trait_impl,
@@ -9,7 +9,7 @@ use async_graphql::Enum;
 
 use super::naming;
 
-/// The hub setting. The operator chose `BaseModel` (R-NEW-modellibrary).
+/// The hub setting. The operator chose `BaseModel` (R-343).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Enum)]
 #[graphql(name = "ModelPublisherApproval")]
 pub enum PublisherApproval {
@@ -46,7 +46,7 @@ pub enum Widening {
     /// The publisher joins the list.
     Add(String),
     /// The publisher stays out: an API key or an agent added the model. Only a person widens
-    /// the list (R-NEW-modellibrary).
+    /// the list (R-343).
     Withheld(String),
 }
 

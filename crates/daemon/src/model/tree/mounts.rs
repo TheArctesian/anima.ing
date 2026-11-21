@@ -1,4 +1,4 @@
-//! The mount of cgroup v2, read from `/proc/self/mountinfo` (R-NEW-cgroupns). A cgroup
+//! The mount of cgroup v2, read from `/proc/self/mountinfo` (R-330). A cgroup
 //! namespace stops a move of a process out of its root only when cgroup v2 is mounted with
 //! `nsdelegate`; without it the daemon refuses a start (`containment_failed`, `no_nsdelegate`).
 

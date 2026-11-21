@@ -21,8 +21,16 @@ pub(super) const ACCOUNT: &str = "anima-daemon";
 /// The system unit's state folder, which holds the token (`ANIMA_DAEMON_HOME` in the unit).
 pub(crate) const SYSTEM_HOME: &str = "/var/lib/anima-daemon";
 
-/// How long `launchctl bootstrap` waits before its one retry.
-const BOOTSTRAP_RETRY: Duration = Duration::from_secs(1);
+/// The pauses before each further try of `launchctl bootstrap`: right after `bootout`, or after
+/// the old daemon was just ended, launchd answers EIO (5) for some seconds while it still takes
+/// the old service out (seen twice in a row on 2026-11-21). Six tries over 15 s in all.
+const BOOTSTRAP_RETRIES: &[Duration] = &[
+    Duration::from_secs(1),
+    Duration::from_secs(2),
+    Duration::from_secs(3),
+    Duration::from_secs(4),
+    Duration::from_secs(5),
+];
 
 /// What `install` does: write `contents of unit` as `file`, then run `steps` in order. `home` is
 /// the daemon folder the started daemon finds: the unit sets no `ANIMA_DAEMON_HOME` for the user.
@@ -152,7 +160,7 @@ pub(super) fn plan(
             let mut bootstrap = Step::new("/bin/launchctl", &["bootstrap"]);
             bootstrap.args.push(domain);
             bootstrap.args.push(file.display().to_string());
-            bootstrap.retry_after = Some(BOOTSTRAP_RETRY);
+            bootstrap.retries = BOOTSTRAP_RETRIES;
             Ok(Plan {
                 unit: Unit::LaunchAgent,
                 file,
@@ -294,8 +302,8 @@ mod tests {
             !plan.steps[0].may_not_run,
             "the current label's bootout must run"
         );
-        assert_eq!(plan.steps[0].retry_after, None);
-        assert_eq!(plan.steps[1].retry_after, Some(BOOTSTRAP_RETRY));
+        assert_eq!(plan.steps[0].retries, &[] as &[Duration]);
+        assert_eq!(plan.steps[1].retries, BOOTSTRAP_RETRIES);
         assert_eq!(plan.steps[0].args, ["bootout", "gui/501/ing.anima.daemon"]);
         assert!(!plan.steps[1].may_fail);
         assert_eq!(

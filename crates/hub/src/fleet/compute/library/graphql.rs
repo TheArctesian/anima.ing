@@ -18,13 +18,13 @@ use crate::{
 };
 
 /// Whether the request comes from a person at a login or browser token: not an API key and
-/// not an agent (R-NEW-modellibrary).
+/// not an agent (R-343).
 fn is_person(ctx: &Context<'_>) -> Result<bool> {
     let actor = &schema_dependency::<Operator>(ctx)?.actor;
     Ok(actor.kind() == ActorKind::User && actor.token() != Some(TokenKind::ApiKey))
 }
 
-/// Only a person changes the approved sources (R-NEW-modellibrary). The D-23 list keeps API
+/// Only a person changes the approved sources (R-343). The D-23 list keeps API
 /// keys out before this; this refuses an agent.
 fn person_only(ctx: &Context<'_>) -> Result<()> {
     if is_person(ctx)? {

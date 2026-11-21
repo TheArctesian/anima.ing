@@ -1,4 +1,4 @@
-//! A Keychain read that cannot hold the daemon for ever (R-NEW-keychainwait). macOS asks the
+//! A Keychain read that cannot hold the daemon for ever (R-322). macOS asks the
 //! person before a program that is not on the access list of an item reads it; an ad hoc
 //! signed build is a new program at each build, so its read can wait for a click that never
 //! comes, and the OS call has no timeout.
@@ -21,7 +21,7 @@ use crate::config::home::Home;
 /// How long a caller waits for one Keychain read. An allowed read ends in milliseconds, and
 /// the first unlock of the login keychain in a second or two; a prompt that nobody answers
 /// never ends. 5 s is well above the first and keeps `install` far below the 30 s of one
-/// step and the deadline of the app (R-NEW-keychainwait).
+/// step and the deadline of the app (R-322).
 pub const DEADLINE: Duration = Duration::from_secs(5);
 
 /// The file in the daemon's folder that is there while the daemon waits for the person to

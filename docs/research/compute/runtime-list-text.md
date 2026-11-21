@@ -1,10 +1,10 @@
-# The installed runtimes: the text for the second approval (R-NEW-runtimelist)
+# The installed runtimes: the text for the second approval (R-345)
 
-Status: the operator approved the list with two changes (R-NEW-runtimelist): "Approve, add Ollama" and "Add the
+Status: the operator approved the list with two changes (R-345): "Approve, add Ollama" and "Add the
 field". This text has both. He then approved the wording of `backend` with one fix: "Approve, one fix
 (Recommended)". The text is in model-work.md Section 8 on the branch compute/l1-3.
 
-The operator selected "Separate list" (R-NEW-runtimelist): the model runtimes are not names of the K8
+The operator selected "Separate list" (R-345): the model runtimes are not names of the K8
 tool inventory. They have one list of their own, defined once, in the runtime report of the model-work
 contract (`contracts/compute/model-work.md` Section 8, on the branch compute/l1-3, which is not merged).
 The text below replaces the `installed` part of that section. `contracts/daemon-push.md` Section 4 gets
@@ -25,7 +25,7 @@ with:
 
 Add these items after the list of `state` of a server:
 
-- `installed` is the list of the installed model runtimes (CAP-003, R-NEW-runtimelist). It is the only list of
+- `installed` is the list of the installed model runtimes (CAP-003, R-345). It is the only list of
   the runtimes; the tool inventory of K8 Section 4 does not hold them. It holds at most 16 entries with unique
   names. Each entry has a `runtime` and either a `version` of 1 to 64 bytes of `[0-9A-Za-z.+_-]` or a `state`,
   never both. The `state` is a fixed code, never text from the device: `timed_out`, `exited` or `no_version`,
@@ -65,10 +65,10 @@ Change "At most 16 servers, 64 copies and 16 installed runtimes." to "At most 16
 ## The reference in daemon-push.md Section 4
 
 After the list of the tool names, the text is now: "the model runtimes are not tools: they have their own list,
-R-NEW-runtimelist". After the approval it becomes:
+R-345". After the approval it becomes:
 
 > The installed model runtimes are not tools. They are in the optional member `runtimes`, which
-> model-work.md (a link to `compute/model-work.md`) Section 8 defines (R-NEW-runtimelist).
+> model-work.md (a link to `compute/model-work.md`) Section 8 defines (R-345).
 
 ## The answers of the operator
 

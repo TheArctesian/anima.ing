@@ -1,4 +1,4 @@
-//! The rules of the child fetch process (Section 4, R-NEW-fetchprocess, task L1-6b): the order
+//! The rules of the child fetch process (Section 4, R-336, task L1-6b): the order
 //! that the daemon writes to its standard input, the one word that it gives back, the hosts that
 //! a redirect may reach, and the deadlines. The child and the daemon both use these; the I/O is
 //! in the daemon crate.

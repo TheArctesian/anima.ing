@@ -1,6 +1,6 @@
 -- The device policy of each compute node (CAP-010 to CAP-012; compute plan task L1-5). A new
 -- table in the range 1040-1059 and the schema `compute` that migration 1040 (task L1-4) creates:
--- waits for a ruling, R-NEW-devicepolicy.
+-- waits for a ruling, R-335.
 --
 -- One row per device whose operator set a policy; a device with no row has the default policy
 -- of the hub (100 percent of the usable memory, 75 percent of the free disk, no quiet hours, mains power only, the

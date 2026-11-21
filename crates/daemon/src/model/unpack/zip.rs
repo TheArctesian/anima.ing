@@ -1,4 +1,4 @@
-//! The entries of a `.zip` (R-NEW-archivezip), with the rules of the `.tar.gz`: only a regular
+//! The entries of a `.zip` (R-329), with the rules of the `.tar.gz`: only a regular
 //! file or a folder (the Unix type bits, when the entry has them, say which), no symbolic link,
 //! no encrypted entry, the declared size and the bytes read both within the limit, so a zip
 //! bomb stops at the limit.

@@ -7,10 +7,10 @@ use thiserror::Error;
 
 /// The memory share of a node with no policy, in percent of the usable memory that the node
 /// reports (CAP-005): all of it. The fit estimate keeps its own overhead, so the share adds no
-/// second margin; the operator can lower it for each device (R-NEW-devicepolicy).
+/// second margin; the operator can lower it for each device (R-335).
 pub const DEFAULT_MEMORY_SHARE: u8 = 100;
 /// The disk share for models of a node with no policy, in percent of the free disk
-/// (R-NEW-devicepolicy). The disk reserve of the daemon always wins: the usable disk is the
+/// (R-335). The disk reserve of the daemon always wins: the usable disk is the
 /// smaller of this share of the free disk and the free disk less the reserve (model-work
 /// contract, Section 7).
 pub const DEFAULT_DISK_SHARE: u8 = 75;

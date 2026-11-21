@@ -11,7 +11,7 @@ use super::cause::Cause;
 use super::names::{Backend, Runtime, Word};
 
 /// The lowest release of each runtime that this program accepts. The number of
-/// `llama_server` is a placeholder until the human check of HT-NEW-l1daemonwork picks the
+/// `llama_server` is a placeholder until the human check of HT-120 picks the
 /// first release of each machine (OD-C1).
 pub const LOWEST: [(Runtime, u64); 1] = [(Runtime::LlamaServer, 6000)];
 
@@ -68,7 +68,7 @@ pub fn accepted(release: &Release) -> Result<(), Cause> {
     Ok(())
 }
 
-/// The form of a runtime archive, by the end of its address (R-NEW-archivezip).
+/// The form of a runtime archive, by the end of its address (R-329).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ArchiveFormat {
     TarGz,

@@ -1,4 +1,4 @@
-//! The K1 types of the device policy (waits for R-NEW-devicepolicy): `DevicePolicy`,
+//! The K1 types of the device policy (waits for R-335): `DevicePolicy`,
 //! `QuietHours`, `ModelWorkStop` and the inputs of `setDevicePolicy`.
 #![expect(
     clippy::unused_async_trait_impl,

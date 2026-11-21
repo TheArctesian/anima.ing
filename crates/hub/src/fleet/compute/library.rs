@@ -195,7 +195,7 @@ pub async fn set_publisher_approval(
 }
 
 /// Adds the publisher of the model that [`read`] gave to the approved list, when the setting
-/// and the actor permit it (R-NEW-modellibrary). `person` is false for an API key or an agent.
+/// and the actor permit it (R-343). `person` is false for an API key or an agent.
 /// Returns what it did, for the audit entry.
 ///
 /// # Errors

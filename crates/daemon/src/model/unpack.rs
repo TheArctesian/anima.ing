@@ -34,7 +34,7 @@ impl Limits {
     };
 }
 
-/// The cause of an archive that breaks a rule of the unpack (Section 5, R-NEW-archiverejected).
+/// The cause of an archive that breaks a rule of the unpack (Section 5, R-328).
 const BAD_ARCHIVE: Cause = Cause::ArchiveRejected;
 
 const DIR_FLAGS: OFlags = OFlags::DIRECTORY

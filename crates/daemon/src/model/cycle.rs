@@ -47,7 +47,7 @@ pub struct Node {
     pub started: Instant,
     /// The free disk that model work leaves ([`install::DEFAULT_RESERVE`] by default).
     pub reserve: u64,
-    /// The daemon program: the launcher of a runtime on Linux (R-NEW-containment).
+    /// The daemon program: the launcher of a runtime on Linux (R-331).
     pub launcher: PathBuf,
     /// The range of loopback ports of the daemon configuration ([`server::PORTS`] by default).
     pub ports: std::ops::RangeInclusive<u16>,
@@ -102,7 +102,7 @@ fn architecture_word(architecture: WorkArchitecture) -> &'static str {
 
 impl Node {
     /// Ends the processes and the cgroups of each server of an earlier run, from their records
-    /// (R-NEW-containment). The daemon calls it once when it starts, before any claim.
+    /// (R-331). The daemon calls it once when it starts, before any claim.
     ///
     /// # Errors
     /// An I/O error of the state folder.

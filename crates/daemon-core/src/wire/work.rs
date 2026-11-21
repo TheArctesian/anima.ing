@@ -23,7 +23,7 @@ pub enum WorkType {
     Build,
     Runner,
     /// The model work types (`contracts/compute/model-work.md` Section 2; waits for
-    /// R-NEW-modelwork). Each has the kind [`WorkKind::Model`].
+    /// R-344). Each has the kind [`WorkKind::Model`].
     ModelReport,
     RuntimeInstall,
     ModelPull,

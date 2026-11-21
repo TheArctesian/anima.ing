@@ -12,10 +12,14 @@ use tempfile::TempDir;
 
 mod connection;
 mod holder_update;
+mod listing;
 mod requests;
 mod runner;
 mod start;
 mod stop;
+
+/// How long a test waits for an event of the holder: generous, so that a busy computer passes.
+const WAIT: Duration = Duration::from_secs(60);
 
 /// A holder process in a folder of its own, ended with the test.
 struct Holder {
@@ -37,7 +41,8 @@ impl Holder {
     }
 
     async fn link(&self) -> Talk {
-        for _ in 0..100 {
+        // Up to 30 s: a busy computer can take seconds to start the binary of the holder.
+        for _ in 0..600 {
             if let Ok(link) = HolderLink::connect(&self.dir).await {
                 return Talk {
                     link,
@@ -48,6 +53,18 @@ impl Holder {
             tokio::time::sleep(Duration::from_millis(50)).await;
         }
         panic!("the holder did not listen");
+    }
+
+    /// Whether the holder process ended within `bound`.
+    async fn ended_within(&mut self, bound: Duration) -> bool {
+        let deadline = tokio::time::Instant::now() + bound;
+        while tokio::time::Instant::now() < deadline {
+            if matches!(self.child.try_wait(), Ok(Some(_))) {
+                return true;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+        false
     }
 }
 
@@ -166,7 +183,7 @@ impl Talk {
 
     /// The events after the last call, up to the first for which `last` is true.
     async fn until(&mut self, last: impl Fn(&Event) -> bool) -> Vec<Event> {
-        let deadline = tokio::time::Instant::now() + Duration::from_secs(20);
+        let deadline = tokio::time::Instant::now() + WAIT;
         loop {
             if let Some(at) = self.log[self.cursor..].iter().position(&last) {
                 let found = self.log[self.cursor..=self.cursor + at].to_vec();
@@ -179,7 +196,7 @@ impl Talk {
 
     /// The answer to the command `id`, wherever it is in the log.
     async fn answer(&mut self, id: u64) -> Outcome {
-        let deadline = tokio::time::Instant::now() + Duration::from_secs(20);
+        let deadline = tokio::time::Instant::now() + WAIT;
         loop {
             let found = self.log.iter().find_map(|event| match event {
                 Event::Done { id: done, outcome } if *done == id => Some(outcome.clone()),

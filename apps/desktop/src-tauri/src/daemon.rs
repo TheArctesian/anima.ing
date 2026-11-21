@@ -66,7 +66,7 @@ const ENROL_DEADLINE: Duration = Duration::from_secs(60);
 const UNINSTALL_DEADLINE: Duration = Duration::from_secs(120);
 /// `install` runs up to five steps of 30 s each (two take the unit of the old program out,
 /// R-126), one retried after a pause; the rest is margin. Its read of the token in the
-/// Keychain stops after 5 s (R-NEW-keychainwait), so a prompt that nobody answers no longer
+/// Keychain stops after 5 s (R-322), so a prompt that nobody answers no longer
 /// holds it: the deadline is for slow service managers, and the update uses it too.
 const INSTALL_DEADLINE: Duration = Duration::from_secs(240);
 
@@ -288,7 +288,7 @@ pub fn update_at_start(installing: &Installing) {
             }
             Ok(update::Updated::KeptForKeychain) => {
                 log::warn!(
-                    "the daemon on this computer is older than the one of the app, but this build has no Developer ID signature: the Keychain would ask again for the new daemon, so it stays (R-NEW-adhocswap)"
+                    "the daemon on this computer is older than the one of the app, but this build has no Developer ID signature: the Keychain would ask again for the new daemon, so it stays (R-321)"
                 );
             }
             Ok(update::Updated::NoCopy | update::Updated::Unchanged) => {}
