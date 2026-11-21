@@ -56,6 +56,8 @@ in pkgs.testers.runNixOSTest {
     retained = json.loads(machine.succeed(f"anima-osd job-get {request}"))["value"]
     assert retained == completed
     machine.reboot()
+    machine.wait_for_shutdown()
+    machine.start()
     machine.wait_for_unit("anima-os-control.service")
     machine.wait_until_succeeds("anima-osd status")
     retained = json.loads(machine.succeed(f"anima-osd job-get {request}"))["value"]
