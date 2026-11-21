@@ -12,7 +12,7 @@ NIX_REMOTE=daemon nix --extra-experimental-features 'nix-command flakes' build \
   path:./experiments/anima-os#iso --out-link /tmp/anima-os-preview-iso -L
 ```
 
-The image is `/tmp/anima-os-preview-iso/iso/anima-os-preview-x86_64.iso`. Runtime preparation builds the repository daemon with `--locked --release`, strips a copy and records its source revision and hashes. `payload/` is generated and excluded from git. This is a local preview build, not a signed release or a fully hermetic Rust build inside Nix.
+The image is `/tmp/anima-os-preview-iso/iso/anima-os-preview-x86_64.iso`. Runtime preparation builds the repository daemon with `--locked --release`, strips a copy and records its source revision and hashes. It also projects the four OS Rust crates and locked workspace metadata into `payload/source`; Nix builds those controllers from source. `payload/` is generated and excluded from git. This is a local preview build, not a signed release or a fully hermetic Rust build inside Nix.
 
 ## Try and install
 
@@ -26,7 +26,7 @@ Installer display settings follow screen geometry changes, recenter after rotati
 
 All installer steps and installed-console pages share resolution-aware Qt scaling, including dialogs and footer controls. At launch the primary active display determines a quarter-step scale that retains at least a 1280×800 logical canvas where the panel permits it; small displays remain at 1×. Form fields grow with the page up to 1100 logical pixels; welcome/completion artwork follows the available area. This is a resolution-based default, not a claim of measured physical DPI.
 
-The footer settings icon opens display orientation, reduced motion and recovery controls. Ctrl+Alt+F2 opens a text recovery console. For CLI installation, stop Calamares before running `anima-install`; both installers share an exclusive installation lock. The CLI uses a typed disk-specific erase phrase.
+The footer settings icon opens display orientation, reduced motion and recovery controls. Ctrl+Alt+F2 opens a text recovery console. For CLI installation, stop Calamares before running `anima-install`; both installers share an exclusive installation lock. The native CLI accepts one bounded JSON request on stdin with an explicit confirmation and the exact reviewed disk identities; `anima-os-install inventory` supplies those identities. The graphical installer constructs this request after the erase review. No interactive terminal UI is required.
 
 System NetworkManager profiles are copied privately to persistent storage. Secrets held only in a user's keyring are not copied; such connections can require setup again after installation. The console keyboard map is retained. The installed supplicant uses a read-only configuration while NetworkManager retains profiles in its designated writable directory. Firmware and `lspci`, `lsusb`, `iw` and `rfkill` diagnostics are available. A graphical menu cannot make an unsupported Wi-Fi adapter appear; unknown hardware still needs validation.
 
@@ -34,7 +34,7 @@ The preview uses fixed filesystem labels and refuses installation while another 
 
 ## Connect monitoring
 
-Choose **Sign in to Anima** from the Anima screen, complete the secure browser flow, then choose **Add this computer**. The console obtains the account’s hub access, joins the private link, identifies or creates this machine’s device record, and exchanges a fresh enrollment code for the daemon token internally. Neither the code nor account tokens appear in the UI, process arguments or operation logs. Existing daemon enrollment is not silently replaced. A machine-ID-derived name distinguishes spare computers. The link runs as a system service and survives local screen locking and reboots.
+Choose **Sign in to Anima** directly from Overview, complete the secure browser flow, then choose **Add this computer**. The console obtains the account’s hub access, joins the private link, identifies or creates this machine’s device record, and exchanges a fresh enrollment code for the daemon token internally. Neither the code nor account tokens appear in the UI, process arguments or operation logs. Existing daemon enrollment is not silently replaced. A machine-ID-derived name distinguishes spare computers. The link runs as a system service and survives local screen locking and reboots.
 
 This flow depends on the account service and compatible hub routes being available. It reports failures rather than displaying a mock success. Sign-in tokens are memory-only; restart sign-in after a failed enrollment. No production account was enrolled during automated image testing. Packaging monitoring does not add the planned managed job/agent execution engine.
 
@@ -54,13 +54,13 @@ python3 experiments/anima-os/iso_test.py \
   "$HOME/.local/share/anima-os-prototype/iso-test-new"
 ```
 
-Use a fresh disk-backed directory with at least 64 GiB free. The GUI test creates a 64 GiB OS disk, a 40 GiB data disk and a separate 32 GiB sentinel disk. It attaches no NIC, checks erase authorization and its reset after selection changes, installs, removes the ISO, logs in and checks persistence after reboot. The CLI test separately covers its typed confirmation flow. All disks are disposable regular files. No host disk is attached. Raw logs and results remain in that directory.
+Use a fresh disk-backed directory with at least 64 GiB free. The GUI test creates a 64 GiB OS disk, a 40 GiB data disk and a separate 32 GiB sentinel disk. It attaches no NIC, checks erase authorization and its reset after selection changes, installs, removes the ISO, logs in and checks persistence after reboot. The native CLI test separately covers missing or changed identity/confirmation refusal. All disks are disposable regular files. No host disk is attached. Raw logs and results remain in that directory.
 
 Run the Python regression checks separately:
 
 ```sh
 python3 -m unittest discover -s experiments/anima-os -p 'test_*.py'
-python3 -m unittest discover -s experiments/anima-os/installer
+cargo test -p anima-os-install -p anima-os-update -p anima-osd
 ```
 
 Physical hardware and real enrollment checks are tracked in HT-069 in `docs/need-human-testing.md`.
@@ -83,7 +83,7 @@ The top-right battery indicator in both interfaces reads present system batterie
 
 **Your own hub** accepts a reachable private HTTPS hub and an enrollment code supplied by its owner. Certificates must validate, the supported port is 443, and the machine must already have a network route to that hub. Existing ownership is never silently replaced. The code travels over standard input to the daemon rather than appearing in process arguments. Hosted sign-in uses a separate private browser profile with a compact header and no native command bridge on the remote page.
 
-The **Updates** page checks `https://releases.anima.ing/os/preview/x86_64-linux/latest.json`. It verifies the signed manifest with the public key embedded in the image, verifies the complete compressed system archive before import, and stages a separately bootable candidate while retaining the previous system. Downloading does not activate it. Finish active work before explicitly choosing the update restart; automatic workload draining is not implemented in this preview. OS updates do not roll back persistent workload data.
+**Settings → Updates** checks `https://releases.anima.ing/os/preview/x86_64-linux/latest.json`. It verifies the signed manifest with the public key embedded in the image, verifies the complete compressed system archive before import, and stages a separately bootable candidate while retaining the previous system. Downloading does not activate it. Finish active work before explicitly choosing the update restart; automatic workload draining is not implemented in this preview. OS updates do not roll back persistent workload data.
 
 This initial transport downloads a full system closure, rather than a delta. Automatic retirement of old EFI assets and Nix store garbage collection are not implemented yet; low-space staging is refused rather than deleting recovery material. It needs enough free storage for the archive, imported closure and recovery. Local boot checks determine whether a candidate is accepted; loss of hub connectivity alone is not a rollback trigger. Hardware-specific failures and real-account enrollment still require the human checks above.
 
@@ -99,3 +99,34 @@ python3 experiments/anima-os/updates/publish.py /disk-backed/release \
 The publisher requires boto3. It uploads only the OS preview namespace in the existing release bucket, checks the public artifact digest, and then publishes the signed feed. Keep the signing key backed up securely: future updates must verify against the key already installed on machines.
 
 `update_test.py ISO PACKAGE OUTPUT` installs into disposable VM disks, exercises the completion restart and installed console, captures real daemon storage telemetry at a local fixture hub, and checks signed HTTPS staging, reboot and owner rollback with persistent-data sentinels. It uses a test-only TLS origin on a disposable attached disk, without host networking or disabled certificate verification.
+
+
+### Updates automated tests
+
+From the repository root, build the native updater, run the staging VM, and build the real EFI boot fixture with the pinned Nixpkgs input:
+
+```sh
+export ANIMA_OS_WORKSPACE="$PWD"
+for target in update-package update-rust-vm update-boot-vm; do
+  ANIMA_UPDATE_TARGET="$target" NIX_REMOTE=daemon nix \
+    --extra-experimental-features 'nix-command flakes' build --impure --expr '
+      let
+        workspaceRoot = builtins.toPath (builtins.getEnv "ANIMA_OS_WORKSPACE");
+        os = workspaceRoot + "/experiments/anima-os";
+        flake = builtins.getFlake ("path:" + toString os);
+        pkgs = import flake.inputs.nixpkgs { system = builtins.currentSystem; };
+      in import (os + ("/" + builtins.getEnv "ANIMA_UPDATE_TARGET" + ".nix"))
+        { inherit pkgs workspaceRoot; }
+    ' --out-link "/tmp/anima-$target" -L || exit 1
+done
+
+NIX_REMOTE=daemon python3 experiments/anima-os/update_boot_test.py \
+  /tmp/anima-update-boot-vm \
+  "$HOME/.local/share/anima-os-prototype/update-boot-new"
+```
+
+Use a fresh disk-backed output directory with at least 32 GiB free. The boot runner requires the QEMU/OVMF tools described above, `nix-store`, `openssl`, `xz`, and `mkfs.ext4`. It exports the complete candidate closure, signs it with a synthetic fixture key, serves it over locally trusted HTTPS inside the isolated guest, and records `update-boot-results.json` and `serial.log` in the output directory.
+
+The staging VM verifies signature/hash/downgrade refusal, locking, progress interruption and import/staging; its candidate is deliberately not bootable. The separate EFI fixture boots real A/B kernels on a persistent 1 GiB ESP, checks activation and health blessing, explicitly rolls back, then masks a candidate health dependency to prove two failed boots recover the previous system. Identity/work sentinels and an unselected disk must remain unchanged. Its headless services stand in for graphical health dependencies; it does not qualify the full graphical appliance, physical hardware or real enrollment.
+
+`updates/package.py`, `publish.py`, `feed.py` and their Python tests remain publishing/test tools. The native updater package and its installed shell wrapper contain no Python runtime dependency; retained `updates/update.py` and `boot.py` are reference implementations, not installed control paths.

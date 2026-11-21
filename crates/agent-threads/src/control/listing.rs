@@ -78,7 +78,7 @@ impl Listing {
 #[error("a title is 1 to {MAX_TITLE} characters on one line, with no hidden marks")]
 pub struct BadTitle;
 
-fn checked_title(title: &str) -> Result<String, BadTitle> {
+pub(crate) fn checked_title(title: &str) -> Result<String, BadTitle> {
     let title = title.trim();
     let fits = !title.is_empty() && title.chars().count() <= MAX_TITLE;
     let shown = title

@@ -4,6 +4,7 @@
   outputs = { self, nixpkgs }: let
     system = "x86_64-linux";
     pkgs = import nixpkgs { inherit system; };
+    workspaceRoot = ./payload/source;
     daemonPackage = import ./daemon-package.nix { inherit pkgs; };
   in {
     packages.${system} = {
@@ -18,11 +19,12 @@
     };
     nixosConfigurations.appliance = nixpkgs.lib.nixosSystem {
       inherit system;
-      specialArgs = { inherit daemonPackage; };
+      specialArgs = { inherit daemonPackage workspaceRoot; };
       modules = [ ./appliance.nix ];
     };
     nixosConfigurations.installer = nixpkgs.lib.nixosSystem {
       inherit system;
+      specialArgs.workspaceRoot = workspaceRoot;
       specialArgs.installedSystem = self.nixosConfigurations.appliance.config.system.build.toplevel;
       modules = [ ./iso.nix ];
     };

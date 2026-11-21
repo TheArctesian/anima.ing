@@ -8,7 +8,7 @@ import { listingsFrom, type Listing, type ListingChange } from '../listing/listi
 import type { Program } from '../thread';
 
 export type RunState = 'starting' | 'working' | 'needs_you' | 'idle' | 'stopped' | 'unknown';
-export type Mode = 'full_access' | 'accept_edits' | 'ask';
+export type Mode = 'full_access' | 'accept_edits' | 'ask' | 'plan';
 export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 export type RequestKind = 'command' | 'file_change' | 'tool' | 'question';
 
@@ -145,7 +145,7 @@ export const OVER_LIMIT = 'You are over the recommended guidance and at risk of 
 
 const PROGRAMS: readonly string[] = ['claude_code', 'codex'];
 const STATES: readonly string[] = ['starting', 'working', 'needs_you', 'idle', 'stopped', 'unknown'];
-const MODES: readonly string[] = ['full_access', 'accept_edits', 'ask'];
+const MODES: readonly string[] = ['full_access', 'accept_edits', 'ask', 'plan'];
 const KINDS: readonly string[] = ['command', 'file_change', 'tool', 'question'];
 const REFUSALS: readonly string[] = ['unknown_thread', 'folder_not_permitted', 'program_not_found', 'program_does_not_answer', 'bad_value', 'request_gone', 'answer_does_not_fit', 'not_running', 'holder', 'from_an_agent', 'running', 'over_limit'];
 

@@ -2,15 +2,21 @@
 //! the operator may revoke that token (K8 Section 3, MET-011, MET-012, MET-013).
 
 use async_graphql::Object;
-use chrono::{DateTime, Utc};
-use daemon_core::wire::{CodeHash, DaemonToken, Enrolled, EnrolmentCode, is_device_name};
+use chrono::{DateTime, SecondsFormat, Utc};
+use daemon_core::wire::{
+    CODE_BYTES, CodeHash, DaemonToken, Enrolled, EnrolmentCode, is_device_name,
+};
+use serde_json::json;
 use sqlx::{PgConnection, PgPool};
 
 use super::{CODE_LIFETIME, Error, TOKEN_LIFETIME, store};
 use crate::{
     fleet::{
         devices,
-        events::{self, ActorKind, Bus, NewEvent, Severity, Source},
+        events::{
+            self, ActorKind, AuditAction, AuditTarget, Bus, NewEvent, Severity, Source, Trail,
+            TrailEntry,
+        },
     },
     ids::DeviceId,
 };
@@ -33,10 +39,39 @@ impl DaemonEnrolment {
     }
 }
 
-impl DaemonEnrolment {
-    /// When the code stops working.
-    pub(in crate::fleet::metrics) const fn expiry(&self) -> DateTime<Utc> {
-        self.expires_at
+/// A one-use enrolment code for `device`, made from the OS random source, with its audit entry
+/// and event written by `trail`, in the caller's transaction; the device's earlier unused codes
+/// stop working (MET-012). The operator's `enrolDaemon` and the claim of a computer with no
+/// application (HM-T33) both make their code here.
+///
+/// # Errors
+/// `Random` when the source fails; `NoDevice` when the device was deleted meanwhile;
+/// `Database` or `Events` when a write fails.
+pub async fn enrol_code(
+    conn: &mut PgConnection,
+    device: &devices::Device,
+    trail: Trail<'_>,
+) -> Result<DaemonEnrolment, Error> {
+    let bytes = super::random::<CODE_BYTES>()?;
+    let code = EnrolmentCode::from_random(*bytes);
+    let enrolment = make_code(conn, device.id, code, trail.now).await?;
+    trail.write(conn, code_made(device, &enrolment)).await?;
+    Ok(enrolment)
+}
+
+/// The audit entry and event of a new code: when it stops working, never the code (LOG-007).
+fn code_made(device: &devices::Device, enrolment: &DaemonEnrolment) -> TrailEntry {
+    let expires_at = enrolment
+        .expires_at
+        .to_rfc3339_opts(SecondsFormat::Secs, true);
+    TrailEntry {
+        source: Source::Metrics,
+        severity: Severity::Info,
+        device: Some((device.id, device.name.clone())),
+        message: format!("Made a daemon enrolment code for {}.", device.name),
+        action: AuditAction::Create,
+        target: AuditTarget::Device(device.id),
+        change: json!({ "daemonEnrolment": { "expiresAt": expires_at } }),
     }
 }
 

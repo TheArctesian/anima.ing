@@ -7,6 +7,7 @@ import subprocess
 import sys
 import threading
 from commands import connect, networks, run, status
+from diagnostic_job import DiagnosticJob
 from hosted import Account
 from selfhost import enroll as enroll_selfhost
 from orientation import outputs, rotate, save_rotation
@@ -15,6 +16,7 @@ from orientation import outputs, rotate, save_rotation
 class Session:
     def __init__(self):
         self.account = Account()
+        self.diagnostic_job = DiagnosticJob()
         self.rotation = None
         self.revert_timer = None
         self.rotation_lock = threading.RLock()
@@ -95,9 +97,15 @@ class Session:
             run(['systemctl', '--no-block', 'reboot' if op == 'restart' else 'poweroff'])
             return {'requested': True}
         if op == 'diagnostics':
-            return {'network': run(['nmcli', '-t', '-f', 'STATE,CONNECTIVITY', 'general']),
+            result = {'network': run(['nmcli', '-t', '-f', 'STATE,CONNECTIVITY', 'general']),
                     'radio': run(['rfkill', '--json']), 'root': run(['findmnt', '-n', '-o', 'OPTIONS', '/']),
                     'monitoring': status()['daemon'], 'wifi_backend': status()['supplicant']}
+            control = os.environ.get('ANIMA_OS_CONTROL')
+            if control:
+                diagnostics = self.diagnostic_job.read(control)
+                result['monitoring'] = diagnostics['monitoring']
+                result['private_link'] = diagnostics['private_link']
+            return result
         raise ValueError('Unsupported operation.')
 
 

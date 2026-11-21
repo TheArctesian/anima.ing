@@ -8,10 +8,12 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::drive::{AccountFacts, Answer, DriveEvent, Effort, Mode, Program, Request};
+use crate::drive::{AccountFacts, Answer, DriveEvent, Effort, Mode, ModelChoice, Program, Request};
 
 mod listing;
+mod project;
 pub use listing::{BadTitle, Listing, ListingChange, MAX_TITLE};
+pub use project::{BadProject, MAX_PROJECTS, Project, ProjectChange, changed as project_changed};
 
 /// The most bytes of one frame of a client.
 pub const MAX_FRAME: usize = 4 * 1024 * 1024;
@@ -89,6 +91,19 @@ pub enum Action {
     Listings,
     /// A change of how the person lists a thread (TH46): only the person makes it.
     ChangeListing { thread: Uuid, change: ListingChange },
+    /// The newest list of models that each program named (TH104).
+    Models,
+    /// The updates that the runner keeps of a thread with a number below `before`, at most
+    /// `most` of them, the newest of them (TH106).
+    Earlier {
+        thread: Uuid,
+        before: u64,
+        most: usize,
+    },
+    /// The projects of this computer (TH107).
+    Projects,
+    /// A change of the projects (TH107): only the person makes it.
+    ChangeProject { change: ProjectChange },
 }
 
 /// A frame of the runner to a client.
@@ -130,6 +145,16 @@ pub enum Outcome {
     /// How the person lists each thread that has a listing (TH46).
     Listings {
         listings: Vec<Listing>,
+    },
+    Models {
+        models: Vec<ModelRow>,
+    },
+    /// Oldest first; empty when the runner keeps nothing older.
+    Earlier {
+        updates: Vec<Update>,
+    },
+    Projects {
+        projects: Vec<Project>,
     },
     Refused {
         why: Refusal,
@@ -263,6 +288,15 @@ pub struct AccountRow {
     #[serde(flatten)]
     pub facts: AccountFacts,
     /// The time of the newest report.
+    pub at: chrono::DateTime<chrono::Utc>,
+}
+
+/// The models of one program, as its newest thread named them (TH104). In the memory of the
+/// runner only: a program names its models when one of its threads starts.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ModelRow {
+    pub program: Program,
+    pub models: Vec<ModelChoice>,
     pub at: chrono::DateTime<chrono::Utc>,
 }
 

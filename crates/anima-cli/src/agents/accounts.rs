@@ -1,8 +1,9 @@
 //! `anima agents accounts`: the account, the plan and the limits that each agent program of
 //! this computer said to the runner (THR-132). It reads the local socket of this user only; the
 //! name of an account is often an address of the person, so no MCP tool gives it (THR-132).
+//! `anima agents models`: the models that each program offers for a start (TH104).
 
-use agent_threads::control::{AccountRow, Action, Outcome};
+use agent_threads::control::{AccountRow, Action, ModelRow, Outcome};
 use agent_threads::drive::Limit;
 use chrono::{DateTime, Utc};
 
@@ -28,6 +29,45 @@ pub async fn accounts(invocation: &Invocation) -> Result<(), Failure> {
         return Ok(());
     }
     invocation.output.data(&accounts, |rows| table(rows))
+}
+
+/// `anima agents models`: the models that each program named when its newest thread started.
+///
+/// # Errors
+/// [`Failure`] when the runner is not there.
+pub async fn models(invocation: &Invocation) -> Result<(), Failure> {
+    let mut link = RunnerLink::connect().await?;
+    let Outcome::Models { models } = accepted(link.call(Action::Models).await?)? else {
+        return Ok(());
+    };
+    if models.is_empty() {
+        invocation
+            .output
+            .message("No program of this computer named its models yet. Start a thread first.");
+        return Ok(());
+    }
+    invocation.output.data(&models, |rows| model_table(rows))
+}
+
+fn model_table(rows: &[ModelRow]) -> Table {
+    let mut table = Table::new(vec!["PROGRAM", "MODEL", "NAME", "EFFORTS"]);
+    for row in rows {
+        let program = super::threads::shown::program_words(program_key(row.program));
+        for model in &row.models {
+            let efforts = if model.efforts.is_empty() {
+                "-".to_owned()
+            } else {
+                model.efforts.join(", ")
+            };
+            table.row(vec![
+                Cell::new(program),
+                Cell::new(&model.value),
+                Cell::new(&model.name),
+                Cell::toned(&efforts, Tone::Muted),
+            ]);
+        }
+    }
+    table
 }
 
 fn table(rows: &[AccountRow]) -> Table {
