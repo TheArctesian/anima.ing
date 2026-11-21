@@ -1,13 +1,16 @@
 import { shellCapabilities } from '$lib/desktop/capabilities';
 import { isMac } from '$lib/platform/mac';
+import { isMobile } from '$lib/platform/mobile';
 import { KEY_RULES, type KeyRule } from './keymap';
 
 /**
  * The keys of the Code section in a browser ("Remap for web", operator, 2026-11-21). The desktop app keeps T3 Code's
- * table. In a browser, each T3 Code key that the browser keeps for itself on a platform becomes Alt+Shift with a letter
- * (⌥⇧ on the Mac), and so does each T3 Code key with Ctrl+Alt that Windows takes (Ctrl+Alt is AltGr there). No browser,
- * operating system or screen reader of macOS, Windows or Linux takes Alt+Shift with a letter, except Chrome's
- * Alt+Shift+T, B, I and A, which are left out. The letter is T3 Code's where it is free.
+ * table. In a browser, each T3 Code key of the ruled list that the browser keeps for itself on a platform, and each key
+ * with Ctrl+Alt that Windows takes (Ctrl+Alt is AltGr there), becomes Shift with a letter and one more modifier: Alt on
+ * Windows and Linux, Control on the Mac. Alt+Shift with a letter is free on Windows and Linux but for Chrome's
+ * Alt+Shift+T, B, I and A, which are left out. On the Mac ⌥⇧ types letters on many layouts (Ą, Ł, Ż on Polish), while
+ * ⌃⇧ types nothing, keeps the letter of the layout in the key event, and is not VoiceOver's ⌃⌥. The letter is
+ * T3 Code's where it is free. `WEB_KEYS` writes each key with Alt; `webKeyOn` gives it for a platform.
  */
 
 /** Which keys apply: the platform, and whether the client runs in a browser or in the desktop app. */
@@ -31,7 +34,7 @@ export interface WebKey {
 
 export const WEB_KEYS: readonly WebKey[] = [
   { from: 'mod+n', command: 'chat.new', key: 'alt+shift+n', why: 'New browser window' },
-  { from: 'mod+shift+o', command: 'chat.new', key: null, why: "Chrome's bookmark manager; New chat keeps Alt+Shift+N" },
+  { from: 'mod+shift+o', command: 'chat.new', key: null, why: "Chrome's bookmark manager; New chat keeps its web key with N" },
   { from: 'mod+shift+n', command: 'chat.newLocal', key: 'alt+shift+h', why: 'New private window; N is New chat, so H for "here"' },
   { from: 'mod+alt+n', command: 'chat.newWithoutProject', key: 'alt+shift+f', only: 'other', why: 'Windows: starts NVDA, and AltGr+N types ń; N and H are taken, so F for "free of a project"' },
   { from: 'mod+n', command: 'terminal.new', key: 'alt+shift+n', why: 'New browser window' },
@@ -52,7 +55,7 @@ export const WEB_KEYS: readonly WebKey[] = [
   { from: 'mod+l', command: 'preview.focusUrl', key: 'alt+shift+l', why: 'Go to the address bar' },
   { from: 'mod+r', command: 'preview.refresh', key: 'alt+shift+r', why: 'Reload the page' },
   { from: 'mod+=', command: 'preview.zoomIn', key: 'alt+shift+=', why: 'Zoom the page in' },
-  { from: 'mod++', command: 'preview.zoomIn', key: null, why: 'Zoom the page in; Zoom in keeps Alt+Shift+=' },
+  { from: 'mod++', command: 'preview.zoomIn', key: null, why: 'Zoom the page in; Zoom in keeps its web key with =' },
   { from: 'mod+-', command: 'preview.zoomOut', key: 'alt+shift+-', why: 'Zoom the page out' },
   { from: 'mod+0', command: 'preview.resetZoom', key: 'alt+shift+0', why: 'Reset the zoom of the page' },
   { from: 'f6', command: 'workspace.focusNext', key: null, why: 'Go to the address bar; keeps ⌘F6 or Ctrl+F6' },
@@ -64,6 +67,11 @@ export const WEB_KEYS: readonly WebKey[] = [
   { from: 'mod+k', command: 'commandPalette.toggle', key: 'alt+shift+k', only: 'other', why: 'Search the web from the address bar' },
   { from: 'mod+shift+k', command: 'pullRequest.copyNumber', key: 'alt+shift+x', only: 'other', why: "Firefox's console; K is the palette, so X" },
 ];
+
+/** A web key on one platform: Alt+Shift on Windows and Linux, Control+Shift (⌃⇧) on the Mac. */
+export function webKeyOn(key: string, mac: boolean): string {
+  return mac ? key.replace(/^alt\+shift\+/, 'ctrl+shift+') : key;
+}
 
 /** A rule for the desktop app alone (`isDesktop`): it never acts in a browser. */
 function desktopOnly(rule: KeyRule): boolean {
@@ -77,12 +85,15 @@ export function keyRules(set: KeySet): KeyRule[] {
   return KEY_RULES.filter((rule) => !desktopOnly(rule)).flatMap((rule) => {
     const web = WEB_KEYS.find((candidate) => candidate.from === rule.key && candidate.command === rule.command && (candidate.only ?? platform) === platform);
     if (web === undefined) return [rule];
-    return web.key === null ? [] : [{ ...rule, key: web.key }];
+    return web.key === null ? [] : [{ ...rule, key: webKeyOn(web.key, set.mac) }];
   });
 }
 
-/** The key set of this client: the platform it runs on, and a browser unless the desktop or mobile shell runs it. */
+/**
+ * The key set of this client: the platform it runs on, and the web keys unless the desktop shell runs it. The mobile shell
+ * takes the web keys too: it has no desktop window, so T3 Code's rules for the desktop app (`isDesktop`) do not apply.
+ */
 export function thisKeySet(): KeySet {
   if (typeof navigator === 'undefined') return { mac: false, web: true };
-  return { mac: isMac(navigator.userAgent), web: shellCapabilities() === null };
+  return { mac: isMac(navigator.userAgent), web: shellCapabilities() === null || isMobile(navigator) };
 }

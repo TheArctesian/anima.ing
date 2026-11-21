@@ -5,16 +5,16 @@ import { KEY_RULES } from './keymap';
 const text = (found: readonly Clash[]) => found.map((clash) => `${clash.client} ${clash.platform} ${clash.key} ${clash.command}`);
 
 describe('the keys of the Code section against the keys Anima, its window and the browser already take', () => {
-  it('leaves only the clashes the ruling keeps: ⌘W and ⌘Z of the Mac menu in the desktop app', () => {
+  it('names a reason for each clash left: ⌘W and ⌘Z in the Mac app by the ruling, the rest open for one', () => {
     const found = clashes();
-    expect(text(found)).toEqual(['desktop mac mod+w terminal.close', 'desktop mac mod+w rightPanel.close', 'desktop mac mod+z thread.undo']);
-    expect(found.every((clash) => clash.taken.kept !== undefined)).toBe(true);
+    expect(found.filter((clash) => clash.taken.kept === undefined)).toEqual([]);
+    expect(text(found.filter((clash) => clash.client === 'desktop' && clash.platform === 'mac'))).toEqual(['desktop mac mod+w terminal.close', 'desktop mac mod+w rightPanel.close', 'desktop mac mod+z thread.undo']);
+    expect(text(found)).toEqual(expect.arrayContaining(['desktop other mod+alt+n chat.newWithoutProject', 'web mac mod+f chat.find', 'web other mod+b sidebar.toggle']));
   });
 
   it('would meet the browser on T3 Code keys, which is why the web client has its own', () => {
     const t3InBrowser = clashes(TAKEN_KEYS, (set) => (set.web ? KEY_RULES.filter((rule) => rule.when?.includes('isDesktop') !== true) : []));
     expect(text(t3InBrowser)).toEqual(expect.arrayContaining(['web mac mod+n chat.new', 'web other mod+k commandPalette.toggle', 'web mac mod+shift+[ thread.previous', 'web other mod+shift+c thread.copyReference']));
-    expect(text(t3InBrowser)).not.toContain('web mac mod+k commandPalette.toggle');
   });
 
   it('keeps a rule that acts in a terminal as a clash with the keys of a session terminal, in both clients', () => {

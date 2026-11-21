@@ -27,6 +27,14 @@ export interface TakenKey {
 const KEPT_IN_DESKTOP =
   "The desktop app keeps T3 Code's key (operator, 2026-11-21): it closes the focused panel or terminal, else the window, and undoes in the chat when no text field has the focus";
 
+/** A clash found after the ruling, in a key a page may take from the browser: listed for the next ruling. */
+const OPEN_FOR_RULING =
+  "Not in the ruled list, and a page may take this key from the browser (Anima's threads page already takes ⌘F). Open: remap it too, or keep it";
+
+/** Ctrl+Alt in the desktop app on Windows, where it is AltGr: the ruling keeps T3 Code's key, which also types there. */
+const OPEN_ON_WINDOWS =
+  "The desktop app keeps T3 Code's key (operator, 2026-11-21), but on Windows Ctrl+Alt is AltGr and types a letter. Open: remap it in the Windows desktop app too, or keep it";
+
 export const TAKEN_KEYS: readonly TakenKey[] = [
   { key: 'mod+shift+[', place: 'threads-page', does: 'Previous thread', same: 'thread.previous' },
   { key: 'mod+shift+]', place: 'threads-page', does: 'Next thread', same: 'thread.next' },
@@ -91,8 +99,16 @@ export const TAKEN_KEYS: readonly TakenKey[] = [
   { key: 'alt+shift+i', place: 'browser', does: 'Send feedback (Chrome)', only: 'other' },
   { key: 'alt+shift+a', place: 'browser', does: 'Go to an open dialog of the browser (Chrome)', only: 'other' },
   { key: 'meta+alt+b', place: 'browser', does: 'Bookmark manager (Chrome)', only: 'mac' },
-  { key: 'ctrl+alt+n', place: 'windows', does: 'Start NVDA, the screen reader; as AltGr+N it also types ń on a Polish layout', only: 'other' },
-  { key: 'ctrl+alt+b', place: 'windows', does: 'As AltGr+B it types { on a Hungarian layout', only: 'other' },
+  { key: 'mod+f', place: 'browser', does: 'Find in the page', kept: OPEN_FOR_RULING },
+  { key: 'mod+shift+g', place: 'browser', does: 'Find the previous match', kept: OPEN_FOR_RULING },
+  { key: 'mod+shift+a', place: 'browser', does: 'Search the tabs (Chrome)', kept: OPEN_FOR_RULING },
+  { key: 'mod+shift+d', place: 'browser', does: 'Bookmark all tabs (Chrome)', kept: OPEN_FOR_RULING },
+  { key: 'mod+b', place: 'browser', does: 'Bookmarks sidebar (Firefox)', kept: OPEN_FOR_RULING },
+  { key: 'meta+k', place: 'browser', does: 'Search the web (Firefox)', only: 'mac', kept: OPEN_FOR_RULING },
+  { key: 'ctrl+shift+m', place: 'browser', does: 'Profile menu (Chrome)', only: 'other', kept: OPEN_FOR_RULING },
+  { key: 'ctrl+shift+s', place: 'browser', does: 'Screenshot (Firefox), web capture (Edge)', only: 'other', kept: OPEN_FOR_RULING },
+  { key: 'ctrl+alt+n', place: 'windows', does: 'Start NVDA, the screen reader; as AltGr+N it also types ń on a Polish layout', only: 'other', kept: OPEN_ON_WINDOWS },
+  { key: 'ctrl+alt+b', place: 'windows', does: 'As AltGr+B it types { on a Hungarian layout', only: 'other', kept: OPEN_ON_WINDOWS },
 ];
 
 /** One shortcut of the key table that a taken shortcut also uses, on one platform. */
@@ -119,12 +135,9 @@ function meet(rule: KeyRule, taken: TakenKey): boolean {
   return !(taken.place === 'session-terminal' && (when.includes('!terminalFocus') || /(^|[^!])previewFocus/.test(when)));
 }
 
-/**
- * The places a client meets: the desktop app has the Mac menu and no browser, and runs on macOS and Linux only; the web
- * client has the browser, and Windows, and no Mac menu.
- */
+/** The places a client meets: the desktop app has the Mac menu and no browser, the web client the reverse. */
 function reaches(set: KeySet, taken: TakenKey): boolean {
-  return set.web ? taken.place !== 'mac-app-menu' : taken.place !== 'browser' && taken.place !== 'windows';
+  return set.web ? taken.place !== 'mac-app-menu' : taken.place !== 'browser';
 }
 
 /** The rules of one key set whose key a taken shortcut also uses with a different meaning. */

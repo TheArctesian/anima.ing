@@ -15,12 +15,12 @@ describe('the keys of the desktop app and of the web client', () => {
     expect(keyOf(MAC_APP, 'chat.new')).toBe('⌘N');
   });
 
-  it('gives a browser Alt+Shift keys where it keeps the T3 key, on the platform where it keeps it', () => {
-    expect(keyOf(MAC_WEB, 'chat.new')).toBe('⌥⇧N');
+  it('gives a browser Shift keys where it keeps the T3 key, with Control on the Mac and Alt elsewhere', () => {
+    expect(keyOf(MAC_WEB, 'chat.new')).toBe('⌃⇧N');
     expect(keyOf(PC_WEB, 'chat.new')).toBe('Alt+Shift+N');
     expect(keyOf(MAC_WEB, 'commandPalette.toggle')).toBe('⌘K');
     expect(keyOf(PC_WEB, 'commandPalette.toggle')).toBe('Alt+Shift+K');
-    expect(keyOf(MAC_WEB, 'thread.previous')).toBe('⌥⇧[');
+    expect(keyOf(MAC_WEB, 'thread.previous')).toBe('⌃⇧[');
     expect(keyOf(PC_WEB, 'thread.previous')).toBe('Ctrl+Shift+[');
   });
 
@@ -43,12 +43,14 @@ describe('the keys of the desktop app and of the web client', () => {
     for (const set of [MAC_WEB, PC_WEB]) {
       const t3 = new Set(KEY_RULES.map((rule) => chordText(onPlatform(parseChord(rule.key) ?? { key: '', mod: false, meta: false, ctrl: false, shift: false, alt: false }, set.mac), set.mac)));
       const seen = new Map<string, string>();
-      for (const rule of keyRules(set).filter((candidate) => candidate.key.startsWith('alt+shift+'))) {
+      const webRules = keyRules(set).filter((rule) => !KEY_RULES.includes(rule));
+      for (const rule of webRules) {
         const chord = parseChord(rule.key);
         expect(chord).not.toBeNull();
-        const id = `${rule.key}|${rule.when ?? ''}`;
-        expect(seen.get(id), id).toBeUndefined();
-        seen.set(id, rule.command);
+        // Two rules on one key must act in opposite conditions (`terminalFocus` and `!terminalFocus`), never overlap.
+        const other = seen.get(rule.key);
+        if (other !== undefined) expect(rule.when === `!${other}` || other === `!${rule.when ?? ''}`, `${rule.key} ${rule.command}`).toBe(true);
+        seen.set(rule.key, rule.when ?? '');
         expect(t3.has(chordText(chord ?? { key: '', mod: false, meta: false, ctrl: false, shift: false, alt: false }, set.mac))).toBe(false);
       }
     }
