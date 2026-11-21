@@ -135,6 +135,9 @@ describe.skipIf(process.platform === "win32")("the one-line installation of a co
     expect(commands()).toEqual([]);
   });
 
+});
+
+describe.skipIf(process.platform === "win32")("a second run of the one-line installation (HM-T33)", () => {
   test("a second run with a claim only does not join again and enrols the daemon again", () => {
     expect(install(`anima-install.1.${CLAIM}.${INVITE}`).code).toBe(0);
     writeFileSync(log, "");
@@ -161,6 +164,9 @@ describe.skipIf(process.platform === "win32")("the one-line installation of a co
     expect(commands().some((line) => line.startsWith("anima-daemon"))).toBe(false);
   });
 
+});
+
+describe.skipIf(process.platform === "win32")("the refusals of the one-line installation (HM-T33)", () => {
   test.each([
     ["no install code", ""],
     ["a code of a different form", "anima_enrol_AAAAAAAAAAAAAAAAAAAAAA"],
