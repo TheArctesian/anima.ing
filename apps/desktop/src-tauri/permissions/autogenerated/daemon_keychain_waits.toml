@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-daemon-keychain-waits"
+description = "Enables the daemon_keychain_waits command without any pre-configured scope."
+commands.allow = ["daemon_keychain_waits"]
+
+[[permission]]
+identifier = "deny-daemon-keychain-waits"
+description = "Denies the daemon_keychain_waits command without any pre-configured scope."
+commands.deny = ["daemon_keychain_waits"]

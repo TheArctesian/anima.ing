@@ -1,12 +1,20 @@
 //! The macOS token store: one generic password in the login Keychain (MET-013).
 //!
-//! Compiled only on macOS; it has not been built on this machine (R-092 D-8).
+//! Compiled only on macOS. Each read is bounded ([`crate::keychain_wait`]): a read that macOS
+//! holds for the person is [`TokenStoreError::KeychainWaits`].
 
 use keyring::Entry;
 use zeroize::Zeroizing;
 
 use super::TokenStoreError;
 use crate::config::home::Home;
+use crate::keychain_wait::{self, Reads, Unread};
+
+/// What one read of the item gives; the error as text, so that it crosses the thread.
+type Answer = Result<Option<Zeroizing<Vec<u8>>>, String>;
+
+/// The reads of the token's item: one in flight at a time (R-NEW-keychainwait).
+static READS: Reads<Answer> = Reads::new();
 
 const SERVICE: &str = "ing.anima.daemon";
 const ACCOUNT: &str = "daemon-token";
@@ -23,10 +31,10 @@ impl Backend {
         reason = "same signature as the file backend on other systems"
     )]
     pub fn read(&self) -> Result<Option<Zeroizing<Vec<u8>>>, TokenStoreError> {
-        match entry()?.get_password() {
-            Ok(text) => Ok(Some(Zeroizing::new(text.into_bytes()))),
-            Err(keyring::Error::NoEntry) => Ok(None),
-            Err(error) => Err(TokenStoreError::Keychain(error.to_string())),
+        match READS.read(keychain_wait::DEADLINE, read_now) {
+            Ok(answer) => answer.map_err(TokenStoreError::Keychain),
+            Err(Unread::Waits) => Err(TokenStoreError::KeychainWaits),
+            Err(Unread::Lost) => Err(TokenStoreError::Keychain(Unread::Lost.to_string())),
         }
     }
 
@@ -59,6 +67,16 @@ impl Backend {
             Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
             Err(error) => Err(TokenStoreError::Keychain(error.to_string())),
         }
+    }
+}
+
+/// One read of the item, on the thread of [`READS`]: it can wait for the person for ever.
+fn read_now() -> Answer {
+    let entry = Entry::new(SERVICE, ACCOUNT).map_err(|error| error.to_string())?;
+    match entry.get_password() {
+        Ok(text) => Ok(Some(Zeroizing::new(text.into_bytes()))),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(error) => Err(error.to_string()),
     }
 }
 

@@ -7,6 +7,7 @@ mod flow;
 mod folders;
 mod removal;
 mod rig;
+mod stuck;
 mod trust;
 mod updates;
 

@@ -12,23 +12,25 @@ use std::{
     },
     path::Path,
     process::Command,
+    time::Duration,
 };
 
 use super::rig::{NEVER, Rig, WIDE, names_in, rig};
 use crate::daemon::{
     DaemonError,
+    signature::Identity,
     update::{STOP_ARGS, Swap, Updated, previous, update_here},
     version::{Decision, decide, parse},
 };
 
 /// How a stand-in answers `--version`.
-const OLD: &str = "echo 'anima-daemon 0.1.9'";
-const NEW: &str = "echo 'anima-daemon 0.1.10'";
+pub(super) const OLD: &str = "echo 'anima-daemon 0.1.9'";
+pub(super) const NEW: &str = "echo 'anima-daemon 0.1.10'";
 /// A daemon from before `--version`: it prints the usage and fails.
 const NO_VERSION: &str = "echo 'usage: anima-daemon run' >&2; exit 2";
 /// What the stand-ins record as the version of the copy.
-const OLD_COPY: &str = "copy:anima-daemon 0.1.9";
-const NEW_COPY: &str = "copy:anima-daemon 0.1.10";
+pub(super) const OLD_COPY: &str = "copy:anima-daemon 0.1.9";
+pub(super) const NEW_COPY: &str = "copy:anima-daemon 0.1.10";
 
 /// A stand-in daemon named `label` that answers `--version` with `version` and records each
 /// other run as `<label> <args> copy:<version of the copy> prev:<inode of the copy of before>`,
@@ -50,7 +52,7 @@ fn write_program(path: &Path, text: &str) {
 
 /// A rig whose installed copy (`old`) answers `installed` and whose carried daemon (`new`)
 /// answers `carried` and runs `then` for each other command.
-fn installed(installed: &str, carried: &str, then: &str) -> (Rig, String, String) {
+pub(super) fn installed(installed: &str, carried: &str, then: &str) -> (Rig, String, String) {
     let rig = rig("exit 0");
     rig.local_bin();
     let old = stand_in(&rig, "old", installed, "exit 0");
@@ -61,18 +63,29 @@ fn installed(installed: &str, carried: &str, then: &str) -> (Rig, String, String
 }
 
 fn update(rig: &Rig) -> Result<Updated, DaemonError> {
+    update_with(rig, WIDE, Identity::Kept)
+}
+
+/// The update with `restart` as the deadline of each `stop` and `install`, for a carried daemon
+/// of `identity`.
+pub(super) fn update_with(
+    rig: &Rig,
+    restart: Duration,
+    identity: Identity,
+) -> Result<Updated, DaemonError> {
     let env = rig.here().env;
     update_here(&Swap {
         copy: &rig.installed(),
         carried: &rig.source,
         user: rig.user,
         env: &env,
-        restart: WIDE,
+        restart,
         stop: &NEVER,
+        identity,
     })
 }
 
-fn copy_text(rig: &Rig) -> String {
+pub(super) fn copy_text(rig: &Rig) -> String {
     fs::read_to_string(rig.installed()).expect("a copy")
 }
 
@@ -80,7 +93,7 @@ fn inode(path: &Path) -> u64 {
     fs::metadata(path).expect("a file").ino()
 }
 
-fn bin(rig: &Rig) -> Vec<String> {
+pub(super) fn bin(rig: &Rig) -> Vec<String> {
     names_in(&rig.home.join(".local/bin"))
 }
 

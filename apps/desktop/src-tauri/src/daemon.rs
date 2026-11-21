@@ -21,11 +21,15 @@
 
 mod error;
 mod installing;
+#[cfg(unix)]
+pub(crate) mod keychain;
 #[cfg_attr(windows, path = "daemon/placement/windows.rs")]
 pub(crate) mod placement;
 mod removal;
 mod request;
 mod run;
+#[cfg(unix)]
+mod signature;
 #[cfg(unix)]
 pub(crate) mod trust;
 #[cfg(unix)]
@@ -61,7 +65,9 @@ const ENROL_DEADLINE: Duration = Duration::from_secs(60);
 /// `uninstall` runs at most two steps of 30 s each and deletes a Keychain item; the rest is margin.
 const UNINSTALL_DEADLINE: Duration = Duration::from_secs(120);
 /// `install` runs up to five steps of 30 s each (two take the unit of the old program out,
-/// R-126), one retried after a pause; the rest is margin.
+/// R-126), one retried after a pause; the rest is margin. Its read of the token in the
+/// Keychain stops after 5 s (R-NEW-keychainwait), so a prompt that nobody answers no longer
+/// holds it: the deadline is for slow service managers, and the update uses it too.
 const INSTALL_DEADLINE: Duration = Duration::from_secs(240);
 
 /// Where accounts and groups are read, to find the user's private group.
@@ -266,6 +272,7 @@ pub fn update_at_start(installing: &Installing) {
             env: &env,
             restart: INSTALL_DEADLINE,
             stop: &claim.stop,
+            identity: signature::of_program(&carried),
         };
         match update::update_here(&swap) {
             Ok(update::Updated::Replaced) => {
@@ -278,6 +285,11 @@ pub fn update_at_start(installing: &Installing) {
             }
             Ok(update::Updated::CarriedUnknown) => {
                 log::warn!("the version of the daemon of the app could not be read; no update");
+            }
+            Ok(update::Updated::KeptForKeychain) => {
+                log::warn!(
+                    "the daemon on this computer is older than the one of the app, but this build has no Developer ID signature: the Keychain would ask again for the new daemon, so it stays (R-NEW-adhocswap)"
+                );
             }
             Ok(update::Updated::NoCopy | update::Updated::Unchanged) => {}
             Err(error) => log::warn!("the daemon was not updated: {}", error.code()),

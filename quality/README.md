@@ -274,7 +274,8 @@ run `bun run gates:linux-threads`. It runs the tests of `anima-daemon` and `agen
 (`rust:<version of rust-toolchain.toml>-bookworm`, as a user who is not root) and gets the Linux build of
 cargo-nextest one time. The source is mounted read only. The tests `units::` write into the source, so this run
 leaves them out; GitHub runs them. The Docker volumes `anima-linux-target` and `anima-linux-cargo` keep the build
-between runs. Arguments after `--` go to nextest, for example `bun run gates:linux-threads -- threads::`. It is
+between runs, one build folder for each worktree (`build-<name of the worktree>`): each worktree is mounted at the
+same path, and cargo would take the build of a different worktree for a source file that is older than it. Arguments after `--` go to nextest, for example `bun run gates:linux-threads -- threads::`. It is
 not a gate: the run on GitHub is.
 
 ### Throwaway PostgreSQL (R-009, R-019)
