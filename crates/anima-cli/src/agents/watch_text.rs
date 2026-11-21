@@ -2,7 +2,7 @@
 //! program are shown as text: `stream::line` cleans each line of control characters.
 
 use agent_threads::control::{Change, RunState};
-use agent_threads::drive::{DriveEvent, RequestKind};
+use agent_threads::drive::{DriveEvent, RequestKind, StepState};
 
 /// The most characters of a reply, a command or a result on one line.
 const WIDTH: usize = 200;
@@ -56,6 +56,14 @@ pub fn text(change: &Change) -> Option<String> {
     })
 }
 
+const fn step_mark(state: StepState) -> &'static str {
+    match state {
+        StepState::Pending => " ",
+        StepState::InProgress => ">",
+        StepState::Completed => "x",
+    }
+}
+
 fn said(event: &DriveEvent) -> Option<String> {
     Some(match event {
         DriveEvent::Session { id, model, .. } => {
@@ -80,6 +88,23 @@ fn said(event: &DriveEvent) -> Option<String> {
             }
         }
         DriveEvent::Notice { text } => format!("notice: {}", short(text)),
+        DriveEvent::TurnDiff { diff, .. } => format!("diff of the turn: {}", short(diff)),
+        DriveEvent::Plan { steps, .. } => format!(
+            "plan: {}",
+            short(
+                &steps
+                    .iter()
+                    .map(|step| format!("[{}] {}", step_mark(step.state), step.step))
+                    .collect::<Vec<_>>()
+                    .join("; ")
+            )
+        ),
+        DriveEvent::Usage { usage } => match (usage.context, usage.window) {
+            (Some(context), Some(window)) => {
+                format!("use: {context} of {window} tokens in context")
+            }
+            _ => format!("use: {} in, {} out", usage.input, usage.output),
+        },
         DriveEvent::Unknown {
             what,
             stops_turn: true,
@@ -106,6 +131,41 @@ mod tests {
         assert_eq!(
             line,
             format!("NEEDS YOU: may it run a command? rm -rf build (request {request})")
+        );
+    }
+
+    #[test]
+    fn th102_th103_a_plan_and_a_use_are_one_line_each() {
+        let plan = Change::Said {
+            event: DriveEvent::Plan {
+                explanation: None,
+                steps: vec![
+                    agent_threads::drive::PlanStep {
+                        step: "Read".to_owned(),
+                        state: StepState::Completed,
+                    },
+                    agent_threads::drive::PlanStep {
+                        step: "Change".to_owned(),
+                        state: StepState::InProgress,
+                    },
+                ],
+            },
+        };
+        assert_eq!(text(&plan).as_deref(), Some("plan: [x] Read; [>] Change"));
+        let usage = Change::Said {
+            event: DriveEvent::Usage {
+                usage: agent_threads::drive::Usage {
+                    context: Some(30),
+                    window: Some(1000),
+                    input: 5,
+                    output: 6,
+                    cost_usd: None,
+                },
+            },
+        };
+        assert_eq!(
+            text(&usage).as_deref(),
+            Some("use: 30 of 1000 tokens in context")
         );
     }
 }

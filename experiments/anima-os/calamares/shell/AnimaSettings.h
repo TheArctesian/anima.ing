@@ -50,14 +50,15 @@ class AnimaSettings : public QDialog {
     }
     void revert() {
         if (remaining>0) {
-            timer.stop(); const bool restored=change(previous); remaining=0; screens->setEnabled(true); rotations->setEnabled(true);
+            timer.stop(); QProcess command; command.start("anima-display", {"--revert"});
+            const bool restored=command.waitForFinished(7000) && command.exitStatus()==QProcess::NormalExit && command.exitCode()==0; remaining=0; screens->setEnabled(true); rotations->setEnabled(true);
             status->setText(restored ? "Previous orientation restored." : "Restore failed. Use Ctrl+Alt+F2 for recovery."); keep->hide(); apply->setEnabled(true);
         }
     }
     void applyRotation() {
         output=screens->currentText(); previous=screens->currentData().toString();
         if (output.isEmpty()) return;
-        if (!change(rotations->currentData().toString())) { change(previous); status->setText("Unable to change this display."); return; }
+        if (!change(rotations->currentData().toString())) { status->setText("Unable to change this display."); return; }
         remaining=15; screens->setEnabled(false); rotations->setEnabled(false); apply->setEnabled(false); keep->show(); timer.start(1000);
         status->setText("Keep this orientation? Reverting in 15 seconds.");
     }
@@ -85,7 +86,7 @@ public:
         status=new QLabel(Calamares::ViewManager::instance()->currentStepIndex()<6 ? "Changes revert unless you keep them." : "Change orientation before installation or from the installed console.",this); status->setWordWrap(true); box->addWidget(status);
         keep=new QPushButton("Keep orientation",this); keep->setObjectName("view-button-next"); box->addWidget(keep); keep->hide();
         connect(keep,&QPushButton::clicked,this,[this]{
-            QProcess save; save.start("anima-display",{"--save",output});
+            QProcess save; save.start("anima-display",{"--keep",output});
             if (!save.waitForFinished(5000) || save.exitStatus()!=QProcess::NormalExit || save.exitCode()!=0) {
                 save.kill(); save.waitForFinished(); status->setText("Could not save orientation. The preview will revert."); return;
             }

@@ -23,7 +23,7 @@ use crate::api_errors::field_names;
 use crate::fleet::events;
 use crate::ids::{DeviceId, SiteId};
 
-pub use hub_device::ensure_hub_device;
+pub use hub_device::{LinkComputer, ensure_hub_device, ensure_link_computer};
 pub use loaders::{DevicesById, DevicesBySite, SitesById};
 pub use mac::{MacAddress, MacAddressError};
 pub use model::{Device, Distribution, OperatingSystem, Site, SshAuth, SshSettings};

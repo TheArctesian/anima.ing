@@ -5,7 +5,7 @@
 use std::io::Write as _;
 use std::path::Path;
 
-use agent_threads::control::{Limits, Listing};
+use agent_threads::control::{Limits, Listing, Project};
 use serde::{Deserialize, Serialize};
 
 use super::RunnerError;
@@ -24,6 +24,9 @@ pub struct Record {
     /// How the person lists each thread (TH46); a record of before has none.
     #[serde(default)]
     pub listings: Vec<Listing>,
+    /// The projects of this computer (TH107); a record of before has none.
+    #[serde(default)]
+    pub projects: Vec<Project>,
 }
 
 impl Default for Record {
@@ -32,6 +35,7 @@ impl Default for Record {
             limits: Limits::FIRST,
             threads: Vec::new(),
             listings: Vec::new(),
+            projects: Vec::new(),
         }
     }
 }

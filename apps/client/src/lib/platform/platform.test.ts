@@ -29,12 +29,12 @@ describe('shellCapabilities (WP-42 D-4)', () => {
   });
 
   it('R-059, R-079, NAV-007: on Linux the desktop app has no Sharing settings to open and keeps its own title bar', () => {
-    expect(shellCapabilities(computer(LINUX))).toEqual({ ...DESKTOP_MAC, systemSettings: false, overlayTitleBar: false });
+    expect(shellCapabilities(computer(LINUX))).toEqual({ ...DESKTOP_MAC, systemSettings: false, overlayTitleBar: false, framelessWindow: true });
   });
 
   it('WIN2: Windows exposes the native hub, device controls and release builder', () => {
     expect(shellCapabilities(computer('Mozilla/5.0 (Windows NT 10.0; Win64; x64)'))).toEqual({
-      ...DESKTOP_MAC, systemSettings: false, overlayTitleBar: false,
+      ...DESKTOP_MAC, systemSettings: false, overlayTitleBar: false, framelessWindow: true,
       builds: true, mcpPermissions: true, commandLine: true, stayAwake: true, localHub: true,
     });
   });

@@ -252,8 +252,17 @@ pub fn launch(arguments: &[String]) -> ! {
     if hide_cgroups().is_err() {
         fail(failure, Containment::UsernsDenied);
     }
+    // Duplication preserves the handshake while exec's stdio setup restores /dev/null.
+    // Successful exec closes the duplicate in the kernel; runtime code cannot forge it.
+    let ready = rustix::io::fcntl_dupfd_cloexec(std::io::stdin(), 3)
+        .unwrap_or_else(|_| fail(failure, Containment::ExecFailed));
+    if rustix::io::write(&ready, &[0]) != Ok(1) {
+        fail(failure, Containment::ExecFailed);
+    }
     let _error = std::process::Command::new(program)
         .args(&arguments[4..])
+        .stdin(std::process::Stdio::null())
         .exec();
+    let _ = rustix::io::write(&ready, &[1]);
     fail(failure, Containment::ExecFailed);
 }

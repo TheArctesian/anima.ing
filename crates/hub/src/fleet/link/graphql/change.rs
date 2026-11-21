@@ -150,6 +150,28 @@ pub(super) fn device_revoked(device: &ListedDevice, revoked: &Revoked) -> TrailE
     )
 }
 
+/// An install claim for a computer that is on the link already was made (HM-T33); never the
+/// claim.
+pub(super) fn install_claim_made(name: &str) -> TrailEntry {
+    let name = clean(name, super::NAME_CHARS);
+    entry(
+        AuditAction::Create,
+        format!("Made an install claim for the computer {name} of the link."),
+        json!({ "computerInstall": { "device": name } }),
+    )
+}
+
+/// The open invites of the link for a computer were cancelled before its new install code
+/// (HM-T33); never an invite.
+pub(super) fn invites_cancelled(name: &str, count: usize) -> TrailEntry {
+    let name = clean(name, super::NAME_CHARS);
+    entry(
+        AuditAction::Delete,
+        format!("Cancelled {count} open link invite(s) for the device {name}."),
+        json!({ "invitesCancelled": { "device": name, "count": count } }),
+    )
+}
+
 fn entry(action: AuditAction, message: String, change: serde_json::Value) -> TrailEntry {
     TrailEntry {
         source: Source::Access,

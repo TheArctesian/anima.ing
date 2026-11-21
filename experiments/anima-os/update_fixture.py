@@ -16,14 +16,21 @@ def prepare(source, output):
         else:
             os.link(path,destination/relative)
     subprocess.run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-days','1',
+                    '-subj','/CN=AnimaUpdateTestCA','-addext','basicConstraints=critical,CA:TRUE',
+                    '-keyout',str(tree/'ca-key.pem'),'-out',str(tree/'certificate.pem')],check=True,capture_output=True)
+    subprocess.run(['openssl','req','-new','-newkey','rsa:2048','-nodes',
                     '-subj','/CN=releases.anima.ing','-addext','subjectAltName=DNS:releases.anima.ing',
-                    '-keyout',str(tree/'key.pem'),'-out',str(tree/'certificate.pem')],check=True,capture_output=True)
+                    '-addext','basicConstraints=critical,CA:FALSE',
+                    '-keyout',str(tree/'key.pem'),'-out',str(tree/'request.pem')],check=True,capture_output=True)
+    subprocess.run(['openssl','x509','-req','-in',str(tree/'request.pem'),'-CA',str(tree/'certificate.pem'),
+                    '-CAkey',str(tree/'ca-key.pem'),'-CAcreateserial','-days','1','-copy_extensions','copy',
+                    '-out',str(tree/'server.pem')],check=True,capture_output=True)
     (tree/'serve.py').write_text('''from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler
 import os,ssl
 os.chdir('/run/update-origin')
 server=ThreadingHTTPServer(('127.0.0.1',443),SimpleHTTPRequestHandler)
 context=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-context.load_cert_chain('certificate.pem','key.pem')
+context.load_cert_chain('server.pem','key.pem')
 server.socket=context.wrap_socket(server.socket,server_side=True)
 server.serve_forever()
 ''')
@@ -39,6 +46,10 @@ def attach(machine, output, disk):
     from gui_test import qmp
     qmp(output,'blockdev-add',{'node-name':'updates','driver':'raw','read-only':True,'file':{'driver':'file','filename':str(disk)}})
     qmp(output,'device_add',{'driver':'virtio-blk-pci','drive':'updates','id':'update-fixture','bus':'update-port'})
-    machine.command('udevadm settle; mkdir -p /run/update-origin; mount -o ro /dev/disk/by-label/UPDATEFIX /run/update-origin')
+    serve(machine)
+
+
+def serve(machine):
+    machine.command("timeout 20 sh -c 'until test -b /dev/disk/by-label/UPDATEFIX; do udevadm settle; sleep 0.2; done'; mkdir -p /run/update-origin; mount -o ro /dev/disk/by-label/UPDATEFIX /run/update-origin")
     machine.command("printf '127.0.0.1 localhost releases.anima.ing\\n' > /tmp/update-hosts; mount --bind /tmp/update-hosts /etc/hosts")
     machine.command("python=$(nix-store -qR /run/current-system | grep -E '/[^/]+-python3-[0-9.]+$' | head -n1); systemd-run --unit=anima-update-fixture --collect $python/bin/python3 /run/update-origin/serve.py; timeout 15 sh -c 'until ss -ltn | grep -q 127.0.0.1:443; do sleep 1; done'")

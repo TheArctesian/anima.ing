@@ -19,6 +19,8 @@
 #                       the Mac of the operator, or the keychain that the job of the release
 #                       workflow makes (as its job `macos` does, BLD-083). The script reads no
 #                       certificate file and no password.
+#   IOS_TESTFLIGHT_BUILD  Optional TestFlight version number. Keeps the signed archive for direct Xcode upload.
+#   IOS_TESTFLIGHT_EXPORT_EXEMPT  Set to true for an internal build with a reviewed export exemption.
 #   IOS_PROFILE         Needed with IOS_SIGN_IDENTITY: the path of the App Store provisioning
 #                       profile of ing.anima.mobile (a .mobileprovision file). The script copies
 #                       it to the folders where Xcode looks for profiles.
@@ -58,6 +60,17 @@ APP_ID=ing.anima.mobile
 VERSION=${1:-$(cd "$ROOT" && sh deploy/bin/commit-version)}
 echo "$VERSION" | grep -Eq '^(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})$' || refuse "the version is not like 0.1.0"
 BUILD=$(sh "$ROOT/deploy/bin/phone-build-number" "$VERSION") || refuse "the version has no build number"
+# Both TestFlight tracks use one workflow sequence. Local and App Store release archives
+# still use the commit-derived build number.
+if [ -n "${IOS_TESTFLIGHT_BUILD:-}" ]; then
+    echo "$IOS_TESTFLIGHT_BUILD" | grep -Eq '^[1-9][0-9]{0,3}\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$' || refuse "invalid TestFlight build number"
+    BUILD=$IOS_TESTFLIGHT_BUILD
+fi
+case "${IOS_TESTFLIGHT_EXPORT_EXEMPT:-}" in
+    '') ;;
+    true) [ -n "${IOS_TESTFLIGHT_BUILD:-}" ] || refuse "the export exemption requires a TestFlight build number" ;;
+    *) refuse "IOS_TESTFLIGHT_EXPORT_EXEMPT must be true or unset" ;;
+esac
 IDENTITY=${IOS_SIGN_IDENTITY:-}
 PROFILE=${IOS_PROFILE:-}
 # The identity goes into a settings file of Xcode and into a property list: one plain line.
@@ -135,6 +148,9 @@ cp -R "$HERE/ios/AnimaAppIcon.appiconset" "$PROJECT/Assets.xcassets/"
 if [ "$SIGNED" = yes ]; then sed -i '' -e '/^      DEVELOPMENT_TEAM: /d' "$PROJECT/project.yml"; fi
 sed -i '' -e "/^      PRODUCT_BUNDLE_IDENTIFIER: /r $ROOM/settings" "$PROJECT/project.yml"
 (cd "$PROJECT" && xcodegen generate --spec project.yml --quiet)
+if [ "${IOS_TESTFLIGHT_EXPORT_EXEMPT:-}" = true ]; then
+    plutil -insert ITSAppUsesNonExemptEncryption -bool NO "$PROJECT/anima-app_iOS/Info.plist"
+fi
 CONFIG="{\"version\":\"$VERSION\",\"bundle\":{\"iOS\":{\"bundleVersion\":\"$BUILD\"}}}"
 bunx tauri ios build --target aarch64 --ci --archive-only --config "$CONFIG"
 
@@ -143,6 +159,10 @@ APP=$ARCHIVE/Products/Applications/Anima.ing.app
 [ "$(plist CFBundleIdentifier "$APP/Info.plist")" = "$APP_ID" ] || refuse "the application of the archive is not $APP_ID"
 [ "$(plist CFBundleShortVersionString "$APP/Info.plist")" = "$VERSION" ] || refuse "the archive does not have the version $VERSION"
 [ "$(plist CFBundleVersion "$APP/Info.plist")" = "$BUILD" ] || refuse "the archive does not have the build number $BUILD"
+if [ "${IOS_TESTFLIGHT_EXPORT_EXEMPT:-}" = true ]; then
+    [ "$(plist ITSAppUsesNonExemptEncryption "$APP/Info.plist")" = false ] ||
+        refuse "the archive does not contain the reviewed TestFlight export exemption"
+fi
 for family in CFBundleIcons 'CFBundleIcons~ipad'; do
     [ "$(plist "$family:CFBundlePrimaryIcon:CFBundleIconName" "$APP/Info.plist")" = AnimaAppIcon ] ||
         refuse "the archive does not have the Anima icon for $family"
@@ -154,6 +174,10 @@ if [ "$SIGNED" = no ]; then
     exit 0
 fi
 codesign --verify --deep --strict "$APP" || refuse "the signature of the application in the archive is not valid"
+if [ -n "${IOS_TESTFLIGHT_BUILD:-}" ]; then
+    printf 'version=%s\nbuild=%s\nsigned=yes\narchive=%s\n' "$VERSION" "$BUILD" "$ARCHIVE"
+    exit 0
+fi
 cat > "$ROOM/export.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

@@ -32,7 +32,7 @@ use crate::{
 const NOT_HOSTED: &str = "This hub is not hosted by Anima.ing.";
 const WRONG_KEY: &str = "The cloud key is wrong.";
 /// How long the claim of a device that is already on the link works: as long as an invite.
-const CLAIM_LIFE: chrono::TimeDelta = chrono::TimeDelta::minutes(15);
+pub(super) const CLAIM_LIFE: chrono::TimeDelta = chrono::TimeDelta::minutes(15);
 const WRONG_TICKET: &str = "The ticket is used, expired or wrong.";
 const TOO_MANY_TICKETS: &str = "Too many browser tickets are open. Try again in a minute.";
 const WRONG_CLAIM: &str =

@@ -16,6 +16,14 @@ impl ClaudeInput {
         json!({"type": "user", "message": {"role": "user", "content": text}}).to_string()
     }
 
+    /// The first line of a thread: its answer names the models of the program (TH10 2b.1,
+    /// TH104). No hooks are given, so the program keeps its own.
+    #[must_use]
+    pub fn initialize(id: &str) -> String {
+        json!({"type": "control_request", "request_id": id, "request": {"subtype": "initialize", "hooks": null}})
+            .to_string()
+    }
+
     /// Stops the turn and keeps the process (TH10 2b.1).
     #[must_use]
     pub fn interrupt(id: &str) -> String {
