@@ -115,6 +115,22 @@ select {
   }
 }
 
+/* On Windows and Linux the window has no frame of the system (tauri.windows.conf.json, tauri.linux.conf.json): a strip
+   of this height at the top of the window moves it and holds the window controls, and the page and each bar that pins
+   to the top start below it. It is 0 where the system draws the top of the window. The page Code has its own top band
+   in that place, so there the strip keeps no room. */
+:root {
+  --titlebar-block-size: 0px;
+}
+
+:root[data-titlebar="frameless"] {
+  --titlebar-block-size: var(--control-md);
+}
+
+:root[data-titlebar="frameless"]:has([data-code-band]) {
+  --titlebar-block-size: 0px;
+}
+
 /* On a Mac the window draws under its title bar (tauri.macos.conf.json). The three window buttons sit at the start of
    the bar's top row: 16 px in, 12 px each, 8 px apart, then a gap; the collapsed bar keeps room for them and the toggle. */
 :root[data-titlebar="overlay"] {
@@ -123,6 +139,12 @@ select {
 
 :root[data-titlebar="overlay"][data-nav="icons"] {
   --nav-inline-size: calc(var(--space-3) * 2 + var(--titlebar-buttons-inline-size) + var(--target-min-touch));
+}
+
+/* On the page Code the bar has no fold toggle (Code's own toggle hides its column of threads), so the folded bar keeps
+   room for the window buttons alone. */
+:root[data-titlebar="overlay"][data-nav="icons"]:has([data-code-page]) {
+  --nav-inline-size: calc(var(--space-3) * 2 + var(--titlebar-buttons-inline-size));
 }
 
 /* The operator's typeface choice (UI-020): `lib/typeface` sets the data attributes; IBM Plex Mono is the token default. */

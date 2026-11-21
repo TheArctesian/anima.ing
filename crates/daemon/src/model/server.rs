@@ -3,6 +3,9 @@
 //! and its output in the ring. Stopped by a request to end, at most 10 seconds, then the end
 //! of the whole tree.
 
+#[cfg(target_os = "linux")]
+mod handshake;
+
 use std::io;
 use std::net::TcpListener;
 use std::ops::RangeInclusive;
@@ -63,6 +66,8 @@ pub struct Running {
     pub key: Zeroizing<String>,
     /// The tree was ended and waited for; it is not signalled again.
     ended: bool,
+    #[cfg(target_os = "linux")]
+    startup: Option<tokio::net::UnixStream>,
 }
 
 impl Drop for Running {
@@ -154,6 +159,10 @@ impl Running {
     /// An error of the read of the tree (the cgroup on Linux, the walk on macOS), or an empty
     /// tree while the main process still runs (it left the tree): both fail closed.
     pub async fn poll(&mut self) -> io::Result<Vec<Identity>> {
+        #[cfg(target_os = "linux")]
+        if let Some(startup) = self.startup.take() {
+            handshake::wait(startup).await?;
+        }
         #[cfg(target_os = "linux")]
         let members = {
             let cgroup = self
@@ -300,9 +309,11 @@ pub fn spawn(launch: &Launch) -> Result<Running, Cause> {
     }
     let ring = Ring::create(&launch.ring).map_err(|_| Cause::StartFailed)?;
     let cgroup = contain(launch)?;
-    let mut child = command(launch, cgroup.as_deref())
-        .spawn()
-        .map_err(|_| Cause::StartFailed)?;
+    let mut command = command(launch, cgroup.as_deref());
+    #[cfg(target_os = "linux")]
+    let startup = Some(handshake::attach(&mut command).map_err(|_| Cause::StartFailed)?);
+    let mut child = command.spawn().map_err(|_| Cause::StartFailed)?;
+    drop(command);
     let leader = child
         .id()
         .and_then(|id| i32::try_from(id).ok())
@@ -322,6 +333,8 @@ pub fn spawn(launch: &Launch) -> Result<Running, Cause> {
         record: launch.place.join(tree::RECORD),
         key: launch.key.clone(),
         ended: false,
+        #[cfg(target_os = "linux")]
+        startup,
     };
     running.record().save(&running.record);
     Ok(running)

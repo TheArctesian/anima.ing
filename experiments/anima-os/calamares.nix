@@ -1,4 +1,4 @@
-{ pkgs, lib, installedSystem, installerSource }:
+{ pkgs, lib, installedSystem, installerProgram }:
 let
   yaml = value: builtins.toJSON value;
   extension = pkgs.runCommand "anima-calamares" {} ''
@@ -6,7 +6,7 @@ let
     cp ${./calamares/module.desc} $out/lib/calamares/modules/anima/module.desc
     cp ${./calamares/main.py} $out/lib/calamares/modules/anima/main.py
     substituteInPlace $out/lib/calamares/modules/anima/main.py \
-      --replace-fail @installerSource@ ${installerSource} \
+      --replace-fail @installerProgram@ ${installerProgram}/bin/anima-os-install \
       --replace-fail @installedSystem@ ${installedSystem}
     cp ${./calamares/show.qml} $out/share/calamares/branding/anima/show.qml
     cp ${./calamares/branding.desc} $out/share/calamares/branding/anima/branding.desc
@@ -77,7 +77,7 @@ let
       exec 9>/run/anima-installer.lock
       flock --nonblock 9 || exit 1
       umask 077
-      python3 -c 'import sys,json; sys.path.insert(0,"${installerSource}"); from disks import inventory,eligible; print(json.dumps([dict(d,eligible=eligible(d)) for d in inventory()]))' > /run/anima-installer-disks.json
+      ${installerProgram}/bin/anima-os-install inventory > /run/anima-installer-disks.json
       export XDG_DATA_DIRS="${extension}/share:''${XDG_DATA_DIRS:-/run/current-system/sw/share}"
       export XDG_CONFIG_DIRS="${extension}/etc:/etc/xdg"
       export QT_FONT_DPI=96

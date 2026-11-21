@@ -102,7 +102,7 @@
 
   thead th {
     position: sticky;
-    inset-block-start: 0;
+    inset-block-start: var(--titlebar-block-size);
     z-index: var(--layer-sticky);
     background: var(--surface-raised);
     color: var(--text-secondary);

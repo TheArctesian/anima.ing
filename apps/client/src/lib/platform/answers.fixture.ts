@@ -24,6 +24,7 @@ export const DESKTOP_MAC: Capabilities = {
   accountSession: false,
   runnerReport: false,
   overlayTitleBar: true,
+  framelessWindow: false,
   recentCopy: true,
 };
 

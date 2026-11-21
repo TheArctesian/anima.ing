@@ -78,16 +78,19 @@ const CLAUDE_ASK: &str = r#"{"type":"control_request","request_id":"r-1","reques
 const CLAUDE_DELTA: &str = r#"{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"text_delta","text":"hi"}}}"#;
 
 mod accounts;
+mod kept;
 mod restart;
 
 #[test]
 fn th11_a_claude_thread_writes_its_prompt_and_names_its_session() {
     let mut thread = claude();
     let steps = thread.begin("Look at the tests\nand more");
+    let sent = writes(&steps);
     assert_eq!(
-        writes(&steps)[0]["message"]["content"],
-        "Look at the tests\nand more"
+        sent[0]["request"]["subtype"], "initialize",
+        "its answer names the models (TH104)"
     );
+    assert_eq!(sent[1]["message"]["content"], "Look at the tests\nand more");
     assert_eq!(thread.row.title, "Look at the tests");
     let steps = thread.line(CLAUDE_INIT, &mut counter());
     assert_eq!(thread.row.session.as_deref(), Some("s-1"));
