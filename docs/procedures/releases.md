@@ -419,6 +419,9 @@ The branch workflow [TestFlight](../../.github/workflows/testflight.yml) runs on
 the scheduled check. The check runs every 20 minutes and dispatches any new `dev`
 revision that the merge train pushed with GitHub's workflow token. Each build gets a unique number from the workflow run sequence. The iOS release version still comes
 from the first-parent history of `main`.
+The job uses GitHub's `xcode-27` image and checks for iOS SDK 27 or later before
+building. The generated project targets iOS 17, which meets Apple's minimum deployment
+target of iOS 15 for uploads from April 2027.
 
 | Branch | GitHub environment | GitHub variable | TestFlight group |
 | --- | --- | --- | --- |

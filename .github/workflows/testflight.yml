@@ -38,7 +38,7 @@ jobs:
     concurrency:
       group: testflight-upload
       cancel-in-progress: false
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 120
     permissions:
       contents: read
@@ -62,6 +62,13 @@ jobs:
       - name: Prepare the iOS build
         run: |
           set -eu
+          xcodebuild -version
+          sdk=$(xcrun --sdk iphoneos --show-sdk-version)
+          echo "iOS SDK: $sdk"
+          if ! [ "${sdk%%.*}" -ge 27 ]; then
+            echo "::error::TestFlight requires the iOS 27 SDK or later."
+            exit 1
+          fi
           rustup target add aarch64-apple-ios
           brew install xcodegen
           bun install --frozen-lockfile
