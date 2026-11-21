@@ -118,7 +118,7 @@
   <PageHeader title="Threads" detail="The sessions of Claude Code and Codex on this computer. Threads started here are driven on this computer only.">
     {#snippet actions()}
       {#if live !== null && (store.archived || store.archivedCount > 0)}
-        <FormButton tone="ghost" aria-pressed={store.archived} onclick={() => (store.archived = !store.archived)}>{store.archived ? 'Back to the threads' : `Archived (${String(store.archivedCount)})`}</FormButton>
+        <FormButton onclick={() => (store.archived = !store.archived)}>{store.archived ? 'Back to the threads' : `Archived (${String(store.archivedCount)})`}</FormButton>
       {/if}
       {#if live !== null}<FormButton tone="primary" icon="carbon:add" onclick={() => (starting = true)} disabled={live.linked === false}>New thread</FormButton>{/if}
     {/snippet}
@@ -158,8 +158,13 @@
           <ListingBar
             title={chosenRow?.title ?? store.liveThread?.row.title ?? store.thread?.title ?? null}
             listing={live.listings.get(id) ?? null}
-            running={store.liveThread !== null && store.liveThread.row.state !== 'stopped'}
-            onChange={(change) => live.changeListing(id, change)}
+            running={store.liveThread === null ? store.thread?.id === id && threadState(store.thread, moment, store.seen) === 'working' : store.liveThread.row.state !== 'stopped'}
+            onChange={async (change) => {
+              const result = await live.changeListing(id, change);
+              // A removed thread leaves the list, so it is no longer the open one.
+              if (result.ok && change.change === 'remove' && store.chosen === id) store.chosen = null;
+              return result;
+            }}
           />
         {/if}
         {#if store.threadProblem !== null}

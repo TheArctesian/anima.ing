@@ -33,7 +33,7 @@ pub struct RemoveArgs {
 }
 
 /// The question before a thread is removed from the list.
-pub const REMOVE: &str = "Remove this thread from the list of Anima? Its pin, archive and title go too. The session files of Claude Code or Codex stay on disk.";
+pub const REMOVE: &str = "Remove this thread from Anima's list? Its pin, archive and title go too. The session files of Claude Code or Codex stay on disk.";
 
 async fn change(thread: Uuid, change: ListingChange) -> Result<(), Failure> {
     let mut link = RunnerLink::connect().await?;

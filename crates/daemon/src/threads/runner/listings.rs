@@ -56,6 +56,15 @@ impl Runner {
     /// Forgets a thread that the runner started, after it stopped; its session, which is also
     /// a file of its program, is removed from the list with it.
     fn forget(&mut self, thread: Uuid) -> Result<(), Refusal> {
+        // A thread is named by its own ID or by the session of its program (Codex has its own).
+        let named = thread.to_string();
+        let runs_as_session = self.threads.values().any(|started| {
+            started.row.session.as_deref() == Some(named.as_str())
+                && started.row.state != RunState::Stopped
+        });
+        if runs_as_session {
+            return Err(Refusal::Running);
+        }
         let Some(started) = self.threads.get(&thread) else {
             return Ok(());
         };

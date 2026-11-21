@@ -22,7 +22,7 @@ export const MAX_TITLE = 200;
 
 /** The question before a thread leaves the list; the same words as `anima agents remove`. */
 export const REMOVE_QUESTION =
-  'Remove this thread from the list of Anima? Its pin, archive and title go too. The session files of Claude Code or Codex stay on disk.';
+  "Remove this thread from Anima's list? Its pin, archive and title go too. The session files of Claude Code or Codex stay on disk.";
 
 function listingFrom(value: unknown): Listing | null {
   if (typeof value !== 'object' || value === null) return null;
@@ -70,6 +70,8 @@ const HIDDEN: readonly (readonly [number, number])[] = [
   [0x00, 0x1f],
   [0x7f, 0x9f],
   [0xad, 0xad],
+  [0x61c, 0x61c],
+  [0x180e, 0x180e],
   [0x200b, 0x200f],
   [0x2028, 0x202e],
   [0x2060, 0x206f],

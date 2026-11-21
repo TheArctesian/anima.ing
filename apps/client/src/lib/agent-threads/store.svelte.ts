@@ -50,7 +50,8 @@ export class ThreadsStore {
   readonly liveThread = $derived.by(() => (this.chosen === null ? null : (this.live?.threads.get(this.chosen) ?? null)));
 
   /** How many threads need the person (THR-057). */
-  readonly needsYou = $derived(needsYouCount(this.allRows ?? [], this.readAt, this.seen));
+  /** An archived or removed thread is not counted: the person put it away (TH46). */
+  readonly needsYou = $derived.by(() => needsYouCount(this.allRows === null ? [] : listed(this.allRows, this.live?.listings ?? NO_LISTINGS, false), this.readAt, this.seen));
 
   /** Reads the list again; the rows on the screen stay until the new ones come. */
   async loadList(): Promise<void> {

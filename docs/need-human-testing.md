@@ -2984,22 +2984,24 @@ Result: Open.
 What was built and where: task TH46 of [agent-threads.md](proposals/agent-threads.md), on the branch
 `threads/list-marks` (2026-11-21, overnight; ruling R-NEW-threadlisting). The runner keeps, in its own record, how the
 person lists each thread: pinned, archived, a title of the person, or removed from the list. No session file of
-Claude Code or Codex changes. The page Threads has these actions on each row; the commands are
+Claude Code or Codex changes. The page Threads has these actions in a row above the open thread (Pin, Archive, Rename, Remove), a group "Pinned"
+in the list, and "Archived (n)" in the page header; the commands are
 `anima agents pin <thread> [--off]`, `anima agents archive <thread> [--off]`, `anima agents rename <thread> [<title>]`,
 `anima agents remove <thread>` and `anima agents listings`. What the tests did not cover: the page in a desktop
 window, a real Claude Code thread, and a restart of the installed daemon.
 
-1. On the page Threads, open the actions of a row and choose Pin. Expected: the thread is listed first, with a
-   pin mark.
-2. Choose Rename, type a new title and save. Expected: the row shows the new title. Rename again with an empty title.
-   Expected: the row shows the title of the program again.
-3. Choose Archive. Expected: the thread leaves the list. Show the archived threads. Expected: it is there; choose
+1. On the page Threads, open a thread that does not need you and choose Pin above it. Expected: the thread is in the
+   group "Pinned" of the list, under "Needs you".
+2. Choose Rename, type a new title and save. Expected: the row shows the new title. Choose Rename again and "Use the
+   program's title". Expected: the row shows the title of the program again.
+3. Choose Archive. Expected: the thread leaves the list. Choose "Archived (1)" in the page header. Expected: it is there; choose
    Unarchive and it comes back.
-4. Stop a thread, then choose Remove on its row. Expected: a question that says the thread leaves the list of Anima
+4. Stop a thread, open it, and choose Remove. Expected: a question that says the thread leaves Anima's list
    with its pin, archive and title, and that the session files of Claude Code or Codex stay on disk. Confirm.
    Expected: the thread leaves the list. In a terminal, `ls ~/.claude/projects/*/` (or `~/.codex/sessions/`) still
    shows its session file.
-5. Choose Remove on a thread that runs. Expected: a refusal that says to stop the thread first.
+5. Open a thread that runs. Expected: Remove is off, with the line "Stop the thread first to remove it." From a
+   terminal, `anima agents remove <its ID>` answers "That thread runs: stop it first, then remove it from the list."
 6. From inside a Claude Code thread, ask it to run `anima agents pin <the ID of a thread>`. Expected: "Only the person
    can answer a request, raise the limit, start a thread or change the list of threads: this call came from a process
    of an agent." The pin does not change.

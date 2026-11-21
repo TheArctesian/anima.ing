@@ -46,30 +46,31 @@
 <!-- How the person lists this thread (TH46): pin, archive, a title of their own, remove from the list. Each changes only
      the record of Anima; the session files of the program stay as they are. -->
 <div class="bar">
-  <FormButton size="sm" tone="ghost" onclick={() => void change({ change: 'pin', on: !pinned })} disabled={busy}>{pinned ? 'Unpin' : 'Pin'}</FormButton>
-  <FormButton size="sm" tone="ghost" onclick={() => void change({ change: 'archive', on: !archived })} disabled={busy}>{archived ? 'Unarchive' : 'Archive'}</FormButton>
+  <FormButton size="sm" tone="ghost" onclick={() => void change({ change: 'pin', on: !pinned })} {busy}>{pinned ? 'Unpin' : 'Pin'}</FormButton>
+  <FormButton size="sm" tone="ghost" onclick={() => void change({ change: 'archive', on: !archived })} {busy}>{archived ? 'Unarchive' : 'Archive'}</FormButton>
   <FormButton
     size="sm"
     tone="ghost"
-    icon="carbon:edit"
     onclick={() => {
       draft = title ?? '';
       problem = null;
       renaming = true;
     }}
-    disabled={busy}>Rename</FormButton
+    {busy}>Rename</FormButton
   >
   <FormButton
     size="sm"
     tone="ghost"
-    icon="carbon:trash-can"
     onclick={() => {
+      if (running) return;
       problem = null;
       removing = true;
     }}
-    disabled={busy || running}
-    title={running ? 'Stop the thread first' : undefined}>Remove</FormButton
+    aria-disabled={running}
+    aria-describedby={running ? 'listing-running' : undefined}
+    {busy}>Remove</FormButton
   >
+  {#if running}<span class="why" id="listing-running">Stop the thread first to remove it.</span>{/if}
   {#if problem !== null && !renaming && !removing}<p class="problem" role="alert">{problem}</p>{/if}
 </div>
 
@@ -112,6 +113,11 @@
   p {
     margin: 0;
     line-height: var(--leading-normal);
+  }
+
+  .why {
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
   }
 
   .hint {
