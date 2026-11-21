@@ -8,8 +8,6 @@
 
 use async_graphql::futures_util::stream::{self, Stream};
 use async_graphql::{Context, Error as GraphQlError, ID, Object, Result, Subscription};
-use chrono::SecondsFormat;
-use daemon_core::wire::{CODE_BYTES, EnrolmentCode};
 use serde_json::json;
 use tokio::sync::broadcast::{Receiver, error::RecvError};
 
@@ -62,14 +60,10 @@ impl Mutation {
     async fn enrol_daemon(&self, ctx: &Context<'_>, device_id: ID) -> Result<DaemonEnrolment> {
         let device = device_of(ctx, wanted(&device_id)?).await?;
         let trail = Trail::from_context(ctx)?;
-        let bytes = ingest::random::<CODE_BYTES>().map_err(internal)?;
-        let code = EnrolmentCode::from_random(*bytes);
         let mut tx = begin(ctx).await?;
-        let enrolment = ingest::make_code(&mut tx, device.id, code, trail.now)
+        let enrolment = ingest::enrol_code(&mut tx, &device, trail)
             .await
             .map_err(ingest_error)?;
-        let entry = code_made(&device, &enrolment);
-        trail.write(&mut tx, entry).await.map_err(internal)?;
         commit(tx).await?;
         Ok(enrolment)
     }
@@ -137,22 +131,6 @@ fn ingest_error(error: ingest::Error) -> GraphQlError {
     match error {
         ingest::Error::NoDevice => coded("No such device.", ErrorCode::NotFound),
         other => internal(other),
-    }
-}
-
-/// The audit entry and event of a new code: when it stops working, never the code (LOG-007).
-fn code_made(device: &Device, enrolment: &DaemonEnrolment) -> TrailEntry {
-    let expires_at = enrolment
-        .expiry()
-        .to_rfc3339_opts(SecondsFormat::Secs, true);
-    TrailEntry {
-        source: Source::Metrics,
-        severity: Severity::Info,
-        device: Some((device.id, device.name.clone())),
-        message: format!("Made a daemon enrolment code for {}.", device.name),
-        action: AuditAction::Create,
-        target: AuditTarget::Device(device.id),
-        change: json!({ "daemonEnrolment": { "expiresAt": expires_at } }),
     }
 }
 

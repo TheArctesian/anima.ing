@@ -26,7 +26,7 @@
 /// label in its details: login or browser token only (HOST-001, HOST-017, MCP-004, R-149, R-150).
 /// What a daemon waits for is reported by the signed-in desktop app of its computer: login or
 /// browser token only (R-NEW-daemonneed).
-pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 61] = [
+pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 62] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -72,6 +72,7 @@ pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 61] = [
     "mergePullRequest",
     "mergePullRequests",
     "createLinkInvite",
+    "createComputerInstall",
     "revokeLinkDevice",
     "createOperationalKey",
     "updateOperationalKey",

@@ -141,6 +141,12 @@ select {
   --nav-inline-size: calc(var(--space-3) * 2 + var(--titlebar-buttons-inline-size) + var(--target-min-touch));
 }
 
+/* On the page Code the bar has no fold toggle (Code's own toggle hides its column of threads), so the folded bar keeps
+   room for the window buttons alone. */
+:root[data-titlebar="overlay"][data-nav="icons"]:has([data-code-page]) {
+  --nav-inline-size: calc(var(--space-3) * 2 + var(--titlebar-buttons-inline-size));
+}
+
 /* The operator's typeface choice (UI-020): `lib/typeface` sets the data attributes; IBM Plex Mono is the token default. */
 :root[data-font-ui="opendyslexic"] {
   --font-ui: var(--font-ui-opendyslexic);

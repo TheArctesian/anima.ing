@@ -144,18 +144,20 @@ async function distribute(app, groups) {
     throw new Error('App Store Connect reports an incompatible or expired build.');
   }
   const group = await groupFor(app, groups);
-  if (!internal) await prepareExternal(build.id);
-  const assigned = await list(`/v1/builds/${build.id}/betaGroups`);
-  if (!assigned.some((each) => each.id === group.id)) {
-    await apple('POST', `/v1/betaGroups/${group.id}/relationships/builds`, [resource('builds', build.id)]);
-  }
-  console.log(`Build ${build.attributes.version} assigned to ${group.attributes.name}.`);
   if (internal) {
     const { data: beta } = await apple('GET', `/v1/builds/${build.id}/buildBetaDetail`);
     if (!['READY_FOR_BETA_TESTING', 'IN_BETA_TESTING'].includes(beta.attributes.internalBuildState)) {
       throw new Error(`Internal testing is blocked by ${beta.attributes.internalBuildState}. Check the build in App Store Connect.`);
     }
-  } else await submitExternal(build.id);
+  } else await prepareExternal(build.id);
+
+  const membership = `/v1/betaGroups/${group.id}/relationships/builds`;
+  const assigned = await list(`${membership}?limit=200`);
+  if (!assigned.some((each) => each.id === build.id)) {
+    await apple('POST', membership, [resource('builds', build.id)]);
+  }
+  console.log(`Build ${build.attributes.version} assigned to ${group.attributes.name}.`);
+  if (!internal) await submitExternal(build.id);
 }
 
 async function main() {

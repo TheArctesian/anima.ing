@@ -41,6 +41,7 @@ fn a_reused_process_id_is_never_signalled() {
 
 #[test]
 fn the_sweep_ends_the_processes_of_each_record_whose_identity_holds() {
+    let _isolation = super::kit::containment_lock();
     let state = tempfile::tempdir().expect("a folder");
     let mut ended = sleeper();
     let mut kept = sleeper();
@@ -178,9 +179,9 @@ fn exiting(root: &std::path::Path, script: &str) -> anima_daemon::model::server:
 #[tokio::test]
 async fn an_exit_code_of_a_launcher_step_counts_only_with_the_failure_file_of_the_launcher() {
     use daemon_core::model_work::cause::Containment;
-    if !super::kit::contained() {
+    let Some(_isolation) = super::kit::contained() else {
         return;
-    }
+    };
     let root = tempfile::tempdir().expect("a folder");
     let mut runtime =
         anima_daemon::model::server::spawn(&exiting(root.path(), "sleep 0.5; exit 123"))

@@ -50,6 +50,7 @@ fn a_file_that_the_runtime_can_replace_is_read_only_when_plain_and_small() {
 
 #[test]
 fn a_record_that_is_a_link_is_not_swept() {
+    let _isolation = super::kit::containment_lock();
     let root = tempfile::tempdir().expect("a folder");
     let server = root.path().join("one");
     std::fs::create_dir(&server).expect("a folder");
@@ -62,6 +63,7 @@ fn a_record_that_is_a_link_is_not_swept() {
 
 #[test]
 fn a_server_folder_that_is_a_link_is_neither_read_nor_emptied() {
+    let _isolation = super::kit::containment_lock();
     let root = tempfile::tempdir().expect("a folder");
     let servers = root.path().join("servers");
     let other = root.path().join("other");
@@ -101,6 +103,7 @@ fn a_record_is_written_in_place_of_a_link_or_a_fifo_and_never_through_one() {
 #[test]
 fn records_and_failure_files_over_their_real_caps_are_refused() {
     use anima_daemon::model::tree::RECORD_BYTES;
+    let _isolation = super::kit::containment_lock();
     let root = tempfile::tempdir().expect("a folder");
     let padded = |size: usize| {
         let mut text = b"{\"known\":[],\"cgroup\":null}".to_vec();

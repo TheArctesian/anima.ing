@@ -31,7 +31,7 @@ class Bridge(QObject):
         super().__init__()
         self.process = None
         self.buffer = b''
-        self.busy = False
+        self.pending = {}
         self.unlocked = False
         self.readings = Readings()
         self.telemetry_timer = QTimer(self)
@@ -62,10 +62,14 @@ class Bridge(QObject):
             if not self.unlocked:
                 self.emit_error(identity, 'Unlock the local session first.')
                 return
-            if self.busy:
+            reads = ('status', 'diagnostics', 'update-status', 'displays')
+            if identity in self.pending:
+                self.emit_error(identity, 'This operation is already running.')
+                return
+            if op not in reads and any(active not in reads for active in self.pending.values()):
                 self.emit_error(identity, 'Wait for the current operation to finish.')
                 return
-            self.busy = True
+            self.pending[identity] = op
             self.process.write((json.dumps(request)+'\n').encode())
         except (ValueError, KeyError, TypeError):
             self.emit_error('invalid', 'Invalid local request.')
@@ -100,14 +104,14 @@ class Bridge(QObject):
                 answer = json.loads(line)
             except ValueError:
                 continue
-            self.busy = False
+            operation = self.pending.pop(answer.get('id'), None)
             if answer['id'] == 'unlock' and answer['ok']:
                 self.unlocked = True
             value = answer.get('value', {})
             if isinstance(value, dict):
                 if value.get('url'):
                     self.openBrowser.emit(value['url'], value.get('userCode', ''))
-                if value.get('signedIn'):
+                if answer.get('ok') and (value.get('signedIn') or operation == 'cancel-sign-in'):
                     self.closeBrowser.emit()
             self.answer.emit(json.dumps(answer))
 
@@ -116,7 +120,7 @@ class Bridge(QObject):
             process.deleteLater()
             return
         self.process = None
-        self.busy = False
+        self.pending = {}
         if not self.unlocked:
             self.emit_error('unlock', 'Authentication failed. Enter the local admin password.')
         self.unlocked = False
@@ -128,7 +132,7 @@ class Bridge(QObject):
         process = self.process
         self.process = None
         self.unlocked = False
-        self.busy = False
+        self.pending = {}
         self.buffer = b''
         if process:
             process.closeWriteChannel()

@@ -25,8 +25,10 @@ mod work;
 use chrono::TimeDelta;
 use zeroize::Zeroizing;
 
-pub use enrolment::DaemonEnrolment;
-pub(super) use enrolment::{make_code, own_device_code, revoke};
+#[cfg(test)]
+use enrolment::make_code;
+pub use enrolment::{DaemonEnrolment, enrol_code};
+pub(super) use enrolment::{own_device_code, revoke};
 pub use routes::daemon_router;
 pub use stale::spawn_stale_watch;
 pub(super) use stale::without_fresh_daemon;
@@ -80,7 +82,7 @@ pub(super) async fn set_need(
 /// Why a daemon operation failed. Messages are fixed text: they hold no code, token, body or
 /// SQL (LOG-007).
 #[derive(Debug, thiserror::Error)]
-pub(super) enum Error {
+pub enum Error {
     #[error("database error")]
     Database(#[from] sqlx::Error),
     #[error("the event log cannot be written")]

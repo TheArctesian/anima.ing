@@ -167,7 +167,7 @@ describe('words of the work log', () => {
 describe('times of a turn', () => {
   it('writes the timer and the duration as T3 Code writes them', () => {
     expect([timer(12_400), timer(72_000), timer(3_723_000)]).toEqual(['12s', '1m 12s', '1h 2m 3s']);
-    expect([duration(850), duration(4_250), duration(42_000), duration(72_000)]).toEqual(['850ms', '4.2s', '42s', '1m 12s']);
+    expect([duration(0.2), duration(850), duration(4_250), duration(9_000), duration(42_000), duration(59_600), duration(72_000)]).toEqual(['1ms', '850ms', '4.3s', '9s', '42s', '1m 0s', '1m 12s']);
   });
 
   it('says Working while the turn runs and Worked or You stopped after it ends', () => {
@@ -176,7 +176,13 @@ describe('times of a turn', () => {
     const [running] = turnsOf([prompt('Go', 0)], { ...IDLE, working: true });
     if (done === undefined || stopped === undefined || running === undefined) throw new Error('a turn');
     expect(turnLine(done, at(99))).toBe('Worked for 1m 12s');
-    expect(turnLine(stopped, at(99))).toBe('You stopped after 9.0s');
+    expect(turnLine(stopped, at(99))).toBe('You stopped after 9s');
     expect(turnLine(running, at(12))).toBe('Working for 12s');
+  });
+
+  it('says Worked with no duration when the turn holds no time between its start and its end', () => {
+    const [same] = turnsOf([prompt('Go', 5), reply('Done', 5), end(5)], IDLE);
+    if (same === undefined) throw new Error('a turn');
+    expect(turnLine(same, at(99))).toBe('Worked');
   });
 });

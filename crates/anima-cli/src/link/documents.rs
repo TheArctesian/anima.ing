@@ -20,6 +20,13 @@ pub struct LinkInvite;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "schema.graphql",
+    query_path = "src/link/install.graphql"
+)]
+pub struct LinkInstall;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.graphql",
     query_path = "src/link/revoke.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"
