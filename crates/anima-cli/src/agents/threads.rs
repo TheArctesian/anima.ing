@@ -241,6 +241,10 @@ async fn removed() -> BTreeSet<String> {
 const RUNNER_WAIT: std::time::Duration = std::time::Duration::from_secs(2);
 
 #[cfg(not(unix))]
+#[expect(
+    clippy::unused_async,
+    reason = "the same signature as the Unix side, which asks the runner; here no runner is asked"
+)]
 async fn removed() -> BTreeSet<String> {
     BTreeSet::new()
 }
