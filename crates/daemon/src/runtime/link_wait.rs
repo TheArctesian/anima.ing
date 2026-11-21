@@ -15,6 +15,6 @@ pub async fn passed(link: &LinkWatch) {
 
 /// Never ends: a daemon on Windows has no old enrolment to move.
 #[cfg(windows)]
-pub async fn passed(_: &LinkWatch) {
+pub async fn passed((): &LinkWatch) {
     std::future::pending::<()>().await;
 }
