@@ -105,7 +105,7 @@ impl Mutation {
         let device = device_of(ctx, wanted(&device_id)?).await?;
         let trail = Trail::from_context(ctx)?;
         let mut tx = begin(ctx).await?;
-        let changed = ingest::set_need(&mut tx, device.id, need.map(DaemonNeed::stored))
+        let changed = ingest::set_need(&mut tx, device.id, need.map(DaemonNeed::stored), trail.now)
             .await
             .map_err(internal)?
             .ok_or_else(|| coded("This device has no daemon token.", ErrorCode::NotFound))?;

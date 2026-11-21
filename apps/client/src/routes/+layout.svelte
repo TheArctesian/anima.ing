@@ -106,9 +106,10 @@
       void installDaemonOnThisComputer(hub, (did) => {
         daemonHere.current = did === 'installing' ? { kind: 'installing' } : stateAfter(did);
       });
-      // The daemon cannot tell the hub that it waits in the Keychain, as it has no token then: the app tells it (R-322).
-      $effect(() => watchDaemonNeedHere(hub));
     }
+    // The daemon cannot tell the hub that it waits in the Keychain, as it has no token then: the app tells it, for each
+    // hub, hosted or not (R-322). Signed out, it asks the hub nothing.
+    if (capabilities().thisMachine) $effect(() => watchDaemonNeedHere(hub, () => !showsSignedOutPage(page.url)));
     // A hub that stops answering may come back as another program on the same port: once the connection is not live,
     // the next request checks again (M-C, MF-1).
     $effect(() => {

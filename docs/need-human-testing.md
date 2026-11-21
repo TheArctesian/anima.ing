@@ -1518,15 +1518,17 @@ Built: on the branch `hosted/daemon-keychain-need`. The hub keeps what the daemo
 (`metrics.daemons.need`, migration 0722), serves it as `Device.daemonNeed` and takes it with the mutation
 `setDaemonNeed` (`crates/hub/src/fleet/metrics/graphql.rs`); the next accepted batch of the daemon clears it
 (`crates/hub/src/fleet/metrics/ingest/store.rs`, `take_batch`). The application reads the mark file of R-322 at
-its start and each minute, and calls the mutation for the device of this computer when the mark appears or goes
-(`apps/client/src/lib/desktop/daemon/need.ts`). The chart area of the device page gives the reason line in place of
+its start and each minute, signed in to any hub, and calls the mutation for the device of this computer when the
+mark appears or goes (`apps/client/src/lib/desktop/daemon/need.ts`). The chart area of the device page gives the reason line in place of
 "Waiting for metrics", in the words of Agent usage (`keychainNeedLine` in
 `apps/client/src/lib/desktop/daemon/state.svelte.ts`): on this Mac it speaks of "this computer", on any other client
 it names the device and says "Allow it there".
 
 The tests cover: the mutation, the event of a change, a second call that changes nothing, the clear by a batch
-and by a new token, NOT_FOUND for a device with no daemon token, the refusal of an API key; `anima daemon need`
-and `anima_daemon_set_need` against the scripted hub; the reading each minute and the call only on a change, with
+and by a new token and the event of each, a need not set just after a batch, no need on a device whose source is
+not DAEMON, NOT_FOUND for a device with no daemon token, the refusal of an API key; `anima daemon need`
+and `anima_daemon_set_need` against the scripted hub; the reading each minute and the call only on a change, a
+mark that was not read, a sign-out, a refusal that settles the reading and a turn that does not end, with
 stand-ins for the shell and the hub; the texts of the page. Not covered: the real Keychain and its window, the
 real mark file, the real hosted hub, and the page seen from a second computer.
 
@@ -1548,8 +1550,9 @@ the same hosted hub.
    has "Daemon needs: a person to allow it in the Keychain"; one event "The daemon on <this Mac> waits for a
    person to allow it in the Keychain."
 5. Quit the application. In the window of macOS, type the password of the Mac and click Always Allow. Wait one
-   minute, then reload the page of step 3. Expected: the bars show values, the page no longer says "Needs you",
-   with the application still closed (the batch of the daemon cleared it).
+   minute, then reload the page of step 3. Expected: the page no longer gives the reason line of step 3 (the
+   chart area shows values), with the application still closed; `anima event list` on the second computer has
+   one event "The daemon on <this Mac> no longer waits for a person." (the batch of the daemon cleared it).
 6. Open the application again and wait one minute. Expected: no new event of the daemon need; the log of the
    application has "the daemon of this computer waits for nothing: the hub knows" at most once.
 

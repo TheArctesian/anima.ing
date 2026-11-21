@@ -459,7 +459,8 @@ The hub:
   device's metrics are stale: the hub writes one event (source `metrics`, severity warning) and serves
   `Device.metricsStale` true. The next accepted batch clears the mark and writes one event (severity info).
   It also clears what the daemon waits for from a person (`Device.daemonNeed`, which the desktop application of
-  that computer sets through K1 while the daemon has no token, R-NEW-daemonneed), with no event.
+  that computer sets through K1 while the daemon has no token, R-NEW-daemonneed); when it held one, the hub
+  writes one event (source `metrics`, severity info) "The daemon on <name> no longer waits for a person."
   A daemon that has never pushed is not marked, and `metricsStale` is true for it. Stale changes no check:
   a stale daemon is never a Down check.
 

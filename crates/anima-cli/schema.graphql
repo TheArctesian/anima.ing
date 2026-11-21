@@ -4197,7 +4197,7 @@ type Mutation {
   enrolDaemon(deviceId: ID!): DaemonEnrolment!
   "Login or browser token only (D-23, R-100). The source stays DAEMON, shown as stale, until the operator changes it (R-092 D-7)."
   revokeDaemonToken(deviceId: ID!): Device!
-  "Login or browser token only (D-23, R-NEW-daemonneed). Sets what the device's daemon waits for, or clears it with a null need. NOT_FOUND for a device with no daemon token; changes nothing when the need is already that."
+  "Login or browser token only (D-23, R-NEW-daemonneed). Sets what the device's daemon waits for, or clears it with a null need. NOT_FOUND for a device with no daemon token; changes nothing when the need is already that, or when the need is not null and the last batch of that daemon came less than 5 s before the call (the answer then shows the need the hub keeps)."
   setDaemonNeed(deviceId: ID!, need: DaemonNeed): Device!
 
   setCheckDefaults(input: CheckDefaultsInput!): CheckDefaults!

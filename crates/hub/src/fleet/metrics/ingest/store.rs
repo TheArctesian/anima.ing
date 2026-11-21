@@ -58,25 +58,26 @@ pub(super) async fn use_code(
 
 /// Makes `token` the device's only token, with no renewed one beside it. The stale timer
 /// starts again, and the version and the need are forgotten: the new daemon has sent no batch
-/// yet (MET-018, R-122, R-NEW-daemonneed).
+/// yet (MET-018, R-122, R-NEW-daemonneed). Whether the daemon it replaced waited for a person.
 pub(super) async fn replace_token(
     conn: &mut PgConnection,
     device: DeviceId,
     token: TokenHash,
     expires_at: DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        "INSERT INTO metrics.daemons (device_id, token_sha256, expires_at) VALUES ($1, $2, $3) \
+) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar(
+        "WITH old AS (SELECT need FROM metrics.daemons WHERE device_id = $1 FOR UPDATE) \
+         INSERT INTO metrics.daemons (device_id, token_sha256, expires_at) VALUES ($1, $2, $3) \
          ON CONFLICT (device_id) DO UPDATE SET token_sha256 = excluded.token_sha256, \
              expires_at = excluded.expires_at, next_token_sha256 = NULL, next_expires_at = NULL, \
-             last_batch_at = NULL, stale_at = NULL, daemon_version = NULL, need = NULL",
+             last_batch_at = NULL, stale_at = NULL, daemon_version = NULL, need = NULL \
+         RETURNING COALESCE((SELECT need IS NOT NULL FROM old), false)",
     )
     .bind(device)
     .bind(token.to_bytes().as_slice())
     .bind(expires_at)
-    .execute(conn)
-    .await?;
-    Ok(())
+    .fetch_one(conn)
+    .await
 }
 
 /// The device whose usable token is `token` at `now`. A renewed token is promoted on its first
@@ -159,31 +160,39 @@ pub(super) async fn revoke(conn: &mut PgConnection, device: DeviceId) -> Result<
     Ok(deleted.rows_affected() > 0)
 }
 
+/// What a batch found when it was taken: whether its daemon was marked stale, and whether it
+/// waited for a person (R-NEW-daemonneed).
+pub(super) struct Taken {
+    pub(super) was_stale: bool,
+    pub(super) needed: bool,
+}
+
 /// Records a batch accepted at `now` from the device whose usable token is still `token`, in
 /// the caller's transaction, and clears its stale mark and its need (R-NEW-daemonneed); the
-/// time of the last batch never moves back, should a batch that started earlier commit later;
-/// whether it was marked stale. `None` when the token was revoked or replaced since it was
-/// checked (MET-013, MET-018).
+/// time of the last batch never moves back, should a batch that started earlier commit later.
+/// `None` when the token was revoked or replaced since it was checked (MET-013, MET-018).
 pub(super) async fn take_batch(
     conn: &mut PgConnection,
     device: DeviceId,
     token: TokenHash,
     now: DateTime<Utc>,
-) -> Result<Option<bool>, sqlx::Error> {
-    sqlx::query_scalar(
+) -> Result<Option<Taken>, sqlx::Error> {
+    let row: Option<(bool, bool)> = sqlx::query_as(
         "WITH old AS ( \
-            SELECT device_id, stale_at FROM metrics.daemons \
+            SELECT device_id, stale_at, need FROM metrics.daemons \
             WHERE device_id = $1 AND token_sha256 = $2 AND expires_at > $3 FOR UPDATE) \
          UPDATE metrics.daemons a \
          SET last_batch_at = GREATEST(a.last_batch_at, $3), stale_at = NULL, need = NULL \
          FROM old \
-         WHERE a.device_id = old.device_id RETURNING old.stale_at IS NOT NULL",
+         WHERE a.device_id = old.device_id \
+         RETURNING old.stale_at IS NOT NULL, old.need IS NOT NULL",
     )
     .bind(device)
     .bind(token.to_bytes().as_slice())
     .bind(now)
     .fetch_optional(conn)
-    .await
+    .await?;
+    Ok(row.map(|(was_stale, needed)| Taken { was_stale, needed }))
 }
 
 /// Records `version`, the daemon version of the batch accepted at `at`, in the caller's
@@ -223,21 +232,28 @@ pub(in crate::fleet::metrics) async fn daemon_versions(
 }
 
 /// Sets the need of the device's daemon to `need` (`None` clears it) in the caller's
-/// transaction; `None` when the device has no daemon token, else whether the need changed
+/// transaction, unless `need` is a need and a batch came after `batch_after`: that daemon holds
+/// its token. `None` when the device has no daemon token, else whether the need changed
 /// (R-NEW-daemonneed).
-pub(in crate::fleet::metrics) async fn set_need(
+pub(super) async fn set_need(
     conn: &mut PgConnection,
     device: DeviceId,
     need: Option<&str>,
+    batch_after: DateTime<Utc>,
 ) -> Result<Option<bool>, sqlx::Error> {
     sqlx::query_scalar(
         "WITH old AS ( \
-            SELECT device_id, need FROM metrics.daemons WHERE device_id = $1 FOR UPDATE) \
-         UPDATE metrics.daemons a SET need = $2::text FROM old \
-         WHERE a.device_id = old.device_id RETURNING old.need IS DISTINCT FROM $2::text",
+            SELECT device_id, need, last_batch_at FROM metrics.daemons \
+            WHERE device_id = $1 FOR UPDATE) \
+         UPDATE metrics.daemons a \
+         SET need = CASE WHEN $2::text IS NOT NULL AND old.last_batch_at > $3 \
+             THEN old.need ELSE $2::text END \
+         FROM old \
+         WHERE a.device_id = old.device_id RETURNING a.need IS DISTINCT FROM old.need",
     )
     .bind(device)
     .bind(need)
+    .bind(batch_after)
     .fetch_optional(conn)
     .await
 }

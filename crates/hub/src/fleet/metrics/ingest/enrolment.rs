@@ -127,7 +127,10 @@ pub(super) async fn enrol(
     if !is_device_name(&name) || !store::code_kept(&mut tx, code, device).await? {
         return Ok(None);
     }
-    store::replace_token(&mut tx, device, token.hash(), expires_at).await?;
+    let needed = store::replace_token(&mut tx, device, token.hash(), expires_at).await?;
+    if needed {
+        events::record(&mut tx, bus, now, super::need_gone(device, &name)).await?;
+    }
     let event = NewEvent {
         severity: Severity::Info,
         source: Source::Metrics,

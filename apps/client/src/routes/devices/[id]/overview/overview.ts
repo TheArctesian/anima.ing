@@ -4,7 +4,6 @@ import { keychainNeedLine } from '$lib/desktop/daemon/state.svelte';
 import { statusLabel, type DeviceStatus } from '$lib/devices/card/card';
 import type { DaemonNeed } from '$lib/hub/generated/graphql';
 
-
 /** What the Overview tab reads from a device (D-10). */
 export type OverviewDevice = Pick<DeviceDetail, 'maintenance' | 'day' | 'week' | 'month'> & {
   readonly ssh: Pick<DeviceDetail['ssh'], 'enabled' | 'hostKey'>;
