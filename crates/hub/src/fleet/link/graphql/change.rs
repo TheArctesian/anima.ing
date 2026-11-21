@@ -161,6 +161,17 @@ pub(super) fn install_claim_made(name: &str) -> TrailEntry {
     )
 }
 
+/// The open invites of the link for a computer were cancelled before its new install code
+/// (HM-T33); never an invite.
+pub(super) fn invites_cancelled(name: &str, count: usize) -> TrailEntry {
+    let name = clean(name, super::NAME_CHARS);
+    entry(
+        AuditAction::Delete,
+        format!("Cancelled {count} open link invite(s) for the device {name}."),
+        json!({ "invitesCancelled": { "device": name, "count": count } }),
+    )
+}
+
 fn entry(action: AuditAction, message: String, change: serde_json::Value) -> TrailEntry {
     TrailEntry {
         source: Source::Access,

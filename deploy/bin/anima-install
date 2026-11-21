@@ -5,10 +5,12 @@
 # install code, and the daemon enrolled at the socket of that link (HMD-053, HMD-054).
 #
 #   anima-install --version <version> --target <target> --link-sha256 <hex> --daemon-sha256 <hex> [--from <folder>]
-#       The install code (`anima link install <name>`) is read from standard input, never from
-#       an argument, which other users of the computer can read (LNK-008).
+#       The install code (`anima link install <name>`) is asked at the terminal, with no echo,
+#       or read from standard input when that is not a terminal. It is never an argument, which
+#       other users of the computer can read (LNK-008), and never in the history of the shell.
 #   anima-install --remove
-#       Stops and removes the two units, the two programs, the token and the key of the link.
+#       Stops and removes the two units, the two programs, the token and the key of the link,
+#       when this script installed them.
 #
 # The release publishes this file as install/<version>/anima-install.sh. The line pins this
 # file by its SHA-256, and this file pins each program by the SHA-256 of the line: nothing of an
@@ -18,7 +20,8 @@
 # A second run with a new install code updates the programs and enrols the daemon again; it
 # joins the link only when this computer has not joined yet. The secrets of the run (the invite,
 # the claim and the enrolment code) go from one program to the next on standard input and never
-# reach an argument, a file or the output.
+# reach an argument, a file or the output. The claim goes to the hub through the socket of the
+# daemon, in a folder of this user only, never through the port of the link (K8 Section 1).
 set -eu
 umask 077
 
@@ -28,6 +31,10 @@ CODE_PREFIX=anima-install.1.
 say() { printf '%s\n' "anima-install: $1" >&2; }
 refuse() { say "$1"; exit 1; }
 
+not_root() {
+    [ "$(id -u)" != 0 ] || refuse "run this as the user who uses the computer, not as root: it installs units of the user"
+}
+
 # The folders of this user, as the link of the application and the daemon name them.
 folders() {
     [ -n "${HOME:-}" ] || refuse "no home folder: set HOME"
@@ -36,13 +43,13 @@ folders() {
             SYSTEM=darwin
             OS=MACOS
             LINK_HOME="$HOME/Library/Application Support/anima-link"
-            DAEMON_HOME="$HOME/Library/Application Support/anima-daemon"
+            DAEMON_HOME="${ANIMA_DAEMON_HOME:-$HOME/Library/Application Support/anima-daemon}"
             ;;
         Linux)
             SYSTEM=linux
             OS=LINUX
             LINK_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/anima-link"
-            DAEMON_HOME="${XDG_CONFIG_HOME:-$HOME/.config}/anima-daemon"
+            DAEMON_HOME="${ANIMA_DAEMON_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/anima-daemon}"
             ;;
         *) refuse "this computer is neither macOS nor Linux" ;;
     esac
@@ -50,6 +57,8 @@ folders() {
     LINK="$LINK_HOME/program/anima-link"
     DAEMON="$HOME/.local/bin/anima-daemon"
     SOCKET="$DAEMON_HOME/link.sock"
+    # Written before this script enrols the daemon: the daemon of this user is then its own.
+    OURS="$LINK_HOME/daemon-installed"
 }
 
 # The release target of this computer.
@@ -61,16 +70,40 @@ target_here() {
     esac
 }
 
-# The file of the unit of the link of this user, when one is installed.
+# The file of the unit of the link of this user, or nothing when none is installed. The answer
+# of `unit show` is one line of JSON; a file that this cannot read plainly stops the run, so that
+# an installed unit is never taken for none.
 link_unit_file() {
-    "$1" unit show 2> /dev/null | sed -n 's/.*"installed":true,"file":"\([^"]*\)".*/\1/p'
+    shown=$("$1" unit show 2> /dev/null) || refuse "anima-link cannot say whether its unit is installed"
+    case $shown in
+        *'"installed":false'*) return 0 ;;
+        *'"installed":true'*) ;;
+        *) refuse "anima-link gave an answer about its unit that this script does not read" ;;
+    esac
+    file=$(printf '%s\n' "$shown" | sed -n 's/^{"installed":true,"file":"\([^"\\]*\)"}$/\1/p')
+    [ -n "$file" ] || refuse "the unit of the link is installed, and its file is not a plain path: this script does not touch it"
+    printf '%s\n' "$file"
 }
 
-# Whether the installed unit of the link is the one of this installation (it names its state
-# folder), so that a removal never takes the unit of the application.
+# Whether the installed unit of the link is the one of this installation: its command line has
+# the argument -state with exactly the state folder of this installation. So a removal never
+# takes the unit of the application.
 our_link_unit() {
-    file=$(link_unit_file "$1")
-    [ -n "$file" ] && [ -f "$file" ] && grep -qF "$STATE" "$file"
+    file=$(link_unit_file "$1") || exit 1
+    [ -n "$file" ] && [ -f "$file" ] || return 1
+    awk -v state="$STATE" '
+        { line = $0; gsub(/^[ \t]+|[ \t]+$/, "", line) }
+        previous == "<string>-state</string>" && line == "<string>" state "</string>" { found = 1 }
+        index($0, "\"-state\" \"" state "\" ") { found = 1 }
+        { previous = line }
+        END { exit !found }
+    ' "$file"
+}
+
+# Whether a unit of the link that is not the one of this installation is installed.
+other_link_unit() {
+    installed=$(link_unit_file "$1") || exit 1
+    [ -n "$installed" ] && ! our_link_unit "$1"
 }
 
 sha256_of() {
@@ -93,16 +126,18 @@ fetch() {
     chmod 0755 "$3"
 }
 
-# place <file> <destination>: a new file beside the destination, renamed into place, so that a
-# program that runs keeps its file of before.
+# place <file> <destination>: a new file of its own beside the destination (mktemp never follows
+# a link that is there), renamed into place, so that a program that runs keeps its file of before.
 place() {
-    mkdir -p "$(dirname "$2")"
-    cp "$1" "$2.new"
-    chmod 0755 "$2.new"
-    mv -f "$2.new" "$2"
+    folder=$(dirname "$2")
+    mkdir -p "$folder"
+    new=$(mktemp "$folder/.anima-install.XXXXXX")
+    cp "$1" "$new"
+    chmod 0755 "$new"
+    mv -f "$new" "$2"
 }
 
-# A free port of 127.0.0.1 for the link, kept for the next run.
+# A free port of 127.0.0.1 for the link, kept for the next run. No secret goes to this port.
 link_port() {
     if [ -f "$LINK_HOME/port" ]; then
         cat "$LINK_HOME/port"
@@ -121,17 +156,37 @@ link_port() {
     refuse "no free port for the link"
 }
 
+# The install code: asked at the terminal with no echo, else the first line of standard input.
+read_code() {
+    CODE=""
+    if [ -t 0 ]; then
+        printf 'Paste the install code and press Return: ' > /dev/tty
+        stty -echo < /dev/tty 2> /dev/null || true
+        IFS= read -r CODE < /dev/tty || true
+        stty echo < /dev/tty 2> /dev/null || true
+        printf '\n' > /dev/tty
+    else
+        IFS= read -r CODE || true
+    fi
+}
+
 remove() {
     folders
-    if [ -x "$DAEMON" ]; then
-        "$DAEMON" uninstall || say "the unit of the daemon could not be removed"
+    not_root
+    if [ -x "$LINK" ] && other_link_unit "$LINK"; then
+        refuse "the application keeps the link of this computer: remove Anima with the application. Nothing was removed."
     fi
-    rm -f "$DAEMON"
-    rm -rf "$DAEMON_HOME"
-    if [ -x "$LINK" ]; then
-        if our_link_unit "$LINK"; then
-            "$LINK" unit remove || say "the unit of the link could not be removed"
+    if [ -f "$OURS" ]; then
+        if [ -x "$DAEMON" ]; then
+            "$DAEMON" uninstall || say "the unit of the daemon could not be removed"
         fi
+        rm -f "$DAEMON"
+        rm -rf "$DAEMON_HOME"
+    else
+        say "the daemon of this user was not installed by this script: it stays."
+    fi
+    if [ -x "$LINK" ] && our_link_unit "$LINK"; then
+        "$LINK" unit remove || say "the unit of the link could not be removed"
     fi
     rm -rf "$LINK_HOME"
     say "removed. The hub still lists this computer: remove it in the devices of the hub."
@@ -139,17 +194,20 @@ remove() {
 
 install_here() {
     folders
-    [ "$(id -u)" != 0 ] || refuse "run this as the user who uses the computer, not as root: it installs units of the user"
+    not_root
     echo "$VERSION" | grep -Eq '^(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})$' || refuse "the version is not like 0.9.23"
     for SUM in "$LINK_SHA256" "$DAEMON_SHA256"; do
         echo "$SUM" | grep -Eq '^[0-9a-f]{64}$' || refuse "a SHA-256 is not 64 small hex characters"
     done
     [ "$(target_here)" = "$TARGET" ] || refuse "the line is for $TARGET, and this computer is $(uname -s) $(uname -m). Make the line for this computer."
+    if [ -f "$DAEMON_HOME/daemon.json" ] && [ ! -f "$OURS" ]; then
+        refuse "a daemon of Anima is enrolled for this user already, by the application or by its own install. Remove it first; this script does not enrol over it."
+    fi
 
-    IFS= read -r CODE || true
+    read_code
     case $CODE in
         "$CODE_PREFIX"*) ;;
-        *) refuse "give the install code of \`anima link install\` on standard input" ;;
+        *) refuse "give the install code of \`anima link install\`" ;;
     esac
     REST=${CODE#"$CODE_PREFIX"}
     CLAIM=${REST%%.*}
@@ -165,7 +223,7 @@ install_here() {
     fetch anima-link "$LINK_SHA256" "$WORK/anima-link"
     fetch anima-daemon "$DAEMON_SHA256" "$WORK/anima-daemon"
 
-    if [ -n "$(link_unit_file "$WORK/anima-link")" ] && ! our_link_unit "$WORK/anima-link"; then
+    if other_link_unit "$WORK/anima-link"; then
         refuse "the application keeps the link of this computer: it installs the daemon by itself."
     fi
     if [ -f "$LINK_HOME/joined" ] && [ -n "$INVITE" ]; then
@@ -185,7 +243,7 @@ install_here() {
     PORT=$(link_port)
     "$LINK" unit install -state "$STATE" -listen "127.0.0.1:$PORT" -daemon-socket "$SOCKET" || refuse "the unit of the link could not be installed"
     waited=0
-    until curl -fs --max-time 2 -o /dev/null "http://127.0.0.1:$PORT/health"; do
+    until curl -fs --max-time 2 -o /dev/null --unix-socket "$SOCKET" "http://link/health"; do
         waited=$((waited + 1))
         [ $waited -lt 30 ] || refuse "the link does not reach the hub"
         sleep 1
@@ -194,10 +252,11 @@ install_here() {
     # shellcheck disable=SC2016 # the $ names GraphQL variables, not shell ones
     QUERY='mutation ($claim: String!, $os: OperatingSystem!) { claimComputerEnrolment(claim: $claim, os: $os) { code } }'
     ANSWER=$(printf '{"query":"%s","variables":{"claim":"%s","os":"%s"}}' "$QUERY" "$CLAIM" "$OS" |
-        curl -sS --max-time 30 -H 'Content-Type: application/json' --data-binary @- "http://127.0.0.1:$PORT/graphql") ||
+        curl -sS --max-time 30 -H 'Content-Type: application/json' --data-binary @- --unix-socket "$SOCKET" "http://link/graphql") ||
         refuse "the hub did not answer the claim"
     ENROL=$(printf '%s' "$ANSWER" | grep -Eo 'anima_enrol_[A-Za-z0-9_-]{22}' | head -n 1 || true)
     [ -n "$ENROL" ] || refuse "the hub refused the claim: it is used, expired or wrong. Make a new install code."
+    : > "$OURS"
     printf '%s\n' "$ENROL" | "$DAEMON" enrol --hub "unix:$SOCKET" - > /dev/null || refuse "the daemon could not enrol"
     "$DAEMON" install > /dev/null || refuse "the unit of the daemon could not be installed"
 
@@ -211,6 +270,11 @@ install_here() {
     say "to remove it: sh \"$LINK_HOME/anima-install.sh\" --remove"
 }
 
+# value <option> <count of the arguments left>: refuses an option with no value.
+value() {
+    [ "$2" -ge 2 ] || refuse "$1 needs a value"
+}
+
 VERSION=""
 TARGET=""
 LINK_SHA256=""
@@ -219,11 +283,11 @@ FROM=""
 ACTION=install
 while [ $# -gt 0 ]; do
     case $1 in
-        --version) VERSION=${2:-}; shift 2 || refuse "--version needs a value" ;;
-        --target) TARGET=${2:-}; shift 2 || refuse "--target needs a value" ;;
-        --link-sha256) LINK_SHA256=${2:-}; shift 2 || refuse "--link-sha256 needs a value" ;;
-        --daemon-sha256) DAEMON_SHA256=${2:-}; shift 2 || refuse "--daemon-sha256 needs a value" ;;
-        --from) FROM=${2:-}; shift 2 || refuse "--from needs a folder" ;;
+        --version) value "$1" $#; VERSION=$2; shift 2 ;;
+        --target) value "$1" $#; TARGET=$2; shift 2 ;;
+        --link-sha256) value "$1" $#; LINK_SHA256=$2; shift 2 ;;
+        --daemon-sha256) value "$1" $#; DAEMON_SHA256=$2; shift 2 ;;
+        --from) value "$1" $#; FROM=$2; shift 2 ;;
         --remove) ACTION=remove; shift ;;
         *) refuse "unknown argument $1" ;;
     esac

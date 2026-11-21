@@ -1387,16 +1387,20 @@ Built: on the branch `hosted/hm-t33-one-line-install`. The design is Section 8.1
 operator makes, gives a link invite and a one-time claim; `claimComputerEnrolment(claim, os)`, which only
 the computer that joined with that invite can send through its link, adds the computer to the devices in
 the site `Link` with the kind `server` and gives a daemon enrolment code. `anima link install <name>`
-shows the two as one install code. The script `deploy/bin/anima-install` reads the code on standard input,
+shows the two as one install code. The script `deploy/bin/anima-install` asks for the code at the terminal with no echo,
 checks the SHA-256 of each program, joins the link, installs the unit of the link with the socket of the
-daemon, claims the code through the link, enrols the daemon at the socket and installs its unit. It
+daemon, claims the code through that socket, enrols the daemon at the socket and installs its unit. It
 installs units of the user only and refuses root. `--remove` takes it all out again.
 
 The tests cover: the hub calls with a fake link (the claim works once, only from the computer that
-joined, the device is added once, a second install gives a claim and no invite, no secret in an entry or
-a log); the script with a fake release folder and stand-ins of the two programs and of `curl` (the order
-of the steps, a wrong SHA-256, a second run, a refused claim, a line for a different computer, the unit of
-the application, the removal, and no secret in an argument or the output). Not covered: the real link,
+joined: a try from a different device of the link spends it, a try from off the link does not; the device
+is added once; a second install gives a claim and no invite; a new install cancels the open invites of its
+name; no install code for a name that two devices of the link have; no secret in an entry or a log); the
+script with a fake release folder and stand-ins of the two programs and of `curl` (the order of the steps,
+the claim through the socket of the daemon, a wrong SHA-256 of each program, a second run, a refused claim,
+a line for a different computer, the unit of the application also when its state folder only starts like
+this one, an answer of `unit show` that is not a plain path, a daemon that the script did not enrol, the
+removal, and no secret in an argument or the output). Not covered: the prompt at a real terminal, the real link,
 the real daemon, `systemd` and `launchd`, a real hub, the release (it does not publish `anima-link`
 alone or the script yet) and the page of the web client (not built).
 
@@ -1414,15 +1418,17 @@ there, and it must not touch the units of the application.
 2. On your own computer, run `anima link install build-1`. Expected: one line that starts with
    `anima-install.1.` on standard output, and the expiry on standard error.
 3. On the Linux computer, within 15 minutes, run
-   `printf '%s\n' '<the code>' | sh ~/anima-install --version 0.0.1 --target linux-x86_64 --link-sha256 <hex> --daemon-sha256 <hex> --from ~/rel`.
-   Expected: no password is asked; the last lines say that the computer is a device of the hub and how to
-   remove it; on a computer where lingering is off, a line names `loginctl enable-linger`.
+   `sh ~/anima-install --version 0.0.1 --target linux-x86_64 --link-sha256 <hex> --daemon-sha256 <hex> --from ~/rel`,
+   and paste the code at the prompt "Paste the install code". Expected: the code is not shown while you
+   paste it, and it is not in `history`; no password is asked; the last lines say that the computer is a
+   device of the hub and how to remove it; on a computer where lingering is off, a line names
+   `loginctl enable-linger`.
 4. Run `systemctl --user status anima-link.service anima-daemon.service`. Expected: both are active.
    `ps -eo args | grep -c anima-install` shows no code in any process.
 5. Open Devices of the hub. Expected: within one minute a device `build-1`, kind server, Linux, in the site
    `Link`, with metrics from its daemon.
-6. Run step 3 again with the same code. Expected: it stops with "the link could not join the hub" or
-   "the hub refused the claim", and the device keeps its metrics.
+6. Run step 3 again with the same code. Expected: it stops with "this computer is on the link already"
+   (the code holds an invite, and the computer joined), and the device keeps its metrics.
 7. Make a new code with `anima link install build-1`; run step 3 with it. Expected: no new join (the code
    has no invite), the daemon enrols again, the device in Devices is the same one, with no second
    `build-1`.
@@ -1437,6 +1443,9 @@ there, and it must not touch the units of the application.
     with `--target darwin-universal`, the two programs of a signed trial build
     (`Anima.ing.app/Contents/MacOS/`) and `shasum -a 256`. Expected: the same, with `launchctl print
     gui/$(id -u)/ing.anima.link` and `ing.anima.daemon` running.
+12. On the Linux computer, install the daemon alone with its own command (MET-019) for a different
+    device, then run step 3 with a new code. Expected: it stops with "a daemon of Anima is enrolled for
+    this user already", and the daemon of MET-019 still runs.
 
 State: Open. Not run.
 
