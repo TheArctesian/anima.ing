@@ -2465,7 +2465,7 @@ Requirements: HOST-050, task H40; SF-248; OD-HOST-54.
 
 What it is: A public `tcp_stream` or `udp_stream` needed a protocol from the fixed list of the hub, but nothing checked that the application on that port speaks it. A person could open a database or a shell to the internet with the label `imaps`.
 
-Where: `crates/hub/src/work/routes/model.rs` (`Route::waits`), `crates/hub/migrations/1041_routes_kinds.sql`.
+Where: `crates/hub/src/work/routes/model.rs` (`Route::waits`), `crates/hub/migrations/1061_routes_kinds.sql`.
 
 Effect, and who can cause it: A person who adds a route, or an agent with a login token. Effect: a service that trusts its network is public.
 

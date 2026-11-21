@@ -1,4 +1,4 @@
--- The kinds and the access of a route (range 1040-1059; HOST-050, task H40; Section 16 of
+-- The kinds and the access of a route (range 1060-1079; HOST-050, task H40; Section 16 of
 -- docs/proposals/hosted-applications-stage-2.md).
 --
 -- `kind`: `web` (HTTPS by name, Section 12), `redirect` (a proven name that answers with a fixed
