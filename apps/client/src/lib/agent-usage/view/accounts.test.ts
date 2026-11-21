@@ -47,4 +47,11 @@ it('each device of an account has its share of the use of that program only, and
   ];
   expect(deviceShares({ source: 'CODEX', devices }, rows, 'cost').map((one) => one.percent)).toEqual([75, 25]);
   expect(deviceShares({ source: 'CODEX', devices }, [], 'cost').map((one) => one.percent)).toEqual([null, null]);
+  // A device whose daemon reads no sessions is not counted: its use is not known, which is not 0 %.
+  const second = devices[1]?.id ?? '';
+  const onlyFirst = rows.filter((row) => row.device.id !== second);
+  const shares = deviceShares({ source: 'CODEX', devices }, onlyFirst, 'cost', new Set([second]));
+  expect(shares.map((one) => [one.percent, one.counted])).toEqual([[100, true], [null, false]]);
+  // A use from before the daemon stopped reading still counts.
+  expect(deviceShares({ source: 'CODEX', devices }, rows, 'cost', new Set([second])).map((one) => one.percent)).toEqual([75, 25]);
 });

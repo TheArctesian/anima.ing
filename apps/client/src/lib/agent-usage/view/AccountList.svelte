@@ -13,9 +13,11 @@
     count: Count;
     /** The time of now, in milliseconds; the page gives a new one each minute. */
     now: number;
+    /** The devices whose daemon reads no sessions (AIS-024): their share is not known. */
+    notCounted?: ReadonlySet<string>;
   }
 
-  const { accounts, shares, count, now }: Props = $props();
+  const { accounts, shares, count, now, notCounted = new Set() }: Props = $props();
 </script>
 
 <!-- One card for each account (AIS-022 as R-313 changed it): its limit windows, which its devices share, and the share of
@@ -50,10 +52,12 @@
         {/if}
         <div class="devices">
           <span class="small quiet">Each device's share of this program's {count} in these days</span>
-          {#each deviceShares(account, shares, count) as device (device.id)}
+          {#each deviceShares(account, shares, count, notCounted) as device (device.id)}
             <div class="device">
               <span class="name">{device.name}</span>
-              {#if device.percent === null}
+              {#if !device.counted}
+                <span class="quiet share-none">not counted</span>
+              {:else if device.percent === null}
                 <span class="quiet share-none">no use</span>
               {:else}
                 <span class="share" aria-hidden="true"><i style:inline-size="{device.percent}%"></i></span>
