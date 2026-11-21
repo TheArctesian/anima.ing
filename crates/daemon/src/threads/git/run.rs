@@ -298,6 +298,12 @@ impl Git {
 }
 
 impl Git {
+    /// The names of the environment that reach `git`, for the tests.
+    #[cfg(test)]
+    pub(super) fn env_names(&self) -> Vec<OsString> {
+        self.env.iter().map(|(name, _)| name.clone()).collect()
+    }
+
     /// The configuration a run gets through its environment, which wins over each file and can
     /// name a key with any character in it: the filters of the repository, off, for a run of
     /// the runner itself.
@@ -332,7 +338,7 @@ async fn held(pipe: Option<impl tokio::io::AsyncRead + Unpin>) -> Option<Vec<u8>
 /// The configuration each run gets on its command line, where it wins over each file: no
 /// monitor program, no external diff, no `ext::` transport, no pager, no optional lock, quoted
 /// paths as bytes. A run of the runner itself has no hooks.
-fn fixed_configuration(asked: Asked) -> Vec<&'static str> {
+pub(super) fn fixed_configuration(asked: Asked) -> Vec<&'static str> {
     let mut args = vec![
         "--no-pager",
         "--no-optional-locks",
@@ -372,7 +378,7 @@ fn fixed_configuration(asked: Asked) -> Vec<&'static str> {
 
 /// The environment each run gets after the kept names: no prompt, fixed words, a fixed `ssh`,
 /// and no fetch of an object that a partial clone lacks.
-fn fixed_environment() -> [(&'static str, &'static str); 5] {
+pub(super) fn fixed_environment() -> [(&'static str, &'static str); 5] {
     [
         ("GIT_TERMINAL_PROMPT", "0"),
         ("GIT_SSH_COMMAND", "ssh -o BatchMode=yes"),
@@ -380,38 +386,4 @@ fn fixed_environment() -> [(&'static str, &'static str); 5] {
         ("LC_ALL", "C"),
         ("GIT_NO_LAZY_FETCH", "1"),
     ]
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn only_the_kept_names_of_the_environment_reach_git() {
-        let env = [
-            ("HOME", "/home/ada"),
-            ("PATH", "/usr/bin"),
-            ("GIT_DIR", "/elsewhere/.git"),
-            ("GIT_INDEX_FILE", "/elsewhere/index"),
-            ("ANIMA_DAEMON_TOKEN", "secret"),
-            ("GH_TOKEN", "secret"),
-        ]
-        .map(|(name, value)| (OsString::from(name), OsString::from(value)));
-        let Ok(git) = Git::find(env) else {
-            return;
-        };
-        let names: Vec<_> = git.env.iter().map(|(name, _)| name.clone()).collect();
-        assert_eq!(names, ["HOME", "PATH"]);
-    }
-
-    #[test]
-    fn the_runner_has_no_hooks_and_the_person_has_theirs() {
-        assert!(fixed_configuration(Asked::Runner).contains(&"core.hooksPath=/dev/null"));
-        // No transport for the runner, and no fetch of a missing object for anyone: a remote
-        // of a partial clone cannot name a program that a diff then starts.
-        assert!(fixed_configuration(Asked::Runner).contains(&"protocol.allow=never"));
-        assert!(!fixed_configuration(Asked::Person).contains(&"protocol.allow=never"));
-        assert!(fixed_environment().contains(&("GIT_NO_LAZY_FETCH", "1")));
-        assert!(!fixed_configuration(Asked::Person).contains(&"core.hooksPath=/dev/null"));
-    }
 }

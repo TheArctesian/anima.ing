@@ -3,6 +3,7 @@
 
 mod person;
 mod planted;
+mod runs;
 mod turns;
 
 use std::path::{Path, PathBuf};
