@@ -414,6 +414,38 @@ What is not known until the first run: if the Linux program starts on a computer
 
 ### The iOS application: TestFlight (R-203; task B8i)
 
+The branch workflow [TestFlight](../../.github/workflows/testflight.yml) runs on a push to
+`dev` or `main`. Manual dispatch on either branch redeploys that branch. The scheduled
+check runs every 20 minutes and dispatches any new `dev` revision that the merge
+train pushed with GitHub's workflow token. Each build
+gets a unique number from the workflow run sequence. The iOS release version still comes
+from the first-parent history of `main`.
+
+| Branch | GitHub environment | GitHub variable | TestFlight group |
+| --- | --- | --- | --- |
+| `dev` | `release` | `ANIMA_TESTFLIGHT_DEV=on` | Anima Internal |
+| `main` | `release` | `ANIMA_TESTFLIGHT_MAIN=on` | Anima External |
+
+The operator authorized the `release` environment to allow deployments from `dev` and
+`main`. Both jobs use the existing iOS secrets. The operator supplies
+`IOS_DISTRIBUTION_P12_BASE64`, `IOS_DISTRIBUTION_P12_PASSWORD`,
+`IOS_PROVISIONING_PROFILE_BASE64`, `ASC_API_PRIVATE_KEY`, `ASC_API_KEY_ID` and
+`ASC_API_ISSUER_ID` in `release`. The key is an App Store Connect team key
+with App Manager access. The old `ANIMA_PUBLIC_TESTFLIGHT` switch stays off when
+using the branch workflow.
+
+Keep automatic distribution off for Anima Internal. Xcode marks `dev` uploads as
+TestFlight Internal Only. The workflow checks Apple's recorded build audience before
+assigning it to the internal group. The `main` job creates Anima External when needed,
+assigns the processed build, enables automatic tester notification and submits it for
+Beta App Review when Apple requires it. The operator supplies the app's beta review
+contact, sign-in instructions and export compliance answers in App Store Connect.
+External testers get the build when Apple clears it. Add the testers you want in the
+external group in App Store Connect.
+
+The earlier release workflow used the jobs below for its separate TestFlight trial.
+
+
 Built as three jobs of the release workflow: `ios` builds and signs, `ios-upload` sends the file to App Store Connect, and `ios-record` writes `ios/latest.json` in the bucket so that the next push can compare with it. The job `ios` runs `apps/desktop/src-tauri/ios-archive.sh` on `macos-26` for the Xcode and SDK versions required by [App Store Connect](https://developer.apple.com/news/upcoming-requirements/). The first signed trial is open in [HT-046](../need-human-testing.md#ht-046-the-ios-application-from-the-release-workflow-to-testflight-task-b8i).
 
 **Two switches of its own.** `ANIMA_IOS_BUILD` lets the job `ios` run, in a trial and for a push to `main`: it builds and signs, and uploads nothing. While it is not `on`, no iOS job runs, and a trial is not red for it. `ANIMA_PUBLIC_TESTFLIGHT`, which only the operator sets, lets a push to `main` also send that build to TestFlight. Neither exists today, and they do not depend on `ANIMA_PUBLIC_RELEASES`.

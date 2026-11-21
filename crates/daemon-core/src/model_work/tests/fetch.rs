@@ -9,14 +9,23 @@ use crate::model_work::releases::fetch::{
     verdict,
 };
 
+/// An absolute folder on each system: `/state` is not absolute on Windows, where the order is refused.
+fn folder(name: &str) -> String {
+    std::env::temp_dir()
+        .join(name)
+        .to_str()
+        .expect("a folder in text")
+        .to_owned()
+}
+
 fn order() -> FetchOrder {
     FetchOrder {
         runtime: "llama_server".to_owned(),
         address: "https://github.com/o/r/releases/download/b6000/llama.tar.gz".to_owned(),
         sha256: "a".repeat(64),
         size_bytes: 1 << 20,
-        archive_folder: "/state".to_owned(),
-        unpack_folder: "/runtimes/llama_server/.unpack-1".to_owned(),
+        archive_folder: folder("state"),
+        unpack_folder: folder("runtimes/llama_server/.unpack-1"),
         reserve: 0,
         parent: 1,
     }
