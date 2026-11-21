@@ -4094,7 +4094,16 @@ Windows or on Linux, so each step below is the first run.
    Expected: each takes the focus with a ring that can be seen, and Enter or Space runs it.
 8. On Linux, repeat step 1 under a desktop that draws frames itself (for example KDE), if one is there.
    Expected: no second title bar. If the desktop draws one, write it here.
-9. On a Mac, start the application.
-   Expected: nothing changed: the three window buttons of macOS are over the bar, and no drawn buttons show.
+9. Open a device page and scroll it; open a table that is longer than the window and scroll it; open a modal.
+   Expected: the pinned bar and the table head stop below the strip, not under it. With the modal open the window
+   still moves by the strip, and the three buttons still work.
+10. Make the window less than 1100 wide and stop the hub, so that the banner "Not on the network" shows.
+    Expected: the banner is the top of the window, and the strip with the three buttons is below it.
+11. Press and move the pointer on the top of the navigation bar, beside "Anima.ing".
+    Expected, a known limit: with the bar at its full width this does not move the window; only the strip over the
+    page does. The correction is one attribute in `apps/client/src/lib/nav/Nav.svelte` (`data-tauri-drag-region="deep"`
+    on the brand row). It is not in this branch, because that file belongs to two mockup records.
+12. On a Mac, start the application.
+    Expected: nothing changed: the three window buttons of macOS are over the bar, and no drawn buttons show.
 
 Result: Open.

@@ -80,8 +80,7 @@
       <CollapseToggle {collapsed} ontoggle={ontogglecollapse} />
     {/if}
   </div>
-  <!-- The brand row moves the window too: with no frame of the system the top of the bar is the top of the window. -->
-  <div class="brand" data-tauri-drag-region="deep">
+  <div class="brand">
     <img src={asset('/logo.png')} alt="" width="24" height="24" />
     <span class="words">Anima.ing</span>
   </div>
