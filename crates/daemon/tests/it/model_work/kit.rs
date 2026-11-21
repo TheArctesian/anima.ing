@@ -51,17 +51,12 @@ pub fn contained() -> bool {
     #[cfg(target_os = "linux")]
     {
         let probe = format!("probe-{}", std::process::id());
-        match anima_daemon::model::tree::linux::make(&probe) {
-            Ok(path) => {
-                anima_daemon::model::tree::linux::end_cgroup(&path);
-                true
-            }
-            Err(_) => {
-                eprintln!(
-                    "skipped: no delegated cgroup v2 here; HT-NEW-l1containment covers pop-os"
-                );
-                false
-            }
+        if let Ok(path) = anima_daemon::model::tree::linux::make(&probe) {
+            anima_daemon::model::tree::linux::end_cgroup(&path);
+            true
+        } else {
+            eprintln!("skipped: no delegated cgroup v2 here; HT-NEW-l1containment covers pop-os");
+            false
         }
     }
     #[cfg(not(target_os = "linux"))]
