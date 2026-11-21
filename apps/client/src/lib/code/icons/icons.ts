@@ -2,12 +2,7 @@ import AlarmClock from '@lucide/svelte/icons/alarm-clock';
 import AlarmClockOff from '@lucide/svelte/icons/alarm-clock-off';
 import ArrowRightLeft from '@lucide/svelte/icons/arrow-right-left';
 import ArrowUp from '@lucide/svelte/icons/arrow-up';
-import AtSign from '@lucide/svelte/icons/at-sign';
-import AudioLines from '@lucide/svelte/icons/audio-lines';
-import BookOpen from '@lucide/svelte/icons/book-open';
 import Bot from '@lucide/svelte/icons/bot';
-import Brain from '@lucide/svelte/icons/brain';
-import Camera from '@lucide/svelte/icons/camera';
 import Check from '@lucide/svelte/icons/check';
 import ChevronDown from '@lucide/svelte/icons/chevron-down';
 import ChevronLeft from '@lucide/svelte/icons/chevron-left';
@@ -27,12 +22,10 @@ import File from '@lucide/svelte/icons/file';
 import FileCode from '@lucide/svelte/icons/file-code';
 import FileText from '@lucide/svelte/icons/file-text';
 import Folder from '@lucide/svelte/icons/folder';
-import Gauge from '@lucide/svelte/icons/gauge';
 import GitBranch from '@lucide/svelte/icons/git-branch';
 import GitMerge from '@lucide/svelte/icons/git-merge';
 import GitPullRequest from '@lucide/svelte/icons/git-pull-request';
 import Hammer from '@lucide/svelte/icons/hammer';
-import Hash from '@lucide/svelte/icons/hash';
 import Image from '@lucide/svelte/icons/image';
 import ListPlus from '@lucide/svelte/icons/list-plus';
 import Maximize2 from '@lucide/svelte/icons/maximize-2';
@@ -60,7 +53,6 @@ import Sparkles from '@lucide/svelte/icons/sparkles';
 import Square from '@lucide/svelte/icons/square';
 import SquareMenu from '@lucide/svelte/icons/square-menu';
 import SquarePen from '@lucide/svelte/icons/square-pen';
-import SquareSlash from '@lucide/svelte/icons/square-slash';
 import Terminal from '@lucide/svelte/icons/terminal';
 import Trash2 from '@lucide/svelte/icons/trash-2';
 import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
@@ -81,12 +73,7 @@ export const CODE_ICONS = {
   'alarm-clock-off': AlarmClockOff,
   'arrow-right-left': ArrowRightLeft,
   'arrow-up': ArrowUp,
-  'at-sign': AtSign,
-  'audio-lines': AudioLines,
-  'book-open': BookOpen,
   bot: Bot,
-  brain: Brain,
-  camera: Camera,
   check: Check,
   'chevron-down': ChevronDown,
   'chevron-left': ChevronLeft,
@@ -106,12 +93,10 @@ export const CODE_ICONS = {
   'file-code': FileCode,
   'file-text': FileText,
   folder: Folder,
-  gauge: Gauge,
   'git-branch': GitBranch,
   'git-merge': GitMerge,
   'git-pull-request': GitPullRequest,
   hammer: Hammer,
-  hash: Hash,
   image: Image,
   'list-plus': ListPlus,
   'maximize-2': Maximize2,
@@ -139,7 +124,6 @@ export const CODE_ICONS = {
   square: Square,
   'square-menu': SquareMenu,
   'square-pen': SquarePen,
-  'square-slash': SquareSlash,
   terminal: Terminal,
   'trash-2': Trash2,
   'triangle-alert': TriangleAlert,

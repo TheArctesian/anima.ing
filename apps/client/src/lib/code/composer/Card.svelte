@@ -1,0 +1,244 @@
+<script lang="ts">
+  import { untrack } from 'svelte';
+  import { isMac } from '$lib/platform/mac';
+  import AttachButton from './attachments/AttachButton.svelte';
+  import Attachments from './attachments/Attachments.svelte';
+  import Preview from './attachments/Preview.svelte';
+  import { dropZone } from './attachments/drop';
+  import { CardState } from './card-state.svelte';
+  import type { CaretAt } from './draft';
+  import Editor from './editor/Editor.svelte';
+  import type { ComposerEngine } from './engine';
+  import MentionMenu from './mentions/MentionMenu.svelte';
+  import { chipReader } from './mentions/chips';
+  import { insertionOf } from './mentions/insertion';
+  import type { MentionEntry } from './mentions/sources';
+  import { afterCaretMove, afterEdit, afterEscape, NO_TRIGGER, triggerAt } from './mentions/trigger';
+  import ModelPicker from './picker/ModelPicker.svelte';
+  import SendButton from './primary/SendButton.svelte';
+  import StopButton from './primary/StopButton.svelte';
+  import { enterSends, showsSend, showsStop } from './primary/send';
+  import QueuedMessages from './queue/QueuedMessages.svelte';
+  import { labelled } from './queue/queue';
+  import MicButton from './voice/MicButton.svelte';
+  import './composer.css';
+  import './mentions/mentions.css';
+
+  interface Props {
+    engine: ComposerEngine;
+    /** The key under which the unsent text of this chat is kept. */
+    draft?: string | undefined;
+    /** The chat's title, for the editor's name: "Message Fix the gate". */
+    title?: string | undefined;
+    /** The text to start from, for the specimen and the gallery. */
+    start?: string;
+  }
+
+  /*
+   * The composer's card (03 B.1): the queued messages above it, then the editor with what is attached, and the
+   * footer with the paperclip, the model, the microphone and the round send. The card is opaque and shows a focus
+   * ring while the editor has focus: T3's is glass with no ring (R-354, D7 and D9).
+   */
+  const { engine, draft, title, start }: Props = $props();
+  const menuId = $props.id();
+  // The chat column mounts one composer for each chat (`{#key}` in Composer.svelte), so the key is read once.
+  // svelte-ignore state_referenced_locally
+  const card = new CardState(() => engine, draft, isMac(navigator.userAgent) ? '⌘' : 'Ctrl');
+  // svelte-ignore state_referenced_locally
+  if (start !== undefined) card.prompt = start;
+  const chips = $derived(chipReader({ skills: engine.sources.skills }));
+  let editor = $state<Editor>();
+  let menu = $state<MentionMenu>();
+  let surface = $state<HTMLElement>();
+  let over = $state(false);
+  let watch = $state(NO_TRIGGER);
+  let caret = $state<DOMRect | null>(null);
+  let seen = '';
+  let allQueued = $state(false);
+  let picking = $state(false);
+  let previewed = $state<string | null>(null);
+  // No list exists for pull requests yet, so `#` opens nothing.
+  const trigger = $derived(watch.open !== null && watch.open.kind !== 'pull-request' ? watch.open : null);
+  const images = $derived(card.attachments.filter((attachment) => attachment.kind === 'image' && attachment.state.state === 'ready'));
+
+  $effect(() => {
+    card.turned(engine.phase === 'running');
+  });
+  $effect(() => {
+    card.keep();
+  });
+
+  /* The editor tells this from inside its own effect: nothing read here may become a dependency of that effect. */
+  function onCaret(at: CaretAt): void {
+    untrack(() => {
+      const found = at.rect === null ? null : triggerAt(at.prompt, at.caret);
+      watch = at.prompt === seen ? afterCaretMove(watch, found) : afterEdit(watch, found);
+      seen = at.prompt;
+      caret = at.rect;
+    });
+  }
+
+  function choose(choice: MentionEntry): void {
+    if (trigger === null) return;
+    const insertion = insertionOf(trigger, choice, card.prompt);
+    watch = NO_TRIGGER;
+    if (insertion === null) return;
+    editor?.replace(insertion.start, insertion.end, insertion.text);
+    if (choice.kind === 'command' && choice.command.name === 'model') picking = true;
+  }
+
+  /** The keys of the composer before the editor's own (03 B.12): the open menu first, then the queue, then Enter. */
+  function onKey(event: KeyboardEvent): boolean {
+    if (trigger !== null && menu?.key(event) === true) return true;
+    if (event.key === 'ArrowUp' && event.altKey && card.prompt === '' && card.editing === null) {
+      const last = engine.queued.at(-1);
+      if (last === undefined || last.saving) return false;
+      allQueued = true;
+      card.edit(last.id);
+      return true;
+    }
+    if (!enterSends({ key: event.key, shift: event.shiftKey, alt: event.altKey, composing: event.isComposing })) return false;
+    void card.submit(event.metaKey || event.ctrlKey);
+    return true;
+  }
+
+  function held(event: KeyboardEvent): void {
+    card.alternate = event.metaKey || event.ctrlKey;
+  }
+</script>
+
+<svelte:window onkeydown={held} onkeyup={held} onblur={() => (card.alternate = false)} />
+
+<div class="composer">
+  <QueuedMessages
+    queue={engine.queued}
+    editing={card.editing}
+    running={card.running}
+    busy={card.busy}
+    bind:all={allQueued}
+    onSendNow={(id) => void card.queued(id, 'send')}
+    onEdit={(id) => {
+      card.edit(id);
+      editor?.focus();
+    }}
+    onRemove={(id) => void card.queued(id, 'remove')}
+    onCancel={() => {
+      card.cancelEdit();
+      editor?.focus();
+    }}
+  >
+    {#snippet body(prompt)}<p class="queued">{labelled(prompt, chips(prompt))}</p>{/snippet}
+  </QueuedMessages>
+  {#if trigger !== null}
+    <MentionMenu bind:this={menu} id={menuId} {trigger} body={surface} anchor={caret} sources={engine.sources} onChoose={choose} onClose={() => (watch = afterEscape(trigger))} />
+  {/if}
+  <form
+    class="card"
+    class:over
+    aria-label="Composer"
+    bind:this={surface}
+    {@attach dropZone({
+      onOver: (now) => (over = now && engine.attach.can),
+      onFiles: (files) => {
+        if (engine.attach.can) card.add(files);
+      },
+    })}
+    onsubmit={(event) => {
+      event.preventDefault();
+    }}
+  >
+    <div class="body">
+      <Attachments attachments={card.attachments} onRemove={(id) => card.remove(id)} onOpen={(id) => (previewed = id)} />
+      <Editor
+        bind:this={editor}
+        bind:value={card.prompt}
+        label={title === undefined ? 'Message' : `Message ${title}`}
+        placeholder="Ask anything. @ files, $ skills, / commands"
+        {chips}
+        {onCaret}
+        {onKey}
+        onFiles={(files) => {
+          if (engine.attach.can) card.add(files);
+          else card.problem = engine.attach.reason;
+        }}
+      />
+    </div>
+    {#if card.problem !== null}<p class="problem" role="alert">{card.problem}</p>{/if}
+    <div class="footer">
+      <AttachButton can={engine.attach} onFiles={(files) => card.add(files)} />
+      <div class="actions">
+        <ModelPicker catalogue={engine.catalogue} value={engine.choice} onChange={engine.choose} can={engine.pick} align="end" bind:open={picking} />
+        <MicButton can={engine.dictate} onStart={() => undefined} />
+        {#if showsSend(card.turn)}<SendButton face={card.face} onPress={(alternate) => void card.submit(alternate)} />{/if}
+        {#if showsStop(card.turn, card.stop)}<StopButton pending={card.stop === 'pending'} onStop={() => void card.interrupt()} />{/if}
+      </div>
+    </div>
+  </form>
+</div>
+<Preview {images} openId={previewed} onOpen={(id) => (previewed = id)} onClose={() => (previewed = null)} />
+
+<style>
+  .composer {
+    display: flex;
+    position: relative;
+    flex-direction: column;
+    inline-size: 100%;
+    font-family: var(--font-ui);
+  }
+
+  /* Above the mention menu, whose foot is tucked under the card's top edge (03 "Popup design"). */
+  .card {
+    position: relative;
+    border: var(--border-thin) solid var(--code-composer-line);
+    border-radius: var(--code-composer-radius);
+    background: var(--code-composer-surface);
+    transition: background-color var(--duration-base) var(--ease-enter);
+  }
+
+  .card:has(:global([role='textbox']:focus)) {
+    outline: var(--border-focus) solid var(--focus-ring);
+    outline-offset: calc(var(--border-thin) * -1);
+  }
+
+  /* Files are dragged over it (03 B.2.6): a fill and a line in the accent. */
+  .card.over {
+    border-color: var(--accent);
+    background: var(--accent-tint);
+  }
+
+  .body {
+    position: relative;
+    padding: var(--code-composer-pad-start) var(--code-composer-pad-inline) var(--code-composer-pad-end);
+    font-size: var(--code-text-body);
+  }
+
+  .problem {
+    margin: 0;
+    padding: 0 var(--code-composer-pad-inline) var(--space-2);
+    color: var(--status-down-text);
+    font-size: var(--code-text-meta);
+  }
+
+  .footer {
+    display: flex;
+    align-items: center;
+    min-inline-size: 0;
+    padding: 0 var(--code-composer-footer-pad) var(--code-composer-footer-pad);
+  }
+
+  .actions {
+    display: flex;
+    flex: 1;
+    gap: var(--code-composer-actions-gap);
+    align-items: center;
+    justify-content: flex-end;
+    min-inline-size: 0;
+    margin-inline-start: var(--space-2);
+  }
+
+  .queued {
+    margin: 0;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+</style>

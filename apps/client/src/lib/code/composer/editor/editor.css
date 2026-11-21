@@ -1,0 +1,286 @@
+/*
+ * The editor of the composer: T3 Code's sizes (t3-ui-copy-2026-11-21/03, The editor: Node CSS, Code block) in
+ * Anima's skin (R-354): our tokens for every colour, IBM Plex in two weights, corners of 2 and 4 px, quiet text in
+ * the secondary colour where T3 fades it, no text under 12 px, no motion. The lines are drawn by `view/draw.ts`,
+ * outside the component, so these rules are not scoped by it: every class starts with `ce-` or `code-editor`.
+ */
+:root {
+  /* The page: 4 px of padding, taken back by the margin, so the text lines up with the card (Height, growth). */
+  --code-composer-editor-pad: var(--space-1);
+
+  /* Above and under a list, a quote, a code block. */
+  --code-composer-editor-gap: 0.65rem;
+
+  /* Headings: 20, 18 and 16 px, then the body size; 20 px above, 8 px under; line height 1.3. */
+  --code-composer-editor-h1: calc(var(--text-xl) * var(--code-text-scale));
+  --code-composer-editor-h2: calc(1.125rem * var(--code-text-scale));
+  --code-composer-editor-h3: calc(var(--text-lg) * var(--code-text-scale));
+  --code-composer-editor-heading-leading: 1.3;
+  --code-composer-editor-heading-above: var(--space-5);
+  --code-composer-editor-heading-under: var(--space-2);
+
+  /* Lists: a gutter of 20 px at least for the marker; a nested task 22 px in; the checkbox 15.2 px, 8 px from its text. */
+  --code-composer-editor-gutter: var(--space-5);
+  --code-composer-editor-task-gutter: 1.375rem;
+  --code-composer-editor-check: 0.95rem;
+  --code-composer-editor-check-gap: var(--space-2);
+
+  /* A quote: a 2 px line, the text 12.8 px from it. */
+  --code-composer-editor-quote-line: 0.125rem;
+  --code-composer-editor-quote-pad: 0.8rem;
+
+  /* A code block: 12 px at the sides, 6 px over the header, 4 px over the code, 8 px under it; line height 1.375. */
+  --code-composer-editor-code-pad: var(--space-3);
+  --code-composer-editor-code-above: 0.375rem;
+  --code-composer-editor-code-between: var(--space-1);
+  --code-composer-editor-code-under: var(--space-2);
+  --code-composer-editor-code-leading: 1.375;
+}
+
+.code-editor {
+  display: flow-root;
+  position: relative;
+  color: var(--text);
+  font-weight: var(--weight-regular);
+  font-size: var(--code-text-body);
+  line-height: var(--code-composer-leading);
+  font-family: var(--font-ui);
+}
+
+/* A phone zooms the page on a text box under 16 px (Type, size, colour). */
+@media (pointer: coarse) and (width < 40rem) {
+  .code-editor {
+    font-size: max(var(--code-text-body), 1rem);
+  }
+}
+
+/* The focus ring is on the card of the composer (composer.css), which holds this text box and nothing else that types. */
+.code-editor-page {
+  display: block;
+  min-block-size: calc(2lh + var(--code-composer-editor-pad) * 2);
+  max-block-size: var(--code-composer-editor-max);
+  margin: calc(var(--code-composer-editor-pad) * -1);
+  padding: var(--code-composer-editor-pad);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  outline: none;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.code-editor-placeholder {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.ce-line {
+  position: relative;
+}
+
+/* A Markdown marker the caret touches: quiet, upright text. One it does not touch is in the page and not drawn. */
+.ce-mark {
+  color: var(--text-secondary);
+  font-style: normal;
+  font-weight: var(--weight-regular);
+  text-decoration: none;
+}
+
+.ce-off {
+  display: none;
+}
+
+.ce-bold {
+  font-weight: var(--weight-medium);
+}
+
+.ce-italic {
+  font-style: italic;
+}
+
+.ce-strike {
+  text-decoration: line-through;
+}
+
+code.ce-code {
+  padding: 0.05em 0.25em;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-size: 0.92em;
+  font-family: var(--font-mono);
+}
+
+.ce-heading {
+  margin-block: var(--code-composer-editor-heading-above) var(--code-composer-editor-heading-under);
+  font-weight: var(--weight-medium);
+  line-height: var(--code-composer-editor-heading-leading);
+}
+
+.ce-h1 {
+  font-size: var(--code-composer-editor-h1);
+}
+
+.ce-h2 {
+  font-size: var(--code-composer-editor-h2);
+}
+
+.ce-h3 {
+  font-size: var(--code-composer-editor-h3);
+}
+
+.ce-h6 {
+  color: var(--text-secondary);
+}
+
+/* A list line: the marker hangs in a gutter before the text, one gutter deeper for each level. */
+.ce-bullet,
+.ce-ordered {
+  --code-composer-editor-own: max(var(--code-composer-editor-gutter), 2ch);
+
+  padding-inline-start: calc(var(--code-composer-editor-depth) * var(--code-composer-editor-gutter) + var(--code-composer-editor-own));
+}
+
+/* The gutter grows with the marker as it is written: `3)`, `100.` (T3's `data-marker-width`). */
+.ce-ordered {
+  --code-composer-editor-own: max(var(--code-composer-editor-gutter), calc((var(--code-composer-editor-marker) + 1) * 1ch));
+}
+
+.ce-bullet::before,
+.ce-ordered::before {
+  position: absolute;
+  inset-inline-start: calc(var(--code-composer-editor-depth) * var(--code-composer-editor-gutter));
+  inline-size: var(--code-composer-editor-own);
+  content: attr(data-marker) ' ';
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.ce-task {
+  padding-inline-start: calc(
+    var(--code-composer-editor-depth) * var(--code-composer-editor-task-gutter) + var(--code-composer-editor-check) +
+      var(--code-composer-editor-check-gap)
+  );
+}
+
+.ce-check {
+  position: absolute;
+  inset-block-start: calc((1lh - var(--code-composer-editor-check)) / 2);
+  inset-inline-start: calc(var(--code-composer-editor-depth) * var(--code-composer-editor-task-gutter));
+  inline-size: var(--code-composer-editor-check);
+  block-size: var(--code-composer-editor-check);
+  margin: 0;
+  accent-color: var(--accent);
+  /* The line's own font, so `1lh` here is the height of the line the box sits on. */
+  font: inherit;
+  cursor: pointer;
+}
+
+.ce-check:focus-visible {
+  outline: var(--border-focus) solid var(--focus-ring);
+  outline-offset: var(--border-focus);
+}
+
+.ce-quote {
+  padding-inline-start: var(--code-composer-editor-quote-pad);
+  border-inline-start: var(--code-composer-editor-quote-line) solid var(--border-strong);
+}
+
+:is(.ce-bullet, .ce-ordered, .ce-quote, .ce-fence).ce-first {
+  margin-block-start: var(--code-composer-editor-gap);
+}
+
+:is(.ce-bullet, .ce-ordered, .ce-quote).ce-last {
+  margin-block-end: var(--code-composer-editor-gap);
+}
+
+/* A rule: a line across the middle of its row. With the caret on it, its source shows in its place. */
+.ce-rule:not(.ce-source)::before {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline: 0;
+  border-block-start: var(--border-thin) solid var(--border-strong);
+  content: '';
+}
+
+/* A code block: one sunken frame over its lines. The header is its opening fence and shows the language. */
+.ce-fence,
+.ce-code,
+.ce-close {
+  padding-inline: var(--code-composer-editor-code-pad);
+  border-inline: var(--border-thin) solid var(--border-subtle);
+  background: var(--surface-sunken);
+  line-height: var(--code-composer-editor-code-leading);
+  text-align: start;
+}
+
+.ce-code,
+.ce-close {
+  overflow-wrap: anywhere;
+  font-size: var(--code-text-small);
+  font-family: var(--font-mono);
+}
+
+.ce-fence {
+  padding-block: var(--code-composer-editor-code-above) var(--code-composer-editor-code-between);
+  border-block-start: var(--border-thin) solid var(--border-subtle);
+  border-start-start-radius: var(--radius-md);
+  border-start-end-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-weight: var(--weight-medium);
+  font-size: var(--code-text-meta);
+}
+
+.ce-fence[data-plain]:not(.ce-source)::before {
+  content: attr(data-plain);
+}
+
+/* The closing fence is the foot of the frame: with no caret on it, only the space under the code. */
+:is(.ce-fence, .ce-code, .ce-close).ce-last {
+  margin-block-end: var(--code-composer-editor-gap);
+  padding-block-end: var(--code-composer-editor-code-under);
+  border-block-end: var(--border-thin) solid var(--border-subtle);
+  border-end-start-radius: var(--radius-md);
+  border-end-end-radius: var(--radius-md);
+}
+
+/* A chip: one unit of icon and name in the accent, with no fill (03, The chosen item as an inline chip). */
+.ce-chip {
+  display: inline-block;
+  max-inline-size: 100%;
+  overflow-x: clip;
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-weight: var(--weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.ce-chip .code-icon {
+  inline-size: 1em;
+  block-size: 1em;
+  margin-inline-end: 0.2em;
+}
+
+/* A chip that is the whole selection has the ring; one inside a wider selection has the fill of a selected row. */
+.ce-alone {
+  outline: var(--border-focus) solid var(--focus-ring);
+  outline-offset: calc(var(--border-focus) * -1);
+}
+
+.ce-within {
+  background: var(--surface-selected);
+}
+
+/* The space of a block is between blocks, not between the prompt and the edge of the editor. Last, so it wins. */
+.code-editor-page > :first-child {
+  margin-block-start: 0;
+}
+
+.code-editor-page > :last-child {
+  margin-block-end: 0;
+}
