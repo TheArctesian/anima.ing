@@ -2,11 +2,7 @@
 import json
 from pathlib import Path
 import subprocess
-import sys
 import libcalamares
-
-sys.path.insert(0, '@installerSource@')
-from install import install_plan
 
 
 def pretty_name():
@@ -39,7 +35,13 @@ def run():
                                  '-variant', gs.value('keyboardVariant') or ''],
                                 check=True, capture_output=True, text=True).stdout
         libcalamares.job.setprogress(0.05)
-        install_plan('@installedSystem@', selected[0], hashed, {'keymap': keymap, 'data': selected[1:]})
+        request = {'system': '@installedSystem@', 'selected': selected[0],
+                   'data': selected[1:], 'hashed_password': hashed, 'keymap': keymap,
+                   'confirmed': [{key: disk.get(key) for key in
+                                  ('path', 'maj:min', 'size', 'model', 'serial')}
+                                 for disk in selected]}
+        native_install(request)
+        del request, hashed
         libcalamares.job.setprogress(1.0)
         libcalamares.utils.debug('ANIMA_INSTALL_COMPLETE')
     except subprocess.CalledProcessError as error:
@@ -49,3 +51,28 @@ def run():
     except (ValueError, OSError) as error:
         return ('Installation stopped', str(error))
     return None
+
+
+def native_install(request):
+    with subprocess.Popen(['@installerProgram@', 'install', '--system', '@installedSystem@'],
+                          stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                          stderr=subprocess.DEVNULL, text=True) as process:
+        process.stdin.write(json.dumps(request))
+        process.stdin.close()
+        succeeded = False
+        failure = 'The native installer stopped. Inspect the local system journal.'
+        while True:
+            line = process.stdout.readline(65537)
+            if not line:
+                break
+            if len(line) > 65536:
+                raise ValueError('The installer returned an invalid progress event.')
+            event = json.loads(line)
+            if event.get('state') == 'failed':
+                failure = event.get('error', failure)
+            progress = event.get('progress')
+            if isinstance(progress, (int, float)) and 0 <= progress <= 1:
+                libcalamares.job.setprogress(progress)
+            succeeded = event.get('state') == 'succeeded' or succeeded
+        if process.wait() != 0 or not succeeded:
+            raise ValueError(failure)

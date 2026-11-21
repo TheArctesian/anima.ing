@@ -50,7 +50,27 @@ impl Claims {
         let mut book = self.0.lock().unwrap_or_else(PoisonError::into_inner);
         book.remove(&hash).filter(|open| now < open.expires)
     }
+
+    /// Puts back a claim that [`Claims::use_claim`] gave to the right device but whose work then
+    /// failed, so that the device can try again. A claim that expired, or whose device got a
+    /// newer claim meanwhile, stays out.
+    pub(crate) fn restore(&self, hash: ClaimHash, claim: OpenClaim, now: DateTime<Utc>) {
+        let mut book = self.0.lock().unwrap_or_else(PoisonError::into_inner);
+        book.retain(|_, open| now < open.expires);
+        let newer = book
+            .values()
+            .any(|open| open.device_name == claim.device_name);
+        if !newer && now < claim.expires {
+            book.insert(hash, claim);
+        }
+    }
 }
+
+/// The open claims of computers with no application (HM-T33, R-240 c): the rules of [`Claims`]
+/// in a book of their own, so that a claim of one kind never works as the other. Such a claim
+/// gives a daemon enrolment code, never a token.
+#[derive(Default)]
+pub struct ComputerClaims(pub(crate) Claims);
 
 #[cfg(test)]
 mod tests {
@@ -98,6 +118,23 @@ mod tests {
             claims.use_claim(ClaimHash::of("second"), at(6)),
             Some(claim("Studio", 20))
         );
+    }
+
+    #[test]
+    fn a_restored_claim_works_again_unless_a_newer_one_opened_or_it_expired() {
+        let claims = Claims::default();
+        claims.open(ClaimHash::of("first"), claim("Studio", 15), at(0));
+        let taken = claims.use_claim(ClaimHash::of("first"), at(1)).unwrap();
+        claims.restore(ClaimHash::of("first"), taken.clone(), at(2));
+        assert_eq!(
+            claims.use_claim(ClaimHash::of("first"), at(3)),
+            Some(claim("Studio", 15))
+        );
+        claims.open(ClaimHash::of("second"), claim("Studio", 20), at(4));
+        claims.restore(ClaimHash::of("first"), taken, at(5));
+        assert_eq!(claims.use_claim(ClaimHash::of("first"), at(6)), None);
+        claims.restore(ClaimHash::of("late"), claim("Laptop", 15), at(15));
+        assert_eq!(claims.use_claim(ClaimHash::of("late"), at(14)), None);
     }
 
     #[test]

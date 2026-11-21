@@ -1,5 +1,6 @@
-//! The hub as a device of its own list (HMD-045): a hosted hub adds itself at its start, in
-//! the site of the link, with no SSH, RDP or VNC.
+//! The devices that the hub adds by itself in the site of the link: the hub as a device of its
+//! own list (HMD-045), which a hosted hub adds at its start with no SSH, RDP or VNC, and a
+//! computer with no application that claims its daemon enrolment through the link (HM-T33).
 
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
@@ -143,16 +144,20 @@ pub(super) fn free_name(names: Vec<String>, taken: &[String]) -> Option<String> 
     names.into_iter().find(|name| !taken.contains(name))
 }
 
-/// The hub's own work is written for no operator, from the hub's own address (LOG-014).
-fn hub_trail(bus: &Bus, now: DateTime<Utc>) -> Trail<'_> {
-    let client = ClientAddr(IpAddr::V4(Ipv4Addr::LOCALHOST));
+/// The hub's own work is written for no operator (LOG-014), from `client`: the hub's own
+/// address, or the link address of the computer it acts for.
+fn hub_trail(bus: &Bus, client: ClientAddr, now: DateTime<Utc>) -> Trail<'_> {
     Trail::new(bus, (Operator::hub(), client), now)
 }
+
+/// The hub's own address.
+const HUB_CLIENT: ClientAddr = ClientAddr(IpAddr::V4(Ipv4Addr::LOCALHOST));
 
 /// The site of the link: the one that exists, else a new one with its audit entry.
 async fn link_site(
     conn: &mut PgConnection,
     bus: &Bus,
+    client: ClientAddr,
     now: DateTime<Utc>,
 ) -> Result<SiteId, Error> {
     let subnet = IpNet::V6(LINK_SUBNET);
@@ -164,7 +169,7 @@ async fn link_site(
     let new = validate_new_site(&NewSiteInput { name, subnet }).map_err(Error::Validation)?;
     let site = store::create_site(conn, SiteId::from(Uuid::now_v7()), &new).await?;
     let entry = trail::site_added(&site);
-    let written = hub_trail(bus, now).write(conn, entry).await;
+    let written = hub_trail(bus, client, now).write(conn, entry).await;
     written.map_err(Error::Trail)?;
     Ok(site.id)
 }
@@ -197,7 +202,7 @@ pub async fn ensure_hub_device(
         tx.commit().await?;
         return Ok((device, false));
     }
-    let site = link_site(&mut tx, bus, now).await?;
+    let site = link_site(&mut tx, bus, HUB_CLIENT, now).await?;
     let taken = store::names_in_use(&mut tx, &names()).await?;
     let form = NewDeviceInput {
         site,
@@ -213,7 +218,70 @@ pub async fn ensure_hub_device(
     let id = DeviceId::from(Uuid::now_v7());
     let device = store::create_device(&mut tx, id, now, &new).await?;
     let entry = trail::device_added(&device, &new, false);
-    let written = hub_trail(bus, now).write(&mut tx, entry).await;
+    let written = hub_trail(bus, HUB_CLIENT, now).write(&mut tx, entry).await;
+    written.map_err(Error::Trail)?;
+    tx.commit().await?;
+    Ok((device, true))
+}
+
+/// The kind of a computer that the hub adds for an installation with no application (HM-T33):
+/// a computer that runs the link and the daemon with no application is a server in most cases.
+const COMPUTER_KIND: &str = "server";
+
+/// A computer on the link that has no application (HM-T33, R-240 c): its link address, which is
+/// its host, its name on the link, and its operating system as the installation says it.
+pub struct LinkComputer<'a> {
+    pub address: IpAddr,
+    pub name: &'a str,
+    pub os: OperatingSystem,
+}
+
+/// The names that a computer of the link can take, the first choice first: its name on the
+/// link, then `<name> (2)` and so on.
+fn computer_names(name: &str) -> Vec<String> {
+    let numbered = (2..NAMES).map(|number| format!("{name} ({number})"));
+    std::iter::once(name.to_owned()).chain(numbered).collect()
+}
+
+/// The device of `computer` in the caller's transaction (HM-T33): the device whose host is its
+/// link address, else a new one in the site `Link`, as the application adds the computer it
+/// runs on (HMD-044), with the kind `server`, no check and no SSH, RDP or VNC. The audit
+/// entries are written as the hub, from the link address. Returns the device and whether it
+/// was added now.
+///
+/// # Errors
+/// `Validation` when every name is taken; `Trail` when an audit entry cannot be written.
+pub async fn ensure_link_computer(
+    conn: &mut PgConnection,
+    bus: &Bus,
+    computer: &LinkComputer<'_>,
+    now: DateTime<Utc>,
+) -> Result<(Device, bool), Error> {
+    let host = computer.address.to_string();
+    let mut tx = conn.begin().await?;
+    store::lock_hub_device(&mut tx).await?;
+    if let Some(device) = store::device_at_host(&mut tx, &host).await? {
+        tx.commit().await?;
+        return Ok((device, false));
+    }
+    let client = ClientAddr(computer.address);
+    let site = link_site(&mut tx, bus, client, now).await?;
+    let names = computer_names(computer.name);
+    let taken = store::names_in_use(&mut tx, &names).await?;
+    let form = NewDeviceInput {
+        site,
+        name: free_name(names, &taken).ok_or_else(names_taken)?,
+        host,
+        kind: COMPUTER_KIND.to_owned(),
+        os: computer.os,
+        tags: Vec::new(),
+        ssh: None,
+        remote: RemoteForm::default(),
+    };
+    let new = validate_new_device(&form).map_err(Error::Validation)?;
+    let device = store::create_device(&mut tx, DeviceId::from(Uuid::now_v7()), now, &new).await?;
+    let entry = trail::device_added(&device, &new, false);
+    let written = hub_trail(bus, client, now).write(&mut tx, entry).await;
     written.map_err(Error::Trail)?;
     tx.commit().await?;
     Ok((device, true))
