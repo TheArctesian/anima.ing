@@ -340,6 +340,6 @@ export const REFUSAL_WORDS: Readonly<Record<Refusal, string>> = {
   not_running: 'The program of that thread is not running.',
   holder: 'The holder of the programs did not take the command.',
   from_an_agent: 'Only the person can answer a request, raise the limit, start a thread or change the list of threads: this call came from a process of an agent.',
-  running: 'That thread runs: stop it first, then remove it from the list.',
+  running: 'The program of that thread still runs: stop it first, then remove it from the list.',
   over_limit: OVER_LIMIT,
 };

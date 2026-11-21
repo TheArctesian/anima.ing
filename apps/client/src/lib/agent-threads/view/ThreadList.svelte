@@ -189,7 +189,7 @@
     font-weight: var(--weight-medium);
   }
 
-  [data-state='working'] .state {
+  :is([data-state='working'], [data-state='starting']) .state {
     color: var(--text);
   }
 
