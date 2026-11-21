@@ -71,8 +71,9 @@ const SCREENS: readonly ThreadsScreen[] = [
     open: async (page) => {
       await openThreads(page);
       await page.getByRole('button', { name: 'Archived (2)' }).click();
-      // Archived threads are done, so they come in the group Earlier, which is folded at first.
-      await page.getByRole('button', { name: /Earlier/ }).click();
+      // Archived threads are done, so they come in the group Earlier; it opens with the view, or is opened here.
+      const earlier = page.getByRole('button', { name: /Earlier/ });
+      if ((await earlier.getAttribute('aria-expanded')) === 'false') await earlier.click();
       await expect(page.getByText('Spike: WebGPU charts')).toBeVisible();
     },
   },
@@ -100,7 +101,7 @@ const SCREENS: readonly ThreadsScreen[] = [
     windowOnly: true,
     open: async (page) => {
       await openThread(page, 'Fix the flaky batching test');
-      await expect(page.getByText('Stop the thread first to remove it.')).toBeVisible();
+      await expect(page.getByText(/first to remove it\./)).toBeVisible();
     },
   },
   {
