@@ -55,6 +55,8 @@ impl Runner {
                 return;
             }
             Action::Interrupt { thread } => self.interrupt(thread).await,
+            Action::Listings => self.listings(),
+            Action::ChangeListing { thread, change } => self.change_listing(thread, &change),
             Action::Accounts => Outcome::Accounts {
                 accounts: self.accounts.rows(),
             },
@@ -141,6 +143,9 @@ impl Runner {
     }
 
     pub(super) fn note(&self, kind: Kind, thread: Option<Uuid>, what: &str) {
+        if kind == Kind::Refusal {
+            refusal_to_daemon_log(thread, what);
+        }
         let line = Line {
             at: chrono::Utc::now(),
             kind,
@@ -258,12 +263,16 @@ struct Answering {
     request: Uuid,
 }
 
-/// Whether only the person may make this call: an answer to a request, a raise of the limit
-/// and a start. A process of an agent may not, so that an agent never approves itself.
+/// Whether only the person may make this call: an answer to a request, a raise of the limit,
+/// a start and a change of how a thread is listed (TH46). A process of an agent may not, so that
+/// an agent never approves itself or hides a thread from the person.
 const fn for_the_person(action: &Action) -> bool {
     matches!(
         action,
-        Action::Answer { .. } | Action::RaiseLimit | Action::Start { .. }
+        Action::Answer { .. }
+            | Action::RaiseLimit
+            | Action::Start { .. }
+            | Action::ChangeListing { .. }
     )
 }
 
@@ -273,7 +282,8 @@ const fn thread_of(action: &Action) -> Option<Uuid> {
         Action::Send { thread, .. }
         | Action::Answer { thread, .. }
         | Action::Interrupt { thread }
-        | Action::Stop { thread } => Some(*thread),
+        | Action::Stop { thread }
+        | Action::ChangeListing { thread, .. } => Some(*thread),
         _ => None,
     }
 }
@@ -287,10 +297,18 @@ const fn answer_word(answer: &Answer) -> &'static str {
     }
 }
 
+/// The daemon's own log (MET-019) takes the refusals too, so that a person who reads only that
+/// file sees them; the word is fixed, never text of the person or of the program (LOG-007).
+fn refusal_to_daemon_log(thread: Option<Uuid>, why: &str) {
+    let thread = thread.map_or_else(|| "none".to_owned(), |id| id.to_string());
+    tracing::info!(%thread, why, "the runner refused a call");
+}
+
 pub(super) const fn refusal_word(why: &Refusal) -> &'static str {
     match why {
         Refusal::UnknownThread => "unknown thread",
         Refusal::FromAnAgent => "from a process of an agent",
+        Refusal::Running => "the thread runs",
         Refusal::FolderNotPermitted => "folder not permitted",
         Refusal::ProgramNotFound => "program not found",
         Refusal::ProgramDoesNotAnswer { .. } => "program did not answer",

@@ -97,7 +97,7 @@ pub async fn run(
     stop: impl Future<Output = ()>,
 ) -> Result<(), RunError> {
     let mut stop = std::pin::pin!(stop);
-    // A token read that waits for the person in the Keychain does not end the run (R-NEW-keychainwait).
+    // A token read that waits for the person in the Keychain does not end the run (R-322).
     let credential = tokio::select! {
         read = token_wait::credential(home) => read?,
         () = &mut stop => {

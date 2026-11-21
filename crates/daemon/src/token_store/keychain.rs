@@ -13,7 +13,7 @@ use crate::keychain_wait::{self, Reads, Unread};
 /// What one read of the item gives; the error as text, so that it crosses the thread.
 type Answer = Result<Option<Zeroizing<Vec<u8>>>, String>;
 
-/// The reads of the token's item: one in flight at a time (R-NEW-keychainwait).
+/// The reads of the token's item: one in flight at a time (R-322).
 static READS: Reads<Answer> = Reads::new();
 
 const SERVICE: &str = "ing.anima.daemon";

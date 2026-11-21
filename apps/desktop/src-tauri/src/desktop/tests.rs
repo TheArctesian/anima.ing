@@ -9,7 +9,7 @@ use std::collections::BTreeSet;
 const NOT_ON_WINDOWS: [(&str, &str); 5] = [
     (
         "daemon::keychain::daemon_keychain_waits",
-        "reads the mark of a daemon that waits in the macOS Keychain; module daemon::keychain is Unix only (R-NEW-keychainwait)",
+        "reads the mark of a daemon that waits in the macOS Keychain; module daemon::keychain is Unix only (R-322)",
     ),
     (
         "system_settings::sharing_settings_open",

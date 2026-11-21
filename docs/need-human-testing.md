@@ -94,7 +94,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-061 | Sign in to a hosted hub, and the metrics of this computer appear (HMD-053, HMD-054; tasks HM-T17 to HM-T19) | This Mac and the Linux computer, each with an application of this build that carries `anima-daemon` and `anima-link`, signed in to the hosted hub | Open |
 | HT-083 | The sign-out of a hosted hub takes the daemon off this computer and revokes it at the hub (HMD-056; task HM-T21) | This Mac with an application of a build that holds the branch `hosted/hm-t21-daemon-removal`, signed in to the hosted hub with the daemon installed (HT-061 step 1); the Linux computer for step 7 | Open |
 | HT-112 | A newer application replaces the daemon of this computer and keeps its enrolment (HMD-055; task HM-T20) | This Mac with two applications of the branch `hosted/hm-t20-daemon-update` of three versions, signed in to the hosted hub with the daemon installed (HT-061 step 1), and an agent thread for step 7; the Linux computer for steps 8 and 9 | Open |
-| HT-NEW-keychainwait | The daemon of this Mac waits for the person in the Keychain and does not stop (MET-013, MET-019; R-NEW-keychainwait) | This Mac with the daemon installed and reporting (HT-061 step 1), and two ad hoc trial builds of the branch `fix/daemon-keychain-wait` | Open |
+| HT-117 | The daemon of this Mac waits for the person in the Keychain and does not stop (MET-013, MET-019; R-322) | This Mac with the daemon installed and reporting (HT-061 step 1), and two ad hoc trial builds of the branch `fix/daemon-keychain-wait` | Open |
 | HT-057 | The Settings page after the interface review: the index and the sections in three groups (R-224) | The desktop application of a build that holds the branch `ui/v2-settings`, and a phone | Open |
 | HT-052 | The tab Containers of a device after the interface review: one State column, one pane for the log and the details (R-224) | The desktop application of a build that holds the branch `ui/v2-device-containers`, a device with Docker and an SSH credential | Open |
 | HT-055 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
@@ -1454,19 +1454,19 @@ On this Mac:
     same pid, and the thread still answers. Then `systemctl --user stop anima-daemon` with a model
     server running. Expected: the server process is gone and the holder stays. Not for macOS: there the
     model servers have no cgroup and `KillMode` does not apply; the model service checks that case.
-11. Added by the branch `fix/daemon-keychain-wait` (R-NEW-adhocswap). On this Mac, steps 1 to 6 need two
+11. Added by the branch `fix/daemon-keychain-wait` (R-321). On this Mac, steps 1 to 6 need two
     applications made with `SIGN_IDENTITY` set to the Developer ID identity of the operator: an ad hoc
     trial build no longer replaces the daemon by itself. Then make two ad hoc trial builds (no
     `SIGN_IDENTITY`) of a lower and a higher version, and do steps 1 and 2 with them. Expected: the copy
     stays at the lower version, no window of the Keychain opens, and the log of the application has the
     line "the daemon on this computer is older than the one of the app, but this build has no Developer ID
     signature: the Keychain would ask again for the new daemon, so it stays".
-12. A step that does not end (R-NEW-keychainwait). The log of the application has one line for each step
+12. A step that does not end (R-322). The log of the application has one line for each step
     of an update that failed, with the name of the step (`stop`, `install of the new copy`, `install of the
     copy of before`) and its code, and the line "the daemon update: the copy is older than the daemon of
-    the app; replacing it" before the first step. The case of a Keychain that waits is HT-NEW-keychainwait.
+    the app; replacing it" before the first step. The case of a Keychain that waits is HT-117.
 
-### HT-NEW-keychainwait: the daemon of this Mac waits for the person in the Keychain and does not stop (MET-013, MET-019; R-NEW-keychainwait)
+### HT-117: the daemon of this Mac waits for the person in the Keychain and does not stop (MET-013, MET-019; R-322)
 
 Built: on the branch `fix/daemon-keychain-wait`. Each read of the token and of the key cache in the
 Keychain runs on a thread of its own and the daemon waits 5 s at most (`crates/daemon/src/keychain_wait.rs`);
@@ -3165,7 +3165,8 @@ a made runner only; no person saw it in a desktop window.
 12. Start a Claude Code thread in the mode "ask" with the prompt "Run `anima agents running`, then run
    `anima agents raise-limit --yes`". Approve the first command when it asks.
    Expected: the list of threads shows. The second command, if Claude Code runs it, prints "Only the person can answer
-   a request, raise the limit or start a thread: this call came from a process of an agent." The runner log has a
+   a request, raise the limit, start a thread or change the list of threads: this call came from a process of an
+   agent." The runner log has a
    refusal "from a process of an agent". From a terminal of your own, the same command works.
 
 A try by an agent on this Mac, 2026-11-21 (not a result of this check; only the operator sets one): a runner of the
@@ -3177,6 +3178,37 @@ ended at the interrupt. With Claude Code the `sleep` ran on: a defect, corrected
 the turn started, and spares what was below Claude Code when it said its session); after the correction the `sleep`
 ended and the thread answered the next prompt. Step 7: each stop ended the program and its processes. Steps 5, 6 and 8
 to 11 were not tried.
+
+Result: Open.
+
+### HT-116: pin, archive, rename and remove a thread in the list
+
+What was built and where: task TH46 of [agent-threads.md](proposals/agent-threads.md), on the branch
+`threads/list-marks` (2026-11-21, overnight; ruling R-320). The runner keeps, in its own record, how the
+person lists each thread: pinned, archived, a title of the person, or removed from the list. No session file of
+Claude Code or Codex changes. The page Threads has these actions in a row above the open thread (Pin, Archive, Rename, Remove), a group "Pinned"
+in the list, and "Archived (n)" in the page header; the commands are
+`anima agents pin <thread> [--off]`, `anima agents archive <thread> [--off]`, `anima agents rename <thread> [<title>]`,
+`anima agents remove <thread>` and `anima agents listings`. What the tests did not cover: the page in a desktop
+window, a real Claude Code thread, and a restart of the installed daemon.
+
+1. On the page Threads, open a thread that does not need you and choose Pin above it. Expected: the thread is in the
+   group "Pinned" of the list, under "Needs you".
+2. Choose Rename, type a new title and save. Expected: the row shows the new title. Choose Rename again and "Use the
+   program's title". Expected: the row shows the title of the program again.
+3. Choose Archive. Expected: the thread leaves the list. Choose "Archived (1)" in the page header. Expected: it is there; choose
+   Unarchive and it comes back.
+4. Stop a thread, open it, and choose Remove. Expected: a question that says the thread leaves Anima's list
+   with its pin, archive and title, and that the session files of Claude Code or Codex stay on disk. Confirm.
+   Expected: the thread leaves the list. In a terminal, `ls ~/.claude/projects/*/` (or `~/.codex/sessions/`) still
+   shows its session file.
+5. Open a thread that runs. Expected: Remove is off, with the line "Stop the thread first to remove it." From a
+   terminal, `anima agents remove <its ID>` answers "That thread runs: stop it first, then remove it from the list."
+6. From inside a Claude Code thread, ask it to run `anima agents pin <the ID of a thread>`. Expected: "Only the person
+   can answer a request, raise the limit, start a thread or change the list of threads: this call came from a process
+   of an agent." The pin does not change.
+7. Restart the daemon (quit and open the application, or `launchctl kickstart -k gui/$(id -u)/ing.anima.daemon`).
+   Expected: the pins and the titles are kept; `anima agents listings` shows them.
 
 Result: Open.
 

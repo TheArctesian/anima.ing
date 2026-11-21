@@ -12,6 +12,7 @@ use tempfile::TempDir;
 
 mod connection;
 mod holder_update;
+mod listing;
 mod requests;
 mod runner;
 mod start;

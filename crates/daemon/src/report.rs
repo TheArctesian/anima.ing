@@ -127,7 +127,7 @@ pub fn log_file_refused(error: &std::io::Error) {
 }
 
 /// Once, when the first read of the token waits for the person in the Keychain: the daemon
-/// keeps running without its token and reads again (R-NEW-keychainwait).
+/// keeps running without its token and reads again (R-322).
 pub fn keychain_waits() {
     tracing::warn!(
         "this computer's daemon needs you to allow it in the Keychain: click Always Allow in the window of macOS; it reads the token again every 30 s, after 10 minutes every 5 minutes"

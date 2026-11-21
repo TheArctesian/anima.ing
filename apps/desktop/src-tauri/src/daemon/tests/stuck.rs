@@ -1,5 +1,5 @@
 //! The update of the installed copy (HMD-055) when a step does not end, and on a build whose
-//! daemon would be a new program to the Keychain (R-NEW-adhocswap). Stand-in daemons as in
+//! daemon would be a new program to the Keychain (R-321). Stand-in daemons as in
 //! [`super::updates`]; no real unit, Keychain or `~/.local/bin` is touched.
 
 use std::{fs, path::Path, process::Command, time::Duration};

@@ -4,6 +4,7 @@
  * boundary, so each field is checked; a frame that does not read is left out.
  */
 
+import { listingsFrom, type Listing, type ListingChange } from '../listing/listing';
 import type { Program } from '../thread';
 
 export type RunState = 'starting' | 'working' | 'needs_you' | 'idle' | 'stopped' | 'unknown';
@@ -81,6 +82,7 @@ export type Refusal =
   | 'not_running'
   | 'holder'
   | 'from_an_agent'
+  | 'running'
   | 'over_limit';
 
 export interface Limits {
@@ -96,6 +98,8 @@ export type Outcome =
   | { readonly outcome: 'threads'; readonly threads: readonly RunRow[]; readonly holder?: string }
   | { readonly outcome: 'limits'; readonly limits: Limits }
   | { readonly outcome: 'stopped'; readonly allEnded: boolean }
+  /** How the person lists each thread that has a listing (TH46). */
+  | { readonly outcome: 'listings'; readonly listings: readonly Listing[] }
   /** What the project files of a folder make the program do with no question (THR-046); empty when nothing. */
   | { readonly outcome: 'folder'; readonly notice: readonly string[] }
   /**
@@ -129,7 +133,9 @@ export type Action =
   | { readonly call: 'interrupt'; readonly thread: string }
   | { readonly call: 'stop'; readonly thread: string }
   | { readonly call: 'raise_limit' }
-  | { readonly call: 'folder'; readonly folder: string };
+  | { readonly call: 'folder'; readonly folder: string }
+  | { readonly call: 'listings' }
+  | { readonly call: 'change_listing'; readonly thread: string; readonly change: ListingChange };
 
 /**
  * The sentence of the operator at the soft limit (THR-114), the same words as `anima agents start` and the runner.
@@ -141,7 +147,7 @@ const PROGRAMS: readonly string[] = ['claude_code', 'codex'];
 const STATES: readonly string[] = ['starting', 'working', 'needs_you', 'idle', 'stopped', 'unknown'];
 const MODES: readonly string[] = ['full_access', 'accept_edits', 'ask'];
 const KINDS: readonly string[] = ['command', 'file_change', 'tool', 'question'];
-const REFUSALS: readonly string[] = ['unknown_thread', 'folder_not_permitted', 'program_not_found', 'program_does_not_answer', 'bad_value', 'request_gone', 'answer_does_not_fit', 'not_running', 'holder', 'from_an_agent', 'over_limit'];
+const REFUSALS: readonly string[] = ['unknown_thread', 'folder_not_permitted', 'program_not_found', 'program_does_not_answer', 'bad_value', 'request_gone', 'answer_does_not_fit', 'not_running', 'holder', 'from_an_agent', 'running', 'over_limit'];
 
 type Fields = Record<string, unknown>;
 
@@ -311,6 +317,10 @@ export function outcomeFrom(value: unknown): Outcome | null {
       return { outcome: 'stopped', allEnded: value.all_ended === true };
     case 'folder':
       return Array.isArray(value.notice) && value.notice.every((line) => typeof line === 'string') ? { outcome: 'folder', notice: value.notice as string[] } : null;
+    case 'listings': {
+      const listings = listingsFrom(value.listings);
+      return listings === null ? null : { outcome: 'listings', listings };
+    }
     case 'refused':
       return refusedFrom(value.why);
     default:
@@ -329,6 +339,7 @@ export const REFUSAL_WORDS: Readonly<Record<Refusal, string>> = {
   answer_does_not_fit: 'That answer does not fit the request.',
   not_running: 'The program of that thread is not running.',
   holder: 'The holder of the programs did not take the command.',
-  from_an_agent: 'Only the person can answer a request, raise the limit or start a thread: this call came from a process of an agent.',
+  from_an_agent: 'Only the person can answer a request, raise the limit, start a thread or change the list of threads: this call came from a process of an agent.',
+  running: 'That thread runs: stop it first, then remove it from the list.',
   over_limit: OVER_LIMIT,
 };

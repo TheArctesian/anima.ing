@@ -27,7 +27,7 @@ pub enum KeyStoreError {
     #[error("the Keychain: {0}")]
     Keychain(String),
     /// macOS asks the person to allow this program to read the key cache, and nobody answered
-    /// in time (R-NEW-keychainwait). Only the Keychain store gives it.
+    /// in time (R-322). Only the Keychain store gives it.
     #[error(
         "this computer's daemon needs you to allow it in the Keychain: click Always Allow in the window of macOS"
     )]

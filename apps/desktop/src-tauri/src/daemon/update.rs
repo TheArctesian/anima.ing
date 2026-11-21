@@ -21,7 +21,7 @@
 //! to the log of the app, and a line goes there before the first step, so that an update that
 //! the end of the app cuts leaves a trace. A carried daemon that the Keychain would see as a new
 //! program (an ad hoc signature, [`super::signature`]) does not replace the copy
-//! (R-NEW-adhocswap).
+//! (R-321).
 
 use std::{
     ffi::OsString,
@@ -59,7 +59,7 @@ pub struct Swap<'a> {
     /// The deadline of the daemon's `stop` and of its `install`, which starts the unit again.
     pub restart: Duration,
     pub stop: &'a AtomicBool,
-    /// Whether the carried daemon keeps its identity in the Keychain (R-NEW-adhocswap).
+    /// Whether the carried daemon keeps its identity in the Keychain (R-321).
     pub identity: Identity,
 }
 
@@ -77,7 +77,7 @@ pub enum Updated {
     /// The copy was replaced, and its unit runs the new one.
     Replaced,
     /// The carried daemon is newer, but its signature is ad hoc: the Keychain would take it for a
-    /// new program and ask the person, so the copy stays (R-NEW-adhocswap).
+    /// new program and ask the person, so the copy stays (R-321).
     KeptForKeychain,
 }
 

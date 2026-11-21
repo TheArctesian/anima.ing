@@ -1,5 +1,5 @@
 //! The token at the start of `run`, when the Keychain makes the daemon wait for the person
-//! (R-NEW-keychainwait): the daemon does not end, so the service manager does not start it
+//! (R-322): the daemon does not end, so the service manager does not start it
 //! again and again. It logs one line, puts the mark for the app, and reads again on the
 //! schedule of [`keychain_wait::next_try`] until the read answers. Each read runs off the async
 //! loop; the runner of the agent threads runs on beside it.

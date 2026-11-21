@@ -147,8 +147,12 @@ pub fn refusal(why: &Refusal) -> Failure {
         Refusal::NotRunning => ("The program of that thread is not running.", None),
         Refusal::Holder => ("The holder of the programs did not take the command.", None),
         Refusal::FromAnAgent => (
-            "Only the person can answer a request, raise the limit or start a thread: this call came from a process of an agent.",
+            "Only the person can answer a request, raise the limit, start a thread or change the list of threads: this call came from a process of an agent.",
             None,
+        ),
+        Refusal::Running => (
+            "That thread runs: stop it first, then remove it from the list.",
+            Some(Hint::run("anima agents stop <thread>")),
         ),
         Refusal::OverLimit { .. } => (
             control::OVER_LIMIT,
