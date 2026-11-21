@@ -7,7 +7,7 @@
 # left out here; GitHub runs them. Two Docker volumes keep the build and the registry between runs.
 # Each worktree has its own build folder in the volume: each is mounted at /src, and cargo would
 # take the build of a different worktree for a source file that is older than it.
-# Then it runs Clippy for Windows (the target of the job `windows-lint`) on the crates that hold
+# Then, also when a test failed, it runs Clippy for Windows (the target of the job `windows-lint`) on the crates that hold
 # code behind `cfg(windows)` near the runner: `anima-cli`, `anima-daemon` and `agent-threads`.
 # `--no-windows` leaves that out.
 # Arguments after `--` go to nextest (for example a filter of tests).
@@ -50,12 +50,14 @@ su tester -s /bin/bash -c '
   cd /src
   export HOME=/home/tester PATH=/usr/local/cargo/bin:\$PATH CARGO_HOME=/usr/local/cargo
   export CARGO_TARGET_DIR=/target/$build RUSTC_WRAPPER= RUSTUP_HOME=/usr/local/rustup
+  tests=0
   /target/cargo-nextest nextest run --cargo-quiet -p anima-daemon -p agent-threads \
-    --no-fail-fast -E \"not test(/^units::/)\"$extra
+    --no-fail-fast -E \"not test(/^units::/)\"$extra || tests=\$?
   if [[ $windows == 1 ]]; then
     echo \"windows lint: clippy --target x86_64-pc-windows-gnu, anima-cli, anima-daemon, agent-threads\"
     cargo clippy --locked --target x86_64-pc-windows-gnu -p anima-cli -p anima-daemon -p agent-threads \
       --all-targets -- -D warnings
   fi
+  exit \$tests
 '
 "
