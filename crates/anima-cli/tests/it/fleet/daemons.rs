@@ -1,4 +1,5 @@
-//! `anima daemon` against the scripted hub (CMD-020, CMD-021, CMD-024, R-122).
+//! `anima daemon` against the scripted hub (CMD-020, CMD-021, CMD-024, R-122,
+//! R-NEW-daemonneed).
 
 use serde_json::{Value, json};
 
@@ -161,4 +162,34 @@ async fn cmd_024_daemon_revoke_needs_yes_and_prints_the_stale_source() {
         run.stdout
     );
     assert_eq!(variables(&hub, "DaemonRevoke")["deviceId"], DEVICE);
+}
+
+#[tokio::test]
+async fn r_new_daemonneed_daemon_need_sets_and_clears_what_the_daemon_waits_for() {
+    let hub = FakeHub::start().await;
+    let answer = |need: Value| {
+        data(json!({ "setDaemonNeed": { "id": DEVICE, "name": "nas", "daemonNeed": need } }))
+    };
+    hub.answer("DaemonNeedSet", answer(json!("KEYCHAIN")))
+        .answer("DaemonNeedSet", answer(Value::Null));
+    let run = signed_in()
+        .run(&["daemon", "need", DEVICE, "keychain", "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    assert!(run.stdout.contains("Keychain"), "{}", run.stdout);
+    assert_eq!(variables(&hub, "DaemonNeedSet")["need"], "KEYCHAIN");
+
+    let run = signed_in()
+        .run(&[
+            "daemon",
+            "need",
+            DEVICE,
+            "none",
+            "--json",
+            "--hub",
+            &hub.origin,
+        ])
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    assert_eq!(run.json()["daemonNeed"], Value::Null);
 }

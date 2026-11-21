@@ -1,5 +1,5 @@
 //! Batched reads that join the metrics domain into `Device` (API-005, MET-004, MET-006,
-//! MET-018, MET-032, R-122): one call to the metrics face per batch. `readings` is judged at the schema clock, read once
+//! MET-018, MET-032, R-122, R-NEW-daemonneed): one call to the metrics face per batch. `readings` is judged at the schema clock, read once
 //! per batch.
 
 use std::{collections::HashMap, sync::Arc};
@@ -9,7 +9,7 @@ use sqlx::PgPool;
 
 use crate::{
     clock::Clock,
-    fleet::metrics::{self, Battery, Error, Gpu, Readings},
+    fleet::metrics::{self, Battery, DaemonNeed, Error, Gpu, Readings},
     ids::DeviceId,
 };
 
@@ -90,6 +90,19 @@ impl Loader<DeviceId> for DaemonVersionOf {
     }
 }
 
+/// What each daemon device's daemon waits for, for `Device.daemonNeed` (R-NEW-daemonneed).
+/// Load only devices whose metrics source is `daemon`.
+pub struct DaemonNeedOf(PgPool);
+
+impl Loader<DeviceId> for DaemonNeedOf {
+    type Value = DaemonNeed;
+    type Error = Arc<Error>;
+
+    async fn load(&self, keys: &[DeviceId]) -> Result<HashMap<DeviceId, DaemonNeed>, Self::Error> {
+        metrics::daemon_needs(&self.0, keys).await.map_err(Arc::new)
+    }
+}
+
 /// The loader behind `Device.readings`: one `metrics::readings` call per batch, no cache.
 #[must_use]
 pub fn readings_loader(pool: PgPool, clock: Arc<dyn Clock>) -> DataLoader<ReadingsOf> {
@@ -119,4 +132,10 @@ pub fn stale_loader(pool: PgPool) -> DataLoader<StaleOf> {
 #[must_use]
 pub fn daemon_version_loader(pool: PgPool) -> DataLoader<DaemonVersionOf> {
     DataLoader::new(DaemonVersionOf(pool), tokio::spawn)
+}
+
+/// The loader behind `Device.daemonNeed`: one `metrics::daemon_needs` call per batch, no cache.
+#[must_use]
+pub fn daemon_need_loader(pool: PgPool) -> DataLoader<DaemonNeedOf> {
+    DataLoader::new(DaemonNeedOf(pool), tokio::spawn)
 }

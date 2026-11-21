@@ -14,8 +14,8 @@ pub use self::interfaces::{
 };
 pub use self::loaders::{ChecksOf, ResolvedIpOf, StatusOf, UptimeOf};
 pub use self::metrics::{
-    BatteriesOf, DaemonVersionOf, GpusOf, ReadingsOf, StaleOf, batteries_loader,
-    daemon_version_loader, gpus_loader, readings_loader, stale_loader,
+    BatteriesOf, DaemonNeedOf, DaemonVersionOf, GpusOf, ReadingsOf, StaleOf, batteries_loader,
+    daemon_need_loader, daemon_version_loader, gpus_loader, readings_loader, stale_loader,
 };
 pub(super) use self::{
     listing::list,

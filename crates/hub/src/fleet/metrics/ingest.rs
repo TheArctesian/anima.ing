@@ -30,7 +30,7 @@ pub(super) use enrolment::{make_code, own_device_code, revoke};
 pub use routes::daemon_router;
 pub use stale::spawn_stale_watch;
 pub(super) use stale::without_fresh_daemon;
-pub(super) use store::daemon_versions;
+pub(super) use store::{daemon_needs, daemon_versions, set_need};
 
 use crate::fleet::{agent_usage, devices, events};
 

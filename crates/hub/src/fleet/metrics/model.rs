@@ -338,3 +338,25 @@ pub struct MetricsAdded {
     pub samples: Vec<MetricSample>,
     pub readings: Readings,
 }
+
+/// What the daemon of a device waits for from a person at the device (R-NEW-daemonneed).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Enum)]
+pub enum DaemonNeed {
+    /// macOS waits for the person to allow the daemon to read its token in the Keychain (R-322).
+    Keychain,
+}
+
+impl DaemonNeed {
+    /// The text of `metrics.daemons.need` (K2 0722).
+    pub(super) const fn stored(self) -> &'static str {
+        match self {
+            Self::Keychain => "keychain",
+        }
+    }
+
+    /// The need that `text` of `metrics.daemons.need` names; `None` for a text this version
+    /// does not know.
+    pub(super) fn from_stored(text: &str) -> Option<Self> {
+        (text == Self::Keychain.stored()).then_some(Self::Keychain)
+    }
+}

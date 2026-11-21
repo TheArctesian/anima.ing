@@ -192,3 +192,28 @@ async fn mcp_017_session_end_ends_a_live_session_and_refuses_a_non_id() {
     assert_eq!(sent(&hub, "SessionEnd")["id"], SESSION);
     session.finish().await;
 }
+
+#[tokio::test]
+async fn r_new_daemonneed_daemon_set_need_sets_or_clears_the_need() {
+    let hub = hub().await;
+    let answer = |need: Value| {
+        data(json!({ "setDaemonNeed": { "id": DEVICE, "name": "web-1", "daemonNeed": need } }))
+    };
+    hub.answer("DaemonNeedSet", answer(json!("KEYCHAIN")))
+        .answer("DaemonNeedSet", answer(Value::Null));
+    let desk = Desk::new();
+    let mut session = writing(&hub, &desk).await;
+    let set = session
+        .call(
+            "anima_daemon_set_need",
+            json!({ "device": DEVICE, "need": "KEYCHAIN" }),
+        )
+        .await;
+    assert_eq!(structured(&set)["device"]["daemonNeed"], "KEYCHAIN");
+    assert_eq!(sent(&hub, "DaemonNeedSet")["need"], "KEYCHAIN");
+    let cleared = session
+        .call("anima_daemon_set_need", json!({ "device": DEVICE }))
+        .await;
+    assert_eq!(structured(&cleared)["device"]["daemonNeed"], Value::Null);
+    session.finish().await;
+}

@@ -41,8 +41,8 @@ pub use daemon_core::{
 pub use feed::Feed;
 pub use ingest::{daemon_router, spawn_stale_watch};
 pub use model::{
-    Battery, BatteryState, Gpu, GpuVendor, MetricKind, MetricPoint, MetricRange, MetricSample,
-    MetricSeries, MetricsAdded, Readings,
+    Battery, BatteryState, DaemonNeed, Gpu, GpuVendor, MetricKind, MetricPoint, MetricRange,
+    MetricSample, MetricSeries, MetricsAdded, Readings,
 };
 pub use retention::{Retention, Trimmed};
 pub use storage::{DriveKind, Mount, Storage, StorageDrive};
@@ -203,6 +203,30 @@ pub async fn daemon_versions(
     devices: &[DeviceId],
 ) -> Result<HashMap<DeviceId, String>, Error> {
     Ok(ingest::daemon_versions(db, devices).await?)
+}
+
+/// What the daemon of each of `devices` waits for from a person at the device; a device whose
+/// daemon needs nothing, or that has no daemon, has no entry (R-NEW-daemonneed).
+///
+/// # Errors
+/// `Database` when the query fails; `Unreadable` for a stored need this version does not know.
+#[expect(
+    clippy::zero_sized_map_values,
+    reason = "DaemonNeed has one kind today; the map keeps the kind for the kinds that K1 adds"
+)]
+pub async fn daemon_needs(
+    db: &PgPool,
+    devices: &[DeviceId],
+) -> Result<HashMap<DeviceId, DaemonNeed>, Error> {
+    ingest::daemon_needs(db, devices)
+        .await?
+        .into_iter()
+        .map(|(device, text)| {
+            DaemonNeed::from_stored(&text)
+                .map(|need| (device, need))
+                .ok_or(Error::Unreadable)
+        })
+        .collect()
 }
 
 /// The distribution that the text of an `os-release` file names (DEV-016); `None` when it names

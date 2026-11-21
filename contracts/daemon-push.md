@@ -22,6 +22,8 @@ The kind `battery_percent` and the member `batteries` of Section 4 (MET-032, CAP
 with them by the same ruling. They are optional, so they need no new version of this contract.
 The first wait after a failure in Section 7 was changed from 10 to 2 seconds by R-312 (orchestrator, 2026-11-21,
 made overnight, not yet confirmed; CON-001). It changes no message, so it needs no new version of this contract.
+The clear of the need of a daemon in Section 4 was added by R-NEW-daemonneed (made overnight, not yet confirmed; CON-001).
+It changes no message, so it needs no new version of this contract.
 
 This contract and the work route contract K10 ([work-route.md](work-route.md); accepted by R-209, 2026-11-19) are the whole interface between `anima-daemon` and the hub. The daemon makes the requests of K8 and of K10 and no other.
 
@@ -456,6 +458,8 @@ The hub:
   whose series the hub all ignores; a refused batch does not. 30 seconds after the last accepted batch the
   device's metrics are stale: the hub writes one event (source `metrics`, severity warning) and serves
   `Device.metricsStale` true. The next accepted batch clears the mark and writes one event (severity info).
+  It also clears what the daemon waits for from a person (`Device.daemonNeed`, which the desktop application of
+  that computer sets through K1 while the daemon has no token, R-NEW-daemonneed), with no event.
   A daemon that has never pushed is not marked, and `metricsStale` is true for it. Stale changes no check:
   a stale daemon is never a Down check.
 

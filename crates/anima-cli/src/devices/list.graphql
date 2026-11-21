@@ -13,6 +13,7 @@ query DeviceList($filter: DeviceFilter, $sort: DeviceSort, $first: Int, $after: 
         status
         tags
         maintenance
+        daemonNeed
         site {
           id
           name
