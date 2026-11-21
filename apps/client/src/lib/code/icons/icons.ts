@@ -3,6 +3,8 @@ import AlarmClockOff from '@lucide/svelte/icons/alarm-clock-off';
 import ArrowDown from '@lucide/svelte/icons/arrow-down';
 import ArrowRightLeft from '@lucide/svelte/icons/arrow-right-left';
 import ArrowUp from '@lucide/svelte/icons/arrow-up';
+import Bot from '@lucide/svelte/icons/bot';
+import Brain from '@lucide/svelte/icons/brain';
 import ChartNoAxesColumn from '@lucide/svelte/icons/chart-no-axes-column';
 import Check from '@lucide/svelte/icons/check';
 import ChevronDown from '@lucide/svelte/icons/chevron-down';
@@ -23,11 +25,14 @@ import GitBranch from '@lucide/svelte/icons/git-branch';
 import GitMerge from '@lucide/svelte/icons/git-merge';
 import GitPullRequest from '@lucide/svelte/icons/git-pull-request';
 import GitPullRequestArrow from '@lucide/svelte/icons/git-pull-request-arrow';
+import Globe from '@lucide/svelte/icons/globe';
 import Hammer from '@lucide/svelte/icons/hammer';
 import Keyboard from '@lucide/svelte/icons/keyboard';
 import Link from '@lucide/svelte/icons/link';
 import Link2 from '@lucide/svelte/icons/link-2';
+import ListTodo from '@lucide/svelte/icons/list-todo';
 import Maximize2 from '@lucide/svelte/icons/maximize-2';
+import MessageCircle from '@lucide/svelte/icons/message-circle';
 import MessageCircleQuestion from '@lucide/svelte/icons/message-circle-question';
 import MessageSquare from '@lucide/svelte/icons/message-square';
 import MessageSquareDashed from '@lucide/svelte/icons/message-square-dashed';
@@ -42,6 +47,7 @@ import Paperclip from '@lucide/svelte/icons/paperclip';
 import Pin from '@lucide/svelte/icons/pin';
 import PinOff from '@lucide/svelte/icons/pin-off';
 import Plus from '@lucide/svelte/icons/plus';
+import Redo2 from '@lucide/svelte/icons/redo-2';
 import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 import Search from '@lucide/svelte/icons/search';
 import Settings from '@lucide/svelte/icons/settings';
@@ -56,8 +62,10 @@ import Trash2 from '@lucide/svelte/icons/trash-2';
 import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 import Undo2 from '@lucide/svelte/icons/undo-2';
 import UserRound from '@lucide/svelte/icons/user-round';
+import WrapText from '@lucide/svelte/icons/wrap-text';
 import Wrench from '@lucide/svelte/icons/wrench';
 import X from '@lucide/svelte/icons/x';
+import Zap from '@lucide/svelte/icons/zap';
 
 /**
  * Every Lucide icon the Code section draws, by T3 Code's name for it (D4, operator 2026-11-21: "Lucide now"; ISC
@@ -70,6 +78,8 @@ export const CODE_ICONS = {
   'arrow-down': ArrowDown,
   'arrow-right-left': ArrowRightLeft,
   'arrow-up': ArrowUp,
+  bot: Bot,
+  brain: Brain,
   'chart-no-axes-column': ChartNoAxesColumn,
   check: Check,
   'chevron-down': ChevronDown,
@@ -90,11 +100,14 @@ export const CODE_ICONS = {
   'git-merge': GitMerge,
   'git-pull-request': GitPullRequest,
   'git-pull-request-arrow': GitPullRequestArrow,
+  globe: Globe,
   hammer: Hammer,
   keyboard: Keyboard,
   link: Link,
   'link-2': Link2,
+  'list-todo': ListTodo,
   'maximize-2': Maximize2,
+  'message-circle': MessageCircle,
   'message-circle-question': MessageCircleQuestion,
   'message-square': MessageSquare,
   'message-square-dashed': MessageSquareDashed,
@@ -109,6 +122,7 @@ export const CODE_ICONS = {
   pin: Pin,
   'pin-off': PinOff,
   plus: Plus,
+  'redo-2': Redo2,
   'rotate-ccw': RotateCcw,
   search: Search,
   settings: Settings,
@@ -123,8 +137,10 @@ export const CODE_ICONS = {
   'triangle-alert': TriangleAlert,
   'undo-2': Undo2,
   'user-round': UserRound,
+  'wrap-text': WrapText,
   wrench: Wrench,
   x: X,
+  zap: Zap,
 } as const;
 
 export type CodeIconName = keyof typeof CODE_ICONS;

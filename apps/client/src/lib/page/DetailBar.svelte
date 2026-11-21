@@ -80,7 +80,8 @@
   /* The bar runs to the page's edges, over the main column's padding, so the page scrolls cleanly under it. */
   header {
     position: sticky;
-    inset-block-start: 0;
+    /* Below the strip that takes the place of the frame of the window, where there is one. */
+    inset-block-start: var(--titlebar-block-size);
     z-index: var(--layer-sticky);
     display: flex;
     flex-direction: column;
@@ -92,7 +93,7 @@
 
   /* Below the compact breakpoint the unreachable strip takes the top of the window; the bar pins under it. */
   :global(:root[data-nav='icons'][data-hub-banner]) header {
-    inset-block-start: var(--nav-banner-block-size);
+    inset-block-start: calc(var(--nav-banner-block-size) + var(--titlebar-block-size));
   }
 
   header:not(:has(.tabs)) {
