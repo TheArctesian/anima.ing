@@ -122,11 +122,11 @@
         <FormButton
           onclick={() => {
             store.archived = !store.archived;
-            // The archived threads are mostly in "Earlier": folded, the view would show one line.
-            if (store.archived) earlierChosen = true;
+            // The archived threads are mostly in "Earlier": folded, the view would show one line. Back, it folds again.
+            earlierChosen = store.archived;
           }}>{store.archived ? 'Back to the threads' : `Archived (${String(store.archivedCount)})`}</FormButton>
       {/if}
-      {#if live !== null}<FormButton tone="primary" icon="carbon:add" onclick={() => (starting = true)} disabled={live.linked === false} aria-describedby={live.linked === false ? 'threads-link' : undefined}>New thread</FormButton>{/if}
+      {#if live !== null}<FormButton tone="primary" icon="carbon:add" onclick={() => (starting = true)} aria-disabled={live.linked === false} aria-describedby={live.linked === false ? 'threads-link' : undefined}>New thread</FormButton>{/if}
     {/snippet}
   </PageHeader>
   <!-- Why no thread starts, or why its corrections are not in force: a warning, not a description of the page. -->
@@ -234,7 +234,7 @@
     margin: 0;
     padding-inline-start: var(--space-2);
     border-inline-start: var(--border-focus) solid var(--status-warning);
-    color: var(--text-primary);
+    color: var(--text);
     font-size: var(--text-sm);
   }
 
