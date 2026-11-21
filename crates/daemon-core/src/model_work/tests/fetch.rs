@@ -4,8 +4,9 @@ use crate::model_work::cause::Cause;
 use crate::model_work::names::Runtime;
 use crate::model_work::releases::ArchiveFormat;
 use crate::model_work::releases::fetch::{
-    DONE, Ending, FetchOrder, SYSTEM_VARIABLE, child_deadline, download_deadline,
-    environment_empty, redirect_permitted, release_hosts, reply, verdict,
+    DONE, Ending, FetchOrder, MAX_REDIRECTS, SYSTEM_VARIABLE, UNPACK_DEADLINE, child_deadline,
+    download_deadline, environment_empty, follows, redirect_permitted, release_hosts, reply,
+    verdict,
 };
 
 fn order() -> FetchOrder {
@@ -17,6 +18,7 @@ fn order() -> FetchOrder {
         archive_folder: "/state".to_owned(),
         unpack_folder: "/runtimes/llama_server/.unpack-1".to_owned(),
         reserve: 0,
+        parent: 1,
     }
 }
 
@@ -30,7 +32,11 @@ fn a_whole_order_gives_the_form_and_the_fixed_hosts_of_its_runtime() {
 
 #[test]
 fn an_order_that_breaks_a_rule_is_refused_before_a_connection() {
-    let broken: [fn(&mut FetchOrder); 7] = [
+    let broken: [fn(&mut FetchOrder); 11] = [
+        |o| o.address = "https://evil.example/llama.tar.gz".to_owned(),
+        |o| o.address = "https://github.com:8443/llama.tar.gz".to_owned(),
+        |o| o.address = "https://x@github.com/llama.tar.gz".to_owned(),
+        |o| o.runtime = "vllm".to_owned(),
         |o| o.runtime = "curl".to_owned(),
         |o| o.address = o.address.replacen("https", "http", 1),
         |o| o.address = "https://github.com/a.exe".to_owned(),
@@ -83,7 +89,10 @@ fn the_deadlines_grow_with_the_size_and_stop_at_a_limit() {
     assert_eq!(download_deadline(0), Duration::from_secs(300));
     assert_eq!(download_deadline(100 << 20), Duration::from_secs(400));
     assert_eq!(download_deadline(u64::MAX), Duration::from_secs(3_600));
-    assert_eq!(child_deadline(0), Duration::from_mins(35));
+    assert_eq!(
+        child_deadline(0),
+        download_deadline(0) + UNPACK_DEADLINE + Duration::from_mins(5)
+    );
 }
 
 #[test]
@@ -126,4 +135,15 @@ fn the_environment_of_the_child_is_empty_but_for_the_system_variable() {
         [SYSTEM_VARIABLE, "HTTPS_PROXY"].into_iter()
     ));
     assert!(!environment_empty(["ANIMA_DAEMON_TOKEN"].into_iter()));
+}
+
+#[test]
+fn the_redirect_client_stops_at_the_count_and_at_each_broken_rule() {
+    let hosts = release_hosts(Runtime::LlamaServer);
+    let host = Some("github.com");
+    assert!(follows(MAX_REDIRECTS - 1, "https", host, hosts));
+    assert!(!follows(MAX_REDIRECTS, "https", host, hosts));
+    assert!(!follows(0, "http", host, hosts));
+    assert!(!follows(0, "https", Some("10.0.0.1"), &["10.0.0.1"]));
+    assert!(!follows(0, "https", Some("evil.example"), hosts));
 }

@@ -95,6 +95,7 @@ fn order(target: &Target, into: &Path) -> Result<FetchOrder, Cause> {
         archive_folder: text(&target.folders.state)?,
         unpack_folder: text(into)?,
         reserve: target.reserve,
+        parent: std::process::id(),
     })
 }
 

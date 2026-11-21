@@ -66,16 +66,39 @@ pub fn redirect_permitted(scheme: &str, host: Option<&str>, hosts: &[&str]) -> b
     scheme == "https" && host.is_some_and(named)
 }
 
+/// Whether the first request goes to a host of `hosts`: an `https` address whose authority is
+/// a plain name of the list, with no user, no port and no IP address. A runtime with an empty
+/// list refuses each address.
+#[must_use]
+pub fn first_host_permitted(address: &str, hosts: &[&str]) -> bool {
+    let Some(rest) = address.strip_prefix("https://") else {
+        return false;
+    };
+    let authority = rest.split(['/', '?', '#']).next().unwrap_or_default();
+    !authority.contains(['@', ':']) && redirect_permitted("https", Some(authority), hosts)
+}
+
+/// Whether the redirect client follows one more redirect, after `previous` redirects, to
+/// `scheme://host`.
+#[must_use]
+pub fn follows(previous: usize, scheme: &str, host: Option<&str>, hosts: &[&str]) -> bool {
+    previous < MAX_REDIRECTS && redirect_permitted(scheme, host, hosts)
+}
+
 /// The most time of one download: 5 minutes and one second for each MiB, at most 1 hour.
 #[must_use]
 pub fn download_deadline(size_bytes: u64) -> Duration {
     Duration::from_secs((300 + size_bytes / (1 << 20)).min(3_600))
 }
 
-/// The most time that the daemon waits for the child: the download and 30 minutes to unpack.
+/// The most time of the unpack in the child. Past it, the child gives back `archive_rejected`.
+pub const UNPACK_DEADLINE: Duration = Duration::from_mins(25);
+
+/// The most time that the daemon waits for the child: the download, the unpack and 5 minutes,
+/// so the child gives its own cause first.
 #[must_use]
 pub fn child_deadline(size_bytes: u64) -> Duration {
-    download_deadline(size_bytes) + Duration::from_mins(30)
+    download_deadline(size_bytes) + UNPACK_DEADLINE + Duration::from_mins(5)
 }
 
 /// The order of the daemon to the child, as JSON on its standard input. It holds no token, no
@@ -93,6 +116,9 @@ pub struct FetchOrder {
     pub unpack_folder: String,
     /// The free disk that the unpack leaves.
     pub reserve: u64,
+    /// The process id of the daemon. On Linux the child ends when its parent is no longer this
+    /// process.
+    pub parent: u32,
 }
 
 /// An order that passed [`FetchOrder::checked`].
@@ -113,7 +139,8 @@ impl FetchOrder {
         let runtime = Runtime::parse(&self.runtime).ok_or(Cause::RuntimeNotConfigured)?;
         let format = format_of(&self.address).ok_or(Cause::RuntimeNotConfigured)?;
         let absolute = |folder: &str| std::path::Path::new(folder).is_absolute();
-        let holds = self.address.starts_with("https://")
+        let hosts = release_hosts(runtime);
+        let holds = first_host_permitted(&self.address, hosts)
             && is_lower_hex(&self.sha256, 64)
             && (1..=MAX_ARCHIVE_BYTES).contains(&self.size_bytes)
             && absolute(&self.archive_folder)
@@ -122,7 +149,7 @@ impl FetchOrder {
             .then_some(Checked {
                 runtime,
                 format,
-                hosts: release_hosts(runtime),
+                hosts,
             })
             .ok_or(Cause::RuntimeNotConfigured)
     }

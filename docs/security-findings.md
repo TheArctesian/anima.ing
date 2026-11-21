@@ -2914,6 +2914,66 @@ The correction: The operator ruled (R-NEW-fetchprocess: "Separate process before
 
 State: Open. Waits for task L1-6b. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
 
+### SF-NEW-l1fetcha: The first request of the fetch process could go to any HTTPS host. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); SEC-C-001, CAG-008; R-NEW-fetchprocess.
+
+Where: `crates/daemon-core/src/model_work/releases/fetch.rs` (`FetchOrder::checked`).
+
+What it is: The check of the order asked only for `https://`. The host list was applied to redirects only, so an order with an address of a different host was fetched.
+
+The correction: `first_host_permitted`: the host of the address must be a name of the fixed list of the runtime, with no user, no port and no IP address. A runtime with an empty list refuses each address. Tests: `an_order_that_breaks_a_rule_is_refused_before_a_connection`, `the_child_refuses_a_first_host_off_the_list_before_a_connection`.
+
+State: Corrected on `compute/l1-6b`, not yet read again. Found by a separate reviewer on 2026-11-21 in commit `7a339859a`.
+
+### SF-NEW-l1fetchb: The child did not end with the daemon, and the unpack had no deadline. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); SEC-C-001, CAG-008; R-NEW-fetchprocess.
+
+Where: `crates/daemon/src/model/fetch/child.rs`, `fetch/spawn.rs`.
+
+What it is: When the daemon ended, the child went on until its own download deadline, and the unpack had no time limit inside the child.
+
+The correction: The order carries the process id of the daemon. On Linux the child sets the parent-death signal to SIGKILL and then checks that its parent is that process; if not, it exits. On each system the daemon keeps the standard input of the child open while it runs, and a thread of the child exits when that input closes. The unpack runs on a thread with the deadline `UNPACK_DEADLINE` (25 minutes); past it the child gives back `archive_rejected`. The daemon waits the download, the unpack and 5 minutes. A child that is killed can leave a folder `.unpack-*` below `runtimes/<runtime>/`: the wiring task must remove such stale folders when the daemon starts (not wired in this task). Tests: `the_child_ends_when_its_parent_is_not_the_daemon_of_the_order` (Linux), `the_child_ends_when_its_input_closes_before_the_whole_order`, `the_deadlines_grow_with_the_size_and_stop_at_a_limit`. The thread that watches the input is not tested apart, because a test cannot hold the child after its order without a connection; HT-NEW-l1fetchchild step 3 covers it.
+
+State: Corrected on `compute/l1-6b`, not yet read again. The sweep of `.unpack-*` waits for the wiring task. Found by a separate reviewer on 2026-11-21 in commit `7a339859a`.
+
+### SF-NEW-l1fetchc: The unpack folder was opened by path only. Note
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); SEC-C-001, CAG-008; R-NEW-fetchprocess.
+
+Where: `crates/daemon/src/model/unpack.rs` (`Writer::new`).
+
+What it is: The child opened the folder that the daemon named with `O_NOFOLLOW` and `O_DIRECTORY`, but did not check that it was empty and belonged to this user.
+
+The correction: After the open, the unpack checks with `fstat` that the folder belongs to the effective user and that it holds no entry, and refuses with `limit_disk` otherwise. Each entry is then made relative to that handle (`openat`), as before. Test: `the_unpack_folder_must_be_an_empty_folder_and_not_a_link`.
+
+State: Corrected on `compute/l1-6b`, not yet read again. Found by a separate reviewer on 2026-11-21 in commit `7a339859a`.
+
+### SF-NEW-l1fetchd: The daemon cannot check what a child that was taken over wrote. Note
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); SEC-C-001, CAG-008; R-NEW-fetchprocess.
+
+Where: `crates/daemon/src/model/install.rs` (`settle`).
+
+What it is: The child runs as the same user. If a parser fault gives code execution in the child, it can write any file in the unpack folder, and the daemon checks only that the program exists before the rename.
+
+The correction: None in this task. Open options for a later task: (a) the child hands the verified archive back to the daemon by a file descriptor, and the daemon unpacks it in a second child with fewer rights; (b) the child gives back a manifest hash of the unpacked files, which the daemon checks against the release source entry. The sandbox of the runtime (Section 9) is the other limit.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-21 in commit `7a339859a`.
+
+### SF-NEW-l1fetche: Descriptors opened by a C library could pass into the child. Note
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); SEC-C-001, CAG-008; R-NEW-fetchprocess.
+
+Where: `crates/daemon/src/model/fetch/spawn.rs`.
+
+What it is: Rust opens each descriptor with close-on-exec, so the descriptors of the daemon do not pass into the child. A C library in the daemon that opens a descriptor without that flag would pass it.
+
+The correction: None. The daemon links no C library that opens such a descriptor today; a later change that adds one must set the flag.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-21 in commit `7a339859a`.
+
 ### SF-NEW-l1workr: macOS reads the socket table with `lsof`, not `proc_pidinfo`. Low
 
 Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.

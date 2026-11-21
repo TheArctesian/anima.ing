@@ -15,19 +15,22 @@ use std::io::Write as _;
 use std::time::Duration;
 
 use daemon_core::model_work::cause::Cause;
-use daemon_core::model_work::releases::fetch::{MAX_REDIRECTS, redirect_permitted};
+use daemon_core::model_work::releases::fetch::follows;
 use reqwest::{Client, Url, redirect};
 use sha2::{Digest as _, Sha256};
 
 fn client(hosts: &'static [&'static str]) -> Result<Client, Cause> {
     let policy = redirect::Policy::custom(move |attempt| {
         let url = attempt.url();
-        if attempt.previous().len() >= MAX_REDIRECTS
-            || !redirect_permitted(url.scheme(), url.host_str(), hosts)
-        {
-            attempt.stop()
-        } else {
+        if follows(
+            attempt.previous().len(),
+            url.scheme(),
+            url.host_str(),
+            hosts,
+        ) {
             attempt.follow()
+        } else {
+            attempt.stop()
         }
     });
     Client::builder()
@@ -60,17 +63,51 @@ pub async fn download(
     if response.status().as_u16() != 200 {
         return Err(Cause::SourceFailed);
     }
-    let mut hash = Sha256::new();
-    let mut read = 0u64;
+    let mut written = Hashed::new(file, max_bytes);
     while let Some(chunk) = response.chunk().await.map_err(|_| Cause::SourceFailed)? {
-        read += chunk.len() as u64;
-        if read > max_bytes {
-            return Err(Cause::Size);
-        }
-        hash.update(&chunk);
-        file.write_all(&chunk).map_err(|_| Cause::LimitDisk)?;
+        written.write(&chunk)?;
     }
-    Ok(hex(&hash.finalize()))
+    Ok(written.sha256())
+}
+
+/// A file that a download writes, with the SHA-256 of the bytes written to it and a bound.
+pub struct Hashed<'a> {
+    file: &'a mut std::fs::File,
+    hash: Sha256,
+    left: u64,
+}
+
+impl<'a> Hashed<'a> {
+    /// Writes at most `max_bytes` to `file`.
+    #[must_use]
+    pub fn new(file: &'a mut std::fs::File, max_bytes: u64) -> Self {
+        Self {
+            file,
+            hash: Sha256::new(),
+            left: max_bytes,
+        }
+    }
+
+    /// Writes `chunk` and adds it to the hash.
+    ///
+    /// # Errors
+    /// `size` when the chunk passes the bound (nothing of it is written); `limit_disk` when
+    /// the write fails.
+    pub fn write(&mut self, chunk: &[u8]) -> Result<(), Cause> {
+        self.left = self
+            .left
+            .checked_sub(chunk.len() as u64)
+            .ok_or(Cause::Size)?;
+        self.file.write_all(chunk).map_err(|_| Cause::LimitDisk)?;
+        self.hash.update(chunk);
+        Ok(())
+    }
+
+    /// The SHA-256 of the bytes written, in lower-case hexadecimal.
+    #[must_use]
+    pub fn sha256(self) -> String {
+        hex(&self.hash.finalize())
+    }
 }
 
 /// Lower-case hexadecimal of `bytes`.

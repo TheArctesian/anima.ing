@@ -1,5 +1,6 @@
 //! The daemon side of the fetch process: it starts the child with an empty environment, writes
-//! its order, reads its one word and ends it at the deadline. A stall or a fault of the child
+//! its order as one line, keeps its input open while it runs, reads its one word and ends it at
+//! the deadline. A stall or a fault of the child
 //! ends the child, never the daemon (R-NEW-fetchfault).
 
 use std::path::Path;
@@ -54,11 +55,12 @@ fn start(program: &Path) -> Option<Child> {
 
 /// The reply of a child that exited with code 0; `None` for each other end.
 async fn reply_of(child: &mut Child, order: &FetchOrder) -> Option<String> {
-    let text = serde_json::to_vec(order).ok()?;
+    let mut text = serde_json::to_vec(order).ok()?;
+    text.push(b'\n');
+    // The input stays open while the child runs: the child ends when it closes (the daemon
+    // ended). A child that ends before it reads its order is a fault; its exit says so.
     let mut input = child.stdin.take()?;
-    // A child that ends before it reads its order is a fault; its exit status says so.
     let _ = input.write_all(&text).await;
-    drop(input);
     let mut reply = String::new();
     child
         .stdout
@@ -68,5 +70,6 @@ async fn reply_of(child: &mut Child, order: &FetchOrder) -> Option<String> {
         .await
         .ok()?;
     let status = child.wait().await.ok()?;
+    drop(input);
     status.success().then_some(reply)
 }
