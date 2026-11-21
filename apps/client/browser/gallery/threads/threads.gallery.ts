@@ -7,7 +7,7 @@ import { HEIGHT, MODES, storedSettings } from '../shots';
 import { installDesktopShell, type Scenario } from './desktop-shell';
 import { EVERY_STATE, HOOKED_FOLDER, OLDER_HOLDER, RUNNER_DOWN, STARTS } from './scenario';
 
-// The page Threads in each state that the person meets (THR-011 to THR-017, TH14, TH46, TH97, TH98). Only the desktop
+// The page Code (once Threads) in each state that the person meets (THR-011 to THR-017, TH14, TH46, TH97, TH98). Only the desktop
 // application shows the page, so the gallery stands in for its shell (`desktop-shell.ts`) with made-up threads
 // (`scenario.ts`). They run only when asked, `GALLERY_THREADS=1`; pictures go to `gallery-shots/threads/<mode>/`.
 
@@ -25,8 +25,8 @@ interface ThreadsScreen {
 }
 
 async function openThreads(page: Page): Promise<void> {
-  await page.goto(`${HUB_ORIGIN}/threads`);
-  await expect(page.getByRole('heading', { level: 1, name: 'Threads' })).toBeVisible();
+  await page.goto(`${HUB_ORIGIN}/code`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Code' })).toBeVisible();
   await expect(page.getByRole('searchbox', { name: 'Search threads' }).or(page.getByLabel('Search threads'))).toBeVisible();
 }
 
@@ -174,7 +174,7 @@ const numbered = SCREENS.map((screen, index) => ({ screen, file: `${String(index
 
 for (const chosen of MODES.filter((mode) => !mode.dyslexic)) {
   test.describe(`threads-${chosen.folder}`, () => {
-    test.skip(process.env['GALLERY_THREADS'] !== '1', 'The pictures of the page Threads are made only when asked.');
+    test.skip(process.env['GALLERY_THREADS'] !== '1', 'The pictures of the page Code are made only when asked.');
     test.use({ viewport: { width: chosen.width, height: HEIGHT }, colorScheme: chosen.theme });
     for (const { screen, file } of numbered) {
       test(file, async ({ page, context }) => {

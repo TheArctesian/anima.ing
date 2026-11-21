@@ -1,4 +1,4 @@
-//! The agent threads that the daemon of this computer runs (TH14, THR-128): the page Threads is a
+//! The agent threads that the daemon of this computer runs (TH14, THR-128): the page Code is a
 //! client of the local socket of the runner, as `anima agents` is. This module adds the caller
 //! check, the error codes, the watch that sends each update to the main window, and the system
 //! notification of a thread that needs the person (THR-059). It starts no program itself, sends
