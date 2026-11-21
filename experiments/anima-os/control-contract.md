@@ -1,4 +1,4 @@
-# Local host control, version 1 (OS3-R1)
+# Local host control (OS3-R1 / OS3-R3)
 
 This is the implemented read-only slice of the proposed host-control contract. It does not change K1/K8/K10, add a hub function or expose an MCP tool. It adds no TUI. The existing graphical console remains primary. Network/display mutations, enrollment, jobs, update control and remote access are not operations in version 1.
 
@@ -50,9 +50,36 @@ The NixOS module `control.nix` is imported by the experimental appliance but dis
 
 The VM test uses synthetic active/failed systemd units in place of the real monitoring and link programs. It verifies process-state interpretation, ordinary-user refusal, restart and runtime cleanup. It does not validate the hosted link, actual daemon enrollment or graphical hardware. Read the OS3-R1 entry in `docs/need-human-testing.md` before claiming an installed-console result.
 
+## Implemented diagnostic jobs, version 2 (OS3-R3)
+
+This bounded slice adds only persistent read-only diagnostic collection. It adds no privileged executor, host mutation, secret-bearing input, preparation/confirmation flow or generic command bridge. The same private socket and kernel-peer policy apply. Version-1 reads remain available and compatible. The service needs an explicit `--state-directory` to enable jobs; without it version-2 requests return `jobs_unavailable`.
+
+Requests (one JSON line, existing 1024-byte request limit):
+
+```json
+{"version":2,"operation":"operation_start","request_id":"bbd7e880-25b9-46fb-9342-42f17d38dd11","action":"diagnostics"}
+{"version":2,"operation":"operation_get","request_id":"bbd7e880-25b9-46fb-9342-42f17d38dd11"}
+{"version":2,"operation":"operation_list","after":null}
+{"version":2,"operation":"operation_cancel","operation_id":"019b0000-0000-7000-8000-000000000001"}
+```
+
+Only `diagnostics` is a valid action. Unknown actions/fields are rejected, so no accepted request can be changed into another action. Start rejects a nil request UUID. Start/get use the original request UUID; cancel uses the returned operation UUID. List returns at most 32 records with a `next` cursor, passed as `after` for the next page. IDs are local deduplication/lookup keys, never credentials. The client checks reply version, result kind and requested identity. CLI equivalents are `job-start UUID`, `job-get UUID`, `job-list [--after UUID]`, and `job-cancel UUID`.
+
+Replies have version 2 and `result` of `operation`, `operations`, or `error`. An operation value contains `id`, `request_id`, `action`, `state`, `revision`, `cancel_requested`, `created_seconds`, `updated_seconds`, `boot_id`, and `result`. List value contains `records` and `next`. Error value is one of `invalid_request`, `jobs_unavailable`, `busy`, `not_found`, `cancel_not_allowed`, or `journal_unavailable`, or `timed_out`. A transport failure is an ambiguous outcome: retry the same request ID or query it. Never infer that the job was rejected from a lost reply.
+
+States are queued, running, succeeded, cancelled and interrupted. A successful result is exactly the existing diagnostic schema; unknown unit states remain unknown rather than proving readiness. State is the phase for this single bounded probe; there is no invented percentage, total time or multi-stage progress. Revisions increase on persisted transitions. The recorded boot ID identifies the boot on which the operation was accepted; interrupted recovery retains it. The GUI still uses its existing Diagnostics action and result layout, with a bounded polling adapter. Its live authenticated Session retains the request UUID across ambiguous retries and queries that ID rather than starting again; missing retained history requires an explicit new check; the CLI can recover it across a new session. Automatic GUI recovery after the whole console exits is not implemented in this slice.
+
+Admission reserves a durable queued record before starting either fixed systemctl probe. Up to eight nonterminal diagnostic jobs are accepted. Journal work runs on blocking workers, serialized separately from version-1 status probes. At most two job admissions can wait on journal I/O; further job requests return busy, reserving exchange capacity for version-1 reads. A two-second reply deadline returns timed_out while already dispatched acceptance is allowed to finish; its request ID remains the recovery key. Repeating a retained request ID returns the same operation and never reruns its probes, even after restart. Cancellation of a queued job records cancelled before probes begin. Cancellation of a running job records the request; its bounded probes finish/clean up before the final cancelled record, with no diagnostic result exposed. Terminal cancellation is idempotent for cancelled jobs and refused for other terminal states.
+
+The service-owned directory must exist, be canonical, mode 0700 and owned by the service user. An exclusive lifetime file lock refuses a second process using it. Each private JSON record is bounded to 16 KiB; atomic rename with file and directory sync commits transitions. Pending writes cannot authorize work before a committed record exists. On restart, incomplete operations become interrupted and are not replayed. Corrupt/unavailable journals disable jobs with journal_unavailable while the service still serves version-1 reads; recovery requires owner inspection and service restart. A write failure stops later job transitions/admission until restart; no new work starts from an uncommitted acceptance. Version-1 status remains usable after an in-process job write failure.
+
+Retention keeps at most 256 terminal records for seven days; cleanup runs at startup, job requests and completion, so an idle process can retain expired files until its next request. Active records are never evicted. Retention bounds use wall time conservatively if the clock moves backward. After eviction, old request IDs no longer deduplicate; callers must not retry an old terminal request automatically. The NixOS service explicitly persists `/persist/anima-osd-jobs`, prepares its owner/mode, waits for the mount and grants write access only to that directory under its existing restricted service policy.
+
+The diagnostic adapter is opt-in with the existing Rust module. No production release, new ISO, root action authority, new graphical navigation or general cancellation UI follows from it. Broader contract requirements below remain future work.
+
 ## Proposed operation extension (OS3-R2; not implemented)
 
-This section is the continuation design for C3/C4/C7, not an advertised version-1 capability. The running service still rejects every operation below. Review this extension before enabling mutations. Keep version 1 available during migration; add a separately negotiated version 2 only with its implementation and compatibility tests. The renderer decision is independent.
+This section is the broader continuation design for C3/C4/C7, not an advertised version-1 capability. Only the diagnostic-job subset specified above is implemented in version 2; the remaining actions and authorization machinery below are not implemented. Review this extension before enabling mutations. Keep version 1 available during migration; add a separately negotiated version 2 only with its implementation and compatibility tests. The renderer decision is independent.
 
 ### Authority and process ownership
 

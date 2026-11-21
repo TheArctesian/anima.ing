@@ -4067,7 +4067,7 @@ flake only. It is not fixed.
 
 Result: Open.
 
-### HT-NEW-oscontrol: Rust host-control diagnostics in the graphical OS preview (OS3-R1)
+### HT-NEW-oscontrol: Rust host-control diagnostics in the graphical OS preview (OS3-R1 / OS3-R3)
 
 Built: `crates/anima-osd`, the opt-in module `experiments/anima-os/control.nix`, and the existing console Diagnostics action's adapter. The Rust socket and disposable NixOS service tests cover read-only transport, process-state reporting, restricted access and lifecycle. They do not exercise the complete appliance graphical session, real monitoring/link or physical hardware.
 
@@ -4075,7 +4075,7 @@ Built: `crates/anima-osd`, the opt-in module `experiments/anima-os/control.nix`,
 2. Unlock the local console and open Recovery → Run checks.
    Expected: existing network/root/Wi-Fi diagnostics remain present; monitoring and private-link states come from the Rust service. No terminal is required in the normal interface. Active processes do not claim hub reachability or agent readiness.
 3. In the disposable trial, stop the host-control service, then run the graphical check again.
-   Expected: a visible operation failure and an available retry/close path; no fabricated success or silent fallback to old results. Restore the service and retry; results return.
+   Expected: a visible operation failure and an available retry/close path; no fabricated success or silent fallback to old results. Restore the service and retry. A retained job is observed without restarting it; interrupted or missing history produces a clear error and a subsequent explicit new check returns results.
 4. Lock/unlock and restart the trial, then repeat the graphical check.
    Expected: owner authentication is still required, the service runs under its restricted account and the socket is private. Monitoring/link remain separate background services.
 5. Compare the console to the existing approved mockup on compact and portrait displays.

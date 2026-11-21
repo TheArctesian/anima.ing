@@ -7,6 +7,7 @@ import subprocess
 import sys
 import threading
 from commands import connect, networks, run, status
+from diagnostic_job import DiagnosticJob
 from hosted import Account
 from selfhost import enroll as enroll_selfhost
 from orientation import outputs, rotate, save_rotation
@@ -15,6 +16,7 @@ from orientation import outputs, rotate, save_rotation
 class Session:
     def __init__(self):
         self.account = Account()
+        self.diagnostic_job = DiagnosticJob()
         self.rotation = None
         self.revert_timer = None
         self.rotation_lock = threading.RLock()
@@ -100,11 +102,9 @@ class Session:
                     'monitoring': status()['daemon'], 'wifi_backend': status()['supplicant']}
             control = os.environ.get('ANIMA_OS_CONTROL')
             if control:
-                reply = json.loads(run([control, 'diagnostics'], timeout=5))
-                if reply.get('version') != 1 or reply.get('result') != 'diagnostics':
-                    raise ValueError('The local control service returned an incompatible reply.')
-                result['monitoring'] = reply['value']['monitoring']
-                result['private_link'] = reply['value']['private_link']
+                diagnostics = self.diagnostic_job.read(control)
+                result['monitoring'] = diagnostics['monitoring']
+                result['private_link'] = diagnostics['private_link']
             return result
         raise ValueError('Unsupported operation.')
 

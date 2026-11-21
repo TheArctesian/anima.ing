@@ -42,7 +42,11 @@ fn invalid_requests_cannot_dispatch_or_stop_later_reads() {
     for (bytes, failure) in [
         (b"not-json\n".as_slice(), "invalid_request"),
         (
-            b"{\"version\":2,\"operation\":\"status\"}\n".as_slice(),
+            b"{\"version\":1,\"operation\":\"diagnostics\",\"operation\":\"status\"}\n".as_slice(),
+            "invalid_request",
+        ),
+        (
+            b"{\"version\":3,\"operation\":\"status\"}\n".as_slice(),
             "unsupported_version",
         ),
         (

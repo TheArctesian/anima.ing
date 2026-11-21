@@ -27,7 +27,7 @@ let
     workspace = {
       inherit (manifest.workspace) resolver package lints;
       members = [ "crates/anima-osd" ];
-      dependencies = lib.getAttrs [ "clap" "serde" "serde_json" "thiserror" "tokio" "tempfile" ] manifest.workspace.dependencies;
+      dependencies = lib.getAttrs [ "clap" "serde" "serde_json" "thiserror" "tokio" "tempfile" "uuid" ] manifest.workspace.dependencies;
     };
   };
   source = pkgs.runCommand "anima-osd-source" {} ''

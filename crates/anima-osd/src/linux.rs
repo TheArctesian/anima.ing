@@ -1,4 +1,6 @@
 mod client;
+mod job_client;
+mod jobs;
 mod probe;
 mod protocol;
 mod socket;
@@ -22,11 +24,24 @@ enum Command {
     Serve {
         #[arg(long, default_value = "/run/current-system/sw/bin/systemctl")]
         systemctl: PathBuf,
+        #[arg(long)]
+        state_directory: Option<PathBuf>,
     },
     /// Read local host facts. This does not establish hub connectivity or work readiness.
     Status,
     /// Read local monitoring/link process state and service-namespace root mount state.
     Diagnostics,
+    /// Start or recover a persistent diagnostic operation by request UUID.
+    JobStart { request_id: uuid::Uuid },
+    /// Observe an operation by its original request UUID.
+    JobGet { request_id: uuid::Uuid },
+    /// List retained operations, optionally after a previous page cursor.
+    JobList {
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+    },
+    /// Request cancellation; running probes finish bounded cleanup first.
+    JobCancel { operation_id: uuid::Uuid },
 }
 
 pub fn run() -> ExitCode {
@@ -47,7 +62,37 @@ pub fn run() -> ExitCode {
 
 async fn execute(arguments: Arguments) -> Result<(), Error> {
     match arguments.command {
-        Command::Serve { systemctl } => socket::serve(&arguments.socket, &systemctl).await,
+        Command::Serve {
+            systemctl,
+            state_directory,
+        } => socket::serve(&arguments.socket, &systemctl, state_directory.as_deref()).await,
+        Command::JobStart { request_id } => {
+            job_client::request(
+                &arguments.socket,
+                jobs::schema::Operation::Start {
+                    request_id,
+                    action: jobs::schema::Action::Diagnostics,
+                },
+            )
+            .await
+        }
+        Command::JobGet { request_id } => {
+            job_client::request(
+                &arguments.socket,
+                jobs::schema::Operation::Get { request_id },
+            )
+            .await
+        }
+        Command::JobList { after } => {
+            job_client::request(&arguments.socket, jobs::schema::Operation::List { after }).await
+        }
+        Command::JobCancel { operation_id } => {
+            job_client::request(
+                &arguments.socket,
+                jobs::schema::Operation::Cancel { operation_id },
+            )
+            .await
+        }
         Command::Status => client::request(&arguments.socket, protocol::Operation::Status).await,
         Command::Diagnostics => {
             client::request(&arguments.socket, protocol::Operation::Diagnostics).await

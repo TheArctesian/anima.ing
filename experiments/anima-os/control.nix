@@ -13,12 +13,14 @@ in {
     environment.systemPackages = [ cfg.package ];
     users.users.anima-os-control = { isSystemUser = true; group = "anima-os-control"; };
     users.groups.anima-os-control = {};
+    systemd.tmpfiles.rules = [ "d /persist/anima-osd-jobs 0700 anima-os-control anima-os-control -" ];
     systemd.services.anima-os-control = {
       description = "Anima OS read-only local host control";
       wantedBy = [ "multi-user.target" ];
-      after = [ "local-fs.target" ];
+      after = [ "local-fs.target" "systemd-tmpfiles-setup.service" ];
+      unitConfig.RequiresMountsFor = "/persist";
       serviceConfig = {
-        ExecStart = "${cfg.package}/bin/anima-osd serve --systemctl ${pkgs.systemd}/bin/systemctl";
+        ExecStart = "${cfg.package}/bin/anima-osd serve --state-directory /persist/anima-osd-jobs --systemctl ${pkgs.systemd}/bin/systemctl";
         User = "anima-os-control";
         Group = "anima-os-control";
         RuntimeDirectory = "anima-osd";
@@ -29,6 +31,7 @@ in {
         NoNewPrivileges = true;
         CapabilityBoundingSet = "";
         ProtectSystem = "strict";
+        ReadWritePaths = [ "/persist/anima-osd-jobs" ];
         ProtectHome = true;
         PrivateTmp = true;
         ProtectKernelTunables = true;

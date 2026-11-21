@@ -16,9 +16,19 @@ use tokio::{
 };
 
 pub async fn request(path: &Path, operation: Operation) -> Result<(), Error> {
-    let reply = timeout(Duration::from_secs(4), exchange(path, operation))
-        .await
-        .map_err(|_| Error::Policy("local control request timed out"))??;
+    let reply = timeout(
+        Duration::from_secs(4),
+        exchange(
+            path,
+            serde_json::to_vec(&Request {
+                version: VERSION,
+                operation,
+            })?,
+        ),
+    )
+    .await
+    .map_err(|_| Error::Policy("local control request timed out"))??;
+    let reply: Reply = serde_json::from_slice(&reply)?;
     if reply.version != VERSION {
         return Err(Error::Policy("unsupported local control reply version"));
     }
@@ -39,7 +49,7 @@ pub async fn request(path: &Path, operation: Operation) -> Result<(), Error> {
     Ok(())
 }
 
-async fn exchange(path: &Path, operation: Operation) -> Result<Reply, Error> {
+pub async fn exchange(path: &Path, mut bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
     let mut stream = UnixStream::connect(path).await?;
     let owner = stream.peer_cred()?.uid();
     socket::directory(path, owner)?;
@@ -52,10 +62,6 @@ async fn exchange(path: &Path, operation: Operation) -> Result<Reply, Error> {
             "endpoint socket must be private and owned by its peer",
         ));
     }
-    let mut bytes = serde_json::to_vec(&Request {
-        version: VERSION,
-        operation,
-    })?;
     bytes.push(b'\n');
     stream.write_all(&bytes).await?;
     let mut reply = Vec::new();
@@ -65,5 +71,5 @@ async fn exchange(path: &Path, operation: Operation) -> Result<Reply, Error> {
     if reply.len() > RESPONSE_LIMIT || reply.last() != Some(&b'\n') {
         return Err(Error::Policy("invalid local control reply frame"));
     }
-    Ok(serde_json::from_slice(&reply)?)
+    Ok(reply)
 }
