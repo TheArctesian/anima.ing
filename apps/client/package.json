@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@graphql-typed-document-node/core": "3.2.0",
+    "@lucide/svelte": "1.70.0",
     "@tauri-apps/api": "2.12.4",
     "@tauri-apps/plugin-log": "2.10.1",
     "@tauri-apps/plugin-process": "2.4.0",
