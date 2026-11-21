@@ -37,7 +37,7 @@
   <PageHeader title="Command palette" detail="T3 Code's palette and keys in Anima's skin" eyebrow={{ text: 'Stage 6', icon: 'carbon:code' }} />
   <div class="settings">
     <Segmented label="Chats" size="sm" bind:value={chats} options={[{ value: 'ready', label: 'Ready' }, { value: 'loading', label: 'Loading' }, { value: 'failed', label: 'Failed' }, { value: 'none', label: 'None' }]} />
-    <Segmented label="Open chat" size="sm" bind:value={chat} options={[{ value: 'none', label: 'None' }, { value: 'open', label: 'One open' }]} />
+    <Segmented label="Open chat" size="sm" bind:value={chat} options={[{ value: 'none', label: 'No chat open' }, { value: 'open', label: 'One open' }]} />
     <Segmented label="Keys of" size="sm" bind:value={platform} options={[{ value: 'mac', label: 'Mac' }, { value: 'other', label: 'Windows and Linux' }]} />
   </div>
   <Section title="Palette" icon="carbon:search" lede="⌘K or Ctrl+K opens it anywhere on this page. Three actions run here; the rest wait for their stage.">
