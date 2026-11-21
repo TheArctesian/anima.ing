@@ -214,14 +214,21 @@ describe('keys', () => {
 });
 
 describe('the clipboard', () => {
-  it('hands pasted files up and puts nothing in', () => {
-    const onFiles = vi.fn();
+  it('hands pasted files up and puts nothing in when they are taken', () => {
+    const onFiles = vi.fn(() => true);
     const { box, props } = editor({ onFiles });
     box.focus();
     const file = new File(['x'], 'shot.png');
     expect(clipboard(box, 'paste', { files: [file], text: 'shot.png' }).event.defaultPrevented).toBe(true);
     expect(onFiles).toHaveBeenCalledWith([file], 'paste');
     expect(props.value).toBe('');
+  });
+
+  it('puts the pasted text in when the files are not taken', () => {
+    const { box, props } = editor({ onFiles: () => false });
+    box.focus();
+    clipboard(box, 'paste', { files: [new File(['x'], 'cells.png')], text: 'a\tb' });
+    expect(props.value).toBe('a\tb');
   });
 
   it('puts pasted text in as Markdown, with one kind of line break', () => {

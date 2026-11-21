@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { onDestroy, untrack } from 'svelte';
   import { isMac } from '$lib/platform/mac';
   import AttachButton from './attachments/AttachButton.svelte';
   import Attachments from './attachments/Attachments.svelte';
@@ -46,9 +46,12 @@
   const card = new CardState(() => engine, draft, isMac(navigator.userAgent) ? '⌘' : 'Ctrl');
   // svelte-ignore state_referenced_locally
   if (start !== undefined) card.prompt = start;
-  const chips = $derived(chipReader({ skills: engine.sources.skills }));
+  // One reader while the skills are the same list: a new one makes the editor draw the whole prompt again.
+  const skills = $derived(engine.sources.skills);
+  const chips = $derived(chipReader({ skills }));
   let editor = $state<Editor>();
   let menu = $state<MentionMenu>();
+  let activeOption = $state<string>();
   let surface = $state<HTMLElement>();
   let over = $state(false);
   let watch = $state(NO_TRIGGER);
@@ -67,6 +70,11 @@
   $effect(() => {
     card.keep();
   });
+  $effect(() => {
+    const open = card.editing;
+    if (open !== null && !engine.queued.some((queued) => queued.id === open)) untrack(() => card.orphaned());
+  });
+  onDestroy(() => card.dispose());
 
   /* The editor tells this from inside its own effect: nothing read here may become a dependency of that effect. */
   function onCaret(at: CaretAt): void {
@@ -90,7 +98,7 @@
   /** The keys of the composer before the editor's own (03 B.12): the open menu first, then the queue, then Enter. */
   function onKey(event: KeyboardEvent): boolean {
     if (trigger !== null && menu?.key(event) === true) return true;
-    if (event.key === 'ArrowUp' && event.altKey && card.prompt === '' && card.editing === null) {
+    if (event.key === 'ArrowUp' && event.altKey && card.prompt === '' && card.editing === null && !card.busy) {
       const last = engine.queued.at(-1);
       if (last === undefined || last.saving) return false;
       allQueued = true;
@@ -130,7 +138,7 @@
     {#snippet body(prompt)}<p class="queued">{labelled(prompt, chips(prompt))}</p>{/snippet}
   </QueuedMessages>
   {#if trigger !== null}
-    <MentionMenu bind:this={menu} id={menuId} {trigger} body={surface} anchor={caret} sources={engine.sources} onChoose={choose} onClose={() => (watch = afterEscape(trigger))} />
+    <MentionMenu bind:this={menu} id={menuId} {trigger} body={surface} anchor={caret} sources={engine.sources} bind:activeOption onChoose={choose} onClose={() => (watch = afterEscape(trigger))} />
   {/if}
   <form
     class="card"
@@ -141,6 +149,7 @@
       onOver: (now) => (over = now && engine.attach.can),
       onFiles: (files) => {
         if (engine.attach.can) card.add(files);
+        else card.problem = engine.attach.reason;
       },
     })}
     onsubmit={(event) => {
@@ -157,10 +166,16 @@
         {chips}
         {onCaret}
         {onKey}
-        onFiles={(files) => {
+        controls={trigger === null ? undefined : menuId}
+        activeDescendant={trigger === null ? undefined : activeOption}
+        onFiles={(files, how) => {
+          // A drop goes on to the card's own drop zone, which takes it one time.
+          if (how === 'drop') return true;
           if (engine.attach.can) card.add(files);
           else card.problem = engine.attach.reason;
+          return engine.attach.can;
         }}
+        onLongPaste={() => (card.problem = 'Pasted text is too large for this message. Paste a shorter part, or attach it as a file.')}
       />
     </div>
     {#if card.problem !== null}<p class="problem" role="alert">{card.problem}</p>{/if}

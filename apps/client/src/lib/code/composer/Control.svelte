@@ -53,7 +53,7 @@
   }
 
   .chip:disabled {
-    opacity: var(--opacity-disabled);
+    color: var(--text-tertiary);
   }
 
   .chip:focus-visible {

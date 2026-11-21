@@ -214,7 +214,7 @@
 
   .row[aria-disabled='true'] {
     flex: 1;
-    opacity: var(--opacity-disabled);
+    color: var(--text-tertiary);
     cursor: not-allowed;
   }
 

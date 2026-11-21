@@ -25,12 +25,14 @@
    */
   let { queue, editing, running, busy, body, all = $bindable(false), onSendNow, onEdit, onRemove, onCancel }: Props = $props();
   const id = $props.id();
-  const rows = $derived(shown(queue, all));
+  // The message that is open in the composer is never folded away: its Cancel is on its row.
+  const rows = $derived(shown(queue, all || editing !== null));
 </script>
 
+<!-- Always there, so that the first and the last count are said. -->
+<span class="status" aria-live="polite">{queue.length > 0 ? `${String(queue.length)} queued` : ''}</span>
 {#if queue.length > 0}
   <section aria-label={queueName(queue.length)}>
-    <span class="status" aria-live="polite">{String(queue.length)} queued</span>
     <ol {id}>
       {#each rows as message, index (message.id)}
         <QueuedMessage

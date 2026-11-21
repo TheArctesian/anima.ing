@@ -52,7 +52,9 @@ export class CardState {
   get turn(): Turn {
     const engine = this.#engine();
     const states = this.attachments.map((attachment) => attachment.state.state);
-    const blocked = engine.ended ?? (states.includes('failed') ? FAILED_FILE : states.includes('reading') ? STILL_READING : null);
+    // With neither follow-up, nothing can go into a running turn: the button says why and does nothing.
+    const noFollowUp = this.running && this.editing === null && !engine.steer.can && !engine.queue.can ? engine.steer.reason : null;
+    const blocked = engine.ended ?? noFollowUp ?? (states.includes('failed') ? FAILED_FILE : states.includes('reading') ? STILL_READING : null);
     return {
       running: this.running,
       filled: this.prompt.trim() !== '' || this.attachments.length > 0,
@@ -77,18 +79,27 @@ export class CardState {
     else kept.set(this.#key, { prompt: this.prompt, attachments: this.attachments });
   }
 
-  /** The press of the round button, or Enter. A press in the half second after a stop landed does nothing. */
+  /**
+   * The press of the round button, or Enter. A press in the half second after a stop landed does nothing. The editor
+   * is emptied at once, so that what is typed while the message goes is the next message; a message that did not go
+   * comes back in front of it.
+   */
   async submit(alternate: boolean): Promise<void> {
     const face = sendFace({ ...this.turn, alternate }, this.modifier);
-    if (face.disabled || this.stop === 'landed') return;
+    if (face.disabled || this.busy || this.stop === 'landed') return;
     const engine = this.#engine();
     const message: Message = { prompt: this.prompt, attachments: this.attachments };
     const editing = this.editing;
-    const call = face.action === 'update' && editing !== null ? engine.requeue(editing, message) : face.action === 'queue' ? engine.enqueue(message) : engine.send(message);
-    if (!(await this.#run(call))) return;
-    // What was typed while the message went stays in the editor.
-    if (this.prompt === message.prompt) this.#fill(editing === null ? null : this.#aside);
-    if (editing !== null) this.#endEdit();
+    const aside = this.#aside;
+    this.#endEdit();
+    this.#fill(editing === null ? null : aside);
+    const went = await this.#run(() => (face.action === 'update' && editing !== null ? engine.requeue(editing, message) : face.action === 'queue' ? engine.enqueue(message) : engine.send(message)));
+    if (went) return;
+    const typed = this.prompt === (editing === null ? '' : (aside?.prompt ?? '')) ? '' : this.prompt;
+    this.#fill({ prompt: typed === '' ? message.prompt : `${message.prompt}\n${typed}`, attachments: message.attachments });
+    if (editing === null) return;
+    this.editing = editing;
+    this.#aside = aside;
   }
 
   /** Stop: it waits for the turn to end for at most ten seconds, then can be pressed again (03 B.7.2). */
@@ -104,8 +115,26 @@ export class CardState {
 
   /** The turn started or ended: a stop that was asked for has landed, or is forgotten. */
   turned(running: boolean): void {
-    this.stop = stopAfter(this.stop, running);
-    if (this.stop === 'landed') this.#after(STOP_LANDED_MS, 'landed', 'none');
+    const next = stopAfter(this.stop, running);
+    // The half second starts when the stop lands, not again at each update of the chat.
+    if (next === 'landed' && this.stop !== 'landed') this.#after(STOP_LANDED_MS, 'landed', 'none');
+    this.stop = next;
+  }
+
+  /**
+   * The queued message that is open left the queue (it was sent, or removed elsewhere): its text stays as the chat's
+   * unsent text when the chat had none, else the chat's own text comes back (03 3.6).
+   */
+  orphaned(): void {
+    if (this.editing === null) return;
+    if (this.#aside !== null && (this.#aside.prompt !== '' || this.#aside.attachments.length > 0)) this.#fill(this.#aside);
+    this.#endEdit();
+    this.keep();
+  }
+
+  /** The composer goes away: no timer of it fires after. */
+  dispose(): void {
+    clearTimeout(this.#timer);
   }
 
   add(files: readonly File[]): void {
@@ -144,7 +173,7 @@ export class CardState {
   /** "Send now" and "Remove" of a queued message. */
   queued(id: string, act: 'send' | 'remove'): Promise<boolean> {
     const engine = this.#engine();
-    return this.#run(act === 'send' ? engine.sendQueued(id) : engine.unqueue(id));
+    return this.#run(() => (act === 'send' ? engine.sendQueued(id) : engine.unqueue(id)));
   }
 
   #endEdit(): void {
@@ -155,14 +184,23 @@ export class CardState {
   #fill(message: Message | null): void {
     this.prompt = message?.prompt ?? '';
     this.attachments = message?.attachments ?? [];
+    // Also when the composer is gone while a message went: the sent text must not come back as the unsent text.
+    this.keep();
   }
 
-  async #run(call: Promise<Outcome>): Promise<boolean> {
+  /** One call at a time; a call that throws is a failure with words, and never leaves the composer busy. */
+  async #run(call: () => Promise<Outcome>): Promise<boolean> {
     if (this.busy) return false;
     this.busy = true;
     this.problem = null;
-    const outcome = await call;
-    this.busy = false;
+    let outcome: Outcome;
+    try {
+      outcome = await call();
+    } catch {
+      outcome = { ok: false, words: 'The message could not be sent.' };
+    } finally {
+      this.busy = false;
+    }
     if (!outcome.ok) this.problem = outcome.words;
     return outcome.ok;
   }

@@ -61,7 +61,8 @@ export function pathIcon(path: string, folder = path.endsWith('/')): CodeIconNam
 /** The link a chosen file is written as. The words escape `\ [ ] * _` so that `__init__.py` is not read as bold. */
 export function fileLink(path: string): string {
   const label = baseName(path).replace(/[\\[\]*_]/g, String.raw`\$&`);
-  const destination = encodeURI(path).replaceAll('(', '%28').replaceAll(')', '%29').replaceAll('#', '%23').replaceAll('?', '%3F').replaceAll('\\', '%5C');
+  // A lone surrogate, which a file name can hold, would make encodeURI throw in the middle of a choice.
+  const destination = encodeURI(path.replace(/[\uD800-\uDFFF]/gu, '\uFFFD')).replaceAll('(', '%28').replaceAll(')', '%29').replaceAll('#', '%23').replaceAll('?', '%3F').replaceAll('\\', '%5C');
   return `[${label}](${destination})`;
 }
 

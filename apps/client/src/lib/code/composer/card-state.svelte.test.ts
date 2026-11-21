@@ -142,3 +142,63 @@ describe('the queue, stop and attachments of the card', () => {
     expect(card.attachments).toEqual([]);
   });
 });
+
+describe('the card while a message goes, and when things go wrong', () => {
+  it('keeps what is typed while a message goes as the next message, and puts a failed one back in front of it', async () => {
+    let settle: (outcome: Outcome) => void = () => undefined;
+    const { engine } = engineOf({ send: () => new Promise<Outcome>((done) => (settle = done)) });
+    const card = new CardState(() => engine, undefined, '⌘');
+    card.prompt = 'hello';
+    const going = card.submit(false);
+    expect(card.prompt).toBe('');
+    card.prompt = 'world';
+    settle({ ok: true });
+    await going;
+    expect(card.prompt).toBe('world');
+    const again = card.submit(false);
+    card.prompt = 'more';
+    settle({ ok: false, words: 'No.' });
+    await again;
+    expect(card.prompt).toBe('world\nmore');
+  });
+
+  it('is not left busy by an engine that throws', async () => {
+    const { engine } = engineOf({ send: () => Promise.reject(new Error('socket closed')) });
+    const card = new CardState(() => engine, undefined, '⌘');
+    card.prompt = 'hello';
+    await card.submit(false);
+    expect(card).toMatchObject({ busy: false, prompt: 'hello', problem: 'The message could not be sent.' });
+  });
+
+  it('gives the chat its text back when the open queued message leaves the queue, or keeps the edit when the chat had none', () => {
+    const { engine } = engineOf();
+    const card = new CardState(() => engine, undefined, '⌘');
+    card.prompt = 'My own words';
+    card.edit('q1');
+    card.orphaned();
+    expect(card).toMatchObject({ editing: null, prompt: 'My own words' });
+    card.prompt = '';
+    card.edit('q1');
+    card.prompt = 'Then run all the gates';
+    card.orphaned();
+    expect(card).toMatchObject({ editing: null, prompt: 'Then run all the gates' });
+  });
+
+  it('counts the half second after a stop from when it landed, whatever updates come after', async () => {
+    const { engine } = engineOf({ phase: 'running' });
+    const card = new CardState(() => engine, undefined, '⌘');
+    await card.interrupt();
+    card.turned(false);
+    vi.advanceTimersByTime(300);
+    card.turned(false);
+    vi.advanceTimersByTime(300);
+    expect(card.stop).toBe('none');
+  });
+
+  it('cannot send into a running turn that takes neither a steer nor a queued message', () => {
+    const { engine } = engineOf({ phase: 'running', steer: cannot('The turn cannot be steered now.'), queue: cannot('No queue.') });
+    const card = new CardState(() => engine, undefined, '⌘');
+    card.prompt = 'hello';
+    expect(card.face).toMatchObject({ disabled: true, tip: 'The turn cannot be steered now.' });
+  });
+});

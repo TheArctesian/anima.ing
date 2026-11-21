@@ -262,8 +262,7 @@
   .root :global(.chip[aria-disabled='true']),
   .root :global(.chip[aria-disabled='true']:hover) {
     background: none;
-    color: var(--text-secondary);
-    opacity: var(--opacity-disabled);
+    color: var(--text-tertiary);
     cursor: not-allowed;
   }
 

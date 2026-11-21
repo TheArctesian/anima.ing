@@ -5,7 +5,7 @@ import type { Attachment } from './attachments/attach';
 import { CAN, cannot, type Can } from './draft';
 import { builtInCommands } from './mentions/lists/commands';
 import type { MentionSources } from './mentions/sources';
-import { PERMISSION_MODES, type Catalogue, type Choice } from './picker/catalogue';
+import { PERMISSION_MODES, type Catalogue, type Choice, type PermissionMode } from './picker/catalogue';
 import type { Queued } from './queue/queue';
 
 /** How a call to the engine ended; the words of a failure go under the editor. */
@@ -64,11 +64,21 @@ const NO_QUEUE = 'The runner keeps no queue yet: a message goes into the running
 const NO_PICK = 'The model and the permissions are set when a chat starts; the runner cannot change them after.';
 const NO_COMMAND = 'The runner has no such command yet.';
 
-const MODES: Readonly<Record<Mode, string>> = { ask: 'approval-required', accept_edits: 'auto-accept-edits', full_access: 'full-access' };
+const MODES: Readonly<Record<Mode, string>> = { ask: 'approval-required', accept_edits: 'auto-accept-edits', full_access: 'full-access', plan: 'plan' };
+
+/** The runner's own fourth mode, which T3 Code's four do not have (03 A.4.1): the program plans and changes nothing. */
+const PLAN_MODE: PermissionMode = { id: 'plan', label: 'Plan', description: 'Plan the work; change no file and run no command.', icon: 'eye', can: CAN };
 
 function outcomeOf(result: CallResult): Outcome {
   return result.ok ? { ok: true } : { ok: false, words: result.words };
 }
+
+/** One list for every row, so that what reads it is not told of a change at each update of the chat. */
+const SOURCES: MentionSources = {
+  commands: builtInCommands({ model: cannot(NO_PICK), clear: cannot(NO_COMMAND) }),
+  skills: [],
+  files: () => Promise.resolve([]),
+};
 
 const refused = (words: string) => (): Promise<Outcome> => Promise.resolve({ ok: false, words });
 
@@ -79,7 +89,7 @@ function catalogueOf(row: RunRow): { catalogue: Catalogue; choice: Choice } {
     catalogue: {
       providers: [{ id: row.program, name: programName(row.program), icon: 'bot', can: CAN }],
       models: [{ id: model, provider: row.program, label: row.model ?? 'Default model', favourite: false, can: CAN, efforts: [], speeds: [], toggles: [] }],
-      modes: PERMISSION_MODES,
+      modes: [...PERMISSION_MODES, PLAN_MODE],
     },
     choice: { provider: row.program, model, effort: null, speed: null, toggles: [], mode: MODES[row.mode] },
   };
@@ -109,10 +119,6 @@ export function runEngine(row: RunRow, calls: RunCalls): ComposerEngine {
     pick: cannot(NO_PICK),
     ...catalogueOf(row),
     choose: () => undefined,
-    sources: {
-      commands: builtInCommands({ model: cannot(NO_PICK), clear: cannot(NO_COMMAND) }),
-      skills: [],
-      files: () => Promise.resolve([]),
-    },
+    sources: SOURCES,
   };
 }

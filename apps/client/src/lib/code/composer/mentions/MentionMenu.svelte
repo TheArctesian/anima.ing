@@ -104,8 +104,10 @@
   export function key(event: KeyboardEvent, otherSend = false): boolean {
     const action = menuKey(event, { count: entries.length, otherSend });
     if (action === 'pass') return false;
-    event.preventDefault();
     const entry = entries[current];
+    // A row that cannot be chosen does not hold the key: Enter then sends, as with no list.
+    if (action === 'choose' && (entry === undefined || !entry.available.can || (entry.kind === 'path' && found?.query !== pathQuery))) return false;
+    event.preventDefault();
     if (action === 'close') onClose();
     else if (action === 'choose') {
       if (entry !== undefined) choose(entry);
@@ -131,7 +133,14 @@
   popup surface. The editor keeps the focus and names the active row; the keys come through `key`.
 -->
 <div class="layer" class:free={body === undefined} {@attach place}>
-  <div class="drawer">
+  <!-- A press on the list's padding must not take the focus from the editor: the list would close. -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div
+    class="drawer"
+    onmousedown={(event) => {
+      event.preventDefault();
+    }}
+  >
     {#if entries.length > 0}
       <div class="scroll">
         <ScrollArea label={listLabel(trigger.kind)}>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { mount, onMount, unmount } from 'svelte';
+  import { mount, onMount, unmount, untrack } from 'svelte';
   import { isMac } from '$lib/platform/mac';
   import CodeIcon from '../../icons/CodeIcon.svelte';
   import type { CodeIconName } from '../../icons/icons';
@@ -30,13 +30,16 @@
     onCaret?: (at: CaretAt) => void;
     /** Gets every key first; true means the composer took it, and the editor stops the key there. */
     onKey?: (event: KeyboardEvent) => boolean;
-    /** Files pasted or dropped: the editor only hands them up. */
-    onFiles?: (files: readonly File[], how: 'paste' | 'drop') => void;
+    /** Files pasted or dropped: the editor only hands them up. False: they were not taken, and pasted text goes in. */
+    onFiles?: (files: readonly File[], how: 'paste' | 'drop') => boolean;
+    /** The id of the list a trigger opened, and of its lit row, for assistive technology (03, The editor: Element tree). */
+    controls?: string | undefined;
+    activeDescendant?: string | undefined;
     /** Pasted text too long for the prompt, handed up in place of being put in. */
     onLongPaste?: (text: string) => void;
   }
 
-  let { value = $bindable(), placeholder, label, disabled = false, mode = 'rich', chips, onCaret, onKey, onFiles, onLongPaste }: Props = $props();
+  let { value = $bindable(), placeholder, label, disabled = false, mode = 'rich', chips, onCaret, onKey, onFiles, onLongPaste, controls, activeDescendant }: Props = $props();
   let root: HTMLDivElement;
   let sheet: Sheet | undefined;
   /** An input method is composing: the browser owns the page until it ends (03, The editor: Keyboard behaviour). */
@@ -67,7 +70,14 @@
 
   // A prompt from outside is taken; a new mode or a new chip reader draws the prompt again (the sheet asks for both).
   $effect(() => { sheet?.load(value); });
-  $effect(() => { sheet?.show(); });
+  // Not while an input method composes or a pointer selects: the browser owns the selection then, and a drawing would
+  // move it. The next change of the selection draws.
+  $effect(() => {
+    void mode;
+    void chips;
+    if (composing) return;
+    untrack(() => { if (!pressing) sheet?.show(); });
+  });
 
   function hold(): void {
     placing = true;
@@ -147,8 +157,9 @@
     if (sheet === undefined || disabled) return;
     sheet.heed();
     const files = Array.from(event.clipboardData?.files ?? []);
-    if (files.length > 0) onFiles?.(files, 'paste');
-    else put(event.clipboardData?.getData('text/plain') ?? '');
+    const text = event.clipboardData?.getData('text/plain') ?? '';
+    // Cells of a spreadsheet come as a picture and as text: where the picture is not taken, the text is not lost.
+    if (files.length === 0 || onFiles?.(files, 'paste') !== true) put(text);
   }
 
   /** Copy and cut write the selection's Markdown as plain text (03, The editor: Markdown round trip). */
@@ -236,11 +247,15 @@
     oncut={onCopy}
     ondrop={onDrop}
     ondragstart={(event) => { event.preventDefault(); }}
-    onpointerdown={() => { pressing = true; }}
+    onpointerdown={(event) => { if (event.button === 0) pressing = true; }}
+    oncontextmenu={() => { pressing = false; }}
+    aria-autocomplete={controls === undefined ? undefined : 'list'}
+    aria-controls={controls}
+    aria-activedescendant={activeDescendant}
     onmousedown={onMouseDown}
     onclick={onClick}
     onfocus={() => { if (!placing && !pressing) sheet?.follow(true); }}
-    onblur={() => sheet?.follow(true)}
+    onblur={() => { pressing = false; sheet?.follow(true); }}
   ></div>
   {#if value === '' && !composing}
     <div class="code-editor-placeholder" aria-hidden="true">{placeholder}</div>

@@ -124,7 +124,7 @@
   }
 
   .words:disabled {
-    opacity: var(--opacity-disabled);
+    color: var(--text-tertiary);
   }
 
   .words:focus-visible {

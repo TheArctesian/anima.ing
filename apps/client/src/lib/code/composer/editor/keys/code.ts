@@ -63,6 +63,8 @@ export function codeIndent(value: string, sel: Span, all: readonly Line[], direc
   const before = value.slice(first.start, end).split('\n');
   const after = before.map((line) => (direction === 'out' ? outdent(line) : line === '' ? line : INDENT + line));
   const text = after.join('\n');
+  // Nothing to move: the key is not the block's, so Shift-Tab can leave the editor.
+  if (text === before.join('\n')) return null;
   const anchor = Math.max(first.start, sel.start + (after[0]?.length ?? 0) - (before[0]?.length ?? 0));
   const focus = Math.max(anchor, sel.end + text.length - (end - first.start));
   return { start: first.start, end, text, anchor, focus };

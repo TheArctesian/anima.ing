@@ -42,5 +42,7 @@ describe('the engine of a driven chat', () => {
     expect(catalogue.models.map((model) => model.label)).toEqual(['Default model']);
     expect(choice.mode).toBe('auto-accept-edits');
     expect(runEngine({ ...row, model: 'opus', mode: 'full_access' }, calls).choice).toMatchObject({ model: 'opus', mode: 'full-access' });
+    const planning = runEngine({ ...row, mode: 'plan' }, calls);
+    expect(planning.catalogue.modes.find((mode) => mode.id === planning.choice.mode)?.label).toBe('Plan');
   });
 });

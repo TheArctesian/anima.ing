@@ -30,5 +30,5 @@
 {:else if engine.ended !== null}
   <ReadOnlyBar status={engine.ended} />
 {:else}
-  {#key draft}<Card {engine} {draft} title={row?.title} />{/key}
+  {#key draft ?? row?.id}<Card {engine} {draft} title={row?.title} />{/key}
 {/if}

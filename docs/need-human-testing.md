@@ -4250,3 +4250,31 @@ Built: four-destination graphical console and native session/update/install cont
    Expected: background compute continues while locked; focus remains visible; perceived responsiveness and display quality are acceptable. Record hardware and measured delays rather than inferring them from language choice.
 
 Result: Open; deferred to the final step by the operator. No production release is authorized.
+
+### HT-NEW-composerwebkit: the editor of the composer of Code in the desktop application (TC4)
+
+Built on the branch `code/stage-4-composer`: `apps/client/src/lib/code/composer/`, shown on the page `/code-kit/composer`
+of a development build. The editor is our own, over the Markdown of the prompt. Its tests run in jsdom, and its pictures
+are taken in WebKit with typed keys only. Not covered: an input method (Japanese, Chinese), the dictation of macOS, a
+paste from a different application, a drop of a file from the Finder into the window of the desktop application, and the
+speed with a prompt of many thousand characters.
+
+1. Start the desktop application in development and open `/code-kit/composer`. Click the first card.
+   Expected: the card shows a focus ring and the caret is in the editor.
+2. Type `**bold** and *italic* and a line that starts with "- "`.
+   Expected: the words are drawn bold and italic, the markers show only while the caret is in them, the line is a list item.
+3. Press ⌘Z until the editor is empty, then ⇧⌘Z.
+   Expected: the text goes and comes back in steps, and the caret is where it was.
+4. With a Japanese or Chinese input method, type a word and accept a candidate.
+   Expected: the candidate window stays open while you type, and the accepted word is in the text one time.
+5. Use the dictation of macOS (Fn twice) in the editor.
+   Expected: the spoken words are in the text one time.
+6. Copy a paragraph from a different application and paste it.
+   Expected: the text is there as plain Markdown, with no styles of the source.
+7. Type `Read @comp` and press Enter on the first row of the list.
+   Expected: the list hangs over the card, and the choice is one chip with a space after it.
+8. Drag a picture from the Finder over the first card and drop it.
+   Expected: the card takes the accent line while the picture is over it, and the picture is a tile over the editor.
+
+Result: Open.
+
