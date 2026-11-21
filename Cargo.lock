@@ -440,6 +440,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "anima-osd"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "nix 0.31.3",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "anima-theme"
 version = "0.1.0"
 

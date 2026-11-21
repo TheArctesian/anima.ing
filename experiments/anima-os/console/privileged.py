@@ -95,9 +95,17 @@ class Session:
             run(['systemctl', '--no-block', 'reboot' if op == 'restart' else 'poweroff'])
             return {'requested': True}
         if op == 'diagnostics':
-            return {'network': run(['nmcli', '-t', '-f', 'STATE,CONNECTIVITY', 'general']),
+            result = {'network': run(['nmcli', '-t', '-f', 'STATE,CONNECTIVITY', 'general']),
                     'radio': run(['rfkill', '--json']), 'root': run(['findmnt', '-n', '-o', 'OPTIONS', '/']),
                     'monitoring': status()['daemon'], 'wifi_backend': status()['supplicant']}
+            control = os.environ.get('ANIMA_OS_CONTROL')
+            if control:
+                reply = json.loads(run([control, 'diagnostics'], timeout=5))
+                if reply.get('version') != 1 or reply.get('result') != 'diagnostics':
+                    raise ValueError('The local control service returned an incompatible reply.')
+                result['monitoring'] = reply['value']['monitoring']
+                result['private_link'] = reply['value']['private_link']
+            return result
         raise ValueError('Unsupported operation.')
 
 

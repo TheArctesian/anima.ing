@@ -4042,3 +4042,19 @@ flake only. It is not fixed.
    Expected: it passes. If it fails with a timeout, record the time and the load here.
 
 Result: Open.
+
+### HT-NEW-oscontrol: Rust host-control diagnostics in the graphical OS preview (OS3-R1)
+
+Built: `crates/anima-osd`, the opt-in module `experiments/anima-os/control.nix`, and the existing console Diagnostics action's adapter. The Rust socket and disposable NixOS service tests cover read-only transport, process-state reporting, restricted access and lifecycle. They do not exercise the complete appliance graphical session, real monitoring/link or physical hardware.
+
+1. Build a disposable appliance trial from the existing ISO procedure with `services.anima-os-control.enable = true` and its source-built `package` supplied as described in `experiments/anima-os/control-contract.md`. Do not replace an existing installation or publish the ISO for this check.
+2. Unlock the local console and open Recovery → Run checks.
+   Expected: existing network/root/Wi-Fi diagnostics remain present; monitoring and private-link states come from the Rust service. No terminal is required in the normal interface. Active processes do not claim hub reachability or agent readiness.
+3. In the disposable trial, stop the host-control service, then run the graphical check again.
+   Expected: a visible operation failure and an available retry/close path; no fabricated success or silent fallback to old results. Restore the service and retry; results return.
+4. Lock/unlock and restart the trial, then repeat the graphical check.
+   Expected: owner authentication is still required, the service runs under its restricted account and the socket is private. Monitoring/link remain separate background services.
+5. Compare the console to the existing approved mockup on compact and portrait displays.
+   Expected: no page/navigation/branding changes from this backend slice; readable diagnostic rows and unchanged accessible controls.
+
+Result: Open. No physical-hardware, real-account, full-appliance UI, speed or ISO-size result is claimed.

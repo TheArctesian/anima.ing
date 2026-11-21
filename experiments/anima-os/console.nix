@@ -1,4 +1,4 @@
-{ pkgs, lib, ... }:
+{ config, pkgs, lib, ... }:
 let
   python = pkgs.python3.withPackages (ps: [ ps.pyside6 ]);
   source = pkgs.runCommand "anima-local-console-source" {} ''
@@ -13,7 +13,10 @@ let
   privileged = pkgs.writeShellApplication {
     name = "anima-console-privileged";
     runtimeInputs = with pkgs; [ python3 networkmanager systemd util-linux xrandr xinput coreutils ];
-    text = ''exec python3 ${source}/privileged.py'';
+    text = ''
+      ${lib.optionalString config.services.anima-os-control.enable "export ANIMA_OS_CONTROL=${config.services.anima-os-control.package}/bin/anima-osd"}
+      exec python3 ${source}/privileged.py
+    '';
   };
   console = pkgs.writeShellApplication {
     name = "anima-console";
