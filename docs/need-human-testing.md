@@ -115,6 +115,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-066 | A browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) | A hub of the pool with an image of this build, and the gateway of the pool at `hub.anima.ing` | Open |
 | HT-080 | The web client of a hosted hub behind the gateway: the sign-in with no password page, the sign-out, a session that ended (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27) | A hub of the pool whose image has this build of the web client, and the gateway of the pool at `hub.anima.ing` | Open |
 | HT-104 | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with its own public origin `https://<hub id>.hub.anima.ing` and an image of this build, the door of the pool for that address, an application of this build, and a GitHub account that may get a new App | Open |
+| HT-NEW-framelesswindow | The window with no frame on Windows and Linux: move it, the three controls, resize, each page (task TC2 of agent threads, R-NEW-codeshell) | A Windows computer and the Linux computer `pop-os`, each with a build of the branch `code/shell-window`; a Mac for the last step | Open |
 
 ### What a check on the hosted hub needs
 
@@ -4064,5 +4065,36 @@ flake only. It is not fixed.
    Expected: each VPS-001 test passes in a few seconds.
 2. Run it again while the load average is above 50.
    Expected: it passes. If it fails with a timeout, record the time and the load here.
+
+Result: Open.
+
+### HT-NEW-framelesswindow: the window with no frame on Windows and Linux (task TC2, R-NEW-codeshell)
+
+The branch `code/shell-window` takes the frame of the system from the window on Windows and Linux. A strip at the top
+of each page moves the window and holds the three window controls. It was written on a Mac. No part of it was run on
+Windows or on Linux, so each step below is the first run.
+
+1. On Windows and on `pop-os`, start the application.
+   Expected: the window has no title bar of the system. At the top right are three buttons: Minimise, Maximise, Close.
+2. Press and move the pointer on the empty part of the strip at the top.
+   Expected: the window moves. A press on one of the three buttons does not move it.
+3. Use each button. Then double-click the empty part of the strip, twice.
+   Expected: the window goes to the task bar; fills the screen and the middle button says "Restore"; closes. The
+   double click fills the screen and then goes back, and the middle button follows each time.
+4. Move the pointer to each edge and each corner of the window and pull.
+   Expected: the window changes its size, and it does not get smaller than 960 by 600. If an edge does not resize,
+   write which edge and which system here: the window then needs resize handles of its own.
+5. Move the window to a second monitor. Use the keys of the system for a window (on Windows: the Windows key with an
+   arrow; on Linux: the keys of the desktop).
+   Expected: the window snaps and fills as each other window does.
+6. Open each page of the bar, a device with a session tab, Settings, and the page before sign-in.
+   Expected: the three buttons do not lie over a control or a text of the page, and the top of each page is not cut.
+   Make the window 960 wide, then collapse the bar. The same holds.
+7. With the Tab key go to the three buttons.
+   Expected: each takes the focus with a ring that can be seen, and Enter or Space runs it.
+8. On Linux, repeat step 1 under a desktop that draws frames itself (for example KDE), if one is there.
+   Expected: no second title bar. If the desktop draws one, write it here.
+9. On a Mac, start the application.
+   Expected: nothing changed: the three window buttons of macOS are over the bar, and no drawn buttons show.
 
 Result: Open.
