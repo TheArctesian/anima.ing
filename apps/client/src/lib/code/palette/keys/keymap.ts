@@ -177,20 +177,46 @@ export function chordText(chord: Chord, mac: boolean): string {
 /** The parts of a key event a chord is matched against. */
 export interface Pressed {
   readonly key: string;
+  /** The physical place of the key, `KeyK`, when the event gives it. */
+  readonly code?: string;
   readonly metaKey: boolean;
   readonly ctrlKey: boolean;
   readonly shiftKey: boolean;
   readonly altKey: boolean;
 }
 
-/** Whether a key press is the chord on this platform. Letters match in either case, so Shift+K is `shift+k`. */
+/** The keys whose physical place (`KeyboardEvent.code`) names them when Shift or the layout gives a different character. */
+const PLACES: Readonly<Record<string, string>> = { BracketLeft: '[', BracketRight: ']', Equal: '=', Minus: '-' };
+
+/** The key a physical place stands for: `KeyK` is `k`, `Digit1` is `1`, `BracketLeft` is `[`. */
+function placeKey(code: string): string | undefined {
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3).toLowerCase();
+  if (/^Digit\d$/.test(code)) return code.slice(5);
+  return PLACES[code];
+}
+
+/**
+ * The keys a press can be: its character, and, when that is not a Latin letter or a digit, the key at its physical
+ * place, so ⇧⌘[ (which types `{`) and Ctrl+K on a Russian layout (which types `л`) still match. A Latin letter is
+ * taken as typed, so a French layout keeps its own A and Q.
+ */
+function pressedKeys(pressed: Pressed): string[] {
+  const key = pressed.key.toLowerCase();
+  const place = /^[a-z0-9]$/.test(key) || pressed.code === undefined ? undefined : placeKey(pressed.code);
+  return place === undefined ? [key] : [key, place];
+}
+
+/**
+ * Whether a key press is the chord on this platform. Letters match in either case, so Shift+K is `shift+k`; the plus
+ * key takes Shift on most layouts, so `mod++` matches with or without it.
+ */
 export function pressedIs(pressed: Pressed, chord: Chord, mac: boolean): boolean {
   const local = onPlatform(chord, mac);
   return (
-    pressed.key.toLowerCase() === local.key &&
+    pressedKeys(pressed).includes(local.key) &&
     pressed.metaKey === local.meta &&
     pressed.ctrlKey === local.ctrl &&
-    pressed.shiftKey === local.shift &&
+    (local.key === '+' || pressed.shiftKey === local.shift) &&
     pressed.altKey === local.alt
   );
 }

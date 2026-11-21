@@ -2,9 +2,13 @@ import { shortAge } from '../status/status';
 import type { CodeIconName } from '../icons/icons';
 import { shownActions, type PaletteChat, type PaletteHost, type ShownAction } from './adapter';
 
-/** T3 Code's limits (`CommandPalette.logic.ts`, `paletteSearch.ts`): 12 recent chats, 20 chats in a search. */
+/**
+ * T3 Code's limits (`CommandPalette.logic.ts`, `paletteSearch.ts`): 12 recent chats, 20 chats in a search, and 3 rows
+ * of each other group while chats match.
+ */
 export const RECENT_LIMIT = 12;
 export const CHAT_LIMIT = 20;
+export const SECONDARY_LIMIT = 3;
 
 /** One row of the palette. */
 export interface PaletteRow {
@@ -100,7 +104,8 @@ function ranked<T>(items: readonly T[], query: string, terms: (item: T) => reado
 
 /**
  * The groups for what the person typed. A `>` first lists the actions alone (T3 Code). With text, the actions and
- * the chats are ranked by `score`; a group whose best row matches better comes first, actions first on a tie.
+ * the chats are ranked by `score`, chats that tie newest first; a group whose best row matches better comes first,
+ * actions first on a tie.
  * Empty groups are left out.
  */
 export function paletteGroups(host: PaletteHost, typed: string, now: number): PaletteGroup[] {
@@ -111,12 +116,17 @@ export function paletteGroups(host: PaletteHost, typed: string, now: number): Pa
     const groups = rootGroups(host, actions, now);
     return (actionsOnly ? groups.slice(0, 1) : groups).filter((group) => group.rows.length > 0);
   }
-  const foundActions = ranked(actions, query, (action) => [action.label, ...action.terms]);
-  const foundChats = actionsOnly ? [] : ranked(host.chats, query, (chat) => [chat.title, chat.project ?? '']).slice(0, CHAT_LIMIT);
+  // Newest first, so chats that match equally well keep that order (the sort is stable).
+  const newest = host.chats.toSorted((left, right) => right.at - left.at);
+  const foundChats = actionsOnly ? [] : ranked(newest, query, (chat) => [chat.title, chat.project ?? '']).slice(0, CHAT_LIMIT);
+  const allActions = ranked(actions, query, (action) => [action.label, ...action.terms]);
+  const foundActions = foundChats.length > 0 ? allActions.slice(0, SECONDARY_LIMIT) : allActions;
+  // The open chat is a `secondary` row: it shows, but it never lifts its group above the others.
+  const chatsBest = foundChats.find(({ item }) => item.id !== host.openChat)?.score ?? (foundChats.length > 0 ? 0 : -1);
   const groups = [
     { best: foundActions[0]?.score ?? -1, group: { id: 'actions', label: 'Actions', rows: foundActions.map(({ item }) => actionRow(item)) } },
     {
-      best: foundChats[0]?.score ?? -1,
+      best: chatsBest,
       group: { id: 'chats', label: 'Chats', rows: openLast(foundChats.map(({ item }) => item), host.openChat).map((chat) => chatRow(chat, host, now)) },
     },
   ] as const;

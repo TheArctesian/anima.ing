@@ -63,6 +63,19 @@ export const TAKEN_KEYS: readonly TakenKey[] = [
   ...Array.from({ length: 9 }, (_, index) => ({ key: `mod+${String(index + 1)}`, place: 'browser' as const, does: `Browser tab ${String(index + 1)}` })),
   { key: 'mod+[', place: 'browser', does: 'Back', only: 'mac', same: 'navigation.back' },
   { key: 'mod+]', place: 'browser', does: 'Forward', only: 'mac', same: 'navigation.forward' },
+  { key: 'meta+shift+[', place: 'browser', does: 'Previous browser tab', only: 'mac' },
+  { key: 'meta+shift+]', place: 'browser', does: 'Next browser tab', only: 'mac' },
+  { key: 'mod+shift+o', place: 'browser', does: 'Bookmark manager (Chrome)' },
+  { key: 'mod+shift+b', place: 'browser', does: 'Show or hide the bookmarks bar' },
+  { key: 'mod+shift+p', place: 'browser', does: 'New private window (Firefox)' },
+  { key: 'mod+r', place: 'browser', does: 'Reload the page' },
+  { key: 'mod+=', place: 'browser', does: 'Zoom in' },
+  { key: 'mod+-', place: 'browser', does: 'Zoom out' },
+  { key: 'mod+0', place: 'browser', does: 'Reset the zoom' },
+  { key: 'f6', place: 'browser', does: 'Go to the address bar' },
+  { key: 'ctrl+shift+c', place: 'browser', does: 'Inspect an element (developer tools)', only: 'other' },
+  { key: 'ctrl+shift+j', place: 'browser', does: 'Console (Chrome developer tools)', only: 'other' },
+  { key: 'ctrl+shift+k', place: 'browser', does: 'Console (Firefox developer tools)', only: 'other' },
 ];
 
 /** One shortcut of the key table that a taken shortcut also uses, on one platform. */
@@ -79,13 +92,14 @@ function same(left: Chord, right: Chord): boolean {
 }
 
 /**
- * Whether a rule and a taken key can both act on one key press. A rule for the desktop app alone never runs in a browser;
- * a rule that names the focus of a terminal or the browser panel leaves the keys of a session terminal alone.
+ * Whether a rule and a taken key can both act on one key press. A rule for the desktop app alone never runs in a browser.
+ * A rule that acts only outside a terminal (`!terminalFocus`) or only in the browser panel (`previewFocus`) leaves the
+ * keys of a session terminal alone; a rule that acts in a terminal can meet them.
  */
 function meet(rule: KeyRule, taken: TakenKey): boolean {
   const when = rule.when ?? '';
   if (taken.place === 'browser' && when.includes('isDesktop')) return false;
-  return !(taken.place === 'session-terminal' && /terminalFocus|previewFocus/.test(when));
+  return !(taken.place === 'session-terminal' && (when.includes('!terminalFocus') || /(^|[^!])previewFocus/.test(when)));
 }
 
 /**

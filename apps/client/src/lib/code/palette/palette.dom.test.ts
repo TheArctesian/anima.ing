@@ -116,6 +116,66 @@ describe('the command palette', () => {
 
 });
 
+function search(text: string): void {
+  const field = input();
+  if (field === null) throw new Error('no input');
+  field.value = text;
+  field.dispatchEvent(new Event('input', { bubbles: true }));
+  flushSync();
+}
+
+describe('the focus and the keys of the command palette', () => {
+  it('leaves the focus where an action put it', async () => {
+    const elsewhere = document.createElement('input');
+    document.body.append(elsewhere);
+    show(host({ runs: { 'settings.open': () => elsewhere.focus() } }));
+    press('k', { ctrlKey: true });
+    search('settings');
+    press('Enter');
+    await settle();
+    expect(document.activeElement).toBe(elsewhere);
+  });
+
+  it('runs a row once when it is clicked again while the palette closes', () => {
+    const settings = vi.fn();
+    show(host({ runs: { 'settings.open': settings } }));
+    press('k', { ctrlKey: true });
+    search('settings');
+    const row = document.querySelector<HTMLElement>('[role="option"][aria-selected="true"]');
+    row?.click();
+    row?.click();
+    expect(settings).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the focus in the input after a press on the footer, and still closes on Escape', async () => {
+    show(host());
+    press('k', { ctrlKey: true });
+    const down = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+    document.querySelector('.foot')?.dispatchEvent(down);
+    expect(down.defaultPrevented).toBe(true);
+    opener.focus();
+    expect(document.activeElement).toBe(input());
+    press('Escape', {}, document.body);
+    await settle();
+    expect(input()).toBeNull();
+  });
+
+  it('leaves Enter to a composition, closes on Ctrl+K and ignores a held key', async () => {
+    const given = host();
+    show(given);
+    press('k', { ctrlKey: true, repeat: true });
+    expect(input()).toBeNull();
+    press('k', { ctrlKey: true });
+    press('ArrowUp');
+    press('Enter', { isComposing: true });
+    press('Enter', { keyCode: 229 });
+    expect(given.openChatById).not.toHaveBeenCalled();
+    press('k', { ctrlKey: true });
+    await settle();
+    expect(input()).toBeNull();
+  });
+});
+
 describe('the actions and the empty states of the command palette', () => {
   it('runs an action the host gives', () => {
     const settings = vi.fn();

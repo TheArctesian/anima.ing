@@ -92,9 +92,34 @@ describe('a search', () => {
     expect(emptyWords('release')).toBe('No matching commands or chats.');
   });
 
-  it('lists at most 20 chats', () => {
-    const chats = Array.from({ length: 30 }, (_, index) => ({ id: String(index), title: `Chat ${String(index)}`, at: NOW }));
-    expect(paletteGroups(host({ chats }), 'chat', NOW).find((group) => group.id === 'chats')?.rows).toHaveLength(20);
+  it('lists at most 20 chats, and at most 3 actions while chats match', () => {
+    const chats = Array.from({ length: 30 }, (_, index) => ({ id: String(index), title: `Open ${String(index)}`, at: NOW }));
+    const groups = paletteGroups(host({ chats }), 'open', NOW);
+    expect(groups.find((group) => group.id === 'chats')?.rows).toHaveLength(20);
+    expect(groups.find((group) => group.id === 'actions')?.rows).toHaveLength(3);
+    expect(paletteGroups(host({ chats: [] }), 'open', NOW)[0]?.rows.length).toBeGreaterThan(3);
+  });
+
+  it('lists chats that match equally well newest first', () => {
+    const chats = [
+      { id: 'old', title: 'Deploy the hub', at: NOW - 60 * MINUTE },
+      { id: 'new', title: 'Deploy the site', at: NOW },
+    ];
+    expect(titles(paletteGroups(host({ chats }), 'deploy', NOW))).toEqual([['Chats', ['Deploy the site', 'Deploy the hub']]]);
+  });
+
+  it('does not let the open chat lift its group above the actions', () => {
+    const chats = [{ id: 'n', title: 'Chat ideas', at: NOW }];
+    expect(titles(paletteGroups(host({ chats }), 'chat', NOW))[0]?.[0]).toBe('Chats');
+    expect(titles(paletteGroups(host({ chats, openChat: 'n' }), 'chat', NOW))[0]?.[0]).toBe('Actions');
+  });
+});
+
+describe('the recent chats', () => {
+  it('lists at most 12', () => {
+    const chats = Array.from({ length: 20 }, (_, index) => ({ id: String(index), title: `Chat ${String(index)}`, at: NOW }));
+    const recent = chats.map((chat) => chat.id);
+    expect(paletteGroups(host({ chats, recent }), '', NOW).find((group) => group.id === 'recent')?.rows).toHaveLength(12);
   });
 });
 

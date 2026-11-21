@@ -1,6 +1,6 @@
 <script lang="ts">
   import CodeIcon from '../icons/CodeIcon.svelte';
-  import { shortcutOf } from './table';
+  import { shortcutOf } from './keys/table';
   import type { PaletteGroup, PaletteRow } from './results';
 
   interface Props {
@@ -91,7 +91,7 @@
     display: flex;
     align-items: flex-start;
     gap: var(--space-2);
-    min-block-size: var(--code-palette-row);
+    min-block-size: var(--code-palette-row-narrow);
     padding: var(--code-palette-row-pad);
     border-radius: var(--radius-sm);
     color: var(--text);
@@ -162,5 +162,11 @@
   .age,
   .shortcut {
     line-height: var(--space-5);
+  }
+
+  @media (width >= 40rem) {
+    .row {
+      min-block-size: var(--code-palette-row);
+    }
   }
 </style>

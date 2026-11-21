@@ -38,6 +38,17 @@ describe('chords of the key table', () => {
     expect(pressedIs(press('k', { metaKey: true, shiftKey: true }), chord, true)).toBe(false);
   });
 
+  it('matches a shifted symbol and another layout by the place of the key, and the plus key with or without Shift', () => {
+    const at = (key: string) => parseChord(key) ?? { key: '', mod: false, meta: false, ctrl: false, shift: false, alt: false };
+    expect(pressedIs({ ...press('{', { metaKey: true, shiftKey: true }), code: 'BracketLeft' }, at('mod+shift+['), true)).toBe(true);
+    expect(pressedIs({ ...press('!', { metaKey: true, shiftKey: true }), code: 'Digit1' }, at('mod+shift+1'), true)).toBe(true);
+    expect(pressedIs({ ...press('л', { ctrlKey: true }), code: 'KeyK' }, at('mod+k'), false)).toBe(true);
+    // A French layout types A at the place of Q: the letter typed wins.
+    expect(pressedIs({ ...press('a', { ctrlKey: true }), code: 'KeyQ' }, at('mod+q'), false)).toBe(false);
+    expect(pressedIs({ ...press('+', { ctrlKey: true, shiftKey: true }), code: 'Equal' }, at('mod++'), false)).toBe(true);
+    expect(pressedIs({ ...press('+', { ctrlKey: true }), code: 'NumpadAdd' }, at('mod++'), false)).toBe(true);
+  });
+
   it('has words for every command of the table, and every rule parses', () => {
     for (const rule of KEY_RULES) {
       expect(parseChord(rule.key), rule.key).not.toBeNull();

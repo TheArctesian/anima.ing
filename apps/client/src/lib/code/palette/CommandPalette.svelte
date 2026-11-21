@@ -8,7 +8,7 @@
   import { isMac } from '$lib/platform/mac';
   import type { PaletteHost } from './adapter';
   import PaletteResults from './PaletteResults.svelte';
-  import { parseChord, pressedIs } from './keymap';
+  import { parseChord, pressedIs } from './keys/keymap';
   import { emptyWords, paletteGroups, stepped, type PaletteRow } from './results';
 
   interface Props {
@@ -27,12 +27,19 @@
   const id = $props.id();
 
   let typed = $state('');
-  let active = $state(0);
+  /** The shaded row, by id, so it stays on its row when the host's chats change under it; the first row when absent. */
+  let shadedId = $state<string | undefined>(undefined);
   let openedAt = $state(0);
   let input: HTMLInputElement | undefined = $state();
+  let portal: HTMLElement | undefined = $state();
+  let entry: ReturnType<typeof openDialog> | undefined;
 
   const groups = $derived(open ? paletteGroups(host, typed, now ?? openedAt) : []);
   const rows = $derived(groups.flatMap((group) => group.rows));
+  const active = $derived.by(() => {
+    const at = rows.findIndex((row) => row.id === shadedId);
+    return at >= 0 ? at : rows.length > 0 ? 0 : -1;
+  });
   const chatsNote = $derived(typed.startsWith('>') || typed.trim() === '' ? undefined : { loading: 'Loading chats…', failed: "Couldn't load chats.", ready: undefined }[host.chatsState]);
   const rowId = (index: number): string => `${id}-row-${String(index)}`;
 
@@ -44,44 +51,78 @@
   }
 
   function onwindowkey(event: KeyboardEvent): void {
+    if (event.repeat || event.defaultPrevented) return;
+    if (open && event.key === 'Escape' && entry?.isTopmost() === true) {
+      // The focus left the input (a click on the body of the window): Escape still closes.
+      event.preventDefault();
+      open = false;
+      return;
+    }
     if (!shortcut || OPEN_KEY === null || !pressedIs(event, OPEN_KEY, mac) || inTerminal(event.target)) return;
     event.preventDefault();
     open = !open;
   }
 
-  /** Each opening starts empty, with the first row shaded, and gives the focus back to where it was. */
+  /** Whether the focus is nowhere a closing palette should leave it: on the body, or inside the palette. */
+  function focusIsLost(): boolean {
+    const now = document.activeElement;
+    return now === null || now === document.body || (portal?.contains(now) ?? false);
+  }
+
+  /**
+   * Each opening starts empty, with the first row shaded. On closing the focus goes back to where it was, unless the
+   * chosen row moved it somewhere else.
+   */
   $effect.pre(() => {
     if (!open) return;
-    const entry = openDialog();
+    const opened = openDialog();
+    entry = opened;
     const before = document.activeElement;
     typed = '';
-    active = 0;
+    shadedId = undefined;
     openedAt = Date.now();
     return () => {
-      entry.close();
-      if (before instanceof HTMLElement && before.isConnected) before.focus();
+      opened.close();
+      entry = undefined;
+      if (before instanceof HTMLElement && before.isConnected && focusIsLost()) before.focus();
     };
   });
 
+  /** The focus starts in the input, and focus that lands outside the palette while it is the topmost dialog goes back. */
   $effect(() => {
-    if (open) input?.focus();
+    if (!open) return;
+    input?.focus();
+    const pullBack = (event: FocusEvent): void => {
+      if (open && entry?.isTopmost() === true && !(portal?.contains(event.target as Node | null) ?? false)) input?.focus();
+    };
+    document.addEventListener('focusin', pullBack);
+    return () => {
+      document.removeEventListener('focusin', pullBack);
+    };
   });
 
   $effect(() => {
     if (active >= 0) document.getElementById(rowId(active))?.scrollIntoView({ block: 'nearest' });
   });
 
+  function shade(index: number): void {
+    shadedId = rows[index]?.id;
+  }
+
   function choose(row: PaletteRow | undefined): void {
-    if (row === undefined || row.disabled) return;
+    // A second click while the palette fades out runs nothing.
+    if (!open || row === undefined || row.disabled) return;
     open = false;
     row.run();
   }
 
   function onkey(event: KeyboardEvent): void {
+    // A key that ends a composition (IME) belongs to the composition.
+    if (event.isComposing || event.keyCode === 229) return;
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
-      active = stepped(active, event.key === 'ArrowDown' ? 1 : -1, rows.length);
-    } else if (event.key === 'Enter' && !event.isComposing) {
+      shade(stepped(active, event.key === 'ArrowDown' ? 1 : -1, rows.length));
+    } else if (event.key === 'Enter') {
       event.preventDefault();
       choose(rows[active]);
     } else if (event.key === 'Escape') {
@@ -105,13 +146,14 @@
 <svelte:window onkeydown={onwindowkey} />
 
 {#if open}
-  <div class="portal" {@attach toBody}>
+  <div class="portal" bind:this={portal} {@attach toBody}>
     <div class="scrim" transition:fade|global></div>
+    <!-- A press anywhere but the input keeps the focus in the input, so Escape, the arrows and Enter still work. -->
     <div
       class="frame"
       role="presentation"
       onmousedown={(event) => {
-        if (event.target === event.currentTarget) event.preventDefault();
+        if (event.target !== input) event.preventDefault();
       }}
       onpointerdown={(event) => {
         if (event.target === event.currentTarget) open = false;
@@ -124,12 +166,12 @@
             bind:this={input}
             bind:value={typed}
             oninput={() => {
-              active = 0;
+              shadedId = undefined;
             }}
             onkeydown={onkey}
             role="combobox"
-            aria-expanded="true"
-            aria-controls="{id}-list"
+            aria-expanded={rows.length > 0}
+            aria-controls={rows.length > 0 ? `${id}-list` : undefined}
             aria-activedescendant={rows[active] === undefined ? undefined : rowId(active)}
             aria-autocomplete="list"
             aria-label="Search commands and chats"
@@ -140,7 +182,7 @@
         </div>
         <div class="results">
           {#if rows.length > 0}
-            <PaletteResults id="{id}-list" {groups} {active} {mac} {rowId} onpoint={(index) => (active = index)} onchoose={choose} />
+            <PaletteResults id="{id}-list" {groups} {active} {mac} {rowId} onpoint={shade} onchoose={choose} />
           {:else if chatsNote === undefined}
             <p class="empty">{emptyWords(typed)}</p>
           {/if}

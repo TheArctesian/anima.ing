@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { clashes, type KeyPlace } from '$lib/code/palette/clashes';
-  import { chordText, parseChord } from '$lib/code/palette/keymap';
-  import { COMMAND_WORDS, whenWords } from '$lib/code/palette/words';
+  import { clashes, type KeyPlace } from '$lib/code/palette/keys/clashes';
+  import { chordText, parseChord } from '$lib/code/palette/keys/keymap';
+  import { COMMAND_WORDS, whenWords } from '$lib/code/palette/keys/words';
 
   const PLACES: Readonly<Record<KeyPlace, string>> = {
     'threads-page': 'The threads page',

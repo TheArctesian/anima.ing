@@ -19,8 +19,12 @@
   --code-palette-results: min(28rem, 70vh);
   --code-palette-group-gap: 0.375rem;
 
-  /* A row: at least 28 px, padding 6 by 8 px, 8 px between its parts; a time at least 48 px wide; context at most 45 %. */
-  --code-palette-row: var(--control-sm);
+  /*
+   * A row: at least 32 px on a narrow window and 28 px on a wide one, padding 6 by 8 px, 8 px between its parts; a
+   * time at least 48 px wide; context at most 45 %.
+   */
+  --code-palette-row-narrow: 2rem;
+  --code-palette-row: 1.75rem;
   --code-palette-row-pad: 0.375rem var(--space-2);
   --code-palette-time: var(--space-12);
   --code-palette-context: 45%;

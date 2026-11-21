@@ -1,7 +1,7 @@
 <script lang="ts">
   import '$lib/code/kit/code.css';
   import CommandPalette from '$lib/code/palette/CommandPalette.svelte';
-  import KeyTable from '$lib/code/palette/KeyTable.svelte';
+  import KeyTable from '$lib/code/palette/keys/KeyTable.svelte';
   import type { PaletteAction, PaletteHost } from '$lib/code/palette/adapter';
   import FormButton from '$lib/forms/FormButton.svelte';
   import Segmented from '$lib/forms/segmented/Segmented.svelte';

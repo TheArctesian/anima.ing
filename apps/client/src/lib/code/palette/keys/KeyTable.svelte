@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Kbd from '../kit/Kbd.svelte';
+  import Kbd from '../../kit/Kbd.svelte';
   import { isMac } from '$lib/platform/mac';
   import { keyTable } from './table';
 
