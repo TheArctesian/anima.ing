@@ -415,11 +415,13 @@ What is not known until the first run: if the Linux program starts on a computer
 ### The iOS application: TestFlight (R-203; task B8i)
 
 The branch workflow [TestFlight](../../.github/workflows/testflight.yml) runs on a push to
-`dev` or `main`. Manual dispatch on either branch redeploys that branch. The scheduled
-check runs every 20 minutes and dispatches any new `dev` revision that the merge
-train pushed with GitHub's workflow token. Each build
-gets a unique number from the workflow run sequence. The iOS release version still comes
+`dev` or `main`. Once the workflow is on `main`, GitHub enables manual dispatch and
+the scheduled check. The check runs every 20 minutes and dispatches any new `dev`
+revision that the merge train pushed with GitHub's workflow token. Each build gets a unique number from the workflow run sequence. The iOS release version still comes
 from the first-parent history of `main`.
+The job uses GitHub's `xcode-27` image and checks for iOS SDK 27 or later before
+building. The generated project targets iOS 17, which meets Apple's minimum deployment
+target of iOS 15 for uploads from April 2027.
 
 | Branch | GitHub environment | GitHub variable | TestFlight group |
 | --- | --- | --- | --- |
@@ -435,8 +437,10 @@ with App Manager access. The old `ANIMA_PUBLIC_TESTFLIGHT` switch stays off when
 using the branch workflow.
 
 Keep automatic distribution off for Anima Internal. Xcode marks `dev` uploads as
-TestFlight Internal Only. The workflow checks Apple's recorded build audience before
-assigning it to the internal group. The `main` job creates Anima External when needed,
+TestFlight Internal Only. The signed archive carries the export exemption recorded for
+build 900.0.4. Review that declaration before releasing changes that affect the app's
+encryption or its linked libraries. After processing, the workflow checks Apple's recorded
+build audience and testing status, then adds the build to Anima Internal. The `main` job creates Anima External when needed,
 assigns the processed build, enables automatic tester notification and submits it for
 Beta App Review when Apple requires it. The operator supplies the app's beta review
 contact, sign-in instructions and export compliance answers in App Store Connect.
