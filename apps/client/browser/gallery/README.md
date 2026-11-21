@@ -63,9 +63,9 @@ the same deny-all proxy as the browser tests; nothing reaches a network.
 - **Update banner**: desktop only.
 - **Renew key confirmation**: the broker answer is a placeholder, so the dialog shows nothing the picture 49 does not.
 
-## The page Threads
+## The page Code
 
-Only the desktop application shows the page Threads (THR-011), so `threads/threads.gallery.ts` stands in for the desktop
+Only the desktop application shows the page Code, once named Threads (THR-011), so `threads/threads.gallery.ts` stands in for the desktop
 shell (`threads/desktop-shell.ts`): it answers the commands of the shell with the made-up threads of `threads/scenario.ts`,
 one in each state that the person meets. It reaches no runner, session file or key store. It runs only when asked:
 
