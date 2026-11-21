@@ -133,8 +133,9 @@ async fn h8_output_over_the_limit_of_the_holder_reaches_a_daemon_that_comes_back
     let mut link = holder.link().await;
     let folder = tempfile::tempdir().expect("a folder");
     let over = folder.path().join("over");
-    // Four lines of 3 MiB while no daemon is there. The holder takes the third line at 6 MiB
-    // and then holds 9 MiB, over its 8 MiB, so it reads no more: the file `over` says so.
+    // Four lines of 3 MiB while no daemon is there. The file `over` says that the program wrote
+    // three lines: the holder reads the third at 6 MiB, so it goes over its 8 MiB and the
+    // fourth waits for the daemon.
     let script = format!(
         "for n in 1 2 3 4; do head -c 3145728 /dev/zero | tr '\\0' x; echo; \
          if [ $n = 3 ]; then touch '{}'; fi; done",
@@ -145,7 +146,7 @@ async fn h8_output_over_the_limit_of_the_holder_reaches_a_daemon_that_comes_back
     drop(link);
     assert!(
         appears(&over, super::WAIT).await,
-        "the holder went over its limit while no daemon was there"
+        "the program wrote three lines while no daemon was there"
     );
     let mut link = holder.link().await;
     let mut count = 0;
