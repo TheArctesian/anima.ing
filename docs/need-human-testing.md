@@ -41,6 +41,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-004 | No window of Apple on a Mac without the developer tools | A Mac with no Xcode and no Command Line Tools | Open |
 | HT-005 | The tool inventory of a daemon that runs as a system unit | A Linux computer | Open |
 | HT-006 | The probes of `claude` and `codex` leave the account alone | A computer with the two programs | Open |
+| HT-124 | The child fetch process downloads a real `llama-server` release from GitHub, and a stall of the network ends only the child | A test hub that gives a `runtime_install` item, and a daemon of this build in a test folder on the Mac and on `pop-os` | Open |
 | HT-121 | The hardware values of the Mac and of the Linux PC `pop-os` agree with what each system shows | A hub and a daemon of this build on both computers | Open |
 | HT-120 | The model work of the daemon installs `llama-server`, starts it on loopback, supervises it and stops it on the Mac and on `pop-os` | A test hub that gives model items, and a daemon of this build in a test folder on both computers | Open |
 | HT-119 | The cgroup of each model server on `pop-os`: a child that leaves its session is seen and ended, and a start with no delegated cgroup fails | `pop-os` with a daemon of this build in a test folder, run by its systemd user unit, which has `Delegate=yes` (R-334) | Open |
@@ -283,6 +284,24 @@ Needs HT-002.
 3. Call it with `tool` set to `cargo`. Expected: the same devices as step 5 of HT-002.
 
 Result: Open.
+
+### HT-124: the child fetch process downloads a real release
+
+Built: `crates/daemon/src/model/fetch.rs`, `fetch/child.rs`, `fetch/spawn.rs`, `crates/daemon/src/model/modes.rs` and
+the rules in `crates/daemon-core/src/model_work/releases/fetch.rs` (task L1-6b; R-336; R-348).
+The tests run the child with an order that is refused before a connection, a stalled child and a crashed child.
+They make no connection to GitHub, because the child accepts only the roots of the program and HTTPS, so a local
+server cannot stand in for the source.
+
+1. With a test daemon whose `model-sources.json` names a real `llama-server` release archive of GitHub with its
+   SHA-256 and `sizeBytes`, give a `runtime_install` item. Expected: `succeeded`; the folder
+   `runtimes/llama_server/<version>-<backend>/` holds the program. While it downloads, `ps -o pid,command` shows a
+   child `anima-daemon __model-fetch`, and `ps eww <pid>` (macOS) or `cat /proc/<pid>/environ` (Linux) shows no
+   variable.
+2. Change one character of the SHA-256 in `model-sources.json` and give the item again for a new version folder.
+   Expected: `failed` with `checksum`; no new folder below `runtimes/llama_server/`.
+3. Start the item again and cut the network of the machine for longer than the deadline of the download.
+   Expected: `failed` with `source_failed`; the child is gone; the daemon still answers `model_report`.
 
 ### HT-119: the cgroup of each model server on `pop-os`
 
