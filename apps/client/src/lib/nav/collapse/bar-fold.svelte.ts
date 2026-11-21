@@ -1,5 +1,5 @@
 import { untrack } from 'svelte';
-import { afterLeaving, afterToggle, shownFolded, type BarFold } from './code-fold';
+import { afterLeaving, afterToggle, foldsBar, shownFolded, type BarFold } from './code-fold';
 
 /**
  * The fold of the bar as the root layout keeps it: the stored choice, and the fold of the page Code for its visit
@@ -22,6 +22,12 @@ export class BarFolding {
 
   /** Whether the bar shows folded now. */
   readonly collapsed = $derived.by(() => shownFolded(this.#fold, this.path()));
+
+  /**
+   * Whether the bar shows its own fold toggle. On Code it does not: the toggle at the top start there is Code's, and it
+   * hides the column of the threads, not the bar (decision 1 of the copy of T3 Code).
+   */
+  readonly canToggle = $derived.by(() => !foldsBar(this.path()));
 
   /** The person folds (`true`) or opens the bar. */
   toggle(next: boolean): void {
