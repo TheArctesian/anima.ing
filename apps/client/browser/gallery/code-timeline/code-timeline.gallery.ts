@@ -74,9 +74,11 @@ const SHOTS: readonly TimelineShot[] = [
     scene: 'long',
     act: async (_page, scene) => {
       await click('Show full message')(_page, scene);
-      // The timeline follows the end as the message opens; scroll up only once it rests.
+      // The timeline follows the end as the message opens; scroll up only once it rests. Only a person's scroll (the
+      // wheel here) releases the follow, so the shot scrolls with the wheel and not with `scrollTo`.
       await _page.waitForTimeout(SETTLE_MS);
-      await scene.locator('.scroller').evaluate((node) => node.scrollTo({ top: 0 }));
+      await scene.locator('.scroller').hover();
+      await _page.mouse.wheel(0, -4000);
       await expect(scene.getByRole('button', { name: 'Scroll to end' })).toBeVisible();
     },
   },
