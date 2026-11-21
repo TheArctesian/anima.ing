@@ -26,3 +26,15 @@ A separate source review found three actionable issues, corrected before integra
 ## Limits
 
 HT-NEW-oscontrol remains Open for the complete graphical appliance, real monitoring/link and physical hardware. No new ISO was built/published, no installed machine was upgraded, and no speed or ISO-size improvement is claimed. The built optimized binary is 1,973,568 bytes; that is not its dependency closure, installed system footprint or an ISO comparison. Later work still owns operation progress, mutations, renderer selection, resource policies, workload execution and update/install migration.
+
+## Gate investigation continuation
+
+On continuation, a serial run (`cargo nextest run -p anima-daemon --test it -E 'test(model_work::servers) | test(model_work::tree)' --test-threads 1`) still failed in `a_child_that_leaves_the_session_is_still_seen_and_ended`: the expected child file did not exist. Serial execution alone does not fix the failures.
+
+Source evidence identifies a suspected startup race: `Servers::start` calls `Server::look` immediately after `server::spawn`; `Running::poll` rejects an empty cgroup or a leader not yet in it, but the child launcher joins the cgroup only after process creation. The parent has no startup acknowledgement before the first inspection. This is a hypothesis requiring a deterministic reproduction and an owner-boundary repair, not a confirmed cause of all six failures. In addition, `tree::sweep` sweeps all model cgroups under the daemon cgroup, so concurrent tests sharing that cgroup warrant isolation review. Do not weaken the runtime escape checks or add an arbitrary sleep to make tests pass.
+
+The containment implementation remains claimed by L1-6 (`compute/l1-6`, Stephens-MacBook-Pro.local) on dev. This OS continuation records the reproduction without taking over that active task or modifying its production code. OS3-R2 defines the next operation contract while that gate remains unresolved.
+
+OS3-R2 changes documentation only. `quality:register`, `quality:documents` and `git diff --check` passed. A delta fast-gate attempt (`FAST_BASE=HEAD`) classified the experiment contract path as full scope and began rebuilding the workspace; it was stopped because it would not validate new runtime behavior in this documentation-only slice. No new full-gate pass is claimed. The parent implementation remains subject to its full CI and the containment failures above.
+
+A separate OS3-R2 source/contract review found four gaps, corrected in the draft: a persistent authenticated adapter session now owns confirmation lifetime; request-ID lookup recovers lost acceptance replies; the migration explicitly keeps one updater lock owner and separates the root-only helper from future read-only checks; confirmation consumption and operation reservation share durable deduplication semantics. These are reviewed design corrections, not runtime test results.
