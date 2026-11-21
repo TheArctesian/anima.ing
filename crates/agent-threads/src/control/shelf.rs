@@ -34,14 +34,18 @@ pub struct Marks {
 }
 
 impl Marks {
-    /// Settled at `now`, which ends a snooze; or taken back to the active threads at `now`.
+    /// Settled at `now`, which ends a snooze and forgets a wake; or taken back to the active threads at `now`. To
+    /// take back a thread that is not settled changes nothing.
     #[must_use]
     pub const fn settled(self, on: bool, now: DateTime<Utc>) -> Self {
-        if on {
+        if !on && self.settled_at.is_none() {
+            self
+        } else if on {
             Self {
                 settled_at: Some(now),
                 snoozed_at: None,
                 snoozed_until: None,
+                woke_at: None,
                 ..self
             }
         } else {
@@ -53,24 +57,47 @@ impl Marks {
         }
     }
 
-    /// Snoozed at `now` until `until`, which takes the thread off the shelf Settled.
+    /// Snoozed at `now` until `until`, which takes the thread off the shelf Settled. A pinned
+    /// thread can be snoozed: it leaves the pinned group until it wakes.
     #[must_use]
     pub const fn snoozed(self, until: DateTime<Utc>, now: DateTime<Utc>) -> Self {
         Self {
             settled_at: None,
+            woke_at: None,
             snoozed_at: Some(now),
             snoozed_until: Some(until),
             ..self
         }
     }
 
-    /// Woken at `now`: no snooze.
+    /// Woken at `now`: no snooze. To wake a thread that is not snoozed changes nothing.
     #[must_use]
     pub const fn woken(self, now: DateTime<Utc>) -> Self {
+        if self.snoozed_until.is_none() {
+            return self;
+        }
         Self {
             snoozed_at: None,
             snoozed_until: None,
             woke_at: Some(now),
+            ..self
+        }
+    }
+
+    /// Without the marks that can no longer change the shelf at `now` or later: a take-back, a
+    /// wake or a snooze that ended more than [`SETTLE_AFTER`] ago. So a listing with only such
+    /// marks is plain again and leaves the record.
+    #[must_use]
+    pub fn tidied(self, now: DateTime<Utc>) -> Self {
+        let recent = |at: &DateTime<Utc>| now - *at < SETTLE_AFTER;
+        let snooze_holds = self
+            .snoozed_until
+            .is_some_and(|until| recent(&until) || until > now);
+        Self {
+            unsettled_at: self.unsettled_at.filter(recent),
+            woke_at: self.woke_at.filter(recent),
+            snoozed_at: self.snoozed_at.filter(|_| snooze_holds),
+            snoozed_until: self.snoozed_until.filter(|_| snooze_holds),
             ..self
         }
     }
@@ -228,6 +255,22 @@ mod tests {
             (ListingChange::Wake, 3),
         ]);
         assert_eq!(woken.shelf(&quiet(1), at(4)), Shelf::Active);
+        let again = listing(&[
+            (ListingChange::Snooze { until: at(10) }, 2),
+            (ListingChange::Wake, 3),
+            (ListingChange::Snooze { until: at(20) }, 4),
+        ]);
+        assert_eq!(again.marks.woke_at, None, "a new snooze forgets the wake");
+        let pinned = listing(&[
+            (ListingChange::Pin { on: true }, 0),
+            (ListingChange::Snooze { until: at(10) }, 1),
+        ]);
+        let snoozed_pin = Shelf::Snoozed { until: at(10) };
+        assert_eq!(
+            pinned.shelf(&quiet(0), at(2)),
+            snoozed_pin,
+            "a pinned thread snoozes"
+        );
     }
 
     #[test]
@@ -262,7 +305,10 @@ mod tests {
             Shelf::Active,
             "a request waits"
         );
-        let taken_back = listing(&[(ListingChange::Settle { on: false }, 5)]);
+        let taken_back = listing(&[
+            (ListingChange::Settle { on: true }, 4),
+            (ListingChange::Settle { on: false }, 5),
+        ]);
         assert_eq!(
             taken_back.shelf(&quiet(0), at(WEEK)),
             Shelf::Active,
@@ -273,6 +319,35 @@ mod tests {
             ran_out.shelf(&quiet(0), at(WEEK + 1)),
             Shelf::Active,
             "the week starts when the snooze ran out"
+        );
+    }
+
+    #[test]
+    fn th61_a_mark_that_no_longer_counts_leaves_the_record() {
+        assert!(
+            listing(&[(ListingChange::Wake, 0)]).is_plain(),
+            "nothing to wake"
+        );
+        assert!(
+            listing(&[(ListingChange::Settle { on: false }, 0)]).is_plain(),
+            "nothing to take back"
+        );
+        let old = listing(&[
+            (ListingChange::Settle { on: true }, 0),
+            (ListingChange::Settle { on: false }, 1),
+            (ListingChange::Snooze { until: at(3) }, 2),
+            (ListingChange::Pin { on: true }, 3 + WEEK),
+            (ListingChange::Pin { on: false }, 3 + WEEK),
+        ]);
+        assert!(old.is_plain(), "{old:?}");
+        let fresh = listing(&[
+            (ListingChange::Snooze { until: at(3) }, 2),
+            (ListingChange::Pin { on: false }, 4),
+        ]);
+        assert_eq!(
+            fresh.marks.snoozed_until,
+            Some(at(3)),
+            "it still starts the week"
         );
     }
 

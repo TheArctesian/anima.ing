@@ -179,21 +179,24 @@ pub async fn wake(args: WakeArgs, invocation: &Invocation) -> Result<(), Failure
     Ok(())
 }
 
-/// The length of a snooze from `90m`, `3h` or `2d`.
+/// The length of a snooze from `90m`, `3h` or `2d`, at most 30 days.
 fn snooze_for(text: &str) -> Result<TimeDelta, String> {
-    let split = text.len().saturating_sub(1);
-    let (number, unit) = text.split_at(split);
+    let unit = text.chars().last().unwrap_or(' ');
+    let number = &text[..text.len() - unit.len_utf8().min(text.len())];
     let count: i64 = number
         .parse()
         .ok()
         .filter(|count| *count > 0)
         .ok_or_else(|| format!("{text:?} is not a number and a unit, such as 3h"))?;
-    match unit {
-        "m" => Ok(TimeDelta::minutes(count)),
-        "h" => Ok(TimeDelta::hours(count)),
-        "d" => Ok(TimeDelta::days(count)),
-        _ => Err(format!("{text:?}: the unit is m, h or d")),
-    }
+    let length = match unit {
+        'm' => TimeDelta::try_minutes(count),
+        'h' => TimeDelta::try_hours(count),
+        'd' => TimeDelta::try_days(count),
+        _ => return Err(format!("{text:?}: the unit is m, h or d")),
+    };
+    length
+        .filter(|length| *length <= MOST_SNOOZE)
+        .ok_or_else(|| format!("{text:?}: a snooze is at most 30 days"))
 }
 
 /// `anima agents listings`: each thread that is pinned, archived, renamed, removed, settled or
@@ -234,6 +237,7 @@ fn table(listings: &[Listing]) -> Table {
         let snoozed = listing
             .marks
             .snoozed_until
+            .filter(|until| *until > Utc::now())
             .map(|until| format!("snoozed until {}", until.to_rfc3339()));
         let listed = [
             (listing.pinned, "pinned"),
@@ -265,7 +269,19 @@ mod tests {
         assert_eq!(snooze_for("90m"), Ok(TimeDelta::minutes(90)));
         assert_eq!(snooze_for("3h"), Ok(TimeDelta::hours(3)));
         assert_eq!(snooze_for("2d"), Ok(TimeDelta::days(2)));
-        for bad in ["", "h", "0h", "-1h", "3", "3w", "3 h"] {
+        assert_eq!(snooze_for("30d"), Ok(MOST_SNOOZE));
+        for bad in [
+            "",
+            "h",
+            "0h",
+            "-1h",
+            "3",
+            "3w",
+            "3 h",
+            "31d",
+            "99999999999999d",
+            "3é",
+        ] {
             assert!(snooze_for(bad).is_err(), "{bad:?}");
         }
     }

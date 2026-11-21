@@ -104,6 +104,7 @@ impl Listing {
                 });
             }
         }
+        self.marks = self.marks.tidied(now);
         Ok(self)
     }
 }
