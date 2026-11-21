@@ -141,6 +141,11 @@ impl Runner {
     }
 
     pub(super) fn note(&self, kind: Kind, thread: Option<Uuid>, what: &str) {
+        // The daemon's own log (MET-019) takes the refusals too, so that a person who reads only
+        // that file sees them; the word is fixed, never text of the person or of the program.
+        if kind == Kind::Refusal {
+            tracing::info!(?thread, why = what, "the runner refused a call");
+        }
         let line = Line {
             at: chrono::Utc::now(),
             kind,
