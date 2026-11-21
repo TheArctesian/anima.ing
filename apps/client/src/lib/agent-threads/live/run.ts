@@ -4,7 +4,7 @@
  * boundary, so each field is checked; a frame that does not read is left out.
  */
 
-import { listingsFrom, type Listing, type ListingChange } from './listing';
+import { listingsFrom, type Listing, type ListingChange } from '../listing/listing';
 import type { Program } from '../thread';
 
 export type RunState = 'starting' | 'working' | 'needs_you' | 'idle' | 'stopped' | 'unknown';

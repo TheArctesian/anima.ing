@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { orderedThreads } from '../state';
 import type { ThreadRow } from '../thread';
 import { listed, titleOf, type Listing } from './listing';
-import { outcomeFrom } from './run';
+import { outcomeFrom } from '../live/run';
 
 function row(id: string, title: string): ThreadRow {
   const at = new Date('2026-11-21T10:00:00Z');

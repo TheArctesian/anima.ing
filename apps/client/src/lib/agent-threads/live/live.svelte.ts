@@ -1,5 +1,5 @@
 import type { RunnerShell } from '$lib/desktop/agent-threads/runner';
-import type { Listing, ListingChange } from './listing';
+import type { Listing, ListingChange } from '../listing/listing';
 import { noticeFor, type Looking } from './notify';
 import { REFUSAL_WORDS, type Action, type Outcome, type Update } from './run';
 import { applied, begun, type LiveThread } from './timeline';

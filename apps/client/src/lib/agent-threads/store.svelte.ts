@@ -1,5 +1,5 @@
 import type { LiveThreads } from './live/live.svelte';
-import { listed, type Listing } from './live/listing';
+import { listed, type Listing } from './listing/listing';
 import { mergedRows } from './live/rows';
 import { markSeen, needsYouCount, storedSeen, type Seen } from './state';
 import type { Thread, ThreadRow, ThreadsShell } from './thread';

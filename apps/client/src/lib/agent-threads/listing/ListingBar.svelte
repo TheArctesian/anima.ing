@@ -3,7 +3,7 @@
   import Modal from '$lib/forms/modal/Modal.svelte';
   import Input from '$lib/forms/input/Input.svelte';
   import type { CallResult } from '../live/live.svelte';
-  import { MAX_TITLE, REMOVE_QUESTION, titleOf, type Listing, type ListingChange } from '../live/listing';
+  import { MAX_TITLE, REMOVE_QUESTION, titleOf, type Listing, type ListingChange } from './listing';
 
   interface Props {
     /** The title the list shows now. */

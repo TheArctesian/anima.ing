@@ -15,7 +15,7 @@
   import type { CallResult, LiveThreads } from './live/live.svelte';
   import type { Answer } from './live/run';
   import LimitDialog from './view/LimitDialog.svelte';
-  import ListingBar from './view/ListingBar.svelte';
+  import ListingBar from './listing/ListingBar.svelte';
   import LiveView from './view/LiveView.svelte';
   import NewThread from './view/NewThread.svelte';
 
