@@ -12,6 +12,10 @@ Description: |-
 RepoType: git
 Repo: https://github.com/TheArctesian/anima.ing.git
 
+Binaries: https://github.com/TheArctesian/anima.ing/releases/download/android-%v+%c/Anima.apk
+AllowedAPKSigningKeys:
+  - 7b2c88a9cf7040b1294735cd786d25deff019e64facc70d9aa9f5f06165f4b17
+
 Builds:
   - versionName: 0.1.0
     versionCode: 1000
@@ -44,5 +48,7 @@ Builds:
     output: target/android/Anima-unsigned.apk
     ndk: r28c
 
-AutoUpdateMode: None
-UpdateCheckMode: None
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^android-0\.\d+\.\d+\+\d+$
+UpdateCheckName: Ignore
+UpdateCheckData: '|\+(\d+)$||^android-(0\.\d+\.\d+)\+'
