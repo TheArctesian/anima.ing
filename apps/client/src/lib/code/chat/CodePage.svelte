@@ -118,7 +118,7 @@
 {/snippet}
 
 <!-- The page Code as T3 Code lays it out (02 section 4): the inbox column beside the chat column, each under its band. -->
-<div class="code" class:folded={!inboxOpen} bind:this={page} {@attach fillRoom()}>
+<div class="code" class:folded={!inboxOpen} data-code-page bind:this={page} {@attach fillRoom()}>
   {#if inboxOpen}
     <aside class="inbox" aria-label="Threads of this computer">
       <TopBand start={toggle}><span class="name">Code</span></TopBand>
@@ -153,9 +153,17 @@
     block-size: var(--room, auto);
     min-block-size: calc(var(--space-16) * 6);
     overflow: hidden;
-    border: var(--border-thin) solid var(--border-subtle);
-    border-radius: var(--radius-lg);
     background: var(--surface-base);
+  }
+
+  /* Code fills the window beside Anima's bar edge to edge, its band at the top of the window, with no frame (02 section
+     4; decision 1: the band starts at the inbox column's left edge). The page room of the root layout is left out. */
+  :global(:root main:has([data-code-page])) {
+    padding: 0;
+  }
+
+  :global(:root .pages:has([data-code-page])) {
+    padding-inline: 0;
   }
 
   .folded {

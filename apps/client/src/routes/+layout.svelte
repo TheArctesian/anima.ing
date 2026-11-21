@@ -219,7 +219,7 @@
       buildsOn={publishing.on}
       iconOnly={nav.iconOnly}
       {collapsed}
-      canCollapse={!nav.compact}
+      canCollapse={!nav.compact && folding.canToggle}
       ontogglecollapse={() => {
         setCollapsed(!collapsed);
       }}
