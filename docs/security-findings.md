@@ -2522,7 +2522,699 @@ Mitigation now: the operator can end the token at the hub (switch the device awa
 The fix (not built): on a Linux computer with a session of a person, keep the token and the key cache in the Secret Service (encrypted with the login password), as the shell keeps its keys, and keep the file store for a server with no session and for the system unit. Where the file store stays, write the token and the cache in a folder that backup tools leave out (for example below `$XDG_STATE_HOME` with a `CACHEDIR.TAG`, or a documented exclusion), and say in K8 Section 2 that a backup of the folder holds the token.
 
 State: Open. Found in the review HM-T23 on 2026-11-20.
+## The security read of the model work (task L1-3, 2026-11-20)
 
+A separate reviewer read the draft contract [model-work.md](../contracts/compute/model-work.md), version 0.1, on 2026-11-20. No code exists for it, so each entry is about the text. Version 0.2 of the contract has the corrections of the 14 plain findings and, for the 4 findings that wait for the operator, the safer default. Each entry stays Open until code exists and the operator closes it. "Severity" is the word of the reviewer.
+
+### SF-298: A model file can hold code: a pickle file, a `.py` file through `auto_map`, a chat template. High
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 2.2: a fixed list of files for each format (`file_type`); `auto_map` and `custom_pipelines` refused (`remote_code`); vLLM `--load-format safetensors`; the chat template only from the copy, at most 64 KiB, in the sandboxed renderer of the runtime.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-299: A runtime runs with each right of the user of the daemon, so a fault of a parser reads the token and the configuration. High
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Waits for the operator (OD-C22, MW-P9). Until he decides, Section 9 requires an isolation that denies each thing by default, and a start with no isolation fails (`isolation_failed`).
+
+State: Accepted by the operator (R-346). The stricter form stays a setting at the machine, off by default. Found by a separate reviewer on 2026-11-20.
+
+### SF-300: A runtime can make outgoing connections and gets the environment of the daemon. High
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Sections 2.1 and 4: an empty environment with a fixed list of variables (offline, no usage report, no proxy, no `HF_TOKEN`, no `DYLD_*`, no `LD_PRELOAD`, no `PYTHONPATH`); media only as a `data:` URL; no download folder; a row "runtime: no outgoing connection". The isolation of finding b enforces it.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-301: The hub gives the SHA-256, so the check proves nothing against a hub that is taken over. High
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Waits for the operator (OD-C23, MW-P7). Until he decides, Section 7 checks the hash that Hugging Face publishes at that commit (`hash_mismatch`) and a lowest age of a commit of 7 days (`revision_too_new`).
+
+State: Accepted by the operator (R-339). The stricter form stays a setting at the machine, off by default. Found by a separate reviewer on 2026-11-20.
+
+### SF-302: The default list of the machine has `mlx-community`, an open organisation. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Waits for the operator (OD-C24, MW-P8). Until he decides, the default list is `unsloth` only.
+
+State: Accepted by the operator (R-342). The stricter form stays a setting at the machine, off by default. Found by a separate reviewer on 2026-11-20.
+
+### SF-303: The loopback check ran only at the start, and missed children, later listeners, UDP and mapped IPv4. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 9: the check after each start, restart and `model_load` and each 15 seconds, over the process tree, TCP and UDP, IPv4 and IPv6; only `::ffff:127.0.0.1` counts as mapped loopback; the time of 15 seconds is stated.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-304: Prompts can reach a log through the output of a runtime and its slots. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 2.1: the output goes to a ring file of 1 MiB with mode 0600 that is never sent; owned flags `--log-disable`, `--no-slots`, no slot save path, `--disable-log-requests`.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-305: The memory and the disk of a runtime were not limited. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 9: a server above its share and 10 % is ended (`limit_memory`); `memory.max` or `RLIMIT_AS` on Linux; a temporary folder of 2 GiB, counted as `tempBytes`; the disk reserve checked for each write.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-306: A partial download that nobody continues stays on the disk. Low
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 7: `partial/` counts in the share and in `cacheBytes`; deleted after 7 days or at `copy_delete`; at most 4 partial copies.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-307: The unpack of a runtime archive accepted hard links, devices, setuid bits and very large archives. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 6: regular files and folders only; modes 0755 and 0644, no setuid, setgid or sticky bit; 8 GiB and 50,000 entries at most; no two names equal in lower case; unpack to a temporary folder, then rename; `sizeBytes` for each release source.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-308: A server that fails late is started again with no end. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 9: each end that no item asked for counts; 5 in one hour or 20 in 24 hours make it `failed`; an end in a load makes the copy `failed` (`load_crash`).
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-309: A different process can take the port and receive the API key of a probe. Low
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 9: port 0 where the runtime permits it; before each probe the listener must belong to the process tree of the server (`listener`).
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-310: The index of a GPU and the value of `gpuLayers` were not checked against the machine. Low
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 2.1: a GPU that is not in the inventory is refused (`gpu_unknown`); the only string of `gpuLayers` is `all`.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-311: The list of advisories gave no lowest version of a runtime. Low
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 6: a lowest version of each runtime in the daemon program (`runtime_too_old`), changed only by a signed release.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-312: An API key of an AI agent can start each model work. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Waits for the operator (OD-C25, MW-P6). Until he decides, an API key can ask only for `model_report`, `server_stop`, `model_unload` and `model_drain`.
+
+State: Accepted by the operator (R-326). The stricter form stays a setting at the machine, off by default. Found by a separate reviewer on 2026-11-20.
+
+### SF-313: The rules of TLS, of redirects and of the hosts of the fetch process were not given. Low
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 4: the roots of the system or of the program only; no proxy; no downgrade; no redirect to an IP address or a host outside the list; at most 5 redirects; at most `sizeBytes`; the fixed list of hosts of Hugging Face.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-314: The Hugging Face token can have more rights than a read of gated repositories. Note
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 7: the hub asks for a fine-grained token with read access to gated repositories only.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-315: The daemon can follow a link when it makes or deletes a file of model work. Note
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 10: each change relative to an open folder handle with `O_NOFOLLOW`; `copy_delete` follows no link.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+## The security review of the model work at the machine (task L1-6, 2026-11-20)
+
+A separate reviewer read the first commit of task L1-6 (`95c1a1e8f`, branch `compute/l1-6`) against the contract [model-work.md](../contracts/compute/model-work.md), version 0.3, on 2026-11-20, by a static reading. "Severity" is the word of the reviewer. Entries q to t are the four departures of the build from the contract.
+
+### SF-257: When the main process of a server ends, its children stay alive and are not checked. High
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/supervise.rs`.
+
+What it is: The daemon dropped the record of a server whose main process ended and signalled no other process. A child could keep a listener on 0.0.0.0 with no check, and a restart made a second tree.
+
+The correction: When the main process ends, the daemon ends the whole tree (the cgroup, or each process of the walk whose identity holds) before it starts the server again. Test: `the_children_of_a_server_end_when_its_main_process_ends`.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-258: The tree of a server was its process group, which a child leaves with one call. High
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/sockets.rs`, `server.rs`.
+
+What it is: A child that called `setsid` or `setpgid` was not in the loopback check and outlived `server_stop` and the stop of the daemon.
+
+The correction: The operator ruled (R-331; his first answer "I like strong containment but check how unsloth handle it", his final words "Strong + Unsloth's four (Recommended)"). On Linux one cgroup v2 for each server, joined before the program runs through the launcher `__model-launch`, with the parent-death signal as a backstop; `containment_failed` when the cgroup cannot be made, with no fallback. On macOS the walk of the parent processes, with the descendants recorded at each poll (best effort without the sandbox). The identity (process id and start time) is checked before each signal, and the records and cgroups are swept at the start of the daemon. The contract says that without the sandbox the loopback check constrains an honest runtime only. Tests: `a_child_that_leaves_the_session_is_still_seen_and_ended`, `a_reused_process_id_is_never_signalled`, `the_sweep_ends_the_processes_of_each_record_whose_identity_holds`, `the_walk_keeps_a_child_that_was_seen_after_its_parent_left`, `the_walk_finds_a_live_child_on_this_mac`. The Linux tests skip, with a message, where no delegated cgroup v2 exists; HT-119 covers `pop-os`.
+
+State: Open. Ruled by the operator (R-331); the correction is built on the branch `compute/l1-6` (not pushed). The Linux code was not compiled or run on this Mac (no Linux target is installed, and nothing may be installed): HT-119. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-259: No supervision loop runs, no server stops with the daemon, and nothing calls the model cycle. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/cycle.rs`, `supervise.rs`.
+
+What it is: The 15-second loopback check, the restarts, the limit of the temporary folder and the stop of the servers at the stop of the daemon do not run, because the running daemon does not start the model loop. `kill_on_drop` ended the main process only.
+
+The correction: A drop of a running server, and so a drop of the node or of the daemon, ends the whole tree. The loop is still not wired: the switch at the machine (USE-004) does not exist in the daemon, so no claim is made and no server can start in the running daemon. The second read (2026-11-20, commit `df8aca4fc`) confirmed that nothing outside `src/model/` builds a `Node`. The wiring task must: call `Node::sweep` when the daemon starts, before any claim; call `Servers::cycle` every 15 seconds; call `stop_all` when the daemon stops; refresh the unit: when the unit file on disk differs from the unit that this version renders, write it again and run `install` again (the decision of the orchestrating session, not a ruling of the operator; the wiring may take this code from task U6 of the update plan if U6 has it by then, or build the small check itself, and it does not ship without it; until then, HT-119 step 9 is the manual step); and start servers from a worker of the async runtime, never from `spawn_blocking` (SF-294). No server can start before that wiring: the branch is not runnable as a server host until then. The plan row of L1-6 records this. Test: `the_whole_group_ends_when_the_node_drops`.
+
+State: Open. The drop is fixed on the branch `compute/l1-6`; the wiring waits for USE-004. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-260: The install blocks the async runtime and has no total time limit. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/install.rs`, `fetch.rs`.
+
+What it is: The unpack of up to 8 GiB ran on a thread of the async runtime, and a release host could send one byte each 59 seconds with no end.
+
+The correction: The unpack runs on a blocking thread (`spawn_blocking`). The download has a total time of 5 minutes and one second for each MiB of `sizeBytes`, at most 1 hour (`source_failed`). Test: the unit of `fetch_deadline` through the install tests.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-261: The download and the unpack were not checked against the free disk and the reserve. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/install.rs`, `unpack.rs`.
+
+What it is: An archive and its unpack could use 16 GiB with no check of the free disk.
+
+The correction: Before the download the daemon checks that the state and runtime folders have `sizeBytes` free above the reserve (default 10 GiB); the unpack checks the reserve before each entry (`limit_disk`). Tests: `the_disk_reserve_stops_the_unpack_and_the_download`, `an_install_with_no_room_for_the_archive_downloads_nothing`.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-262: The API key was not wiped and the daemon kept no copy of it. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/cycle.rs`, `server.rs`.
+
+What it is: The key was in a plain string of the environment list.
+
+The correction: The key is a `Zeroizing<String>`, held by the record of the running server; the values of the environment of a launch are wiped when the launch drops. A process of the same user can still read the environment of the runtime; the contract accepts that channel.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-263: A local process can take the port first. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/server.rs`.
+
+What it is: The free port is found by a bind and a drop, so another process can take it. The readiness needs a listener of the tree, so a squatter is not taken for the server; the effect is a restart loop.
+
+The correction: None in this build: the HTTP probe, which would send the key, does not exist yet (R-329).
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-264: Details of the unpack: folder modes, case collisions of a part. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/unpack.rs`.
+
+What it is: The mode of a new folder passed through the umask, and two names that differ only in case in a parent folder were not refused.
+
+The correction: Each new folder gets `fchmod` 0755. Each part of each path is compared in lower case. Unicode forms (NFC and NFD) are not compared; `O_EXCL` still stops an overwrite. Tests: `a_whole_archive_is_installed_with_plain_modes`, `an_archive_that_breaks_a_rule_is_refused_and_leaves_nothing`, `a_hostile_zip_is_refused_and_leaves_nothing`.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-265: The folders of model work followed a link in a parent. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/folders.rs`.
+
+What it is: `DirBuilder::recursive` followed a link at a parent below the three folders.
+
+The correction: Below each of the three folders, each part is made and opened relative to an open handle with `O_NOFOLLOW`, with mode 0700, and owned by this user (`private_below`). Test: `a_link_in_a_parent_folder_is_not_followed`.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-266: The reading of `lsof` on macOS. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon-core/src/model_work/loopback.rs`, `crates/daemon/src/model/sockets.rs`.
+
+What it is: `lsof` had no time limit; an exit status 1 with output killed the server; a UDP socket with no port counted as exposed.
+
+The correction: A limit of 5 seconds that fails closed; status 1 reads its output; an unbound UDP socket (`*:*`) is not counted; a name that does not read (a zone) counts as exposed. Test: `the_edges_of_the_lsof_output_read`.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-267: Linux reads the tables of the network of the first process only. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/sockets.rs`.
+
+What it is: A socket of a child in another network namespace is not matched; it is not reachable from the network of the host.
+
+The correction: None.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-268: TLS, redirects and proxies of the download. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/fetch.rs`.
+
+What it is: HTTPS only, no proxy, the roots of the program, at most 5 redirects to listed names only, the hash checked before the archive is opened. The first address is the operator's.
+
+The correction: None.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-269: The hub side and the wire. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/hub/src/work/jobs.rs`, `crates/daemon-core/src/model_work/order.rs`.
+
+What it is: The hub makes no model item; the daemon checks the exact members of each item. `actor` binds an honest hub only.
+
+The correction: None.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-270: A runtime can rewrite `model-work.json` and `model-sources.json` when the sandbox is off. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/machine_files.rs`.
+
+What it is: The files are in the daemon folder, which a runtime with the rights of the user can write. Within the risk that the operator accepted (R-346).
+
+The correction: None.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-271: The restart limits. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon-core/src/model_work/supervision.rs`.
+
+What it is: The waits and counts follow the contract. An end during the start wait is not counted (minor).
+
+The correction: None.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-272: Parts of the contract that matter for security are not built. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon-core/src/model_work/command.rs`.
+
+What it is: No `--no-webui` and no `--slot-save-path`; no check that the version has the flags of the logs; no memory limit; the limit of the temporary folder runs only in the cycle, which is not wired.
+
+The correction: None in this build; HT-120 asks which flags the release takes.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-273: The download runs in the daemon, not in a child fetch process. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/fetch.rs`, `install.rs`.
+
+What it is: The parsers of TLS, HTTP, gzip, tar and zip run in the process that holds the daemon token.
+
+The correction: The operator ruled (R-336: "Separate process before L1-7 (Recommended)"). The download in the daemon is permitted for task L1-6 only (contract Section 4); task L1-6b builds the child fetch process, and task L1-7 does not start without it.
+
+State: Open. Waits for task L1-6b. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-274: macOS reads the socket table with `lsof`, not `proc_pidinfo`. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/sockets.rs`.
+
+What it is: `lsof` is slower and depends on its output form.
+
+The correction: Accepted by the operator (R-329: "Accept, but add zip (Recommended)"): a limit of 5 seconds that fails closed, and the contract text of Section 9.
+
+State: Accepted (R-329). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-276: Ready means a listener on loopback, with no HTTP probe. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/supervise.rs`.
+
+What it is: A listener can exist before the server answers, so `ready` can come early. No key is sent to a squatter.
+
+The correction: Accepted by the operator (R-329); the contract text of Section 9; the HTTP probe comes with task L1-9 or `model_measure`.
+
+State: Accepted (R-329). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-277: Only `.tar.gz` archives. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/unpack.rs`.
+
+What it is: The upstream releases of llama.cpp are mostly `.zip`.
+
+The correction: The operator added `.zip` (R-329), with the same rules and limits: no link, no device, no encrypted entry, no absolute path or `..`, the case of each part, the declared size and the bytes read within the limit, the entry count, and the unpack into a temporary folder and one rename. Tests: `a_whole_zip_is_installed_with_plain_modes`, `a_hostile_zip_is_refused_and_leaves_nothing`, `a_zip_bomb_and_too_many_entries_stop_at_the_limits`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed), with tests. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-279: On Linux the network tables of the first cgroup member only were read. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007; R-331.
+
+Where: `crates/daemon/src/model/sockets.rs`.
+
+What it is: The loopback check read `/proc/<pid>/net/*` of the first process of `cgroup.procs`. A member that moved into a network namespace of its own (unprivileged user namespaces) and sorted first hid the host listener of a different member.
+
+The correction: The daemon reads the tables of each distinct network namespace (`/proc/<pid>/ns/net`) of the members and merges them. A member that still runs but whose `fd` or `ns` files do not read (it made itself not dumpable) fails the read, so the check fails closed. Linux code, not compiled on the Mac of the build; HT-119.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-283: An unreadable cgroup or an empty tree passed the loopback check. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007; R-331.
+
+Where: `crates/daemon/src/model/tree/linux.rs`, `server.rs`, `sockets.rs`.
+
+What it is: `members` read `cgroup.procs` with a default of nothing, and an empty table gave the verdict loopback.
+
+The correction: `members` gives an I/O error, `poll` refuses an empty tree while the main process runs, and the socket table of an empty tree is an error. Each of these ends the server with `listener`. Test: `an_empty_tree_of_a_running_server_does_not_read_as_a_safe_table` (the Linux read is not compiled on the Mac).
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-286: One large entry could write past the disk reserve. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001; the rest of SF-261.
+
+Where: `crates/daemon/src/model/unpack.rs`.
+
+What it is: The free disk was asked before each entry only, so one entry of up to 8 GiB could pass the reserve.
+
+The correction: The copy of an entry asks the disk again after each 64 MiB. Test: `the_disk_is_asked_again_while_one_large_entry_is_written`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-294: Races in the launcher of a server. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-331.
+
+Where: `crates/daemon/src/model/tree/linux.rs`, `server.rs`.
+
+What it is: If the daemon ended between the fork and the parent-death signal, the runtime ran on with no backstop. The signal also fires when the thread that started the launcher ends, so a start from `spawn_blocking` would kill each server about 10 seconds later.
+
+The correction: The daemon gives its process id to the launcher, which exits with code 125 when its parent is no longer the daemon after the signal is set. The documentation of `spawn` and `launch` says that a start must come from a thread that lives as long as the daemon. No test: Linux only, and a thread rule (HT-119).
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-295: A cgroup that did not empty blocked the next start, with no log, and no process limit; blocking calls on async threads. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-331.
+
+Where: `crates/daemon/src/model/tree/linux.rs`, `server.rs`.
+
+What it is: The end of a cgroup gave up after 1 second with no log, and the next start of the same server then failed. No `pids.max` was set. The waits of the cgroup and the `ps` and `lsof` reads of macOS ran on the threads of the async runtime.
+
+The correction: A cgroup that does not empty is logged and left; each start has a cgroup of its own name. `pids.max` is 512 when the controller is delegated (a placeholder value in the contract, Section 9). The end and the signals of `kill` and `stop`, and the read of `cgroup.procs`, run on a blocking thread; `lsof` was already a child process with a timeout. The drop of a running server still ends its tree on its own thread, because a drop cannot wait. No test on the Mac for the cgroup part (HT-119).
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-296: The sweep trusted the cgroup path in a record that the runtime can write. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree.rs`, `tree/linux.rs`.
+
+What it is: A forged `tree.json` could make the daemon write `cgroup.kill` in any path and remove any empty folder. The runtime is already that user, so it grants nothing new while the sandbox is off.
+
+The correction: The daemon ends only a cgroup named `anima-model-` directly below its own cgroup. The identities in the record are still trusted (accepted risk while the sandbox is off; with the sandbox, keep the records out of reach of the runtime). Linux code, not compiled on the Mac (HT-119).
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-278: With a delegated cgroup, a runtime can leave the cgroup of its server. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-331, R-334; OD-C22.
+
+Where: `crates/daemon/src/model/server.rs`, `tree/linux.rs`.
+
+What it is: With `Delegate=yes`, the user of the daemon may write to each `cgroup.procs` of the delegated tree. A runtime can write its own process id into the `cgroup.procs` of the cgroup of the daemon and leave the cgroup of its server. When the main process leaves and a child stays, the tree still reads as not empty, and the main process is no longer read or ended by the cgroup.
+
+The correction: The operator ruled R-330: "Hide the daemon's cgroup (Recommended)". The launcher makes a new cgroup namespace (with a user namespace of its own, which a user that is not root needs) after it joins the cgroup of the server and before `exec`. The kernel then refuses a move of a process of the runtime to a cgroup outside the cgroup of its server, a child included. When the namespaces cannot be made, the start fails with `containment_failed`, with no fallback. The launcher now runs before the async runtime starts, because a new user namespace needs a process with one thread. Each poll also checks that the main process, while it runs, is a member of the `cgroup.procs` of its server; when it is not, the server ends with `listener`. Linux only, not compiled on the Mac; HT-119 steps 9a and 9b.
+
+State: Open. Fixed by the ruling R-330 on the branch `compute/l1-6` (not pushed); waits for HT-119. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `65fc31ed7`.
+
+### SF-280: A cgroup below the cgroup of a server hid its processes from the loopback check. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-331, R-330.
+
+Where: `crates/daemon/src/model/tree/linux.rs`.
+
+What it is: The runtime may make a cgroup below the cgroup of its server (its user owns that folder) and move a process into it, inside the root of its namespace. `members` read only the `cgroup.procs` of the server, so the loopback check and the check of the main process missed that process.
+
+The correction: `members` reads the `cgroup.procs` of the cgroup of the server and of each cgroup below it, and a folder that does not read fails closed. `make` sets `cgroup.max.descendants` to 0, so no cgroup can be made below it; with `nsdelegate` the runtime cannot write that file of the root of its namespace. The end removes the cgroups below first. Linux only, not compiled on the Mac; HT-119 step 9c.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `acf0b853b`.
+
+### SF-281: The cgroup namespace stops a move out only with `nsdelegate`. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-330.
+
+Where: `crates/daemon/src/model/tree/linux.rs`, `tree/mounts.rs`.
+
+What it is: The kernel refuses a move to a cgroup outside the root of a cgroup namespace only when cgroup v2 is mounted with `nsdelegate`. systemd mounts it so; a system without systemd, or a mount of its own, may not, and the start then succeeded with the escape of SF-278 open.
+
+The correction: `make` reads `/proc/self/mountinfo` and refuses a start with `containment_failed` and the detail `no_nsdelegate` when the cgroup v2 mount at `/sys/fs/cgroup` has no `nsdelegate`. Test: `the_cgroup_mount_must_delegate_to_namespaces`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `acf0b853b`.
+
+### SF-282: Each failure of the launcher, and an exit 125 of a runtime, read as one `containment_failed`. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-330.
+
+Where: `crates/daemon/src/model/tree/linux.rs`, `server.rs`, `supervise.rs`, `cycle.rs`; `crates/daemon-core/src/model_work/cause.rs`.
+
+What it is: The launcher exited 125 at each step, and the daemon took each exit 125 as a failure of containment. A refusal of the user namespace (AppArmor on Ubuntu 24.04 and later, or a sysctl) could not be told from a missing delegation or a missing program, and a runtime that exits 125 was reported as a failure of containment.
+
+The correction: `containment_failed` carries a detail (`no_delegation`, `no_nsdelegate`, `cgroup_join_failed`, `backstop_failed`, `parent_gone`, `userns_denied`, `exec_failed`), which the report gives in the member `detail` of the result. Each launcher step has its own exit code (120 to 124), and the launcher writes it to a failure file in the folder of the server before it exits; an exit code counts as the launcher's only when that file holds it. Tests: `each_failed_step_of_containment_has_its_own_detail_and_launcher_code`, `an_exit_code_of_a_launcher_step_counts_only_with_the_failure_file_of_the_launcher`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `acf0b853b`.
+
+### SF-284: The failure file of the launcher and the record of a tree were read through links, with no size limit. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree.rs`, `server.rs`.
+
+What it is: The daemon read `launch-failure` with `read_to_string` and `tree.json` after a `symlink_metadata` check. A runtime could replace either with a link to a FIFO (the supervision loop waits for ever) or to `/dev/zero` (no end to the read). No new power while the runtime is the user of the daemon, but an escape route once the sandbox exists.
+
+The correction: `read_capped` opens the folder and the file with `O_NOFOLLOW`, the file also with `O_NONBLOCK` and `O_CLOEXEC`, requires a regular file (`fstat`), and reads at most 4 KiB for the failure file and 64 KiB for the record. Tests: `a_file_that_the_runtime_can_replace_is_read_only_when_plain_and_small`, `a_record_that_is_a_link_is_not_swept`.
+
+State: Open. Built on the branch `compute/l1-6`. Found by a separate reviewer on 2026-11-20 in commit `dd8ca6c79`.
+
+### SF-285: The interface files of a sibling server cgroup are writable by the runtime. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree/linux.rs`.
+
+What it is: The daemon makes each server cgroup, so its files belong to the user of the daemon. The cgroup namespace stops moves, but a runtime can write `cgroup.kill` or `pids.max` of a different server cgroup through the full `/sys/fs/cgroup` mount. That ends or limits another server, which a `kill` by the same user already can.
+
+The correction: None now (no new power). The sandbox design must hide `/sys/fs/cgroup` with a mount namespace.
+
+State: Open (Note). Found by a separate reviewer on 2026-11-20 in commit `dd8ca6c79`.
+
+### SF-287: Writing the record of a tree could wait on a FIFO or truncate a hard-linked file. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree.rs`.
+
+What it is: `Record::save` opened `tree.json` without `O_NONBLOCK`, so a FIFO stalled the supervising thread, and with truncate, so a hard link at that name truncated a different file.
+
+The correction: The record is written to a new temporary name (`O_CREAT|O_EXCL|O_NOFOLLOW|O_NONBLOCK`, mode 0600) and renamed over `tree.json`. Test: `a_record_is_written_in_place_of_a_link_or_a_fifo_and_never_through_one`.
+
+State: Open. Built on the branch `compute/l1-stack`. Found by a separate reviewer on 2026-11-21 in commit `6697d2d0b`.
+
+### SF-288: The sweep removed a record through a server folder that is a link. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree.rs`.
+
+What it is: The sweep called `remove_file` on `servers/<entry>/tree.json`, which follows `<entry>` when it is a link.
+
+The correction: The sweep opens each entry with `O_NOFOLLOW|O_DIRECTORY` and reads and removes the record through that one handle (`unlinkat`). Test: `a_server_folder_that_is_a_link_is_neither_read_nor_emptied`.
+
+State: Open. Built on the branch `compute/l1-stack`. Found by a separate reviewer on 2026-11-21 in commit `6697d2d0b`.
+
+### SF-289: The test of a linked record did not check that the named file survives. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/tests/it/model_work/tree.rs`.
+
+What it is: `a_record_that_is_a_link_is_not_swept` did not assert that the file the link names still exists, and no case covered a linked server folder.
+
+The correction: The test asserts that the file survives, and a new test covers a server folder that is a link to a folder with a record.
+
+State: Open. Built on the branch `compute/l1-stack`. Found by a separate reviewer on 2026-11-21 in commit `6697d2d0b`.
+
+### SF-290: The tests of the size caps did not reach the read limit or the real caps. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/tests/it/model_work/tree.rs`.
+
+What it is: No case read exactly the cap, a linked folder, or one byte over the real 4 KiB and 64 KiB caps, and the FIFO case had no time limit.
+
+The correction: Cases at exactly the cap and with a linked folder; the real caps through `launch_failure` (4096 and 4097 bytes) and through the sweep (65536 and 65537 bytes); the FIFO cases wait at most 5 seconds. Tests: `a_file_that_the_runtime_can_replace_is_read_only_when_plain_and_small`, `records_and_failure_files_over_their_real_caps_are_refused`, `an_exit_code_of_a_launcher_step_counts_only_with_the_failure_file_of_the_launcher`.
+
+State: Open. Built on the branch `compute/l1-stack`. Found by a separate reviewer on 2026-11-21 in commit `6697d2d0b`.
+
+### SF-291: The documentation of `read_capped` claimed more than `O_NOFOLLOW` gives. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree.rs`.
+
+What it is: `O_NOFOLLOW` checks the last part of a path only.
+
+The correction: The comment says so: the parent folders are trusted because the daemon made them with `folders::private_below`.
+
+State: Open. Built on the branch `compute/l1-stack`. Found by a separate reviewer on 2026-11-21 in commit `6697d2d0b`.
+
+### SF-292: A device node is opened before `fstat` refuses it. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree.rs`.
+
+What it is: `read_capped` opens the file (with `O_NONBLOCK`) before it can see that it is a device; the open of some devices has effects.
+
+The correction: None now; the comment records it. With the sandbox the runtime cannot place a device node in the state folder.
+
+State: Open (Note). Found by a separate reviewer on 2026-11-21 in commit `6697d2d0b`.
+
+### SF-293: The launcher wrote its failure file through a link. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree/linux.rs`.
+
+What it is: The launcher wrote `launch-failure` with `std::fs::write`, which follows a link and truncates an existing file.
+
+The correction: The launcher creates it as a new file only (`O_CREAT|O_EXCL`, `O_NOFOLLOW`, `O_NONBLOCK`, mode 0600); the daemon removes it before each start. Linux code, not compiled on the Mac.
+
+State: Open. Built on the branch `compute/l1-stack`. Found by a separate reviewer on 2026-11-21 in commit `6697d2d0b`.
+
+### SF-256: With KillMode=process, a model runtime's own children can outlive a daemon that systemd killed. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); R-331; R-334; THR-113.
+
+Where: `crates/daemon/units/anima-daemon.user.unit` and `anima-daemon.system.unit` (`KillMode=process`, from hosted/hm-t20-daemon-update), against `Delegate=yes` and the cgroup of each model server.
+
+What it is: systemd now stops only the main process. On a clean stop the daemon ends each model server itself (`Servers::stop_all`), and nothing changes. When the daemon does not end its servers (it is killed with SIGKILL after the stop timeout, or it crashes), systemd leaves the delegated child cgroups alone. The launcher's parent-death signal ends only the runtime it became, not the children that runtime started; those stay alive in the server's cgroup until the sweep at the next start of the daemon. A stopped or disabled daemon has no next start.
+
+The correction: Not made. Both lines stay as they are (KillMode is held by THR-113 for the thread holder). Options for the operator: kill each server cgroup on a stop with an `ExecStopPost=` that writes `cgroup.kill` under the unit's cgroup, excluding the holder; or move the holder out of the unit's cgroup and go back to the control-group mode. Linux code, not compiled on the Mac. Made overnight, not yet confirmed.
+
+State: Open. Found on 2026-11-21 at the merge of dev `b623ae977` into `compute/l1-stack`.
+
+Note: hm-t20 sets `KillMode=process` in both units, so at a stop systemd ends only the main process of the daemon; the model servers in the `anima-model-*` cgroups survive unless the daemon ends them. Today `stop_all` at the stop and the sweep at the start are not wired, but nothing starts a server either. The rule is R-340.
+
+### SF-297: A read error of a zip entry was reported as a full disk. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001; R-328.
+
+Where: `crates/daemon/src/model/unpack.rs`.
+
+What it is: A CRC that does not match, or a cut stream, came through `io::copy` as `limit_disk`.
+
+The correction: The copy tells a read error (`archive_rejected`) from a write error (`limit_disk`). Test: `an_entry_whose_bytes_break_their_check_is_a_rejected_archive`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-275: The three root folders were made with a recursive create. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001; the rest of SF-266.
+
+Where: `crates/daemon/src/model/folders.rs`.
+
+What it is: `private_folder` made the roots and their missing parents in one recursive call and checked the last folder only.
+
+The correction: It makes each missing part on its own with mode 0700 and checks each part that it made, and the root: a plain folder of this user, not a link. A parent that was already there is used as it is. Test: `the_missing_parents_of_a_folder_of_model_work_are_made_private`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
 ## The security review of the browser session of a hosted hub and of the trust in the gateway (task HM-T32, 2026-11-21)
 
 Task HM-T32 of [hosted-mode.md](proposals/hosted-mode.md) is the review that HMD-067 asks for before a person other than the operator uses `hub.anima.ing`. This part of it is the side of this repository: the browser session of a hosted hub (`hostedBrowserTicket`, `hostedBrowserSignIn`, the cookie, its life, the sign-out), the web client behind the gateway (HM-T27, HM-T30, HM-T31), Connect GitHub on a hosted hub (HM-T29), and what the hub trusts from the gateway: the public origin, the guard of the host name, the check of `Origin`, the cookies, CORS, the security headers and the paths below `/_door/`. It also looks at the move to one address for each hub (`https://<hub id>.hub.anima.ing`, HMD-068, HMD-069). The review read the code on `dev` of 2026-11-21 (`crates/hub/src/fleet/link/graphql/hosted.rs`, `crates/hub/src/fleet/access/`, `crates/hub/src/lib.rs`, `crates/hub/src/config.rs`, `crates/hub/src/web_client/`, `crates/hub/src/engine/sources/registration*`, `crates/hub/src/fleet/sessions/`, `apps/client/src/lib/hub/gateway/`, `apps/client/src/lib/hosted/`). It read the gateway of the private repository to know what the hub may assume; the findings of the gateway are recorded there, not here. It ran the hub tests of `crates/hub/tests/it/link/hosted_origin.rs`; it contacted no server. An agent did it, and a second agent read the same code with only the list of the flows; this list holds the findings of both. "Severity" is the word of the reviewers.

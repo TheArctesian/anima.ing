@@ -21,8 +21,18 @@ use anima_daemon::units::step::{STEP_DEADLINE, run_step};
 use anima_daemon::units::{self, plan::Target};
 use zeroize::Zeroizing;
 
-#[tokio::main]
-async fn main() -> ExitCode {
+fn main() -> ExitCode {
+    // The launcher of a model runtime comes first, before any runtime or thread.
+    #[cfg(target_os = "linux")]
+    anima_daemon::model::tree::linux::dispatch_if_launch();
+    // The same runtime as `Builder::new_multi_thread().enable_all()`.
+    match tokio::runtime::Runtime::new() {
+        Ok(runtime) => runtime.block_on(daemon()),
+        Err(error) => failure(&error),
+    }
+}
+
+async fn daemon() -> ExitCode {
     #[cfg(windows)]
     let _ = anima_windows::console::attach_parent();
     start_log();

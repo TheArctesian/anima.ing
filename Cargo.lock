@@ -159,6 +159,7 @@ dependencies = [
  "objc2-foundation",
  "objc2-web-kit",
  "open",
+ "power",
  "rcgen",
  "reqwest 0.12.28",
  "rustix",
@@ -256,6 +257,7 @@ dependencies = [
  "bytes",
  "chrono",
  "daemon-core",
+ "flate2",
  "getrandom 0.4.3",
  "http-body-util",
  "hyper",
@@ -268,7 +270,9 @@ dependencies = [
  "rustix",
  "serde",
  "serde_json",
+ "sha2 0.11.1",
  "sysinfo",
+ "tar",
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
@@ -277,6 +281,7 @@ dependencies = [
  "uds_windows",
  "uuid",
  "zeroize",
+ "zip",
 ]
 
 [[package]]
@@ -1920,11 +1925,13 @@ dependencies = [
  "base64 0.23.1",
  "chrono",
  "hmac 0.13.0",
+ "power",
  "proptest",
  "serde",
  "serde_json",
  "sha2 0.11.1",
  "static_assertions",
+ "thiserror 2.0.21",
  "uuid",
  "zeroize",
 ]
@@ -6012,6 +6019,10 @@ checksum = "d83eb9bc6d8e5cf568e7a1101d60ee05e81ed50ea106026f3d18deeb046d7661"
 dependencies = [
  "zerovec",
 ]
+
+[[package]]
+name = "power"
+version = "0.1.0"
 
 [[package]]
 name = "powerfmt"
@@ -10789,6 +10800,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eaeb7f16d2605b49aef586996ded29e65642fab7259a3077e537351df6d80426"
 dependencies = [
  "crc32fast",
+ "flate2",
  "getrandom 0.4.3",
  "indexmap 2.14.2",
  "libc",

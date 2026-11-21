@@ -8,8 +8,10 @@ mod capabilities;
 mod catalogue_entries;
 mod change;
 mod compose_file;
+mod compute_policy;
 mod containers;
 mod metrics;
+pub mod models;
 mod read;
 
 use rmcp::model::JsonObject;
@@ -26,6 +28,8 @@ pub enum DeviceTool {
     Get,
     Metrics,
     CapabilityList,
+    ComputePolicyList,
+    ComputePolicySet,
     AgentUsage,
     AgentSessions,
     ContainerList,
@@ -45,12 +49,13 @@ pub enum DeviceTool {
 }
 
 impl DeviceTool {
-    pub const ALL: [Self; 21] = [
+    pub const ALL: [Self; 23] = [
         Self::FleetOverview,
         Self::Search,
         Self::Get,
         Self::Metrics,
         Self::CapabilityList,
+        Self::ComputePolicyList,
         Self::AgentUsage,
         Self::AgentSessions,
         Self::ContainerList,
@@ -67,6 +72,7 @@ impl DeviceTool {
         Self::Wake,
         Self::Update,
         Self::Delete,
+        Self::ComputePolicySet,
     ];
 
     #[must_use]
@@ -74,6 +80,7 @@ impl DeviceTool {
         match self {
             Self::Metrics => metrics::definition(),
             Self::CapabilityList => capabilities::definition(),
+            Self::ComputePolicyList | Self::ComputePolicySet => compute_policy::definition_of(self),
             Self::AgentUsage => agent_usage::definition(),
             Self::AgentSessions => agent_sessions::definition(),
             Self::ContainerList
@@ -100,6 +107,9 @@ impl DeviceTool {
             Self::Get => read::get(hub, arguments).await,
             Self::Metrics => metrics::metrics(hub, arguments).await,
             Self::CapabilityList => capabilities::list(hub, arguments).await,
+            Self::ComputePolicyList | Self::ComputePolicySet => {
+                compute_policy::call(self, hub, arguments).await
+            }
             Self::AgentUsage | Self::AgentSessions => self.agents(hub, arguments).await,
             Self::ContainerList
             | Self::ContainerStorage

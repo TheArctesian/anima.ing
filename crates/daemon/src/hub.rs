@@ -18,6 +18,7 @@ pub mod peer;
 mod unix;
 #[cfg(windows)]
 mod windows;
+pub mod work;
 
 use std::path::Path;
 use std::time::Duration;
