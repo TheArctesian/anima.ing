@@ -180,6 +180,13 @@ describe("the gates workflow: a push to dev", () => {
     expect(base.run).toContain("pipefail");
   });
 
+  test("a push to dev waits for the run of dev before it; each other branch stops its older run", () => {
+    const concurrency = (Bun.YAML.parse(RAW) as { concurrency: { group: string; "cancel-in-progress": string } }).concurrency;
+    expect(concurrency.group).toBe("gates-${{ github.workflow }}-${{ inputs.ref || github.ref }}");
+    // The same ref as the group, both of its spellings: the push of dev, and a call or dispatch that names it.
+    expect(concurrency["cancel-in-progress"]).toBe("${{ (inputs.ref || github.ref) != 'refs/heads/dev' && (inputs.ref || github.ref) != 'dev' }}");
+  });
+
   test("windows does not run when only the quality gates are needed", () => {
     expect(workflow.jobs["windows"]?.if).toContain("needs.base.outputs.documents_only != 'true'");
   });

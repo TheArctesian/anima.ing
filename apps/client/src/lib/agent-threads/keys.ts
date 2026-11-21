@@ -1,4 +1,4 @@
-/** The keys of the page Threads (THR-016), as a pure rule: a key and where the focus is give one action or none. */
+/** The keys of the page Code (THR-016), as a pure rule: a key and where the focus is give one action or none. */
 
 export type KeyAction =
   | { readonly kind: 'move'; readonly by: 1 | -1 }

@@ -2,6 +2,8 @@
 //! K8 Section 2). The record is the `Renewed` body with the hub origin added, so the expiry and
 //! the hub are stored with the token.
 
+use std::time::Duration;
+
 use chrono::{DateTime, TimeDelta, Utc};
 use daemon_core::wire::{DaemonToken, Renewed};
 use serde::{Deserialize, Serialize};
@@ -9,6 +11,7 @@ use zeroize::Zeroizing;
 
 use crate::config::home::Home;
 use crate::config::origin::Origin;
+use crate::keychain_wait;
 
 #[cfg(not(target_os = "macos"))]
 mod file;
@@ -65,8 +68,8 @@ pub enum TokenStoreError {
     #[cfg(target_os = "macos")]
     #[error("the Keychain: {0}")]
     Keychain(String),
-    /// macOS asks the person to allow this program to read the token, and nobody answered in
-    /// time (R-322). Only the Keychain store gives it.
+    /// macOS asks the person to allow this program to read, write or delete the token, and
+    /// nobody answered in time (R-322). Only the Keychain store gives it.
     #[error(
         "this computer's daemon needs you to allow it in the Keychain: click Always Allow in the window of macOS"
     )]
@@ -74,8 +77,12 @@ pub enum TokenStoreError {
 }
 
 /// The daemon's token store for this platform.
+#[derive(Clone)]
 pub struct TokenStore {
     backend: Backend,
+    /// How long a call of the Keychain waits for the person at most (R-322); the file store
+    /// never waits.
+    deadline: Duration,
 }
 
 impl Credential {
@@ -130,10 +137,23 @@ impl Credential {
 }
 
 impl TokenStore {
+    /// The store of the daemon in `home`, whose Keychain calls wait
+    /// [`keychain_wait::DEADLINE`] at most.
     #[must_use]
     pub fn open(home: &Home) -> Self {
         Self {
             backend: Backend::open(home),
+            deadline: keychain_wait::DEADLINE,
+        }
+    }
+
+    /// The same store, whose Keychain calls wait `deadline` at most: longer for a person at
+    /// the terminal, who needs time to answer the window of macOS.
+    #[must_use]
+    pub fn waiting(&self, deadline: Duration) -> Self {
+        Self {
+            backend: self.backend.clone(),
+            deadline,
         }
     }
 
@@ -142,7 +162,7 @@ impl TokenStore {
     /// # Errors
     /// [`TokenStoreError`] when the store cannot be read, is exposed, or does not parse.
     pub fn load(&self) -> Result<Option<Credential>, TokenStoreError> {
-        let Some(bytes) = self.backend.read()? else {
+        let Some(bytes) = self.backend.read(self.deadline)? else {
             return Ok(None);
         };
         Credential::from_record(&bytes).map(Some)
@@ -171,7 +191,7 @@ impl TokenStore {
     /// # Errors
     /// [`TokenStoreError`] when it cannot be deleted.
     pub fn forget(&self) -> Result<(), TokenStoreError> {
-        self.backend.delete()
+        self.backend.delete(self.deadline)
     }
 
     fn write(&self, credential: &Credential, fresh: bool) -> Result<(), TokenStoreError> {
@@ -182,7 +202,7 @@ impl TokenStore {
             expires_at: credential.expires_at,
             hub: credential.hub.clone(),
         };
-        self.backend.write(&copy.render(), fresh)
+        self.backend.write(&copy.render(), fresh, self.deadline)
     }
 }
 

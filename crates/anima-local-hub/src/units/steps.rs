@@ -19,9 +19,10 @@ pub struct Step {
     pub args: Vec<String>,
     /// A failure is not an error: the unit may not be loaded.
     pub may_fail: bool,
-    /// Run it once more after this pause when it fails. `launchctl bootstrap` right after
-    /// `bootout` can fail with an input/output error.
-    pub retry_after: Option<Duration>,
+    /// While a run fails, wait the next of these pauses and run it again; empty: one run.
+    /// `launchctl bootstrap` right after `bootout` answers an input/output error (5) for some
+    /// seconds while launchd still takes the old service out.
+    pub retries: &'static [Duration],
 }
 
 impl Step {
@@ -32,7 +33,7 @@ impl Step {
             program,
             args: args.iter().map(|&arg| arg.to_owned()).collect(),
             may_fail: false,
-            retry_after: None,
+            retries: &[],
         }
     }
 
@@ -51,8 +52,8 @@ impl Step {
         self
     }
 
-    pub(super) const fn retried_after(mut self, pause: Duration) -> Self {
-        self.retry_after = Some(pause);
+    pub(super) const fn retried_after(mut self, pauses: &'static [Duration]) -> Self {
+        self.retries = pauses;
         self
     }
 }
@@ -62,14 +63,15 @@ impl Step {
 /// # Errors
 /// When the program cannot be run, or does not end in `limit` (it is killed).
 pub fn run_step(step: &Step, env: &[(&'static str, String)], limit: Duration) -> io::Result<bool> {
-    if run_once(step, env, limit)? {
-        return Ok(true);
+    let mut ok = run_once(step, env, limit)?;
+    for pause in step.retries {
+        if ok {
+            break;
+        }
+        thread::sleep(*pause);
+        ok = run_once(step, env, limit)?;
     }
-    let Some(pause) = step.retry_after else {
-        return Ok(false);
-    };
-    thread::sleep(pause);
-    run_once(step, env, limit)
+    Ok(ok)
 }
 
 fn run_once(step: &Step, env: &[(&'static str, String)], limit: Duration) -> io::Result<bool> {
@@ -140,18 +142,39 @@ mod tests {
     }
 
     #[test]
-    fn a_step_with_a_retry_runs_once_more_after_a_failure() {
+    fn a_step_with_retries_runs_again_until_it_succeeds_and_then_stops() {
+        const SHORT: Duration = Duration::from_millis(10);
         let folder = tempfile::tempdir().unwrap();
-        let mark = folder.path().join("ran-once");
-        // Fails the first time, succeeds the second.
-        let script = format!("[ -f '{0}' ] || {{ touch '{0}'; exit 1; }}", mark.display());
+        let count = folder.path().join("count");
+        // Fails twice, as launchd did after a bootout on 2026-11-21, then succeeds.
+        let script = format!(
+            "echo run >> '{0}'; [ $(wc -l < '{0}') -ge 3 ] || exit 5",
+            count.display()
+        );
         let step = Step::new("/bin/sh", &["-c", &script]);
 
         assert!(!run_step(&step, &[], SOON).unwrap());
-        std::fs::remove_file(&mark).unwrap();
-        let retried = step.retried_after(Duration::from_millis(10));
+        std::fs::remove_file(&count).unwrap();
+        assert!(run_step(&step.retried_after(&[SHORT; 4]), &[], SOON).unwrap());
+        let runs = std::fs::read_to_string(&count).unwrap();
+        assert_eq!(
+            runs.lines().count(),
+            3,
+            "no run after the one that succeeded"
+        );
+    }
 
-        assert!(run_step(&retried, &[], SOON).unwrap());
+    #[test]
+    fn a_step_that_always_fails_runs_once_more_per_pause() {
+        const SHORT: Duration = Duration::from_millis(10);
+        let folder = tempfile::tempdir().unwrap();
+        let count = folder.path().join("count");
+        let script = format!("echo run >> '{0}'; exit 5", count.display());
+        let step = Step::new("/bin/sh", &["-c", &script]).retried_after(&[SHORT; 2]);
+
+        assert!(!run_step(&step, &[], SOON).unwrap());
+        let runs = std::fs::read_to_string(&count).unwrap();
+        assert_eq!(runs.lines().count(), 3);
     }
 
     #[test]

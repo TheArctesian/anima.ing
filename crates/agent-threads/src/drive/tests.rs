@@ -9,6 +9,7 @@ mod account;
 mod claude;
 mod codex;
 mod launch;
+mod turn_facts;
 
 const CLAUDE_FULL: &str = include_str!("tests/fixtures/claude-full-access.jsonl");
 const CLAUDE_ASK: &str = include_str!("tests/fixtures/claude-ask.jsonl");

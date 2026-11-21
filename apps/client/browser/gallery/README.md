@@ -63,6 +63,19 @@ the same deny-all proxy as the browser tests; nothing reaches a network.
 - **Update banner**: desktop only.
 - **Renew key confirmation**: the broker answer is a placeholder, so the dialog shows nothing the picture 49 does not.
 
+## The page Code
+
+Only the desktop application shows the page Code, once named Threads (THR-011), so `threads/threads.gallery.ts` stands in for the desktop
+shell (`threads/desktop-shell.ts`): it answers the commands of the shell with the made-up threads of `threads/scenario.ts`,
+one in each state that the person meets. It reaches no runner, session file or key store. It runs only when asked:
+
+```sh
+bun run --cwd apps/client build
+GALLERY_THREADS=1 GALLERY_WIDTHS=800,1440 bun run --cwd apps/client gallery threads
+```
+
+Pictures go to `apps/client/gallery-shots/threads/<theme>-<width>/`.
+
 ## The pictures of the Extensions page
 
 Each built extension shows a picture of its own page in its tile (OD-EXT-NEW-pictures). `pictures/extensions.gallery.ts` makes them from

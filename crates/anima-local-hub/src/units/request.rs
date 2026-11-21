@@ -12,8 +12,17 @@ use super::unit_file::{self, LABEL, Launch, SYSTEMD_UNIT};
 use crate::Folders;
 use crate::members::{Carried, LOCAL_HUB};
 
-/// `launchctl bootstrap` right after `bootout` can fail once.
-const BOOTSTRAP_RETRY: Duration = Duration::from_secs(1);
+/// The pauses before each further try of `launchctl bootstrap`: right after `bootout` launchd
+/// answers an input/output error (5) for some seconds while it still takes the old service out
+/// (seen twice in a row for the daemon on 2026-11-21). Six tries over 15 s in all, as the daemon's
+/// own install.
+const BOOTSTRAP_RETRIES: &[Duration] = &[
+    Duration::from_secs(1),
+    Duration::from_secs(2),
+    Duration::from_secs(3),
+    Duration::from_secs(4),
+    Duration::from_secs(5),
+];
 
 /// Whose unit, and for which hub.
 #[derive(Debug, Clone)]
@@ -74,7 +83,7 @@ impl Request<'_> {
                     &format!("gui/{}", self.uid),
                     &file.to_string_lossy(),
                 ])
-                .retried_after(BOOTSTRAP_RETRY),
+                .retried_after(BOOTSTRAP_RETRIES),
             ],
             #[cfg(windows)]
             Platform::Windows => vec![

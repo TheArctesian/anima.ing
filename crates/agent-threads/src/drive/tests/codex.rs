@@ -136,6 +136,7 @@ fn each_codex_line_the_runner_can_write_names_a_method_of_the_closed_list() {
         CodexInput::turn_steer(6, turn, "also"),
         CodexInput::turn_interrupt(7, turn),
         CodexInput::account_read(8),
+        CodexInput::model_list(9),
     ];
     let names: Vec<&str> = CodexMethod::ALL
         .iter()

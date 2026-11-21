@@ -51,6 +51,14 @@ describe('the state of a thread from its session file', () => {
     expect(needsYouCount(rows, NOW, NONE)).toBe(3);
   });
 
+  it('TH97: a program that starts is "Starting" in the list, as in its header, and is in the group Working', () => {
+    // A driven thread, not a file: its row comes from the runner (live/rows.ts).
+    const starting: ThreadRow = { ...row('new', 'open', 5), tail: 'starting' };
+    expect(threadState(starting, NOW, NONE)).toBe('starting');
+    const entries = orderedThreads([starting], NOW, NONE).map((entry) => (entry.kind === 'group' ? entry.title : entry.key));
+    expect(entries).toEqual(['Working', 'new']);
+  });
+
   it('THR-056: the folded group Earlier keeps its title and its count, and none of its threads', () => {
     const rows = [row('work', 'open', 10), row('old', 'turn_ended', 3 * 24 * 3600), row('turn', 'turn_ended', 60)];
     const entries = orderedThreads(rows, NOW, NONE, { earlierOpen: false, chosen: null }).map((entry) => (entry.kind === 'group' ? `${entry.title} ${String(entry.count)}` : entry.key));

@@ -42,6 +42,8 @@
   const view = $derived(store.view);
   /** No daemon sent counts, whatever the choices: the whole page is the empty state. */
   const noDaemon = $derived(view !== null && view.everyDevice.length === 0);
+  /** The devices whose daemon reads no sessions: an account card says so, not 0 % (AIS-024). */
+  const notCounted = $derived(new Set((view?.everyDevice ?? []).filter((each) => each.state !== 'READING').map((each) => each.device.id)));
 
   /** The program and model that limit the chart: a choice of this page only, since the hub's filter has no model. */
   let picked = $state<Picked | null>(null);
@@ -140,7 +142,7 @@
                 onPick={pick}
               />
             {/if}
-            <AccountList accounts={view.accounts} shares={view.shares} count={query.count} now={minute} />
+            <AccountList accounts={view.accounts} shares={view.shares} count={query.count} now={minute} notCounted={notCounted} />
             <ShareTable
               label="By device"
               note="only devices whose daemon reports; counts only, no text of a session leaves a device"

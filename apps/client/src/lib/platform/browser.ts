@@ -21,6 +21,7 @@ export const browserCapabilities: Capabilities = {
   accountSession: false,
   runnerReport: false,
   overlayTitleBar: false,
+  framelessWindow: false,
   recentCopy: false,
 };
 

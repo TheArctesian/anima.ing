@@ -39,6 +39,7 @@
   import { applyTypefaces, storedTypefaces } from '$lib/typeface/typeface';
   import { provideDesktopUpdates } from '$lib/updates/desktop.svelte';
   import UpdateBanner from '$lib/updates/UpdateBanner.svelte';
+  import WindowStrip from '$lib/code/shell/WindowStrip.svelte';
 
   const { children }: { children: Snippet } = $props();
 
@@ -49,6 +50,7 @@
   applyMotion(document.documentElement, storedMotion(localStorage));
   // On a Mac the window draws under its title bar; the bar keeps room for the window buttons.
   if (capabilities().overlayTitleBar) document.documentElement.dataset['titlebar'] = 'overlay';
+  if (capabilities().framelessWindow) document.documentElement.dataset['titlebar'] = 'frameless';
   if (isAndroid(navigator)) document.documentElement.dataset['os'] = 'android';
   $effect(() => followVisualTop(document.documentElement, window.visualViewport));
   // The bar shows icons only below the compact breakpoint or when the operator collapses it; set before the first
@@ -198,6 +200,7 @@
   <!-- Before sign-in the window shows the page alone: no bar, no sessions, no hub status (NAV-009). -->
   <div class="bare">
     <div class="drag" data-tauri-drag-region></div>
+    <WindowStrip bare />
     <main>{@render children()}</main>
   </div>
 {:else if shell !== null}
@@ -219,6 +222,7 @@
     />
     <!-- On a Mac the strip above the page moves the window, as the title bar it replaces did. -->
     <div class="drag" data-tauri-drag-region></div>
+    <WindowStrip />
     <main data-shifts-with-banner>
       <SessionTabs />
       <div class="stage">
@@ -334,7 +338,7 @@
 
   /* Below the compact breakpoint the unreachable strip takes the top of the window; the page starts below it. */
   :global(:root[data-nav='icons'][data-hub-banner]) main {
-    padding-block-start: calc(var(--space-6) + var(--nav-banner-block-size));
+    padding-block-start: calc(var(--space-6) + var(--nav-banner-block-size) + var(--titlebar-block-size));
   }
 
   /* One column that may shrink below its content, so neither the pages nor a session widen the document (UI-009). */
