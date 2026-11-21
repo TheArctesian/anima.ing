@@ -40,6 +40,20 @@ fn salt_text() -> String {
     base64::engine::general_purpose::STANDARD.encode(SALT)
 }
 
+/// A daemon whose setting `sendAccounts` is off reports no accounts: its batches carry no
+/// accounts member at all, so the hub neither gets keys nor sends its salt.
+#[test]
+fn ais_022_with_no_accounts_reported_a_batch_has_no_accounts_member() {
+    let mut backlog = UsageBacklog::default();
+    backlog.take(report(None));
+    let sent = backlog
+        .outgoing()
+        .expect("the first batch announces the state");
+    assert_eq!(sent.accounts, None);
+    let text = serde_json::to_string(&sent).expect("json");
+    assert!(!text.contains("accounts"), "{text}");
+}
+
 #[test]
 fn ais_022_with_no_salt_an_empty_list_asks_for_it_then_the_key_goes() {
     let mut backlog = UsageBacklog::default();

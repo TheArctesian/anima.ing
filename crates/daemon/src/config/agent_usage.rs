@@ -2,8 +2,11 @@
 //! (AIS-008, AIS-023, K8 Section 4). The operator writes it; the daemon only reads it, at start.
 //!
 //! ```json
-//! { "off": true, "excludedFolders": ["/Users/me/private"], "excludedRepositories": ["github.com/me/secret"] }
+//! { "off": true, "excludedFolders": ["/Users/me/private"], "excludedRepositories": ["github.com/me/secret"], "sendAccounts": true }
 //! ```
+//!
+//! `sendAccounts` is off by default: the accounts of the programs leave the machine, as keys,
+//! only when the operator turns it on (R-313 is held until the operator rules on THR-051).
 
 use std::io;
 use std::path::{Path, PathBuf};
@@ -33,6 +36,9 @@ pub struct UsageSettings {
     pub excluded_repositories: Vec<String>,
     /// Folders compare without letter case, as the file system of macOS does.
     pub fold_case: bool,
+    /// The key, the plan and the limit windows of each program's account are sent (AIS-022,
+    /// R-313). Off unless the operator writes `"sendAccounts": true`.
+    pub send_accounts: bool,
 }
 
 #[derive(Deserialize)]
@@ -44,6 +50,8 @@ struct Stored {
     excluded_folders: Vec<String>,
     #[serde(default)]
     excluded_repositories: Vec<String>,
+    #[serde(default)]
+    send_accounts: bool,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -51,7 +59,7 @@ pub enum SettingsError {
     #[error("{SETTINGS_FILE} cannot be read: {0}")]
     Io(#[from] io::Error),
     #[error(
-        "{SETTINGS_FILE} is not JSON of its form (members off, excludedFolders, excludedRepositories)"
+        "{SETTINGS_FILE} is not JSON of its form (members off, excludedFolders, excludedRepositories, sendAccounts)"
     )]
     Unreadable,
     #[error("{SETTINGS_FILE} names a folder that is not an absolute path")]
@@ -124,6 +132,7 @@ impl UsageSettings {
             excluded_folders,
             excluded_repositories: stored.excluded_repositories,
             fold_case: false,
+            send_accounts: stored.send_accounts,
         })
     }
 
@@ -207,6 +216,14 @@ mod tests {
             UsageSettings::default()
         );
         assert!(UsageSettings::parse(br#"{"off":true}"#).expect("off").off);
+    }
+
+    #[test]
+    fn ais_022_the_accounts_are_sent_only_when_the_operator_turns_it_on() {
+        assert!(!UsageSettings::default().send_accounts);
+        assert!(!UsageSettings::parse(b"{}").expect("empty").send_accounts);
+        let on = UsageSettings::parse(br#"{"sendAccounts":true}"#).expect("on");
+        assert!(on.send_accounts);
     }
 
     #[test]

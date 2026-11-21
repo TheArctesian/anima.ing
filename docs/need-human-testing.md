@@ -2230,12 +2230,14 @@ AU-10 (branch `ui/account-limits`). Every 15 minutes the usage task of the daemo
 computer, on its own socket, for the account of each program (`crates/daemon/src/runtime/agent_usage/runner.rs`). It
 makes the key of an account from the vendor's identifier with the account salt of the hub, and sends the key, the
 plan and the limit windows only (`crates/daemon/src/push/accounts.rs`). The salt is in memory only: after a start the
-first batch asks for it with an empty list. The tests prove the key, the salt, that no identifier or name is in a
+first batch asks for it with an empty list. All of this is off by default: the daemon asks the runner only when
+`agent-usage.json` in its folder says `"sendAccounts": true` (R-313 is held until the operator rules). The tests prove the key, the salt, that no identifier or name is in a
 batch, and the socket check, with a stand-in runner and a stand-in hub. The tests did not cover: a real Codex, a real
 runner, two real computers, a real hub. Claude Code gives no identifier of its account, so it sends no account.
 
-1. On two computers of one hub whose daemons read sessions (HT-026), sign in to Codex with the same account. On each,
-   start a Codex thread through Anima: `anima agents start --program codex --folder <an absolute folder> "hello"`.
+1. On two computers of one hub whose daemons read sessions (HT-026), write `{"sendAccounts": true}` in
+   `agent-usage.json` in the folder of the daemon (with the members that the file has already) and restart the daemon.
+   Sign in to Codex with the same account. On each, start a Codex thread through Anima: `anima agents start --program codex --folder <an absolute folder> "hello"`.
    Expected: `anima agents accounts` on each computer shows the account, the plan and the limits.
 2. Wait 20 minutes. Open "Agent usage".
    Expected: under "By account", one card "Codex" with the plan, the bars of the limit windows, and both computers
@@ -2244,6 +2246,9 @@ runner, two real computers, a real hub. Claude Code gives no identifier of its a
    Expected: one line "Account <8 digits> (Codex, <plan>) on <computer 1>, <computer 2>: ..." under the table.
 4. On one computer, sign in to Codex with a different account and start a thread again; wait 20 minutes.
    Expected: two Codex cards, each with one computer.
+5. On both computers, remove `sendAccounts` from `agent-usage.json` and restart the daemon; wait 20 minutes.
+   Expected: no new report of an account comes from these computers; `anima agents usage` shows the last report time
+   of each card and it does not move.
 
 ### HT-111: the daemon sends its token only to the signed link at its socket (K8 Section 1, HMD-054)
 

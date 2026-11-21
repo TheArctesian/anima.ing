@@ -26,7 +26,7 @@
     <span class="note">one limit for each account, shared by its devices; the name of the account stays on each device</span>
   </div>
   {#if accounts.length === 0}
-    <p class="none">No account to show. The devices do not send their accounts yet.</p>
+    <p class="none">No account to show. A device sends the accounts of its programs only when its agent usage settings turn on sendAccounts.</p>
   {:else}
   <ul class="cards">
     {#each accounts as account (account.key)}

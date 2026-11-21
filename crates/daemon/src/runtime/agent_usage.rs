@@ -1,6 +1,7 @@
 //! The task that reads the session files of the AI agent programs at start and every 15
 //! minutes and hands the changed session days to the pusher (AIS-018, AIS-019, AIS-024), with
-//! the accounts that the thread runner of this computer has (AIS-022, R-313).
+//! the accounts that the thread runner of this computer has, only when the operator's setting
+//! `sendAccounts` is on (AIS-022, R-313 held: off by default).
 
 #[cfg(unix)]
 mod runner;
@@ -87,7 +88,11 @@ pub(super) async fn count(
         };
         sessions = back;
         #[cfg(unix)]
-        let accounts = runner::accounts(|name| std::env::var(name).ok()).await;
+        let accounts = if sessions.sends_accounts() {
+            runner::accounts(|name| std::env::var(name).ok()).await
+        } else {
+            None
+        };
         #[cfg(not(unix))]
         let accounts = None;
         let report = UsageReport {
@@ -143,5 +148,18 @@ mod tests {
             None,
         );
         assert!(matches!(excluded, Counting::Reading(_)));
+    }
+
+    /// R-313 is held until the operator rules on THR-051: a daemon asks the runner for the
+    /// accounts only when its settings say `sendAccounts`.
+    #[test]
+    fn ais_022_a_default_daemon_does_not_send_accounts() {
+        let sends = |settings| match decided(settings, None) {
+            Counting::Reading(sessions) => sessions.sends_accounts(),
+            Counting::Silent(_) => panic!("reading"),
+        };
+        assert!(!sends(None), "no settings file");
+        assert!(!sends(Some("{}")), "an empty settings file");
+        assert!(sends(Some(r#"{"sendAccounts":true}"#)), "turned on");
     }
 }
