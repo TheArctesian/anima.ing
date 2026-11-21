@@ -1,7 +1,7 @@
 //! The agent usage waiting for the hub (AIS-019, K8 Section 4): the state until a batch with it
 //! is accepted, and the changed session days, at most 16 to a batch, each until a batch with it
 //! is accepted or refused as `MALFORMED`. A newer count of a waiting day replaces it. The
-//! accounts go when they changed since the last accepted batch, as keys (AIS-022, R-313).
+//! accounts go when they changed since the last accepted batch, as keys with their addresses (AIS-022, THR-149).
 
 use std::collections::BTreeMap;
 

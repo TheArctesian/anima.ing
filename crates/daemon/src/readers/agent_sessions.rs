@@ -82,7 +82,7 @@ impl AgentSessions {
         }
     }
 
-    /// Whether the operator's settings send the accounts of the programs (R-313, off by default).
+    /// Whether the operator's settings send the accounts of the programs (THR-149, on by default).
     #[must_use]
     pub const fn sends_accounts(&self) -> bool {
         self.settings.send_accounts

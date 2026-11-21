@@ -1,6 +1,7 @@
-//! The accounts of the AI agent programs, as keys only (R-313, AIS-022; K8 Section
-//! 4 `agentUsage.accounts`, Section 8.2 `accountSalt`): the newest report of each device and
-//! source, and the hub's account salt.
+//! The accounts of the AI agent programs (THR-149, AIS-022; K8 Section 4
+//! `agentUsage.accounts`, Section 8.2 `accountSalt`): the newest report of each device and
+//! source, and the hub's account salt. The address of an account is personal data: it is in no
+//! log line (its `Debug` shows no text) and goes with the row of its device.
 //!
 //! [`record`] stores a report in the transaction of its batch. [`salt`] gives the salt, made
 //! once. [`list`] reads the reports, and [`grouped`] puts the devices of one key under one
@@ -14,7 +15,7 @@ use std::collections::BTreeMap;
 
 use chrono::{DateTime, Utc};
 use daemon_core::agent_usage::Source;
-use daemon_core::agent_usage::account::{Account, Limit};
+use daemon_core::agent_usage::account::{Account, Address, Limit};
 use sqlx::{PgConnection, PgPool};
 
 use super::Error;
@@ -33,9 +34,11 @@ pub struct Reported {
 pub struct AccountGroup {
     pub key: String,
     pub source: Source,
+    /// The email address of the newest report.
+    pub address: Option<Address>,
     pub plan: Option<String>,
     pub limits: Vec<Limit>,
-    /// The time of the newest report, which gave the plan and the limits.
+    /// The time of the newest report, which gave the address, the plan and the limits.
     pub reported_at: DateTime<Utc>,
     /// The devices that use the account, in the order of their newest report first.
     pub devices: Vec<DeviceId>,
@@ -75,8 +78,8 @@ pub async fn list(db: &PgPool) -> Result<Vec<Reported>, Error> {
     store::read(db).await
 }
 
-/// The reports put under their keys: one group for each key, with the plan and the limits of its
-/// newest report, its devices newest first; the groups newest first.
+/// The reports put under their keys: one group for each key, with the address, the plan and the
+/// limits of its newest report, its devices newest first; the groups newest first.
 #[must_use]
 pub fn grouped(mut reports: Vec<Reported>) -> Vec<AccountGroup> {
     reports.sort_by_key(|one| std::cmp::Reverse(one.reported_at));
@@ -87,6 +90,7 @@ pub fn grouped(mut reports: Vec<Reported>) -> Vec<AccountGroup> {
             .or_insert_with(|| AccountGroup {
                 key: report.account.key.clone(),
                 source: report.account.source,
+                address: report.account.address.clone(),
                 plan: report.account.plan.clone(),
                 limits: report.account.limits.clone(),
                 reported_at: report.reported_at,

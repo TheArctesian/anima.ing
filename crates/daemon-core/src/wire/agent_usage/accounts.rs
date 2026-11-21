@@ -1,5 +1,5 @@
-//! The `accounts` member of `agentUsage` (K8 Section 4; AIS-022, R-313): the key, the
-//! plan and the limit windows of each account, and the hub's pure check of them.
+//! The `accounts` member of `agentUsage` (K8 Section 4; AIS-022, THR-149): the key, the
+//! address, the plan and the limit windows of each account, and the hub's pure check of them.
 
 use std::collections::BTreeSet;
 
@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::agent_usage::account::{
-    Account, Limit, MAX_ACCOUNTS, MAX_LIMITS, is_key, is_plan, is_window,
+    Account, Address, Limit, MAX_ACCOUNTS, MAX_LIMITS, is_key, is_plan, is_window,
 };
 use crate::agent_usage::{Source, is_word};
 
@@ -18,6 +18,9 @@ use crate::agent_usage::{Source, is_word};
 pub struct BatchAccount {
     pub source: String,
     pub key: String,
+    /// The email address of the account; a text that is not one makes the batch `MALFORMED`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub address: Option<Address>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub plan: Option<String>,
     #[serde(default)]
@@ -78,6 +81,7 @@ impl BatchAccount {
         Some(Account {
             source: Source::parse(&self.source)?,
             key: self.key,
+            address: self.address,
             plan: self.plan,
             limits: self
                 .limits
@@ -98,6 +102,7 @@ impl From<&Account> for BatchAccount {
         Self {
             source: account.source.as_str().to_owned(),
             key: account.key.clone(),
+            address: account.address.clone(),
             plan: account.plan.clone(),
             limits: account
                 .limits

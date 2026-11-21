@@ -1,12 +1,14 @@
-//! The accounts as a batch carries them (K8 Section 4 `agentUsage.accounts`; AIS-022 as R-313
+//! The accounts as a batch carries them (K8 Section 4 `agentUsage.accounts`; AIS-022 as THR-149
 //! changed it): for each program, the key made from the vendor's identifier with the account
-//! salt of the hub, the name of the plan and the limit windows. The identifier is read only to
-//! make the key; the name of the account is never read. Pure.
+//! salt of the hub, the email address, the name of the plan and the limit windows. The
+//! identifier is read only to make the key. The name of the account goes only when it is an
+//! address (Codex may give the name of a workspace instead). Pure.
 
 use base64::Engine as _;
 use chrono::DateTime;
 use daemon_core::agent_usage::account::{
-    Account, Limit, MAX_ACCOUNTS, MAX_LIMITS, SALT_BYTES, account_key, is_plan, is_window,
+    Account, Address, Limit, MAX_ACCOUNTS, MAX_LIMITS, SALT_BYTES, account_key, is_plan,
+    is_window,
 };
 use daemon_core::wire::BatchAccount;
 
@@ -43,6 +45,10 @@ pub fn outgoing(salt: Option<&[u8; SALT_BYTES]>, accounts: &[ProgramAccount]) ->
         let account = Account {
             source: one.source,
             key: account_key(salt, one.source, id.reveal()),
+            address: facts
+                .name
+                .as_ref()
+                .and_then(|name| Address::parse(name.reveal())),
             plan: facts.plan.clone().filter(|plan| is_plan(plan)),
             limits: facts
                 .limits

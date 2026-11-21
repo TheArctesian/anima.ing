@@ -163,3 +163,47 @@ async fn met_014_the_log_tells_a_panicked_sampler_from_one_that_returned() {
         returned_before + 1
     );
 }
+
+/// THR-149 point 7: at TRACE, the daemon sends the address of an account to the hub and writes
+/// it in no log line, through the ask for the salt, the batch with the account and a refusal.
+#[tokio::test]
+async fn thr_149_trace_logs_hold_no_address_of_an_account() {
+    use anima_daemon::sampling::agent_usage::{ProgramAccount, UsageReport};
+    use daemon_core::agent_usage::{Source, UsageState};
+
+    const ADDRESS: &str = "person-e4c1@example.com";
+    LazyLock::force(&LOG);
+    let hub = FakeHub::start().await;
+    let salt = r#"{"accountSalt":"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc="}"#;
+    hub.queue_push([
+        Reply::json(200, salt),
+        Reply::refuse(RefusalCode::Unavailable),
+        Reply::json(200, salt),
+    ]);
+    let mut rig = rig(&hub, 1, chrono::TimeDelta::days(10));
+    let facts = serde_json::from_value(serde_json::json!({
+        "id": "user-e4c1", "name": ADDRESS, "plan": "pro",
+        "limits": [{ "window": "300 min", "used_percent": 35, "resets_at": null, "reached": false }]
+    }))
+    .expect("facts");
+    rig.pusher.accept(Event::AgentUsage(UsageReport {
+        state: UsageState::Reading,
+        session_days: Vec::new(),
+        accounts: Some(vec![ProgramAccount {
+            source: Source::Codex,
+            facts,
+        }]),
+    }));
+    for point in points(1, 4) {
+        rig.pusher.accept(Event::Point(point));
+    }
+    for round in 0..4 {
+        rig.pusher.push_due(at(40 + round * 700)).await;
+    }
+    let sent = hub
+        .seen("push")
+        .iter()
+        .any(|seen| seen.body.to_string().contains(ADDRESS));
+    assert!(sent, "the address went to the hub");
+    assert!(!LOG.text().contains("person-e4c1"), "an address reached the log");
+}

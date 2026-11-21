@@ -5,8 +5,9 @@
 //! { "off": true, "excludedFolders": ["/Users/me/private"], "excludedRepositories": ["github.com/me/secret"], "sendAccounts": true }
 //! ```
 //!
-//! `sendAccounts` is off by default: the accounts of the programs leave the machine, as keys,
-//! only when the operator turns it on (R-313 is held until the operator rules on THR-051).
+//! `sendAccounts` is on by default, as T3 Code sends the account with no switch (THR-149): the
+//! account of each program goes to the hub, for the person's clients. `"sendAccounts": false`
+//! keeps it at the machine.
 
 use std::io;
 use std::path::{Path, PathBuf};
@@ -23,8 +24,8 @@ pub const SETTINGS_FILE: &str = "agent-usage.json";
 /// The most entries of each list.
 const MAX_ENTRIES: usize = 256;
 
-/// What the operator chose; the default reads every session.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+/// What the operator chose; the default reads every session and sends the accounts.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UsageSettings {
     /// No session file is read and no counts are sent.
     pub off: bool,
@@ -36,9 +37,21 @@ pub struct UsageSettings {
     pub excluded_repositories: Vec<String>,
     /// Folders compare without letter case, as the file system of macOS does.
     pub fold_case: bool,
-    /// The key, the plan and the limit windows of each program's account are sent (AIS-022,
-    /// R-313). Off unless the operator writes `"sendAccounts": true`.
+    /// The key, the address, the plan and the limit windows of each program's account are sent
+    /// (AIS-022, THR-149). On unless the operator writes `"sendAccounts": false`.
     pub send_accounts: bool,
+}
+
+impl Default for UsageSettings {
+    fn default() -> Self {
+        Self {
+            off: false,
+            excluded_folders: Vec::new(),
+            excluded_repositories: Vec::new(),
+            fold_case: false,
+            send_accounts: true,
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -50,8 +63,12 @@ struct Stored {
     excluded_folders: Vec<String>,
     #[serde(default)]
     excluded_repositories: Vec<String>,
-    #[serde(default)]
+    #[serde(default = "on")]
     send_accounts: bool,
+}
+
+const fn on() -> bool {
+    true
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -219,11 +236,13 @@ mod tests {
     }
 
     #[test]
-    fn ais_022_the_accounts_are_sent_only_when_the_operator_turns_it_on() {
-        assert!(!UsageSettings::default().send_accounts);
-        assert!(!UsageSettings::parse(b"{}").expect("empty").send_accounts);
+    fn thr_149_the_accounts_are_sent_unless_the_operator_turns_it_off() {
+        assert!(UsageSettings::default().send_accounts);
+        assert!(UsageSettings::parse(b"{}").expect("empty").send_accounts);
         let on = UsageSettings::parse(br#"{"sendAccounts":true}"#).expect("on");
         assert!(on.send_accounts);
+        let off = UsageSettings::parse(br#"{"sendAccounts":false}"#).expect("off");
+        assert!(!off.send_accounts);
     }
 
     #[test]

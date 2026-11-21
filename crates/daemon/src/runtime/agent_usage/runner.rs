@@ -1,7 +1,8 @@
 //! The accounts of the programs, asked of the thread runner of this computer on its own socket
 //! with the call `accounts`, as `anima agents accounts` asks them (THR-132). The socket must be
 //! a socket of this user that no one else may use (THR-128). The answer stays in memory: it is
-//! not logged, and only the key made from an identifier leaves the machine (AIS-022, R-313).
+//! not logged; the key made from an identifier and the address leave the machine, the
+//! identifier never (AIS-022, THR-149).
 
 use std::os::unix::fs::{FileTypeExt as _, MetadataExt as _, PermissionsExt as _};
 use std::path::Path;

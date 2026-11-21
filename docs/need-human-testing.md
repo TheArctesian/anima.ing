@@ -2411,32 +2411,39 @@ saw the part with the sessions of a real computer. It needs HT-026 first: a daem
 5. Make the window narrow (about 800 px).
    Expected: the table of sessions fits with no scroll to the side: "Recent" stands over the time, and the column
    Prompts is left out. No name is cut into pieces.
-### HT-NEW-accountkeys: one account on two computers is one card with one limit on the page Agent usage (AIS-022, R-313)
+### HT-NEW-accountkeys: one account on two computers is one card with one limit on the page Agent usage, and the hub has its address (AIS-022, THR-149)
 
-Built on the branch `agents/account-daemon` (AU-8 of extensions-plan.md), with AU-7, AU-9 (in `dev`) and the page of
-AU-10 (branch `ui/account-limits`). Every 15 minutes the usage task of the daemon asks the thread runner of this
-computer, on its own socket, for the account of each program (`crates/daemon/src/runtime/agent_usage/runner.rs`). It
-makes the key of an account from the vendor's identifier with the account salt of the hub, and sends the key, the
-plan and the limit windows only (`crates/daemon/src/push/accounts.rs`). The salt is in memory only: after a start the
-first batch asks for it with an empty list. All of this is off by default: the daemon asks the runner only when
-`agent-usage.json` in its folder says `"sendAccounts": true` (R-313 is held until the operator rules). The tests prove the key, the salt, that no identifier or name is in a
-batch, and the socket check, with a stand-in runner and a stand-in hub. The tests did not cover: a real Codex, a real
-runner, two real computers, a real hub. Claude Code gives no identifier of its account, so it sends no account.
+Built on the branch `agents/account-address` (AU-8 of extensions-plan.md), with AU-7, AU-9 (in `dev`) and the interim
+page of AU-10. Every 15 minutes the usage task of the daemon asks the thread runner of this computer, on its own socket,
+for the account of each program (`crates/daemon/src/runtime/agent_usage/runner.rs`). It makes the key of an account
+from the vendor's identifier with the account salt of the hub, and sends the key, the email address, the plan and the
+limit windows (`crates/daemon/src/push/accounts.rs`); never the identifier. Codex may give the name of a workspace in
+place of an address: that name is not sent. The salt is in memory only: after a start the first batch asks for it with
+an empty list. This is on by default, as in T3 Code (THR-149); `"sendAccounts": false` in `agent-usage.json` in the
+folder of the daemon turns it off. The hub keeps the address with the report of the device and deletes it with the
+device; it gives it in `agentUsage.accounts.address`. The tests prove the key, the salt, the address in the batch and
+at the hub, that no identifier is in a batch, that no address is in a log line of the daemon or of the hub, and the
+socket check, with a stand-in runner and a stand-in hub. The tests did not cover: a real Codex, a real runner, two
+real computers, a real hub. Claude Code gives no identifier of its account, so it sends no account. The interim page
+"By account" does not show the address; the Usage page of Code (C8 of [agent-threads.md](proposals/agent-threads.md))
+replaces it.
 
-1. On two computers of one hub whose daemons read sessions (HT-026), write `{"sendAccounts": true}` in
-   `agent-usage.json` in the folder of the daemon (with the members that the file has already) and restart the daemon.
+1. On two computers of one hub whose daemons read sessions (HT-026), restart the daemon with a build of this branch.
    Sign in to Codex with the same account. On each, start a Codex thread through Anima: `anima agents start --program codex --folder <an absolute folder> "hello"`.
    Expected: `anima agents accounts` on each computer shows the account, the plan and the limits.
 2. Wait 20 minutes. Open "Agent usage".
    Expected: under "By account", one card "Codex" with the plan, the bars of the limit windows, and both computers
-   with their shares. The card shows a short key, not the name or the address of the account.
+   with their shares.
 3. In a terminal, run `anima agents usage`.
    Expected: one line "Account <8 digits> (Codex, <plan>) on <computer 1>, <computer 2>: ..." under the table.
-4. On one computer, sign in to Codex with a different account and start a thread again; wait 20 minutes.
+4. Search the log of each daemon and the log of the hub for the address of your Codex account.
+   Expected: the address is in none of them.
+5. On one computer, sign in to Codex with a different account and start a thread again; wait 20 minutes.
    Expected: two Codex cards, each with one computer.
-5. On both computers, remove `sendAccounts` from `agent-usage.json` and restart the daemon; wait 20 minutes.
-   Expected: no new report of an account comes from these computers; `anima agents usage` shows the last report time
-   of each card and it does not move.
+6. Delete one of the two computers from the hub (Devices). On the other, write `{"sendAccounts": false}` in
+   `agent-usage.json` (with the members that the file has already) and restart the daemon; wait 20 minutes.
+   Expected: the card of the deleted computer is gone; no new report comes from the other computer, and
+   `anima agents usage` shows a report time that does not move.
 
 ### HT-111: the daemon sends its token only to the signed link at its socket (K8 Section 1, HMD-054)
 

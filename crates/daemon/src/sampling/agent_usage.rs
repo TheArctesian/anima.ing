@@ -18,8 +18,8 @@ pub struct UsageReport {
     pub accounts: Option<Vec<ProgramAccount>>,
 }
 
-/// The account of one program of this computer. Its identifier and name stay at the machine:
-/// only the key made from the identifier leaves it (AIS-022 as R-313 changed it).
+/// The account of one program of this computer. Its identifier stays at the machine: the key
+/// made from it leaves, with the name when that is an address (AIS-022 as THR-149 changed it).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProgramAccount {
     pub source: Source,

@@ -1,5 +1,5 @@
-//! The accounts of a batch (AIS-022 as R-313 changed it): only a key, a plan and limit windows
-//! leave the machine, never the identifier or the name of an account.
+//! The accounts of a batch (AIS-022 as THR-149 changed it): a key, the address, a plan and
+//! limit windows leave the machine, never the identifier of an account.
 
 use agent_threads::drive::AccountFacts;
 use base64::Engine as _;
@@ -40,7 +40,7 @@ fn salt_text() -> String {
     base64::engine::general_purpose::STANDARD.encode(SALT)
 }
 
-/// A daemon whose setting `sendAccounts` is off reports no accounts: its batches carry no
+/// A daemon whose setting `sendAccounts` is false reports no accounts: its batches carry no
 /// accounts member at all, so the hub neither gets keys nor sends its salt.
 #[test]
 fn ais_022_with_no_accounts_reported_a_batch_has_no_accounts_member() {
@@ -67,20 +67,52 @@ fn ais_022_with_no_salt_an_empty_list_asks_for_it_then_the_key_goes() {
     assert_eq!(accounts.len(), 1);
     assert_eq!(accounts[0].source, "codex");
     assert_eq!(accounts[0].key, account_key(&SALT, Source::Codex, ID));
+    assert_eq!(
+        accounts[0].address.as_ref().map(|one| one.reveal()),
+        Some(NAME)
+    );
     assert_eq!(accounts[0].plan.as_deref(), Some("pro"));
     assert_eq!(accounts[0].limits[0].window, "300 min");
     assert_eq!(accounts[0].limits[0].used_percent, Some(35));
 }
 
 #[test]
-fn ais_022_the_identifier_and_the_name_of_an_account_never_leave() {
+fn thr_149_the_address_leaves_and_the_identifier_never() {
     let mut backlog = UsageBacklog::default();
     backlog.take_salt(Some(&salt_text()));
     backlog.take(report(Some(vec![signed_in()])));
     let sent = backlog.outgoing().expect("a batch");
     let text = serde_json::to_string(&sent).expect("json");
+    assert!(text.contains(NAME), "{text}");
+    assert!(!text.contains(ID), "{text}");
+    assert!(!text.contains("user-"), "{text}");
+}
+
+/// Codex gives the name of a workspace when it has no address: that name stays at the machine.
+#[test]
+fn thr_149_a_name_that_is_not_an_address_never_leaves() {
+    let mut backlog = UsageBacklog::default();
+    backlog.take_salt(Some(&salt_text()));
+    let workspace = codex(json!({ "id": ID, "name": "Team 7f3a9c", "plan": "team", "limits": [] }));
+    backlog.take(report(Some(vec![workspace])));
+    let sent = backlog.outgoing().expect("a batch");
+    let accounts = sent.accounts.clone().expect("accounts");
+    assert_eq!(accounts[0].address, None);
+    let text = serde_json::to_string(&sent).expect("json");
     assert!(!text.contains("7f3a9c"), "{text}");
-    assert!(!text.contains("example.com"), "{text}");
+}
+
+/// THR-149 point 7: what the pusher could log of a batch, its `Debug`, holds no address.
+#[test]
+fn thr_149_the_debug_of_a_batch_holds_no_address() {
+    let mut backlog = UsageBacklog::default();
+    backlog.take_salt(Some(&salt_text()));
+    backlog.take(report(Some(vec![signed_in()])));
+    let sent = backlog.outgoing().expect("a batch");
+    let shown = format!("{sent:?} {:?}", signed_in());
+    assert!(shown.contains("Address(..)"), "{shown}");
+    assert!(!shown.contains("person-7f3a9c"), "{shown}");
+    assert!(!shown.contains(ID), "{shown}");
 }
 
 #[test]

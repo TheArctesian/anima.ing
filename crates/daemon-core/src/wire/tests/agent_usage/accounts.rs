@@ -1,16 +1,19 @@
-//! The `accounts` member of `agentUsage` (K8 Section 4; AIS-022, R-313): a key, a
-//! plan and limit windows only; held to fixed alphabets and sizes; absent keeps what the hub has.
+//! The `accounts` member of `agentUsage` (K8 Section 4; AIS-022, THR-149): a key, an
+//! address, a plan and limit windows only; held to fixed alphabets and sizes; absent keeps what
+//! the hub has; the address is in no `Debug`.
 
 use super::*;
-use crate::agent_usage::account::account_key;
+use crate::agent_usage::account::{Address, account_key};
 use crate::wire::{BatchAccount, BatchLimit};
 
 const KEY: &str = "3f9a0c55e1d24b7aa0b1c2d3e4f5061728394a5b6c7d8e9f00112233445566ff";
+const ADDRESS: &str = "person-5d1e@example.com";
 
 fn account(source: &str) -> BatchAccount {
     BatchAccount {
         source: source.to_owned(),
         key: KEY.to_owned(),
+        address: Address::parse(ADDRESS),
         plan: Some("Pro".to_owned()),
         limits: vec![BatchLimit {
             window: "five_hour".to_owned(),
@@ -40,6 +43,10 @@ fn ais_022_an_account_reaches_the_hub_with_its_key_plan_and_windows() {
     let accounts = usage.accounts.unwrap();
     assert_eq!(accounts[0].source, Source::Codex);
     assert_eq!(accounts[0].key, KEY);
+    assert_eq!(
+        accounts[0].address.as_ref().map(Address::reveal),
+        Some(ADDRESS)
+    );
     assert_eq!(accounts[0].plan.as_deref(), Some("Pro"));
     assert_eq!(accounts[0].limits[0].used_percent, Some(42));
 }
@@ -84,6 +91,51 @@ fn ais_022_an_account_that_could_name_a_person_is_refused() {
         "two of one source",
         with_accounts(vec![account("codex"), account("codex")]),
     );
+}
+
+/// An address that is not one does not decode, so its batch is `MALFORMED`.
+#[test]
+fn thr_149_an_address_that_is_not_one_does_not_decode() {
+    for bad in [
+        "no-at-sign",
+        "@example.com",
+        "ann@",
+        "a@b@c",
+        "ann smith@example.com",
+        "ann@example.com\n",
+        "<ann@example.com>",
+    ] {
+        let text = format!(r#"{{"source":"codex","key":"{KEY}","address":"{bad}"}}"#);
+        assert!(
+            serde_json::from_str::<BatchAccount>(&text).is_err(),
+            "{bad} is refused"
+        );
+    }
+    let long = format!("{}@example.com", "a".repeat(250));
+    assert!(Address::parse(&long).is_none(), "over 254 bytes");
+    let text = format!(r#"{{"source":"codex","key":"{KEY}","address":"{ADDRESS}"}}"#);
+    let one: BatchAccount = serde_json::from_str(&text).unwrap();
+    assert_eq!(one.address.as_ref().map(Address::reveal), Some(ADDRESS));
+    assert_eq!(serde_json::to_string(&one).unwrap(), text, "the same text back");
+}
+
+/// THR-149 point 7: a log line or an error made from an account cannot hold its address.
+#[test]
+fn thr_149_the_address_is_in_no_debug_and_no_decoding_error() {
+    let batch = account("codex");
+    let usage = checked(with_accounts(vec![batch.clone()]))
+        .unwrap()
+        .agent_usage
+        .unwrap();
+    let shown = format!("{batch:?} {usage:?}");
+    assert!(shown.contains("Address(..)"), "{shown}");
+    assert!(!shown.contains("person-5d1e"), "{shown}");
+    let bad = "person-5d1e@example.com>";
+    let text = format!(r#"{{"source":"codex","key":"{KEY}","address":"{bad}"}}"#);
+    let error = serde_json::from_str::<BatchAccount>(&text)
+        .unwrap_err()
+        .to_string();
+    assert!(!error.contains("person-5d1e"), "{error}");
 }
 
 #[test]
