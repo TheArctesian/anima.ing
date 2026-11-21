@@ -14,6 +14,10 @@ mod log;
 #[cfg(unix)]
 mod model_work;
 #[cfg(target_os = "linux")]
+mod old_origin;
+#[cfg(unix)]
+mod peer;
+#[cfg(target_os = "linux")]
 mod push;
 #[cfg(unix)]
 mod readers;
