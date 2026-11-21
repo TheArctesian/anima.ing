@@ -127,3 +127,16 @@ it('H38: a list that the hub does not give shows its reason and a retry', async 
   await openCatalogue();
   expect(document.body.textContent).toContain('The hub did not answer.');
 });
+
+it('H39: an empty catalogue says what the catalogue is and reads it again on Check again', async () => {
+  calls.entries = () => {
+    calls.entriesAsked += 1;
+    return Promise.resolve({ ok: true, value: [] });
+  };
+  await openCatalogue();
+  expect(document.body.textContent).toContain('No apps to install yet');
+  expect(document.body.textContent).toContain('The catalogue shows the apps that Anima can install on this device.');
+  button('Check again')?.click();
+  await settle();
+  expect(calls.entriesAsked).toBe(2);
+});
