@@ -6,7 +6,11 @@
 use std::collections::BTreeSet;
 
 /// Commands that only the macOS and Linux application registers, each with its reason.
-const NOT_ON_WINDOWS: [(&str, &str); 4] = [
+const NOT_ON_WINDOWS: [(&str, &str); 5] = [
+    (
+        "daemon::keychain::daemon_keychain_waits",
+        "reads the mark of a daemon that waits in the macOS Keychain; module daemon::keychain is Unix only (R-NEW-keychainwait)",
+    ),
     (
         "system_settings::sharing_settings_open",
         "opens the sharing settings of macOS or Linux; module system_settings is Unix only",
