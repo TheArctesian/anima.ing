@@ -53,7 +53,7 @@ pub enum Access {
     /// The internet.
     Public,
     /// Only the nodes of the network of Anima, on the address of the hub on that network
-    /// (Section 16.7, SF-NEW-lsprivate). Each machine and container of that network is a node.
+    /// (Section 16.7, SF-245). Each machine and container of that network is a node.
     Private,
 }
 
@@ -75,7 +75,7 @@ impl Access {
 }
 
 /// A protocol that may have a public stream: it has its own sign-in and its own TLS, so a stream
-/// with no look inside does not open a service that trusts its network (SF-NEW-lsstreams). The
+/// with no look inside does not open a service that trusts its network (SF-248). The
 /// usual port is a hint for the person; the hub never opens a port by itself.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Protocol {
@@ -123,9 +123,10 @@ pub const PUBLIC_PROTOCOLS: [Protocol; 7] = [
     },
 ];
 
-/// The ports of the hub that a stream never takes, also inside the range of the operator: STUN,
-/// PostgreSQL, the link, `WireGuard`, the gateway and the local hub (Section 16.4).
-const RESERVED_LISTEN_PORTS: [u16; 6] = [3478, 5432, 41641, 51820, 4822, 8443];
+/// The ports of the hub that a stream never takes, also inside the range of the operator, besides
+/// the ports of Anima of the catalogue (`catalogue::ANIMA_PORTS`: the gateway, the local hub and the
+/// link with its STUN): PostgreSQL and `WireGuard` (Section 16.4).
+const RESERVED_LISTEN_PORTS: [u16; 2] = [5432, 51820];
 /// The lowest port of the hub for a stream: the ports below it are the system's.
 const LOWEST_LISTEN_PORT: u16 = 1024;
 
@@ -251,7 +252,10 @@ fn listen_port(port: i64, rules: &StreamRules) -> Result<u16, KindRefusal> {
     if port < LOWEST_LISTEN_PORT {
         return Err(KindRefusal::ListenPortBelow1024);
     }
-    if RESERVED_LISTEN_PORTS.contains(&port) || rules.hub_ports.contains(&port) {
+    if catalogue::ANIMA_PORTS.contains(&port)
+        || RESERVED_LISTEN_PORTS.contains(&port)
+        || rules.hub_ports.contains(&port)
+    {
         return Err(KindRefusal::ListenPortReserved);
     }
     if !range.contains(&port) {
@@ -289,7 +293,7 @@ fn protocols_of(udp: bool) -> String {
 /// The address of a redirect: `https://`, a host of letters, digits, dots and hyphens with an
 /// optional port, and a path of visible characters with no space, no `\` and no `@` before the
 /// path, at most 2048 bytes. A redirect always goes to this one address: the proxy adds nothing
-/// of the request to it, so the name cannot be an open redirect (SF-NEW-lsstreams).
+/// of the request to it, so the name cannot be an open redirect (SF-248).
 ///
 /// # Errors
 /// [`KindRefusal::RedirectTo`].

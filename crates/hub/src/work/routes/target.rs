@@ -8,9 +8,6 @@ use crate::fleet::targets::{AddressPolicy, on_link};
 
 /// The ports of the sessions (SSH, VNC, RDP): never the port of an application (Section 12.3).
 const SESSION_PORTS: [u16; 3] = [22, 5900, 3389];
-/// The ports of Anima on a machine: the local hub (8443), `guacd` (4822) and the link (the
-/// tunnel on 41641, STUN on 3478). The daemon listens on no port: only on its Unix socket.
-const ANIMA_PORTS: [u16; 4] = [8443, 4822, 41641, 3478];
 /// The ports that control the engine of the containers: the Docker API (2375, 2376) and the
 /// kubelet (10250). Whoever reaches one controls the machine (SF-NEW-revroutetarget).
 const ENGINE_PORTS: [u16; 3] = [2375, 2376, 10250];
@@ -52,7 +49,8 @@ pub fn check_port(port: i64) -> Result<u16, TargetRefusal> {
     if SESSION_PORTS.contains(&port) {
         return Err(TargetRefusal::SessionPort);
     }
-    if ANIMA_PORTS.contains(&port) {
+    // The ports of Anima on a machine: one list with the catalogue (SF-252).
+    if catalogue::ANIMA_PORTS.contains(&port) {
         return Err(TargetRefusal::AnimaPort);
     }
     if ENGINE_PORTS.contains(&port) {

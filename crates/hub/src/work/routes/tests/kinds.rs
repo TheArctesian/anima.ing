@@ -1,4 +1,4 @@
-//! The kinds and the access of a route (HOST-050, task H40; SF-NEW-lsstreams, SF-NEW-lsprivate):
+//! The kinds and the access of a route (HOST-050, task H40; SF-248, SF-245):
 //! what each kind needs, the port of the hub of a stream, the protocols of a public stream, the
 //! hosted hub, and the address of a redirect.
 
@@ -66,6 +66,8 @@ fn the_ports_of_the_hub_below_1024_reserved_or_outside_the_range_are_refused() {
         (41_641, KindRefusal::ListenPortReserved),
         (51_820, KindRefusal::ListenPortReserved),
         (8443, KindRefusal::ListenPortReserved),
+        (4822, KindRefusal::ListenPortReserved),
+        (3478, KindRefusal::ListenPortReserved),
     ] {
         let shape = stream(Kind::TcpStream, Access::Private, port, 6000);
         assert_eq!(check(&shape, &wide), Err(refusal), "{port}");
