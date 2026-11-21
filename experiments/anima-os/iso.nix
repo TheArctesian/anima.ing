@@ -3,8 +3,10 @@ let
   installerProgram = import ./installer-package.nix { inherit pkgs workspaceRoot; };
   installer = pkgs.writeShellApplication {
     name = "anima-install";
-    runtimeInputs = [ installerProgram ];
+    runtimeInputs = [ installerProgram pkgs.util-linux ];
     text = ''
+      exec 9>/run/anima-installer.lock
+      flock --nonblock 9 || { echo "Another installer is open. Close it before starting installation." >&2; exit 1; }
       exec ${installerProgram}/bin/anima-os-install install --system ${installedSystem}
     '';
   };
