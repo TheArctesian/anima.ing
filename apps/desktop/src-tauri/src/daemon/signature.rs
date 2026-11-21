@@ -14,10 +14,6 @@ pub enum Identity {
     /// A signature with a team (Developer ID), or a system with no Keychain.
     Kept,
     /// An ad hoc signature, no signature, or one that could not be read.
-    #[cfg_attr(
-        all(not(target_os = "macos"), not(test)),
-        expect(dead_code, reason = "made only on macOS and by the tests")
-    )]
     NewEachBuild,
 }
 
