@@ -1,5 +1,9 @@
+import { Buffer } from 'node:buffer';
+import console from 'node:console';
 import { sign } from 'node:crypto';
+import process from 'node:process';
 import { setTimeout as wait } from 'node:timers/promises';
+import { URL, URLSearchParams } from 'node:url';
 
 const origin = 'https://api.appstoreconnect.apple.com';
 const internal = process.env.GITHUB_REF_NAME === 'dev';
@@ -19,10 +23,10 @@ function jwt() {
 async function apple(method, endpoint, data) {
   const url = new URL(endpoint, origin);
   if (url.origin !== origin) throw new Error('Apple returned an unexpected pagination origin.');
-  const response = await fetch(url, {
+  const response = await globalThis.fetch(url, {
     method,
     redirect: 'error',
-    signal: AbortSignal.timeout(30_000),
+    signal: globalThis.AbortSignal.timeout(30_000),
     headers: { Authorization: `Bearer ${jwt()}`, 'Content-Type': 'application/json' },
     ...(data === undefined ? {} : { body: JSON.stringify({ data }) }),
   });
