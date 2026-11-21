@@ -38,6 +38,7 @@
   import { applyTypefaces, storedTypefaces } from '$lib/typeface/typeface';
   import { provideDesktopUpdates } from '$lib/updates/desktop.svelte';
   import UpdateBanner from '$lib/updates/UpdateBanner.svelte';
+  import WindowControls from '$lib/code/shell/WindowControls.svelte';
 
   const { children }: { children: Snippet } = $props();
 
@@ -48,6 +49,8 @@
   applyMotion(document.documentElement, storedMotion(localStorage));
   // On a Mac the window draws under its title bar; the bar keeps room for the window buttons.
   if (capabilities().overlayTitleBar) document.documentElement.dataset['titlebar'] = 'overlay';
+  // On Windows and Linux the window has no frame: a strip at the top moves it and holds the window controls (TC2).
+  if (capabilities().framelessWindow) document.documentElement.dataset['titlebar'] = 'frameless';
   if (isAndroid(navigator)) document.documentElement.dataset['os'] = 'android';
   $effect(() => followVisualTop(document.documentElement, window.visualViewport));
   // The bar shows icons only below the compact breakpoint or when the operator collapses it; set before the first
@@ -193,7 +196,7 @@
 {#if shell !== null && showsSignedOutPage(page.url)}
   <!-- Before sign-in the window shows the page alone: no bar, no sessions, no hub status (NAV-009). -->
   <div class="bare">
-    <div class="drag" data-tauri-drag-region></div>
+    <div class="drag" data-tauri-drag-region>{#if capabilities().framelessWindow}<WindowControls />{/if}</div>
     <main>{@render children()}</main>
   </div>
 {:else if shell !== null}
@@ -214,7 +217,7 @@
       oncollapse={setCollapsed}
     />
     <!-- On a Mac the strip above the page moves the window, as the title bar it replaces did. -->
-    <div class="drag" data-tauri-drag-region></div>
+    <div class="drag" data-tauri-drag-region>{#if capabilities().framelessWindow}<WindowControls />{/if}</div>
     <main data-shifts-with-banner>
       <SessionTabs />
       <div class="stage">
@@ -326,6 +329,28 @@
   /* With no bar the strip spans the window; the window buttons are drawn over it. */
   :global(:root[data-titlebar='overlay']) .bare .drag {
     inset-inline-start: 0;
+  }
+
+  /* With no frame of the system (Windows, Linux) the strip is the top of the window: it moves the window and holds
+     the window controls at its end, and the page starts below it (TC2). */
+  :global(:root[data-titlebar='frameless']) .drag {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    position: fixed;
+    inset-block-start: 0;
+    inset-inline: var(--nav-inline-size) 0;
+    block-size: var(--control-md);
+    padding-inline-end: var(--space-1);
+    z-index: var(--layer-nav);
+  }
+
+  :global(:root[data-titlebar='frameless']) .bare .drag {
+    inset-inline-start: 0;
+  }
+
+  :global(:root[data-titlebar='frameless']) .shell > main {
+    padding-block-start: calc(var(--space-8) + var(--control-md) / 2);
   }
 
   /* Below the compact breakpoint the unreachable strip takes the top of the window; the page starts below it. */
