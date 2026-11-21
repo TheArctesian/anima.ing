@@ -248,14 +248,14 @@ that owns the area.
 | SF-145 | The reader of shell words keeps as text an expansion that a shell does. Low | Compose file check and `docker run` converter (task H29) | Open |
 | SF-142 | A problem of the check shows a secret that the operator wrote in the place of a key. Low | Compose file check and `docker run` converter (task H29) | Open |
 | SF-143 | The MCP cleaning can change the Compose file that an agent gets. Low | Compose file check and `docker run` converter (task H29) | Open |
-| SF-NEW-routeproxyexit | The proxy of the hub could reach the dial socket of the link, and so port 22 of each machine. High | The routing of the domains of applications on the hub (task H21, design) | Open |
-| SF-NEW-routepublish | Who may make an application public was not stated. High | The routing of the domains of applications on the hub (task H21, design) | Open |
-| SF-NEW-routetoken | The token of the proof of a name, and the names that Anima gives, could be taken by a different hub. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
-| SF-NEW-routeheaders | Forwarded headers of the client were kept, and the log could hold tokens of an application. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
-| SF-NEW-routetarget | The target of a route could change after it was made public, or be a port of a session. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
-| SF-NEW-routeacme | Certificates under the shared address of the pool, and the owner of the ACME key. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
-| SF-NEW-routelinkshare | Public traffic can slow the sessions on the same link. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
-| SF-NEW-routeabuse | Smaller points: claims about the door, wake, abuse and a hub on the same site. Low | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-231 | The proxy of the hub could reach the dial socket of the link, and so port 22 of each machine. High | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-232 | Who may make an application public was not stated. High | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-234 | The token of the proof of a name, and the names that Anima gives, could be taken by a different hub. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-229 | Forwarded headers of the client were kept, and the log could hold tokens of an application. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-233 | The target of a route could change after it was made public, or be a port of a session. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-228 | Certificates under the shared address of the pool, and the owner of the ACME key. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-230 | Public traffic can slow the sessions on the same link. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-227 | Smaller points: claims about the door, wake, abuse and a hub on the same site. Low | The routing of the domains of applications on the hub (task H21, design) | Open |
 | SF-NEW-revroutecheck | The proof of a name is read again only when a person asks. Low | The routing of the domains of applications on the hub (task H21, code) | Open |
 | SF-NEW-revroutestepup | A change of a route asks for no new second factor. Low | The routing of the domains of applications on the hub (task H21, code) | Open |
 | SF-NEW-revroutetarget | The target of a route came from the person, not from the record of the application. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
@@ -271,10 +271,10 @@ that owns the area.
 | SF-NEW-lsstreams | Streams: a false UDP rule, public TCP of services that trust localhost, an open list of ports, open redirects. Medium | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
 | SF-NEW-lsroot | Images start as root with nothing added to contain them; the rule of `shm_size`. Medium | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
 | SF-NEW-lstestmachine | The machine tests run images that are not trusted. Medium | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
-| SF-NEW-revcatroot | The static test of a recipe let a service run as root with each capability, and change its code at the start. High | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
-| SF-NEW-revcatvars | A variable could give the image, a published port or its address after the static test. Medium | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
-| SF-NEW-revcatsecret | The list of secret names was short, and a secret written in the Compose file was not refused. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
-| SF-NEW-revcatpg | The password of a database user, the names of two applications and the extensions of PostgreSQL were too permissive. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
+| SF-224 | The static test of a recipe let a service run as root with each capability, and change its code at the start. High | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
+| SF-226 | A variable could give the image, a published port or its address after the static test. Medium | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
+| SF-225 | The list of secret names was short, and a secret written in the Compose file was not refused. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
+| SF-223 | The password of a database user, the names of two applications and the extensions of PostgreSQL were too permissive. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
 | SF-179 | A program of the same user can listen at the socket of the link and get the daemon token and an enrolment code; on macOS this goes around the Keychain. Medium | The daemon on a computer of a person (task HM-T23) | Open |
 | SF-178 | On macOS, a daemon enrolled with an old link origin sends its token to a socket in the folder that the environment names. Low | The daemon on a computer of a person (task HM-T23) | Open |
 | SF-175 | The copy of the daemon in `~/.local/bin` is not checked after the installation. Low | The daemon on a computer of a person (task HM-T23) | Open |
@@ -2223,9 +2223,9 @@ State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of t
 
 A separate reviewer read Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) on 2026-11-20. No code existed. The text is corrected in the same branch; the build of task H21 builds the rules.
 
-### SF-NEW-routeproxyexit: The proxy of the hub could reach the dial socket of the link, and so port 22 of each machine. High
+### SF-231: The proxy of the hub could reach the dial socket of the link, and so port 22 of each machine. High
 
-Requirements: HOST-046, task H21; R-NEW-hubrouting.
+Requirements: HOST-046, task H21; R-302.
 
 What it is: A parser fault in the proxy, which reads each request from the internet, gives its process. If that process can open the dial socket of the link, the control socket of the link, the listener of the hub or the network of the pool, an attacker on the internet gets SSH on each machine whose port 22 is on. The text said that the proxy takes an identifier of an application, but nothing enforced it.
 
@@ -2237,9 +2237,9 @@ Mitigation now: Section 12.3 now says that the user of the proxy cannot open tho
 
 State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
 
-### SF-NEW-routepublish: Who may make an application public was not stated. High
+### SF-232: Who may make an application public was not stated. High
 
-Requirements: HOST-046, task H21; R-NEW-hubrouting.
+Requirements: HOST-046, task H21; R-302.
 
 What it is: An API key, an MCP agent or a person who took over the hub could add a public name to an application whose port is open only for a look in the hub: an administration page, or an application that holds the socket of the engine, is then on the internet. The consent of the machine (OD-HOST-29) covers "the hub may reach this port", not "the internet may reach it".
 
@@ -2251,9 +2251,9 @@ Mitigation now: Section 12.3: only a person with a login or a browser session, a
 
 State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
 
-### SF-NEW-routetoken: The token of the proof of a name, and the names that Anima gives, could be taken by a different hub. Medium
+### SF-234: The token of the proof of a name, and the names that Anima gives, could be taken by a different hub. Medium
 
-Requirements: HOST-046, task H21; R-NEW-hubrouting.
+Requirements: HOST-046, task H21; R-302.
 
 What it is: The text did not say who makes the token, so a hub could give a token that it copied from a different hub. A name that Anima gives could be given again to a new customer, who then gets the cookies, saved passwords and callbacks of the old one. One failed DNS read could remove a name.
 
@@ -2265,9 +2265,9 @@ Mitigation now: Section 12.4: the cloud service makes a random token of at least
 
 State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
 
-### SF-NEW-routeheaders: Forwarded headers of the client were kept, and the log could hold tokens of an application. Medium
+### SF-229: Forwarded headers of the client were kept, and the log could hold tokens of an application. Medium
 
-Requirements: HOST-046, task H21; R-NEW-hubrouting.
+Requirements: HOST-046, task H21; R-302.
 
 What it is: Adding to an `X-Forwarded-For` that the client sent keeps a false address that an application can trust. A `Host` that is not the SNI name, or content on port 80, makes a second path. A log of the request line keeps reset tokens and OAuth codes.
 
@@ -2279,9 +2279,9 @@ Mitigation now: Section 12.2 and 12.3: each `Forwarded`, `X-Forwarded-*` and `X-
 
 State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
 
-### SF-NEW-routetarget: The target of a route could change after it was made public, or be a port of a session. Medium
+### SF-233: The target of a route could change after it was made public, or be a port of a session. Medium
 
-Requirements: HOST-046, task H21; R-NEW-hubrouting.
+Requirements: HOST-046, task H21; R-302.
 
 What it is: On a hub that a person hosts, a changed host of a device (an API key, or a name that a DNS rebinding changes) points a public name at a different host of the network, a metadata address or the hub itself. A record of an application that names port 22 would pass the rule "a port that the record names".
 
@@ -2293,9 +2293,9 @@ Mitigation now: Section 12.3: the target is fixed when the name is made public; 
 
 State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
 
-### SF-NEW-routeacme: Certificates under the shared address of the pool, and the owner of the ACME key. Medium
+### SF-228: Certificates under the shared address of the pool, and the owner of the ACME key. Medium
 
-Requirements: HOST-046, task H21; R-NEW-hubrouting.
+Requirements: HOST-046, task H21; R-302.
 
 What it is: Let's Encrypt limits new accounts for each address, and all hubs of the pool share one. A domain of the names that Anima gives that is not on the Public Suffix List shares one weekly limit. A wildcard certificate would put one key in each hub. The text gave the ACME work to both the hub and the proxy.
 
@@ -2307,9 +2307,9 @@ Mitigation now: Section 12.5: the hub holds the account and its key; no wildcard
 
 State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
 
-### SF-NEW-routelinkshare: Public traffic can slow the sessions on the same link. Medium
+### SF-230: Public traffic can slow the sessions on the same link. Medium
 
-Requirements: HOST-046, task H21; R-NEW-hubrouting.
+Requirements: HOST-046, task H21; R-302.
 
 What it is: A flood to one name fills the tunnel of the link to a machine, and SSH and VNC on the same tunnel stall. The text said that the door never cuts the sessions, which is true and does not help.
 
@@ -2321,9 +2321,9 @@ Mitigation now: Section 12.7: the hub limits the streams and the bandwidth of pu
 
 State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
 
-### SF-NEW-routeabuse: Smaller points: claims about the door, wake, abuse and a hub on the same site. Low
+### SF-227: Smaller points: claims about the door, wake, abuse and a hub on the same site. Low
 
-Requirements: HOST-046, task H21; R-NEW-hubrouting.
+Requirements: HOST-046, task H21; R-302.
 
 What it is: The text wrote what the door does as a fact, but the door is in the private cloud plan. The door cannot answer a page inside TLS with option R1. Requests from the internet could wake a failing hub again and again. The switch for abuse had no message to the customer. A hub that a person hosts on the same registered domain as an application is same-site for cookies. The seal of keys protects nothing if its key is in the same backup.
 
@@ -2341,7 +2341,7 @@ A separate reviewer read the code of task H21 on the branch `hosted/apps-h21` on
 
 ### SF-NEW-revroutetarget: The target of a route came from the person, not from the record of the application. Medium
 
-Requirements: HOST-046, task H21; R-NEW-hubrouting; SF-NEW-routetarget.
+Requirements: HOST-046, task H21; R-302; SF-233.
 
 What it is: `addApplicationRoute` took the port, the application identifier and the mark "holds the socket of the engine" from its input and trusted them. A link address passed the address check with no port check, so each port of a device was reachable, and the refused ports were only 22, 5900, 3389, 8443 and 4822: the Docker API, the kubelet, databases and Prometheus could be made public.
 
@@ -2355,7 +2355,7 @@ State: Open (built in `274463241`). Found by a separate reviewer on 2026-11-21.
 
 ### SF-NEW-revrouteupgrade: The proxy opened a tunnel for each `Upgrade: websocket` without the answer 101. Medium
 
-Requirements: HOST-046, task H21; SF-NEW-routeheaders.
+Requirements: HOST-046, task H21; SF-229.
 
 What it is: After a request with `Upgrade: websocket` the relay copied both ways at once. A client could then send a second request that the proxy never read, past the rewrite of the headers and the check of `Host`.
 
@@ -2379,13 +2379,13 @@ Effect, and who can cause it: Anyone on the internet. Effect: the proxy runs out
 
 Mitigation now: Settings with defaults: 10 s for the handshake with the PROXY header (`ANIMA_ROUTE_PROXY_HANDSHAKE_SECONDS`), 10 s for the head (`ANIMA_ROUTE_PROXY_HEAD_SECONDS`, answer 408), 60 s for the head and the body of one request together (`ANIMA_ROUTE_PROXY_REQUEST_SECONDS`), 300 s with no byte on a stream (`ANIMA_ROUTE_PROXY_IDLE_SECONDS`); 1024 connections in all and 8 for each client before the handshake and for the life of the connection (`ANIMA_ROUTE_PROXY_OPEN_TOTAL`, `ANIMA_ROUTE_PROXY_OPEN_PER_CLIENT`), and 256 on port 80 (`ANIMA_ROUTE_PROXY_OPEN_PLAIN`). The cap of a client is below the 32 streams of one link (`ANIMA_ROUTES_STREAMS_PER_LINK`), so one client cannot hold each stream of a device. A client is the /64 of an IPv6 address and the whole address of IPv4, so a host cannot take more places with more addresses of its own network. In door mode the proxy reads a PROXY header only from a peer in `ANIMA_ROUTE_PROXY_DOOR_ADDRESSES`; with no address, each connection is closed before a byte is read. The hub waits 10 s for a request line of the proxy and ends a stream after 300 s with no byte. Tests: `a_listener_caps_its_connections_in_all_and_for_each_client`, `the_addresses_of_one_64_share_the_cap_of_one_client`, `a_client_is_its_64_of_ipv6_and_its_address_of_ipv4`, `a_stream_with_no_byte_for_its_idle_time_ends`, `each_byte_starts_the_idle_time_again`, `a_body_that_comes_one_byte_at_a_time_ends_at_the_deadline_of_its_request`, `only_an_address_of_the_door_may_send_a_proxy_header`, and the defaults of the settings.
 
-What stays: the answer of an application to a client that reads it one byte at a time has only the idle time. Several networks together can still hold the streams of one link; the limit of the link (SF-NEW-routelinkshare) keeps the sessions apart from them.
+What stays: the answer of an application to a client that reads it one byte at a time has only the idle time. Several networks together can still hold the streams of one link; the limit of the link (SF-230) keeps the sessions apart from them.
 
 State: Open (built in `294c9a525`). A re-read on 2026-11-21 found the first build only partly closed it (an idle time that each byte starts again, a cap of a client equal to the limit of a link, a PROXY header from any peer, a cap for each IPv6 address). Found by a separate reviewer on 2026-11-21.
 
 ### SF-NEW-revroutesocket: The socket of the interface of the proxy checked no peer and had no set mode. Medium
 
-Requirements: HOST-046, task H21; SF-NEW-routeproxyexit.
+Requirements: HOST-046, task H21; SF-231.
 
 What it is: The hub served the interface to each process that could open the socket, and the mode of the socket was what the umask gave. A different local process could read the table, with the private key of each name, and connect to applications.
 
@@ -2399,7 +2399,7 @@ State: Open (built in `274463241`). Found by a separate reviewer on 2026-11-21.
 
 ### SF-NEW-revrouteheaders: The head accepted two lengths, a length that is not digits, and `_` in a header name. Low
 
-Requirements: HOST-046, task H21; SF-NEW-routeheaders.
+Requirements: HOST-046, task H21; SF-229.
 
 What it is: A second `Content-Length` replaced the first; a value such as `+5` passed; `Transfer-Encoding` with `Content-Length` was refused only by the order of the lines. A name such as `X_Forwarded_For` passed the removal of the forwarded headers, and some servers read `_` as `-`.
 
@@ -2413,7 +2413,7 @@ State: Open (built in `274463241`). Found by a separate reviewer on 2026-11-21.
 
 ### SF-NEW-revroutecheck: The proof of a name is read again only when a person asks. Low
 
-Requirements: HOST-046, task H21; Section 12.4 point 4; SF-NEW-routetoken.
+Requirements: HOST-046, task H21; Section 12.4 point 4; SF-234.
 
 What it is: `checkApplicationRoute` reads the TXT record once. Nothing reads it again at intervals, so a name whose owner removed the record, or gave the name to a different hub, stays proven on this hub.
 
@@ -2429,7 +2429,7 @@ State: Open. Found by a separate reviewer on 2026-11-21.
 
 ### SF-NEW-revroutestepup: A change of a route asks for no new second factor. Low
 
-Requirements: HOST-046, task H21; HM-D14; SF-NEW-routepublish.
+Requirements: HOST-046, task H21; HM-D14; SF-232.
 
 What it is: The mutations of the routes check that the account has a second factor, but not that the person gave it recently. A browser session that a different person took over can make an application public.
 
@@ -2479,7 +2479,7 @@ State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no cod
 
 Requirements: HOST-049, HOST-050; R-NEW-linuxserver.
 
-What it is: R-NEW-catalogueways keeps "each entry is tested"; tier 2 ships entries that are not tested. The applications program cannot tell a tier, and a new pin puts an entry back in tier 2. "Tested" says nothing of default credentials.
+What it is: R-300 keeps "each entry is tested"; tier 2 ships entries that are not tested. The applications program cannot tell a tier, and a new pin puts an entry back in tier 2. "Tested" says nothing of default credentials.
 
 Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
 
@@ -2562,9 +2562,9 @@ State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no cod
 
 A separate reviewer read the code of the recipe format and its static test (`crates/catalogue`, `crates/compose-rules`) and the PostgreSQL functions of the catalogue (`crates/catalogue/src/postgresql*`) on the branch `hosted/apps-h38`. The design is in Sections 13 and 14 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md). The corrections are built in the same branch. No entry of the catalogue was tested on a machine (task H37).
 
-### SF-NEW-revcatroot: The static test of a recipe let a service run as root with each capability, and change its code at the start. High
+### SF-224: The static test of a recipe let a service run as root with each capability, and change its code at the start. High
 
-Requirements: HOST-047, tasks H36 and H38; R-NEW-catalogueways.
+Requirements: HOST-047, tasks H36 and H38; R-300.
 
 What it is: The static test let through the variables `DOCKER_MODS`, `INSTALL_PACKAGES` and `INSTALL_PIP_PACKAGES`, a `VERSION` that makes the image get a different version at the start, `PUID` or `PGID` of 0 and `user` of `0` or `root`. `no-new-privileges` and the drop of capabilities were optional. Thus a listed recipe could run code that no digest names, as root with each default capability.
 
@@ -2576,7 +2576,7 @@ Mitigation now: `crates/catalogue/src/privileges.rs` refuses each of these with 
 
 State: Open. Built in `a7855335`; no test on a machine has shown that each image starts with these rights (task H37). Found by a separate reviewer on 2026-11-21.
 
-### SF-NEW-revcatvars: A variable could give the image, a published port or its address after the static test. Medium
+### SF-226: A variable could give the image, a published port or its address after the static test. Medium
 
 Requirements: HOST-047, task H36; R-233.
 
@@ -2590,7 +2590,7 @@ Mitigation now: The static test refuses `$` in the text of `image`, of a publish
 
 State: Open. Built in `a7855335`. Found by a separate reviewer on 2026-11-21.
 
-### SF-NEW-revcatsecret: The list of secret names was short, and a secret written in the Compose file was not refused. Low
+### SF-225: The list of secret names was short, and a secret written in the Compose file was not refused. Low
 
 Requirements: HOST-047, task H36.
 
@@ -2604,7 +2604,7 @@ Mitigation now: The name list is wider and case does not count. In the Compose f
 
 State: Open. Built in `a7855335`. Found by a separate reviewer on 2026-11-21.
 
-### SF-NEW-revcatpg: The password of a database user, the names of two applications and the extensions of PostgreSQL were too permissive. Low
+### SF-223: The password of a database user, the names of two applications and the extensions of PostgreSQL were too permissive. Low
 
 Requirements: HOST-048, task H24; R-216.
 

@@ -1,5 +1,5 @@
 //! The install of an entry: present, and refused with a fixed reason until task H6 exists
-//! (R-NEW-buildnow). No machine is reached.
+//! (R-299). No machine is reached.
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

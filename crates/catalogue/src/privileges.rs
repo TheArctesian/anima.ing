@@ -1,4 +1,4 @@
-//! The rights of the services of a recipe (SF-NEW-revcatroot): each service refuses new rights
+//! The rights of the services of a recipe (SF-224): each service refuses new rights
 //! and drops each capability, no setting makes a service root, and no setting makes an image
 //! change its code at the start. The rules read the file as its author wrote it, before an
 //! environment file fills its variables, so that no value of the install changes the result.

@@ -170,7 +170,7 @@ pub enum Mark {
     Device,
 }
 
-/// An exception to "each service drops each capability" (SF-NEW-revcatroot).
+/// An exception to "each service drops each capability" (SF-224).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Exception {

@@ -7,12 +7,14 @@ use std::path::PathBuf;
 
 mod link;
 mod origin;
+mod own_daemon;
 mod paths;
 use paths::{optional_path, optional_root, optional_socket, remote_drive_path};
 mod releases;
 mod routes;
 
 pub use link::{LINK_DEVICES, dial_socket};
+pub use own_daemon::OwnDaemon;
 pub use releases::Releases;
 pub use routes::Routes;
 
@@ -61,6 +63,9 @@ pub struct Config {
     /// R-129): the cloud asks this hub for device invites, and no one signs in with a password.
     /// Only with the link's control socket; `None` when unset or empty.
     pub hosted_cloud_key_file: Option<PathBuf>,
+    /// The socket of the hub's own daemon and the file of its code, in the hosted mode only
+    /// (HMD-071, HM-T35). `None` when unset or empty.
+    pub own_daemon: Option<OwnDaemon>,
     /// Networks checks must never probe: the hub's own Docker networks and public address
     /// (R-030). Empty when unset; `main.rs` warns at start.
     pub probe_deny: Vec<ipnet::IpNet>,
@@ -143,11 +148,30 @@ pub enum Error {
     HostedWithoutLink,
     #[error("{variable} is not valid")]
     Routes { variable: &'static str },
+    #[error("{} {}", own_daemon::OWN_DAEMON_SOCKET, own_daemon::OWN_DAEMON_RULE)]
+    OwnDaemonNotHosted,
+    #[error("{} {}", own_daemon::OWN_DAEMON_CODE_FILE, own_daemon::CODE_FILE_RULE)]
+    OwnDaemonCodeAlone,
     #[error("{present} is set but {missing} is not")]
     TlsIncomplete {
         present: &'static str,
         missing: &'static str,
     },
+}
+
+/// Both TLS files or neither: half of the pair is refused.
+const fn tls_pair(cert: bool, key: bool) -> Result<(), Error> {
+    match (cert, key) {
+        (true, false) => Err(Error::TlsIncomplete {
+            present: TLS_CERT_FILE,
+            missing: TLS_KEY_FILE,
+        }),
+        (false, true) => Err(Error::TlsIncomplete {
+            present: TLS_KEY_FILE,
+            missing: TLS_CERT_FILE,
+        }),
+        _ => Ok(()),
+    }
 }
 
 /// Read `name`, falling back to `default`; a variable that is set but empty is an error.
@@ -250,7 +274,7 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
     let listen = value(env, LISTEN, "127.0.0.1:8443")?;
     let tls_cert_file = optional_path(env, TLS_CERT_FILE);
     let tls_key_file = optional_path(env, TLS_KEY_FILE);
-    tls_pair(tls_cert_file.as_ref(), tls_key_file.as_ref())?;
+    tls_pair(tls_cert_file.is_some(), tls_key_file.is_some())?;
     let listen: SocketAddr = listen.parse().map_err(|source| Error::Listen {
         value: listen.to_owned(),
         source,
@@ -274,6 +298,7 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
         vpn_broker: optional_socket(env, VPN_BROKER)?,
         permitted_networks: permitted_networks(env, link_socket.is_some())?,
         link_control,
+        own_daemon: own_daemon::own_daemon(env, hosted_cloud_key_file.is_some())?,
         hosted_cloud_key_file,
         link_socket,
         probe_deny: match env.get(PROBE_DENY).map(String::as_str) {
@@ -294,21 +319,6 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
         files_dir: optional_root(env, FILES_DIR)?,
         routes: routes::from_env(env)?,
     })
-}
-
-/// Refuses half of a TLS pair: a certificate with no key, or a key with no certificate.
-fn tls_pair(cert: Option<&PathBuf>, key: Option<&PathBuf>) -> Result<(), Error> {
-    match (cert, key) {
-        (Some(_), None) => Err(Error::TlsIncomplete {
-            present: TLS_CERT_FILE,
-            missing: TLS_KEY_FILE,
-        }),
-        (None, Some(_)) => Err(Error::TlsIncomplete {
-            present: TLS_KEY_FILE,
-            missing: TLS_CERT_FILE,
-        }),
-        _ => Ok(()),
-    }
 }
 
 #[cfg(test)]
