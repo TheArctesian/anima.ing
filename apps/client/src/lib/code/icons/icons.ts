@@ -18,6 +18,7 @@ import Folder from '@lucide/svelte/icons/folder';
 import GitBranch from '@lucide/svelte/icons/git-branch';
 import GitMerge from '@lucide/svelte/icons/git-merge';
 import GitPullRequest from '@lucide/svelte/icons/git-pull-request';
+import ListFilter from '@lucide/svelte/icons/list-filter';
 import Hammer from '@lucide/svelte/icons/hammer';
 import Maximize2 from '@lucide/svelte/icons/maximize-2';
 import MessageCircleQuestion from '@lucide/svelte/icons/message-circle-question';
@@ -72,6 +73,7 @@ export const CODE_ICONS = {
   'git-branch': GitBranch,
   'git-merge': GitMerge,
   'git-pull-request': GitPullRequest,
+  'list-filter': ListFilter,
   hammer: Hammer,
   'maximize-2': Maximize2,
   'message-circle-question': MessageCircleQuestion,
