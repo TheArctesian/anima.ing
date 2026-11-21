@@ -8,7 +8,7 @@ use super::claude;
 fn diff(turn: &str, diff: &str) -> Change {
     Change::Said {
         event: DriveEvent::TurnDiff {
-            turn: Some(turn.to_owned()),
+            turn: (!turn.is_empty()).then(|| turn.to_owned()),
             diff: diff.to_owned(),
         },
     }
@@ -25,6 +25,7 @@ fn said(text: &str) -> Change {
 #[test]
 fn th101_only_the_newest_diff_of_a_turn_is_kept() {
     let mut thread = claude();
+    thread.note(diff("", "no turn"));
     thread.note(diff("a", "one"));
     thread.note(said("between"));
     thread.note(diff("b", "other turn"));
@@ -33,11 +34,24 @@ fn th101_only_the_newest_diff_of_a_turn_is_kept() {
     assert_eq!(
         kept,
         vec![
+            diff("", "no turn"),
             said("between"),
             diff("b", "other turn"),
             diff("a", "one and two")
         ]
     );
+}
+
+#[test]
+fn th101_the_bytes_of_a_dropped_diff_are_given_back() {
+    let mut thread = claude();
+    thread.note(diff("a", &"x".repeat(1000)));
+    thread.note(diff("a", "short"));
+    let newest: Vec<Change> = thread
+        .kept_newest(10, 200)
+        .map(|update| update.change.clone())
+        .collect();
+    assert_eq!(newest, vec![diff("a", "short")]);
 }
 
 #[test]

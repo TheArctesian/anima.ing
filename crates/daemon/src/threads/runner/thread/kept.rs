@@ -116,11 +116,14 @@ impl Thread {
     }
 }
 
-/// The turn of a diff of a turn (TH101), or `None` when `change` is not one.
-fn diff_of(change: &Change) -> Option<&Option<String>> {
+/// The turn of a diff of a turn (TH101), or `None` when `change` is not one or names no turn: a
+/// diff with no turn stands for no other diff.
+fn diff_of(change: &Change) -> Option<&str> {
     match change {
         Change::Said {
-            event: DriveEvent::TurnDiff { turn, .. },
+            event: DriveEvent::TurnDiff {
+                turn: Some(turn), ..
+            },
         } => Some(turn),
         _ => None,
     }

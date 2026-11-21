@@ -273,14 +273,20 @@ impl Runner {
 
     /// Does a step of a thread that is not a command to the holder.
     fn own_step(&mut self, id: Uuid, step: Step) {
-        match step {
-            Step::Log(what) => self.note(Kind::Stop, Some(id), what),
-            Step::Change(change) => self.publish(id, change),
-            said => {
-                if let Some(thread) = self.threads.get(&id) {
-                    self.said.note(thread.row.program, said, chrono::Utc::now());
-                }
+        let program = self.threads.get(&id).map(|thread| thread.row.program);
+        match (step, program) {
+            (Step::Log(what), _) => self.note(Kind::Stop, Some(id), what),
+            (Step::Change(change), _) => self.publish(id, change),
+            (Step::Account(facts), Some(program)) => {
+                self.said.accounts.note(program, *facts, chrono::Utc::now());
             }
+            (Step::Models(models), Some(program)) => {
+                self.said.models.note(program, models, chrono::Utc::now());
+            }
+            // A fact of a thread that is gone has no program to keep it for; a command is never
+            // here, as `apply` sends it to the holder.
+            (Step::Account(_) | Step::Models(_), None)
+            | (Step::Write(_) | Step::Mark | Step::EndChildren | Step::EndProgram, _) => {}
         }
     }
 
