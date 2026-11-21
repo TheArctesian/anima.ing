@@ -7,6 +7,27 @@ use agent_threads::control::{AccountRow, ModelRow};
 use agent_threads::drive::{AccountFacts, ModelChoice, Program};
 use chrono::{DateTime, Utc};
 
+use super::thread::Step;
+
+/// What the programs said of themselves for the runner only: their accounts and their models.
+#[derive(Debug, Default)]
+pub struct Said {
+    pub accounts: Accounts,
+    pub models: Models,
+}
+
+impl Said {
+    /// Keeps a step [`Step::Account`] or [`Step::Models`] of a thread of `program`, said at `at`.
+    /// Each other step is not a fact of a program, and is left.
+    pub fn note(&mut self, program: Program, step: Step, at: DateTime<Utc>) {
+        match step {
+            Step::Account(facts) => self.accounts.note(program, *facts, at),
+            Step::Models(models) => self.models.note(program, models, at),
+            _ => {}
+        }
+    }
+}
+
 /// The newest account of each program.
 #[derive(Debug, Default)]
 pub struct Accounts {

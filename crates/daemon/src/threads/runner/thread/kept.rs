@@ -2,6 +2,7 @@
 //! bound of count and of bytes (THR-045). Pure.
 
 use agent_threads::control::{Change, Update};
+use agent_threads::drive::DriveEvent;
 
 use super::Open;
 
@@ -40,7 +41,8 @@ impl Thread {
         let mut used = 0;
         let mut from = end;
         for (at, (_, size)) in self.kept.range(..end).enumerate().rev() {
-            if end - at > most || used + size > bytes {
+            // The newest one is given however big it is, so that a client can always read on.
+            if end - at > most || (used + size > bytes && from != end) {
                 break;
             }
             used += size;
@@ -91,6 +93,16 @@ impl Thread {
             seq: self.seq,
             change,
         };
+        if let Some(turn) = diff_of(&update.change) {
+            // A diff holds the whole turn so far, so it stands for each earlier diff of the turn.
+            let mut gone = 0;
+            self.kept.retain(|(kept, size)| {
+                let earlier = diff_of(&kept.change) == Some(turn);
+                gone += if earlier { *size } else { 0 };
+                !earlier
+            });
+            self.kept_bytes -= gone;
+        }
         let bytes = serde_json::to_vec(&update).map_or(0, |json| json.len());
         self.kept.push_back((update.clone(), bytes));
         self.kept_bytes += bytes;
@@ -101,5 +113,15 @@ impl Thread {
             self.kept_bytes -= gone;
         }
         update
+    }
+}
+
+/// The turn of a diff of a turn (TH101), or `None` when `change` is not one.
+fn diff_of(change: &Change) -> Option<&Option<String>> {
+    match change {
+        Change::Said {
+            event: DriveEvent::TurnDiff { turn, .. },
+        } => Some(turn),
+        _ => None,
     }
 }

@@ -120,10 +120,9 @@ pub struct Runner {
     asks: start::Asks,
     /// When each thread last got the words of a lost sign-in (TH99).
     sign_in_told: BTreeMap<Uuid, std::time::Instant>,
-    /// What the programs said of their accounts: in memory only (THR-051).
-    accounts: accounts::Accounts,
-    /// The models that each program offers (TH104): in memory only.
-    models: accounts::Models,
+    /// What the programs said of their accounts (THR-051) and their models (TH104): in memory
+    /// only.
+    said: accounts::Said,
 }
 
 /// Whether the daemon in `daemon_dir` serves a person, so that it may run agents in the login
@@ -189,8 +188,7 @@ pub async fn run(
         silence: silence::Silence::default(),
         asks: start::Asks::default(),
         sign_in_told: BTreeMap::new(),
-        accounts: accounts::Accounts::default(),
-        models: accounts::Models::default(),
+        said: accounts::Said::default(),
     };
     runner.restore(saved.threads);
     let listener = socket::bind(&dir)?;
@@ -273,48 +271,28 @@ impl Runner {
         }
     }
 
+    /// Does a step of a thread that is not a command to the holder.
+    fn own_step(&mut self, id: Uuid, step: Step) {
+        match step {
+            Step::Log(what) => self.note(Kind::Stop, Some(id), what),
+            Step::Change(change) => self.publish(id, change),
+            said => {
+                if let Some(thread) = self.threads.get(&id) {
+                    self.said.note(thread.row.program, said, chrono::Utc::now());
+                }
+            }
+        }
+    }
+
     /// Does the steps of a thread, in order. Gives the ID of the command of the last line
     /// written, or [`LinkDown`] when a command did not reach the holder.
     async fn apply(&mut self, id: Uuid, steps: Vec<Step>) -> Result<Option<u64>, LinkDown> {
         let key = id.to_string();
         let mut last_write = None;
         for step in steps {
-            let action = match step {
-                Step::Write(line) => Action::Write {
-                    thread: key.clone(),
-                    line,
-                },
-                Step::Mark => Action::Mark {
-                    thread: key.clone(),
-                },
-                Step::EndChildren => Action::EndChildren {
-                    thread: key.clone(),
-                },
-                Step::EndProgram => Action::Stop {
-                    thread: key.clone(),
-                },
-                Step::Log(what) => {
-                    self.note(Kind::Stop, Some(id), what);
-                    continue;
-                }
-                Step::Change(change) => {
-                    self.publish(id, change);
-                    continue;
-                }
-                Step::Account(facts) => {
-                    if let Some(thread) = self.threads.get(&id) {
-                        let program = thread.row.program;
-                        self.accounts.note(program, *facts, chrono::Utc::now());
-                    }
-                    continue;
-                }
-                Step::Models(models) => {
-                    if let Some(thread) = self.threads.get(&id) {
-                        let program = thread.row.program;
-                        self.models.note(program, models, chrono::Utc::now());
-                    }
-                    continue;
-                }
+            let Some(action) = step.command(&key) else {
+                self.own_step(id, step);
+                continue;
             };
             let write = matches!(action, Action::Write { .. });
             let command = self.command(action).await.ok_or(LinkDown)?;

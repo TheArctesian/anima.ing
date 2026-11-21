@@ -56,7 +56,8 @@ pub(super) struct NewThread {
 }
 
 impl NewThread {
-    /// The new thread of a start call; `None` for a different call.
+    /// The new thread of a start call; `None` for a different call, and for a start that asks
+    /// Codex to plan first, which Codex cannot do (TH105).
     pub(super) fn of(action: agent_threads::control::Action) -> Option<Self> {
         match action {
             agent_threads::control::Action::Start {
@@ -67,7 +68,7 @@ impl NewThread {
                 effort,
                 prompt,
                 program_path,
-            } => Some(Self {
+            } if !(program == Program::Codex && mode == Mode::Plan) => Some(Self {
                 program,
                 folder,
                 mode,
@@ -85,9 +86,6 @@ impl Runner {
     /// Checks a new thread, counts it against the soft limit (THR-114) and asks the holder to
     /// start its program; the answer goes to the client when the holder answers.
     pub(super) async fn start(&mut self, new: NewThread, back: Caller) -> Result<(), Refusal> {
-        if new.program == Program::Codex && new.mode == Mode::Plan {
-            return Err(Refusal::BadValue);
-        }
         // A start whose copy is being asked counts against the soft limit too.
         self.may_start(u32::try_from(self.asks.open.len()).unwrap_or(u32::MAX))?;
         chosen_folder(&new.folder, self.dir.parent().unwrap_or(&self.dir))?;

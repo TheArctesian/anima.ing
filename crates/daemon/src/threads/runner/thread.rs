@@ -6,8 +6,7 @@ use std::collections::{BTreeMap, VecDeque};
 
 use agent_threads::control::{Change, Refusal, RunState, ThreadRow, Update};
 use agent_threads::drive::{
-    AccountFacts, ClaudeDecoder, ClaudeInput, DriveEvent, Effort, ModelChoice, Program,
-    ProgramState, Request,
+    ClaudeDecoder, ClaudeInput, DriveEvent, Effort, Program, ProgramState, Request,
 };
 use agent_threads::first_line;
 use serde::{Deserialize, Serialize};
@@ -18,6 +17,9 @@ use super::codex::Codex;
 mod asks;
 mod events;
 mod kept;
+mod step;
+
+pub use step::Step;
 
 /// How many updates of a thread the runner keeps for a client that starts to watch, and their
 /// most bytes as JSON: a line of a program can be 4 MiB, so a count alone does not bound them.
@@ -26,27 +28,6 @@ const KEPT_BYTES: usize = 4 * 1024 * 1024;
 
 /// The source of a prompt that came through the local socket (THR-042).
 pub const THIS_COMPUTER: &str = "this computer";
-
-/// Something the runner does for a thread, in order.
-#[derive(Clone, Debug, PartialEq)]
-pub enum Step {
-    /// A line to the standard input of the program.
-    Write(String),
-    /// Keep the processes below the program now as spared (the MCP servers of Codex).
-    Mark,
-    /// End the processes below the program that are not spared (the stop of a Codex turn).
-    EndChildren,
-    /// End the program: it cannot go on (Codex did not start its thread).
-    EndProgram,
-    /// A line of the log of the runner, of the kind "stop", for a stop that the runner made.
-    Log(&'static str),
-    /// An update for the clients.
-    Change(Change),
-    /// What the program said of its account: for the runner only, never an update (THR-051).
-    Account(Box<AccountFacts>),
-    /// The models that the program offers (TH104): for the runner, not an update.
-    Models(Vec<ModelChoice>),
-}
 
 /// A request that waits for the person, with the line it came in, so that a runner that starts
 /// again reads it again (THR-030).

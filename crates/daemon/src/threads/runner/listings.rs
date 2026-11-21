@@ -29,7 +29,10 @@ impl Runner {
                     Err(why) => return Outcome::Refused { why },
                 }
             }
-            other => other.folder().clone(),
+            // A folder that is gone is named as it was added.
+            other => {
+                std::fs::canonicalize(other.folder()).unwrap_or_else(|_| other.folder().clone())
+            }
         };
         match project_changed(self.projects.clone(), change, folder) {
             Ok(projects) => {

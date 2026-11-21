@@ -13,6 +13,7 @@ use super::thread::{Step, Thread};
 use super::{Pending, Runner, Waits};
 use crate::threads::wire;
 
+mod reads;
 mod refusal_lines;
 pub(super) use refusal_lines::RefusalLines;
 use refusal_lines::Say;
@@ -83,44 +84,6 @@ impl Runner {
             self.note(Kind::Refusal, named, refusal_word(why));
         }
         back.answer(answer);
-    }
-
-    /// The answer to a call that only reads, or `None` for each other call.
-    fn read(&self, action: &Action) -> Option<Outcome> {
-        Some(match action {
-            Action::List => Outcome::Threads {
-                threads: self
-                    .threads
-                    .values()
-                    .map(|thread| thread.row.clone())
-                    .collect(),
-                holder: self.holder_words(),
-            },
-            Action::Listings => self.listings(),
-            Action::Projects => self.projects(),
-            Action::Accounts => Outcome::Accounts {
-                accounts: self.accounts.rows(),
-            },
-            Action::Models => Outcome::Models {
-                models: self.models.rows(),
-            },
-            Action::Earlier {
-                thread,
-                before,
-                most,
-            } => self.threads.get(thread).map_or(
-                Outcome::Refused {
-                    why: Refusal::UnknownThread,
-                },
-                |thread| Outcome::Earlier {
-                    updates: thread
-                        .kept_before(*before, *most, CLIENT_BYTES / 2)
-                        .cloned()
-                        .collect(),
-                },
-            ),
-            _ => return None,
-        })
     }
 
     /// A call whose answer waits for the holder: a start, a prompt, an answer or a stop.
