@@ -65,19 +65,24 @@ pub(super) async fn replace_token(
     token: TokenHash,
     expires_at: DateTime<Utc>,
 ) -> Result<bool, sqlx::Error> {
-    sqlx::query_scalar(
-        "WITH old AS (SELECT need FROM metrics.daemons WHERE device_id = $1 FOR UPDATE) \
-         INSERT INTO metrics.daemons (device_id, token_sha256, expires_at) VALUES ($1, $2, $3) \
+    let needed: Option<bool> = sqlx::query_scalar(
+        "SELECT need IS NOT NULL FROM metrics.daemons WHERE device_id = $1 FOR UPDATE",
+    )
+    .bind(device)
+    .fetch_optional(&mut *conn)
+    .await?;
+    sqlx::query(
+        "INSERT INTO metrics.daemons (device_id, token_sha256, expires_at) VALUES ($1, $2, $3) \
          ON CONFLICT (device_id) DO UPDATE SET token_sha256 = excluded.token_sha256, \
              expires_at = excluded.expires_at, next_token_sha256 = NULL, next_expires_at = NULL, \
-             last_batch_at = NULL, stale_at = NULL, daemon_version = NULL, need = NULL \
-         RETURNING COALESCE((SELECT need IS NOT NULL FROM old), false)",
+             last_batch_at = NULL, stale_at = NULL, daemon_version = NULL, need = NULL",
     )
     .bind(device)
     .bind(token.to_bytes().as_slice())
     .bind(expires_at)
-    .fetch_one(conn)
-    .await
+    .execute(conn)
+    .await?;
+    Ok(needed.unwrap_or(false))
 }
 
 /// The device whose usable token is `token` at `now`. A renewed token is promoted on its first
