@@ -1,6 +1,7 @@
-{ config, lib, pkgs, daemonPackage, ... }:
+{ config, lib, pkgs, daemonPackage, workspaceRoot ? ../.., ... }:
 {
   imports = [ ./branding.nix ./console.nix ./display.nix ./updates.nix ./naming.nix ./control.nix ];
+  services.anima-os-control = { enable = true; package = import ./control-package.nix { inherit pkgs workspaceRoot; }; };
   system.stateVersion = "26.05";
   boot.loader.systemd-boot.enable = true;
   boot.loader.systemd-boot.configurationLimit = 3;
@@ -46,7 +47,7 @@
     path = [ pkgs.util-linux ];
     serviceConfig.Type = "oneshot";
     serviceConfig.RemainAfterExit = true;
-    serviceConfig.ExecStart = "${pkgs.python3}/bin/python3 ${./installer/mount_volumes.py}";
+    serviceConfig.ExecStart = "${import ./installer-package.nix { inherit pkgs workspaceRoot; }}/bin/anima-os-install mount-volumes";
   };
   systemd.services.anima-keymap = {
     wantedBy = [ "multi-user.target" ];

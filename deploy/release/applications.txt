@@ -19,6 +19,9 @@ desktop out crates/rdp-test-device/
 # plan adds it and removes this line.
 desktop out crates/anima-applications/
 desktop out crates/anima-osd/
+desktop out crates/anima-os-session/
+desktop out crates/anima-os-update/
+desktop out crates/anima-os-install/
 desktop out AGENTS.md
 desktop out CLAUDE.md
 desktop out README.md
@@ -42,6 +45,9 @@ cli out design/
 cli out contracts/
 cli out crates/anima-applications/
 cli out crates/anima-osd/
+cli out crates/anima-os-session/
+cli out crates/anima-os-update/
+cli out crates/anima-os-install/
 cli out crates/anima-database/
 cli out crates/anima-gateway/
 cli out crates/anima-local-hub/
@@ -82,6 +88,9 @@ ios out quality/
 ios out deploy/
 ios out crates/anima-applications/
 ios out crates/anima-osd/
+ios out crates/anima-os-session/
+ios out crates/anima-os-update/
+ios out crates/anima-os-install/
 ios out crates/anima-database/
 ios out crates/anima-gateway/
 ios out crates/anima-local-hub/

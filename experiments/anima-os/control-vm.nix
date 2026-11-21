@@ -1,6 +1,19 @@
 { pkgs, workspaceRoot }:
 let
   package = import ./control-package.nix { inherit pkgs workspaceRoot; };
+  session = import ./session-package.nix { inherit pkgs workspaceRoot; };
+  adapter = pkgs.writeText "diagnostics-adapter.py" ''
+    import json, os, subprocess
+    process = subprocess.Popen(["${session}/bin/anima-os-session"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, env=dict(os.environ, ANIMA_OS_CONTROL="${package}/bin/anima-osd"))
+    assert json.loads(process.stdout.readline())["id"] == "unlock"
+    process.stdin.write(json.dumps(dict(id="diagnostic", op="diagnostics", args={}))+"\n")
+    process.stdin.flush()
+    result = json.loads(process.stdout.readline())
+    assert result["ok"], result
+    process.stdin.close()
+    assert process.wait(timeout=10) == 0
+    print(json.dumps(result["value"]))
+  '';
 in pkgs.testers.runNixOSTest {
   name = "anima-os-control";
   nodes.machine = {
@@ -16,7 +29,7 @@ in pkgs.testers.runNixOSTest {
     systemd.services.anima-link.serviceConfig = { Type = "oneshot"; ExecStart = "${pkgs.coreutils}/bin/false"; };
     virtualisation.memorySize = 1024;
     virtualisation.emptyDiskImages = [ 64 ];
-    fileSystems."/persist" = {
+    virtualisation.fileSystems."/persist" = {
       device = "/dev/vdb";
       fsType = "ext4";
       autoFormat = true;
@@ -65,7 +78,7 @@ in pkgs.testers.runNixOSTest {
     machine.fail("su -s /bin/sh observer -c 'ls /persist/anima-osd-jobs'")
     machine.wait_for_unit("anima-daemon.service")
     machine.fail("systemctl start anima-link.service")
-    adapter = machine.succeed("PYTHONPATH=${./console}:${./display} ANIMA_OS_CONTROL=${package}/bin/anima-osd ${pkgs.python3}/bin/python3 -c 'import json; from privileged import Session; print(json.dumps(Session().dispatch(\"diagnostics\", {})))'")
+    adapter = machine.succeed("${pkgs.python3}/bin/python3 ${adapter}")
     adapter = json.loads(adapter)
     assert adapter["monitoring"] == "active"
     assert adapter["private_link"] == "failed"

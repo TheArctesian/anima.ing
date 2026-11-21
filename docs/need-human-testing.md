@@ -4072,13 +4072,31 @@ Result: Open.
 Built: `crates/anima-osd`, the opt-in module `experiments/anima-os/control.nix`, and the existing console Diagnostics action's adapter. The Rust socket and disposable NixOS service tests cover read-only transport, process-state reporting, restricted access and lifecycle. They do not exercise the complete appliance graphical session, real monitoring/link or physical hardware.
 
 1. Build a disposable appliance trial from the existing ISO procedure with `services.anima-os-control.enable = true` and its source-built `package` supplied as described in `experiments/anima-os/control-contract.md`. Do not replace an existing installation or publish the ISO for this check.
-2. Unlock the local console and open Recovery → Run checks.
+2. Unlock the local console and open Settings → Diagnostics → Run checks.
    Expected: existing network/root/Wi-Fi diagnostics remain present; monitoring and private-link states come from the Rust service. No terminal is required in the normal interface. Active processes do not claim hub reachability or agent readiness.
 3. In the disposable trial, stop the host-control service, then run the graphical check again.
    Expected: a visible operation failure and an available retry/close path; no fabricated success or silent fallback to old results. Restore the service and retry. A retained job is observed without restarting it; interrupted or missing history produces a clear error and a subsequent explicit new check returns results.
 4. Lock/unlock and restart the trial, then repeat the graphical check.
    Expected: owner authentication is still required, the service runs under its restricted account and the socket is private. Monitoring/link remain separate background services.
 5. Compare the console to the existing approved mockup on compact and portrait displays.
-   Expected: no page/navigation/branding changes from this backend slice; readable diagnostic rows and unchanged accessible controls.
+   Expected: the OS3-R4 four-destination layout matches the updated mockup, with readable diagnostic rows and accessible controls.
 
 Result: Open. No physical-hardware, real-account, full-appliance UI, speed or ISO-size result is claimed.
+
+
+### HT-NEW-oscomplete: final graphical and hardware acceptance of the Rust OS continuation (OS3-R4)
+
+Built: four-destination graphical console and native session/update/install controllers. Automated checks use disposable virtual disks, synthetic account services and headless rendered UI. They cannot qualify the user's physical Wi-Fi/display/touch hardware, real account or perceived responsiveness. The operator moved this check to the last step; that is scheduling, not a reported pass.
+
+1. Boot the locally built preview ISO on an explicitly selected spare UEFI machine. In Calamares, connect Wi-Fi, change orientation, let one preview expire and keep another. Review storage without authorizing any disk until its identity is correct.
+   Expected: controls remain reachable; orientation restores after timeout and persists only after Keep; unselected/USB/busy disks are not erase targets.
+2. Install only to the explicitly selected disposable target, remove the USB and boot. Unlock the graphical console. Visit Overview, Network, Storage and Settings at the machine's normal scale.
+   Expected: the familiar visual design remains, no normal flow requires a terminal, no controls overlap or leave excessive unused space, and network/display settings survive reboot.
+3. Choose Sign in directly from Overview. Cancel once, then complete the provider sign-in and explicitly Add this computer with a real test account.
+   Expected: cancel closes the provider view; sign-in does not add the machine before consent; failures offer retry; the machine appears once and monitoring/link state is truthful.
+4. Open Settings → Diagnostics and Updates. Run diagnostics; check a properly signed compatible preview update when one is available, stage it and explicitly restart. Confirm fallback/rollback on this test device while retaining a disposable workload sentinel.
+   Expected: phase/byte progress remains visible while other pages respond, no download automatically activates, and recovery preserves identity and workload data.
+5. Lock and unlock, restart, and compare pointer/keyboard navigation, screen-open delay and idle behavior with the prior preview on the same machine.
+   Expected: background compute continues while locked; focus remains visible; perceived responsiveness and display quality are acceptable. Record hardware and measured delays rather than inferring them from language choice.
+
+Result: Open; deferred to the final step by the operator. No production release is authorized.

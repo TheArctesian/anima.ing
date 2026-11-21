@@ -1,22 +1,14 @@
-{ lib, pkgs, modulesPath, installedSystem, ... }:
+{ lib, pkgs, modulesPath, installedSystem, workspaceRoot ? ../.., ... }:
 let
-  installerSource = builtins.path {
-    path = ./installer;
-    name = "anima-installer";
-    filter = path: type:
-      (type == "directory" && builtins.baseNameOf path != "__pycache__")
-      || (type == "regular" && builtins.elem (builtins.baseNameOf path) [ "install.py" "disks.py" "volumes.py" ]);
-  };
+  installerProgram = import ./installer-package.nix { inherit pkgs workspaceRoot; };
   installer = pkgs.writeShellApplication {
     name = "anima-install";
-    runtimeInputs = with pkgs; [ python3 util-linux parted btrfs-progs dosfstools systemd mkpasswd ];
+    runtimeInputs = [ installerProgram ];
     text = ''
-      exec 9>/run/anima-installer.lock
-      flock --nonblock 9 || exit 1
-      exec python3 ${installerSource}/install.py ${installedSystem}
+      exec ${installerProgram}/bin/anima-os-install install --system ${installedSystem}
     '';
   };
-  gui = import ./calamares.nix { inherit pkgs lib installedSystem installerSource; };
+  gui = import ./calamares.nix { inherit pkgs lib installedSystem installerProgram; };
 in {
   imports = [ "${modulesPath}/installer/cd-dvd/installation-cd-graphical-base.nix" ./branding.nix ./live-desktop.nix ./display.nix ];
   networking.hostName = lib.mkForce "anima-live";
@@ -27,7 +19,8 @@ in {
   services.openssh.enable = lib.mkForce false;
   services.getty.autologinUser = lib.mkForce "root";
   boot.kernelParams = [ "console=tty0" "console=ttyS0,115200" ];
-  environment.systemPackages = with pkgs; [ installer nano gui.launcher gui.desktop gui.calamares networkmanagerapplet xdotool ];
+  environment.systemPackages = with pkgs; [ installer installerProgram mkpasswd ckbcomp nano gui.launcher gui.desktop gui.calamares networkmanagerapplet xdotool ];
+  environment.etc."anima-install-system".text = "${installedSystem}\n";
   image.baseName = lib.mkForce "anima-os-preview-x86_64";
   image.fileName = lib.mkForce "anima-os-preview-x86_64.iso";
   boot.zfs.forceImportRoot = false;
