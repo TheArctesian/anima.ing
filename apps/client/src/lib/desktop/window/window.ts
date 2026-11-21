@@ -2,7 +2,9 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 
 /**
  * The window of the application, for a window that the system gives no frame (task TC2, "Both together"). The
- * client draws the three controls that the frame had; these are the commands behind them. They take no argument.
+ * client draws the three controls that the frame had; these are the commands behind them. Each is sent for the window
+ * of this web view. The command of Tauri takes the label of a window, so a script of the main web view could name a
+ * different window of the application; the capability gives it to the main web view only.
  */
 export interface WindowFrame {
   minimise(): Promise<void>;

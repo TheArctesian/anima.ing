@@ -16,13 +16,27 @@
   $effect(() => {
     let stop: (() => void) | undefined;
     let ended = false;
+    // A pull at an edge sends many changes. One question is open at a time, and one more follows it when a change
+    // came in between, so the last answer is of the last size.
+    let asking = false;
+    let again = false;
     const read = (): void => {
-      frame.isMaximised().then(
-        (now) => {
-          if (!ended) maximised = now;
-        },
-        () => undefined,
-      );
+      if (asking) {
+        again = true;
+        return;
+      }
+      asking = true;
+      const done = (): void => {
+        asking = false;
+        if (again && !ended) {
+          again = false;
+          read();
+        }
+      };
+      frame.isMaximised().then((now) => {
+        if (!ended) maximised = now;
+        done();
+      }, done);
     };
     read();
     frame.onResized(read).then(
@@ -45,14 +59,14 @@
 </script>
 
 <div class="controls" role="group" aria-label="Window">
-  <button type="button" aria-label="Minimise" title="Minimise" onclick={() => run(frame.minimise)} {@attach press()}>
+  <button type="button" aria-label="Minimise window" title="Minimise" onclick={() => run(() => frame.minimise())} {@attach press()}>
     <Icon name="carbon:subtract" size="sm" />
   </button>
   <button
     type="button"
-    aria-label={maximised ? 'Restore' : 'Maximise'}
+    aria-label={maximised ? 'Restore window' : 'Maximise window'}
     title={maximised ? 'Restore' : 'Maximise'}
-    onclick={() => run(frame.toggleMaximise)}
+    onclick={() => run(() => frame.toggleMaximise())}
     {@attach press()}
   >
     <!-- The icon set of the client has no square; these two are drawn here, in its weight. -->
@@ -65,7 +79,7 @@
       {/if}
     </svg>
   </button>
-  <button class="close" type="button" aria-label="Close" title="Close" onclick={() => run(frame.close)} {@attach press()}>
+  <button class="close" type="button" aria-label="Close window" title="Close" onclick={() => run(() => frame.close())} {@attach press()}>
     <Icon name="carbon:close" size="sm" />
   </button>
 </div>

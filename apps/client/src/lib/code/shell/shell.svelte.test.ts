@@ -5,6 +5,7 @@ import { browserCapabilities } from '$lib/platform/browser';
 import type { Capabilities } from '$lib/platform/capabilities';
 import TopBand from './TopBand.svelte';
 import WindowControls from './WindowControls.svelte';
+import WindowStrip from './WindowStrip.svelte';
 import { shellWindow, type WindowFrame } from '$lib/desktop/window/window';
 
 const shell = vi.hoisted(() => ({
@@ -63,7 +64,7 @@ afterEach(() => {
 });
 
 describe('the window with no frame (TC2)', () => {
-  it('TC2: the commands of the window take no argument from the web view', async () => {
+  it('TC2: each control sends its one command of the window', async () => {
     const current = shellWindow();
     await current.minimise();
     await current.toggleMaximise();
@@ -78,9 +79,9 @@ describe('the window with no frame (TC2)', () => {
     app = mount(WindowControls, { target: document.body, props: { frame: made } });
     await settle();
     expect(document.querySelector('[role="group"]')?.getAttribute('aria-label')).toBe('Window');
-    button('Minimise').click();
-    button('Maximise').click();
-    button('Close').click();
+    button('Minimise window').click();
+    button('Maximise window').click();
+    button('Close window').click();
     expect(made.minimise).toHaveBeenCalledTimes(1);
     expect(made.toggleMaximise).toHaveBeenCalledTimes(1);
     expect(made.close).toHaveBeenCalledTimes(1);
@@ -91,14 +92,35 @@ describe('the window with no frame (TC2)', () => {
     const made = frame(state);
     app = mount(WindowControls, { target: document.body, props: { frame: made } });
     await settle();
-    expect(document.querySelector('button[aria-label="Restore"]')).toBeNull();
+    expect(document.querySelector('button[aria-label="Restore window"]')).toBeNull();
     state.now = true;
     made.resized();
     await settle();
-    expect(button('Restore').title).toBe('Restore');
+    expect(button('Restore window').title).toBe('Restore');
     void unmount(app);
     app = undefined;
     expect(made.stopped).toBe(1);
+  });
+
+});
+
+describe('the window controls and the size of the window (TC2)', () => {
+  it('TC2: while one question is open a second change asks once more, so the last answer is of the last size', async () => {
+    const answers: ((now: boolean) => void)[] = [];
+    const made = frame({ now: false });
+    made.isMaximised = () => new Promise<boolean>((resolve) => answers.push(resolve));
+    app = mount(WindowControls, { target: document.body, props: { frame: made } });
+    await settle();
+    made.resized();
+    made.resized();
+    expect(answers).toHaveLength(1);
+    answers[0]?.(true);
+    await settle();
+    expect(answers).toHaveLength(2);
+    answers[1]?.(false);
+    await settle();
+    expect(document.querySelector('button[aria-label="Restore window"]')).toBeNull();
+    expect(button('Maximise window')).not.toBeNull();
   });
 
   it('TC2: a command that fails leaves the controls as they are', async () => {
@@ -106,36 +128,58 @@ describe('the window with no frame (TC2)', () => {
     made.close = vi.fn(() => Promise.reject(new Error('refused')));
     app = mount(WindowControls, { target: document.body, props: { frame: made } });
     await settle();
-    button('Close').click();
+    button('Close window').click();
     await settle();
-    expect(button('Close')).not.toBeNull();
+    expect(button('Close window')).not.toBeNull();
   });
 });
 
 describe('the top band of Code (TC2)', () => {
-  it('TC2: the band moves the window, and it draws the controls only for a window with no frame', async () => {
-    app = mount(TopBand, { target: document.body, props: { holdsWindowControls: true } });
-    await settle();
-    expect(document.querySelector('header[data-tauri-drag-region]')).not.toBeNull();
-    expect(document.querySelector('button[aria-label="Close"]')).toBeNull();
-    void unmount(app);
+  it('TC2: the band moves the window, tells the layout that the page has its own top, and draws no window controls', async () => {
     shell.answers.current = { ...browserCapabilities, framelessWindow: true };
-    app = mount(TopBand, { target: document.body, props: { holdsWindowControls: true } });
+    app = mount(TopBand, { target: document.body, props: { clearsWindowControls: true } });
     await settle();
-    expect(button('Close')).not.toBeNull();
+    const band = document.querySelector('[data-code-band]');
+    expect(band?.getAttribute('data-tauri-drag-region')).toBe('deep');
+    expect(band?.classList.contains('keeps')).toBe(true);
+    expect(document.querySelector('button')).toBeNull();
+    expect(document.querySelector('header')).toBeNull();
   });
 
-  it('TC2: a band that is not the last one of its row draws no controls', async () => {
+  it('TC2: a band keeps no room for the window controls where the system draws them, or when it is not the last', async () => {
+    app = mount(TopBand, { target: document.body, props: { clearsWindowControls: true } });
+    await settle();
+    expect(document.querySelector('.band')?.classList.contains('keeps')).toBe(false);
+    void unmount(app);
     shell.answers.current = { ...browserCapabilities, framelessWindow: true };
     app = mount(TopBand, { target: document.body, props: {} });
     await settle();
-    expect(document.querySelector('button[aria-label="Close"]')).toBeNull();
+    expect(document.querySelector('.band')?.classList.contains('keeps')).toBe(false);
   });
 
   it('TC2: on a Mac the first band leaves room for the window buttons', async () => {
     shell.answers.current = { ...browserCapabilities, overlayTitleBar: true };
     app = mount(TopBand, { target: document.body, props: { clearsWindowButtons: true } });
     await settle();
-    expect(document.querySelector('header')?.classList.contains('clears')).toBe(true);
+    expect(document.querySelector('.band')?.classList.contains('clears')).toBe(true);
+  });
+});
+
+describe('the strip at the top of a window with no frame (TC2)', () => {
+  it('TC2: where the system draws the top of the window the strip is nothing', async () => {
+    app = mount(WindowStrip, { target: document.body, props: {} });
+    await settle();
+    expect(document.body.querySelector('.strip')).toBeNull();
+    expect(document.querySelector('button')).toBeNull();
+  });
+
+  it('TC2: with no frame the strip moves the window and holds the three controls, once', async () => {
+    shell.answers.current = { ...browserCapabilities, framelessWindow: true };
+    app = mount(WindowStrip, { target: document.body, props: { bare: true } });
+    await settle();
+    const strip = document.querySelector('.strip');
+    expect(strip?.hasAttribute('data-tauri-drag-region')).toBe(true);
+    expect(strip?.classList.contains('bare')).toBe(true);
+    expect(document.querySelectorAll('button')).toHaveLength(3);
   });
 });

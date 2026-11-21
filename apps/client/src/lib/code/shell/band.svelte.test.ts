@@ -87,3 +87,31 @@ describe('the buttons of the band (TC2)', () => {
     expect(ontoggle).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('the head of the chat column (TC2)', () => {
+  it('TC2: the head shows the folder and the title of the open thread, and a line only when no thread is open', async () => {
+    const { default: ChatHeader } = await import('./ChatHeader.svelte');
+    const thread = {
+      id: 'a',
+      program: 'codex' as const,
+      title: null,
+      folder: '/Users/me/work/anima.ing',
+      branch: null,
+      model: null,
+      started: null,
+      last: null,
+      tail: 'nothing' as const,
+    };
+    app = mount(ChatHeader, { target: document.body, props: { thread } });
+    flushSync();
+    const items = [...document.querySelectorAll('nav li')].map((item) => item.textContent.trim());
+    expect(items).toEqual(['anima.ing', '/', 'Untitled thread']);
+    expect(document.querySelector('.head')?.classList.contains('empty')).toBe(false);
+    void unmount(app);
+    app = mount(ChatHeader, { target: document.body, props: {} });
+    flushSync();
+    expect(document.querySelector('nav')).toBeNull();
+    expect(document.querySelector('.head')?.classList.contains('empty')).toBe(true);
+    expect(document.querySelector('[data-code-band][data-tauri-drag-region]')).not.toBeNull();
+  });
+});
