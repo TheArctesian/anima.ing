@@ -79,16 +79,16 @@ impl AddArgs {
             application_id: self.application,
             device_id: self.device,
             port: self.port,
-            kind: Some(match self.kind {
+            kind: match self.kind {
                 KindArg::Web => route_add::ApplicationRouteKind::WEB,
                 KindArg::Redirect => route_add::ApplicationRouteKind::REDIRECT,
                 KindArg::TcpStream => route_add::ApplicationRouteKind::TCP_STREAM,
                 KindArg::UdpStream => route_add::ApplicationRouteKind::UDP_STREAM,
-            }),
-            access: Some(match self.access {
+            },
+            access: match self.access {
                 AccessArg::Private => route_add::ApplicationRouteAccess::PRIVATE,
                 AccessArg::Public => route_add::ApplicationRouteAccess::PUBLIC,
-            }),
+            },
             listen_port: self.listen_port,
             protocol: self.protocol,
             redirect_to: self.redirect_to,

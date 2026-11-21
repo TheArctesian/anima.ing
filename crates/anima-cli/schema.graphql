@@ -3772,9 +3772,9 @@ input ApplicationRouteInput {
   deviceId: ID!
   "The port of the application; needed by each kind but REDIRECT, which has none. Never a port of a session, of Anima, of the engine of the containers, of a database or of metrics. The route serves only when the hub's record of the application names this device and this port."
   port: Int
-  kind: ApplicationRouteKind = WEB
+  kind: ApplicationRouteKind! = WEB
   "A new route is private unless the person makes it public (Section 16.4)."
-  access: ApplicationRouteAccess = PRIVATE
+  access: ApplicationRouteAccess! = PRIVATE
   "The port of the hub of a stream: in the range that the operator set (ANIMA_ROUTES_STREAM_PORTS), never below 1024, never a port of Anima, the link, WireGuard or PostgreSQL. Only for a stream."
   listenPort: Int
   "The protocol of a stream: needed for a public stream, one with its own sign-in and TLS (imaps, pop3s, smtps, ldaps, xmpps over TCP; openvpn, wireguard over UDP). The usual port of the protocol is a hint; the hub never opens a port by itself."
