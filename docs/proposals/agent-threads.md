@@ -1,14 +1,14 @@
 ---
 kind: Proposal
 state: Direction decided
-evidence: Version 3.1 (2026-11-20). The operator answered each open decision that was put to him: 36 on question cards (the four rulings that Section 1.3 names) and the last seven the same day (R-309); all relayed through the orchestrating session. No decision of his holds stage 1b (drive Claude Code and Codex on this computer); his standing rule stays, so code that starts an agent merges only after a separate security review of that code (the list of Section 6.2.1). The requirements THR-001 to THR-141 are not approved as a whole: a requirement is in force where a ruling names its decision. Parity with the inventory of T3 Code: 101 functions; 15 built on a branch, 3 partly built, 77 not started, 5 owned by a different document, 1 not copied. Built and pushed, not merged: tasks TH1 to TH5 and TH8 (they read and start no program). A different session builds stage 1b. Three separate security reads are recorded (28, 19 and 24 findings; Section 9). No reviewer read version 3.1. Risks that he accepted are in Section 8.2 with his words. Not designed: the store of the tokens of THR-131.
+evidence: Version 3.1 (2026-11-20). The operator answered each open decision that was put to him: 36 on question cards (the four rulings that Section 1.3 names) and the last seven the same day (R-309); all relayed through the orchestrating session. No decision of his holds stage 1b (drive Claude Code and Codex on this computer); his standing rule stays, so code that starts an agent merges only after a separate security review of that code (the list of Section 6.2.1). The requirements THR-001 to THR-141 are not approved as a whole: a requirement is in force where a ruling names its decision. Parity with the inventory of T3 Code: 101 functions; 15 built on a branch, 3 partly built, 77 not started, 5 owned by a different document, 1 not copied. Built and pushed, not merged: tasks TH1 to TH5 and TH8 (they read and start no program). A different session builds stage 1b. Three separate security reads are recorded (28, 19 and 24 findings; Section 9). No reviewer read version 3.1. Risks that he accepted are in Section 8.2 with his words. Not designed: the store of the tokens of THR-131. Version 3.3 (2026-11-21): the ruling R-NEW-threadlisting, made overnight and not yet confirmed, frees task TH46 (pin, archive, rename, remove from the list) before his approval of Section 8; the rest of stage 4 still waits for it.
 ---
 
 # Proposal: agent threads (the behaviour of T3 Code, as a native part of Anima)
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this proposal (PLN-005).
 
-Version: 3.2. Date: 2026-11-21.
+Version: 3.3. Date: 2026-11-21.
 Status: the header of this document holds the state (PLN-020).
 Map: [work-plan.md](../work-plan.md), categories Use and See, row 4.24 of [priorities.md](../plan/priorities.md).
 From: R-286, R-287, R-288, R-293, R-289, R-297, R-295, R-291.
@@ -603,7 +603,7 @@ Each task of this stage runs `git` or changes files of the person through the ru
 | TH43 | The diff of a turn and of the thread from two checkpoints, with its panel, find in the diff, and a comment on a line that goes to the agent (inventory 2.9; THR-100) | TH42 | Tests; client tests | Not started |
 | TH44 | "Edit from here": cut the conversation, and revert the files only in a worktree of the runner (inventory 6.3) | TH42 | Tests: refused outside a worktree, and when a different thread uses the folder | Not started |
 | TH45 | Commit, push and a pull request through the forge domain of the hub; the state of the branch, fetch, pull (inventory 6.4, 6.5) | TH41 | Tests with a made remote; a human check on GitHub | Not started |
-| TH46 | The list: archive, delete, pin, rename, a title that a model writes, groups by project (inventory 1.4, 1.6, 1.7) | TH11 | Tests | Not started |
+| TH46 | The list: archive, delete, pin, rename, a title that a model writes, groups by project (inventory 1.4, 1.6, 1.7) | TH11 | Tests | Built on branch threads/list-marks (rename, pin, archive, remove from the list; no title written by a model, no groups by project), freed by the ruling R-NEW-threadlisting; not merged |
 | TH47 | Images by paste or drag, files, a large paste as a file; sub-agents shown read-only (inventory 11, 1.8) | TH14 | Tests; the size limits | Not started |
 | TH48 | The composer: steer, the queue on the runner, plan mode with the plan card, the card of steps, `/clear`, the history of prompts, the context meter (inventory 2.2, 2.8, 2.11, 12) | TH14 | Tests | Not started |
 | TH49 | Find in the thread; a terminal for each thread through the terminal of Anima; a set-up script when a worktree is made (inventory 2.12, 7) | TH41 | Tests; a separate security read for the terminal | Not started |

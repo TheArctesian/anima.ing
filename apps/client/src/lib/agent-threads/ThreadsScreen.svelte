@@ -15,6 +15,7 @@
   import type { CallResult, LiveThreads } from './live/live.svelte';
   import type { Answer } from './live/run';
   import LimitDialog from './view/LimitDialog.svelte';
+  import ListingBar from './view/ListingBar.svelte';
   import LiveView from './view/LiveView.svelte';
   import NewThread from './view/NewThread.svelte';
 
@@ -36,7 +37,9 @@
   const live = $derived(store.live);
   const linkWords = $derived(live === null ? null : live.linked === false ? (live.problem ?? 'The thread runner of this computer is not running. Start the Anima daemon to start threads.') : live.holder);
   let screen = $state<HTMLElement>();
-  const shown = $derived(narrowed(store.allRows ?? [], program, search));
+  const shown = $derived(narrowed(store.listedRows ?? [], program, search));
+  /** The row of the open thread as the list shows it, for its title. */
+  const chosenRow = $derived(shown.find((row) => row.id === store.chosen) ?? null);
   /** The states are of the time of the last read of the list; a test gives its own time. */
   const moment = $derived.by(() => {
     void store.allRows;
@@ -114,6 +117,9 @@
 <section class="threads" bind:this={screen} {@attach fillRoom()}>
   <PageHeader title="Threads" detail="The sessions of Claude Code and Codex on this computer. Threads started here are driven on this computer only.">
     {#snippet actions()}
+      {#if live !== null && (store.archived || store.archivedCount > 0)}
+        <FormButton tone="ghost" aria-pressed={store.archived} onclick={() => (store.archived = !store.archived)}>{store.archived ? 'Back to the threads' : `Archived (${String(store.archivedCount)})`}</FormButton>
+      {/if}
       {#if live !== null}<FormButton tone="primary" icon="carbon:add" onclick={() => (starting = true)} disabled={live.linked === false}>New thread</FormButton>{/if}
     {/snippet}
   </PageHeader>
@@ -147,6 +153,15 @@
         }}
       />
       <div class="thread" aria-busy={store.loadingThread}>
+        {#if live !== null && store.chosen !== null && store.threadProblem === null}
+          {@const id = store.chosen}
+          <ListingBar
+            title={chosenRow?.title ?? store.liveThread?.row.title ?? store.thread?.title ?? null}
+            listing={live.listings.get(id) ?? null}
+            running={store.liveThread !== null && store.liveThread.row.state !== 'stopped'}
+            onChange={(change) => live.changeListing(id, change)}
+          />
+        {/if}
         {#if store.threadProblem !== null}
           <ErrorState message={store.threadProblem} onRetry={() => (store.chosen === null ? undefined : void store.open(store.chosen))} />
         {:else if store.liveThread !== null && live !== null}
