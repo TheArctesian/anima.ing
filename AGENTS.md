@@ -303,7 +303,8 @@ path is read by a Rust build or test, no Go job without `link/`. When each chang
 `quality/src/gates/test-only.ts`), the Rust jobs lint and test only those crates. A run for a train or for a call runs each job.
 A push to `dev` (`bun quality/bin/gates.ts --dev-push`) runs only the quality gates when a run on `dev` or on a
 train already passed for its tree, or when it changed only documents on such a tree; each other push to `dev`
-runs each job, so `dev` never holds a tree that no run proved. The jobs read the compiled Rust dependencies from the caches that the workflow `rust-cache` writes
+runs each job, so `dev` never holds a tree that no run proved. A push to `dev` does not stop the run of `dev` before it: it waits, and then
+runs only the quality gates when only documents changed on the tree that run proved. The jobs read the compiled Rust dependencies from the caches that the workflow `rust-cache` writes
 under `main`, the one branch whose caches each branch can read; they write no cache.
 
 The gates run in this order and stop at the first failure: `cargo fmt --check`,
