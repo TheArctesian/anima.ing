@@ -1,7 +1,9 @@
 import AlarmClock from '@lucide/svelte/icons/alarm-clock';
 import AlarmClockOff from '@lucide/svelte/icons/alarm-clock-off';
+import ArrowDown from '@lucide/svelte/icons/arrow-down';
 import ArrowRightLeft from '@lucide/svelte/icons/arrow-right-left';
 import ArrowUp from '@lucide/svelte/icons/arrow-up';
+import ChartNoAxesColumn from '@lucide/svelte/icons/chart-no-axes-column';
 import Check from '@lucide/svelte/icons/check';
 import ChevronDown from '@lucide/svelte/icons/chevron-down';
 import ChevronRight from '@lucide/svelte/icons/chevron-right';
@@ -14,15 +16,24 @@ import Clock from '@lucide/svelte/icons/clock';
 import Copy from '@lucide/svelte/icons/copy';
 import Ellipsis from '@lucide/svelte/icons/ellipsis';
 import Eye from '@lucide/svelte/icons/eye';
+import FileSearch from '@lucide/svelte/icons/file-search';
 import Folder from '@lucide/svelte/icons/folder';
+import FolderPlus from '@lucide/svelte/icons/folder-plus';
 import GitBranch from '@lucide/svelte/icons/git-branch';
 import GitMerge from '@lucide/svelte/icons/git-merge';
 import GitPullRequest from '@lucide/svelte/icons/git-pull-request';
+import GitPullRequestArrow from '@lucide/svelte/icons/git-pull-request-arrow';
 import Hammer from '@lucide/svelte/icons/hammer';
+import Keyboard from '@lucide/svelte/icons/keyboard';
+import Link from '@lucide/svelte/icons/link';
+import Link2 from '@lucide/svelte/icons/link-2';
 import Maximize2 from '@lucide/svelte/icons/maximize-2';
 import MessageCircleQuestion from '@lucide/svelte/icons/message-circle-question';
+import MessageSquare from '@lucide/svelte/icons/message-square';
+import MessageSquareDashed from '@lucide/svelte/icons/message-square-dashed';
 import Mic from '@lucide/svelte/icons/mic';
 import Minimize2 from '@lucide/svelte/icons/minimize-2';
+import Monitor from '@lucide/svelte/icons/monitor';
 import PanelBottom from '@lucide/svelte/icons/panel-bottom';
 import PanelLeft from '@lucide/svelte/icons/panel-left';
 import PanelLeftClose from '@lucide/svelte/icons/panel-left-close';
@@ -31,6 +42,7 @@ import Paperclip from '@lucide/svelte/icons/paperclip';
 import Pin from '@lucide/svelte/icons/pin';
 import PinOff from '@lucide/svelte/icons/pin-off';
 import Plus from '@lucide/svelte/icons/plus';
+import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 import Search from '@lucide/svelte/icons/search';
 import Settings from '@lucide/svelte/icons/settings';
 import Shield from '@lucide/svelte/icons/shield';
@@ -39,6 +51,7 @@ import Square from '@lucide/svelte/icons/square';
 import SquareMenu from '@lucide/svelte/icons/square-menu';
 import SquarePen from '@lucide/svelte/icons/square-pen';
 import Terminal from '@lucide/svelte/icons/terminal';
+import TextSearch from '@lucide/svelte/icons/text-search';
 import Trash2 from '@lucide/svelte/icons/trash-2';
 import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 import Undo2 from '@lucide/svelte/icons/undo-2';
@@ -54,8 +67,10 @@ import X from '@lucide/svelte/icons/x';
 export const CODE_ICONS = {
   'alarm-clock': AlarmClock,
   'alarm-clock-off': AlarmClockOff,
+  'arrow-down': ArrowDown,
   'arrow-right-left': ArrowRightLeft,
   'arrow-up': ArrowUp,
+  'chart-no-axes-column': ChartNoAxesColumn,
   check: Check,
   'chevron-down': ChevronDown,
   'chevron-right': ChevronRight,
@@ -68,15 +83,24 @@ export const CODE_ICONS = {
   copy: Copy,
   ellipsis: Ellipsis,
   eye: Eye,
+  'file-search': FileSearch,
   folder: Folder,
+  'folder-plus': FolderPlus,
   'git-branch': GitBranch,
   'git-merge': GitMerge,
   'git-pull-request': GitPullRequest,
+  'git-pull-request-arrow': GitPullRequestArrow,
   hammer: Hammer,
+  keyboard: Keyboard,
+  link: Link,
+  'link-2': Link2,
   'maximize-2': Maximize2,
   'message-circle-question': MessageCircleQuestion,
+  'message-square': MessageSquare,
+  'message-square-dashed': MessageSquareDashed,
   mic: Mic,
   'minimize-2': Minimize2,
+  monitor: Monitor,
   'panel-bottom': PanelBottom,
   'panel-left': PanelLeft,
   'panel-left-close': PanelLeftClose,
@@ -85,6 +109,7 @@ export const CODE_ICONS = {
   pin: Pin,
   'pin-off': PinOff,
   plus: Plus,
+  'rotate-ccw': RotateCcw,
   search: Search,
   settings: Settings,
   shield: Shield,
@@ -93,6 +118,7 @@ export const CODE_ICONS = {
   'square-menu': SquareMenu,
   'square-pen': SquarePen,
   terminal: Terminal,
+  'text-search': TextSearch,
   'trash-2': Trash2,
   'triangle-alert': TriangleAlert,
   'undo-2': Undo2,
