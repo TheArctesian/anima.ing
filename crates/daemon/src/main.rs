@@ -22,22 +22,11 @@ use anima_daemon::units::{self, plan::Target};
 use zeroize::Zeroizing;
 
 fn main() -> ExitCode {
-    // The launcher of a model runtime (R-NEW-containment, R-NEW-cgroupns): it joins the cgroup
-    // of the server, hides the cgroups above it and becomes the runtime; it never returns. It
-    // runs before the async runtime starts, because a new namespace needs one thread.
+    // The launcher of a model runtime comes first, before any runtime or thread.
     #[cfg(target_os = "linux")]
-    {
-        let arguments: Vec<String> = std::env::args().skip(1).collect();
-        if arguments.first().map(String::as_str)
-            == Some(anima_daemon::model::tree::linux::LAUNCH_MODE)
-        {
-            anima_daemon::model::tree::linux::launch(&arguments[1..]);
-        }
-    }
-    match tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-    {
+    anima_daemon::model::tree::linux::dispatch_if_launch();
+    // The same runtime as `Builder::new_multi_thread().enable_all()`.
+    match tokio::runtime::Runtime::new() {
         Ok(runtime) => runtime.block_on(daemon()),
         Err(error) => failure(&error),
     }

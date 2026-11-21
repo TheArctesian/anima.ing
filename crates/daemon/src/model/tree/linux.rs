@@ -203,6 +203,17 @@ fn fail(failure: &str, step: Containment) -> ! {
     std::process::exit(code);
 }
 
+/// Becomes the launcher when the first argument is [`LAUNCH_MODE`]; otherwise returns. The
+/// launcher (R-NEW-containment, R-NEW-cgroupns) joins the cgroup of the server, hides the cgroups
+/// above it and becomes the runtime; it never returns. `main` calls this first, before the async
+/// runtime or any thread starts, because a new namespace needs one thread.
+pub fn dispatch_if_launch() {
+    let arguments: Vec<String> = std::env::args().skip(1).collect();
+    if arguments.first().map(String::as_str) == Some(LAUNCH_MODE) {
+        launch(&arguments[1..]);
+    }
+}
+
 /// The launcher: `__model-launch <cgroup.procs> <daemon pid> <failure file> <program>
 /// <arguments…>`. It never returns. At a failed step it writes the exit code of that step
 /// ([`Containment::exit_code`]) to the failure file, then exits with it. The environment is the one that the daemon gave it, already the fixed list.
