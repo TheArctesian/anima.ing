@@ -38,7 +38,7 @@ def prepare(folder):
 def samples(machine, mode):
     code = base64.b64encode(Path(__file__).with_name('guest.py').read_bytes()).decode()
     offset = len(machine.buffer)
-    resolve = 'mapfile -t perf_python < <(for candidate in /nix/store/*-python3-*/bin/python3; do if test -x "$candidate"; then readlink -f "$candidate"; fi; done | sort -u); test "${#perf_python[@]}" = 1'
+    resolve = 'mapfile -t perf_python < <(for candidate in /nix/store/*-python3-*/bin/python3; do case "$candidate" in *-env/bin/python3) continue;; esac; if test -x "$candidate"; then readlink -f "$candidate"; fi; done | sort -u); test "${#perf_python[@]}" = 1'
     machine.command(f'{resolve}; echo {shlex.quote(code)} | base64 -d > /tmp/anima-perf-guest.py; timeout 120 "${{perf_python[0]}}" /tmp/anima-perf-guest.py {mode}', timeout=130)
     match = re.search(r'ANIMA_PERFORMANCE=(\{[^\r\n]+\})', machine.buffer[offset:])
     if not match:
@@ -63,7 +63,7 @@ def installed_login(machine, password):
 def install(machine, password):
     offset = len(machine.buffer)
     machine.command('if command -v anima-os-install >/dev/null; then echo PERF_NATIVE; else echo PERF_LEGACY; fi')
-    if re.search(r'PERF_NATIVE(?:\r?\n)', machine.buffer[offset:]):
+    if re.search(r'PERF_NATIVE(?:\r*\n)', machine.buffer[offset:]):
         install_request(machine, password)
         machine.command('anima-install < /run/install.json > /run/install-progress.jsonl; grep -q ANIMA_INSTALL_COMPLETE /run/install-progress.jsonl', timeout=1200)
         return
@@ -134,12 +134,13 @@ def main():
     parser.add_argument('after', type=Path)
     parser.add_argument('output', type=Path)
     parser.add_argument('--rounds', type=int, default=3)
+    parser.add_argument('--resume', action='store_true', help='Reuse completed measurement records, never VM disks')
     args = parser.parse_args()
     args.before = args.before.resolve(strict=True)
     args.after = args.after.resolve(strict=True)
     if args.rounds < 1:
         parser.error('rounds must be positive')
-    args.output.mkdir(parents=True, exist_ok=False)
+    args.output.mkdir(parents=True, exist_ok=args.resume)
     (args.output / 'manifest.json').write_text(json.dumps(dict(
         qemu=subprocess.check_output(['qemu-system-x86_64', '--version'], text=True).splitlines()[0],
         host_kernel=platform.release(), guest=dict(cpus=2, memory_mib=4096, network='none', firmware='OVMF UEFI', disk='fresh64GiB qcow2'),
@@ -147,11 +148,20 @@ def main():
         background_workload='Host desktop and unrelated long-running Windows process retained; no host cache clearing or workload isolation',
         caveats='ISO digest warms host file cache before each boot; graphical times are observed upper bounds, include serial login/polling/OCR; RSS double-counts shared pages'
     ), indent=2) + '\n')
-    records = []
+    records = json.loads((args.output / 'results.json').read_text()) if args.resume else []
+    for record in records:
+        expected = args.before if record['label'] == 'before' else args.after
+        if record['iso'] != str(expected):
+            raise ValueError('Resume artifact does not match existing records')
     for index in range(args.rounds):
         order = [('before', args.before), ('after', args.after)]
         for label, iso in order if index % 2 == 0 else reversed(order):
-            result = one(iso.resolve(strict=True), args.output / f'{index+1}-{label}')
+            if any(record['round'] == index+1 and record['label'] == label for record in records):
+                continue
+            folder = args.output / f'{index+1}-{label}'
+            if folder.exists():
+                folder.rename(folder.with_name(folder.name + '-incomplete-' + str(time.monotonic_ns())))
+            result = one(iso.resolve(strict=True), folder)
             records.append(dict(round=index+1, label=label, **result))
             (args.output / 'results.json').write_text(json.dumps(records, indent=2) + '\n')
 

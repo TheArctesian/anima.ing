@@ -37,7 +37,7 @@ def report(folder):
         ('Live installer tree RSS sum (MiB)', 'live_rss'),
         ('Installed lock screen observed (s)', 'installed_locked_screen_observed_seconds'),
         ('Installed guest MemAvailable (MiB)', 'installed_memory'),
-        ('Installed console tree RSS sum (MiB)', 'installed_rss'),
+        ('Installed locked-console tree RSS sum (MiB)', 'installed_rss'),
         ('Privileged session startup (ms)', 'session_session_start_ms'),
         ('Status round-trip median (ms)', 'session_status_median_ms'),
     ]
@@ -47,13 +47,16 @@ def report(folder):
     for label, key in metrics:
         columns = [cell([value(record, key) for record in records if record['label'] == group]) for group in ('before', 'after')]
         lines.append(f'| {label} | {columns[0]} | {columns[1]} |')
-    lines.extend(['', 'Per-boot memory values are medians of five idle samples. Status values are medians of ten successful protocol requests. Readiness is an observed upper bound including serial login, polling and (installed) OCR, not a paint timestamp. Live Calamares and installed-console measurements describe different software.', '',
+    lines.extend(['', 'Per-boot memory values are medians of five idle samples. Status values are medians of ten successful protocol requests. Readiness is an observed upper bound including serial login, polling and (installed) OCR, not a paint timestamp. Live Calamares and installed-console measurements describe different software. Installed idle memory is measured with the graphical console locked; dashboard interaction and render latency are unmeasured.', '',
                   'Artifact-wide comparison cannot attribute a change to Rust or the UI. Host desktop and an unrelated Windows workload remained running; file checksums warm the ISO cache. Guest RAM and CPUs are fixed, but host scheduling/cache/thermal effects remain uncontrolled. RSS sums double-count shared pages. No live account, network, agent work or physical hardware was measured.', '',
                   '## Artifact identity', ''])
     for group in ('before', 'after'):
         group_records = [record for record in records if record['label'] == group]
         first = group_records[0]
         lines.append(f"- {group}: `{first['iso']}`; SHA-256 `{first['iso_sha256']}`; {len(group_records)} fresh offline VM samples.")
+    incomplete = sorted(path.name for path in folder.glob('*-incomplete-*'))
+    if incomplete:
+        lines.extend(['', 'Incomplete attempts excluded from statistics: ' + ', '.join(f'`{name}`' for name in incomplete) + '. Their serial logs remain in the evidence directory.'])
     lines.extend(['', f"All unselected sentinel disks unchanged: {all(record['unselected_disk_unchanged'] for record in records)}.", '',
                   'Graphical usability acceptance remains a separate final operator check.'])
     return '\n'.join(lines) + '\n'

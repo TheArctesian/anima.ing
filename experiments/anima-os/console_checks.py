@@ -38,7 +38,7 @@ def installed_console(machine, output, password):
     wait_label(output, 'Connect to Anima')
     screenshot(output, 'console-overview')
     x, y, w, h = locate(output, 'Network'); click(machine, x+w//2, y+h//2)
-    wait_label(output, 'Scan networks')
+    wait_label(output, 'No Wi-Fi adapter was detected')
     screenshot(output, 'console-network')
     x, y, w, h = locate(output, 'Settings'); click(machine, x+w//2, y+h//2)
     wait_label(output, 'Display & accessibility')
