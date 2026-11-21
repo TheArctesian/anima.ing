@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-use crate::limits::{Caps, Limits, Timeouts};
+use crate::limits::{Caps, Limits, Network, Timeouts};
 
 const HUB_SOCKET: &str = "ANIMA_ROUTE_PROXY_HUB_SOCKET";
 const LISTEN: &str = "ANIMA_ROUTE_PROXY_LISTEN";
@@ -26,6 +26,10 @@ const IDLE_SECONDS: &str = "ANIMA_ROUTE_PROXY_IDLE_SECONDS";
 const OPEN_TOTAL: &str = "ANIMA_ROUTE_PROXY_OPEN_TOTAL";
 const OPEN_PER_CLIENT: &str = "ANIMA_ROUTE_PROXY_OPEN_PER_CLIENT";
 const OPEN_PLAIN: &str = "ANIMA_ROUTE_PROXY_OPEN_PLAIN";
+const PRIVATE_ADDRESS: &str = "ANIMA_ROUTE_PROXY_PRIVATE_ADDRESS";
+const PRIVATE_NETWORKS: &str = "ANIMA_ROUTE_PROXY_PRIVATE_NETWORKS";
+const UDP_FLOWS: &str = "ANIMA_ROUTE_PROXY_UDP_FLOWS";
+const UDP_IDLE_SECONDS: &str = "ANIMA_ROUTE_PROXY_UDP_IDLE_SECONDS";
 const DAY_MS: u64 = 24 * 60 * 60 * 1000;
 /// The default cap of one client network: below the 32 streams of one link of the hub.
 const PER_CLIENT: u32 = 8;
@@ -49,6 +53,20 @@ pub struct Settings {
     pub tls_caps: Caps,
     /// The connections of the plain listener.
     pub plain_caps: Caps,
+    /// Where the private routes listen; `None`: no private route is served.
+    pub private: Option<Private>,
+    /// The flows of each UDP stream at one time.
+    pub udp_flows: usize,
+    /// The time with no datagram after which a UDP flow ends.
+    pub udp_idle: Duration,
+}
+
+/// The address of the proxy on the network of Anima, and the networks of its nodes: a private
+/// route listens only there and answers only them (Section 16.7, SF-NEW-lsprivate).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Private {
+    pub address: IpAddr,
+    pub networks: Vec<Network>,
 }
 
 /// Why the settings were not read.
@@ -58,6 +76,8 @@ pub enum SettingsError {
     Invalid(&'static str),
     #[error("{HUB_SOCKET} is not set")]
     NoHub,
+    #[error("{PRIVATE_ADDRESS} needs {PRIVATE_NETWORKS}")]
+    NoPrivateNetworks,
 }
 
 /// The settings, or `None` when the proxy is off.
@@ -94,7 +114,32 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Option<Settings>, Sett
             total: positive(env, OPEN_PLAIN)?.unwrap_or(256),
             per_client: positive(env, OPEN_PER_CLIENT)?.unwrap_or(PER_CLIENT),
         },
+        private: private(env)?,
+        udp_flows: positive(env, UDP_FLOWS)?.unwrap_or(64),
+        udp_idle: positive::<u64>(env, UDP_IDLE_SECONDS)?
+            .map_or(Duration::from_secs(60), Duration::from_secs),
     }))
+}
+
+/// The private place, when its address is set; its networks are then needed.
+fn private(env: &BTreeMap<String, String>) -> Result<Option<Private>, SettingsError> {
+    let Some(address) = read::<IpAddr>(env, PRIVATE_ADDRESS)? else {
+        return Ok(None);
+    };
+    let networks = env.get(PRIVATE_NETWORKS).map_or(Ok(Vec::new()), |text| {
+        text.split(',')
+            .map(str::trim)
+            .filter(|part| !part.is_empty())
+            .map(|part| {
+                part.parse()
+                    .map_err(|()| SettingsError::Invalid(PRIVATE_NETWORKS))
+            })
+            .collect::<Result<Vec<Network>, _>>()
+    })?;
+    if networks.is_empty() {
+        return Err(SettingsError::NoPrivateNetworks);
+    }
+    Ok(Some(Private { address, networks }))
 }
 
 /// The timeouts: 10 s for the handshake and the head, 60 s for a whole request, 300 s with no

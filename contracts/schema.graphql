@@ -3541,19 +3541,47 @@ enum ApplicationRouteWait {
   MACHINE_CONSENT
   "The hub has no record of the application that names this device and this port and no socket of the engine (task H6). The hub keeps no such record yet: no route serves in this version."
   APPLICATION_RECORD
-  "The route has no certificate that is valid now."
+  "The route has no certificate that is valid now. A stream has no TLS of the hub and never waits for it."
   CERTIFICATE
 }
 
-"One public name of one application, with its target fixed when the name was added. It holds no certificate and no key."
+"What a route carries (HOST-050, task H40; Section 16 of hosted-applications-stage-2.md)."
+enum ApplicationRouteKind {
+  "HTTPS by name to the port of the application (Section 12)."
+  WEB
+  "A proven name that answers 301 (GET, HEAD) or 308 with one fixed https:// address; it reaches no machine."
+  REDIRECT
+  "A port of the hub (listenPort) to the port of the application over TCP, with no TLS of the hub and no look inside. Never on a hosted hub until the door has an address for each hub (OD-HOST-47)."
+  TCP_STREAM
+  "The same over UDP, only to a machine that the hub reaches on its own network, never through the link (OD-HOST-48)."
+  UDP_STREAM
+}
+
+"Who may reach a route (Section 16.7, OD-HOST-49)."
+enum ApplicationRouteAccess {
+  "The internet."
+  PUBLIC
+  "Only the nodes of the network of Anima (each device, machine and container on it), on the address of the hub on that network."
+  PRIVATE
+}
+
+"One name of one application, with its target fixed when the name was added. It holds no certificate and no key."
 type ApplicationRoute {
   id: ID!
   "A DNS name in lower case."
   name: String!
+  kind: ApplicationRouteKind!
+  access: ApplicationRouteAccess!
   applicationId: ID!
   deviceId: ID!
-  "The port that the applications program recorded. Never 22, 5900, 3389 or a port of Anima."
-  port: Int!
+  "The port that the applications program recorded. Never 22, 5900, 3389 or a port of Anima. Null for a redirect."
+  port: Int
+  "The port of the hub that a stream listens on; null for a web route and a redirect."
+  listenPort: Int
+  "The protocol that the person picked for a stream, from the fixed list of the hub; null when none."
+  protocol: String
+  "The one https:// address of a redirect; null for each other kind."
+  redirectTo: String
   proof: ApplicationRouteProof!
   "Failed reads of the proof in a row."
   failedReads: Int!
@@ -3582,14 +3610,23 @@ type ApplicationRouteAdded {
   sameSiteAsHub: Boolean!
 }
 
-"What a person gives to add a public name to an application."
+"What a person gives to add a name to an application. Each route of an application goes to one device."
 input ApplicationRouteInput {
   "A DNS name: never the name of the hub or below it, never at or below a domain that holds a cookie of a hub, never a wildcard."
   name: String!
   applicationId: ID!
   deviceId: ID!
-  "The port of the application. Never a port of a session, of Anima, of the engine of the containers, of a database or of metrics. The route serves only when the hub's record of the application names this device and this port."
-  port: Int!
+  "The port of the application; needed by each kind but REDIRECT, which has none. Never a port of a session, of Anima, of the engine of the containers, of a database or of metrics. The route serves only when the hub's record of the application names this device and this port."
+  port: Int
+  kind: ApplicationRouteKind = WEB
+  "A new route is private unless the person makes it public (Section 16.4)."
+  access: ApplicationRouteAccess = PRIVATE
+  "The port of the hub of a stream: in the range that the operator set (ANIMA_ROUTES_STREAM_PORTS), never below 1024, never a port of Anima, the link, WireGuard or PostgreSQL. Only for a stream."
+  listenPort: Int
+  "The protocol of a stream: needed for a public stream, one with its own sign-in and TLS (imaps, pop3s, smtps, ldaps, xmpps over TCP; openvpn, wireguard over UDP). The usual port of the protocol is a hint; the hub never opens a port by itself."
+  protocol: String
+  "The one https:// address of a REDIRECT: a host name, an optional port and path; nothing of a request is added to it."
+  redirectTo: String
 }
 
 # ---------------------------------------------------------------- root types

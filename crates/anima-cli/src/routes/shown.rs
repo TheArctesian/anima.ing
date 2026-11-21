@@ -26,14 +26,19 @@ fn state(route: &Value) -> Cell {
 
 /// A row for each route.
 pub fn table<T: Serialize>(routes: &[T]) -> Table {
-    let mut table = Table::new(vec!["ID", "NAME", "DEVICE", "PORT", "PROOF", "STATE"]);
+    let mut table = Table::new(vec![
+        "ID", "NAME", "KIND", "ACCESS", "DEVICE", "PORT", "LISTEN", "PROOF", "STATE",
+    ]);
     for route in routes {
         let route = serde_json::to_value(route).unwrap_or_default();
         table.row(vec![
             text(&route, "id").into(),
             text(&route, "name").into(),
+            text(&route, "kind").into(),
+            text(&route, "access").into(),
             text(&route, "deviceId").into(),
             text(&route, "port").into(),
+            text(&route, "listenPort").into(),
             text(&route, "proof").into(),
             state(&route),
         ]);
@@ -48,9 +53,14 @@ pub fn record<T: Serialize>(route: &T) -> Table {
     for (label, field) in [
         ("ID", "id"),
         ("Name", "name"),
+        ("Kind", "kind"),
+        ("Access", "access"),
         ("Application", "applicationId"),
         ("Device", "deviceId"),
         ("Port", "port"),
+        ("Port of the hub", "listenPort"),
+        ("Protocol", "protocol"),
+        ("Redirect to", "redirectTo"),
         ("Proof", "proof"),
         ("Failed reads", "failedReads"),
         ("TXT record", "proofRecordName"),

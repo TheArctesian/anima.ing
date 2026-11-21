@@ -10,8 +10,65 @@ use chrono::{DateTime, Utc};
 
 use crate::work::routes::{
     Added, Route, Waits,
+    kinds::{Access, Kind, Shape},
     proof::{Proof, ProofRule, record_name, record_value},
 };
+
+#[derive(Clone, Copy, PartialEq, Eq, Enum)]
+#[graphql(name = "ApplicationRouteKind")]
+pub(super) enum KindValue {
+    Web,
+    Redirect,
+    TcpStream,
+    UdpStream,
+}
+
+impl From<Kind> for KindValue {
+    fn from(kind: Kind) -> Self {
+        match kind {
+            Kind::Web => Self::Web,
+            Kind::Redirect => Self::Redirect,
+            Kind::TcpStream => Self::TcpStream,
+            Kind::UdpStream => Self::UdpStream,
+        }
+    }
+}
+
+impl From<KindValue> for Kind {
+    fn from(kind: KindValue) -> Self {
+        match kind {
+            KindValue::Web => Self::Web,
+            KindValue::Redirect => Self::Redirect,
+            KindValue::TcpStream => Self::TcpStream,
+            KindValue::UdpStream => Self::UdpStream,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Enum)]
+#[graphql(name = "ApplicationRouteAccess")]
+pub(super) enum AccessValue {
+    Public,
+    Private,
+}
+
+impl From<Access> for AccessValue {
+    fn from(access: Access) -> Self {
+        match access {
+            Access::Public => Self::Public,
+            Access::Private => Self::Private,
+        }
+    }
+}
+
+impl From<AccessValue> for Access {
+    fn from(access: AccessValue) -> Self {
+        match access {
+            AccessValue::Public => Self::Public,
+            AccessValue::Private => Self::Private,
+        }
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Enum)]
 #[graphql(name = "ApplicationRouteProof")]
@@ -56,6 +113,26 @@ impl RouteView {
         self.route.name.as_str()
     }
 
+    async fn kind(&self) -> KindValue {
+        self.route.kind.into()
+    }
+
+    async fn access(&self) -> AccessValue {
+        self.route.access.into()
+    }
+
+    async fn listen_port(&self) -> Option<i32> {
+        self.route.listen_port.map(i32::from)
+    }
+
+    async fn protocol(&self) -> Option<&str> {
+        self.route.protocol.as_deref()
+    }
+
+    async fn redirect_to(&self) -> Option<&str> {
+        self.route.redirect_to.as_deref()
+    }
+
     async fn application_id(&self) -> ID {
         ID(self.route.application.to_string())
     }
@@ -64,8 +141,8 @@ impl RouteView {
         ID(self.route.device.to_string())
     }
 
-    async fn port(&self) -> i32 {
-        i32::from(self.route.port)
+    async fn port(&self) -> Option<i32> {
+        self.route.port.map(i32::from)
     }
 
     async fn proof(&self) -> ProofValue {
@@ -157,12 +234,32 @@ impl AddedView {
     }
 }
 
-/// K1 `ApplicationRouteInput`.
+/// K1 `ApplicationRouteInput`. A route with no kind is a web route; a route with no access is
+/// private (Section 16.4).
 #[derive(InputObject)]
 #[graphql(name = "ApplicationRouteInput")]
 pub(super) struct RouteFields {
     pub name: String,
     pub application_id: ID,
     pub device_id: ID,
-    pub port: i32,
+    pub port: Option<i32>,
+    #[graphql(default_with = "KindValue::Web")]
+    pub kind: KindValue,
+    #[graphql(default_with = "AccessValue::Private")]
+    pub access: AccessValue,
+    pub listen_port: Option<i32>,
+    pub protocol: Option<String>,
+    pub redirect_to: Option<String>,
+}
+
+/// The kind, the access and the ports of an input.
+pub(super) fn shape(input: &RouteFields) -> Shape {
+    Shape {
+        kind: input.kind.into(),
+        access: input.access.into(),
+        port: input.port.map(i64::from),
+        listen_port: input.listen_port.map(i64::from),
+        protocol: input.protocol.clone(),
+        redirect_to: input.redirect_to.clone(),
+    }
 }

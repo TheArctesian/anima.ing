@@ -309,3 +309,16 @@ pub(super) fn host_path(path: &str) -> String {
         path.to_owned()
     }
 }
+
+#[test]
+fn the_ports_of_streams_are_off_by_default_and_never_below_1024() {
+    assert_eq!(from_env(&env(&[])).unwrap().routes.stream_ports, None);
+    let set = from_env(&env(&[("ANIMA_ROUTES_STREAM_PORTS", "20000-20999")])).unwrap();
+    assert_eq!(set.routes.stream_ports, Some(20_000..=20_999));
+    for refused in ["993-2000", "21000-20000", "20000", "a-b"] {
+        assert!(
+            from_env(&env(&[("ANIMA_ROUTES_STREAM_PORTS", refused)])).is_err(),
+            "{refused}"
+        );
+    }
+}

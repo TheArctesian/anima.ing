@@ -82,7 +82,11 @@ fn a_client_is_its_64_of_ipv6_and_its_address_of_ipv4() {
     let v4: IpAddr = "198.51.100.7".parse().unwrap();
     assert_eq!(client_key(v4), v4);
     let mapped: IpAddr = "::ffff:198.51.100.7".parse().unwrap();
-    assert_eq!(client_key(mapped), v4, "an IPv4 address in IPv6 form is IPv4");
+    assert_eq!(
+        client_key(mapped),
+        v4,
+        "an IPv4 address in IPv6 form is IPv4"
+    );
 }
 
 #[test]

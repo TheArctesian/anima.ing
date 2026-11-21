@@ -3,9 +3,14 @@ query RouteShow($id: ID!) {
   applicationRoute(id: $id) {
     id
     name
+    kind
+    access
     applicationId
     deviceId
     port
+    listenPort
+    protocol
+    redirectTo
     proof
     failedReads
     proofRecordName

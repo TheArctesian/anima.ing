@@ -2,20 +2,33 @@
 
 use tokio::io::BufReader;
 
-use crate::wire::{Request, WireError, parse_request, read_line};
+use crate::wire::{Dial, Request, Transport, WireError, parse_request, read_line};
 
 #[test]
-fn a_connect_names_an_application_and_nothing_else() {
+fn a_connect_names_an_application_and_its_route_and_nothing_else() {
     let id = "0190a000-0000-7000-8009-000000000001";
-    let parsed = parse_request(&format!(r#"{{"connect":{{"application":"{id}"}}}}"#)).unwrap();
+    let line = format!(r#"{{"connect":{{"application":"{id}","name":"mail.example.com"}}}}"#);
     assert_eq!(
-        parsed,
-        Request::Connect {
-            application: id.parse().unwrap()
-        }
+        parse_request(&line).unwrap(),
+        Request::Connect(Dial {
+            application: id.parse().unwrap(),
+            name: "mail.example.com".to_owned(),
+            transport: Transport::Tcp,
+        })
     );
+    let udp = format!(
+        r#"{{"connect":{{"application":"{id}","name":"vpn.example.com","transport":"udp"}}}}"#
+    );
+    assert!(matches!(
+        parse_request(&udp).unwrap(),
+        Request::Connect(Dial {
+            transport: Transport::Udp,
+            ..
+        })
+    ));
     for refused in [
-        format!(r#"{{"connect":{{"application":"{id}","port":22}}}}"#),
+        format!(r#"{{"connect":{{"application":"{id}"}}}}"#),
+        format!(r#"{{"connect":{{"application":"{id}","name":"a","port":22}}}}"#),
         r#"{"connect":{"device":"x","port":22}}"#.to_owned(),
         "dial fd7a:115c:a1e0::1 22".to_owned(),
     ] {

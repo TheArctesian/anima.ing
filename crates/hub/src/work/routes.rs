@@ -7,7 +7,9 @@
 //! consent at the machine is given (OD-HOST-43; nothing can give it yet), the hub's record of the
 //! application confirms the device and the port and names no socket of the engine (task H6; the
 //! hub has no such record yet, SF-NEW-revroutetarget) and it has a valid certificate
-//! (Section 12.5). The proxy is a process apart from the hub; it reaches an
+//! (Section 12.5). A route has a kind (web, redirect, TCP stream, UDP stream) and an access
+//! (public or private), with the rules of [`kinds`] (HOST-050, task H40). The proxy is a
+//! process apart from the hub; it reaches an
 //! application only through [`door`], which takes the identifier of an application and never a
 //! device or a port (SF-NEW-routeproxyexit). Messages in [`Error`] hold no secret (LOG-007).
 
@@ -16,9 +18,11 @@ pub mod certificates;
 mod dns;
 pub mod door;
 pub mod graphql;
+pub mod kinds;
 mod model;
 pub mod names;
 pub mod proof;
+mod serving;
 mod store;
 mod target;
 #[cfg(test)]
@@ -32,8 +36,10 @@ use uuid::Uuid;
 
 pub use self::dns::SystemDns;
 pub use self::model::{Added, CertificateState, NewRoute, Route, Traffic, Waits};
+pub use self::serving::{Served, served, served_streams, target_of};
 use self::{
     certificates::Issuer,
+    kinds::{Kind, KindRefusal, StreamRules},
     names::{NameRefusal, NameRules, RouteName},
     proof::{ProofRule, Resolver},
     target::TargetRefusal,
@@ -41,9 +47,9 @@ use self::{
 use crate::{
     config::Config,
     fleet::{
-        credentials::{self, Secret, Vault},
+        credentials::{self, Vault},
         devices,
-        targets::{self, AddressPolicy},
+        targets::{self, AddressPolicy, on_link},
     },
     ids::{ApplicationId, DeviceId, RouteId},
 };
@@ -59,9 +65,13 @@ pub enum Error {
     Name(#[from] NameRefusal),
     #[error(transparent)]
     Target(#[from] TargetRefusal),
+    #[error(transparent)]
+    Kind(#[from] KindRefusal),
     #[error("a route already has this name")]
     NameTaken,
-    #[error("the application already has routes to a different device or port")]
+    #[error("a stream of the same transport already listens on this port of the hub")]
+    ListenPortTaken,
+    #[error("the application already has routes to a different device")]
     OtherTarget,
     #[error("the host of the device does not resolve to an address the hub may reach")]
     Unresolved,
@@ -92,6 +102,8 @@ pub struct Settings {
     pub policy: AddressPolicy,
     /// The listeners of the hub itself, which a route never targets.
     pub hub_listeners: Vec<SocketAddr>,
+    /// What the hub permits for streams (Section 16.4).
+    pub streams: StreamRules,
 }
 
 impl Settings {
@@ -112,6 +124,11 @@ impl Settings {
             proof,
             policy,
             hub_listeners: vec![config.listen],
+            streams: StreamRules {
+                hosted: config.hosted_cloud_key_file.is_some(),
+                ports: config.routes.stream_ports.clone(),
+                hub_ports: vec![config.listen.port()],
+            },
         }
     }
 }
@@ -151,28 +168,40 @@ pub async fn add(
     now: DateTime<Utc>,
 ) -> Result<Added, Error> {
     let name = RouteName::parse(&new.name, &settings.names)?;
-    let port = target::check_port(new.port)?;
+    let checked = kinds::check(&new.shape, &settings.streams)?;
     let device = devices::get(db, new.device)
         .await
         .map_err(|error| match error {
             devices::Error::NotFound(_) => Error::NoDevice,
             other => Error::Devices(other),
         })?;
-    let address = fixed_address(&device.host, port, settings).await?;
+    let (port, address) = match new.shape.port {
+        Some(port) => {
+            let port = target::check_port(port)?;
+            let address = fixed_address(&device.host, port, settings).await?;
+            if new.shape.kind == Kind::UdpStream && on_link(address.ip().to_canonical()) {
+                return Err(KindRefusal::UdpThroughLink.into());
+            }
+            (Some(port), Some(address))
+        }
+        None => (None, None),
+    };
     let others = store::list(&mut *conn, Some(new.application)).await?;
-    if others
-        .iter()
-        .any(|other| (other.device, other.port) != (new.device, port))
-    {
+    if others.iter().any(|other| other.device != new.device) {
         return Err(Error::OtherTarget);
     }
     let route = Route {
         id: RouteId::from(Uuid::now_v7()),
         name,
+        kind: new.shape.kind,
+        access: new.shape.access,
         application: new.application,
         device: new.device,
         port,
-        address: Some(address),
+        listen_port: checked.listen_port,
+        protocol: checked.protocol.map(str::to_owned),
+        redirect_to: checked.redirect_to,
+        address,
         token: proof::new_token().map_err(Error::Random)?,
         proof: proof::Proof::Waiting,
         failed_reads: 0,
@@ -285,62 +314,6 @@ pub async fn order_certificate(
     let mut conn = ordering.db.acquire().await?;
     store::store_certificate(&mut conn, id, &stored, now).await?;
     Ok(true)
-}
-
-/// The certificate of a serving route with its key opened, for the proxy only (through
-/// [`door`]). No `Debug`: it holds the key.
-pub struct Served {
-    pub name: RouteName,
-    pub application: ApplicationId,
-    pub chain_pem: String,
-    pub key_pem: Secret,
-}
-
-/// Each route that serves at `now`, with its certificate and key: the one view of the routes
-/// that the proxy gets (Section 12.3).
-///
-/// # Errors
-/// `Database`, `Unreadable` or `Seal`.
-pub async fn served(db: &PgPool, vault: &Vault, now: DateTime<Utc>) -> Result<Vec<Served>, Error> {
-    let mut found = Vec::new();
-    for route in store::list(db, None).await? {
-        if route.waits(now).is_some() {
-            continue;
-        }
-        let Some(stored) = store::certificate(db, route.id).await? else {
-            continue;
-        };
-        let sealed = credentials::Sealed::from_bytes(&stored.sealed_key).map_err(Error::Seal)?;
-        let context = certificates::key_context(route.id, &route.name);
-        let key_pem = vault
-            .open(&sealed, context.as_bytes())
-            .map_err(Error::Seal)?;
-        found.push(Served {
-            name: route.name,
-            application: route.application,
-            chain_pem: stored.chain_pem,
-            key_pem,
-        });
-    }
-    Ok(found)
-}
-
-/// The fixed target of the application, from the route that serves for it at `now`: the one
-/// way from an application identifier to a device and a port (SF-NEW-routeproxyexit).
-///
-/// # Errors
-/// `NotFound` when no route of the application serves; `Database` or `Unreadable`.
-pub async fn target_of(
-    db: &PgPool,
-    application: ApplicationId,
-    now: DateTime<Utc>,
-) -> Result<(DeviceId, SocketAddr), Error> {
-    store::list(db, Some(application))
-        .await?
-        .into_iter()
-        .filter(|route| route.waits(now).is_none())
-        .find_map(|route| route.address.map(|address| (route.device, address)))
-        .ok_or(Error::NotFound)
 }
 
 /// Adds what the proxy counted for the route of `name`. An unknown name is no error: the route

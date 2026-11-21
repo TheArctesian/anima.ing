@@ -71,3 +71,19 @@ fn only_an_address_of_the_door_may_send_a_proxy_header() {
         "with no address of the door, no peer is the door"
     );
 }
+
+#[test]
+fn a_redirect_answers_its_one_address_and_keeps_the_method_of_a_post() {
+    let to = "https://photos.example.org/";
+    let (status, out) =
+        crate::plain::redirect(b"GET /a?next=https://evil.example HTTP/1.1\r\n\r\n", to);
+    assert_eq!(status, 301);
+    let out = text(&out);
+    assert!(out.contains("\r\nlocation: https://photos.example.org/\r\n"));
+    assert!(
+        !out.contains("evil"),
+        "nothing of the request goes into the address"
+    );
+    let (status, _) = crate::plain::redirect(b"POST /form HTTP/1.1\r\n\r\n", to);
+    assert_eq!(status, 308);
+}

@@ -13,8 +13,8 @@ use std::{str::FromStr, sync::Arc};
 
 use async_graphql::{Context, ID, Object, Result};
 
-use self::types::{AddedView, RouteFields, RouteView};
-use super::{Error, NewRoute, Settings, SystemDns, proof::Resolver};
+use self::types::{AddedView, RouteFields, RouteView, shape};
+use super::{Error, NewRoute, Settings, SystemDns, kinds::KindRefusal, proof::Resolver};
 use crate::{
     api_errors::{
         ErrorCode, FieldError, begin, coded, commit, internal, invalid, pool, schema_dependency,
@@ -55,9 +55,30 @@ fn to_graphql(error: Error) -> async_graphql::Error {
         Error::NoDevice => coded("No such device.", ErrorCode::NotFound),
         Error::Name(refusal) => invalid(&[FieldError::new("name", refusal.to_string())]),
         Error::Target(refusal) => invalid(&[FieldError::new("port", refusal.to_string())]),
+        Error::Kind(refusal) => invalid(&[FieldError::new(
+            refusal_field(&refusal),
+            refusal.to_string(),
+        )]),
+        Error::ListenPortTaken => invalid(&[FieldError::new("listenPort", error.to_string())]),
         Error::Unresolved => invalid(&[FieldError::new("deviceId", error.to_string())]),
         Error::NameTaken | Error::OtherTarget => coded(error.to_string(), ErrorCode::Conflict),
         other => internal(other),
+    }
+}
+
+/// The input field that a refusal of the kind names.
+const fn refusal_field(refusal: &KindRefusal) -> &'static str {
+    match refusal {
+        KindRefusal::NoListenPort
+        | KindRefusal::ListenPortNotForKind
+        | KindRefusal::NoStreamPorts
+        | KindRefusal::ListenPortBelow1024
+        | KindRefusal::ListenPortOutsideRange
+        | KindRefusal::ListenPortReserved => "listenPort",
+        KindRefusal::StreamOnHostedHub | KindRefusal::RedirectShape => "kind",
+        KindRefusal::UdpThroughLink | KindRefusal::NoPort => "port",
+        KindRefusal::PublicStreamProtocol(_) | KindRefusal::ProtocolNotForKind => "protocol",
+        KindRefusal::RedirectToNotForKind | KindRefusal::RedirectTo => "redirectTo",
     }
 }
 
@@ -134,10 +155,10 @@ impl Mutation {
     ) -> Result<AddedView> {
         person_with_second_factor(ctx, "addApplicationRoute").await?;
         let new = NewRoute {
-            name: input.name,
             application: parse(&input.application_id, "applicationId")?,
             device: parse(&input.device_id, "deviceId")?,
-            port: i64::from(input.port),
+            shape: shape(&input),
+            name: input.name,
         };
         let settings = settings(ctx)?;
         let trail = Trail::from_context(ctx)?;

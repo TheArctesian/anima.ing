@@ -4,7 +4,11 @@ use std::net::SocketAddr;
 
 use chrono::{DateTime, Utc};
 
-use super::{names::RouteName, proof::Proof};
+use super::{
+    kinds::{Access, Kind, Shape},
+    names::RouteName,
+    proof::Proof,
+};
 use crate::ids::{ApplicationId, DeviceId, RouteId};
 
 /// One public name of one application, with its fixed target (SF-NEW-routetarget).
@@ -12,9 +16,18 @@ use crate::ids::{ApplicationId, DeviceId, RouteId};
 pub struct Route {
     pub id: RouteId,
     pub name: RouteName,
+    pub kind: Kind,
+    pub access: Access,
     pub application: ApplicationId,
     pub device: DeviceId,
-    pub port: u16,
+    /// The port of the application; `None` for a redirect.
+    pub port: Option<u16>,
+    /// The port of the hub that a stream listens on.
+    pub listen_port: Option<u16>,
+    /// The protocol that the person picked for a stream, from the fixed list.
+    pub protocol: Option<String>,
+    /// The one `https://` address of a redirect.
+    pub redirect_to: Option<String>,
     /// The address fixed when the name was added; a link address for a computer of the link.
     pub address: Option<SocketAddr>,
     pub token: String,
@@ -59,7 +72,8 @@ pub enum Waits {
     /// The hub has no record of the application with this device and port and without the
     /// socket of the engine (task H6; SF-NEW-revroutetarget).
     ApplicationRecord,
-    /// The route has no certificate that is valid now.
+    /// The route has no certificate that is valid now. A stream has no TLS of the hub and needs
+    /// none.
     Certificate,
 }
 
@@ -76,6 +90,9 @@ impl Route {
         if !self.application_recorded {
             return Some(Waits::ApplicationRecord);
         }
+        if self.kind.is_stream() {
+            return None;
+        }
         match self.certificate {
             Some(certificate) if certificate.not_after > now => None,
             _ => Some(Waits::Certificate),
@@ -91,7 +108,8 @@ pub struct NewRoute {
     pub name: String,
     pub application: ApplicationId,
     pub device: DeviceId,
-    pub port: i64,
+    /// The kind, the access, the ports and the address of a redirect.
+    pub shape: Shape,
 }
 
 /// A route that was added, with what the person must do and what the hub warns about.

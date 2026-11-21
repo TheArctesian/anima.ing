@@ -60,6 +60,50 @@ pub fn client_key(client: IpAddr) -> IpAddr {
     }
 }
 
+/// A network of addresses, as `address/prefix`: the nodes of the network of Anima that may
+/// reach a private route (Section 16.7, SF-NEW-lsprivate).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Network {
+    address: IpAddr,
+    prefix: u8,
+}
+
+impl std::str::FromStr for Network {
+    type Err = ();
+
+    fn from_str(text: &str) -> Result<Self, ()> {
+        let (address, prefix) = text.split_once('/').ok_or(())?;
+        let address: IpAddr = address.parse().map_err(|_| ())?;
+        let prefix: u8 = prefix.parse().map_err(|_| ())?;
+        let most = if address.is_ipv4() { 32 } else { 128 };
+        (prefix <= most)
+            .then_some(Self { address, prefix })
+            .ok_or(())
+    }
+}
+
+impl Network {
+    /// Whether `address` is in the network. An IPv4 address in IPv6 form is IPv4.
+    #[must_use]
+    pub fn contains(&self, address: IpAddr) -> bool {
+        match (self.address, address.to_canonical()) {
+            (IpAddr::V4(network), IpAddr::V4(address)) => {
+                let mask = u32::MAX
+                    .checked_shl(32 - u32::from(self.prefix))
+                    .unwrap_or(0);
+                u32::from(network) & mask == u32::from(address) & mask
+            }
+            (IpAddr::V6(network), IpAddr::V6(address)) => {
+                let mask = u128::MAX
+                    .checked_shl(128 - u32::from(self.prefix))
+                    .unwrap_or(0);
+                u128::from(network) & mask == u128::from(address) & mask
+            }
+            _ => false,
+        }
+    }
+}
+
 /// The connections open now on one listener, in all and for each client network.
 #[derive(Debug)]
 pub struct Gate {

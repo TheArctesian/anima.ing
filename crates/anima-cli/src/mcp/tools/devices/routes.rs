@@ -1,7 +1,9 @@
-//! `anima_route_list` and `anima_route_get`: the public names of applications (HOST-046, task
-//! H21), read only. No tool adds, checks or removes a name: making an application public on the
-//! internet is a trust decision for a person with a second factor (Section 7 of the plan,
-//! SF-NEW-routepublish). No tool returns a certificate or a key: the hub gives them to no API.
+//! `anima_route_list` and `anima_route_get`: the routes of applications (HOST-046, HOST-050,
+//! tasks H21 and H40) with their kind and access, read only. No tool adds, checks or removes a
+//! route: making an application public on the internet or open to the network of Anima, or
+//! opening a stream, is a trust decision for a person with a second factor (Section 7 of the
+//! plan, SF-NEW-routepublish). No tool returns a certificate or a key: the hub gives them to no
+//! API.
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
@@ -35,7 +37,10 @@ pub struct GetInput {
     id: String,
 }
 
-const ROUTE: &str = "id, name, applicationId, deviceId, port, proof (WAITING, PROVEN or LOST), \
+const ROUTE: &str = "id, name, kind (WEB, REDIRECT, TCP_STREAM, UDP_STREAM), access (PUBLIC: \
+                     the internet; PRIVATE: only the nodes of the network of Anima), \
+                     applicationId, deviceId, port (null for a redirect), listenPort (the port \
+                     of the hub of a stream), protocol, redirectTo, proof (WAITING, PROVEN or LOST), \
                      failedReads, proofRecordName and proofRecordValue (the TXT record that \
                      proves the name), machineConsent, certificateNotAfter, waitsFor (PROOF, \
                      MACHINE_CONSENT, APPLICATION_RECORD, CERTIFICATE; null when it serves), \
@@ -51,9 +56,9 @@ impl RouteTool {
                 "anima_route_list",
                 Access::Read,
                 Effect::Reads,
-                "The public names of applications that the hub serves, of one application or \
-                 of each: the state of the proof of each name, what it waits for and its \
-                 counts. Only a person adds or removes a name, in the client or with `anima \
+                "The routes of applications that the hub serves, of one application or of each: \
+                 web names, redirects and streams of TCP or UDP, public or private, with the \
+                 state of the proof of each name, what it waits for and its counts. Only a person adds or removes a name, in the client or with `anima \
                  route add`. Next: anima_route_get.",
             )
             .returns(&[

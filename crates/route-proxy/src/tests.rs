@@ -5,5 +5,6 @@ mod limits;
 mod plain;
 mod relay;
 mod settings;
+mod streams;
 mod tls;
 mod wire;

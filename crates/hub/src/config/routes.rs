@@ -1,7 +1,7 @@
 //! The settings of the public names of applications (HOST-046, task H21). Each is off or empty
 //! by default: no deploy opens the interface of the proxy by accident.
 
-use std::{collections::BTreeMap, net::IpAddr, path::PathBuf};
+use std::{collections::BTreeMap, net::IpAddr, ops::RangeInclusive, path::PathBuf};
 
 use super::{Error, paths::optional_socket};
 
@@ -18,6 +18,9 @@ const PUBLIC_ADDRESS: &str = "ANIMA_ROUTES_PUBLIC_ADDRESS";
 const STREAMS_PER_LINK: &str = "ANIMA_ROUTES_STREAMS_PER_LINK";
 /// The default of [`STREAMS_PER_LINK`].
 const STREAMS_DEFAULT: usize = 32;
+/// The ports of the hub that streams may listen on, as `first-last`, both 1024 or more; unset:
+/// no stream (HOST-050, task H40).
+const STREAM_PORTS: &str = "ANIMA_ROUTES_STREAM_PORTS";
 
 /// The settings of the routes.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -28,6 +31,8 @@ pub struct Routes {
     pub cookie_domains: Vec<String>,
     pub public_address: Option<IpAddr>,
     pub streams_per_link: usize,
+    /// The ports of the hub for streams; `None`: no stream.
+    pub stream_ports: Option<RangeInclusive<u16>>,
 }
 
 /// Reads the settings of the routes.
@@ -71,10 +76,28 @@ pub(super) fn from_env(env: &BTreeMap<String, String>) -> Result<Routes, Error> 
         });
     }
     Ok(Routes {
+        stream_ports: stream_ports(env)?,
         socket,
         proxy_uid,
         cookie_domains,
         public_address,
         streams_per_link,
     })
+}
+
+/// The range of [`STREAM_PORTS`]: `first-last`, with `1024 <= first <= last`.
+fn stream_ports(env: &BTreeMap<String, String>) -> Result<Option<RangeInclusive<u16>>, Error> {
+    let refused = Error::Routes {
+        variable: STREAM_PORTS,
+    };
+    let Some(text) = env.get(STREAM_PORTS).filter(|text| !text.is_empty()) else {
+        return Ok(None);
+    };
+    let (first, last) = text.split_once('-').ok_or(Error::Routes {
+        variable: STREAM_PORTS,
+    })?;
+    match (first.trim().parse::<u16>(), last.trim().parse::<u16>()) {
+        (Ok(first), Ok(last)) if 1024 <= first && first <= last => Ok(Some(first..=last)),
+        _ => Err(refused),
+    }
 }

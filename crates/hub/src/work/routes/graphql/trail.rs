@@ -19,7 +19,11 @@ fn fields(route: &Route) -> Value {
         "routeId": route.id.to_string(),
         "name": route.name.as_str(),
         "applicationId": route.application.to_string(),
+        "kind": route.kind.as_str(),
+        "access": route.access.as_str(),
         "port": route.port,
+        "listenPort": route.listen_port,
+        "redirectTo": route.redirect_to,
     })
 }
 

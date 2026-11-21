@@ -118,7 +118,7 @@ async fn ask(door: &Door, request: &str) -> (String, String) {
 }
 
 fn connect(application: &str) -> String {
-    format!(r#"{{"connect":{{"application":"{application}"}}}}"#)
+    format!(r#"{{"connect":{{"application":"{application}","name":"photos.example.com"}}}}"#)
 }
 
 db_test! {
@@ -194,5 +194,21 @@ db_test! {
         assert_eq!(table.names.len(), 1);
         assert_eq!(table.names[0].name, "photos.example.com");
         assert_eq!(table.names[0].application, uuid::Uuid::from(application()));
+    }
+}
+
+db_test! {
+    async fn a_dial_names_the_route_and_its_transport(pool: PgPool) {
+        serving(&pool).await;
+        let connector = Arc::new(FakeConnector::default());
+        let door = door(&pool, Arc::clone(&connector), 4);
+        let id = application().to_string();
+        let other = format!(r#"{{"connect":{{"application":"{id}","name":"other.example.com"}}}}"#);
+        assert_eq!(ask(&door, &other).await.0, "refused", "a name of no route");
+        let udp = format!(
+            r#"{{"connect":{{"application":"{id}","name":"photos.example.com","transport":"udp"}}}}"#
+        );
+        assert_eq!(ask(&door, &udp).await.0, "refused", "a web route carries no UDP");
+        assert!(connector.reached.lock().unwrap().is_empty());
     }
 }

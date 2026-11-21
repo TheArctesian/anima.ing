@@ -6,9 +6,8 @@ use tokio::{
     io::{AsyncRead, AsyncWrite, AsyncWriteExt as _, BufReader},
     net::UnixStream,
 };
-use uuid::Uuid;
 
-use crate::wire::{self, Answer, Counts, Request, Table, WireError};
+use crate::wire::{self, Answer, Counts, Dial, Request, Table, WireError};
 
 /// What the proxy may ask of the hub. A connection names an application, never a port.
 pub trait Hub: Send + Sync + 'static {
@@ -16,8 +15,8 @@ pub trait Hub: Send + Sync + 'static {
 
     /// The names that serve now, with their certificates.
     fn table(&self) -> impl Future<Output = Result<Table, WireError>> + Send;
-    /// A connection to the port of `application`, as the hub's record gives it.
-    fn connect(&self, application: Uuid) -> impl Future<Output = io::Result<Self::Stream>> + Send;
+    /// A connection to the port of a route of an application, as the hub's record gives it.
+    fn connect(&self, dial: Dial) -> impl Future<Output = io::Result<Self::Stream>> + Send;
     /// What the proxy counted for `name`.
     fn count(
         &self,
@@ -48,9 +47,9 @@ impl Hub for HubSocket {
         serde_json::from_str(&line).map_err(|_| WireError::Malformed)
     }
 
-    async fn connect(&self, application: Uuid) -> io::Result<Self::Stream> {
+    async fn connect(&self, dial: Dial) -> io::Result<Self::Stream> {
         let mut stream = self
-            .ask(&Request::Connect { application })
+            .ask(&Request::Connect(dial))
             .await
             .map_err(io::Error::other)?;
         let word = wire::read_line(&mut stream, 32)

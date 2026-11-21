@@ -1,5 +1,6 @@
-//! The answers of port 80 (Section 12.2, SF-NEW-routeheaders): the ACME `HTTP-01` challenge of a
-//! name and a redirect to `https://`. Port 80 never carries the content of an application. Pure.
+//! The answers of the proxy itself (Section 12.2, SF-NEW-routeheaders): on port 80 the ACME
+//! `HTTP-01` challenge of a name and a redirect to `https://`, and the answer of a route of the
+//! kind redirect (Section 16.2). Port 80 never carries the content of an application. Pure.
 
 use std::{collections::HashMap, hash::BuildHasher};
 
@@ -51,4 +52,21 @@ pub fn host_and_target(head: &[u8]) -> Option<(String, String)> {
             .then(|| value.trim().to_owned())
     })?;
     Some((host, target))
+}
+
+/// The answer of a route of the kind redirect to the request `head`: `301` for `GET` and
+/// `HEAD`, `308` for each other method, so the method and the body stay. The address is the
+/// one of the route: nothing of the request is added to it (SF-NEW-lsstreams).
+#[must_use]
+pub fn redirect(head: &[u8], to: &str) -> (u16, Vec<u8>) {
+    let method = head.split(|byte| *byte == b' ').next().unwrap_or_default();
+    let (status, reason) = if method == b"GET" || method == b"HEAD" {
+        (301, "Moved Permanently")
+    } else {
+        (308, "Permanent Redirect")
+    };
+    let answer = format!(
+        "HTTP/1.1 {status} {reason}\r\nlocation: {to}\r\ncontent-length: 0\r\nconnection: close\r\n\r\n"
+    );
+    (status, answer.into_bytes())
 }

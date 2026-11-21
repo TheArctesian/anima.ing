@@ -16,6 +16,8 @@ fn named(name: &str, certified_for: &str) -> Named {
         application: uuid::Uuid::nil(),
         chain_pem: certificate.pem(),
         key_pem: Zeroizing::new(key.serialize_pem()),
+        reach: crate::wire::Reach::Public,
+        redirect_to: None,
     }
 }
 
@@ -30,6 +32,7 @@ fn a_certificate_of_a_different_name_or_a_broken_key_is_left_out() {
             broken,
         ],
         challenges: Vec::new(),
+        streams: Vec::new(),
     };
     let (_, left_out) = server_config(&table).unwrap();
     assert_eq!(left_out, ["hub.example.com", "broken.example.com"]);

@@ -8,13 +8,15 @@ use sqlx::{PgConnection, PgExecutor};
 
 use super::{
     Error,
+    kinds::{Access, Kind},
     model::{CertificateState, Route, Traffic},
     names::RouteName,
     proof::Proof,
 };
 use crate::ids::{ApplicationId, DeviceId, RouteId};
 
-const SELECT: &str = "SELECT r.id, r.name, r.application_id, r.device_id, r.port, r.address, \
+const SELECT: &str = "SELECT r.id, r.name, r.kind, r.access, r.application_id, r.device_id, \
+                             r.port, r.listen_port, r.protocol, r.redirect_to, r.address, \
                              r.token, r.proof, r.failed_reads, r.machine_consent, \
                              r.application_recorded, r.checked_at, \
                              r.issue_failures, r.next_issue_at, r.created_at, \
@@ -28,9 +30,14 @@ const SELECT: &str = "SELECT r.id, r.name, r.application_id, r.device_id, r.port
 struct Row {
     id: RouteId,
     name: String,
+    kind: String,
+    access: String,
     application_id: ApplicationId,
     device_id: DeviceId,
-    port: i32,
+    port: Option<i32>,
+    listen_port: Option<i32>,
+    protocol: Option<String>,
+    redirect_to: Option<String>,
     address: Option<IpAddr>,
     token: String,
     proof: String,
@@ -47,6 +54,12 @@ struct Row {
     refused: Option<i64>,
 }
 
+fn stored_port(value: Option<i32>) -> Result<Option<u16>, Error> {
+    value
+        .map(|port| u16::try_from(port).map_err(|_| Error::Unreadable))
+        .transpose()
+}
+
 fn count(value: Option<i64>) -> u64 {
     value
         .and_then(|value| u64::try_from(value).ok())
@@ -57,14 +70,22 @@ impl TryFrom<Row> for Route {
     type Error = Error;
 
     fn try_from(row: Row) -> Result<Self, Error> {
-        let port = u16::try_from(row.port).map_err(|_| Error::Unreadable)?;
+        let port = stored_port(row.port)?;
         Ok(Self {
             id: row.id,
             name: RouteName::stored(row.name),
+            kind: Kind::from_stored(&row.kind).ok_or(Error::Unreadable)?,
+            access: Access::from_stored(&row.access).ok_or(Error::Unreadable)?,
             application: row.application_id,
             device: row.device_id,
             port,
-            address: row.address.map(|ip| SocketAddr::new(ip, port)),
+            listen_port: stored_port(row.listen_port)?,
+            protocol: row.protocol,
+            redirect_to: row.redirect_to,
+            address: row
+                .address
+                .zip(port)
+                .map(|(ip, port)| SocketAddr::new(ip, port)),
             token: row.token,
             proof: Proof::from_stored(&row.proof).ok_or(Error::Unreadable)?,
             failed_reads: u32::try_from(row.failed_reads).map_err(|_| Error::Unreadable)?,
@@ -106,35 +127,44 @@ pub(super) async fn get(db: impl PgExecutor<'_>, id: RouteId) -> Result<Option<R
     row.map(Route::try_from).transpose()
 }
 
-/// Inserts a new route; [`Error::NameTaken`] when a route already has its name.
+/// Inserts a new route; [`Error::NameTaken`] when a route already has its name,
+/// [`Error::ListenPortTaken`] when a stream of the same transport has its port of the hub.
 pub(super) async fn insert(conn: &mut PgConnection, route: &Route) -> Result<(), Error> {
     let result = sqlx::query(
-        "INSERT INTO routes.route (id, name, application_id, device_id, port, address, token, \
+        "INSERT INTO routes.route (id, name, kind, access, application_id, device_id, port, \
+                                   listen_port, protocol, redirect_to, address, token, \
                                    created_at) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
     )
     .bind(route.id)
     .bind(route.name.as_str())
+    .bind(route.kind.as_str())
+    .bind(route.access.as_str())
     .bind(route.application)
     .bind(route.device)
-    .bind(i32::from(route.port))
+    .bind(route.port.map(i32::from))
+    .bind(route.listen_port.map(i32::from))
+    .bind(route.protocol.as_deref())
+    .bind(route.redirect_to.as_deref())
     .bind(route.address.map(|address| address.ip()))
     .bind(&route.token)
     .bind(route.created_at)
     .execute(conn)
     .await;
-    match result {
-        Ok(_) => Ok(()),
-        Err(error)
-            if error
-                .as_database_error()
-                .is_some_and(sqlx::error::DatabaseError::is_unique_violation) =>
-        {
-            Err(Error::NameTaken)
+    let Err(error) = result else {
+        return Ok(());
+    };
+    match error.as_database_error() {
+        Some(found) if found.is_unique_violation() && found.constraint() == Some(LISTEN_PORT) => {
+            Err(Error::ListenPortTaken)
         }
-        Err(error) => Err(Error::Database(error)),
+        Some(found) if found.is_unique_violation() => Err(Error::NameTaken),
+        _ => Err(Error::Database(error)),
     }
 }
+
+/// The unique index of the ports of the hub of streams.
+const LISTEN_PORT: &str = "route_listen_port";
 
 /// Deletes a route with its certificate and its counts; the device it had, or `None`.
 pub(super) async fn delete(

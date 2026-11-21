@@ -15,9 +15,11 @@ macro_rules! db_test {
 
 mod caa;
 mod door;
+mod kinds;
 mod names;
 mod proof;
 mod socket;
 mod store;
+mod streams;
 mod support;
 mod target;

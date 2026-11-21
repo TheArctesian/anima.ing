@@ -9,6 +9,7 @@
 use std::{
     future::Future as _,
     io,
+    net::IpAddr,
     pin::Pin,
     task::{Context, Poll},
     time::Duration,
@@ -19,10 +20,10 @@ use tokio::{
         AsyncRead, AsyncReadExt as _, AsyncWrite, AsyncWriteExt as _, ReadBuf, copy,
         copy_bidirectional,
     },
-    time::{Instant, Sleep, sleep, timeout_at},
+    time::{Instant, Sleep, sleep, timeout, timeout_at},
 };
 
-use crate::head::Rewritten;
+use crate::head::{self, HEAD_MAX, Rewritten, Status};
 
 /// The most bytes read for the status line of an answer.
 const STATUS_MAX: usize = 16 * 1024;
@@ -100,6 +101,52 @@ where
     relayed.bytes_out += copy(app, client).await?;
     client.flush().await?;
     Ok(relayed)
+}
+
+/// The head of one request within `wait`, written again for the application of `name`, and
+/// the bytes after it.
+///
+/// # Errors
+/// The [`Status`] that the proxy answers in place of the application.
+pub async fn read_request<S: AsyncRead + Unpin>(
+    wait: Duration,
+    tls: &mut S,
+    name: &str,
+    client: IpAddr,
+) -> Result<(head::Rewritten, Vec<u8>), Status> {
+    let (head, early) = match timeout(wait, read_head(tls)).await {
+        Ok(Ok(read)) => read,
+        Ok(Err(NoHead)) => return Err(Status::HeadTooLarge),
+        Err(_) => return Err(Status::RequestTimeout),
+    };
+    Ok((head::rewrite(&head, name, client)?, early))
+}
+
+/// Why a head was not read.
+#[derive(Debug)]
+pub struct NoHead;
+
+/// Reads up to the end of a request head: the head and the bytes after it.
+///
+/// # Errors
+/// [`NoHead`] when the stream ends or fails first, or the head is longer than [`HEAD_MAX`].
+pub async fn read_head<S: AsyncRead + Unpin>(stream: &mut S) -> Result<(Vec<u8>, Vec<u8>), NoHead> {
+    let mut buffer = Vec::with_capacity(4096);
+    let mut chunk = [0_u8; 4096];
+    loop {
+        let read = stream.read(&mut chunk).await.map_err(|_| NoHead)?;
+        if read == 0 {
+            return Err(NoHead);
+        }
+        buffer.extend_from_slice(&chunk[..read]);
+        if let Some(end) = head::end_of_head(&buffer) {
+            let early = buffer.split_off(end);
+            return Ok((buffer, early));
+        }
+        if buffer.len() > HEAD_MAX {
+            return Err(NoHead);
+        }
+    }
 }
 
 /// The first bytes of the answer of the application, up to the end of its status line or

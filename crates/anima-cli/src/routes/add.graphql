@@ -5,9 +5,14 @@ mutation RouteAdd($input: ApplicationRouteInput!) {
     route {
     id
     name
+    kind
+    access
     applicationId
     deviceId
     port
+    listenPort
+    protocol
+    redirectTo
     proof
     failedReads
     proofRecordName

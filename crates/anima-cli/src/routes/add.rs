@@ -1,6 +1,8 @@
-//! `anima route add <name>`: makes an application public under a name, and prints the TXT
-//! record that proves the name. A login token only, with a second factor on the account
-//! (SF-NEW-routepublish).
+//! `anima route add <name>`: adds a route of an application (a web name, a redirect, or a
+//! stream of TCP or UDP; private unless `--access public`), and prints the TXT record that
+//! proves the name. A login token only, with a second factor on the account
+//! (SF-NEW-routepublish). A stream needs a port of the hub (`--listen-port`) and, when public, a
+//! protocol with its own sign-in and TLS (`--protocol`): the hub never picks a port by itself.
 
 use super::documents::{RouteAdd, route_add};
 use super::shown;
@@ -17,28 +19,79 @@ pub struct AddArgs {
     /// The device's ID.
     #[arg(long)]
     device: String,
-    /// The port of the application. The route serves only when the hub's record of the
-    /// application names this device and this port.
+    /// The port of the application; not for a redirect. The route serves only when the hub's
+    /// record of the application names this device and this port.
     #[arg(long)]
-    port: i64,
+    port: Option<i64>,
+    /// What the route carries.
+    #[arg(long, value_enum, default_value = "web")]
+    kind: KindArg,
+    /// Who may reach it: only the devices of the network of Anima, or the internet.
+    #[arg(long, value_enum, default_value = "private")]
+    access: AccessArg,
+    /// The port of the hub that a stream listens on (1024 or more, in the range of the hub).
+    #[arg(long)]
+    listen_port: Option<i64>,
+    /// The protocol of a stream, needed when it is public: imaps (993), pop3s (995), smtps
+    /// (465), ldaps (636), xmpps (5223) over TCP; openvpn (1194), wireguard (51820) over UDP.
+    /// The usual port is a hint only.
+    #[arg(long)]
+    protocol: Option<String>,
+    /// The one `https://` address of a redirect.
+    #[arg(long)]
+    redirect_to: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+enum KindArg {
+    Web,
+    Redirect,
+    TcpStream,
+    UdpStream,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum)]
+enum AccessArg {
+    Private,
+    Public,
 }
 
 impl AddArgs {
-    /// Asks for confirmation (`--yes` skips it), adds the name and prints the route.
+    /// Asks for confirmation (`--yes` skips it), adds the route and prints it.
     ///
     /// # Errors
     /// [`Failure::Usage`] when it cannot ask; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
-        let question = format!(
-            "Make the application public on the internet as {}? Its page is then open to each person.",
-            self.name
-        );
+        let question = if self.access == AccessArg::Public {
+            format!(
+                "Make the application public on the internet as {}? It is then open to each person.",
+                self.name
+            )
+        } else {
+            format!(
+                "Open {} to each node of the network of Anima: each device, machine and container on it?",
+                self.name
+            )
+        };
         invocation.prompter.confirm(&question)?;
         let input = route_add::ApplicationRouteInput {
             name: self.name,
             application_id: self.application,
             device_id: self.device,
             port: self.port,
+            kind: Some(match self.kind {
+                KindArg::Web => route_add::ApplicationRouteKind::WEB,
+                KindArg::Redirect => route_add::ApplicationRouteKind::REDIRECT,
+                KindArg::TcpStream => route_add::ApplicationRouteKind::TCP_STREAM,
+                KindArg::UdpStream => route_add::ApplicationRouteKind::UDP_STREAM,
+            }),
+            access: Some(match self.access {
+                AccessArg::Private => route_add::ApplicationRouteAccess::PRIVATE,
+                AccessArg::Public => route_add::ApplicationRouteAccess::PUBLIC,
+            }),
+            listen_port: self.listen_port,
+            protocol: self.protocol,
+            redirect_to: self.redirect_to,
         };
         let added = invocation
             .hub()?

@@ -3,9 +3,14 @@ query RouteList($applicationId: ID) {
   applicationRoutes(applicationId: $applicationId) {
     id
     name
+    kind
+    access
     applicationId
     deviceId
     port
+    listenPort
+    protocol
+    redirectTo
     proof
     failedReads
     proofRecordName

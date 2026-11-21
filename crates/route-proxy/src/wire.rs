@@ -1,7 +1,8 @@
 //! The one interface between the proxy and the hub (Section 12.3, SF-NEW-routeproxyexit): a
 //! Unix socket of the hub with three requests, one JSON line each. The proxy can ask for the
-//! table of names, connect to the application with an identifier, and give what it counted.
-//! No request names a device, an address or a port: the hub finds them in its own record.
+//! table of names and streams, connect to a route of an application by the identifier of the
+//! application and the name of the route, and give what it counted. No request names a device,
+//! an address or a port: the hub finds them in its own record.
 //!
 //! `connect` is answered with one word on a line; after `ok` the bytes of the application
 //! follow on the same socket. Both sides use this module.
@@ -20,12 +21,43 @@ pub const TABLE_MAX: usize = 16 * 1024 * 1024;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Request {
-    /// The names that serve now, with their certificates.
+    /// The names that serve now, with their certificates, and the streams.
     Table,
-    /// A connection to the port of this application.
-    Connect { application: Uuid },
+    /// A connection to the port of a route of this application.
+    Connect(Dial),
     /// What the proxy counted for one name since its last report.
     Count { name: String, counts: Counts },
+}
+
+/// A connection that the proxy asks for: the application and the name of its route, never a
+/// device or a port.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Dial {
+    pub application: Uuid,
+    pub name: String,
+    #[serde(default)]
+    pub transport: Transport,
+}
+
+/// How the bytes of a route go. After `ok`, a UDP connection carries datagrams as frames
+/// (`crate::streams::datagrams`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Transport {
+    #[default]
+    Tcp,
+    Udp,
+}
+
+/// Who may reach a route (Section 16.7): the internet, or only the nodes of the network of
+/// Anima on the private address of the hub.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Reach {
+    #[default]
+    Public,
+    Private,
 }
 
 /// What the proxy counts for a name (Section 12.7).
@@ -47,6 +79,20 @@ pub struct Table {
     /// The open ACME `HTTP-01` challenges: each token with its key authorization.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub challenges: Vec<Challenge>,
+    /// The streams that serve now: a port of the hub each.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub streams: Vec<StreamRoute>,
+}
+
+/// One stream that serves: the proxy listens on its port and connects by its name.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StreamRoute {
+    pub name: String,
+    pub application: Uuid,
+    pub transport: Transport,
+    pub listen_port: u16,
+    pub reach: Reach,
 }
 
 /// One open ACME challenge that the proxy answers on port 80.
@@ -65,6 +111,11 @@ pub struct Named {
     pub application: Uuid,
     pub chain_pem: String,
     pub key_pem: Zeroizing<String>,
+    #[serde(default)]
+    pub reach: Reach,
+    /// The one `https://` address of a redirect; `None` for a web route.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub redirect_to: Option<String>,
 }
 
 /// The answer to `connect`.

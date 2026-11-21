@@ -15,6 +15,7 @@ use crate::{
     work::routes::{
         NewRoute, Settings,
         certificates::{IssueError, Issued, Issuer},
+        kinds::{Access, Kind, Shape, StreamRules},
         names::{NameRules, RouteName},
         proof::{Caa, LookupFailed, ProofRule, Resolver},
     },
@@ -48,6 +49,40 @@ pub fn settings() -> Settings {
         },
         policy: AddressPolicy::default(),
         hub_listeners: vec!["10.10.0.99:8443".parse().unwrap()],
+        streams: stream_rules(),
+    }
+}
+
+/// A hub that a person hosts, with the ports 20000 to 20999 for streams.
+pub fn stream_rules() -> StreamRules {
+    StreamRules {
+        hosted: false,
+        ports: Some(20_000..=20_999),
+        hub_ports: vec![8443],
+    }
+}
+
+/// A public web route to `port`.
+pub fn web(port: i64) -> Shape {
+    Shape {
+        kind: Kind::Web,
+        access: Access::Public,
+        port: Some(port),
+        listen_port: None,
+        protocol: None,
+        redirect_to: None,
+    }
+}
+
+/// A stream of `kind` from `listen_port` of the hub to `port`.
+pub fn stream(kind: Kind, access: Access, listen_port: i64, port: i64) -> Shape {
+    Shape {
+        kind,
+        access,
+        port: Some(port),
+        listen_port: Some(listen_port),
+        protocol: None,
+        redirect_to: None,
     }
 }
 
@@ -60,11 +95,15 @@ pub fn application() -> ApplicationId {
 }
 
 pub fn new_route(name: &str, port: i64) -> NewRoute {
+    shaped(name, web(port))
+}
+
+pub fn shaped(name: &str, shape: Shape) -> NewRoute {
     NewRoute {
         name: name.to_owned(),
         application: application(),
         device: device(DOCKER_HOST),
-        port,
+        shape,
     }
 }
 

@@ -2,12 +2,13 @@
 //! from the hub (task H21). It wires the settings, the hub socket and the listeners; it holds no
 //! rule. With `ANIMA_ROUTE_PROXY_LISTEN` unset it says that it is off and ends.
 
-use std::{process::ExitCode, sync::Arc, time::Duration};
+use std::{net::SocketAddr, process::ExitCode, sync::Arc, time::Duration};
 
 use anima_route_proxy::{
     hub::HubSocket,
-    serve::{Proxy, serve_plain, serve_tls},
+    serve::{Proxy, http, https},
     settings,
+    wire::Reach,
 };
 use tokio::net::TcpListener;
 
@@ -31,23 +32,23 @@ async fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    let Ok(listener) = TcpListener::bind(settings.listen).await else {
-        eprintln!(
-            "anima-route-proxy: port {} is in use by a different program, or not permitted",
-            settings.listen.port()
-        );
+    let Some(listener) = bind(settings.listen).await else {
         return ExitCode::FAILURE;
     };
     let mut plain = None;
     if let Some(address) = settings.listen_plain {
-        let Ok(listener) = TcpListener::bind(address).await else {
-            eprintln!(
-                "anima-route-proxy: port {} is in use by a different program, or not permitted",
-                address.port()
-            );
+        let Some(listener) = bind(address).await else {
             return ExitCode::FAILURE;
         };
         plain = Some(listener);
+    }
+    let mut private = None;
+    if let Some(place) = &settings.private {
+        let Some(listener) = bind(SocketAddr::new(place.address, settings.listen.port())).await
+        else {
+            return ExitCode::FAILURE;
+        };
+        private = Some(listener);
     }
     let hub = HubSocket(settings.hub_socket.clone());
     let Ok(proxy) = Proxy::new(hub, &settings) else {
@@ -55,14 +56,29 @@ async fn main() -> ExitCode {
     };
     let proxy = Arc::new(proxy);
     if let Some(plain) = plain {
-        tokio::spawn(serve_plain(Arc::clone(&proxy), plain));
+        tokio::spawn(http::serve(Arc::clone(&proxy), plain));
     }
-    tokio::spawn(serve_tls(Arc::clone(&proxy), listener));
+    if let Some(private) = private {
+        tokio::spawn(https::serve(Arc::clone(&proxy), private, Reach::Private));
+    }
+    tokio::spawn(https::serve(Arc::clone(&proxy), listener, Reach::Public));
     loop {
         if let Err(error) = proxy.refresh().await {
             tracing::warn!(error = %error, "the table of the hub was not read");
         }
+        proxy.keep_streams().await;
         proxy.report().await;
         tokio::time::sleep(REFRESH).await;
     }
+}
+
+/// A listener on `address`, or `None` after it says why not.
+async fn bind(address: SocketAddr) -> Option<TcpListener> {
+    let bound = TcpListener::bind(address).await.ok();
+    if bound.is_none() {
+        eprintln!(
+            "anima-route-proxy: {address} is in use by a different program, or not permitted"
+        );
+    }
+    bound
 }

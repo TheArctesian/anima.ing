@@ -1,10 +1,12 @@
 //! The hub's side of the one interface of the proxy (Section 12.3, SF-NEW-routeproxyexit).
 //!
 //! The proxy runs as a process apart from the hub. It reaches the hub only through this Unix
-//! socket, with the requests of `anima_route_proxy::wire`: the table of the names that serve,
-//! a connection to an application by its identifier, and its counts. The hub maps the
-//! identifier to the device and the port of its own record ([`super::target_of`]); no request
-//! can name a device, an address or a port, so the proxy can never reach port 22 of a machine.
+//! socket, with the requests of `anima_route_proxy::wire`: the table of the names and the
+//! streams that serve, a connection to a route by the identifier of its application and its
+//! name, and its counts. The hub maps them to the device and the port of its own record
+//! ([`super::target_of`]); no request can name a device, an address or a port, so the proxy can
+//! never reach port 22 of a machine. A UDP stream goes only to an address that is not on the
+//! link (OD-HOST-48): the hub sends its datagrams from a socket of its own.
 //! The socket is served only when `ANIMA_ROUTES_SOCKET` is set: off by default. It has mode
 //! `0660` and answers only a peer with the user ID of the proxy (`ANIMA_ROUTES_PROXY_UID`,
 //! SF-NEW-revroutesocket). A request line must come within [`REQUEST_WAIT`], and a stream ends
@@ -26,23 +28,28 @@ use std::{
 
 use anima_route_proxy::{
     relay::Idle,
-    wire::{self, Answer, Named, Request, Table},
+    streams::datagrams,
+    wire::{self, Answer, Dial, Named, Reach, Request, StreamRoute, Table, Transport},
 };
 use async_trait::async_trait;
 use sqlx::PgPool;
 use tokio::{
     io::{AsyncRead, AsyncWrite, AsyncWriteExt as _, BufReader, copy_bidirectional},
-    net::{UnixListener, UnixStream},
+    net::{UdpSocket, UnixListener, UnixStream},
     time::timeout,
 };
 use zeroize::Zeroizing;
 
-use super::{Traffic, count, served, target_of};
+use super::{
+    Route, Traffic, count,
+    kinds::{Access, Kind},
+    served, served_streams, target_of,
+};
 use crate::{
     clock::Clock,
     fleet::{
         credentials::Vault,
-        targets::{self, AddressPolicy},
+        targets::{self, AddressPolicy, on_link},
     },
     ids::{ApplicationId, DeviceId},
 };
@@ -223,15 +230,20 @@ pub async fn answer<S: AsyncRead + AsyncWrite + Unpin + Send>(
                         key_pem: Zeroizing::new(
                             String::from_utf8_lossy(route.key_pem.expose()).into_owned(),
                         ),
+                        reach: reach(route.access),
+                        redirect_to: route.redirect_to,
                     })
                     .collect(),
                 challenges: Vec::new(),
+                streams: served_streams(&door.db, now)
+                    .await?
+                    .iter()
+                    .filter_map(stream_route)
+                    .collect(),
             };
             wire::write_json(&mut socket, &table).await?;
         }
-        Request::Connect { application } => {
-            connect(door, &mut socket, ApplicationId::from(application)).await?;
-        }
+        Request::Connect(dial) => connect(door, &mut socket, dial).await?,
         Request::Count { name, counts } => {
             let traffic = Traffic {
                 requests: counts.requests,
@@ -246,26 +258,86 @@ pub async fn answer<S: AsyncRead + AsyncWrite + Unpin + Send>(
     Ok(())
 }
 
-/// Connects the socket to the fixed target of `application`, or answers why not.
+fn reach(access: Access) -> Reach {
+    match access {
+        Access::Public => Reach::Public,
+        Access::Private => Reach::Private,
+    }
+}
+
+/// The wire form of a serving stream.
+fn stream_route(route: &Route) -> Option<StreamRoute> {
+    Some(StreamRoute {
+        name: route.name.to_string(),
+        application: route.application.into(),
+        transport: match route.kind {
+            Kind::TcpStream => Transport::Tcp,
+            Kind::UdpStream => Transport::Udp,
+            Kind::Web | Kind::Redirect => return None,
+        },
+        listen_port: route.listen_port?,
+        reach: reach(route.access),
+    })
+}
+
+/// Whether a route of `kind` carries `transport`: TCP for a web route and a TCP stream, UDP for
+/// a UDP stream. A redirect carries nothing to the machine.
+fn carries(kind: Kind, transport: Transport) -> bool {
+    matches!(
+        (kind, transport),
+        (Kind::Web | Kind::TcpStream, Transport::Tcp) | (Kind::UdpStream, Transport::Udp)
+    )
+}
+
+/// Connects the socket to the fixed target of the route of `dial`, or answers why not.
 async fn connect<S: AsyncRead + AsyncWrite + Unpin + Send>(
     door: &Door,
     socket: &mut BufReader<S>,
-    application: ApplicationId,
+    dial: Dial,
 ) -> Result<(), DoorError> {
-    let (device, address) = match target_of(&door.db, application, door.clock.now()).await {
-        Ok(found) => found,
-        Err(super::Error::NotFound) => return say(socket, Answer::Refused).await,
+    let application = ApplicationId::from(dial.application);
+    let found = target_of(&door.db, application, &dial.name, door.clock.now()).await;
+    let (device, address) = match found {
+        Ok((device, address, kind)) if carries(kind, dial.transport) => (device, address),
+        Ok(_) | Err(super::Error::NotFound) => return say(socket, Answer::Refused).await,
         Err(error) => return Err(error.into()),
     };
     let Some(_permit) = door.streams.take(device) else {
         return say(socket, Answer::Refused).await;
     };
+    if dial.transport == Transport::Udp {
+        return datagrams_to(door, socket, address).await;
+    }
     let Ok(stream) = door.connector.connect(address).await else {
         return say(socket, Answer::Unavailable).await;
     };
     say(socket, Answer::Ok).await?;
     let mut stream = Idle::new(stream, door.idle);
     copy_bidirectional(socket, &mut stream).await?;
+    Ok(())
+}
+
+/// Carries the datagrams of a UDP stream between the socket of the proxy and `address`, from a
+/// UDP socket of the hub. Never to an address on the link (OD-HOST-48).
+async fn datagrams_to<S: AsyncRead + AsyncWrite + Unpin + Send>(
+    door: &Door,
+    socket: &mut BufReader<S>,
+    address: SocketAddr,
+) -> Result<(), DoorError> {
+    if on_link(address.ip().to_canonical()) {
+        return say(socket, Answer::Refused).await;
+    }
+    let local: SocketAddr = if address.is_ipv4() {
+        ([0, 0, 0, 0], 0).into()
+    } else {
+        ([0_u16; 8], 0).into()
+    };
+    let udp = UdpSocket::bind(local).await?;
+    if udp.connect(address).await.is_err() {
+        return say(socket, Answer::Unavailable).await;
+    }
+    say(socket, Answer::Ok).await?;
+    datagrams::pump(socket, &udp, door.idle).await?;
     Ok(())
 }
 

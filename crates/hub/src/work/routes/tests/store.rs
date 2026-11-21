@@ -60,7 +60,6 @@ db_test! {
         assert!(matches!(add(&pool, "admin.example.com", 22).await, Err(Error::Target(_))));
         assert!(matches!(add(&pool, "*.example.com", 3000).await, Err(Error::Name(_))));
         assert!(matches!(add(&pool, "photos.anima.ing", 3000).await, Err(Error::Name(_))));
-        assert!(matches!(add(&pool, "other.example.com", 3001).await, Err(Error::OtherTarget)));
         for port in [2375, 10250, 5432, 9090] {
             let refused = add(&pool, &format!("p{port}.example.com"), port).await;
             assert!(matches!(refused, Err(Error::Target(_))), "{port}");
