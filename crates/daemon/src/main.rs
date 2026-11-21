@@ -24,6 +24,7 @@ use zeroize::Zeroizing;
 fn main() -> ExitCode {
     // The fixed modes (the Linux launcher first, then the fetch child) run before any
     // runtime or thread; each never returns.
+    #[cfg(unix)]
     anima_daemon::model::modes::dispatch();
     // The same runtime as `Builder::new_multi_thread().enable_all()`.
     match tokio::runtime::Runtime::new() {
