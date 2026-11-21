@@ -319,7 +319,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (101)
+## 4. Checks that only the operator can do (102)
 
 | Check | What |
 | --- | --- |
@@ -360,6 +360,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-059 | the application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) |
 | HT-083 | the sign-out of a hosted hub takes the daemon off this computer and revokes it (HMD-056; task HM-T21) |
 | HT-112 | a newer application replaces the daemon of this computer and keeps its enrolment (HMD-055; task HM-T20) |
+| HT-117 | the daemon of this Mac waits for the person in the Keychain and does not stop (MET-013, MET-019; R-322) |
 | HT-068 | a Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon (DEF-007) |
 | HT-050 | the device link runs as a unit of the user (HMD-058, task HM-T24 part a) |
 | HT-049 | the application carries `anima-daemon` (HMD-052, task HM-T16) |

@@ -14,6 +14,14 @@
 //! again; the next start of the app tries again. No other process is signalled: the holder of
 //! the agent threads (THR-113) and its programs stay, and the update does not wait for them. A
 //! copy that is not installed is never installed here: that is the install of HMD-053.
+//!
+//! Each run (`--version`, `stop`, `install`) has a deadline; a run past it is killed with every
+//! process it started and counts as a failure, as above (a `stop` past it may have stopped the
+//! unit, so the unit of the copy starts again). Each failed step writes one line with its name
+//! to the log of the app, and a line goes there before the first step, so that an update that
+//! the end of the app cuts leaves a trace. A carried daemon that the Keychain would see as a new
+//! program (an ad hoc signature, [`super::signature`]) does not replace the copy
+//! (R-321).
 
 use std::{
     ffi::OsString,
@@ -24,9 +32,12 @@ use std::{
     time::Duration,
 };
 
+use tauri_plugin_log::log;
+
 use super::{
     DaemonError, placement,
-    run::{self, INSTALL_ARGS, Run},
+    run::{self, INSTALL_ARGS, Run, RunError},
+    signature::Identity,
     trust::User,
     version::{self, Decision},
 };
@@ -45,9 +56,11 @@ pub struct Swap<'a> {
     pub carried: &'a Path,
     pub user: User,
     pub env: &'a [(&'static str, OsString)],
-    /// The deadline of the daemon's `install`, which starts the unit again.
+    /// The deadline of the daemon's `stop` and of its `install`, which starts the unit again.
     pub restart: Duration,
     pub stop: &'a AtomicBool,
+    /// Whether the carried daemon keeps its identity in the Keychain (R-321).
+    pub identity: Identity,
 }
 
 /// What the update did.
@@ -63,6 +76,9 @@ pub enum Updated {
     KeptNewer,
     /// The copy was replaced, and its unit runs the new one.
     Replaced,
+    /// The carried daemon is newer, but its signature is ad hoc: the Keychain would take it for a
+    /// new program and ask the person, so the copy stays (R-321).
+    KeptForKeychain,
 }
 
 /// Where the copy of before waits for the unit to start the new copy: `<copy>.previous`.
@@ -95,6 +111,9 @@ pub fn update_here(swap: &Swap<'_>) -> Result<Updated, DaemonError> {
         return Ok(Updated::CarriedUnknown);
     };
     match version::decide(carried, read(swap.copy)) {
+        Decision::Replace if swap.identity == Identity::NewEachBuild => {
+            Ok(Updated::KeptForKeychain)
+        }
         Decision::Replace => replace(swap, &aside).map(|()| Updated::Replaced),
         Decision::Same => finish_earlier(swap, &aside).map(|()| Updated::Unchanged),
         Decision::KeepNewer => finish_earlier(swap, &aside).map(|()| Updated::KeptNewer),
@@ -105,10 +124,16 @@ pub fn update_here(swap: &Swap<'_>) -> Result<Updated, DaemonError> {
 /// carried daemon in its place and starts the unit again. When the copy is not put in place, the
 /// copy of before goes back and its unit starts again.
 fn replace(swap: &Swap<'_>, aside: &Path) -> Result<(), DaemonError> {
+    // A line before the first step, so that an update that the end of the app cuts leaves a trace.
+    log::info!("the daemon update: the copy is older than the daemon of the app; replacing it");
     stop(swap)?;
     let failed = |error: DaemonError| {
+        log::warn!(
+            "the daemon update: the new copy was not put in place: {}",
+            error.code()
+        );
         // The copy of before starts again; the error that matters is the first one.
-        let _ = restart(swap, &real(swap.copy));
+        let _ = restart(swap, &real(swap.copy), BEFORE);
         Err(error)
     };
     if fs::symlink_metadata(aside).is_err() && fs::rename(swap.copy, aside).is_err() {
@@ -125,8 +150,9 @@ fn replace(swap: &Swap<'_>, aside: &Path) -> Result<(), DaemonError> {
     }
 }
 
-/// `stop` with the carried daemon: the unit stops, and its file and the token stay. Nothing is
-/// changed yet when it fails.
+/// `stop` with the carried daemon: the unit stops, and its file and the token stay. No file is
+/// changed yet when it fails. A stop that ran past its deadline is killed, and may have stopped
+/// the unit, so the unit of the copy starts again.
 fn stop(swap: &Swap<'_>) -> Result<(), DaemonError> {
     let stop = Run {
         program: swap.carried,
@@ -136,7 +162,31 @@ fn stop(swap: &Swap<'_>) -> Result<(), DaemonError> {
         deadline: swap.restart,
         stop: swap.stop,
     };
-    run::run(&stop).map_err(|error| DaemonError::of_run(error, DaemonError::Failed))
+    let Err(error) = run::run(&stop) else {
+        return Ok(());
+    };
+    let failed = failed_step("stop", error, DaemonError::Failed);
+    if error == RunError::TimedOut {
+        // The error that the person needs is the one of the stop.
+        let _ = restart(swap, &real(swap.copy), BEFORE);
+    }
+    Err(failed)
+}
+
+/// The name of the `install` of the copy of before, in the log.
+const BEFORE: &str = "install of the copy of before";
+/// The name of the `install` of the new copy, in the log.
+const NEW: &str = "install of the new copy";
+
+/// The error of the step `name` that did not succeed, after one line in the log of the app with
+/// the name and the code of the error (never a path or an OS text).
+fn failed_step(name: &str, error: RunError, failed: DaemonError) -> DaemonError {
+    let error = DaemonError::of_run(error, failed);
+    log::warn!(
+        "the daemon update: the step `{name}` failed: {}",
+        error.code()
+    );
+    error
 }
 
 /// The real path of `copy`, the path that the install runs; `copy` itself when it has none.
@@ -148,6 +198,7 @@ fn real(copy: &Path) -> PathBuf {
 /// again, so that it runs the copy that is there.
 fn finish_earlier(swap: &Swap<'_>, aside: &Path) -> Result<(), DaemonError> {
     if aside.is_file() {
+        log::info!("the daemon update: an earlier update was cut; its unit starts again");
         return started(swap, &real(swap.copy), aside);
     }
     Ok(())
@@ -156,11 +207,14 @@ fn finish_earlier(swap: &Swap<'_>, aside: &Path) -> Result<(), DaemonError> {
 /// Starts the unit with `installed`, then deletes the copy of before. When the start fails, the
 /// copy of before goes back and its unit starts again.
 fn started(swap: &Swap<'_>, installed: &Path, aside: &Path) -> Result<(), DaemonError> {
-    if let Err(error) = restart(swap, installed) {
+    if let Err(error) = restart(swap, installed, NEW) {
         if put_back(swap.copy, aside).is_ok() {
+            log::warn!("the daemon update: the copy of before is back; its unit starts again");
             // The error that the person needs is the one of the new copy; the next start of
             // the app tries the update again.
-            let _ = restart(swap, installed);
+            let _ = restart(swap, installed, BEFORE);
+        } else {
+            log::warn!("the daemon update: the copy of before could not be put back");
         }
         return Err(error);
     }
@@ -172,8 +226,8 @@ fn started(swap: &Swap<'_>, installed: &Path, aside: &Path) -> Result<(), Daemon
 }
 
 /// `install` with `program`: it writes the unit again and starts it, so the unit runs the copy
-/// that is in place now. The token stays where it is.
-fn restart(swap: &Swap<'_>, program: &Path) -> Result<(), DaemonError> {
+/// that is in place now. The token stays where it is. `name` names the step in the log.
+fn restart(swap: &Swap<'_>, program: &Path, name: &str) -> Result<(), DaemonError> {
     let install = Run {
         program,
         args: &INSTALL_ARGS,
@@ -182,7 +236,7 @@ fn restart(swap: &Swap<'_>, program: &Path) -> Result<(), DaemonError> {
         deadline: swap.restart,
         stop: swap.stop,
     };
-    run::run(&install).map_err(|error| DaemonError::of_run(error, DaemonError::Install))
+    run::run(&install).map_err(|error| failed_step(name, error, DaemonError::Install))
 }
 
 /// Renames the copy of before over the copy, and flushes the folder.

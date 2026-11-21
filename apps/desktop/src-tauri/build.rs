@@ -42,6 +42,7 @@ const APP_COMMANDS: &[&str] = &[
     "daemon_bundled",
     "daemon_install",
     "daemon_remove",
+    "daemon_keychain_waits",
     "local_hub_carried",
     "local_hub_install",
     "local_hub_remove",

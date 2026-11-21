@@ -26,11 +26,15 @@ pub struct Asking<'a> {
 
 impl Keeper {
     /// The keeper of the cache in `store`. A cache that cannot be read is deleted, and the
-    /// daemon starts with none: it fetches its keys again.
+    /// daemon starts with none: it fetches its keys again. A read that waits for the person in
+    /// the Keychain deletes nothing: the delete would wait the same way (R-322).
     #[must_use]
     pub fn open(store: KeyStore) -> Self {
         let cache = store.load().unwrap_or_else(|error| {
             report::not_read(&error);
+            if matches!(error, KeyStoreError::KeychainWaits) {
+                return KeyCache::default();
+            }
             if let Err(error) = store.forget() {
                 report::not_deleted(&error);
             }

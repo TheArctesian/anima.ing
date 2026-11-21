@@ -36,8 +36,10 @@ use windows::{environment, socket_present};
 #[cfg(unix)]
 #[path = "kept/unix.rs"]
 mod unix;
+#[cfg(any(target_os = "macos", all(unix, test)))]
+pub use unix::daemon_folder;
 #[cfg(all(unix, test))]
-pub use unix::{daemon_folder, private_socket};
+pub use unix::private_socket;
 #[cfg(unix)]
 pub use unix::{environment, socket_of_user};
 

@@ -69,6 +69,16 @@ export async function daemonBundled(): Promise<boolean> {
   }
 }
 
+/** Whether the daemon of this computer waits for the person to allow it in the macOS Keychain; false outside the app or when the shell does not answer. */
+export async function daemonKeychainWaits(): Promise<boolean> {
+  if (!isTauri()) return false;
+  try {
+    return (await invoke('daemon_keychain_waits')) === true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Has the shell install the daemon on this computer for this user, enrolled with `code` at `origin` (MET-019). The code goes
  * to the shell and nowhere else; no answer and no message holds it (LOG-007).

@@ -65,6 +65,12 @@ pub enum TokenStoreError {
     #[cfg(target_os = "macos")]
     #[error("the Keychain: {0}")]
     Keychain(String),
+    /// macOS asks the person to allow this program to read the token, and nobody answered in
+    /// time (R-322). Only the Keychain store gives it.
+    #[error(
+        "this computer's daemon needs you to allow it in the Keychain: click Always Allow in the window of macOS"
+    )]
+    KeychainWaits,
 }
 
 /// The daemon's token store for this platform.
