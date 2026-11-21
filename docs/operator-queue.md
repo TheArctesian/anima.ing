@@ -318,7 +318,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (105)
+## 4. Checks that only the operator can do (106)
 
 | Check | What |
 | --- | --- |
@@ -328,6 +328,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-001 | `anima snapshot` against GitHub |
 | HT-002 | the tool inventory from a daemon to the command line |
 | HT-003 | the tool inventory in an MCP client |
+| HT-124 | the child fetch process downloads a real release |
 | HT-119 | the cgroup of each model server on `pop-os` |
 | HT-120 | the model work of the daemon on the Mac and on `pop-os` |
 | HT-121 | the hardware values agree with what each system shows |

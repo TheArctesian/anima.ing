@@ -92,7 +92,7 @@ impl AgentCommand {
         match self {
             Self::Usage(args) => args.run(invocation).await,
             Self::Sessions(args) => args.run(invocation).await,
-            Self::Threads(args) => args.run(invocation),
+            Self::Threads(args) => args.run(invocation).await,
             Self::Thread(args) => args.run(invocation),
             #[cfg(unix)]
             local => local.run_local(invocation).await,

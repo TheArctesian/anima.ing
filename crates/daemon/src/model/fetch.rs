@@ -1,48 +1,36 @@
-//! The download of a runtime archive (Sections 4 and 6): HTTPS only, no proxy, the roots of
-//! the program, at most 5 redirects and only to a host of the fixed list of that runtime, never
-//! to an address written as an IP address; at most `sizeBytes` read, the SHA-256 computed as
-//! the bytes arrive.
+//! The fetch process of model work (Section 4, R-336, task L1-6b). The download
+//! runs in a child of the daemon, made from the same program in the mode
+//! [`child::FETCH_MODE`], with an empty environment and no token, hub origin or proxy. The rules
+//! are pure, in `daemon_core::model_work::releases::fetch`.
 //!
-//! Contract Section 4 asks for a child "fetch process" with no token. This build fetches in the
-//! daemon process, with a client of its own that holds no token and no hub origin (reported as
-//! a deviation of task L1-6).
+//! [`child`] is the child: it downloads, verifies and unpacks. [`spawn`] is the daemon side: it
+//! starts the child, gives it its order and ends it at the deadline. [`download`] is the HTTPS
+//! client of the child: no proxy, the roots of the program, at most 5 redirects and only to a
+//! host of the fixed list, never to an IP address; at most `sizeBytes` read.
+
+pub mod child;
+pub mod spawn;
 
 use std::io::Write as _;
 use std::time::Duration;
 
 use daemon_core::model_work::cause::Cause;
-use daemon_core::model_work::names::Runtime;
+use daemon_core::model_work::releases::fetch::follows;
 use reqwest::{Client, Url, redirect};
 use sha2::{Digest as _, Sha256};
 
-/// The hosts that a redirect of a release source may reach, for each runtime.
-#[must_use]
-pub const fn release_hosts(runtime: Runtime) -> &'static [&'static str] {
-    match runtime {
-        Runtime::LlamaServer => &[
-            "github.com",
-            "objects.githubusercontent.com",
-            "release-assets.githubusercontent.com",
-        ],
-        Runtime::MlxLm | Runtime::Vllm => &[],
-    }
-}
-
-/// Whether a redirect to `url` is permitted: `https`, a name (not an IP address) of `hosts`.
-#[must_use]
-pub fn redirect_permitted(url: &Url, hosts: &[&str]) -> bool {
-    url.scheme() == "https"
-        && url
-            .host_str()
-            .is_some_and(|host| host.parse::<std::net::IpAddr>().is_err() && hosts.contains(&host))
-}
-
 fn client(hosts: &'static [&'static str]) -> Result<Client, Cause> {
     let policy = redirect::Policy::custom(move |attempt| {
-        if attempt.previous().len() >= 5 || !redirect_permitted(attempt.url(), hosts) {
-            attempt.stop()
-        } else {
+        let url = attempt.url();
+        if follows(
+            attempt.previous().len(),
+            url.scheme(),
+            url.host_str(),
+            hosts,
+        ) {
             attempt.follow()
+        } else {
+            attempt.stop()
         }
     });
     Client::builder()
@@ -60,7 +48,7 @@ fn client(hosts: &'static [&'static str]) -> Result<Client, Cause> {
 /// # Errors
 /// `source_failed` when the source does not answer 200; `size` when it sends more than
 /// `max_bytes`; `limit_disk` when the file cannot be written.
-pub async fn fetch(
+pub async fn download(
     address: &str,
     hosts: &'static [&'static str],
     max_bytes: u64,
@@ -75,17 +63,51 @@ pub async fn fetch(
     if response.status().as_u16() != 200 {
         return Err(Cause::SourceFailed);
     }
-    let mut hash = Sha256::new();
-    let mut read = 0u64;
+    let mut written = Hashed::new(file, max_bytes);
     while let Some(chunk) = response.chunk().await.map_err(|_| Cause::SourceFailed)? {
-        read += chunk.len() as u64;
-        if read > max_bytes {
-            return Err(Cause::Size);
-        }
-        hash.update(&chunk);
-        file.write_all(&chunk).map_err(|_| Cause::LimitDisk)?;
+        written.write(&chunk)?;
     }
-    Ok(hex(&hash.finalize()))
+    Ok(written.sha256())
+}
+
+/// A file that a download writes, with the SHA-256 of the bytes written to it and a bound.
+pub struct Hashed<'a> {
+    file: &'a mut std::fs::File,
+    hash: Sha256,
+    left: u64,
+}
+
+impl<'a> Hashed<'a> {
+    /// Writes at most `max_bytes` to `file`.
+    #[must_use]
+    pub fn new(file: &'a mut std::fs::File, max_bytes: u64) -> Self {
+        Self {
+            file,
+            hash: Sha256::new(),
+            left: max_bytes,
+        }
+    }
+
+    /// Writes `chunk` and adds it to the hash.
+    ///
+    /// # Errors
+    /// `size` when the chunk passes the bound (nothing of it is written); `limit_disk` when
+    /// the write fails.
+    pub fn write(&mut self, chunk: &[u8]) -> Result<(), Cause> {
+        self.left = self
+            .left
+            .checked_sub(chunk.len() as u64)
+            .ok_or(Cause::Size)?;
+        self.file.write_all(chunk).map_err(|_| Cause::LimitDisk)?;
+        self.hash.update(chunk);
+        Ok(())
+    }
+
+    /// The SHA-256 of the bytes written, in lower-case hexadecimal.
+    #[must_use]
+    pub fn sha256(self) -> String {
+        hex(&self.hash.finalize())
+    }
 }
 
 /// Lower-case hexadecimal of `bytes`.

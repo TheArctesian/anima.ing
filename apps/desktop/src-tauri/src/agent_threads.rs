@@ -79,7 +79,13 @@ pub async fn agent_threads_list<R: Runtime>(
     with(&webview, move || {
         let home = threads::home().map_err(|_| ThreadsError::Home)?;
         let limit = limit.unwrap_or(threads::MAX_LIMIT);
-        Ok(threads::list(&home, program.map(Program::source), limit))
+        // The page applies the listings of the runner itself (TH46): the files as they are.
+        Ok(threads::list(
+            &home,
+            program.map(Program::source),
+            limit,
+            &std::collections::BTreeSet::new(),
+        ))
     })
     .await
 }
