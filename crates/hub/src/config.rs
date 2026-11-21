@@ -334,6 +334,8 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
 #[cfg(test)]
 mod roots_tests;
 #[cfg(test)]
+mod routes_tests;
+#[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod vpn_tests;
