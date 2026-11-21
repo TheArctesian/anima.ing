@@ -149,6 +149,13 @@ pub async fn run(
 /// The pusher for the enrolled device, from the configuration and the `credential` that the
 /// token store held. An old enrolment moves to the socket of the link first, when it can
 /// ([`old_origin`]).
+#[cfg_attr(
+    windows,
+    expect(
+        clippy::unused_async,
+        reason = "only the move of an old enrolment awaits, and Windows has none"
+    )
+)]
 async fn prepare(
     home: &Home,
     credential: Option<Credential>,
