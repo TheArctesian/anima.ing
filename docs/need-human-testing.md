@@ -2303,6 +2303,11 @@ built or signed the application, and nothing was sent to App Store Connect.
 5. Push a change of a document only. Expected: the summary of the run says "nothing: no change of ios after the
    published <version>", and no iOS job runs.
 
+For the branch TestFlight workflow (M5-8), push a change to `dev` and follow the run.
+Expected: the signed build clears export compliance and appears as Testing in Anima Internal
+without a declaration or an assignment in App Store Connect. Install that build on an iPhone
+or iPad and confirm its version and build number.
+
 Result: Open.
 
 ### HT-051: the workflows `gates` and `merge-to-dev` on GitHub (R-253, R-254, R-252)
