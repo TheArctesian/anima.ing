@@ -62,7 +62,10 @@ pub async fn snapshot(git: &Git, worktree: &Worktree) -> Result<String, GitError
         Err(GitError::Failed { code: Some(1), .. }) => None,
         Err(other) => return Err(other),
     };
-    if let Some(head) = &head {
+    // The private index starts as a copy of the index of the worktree, so that `git add` reads
+    // only the files that changed; with no index to copy it starts from the last commit.
+    let seeded = std::fs::copy(worktree.record().git_dir.join("index"), &index).is_ok();
+    if let (false, Some(head)) = (seeded, &head) {
         git.output(with_index(Run::new(dir, ["read-tree", head.as_str()])))
             .await?;
     }

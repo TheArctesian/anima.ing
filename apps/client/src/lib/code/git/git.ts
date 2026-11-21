@@ -30,6 +30,8 @@ export interface GitStatus {
   default_branch?: string;
   is_default_branch: boolean;
   has_remote: boolean;
+  /** Where a push goes, with each credential removed. */
+  push_url?: string;
   upstream?: string;
   ahead: number;
   behind: number;
@@ -65,6 +67,7 @@ export type GitRefusal =
   | 'no_remote'
   | 'behind'
   | 'default_branch'
+  | 'not_our_branch'
   | 'not_pushed'
   | 'no_commits'
   | 'unknown_forge'
@@ -85,6 +88,7 @@ const REFUSALS: Record<GitRefusal, string> = {
   no_remote: 'Add an "origin" remote before pushing.',
   behind: 'Branch is behind upstream. Pull/rebase before pushing.',
   default_branch: 'This is the default branch. Confirm the push, or commit on a new branch.',
+  not_our_branch: 'This chat did not make this branch, so it does not move it. Commit on a new branch.',
   not_pushed: 'Current branch has not been pushed. Push it before opening a pull request.',
   no_commits: 'No local commits to include in a pull request.',
   unknown_forge: 'The remote is not GitHub or GitLab, so no pull request page can be opened.',
@@ -152,6 +156,8 @@ export interface MenuRow {
   label: string;
   /** Why the row is off. */
   hint?: string;
+  /** More about what the row does: where a push goes. */
+  detail?: string;
 }
 
 /** The rows of the menu: Commit, Push and Create PR, each with its reason when it is off. */
@@ -159,7 +165,7 @@ export function menuRows(status: GitStatus | undefined): readonly MenuRow[] {
   if (status === undefined) return [];
   const rows: MenuRow[] = [{ step: 'commit', label: 'Commit', ...(status.files.length === 0 ? { hint: REFUSALS.nothing_to_commit } : {}) }];
   if (!status.has_remote) return rows;
-  rows.push({ step: 'push', label: 'Push', ...hinted(pushHint(status)) }, { step: 'pull_request', label: 'Create PR', ...hinted(pullRequestHint(status)) });
+  rows.push({ step: 'push', label: 'Push', ...hinted(pushHint(status)), ...(status.push_url === undefined ? {} : { detail: `To ${status.push_url}` }) }, { step: 'pull_request', label: 'Create PR', ...hinted(pullRequestHint(status)) });
   return rows;
 }
 

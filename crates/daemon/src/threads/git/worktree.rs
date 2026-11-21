@@ -11,7 +11,7 @@ use agent_threads::git::GitRefusal;
 use uuid::Uuid;
 
 use super::checkpoint;
-use super::place::{self, Home, Worktree};
+use super::place::{self, Home, Record, Worktree};
 use super::run::{Git, Run};
 
 /// A worktree that is ready for a thread.
@@ -77,7 +77,12 @@ pub async fn make(git: &Git, home: &Home, plan: Plan<'_>) -> Result<Made, GitRef
         reused,
     };
     if let Ok(worktree) = home.worktree(plan.thread, &repository) {
-        return Ok(made(worktree, true));
+        // A worktree of the same name from a different repository is not this one.
+        return if worktree.record().project == project {
+            Ok(made(worktree, true))
+        } else {
+            Err(GitRefusal::BadPath)
+        };
     }
     let folder = home.planned(plan.thread, &repository)?;
     if folder.symlink_metadata().is_ok() {
@@ -90,7 +95,7 @@ pub async fn make(git: &Git, home: &Home, plan: Plan<'_>) -> Result<Made, GitRef
     if branch_exists && !has_ref(git, &project, &checkpoint::kept_ref(plan.thread)).await? {
         return Err(GitRefusal::BranchExists);
     }
-    private_folder(&home.of_thread(plan.thread)).map_err(|_| GitRefusal::BadPath)?;
+    place::private_folder(&home.of_thread(plan.thread)).map_err(|_| GitRefusal::BadPath)?;
     if !branch_exists {
         let new = [
             "branch",
@@ -116,7 +121,12 @@ pub async fn make(git: &Git, home: &Home, plan: Plan<'_>) -> Result<Made, GitRef
         }
         return Err(failed.into());
     }
+    // The record is written now, before an agent runs in the worktree: each later run of `git`
+    // is held to these places, whatever the files of the worktree say then.
+    let record = record_of(git, &project, &folder, &branch).await?;
+    home.keep(plan.thread, &repository, &record)?;
     let worktree = home.worktree(plan.thread, &repository)?;
+    let git = &git.for_worktree(&worktree).await?;
     checkpoint::capture(git, &worktree, 0).await?;
     Ok(made(worktree, false))
 }
@@ -148,13 +158,31 @@ async fn start_of(git: &Git, project: &Path, base: Option<&str>) -> Result<Strin
     .map_err(|_| GitRefusal::UnknownBase)
 }
 
-/// Makes `folder` with access for the user alone.
-fn private_folder(folder: &Path) -> std::io::Result<()> {
-    let mut builder = std::fs::DirBuilder::new();
-    builder.recursive(true);
-    #[cfg(unix)]
-    std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);
-    builder.create(folder)
+/// The record of a worktree that `git worktree add` made a moment ago at `folder`.
+async fn record_of(
+    git: &Git,
+    project: &Path,
+    folder: &Path,
+    branch: &str,
+) -> Result<Record, GitRefusal> {
+    let common = ["rev-parse", "--path-format=absolute", "--git-common-dir"];
+    let common_dir = git.text(Run::new(project, common)).await?;
+    let common_dir = std::fs::canonicalize(common_dir).map_err(|_| GitRefusal::NotARepository)?;
+    let folder = std::fs::canonicalize(folder).map_err(|_| GitRefusal::NoWorktree)?;
+    let pointer =
+        std::fs::read_to_string(folder.join(".git")).map_err(|_| GitRefusal::NoWorktree)?;
+    let git_dir = pointer
+        .trim()
+        .strip_prefix("gitdir: ")
+        .ok_or(GitRefusal::NoWorktree)?;
+    let git_dir = std::fs::canonicalize(git_dir).map_err(|_| GitRefusal::NoWorktree)?;
+    Ok(Record {
+        project: project.to_owned(),
+        folder,
+        git_dir,
+        common_dir,
+        branches: vec![branch.to_owned()],
+    })
 }
 
 /// Saves the files of the worktree to the private ref of its thread, then removes the worktree
@@ -163,44 +191,36 @@ fn private_folder(folder: &Path) -> std::io::Result<()> {
 /// # Errors
 /// A [`GitRefusal`] when the work could not be saved (nothing is removed then) or `git` fails.
 pub async fn remove(git: &Git, home: &Home, worktree: &Worktree) -> Result<String, GitRefusal> {
-    let git = &git.quiet_in(worktree.folder()).await?;
+    let held = &git.for_worktree(worktree).await?;
     let kept = checkpoint::kept_ref(worktree.thread());
-    let commit = checkpoint::snapshot(git, worktree).await?;
-    checkpoint::keep(git, worktree, &kept, &commit).await?;
-    let turns = checkpoint::list(git, worktree).await?;
-    let shared = git
-        .text(Run::new(
-            worktree.folder(),
-            ["rev-parse", "--path-format=absolute", "--git-common-dir"],
-        ))
-        .await?;
+    let commit = checkpoint::snapshot(held, worktree).await?;
+    checkpoint::keep(held, worktree, &kept, &commit).await?;
+    let turns = checkpoint::list(held, worktree).await?;
+    // The removal runs from the repository of the record, not from what the worktree names.
     let mut git_dir = std::ffi::OsString::from("--git-dir=");
-    git_dir.push(&shared);
-    git.output(Run::new(
-        home.folder(),
-        [
-            git_dir.as_os_str(),
-            "worktree".as_ref(),
-            "remove".as_ref(),
-            "--force".as_ref(),
-            "--".as_ref(),
-            worktree.folder().as_os_str(),
-        ],
-    ))
-    .await?;
+    git_dir.push(&worktree.record().common_dir);
+    let remove: [&OsStr; 6] = [
+        git_dir.as_os_str(),
+        "worktree".as_ref(),
+        "remove".as_ref(),
+        "--force".as_ref(),
+        "--".as_ref(),
+        worktree.folder().as_os_str(),
+    ];
+    git.output(Run::new(home.folder(), remove)).await?;
     for checkpoint in turns {
         let name = checkpoint::turn_ref(worktree.thread(), checkpoint.turn);
-        git.output(Run::new(
-            home.folder(),
-            [
-                git_dir.as_os_str(),
-                "update-ref".as_ref(),
-                "--no-deref".as_ref(),
-                "-d".as_ref(),
-                name.as_ref(),
-            ],
-        ))
-        .await?;
+        let forget: [&OsStr; 5] = [
+            git_dir.as_os_str(),
+            "update-ref".as_ref(),
+            "--no-deref".as_ref(),
+            "-d".as_ref(),
+            name.as_ref(),
+        ];
+        git.output(Run::new(home.folder(), forget)).await?;
+    }
+    if let Some(repository) = worktree.folder().file_name().and_then(OsStr::to_str) {
+        home.forget(worktree.thread(), repository);
     }
     // The folder of the thread goes when it is empty; one with a second repository stays.
     let _ = std::fs::remove_dir(home.of_thread(worktree.thread()));

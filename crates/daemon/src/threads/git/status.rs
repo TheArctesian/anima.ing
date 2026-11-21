@@ -27,6 +27,32 @@ pub async fn of(git: &Git, worktree: &Worktree) -> Result<Status, GitError> {
         ))
         .await?;
     let mut status = read(&porcelain);
+    count(git, worktree, &mut status).await?;
+    let remote = remote(git, worktree).await?;
+    status.has_remote = remote.is_some();
+    status.default_branch = default_branch(git, worktree, remote.as_deref()).await?;
+    // What the remote says is the default can be changed in the repository, so the two usual
+    // names count as the default branch too.
+    status.is_default_branch = status.branch.as_deref().is_some_and(|branch| {
+        Some(branch) == status.default_branch.as_deref() || matches!(branch, "main" | "master")
+    });
+    if let Some(remote) = &remote {
+        let url = ["remote", "get-url", "--push", "--", remote.as_str()];
+        status.push_url = git
+            .text(Run::new(dir, url))
+            .await
+            .ok()
+            .map(|url| super::said::without_credentials(&url));
+    }
+    if let Some(default) = &status.default_branch {
+        status.ahead_of_default = ahead_of(git, worktree, remote.as_deref(), default).await?;
+    }
+    Ok(status)
+}
+
+/// Gives each file of `status` its counts of added and removed lines against the last commit.
+async fn count(git: &Git, worktree: &Worktree, status: &mut Status) -> Result<(), GitError> {
+    let dir = worktree.folder();
     let counts = match git
         .output(Run::new(
             dir,
@@ -55,14 +81,7 @@ pub async fn of(git: &Git, worktree: &Worktree) -> Result<Status, GitError> {
     }
     status.additions = status.files.iter().map(|file| file.additions).sum();
     status.deletions = status.files.iter().map(|file| file.deletions).sum();
-    let remote = remote(git, worktree).await?;
-    status.has_remote = remote.is_some();
-    status.default_branch = default_branch(git, worktree, remote.as_deref()).await?;
-    status.is_default_branch = status.branch.is_some() && status.branch == status.default_branch;
-    if let Some(default) = &status.default_branch {
-        status.ahead_of_default = ahead_of(git, worktree, remote.as_deref(), default).await?;
-    }
-    Ok(status)
+    Ok(())
 }
 
 /// The remote a push goes to: the push remote of the person, else `origin`, else the first.

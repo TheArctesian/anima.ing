@@ -20,7 +20,7 @@ const PUSH: GitAction = GitAction::Push {
 
 impl Bench {
     /// A bare repository beside the project as its `origin`, with `main` pushed to it.
-    async fn with_origin(&self) {
+    pub(super) async fn with_origin(&self) {
         let origin = self.project.with_file_name("origin.git");
         let place = origin.to_string_lossy().into_owned();
         self.git_in(
@@ -173,6 +173,7 @@ async fn a_push_goes_to_the_remote_once_and_a_pull_request_needs_a_pushed_branch
         remote,
         branch,
         up_to_date,
+        ..
     } = pushed
     else {
         panic!("no push: {pushed:?}");
@@ -222,7 +223,7 @@ async fn a_push_is_refused_with_no_remote_and_for_the_default_branch_without_a_y
     bench.git_in(&folder, &["switch", "--quiet", "main"]).await;
     std::fs::write(folder.join("a.txt"), "on main\n").expect("a file");
     let on_default = bench.call(PERSON, commit("on main", None, None)).await;
-    assert_eq!(refused(&on_default), Some(&GitRefusal::DefaultBranch));
+    assert_eq!(refused(&on_default), Some(&GitRefusal::NotOurBranch));
     let unasked = bench.call(PERSON, PUSH).await;
     assert_eq!(refused(&unasked), Some(&GitRefusal::DefaultBranch));
     let origin = bench.project.with_file_name("origin.git");

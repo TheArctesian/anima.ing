@@ -93,7 +93,7 @@ impl Engine {
     /// A [`GitRefusal`] when the thread has no worktree or `git` fails.
     pub async fn turn_ended(&self, target: Target<'_>, turn: u32) -> Result<(), GitRefusal> {
         let worktree = self.home.worktree(target.thread, target.repository)?;
-        let git = self.git.quiet_in(worktree.folder()).await?;
+        let git = self.git.for_worktree(&worktree).await?;
         checkpoint::capture(&git, &worktree, turn).await?;
         Ok(())
     }
@@ -118,7 +118,7 @@ impl Engine {
         worktree: &Worktree,
         action: GitAction,
     ) -> Result<GitOutcome, GitRefusal> {
-        let git = &self.git.quiet_in(worktree.folder()).await?;
+        let git = &self.git.for_worktree(worktree).await?;
         Ok(match action {
             GitAction::Status => GitOutcome::Status(status::of(git, worktree).await?),
             GitAction::Checkpoints => GitOutcome::Checkpoints {
@@ -145,32 +145,30 @@ impl Engine {
                     files: files.as_deref(),
                     new_branch: new_branch.as_deref(),
                 };
-                // A commit on the default branch moves a branch that the thread did not make.
-                if asked.new_branch.is_none() && status::of(git, worktree).await?.is_default_branch
-                {
-                    return Err(GitRefusal::DefaultBranch);
-                }
-                let (commit, branch) = commit::make(git, worktree, asked).await?;
+                // A branch that this call makes is written to the record as one of the thread.
+                let own = |name: &str| self.own(worktree, name);
+                let (commit, branch) = commit::make(git, worktree, asked, &own).await?;
                 GitOutcome::Committed { commit, branch }
             }
             GitAction::Push {
                 default_branch_allowed,
-            } => {
-                let (remote, branch, up_to_date) =
-                    push::make(git, worktree, default_branch_allowed).await?;
-                GitOutcome::Pushed {
-                    remote,
-                    branch,
-                    up_to_date,
-                }
-            }
+            } => push::make(git, worktree, default_branch_allowed).await?,
             GitAction::PullRequest => {
                 GitOutcome::PullRequest(pull_request::prepare(git, worktree).await?)
             }
             GitAction::Remove => GitOutcome::Removed {
-                kept: Some(worktree::remove(git, &self.home, worktree).await?),
+                kept: Some(worktree::remove(&self.git, &self.home, worktree).await?),
             },
         })
+    }
+
+    /// Writes to the record that the runner made the branch `name` for the thread.
+    fn own(&self, worktree: &Worktree, name: &str) -> Result<(), GitRefusal> {
+        let mut record = worktree.record().clone();
+        record.branches.push(name.to_owned());
+        let repository = record.folder.file_name().and_then(|name| name.to_str());
+        let repository = repository.ok_or(GitRefusal::BadPath)?;
+        Ok(self.home.keep(worktree.thread(), repository, &record)?)
     }
 }
 

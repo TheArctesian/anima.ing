@@ -72,8 +72,12 @@ pub enum Asked {
 pub struct Git {
     program: PathBuf,
     env: Vec<(OsString, OsString)>,
-    /// The arguments that turn off the filter programs of one repository ([`Git::quiet_in`]).
-    filters_off: Vec<OsString>,
+    /// The configuration names that turn off the filter programs of one repository
+    /// ([`Git::quiet_in`]), each with its value.
+    filters_off: Vec<(String, &'static str)>,
+    /// The Git folder, the shared Git folder and the work folder of one worktree
+    /// ([`Git::for_worktree`]): with them `git` reads no `.git` file and no `core.worktree`.
+    bound: Vec<(&'static str, OsString)>,
 }
 
 /// One run: where, for whom, with which arguments.
@@ -152,46 +156,67 @@ impl Git {
             program,
             env,
             filters_off: Vec::new(),
+            bound: Vec::new(),
         })
     }
 
     /// This `git` for the repository at `dir`, with each filter program that the configuration
-    /// of the repository names turned off for the runs of the runner itself (THR-050): a
-    /// checkpoint, a status, a diff or a revert then starts none. `git add`, `git write-tree`,
-    /// `git status` and `git restore` can each start one. The filters of the person's own
-    /// configuration stay, and a run for the person keeps each filter.
+    /// of the repository or of its worktree names turned off for the runs of the runner itself
+    /// (THR-050): a checkpoint, a status, a diff or a revert then starts none. `git add`,
+    /// `git write-tree`, `git status` and `git restore` can each start one. The filters of the
+    /// person's own configuration stay, and a run for the person keeps each filter.
     ///
     /// # Errors
     /// A [`GitError`] when the configuration cannot be read.
     pub async fn quiet_in(&self, dir: &Path) -> Result<Self, GitError> {
-        let names = [
+        let list = [
             "config",
-            "--local",
+            "-z",
+            "--show-scope",
             "--includes",
             "--name-only",
             "--get-regexp",
-            r"^filter\..*\.(clean|smudge|process|required)$",
+            r"^filter\.",
         ];
         // `git config --get-regexp` ends with 1 when no name matches.
-        let names = match self.output(Run::new(dir, names)).await {
+        let listed = match self.output(Run::new(dir, list)).await {
             Ok(out) => String::from_utf8_lossy(&out).into_owned(),
             Err(GitError::Failed { code: Some(1), .. }) => String::new(),
             Err(other) => return Err(other),
         };
         let mut quiet = self.clone();
         quiet.filters_off.clear();
-        for name in names.lines().filter(|name| !name.contains('=')) {
-            let off = if name.ends_with(".required") {
-                "false"
-            } else {
-                ""
-            };
-            quiet.filters_off.push(OsString::from("-c"));
-            quiet
-                .filters_off
-                .push(OsString::from(format!("{name}={off}")));
+        // The fields come in pairs: the scope, then the name. A name can hold any character.
+        let mut fields = listed.split('\0');
+        while let (Some(scope), Some(name)) = (fields.next(), fields.next()) {
+            if matches!(scope, "local" | "worktree") {
+                let off = if name.ends_with(".required") {
+                    "false"
+                } else {
+                    ""
+                };
+                quiet.filters_off.push((name.to_owned(), off));
+            }
         }
         Ok(quiet)
+    }
+
+    /// This `git` held to `worktree`: each run names the Git folder, the shared Git folder and
+    /// the work folder that the runner wrote down when it made the worktree, so that a changed
+    /// `.git` file or a `core.worktree` cannot send a run to the checkout of the person or to a
+    /// different folder (P12). The filters of the repository are off as in [`Git::quiet_in`].
+    ///
+    /// # Errors
+    /// A [`GitError`] when the configuration cannot be read.
+    pub async fn for_worktree(&self, worktree: &super::place::Worktree) -> Result<Self, GitError> {
+        let record = worktree.record();
+        let mut held = self.clone();
+        held.bound = vec![
+            ("GIT_DIR", record.git_dir.clone().into_os_string()),
+            ("GIT_COMMON_DIR", record.common_dir.clone().into_os_string()),
+            ("GIT_WORK_TREE", record.folder.clone().into_os_string()),
+        ];
+        held.quiet_in(&record.folder).await
     }
 
     /// Runs `git` and gives what it wrote to standard output.
@@ -233,16 +258,13 @@ impl Git {
         let mut command = tokio::process::Command::new(&self.program);
         command
             .args(fixed_configuration(run.asked))
-            .args(if run.asked == Asked::Runner {
-                self.filters_off.as_slice()
-            } else {
-                &[]
-            })
             .args(&run.args)
             .current_dir(run.dir)
             .env_clear()
             .envs(self.env.iter().map(|(name, value)| (name, value)))
             .envs(fixed_environment())
+            .envs(self.bound.iter().map(|(name, value)| (name, value)))
+            .envs(self.overrides(run.asked))
             .envs(run.env.iter().map(|(name, value)| (name, value)))
             .stdin(if run.input.is_some() {
                 Stdio::piped()
@@ -272,6 +294,25 @@ impl Git {
         let out = out.ok_or(GitError::TooLarge)?;
         let said = String::from_utf8_lossy(&said.unwrap_or_default()).into_owned();
         Ok((code, out, super::said::without_credentials(&said)))
+    }
+}
+
+impl Git {
+    /// The configuration a run gets through its environment, which wins over each file and can
+    /// name a key with any character in it: the filters of the repository, off, for a run of
+    /// the runner itself.
+    fn overrides(&self, asked: Asked) -> Vec<(String, String)> {
+        let off: &[(String, &str)] = if asked == Asked::Runner {
+            &self.filters_off
+        } else {
+            &[]
+        };
+        let mut env = vec![("GIT_CONFIG_COUNT".to_owned(), off.len().to_string())];
+        for (at, (name, value)) in off.iter().enumerate() {
+            env.push((format!("GIT_CONFIG_KEY_{at}"), name.clone()));
+            env.push((format!("GIT_CONFIG_VALUE_{at}"), (*value).to_owned()));
+        }
+        env
     }
 }
 
@@ -311,19 +352,33 @@ fn fixed_configuration(asked: Asked) -> Vec<&'static str> {
         "gc.auto=0",
     ];
     if asked == Asked::Runner {
-        args.extend(["-c", "core.hooksPath=/dev/null"]);
+        // No hook, no transport (so no program of a remote, also not for a missing object of a
+        // partial clone), and nothing read from a repository inside the worktree.
+        args.extend([
+            "-c",
+            "core.hooksPath=/dev/null",
+            "-c",
+            "protocol.allow=never",
+            "-c",
+            "status.submoduleSummary=false",
+            "-c",
+            "diff.ignoreSubmodules=all",
+            "-c",
+            "submodule.recurse=false",
+        ]);
     }
     args
 }
 
-/// The environment each run gets after the kept names: no prompt, fixed words, a fixed `ssh`.
+/// The environment each run gets after the kept names: no prompt, fixed words, a fixed `ssh`,
+/// and no fetch of an object that a partial clone lacks.
 fn fixed_environment() -> [(&'static str, &'static str); 5] {
     [
         ("GIT_TERMINAL_PROMPT", "0"),
         ("GIT_SSH_COMMAND", "ssh -o BatchMode=yes"),
         ("GIT_PAGER", "cat"),
         ("LC_ALL", "C"),
-        ("GIT_CONFIG_COUNT", "0"),
+        ("GIT_NO_LAZY_FETCH", "1"),
     ]
 }
 
@@ -352,6 +407,11 @@ mod tests {
     #[test]
     fn the_runner_has_no_hooks_and_the_person_has_theirs() {
         assert!(fixed_configuration(Asked::Runner).contains(&"core.hooksPath=/dev/null"));
+        // No transport for the runner, and no fetch of a missing object for anyone: a remote
+        // of a partial clone cannot name a program that a diff then starts.
+        assert!(fixed_configuration(Asked::Runner).contains(&"protocol.allow=never"));
+        assert!(!fixed_configuration(Asked::Person).contains(&"protocol.allow=never"));
+        assert!(fixed_environment().contains(&("GIT_NO_LAZY_FETCH", "1")));
         assert!(!fixed_configuration(Asked::Person).contains(&"core.hooksPath=/dev/null"));
     }
 }

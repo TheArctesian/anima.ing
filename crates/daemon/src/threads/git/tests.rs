@@ -2,6 +2,7 @@
 //! and the only remote is a bare repository beside the made one.
 
 mod person;
+mod planted;
 mod turns;
 
 use std::path::{Path, PathBuf};
@@ -33,11 +34,12 @@ impl Bench {
         let keep = tempfile::tempdir().expect("a temporary folder");
         let root = std::fs::canonicalize(keep.path()).expect("its real path");
         let (project, home) = (root.join("engine"), root.join("worktrees"));
+        let records = root.join("records");
         std::fs::create_dir_all(&project).expect("the project");
         std::fs::create_dir_all(&home).expect("the home");
         let git = Git::find(std::env::vars_os()).expect("git is installed");
         let bench = Self {
-            engine: Engine::new(git.clone(), Home::at(&home).expect("a home")),
+            engine: Engine::new(git.clone(), Home::at(&home, &records).expect("a home")),
             _keep: keep,
             git,
             project,
@@ -67,9 +69,10 @@ impl Bench {
         bench
     }
 
+    /// A command of the test itself, run as the person would in a terminal.
     async fn git_in(&self, dir: &Path, args: &[&str]) -> String {
         self.git
-            .text(Run::new(dir, args))
+            .text(Run::new(dir, args).for_the_person())
             .await
             .unwrap_or_else(|error| panic!("git {args:?}: {error}"))
     }

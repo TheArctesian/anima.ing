@@ -130,6 +130,8 @@
             >
               <span>{row.label}</span>
               {#if row.hint !== undefined}<span class="why">{row.hint}</span>{/if}
+              <!-- The person sees where a push goes before they ask for it. -->
+              {#if row.detail !== undefined}<span class="why">{row.detail}</span>{/if}
             </button>
           {/each}
         </div>

@@ -29,11 +29,13 @@ pub struct Asked<'a> {
 ///
 /// # Errors
 /// A [`GitRefusal`] for an empty message, a path that leaves the worktree, a branch name that
-/// is taken or not allowed, nothing to commit, or a failure of `git`.
+/// is taken or not allowed, a branch that the runner did not make, nothing to commit, or a
+/// failure of `git`. `own` records a branch that this commit made.
 pub async fn make(
     git: &Git,
     worktree: &Worktree,
     asked: Asked<'_>,
+    own: &dyn Fn(&str) -> Result<(), GitRefusal>,
 ) -> Result<(String, Option<String>), GitRefusal> {
     let dir = worktree.folder();
     let message = asked.message.trim();
@@ -46,6 +48,14 @@ pub async fn make(
         .map(|files| files.iter().map(|path| place::inside(path)).collect())
         .transpose()?;
     let new_branch = asked.new_branch.map(place::branch_name).transpose()?;
+    let on = ["symbolic-ref", "--quiet", "--short", "HEAD"];
+    if new_branch.is_none() {
+        // A commit moves only a branch that the runner made for this thread (P12).
+        let head = git.text(Run::new(dir, on)).await.ok();
+        if !head.is_some_and(|head| worktree.owns(&head)) {
+            return Err(GitRefusal::NotOurBranch);
+        }
+    }
     if let Some(name) = new_branch {
         let full = format!("refs/heads/{name}");
         let verify = ["show-ref", "--verify", "--quiet", full.as_str()];
@@ -59,14 +69,15 @@ pub async fn make(
         return Err(GitRefusal::NothingToCommit);
     }
     if let Some(name) = new_branch {
+        // `git switch --create` fails for a name that exists, so the branch is new and ours.
         git.output(Run::new(dir, ["switch", "--quiet", "--create", name]))
             .await?;
+        own(name)?;
     }
     let message = format!("--message={message}");
     let commit = Run::new(dir, ["commit", "--quiet", message.as_str()]);
     git.output(commit.for_the_person().with_time(TIME)).await?;
     let commit = git.text(Run::new(dir, ["rev-parse", "HEAD"])).await?;
-    let on = ["symbolic-ref", "--quiet", "--short", "HEAD"];
     Ok((commit, git.text(Run::new(dir, on)).await.ok()))
 }
 

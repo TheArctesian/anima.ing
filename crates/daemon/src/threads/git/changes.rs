@@ -29,6 +29,7 @@ pub async fn between(
             "--no-textconv",
             "--find-renames",
             "--submodule=short",
+            "--ignore-submodules=all",
             "--src-prefix=a/",
             "--dst-prefix=b/",
         ];

@@ -27,8 +27,8 @@ index 3f1c2aa..9b7d410 100644
 export const FILES: readonly ChangedFile[] = [
   file('crates/daemon/src/threads/git/push.rs', 4, 1, { patch: PATCH }),
   file('crates/daemon/src/threads/git/status.rs', 212, 0, { kind: 'added', patch: '@@ -0,0 +1,2 @@\n+//! How the branch of a worktree stands.\n+use agent_threads::git::Status;\n' }),
-  file('apps/client/src/lib/code/git/git.ts', 38, 12),
-  file('apps/client/src/lib/code/git/old-name.ts', 0, 0, { kind: 'renamed', old_path: 'apps/client/src/lib/code/git/name.ts', path: 'apps/client/src/lib/code/git/new-name.ts' }),
+  file('apps/client/src/lib/code/git/git.ts', 38, 12, { patch: "@@ -1,3 +1,3 @@\n-export type GitStep = 'commit' | 'push';\n+export type GitStep = 'commit' | 'push' | 'pull_request';\n \n export interface QuickAction {\n" }),
+  file('apps/client/src/lib/code/git/old-name.ts', 0, 0, { kind: 'renamed', old_path: 'apps/client/src/lib/code/git/name.ts', path: 'apps/client/src/lib/code/git/new-name.ts', patch: 'diff --git a/apps/client/src/lib/code/git/name.ts b/apps/client/src/lib/code/git/new-name.ts\nsimilarity index 100%\nrename from apps/client/src/lib/code/git/name.ts\nrename to apps/client/src/lib/code/git/new-name.ts\n' }),
   file('docs/mockup/code-git.png', 0, 0, { binary: true }),
   file('README.md', 0, 9, { kind: 'deleted', patch: '@@ -1,2 +0,0 @@\n-# Old\n-Gone.\n' })
 ];
@@ -38,6 +38,7 @@ const clean: GitStatus = {
   default_branch: 'main',
   is_default_branch: false,
   has_remote: true,
+  push_url: 'https://github.com/ada/engine.git',
   upstream: 'origin/anima/3fa41c07',
   ahead: 0,
   behind: 0,

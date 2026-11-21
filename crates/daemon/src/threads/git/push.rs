@@ -3,14 +3,11 @@
 //!
 //! I/O: `git push` with the credentials that git itself finds; the runner reads none.
 
-use agent_threads::git::{GitRefusal, Status};
+use agent_threads::git::{GitOutcome, GitRefusal, Status};
 
 use super::place::{self, Worktree};
 use super::run::{Git, REMOTE_TIME, Run};
 use super::status;
-
-/// What a push did: the remote, the branch, and whether there was nothing to push.
-pub type Pushed = (String, String, bool);
 
 /// The checks of a push that need no network, from the status of the branch.
 ///
@@ -34,35 +31,55 @@ pub fn allowed(status: &Status, default_branch_allowed: bool) -> Result<&str, Gi
 /// Pushes the branch of the worktree and records its upstream.
 ///
 /// # Errors
-/// A [`GitRefusal`] from [`allowed`], or the words of `git` when the push fails.
+/// A [`GitRefusal`] from [`allowed`], for a branch that the runner did not make, or the words
+/// of `git` when the push fails.
 pub async fn make(
     git: &Git,
     worktree: &Worktree,
     default_branch_allowed: bool,
-) -> Result<Pushed, GitRefusal> {
+) -> Result<GitOutcome, GitRefusal> {
     let dir = worktree.folder();
     let now = status::of(git, worktree).await?;
     let branch = allowed(&now, default_branch_allowed)?.to_owned();
+    // A push moves only a branch that the runner made for this thread (P12).
+    if !worktree.owns(&branch) {
+        return Err(GitRefusal::NotOurBranch);
+    }
     let remote = status::remote(git, worktree)
         .await?
         .ok_or(GitRefusal::NoRemote)?;
+    let pushed = |up_to_date| GitOutcome::Pushed {
+        remote: remote.clone(),
+        url: now.push_url.clone().unwrap_or_default(),
+        branch: branch.clone(),
+        up_to_date,
+    };
     if now.upstream.is_some() && now.ahead == 0 {
-        return Ok((remote, branch, true));
+        return Ok(pushed(true));
     }
     let target = format!("HEAD:refs/heads/{branch}");
-    git.output(
-        Run::new(dir, ["push", "--", remote.as_str(), target.as_str()])
-            .for_the_person()
-            .with_time(REMOTE_TIME),
-    )
-    .await?;
+    // The program at the remote is the one of git, not one that the configuration names; no
+    // tag and no submodule goes with the branch.
+    let push = [
+        "-c",
+        "push.recurseSubmodules=no",
+        "-c",
+        "push.followTags=false",
+        "push",
+        "--receive-pack=git-receive-pack",
+        "--",
+        remote.as_str(),
+        target.as_str(),
+    ];
+    git.output(Run::new(dir, push).for_the_person().with_time(REMOTE_TIME))
+        .await?;
     let merge = format!("refs/heads/{branch}");
     for (name, value) in [("remote", remote.as_str()), ("merge", merge.as_str())] {
         let key = format!("branch.{branch}.{name}");
         git.output(Run::new(dir, ["config", "--local", key.as_str(), value]))
             .await?;
     }
-    Ok((remote, branch, false))
+    Ok(pushed(false))
 }
 
 #[cfg(test)]

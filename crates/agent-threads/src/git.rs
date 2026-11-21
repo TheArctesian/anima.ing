@@ -86,6 +86,8 @@ pub enum GitOutcome {
     },
     Pushed {
         remote: String,
+        /// Where the push went, with each credential removed.
+        url: String,
         branch: String,
         up_to_date: bool,
     },
@@ -120,6 +122,9 @@ pub enum GitRefusal {
     Behind,
     /// The branch is the default branch and the person did not say yes to it.
     DefaultBranch,
+    /// The runner did not make this branch for the thread, so it does not move it: commit on
+    /// a new branch.
+    NotOurBranch,
     /// The branch has commits that are not pushed.
     NotPushed,
     NoCommits,
@@ -145,6 +150,9 @@ pub struct Status {
     pub default_branch: Option<String>,
     pub is_default_branch: bool,
     pub has_remote: bool,
+    /// Where a push goes, with each credential removed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub push_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub upstream: Option<String>,
     pub ahead: u32,

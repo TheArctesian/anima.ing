@@ -81,6 +81,9 @@ pub async fn prepare(git: &Git, worktree: &Worktree) -> Result<PullRequestPage, 
     if now.is_default_branch {
         return Err(GitRefusal::DefaultBranch);
     }
+    if !worktree.owns(&head) {
+        return Err(GitRefusal::NotOurBranch);
+    }
     let remote = status::remote(git, worktree)
         .await?
         .ok_or(GitRefusal::NoRemote)?;

@@ -52,6 +52,7 @@ describe('the main Git action of the details card', () => {
     const ready = menuRows({ ...dirty, ahead: 1, ahead_of_default: 1 });
     expect(ready.every((row) => row.hint === undefined)).toBe(true);
     expect(menuRows({ ...clean, is_default_branch: true, ahead: 1 })[2]?.hint).toContain('default branch');
+    expect(menuRows({ ...clean, push_url: 'https://github.com/ada/engine.git' })[1]?.detail).toBe('To https://github.com/ada/engine.git');
   });
 });
 

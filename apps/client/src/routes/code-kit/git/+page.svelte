@@ -128,8 +128,9 @@
     background: var(--surface-raised);
   }
 
+  /* Room below the rows for the open menu, which in the app floats over the chat. */
   .card {
-    min-block-size: 9rem;
+    min-block-size: 17rem;
   }
 
   .lane {

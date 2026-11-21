@@ -27,38 +27,77 @@ pub enum BadPlace {
     BadName,
 }
 
-/// The folder of the runner that holds the worktrees: `<home>/<thread>/<repository>`.
+/// The folder of the runner that holds the worktrees, `<home>/<thread>/<repository>`, and the
+/// folder of its records, which is outside each repository and each worktree.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Home(PathBuf);
+pub struct Home {
+    folder: PathBuf,
+    records: PathBuf,
+}
 
-/// A worktree of a thread that passed each check: a real folder below the home, with a `.git`
-/// file (a linked worktree), never the checkout of the person.
+/// What the runner wrote down when it made a worktree, before an agent ran in it. Each later
+/// run of `git` is held to these places and branches, whatever the files of the worktree say.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Record {
+    /// The repository of the person the worktree was made from.
+    pub project: PathBuf,
+    /// The real folder of the worktree.
+    pub folder: PathBuf,
+    /// The Git folder of the worktree: `<common>/worktrees/<name>`.
+    pub git_dir: PathBuf,
+    /// The Git folder of the repository of the person.
+    pub common_dir: PathBuf,
+    /// The branches the runner made for this thread: the only ones a commit or a push may move.
+    pub branches: Vec<String>,
+}
+
+/// A worktree of a thread that passed each check: its real folder is below the home and is the
+/// one of its record, with a `.git` file (a linked worktree), never the checkout of the person.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Worktree {
-    folder: PathBuf,
     thread: Uuid,
+    record: Record,
 }
 
 impl Worktree {
     #[must_use]
     pub fn folder(&self) -> &Path {
-        &self.folder
+        &self.record.folder
     }
 
     #[must_use]
     pub const fn thread(&self) -> Uuid {
         self.thread
     }
+
+    #[must_use]
+    pub const fn record(&self) -> &Record {
+        &self.record
+    }
+
+    /// The runner made the branch `name` for this thread.
+    #[must_use]
+    pub fn owns(&self, name: &str) -> bool {
+        self.record.branches.iter().any(|branch| branch == name)
+    }
 }
 
 impl Home {
-    /// The home at `folder`, which must be absolute.
+    /// The home at `folder` with its records in `records`; both absolute, neither in the other.
     ///
     /// # Errors
-    /// [`BadPlace::Escapes`] for a relative path or one with `..`.
-    pub fn at(folder: &Path) -> Result<Self, BadPlace> {
-        if folder.is_absolute() && plain(folder) {
-            Ok(Self(folder.to_owned()))
+    /// [`BadPlace::Escapes`] for a relative path, one with `..`, or one inside the other.
+    pub fn at(folder: &Path, records: &Path) -> Result<Self, BadPlace> {
+        let good = |path: &Path| path.is_absolute() && plain(path);
+        if good(folder)
+            && good(records)
+            && !records.starts_with(folder)
+            && !folder.starts_with(records)
+        {
+            Ok(Self {
+                folder: folder.to_owned(),
+                records: records.to_owned(),
+            })
         } else {
             Err(BadPlace::Escapes)
         }
@@ -66,13 +105,13 @@ impl Home {
 
     #[must_use]
     pub fn folder(&self) -> &Path {
-        &self.0
+        &self.folder
     }
 
     /// The folder of one thread, which holds one worktree for each repository (THR-116).
     #[must_use]
     pub fn of_thread(&self, thread: Uuid) -> PathBuf {
-        self.0.join(thread.as_hyphenated().to_string())
+        self.folder.join(thread.as_hyphenated().to_string())
     }
 
     /// Where the worktree of `repository` of `thread` is or will be. The name is checked; the
@@ -88,16 +127,56 @@ impl Home {
         }
     }
 
-    /// The worktree of `repository` of `thread`, after each check: the real path (each symlink
-    /// followed) is below the real home, and its `.git` is a file, as in a linked worktree.
+    fn record_file(&self, thread: Uuid, repository: &str) -> Result<PathBuf, BadPlace> {
+        self.planned(thread, repository)?;
+        let thread = thread.as_hyphenated().to_string();
+        Ok(self.records.join(thread).join(format!("{repository}.json")))
+    }
+
+    /// Writes the record of a worktree, in a folder and a file for the user alone.
+    ///
+    /// # Errors
+    /// A [`BadPlace`] for a bad name, or when the file cannot be written.
+    pub fn keep(&self, thread: Uuid, repository: &str, record: &Record) -> Result<(), BadPlace> {
+        let file = self.record_file(thread, repository)?;
+        let folder = file.parent().ok_or(BadPlace::Escapes)?;
+        private_folder(folder).map_err(|_| BadPlace::NotOurWorktree)?;
+        let text = serde_json::to_vec_pretty(record).map_err(|_| BadPlace::NotOurWorktree)?;
+        std::fs::write(&file, text).map_err(|_| BadPlace::NotOurWorktree)
+    }
+
+    /// Removes the record of a worktree that was removed.
+    pub fn forget(&self, thread: Uuid, repository: &str) {
+        if let Ok(file) = self.record_file(thread, repository) {
+            // A record that is gone already is the wanted state.
+            let _ = std::fs::remove_file(&file);
+            let _ = file.parent().map(std::fs::remove_dir);
+        }
+    }
+
+    /// The record of the worktree of `repository` of `thread`, as the runner wrote it.
+    ///
+    /// # Errors
+    /// [`BadPlace::NotOurWorktree`] when the runner made no such worktree.
+    pub fn recorded(&self, thread: Uuid, repository: &str) -> Result<Record, BadPlace> {
+        let file = self.record_file(thread, repository)?;
+        let text = std::fs::read(file).map_err(|_| BadPlace::NotOurWorktree)?;
+        serde_json::from_slice(&text).map_err(|_| BadPlace::NotOurWorktree)
+    }
+
+    /// The worktree of `repository` of `thread`, after each check: the runner has a record of
+    /// it; the real path (each symlink followed) is the folder of the record and is below the
+    /// real home; its `.git` is a file, as in a linked worktree; and its Git folder is below
+    /// the `worktrees` folder of the repository it was made from.
     ///
     /// # Errors
     /// A [`BadPlace`] when a check fails.
     pub fn worktree(&self, thread: Uuid, repository: &str) -> Result<Worktree, BadPlace> {
+        let record = self.recorded(thread, repository)?;
         let planned = self.planned(thread, repository)?;
-        let home = std::fs::canonicalize(&self.0).map_err(|_| BadPlace::NotOurWorktree)?;
+        let home = std::fs::canonicalize(&self.folder).map_err(|_| BadPlace::NotOurWorktree)?;
         let real = std::fs::canonicalize(&planned).map_err(|_| BadPlace::NotOurWorktree)?;
-        if !real.starts_with(&home) || real == home {
+        if !real.starts_with(&home) || real == home || real != record.folder {
             return Err(BadPlace::Escapes);
         }
         let dot_git = real.join(".git");
@@ -105,14 +184,26 @@ impl Home {
         if meta.is_dir() {
             return Err(BadPlace::MainCheckout);
         }
-        if !meta.is_file() {
+        let git_dir =
+            std::fs::canonicalize(&record.git_dir).map_err(|_| BadPlace::NotOurWorktree)?;
+        let ours = git_dir.parent() == Some(record.common_dir.join("worktrees").as_path());
+        if !meta.is_file() || !ours || git_dir != record.git_dir {
             return Err(BadPlace::NotOurWorktree);
         }
-        Ok(Worktree {
-            folder: real,
-            thread,
-        })
+        Ok(Worktree { thread, record })
     }
+}
+
+/// Makes `folder` with access for the user alone.
+///
+/// # Errors
+/// The error of the file system.
+pub fn private_folder(folder: &Path) -> std::io::Result<()> {
+    let mut builder = std::fs::DirBuilder::new();
+    builder.recursive(true);
+    #[cfg(unix)]
+    std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);
+    builder.create(folder)
 }
 
 /// A path with only normal parts: no `..`, no `.`.
@@ -277,10 +368,13 @@ mod tests {
 
     #[test]
     fn a_repository_name_with_a_path_in_it_is_not_a_place() {
-        let home = Home::at(Path::new("/tmp/worktrees")).expect("an absolute home");
+        let home =
+            Home::at(Path::new("/tmp/worktrees"), Path::new("/tmp/records")).expect("a home");
         assert_eq!(home.planned(THREAD, "../other"), Err(BadPlace::BadName));
         assert_eq!(home.planned(THREAD, "a/b"), Err(BadPlace::BadName));
-        assert!(Home::at(Path::new("relative")).is_err());
-        assert!(Home::at(Path::new("/tmp/../etc")).is_err());
+        let records = Path::new("/tmp/records");
+        assert!(Home::at(Path::new("relative"), records).is_err());
+        assert!(Home::at(Path::new("/tmp/../etc"), records).is_err());
+        assert!(Home::at(Path::new("/tmp/w"), Path::new("/tmp/w/records")).is_err());
     }
 }
