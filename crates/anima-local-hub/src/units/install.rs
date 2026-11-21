@@ -7,7 +7,7 @@ use std::fs;
 use std::fs::OpenOptions;
 use std::io::{self, Write as _};
 #[cfg(unix)]
-use std::os::unix::fs::OpenOptionsExt;
+use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -282,8 +282,14 @@ fn private(folder: &Path, uid: u32) -> Result<(), InstallError> {
 /// unit tool runs what the file names at each login.
 fn write_unit(file: &Path, text: &str, uid: u32) -> Result<(), InstallError> {
     let folder = file.parent().unwrap_or(file);
+    // Mode 0755 whatever the umask: with 0002 (Ubuntu) a folder made here would be open to
+    // the group, and `private` would refuse it.
     #[cfg(unix)]
-    fs::create_dir_all(folder).map_err(write_error(folder))?;
+    fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o755)
+        .create(folder)
+        .map_err(write_error(folder))?;
     #[cfg(windows)]
     owner_only::folder(folder).map_err(write_error(folder))?;
     private(folder, uid)?;

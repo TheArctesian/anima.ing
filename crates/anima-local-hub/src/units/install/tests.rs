@@ -1,5 +1,5 @@
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
+use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
 use std::path::Path;
 use std::time::Duration;
 
@@ -7,7 +7,7 @@ use anima_database::Platform;
 use tempfile::TempDir;
 
 use super::{InstallError, Request, install, is_installed, remove};
-use crate::programs::tests::carried;
+use crate::programs::tests::{carried, private_folder};
 use crate::{Carried, Folders, run};
 
 mod start_stop;
@@ -19,7 +19,7 @@ struct Rig {
 }
 
 fn rig() -> Rig {
-    let folder = tempfile::tempdir().unwrap();
+    let folder = private_folder();
     let folders = Folders::new(folder.path().join("home/hub"), folder.path().join("s")).unwrap();
     let source = carried(folder.path(), "one");
     Rig {
@@ -253,7 +253,11 @@ fn a_hub_folder_below_a_folder_that_others_can_change_is_refused_before_anything
 #[test]
 fn install_closes_a_hub_folder_that_was_open_to_others() {
     let rig = rig();
-    fs::create_dir_all(rig.folders.root()).unwrap();
+    fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o700)
+        .create(rig.folders.root())
+        .unwrap();
     fs::set_permissions(rig.folders.root(), fs::Permissions::from_mode(0o777)).unwrap();
 
     rig.install(Platform::MacOs).0.unwrap();

@@ -9,7 +9,7 @@ use anima_database::Platform;
 use tempfile::TempDir;
 
 use super::{Outcome, update};
-use crate::programs::tests::carried;
+use crate::programs::tests::{carried, private_folder};
 use crate::units::install::InstallError;
 use crate::units::install::{self, Request, is_installed};
 use crate::{Carried, Folders};
@@ -23,7 +23,7 @@ struct Rig {
 }
 
 fn rig() -> Rig {
-    let folder = tempfile::tempdir().unwrap();
+    let folder = private_folder();
     let folders = Folders::new(folder.path().join("home/hub"), folder.path().join("s")).unwrap();
     let source = carried(folder.path(), "one");
     Rig {
