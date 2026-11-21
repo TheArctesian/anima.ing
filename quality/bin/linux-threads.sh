@@ -5,12 +5,15 @@
 #
 # The source is mounted read-only. The tests `units::` write into the source tree, so they are
 # left out here; GitHub runs them. Two Docker volumes keep the build and the registry between runs.
+# Each worktree has its own build folder in the volume: each is mounted at /src, and cargo would
+# take the build of a different worktree for a source file that is older than it.
 # Arguments after `--` go to nextest (for example a filter of tests).
 set -euo pipefail
 
 root="$(git rev-parse --show-toplevel)"
 toolchain="$(sed -n 's/^channel *= *"\(.*\)"/\1/p' "$root/rust-toolchain.toml")"
 image="rust:${toolchain}-bookworm"
+build="build-$(basename "$root")"
 case "$(docker info --format '{{.Architecture}}')" in
   aarch64 | arm64) nextest_url="https://get.nexte.st/latest/linux-arm" ;;
   *) nextest_url="https://get.nexte.st/latest/linux" ;;
@@ -36,7 +39,7 @@ su tester -s /bin/bash -c '
   set -euo pipefail
   cd /src
   export HOME=/home/tester PATH=/usr/local/cargo/bin:\$PATH CARGO_HOME=/usr/local/cargo
-  export CARGO_TARGET_DIR=/target/build RUSTC_WRAPPER= RUSTUP_HOME=/usr/local/rustup
+  export CARGO_TARGET_DIR=/target/$build RUSTC_WRAPPER= RUSTUP_HOME=/usr/local/rustup
   /target/cargo-nextest nextest run --cargo-quiet -p anima-daemon -p agent-threads \
     --no-fail-fast -E \"not test(/^units::/)\"$extra
 '
