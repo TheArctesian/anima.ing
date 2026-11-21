@@ -1,4 +1,5 @@
 import type { RunnerShell } from '$lib/desktop/agent-threads/runner';
+import type { Listing, ListingChange } from '../listing/listing';
 import { noticeFor, type Looking } from './notify';
 import { REFUSAL_WORDS, type Action, type Outcome, type Update } from './run';
 import { applied, begun, type LiveThread } from './timeline';
@@ -32,6 +33,9 @@ export class LiveThreads {
   problem = $state<string | null>(null);
   /** Words while the holder of the programs is older than the daemon (TH98); read again when a thread stops. */
   holder = $state<string | null>(null);
+  /** How the person lists each thread (TH46), by thread. */
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- replaced whole at each answer, never changed in place
+  listings = $state<ReadonlyMap<string, Listing>>(new Map());
   /** A start that the runner refused at the soft limit: it is sent again when the person raises the limit. */
   overLimit = $state<Action | null>(null);
   /** Called with the ID of a thread that changed while the person looks at it: it does not need the person (THR-055). */
@@ -58,6 +62,7 @@ export class LiveThreads {
         },
       );
       await this.seed();
+      await this.readListings();
       return stop;
     } catch (reason) {
       this.linked = false;
@@ -81,6 +86,28 @@ export class LiveThreads {
     const next = new Map(this.threads);
     for (const row of listed.threads) if (!next.has(row.id)) next.set(row.id, begun(row, at));
     this.threads = next;
+  }
+
+  /** Reads how the person lists each thread again; the listings on the screen stay when the runner does not answer. */
+  async readListings(): Promise<void> {
+    const read = await this.shell.call({ call: 'listings' }).catch(() => null);
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- built here, then set whole as the new state
+    if (read?.outcome === 'listings') this.listings = new Map(read.listings.map((listing) => [listing.thread, listing]));
+  }
+
+  /** Changes how the person lists a thread (TH46). A thread that the runner forgot leaves the page too. */
+  async changeListing(thread: string, change: ListingChange): Promise<CallResult> {
+    const result = await this.call({ call: 'change_listing', thread, change });
+    if (!result.ok || result.outcome.outcome !== 'listings') return result;
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- built here, then set whole as the new state
+    this.listings = new Map(result.outcome.listings.map((listing) => [listing.thread, listing]));
+    if (change.change === 'remove' && this.threads.has(thread)) {
+      // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a copy set whole as the new state
+      const next = new Map(this.threads);
+      next.delete(thread);
+      this.threads = next;
+    }
+    return result;
   }
 
   /** One update of the watch; an update of a thread that the page does not know yet waits for its row. */

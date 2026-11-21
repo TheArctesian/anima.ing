@@ -10,6 +10,9 @@ use uuid::Uuid;
 
 use crate::drive::{AccountFacts, Answer, DriveEvent, Effort, Mode, Program, Request};
 
+mod listing;
+pub use listing::{BadTitle, Listing, ListingChange, MAX_TITLE};
+
 /// The most bytes of one frame of a client.
 pub const MAX_FRAME: usize = 4 * 1024 * 1024;
 
@@ -82,6 +85,10 @@ pub enum Action {
     /// What the project files of a folder make the program do with no question, to show before
     /// a thread starts there (THR-046).
     Folder { folder: PathBuf },
+    /// How the person lists each thread (TH46).
+    Listings,
+    /// A change of how the person lists a thread (TH46): only the person makes it.
+    ChangeListing { thread: Uuid, change: ListingChange },
 }
 
 /// A frame of the runner to a client.
@@ -119,6 +126,10 @@ pub enum Outcome {
     /// still there or the walk could not run (THR-049).
     Stopped {
         all_ended: bool,
+    },
+    /// How the person lists each thread that has a listing (TH46).
+    Listings {
+        listings: Vec<Listing>,
     },
     Refused {
         why: Refusal,
@@ -160,6 +171,8 @@ pub enum Refusal {
     /// The call came from a process of an agent: only the person answers a request, raises the
     /// limit or starts a thread.
     FromAnAgent,
+    /// The thread runs: it is removed from the list only after it stopped (TH46).
+    Running,
     /// A start would pass the soft limit: the person must answer first (THR-114).
     OverLimit {
         limits: Limits,

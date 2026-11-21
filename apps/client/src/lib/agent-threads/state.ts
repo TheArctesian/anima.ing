@@ -73,16 +73,18 @@ export const STATE_MARKS: Readonly<Record<ThreadState, { readonly words: string;
   idle: { words: 'Idle', icon: 'carbon:circle-dash', detail: 'The turn is open and the session file did not change for 2 minutes or more.' },
 };
 
-export type GroupKey = 'needs' | 'earlier' | 'working';
+export type GroupKey = 'needs' | 'pinned' | 'earlier' | 'working';
 
 /** The key of the entry of the group "Earlier", which the list can fold. */
 export const EARLIER_KEY = 'group:earlier';
 
-const GROUP_TITLES: Readonly<Record<GroupKey, string>> = { needs: 'Needs you', earlier: 'Earlier', working: 'Working' };
+const GROUP_TITLES: Readonly<Record<GroupKey, string>> = { needs: 'Needs you', pinned: 'Pinned', earlier: 'Earlier', working: 'Working' };
 
-function groupOf(state: ThreadState): GroupKey {
+/** A thread that needs the person stays in "Needs you", and one that works in "Working"; a pinned thread is next (TH46). */
+function groupOf(state: ThreadState, pinned: boolean): GroupKey {
   if (needsYou(state)) return 'needs';
-  return state === 'working' ? 'working' : 'earlier';
+  if (state === 'working') return 'working';
+  return pinned ? 'pinned' : 'earlier';
 }
 
 /** A row of the list with its state. */
@@ -115,10 +117,10 @@ export interface Fold {
  * The group "Earlier" is folded unless `fold.earlierOpen`: then only its title, its count and the thread that is open (`fold.chosen`) are in the list.
  */
 export function orderedThreads(rows: readonly ThreadRow[], now: Date, seen: Seen, fold: Fold = { earlierOpen: true, chosen: null }): readonly ThreadEntry[] {
-  const stated = rows.map((row) => ({ row, state: threadState(row, now, seen) }));
+  const stated = rows.map((row) => ({ row, state: threadState(row, now, seen), pinned: 'pinned' in row && row.pinned === true }));
   const entries: ThreadEntry[] = [];
-  for (const group of ['needs', 'earlier', 'working'] as const) {
-    const members = stated.filter((each) => groupOf(each.state) === group).sort(newestFirst);
+  for (const group of ['needs', 'pinned', 'earlier', 'working'] as const) {
+    const members = stated.filter((each) => groupOf(each.state, each.pinned) === group).sort(newestFirst);
     if (group === 'needs') members.sort((a, b) => urgency(b.state) - urgency(a.state));
     if (members.length === 0) continue;
     entries.push({ kind: 'group', key: `group:${group}`, title: GROUP_TITLES[group], count: members.length });
