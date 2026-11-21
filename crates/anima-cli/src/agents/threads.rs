@@ -225,12 +225,20 @@ impl ThreadArgs {
     }
 }
 
-/// The threads that the runner of this computer has as removed; none when no runner answers,
-/// as the files are all that is known then.
+/// The threads that the runner of this computer has as removed; none when no runner answers
+/// within [`RUNNER_WAIT`], as the files are all that is known then.
 #[cfg(unix)]
 async fn removed() -> BTreeSet<String> {
-    super::listing::removed().await.unwrap_or_default()
+    tokio::time::timeout(RUNNER_WAIT, super::listing::removed())
+        .await
+        .ok()
+        .and_then(Result::ok)
+        .unwrap_or_default()
 }
+
+/// How long the list waits for the runner: a runner that does not answer must not stop it.
+#[cfg(unix)]
+const RUNNER_WAIT: std::time::Duration = std::time::Duration::from_secs(2);
 
 #[cfg(not(unix))]
 async fn removed() -> BTreeSet<String> {
