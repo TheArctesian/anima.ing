@@ -24,6 +24,9 @@ pub struct Timeouts {
     pub request: Duration,
     /// With no byte in either direction on one stream.
     pub idle: Duration,
+    /// For each write to the client: a client that reads too slowly to take one write in this
+    /// time cannot hold a stream of the link (SF-NEW-revroutelimits).
+    pub write: Duration,
 }
 
 impl Default for Timeouts {
@@ -33,6 +36,7 @@ impl Default for Timeouts {
             head: Duration::from_secs(10),
             request: Duration::from_secs(60),
             idle: Duration::from_secs(300),
+            write: Duration::from_secs(30),
         }
     }
 }
@@ -196,10 +200,50 @@ impl Drop for Pass {
     }
 }
 
+/// New arrivals each second with a burst: a bucket of tokens that fills again with time.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Bucket {
+    per_second: u32,
+    burst: u32,
+    /// The arrivals that the bucket still holds, in thousandths.
+    tokens_milli: u64,
+    refilled_ms: u64,
+}
+
+impl Bucket {
+    /// A full bucket at `now_ms`.
+    #[must_use]
+    pub fn full(per_second: u32, burst: u32, now_ms: u64) -> Self {
+        Self {
+            per_second,
+            burst,
+            tokens_milli: u64::from(burst) * 1000,
+            refilled_ms: now_ms,
+        }
+    }
+
+    /// Takes one arrival at `now_ms`; `false` when the bucket is empty.
+    pub fn take(&mut self, now_ms: u64) -> bool {
+        let elapsed = now_ms.saturating_sub(self.refilled_ms);
+        let added = elapsed.saturating_mul(u64::from(self.per_second));
+        self.tokens_milli = self
+            .tokens_milli
+            .saturating_add(added)
+            .min(u64::from(self.burst) * 1000);
+        self.refilled_ms = now_ms;
+        if self.tokens_milli < 1000 {
+            return false;
+        }
+        self.tokens_milli -= 1000;
+        true
+    }
+}
+
 /// The limits of one name.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Limits {
-    /// Connections open at one time.
+    /// Connections open at one time: below the streams of one link of the hub, so the clients
+    /// of one route cannot hold each stream of its device (SF-NEW-revroutelimits).
     pub connections: u32,
     /// New connections each second, with a burst of the same number.
     pub new_per_second: u32,
@@ -220,9 +264,7 @@ pub enum Refusal {
 #[derive(Clone, Copy, Debug, Default)]
 struct State {
     open: u32,
-    /// New connections that the bucket still holds, in thousandths.
-    tokens_milli: u64,
-    refilled_ms: u64,
+    arrivals: Bucket,
     period_start_ms: u64,
     bytes: u64,
     started: bool,
@@ -257,15 +299,9 @@ impl Limiter {
         if limits.bytes_per_period > 0 && state.bytes >= limits.bytes_per_period {
             return Err(Refusal::Bytes);
         }
-        let elapsed = now_ms.saturating_sub(state.refilled_ms);
-        let full = u64::from(limits.new_per_second) * 1000;
-        state.tokens_milli =
-            (state.tokens_milli + elapsed * u64::from(limits.new_per_second)).min(full);
-        state.refilled_ms = now_ms;
-        if state.tokens_milli < 1000 {
+        if !state.arrivals.take(now_ms) {
             return Err(Refusal::Rate);
         }
-        state.tokens_milli -= 1000;
         state.open += 1;
         Ok(())
     }
@@ -291,8 +327,7 @@ impl Limiter {
         let state = self.names.entry(name.to_owned()).or_default();
         if !state.started {
             *state = State {
-                tokens_milli: u64::from(limits.new_per_second) * 1000,
-                refilled_ms: now_ms,
+                arrivals: Bucket::full(limits.new_per_second, limits.new_per_second, now_ms),
                 period_start_ms: now_ms,
                 started: true,
                 ..State::default()

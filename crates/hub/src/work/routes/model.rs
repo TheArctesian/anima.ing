@@ -39,6 +39,10 @@ pub struct Route {
     /// the engine (SF-NEW-revroutetarget). The hub keeps no such record before task H6, so
     /// nothing sets it yet.
     pub application_recorded: bool,
+    /// The hub's record of the application marks the port of this stream `stream-public`
+    /// (SF-NEW-revroutepublic): the protocol that the person picked is only a label until then.
+    /// Nothing sets it before task H6.
+    pub stream_public: bool,
     pub checked_at: Option<DateTime<Utc>>,
     pub certificate: Option<CertificateState>,
     pub traffic: Traffic,
@@ -70,7 +74,8 @@ pub enum Waits {
     /// The second consent at the machine is not given (OD-HOST-43).
     MachineConsent,
     /// The hub has no record of the application with this device and port and without the
-    /// socket of the engine (task H6; SF-NEW-revroutetarget).
+    /// socket of the engine (task H6; SF-NEW-revroutetarget); for a public stream, also with the
+    /// mark `stream-public` on its port (SF-NEW-revroutepublic).
     ApplicationRecord,
     /// The route has no certificate that is valid now. A stream has no TLS of the hub and needs
     /// none.
@@ -87,7 +92,9 @@ impl Route {
         if !self.machine_consent {
             return Some(Waits::MachineConsent);
         }
-        if !self.application_recorded {
+        let unmarked =
+            self.kind.is_stream() && self.access == Access::Public && !self.stream_public;
+        if !self.application_recorded || unmarked {
             return Some(Waits::ApplicationRecord);
         }
         if self.kind.is_stream() {

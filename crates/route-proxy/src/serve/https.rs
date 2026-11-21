@@ -1,7 +1,8 @@
 //! A TLS listener of the names that serve (Section 12.3): the public one, and the private one on
 //! the address of the proxy on the network of Anima (Section 16.7). A private name answers only
 //! on the private listener and only to a node of that network; a redirect answers its one
-//! address and never reaches a machine.
+//! address and never reaches a machine. A connection holds a place of its route until it ends, a
+//! WebSocket after its `101` included, and each write to the client has its time.
 
 use std::{
     net::IpAddr,
@@ -47,7 +48,7 @@ pub async fn serve<H: Hub>(proxy: Arc<Proxy<H>>, listener: TcpListener, reach: R
     }
 }
 
-/// One TLS connection: the name of its SNI, its limits, its request and its answer.
+/// One TLS connection up to its name: its caps, the PROXY header and the handshake.
 async fn one<H: Hub>(
     proxy: &Proxy<H>,
     mut stream: TcpStream,
@@ -70,22 +71,33 @@ async fn one<H: Hub>(
     let Some(name) = tls.get_ref().1.server_name().map(str::to_owned) else {
         return;
     };
-    let mut tls = Idle::new(tls, times.idle);
-    let Some(entry) = proxy.entry(&name) else {
+    let tls = Idle::new(tls, times.idle).writes_within(times.write);
+    answer(proxy, tls, (&name, client), listener).await;
+}
+
+/// One connection of `name` after its handshake, on the listener of `listener`: the limits of its
+/// route, its request and its answer. The place of the route is held until the connection ends.
+pub(crate) async fn answer<H: Hub, S: AsyncRead + AsyncWrite + Unpin + Send>(
+    proxy: &Proxy<H>,
+    mut tls: S,
+    (name, client): (&str, IpAddr),
+    listener: Reach,
+) {
+    let Some(entry) = proxy.entry(name) else {
         return;
     };
     if listener == Reach::Public && entry.reach == Reach::Private {
         return;
     }
-    if !proxy.admit(&name) {
+    if !proxy.admit(name) {
         tls.write_all(OVER_LIMIT).await.ok();
         return;
     }
     let status = match &entry.redirect_to {
-        Some(to) => redirect(proxy, &mut tls, &name, to).await,
-        None => request(proxy, &mut tls, (&name, entry.application), client).await,
+        Some(to) => redirect(proxy, &mut tls, name, to).await,
+        None => request(proxy, &mut tls, (name, entry.application), client).await,
     };
-    proxy.release(&name);
+    proxy.release(name);
     tracing::info!(name = %name, status = ?status, "a request of a public name");
 }
 

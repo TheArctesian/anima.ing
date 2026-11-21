@@ -34,6 +34,13 @@ fn the_timeouts_and_the_caps_have_defaults() {
     assert_eq!(settings.tls_caps.per_client, 8);
     assert_eq!(settings.door_addresses, Vec::<std::net::IpAddr>::new());
     assert_eq!(settings.plain_caps.total, 256);
+    assert_eq!(settings.timeouts.write, Duration::from_secs(30));
+    assert!(
+        settings.limits.connections < 32,
+        "one route holds fewer streams than one link of the hub"
+    );
+    assert_eq!(settings.limits.connections, 16);
+    assert_eq!(settings.udp_new_per_second, 8);
 }
 
 #[test]

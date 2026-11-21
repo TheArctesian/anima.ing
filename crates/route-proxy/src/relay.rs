@@ -3,7 +3,8 @@
 //! no byte more, so a second request on the same connection never reaches the application
 //! unread. The body must come before the deadline of its request ([`Body::by`]), so a client that
 //! sends one byte at a time cannot hold the stream. A WebSocket upgrade goes both ways as it is
-//! after the application's `101`. Each stream can end after a time with no byte ([`Idle`]).
+//! after the application's `101`. Each stream can end after a time with no byte ([`Idle`]), and
+//! the stream of a client also when one write to it does not finish in its time.
 //! Nothing here reads or logs a body.
 
 use std::{
@@ -173,11 +174,15 @@ pub fn status(bytes: &[u8]) -> Option<u16> {
 }
 
 /// A stream that fails with [`io::ErrorKind::TimedOut`] when no byte moved through it, in either
-/// direction, for its idle time (SF-NEW-revroutelimits).
+/// direction, for its idle time, or, with [`Idle::writes_within`], when one write does not finish
+/// in its time: the least rate of a client that reads the answer (SF-NEW-revroutelimits).
 pub struct Idle<S> {
     inner: S,
     after: Duration,
     deadline: Pin<Box<Sleep>>,
+    write_within: Option<Duration>,
+    /// The end of the write that waits now.
+    write_by: Option<Pin<Box<Sleep>>>,
 }
 
 impl<S> Idle<S> {
@@ -187,6 +192,17 @@ impl<S> Idle<S> {
             inner,
             after,
             deadline: Box::pin(sleep(after)),
+            write_within: None,
+            write_by: None,
+        }
+    }
+
+    /// The same stream, on which each write must finish within `within`.
+    #[must_use]
+    pub fn writes_within(self, within: Duration) -> Self {
+        Self {
+            write_within: Some(within),
+            ..self
         }
     }
 
@@ -201,6 +217,17 @@ impl<S> Idle<S> {
             Poll::Ready(()) => Poll::Ready(Err(io::ErrorKind::TimedOut.into())),
             Poll::Pending => Poll::Pending,
         }
+    }
+
+    /// A write that waits: an error when its time or the idle time is over.
+    fn writing<T>(&mut self, cx: &mut Context<'_>) -> Poll<io::Result<T>> {
+        if let Some(within) = self.write_within {
+            let by = self.write_by.get_or_insert_with(|| Box::pin(sleep(within)));
+            if by.as_mut().poll(cx).is_ready() {
+                return Poll::Ready(Err(io::ErrorKind::TimedOut.into()));
+            }
+        }
+        self.waiting(cx)
     }
 }
 
@@ -233,21 +260,25 @@ impl<S: AsyncWrite + Unpin> AsyncWrite for Idle<S> {
         let this = &mut *self;
         match Pin::new(&mut this.inner).poll_write(cx, bytes) {
             Poll::Ready(Ok(written)) => {
+                this.write_by = None;
                 if written > 0 {
                     this.moved();
                 }
                 Poll::Ready(Ok(written))
             }
             Poll::Ready(Err(error)) => Poll::Ready(Err(error)),
-            Poll::Pending => this.waiting(cx),
+            Poll::Pending => this.writing(cx),
         }
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
         let this = &mut *self;
         match Pin::new(&mut this.inner).poll_flush(cx) {
-            Poll::Pending => this.waiting(cx),
-            Poll::Ready(result) => Poll::Ready(result),
+            Poll::Pending => this.writing(cx),
+            Poll::Ready(result) => {
+                this.write_by = None;
+                Poll::Ready(result)
+            }
         }
     }
 

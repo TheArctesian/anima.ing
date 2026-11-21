@@ -23,6 +23,7 @@ const HANDSHAKE_SECONDS: &str = "ANIMA_ROUTE_PROXY_HANDSHAKE_SECONDS";
 const HEAD_SECONDS: &str = "ANIMA_ROUTE_PROXY_HEAD_SECONDS";
 const REQUEST_SECONDS: &str = "ANIMA_ROUTE_PROXY_REQUEST_SECONDS";
 const IDLE_SECONDS: &str = "ANIMA_ROUTE_PROXY_IDLE_SECONDS";
+const WRITE_SECONDS: &str = "ANIMA_ROUTE_PROXY_WRITE_SECONDS";
 const OPEN_TOTAL: &str = "ANIMA_ROUTE_PROXY_OPEN_TOTAL";
 const OPEN_PER_CLIENT: &str = "ANIMA_ROUTE_PROXY_OPEN_PER_CLIENT";
 const OPEN_PLAIN: &str = "ANIMA_ROUTE_PROXY_OPEN_PLAIN";
@@ -30,9 +31,13 @@ const PRIVATE_ADDRESS: &str = "ANIMA_ROUTE_PROXY_PRIVATE_ADDRESS";
 const PRIVATE_NETWORKS: &str = "ANIMA_ROUTE_PROXY_PRIVATE_NETWORKS";
 const UDP_FLOWS: &str = "ANIMA_ROUTE_PROXY_UDP_FLOWS";
 const UDP_IDLE_SECONDS: &str = "ANIMA_ROUTE_PROXY_UDP_IDLE_SECONDS";
+const UDP_NEW_PER_SECOND: &str = "ANIMA_ROUTE_PROXY_UDP_NEW_PER_SECOND";
 const DAY_MS: u64 = 24 * 60 * 60 * 1000;
 /// The default cap of one client network: below the 32 streams of one link of the hub.
 const PER_CLIENT: u32 = 8;
+/// The default cap of the connections of one route, also below the 32 streams of one link, so
+/// the slow clients of one route cannot hold each stream of its device (SF-NEW-revroutelimits).
+const PER_ROUTE: u32 = 16;
 
 /// What the proxy runs with.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -59,6 +64,9 @@ pub struct Settings {
     pub udp_flows: usize,
     /// The time with no datagram after which a UDP flow ends.
     pub udp_idle: Duration,
+    /// The new flows of each UDP stream each second; the burst is twice as many. A source of
+    /// UDP can be false, so this keeps false sources from filling the flows (SF-NEW-revroutelimits).
+    pub udp_new_per_second: u32,
 }
 
 /// The address of the proxy on the network of Anima, and the networks of its nodes: a private
@@ -100,7 +108,7 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Option<Settings>, Sett
         door: read::<bool>(env, DOOR)?.unwrap_or(false),
         door_addresses: addresses(env, DOOR_ADDRESSES)?,
         limits: Limits {
-            connections: read(env, CONNECTIONS)?.unwrap_or(64),
+            connections: positive(env, CONNECTIONS)?.unwrap_or(PER_ROUTE),
             new_per_second: read(env, NEW_PER_SECOND)?.unwrap_or(20),
             bytes_per_period: read(env, BYTES_PER_DAY)?.unwrap_or(0),
             period_ms: DAY_MS,
@@ -118,6 +126,7 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Option<Settings>, Sett
         udp_flows: positive(env, UDP_FLOWS)?.unwrap_or(64),
         udp_idle: positive::<u64>(env, UDP_IDLE_SECONDS)?
             .map_or(Duration::from_secs(60), Duration::from_secs),
+        udp_new_per_second: positive(env, UDP_NEW_PER_SECOND)?.unwrap_or(8),
     }))
 }
 
@@ -143,7 +152,7 @@ fn private(env: &BTreeMap<String, String>) -> Result<Option<Private>, SettingsEr
 }
 
 /// The timeouts: 10 s for the handshake and the head, 60 s for a whole request, 300 s with no
-/// byte by default.
+/// byte and 30 s for one write to the client by default.
 fn timeouts(env: &BTreeMap<String, String>) -> Result<Timeouts, SettingsError> {
     let default = Timeouts::default();
     let seconds = |name, default: Duration| {
@@ -154,6 +163,7 @@ fn timeouts(env: &BTreeMap<String, String>) -> Result<Timeouts, SettingsError> {
         head: seconds(HEAD_SECONDS, default.head)?,
         request: seconds(REQUEST_SECONDS, default.request)?,
         idle: seconds(IDLE_SECONDS, default.idle)?,
+        write: seconds(WRITE_SECONDS, default.write)?,
     })
 }
 

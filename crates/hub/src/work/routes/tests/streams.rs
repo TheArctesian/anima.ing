@@ -131,3 +131,24 @@ db_test! {
         assert_eq!(table.streams[0].reach, anima_route_proxy::wire::Reach::Private);
     }
 }
+
+db_test! {
+    async fn a_public_stream_waits_for_the_mark_stream_public_of_the_record(pool: PgPool) {
+        let imaps = stream(Kind::TcpStream, Access::Public, 20_993, 993);
+        let shape = Shape { protocol: Some("imaps".to_owned()), ..imaps };
+        let public = add(&pool, &shaped("imap.example.com", shape)).await.unwrap().route;
+        add(&pool, &mail(20_143)).await.unwrap();
+        serve_all(&pool).await;
+        let stored = routes::get(&pool, public.id).await.unwrap();
+        assert_eq!(stored.waits(now()), Some(Waits::ApplicationRecord), "the protocol is a label");
+        let streams = routes::served_streams(&pool, now()).await.unwrap();
+        assert_eq!(streams.len(), 1, "only the private stream serves");
+        assert_eq!(streams[0].listen_port, Some(20_143));
+        sqlx::query("UPDATE routes.route SET stream_public = true WHERE id = $1")
+            .bind(public.id)
+            .execute(&pool)
+            .await
+            .unwrap();
+        assert_eq!(routes::get(&pool, public.id).await.unwrap().waits(now()), None);
+    }
+}

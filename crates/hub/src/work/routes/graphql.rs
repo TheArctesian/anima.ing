@@ -3,7 +3,9 @@
 //! A read key may read the routes: no field holds a certificate or a key. Each change is for a
 //! person only, with a login or a browser token and a second factor on the account
 //! (SF-232, HM-D14): the three mutations are in `API_KEY_REFUSED_ROOTS`, and each
-//! resolver checks the kind of the token again. Each change writes one audit entry and one
+//! resolver checks the kind of the token again. A public route is added only from the Anima app
+//! in a browser, by a person with no agent declared: never by a login token, which the `anima`
+//! command and an agent hold (SF-NEW-revroutestepup). Each change writes one audit entry and one
 //! event in its own transaction.
 
 mod trail;
@@ -14,7 +16,11 @@ use std::{str::FromStr, sync::Arc};
 use async_graphql::{Context, ID, Object, Result};
 
 use self::types::{AddedView, RouteFields, RouteView, shape};
-use super::{Error, NewRoute, Settings, SystemDns, kinds::KindRefusal, proof::Resolver};
+use super::{
+    Error, NewRoute, Settings, SystemDns,
+    kinds::{Access, KindRefusal},
+    proof::Resolver,
+};
 use crate::{
     api_errors::{
         ErrorCode, FieldError, begin, coded, commit, internal, invalid, pool, schema_dependency,
@@ -22,7 +28,7 @@ use crate::{
     clock::Clock,
     config::Config,
     fleet::{
-        access::{self, Authenticated, operator_only},
+        access::{self, Authenticated, Identity, operator_only},
         devices,
         events::Trail,
         targets::AddressPolicy,
@@ -62,6 +68,7 @@ fn to_graphql(error: Error) -> async_graphql::Error {
         Error::ListenPortTaken => invalid(&[FieldError::new("listenPort", error.to_string())]),
         Error::Unresolved => invalid(&[FieldError::new("deviceId", error.to_string())]),
         Error::NameTaken | Error::OtherTarget => coded(error.to_string(), ErrorCode::Conflict),
+        Error::PublicNeedsPerson => coded(error.to_string(), ErrorCode::Forbidden),
         other => internal(other),
     }
 }
@@ -80,6 +87,13 @@ const fn refusal_field(refusal: &KindRefusal) -> &'static str {
         KindRefusal::PublicStreamProtocol(_) | KindRefusal::ProtocolNotForKind => "protocol",
         KindRefusal::RedirectToNotForKind | KindRefusal::RedirectTo => "redirectTo",
     }
+}
+
+/// True when the request is a person signed in to the Anima app in a browser, with no agent
+/// declared: the one caller who may make an application public (SF-NEW-revroutestepup).
+fn in_browser(ctx: &Context<'_>) -> bool {
+    ctx.data_opt::<Identity>()
+        .is_some_and(Identity::is_person_in_browser)
 }
 
 /// A person with a login or browser token, whose account has a second factor (HM-D14).
@@ -153,11 +167,15 @@ impl Mutation {
         ctx: &Context<'_>,
         input: RouteFields,
     ) -> Result<AddedView> {
+        let shape = shape(&input);
+        if shape.access == Access::Public && !in_browser(ctx) {
+            return Err(to_graphql(Error::PublicNeedsPerson));
+        }
         person_with_second_factor(ctx, "addApplicationRoute").await?;
         let new = NewRoute {
             application: parse(&input.application_id, "applicationId")?,
             device: parse(&input.device_id, "deviceId")?,
-            shape: shape(&input),
+            shape,
             name: input.name,
         };
         let settings = settings(ctx)?;

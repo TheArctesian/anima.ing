@@ -60,6 +60,7 @@ pub struct Proxy<H: Hub> {
     timeouts: Timeouts,
     udp_flows: usize,
     udp_idle: Duration,
+    udp_new_per_second: u32,
     tls_gate: Arc<Mutex<Gate>>,
     plain_gate: Arc<Mutex<Gate>>,
     stream_gate: Arc<Mutex<Gate>>,
@@ -93,6 +94,7 @@ impl<H: Hub> Proxy<H> {
             timeouts: settings.timeouts,
             udp_flows: settings.udp_flows,
             udp_idle: settings.udp_idle,
+            udp_new_per_second: settings.udp_new_per_second,
             tls_gate: Arc::new(Mutex::new(Gate::new(settings.tls_caps))),
             plain_gate: Arc::new(Mutex::new(Gate::new(settings.plain_caps))),
             stream_gate: Arc::new(Mutex::new(Gate::new(settings.tls_caps))),
@@ -179,6 +181,10 @@ impl<H: Hub> Proxy<H> {
 
     pub(crate) const fn udp_idle(&self) -> Duration {
         self.udp_idle
+    }
+
+    pub(crate) const fn udp_new_per_second(&self) -> u32 {
+        self.udp_new_per_second
     }
 
     /// The name that serves as `name`.

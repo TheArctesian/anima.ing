@@ -2,7 +2,7 @@
 
 use std::net::IpAddr;
 
-use crate::limits::{Caps, Gate, Limiter, Limits, Refusal, client_key};
+use crate::limits::{Bucket, Caps, Gate, Limiter, Limits, Refusal, client_key};
 
 const LIMITS: Limits = Limits {
     connections: 2,
@@ -107,4 +107,26 @@ fn the_addresses_of_one_64_share_the_cap_of_one_client() {
     );
     gate.leave_client(addresses[0]);
     assert!(gate.enter_client(addresses[2]));
+}
+
+#[test]
+fn a_bucket_takes_its_burst_at_once_and_then_its_rate() {
+    let mut arrivals = Bucket::full(8, 16, 0);
+    assert_eq!(
+        (0..20).filter(|_| arrivals.take(0)).count(),
+        16,
+        "the burst"
+    );
+    assert!(!arrivals.take(100), "0.8 of an arrival after 100 ms");
+    assert!(arrivals.take(125), "one after 125 ms");
+    assert_eq!(
+        (0..20).filter(|_| arrivals.take(1125)).count(),
+        8,
+        "8 in the next second"
+    );
+    assert_eq!(
+        (0..40).filter(|_| arrivals.take(60_000)).count(),
+        16,
+        "never more than the burst"
+    );
 }

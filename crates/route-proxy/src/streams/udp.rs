@@ -1,7 +1,8 @@
 //! One listener of a UDP stream, only on a hub that reaches the machine on its own network
 //! (OD-HOST-48). Each source address is one flow through the hub, with a limit of flows for each
 //! stream and an idle time. A source address of UDP can be false, so the proxy sends to a source
-//! at most as many bytes as it received from it (Section 16.4, SF-248).
+//! at most as many bytes as it received from it (Section 16.4, SF-248), and the new flows of a
+//! stream each second are limited, so false sources cannot fill its flows (SF-NEW-revroutelimits).
 
 use std::{
     collections::HashMap,
@@ -12,12 +13,13 @@ use std::{
 use tokio::{
     net::UdpSocket,
     sync::mpsc::{self, Receiver, Sender},
+    time::Instant,
 };
 
 use super::datagrams::{DATAGRAM_MAX, Moved, read_frame, write_frame};
 use crate::{
     hub::Hub,
-    limits::Pass,
+    limits::{Bucket, Pass},
     serve::Proxy,
     wire::{Dial, StreamRoute, Transport},
 };
@@ -39,6 +41,9 @@ pub async fn serve<H: Hub>(proxy: Arc<Proxy<H>>, socket: UdpSocket, stream: Stre
     let socket = Arc::new(socket);
     let stream = Arc::new(stream);
     let flows: Flows = Arc::default();
+    let per_second = proxy.udp_new_per_second();
+    let mut arrivals = Bucket::full(per_second, per_second.saturating_mul(2), 0);
+    let started = Instant::now();
     let mut buffer = vec![0_u8; DATAGRAM_MAX];
     loop {
         let Ok((length, source)) = socket.recv_from(&mut buffer).await else {
@@ -52,6 +57,10 @@ pub async fn serve<H: Hub>(proxy: Arc<Proxy<H>>, socket: UdpSocket, stream: Stre
             .cloned();
         if let Some(sender) = known {
             sender.try_send(datagram).ok();
+            continue;
+        }
+        let now_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
+        if !arrivals.take(now_ms) {
             continue;
         }
         let Some(receiver) = open(&proxy, &flows, &stream, source) else {

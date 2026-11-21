@@ -1,5 +1,6 @@
 //! One listener of a TCP stream: each connection goes to the route through the hub, by the
-//! identifier of the application and the name of the route, with the limits of the proxy.
+//! identifier of the application and the name of the route, with the limits of the proxy. A
+//! connection holds a place of its route until it ends, and each write to the client has its time.
 
 use std::{net::SocketAddr, sync::Arc};
 
@@ -51,9 +52,9 @@ async fn one<H: Hub>(
         transport: Transport::Tcp,
     };
     if let Ok(app) = proxy.hub().connect(dial).await {
-        let idle = proxy.timeouts().idle;
-        let mut app = Idle::new(app, idle);
-        let mut client = Idle::new(&mut client, idle);
+        let times = proxy.timeouts();
+        let mut app = Idle::new(app, times.idle);
+        let mut client = Idle::new(&mut client, times.idle).writes_within(times.write);
         if let Ok((bytes_in, bytes_out)) = copy_bidirectional(&mut client, &mut app).await {
             proxy.moved(&stream.name, bytes_in, bytes_out);
         }

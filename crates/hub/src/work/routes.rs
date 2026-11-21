@@ -75,6 +75,11 @@ pub enum Error {
     OtherTarget,
     #[error("the host of the device does not resolve to an address the hub may reach")]
     Unresolved,
+    #[error(
+        "a public route is added only by a person in the Anima app in a web browser, not by the \
+         `anima` command, an API key or an agent"
+    )]
+    PublicNeedsPerson,
     #[error("the route does not serve now")]
     NotServing(Waits),
     #[error(transparent)]
@@ -207,6 +212,7 @@ pub async fn add(
         failed_reads: 0,
         machine_consent: false,
         application_recorded: false,
+        stream_public: false,
         checked_at: None,
         certificate: None,
         traffic: Traffic::default(),
