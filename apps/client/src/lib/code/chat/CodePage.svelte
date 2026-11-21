@@ -112,7 +112,8 @@
 <div class="code" class:folded={!inboxOpen} bind:this={page} {@attach fillRoom()}>
   {#if inboxOpen}
     <aside class="inbox" aria-label="Threads of this computer">
-      <Band end={toggle}><span class="name">Code</span></Band>
+      <!-- The top band of the window moves it; its buttons and fields still click (the shell session, D1b). -->
+      <div data-tauri-drag-region="deep"><Band end={toggle}><span class="name">Code</span></Band></div>
       <InboxColumn {view} {store} onOpen={(id) => void choose(id)} {newOff} onNew={() => (starting = true)} bind:field />
     </aside>
   {/if}
