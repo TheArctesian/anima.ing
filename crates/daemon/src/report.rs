@@ -1,6 +1,8 @@
 //! The daemon's log lines, in one place: what happened, by code or cause, never a token, a
 //! code or a body (LOG-007). Called from the I/O edge only.
 
+pub mod log_file;
+
 use daemon_core::agent_usage::UsageState;
 use daemon_core::wire::RefusalCode;
 
@@ -97,4 +99,34 @@ fn sampling_panicked() {
 
 fn sampling_returned() {
     tracing::error!("sampling stopped before the daemon was told to stop");
+}
+
+/// An old link origin that did not move: the daemon sends through `socket`, to a peer that passes
+/// the check, and asks the socket of the move again each minute (R-317).
+#[cfg(unix)]
+pub fn old_origin_waits(socket: &std::path::Path) {
+    tracing::warn!(
+        socket = %socket.display(),
+        "enrolled with an old link origin: sending through this socket of anima-link, only to the link of this user that passes the check, until the move to it"
+    );
+}
+
+#[cfg(unix)]
+pub fn moved() {
+    tracing::info!("the old link origin moved to the socket of anima-link");
+}
+
+#[cfg(unix)]
+pub fn move_failed(error: &crate::runtime::old_origin::MoveError) {
+    tracing::error!(%error, "the old link origin could not move; trying again at the next start");
+}
+
+/// Once, when the log file cannot be opened: the log goes to standard error.
+pub fn log_file_refused(error: &std::io::Error) {
+    tracing::error!(%error, "the log file could not be opened; logging to standard error");
+}
+
+/// The run ended on an error; the service manager starts the daemon again.
+pub fn run_ended(error: &dyn std::error::Error) {
+    tracing::error!(%error, "the daemon stopped on an error");
 }

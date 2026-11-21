@@ -8,7 +8,7 @@
 -- on that network). The routes of task H21 were public web routes, so the defaults keep them as
 -- they were; the hub writes both columns for each new route. `protocol` is the protocol that the
 -- person picked for a public stream, from the fixed list of the hub (a protocol with its own
--- sign-in and TLS, SF-NEW-lsstreams). One port of the hub carries one stream of each transport.
+-- sign-in and TLS, SF-248). One port of the hub carries one stream of each transport.
 alter table routes.route
     add column kind text not null default 'web'
         check (kind in ('web', 'redirect', 'tcp_stream', 'udp_stream')),

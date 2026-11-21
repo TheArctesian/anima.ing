@@ -64,11 +64,15 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      # A push to dev reads the runs of the gates, to find the trees that already passed.
+      actions: read
     outputs:
       dev_sha: ${{ steps.dev.outputs.dev_sha }}
       rust: ${{ steps.jobs.outputs.rust }}
       go: ${{ steps.jobs.outputs.go }}
       documents_only: ${{ steps.jobs.outputs.documents_only }}
+      rust_crates: ${{ steps.jobs.outputs.rust_crates }}
+      proved: ${{ steps.jobs.outputs.proved }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -93,33 +97,47 @@ jobs:
             dev_sha="$(git ls-remote origin refs/heads/dev | cut -f1)"
           fi
           echo "dev_sha=$dev_sha" >> "$GITHUB_OUTPUT"
-          printf '%s\n' "$dev_sha" > tested-base
+          # Outside the checkout: the next step counts each untracked file as a change of the branch,
+          # and a file here made each branch need each job.
+          printf '%s\n' "$dev_sha" > "$RUNNER_TEMP/tested-base"
           echo "tested with dev at: ${dev_sha:-nothing, the commit as it is}"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: tested-base
-          path: tested-base
+          path: ${{ runner.temp }}/tested-base
           if-no-files-found: error
           retention-days: 7
       # The push of a branch runs only the jobs that its changes need (quality/src/gates/jobs.ts):
       # no Rust job for a change that no Rust build reads, no Go job without `link/`, only the
-      # quality gates for documents. A run for `dev`, a train or a call runs each job, and the train
-      # runs each job again before `dev` moves.
+      # quality gates for documents. The train runs each job again before `dev` moves.
+      # A push to `dev` (devPushJobs): only the quality gates when a run on `dev` or a train
+      # already passed for its tree, or when it changed only documents on such a tree; each job
+      # for each other tree, so `dev` never holds a tree that no run proved. A train or a call
+      # runs each job.
       - id: jobs
         name: Read the jobs that the changes need
         env:
           DEV_SHA: ${{ steps.dev.outputs.dev_sha }}
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          CALLED_REF: ${{ inputs.ref }}
+          BEFORE: ${{ github.event.before }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          set -eu
+          set -eu -o pipefail
           if [ -n "$DEV_SHA" ]; then
             FAST_BASE="$DEV_SHA" bun quality/bin/gates.ts --jobs | tee -a "$GITHUB_OUTPUT"
+          elif [ "$EVENT" = "push" ] && [ "$REF_NAME" = "dev" ] && [ -z "$CALLED_REF" ]; then
+            bun quality/bin/gates.ts --dev-push "$BEFORE" | tee -a "$GITHUB_OUTPUT"
           else
             printf 'rust=true\ngo=true\ndocuments_only=false\n' | tee -a "$GITHUB_OUTPUT"
           fi
 
   windows:
     needs: base
-    if: github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/train/')
+    # dev, a train, or a run that a person started by hand (`gh workflow run gates.yml --ref <branch>`),
+    # the only way to run the Windows gates for a branch before it reaches dev.
+    if: (github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/train/') || github.event_name == 'workflow_dispatch') && needs.base.outputs.documents_only != 'true'
     permissions:
       contents: read
     uses: ./.github/workflows/windows-trial.yml
@@ -156,12 +174,51 @@ jobs:
           shared-key: gates-lint
           # Only the workflow rust-cache writes these caches, under `main`, which each branch can read.
           save-if: false
+      # A branch that changed only tests of some crates (`rust_crates`, quality/src/gates/test-only.ts)
+      # lints only those crates and checks no crate alone; the train runs each gate.
       - name: Run the gates fmt and clippy
+        env:
+          GATES_RUST_CRATES: ${{ needs.base.outputs.rust_crates }}
         run: bun quality/bin/gates.ts --group rust --gate fmt,clippy
       # The workspace turns on the union of the features of its crates; the release builds `anima`
       # and the application alone, so each crate must build alone (anima-cli at 6364bb038).
       - name: Check each crate alone
+        env:
+          GATES_RUST_CRATES: ${{ needs.base.outputs.rust_crates }}
         run: bun quality/bin/gates.ts --alone
+
+  # Clippy of the workspace for Windows, on Linux (quality/src/gates/windows-lint.ts): the code behind
+  # cfg(windows) that the other Linux jobs never compile. The job windows still builds it with MSVC
+  # and runs its tests, but only for dev, a train or a call.
+  windows-lint:
+    needs: base
+    if: needs.base.outputs.rust == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+          no-cache: true
+      - name: Merge the dev of this run into the checkout
+        env:
+          DEV_SHA: ${{ needs.base.outputs.dev_sha }}
+        run: /bin/sh .github/workflows/gates-merge.sh
+      - name: Install the Windows GNU target and its C compiler
+        run: |
+          set -eu
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends mingw-w64
+          rustup target add x86_64-pc-windows-gnu
+      - name: Run Clippy for Windows
+        run: bun quality/bin/gates.ts --windows-lint
 
   rust-test:
     needs: base
@@ -195,7 +252,10 @@ jobs:
           # Only the workflow rust-cache writes these caches, under `main`, which each branch can read.
           save-if: false
       # The pinning test of the desktop shell starts the event loop of Tauri, which needs a display.
+      # A branch that changed only tests of some crates tests only those crates (see rust-lint).
       - name: Run the gates rust-test, doctest and pinning
+        env:
+          GATES_RUST_CRATES: ${{ needs.base.outputs.rust_crates }}
         run: |
           set -eu
           unset DATABASE_URL
@@ -271,7 +331,7 @@ jobs:
   # One name for a rule of the repository: it passes when each job above passed.
   passed:
     if: always()
-    needs: [base, rust-lint, rust-test, go, bun, windows]
+    needs: [base, rust-lint, windows-lint, rust-test, go, bun, windows]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
@@ -286,4 +346,4 @@ jobs:
           echo "results: $RESULTS"
           # windows runs only for dev and trains. A Rust or Go job may be skipped only when the job
           # base said that the changes do not need it (`--jobs`); any other skip fails.
-          echo "$RESULTS" | jq -e --arg rust "${RUST_NEEDED:-}" --arg go "${GO_NEEDED:-}" 'to_entries | all(.value.result == "success" or (.value.result == "skipped" and (.key == "windows" or ($rust == "false" and (.key == "rust-lint" or .key == "rust-test")) or ($go == "false" and .key == "go"))))' > /dev/null
+          echo "$RESULTS" | jq -e --arg rust "${RUST_NEEDED:-}" --arg go "${GO_NEEDED:-}" 'to_entries | all(.value.result == "success" or (.value.result == "skipped" and (.key == "windows" or ($rust == "false" and (.key == "rust-lint" or .key == "windows-lint" or .key == "rust-test")) or ($go == "false" and .key == "go"))))' > /dev/null

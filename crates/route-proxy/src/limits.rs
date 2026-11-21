@@ -61,7 +61,7 @@ pub fn client_key(client: IpAddr) -> IpAddr {
 }
 
 /// A network of addresses, as `address/prefix`: the nodes of the network of Anima that may
-/// reach a private route (Section 16.7, SF-NEW-lsprivate).
+/// reach a private route (Section 16.7, SF-245).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Network {
     address: IpAddr,

@@ -12,11 +12,17 @@ mod kit;
 #[cfg(target_os = "linux")]
 mod log;
 #[cfg(target_os = "linux")]
+mod old_origin;
+#[cfg(unix)]
+mod peer;
+#[cfg(target_os = "linux")]
 mod push;
 #[cfg(unix)]
 mod readers;
 #[cfg(target_os = "linux")]
 mod renewal;
+#[cfg(unix)]
+mod threads;
 #[cfg(target_os = "linux")]
 mod token_store;
 mod transport;

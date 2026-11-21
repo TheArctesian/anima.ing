@@ -5,6 +5,8 @@ WP-54 T2. Spec: MET-011 to MET-020, LOG-007, NET-002, NET-003, P3-004. Rust type
 The drive kinds and `drives` (MET-027, MET-028) were added by the operator's ruling of 2026-11-12 (PKG-001, CR-24).
 The link origin of Section 1 was added by the operator's ruling of 2026-11-15 (one-click plan, S5). R-172
 (operator, 2026-11-18) changed it from a local port to a Unix socket (task W0).
+The check of the peer of the socket and the move of an old link origin to the socket (Section 1) were added by
+R-317 (made overnight by the orchestrator, not yet confirmed by the operator).
 The `daemonVersion` member of Section 4 was added by R-122 (operator, 2026-11-16).
 The `agentUsage` member of Section 4 was added by R-135 (operator, 2026-11-17; AIS-018, AIS-019, AIS-022 to
 AIS-024).
@@ -18,6 +20,8 @@ The socket of the hub for its own daemon (Section 1, task HM-T35) and the batch 
 [hosted-mode.md](../docs/proposals/hosted-mode.md), task HM-T34) were approved by R-305 (operator, 2026-11-20; CON-001). They use only kinds and members that exist, so they need no new version of this contract.
 The kind `battery_percent` and the member `batteries` of Section 4 (MET-032, CAP-004; R-303) were approved
 with them by the same ruling. They are optional, so they need no new version of this contract.
+The first wait after a failure in Section 7 was changed from 10 to 2 seconds by R-312 (orchestrator, 2026-11-21,
+made overnight, not yet confirmed; CON-001). It changes no message, so it needs no new version of this contract.
 
 This contract and the work route contract K10 ([work-route.md](work-route.md); accepted by R-209, 2026-11-19) are the whole interface between `anima-daemon` and the hub. The daemon makes the requests of K8 and of K10 and no other.
 
@@ -45,17 +49,36 @@ This contract and the work route contract K10 ([work-route.md](work-route.md); a
     folder of the socket by the rule of its own folder (Section 2): a real folder, owned by the user that
     runs the daemon, with no access for the group or for others, below no folder that others can write to
     without the sticky bit. If a thing is at the path, it must be a socket that the same user owns. If one
-    check fails the daemon stops with an error and sends nothing. Thus a program of a different user can
-    neither open the socket nor put a socket of its own at the path. A program of the same user can do the
-    two things: the system cannot tell it from the link, and such a program can also read the token store.
-    A job must thus run as a different user (task W2).
+    check fails the daemon stops with an error and sends nothing. Then, for each request, after it connects
+    and before it writes a byte, the daemon reads the peer of the connection from the kernel (R-317):
+    the user of the peer must be the user that runs the daemon; on macOS, a daemon with a Developer ID
+    signature also requires that the process of the peer is `anima-link` (its signing identifier) with a valid
+    Developer ID signature of the same team, and that its file is the program that runs (`codesign --verify`
+    with the requirement of the release). The daemon takes its own team from its own signature only when
+    `codesign --verify` of the running daemon agrees, so a file put in the place of the daemon stops it with an
+    error; it does not make it a daemon with no signature. If the peer fails, the daemon closes the
+    connection, sends nothing, and the request fails (Section 7). A daemon with no Developer ID signature (a
+    build for development) and each daemon on Linux check the user only: on Linux a program of the same user
+    can read the token file in any case (Section 2). Thus a program of a different user can neither open the
+    socket nor listen at the path, and on macOS a program of the same user that only listens at the path
+    gets nothing. A program of the same user that tries harder can still get the token: it can let a signed
+    program take the process that made its socket, or start the signed link with settings of its own, and on
+    Linux it can read the token store. A job must thus run as a different user (task W2).
   - The daemon sends no request to a TCP port in the link mode. It accepts `http` for no host:
     `enrol --hub http://127.0.0.1:<port>` is refused.
   - A daemon that was enrolled with the old link origin, `http://127.0.0.1:<port>`. Its configuration file
     and its token record keep that text; an update does not change them (ROL-018). The daemon reads the
     text as "the link of this computer": it uses the socket `link.sock` in its own folder and sends nothing
-    to the port. The link of that computer must then start with `-daemon-socket <folder>/link.sock`. Until
-    it does, a push fails and the daemon keeps its samples (Section 7).
+    to the port. At its start the daemon moves such an enrolment to the socket (R-317): when the program at
+    the socket passes the check of the peer below (it writes nothing to it), the daemon writes `unix:<path>`
+    into its token record first and then into its configuration, and from then on it is a link origin like any
+    other. On macOS the path is `link.sock` in the default folder below the home folder of the account as the
+    user database names it, not the folder that the environment names (`ANIMA_DAEMON_HOME`, `HOME`), because no
+    value of the environment may decide where a token from the Keychain goes; until the move, the daemon sends only to a
+    peer that passes the check: on macOS through that socket, on Linux through the socket in its own folder as before; and asks the socket of the move again
+    each minute; when it passes, the daemon stops with an error, and the service manager starts it again for the
+    move. The link of that computer must start with `-daemon-socket <path>`.
+    Until it does, a push fails and the daemon keeps its samples (Section 7).
   - `anima-link device` keeps its local port for the desktop client. The daemon does not use it.
 - In the container of a hosted hub (HMD-046; tasks HM-T35 and HM-T10 of
   [hosted-mode.md](../docs/proposals/hosted-mode.md)) the hub's own daemon reaches the hub through a Unix socket
@@ -268,8 +291,9 @@ Request:
   `MALFORMED`. A release build carries the release version (`ANIMA_VERSION`, as `anima` does); any other build
   carries the crate version. Absent means a daemon older than R-122, and a hub older than R-122 ignores it.
 - `agentUsage`: optional (R-135; AIS-018, AIS-019). The use of the AI agent programs on the device: counts
-  only, never the text of a session, a title, the path of a folder, a login, the name of an account or a
-  usage limit (AIS-018, AIS-022). Absent means "nothing new": a daemon older than R-135 sends none and a hub
+  only, never the text of a session, a title, the path of a folder, a login, a token, the name of an account
+  or the identifier of an account (AIS-018, AIS-022). Its member `accounts` gives the key, the plan and the
+  limits of an account, and nothing else of it (R-313). Absent means "nothing new": a daemon older than R-135 sends none and a hub
   older than R-135 ignores it, so the change needs no `/daemon/v2/`.
   - `state` says what the daemon can read: `reading` (it reads the session files of its user),
     `system_unit` (it runs as the systemd system unit, which cannot see the files of a user, AIS-024) or
@@ -305,6 +329,23 @@ Request:
       `cacheWriteTokens` are the input tokens read from and written to the cache.
     - Every count (`prompts`, `toolCalls` and the four token counts) is a whole number from 0 to
       9 007 199 254 740 991 (2^53 − 1).
+  - `accounts`: optional (R-313, AIS-022). The accounts that the programs of the device use
+    now, 0 to 4 entries, no two with the same `source`. Absent means "nothing new"; a daemon older than
+    R-313 sends none, and a hub older than it ignores it. Present, even empty, it asks the hub for
+    its account salt (Section 8.2). The daemon sends an entry only when it has the salt of the hub that
+    it pushes to.
+    - `source`: as in `sessionDays`.
+    - `key`: 64 bytes of `[0-9a-f]`: the HMAC-SHA-256, written in lower-case hexadecimal, of the text
+      `<source>:<identifier>` with the account salt as the key, where `<identifier>` is the identifier that
+      the vendor gives the account (Codex: `account/read` or `creator_account_id` of a rollout; Claude
+      Code: the account of the runner of threads, THR-132). Never the identifier itself.
+    - `plan`: optional, 1 to 32 bytes of `[A-Za-z0-9 ._-]`: the name of the plan as the program states it.
+    - `limits` holds 0 to 8 entries with unique `window` names: `window`, 1 to 32 bytes of
+      `[a-z0-9_ ]` (`five_hour`, `seven_day`, `300 min`); `usedPercent`, optional, a whole number from 0
+      to 100; `resetsAt`, optional, a K8 time (Section 1); `reached`, true when the program said that the
+      limit is reached.
+    - Each entry replaces the earlier report of the same device and `source`. An account that the device
+      no longer reports keeps its last report until a batch says that the device uses a different key.
   - A batch whose `agentUsage` breaks one of these rules is `MALFORMED`. The daemon sends only values that
     pass them.
   - The daemon reads only the session files `~/.claude/projects/*/*.jsonl` (with the sub-agent files
@@ -454,7 +495,8 @@ and tries again after its wait (Section 7).
   at once while points remain.
 - While the hub cannot be reached (a network error, a timeout of 10 seconds, a 5xx), it keeps up to 360
   points (1 hour), dropping the oldest first, and drops any point older than 59 minutes before it sends.
-- After a failure it waits 10 seconds, doubling to at most 60 seconds, then resumes the 10-second rhythm. Each
+- After a failure it waits 2 seconds, doubling to at most 60 seconds (2, 4, 8, 16, 32, 60, 60 seconds;
+  R-312), then resumes the 10-second rhythm. Each
   wait after a failure is moved at random by up to 20 % either way (so at most 72 seconds), so daemons that
   failed together do not all try again together.
 
@@ -520,8 +562,14 @@ different version, and the batch had an `update` member, it answers 200 with `Ac
 { "update": { "version": "0.3.0", "again": false } }
 ```
 
-- 200 and 204 mean the same for the batch: it is stored. A daemon that sent no `update` member always gets
-  204, so a daemon older than R-139 keeps working.
+- 200 and 204 mean the same for the batch: it is stored. A daemon that sent no `update` member and no
+  `agentUsage.accounts` member always gets 204, so a daemon older than R-139 keeps working.
+- `accountSalt` (R-313, AIS-022): in each answer to a batch with an `agentUsage.accounts` member,
+  the account salt of the hub, 32 bytes in standard base64. The hub makes it once, from a random source,
+  and keeps it in its database; it does not change. The daemon keeps it in its state folder with the token
+  of that hub and forgets it at a new enrolment. One account on two machines of one hub thus gives one key,
+  and a different hub gives a different key. The salt is not a secret of a device and gives no access; it is
+  in no log (LOG-007) all the same.
 - `version` is the only instruction (ROL-009). The hub never sends an address, a path, a command or a file
   name. The text has the rule of `daemonVersion`; a daemon ignores an `Accepted` that breaks it.
 - `again`: true only after the operator pressed "Try again" (ROL-032). The machine then sets `tries` to 0 for

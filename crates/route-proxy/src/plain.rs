@@ -56,7 +56,7 @@ pub fn host_and_target(head: &[u8]) -> Option<(String, String)> {
 
 /// The answer of a route of the kind redirect to the request `head`: `301` for `GET` and
 /// `HEAD`, `308` for each other method, so the method and the body stay. The address is the
-/// one of the route: nothing of the request is added to it (SF-NEW-lsstreams).
+/// one of the route: nothing of the request is added to it (SF-248).
 #[must_use]
 pub fn redirect(head: &[u8], to: &str) -> (u16, Vec<u8>) {
     let method = head.split(|byte| *byte == b' ').next().unwrap_or_default();

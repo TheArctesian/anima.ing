@@ -1317,11 +1317,58 @@ enum CatalogueMarkKind {
   DEVICE
 }
 
-"Why the hub does not install an entry of the catalogue (task H38). NOT_LISTED: the catalogue lists no entry with this identifier. ENGINE_SOCKET: the entry needs the socket of the container engine (R-247). INSTALL_NOT_BUILT: the install needs task H6 of the hosted applications plan, which is not built."
+"Why the hub does not install an entry of the catalogue (task H38). NOT_LISTED: the catalogue lists no entry with this identifier. ENGINE_SOCKET: the entry needs the socket of the container engine (R-247). SHELL_NEEDS_PERSON: the entry is a shell, which only a person signed in to the Anima app in a web browser installs (a browser token), never the anima command, the desktop app or another login token, an API key or an agent (OD-HOST-54, SF-252). GENERATED_NEEDS_DIGEST: the entry is generated from the data of a publisher, and the request does not name the digest of its image (OD-HOST-50). GENERATED_NOT_TESTED: the entry is generated, the request is not from the Anima app in a web browser, and no test on a machine passed with the image of the entry (SF-252). INSTALL_NOT_BUILT: the install needs task H6 of the hosted applications plan, which is not built."
 enum CatalogueInstallRefusal {
   NOT_LISTED
   ENGINE_SOCKET
+  SHELL_NEEDS_PERSON
+  GENERATED_NEEDS_DIGEST
+  GENERATED_NOT_TESTED
   INSTALL_NOT_BUILT
+}
+
+"What a person may do with an entry of the catalogue (OD-HOST-54). SHELL: who reaches it is root in a container (a desktop in a browser, a code editor): it needs a credential that the machine makes at the install, only a person installs it, and it gets no public route."
+enum CatalogueEntryClass {
+  APPLICATION
+  SHELL
+}
+
+"The tier of an entry of the catalogue (OD-HOST-50). TESTED: tier 1, written and checked by the Anima project. GENERATED: tier 2, generated from the data of a publisher and not tested by Anima. Tier 3 is installed at the machine and is not an entry."
+enum CatalogueTier {
+  TESTED
+  GENERATED
+}
+
+"The publisher of a generated entry (task H39)."
+type CatalogueOrigin {
+  "The name of the publisher, for a person, for example LinuxServer.io."
+  publisher: String!
+  "The day (YYYY-MM-DD) of the data of the publisher that the entry was made from."
+  read: String!
+}
+
+"A published port of an entry other than the port of its test: a stream that a route of task H40 can carry."
+type CatalogueStream {
+  "The port in the container."
+  port: Int!
+  "tcp, udp or both."
+  protocols: [String!]!
+}
+
+"The kind of an optional part of an entry. DEVICE: a device of the machine below /dev/."
+enum CatalogueOptionalPartKind {
+  DEVICE
+}
+
+"A part of the application that is off, because it needs a setting of the machine that no rule of a Compose file permits yet (task H39)."
+type CatalogueOptionalPart {
+  kind: CatalogueOptionalPartKind!
+  "The path of the device, for example /dev/dri."
+  path: String!
+  "Whether the install turns the part on. Never today."
+  on: Boolean!
+  "The part needs a setting of the machine."
+  needsMachineSetting: Boolean!
 }
 
 "A port on the network that an entry needs (a NETWORK_PORT mark)."
@@ -1359,11 +1406,27 @@ type CatalogueEntry {
   marks: [CatalogueMarkKind!]!
   "The ports on the network of the NETWORK_PORT marks."
   networkPorts: [CatalogueNetworkPort!]!
+  "What a person may do with the entry (OD-HOST-54)."
+  class: CatalogueEntryClass!
+  "Tested by Anima (tier 1) or generated from the data of a publisher (tier 2, OD-HOST-50)."
+  tier: CatalogueTier!
+  "The publisher of a generated entry; null for a tested entry."
+  origin: CatalogueOrigin
+  "The person who reviewed the generated entry; null when no person did (the client says Not reviewed), and for a tested entry (SF-255). Never an agent or a session."
+  reviewedBy: String
+  "The day (YYYY-MM-DD) of that review; null when no person reviewed the entry."
+  reviewedOn: String
+  "The published ports other than the port of the test."
+  streams: [CatalogueStream!]!
+  "The parts of the application that are off."
+  optionalParts: [CatalogueOptionalPart!]!
+  "The digest of each image (sha256: and 64 hexadecimal digits). An install of a generated entry names it."
+  digests: [String!]!
   "The day (YYYY-MM-DD) of the last test on a machine, which passed. Null: not tested on a machine. An entry whose last test failed is not listed."
   lastMachineTest: String
   "The day (YYYY-MM-DD) of the last pin of the digests of the images (R-233)."
   pinned: String!
-  "What the hub answers to an install of this entry now."
+  "What the hub answers to an install of this entry by this request, with no digest named."
   install: CatalogueInstall!
   "The text of the Compose file. It holds no secret: each secret is a variable that the install makes."
   composeFile: String!
@@ -1438,8 +1501,36 @@ type AgentUsage {
   total: AgentUsageRow!
   "Each device whose daemon sent a usage state, by device name; only the device of filter.deviceId when it is given."
   devices: [AgentUsageDevice!]!
+  "The accounts that the devices report now, each with its devices, newest report first (R-313, AIS-022). Not narrowed by the filter."
+  accounts: [AgentAccount!]!
   "The day of the public list prices of estimatedCostUsd, YYYY-MM-DD."
   pricesAsOf: String!
+}
+
+"An account of an AI agent program, as a key only, and the devices that use it (R-313, AIS-022)."
+type AgentAccount {
+  "The HMAC-SHA-256 of the vendor's identifier of the account with the salt of this hub, 64 hexadecimal digits; never the identifier."
+  key: String!
+  "The first 8 digits of key, to tell two accounts of one program apart."
+  shortKey: String!
+  source: AgentSource!
+  "The name of the plan as the program states it."
+  plan: String
+  "The limit windows of the newest report; the limit is the account's, shared by its devices."
+  limits: [AgentAccountLimit!]!
+  reportedAt: DateTime!
+  "The devices that use the account, newest report first."
+  devices: [Device!]!
+}
+
+"One limit window of an account."
+type AgentAccountLimit {
+  "The name of the window as the program gives it (five_hour, seven_day), or its length (300 min)."
+  window: String!
+  "How much of the window is used, 0 to 100; null when the program says only whether it is reached."
+  usedPercent: Int
+  resetsAt: DateTime
+  reached: Boolean!
 }
 
 "The sums of one group. A dimension that by does not name is null; MODEL and REPOSITORY are also null for use with no model or no repository. Every text comes from a device. Counts are whole numbers; a Float holds a count above 2^31 exactly up to 2^53."
@@ -1463,6 +1554,42 @@ type AgentUsageRow {
   "An estimate in US dollars: the tokens of each model times its public list price of pricesAsOf (AIS-021). It is not the bill of a subscription. Null when no token of the group has a known price; never a guess for a model with no known price."
   estimatedCostUsd: Float
   "The tokens of models with no known price, which estimatedCostUsd leaves out."
+  unpricedTokens: Float!
+}
+
+"The single sessions of agentSessions (AIS-025)."
+type AgentSessions {
+  "The days summed, YYYY-MM-DD, both included."
+  firstDay: String!
+  lastDay: String!
+  "The sessions, the newest last use first (the order of storage breaks a tie)."
+  sessions: [AgentSession!]!
+  "How many sessions the filter admits that are not in sessions."
+  sessionsLeftOut: Int!
+}
+
+"One session with its sums over the days asked for (AIS-025). Every text comes from a device."
+type AgentSession {
+  "The hub's ID of the session, stable while the hub keeps it."
+  id: ID!
+  device: Device!
+  source: AgentSource!
+  "The model with the most output tokens of the whole session; null when it has none."
+  model: String
+  repository: String
+  startedAt: DateTime!
+  "The end of the last entry the daemon counted (it counts every 15 minutes)."
+  lastUseAt: DateTime!
+  "lastUseAt is at most 30 minutes before the clock of the hub (AIS-026). It does not say that the session runs now."
+  recent: Boolean!
+  prompts: Float!
+  toolCalls: Float!
+  inputTokens: Float!
+  outputTokens: Float!
+  cacheReadTokens: Float!
+  cacheWriteTokens: Float!
+  "An estimate in US dollars from public list prices (AIS-021); null when no token has a known price."
+  estimatedCostUsd: Float
   unpricedTokens: Float!
 }
 
@@ -2420,6 +2547,8 @@ type Source {
   "Keys of the extensions that use it."
   consumers: [String!]!
   accounts: [SourceAccount!]!
+  "The hub page where a browser continues Connect for this source: <public origin>/connect/github, so its host is where the browser must be signed in. Holds no secret and no one-time value. Null: the hub cannot start the flow in a browser (HMD-070), or the source has no such flow. A hub of before this field has none: a client counts that as null (R-311, K-E1 Section 7a)."
+  connectPageUrl: String
 }
 
 type SyncProblem {
@@ -3721,6 +3850,9 @@ type Query {
   # The use of the AI agent programs (R-135; AIS-020, AIS-021, AIS-024)
   "The use of the AI agent programs (Claude Code, Codex) on the devices whose daemon sends it, summed by the dimensions of by over the UTC days of filter (default: the 30 days that end today), with an estimate of the cost from public list prices and each daemon's usage state. by empty: one row of everything. VALIDATION for a bad deviceId, repository or day, a first day after the last, more than 366 days, or more than 20000 groups before the rows are cut to 1000. Open to a read key."
   agentUsage(filter: AgentUsageFilter, by: [AgentUsageDimension!]! = []): AgentUsage!
+  # The single sessions of the AI agent programs (AIS-025, AIS-026)
+  "The single sessions that filter admits (default: the 30 days that end today), the newest last use first, each with its sums over those days and the estimate of its cost. At most first (1 to 200) sessions; sessionsLeftOut counts the rest. VALIDATION for a bad filter or first. Open to a read key."
+  agentSessions(filter: AgentUsageFilter, first: Int! = 50): AgentSessions!
   "The containers of a device, running or not, newest first (HOST-001). CONFLICT when the device has no SSH credential in Anima, SSH is off, no host key is accepted, or it has no docker command. UNAVAILABLE when the device or Docker does not answer. NOT_FOUND for an unknown device."
   containers(deviceId: ID!): [Container!]!
   "The last lines of the log of one container (HOST-001). containerId is 12 to 64 lower-case hexadecimal characters; lines is 1 to 1000, default 200. The errors of containers apply; NOT_FOUND also when the device has no such container. A log can hold a secret: Login or browser token only (D-23, R-100), and no MCP tool returns it (MCP-004)."
@@ -4094,8 +4226,8 @@ type Mutation {
   ungrantOperationalKey(name: String!, device: ID!, workload: String!): OperationalKey!
 
   # The catalogue (HOST-047, R-234; task H38)
-  "Asks for the install of an entry of the catalogue on a device. The answer is a refusal with a fixed reason until task H6 exists (INSTALL_NOT_BUILT); an entry with the mark ENGINE_SOCKET is never installed (R-247). No machine is reached, nothing is kept and no audit entry is written. VALIDATION for a deviceId that is not an ID of a device. Open to a write API key and an AI agent (R-234)."
-  installCatalogueEntry(entryId: String!, deviceId: ID!): CatalogueInstall!
+  "Asks for the install of an entry of the catalogue on a device. The answer is a refusal with a fixed reason until task H6 exists (INSTALL_NOT_BUILT); an entry with the mark ENGINE_SOCKET is never installed (R-247). Before that reason: a shell needs a person signed in to the Anima app in a web browser (SHELL_NEEDS_PERSON, OD-HOST-54); a generated entry from anything but that app needs a passed test on a machine with its image (GENERATED_NOT_TESTED), and each generated entry needs digest, the digest of its image (GENERATED_NEEDS_DIGEST, OD-HOST-50). No machine is reached, nothing is kept and no audit entry is written. VALIDATION for a deviceId that is not an ID of a device. Open to a write API key and an AI agent (R-234)."
+  installCatalogueEntry(entryId: String!, deviceId: ID!, digest: String): CatalogueInstall!
 }
 
 type Subscription {

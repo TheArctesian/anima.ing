@@ -1,7 +1,7 @@
 //! One listener of a UDP stream, only on a hub that reaches the machine on its own network
 //! (OD-HOST-48). Each source address is one flow through the hub, with a limit of flows for each
 //! stream and an idle time. A source address of UDP can be false, so the proxy sends to a source
-//! at most as many bytes as it received from it (Section 16.4, SF-NEW-lsstreams).
+//! at most as many bytes as it received from it (Section 16.4, SF-248).
 
 use std::{
     collections::HashMap,

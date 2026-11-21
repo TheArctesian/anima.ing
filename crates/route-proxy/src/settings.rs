@@ -62,7 +62,7 @@ pub struct Settings {
 }
 
 /// The address of the proxy on the network of Anima, and the networks of its nodes: a private
-/// route listens only there and answers only them (Section 16.7, SF-NEW-lsprivate).
+/// route listens only there and answers only them (Section 16.7, SF-245).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Private {
     pub address: IpAddr,

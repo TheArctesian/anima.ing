@@ -6,7 +6,7 @@
 //! before the TLS handshake, each step has a time limit, a request has one deadline for its head
 //! and its body, and in door mode only the door's addresses may send a PROXY header
 //! (SF-NEW-revroutelimits). A private route answers only on the private address and only the
-//! nodes of the network of Anima (Section 16.7, SF-NEW-lsprivate). The log has only the name,
+//! nodes of the network of Anima (Section 16.7, SF-245). The log has only the name,
 //! the bytes, the status and the time: never a path, a query, a header or a cookie (LOG-007,
 //! SF-229). I/O edge.
 
