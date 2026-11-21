@@ -45,6 +45,8 @@ use device::Launch;
 pub use error::LinkError;
 use folder::LinkFolders;
 use joining::Joined;
+#[cfg(target_os = "macos")]
+pub use kept::daemon_folder;
 pub use kept::daemon_socket;
 pub use kept::hosted_hub_opened;
 #[cfg(windows)]

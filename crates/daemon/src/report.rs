@@ -126,6 +126,24 @@ pub fn log_file_refused(error: &std::io::Error) {
     tracing::error!(%error, "the log file could not be opened; logging to standard error");
 }
 
+/// Once, when the first read of the token waits for the person in the Keychain: the daemon
+/// keeps running without its token and reads again (R-NEW-keychainwait).
+pub fn keychain_waits() {
+    tracing::warn!(
+        "this computer's daemon needs you to allow it in the Keychain: click Always Allow in the window of macOS; it reads the token again every 30 s, after 10 minutes every 5 minutes"
+    );
+}
+
+/// The read of the token answered after it waited for the person.
+pub fn keychain_answered() {
+    tracing::info!("the Keychain answered the read of the token");
+}
+
+/// The file that tells the app that the daemon waits could not be written or deleted.
+pub fn keychain_mark_refused(error: &std::io::Error) {
+    tracing::warn!(%error, "the mark of the wait for the Keychain could not be changed");
+}
+
 /// The run ended on an error; the service manager starts the daemon again.
 pub fn run_ended(error: &dyn std::error::Error) {
     tracing::error!(%error, "the daemon stopped on an error");
