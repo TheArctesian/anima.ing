@@ -282,16 +282,18 @@ fn contain(launch: &Launch) -> Result<Option<PathBuf>, Cause> {
     }
 }
 
-/// Starts the process of `launch` in its tree.
+/// Starts the process of `launch` in its tree. On Linux it returns when the launcher is in the
+/// cgroup of the server, or has ended (the next look reads its end), so the first poll does not
+/// read the tree before the join.
 ///
 /// Call it from a thread that lives as long as the daemon (a worker of the async runtime),
 /// never from `spawn_blocking`: on Linux the parent-death signal of the launcher fires when
 /// the thread that started it ends ([`super::tree::linux::launch`]).
 ///
 /// # Errors
-/// `containment_failed` when the cgroup cannot be made (Linux); `start_failed` for an error of
-/// the folders, the ring or the start.
-pub fn spawn(launch: &Launch) -> Result<Running, Cause> {
+/// `containment_failed` when the cgroup cannot be made, or the launcher is not in it after
+/// [`JOIN`] (Linux); `start_failed` for an error of the folders, the ring or the start.
+pub async fn spawn(launch: &Launch) -> Result<Running, Cause> {
     fresh_temporary(&launch.state, &launch.temporary).map_err(|_| Cause::StartFailed)?;
     match std::fs::remove_file(launch.place.join(tree::LAUNCH_FAILURE)) {
         Ok(()) => {}
@@ -324,7 +326,41 @@ pub fn spawn(launch: &Launch) -> Result<Running, Cause> {
         ended: false,
     };
     running.record().save(&running.record);
+    #[cfg(target_os = "linux")]
+    let running = joined(running).await?;
     Ok(running)
+}
+
+/// The most time from the start of the launcher to its join of the cgroup of the server.
+#[cfg(target_os = "linux")]
+pub const JOIN: Duration = Duration::from_secs(5);
+
+/// `running` when its main process is in the cgroup of its server, or has ended. The launcher
+/// joins before it runs the runtime with `exec`, so until the join no code of the runtime runs
+/// and the tree reads empty. A launcher that is not in the cgroup after [`JOIN`] is ended with
+/// the tree, when `running` drops.
+#[cfg(target_os = "linux")]
+async fn joined(mut running: Running) -> Result<Running, Cause> {
+    let Some(cgroup) = running.cgroup.clone() else {
+        return Ok(running);
+    };
+    let deadline = tokio::time::Instant::now() + JOIN;
+    loop {
+        if !matches!(running.child.try_wait(), Ok(None)) {
+            return Ok(running);
+        }
+        let path = cgroup.clone();
+        let members = tokio::task::spawn_blocking(move || tree::linux::members(&path))
+            .await
+            .map_err(|_| Cause::StartFailed)?;
+        if members.is_ok_and(|members| members.contains(&running.leader)) {
+            return Ok(running);
+        }
+        if tokio::time::Instant::now() >= deadline {
+            return Err(Cause::ContainmentFailed(Containment::CgroupJoinFailed));
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
 }
 
 /// Ends the whole tree at once, also when its main process has already ended.

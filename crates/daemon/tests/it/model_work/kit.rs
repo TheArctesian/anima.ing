@@ -16,7 +16,8 @@ use uuid::Uuid;
 /// The scripted runtime. It reads `mode` beside it: `exit` ends at once, `any` listens on
 /// 0.0.0.0, else it listens on 127.0.0.1. It writes the names of its environment to `env`, and
 /// before it listens it starts a child that leaves the session and process group (`setsid`)
-/// and writes its process id to `child`. That child sleeps; in the mode `escape` it listens
+/// and writes its process id to `child` at once, so a check that ends the tree early still
+/// leaves the id for the test. That child sleeps; in the mode `escape` it listens
 /// on 0.0.0.0 instead.
 pub const FAKE_RUNTIME: &str = r#"#!/usr/bin/perl
 use strict;
@@ -38,8 +39,8 @@ if (defined $kid && $kid == 0) {
     }
     sleep 100000; exit 0;
 }
-select(undef, undef, undef, 0.3) if $mode eq 'escape';
 open(my $k, '>', "$dir/child"); print $k $kid; close($k);
+select(undef, undef, undef, 0.3) if $mode eq 'escape';
 my $host = $mode eq 'any' ? '0.0.0.0' : '127.0.0.1';
 my $s = IO::Socket::INET->new(LocalAddr => $host, LocalPort => $port, Listen => 5, ReuseAddr => 1) or exit 2;
 while (1) { my $c = $s->accept(); close($c) if $c; }
