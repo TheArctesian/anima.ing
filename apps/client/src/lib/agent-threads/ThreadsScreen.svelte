@@ -113,10 +113,10 @@
 
 <svelte:window {onkeydown} />
 
-<!-- The page Threads (THR-011 to THR-017): the list beside one thread. It reads the session files of this computer
+<!-- The page Code (THR-011 to THR-017): the list beside one thread. It reads the session files of this computer
      through the desktop shell; it sends nothing to the hub and starts no program. -->
 <section class="threads" bind:this={screen} {@attach fillRoom()}>
-  <PageHeader title="Threads" detail="The sessions of Claude Code and Codex on this computer. Threads started here are driven on this computer only.">
+  <PageHeader title="Code" detail="The sessions of Claude Code and Codex on this computer. Threads started here are driven on this computer only.">
     {#snippet actions()}
       {#if live !== null && (store.archived || store.archivedCount > 0)}
         <FormButton

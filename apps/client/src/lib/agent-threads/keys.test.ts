@@ -3,7 +3,7 @@ import { keyAction, moved, type Pressed } from './keys';
 
 const press = (key: string, more: Partial<Pressed> = {}): Pressed => ({ key, mod: false, shift: false, alt: false, typing: false, ...more });
 
-describe('the keys of the page Threads', () => {
+describe('the keys of the page Code', () => {
   it('THR-016: the arrow keys move in the list, and Cmd+Shift+[ and ] open the previous and the next thread', () => {
     expect(keyAction(press('ArrowDown'))).toEqual({ kind: 'move', by: 1 });
     expect(keyAction(press('ArrowUp'))).toEqual({ kind: 'move', by: -1 });

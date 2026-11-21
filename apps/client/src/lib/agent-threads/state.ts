@@ -136,7 +136,7 @@ export function orderedThreads(rows: readonly ThreadRow[], now: Date, seen: Seen
   return entries;
 }
 
-/** How many threads need the person: the count on the item Threads of the bar (THR-057). */
+/** How many threads need the person: the count on the item Code of the bar (THR-057). */
 export function needsYouCount(rows: readonly ThreadRow[], now: Date, seen: Seen): number {
   return rows.filter((row) => needsYou(threadState(row, now, seen))).length;
 }

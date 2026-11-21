@@ -7,7 +7,7 @@
   $effect(() => keepFresh(store));
 </script>
 
-<!-- How many threads need the person, on the item Threads of the bar; nothing when none does. -->
+<!-- How many threads need the person, on the item Code of the bar; nothing when none does. -->
 {#if store.needsYou > 0}
   <span class="count" aria-label={store.needsYou === 1 ? '1 thread needs you' : `${String(store.needsYou)} threads need you`}>{store.needsYou}</span>
 {/if}
