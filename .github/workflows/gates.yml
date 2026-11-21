@@ -44,10 +44,14 @@ on:
         type: string
         default: ""
 
-# A new push to a branch stops the run of the older commit of that branch.
+# A new push to a branch stops the run of the older commit of that branch. On `dev` it waits
+# instead: the run of a tree of `dev` ends, and a later push (a claim, say) runs after it, when
+# that tree is proved and the push needs only the quality gates (`--dev-push`). GitHub keeps one
+# waiting run of a group; a newer one takes its place. (A choice made overnight on 2026-11-21:
+# claims every few minutes stopped each run of `dev` before it ended.)
 concurrency:
   group: gates-${{ github.workflow }}-${{ inputs.ref || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ (inputs.ref || github.ref) != 'refs/heads/dev' && (inputs.ref || github.ref) != 'dev' }}
 
 permissions: {}
 
