@@ -6,6 +6,8 @@
 pub mod pacing;
 pub mod renewal;
 mod renewing;
+#[cfg(all(test, target_os = "linux"))]
+mod tests;
 pub mod unstored;
 pub mod usage;
 
@@ -23,6 +25,7 @@ use uuid::Uuid;
 use crate::config::home::Home;
 use crate::hub::HubClient;
 use crate::hub::answer::Answer;
+use crate::keychain_wait;
 use crate::keys::keeper::{Asking, Keeper};
 
 use crate::report;
@@ -75,8 +78,11 @@ pub struct Pusher {
     keys: Option<Keeper>,
     /// A renewed token whose save waits for the person in the Keychain; not used until stored.
     unstored: Option<Unstored>,
-    /// The daemon's folder, where [`MARK`](crate::keychain_wait::MARK) tells the app that a save waits.
+    /// The daemon's folder, where [`MARK`](crate::keychain_wait::MARK) tells the app that a
+    /// call of the Keychain waits.
     marks: Option<Home>,
+    /// Whether this pusher put the mark.
+    marked: bool,
 }
 
 impl Pusher {
@@ -98,11 +104,13 @@ impl Pusher {
             keys: None,
             unstored: None,
             marks: None,
+            marked: false,
         }
     }
 
-    /// The same pusher, which puts [`MARK`](crate::keychain_wait::MARK) in `home` while the save of a
-    /// renewed token waits for the person in the Keychain (R-322).
+    /// The same pusher, which puts [`MARK`](crate::keychain_wait::MARK) in `home` while the
+    /// save of a renewed token or a call of the key store waits for the person in the
+    /// Keychain (R-322).
     #[must_use]
     pub fn with_marks(self, home: Home) -> Self {
         Self {
@@ -150,13 +158,15 @@ impl Pusher {
     /// until none is left or one fails. Returns how long to wait before the next round.
     pub async fn push_due(&mut self, now: DateTime<Utc>) -> Duration {
         if let Some(keys) = &mut self.keys {
-            keys.expire(now);
+            keys.tend(now).await;
         }
         if self.stopped_until.is_none() {
             self.renew_if_due(now).await;
         }
+        let adopted = self.stopped_until.is_some() && self.adopt_changed_token().await;
+        self.show_waits();
         if let Some(retry_at) = self.stopped_until
-            && !self.adopt_changed_token()
+            && !adopted
             && now < retry_at
         {
             return RHYTHM;
@@ -226,7 +236,7 @@ impl Pusher {
                     self.limit = smaller;
                     count = smaller;
                 }
-                Action::Stop(code) => return Round::Wait(self.stop(code, now)),
+                Action::Stop(code) => return Round::Wait(self.stop(code, now).await),
                 Action::Wait => return Round::Wait(self.failed(&answer)),
             }
         }
@@ -267,14 +277,14 @@ impl Pusher {
 
     /// Stops pushing for 10 minutes. Logs only when it was pushing before (K8 Section 6). A
     /// refused token also deletes the whole key cache (R-147).
-    fn stop(&mut self, code: RefusalCode, now: DateTime<Utc>) -> Duration {
+    async fn stop(&mut self, code: RefusalCode, now: DateTime<Utc>) -> Duration {
         if self.stopped_until.is_none() {
             report::token_refused(code);
         }
         if code == RefusalCode::TokenRefused
             && let Some(keys) = &mut self.keys
         {
-            keys.forget();
+            keys.forget().await;
         }
         let wait = TimeDelta::from_std(pacing::REFUSED_RETRY).unwrap_or(TimeDelta::minutes(10));
         self.stopped_until = Some(now + wait);
@@ -283,9 +293,11 @@ impl Pusher {
 
     /// When the token store holds another token than the one in use, issued by the same hub,
     /// takes it and resumes. A token bound to another hub is never taken: it would be sent
-    /// to this one.
-    fn adopt_changed_token(&mut self) -> bool {
-        let Ok(Some(stored)) = self.store.load() else {
+    /// to this one. A renewed token whose save waited goes with it: the store holds either
+    /// that token, stored late, or a newer one.
+    async fn adopt_changed_token(&mut self) -> bool {
+        let store = self.store.clone();
+        let Ok(Some(stored)) = keychain_wait::off_loop(move || store.load()).await else {
             return false;
         };
         if stored.hub != self.credential.hub || stored.token.hash() == self.credential.token.hash()
@@ -294,10 +306,7 @@ impl Pusher {
         }
         self.credential = stored;
         self.stopped_until = None;
-        // The store holds a newer token than the one whose save waited: that one is stale.
-        if self.unstored.take().is_some() {
-            self.mark(false);
-        }
+        self.unstored = None;
         report::token_store_changed();
         true
     }

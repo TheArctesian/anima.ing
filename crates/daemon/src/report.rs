@@ -60,6 +60,12 @@ pub fn renewal_waits() {
     );
 }
 
+/// The save of a renewed token failed after a save of it that waited, which may have stored it
+/// (R-322): the token is kept and tried again, and no other renewal is asked for meanwhile.
+pub fn renewal_unsure(error: &TokenStoreError) {
+    tracing::error!(%error, "the renewed token could not be stored; keeping it and the current one, and trying again");
+}
+
 /// The delete of a token that the hub refused waits for the person in the Keychain (R-322).
 pub fn forget_waits() {
     tracing::warn!(

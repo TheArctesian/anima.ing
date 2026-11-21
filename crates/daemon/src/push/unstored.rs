@@ -2,31 +2,37 @@
 //!
 //! The daemon uses a new token only once it is stored. While its save waits, the daemon keeps
 //! the new token in memory, unused, pushes with the current one (the hub accepts it until the
-//! new one is first used) and tries the save again on the schedule of
-//! [`keychain_wait::next_try`]. It asks the hub for no other token meanwhile: that renewal
-//! would replace the new token at the hub, and a save that macOS ends late could still put
-//! the replaced one in the Keychain, where the next start would read a token the hub refuses.
+//! new one is first used) and tries the save again on the schedule of [`Tries`]. It asks the
+//! hub for no other token meanwhile: that renewal would replace the new token at the hub, and
+//! a save that macOS ends late could still put the replaced one in the Keychain, where the
+//! next start would read a token the hub refuses. For the same reason a token whose save once
+//! waited is never dropped: a later save that fails in another way reads the item back, and
+//! the token is used when the late save stored it, or kept and tried again when it did not.
 
-use chrono::{DateTime, TimeDelta, Utc};
+use chrono::{DateTime, Utc};
 
-use crate::keychain_wait;
+use crate::keychain_wait::Tries;
 use crate::token_store::{Credential, TokenStoreError};
 
 /// A renewed token that is not stored yet, and when its save is tried again.
 pub struct Unstored {
     credential: Credential,
-    /// How many saves of it waited.
-    waited: u32,
-    next_at: DateTime<Utc>,
+    tries: Tries,
 }
 
 /// What a try to store a renewed token ended in.
 pub enum Stored {
     /// Stored: the daemon uses it from now.
     Yes(Credential),
-    /// The Keychain waits for the person: kept in memory, unused, and tried again.
-    Waits(Unstored),
-    /// Any other failure: the new token is dropped and the current one stays.
+    /// Not tried: the next try is later.
+    Later(Unstored),
+    /// The save waits for the person; `first` for the first save of this token that waited,
+    /// which is logged.
+    Waits { unstored: Unstored, first: bool },
+    /// Another failure after a save that waited, which may have stored the token: kept, and
+    /// tried again.
+    Unsure(Unstored, TokenStoreError),
+    /// Another failure of the first save: nothing can be stored, and the token is dropped.
     No(TokenStoreError),
 }
 
@@ -36,40 +42,48 @@ pub fn store(
     now: DateTime<Utc>,
     save: impl FnOnce(&Credential) -> Result<(), TokenStoreError>,
 ) -> Stored {
-    Unstored {
-        credential: next,
-        waited: 0,
-        next_at: now,
+    match save(&next) {
+        Ok(()) => Stored::Yes(next),
+        Err(TokenStoreError::KeychainWaits) => Stored::Waits {
+            unstored: Unstored {
+                credential: next,
+                tries: Tries::first(now),
+            },
+            first: true,
+        },
+        Err(error) => Stored::No(error),
     }
-    .retry(now, save)
 }
 
 impl Unstored {
-    /// Whether this is the first save that waited: the one that is logged.
-    #[must_use]
-    pub const fn first_wait(&self) -> bool {
-        self.waited == 1
-    }
-
-    /// Tries the save again with `save` when it is due at `now`; else waits on, untried.
+    /// Tries the save again with `save` when it is due at `now`. A failure other than a wait
+    /// reads the item back with `read_back`: when it holds this token, a save that waited
+    /// stored it late.
     pub fn retry(
         mut self,
         now: DateTime<Utc>,
         save: impl FnOnce(&Credential) -> Result<(), TokenStoreError>,
+        read_back: impl FnOnce() -> Result<Option<Credential>, TokenStoreError>,
     ) -> Stored {
-        if now < self.next_at {
-            return Stored::Waits(self);
+        if !self.tries.due(now) {
+            return Stored::Later(self);
         }
-        match save(&self.credential) {
-            Ok(()) => Stored::Yes(self.credential),
-            Err(TokenStoreError::KeychainWaits) => {
-                let pause = keychain_wait::next_try(self.waited);
-                self.waited = self.waited.saturating_add(1);
-                self.next_at = now + TimeDelta::from_std(pause).unwrap_or(TimeDelta::minutes(5));
-                Stored::Waits(self)
-            }
-            Err(error) => Stored::No(error),
+        let error = match save(&self.credential) {
+            Ok(()) => return Stored::Yes(self.credential),
+            Err(error) => error,
+        };
+        self.tries = self.tries.again(now);
+        if matches!(error, TokenStoreError::KeychainWaits) {
+            return Stored::Waits {
+                unstored: self,
+                first: false,
+            };
         }
+        let mine = self.credential.token.hash();
+        if matches!(read_back(), Ok(Some(stored)) if stored.token.hash() == mine) {
+            return Stored::Yes(self.credential);
+        }
+        Stored::Unsure(self, error)
     }
 }
 
@@ -77,94 +91,121 @@ impl Unstored {
 mod tests {
     use std::cell::RefCell;
 
+    use chrono::TimeDelta;
     use daemon_core::wire::DaemonToken;
 
     use super::*;
     use crate::config::origin::Origin;
 
+    type Answer = Result<(), TokenStoreError>;
+
     fn at(seconds: i64) -> DateTime<Utc> {
         DateTime::UNIX_EPOCH + TimeDelta::seconds(seconds)
     }
 
-    fn next() -> Credential {
+    fn credential(seed: u8) -> Credential {
         Credential {
-            token: DaemonToken::from_random([2; 32]),
+            token: DaemonToken::from_random([seed; 32]),
             expires_at: at(0) + TimeDelta::days(365),
             hub: Origin::parse("https://hub.example").expect("origin"),
         }
     }
 
-    fn waits(stored: Stored) -> Unstored {
+    fn waits() -> Answer {
+        Err(TokenStoreError::KeychainWaits)
+    }
+
+    fn untouched() -> Result<Option<Credential>, TokenStoreError> {
+        panic!("not read back")
+    }
+
+    fn waiting(stored: Stored, first_wait: bool) -> Unstored {
         match stored {
-            Stored::Waits(unstored) => unstored,
-            Stored::Yes(_) => panic!("stored"),
-            Stored::No(error) => panic!("dropped: {error}"),
+            Stored::Waits { unstored, first } => {
+                assert_eq!(
+                    first, first_wait,
+                    "the first wait is the one that is logged"
+                );
+                unstored
+            }
+            _ => panic!("not a wait"),
         }
+    }
+
+    fn is_next(stored: &Stored) -> bool {
+        matches!(stored, Stored::Yes(stored) if stored.token.hash() == credential(2).token.hash())
     }
 
     #[test]
     fn met_013_a_renewed_token_whose_save_waits_is_kept_unused_and_stored_later() {
-        let saves = RefCell::new(Vec::new());
-        let log = &saves;
-        let save = |answer: Result<(), TokenStoreError>| {
-            move |credential: &Credential| {
-                log.borrow_mut().push(credential.token.hash());
+        let saves = RefCell::new(0);
+        let save = |answer: Answer| {
+            let saves = &saves;
+            move |next: &Credential| {
+                assert!(next.token.hash() == credential(2).token.hash());
+                *saves.borrow_mut() += 1;
                 answer
             }
         };
-        let unstored = waits(store(
-            next(),
-            at(0),
-            save(Err(TokenStoreError::KeychainWaits)),
-        ));
-        assert!(unstored.first_wait(), "logged once");
-
-        let unstored = waits(unstored.retry(at(29), save(Ok(()))));
-        assert_eq!(saves.borrow().len(), 1, "not tried again before 30 s");
-
-        let unstored = waits(unstored.retry(at(30), save(Err(TokenStoreError::KeychainWaits))));
-        assert!(!unstored.first_wait(), "logged only at the first wait");
-        assert_eq!(saves.borrow().len(), 2);
-
-        let Stored::Yes(stored) = unstored.retry(at(60), save(Ok(()))) else {
-            panic!("the save answered");
+        let unstored = waiting(store(credential(2), at(0), save(waits())), true);
+        let Stored::Later(unstored) = unstored.retry(at(29), save(Ok(())), untouched) else {
+            panic!("tried before 30 s");
         };
-        assert!(
-            stored.token.hash() == next().token.hash(),
-            "the token is not lost"
-        );
-        assert_eq!(saves.borrow().len(), 3);
-        assert!(
-            saves
-                .borrow()
-                .iter()
-                .all(|hash| *hash == next().token.hash())
-        );
+        assert_eq!(*saves.borrow(), 1, "a retry that is not due tries nothing");
+        let unstored = waiting(unstored.retry(at(30), save(waits()), untouched), false);
+        assert!(is_next(&unstored.retry(at(60), save(Ok(())), untouched)));
+        assert_eq!(*saves.borrow(), 3);
     }
 
     #[test]
     fn met_013_saves_that_wait_are_tried_every_30_s_for_10_minutes_then_every_5_minutes() {
-        let mut unstored = waits(store(next(), at(0), |_| {
-            Err(TokenStoreError::KeychainWaits)
-        }));
+        let mut unstored = waiting(store(credential(2), at(0), |_| waits()), true);
         let mut now = at(0);
-        for _ in 0..19 {
+        for _ in 0..20 {
             now += TimeDelta::seconds(30);
-            unstored = waits(unstored.retry(now, |_| Err(TokenStoreError::KeychainWaits)));
+            unstored = waiting(unstored.retry(now, |_| waits(), untouched), false);
         }
-        now += TimeDelta::seconds(30);
-        unstored = waits(unstored.retry(now, |_| Err(TokenStoreError::KeychainWaits)));
-        let untried = |_: &Credential| -> Result<(), TokenStoreError> { panic!("tried too soon") };
-        unstored = waits(unstored.retry(now + TimeDelta::seconds(299), untried));
-        assert!(matches!(
-            unstored.retry(now + TimeDelta::minutes(5), |_| Ok(())),
-            Stored::Yes(_)
-        ));
+        let later = unstored.retry(
+            now + TimeDelta::seconds(299),
+            |_| panic!("too soon"),
+            untouched,
+        );
+        let Stored::Later(unstored) = later else {
+            panic!("tried too soon");
+        };
+        let stored = unstored.retry(now + TimeDelta::minutes(5), |_| Ok(()), untouched);
+        assert!(is_next(&stored));
     }
 
     #[test]
-    fn met_013_a_save_that_fails_otherwise_drops_the_new_token() {
-        let failed = store(next(), at(0), |_| Err(TokenStoreError::Corrupt));
+    fn met_013_a_first_save_that_fails_otherwise_drops_the_new_token() {
+        let failed = store(credential(2), at(0), |_| Err(TokenStoreError::Corrupt));
         assert!(matches!(failed, Stored::No(TokenStoreError::Corrupt)));
+    }
+
+    #[test]
+    fn met_013_after_a_wait_another_failure_uses_the_token_that_a_late_save_stored() {
+        let unstored = waiting(store(credential(2), at(0), |_| waits()), true);
+        let late = || Ok(Some(credential(2)));
+        let stored = unstored.retry(at(30), |_| Err(TokenStoreError::Corrupt), late);
+        assert!(is_next(&stored), "the Keychain holds it: used, not dropped");
+    }
+
+    #[test]
+    fn met_013_after_a_wait_another_failure_keeps_the_token_when_the_item_holds_another() {
+        let unstored = waiting(store(credential(2), at(0), |_| waits()), true);
+        let old = || Ok(Some(credential(1)));
+        let Stored::Unsure(unstored, TokenStoreError::Corrupt) =
+            unstored.retry(at(30), |_| Err(TokenStoreError::Corrupt), old)
+        else {
+            panic!("dropped");
+        };
+        let unread = || Err(TokenStoreError::KeychainWaits);
+        let Stored::Unsure(unstored, _) =
+            unstored.retry(at(60), |_| Err(TokenStoreError::Corrupt), unread)
+        else {
+            panic!("dropped when the read back failed");
+        };
+        assert!(is_next(&unstored.retry(at(90), |_| Ok(()), untouched)));
     }
 }

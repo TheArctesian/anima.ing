@@ -87,3 +87,19 @@ async fn met_020_a_token_issued_by_the_configured_hub_is_used() {
     let (_dir, home) = setup("https://hub.example");
     assert!(prepared(&home).await.is_ok());
 }
+
+#[test]
+fn hmd_046_a_refused_token_whose_delete_waits_ends_the_run_with_the_mark_put() {
+    let mut marked = false;
+    let end = refusal_end(Err(TokenStoreError::KeychainWaits), || marked = true);
+    assert!(matches!(end, RunError::TokenRefusedKept));
+    assert!(marked, "the app is told that the Keychain waits");
+    assert!(end.to_string().contains("not deleted yet"));
+
+    let mut marked = false;
+    let end = refusal_end(Ok(()), || marked = true);
+    assert!(matches!(end, RunError::TokenRefused));
+    let end = refusal_end(Err(TokenStoreError::Corrupt), || marked = true);
+    assert!(matches!(end, RunError::Token(TokenStoreError::Corrupt)));
+    assert!(!marked, "no mark when nothing waits");
+}

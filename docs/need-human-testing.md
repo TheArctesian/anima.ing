@@ -1485,7 +1485,11 @@ ends with no answer; the schedule of the reads; the mark; the run that waits and
 `fix/daemon-keychain-writes` adds, with stand-ins: a write that does not end gives "waits" within its
 deadline and no second write starts while it is in flight; a read and a write of one item never run at
 once; a renewed token whose save waits is kept unused and stored at a later try, on the schedule of the
-reads; `enrol` stops before it sends the code, and fails with the steps after a save that waits. Not
+reads, and is used or kept, never dropped, when a later save fails otherwise; a change of the token
+store drops it and its mark; a save of the key cache that waits is tried again on that schedule, and a
+delete that waits is owed until it answers; the end of a run whose refused token cannot be deleted;
+`enrol` reads the store before it sends the code (a token file that cannot be read sends nothing), and
+says that the code is spent after a save that fails. Not
 covered: the real Keychain and its window, `launchctl`, the real time of the reads, and a renewal that
 waits (it needs a token in its last 30 days).
 
@@ -1519,10 +1523,12 @@ first. Each ad hoc build is a new program to the Keychain, so build B makes the 
    enrolment gives the Mac a new token). Quit the application. Run
    `cp /Applications/Anima.ing.app/Contents/MacOS/anima-daemon /tmp/anima-daemon-c` with build C in
    `/Applications`, then `time /tmp/anima-daemon-c enrol -` and paste the code. Do not answer the
-   window of macOS. Expected: the command ends in less than 10 s with "the code was not sent: allow
-   the daemon in the Keychain ..."; `pgrep -f anima-daemon-c` prints nothing. Then run
-   `/tmp/anima-daemon-c enrol -` again with the same code, and click Always Allow in the window.
-   Expected: "Enrolled ...": the code was not spent by the first try. Last, run
+   window of macOS. Expected: the window stays open while the command waits; the command ends after
+   about 2 minutes (`enrol` waits 120 s for the person) with "the code was not sent: allow the
+   daemon in the Keychain ..."; `pgrep -f anima-daemon-c` prints nothing. Then run
+   `/tmp/anima-daemon-c enrol -` again with the same code, type the password of the Mac and click
+   Always Allow in the window within 2 minutes. Expected: "Enrolled ...": the code was not spent by
+   the first try. Last, run
    `cp /tmp/anima-daemon-c ~/.local/bin/anima-daemon` and `~/.local/bin/anima-daemon install`, and
    allow it in the Keychain if macOS asks. Expected: the Mac row in Devices shows new metrics.
 

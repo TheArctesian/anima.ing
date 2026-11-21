@@ -14,6 +14,7 @@ static CALLS: Calls = Calls::new();
 const SERVICE: &str = "ing.anima.daemon";
 const ACCOUNT: &str = "key-cache";
 
+#[derive(Clone)]
 pub struct Backend;
 
 impl Backend {

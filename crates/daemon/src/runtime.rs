@@ -195,13 +195,21 @@ async fn prepare(
 /// delete that waits for the person in the Keychain is logged and marked for the app, and the
 /// run ends as for any refused token: the token stays until a later delete or enrolment.
 fn forget_refused(home: &Home) -> RunError {
-    match TokenStore::open(home).forget() {
+    refusal_end(TokenStore::open(home).forget(), || {
+        if let Err(error) = crate::keychain_wait::mark(home, true) {
+            report::keychain_mark_refused(&error);
+        }
+    })
+}
+
+/// The end of a run whose token the hub refused, from `forgot`, the delete of that token;
+/// `mark` puts the mark for the app when the delete waits for the person.
+fn refusal_end(forgot: Result<(), TokenStoreError>, mark: impl FnOnce()) -> RunError {
+    match forgot {
         Ok(()) => RunError::TokenRefused,
         Err(TokenStoreError::KeychainWaits) => {
             report::forget_waits();
-            if let Err(error) = crate::keychain_wait::mark(home, true) {
-                report::keychain_mark_refused(&error);
-            }
+            mark();
             RunError::TokenRefusedKept
         }
         Err(error) => error.into(),

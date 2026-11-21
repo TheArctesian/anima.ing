@@ -12,6 +12,7 @@ use crate::config::private_file::{self, PrivateFileError};
 
 const FILE: &str = "keys";
 
+#[derive(Clone)]
 pub struct Backend {
     home: Home,
     path: PathBuf,

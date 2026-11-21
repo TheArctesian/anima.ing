@@ -22,6 +22,10 @@ use zeroize::Zeroizing;
 
 use crate::config::home::Home;
 
+mod tries;
+
+pub use tries::{Tries, next_try};
+
 /// How long a caller waits for one Keychain call. An allowed call ends in milliseconds, and
 /// the first unlock of the login keychain in a second or two; a prompt that nobody answers
 /// never ends. 5 s is well above the first and keeps `install` far below the 30 s of one
@@ -32,11 +36,9 @@ pub const DEADLINE: Duration = Duration::from_secs(5);
 /// allow it in the Keychain. Empty: its presence is the state.
 pub const MARK: &str = "keychain-waits";
 
-/// The tries of the first 10 minutes come every 30 s, so that a person who allows the daemon
-/// sees it push soon; then every 5 minutes, so that a computer with nobody at it is not busy.
-const QUICK_TRIES: u32 = 20;
-const QUICK: Duration = Duration::from_secs(30);
-const SLOW: Duration = Duration::from_mins(5);
+/// The least time that a call gets after the call in flight answered late, so that a call
+/// that waited behind it is not given up at once (at most the caller's deadline).
+const LEAST: Duration = Duration::from_secs(1);
 
 /// What one read of an item gives: its bytes, `None` when there is no item, or the error as
 /// text, so that it crosses the thread.
@@ -114,7 +116,8 @@ impl Calls {
     }
 
     /// Waits for the call in flight; gives its answer when `LATE` and `kind` takes it, else
-    /// runs `call` in the time that is left of `deadline`.
+    /// runs `call` in the time that is left of `deadline`, and at least in [`LEAST`] (never
+    /// more than `deadline`).
     fn run<R, const LATE: bool>(
         &self,
         deadline: Duration,
@@ -141,7 +144,10 @@ impl Calls {
             }
         }
         let answer = start(call);
-        match answer.recv_timeout(end.saturating_duration_since(Instant::now())) {
+        let left = end
+            .saturating_duration_since(Instant::now())
+            .max(deadline.min(LEAST));
+        match answer.recv_timeout(left) {
             Ok(answer) => kind(answer).ok_or(Unanswered::Lost),
             Err(RecvTimeoutError::Timeout) => {
                 *in_flight = Some(answer);
@@ -172,10 +178,13 @@ fn start<T: Send + 'static>(call: impl FnOnce() -> T + Send + 'static) -> Receiv
     answer
 }
 
-/// The pause before the next try, after `waited` tries that waited.
-#[must_use]
-pub const fn next_try(waited: u32) -> Duration {
-    if waited < QUICK_TRIES { QUICK } else { SLOW }
+/// Runs `call`, a store call that can take its whole deadline, on a blocking thread of the
+/// async runtime, so that the async loop (the stop signal, the link) goes on meanwhile. A
+/// panic of `call` goes on in the caller.
+pub async fn off_loop<T: Send + 'static>(call: impl FnOnce() -> T + Send + 'static) -> T {
+    tokio::task::spawn_blocking(call)
+        .await
+        .unwrap_or_else(|ended| std::panic::resume_unwind(ended.into_panic()))
 }
 
 /// Puts [`MARK`] in the daemon's folder when `waits`, and takes it away when not. A mark that
@@ -285,7 +294,10 @@ mod tests {
         let (click, call) = blocked(&count, Ok(()));
         let began = Instant::now();
         assert_eq!(calls.write(SHORT, call), Err(Unanswered::Waits));
-        assert!(began.elapsed() < LONG, "it gave up at its deadline");
+        assert!(
+            began.elapsed() < Duration::from_secs(1),
+            "it gave up at its deadline of 50 ms"
+        );
         let counted = Arc::clone(&count);
         let second = calls.write(SHORT, move || {
             counted.fetch_add(1, Ordering::SeqCst);
@@ -336,14 +348,6 @@ mod tests {
             Ok("after the write".to_owned()),
             "a read after a write reads the item, not the write's answer"
         );
-    }
-
-    #[test]
-    fn met_013_tries_come_every_30_s_for_10_minutes_then_every_5_minutes() {
-        assert_eq!(next_try(0), Duration::from_secs(30));
-        assert_eq!(next_try(19), Duration::from_secs(30));
-        assert_eq!(next_try(20), Duration::from_mins(5));
-        assert_eq!(next_try(u32::MAX), Duration::from_mins(5));
     }
 
     #[test]

@@ -3,12 +3,14 @@
 //! Compiled only on macOS. Each read, write and delete is bounded ([`crate::keychain_wait`]):
 //! a call that macOS holds for the person is [`TokenStoreError::KeychainWaits`].
 
+use std::time::Duration;
+
 use keyring::Entry;
 use zeroize::Zeroizing;
 
 use super::TokenStoreError;
 use crate::config::home::Home;
-use crate::keychain_wait::{self, Calls, Read, Unanswered, Written};
+use crate::keychain_wait::{Calls, Read, Unanswered, Written};
 
 /// The calls of the token's item: one in flight at a time (R-322).
 static CALLS: Calls = Calls::new();
@@ -16,6 +18,7 @@ static CALLS: Calls = Calls::new();
 const SERVICE: &str = "ing.anima.daemon";
 const ACCOUNT: &str = "daemon-token";
 
+#[derive(Clone)]
 pub struct Backend;
 
 impl Backend {
@@ -27,9 +30,9 @@ impl Backend {
         clippy::unused_self,
         reason = "same signature as the file backend on other systems"
     )]
-    pub fn read(&self) -> Result<Option<Zeroizing<Vec<u8>>>, TokenStoreError> {
+    pub fn read(&self, deadline: Duration) -> Result<Option<Zeroizing<Vec<u8>>>, TokenStoreError> {
         CALLS
-            .read(keychain_wait::DEADLINE, read_now)
+            .read(deadline, read_now)
             .map_err(unanswered)?
             .map_err(TokenStoreError::Keychain)
     }
@@ -40,11 +43,16 @@ impl Backend {
         clippy::unused_self,
         reason = "same signature as the file backend on other systems"
     )]
-    pub fn write(&self, bytes: &[u8], fresh: bool) -> Result<(), TokenStoreError> {
+    pub fn write(
+        &self,
+        bytes: &[u8],
+        fresh: bool,
+        deadline: Duration,
+    ) -> Result<(), TokenStoreError> {
         let text = std::str::from_utf8(bytes).map_err(|_| TokenStoreError::Corrupt)?;
         let text = Zeroizing::new(text.to_owned());
         CALLS
-            .write(keychain_wait::DEADLINE, move || write_now(&text, fresh))
+            .write(deadline, move || write_now(&text, fresh))
             .map_err(unanswered)?
             .map_err(TokenStoreError::Keychain)
     }
@@ -54,9 +62,9 @@ impl Backend {
         clippy::unused_self,
         reason = "same signature as the file backend on other systems"
     )]
-    pub fn delete(&self) -> Result<(), TokenStoreError> {
+    pub fn delete(&self, deadline: Duration) -> Result<(), TokenStoreError> {
         CALLS
-            .write(keychain_wait::DEADLINE, delete_now)
+            .write(deadline, delete_now)
             .map_err(unanswered)?
             .map_err(TokenStoreError::Keychain)
     }

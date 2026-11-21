@@ -2,6 +2,8 @@
 //! Keychain, or on Linux the file `keys` in the daemon's folder, mode 0600, written to a
 //! temporary file and renamed. An empty cache is stored as no record at all.
 
+use zeroize::Zeroizing;
+
 use super::cache::KeyCache;
 use super::record::{self, RECORD_LIMIT};
 use crate::config::home::Home;
@@ -35,6 +37,7 @@ pub enum KeyStoreError {
 }
 
 /// The daemon's key store for this platform.
+#[derive(Clone)]
 pub struct KeyStore {
     backend: Backend,
 }
@@ -68,10 +71,26 @@ impl KeyStore {
     /// # Errors
     /// [`KeyStoreError`] when it cannot be written.
     pub fn save(&self, cache: &KeyCache) -> Result<(), KeyStoreError> {
-        if cache.is_empty() {
-            return self.backend.delete();
+        self.keep(Self::record(cache).as_deref().map(Vec::as_slice))
+    }
+
+    /// The record that [`KeyStore::save`] stores for `cache`; `None` for an empty cache, which
+    /// is stored as no record. Made apart from the store, so that the store call can run on a
+    /// thread of its own with the bytes alone.
+    #[must_use]
+    pub fn record(cache: &KeyCache) -> Option<Zeroizing<Vec<u8>>> {
+        (!cache.is_empty()).then(|| record::render(cache))
+    }
+
+    /// Stores `record`, as [`KeyStore::record`] made it; deletes the record for `None`.
+    ///
+    /// # Errors
+    /// [`KeyStoreError`] when it cannot be written or deleted.
+    pub fn keep(&self, record: Option<&[u8]>) -> Result<(), KeyStoreError> {
+        match record {
+            Some(bytes) => self.backend.write(bytes),
+            None => self.backend.delete(),
         }
-        self.backend.write(&record::render(cache))
     }
 
     /// Deletes the whole cache.
