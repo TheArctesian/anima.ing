@@ -40,32 +40,18 @@ def run(iso, output):
         machine.command('systemctl stop display-manager; pkill -TERM -x calamares || true; sleep 1')
         machine.command('test -d /sys/firmware/efi; test ! -e /var/lib/anima-daemon/token')
         machine.command('parted -s /dev/vda mklabel gpt mkpart primary ext4 1MiB 65MiB; udevadm settle; mkfs.ext4 -F /dev/vda1; mkdir /mnt/blocked-target; mount -t ext4 /dev/vda1 /mnt/blocked-target', timeout=60)
-        start = machine.offset
-        machine.send('anima-install'); machine.expect('Disk number')
-        offered = machine.buffer[start:machine.offset]
-        if '/dev/vda' in offered or '/dev/vdb' not in offered:
-            raise RuntimeError('Mounted target was offered or unrelated eligible disk was missing')
-        machine.send(''); machine.expect('Cancelled; no disk changed.')
+        machine.command('anima-os-install inventory | jq -e \'map(select(.path == "/dev/vda" or .path == "/dev/vdb")) | length == 2 and any(.[]; .path == "/dev/vda" and (.eligible | not)) and any(.[]; .path == "/dev/vdb" and .eligible)\'')
         machine.command('umount /mnt/blocked-target; wipefs --all /dev/vda; udevadm settle')
         results.append({'case': 'mounted-child-excluded', 'result': 'Passed'})
         machine.command('head -c 1048576 /dev/vda | sha256sum > /run/before-disk')
         results.append({'case': 'iso-uefi-live', 'result': 'Passed'})
-        for confirm in (False, True):
-            machine.send('anima-install')
-            machine.expect('Disk number'); machine.send('1')
-            machine.expect('Password for the local admin account'); machine.send(password)
-            machine.expect('Repeat password:'); machine.send(password)
-            machine.expect('type exactly ERASE /dev/vda:')
-            machine.send('ERASE /dev/vda' if confirm else 'CANCEL')
-            if not confirm:
-                machine.expect('Cancelled; no disk changed.')
-                machine.command('head -c 1048576 /dev/vda | sha256sum | diff /run/before-disk -')
-                results.append({'case': 'cancel-before-erase', 'result': 'Passed'})
-            else:
-                finish = machine.expect(r'ANIMA_INSTALL_COMPLETE|Installation stopped:|Traceback \(most recent call last\):', timeout=1200)
-                if finish.group(0) != 'ANIMA_INSTALL_COMPLETE':
-                    raise RuntimeError('Installer reported failure; see serial.log')
-                results.append({'case': 'offline-install', 'result': 'Passed'})
+        from installer_checks import install_request
+        install_request(machine, password)
+        machine.command('if anima-install < /run/install-unconfirmed.json; then exit 1; fi; head -c 1048576 /dev/vda | sha256sum | diff /run/before-disk -')
+        results.append({'case': 'cancel-before-erase', 'result': 'Passed'})
+        machine.command('anima-install < /run/install.json > /run/install-progress.jsonl', timeout=1200)
+        machine.command("grep -q ANIMA_INSTALL_COMPLETE /run/install-progress.jsonl")
+        results.append({'case': 'offline-install', 'result': 'Passed'})
         machine.send('systemctl poweroff')
         machine.wait_exit(timeout=90)
         machine.close()

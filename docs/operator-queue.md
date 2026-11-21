@@ -39,7 +39,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (249)
+## 2. Open decisions (248)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -264,7 +264,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-RCL16 | The gate (SF-112): "he has decided its findings", or "no finding of severity High is open" as ROU-014 says for routing? | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
 | OD-AOS1 | Confirm NixOS as the base and a separate OS repository? | Open; no repository created | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-AOS2 | Retain this proposal under priority 4.16 or assign a new priority row? | Open; mapping only, no reprioritization | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
-| OD-AOS3 | Confirm the provisional graphical plus text local interface from Decision 7? | Open; side-chat revisit requested | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-AOS4 | Which named PCs, Intel Macs and ARM boards can be used for validation? | Open; no hardware access or result assumed | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-AOS6 | What custom host configuration is a supported public input? | Open; reconcile with Decision 16, do not narrow it silently | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-AOS7 | How should the work-route owner reconcile offline continuation and retained work with current lease and cleanup rules? | Open; blocks corresponding F4 and OS4 acceptance | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |

@@ -9,6 +9,6 @@ pkgs.stdenv.mkDerivation {
   installPhase = ''
     mkdir -p $out/bin $out/share/anima-build
     install -m755 anima-daemon $out/bin/anima-daemon
-    cp SOURCE-REVISION CARGO-LOCK-SHA256 BINARY-SHA256 $out/share/anima-build/
+    cp SOURCE-REVISION SOURCE-SHA256 CARGO-LOCK-SHA256 BINARY-SHA256 $out/share/anima-build/
   '';
 }
