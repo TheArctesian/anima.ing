@@ -2924,7 +2924,7 @@ What it is: The check of the order asked only for `https://`. The host list was 
 
 The correction: `first_host_permitted`: the host of the address must be a name of the fixed list of the runtime, with no user, no port and no IP address. A runtime with an empty list refuses each address. Tests: `an_order_that_breaks_a_rule_is_refused_before_a_connection`, `the_child_refuses_a_first_host_off_the_list_before_a_connection`.
 
-State: Corrected on `compute/l1-6b`, not yet read again. Found by a separate reviewer on 2026-11-21 in commit `7a339859a`.
+State: Closed in `04679df6a`; the same separate reviewer read it again and closed it on 2026-11-21 (the second read). Found by a separate reviewer on 2026-11-21 in commit `7a339859a`.
 
 ### SF-NEW-l1fetchb: The child did not end with the daemon, and the unpack had no deadline. Low
 
@@ -2936,7 +2936,7 @@ What it is: When the daemon ended, the child went on until its own download dead
 
 The correction: The order carries the process id of the daemon. On Linux the child sets the parent-death signal to SIGKILL and then checks that its parent is that process; if not, it exits. On each system the daemon keeps the standard input of the child open while it runs, and a thread of the child exits when that input closes. The unpack runs on a thread with the deadline `UNPACK_DEADLINE` (25 minutes); past it the child gives back `archive_rejected`. The daemon waits the download, the unpack and 5 minutes. A child that is killed can leave a folder `.unpack-*` below `runtimes/<runtime>/`: the wiring task must remove such stale folders when the daemon starts (not wired in this task). Tests: `the_child_ends_when_its_parent_is_not_the_daemon_of_the_order` (Linux), `the_child_ends_when_its_input_closes_before_the_whole_order`, `the_deadlines_grow_with_the_size_and_stop_at_a_limit`. The thread that watches the input is not tested apart, because a test cannot hold the child after its order without a connection; HT-NEW-l1fetchchild step 3 covers it.
 
-State: Corrected on `compute/l1-6b`, not yet read again. The sweep of `.unpack-*` waits for the wiring task. Found by a separate reviewer on 2026-11-21 in commit `7a339859a`.
+State: Closed in `04679df6a`; the same separate reviewer read it again and closed it on 2026-11-21 (the second read). The sweep of `.unpack-*` waits for the wiring task. Found by a separate reviewer on 2026-11-21 in commit `7a339859a`.
 
 ### SF-NEW-l1fetchc: The unpack folder was opened by path only. Note
 
@@ -2948,7 +2948,7 @@ What it is: The child opened the folder that the daemon named with `O_NOFOLLOW` 
 
 The correction: After the open, the unpack checks with `fstat` that the folder belongs to the effective user and that it holds no entry, and refuses with `limit_disk` otherwise. Each entry is then made relative to that handle (`openat`), as before. Test: `the_unpack_folder_must_be_an_empty_folder_and_not_a_link`.
 
-State: Corrected on `compute/l1-6b`, not yet read again. Found by a separate reviewer on 2026-11-21 in commit `7a339859a`.
+State: Closed in `04679df6a`; the same separate reviewer read it again and closed it on 2026-11-21 (the second read). Found by a separate reviewer on 2026-11-21 in commit `7a339859a`.
 
 ### SF-NEW-l1fetchd: The daemon cannot check what a child that was taken over wrote. Note
 
@@ -2984,7 +2984,7 @@ What it is: A daemon that ended between the check of the parent and the call of 
 
 The correction: The child sets the parent-death signal first, then compares its parent with the process id of the order. A comment and the documentation of `spawn::start` say that on Linux the signal fires when the spawning thread exits, so the daemon spawns the child from a long-lived worker of its async runtime, never from `spawn_blocking`. Test: `the_child_ends_when_its_parent_is_not_the_daemon_of_the_order` (Linux; it runs on GitHub, not on the Mac of the build).
 
-State: Corrected on `compute/l1-6b`, not yet read again. Found by a separate reviewer on 2026-11-21 in commit `04679df6a` (the second read).
+State: Closed in `8f5c4d73b`; the same separate reviewer read it again and closed it on 2026-11-21 (the third read). Found by a separate reviewer on 2026-11-21 in commit `04679df6a` (the second read).
 
 ### SF-NEW-l1fetchg: A wrong unpack folder was reported as `limit_disk`. Low
 
@@ -2996,7 +2996,7 @@ What it is: A folder that does not open, is a link, belongs to a different user 
 
 The correction: These cases give `runtime_not_configured`. Test: `the_unpack_folder_must_be_an_empty_folder_and_not_a_link`.
 
-State: Corrected on `compute/l1-6b`, not yet read again. Found by a separate reviewer on 2026-11-21 in commit `04679df6a` (the second read).
+State: Closed in `8f5c4d73b`; the same separate reviewer read it again and closed it on 2026-11-21 (the third read). Found by a separate reviewer on 2026-11-21 in commit `04679df6a` (the second read).
 
 ### SF-NEW-l1fetchh: An interrupted read ended the watch of the input. Note
 
@@ -3008,7 +3008,7 @@ What it is: A read of the input that a signal interrupted (`EINTR`) was taken as
 
 The correction: The watch reads again after `ErrorKind::Interrupted`, and exits only at the end of the input or at a different error.
 
-State: Corrected on `compute/l1-6b`, not yet read again. Found by a separate reviewer on 2026-11-21 in commit `04679df6a` (the second read).
+State: Closed in `8f5c4d73b`; the same separate reviewer read it again and closed it on 2026-11-21 (the third read). Found by a separate reviewer on 2026-11-21 in commit `04679df6a` (the second read).
 
 ### SF-NEW-l1fetchi: No test runs the redirect policy as the client wires it. Note
 
