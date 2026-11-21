@@ -29,7 +29,7 @@
 
   .answer {
     margin: 0;
-    color: var(--text-secondary);
-    font-size: var(--text-xs);
+    color: var(--code-quiet-text);
+    font-size: var(--code-text-meta);
   }
 </style>

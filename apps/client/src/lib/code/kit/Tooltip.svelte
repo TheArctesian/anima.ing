@@ -9,15 +9,16 @@
     text: string;
     /** The trigger: one focusable control. */
     children: Snippet;
-    /** Open from the start, for the specimen and the gallery. */
-    open?: boolean;
+    /** Above the trigger by default; the band's toggles show theirs below (02 section 4.2). */
+    side?: 'above' | 'below';
   }
 
   /*
-   * A hover tip (02 section 3.3): it opens after `duration.fast` on hover, at once on keyboard focus, above the trigger
-   * by 4 px, and closes on Escape, leaving or blur (WCAG 1.4.13). The panel is opaque (glass is on hold).
+   * A hover tip (02 section 3.3): it opens after `duration.fast` on hover, at once on keyboard focus, 4 px from the
+   * trigger, and closes on Escape, leaving or blur (WCAG 1.4.13). The panel is opaque (glass is on hold).
    */
-  let { text, children, open = $bindable(false) }: Props = $props();
+  const { text, children, side = 'above' }: Props = $props();
+  let open = $state(false);
   const id = $props.id();
   let anchor = $state<HTMLElement>();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -46,7 +47,7 @@
       anchor.getBoundingClientRect(),
       { width: panel.offsetWidth, height: panel.offsetHeight },
       { width: document.documentElement.clientWidth, height: document.documentElement.clientHeight },
-      Number.parseFloat(getComputedStyle(panel).marginBlockEnd) || 0,
+      { side, gap: Number.parseFloat(getComputedStyle(panel).marginBlockEnd) || 0 },
     );
     panel.style.insetInlineStart = `${String(spot.left)}px`;
     panel.style.insetBlockStart = `${String(spot.top)}px`;
@@ -88,7 +89,7 @@
     background: var(--surface-overlay);
     box-shadow: var(--elevation-2);
     color: var(--text);
-    font-size: var(--text-xs);
+    font-size: var(--code-text-meta);
     line-height: var(--leading-tight);
   }
 </style>

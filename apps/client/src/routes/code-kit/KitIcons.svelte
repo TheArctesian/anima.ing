@@ -1,25 +1,21 @@
 <script lang="ts">
-  import { CODE_ICONS } from '$lib/code/kit/icons';
-  import Icon from '$lib/icons/Icon.svelte';
+  import CodeIcon from '$lib/code/icons/CodeIcon.svelte';
+  import { CODE_ICONS, type CodeIconName } from '$lib/code/icons/icons';
 
-  const ICONS = Object.entries(CODE_ICONS);
+  const NAMES = Object.keys(CODE_ICONS) as CodeIconName[];
 </script>
 
-<!-- T3 Code's icons and the one of our drawn set that stands for each; a missing Carbon icon waits for decision D4. -->
+<!-- Every Lucide icon the Code section draws, at stroke 1.5 (D4): the list to redraw in our own set later. -->
 <ul class="icons">
-  {#each ICONS as [lucide, mapped] (lucide)}
-    <li class:wanted={mapped.wanted !== undefined}>
-      <Icon name={mapped.icon} size="sm" />
-      <span>{lucide}</span>
-      <code>{mapped.wanted === undefined ? mapped.icon : `${mapped.icon}, wants ${mapped.wanted}`}</code>
-    </li>
+  {#each NAMES as name (name)}
+    <li><CodeIcon {name} /><code>{name}</code></li>
   {/each}
 </ul>
 
 <style>
   .icons {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
     gap: var(--space-2) var(--space-6);
     margin: 0;
     padding: 0;
@@ -27,20 +23,14 @@
   }
 
   li {
-    display: grid;
-    grid-template-columns: var(--icon-sm) 10rem 1fr;
+    display: flex;
     align-items: center;
     gap: var(--space-2);
-    font-size: var(--text-sm);
   }
 
   code {
-    color: var(--text-secondary);
+    color: var(--code-quiet-text);
     font-family: var(--font-mono);
-    font-size: var(--text-xs);
-  }
-
-  .wanted code {
-    color: var(--status-degraded-text);
+    font-size: var(--code-text-meta);
   }
 </style>

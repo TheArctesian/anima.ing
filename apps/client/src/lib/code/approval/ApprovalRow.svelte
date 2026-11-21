@@ -1,6 +1,6 @@
 <script lang="ts">
   import FormButton from '$lib/forms/FormButton.svelte';
-  import Icon from '$lib/icons/Icon.svelte';
+  import CodeIcon from '../icons/CodeIcon.svelte';
   import Menu from '../kit/Menu.svelte';
   import type { MenuEntry } from '../kit/menu';
   import { APPROVAL_LOOKS, DEFAULT_MORE, PROCESS_GONE, type ApprovalKind } from './approval';
@@ -32,7 +32,7 @@
 -->
 <div class="approval" role="group" aria-label={look.name}>
   <div class="line">
-    <Icon name={look.icon} size="sm" />
+    <CodeIcon name={look.icon} />
     <!-- The detail scrolls past 10rem, so the keyboard must reach it. -->
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
     <code tabindex="0">{detail}</code>
@@ -41,13 +41,13 @@
     {#if app !== undefined}<span class="quiet">{app}</span>{/if}
     {#if reason !== undefined}<span class="quiet">{reason}</span>{/if}
     <div class="answers">
-      <span class="waiting"><Icon name="carbon:security" size="sm" />Waiting for approval</span>
+      <span class="waiting"><CodeIcon name="shield" />Waiting for approval</span>
       {#if gone}
         <span class="waiting">{PROCESS_GONE}</span>
       {:else}
         <FormButton size="sm" disabled={locked} onclick={() => { onDecide('decline'); }}>Decline</FormButton>
         <FormButton size="sm" tone="primary" disabled={locked} onclick={() => { onDecide('accept'); }}>Approve</FormButton>
-        <Menu label="More approval options" face={{ icon: 'carbon:overflow-menu-vertical' }} entries={more} side={{ side: 'above', align: 'end' }} disabled={locked} onChoose={onDecide} />
+        <Menu label="More approval options" face={{ icon: 'ellipsis' }} entries={more} side={{ side: 'above', align: 'end' }} disabled={locked} onChoose={onDecide} />
       {/if}
     </div>
   </div>
@@ -67,9 +67,9 @@
     gap: var(--space-3);
   }
 
-  .line > :global(.icon) {
+  .line > :global(.code-icon) {
     margin-block-start: 2px;
-    color: var(--text-secondary);
+    color: var(--code-quiet-text);
   }
 
   code {
@@ -78,7 +78,7 @@
     max-block-size: var(--code-detail-max);
     overflow-y: auto;
     font-family: var(--font-mono);
-    font-size: var(--text-xs);
+    font-size: var(--code-text-meta);
     line-height: var(--leading-normal);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -99,8 +99,8 @@
   }
 
   .quiet {
-    color: var(--text-secondary);
-    font-size: var(--text-xs);
+    color: var(--code-quiet-text);
+    font-size: var(--code-text-meta);
   }
 
   .answers {
@@ -116,6 +116,6 @@
     gap: var(--space-1);
     margin-inline-end: var(--space-2);
     color: var(--status-degraded-text);
-    font-size: var(--text-xs);
+    font-size: var(--code-text-meta);
   }
 </style>

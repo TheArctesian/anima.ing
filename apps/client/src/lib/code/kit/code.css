@@ -13,8 +13,15 @@
   --code-inbox-max: calc(var(--space-16) * 5);
   --code-inbox-inset: var(--space-2);
 
-  /* The conversation lane: 46rem, centred. */
+  /* The conversation lane, centred: 46rem by default ("comfortable"); see the reader settings below. */
   --code-lane: 46rem;
+
+  /* Text: times the text scale of the reader settings below. */
+  --code-text-scale: 1;
+
+  /* Quiet text and lines: the secondary token, at least 4.5:1 on each surface of the theme. */
+  --code-quiet-text: var(--text-secondary);
+  --code-line: var(--border-subtle);
 
   /* Inbox rows: the card is 78 px with three lines, the one-liner 36 px, the shelf header 32 px. */
   --code-card: 4.875rem;
@@ -47,4 +54,38 @@
 
   /* Scroll area: a 6 px thumb, shown while the pointer is over the area or it scrolls. */
   --code-scroll-thumb: 0.375rem;
+}
+
+/*
+ * The reader settings of the Code section (D12, operator 2026-11-21: "All that apply"): chat width, text size and
+ * contrast. A setting sets the attribute on the section's root; the settings page is stage 6. Each value keeps the
+ * 12 px minimum (the scale only grows) and 4.5:1 (more contrast only moves quiet text to the full text token).
+ */
+[data-code-width='wide'] {
+  --code-lane: 72rem;
+}
+
+[data-code-width='full'] {
+  --code-lane: 100%;
+}
+
+/* Text: the body of a chat 14 px, small text 13 px, metadata 12 px. Worked out again where a setting sets the scale. */
+:root,
+[data-code-text] {
+  --code-text-body: calc(var(--text-md) * var(--code-text-scale));
+  --code-text-small: calc(var(--text-sm) * var(--code-text-scale));
+  --code-text-meta: max(var(--text-xs), calc(var(--text-xs) * var(--code-text-scale)));
+}
+
+[data-code-text='large'] {
+  --code-text-scale: 1.0715;
+}
+
+[data-code-text='larger'] {
+  --code-text-scale: 1.1429;
+}
+
+[data-code-contrast='more'] {
+  --code-quiet-text: var(--text);
+  --code-line: var(--border-strong);
 }

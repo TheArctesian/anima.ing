@@ -1,4 +1,4 @@
-import type { IconName } from '$lib/icons/icons';
+import type { CodeIconName } from '../icons/icons';
 import type { Anchor, Size } from '$lib/overlay/helptip/placement';
 
 /** One row of a menu (02 section 3.5): a choice, a group label or a line between groups. */
@@ -7,7 +7,7 @@ export type MenuEntry =
       readonly kind: 'choice';
       readonly id: string;
       readonly label: string;
-      readonly icon?: IconName;
+      readonly icon?: CodeIconName;
       /** A key for it, right aligned: "⌘K". */
       readonly shortcut?: string;
       /** A value right aligned in tabular numbers: a wake time. */

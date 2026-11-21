@@ -1,7 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
-  import Icon from '$lib/icons/Icon.svelte';
-  import type { IconName } from '$lib/icons/icons';
+  import CodeIcon from '../icons/CodeIcon.svelte';
+  import type { CodeIconName } from '../icons/icons';
   import { press } from '$lib/motion/roles/press';
   import { popover } from '$lib/motion/roles/transitions';
   import { menuPlace, nextChoice, type MenuChoice, type MenuEntry, type MenuSide } from './menu';
@@ -12,7 +12,7 @@
     entries: readonly MenuEntry[];
     onChoose: (id: string) => void;
     /** The trigger: inline words (the approval row's "More") or a 28 px icon button. */
-    face: { readonly text: string } | { readonly icon: IconName };
+    face: { readonly text: string } | { readonly icon: CodeIconName };
     side?: MenuSide;
     disabled?: boolean;
     /** Open from the start, for the specimen and the gallery. */
@@ -104,7 +104,7 @@
     onkeydown={onTriggerKey}
     {@attach press()}
   >
-    {#if 'text' in face}{face.text}{:else}<Icon name={face.icon} size="sm" />{/if}
+    {#if 'text' in face}{face.text}{:else}<CodeIcon name={face.icon} />{/if}
   </button>
   {#if open}
     <div class="menu" id="{id}-menu" role="menu" aria-label={label} tabindex="-1" onkeydown={onMenuKey} transition:popover={{ from: trigger }} {@attach place}>
@@ -123,7 +123,7 @@
             bind:this={buttons[indexOf(entry)]}
             onclick={() => { choose(entry); }}
           >
-            {#if entry.icon !== undefined}<Icon name={entry.icon} size="sm" />{/if}
+            {#if entry.icon !== undefined}<CodeIcon name={entry.icon} />{/if}
             <span class="label">{entry.label}</span>
             {#if entry.detail !== undefined}<span class="detail">{entry.detail}</span>{/if}
             {#if entry.shortcut !== undefined}<span class="detail">{entry.shortcut}</span>{/if}
@@ -148,8 +148,8 @@
 
   .words {
     padding: 0;
-    color: var(--text-secondary);
-    font-size: var(--text-xs);
+    color: var(--code-quiet-text);
+    font-size: var(--code-text-meta);
     font-weight: var(--weight-medium);
   }
 
@@ -165,7 +165,7 @@
     inline-size: var(--code-control-dense);
     block-size: var(--code-control-dense);
     border-radius: var(--radius-md);
-    color: var(--text-secondary);
+    color: var(--code-quiet-text);
   }
 
   .square:hover:not(:disabled),
@@ -206,12 +206,12 @@
     padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-sm);
     color: var(--text);
-    font-size: var(--text-md);
+    font-size: var(--code-text-body);
     text-align: start;
   }
 
-  .menu [role='menuitem'] :global(.icon) {
-    color: var(--text-secondary);
+  .menu [role='menuitem'] :global(.code-icon) {
+    color: var(--code-quiet-text);
   }
 
   .menu [role='menuitem']:hover,
@@ -234,16 +234,16 @@
 
   .detail {
     padding-inline-start: var(--space-4);
-    color: var(--text-secondary);
-    font-size: var(--text-xs);
+    color: var(--code-quiet-text);
+    font-size: var(--code-text-meta);
     font-weight: var(--weight-medium);
     font-variant-numeric: tabular-nums;
   }
 
   .group {
     padding: var(--space-2) var(--space-2) var(--space-1);
-    color: var(--text-secondary);
-    font-size: var(--text-xs);
+    color: var(--code-quiet-text);
+    font-size: var(--code-text-meta);
     font-weight: var(--weight-medium);
   }
 

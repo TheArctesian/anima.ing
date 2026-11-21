@@ -1,4 +1,4 @@
-import type { IconName } from '$lib/icons/icons';
+import type { CodeIconName } from '../icons/icons';
 
 /** The states a chat shows in the inbox, as T3 Code names them (t3-ui-copy-2026-11-21/02 section 5.5). */
 export type ChatStatus = 'preparing' | 'working' | 'waiting' | 'approval' | 'input' | 'request' | 'limited' | 'failed' | 'woke' | 'done';
@@ -8,22 +8,22 @@ export type StatusTone = 'accent' | 'degraded' | 'down' | 'up' | 'secondary';
 
 export interface StatusLook {
   readonly label: string;
-  readonly icon: IconName;
+  readonly icon: CodeIconName;
   readonly tone: StatusTone;
 }
 
 /** Each state shows an icon and a word, never a colour alone. */
 export const STATUS_LOOKS: Readonly<Record<ChatStatus, StatusLook>> = {
-  preparing: { label: 'Setting up', icon: 'carbon:circle-dash', tone: 'accent' },
-  working: { label: 'Working', icon: 'carbon:circle-dash', tone: 'accent' },
-  waiting: { label: 'Waiting', icon: 'carbon:time', tone: 'secondary' },
-  approval: { label: 'Approval', icon: 'carbon:security', tone: 'degraded' },
-  input: { label: 'Input', icon: 'carbon:information', tone: 'degraded' },
-  request: { label: 'Request', icon: 'carbon:user', tone: 'degraded' },
-  limited: { label: 'Limited', icon: 'carbon:warning', tone: 'degraded' },
-  failed: { label: 'Failed', icon: 'carbon:warning', tone: 'down' },
-  woke: { label: 'Woke', icon: 'carbon:notification', tone: 'degraded' },
-  done: { label: 'Done', icon: 'carbon:checkmark-outline', tone: 'up' },
+  preparing: { label: 'Setting up', icon: 'circle-dashed', tone: 'accent' },
+  working: { label: 'Working', icon: 'circle-dashed', tone: 'accent' },
+  waiting: { label: 'Waiting', icon: 'circle-dot-dashed', tone: 'secondary' },
+  approval: { label: 'Approval', icon: 'shield-question', tone: 'degraded' },
+  input: { label: 'Input', icon: 'message-circle-question', tone: 'degraded' },
+  request: { label: 'Request', icon: 'user-round', tone: 'degraded' },
+  limited: { label: 'Limited', icon: 'circle-alert', tone: 'degraded' },
+  failed: { label: 'Failed', icon: 'circle-alert', tone: 'down' },
+  woke: { label: 'Woke', icon: 'alarm-clock', tone: 'degraded' },
+  done: { label: 'Done', icon: 'circle-check', tone: 'up' },
 };
 
 const MINUTE = 60_000;

@@ -36,8 +36,11 @@ describe('where a menu opens', () => {
     expect(menuPlace(low, panel, viewport, { side: 'below', align: 'start', gap: 4 })).toEqual({ left: 10, top: 456 });
   });
 
-  it('keeps a tip centred above its trigger and inside the window', () => {
-    expect(tipPlace({ left: 100, top: 100, width: 40, height: 20 }, { width: 80, height: 24 }, viewport, 4)).toEqual({ left: 80, top: 72 });
-    expect(tipPlace({ left: 0, top: 10, width: 20, height: 20 }, { width: 80, height: 24 }, viewport, 4)).toEqual({ left: 0, top: 34 });
+  it('centres a tip on its trigger, on the asked side when there is room, inside the window', () => {
+    const tip = { width: 80, height: 24 };
+    expect(tipPlace({ left: 100, top: 100, width: 40, height: 20 }, tip, viewport, { side: 'above', gap: 4 })).toEqual({ left: 80, top: 72 });
+    expect(tipPlace({ left: 0, top: 10, width: 20, height: 20 }, tip, viewport, { side: 'above', gap: 4 })).toEqual({ left: 0, top: 34 });
+    expect(tipPlace({ left: 100, top: 14, width: 28, height: 28 }, tip, viewport, { side: 'below', gap: 4 })).toEqual({ left: 74, top: 46 });
+    expect(tipPlace({ left: 100, top: 570, width: 28, height: 28 }, tip, viewport, { side: 'below', gap: 4 })).toEqual({ left: 74, top: 542 });
   });
 });

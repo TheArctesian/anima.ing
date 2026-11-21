@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Icon from '$lib/icons/Icon.svelte';
+  import CodeIcon from '../icons/CodeIcon.svelte';
   import { STATUS_LOOKS, type ChatStatus } from './status';
 
   interface Props {
@@ -11,7 +11,7 @@
 </script>
 
 <!-- The status slot of an inbox row: a 16 px icon and the word, in the state's status token. The icon does not spin. -->
-<span class="mark {look.tone}"><Icon name={look.icon} size="sm" />{look.label}</span>
+<span class="mark {look.tone}"><CodeIcon name={look.icon} />{look.label}</span>
 
 <style>
   .mark {
@@ -19,7 +19,7 @@
     align-items: center;
     gap: var(--space-1);
     min-block-size: var(--space-5);
-    font-size: var(--text-xs);
+    font-size: var(--code-text-meta);
     font-weight: var(--weight-medium);
     white-space: nowrap;
   }
@@ -41,6 +41,6 @@
   }
 
   .secondary {
-    color: var(--text-secondary);
+    color: var(--code-quiet-text);
   }
 </style>

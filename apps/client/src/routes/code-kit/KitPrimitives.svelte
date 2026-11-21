@@ -1,5 +1,7 @@
 <script lang="ts">
+  import CodeIcon from '$lib/code/icons/CodeIcon.svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
+  import IconButton from '$lib/code/kit/IconButton.svelte';
   import Kbd from '$lib/code/kit/Kbd.svelte';
   import Menu from '$lib/code/kit/Menu.svelte';
   import type { MenuEntry } from '$lib/code/kit/menu';
@@ -13,15 +15,15 @@
   const AGES = [30_000, 5 * 60_000, 3 * 3_600_000, 2 * 86_400_000].map((age) => shortAge(NOW - age, NOW));
 
   const ROW_MENU: readonly MenuEntry[] = [
-    { kind: 'choice', id: 'pin', label: 'Pin', icon: 'carbon:tag' },
-    { kind: 'choice', id: 'rename', label: 'Rename', icon: 'carbon:edit', shortcut: 'F2' },
-    { kind: 'choice', id: 'copy', label: 'Copy link', icon: 'carbon:copy', disabled: true },
+    { kind: 'choice', id: 'pin', label: 'Pin', icon: 'pin' },
+    { kind: 'choice', id: 'rename', label: 'Rename', icon: 'square-pen', shortcut: 'F2' },
+    { kind: 'choice', id: 'copy', label: 'Copy link', icon: 'copy', disabled: true },
     { kind: 'line' },
     { kind: 'group', label: 'Snooze until' },
     { kind: 'choice', id: 'hour', label: 'In an hour', detail: '13:00' },
     { kind: 'choice', id: 'tomorrow', label: 'Tomorrow', detail: 'Sat 09:00' },
     { kind: 'line' },
-    { kind: 'choice', id: 'archive', label: 'Archive', icon: 'carbon:trash-can', danger: true },
+    { kind: 'choice', id: 'archive', label: 'Archive', icon: 'trash-2', danger: true },
   ];
 
   let chosen = $state('none');
@@ -46,17 +48,17 @@
   <div class="cell" data-kit="tooltip">
     <h3>Tooltip</h3>
     <p class="row">
-      <Tooltip text="Settle thread"><FormButton size="sm" icon="carbon:checkmark">Settle</FormButton></Tooltip>
-      <Tooltip text="Snooze thread"><FormButton size="sm" tone="ghost" icon="carbon:time" label="Snooze" /></Tooltip>
+      <Tooltip text="Settle thread"><FormButton size="sm"><CodeIcon name="check" />Settle</FormButton></Tooltip>
+      <Tooltip text="Snooze thread"><IconButton label="Snooze" icon="clock" onclick={() => (chosen = 'snooze')} /></Tooltip>
     </p>
   </div>
 
   <div class="cell" data-kit="menu">
     <h3>Menu</h3>
     <p class="row">
-      <Menu label="Chat actions" face={{ icon: 'carbon:overflow-menu-vertical' }} entries={ROW_MENU} onChoose={(id) => (chosen = id)} />
+      <Menu label="Chat actions" face={{ icon: 'ellipsis' }} entries={ROW_MENU} onChoose={(id) => (chosen = id)} />
       <Menu label="More options" face={{ text: 'More' }} entries={ROW_MENU} side={{ side: 'above', align: 'end' }} onChoose={(id) => (chosen = id)} />
-      <Menu label="Locked options" face={{ icon: 'carbon:overflow-menu-vertical' }} entries={ROW_MENU} disabled onChoose={(id) => (chosen = id)} />
+      <Menu label="Locked options" face={{ icon: 'ellipsis' }} entries={ROW_MENU} disabled onChoose={(id) => (chosen = id)} />
     </p>
     <p class="ages" aria-live="polite">Chosen: {chosen}</p>
   </div>
@@ -88,7 +90,7 @@
 
   h3 {
     margin: 0;
-    font-size: var(--text-sm);
+    font-size: var(--code-text-small);
     font-weight: var(--weight-medium);
   }
 
@@ -103,8 +105,8 @@
 
   .ages {
     margin: 0;
-    color: var(--text-secondary);
-    font-size: var(--text-xs);
+    color: var(--code-quiet-text);
+    font-size: var(--code-text-meta);
   }
 
   .row {
@@ -130,6 +132,6 @@
   .line {
     margin: 0;
     padding: var(--space-1) var(--space-3);
-    font-size: var(--text-sm);
+    font-size: var(--code-text-small);
   }
 </style>

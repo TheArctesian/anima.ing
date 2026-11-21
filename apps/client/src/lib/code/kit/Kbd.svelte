@@ -22,9 +22,9 @@
     padding: 0 var(--space-1);
     border-radius: var(--radius-sm);
     background: var(--surface-sunken);
-    color: var(--text-secondary);
+    color: var(--code-quiet-text);
     font-family: var(--font-ui);
-    font-size: var(--text-xs);
+    font-size: var(--code-text-meta);
     font-weight: var(--weight-medium);
     line-height: 1;
     white-space: nowrap;
