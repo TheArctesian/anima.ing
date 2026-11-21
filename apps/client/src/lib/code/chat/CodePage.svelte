@@ -10,12 +10,14 @@
   import { inboxEngine } from '../inbox/engine';
   import InboxColumn from '../inbox/InboxColumn.svelte';
   import { InboxView } from '../inbox/view.svelte';
-  import Band from '../kit/Band.svelte';
-  import IconButton from '../kit/IconButton.svelte';
-  import Tooltip from '../kit/Tooltip.svelte';
+  import CommandPalette from '../palette/CommandPalette.svelte';
+  import ChatHeader from '../shell/ChatHeader.svelte';
+  import InboxToggle from '../shell/InboxToggle.svelte';
+  import TopBand from '../shell/TopBand.svelte';
   import ChatColumn from './ChatColumn.svelte';
-  // The one mounting line of the band (agreed with the shell session): `$lib/code/shell/ChatHeader.svelte` when it lands.
-  import ChatHeader from './HeaderStandIn.svelte';
+  // The foot of the column until the composer of stage 4 lands.
+  import ComposerStandIn from './ComposerStandIn.svelte';
+  import { paletteHost } from './palette-host';
   import ThreadBody from './ThreadBody.svelte';
 
   interface Props {
@@ -34,6 +36,15 @@
   const linkWords = $derived(live === null ? null : live.linked === false ? (live.problem ?? 'The thread runner of this computer is not running. Start the Anima daemon to start threads.') : live.holder);
   const newOff = $derived(live === null ? 'Threads start in the desktop application.' : live.linked === false ? 'The thread runner is not running.' : null);
   /** The row of the open thread, for the band. */
+  const palette = $derived(
+    paletteHost({
+      rows: store.listedRows,
+      failed: store.listProblem !== null || live?.linked === false,
+      chosen: store.chosen,
+      newThread: newOff === null ? () => (starting = true) : undefined,
+      open: (id) => void choose(id),
+    }),
+  );
   const open = $derived(store.chosen === null ? undefined : ((store.listedRows ?? []).find((row) => row.id === store.chosen) ?? (store.thread?.id === store.chosen ? store.thread : undefined)));
 
   async function choose(id: string): Promise<void> {
@@ -103,17 +114,14 @@
 <svelte:window {onkeydown} />
 
 {#snippet toggle()}
-  <Tooltip text={inboxOpen ? 'Hide the thread list' : 'Show the thread list'} side="below">
-    <IconButton label="Thread list" icon={inboxOpen ? 'panel-left-close' : 'panel-left'} pressed={inboxOpen} onclick={() => (inboxOpen = !inboxOpen)} />
-  </Tooltip>
+  <InboxToggle open={inboxOpen} ontoggle={() => (inboxOpen = !inboxOpen)} />
 {/snippet}
 
 <!-- The page Code as T3 Code lays it out (02 section 4): the inbox column beside the chat column, each under its band. -->
 <div class="code" class:folded={!inboxOpen} bind:this={page} {@attach fillRoom()}>
   {#if inboxOpen}
     <aside class="inbox" aria-label="Threads of this computer">
-      <!-- The top band of the window moves it; its buttons and fields still click (the shell session, D1b). -->
-      <div data-tauri-drag-region="deep"><Band end={toggle}><span class="name">Code</span></Band></div>
+      <TopBand start={toggle}><span class="name">Code</span></TopBand>
       <InboxColumn {view} {store} onOpen={(id) => void choose(id)} {newOff} onNew={() => (starting = true)} bind:field />
     </aside>
   {/if}
@@ -121,8 +129,10 @@
     {#snippet header()}<ChatHeader thread={open} start={inboxOpen ? undefined : toggle} />{/snippet}
     {#snippet notice()}{#if linkWords !== null}<p class="link" role="status">{linkWords}</p>{/if}{/snippet}
     <ThreadBody {store} now={view.moment} {toolsOpen} />
+    {#snippet composer()}{#if store.liveThread !== null && live !== null}<ComposerStandIn thread={store.liveThread} {live} />{/if}{/snippet}
   </ChatColumn>
 </div>
+<CommandPalette host={palette} />
 {#if live !== null}
   <NewThread
     open={starting}
