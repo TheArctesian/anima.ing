@@ -2,9 +2,9 @@
 # The keychain and profile are on the disposable runner. The upload key is supplied separately.
 set -euo pipefail
 umask 077
-: "${IOS_DISTRIBUTION_P12_BASE64:?Set the iOS certificate in this TestFlight environment}"
-: "${IOS_DISTRIBUTION_P12_PASSWORD:?Set the iOS certificate password in this TestFlight environment}"
-: "${IOS_PROVISIONING_PROFILE_BASE64:?Set the iOS provisioning profile in this TestFlight environment}"
+: "${IOS_DISTRIBUTION_P12_BASE64:?Set the iOS certificate in the release environment}"
+: "${IOS_DISTRIBUTION_P12_PASSWORD:?Set the iOS certificate password in the release environment}"
+: "${IOS_PROVISIONING_PROFILE_BASE64:?Set the iOS provisioning profile in the release environment}"
 
 keychain="$RUNNER_TEMP/testflight.keychain-db"
 password=$(openssl rand -hex 24)

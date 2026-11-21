@@ -423,13 +423,14 @@ from the first-parent history of `main`.
 
 | Branch | GitHub environment | GitHub variable | TestFlight group |
 | --- | --- | --- | --- |
-| `dev` | `testflight-dev` | `ANIMA_TESTFLIGHT_DEV=on` | Anima Internal |
-| `main` | `testflight-main` | `ANIMA_TESTFLIGHT_MAIN=on` | Anima External |
+| `dev` | `release` | `ANIMA_TESTFLIGHT_DEV=on` | Anima Internal |
+| `main` | `release` | `ANIMA_TESTFLIGHT_MAIN=on` | Anima External |
 
-Each environment allows deployments from its named branch. The operator supplies
+The operator authorized the `release` environment to allow deployments from `dev` and
+`main`. Both jobs use the existing iOS secrets. The operator supplies
 `IOS_DISTRIBUTION_P12_BASE64`, `IOS_DISTRIBUTION_P12_PASSWORD`,
 `IOS_PROVISIONING_PROFILE_BASE64`, `ASC_API_PRIVATE_KEY`, `ASC_API_KEY_ID` and
-`ASC_API_ISSUER_ID` in each environment. The key is an App Store Connect team key
+`ASC_API_ISSUER_ID` in `release`. The key is an App Store Connect team key
 with App Manager access. The old `ANIMA_PUBLIC_TESTFLIGHT` switch stays off when
 using the branch workflow.
 

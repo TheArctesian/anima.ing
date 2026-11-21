@@ -1,9 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 umask 077
-: "${ASC_API_PRIVATE_KEY:?Set the App Store Connect key in this TestFlight environment}"
-: "${ASC_API_KEY_ID:?Set the App Store Connect key ID in this TestFlight environment}"
-: "${ASC_API_ISSUER_ID:?Set the App Store Connect issuer ID in this TestFlight environment}"
+: "${ASC_API_PRIVATE_KEY:?Set the App Store Connect key in the release environment}"
+: "${ASC_API_KEY_ID:?Set the App Store Connect key ID in the release environment}"
+: "${ASC_API_ISSUER_ID:?Set the App Store Connect issuer ID in the release environment}"
 
 case "$GITHUB_REF_NAME" in
     dev) internal=true ;;

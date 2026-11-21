@@ -43,7 +43,7 @@ jobs:
     permissions:
       contents: read
     environment:
-      name: testflight-${{ github.ref_name }}
+      name: release
     env:
       CI: "true"
     steps:
