@@ -77,8 +77,10 @@ jobs:
         with:
           go-version-file: link/go.mod
           cache: false
+      # The installer step builds the PostgreSQL tree too; that build bounds each of its own steps.
       - name: Build the native installer
         shell: pwsh
+        timeout-minutes: 90
         run: |
           $ErrorActionPreference = 'Stop'
           $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
@@ -141,6 +143,14 @@ jobs:
           if ($digest -ne 'ba35ee0ce14ace65cd8c7aaa9613adb7d2644b0fe3866e85131eb4c269786efb') { throw "cargo-nextest has the digest $digest" }
           Expand-Archive $zip -DestinationPath "$env:RUNNER_TEMP/nextest"
           "$env:RUNNER_TEMP/nextest" >> $env:GITHUB_PATH
+      # Its own step with its own limit: this build hung once for hours, before the gates began.
+      - name: Build the PostgreSQL tree of the installer
+        shell: pwsh
+        timeout-minutes: 30
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & bun apps/desktop/src-tauri/database-tree/windows.ts "$pwd/target/windows-database-work" "$pwd/apps/desktop/src-tauri/database"
+          if ($LASTEXITCODE -ne 0) { throw 'The PostgreSQL tree failed' }
       - name: Run the Windows gates
         shell: pwsh
         env:
@@ -153,10 +163,8 @@ jobs:
           if (-not $installation) { throw 'MSVC build tools are missing' }
           Import-Module "$installation/Common7/Tools/Microsoft.VisualStudio.DevShell.dll"
           Enter-VsDevShell -VsInstallPath $installation -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64'
-          # The PostgreSQL tree of the installer, built from the same verified archives.
+          # The PostgreSQL tree of the installer, built in the step before from the same verified archives.
           $env:ANIMA_POSTGRES_TREE = "$pwd/apps/desktop/src-tauri/database"
-          & bun apps/desktop/src-tauri/database-tree/windows.ts "$pwd/target/windows-database-work" $env:ANIMA_POSTGRES_TREE
-          if ($LASTEXITCODE -ne 0) { throw 'The PostgreSQL tree failed' }
           $env:PATH = "$env:ANIMA_POSTGRES_TREE/bin;C:/msys64/mingw64/bin;$env:PATH"
           $proof = $env:EVENT -eq 'workflow_dispatch'
           $keepGoing = @(); if ($proof) { $keepGoing = @('--keep-going') }

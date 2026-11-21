@@ -324,6 +324,10 @@ source file that is older than that build, so a worktree with a fault can pass (
 [quality/README.md](quality/README.md), "The build cache"). Two sessions that build at the same time with
 sccache do not wait on each other: each compiles in its own `target/` and both read and write the cache.
 Set `RUSTC_WRAPPER=` (empty) to run without the cache. `sccache --show-stats` shows the hit rate.
+Cargo never removes an old build, so a `target/` grows to tens of GB. After your branch lands in `dev`, run
+`bun run worktrees:sweep`: for each linked worktree whose branch tip is in `origin/dev`, with no process in its
+folder and no uncommitted change, it removes only `target/` and says how much it freed. It never removes a
+worktree, a branch or the `target/` of a branch that is not in `dev`. `bun run worktrees:sweep -- --plan` only lists.
 cargo-nextest must be on `PATH` (`cargo install cargo-nextest --locked`; put `~/.cargo/bin` on `PATH`).
 Go must be on `PATH` (`brew install go`); `link/go.mod` sets the lowest Go version and pins the two lint tools, so
 nothing else is installed for the Go gates.

@@ -1,7 +1,11 @@
 import type { LiveThreads } from './live/live.svelte';
+import { listed, type Listing } from './listing/listing';
 import { mergedRows } from './live/rows';
 import { markSeen, needsYouCount, storedSeen, type Seen } from './state';
 import type { Thread, ThreadRow, ThreadsShell } from './thread';
+
+/** No listing: where there is no runner. */
+const NO_LISTINGS: ReadonlyMap<string, Listing> = new Map();
 
 /** The threads of this computer and the one that is open (THR-011). The last answer that was asked for wins. */
 export class ThreadsStore {
@@ -33,11 +37,21 @@ export class ThreadsStore {
   /** The rows of the list: the driven threads, then the session files that are not one of them (THR-056). */
   readonly allRows = $derived.by(() => (this.rows === null ? null : mergedRows(this.rows, [...(this.live?.threads.values() ?? [])])));
 
+  /** Whether the list shows the archived threads in place of the others (TH46). */
+  archived = $state(false);
+
+  /** The rows as the person lists them: no removed thread, and only the archived ones when asked (TH46). */
+  readonly listedRows = $derived.by(() => (this.allRows === null ? null : listed(this.allRows, this.live?.listings ?? NO_LISTINGS, this.archived)));
+
+  /** How many threads are archived. */
+  readonly archivedCount = $derived.by(() => [...(this.live?.listings.values() ?? [])].filter((listing) => listing.archived && !listing.removed).length);
+
   /** The driven thread that is open, or `null` when the open thread is a session file. */
   readonly liveThread = $derived.by(() => (this.chosen === null ? null : (this.live?.threads.get(this.chosen) ?? null)));
 
   /** How many threads need the person (THR-057). */
-  readonly needsYou = $derived(needsYouCount(this.allRows ?? [], this.readAt, this.seen));
+  /** An archived or removed thread is not counted: the person put it away (TH46). */
+  readonly needsYou = $derived.by(() => needsYouCount(this.allRows === null ? [] : listed(this.allRows, this.live?.listings ?? NO_LISTINGS, false), this.readAt, this.seen));
 
   /** Reads the list again; the rows on the screen stay until the new ones come. */
   async loadList(): Promise<void> {
@@ -45,6 +59,7 @@ export class ThreadsStore {
       this.rows = await this.shell.list(null);
       this.readAt = this.now();
       this.listProblem = null;
+      void this.live?.readListings();
       // The list is read only while the window is seen: the open thread is in front of the person.
       if (this.chosen !== null) this.markSeen(this.chosen);
     } catch (reason) {

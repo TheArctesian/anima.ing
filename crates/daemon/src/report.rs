@@ -101,9 +101,47 @@ fn sampling_returned() {
     tracing::error!("sampling stopped before the daemon was told to stop");
 }
 
+/// An old link origin that did not move: the daemon sends through `socket`, to a peer that passes
+/// the check, and asks the socket of the move again each minute (R-317).
+#[cfg(unix)]
+pub fn old_origin_waits(socket: &std::path::Path) {
+    tracing::warn!(
+        socket = %socket.display(),
+        "enrolled with an old link origin: sending through this socket of anima-link, only to the link of this user that passes the check, until the move to it"
+    );
+}
+
+#[cfg(unix)]
+pub fn moved() {
+    tracing::info!("the old link origin moved to the socket of anima-link");
+}
+
+#[cfg(unix)]
+pub fn move_failed(error: &crate::runtime::old_origin::MoveError) {
+    tracing::error!(%error, "the old link origin could not move; trying again at the next start");
+}
+
 /// Once, when the log file cannot be opened: the log goes to standard error.
 pub fn log_file_refused(error: &std::io::Error) {
     tracing::error!(%error, "the log file could not be opened; logging to standard error");
+}
+
+/// Once, when the first read of the token waits for the person in the Keychain: the daemon
+/// keeps running without its token and reads again (R-322).
+pub fn keychain_waits() {
+    tracing::warn!(
+        "this computer's daemon needs you to allow it in the Keychain: click Always Allow in the window of macOS; it reads the token again every 30 s, after 10 minutes every 5 minutes"
+    );
+}
+
+/// The read of the token answered after it waited for the person.
+pub fn keychain_answered() {
+    tracing::info!("the Keychain answered the read of the token");
+}
+
+/// The file that tells the app that the daemon waits could not be written or deleted.
+pub fn keychain_mark_refused(error: &std::io::Error) {
+    tracing::warn!(%error, "the mark of the wait for the Keychain could not be changed");
 }
 
 /// The run ended on an error; the service manager starts the daemon again.

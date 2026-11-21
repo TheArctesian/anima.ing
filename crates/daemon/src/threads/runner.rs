@@ -11,9 +11,12 @@ mod accounts;
 mod calls;
 pub mod codex;
 mod holder_events;
+mod listings;
 pub mod log;
 pub mod login;
+pub mod peer;
 pub mod record;
+mod silence;
 pub mod socket;
 mod start;
 #[cfg(test)]
@@ -36,8 +39,6 @@ use thread::{Step, Thread};
 
 /// The most stopped threads that the runner keeps; the oldest go first.
 const STOPPED_KEPT: usize = 50;
-/// The longest wait between two tries to reach the holder.
-const RETRY_MOST: Duration = Duration::from_secs(30);
 
 #[derive(Debug, thiserror::Error)]
 pub enum RunnerError {
@@ -88,8 +89,8 @@ pub struct Runner {
     dir: PathBuf,
     program: PathBuf,
     link: HolderLink,
-    /// The holder speaks the version of this runner; until it says so, nothing starts.
-    holder_fits: bool,
+    /// What the runner knows of the holder (THR-113, TH98).
+    holder: holder_events::Standing,
     env: Vec<(String, String)>,
     /// The environment of the daemon, to ask the login shell again when a program is not found.
     daemon_env: Vec<(String, String)>,
@@ -97,6 +98,8 @@ pub struct Runner {
     asked_again: Option<std::time::Instant>,
     threads: BTreeMap<Uuid, Thread>,
     limits: Limits,
+    /// How the person lists each thread (TH46).
+    listings: BTreeMap<Uuid, agent_threads::control::Listing>,
     watchers: Vec<Client>,
     waits: BTreeMap<u64, Waits>,
     /// The commands that change a program and that the holder did not answer yet: a new link
@@ -106,6 +109,13 @@ pub struct Runner {
     /// again is not read twice.
     read_up_to: BTreeMap<Uuid, u64>,
     log: log::RunnerLog,
+    /// The copies that were asked for their version and the threads that wait for their first
+    /// line (TH97).
+    silence: silence::Silence,
+    /// The starts whose copy is being asked for its version.
+    asks: start::Asks,
+    /// When each thread last got the words of a lost sign-in (TH99).
+    sign_in_told: BTreeMap<Uuid, std::time::Instant>,
     /// What the programs said of their accounts: in memory only (THR-051).
     accounts: accounts::Accounts,
 }
@@ -145,24 +155,32 @@ pub async fn run(
     let env = login::environment(&daemon_env).await;
     tokio::pin!(stop);
     let link = tokio::select! {
-        link = reach_patiently(program, &dir) => link,
+        link = link::reach_patiently(program, &dir) => link,
         () = &mut stop => return Ok(()),
     };
     let mut runner = Runner {
         dir: dir.clone(),
         program: program.to_owned(),
         link,
-        holder_fits: false,
+        holder: holder_events::Standing::default(),
         env,
         daemon_env,
         asked_again: None,
         threads: BTreeMap::new(),
         limits: saved.limits,
+        listings: saved
+            .listings
+            .into_iter()
+            .map(|listing| (listing.thread, listing))
+            .collect(),
         watchers: Vec::new(),
         waits: BTreeMap::new(),
         unanswered: BTreeMap::new(),
         read_up_to: BTreeMap::new(),
         log: log::RunnerLog::at(&dir),
+        silence: silence::Silence::default(),
+        asks: start::Asks::default(),
+        sign_in_told: BTreeMap::new(),
         accounts: accounts::Accounts::default(),
     };
     runner.restore(saved.threads);
@@ -173,19 +191,6 @@ pub async fn run(
     }
     runner.save();
     Ok(())
-}
-
-/// The link to the holder; while none answers, it tries again, each time a little later.
-async fn reach_patiently(program: &Path, dir: &Path) -> HolderLink {
-    let mut wait = Duration::from_secs(1);
-    loop {
-        match link::reach(program, dir).await {
-            Ok(link) => return link,
-            Err(error) => tracing::warn!(%error, "the holder did not answer; trying again"),
-        }
-        tokio::time::sleep(wait).await;
-        wait = (wait * 2).min(RETRY_MOST);
-    }
 }
 
 impl Runner {
@@ -209,8 +214,12 @@ impl Runner {
     /// The loop of the runner: the holder, the clients, and the stop.
     async fn serve(&mut self, listener: tokio::net::UnixListener, stop: impl Future<Output = ()>) {
         let (sender, mut incoming) = mpsc::channel(256);
-        let accepting = tokio::spawn(socket::accept(listener, sender));
+        let accepting = tokio::spawn(socket::accept(listener, sender, self.dir.clone()));
         tokio::pin!(stop);
+        let mut look = tokio::time::interval(Duration::from_secs(10));
+        let Some(mut asked) = self.asks.receiver.take() else {
+            return;
+        };
         loop {
             tokio::select! {
                 event = self.link.events.recv() => match event {
@@ -218,6 +227,11 @@ impl Runner {
                     None => self.reconnect().await,
                 },
                 Some(call) = incoming.recv() => self.call(call).await,
+                Some((id, answers)) = asked.recv() => self.asked(id, answers).await,
+                _ = look.tick() => {
+                    self.end_the_silent().await;
+                    self.replace_older_holder().await;
+                }
                 () = &mut stop => break,
             }
         }
@@ -229,9 +243,12 @@ impl Runner {
     /// that waits gets its answer; a start waits for the holder to say what it holds.
     async fn reconnect(&mut self) {
         tracing::warn!("the link to the holder closed; connecting again");
-        self.holder_fits = false;
+        self.holder.fits = false;
+        self.holder.newer = false;
+        // Until the next hello nothing is known of the holder: no Quit goes to a new one.
+        self.holder.older = false;
         let next = self.link.next_id();
-        self.link = reach_patiently(&self.program, &self.dir).await;
+        self.link = link::reach_patiently(&self.program, &self.dir).await;
         self.link.go_on_from(next);
         self.send_again().await;
     }
@@ -346,18 +363,10 @@ impl Runner {
         let record = record::Record {
             limits: self.limits,
             threads: self.threads.values().map(Thread::saved).collect(),
+            listings: self.listings.values().cloned().collect(),
         };
         if let Err(error) = record::write(&self.dir, &record) {
             tracing::warn!(%error, "the record of the runner was not written");
         }
-    }
-
-    fn running(&self) -> u32 {
-        let count = self
-            .threads
-            .values()
-            .filter(|thread| thread.row.state != RunState::Stopped)
-            .count();
-        u32::try_from(count).unwrap_or(u32::MAX)
     }
 }

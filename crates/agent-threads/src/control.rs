@@ -10,6 +10,9 @@ use uuid::Uuid;
 
 use crate::drive::{AccountFacts, Answer, DriveEvent, Effort, Mode, Program, Request};
 
+mod listing;
+pub use listing::{BadTitle, Listing, ListingChange, MAX_TITLE};
+
 /// The most bytes of one frame of a client.
 pub const MAX_FRAME: usize = 4 * 1024 * 1024;
 
@@ -57,6 +60,10 @@ pub enum Action {
         model: Option<String>,
         effort: Option<Effort>,
         prompt: String,
+        /// A different copy of the program than the first on the `PATH` of the login: one of
+        /// the copies the runner finds (TH97).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        program_path: Option<PathBuf>,
     },
     /// A prompt to a thread: to its running turn, or as a new turn.
     Send { thread: Uuid, text: String },
@@ -78,6 +85,10 @@ pub enum Action {
     /// What the project files of a folder make the program do with no question, to show before
     /// a thread starts there (THR-046).
     Folder { folder: PathBuf },
+    /// How the person lists each thread (TH46).
+    Listings,
+    /// A change of how the person lists a thread (TH46): only the person makes it.
+    ChangeListing { thread: Uuid, change: ListingChange },
 }
 
 /// A frame of the runner to a client.
@@ -97,6 +108,9 @@ pub enum Outcome {
     },
     Threads {
         threads: Vec<ThreadRow>,
+        /// Words for the person while the holder is older than the daemon (TH98).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        holder: Option<String>,
     },
     Limits {
         limits: Limits,
@@ -113,6 +127,10 @@ pub enum Outcome {
     Stopped {
         all_ended: bool,
     },
+    /// How the person lists each thread that has a listing (TH46).
+    Listings {
+        listings: Vec<Listing>,
+    },
     Refused {
         why: Refusal,
     },
@@ -127,6 +145,14 @@ pub enum Refusal {
     FolderNotPermitted,
     /// The program is not on the `PATH` of the login of the person.
     ProgramNotFound,
+    /// The program did not answer `--version` in time: `said` names it, its path and what to
+    /// try, in words for the person; `answered` holds the other copies that answered, which a
+    /// start can name (TH97).
+    ProgramDoesNotAnswer {
+        said: String,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        answered: Vec<PathBuf>,
+    },
     /// A value that becomes an argument is not of its alphabet (THR-040).
     BadValue,
     /// The request is answered, or its process ended (THR-030).
@@ -137,6 +163,16 @@ pub enum Refusal {
     NotRunning,
     /// The holder did not take the command.
     Holder,
+    /// The holder is older than the daemon and speaks a different protocol: `said` tells when
+    /// it is replaced, in words for the person (TH98).
+    HolderOlder {
+        said: String,
+    },
+    /// The call came from a process of an agent: only the person answers a request, raises the
+    /// limit or starts a thread.
+    FromAnAgent,
+    /// The thread runs: it is removed from the list only after it stopped (TH46).
+    Running,
     /// A start would pass the soft limit: the person must answer first (THR-114).
     OverLimit {
         limits: Limits,

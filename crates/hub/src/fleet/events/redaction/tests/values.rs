@@ -174,8 +174,36 @@ fn log_007_redaction_masks_values_of_text_keys_named_like_secrets() {
     assert_eq!(redact_text(&long), "password=\"[redacted]\" next");
 }
 
-/// Inputs built to make a scan quadratic finish in linear time (S1). 200 KB each; a
-/// quadratic scan took seconds in a release build, the bound leaves wide room for a debug one.
+/// The processor time of this thread on Unix: a busy machine takes the processor away from the
+/// thread, and that wait is not counted, so the time of a long text does not grow with the load.
+#[cfg(unix)]
+fn clock() -> std::time::Duration {
+    let time = rustix::time::clock_gettime(rustix::time::ClockId::ThreadCPUTime);
+    std::time::Duration::new(
+        u64::try_from(time.tv_sec).expect("a time after the start of the thread"),
+        u32::try_from(time.tv_nsec).expect("nanoseconds below one second"),
+    )
+}
+
+/// The time since a fixed instant on Windows, where the gates run on a runner of their own.
+#[cfg(not(unix))]
+fn clock() -> std::time::Duration {
+    static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    START.get_or_init(std::time::Instant::now).elapsed()
+}
+
+/// The fastest of three redactions of `text`: a loaded machine slows a run, never speeds it.
+fn fastest_redaction(text: &str) -> std::time::Duration {
+    (0..3)
+        .map(|_| {
+            let started = clock();
+            let _ = redact_text(text);
+            clock().saturating_sub(started)
+        })
+        .min()
+        .expect("three runs")
+}
+
 #[test]
 fn log_007_redaction_of_pathological_text_takes_linear_time() {
     let units = [
@@ -193,13 +221,14 @@ fn log_007_redaction_of_pathological_text_takes_linear_time() {
         "password=a",
     ];
     for unit in units {
-        let text = unit.repeat(200_000 / unit.len());
-        let started = std::time::Instant::now();
-        let _ = redact_text(&text);
-        let elapsed = started.elapsed();
+        let short = unit.repeat(25_000 / unit.len());
+        let long = unit.repeat(100_000 / unit.len());
+        let (once, four_times) = (fastest_redaction(&short), fastest_redaction(&long));
         assert!(
-            elapsed < std::time::Duration::from_secs(2),
-            "{unit:?}: {elapsed:?}"
+            four_times < once * 8 + std::time::Duration::from_millis(5),
+            "{unit:?}: {once:?} for {} bytes, {four_times:?} for {}",
+            short.len(),
+            long.len()
         );
     }
 }

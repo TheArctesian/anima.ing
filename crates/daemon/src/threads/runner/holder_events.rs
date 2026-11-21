@@ -2,11 +2,18 @@
 //! programs, their end, the answer to each command, and a program that waits because the holder
 //! keeps its limit of output (THR-113).
 
+mod older;
+mod refused;
+
+pub(super) use older::Standing;
+mod signed_out;
+
 use agent_threads::control::{Change, Outcome, Refusal, RunState};
 use agent_threads::drive::DriveEvent;
 use uuid::Uuid;
 
 use super::log::Kind;
+use super::socket::Caller;
 use super::thread::Thread;
 use super::{Pending, Runner, Waits};
 use crate::threads::wire::{
@@ -17,7 +24,11 @@ use crate::threads::wire::{
 impl Runner {
     pub(super) async fn holder_event(&mut self, event: Event) {
         match event {
-            Event::Hello { version, threads } => self.hello(version, threads).await,
+            Event::Hello {
+                version,
+                threads,
+                build,
+            } => self.hello(version, threads, build.as_deref()).await,
             Event::Done { id, outcome } => self.done(id, outcome).await,
             Event::Lines {
                 thread,
@@ -32,19 +43,29 @@ impl Runner {
     /// After a connection: a holder of a different version takes no start (THR-113); a thread
     /// that the holder does not hold any more stopped; a program the holder holds that no
     /// thread knows is ended (THR-049); a start whose answer was lost is settled.
-    async fn hello(&mut self, version: u32, held: Vec<Held>) {
-        self.holder_fits = version == wire::VERSION;
-        if !self.holder_fits {
-            tracing::error!(
+    async fn hello(&mut self, version: u32, held: Vec<Held>, build: Option<&str>) {
+        self.holder.fits = version == wire::VERSION;
+        self.holder.quitting = false;
+        self.holder.quit_command = None;
+        // Compared with the file that a new holder would start from, so that a holder that a
+        // new start would not change is never replaced (no loop of ends and starts).
+        // A holder of the same file is never older, also when its protocol differs: then this
+        // runner is the old one and ends with the next restart of the daemon.
+        let next = wire::build_of(&self.program);
+        self.holder.older = next.is_some() && build != next.as_deref();
+        self.holder.newer = !self.holder.fits && !self.holder.older;
+        if self.holder.older {
+            tracing::warn!(
                 holder = version,
                 runner = wire::VERSION,
-                "the holder speaks a different version; no thread starts until it ends"
+                "the holder is older than the daemon; it is replaced when no thread runs"
             );
         }
         self.reconcile(&held).await;
         self.settle_starts().await;
         self.end_unknown(held).await;
         self.save();
+        self.replace_older_holder().await;
     }
 
     /// Each thread that the holder does not hold, or holds ended, stops.
@@ -120,7 +141,7 @@ impl Runner {
                 self.threads.remove(&thread);
                 refused(Refusal::Holder)
             };
-            back.answer(result);
+            self.answer_late(&back, Some(thread), result);
         }
     }
 
@@ -148,6 +169,7 @@ impl Runner {
         };
         let before = self.threads.get(&id).map(Thread::record_key);
         let mut last = self.read_up_to.get(&id).copied().unwrap_or(0);
+        let mut signed_out = false;
         for (at, line) in lines.into_iter().enumerate() {
             let seq = first + at as u64;
             if seq <= last {
@@ -164,9 +186,13 @@ impl Runner {
                     Vec::new()
                 }
             };
+            signed_out |= steps.iter().any(signed_out::not_logged_in);
             if self.apply(id, steps).await.is_err() {
                 break;
             }
+        }
+        if signed_out {
+            self.tell_sign_in(id).await;
         }
         self.read_up_to.insert(id, last);
         // The record holds the open requests before the holder drops their lines (THR-030); a
@@ -206,7 +232,10 @@ impl Runner {
         let Some(thread) = self.threads.get_mut(&id) else {
             return;
         };
-        let steps = thread.exited(exit.code, exit.signal);
+        let steps = match self.silence.ended(id) {
+            Some(why) => thread.ended_because(why),
+            None => thread.exited(exit.code, exit.signal),
+        };
         let _ = self.apply(id, steps).await;
         self.save();
         self.command(Action::Forget {
@@ -217,6 +246,9 @@ impl Runner {
 
     /// The answer of the holder to a command that a call waits for.
     async fn done(&mut self, command: u64, outcome: HolderOutcome) {
+        if self.quit_answered(command, &outcome) {
+            return;
+        }
         let sent = self.unanswered.remove(&command);
         let Some(waits) = self.waits.remove(&command) else {
             if let HolderOutcome::Refused { why } = outcome {
@@ -224,51 +256,42 @@ impl Runner {
             }
             return;
         };
-        match waits {
+        let (back, thread, result) = match waits {
             Waits::Start {
                 thread,
                 back,
                 prompt,
-            } => back.answer(self.start_done(thread, &prompt, &outcome).await),
-            Waits::Stop { back } => back.answer(match outcome {
-                HolderOutcome::Stopped { all_ended, .. } => Outcome::Stopped { all_ended },
-                HolderOutcome::Refused { .. } => refused(Refusal::Holder),
-                _ => Outcome::Ok,
-            }),
+            } => {
+                let result = self.start_done(thread, &prompt, &outcome).await;
+                (back, Some(thread), result)
+            }
+            Waits::Stop { back } => {
+                let result = match outcome {
+                    HolderOutcome::Stopped { all_ended, .. } => Outcome::Stopped { all_ended },
+                    HolderOutcome::Refused { .. } => refused(Refusal::Holder),
+                    _ => Outcome::Ok,
+                };
+                (back, None, result)
+            }
             Waits::Send { thread, back, text } => {
-                back.answer(self.sent(thread, &text, &outcome).await);
+                let result = self.sent(thread, &text, &outcome).await;
+                (back, Some(thread), result)
             }
             Waits::Answer(pending) => {
                 let result = self.answered(&pending, &outcome).await;
-                pending.back.answer(result);
+                (pending.back, Some(pending.thread), result)
             }
-        }
+        };
+        self.answer_late(&back, thread, result);
     }
 
-    /// The holder refused a command that no call waits for: the log says so, and a line that
-    /// did not reach the program is said in its thread.
-    fn not_taken(&mut self, sent: Option<wire::Command>, why: HolderRefusal) {
-        let Some(wire::Command {
-            action: Action::Write { thread, .. },
-            ..
-        }) = sent
-        else {
-            tracing::warn!(?why, "the holder refused a command of the runner");
-            return;
-        };
-        let Ok(id) = Uuid::parse_str(&thread) else {
-            return;
-        };
-        tracing::warn!(%id, ?why, "the holder did not write a line to the program");
-        self.publish(
-            id,
-            Change::Said {
-                event: DriveEvent::Notice {
-                    text: "A line did not reach the program: the holder did not take it."
-                        .to_owned(),
-                },
-            },
-        );
+    /// Answers a call that waited for the holder; a refusal goes to the log first (THR-044), as
+    /// the refusal of a call that did not wait does.
+    fn answer_late(&self, back: &Caller, thread: Option<Uuid>, result: Outcome) {
+        if let Outcome::Refused { why } = &result {
+            self.note(Kind::Refusal, thread, super::calls::refusal_word(why));
+        }
+        back.answer(result);
     }
 
     async fn start_done(&mut self, id: Uuid, prompt: &str, outcome: &HolderOutcome) -> Outcome {

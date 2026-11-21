@@ -31,6 +31,9 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
 | HT-074 | Windows desktop account, link and remote sessions (WIN1) | Windows 11 VM, Anima account and a hub | Open |
+| HT-114 | Three generated entries of LinuxServer.io start with the rights of the static test (task H39) | A throwaway Linux test machine with Docker and Compose, not on the network of Anima | Open |
+| HT-115 | A person reads the settings of the ten generated entries of LinuxServer.io and records the review (task H39) | The branch `hosted/catalogue-linuxserver`; no machine | Open |
+| HT-113 | The choice Catalogue shows the tier, the class shell, the streams and the optional parts, and scales with a search and groups (task H39) | The desktop client signed in to a hub of this branch, a device with Docker | Open |
 | HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
@@ -87,6 +90,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-060 | The Projects page after the interface review: the choice of the group, tiles with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-projects`, the extension Projects on, GitHub connected | Open |
 | HT-061 | Sign in to a hosted hub, and the metrics of this computer appear (HMD-053, HMD-054; tasks HM-T17 to HM-T19) | This Mac and the Linux computer, each with an application of this build that carries `anima-daemon` and `anima-link`, signed in to the hosted hub | Open |
 | HT-083 | The sign-out of a hosted hub takes the daemon off this computer and revokes it at the hub (HMD-056; task HM-T21) | This Mac with an application of a build that holds the branch `hosted/hm-t21-daemon-removal`, signed in to the hosted hub with the daemon installed (HT-061 step 1); the Linux computer for step 7 | Open |
+| HT-112 | A newer application replaces the daemon of this computer and keeps its enrolment (HMD-055; task HM-T20) | This Mac with two applications of the branch `hosted/hm-t20-daemon-update` of three versions, signed in to the hosted hub with the daemon installed (HT-061 step 1), and an agent thread for step 7; the Linux computer for steps 8 and 9 | Open |
+| HT-117 | The daemon of this Mac waits for the person in the Keychain and does not stop (MET-013, MET-019; R-322) | This Mac with the daemon installed and reporting (HT-061 step 1), and two ad hoc trial builds of the branch `fix/daemon-keychain-wait` | Open |
 | HT-057 | The Settings page after the interface review: the index and the sections in three groups (R-224) | The desktop application of a build that holds the branch `ui/v2-settings`, and a phone | Open |
 | HT-052 | The tab Containers of a device after the interface review: one State column, one pane for the log and the details (R-224) | The desktop application of a build that holds the branch `ui/v2-device-containers`, a device with Docker and an SSH credential | Open |
 | HT-055 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
@@ -102,6 +107,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
 | HT-059 | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
 | HT-068 | A Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon, and shows metrics (DEF-007) | The Linux computer `pop-os`, an AppImage that holds the branch `fix/link-private-folder`, the sign-in to the hosted hub; this Mac with its unit of before | Open (steps 1 to 4 passed) |
+| HT-111 | The daemon sends its token only to the signed link at its socket (K8 Section 1, HMD-054, R-317) | This Mac with a release application (Developer ID) signed in to the hosted hub, and the Linux computer `pop-os` with an AppImage of the same build | Open |
 | HT-066 | A browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) | A hub of the pool with an image of this build, and the gateway of the pool at `hub.anima.ing` | Open |
 | HT-080 | The web client of a hosted hub behind the gateway: the sign-in with no password page, the sign-out, a session that ended (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27) | A hub of the pool whose image has this build of the web client, and the gateway of the pool at `hub.anima.ing` | Open |
 | HT-104 | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with its own public origin `https://<hub id>.hub.anima.ing` and an image of this build, the door of the pool for that address, an application of this build, and a GitHub account that may get a new App | Open |
@@ -1227,6 +1233,139 @@ On this Mac:
    no `anima-daemon.service`, no copy, no file `token` in the folder of the daemon, and
    `systemctl --user status anima-daemon` says that the unit could not be found.
 
+### HT-112: a newer application replaces the daemon of this computer and keeps its enrolment (HMD-055; task HM-T20)
+
+Built: on the branch `hosted/hm-t20-daemon-update`. The daemon has the command
+`anima-daemon --version` (`crates/daemon/src/cli.rs`), which prints `anima-daemon <version>`. At each
+start the shell (`apps/desktop/src-tauri/src/daemon/update.rs`) runs `--version` with the daemon that the
+application carries and with the copy `~/.local/bin/anima-daemon`. When the carried daemon is newer, or the
+copy prints no version (a daemon from before this task), the shell first stops the unit with
+`anima-daemon stop` of the carried daemon (`launchctl bootout`, or `systemctl --user stop`). Then it moves
+the copy to `anima-daemon.previous`, writes the new copy beside it as a new file and renames it into place,
+then runs `anima-daemon install` with the new copy, which writes the unit again and starts it. Then it
+deletes `anima-daemon.previous`. It does not enrol again, it signals no other process (the holder of the
+agent threads stays) and it does not wait for threads. An equal or older carried daemon changes nothing.
+When the copy or the start fails, the copy of before goes back and its unit starts again. The log of the
+application has one line for each result. The systemd units have `KillMode=process`, so that a stop or a
+restart of the daemon does not kill the holder (THR-113).
+
+The tests cover, with stand-in daemons in temporary folders: the order stop, new file, start, with the
+file of before kept at `anima-daemon.previous` (its inode) until the start; a stand-in holder that is not
+signalled; the same version; an older carried daemon; a copy that prints no version; a carried daemon
+that prints no version; no copy; a stop that fails; a copy that fails after the stop (the copy of before
+goes back and starts); a unit that does not start; and an update that a stop of the application cut.
+Not covered: the real `launchctl`, `systemctl`, Keychain and `~/.local/bin`, the code signature of a real
+copy on a Mac, a real holder with a real thread, and a real hub.
+
+It needs: two applications of this branch with different versions, made with
+`apps/desktop/src-tauri/trial-bundle.sh <version>` (for example `0.0.2` first, then `0.0.3`), the
+sign-in to the hosted hub, and HT-061 step 1 passed (the daemon reports).
+
+On this Mac:
+
+1. Install and open the application of the lower version. Sign in to the hosted hub and wait until the
+   device of this Mac shows its metrics (HT-061 step 1). Run `~/.local/bin/anima-daemon --version` and
+   `launchctl print gui/$(id -u)/ing.anima.daemon | grep pid`. Expected: `anima-daemon 0.0.2` and a pid.
+   Write down the pid.
+2. Quit the application. Install the application of the higher version over it and open it. Wait one
+   minute. Expected: no sign-in, no question and no message.
+3. Run the two commands of step 1 again, and `ls ~/.local/bin/`. Expected: `anima-daemon 0.0.3`, a pid
+   that is not the pid of step 1, and no file `anima-daemon.previous`. The log of the application
+   (Settings, Logs of the application) has the line "the daemon on this computer was replaced by the
+   newer one of the app".
+4. In the application open Devices. Expected: one device for this Mac, with new metrics after one minute.
+   On the page of this Mac, Settings, the panel "Daemon" shows the same daemon as before: no new
+   enrolment, and no "Daemon revoked.".
+5. Run `codesign --verify --verbose ~/.local/bin/anima-daemon`. Expected: "valid on disk".
+6. Quit the application. Install the application of the lower version again and open it. Wait one minute.
+   Run `~/.local/bin/anima-daemon --version`. Expected: `anima-daemon 0.0.3`; the log has the line "the
+   daemon on this computer is newer than the one of the app; it stays".
+7. A thread during the update. Install the application of the lower version again, but first make a
+   third application of a higher version (for example `0.0.4`). In the application start an agent thread
+   and give it a task that runs for some minutes. While it works, quit the application, install the
+   application of `0.0.4` and open it. Expected: the daemon is replaced as in step 3, the thread goes on
+   and finishes its task, and `pgrep -fl "anima-daemon holder"` shows the same pid as before the update:
+   the holder keeps the build of before until its last thread ends. The page of the threads says that the
+   holder is older than the daemon (the T3 session adds that sentence).
+8. On the Linux computer, steps 1 to 4 with the AppImages of the two versions and
+   `systemctl --user show -p MainPID anima-daemon` in place of `launchctl print`. Expected: the same.
+9. On the Linux computer, start an agent thread, then run `systemctl --user restart anima-daemon`.
+   Expected: after the restart the thread is still idle or working, and `pgrep -fl "anima-daemon holder"`
+   shows the same pid as before. The runner connects to the holder again in about 30 seconds; while no
+   runner runs, the page shows the link as down.
+10. Only after the model cycle wiring of the Level 1 model service is in `dev` (its sweep at the start of
+    the daemon and its stop of the model servers at a stop); until then nothing starts a model server, and
+    this step waits. The rule, agreed between this task and the model service on 2026-11-21 and recorded
+    with the model service's finding of the kill mode: `KillMode=process` stays, so the holder and each
+    process below it outlive each stop, crash and update of the daemon. Each model server runs in a
+    cgroup of its own, `anima-model-<server>-<start>`, directly below the cgroup of the unit; the daemon
+    ends these at its stop, and at its next start it kills what a crash left in them. Nothing else is
+    signalled. On the Linux computer with a GPU: start an agent thread and a model server, and write down
+    `nvidia-smi --query-gpu=memory.used --format=csv` and the pid of `pgrep -fl "anima-daemon holder"`.
+    Run `systemctl --user kill -s KILL anima-daemon` and wait until
+    `systemctl --user show -p MainPID anima-daemon` shows a new pid. Expected: no `anima-model-` cgroup
+    under the cgroup of the unit holds a process that the crashed daemon started
+    (`systemd-cgls --user-unit anima-daemon`), the GPU memory of that server is free, the holder has the
+    same pid, and the thread still answers. Then `systemctl --user stop anima-daemon` with a model
+    server running. Expected: the server process is gone and the holder stays. Not for macOS: there the
+    model servers have no cgroup and `KillMode` does not apply; the model service checks that case.
+11. Added by the branch `fix/daemon-keychain-wait` (R-321). On this Mac, steps 1 to 6 need two
+    applications made with `SIGN_IDENTITY` set to the Developer ID identity of the operator: an ad hoc
+    trial build no longer replaces the daemon by itself. Then make two ad hoc trial builds (no
+    `SIGN_IDENTITY`) of a lower and a higher version, and do steps 1 and 2 with them. Expected: the copy
+    stays at the lower version, no window of the Keychain opens, and the log of the application has the
+    line "the daemon on this computer is older than the one of the app, but this build has no Developer ID
+    signature: the Keychain would ask again for the new daemon, so it stays".
+12. A step that does not end (R-322). The log of the application has one line for each step
+    of an update that failed, with the name of the step (`stop`, `install of the new copy`, `install of the
+    copy of before`) and its code, and the line "the daemon update: the copy is older than the daemon of
+    the app; replacing it" before the first step. The case of a Keychain that waits is HT-117.
+
+### HT-117: the daemon of this Mac waits for the person in the Keychain and does not stop (MET-013, MET-019; R-322)
+
+Built: on the branch `fix/daemon-keychain-wait`. Each read of the token and of the key cache in the
+Keychain runs on a thread of its own and the daemon waits 5 s at most (`crates/daemon/src/keychain_wait.rs`);
+one read is in flight for each item. `anima-daemon install` counts a read that waits as installed: it writes
+the LaunchAgent and starts it (`crates/daemon/src/units/install.rs`). `anima-daemon run` does not end on
+such a read: it logs once "this computer's daemon needs you to allow it in the Keychain" and reads again
+every 30 s, after 10 minutes every 5 minutes (`crates/daemon/src/runtime/token_wait.rs`). While it waits,
+the file `keychain-waits` is in `~/Library/Application Support/anima-daemon/`; the application reads it
+(`apps/desktop/src-tauri/src/daemon/keychain.rs`) and the page Agent usage of a hosted hub, while it has
+no counts, says "The daemon of this computer needs you".
+
+The tests cover, with stand-ins and no Keychain: a read that ends in time; a read that does not end, with
+no second read started while it is in flight and its answer given to the next read; a read whose thread
+ends with no answer; the schedule of the reads; the mark; the run that waits and then gets its token;
+`install` that takes a wait for installed; the sentence of the page. Not covered: the real Keychain and
+its window, `launchctl`, and the real time of the reads.
+
+It needs: this Mac with the daemon installed and reporting (HT-061 step 1), and two ad hoc trial builds of
+this branch (`apps/desktop/src-tauri/trial-bundle.sh <version>` with no `SIGN_IDENTITY`), A installed
+first. Each ad hoc build is a new program to the Keychain, so build B makes the window of macOS open.
+
+1. Quit the application. Install build B in `/Applications`, but do not open it. Run
+   `cp /Applications/Anima.ing.app/Contents/MacOS/anima-daemon ~/.local/bin/anima-daemon`, then
+   `time ~/.local/bin/anima-daemon install`. A window of macOS asks whether `anima-daemon` may use its
+   item in the Keychain: do not answer it yet. Expected: the command ends in less than 10 s with
+   "Installed ... and started the daemon."
+2. Run `ls ~/Library/Application\ Support/anima-daemon/keychain-waits`,
+   `launchctl print gui/$(id -u)/ing.anima.daemon | grep -E 'pid|ANIMA_DAEMON_LOG'`. Expected: the file is
+   there; the unit has a pid and `ANIMA_DAEMON_LOG => file`.
+3. Wait two minutes. Run `grep -c "needs you to allow it in the Keychain" ~/Library/Logs/Anima/anima-daemon.log`
+   and `ps -M <pid> | wc -l` two times, one minute apart. Expected: the count is 1; the pid does not
+   change (no restart); the number of threads does not grow; only one window of the Keychain is open.
+4. Open the application (build B). Open Agent usage on the hosted hub while it shows no counts. Expected:
+   the sentence "The daemon of this computer needs you: macOS asks whether it may read its key in the
+   Keychain. ..." The log of the application has "the daemon of this computer waits for you to allow it in
+   the Keychain".
+5. In the window of macOS, type the password of the Mac and click Always Allow (a second window can open
+   for the key cache of the daemon; allow it too). Wait one minute. Expected: the daemon log has "the
+   Keychain answered the read of the token" and "the daemon is running"; the file `keychain-waits` is gone;
+   the Mac row in Devices shows new metrics.
+6. Quit and open the application. Expected: Agent usage no longer says that the daemon needs you.
+
+Result: Open.
+
 ### HT-068: a Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon (DEF-007)
 
 Built: on the branch `fix/link-private-folder`. The shell (`apps/desktop/src-tauri/src/link/kept.rs`) copies
@@ -2106,6 +2245,60 @@ runner, two real computers, a real hub. Claude Code gives no identifier of its a
 4. On one computer, sign in to Codex with a different account and start a thread again; wait 20 minutes.
    Expected: two Codex cards, each with one computer.
 
+### HT-111: the daemon sends its token only to the signed link at its socket (K8 Section 1, HMD-054)
+
+Built: on the branch `hosted/daemon-socket-peer` (R-317). Before each request on the socket of the link, the
+daemon reads the user and the process of the peer from the kernel (`crates/daemon/src/hub/peer.rs`,
+`hub/unix.rs`). The user must be its own. On macOS a daemon with a Developer ID signature also runs
+`/usr/bin/codesign` on the process of the peer: it must be `anima-link` (signing identifier) with the Developer ID
+requirement of the daemon's own team, and its file must be the program that runs; a
+peer that fails gets no byte, and the push fails with "the program at the socket of anima-link is not the Anima
+link, so nothing was sent to it". A daemon with no Developer ID signature (a build for development) and each
+daemon on Linux check the user only. A daemon that was enrolled with the old link origin
+(`http://127.0.0.1:<port>`) moves by itself to `unix:<path>` at its start when the program at the socket passes
+the check, or within a minute after the link starts, and until then pushes only to a peer that passes the same check (on macOS through the socket of the move,
+on Linux through the socket of its own folder); on macOS the path of the move is below the home folder of the account, not
+one that the environment names. The link that the application runs itself (not a unit) makes the same socket. When
+the application updates the copy of the link, it moves the running copy aside (`anima-link.previous`) first,
+so the running link keeps passing the check until its unit starts the new copy.
+
+The tests cover: a listener whose user is not the expected one gets no byte; an old enrolment moves when the peer passes (Linux token file) and does not move when it fails; the wait of an old enrolment goes on with no socket and with a peer that fails, and ends when a socket that passes appears; the link that the application runs itself gets `-daemon-socket`; an old enrolment pushes through the socket of its own folder and sends nothing to the port; a socket that fails the check with an old enrolment is not a step here, because on a computer of today a stand-in at the socket before the move would get the token from the daemon before this build; on macOS, a listener in the test
+process (no Developer ID signature) gets no byte from a daemon that expects a team; the reading of the output
+of `codesign -d`. Not covered: a real release daemon and a real release link (Developer ID, hardened runtime);
+the real unit of the link; the Linux user check on a real computer (compiled only on Linux, checked by reading).
+
+It needs: this Mac with a release application signed in to the hosted hub, whose daemon shows metrics; a
+terminal; `python3` (in the Command Line Tools). For step 5, `pop-os` with an AppImage of the same build.
+
+1. On this Mac, open Devices on the hub. Expected: the row of this Mac shows CPU, Memory and Disk, and they
+   change within one minute. (The real link is signed by the same team, so the check passes.)
+2. Run `codesign -dv ~/Library/Application\ Support/ing.anima.desktop/link/program/anima-link 2>&1 | grep
+   TeamIdentifier` and the same for `~/.local/bin/anima-daemon`. Expected: the two lines are the same and do
+   not say `not set`.
+3. Put a stand-in at the socket. Run `launchctl bootout gui/$(id -u)/ing.anima.link`, then
+   `S=~/Library/Application\ Support/anima-daemon/link.sock; rm -f "$S"; python3 -c 'import socket,sys;
+   s=socket.socket(socket.AF_UNIX); s.bind(sys.argv[1]); s.listen(); c,_=s.accept(); print(len(c.recv(65536)),
+   "bytes")' "$S"`. Expected: within about 10 seconds the command prints `0 bytes`. The stand-in got no token.
+   Press Control-C if it prints nothing after 30 seconds, and report that.
+4. Close the application and open it again (it installs and starts the unit of the link again). Expected: after
+   about one minute the row of this Mac shows metrics again.
+5. On `pop-os`, open Devices on the hub. Expected: the row `pop-os` shows metrics (the user check passes for
+   the real link).
+6. An old enrolment (only on a computer whose daemon was enrolled before task W0; skip it on others). Run
+   `grep -o '"hub":"[^"]*"' ~/Library/Application\ Support/anima-daemon/daemon.json` before you install the
+   build. Expected before: `http://127.0.0.1:` and a port. After the build is installed and the link runs,
+   wait one minute and run it again. Expected: `unix:` and the path of `link.sock`, and the row of this Mac shows
+   metrics. If the link does not run, the line stays as it was and the row shows no metrics; start the
+   application, and within two minutes the line changes, also when the application runs the link itself (no
+   unit). If the line does not change after the application has run for five minutes, report it with the lines of
+   the daemon's log that name the old link origin. What you see: nothing to do; the metrics come back.
+7. An update of the link. Install a build with a different link program over this one and open it. Within
+   one minute, `ls ~/Library/Application\ Support/ing.anima.desktop/link/program/` shows `anima-link` and no
+   `anima-link.previous`, and the row of this Mac shows metrics with no gap longer than about one minute. What you
+   see: the metrics go on; at most one or two pushes fail while the unit starts again.
+8. If step 1 fails: run `codesign -dv ~/Library/Application\ Support/ing.anima.desktop/link/program/anima-link
+   2>&1 | grep '^Identifier'` and report the line. The daemon accepts only `anima-link` or `anima-link-` and hex
+   digits; a different identifier of the release is a defect of this branch.
 ### HT-104: Connect GitHub on a hosted hub through the gateway (HMD-068, HMD-069; task HM-T29)
 
 Built on the branch `hosted/hm-t29-github-hosted`. The hub tells the application whether the browser flow can start:
@@ -2771,9 +2964,15 @@ At a stop the program gets `SIGTERM` and 3 seconds to write its session file. Ea
 those 3 seconds (for example a hook at the end of a session) is killed when the walk finds it, so such a hook does not
 run to its end.
 
-What it cannot stop: a process that leaves the tree in less than 2 seconds after it starts, by `setsid` or a double fork,
-is never seen. It runs on after the stop, and the stop cannot report it (it can report only what it saw). On Linux a
-cgroup of the user (`systemd-run --user --scope`) would close this gap; it is not built.
+A process that leaves the tree in less than 2 seconds after it starts, by `setsid` or a double fork, is not seen by the
+walk. The holder gives each program the mark `AGENT_THREAD=<thread>` in its environment, which each process below it
+takes with it; at a stop the holder also ends each process of this user that carries the mark, and says that not all
+ended when it cannot read the environments or a marked process does not end. On Linux it reads `/proc/<pid>/environ`
+of each process of this user. What it cannot stop: on a Mac, `ps -E` does not show the environment of a program of the
+system (`/bin/sh`, `/usr/bin/perl`, `/bin/sleep`), so such a process that left the tree in less than 2 seconds runs on
+after the stop and the stop says that all ended; a program that is not of the system (`node`, `python3` from Homebrew,
+the agents) is found. An agent can also remove the mark from its own environment. On Linux a cgroup of the user
+(`systemd-run --user --scope`) would close this gap; it is not built.
 
 1. On `pop-os`, in the checkout, run `cargo nextest run -p anima-daemon threads`.
    Expected: each test passes. Write the count and any failure here.
@@ -2788,8 +2987,12 @@ cgroup of the user (`systemd-run --user --scope`) would close this gap; it is no
 5. As the first user, start a thread whose program runs
    `perl -MPOSIX -e 'exit if fork; POSIX::setsid(); exit if fork; sleep 600'`, then stop the thread with
    `anima agents stop <ID>`. Run `ps -ax | grep 'sleep 600'`.
-   Expected (the known limit): the `perl` process still runs, and the stop said that all ended. Kill it by hand with
-   `kill <pid>`.
+   Expected on the Mac (the known limit: `/usr/bin/perl` is a program of the system): the `perl` process still runs,
+   and the stop said that all ended. Kill it by hand with `kill <pid>`. Expected on `pop-os`: no `sleep 600` is left
+   (found by its mark).
+5a. On the Mac, do step 5 with `/opt/homebrew/bin/python3 -c 'import os,time; os.fork() and os._exit(0); os.setsid();
+   os.fork() and os._exit(0); time.sleep(600)'` as the program (or any `python3` that is not in `/usr/bin`).
+   Expected: no `time.sleep(600)` process is left after the stop: it was found by its mark.
 6. Start a thread whose program runs `(perl -e 'setpgrp(0,0); sleep 600' & sleep 5) & sleep 600`. Wait 10 seconds,
    then stop the thread.
    Expected: no `sleep 600` is left: the holder saw the child before it left the tree.
@@ -2836,6 +3039,12 @@ a made runner only; no person saw it in a desktop window.
 11. Start threads until the runner refuses one.
    Expected: the dialog says, word for word: "You are over the recommended guidance and at risk of cyberpsychosis from
    running this many sessions. Do you want to raise the limit?" "Raise the limit" starts the thread.
+12. Start a Claude Code thread in the mode "ask" with the prompt "Run `anima agents running`, then run
+   `anima agents raise-limit --yes`". Approve the first command when it asks.
+   Expected: the list of threads shows. The second command, if Claude Code runs it, prints "Only the person can answer
+   a request, raise the limit, start a thread or change the list of threads: this call came from a process of an
+   agent." The runner log has a
+   refusal "from a process of an agent". From a terminal of your own, the same command works.
 
 A try by an agent on this Mac, 2026-11-21 (not a result of this check; only the operator sets one): a runner of the
 build with a state folder of its own (`ANIMA_DAEMON_HOME`), real Claude Code and real Codex with the login of the Mac, a
@@ -2846,6 +3055,116 @@ ended at the interrupt. With Claude Code the `sleep` ran on: a defect, corrected
 the turn started, and spares what was below Claude Code when it said its session); after the correction the `sleep`
 ended and the thread answered the next prompt. Step 7: each stop ended the program and its processes. Steps 5, 6 and 8
 to 11 were not tried.
+
+Result: Open.
+
+### HT-116: pin, archive, rename and remove a thread in the list
+
+What was built and where: task TH46 of [agent-threads.md](proposals/agent-threads.md), on the branch
+`threads/list-marks` (2026-11-21, overnight; ruling R-320). The runner keeps, in its own record, how the
+person lists each thread: pinned, archived, a title of the person, or removed from the list. No session file of
+Claude Code or Codex changes. The page Threads has these actions in a row above the open thread (Pin, Archive, Rename, Remove), a group "Pinned"
+in the list, and "Archived (n)" in the page header; the commands are
+`anima agents pin <thread> [--off]`, `anima agents archive <thread> [--off]`, `anima agents rename <thread> [<title>]`,
+`anima agents remove <thread>` and `anima agents listings`. What the tests did not cover: the page in a desktop
+window, a real Claude Code thread, and a restart of the installed daemon.
+
+1. On the page Threads, open a thread that does not need you and choose Pin above it. Expected: the thread is in the
+   group "Pinned" of the list, under "Needs you".
+2. Choose Rename, type a new title and save. Expected: the row shows the new title. Choose Rename again and "Use the
+   program's title". Expected: the row shows the title of the program again.
+3. Choose Archive. Expected: the thread leaves the list. Choose "Archived (1)" in the page header. Expected: it is there; choose
+   Unarchive and it comes back.
+4. Stop a thread, open it, and choose Remove. Expected: a question that says the thread leaves Anima's list
+   with its pin, archive and title, and that the session files of Claude Code or Codex stay on disk. Confirm.
+   Expected: the thread leaves the list. In a terminal, `ls ~/.claude/projects/*/` (or `~/.codex/sessions/`) still
+   shows its session file.
+5. Open a thread that runs. Expected: Remove is off, with the line "Stop the thread first to remove it." From a
+   terminal, `anima agents remove <its ID>` answers "That thread runs: stop it first, then remove it from the list."
+6. From inside a Claude Code thread, ask it to run `anima agents pin <the ID of a thread>`. Expected: "Only the person
+   can answer a request, raise the limit, start a thread or change the list of threads: this call came from a process
+   of an agent." The pin does not change.
+7. Restart the daemon (quit and open the application, or `launchctl kickstart -k gui/$(id -u)/ing.anima.daemon`).
+   Expected: the pins and the titles are kept; `anima agents listings` shows them.
+
+Result: Open.
+
+### HT-110: a program that does not answer, with the Codex of Homebrew of this Mac
+
+What was built and where: task TH97 of [agent-threads.md](proposals/agent-threads.md), on the branch
+`threads/start-health` (2026-11-21, overnight). Before a start, the runner asks the chosen copy of the program for
+its version (20 seconds). When it does not answer, the start is refused with words that name the program, its
+path, what to try, and each other copy that answered in 5 seconds. A started program that says nothing in 10
+minutes is ended with words of the same kind; until then the page shows "Waiting for the first answer of the
+program" with the time it waited and what the program does first. When more than one copy is found, the thread says which one runs
+and why. `anima agents start --program-path <path>` takes a different copy, only one the runner finds.
+What the tests did not cover: the real Codex; the page in a desktop window. On this Mac on 2026-11-21,
+`/opt/homebrew/bin/codex` (0.170.0) did not end even for `codex --version`; the Codex of ChatGPT.app (0.169.0)
+answered at once.
+
+1. Run `anima agents start --program codex --folder <a scratch folder> "Reply ok"`. Expected, while the Codex of
+   Homebrew does not answer: after about 20 seconds, "The Codex at /opt/homebrew/bin/codex did not answer in 20
+   seconds. Run `/opt/homebrew/bin/codex --version` once in a terminal ..." and "A different copy answered:
+   /Applications/ChatGPT.app/.../codex (codex-cli 0.169.0...)". No thread says "starting".
+   While a thread starts, its view on the page Threads says "Waiting for the first answer of the program: <time>"
+   and the time goes up each second.
+2. Run the same command again at once. Expected: the same words in less than 2 seconds.
+3. Run it with `--program-path` and the path of the copy of ChatGPT.app from step 1. Expected: the thread starts,
+   its first line says "Codex runs from /Applications/ChatGPT.app/... (the copy that the start named)", and it
+   comes to `idle`.
+4. On the page Threads, start a Codex thread with "New thread". Expected: after about 20 seconds the dialog says
+   "The usual copy of Codex does not answer. A different copy answers:", the path of the copy of ChatGPT.app, and
+   a button "Start with this copy". Press it. Expected: the thread starts with that copy, and "Advanced" shows its
+   path. (Branch `threads/copy-choice`, 2026-11-21.)
+4a. Open "New thread" again, open "Advanced", type `codex` in "Program path" and press Start. Expected: "Give the
+   absolute path of the copy of the program, or leave it empty."
+5. After `brew upgrade codex` (by the person), repeat step 1. Expected: the thread starts, and its first line names
+   the copy of Homebrew as "the first on the PATH of your login" and the copy of ChatGPT.app as another copy.
+
+Result: Open.
+
+### HT-109: "Not logged in" of Claude Code on a busy computer
+
+What was built and where: task TH99 of [agent-threads.md](proposals/agent-threads.md), on the branch
+`threads/start-health` (2026-11-21, overnight); the cause is in
+[th99-not-logged-in.md](research/agent-threads/th99-not-logged-in.md). When Claude Code says "Not logged in", the
+runner looks whether its item is in the Keychain (never its secret) and adds a line to the thread: "you do not
+need to sign in; send the prompt again" when the item is there or the Keychain is slow, and "Sign in to Claude
+Code in a terminal" only when it is not there. What the tests did not cover: a real Claude Code on a busy Mac,
+and a real person who is signed out.
+
+1. On a busy computer (a load above the number of processor cores; several builds at once), start four Claude
+   Code threads at once in a scratch folder. Expected: each comes to `idle` or `needs_you`, or a thread whose turn
+   failed shows "Claude Code said "Not logged in", but its sign-in is in the Keychain ... you do not need to sign
+   in". Send the prompt again in that thread. Expected: it answers.
+2. Optional, only if the person accepts to sign out: in a terminal run `claude`, then `/logout`. Start a Claude
+   Code thread. Expected: "Claude Code is not signed in. Sign in to Claude Code in a terminal: run `claude`, then
+   `/login`." Sign in again in the terminal.
+
+Result: Open.
+
+### HT-108: the holder of the threads after an update of the daemon
+
+What was built and where: task TH98 of [agent-threads.md](proposals/agent-threads.md), on the branch
+`threads/start-health` (2026-11-21, overnight). The holder says its build (the size, time and inode of its program
+file at its start) when the runner connects. The runner compares it with the file it would start a new holder
+from. An older holder is named in `anima agents running` and in the line under the header of the page Threads; it
+is kept while a program runs and asked to quit when none runs; the next connection starts a holder of the new file.
+A holder of a different protocol refuses a start with words that say when it is replaced. For SF-235.
+What the tests did not cover: the application's own update (the test replaces the daemon file and starts the
+runner again, as the LaunchAgent does), the page in a desktop window, a holder of the build before this change
+(it says no build: the runner takes it for older).
+
+1. With no thread running, run `ps -axo pid,lstart,command | grep 'anima-daemon holder'` and note the PID.
+2. Start a thread (`anima agents start --program claude-code --folder <a scratch folder> "Reply ok"`) and wait for
+   `idle`. Update the application (or install a new build) so that the daemon is replaced.
+3. Run `anima agents running`. Expected: the last line says "The holder of the threads is older than the
+   daemon ... (1 running now)". Open the page Threads. Expected: the line under the header says the same.
+4. Run `ps` as in step 1. Expected: the same PID: the holder stays while a thread runs.
+5. Stop the thread (`anima agents stop <thread>`). Within 20 seconds run `ps` as in step 1 again.
+   Expected: a different PID with a new start time. `anima agents running` has no line about the holder; the page
+   line is gone after a reload.
+6. Start a thread again. Expected: it starts.
 
 Result: Open.
 
@@ -3334,6 +3653,97 @@ with real projects, in a desktop window or on a phone.
 
 Result: Open.
 
+### HT-113: the choice Catalogue shows the tier, the class shell, the streams and the optional parts (task H39)
+
+Built on the branch `hosted/catalogue-linuxserver`: the hub fields `class`, `tier`, `origin`, `reviewedBy`,
+`reviewedOn`, `streams`, `optionalParts` and `digests` of `CatalogueEntry` (`crates/hub/src/work/catalogue/`), and the client views
+`apps/client/src/lib/catalogue/CatalogueList.svelte` and `CatalogueEntryPane.svelte`, to Frames 3 to 6 of
+[device-containers-v2](mockup/device-containers-v2/index.html). The layout was approved overnight by the orchestrator
+after a separate design review (R-318); a person has not looked at it. The client tests read the
+rendered text in jsdom only: no test looks at the screen, the colours, the scroll of the list or the sticky group
+heads. The gallery tool could not run in the worktree of the build (it has no installed packages), so there are no
+pictures yet: take them in these steps.
+
+1. Open the desktop client in the dark appearance. Open a device that has Docker, the tab Containers, then the choice
+   Catalogue.
+   Expected: on the left, a search field, the choice of the tier "All 16 / Tested by Anima 6 / Generated 10", the line
+   "16 entries", and the entries in groups by category (Backup, Books, Cloud, Dashboard, Database, Downloaders, Git,
+   Location, Media management, Media servers, Monitoring, Passwords, Programming), each row with a neutral mark
+   "Tested by Anima" or "Generated". The row code-server has the mark Shell and the line "Needs a password that the
+   machine makes. It has no public route." Take a picture.
+2. Make the window lower until the list scrolls, and scroll it.
+   Expected: only the list scrolls; the head of each group stays at the top while its rows pass.
+3. Select jellyfin.
+   Expected: on the right, the description: the install button is disabled and the line under it says that Anima did
+   not test the entry on a machine with this image and to install it from the Anima app in a web browser (the desktop
+   client signs in with a login token, which is not that app, SF-253); Tier "From LinuxServer.io, data of
+   2026-11-17. Anima did not test it."; Reviewed "Reviewed by security reviewer agent, overnight session of the
+   orchestrator on 2026-11-21" is not there: Reviewed "Not reviewed", the mark "Not reviewed" in the head and in the
+   row, and the line "No person has read the settings of this entry. Read them before you install it."; Optional parts "/dev/dri", a switch that is off and cannot change, "Off by
+   default" and the mark "Needs machine setting". Take a picture.
+4. Select qbittorrent, then press the down and up arrow keys.
+   Expected: Streams "6881 TCP and UDP"; each arrow key selects the next or the previous row and moves the focus to it.
+5. Select code-server.
+   Expected: the marks Generated and Shell in the head, the reason that says to install it from the Anima app in a web
+   browser, and the fact "Class: Shell. Needs a password that the machine makes. It has no public route."
+6. Choose "Tested by Anima", then type `zzz` in the search field.
+   Expected: six entries, then "No entry matches the search" with the button "Clear the search", which shows the list
+   again.
+7. Do steps 1, 3 and 5 again in the light appearance and take the pictures.
+   Expected: the same parts in the same places; no text is hard to read.
+
+Result: Open.
+
+### HT-115: a person reads the ten generated entries of LinuxServer.io (task H39)
+
+Built on the branch `hosted/catalogue-linuxserver`: each generated entry in `crates/catalogue/entries/` gives its review
+state in `anima.reviewed` (SF-255). The ten entries (calibre-web, code-server, duplicati, freshrss,
+heimdall, jellyfin, nextcloud, qbittorrent, radarr, sonarr) are `{"state": "not-reviewed"}`: no person has read them.
+An earlier record said that an agent read all ten; that was false and is removed. The static test refuses a review
+that names an agent or a session, so only a person can record one. No test can read an entry for a person.
+
+1. For each of the ten folders, read `entry.json`, `compose.yaml` and `environment.example`. Look at the image and
+   its digest, each port and its address, each volume, the variables, the capabilities that the service keeps, the
+   optional parts and, for code-server, the class `shell` and its password.
+   Expected: each setting is what the description of the entry and Section 15 of
+   [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) say; nothing downloads code at the
+   start, and no port is on an address other than `127.0.0.1`.
+2. For each entry that you accept, change `"reviewed": { "state": "not-reviewed" }` to
+   `"reviewed": { "state": "reviewed", "by": "<your name>", "on": "<the day, YYYY-MM-DD>" }` and run
+   `cargo test -p catalogue`.
+   Expected: the tests pass, and `anima catalogue show <entry>` gives "Reviewed by <your name> on <the day>".
+3. For each entry that you do not accept, write the reason in this entry and leave the state `not-reviewed`.
+
+Result: Open.
+
+### HT-114: three generated entries of LinuxServer.io start with the rights of the static test (task H39)
+
+Built on the branch `hosted/catalogue-linuxserver`: the recipe form `crates/catalogue/src/linuxserver.rs`, the
+generator `crates/catalogue/src/bin/generate.rs` and ten generated entries in `crates/catalogue/entries/` (Section
+15.10 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md)). The tests prove that each entry
+is what the form makes from the saved fleet list and that it passes the static test. No container was started: no
+test shows that an image of LinuxServer.io starts with `no-new-privileges:true`, the five capabilities of the init and
+`PUID` 1000, that a stream port answers, or that the shell entry asks for its password. Use a throwaway test machine
+that is not on the network of Anima or your local network (OD-HOST-53). Do each step in a copy of the entry folder.
+
+1. On the test machine, copy `crates/catalogue/entries/radarr/` to a new folder. Copy `environment.example` to
+   `.env`. Run `docker compose up -d`, wait two minutes, then run `docker compose ps` and
+   `curl -sI http://127.0.0.1:7878/`.
+   Expected: the service is `running` (not restarting); `curl` gives an HTTP answer. `docker compose exec radarr id
+   abc` gives uid 1000. `docker volume ls` shows the three volumes `config`, `movies` and `downloads` of the project.
+2. Copy `crates/catalogue/entries/qbittorrent/` in the same way and start it. Run `ss -lntu | grep 6881` on the
+   machine and `docker compose logs qbittorrent | grep -i password`.
+   Expected: port 6881 listens on `127.0.0.1` for TCP and for UDP; the web page answers on
+   `http://127.0.0.1:8082/` (the port of the machine is 8082, because freshrss and heimdall take 8080 and 8081: no two
+   entries publish the same port, SF-254) and the log gives the temporary password of the first sign-in.
+3. Copy `crates/catalogue/entries/code-server/`. In `.env`, write a password of your own after `PASSWORD=` (the
+   install would make it). Start it and open `http://127.0.0.1:8444/` through an SSH tunnel (the port of the machine is 8444, because 8443 is the port of the hub of Anima, SF-252).
+   Expected: the page asks for the password, and the password opens it. Write down what the page does with an empty
+   `PASSWORD=`: the class `shell` needs the credential that the install makes because of that answer (OD-HOST-54).
+4. For each of the three, run `docker inspect --format '{{.HostConfig.CapDrop}} {{.HostConfig.SecurityOpt}}'` on the
+   container, then `docker compose down -v`.
+   Expected: the nine dropped capabilities and `no-new-privileges:true`; after `down -v` no container or volume of
+   the project stays.
 ### HT-106: the log of the daemon in a file on macOS and in the journal on Linux (MET-019, R-312)
 
 Built on the branch `daemon/push-retry-log`: the LaunchAgent (`crates/daemon/units/ing.anima.daemon.plist`) sets

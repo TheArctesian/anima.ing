@@ -165,6 +165,8 @@ impl Shared {
 /// [`HolderError`] when the folder is not private, a different holder holds it, or the socket
 /// cannot be made.
 pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
+    // The build of the file this holder started from, before an update replaces it (TH98).
+    let _ = wire::this_build();
     let _lock = lock(dir)?;
     record::end_left_over(dir).await;
     let listener = bind(dir)?;
@@ -188,7 +190,7 @@ pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
         state.closing = true;
         state.connection = None;
     }
-    super::commands::end_all(&shared).await;
+    super::stop::end_all(&shared).await;
     let _ = std::fs::remove_file(dir.join(SOCKET));
     Ok(())
 }
@@ -318,6 +320,7 @@ async fn serve(shared: Arc<Mutex<Shared>>, stream: UnixStream, connection: Conne
     });
     let mut reader = BufReader::new(reading).take(u64::MAX);
     let mut line = Vec::new();
+    let mut quitting = false;
     loop {
         line.clear();
         reader.set_limit(u64::try_from(MAX_FRAME).unwrap_or(u64::MAX) + 1);
@@ -336,7 +339,9 @@ async fn serve(shared: Arc<Mutex<Shared>>, stream: UnixStream, connection: Conne
         let outcome = super::commands::run(&shared, command).await;
         drop(one);
         if ends && outcome == Outcome::Ok {
-            let _ = quit.send(()).await;
+            // A command after the Quit would start a program in a holder that ends.
+            quitting = true;
+            break;
         }
     }
     if let Ok(mut state) = shared.lock()
@@ -344,5 +349,11 @@ async fn serve(shared: Arc<Mutex<Shared>>, stream: UnixStream, connection: Conne
     {
         state.connection = None;
     }
-    writer.abort();
+    if quitting {
+        // The answer to the Quit goes out before the holder ends.
+        let _ = tokio::time::timeout(std::time::Duration::from_secs(1), writer).await;
+        let _ = quit.send(()).await;
+    } else {
+        writer.abort();
+    }
 }

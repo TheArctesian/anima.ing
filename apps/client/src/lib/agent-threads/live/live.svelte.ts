@@ -1,4 +1,5 @@
 import type { RunnerShell } from '$lib/desktop/agent-threads/runner';
+import type { Listing, ListingChange } from '../listing/listing';
 import { noticeFor, type Looking } from './notify';
 import { REFUSAL_WORDS, type Action, type Outcome, type Update } from './run';
 import { applied, begun, type LiveThread } from './timeline';
@@ -14,7 +15,10 @@ export const REPLAY_GAP_MS = 500;
 export const STOPPED_KEPT = 50;
 
 /** What a call came to: its outcome, or the refusal in words for the person. */
-export type CallResult = { readonly ok: true; readonly outcome: Outcome } | { readonly ok: false; readonly words: string };
+export type CallResult =
+  | { readonly ok: true; readonly outcome: Outcome }
+  /** `answered`: the copies of a program that answered when the chosen one did not (TH97). */
+  | { readonly ok: false; readonly words: string; readonly answered?: readonly string[] };
 
 /**
  * The threads that the runner of this computer drives, as the page shows them (TH14): the watch folds each update into
@@ -27,6 +31,11 @@ export class LiveThreads {
   linked = $state<boolean | null>(null);
   /** A failure of the watch or of a notification, as fixed text. */
   problem = $state<string | null>(null);
+  /** Words while the holder of the programs is older than the daemon (TH98); read again when a thread stops. */
+  holder = $state<string | null>(null);
+  /** How the person lists each thread (TH46), by thread. */
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- replaced whole at each answer, never changed in place
+  listings = $state<ReadonlyMap<string, Listing>>(new Map());
   /** A start that the runner refused at the soft limit: it is sent again when the person raises the limit. */
   overLimit = $state<Action | null>(null);
   /** Called with the ID of a thread that changed while the person looks at it: it does not need the person (THR-055). */
@@ -53,6 +62,7 @@ export class LiveThreads {
         },
       );
       await this.seed();
+      await this.readListings();
       return stop;
     } catch (reason) {
       this.linked = false;
@@ -61,14 +71,43 @@ export class LiveThreads {
     }
   }
 
+  /** The holder is replaced when no thread runs: its words go when the list no longer has them. */
+  private async readHolder(): Promise<void> {
+    const listed = await this.shell.call({ call: 'list' }).catch(() => null);
+    if (listed?.outcome === 'threads') this.holder = listed.holder ?? null;
+  }
+
   private async seed(): Promise<void> {
     const listed = await this.shell.call({ call: 'list' });
     if (listed.outcome !== 'threads') return;
+    this.holder = listed.holder ?? null;
     const at = this.now();
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- built here, then set whole as the new state
     const next = new Map(this.threads);
     for (const row of listed.threads) if (!next.has(row.id)) next.set(row.id, begun(row, at));
     this.threads = next;
+  }
+
+  /** Reads how the person lists each thread again; the listings on the screen stay when the runner does not answer. */
+  async readListings(): Promise<void> {
+    const read = await this.shell.call({ call: 'listings' }).catch(() => null);
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- built here, then set whole as the new state
+    if (read?.outcome === 'listings') this.listings = new Map(read.listings.map((listing) => [listing.thread, listing]));
+  }
+
+  /** Changes how the person lists a thread (TH46). A thread that the runner forgot leaves the page too. */
+  async changeListing(thread: string, change: ListingChange): Promise<CallResult> {
+    const result = await this.call({ call: 'change_listing', thread, change });
+    if (!result.ok || result.outcome.outcome !== 'listings') return result;
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- built here, then set whole as the new state
+    this.listings = new Map(result.outcome.listings.map((listing) => [listing.thread, listing]));
+    if (change.change === 'remove' && this.threads.has(thread)) {
+      // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a copy set whole as the new state
+      const next = new Map(this.threads);
+      next.delete(thread);
+      this.threads = next;
+    }
+    return result;
   }
 
   /** One update of the watch; an update of a thread that the page does not know yet waits for its row. */
@@ -81,6 +120,7 @@ export class LiveThreads {
     if (after === before) return;
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a copy set whole as the new state
     this.threads = pruned(new Map(this.threads).set(update.thread, after));
+    if (this.holder !== null && update.change.change === 'state' && update.change.state === 'stopped') void this.readHolder();
     const looking = this.looking();
     if (looking.front && looking.chosen === update.thread) this.seenOpen?.(update.thread);
     if (at.getTime() < this.quietUntil) {
@@ -106,7 +146,8 @@ export class LiveThreads {
     }
     if (outcome.outcome !== 'refused') return { ok: true, outcome };
     if (outcome.why === 'over_limit' && action.call === 'start') this.overLimit = action;
-    return { ok: false, words: REFUSAL_WORDS[outcome.why] };
+    const words = outcome.said ?? REFUSAL_WORDS[outcome.why];
+    return outcome.answered === undefined ? { ok: false, words } : { ok: false, words, answered: outcome.answered };
   }
 
   /**
