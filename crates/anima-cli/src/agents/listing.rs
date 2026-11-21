@@ -3,7 +3,9 @@
 //! Claude Code or Codex changes. No MCP tool does it: the runner refuses it from a process of
 //! an agent, so that an agent cannot hide a thread from the person.
 
-use agent_threads::control::{Action, Listing, ListingChange, Outcome};
+use std::collections::BTreeSet;
+
+use agent_threads::control::{Action, Listing, ListingChange, MAX_TITLE, Outcome};
 use uuid::Uuid;
 
 use super::drive::accepted;
@@ -74,7 +76,17 @@ pub async fn archive(args: SwitchArgs, invocation: &Invocation) -> Result<(), Fa
 /// marks), or a runner that is not there.
 pub async fn rename(args: RenameArgs, invocation: &Invocation) -> Result<(), Failure> {
     let cleared = args.title.is_none();
-    change(args.thread, ListingChange::Rename { title: args.title }).await?;
+    let rename = ListingChange::Rename { title: args.title };
+    // The same check as the runner's, here first, so that the words are about a title.
+    if Listing::default().changed(&rename).is_err() {
+        return Err(Failure::Usage {
+            message: format!(
+                "A title takes 1 to {MAX_TITLE} characters that show: no control characters and no hidden marks, such as a mark that turns the direction of text."
+            ),
+            hint: None,
+        });
+    }
+    change(args.thread, rename).await?;
     invocation.output.message(if cleared {
         "The thread has the title of its program again."
     } else {
@@ -110,6 +122,22 @@ pub async fn listings(invocation: &Invocation) -> Result<(), Failure> {
         .output
         .data(&listings, |listings| table(listings))?;
     Ok(())
+}
+
+/// The IDs of the threads that the person removed from the list, from the runner.
+///
+/// # Errors
+/// [`Failure`] when the runner is not there or refuses.
+pub async fn removed() -> Result<BTreeSet<String>, Failure> {
+    let mut link = RunnerLink::connect().await?;
+    let Outcome::Listings { listings } = accepted(link.call(Action::Listings).await?)? else {
+        return Ok(BTreeSet::new());
+    };
+    Ok(listings
+        .iter()
+        .filter(|listing| listing.removed)
+        .map(|listing| listing.thread.to_string())
+        .collect())
 }
 
 fn table(listings: &[Listing]) -> Table {

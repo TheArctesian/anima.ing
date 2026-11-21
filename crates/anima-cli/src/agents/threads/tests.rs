@@ -38,6 +38,9 @@ fn home() -> tempfile::TempDir {
     home
 }
 
+/// No thread removed from the list.
+const NONE: BTreeSet<String> = BTreeSet::new();
+
 fn ids(rows: &[ThreadRow]) -> Vec<&str> {
     rows.iter().map(|row| row.id.as_str()).collect()
 }
@@ -45,7 +48,7 @@ fn ids(rows: &[ThreadRow]) -> Vec<&str> {
 #[test]
 fn thr_007_the_list_holds_the_sessions_of_both_programs_and_no_sub_agent() {
     let home = home();
-    let rows = list(home.path(), None, DEFAULT_LIMIT);
+    let rows = list(home.path(), None, DEFAULT_LIMIT, &NONE);
     let mut found = ids(&rows);
     found.sort_unstable();
     assert_eq!(found, ["019a7c2e-codex", "4f1d2c3b-claude"]);
@@ -62,10 +65,31 @@ fn thr_007_the_list_holds_the_sessions_of_both_programs_and_no_sub_agent() {
 fn thr_007_a_program_and_a_limit_narrow_the_list() {
     let home = home();
     assert_eq!(
-        ids(&list(home.path(), Some(Source::Codex), 10)),
+        ids(&list(home.path(), Some(Source::Codex), 10, &NONE)),
         ["019a7c2e-codex"]
     );
-    assert_eq!(list(home.path(), None, 1).len(), 1);
+    assert_eq!(list(home.path(), None, 1, &NONE).len(), 1);
+}
+
+#[test]
+fn th46_a_thread_removed_from_the_list_is_not_shown_and_the_limit_counts_the_others() {
+    let home = home();
+    // The Codex file is the newest, so a limit of one would show it if the filter came after.
+    let codex = home
+        .path()
+        .join(".codex/sessions/2026/11/19/rollout-2026-11-19T10-00-00-019a7c2e-codex.jsonl");
+    let later = std::time::SystemTime::now() + std::time::Duration::from_secs(60);
+    fs::File::options()
+        .write(true)
+        .open(&codex)
+        .and_then(|file| file.set_modified(later))
+        .expect("the time of the file");
+    assert_eq!(ids(&list(home.path(), None, 1, &NONE)), ["019a7c2e-codex"]);
+    let removed = BTreeSet::from(["019a7c2e-codex".to_owned()]);
+    assert_eq!(
+        ids(&list(home.path(), None, 1, &removed)),
+        ["4f1d2c3b-claude"]
+    );
 }
 
 #[test]
@@ -101,7 +125,7 @@ fn thr_007_a_session_file_that_is_a_link_is_not_listed() {
     let outside = home.path().join("outside.jsonl");
     fs::write(&outside, CLAUDE).expect("written");
     std::os::unix::fs::symlink(&outside, project.join("9e9e9e9e-link.jsonl")).expect("a link");
-    assert!(!ids(&list(home.path(), None, DEFAULT_LIMIT)).contains(&"9e9e9e9e-link"));
+    assert!(!ids(&list(home.path(), None, DEFAULT_LIMIT, &NONE)).contains(&"9e9e9e9e-link"));
 }
 
 #[test]
@@ -136,7 +160,7 @@ fn thr_007_a_glance_reads_the_title_from_the_end_of_a_long_file() {
     text.push_str(r#"{"type":"custom-title","customTitle":"Named late"}"#);
     text.push('\n');
     fs::write(&file, text).expect("written");
-    let row = list(home.path(), None, DEFAULT_LIMIT)
+    let row = list(home.path(), None, DEFAULT_LIMIT, &NONE)
         .into_iter()
         .find(|row| row.id == "7a7a7a7a-long")
         .expect("a row");
@@ -152,7 +176,7 @@ fn thr_007_a_session_file_with_a_second_name_is_not_read() {
     let outside = home.path().join("outside.jsonl");
     fs::write(&outside, CLAUDE).expect("written");
     fs::hard_link(&outside, project.join("8b8b8b8b-hard.jsonl")).expect("a hard link");
-    assert!(!ids(&list(home.path(), None, DEFAULT_LIMIT)).contains(&"8b8b8b8b-hard"));
+    assert!(!ids(&list(home.path(), None, DEFAULT_LIMIT, &NONE)).contains(&"8b8b8b8b-hard"));
 }
 
 #[cfg(unix)]
@@ -163,7 +187,7 @@ fn thr_007_a_root_folder_that_is_a_link_gives_no_thread() {
     fs::rename(home.path().join(".codex"), &real).expect("moved");
     std::os::unix::fs::symlink(&real, home.path().join(".codex")).expect("a link");
     assert_eq!(
-        ids(&list(home.path(), None, DEFAULT_LIMIT)),
+        ids(&list(home.path(), None, DEFAULT_LIMIT, &NONE)),
         ["4f1d2c3b-claude"]
     );
 }
@@ -178,7 +202,7 @@ fn thr_007_the_id_of_a_row_is_the_id_that_opens_it() {
         forged,
     )
     .expect("written");
-    let rows = list(home.path(), Some(Source::Codex), DEFAULT_LIMIT);
+    let rows = list(home.path(), Some(Source::Codex), DEFAULT_LIMIT, &NONE);
     let row = rows
         .iter()
         .find(|row| row.id.ends_with("5c5c5c5c-other"))
