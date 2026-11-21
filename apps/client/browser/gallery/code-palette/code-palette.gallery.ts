@@ -40,6 +40,11 @@ const SHOTS: readonly PaletteShot[] = [
   { name: 'key-table-mac', part: 'key-table' },
   { name: 'key-table-windows-linux', settings: ['Windows and Linux'], part: 'key-table' },
   { name: 'clashes', part: 'clashes' },
+  { name: 'web-root-mac', settings: ['Web'] },
+  { name: 'web-root-windows-linux', settings: ['Windows and Linux', 'Web'] },
+  { name: 'key-table-web-mac', settings: ['Web'], part: 'key-table' },
+  { name: 'key-table-web-windows-linux', settings: ['Windows and Linux', 'Web'], part: 'key-table' },
+  { name: 'web-keys', part: 'web-keys' },
 ];
 
 async function openPalette(page: Page, shot: PaletteShot): Promise<void> {

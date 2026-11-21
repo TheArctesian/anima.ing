@@ -1,43 +1,30 @@
 import { describe, expect, it } from 'vitest';
-import { clashes, TAKEN_KEYS } from './clashes';
+import { clashes, TAKEN_KEYS, type Clash } from './clashes';
+import { KEY_RULES } from './keymap';
 
-const lines = (platform: 'mac' | 'other', place: string) =>
-  clashes()
-    .filter((clash) => clash.platform === platform && clash.taken.place === place)
-    .map((clash) => `${clash.key} ${clash.command}`);
+const text = (found: readonly Clash[]) => found.map((clash) => `${clash.client} ${clash.platform} ${clash.key} ${clash.command}`);
 
-describe('the keys of T3 Code against the keys Anima already takes', () => {
-  it('meets the menu of the Mac window on ⌘W and ⌘Z only', () => {
-    expect(lines('mac', 'mac-app-menu')).toEqual(['mod+w terminal.close', 'mod+w rightPanel.close', 'mod+z thread.undo']);
+describe('the keys of the Code section against the keys Anima, its window and the browser already take', () => {
+  it('leaves only the clashes the ruling keeps: ⌘W and ⌘Z of the Mac menu in the desktop app', () => {
+    const found = clashes();
+    expect(text(found)).toEqual(['desktop mac mod+w terminal.close', 'desktop mac mod+w rightPanel.close', 'desktop mac mod+z thread.undo']);
+    expect(found.every((clash) => clash.taken.kept !== undefined)).toBe(true);
   });
 
-  it('agrees with the page it replaces, and leaves the keys of a session terminal alone', () => {
-    expect(lines('mac', 'threads-page')).toEqual([]);
-    expect(lines('other', 'threads-page')).toEqual([]);
-    expect(lines('other', 'session-terminal')).toEqual([]);
+  it('would meet the browser on T3 Code keys, which is why the web client has its own', () => {
+    const t3InBrowser = clashes(TAKEN_KEYS, (set) => (set.web ? KEY_RULES.filter((rule) => rule.when?.includes('isDesktop') !== true) : []));
+    expect(text(t3InBrowser)).toEqual(expect.arrayContaining(['web mac mod+n chat.new', 'web other mod+k commandPalette.toggle', 'web mac mod+shift+[ thread.previous', 'web other mod+shift+c thread.copyReference']));
+    expect(text(t3InBrowser)).not.toContain('web mac mod+k commandPalette.toggle');
   });
 
-  it('meets the browser, as a web page, on the keys a browser keeps', () => {
-    expect(lines('other', 'browser')).toContain('mod+k commandPalette.toggle');
-    expect(lines('mac', 'browser')).not.toContain('mod+k commandPalette.toggle');
-    expect(lines('mac', 'browser')).not.toContain('mod+1 thread.jump.1');
-    expect(lines('mac', 'browser')).toContain('mod+n chat.new');
-  });
-
-  it('meets the tab keys of a Mac browser and the developer tools elsewhere', () => {
-    expect(lines('mac', 'browser')).toEqual(expect.arrayContaining(['mod+shift+[ thread.previous', 'mod+shift+] thread.next', 'f6 workspace.focusNext', 'mod+r preview.refresh']));
-    expect(lines('other', 'browser')).toEqual(expect.arrayContaining(['mod+shift+c thread.copyReference', 'mod+shift+j preview.toggle', 'mod+shift+k pullRequest.copyNumber']));
-    expect(lines('mac', 'browser')).not.toContain('mod+shift+c thread.copyReference');
-  });
-
-  it('keeps a rule that acts in a terminal as a clash with the keys of a session terminal', () => {
+  it('keeps a rule that acts in a terminal as a clash with the keys of a session terminal, in both clients', () => {
     const taken = TAKEN_KEYS.filter((key) => key.place === 'session-terminal');
-    expect(clashes([{ key: 'mod+shift+c', command: 'terminal.copy', when: 'terminalFocus' }], taken)).toHaveLength(1);
-    expect(clashes([{ key: 'mod+shift+c', command: 'thread.copyReference', when: '!terminalFocus' }], taken)).toEqual([]);
+    expect(text(clashes(taken, () => [{ key: 'mod+shift+c', command: 'terminal.copy', when: 'terminalFocus' }]))).toEqual(['desktop other mod+shift+c terminal.copy', 'web other mod+shift+c terminal.copy']);
+    expect(clashes(taken, () => [{ key: 'mod+shift+c', command: 'thread.copyReference', when: '!terminalFocus' }])).toEqual([]);
   });
 
   it('finds a clash with a key it is given', () => {
-    const found = clashes([{ key: 'mod+shift+e', command: 'composer.effort' }], [{ key: 'ctrl+shift+e', place: 'session-tab', does: 'A key', only: 'other' }, ...TAKEN_KEYS]);
-    expect(found.map((clash) => [clash.platform, clash.command])).toEqual([['other', 'composer.effort']]);
+    const found = clashes([{ key: 'ctrl+shift+e', place: 'session-tab', does: 'A key', only: 'other' }], () => [{ key: 'mod+shift+e', command: 'composer.effort' }]);
+    expect(text(found)).toEqual(['desktop other mod+shift+e composer.effort', 'web other mod+shift+e composer.effort']);
   });
 });
