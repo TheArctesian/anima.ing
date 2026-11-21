@@ -32,7 +32,7 @@ export interface InboxEngine {
 }
 
 /** Shown beside a disabled Settle, Snooze or Wake. */
-export const WAITING_WHY = 'Settle and snooze need the thread runner to keep them (task TH61, not built yet).';
+export const WAITING_WHY = 'Not yet: the thread runner does not keep settle or snooze (task TH61).';
 
 /** The engine while the runner has no settle, snooze or wake. */
 export const WAITING: InboxEngine = {

@@ -50,7 +50,7 @@
 </script>
 
 <!-- One thread of the inbox (02 sections 5.5 and 5.7). The row is one button; its hover actions sit beside it, not in it. -->
-<li class="row {kind}" class:open class:selected class:recedes={item.recedes && !open} class:settled={shelf === 'settled'} data-thread={row.id} {oncontextmenu}>
+<li class="row {kind}" class:meta class:open class:selected class:recedes={item.recedes && !open} class:settled={shelf === 'settled'} data-thread={row.id} {oncontextmenu}>
   <svelte:element
     this={renaming ? 'div' : 'button'}
     class="main"
@@ -97,8 +97,8 @@
   .row {
     position: relative;
     padding-block: var(--border-focus);
+    /* No content-visibility as in T3: its paint containment would clip the hover tips of the row. */
     list-style: none;
-    content-visibility: auto;
   }
 
   .main {
@@ -118,8 +118,12 @@
   .card .main {
     flex-direction: column;
     justify-content: center;
-    min-block-size: var(--code-card);
     padding: var(--code-card-pad-block) var(--code-row-pad-inline);
+  }
+
+  /* 78 px with the meta line; with no third line the card is as tall as its two lines (02 section 5.5). */
+  .meta .main {
+    min-block-size: var(--code-card);
   }
 
   .slim .main {

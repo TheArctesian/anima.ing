@@ -138,6 +138,7 @@
   .code {
     display: grid;
     grid-template-columns: clamp(var(--code-inbox-min), var(--code-inbox), var(--code-inbox-max)) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
     block-size: var(--room, auto);
     min-block-size: calc(var(--space-16) * 6);
     overflow: hidden;

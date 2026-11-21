@@ -101,7 +101,7 @@
     display: flex;
     flex-direction: column;
     min-inline-size: var(--code-menu-min);
-    max-inline-size: calc(100vw - var(--space-8));
+    max-inline-size: min(var(--code-tip-max), calc(100vw - var(--space-8)));
     margin-block-end: var(--code-offset);
     padding: var(--code-menu-pad);
     border: var(--border-thin) solid var(--border-strong);
@@ -166,6 +166,7 @@
 
   .group {
     padding: var(--space-2) var(--space-2) var(--space-1);
+    line-height: var(--leading-tight);
     color: var(--code-quiet-text);
     font-size: var(--code-text-meta);
     font-weight: var(--weight-medium);
