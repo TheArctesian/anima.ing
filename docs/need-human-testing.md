@@ -104,8 +104,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-067 | The tab Overview of a device with the cards Connect and About, the chart figures and the storage table (R-224) | The desktop application of a build that holds the branch `ui/v2-overview-full`; a Linux device with a daemon and a drive that is not mounted; a device with a web interface | Open |
 | HT-098 | The holder of the agent programs on Linux, against a second user of the computer, and with a process that leaves the tree (THR-049, THR-113, THR-128) | The Linux computer `pop-os` with Rust and a checkout of the local branch `threads/runner`; a Mac with an administrator account to make a second user | Open |
 | HT-097 | The thread runner of the daemon: Claude Code and Codex started and driven on this computer (TH11 to TH13) | A Mac with Claude Code and Codex signed in, and a build of the local branch `threads/runner` with a state folder and a label of your own | Open |
-| HT-079 | The page Threads with the real sessions of Claude Code and Codex of this computer (R-286) | A Mac and the Linux computer `pop-os`, each with sessions of the two programs, and a build of the branch `threads/read-side` | Open |
-| HT-100 | The page Threads: the list and the thread scroll on their own, and a thread opens at its newest end (THR-013, THR-014) | The desktop application of a build that holds the branch `threads/scroll`, with sessions of Claude Code or Codex on the Mac | Open |
+| HT-079 | The page Code with the real sessions of Claude Code and Codex of this computer (R-286) | A Mac and the Linux computer `pop-os`, each with sessions of the two programs, and a build of the branch `threads/read-side` | Open |
+| HT-100 | The page Code: the list and the thread scroll on their own, and a thread opens at its newest end (THR-013, THR-014) | The desktop application of a build that holds the branch `threads/scroll`, with sessions of Claude Code or Codex on the Mac | Open |
 | HT-065 | The measurements of the isolation design on Linux (task W2): a job in a rootless container on the computer `pop-os` | The computer `pop-os`, a terminal there, and one `sudo` for the installation of Podman | Open |
 | HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
@@ -3070,7 +3070,7 @@ the workspace. No person saw it in a window of the application.
 
 Result: Open.
 
-### HT-079: the page Threads with the real sessions of this computer (R-286)
+### HT-079: the page Code with the real sessions of this computer (R-286)
 
 Built on the branch `threads/read-side` (tasks TH1 to TH4 of [agent-threads.md](proposals/agent-threads.md)): the page
 Threads of the desktop application, the commands `anima agents threads` and `anima agents thread`, and the MCP tool
@@ -3079,7 +3079,7 @@ real session files (2026-11-20). No person saw the page in a desktop window, and
 not compared with its mockup.
 
 1. On the Mac, with sessions of Claude Code and Codex in the home folder, open the desktop application and select
-   "Threads" in the navigation bar.
+   "Code" in the navigation bar (named "Threads" before 2026-11-21).
    Expected: a list of the sessions, the last changed first, in the groups "Changed now", "Today" and "Earlier". Each row
    has a title, the program, the folder and the time. A session that you use now has a dot in the accent colour.
 2. Select a thread of Claude Code, then one of Codex.
@@ -3100,7 +3100,7 @@ not compared with its mockup.
    Expected: the same.
 8. (Branch `threads/needs-you`.) In a terminal, give Claude Code a short task and wait until it ends. Do not open its thread.
    Expected: in at most 30 seconds the thread is in the group "Needs you" at the top, with a bell and the words "Your
-   turn", and the item Threads of the bar shows the count 1. Give a long task: while the agent works, the thread is in
+   turn", and the item Code of the bar shows the count 1. Give a long task: while the agent works, the thread is in
    the group "Working" at the bottom. Open the thread that waits: it goes to "Earlier" with "Done", and the count goes.
 9. (Branch `threads/needs-you`.) Start a task in which Claude Code asks for an approval, and do not answer for more than one minute.
    Expected: the thread is in "Needs you", first, with the words "May wait for you". Hold the pointer on the list while a
@@ -3191,7 +3191,7 @@ a made runner only; no person saw it in a desktop window.
    Expected: its runner refuses to start, with the words "a different runner holds the threads of this daemon".
 7. Run `anima agents stop <ID>`.
    Expected: the program and each child of it end.
-8. (Branch `threads/client`, task TH14.) Open the desktop application of the build, then the page Threads. Select "New
+8. (Branch `threads/client`, task TH14.) Open the desktop application of the build, then the page Code. Select "New
    thread", choose Claude Code, a test folder and "Ask before each change", and type a prompt that runs a command.
    Expected: the thread is at the top of the list and opens. The request shows with "Allow once" and "Decline". Its text
    is plain text. "Allow once" lets the command run. Compare the page with frame 3 of
@@ -3229,13 +3229,13 @@ Result: Open.
 What was built and where: task TH46 of [agent-threads.md](proposals/agent-threads.md), on the branch
 `threads/list-marks` (2026-11-21, overnight; ruling R-320). The runner keeps, in its own record, how the
 person lists each thread: pinned, archived, a title of the person, or removed from the list. No session file of
-Claude Code or Codex changes. The page Threads has these actions in a row above the open thread (Pin, Archive, Rename, Remove), a group "Pinned"
+Claude Code or Codex changes. The page Code has these actions in a row above the open thread (Pin, Archive, Rename, Remove), a group "Pinned"
 in the list, and "Archived (n)" in the page header; the commands are
 `anima agents pin <thread> [--off]`, `anima agents archive <thread> [--off]`, `anima agents rename <thread> [<title>]`,
 `anima agents remove <thread>` and `anima agents listings`. What the tests did not cover: the page in a desktop
 window, a real Claude Code thread, and a restart of the installed daemon.
 
-1. On the page Threads, open a thread that does not need you and choose Pin above it. Expected: the thread is in the
+1. On the page Code, open a thread that does not need you and choose Pin above it. Expected: the thread is in the
    group "Pinned" of the list, under "Needs you".
 2. Choose Rename, type a new title and save. Expected: the row shows the new title. Choose Rename again and "Use the
    program's title". Expected: the row shows the title of the program again.
@@ -3277,13 +3277,13 @@ answered at once.
    Homebrew does not answer: after about 20 seconds, "The Codex at /opt/homebrew/bin/codex did not answer in 20
    seconds. Run `/opt/homebrew/bin/codex --version` once in a terminal ..." and "A different copy answered:
    /Applications/ChatGPT.app/.../codex (codex-cli 0.169.0...)". No thread says "starting".
-   While a thread starts, its view on the page Threads says "Waiting for the first answer of the program: <time>"
+   While a thread starts, its view on the page Code says "Waiting for the first answer of the program: <time>"
    and the time goes up each second.
 2. Run the same command again at once. Expected: the same words in less than 2 seconds.
 3. Run it with `--program-path` and the path of the copy of ChatGPT.app from step 1. Expected: the thread starts,
    its first line says "Codex runs from /Applications/ChatGPT.app/... (the copy that the start named)", and it
    comes to `idle`.
-4. On the page Threads, start a Codex thread with "New thread". Expected: after about 20 seconds the dialog says
+4. On the page Code, start a Codex thread with "New thread". Expected: after about 20 seconds the dialog says
    "The usual copy of Codex does not answer. A different copy answers:", the path of the copy of ChatGPT.app, and
    a button "Start with this copy". Press it. Expected: the thread starts with that copy, and "Advanced" shows its
    path. (Branch `threads/copy-choice`, 2026-11-21.)
@@ -3319,7 +3319,7 @@ Result: Open.
 What was built and where: task TH98 of [agent-threads.md](proposals/agent-threads.md), on the branch
 `threads/start-health` (2026-11-21, overnight). The holder says its build (the size, time and inode of its program
 file at its start) when the runner connects. The runner compares it with the file it would start a new holder
-from. An older holder is named in `anima agents running` and in the line under the header of the page Threads; it
+from. An older holder is named in `anima agents running` and in the line under the header of the page Code; it
 is kept while a program runs and asked to quit when none runs; the next connection starts a holder of the new file.
 A holder of a different protocol refuses a start with words that say when it is replaced. For SF-235.
 What the tests did not cover: the application's own update (the test replaces the daemon file and starts the
@@ -3330,7 +3330,7 @@ runner again, as the LaunchAgent does), the page in a desktop window, a holder o
 2. Start a thread (`anima agents start --program claude-code --folder <a scratch folder> "Reply ok"`) and wait for
    `idle`. Update the application (or install a new build) so that the daemon is replaced.
 3. Run `anima agents running`. Expected: the last line says "The holder of the threads is older than the
-   daemon ... (1 running now)". Open the page Threads. Expected: the line under the header says the same.
+   daemon ... (1 running now)". Open the page Code. Expected: the line under the header says the same.
 4. Run `ps` as in step 1. Expected: the same PID: the holder stays while a thread runs.
 5. Stop the thread (`anima agents stop <thread>`). Within 20 seconds run `ps` as in step 1 again.
    Expected: a different PID with a new start time. `anima agents running` has no line about the holder; the page
