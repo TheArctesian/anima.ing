@@ -2,6 +2,20 @@
 
 This procedure serves M5-7 of the [mobile plan](../../plans/mobile-plan.md). It builds an unsigned APK for `ing.anima.mobile` on x86-64 Linux.
 
+## Release from GitHub
+
+The [Android release workflow](../../../.github/workflows/android-release.yml) builds from a push that advances `main` by one first-parent commit. It uses the shared release version and the first-parent count as the Android version code. GitHub uploads `Anima.apk` to a draft release, then publishes the release with a tag of the form `android-0.8.21+821`. The Android workflow has its own switch, `ANIMA_PUBLIC_ANDROID=on`. Once the run passes, use the `fdroid-submission` artifact for the first catalog submission.
+
+Before the first release, create the GitHub environment `release-android` and restrict it to the branch `main`. Set the two environment secrets below with the existing Android release key. Set the environment variable to the certificate's SHA-256 in lowercase hexadecimal. The value in the environment must match `AllowedAPKSigningKeys` in the F-Droid recipe. The key alias in the keystore is `anima-android-release`.
+
+| Setting | Value |
+| --- | --- |
+| Secret `ANDROID_RELEASE_KEYSTORE_BASE64` | Base64 of the existing PKCS#12 release keystore |
+| Secret `ANDROID_RELEASE_KEYSTORE_PASSWORD` | Password for the release keystore |
+| Variable `ANDROID_RELEASE_CERTIFICATE_SHA256` | SHA-256 of the public signing certificate |
+
+Set the keystore secret from Terminal with `base64 -i "$RELEASE_KEYSTORE" | gh secret set ANDROID_RELEASE_KEYSTORE_BASE64 --env release-android`. Set the password through GitHub's environment settings or the interactive prompt of `gh secret set`. Only the signing job reads the secrets.
+
 ## Build on Linux
 
 1. Use a fresh Git checkout of the commit to build. Install Git, a C compiler, `make`, `pkg-config`, and JDK 21.
@@ -35,10 +49,12 @@ Use the draft [F-Droid recipe](../../../apps/desktop/fdroid/ing.anima.mobile.yml
 
 The upstream listing reads the [Fastlane metadata](../../../fastlane/metadata/android/en-US/) from the release tag. Before submission, check the Android release against [HT-070](../../need-human-testing.md#ht-070-keep-and-clear-a-mobile-session-m5-1).
 
+The recipe reads both version fields from Android release tags and downloads the APK from the matching GitHub release. Once the first build is accepted, F-Droid's update checker can add later releases from their tags. F-Droid publishes the upstream-signed APK after its build verifies against that APK.
+
 The checkout includes the [project license](../../../LICENSE), [font notices](../../../apps/client/src/styles/fonts/) and the [Carbon icon license](../../../apps/client/src/lib/icons/LICENSE-Carbon.txt). The F-Droid source scanner flagged a Go test fixture. The recipe removes it from the recipe checkout because the production build does not use it.
 
 1. Copy the recipe to `metadata/ing.anima.mobile.yml` in an `fdroiddata` checkout. Set `commit`, `versionName` and `versionCode` to the first release.
-2. On the release builder, the operator signs the upstream APK with the Android release keystore. Use build-tools 36.0.0 and let `apksigner` prompt for the passwords. `--alignment-preserved` keeps the APK layout that the [signature comparison tool](https://github.com/obfusk/apksigcopier#what-about-signatures-made-by-apksigner-from-build-tools--3500-rc1) expects.
+2. Use the signed asset from the matching GitHub release. For a manual build, sign the upstream APK with the Android release keystore. Use build-tools 36.0.0 and let `apksigner` prompt for the passwords. `--alignment-preserved` keeps the APK layout that the [signature comparison tool](https://github.com/obfusk/apksigcopier#what-about-signatures-made-by-apksigner-from-build-tools--3500-rc1) expects.
 
    ```sh
    "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign --alignment-preserved \
@@ -47,7 +63,7 @@ The checkout includes the [project license](../../../LICENSE), [font notices](..
    "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs target/android/Anima.apk
    ```
 
-   Set `binary` in the build entry to the versioned URL of that APK. Put the signing certificate SHA-256 in `AllowedAPKSigningKeys` at the top level.
+   Check that `Binaries` resolves to the versioned URL of that APK. Check that `AllowedAPKSigningKeys` holds the signing certificate SHA-256.
 3. Remove `disable` from the build entry. Run `fdroid lint ing.anima.mobile` and `fdroid build --server ing.anima.mobile` using the F-Droid build server. Review the scanner output and the dependency licenses.
 4. Compare the signed APK to the unsigned APK from that build. Put the Android build-tools folder on `PATH` so the comparison can run `apksigner`.
 
