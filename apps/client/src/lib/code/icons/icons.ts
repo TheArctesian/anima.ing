@@ -30,6 +30,7 @@ import Hammer from '@lucide/svelte/icons/hammer';
 import Keyboard from '@lucide/svelte/icons/keyboard';
 import Link from '@lucide/svelte/icons/link';
 import Link2 from '@lucide/svelte/icons/link-2';
+import ListFilter from '@lucide/svelte/icons/list-filter';
 import ListTodo from '@lucide/svelte/icons/list-todo';
 import Maximize2 from '@lucide/svelte/icons/maximize-2';
 import MessageCircle from '@lucide/svelte/icons/message-circle';
@@ -105,6 +106,7 @@ export const CODE_ICONS = {
   keyboard: Keyboard,
   link: Link,
   'link-2': Link2,
+  'list-filter': ListFilter,
   'list-todo': ListTodo,
   'maximize-2': Maximize2,
   'message-circle': MessageCircle,
