@@ -17,6 +17,7 @@
   import { crossFade } from '$lib/motion/roles/transitions';
   import { shiftShell } from '$lib/nav/banner-shift';
   import { DATA_AGE_REFRESH_MS } from '$lib/nav/nav';
+  import { BarFolding } from '$lib/nav/collapse/bar-fold.svelte';
   import { storedCollapsed, storeCollapsed } from '$lib/nav/collapse/collapse';
   import { watchIconOnly } from '$lib/nav/collapse/icon-only';
   import { releaseWidth } from '$lib/nav/collapse/resize';
@@ -53,25 +54,33 @@
   // The bar shows icons only below the compact breakpoint or when the operator collapses it; set before the first
   // render so the width never changes after load.
   let nav = $state({ iconOnly: false, compact: false });
-  const startsCollapsed = storedCollapsed(localStorage);
-  let collapsed = $state(startsCollapsed);
-  const iconOnlyWatch = watchIconOnly(document.documentElement, window, startsCollapsed, (now) => {
+  const folding = new BarFolding(storedCollapsed(localStorage), () => page.url.pathname, (next) => storeCollapsed(localStorage, next));
+  const collapsed = $derived(folding.collapsed);
+  let shownCollapsed = untrack(() => collapsed);
+  const iconOnlyWatch = watchIconOnly(document.documentElement, window, shownCollapsed, (now) => {
     nav = now;
   });
   $effect(() => iconOnlyWatch.stop);
 
-  /** Collapses or expands the bar: its width changes at once and the page glides to its new edge (NAV-006, MOT-006). */
-  function setCollapsed(next: boolean) {
-    const root = document.documentElement;
-    const changed = next !== collapsed;
-    collapsed = next;
-    storeCollapsed(localStorage, next);
-    shiftShell(root, () => {
-      releaseWidth(root);
-      iconOnlyWatch.collapse(next);
+  /** The bar's width changes at once and the page glides to its new edge (NAV-006, MOT-006). */
+  $effect(() => {
+    const next = collapsed;
+    untrack(() => {
+      if (next === shownCollapsed) return;
+      shownCollapsed = next;
+      const root = document.documentElement;
+      shiftShell(root, () => {
+        releaseWidth(root);
+        iconOnlyWatch.collapse(next);
+      });
+      const bar = document.getElementById('main-nav');
+      if (!next && bar !== null) void fadeInWords(bar);
     });
-    const bar = document.getElementById('main-nav');
-    if (changed && !next && bar !== null) void fadeInWords(bar);
+  });
+
+  /** The person collapses or expands the bar; on Code the fold is for the visit (OD-THR60). */
+  function setCollapsed(next: boolean) {
+    folding.toggle(next);
   }
 
   // Decided once, from the page the browser loaded: the operator shell, or a fixed refusal on an origin that cannot be
