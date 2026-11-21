@@ -39,7 +39,7 @@ pub use daemon_core::{
     readings::{Cpu, Disk, Interface, Load, Memory, Reading},
 };
 pub use feed::Feed;
-pub use ingest::{daemon_router, spawn_stale_watch};
+pub use ingest::{DaemonEnrolment, daemon_router, spawn_stale_watch};
 pub use model::{
     Battery, BatteryState, Gpu, GpuVendor, MetricKind, MetricPoint, MetricRange, MetricSample,
     MetricSeries, MetricsAdded, Readings,

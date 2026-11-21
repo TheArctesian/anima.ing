@@ -91,6 +91,28 @@ impl Mutation {
     }
 }
 
+/// A one-use enrolment code for `device`, a computer that joined the link with no application
+/// (HM-T33), with its audit entry and event written by `trail`, in the caller's transaction.
+/// The device's earlier unused codes stop working, as with [`Mutation::enrol_daemon`].
+///
+/// # Errors
+/// `NOT_FOUND` for a device deleted meanwhile; `INTERNAL` for the random source, the database
+/// or the audit entry.
+pub async fn computer_enrolment(
+    conn: &mut sqlx::PgConnection,
+    device: &Device,
+    trail: Trail<'_>,
+) -> Result<DaemonEnrolment> {
+    let bytes = ingest::random::<CODE_BYTES>().map_err(internal)?;
+    let code = EnrolmentCode::from_random(*bytes);
+    let enrolment = ingest::make_code(conn, device.id, code, trail.now)
+        .await
+        .map_err(ingest_error)?;
+    let entry = code_made(device, &enrolment);
+    trail.write(conn, entry).await.map_err(internal)?;
+    Ok(enrolment)
+}
+
 /// The device the mutation is about; `NOT_FOUND` when there is none.
 async fn device_of(ctx: &Context<'_>, id: DeviceId) -> Result<Device> {
     devices::get(pool(ctx)?, id).await.map_err(device_error)

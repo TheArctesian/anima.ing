@@ -52,6 +52,12 @@ impl Claims {
     }
 }
 
+/// The open claims of computers with no application (HM-T33, R-240 c): the rules of [`Claims`]
+/// in a book of their own, so that a claim of one kind never works as the other. Such a claim
+/// gives a daemon enrolment code, never a token.
+#[derive(Default)]
+pub struct ComputerClaims(pub(crate) Claims);
+
 #[cfg(test)]
 mod tests {
     use chrono::TimeDelta;

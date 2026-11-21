@@ -150,6 +150,17 @@ pub(super) fn device_revoked(device: &ListedDevice, revoked: &Revoked) -> TrailE
     )
 }
 
+/// An install claim for a computer that is on the link already was made (HM-T33); never the
+/// claim.
+pub(super) fn install_claim_made(name: &str) -> TrailEntry {
+    let name = clean(name, super::NAME_CHARS);
+    entry(
+        AuditAction::Create,
+        format!("Made an install claim for the computer {name} of the link."),
+        json!({ "computerInstall": { "device": name } }),
+    )
+}
+
 fn entry(action: AuditAction, message: String, change: serde_json::Value) -> TrailEntry {
     TrailEntry {
         source: Source::Access,

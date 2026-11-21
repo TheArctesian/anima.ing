@@ -6,7 +6,7 @@
 # An addition marked @pending is ignored until the hub declares it; then the
 # programme orchestrator removes @pending (P2-002, P3-002, K7 / WP-17 E-2).
 # Conventions: contracts/conventions.md.
-# Every operation needs a valid token, except `login`, `signInBrowser`, `hostedDeviceInvite`, `claimDeviceToken`, `hostedBrowserTicket` and `hostedBrowserSignIn` (API-003, D-4, R-111, R-129, HMD-061).
+# Every operation needs a valid token, except `login`, `signInBrowser`, `hostedDeviceInvite`, `claimDeviceToken`, `hostedBrowserTicket`, `hostedBrowserSignIn` and `claimComputerEnrolment` (API-003, D-4, R-111, R-129, HMD-061, HM-T33).
 
 scalar DateTime # RFC 3339, UTC
 scalar IpAddr # "10.10.0.12" or an IPv6 address
@@ -2480,6 +2480,15 @@ type HostedDeviceInvite {
   expiresAt: DateTime!
 }
 
+"""What a hub gives an operator for a computer with no application (hosted-mode.md HM-T33, R-240 c): shown once, never logged (LOG-007)."""
+type ComputerInstall {
+  "The link invite: works once and expires (LNK-003). Null when a device with this name is already on the link: the claim then gives that computer a new enrolment code."
+  invite: String
+  "The one-time claim that the computer that joined with invite trades for a daemon enrolment code (claimComputerEnrolment)."
+  claim: String!
+  expiresAt: DateTime!
+}
+
 """What a hosted hub gives the Anima.ing cloud for a browser of its account (hosted-mode.md HMD-061): shown once, never logged (LOG-007)."""
 type HostedBrowserTicket {
   "The one-time ticket that the gateway trades for the session cookie of the hub (hostedBrowserSignIn). It works once, for 60 seconds."
@@ -4302,6 +4311,12 @@ type Mutation {
   hostedBrowserTicket(cloudKey: String!): HostedBrowserTicket!
   "The browser session of this hub in trade for ticket: the answer sets the __Host-anima cookie (Secure, HttpOnly, SameSite=Strict, Path=/, Max-Age 12 hours). The gateway of the pool sends it for the browser, with Origin of the public origin of the hub, and passes the Set-Cookie on; the ticket is never in an address. The ticket works once. Needs no token. FORBIDDEN on a hub that is not hosted and for a request that does not come from the public origin; UNAUTHENTICATED for a ticket that is used, expired or wrong. Writes an audit entry and an event (HMD-061, HMD-062)."
   hostedBrowserSignIn(ticket: String!): HostedBrowserSignIn!
+
+  # A computer with no application (hosted-mode.md HM-T33, R-240 c)
+  "An invite and a one-time claim for the computer named name (1 to 64 visible characters), which has no application. A device already on the link gets a claim and no invite. A new claim for a name ends the open claim of that name. The claim works once, until its invite expires. The response is no-store. Writes an audit entry without the invite or the claim (LOG-007). Login or browser token only (D-23)."
+  createComputerInstall(name: String!): ComputerInstall!
+  "A daemon enrolment code (MET-012) for the computer that sends this through the link, when it joined with the invite of claim. When no device has the link address of the computer as its host, the hub adds one: the name of the computer on the link, the kind server, os, in the site Link. The claim works once. Needs no token. UNAUTHENTICATED for any refusal. The response is no-store. Writes an audit entry and an event without the code."
+  claimComputerEnrolment(claim: String!, os: OperatingSystem!): DaemonEnrolment!
 
   # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E4)
   "Links two records. A second call with the same source, target and kind returns the stored link and writes nothing; with a new label it replaces the label. VALIDATION for text that is not kind:id, for a record linked to itself, and for a repository, place, person or date key that is not in its one form (RLK-004)."
