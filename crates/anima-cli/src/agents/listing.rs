@@ -2,10 +2,13 @@
 //! how the person lists the threads of this computer (TH46, TH61). The runner keeps it in its own record; no session file of
 //! Claude Code or Codex changes. No MCP tool does it: the runner refuses it from a process of
 //! an agent, so that an agent cannot hide a thread from the person.
+//! `anima agents projects`: the projects of this computer (TH107), changed by the person only.
 
 use std::collections::BTreeSet;
 
-use agent_threads::control::{Action, Listing, ListingChange, MAX_TITLE, MOST_SNOOZE, Outcome};
+use agent_threads::control::{
+    Action, Listing, ListingChange, MAX_TITLE, MOST_SNOOZE, Outcome, Project, ProjectChange,
+};
 use chrono::{DateTime, TimeDelta, Utc};
 use uuid::Uuid;
 
@@ -50,6 +53,78 @@ pub struct SnoozeArgs {
     /// The end of the snooze, as RFC 3339 (`2026-11-23T09:00:00+01:00`).
     #[arg(long, group = "end")]
     until: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct ProjectsArgs {
+    #[command(subcommand)]
+    change: Option<ProjectCommand>,
+}
+
+#[derive(Debug, clap::Subcommand)]
+enum ProjectCommand {
+    /// Add a folder of this computer as a project.
+    Add {
+        folder: std::path::PathBuf,
+        /// The name of the project; by default the last part of the folder.
+        #[arg(long)]
+        name: Option<String>,
+    },
+    /// Give a project a new name.
+    Rename {
+        folder: std::path::PathBuf,
+        name: String,
+    },
+    /// Take a project off the list. No file and no thread of it changes.
+    Remove { folder: std::path::PathBuf },
+}
+
+/// `anima agents projects`: lists the projects, after the change that the arguments name.
+///
+/// # Errors
+/// [`Failure`] for a refusal of the runner, or a runner that is not there.
+pub async fn projects(args: ProjectsArgs, invocation: &Invocation) -> Result<(), Failure> {
+    let absolute = |folder: std::path::PathBuf| std::path::absolute(&folder).unwrap_or(folder);
+    let action = match args.change {
+        None => Action::Projects,
+        Some(command) => Action::ChangeProject {
+            change: match command {
+                ProjectCommand::Add { folder, name } => ProjectChange::Add {
+                    folder: absolute(folder),
+                    name,
+                },
+                ProjectCommand::Rename { folder, name } => ProjectChange::Rename {
+                    folder: absolute(folder),
+                    name,
+                },
+                ProjectCommand::Remove { folder } => ProjectChange::Remove {
+                    folder: absolute(folder),
+                },
+            },
+        },
+    };
+    let mut link = RunnerLink::connect().await?;
+    let Outcome::Projects { projects } = accepted(link.call(action).await?)? else {
+        return Ok(());
+    };
+    if projects.is_empty() {
+        invocation.output.message("No projects.");
+        return Ok(());
+    }
+    invocation
+        .output
+        .data(&projects, |rows| project_table(rows))
+}
+
+fn project_table(rows: &[Project]) -> Table {
+    let mut table = Table::new(vec!["NAME", "FOLDER"]);
+    for row in rows {
+        table.row(vec![
+            Cell::new(&row.name),
+            Cell::new(&row.folder.display().to_string()),
+        ]);
+    }
+    table
 }
 
 /// The question before a thread is removed from the list.

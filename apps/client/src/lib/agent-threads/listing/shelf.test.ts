@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { outcomeFrom } from '../live/run';
 import { NO_MARKS, shelfOf, type Activity, type Marks } from './shelf';
 
-// The same cases as the test of `Listing::shelf` in crates/agent-threads/src/control/shelf.rs.
+// The same cases as the test of `Listing::shelf`, crates/agent-threads/src/control/shelf/tests.rs.
 const START = Date.parse('2027-01-15T08:00:00Z');
 const WEEK = 7 * 24;
 const at = (hours: number): Date => new Date(START + hours * 60 * 60 * 1000);

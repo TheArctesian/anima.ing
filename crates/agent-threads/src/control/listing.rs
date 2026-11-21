@@ -112,13 +112,18 @@ impl Listing {
 /// A change of a listing that the runner does not make.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum BadChange {
-    #[error("a title is 1 to {MAX_TITLE} characters on one line, with no hidden marks")]
-    Title,
+    #[error(transparent)]
+    Title(#[from] BadTitle),
     #[error("a snooze ends after now and at most 30 days from now")]
     SnoozeTime,
 }
 
-fn checked_title(title: &str) -> Result<String, BadChange> {
+/// A title that the runner does not keep.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("a title is 1 to {MAX_TITLE} characters on one line, with no hidden marks")]
+pub struct BadTitle;
+
+pub(crate) fn checked_title(title: &str) -> Result<String, BadTitle> {
     let title = title.trim();
     let fits = !title.is_empty() && title.chars().count() <= MAX_TITLE;
     let shown = title
@@ -127,7 +132,7 @@ fn checked_title(title: &str) -> Result<String, BadChange> {
     if fits && shown {
         Ok(title.to_owned())
     } else {
-        Err(BadChange::Title)
+        Err(BadTitle)
     }
 }
 
@@ -169,7 +174,7 @@ mod tests {
             };
             assert_eq!(
                 plain().changed(&change, now()),
-                Err(BadChange::Title),
+                Err(BadChange::Title(BadTitle)),
                 "{bad:?}"
             );
         }

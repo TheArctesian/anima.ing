@@ -115,6 +115,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-066 | A browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) | A hub of the pool with an image of this build, and the gateway of the pool at `hub.anima.ing` | Open |
 | HT-080 | The web client of a hosted hub behind the gateway: the sign-in with no password page, the sign-out, a session that ended (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27) | A hub of the pool whose image has this build of the web client, and the gateway of the pool at `hub.anima.ing` | Open |
 | HT-104 | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with its own public origin `https://<hub id>.hub.anima.ing` and an image of this build, the door of the pool for that address, an application of this build, and a GitHub account that may get a new App | Open |
+| HT-125 | The window with no frame on Windows and Linux: move it, the three controls, resize, each page (task TC2 of agent threads, R-355) | A Windows computer and the Linux computer `pop-os`, each with a build of the branch `code/shell-window`; a Mac for the last step | Open |
 
 ### What a check on the hosted hub needs
 
@@ -3259,6 +3260,40 @@ window, a real Claude Code thread, and a restart of the installed daemon.
 
 Result: Open.
 
+### HT-126: the diff, the plan, the use, the models, plan mode and the projects with the real programs (TH101 to TH107)
+
+Built: on the branch `threads/engine-for-copy` (tasks TH101 to TH107 of agent-threads.md). The runner now passes on the
+diff of each Codex turn, the plan of a Codex turn, and the use of tokens of both programs as updates of a thread; it
+writes `initialize` to Claude Code before the first prompt and asks Codex for `model/list`, and keeps the models of each
+program (`anima agents models`); a start can be in plan mode (Claude Code only); the call `earlier` reads back the kept
+updates of a thread; the projects of this computer are kept in the record of the runner (`anima agents projects`).
+The page does not show any of it yet: the copy of the T3 Code screens does.
+
+The tests cover the decoders with the lines recorded in TH18 (a Codex turn with five diffs and five reports of use; a
+Claude Code turn with its cost), a Codex plan and a model list written by hand from the types of `codex app-server`
+0.170, the answer of Claude Code to `initialize` as TH10 recorded it, and the calls on the socket of a runner with a made
+Claude Code. They do not cover a real Claude Code or Codex: whether `initialize` before the prompt changes the start of
+Claude Code, whether Codex sends `turn/plan/updated` when it plans, and what plan mode does.
+
+1. On the Mac, run `anima agents start --program claude-code --folder <a folder> "Say hello"`, wait for the reply,
+   then run `anima agents models`.
+   Expected: the thread replies as before; the list shows the models of Claude Code with their efforts.
+2. Run `anima agents start --program codex --folder <a folder> "Make a file note.txt that says ok"`, wait, then run
+   `anima agents watch` for a moment and `anima agents models`.
+   Expected: the watch shows a diff of the turn with `note.txt`, and a use with a context window; the models of Codex
+   are listed.
+3. Start a Codex thread with "Make a plan of three steps to tidy this folder, then do the first step".
+   Expected: the watch shows a plan with its steps and their states. If no plan comes, record it here.
+4. Run `anima agents start --program claude-code --mode plan --folder <a folder> "Plan a README"`.
+   Expected: Claude Code plans and changes no file; the thread asks before it leaves plan mode.
+5. Run `anima agents start --program codex --mode plan --folder <a folder> "x"`.
+   Expected: refused, with the words for a bad value.
+6. Run `anima agents projects add <a folder>`, then `anima agents projects rename <the folder> "My project"`, then
+   quit and open the application again and run `anima agents projects`.
+   Expected: the project is listed with its new name; `anima agents projects remove <the folder>` takes it off.
+
+Result: Open.
+
 ### HT-110: a program that does not answer, with the Codex of Homebrew of this Mac
 
 What was built and where: task TH97 of [agent-threads.md](proposals/agent-threads.md), on the branch
@@ -4064,5 +4099,45 @@ flake only. It is not fixed.
    Expected: each VPS-001 test passes in a few seconds.
 2. Run it again while the load average is above 50.
    Expected: it passes. If it fails with a timeout, record the time and the load here.
+
+Result: Open.
+
+### HT-125: the window with no frame on Windows and Linux (task TC2, R-355)
+
+The branch `code/shell-window` takes the frame of the system from the window on Windows and Linux. A strip at the top
+of each page moves the window and holds the three window controls. It was written on a Mac. No part of it was run on
+Windows or on Linux, so each step below is the first run.
+
+1. On Windows and on `pop-os`, start the application.
+   Expected: the window has no title bar of the system. At the top right are three buttons: Minimise, Maximise, Close.
+2. Press and move the pointer on the empty part of the strip at the top.
+   Expected: the window moves. A press on one of the three buttons does not move it.
+3. Use each button. Then double-click the empty part of the strip, twice.
+   Expected: the window goes to the task bar; fills the screen and the middle button says "Restore"; closes. The
+   double click fills the screen and then goes back, and the middle button follows each time.
+4. Move the pointer to each edge and each corner of the window and pull.
+   Expected: the window changes its size, and it does not get smaller than 960 by 600. If an edge does not resize,
+   write which edge and which system here: the window then needs resize handles of its own.
+5. Move the window to a second monitor. Use the keys of the system for a window (on Windows: the Windows key with an
+   arrow; on Linux: the keys of the desktop).
+   Expected: the window snaps and fills as each other window does.
+6. Open each page of the bar, a device with a session tab, Settings, and the page before sign-in.
+   Expected: the three buttons do not lie over a control or a text of the page, and the top of each page is not cut.
+   Make the window 960 wide, then collapse the bar. The same holds.
+7. With the Tab key go to the three buttons.
+   Expected: each takes the focus with a ring that can be seen, and Enter or Space runs it.
+8. On Linux, repeat step 1 under a desktop that draws frames itself (for example KDE), if one is there.
+   Expected: no second title bar. If the desktop draws one, write it here.
+9. Open a device page and scroll it; open a table that is longer than the window and scroll it; open a modal.
+   Expected: the pinned bar and the table head stop below the strip, not under it. With the modal open the window
+   still moves by the strip, and the three buttons still work.
+10. Make the window less than 1100 wide and stop the hub, so that the banner "Not on the network" shows.
+    Expected: the banner is the top of the window, and the strip with the three buttons is below it.
+11. Press and move the pointer on the top of the navigation bar, beside "Anima.ing".
+    Expected, a known limit: with the bar at its full width this does not move the window; only the strip over the
+    page does. The correction is one attribute in `apps/client/src/lib/nav/Nav.svelte` (`data-tauri-drag-region="deep"`
+    on the brand row). It is not in this branch, because that file belongs to two mockup records.
+12. On a Mac, start the application.
+    Expected: nothing changed: the three window buttons of macOS are over the bar, and no drawn buttons show.
 
 Result: Open.

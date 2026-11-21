@@ -92,6 +92,13 @@ pub enum AgentCommand {
     /// or snoozed.
     #[cfg(unix)]
     Listings,
+    /// Show the models that each agent program of this computer offers for a start.
+    #[cfg(unix)]
+    Models,
+    /// List the projects of this computer, or add, rename or remove one. A project is a folder
+    /// whose threads are listed under its name.
+    #[cfg(unix)]
+    Projects(listing::ProjectsArgs),
 }
 
 impl AgentCommand {
@@ -123,6 +130,7 @@ impl AgentCommand {
             Self::Watch(args) => drive::watch(args, invocation).await,
             Self::RaiseLimit => drive::raise_limit(invocation).await,
             Self::Accounts => accounts::accounts(invocation).await,
+            Self::Models => accounts::models(invocation).await,
             other => other.run_listing(invocation).await,
         }
     }
@@ -139,6 +147,7 @@ impl AgentCommand {
             Self::Snooze(args) => listing::snooze(args, invocation).await,
             Self::Wake(args) => listing::wake(args, invocation).await,
             Self::Listings => listing::listings(invocation).await,
+            Self::Projects(args) => listing::projects(args, invocation).await,
             _ => unreachable!("the other commands are run by `run` and `run_local`"),
         }
     }
