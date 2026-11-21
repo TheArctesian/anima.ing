@@ -2974,6 +2974,54 @@ The correction: None. The daemon links no C library that opens such a descriptor
 
 State: Open (a note). Found by a separate reviewer on 2026-11-21 in commit `7a339859a`.
 
+### SF-NEW-l1fetchf: On Linux the child checked its parent before it set the parent-death signal. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); SEC-C-001, CAG-008; R-NEW-fetchprocess.
+
+Where: `crates/daemon/src/model/fetch/child.rs` (`watch_parent`).
+
+What it is: A daemon that ended between the check of the parent and the call of `prctl` left a child that no signal would end.
+
+The correction: The child sets the parent-death signal first, then compares its parent with the process id of the order. A comment and the documentation of `spawn::start` say that on Linux the signal fires when the spawning thread exits, so the daemon spawns the child from a long-lived worker of its async runtime, never from `spawn_blocking`. Test: `the_child_ends_when_its_parent_is_not_the_daemon_of_the_order` (Linux; it runs on GitHub, not on the Mac of the build).
+
+State: Corrected on `compute/l1-6b`, not yet read again. Found by a separate reviewer on 2026-11-21 in commit `04679df6a` (the second read).
+
+### SF-NEW-l1fetchg: A wrong unpack folder was reported as `limit_disk`. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); SEC-C-001, CAG-008; R-NEW-fetchprocess.
+
+Where: `crates/daemon/src/model/unpack.rs` (`Writer::new`).
+
+What it is: A folder that does not open, is a link, belongs to a different user or is not empty is a fault of the order, but the report named the disk.
+
+The correction: These cases give `runtime_not_configured`. Test: `the_unpack_folder_must_be_an_empty_folder_and_not_a_link`.
+
+State: Corrected on `compute/l1-6b`, not yet read again. Found by a separate reviewer on 2026-11-21 in commit `04679df6a` (the second read).
+
+### SF-NEW-l1fetchh: An interrupted read ended the watch of the input. Note
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); SEC-C-001, CAG-008; R-NEW-fetchprocess.
+
+Where: `crates/daemon/src/model/fetch/child.rs` (`watch_parent`).
+
+What it is: A read of the input that a signal interrupted (`EINTR`) was taken as the end of the daemon, so the child exited.
+
+The correction: The watch reads again after `ErrorKind::Interrupted`, and exits only at the end of the input or at a different error.
+
+State: Corrected on `compute/l1-6b`, not yet read again. Found by a separate reviewer on 2026-11-21 in commit `04679df6a` (the second read).
+
+### SF-NEW-l1fetchi: No test runs the redirect policy as the client wires it. Note
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); SEC-C-001, CAG-008; R-NEW-fetchprocess.
+
+Where: `crates/daemon/src/model/fetch.rs` (`client`).
+
+What it is: The pure rule `follows` has tests, but no test sends a real redirect through the `reqwest` client. The client accepts HTTPS only, with the roots of the program, so a local test server needs a certificate that those roots trust. That needs TLS fixtures that the repository does not have, and a test seam that trusts a test root would widen the child.
+
+The correction: None in this task; recorded as a gap. HT-NEW-l1fetchchild step 1 runs the real redirect of GitHub (`github.com` to its file host).
+
+State: Open (a note). Found by a separate reviewer on 2026-11-21 in commit `04679df6a` (the second read).
+
 ### SF-NEW-l1workr: macOS reads the socket table with `lsof`, not `proc_pidinfo`. Low
 
 Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.

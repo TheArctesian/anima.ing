@@ -241,7 +241,7 @@ fn the_unpack_folder_must_be_an_empty_folder_and_not_a_link() {
     std::fs::write(root.path().join("a.tgz"), &bytes).expect("written");
     assert_eq!(
         finish(again(), &sha, &order, checked),
-        Err(Cause::LimitDisk)
+        Err(Cause::RuntimeNotConfigured)
     );
     let target = root.path().join("elsewhere");
     std::fs::create_dir(&target).expect("made");
@@ -249,7 +249,7 @@ fn the_unpack_folder_must_be_an_empty_folder_and_not_a_link() {
     std::os::unix::fs::symlink(&target, &into).expect("a link");
     assert_eq!(
         finish(again(), &sha, &order, checked),
-        Err(Cause::LimitDisk)
+        Err(Cause::RuntimeNotConfigured)
     );
     assert!(!target.join(PROGRAM).exists());
 }

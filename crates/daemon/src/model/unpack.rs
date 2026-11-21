@@ -109,10 +109,12 @@ struct Writer<F: Fn() -> bool> {
 
 impl<F: Fn() -> bool> Writer<F> {
     fn new(into: &Path, limits: Limits, disk_holds: F) -> Result<Self, Cause> {
-        let root =
-            rustix::fs::open(into, DIR_FLAGS, Mode::empty()).map_err(|_| Cause::LimitDisk)?;
+        // A folder that does not open, is a link, is not this user's or is not empty is a fault
+        // of the order, not of the disk.
+        let root = rustix::fs::open(into, DIR_FLAGS, Mode::empty())
+            .map_err(|_| Cause::RuntimeNotConfigured)?;
         if !own_empty_folder(&root) {
-            return Err(Cause::LimitDisk);
+            return Err(Cause::RuntimeNotConfigured);
         }
         Ok(Self {
             root,

@@ -39,7 +39,9 @@ pub async fn fetch_in_child(
     }
 }
 
-/// Starts `program` in the fetch mode with an empty environment.
+/// Starts `program` in the fetch mode with an empty environment. Called on a worker of the
+/// async runtime, never in `spawn_blocking`: on Linux the parent-death signal of the child
+/// fires when the spawning thread exits.
 fn start(program: &Path) -> Option<Child> {
     Command::new(program)
         .arg(FETCH_MODE)

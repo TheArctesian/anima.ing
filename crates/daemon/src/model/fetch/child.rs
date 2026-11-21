@@ -71,9 +71,16 @@ fn watch_parent(mut input: BufReader<Stdin>, parent: u32) {
     #[cfg(target_os = "linux")]
     {
         use rustix::process::{Signal, getppid, set_parent_process_death_signal};
+        // The signal is set first, then the parent is checked, so a daemon that ends between
+        // the two is still seen. On Linux the signal fires when the THREAD that spawned this
+        // child exits, not the process: the daemon must spawn it from a long-lived worker of
+        // its async runtime, never from `spawn_blocking`.
+        if set_parent_process_death_signal(Some(Signal::KILL)).is_err() {
+            std::process::exit(PARENT_GONE);
+        }
         let same =
             getppid().is_some_and(|pid| pid.as_raw_nonzero().get().cast_unsigned() == parent);
-        if set_parent_process_death_signal(Some(Signal::KILL)).is_err() || !same {
+        if !same {
             std::process::exit(PARENT_GONE);
         }
     }
@@ -81,7 +88,13 @@ fn watch_parent(mut input: BufReader<Stdin>, parent: u32) {
     let _ = parent;
     std::thread::spawn(move || {
         let mut sink = [0u8; 64];
-        while input.read(&mut sink).is_ok_and(|read| read > 0) {}
+        loop {
+            match input.read(&mut sink) {
+                Ok(0) => break,
+                Err(error) if error.kind() != std::io::ErrorKind::Interrupted => break,
+                _ => {}
+            }
+        }
         std::process::exit(PARENT_GONE);
     });
 }
