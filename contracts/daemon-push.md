@@ -376,7 +376,7 @@ Request:
       stable identifier of the account at the hub: the hub groups devices by it.
     - `address`: optional (THR-149), the email address that the program is signed in with, as the program
       gives it: 3 to 254 bytes, one `@` with text before and after it, and no white space, control character,
-      `<` or `>`. The daemon sends it only when the name that the program gives is such an address (Codex may
+      `<` or `>`; the hub refuses another form as `MALFORMED` before it writes. The daemon sends it only when the name that the program gives is such an address (Codex may
       give the name of a workspace instead, which is not sent). The address is personal data: neither side
       writes it in a log line, an error text or a notification (LOG-007, THR-149 point 7), the hub gives it in
       no diagnostics, and the hub deletes it with its device (DEV-015).
@@ -385,8 +385,11 @@ Request:
       `[a-z0-9_ ]` (`five_hour`, `seven_day`, `300 min`); `usedPercent`, optional, a whole number from 0
       to 100; `resetsAt`, optional, a K8 time (Section 1); `reached`, true when the program said that the
       limit is reached.
-    - Each entry replaces the earlier report of the same device and `source`. An account that the device
-      no longer reports keeps its last report until a batch says that the device uses a different key.
+    - Each entry replaces the earlier report of the same device and `source`. A present list is the whole
+      set of the device: the hub deletes the report of each `source` that it does not name, with its
+      address and its limits (THR-149). So a program that signed out, or a daemon whose `sendAccounts` is
+      false (it then sends an empty list once after each start), leaves no address at the hub. The empty
+      list that asks for the salt after a start also deletes the reports until the next batch gives them.
   - A batch whose `agentUsage` breaks one of these rules is `MALFORMED`. The daemon sends only values that
     pass them.
   - The daemon reads only the session files `~/.claude/projects/*/*.jsonl` (with the sub-agent files

@@ -45,7 +45,9 @@ pub struct AccountGroup {
 }
 
 /// Stores `accounts`, reported by `device` at `now`, in the caller's transaction: each one
-/// replaces the earlier report of the device and its source, limits included.
+/// replaces the earlier report of the device and its source, limits included, and the report of
+/// each source that the list does not name is deleted (a program signed out, or the device
+/// turned the accounts off; THR-149).
 ///
 /// # Errors
 /// `Database` when a statement fails; nothing of the batch is then kept.
@@ -58,7 +60,8 @@ pub async fn record(
     for account in accounts {
         store::write(conn, device, account, now).await?;
     }
-    Ok(())
+    let named: Vec<&str> = accounts.iter().map(|one| one.source.as_str()).collect();
+    store::forget_others(conn, device, &named).await
 }
 
 /// The account salt of this hub: 32 random bytes, made by the first call and the same ever after.

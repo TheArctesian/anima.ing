@@ -184,6 +184,54 @@ async fn thr_149_deleting_the_device_deletes_its_address(pool: PgPool) {
     assert_eq!(stored().await, 0);
 }
 
+/// A present list is the whole set of the device: a source that it no longer names (signed out,
+/// or the accounts turned off) loses its report and its address (THR-149).
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn thr_149_a_list_that_no_longer_names_the_source_deletes_its_address(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let daemons = Daemons::at(&pool, now).await;
+    let pusher = Pusher::new(&daemons, PVE_01, now).await;
+    assert_eq!(
+        push(&pusher, 0, json!([account(SHARED, 20)])).await.0,
+        StatusCode::OK
+    );
+    assert_eq!(push(&pusher, 1, json!([])).await.0, StatusCode::OK);
+    let rows: i64 = sqlx::query_scalar("SELECT count(*) FROM agent_usage.accounts")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(rows, 0);
+    let answer = daemons.operate(ACCOUNTS, json!({})).await;
+    assert_eq!(answer["data"]["agentUsage"]["accounts"], json!([]), "{answer}");
+}
+
+/// Each address that the wire takes is stored: the database checks only its length, so a
+/// locale of the database cannot refuse a row and stop the pushes of the device.
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn thr_149_each_address_that_the_wire_takes_is_stored(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let daemons = Daemons::at(&pool, now).await;
+    let pusher = Pusher::new(&daemons, PVE_01, now).await;
+    let longest = format!("{}@example.com", "a".repeat(254 - "@example.com".len()));
+    for (step, address) in ["pérson\u{200b}\u{ad}@exämple.中国", longest.as_str()]
+        .into_iter()
+        .enumerate()
+    {
+        let mut one = account(SHARED, 20);
+        one["address"] = json!(address);
+        let step = i64::try_from(step).unwrap();
+        assert_eq!(push(&pusher, step, json!([one])).await.0, StatusCode::OK, "{address}");
+        let answer = daemons.operate(ACCOUNTS, json!({})).await;
+        assert_eq!(answer["data"]["agentUsage"]["accounts"][0]["address"], address);
+    }
+}
+
 /// THR-149 point 7: at TRACE, a stored report, a refused one and the query of the page write the
 /// address in no log line.
 #[sqlx::test(

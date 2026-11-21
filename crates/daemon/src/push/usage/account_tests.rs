@@ -170,3 +170,20 @@ fn ais_022_a_salt_that_does_not_read_is_ignored() {
         Some(Vec::new())
     );
 }
+
+/// With `sendAccounts` false the task reports an empty list: one batch says so, and the hub
+/// deletes what it had of the device (THR-149); then nothing more goes.
+#[test]
+fn thr_149_turned_off_an_empty_list_goes_once() {
+    let mut backlog = UsageBacklog::default();
+    backlog.take_salt(Some(&salt_text()));
+    backlog.take(report(Some(vec![signed_in()])));
+    assert!(backlog.outgoing().is_some());
+    backlog.done();
+    backlog.take(report(Some(Vec::new())));
+    let sent = backlog.outgoing().expect("the empty list");
+    assert_eq!(sent.accounts, Some(Vec::new()));
+    backlog.done();
+    backlog.take(report(Some(Vec::new())));
+    assert_eq!(backlog.outgoing(), None, "said once");
+}

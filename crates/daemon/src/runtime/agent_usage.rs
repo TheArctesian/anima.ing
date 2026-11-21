@@ -88,10 +88,11 @@ pub(super) async fn count(
         };
         sessions = back;
         #[cfg(unix)]
+        // Turned off, the daemon reports no account, so the hub deletes what it had (THR-149).
         let accounts = if sessions.sends_accounts() {
             runner::accounts(|name| std::env::var(name).ok()).await
         } else {
-            None
+            Some(Vec::new())
         };
         #[cfg(not(unix))]
         let accounts = None;

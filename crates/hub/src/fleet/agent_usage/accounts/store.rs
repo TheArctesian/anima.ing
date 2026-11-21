@@ -67,6 +67,20 @@ pub(super) async fn write(
     Ok(())
 }
 
+/// Deletes the report of `device` for each source not in `named`, with its limit windows.
+pub(super) async fn forget_others(
+    conn: &mut PgConnection,
+    device: DeviceId,
+    named: &[&str],
+) -> Result<(), Error> {
+    sqlx::query("DELETE FROM agent_usage.accounts WHERE device_id = $1 AND NOT (source = ANY($2))")
+        .bind(device)
+        .bind(named)
+        .execute(&mut *conn)
+        .await?;
+    Ok(())
+}
+
 /// The salt of the hub: `made` when none is stored yet, else the stored one.
 pub(super) async fn salt(db: &PgPool, made: &[u8; 32]) -> Result<[u8; 32], Error> {
     sqlx::query("INSERT INTO agent_usage.salt (salt) VALUES ($1) ON CONFLICT (one) DO NOTHING")
