@@ -34,6 +34,19 @@ pub struct Keep<'a> {
     pub spare: &'a tree::Known,
 }
 
+impl Keep<'static> {
+    /// Keeps no marked process: for a program that ended, whose thread runs nothing now.
+    #[must_use]
+    pub fn nothing() -> Self {
+        static NONE: tree::Known = tree::Known::new();
+        Self {
+            program: None,
+            since: None,
+            spare: &NONE,
+        }
+    }
+}
+
 /// The marked processes that were found, and whether a marked line could not be read as one.
 pub struct Found {
     pub pids: BTreeSet<u32>,

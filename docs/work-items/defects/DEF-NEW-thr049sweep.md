@@ -1,0 +1,32 @@
+# DEF-NEW-thr049sweep: a program of a thread that ends by itself before the holder looks below it leaves its child running
+
+Progress: the index [README.md](../README.md) holds the state of this item (PLN-006). The plan register in [work-plan.md](../../work-plan.md) Section 9 lists the index.
+
+| Item | Value |
+| --- | --- |
+| Identifier | DEF-NEW-thr049sweep |
+| Kind | Defect |
+| Owner | [agent-threads.md](../../proposals/agent-threads.md) THR-049, THR-113 |
+| Serves | Row 4.24 of the work plan (agent threads) |
+| Version | 1.0 |
+| Date | 2026-11-21 |
+| Origin | The test `thr_049_a_program_that_ends_by_itself_leaves_no_child_in_a_group_of_its_own` failed 1 time in 4 runs on `dev`, on `pop-os` (Linux) with a load average of about 6.5, on 2026-11-21. Not a GitHub issue (PLN-012). |
+
+## Cause
+
+Measured on `pop-os` with the code of `dev` at the start of the branch.
+
+- When the program of a thread ends by itself, the holder ends what is left in the process group of the program. It also ends each process that it saw below the program (`Slot.seen`). It sees the processes below the program only every 2 s (`LOOK` in `crates/daemon/src/threads/program.rs`).
+- A child that put itself in a process group of its own, of a program that ended before a look saw that child, is not ended. The holder then says that the sweep proved the end, so a later stop does not sweep again. Only the sweep by mark of a stop ends the child.
+- The test starts a program that ends after 3 s, so only one look can see the child. When the `ps` of that look is late on a busy computer, the child is not seen and the test fails. With a program that ends after 1 s, the test failed 3 times in 3 runs, and each run left a `perl` process.
+
+## Correction
+
+On the branch `fix/thr049-flake`:
+
+- [x] When a program ends by itself, the holder also ends each process that carries the mark of its thread, as a stop does (`crates/daemon/src/threads/program.rs`, `wait`, with `Keep::nothing` in `marker.rs`). A thread key holds one program at a time (`ThreadExists`), so each marked process is a leftover of that program. When the sweep by mark cannot prove the end, the holder keeps what it saw, so that a later stop sweeps again.
+- [x] Test `thr_049_a_program_that_ends_before_the_first_look_leaves_no_child` in `crates/daemon/tests/it/threads/stop.rs`: a program that ends after 1 s leaves no child. It failed 3 times in 3 runs without the correction, and passed with it.
+- [x] Each of the two tests has its own thread key: the mark of a thread is its key, and two holders of the tests run at the same time.
+- [x] The tests of `threads::stop` passed 30 times in 30 runs with a load average from 10 to 18.
+
+The known limit of THR-049 stays: on a Mac, `ps -E` does not show the environment of a program of the system, and an agent can remove the mark from its environment.
