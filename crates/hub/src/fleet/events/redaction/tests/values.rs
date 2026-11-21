@@ -185,7 +185,8 @@ fn clock() -> std::time::Duration {
     )
 }
 
-/// The time since a fixed instant on Windows, where the gates run on a runner of their own.
+/// The time since a fixed instant on Windows. The test runs alone (`.config/nextest.toml`), so
+/// no other test takes the processor from it.
 #[cfg(not(unix))]
 fn clock() -> std::time::Duration {
     static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
