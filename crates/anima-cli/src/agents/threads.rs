@@ -7,6 +7,7 @@ pub mod shown;
 #[cfg(test)]
 mod tests;
 
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use agent_threads::Source;
@@ -124,12 +125,19 @@ pub const fn program_name(source: Source) -> &'static str {
     }
 }
 
-/// The threads of `home`, the last changed first, at most `limit`.
+/// The threads of `home`, the last changed first, at most `limit`, without those whose ID is in
+/// `removed` (TH46: the person took them off Anima's list).
 #[must_use]
-pub fn list(home: &Path, program: Option<Source>, limit: usize) -> Vec<ThreadRow> {
+pub fn list(
+    home: &Path,
+    program: Option<Source>,
+    limit: usize,
+    removed: &BTreeSet<String>,
+) -> Vec<ThreadRow> {
     files::find(home)
         .into_iter()
         .filter(|file| program.is_none_or(|program| file.source == program))
+        .filter(|file| !removed.iter().any(|id| file.name.ends_with(id.as_str())))
         .take(limit.clamp(1, MAX_LIMIT))
         .filter_map(|file| {
             let thread = files::glance(&file).ok()?;
@@ -178,12 +186,18 @@ pub fn home() -> Result<PathBuf, Failure> {
 }
 
 impl ThreadsArgs {
-    /// Lists the threads of this computer.
+    /// Lists the threads of this computer, without those that the person removed from the list.
     ///
     /// # Errors
     /// [`Failure`] when the home folder is not known or the output fails.
-    pub fn run(self, invocation: &Invocation) -> Result<(), Failure> {
-        let rows = list(&home()?, self.program.map(Program::source), self.limit);
+    pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
+        let removed = removed().await;
+        let rows = list(
+            &home()?,
+            self.program.map(Program::source),
+            self.limit,
+            &removed,
+        );
         invocation.output.data(&rows, |rows| table(rows))
     }
 }
@@ -209,6 +223,18 @@ impl ThreadArgs {
                 .file(&shown::text(&ThreadRow::of(&file, thread.clone()), &thread))
         }
     }
+}
+
+/// The threads that the runner of this computer has as removed; none when no runner answers,
+/// as the files are all that is known then.
+#[cfg(unix)]
+async fn removed() -> BTreeSet<String> {
+    super::listing::removed().await.unwrap_or_default()
+}
+
+#[cfg(not(unix))]
+async fn removed() -> BTreeSet<String> {
+    BTreeSet::new()
 }
 
 fn table(rows: &[ThreadRow]) -> Table {
