@@ -2100,7 +2100,9 @@ Task H40 builds steps 1, 2 and the first part of 4 of Section 16.5 with the deci
   and the hub's own port). The proxy logs a port that it cannot bind and leaves it out.
 - **UDP answers.** No source proves that it gets the answers, so the proxy never sends to a source more
   bytes than it received from it, for the life of the flow. Each stream has a limit of flows
-  (`ANIMA_ROUTE_PROXY_UDP_FLOWS`, 64) and an idle time (`ANIMA_ROUTE_PROXY_UDP_IDLE_SECONDS`, 60 s).
+  (`ANIMA_ROUTE_PROXY_UDP_FLOWS`, 64), of new flows each second (8, with a burst of 16), and of flows of
+  one source network (4, the /24 of IPv4 or the /64 of IPv6), and an idle time
+  (`ANIMA_ROUTE_PROXY_UDP_IDLE_SECONDS`, 60 s).
   The hub sends the datagrams to the machine from a socket of its own, never through the link.
 - **Private.** The proxy has a second TLS listener and the stream listeners on its address on the network
   of Anima (`ANIMA_ROUTE_PROXY_PRIVATE_ADDRESS`) and answers there only a peer in the networks of
@@ -2109,10 +2111,13 @@ Task H40 builds steps 1, 2 and the first part of 4 of Section 16.5 with the deci
 - **Redirect.** It answers 301 to `GET` and `HEAD` and 308 to each other method, with the one address of
   the route and nothing of the request. It has an application and a device (the owner and the target of
   the audit) and no port.
-- **Priority of the sessions.** The link carries no priorities. Each stream and each request counts against
-  the limit of public streams of its link (`ANIMA_ROUTES_STREAMS_PER_LINK`), which keeps room for the
-  sessions, and each name has the limits of Section 12.7 and the caps of each client of the proxy
-  (SF-NEW-revroutelimits).
+- **Priority of the sessions.** The link carries no priorities. Each stream and each request of the routes
+  of one device counts against the limit of that device (`ANIMA_ROUTES_STREAMS_PER_DEVICE`, 16), which is
+  below the streams of its link (`ANIMA_ROUTES_STREAMS_PER_LINK`, 32) and so keeps room for the sessions;
+  each name has the limits of Section 12.7, 16 connections of one route, and the caps of each client of the
+  proxy (SF-NEW-revroutelimits).
+- **A hub on Linux.** The interface of the proxy is a Unix socket, so routing is built only for a hub on
+  Unix; on any other hub the routes API refuses with "Routing needs a hub on Linux." (R-NEW-routeslinux).
 - **One device for each application.** The routes of one application go to one device and may go to
   different ports of it (a web page and an IMAPS stream), so the proxy dials a route by the identifier of
   its application and the name of the route, never a device or a port.
