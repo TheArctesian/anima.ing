@@ -131,17 +131,27 @@ async fn thr_128_the_daemon_refuses_a_socket_that_others_could_use() {
 async fn h8_output_over_the_limit_of_the_holder_reaches_a_daemon_that_comes_back() {
     let holder = Holder::start(0);
     let mut link = holder.link().await;
-    // Four lines of 3 MiB: more than the 8 MiB that the holder keeps, written while no daemon
-    // is there.
-    let script = "for n in 1 2 3 4; do head -c 3145728 /dev/zero | tr '\\0' x; echo; done";
-    let id = link.send(start("big", "/bin/sh", &["-c", script])).await;
+    let folder = tempfile::tempdir().expect("a folder");
+    let over = folder.path().join("over");
+    // Four lines of 3 MiB while no daemon is there. The file `over` says that the program wrote
+    // three lines: the holder reads the third at 6 MiB, so it goes over its 8 MiB and the
+    // fourth waits for the daemon.
+    let script = format!(
+        "for n in 1 2 3 4; do head -c 3145728 /dev/zero | tr '\\0' x; echo; \
+         if [ $n = 3 ]; then touch '{}'; fi; done",
+        over.display()
+    );
+    let id = link.send(start("big", "/bin/sh", &["-c", &script])).await;
     link.answer(id).await;
     drop(link);
-    tokio::time::sleep(Duration::from_millis(1500)).await;
+    assert!(
+        appears(&over, super::WAIT).await,
+        "the program wrote three lines while no daemon was there"
+    );
     let mut link = holder.link().await;
     let mut count = 0;
     loop {
-        let event = tokio::time::timeout(Duration::from_secs(30), link.link.events.recv())
+        let event = tokio::time::timeout(super::WAIT, link.link.events.recv())
             .await
             .expect("in time")
             .expect("the connection stays");
@@ -167,25 +177,46 @@ async fn h8_output_over_the_limit_of_the_holder_reaches_a_daemon_that_comes_back
 
 #[tokio::test]
 async fn th98_a_start_sent_after_a_quit_starts_no_program() {
-    let holder = Holder::start(0);
+    let mut holder = Holder::start(0);
     let mut link = holder.link().await;
     let folder = tempfile::tempdir().expect("a folder");
     let ran = folder.path().join("ran");
     let script = format!("touch '{}'; sleep 300", ran.display());
     let quit = link.send(Action::Quit).await;
+    // A holder that already ended refuses the start at the socket: that also starts nothing.
     let late = link
+        .link
         .send(start("after-quit", "/bin/sh", &["-c", &script]))
-        .await;
+        .await
+        .ok();
     assert_eq!(link.answer(quit).await, Outcome::Ok);
     // The holder reads nothing after its Quit: the start gets no answer and no program runs.
     while let Ok(Some(event)) =
         tokio::time::timeout(Duration::from_secs(10), link.link.events.recv()).await
     {
         assert!(
-            !matches!(&event, Event::Done { id, .. } if *id == late),
+            !matches!(&event, Event::Done { id, .. } if Some(*id) == late),
             "the start was taken: {event:?}"
         );
     }
-    tokio::time::sleep(Duration::from_millis(500)).await;
-    assert!(!ran.exists(), "a program started in the holder that ends");
+    assert!(
+        holder.ended_within(super::WAIT).await,
+        "the holder ends after its Quit"
+    );
+    assert!(
+        !appears(&ran, Duration::from_secs(2)).await,
+        "a program started in the holder that ends"
+    );
+}
+
+/// Whether `file` is there within `bound`.
+async fn appears(file: &std::path::Path, bound: Duration) -> bool {
+    let deadline = tokio::time::Instant::now() + bound;
+    while tokio::time::Instant::now() < deadline {
+        if file.exists() {
+            return true;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    file.exists()
 }
