@@ -28,6 +28,27 @@ impl Thread {
         self.kept.range(from..).map(|(update, _)| update)
     }
 
+    /// The newest updates the runner keeps with a number below `before`, at most `most` of
+    /// them and `bytes` of them, oldest first (TH106): what a client reads back.
+    pub fn kept_before(
+        &self,
+        before: u64,
+        most: usize,
+        bytes: usize,
+    ) -> impl Iterator<Item = &Update> {
+        let end = self.kept.partition_point(|(update, _)| update.seq < before);
+        let mut used = 0;
+        let mut from = end;
+        for (at, (_, size)) in self.kept.range(..end).enumerate().rev() {
+            if end - at > most || used + size > bytes {
+                break;
+            }
+            used += size;
+            from = at;
+        }
+        self.kept.range(from..end).map(|(update, _)| update)
+    }
+
     /// What a new watch must know of this thread however few updates it gets: its row and each
     /// request that waits, as new changes (THR-030).
     #[must_use]

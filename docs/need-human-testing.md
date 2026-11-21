@@ -3259,6 +3259,40 @@ window, a real Claude Code thread, and a restart of the installed daemon.
 
 Result: Open.
 
+### HT-NEW-copyengine: the diff, the plan, the use, the models, plan mode and the projects with the real programs (TH101 to TH107)
+
+Built: on the branch `threads/engine-for-copy` (tasks TH101 to TH107 of agent-threads.md). The runner now passes on the
+diff of each Codex turn, the plan of a Codex turn, and the use of tokens of both programs as updates of a thread; it
+writes `initialize` to Claude Code before the first prompt and asks Codex for `model/list`, and keeps the models of each
+program (`anima agents models`); a start can be in plan mode (Claude Code only); the call `earlier` reads back the kept
+updates of a thread; the projects of this computer are kept in the record of the runner (`anima agents projects`).
+The page does not show any of it yet: the copy of the T3 Code screens does.
+
+The tests cover the decoders with the lines recorded in TH18 (a Codex turn with five diffs and five reports of use; a
+Claude Code turn with its cost), a Codex plan and a model list written by hand from the types of `codex app-server`
+0.170, the answer of Claude Code to `initialize` as TH10 recorded it, and the calls on the socket of a runner with a made
+Claude Code. They do not cover a real Claude Code or Codex: whether `initialize` before the prompt changes the start of
+Claude Code, whether Codex sends `turn/plan/updated` when it plans, and what plan mode does.
+
+1. On the Mac, run `anima agents start --program claude-code --folder <a folder> "Say hello"`, wait for the reply,
+   then run `anima agents models`.
+   Expected: the thread replies as before; the list shows the models of Claude Code with their efforts.
+2. Run `anima agents start --program codex --folder <a folder> "Make a file note.txt that says ok"`, wait, then run
+   `anima agents watch` for a moment and `anima agents models`.
+   Expected: the watch shows a diff of the turn with `note.txt`, and a use with a context window; the models of Codex
+   are listed.
+3. Start a Codex thread with "Make a plan of three steps to tidy this folder, then do the first step".
+   Expected: the watch shows a plan with its steps and their states. If no plan comes, record it here.
+4. Run `anima agents start --program claude-code --mode plan --folder <a folder> "Plan a README"`.
+   Expected: Claude Code plans and changes no file; the thread asks before it leaves plan mode.
+5. Run `anima agents start --program codex --mode plan --folder <a folder> "x"`.
+   Expected: refused, with the words for a bad value.
+6. Run `anima agents projects add <a folder>`, then `anima agents projects rename <the folder> "My project"`, then
+   quit and open the application again and run `anima agents projects`.
+   Expected: the project is listed with its new name; `anima agents projects remove <the folder>` takes it off.
+
+Result: Open.
+
 ### HT-110: a program that does not answer, with the Codex of Homebrew of this Mac
 
 What was built and where: task TH97 of [agent-threads.md](proposals/agent-threads.md), on the branch

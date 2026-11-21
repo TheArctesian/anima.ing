@@ -85,6 +85,9 @@ impl Runner {
     /// Checks a new thread, counts it against the soft limit (THR-114) and asks the holder to
     /// start its program; the answer goes to the client when the holder answers.
     pub(super) async fn start(&mut self, new: NewThread, back: Caller) -> Result<(), Refusal> {
+        if new.program == Program::Codex && new.mode == Mode::Plan {
+            return Err(Refusal::BadValue);
+        }
         // A start whose copy is being asked counts against the soft limit too.
         self.may_start(u32::try_from(self.asks.open.len()).unwrap_or(u32::MAX))?;
         chosen_folder(&new.folder, self.dir.parent().unwrap_or(&self.dir))?;

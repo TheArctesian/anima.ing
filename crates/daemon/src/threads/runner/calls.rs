@@ -42,10 +42,52 @@ impl Runner {
             client: client.clone(),
         };
         let named = thread_of(&action);
-        let answer = match action {
-            ref asked if agent && for_the_person(asked) => Outcome::Refused {
-                why: Refusal::FromAnAgent,
+        let answer = match self.read(&action) {
+            Some(read) => read,
+            None => match action {
+                ref asked if agent && for_the_person(asked) => Outcome::Refused {
+                    why: Refusal::FromAnAgent,
+                },
+                Action::Watch => {
+                    self.watch(id, client);
+                    return;
+                }
+                Action::Interrupt { thread } => self.interrupt(thread).await,
+                Action::ChangeListing { thread, change } => self.change_listing(thread, &change),
+                Action::ChangeProject { change } => self.change_project(&change),
+                Action::Folder { folder } => {
+                    match super::start::chosen_folder(
+                        &folder,
+                        self.dir.parent().unwrap_or(&self.dir),
+                    ) {
+                        Ok(real) => Outcome::Folder {
+                            notice: crate::threads::notice::of_folder(&real),
+                        },
+                        Err(why) => Outcome::Refused { why },
+                    }
+                }
+                Action::RaiseLimit => {
+                    self.limits = self.limits.raised();
+                    self.save();
+                    Outcome::Limits {
+                        limits: self.limits,
+                    }
+                }
+                waits => match self.held_call(waits, back.clone()).await {
+                    Ok(()) => return,
+                    Err(why) => Outcome::Refused { why },
+                },
             },
+        };
+        if let Outcome::Refused { why } = &answer {
+            self.note(Kind::Refusal, named, refusal_word(why));
+        }
+        back.answer(answer);
+    }
+
+    /// The answer to a call that only reads, or `None` for each other call.
+    fn read(&self, action: &Action) -> Option<Outcome> {
+        Some(match action {
             Action::List => Outcome::Threads {
                 threads: self
                     .threads
@@ -54,40 +96,31 @@ impl Runner {
                     .collect(),
                 holder: self.holder_words(),
             },
-            Action::Watch => {
-                self.watch(id, client);
-                return;
-            }
-            Action::Interrupt { thread } => self.interrupt(thread).await,
             Action::Listings => self.listings(),
-            Action::ChangeListing { thread, change } => self.change_listing(thread, &change),
+            Action::Projects => self.projects(),
             Action::Accounts => Outcome::Accounts {
                 accounts: self.accounts.rows(),
             },
-            Action::Folder { folder } => {
-                match super::start::chosen_folder(&folder, self.dir.parent().unwrap_or(&self.dir)) {
-                    Ok(real) => Outcome::Folder {
-                        notice: crate::threads::notice::of_folder(&real),
-                    },
-                    Err(why) => Outcome::Refused { why },
-                }
-            }
-            Action::RaiseLimit => {
-                self.limits = self.limits.raised();
-                self.save();
-                Outcome::Limits {
-                    limits: self.limits,
-                }
-            }
-            waits => match self.held_call(waits, back.clone()).await {
-                Ok(()) => return,
-                Err(why) => Outcome::Refused { why },
+            Action::Models => Outcome::Models {
+                models: self.models.rows(),
             },
-        };
-        if let Outcome::Refused { why } = &answer {
-            self.note(Kind::Refusal, named, refusal_word(why));
-        }
-        back.answer(answer);
+            Action::Earlier {
+                thread,
+                before,
+                most,
+            } => self.threads.get(thread).map_or(
+                Outcome::Refused {
+                    why: Refusal::UnknownThread,
+                },
+                |thread| Outcome::Earlier {
+                    updates: thread
+                        .kept_before(*before, *most, CLIENT_BYTES / 2)
+                        .cloned()
+                        .collect(),
+                },
+            ),
+            _ => return None,
+        })
     }
 
     /// A call whose answer waits for the holder: a start, a prompt, an answer or a stop.
@@ -279,6 +312,7 @@ const fn for_the_person(action: &Action) -> bool {
             | Action::RaiseLimit
             | Action::Start { .. }
             | Action::ChangeListing { .. }
+            | Action::ChangeProject { .. }
     )
 }
 
@@ -289,7 +323,8 @@ const fn thread_of(action: &Action) -> Option<Uuid> {
         | Action::Answer { thread, .. }
         | Action::Interrupt { thread }
         | Action::Stop { thread }
-        | Action::ChangeListing { thread, .. } => Some(*thread),
+        | Action::ChangeListing { thread, .. }
+        | Action::Earlier { thread, .. } => Some(*thread),
         _ => None,
     }
 }

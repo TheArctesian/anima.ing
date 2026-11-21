@@ -6,7 +6,8 @@ use std::collections::{BTreeMap, VecDeque};
 
 use agent_threads::control::{Change, Refusal, RunState, ThreadRow, Update};
 use agent_threads::drive::{
-    AccountFacts, ClaudeDecoder, ClaudeInput, DriveEvent, Effort, Program, ProgramState, Request,
+    AccountFacts, ClaudeDecoder, ClaudeInput, DriveEvent, Effort, ModelChoice, Program,
+    ProgramState, Request,
 };
 use agent_threads::first_line;
 use serde::{Deserialize, Serialize};
@@ -43,6 +44,8 @@ pub enum Step {
     Change(Change),
     /// What the program said of its account: for the runner only, never an update (THR-051).
     Account(Box<AccountFacts>),
+    /// The models that the program offers (TH104): for the runner, not an update.
+    Models(Vec<ModelChoice>),
 }
 
 /// A request that waits for the person, with the line it came in, so that a runner that starts
@@ -205,7 +208,11 @@ impl Thread {
         self.row.title = first_line(prompt, agent_threads::TITLE_LENGTH);
         let mut steps = vec![prompt_change(prompt)];
         match &mut self.driver {
-            Driver::Claude(_) => steps.push(Step::Write(ClaudeInput::prompt(prompt))),
+            Driver::Claude(_) => {
+                // Its answer names the models of the program (TH104).
+                steps.push(Step::Write(ClaudeInput::initialize("anima-initialize")));
+                steps.push(Step::Write(ClaudeInput::prompt(prompt)));
+            }
             Driver::Codex(codex) => {
                 steps.push(Step::Write(codex.begin()));
                 codex.prompt(prompt);

@@ -30,6 +30,8 @@ pub enum ModeName {
     AcceptEdits,
     /// The program asks before each change.
     Ask,
+    /// The program plans and changes nothing until you accept its plan (Claude Code only).
+    Plan,
 }
 
 #[derive(Debug, clap::Args)]
@@ -140,6 +142,7 @@ impl StartArgs {
                 ModeName::FullAccess => Mode::FullAccess,
                 ModeName::AcceptEdits => Mode::AcceptEdits,
                 ModeName::Ask => Mode::Ask,
+                ModeName::Plan => Mode::Plan,
             },
             model: self.model,
             effort: self.effort,
