@@ -49,6 +49,23 @@ test("a downloadable trial must pass native gates and installation checks with u
   }
 });
 
+test("the PostgreSQL tree is built in a step of its own with a limit, before the gates", () => {
+  const steps = workflow.jobs["windows-gates"]?.steps ?? [];
+  const tree = steps.findIndex((step) => step.run?.includes("database-tree/windows.ts"));
+  const run = steps.findIndex((step) => step.run?.includes("bun run gates"));
+  expect(tree).toBeGreaterThanOrEqual(0);
+  expect(run).toBeGreaterThan(tree);
+  expect(steps[run]?.run).not.toContain("database-tree/windows.ts");
+  expect((steps[tree] as { "timeout-minutes"?: number })["timeout-minutes"]).toBe(30);
+  const installer = workflow.jobs["windows"]?.steps.find((step) => step.run?.includes("windows-bundle.ps1"));
+  expect((installer as { "timeout-minutes"?: number } | undefined)?.["timeout-minutes"]).toBe(90);
+  // The build bounds each program it starts, and the whole build, and tries once more after a failure.
+  const script = readFileSync(join(root, "apps/desktop/src-tauri/database-tree/windows.ts"), "utf8");
+  expect(script).not.toMatch(/spawnSync\([^)]*\{ stdio: 'inherit', windowsHide: true \}\)/);
+  expect(script).toContain("timeout: minutes * MINUTE");
+  expect(script).toContain("const ATTEMPTS = 2;");
+});
+
 test("the Windows gates use the pinned cargo-nextest of the Linux gates and check its digest", () => {
   const install = workflow.jobs["windows-gates"]?.steps.find((step) => step.run?.includes("cargo-nextest"))?.run ?? "";
   const linux = /cargo-nextest@([\d.]+)/.exec(readFileSync(join(root, ".github/workflows/gates.yml"), "utf8"))?.[1];
