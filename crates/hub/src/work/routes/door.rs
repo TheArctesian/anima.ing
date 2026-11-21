@@ -1,4 +1,4 @@
-//! The hub's side of the one interface of the proxy (Section 12.3, SF-NEW-routeproxyexit).
+//! The hub's side of the one interface of the proxy (Section 12.3, SF-231).
 //!
 //! The proxy runs as a process apart from the hub. It reaches the hub only through this Unix
 //! socket, with the requests of `anima_route_proxy::wire`: the table of the names and the
@@ -13,7 +13,7 @@
 //! after [`Door::idle`] with no byte (SF-NEW-revroutelimits).
 //!
 //! Each link has a limit of public streams at one time, so the public traffic leaves room for
-//! the sessions of the operator on the same tunnel (SF-NEW-routelinkshare). I/O edge; it writes
+//! the sessions of the operator on the same tunnel (SF-230). I/O edge; it writes
 //! no body and no header to a log (LOG-007).
 
 use std::{
@@ -80,7 +80,7 @@ impl Connector for Network {
     }
 }
 
-/// The public streams at one time on each link (SF-NEW-routelinkshare).
+/// The public streams at one time on each link (SF-230).
 #[derive(Clone)]
 pub struct LinkStreams {
     limit: usize,

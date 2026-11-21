@@ -3549,7 +3549,7 @@ input PlaceSplitInput {
   links: [ID!]
 }
 
-# ---------------------------------------------------------------- application routes (R-NEW-hubrouting, R-NEW-buildnow; HOST-046; task H21)
+# ---------------------------------------------------------------- application routes (R-302, R-299; HOST-046; task H21)
 
 "Whether the name of a route is proven to belong to this hub (Section 12.4 of hosted-applications-stage-2.md). A proven name is LOST only after 3 failed reads in a row."
 enum ApplicationRouteProof {
@@ -3631,7 +3631,7 @@ type ApplicationRoute {
 "A name that was added, with what the hub warns about."
 type ApplicationRouteAdded {
   route: ApplicationRoute!
-  "The name and the hub share a domain: the cookie attribute SameSite does not stop a request from the page of the application (SF-NEW-routeabuse)."
+  "The name and the hub share a domain: the cookie attribute SameSite does not stop a request from the page of the application (SF-227)."
   sameSiteAsHub: Boolean!
 }
 
@@ -3885,7 +3885,7 @@ type Mutation {
   dismissWebInterfaceSuggestion(checkId: ID!): ID!
   "Pins the certificate and writes an audit entry (WEB-008, WEB-009). Login or browser token only (D-23, R-100)."
   acceptWebCertificate(id: ID!, fingerprintSha256: String!): WebInterface!
-  "Adds a public name to an application and gives the token of its proof (HOST-046, task H21; SF-NEW-routepublish). The device, the port and the address are fixed now: a change is a removal and a new name. VALIDATION for a refused name, port or address; CONFLICT when a route has the name, the application has routes to a different target, or the application holds the socket of the engine; FORBIDDEN when the operator has no second factor. Login or browser token only (D-23, R-100)."
+  "Adds a public name to an application and gives the token of its proof (HOST-046, task H21; SF-232). The device, the port and the address are fixed now: a change is a removal and a new name. VALIDATION for a refused name, port or address; CONFLICT when a route has the name, the application has routes to a different target, or the application holds the socket of the engine; FORBIDDEN when the operator has no second factor. Login or browser token only (D-23, R-100)."
   addApplicationRoute(input: ApplicationRouteInput!): ApplicationRouteAdded!
   "Reads the proof of the name once and keeps its new state. One failed read changes nothing. Login or browser token only (D-23, R-100)."
   checkApplicationRoute(id: ID!): ApplicationRoute!

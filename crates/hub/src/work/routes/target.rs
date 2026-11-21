@@ -1,5 +1,5 @@
 //! The target of a route: the port of an application on a device, fixed when the name is added
-//! (SF-NEW-routetarget). It is never a port of a session or of Anima itself, and never an
+//! (SF-233). It is never a port of a session or of Anima itself, and never an
 //! address that the hub must not touch. Pure.
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};

@@ -2,7 +2,7 @@
 //!
 //! A read key may read the routes: no field holds a certificate or a key. Each change is for a
 //! person only, with a login or a browser token and a second factor on the account
-//! (SF-NEW-routepublish, HM-D14): the three mutations are in `API_KEY_REFUSED_ROOTS`, and each
+//! (SF-232, HM-D14): the three mutations are in `API_KEY_REFUSED_ROOTS`, and each
 //! resolver checks the kind of the token again. Each change writes one audit entry and one
 //! event in its own transaction.
 

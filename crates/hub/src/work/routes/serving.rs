@@ -1,5 +1,5 @@
 //! What serves now: the one view of the routes that the proxy gets through [`super::door`]
-//! (Section 12.3, SF-NEW-routeproxyexit). A route serves only when it waits for nothing
+//! (Section 12.3, SF-231). A route serves only when it waits for nothing
 //! ([`Route::waits`]).
 
 use std::net::SocketAddr;
@@ -70,7 +70,7 @@ pub async fn served_streams(db: &PgPool, now: DateTime<Utc>) -> Result<Vec<Route
 
 /// The fixed target of the route `name` of the application, when it serves at `now`, with its
 /// kind: the one way from an application identifier to a device and a port
-/// (SF-NEW-routeproxyexit). A redirect has no target.
+/// (SF-231). A redirect has no target.
 ///
 /// # Errors
 /// `NotFound` when no such route of the application serves; `Database` or `Unreadable`.

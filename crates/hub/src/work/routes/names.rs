@@ -1,6 +1,6 @@
 //! The rules of a public name of an application (Section 12.3 and 12.4 of the design): a DNS
 //! name in lower case that is never the name of the hub, never below it, and never at or below
-//! a domain that holds a cookie of a hub (AC-D45, SF-NEW-routetoken). Pure.
+//! a domain that holds a cookie of a hub (AC-D45, SF-234). Pure.
 
 use std::fmt;
 
@@ -111,7 +111,7 @@ impl RouteName {
 
     /// Whether this name and the hub share the domain above the hub's name (`hub.example.com`
     /// and `photos.example.com`): then the cookie attribute `SameSite` does not stop a request
-    /// from the page of the application (SF-NEW-routeabuse). Without the Public Suffix List
+    /// from the page of the application (SF-227). Without the Public Suffix List
     /// the parent of the hub stands for its registered domain.
     #[must_use]
     pub fn same_site_as(&self, hub: &str) -> bool {

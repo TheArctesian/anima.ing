@@ -1,4 +1,4 @@
-//! The proof that a name belongs to this hub (Section 12.4 of the design, SF-NEW-routetoken).
+//! The proof that a name belongs to this hub (Section 12.4 of the design, SF-234).
 //!
 //! A hosted hub shares the address of the door, so it proves a name with a `TXT` record
 //! `_anima.<name>` that holds its token: 256 random bits, bound to the pair of the hub and the

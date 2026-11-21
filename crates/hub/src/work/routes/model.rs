@@ -11,7 +11,7 @@ use super::{
 };
 use crate::ids::{ApplicationId, DeviceId, RouteId};
 
-/// One public name of one application, with its fixed target (SF-NEW-routetarget).
+/// One public name of one application, with its fixed target (SF-233).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Route {
     pub id: RouteId,
@@ -116,6 +116,6 @@ pub struct NewRoute {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Added {
     pub route: Route,
-    /// The name shares its domain with the hub (SF-NEW-routeabuse).
+    /// The name shares its domain with the hub (SF-227).
     pub same_site_as_hub: bool,
 }

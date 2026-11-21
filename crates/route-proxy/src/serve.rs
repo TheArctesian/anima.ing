@@ -8,7 +8,7 @@
 //! (SF-NEW-revroutelimits). A private route answers only on the private address and only the
 //! nodes of the network of Anima (Section 16.7, SF-NEW-lsprivate). The log has only the name,
 //! the bytes, the status and the time: never a path, a query, a header or a cookie (LOG-007,
-//! SF-NEW-routeheaders). I/O edge.
+//! SF-229). I/O edge.
 
 pub mod http;
 pub mod https;

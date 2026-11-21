@@ -1,4 +1,4 @@
-//! The head of a request (SF-NEW-routeheaders).
+//! The head of a request (SF-229).
 
 use std::net::IpAddr;
 

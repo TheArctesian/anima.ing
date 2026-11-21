@@ -1,4 +1,4 @@
-//! The target of a route (SF-NEW-routetarget): never a session port, a port of Anima, an
+//! The target of a route (SF-233): never a session port, a port of Anima, an
 //! address the hub must not touch, or a listener of the hub.
 
 use std::net::{Ipv6Addr, SocketAddr};

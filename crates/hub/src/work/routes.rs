@@ -1,9 +1,9 @@
-//! The public names of applications, served on the hub (HOST-046, R-NEW-hubrouting,
-//! R-NEW-buildnow; task H21; Section 12 of `docs/proposals/hosted-applications-stage-2.md`).
+//! The public names of applications, served on the hub (HOST-046, R-302,
+//! R-299; task H21; Section 12 of `docs/proposals/hosted-applications-stage-2.md`).
 //!
 //! A route is one name of one application with a target that is fixed when the name is added:
 //! the device, the port that the applications program recorded and the address resolved then
-//! (SF-NEW-routetarget). A route serves only when its name is proven (Section 12.4), the second
+//! (SF-233). A route serves only when its name is proven (Section 12.4), the second
 //! consent at the machine is given (OD-HOST-43; nothing can give it yet), the hub's record of the
 //! application confirms the device and the port and names no socket of the engine (task H6; the
 //! hub has no such record yet, SF-NEW-revroutetarget) and it has a valid certificate
@@ -11,7 +11,7 @@
 //! (public or private), with the rules of [`kinds`] (HOST-050, task H40). The proxy is a
 //! process apart from the hub; it reaches an
 //! application only through [`door`], which takes the identifier of an application and never a
-//! device or a port (SF-NEW-routeproxyexit). Messages in [`Error`] hold no secret (LOG-007).
+//! device or a port (SF-231). Messages in [`Error`] hold no secret (LOG-007).
 
 pub mod caa;
 pub mod certificates;
@@ -157,7 +157,7 @@ pub async fn get(db: &PgPool, id: RouteId) -> Result<Route, Error> {
 }
 
 /// Adds a name to an application, with a new token and its target fixed now. The caller has
-/// checked who may do this (SF-NEW-routepublish).
+/// checked who may do this (SF-232).
 ///
 /// # Errors
 /// The [`Error`] of the first rule that refuses.
@@ -220,7 +220,7 @@ pub async fn add(
     })
 }
 
-/// The one address of the target, resolved once now and checked (SF-NEW-routetarget).
+/// The one address of the target, resolved once now and checked (SF-233).
 async fn fixed_address(host: &str, port: u16, settings: &Settings) -> Result<SocketAddr, Error> {
     let found = targets::resolve_checked(host, port, &settings.policy)
         .await
@@ -234,7 +234,7 @@ async fn fixed_address(host: &str, port: u16, settings: &Settings) -> Result<Soc
 }
 
 /// Reads the proof of a route once and keeps its new state. One failed read changes nothing;
-/// a proven name is lost only after several in a row (SF-NEW-routetoken).
+/// a proven name is lost only after several in a row (SF-234).
 ///
 /// # Errors
 /// `NotFound`, `Database` or `Unreadable`.

@@ -1,4 +1,4 @@
-//! The one interface of the proxy (SF-NEW-routeproxyexit, SF-NEW-routelinkshare): a route is
+//! The one interface of the proxy (SF-231, SF-230): a route is
 //! reached only by the identifier of its application, at the target fixed in the hub's record.
 
 use std::{

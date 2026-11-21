@@ -1,4 +1,4 @@
-//! The answers of the proxy itself (Section 12.2, SF-NEW-routeheaders): on port 80 the ACME
+//! The answers of the proxy itself (Section 12.2, SF-229): on port 80 the ACME
 //! `HTTP-01` challenge of a name and a redirect to `https://`, and the answer of a route of the
 //! kind redirect (Section 16.2). Port 80 never carries the content of an application. Pure.
 

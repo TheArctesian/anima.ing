@@ -1,4 +1,4 @@
-//! The rules of a public name (Section 12.3 and 12.4; SF-NEW-routetoken, SF-NEW-routeabuse).
+//! The rules of a public name (Section 12.3 and 12.4; SF-234, SF-227).
 
 use super::support::{HUB, name, rules};
 use crate::work::routes::names::{NameRefusal, RouteName};

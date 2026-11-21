@@ -1,12 +1,12 @@
--- The routes domain's tables (range 1040-1059; HOST-046, R-NEW-hubrouting, task H21; Section 12
+-- The routes domain's tables (range 1040-1059; HOST-046, R-302, task H21; Section 12
 -- of docs/proposals/hosted-applications-stage-2.md).
 --
 -- A route is one public name of one application. Its target (the device, the port and, for a
 -- path by the network, the address) is fixed when the name is added: a change is a removal and
--- a new route (SF-NEW-routetarget). The token of the proof is 256 random bits in hex, bound to
--- the pair of this hub and the name (SF-NEW-routetoken). `machine_consent` is the second
+-- a new route (SF-233). The token of the proof is 256 random bits in hex, bound to
+-- the pair of this hub and the name (SF-234). `machine_consent` is the second
 -- consent at the machine that OD-HOST-43 asks for: nothing can set it yet, so no route is
--- active (SF-NEW-routepublish). `application_recorded` says that the hub's record of the
+-- active (SF-232). `application_recorded` says that the hub's record of the
 -- application names this device and this port and no socket of the engine: the hub has no such
 -- record before task H6, so nothing sets it and no route serves (SF-NEW-revroutetarget). The private key of a certificate is sealed with the hub key and
 -- bound to its route (SEC-003); nothing in these tables is a body of a request (LOG-007).

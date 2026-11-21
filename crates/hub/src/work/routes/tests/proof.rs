@@ -1,4 +1,4 @@
-//! The proof of a name (Section 12.4, SF-NEW-routetoken): the token names this hub, and one
+//! The proof of a name (Section 12.4, SF-234): the token names this hub, and one
 //! failed read removes nothing.
 
 use super::support::{FakeDns, HUB, name};

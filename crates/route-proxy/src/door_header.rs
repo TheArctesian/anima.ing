@@ -1,7 +1,7 @@
 //! The PROXY protocol header (version 1) that the door of the cloud service puts before each
 //! connection, with the address of the client (Section 12.2). The proxy reads it only when its
 //! setting says that the connections come from the door; on a hub that a person hosts it never
-//! reads it, so a client cannot claim an address (SF-NEW-routeheaders). In door mode it reads it
+//! reads it, so a client cannot claim an address (SF-229). In door mode it reads it
 //! only from a peer that is an address of the door (SF-NEW-revroutelimits). Pure.
 
 use std::net::IpAddr;

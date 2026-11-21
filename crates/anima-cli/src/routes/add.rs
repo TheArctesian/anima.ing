@@ -1,7 +1,7 @@
 //! `anima route add <name>`: adds a route of an application (a web name, a redirect, or a
 //! stream of TCP or UDP; private unless `--access public`), and prints the TXT record that
 //! proves the name. A login token only, with a second factor on the account
-//! (SF-NEW-routepublish). A stream needs a port of the hub (`--listen-port`) and, when public, a
+//! (SF-232). A stream needs a port of the hub (`--listen-port`) and, when public, a
 //! protocol with its own sign-in and TLS (`--protocol`): the hub never picks a port by itself.
 
 use super::documents::{RouteAdd, route_add};

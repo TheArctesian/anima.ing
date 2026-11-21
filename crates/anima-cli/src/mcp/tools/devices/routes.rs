@@ -2,7 +2,7 @@
 //! tasks H21 and H40) with their kind and access, read only. No tool adds, checks or removes a
 //! route: making an application public on the internet or open to the network of Anima, or
 //! opening a stream, is a trust decision for a person with a second factor (Section 7 of the
-//! plan, SF-NEW-routepublish). No tool returns a certificate or a key: the hub gives them to no
+//! plan, SF-232). No tool returns a certificate or a key: the hub gives them to no
 //! API.
 
 use rmcp::model::JsonObject;

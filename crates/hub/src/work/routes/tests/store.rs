@@ -1,5 +1,5 @@
 //! Adding, checking and removing a route, and its certificate, against PostgreSQL
-//! (SF-NEW-routepublish, SF-NEW-routetarget, SF-NEW-routetoken, Section 12.5).
+//! (SF-232, SF-233, SF-234, Section 12.5).
 
 use super::support::{
     DOCKER_HOST, FakeDns, FakeIssuer, HUB, KEY_PEM, application, device, new_route, now, settings,

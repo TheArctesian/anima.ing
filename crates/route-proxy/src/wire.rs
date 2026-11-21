@@ -1,4 +1,4 @@
-//! The one interface between the proxy and the hub (Section 12.3, SF-NEW-routeproxyexit): a
+//! The one interface between the proxy and the hub (Section 12.3, SF-231): a
 //! Unix socket of the hub with three requests, one JSON line each. The proxy can ask for the
 //! table of names and streams, connect to a route of an application by the identifier of the
 //! application and the name of the route, and give what it counted. No request names a device,

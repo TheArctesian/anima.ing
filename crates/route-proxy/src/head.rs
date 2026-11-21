@@ -1,5 +1,5 @@
 //! The head of one HTTP/1.1 request from the internet, read and written again before it goes to
-//! the application (Section 12.3, SF-NEW-routeheaders). Pure.
+//! the application (Section 12.3, SF-229). Pure.
 //!
 //! The proxy removes each `Forwarded`, `X-Forwarded-*` and `X-Real-IP` header that the client
 //! sent and each header of the hub or the door, then sets `X-Forwarded-For` and

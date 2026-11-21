@@ -1,4 +1,4 @@
-//! The certificates of the routes (Section 12.5, SF-NEW-routeacme): the interface of an ACME
+//! The certificates of the routes (Section 12.5, SF-228): the interface of an ACME
 //! issuer, the rules of when the hub asks, and the context that binds a sealed key to its route.
 //!
 //! The hub holds the ACME account and asks; the proxy only answers the challenge and gets the
