@@ -1,6 +1,7 @@
-/** How the person lists each thread (TH46): pinned, archived, a title of their own, or removed. Pure. */
+/** How the person lists each thread (TH46): pinned, archived, a title of their own, or removed; settled or snoozed (TH61). Pure. */
 
 import type { ThreadRow } from '../thread';
+import { marksFrom, type Marks } from './shelf';
 
 export interface Listing {
   readonly thread: string;
@@ -8,6 +9,8 @@ export interface Listing {
   readonly archived: boolean;
   readonly title: string | null;
   readonly removed: boolean;
+  /** When the person settled, took back, snoozed or woke the thread (TH61). */
+  readonly marks: Marks;
 }
 
 /** A change of the listing of one thread, in the form of the socket of the runner. */
@@ -15,7 +18,11 @@ export type ListingChange =
   | { readonly change: 'pin'; readonly on: boolean }
   | { readonly change: 'archive'; readonly on: boolean }
   | { readonly change: 'rename'; readonly title: string | null }
-  | { readonly change: 'remove' };
+  | { readonly change: 'remove' }
+  | { readonly change: 'settle'; readonly on: boolean }
+  /** `until` as RFC 3339, after now and at most `MOST_SNOOZE_MS` from now; the runner refuses other times. */
+  | { readonly change: 'snooze'; readonly until: string }
+  | { readonly change: 'wake' };
 
 /** The most characters of a title, as the runner keeps it. */
 export const MAX_TITLE = 200;
@@ -34,6 +41,7 @@ function listingFrom(value: unknown): Listing | null {
     archived: fields.archived === true,
     title: typeof fields.title === 'string' ? fields.title : null,
     removed: fields.removed === true,
+    marks: marksFrom(fields),
   };
 }
 

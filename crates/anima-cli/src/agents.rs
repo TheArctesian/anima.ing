@@ -78,7 +78,18 @@ pub enum AgentCommand {
     /// Code or Codex stay on disk; a thread that runs is refused.
     #[cfg(unix)]
     Remove(listing::RemoveArgs),
-    /// List the threads of this computer that are pinned, archived, renamed or removed.
+    /// Settle a thread of this computer: it goes to the shelf Settled. `--off` takes it back.
+    #[cfg(unix)]
+    Settle(listing::SwitchArgs),
+    /// Snooze a thread of this computer until a time (`--for 3h` or `--until <RFC 3339>`), at
+    /// most 30 days. A prompt or a request of its program wakes it before.
+    #[cfg(unix)]
+    Snooze(listing::SnoozeArgs),
+    /// End the snooze of a thread of this computer now.
+    #[cfg(unix)]
+    Wake(listing::WakeArgs),
+    /// List the threads of this computer that are pinned, archived, renamed, removed, settled
+    /// or snoozed.
     #[cfg(unix)]
     Listings,
 }
@@ -116,7 +127,7 @@ impl AgentCommand {
         }
     }
 
-    /// Runs a command that changes how a thread is listed (TH46).
+    /// Runs a command that changes how a thread is listed (TH46, TH61).
     #[cfg(unix)]
     async fn run_listing(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
@@ -124,6 +135,9 @@ impl AgentCommand {
             Self::Archive(args) => listing::archive(args, invocation).await,
             Self::Rename(args) => listing::rename(args, invocation).await,
             Self::Remove(args) => listing::remove(args, invocation).await,
+            Self::Settle(args) => listing::settle(args, invocation).await,
+            Self::Snooze(args) => listing::snooze(args, invocation).await,
+            Self::Wake(args) => listing::wake(args, invocation).await,
             Self::Listings => listing::listings(invocation).await,
             _ => unreachable!("the other commands are run by `run` and `run_local`"),
         }

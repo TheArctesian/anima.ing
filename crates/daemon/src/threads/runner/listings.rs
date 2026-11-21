@@ -1,4 +1,5 @@
-//! How the person lists each thread (TH46): pinned, archived, a title of their own, or removed.
+//! How the person lists each thread (TH46): pinned, archived, a title of their own, or removed;
+//! settled or snoozed (TH61).
 //! Kept in the record of the runner only; no session file of a program changes.
 
 use agent_threads::control::{Listing, ListingChange, Outcome, Refusal, RunState};
@@ -37,7 +38,7 @@ impl Runner {
                 thread,
                 ..Listing::default()
             })
-            .changed(change)
+            .changed(change, chrono::Utc::now())
             .map_err(|_| Refusal::BadValue)?;
         if !self.listings.contains_key(&thread) && self.listings.len() >= MAX_LISTINGS {
             return Err(Refusal::BadValue);

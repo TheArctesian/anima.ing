@@ -906,7 +906,7 @@ Stages 1 to 4 hold each function marked must or should in Section 3.3. Stage 5 h
 | Task | Work | State |
 | --- | --- | --- |
 | TH60 | Projects: new, clone, publish; threads with no project; icons | Not started |
-| TH61 | Snooze, settle, auto-settle, shelves, drag in the list | Not started |
+| TH61 | Snooze, settle, auto-settle, shelves, drag in the list | In progress: the runner half is built on branch threads/th61-settle (the marks settled, taken back, snoozed until and woken in the listing of the runner; the changes settle, snooze and wake; the rule of the shelf in `control/shelf.rs` and the same rule for the client in `lib/agent-threads/listing/shelf.ts`; `anima agents settle`, `snooze`, `wake`; no MCP tool, as for TH46). A thread settles by itself after 7 quiet days; the rule works it out when the list is read, so no timer writes the record. Not built: the shelves and the drag of the list (stage 2 of the copy), a setting for the days |
 | TH62 | The state "limited", resume at the reset of a limit, goals (needs a ruling on AIS-022) | Not started |
 | TH63 | Other agent programs, one at a time, each with its vendor terms row | Not started |
 | TH64 | Continue the threads after a restart | Not started |

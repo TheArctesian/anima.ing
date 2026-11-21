@@ -11,7 +11,9 @@ use uuid::Uuid;
 use crate::drive::{AccountFacts, Answer, DriveEvent, Effort, Mode, Program, Request};
 
 mod listing;
-pub use listing::{BadTitle, Listing, ListingChange, MAX_TITLE};
+mod shelf;
+pub use listing::{BadChange, Listing, ListingChange, MAX_TITLE};
+pub use shelf::{Activity, MOST_SNOOZE, Marks, SETTLE_AFTER, Shelf};
 
 /// The most bytes of one frame of a client.
 pub const MAX_FRAME: usize = 4 * 1024 * 1024;

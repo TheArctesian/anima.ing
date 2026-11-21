@@ -1,4 +1,4 @@
-//! How the person lists the threads (TH46): kept by the runner across its restart, never a
+//! How the person lists the threads (TH46, TH61): kept by the runner across its restart, never a
 //! change of a thread that runs.
 
 use agent_threads::control::{Action, Listing, ListingChange, Outcome, Refusal, RunState};
@@ -112,4 +112,48 @@ async fn th46_a_thread_that_runs_is_not_removed_and_a_stopped_one_leaves_the_lis
         None,
         "the runner forgot it"
     );
+}
+
+#[tokio::test]
+async fn th61_a_settle_and_a_snooze_are_kept_after_a_restart_and_a_bad_snooze_is_refused() {
+    let mut kit = Kit::with(CLAUDE);
+    let mut client = kit.client().await;
+    let (settled, snoozed) = (Uuid::now_v7(), Uuid::now_v7());
+    change(&mut client, settled, ListingChange::Settle { on: true }).await;
+    let until = chrono::Utc::now() + chrono::TimeDelta::hours(3);
+    change(&mut client, snoozed, ListingChange::Snooze { until }).await;
+    let past = chrono::Utc::now() - chrono::TimeDelta::hours(1);
+    assert_eq!(
+        change(&mut client, snoozed, ListingChange::Snooze { until: past }).await,
+        Outcome::Refused {
+            why: Refusal::BadValue
+        }
+    );
+    drop(client);
+
+    kit.end_runner();
+    kit.start();
+    let mut client = kit.client().await;
+    let kept = listings(&mut client).await;
+    let of = |thread: Uuid| {
+        kept.iter()
+            .find(|listing| listing.thread == thread)
+            .cloned()
+    };
+    assert!(of(settled).is_some_and(|listing| listing.marks.settled_at.is_some()));
+    let snooze = of(snoozed)
+        .expect("kept")
+        .marks
+        .snoozed_until
+        .expect("snoozed");
+    assert_eq!(snooze.timestamp_micros(), until.timestamp_micros());
+
+    change(&mut client, snoozed, ListingChange::Wake).await;
+    let woken = listings(&mut client).await;
+    let marks = woken
+        .iter()
+        .find(|listing| listing.thread == snoozed)
+        .expect("the wake is kept")
+        .marks;
+    assert!(marks.snoozed_until.is_none() && marks.woke_at.is_some());
 }
