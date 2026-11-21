@@ -1,0 +1,31 @@
+/*
+ * The sizes of the command palette (t3-ui-copy-2026-11-21/02 section 10), on the kit and the semantic tokens. The
+ * surface is opaque over our scrim (D7), with our corners (D2); its text keeps 12 px and 4.5:1 (D5, D9).
+ */
+:root {
+  /* The surface: at most 36rem wide and 26.25rem high, 10vh from the top on a wide window, 16 px from it on a narrow one. */
+  --code-palette-width: 36rem;
+  --code-palette-height: 26.25rem;
+  --code-palette-top: max(10vh, var(--space-4));
+  --code-palette-top-narrow: max(var(--space-4), 4vh);
+
+  /* The input row: padding 6 by 8 px, an input 34 px high (38 px on a narrow window), text 32 px in from the icon. */
+  --code-palette-input: 2.125rem;
+  --code-palette-input-narrow: 2.375rem;
+  --code-palette-input-pad: 0.375rem var(--space-2);
+  --code-palette-input-inset: var(--space-8);
+
+  /* The results: at most min(28rem, 70vh), 8 px round; a group label 6 by 8 px with 6 px above all but the first. */
+  --code-palette-results: min(28rem, 70vh);
+  --code-palette-group-gap: 0.375rem;
+
+  /* A row: at least 28 px, padding 6 by 8 px, 8 px between its parts; a time at least 48 px wide; context at most 45 %. */
+  --code-palette-row: var(--control-sm);
+  --code-palette-row-pad: 0.375rem var(--space-2);
+  --code-palette-time: var(--space-12);
+  --code-palette-context: 45%;
+
+  /* The footer: padding 10 by 16 px, 12 px between the hints, 4 px inside one. */
+  --code-palette-foot-pad: 0.625rem var(--space-4);
+  --code-palette-hint-gap: var(--space-3);
+}
