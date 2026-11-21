@@ -11,6 +11,7 @@ mod accounts;
 mod calls;
 pub mod codex;
 mod holder_events;
+mod listings;
 pub mod log;
 pub mod login;
 pub mod peer;
@@ -97,6 +98,8 @@ pub struct Runner {
     asked_again: Option<std::time::Instant>,
     threads: BTreeMap<Uuid, Thread>,
     limits: Limits,
+    /// How the person lists each thread (TH46).
+    listings: BTreeMap<Uuid, agent_threads::control::Listing>,
     watchers: Vec<Client>,
     waits: BTreeMap<u64, Waits>,
     /// The commands that change a program and that the holder did not answer yet: a new link
@@ -165,6 +168,11 @@ pub async fn run(
         asked_again: None,
         threads: BTreeMap::new(),
         limits: saved.limits,
+        listings: saved
+            .listings
+            .into_iter()
+            .map(|listing| (listing.thread, listing))
+            .collect(),
         watchers: Vec::new(),
         waits: BTreeMap::new(),
         unanswered: BTreeMap::new(),
@@ -355,6 +363,7 @@ impl Runner {
         let record = record::Record {
             limits: self.limits,
             threads: self.threads.values().map(Thread::saved).collect(),
+            listings: self.listings.values().cloned().collect(),
         };
         if let Err(error) = record::write(&self.dir, &record) {
             tracing::warn!(%error, "the record of the runner was not written");

@@ -6,6 +6,8 @@ pub mod accounts;
 pub mod documents;
 #[cfg(unix)]
 pub mod drive;
+#[cfg(unix)]
+pub mod listing;
 pub mod report;
 #[cfg(unix)]
 pub mod runner;
@@ -62,6 +64,23 @@ pub enum AgentCommand {
     /// said. They stay on this computer.
     #[cfg(unix)]
     Accounts,
+    /// Pin a thread of this computer: it is listed first. `--off` takes the pin away.
+    #[cfg(unix)]
+    Pin(listing::SwitchArgs),
+    /// Archive a thread of this computer: it is listed only with the archived threads.
+    #[cfg(unix)]
+    Archive(listing::SwitchArgs),
+    /// Give a thread of this computer a title of your own; with no title, the title of its
+    /// program again.
+    #[cfg(unix)]
+    Rename(listing::RenameArgs),
+    /// Remove a thread from the list of Anima, after a question. The session files of Claude
+    /// Code or Codex stay on disk; a thread that runs is refused.
+    #[cfg(unix)]
+    Remove(listing::RemoveArgs),
+    /// List the threads of this computer that are pinned, archived, renamed or removed.
+    #[cfg(unix)]
+    Listings,
 }
 
 impl AgentCommand {
@@ -76,23 +95,37 @@ impl AgentCommand {
             Self::Threads(args) => args.run(invocation),
             Self::Thread(args) => args.run(invocation),
             #[cfg(unix)]
+            local => local.run_local(invocation).await,
+        }
+    }
+
+    /// Runs a command that drives the runner of this computer.
+    #[cfg(unix)]
+    async fn run_local(self, invocation: &Invocation) -> Result<(), Failure> {
+        match self {
             Self::Start(args) => args.run(invocation).await,
-            #[cfg(unix)]
             Self::Send(args) => args.run(invocation).await,
-            #[cfg(unix)]
             Self::Approve(args) => args.run(invocation).await,
-            #[cfg(unix)]
             Self::Interrupt(args) => drive::interrupt(args, invocation).await,
-            #[cfg(unix)]
             Self::Stop(args) => drive::stop(args, invocation).await,
-            #[cfg(unix)]
             Self::Running => drive::running(invocation).await,
-            #[cfg(unix)]
             Self::Watch(args) => drive::watch(args, invocation).await,
-            #[cfg(unix)]
             Self::RaiseLimit => drive::raise_limit(invocation).await,
-            #[cfg(unix)]
             Self::Accounts => accounts::accounts(invocation).await,
+            other => other.run_listing(invocation).await,
+        }
+    }
+
+    /// Runs a command that changes how a thread is listed (TH46).
+    #[cfg(unix)]
+    async fn run_listing(self, invocation: &Invocation) -> Result<(), Failure> {
+        match self {
+            Self::Pin(args) => listing::pin(args, invocation).await,
+            Self::Archive(args) => listing::archive(args, invocation).await,
+            Self::Rename(args) => listing::rename(args, invocation).await,
+            Self::Remove(args) => listing::remove(args, invocation).await,
+            Self::Listings => listing::listings(invocation).await,
+            _ => unreachable!("the other commands are run by `run` and `run_local`"),
         }
     }
 }

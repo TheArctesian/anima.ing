@@ -329,6 +329,6 @@ export const REFUSAL_WORDS: Readonly<Record<Refusal, string>> = {
   answer_does_not_fit: 'That answer does not fit the request.',
   not_running: 'The program of that thread is not running.',
   holder: 'The holder of the programs did not take the command.',
-  from_an_agent: 'Only the person can answer a request, raise the limit or start a thread: this call came from a process of an agent.',
+  from_an_agent: 'Only the person can answer a request, raise the limit, start a thread or change the list of threads: this call came from a process of an agent.',
   over_limit: OVER_LIMIT,
 };

@@ -55,6 +55,8 @@ impl Runner {
                 return;
             }
             Action::Interrupt { thread } => self.interrupt(thread).await,
+            Action::Listings => self.listings(),
+            Action::ChangeListing { thread, change } => self.change_listing(thread, &change),
             Action::Accounts => Outcome::Accounts {
                 accounts: self.accounts.rows(),
             },
@@ -258,12 +260,16 @@ struct Answering {
     request: Uuid,
 }
 
-/// Whether only the person may make this call: an answer to a request, a raise of the limit
-/// and a start. A process of an agent may not, so that an agent never approves itself.
+/// Whether only the person may make this call: an answer to a request, a raise of the limit,
+/// a start and a change of how a thread is listed (TH46). A process of an agent may not, so that
+/// an agent never approves itself or hides a thread from the person.
 const fn for_the_person(action: &Action) -> bool {
     matches!(
         action,
-        Action::Answer { .. } | Action::RaiseLimit | Action::Start { .. }
+        Action::Answer { .. }
+            | Action::RaiseLimit
+            | Action::Start { .. }
+            | Action::ChangeListing { .. }
     )
 }
 
@@ -273,7 +279,8 @@ const fn thread_of(action: &Action) -> Option<Uuid> {
         Action::Send { thread, .. }
         | Action::Answer { thread, .. }
         | Action::Interrupt { thread }
-        | Action::Stop { thread } => Some(*thread),
+        | Action::Stop { thread }
+        | Action::ChangeListing { thread, .. } => Some(*thread),
         _ => None,
     }
 }
@@ -291,6 +298,7 @@ pub(super) const fn refusal_word(why: &Refusal) -> &'static str {
     match why {
         Refusal::UnknownThread => "unknown thread",
         Refusal::FromAnAgent => "from a process of an agent",
+        Refusal::Running => "the thread runs",
         Refusal::FolderNotPermitted => "folder not permitted",
         Refusal::ProgramNotFound => "program not found",
         Refusal::ProgramDoesNotAnswer { .. } => "program did not answer",
