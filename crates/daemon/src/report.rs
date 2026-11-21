@@ -53,6 +53,20 @@ pub fn renewal_not_stored(error: &TokenStoreError) {
     tracing::error!(%error, "the new token could not be stored; keeping the current one");
 }
 
+/// Once, when the save of a renewed token first waits for the person in the Keychain (R-322).
+pub fn renewal_waits() {
+    tracing::warn!(
+        "this computer's daemon needs you to allow it in the Keychain to store its renewed token: click Always Allow in the window of macOS; it keeps the current token, which the hub accepts until the new one is used, and tries again every 30 s, after 10 minutes every 5 minutes"
+    );
+}
+
+/// The delete of a token that the hub refused waits for the person in the Keychain (R-322).
+pub fn forget_waits() {
+    tracing::warn!(
+        "the refused token could not be deleted: this computer's daemon needs you to allow it in the Keychain; click Always Allow in the window of macOS"
+    );
+}
+
 pub fn renewal_refused(code: RefusalCode) {
     tracing::warn!(code = code.as_str(), "renewal refused");
 }

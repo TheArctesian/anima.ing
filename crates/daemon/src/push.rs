@@ -5,6 +5,8 @@
 
 pub mod pacing;
 pub mod renewal;
+mod renewing;
+pub mod unstored;
 pub mod usage;
 
 use std::time::Duration;
@@ -14,10 +16,11 @@ use daemon_core::hardware::Hardware;
 use daemon_core::points::{BATCH_POINTS, Backlog, Point};
 use daemon_core::wire::{
     Announcements, Batch, BatchBattery, BatchDrive, BatchGpu, BatchInventory, PushAccepted,
-    RefusalCode, Renewed,
+    RefusalCode,
 };
 use uuid::Uuid;
 
+use crate::config::home::Home;
 use crate::hub::HubClient;
 use crate::hub::answer::Answer;
 use crate::keys::keeper::{Asking, Keeper};
@@ -26,6 +29,7 @@ use crate::report;
 use crate::sampling::agent_usage::UsageReport;
 use crate::token_store::{Credential, TokenStore};
 use pacing::{Action, Backoff, RHYTHM};
+use unstored::Unstored;
 use usage::UsageBacklog;
 
 /// The version of this daemon, sent with each batch (R-122); `build.rs` sets it for a release.
@@ -69,6 +73,10 @@ pub struct Pusher {
     spread: fn() -> f64,
     /// The operational key cache; `None` for a pusher that keeps none and sends no `keys`.
     keys: Option<Keeper>,
+    /// A renewed token whose save waits for the person in the Keychain; not used until stored.
+    unstored: Option<Unstored>,
+    /// The daemon's folder, where [`MARK`](crate::keychain_wait::MARK) tells the app that a save waits.
+    marks: Option<Home>,
 }
 
 impl Pusher {
@@ -88,6 +96,18 @@ impl Pusher {
             renewal_tried: None,
             spread: os_spread,
             keys: None,
+            unstored: None,
+            marks: None,
+        }
+    }
+
+    /// The same pusher, which puts [`MARK`](crate::keychain_wait::MARK) in `home` while the save of a
+    /// renewed token waits for the person in the Keychain (R-322).
+    #[must_use]
+    pub fn with_marks(self, home: Home) -> Self {
+        Self {
+            marks: Some(home),
+            ..self
         }
     }
 
@@ -274,35 +294,12 @@ impl Pusher {
         }
         self.credential = stored;
         self.stopped_until = None;
+        // The store holds a newer token than the one whose save waited: that one is stale.
+        if self.unstored.take().is_some() {
+            self.mark(false);
+        }
         report::token_store_changed();
         true
-    }
-
-    /// Renews the token inside its last 30 days (K8 Section 5): the new token is stored first,
-    /// and only then used. If it cannot be stored the current one stays.
-    async fn renew_if_due(&mut self, now: DateTime<Utc>) {
-        if !renewal::due(self.credential.expires_at, now, self.renewal_tried) {
-            return;
-        }
-        self.renewal_tried = Some(now);
-        match self.hub.renew(&self.credential.token).await {
-            Answer::Accepted(renewed) => self.keep_renewed(renewed, now),
-            Answer::Refused(code) => report::renewal_refused(code),
-            Answer::Failed(cause) => report::renewal_failed(cause),
-        }
-    }
-
-    /// Stores the renewed token and only then uses it; on a failure the current one stays.
-    fn keep_renewed(&mut self, renewed: Renewed, now: DateTime<Utc>) {
-        let hub = self.credential.hub.clone();
-        let next = Credential::received(renewed.token, renewed.expires_at, hub, now);
-        match self.store.save(&next) {
-            Ok(()) => {
-                self.credential = next;
-                report::renewed();
-            }
-            Err(error) => report::renewal_not_stored(&error),
-        }
     }
 }
 

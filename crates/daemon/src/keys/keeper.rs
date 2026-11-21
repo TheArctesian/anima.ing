@@ -15,6 +15,10 @@ use crate::hub::answer::{Answer, Cause};
 pub struct Keeper {
     cache: KeyCache,
     store: KeyStore,
+    /// A save waited for the person in the Keychain (R-322): later saves are skipped, as each
+    /// would hold the push loop for the deadline, until a delete answers. The cache is only a
+    /// cache: the hub's next answer that names the keys puts a stale one right.
+    saves_wait: bool,
 }
 
 /// What [`Keeper::follow`] needs of the pusher: its hub, its token and its device.
@@ -40,7 +44,11 @@ impl Keeper {
             }
             KeyCache::default()
         });
-        Self { cache, store }
+        Self {
+            cache,
+            store,
+            saves_wait: false,
+        }
     }
 
     /// The versions the cache holds: the `held` of the next batch.
@@ -58,10 +66,12 @@ impl Keeper {
     }
 
     /// Deletes the whole cache: after a refused token, and when the daemon leaves the machine.
+    /// A delete is always tried, also while saves are skipped: it removes key values.
     pub fn forget(&mut self) {
         self.cache.forget();
-        if let Err(error) = self.store.forget() {
-            report::not_deleted(&error);
+        match self.store.forget() {
+            Ok(()) => self.saves_wait = false,
+            Err(error) => report::not_deleted(&error),
         }
     }
 
@@ -99,9 +109,19 @@ impl Keeper {
         self.save();
     }
 
-    fn save(&self) {
-        if let Err(error) = self.store.save(&self.cache) {
-            report::not_stored(&error);
+    /// Stores the cache, unless an earlier save waited in the Keychain: then the cache is kept
+    /// in memory only.
+    fn save(&mut self) {
+        if self.saves_wait {
+            return;
+        }
+        match self.store.save(&self.cache) {
+            Ok(()) => {}
+            Err(KeyStoreError::KeychainWaits) => {
+                report::saves_wait();
+                self.saves_wait = true;
+            }
+            Err(error) => report::not_stored(&error),
         }
     }
 }
@@ -118,6 +138,12 @@ mod report {
 
     pub fn not_stored(error: &KeyStoreError) {
         tracing::error!(%error, "the key cache could not be stored");
+    }
+
+    pub fn saves_wait() {
+        tracing::warn!(
+            "the key cache could not be stored: this computer's daemon needs you to allow it in the Keychain; the cache is kept in memory only until a delete of it answers"
+        );
     }
 
     pub fn not_deleted(error: &KeyStoreError) {
