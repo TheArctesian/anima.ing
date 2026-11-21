@@ -5,7 +5,9 @@
 //! (SF-232, HM-D14): the three mutations are in `API_KEY_REFUSED_ROOTS`, and each
 //! resolver checks the kind of the token again. A public route is added only from the Anima app
 //! in a browser, by a person with no agent declared: never by a login token, which the `anima`
-//! command and an agent hold (SF-NEW-revroutestepup). Each change writes one audit entry and one
+//! command and an agent hold (SF-NEW-revroutestepup). On a hub that is not on Unix the routes
+//! cannot serve, so adding and checking a route is refused: "Routing needs a hub on Linux."
+//! (R-NEW-routeslinux). Each change writes one audit entry and one
 //! event in its own transaction.
 
 mod trail;
@@ -69,6 +71,7 @@ fn to_graphql(error: Error) -> async_graphql::Error {
         Error::Unresolved => invalid(&[FieldError::new("deviceId", error.to_string())]),
         Error::NameTaken | Error::OtherTarget => coded(error.to_string(), ErrorCode::Conflict),
         Error::PublicNeedsPerson => coded(error.to_string(), ErrorCode::Forbidden),
+        Error::NeedsLinuxHub => coded(error.to_string(), ErrorCode::Unavailable),
         other => internal(other),
     }
 }
@@ -167,6 +170,7 @@ impl Mutation {
         ctx: &Context<'_>,
         input: RouteFields,
     ) -> Result<AddedView> {
+        super::routing_here(cfg!(unix)).map_err(to_graphql)?;
         let shape = shape(&input);
         if shape.access == Access::Public && !in_browser(ctx) {
             return Err(to_graphql(Error::PublicNeedsPerson));
@@ -201,6 +205,7 @@ impl Mutation {
 
     #[graphql(guard = "Authenticated")]
     async fn check_application_route(&self, ctx: &Context<'_>, id: ID) -> Result<RouteView> {
+        super::routing_here(cfg!(unix)).map_err(to_graphql)?;
         person_with_second_factor(ctx, "checkApplicationRoute").await?;
         let id = parse(&id, "id")?;
         let settings = settings(ctx)?;

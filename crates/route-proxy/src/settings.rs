@@ -32,6 +32,7 @@ const PRIVATE_NETWORKS: &str = "ANIMA_ROUTE_PROXY_PRIVATE_NETWORKS";
 const UDP_FLOWS: &str = "ANIMA_ROUTE_PROXY_UDP_FLOWS";
 const UDP_IDLE_SECONDS: &str = "ANIMA_ROUTE_PROXY_UDP_IDLE_SECONDS";
 const UDP_NEW_PER_SECOND: &str = "ANIMA_ROUTE_PROXY_UDP_NEW_PER_SECOND";
+const UDP_FLOWS_PER_NETWORK: &str = "ANIMA_ROUTE_PROXY_UDP_FLOWS_PER_NETWORK";
 const DAY_MS: u64 = 24 * 60 * 60 * 1000;
 /// The default cap of one client network: below the 32 streams of one link of the hub.
 const PER_CLIENT: u32 = 8;
@@ -67,6 +68,8 @@ pub struct Settings {
     /// The new flows of each UDP stream each second; the burst is twice as many. A source of
     /// UDP can be false, so this keeps false sources from filling the flows (SF-NEW-revroutelimits).
     pub udp_new_per_second: u32,
+    /// The flows of each UDP stream from one source network (`limits::source_network`).
+    pub udp_flows_per_network: usize,
 }
 
 /// The address of the proxy on the network of Anima, and the networks of its nodes: a private
@@ -127,6 +130,7 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Option<Settings>, Sett
         udp_idle: positive::<u64>(env, UDP_IDLE_SECONDS)?
             .map_or(Duration::from_secs(60), Duration::from_secs),
         udp_new_per_second: positive(env, UDP_NEW_PER_SECOND)?.unwrap_or(8),
+        udp_flows_per_network: positive(env, UDP_FLOWS_PER_NETWORK)?.unwrap_or(4),
     }))
 }
 

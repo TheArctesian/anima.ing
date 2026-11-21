@@ -16,6 +16,7 @@
 pub mod caa;
 pub mod certificates;
 mod dns;
+#[cfg(unix)]
 pub mod door;
 pub mod graphql;
 pub mod kinds;
@@ -80,6 +81,8 @@ pub enum Error {
          `anima` command, an API key or an agent"
     )]
     PublicNeedsPerson,
+    #[error("Routing needs a hub on Linux.")]
+    NeedsLinuxHub,
     #[error("the route does not serve now")]
     NotServing(Waits),
     #[error(transparent)]
@@ -159,6 +162,19 @@ pub async fn list(db: &PgPool, application: Option<ApplicationId>) -> Result<Vec
 /// `NotFound`, `Database` or `Unreadable`.
 pub async fn get(db: &PgPool, id: RouteId) -> Result<Route, Error> {
     store::get(db, id).await?.ok_or(Error::NotFound)
+}
+
+/// Whether this hub can serve routes: the interface of the proxy is a Unix socket, so routing
+/// needs a hub on Linux (R-NEW-routeslinux). The caller gives `cfg!(unix)`.
+///
+/// # Errors
+/// `NeedsLinuxHub` when `unix` is false.
+pub fn routing_here(unix: bool) -> Result<(), Error> {
+    if unix {
+        Ok(())
+    } else {
+        Err(Error::NeedsLinuxHub)
+    }
 }
 
 /// Adds a name to an application, with a new token and its target fixed now. The caller has

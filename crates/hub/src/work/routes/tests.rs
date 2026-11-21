@@ -14,10 +14,12 @@ macro_rules! db_test {
 }
 
 mod caa;
+#[cfg(unix)]
 mod door;
 mod kinds;
 mod names;
 mod proof;
+#[cfg(unix)]
 mod socket;
 mod store;
 mod streams;

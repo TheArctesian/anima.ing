@@ -1,13 +1,21 @@
-//! The proxy's side of the one interface to the hub ([`crate::wire`]). I/O edge.
+//! The proxy's side of the one interface to the hub ([`crate::wire`]). The interface is a Unix
+//! socket, so [`HubSocket`] exists only on Unix: routing needs a hub on Linux (R-NEW-routeslinux).
+//! I/O edge.
 
-use std::{future::Future, io, path::PathBuf};
+#[cfg(unix)]
+use std::path::PathBuf;
+use std::{future::Future, io};
 
+use tokio::io::{AsyncRead, AsyncWrite};
+#[cfg(unix)]
 use tokio::{
-    io::{AsyncRead, AsyncWrite, AsyncWriteExt as _, BufReader},
+    io::{AsyncWriteExt as _, BufReader},
     net::UnixStream,
 };
 
-use crate::wire::{self, Answer, Counts, Dial, Request, Table, WireError};
+#[cfg(unix)]
+use crate::wire::{self, Answer, Request};
+use crate::wire::{Counts, Dial, Table, WireError};
 
 /// What the proxy may ask of the hub. A connection names an application, never a port.
 pub trait Hub: Send + Sync + 'static {
@@ -26,8 +34,10 @@ pub trait Hub: Send + Sync + 'static {
 }
 
 /// The hub at its Unix socket.
+#[cfg(unix)]
 pub struct HubSocket(pub PathBuf);
 
+#[cfg(unix)]
 impl HubSocket {
     async fn ask(&self, request: &Request) -> Result<BufReader<UnixStream>, WireError> {
         let mut stream = BufReader::new(UnixStream::connect(&self.0).await?);
@@ -36,6 +46,7 @@ impl HubSocket {
     }
 }
 
+#[cfg(unix)]
 impl Hub for HubSocket {
     type Stream = BufReader<UnixStream>;
 

@@ -64,6 +64,17 @@ pub fn client_key(client: IpAddr) -> IpAddr {
     }
 }
 
+/// The network of a source of UDP for its cap of flows: the /64 of an IPv6 address and the /24
+/// of IPv4, so a sender of false sources in one network takes only a few flows
+/// (SF-NEW-revroutelimits). An IPv4 address in IPv6 form is IPv4.
+#[must_use]
+pub fn source_network(source: IpAddr) -> IpAddr {
+    match source.to_canonical() {
+        IpAddr::V4(address) => IpAddr::V4((u32::from(address) & !0xff).into()),
+        v6 @ IpAddr::V6(_) => client_key(v6),
+    }
+}
+
 /// A network of addresses, as `address/prefix`: the nodes of the network of Anima that may
 /// reach a private route (Section 16.7, SF-245).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

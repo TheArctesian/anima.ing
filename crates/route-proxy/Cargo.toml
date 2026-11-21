@@ -18,9 +18,12 @@ tokio-rustls.workspace = true
 rustls.workspace = true
 rustls-pki-types.workspace = true
 tracing.workspace = true
-tracing-subscriber.workspace = true
 uuid.workspace = true
 zeroize = { workspace = true, features = ["serde"] }
+
+# The log of the binary, which runs only on Unix (R-NEW-routeslinux).
+[target.'cfg(unix)'.dependencies]
+tracing-subscriber.workspace = true
 
 [dev-dependencies]
 rcgen.workspace = true

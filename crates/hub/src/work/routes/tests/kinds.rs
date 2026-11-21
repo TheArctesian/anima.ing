@@ -166,3 +166,11 @@ fn the_address_of_a_redirect_is_a_plain_https_address() {
         );
     }
 }
+
+#[test]
+fn a_hub_that_is_not_on_unix_refuses_routing_in_plain_words() {
+    assert!(crate::work::routes::routing_here(true).is_ok());
+    let refused = crate::work::routes::routing_here(false).unwrap_err();
+    assert!(matches!(refused, crate::work::routes::Error::NeedsLinuxHub));
+    assert_eq!(refused.to_string(), "Routing needs a hub on Linux.");
+}

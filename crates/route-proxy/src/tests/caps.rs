@@ -1,7 +1,7 @@
 //! The caps that keep slow clients from holding each stream of a link (SF-NEW-revroutelimits):
 //! a TCP stream and a WebSocket after its `101` hold a place of their route until they end, a
 //! write to a client that does not read ends at its time, and a UDP stream opens only so many new
-//! flows each second.
+//! flows each second and from each source network.
 
 use std::{
     collections::BTreeMap,
@@ -239,4 +239,31 @@ async fn a_udp_stream_opens_only_its_new_flows_each_second() {
         dials, 2,
         "a burst of twice the rate, then no new flow until it fills again"
     );
+}
+
+#[tokio::test]
+async fn a_udp_stream_opens_only_its_flows_of_one_source_network() {
+    let proxy = proxy(&[
+        ("ANIMA_ROUTE_PROXY_UDP_NEW_PER_SECOND", "100"),
+        ("ANIMA_ROUTE_PROXY_UDP_FLOWS_PER_NETWORK", "3"),
+    ]);
+    let port = UdpSocket::bind("127.0.0.1:0")
+        .await
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let listeners = Listeners::default();
+    listeners
+        .keep(&proxy, LOOPBACK, vec![stream(Transport::Udp, port)])
+        .await;
+    let mut sources = Vec::new();
+    for _ in 0..6 {
+        let source = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        source.send_to(b"ping", ("127.0.0.1", port)).await.unwrap();
+        sources.push(source);
+    }
+    sleep(Duration::from_millis(300)).await;
+    let dials = proxy.hub().dials.lock().unwrap().len();
+    assert_eq!(dials, 3, "each source of 127.0.0.0/24 is one network");
 }

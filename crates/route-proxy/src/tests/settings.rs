@@ -41,6 +41,7 @@ fn the_timeouts_and_the_caps_have_defaults() {
     );
     assert_eq!(settings.limits.connections, 16);
     assert_eq!(settings.udp_new_per_second, 8);
+    assert_eq!(settings.udp_flows_per_network, 4);
 }
 
 #[test]

@@ -2,7 +2,7 @@
 
 use std::net::IpAddr;
 
-use crate::limits::{Bucket, Caps, Gate, Limiter, Limits, Refusal, client_key};
+use crate::limits::{Bucket, Caps, Gate, Limiter, Limits, Refusal, client_key, source_network};
 
 const LIMITS: Limits = Limits {
     connections: 2,
@@ -129,4 +129,14 @@ fn a_bucket_takes_its_burst_at_once_and_then_its_rate() {
         16,
         "never more than the burst"
     );
+}
+
+#[test]
+fn a_source_of_udp_is_its_24_of_ipv4_and_its_64_of_ipv6() {
+    let network = |text: &str| source_network(text.parse::<IpAddr>().unwrap());
+    assert_eq!(network("198.51.100.7"), network("198.51.100.250"));
+    assert_ne!(network("198.51.100.7"), network("198.51.101.7"));
+    assert_eq!(network("2001:db8:1:2::7"), network("2001:db8:1:2:ffff::1"));
+    assert_ne!(network("2001:db8:1:2::7"), network("2001:db8:1:3::7"));
+    assert_eq!(network("::ffff:198.51.100.7"), network("198.51.100.9"));
 }

@@ -2,7 +2,8 @@
 //! (OD-HOST-48). Each source address is one flow through the hub, with a limit of flows for each
 //! stream and an idle time. A source address of UDP can be false, so the proxy sends to a source
 //! at most as many bytes as it received from it (Section 16.4, SF-248), and the new flows of a
-//! stream each second are limited, so false sources cannot fill its flows (SF-NEW-revroutelimits).
+//! stream each second and from each source network are limited, so false sources cannot fill its
+//! flows (SF-NEW-revroutelimits).
 
 use std::{
     collections::HashMap,
@@ -19,7 +20,7 @@ use tokio::{
 use super::datagrams::{DATAGRAM_MAX, Moved, read_frame, write_frame};
 use crate::{
     hub::Hub,
-    limits::{Bucket, Pass},
+    limits::{Bucket, Pass, source_network},
     serve::Proxy,
     wire::{Dial, StreamRoute, Transport},
 };
@@ -84,7 +85,8 @@ pub async fn serve<H: Hub>(proxy: Arc<Proxy<H>>, socket: UdpSocket, stream: Stre
     }
 }
 
-/// A new flow of `source` in `flows`, within the limit of flows; `None` when it is refused.
+/// A new flow of `source` in `flows`, within the limit of flows of the stream and of the network
+/// of the source; `None` when it is refused.
 fn open<H: Hub>(
     proxy: &Proxy<H>,
     flows: &Flows,
@@ -95,7 +97,12 @@ fn open<H: Hub>(
         return None;
     }
     let mut flows = flows.lock().unwrap_or_else(PoisonError::into_inner);
-    if flows.len() >= proxy.udp_flows() {
+    let network = source_network(source.ip());
+    let of_network = flows
+        .keys()
+        .filter(|known| source_network(known.ip()) == network)
+        .count();
+    if flows.len() >= proxy.udp_flows() || of_network >= proxy.udp_flows_per_network() {
         return None;
     }
     let (sender, receiver) = mpsc::channel(QUEUE);

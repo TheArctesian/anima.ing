@@ -322,3 +322,19 @@ fn the_ports_of_streams_are_off_by_default_and_never_below_1024() {
         );
     }
 }
+
+#[test]
+fn the_streams_of_one_device_stay_below_the_streams_of_its_link() {
+    let routes = from_env(&env(&[])).unwrap().routes;
+    assert_eq!(
+        (routes.streams_per_device, routes.streams_per_link),
+        (16, 32)
+    );
+    for (device, link) in [("32", "32"), ("40", "32"), ("0", "32")] {
+        let pairs = [
+            ("ANIMA_ROUTES_STREAMS_PER_DEVICE", device),
+            ("ANIMA_ROUTES_STREAMS_PER_LINK", link),
+        ];
+        assert!(from_env(&env(&pairs)).is_err(), "{device} of {link}");
+    }
+}

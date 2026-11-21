@@ -1,29 +1,22 @@
 //! Streams and redirects in the table of routes against PostgreSQL (HOST-050, task H40): one
 //! port of the hub for each transport, UDP never through the link, the routes of one
-//! application on one device, a redirect with no target, and the streams that serve in the
-//! table of the proxy.
+//! application on one device, a redirect with no target, and the streams that serve.
 
-use std::sync::Arc;
-
-use super::{
-    door::{FakeConnector, door},
-    support::{DOCKER_HOST, application, now, settings, shaped, stream},
-};
+use super::support::{DOCKER_HOST, application, now, settings, shaped, stream};
 use crate::{
     ids::DeviceId,
     work::routes::{
         self, Error, NewRoute, Waits,
-        door::answer,
         kinds::{Access, Kind, KindRefusal, Shape},
     },
 };
 
-async fn add(pool: &sqlx::PgPool, new: &NewRoute) -> Result<routes::Added, Error> {
+pub(super) async fn add(pool: &sqlx::PgPool, new: &NewRoute) -> Result<routes::Added, Error> {
     let mut conn = pool.acquire().await.unwrap();
     routes::add((pool, &settings()), &mut conn, new, now()).await
 }
 
-fn mail(listen_port: i64) -> NewRoute {
+pub(super) fn mail(listen_port: i64) -> NewRoute {
     shaped(
         "mail.example.com",
         stream(Kind::TcpStream, Access::Private, listen_port, 1143),
@@ -31,7 +24,7 @@ fn mail(listen_port: i64) -> NewRoute {
 }
 
 /// What the proof, the consent and the record of the application will set.
-async fn serve_all(pool: &sqlx::PgPool) {
+pub(super) async fn serve_all(pool: &sqlx::PgPool) {
     sqlx::query(
         "UPDATE routes.route SET proof = 'proven', machine_consent = true, \
                                  application_recorded = true",
@@ -108,27 +101,6 @@ db_test! {
         serve_all(&pool).await;
         let found = routes::target_of(&pool, application(), "old.example.com", now()).await;
         assert!(matches!(found, Err(Error::NotFound)));
-    }
-}
-
-db_test! {
-    async fn the_table_of_the_proxy_names_each_serving_stream_by_its_port(pool: PgPool) {
-        add(&pool, &mail(20_143)).await.unwrap();
-        serve_all(&pool).await;
-        let door = door(&pool, Arc::new(FakeConnector::default()), 4);
-        let (proxy, hub) = tokio::io::duplex(1 << 16);
-        let (read, mut write) = tokio::io::split(proxy);
-        tokio::io::AsyncWriteExt::write_all(&mut write, b"\"table\"\n").await.unwrap();
-        answer(&door, hub).await.unwrap();
-        let mut line = String::new();
-        tokio::io::AsyncBufReadExt::read_line(&mut tokio::io::BufReader::new(read), &mut line)
-            .await
-            .unwrap();
-        let table: anima_route_proxy::wire::Table = serde_json::from_str(&line).unwrap();
-        assert!(table.names.is_empty(), "a stream has no certificate and is not a name");
-        assert_eq!(table.streams.len(), 1);
-        assert_eq!(table.streams[0].listen_port, 20_143);
-        assert_eq!(table.streams[0].reach, anima_route_proxy::wire::Reach::Private);
     }
 }
 

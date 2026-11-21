@@ -12,8 +12,9 @@
 //! SF-NEW-revroutesocket). A request line must come within [`REQUEST_WAIT`], and a stream ends
 //! after [`Door::idle`] with no byte (SF-NEW-revroutelimits).
 //!
-//! Each link has a limit of public streams at one time, so the public traffic leaves room for
-//! the sessions of the operator on the same tunnel (SF-230). I/O edge; it writes
+//! Each device has a limit of the streams of its routes at one time, below the streams of its
+//! link, so the public traffic leaves room for the sessions of the operator on the same tunnel
+//! (SF-230, SF-NEW-revroutelimits). It counts each route of the device together. I/O edge; it writes
 //! no body and no header to a log (LOG-007).
 
 use std::{
@@ -80,20 +81,21 @@ impl Connector for Network {
     }
 }
 
-/// The public streams at one time on each link (SF-230).
+/// The streams of the routes of each device at one time, each route together: below the streams
+/// of its link (`ANIMA_ROUTES_STREAMS_PER_DEVICE`; SF-230, SF-NEW-revroutelimits).
 #[derive(Clone)]
-pub struct LinkStreams {
+pub struct DeviceStreams {
     limit: usize,
     open: Arc<Mutex<HashMap<DeviceId, usize>>>,
 }
 
-/// One stream that counts against its link until it is dropped.
+/// One stream that counts against its device until it is dropped.
 pub struct StreamPermit {
     device: DeviceId,
     open: Arc<Mutex<HashMap<DeviceId, usize>>>,
 }
 
-impl LinkStreams {
+impl DeviceStreams {
     #[must_use]
     pub fn new(limit: usize) -> Self {
         Self {
@@ -133,7 +135,7 @@ pub struct Door {
     pub vault: Vault,
     pub clock: Arc<dyn Clock>,
     pub connector: Arc<dyn Connector>,
-    pub streams: LinkStreams,
+    pub streams: DeviceStreams,
     /// The user ID of the proxy process: the one peer that the socket answers.
     pub proxy_uid: u32,
     /// The time with no byte after which a stream to an application ends.

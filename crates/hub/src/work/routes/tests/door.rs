@@ -10,13 +10,16 @@ use std::{
 use async_trait::async_trait;
 use tokio::io::{AsyncBufReadExt as _, AsyncReadExt as _, AsyncWriteExt as _, BufReader, duplex};
 
-use super::support::{FakeDns, FakeIssuer, HUB, application, device, new_route, now, settings};
+use super::{
+    streams::{add, mail, serve_all},
+    support::{FakeDns, FakeIssuer, HUB, application, device, new_route, now, settings},
+};
 use crate::{
     clock::FixedClock,
     fleet::credentials::test_vault,
     work::routes::{
         self, Ordering,
-        door::{Connector, Door, IDLE_DEFAULT, LinkStreams, Stream, answer},
+        door::{Connector, DeviceStreams, Door, IDLE_DEFAULT, Stream, answer},
         proof::record_value,
     },
 };
@@ -84,7 +87,7 @@ pub fn door<C: Connector + 'static>(
         vault: test_vault(),
         clock: Arc::new(FixedClock(now())),
         connector,
-        streams: LinkStreams::new(streams),
+        streams: DeviceStreams::new(streams),
         proxy_uid: 0,
         idle: IDLE_DEFAULT,
     }
@@ -169,7 +172,7 @@ db_test! {
 }
 
 db_test! {
-    async fn the_streams_of_one_link_have_a_limit(pool: PgPool) {
+    async fn the_streams_of_one_device_have_a_limit(pool: PgPool) {
         serving(&pool).await;
         let connector = Arc::new(FakeConnector::default());
         let door = door(&pool, connector, 1);
@@ -210,5 +213,56 @@ db_test! {
         );
         assert_eq!(ask(&door, &udp).await.0, "refused", "a web route carries no UDP");
         assert!(connector.reached.lock().unwrap().is_empty());
+    }
+}
+
+db_test! {
+    async fn the_table_of_the_proxy_names_each_serving_stream_by_its_port(pool: PgPool) {
+        add(&pool, &mail(20_143)).await.unwrap();
+        serve_all(&pool).await;
+        let door = door(&pool, Arc::new(FakeConnector::default()), 4);
+        let (proxy, hub) = tokio::io::duplex(1 << 16);
+        let (read, mut write) = tokio::io::split(proxy);
+        tokio::io::AsyncWriteExt::write_all(&mut write, b"\"table\"\n").await.unwrap();
+        answer(&door, hub).await.unwrap();
+        let mut line = String::new();
+        tokio::io::AsyncBufReadExt::read_line(&mut tokio::io::BufReader::new(read), &mut line)
+            .await
+            .unwrap();
+        let table: anima_route_proxy::wire::Table = serde_json::from_str(&line).unwrap();
+        assert!(table.names.is_empty(), "a stream has no certificate and is not a name");
+        assert_eq!(table.streams.len(), 1);
+        assert_eq!(table.streams[0].listen_port, 20_143);
+        assert_eq!(table.streams[0].reach, anima_route_proxy::wire::Reach::Private);
+    }
+}
+
+db_test! {
+    async fn two_routes_of_one_device_share_the_limit_of_the_device(pool: PgPool) {
+        serving(&pool).await;
+        add(&pool, &mail(20_143)).await.unwrap();
+        serve_all(&pool).await;
+        let door = door(&pool, Arc::new(FakeConnector::default()), 1);
+        let (proxy, hub) = duplex(1 << 16);
+        let (read_half, mut write_half) = tokio::io::split(proxy);
+        write_half.write_all(connect(&application().to_string()).as_bytes()).await.unwrap();
+        write_half.write_all(b"\n").await.unwrap();
+        let web = answer(&door, hub);
+        let mail_route = format!(
+            r#"{{"connect":{{"application":"{}","name":"mail.example.com"}}}}"#,
+            application()
+        );
+        let held = async {
+            let mut reader = BufReader::new(read_half);
+            let mut line = String::new();
+            reader.read_line(&mut line).await.unwrap();
+            assert_eq!(line.trim(), "ok", "the web route holds the one place of the device");
+            let other = ask(&door, &mail_route).await;
+            drop((reader, write_half));
+            other
+        };
+        let (_, other) = tokio::join!(web, held);
+        assert_eq!(other.0, "refused", "the stream of the same device waits");
+        assert_eq!(ask(&door, &mail_route).await.0, "ok", "free again when the first ends");
     }
 }

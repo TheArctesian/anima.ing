@@ -18,6 +18,11 @@ const PUBLIC_ADDRESS: &str = "ANIMA_ROUTES_PUBLIC_ADDRESS";
 const STREAMS_PER_LINK: &str = "ANIMA_ROUTES_STREAMS_PER_LINK";
 /// The default of [`STREAMS_PER_LINK`].
 const STREAMS_DEFAULT: usize = 32;
+/// The streams of the routes of one device at one time, each route together; below
+/// [`STREAMS_PER_LINK`], so the routes leave room for the sessions (SF-NEW-revroutelimits).
+const STREAMS_PER_DEVICE: &str = "ANIMA_ROUTES_STREAMS_PER_DEVICE";
+/// The default of [`STREAMS_PER_DEVICE`].
+const STREAMS_PER_DEVICE_DEFAULT: usize = 16;
 /// The ports of the hub that streams may listen on, as `first-last`, both 1024 or more; unset:
 /// no stream (HOST-050, task H40).
 const STREAM_PORTS: &str = "ANIMA_ROUTES_STREAM_PORTS";
@@ -31,6 +36,8 @@ pub struct Routes {
     pub cookie_domains: Vec<String>,
     pub public_address: Option<IpAddr>,
     pub streams_per_link: usize,
+    /// The streams of the routes of one device; below [`Routes::streams_per_link`].
+    pub streams_per_device: usize,
     /// The ports of the hub for streams; `None`: no stream.
     pub stream_ports: Option<RangeInclusive<u16>>,
 }
@@ -53,16 +60,13 @@ pub(super) fn from_env(env: &BTreeMap<String, String>) -> Result<Routes, Error> 
             variable: PUBLIC_ADDRESS,
         })?),
     };
-    let streams_per_link = match env.get(STREAMS_PER_LINK).map(String::as_str) {
-        None | Some("") => STREAMS_DEFAULT,
-        Some(text) => text
-            .parse()
-            .ok()
-            .filter(|limit| *limit > 0)
-            .ok_or(Error::Routes {
-                variable: STREAMS_PER_LINK,
-            })?,
-    };
+    let streams_per_link = limit(env, STREAMS_PER_LINK, STREAMS_DEFAULT)?;
+    let streams_per_device = limit(env, STREAMS_PER_DEVICE, STREAMS_PER_DEVICE_DEFAULT)?;
+    if streams_per_device >= streams_per_link {
+        return Err(Error::Routes {
+            variable: STREAMS_PER_DEVICE,
+        });
+    }
     let socket = optional_socket(env, SOCKET)?;
     let proxy_uid = match env.get(PROXY_UID).map(String::as_str) {
         None | Some("") => None,
@@ -82,7 +86,24 @@ pub(super) fn from_env(env: &BTreeMap<String, String>) -> Result<Routes, Error> 
         cookie_domains,
         public_address,
         streams_per_link,
+        streams_per_device,
     })
+}
+
+/// A number above 0 from `variable`, or `default` when it is not set.
+fn limit(
+    env: &BTreeMap<String, String>,
+    variable: &'static str,
+    default: usize,
+) -> Result<usize, Error> {
+    match env.get(variable).map(String::as_str) {
+        None | Some("") => Ok(default),
+        Some(text) => text
+            .parse()
+            .ok()
+            .filter(|limit| *limit > 0)
+            .ok_or(Error::Routes { variable }),
+    }
 }
 
 /// The range of [`STREAM_PORTS`]: `first-last`, with `1024 <= first <= last`.

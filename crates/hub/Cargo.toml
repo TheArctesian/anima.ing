@@ -80,7 +80,10 @@ rustix = { version = "1.1", features = ["process"] }
 catalogue = { path = "../catalogue" }
 # The events of a Compose file for its syntax check (HOST-022). No machine is reached.
 yaml-rust2 = { version = "0.13", default-features = false }
-# The one interface of the route proxy, a process apart from the hub (task H21).
+
+# The one interface of the route proxy, a process apart from the hub (task H21). It is a Unix
+# socket: routing needs a hub on Linux (R-NEW-routeslinux).
+[target.'cfg(unix)'.dependencies]
 anima-route-proxy = { path = "../route-proxy" }
 
 [target.'cfg(windows)'.dependencies]
