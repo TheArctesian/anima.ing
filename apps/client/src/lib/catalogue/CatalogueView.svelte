@@ -1,6 +1,7 @@
 <script lang="ts">
   import EmptyState from '$lib/states/EmptyState.svelte';
   import ErrorState from '$lib/states/ErrorState.svelte';
+  import FormButton from '$lib/forms/FormButton.svelte';
   import LoadingState from '$lib/states/LoadingState.svelte';
   import CatalogueEntryPane from './CatalogueEntryPane.svelte';
   import CatalogueList from './CatalogueList.svelte';
@@ -21,7 +22,14 @@
   {:else if store.status !== 'ready'}
     <LoadingState label="Loading the catalogue" />
   {:else if store.entries.length === 0}
-    <EmptyState title="No entry in the catalogue" line="The hub lists no recipe that passed its static test." />
+    <EmptyState
+      title="No apps to install yet"
+      line="The catalogue shows the apps that Anima can install on this device. This hub has no app to show now."
+    >
+      {#snippet action()}
+        <FormButton onclick={() => void store.load()}>Check again</FormButton>
+      {/snippet}
+    </EmptyState>
   {:else}
     <p class="about">The applications that ship with Anima. The hub reads this list from its own program and connects to no machine.</p>
     <div class="split">
