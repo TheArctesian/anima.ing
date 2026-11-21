@@ -143,10 +143,8 @@ impl Runner {
     }
 
     pub(super) fn note(&self, kind: Kind, thread: Option<Uuid>, what: &str) {
-        // The daemon's own log (MET-019) takes the refusals too, so that a person who reads only
-        // that file sees them; the word is fixed, never text of the person or of the program.
         if kind == Kind::Refusal {
-            tracing::info!(?thread, why = what, "the runner refused a call");
+            refusal_to_daemon_log(thread, what);
         }
         let line = Line {
             at: chrono::Utc::now(),
@@ -297,6 +295,13 @@ const fn answer_word(answer: &Answer) -> &'static str {
         Answer::Deny { .. } => "deny",
         Answer::Choose { .. } => "choose",
     }
+}
+
+/// The daemon's own log (MET-019) takes the refusals too, so that a person who reads only that
+/// file sees them; the word is fixed, never text of the person or of the program (LOG-007).
+fn refusal_to_daemon_log(thread: Option<Uuid>, why: &str) {
+    let thread = thread.map_or_else(|| "none".to_owned(), |id| id.to_string());
+    tracing::info!(%thread, why, "the runner refused a call");
 }
 
 pub(super) const fn refusal_word(why: &Refusal) -> &'static str {
