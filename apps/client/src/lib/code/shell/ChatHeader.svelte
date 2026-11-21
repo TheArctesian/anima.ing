@@ -7,6 +7,8 @@
   interface Props {
     /** The open thread; none when no thread is open. */
     thread?: ThreadRow | undefined;
+    /** What stands at the start of the band, for example the toggle of the thread list while the list is hidden. */
+    start?: Snippet;
     /** What stands at the end of the band, for example the buttons of the panels. */
     end?: Snippet;
     /** Starts a new thread in the folder of this thread. */
@@ -15,7 +17,7 @@
     onactions?: (anchor: HTMLElement) => void;
   }
 
-  const { thread, end, onproject, onactions }: Props = $props();
+  const { thread, start, end, onproject, onactions }: Props = $props();
   const project = $derived(thread?.folder === null || thread === undefined ? undefined : folderName(thread.folder));
 </script>
 
@@ -24,7 +26,7 @@
   last band of its row until a right panel is there, so it keeps the room of the window controls of a window with no frame.
 -->
 <div class="head" class:empty={thread === undefined}>
-  <TopBand clearsWindowControls {end}>
+  <TopBand clearsWindowControls {start} {end}>
     {#if thread !== undefined}
       <Breadcrumb {project} title={thread.title ?? 'Untitled thread'} {onproject} {onactions} />
     {/if}
