@@ -3,9 +3,9 @@
 
 use serde_json::Value;
 
-use super::account;
 use super::request::{ProgramRequestId, Question, Request, RequestKind, claude_diff, visible};
 use super::{DriveEvent, MAX_LINE, ProgramState, TurnOutcome, text_of};
+use super::{account, turn_facts};
 use crate::{MAX_OUTPUT, MAX_TEXT, held};
 
 /// The `system` subtypes that are known and say nothing the view needs.
@@ -55,8 +55,12 @@ impl ClaudeDecoder {
             }
             "user" => user(&value),
             "control_request" => vec![control_request(&value)],
-            "control_response" => vec![control_response(&value["response"])],
-            "result" => vec![result(&value, self.fault.take())],
+            "control_response" => control_response(&value["response"]),
+            // The use of the turn comes before its end, so that the end is the last word.
+            "result" => turn_facts::claude_usage(&value)
+                .into_iter()
+                .chain([result(&value, self.fault.take())])
+                .collect(),
             // The limits of the account: kept at the machine (THR-051, THR-132).
             "rate_limit_event" => account::claude_limits(&value["rate_limit_info"])
                 .map(|facts| DriveEvent::Account {
@@ -258,16 +262,19 @@ fn questions(list: &Value) -> Vec<Question> {
         .collect()
 }
 
-fn control_response(response: &Value) -> DriveEvent {
-    match ProgramRequestId::from_json(&response["request_id"]) {
-        Some(id) => DriveEvent::Reply {
-            id,
-            ok: response["subtype"] == "success",
-            // The answer to `initialize` names the account: it is dropped (THR-051).
-            result: Value::Null,
-        },
-        None => unknown("a control response with no ID", false),
-    }
+/// The answer to a control request of the runner. Of the answer to `initialize` only its list
+/// of models is read (TH104); the rest names the account and is dropped (THR-051).
+fn control_response(response: &Value) -> Vec<DriveEvent> {
+    let Some(id) = ProgramRequestId::from_json(&response["request_id"]) else {
+        return vec![unknown("a control response with no ID", false)];
+    };
+    let models = turn_facts::claude_models(&response["response"]);
+    let reply = DriveEvent::Reply {
+        id,
+        ok: response["subtype"] == "success",
+        result: Value::Null,
+    };
+    [reply].into_iter().chain(models).collect()
 }
 
 /// The end of a turn: `success` is completed, an abort is an interrupt, each other is a fault.

@@ -56,7 +56,8 @@ pub(super) struct NewThread {
 }
 
 impl NewThread {
-    /// The new thread of a start call; `None` for a different call.
+    /// The new thread of a start call; `None` for a different call, and for a start that asks
+    /// Codex to plan first, which Codex cannot do (TH105).
     pub(super) fn of(action: agent_threads::control::Action) -> Option<Self> {
         match action {
             agent_threads::control::Action::Start {
@@ -67,7 +68,7 @@ impl NewThread {
                 effort,
                 prompt,
                 program_path,
-            } => Some(Self {
+            } if !(program == Program::Codex && mode == Mode::Plan) => Some(Self {
                 program,
                 folder,
                 mode,
