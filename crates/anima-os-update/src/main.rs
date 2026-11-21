@@ -1,12 +1,20 @@
+#[cfg(target_os = "linux")]
 mod boot;
+#[cfg(target_os = "linux")]
 mod command;
+#[cfg(target_os = "linux")]
 mod download;
+#[cfg(target_os = "linux")]
 mod feed;
+#[cfg(target_os = "linux")]
 mod state;
+#[cfg(target_os = "linux")]
 mod update;
 
+#[cfg(target_os = "linux")]
 use std::{path::Path, process::ExitCode};
 
+#[cfg(target_os = "linux")]
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("{0}")]
@@ -19,8 +27,10 @@ pub enum Error {
     Network(#[from] reqwest::Error),
 }
 
+#[cfg(target_os = "linux")]
 type Result<T> = std::result::Result<T, Error>;
 
+#[cfg(target_os = "linux")]
 fn main() -> ExitCode {
     let outcome = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -42,6 +52,7 @@ fn main() -> ExitCode {
     }
 }
 
+#[cfg(target_os = "linux")]
 async fn run() -> Result<serde_json::Value> {
     let args: Vec<_> = std::env::args().skip(1).collect();
     if let [operation, manifest, flag, key] = args.as_slice()
@@ -69,4 +80,10 @@ async fn run() -> Result<serde_json::Value> {
     lock.try_lock()
         .map_err(|_| Error::Refused("An update is already running. Wait for it to finish."))?;
     update::dispatch(action).await
+}
+
+#[cfg(not(target_os = "linux"))]
+fn main() -> std::process::ExitCode {
+    println!("{{\"ok\":false,\"error\":\"Anima OS updates are supported only on Linux.\"}}");
+    std::process::ExitCode::FAILURE
 }

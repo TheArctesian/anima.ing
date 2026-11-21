@@ -50,6 +50,8 @@ All 21 repository gates passed in `/tmp/anima-os-complete-gates.log`: workspace 
 
 The first local attempts exposed missing PostgreSQL fixture discovery, not database product failures. Supplying the existing Nix PostgreSQL 17 binaries on `PATH` and its root through the documented `ANIMA_POSTGRES_TREE` setting resolved the environment; the database package then passed 108 tests and the full suite passed. ShellCheck was supplied from the existing Nix store. `CARGO_BUILD_JOBS=2` bounded compilation after an earlier unrestricted run exhausted host resources. No host database service was installed and no database production code changed.
 
+The first GitHub run also compiled the Linux updater for Windows and exposed missing platform guards. A follow-up gates its modules, dependencies and Linux integration tests, returning an explicit unsupported-platform failure elsewhere. Linux implementation bodies and the recorded ISO remain unchanged. Both Linux and Windows MSVC all-targets Clippy passed locally after this correction, along with the updater behavioral tests.
+
 ## Repeated performance measurements
 
 The [full comparison](native-performance-2026-11-21.md) records three fresh offline VM samples per artifact. Median privileged-session startup decreased from 57.77 ms to 3.74 ms. Installed graphical readiness was essentially unchanged at 15.19 s versus 15.17 s; status round trips were slightly slower at 25.38 ms versus 26.52 ms. Memory ranges overlap. These observations support a faster control-process startup, not a general claim of faster OS boot, dashboard rendering or lower memory use.
