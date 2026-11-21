@@ -39,7 +39,31 @@ const openMenu = (name: string, key?: string) => async (page: Page, part: Locato
   return menu;
 };
 
+/** Scrolls the part to the middle of the window, so a menu or a tip has room on the side it asks for. */
+async function centre(part: Locator): Promise<void> {
+  await part.evaluate((node) => {
+    node.scrollIntoView({ block: 'center' });
+  });
+}
+
+/** Sets the reader settings of D12 on the kit page by their radios, then leaves the part as it rests. */
+const reader = (...choices: readonly string[]) => async (page: Page, part: Locator) => {
+  for (const name of choices) await page.getByRole('radio', { name, exact: true }).click();
+  await page.mouse.move(0, 0);
+  await centre(part);
+  return undefined;
+};
+
 const SHOTS: readonly KitShot[] = [
+  { name: 'band-chat', part: 'band-chat' },
+  { name: 'band-tooltip-below', part: 'band-chat', act: hover('Toggle main sidebar') },
+  { name: 'band-toggle-focus', part: 'band-chat', act: async (page, part) => {
+    await part.getByRole('button', { name: 'Toggle right panel' }).focus();
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Shift+Tab');
+    return undefined;
+  } },
+  { name: 'band-empty', part: 'band-empty' },
   { name: 'status', part: 'status' },
   { name: 'kbd', part: 'kbd' },
   { name: 'tooltip-rest', part: 'tooltip' },
@@ -86,6 +110,13 @@ const SHOTS: readonly KitShot[] = [
   },
   { name: 'approval-locked', part: 'approval-locked' },
   { name: 'approval-process-gone', part: 'approval-gone' },
+  { name: 'reader-larger-more-status', part: 'status', act: reader('Larger', 'More') },
+  { name: 'reader-larger-more-approval', part: 'approval-file-read', act: reader('Larger', 'More') },
+  { name: 'reader-larger-more-menu', part: 'menu', act: async (page, part) => {
+    await reader('Larger', 'More')(page, part);
+    return openMenu('Chat actions')(page, part);
+  } },
+  { name: 'reader-wide-lane', part: 'approval-long', act: reader('Wide') },
 ];
 
 /** The smallest box that holds the part and its floating layer, with a margin, inside the window. */
@@ -124,8 +155,7 @@ for (const chosen of MODES.filter((mode) => !mode.dyslexic && mode.width === 128
     SHOTS.forEach((shot, index) => {
       test(shot.name, async ({ page }) => {
         const part = page.locator(`[data-kit="${shot.part}"]`);
-        await part.scrollIntoViewIfNeeded();
-        await page.evaluate(() => window.scrollBy(0, -160));
+        await centre(part);
         const layer = await shot.act?.(page, part);
         await page.waitForTimeout(SETTLE_MS);
         const file = `${String(index + 1).padStart(2, '0')}-${shot.name}.png`;
