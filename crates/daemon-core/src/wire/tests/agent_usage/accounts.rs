@@ -113,7 +113,7 @@ fn thr_149_an_address_that_is_not_one_does_not_decode() {
     }
     let long = format!("{}@example.com", "a".repeat(250));
     assert!(Address::parse(&long).is_none(), "over 254 bytes");
-    let text = format!(r#"{{"source":"codex","key":"{KEY}","address":"{ADDRESS}"}}"#);
+    let text = format!(r#"{{"source":"codex","key":"{KEY}","address":"{ADDRESS}","limits":[]}}"#);
     let one: BatchAccount = serde_json::from_str(&text).unwrap();
     assert_eq!(one.address.as_ref().map(Address::reveal), Some(ADDRESS));
     assert_eq!(
