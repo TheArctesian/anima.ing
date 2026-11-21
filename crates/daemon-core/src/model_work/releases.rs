@@ -3,6 +3,8 @@
 //! of the daemon folder; the hub cannot write them. The lowest versions and the list of
 //! versions with an advisory are in this program, and only a signed release changes them.
 
+pub mod fetch;
+
 use serde::Deserialize;
 
 use super::cause::Cause;
@@ -101,20 +103,26 @@ impl SourceEntry {
     /// The form of the archive, from the end of the path of its address; `None` for another.
     #[must_use]
     pub fn format(&self) -> Option<ArchiveFormat> {
-        let path = std::path::Path::new(self.address.split(['?', '#']).next().unwrap_or_default());
-        let is = |found: Option<&std::ffi::OsStr>, wanted: &str| {
-            found.is_some_and(|found| found.eq_ignore_ascii_case(wanted))
-        };
-        let inner = path.file_stem().map(std::path::Path::new);
-        if is(path.extension(), "tgz")
-            || (is(path.extension(), "gz") && is(inner.and_then(std::path::Path::extension), "tar"))
-        {
-            Some(ArchiveFormat::TarGz)
-        } else if is(path.extension(), "zip") {
-            Some(ArchiveFormat::Zip)
-        } else {
-            None
-        }
+        format_of(&self.address)
+    }
+}
+
+/// The form of an archive, from the end of the path of `address`; `None` for another.
+#[must_use]
+pub fn format_of(address: &str) -> Option<ArchiveFormat> {
+    let path = std::path::Path::new(address.split(['?', '#']).next().unwrap_or_default());
+    let is = |found: Option<&std::ffi::OsStr>, wanted: &str| {
+        found.is_some_and(|found| found.eq_ignore_ascii_case(wanted))
+    };
+    let inner = path.file_stem().map(std::path::Path::new);
+    if is(path.extension(), "tgz")
+        || (is(path.extension(), "gz") && is(inner.and_then(std::path::Path::extension), "tar"))
+    {
+        Some(ArchiveFormat::TarGz)
+    } else if is(path.extension(), "zip") {
+        Some(ArchiveFormat::Zip)
+    } else {
+        None
     }
 }
 

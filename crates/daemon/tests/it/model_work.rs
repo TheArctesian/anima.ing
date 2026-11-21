@@ -3,6 +3,7 @@
 //! below a temporary folder.
 
 mod claim;
+mod fetch;
 mod files;
 mod install;
 mod kit;

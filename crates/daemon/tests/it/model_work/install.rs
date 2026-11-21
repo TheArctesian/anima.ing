@@ -92,6 +92,7 @@ async fn an_install_with_no_room_for_the_archive_downloads_nothing() {
         os: super::kit::OS.1,
         architecture: super::kit::ARCH.1,
         reserve: u64::MAX,
+        program: std::path::Path::new(env!("CARGO_BIN_EXE_anima-daemon")),
     };
     // The address of the entry names no real file; the reserve refuses before a request.
     assert_eq!(install(&release(), &place).await, Err(Cause::LimitDisk));

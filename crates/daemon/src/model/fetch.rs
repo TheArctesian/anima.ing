@@ -1,45 +1,30 @@
-//! The download of a runtime archive (Sections 4 and 6): HTTPS only, no proxy, the roots of
-//! the program, at most 5 redirects and only to a host of the fixed list of that runtime, never
-//! to an address written as an IP address; at most `sizeBytes` read, the SHA-256 computed as
-//! the bytes arrive.
+//! The fetch process of model work (Section 4, R-NEW-fetchprocess, task L1-6b). The download
+//! runs in a child of the daemon, made from the same program in the mode
+//! [`child::FETCH_MODE`], with an empty environment and no token, hub origin or proxy. The rules
+//! are pure, in `daemon_core::model_work::releases::fetch`.
 //!
-//! Contract Section 4 asks for a child "fetch process" with no token. This build fetches in the
-//! daemon process, with a client of its own that holds no token and no hub origin (reported as
-//! a deviation of task L1-6).
+//! [`child`] is the child: it downloads, verifies and unpacks. [`spawn`] is the daemon side: it
+//! starts the child, gives it its order and ends it at the deadline. [`download`] is the HTTPS
+//! client of the child: no proxy, the roots of the program, at most 5 redirects and only to a
+//! host of the fixed list, never to an IP address; at most `sizeBytes` read.
+
+pub mod child;
+pub mod spawn;
 
 use std::io::Write as _;
 use std::time::Duration;
 
 use daemon_core::model_work::cause::Cause;
-use daemon_core::model_work::names::Runtime;
+use daemon_core::model_work::releases::fetch::{MAX_REDIRECTS, redirect_permitted};
 use reqwest::{Client, Url, redirect};
 use sha2::{Digest as _, Sha256};
 
-/// The hosts that a redirect of a release source may reach, for each runtime.
-#[must_use]
-pub const fn release_hosts(runtime: Runtime) -> &'static [&'static str] {
-    match runtime {
-        Runtime::LlamaServer => &[
-            "github.com",
-            "objects.githubusercontent.com",
-            "release-assets.githubusercontent.com",
-        ],
-        Runtime::MlxLm | Runtime::Vllm => &[],
-    }
-}
-
-/// Whether a redirect to `url` is permitted: `https`, a name (not an IP address) of `hosts`.
-#[must_use]
-pub fn redirect_permitted(url: &Url, hosts: &[&str]) -> bool {
-    url.scheme() == "https"
-        && url
-            .host_str()
-            .is_some_and(|host| host.parse::<std::net::IpAddr>().is_err() && hosts.contains(&host))
-}
-
 fn client(hosts: &'static [&'static str]) -> Result<Client, Cause> {
     let policy = redirect::Policy::custom(move |attempt| {
-        if attempt.previous().len() >= 5 || !redirect_permitted(attempt.url(), hosts) {
+        let url = attempt.url();
+        if attempt.previous().len() >= MAX_REDIRECTS
+            || !redirect_permitted(url.scheme(), url.host_str(), hosts)
+        {
             attempt.stop()
         } else {
             attempt.follow()
@@ -60,7 +45,7 @@ fn client(hosts: &'static [&'static str]) -> Result<Client, Cause> {
 /// # Errors
 /// `source_failed` when the source does not answer 200; `size` when it sends more than
 /// `max_bytes`; `limit_disk` when the file cannot be written.
-pub async fn fetch(
+pub async fn download(
     address: &str,
     hosts: &'static [&'static str],
     max_bytes: u64,

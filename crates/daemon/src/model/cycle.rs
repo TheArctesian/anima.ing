@@ -222,6 +222,7 @@ impl Node {
                     os: os_word(self.os),
                     architecture: architecture_word(self.architecture),
                     reserve: self.reserve,
+                    program: &self.launcher,
                 };
                 install::install(release, &place).await.map(|()| None)
             }
