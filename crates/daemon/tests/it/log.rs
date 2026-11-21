@@ -194,10 +194,11 @@ async fn thr_149_trace_logs_hold_no_address_of_an_account() {
             facts,
         }]),
     }));
-    for point in points(1, 4) {
-        rig.pusher.accept(Event::Point(point));
-    }
     for round in 0..4 {
+        // Each push carries new points, so each round has a batch to send.
+        for point in points(round * 70 + 1, 2) {
+            rig.pusher.accept(Event::Point(point));
+        }
         rig.pusher.push_due(at(40 + round * 700)).await;
     }
     let sent = hub

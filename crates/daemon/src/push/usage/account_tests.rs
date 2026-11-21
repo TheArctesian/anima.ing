@@ -3,7 +3,7 @@
 
 use agent_threads::drive::AccountFacts;
 use base64::Engine as _;
-use daemon_core::agent_usage::account::account_key;
+use daemon_core::agent_usage::account::{Address, account_key};
 use daemon_core::agent_usage::{Source, UsageState};
 use serde_json::json;
 
@@ -68,7 +68,7 @@ fn ais_022_with_no_salt_an_empty_list_asks_for_it_then_the_key_goes() {
     assert_eq!(accounts[0].source, "codex");
     assert_eq!(accounts[0].key, account_key(&SALT, Source::Codex, ID));
     assert_eq!(
-        accounts[0].address.as_ref().map(|one| one.reveal()),
+        accounts[0].address.as_ref().map(Address::reveal),
         Some(NAME)
     );
     assert_eq!(accounts[0].plan.as_deref(), Some("pro"));

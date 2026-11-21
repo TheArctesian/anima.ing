@@ -63,12 +63,7 @@ struct Stored {
     excluded_folders: Vec<String>,
     #[serde(default)]
     excluded_repositories: Vec<String>,
-    #[serde(default = "on")]
-    send_accounts: bool,
-}
-
-const fn on() -> bool {
-    true
+    send_accounts: Option<bool>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -149,7 +144,7 @@ impl UsageSettings {
             excluded_folders,
             excluded_repositories: stored.excluded_repositories,
             fold_case: false,
-            send_accounts: stored.send_accounts,
+            send_accounts: stored.send_accounts.unwrap_or(true),
         })
     }
 
