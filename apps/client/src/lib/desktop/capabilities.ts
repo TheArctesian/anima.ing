@@ -47,6 +47,8 @@ export function shellCapabilities(agent: Agent = navigator): Capabilities | null
     accountSession: false,
     runnerReport: false,
     overlayTitleBar: isMac(userAgent),
+    // On Windows and Linux the window has no frame of the system (tauri.windows.conf.json, tauri.linux.conf.json).
+    framelessWindow: !isMac(userAgent),
     recentCopy: true,
   };
 }

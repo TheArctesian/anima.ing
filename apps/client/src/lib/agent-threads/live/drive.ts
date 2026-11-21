@@ -12,6 +12,7 @@ export const MODE_WORDS: Readonly<Record<Mode, string>> = {
   full_access: 'Full access',
   accept_edits: 'Ask before commands',
   ask: 'Ask before each change',
+  plan: 'Plan first (Claude Code only)',
 };
 
 export const EFFORTS: readonly Effort[] = ['low', 'medium', 'high', 'xhigh', 'max'];

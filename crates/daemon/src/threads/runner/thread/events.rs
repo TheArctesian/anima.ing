@@ -29,6 +29,7 @@ impl Thread {
             DriveEvent::RequestClosed { id } => self.program_closed(&id),
             DriveEvent::Reply { id, ok, result } => self.reply(&id, ok, &result),
             DriveEvent::Account { facts } => vec![Step::Account(facts)],
+            DriveEvent::Models { models } => vec![Step::Models(models)],
             // A line that could wait for an answer stops the turn (THR-046: fail closed). The
             // open requests stay: only an answer, a stop by the person or the end of the process
             // closes one (THR-087).
