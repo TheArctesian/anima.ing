@@ -2081,11 +2081,16 @@ A separate reviewer read Sections 15 and 16 on 2026-11-20: SF-243 to SF-250 in
 Task H40 builds steps 1, 2 and the first part of 4 of Section 16.5 with the decisions R-NEW-hostovernight
 (OD-HOST-46 to OD-HOST-49 and OD-HOST-54, each option A). Where it differs from the text above:
 
-- **No mark `stream-public` yet.** The catalogue does not give the hub its entries with their ports
-  before task H6, so a public stream needs a protocol that the person picks from a fixed list of the
-  hub: protocols with their own sign-in and TLS (imaps, pop3s, smtps, ldaps and xmpps over TCP; openvpn
-  and wireguard over UDP). The usual port of each is a hint only; the hub never opens a port by itself.
-  A private stream needs no protocol.
+- **The mark `stream-public` waits for task H6.** The catalogue does not give the hub its entries with
+  their ports before task H6, so a public stream needs a protocol that the person picks from a fixed list
+  of the hub: protocols with their own sign-in and TLS (imaps, pop3s, smtps, ldaps and xmpps over TCP;
+  openvpn and wireguard over UDP). The usual port of each is a hint only; the hub never opens a port by
+  itself. The protocol is only a label, so a public stream also waits for the mark `stream-public` on its
+  port in the record of the application (SF-NEW-revroutepublic): no public stream serves before task H6.
+  A private stream needs no protocol and no mark.
+- **A public route needs the browser.** A public route of each kind is added only by a person in the
+  Anima app in a browser, with no agent declared; never by a login token, MCP or an API key
+  (SF-NEW-revroutestepup).
 - **No class `shell` yet.** The hub has no class of an entry before task H6. Each route waits for the
   record of the application (`APPLICATION_RECORD`), so none serves; the record must refuse each route of
   an entry of the class `shell` (OD-HOST-54).

@@ -257,10 +257,11 @@ that owns the area.
 | SF-230 | Public traffic can slow the sessions on the same link. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
 | SF-227 | Smaller points: claims about the door, wake, abuse and a hub on the same site. Low | The routing of the domains of applications on the hub (task H21, design) | Open |
 | SF-NEW-revroutecheck | The proof of a name is read again only when a person asks. Low | The routing of the domains of applications on the hub (task H21, code) | Open |
-| SF-NEW-revroutestepup | A change of a route asks for no new second factor. Low | The routing of the domains of applications on the hub (task H21, code) | Open |
+| SF-NEW-revroutestepup | A change of a route asks for no new second factor. Low | The routing of the domains of applications on the hub (task H21, code) | Open (built in `bb0bce295`) |
 | SF-NEW-revroutetarget | The target of a route came from the person, not from the record of the application. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
 | SF-NEW-revrouteupgrade | The proxy opened a tunnel for each `Upgrade: websocket` without the answer 101. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
-| SF-NEW-revroutelimits | No time limit and no cap before the name of a connection was known. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `294c9a525`) |
+| SF-NEW-revroutelimits | No time limit and no cap before the name of a connection was known. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `bb0bce295`) |
+| SF-NEW-revroutepublic | The protocol of a public stream was only a label that the person picked. Medium | The routing of the domains of applications on the hub (task H40, code) | Open (built in `bb0bce295`) |
 | SF-NEW-revroutesocket | The socket of the interface of the proxy checked no peer and had no set mode. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
 | SF-NEW-revrouteheaders | The head accepted two lengths, a length that is not digits, and `_` in a header name. Low | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
 | SF-224 | The static test of a recipe let a service run as root with each capability, and change its code at the start. High | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
@@ -2390,9 +2391,11 @@ Effect, and who can cause it: Anyone on the internet. Effect: the proxy runs out
 
 Mitigation now: Settings with defaults: 10 s for the handshake with the PROXY header (`ANIMA_ROUTE_PROXY_HANDSHAKE_SECONDS`), 10 s for the head (`ANIMA_ROUTE_PROXY_HEAD_SECONDS`, answer 408), 60 s for the head and the body of one request together (`ANIMA_ROUTE_PROXY_REQUEST_SECONDS`), 300 s with no byte on a stream (`ANIMA_ROUTE_PROXY_IDLE_SECONDS`); 1024 connections in all and 8 for each client before the handshake and for the life of the connection (`ANIMA_ROUTE_PROXY_OPEN_TOTAL`, `ANIMA_ROUTE_PROXY_OPEN_PER_CLIENT`), and 256 on port 80 (`ANIMA_ROUTE_PROXY_OPEN_PLAIN`). The cap of a client is below the 32 streams of one link (`ANIMA_ROUTES_STREAMS_PER_LINK`), so one client cannot hold each stream of a device. A client is the /64 of an IPv6 address and the whole address of IPv4, so a host cannot take more places with more addresses of its own network. In door mode the proxy reads a PROXY header only from a peer in `ANIMA_ROUTE_PROXY_DOOR_ADDRESSES`; with no address, each connection is closed before a byte is read. The hub waits 10 s for a request line of the proxy and ends a stream after 300 s with no byte. Tests: `a_listener_caps_its_connections_in_all_and_for_each_client`, `the_addresses_of_one_64_share_the_cap_of_one_client`, `a_client_is_its_64_of_ipv6_and_its_address_of_ipv4`, `a_stream_with_no_byte_for_its_idle_time_ends`, `each_byte_starts_the_idle_time_again`, `a_body_that_comes_one_byte_at_a_time_ends_at_the_deadline_of_its_request`, `only_an_address_of_the_door_may_send_a_proxy_header`, and the defaults of the settings.
 
-What stays: the answer of an application to a client that reads it one byte at a time has only the idle time. Several networks together can still hold the streams of one link; the limit of the link (SF-230) keeps the sessions apart from them.
+A re-read of `19e7fd03a` on 2026-11-21 found three more points, decided overnight on the recommendation of the orchestrator (R-NEW-hostovernight): (Medium) slow clients of several networks could hold each stream of the link of one device; (Medium) the answer to a client that reads it one byte at a time had only the idle time; (Low) false UDP sources could fill the flows of a stream. Built in `bb0bce295`: one route keeps at most 16 connections open (`ANIMA_ROUTE_PROXY_CONNECTIONS`, below the 32 streams of a link), and a TCP stream and a WebSocket after its `101` hold their place until they end; each write to a client must finish within 30 s (`ANIMA_ROUTE_PROXY_WRITE_SECONDS`), or the connection ends; a UDP stream opens at most 8 new flows each second with a burst of 16 (`ANIMA_ROUTE_PROXY_UDP_NEW_PER_SECOND`). Tests: `a_tcp_stream_holds_a_place_of_its_route_until_it_ends`, `a_websocket_after_its_101_holds_a_place_of_its_route`, `a_write_to_a_client_that_does_not_read_ends_at_its_time`, `a_udp_stream_opens_only_its_new_flows_each_second`, `a_bucket_takes_its_burst_at_once_and_then_its_rate`, and the defaults of the settings.
 
-State: Open (built in `294c9a525`). A re-read on 2026-11-21 found the first build only partly closed it (an idle time that each byte starts again, a cap of a client equal to the limit of a link, a PROXY header from any peer, a cap for each IPv6 address). Found by a separate reviewer on 2026-11-21.
+What stays: a client that takes one segment in each 30 s keeps its connection. Several routes of one device together can still hold the streams of its link; the limit of the link (SF-230) keeps the sessions apart from them.
+
+State: Open (built in `bb0bce295`). A re-read on 2026-11-21 found the first build only partly closed it (an idle time that each byte starts again, a cap of a client equal to the limit of a link, a PROXY header from any peer, a cap for each IPv6 address). Found by a separate reviewer on 2026-11-21.
 
 ### SF-NEW-revroutesocket: The socket of the interface of the proxy checked no peer and had no set mode. Medium
 
@@ -2448,11 +2451,25 @@ Where: `crates/hub/src/work/routes/graphql.rs` (`person_with_second_factor`).
 
 Effect, and who can cause it: A person who took over a browser session of the operator. Effect: an application is made public.
 
-Mitigation now: Only a person with a login or a browser token, on an account with a second factor; no API key and no MCP tool.
+Mitigation now: Only a person with a login or a browser token, on an account with a second factor; no API key and no MCP tool. A re-read of `19e7fd03a` on 2026-11-21 found that a login token, which the `anima` command and an agent hold, could make an application public (Medium). Decided overnight on the recommendation of the orchestrator (R-NEW-hostovernight), and built in `bb0bce295`: a public route of each kind is added only by a browser token with no agent declared (`Identity::is_person_in_browser`, the rule of the shell gate of the catalogue); a login token, the same token declared as an agent (MCP) and an API key get the refusal `PublicNeedsPerson` (`FORBIDDEN`). A private route keeps the rule above. Tests: `sf_revroutestepup_only_a_person_in_the_browser_adds_a_public_route`, `sf_revroutestepup_an_api_key_adds_no_route`.
 
 The fix to make: `addApplicationRoute` and `removeApplicationRoute` ask for a code of the second factor given in the last minutes (a step-up), and refuse otherwise.
 
-State: Open. Found by a separate reviewer on 2026-11-21.
+State: Open (built in `bb0bce295`). Found by a separate reviewer on 2026-11-21.
+
+### SF-NEW-revroutepublic: The protocol of a public stream was only a label that the person picked. Medium
+
+Requirements: HOST-050, task H40; SF-248; OD-HOST-54.
+
+What it is: A public `tcp_stream` or `udp_stream` needed a protocol from the fixed list of the hub, but nothing checked that the application on that port speaks it. A person could open a database or a shell to the internet with the label `imaps`.
+
+Where: `crates/hub/src/work/routes/model.rs` (`Route::waits`), `crates/hub/migrations/1041_routes_kinds.sql`.
+
+Effect, and who can cause it: A person who adds a route, or an agent with a login token. Effect: a service that trusts its network is public.
+
+Mitigation now: Decided overnight on the recommendation of the orchestrator (R-NEW-hostovernight), and built in `bb0bce295`: a public stream also waits for the mark `stream-public` on the port in the record of the application (`routes.route.stream_public`), as part of the wait `APPLICATION_RECORD`. Nothing sets it before task H6, so no public stream serves; a private stream is as before. Test: `a_public_stream_waits_for_the_mark_stream_public_of_the_record`.
+
+State: Open (built in `bb0bce295`). Found by a separate reviewer on 2026-11-21.
 
 ## The code review of the catalogue and the routes (2026-11-21)
 

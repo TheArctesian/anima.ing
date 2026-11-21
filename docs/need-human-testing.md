@@ -2206,9 +2206,12 @@ these marks in the database of a test hub only.
    for a test TCP echo service on port 7 of a machine. Expected: a private route that waits for its proof.
 2. Run the same with `--listen-port 993`, `--listen-port 5432` and `--listen-port 30000`. Expected: each one
    is refused with its reason (below 1024, a port of Anima, outside the range).
-3. Run it with `--access public` and no `--protocol`. Expected: refused, with the list of protocols and
-   their usual ports. Add an IMAPS route: `--kind tcp-stream --access public --protocol imaps --listen-port 20993 --port 993`.
-4. On a test hub only, set `proof`, `machine_consent` and `application_recorded` of both routes to their
+3. Run it with `--access public --protocol imaps --listen-port 20993 --port 993`. Expected: refused, because
+   a public route is added only by a person in the Anima app in a browser. In a browser signed in to the hub,
+   send `addApplicationRoute` with the same fields and no `protocol`. Expected: refused, with the list of
+   protocols and their usual ports. Send it again with `protocol: "imaps"`. Expected: a public route that
+   waits for its proof.
+4. On a test hub only, set `proof`, `machine_consent`, `application_recorded` and `stream_public` of both routes to their
    serving values. Start `anima-route-proxy` with `ANIMA_ROUTE_PROXY_LISTEN` on the public address and
    `ANIMA_ROUTE_PROXY_PRIVATE_ADDRESS` and `ANIMA_ROUTE_PROXY_PRIVATE_NETWORKS` for the network of Anima.
    Expected: within one minute the proxy listens on 20993 on the public address and on 20007 on the
