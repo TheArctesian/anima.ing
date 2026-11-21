@@ -102,15 +102,20 @@ impl Silence {
         }
     }
 
-    /// The other copies of `copies` that answered when they were last asked, with their versions.
+    /// The other copies of `copies` that answered when they were last asked and are the same
+    /// file now, with their versions. A path that is not UTF-8 is left out: the refusal that
+    /// names the copies is JSON.
     #[must_use]
     pub fn answered_others(&self, path: &Path, copies: &[PathBuf]) -> Vec<(PathBuf, String)> {
         copies
             .iter()
-            .filter(|copy| copy.as_path() != path)
+            .filter(|copy| copy.as_path() != path && copy.to_str().is_some())
             .filter_map(|copy| {
-                let version = self.asked.get(copy)?.version.clone()?;
-                Some((copy.clone(), version))
+                let asked = self
+                    .asked
+                    .get(copy)
+                    .filter(|asked| asked.stamp == stamp(copy))?;
+                Some((copy.clone(), asked.version.clone()?))
             })
             .collect()
     }
@@ -306,6 +311,31 @@ mod tests {
         assert!(words.contains(&format!("{} (codex-cli 0.169.0)", answers.display())));
         let fine = ask(answers.clone(), copies, env).await;
         assert_eq!(fine.len(), 1, "the others are asked only after a silence");
+    }
+
+    #[test]
+    fn th97_a_copy_changed_since_it_answered_or_not_utf8_is_not_offered() {
+        use std::os::unix::ffi::OsStrExt as _;
+        let dir = tempfile::tempdir().expect("a folder");
+        let silent = script(dir.path(), "codex", "exec sleep 600");
+        let replaced = script(dir.path(), "codex-app", "echo 'codex-cli 0.169.0'");
+        // A Mac takes no file name that is not UTF-8; the path alone is enough here.
+        let odd = dir.path().join(std::ffi::OsStr::from_bytes(b"codex-\xff"));
+        let kept = script(dir.path(), "codex-kept", "echo 'codex-cli 0.169.0'");
+        let mut silence = Silence::default();
+        let answered = |path: &PathBuf| (path.clone(), Some("codex-cli 0.169.0".to_owned()));
+        silence.keep(&vec![answered(&replaced), answered(&odd), answered(&kept)]);
+        // An update writes a new file in place of the old one.
+        let fresh = dir.path().join("fresh");
+        std::fs::copy(&replaced, &fresh).expect("copied");
+        std::fs::rename(&fresh, &replaced).expect("put in place");
+        let copies = vec![silent.clone(), replaced, odd, kept.clone()];
+        let offered: Vec<PathBuf> = silence
+            .answered_others(&silent, &copies)
+            .into_iter()
+            .map(|(copy, _)| copy)
+            .collect();
+        assert_eq!(offered, [kept]);
     }
 
     #[test]
