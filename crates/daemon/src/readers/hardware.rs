@@ -41,6 +41,7 @@ fn free_disk_bytes() -> Option<u64> {
 }
 
 /// The fixed CPU features that model runtimes use, which this processor has.
+#[cfg(unix)]
 #[must_use]
 pub fn cpu_features() -> Vec<String> {
     let mut found: Vec<&str> = Vec::new();

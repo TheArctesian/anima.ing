@@ -29,6 +29,7 @@ pub fn start_of(pid: i32) -> Option<String> {
 }
 
 /// The cgroup v2 folder of the daemon.
+#[must_use]
 pub fn own_cgroup() -> Option<PathBuf> {
     let text = std::fs::read_to_string("/proc/self/cgroup").ok()?;
     let relative = text.lines().find_map(|line| line.strip_prefix("0::"))?;
@@ -234,7 +235,7 @@ pub fn launch(arguments: &[String]) -> ! {
     }
     // The daemon may have ended before the signal was set: then nothing would end the runtime.
     let parent = rustix::process::getppid().map(rustix::process::Pid::as_raw_nonzero);
-    if !parent.is_some_and(|pid| daemon.parse().ok() == Some(pid.get())) {
+    if parent.is_none_or(|pid| daemon.parse().ok() != Some(pid.get())) {
         fail(failure, Containment::ParentGone);
     }
     if hide_cgroups().is_err() {

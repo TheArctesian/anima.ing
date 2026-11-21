@@ -94,6 +94,10 @@ impl Tree {
     /// Ends the whole tree now: the cgroup, and each known process whose identity holds. On
     /// macOS the walk is read once more first, so a child made after the last poll is ended
     /// too.
+    #[cfg_attr(
+        target_os = "linux",
+        expect(unused_mut, reason = "only the macOS walk adds to known")
+    )]
     fn end(mut self) {
         #[cfg(not(target_os = "linux"))]
         if let Some(table) = super::tree::walk::table() {
