@@ -114,7 +114,6 @@
     max-inline-size: 100%;
     min-block-size: var(--control-sm);
     padding: 0 var(--space-1);
-    margin-inline: calc(var(--space-1) * -1);
     border: 0;
     border-radius: var(--radius-md);
     background: transparent;
