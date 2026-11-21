@@ -132,6 +132,13 @@ describe('the right-click menus (02 section 5.11)', () => {
     expect(labels(rowMenu(item, { ...able, marks: true, settled: true, snoozed: true })).slice(0, 3)).toEqual(['Pin thread', 'Un-settle thread', 'Wake thread']);
   });
 
+  it('offers "End the program" above Archive only while the program runs', () => {
+    if (item === undefined) throw new Error('no row');
+    expect(labels(rowMenu(item, { ...able, endable: true })).slice(-3)).toEqual(['End the program', 'Archive thread', 'Remove from the list']);
+    expect(labels(rowMenu(item, able))).not.toContain('End the program');
+    expect(intentOf('end', [item], NOW)).toEqual({ kind: 'end' });
+  });
+
   it('counts the rows of a multi-selection', () => {
     if (item === undefined) throw new Error('no row');
     expect(labels(manyMenu([item, { ...item, row: { ...item.row, pinned: true } }], { ...able, listing: false }))).toEqual([

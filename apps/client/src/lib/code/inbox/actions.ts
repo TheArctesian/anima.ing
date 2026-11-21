@@ -7,7 +7,7 @@ import type { MenuEntry } from '../kit/menu';
 import { SNOOZE_PRESETS, type InboxChange } from './engine';
 import type { InboxRow } from './inbox';
 
-export type RowAction = 'pin' | 'unpin' | 'settle' | 'unsettle' | 'snooze' | 'wake' | 'rename' | 'copy-path' | 'copy-branch' | 'copy-id' | 'archive' | 'unarchive' | 'remove';
+export type RowAction = 'pin' | 'unpin' | 'settle' | 'unsettle' | 'snooze' | 'wake' | 'rename' | 'copy-path' | 'copy-branch' | 'copy-id' | 'archive' | 'unarchive' | 'remove' | 'end';
 
 /** What the menus can do now. */
 export interface Able {
@@ -20,6 +20,8 @@ export interface Able {
   /** Whether the row is in Settled or Snoozed. */
   readonly settled: boolean;
   readonly snoozed: boolean;
+  /** The runner drives the thread and its program runs: "End the program" shows (T3's composer has no such control). */
+  readonly endable?: boolean;
 }
 
 function choice(id: RowAction, label: string, disabled: boolean, extra: Partial<Extract<MenuEntry, { kind: 'choice' }>> = {}): MenuEntry {
@@ -42,6 +44,9 @@ export function rowMenu(item: InboxRow, able: Able): readonly MenuEntry[] {
   entries.push(
     choice('copy-id', 'Thread ID', false, { icon: 'copy' }),
     { kind: 'line' },
+  );
+  if (able.endable === true) entries.push(choice('end', 'End the program', off, { icon: 'square' }));
+  entries.push(
     row.archived ? choice('unarchive', 'Unarchive thread', off) : choice('archive', 'Archive thread', off),
     choice('remove', 'Remove from the list', off, { icon: 'trash-2', danger: true }),
   );
@@ -87,7 +92,7 @@ export type Intent =
   | { readonly kind: 'listing'; readonly change: ListingChange; readonly pinnedOnly?: boolean }
   | { readonly kind: 'mark'; readonly change: InboxChange }
   | { readonly kind: 'copy'; readonly text: string }
-  | { readonly kind: 'rename' | 'remove' | 'snooze-menu' };
+  | { readonly kind: 'rename' | 'remove' | 'snooze-menu' | 'end' };
 
 /** The intent of the choice `id` for the rows `items` (one, or a multi-selection); `null` for an unknown choice. */
 export function intentOf(id: string, items: readonly InboxRow[], now: Date): Intent | null {
@@ -118,6 +123,8 @@ export function intentOf(id: string, items: readonly InboxRow[], now: Date): Int
       return { kind: 'remove' };
     case 'snooze':
       return { kind: 'snooze-menu' };
+    case 'end':
+      return { kind: 'end' };
     default:
       return null;
   }

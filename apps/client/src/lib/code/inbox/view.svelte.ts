@@ -71,6 +71,12 @@ export class InboxView {
     this.#selection = next;
   }
 
+  /** The row of `id` wherever it is, on a folded shelf too; none when the filter or the list leaves it out. */
+  itemOf(id: string): InboxRow | undefined {
+    const { pinned, active, working, snoozed, settled } = this.parts;
+    return [...pinned, ...active, ...working, ...snoozed, ...settled].find((item) => item.row.id === id);
+  }
+
   /** Whether `id` is in Settled or Snoozed, for its menu. */
   shelfOf(id: string): 'list' | 'snoozed' | 'settled' {
     if (this.parts.snoozed.some((item) => item.row.id === id)) return 'snoozed';

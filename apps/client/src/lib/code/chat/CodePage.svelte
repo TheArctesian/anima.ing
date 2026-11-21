@@ -33,6 +33,7 @@
   let starting = $state(false);
   let field = $state<HTMLInputElement>();
   let page = $state<HTMLElement>();
+  let inbox = $state<ReturnType<typeof InboxColumn>>();
   const linkWords = $derived(live === null ? null : live.linked === false ? (live.problem ?? 'The thread runner of this computer is not running. Start the Anima daemon to start threads.') : live.holder);
   const newOff = $derived(live === null ? 'Threads start in the desktop application.' : live.linked === false ? 'The thread runner is not running.' : null);
   /** The row of the open thread, for the band. */
@@ -119,14 +120,13 @@
 
 <!-- The page Code as T3 Code lays it out (02 section 4): the inbox column beside the chat column, each under its band. -->
 <div class="code" class:folded={!inboxOpen} data-code-page bind:this={page} {@attach fillRoom()}>
-  {#if inboxOpen}
-    <aside class="inbox" aria-label="Threads of this computer">
-      <TopBand start={toggle}><span class="name">Code</span></TopBand>
-      <InboxColumn {view} {store} onOpen={(id) => void choose(id)} {newOff} onNew={() => (starting = true)} bind:field />
-    </aside>
-  {/if}
+  <!-- Hidden, not unmounted: the band's title opens a thread's menu through it, and the list keeps its place. -->
+  <aside class="inbox" class:gone={!inboxOpen} aria-label="Threads of this computer">
+    <TopBand start={toggle}><span class="name">Code</span></TopBand>
+    <InboxColumn bind:this={inbox} {view} {store} onOpen={(id) => void choose(id)} {newOff} onNew={() => (starting = true)} bind:field />
+  </aside>
   <ChatColumn>
-    {#snippet header()}<ChatHeader thread={open} start={inboxOpen ? undefined : toggle} />{/snippet}
+    {#snippet header()}<ChatHeader thread={open} start={inboxOpen ? undefined : toggle} onactions={(anchor) => (open === undefined ? undefined : inbox?.openThreadMenu(open.id, anchor.getBoundingClientRect()))} />{/snippet}
     {#snippet notice()}{#if linkWords !== null}<p class="link" role="status">{linkWords}</p>{/if}{/snippet}
     <ThreadBody {store} now={view.moment} {toolsOpen} />
     {#snippet composer()}{#if store.liveThread !== null && live !== null}<ComposerStandIn thread={store.liveThread} {live} />{/if}{/snippet}
@@ -177,6 +177,10 @@
     border-inline-end: var(--border-thin) solid var(--border-subtle);
   }
 
+  .gone {
+    display: none;
+  }
+
   .name {
     color: var(--code-quiet-text);
   }
@@ -194,6 +198,10 @@
     .code {
       grid-template-columns: minmax(0, 1fr);
       grid-template-rows: minmax(0, 2fr) minmax(0, 3fr);
+    }
+
+    .folded {
+      grid-template-rows: minmax(0, 1fr);
     }
 
     .inbox {
