@@ -14,6 +14,7 @@ mod claude;
 mod codex;
 pub mod control;
 pub mod drive;
+pub mod git;
 pub mod marks;
 pub mod project;
 #[cfg(test)]
