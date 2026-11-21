@@ -2,8 +2,13 @@
 //! threads of this computer (TH46). The runner keeps it in its own record; no session file of
 //! Claude Code or Codex changes. No MCP tool does it: the runner refuses it from a process of
 //! an agent, so that an agent cannot hide a thread from the person.
+//! `anima agents projects`: the projects of this computer (TH107), changed by the person only.
 
-use agent_threads::control::{Action, Listing, ListingChange, Outcome};
+use std::collections::BTreeSet;
+
+use agent_threads::control::{
+    Action, Listing, ListingChange, MAX_TITLE, Outcome, Project, ProjectChange,
+};
 use uuid::Uuid;
 
 use super::drive::accepted;
@@ -30,6 +35,78 @@ pub struct RenameArgs {
 #[derive(Debug, clap::Args)]
 pub struct RemoveArgs {
     thread: Uuid,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct ProjectsArgs {
+    #[command(subcommand)]
+    change: Option<ProjectCommand>,
+}
+
+#[derive(Debug, clap::Subcommand)]
+enum ProjectCommand {
+    /// Add a folder of this computer as a project.
+    Add {
+        folder: std::path::PathBuf,
+        /// The name of the project; by default the last part of the folder.
+        #[arg(long)]
+        name: Option<String>,
+    },
+    /// Give a project a new name.
+    Rename {
+        folder: std::path::PathBuf,
+        name: String,
+    },
+    /// Take a project off the list. No file and no thread of it changes.
+    Remove { folder: std::path::PathBuf },
+}
+
+/// `anima agents projects`: lists the projects, after the change that the arguments name.
+///
+/// # Errors
+/// [`Failure`] for a refusal of the runner, or a runner that is not there.
+pub async fn projects(args: ProjectsArgs, invocation: &Invocation) -> Result<(), Failure> {
+    let absolute = |folder: std::path::PathBuf| std::path::absolute(&folder).unwrap_or(folder);
+    let action = match args.change {
+        None => Action::Projects,
+        Some(command) => Action::ChangeProject {
+            change: match command {
+                ProjectCommand::Add { folder, name } => ProjectChange::Add {
+                    folder: absolute(folder),
+                    name,
+                },
+                ProjectCommand::Rename { folder, name } => ProjectChange::Rename {
+                    folder: absolute(folder),
+                    name,
+                },
+                ProjectCommand::Remove { folder } => ProjectChange::Remove {
+                    folder: absolute(folder),
+                },
+            },
+        },
+    };
+    let mut link = RunnerLink::connect().await?;
+    let Outcome::Projects { projects } = accepted(link.call(action).await?)? else {
+        return Ok(());
+    };
+    if projects.is_empty() {
+        invocation.output.message("No projects.");
+        return Ok(());
+    }
+    invocation
+        .output
+        .data(&projects, |rows| project_table(rows))
+}
+
+fn project_table(rows: &[Project]) -> Table {
+    let mut table = Table::new(vec!["NAME", "FOLDER"]);
+    for row in rows {
+        table.row(vec![
+            Cell::new(&row.name),
+            Cell::new(&row.folder.display().to_string()),
+        ]);
+    }
+    table
 }
 
 /// The question before a thread is removed from the list.
@@ -74,7 +151,17 @@ pub async fn archive(args: SwitchArgs, invocation: &Invocation) -> Result<(), Fa
 /// marks), or a runner that is not there.
 pub async fn rename(args: RenameArgs, invocation: &Invocation) -> Result<(), Failure> {
     let cleared = args.title.is_none();
-    change(args.thread, ListingChange::Rename { title: args.title }).await?;
+    let rename = ListingChange::Rename { title: args.title };
+    // The same check as the runner's, here first, so that the words are about a title.
+    if Listing::default().changed(&rename).is_err() {
+        return Err(Failure::Usage {
+            message: format!(
+                "A title takes 1 to {MAX_TITLE} characters that show: no control characters and no hidden marks, such as a mark that turns the direction of text."
+            ),
+            hint: None,
+        });
+    }
+    change(args.thread, rename).await?;
     invocation.output.message(if cleared {
         "The thread has the title of its program again."
     } else {
@@ -110,6 +197,22 @@ pub async fn listings(invocation: &Invocation) -> Result<(), Failure> {
         .output
         .data(&listings, |listings| table(listings))?;
     Ok(())
+}
+
+/// The IDs of the threads that the person removed from the list, from the runner.
+///
+/// # Errors
+/// [`Failure`] when the runner is not there or refuses.
+pub async fn removed() -> Result<BTreeSet<String>, Failure> {
+    let mut link = RunnerLink::connect().await?;
+    let Outcome::Listings { listings } = accepted(link.call(Action::Listings).await?)? else {
+        return Ok(BTreeSet::new());
+    };
+    Ok(listings
+        .iter()
+        .filter(|listing| listing.removed)
+        .map(|listing| listing.thread.to_string())
+        .collect())
 }
 
 fn table(listings: &[Listing]) -> Table {

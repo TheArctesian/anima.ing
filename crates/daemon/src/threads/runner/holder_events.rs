@@ -287,7 +287,7 @@ impl Runner {
 
     /// Answers a call that waited for the holder; a refusal goes to the log first (THR-044), as
     /// the refusal of a call that did not wait does.
-    fn answer_late(&self, back: &Caller, thread: Option<Uuid>, result: Outcome) {
+    fn answer_late(&mut self, back: &Caller, thread: Option<Uuid>, result: Outcome) {
         if let Outcome::Refused { why } = &result {
             self.note(Kind::Refusal, thread, super::calls::refusal_word(why));
         }

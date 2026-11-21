@@ -633,5 +633,32 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 </div>
 <figcaption>Frame 4, dark, 800 px: a narrow window. The tabs do not fit with their icons, so the icons go and the words stay; when the words still do not fit, the far end fades and an arrow there scrolls the tabs (NAV-005; an arrow at the start shows the same way). At 800 px the words fit and no arrow shows; the frame draws the arrow of a narrower strip. The Warning badge opens its tip on hover, focus or a click: what Warning means, then each warning (RA-020). Under the tabs, the open tab's skeleton while the device loads: the cards of the loaded tab without their text (D-9). Made overnight on 2026-11-21, not yet confirmed by the operator.</figcaption>
 </figure>
+<figure>
+<div class="v2" data-theme="dark" style="width: 1280px; height: 420px;">
+<aside class="side">
+  <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
+    <nav class="nav" aria-label="Main"><a href="#" class="on" aria-current="page">Devices<span class="n bad">1</span></a><a href="#">Agent usage</a></nav>
+</aside>
+<main class="page">
+  <header class="bar">
+    <div class="row1">
+      <nav class="crumb" aria-label="Breadcrumb"><a href="#">Devices</a><span aria-hidden="true">/</span><h1>studio-mac</h1></nav>
+      <span class="st up">Up</span><span class="tag warn">Needs you</span><span class="sec">This computer</span>
+    </div>
+    <p class="reason" role="status"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="7" width="8" height="6.5" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg><span>The daemon of this computer needs you: macOS asks whether it may read its key in the Keychain. Type your password in that window and click Always Allow. Metrics and counts appear here some minutes later.</span></p>
+    <nav class="tabs" aria-label="Device"><a href="#" class="on" aria-current="page">Overview</a><a href="#">Checks</a><a href="#">Containers</a><a href="#">Sessions</a><a href="#">Logs</a><a href="#">Settings</a></nav>
+  </header>
+  <div class="body" style="padding-top: var(--space-4)">
+    <section class="card" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))" aria-label="Health">
+      <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Checks</span><span><span class="st up">1 of 1 up</span></span><span class="note">Ping, every 60 s</span></div>
+      <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Metrics</span><span class="sec">Waiting for the daemon</span><span class="note">It reports after you allow it</span></div>
+      <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Agent usage</span><span class="sec">Not counted</span><span class="note">Until the daemon reads its key</span></div>
+      <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Host key</span><span><span class="st up">Trusted</span></span><span class="note">Checked at the last session</span></div>
+    </section>
+  </div>
+</main>
+</div>
+<figcaption>Frame 5, dark, 1280 px, a proposal that is not built (made on 2026-11-21, not confirmed by the operator): the device of this computer while its daemon waits for the person in the Keychain (R-322, HT-117). The bar has the badge "Needs you" beside the status, and the reason line says what to do, in the words that Agent usage already uses. The facts that wait on the daemon say so in place of a value. Devices in the side bar counts one device that needs the person. Only the application on this computer can show it: the hub does not know why a daemon does not report.</figcaption>
+</figure>
 </body>
 </html>

@@ -50,6 +50,11 @@ export interface Capabilities {
   readonly runnerReport: boolean;
   /** The window draws its content under the OS title bar, with the window buttons over the navigation bar (macOS). */
   readonly overlayTitleBar: boolean;
+  /**
+   * The system gives the window no frame, so the client draws the window controls and the top of the window moves it
+   * (Windows and Linux; task TC2 of agent-threads.md, "Both together").
+   */
+  readonly framelessWindow: boolean;
   /** The app keeps a read-only copy of recent hub answers on this computer and shows it when the hub does not answer (FND-007). */
   readonly recentCopy: boolean;
 }

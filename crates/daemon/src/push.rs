@@ -6,26 +6,34 @@
 pub mod accounts;
 pub mod pacing;
 pub mod renewal;
+mod renewing;
+#[cfg(all(test, target_os = "linux"))]
+mod tests;
+pub mod unstored;
 pub mod usage;
 
 use std::time::Duration;
 
 use chrono::{DateTime, TimeDelta, Utc};
+use daemon_core::hardware::Hardware;
 use daemon_core::points::{BATCH_POINTS, Backlog, Point};
 use daemon_core::wire::{
     Announcements, Batch, BatchBattery, BatchDrive, BatchGpu, BatchInventory, PushAccepted,
-    RefusalCode, Renewed,
+    RefusalCode,
 };
 use uuid::Uuid;
 
+use crate::config::home::Home;
 use crate::hub::HubClient;
 use crate::hub::answer::Answer;
+use crate::keychain_wait;
 use crate::keys::keeper::{Asking, Keeper};
 
 use crate::report;
 use crate::sampling::agent_usage::UsageReport;
 use crate::token_store::{Credential, TokenStore};
 use pacing::{Action, Backoff, RHYTHM};
+use unstored::Unstored;
 use usage::UsageBacklog;
 
 /// The version of this daemon, sent with each batch (R-122); `build.rs` sets it for a release.
@@ -42,6 +50,8 @@ pub enum Event {
     Batteries(Vec<BatchBattery>),
     /// The tool inventory probed at start or after a change; sent in the next batch (CAP-027).
     Inventory(BatchInventory),
+    /// The hardware values read with the inventory; sent in the next batch (CAP-032).
+    Hardware(Hardware),
     /// The daemon's agent usage state and the session days that changed (AIS-019).
     AgentUsage(UsageReport),
 }
@@ -67,6 +77,13 @@ pub struct Pusher {
     spread: fn() -> f64,
     /// The operational key cache; `None` for a pusher that keeps none and sends no `keys`.
     keys: Option<Keeper>,
+    /// A renewed token whose save waits for the person in the Keychain; not used until stored.
+    unstored: Option<Unstored>,
+    /// The daemon's folder, where [`MARK`](crate::keychain_wait::MARK) tells the app that a
+    /// call of the Keychain waits.
+    marks: Option<Home>,
+    /// Whether this pusher put the mark.
+    marked: bool,
 }
 
 impl Pusher {
@@ -86,6 +103,20 @@ impl Pusher {
             renewal_tried: None,
             spread: os_spread,
             keys: None,
+            unstored: None,
+            marks: None,
+            marked: false,
+        }
+    }
+
+    /// The same pusher, which puts [`MARK`](crate::keychain_wait::MARK) in `home` while the
+    /// save of a renewed token or a call of the key store waits for the person in the
+    /// Keychain (R-322).
+    #[must_use]
+    pub fn with_marks(self, home: Home) -> Self {
+        Self {
+            marks: Some(home),
+            ..self
         }
     }
 
@@ -113,6 +144,7 @@ impl Pusher {
             Event::Drives(drives) => self.announced.drives = Some(drives),
             Event::Batteries(batteries) => self.announced.batteries = Some(batteries),
             Event::Inventory(inventory) => self.announced.inventory = Some(inventory),
+            Event::Hardware(hardware) => self.announced.hardware = Some(hardware),
             Event::AgentUsage(report) => self.usage.take(report),
         }
     }
@@ -127,13 +159,15 @@ impl Pusher {
     /// until none is left or one fails. Returns how long to wait before the next round.
     pub async fn push_due(&mut self, now: DateTime<Utc>) -> Duration {
         if let Some(keys) = &mut self.keys {
-            keys.expire(now);
+            keys.tend(now).await;
         }
         if self.stopped_until.is_none() {
             self.renew_if_due(now).await;
         }
+        let adopted = self.stopped_until.is_some() && self.adopt_changed_token().await;
+        self.show_waits();
         if let Some(retry_at) = self.stopped_until
-            && !self.adopt_changed_token()
+            && !adopted
             && now < retry_at
         {
             return RHYTHM;
@@ -204,7 +238,7 @@ impl Pusher {
                     self.limit = smaller;
                     count = smaller;
                 }
-                Action::Stop(code) => return Round::Wait(self.stop(code, now)),
+                Action::Stop(code) => return Round::Wait(self.stop(code, now).await),
                 Action::Wait => return Round::Wait(self.failed(&answer)),
             }
         }
@@ -245,14 +279,14 @@ impl Pusher {
 
     /// Stops pushing for 10 minutes. Logs only when it was pushing before (K8 Section 6). A
     /// refused token also deletes the whole key cache (R-147).
-    fn stop(&mut self, code: RefusalCode, now: DateTime<Utc>) -> Duration {
+    async fn stop(&mut self, code: RefusalCode, now: DateTime<Utc>) -> Duration {
         if self.stopped_until.is_none() {
             report::token_refused(code);
         }
         if code == RefusalCode::TokenRefused
             && let Some(keys) = &mut self.keys
         {
-            keys.forget();
+            keys.forget().await;
         }
         let wait = TimeDelta::from_std(pacing::REFUSED_RETRY).unwrap_or(TimeDelta::minutes(10));
         self.stopped_until = Some(now + wait);
@@ -261,9 +295,11 @@ impl Pusher {
 
     /// When the token store holds another token than the one in use, issued by the same hub,
     /// takes it and resumes. A token bound to another hub is never taken: it would be sent
-    /// to this one.
-    fn adopt_changed_token(&mut self) -> bool {
-        let Ok(Some(stored)) = self.store.load() else {
+    /// to this one. A renewed token whose save waited goes with it: the store holds either
+    /// that token, stored late, or a newer one.
+    async fn adopt_changed_token(&mut self) -> bool {
+        let store = self.store.clone();
+        let Ok(Some(stored)) = keychain_wait::off_loop(move || store.load()).await else {
             return false;
         };
         if stored.hub != self.credential.hub || stored.token.hash() == self.credential.token.hash()
@@ -272,35 +308,9 @@ impl Pusher {
         }
         self.credential = stored;
         self.stopped_until = None;
+        self.unstored = None;
         report::token_store_changed();
         true
-    }
-
-    /// Renews the token inside its last 30 days (K8 Section 5): the new token is stored first,
-    /// and only then used. If it cannot be stored the current one stays.
-    async fn renew_if_due(&mut self, now: DateTime<Utc>) {
-        if !renewal::due(self.credential.expires_at, now, self.renewal_tried) {
-            return;
-        }
-        self.renewal_tried = Some(now);
-        match self.hub.renew(&self.credential.token).await {
-            Answer::Accepted(renewed) => self.keep_renewed(renewed, now),
-            Answer::Refused(code) => report::renewal_refused(code),
-            Answer::Failed(cause) => report::renewal_failed(cause),
-        }
-    }
-
-    /// Stores the renewed token and only then uses it; on a failure the current one stays.
-    fn keep_renewed(&mut self, renewed: Renewed, now: DateTime<Utc>) {
-        let hub = self.credential.hub.clone();
-        let next = Credential::received(renewed.token, renewed.expires_at, hub, now);
-        match self.store.save(&next) {
-            Ok(()) => {
-                self.credential = next;
-                report::renewed();
-            }
-            Err(error) => report::renewal_not_stored(&error),
-        }
     }
 }
 

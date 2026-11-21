@@ -5,17 +5,15 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::Value;
 
-use super::account;
 use super::request::{ProgramRequestId, Question, Request, RequestKind};
 use super::{DriveEvent, MAX_LINE, ProgramState, TurnOutcome, text_of};
+use super::{account, turn_facts};
 use crate::{MAX_OUTPUT, MAX_TEXT, held};
 
 /// Notifications that are known and say nothing the view needs.
-const QUIET: [&str; 8] = [
-    "thread/tokenUsage/updated",
+const QUIET: [&str; 6] = [
     "mcpServer/startupStatus/updated",
     "remoteControl/status/changed",
-    "turn/diff/updated",
     "thread/goal/cleared",
     "item/reasoning/summaryPartAdded",
     "item/userMessage/delta",
@@ -92,6 +90,9 @@ impl CodexDecoder {
                 .into_iter()
                 .collect(),
             "turn/completed" => self.turn_completed(&params["turn"]),
+            "turn/diff/updated" => vec![turn_facts::codex_diff(params)],
+            "turn/plan/updated" => vec![turn_facts::codex_plan(params)],
+            "thread/tokenUsage/updated" => vec![turn_facts::codex_usage(params)],
             "configWarning" => vec![DriveEvent::Notice {
                 text: held(&text_of(&params["summary"]), MAX_TEXT),
             }],
@@ -292,7 +293,7 @@ fn replied(id: ProgramRequestId, value: &Value) -> Vec<DriveEvent> {
     } else if result.get("rateLimits").is_some() {
         facts(account::codex_limits(&result["rateLimits"]))
     } else {
-        Vec::new()
+        turn_facts::codex_models(result).into_iter().collect()
     };
     events.insert(0, reply(id, value));
     events

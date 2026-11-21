@@ -100,6 +100,8 @@ pub struct Runner {
     limits: Limits,
     /// How the person lists each thread (TH46).
     listings: BTreeMap<Uuid, agent_threads::control::Listing>,
+    /// The projects of this computer, in the order the person added them (TH107).
+    projects: Vec<agent_threads::control::Project>,
     watchers: Vec<Client>,
     waits: BTreeMap<u64, Waits>,
     /// The commands that change a program and that the holder did not answer yet: a new link
@@ -109,6 +111,8 @@ pub struct Runner {
     /// again is not read twice.
     read_up_to: BTreeMap<Uuid, u64>,
     log: log::RunnerLog,
+    /// How many refusals the daemon's log took this minute (MET-019).
+    refusal_lines: calls::RefusalLines,
     /// The copies that were asked for their version and the threads that wait for their first
     /// line (TH97).
     silence: silence::Silence,
@@ -116,8 +120,9 @@ pub struct Runner {
     asks: start::Asks,
     /// When each thread last got the words of a lost sign-in (TH99).
     sign_in_told: BTreeMap<Uuid, std::time::Instant>,
-    /// What the programs said of their accounts: in memory only (THR-051).
-    accounts: accounts::Accounts,
+    /// What the programs said of their accounts (THR-051) and their models (TH104): in memory
+    /// only.
+    said: accounts::Said,
 }
 
 /// Whether the daemon in `daemon_dir` serves a person, so that it may run agents in the login
@@ -173,15 +178,17 @@ pub async fn run(
             .into_iter()
             .map(|listing| (listing.thread, listing))
             .collect(),
+        projects: saved.projects,
         watchers: Vec::new(),
         waits: BTreeMap::new(),
         unanswered: BTreeMap::new(),
         read_up_to: BTreeMap::new(),
         log: log::RunnerLog::at(&dir),
+        refusal_lines: calls::RefusalLines::default(),
         silence: silence::Silence::default(),
         asks: start::Asks::default(),
         sign_in_told: BTreeMap::new(),
-        accounts: accounts::Accounts::default(),
+        said: accounts::Said::default(),
     };
     runner.restore(saved.threads);
     let listener = socket::bind(&dir)?;
@@ -264,41 +271,34 @@ impl Runner {
         }
     }
 
+    /// Does a step of a thread that is not a command to the holder.
+    fn own_step(&mut self, id: Uuid, step: Step) {
+        let program = self.threads.get(&id).map(|thread| thread.row.program);
+        match (step, program) {
+            (Step::Log(what), _) => self.note(Kind::Stop, Some(id), what),
+            (Step::Change(change), _) => self.publish(id, change),
+            (Step::Account(facts), Some(program)) => {
+                self.said.accounts.note(program, *facts, chrono::Utc::now());
+            }
+            (Step::Models(models), Some(program)) => {
+                self.said.models.note(program, models, chrono::Utc::now());
+            }
+            // A fact of a thread that is gone has no program to keep it for; a command is never
+            // here, as `apply` sends it to the holder.
+            (Step::Account(_) | Step::Models(_), None)
+            | (Step::Write(_) | Step::Mark | Step::EndChildren | Step::EndProgram, _) => {}
+        }
+    }
+
     /// Does the steps of a thread, in order. Gives the ID of the command of the last line
     /// written, or [`LinkDown`] when a command did not reach the holder.
     async fn apply(&mut self, id: Uuid, steps: Vec<Step>) -> Result<Option<u64>, LinkDown> {
         let key = id.to_string();
         let mut last_write = None;
         for step in steps {
-            let action = match step {
-                Step::Write(line) => Action::Write {
-                    thread: key.clone(),
-                    line,
-                },
-                Step::Mark => Action::Mark {
-                    thread: key.clone(),
-                },
-                Step::EndChildren => Action::EndChildren {
-                    thread: key.clone(),
-                },
-                Step::EndProgram => Action::Stop {
-                    thread: key.clone(),
-                },
-                Step::Log(what) => {
-                    self.note(Kind::Stop, Some(id), what);
-                    continue;
-                }
-                Step::Change(change) => {
-                    self.publish(id, change);
-                    continue;
-                }
-                Step::Account(facts) => {
-                    if let Some(thread) = self.threads.get(&id) {
-                        let program = thread.row.program;
-                        self.accounts.note(program, *facts, chrono::Utc::now());
-                    }
-                    continue;
-                }
+            let Some(action) = step.command(&key) else {
+                self.own_step(id, step);
+                continue;
             };
             let write = matches!(action, Action::Write { .. });
             let command = self.command(action).await.ok_or(LinkDown)?;
@@ -364,6 +364,7 @@ impl Runner {
             limits: self.limits,
             threads: self.threads.values().map(Thread::saved).collect(),
             listings: self.listings.values().cloned().collect(),
+            projects: self.projects.clone(),
         };
         if let Err(error) = record::write(&self.dir, &record) {
             tracing::warn!(%error, "the record of the runner was not written");

@@ -897,6 +897,138 @@ type DeviceCapabilities {
   buildTargets: [String!]!
   "When the hub stored this inventory."
   foundAt: DateTime!
+  "The hardware values its daemon last sent; null until it sends them (CAP-001 to CAP-005, CAP-032). R-165 permits this field of the optional K8 member `hardware`."
+  hardware: Hardware
+}
+
+# The device policy of a compute node (CMP-002, CAP-010 to CAP-012). Waits for a ruling: R-335.
+"The device policy of one device and whether it takes model work now."
+type DevicePolicy {
+  device: Device!
+  "The largest part of the usable memory that the daemon reports (Hardware.usableMemoryBytes, else the dedicated or the system memory) that models may use, 1 to 100 percent. Default 100: the fit estimate keeps its own overhead, so the share adds no second margin."
+  memorySharePercent: Int!
+  "The largest part of the free disk that model files may use, 1 to 100 percent. Default 75. The disk reserve of the daemon always wins: the usable disk is the smaller of this share of the free disk and the free disk less the reserve (contracts/compute/model-work.md Section 7)."
+  diskSharePercent: Int!
+  "The hours in which the device takes no new model work; null for none."
+  quietHours: QuietHours
+  "Model work only on mains power (CAP-011). Default true; a computer with no battery always reads mains."
+  mainsOnly: Boolean!
+  "No new model work while the operator is active at the device (CAP-012). Default false."
+  idleOnly: Boolean!
+  "True when the operator set no policy for the device."
+  isDefault: Boolean!
+  "Whether the device takes model work now (CMP-002)."
+  takesModelWork: Boolean!
+  "Why the device takes no model work now; null when it takes it."
+  stopReason: ModelWorkStop
+}
+
+"From start to end (HH:MM) in timeZone (an IANA name); past midnight when end is not after start."
+type QuietHours {
+  start: String!
+  end: String!
+  timeZone: String!
+}
+
+"Why a device takes no model work now."
+enum ModelWorkStop {
+  "The machine never asked this hub for work."
+  NO_SWITCH
+  "The switch \"takes work\" at the machine is off."
+  SWITCH_OFF
+  "The operator set the machine off in the hub, or the hub holds it off for an hour."
+  OFF_IN_HUB
+  QUIET_HOURS
+  ON_BATTERY
+  OPERATOR_ACTIVE
+}
+
+"The whole new device policy of a device."
+input DevicePolicyInput {
+  memorySharePercent: Int!
+  diskSharePercent: Int!
+  quietHours: QuietHoursInput
+  mainsOnly: Boolean!
+  idleOnly: Boolean!
+}
+
+"start and end as HH:MM; timeZone an IANA name, for example Europe/London."
+input QuietHoursInput {
+  start: String!
+  end: String!
+  timeZone: String!
+}
+
+# Hardware values (CAP-001 to CAP-005, CAP-032; R-165, the optional K8 member `hardware` of task L1-1).
+"The hardware values a daemon last sent. A byte count is a Float, as a drive size is; null is a value the daemon could not read, never zero."
+type Hardware {
+  "All system memory."
+  systemMemoryBytes: Float!
+  "The memory the CPU and the GPU share: Apple silicon only."
+  unifiedMemoryBytes: Float
+  "The sum of the video memory of the NVIDIA and AMD GPUs."
+  dedicatedMemoryBytes: Float
+  "Apple silicon: the GPU working-set limit of macOS (CAP-005)."
+  usableMemoryBytes: Float
+  "Where usableMemoryBytes came from."
+  usableMemorySource: UsableMemorySource
+  "The free space of the file system of the daemon's home folder, in whole GiB."
+  freeDiskBytes: Float
+  "Fixed CPU feature names, for example avx2 or neon, in byte order."
+  cpuFeatures: [String!]!
+  "One verdict per backend: metal, cuda, rocm, vulkan, cpu (CAP-002)."
+  backends: [Backend!]!
+  powerSource: PowerSource
+  thermalState: ThermalState
+  "Whether a person used the keyboard or the pointer in the last 5 minutes; macOS only."
+  operatorActive: Boolean
+  "When the hub stored these values."
+  foundAt: DateTime!
+}
+
+"One model backend and its verdict (CAP-002)."
+type Backend {
+  "metal, cuda, rocm, vulkan or cpu."
+  name: String!
+  usable: Boolean!
+  "Why the backend is not usable; null when it is."
+  reason: BackendNotUsable
+}
+
+"Why a backend is not usable: a fixed code, never text from the device (CAP-002)."
+enum BackendNotUsable {
+  "No GPU of the backend's vendor is present."
+  NO_DEVICE
+  "The GPU is present, but its driver is not."
+  NO_DRIVER
+  "The driver is present, but the daemon's user may not open the device."
+  NO_PERMISSION
+  "The backend does not exist on this operating system or processor."
+  NOT_SUPPORTED
+  "A reason this hub does not know (a newer daemon's)."
+  FAILED
+}
+
+"Where the usable memory of Apple silicon came from (CAP-005)."
+enum UsableMemorySource {
+  "The operator set the sysctl iogpu.wired_limit_mb; its value is the limit."
+  WIRED_LIMIT
+  "iogpu.wired_limit_mb is 0: the default share of macOS, three quarters of a memory above 36 GiB, else two thirds."
+  DEFAULT_SHARE
+}
+
+"Where the power comes from (CAP-004)."
+enum PowerSource {
+  MAINS
+  BATTERY
+}
+
+"The thermal state (CAP-004)."
+enum ThermalState {
+  "No thermal limit is in force."
+  NOMINAL
+  "The system limits the CPU speed for heat."
+  THROTTLED
 }
 
 "One tool the daemon found (CAP-024, CAP-025)."
@@ -1446,6 +1578,129 @@ type ContainerLog {
   lines: [ContainerLogLine!]!
   "True when the lines passed 4 MiB: the newest lines are missing."
   cut: Boolean!
+}
+
+# The model library of the compute domain (compute plan L1-4; LIBM-001 to LIBM-009, SEL-003,
+# SEL-005; ruling R-343).
+"What a model can do, as the files of its repository say (LIBM-008). A tag is not evidence that a runtime of Anima runs the model, and it selects no runtime (LIBM-009)."
+enum ModelCapability {
+  CHAT
+  "Calls the tools that a request names."
+  TOOLS
+  CODING
+  REASONING
+  TRANSLATION
+  SUMMARIZATION
+  TEXT_CLASSIFICATION
+  STRUCTURED_EXTRACTION
+  TOKEN_CLASSIFICATION
+  IMAGE_GENERATION
+  IMAGE_EDITING
+  UPSCALING
+  IMAGE_CLASSIFICATION
+  VIDEO_GENERATION
+  VIDEO_EDITING
+  VIDEO_UNDERSTANDING
+  VIDEO_CLASSIFICATION
+  "Music and sound-effects generation."
+  MUSIC_GENERATION
+  AUDIO_GENERATION
+  AUDIO_UNDERSTANDING
+  AUDIO_CLASSIFICATION
+  AUDIO_TO_AUDIO
+  TRANSCRIPTION
+  SPOKEN_TRANSLATION
+  TEXT_TO_SPEECH
+  CONVERSATIONAL_VOICE
+  IMAGE_UNDERSTANDING
+  OCR
+  DOCUMENT_FIELD_EXTRACTION
+  "Table and document question answering."
+  DOCUMENT_QUESTION_ANSWERING
+  VISUAL_DOCUMENT_RETRIEVAL
+  OBJECT_DETECTION
+  "Image segmentation and background masks."
+  IMAGE_SEGMENTATION
+  DEPTH_ESTIMATION
+  "Keypoint and pose detection."
+  POSE_DETECTION
+  EMBEDDINGS
+  RERANKING
+  TABULAR_CLASSIFICATION
+  TABULAR_REGRESSION
+  "Reinforcement-learning policies: a tag of the catalogue only."
+  POLICY
+  "3D object, mesh and scene generation (later)."
+  THREE_DIMENSIONAL_GENERATION
+}
+
+"How the publisher of a base model gets onto the approved model sources (LIBM-003, R-343)."
+enum ModelPublisherApproval {
+  "When a person (not an API key, not an agent) adds a model from an approved repository, the organisation of its base model joins the approved sources."
+  BASE_MODEL
+  "Only the operator adds an organisation, by hand."
+  BY_HAND
+}
+
+"The file format of a variant."
+enum ModelFormat {
+  GGUF
+  MLX
+  SAFETENSORS
+}
+
+"A model of the library (LIBM-001). A null fact is one that the model files did not give (LIBM-005)."
+type LibraryModel {
+  "The name part of name:tag (LIBM-006): 1 to 64 of a-z, 0-9, dot, dash and underscore."
+  name: String!
+  family: String
+  parameterCount: Float
+  contextLength: Int
+  layerCount: Int
+  hiddenSize: Int
+  attentionHeads: Int
+  keyValueHeads: Int
+  capabilities: [ModelCapability!]!
+  licence: String
+  "The organisation of the base model, as the card of the approved repository names it (LIBM-003)."
+  publisher: String
+  "Each Hugging Face repository of the variants, organisation/name."
+  sourceRepositories: [String!]!
+  aliases: [String!]!
+  "In tag order."
+  variants: [ModelVariant!]!
+  addedAt: DateTime!
+}
+
+"A variant of a model (LIBM-002)."
+type ModelVariant {
+  "name:tag (LIBM-006)."
+  address: String!
+  tag: String!
+  format: ModelFormat!
+  "As the files name it, such as Q4_K_M or 4bit."
+  quantisation: String!
+  sourceRepository: String!
+  "The commit of the repository that the file list is from: 40 lower-case hexadecimal characters."
+  revision: String!
+  "The sum of the sizes of the files."
+  sizeBytes: Float!
+  "In path order."
+  files: [ModelFile!]!
+}
+
+"A file of a variant. A pull verifies it against sha256 (PULL-005)."
+type ModelFile {
+  path: String!
+  sizeBytes: Float!
+  "64 lower-case hexadecimal characters."
+  sha256: String!
+}
+
+"An alias and the model that it points at now (LIBM-007, SEL-003)."
+type ModelAlias {
+  alias: String!
+  model: String!
 }
 
 # The use of the AI agent programs (R-135; AIS-018 to AIS-024; K8 Section 4 agentUsage).
@@ -3742,9 +3997,23 @@ type Query {
   "Each device whose daemon sent a tool inventory, by device name (byte order). tool: only the devices where that tool is usable. buildTarget: only the devices with that Rust target. A name the hub does not know matches no device (CAP-030). Open to a read key."
   capabilities(tool: String, buildTarget: String): [DeviceCapabilities!]!
 
+  # The device policy of a compute node (CMP-002, CAP-010 to CAP-012; compute plan task L1-5). Waits for a ruling: R-335.
+  "The device policy of each device, by device name (byte order), with whether it takes model work now and why not. A device with no policy of its own has the defaults. Open to a read key."
+  devicePolicies: [DevicePolicy!]!
+
   # The use of the AI agent programs (R-135; AIS-020, AIS-021, AIS-024)
   "The use of the AI agent programs (Claude Code, Codex) on the devices whose daemon sends it, summed by the dimensions of by over the UTC days of filter (default: the 30 days that end today), with an estimate of the cost from public list prices and each daemon's usage state. by empty: one row of everything. VALIDATION for a bad deviceId, repository or day, a first day after the last, more than 366 days, or more than 20000 groups before the rows are cut to 1000. Open to a read key."
   agentUsage(filter: AgentUsageFilter, by: [AgentUsageDimension!]! = []): AgentUsage!
+
+  # The model library (compute plan L1-4; R-343)
+  "Every model of the library in name order, with its variants and aliases (SEL-005). Open to a read key."
+  libraryModels: [LibraryModel!]!
+  "The model of this name, alias or name:tag; null when there is none. Open to a read key."
+  libraryModel(name: String!): LibraryModel
+  "The Hugging Face organisations from which a variant can come, in name order (LIBM-003). Open to a read key."
+  approvedModelSources: [String!]!
+  "How the publisher of a base model gets onto the approved sources. Open to a read key."
+  modelPublisherApproval: ModelPublisherApproval!
   # The single sessions of the AI agent programs (AIS-025, AIS-026)
   "The single sessions that filter admits (default: the 30 days that end today), the newest last use first, each with its sums over those days and the estimate of its cost. At most first (1 to 200) sessions; sessionsLeftOut counts the rest. VALIDATION for a bad filter or first. Open to a read key."
   agentSessions(filter: AgentUsageFilter, first: Int! = 50): AgentSessions!
@@ -3934,6 +4203,10 @@ type Mutation {
   "Login or browser token only (D-23, R-100)."
   setRetention(subject: RetentionSubject!, days: Int!): RetentionPeriod!
 
+  # The device policy of a compute node (CAP-010 to CAP-012). Waits for a ruling: R-335.
+  "Replaces the device policy of a device. It sets no switch: the one switch \"takes work\" stays at the machine (USE-004, OD-C8). VALIDATION names the field out of range; NOT_FOUND for an unknown device. Login or browser token only (R-335), until a key permission for the device policy exists."
+  setDevicePolicy(deviceId: ID!, input: DevicePolicyInput!): DevicePolicy!
+
   # Phase 3: builds (WP-36, R-107)
   "One queued job for each target; VALIDATION for a version that is not new (BLD-001, BLD-002). Login or browser token only (D-23, R-107)."
   createRelease(version: String!, commit: String!, targets: [BuildTarget!]!): Release!
@@ -4113,6 +4386,16 @@ type Mutation {
   # The catalogue (HOST-047, R-234; task H38)
   "Asks for the install of an entry of the catalogue on a device. The answer is a refusal with a fixed reason until task H6 exists (INSTALL_NOT_BUILT); an entry with the mark ENGINE_SOCKET is never installed (R-247). Before that reason: a shell needs a person signed in to the Anima app in a web browser (SHELL_NEEDS_PERSON, OD-HOST-54); a generated entry from anything but that app needs a passed test on a machine with its image (GENERATED_NOT_TESTED), and each generated entry needs digest, the digest of its image (GENERATED_NEEDS_DIGEST, OD-HOST-50). No machine is reached, nothing is kept and no audit entry is written. VALIDATION for a deviceId that is not an ID of a device. Open to a write API key and an AI agent (R-234)."
   installCatalogueEntry(entryId: String!, deviceId: ID!, digest: String): CatalogueInstall!
+
+  # The model library (compute plan L1-4; R-343)
+  "Reads a Hugging Face repository (organisation/name) of an approved organisation and stores its model and its variants with the size and SHA-256 value of each file (LIBM-002 to LIBM-005). name: the model name; default from the repository name. A variant of the same tag is replaced. With modelPublisherApproval BASE_MODEL, the organisation of the base model joins the approved sources when a person adds the model; when an API key or an agent adds it, the organisation stays out and the audit entry says so. VALIDATION on repository for an organisation that is not approved (the hub reads nothing then), a private or gated repository, or one with no GGUF, MLX or safetensors files; on name for a bad name or an alias. NOT_FOUND when the repository does not exist; UNAVAILABLE when Hugging Face does not answer."
+  addLibraryModel(repository: String!, name: String): LibraryModel!
+  "Points an alias at a model (name, alias or name:tag), in place of the model that it pointed at (SEL-003). VALIDATION on alias for a bad alias or the name of a model; NOT_FOUND for an unknown model."
+  setModelAlias(alias: String!, model: String!): ModelAlias!
+  "Adds a Hugging Face organisation to the approved sources (LIBM-003) and returns the list. An organisation that is there already, in any case, changes nothing. VALIDATION on organisation for a bad name. FORBIDDEN for an agent. Login or browser token only (D-23, R-343)."
+  addApprovedModelSource(organisation: String!): [String!]!
+  "Changes how the publisher of a base model gets onto the approved sources. FORBIDDEN for an agent. Login or browser token only (D-23, R-343)."
+  setModelPublisherApproval(mode: ModelPublisherApproval!): ModelPublisherApproval!
 }
 
 type Subscription {

@@ -15,6 +15,7 @@ members = [
     "crates/release-record",
     "crates/redaction",
     "crates/compose-rules",
+    "crates/power",
     "crates/catalogue",
     "crates/anima-applications",
     "crates/anima-cli",

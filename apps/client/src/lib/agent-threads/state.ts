@@ -11,6 +11,8 @@ export type ThreadState =
   | 'may_wait'
   /** The agent ended its turn and the person did not open the thread since. */
   | 'your_turn'
+  /** A program that the runner starts has not given its first answer yet (TH97). */
+  | 'starting'
   /** The file changed in the last 2 minutes and the turn is open. */
   | 'working'
   /** The turn ended and the person saw it, or it ended more than a day ago. */
@@ -41,6 +43,8 @@ export function threadState(row: ThreadRow, now: Date, seen: Seen): ThreadState 
   switch (row.tail) {
     case 'asks':
       return 'asks';
+    case 'starting':
+      return 'starting';
     case 'running':
       return 'working';
     case 'turn_ended':
@@ -67,6 +71,7 @@ export const STATE_MARKS: Readonly<Record<ThreadState, { readonly words: string;
   asks: { words: 'Asks you', icon: 'carbon:notification', detail: 'The program waits for your answer to its request.' },
   may_wait: { words: 'May wait for you', icon: 'carbon:notification', detail: 'A tool call has had no result for a minute. It runs long, or it waits for your approval. The session file cannot tell which.' },
   your_turn: { words: 'Your turn', icon: 'carbon:notification', detail: 'The agent ended its turn. It waits for your next prompt.' },
+  starting: { words: 'Starting', icon: 'carbon:activity', detail: 'The program starts and has not given its first answer yet.' },
   working: { words: 'Working', icon: 'carbon:activity', detail: 'The session file changed in the last 2 minutes.' },
   done: { words: 'Done', icon: 'carbon:checkmark', detail: 'The agent ended its turn.' },
   stopped: { words: 'Stopped', icon: 'carbon:pause', detail: 'The turn was stopped.' },
@@ -83,7 +88,7 @@ const GROUP_TITLES: Readonly<Record<GroupKey, string>> = { needs: 'Needs you', p
 /** A thread that needs the person stays in "Needs you", and one that works in "Working"; a pinned thread is next (TH46). */
 function groupOf(state: ThreadState, pinned: boolean): GroupKey {
   if (needsYou(state)) return 'needs';
-  if (state === 'working') return 'working';
+  if (state === 'working' || state === 'starting') return 'working';
   return pinned ? 'pinned' : 'earlier';
 }
 
@@ -131,7 +136,7 @@ export function orderedThreads(rows: readonly ThreadRow[], now: Date, seen: Seen
   return entries;
 }
 
-/** How many threads need the person: the count on the item Threads of the bar (THR-057). */
+/** How many threads need the person: the count on the item Code of the bar (THR-057). */
 export function needsYouCount(rows: readonly ThreadRow[], now: Date, seen: Seen): number {
   return rows.filter((row) => needsYou(threadState(row, now, seen))).length;
 }

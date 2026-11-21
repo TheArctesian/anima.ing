@@ -6,6 +6,12 @@ import NewThread from '../view/NewThread.svelte';
 import type { CallResult } from './live.svelte';
 import type { Action } from './run';
 
+/** The control that the label with `text` names, as a screen reader finds it. */
+function byLabel<T extends HTMLElement>(text: string): T | null {
+  const label = [...document.querySelectorAll('label')].find((each) => each.textContent.trim() === text);
+  return label === undefined ? null : document.getElementById(label.htmlFor) as T | null;
+}
+
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
   animate: (await import('$lib/motion/engine.fixture')).fakeRun,
@@ -43,8 +49,8 @@ it('THR-046: a folder whose files run commands by themselves shows its notice be
   const started: string[] = [];
   app = mount(NewThread, { target: document.body, props: { open: true, onStart, onStarted: (thread: string) => started.push(thread), onClose: () => undefined } });
   flushSync();
-  const folder = document.querySelector<HTMLInputElement>('input[placeholder="/Users/you/project"]');
-  const prompt = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="First prompt"]');
+  const folder = byLabel<HTMLInputElement>('Folder');
+  const prompt = byLabel<HTMLTextAreaElement>('First prompt');
   if (folder === null || prompt === null) throw new Error('the dialog has its fields');
   type(folder, '/tmp/project');
   type(prompt, 'Hello');
@@ -71,8 +77,8 @@ it('THR-046: a folder check that fails is said and does not stop the start; the 
   };
   app = mount(NewThread, { target: document.body, props: { open: true, onStart, onStarted: () => undefined, onClose: () => undefined } });
   flushSync();
-  const folder = document.querySelector<HTMLInputElement>('input[placeholder="/Users/you/project"]');
-  const prompt = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="First prompt"]');
+  const folder = byLabel<HTMLInputElement>('Folder');
+  const prompt = byLabel<HTMLTextAreaElement>('First prompt');
   if (folder === null || prompt === null) throw new Error('the dialog has its fields');
   type(folder, '/tmp/a');
   type(prompt, 'Hello');

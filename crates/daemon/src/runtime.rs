@@ -1,5 +1,6 @@
 //! `anima-daemon run`: four tasks and the clock. One samples every 2 seconds and hands points
-//! over; one probes the tool inventory at start and every 15 minutes (CAP-027); one reads the
+//! over; one probes the tool inventory and reads the hardware values at start and every 15 minutes
+//! (CAP-027, CAP-032); one reads the
 //! session files of the AI agent programs at start and every 15 minutes (AIS-018); the other
 //! keeps the buffer and pushes every 10 seconds, so a slow hub, probe or read never delays
 //! sampling (MET-014, K8 Section 7). This is the I/O edge: clock, sleep, signals.
@@ -32,7 +33,7 @@ use crate::sampling::Sampler;
 use crate::sampling::batteries::BatteryWatch;
 use crate::sampling::drives::DriveWatch;
 use crate::sampling::gpu::Discovery;
-use crate::sampling::inventory::InventoryWatch;
+use crate::sampling::inventory::{InventoryWatch, Watch as Announced};
 use crate::token_store::{Credential, TokenStore, TokenStoreError};
 use agent_usage::{count, counting};
 use link_wait::LinkWatch;
@@ -71,6 +72,12 @@ pub enum RunError {
     /// `anima-local-hub` enrols the daemon again at its next start (HMD-046, HM-T35).
     #[error("the hub refused the token; it is deleted, and the next start of the hub enrols again")]
     TokenRefused,
+    /// As [`RunError::TokenRefused`], but the delete of the token waits for the person in the
+    /// Keychain (R-322), so the token is still stored.
+    #[error(
+        "the hub refused the token; it is not deleted yet: this computer's daemon needs you to allow it in the Keychain"
+    )]
+    TokenRefusedKept,
 }
 
 /// Why the push loop ended.
@@ -177,16 +184,34 @@ async fn prepare(
     let hub = HubClient::reaching(config.hub.reach(), &socket, TIMEOUT)?;
     Ok((
         Pusher::new(hub, config.device, credential, store)
-            .with_keys(Keeper::open(KeyStore::open(home))),
+            .with_keys(Keeper::open(KeyStore::open(home)))
+            .with_marks(home.clone()),
         config.device,
         link,
     ))
 }
 
-/// Deletes the token that the hub refused; the key cache went with the refusal (R-147).
+/// Deletes the token that the hub refused; the key cache went with the refusal (R-147). A
+/// delete that waits for the person in the Keychain is logged and marked for the app, and the
+/// run ends as for any refused token: the token stays until a later delete or enrolment.
 fn forget_refused(home: &Home) -> RunError {
-    match TokenStore::open(home).forget() {
+    refusal_end(TokenStore::open(home).forget(), || {
+        if let Err(error) = crate::keychain_wait::mark(home, true) {
+            report::keychain_mark_refused(&error);
+        }
+    })
+}
+
+/// The end of a run whose token the hub refused, from `forgot`, the delete of that token;
+/// `mark` puts the mark for the app when the delete waits for the person.
+fn refusal_end(forgot: Result<(), TokenStoreError>, mark: impl FnOnce()) -> RunError {
+    match forgot {
         Ok(()) => RunError::TokenRefused,
+        Err(TokenStoreError::KeychainWaits) => {
+            report::forget_waits();
+            mark();
+            RunError::TokenRefusedKept
+        }
         Err(error) => error.into(),
     }
 }
@@ -230,11 +255,12 @@ async fn sample(mut source: Source, events: mpsc::Sender<Event>) {
     }
 }
 
-/// At start and every 15 minutes: probes the tools and hands the inventory over when it
-/// changed or went 24 hours unannounced (CAP-027). A probe run waits for the one before; a slow
+/// At start and every 15 minutes: probes the tools and reads the hardware values, and hands
+/// each over when it changed or went 24 hours unannounced (CAP-027). A probe run waits for the one before; a slow
 /// one delays the next.
 async fn probe(platform: Platform, events: mpsc::Sender<Event>) {
     let mut watch = InventoryWatch::new();
+    let mut hardware = Announced::new();
     let mut ticks = interval(PROBE_EVERY);
     ticks.set_missed_tick_behavior(MissedTickBehavior::Delay);
     loop {
@@ -242,6 +268,12 @@ async fn probe(platform: Platform, events: mpsc::Sender<Event>) {
         let read = readers::inventory(platform).await;
         if let Some(changed) = watch.changed(read, std::time::Instant::now())
             && events.send(Event::Inventory(changed)).await.is_err()
+        {
+            return;
+        }
+        let read = readers::hardware(platform).await;
+        if let Some(changed) = hardware.changed(read, std::time::Instant::now())
+            && events.send(Event::Hardware(changed.clone())).await.is_err()
         {
             return;
         }

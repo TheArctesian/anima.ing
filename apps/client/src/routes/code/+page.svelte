@@ -14,5 +14,5 @@
 {#if here}
   <ThreadsScreen {store} />
 {:else}
-  <EmptyState title="Threads are in the desktop application" line="This page reads the sessions of Claude Code and Codex on the computer where the application runs." />
+  <EmptyState title="Anima Code is in the desktop application" line="This page reads the sessions of Claude Code and Codex on the computer where the application runs." />
 {/if}

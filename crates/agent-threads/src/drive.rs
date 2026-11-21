@@ -22,6 +22,7 @@ mod request;
 mod session_rule;
 #[cfg(test)]
 mod tests;
+mod turn_facts;
 
 pub use account::{AccountFacts, Limit, Private};
 pub use claude_in::ClaudeInput;
@@ -30,6 +31,7 @@ pub use codex_in::{CodexInput, CodexMethod, CodexTurn};
 pub use codex_out::CodexDecoder;
 pub use launch::{Effort, Invocation, Launch, Mode, Model, Program, SessionStart};
 pub use request::{Answer, ProgramRequestId, Question, Request, RequestKind};
+pub use turn_facts::{ModelChoice, PlanStep, StepState, Usage};
 
 use serde::{Deserialize, Serialize};
 
@@ -122,6 +124,25 @@ pub enum DriveEvent {
         id: ProgramRequestId,
         ok: bool,
         result: serde_json::Value,
+    },
+    /// The whole diff of the running turn so far (Codex, TH101).
+    TurnDiff {
+        turn: Option<String>,
+        diff: String,
+    },
+    /// The plan of the running turn (Codex, TH102).
+    Plan {
+        explanation: Option<String>,
+        steps: Vec<PlanStep>,
+    },
+    /// The use of tokens of the thread (TH103).
+    Usage {
+        usage: Usage,
+    },
+    /// The models that the program offers (TH104). The runner keeps the newest list of each
+    /// program; it is not an update of a thread.
+    Models {
+        models: Vec<ModelChoice>,
     },
     TurnEnded {
         outcome: TurnOutcome,

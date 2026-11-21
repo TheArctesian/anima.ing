@@ -21,8 +21,19 @@ use anima_daemon::units::step::{STEP_DEADLINE, run_step};
 use anima_daemon::units::{self, plan::Target};
 use zeroize::Zeroizing;
 
-#[tokio::main]
-async fn main() -> ExitCode {
+fn main() -> ExitCode {
+    // The fixed modes (the Linux launcher first, then the fetch child) run before any
+    // runtime or thread; each never returns.
+    #[cfg(unix)]
+    anima_daemon::model::modes::dispatch();
+    // The same runtime as `Builder::new_multi_thread().enable_all()`.
+    match tokio::runtime::Runtime::new() {
+        Ok(runtime) => runtime.block_on(daemon()),
+        Err(error) => failure(&error),
+    }
+}
+
+async fn daemon() -> ExitCode {
     #[cfg(windows)]
     let _ = anima_windows::console::attach_parent();
     start_log();
