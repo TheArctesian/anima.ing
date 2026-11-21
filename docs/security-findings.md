@@ -3190,6 +3190,8 @@ The correction: Not made. Both lines stay as they are (KillMode is held by THR-1
 
 State: Open. Found on 2026-11-21 at the merge of dev `b623ae977` into `compute/l1-stack`.
 
+Note: hm-t20 sets `KillMode=process` in both units, so at a stop systemd ends only the main process of the daemon; the model servers in the `anima-model-*` cgroups survive unless the daemon ends them. Today `stop_all` at the stop and the sweep at the start are not wired, but nothing starts a server either. The rule is R-NEW-killmodeprocess.
+
 ### SF-NEW-l1workzip: A read error of a zip entry was reported as a full disk. Low
 
 Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001; R-NEW-archiverejected.
