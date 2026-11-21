@@ -101,7 +101,10 @@ async fn ais_022_the_devices_of_one_key_are_one_account_with_the_newest_limits(p
         .clone();
     assert_eq!(accounts.len(), 1, "{answer}");
     assert_eq!(accounts[0]["shortKey"], "3f9a0c55");
-    assert_eq!(accounts[0]["address"], ADDRESS, "the person sees the address");
+    assert_eq!(
+        accounts[0]["address"], ADDRESS,
+        "the person sees the address"
+    );
     assert_eq!(accounts[0]["plan"], "Pro");
     assert_eq!(
         accounts[0]["limits"][0]["usedPercent"], 35,
@@ -149,7 +152,10 @@ async fn thr_149_an_address_that_is_not_one_is_refused(pool: PgPool) {
     let pusher = Pusher::new(&daemons, PVE_01, now).await;
     let mut bad = account(SHARED, 20);
     bad["address"] = json!("person 9b2e at example.com");
-    assert_eq!(push(&pusher, 0, json!([bad])).await.0, StatusCode::BAD_REQUEST);
+    assert_eq!(
+        push(&pusher, 0, json!([bad])).await.0,
+        StatusCode::BAD_REQUEST
+    );
 }
 
 /// The address is personal data: deleting the device deletes it (DEV-015).
@@ -205,7 +211,11 @@ async fn thr_149_a_list_that_no_longer_names_the_source_deletes_its_address(pool
         .unwrap();
     assert_eq!(rows, 0);
     let answer = daemons.operate(ACCOUNTS, json!({})).await;
-    assert_eq!(answer["data"]["agentUsage"]["accounts"], json!([]), "{answer}");
+    assert_eq!(
+        answer["data"]["agentUsage"]["accounts"],
+        json!([]),
+        "{answer}"
+    );
 }
 
 /// Each address that the wire takes is stored: the database checks only its length, so a
@@ -226,9 +236,16 @@ async fn thr_149_each_address_that_the_wire_takes_is_stored(pool: PgPool) {
         let mut one = account(SHARED, 20);
         one["address"] = json!(address);
         let step = i64::try_from(step).unwrap();
-        assert_eq!(push(&pusher, step, json!([one])).await.0, StatusCode::OK, "{address}");
+        assert_eq!(
+            push(&pusher, step, json!([one])).await.0,
+            StatusCode::OK,
+            "{address}"
+        );
         let answer = daemons.operate(ACCOUNTS, json!({})).await;
-        assert_eq!(answer["data"]["agentUsage"]["accounts"][0]["address"], address);
+        assert_eq!(
+            answer["data"]["agentUsage"]["accounts"][0]["address"],
+            address
+        );
     }
 }
 
@@ -257,13 +274,22 @@ async fn thr_149_the_hub_logs_no_address(pool: PgPool) {
     );
     let mut bad = account(SHARED, 20);
     bad["address"] = json!("person-9b2e@example.com>");
-    assert_eq!(push(&pusher, 1, json!([bad])).await.0, StatusCode::BAD_REQUEST);
+    assert_eq!(
+        push(&pusher, 1, json!([bad])).await.0,
+        StatusCode::BAD_REQUEST
+    );
     let answer = daemons.operate(ACCOUNTS, json!({})).await;
-    assert_eq!(answer["data"]["agentUsage"]["accounts"][0]["address"], ADDRESS);
+    assert_eq!(
+        answer["data"]["agentUsage"]["accounts"][0]["address"],
+        ADDRESS
+    );
     tracing::error!("capture control line");
 
     let text = String::from_utf8(capture.0.lock().unwrap().clone()).unwrap();
-    assert!(text.contains("capture control line"), "the log was captured");
+    assert!(
+        text.contains("capture control line"),
+        "the log was captured"
+    );
     assert!(!text.contains("person-9b2e"), "an address reached the log");
 }
 

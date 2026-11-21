@@ -7,8 +7,7 @@
 use base64::Engine as _;
 use chrono::DateTime;
 use daemon_core::agent_usage::account::{
-    Account, Address, Limit, MAX_ACCOUNTS, MAX_LIMITS, SALT_BYTES, account_key, is_plan,
-    is_window,
+    Account, Address, Limit, MAX_ACCOUNTS, MAX_LIMITS, SALT_BYTES, account_key, is_plan, is_window,
 };
 use daemon_core::wire::BatchAccount;
 

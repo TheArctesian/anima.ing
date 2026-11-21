@@ -205,5 +205,8 @@ async fn thr_149_trace_logs_hold_no_address_of_an_account() {
         .iter()
         .any(|seen| seen.body.to_string().contains(ADDRESS));
     assert!(sent, "the address went to the hub");
-    assert!(!LOG.text().contains("person-e4c1"), "an address reached the log");
+    assert!(
+        !LOG.text().contains("person-e4c1"),
+        "an address reached the log"
+    );
 }

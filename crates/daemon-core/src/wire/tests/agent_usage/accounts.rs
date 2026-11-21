@@ -116,7 +116,11 @@ fn thr_149_an_address_that_is_not_one_does_not_decode() {
     let text = format!(r#"{{"source":"codex","key":"{KEY}","address":"{ADDRESS}"}}"#);
     let one: BatchAccount = serde_json::from_str(&text).unwrap();
     assert_eq!(one.address.as_ref().map(Address::reveal), Some(ADDRESS));
-    assert_eq!(serde_json::to_string(&one).unwrap(), text, "the same text back");
+    assert_eq!(
+        serde_json::to_string(&one).unwrap(),
+        text,
+        "the same text back"
+    );
 }
 
 /// THR-149 point 7: a log line or an error made from an account cannot hold its address.
