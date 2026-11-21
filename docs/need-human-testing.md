@@ -3202,8 +3202,8 @@ window, a real Claude Code thread, and a restart of the installed daemon.
    with its pin, archive and title, and that the session files of Claude Code or Codex stay on disk. Confirm.
    Expected: the thread leaves the list. In a terminal, `ls ~/.claude/projects/*/` (or `~/.codex/sessions/`) still
    shows its session file.
-5. Open a thread that runs. Expected: Remove is off, with the line "Stop the thread first to remove it." From a
-   terminal, `anima agents remove <its ID>` answers "That thread runs: stop it first, then remove it from the list."
+5. Open a thread that runs. Expected: Remove is off, with the line "The program of this thread still runs: end the program first to remove it." From a
+   terminal, `anima agents remove <its ID>` answers "The program of that thread still runs: stop it first, then remove it from the list."
 6. From inside a Claude Code thread, ask it to run `anima agents pin <the ID of a thread>`. Expected: "Only the person
    can answer a request, raise the limit, start a thread or change the list of threads: this call came from a process
    of an agent." The pin does not change.

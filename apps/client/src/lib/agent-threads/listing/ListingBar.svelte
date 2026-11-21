@@ -70,7 +70,7 @@
     aria-describedby={running ? 'listing-running' : undefined}
     {busy}>Remove</FormButton
   >
-  {#if running}<span class="why" id="listing-running">Stop the thread first to remove it.</span>{/if}
+  {#if running}<span class="why" id="listing-running">The program of this thread still runs: end the program first to remove it.</span>{/if}
   {#if problem !== null && !renaming && !removing}<p class="problem" role="alert">{problem}</p>{/if}
 </div>
 

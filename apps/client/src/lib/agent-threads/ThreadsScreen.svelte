@@ -12,6 +12,7 @@
   import ThreadList from './view/ThreadList.svelte';
   import ThreadView from './view/ThreadView.svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
+  import Icon from '$lib/icons/Icon.svelte';
   import type { CallResult, LiveThreads } from './live/live.svelte';
   import type { Answer } from './live/run';
   import LimitDialog from './view/LimitDialog.svelte';
@@ -29,7 +30,7 @@
   let program = $state<Program | null>(null);
   let search = $state('');
   let toolsOpen = $state(false);
-  /** The group "Earlier" is folded at first (THR-056); a search shows what it holds. */
+  /** The group "Earlier" is folded at first (THR-056); a search shows what it holds, and the archived threads open it. */
   let earlierChosen = $state(false);
   const earlierOpen = $derived(earlierChosen || search.trim() !== '');
   let field = $state<HTMLInputElement>();
@@ -118,12 +119,18 @@
   <PageHeader title="Threads" detail="The sessions of Claude Code and Codex on this computer. Threads started here are driven on this computer only.">
     {#snippet actions()}
       {#if live !== null && (store.archived || store.archivedCount > 0)}
-        <FormButton onclick={() => (store.archived = !store.archived)}>{store.archived ? 'Back to the threads' : `Archived (${String(store.archivedCount)})`}</FormButton>
+        <FormButton
+          onclick={() => {
+            store.archived = !store.archived;
+            // The archived threads are mostly in "Earlier": folded, the view would show one line.
+            if (store.archived) earlierChosen = true;
+          }}>{store.archived ? 'Back to the threads' : `Archived (${String(store.archivedCount)})`}</FormButton>
       {/if}
-      {#if live !== null}<FormButton tone="primary" icon="carbon:add" onclick={() => (starting = true)} disabled={live.linked === false}>New thread</FormButton>{/if}
+      {#if live !== null}<FormButton tone="primary" icon="carbon:add" onclick={() => (starting = true)} disabled={live.linked === false} aria-describedby={live.linked === false ? 'threads-link' : undefined}>New thread</FormButton>{/if}
     {/snippet}
   </PageHeader>
-  {#if linkWords !== null}<p class="link" role="status">{linkWords}</p>{/if}
+  <!-- Why no thread starts, or why its corrections are not in force: a warning, not a description of the page. -->
+  {#if linkWords !== null}<p class="link" id="threads-link" role="status"><Icon name="carbon:warning" size="sm" />{linkWords}</p>{/if}
   {#if store.rows === null && store.listProblem !== null}
     <ErrorState message={store.listProblem} onRetry={() => void store.loadList()} />
   {:else if store.rows === null}
@@ -221,8 +228,13 @@
   }
 
   .link {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
     margin: 0;
-    color: var(--text-secondary);
+    padding-inline-start: var(--space-2);
+    border-inline-start: var(--border-focus) solid var(--status-warning);
+    color: var(--text-primary);
     font-size: var(--text-sm);
   }
 
