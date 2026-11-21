@@ -2,14 +2,16 @@
 //! the token is kept, and the local reader `anima-daemon key read` (K-E5 Section 2.1, R-147).
 //!
 //! Pure core: [`cache`] decides what to drop and what to fetch from the hub's answer and the
-//! time, and [`record`] is the stored form. I/O at the edge: [`store`] (Keychain or a 0600
-//! file) and [`keeper`] (the store and the hub). A cache is a copy: it holds one version of each
+//! time, `pending` what the store owes after the Keychain waited, and [`record`] is the stored
+//! form. I/O at the edge: [`store`] (Keychain or a 0600 file) and [`keeper`] (the store and
+//! the hub). A cache is a copy: it holds one version of each
 //! key, follows the hub at each push, and is deleted after 7 days with no answer that named the
 //! keys, on a refused token, and when the daemon leaves the machine. No type that holds a value
 //! implements `Debug` or `Display`, and no log line holds a value or a key name (LOG-007).
 
 pub mod cache;
 pub mod keeper;
+mod pending;
 pub mod record;
 pub mod store;
 

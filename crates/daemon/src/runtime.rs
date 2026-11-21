@@ -72,6 +72,12 @@ pub enum RunError {
     /// `anima-local-hub` enrols the daemon again at its next start (HMD-046, HM-T35).
     #[error("the hub refused the token; it is deleted, and the next start of the hub enrols again")]
     TokenRefused,
+    /// As [`RunError::TokenRefused`], but the delete of the token waits for the person in the
+    /// Keychain (R-322), so the token is still stored.
+    #[error(
+        "the hub refused the token; it is not deleted yet: this computer's daemon needs you to allow it in the Keychain"
+    )]
+    TokenRefusedKept,
 }
 
 /// Why the push loop ended.
@@ -178,16 +184,34 @@ async fn prepare(
     let hub = HubClient::reaching(config.hub.reach(), &socket, TIMEOUT)?;
     Ok((
         Pusher::new(hub, config.device, credential, store)
-            .with_keys(Keeper::open(KeyStore::open(home))),
+            .with_keys(Keeper::open(KeyStore::open(home)))
+            .with_marks(home.clone()),
         config.device,
         link,
     ))
 }
 
-/// Deletes the token that the hub refused; the key cache went with the refusal (R-147).
+/// Deletes the token that the hub refused; the key cache went with the refusal (R-147). A
+/// delete that waits for the person in the Keychain is logged and marked for the app, and the
+/// run ends as for any refused token: the token stays until a later delete or enrolment.
 fn forget_refused(home: &Home) -> RunError {
-    match TokenStore::open(home).forget() {
+    refusal_end(TokenStore::open(home).forget(), || {
+        if let Err(error) = crate::keychain_wait::mark(home, true) {
+            report::keychain_mark_refused(&error);
+        }
+    })
+}
+
+/// The end of a run whose token the hub refused, from `forgot`, the delete of that token;
+/// `mark` puts the mark for the app when the delete waits for the person.
+fn refusal_end(forgot: Result<(), TokenStoreError>, mark: impl FnOnce()) -> RunError {
+    match forgot {
         Ok(()) => RunError::TokenRefused,
+        Err(TokenStoreError::KeychainWaits) => {
+            report::forget_waits();
+            mark();
+            RunError::TokenRefusedKept
+        }
         Err(error) => error.into(),
     }
 }
