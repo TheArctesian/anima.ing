@@ -1,21 +1,139 @@
 ---
 kind: Proposal
 state: Direction decided
-evidence: Version 3.1 (2026-11-20). The operator answered each open decision that was put to him: 36 on question cards (the four rulings that Section 1.3 names) and the last seven the same day (R-309); all relayed through the orchestrating session. No decision of his holds stage 1b (drive Claude Code and Codex on this computer); his standing rule stays, so code that starts an agent merges only after a separate security review of that code (the list of Section 6.2.1). The requirements THR-001 to THR-141 are not approved as a whole: a requirement is in force where a ruling names its decision. Parity with the inventory of T3 Code: 101 functions; 15 built on a branch, 3 partly built, 77 not started, 5 owned by a different document, 1 not copied. Built and pushed, not merged: tasks TH1 to TH5 and TH8 (they read and start no program). A different session builds stage 1b. Three separate security reads are recorded (28, 19 and 24 findings; Section 9). No reviewer read version 3.1. Risks that he accepted are in Section 8.2 with his words. Not designed: the store of the tokens of THR-131. Version 3.3 (2026-11-21): the ruling R-320, made overnight and not yet confirmed, frees task TH46 (pin, archive, rename, remove from the list) before his approval of Section 8; the rest of stage 4 still waits for it.
+evidence: Version 4.0, a draft (2026-11-21). The operator rejected the result of versions 1 to 3 on 2026-11-21 and ruled that the UI of T3 Code is copied "pretty much to a T" and that the function is named Code (Section 0; relayed). Section 0 corrects the order of the build, lists each wait as a question for him, and says which rulings hold. The text below Section 0 is the text of version 3.3 and still says Threads. Version 3.1 (2026-11-20). The operator answered each open decision that was put to him: 36 on question cards (the four rulings that Section 1.3 names) and the last seven the same day (R-309); all relayed through the orchestrating session. No decision of his holds stage 1b (drive Claude Code and Codex on this computer); his standing rule stays, so code that starts an agent merges only after a separate security review of that code (the list of Section 6.2.1). The requirements THR-001 to THR-141 are not approved as a whole: a requirement is in force where a ruling names its decision. Parity with the inventory of T3 Code: 101 functions; 15 built on a branch, 3 partly built, 77 not started, 5 owned by a different document, 1 not copied. Built and pushed, not merged: tasks TH1 to TH5 and TH8 (they read and start no program). A different session builds stage 1b. Three separate security reads are recorded (28, 19 and 24 findings; Section 9). No reviewer read version 3.1. Risks that he accepted are in Section 8.2 with his words. Not designed: the store of the tokens of THR-131. Version 3.3 (2026-11-21): the ruling R-320, made overnight and not yet confirmed, frees task TH46 (pin, archive, rename, remove from the list) before his approval of Section 8; the rest of stage 4 still waits for it.
 ---
 
 # Proposal: agent threads (the behaviour of T3 Code, as a native part of Anima)
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this proposal (PLN-005).
 
-Version: 3.3. Date: 2026-11-21.
+Version: 4.0 (draft). Date: 2026-11-21.
 Status: the header of this document holds the state (PLN-020).
 Map: [work-plan.md](../work-plan.md), categories Use and See, row 4.24 of [priorities.md](../plan/priorities.md).
-From: R-286, R-287, R-288, R-293, R-289, R-297, R-295, R-291.
-Identifiers: THR-001 to THR-141, OD-THR1 to OD-THR44 (each decided), tasks TH0 to TH100.
+From: R-286, R-287, R-288, R-293, R-289, R-297, R-295, R-291, R-NEW-codecopy, R-NEW-codename.
+Identifiers: THR-001 to THR-148, OD-THR1 to OD-THR44 (each decided), OD-THR45 to OD-THR59 (open, Section 0.5), tasks TH0 to TH100.
 Language: Simplified Technical English (design specification, Section 0).
 Mockup: [agent-threads/index.html](../mockup/agent-threads/index.html).
 Inventory of T3 Code: [t3-code-inventory.md](../research/agent-threads/t3-code-inventory.md) (a record; it adds no requirement).
+
+## 0. Version 4: the result was rejected, and what this version corrects
+
+This section is a draft. It is written before three of the four reports of Section 0.3 were complete; each place that waits for a report says so. Where this section and a later section do not agree, this section is correct.
+
+### 0.1 What the operator said on 2026-11-21
+
+The operator saw the page Threads on 2026-11-21 and rejected it. His words, relayed by the orchestrating session (not first-hand in the session that writes this):
+
+- "The t3 code implemntation is fucking terrible".
+- "You are missing so many feautres that it doesn't even bear any resemblence".
+- "the UI should be copied pretty much to a T".
+- The function is named "Code" ("anima code"), not Threads.
+
+R-NEW-codecopy and R-NEW-codename record these words.
+
+### 0.2 What was wrong, in plain words
+
+1. **The inventory did not look at the UI.** The record [t3-code-inventory.md](../research/agent-threads/t3-code-inventory.md) was read from the source for behaviour: which functions exist and how they work underneath. No reader looked at how T3 Code looks: its layout, its sizes, its parts, its words, its keys, its motion. So the proposal had a list of functions and no picture to copy.
+2. **The proposal read "copy" as "copy the functions".** R-286 holds his words "should copy every feature they have" and "completley emulate it". THR-001 and THR-002 then said: take the behaviour, not the code; use the tokens, the icons and the words of Anima. That made an Anima page that does some of what T3 Code does. It is not T3 Code.
+3. **The order of the build was from the bottom up.** Section 6 put the reader, the runner, the holder and the socket first, and the parts that a person sees (the composer with its pickers, projects in the sidebar, the diff panel, the terminal, the editor, the board) in stages 4 and 5.
+4. **The proposal made the visible parts wait for his approval.** Section 6.5 says of each task of stage 4 that it "waits for the approval of Section 8". Stage 5 has more waits. Section 0.5 lists each one. He had said "Build now".
+5. **The mockup was a drawing of an Anima page.** Frames 1 and 2 of [agent-threads/index.html](../mockup/agent-threads/index.html) show a settings-style page with a narrow list and a boxed reader. He approved them (R-296, OD-THR14) as the only picture that was put to him. No picture of T3 Code was put beside them.
+6. **The count of Section 1.1 called functions "built" that no person had seen.** Task TH4 says of itself: "No person saw it in a window; not compared with the mockup". About three of fifteen areas of T3 Code have code, and they are the three that he cannot see: the reader, the runner and the holder.
+7. **The orchestrating session reported the engine as the function.** The session that writes this gave it the count and the stage names that made that report possible.
+
+What is not wrong and stays: the engine. The reader of session files, the thread runner, the holder, the socket, the approvals, the security reads of that code and the rulings on reach, the hub and machines are what the copied UI runs on.
+
+### 0.3 The rule of the copy
+
+The reference is T3 Code at commit `c6ca01b` of `pingdotgg/t3code`. Four readers of a side session of the operator read it into the workspace folder `t3-ui-copy-2026-11-21/` (outside the repository):
+
+| Report | Subject | State when this draft was written |
+| --- | --- | --- |
+| 01 | The functions of T3 Code that the inventory missed | Not there yet |
+| 02 | The shell and the sidebar, exactly | Not there yet |
+| 03 | The chat thread and the composer, exactly | Not there yet |
+| 04 | The page of Anima today against 24 things that T3 Code has | Read. Of the 24: 1 is there, 8 are there in part, 15 are not there |
+
+- **THR-142.** The function is named Code in each client: the item of the navigation bar, the title of the page, the settings group, the notifications and the documents. The word Threads stays only for one conversation ("a thread"), as in T3 Code. The names in code (`agent-threads`, `anima agents`, the route `/threads`) change with the build, one branch at a time; OD-THR56 asks about the command line, because `anima code` is taken.
+- **THR-143.** The screens of Code are a copy of the UI of T3 Code at the reference commit: the layout, the sizes, the spacing, the parts of each screen, the states of each part, the words of the controls, the keys, the menus and the motion. A difference from T3 Code is a defect unless a row of Section 0.5 or a ruling permits it. The four reports are the measure, and the source at the reference commit decides where a report is silent.
+- **THR-144.** A function is "built" only when (1) a person can see and use it in the window of the application with a real agent program, and (2) a picture of it is put beside a picture of the same state of T3 Code at the same window size, and each difference is written down. Code with tests and no such pictures has the state "has code". The count of Section 1.1 and the table of Section 6.9 use these words from version 4.
+- **THR-145.** The order of the build is by what a person sees first (Section 0.4). Work on the engine is done when a visible slice needs it, and not before.
+- **THR-146.** The licence duties of Section 3.1 are met before a copied part merges: the notice file, the line at the head of each ported file, and the notices in the built application.
+- **THR-147.** The brand of T3 Code is replaced everywhere (Section 3.1). The copy is of the UI, not of the name.
+- **THR-148.** What Anima adds beyond T3 Code (Section 4.11, Section 4.12: the tree of threads, other machines, the five ideas, the board, the browser) is built after the copy of the screen that it changes, and it must not change the copied screens unless a ruling says so (OD-THR58).
+
+### 0.4 The order of the build: by what a person sees first
+
+This order replaces the order of Section 6. The numbers of the stages and of the tasks stay as names, because rulings and the mobile plan cite them. The slices are named C1 to C9. The content of C1 to C6 is from report 04 and from the inventory; the reports 01 to 03 can add parts and change sizes, and they can not move a visible part behind an engine part.
+
+| Slice | What a person sees | Tasks that it takes (old stage) | What the engine has today |
+| --- | --- | --- | --- |
+| C1 | The shell of T3 Code: the page fills the window; a sidebar with projects and their threads; the main area with the top bar of the thread; the empty screen of a new thread with the composer. The name Code. No page title, no boxed reader | TH4 and TH14 made again; TH46 (groups by project); TH60 (projects) | The list of threads, the folder of each thread, live states |
+| C2 | The chat thread: the messages of the person and of the agent as T3 Code draws them; full markdown; code blocks with colours, a language label and a copy button; the reply as it streams; reasoning; the work log of tool calls by kind; the end of a turn; the approval and the question in place; the plan card and the card of steps | TH8, TH15, TH48 (plan card, steps); the markdown of 1a made again | Entries from the session file and from the runner; approvals and questions work; a live edit has no patch yet |
+| C3 | Projects in the sidebar: add a folder as a project; threads under their project; the row of a thread with its state, its time and its menu; rename, archive, delete; the order and the fold of projects; search | TH40, TH46, TH60, TH61 | Rename, pin, archive and remove have code (branch `threads/list-marks`); no project exists as a thing |
+| C4 | The composer: a field that grows; the pickers of the program and the model, the effort, the mode of approvals and the plan mode as controls; send and stop; the queue and steer while a turn runs; images by paste and drop; the `@` menu of files and the `/` menu of commands; the context meter | TH14, TH47, TH48, TH67 (the file picker of `@`) | Send, stop and the model at the start work; the pickers are plain words; no queue, no attachments |
+| C5 | A new thread as in T3 Code: from the sidebar or a key, into the empty screen, with the project chosen, the branch and "local or worktree" chosen in the composer. The dialog "New thread" of today goes | TH40, TH41 (worktrees), the dialog of TH14 removed | A start with a typed folder path works |
+| C6 | The top bar and the panels of a thread: the diff of a turn and of the thread in its panel; the git actions (commit, push, pull request); the branch picker; "open in editor"; the terminal; the project scripts | TH42, TH43, TH44, TH45, TH49, TH68 | Nothing |
+| C7 | The command palette, the whole table of keys, the settings of Code, the notifications as T3 Code has them | TH6, TH69 in part, the keys of each stage | The count on the bar and the order of "needs you" have code |
+| C8 | Each other function of the inventory and of report 01 on this computer | TH62 to TH69 | — |
+| C9 | What T3 Code does not have: other machines (stages 2 and 3), the phone (stage 6), orchestration and machines (stages 7 and 8), the additions of Section 4.11 | TH20 to TH33, TH50 to TH52, TH70 to TH96 | The rulings and the design |
+
+Rules of the order:
+
+1. C1 and C2 come first and together, because they are the first two things that a person sees: the shape of the window and the conversation.
+2. A slice ends with the pictures of THR-144 and an entry in [need-human-testing.md](../need-human-testing.md). It does not end with a wait for him.
+3. A task of the engine that no slice needs yet is not built (the gates of TH16, the hub API of stage 2, the token store of Section 4.14).
+4. Code that starts or drives an agent, runs `git` or opens a terminal still gets a separate security read of the code before it merges: the standing rule of the operator. That is a read by a reviewer, not an approval by him (OD-THR48).
+
+### 0.5 Each place where the proposal made something wait for his approval, as a question for him
+
+He said "Build now". The proposal then wrote waits. This table has each of them as one question, with the recommendation of this document. A question about what the copy "to a T" means is in the same table. None is decided.
+
+| ID | Where the wait or the doubt is | What waits | The question for him | Recommendation |
+| --- | --- | --- | --- | --- |
+| OD-THR45 | THR-002; the tokens of Anima | The look of each screen | Does the copy take the look of T3 Code in full (colours of both themes, type sizes, radii, density, motion), or the layout of T3 Code in the colours and fonts of Anima? | In full, with only the brand replaced. The Anima look on a T3 layout is what was rejected. The fonts are in the answer of report 02 (each font has its own licence) |
+| OD-THR46 | THR-001: "get a ruling first" before a part of the code is copied | Each screen: without the source, a copy to a T is a guess | May the build port the components of T3 Code (its markup, its style rules, its strings) into the client of Anima, with the licence duties of Section 3.1? | Yes. Section 3.1 says what must be carried |
+| OD-THR47 | PLN-019; task TH4 "the mockup approved"; R-296 (1) | Each new screen waits for a mockup and its approval | Is T3 Code at the reference commit the mockup of each copied screen, so that no drawing is made and approved first? | Yes. The record of each screen is the pair of pictures of THR-144 |
+| OD-THR48 | Section 6 "A stage that drives an agent waits for the approval of this proposal and of the points of Section 8"; Section 6.5 "each waits for the approval of Section 8"; Section 1 | Stage 4: the folder picker, worktrees, checkpoints, the diff panel, edit from here, commit, push, pull request, images, steer, the queue, the plan card, find, the terminal | Do these merge after a separate security read of the code with no High finding open, as the rule of the night of 2026-11-20 said for the runner, with no approval of yours before each? | Yes, as a standing rule for this function |
+| OD-THR49 | Section 6.2 title: "before the launch if the operator approves Section 8 in time"; Section 7 title: "not approved" | Stage 1b. Its code is in `dev` since 2026-11-21 by the rule of that night, after seven reviews | Do you confirm that merge, and the overnight choices R-310, R-315, R-316 and R-320? | Confirm. Each is listed with its options in [rulings.md](../rulings.md) |
+| OD-THR50 | The header: "The requirements THR-001 to THR-141 are not approved as a whole" | Nothing is built against a requirement that is "in force"; each needs a ruling that names its decision | Do you want to approve requirements, or to judge the result in the window? | Judge the result. A requirement is in force when the slice that it belongs to is built; you reject what you see |
+| OD-THR51 | Section 6.6: "Each task that starts a program or opens a path to a machine has its own security read first"; TH62 "needs a ruling on AIS-022"; "more than one account needs a ruling on BOT-025" | Stage 5 on this computer: projects, the editor, terminal splits, scripts, more than one account of a program, the limits of an account | Is each function that T3 Code has on one computer built with no further ruling, also where an older document of Anima forbids it (BOT-025, AIS-022)? | Yes; the older text is changed by this answer, and each change is listed for you after it is made |
+| OD-THR52 | Section 6.6, guest links: "SEC-008 and RA-035 forbid a public link today, so it needs a ruling" | Guest links of T3 Code | Are guest links copied? They open a thread to a person with no account | Not in the first copy. It is the one function of T3 Code that a security rule of Anima forbids outright |
+| OD-THR53 | Section 6.4 (TH30 "Section 8 approved", TH31 and TH32 "held"); Section 6.7 (TH52 "held"); Section 6.8 "none is built for the merge train before the approval of this proposal, of Section 8 and of the reviews" | Stages 3, 6, 7 and 8: a start through the hub, prompts from the phone, orchestration, machines for an agent | You accepted these risks in R-292 and R-294. Do they still wait for an approval of yours, or only for their place in the order (after the copy, slice C9) and a security read? | Only the order and the read |
+| OD-THR54 | Section 11: [design-spec.md](../spec/design-spec.md) NAV-001 and AXT-049 change at "the approval of this proposal"; R-287 (3) | The item of the navigation bar in the design specification; the text of two other documents | Are these changes made now, with the name Code? | Yes |
+| OD-THR55 | R-293 and R-296 (6): the groups "Needs you", "Pinned", "Earlier" (folded) and "Working" | The sidebar of slice C1 and C3. T3 Code groups threads under projects | Your order of 2026-11-20 (threads that need you at the top, working at the bottom) or the sidebar of T3 Code exactly? | The sidebar of T3 Code exactly, and your order inside it only where T3 Code lets a person choose an order. Report 02 says what T3 Code offers |
+| OD-THR56 | THR-142. `anima code ls` and `anima code show` exist in the command line (the files of a repository of a project), and a project has a tab "Code" | The name of the commands of this function | The page is Code. Does the command stay `anima agents`, or does this function take `anima code` and the repository commands move? | The page and the product name are Code now; the command stays `anima agents` until you say. A moved command breaks scripts and the MCP tools of today |
+| OD-THR57 | R-296 (11): "Several repos per thread now" | Worktrees, checkpoints, the diff and the pull request of slice C5 and C6 | T3 Code has one project for a thread. Copy that first and add several repositories after, or build several from the start? | Copy first. Several repositories change the top bar, the diff panel and the branch picker, which are copied screens |
+| OD-THR58 | R-291, R-296 (9) and (12), R-297: the five ideas, the board, navigation in code, the browser, the tree of threads | What Anima adds beyond T3 Code | Are the additions built after the copy, in places that do not change a copied screen (THR-148)? | Yes |
+| OD-THR59 | Section 3.1; no page of licence notices was found in the application | The notices of T3 Code, and of the fonts and icons that the client has today, in the built application | May a page "Licences" be added to Settings, About? It is the one new screen that T3 Code does not give | Yes. The licence asks for the notice in each copy |
+
+### 0.6 The rulings of 2026-11-20 for this function: what holds and what the copy changes
+
+"Holds" means that the copy changes no word of it. Each ruling is in [rulings.md](../rulings.md).
+
+| Ruling | Subject | After 2026-11-21 |
+| --- | --- | --- |
+| R-286 | T3 Code as a native function; "should copy every feature they have" | Holds, and is made stronger. One part of it changes: it read "copy" as a copy of the functions, with THR-001 and THR-002. THR-143, THR-146 and THR-147 replace them |
+| R-287 | Its own item of the navigation bar, above Agent usage | The place holds. The name changes to Code (THR-142) |
+| R-288 | On the phone it takes the place of the centre button | Holds. The name on the phone is for the mobile stream to change; this document changes no phone text |
+| R-289 | "maximum agent reach is a good thing" | Holds |
+| R-290 | How Anima drives the programs: the daemon, the adapters, Full access by default, the environment of the login, the settings of a project with a notice, the tools of a tree, the soft limits | Holds. T3 Code shows the mode and the model as pickers in the composer; the defaults of this ruling are the first values of those pickers |
+| R-291 | Better than T3 Code where other tools are better | Holds, in a later place: after the copy (THR-148, OD-THR58) |
+| R-292 | What the hub may hold and do; who counts as the person | Holds |
+| R-293 | Threads that need him at the top, working at the bottom; a notification | The notification holds. The order is a question, because the sidebar of T3 Code groups by project (OD-THR55) |
+| R-294 | Machines for an agent | Holds |
+| R-295 | A server inside the subscription | Holds |
+| R-296 (1) | The mockup frames 1 and 2 approved | Changed. The frames show the rejected page. T3 Code is the reference (OD-THR47) |
+| R-296 (6) | The folded group "Earlier" | A question (OD-THR55) |
+| R-296 (11) | Several repositories for a thread from the start | A question (OD-THR57) |
+| R-296 (9), (10), (12) | The five ideas; one prompt to several agents; navigation in code, the board, the browser | Hold, after the copy (OD-THR58). T3 Code has its own file viewer and its own preview; where an addition is the same part as a copied one, the copied one is built |
+| R-296 (2) to (5), (7), (8), (13), (14) | Its own document; the catalogue entry of T3 Code; the session ID with the counts; the title that may leave the computer; no event log where the file is enough; live sessions on the phone; worktrees outside a synced folder; the shared folder or a clone | Hold |
+| R-297 | Sub agents on other machines and models; orchestration | Holds, in slice C9 |
+| R-309 | The last seven decisions (the allowance, the doubling of the limits, the Codex tokens, the title on the hub) | Holds |
+| His standing rule | Nothing that gives an agent a shell merges before its security review | Holds. Section 0.5 asks what "and his rulings" means for each stage (OD-THR48, OD-THR53) |
+
+Not rulings of his, and not changed by the copy: R-310, R-315, R-316 and R-320 were made overnight by sessions and still wait for him (OD-THR49).
 
 ## 1. What was decided, and what was not
 
@@ -29,6 +147,8 @@ What this decides:
 What this does not decide: each requirement below, each question of Section 10, and the time of the stages after stage 1. A standing rule of the operator applies: nothing that gives an agent a shell, or that lets a hub start a program on a machine, merges before its security review and his rulings. So no code that starts or drives an agent goes to the merge train before he approves this proposal and Section 8. Such code may be built on a branch that is marked held.
 
 ### 1.1 Parity with T3 Code, as a count
+
+Version 4: this count is of functions that have code. It is not a count of what a person sees. By THR-144 none of these rows is "built" until it is compared with T3 Code in a window. Section 0.2 says why the count misled.
 
 The table of Section 6.9 has one row for each function of the inventory, with its stage, its task and its state.
 
@@ -117,8 +237,29 @@ The inventory was read from the public repository `pingdotgg/t3code` at commit `
 
 The licence is MIT: "Copyright (c) 2026 T3 Tools Inc." MIT permits a copy of the code, also in a closed or commercial product, when the copyright notice and the licence text go with each substantial part.
 
-- **THR-001.** Anima must take the behaviour of T3 Code, not its code. A session that builds this function must not copy code of T3 Code into the repository. If a later task wants to copy a part, the task must name the files, keep the MIT notice of T3 Tools Inc. with them, and get a ruling first.
-- **THR-002.** Anima must not use the name "T3 Code", its logos and icons (`assets/`), its sounds (CC0, but not needed), or its fonts (Symbols Nerd Font, MesloLGS, KaTeX fonts: each under its own licence). The screen uses the tokens, the icons and the words of Anima. MIT covers copyright, not a trademark.
+Version 4 replaces THR-001 and THR-002 of versions 1 to 3 ("take the behaviour, not the code"; "use the tokens, the icons and the words of Anima"). The operator ruled that the UI is copied (R-NEW-codecopy). This is what the licence asks. It is a reading of the licence text by the session that writes this; no lawyer read it.
+
+**The one condition of the MIT licence**, in its words: "The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software." It asks nothing more: no payment, no permission, no name in the product.
+
+**When the condition applies.** A screen that is made again from a picture, with code of Anima, copies no part of the software, and the licence asks nothing for it. A component that is ported from the source of T3 Code (its markup, its style rules, its strings, its logic, also when it is written again in Svelte) is a copy of a part of the software. A copy "to a T" is made from the source, so each screen of Code counts as a copy.
+
+- **THR-001.** (Version 4.) What Anima must carry, and where:
+  1. **In the repository.** The file `LICENSE` of T3 Code, whole and unchanged, with its line "Copyright (c) 2026 T3 Tools Inc.", as `LICENSE-T3Code.txt` in the folder of the copied code in `apps/client/src/lib/`, beside the code. This is how the client carries `LICENSE-Carbon.txt`, `LICENSE-IBMPlex.txt` and `LICENSE-NerdFonts.txt` today. Under the text, two lines of Anima: the repository `pingdotgg/t3code` and the commit that was copied.
+  2. **At the head of each ported file.** One comment line: the path of the file in T3 Code, the commit, "MIT, Copyright (c) 2026 T3 Tools Inc.", and the name of the notice file. The licence does not ask for a line in each file. The line keeps the notice with each part, and it lets a later reader see which files are a copy.
+  3. **In each built copy.** The notice and the licence text must be in what a person receives: the desktop application, the client that a hub serves, and later the phone application. A search of the client found no page of licence notices, so the three licence files of today are in the source and not in the built application. A page "Licences" in Settings, About, with the text of each notice, closes this for T3 Code and for the fonts and icons of today (OD-THR59; task for the build of slice C1).
+  4. **For the parts that T3 Code took from others.** Its file `third-party-licenses.config.json` and its folder `third-party-licenses/spdx/` name them. When Anima copies one of these parts, the notice of that part comes with it: the GitHub gemoji data, the Office viewers of opencode, the Ionic keyboard assist, libghostty-vt and GhosttyKit (each MIT); Symbols Nerd Font Mono; the MesloLGS NF font (Apache-2.0: its licence text, and its NOTICE file if it has one); the KaTeX fonts (OFL-1.1); the two notification sounds (CC0-1.0: nothing must be carried). A package that T3 Code installs from a registry (its component library, its icon set, its editor of the composer, its diff view) is under its own licence; Anima installs the same package and carries its notice in the same page. The reports 02 and 03 name these packages.
+- The licence of Anima is AGPL-3.0-or-later. A part under MIT can be a part of a work under the AGPL. The MIT notice stays with the part; the whole is distributed under the AGPL.
+- The MIT licence gives no right to a trademark and no patent licence.
+
+- **THR-002.** (Version 4.) What is brand, and is replaced. The licence covers the copyright of the code; it does not let Anima present itself as T3 Code.
+  1. The names "T3 Code", "T3", "t3code" and "T3 Tools" in each text that a person sees: the title of the window, the sidebar head, the empty screens, the settings, the dialogs, the notifications, the update texts. The name of the function is Code (THR-142).
+  2. The T3 mark and each icon that is made from it: the folder `assets/` (`prod/logo.svg`, the `t3-black-*` and `black-*` files, the `dev` and `nightly` icons, the Icon Composer projects), the favicon, the icons of the web manifest and the splash screen in `apps/web/public`.
+  3. The identifiers of the product: the bundle identifier, the URL scheme, the names of its folders of settings and data, the name of its command (`t3`), the names of its packages.
+  4. Each address of T3 Tools: its web site, its documents, its update server, its relay, its telemetry, its community links. No request of Code goes to a server of T3 Tools.
+  5. The marketing site (`apps/marketing`) and its texts are not copied.
+  6. What is not brand and is copied: the layout, the sizes, the parts, the words of the controls ("New thread", "Commit", "Plan"), the keys, the icons of an icon set that has its own licence.
+  7. The notice of point 1 of THR-001 names T3 Tools Inc. That is the notice that the licence asks, not a use of the brand. A line such as "The screens of Code are based on T3 Code (MIT)" in the page of licences is true and permitted. No text says or suggests that T3 Tools made, checked or supports Anima.
+
 - The Claude Agent SDK that T3 Code uses is under the licence of Anthropic, not MIT. Section 4.4 does not use it.
 
 ### 3.2 How T3 Code works underneath (short)
@@ -509,7 +650,9 @@ So stage 1a knows "a turn ended" and guesses "may wait for an approval" from a t
 
 Each stage is useful alone. A stage that drives an agent waits for the approval of this proposal and of the points of Section 8 that it names.
 
-**The order of the build is by where the work runs, not by the number of a stage:** 1a (read, this computer), 1b (drive, this computer), 4 (each other function on this computer: worktrees, checkpoints, the diff of a turn, undo, commit, push, pull request, images, archive, delete, rename, steer, plan mode, find, a terminal), then 2 (read other machines), 3 (drive other machines), 7 (the tree of threads, orchestration, a chosen machine and model), 8 (servers inside the subscription), 5 (each other function of the inventory), 6 (the phone; its read part can follow stage 2). The numbers of the stages are names: rulings and the mobile plan cite them, so they do not change. Stage 4 comes before stages 2 and 3 because five functions marked must (the diff of a turn, checkpoints, archive, delete, images) are in it, and stage 3 has the heaviest security work. In the column "State", "Built (held)" means a branch that is pushed and not offered to the merge train.
+**Version 4: Section 0.4 replaces the order below.** The order is now by what a person sees first. The paragraph stays as the record of versions 1 to 3.
+
+**The order of the build (versions 1 to 3, replaced) is by where the work runs, not by the number of a stage:** 1a (read, this computer), 1b (drive, this computer), 4 (each other function on this computer: worktrees, checkpoints, the diff of a turn, undo, commit, push, pull request, images, archive, delete, rename, steer, plan mode, find, a terminal), then 2 (read other machines), 3 (drive other machines), 7 (the tree of threads, orchestration, a chosen machine and model), 8 (servers inside the subscription), 5 (each other function of the inventory), 6 (the phone; its read part can follow stage 2). The numbers of the stages are names: rulings and the mobile plan cite them, so they do not change. Stage 4 comes before stages 2 and 3 because five functions marked must (the diff of a turn, checkpoints, archive, delete, images) are in it, and stage 3 has the heaviest security work. In the column "State", "Built (held)" means a branch that is pushed and not offered to the merge train.
 
 ### 6.1 Stage 1a: the threads of this computer, read only (before the launch)
 
@@ -1156,6 +1299,7 @@ Not made in this version; each needs the ruling named.
 
 ## 13. History
 
+- 2026-11-21, version 4.0, a draft. The operator rejected the result (R-NEW-codecopy; relayed): the UI of T3 Code is copied "pretty much to a T", and the function is named Code (R-NEW-codename). Section 0 is new: what was wrong, THR-142 to THR-148, the order of the build by what a person sees, each wait of the proposal as a question for him (OD-THR45 to OD-THR59), and the rulings of 2026-11-20 that hold and that change. Section 3.1 says what the MIT licence of T3 Code asks and what is brand. THR-001 and THR-002 are replaced. The text below Section 0 is not yet renamed and not yet reordered.
 - 2026-11-20, version 3.1. The operator answered the last seven decisions (R-309; relayed): nothing past the allowance unless he turned more on (OD-THR38); the limits double with no end (OD-THR39); Anima may hold the tokens of a Codex login (OD-THR40; THR-131, with what bots.md holds on the terms of the vendor); a program can raise the plan when the automatic change is on (OD-THR41); the count, the state and the title of each thread go to the hub with the switch off (OD-THR42); the account, the plan and the limits go to the hub, and one account on several machines is one account (OD-THR43; THR-132); the hub keeps the content until the thread is deleted (OD-THR44). A note on the address of a hosted hub is in Section 4.5.
 - 2026-11-20, version 3. The operator answered 36 open decisions (R-296, R-290, R-292, R-294; relayed). Section 1.3 has the answers that are not the recommendation, with their consequences; Section 1.4 has what OD-THR18 changes; Section 8.2 has the risks that he accepted, with his words. THR-034, THR-048 and THR-105 are withdrawn. New: the holder (THR-113), the soft limits (THR-114), Codex with the account methods (THR-115), more than one repository in a thread (THR-116), the five ideas (THR-117 to THR-121), three functions of other tools (THR-122 to THR-124), tasks TH17 and TH70 to TH72, OD-THR38 to OD-THR41. The mockup has a folded group "Earlier". The third security read (H1 to H24) is in Section 9.2: the requirements that an answer changed are written in full in their form of version 3, Section 8.0 gives the guards in force, THR-125 to THR-130 are new, and Section 6.2.1 is the list for the review of the code of stage 1b, with the order of its build.
 - 2026-11-20, version 2, second part. Task TH10 is measured on this Mac (the record th10-driving-claude-code-and-codex.md): THR-020 and THR-021 say what the two programs give, and OD-THR2 and OD-THR3 have the evidence. The four claims of the research that it tested held.
