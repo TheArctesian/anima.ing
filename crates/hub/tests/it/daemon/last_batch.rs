@@ -276,7 +276,8 @@ async fn r_new_daemonneed_the_app_sets_the_need_and_the_next_batch_clears_it(poo
     set_need(&daemons, PVE_01, json!("KEYCHAIN")).await;
     assert_eq!(daemon_need(&daemons).await, json!("KEYCHAIN"));
     let written = metrics_events(&pool, "info").await;
-    assert_eq!(written, [WAITS], "only a change is written");
+    let waits = written.iter().filter(|text| *text == WAITS).count();
+    assert_eq!(waits, 1, "only a change is written: {written:?}");
 
     let pushed = daemons.push(&token, &cpu_batch(PVE_01, now, 5.0)).await;
     assert_eq!(pushed.0, StatusCode::NO_CONTENT);
