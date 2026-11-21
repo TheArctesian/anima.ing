@@ -597,7 +597,7 @@ Tasks that a ruling names:
 
 ### 8.1 The design of HM-T33: the one-line installation of a computer with no application (R-240 c)
 
-This section is the design of task HM-T33. The choices that no ruling of the operator settles are R-NEW-onelinejoin, R-NEW-onelinepins, R-NEW-onelineplace and R-NEW-onelinererun of [rulings.md](../rulings.md): made overnight, not yet confirmed.
+This section is the design of task HM-T33. The choices that no ruling of the operator settles are R-NEW-onelinejoin, R-NEW-onelinepins, R-NEW-onelineplace, R-NEW-onelinererun and R-NEW-onelineedges of [rulings.md](../rulings.md): made overnight, not yet confirmed.
 
 **How the person gets the line.** The person who has no application on the computer is signed in to the hub somewhere else: in a browser at `hub.anima.ing`, or in the application of a different computer. Devices has "Add a computer with no application". The person types the name of the computer and chooses its system (Linux x86_64, or macOS). The page asks the hub for an install code (`createComputerInstall`, signed-in operator only, never an API key) and shows one line to copy, with the time until the code expires (15 minutes, as an invite, LNK-003). Until that page exists, a signed-in operator makes the code with `anima link install <name>` and puts it in the line by hand (check HT-NEW-oneline).
 
