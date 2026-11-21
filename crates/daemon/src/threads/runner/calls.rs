@@ -13,6 +13,10 @@ use super::thread::{Step, Thread};
 use super::{Pending, Runner, Waits};
 use crate::threads::wire;
 
+mod refusal_lines;
+pub(super) use refusal_lines::RefusalLines;
+use refusal_lines::Say;
+
 /// What the runner can see of the source of a call: the local socket (THR-044).
 const SOURCE: &str = "local socket";
 /// The most clients that watch at one time.
@@ -142,12 +146,14 @@ impl Runner {
         }
     }
 
-    pub(super) fn note(&self, kind: Kind, thread: Option<Uuid>, what: &str) {
+    pub(super) fn note(&mut self, kind: Kind, thread: Option<Uuid>, what: &str) {
+        let at = chrono::Utc::now();
         if kind == Kind::Refusal {
-            refusal_to_daemon_log(thread, what);
+            let say = self.refusal_lines.admit(thread, at.timestamp() / 60);
+            refusal_to_daemon_log(thread, what, say);
         }
         let line = Line {
-            at: chrono::Utc::now(),
+            at,
             kind,
             thread,
             source: SOURCE,
@@ -299,9 +305,15 @@ const fn answer_word(answer: &Answer) -> &'static str {
 
 /// The daemon's own log (MET-019) takes the refusals too, so that a person who reads only that
 /// file sees them; the word is fixed, never text of the person or of the program (LOG-007).
-fn refusal_to_daemon_log(thread: Option<Uuid>, why: &str) {
+/// At most [`refusal_lines::PER_THREAD`] lines of a thread in a minute; the last says so.
+fn refusal_to_daemon_log(thread: Option<Uuid>, why: &str, say: Say) {
     let thread = thread.map_or_else(|| "none".to_owned(), |id| id.to_string());
-    tracing::info!(%thread, why, "the runner refused a call");
+    let more = match say {
+        Say::Nothing => return,
+        Say::Line => "",
+        Say::LastLine => "; more refusals of this minute are only in runner.log",
+    };
+    tracing::info!(%thread, why, "the runner refused a call{more}");
 }
 
 pub(super) const fn refusal_word(why: &Refusal) -> &'static str {

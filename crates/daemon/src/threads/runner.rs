@@ -109,6 +109,8 @@ pub struct Runner {
     /// again is not read twice.
     read_up_to: BTreeMap<Uuid, u64>,
     log: log::RunnerLog,
+    /// How many refusals the daemon's log took this minute (MET-019).
+    refusal_lines: calls::RefusalLines,
     /// The copies that were asked for their version and the threads that wait for their first
     /// line (TH97).
     silence: silence::Silence,
@@ -178,6 +180,7 @@ pub async fn run(
         unanswered: BTreeMap::new(),
         read_up_to: BTreeMap::new(),
         log: log::RunnerLog::at(&dir),
+        refusal_lines: calls::RefusalLines::default(),
         silence: silence::Silence::default(),
         asks: start::Asks::default(),
         sign_in_told: BTreeMap::new(),
