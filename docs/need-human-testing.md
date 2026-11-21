@@ -33,6 +33,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-074 | Windows desktop account, link and remote sessions (WIN1) | Windows 11 VM, Anima account and a hub | Open |
 | HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
 | HT-NEW-routeproxy | The public names of applications through the route proxy, on a real network (task H21) | A hub that a person hosts with ports 80 and 443 open, a domain name with its DNS, a machine on the link with a web application, and a second hub | Open |
+| HT-NEW-routestreams | Streams of TCP and UDP and the access of a route on a real network (task H40) | A hub that a person hosts, a machine on its network with a test TCP service and an IMAPS server, a device of the network of Anima and a device that is not on it | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
 | HT-003 | The tool inventory in an MCP client | HT-002 | Open |
@@ -2086,6 +2087,48 @@ the proxy before the name (SF-NEW-revroutelimits) were tested only with in-memor
    and an `X-Forwarded-For` with the address of your client.
 7. On a second hub, run `anima route add` with the same name. Expected: the TXT record of the first hub
    does not prove the name for the second hub.
+
+Result: Open.
+
+### HT-NEW-routestreams: streams of TCP and UDP and the access of a route (task H40)
+
+Built on the branch `hosted/apps-h21`: the kinds `web`, `redirect`, `tcp_stream` and `udp_stream` and the
+access `public` or `private` in the table of routes (migration 1041, `crates/hub/src/work/routes/kinds.rs`),
+`anima route add --kind --access --listen-port --protocol --redirect-to`, the kind and the access in the
+MCP tools `anima_route_list` and `anima_route_get`, and in the proxy (`crates/route-proxy/src/streams/`)
+a TCP listener for each stream, a UDP listener only on a hub that a person hosts, a private TLS listener
+and the answer of a redirect. The tests use a fake hub, a fake machine that echoes, the loopback address
+and a test database. They prove the rules of each kind and port, the refusals of a hosted hub and of UDP
+through the link, the protocols of a public stream, the address of a redirect, the dial by the name of
+the route, and the frames of datagrams. No test used a real network of Anima, a real IMAPS client, a
+port of a real hub or a real machine. No route serves on a real hub yet: each waits for its proof, the
+consent of the machine (OD-HOST-43) and the record of the application (task H6); to try the steps, set
+these marks in the database of a test hub only.
+
+1. On a hub that a person hosts, set `ANIMA_ROUTES_STREAM_PORTS=20000-20999`, `ANIMA_ROUTES_SOCKET` and
+   `ANIMA_ROUTES_PROXY_UID`, start the hub, and run
+   `anima route add test.example.com --kind tcp-stream --listen-port 20007 --port 7 --application <id> --device <machine>`
+   for a test TCP echo service on port 7 of a machine. Expected: a private route that waits for its proof.
+2. Run the same with `--listen-port 993`, `--listen-port 5432` and `--listen-port 30000`. Expected: each one
+   is refused with its reason (below 1024, a port of Anima, outside the range).
+3. Run it with `--access public` and no `--protocol`. Expected: refused, with the list of protocols and
+   their usual ports. Add an IMAPS route: `--kind tcp-stream --access public --protocol imaps --listen-port 20993 --port 993`.
+4. On a test hub only, set `proof`, `machine_consent` and `application_recorded` of both routes to their
+   serving values. Start `anima-route-proxy` with `ANIMA_ROUTE_PROXY_LISTEN` on the public address and
+   `ANIMA_ROUTE_PROXY_PRIVATE_ADDRESS` and `ANIMA_ROUTE_PROXY_PRIVATE_NETWORKS` for the network of Anima.
+   Expected: within one minute the proxy listens on 20993 on the public address and on 20007 on the
+   private address only.
+5. From a device of the network of Anima, run `nc <private address of the hub> 20007` and type a line.
+   Expected: the echo service answers the line.
+6. From a device that is not on the network of Anima, run `nc <public address of the hub> 20007` and
+   `nc <private address of the hub> 20007`. Expected: no answer from either.
+7. From a second network, connect an IMAPS client to `<public address of the hub>:20993`. Expected: the
+   mail server's own certificate and sign-in; the mailbox opens.
+8. Run `anima route add vpn.example.com --kind udp-stream --listen-port 20194 --port 1194` for a machine on
+   the link. Expected: refused, UDP never goes through the link. For a machine on the network of the hub
+   it is added.
+9. On a hosted hub, run step 1. Expected: refused, a hosted hub has no stream until the door has an address
+   for each hub.
 
 Result: Open.
 
