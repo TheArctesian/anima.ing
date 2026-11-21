@@ -6,7 +6,7 @@ import type { Hub, HubResult } from '$lib/hub/hub';
 import { linkApi } from '$lib/link/api';
 import { metricsApi } from '$lib/metrics/api';
 import { warnToProcessLog } from '../process-log';
-import { daemonBundled, installDaemon, type DaemonShellProblem, type DaemonShellResult } from './shell';
+import { daemonBundled, daemonKeychainWaits, installDaemon, type DaemonShellProblem, type DaemonShellResult } from './shell';
 
 /** The most devices that are read to find this computer: one page of the hub. */
 const ONE_PAGE = 200;
@@ -34,6 +34,8 @@ export interface DaemonHereParts {
   readonly install: (code: string, origin: string) => Promise<DaemonShellResult>;
   /** The address at which the app reaches the hub. */
   readonly origin: string;
+  /** Whether the daemon of this computer waits for the person in the macOS Keychain; no part means never. */
+  readonly keychainWaits?: () => Promise<boolean>;
   /** Waits; a test passes one that does not. Default: a timer. */
   readonly wait?: (milliseconds: number) => Promise<void>;
   /** Takes one line for the log of the app. Each line is fixed text and a fixed code: never a name, an address or the code. */
@@ -53,12 +55,14 @@ const WAIT_MS = 30_000;
 const timer = (milliseconds: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 /**
- * What the install did: it installed the daemon; the daemon of this computer reports already; there was nothing to
- * do it with (no daemon in this build, or this computer is not a device of the hub yet); or the step that failed.
+ * What the install did: it installed the daemon; the daemon of this computer reports already; the daemon is there but
+ * waits for the person to allow it in the macOS Keychain; there was nothing to do it with (no daemon in this build, or
+ * this computer is not a device of the hub yet); or the step that failed.
  */
 export type DaemonHere =
   | { readonly kind: 'installed' }
   | { readonly kind: 'present' }
+  | { readonly kind: 'needs-you' }
   | { readonly kind: 'not-ready' }
   | { readonly kind: 'failed'; readonly step: 'enrol' | DaemonShellProblem };
 
@@ -114,9 +118,17 @@ async function install(parts: DaemonHereParts): Promise<DaemonHere> {
     const last = !again || attempt >= TRIES;
     // Each turn is in the log, so that a start that ends with no metrics shows where it stopped.
     log(`the daemon of this computer: try ${String(attempt)} of ${String(TRIES)}: ${note}${last ? '' : '; it looks again in 30 s'}`);
-    if (last) return did;
+    if (last) return await waitsForYou(did, parts, log);
     await (parts.wait ?? timer)(WAIT_MS);
   }
+}
+
+/** `did`, or 'needs-you' when the daemon is there but its read of the token waits for the person in the Keychain. */
+async function waitsForYou(did: DaemonHere, parts: DaemonHereParts, log: (line: string) => void): Promise<DaemonHere> {
+  if (did.kind !== 'installed' && did.kind !== 'present') return did;
+  if (!(await parts.keychainWaits?.())) return did;
+  log('the daemon of this computer waits for you to allow it in the Keychain');
+  return { kind: 'needs-you' };
 }
 
 /** The install that runs now; a second page that opens meanwhile waits for it, so one code is made, not two. */
@@ -153,6 +165,7 @@ export function installDaemonOnThisComputer(hub: Hub, show: (did: DaemonHere | '
     enrol: (deviceId) => metricsApi(hub).enrolDaemon(deviceId),
     install: installDaemon,
     origin: hub.address.origin,
+    keychainWaits: daemonKeychainWaits,
     log: warnToProcessLog,
   });
   void done.then(show);

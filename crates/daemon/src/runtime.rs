@@ -1,5 +1,6 @@
 //! `anima-daemon run`: four tasks and the clock. One samples every 2 seconds and hands points
-//! over; one probes the tool inventory at start and every 15 minutes (CAP-027); one reads the
+//! over; one probes the tool inventory and reads the hardware values at start and every 15 minutes
+//! (CAP-027, CAP-032); one reads the
 //! session files of the AI agent programs at start and every 15 minutes (AIS-018); the other
 //! keeps the buffer and pushes every 10 seconds, so a slow hub, probe or read never delays
 //! sampling (MET-014, K8 Section 7). This is the I/O edge: clock, sleep, signals.
@@ -8,6 +9,7 @@ mod agent_usage;
 mod link_wait;
 #[cfg(unix)]
 pub mod old_origin;
+mod token_wait;
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -31,8 +33,8 @@ use crate::sampling::Sampler;
 use crate::sampling::batteries::BatteryWatch;
 use crate::sampling::drives::DriveWatch;
 use crate::sampling::gpu::Discovery;
-use crate::sampling::inventory::InventoryWatch;
-use crate::token_store::{TokenStore, TokenStoreError};
+use crate::sampling::inventory::{InventoryWatch, Watch as Announced};
+use crate::token_store::{Credential, TokenStore, TokenStoreError};
 use agent_usage::{count, counting};
 use link_wait::LinkWatch;
 
@@ -94,7 +96,16 @@ pub async fn run(
     hosted_hub: Option<PathBuf>,
     stop: impl Future<Output = ()>,
 ) -> Result<(), RunError> {
-    let (pusher, device, link) = prepare(home).await?;
+    let mut stop = std::pin::pin!(stop);
+    // A token read that waits for the person in the Keychain does not end the run (R-322).
+    let credential = tokio::select! {
+        read = token_wait::credential(home) => read?,
+        () = &mut stop => {
+            report::stopping();
+            return Ok(());
+        }
+    };
+    let (pusher, device, link) = prepare(home, credential).await?;
     let (sender, receiver) = mpsc::channel(CHANNEL_ROOM);
     let refusal_ends = hosted_hub.is_some();
     let probing = tokio::spawn(probe(Platform::current(), sender.clone()));
@@ -121,7 +132,7 @@ pub async fn run(
             report::sampling_ended(&ended);
             Err(RunError::SamplingStopped)
         }
-        () = stop => {
+        () = &mut stop => {
             report::stopping();
             Ok(())
         }
@@ -136,8 +147,9 @@ pub async fn run(
     outcome
 }
 
-/// The pusher for the enrolled device, from the configuration and the token store. An old
-/// enrolment moves to the socket of the link first, when it can ([`old_origin`]).
+/// The pusher for the enrolled device, from the configuration and the `credential` that the
+/// token store held. An old enrolment moves to the socket of the link first, when it can
+/// ([`old_origin`]).
 #[cfg_attr(
     windows,
     expect(
@@ -145,10 +157,13 @@ pub async fn run(
         reason = "only the move of an old enrolment awaits, and Windows has none"
     )
 )]
-async fn prepare(home: &Home) -> Result<(Pusher, Uuid, LinkWatch), RunError> {
+async fn prepare(
+    home: &Home,
+    credential: Option<Credential>,
+) -> Result<(Pusher, Uuid, LinkWatch), RunError> {
     let config = home.read_config()?.ok_or(RunError::NotEnrolled)?;
     let store = TokenStore::open(home);
-    let credential = store.load()?.ok_or(RunError::NotEnrolled)?;
+    let credential = credential.ok_or(RunError::NotEnrolled)?;
     #[cfg(unix)]
     let old_origin::Start {
         enrolled: old_origin::Enrolled { config, credential },
@@ -216,11 +231,12 @@ async fn sample(mut source: Source, events: mpsc::Sender<Event>) {
     }
 }
 
-/// At start and every 15 minutes: probes the tools and hands the inventory over when it
-/// changed or went 24 hours unannounced (CAP-027). A probe run waits for the one before; a slow
+/// At start and every 15 minutes: probes the tools and reads the hardware values, and hands
+/// each over when it changed or went 24 hours unannounced (CAP-027). A probe run waits for the one before; a slow
 /// one delays the next.
 async fn probe(platform: Platform, events: mpsc::Sender<Event>) {
     let mut watch = InventoryWatch::new();
+    let mut hardware = Announced::new();
     let mut ticks = interval(PROBE_EVERY);
     ticks.set_missed_tick_behavior(MissedTickBehavior::Delay);
     loop {
@@ -228,6 +244,12 @@ async fn probe(platform: Platform, events: mpsc::Sender<Event>) {
         let read = readers::inventory(platform).await;
         if let Some(changed) = watch.changed(read, std::time::Instant::now())
             && events.send(Event::Inventory(changed)).await.is_err()
+        {
+            return;
+        }
+        let read = readers::hardware(platform).await;
+        if let Some(changed) = hardware.changed(read, std::time::Instant::now())
+            && events.send(Event::Hardware(changed.clone())).await.is_err()
         {
             return;
         }

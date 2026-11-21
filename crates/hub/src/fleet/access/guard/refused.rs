@@ -26,7 +26,7 @@
 /// label in its details: login or browser token only (HOST-001, HOST-017, MCP-004, R-149, R-150).
 /// Making an application public on the internet, checking its proof and removing it is for a
 /// person with a second factor (HOST-046, SF-232, task H21).
-pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 60] = [
+pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 63] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -87,4 +87,9 @@ pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 60] = [
     "addApplicationRoute",
     "checkApplicationRoute",
     "removeApplicationRoute",
+    // The approved model sources: only a person changes them (R-343).
+    "addApprovedModelSource",
+    "setModelPublisherApproval",
+    // The device policy: closed until a key permission for it exists (R-335).
+    "setDevicePolicy",
 ];

@@ -20,7 +20,7 @@ const ORIGIN = 'http://127.0.0.1:41001';
 const ok = <T>(value: T): HubResult<T> => ({ ok: true, value });
 const denied: HubResult<never> = { ok: false, error: { code: 'FORBIDDEN', message: 'x' } satisfies HubError };
 
-type Answers = { readonly [Part in Exclude<keyof DaemonHereParts, 'origin' | 'wait' | 'log'>]?: Awaited<ReturnType<DaemonHereParts[Part]>> };
+type Answers = { readonly [Part in Exclude<keyof DaemonHereParts, 'origin' | 'wait' | 'log' | 'keychainWaits'>]?: Awaited<ReturnType<DaemonHereParts[Part]>> };
 
 /** A hosted hub that lists this Mac with no daemon, and a build that carries the daemon. */
 function parts(answers: Answers = {}) {
@@ -142,5 +142,28 @@ describe('installDaemonHere writes each turn to the log of the app, with fixed w
     const bare = parts({ bundled: false });
     await installDaemonHere(bare);
     expect(bare.log.mock.calls).toEqual([['the daemon of this computer: this build carries no daemon']]);
+  });
+});
+
+describe('installDaemonHere when the daemon waits for the person in the Keychain (MET-013)', () => {
+  it('a daemon installed now, or reporting already, that waits in the Keychain needs you, and the log says so', async () => {
+    const waiting = { ...parts(), keychainWaits: vi.fn(() => Promise.resolve(true)) };
+    expect(await installDaemonHere(waiting)).toEqual({ kind: 'needs-you' });
+    expect(waiting.log.mock.calls.at(-1)).toEqual(['the daemon of this computer waits for you to allow it in the Keychain']);
+
+    forgetDaemonHere();
+    const reporting = HUB_DEVICES.map((device) => (device.id === 'mac' ? { ...device, metricsSource: 'DAEMON' as const } : device));
+    const present = { ...parts({ devices: ok(reporting) }), keychainWaits: vi.fn(() => Promise.resolve(true)) };
+    expect(await installDaemonHere(present)).toEqual({ kind: 'needs-you' });
+  });
+
+  it('a daemon that does not wait is installed, and a failure is not asked about', async () => {
+    const free = { ...parts(), keychainWaits: vi.fn(() => Promise.resolve(false)) };
+    expect(await installDaemonHere(free)).toEqual({ kind: 'installed' });
+
+    forgetDaemonHere();
+    const failed = { ...parts({ install: { ok: false, problem: 'copy', message: 'x' } }), keychainWaits: vi.fn(() => Promise.resolve(true)) };
+    expect(await installDaemonHere(failed)).toEqual({ kind: 'failed', step: 'copy' });
+    expect(failed.keychainWaits).not.toHaveBeenCalled();
   });
 });

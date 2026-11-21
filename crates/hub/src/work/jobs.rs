@@ -39,6 +39,17 @@ use crate::{
 /// How often the upkeep ends the leases that ran out and the attempts that are too long.
 pub const LEASE_SWEEP: std::time::Duration = std::time::Duration::from_secs(30);
 
+/// What the hub knows of each machine for work (the switch "takes work", USE-004); a device
+/// that never asked for work has no entry. The device policy of compute reads it (CMP-002).
+///
+/// # Errors
+/// `Database` when the query fails; `Unreadable` for a stored row this version does not read.
+pub async fn machines(
+    db: &PgPool,
+) -> Result<std::collections::HashMap<crate::ids::DeviceId, Machine>, Error> {
+    store::machines(db).await
+}
+
 /// Why an operation on the jobs failed.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -111,7 +122,8 @@ fn secrets_permitted(job: &NewJob) -> bool {
     let permitted: &[&str] = match job.work_type {
         WorkType::Runner => &["jit_config"],
         WorkType::Build => &["repository_token", "project_secret"],
-        WorkType::Unknown => &[],
+        // The hub makes no model item yet (model work contract; tasks L1-6 to L1-8).
+        _ => &[],
     };
     job.secrets
         .iter()
@@ -124,6 +136,9 @@ fn validate(job: &NewJob) -> Result<(), Error> {
         return Err(Error::Invalid(
             "the type and the kind are of the fixed lists",
         ));
+    }
+    if job.work_type.is_model() || job.kind == WorkKind::Model {
+        return Err(Error::Invalid("the hub does not make model items yet"));
     }
     if !job.parameters.is_object() {
         return Err(Error::Invalid("the parameters are an object"));

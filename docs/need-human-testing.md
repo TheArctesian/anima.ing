@@ -43,6 +43,9 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-004 | No window of Apple on a Mac without the developer tools | A Mac with no Xcode and no Command Line Tools | Open |
 | HT-005 | The tool inventory of a daemon that runs as a system unit | A Linux computer | Open |
 | HT-006 | The probes of `claude` and `codex` leave the account alone | A computer with the two programs | Open |
+| HT-121 | The hardware values of the Mac and of the Linux PC `pop-os` agree with what each system shows | A hub and a daemon of this build on both computers | Open |
+| HT-120 | The model work of the daemon installs `llama-server`, starts it on loopback, supervises it and stops it on the Mac and on `pop-os` | A test hub that gives model items, and a daemon of this build in a test folder on both computers | Open |
+| HT-119 | The cgroup of each model server on `pop-os`: a child that leaves its session is seen and ended, and a start with no delegated cgroup fails | `pop-os` with a daemon of this build in a test folder, run by its systemd user unit, which has `Delegate=yes` (R-334) | Open |
 | HT-007 | The pinned Rust version on the Linux computer | The Linux development computer | Open |
 | HT-008 | A macOS release build with the pinned Rust version | A Mac builder | Open |
 | HT-010 | Merge a pull request, and a set of pull requests, on GitHub | A GitHub repository that is safe to change, GitHub on the hosted hub, and a sign-in of the command line (OD-25) | Open |
@@ -93,6 +96,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-061 | Sign in to a hosted hub, and the metrics of this computer appear (HMD-053, HMD-054; tasks HM-T17 to HM-T19) | This Mac and the Linux computer, each with an application of this build that carries `anima-daemon` and `anima-link`, signed in to the hosted hub | Open |
 | HT-083 | The sign-out of a hosted hub takes the daemon off this computer and revokes it at the hub (HMD-056; task HM-T21) | This Mac with an application of a build that holds the branch `hosted/hm-t21-daemon-removal`, signed in to the hosted hub with the daemon installed (HT-061 step 1); the Linux computer for step 7 | Open |
 | HT-112 | A newer application replaces the daemon of this computer and keeps its enrolment (HMD-055; task HM-T20) | This Mac with two applications of the branch `hosted/hm-t20-daemon-update` of three versions, signed in to the hosted hub with the daemon installed (HT-061 step 1), and an agent thread for step 7; the Linux computer for steps 8 and 9 | Open |
+| HT-117 | The daemon of this Mac waits for the person in the Keychain and does not stop (MET-013, MET-019; R-322) | This Mac with the daemon installed and reporting (HT-061 step 1), and two ad hoc trial builds of the branch `fix/daemon-keychain-wait` | Open |
 | HT-057 | The Settings page after the interface review: the index and the sections in three groups (R-224) | The desktop application of a build that holds the branch `ui/v2-settings`, and a phone | Open |
 | HT-052 | The tab Containers of a device after the interface review: one State column, one pane for the log and the details (R-224) | The desktop application of a build that holds the branch `ui/v2-device-containers`, a device with Docker and an SSH credential | Open |
 | HT-055 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
@@ -279,6 +283,148 @@ Needs HT-002.
 2. Ask the client to call `anima_capability_list`. Expected: the same devices and tools as
    `anima capability list`.
 3. Call it with `tool` set to `cargo`. Expected: the same devices as step 5 of HT-002.
+
+Result: Open.
+
+### HT-119: the cgroup of each model server on `pop-os`
+
+Built: `crates/daemon/src/model/tree.rs`, `tree/linux.rs`, `tree/walk.rs`, and the launcher mode `__model-launch`
+of `crates/daemon/src/main.rs` (task L1-6; R-331; SF-258). The Linux code was not compiled or
+run on the Mac of the build: no Linux target is installed there. The tests that start a server skip on a Linux
+computer with no delegated cgroup v2, with the message "skipped: no delegated cgroup v2 here".
+
+1. On `pop-os`, run `cargo nextest run -p anima-daemon model_work` in a worktree of this branch, from a shell in a
+   systemd user scope with delegation: `systemd-run --user --scope -p Delegate=yes bash`. Expected: each test passes;
+   none prints "skipped".
+2. Run the same command from a plain shell with no delegation. Expected: the tests that start a server print
+   "skipped", and each other test passes.
+3. With a test daemon in a user unit with `Delegate=yes`, give a `server_start` item. Expected: a folder
+   `anima-model-<server>` below the cgroup of the unit; `cat cgroup.procs` there names `llama-server`. Give
+   `server_stop`. Expected: the folder is gone and no process is left.
+4. Without `Delegate=yes`, give a `server_start` item. Expected: `failed` with `containment_failed`, and no
+   process is started.
+5. Start a server, then end the test daemon with `kill -9`. Start it again and call the sweep (`Node::sweep`).
+   Expected: the `llama-server` of the first run and its cgroup are gone.
+6. Install the user unit of this build (`anima-daemon install` from the test folder). Expected:
+   `systemctl --user show anima-daemon -p Delegate` gives `Delegate=yes` (R-334).
+7. With a server running, start in its cgroup a process that enters a network namespace of its own
+   (`unshare -rn sleep 600`) and a second one that listens on `0.0.0.0` (`nc -l 0.0.0.0 41999`). Expected: at the
+   next cycle the server is `failed` with `listener`, and the cgroup is gone.
+8. With a server running, write a different path into the `cgroup` member of its `tree.json`, end the daemon
+   with `kill -9`, and start it again with the sweep. Expected: that path is not changed; the cgroup
+   `anima-model-…` of the server is gone. `cat pids.max` in a new cgroup of a server shows `512` when the
+   `pids` controller is delegated.
+9a. With a server running, write the process id of its `llama-server` into the `cgroup.procs` of the cgroup
+   of the daemon (`echo <pid> > /sys/fs/cgroup/<cgroup of the daemon>/cgroup.procs`). Expected: at the next cycle
+   the server is `failed` with `listener`, and its processes and its cgroup are gone (SF-278).
+9b. With a server running, read `/proc/<pid of llama-server>/cgroup`. Expected: `0::/` (the runtime sees its
+   own cgroup as the root). Then, as the user of the daemon, run `nsenter -t <pid> -U -C --preserve-credentials sh
+   -c 'echo $$ > /sys/fs/cgroup/<cgroup of the daemon>/cgroup.procs'`. Expected: the write fails (`No such file`
+   or `Permission denied`). If `sysctl kernel.apparmor_restrict_unprivileged_userns` gives `1`, or
+   `kernel.unprivileged_userns_clone` gives `0`, each start fails with `containment_failed`: write that in the
+   result (R-330).
+9c. With a server running, as the user of the daemon, run `mkdir` in the cgroup of the server from inside its
+   namespaces (`nsenter -t <pid> -U -C --preserve-credentials mkdir /sys/fs/cgroup/x`). Expected: it fails, because
+   `cgroup.max.descendants` is 0. Then make such a cgroup from outside (as the daemon user), move a child of the
+   runtime that listens on `0.0.0.0` into it, and run a cycle. Expected: `failed` with `listener`.
+9d. Read the `detail` of each `containment_failed` report: on a system with
+   `kernel.apparmor_restrict_unprivileged_userns=1` and no profile it is `userns_denied`; with no `Delegate=yes` it
+   is `no_delegation`. Until task L1-6c (the AppArmor profile) is built, `userns_denied` is the expected result on
+   a system of the Ubuntu family with the restriction on; it is not a failure of this check. Write the values of `sysctl kernel.apparmor_restrict_unprivileged_userns`,
+   `kernel.unprivileged_userns_clone` and `user.max_user_namespaces`, and `aa-status --enabled`, on `pop-os`.
+9e. End the test daemon with
+   `kill -9` while a server runs. Expected: the `llama-server` ends at once (the parent-death signal survived the
+   namespaces).
+9f. GPU inside the namespaces, on an NVIDIA machine and on an AMD (ROCm) machine: start a server whose settings put
+   the model on the GPU. Expected: `/dev/nvidia*` (NVIDIA), or `/dev/dri/renderD*` and `/dev/kfd` (ROCm), open in
+   the runtime (`ls -l /proc/<pid>/fd`), and the log of the runtime shows the layers on the GPU. If the NVIDIA
+   device nodes are missing before the first use, note it: `nvidia-modprobe` cannot run setuid inside the user
+   namespace.
+9. The unit of an install that exists. The unit file is written only by `anima-daemon install`, which writes it
+   and runs `systemctl --user daemon-reload`, `enable` and `restart`. The desktop application runs `install` only
+   when it enrols the computer (`daemon_install`); an update of the application does not place the new daemon
+   or run `install` again, and the daemon cannot write its own unit (`ProtectHome=read-only`). So a computer that
+   enrolled before this build keeps a unit with no `Delegate=yes`, and each model start fails with
+   `containment_failed`. Until a fix: run `anima-daemon install` once by hand. Expected:
+   `systemctl --user show anima-daemon -p Delegate` gives `Delegate=yes`. The proposed smallest fix: when the
+   desktop application starts and the daemon is enrolled, it places its own daemon and runs `install` again
+   when the unit file differs from the unit that this version renders (task U6 of the update plan owns the
+   update of the daemon).
+
+Result: Open.
+
+### HT-120: the model work of the daemon on the Mac and on `pop-os`
+
+Built: `crates/daemon-core/src/model_work/` (the checks of the ten model work types, the causes, the
+flag policy, the files of a copy, the settings at the machine and the actor check, the release
+sources, the command line and the environment, the waits of a restart, the loopback verdict, the
+folders) and `crates/daemon/src/model/` (the claim and the report through the work route,
+`runtime_install`, `server_start`, `server_stop`, the supervision, `model_report`), task L1-6 of
+the compute plan (CAG-001 to CAG-009, RTC-002 to RTC-006, SEC-C-001, SEC-C-007, SEC-C-008). The
+contract is `contracts/compute/model-work.md` version 0.3, which waits for R-344 and the
+security review SEC-C-012. The tests use a scripted hub and a scripted runtime (a Perl program);
+no test downloads a real release or starts a real `llama-server`. The claim loop is not yet
+started by the running daemon: the switch at the machine (USE-004) does not exist in the daemon.
+Thus this check needs a small test program or a test build that calls `model::cycle::Node::cycle`.
+
+Do not use the installed daemon of the operator. Set `ANIMA_DAEMON_HOME` to a new test folder.
+
+1. On each computer, write `model-sources.json` in the test folder with one entry for the
+   `llama-server` release of that computer (the `.tar.gz` of the upstream release, its SHA-256 and
+   size, and the path of `llama-server` in it). Give a `runtime_install` item from the test hub.
+   Expected: the report is `succeeded`; `<home>/runtimes/llama_server/<version>-<backend>/` holds
+   the files, with mode 0755 for folders and programs and 0644 for each other file, and no link.
+   The upstream `.zip` or `.tar.gz` both work (R-329); write which one was used.
+2. Give a `runtime_install` item with a wrong SHA-256 in `model-sources.json`. Expected: `failed`
+   with `checksum`, and no new folder.
+3. Give a `server_start` item. Expected: `succeeded`. `lsof -nP -iTCP -sTCP:LISTEN` (Mac) or
+   `ss -ltnp` (`pop-os`) shows `llama-server` on `127.0.0.1` and a port from 41000 to 41999 only.
+   `ps eww <pid>` shows only the environment of Section 2.1 of the contract. The output ring
+   `<home>/model-state/servers/<server>/output.log` has mode 0600 and at most 1 MiB. Write in the
+   result whether this release of `llama-server` takes `--verbosity 0`, `--no-slots` and the router
+   mode with no model; if it does not start, write its first error line from the ring.
+4. End the `llama-server` process with `kill -9`. Expected: within 15 seconds of the next cycle the
+   daemon starts it again after the waits 1, 2, 4, 8 seconds; after 5 ends in one hour it stays
+   `failed` in `model_report`.
+5. Give a `server_stop` item. Expected: `succeeded`; no `llama-server` process is left.
+6. Write `{"sandbox": true}` in `<home>/model-work.json` and give a `server_start` item. Expected:
+   `failed` with `isolation_failed` (the isolation is not built).
+7. Write `{"agentTypes": ["model_report"]}` and give a `server_start` item with `actor` `Agent`.
+   Expected: `refused` with `actor_not_permitted`.
+
+Result: Open.
+
+### HT-121: the hardware values agree with what each system shows
+
+Built: `crates/daemon-core/src/hardware/`, `crates/daemon/src/readers/hardware/`, the hub migration `0721_metrics_hardware.sql` (numbered 0720 before the merge with `dev`, where 0720 holds the batteries), the field
+`hardware` of `capabilities`, `anima capability list` and `anima_capability_list` (task L1-1 of
+the compute plan; CAP-001 to CAP-005, CAP-032; R-165). The tests use scripted output in place of
+the real commands and files, and a scripted hub. This check gives the values that OD-C1 needs.
+
+The hub and the daemons must be of this build. A change to the hub on the VPS needs the
+confirmation of the operator (VPS-005). A local hub is sufficient for this check
+([setup/local-hub.md](procedures/setup/local-hub.md)).
+
+1. Start the `anima-daemon` of this build on the Mac of the operator and on the Linux PC
+   `pop-os`. Wait 1 minute. Run `anima capability list --json`.
+2. On the Mac, run `sysctl hw.memsize iogpu.wired_limit_mb`, `pmset -g batt`, `pmset -g therm`,
+   `df -k ~` and `system_profiler SPDisplaysDataType`. Expected: `systemMemoryBytes` and
+   `unifiedMemoryBytes` are `hw.memsize`; `usableMemoryBytes` is `iogpu.wired_limit_mb` × 1048576
+   with `WIRED_LIMIT` when that value is not 0, else three quarters of `hw.memsize` (above 36 GiB)
+   or two thirds with `DEFAULT_SHARE`; `freeDiskBytes` is the available space of `df` rounded
+   down to whole GiB; `metal` and `cpu` are usable and the other backends are `NOT_SUPPORTED`;
+   `powerSource` agrees with the first line of `pmset -g batt`.
+3. If a tool that runs Metal is at hand (for example `llama-server` or an MLX script that prints
+   `mx.metal.device_info()`), compare its `recommendedMaxWorkingSetSize` with
+   `usableMemoryBytes`. Write the two values in the result: they decide whether the default share
+   is correct for this Mac.
+4. On `pop-os`, run `free -b`, `nvidia-smi --query-gpu=name,memory.total --format=csv`,
+   `ls /dev/kfd /usr/share/vulkan/icd.d /etc/vulkan/icd.d` and `df -B1 ~`. Expected:
+   `systemMemoryBytes` is the total of `free -b`; `dedicatedMemoryBytes` is the sum of the
+   memory totals of `nvidia-smi`; `cuda` is usable when `nvidia-smi` runs; `vulkan` is usable
+   when an ICD file is listed; `rocm` is `NO_DEVICE` when the PC has no AMD GPU.
+5. On the Mac, leave the keyboard and the pointer for 6 minutes, wait for the next probe
+   (15 minutes) and run the command again. Expected: `operatorActive` is false.
 
 Result: Open.
 
@@ -1310,6 +1456,62 @@ On this Mac:
     same pid, and the thread still answers. Then `systemctl --user stop anima-daemon` with a model
     server running. Expected: the server process is gone and the holder stays. Not for macOS: there the
     model servers have no cgroup and `KillMode` does not apply; the model service checks that case.
+11. Added by the branch `fix/daemon-keychain-wait` (R-321). On this Mac, steps 1 to 6 need two
+    applications made with `SIGN_IDENTITY` set to the Developer ID identity of the operator: an ad hoc
+    trial build no longer replaces the daemon by itself. Then make two ad hoc trial builds (no
+    `SIGN_IDENTITY`) of a lower and a higher version, and do steps 1 and 2 with them. Expected: the copy
+    stays at the lower version, no window of the Keychain opens, and the log of the application has the
+    line "the daemon on this computer is older than the one of the app, but this build has no Developer ID
+    signature: the Keychain would ask again for the new daemon, so it stays".
+12. A step that does not end (R-322). The log of the application has one line for each step
+    of an update that failed, with the name of the step (`stop`, `install of the new copy`, `install of the
+    copy of before`) and its code, and the line "the daemon update: the copy is older than the daemon of
+    the app; replacing it" before the first step. The case of a Keychain that waits is HT-117.
+
+### HT-117: the daemon of this Mac waits for the person in the Keychain and does not stop (MET-013, MET-019; R-322)
+
+Built: on the branch `fix/daemon-keychain-wait`. Each read of the token and of the key cache in the
+Keychain runs on a thread of its own and the daemon waits 5 s at most (`crates/daemon/src/keychain_wait.rs`);
+one read is in flight for each item. `anima-daemon install` counts a read that waits as installed: it writes
+the LaunchAgent and starts it (`crates/daemon/src/units/install.rs`). `anima-daemon run` does not end on
+such a read: it logs once "this computer's daemon needs you to allow it in the Keychain" and reads again
+every 30 s, after 10 minutes every 5 minutes (`crates/daemon/src/runtime/token_wait.rs`). While it waits,
+the file `keychain-waits` is in `~/Library/Application Support/anima-daemon/`; the application reads it
+(`apps/desktop/src-tauri/src/daemon/keychain.rs`) and the page Agent usage of a hosted hub, while it has
+no counts, says "The daemon of this computer needs you".
+
+The tests cover, with stand-ins and no Keychain: a read that ends in time; a read that does not end, with
+no second read started while it is in flight and its answer given to the next read; a read whose thread
+ends with no answer; the schedule of the reads; the mark; the run that waits and then gets its token;
+`install` that takes a wait for installed; the sentence of the page. Not covered: the real Keychain and
+its window, `launchctl`, and the real time of the reads.
+
+It needs: this Mac with the daemon installed and reporting (HT-061 step 1), and two ad hoc trial builds of
+this branch (`apps/desktop/src-tauri/trial-bundle.sh <version>` with no `SIGN_IDENTITY`), A installed
+first. Each ad hoc build is a new program to the Keychain, so build B makes the window of macOS open.
+
+1. Quit the application. Install build B in `/Applications`, but do not open it. Run
+   `cp /Applications/Anima.ing.app/Contents/MacOS/anima-daemon ~/.local/bin/anima-daemon`, then
+   `time ~/.local/bin/anima-daemon install`. A window of macOS asks whether `anima-daemon` may use its
+   item in the Keychain: do not answer it yet. Expected: the command ends in less than 10 s with
+   "Installed ... and started the daemon."
+2. Run `ls ~/Library/Application\ Support/anima-daemon/keychain-waits`,
+   `launchctl print gui/$(id -u)/ing.anima.daemon | grep -E 'pid|ANIMA_DAEMON_LOG'`. Expected: the file is
+   there; the unit has a pid and `ANIMA_DAEMON_LOG => file`.
+3. Wait two minutes. Run `grep -c "needs you to allow it in the Keychain" ~/Library/Logs/Anima/anima-daemon.log`
+   and `ps -M <pid> | wc -l` two times, one minute apart. Expected: the count is 1; the pid does not
+   change (no restart); the number of threads does not grow; only one window of the Keychain is open.
+4. Open the application (build B). Open Agent usage on the hosted hub while it shows no counts. Expected:
+   the sentence "The daemon of this computer needs you: macOS asks whether it may read its key in the
+   Keychain. ..." The log of the application has "the daemon of this computer waits for you to allow it in
+   the Keychain".
+5. In the window of macOS, type the password of the Mac and click Always Allow (a second window can open
+   for the key cache of the daemon; allow it too). Wait one minute. Expected: the daemon log has "the
+   Keychain answered the read of the token" and "the daemon is running"; the file `keychain-waits` is gone;
+   the Mac row in Devices shows new metrics.
+6. Quit and open the application. Expected: Agent usage no longer says that the daemon needs you.
+
+Result: Open.
 
 ### HT-068: a Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon (DEF-007)
 
@@ -3048,7 +3250,8 @@ a made runner only; no person saw it in a desktop window.
 12. Start a Claude Code thread in the mode "ask" with the prompt "Run `anima agents running`, then run
    `anima agents raise-limit --yes`". Approve the first command when it asks.
    Expected: the list of threads shows. The second command, if Claude Code runs it, prints "Only the person can answer
-   a request, raise the limit or start a thread: this call came from a process of an agent." The runner log has a
+   a request, raise the limit, start a thread or change the list of threads: this call came from a process of an
+   agent." The runner log has a
    refusal "from a process of an agent". From a terminal of your own, the same command works.
 
 A try by an agent on this Mac, 2026-11-21 (not a result of this check; only the operator sets one): a runner of the
@@ -3060,6 +3263,37 @@ ended at the interrupt. With Claude Code the `sleep` ran on: a defect, corrected
 the turn started, and spares what was below Claude Code when it said its session); after the correction the `sleep`
 ended and the thread answered the next prompt. Step 7: each stop ended the program and its processes. Steps 5, 6 and 8
 to 11 were not tried.
+
+Result: Open.
+
+### HT-116: pin, archive, rename and remove a thread in the list
+
+What was built and where: task TH46 of [agent-threads.md](proposals/agent-threads.md), on the branch
+`threads/list-marks` (2026-11-21, overnight; ruling R-320). The runner keeps, in its own record, how the
+person lists each thread: pinned, archived, a title of the person, or removed from the list. No session file of
+Claude Code or Codex changes. The page Threads has these actions in a row above the open thread (Pin, Archive, Rename, Remove), a group "Pinned"
+in the list, and "Archived (n)" in the page header; the commands are
+`anima agents pin <thread> [--off]`, `anima agents archive <thread> [--off]`, `anima agents rename <thread> [<title>]`,
+`anima agents remove <thread>` and `anima agents listings`. What the tests did not cover: the page in a desktop
+window, a real Claude Code thread, and a restart of the installed daemon.
+
+1. On the page Threads, open a thread that does not need you and choose Pin above it. Expected: the thread is in the
+   group "Pinned" of the list, under "Needs you".
+2. Choose Rename, type a new title and save. Expected: the row shows the new title. Choose Rename again and "Use the
+   program's title". Expected: the row shows the title of the program again.
+3. Choose Archive. Expected: the thread leaves the list. Choose "Archived (1)" in the page header. Expected: it is there; choose
+   Unarchive and it comes back.
+4. Stop a thread, open it, and choose Remove. Expected: a question that says the thread leaves Anima's list
+   with its pin, archive and title, and that the session files of Claude Code or Codex stay on disk. Confirm.
+   Expected: the thread leaves the list. In a terminal, `ls ~/.claude/projects/*/` (or `~/.codex/sessions/`) still
+   shows its session file.
+5. Open a thread that runs. Expected: Remove is off, with the line "Stop the thread first to remove it." From a
+   terminal, `anima agents remove <its ID>` answers "That thread runs: stop it first, then remove it from the list."
+6. From inside a Claude Code thread, ask it to run `anima agents pin <the ID of a thread>`. Expected: "Only the person
+   can answer a request, raise the limit, start a thread or change the list of threads: this call came from a process
+   of an agent." The pin does not change.
+7. Restart the daemon (quit and open the application, or `launchctl kickstart -k gui/$(id -u)/ing.anima.daemon`).
+   Expected: the pins and the titles are kept; `anima agents listings` shows them.
 
 Result: Open.
 
@@ -3537,6 +3771,25 @@ headless WebKit with sample devices. No person saw it in a desktop window, at th
 
 Result: Open.
 
+### HT-123: the model library on a real hub (compute plan L1-4)
+
+Branch `compute/l1-4`. On 2026-11-20 the build session ran the database tests with the throwaway PostgreSQL of the
+gates: the 14 tests of `fleet::compute::library` (the alias change, the stored files, the approved sources, the
+publisher approval by setting and actor), the 10 key-root tests, the 24 contract tests of the hub and the 500 tests of
+`anima-cli` (the end-to-end tests too) pass. The tests read recorded answers of Hugging Face. No person ran the
+commands against a hub that reads Hugging Face live.
+
+1. Run `anima model add unsloth/Qwen3-0.6B-GGUF` as a person, then `anima model list`.
+   Expected: about 26 variants, for example `qwen3-0.6b:q4_k_m`, each with a size; `anima model source list` now
+   shows `Qwen` (the publisher of the base model).
+2. Run `anima model show qwen3-0.6b --json`.
+   Expected: the context length 40960, 28 layers, the tags CHAT and TOOLS, and a 64-digit SHA-256 value for each file.
+3. Run `anima model add someone-else/Qwen3-0.6B-GGUF`.
+   Expected: a refusal on `repository`; the hub sends no request to Hugging Face.
+4. With an API key, run `anima model source add bartowski`.
+   Expected: FORBIDDEN.
+5. Ask an agent to call `anima_model_list` and `anima_model_show`.
+   Expected: the same facts as steps 1 and 2.
 ### HT-076: the motion of the other lists (UR-7 Phase F, 5.7.3)
 
 Built on the branch `ui/lists-motion` with the roles of `ui/motion` (`listRow`, `reorderMotion`, `crossFade`):
@@ -3775,6 +4028,37 @@ the heights in a real window, the scroll of the list, or the keyboard and the sc
 9. Make the window narrower than 960 px, then open a session tab and close it again.
    Expected: in the narrow window the list stands over the thread and the page scrolls as before. In the wide window
    again, the page fills the window with no scroll bar of its own.
+### HT-118: D-4 of the deploy tests gives 504 for 502 on a busy machine
+
+For: the owner of the deploy tests (`deploy/test/localapi-server.test.ts`). R-332 permits a
+documents-only push with this one failure until it is corrected.
+
+What fails: "D-4 an endless upstream body gives 502 promptly" (and "an upstream body over the cap
+gives 502") receives 504 where it expects 502. It fails in the full deploy suite on a clean
+`origin/dev` at a high load: 741 pass and 1 fail at load 63; 1 failure in 3 full runs. Alone and
+under load it failed 9 of 10 and 5 of 10 runs. On a quieter machine it passed alone, 3 of 3 and
+15 of 15 runs. The gates on GitHub do not show it.
+
+Steps:
+
+1. On a Mac with a load above 60 (for example, during a full `bun run gates` of a different
+   worktree), run `bun run --cwd deploy test` on `origin/dev`. Expected now: D-4 can fail with 504.
+2. After a correction, run step 1 again five times. Expected: D-4 passes each time.
+
+### HT-122: log_007 of the hub takes too long on a busy machine
+
+For: the owner of the redaction of the hub (`crates/hub/src/fleet/events/redaction/tests/values.rs`). The test is not
+changed.
+
+What fails: `log_007_redaction_of_pathological_text_takes_linear_time` took 10.4 seconds at a load of about 60 on the
+Mac of the operator (18 cores), during a gates run of a different worktree. Alone it passes in 1.7 seconds. A test
+that measures time can fail on a busy machine although the redaction is linear.
+
+Steps:
+
+1. On a Mac with a load above 60, run `cargo nextest run -p anima-hub log_007` on `origin/dev`. Write down the time.
+2. Run it again on a quiet machine. Expected: well under its limit.
+3. Write in the result whether it passes on the runners of GitHub (the run of `compute/l1-stack`).
 ### HT-101: the device page in a narrow window, the Warning badge tip and the skeleton under the tabs (NAV-005, RA-020, D-9)
 
 Built on the branch `ui/device-page-pass`: `apps/client/src/lib/tabs/Tabs.svelte` and

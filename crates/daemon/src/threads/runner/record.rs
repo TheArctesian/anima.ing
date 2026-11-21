@@ -5,7 +5,7 @@
 use std::io::Write as _;
 use std::path::Path;
 
-use agent_threads::control::Limits;
+use agent_threads::control::{Limits, Listing};
 use serde::{Deserialize, Serialize};
 
 use super::RunnerError;
@@ -21,6 +21,9 @@ pub const FILE: &str = "threads.json";
 pub struct Record {
     pub limits: Limits,
     pub threads: Vec<Saved>,
+    /// How the person lists each thread (TH46); a record of before has none.
+    #[serde(default)]
+    pub listings: Vec<Listing>,
 }
 
 impl Default for Record {
@@ -28,6 +31,7 @@ impl Default for Record {
         Self {
             limits: Limits::FIRST,
             threads: Vec::new(),
+            listings: Vec::new(),
         }
     }
 }

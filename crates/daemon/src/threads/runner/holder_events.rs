@@ -13,6 +13,7 @@ use agent_threads::drive::DriveEvent;
 use uuid::Uuid;
 
 use super::log::Kind;
+use super::socket::Caller;
 use super::thread::Thread;
 use super::{Pending, Runner, Waits};
 use crate::threads::wire::{
@@ -140,7 +141,7 @@ impl Runner {
                 self.threads.remove(&thread);
                 refused(Refusal::Holder)
             };
-            back.answer(result);
+            self.answer_late(&back, Some(thread), result);
         }
     }
 
@@ -255,25 +256,42 @@ impl Runner {
             }
             return;
         };
-        match waits {
+        let (back, thread, result) = match waits {
             Waits::Start {
                 thread,
                 back,
                 prompt,
-            } => back.answer(self.start_done(thread, &prompt, &outcome).await),
-            Waits::Stop { back } => back.answer(match outcome {
-                HolderOutcome::Stopped { all_ended, .. } => Outcome::Stopped { all_ended },
-                HolderOutcome::Refused { .. } => refused(Refusal::Holder),
-                _ => Outcome::Ok,
-            }),
+            } => {
+                let result = self.start_done(thread, &prompt, &outcome).await;
+                (back, Some(thread), result)
+            }
+            Waits::Stop { back } => {
+                let result = match outcome {
+                    HolderOutcome::Stopped { all_ended, .. } => Outcome::Stopped { all_ended },
+                    HolderOutcome::Refused { .. } => refused(Refusal::Holder),
+                    _ => Outcome::Ok,
+                };
+                (back, None, result)
+            }
             Waits::Send { thread, back, text } => {
-                back.answer(self.sent(thread, &text, &outcome).await);
+                let result = self.sent(thread, &text, &outcome).await;
+                (back, Some(thread), result)
             }
             Waits::Answer(pending) => {
                 let result = self.answered(&pending, &outcome).await;
-                pending.back.answer(result);
+                (pending.back, Some(pending.thread), result)
             }
+        };
+        self.answer_late(&back, thread, result);
+    }
+
+    /// Answers a call that waited for the holder; a refusal goes to the log first (THR-044), as
+    /// the refusal of a call that did not wait does.
+    fn answer_late(&mut self, back: &Caller, thread: Option<Uuid>, result: Outcome) {
+        if let Outcome::Refused { why } = &result {
+            self.note(Kind::Refusal, thread, super::calls::refusal_word(why));
         }
+        back.answer(result);
     }
 
     async fn start_done(&mut self, id: Uuid, prompt: &str, outcome: &HolderOutcome) -> Outcome {

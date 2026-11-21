@@ -1,11 +1,18 @@
 //! The macOS key store: one generic password in the login Keychain, beside the token's item
-//! (K-E5 Section 2.1).
+//! (K-E5 Section 2.1). Each read is bounded ([`crate::keychain_wait`]).
 
 use keyring::Entry;
 use zeroize::Zeroizing;
 
 use super::KeyStoreError;
 use crate::config::home::Home;
+use crate::keychain_wait::{self, Reads, Unread};
+
+/// What one read of the item gives; the error as its fixed text, so that it crosses the thread.
+type Answer = Result<Option<Zeroizing<Vec<u8>>>, String>;
+
+/// The reads of the key cache's item: one in flight at a time (R-322).
+static READS: Reads<Answer> = Reads::new();
 
 const SERVICE: &str = "ing.anima.daemon";
 const ACCOUNT: &str = "key-cache";
@@ -22,14 +29,12 @@ impl Backend {
         reason = "same signature as the file backend on other systems"
     )]
     pub fn read(&self, limit: usize) -> Result<Option<Zeroizing<Vec<u8>>>, KeyStoreError> {
-        match entry()?.get_password() {
-            Ok(text) => {
-                let bytes = Zeroizing::new(text.into_bytes());
-                Ok((bytes.len() <= limit).then_some(bytes))
-            }
-            Err(keyring::Error::NoEntry) => Ok(None),
-            Err(error) => Err(fault(&error)),
-        }
+        let bytes = match READS.read(keychain_wait::DEADLINE, read_now) {
+            Ok(answer) => answer.map_err(KeyStoreError::Keychain)?,
+            Err(Unread::Waits) => return Err(KeyStoreError::KeychainWaits),
+            Err(Unread::Lost) => return Err(KeyStoreError::Keychain(Unread::Lost.to_string())),
+        };
+        Ok(bytes.filter(|bytes| bytes.len() <= limit))
     }
 
     #[expect(
@@ -55,17 +60,29 @@ impl Backend {
     }
 }
 
+/// One read of the item, on the thread of [`READS`]: it can wait for the person for ever.
+fn read_now() -> Answer {
+    let entry = Entry::new(SERVICE, ACCOUNT).map_err(|error| text(&error))?;
+    match entry.get_password() {
+        Ok(text) => Ok(Some(Zeroizing::new(text.into_bytes()))),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(error) => Err(text(&error)),
+    }
+}
+
 fn entry() -> Result<Entry, KeyStoreError> {
     Entry::new(SERVICE, ACCOUNT).map_err(|error| fault(&error))
 }
 
+fn fault(error: &keyring::Error) -> KeyStoreError {
+    KeyStoreError::Keychain(text(error))
+}
+
 /// The Keychain's error as text. An item that is not UTF-8 is named by a fixed sentence: that
 /// error carries the item's bytes, which may be a value (LOG-007).
-fn fault(error: &keyring::Error) -> KeyStoreError {
+fn text(error: &keyring::Error) -> String {
     match error {
-        keyring::Error::BadEncoding(_) => {
-            KeyStoreError::Keychain("the item is not text".to_owned())
-        }
-        other => KeyStoreError::Keychain(other.to_string()),
+        keyring::Error::BadEncoding(_) => "the item is not text".to_owned(),
+        other => other.to_string(),
     }
 }
