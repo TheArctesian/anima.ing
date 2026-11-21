@@ -201,3 +201,33 @@ async fn met_012_a_refused_folder_sends_no_request_and_spends_no_code() {
     assert!(matches!(error, EnrolError::Folder(_)));
     assert!(hub.seen("enrol").is_empty(), "the code never left");
 }
+
+#[tokio::test]
+async fn r_322_a_token_store_that_cannot_be_read_sends_no_request_and_spends_no_code() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let hub = FakeHub::start().await;
+    hub.queue_enrol(enrolled(3));
+    let dir = tempfile::tempdir().expect("a folder");
+    let home = Home::at(dir.path().join("daemon"));
+    home.ensure().expect("the folder");
+    let token = home.token_path();
+    std::fs::write(&token, b"{}").expect("a token file");
+    std::fs::set_permissions(&token, std::fs::Permissions::from_mode(0o644)).expect("chmod");
+    let store = TokenStore::open(&home);
+    let client = HubClient::new(hub.url.clone(), TIMEOUT).expect("a client");
+    let error = Enrolment {
+        hub: &client,
+        origin: Origin::default_hub(),
+        home: &home,
+        store: &store,
+        now: crate::kit::at(0),
+    }
+    .spend(code())
+    .await
+    .expect_err("the token store is refused");
+    assert!(matches!(error, EnrolError::Unread(_)), "{error}");
+    assert!(
+        hub.seen("enrol").is_empty(),
+        "the store is read before the code leaves"
+    );
+}

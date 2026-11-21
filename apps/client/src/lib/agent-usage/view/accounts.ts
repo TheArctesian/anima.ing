@@ -67,20 +67,20 @@ export function limitText(limit: AccountLimit, now: number, zone?: string): stri
 export interface DeviceShare {
   readonly id: string;
   readonly name: string;
-  /** 0 to 100; null when no device of the account has use of the program in these days. */
+  /** 0 to 100; null when no device of the account has use of the program in these days, or this one is not counted. */
   readonly percent: number | null;
+  /** False when the daemon of the device reads no sessions (AIS-024) and it has no use in these days: its use is not known, which is not no use. */
+  readonly counted: boolean;
 }
 
 /** Each device of `account` with its share of what the page counts, for the program of the account only. */
-export function deviceShares(account: Pick<AgentAccount, 'source' | 'devices'>, rows: readonly DeviceSourceRow[], count: Count): DeviceShare[] {
-  const counts = account.devices.map((device) => {
-    const row = rows.find((one) => one.device.id === device.id && one.source === account.source);
-    return row === undefined ? 0 : countOf(row, count);
-  });
+export function deviceShares(account: Pick<AgentAccount, 'source' | 'devices'>, rows: readonly DeviceSourceRow[], count: Count, notCounted: ReadonlySet<string> = new Set()): DeviceShare[] {
+  const found = account.devices.map((device) => rows.find((one) => one.device.id === device.id && one.source === account.source));
+  const counts = found.map((row) => (row === undefined ? 0 : countOf(row, count)));
   const sum = counts.reduce((all, one) => all + one, 0);
-  return account.devices.map((device, index) => ({
-    id: device.id,
-    name: device.name,
-    percent: sum === 0 ? null : Math.round(share(counts[index] ?? 0, sum) * 100),
-  }));
+  return account.devices.map((device, index) => {
+    // A device with use in these days has its share, also when its daemon reads no sessions now: the use is from before.
+    const counted = found[index] !== undefined || !notCounted.has(device.id);
+    return { id: device.id, name: device.name, counted, percent: sum === 0 || !counted ? null : Math.round(share(counts[index] ?? 0, sum) * 100) };
+  });
 }

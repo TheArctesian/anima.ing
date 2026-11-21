@@ -6,7 +6,7 @@ import type { LiveThread } from './timeline';
 
 const TAILS: Readonly<Record<RunState, Tail>> = {
   needs_you: 'asks',
-  starting: 'running',
+  starting: 'starting',
   working: 'running',
   idle: 'turn_ended',
   stopped: 'stopped',

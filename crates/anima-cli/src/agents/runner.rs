@@ -151,7 +151,7 @@ pub fn refusal(why: &Refusal) -> Failure {
             None,
         ),
         Refusal::Running => (
-            "That thread runs: stop it first, then remove it from the list.",
+            "The program of that thread still runs: stop it first, then remove it from the list.",
             Some(Hint::run("anima agents stop <thread>")),
         ),
         Refusal::OverLimit { .. } => (

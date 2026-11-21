@@ -1481,8 +1481,17 @@ no counts, says "The daemon of this computer needs you".
 The tests cover, with stand-ins and no Keychain: a read that ends in time; a read that does not end, with
 no second read started while it is in flight and its answer given to the next read; a read whose thread
 ends with no answer; the schedule of the reads; the mark; the run that waits and then gets its token;
-`install` that takes a wait for installed; the sentence of the page. Not covered: the real Keychain and
-its window, `launchctl`, and the real time of the reads.
+`install` that takes a wait for installed; the sentence of the page. The branch
+`fix/daemon-keychain-writes` adds, with stand-ins: a write that does not end gives "waits" within its
+deadline and no second write starts while it is in flight; a read and a write of one item never run at
+once; a renewed token whose save waits is kept unused and stored at a later try, on the schedule of the
+reads, and is used or kept, never dropped, when a later save fails otherwise; a change of the token
+store drops it and its mark; a save of the key cache that waits is tried again on that schedule, and a
+delete that waits is owed until it answers; the end of a run whose refused token cannot be deleted;
+`enrol` reads the store before it sends the code (a token file that cannot be read sends nothing), and
+says that the code is spent after a save that fails. Not
+covered: the real Keychain and its window, `launchctl`, the real time of the reads, and a renewal that
+waits (it needs a token in its last 30 days).
 
 It needs: this Mac with the daemon installed and reporting (HT-061 step 1), and two ad hoc trial builds of
 this branch (`apps/desktop/src-tauri/trial-bundle.sh <version>` with no `SIGN_IDENTITY`), A installed
@@ -1508,6 +1517,20 @@ first. Each ad hoc build is a new program to the Keychain, so build B makes the 
    Keychain answered the read of the token" and "the daemon is running"; the file `keychain-waits` is gone;
    the Mac row in Devices shows new metrics.
 6. Quit and open the application. Expected: Agent usage no longer says that the daemon needs you.
+7. Added by the branch `fix/daemon-keychain-writes` (R-322, writes and deletes): each write and delete
+   of the Keychain is bounded as the reads are, and `enrol` reads the token before it sends the code.
+   It needs a third ad hoc build C of that branch, and a new enrolment code of this Mac (the
+   enrolment gives the Mac a new token). Quit the application. Run
+   `cp /Applications/Anima.ing.app/Contents/MacOS/anima-daemon /tmp/anima-daemon-c` with build C in
+   `/Applications`, then `time /tmp/anima-daemon-c enrol -` and paste the code. Do not answer the
+   window of macOS. Expected: the window stays open while the command waits; the command ends after
+   about 2 minutes (`enrol` waits 120 s for the person) with "the code was not sent: allow the
+   daemon in the Keychain ..."; `pgrep -f anima-daemon-c` prints nothing. Then run
+   `/tmp/anima-daemon-c enrol -` again with the same code, type the password of the Mac and click
+   Always Allow in the window within 2 minutes. Expected: "Enrolled ...": the code was not spent by
+   the first try. Last, run
+   `cp /tmp/anima-daemon-c ~/.local/bin/anima-daemon` and `~/.local/bin/anima-daemon install`, and
+   allow it in the Keychain if macOS asks. Expected: the Mac row in Devices shows new metrics.
 
 Result: Open.
 
@@ -3206,6 +3229,9 @@ window, a real Claude Code thread, and a restart of the installed daemon.
    characters that show: no control characters and no hidden marks, such as a mark that turns the direction of text."
 5. Open a thread that runs. Expected: Remove is off, with the line "Stop the thread first to remove it." From a
    terminal, `anima agents remove <its ID>` answers "That thread runs: stop it first, then remove it from the list."
+   shows its session file.
+5. Open a thread that runs. Expected: Remove is off, with the line "The program of this thread still runs: end the program first to remove it." From a
+   terminal, `anima agents remove <its ID>` answers "The program of that thread still runs: stop it first, then remove it from the list."
 6. From inside a Claude Code thread, ask it to run `anima agents pin <the ID of a thread>`. Expected: "Only the person
    can answer a request, raise the limit, start a thread or change the list of threads: this call came from a process
    of an agent." The pin does not change.
