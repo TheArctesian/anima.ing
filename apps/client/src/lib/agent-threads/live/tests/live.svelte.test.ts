@@ -202,6 +202,18 @@ describe('the queue of a thread (TH109)', () => {
     expect(old?.lastTurn).toBeNull();
   });
 
+  it('TH110: reads the effort of a row, and a refusal of a change with the words of the runner', () => {
+    expect(runRowFrom(rowFrame('idle', { effort: 'high' }))?.effort).toBe('high');
+    expect(runRowFrom(rowFrame('idle', { effort: 'loud' }))?.effort).toBeNull();
+    const said = 'Claude Code cannot change the effort of a session that runs.';
+    expect(outcomeFrom({ outcome: 'refused', why: { refusal: 'cannot_change', said } })).toEqual({ outcome: 'refused', why: 'cannot_change', said });
+  });
+
+  it('TH104: the models of each program, for the picker; a program with none and a model that does not read are left out', () => {
+    const answer = { outcome: 'models', models: [{ program: 'codex', models: [{ value: 'gpt-5.6-sol', name: 'GPT-5.6 Sol', efforts: ['low', 'high'], default_effort: 'low' }, { name: 'no value' }], at: '2026-11-21T00:00:00Z' }] };
+    expect(outcomeFrom(answer)).toEqual({ outcome: 'models', models: { codex: [{ id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol', efforts: ['low', 'high'], defaultEffort: 'low' }] } });
+  });
+
   it('says a full queue in words', () => {
     expect(outcomeFrom({ outcome: 'refused', why: { refusal: 'queue_full' } })).toEqual({ outcome: 'refused', why: 'queue_full' });
   });

@@ -123,10 +123,18 @@ impl CodexInput {
     }
 
     #[must_use]
-    pub fn turn_start(id: i64, thread: &str, text: &str, effort: Option<Effort>) -> String {
+    pub fn turn_start(id: i64, thread: &str, text: &str, turn: &TurnSettings<'_>) -> String {
         let mut params = json!({"threadId": thread, "input": [{"type": "text", "text": text}]});
-        if let Some(effort) = effort {
+        if let Some(effort) = turn.effort {
             params["effort"] = Value::from(effort.as_str());
+        }
+        if let Some(model) = turn.model {
+            params["model"] = Value::from(model.as_str());
+        }
+        if let Some(mode) = turn.mode {
+            let (sandbox, approval) = mode.codex();
+            params["approvalPolicy"] = Value::from(approval);
+            params["sandboxPolicy"] = sandbox_policy(sandbox);
         }
         call(id, CodexMethod::TurnStart, &params)
     }
@@ -209,6 +217,25 @@ impl CodexInput {
 
 fn call(id: i64, method: CodexMethod, params: &Value) -> String {
     json!({"jsonrpc": "2.0", "id": id, "method": method.name(), "params": params}).to_string()
+}
+
+/// What a turn changes of its thread from that turn on (TH110): `None` keeps what the thread has.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct TurnSettings<'a> {
+    pub model: Option<&'a Model>,
+    pub effort: Option<Effort>,
+    pub mode: Option<Mode>,
+}
+
+/// The `sandboxPolicy` of a `turn/start` for the `sandbox` of a `thread/start` (Codex 0.170;
+/// `readOnly` was measured on 2026-11-21).
+fn sandbox_policy(sandbox: &str) -> Value {
+    let kind = match sandbox {
+        "danger-full-access" => "dangerFullAccess",
+        "workspace-write" => "workspaceWrite",
+        _ => "readOnly",
+    };
+    json!({"type": kind})
 }
 
 fn thread_params(thread: Option<&str>, folder: &Path, mode: Mode, model: Option<&Model>) -> Value {

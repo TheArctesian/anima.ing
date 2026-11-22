@@ -17,8 +17,9 @@ export const REFUSAL_WORDS: Readonly<Record<Refusal, string>> = {
   answer_does_not_fit: 'That answer does not fit the request.',
   not_running: 'The program of that thread is not running.',
   holder: 'The holder of the programs did not take the command.',
-  from_an_agent: 'Only the person can answer a request, raise the limit, start a thread, change the list of threads, list the files of a thread or change the queue of a thread: this call came from a process of an agent.',
+  from_an_agent: 'Only the person can answer a request, raise the limit, start a thread, change the list of threads, list the files of a thread, change the queue of a thread or change its model, effort or mode: this call came from a process of an agent.',
   running: 'The program of that thread still runs: stop it first, then remove it from the list.',
   over_limit: OVER_LIMIT,
   queue_full: 'That thread has 20 queued prompts: send or drop one first.',
+  cannot_change: 'The program of that thread cannot change that after its start.',
 };

@@ -60,8 +60,9 @@ export class SceneEngine implements ComposerEngine {
 
   sendQueued = (id: string): Promise<Outcome> => this.unqueue(id);
 
-  choose = (next: Choice): void => {
+  choose = (next: Choice): Promise<Outcome> => {
     this.choice = next;
+    return OK;
   };
 }
 

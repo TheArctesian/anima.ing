@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use uuid::Uuid;
 
 use super::{Action, Call, ListingChange, ProjectChange};
-use crate::drive::{Answer, Mode, Program};
+use crate::drive::{Answer, Effort, Mode, Program};
 
 /// One of each call that reads, or that starts or drives a thread.
 fn reads() -> Vec<Action> {
@@ -89,6 +89,12 @@ fn changes() -> Vec<Action> {
             thread,
             queued: other,
         },
+        Action::Set {
+            thread,
+            model: Some(text()),
+            effort: Some(Effort::High),
+            mode: Some(Mode::FullAccess),
+        },
     ]
 }
 
@@ -117,10 +123,11 @@ const fn kind(action: &Action) -> usize {
         Action::Requeue { .. } => 18,
         Action::Unqueue { .. } => 19,
         Action::SendQueued { .. } => 20,
+        Action::Set { .. } => 21,
     }
 }
 
-const KINDS: usize = 21;
+const KINDS: usize = 22;
 
 #[test]
 fn th109_each_call_reads_back_from_its_frame() {

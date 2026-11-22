@@ -24,6 +24,8 @@ pub enum Kind {
     Answer,
     Stop,
     Refusal,
+    /// The person changed the model, the effort or the mode of a thread (TH110).
+    Change,
 }
 
 /// One line: the time, the kind, the thread, what the runner could see of the source, and a
