@@ -54,7 +54,7 @@ impl Runner {
         // A start whose copy is being asked counts against the soft limit too.
         self.may_start(u32::try_from(self.asks.open.len()).unwrap_or(u32::MAX))?;
         chosen_folder(&new.folder, self.dir.parent().unwrap_or(&self.dir))?;
-        self.attached.ready(new.draft, &new.attachments)?;
+        self.draft_ready(&new)?;
         if login::find(new.program, &self.env, login::executable, login::trusted).is_none() {
             self.ask_login_again(new.program).await;
         }
@@ -197,7 +197,7 @@ impl Runner {
             self.threads.remove(&id);
             return Err(Refusal::Holder);
         };
-        let files = self.attached.adopt(new.draft, id, &new.attachments);
+        let files = self.adopt_draft(&new, id);
         let prompt = new.prompt;
         self.waits.insert(
             command,

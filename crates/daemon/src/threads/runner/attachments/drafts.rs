@@ -27,6 +27,35 @@ impl Attachments {
         let Some(draft) = draft else {
             return Vec::new();
         };
+        let moved = self.moved(draft, thread, ids);
+        if !moved.is_empty() {
+            self.drafts.insert(thread, draft);
+        }
+        moved
+    }
+
+    /// The new thread `thread` did not start: the files that it took from its draft go back to
+    /// the draft, so that a new start can name them again.
+    pub fn give_back(&mut self, thread: Uuid) {
+        let Some(draft) = self.drafts.remove(&thread) else {
+            return;
+        };
+        let ids: Vec<Uuid> = self
+            .pending
+            .iter()
+            .filter(|(_, upload)| upload.thread == thread)
+            .map(|(id, _)| *id)
+            .collect();
+        self.moved(thread, draft, &ids);
+        self.forget(thread);
+    }
+
+    /// The first prompt of `thread` took its files: its draft is over.
+    pub fn draft_over(&mut self, thread: Uuid) {
+        self.drafts.remove(&thread);
+    }
+
+    fn moved(&mut self, draft: Uuid, thread: Uuid, ids: &[Uuid]) -> Vec<Uuid> {
         let mut moved = Vec::new();
         for id in ids {
             let mine = self

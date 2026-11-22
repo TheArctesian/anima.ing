@@ -83,13 +83,27 @@ async fn th111_a_file_of_the_draft_goes_with_the_first_prompt_of_the_start_that_
             .exists(),
         "the draft keeps no folder"
     );
+}
 
+#[tokio::test]
+async fn th111_the_id_of_a_thread_is_never_a_key_of_a_draft() {
+    let kit = Kit::with(CLAUDE_KEEPS);
+    std::fs::create_dir_all(kit.path("work")).expect("a folder");
+    let mut client = kit.client().await;
+    client.call(Action::Watch).await;
+    let call = client.call(start(&kit, Uuid::now_v7(), Vec::new())).await;
+    let Outcome::Started { thread } = client.done(call).await else {
+        panic!("the thread started");
+    };
     let taken = client.call(draft_file(thread, b"a")).await;
-    assert_eq!(
-        client.done(taken).await,
-        Outcome::Refused {
-            why: Refusal::BadValue
-        },
-        "the ID of a thread is not a key of a draft"
-    );
+    let again = client.call(start(&kit, thread, Vec::new())).await;
+    for (call, at) in [(taken, "at an attach"), (again, "at a start")] {
+        assert_eq!(
+            client.done(call).await,
+            Outcome::Refused {
+                why: Refusal::BadValue
+            },
+            "{at}"
+        );
+    }
 }

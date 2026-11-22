@@ -8,6 +8,7 @@ use uuid::Uuid;
 use super::super::Runner;
 use super::super::attachments::NewFile;
 use super::super::log::Kind;
+use super::super::start::NewThread;
 
 impl Runner {
     pub(super) fn attach_call(&mut self, action: Action) -> Outcome {
@@ -62,6 +63,34 @@ impl Runner {
 }
 
 impl Runner {
+    /// Whether the files that a start names can go with its first prompt; the key of its draft
+    /// is never the ID of a thread.
+    pub(in crate::threads::runner) fn draft_ready(&self, new: &NewThread) -> Result<(), Refusal> {
+        if new
+            .draft
+            .is_some_and(|draft| self.threads.contains_key(&draft))
+        {
+            return Err(Refusal::BadValue);
+        }
+        self.attached.ready(new.draft, &new.attachments)
+    }
+
+    /// Gives the files of the draft of `new` to the thread `id`; the thread says so when a file
+    /// went in the time between the check and the start.
+    pub(in crate::threads::runner) fn adopt_draft(
+        &mut self,
+        new: &NewThread,
+        id: Uuid,
+    ) -> Vec<Uuid> {
+        let files = self.attached.adopt(new.draft, id, &new.attachments);
+        if files.len() < new.attachments.len() {
+            let text = "A file of the draft was gone when the thread started: it does not go with the first prompt. Attach it again.".to_owned();
+            let event = DriveEvent::Notice { text };
+            self.publish(id, Change::Said { event });
+        }
+        files
+    }
+
     /// The first prompt of a new thread with the files of its draft (TH111). Files that cannot
     /// go stay with the thread for a later prompt, and the thread says so; the text goes.
     pub(in crate::threads::runner) fn first_prompt(
@@ -106,6 +135,7 @@ impl Runner {
         taken: &[Uuid],
         went: bool,
     ) {
+        self.attached.draft_over(id);
         if taken.is_empty() {
             return;
         }

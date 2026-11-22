@@ -45,7 +45,7 @@ impl Runner {
         let (prompt, files) = first;
         if matches!(outcome, HolderOutcome::Refused { .. }) {
             self.threads.remove(&id);
-            self.attached.forget(id);
+            self.attached.give_back(id);
             refused(Refusal::Holder)
         } else {
             self.began(id, prompt, files).await

@@ -141,6 +141,7 @@ impl Runner {
                 self.began(thread, &prompt, &files).await
             } else {
                 self.threads.remove(&thread);
+                self.attached.give_back(thread);
                 refused(Refusal::Holder)
             };
             self.answer_late(Some(&back), Some(thread), result);
