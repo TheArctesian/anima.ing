@@ -1,6 +1,9 @@
 <script lang="ts">
   import { MediaQuery } from 'svelte/reactivity';
   import ApiKeysSection from '$lib/api-keys/ApiKeysSection.svelte';
+  import { routesApi } from '$lib/application-routes/api';
+  import RoutesSection from '$lib/application-routes/RoutesSection.svelte';
+  import { RoutesStore } from '$lib/application-routes/store.svelte';
   import DefaultsSection from '$lib/checks/defaults/DefaultsSection.svelte';
   import SignOutRow from '$lib/access/SignOutRow.svelte';
   import { hubIsHosted } from '$lib/hosted/mark';
@@ -44,7 +47,10 @@
   const { updates, commandLine, processLog, builds, keyStore, mcpPermissions, stayAwake, localHub, runnerReport } = capabilities();
   // The hub on this computer: its section, and its origin for the Stay awake notice (FRN-006, AWK-005, FRN-008).
   // A hub that Anima.ing hosts has no VPN, so the page has no VPN section for it (R-222).
-  const vpnShown = !hubIsHosted(useHub().address.origin);
+  const hub = useHub();
+  const vpnShown = !hubIsHosted(hub.address.origin);
+  // The routes of the hub (task H21); a hosted hub has no streams (OD-HOST-47).
+  const routes = new RoutesStore(routesApi(hub), !vpnShown);
   const hubState = localHub ? new LocalHubWatch(desktopLocalHubShell) : null;
   $effect(() => hubState?.watch());
   const desktopRows = updates || commandLine || processLog || builds;
@@ -87,6 +93,10 @@
   {/if}
 
   <LinkDevicesSection section={SECTIONS.linkDevices} />
+
+  <SettingsSection {...SECTIONS.routes}>
+    <RoutesSection store={routes} />
+  </SettingsSection>
 
   <SettingsSection {...SECTIONS.notifications}>
     <NotificationsSection />
