@@ -6,7 +6,7 @@
 
 use std::sync::Arc;
 
-use async_graphql::{Context, ID, InputObject, Object, Result, SimpleObject};
+use async_graphql::{Context, ErrorExtensions as _, ID, InputObject, Object, Result, SimpleObject};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use chrono::{DateTime, Utc};
 
@@ -16,10 +16,14 @@ use super::{
 };
 use crate::{
     api_errors::schema_dependency,
-    api_errors::{FieldError, begin, commit, internal, invalid, pool},
+    api_errors::{ErrorCode, FieldError, begin, coded, commit, internal, invalid, pool},
     clock::Clock,
+    config::Config,
     engine::records::Reference,
-    fleet::{access::Authenticated, events::Trail},
+    fleet::{
+        access::{Authenticated, Recheck, person_only, recheck_totp},
+        events::{ActorKind, Trail},
+    },
     ids::KeyOfferId,
 };
 
@@ -139,6 +143,31 @@ fn failed(error: Error) -> async_graphql::Error {
     internal(error)
 }
 
+/// A refusal of a reveal by the second factor: `FORBIDDEN`, with `extensions.reason`.
+fn refused(message: &str, reason: &'static str) -> async_graphql::Error {
+    coded(message, ErrorCode::Forbidden)
+        .extend_with(move |_, extensions| extensions.set("reason", reason))
+}
+
+/// The answer of the second factor to a reveal, as `Ok(())` or the error of the call.
+fn second_factor(recheck: Recheck) -> Result<()> {
+    match recheck {
+        Recheck::Passed => Ok(()),
+        Recheck::CodeRequired => Err(refused(
+            "Give a new TOTP code to reveal this record.",
+            "TOTP_REQUIRED",
+        )),
+        Recheck::NotEnrolled => Err(refused(
+            "Enrol TOTP on the hub to reveal a sealed record: anima-hub operator totp.",
+            "TOTP_NOT_ENROLLED",
+        )),
+        Recheck::SignedOut => Err(coded(
+            "Five wrong TOTP codes signed this login out. Sign in again.",
+            ErrorCode::Unauthenticated,
+        )),
+    }
+}
+
 #[derive(Default)]
 pub struct Query;
 
@@ -205,6 +234,56 @@ impl Mutation {
         };
         trail_of_change
             .write(&mut tx, trail::removed(&record))
+            .await
+            .map_err(internal)?;
+        commit(tx).await?;
+        Ok(true)
+    }
+
+    /// Records that a client opens the sealed record of `owner` for the operator: one audit
+    /// entry with no value. Only a person who signed in may ask, and the TOTP code of the login
+    /// must be at most 5 minutes old; else give `totpCode`. `FORBIDDEN` with `reason`
+    /// `TOTP_REQUIRED` asks for a new code. `UNAVAILABLE` on a hosted hub (OD-E20).
+    #[graphql(guard = "Authenticated")]
+    async fn record_reveal(
+        &self,
+        ctx: &Context<'_>,
+        owner: String,
+        totp_code: Option<String>,
+    ) -> Result<bool> {
+        let owner = owner_of(&owner)?;
+        let identity = person_only(ctx)?;
+        if identity
+            .operator()
+            .is_some_and(|operator| operator.actor.kind() == ActorKind::Agent)
+        {
+            return Err(coded(
+                "An AI agent cannot reveal a sealed record.",
+                ErrorCode::Forbidden,
+            ));
+        }
+        if schema_dependency::<Arc<Config>>(ctx)?
+            .hosted_cloud_key_file
+            .is_some()
+        {
+            return Err(coded(
+                "A hosted hub cannot reveal a sealed record yet.",
+                ErrorCode::Unavailable,
+            ));
+        }
+        let trail_of_change = Trail::from_context(ctx)?;
+        let mut conn = pool(ctx)?.acquire().await.map_err(|e| failed(e.into()))?;
+        let Some(record) = stored(&mut conn, &owner).await.map_err(failed)? else {
+            return Err(coded(
+                "No sealed record has this owner.",
+                ErrorCode::NotFound,
+            ));
+        };
+        drop(conn);
+        second_factor(recheck_totp(ctx, totp_code.as_deref()).await?)?;
+        let mut tx = begin(ctx).await?;
+        trail_of_change
+            .write(&mut tx, trail::revealed(&record))
             .await
             .map_err(internal)?;
         commit(tx).await?;

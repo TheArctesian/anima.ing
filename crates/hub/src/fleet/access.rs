@@ -19,6 +19,7 @@ mod networks;
 mod origin;
 mod password;
 mod rebinding;
+mod recheck;
 mod store;
 #[cfg(test)]
 mod tests;
@@ -54,6 +55,7 @@ pub use login::hosted::{BrowserSession, HostedDevice, sign_in_hosted, sign_in_ho
 pub use origin::PublicOrigin;
 pub use password::Password;
 pub use rebinding::loopback_names_layer;
+pub use recheck::{RECHECK_WINDOW, Recheck, recheck_totp};
 pub use tokens::{Scope, TokenKind};
 
 use crate::{
