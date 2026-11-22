@@ -56,6 +56,7 @@
     onQueue={(act) => live?.call(queueAction(act, id)) ?? Promise.resolve(NO_RUNNER)}
     onSet={(change) => live?.call({ call: 'set', thread: id, ...change }) ?? Promise.resolve(NO_RUNNER)}
     models={program === undefined ? undefined : lists[program]}
+    onFiles={(query, most) => live?.files(id, query, most) ?? Promise.resolve(NO_RUNNER)}
   />
 </div></div>
 

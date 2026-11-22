@@ -22,7 +22,7 @@
   import { applyReader, storedReader } from '../settings/reader';
   import ChatColumn from './ChatColumn.svelte';
   import ChatFoot from './ChatFoot.svelte';
-  import { heldWidth, INBOX_WIDTH, storedWidth, storeWidth } from './inbox-width';
+  import { heldWidth, INBOX_WIDTH, storedWidth, storeWidth } from '../shell/inbox-width';
   import { pageKey } from './page-keys';
   import { paletteHost } from './palette-host';
   import ThreadBody from './ThreadBody.svelte';
