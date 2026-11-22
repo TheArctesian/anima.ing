@@ -126,6 +126,11 @@ impl<T> FlowTable<T> {
         }
     }
 
+    /// Removes each flow and drops its handle, which ends it.
+    pub fn clear(&mut self) {
+        self.flows.clear();
+    }
+
     /// The flows in the table, and how many of them are set up.
     #[must_use]
     pub fn counts(&self) -> (usize, usize) {

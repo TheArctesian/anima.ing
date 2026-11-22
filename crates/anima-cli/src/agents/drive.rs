@@ -11,10 +11,13 @@ use agent_threads::drive::{Answer, Effort, Mode, Program};
 use uuid::Uuid;
 
 use super::runner::{RunnerLink, refusal};
+
+mod queue;
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::stream::{self, Reader};
 use crate::output::{Cell, Table, Tone};
+pub use queue::QueueArgs;
 
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
 pub enum ProgramName {

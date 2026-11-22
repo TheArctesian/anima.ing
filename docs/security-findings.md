@@ -281,6 +281,12 @@ that owns the area.
 | SF-248 | Streams: a false UDP rule, public TCP of services that trust localhost, an open list of ports, open redirects. Medium | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
 | SF-246 | Images start as root with nothing added to contain them; the rule of `shm_size`. Medium | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
 | SF-249 | The machine tests run images that are not trusted. Medium | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-335 | A fetch of an operational key during the removal of its device gives the value, and the removal does not name the key. Low | The operational keys (E0-6, K-E5 Section 2) | Open (built on the branch `engine/e0-6-security-review`) |
+| SF-338 | `anima-daemon uninstall` keeps the key cache when the delete of the token fails. Low | The key cache of the daemon (E0-6, K-E5 Section 2.1) | Open (built on the branch `engine/e0-6-security-review`) |
+| SF-336 | `anima-daemon key read` can give a dropped version while a save or a delete in the Keychain waits for the person. Low | The key cache of the daemon on macOS (E0-6, K-E5 Section 2.1) | Open |
+| SF-334 | An API key can read a vault key offer and can replace or delete a sealed record. Medium | The sealed records (E0-6, K-E5 Section 3) | Open |
+| SF-337 | A reveal with a valid new code passes for a login token that was deleted during the request. Low | The sealed records (E0-6, K-E5 Section 3) | Open |
+| SF-333 | A login token with the declaration of an AI agent can change and grant operational keys. Low | The operational keys (E0-6, K-E5 Section 2.2) | Open |
 | SF-179 | A program of the same user can listen at the socket of the link and get the daemon token and an enrolment code; on macOS this goes around the Keychain. Medium | The daemon on a computer of a person (task HM-T23) | Open |
 | SF-178 | On macOS, a daemon enrolled with an old link origin sends its token to a socket in the folder that the environment names. Low | The daemon on a computer of a person (task HM-T23) | Open |
 | SF-175 | The copy of the daemon in `~/.local/bin` is not checked after the installation. Low | The daemon on a computer of a person (task HM-T23) | Open |
@@ -2398,8 +2404,8 @@ A re-read of `33e4fb787` on 2026-11-21 found two more points, decided overnight 
 - A sender of false sources that sends again to each of them sets up flows without seeing an answer, at most 7 of them by default. While those places are full, a real client stays waiting and a new source can replace it.
 - The first datagram of a new real client competes with false sources for the tokens of the bucket (8 each second).
 - One connection of the route stays free for one replacement at a time. In a burst, a new flow can race a replaced flow for its connection, so a real client can be refused once and must send again.
-- When the listener of a stream starts again, the old flows keep their connections until they are idle (60 seconds). The correction: end the flows of a listener when it is stopped, and check that one name has one listener.
-- When `carry` panics, the connection of the name is not given back (`proxy.release`). The correction: a guard that gives it back on drop.
+- When the listener of a stream starts again, the old flows keep their connections until they are idle (60 seconds). The correction: end the flows of a listener when it is stopped, and check that one name has one listener. Built on the branch `hosted/udp-flow-ends`: when the listener of a UDP stream stops, its table drops each flow, which ends it (test `clearing_the_table_drops_each_handle`). One name has one listener: the name of a route is unique (migration 1060) and a route has one kind.
+- When `carry` panics, the connection of the name is not given back (`proxy.release`). The correction: a guard that gives it back on drop. Built on the branch `hosted/udp-flow-ends`.
 - Each replaced flow is a new dial through the hub, up to 8 each second for each stream, each with one query of the hub and one UDP socket.
 - The hub records an error of the door for a frame that a replaced flow cut off; it is a normal end.
 - No test runs a whole flow: the handover of a connection while a flow dials, and the admission of a new client while set-up flows are at their cap.
@@ -3769,6 +3775,90 @@ Effect, and who can cause it: An image that a publisher lost control of. Effect:
 Mitigation now: OD-HOST-53: the test machine is not on the network of Anima or his local network, its outbound traffic is recorded, and it is wiped after each run.
 
 State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-335: A fetch of an operational key during the removal of its device gives the value, and the removal does not name the key. Low
+
+Requirements: R-147; K-E5 Section 2.1 ("After removal").
+
+What it is: The fetch checked the consumer row of the device with `EXISTS` and did not lock it. A removal of the device that ran during the fetch deleted the row before the fetch recorded it, so the list of the keys that the server had did not name the key, and the fetch still gave the value.
+
+Where: `crates/hub/src/fleet/credentials/operational/store.rs` (`fetchable`), `operational/store/consumers.rs` (`mark_fetched`, `delete_of_device`).
+
+Effect, and who can cause it: A device that fetches a key for the first time while the operator removes it. Effect: the server holds the key, and the removal does not tell the operator to revoke it at the provider. The audit entry of the fetch exists.
+
+Mitigation now: `fetchable` holds the consumer rows of the device shared (`FOR SHARE OF k, c`), so the removal waits for the fetch to commit and then names the key.
+
+State: Open. The correction is built on the branch `engine/e0-6-security-review`; no test makes the race. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
+
+### SF-338: `anima-daemon uninstall` keeps the key cache when the delete of the token fails. Low
+
+Requirements: R-147; K-E5 Section 2.1.
+
+What it is: `uninstall` deleted the token first and stopped at its error, so the key cache stayed. On macOS a delete in the Keychain can wait for the person (R-322).
+
+Where: `crates/daemon/src/main.rs` (`uninstall`).
+
+Effect, and who can cause it: A failed or waiting delete of the token during `anima-daemon uninstall`. Effect: `anima-daemon key read` gives the values for up to 7 days, and no daemon runs to delete them.
+
+Mitigation now: `uninstall` deletes the key cache first, and also when the delete of the token fails.
+
+State: Open. The correction is built on the branch `engine/e0-6-security-review`. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
+
+### SF-336: `anima-daemon key read` can give a dropped version while a save or a delete in the Keychain waits for the person. Low
+
+Requirements: R-147; K-E5 Section 2.1.
+
+What it is: The daemon drops a revoked or replaced version in memory, but the stored record stays until a save or a delete in the Keychain succeeds. `key read` is a different process and reads the stored record.
+
+Where: `crates/daemon/src/keys/keeper.rs` (`follow`, `save`, `forget`), `crates/daemon/src/keys.rs` (`key read`).
+
+Effect, and who can cause it: On macOS, before the person allows the Keychain access, the hub revokes or rotates a key. Effect: a workload that runs `anima-daemon key read` gets the old value. The 7-day rule ends it. Linux is not affected.
+
+Mitigation now: none apart from the 7-day rule. The live check HT-035 covers the Keychain.
+
+State: Open. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
+
+### SF-334: An API key can read a vault key offer and can replace or delete a sealed record. Medium
+
+Requirements: VLT-001, VLT-002; K-E5 Section 3.
+
+What it is: `offerVaultKey`, `vaultKeyOffer`, `storeSealedRecord` and `deleteSealedRecord` take each signed-in token. Only `recordReveal` asks for a person (a login or a browser token, and no declared AI agent).
+
+Where: `crates/hub/src/engine/sealed_records/graphql.rs`; `crates/hub/src/fleet/access/guard/refused.rs` (`API_KEY_REFUSED_ROOTS`).
+
+Effect, and who can cause it: A holder of an API key, also a key made for an AI agent. Effect: it can read an offer and so stop the addition of a client (the bytes stay sealed), or replace or delete the one sealed copy of a record on the hub.
+
+Mitigation now: each change writes an audit entry that names the key.
+
+State: Open. The correction (a person only, on the four fields) waits until `recordReveal` is on `dev`, because it changes the same file. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
+
+### SF-337: A reveal with a valid new code passes for a login token that was deleted during the request. Low
+
+Requirements: VLT-005; K-E5 Section 3.
+
+What it is: The check of the second factor reads no row for a deleted token, and then records the code on no row and passes.
+
+Where: `crates/hub/src/fleet/access/recheck.rs`, `access/store/tokens.rs` (`lock_token_totp`).
+
+Effect, and who can cause it: A sign-out of the login while its reveal runs. Effect: the reveal passes, but only with a valid new TOTP code.
+
+Mitigation now: the reveal needs the code.
+
+State: Open. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
+
+### SF-333: A login token with the declaration of an AI agent can change and grant operational keys. Low
+
+Requirements: R-147; K-E5 Section 2.2.
+
+What it is: The changes of the operational keys refuse an API key but not a request that declares an AI agent. `recordReveal` refuses such a request.
+
+Where: `crates/hub/src/fleet/credentials/graphql.rs`; `crates/hub/src/fleet/access/guard.rs` (`operator_only`).
+
+Effect, and who can cause it: An AI agent that holds the login token of the operator and declares itself. Effect: it can grant a key to a server. The declaration is voluntary, so this is a second defence only; the contract does not ask for it.
+
+Mitigation now: a grant writes an audit entry that names the agent.
+
+State: Open. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
 
 ## Closed
 

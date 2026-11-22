@@ -14,6 +14,7 @@ use super::{
     ClientAddr, Error, Identity, Operator,
     actor::{self, Declaration, Signals},
     password::{self, DUMMY_HASH, Password},
+    recheck::claim_step,
     store::{self, Account, AttemptKey, NewToken, Outcome},
     throttle,
     tokens::{BROWSER_LIFETIME, LOGIN_LIFETIME, Scope, TOKEN_BYTES, Token, TokenKind},
@@ -273,14 +274,11 @@ async fn succeed(
     if !store::lock_unchanged(&mut tx, &account).await? {
         return Ok(None);
     }
-    if let Some(step) = step {
-        let sealed = account.totp_secret_enc.as_deref().unwrap_or_default();
-        if !store::claim_totp_step(&mut *tx, account.id, sealed, step).await? {
-            return Ok(None);
-        }
+    let id = store::insert_token(&mut tx, &new_token, attempt.at).await?;
+    if !claim_step(&mut tx, &account, step, (id, attempt.at)).await? {
+        return Ok(None);
     }
     store::finish_attempt(&mut *tx, attempt.id, Outcome::Ok).await?;
-    store::insert_token(&mut tx, &new_token, attempt.at).await?;
     if let Some(mut replaced) = issue.replaces {
         // This sign-in deletes the old token, so its sign-out is this request's (LOG-014).
         replaced.operator.actor = operator.actor.clone();

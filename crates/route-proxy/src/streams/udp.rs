@@ -61,6 +61,7 @@ pub async fn serve<H: Hub>(proxy: Arc<Proxy<H>>, socket: UdpSocket, stream: Stre
         burst,
         proxy.route_connections(),
     ))));
+    let _ends = EndsFlows(Arc::clone(&flows));
     let mut arrivals = Bucket::full(per_second, burst, 0);
     let started = Instant::now();
     let mut buffer = vec![0_u8; DATAGRAM_MAX];
@@ -177,6 +178,10 @@ impl<H: Hub> Flow<H> {
     ) {
         let name = &self.stream.name;
         if pass.admit(self.source.ip()) && self.proxy.admit(name) {
+            let _admitted = Admitted {
+                proxy: &self.proxy,
+                name,
+            };
             let moved = Moved::default();
             tokio::select! {
                 () = self.carry(receiver, first, &moved) => {}
@@ -184,7 +189,6 @@ impl<H: Hub> Flow<H> {
             }
             let (bytes_in, bytes_out) = moved.totals();
             self.proxy.moved(name, bytes_in, bytes_out);
-            self.proxy.release(name);
         }
     }
 
@@ -253,5 +257,31 @@ impl<H: Hub> Drop for Flow<H> {
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .close(self.source, self.id);
+    }
+}
+
+/// Ends each flow of a stream when its listener stops: when `serve` is aborted, its table drops
+/// each handle, so each flow ends and gives back its connection (SF-327).
+struct EndsFlows(Flows);
+
+impl Drop for EndsFlows {
+    fn drop(&mut self) {
+        self.0
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clear();
+    }
+}
+
+/// A connection of a name that the proxy admitted; given back when it is dropped, also when the
+/// flow ends by a panic.
+struct Admitted<'a, H: Hub> {
+    proxy: &'a Proxy<H>,
+    name: &'a str,
+}
+
+impl<H: Hub> Drop for Admitted<'_, H> {
+    fn drop(&mut self) {
+        self.proxy.release(self.name);
     }
 }

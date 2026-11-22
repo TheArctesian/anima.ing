@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { askFrame, madeShell, saidFrame, stateFrame, THREAD } from './frames.fixture';
-import { LiveThreads, REPLAY_GAP_MS, REPLAY_MS } from './live.svelte';
-import { TEXT_CHARS, waitingWords } from './timeline';
-import { OVER_LIMIT, outcomeFrom, type Outcome } from './run';
+import { askFrame, madeShell, rowFrame, saidFrame, stateFrame, THREAD } from './frames.fixture';
+import { LiveThreads, REPLAY_GAP_MS, REPLAY_MS } from '../live.svelte';
+import { TEXT_CHARS, waitingWords } from '../timeline';
+import { OVER_LIMIT } from '../refusals';
+import { outcomeFrom, runRowFrom, type Outcome } from '../run';
 
 const AWAY = { front: false, chosen: null };
 
@@ -101,7 +102,7 @@ describe('the calls of the page to the runner', () => {
 
   it('TH14: a refusal of the runner comes back in words', async () => {
     const live = new LiveThreads(madeShell(() => ({ outcome: 'refused', why: 'request_gone' })), () => AWAY);
-    expect(await live.call({ call: 'interrupt', thread: THREAD })).toEqual({ ok: false, words: 'That request is answered, closed, or its program ended.' });
+    expect(await live.call({ call: 'interrupt', thread: THREAD })).toEqual({ ok: false, words: 'That request or queued prompt is gone: it was answered, closed or sent, or its program ended.' });
   });
 
   it('TH97: a starting thread says what it waits for and for how long', () => {
@@ -188,5 +189,20 @@ describe('the @ list of the composer', () => {
     );
     expect(await live.files(THREAD, 'main', 20)).toEqual({ ok: true, paths: [{ path: 'src', folder: true }, { path: 'src/main.rs', folder: false }], more: true });
     expect(asked).toEqual([{ call: 'files', thread: THREAD, query: 'main', most: 20 }]);
+  });
+});
+
+describe('the queue of a thread (TH109)', () => {
+  it('reads the queued prompts and how the last turn ended; a row of an older runner has none', () => {
+    const row = runRowFrom(rowFrame('working', { queued: [{ id: 'q1', text: 'Then the tests' }, { id: 2 }], last_turn: 'failed' }));
+    expect(row?.queued).toEqual([{ id: 'q1', text: 'Then the tests' }]);
+    expect(row?.lastTurn).toBe('failed');
+    const old = runRowFrom(rowFrame('idle'));
+    expect(old?.queued).toEqual([]);
+    expect(old?.lastTurn).toBeNull();
+  });
+
+  it('says a full queue in words', () => {
+    expect(outcomeFrom({ outcome: 'refused', why: { refusal: 'queue_full' } })).toEqual({ outcome: 'refused', why: 'queue_full' });
   });
 });

@@ -13,9 +13,11 @@ use crate::files::FoundPath;
 
 mod listing;
 mod project;
+mod queue;
 mod shelf;
 pub use listing::{BadChange, BadTitle, Listing, ListingChange, MAX_TITLE};
 pub use project::{BadProject, MAX_PROJECTS, Project, ProjectChange, changed as project_changed};
+pub use queue::{LastTurn, MOST_QUEUED, MOST_QUEUED_BYTES, Queued};
 pub use shelf::{Activity, MOST_SNOOZE, Marks, SETTLE_AFTER, Shelf};
 
 /// The most bytes of one frame of a client.
@@ -115,6 +117,18 @@ pub enum Action {
         query: String,
         most: usize,
     },
+    /// A prompt that waits for the running turn to end, then goes as the next turn (TH109).
+    Queue { thread: Uuid, text: String },
+    /// New words for a prompt that waits (TH109).
+    Requeue {
+        thread: Uuid,
+        id: Uuid,
+        text: String,
+    },
+    /// Takes a prompt that waits out of the queue (TH109).
+    Unqueue { thread: Uuid, id: Uuid },
+    /// Sends a prompt that waits now: into the running turn, or as the next turn (TH109).
+    SendQueued { thread: Uuid, id: Uuid },
 }
 
 /// A frame of the runner to a client.
@@ -219,6 +233,8 @@ pub enum Refusal {
     OverLimit {
         limits: Limits,
     },
+    /// The queue of the thread holds [`MOST_QUEUED`] prompts (TH109).
+    QueueFull,
 }
 
 /// The soft limits of the threads of this computer (THR-114): guidance, raised by the person.
@@ -295,6 +311,13 @@ pub struct ThreadRow {
     pub ended: Option<String>,
     /// The requests that wait for the person.
     pub open: Vec<Uuid>,
+    /// The prompts that wait for the turn to end, oldest first (TH109). In the memory of the
+    /// runner only: the record never holds them.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub queued: Vec<Queued>,
+    /// How the last turn ended, when one ended (TH109).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_turn: Option<LastTurn>,
 }
 
 /// The account of one program of this computer, as its newest report said it (THR-132). It is

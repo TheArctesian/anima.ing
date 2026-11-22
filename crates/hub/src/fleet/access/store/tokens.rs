@@ -151,3 +151,46 @@ pub(in crate::fleet::access) async fn delete_builder_token(
             .await?;
     Ok(done.rows_affected() == 1)
 }
+
+/// When the token last passed a TOTP code, or `None` (VLT-005). Locks the row, so two reveals
+/// of one token check and count their codes one after the other.
+pub(in crate::fleet::access) async fn lock_token_totp(
+    conn: &mut PgConnection,
+    id: Uuid,
+) -> Result<Option<DateTime<Utc>>, sqlx::Error> {
+    let found: Option<Option<DateTime<Utc>>> =
+        sqlx::query_scalar("select totp_at from access.api_tokens where id = $1 for update")
+            .bind(id)
+            .fetch_optional(conn)
+            .await?;
+    Ok(found.flatten())
+}
+
+/// Records that the token passed a TOTP code at `at`, and clears its count of wrong codes.
+pub(in crate::fleet::access) async fn pass_token_totp(
+    conn: &mut PgConnection,
+    id: Uuid,
+    at: DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("update access.api_tokens set totp_at = $2, totp_failures = 0 where id = $1")
+        .bind(id)
+        .bind(at)
+        .execute(conn)
+        .await?;
+    Ok(())
+}
+
+/// Counts one wrong TOTP code of the token, and returns the count since it last passed one.
+pub(in crate::fleet::access) async fn fail_token_totp(
+    conn: &mut PgConnection,
+    id: Uuid,
+) -> Result<i16, sqlx::Error> {
+    let count: Option<i16> = sqlx::query_scalar(
+        "update access.api_tokens set totp_failures = totp_failures + 1 where id = $1 \
+         returning totp_failures",
+    )
+    .bind(id)
+    .fetch_optional(conn)
+    .await?;
+    Ok(count.unwrap_or_default())
+}

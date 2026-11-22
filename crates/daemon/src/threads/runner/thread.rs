@@ -17,6 +17,7 @@ use super::codex::Codex;
 mod asks;
 mod events;
 mod kept;
+mod queue;
 mod step;
 
 pub use step::Step;
@@ -79,6 +80,13 @@ pub struct Thread {
     /// The holder started the program: a line may be written to it.
     held: bool,
     last_error: Option<String>,
+    /// The queue stopped after an interrupt or a failed turn, until the person sends (TH109).
+    stalled: bool,
+    /// The prompts that went as turns of their own and whose turns did not end yet: a queued
+    /// prompt goes only at none, also when the program says that it is idle in between. Claude
+    /// Code holds a prompt sent during a turn and runs it as a turn of its own (THR-020), so each
+    /// counts; a Codex steer ends with the running turn (TH109).
+    pending: u32,
 }
 
 impl Thread {
@@ -100,6 +108,8 @@ impl Thread {
             controls: 0,
             held: false,
             last_error: None,
+            stalled: false,
+            pending: 0,
         }
     }
 
@@ -111,7 +121,7 @@ impl Thread {
             Driver::Claude(_) => (None, None),
         };
         Saved {
-            row: self.row.clone(),
+            row: self.recorded_row(),
             effort: self.effort,
             codex_thread,
             codex_turn,
@@ -143,7 +153,16 @@ impl Thread {
             .iter()
             .map(|(id, open)| (id, open.answering))
             .collect();
-        serde_json::to_string(&(&self.row, codex_thread, codex_turn, open)).unwrap_or_default()
+        serde_json::to_string(&(&self.recorded_row(), codex_thread, codex_turn, open))
+            .unwrap_or_default()
+    }
+
+    /// The row as the record holds it: never the prompts that wait (TH109).
+    fn recorded_row(&self) -> ThreadRow {
+        ThreadRow {
+            queued: Vec::new(),
+            ..self.row.clone()
+        }
     }
 
     /// A thread from its record, after a start of the runner; its open requests are read again
@@ -186,6 +205,7 @@ impl Thread {
     /// The first steps of a new thread: its prompt, and the first line of the program.
     pub fn begin(&mut self, prompt: &str) -> Vec<Step> {
         self.held = true;
+        self.pending = 1;
         self.row.title = first_line(prompt, agent_threads::TITLE_LENGTH);
         let mut steps = vec![prompt_change(prompt)];
         match &mut self.driver {
@@ -208,9 +228,21 @@ impl Thread {
     ///
     /// # Errors
     /// [`Refusal::NotRunning`] when the program ended or the holder did not start it yet.
-    pub fn send(&mut self, text: &str) -> Result<Vec<String>, Refusal> {
+    pub fn send(&mut self, text: &str, person: bool) -> Result<Vec<String>, Refusal> {
         if self.row.state == RunState::Stopped || !self.held {
             return Err(Refusal::NotRunning);
+        }
+        // A prompt of the person starts the queue again after the turn of it; a prompt of an
+        // agent does not (TH109).
+        if person {
+            self.stalled = false;
+        }
+        // Each prompt is a turn that must end before the queue goes on, but a steer of a running
+        // Codex turn. The state of the program is not read here: it says Idle until the program
+        // says that the new turn runs, so a second prompt in that moment would not count.
+        let steers = matches!(&self.driver, Driver::Codex(codex) if codex.steers());
+        if !steers || self.pending == 0 {
+            self.pending = self.pending.saturating_add(1);
         }
         Ok(match &mut self.driver {
             Driver::Claude(_) => vec![ClaudeInput::prompt(text)],
@@ -227,6 +259,7 @@ impl Thread {
     /// The person stops the running turn; the program stays. Each open request closes (THR-087:
     /// a stop by the person).
     pub fn interrupt(&mut self) -> Vec<Step> {
+        self.stall();
         let mut steps = self.turn_stop();
         steps.extend(self.close_all("the turn was stopped"));
         steps.extend(self.state_change());
@@ -265,6 +298,8 @@ impl Thread {
         };
         self.row.ended = Some(why);
         self.row.state = RunState::Stopped;
+        // A stop also stops the queue (THR-102).
+        self.row.queued.clear();
         self.row.open.clear();
         steps.push(Step::Change(Change::State {
             state: RunState::Stopped,
