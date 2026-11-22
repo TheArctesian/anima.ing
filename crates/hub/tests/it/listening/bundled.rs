@@ -27,6 +27,19 @@ const LIMITS: Limits = Limits {
     stop: Duration::from_secs(30),
 };
 
+/// A folder closed to the group whatever the umask (0002 on Ubuntu): a backup refuses a
+/// folder that others can write to.
+fn private_folder() -> tempfile::TempDir {
+    let folder = tempfile::tempdir().unwrap();
+    #[cfg(unix)]
+    std::fs::set_permissions(
+        folder.path(),
+        std::os::unix::fs::PermissionsExt::from_mode(0o700),
+    )
+    .unwrap();
+    folder
+}
+
 /// The PostgreSQL 17 the gates already need (`quality/bin/with-postgres.ts`); never skipped.
 fn tree() -> Tree {
     let named = std::env::var_os("ANIMA_POSTGRES_TREE").map(PathBuf::from);
@@ -122,7 +135,7 @@ fn set_operator(hub_url: &Path, key: &Path) {
 
 #[test]
 fn db_002_r_016_the_hub_migrates_and_serves_on_the_bundled_database() {
-    let folder = tempfile::tempdir().unwrap();
+    let folder = private_folder();
     let layout = Layout::new(folder.path().join("db root"), folder.path().join("s")).unwrap();
     let database = startup::start(&tree(), &layout, SETTINGS, LIMITS).unwrap();
     let key = folder.path().join("anima_key");
@@ -140,7 +153,7 @@ fn db_002_r_016_the_hub_migrates_and_serves_on_the_bundled_database() {
         database.stop(LIMITS).unwrap(),
         anima_database::Stopped::Clean
     );
-    let second = tempfile::tempdir().unwrap();
+    let second = private_folder();
     let restored = Layout::new(second.path().join("db root"), second.path().join("s")).unwrap();
     let restored_database = startup::start(&tree(), &restored, SETTINGS, LIMITS).unwrap();
     anima_database::backup::restore(&tree(), &restored, &backup).unwrap();

@@ -89,6 +89,14 @@ impl Rig {
         let folder = tempfile::tempdir().unwrap();
         #[cfg(windows)]
         anima_windows::files::protect(folder.path()).unwrap();
+        // Closed to the group whatever the umask (0002 on Ubuntu): a backup refuses a folder
+        // that others can write to.
+        #[cfg(unix)]
+        std::fs::set_permissions(
+            folder.path(),
+            std::os::unix::fs::PermissionsExt::from_mode(0o700),
+        )
+        .unwrap();
         Self { folder }
     }
 
