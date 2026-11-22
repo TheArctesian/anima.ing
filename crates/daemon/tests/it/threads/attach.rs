@@ -86,6 +86,22 @@ async fn prompt_line(kit: &Kit, count: usize) -> serde_json::Value {
     panic!("the made program got no prompt {count}");
 }
 
+/// The path of the last file that the words name: below `attachments`, a stored name with no
+/// text of the person, then the name of the person as a JSON string.
+fn last_file<'a>(words: &'a str, attachments: &std::path::Path) -> &'a str {
+    let (path, name) = words
+        .rsplit("\n- ")
+        .next()
+        .and_then(|line| line.split_once(" (named "))
+        .expect("a path and its name");
+    assert_eq!(name, "\"notes.txt\")", "{words}");
+    let path = std::path::Path::new(path);
+    assert!(path.starts_with(attachments), "{words}");
+    assert!(path.extension().is_some_and(|e| e == "txt"), "{words}");
+    assert!(!path.to_string_lossy().contains("notes"), "{words}");
+    path.to_str().expect("a path")
+}
+
 /// Attaches [`PNG`] in two parts, as a large file goes.
 async fn attach_in_two_parts(client: &mut Client, thread: Uuid) -> Uuid {
     let (head, rest) = PNG.split_at(5);
@@ -157,13 +173,10 @@ async fn th111_an_image_goes_inside_the_line_and_a_file_goes_by_its_path() {
     let last = prompt_line(&kit, 2).await;
     let content = &last["message"]["content"];
     let words = content[0]["text"].as_str().expect("words");
-    let attachments = kit.threads().join("attachments").join(thread.to_string());
-    let named = words.rsplit("\n- ").next().expect("a path");
-    assert!(
-        named.starts_with(&attachments.display().to_string()),
-        "{words}"
+    let named = last_file(
+        words,
+        &kit.threads().join("attachments").join(thread.to_string()),
     );
-    assert!(named.ends_with("/notes.txt"), "{words}");
     assert_eq!(content[1]["type"], "image");
     assert_eq!(content[1]["source"]["data"], encoded(PNG));
     assert_eq!(std::fs::read(named).expect("the file"), b"hello");

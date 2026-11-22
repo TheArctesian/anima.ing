@@ -35,7 +35,10 @@ pub struct NewFile<'a> {
 #[derive(Debug)]
 struct Upload {
     thread: Uuid,
+    /// The name as the person sees it ([`attach::shown_name`]).
     name: String,
+    /// The name on disk ([`attach::stored_name`]): no text of the person.
+    file: String,
     image: Option<ImageKind>,
     size: u64,
     received: u64,
@@ -78,7 +81,7 @@ impl Attachments {
     /// written, and [`Refusal::BadValue`] for a part that is not base64.
     pub fn begin(&mut self, thread: Uuid, file: NewFile<'_>) -> Result<Uuid, Refusal> {
         let NewFile { name, mime, size } = file;
-        let name = attach::safe_name(name);
+        let name = attach::shown_name(name);
         let most = attach::most_bytes(mime);
         if size == 0 {
             return Err(cannot(&name, "it is empty"));
@@ -97,17 +100,19 @@ impl Attachments {
             ));
         }
         let id = Uuid::now_v7();
+        let file = attach::stored_name(id, &name, mime);
         let folder = self.pending_folder(thread, id);
         make_private(&folder).map_err(|_| cannot(&name, "the runner could not write it"))?;
         std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)
             .mode(0o600)
-            .open(folder.join(&name))
+            .open(folder.join(&file))
             .map_err(|_| cannot(&name, "the runner could not write it"))?;
         let upload = Upload {
             thread,
             name,
+            file,
             image: ImageKind::of_mime(mime),
             size,
             received: 0,
@@ -250,7 +255,7 @@ impl Attachments {
             .get(&id)
             .filter(|upload| upload.thread == thread);
         let upload = upload.ok_or_else(gone)?;
-        Ok(self.pending_folder(thread, id).join(&upload.name))
+        Ok(self.pending_folder(thread, id).join(&upload.file))
     }
 
     fn drop_pending(&mut self, id: Uuid) {

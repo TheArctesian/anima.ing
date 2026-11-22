@@ -10,7 +10,8 @@ use crate::control::attach::ImageKind;
 /// A file that goes with a prompt: the runner wrote it at `path`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Attachment {
-    /// The name, made safe ([`crate::control::attach::safe_name`]).
+    /// The name as the person sees it ([`crate::control::attach::shown_name`]); never a part of
+    /// [`Self::path`].
     pub name: String,
     pub path: PathBuf,
     pub kind: Attached,
@@ -79,9 +80,9 @@ impl Prompt {
             .collect()
     }
 
-    /// The words, with the path of each file that `by_path` says the program reads from disk. Only
-    /// the paths are written, one on each line: the name of a file is the last part of its path,
-    /// so a name cannot point at a different file.
+    /// The words, with the path of each file that `by_path` says the program reads from disk, one
+    /// on each line. The path holds no text of the person; the name that the person gave follows
+    /// it as a JSON string, only to say what the file is.
     #[must_use]
     pub fn words(&self, by_path: impl Fn(&Attachment) -> bool) -> String {
         let mut words = self.text.clone();
@@ -93,7 +94,8 @@ impl Prompt {
         if named.peek().is_some() {
             words.push_str("\n\nThe person attached these files. Read each one at its path:");
             for file in named {
-                let _ = write!(words, "\n- {}", file.path.display());
+                let name = serde_json::to_string(&file.name).unwrap_or_default();
+                let _ = write!(words, "\n- {} (named {name})", file.path.display());
             }
         }
         words

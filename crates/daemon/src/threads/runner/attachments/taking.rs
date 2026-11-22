@@ -25,6 +25,9 @@ const MOST_INLINE_IMAGES: u32 = 5;
 /// The most pixels on a side of an image that goes inside the line of Claude Code: the API takes
 /// no larger side in a request with many images.
 const MOST_INLINE_SIDE: u32 = 2000;
+/// The most pixels on a side of an image that goes as an image to either program (the limit of
+/// the API for one image); a larger one goes by its path.
+const MOST_SIDE: u32 = 8000;
 
 /// What is left for images inside one line.
 #[derive(Debug)]
@@ -66,7 +69,7 @@ impl Attachments {
                     .folder
                     .join(thread.to_string())
                     .join(id.to_string())
-                    .join(&upload.name);
+                    .join(&upload.file);
                 attachment(upload, &path, program == Program::ClaudeCode, &mut room)
             })
             .collect();
@@ -125,25 +128,13 @@ impl Attachments {
     }
 }
 
-/// A file as the program gets it. An image goes inside the line of Claude Code when it is small,
-/// its header reads, and its sides fit; each other file goes by its path, which the program reads
+/// A file as the program gets it. An image goes as an image only when its bytes are the size
+/// that came, its header reads and its sides fit; it goes inside the line of Claude Code when it
+/// is also small and the line has room. Each other file goes by its path, which the program reads
 /// with its own tools (they make a large image smaller and read a PDF page by page).
 fn attachment(upload: &Upload, path: &Path, claude: bool, room: &mut Room) -> Attachment {
     let kind = match upload.image {
-        Some(kind) => {
-            let small = claude
-                && room.images > 0
-                && upload.size <= MOST_INLINE_BYTES
-                && upload.size <= room.bytes;
-            let inline = small
-                .then(|| inline_image(kind, path, upload.size))
-                .flatten();
-            if inline.is_some() {
-                room.bytes -= upload.size;
-                room.images -= 1;
-            }
-            Attached::Image { kind, inline }
-        }
+        Some(kind) => image(kind, upload.size, path, claude.then_some(room)),
         None if attach::is_pdf(&upload.first) => Attached::Pdf { inline: None },
         None => Attached::File,
     };
@@ -154,14 +145,32 @@ fn attachment(upload: &Upload, path: &Path, claude: bool, room: &mut Room) -> At
     }
 }
 
-/// The bytes of an image in base64, when they are the `size` that came, its header reads and its
-/// sides fit.
-fn inline_image(kind: ImageKind, path: &Path, size: u64) -> Option<String> {
-    let bytes = std::fs::read(path).ok()?;
-    if u64::try_from(bytes.len()).ok()? != size {
-        return None;
+/// An image whose sides fit, with its bytes in base64 when `room` (Claude Code only) takes them;
+/// a plain file when its header does not read or a side is over [`MOST_SIDE`].
+fn image(kind: ImageKind, size: u64, path: &Path, room: Option<&mut Room>) -> Attached {
+    let read = std::fs::read(path)
+        .ok()
+        .filter(|bytes| u64::try_from(bytes.len()).is_ok_and(|length| length == size));
+    let Some((bytes, (width, height))) =
+        read.and_then(|bytes| kind.size(&bytes).map(|sides| (bytes, sides)))
+    else {
+        return Attached::File;
+    };
+    let within = |most: u32| (1..=most).contains(&width) && (1..=most).contains(&height);
+    if !within(MOST_SIDE) {
+        return Attached::File;
     }
-    let (width, height) = kind.size(&bytes)?;
-    let fits = (1..=MOST_INLINE_SIDE).contains(&width) && (1..=MOST_INLINE_SIDE).contains(&height);
-    fits.then(|| base64::engine::general_purpose::STANDARD.encode(bytes))
+    let inline = room
+        .filter(|room| {
+            within(MOST_INLINE_SIDE)
+                && room.images > 0
+                && size <= MOST_INLINE_BYTES
+                && size <= room.bytes
+        })
+        .map(|room| {
+            room.bytes -= size;
+            room.images -= 1;
+            base64::engine::general_purpose::STANDARD.encode(bytes)
+        });
+    Attached::Image { kind, inline }
 }

