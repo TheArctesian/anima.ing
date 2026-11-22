@@ -158,8 +158,9 @@ const SHOTS: readonly Shot[] = [
     name: 'inbox-hidden',
     window: true,
     act: async (page, inbox) => {
-      await inbox.getByRole('button', { name: 'Thread list' }).click();
-      await expect(page.getByRole('button', { name: 'Thread list' })).toHaveAttribute('aria-pressed', 'false');
+      // T3 Code keeps the toggle in the corner of the page, outside the column it hides.
+      await page.getByRole('button', { name: /^Toggle the thread list/ }).click();
+      await expect(page.getByRole('button', { name: /^Toggle the thread list/ })).toHaveAttribute('aria-pressed', 'false');
       return [];
     },
   },
@@ -226,7 +227,7 @@ for (const theme of ['dark', 'light'] as const) {
 
     // The lists of the composer on the real page: they hang over the card, above the timeline (TC4, "Popup design").
     // The engine gives the composer no files yet, so "@" shows the empty list; "/" lists the built-in commands.
-    for (const [name, text, shows] of [['14-mention-list.png', 'Read @', 'No matching files or folders.'], ['15-command-list.png', '/', null]] as const) {
+    for (const [name, text, shows] of [['14-mention-list.png', 'Read @', 'The runner cannot search the folder of a chat yet.'], ['15-command-list.png', '/', null]] as const) {
       test(name, async ({ page }) => {
         mkdirSync(`${FOLDER}${wide.folder}`, { recursive: true });
         const inbox = await prepare(page, wide, EVERY_STATE);
