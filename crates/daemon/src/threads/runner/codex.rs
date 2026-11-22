@@ -4,7 +4,9 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use agent_threads::drive::{CodexDecoder, CodexInput, CodexTurn, Effort, Mode, Model};
+use agent_threads::drive::{
+    CodexDecoder, CodexInput, CodexTurn, Effort, Mode, Model, TurnSettings,
+};
 use serde_json::Value;
 
 /// What a call of the runner was, so that its answer can be read.
@@ -36,6 +38,10 @@ pub struct Codex {
     queued: Vec<String>,
     /// Why Codex refused the last `turn/start`, until the thread reads it (TH109).
     refused_turn: Option<String>,
+    /// The model and the mode that the person changed after the start: each later turn carries
+    /// them (TH110). The effort goes with each turn already.
+    changed_model: Option<Model>,
+    changed_mode: Option<Mode>,
 }
 
 impl Codex {
@@ -54,6 +60,8 @@ impl Codex {
             ended: None,
             queued: Vec::new(),
             refused_turn: None,
+            changed_model: None,
+            changed_mode: None,
         }
     }
 
@@ -97,7 +105,25 @@ impl Codex {
             )];
         }
         self.calls.insert(id, Call::TurnStart);
-        vec![CodexInput::turn_start(id, &thread, text, self.effort)]
+        let turn = TurnSettings {
+            model: self.changed_model.as_ref(),
+            effort: self.effort,
+            mode: self.changed_mode,
+        };
+        vec![CodexInput::turn_start(id, &thread, text, &turn)]
+    }
+
+    /// The model, the effort or the mode of the next turns (TH110). A turn that runs keeps its own.
+    pub fn change(&mut self, model: Option<Model>, effort: Option<Effort>, mode: Option<Mode>) {
+        if model.is_some() {
+            self.changed_model = model;
+        }
+        if effort.is_some() {
+            self.effort = effort;
+        }
+        if mode.is_some() {
+            self.changed_mode = mode;
+        }
     }
 
     /// Why Codex refused the last `turn/start`, once: that turn never runs, so it ended as failed.

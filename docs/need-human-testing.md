@@ -3588,6 +3588,35 @@ state in the order that the tests use, and whether a Codex turn starts again at 
 
 Result: Open.
 
+### HT-NEW-runnerset: the model, the effort and the mode of a thread after its start, with the real programs (TH110)
+
+Built: on the branch `threads/runner-set` (task TH110 of agent-threads.md). The call `set` and `anima agents set` change
+the model, the effort or the mode of a running thread from its next turn. For Codex the runner sends them with each later
+`turn/start`; for Claude Code it writes the control requests `set_model` and `set_permission_mode` between two turns, and
+it refuses a change of the effort with words. The row says the effort.
+
+The tests cover the core of a thread with lines of a made Claude Code and Codex: the lines that each change writes, a
+change during a turn that goes after the turn and before a queued prompt, the refusal of the effort of Claude Code and of
+the plan mode of Codex, and a refusal of Claude Code said as a notice. They do not cover the real programs: the measures
+of 2026-11-21 saw Claude Code take both control requests between two turns, and saw Codex ask for an approval after a
+change of the mode, but no answer of Codex named the model in use, and `workspaceWrite` and `dangerFullAccess` were not
+sent as a `sandboxPolicy`.
+
+1. Start a Claude Code thread with `--model haiku` and a short prompt. When it is idle, run
+   `anima agents set <thread> --model sonnet --mode accept-edits`, then send "Which model are you?".
+   Expected: the next turn starts in the mode accept edits, and `anima agents running --json` says the model `sonnet`.
+2. Run `anima agents set <thread> --effort high` on the same thread.
+   Expected: the command fails with words that say Claude Code cannot change the effort of a session that runs.
+3. Start a long Claude Code turn and run `anima agents set <thread> --mode ask` during it.
+   Expected: the running turn does not change; the next turn asks before a command.
+4. Start a Codex thread in full access. When it is idle, run `anima agents set <thread> --mode ask --effort low`, then
+   send a prompt that runs a command.
+   Expected: Codex asks for an approval before the command.
+5. Run `anima agents set <thread> --mode plan` on the Codex thread.
+   Expected: the command fails with words that say Codex has no plan mode.
+
+Result: Open.
+
 ### HT-126: the diff, the plan, the use, the models, plan mode and the projects with the real programs (TH101 to TH107)
 
 Built: on the branch `threads/engine-for-copy` (tasks TH101 to TH107 of agent-threads.md). The runner now passes on the

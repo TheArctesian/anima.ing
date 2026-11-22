@@ -1,5 +1,5 @@
-//! `anima agents start`, `send`, `approve`, `interrupt`, `stop`, `running`, `watch` and
-//! `raise-limit`: the person drives the agent threads of this computer through the runner of
+//! `anima agents start`, `send`, `queue`, `set`, `approve`, `interrupt`, `stop`, `running`,
+//! `watch` and `raise-limit`: the person drives the agent threads of this computer through the runner of
 //! the daemon (TH13, THR-030, THR-049, THR-114). No MCP tool starts a thread or answers a
 //! request: an answer is a trust decision, and a start waits for the count of THR-114
 //! (Section 7 of cli-mcp-plan.md).
@@ -13,11 +13,13 @@ use uuid::Uuid;
 use super::runner::{RunnerLink, refusal};
 
 mod queue;
+mod set;
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::stream::{self, Reader};
 use crate::output::{Cell, Table, Tone};
 pub use queue::QueueArgs;
+pub use set::SetArgs;
 
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
 pub enum ProgramName {
@@ -35,6 +37,17 @@ pub enum ModeName {
     Ask,
     /// The program plans and changes nothing until you accept its plan (Claude Code only).
     Plan,
+}
+
+impl ModeName {
+    const fn mode(self) -> Mode {
+        match self {
+            Self::FullAccess => Mode::FullAccess,
+            Self::AcceptEdits => Mode::AcceptEdits,
+            Self::Ask => Mode::Ask,
+            Self::Plan => Mode::Plan,
+        }
+    }
 }
 
 #[derive(Debug, clap::Args)]
@@ -141,12 +154,7 @@ impl StartArgs {
                 ProgramName::Codex => Program::Codex,
             },
             folder,
-            mode: match self.mode {
-                ModeName::FullAccess => Mode::FullAccess,
-                ModeName::AcceptEdits => Mode::AcceptEdits,
-                ModeName::Ask => Mode::Ask,
-                ModeName::Plan => Mode::Plan,
-            },
+            mode: self.mode.mode(),
             model: self.model,
             effort: self.effort,
             prompt: self.prompt,

@@ -18,8 +18,10 @@ mod asks;
 mod events;
 mod kept;
 mod queue;
+mod settings;
 mod step;
 
+pub use settings::Changes;
 pub use step::Step;
 
 /// How many updates of a thread the runner keeps for a client that starts to watch, and their
@@ -69,7 +71,6 @@ pub struct Saved {
 #[derive(Debug)]
 pub struct Thread {
     pub row: ThreadRow,
-    effort: Option<Effort>,
     driver: Driver,
     open: BTreeMap<Uuid, Open>,
     program: Option<ProgramState>,
@@ -87,18 +88,22 @@ pub struct Thread {
     /// Code holds a prompt sent during a turn and runs it as a turn of its own (THR-020), so each
     /// counts; a Codex steer ends with the running turn (TH109).
     pending: u32,
+    /// The control requests of a change of the person that wait for the turns to end before
+    /// Claude Code takes them (TH110).
+    changes: Vec<String>,
 }
 
 impl Thread {
     #[must_use]
-    pub fn new(row: ThreadRow, effort: Option<Effort>, codex: Option<Codex>) -> Self {
+    pub fn new(mut row: ThreadRow, effort: Option<Effort>, codex: Option<Codex>) -> Self {
+        // A record of an older runner keeps the effort beside the row.
+        row.effort = row.effort.or(effort);
         let driver = match codex {
             Some(codex) => Driver::Codex(Box::new(codex)),
             None => Driver::Claude(ClaudeDecoder::new()),
         };
         Self {
             row,
-            effort,
             driver,
             open: BTreeMap::new(),
             program: None,
@@ -110,6 +115,7 @@ impl Thread {
             last_error: None,
             stalled: false,
             pending: 0,
+            changes: Vec::new(),
         }
     }
 
@@ -122,7 +128,7 @@ impl Thread {
         };
         Saved {
             row: self.recorded_row(),
-            effort: self.effort,
+            effort: self.row.effort,
             codex_thread,
             codex_turn,
             open: self

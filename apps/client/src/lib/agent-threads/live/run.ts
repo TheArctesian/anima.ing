@@ -5,6 +5,7 @@
  */
 
 import { filesFrom, type FoundFile } from './files';
+import { modelListsFrom, type ModelLists } from './models';
 import { listingsFrom, type Listing, type ListingChange } from '../listing/listing';
 import type { Program } from '../thread';
 import { lastTurnFrom, queuedFrom, type LastTurn, type QueuedPrompt } from './queue';
@@ -34,6 +35,8 @@ export interface RunRow {
   readonly queued?: readonly QueuedPrompt[];
   /** How the last turn ended, when one ended (TH109). */
   readonly lastTurn?: LastTurn | null;
+  /** The effort of the model, when the person chose one (TH110). */
+  readonly effort?: Effort | null;
 }
 
 export interface Question {
@@ -90,7 +93,8 @@ export type Refusal =
   | 'from_an_agent'
   | 'running'
   | 'over_limit'
-  | 'queue_full';
+  | 'queue_full'
+  | 'cannot_change';
 
 export interface Limits {
   readonly depth: number;
@@ -111,6 +115,8 @@ export type Outcome =
   | { readonly outcome: 'folder'; readonly notice: readonly string[] }
   /** The files and folders of the folder of a thread, the best match first; `more` when more matched (TH108). */
   | { readonly outcome: 'files'; readonly paths: readonly FoundFile[]; readonly more: boolean }
+  /** The models that each program named at the start of its newest thread (TH104). */
+  | { readonly outcome: 'models'; readonly models: ModelLists }
   /**
    * `said`: the words of the runner for a refusal that names a program and its path; `answered`: the other copies of a
    * program that did not answer, which did (TH97).
@@ -147,17 +153,21 @@ export type Action =
   | { readonly call: 'change_listing'; readonly thread: string; readonly change: ListingChange }
   /** The `@` list of the composer (TH108): at most `most` paths that match `query`; `most` is 1 to 200. */
   | { readonly call: 'files'; readonly thread: string; readonly query: string; readonly most: number }
+  | { readonly call: 'models' }
   /** The queue of a thread (TH109): only the person changes it. */
   | { readonly call: 'queue'; readonly thread: string; readonly text: string }
   | { readonly call: 'requeue'; readonly thread: string; readonly id: string; readonly text: string }
   | { readonly call: 'unqueue'; readonly thread: string; readonly id: string }
-  | { readonly call: 'send_queued'; readonly thread: string; readonly id: string };
+  | { readonly call: 'send_queued'; readonly thread: string; readonly id: string }
+  /** The model, the effort or the mode of a thread from its next turn (TH110): only the person. */
+  | { readonly call: 'set'; readonly thread: string; readonly model?: string; readonly effort?: Effort; readonly mode?: Mode };
 
 const PROGRAMS: readonly string[] = ['claude_code', 'codex'];
 const STATES: readonly string[] = ['starting', 'working', 'needs_you', 'idle', 'stopped', 'unknown'];
 const MODES: readonly string[] = ['full_access', 'accept_edits', 'ask', 'plan'];
 const KINDS: readonly string[] = ['command', 'file_change', 'tool', 'question'];
-const REFUSALS: readonly string[] = ['unknown_thread', 'folder_not_permitted', 'program_not_found', 'program_does_not_answer', 'bad_value', 'request_gone', 'answer_does_not_fit', 'not_running', 'holder', 'from_an_agent', 'running', 'over_limit', 'queue_full'];
+const REFUSALS: readonly string[] = ['unknown_thread', 'folder_not_permitted', 'program_not_found', 'program_does_not_answer', 'bad_value', 'request_gone', 'answer_does_not_fit', 'not_running', 'holder', 'from_an_agent', 'running', 'over_limit', 'queue_full', 'cannot_change'];
+const EFFORTS: readonly string[] = ['low', 'medium', 'high', 'xhigh', 'max'];
 
 type Fields = Record<string, unknown>;
 
@@ -190,7 +200,7 @@ export function runRowFrom(value: unknown): RunRow | null {
   const open = strings(value.open);
   if (id === null || program === null || folder === null || mode === null || state === null || title === null || open === null) return null;
   if (started === null || Number.isNaN(started.getTime())) return null;
-  return { id, program, folder, mode, model: str(value.model), state, session: str(value.session), title, started, ended: str(value.ended), open, queued: queuedFrom(value.queued), lastTurn: lastTurnFrom(value.last_turn) };
+  return { id, program, folder, mode, model: str(value.model), state, session: str(value.session), title, started, ended: str(value.ended), open, queued: queuedFrom(value.queued), lastTurn: lastTurnFrom(value.last_turn), effort: oneOf<Effort>(value.effort, EFFORTS) };
 }
 
 function questionFrom(value: unknown): Question | null {
@@ -340,6 +350,10 @@ export function outcomeFrom(value: unknown): Outcome | null {
     case 'listings': {
       const listings = listingsFrom(value.listings);
       return listings === null ? null : { outcome: 'listings', listings };
+    }
+    case 'models': {
+      const models = modelListsFrom(value.models);
+      return models === null ? null : { outcome: 'models', models };
     }
     case 'refused':
       return refusedFrom(value.why);

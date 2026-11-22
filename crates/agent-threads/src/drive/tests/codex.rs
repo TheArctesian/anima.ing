@@ -132,7 +132,15 @@ fn each_codex_line_the_runner_can_write_names_a_method_of_the_closed_list() {
         CodexInput::thread_start(2, &folder, Mode::FullAccess, None),
         CodexInput::thread_resume(3, "t", &folder, Mode::Ask),
         CodexInput::thread_fork(4, "t", &folder, Mode::Ask),
-        CodexInput::turn_start(5, "t", "hello", Some(Effort::Low)),
+        CodexInput::turn_start(
+            5,
+            "t",
+            "hello",
+            &TurnSettings {
+                effort: Some(Effort::Low),
+                ..TurnSettings::default()
+            },
+        ),
         CodexInput::turn_steer(6, turn, "also"),
         CodexInput::turn_interrupt(7, turn),
         CodexInput::account_read(8),
@@ -178,4 +186,36 @@ fn thr_046_a_request_id_that_does_not_read_stops_the_turn() {
     assert!(stops(&codex(
         r#"{"method":"item/commandExecution/requestApproval","id":1.5,"params":{}}"#
     )));
+}
+
+#[test]
+fn th110_a_turn_carries_the_model_the_effort_and_the_mode_that_the_person_changed() {
+    let model = Model::new("gpt-5.6-sol").expect("a model");
+    let changed = line(&CodexInput::turn_start(
+        5,
+        "t",
+        "go",
+        &TurnSettings {
+            model: Some(&model),
+            effort: Some(Effort::Medium),
+            mode: Some(Mode::Ask),
+        },
+    ));
+    let params = &changed["params"];
+    assert_eq!(params["model"], "gpt-5.6-sol");
+    assert_eq!(params["effort"], "medium");
+    assert_eq!(params["approvalPolicy"], "untrusted");
+    assert_eq!(params["sandboxPolicy"], json!({"type": "workspaceWrite"}));
+    let kept = line(&CodexInput::turn_start(
+        6,
+        "t",
+        "go",
+        &TurnSettings::default(),
+    ));
+    for field in ["model", "effort", "approvalPolicy", "sandboxPolicy"] {
+        assert!(
+            kept["params"].get(field).is_none(),
+            "{field} is the thread's own"
+        );
+    }
 }
