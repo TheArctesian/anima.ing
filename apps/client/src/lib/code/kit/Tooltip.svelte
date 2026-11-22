@@ -43,14 +43,17 @@
 
   /*
    * The words describe the control itself, at all times, not the wrapper while the tip shows: a dimmed control says why
-   * (09 finding 8). Words that only repeat the control's name are not said twice.
+   * (09 finding 8). Words that the control's name or its own description already say are not said twice.
    */
   $effect(() => {
     const control = anchor?.querySelector<HTMLElement>('button, a[href], input, select, textarea, [tabindex]');
     if (control === null || control === undefined) return;
-    const repeats = control.getAttribute('aria-label') === text;
-    if (repeats) control.removeAttribute('aria-describedby');
-    else control.setAttribute('aria-describedby', `${id}-words`);
+    // Keep what the control names already (the composer ties its own reasons); add or drop only these words.
+    const others = (control.getAttribute('aria-describedby') ?? '').split(/\s+/).filter((token) => token !== '' && token !== `${id}-words`);
+    const said = [control.getAttribute('aria-label'), ...others.map((token) => document.getElementById(token)?.textContent?.trim())];
+    const next = said.includes(text) ? others : [...others, `${id}-words`];
+    if (next.length === 0) control.removeAttribute('aria-describedby');
+    else control.setAttribute('aria-describedby', next.join(' '));
   });
 
   function place(panel: HTMLElement): void {
