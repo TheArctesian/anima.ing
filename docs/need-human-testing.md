@@ -121,6 +121,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-080 | The web client of a hosted hub behind the gateway: the sign-in with no password page, the sign-out, a session that ended (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27) | A hub of the pool whose image has this build of the web client, and the gateway of the pool at `hub.anima.ing` | Open |
 | HT-104 | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with its own public origin `https://<hub id>.hub.anima.ing` and an image of this build, the door of the pool for that address, an application of this build, and a GitHub account that may get a new App | Open |
 | HT-125 | The window with no frame on Windows and Linux: move it, the three controls, resize, each page (task TC2 of agent threads, R-355) | A Windows computer and the Linux computer `pop-os`, each with a build of the branch `code/shell-window`; a Mac for the last step | Open |
+| HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | A Linux AppImage of this build | Passed |
 
 ### What a check on the hosted hub needs
 
@@ -3113,6 +3114,8 @@ covers (HM-D11): "the device doesn't auto add it should and the hub is not there
 
 The preview was built from `665fb16a` on `fix/linux-start-sign-in`. Its startup guard in
 `apps/client/src/lib/access/guard.ts` opens `/welcome` when no hub address is saved. Tests cover a missing token, an old token
+The startup guard in `apps/client/src/lib/access/guard.ts` now opens `/welcome`
+before a token read when no hub address is saved. Tests cover a missing token, an old token
 for the default hub and a refused key store. They also check that a chosen hub still resumes
 with its token. An automatic Linux WebKit check reached the screen with an old default-hub
 token and with no token. The packaged preview also showed the screen in a virtual X11 display
