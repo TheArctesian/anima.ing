@@ -5,6 +5,7 @@ use std::io::{BufRead as _, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
+mod private;
 mod serving;
 use serving::{Serving, Stop};
 use sqlx::Connection as _;
@@ -40,9 +41,7 @@ struct Place {
 
 impl Place {
     fn new() -> Self {
-        let folder = tempfile::tempdir().unwrap();
-        #[cfg(windows)]
-        anima_windows::files::protect(folder.path()).unwrap();
+        let folder = private::folder();
         Self { folder }
     }
 

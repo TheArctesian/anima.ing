@@ -14,6 +14,7 @@ fail-fast = true
 # every test at once `initdb` and `postgres` fail with "No space left on device".
 [test-groups]
 bundled-postgres = { max-threads = 4 }
+model-cgroups = { max-threads = 1 }
 
 [[profile.default.overrides]]
 # The modules named here are pure or touch files only; they start no server.
@@ -33,3 +34,10 @@ threads-required = "num-cpus"
 # from the long text: 38.7 ms and 394.6 ms on the runner of GitHub (run 44931544012). It runs alone.
 filter = "test(redaction::tests::values::log_007_redaction_of_pathological_text_takes_linear_time)"
 threads-required = "num-cpus"
+
+[[profile.default.overrides]]
+# On Linux each test process is in the one cgroup of the run, and the sweep of the model work
+# (`model::tree::sweep`, which each of these modules calls or races) ends each server cgroup
+# below it, also those of a different test. So these tests run one at a time (HT-119).
+filter = "package(anima-daemon) & binary(it) & test(/^model_work::(files|servers|tree)::/)"
+test-group = "model-cgroups"

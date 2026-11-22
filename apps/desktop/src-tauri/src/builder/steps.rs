@@ -134,8 +134,12 @@ impl Workshop<'_> {
         let parent = self.clone.parent().ok_or(BuilderError::Failed)?;
         #[cfg(windows)]
         anima_windows::files::directory(parent).map_err(|_| BuilderError::Failed)?;
+        // Mode 0700 whatever the umask (0002 on Ubuntu): the tree's work folder is made beside
+        // the clone, and `renew` refuses a folder that the group can write to (D-1).
         #[cfg(unix)]
-        fs::create_dir_all(parent).map_err(|_| BuilderError::Failed)?;
+        std::os::unix::fs::DirBuilderExt::mode(fs::DirBuilder::new().recursive(true), 0o700)
+            .create(parent)
+            .map_err(|_| BuilderError::Failed)?;
         self.run(&plan::clone(&self.repository, &self.clone))
             .await?;
         Ok(())

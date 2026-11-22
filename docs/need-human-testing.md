@@ -78,8 +78,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-035 | A server gets, follows and drops an operational key, with the Keychain of a Mac | A hub of this build, a Mac and a Linux server with the daemon of this build | Open |
 | HT-036 | The release workflow of GitHub Actions: a trial, then a release from a push to `main` | The GitHub account of the operator (the three environments and their secrets are set), a Mac with 0.2.1 installed from its DMG, a Linux computer | Open |
 | HT-037 | The daemon pushes through the Unix socket of the link, and an old daemon still pushes after its update | A hub in the link mode, and one computer with `anima-link` and `anima-daemon` of this build | Open |
-| HT-069 | Install and update Anima from F-Droid (M5-7) | A real Android phone, the signed Anima APK, and a newer version in the official F-Droid catalog | Open |
-| HT-070 | Keep and clear a mobile session (M5-1) | An Android phone or tablet and an iPhone or iPad, a hosted Anima account, and a test hub invite | Open |
+| HT-143 | Install and update Anima from F-Droid (M5-7) | A real Android phone, the signed Anima APK, and a newer version in the official F-Droid catalog | Open |
+| HT-144 | Keep and clear a mobile session (M5-1) | An Android phone or tablet and an iPhone or iPad, a hosted Anima account, and a test hub invite | Open |
 | HT-075 | Android reports its memory and storage readings (M6-1) | A physical Android device joined to a hub, and another client to check the same device | Open |
 | HT-038 | The details of a container, the state of a Compose project, and the images, volumes and networks of a real device (hosted applications, task H8) | A hub of this build and a device with Docker, a Compose project and an SSH credential in Anima | Open |
 | HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
@@ -89,7 +89,6 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-042 | The tab Containers with the details, the newer-image mark, the log tools and the images, volumes and networks (hosted applications, task H9) | A hub of this build, the application of this build, and the device of HT-038 | Open |
 | HT-043 | A reminder rule fires and reaches a phone through ntfy, with fixed words for a private record | A hub of this build, a phone with the ntfy app, an ntfy channel with a random topic | Open |
 | HT-044 | The application does not start Tailscale on a hosted hub (DEF-005) | This Mac with Tailscale installed and quit, the application of this build, signed in to the hosted hub | Open |
-| HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | The local Linux AppImage from `fix/linux-start-sign-in` | Passed |
 | HT-051 | The workflows `gates` and `merge-to-dev` on GitHub: the first run and the first merge with no session | The repository on GitHub, and the settings of [quality/README.md](../quality/README.md) | Open |
 | HT-046 | The iOS application from the release workflow to TestFlight (task B8i) | The Apple Developer account and App Store Connect of the operator, the two environments set, the archive script of M5-4 on `main`, an iPhone with TestFlight | Open |
 | HT-047 | The Devices page after the interface review: name first, named connect buttons, the logs as one line, the hub named in the bar (R-224) | The desktop application of a build that holds the branch `ui/v2-devices`, signed in to a hub with some devices | Open |
@@ -2270,7 +2269,7 @@ checks the screen, those check the values. Sign in to the application with a log
 
 Result: Open.
 
-### HT-069: install and update Anima from F-Droid (M5-7)
+### HT-143: install and update Anima from F-Droid (M5-7)
 
 The [Android build procedure](procedures/setup/android-apk.md) gives the steps to verify the F-Droid rebuild against Anima's signed APK. Run this check on a real Android phone when the same release is available from both sources. This check needs a later version in F-Droid to prove an update.
 
@@ -2281,7 +2280,7 @@ The [Android build procedure](procedures/setup/android-apk.md) gives the steps t
 
 Result: Open.
 
-### HT-070: keep and clear a mobile session (M5-1)
+### HT-144: keep and clear a mobile session (M5-1)
 
 1. Join a test hub by invitation. Open Devices and confirm that a fresh read succeeds.
 2. Force-stop the application and open it again. Open Devices, request a fresh read, and check that the link and session still work without entering the invite or credentials again.
@@ -4683,5 +4682,11 @@ branch is in the build.
 12. Attach a file, wait until it is ready, do not send, and come back after more than one hour. Send.
     Expected (a known limit): the runner dropped the file after one hour, so the send is refused with words. Remove
     the file, attach it again and send.
+13. Attach a HEIC photo of an iPhone of more than 10 MB and less than 50 MB.
+    Expected: a tile shows and the photo goes with the prompt as a file: the runner takes HEIC as a file, with the
+    limit of a file.
+14. Attach a file to the unsent text, open a queued message with its pencil, attach a second file there, and open
+    a different queued message.
+    Expected: the second file is gone. Cancel the change: the first file is back with the unsent text.
 
 Result: Open.

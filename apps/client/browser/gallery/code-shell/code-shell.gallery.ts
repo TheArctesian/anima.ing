@@ -33,6 +33,34 @@ const EVERY_STATE: Scenario = {
   ],
 };
 const EMPTY: Scenario = { ...EVERY_STATE, rows: [], running: [], listings: [], updates: [] };
+const TALKED = 'Why does the gates run stop at limits?';
+/** The idle thread works in a linked worktree on a branch, with the context window its program last said (TH112). */
+const DETAILED: Scenario = {
+  ...EVERY_STATE,
+  running: EVERY_STATE.running.map((row) =>
+    row['title'] === TALKED
+      ? { ...row, workspace: { kind: 'worktree', top: '/Users/you/anima', branch: 'code/gates-limits' }, usage: { context: 48_200, window: 200_000, input: 1_200, output: 3_400, cost_usd: 0.42 } }
+      : row,
+  ),
+};
+
+/**
+ * Opens the thread with details. In a 1440 px window the card stands inline beside the lane; at 1280 px, beside Anima's
+ * bar and the list, the canvas is under T3's 1012 px, so the card opens as a popover from the toggle.
+ */
+async function openDetails(page: Page, inbox: Locator, popover: boolean): Promise<readonly Locator[]> {
+  if (!popover) await page.setViewportSize({ width: 1440, height: HEIGHT });
+  // The context window is off by default, as in T3; the person turns it on from the card's menu.
+  await page.evaluate(() => localStorage.setItem('anima.code.details-items', JSON.stringify({ context: true })));
+  await card(inbox, TALKED).click();
+  if (popover) {
+    await page.getByRole('button', { name: 'Toggle thread details' }).click();
+    // The pointer leaves the toggle after the click, so its tooltip does not cover the popover.
+    await page.mouse.move(700, HEIGHT / 2);
+  }
+  await expect(page.getByRole('complementary', { name: 'Thread details' })).toBeVisible();
+  return [];
+}
 
 interface Shot {
   readonly name: string;
@@ -164,6 +192,8 @@ const SHOTS: readonly Shot[] = [
       return [];
     },
   },
+  { name: 'details-inline', window: true, scenario: DETAILED, act: (page, inbox) => openDetails(page, inbox, false) },
+  { name: 'details-popover', window: true, scenario: DETAILED, act: (page, inbox) => openDetails(page, inbox, true) },
   // T3 Code's new thread: no form, the composer in the middle under the project's heading (from the open thread).
   { name: 'new-thread', window: true, act: (page, inbox) => newThread(page, inbox, false) },
   { name: 'new-thread-project', window: true, act: (page, inbox) => newThread(page, inbox, true) },
