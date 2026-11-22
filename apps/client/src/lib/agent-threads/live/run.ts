@@ -149,9 +149,9 @@ export type Action =
   | { readonly call: 'files'; readonly thread: string; readonly query: string; readonly most: number }
   /** The queue of a thread (TH109): only the person changes it. */
   | { readonly call: 'queue'; readonly thread: string; readonly text: string }
-  | { readonly call: 'requeue'; readonly thread: string; readonly id: string; readonly text: string }
-  | { readonly call: 'unqueue'; readonly thread: string; readonly id: string }
-  | { readonly call: 'send_queued'; readonly thread: string; readonly id: string };
+  | { readonly call: 'requeue'; readonly thread: string; readonly queued: string; readonly text: string }
+  | { readonly call: 'unqueue'; readonly thread: string; readonly queued: string }
+  | { readonly call: 'send_queued'; readonly thread: string; readonly queued: string };
 
 const PROGRAMS: readonly string[] = ['claude_code', 'codex'];
 const STATES: readonly string[] = ['starting', 'working', 'needs_you', 'idle', 'stopped', 'unknown'];

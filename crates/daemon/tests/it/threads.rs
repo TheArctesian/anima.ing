@@ -15,6 +15,7 @@ mod files;
 mod holder_update;
 mod listing;
 mod models_projects;
+mod queue_frames;
 mod requests;
 mod runner;
 mod start;

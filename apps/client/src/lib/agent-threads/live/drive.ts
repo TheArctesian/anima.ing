@@ -97,3 +97,34 @@ export function chosenAnswer(ask: Ask, chosen: Readonly<Record<string, readonly 
   }
   return { answer: 'choose', answers };
 }
+
+/** The prompt that waits, as the composer names it: `id` in its first version, `queued` from code/composer-set. */
+type Waiting = { readonly id: string } | { readonly queued: string };
+
+/** A call of the composer's queue, without the thread. */
+export type QueueRequest =
+  | { readonly call: 'queue'; readonly text: string }
+  | ({ readonly call: 'requeue'; readonly text: string } & Waiting)
+  | ({ readonly call: 'unqueue' } & Waiting)
+  | ({ readonly call: 'send_queued' } & Waiting);
+
+function waitingOf(request: Waiting): string {
+  return 'queued' in request ? request.queued : request.id;
+}
+
+/**
+ * The runner's call for a request of the queue of `thread` (TH109). The runner names the prompt that waits `queued`: a
+ * call frame holds its own `id` beside the fields of its action.
+ */
+export function queueAction(request: QueueRequest, thread: string): Action {
+  switch (request.call) {
+    case 'queue':
+      return { call: 'queue', thread, text: request.text };
+    case 'requeue':
+      return { call: 'requeue', thread, queued: waitingOf(request), text: request.text };
+    case 'unqueue':
+      return { call: 'unqueue', thread, queued: waitingOf(request) };
+    case 'send_queued':
+      return { call: 'send_queued', thread, queued: waitingOf(request) };
+  }
+}

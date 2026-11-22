@@ -96,7 +96,7 @@ impl Runner {
     ) -> Result<(), Refusal> {
         match action {
             Action::Send { thread, text } => self.send(thread, text, (back, person)).await,
-            Action::SendQueued { thread, id } => self.send_queued(thread, id, back).await,
+            Action::SendQueued { thread, queued } => self.send_queued(thread, queued, back).await,
             Action::Answer {
                 thread,
                 request,

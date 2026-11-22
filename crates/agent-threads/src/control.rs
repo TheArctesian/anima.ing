@@ -43,7 +43,8 @@ pub fn folder(env: impl Fn(&str) -> Option<String>, macos: bool) -> Option<PathB
     Some(daemon.join("threads"))
 }
 
-/// A call of a client, with an ID that the client chose.
+/// A call of a client, with an ID that the client chose. The action is beside the ID in one
+/// object, so no action has a field named `id` or `call`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Call {
     pub id: u64,
@@ -122,13 +123,13 @@ pub enum Action {
     /// New words for a prompt that waits (TH109).
     Requeue {
         thread: Uuid,
-        id: Uuid,
+        queued: Uuid,
         text: String,
     },
     /// Takes a prompt that waits out of the queue (TH109).
-    Unqueue { thread: Uuid, id: Uuid },
+    Unqueue { thread: Uuid, queued: Uuid },
     /// Sends a prompt that waits now: into the running turn, or as the next turn (TH109).
-    SendQueued { thread: Uuid, id: Uuid },
+    SendQueued { thread: Uuid, queued: Uuid },
 }
 
 /// A frame of the runner to a client.
@@ -376,6 +377,9 @@ pub enum Change {
         row: ThreadRow,
     },
 }
+
+#[cfg(test)]
+mod call_tests;
 
 #[cfg(test)]
 mod limit_tests {
