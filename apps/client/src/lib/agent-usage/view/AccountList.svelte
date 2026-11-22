@@ -20,12 +20,12 @@
   const { accounts, shares, count, now, notCounted = new Set() }: Props = $props();
 </script>
 
-<!-- One card for each account (AIS-022 as R-313 changed it): its limit windows, which its devices share, and the share of
-     each device. The hub knows an account by its key only; the name of the account stays on each device. -->
+<!-- One card for each account (AIS-022 as THR-149 changed it): its limit windows, which its devices share, and the share
+     of each device, grouped by the key. An interim part: the Usage page of Code replaces it (THR-149). -->
 <div class="block">
   <div class="over">
     <span class="label">By account</span>
-    <span class="note">one limit for each account, shared by its devices; the name of the account stays on each device</span>
+    <span class="note">one limit for each account, shared by its devices</span>
   </div>
   {#if accounts.length === 0}
     <p class="none">No account to show. The devices do not send their accounts yet.</p>

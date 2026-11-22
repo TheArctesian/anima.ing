@@ -8,6 +8,7 @@ use serde_json::{Value, json};
 
 use super::DriveError;
 use super::launch::{Effort, Mode, Model};
+use super::prompt::{Attached, Prompt};
 use super::request::{Answer, ProgramRequestId, Request, RequestKind};
 
 /// The closed list of the Codex methods that Anima may call (THR-021, R-290).
@@ -123,21 +124,29 @@ impl CodexInput {
     }
 
     #[must_use]
-    pub fn turn_start(id: i64, thread: &str, text: &str, effort: Option<Effort>) -> String {
-        let mut params = json!({"threadId": thread, "input": [{"type": "text", "text": text}]});
-        if let Some(effort) = effort {
+    pub fn turn_start(id: i64, thread: &str, prompt: &Prompt, turn: &TurnSettings<'_>) -> String {
+        let mut params = json!({"threadId": thread, "input": input(prompt)});
+        if let Some(effort) = turn.effort {
             params["effort"] = Value::from(effort.as_str());
+        }
+        if let Some(model) = turn.model {
+            params["model"] = Value::from(model.as_str());
+        }
+        if let Some(mode) = turn.mode {
+            let (sandbox, approval) = mode.codex();
+            params["approvalPolicy"] = Value::from(approval);
+            params["sandboxPolicy"] = sandbox_policy(sandbox);
         }
         call(id, CodexMethod::TurnStart, &params)
     }
 
     /// A message into the running turn.
     #[must_use]
-    pub fn turn_steer(id: i64, turn: CodexTurn<'_>, text: &str) -> String {
+    pub fn turn_steer(id: i64, turn: CodexTurn<'_>, prompt: &Prompt) -> String {
         let params = json!({
             "threadId": turn.thread,
             "expectedTurnId": turn.turn,
-            "input": [{"type": "text", "text": text}],
+            "input": input(prompt),
         });
         call(id, CodexMethod::TurnSteer, &params)
     }
@@ -211,6 +220,25 @@ fn call(id: i64, method: CodexMethod, params: &Value) -> String {
     json!({"jsonrpc": "2.0", "id": id, "method": method.name(), "params": params}).to_string()
 }
 
+/// What a turn changes of its thread from that turn on (TH110): `None` keeps what the thread has.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct TurnSettings<'a> {
+    pub model: Option<&'a Model>,
+    pub effort: Option<Effort>,
+    pub mode: Option<Mode>,
+}
+
+/// The `sandboxPolicy` of a `turn/start` for the `sandbox` of a `thread/start` (Codex 0.170;
+/// `readOnly` was measured on 2026-11-21).
+fn sandbox_policy(sandbox: &str) -> Value {
+    let kind = match sandbox {
+        "danger-full-access" => "dangerFullAccess",
+        "workspace-write" => "workspaceWrite",
+        _ => "readOnly",
+    };
+    json!({"type": kind})
+}
+
 fn thread_params(thread: Option<&str>, folder: &Path, mode: Mode, model: Option<&Model>) -> Value {
     let (sandbox, approval) = mode.codex();
     let mut params = json!({
@@ -227,4 +255,20 @@ fn thread_params(thread: Option<&str>, folder: &Path, mode: Mode, model: Option<
         params["model"] = Value::from(model.as_str());
     }
     params
+}
+
+/// The input of a turn (TH111): the words, with the path of each file that is not an image, then
+/// each image as `localImage`, which Codex reads itself (measured on 0.170, 2026-11-21).
+fn input(prompt: &Prompt) -> Value {
+    let is_image = |kind: &Attached| matches!(kind, Attached::Image { .. });
+    let words = prompt.words(|file| !is_image(&file.kind));
+    let mut input = vec![json!({"type": "text", "text": words})];
+    for file in prompt
+        .attachments
+        .iter()
+        .filter(|file| is_image(&file.kind))
+    {
+        input.push(json!({"type": "localImage", "path": file.path}));
+    }
+    Value::Array(input)
 }

@@ -3,6 +3,11 @@
 //! and its output in the ring. Stopped by a request to end, at most 10 seconds, then the end
 //! of the whole tree.
 
+#[cfg(target_os = "linux")]
+mod handshake;
+#[cfg(target_os = "linux")]
+mod join;
+
 use std::io;
 use std::net::TcpListener;
 use std::ops::RangeInclusive;
@@ -63,6 +68,8 @@ pub struct Running {
     pub key: Zeroizing<String>,
     /// The tree was ended and waited for; it is not signalled again.
     ended: bool,
+    #[cfg(target_os = "linux")]
+    startup: Option<tokio::net::UnixStream>,
 }
 
 impl Drop for Running {
@@ -154,6 +161,10 @@ impl Running {
     /// An error of the read of the tree (the cgroup on Linux, the walk on macOS), or an empty
     /// tree while the main process still runs (it left the tree): both fail closed.
     pub async fn poll(&mut self) -> io::Result<Vec<Identity>> {
+        #[cfg(target_os = "linux")]
+        if let Some(startup) = self.startup.take() {
+            handshake::wait(startup).await?;
+        }
         #[cfg(target_os = "linux")]
         let members = {
             let cgroup = self
@@ -282,16 +293,18 @@ fn contain(launch: &Launch) -> Result<Option<PathBuf>, Cause> {
     }
 }
 
-/// Starts the process of `launch` in its tree.
+/// Starts the process of `launch` in its tree. On Linux it returns when the launcher is in the
+/// cgroup of the server, or has ended (the next look reads its end), so the first poll does not
+/// read the tree before the join.
 ///
 /// Call it from a thread that lives as long as the daemon (a worker of the async runtime),
 /// never from `spawn_blocking`: on Linux the parent-death signal of the launcher fires when
 /// the thread that started it ends ([`super::tree::linux::launch`]).
 ///
 /// # Errors
-/// `containment_failed` when the cgroup cannot be made (Linux); `start_failed` for an error of
-/// the folders, the ring or the start.
-pub fn spawn(launch: &Launch) -> Result<Running, Cause> {
+/// `containment_failed` when the cgroup cannot be made, or the launcher is not in it after
+/// 5 seconds (Linux); `start_failed` for an error of the folders, the ring or the start.
+pub async fn spawn(launch: &Launch) -> Result<Running, Cause> {
     fresh_temporary(&launch.state, &launch.temporary).map_err(|_| Cause::StartFailed)?;
     match std::fs::remove_file(launch.place.join(tree::LAUNCH_FAILURE)) {
         Ok(()) => {}
@@ -300,9 +313,11 @@ pub fn spawn(launch: &Launch) -> Result<Running, Cause> {
     }
     let ring = Ring::create(&launch.ring).map_err(|_| Cause::StartFailed)?;
     let cgroup = contain(launch)?;
-    let mut child = command(launch, cgroup.as_deref())
-        .spawn()
-        .map_err(|_| Cause::StartFailed)?;
+    let mut command = command(launch, cgroup.as_deref());
+    #[cfg(target_os = "linux")]
+    let startup = Some(handshake::attach(&mut command).map_err(|_| Cause::StartFailed)?);
+    let mut child = command.spawn().map_err(|_| Cause::StartFailed)?;
+    drop(command);
     let leader = child
         .id()
         .and_then(|id| i32::try_from(id).ok())
@@ -322,8 +337,12 @@ pub fn spawn(launch: &Launch) -> Result<Running, Cause> {
         record: launch.place.join(tree::RECORD),
         key: launch.key.clone(),
         ended: false,
+        #[cfg(target_os = "linux")]
+        startup,
     };
     running.record().save(&running.record);
+    #[cfg(target_os = "linux")]
+    let running = join::joined(running).await?;
     Ok(running)
 }
 

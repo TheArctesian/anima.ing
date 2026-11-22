@@ -16,7 +16,8 @@ use uuid::Uuid;
 /// The scripted runtime. It reads `mode` beside it: `exit` ends at once, `any` listens on
 /// 0.0.0.0, else it listens on 127.0.0.1. It writes the names of its environment to `env`, and
 /// before it listens it starts a child that leaves the session and process group (`setsid`)
-/// and writes its process id to `child`. That child sleeps; in the mode `escape` it listens
+/// and writes its process id to `child` at once, so a check that ends the tree early still
+/// leaves the id for the test. That child sleeps; in the mode `escape` it listens
 /// on 0.0.0.0 instead.
 pub const FAKE_RUNTIME: &str = r#"#!/usr/bin/perl
 use strict;
@@ -29,17 +30,22 @@ for my $i (0 .. $#ARGV - 1) { $port = $ARGV[$i + 1] if $ARGV[$i] eq '--port'; }
 open(my $m, '<', "$dir/mode"); my $mode = <$m> // 'loopback'; close($m); chomp $mode;
 open(my $e, '>', "$dir/env"); print $e join("\n", sort keys %ENV); close($e);
 exit 1 if $mode eq 'exit';
+pipe(my $ready_read, my $ready_write) or die "pipe";
 my $kid = fork();
 if (defined $kid && $kid == 0) {
+    close($ready_read);
     POSIX::setsid();
+    open(my $k, '>', "$dir/child"); print $k $$; close($k);
+    syswrite($ready_write, "1"); close($ready_write);
     if ($mode eq 'escape') {
         my $o = IO::Socket::INET->new(LocalAddr => '0.0.0.0', LocalPort => 0, Listen => 5) or exit 3;
         while (1) { my $c = $o->accept(); close($c) if $c; }
     }
     sleep 100000; exit 0;
 }
+close($ready_write);
+sysread($ready_read, my $ready, 1) == 1 or die "child did not start"; close($ready_read);
 select(undef, undef, undef, 0.3) if $mode eq 'escape';
-open(my $k, '>', "$dir/child"); print $k $kid; close($k);
 my $host = $mode eq 'any' ? '0.0.0.0' : '127.0.0.1';
 my $s = IO::Socket::INET->new(LocalAddr => $host, LocalPort => $port, Listen => 5, ReuseAddr => 1) or exit 2;
 while (1) { my $c = $s->accept(); close($c) if $c; }
@@ -47,22 +53,53 @@ while (1) { my $c = $s->accept(); close($c) if $c; }
 
 /// Whether a server can be contained here: on Linux the cgroup v2 of the daemon must be
 /// delegated to this user. A test that starts a server is skipped, with a message, when not.
-pub fn contained() -> bool {
+#[cfg_attr(
+    not(target_os = "linux"),
+    expect(
+        clippy::unnecessary_wraps,
+        reason = "only Linux can refuse a server here"
+    )
+)]
+pub fn contained() -> Option<std::fs::File> {
+    let lock = containment_lock();
     #[cfg(target_os = "linux")]
     {
         let probe = format!("probe-{}", std::process::id());
         if let Ok(path) = anima_daemon::model::tree::linux::make(&probe) {
             anima_daemon::model::tree::linux::end_cgroup(&path);
-            true
+            Some(lock)
         } else {
             eprintln!("skipped: no delegated cgroup v2 here; HT-119 covers pop-os");
-            false
+            None
         }
     }
     #[cfg(not(target_os = "linux"))]
     {
-        true
+        Some(lock)
     }
+}
+
+/// Tests share the runner's delegated cgroup; an orphan sweep must not end another test.
+pub fn containment_lock() -> std::fs::File {
+    use std::os::unix::fs::{MetadataExt as _, OpenOptionsExt as _};
+    let uid = rustix::process::geteuid().as_raw();
+    let path = std::env::temp_dir().join(format!("anima-model-tests-{uid}.lock"));
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .mode(0o600)
+        .custom_flags(rustix::fs::OFlags::NOFOLLOW.bits().cast_signed())
+        .open(path)
+        .expect("private test lock");
+    let metadata = file.metadata().expect("lock metadata");
+    assert!(
+        metadata.is_file() && metadata.uid() == uid,
+        "owned plain lock"
+    );
+    file.lock().expect("isolate cgroup fixtures");
+    file
 }
 
 pub const PROGRAM: &str = "bin/llama-server";

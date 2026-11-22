@@ -57,7 +57,7 @@ impl Thread {
     pub fn now_changes(&self) -> Vec<Change> {
         let mut changes = vec![Change::State {
             state: self.row.state,
-            row: self.row.clone(),
+            row: Box::new(self.row.clone()),
         }];
         changes.extend(self.open.iter().filter(|(_, open)| !open.answering).map(
             |(id, Open { request, .. })| Change::Asked {

@@ -8,6 +8,7 @@
 //! [`socket`], [`login`], [`record`] and [`log`].
 
 mod accounts;
+mod attachments;
 mod calls;
 pub mod codex;
 mod holder_events;
@@ -62,11 +63,7 @@ enum Waits {
         back: Caller,
     },
     /// The last line of a prompt; the prompt is shown as sent when the holder takes it.
-    Send {
-        thread: Uuid,
-        back: Caller,
-        text: String,
-    },
+    Send(calls::SentPrompt),
     /// The line of an answer; the request closes when the holder takes it (THR-030).
     Answer(Pending),
 }
@@ -123,6 +120,10 @@ pub struct Runner {
     /// What the programs said of their accounts (THR-051) and their models (TH104): in memory
     /// only.
     said: accounts::Said,
+    /// The last walk of the folder of each thread, for the `@` list (TH108): in memory only.
+    walked: calls::Walked,
+    /// The files that the person attached for a prompt (TH111).
+    attached: attachments::Attachments,
 }
 
 /// Whether the daemon in `daemon_dir` serves a person, so that it may run agents in the login
@@ -188,7 +189,9 @@ pub async fn run(
         silence: silence::Silence::default(),
         asks: start::Asks::default(),
         sign_in_told: BTreeMap::new(),
+        walked: calls::Walked::default(),
         said: accounts::Said::default(),
+        attached: attachments::Attachments::at(&dir),
     };
     runner.restore(saved.threads);
     let listener = socket::bind(&dir)?;
@@ -201,23 +204,6 @@ pub async fn run(
 }
 
 impl Runner {
-    fn restore(&mut self, saved: Vec<thread::Saved>) {
-        for saved in saved {
-            let codex = calls::codex_of(&saved.row, saved.effort);
-            let mut thread = Thread::restore(saved, codex);
-            // The microseconds of the clock are more than the updates of any run before.
-            thread.number_from(u64::try_from(chrono::Utc::now().timestamp_micros()).unwrap_or(0));
-            let id = thread.row.id;
-            let steps = thread.settle_answering();
-            self.threads.insert(id, thread);
-            for step in steps {
-                if let Step::Change(change) = step {
-                    self.publish(id, change);
-                }
-            }
-        }
-    }
-
     /// The loop of the runner: the holder, the clients, and the stop.
     async fn serve(&mut self, listener: tokio::net::UnixListener, stop: impl Future<Output = ()>) {
         let (sender, mut incoming) = mpsc::channel(256);
@@ -237,6 +223,7 @@ impl Runner {
                 Some((id, answers)) = asked.recv() => self.asked(id, answers).await,
                 _ = look.tick() => {
                     self.end_the_silent().await;
+                    self.attached.expire(std::time::Instant::now());
                     self.replace_older_holder().await;
                 }
                 () = &mut stop => break,
@@ -272,11 +259,12 @@ impl Runner {
     }
 
     /// Does a step of a thread that is not a command to the holder.
-    fn own_step(&mut self, id: Uuid, step: Step) {
+    fn own_step(&mut self, id: Uuid, step: Step, last_write: Option<u64>) {
         let program = self.threads.get(&id).map(|thread| thread.row.program);
         match (step, program) {
             (Step::Log(what), _) => self.note(Kind::Stop, Some(id), what),
             (Step::Change(change), _) => self.publish(id, change),
+            (Step::Queued(queued), _) => self.queued_went(id, queued, last_write),
             (Step::Account(facts), Some(program)) => {
                 self.said.accounts.note(program, *facts, chrono::Utc::now());
             }
@@ -286,7 +274,14 @@ impl Runner {
             // A fact of a thread that is gone has no program to keep it for; a command is never
             // here, as `apply` sends it to the holder.
             (Step::Account(_) | Step::Models(_), None)
-            | (Step::Write(_) | Step::Mark | Step::EndChildren | Step::EndProgram, _) => {}
+            | (
+                Step::Write(_)
+                | Step::Mark
+                | Step::EndChildren
+                | Step::EndProgram
+                | Step::Workspace,
+                _,
+            ) => {}
         }
     }
 
@@ -297,7 +292,10 @@ impl Runner {
         let mut last_write = None;
         for step in steps {
             let Some(action) = step.command(&key) else {
-                self.own_step(id, step);
+                if step == Step::Workspace {
+                    self.look_at_workspace(id).await;
+                }
+                self.own_step(id, step, last_write);
                 continue;
             };
             let write = matches!(action, Action::Write { .. });
@@ -359,6 +357,8 @@ impl Runner {
         for (_, id) in stopped.into_iter().take(over) {
             self.threads.remove(&id);
             self.read_up_to.remove(&id);
+            // No prompt can go to it again: its files go with it (TH111).
+            self.attached.forget(id);
         }
         let record = record::Record {
             limits: self.limits,

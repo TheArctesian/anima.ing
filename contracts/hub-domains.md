@@ -210,7 +210,7 @@ are private to `events`.
 | `checks` (Phase 2, adds) | `sessions` (`link`, `SshLink`, `FixedCommand` only; no cycle: `sessions` does not import `checks`) |
 | `checks` (Phase 3, replaces the Phase 2 row above) | `ssh` (`link`, `SshLink`, `FixedCommand`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `notifications` (`observe`, `adopt_defaults`, `Observation`, `for_checks` only) |
 | `metrics` (Phase 2, new) | `devices`, `sessions` (link only), `credentials` (`Vault` only), `events` |
-| `metrics` (Phase 3, replaces the row above) | `devices`, `ssh` (`link`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `credentials` (`Vault` only), `events`, `access` (`Authenticated`, `Operator`, `ClientAddr` only; daemon tokens live in `metrics`, R-092 D-1); crate `daemon-core` (CR-8) |
+| `metrics` (Phase 3, replaces the row above) | `devices`, `ssh` (`link`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `credentials` (`Vault` only), `events`, `access` (`Authenticated`, `Operator`, `ClientAddr` only, and `operator_only` in `metrics/graphql.rs` for `setDaemonNeed`, R-364; daemon tokens live in `metrics`, R-092 D-1); crate `daemon-core` (CR-8) |
 | `web_interfaces` (Phase 2, new) | `checks` (`http_urls` only), `devices` (CR-5), `events` |
 | `compute` (compute plan L1-4, new; R-343) | `events` (`Trail`; the audit target is the setting `compute.library`), `access` (`Authenticated` only, in `library/graphql.rs`) |
 | `trust` (Phase 3, new) | `devices`, `events` |
@@ -229,6 +229,7 @@ are private to `events`.
 | `agent_usage` (R-135, operator, 2026-11-17; AIS-020; AU-2) | `devices` (`Device`, `list` only) |
 | `containers` (work, new; R-149, operator, 2026-11-18; HOST-001, HOST-010) | `devices` (`Device`, `get`, `Error` only), `ssh` (`link`, `FixedCommand`, `HexDigits`, `CommandOutput`, `LinkError` only), `credentials` (`Vault` only) |
 | `catalogue` (work, new; R-299, R-300; HOST-047; task H38) | — (no domain; the crate `catalogue` and the leaf `ids` only) |
+| `routes` (work, new; R-302, R-299; HOST-046; task H21) | `devices` (`get`, `Device`, `Error` only), `events` (the trail types), `credentials` (`Vault`, `Secret`, `Sealed`, `Error` only); the leaves `targets` (`resolve_checked`, `connect`, `on_link`, `AddressPolicy`) and `config`; the crate `anima-route-proxy` (`wire` only) |
 | `metrics` (R-135, adds) | `agent_usage` (`record` only, in the push transaction) |
 | `files` (engine, new; R-148; K-E4 Sections 9, 10) | `events` (the trail types, `audit`, `NewAudit`), `extensions` (`Key`, `Sensitivity` only: the data class of the extension of a form, VIS-002), `access` (`identify`, `client_addr`, `Identity`, `Scope` only, and only in `files/routes.rs`: the bearer of `/files/v1`); the leaves `sealing_keys` and `records` |
 | `places` (engine, new; R-148; K-E4 Section 8) | `links` (`retarget`, `retarget_named`, `count`, `Titles`, `Unavailable` only), `events` (the trail types), `records` (leaf) |
@@ -247,7 +248,7 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | --- | --- | --- |
 | `devices` | `access` (R-022), `checks`, `sessions` (replaced in Phase 3 by `trust`, see the Phase 3 row below) | the `Authenticated` guard; `Device.status`, `Device.checks`, `Device.uptime`, `DeviceFilter.status`, `DeviceSort.STATUS`/`UPTIME`, `createDevice(addDefaultCheck)`, `SshSettings.hostKey` |
 
-| `devices` (Phase 2, adds) | `metrics`, `web_interfaces` | `Device.readings`, `Device.metrics`, `Device.gpus`, `Device.webInterfaces`, `Device.webInterfaceSuggestions`; Phase 3: `Device.metricsStale` (MET-018, CR-18), `Device.storage` (MET-029), `Device.batteries` (MET-032) |
+| `devices` (Phase 2, adds) | `metrics`, `web_interfaces` | `Device.readings`, `Device.metrics`, `Device.gpus`, `Device.webInterfaces`, `Device.webInterfaceSuggestions`; Phase 3: `Device.metricsStale` (MET-018, CR-18), `Device.storage` (MET-029), `Device.batteries` (MET-032); `Device.daemonVersion` (R-122), `Device.daemonNeed` (R-364) |
 | `metrics`, `web_interfaces` (Phase 2) | `access` (R-022) | the `Authenticated` guard on their root fields |
 | `builds` (Phase 3, WP-36) | `access` | the `Authenticated` and `BuilderSignedIn` guards |
 | `vpn` (Phase 3, VP-5) | `access` | the `Authenticated` guard |
@@ -265,6 +266,8 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | `sources` (R-261; K-E1 Section 7b, adds) | `access` | `operator_only` on `connectDawarich`, which joins `API_KEY_REFUSED_ROOTS` (it takes a secret) |
 | `containers` (R-149; R-150 adds) | `access` | the `Authenticated` guard on `containers`, `containerLog`, `containerDetail`, `containerStorage`, `containerNetworks`, `containerImageUpdates`, `composeFileCheck` and `composeFromDockerRun`; `containerLog` and `containerDetail` join `API_KEY_REFUSED_ROOTS` (a log, a command or a label can hold a secret) |
 | `catalogue` (task H38) | `access` | the `Authenticated` guard on `catalogueEntries`, `catalogueEntry` and `installCatalogueEntry`; none joins `API_KEY_REFUSED_ROOTS`: a key and an agent may ask for the install of an entry of the tested catalogue (R-234) |
+
+| `routes` (R-302; task H21) | `access` | the `Authenticated` guard on `applicationRoutes`, `applicationRoute`, `addApplicationRoute`, `checkApplicationRoute`, `removeApplicationRoute`; `operator_only` and `operator_status` on the three mutations, which join `API_KEY_REFUSED_ROOTS` (making an application public is for a person with a second factor, SF-232) |
 
 `sessions` already depends on `access`. Through these edges a `graphql.rs` uses only `access::Authenticated`; `Operator` and `ClientAddr` come from `events` (R-019).
 
@@ -575,6 +578,9 @@ pub struct CapabilityFilter { pub tool: Option<String>, pub build_target: Option
 pub async fn capabilities(db: &Db, filter: &CapabilityFilter) -> Result<Vec<Capabilities>, Error>;
 /// (R-122) The version of each device's daemon from its last batch; no entry when it sent none.
 pub async fn daemon_versions(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, String>, Error>;
+/// (R-364) What each device's daemon waits for from a person; no entry when nothing.
+/// metrics::graphql owns Mutation.setDaemonNeed (operator_only); the next accepted batch clears it.
+pub async fn daemon_needs(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, DaemonNeed>, Error>;
 /// (MET-032) The batteries each device's daemon last listed, by name; no entry when it has none.
 pub async fn batteries(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec<Battery>>, Error>;
 ```
@@ -896,3 +902,19 @@ pub struct Handshake; impl Handshake {
 }
 ```
 No I/O in this crate. `sessions` owns the sockets.
+
+## routes (work; R-302, R-299; HOST-046; task H21)
+
+Folder `crates/hub/src/work/routes/` (group `work/`). The public names of applications, served on the hub (Section 12 of `docs/proposals/hosted-applications-stage-2.md`). Schema `routes` (range 1060). A route is one name of one application with its target fixed when the name is added (SF-233). It serves only when its name is proven (`proof.rs`: a TXT token bound to the hub and the name, or the public address of a hub that a person hosts), the second consent at the machine is given (OD-HOST-43; nothing sets it yet), the hub's record of the application names its device and its port and no socket of the engine (`application_recorded`; task H6, nothing sets it yet) and it has a valid certificate (`certificates.rs`: the `Issuer` interface, with `NotConfigured` as the only issuer of the hub; `caa.rs` before each order). The proxy is the process `anima-route-proxy` (crate `crates/route-proxy`); it reaches the hub only through `door.rs`, a Unix socket served when `ANIMA_ROUTES_SOCKET` is set, with mode `0660` and only to a peer with the user ID `ANIMA_ROUTES_PROXY_UID`, whose `connect` takes the identifier of an application and never a device or a port (SF-231). A route has a kind and an access (`kinds.rs`, pure; HOST-050, task H40): `web`, `redirect` (one fixed `https://` address, no port), `tcp_stream` and `udp_stream` (a port of the hub in `ANIMA_ROUTES_STREAM_PORTS`, never below 1024; no stream on a hosted hub, OD-HOST-47; UDP never to an address of the link, OD-HOST-48), `public` or `private` (OD-HOST-49); a public stream needs a protocol of the fixed list. The routes of one application go to one device; the proxy dials a route by the application and the name of the route, and `serving.rs` gives it the names and the streams that serve now. `schema.rs` merges `routes::graphql::{Query, Mutation}`.
+
+```rust
+pub async fn list(db: &PgPool, application: Option<ApplicationId>) -> Result<Vec<Route>, Error>;
+pub async fn get(db: &PgPool, id: RouteId) -> Result<Route, Error>;
+pub async fn add((db, settings): (&PgPool, &Settings), conn: &mut PgConnection, new: &NewRoute, now: DateTime<Utc>) -> Result<Added, Error>;
+pub async fn check(conn: &mut PgConnection, (resolver, settings): (&dyn Resolver, &Settings), id: RouteId, now: DateTime<Utc>) -> Result<Route, Error>;
+pub async fn remove(conn: &mut PgConnection, id: RouteId) -> Result<(DeviceId, String), Error>;
+pub async fn order_certificate(ordering: Ordering<'_>, id: RouteId, now: DateTime<Utc>) -> Result<bool, Error>;
+pub async fn served(db: &PgPool, vault: &Vault, now: DateTime<Utc>) -> Result<Vec<Served>, Error>;
+pub async fn target_of(db: &PgPool, application: ApplicationId, now: DateTime<Utc>) -> Result<(DeviceId, SocketAddr), Error>;
+pub async fn count(db: &PgPool, name: &str, traffic: Traffic, now: DateTime<Utc>) -> Result<(), Error>;
+```

@@ -29,9 +29,11 @@
     onSettings: () => void;
     /** The hub's own device: its bars are those of its container (HMD-073). */
     container?: boolean;
+    /** The reason line of a daemon that waits for the person, in place of the wait; `null` for none (R-322). */
+    needLine?: string | null;
   }
 
-  const { source, metrics, range, now, clock, onRange, onRetry, onSettings, container = false }: Props = $props();
+  const { source, metrics, range, now, clock, onRange, onRetry, onSettings, container = false, needLine = null }: Props = $props();
   // A hosted hub reads no metrics over SSH (HMD-049 is not built), so its sentence names the daemon only (R-222).
   const hosted = contextHubIsHosted();
   const charts = $derived(metrics.view === null ? [] : chartsOf(metrics.view.series, metrics.view.gpus));
@@ -81,7 +83,7 @@
       {:else if !waiting}
         <div class="layer" transition:crossFade>
           {#if charts.length === 0 || metrics.span === null}
-            <p class="waiting">{noChartsText(metrics.readings !== null, phrase)}</p>
+            <p class="waiting">{noChartsText(metrics.readings !== null, phrase, needLine)}</p>
           {:else}
             <div class="chart-grid">
               {#each charts as chart (chart.key)}

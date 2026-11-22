@@ -19,7 +19,7 @@ mod socket;
 mod tests;
 mod wire;
 
-pub use claims::Claims;
+pub use claims::{Claims, ComputerClaims};
 pub use model::LinkPath;
 pub(crate) use model::Refusal;
 pub use presence::{Presence, presence};

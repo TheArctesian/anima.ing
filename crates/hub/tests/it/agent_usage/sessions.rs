@@ -21,17 +21,21 @@ async fn sessions(daemons: &Daemons, filter: Value, first: i64) -> Value {
         .await
 }
 
-/// pve-01: Claude Code session "a" on yesterday and today, last used 10 minutes ago; docker-host:
+/// pve-01: Claude Code session "a" on yesterday and today, last used 10 minutes ago, or at
+/// midnight when the hub's clock is less than 10 minutes into its day, so that the session always
+/// ends on `today` (K8 Section 4); docker-host:
 /// Codex session "b" yesterday, ended at 09:00.
 async fn seeded(pool: &PgPool) -> Daemons {
     let now = pushing_now(pool).await;
     let daemons = Daemons::at(pool, now).await;
     let today = now.date_naive();
     let yesterday = today - Days::new(1);
+    let midnight = today.and_hms_opt(0, 0, 0).unwrap().and_utc();
+    let last_use = (now - TimeDelta::minutes(10)).max(midnight);
     let stamp = |at: chrono::DateTime<chrono::Utc>| at.to_rfc3339_opts(SecondsFormat::Secs, true);
     let span = |mut one: Value| {
         one["startedAt"] = json!(format!("{yesterday}T08:00:00Z"));
-        one["endedAt"] = json!(stamp(now - TimeDelta::minutes(10)));
+        one["endedAt"] = json!(stamp(last_use));
         in_repository(one, "github.com/example/anima")
     };
     let opus = |input, output| json!([tokens("claude-opus-4-5", [input, output, 0, 0])]);
@@ -86,7 +90,10 @@ async fn ais_025_sessions_come_newest_use_first_with_their_sums_and_estimate(poo
     assert_eq!(first["outputTokens"], 1_000_000.0);
     // Opus 4.5: 5 dollars for a million input tokens and 25 for a million output tokens.
     assert_eq!(first["estimatedCostUsd"], 30.0);
-    assert_eq!(first["recent"], true, "last used 10 minutes ago (AIS-026)");
+    assert_eq!(
+        first["recent"], true,
+        "last used at most 10 minutes ago (AIS-026)"
+    );
     let second = &rows[1];
     assert_eq!(second["device"]["id"], DOCKER_HOST);
     assert_eq!(second["source"], "CODEX");

@@ -1,6 +1,6 @@
 //! How the person lists each thread (TH46): pinned, archived, a title of their own, or removed;
-//! and the projects that group the threads (TH107). Kept in the record of the runner only; no
-//! session file of a program changes.
+//! settled or snoozed (TH61); and the projects that group the threads (TH107). Kept in the record
+//! of the runner only; no session file of a program changes.
 
 use agent_threads::control::{
     Listing, ListingChange, Outcome, ProjectChange, Refusal, RunState, project_changed,
@@ -73,7 +73,7 @@ impl Runner {
                 thread,
                 ..Listing::default()
             })
-            .changed(change)
+            .changed(change, chrono::Utc::now())
             .map_err(|_| Refusal::BadValue)?;
         if !self.listings.contains_key(&thread) && self.listings.len() >= MAX_LISTINGS {
             return Err(Refusal::BadValue);
@@ -114,6 +114,7 @@ impl Runner {
             .and_then(|id| id.parse().ok());
         self.threads.remove(&thread);
         self.read_up_to.remove(&thread);
+        self.attached.forget(thread);
         if let Some(session) = session.filter(|session| *session != thread) {
             let removed = Listing {
                 thread: session,

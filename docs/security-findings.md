@@ -256,6 +256,14 @@ that owns the area.
 | SF-228 | Certificates under the shared address of the pool, and the owner of the ACME key. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
 | SF-230 | Public traffic can slow the sessions on the same link. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
 | SF-227 | Smaller points: claims about the door, wake, abuse and a hub on the same site. Low | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-325 | The proof of a name is read again only when a person asks. Low | The routing of the domains of applications on the hub (task H21, code) | Open |
+| SF-330 | A change of a route asks for no new second factor. Low | The routing of the domains of applications on the hub (task H21, code) | Open (built in `bb0bce295`) |
+| SF-331 | The target of a route came from the person, not from the record of the application. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
+| SF-332 | The proxy opened a tunnel for each `Upgrade: websocket` without the answer 101. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
+| SF-327 | No time limit and no cap before the name of a connection was known. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `68c9a7ab5`) |
+| SF-328 | The protocol of a public stream was only a label that the person picked. Medium | The routing of the domains of applications on the hub (task H40, code) | Open (built in `bb0bce295`) |
+| SF-329 | The socket of the interface of the proxy checked no peer and had no set mode. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
+| SF-326 | The head accepted two lengths, a length that is not digits, and `_` in a header name. Low | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
 | SF-224 | The static test of a recipe let a service run as root with each capability, and change its code at the start. High | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
 | SF-226 | A variable could give the image, a published port or its address after the static test. Medium | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
 | SF-225 | The list of secret names was short, and a secret written in the Compose file was not refused. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
@@ -273,6 +281,12 @@ that owns the area.
 | SF-248 | Streams: a false UDP rule, public TCP of services that trust localhost, an open list of ports, open redirects. Medium | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
 | SF-246 | Images start as root with nothing added to contain them; the rule of `shm_size`. Medium | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
 | SF-249 | The machine tests run images that are not trusted. Medium | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-335 | A fetch of an operational key during the removal of its device gives the value, and the removal does not name the key. Low | The operational keys (E0-6, K-E5 Section 2) | Open (built on the branch `engine/e0-6-security-review`) |
+| SF-338 | `anima-daemon uninstall` keeps the key cache when the delete of the token fails. Low | The key cache of the daemon (E0-6, K-E5 Section 2.1) | Open (built on the branch `engine/e0-6-security-review`) |
+| SF-336 | `anima-daemon key read` can give a dropped version while a save or a delete in the Keychain waits for the person. Low | The key cache of the daemon on macOS (E0-6, K-E5 Section 2.1) | Open |
+| SF-334 | An API key can read a vault key offer and can replace or delete a sealed record. Medium | The sealed records (E0-6, K-E5 Section 3) | Open |
+| SF-337 | A reveal with a valid new code passes for a login token that was deleted during the request. Low | The sealed records (E0-6, K-E5 Section 3) | Open |
+| SF-333 | A login token with the declaration of an AI agent can change and grant operational keys. Low | The operational keys (E0-6, K-E5 Section 2.2) | Open |
 | SF-179 | A program of the same user can listen at the socket of the link and get the daemon token and an enrolment code; on macOS this goes around the Keychain. Medium | The daemon on a computer of a person (task HM-T23) | Open |
 | SF-178 | On macOS, a daemon enrolled with an old link origin sends its token to a socket in the folder that the environment names. Low | The daemon on a computer of a person (task HM-T23) | Open |
 | SF-175 | The copy of the daemon in `~/.local/bin` is not checked after the installation. Low | The daemon on a computer of a person (task HM-T23) | Open |
@@ -2339,6 +2353,141 @@ Mitigation now: Section 12: each sentence about the door is a request to the clo
 
 State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
 
+## The code review of the routes (2026-11-21)
+
+A separate reviewer read the code of task H21 on the branch `hosted/apps-h21` on 2026-11-21: `crates/hub/src/work/routes.rs`, `crates/hub/src/work/routes/` and `crates/route-proxy/`. The design is Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md). Four findings of severity Medium and four of severity Low; two of the Low ones stay open.
+
+### SF-331: The target of a route came from the person, not from the record of the application. Medium
+
+Requirements: HOST-046, task H21; R-302; SF-233.
+
+What it is: `addApplicationRoute` took the port, the application identifier and the mark "holds the socket of the engine" from its input and trusted them. A link address passed the address check with no port check, so each port of a device was reachable, and the refused ports were only 22, 5900, 3389, 8443 and 4822: the Docker API, the kubelet, databases and Prometheus could be made public.
+
+Where: `crates/hub/src/work/routes.rs` (`add`), `crates/hub/src/work/routes/graphql.rs`, `crates/hub/src/work/routes/target.rs`.
+
+Effect, and who can cause it: A person with a login and a second factor, or a person who took over such a session. Effect: a port that controls the machine is on the internet.
+
+Mitigation now: The input has no `holdsEngineSocket`. The hub keeps no record of an application with its ports before task H6, so a route has the new state `APPLICATION_RECORD` (`application_recorded`, false) and never serves until that record names its device and port and no socket of the engine. `check_port` also refuses 2375, 2376, 10250, 41641, 3478, 5432, 3306, 6379, 27017 and 9090, and `check_address` applies it to a link address too. Tests: `the_ports_of_the_engine_the_link_databases_and_metrics_are_refused`, `a_link_address_passes_only_with_the_port_of_an_application`, and the stored route that waits for the record.
+
+State: Open (built in `274463241`). Found by a separate reviewer on 2026-11-21.
+
+### SF-332: The proxy opened a tunnel for each `Upgrade: websocket` without the answer 101. Medium
+
+Requirements: HOST-046, task H21; SF-229.
+
+What it is: After a request with `Upgrade: websocket` the relay copied both ways at once. A client could then send a second request that the proxy never read, past the rewrite of the headers and the check of `Host`.
+
+Where: `crates/route-proxy/src/relay.rs`, `crates/route-proxy/src/head.rs`.
+
+Effect, and who can cause it: Anyone on the internet. Effect: a request with forged forwarded headers or a cookie of a hub reaches the application.
+
+Mitigation now: The relay sends the status line of the application to the client first. It copies both ways only when the application answers 101 and the request had a `Sec-WebSocket-Key`; each other answer goes back as a plain one and the connection ends. A request with no key is a plain request (`connection: close`). Tests: `an_upgrade_goes_both_ways_only_after_a_101`, `an_upgrade_that_the_application_refuses_is_a_plain_answer`, `an_upgrade_without_its_key_is_a_plain_request`.
+
+State: Open (built in `274463241`). Found by a separate reviewer on 2026-11-21.
+
+### SF-327: No time limit and no cap before the name of a connection was known. Medium
+
+Requirements: HOST-046, task H21; Section 12.7.
+
+What it is: The limits of a name applied only after the TLS handshake. A client could open many connections and send no byte, or one byte at a time, to the PROXY header, the handshake, the head or a relay, on port 443 and on port 80. The stream of the hub to an application had no time limit either.
+
+Where: `crates/route-proxy/src/serve.rs`, `crates/route-proxy/src/relay.rs`, `crates/hub/src/work/routes/door.rs`.
+
+Effect, and who can cause it: Anyone on the internet. Effect: the proxy runs out of connections or memory, and each name stops.
+
+Mitigation now: Settings with defaults: 10 s for the handshake with the PROXY header (`ANIMA_ROUTE_PROXY_HANDSHAKE_SECONDS`), 10 s for the head (`ANIMA_ROUTE_PROXY_HEAD_SECONDS`, answer 408), 60 s for the head and the body of one request together (`ANIMA_ROUTE_PROXY_REQUEST_SECONDS`), 300 s with no byte on a stream (`ANIMA_ROUTE_PROXY_IDLE_SECONDS`); 1024 connections in all and 8 for each client before the handshake and for the life of the connection (`ANIMA_ROUTE_PROXY_OPEN_TOTAL`, `ANIMA_ROUTE_PROXY_OPEN_PER_CLIENT`), and 256 on port 80 (`ANIMA_ROUTE_PROXY_OPEN_PLAIN`). The cap of a client is below the 32 streams of one link (`ANIMA_ROUTES_STREAMS_PER_LINK`), so one client cannot hold each stream of a device. A client is the /64 of an IPv6 address and the whole address of IPv4, so a host cannot take more places with more addresses of its own network. In door mode the proxy reads a PROXY header only from a peer in `ANIMA_ROUTE_PROXY_DOOR_ADDRESSES`; with no address, each connection is closed before a byte is read. The hub waits 10 s for a request line of the proxy and ends a stream after 300 s with no byte. Tests: `a_listener_caps_its_connections_in_all_and_for_each_client`, `the_addresses_of_one_64_share_the_cap_of_one_client`, `a_client_is_its_64_of_ipv6_and_its_address_of_ipv4`, `a_stream_with_no_byte_for_its_idle_time_ends`, `each_byte_starts_the_idle_time_again`, `a_body_that_comes_one_byte_at_a_time_ends_at_the_deadline_of_its_request`, `only_an_address_of_the_door_may_send_a_proxy_header`, and the defaults of the settings.
+
+A re-read of `19e7fd03a` on 2026-11-21 found three more points, decided overnight on the recommendation of the orchestrator (R-365): (Medium) slow clients of several networks could hold each stream of the link of one device; (Medium) the answer to a client that reads it one byte at a time had only the idle time; (Low) false UDP sources could fill the flows of a stream. Built in `bb0bce295`: one route keeps at most 16 connections open (`ANIMA_ROUTE_PROXY_CONNECTIONS`, below the 32 streams of a link), and a TCP stream and a WebSocket after its `101` hold their place until they end; each write to a client must finish within 30 s (`ANIMA_ROUTE_PROXY_WRITE_SECONDS`), or the connection ends; a UDP stream opens at most 8 new flows each second with a burst of 16 (`ANIMA_ROUTE_PROXY_UDP_NEW_PER_SECOND`). Tests: `a_tcp_stream_holds_a_place_of_its_route_until_it_ends`, `a_websocket_after_its_101_holds_a_place_of_its_route`, `a_write_to_a_client_that_does_not_read_ends_at_its_time`, `a_udp_stream_opens_only_its_new_flows_each_second`, `a_bucket_takes_its_burst_at_once_and_then_its_rate`, and the defaults of the settings.
+
+A re-read of `33e4fb787` on 2026-11-21 found two more points, decided overnight on the recommendation of the orchestrator (R-365): (Medium) the cap of each route let several routes of one device hold each stream of its link; (Low) the bucket of new UDP flows is one for each stream, so one sender of false sources could take each new flow. Built in `68c9a7ab5`: the hub limits the streams of the routes of one device together (`ANIMA_ROUTES_STREAMS_PER_DEVICE`, 16), and refuses a value at or above the streams of the link (`ANIMA_ROUTES_STREAMS_PER_LINK`, 32); a UDP stream keeps at most 4 flows from one source network, the /24 of IPv4 and the /64 of IPv6 (`ANIMA_ROUTE_PROXY_UDP_FLOWS_PER_NETWORK`). Tests: `two_routes_of_one_device_share_the_limit_of_the_device`, `the_streams_of_one_device_stay_below_the_streams_of_its_link`, `a_udp_stream_opens_only_its_flows_of_one_source_network`, `a_source_of_udp_is_its_24_of_ipv4_and_its_64_of_ipv6`. A re-read of `d00de9969` on 2026-11-21 found the Low of the bucket only partly closed: false sources in many networks still take the shared tokens of the stream. It does not block the merge; task H41 of the plan holds it. Built on the branch `hosted/udp-buckets` (task H41): a new flow takes the place of the oldest waiting flow, never of a flow whose source sent again after the application answered it, so false sources of many networks replace only each other. Waiting flows hold at most half of the connections of the route, set-up flows fewer than the rest, so one connection stays for a new client; a replaced flow ends at once, and set-up flows leave the waiting places free. Still open (Low): a sender that sends again to each false source can set up flows without seeing an answer; the first datagram of a new real client still competes for the tokens of the bucket. Tests: `false_sources_of_many_networks_replace_only_waiting_flows`, `set_up_flows_leave_the_waiting_places_free`, `waiting_and_set_up_flows_leave_one_connection_of_the_route`, `set_up_flows_stop_at_their_own_cap`. Merged into dev in `bc513403a`. A separate reviewer read `08159dcfe`, `2969f5b69` and `1b41cf1f0`; at `1b41cf1f0` no finding of severity High or Medium is open. These Lows stay open:
+
+- A sender of false sources that sends again to each of them sets up flows without seeing an answer, at most 7 of them by default. While those places are full, a real client stays waiting and a new source can replace it.
+- The first datagram of a new real client competes with false sources for the tokens of the bucket (8 each second).
+- One connection of the route stays free for one replacement at a time. In a burst, a new flow can race a replaced flow for its connection, so a real client can be refused once and must send again.
+- When the listener of a stream starts again, the old flows keep their connections until they are idle (60 seconds). The correction: end the flows of a listener when it is stopped, and check that one name has one listener. Built on the branch `hosted/udp-flow-ends`: when the listener of a UDP stream stops, its table drops each flow, which ends it (test `clearing_the_table_drops_each_handle`). One name has one listener: the name of a route is unique (migration 1060) and a route has one kind.
+- When `carry` panics, the connection of the name is not given back (`proxy.release`). The correction: a guard that gives it back on drop. Built on the branch `hosted/udp-flow-ends`.
+- Each replaced flow is a new dial through the hub, up to 8 each second for each stream, each with one query of the hub and one UDP socket.
+- The hub records an error of the door for a frame that a replaced flow cut off; it is a normal end.
+- No test runs a whole flow: the handover of a connection while a flow dials, and the admission of a new client while set-up flows are at their cap.
+
+What stays: a client that takes one segment in each 30 s keeps its connection. Many source networks together can still take the new flows of a stream; the flows answer each source with no more bytes than it sent (SF-248).
+
+State: Open (built in `68c9a7ab5`). A re-read on 2026-11-21 found the first build only partly closed it (an idle time that each byte starts again, a cap of a client equal to the limit of a link, a PROXY header from any peer, a cap for each IPv6 address). Found by a separate reviewer on 2026-11-21.
+
+### SF-329: The socket of the interface of the proxy checked no peer and had no set mode. Medium
+
+Requirements: HOST-046, task H21; SF-231.
+
+What it is: The hub served the interface to each process that could open the socket, and the mode of the socket was what the umask gave. A different local process could read the table, with the private key of each name, and connect to applications.
+
+Where: `crates/hub/src/work/routes/door.rs`, `crates/hub/src/config/routes.rs`.
+
+Effect, and who can cause it: A local user or process of the hub host. Effect: the keys of the certificates and a path to the applications.
+
+Mitigation now: `door::bind` makes the socket with mode `0660`, and `serve` closes each connection whose peer user ID (`SO_PEERCRED` or `getpeereid`) is not `ANIMA_ROUTES_PROXY_UID`. The hub refuses `ANIMA_ROUTES_SOCKET` without that setting. Test: `the_socket_answers_only_the_user_of_the_proxy`.
+
+State: Open (built in `274463241`). Found by a separate reviewer on 2026-11-21.
+
+### SF-326: The head accepted two lengths, a length that is not digits, and `_` in a header name. Low
+
+Requirements: HOST-046, task H21; SF-229.
+
+What it is: A second `Content-Length` replaced the first; a value such as `+5` passed; `Transfer-Encoding` with `Content-Length` was refused only by the order of the lines. A name such as `X_Forwarded_For` passed the removal of the forwarded headers, and some servers read `_` as `-`.
+
+Where: `crates/route-proxy/src/head.rs`.
+
+Effect, and who can cause it: Anyone on the internet. Effect: request smuggling to an application that reads the length in a different way, or a forged forwarded address.
+
+Mitigation now: The head refuses (400) a second `Content-Length`, a value that is not digits only, `Transfer-Encoding` with `Content-Length`, and a header name with `_`. Tests: `a_body_has_one_length_of_digits_and_never_with_a_transfer_encoding`, `a_header_name_with_an_underscore_is_refused`.
+
+State: Open (built in `274463241`). Found by a separate reviewer on 2026-11-21.
+
+### SF-325: The proof of a name is read again only when a person asks. Low
+
+Requirements: HOST-046, task H21; Section 12.4 point 4; SF-234.
+
+What it is: `checkApplicationRoute` reads the TXT record once. Nothing reads it again at intervals, so a name whose owner removed the record, or gave the name to a different hub, stays proven on this hub.
+
+Where: `crates/hub/src/work/routes.rs` (`check`); the upkeep of the hub.
+
+Effect, and who can cause it: The owner of a name who moved it. Effect: the hub keeps a name that it no longer owns, until a person checks it.
+
+Mitigation now: None in the code. No route serves yet (the consent of the machine and the record of the application are not given).
+
+The fix to make: a job of the upkeep of the hub runs `check` for each route at an interval, with the rule of several failed reads in a row, and writes the audit entry of a lost name.
+
+State: Open. Found by a separate reviewer on 2026-11-21.
+
+### SF-330: A change of a route asks for no new second factor. Low
+
+Requirements: HOST-046, task H21; HM-D14; SF-232.
+
+What it is: The mutations of the routes check that the account has a second factor, but not that the person gave it recently. A browser session that a different person took over can make an application public.
+
+Where: `crates/hub/src/work/routes/graphql.rs` (`person_with_second_factor`).
+
+Effect, and who can cause it: A person who took over a browser session of the operator. Effect: an application is made public.
+
+Mitigation now: Only a person with a login or a browser token, on an account with a second factor; no API key and no MCP tool. A re-read of `19e7fd03a` on 2026-11-21 found that a login token, which the `anima` command and an agent hold, could make an application public (Medium). Decided overnight on the recommendation of the orchestrator (R-365), and built in `bb0bce295`: a public route of each kind is added only by a browser token with no agent declared (`Identity::is_person_in_browser`, the rule of the shell gate of the catalogue); a login token, the same token declared as an agent (MCP) and an API key get the refusal `PublicNeedsPerson` (`FORBIDDEN`). A private route keeps the rule above. Tests: `sf_revroutestepup_only_a_person_in_the_browser_adds_a_public_route`, `sf_revroutestepup_an_api_key_adds_no_route`.
+
+The fix to make: `addApplicationRoute` and `removeApplicationRoute` ask for a code of the second factor given in the last minutes (a step-up), and refuse otherwise.
+
+State: Open (built in `bb0bce295`). Found by a separate reviewer on 2026-11-21.
+
+### SF-328: The protocol of a public stream was only a label that the person picked. Medium
+
+Requirements: HOST-050, task H40; SF-248; OD-HOST-54.
+
+What it is: A public `tcp_stream` or `udp_stream` needed a protocol from the fixed list of the hub, but nothing checked that the application on that port speaks it. A person could open a database or a shell to the internet with the label `imaps`.
+
+Where: `crates/hub/src/work/routes/model.rs` (`Route::waits`), `crates/hub/migrations/1061_routes_kinds.sql`.
+
+Effect, and who can cause it: A person who adds a route, or an agent with a login token. Effect: a service that trusts its network is public.
+
+Mitigation now: Decided overnight on the recommendation of the orchestrator (R-365), and built in `bb0bce295`: a public stream also waits for the mark `stream-public` on the port in the record of the application (`routes.route.stream_public`), as part of the wait `APPLICATION_RECORD`. Nothing sets it before task H6, so no public stream serves; a private stream is as before. Test: `a_public_stream_waits_for_the_mark_stream_public_of_the_record`.
+
+State: Open (built in `bb0bce295`). Found by a separate reviewer on 2026-11-21.
+
 ## The code review of the catalogue and the routes (2026-11-21)
 
 A separate reviewer read the code of the recipe format and its static test (`crates/catalogue`, `crates/compose-rules`) and the PostgreSQL functions of the catalogue (`crates/catalogue/src/postgresql*`) on the branch `hosted/apps-h38`. The design is in Sections 13 and 14 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md). The corrections are built in the same branch. No entry of the catalogue was tested on a machine (task H37).
@@ -3626,6 +3775,90 @@ Effect, and who can cause it: An image that a publisher lost control of. Effect:
 Mitigation now: OD-HOST-53: the test machine is not on the network of Anima or his local network, its outbound traffic is recorded, and it is wiped after each run.
 
 State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-335: A fetch of an operational key during the removal of its device gives the value, and the removal does not name the key. Low
+
+Requirements: R-147; K-E5 Section 2.1 ("After removal").
+
+What it is: The fetch checked the consumer row of the device with `EXISTS` and did not lock it. A removal of the device that ran during the fetch deleted the row before the fetch recorded it, so the list of the keys that the server had did not name the key, and the fetch still gave the value.
+
+Where: `crates/hub/src/fleet/credentials/operational/store.rs` (`fetchable`), `operational/store/consumers.rs` (`mark_fetched`, `delete_of_device`).
+
+Effect, and who can cause it: A device that fetches a key for the first time while the operator removes it. Effect: the server holds the key, and the removal does not tell the operator to revoke it at the provider. The audit entry of the fetch exists.
+
+Mitigation now: `fetchable` holds the consumer rows of the device shared (`FOR SHARE OF k, c`), so the removal waits for the fetch to commit and then names the key.
+
+State: Open. The correction is built on the branch `engine/e0-6-security-review`; no test makes the race. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
+
+### SF-338: `anima-daemon uninstall` keeps the key cache when the delete of the token fails. Low
+
+Requirements: R-147; K-E5 Section 2.1.
+
+What it is: `uninstall` deleted the token first and stopped at its error, so the key cache stayed. On macOS a delete in the Keychain can wait for the person (R-322).
+
+Where: `crates/daemon/src/main.rs` (`uninstall`).
+
+Effect, and who can cause it: A failed or waiting delete of the token during `anima-daemon uninstall`. Effect: `anima-daemon key read` gives the values for up to 7 days, and no daemon runs to delete them.
+
+Mitigation now: `uninstall` deletes the key cache first, and also when the delete of the token fails.
+
+State: Open. The correction is built on the branch `engine/e0-6-security-review`. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
+
+### SF-336: `anima-daemon key read` can give a dropped version while a save or a delete in the Keychain waits for the person. Low
+
+Requirements: R-147; K-E5 Section 2.1.
+
+What it is: The daemon drops a revoked or replaced version in memory, but the stored record stays until a save or a delete in the Keychain succeeds. `key read` is a different process and reads the stored record.
+
+Where: `crates/daemon/src/keys/keeper.rs` (`follow`, `save`, `forget`), `crates/daemon/src/keys.rs` (`key read`).
+
+Effect, and who can cause it: On macOS, before the person allows the Keychain access, the hub revokes or rotates a key. Effect: a workload that runs `anima-daemon key read` gets the old value. The 7-day rule ends it. Linux is not affected.
+
+Mitigation now: none apart from the 7-day rule. The live check HT-035 covers the Keychain.
+
+State: Open. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
+
+### SF-334: An API key can read a vault key offer and can replace or delete a sealed record. Medium
+
+Requirements: VLT-001, VLT-002; K-E5 Section 3.
+
+What it is: `offerVaultKey`, `vaultKeyOffer`, `storeSealedRecord` and `deleteSealedRecord` take each signed-in token. Only `recordReveal` asks for a person (a login or a browser token, and no declared AI agent).
+
+Where: `crates/hub/src/engine/sealed_records/graphql.rs`; `crates/hub/src/fleet/access/guard/refused.rs` (`API_KEY_REFUSED_ROOTS`).
+
+Effect, and who can cause it: A holder of an API key, also a key made for an AI agent. Effect: it can read an offer and so stop the addition of a client (the bytes stay sealed), or replace or delete the one sealed copy of a record on the hub.
+
+Mitigation now: each change writes an audit entry that names the key.
+
+State: Open. The correction (a person only, on the four fields) waits until `recordReveal` is on `dev`, because it changes the same file. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
+
+### SF-337: A reveal with a valid new code passes for a login token that was deleted during the request. Low
+
+Requirements: VLT-005; K-E5 Section 3.
+
+What it is: The check of the second factor reads no row for a deleted token, and then records the code on no row and passes.
+
+Where: `crates/hub/src/fleet/access/recheck.rs`, `access/store/tokens.rs` (`lock_token_totp`).
+
+Effect, and who can cause it: A sign-out of the login while its reveal runs. Effect: the reveal passes, but only with a valid new TOTP code.
+
+Mitigation now: the reveal needs the code.
+
+State: Open. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
+
+### SF-333: A login token with the declaration of an AI agent can change and grant operational keys. Low
+
+Requirements: R-147; K-E5 Section 2.2.
+
+What it is: The changes of the operational keys refuse an API key but not a request that declares an AI agent. `recordReveal` refuses such a request.
+
+Where: `crates/hub/src/fleet/credentials/graphql.rs`; `crates/hub/src/fleet/access/guard.rs` (`operator_only`).
+
+Effect, and who can cause it: An AI agent that holds the login token of the operator and declares itself. Effect: it can grant a key to a server. The declaration is voluntary, so this is a second defence only; the contract does not ask for it.
+
+Mitigation now: a grant writes an audit entry that names the agent.
+
+State: Open. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
 
 ## Closed
 

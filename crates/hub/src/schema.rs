@@ -29,7 +29,7 @@ use crate::{
         targets::AddressPolicy,
         trust, vpn, web_interfaces,
     },
-    work::{catalogue, containers, projects},
+    work::{catalogue, containers, projects, routes},
 };
 
 // One line per domain in each root (K3).
@@ -55,6 +55,7 @@ pub struct Query(
     notifications::graphql::Query,
     places::graphql::Query,
     projects::graphql::Query,
+    routes::graphql::Query,
     retention::graphql::Query,
     sessions::graphql::Query,
     sources::graphql::Query,
@@ -82,12 +83,14 @@ pub struct Mutation(
     extensions::graphql::Mutation,
     link::graphql::Mutation,
     link::graphql::HostedMutation,
+    link::graphql::ComputerMutation,
     links::graphql::Mutation,
     maintenance::graphql::Mutation,
     metrics::graphql::Mutation,
     notifications::graphql::Mutation,
     places::graphql::Mutation,
     projects::graphql::Mutation,
+    routes::graphql::Mutation,
     retention::graphql::Mutation,
     sessions::graphql::Mutation,
     sessions::FilesMutation,
@@ -206,6 +209,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(vault)
     // The open claims of a hosted hub (R-129), and its open browser tickets (HMD-061).
     .data(link::Claims::default())
+    .data(link::ComputerClaims::default())
     .data(access::BrowserTickets::default());
     // One block per domain: its loaders (R-014) and its state.
     let builder = with_devices_loaders(builder, &pool, &clock)
@@ -296,6 +300,7 @@ fn with_devices_loaders(builder: Builder, pool: &PgPool, clock: &Arc<dyn Clock>)
         .data(devices::graphql::batteries_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::stale_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::daemon_version_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(devices::graphql::daemon_need_loader(pool.clone()).delay(BATCH_WINDOW))
 }
 
 /// API-007: release builds are production builds; debug builds keep introspection for tooling.

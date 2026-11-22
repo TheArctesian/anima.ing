@@ -9,7 +9,6 @@ mod object_paths;
 mod path_list;
 mod remote_name;
 mod scratch_ref;
-mod secret_paths;
 mod working_tree;
 
 use std::path::Path;

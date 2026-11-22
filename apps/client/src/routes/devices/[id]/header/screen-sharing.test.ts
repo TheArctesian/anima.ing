@@ -42,7 +42,8 @@ it.each(['MACOS', 'LINUX'] as const)('R-079: a %s device with VNC off has the da
   show(device({ os }));
   const found = setUp();
   expect(found?.querySelector('.full')?.textContent).toBe('Set up screen sharing');
-  expect(found?.querySelector('.short')?.textContent).toBe('VNC');
+  expect(found?.querySelector('.short')?.textContent.trim()).toBe('');
+  expect(found?.textContent).not.toContain('VNC');
   expect(found?.classList.contains('dashed')).toBe(true);
   expect(found?.getAttribute('aria-label')).toBe('Set up screen sharing for nas');
 });

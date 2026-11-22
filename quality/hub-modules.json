@@ -170,6 +170,11 @@
     ],
     "rollout": [
       "builds"
+    ],
+    "routes": [
+      "devices",
+      "events",
+      "credentials"
     ]
   },
   "graphql": {
@@ -233,7 +238,9 @@
     ],
     "link": [
       "access",
-      "events"
+      "events",
+      "devices",
+      "metrics"
     ],
     "agent_usage": [
       "access"
@@ -257,6 +264,9 @@
       "access"
     ],
     "sealed_records": [
+      "access"
+    ],
+    "routes": [
       "access"
     ],
     "compute": [

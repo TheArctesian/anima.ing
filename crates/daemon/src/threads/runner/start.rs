@@ -3,7 +3,7 @@
 
 use std::path::{Path, PathBuf};
 
-use agent_threads::control::{Refusal, RunState, ThreadRow};
+use agent_threads::control::{Refusal, RunState, ThreadRow, Workspace};
 use agent_threads::drive::{Effort, Launch, Mode, Model, Program, SessionStart};
 use uuid::Uuid;
 
@@ -104,7 +104,7 @@ impl Runner {
                 };
                 self.start_checked(asking).await
             }
-            Some(false) => Err(self.not_answered(new.program, &path, &copies)),
+            Some(false) => Err(self.silence.refusal(new.program, &path, &copies)),
             None => {
                 // The ask runs away from the loop; the start goes on when it answers (TH97).
                 // One ask for each copy at a time: a later start waits for the same answer.
@@ -160,7 +160,10 @@ impl Runner {
             let refusal = if answered {
                 self.start_checked(asking).await.err()
             } else {
-                Some(self.not_answered(asking.new.program, &asking.path, &asking.copies))
+                Some(
+                    self.silence
+                        .refusal(asking.new.program, &asking.path, &asking.copies),
+                )
             };
             if let Some(why) = refusal {
                 self.note(
@@ -198,14 +201,6 @@ impl Runner {
             });
         }
         Ok(())
-    }
-
-    /// The refusal of a start whose copy did not answer, with the other copies that did.
-    fn not_answered(&self, program: Program, path: &Path, copies: &[PathBuf]) -> Refusal {
-        let others = self.silence.answered_others(path, copies);
-        let said = super::silence::not_answered(program, path, &others);
-        let answered = others.into_iter().map(|(copy, _)| copy).collect();
-        Refusal::ProgramDoesNotAnswer { said, answered }
     }
 
     /// The start of a thread whose copy answered its version.
@@ -323,6 +318,11 @@ impl Runner {
             started: chrono::Utc::now(),
             ended: None,
             open: Vec::new(),
+            queued: Vec::new(),
+            last_turn: None,
+            effort: new.effort,
+            workspace: Some(Workspace::of(&folder)),
+            usage: None,
         };
         let action = wire::Action::Start {
             thread: id.to_string(),

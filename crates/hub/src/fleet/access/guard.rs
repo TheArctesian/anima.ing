@@ -254,14 +254,30 @@ pub fn operator_only<'a>(ctx: &Context<'a>, root: &str) -> async_graphql::Result
     }
 }
 
+/// The request's identity when the person signed in to it (a login or a browser token);
+/// `FORBIDDEN` for an API key or a builder token. For a field that holds personal data, which
+/// goes to the person's own clients and not to a key made for a program (THR-149).
+///
+/// # Errors
+///
+/// `FORBIDDEN` for a token that the person did not sign in with; `INTERNAL` with no identity.
+pub fn person_only<'a>(ctx: &Context<'a>) -> async_graphql::Result<&'a Identity> {
+    let identity = schema_dependency::<Identity>(ctx)?;
+    match identity.kind() {
+        TokenKind::Login | TokenKind::Browser => Ok(identity),
+        TokenKind::ApiKey | TokenKind::Builder => Err(Error::KindRefused.into_graphql()),
+    }
+}
+
 /// The mutations a signed-out client may run, one per operation (API-003, D-4, A-7, R-111).
-const SIGNED_OUT_MUTATIONS: [&str; 6] = [
+const SIGNED_OUT_MUTATIONS: [&str; 7] = [
     "login",
     "signInBrowser",
     "hostedDeviceInvite",
     "claimDeviceToken",
     "hostedBrowserTicket",
     "hostedBrowserSignIn",
+    "claimComputerEnrolment",
 ];
 
 /// Whether a document may run without an identity: each operation selects only

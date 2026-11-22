@@ -7,6 +7,8 @@ pub mod documents;
 #[cfg(unix)]
 pub mod drive;
 #[cfg(unix)]
+pub mod files;
+#[cfg(unix)]
 pub mod listing;
 pub mod report;
 #[cfg(unix)]
@@ -41,6 +43,13 @@ pub enum AgentCommand {
     /// Send a prompt to a thread that this computer runs.
     #[cfg(unix)]
     Send(drive::SendArgs),
+    /// Queue a prompt for a thread that this computer runs: it goes as the next turn when the
+    /// turns before it ended well. Change, drop or send a queued prompt now.
+    #[cfg(unix)]
+    Queue(drive::QueueArgs),
+    /// Change the model, the effort or the mode of a thread that this computer runs.
+    #[cfg(unix)]
+    Set(drive::SetArgs),
     /// Answer a request of a thread: allow (the default), deny, allow for the session, or
     /// choose the answers of a question.
     #[cfg(unix)]
@@ -78,7 +87,18 @@ pub enum AgentCommand {
     /// Code or Codex stay on disk; a thread that runs is refused.
     #[cfg(unix)]
     Remove(listing::RemoveArgs),
-    /// List the threads of this computer that are pinned, archived, renamed or removed.
+    /// Settle a thread of this computer: it goes to the shelf Settled. `--off` takes it back.
+    #[cfg(unix)]
+    Settle(listing::SwitchArgs),
+    /// Snooze a thread of this computer until a time (`--for 3h` or `--until <RFC 3339>`), at
+    /// most 30 days. A prompt or a request of its program wakes it before.
+    #[cfg(unix)]
+    Snooze(listing::SnoozeArgs),
+    /// End the snooze of a thread of this computer now.
+    #[cfg(unix)]
+    Wake(listing::WakeArgs),
+    /// List the threads of this computer that are pinned, archived, renamed, removed, settled
+    /// or snoozed.
     #[cfg(unix)]
     Listings,
     /// Show the models that each agent program of this computer offers for a start.
@@ -88,6 +108,11 @@ pub enum AgentCommand {
     /// whose threads are listed under its name.
     #[cfg(unix)]
     Projects(listing::ProjectsArgs),
+    /// List the files and folders of the working folder of a thread that the runner started,
+    /// the best match for the words first, as the `@` list of the composer. Secrets and the
+    /// folders of tools and of build output are left out.
+    #[cfg(unix)]
+    Files(files::FilesArgs),
 }
 
 impl AgentCommand {
@@ -112,19 +137,30 @@ impl AgentCommand {
         match self {
             Self::Start(args) => args.run(invocation).await,
             Self::Send(args) => args.run(invocation).await,
+            Self::Queue(args) => args.run(invocation).await,
+            Self::Set(args) => args.run(invocation).await,
             Self::Approve(args) => args.run(invocation).await,
             Self::Interrupt(args) => drive::interrupt(args, invocation).await,
             Self::Stop(args) => drive::stop(args, invocation).await,
-            Self::Running => drive::running(invocation).await,
             Self::Watch(args) => drive::watch(args, invocation).await,
             Self::RaiseLimit => drive::raise_limit(invocation).await,
+            other => other.run_read(invocation).await,
+        }
+    }
+
+    /// Runs a command that only reads what the runner holds.
+    #[cfg(unix)]
+    async fn run_read(self, invocation: &Invocation) -> Result<(), Failure> {
+        match self {
+            Self::Running => drive::running(invocation).await,
             Self::Accounts => accounts::accounts(invocation).await,
             Self::Models => accounts::models(invocation).await,
+            Self::Files(args) => files::files(args, invocation).await,
             other => other.run_listing(invocation).await,
         }
     }
 
-    /// Runs a command that changes how a thread is listed (TH46).
+    /// Runs a command that changes how a thread is listed (TH46, TH61).
     #[cfg(unix)]
     async fn run_listing(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
@@ -132,9 +168,12 @@ impl AgentCommand {
             Self::Archive(args) => listing::archive(args, invocation).await,
             Self::Rename(args) => listing::rename(args, invocation).await,
             Self::Remove(args) => listing::remove(args, invocation).await,
+            Self::Settle(args) => listing::settle(args, invocation).await,
+            Self::Snooze(args) => listing::snooze(args, invocation).await,
+            Self::Wake(args) => listing::wake(args, invocation).await,
             Self::Listings => listing::listings(invocation).await,
             Self::Projects(args) => listing::projects(args, invocation).await,
-            _ => unreachable!("the other commands are run by `run` and `run_local`"),
+            _ => unreachable!("the other commands are run by `run`, `run_local` and `run_read`"),
         }
     }
 }

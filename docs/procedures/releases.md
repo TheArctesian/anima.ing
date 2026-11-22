@@ -162,7 +162,7 @@ Do not start a trial for the commit of a release that is still running, and the 
 
 ### The daemon alone (task U2)
 
-A release also publishes `anima-daemon` for each target, with its signed release record, for the update of the machines (task U6 of the [update plan](../plans/daemon-and-hub-update-plan.md); nothing reads these files yet). After the job `publish`, the job `daemon-publish` puts, for `linux-x86_64` and for `darwin-universal`: `<target>/<version>/anima-daemon`, then `<target>/<version>/release-record.json`, then `<target>/<version>/release-record.json.sig`. The record is signed with the updater key in the job `sign`; no new secret and no new switch. `deploy/release/replaces-from` holds the lowest daemon version that the release can replace (`0.0.0`: each). The fields and the check are in the update plan, "The release record as built".
+A release also publishes `anima-daemon` for each target, with its signed release record, for the update of the machines (task U6 of the [update plan](../plans/daemon-and-hub-update-plan.md); nothing reads these files yet). After the job `publish`, the job `daemon-publish` puts, for `linux-x86_64` and for `darwin-universal`: `<target>/<version>/anima-daemon` and `<target>/<version>/anima-link`, then `<target>/<version>/release-record.json`, then `<target>/<version>/release-record.json.sig`; last, `install/<version>/anima-install.sh`, the script of the one-line install (`deploy/bin/anima-install` of the release commit; HM-T33, R-361). The record lists the SHA-256 of both programs. The summary of the job gives the SHA-256 of the script and of the four programs, for the line. The record is signed with the updater key in the job `sign`; no new secret and no new switch. `deploy/release/replaces-from` holds the lowest daemon version that the release can replace (`0.0.0`: each). The fields and the check are in the update plan, "The release record as built".
 
 To check the files of a release by hand:
 
@@ -317,6 +317,7 @@ A Mac with 0.2.1 from the DMG: the application reads its feed at start and each 
 
 | What | Why a trial does not show it | What is done, and what to do |
 | --- | --- | --- |
+| The puts of `<target>/<version>/anima-link` and `install/<version>/anima-install.sh`, and the SHA-256 values in the summary of `daemon-publish` (HM-T33, R-361) | A trial runs the job `daemon` and writes the records with `anima-link`, but never runs `daemon-publish` | After the first release: `curl -fsSI` of the five files gives `200` with the immutable cache, and `curl -fsSL <url> \| sha256sum` gives the value of the record and of the summary |
 | The environment `release-publish` refuses a run of `main` | A trial never uses that environment | Step 1 of "To switch public releases on". If it is not done, the job `bucket` fails in the first minute |
 | The bucket token is wrong, has no right for `anima-releases`, or is of a different account than `RELEASES_ENDPOINT` | A trial has no token. The orchestrating session set the two secrets from a file of the operator (R-195); no run used them | The job `bucket` reads one object with them in the first minute. The variable has the right form (`https://<32 hex characters>.r2.cloudflarestorage.com`, read on 2026-11-19) |
 | The token can read but cannot write | The job `bucket` only reads | The first write is a file of Linux under a new version folder; the feeds are not changed when it fails. Make a token with "Object Read & Write" for that bucket, set the two secrets, and select "Re-run failed jobs" |
@@ -415,11 +416,13 @@ What is not known until the first run: if the Linux program starts on a computer
 ### The iOS application: TestFlight (R-203; task B8i)
 
 The branch workflow [TestFlight](../../.github/workflows/testflight.yml) runs on a push to
-`dev` or `main`. Manual dispatch on either branch redeploys that branch. The scheduled
-check runs every 20 minutes and dispatches any new `dev` revision that the merge
-train pushed with GitHub's workflow token. Each build
-gets a unique number from the workflow run sequence. The iOS release version still comes
+`dev` or `main`. Once the workflow is on `main`, GitHub enables manual dispatch and
+the scheduled check. The check runs every 20 minutes and dispatches any new `dev`
+revision that the merge train pushed with GitHub's workflow token. Each build gets a unique number from the workflow run sequence. The iOS release version still comes
 from the first-parent history of `main`.
+The job uses GitHub's `xcode-27` image and checks for iOS SDK 27 or later before
+building. The generated project targets iOS 17, which meets Apple's minimum deployment
+target of iOS 15 for uploads from April 2027.
 
 | Branch | GitHub environment | GitHub variable | TestFlight group |
 | --- | --- | --- | --- |
@@ -435,8 +438,10 @@ with App Manager access. The old `ANIMA_PUBLIC_TESTFLIGHT` switch stays off when
 using the branch workflow.
 
 Keep automatic distribution off for Anima Internal. Xcode marks `dev` uploads as
-TestFlight Internal Only. The workflow checks Apple's recorded build audience before
-assigning it to the internal group. The `main` job creates Anima External when needed,
+TestFlight Internal Only. The signed archive carries the export exemption recorded for
+build 900.0.4. Review that declaration before releasing changes that affect the app's
+encryption or its linked libraries. After processing, the workflow checks Apple's recorded
+build audience and testing status, then adds the build to Anima Internal. The `main` job creates Anima External when needed,
 assigns the processed build, enables automatic tester notification and submits it for
 Beta App Review when Apple requires it. The operator supplies the app's beta review
 contact, sign-in instructions and export compliance answers in App Store Connect.

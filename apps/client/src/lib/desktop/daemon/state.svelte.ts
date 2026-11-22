@@ -31,6 +31,17 @@ export function stateAfter(did: DaemonHere): DaemonHereState {
   }
 }
 
+/**
+ * The reason line of a daemon that waits for the person in the macOS Keychain (R-322), the one wording of each page that
+ * says it: `null` for the daemon of the computer that shows the page, else the name of the device seen from another.
+ */
+export function keychainNeedLine(deviceName: string | null): string {
+  if (deviceName === null) {
+    return 'The daemon of this computer needs you: macOS asks whether it may read its key in the Keychain. Type your password in that window and click Always Allow. Metrics and counts appear here some minutes later.';
+  }
+  return `The daemon of ${deviceName} needs you: on that Mac, macOS asks whether it may read its key in the Keychain. Allow it there.`;
+}
+
 /** One sentence for a page of a hosted hub that waits for the daemon of this computer (AIS-020, HMD-057). */
 export function daemonHereLine(state: DaemonHereState): string {
   switch (state.kind) {
@@ -41,7 +52,7 @@ export function daemonHereLine(state: DaemonHereState): string {
     case 'installed':
       return 'The daemon of this computer is installed. Counts appear here some minutes after you use Claude Code or Codex on it.';
     case 'needs-you':
-      return 'The daemon of this computer needs you: macOS asks whether it may read its key in the Keychain. Type your password in that window and click Always Allow. Counts appear here some minutes later.';
+      return keychainNeedLine(null);
     case 'failed':
       return `The daemon was not installed on this computer. ${state.reason} Quit the application and open it again to try once more.`;
   }
@@ -49,3 +60,6 @@ export function daemonHereLine(state: DaemonHereState): string {
 
 /** The state of this start of the app. Pages read `daemonHere.current`; only the install writes it. */
 export const daemonHere = $state<{ current: DaemonHereState }>({ current: { kind: 'idle' } });
+
+/** The device of the hub that is the computer the app runs on, once the watch of its daemon found it; `null` before. */
+export const thisComputerDevice = $state<{ id: string | null }>({ id: null });

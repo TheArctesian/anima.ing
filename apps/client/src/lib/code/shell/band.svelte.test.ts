@@ -13,6 +13,13 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
+/** What a step of the path shows, without the tooltip words kept for a screen reader. */
+function shown(item: Element): string {
+  const copy = item.cloneNode(true) as Element;
+  for (const hidden of copy.querySelectorAll('[hidden]')) hidden.remove();
+  return (copy.textContent ?? '').replace(/\s+/g, ' ').trim();
+}
+
 function button(name: string): HTMLButtonElement {
   const found = document.querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`);
   if (found === null) throw new Error(`no button "${name}"`);
@@ -23,9 +30,7 @@ describe('the path of the head of a thread (TC2)', () => {
   it('TC2: the path is "project / title", and the title is the heading of the thread', () => {
     app = mount(Breadcrumb, { target: document.body, props: { project: 'anima.ing', title: 'Fix the gates' } });
     flushSync();
-    const items = [...document.querySelectorAll('nav[aria-label="Thread breadcrumb"] li')].map((item) =>
-      item.textContent.trim(),
-    );
+    const items = [...document.querySelectorAll('nav[aria-label="Thread breadcrumb"] li')].map(shown);
     expect(items).toEqual(['anima.ing', '/', 'Fix the gates']);
     expect(document.querySelector('h2')?.textContent.trim()).toBe('Fix the gates');
   });
@@ -47,7 +52,7 @@ describe('the path of the head of a thread (TC2)', () => {
       props: { project: 'anima.ing', title: 'Fix the gates', onproject, onactions },
     });
     flushSync();
-    document.querySelector<HTMLButtonElement>('button[title="New thread in anima.ing"]')?.click();
+    button('New thread in anima.ing').click();
     button('Thread actions for Fix the gates').click();
     expect(onproject).toHaveBeenCalledTimes(1);
     expect(onactions).toHaveBeenCalledWith(button('Thread actions for Fix the gates'));
@@ -88,6 +93,32 @@ describe('the buttons of the band (TC2)', () => {
   });
 });
 
+describe('renaming from the head (08 band 2)', () => {
+  it('a double-click on the title opens the field; Enter keeps, an empty title is refused, Escape gives up', async () => {
+    const onrenaming = vi.fn();
+    const onrename = vi.fn(() => Promise.resolve(null));
+    app = mount(Breadcrumb, { target: document.body, props: { title: 'Fix the gates', onactions: vi.fn(), onrename, onrenaming } });
+    flushSync();
+    button('Thread actions for Fix the gates').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+    expect(onrenaming).toHaveBeenCalledWith(true);
+    void unmount(app);
+    app = mount(Breadcrumb, { target: document.body, props: { title: 'Fix the gates', onrename, onrenaming, renaming: true } });
+    flushSync();
+    const field = document.querySelector<HTMLInputElement>('input[aria-label="Thread title"]') ?? expect.fail('no field');
+    field.value = '  ';
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await Promise.resolve();
+    flushSync();
+    expect(document.querySelector('[role="alert"]')?.textContent).toBe('Thread title cannot be empty');
+    field.value = 'Fix the merge gates';
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(onrename).toHaveBeenCalledWith('Fix the merge gates');
+    expect(onrenaming).toHaveBeenLastCalledWith(false);
+  });
+});
+
 describe('the head of the chat column (TC2)', () => {
   it('TC2: the head shows the folder and the title of the open thread, and a line only when no thread is open', async () => {
     const { default: ChatHeader } = await import('./ChatHeader.svelte');
@@ -104,13 +135,14 @@ describe('the head of the chat column (TC2)', () => {
     };
     app = mount(ChatHeader, { target: document.body, props: { thread } });
     flushSync();
-    const items = [...document.querySelectorAll('nav li')].map((item) => item.textContent.trim());
+    const items = [...document.querySelectorAll('nav li')].map(shown);
     expect(items).toEqual(['anima.ing', '/', 'Untitled thread']);
     expect(document.querySelector('.head')?.classList.contains('empty')).toBe(false);
     void unmount(app);
     app = mount(ChatHeader, { target: document.body, props: {} });
     flushSync();
     expect(document.querySelector('nav')).toBeNull();
+    expect(document.querySelector('.none')?.textContent).toBe('No active thread');
     expect(document.querySelector('.head')?.classList.contains('empty')).toBe(true);
     expect(document.querySelector('[data-code-band][data-tauri-drag-region]')).not.toBeNull();
   });

@@ -79,6 +79,7 @@ dependencies = [
  "chrono",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 2.0.21",
  "uuid",
 ]
@@ -254,6 +255,7 @@ dependencies = [
  "agent-threads",
  "anima-windows",
  "axum",
+ "base64 0.23.1",
  "bytes",
  "chrono",
  "daemon-core",
@@ -350,6 +352,7 @@ dependencies = [
  "anima-database",
  "anima-gateway",
  "anima-hub",
+ "anima-route-proxy",
  "anima-windows",
  "argon2",
  "async-graphql",
@@ -436,6 +439,82 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
+ "zeroize",
+]
+
+[[package]]
+name = "anima-os-install"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "rustix",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "uuid",
+ "zeroize",
+]
+
+[[package]]
+name = "anima-os-session"
+version = "0.1.0"
+dependencies = [
+ "nix 0.31.3",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "uuid",
+ "zeroize",
+]
+
+[[package]]
+name = "anima-os-update"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
+ "nix 0.31.3",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
+name = "anima-osd"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "nix 0.31.3",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "anima-route-proxy"
+version = "0.1.0"
+dependencies = [
+ "rcgen",
+ "rustls",
+ "rustls-pki-types",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-rustls",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
  "zeroize",
 ]
 
@@ -10746,6 +10825,7 @@ version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e13084392c5e4bc371903e2935a5eaeed24905a7511356b883835e18a78f6879"
 dependencies = [
+ "serde",
  "zeroize_derive",
 ]
 

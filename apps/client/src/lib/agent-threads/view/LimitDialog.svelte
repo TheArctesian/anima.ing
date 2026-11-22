@@ -2,7 +2,7 @@
   import FormButton from '$lib/forms/FormButton.svelte';
   import Modal from '$lib/forms/modal/Modal.svelte';
   import type { CallResult } from '../live/live.svelte';
-  import { OVER_LIMIT } from '../live/run';
+  import { OVER_LIMIT } from '../live/refusals';
 
   interface Props {
     open: boolean;

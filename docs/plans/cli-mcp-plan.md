@@ -151,7 +151,7 @@ read key; change commands with a write key).
 | `ssh <device>` L | A terminal on the device through the hub (K4 Section 8). The credential stays on the hub. |
 | `files` L | `ls`, `get`, `put` (K4 Section 9) |
 | `web` | `list`, `create`, `update`, `delete`, `suggestion accept\|dismiss`, `accept-certificate` L |
-| `agent` | `status`, `enrol` L, `revoke` L |
+| `agent` | `status`, `enrol` L, `revoke` L, `need keychain\|none` L (what the daemon waits for from a person; the desktop application sets it by itself, R-364) |
 | `capability` | `list` (`--tool <name>`, `--target <build target>`): the tool inventory of each device (compute plan CAP-020 to CAP-031) |
 | `agents` | `usage` (`--device <id\|name>`, `--source claude-code\|codex`, `--repository <host/owner/name>`, `--since <day>`, `--until <day>`, `--days <1-366>`, `--by device,source,model,repository,day`, repeatable; device and source by default): the sessions, prompts, tool calls and tokens of Claude Code and Codex with an estimate of the cost, which is not the bill of a subscription, and the AIS-024 sentence for a daemon that runs as a system unit (R-135; AIS-020, AIS-021, AIS-024) |
 | `snapshot` | `push` (`--remote`), `list`, `delete <ref>`: a commit of the working tree on a scratch ref of the forge (JOB-017, JOB-018). It uses git on this computer and makes no hub request. |
@@ -162,6 +162,7 @@ read key; change commands with a write key).
 | `builder` | `list`, `enrol` L, `revoke` L |
 | `vpn` | `status` (`--watch`), `invite` L, `router-key` L, `register` L, `renew` L, `approve-route` L |
 | `timeline` | `list` (`--from`, `--to`, `--category`, `--limit`, `--after`, `--all`; the last 24 hours when no time is given) (K-E3; TML-007) |
+| `route` | `list` (`--application <id>`), `show <id>`, `add` L, `check` L, `remove` L: the public names of the applications (hosted-applications plan, H21, Section 12) |
 | `record-link` | `list <record>`, `add <source> <target> --kind <kind>` (`--label`), `remove <id>`; a record is `kind:id` (K-E4; RLK-001, RLK-002, RLK-004). The noun `link` is the device link of S6 |
 | `file` | `list <record>`, `upload <path> --owner <record>` (`--name`, `--key`, default `engine`, `--archive <id>`, `--keep-location`, `--type <media type>`), `download <id> --output <path>` (a new file only; never to a terminal), `remove <id>` (confirms), `archive add --owner <record> --name <name>`, `archive remove <id>` (confirms: it deletes the records that came from the archive) (K-E4 Section 9; FIL-001 to FIL-005). The bytes go through `/files/v1`, not through GraphQL |
 | `extraction` | `list` (`--owner`, `--state proposed\|confirmed\|rejected`), `propose --owner --form --extension --origin client\|hub --fields <JSON>` (`--attachment <id>`), `confirm <id> --fields <JSON>`, `reject <id>` (K-E4 Section 10; VIS-001 to VIS-004) |
@@ -389,17 +390,17 @@ Every tool is `allow` by default (MCP-002, MCP-024, R-120). The switch of MCP-02
 
 | Set | Read | Change |
 | --- | --- | --- |
-| `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics`, `anima_capability_list`, `anima_compute_policy_list` (waits for R-335), `anima_agents_usage`, `anima_agents_sessions`, `anima_container_list`, `anima_container_storage`, `anima_container_networks`, `anima_container_updates`, `anima_compose_check`, `anima_compose_from_run`, `anima_catalogue_list`, `anima_catalogue_show` | `anima_catalogue_install`, `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L, `anima_compute_policy_set` L (waits for R-335; it sets no switch, so MCP-005 does not stop it) |
+| `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics`, `anima_capability_list`, `anima_compute_policy_list` (waits for R-335), `anima_agents_usage`, `anima_agents_sessions`, `anima_container_list`, `anima_container_storage`, `anima_container_networks`, `anima_container_updates`, `anima_compose_check`, `anima_compose_from_run`, `anima_catalogue_list`, `anima_catalogue_show` | `anima_catalogue_install`, `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L, `anima_compute_policy_set` L (waits for R-335; it sets no switch, so MCP-005 does not stop it), `anima_daemon_set_need` L (R-364; it takes no secret and makes no trust decision: it changes only what the device page says) |
 | `checks` | `anima_check_get` (with heartbeats and uptime) | `anima_check_create`, `anima_check_update`, `anima_check_set_paused`, `anima_check_delete` |
 | `maintenance` | `anima_maintenance_list` | `anima_maintenance_create`, `anima_maintenance_update`, `anima_maintenance_delete`, `anima_maintenance_set_active` |
 | `events` | `anima_events_search`, `anima_audit_list`, `anima_audit_verify` (R-138) | |
 | `sessions` | `anima_sessions_list` | `anima_session_end` |
 | `notifications` | `anima_notifications_overview` (channels with no addresses, settings, deliveries) | `anima_notification_send_test`, `anima_check_set_notifications` |
-| `web` | (in `anima_device_get`) | `anima_web_interface_create`, `anima_web_interface_update`, `anima_web_interface_delete` |
+| `web` | (in `anima_device_get`), `anima_route_list`, `anima_route_get` (a public name with its proof and state; never its certificate or key) | `anima_web_interface_create`, `anima_web_interface_update`, `anima_web_interface_delete`. `addApplicationRoute`, `checkApplicationRoute` and `removeApplicationRoute` have no tool: publishing a name to the internet is a trust decision (MCP-005), and the hub refuses every API key and asks for a second factor (hosted-applications plan, Section 12, SF-232) |
 | `releases` | `anima_releases_list`, `anima_release_publishing` (PRO-037), `anima_build_log` | `anima_release_create` L, `anima_build_cancel` L |
 | `vpn` | `anima_vpn_status` | `anima_vpn_approve_route` L |
 | `retention` | `anima_retention_list` | `anima_retention_set` L |
-| `link` (FRN-009) | `anima_link_devices` | None: `createLinkInvite` returns a secret (MCP-004) and `revokeLinkDevice` is a trust decision (MCP-005). The command line has both (`anima link invite`, `anima link revoke`) |
+| `link` (FRN-009) | `anima_link_devices` | None: `createLinkInvite` and `createComputerInstall` return a secret (MCP-004) and `revokeLinkDevice` is a trust decision (MCP-005). The command line has the three (`anima link invite`, `anima link install`, HM-T33; `anima link revoke`) |
 | `extensions` | `anima_extensions_list` | `anima_extension_set` L |
 | `timeline` | `anima_timeline_list` | |
 | `records` | `anima_record_links_list`, `anima_files_list`, `anima_extractions_list`, `anima_locations_list`, `anima_location_context`, `anima_reminders_list`, `anima_reminder_get`, `anima_reminder_firings` | `anima_location_import`, `anima_reminder_add`, `anima_reminder_set`, `anima_reminder_remove`, `anima_reminder_set_enabled`, `anima_reminder_test`, `anima_reminder_snooze`, `anima_reminder_ack`. The three `anima location token` commands have no tool: an ingest token is a secret (K-E4 Section 13). `anima source connect dawarich` has no tool: it takes the API key of the server (R-261). `anima_record_link_add`, `anima_record_link_remove`, `anima_file_remove`, `anima_file_archive_add`, `anima_file_archive_remove`, `anima_extraction_propose`, `anima_extraction_confirm`, `anima_extraction_reject`. `anima file upload` and `anima file download` have no tool: a tool does not carry the bytes of a file (K-E4 Section 13) |

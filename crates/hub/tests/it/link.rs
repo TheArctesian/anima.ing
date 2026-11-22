@@ -2,6 +2,7 @@
 //! `linkDevices`, `createLinkInvite` and `revokeLinkDevice`, their token rules, their audit
 //! entries and their errors (FRN-009, LNK-003, LNK-004, LOG-005, LOG-007, D-23).
 
+mod computer;
 mod control;
 mod devices;
 mod hosted;

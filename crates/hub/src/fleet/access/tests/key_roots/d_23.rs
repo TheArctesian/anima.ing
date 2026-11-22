@@ -5,7 +5,7 @@
 /// key, registration and renewal fields, the Connect GitHub fields (PRJ-039, PRJ-041), and the
 /// file of a repository's code (PRJ-033, K-E1 Section 13.5), and the run controls, a workflow
 /// started by hand and a commit status (PRJ-034, PRJ-035, PRO-010), and merging pull requests (PRJ-033, PRO-013), and the changes of an operational key (R-147).
-pub(super) const D_23: [&str; 60] = [
+pub(super) const D_23: [&str; 65] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -51,6 +51,7 @@ pub(super) const D_23: [&str; 60] = [
     "mergePullRequest",
     "mergePullRequests",
     "createLinkInvite",
+    "createComputerInstall",
     "revokeLinkDevice",
     "createOperationalKey",
     "updateOperationalKey",
@@ -63,9 +64,14 @@ pub(super) const D_23: [&str; 60] = [
     "containerDetail",
     "createLocationIngestToken",
     "connectDawarich",
+    "addApplicationRoute",
+    "checkApplicationRoute",
+    "removeApplicationRoute",
     // The approved model sources: only a person changes them (R-343).
     "addApprovedModelSource",
     "setModelPublisherApproval",
     // The device policy: closed until a key permission for it exists (R-335).
     "setDevicePolicy",
+    // What a daemon waits for: set by the app of its computer (R-364).
+    "setDaemonNeed",
 ];

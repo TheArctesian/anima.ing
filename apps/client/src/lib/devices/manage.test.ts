@@ -30,6 +30,7 @@ const DETAIL: DeviceDetail = {
   metricsSource: 'NONE',
   metricsStale: false,
   daemonVersion: null,
+  daemonNeed: null,
   sessionLimit: null,
   accessWarnings: [],
   rdp: {

@@ -61,9 +61,10 @@ function mountButton(compact = false) {
   return { ...calls, onReady };
 }
 
-it('R-079: a card shows "VNC", the width of the VNC button, with the name "Set up screen sharing for <name>" and a title', () => {
+it('R-079: a card shows the icons alone, with the name "Set up screen sharing for <name>" and the same words as its title', () => {
   showCard({}, { calls: fakeCalls().calls, onReady: vi.fn() });
-  const found = button('VNC');
+  const found = button(/^Set up screen sharing for/);
+  expect(found?.textContent.trim()).toBe('');
   expect(found?.title).toBe('Set up screen sharing');
   expect(found?.classList.contains('dashed')).toBe(true);
   expect(found?.getAttribute('aria-label')).toBe('Set up screen sharing for Studio');
@@ -84,15 +85,17 @@ it('R-079: a card shows no button while no route gives the calls', () => {
   expect(button(/screen sharing/i)).toBeUndefined();
 });
 
-it('R-079: the header form holds the full text and "VNC", and the container query shows one of them', () => {
+it('R-079: the header form holds the full text and the icons alone, and the container query shows one of them; no form says "VNC"', () => {
   mountButton();
   expect(document.querySelector('.full')?.textContent).toBe('Set up screen sharing');
-  expect(document.querySelector('.short')?.textContent).toBe('VNC');
+  expect(document.querySelector('.short')?.textContent.trim()).toBe('');
+  expect(document.body.textContent).not.toContain('VNC');
 });
 
-it('R-079: the compact form holds only "VNC"', () => {
+it('R-079: the compact form holds no text, only the icons', () => {
   mountButton(true);
   expect(document.querySelector('.full')).toBeNull();
+  expect(document.querySelector('button')?.textContent.trim()).toBe('');
 });
 
 const status = () => document.querySelector('[role="status"]')?.textContent;
@@ -212,9 +215,9 @@ function showTable(over: Partial<CardDevice>, withCalls: boolean) {
   flushSync();
 }
 
-it('R-079: a table row of a macOS device with VNC off shows "VNC" set-up; Windows, VNC on, or no calls hide it', async () => {
+it('R-079: a table row of a macOS device with VNC off shows the set-up; Windows, VNC on, or no calls hide it', async () => {
   showTable({}, true);
-  expect(button('VNC')?.getAttribute('aria-label')).toBe('Set up screen sharing for Studio');
+  expect(button(/^Set up screen sharing for/)?.getAttribute('aria-label')).toBe('Set up screen sharing for Studio');
   await unmount(app ?? {});
   document.body.replaceChildren();
   for (const [over, withCalls] of [[{ os: 'WINDOWS' as const }, true], [{ vnc: { enabled: true, username: null } }, true], [{}, false]] as const) {

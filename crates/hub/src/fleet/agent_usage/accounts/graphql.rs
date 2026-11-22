@@ -1,5 +1,5 @@
-//! K1 `AgentAccount`: an account of an AI agent program and the devices that use it, as keys only
-//! (R-313, AIS-022).
+//! K1 `AgentAccount`: an account of an AI agent program and the devices that use it (THR-149,
+//! AIS-022).
 
 use async_graphql::SimpleObject;
 use chrono::{DateTime, Utc};
@@ -21,7 +21,12 @@ pub struct AgentAccount {
     /// The first 8 digits of the key, to tell two accounts of one program apart.
     short_key: String,
     source: AgentSource,
+    /// The email address that the program is signed in with, of the newest report: personal
+    /// data, for the person's own clients only (THR-149). Null for an API key or a builder token.
+    address: Option<String>,
+    /// The name of the plan as the program states it.
     plan: Option<String>,
+    /// The limit windows of the newest report; the limit is the account's, shared by its devices.
     limits: Vec<AgentAccountLimit>,
     reported_at: DateTime<Utc>,
     /// The devices that use the account, newest report first; a deleted device is left out.
@@ -39,9 +44,9 @@ pub struct AgentAccountLimit {
 
 impl AgentAccount {
     /// The account of `group` with the devices of `devices` that use it; `None` when none of
-    /// them is left.
+    /// them is left. The address is left out unless `person` (the token is the person's own).
     #[must_use]
-    pub fn of(group: AccountGroup, devices: &[Device]) -> Option<Self> {
+    pub fn of(group: AccountGroup, devices: &[Device], person: bool) -> Option<Self> {
         let used: Vec<Device> = group
             .devices
             .iter()
@@ -51,6 +56,10 @@ impl AgentAccount {
             short_key: group.key.chars().take(SHORT_KEY).collect(),
             key: group.key,
             source: group.source.into(),
+            address: group
+                .address
+                .filter(|_| person)
+                .map(|one| one.reveal().to_owned()),
             plan: group.plan,
             limits: group
                 .limits
