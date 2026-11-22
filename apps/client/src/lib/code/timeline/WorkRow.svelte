@@ -20,17 +20,22 @@
   const failed = $derived(entry.tool?.failed === true);
   /** A notice whose line the width cuts off: it opens to show all its words, as T3 Code's `noticeCutOff`. */
   let cut = $state(false);
+  /** The line holds the keyboard focus: it stays a button until the focus leaves, so a resize never drops the focus. */
+  let focused = $state(false);
+  const notice = $derived(entry.tool === null && entry.kind !== 'reasoning');
   /**
    * The row opens only when there is more to see than its line (fidelity 3): a thought with text, a tool call with an
    * input or an output, a notice that is cut off.
    */
   const opens = $derived(
-    entry.kind === 'reasoning' ? entry.text.trim() !== '' : entry.tool === null ? cut || open : what !== '' || (output ?? '') !== '' || entry.running,
+    entry.kind === 'reasoning' ? entry.text.trim() !== '' : entry.tool === null ? cut || open || focused : what !== '' || (output ?? '') !== '' || entry.running,
   );
   /** The name of the line: its words and its failure, never the time that shows on hover (fidelity 5). */
-  const name = $derived(failed ? `${label}, failed` : label);
+  const name = $derived(failed ? `${label}, tool call failed` : label);
 
-  function measure(line: HTMLElement): () => void {
+  /** Only a notice opens by its width, so only a notice is measured. */
+  function measure(line: HTMLElement): (() => void) | undefined {
+    if (!notice) return undefined;
     const watch = new ResizeObserver(() => (cut = line.scrollWidth > line.clientWidth));
     watch.observe(line);
     return () => {
@@ -67,7 +72,7 @@
     {#if opens}<span class="chevron" class:open aria-hidden="true"><CodeIcon name="chevron-right" /></span>{/if}
   {/snippet}
   {#if opens}
-    <button type="button" class="line" aria-label={name} aria-expanded={open} aria-controls={open ? `${id}-detail` : undefined} onclick={() => (open = !open)}>{@render row()}</button>
+    <button type="button" class="line" aria-label={name} aria-expanded={open} onfocus={() => (focused = true)} onblur={() => (focused = false)} aria-controls={open ? `${id}-detail` : undefined} onclick={() => (open = !open)}>{@render row()}</button>
   {:else}
     <div class="line still">{@render row()}</div>
   {/if}

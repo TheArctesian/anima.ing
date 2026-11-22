@@ -145,9 +145,9 @@
   function jump(event: MouseEvent): void {
     following = true;
     if (scroller === undefined) return;
-    // A key on the button gave it the focus; the button leaves, so the focus goes to the conversation. A pointer press
-    // took no focus (fidelity 19): the focus stays where it was, for example in the composer.
-    const keyed = document.activeElement === event.currentTarget;
+    // A click of a key has no pointer presses (detail 0): the button had the focus and leaves, so the focus goes to the
+    // conversation. A pointer press took no focus (fidelity 19): the focus stays where it was, for example in the composer.
+    const keyed = event.detail === 0;
     toEnd(scroller, true);
     if (keyed) scroller.focus({ preventScroll: true });
   }

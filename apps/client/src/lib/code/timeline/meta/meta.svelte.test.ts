@@ -46,7 +46,7 @@ describe('the rows of the work log as T3 Code draws them', () => {
     row(entry({ kind: 'command', text: '', tool: { name: 'Bash', kind: 'command', summary: 'ls', input: '{"command":"ls"}', patch: null, output: 'no such file', failed: true } }));
     const line = document.querySelector('button');
     expect(line?.getAttribute('aria-expanded')).toBe('false');
-    expect(line?.getAttribute('aria-label'), 'the name says the failure, not the time of the hover').toMatch(/, failed$/);
+    expect(line?.getAttribute('aria-label'), 'the name says the failure, not the time of the hover').toMatch(/, tool call failed$/);
     expect(document.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('Failed');
     line?.click();
     flushSync();
