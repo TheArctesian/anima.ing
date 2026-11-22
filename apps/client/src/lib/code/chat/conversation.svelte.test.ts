@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
-import { flushSync, mount, unmount } from 'svelte';
+import { createRawSnippet, flushSync, mount, unmount } from 'svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ownsKeys, pageKey } from '$lib/agent-threads/keys';
 import type { LiveEntry, OpenAsk } from '$lib/agent-threads/live/timeline';
+import ScrollArea from '../kit/ScrollArea.svelte';
 import Timeline from '../timeline/Timeline.svelte';
+import { works } from '../timeline/turns';
 
 // The conversation of a thread for a keyboard and a screen reader (accessibility findings 2, 3, 4 and 17).
 
@@ -83,6 +85,14 @@ describe('the conversation for a keyboard and a screen reader', () => {
     expect(pageKey(down, document.body)).toEqual({ kind: 'move', by: 1 });
   });
 
+  it('finding 2: a thread of the inbox list still moves to the next thread with the arrows', () => {
+    const children = createRawSnippet(() => ({ render: () => '<button type="button">Fix the bug</button>' }));
+    app = mount(ScrollArea, { target: document.body, props: { label: 'Threads', children } });
+    flushSync();
+    const down = { key: 'ArrowDown', mod: false, shift: false, alt: false, typing: false };
+    expect(pageKey(down, document.querySelector('button'))).toEqual({ kind: 'move', by: 1 });
+  });
+
   it('finding 3: the start and the end of a turn are said once, politely; what was there at the open is not', async () => {
     const props = shown({ entries: [prompt('Old', 0), reply('Old answer.', 1), end(1)], working: false, asks: [] });
     flushSync();
@@ -116,6 +126,18 @@ describe('the requests of the agent for a keyboard and a screen reader', () => {
     await vi.waitFor(() => {
       expect(document.activeElement?.textContent.trim()).toBe('Approve');
     });
+  });
+
+  it('finding 4: a request keeps its row and its focus when the thread becomes needs_you, and the turn is not said to end', async () => {
+    const props = shown({ entries: [prompt('Clean', 0)], working: works('working'), asks: [] });
+    flushSync();
+    props.working = works('needs_you');
+    props.asks = [ASK];
+    flushSync();
+    await vi.waitFor(() => {
+      expect(document.activeElement?.textContent.trim()).toBe('Approve');
+    });
+    expect(document.querySelector('[aria-live="polite"]')?.textContent).not.toMatch(/finished|replied/);
   });
 
   it('finding 4: a thread opened with a request that waits says nothing and leaves the focus where it is', () => {

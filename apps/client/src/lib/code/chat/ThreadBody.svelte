@@ -6,6 +6,7 @@
   import ErrorState from '$lib/states/ErrorState.svelte';
   import LoadingState from '$lib/states/LoadingState.svelte';
   import Timeline from '../timeline/Timeline.svelte';
+  import { works } from '../timeline/turns';
   import { decided } from './decide';
 
   interface Props {
@@ -36,7 +37,7 @@
         entries={thread.entries}
         streaming={thread.streaming}
         asks={thread.asks}
-        working={thread.row.state === 'working' || thread.row.state === 'starting'}
+        working={works(thread.row.state)}
         dropped={thread.dropped}
         onDecide={(request, decision) => {
           decide(thread.row.id, request, decision);

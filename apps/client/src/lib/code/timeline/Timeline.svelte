@@ -49,12 +49,14 @@
   const heard = new Set<string>();
   const opened = Date.now();
   const quiet = (): boolean => Date.now() - opened < quietMs;
+  /** How long a region stays empty before it says the same words again. */
+  const CLEAR_MS = 100;
 
-  /** Says `words` in a region again even when they are the words it already holds. */
+  /** Says `words` in a region again even when they are the words it already holds: the region is empty for a moment that a screen reader sees. */
   async function say(region: 'polite' | 'urgent', words: string): Promise<void> {
     if (region === 'polite') polite = '';
     else urgent = '';
-    await tick();
+    await new Promise((done) => setTimeout(done, CLEAR_MS));
     if (region === 'polite') polite = words;
     else urgent = words;
   }
@@ -84,8 +86,10 @@
   /** Moves the focus to the Approve button of a new request, unless the person is busy in a different place. */
   async function offer(request: string): Promise<void> {
     await tick();
-    const busy = document.activeElement !== null && document.activeElement !== document.body && !(scroller?.contains(document.activeElement) ?? false);
-    if (busy) return;
+    const active = document.activeElement;
+    const busy = active !== null && active !== document.body && !(scroller?.contains(active) ?? false);
+    // A key already on its way to a different request must not answer this one.
+    if (busy || active?.closest('[data-request]') != null) return;
     const row = rowOf(request);
     const approve = [...(row?.querySelectorAll('button') ?? [])].find((button) => button.textContent.trim() === 'Approve');
     approve?.focus();

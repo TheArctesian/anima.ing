@@ -4,6 +4,7 @@
  * group. Pure: the entries, the reply that streams and the open requests are parameters.
  */
 
+import type { RunState } from '$lib/agent-threads/live/run';
 import type { LiveEntry, OpenAsk } from '$lib/agent-threads/live/timeline';
 import type { ToolCall, ToolKind } from '$lib/agent-threads/thread';
 
@@ -180,6 +181,11 @@ function take(turns: Building[], entry: LiveEntry, key: string): void {
 }
 
 /** The entries of a thread as turns, oldest first, with the reply that streams and the open requests in the last turn. */
+/** Whether the program works in a run state: a request that waits for the person is part of its turn. */
+export function works(state: RunState): boolean {
+  return state === 'working' || state === 'starting' || state === 'needs_you';
+}
+
 export function turnsOf(entries: readonly LiveEntry[], now: Now): readonly Turn[] {
   const turns: Building[] = [];
   const from = now.dropped ?? 0;
