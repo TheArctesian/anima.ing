@@ -3641,7 +3641,6 @@ image, many images in one thread, or a file that the program must read from its 
 
 Result: Open.
 
-### HT-NEW-runnerset: the model, the effort and the mode of a thread after its start, with the real programs (TH110)
 ### HT-140: the model, the effort and the mode of a thread after its start, with the real programs (TH110)
 
 Built: on the branch `threads/runner-set` (task TH110 of agent-threads.md). The call `set` and `anima agents set` change
