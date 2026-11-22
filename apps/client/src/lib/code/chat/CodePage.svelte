@@ -1,11 +1,12 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import '../kit/code.css';
-  import { keyAction, moved, type KeyAction } from '$lib/agent-threads/keys';
+  import { moved, type KeyAction } from '$lib/agent-threads/keys';
   import type { CallResult, LiveThreads } from '$lib/agent-threads/live/live.svelte';
   import type { ThreadsStore } from '$lib/agent-threads/store.svelte';
   import LimitDialog from '$lib/agent-threads/view/LimitDialog.svelte';
   import NewThread from '$lib/agent-threads/view/NewThread.svelte';
+  import { isMac } from '$lib/platform/mac';
   import { fillRoom } from '$lib/scroll/room';
   import { inboxEngine } from '../inbox/engine';
   import InboxColumn from '../inbox/InboxColumn.svelte';
@@ -17,6 +18,7 @@
   import { applyReader, storedReader } from '../settings/reader';
   import ChatColumn from './ChatColumn.svelte';
   import ChatFoot from './ChatFoot.svelte';
+  import { pageKey } from './page-keys';
   import { paletteHost } from './palette-host';
   import ThreadBody from './ThreadBody.svelte';
 
@@ -36,6 +38,8 @@
   let field = $state<HTMLInputElement>();
   let page = $state<HTMLElement>();
   let inbox = $state<ReturnType<typeof InboxColumn>>();
+  /** The thread the keys opened, said to a screen reader when focus stays where it was (09 finding 13). */
+  let said = $state('');
   const linkWords = $derived(live === null ? null : live.linked === false ? (live.problem ?? 'The thread runner of this computer is not running. Start the Anima daemon to start threads.') : live.holder);
   const newOff = $derived(live === null ? 'Threads start in the desktop application.' : live.linked === false ? 'The thread runner is not running.' : null);
   /** The row of the open thread, for the band. */
@@ -56,6 +60,22 @@
     page?.querySelector<HTMLElement>(`[data-thread="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' });
   }
 
+  /** After a key opened `id`: focus follows in the list; elsewhere the title is said (09 finding 13). */
+  async function follow(id: string, from: EventTarget | null): Promise<void> {
+    await choose(id);
+    const row = page?.querySelector<HTMLElement>(`.inbox [data-thread="${CSS.escape(id)}"] > .main`);
+    if (row !== null && row !== undefined && from instanceof Element && from.closest('.inbox [data-thread]') !== null) row.focus();
+    else said = `Opened ${(store.listedRows ?? []).find((each) => each.id === id)?.title ?? 'Untitled thread'}`;
+  }
+
+  /** Shows or hides the list; focus moves to the toggle in its new place (09 finding 14). */
+  async function toggleInbox(): Promise<void> {
+    inboxOpen = !inboxOpen;
+    await tick();
+    const toggles = [...(page?.querySelectorAll<HTMLElement>('button[aria-label^="Toggle the thread list"]') ?? [])];
+    toggles.find((each) => each.offsetParent !== null)?.focus();
+  }
+
   async function raise(threads: LiveThreads): Promise<CallResult> {
     const result = await threads.raiseLimit();
     if (result.ok && result.outcome.outcome === 'started') {
@@ -65,17 +85,7 @@
     return result;
   }
 
-  function typing(target: EventTarget | null): boolean {
-    return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || (target instanceof HTMLElement && target.isContentEditable);
-  }
-
-  /** The action of a key on the page; in the scroll area of the thread the arrows scroll it. */
-  function pageAction(event: KeyboardEvent): KeyAction | null {
-    const mod = event.metaKey || event.ctrlKey;
-    const action = keyAction({ key: event.key, mod, shift: event.shiftKey, alt: event.altKey, typing: typing(event.target) });
-    const inPane = event.target instanceof Element && event.target.closest('[data-own-keys]') !== null;
-    return action?.kind === 'move' && !mod && inPane ? null : action;
-  }
+  const mac = isMac(navigator.userAgent);
 
   /** Does what `action` names over the order of the inbox; false when it is not the page's to do. */
   function run(action: KeyAction, target: EventTarget | null): boolean {
@@ -84,7 +94,7 @@
       case 'move':
       case 'jump': {
         const next = order[action.kind === 'jump' ? action.place : moved(order.indexOf(store.chosen ?? ''), action.by, order.length)];
-        if (next !== undefined && next !== store.chosen) void choose(next);
+        if (next !== undefined && next !== store.chosen) void follow(next, target);
         return true;
       }
       case 'search':
@@ -102,22 +112,23 @@
     }
   }
 
-  /** The keys of the page (THR-016); ⌘N starts a thread (02 section 5.3). */
+  /** The keys of the page (THR-016); ⌘N starts a thread (02 section 5.3). A key that a menu, list or dialog took is not the page's. */
   function onkeydown(event: KeyboardEvent): void {
-    if ((event.metaKey || event.ctrlKey) && !event.shiftKey && event.key.toLowerCase() === 'n') {
+    const action = pageKey(event, mac, document);
+    if (action === null) return;
+    if (action.kind === 'new') {
       event.preventDefault();
       if (newOff === null) starting = true;
       return;
     }
-    const action = pageAction(event);
-    if (action !== null && run(action, event.target)) event.preventDefault();
+    if (run(action, event.target)) event.preventDefault();
   }
 </script>
 
 <svelte:window {onkeydown} />
 
 {#snippet toggle()}
-  <InboxToggle open={inboxOpen} ontoggle={() => (inboxOpen = !inboxOpen)} />
+  <InboxToggle open={inboxOpen} ontoggle={() => void toggleInbox()} />
 {/snippet}
 
 <!-- The page Code as T3 Code lays it out (02 section 4): the inbox column beside the chat column, each under its band. -->
@@ -125,7 +136,7 @@
   <!-- Hidden, not unmounted: the band's title opens a thread's menu through it, and the list keeps its place. -->
   <aside class="inbox" class:gone={!inboxOpen} aria-label="Threads of this computer">
     <TopBand start={toggle}><span class="name">Code</span></TopBand>
-    <InboxColumn bind:this={inbox} {view} {store} onOpen={(id) => void choose(id)} {newOff} onNew={() => (starting = true)} bind:field />
+    <InboxColumn bind:this={inbox} {view} {store} onOpen={(id) => void choose(id)} {newOff} onNew={() => (starting = true)} onShow={() => (inboxOpen = true)} bind:field />
   </aside>
   <ChatColumn>
     {#snippet header()}<ChatHeader thread={open} start={inboxOpen ? undefined : toggle} onactions={(anchor) => (open === undefined ? undefined : inbox?.openThreadMenu(open.id, anchor.getBoundingClientRect()))} />{/snippet}
@@ -134,6 +145,7 @@
     {#snippet composer()}{#if store.chosen !== null && (store.liveThread?.row.id === store.chosen || store.thread?.id === store.chosen)}<ChatFoot thread={store.liveThread?.row.id === store.chosen ? store.liveThread : null} {live} id={store.chosen} />{/if}{/snippet}
   </ChatColumn>
 </div>
+<p class="said" role="status">{said}</p>
 <CommandPalette host={palette} />
 {#if live !== null}
   <NewThread
@@ -181,6 +193,16 @@
 
   .gone {
     display: none;
+  }
+
+  .said {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    margin: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   .name {

@@ -42,7 +42,7 @@
     <li class="current">
       <h2 {title}>
         {#if onactions}
-          <button type="button" aria-label="Thread actions for {title}" onclick={(event) => onactions(event.currentTarget)}>
+          <button type="button" aria-label="Thread actions for {title}" aria-haspopup="menu" onclick={(event) => onactions(event.currentTarget)}>
             {title}
           </button>
         {:else}

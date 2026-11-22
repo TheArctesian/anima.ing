@@ -3,7 +3,7 @@
   import type { Anchor } from '$lib/overlay/helptip/placement';
   import CodeIcon from '../../icons/CodeIcon.svelte';
   import StatusMark from '../../status/StatusMark.svelte';
-  import { shortAge } from '../../status/status';
+  import { shortAge, STATUS_LOOKS } from '../../status/status';
   import type { RowAction } from '../actions';
   import type { InboxRow } from '../inbox';
   import RowActions from './RowActions.svelte';
@@ -34,6 +34,8 @@
   const age = $derived(item.since === null ? '' : shortAge(item.since.getTime(), now.getTime()));
   const wakes = $derived(item.wakes?.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) ?? '');
   const meta = $derived(kind === 'card' && row.branch !== null);
+  /** What the slot shows, in words: the slot itself is hidden while the row has focus, so the name keeps this copy (09 finding 5). */
+  const said = $derived(kind === 'slim' && shelf === 'snoozed' ? `Wakes ${wakes}` : item.status !== null && (kind === 'card' || item.status === 'woke') ? STATUS_LOOKS[item.status].label : age);
 
   function oncontextmenu(event: MouseEvent): void {
     event.preventDefault();
@@ -43,9 +45,14 @@
   }
 
   function onkeydown(event: KeyboardEvent): void {
-    if (event.key !== 'F2' || renaming) return;
+    if (renaming) return;
+    if (event.key === 'F2') onAct('rename');
+    // The menu key and Shift+F10 open the row's menu under it, as right-click does (09 finding 6).
+    else if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
+      const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
+      onMenu({ left: box.left, top: box.top, width: box.width, height: box.height });
+    } else return;
     event.preventDefault();
-    onAct('rename');
   }
 </script>
 
@@ -67,7 +74,8 @@
         <CodeIcon name="folder" />
         {#if row.pinned}<span class="pin"><CodeIcon name="pin" /></span><span class="hidden">Pinned.</span>{/if}
         <span class="project">{item.project}</span>
-        <span class="slot">{#if item.status !== null}<StatusMark status={item.status} />{:else}<span class="age">{age}</span>{/if}</span>
+        <span class="slot" aria-hidden="true">{#if item.status !== null}<StatusMark status={item.status} />{:else}<span class="age">{age}</span>{/if}</span>
+        {#if said !== ''}<span class="hidden">{said}.</span>{/if}
       </span>
       <span class="line two">
         <RowTitle {title} {renaming} {onRename} />
@@ -83,14 +91,15 @@
       <CodeIcon name="folder" />
       <RowTitle {title} {renaming} {onRename} />
       <span class="hidden">{item.project}.</span>
-      <span class="slot">
+      {#if said !== ''}<span class="hidden">{said}.</span>{/if}
+      <span class="slot" aria-hidden="true">
         {#if shelf === 'snoozed'}<span class="wakes"><CodeIcon name="alarm-clock" />{wakes}</span>
         {:else if item.status === 'woke'}<StatusMark status="woke" />
         {:else}<span class="age">{age}</span>{/if}
       </span>
     {/if}
   </svelte:element>
-  {#if !renaming}<RowActions {kind} {shelf} pinned={row.pinned} {marksOff} {onAct} />{/if}
+  {#if !renaming}<RowActions {kind} {shelf} pinned={row.pinned} {marksOff} {onAct} {onMenu} />{/if}
 </li>
 
 <style>
@@ -229,10 +238,11 @@
     color: var(--accent);
   }
 
-  /* The hover actions take the place of the status or the age (02 section 5.5). */
+  /* The hover actions take the place of the status or the age (02 section 5.5). Hidden from sight only: the words stay
+     in the row's name, so a focused row still says "Approval" or "Failed" (09 finding 5). */
   .row:hover .slot,
   .row:focus-within .slot {
-    visibility: hidden;
+    opacity: 0;
   }
 
   .recedes .main,

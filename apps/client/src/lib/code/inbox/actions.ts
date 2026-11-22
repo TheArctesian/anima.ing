@@ -37,7 +37,7 @@ export function rowMenu(item: InboxRow, able: Able): readonly MenuEntry[] {
     able.settled ? choice('unsettle', 'Un-settle thread', !able.marks, { icon: 'undo-2' }) : choice('settle', 'Settle thread', !able.marks, { icon: 'check' }),
     able.snoozed ? choice('wake', 'Wake thread', !able.marks, { icon: 'alarm-clock-off' }) : choice('snooze', 'Snooze…', !able.marks, { icon: 'clock' }),
   ];
-  if (!able.marks) entries.push({ kind: 'group', label: able.why });
+  if (!able.marks) entries.push({ kind: 'group', label: able.why, reason: true });
   entries.push({ kind: 'line' }, choice('rename', 'Rename thread', off, { icon: 'square-pen', shortcut: 'F2' }), { kind: 'line' }, { kind: 'group', label: 'Copy' });
   if (row.folder !== null) entries.push(choice('copy-path', 'Path', false, { icon: 'folder' }));
   if (row.branch !== null) entries.push(choice('copy-branch', 'Branch', false, { icon: 'git-branch' }));
@@ -65,7 +65,7 @@ export function manyMenu(items: readonly InboxRow[], able: Pick<Able, 'listing' 
     { kind: 'choice', id: 'settle-many', label: `Settle ${count}`, icon: 'check', disabled: !able.marks },
     { kind: 'choice', id: 'snooze-many', label: `Snooze ${count}…`, icon: 'clock', disabled: !able.marks },
   );
-  if (!able.marks) entries.push({ kind: 'group', label: able.why });
+  if (!able.marks) entries.push({ kind: 'group', label: able.why, reason: true });
   entries.push(
     { kind: 'line' },
     { kind: 'choice', id: 'archive-many', label: `Archive ${count}`, disabled: !able.listing },

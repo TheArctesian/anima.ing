@@ -3,6 +3,7 @@
   import CodeIcon from '../../icons/CodeIcon.svelte';
   import type { CodeIconName } from '../../icons/icons';
   import Tooltip from '../../kit/Tooltip.svelte';
+  import type { Anchor } from '$lib/overlay/helptip/placement';
   import type { RowAction } from '../actions';
 
   interface Props {
@@ -12,9 +13,11 @@
     /** Why settle, snooze and wake are off; `null` when the runner keeps them. */
     marksOff: string | null;
     onAct: (action: RowAction) => void;
+    /** Opens the row's whole menu under the button: the keyboard way to the menu that right-click opens (09 finding 6). */
+    onMenu: (anchor: Anchor) => void;
   }
 
-  const { kind, shelf, pinned, marksOff, onAct }: Props = $props();
+  const { kind, shelf, pinned, marksOff, onAct, onMenu }: Props = $props();
 
   interface Act {
     readonly action: RowAction;
@@ -53,6 +56,20 @@
       </button>
     </Tooltip>
   {/each}
+  <Tooltip text="More actions">
+    <button
+      type="button"
+      aria-label="More actions"
+      aria-haspopup="menu"
+      onclick={(event) => {
+        const box = event.currentTarget.getBoundingClientRect();
+        onMenu({ left: box.left, top: box.top, width: box.width, height: box.height });
+      }}
+      {@attach press()}
+    >
+      <CodeIcon name="ellipsis" />
+    </button>
+  </Tooltip>
 </span>
 
 <style>
@@ -67,8 +84,9 @@
   }
 
   .card {
-    inset-block-start: calc(var(--code-card-pad-block) + var(--border-focus));
-    block-size: var(--space-5);
+    /* 24 px, centred on the 20 px status line it covers. */
+    inset-block-start: var(--code-card-pad-block);
+    block-size: var(--space-6);
   }
 
   .slim {
@@ -85,7 +103,10 @@
     display: inline-flex;
     gap: var(--space-1);
     align-items: center;
-    block-size: var(--space-5);
+    /* 24 px, the smallest target (09 finding 21). */
+    block-size: var(--space-6);
+    min-inline-size: var(--space-6);
+    justify-content: center;
     padding: 0 calc(var(--space-1) * 1.5);
     border: 0;
     border-radius: var(--radius-sm);
