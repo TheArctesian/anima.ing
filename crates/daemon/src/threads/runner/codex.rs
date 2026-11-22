@@ -170,7 +170,8 @@ impl Codex {
     /// waits for that answer any more.
     pub fn turn_ended(&mut self) {
         self.ended = self.turn.take();
-        self.calls.retain(|_, call| !matches!(call, Call::TurnStart));
+        self.calls
+            .retain(|_, call| !matches!(call, Call::TurnStart));
     }
 
     /// `turn/interrupt` for the running turn, if one runs.
