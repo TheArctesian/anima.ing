@@ -7,7 +7,7 @@
 use agent_threads::git::Checkpoint;
 use uuid::Uuid;
 
-use super::place::{self, Worktree, own};
+use super::place::{self, Worktree, own, shared};
 use super::run::{Git, GitError, Run};
 use super::worktree::files;
 
@@ -93,7 +93,11 @@ pub async fn tree_now(
                 .is_some_and(|rest| rest.is_empty() || rest.starts_with(b"/"))
         };
         // A name that ends with `/` is a repository inside the worktree that nothing names.
-        !name.is_empty() && !name.ends_with(b"/") && !nested.iter().any(below)
+        // The folder of a copy of the history that was cancelled is no file of the thread.
+        let of_a_copy = name
+            .strip_prefix(shared::OUT.as_bytes())
+            .is_some_and(|rest| rest.starts_with(b"/"));
+        !name.is_empty() && !name.ends_with(b"/") && !of_a_copy && !nested.iter().any(below)
     };
     let names = |listed: &[u8]| -> Vec<Vec<u8>> {
         let parts = listed.split(|byte| *byte == 0);

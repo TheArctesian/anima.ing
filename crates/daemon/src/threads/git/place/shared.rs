@@ -8,7 +8,7 @@
 //! person, would then read a repository that the agent cannot read. So the store is read
 //! with the rights of the thread: the runner gives a way to start a program as the agent of
 //! a thread is started ([`AsThread`]), and that program makes one pack file of what is
-//! missing. The runner takes the pack as a file, `git index-pack` names each object by the
+//! missing, in a folder of its worktree. The runner takes the pack as a file, `git index-pack` names each object by the
 //! hash of its content, and a commit counts as known only when each object of it is there.
 //! Only the runner writes this folder, and nothing comes into it without that check.
 //!
@@ -33,10 +33,14 @@ const MOST_KNOWN: usize = 64;
 /// The time the copy of a history gets: the first one of a large repository is long.
 pub const LONG: Duration = Duration::from_hours(1);
 
-/// The folder that the thread writes its pack to, and the file that says what is wanted, in
-/// the entry of the worktree in the Git folder of the person.
-const OUT: &str = "anima-pack";
-const WANT: &str = "anima-want";
+/// The folder in the worktree that the thread writes its pack to: the one place that each
+/// thread can write, also a confined one whose sandbox keeps the Git folder read-only. It is
+/// there only while a copy runs.
+pub const OUT: &str = ".anima-pack";
+
+/// The file in the Git folder of the runner that says what is wanted. The runner opens it for
+/// the program; no thread writes it.
+const WANT: &str = "want";
 
 /// The most bytes of the list of the commits where a shallow clone ends.
 const MOST_SHALLOW: u64 = 16 * 1024 * 1024;
@@ -103,7 +107,13 @@ pub async fn learn(git: &Git, worktree: &Worktree, commits: &[&str]) -> Result<(
     if packed.is_err() && !known.is_empty() {
         packed = pack(git, worktree, (&wanted, &[])).await;
     }
-    packed?;
+    if let Err(failed) = packed {
+        // The folder of the pack does not stay in the worktree of the thread.
+        if let Ok(folder) = Dir::open(worktree.folder()) {
+            let _ = folder.remove_all(walk::name(OUT));
+        }
+        return Err(failed);
+    }
     taken(store, worktree).await?;
     for commit in wanted {
         // Each object of the commit is in the folders of the runner now, or it is refused.
@@ -151,7 +161,7 @@ fn shallow(worktree: &Worktree) -> Result<(), GitError> {
 }
 
 /// Has the thread make one pack of the history of `wanted` without the history of `known`,
-/// in the entry of its worktree in the Git folder of the person.
+/// in a folder of its worktree.
 async fn pack(
     git: &Git,
     worktree: &Worktree,
@@ -164,7 +174,6 @@ async fn pack(
         )
     })?;
     let record = worktree.record();
-    let entry = Dir::open(&record.git_dir).map_err(GitError::Files)?;
     let mut list = String::new();
     for commit in wanted {
         list.extend([commit, "\n"]);
@@ -172,17 +181,15 @@ async fn pack(
     for commit in known {
         list.extend(["^", commit, "\n"]);
     }
-    let made = (|| {
-        use std::io::Write as _;
-        entry.remove_all(walk::name(OUT))?;
-        entry.new_folder(walk::name(OUT))?;
-        entry.remove(walk::name(WANT), false)?;
-        entry
-            .new_file(walk::name(WANT), false)?
-            .write_all(list.as_bytes())
-    })();
+    let want = record.own.join(WANT);
+    std::fs::write(&want, list).map_err(GitError::Files)?;
+    // The folder is made new by the runner, with no link followed on the way.
+    let folder = Dir::open(worktree.folder()).map_err(GitError::Files)?;
+    let made = folder
+        .remove_all(walk::name(OUT))
+        .and_then(|()| folder.new_folder(walk::name(OUT)));
     made.map_err(GitError::Files)?;
-    let base = record.git_dir.join(OUT).join("p");
+    let base = worktree.folder().join(OUT).join("p");
     let args: [&OsStr; 4] = [
         "pack-objects".as_ref(),
         "--revs".as_ref(),
@@ -195,7 +202,7 @@ async fn pack(
         program: git.program().to_owned(),
         args: args.map(OsStr::to_owned).into(),
         env: Vec::new(),
-        input: Some(record.git_dir.join(WANT)),
+        input: Some(want),
         within: LONG,
     };
     match AsThread::start(as_thread, run).await {
@@ -212,7 +219,7 @@ async fn pack(
 /// the copy of the project: `git index-pack` names each object by its content first.
 async fn taken(store: &Git, worktree: &Worktree) -> Result<(), GitError> {
     let record = worktree.record();
-    let entry = Dir::open(&record.git_dir).map_err(GitError::Files)?;
+    let entry = Dir::open(worktree.folder()).map_err(GitError::Files)?;
     let incoming = format!("incoming-{}", worktree.thread().as_simple());
     let incoming = super::own::fresh(&record.shared, &incoming)?;
     let copied = (|| {
@@ -232,7 +239,6 @@ async fn taken(store: &Git, worktree: &Worktree) -> Result<(), GitError> {
             packs.push(copy);
         }
         entry.remove_all(walk::name(OUT))?;
-        entry.remove(walk::name(WANT), false)?;
         Ok::<_, std::io::Error>(packs)
     })();
     for pack in copied.map_err(GitError::Files)? {
