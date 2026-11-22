@@ -125,3 +125,27 @@ export function listing(folder: string): FolderListing {
 
 /** A small picture drawn in the page, for the image viewer. */
 export const PICTURE = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400"><rect width="640" height="400" fill="steelblue"/><circle cx="320" cy="200" r="120" fill="white"/></svg>')}`;
+
+/** A patch of one file, for the trial of the diff library. */
+export const PATCH = `diff --git a/src/routes/sign-in/back.ts b/src/routes/sign-in/back.ts
+index 3f1c2aa..9b7d410 100644
+--- a/src/routes/sign-in/back.ts
++++ b/src/routes/sign-in/back.ts
+@@ -1,10 +1,12 @@
+ import { goto } from '$app/navigation';
+ 
+-/** After the sign-in the person goes to the first page. */
+-export function back(): string {
+-  return '/';
++/** After the sign-in the person goes back to the page that the link named. */
++export function back(from: string | null): string {
++  const own = from !== null && from.startsWith('/') && !from.startsWith('//');
++  return own ? from : '/';
+ }
+ 
+ export async function leave(search: string): Promise<void> {
+-  await goto(back());
++  const from = new URLSearchParams(search).get('from');
++  await goto(back(from));
+ }
+`;

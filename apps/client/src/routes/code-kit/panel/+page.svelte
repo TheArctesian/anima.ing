@@ -3,12 +3,13 @@
   import DetailsCard from '$lib/code/details/DetailsCard.svelte';
   import FindBar from '$lib/code/details/FindBar.svelte';
   import type { ShownChoices } from '$lib/code/details/shown';
+  import LibraryDiff from '$lib/code/panel/diff/LibraryDiff.svelte';
   import FileSurface from '$lib/code/panel/files/FileSurface.svelte';
   import FilesSurface from '$lib/code/panel/files/FilesSurface.svelte';
   import RightPanel from '$lib/code/panel/RightPanel.svelte';
   import { closed, shown, type PanelTabs } from '$lib/code/panel/tabs';
   import PageHeader from '$lib/page/PageHeader.svelte';
-  import { FULL, MARKDOWN, PICTURE, PLAIN, REFS, SOURCE, TABS, listing } from './scenes';
+  import { FULL, MARKDOWN, PATCH, PICTURE, PLAIN, REFS, SOURCE, TABS, listing } from './scenes';
 
   let choices = $state<ShownChoices>({ usage: true, context: true });
   let said = $state('none');
@@ -52,6 +53,16 @@
     openUsage: say('open usage'),
   };
   const noop = (): void => undefined;
+  let drawn = $state('loading');
+  let dark = $state(true);
+  $effect(() => {
+    const root = document.documentElement;
+    const read = (): void => void (dark = root.dataset['theme'] === 'dark' || (root.dataset['theme'] === undefined && matchMedia('(prefers-color-scheme: dark)').matches));
+    read();
+    const watch = new MutationObserver(read);
+    watch.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => watch.disconnect();
+  });
 </script>
 
 {#snippet tree()}
@@ -92,6 +103,11 @@
     <section data-kit="files-error" aria-label="Files, read error"><FilesSurface project="anima" query="" onquery={noop} onrefresh={noop} error="The workspace folder could not be read." onretry={noop} sheet {tree} /></section>
     <section data-kit="files-no-match" aria-label="Files, no match"><FilesSurface project="anima" query="zzz" onquery={noop} onrefresh={noop} noMatch sheet {tree} /></section>
   </div>
+  <div class="files">
+    <section data-kit="diff-stacked" aria-label="Diff library, stacked"><LibraryDiff patch={PATCH} theme={dark ? 'dark' : 'light'} ondrawn={(failure) => (drawn = failure ?? 'drawn')} /></section>
+    <section data-kit="diff-split" aria-label="Diff library, split"><LibraryDiff patch={PATCH} split wrap theme={dark ? 'dark' : 'light'} /></section>
+  </div>
+  <p class="said" data-kit-drawn={drawn}>Diff library: {drawn}</p>
   <p class="said" aria-live="polite">Last action: {said}</p>
 </div>
 
