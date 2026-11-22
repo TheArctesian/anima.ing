@@ -17,6 +17,9 @@
   const { entries, live = false, now }: Props = $props();
   let open = $state(false);
   const newest = $derived(entries.at(-1));
+  const label = $derived(newest === undefined ? '' : live ? entryLabel(newest) : groupLabel(entries));
+  /** The name of the line, as T3 Code's group header: its words and a failure, never the time shown on hover. */
+  const name = $derived(entries.some((entry) => entry.tool?.failed === true) ? `${label}, tool call failed` : label);
   const id = $props.id();
 </script>
 
@@ -29,9 +32,9 @@
   <WorkRow entry={newest} {now} />
 {:else if newest !== undefined}
   <div class="group">
-    <button type="button" class="line" class:live aria-expanded={open} aria-controls={open ? `${id}-list` : undefined} onclick={() => (open = !open)}>
+    <button type="button" class="line" class:live aria-label={name} aria-expanded={open} aria-controls={open ? `${id}-list` : undefined} onclick={() => (open = !open)}>
       <span class="slot"><CodeIcon name={live ? WORK_ICONS[newest.kind] : groupIcon(entries)} /></span>
-      <span class="label">{live ? entryLabel(newest) : groupLabel(entries)}</span>
+      <span class="label">{label}</span>
       {#if !live && newest.at !== null}<span class="when"><Stamp at={newest.at} {now} /></span>{/if}
     </button>
     {#if open}
@@ -89,12 +92,15 @@
   /* Fidelity 20: an open header has no space under it; its content 4 px. */
   /* Fidelity 5: the time of a finished group, on hover or focus only. */
   .when {
-    display: none;
+    display: inline-flex;
+    flex: none;
+    opacity: 0;
+    transition: opacity var(--spring-snappy);
   }
 
   .line:hover .when,
   .line:focus-visible .when {
-    display: inline-flex;
+    opacity: 1;
   }
 
   .list {

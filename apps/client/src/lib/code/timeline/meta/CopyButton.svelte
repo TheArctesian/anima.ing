@@ -6,28 +6,35 @@
     text: string;
     /** What it copies: "Copy message" or "Copy code". */
     label?: string;
+    /** The check in the accent colour: T3 Code tints the check of a message, not the check of a code block. */
+    tint?: boolean;
   }
 
-  const { text, label = 'Copy message' }: Props = $props();
+  const { text, label = 'Copy message', tint = true }: Props = $props();
   let copy = $state<'idle' | 'copied' | 'failed'>('idle');
   const SHOWN_MS = 2000;
   const words = $derived(copy === 'copied' ? 'Copied' : copy === 'failed' ? 'Could not copy' : label);
 
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
   async function copyText(): Promise<void> {
+    // The button stays enabled, so the focus stays on it; a press while the check shows does nothing.
+    if (copy === 'copied') return;
+    clearTimeout(timer);
     try {
       await navigator.clipboard.writeText(text);
       copy = 'copied';
     } catch {
       copy = 'failed';
     }
-    setTimeout(() => (copy = 'idle'), SHOWN_MS);
+    timer = setTimeout(() => (copy = 'idle'), SHOWN_MS);
   }
 </script>
 
-<!-- T3 Code's `MessageCopyButton` (fidelity 12 and 15): a 24 px quiet button with a 12 px icon, disabled while the check
-     shows, the check in the primary colour. -->
+<!-- T3 Code's `MessageCopyButton` (fidelity 12 and 15): a 24 px quiet button with a 12 px icon, inert while the check
+     shows, the check in the primary colour. It is not disabled, so a keyboard keeps its focus (accessibility differs). -->
 <Tooltip text={words}>
-  <button type="button" class="copy" class:copied={copy === 'copied'} aria-label={words} disabled={copy === 'copied'} onclick={() => void copyText()}>
+  <button type="button" class="copy" class:copied={copy === 'copied'} class:tint aria-label={words} aria-disabled={copy === 'copied'} onclick={() => void copyText()}>
     <CodeIcon name={copy === 'copied' ? 'check' : 'copy'} />
   </button>
 </Tooltip>
@@ -53,7 +60,7 @@
     block-size: var(--code-timeline-icon-xs);
   }
 
-  .copy:hover:not(:disabled) {
+  .copy:hover:not([aria-disabled='true']) {
     background: var(--surface-hover);
     color: var(--text);
   }
@@ -64,8 +71,11 @@
   }
 
   .copied {
-    color: var(--accent);
     cursor: default;
+  }
+
+  .copied.tint {
+    color: var(--accent);
   }
 
   .hidden {

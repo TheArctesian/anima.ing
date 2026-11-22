@@ -142,12 +142,14 @@
     moved = true;
   };
 
-  function jump(): void {
+  function jump(event: MouseEvent): void {
     following = true;
     if (scroller === undefined) return;
+    // A key on the button gave it the focus; the button leaves, so the focus goes to the conversation. A pointer press
+    // took no focus (fidelity 19): the focus stays where it was, for example in the composer.
+    const keyed = document.activeElement === event.currentTarget;
     toEnd(scroller, true);
-    // The button leaves with its own click: the focus stays in the conversation.
-    scroller.focus({ preventScroll: true });
+    if (keyed) scroller.focus({ preventScroll: true });
   }
 </script>
 
@@ -182,7 +184,7 @@
   <p class="hidden" aria-live="polite">{polite}</p>
   <p class="hidden" role="alert">{urgent}</p>
   {#if !following && !atEnd}
-    <!-- Fidelity 19: a press of the pointer does not take the focus; a key on it still does, and goes to the conversation. -->
+    <!-- Fidelity 19: a press of the pointer takes no focus and leaves it where it was; after a key the focus goes to the conversation. -->
     <button type="button" class="to-end" onpointerdown={(event) => { event.preventDefault(); }} onclick={jump}>
       <CodeIcon name="chevron-down" />Scroll to end
     </button>
@@ -228,6 +230,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
     min-block-size: 100%;
   }
 

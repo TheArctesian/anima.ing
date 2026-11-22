@@ -22,11 +22,11 @@
   <div class="head">
     {#if language !== ''}<span class="language">{language}</span>{/if}
     <div class="actions" role="group" aria-label="Code block actions">
-      <!-- Fidelity 15: 24 px buttons with 12 px icons; the name of Wrap says what a press does. -->
+      <!-- Fidelity 15: 24 px buttons with 12 px icons; the tooltip says what a press does, the name and the pressed state say the setting. -->
       <Tooltip text={wrapWords}>
-        <button type="button" class="wrap-button" aria-label={wrapWords} aria-pressed={wrap} onclick={() => (wrap = !wrap)}><CodeIcon name="wrap-text" /></button>
+        <button type="button" class="wrap-button" aria-label="Wrap lines" aria-pressed={wrap} onclick={() => (wrap = !wrap)}><CodeIcon name="wrap-text" /></button>
       </Tooltip>
-      {#if !streaming}<CopyButton {text} label="Copy code" />{/if}
+      {#if !streaming}<CopyButton {text} label="Copy code" tint={false} />{/if}
     </div>
   </div>
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->

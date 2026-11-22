@@ -18,8 +18,25 @@
   const what = $derived(subject(entry));
   const output = $derived(entry.tool?.output ?? null);
   const failed = $derived(entry.tool?.failed === true);
-  /** The row opens only when there is more to see than its line (fidelity 3): a thought with text, a tool call with an input or an output. */
-  const opens = $derived(entry.kind === 'reasoning' ? entry.text.trim() !== '' : entry.tool !== null && (what !== '' || (output ?? '') !== '' || entry.running));
+  /** A notice whose line the width cuts off: it opens to show all its words, as T3 Code's `noticeCutOff`. */
+  let cut = $state(false);
+  /**
+   * The row opens only when there is more to see than its line (fidelity 3): a thought with text, a tool call with an
+   * input or an output, a notice that is cut off.
+   */
+  const opens = $derived(
+    entry.kind === 'reasoning' ? entry.text.trim() !== '' : entry.tool === null ? cut || open : what !== '' || (output ?? '') !== '' || entry.running,
+  );
+  /** The name of the line: its words and its failure, never the time that shows on hover (fidelity 5). */
+  const name = $derived(failed ? `${label}, failed` : label);
+
+  function measure(line: HTMLElement): () => void {
+    const watch = new ResizeObserver(() => (cut = line.scrollWidth > line.clientWidth));
+    watch.observe(line);
+    return () => {
+      watch.disconnect();
+    };
+  }
   const id = $props.id();
   let thought = $state<HTMLElement>();
   /** The opened thought is at its end: within 4 px, as T3 Code. */
@@ -44,20 +61,21 @@
 <div class="entry" class:failed class:running={entry.running} class:inner>
   {#snippet row()}
     <span class="slot"><CodeIcon name={WORK_ICONS[entry.kind]} /></span>
-    <span class="label">{label}</span>
+    <span class="label" {@attach measure}>{label}</span>
     {#if entry.at !== null}<span class="when"><Stamp at={entry.at} {now} /></span>{/if}
     {#if failed}<span class="mark" role="img" aria-label="Failed"><CodeIcon name="x" /></span>{/if}
     {#if opens}<span class="chevron" class:open aria-hidden="true"><CodeIcon name="chevron-right" /></span>{/if}
   {/snippet}
   {#if opens}
-    <button type="button" class="line" aria-expanded={open} aria-controls={open ? `${id}-detail` : undefined} onclick={() => (open = !open)}>{@render row()}</button>
+    <button type="button" class="line" aria-label={name} aria-expanded={open} aria-controls={open ? `${id}-detail` : undefined} onclick={() => (open = !open)}>{@render row()}</button>
   {:else}
     <div class="line still">{@render row()}</div>
   {/if}
   {#if open && opens}
     <div class="detail" id="{id}-detail">
       {#if entry.kind === 'reasoning'}
-        <div class="thought" bind:this={thought} onscroll={scrolled}><Prose text={entry.text} /></div>
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+        <div class="thought" tabindex="0" role="group" aria-label="Thought" data-own-keys bind:this={thought} onscroll={scrolled}><Prose text={entry.text} /></div>
       {:else if entry.tool === null}
         <pre class="mono">{entry.text}</pre>
       {:else}
@@ -130,14 +148,17 @@
     color: var(--status-down-text);
   }
 
-  /* Fidelity 5: the time of the row, on hover or focus only. */
+  /* Fidelity 5: the time of the row, on hover or focus only; hidden by opacity, as T3 Code, so the line does not move. */
   .when {
-    display: none;
+    display: inline-flex;
+    flex: none;
+    opacity: 0;
+    transition: opacity var(--spring-snappy);
   }
 
   .line:hover .when,
   .line:focus-visible .when {
-    display: inline-flex;
+    opacity: 1;
   }
 
   .mark {
@@ -211,6 +232,10 @@
     color: var(--text);
     font-size: var(--code-text-body);
     user-select: text;
+  }
+
+  .thought:focus-visible {
+    outline: var(--border-focus) solid var(--focus-ring);
   }
 
   .note {

@@ -80,8 +80,9 @@
       <div class="fold">
         <button type="button" class="fold-line" aria-expanded={open} onclick={() => (open = !open)}>
           {turnLine(turn, now, latest)}<CodeIcon name={open ? 'chevron-down' : 'chevron-right'} />
-          {#if turn.ended !== null}<span class="fold-stamp"><Stamp at={turn.ended} {now} /></span>{/if}
         </button>
+        <!-- Fidelity 5: as T3 Code, the time is outside the button, at the end of the row, on hover or focus of the row. -->
+        {#if turn.ended !== null}<span class="fold-stamp"><Stamp at={turn.ended} {now} /></span>{/if}
       </div>
       {#each shown as each (each.key)}{@render part(each)}{/each}
     {/if}
@@ -146,13 +147,13 @@
   }
 
   /* Fidelity 20: a work log that the next row continues (a group, then its approval) has no space under it. */
-  .work:has(+ .approval) {
+  .work:not(.approval):has(+ .approval) {
     padding-block-end: 0;
   }
 
-  /* The kit's approval row has its 16 px icon at its edge; this puts it in the 24 px slot of the work log's lines. */
+  /* The approval row has its own 24 px slot; the 2 px are the inset of the work log's lines, so the icons line up (fidelity 17). */
   .approval {
-    padding-inline-start: calc(2px + (var(--code-timeline-icon-slot) - var(--icon-sm)) / 2);
+    padding-inline-start: 2px;
   }
 
   .question {
@@ -173,6 +174,8 @@
   }
 
   .fold {
+    display: flex;
+    align-items: center;
     margin-block-end: var(--code-timeline-fold-gap);
     padding: var(--space-1) 2px var(--space-2) 0;
     border-block-end: var(--border-thin) solid var(--code-line);
@@ -211,13 +214,16 @@
 
   /* Fidelity 5: the time of the turn, on hover or focus only. */
   .fold-stamp {
-    display: none;
-    margin-inline-start: var(--space-1);
+    margin-inline-start: auto;
+    color: var(--code-quiet-text);
+    font-size: var(--code-text-meta);
+    opacity: 0;
+    transition: opacity var(--spring-snappy);
   }
 
-  button.fold-line:hover .fold-stamp,
-  button.fold-line:focus-visible .fold-stamp {
-    display: inline;
+  .fold:hover .fold-stamp,
+  .fold:focus-within .fold-stamp {
+    opacity: 1;
   }
 
   button.fold-line:focus-visible {

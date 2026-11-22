@@ -1,11 +1,25 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { WorkEntry } from '../turns';
 import WorkRow from '../WorkRow.svelte';
+import CopyButton from './CopyButton.svelte';
 import { dayTime } from './stamp';
 
 let app: ReturnType<typeof mount> | undefined;
+
+/** jsdom has no ResizeObserver: whether a notice is cut off is measured only in a browser. */
+class NoResize {
+  observe(): void {
+    return undefined;
+  }
+  disconnect(): void {
+    return undefined;
+  }
+}
+vi.stubGlobal('ResizeObserver', NoResize);
+// jsdom has no Web Animations: the tooltip of Copy fades in with one.
+Element.prototype.animate ??= () => ({ cancel: () => undefined, finished: Promise.resolve() }) as unknown as Animation;
 
 afterEach(async () => {
   if (app) await unmount(app);
@@ -32,6 +46,7 @@ describe('the rows of the work log as T3 Code draws them', () => {
     row(entry({ kind: 'command', text: '', tool: { name: 'Bash', kind: 'command', summary: 'ls', input: '{"command":"ls"}', patch: null, output: 'no such file', failed: true } }));
     const line = document.querySelector('button');
     expect(line?.getAttribute('aria-expanded')).toBe('false');
+    expect(line?.getAttribute('aria-label'), 'the name says the failure, not the time of the hover').toMatch(/, failed$/);
     expect(document.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('Failed');
     line?.click();
     flushSync();
@@ -43,6 +58,22 @@ describe('the rows of the work log as T3 Code draws them', () => {
     document.querySelector('button')?.click();
     flushSync();
     expect(document.querySelector('.thought strong')?.textContent).toBe('this');
+    const thought = document.querySelector<HTMLElement>('[role="group"][aria-label="Thought"]');
+    expect(thought?.tabIndex, 'a long thought scrolls, so a keyboard can reach it').toBe(0);
+  });
+
+  it('a press of Copy keeps the focus on the button while the check shows', async () => {
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: () => Promise.resolve() }, configurable: true });
+    app = mount(CopyButton, { target: document.body, props: { text: 'hello' } });
+    flushSync();
+    const copy = document.querySelector<HTMLButtonElement>('button');
+    copy?.focus();
+    copy?.click();
+    await vi.waitFor(() => {
+      expect(copy?.getAttribute('aria-label')).toBe('Copied');
+    });
+    expect(copy?.disabled).toBe(false);
+    expect(document.activeElement).toBe(copy);
   });
 });
 
