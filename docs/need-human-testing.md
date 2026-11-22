@@ -37,7 +37,6 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
 | HT-133 | The public names of applications through the route proxy, on a real network (task H21) | A hub that a person hosts with ports 80 and 443 open, a domain name with its DNS, a machine on the link with a web application, and a second hub | Open |
 | HT-134 | Streams of TCP and UDP and the access of a route on a real network (task H40) | A hub that a person hosts, a machine on its network with a test TCP service and an IMAPS server, a device of the network of Anima and a device that is not on it | Open |
-| HT-NEW-routeproxy | The public names of applications through the route proxy, on a real network (task H21) | A hub that a person hosts with ports 80 and 443 open, a domain name with its DNS, a machine on the link with a web application, and a second hub | Open |
 | HT-NEW-routesmockup | The mockup of the section Routes of the hub (tasks H21 and H40), approved overnight by the orchestrator | A browser | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
@@ -2744,9 +2743,9 @@ The tests did not cover: the real gateway, the sign-in at the gateway, the real 
    Expected: "Coming soon: Connect GitHub in your browser for this hub." and "Use key file"; no "Connect GitHub".
 ### HT-NEW-routesmockup: the mockup of the section Routes of the hub (tasks H21 and H40)
 
-Made on the branch `hosted/routes-screen`: [routes/index.html](mockup/routes/index.html), with its record
+Made on the branch `hosted/routes-screen` and brought to `hosted/routes-screen-2`: [routes/index.html](mockup/routes/index.html), with its record
 [records/routes.md](mockup/records/routes.md). The orchestrator approved it overnight after a separate design
-reviewer read it (R-NEW-hostovernight). No person looked at it. Nothing of the screen is built. The decision is yours:
+reviewer read it (R-324). No person looked at it. Nothing of the screen is built. The decision is yours:
 approve it, or say what to change, before the client screen is built.
 
 1. Open `docs/mockup/routes/index.html` in a browser, in a window of at least 1320 px.
