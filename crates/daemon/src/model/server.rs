@@ -304,6 +304,13 @@ fn contain(launch: &Launch) -> Result<Option<PathBuf>, Cause> {
 /// # Errors
 /// `containment_failed` when the cgroup cannot be made, or the launcher is not in it after
 /// 5 seconds (Linux); `start_failed` for an error of the folders, the ring or the start.
+#[cfg_attr(
+    not(target_os = "linux"),
+    expect(
+        clippy::unused_async,
+        reason = "only the wait for the cgroup join awaits, and it is Linux only"
+    )
+)]
 pub async fn spawn(launch: &Launch) -> Result<Running, Cause> {
     fresh_temporary(&launch.state, &launch.temporary).map_err(|_| Cause::StartFailed)?;
     match std::fs::remove_file(launch.place.join(tree::LAUNCH_FAILURE)) {
