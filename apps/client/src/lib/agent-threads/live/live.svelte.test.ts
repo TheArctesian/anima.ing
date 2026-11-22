@@ -174,6 +174,23 @@ describe('the page after a reload', () => {
   });
 });
 
+describe('the @ list of the composer', () => {
+  it('TH108: the files of a thread come as the runner sent them; a frame that does not read is not taken', async () => {
+    const sent = outcomeFrom({ outcome: 'files', paths: [{ path: 'src', folder: true }, { path: 'src/main.rs', folder: false }], more: true });
+    expect(outcomeFrom({ outcome: 'files', paths: [{ path: 'src' }] })).toBeNull();
+    const asked: unknown[] = [];
+    const live = new LiveThreads(
+      madeShell((action) => {
+        asked.push(action);
+        return sent ?? { outcome: 'ok' };
+      }),
+      () => AWAY,
+    );
+    expect(await live.files(THREAD, 'main', 20)).toEqual({ ok: true, paths: [{ path: 'src', folder: true }, { path: 'src/main.rs', folder: false }], more: true });
+    expect(asked).toEqual([{ call: 'files', thread: THREAD, query: 'main', most: 20 }]);
+  });
+});
+
 describe('the queue of a thread (TH109)', () => {
   it('reads the queued prompts and how the last turn ended; a row of an older runner has none', () => {
     const row = runRowFrom(rowFrame('working', { queued: [{ id: 'q1', text: 'Then the tests' }, { id: 2 }], last_turn: 'failed' }));

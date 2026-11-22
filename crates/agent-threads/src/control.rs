@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::drive::{AccountFacts, Answer, DriveEvent, Effort, Mode, ModelChoice, Program, Request};
+use crate::files::FoundPath;
 
 mod listing;
 mod project;
@@ -106,6 +107,14 @@ pub enum Action {
     Projects,
     /// A change of the projects (TH107): only the person makes it.
     ChangeProject { change: ProjectChange },
+    /// The files and folders of the working folder of a thread that match `query`, at most
+    /// `most`, which is at most 200 (TH108): the `@` list of the composer. Only the person asks it.
+    Files {
+        thread: Uuid,
+        #[serde(default)]
+        query: String,
+        most: usize,
+    },
     /// A prompt that waits for the running turn to end, then goes as the next turn (TH109).
     Queue { thread: Uuid, text: String },
     /// New words for a prompt that waits (TH109).
@@ -169,6 +178,12 @@ pub enum Outcome {
     },
     Projects {
         projects: Vec<Project>,
+    },
+    /// The best match first (TH108); `more` when more paths matched than were asked.
+    Files {
+        paths: Vec<FoundPath>,
+        #[serde(default)]
+        more: bool,
     },
     Refused {
         why: Refusal,

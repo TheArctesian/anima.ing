@@ -2,7 +2,7 @@
   import CodeIcon from '../icons/CodeIcon.svelte';
   import { popover } from '$lib/motion/roles/transitions';
   import type { Anchor } from '$lib/overlay/helptip/placement';
-  import { menuPlace, nextChoice, type MenuChoice, type MenuEntry, type MenuSide } from './menu';
+  import { menuPlace, nextChoice, reasonOf, type MenuChoice, type MenuEntry, type MenuSide } from './menu';
 
   interface Props {
     /** The panel's ID, which a trigger names in `aria-controls`. */
@@ -25,6 +25,12 @@
   let panel = $state<HTMLElement>();
   const buttons: HTMLButtonElement[] = [];
   const choices = $derived(entries.filter((entry): entry is MenuChoice => entry.kind === 'choice'));
+
+  /** A disabled choice names the line that says why it is off (09 finding 23). */
+  function described(choice: MenuChoice, row: number): string | undefined {
+    const reason = choice.disabled === true ? reasonOf(entries, row) : null;
+    return reason === null ? undefined : `${id}-reason-${String(reason)}`;
+  }
 
   function choose(choice: MenuChoice): void {
     if (choice.disabled === true) return;
@@ -72,7 +78,7 @@
     {#if entry.kind === 'line'}
       <div class="line" role="separator"></div>
     {:else if entry.kind === 'group'}
-      <div class="group" role="presentation">{entry.label}</div>
+      <div class="group" id={entry.reason === true ? `${id}-reason-${String(row)}` : undefined} role="presentation">{entry.label}</div>
     {:else}
       <button
         type="button"
@@ -80,6 +86,7 @@
         tabindex="-1"
         class:danger={entry.danger === true}
         aria-disabled={entry.disabled === true ? 'true' : undefined}
+        aria-describedby={described(entry, row)}
         bind:this={buttons[choices.indexOf(entry)]}
         onclick={() => {
           choose(entry);

@@ -14,20 +14,29 @@
   }
 
   const { hits, now, chosen, at, onOpen, settled }: Props = $props();
+  let list = $state<HTMLElement>();
+
+  // The highlight stays in sight as the arrows move it (09 finding 11).
+  $effect(() => {
+    list?.querySelectorAll('[role="option"]')[at]?.scrollIntoView({ block: 'nearest' });
+  });
 </script>
 
 <!-- A search replaces the list (02 section 5.10): the arrows in the field move the highlight, Enter opens. -->
+<!-- The count, said when it changes, as the palette does (09 finding 10). -->
+<p class="hidden" role="status">{hits.length === 0 ? '' : `${String(hits.length)} ${hits.length === 1 ? 'thread' : 'threads'} found`}</p>
 {#if hits.length === 0}
-  <p class="none">No threads found</p>
+  <p class="none" role="status">No threads found</p>
 {:else}
-  <ul class="hits" role="listbox" aria-label="Search results">
+  <ul class="hits" id="inbox-search-results" role="listbox" aria-label="Search results" bind:this={list}>
     {#each hits as item, index (item.row.id)}
       <!-- The keys stay in the search field; a pointer opens the row. -->
       <!-- svelte-ignore a11y_click_events_have_key_events -->
       <li
         role="option"
         id="hit-{item.row.id}"
-        aria-selected={item.row.id === chosen}
+        aria-selected={index === at}
+        aria-current={item.row.id === chosen ? 'true' : undefined}
         class:at={index === at}
         class:open={item.row.id === chosen}
         class:settled={settled(item.row.id)}
@@ -95,6 +104,16 @@
     font-size: var(--code-text-meta);
     font-variant-numeric: tabular-nums;
     text-align: end;
+  }
+
+  .hidden {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    margin: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   .none {

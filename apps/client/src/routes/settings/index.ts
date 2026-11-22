@@ -16,6 +16,7 @@ export const SECTIONS = {
   account: { id: 'settings-account', title: 'Account', icon: 'carbon:user-avatar', description: 'Who is signed in to this hub.' },
   leave: { id: 'settings-leave', title: 'Leave', icon: 'carbon:logout', description: 'Sign out and forget this hub.' },
   hub: { id: 'settings-hub', title: 'Hub', icon: 'carbon:network-enterprise', description: 'The hub this app talks to.' },
+  routes: { id: 'settings-routes', title: 'Routes', icon: 'carbon:server-dns', description: 'Names of yours that the hub sends to your applications.' },
   // The next two show only when the shell or the hub says they apply, so the index leaves them out (FRN-006, FRN-009).
   localHub: { id: 'settings-local-hub', title: "This computer's hub", icon: 'carbon:bare-metal-server', description: 'The hub on this computer, its database and link.' },
   linkDevices: { id: 'settings-link-devices', title: 'Devices on the link', icon: 'carbon:remote-connection', description: 'Devices that reach this hub over the link.' },
@@ -41,9 +42,9 @@ export const GROUPS = { hub: 'Hub and account', computer: 'This computer', code:
 
 /** The index of the sections the page shows, in the page's order and in its groups (WP-50 F-10, R-224). */
 export function indexOf(shown: IndexShown): readonly IndexEntry[] {
-  const { account, hub, stayAwake, appearance, codeAppearance, runner, notifications, checkDefaults, retention, updates, apiKeys, integrations, mcp, vpn } = SECTIONS;
+  const { account, hub, routes, stayAwake, appearance, codeAppearance, runner, notifications, checkDefaults, retention, updates, apiKeys, integrations, mcp, vpn } = SECTIONS;
   const groups: readonly (readonly [string, readonly (IndexEntry | false)[]])[] = [
-    [GROUPS.hub, [account, shown.keyStore && hub, notifications, checkDefaults, retention]],
+    [GROUPS.hub, [account, shown.keyStore && hub, routes, notifications, checkDefaults, retention]],
     [GROUPS.computer, [shown.stayAwake && stayAwake, appearance, (shown.runnerReport ?? false) && runner, shown.desktopRows && updates, shown.mcpPermissions && mcp]],
     [GROUPS.code, [codeAppearance]],
     [GROUPS.connections, [integrations, apiKeys, shown.vpn && vpn]],

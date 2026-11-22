@@ -16,10 +16,25 @@ export type MenuEntry =
       readonly danger?: boolean;
       readonly disabled?: boolean;
     }
-  | { readonly kind: 'group'; readonly label: string }
+  | {
+      readonly kind: 'group';
+      readonly label: string;
+      /** It says why the disabled choices above it, back to the last line, are off: each of them names it (09 finding 23). */
+      readonly reason?: boolean;
+    }
   | { readonly kind: 'line' };
 
 export type MenuChoice = Extract<MenuEntry, { kind: 'choice' }>;
+
+/** The index of the reason line that tells why the choice at `index` is off: the first reason after it before a line. */
+export function reasonOf(entries: readonly MenuEntry[], index: number): number | null {
+  for (let at = index + 1; at < entries.length; at += 1) {
+    const entry = entries[at];
+    if (entry === undefined || entry.kind === 'line') return null;
+    if (entry.kind === 'group' && entry.reason === true) return at;
+  }
+  return null;
+}
 
 /** Which side of the trigger the menu opens on, and which edge it lines up with. */
 export interface MenuSide {

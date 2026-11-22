@@ -13,9 +13,11 @@ use super::thread::{Step, Thread};
 use super::{Pending, Runner, Waits};
 use crate::threads::wire;
 
+mod files;
 mod queue;
 mod reads;
 mod refusal_lines;
+pub(super) use files::Walked;
 use refusal_lines::Say;
 pub(super) use refusal_lines::{RefusalLines, refusal_word};
 
@@ -60,6 +62,11 @@ impl Runner {
                 | Action::Unqueue { .. }) => self.queue_call(queued).await,
                 Action::ChangeListing { thread, change } => self.change_listing(thread, &change),
                 Action::ChangeProject { change } => self.change_project(&change),
+                Action::Files {
+                    thread,
+                    query,
+                    most,
+                } => self.files(thread, &query, most),
                 Action::Folder { folder } => {
                     match super::start::chosen_folder(
                         &folder,
@@ -293,6 +300,7 @@ const fn for_the_person(action: &Action) -> bool {
             | Action::Start { .. }
             | Action::ChangeListing { .. }
             | Action::ChangeProject { .. }
+            | Action::Files { .. }
             | Action::Queue { .. }
             | Action::Requeue { .. }
             | Action::Unqueue { .. }
@@ -309,6 +317,7 @@ const fn thread_of(action: &Action) -> Option<Uuid> {
         | Action::Stop { thread }
         | Action::ChangeListing { thread, .. }
         | Action::Earlier { thread, .. }
+        | Action::Files { thread, .. } => Some(*thread),
         | Action::Queue { thread, .. }
         | Action::Requeue { thread, .. }
         | Action::Unqueue { thread, .. }
