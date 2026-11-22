@@ -35,8 +35,10 @@ export interface ProgramModel {
   readonly defaultEffort?: string | null;
 }
 
-const MODE_IDS: Readonly<Record<Mode, string>> = { ask: 'approval-required', accept_edits: 'auto-accept-edits', full_access: 'full-access', plan: 'plan' };
-const EFFORT_WORDS: Readonly<Record<Effort, string>> = { low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Extra high', max: 'Max' };
+/** The id of each mode of a run in the picker's list of permissions. */
+export const MODE_IDS: Readonly<Record<Mode, string>> = { ask: 'approval-required', accept_edits: 'auto-accept-edits', full_access: 'full-access', plan: 'plan' };
+/** The word of each effort, as the picker shows it. */
+export const EFFORT_WORDS: Readonly<Record<Effort, string>> = { low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Extra high', max: 'Max' };
 const EFFORTS = Object.keys(EFFORT_WORDS) as Effort[];
 
 const NO_AUTO = 'The runner has no such mode.';

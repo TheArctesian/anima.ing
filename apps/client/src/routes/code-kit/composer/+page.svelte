@@ -38,6 +38,7 @@
     <div class="lane" data-kit="rest"><Card engine={new SceneEngine()} title="Tighten the gate" /></div>
     <div class="lane" data-kit="rich"><Card engine={new SceneEngine()} start={RICH} /></div>
     <div class="lane" data-kit="failed"><Card engine={new SceneEngine('idle', [], 'The runner did not answer. Your message is still here.')} start="Run the gates" /></div>
+    <div class="lane" data-kit="new-thread"><Card engine={new SceneEngine()} contextStrip /></div>
   </Section>
 
   <Section title="While a turn runs" icon="carbon:activity">
