@@ -17,7 +17,8 @@ def answer(request):
     if request['op'] == 'update-download':
         time.sleep(.5)
     with lock:
-        print(json.dumps(dict(id=request['id'], ok=True, value={})), flush=True)
+        expired = request['op'] == 'sign-in-poll'
+        print(json.dumps(dict(id=request['id'], ok=not expired, value={}, error='Sign-in expired.' if expired else '')), flush=True)
 for line in sys.stdin:
     threading.Thread(target=answer, args=(json.loads(line),)).start()
 '''
@@ -77,6 +78,11 @@ class BridgeLifecycle(unittest.TestCase):
         self.assertFalse(self.bridge.unlocked)
         self.send('locked', 'status')
         self.assertFalse(self.wait_for('locked')['ok'])
+
+    def test_expired_signin_closes_the_qr_and_browser_window(self):
+        self.send('expired', 'sign-in-poll')
+        self.assertFalse(self.wait_for('expired')['ok'])
+        self.assertEqual(len(self.closed), 1)
 
 
 if __name__ == '__main__':

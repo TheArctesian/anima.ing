@@ -8,11 +8,12 @@
 #include <QHBoxLayout>
 
 static QString diskText(const QJsonObject& disk) {
-    return QString("%1 · %2 GiB · Serial: %3 · %4")
-        .arg(disk["model"].toString().trimmed())
+    const auto model = disk["model"].toString().trimmed();
+    return QString("%1 · %2 GiB · Serial: %3%4")
+        .arg(model.isEmpty() ? disk["path"].toString() : model)
         .arg(disk["size"].toVariant().toLongLong() / (1024*1024*1024))
         .arg(disk["serial"].toString().isEmpty() ? "not reported" : disk["serial"].toString())
-        .arg(disk["path"].toString());
+        .arg(model.isEmpty() ? QString{} : " · " + disk["path"].toString());
 }
 void Setup::storage() {
     QFile file("/run/anima-installer-disks.json");
@@ -47,7 +48,7 @@ void Setup::storage() {
         connect(check, &QCheckBox::toggled, this, [this] { selectionChanged(); });
     }
     list->addStretch();
-    layout->addWidget(description("Added drives become separate data volumes, not a RAID array. Unselected drives stay untouched. Disk encryption is not available in this preview.",page));
+    layout->addWidget(description("Added drives become separate data volumes, not a RAID array. Unselected drives stay untouched. Disk encryption is not available.",page));
     connect(systemDisk, qOverload<int>(&QComboBox::currentIndexChanged), this, [this] { selectionChanged(); });
     selectionChanged();
 }
@@ -70,20 +71,4 @@ void Setup::selectionChanged() {
     gs->insert("animaSelectedDisks", selected);
     gs->remove("animaAuthorizedDisks");
     emit nextStatusChanged(isNextEnabled());
-}
-void Setup::refreshReview() {
-    auto* gs = Calamares::JobQueue::instance()->globalStorage();
-    const auto selected = gs->value("animaSelectedDisks").toList();
-    QString text = QString("<p>%1 disks will be erased. Check the model and serial of each.</p><table width='100%' cellspacing='12'>").arg(selected.size());
-    QFile file("/run/anima-installer-disks.json");
-    if (file.open(QIODevice::ReadOnly)) disks = QJsonDocument::fromJson(file.readAll()).array();
-    for (const auto& value : disks) {
-        const auto disk = value.toObject(); const auto path = disk["path"].toString();
-        QString role = "Untouched";
-        if (selected.contains(path)) role = selected.first().toString() == path ? "ERASE — Install Anima OS" : "ERASE — Separate data volume";
-        if (disk["type"].toString() != "disk" && disk["type"].toString() != "rom") continue;
-        text += "<tr><td><b>" + role.toHtmlEscaped() + "</b><br>" + diskText(disk).toHtmlEscaped() + "</td></tr>";
-    }
-    text += "</table><p>Account: admin<br>Server preview: local account and Podman; hub-driven setup is not included.<br>Encryption: off (not available in this preview)<br>Keyboard: " + gs->value("keyboardLayout").toString().toHtmlEscaped() + "</p>";
-    review->setTextFormat(Qt::RichText); review->setText(text); confirmation->setChecked(false); gs->remove("animaAuthorizedDisks");
 }

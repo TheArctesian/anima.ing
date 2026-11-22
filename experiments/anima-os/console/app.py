@@ -10,6 +10,7 @@ from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngin
 from PySide6.QtWebEngineWidgets import QWebEngineView
 
 from signin import SigninWindow
+from screen import ScreenOff
 from readings import Readings
 
 ROOT = Path(__file__).resolve().parent
@@ -26,6 +27,7 @@ class Bridge(QObject):
     locked = Signal()
     openBrowser = Signal(str, str)
     closeBrowser = Signal()
+    blankScreen = Signal()
 
     def __init__(self):
         super().__init__()
@@ -41,6 +43,11 @@ class Bridge(QObject):
     @Slot()
     def telemetry(self):
         self.telemetryChanged.emit(json.dumps(self.readings.sample()))
+
+    @Slot()
+    def screenOff(self):
+        self.lock()
+        self.blankScreen.emit()
 
     def emit_error(self, identity, message):
         self.answer.emit(json.dumps({'id': identity, 'ok': False, 'error': message}))
@@ -111,7 +118,7 @@ class Bridge(QObject):
             if isinstance(value, dict):
                 if value.get('url'):
                     self.openBrowser.emit(value['url'], value.get('userCode', ''))
-                if answer.get('ok') and (value.get('signedIn') or operation == 'cancel-sign-in'):
+                if (answer.get('ok') and (value.get('signedIn') or operation == 'cancel-sign-in')) or (operation == 'sign-in-poll' and not answer.get('ok')):
                     self.closeBrowser.emit()
             self.answer.emit(json.dumps(answer))
 
@@ -159,6 +166,8 @@ def main():
     page.setWebChannel(channel)
     window.setCentralWidget(view)
     browser = SigninWindow()
+    blanker = ScreenOff(app)
+    bridge.blankScreen.connect(blanker.blank)
     bridge.openBrowser.connect(browser.open_signin)
     bridge.closeBrowser.connect(browser.clear)
     view.load(QUrl.fromLocalFile(str(ROOT / 'index.html')))

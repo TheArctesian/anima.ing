@@ -1,4 +1,6 @@
 #include "Setup.h"
+#include "Review.h"
+#include <QJsonDocument>
 #include "GlobalStorage.h"
 #include "JobQueue.h"
 #include <QPushButton>
@@ -20,7 +22,10 @@ QString Setup::prettyName() const { return mode; }
 bool Setup::isNextEnabled() const {
     if (mode == "Ready") return false;
     if (mode == "Storage") return systemDisk && systemDisk->currentIndex() > 0;
-    if (mode == "Review") return confirmation && confirmation->isChecked();
+    if (mode == "Review") {
+        const auto selected = Calamares::JobQueue::instance()->globalStorage()->value("animaSelectedDisks").toList();
+        return confirmation && confirmation->isEnabled() && confirmation->isChecked() && selected == reviewSelection;
+    }
     return true;
 }
 void Setup::setConfigurationMap(const QVariantMap& config) {
@@ -42,12 +47,16 @@ void Setup::setConfigurationMap(const QVariantMap& config) {
     title->setObjectName("animaHeading"); layout->addWidget(title);
     if (mode == "Storage") storage();
     if (mode == "Review") {
-        review = description("", page);
-        auto* scroll = new QScrollArea(page); scroll->setWidgetResizable(true); scroll->setWidget(review);
-        layout->addWidget(scroll);
-        confirmation = new QCheckBox("I authorize erasing every disk marked ERASE above.", page);
-        layout->addWidget(confirmation);
-        connect(confirmation, &QCheckBox::toggled, this, [this](bool on) { emit nextStatusChanged(on); });
+        review = new QScrollArea(page); review->setWidgetResizable(true);
+        review->setFrameShape(QFrame::NoFrame); review->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        layout->addWidget(review);
+        auto* gs = Calamares::JobQueue::instance()->globalStorage();
+        // GlobalStorage emits changed while holding its write lock.
+        connect(gs, &Calamares::GlobalStorage::changed, this, [this,gs] {
+            if (confirmation && confirmation->isEnabled() && gs->value("animaSelectedDisks").toList() != reviewSelection) {
+                confirmation->setChecked(false); confirmation->setEnabled(false); gs->remove("animaAuthorizedDisks");
+            }
+        }, Qt::QueuedConnection);
     }
 }
 void Setup::onActivate() {
@@ -58,9 +67,22 @@ void Setup::onActivate() {
     emit nextStatusChanged(isNextEnabled());
 }
 void Setup::onLeave() {
-    if (mode == "Review" && confirmation->isChecked()) {
+    if (mode == "Review" && isNextEnabled()) {
         auto* gs = Calamares::JobQueue::instance()->globalStorage();
         gs->insert("animaAuthorizedDisks", gs->value("animaSelectedDisks"));
     }
+}
+void Setup::refreshReview() {
+    auto* gs = Calamares::JobQueue::instance()->globalStorage();
+    if (confirmation) confirmation->setChecked(false);
+    reviewSelection = gs->value("animaSelectedDisks").toList(); gs->remove("animaAuthorizedDisks");
+    QFile file("/run/anima-installer-disks.json"); disks = {};
+    if (file.open(QIODevice::ReadOnly)) disks = QJsonDocument::fromJson(file.readAll()).array();
+    auto* content = installationReview(disks,reviewSelection,gs->value("keyboardLayout").toString());
+    confirmation = new QCheckBox("I authorize erasing these disks.", content);
+    confirmation->setAccessibleName("I authorize erasing every selected disk shown above.");
+    confirmation->setEnabled(!reviewSelection.isEmpty()); content->layout()->addWidget(confirmation);
+    connect(confirmation, &QCheckBox::toggled, this, [this] { emit nextStatusChanged(isNextEnabled()); });
+    review->setWidget(content);
 }
 CALAMARES_PLUGIN_FACTORY_DEFINITION(SetupFactory, registerPlugin<Setup>();)
