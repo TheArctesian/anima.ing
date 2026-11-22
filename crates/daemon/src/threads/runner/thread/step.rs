@@ -28,6 +28,9 @@ pub enum Step {
     /// A prompt of the queue whose lines are the writes before this step: it is shown as sent
     /// when the holder took its last line, and waits again in the queue when not (TH109).
     Queued(Queued),
+    /// Read where the thread works again, as a turn ended: an agent may switch the branch
+    /// (TH112).
+    Workspace,
 }
 
 impl Step {
@@ -47,7 +50,8 @@ impl Step {
             | Self::Change(_)
             | Self::Account(_)
             | Self::Models(_)
-            | Self::Queued(_) => return None,
+            | Self::Queued(_)
+            | Self::Workspace => return None,
         })
     }
 }

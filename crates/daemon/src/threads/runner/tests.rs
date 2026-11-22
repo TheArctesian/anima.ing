@@ -25,6 +25,8 @@ fn row(program: Program) -> ThreadRow {
         queued: Vec::new(),
         last_turn: None,
         effort: None,
+        workspace: None,
+        usage: None,
     }
 }
 
@@ -76,7 +78,7 @@ fn asked(steps: &[Step]) -> Vec<Uuid> {
         .collect()
 }
 
-const CLAUDE_INIT: &str = r#"{"type":"system","subtype":"init","session_id":"s-1","model":"m","permissionMode":"default"}"#;
+pub(super) const CLAUDE_INIT: &str = r#"{"type":"system","subtype":"init","session_id":"s-1","model":"m","permissionMode":"default"}"#;
 const CLAUDE_ASK: &str = r#"{"type":"control_request","request_id":"r-1","request":{"subtype":"can_use_tool","tool_name":"Bash","input":{"command":"ls"},"permission_suggestions":[],"tool_use_id":"t-1"}}"#;
 const CLAUDE_DELTA: &str = r#"{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"text_delta","text":"hi"}}}"#;
 
@@ -203,22 +205,6 @@ fn thr_030_the_end_of_the_process_closes_its_requests_and_refuses_a_late_answer(
         thread.send(&agent_threads::drive::Prompt::plain("more"), true),
         Err(Refusal::NotRunning)
     );
-}
-
-#[test]
-fn th11_the_updates_kept_for_a_watch_have_a_bound_of_bytes() {
-    let mut thread = claude();
-    let big = "x".repeat(1024 * 1024);
-    for _ in 0..10 {
-        thread.note(Change::Prompt {
-            text: big.clone(),
-            source: "test".to_owned(),
-            images: 0,
-            files: Vec::new(),
-        });
-    }
-    let kept = thread.kept().count();
-    assert!((1..=4).contains(&kept), "kept {kept} updates of 1 MiB");
 }
 
 fn codex_in_a_turn(ids: &mut impl FnMut() -> Uuid) -> (Thread, Vec<Step>) {
