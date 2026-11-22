@@ -5,25 +5,30 @@
   import { openDialog } from '$lib/forms/modal/stack';
   import { fade, modal } from '$lib/motion/roles/transitions';
   import { coverWhile } from '$lib/overlay/overlay.svelte';
-  import { isMac } from '$lib/platform/mac';
   import type { PaletteHost } from './adapter';
   import PaletteResults from './PaletteResults.svelte';
   import { parseChord, pressedIs } from './keys/keymap';
+  import { keyRules, thisKeySet, type KeySet } from './keys/web';
   import { emptyWords, paletteGroups, stepped, type PaletteRow } from './results';
 
   interface Props {
     host: PaletteHost;
     open?: boolean;
-    /** Opens and closes on ⌘K (Ctrl+K elsewhere), outside a terminal; false where an owner opens it itself. */
+    /** Opens and closes on its key (⌘K or Ctrl+K, Alt+Shift+K in a browser elsewhere), outside a terminal; false where an owner opens it itself. */
     shortcut?: boolean;
     /** The time the ages of the chats are counted from; now, when absent. */
     now?: number;
+    /** The keys to show and to open on: this client's, when absent. */
+    keys?: KeySet;
   }
 
-  let { host, open = $bindable(false), shortcut = true, now }: Props = $props();
+  let { host, open = $bindable(false), shortcut = true, now, keys = thisKeySet() }: Props = $props();
 
-  const OPEN_KEY = parseChord('mod+k');
-  const mac = typeof navigator !== 'undefined' && isMac(navigator.userAgent);
+  const rules = $derived(keyRules(keys));
+  const openKey = $derived.by(() => {
+    const rule = rules.find((candidate) => candidate.command === 'commandPalette.toggle');
+    return rule === undefined ? null : parseChord(rule.key);
+  });
   const id = $props.id();
 
   let typed = $state('');
@@ -58,7 +63,7 @@
       open = false;
       return;
     }
-    if (!shortcut || OPEN_KEY === null || !pressedIs(event, OPEN_KEY, mac) || inTerminal(event.target)) return;
+    if (!shortcut || openKey === null || !pressedIs(event, openKey, keys.mac) || inTerminal(event.target)) return;
     event.preventDefault();
     open = !open;
   }
@@ -182,7 +187,7 @@
         </div>
         <div class="results">
           {#if rows.length > 0}
-            <PaletteResults id="{id}-list" {groups} {active} {mac} {rowId} onpoint={shade} onchoose={choose} />
+            <PaletteResults id="{id}-list" {groups} {active} mac={keys.mac} {rules} {rowId} onpoint={shade} onchoose={choose} />
           {:else if chatsNote === undefined}
             <p class="empty">{emptyWords(typed)}</p>
           {/if}
