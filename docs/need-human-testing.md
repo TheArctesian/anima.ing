@@ -38,6 +38,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
 | HT-003 | The tool inventory in an MCP client | HT-002 | Open |
+| HT-129 | The one-line installation of the link and of the daemon on a computer with no application (task HM-T33, R-240 c) | A hub of the branch `hosted/hm-t33-one-line-install` with a link, `anima` signed in to it, and a Linux computer with no application | Open (not run) |
 | HT-004 | No window of Apple on a Mac without the developer tools | A Mac with no Xcode and no Command Line Tools | Open |
 | HT-005 | The tool inventory of a daemon that runs as a system unit | A Linux computer | Open |
 | HT-006 | The probes of `claude` and `codex` leave the account alone | A computer with the two programs | Open |
@@ -1398,6 +1399,76 @@ On this Mac:
    no `anima-daemon.service`, no copy, no file `token` in the folder of the daemon, and
    `systemctl --user status anima-daemon` says that the unit could not be found.
 
+### HT-129: the one-line installation of the link and of the daemon on a computer with no application (task HM-T33, R-240 c)
+
+Built: on the branch `hosted/hm-t33-one-line-install`. The design is Section 8.1 of
+[hosted-mode.md](proposals/hosted-mode.md). The hub has two new calls
+(`crates/hub/src/fleet/link/graphql/computer.rs`): `createComputerInstall(name)`, which a signed-in
+operator makes, gives a link invite and a one-time claim; `claimComputerEnrolment(claim, os)`, which only
+the computer that joined with that invite can send through its link, adds the computer to the devices in
+the site `Link` with the kind `server` and gives a daemon enrolment code. `anima link install <name>`
+shows the two as one install code. The script `deploy/bin/anima-install` asks for the code at the terminal with no echo,
+checks the SHA-256 of each program, joins the link, installs the unit of the link with the socket of the
+daemon, claims the code through that socket, enrols the daemon at the socket and installs its unit. It
+installs units of the user only and refuses root. `--remove` takes it all out again.
+
+The tests cover: the hub calls with a fake link (the claim works once, only from the computer that
+joined: a try from a different device of the link spends it, a try from off the link does not; the device
+is added once; a second install gives a claim and no invite; a new install cancels the open invites of its
+name; no install code for a name that two devices of the link have; no secret in an entry or a log); the
+script with a fake release folder and stand-ins of the two programs and of `curl` (the order of the steps,
+the claim through the socket of the daemon, a wrong SHA-256 of each program, a second run, a refused claim,
+a line for a different computer, the unit of the application also when its state folder only starts like
+this one, an answer of `unit show` that is not a plain path, a daemon that the script did not enrol, the
+removal, and no secret in an argument or the output). Not covered: the prompt at a real terminal, the real link,
+the real daemon, `systemd` and `launchd`, a real hub, the release (it does not publish `anima-link`
+alone or the script yet) and the page of the web client (not built).
+
+It needs: a hub of this branch with a link (a hub of one's own in the link mode, or a hub of the pool
+with an image of this branch); `anima` of this branch signed in to that hub with a login token; a Linux
+x86_64 computer (a VM is good) with no application of Anima, a user that is not root, and `curl`; the
+AppImage of a trial build of this branch. Do not use a Mac that has the application: the script stops
+there, and it must not touch the units of the application.
+
+1. On the Linux computer, as the normal user, make a release folder from the AppImage:
+   `./Anima_<version>_amd64.AppImage --appimage-extract usr/bin/anima-link usr/bin/anima-daemon`, then
+   `mkdir -p ~/rel/linux-x86_64/0.0.1 && cp squashfs-root/usr/bin/anima-link squashfs-root/usr/bin/anima-daemon ~/rel/linux-x86_64/0.0.1/`
+   and `sha256sum ~/rel/linux-x86_64/0.0.1/*`. Copy `deploy/bin/anima-install` of the branch to `~/anima-install`.
+   Expected: two SHA-256 values.
+2. On your own computer, run `anima link install build-1`. Expected: one line that starts with
+   `anima-install.1.` on standard output, and the expiry on standard error.
+3. On the Linux computer, within 15 minutes, run
+   `sh ~/anima-install --version 0.0.1 --target linux-x86_64 --link-sha256 <hex> --daemon-sha256 <hex> --from ~/rel`,
+   and paste the code at the prompt "Paste the install code". Expected: the code is not shown while you
+   paste it, and it is not in `history`; no password is asked; the last lines say that the computer is a
+   device of the hub and how to remove it; on a computer where lingering is off, a line names
+   `loginctl enable-linger`.
+4. Run `systemctl --user status anima-link.service anima-daemon.service`. Expected: both are active.
+   `ps -eo args | grep -c anima-install` shows no code in any process.
+5. Open Devices of the hub. Expected: within one minute a device `build-1`, kind server, Linux, in the site
+   `Link`, with metrics from its daemon.
+6. Run step 3 again with the same code. Expected: it stops with "this computer is on the link already"
+   (the code holds an invite, and the computer joined), and the device keeps its metrics.
+7. Make a new code with `anima link install build-1`; run step 3 with it. Expected: no new join (the code
+   has no invite), the daemon enrols again, the device in Devices is the same one, with no second
+   `build-1`.
+8. Change one letter of `--link-sha256` and run step 3 with a new code. Expected: "its SHA-256 differs.
+   Nothing was installed." and the two units still run.
+9. Log out of the Linux computer and wait 2 minutes. Expected, when lingering is off: the device goes
+   stale (the units stop at the logout, R-362). Log in again: the metrics come back.
+10. Run `sh "${XDG_DATA_HOME:-$HOME/.local/share}/anima-link/anima-install.sh" --remove`. Expected: no
+    unit of Anima in `systemctl --user list-units 'anima-*'`, no `~/.local/bin/anima-daemon`, no folder
+    `anima-link` or `anima-daemon`, and the sentence that the hub still lists the computer.
+11. Optional, on a Mac with a second user account that has never run the application: steps 1 to 5 and 10
+    with `--target darwin-universal`, the two programs of a signed trial build
+    (`Anima.ing.app/Contents/MacOS/`) and `shasum -a 256`. Expected: the same, with `launchctl print
+    gui/$(id -u)/ing.anima.link` and `ing.anima.daemon` running.
+12. On the Linux computer, install the daemon alone with its own command (MET-019) for a different
+    device, then run step 3 with a new code. Expected: it stops with "a daemon of Anima is enrolled for
+    this user already", and the daemon of MET-019 still runs.
+
+State: Open. Not run.
+
 ### HT-112: a newer application replaces the daemon of this computer and keeps its enrolment (HMD-055; task HM-T20)
 
 Built: on the branch `hosted/hm-t20-daemon-update`. The daemon has the command
@@ -2302,6 +2373,11 @@ built or signed the application, and nothing was sent to App Store Connect.
 4. Install the build from TestFlight on an iPhone. Expected: the application starts and shows the same version.
 5. Push a change of a document only. Expected: the summary of the run says "nothing: no change of ios after the
    published <version>", and no iOS job runs.
+
+For the branch TestFlight workflow (M5-8), push a change to `dev` and follow the run.
+Expected: the signed build clears export compliance and appears as Testing in Anima Internal
+without a declaration or an assignment in App Store Connect. Install that build on an iPhone
+or iPad and confirm its version and build number.
 
 Result: Open.
 
@@ -4141,3 +4217,64 @@ Windows or on Linux, so each step below is the first run.
     Expected: nothing changed: the three window buttons of macOS are over the bar, and no drawn buttons show.
 
 Result: Open.
+### HT-128: Rust host-control diagnostics in the graphical OS preview (OS3-R1 / OS3-R3)
+
+Built: `crates/anima-osd`, the opt-in module `experiments/anima-os/control.nix`, and the existing console Diagnostics action's adapter. The Rust socket and disposable NixOS service tests cover read-only transport, process-state reporting, restricted access and lifecycle. They do not exercise the complete appliance graphical session, real monitoring/link or physical hardware.
+
+1. Build a disposable appliance trial from the existing ISO procedure with `services.anima-os-control.enable = true` and its source-built `package` supplied as described in `experiments/anima-os/control-contract.md`. Do not replace an existing installation or publish the ISO for this check.
+2. Unlock the local console and open Settings → Diagnostics → Run checks.
+   Expected: existing network/root/Wi-Fi diagnostics remain present; monitoring and private-link states come from the Rust service. No terminal is required in the normal interface. Active processes do not claim hub reachability or agent readiness.
+3. In the disposable trial, stop the host-control service, then run the graphical check again.
+   Expected: a visible operation failure and an available retry/close path; no fabricated success or silent fallback to old results. Restore the service and retry. A retained job is observed without restarting it; interrupted or missing history produces a clear error and a subsequent explicit new check returns results.
+4. Lock/unlock and restart the trial, then repeat the graphical check.
+   Expected: owner authentication is still required, the service runs under its restricted account and the socket is private. Monitoring/link remain separate background services.
+5. Compare the console to the existing approved mockup on compact and portrait displays.
+   Expected: the OS3-R4 four-destination layout matches the updated mockup, with readable diagnostic rows and accessible controls.
+
+Result: Open. No physical-hardware, real-account, full-appliance UI, speed or ISO-size result is claimed.
+
+
+### HT-127: final graphical and hardware acceptance of the Rust OS continuation (OS3-R4)
+
+Built: four-destination graphical console and native session/update/install controllers. Automated checks use disposable virtual disks, synthetic account services and headless rendered UI. They cannot qualify the user's physical Wi-Fi/display/touch hardware, real account or perceived responsiveness. The operator moved this check to the last step; that is scheduling, not a reported pass.
+
+1. Boot the locally built preview ISO on an explicitly selected spare UEFI machine. In Calamares, connect Wi-Fi, change orientation, let one preview expire and keep another. Review storage without authorizing any disk until its identity is correct.
+   Expected: controls remain reachable; orientation restores after timeout and persists only after Keep; unselected/USB/busy disks are not erase targets.
+2. Install only to the explicitly selected disposable target, remove the USB and boot. Unlock the graphical console. Visit Overview, Network, Storage and Settings at the machine's normal scale.
+   Expected: the familiar visual design remains, no normal flow requires a terminal, no controls overlap or leave excessive unused space, and network/display settings survive reboot.
+3. Choose Sign in directly from Overview. Cancel once, then complete the provider sign-in and explicitly Add this computer with a real test account.
+   Expected: cancel closes the provider view; sign-in does not add the machine before consent; failures offer retry; the machine appears once and monitoring/link state is truthful.
+4. Open Settings → Diagnostics and Updates. Run diagnostics; check a properly signed compatible preview update when one is available, stage it and explicitly restart. Confirm fallback/rollback on this test device while retaining a disposable workload sentinel.
+   Expected: phase/byte progress remains visible while other pages respond, no download automatically activates, and recovery preserves identity and workload data.
+5. Lock and unlock, restart, and compare pointer/keyboard navigation, screen-open delay and idle behavior with the prior preview on the same machine.
+   Expected: background compute continues while locked; focus remains visible; perceived responsiveness and display quality are acceptable. Record hardware and measured delays rather than inferring them from language choice.
+
+Result: Open; deferred to the final step by the operator. No production release is authorized.
+
+### HT-130: the editor of the composer of Code in the desktop application (TC4)
+
+Built on the branch `code/stage-4-composer`: `apps/client/src/lib/code/composer/`, shown on the page `/code-kit/composer`
+of a development build. The editor is our own, over the Markdown of the prompt. Its tests run in jsdom, and its pictures
+are taken in WebKit with typed keys only. Not covered: an input method (Japanese, Chinese), the dictation of macOS, a
+paste from a different application, a drop of a file from the Finder into the window of the desktop application, and the
+speed with a prompt of many thousand characters.
+
+1. Start the desktop application in development and open `/code-kit/composer`. Click the first card.
+   Expected: the card shows a focus ring and the caret is in the editor.
+2. Type `**bold** and *italic* and a line that starts with "- "`.
+   Expected: the words are drawn bold and italic, the markers show only while the caret is in them, the line is a list item.
+3. Press ⌘Z until the editor is empty, then ⇧⌘Z.
+   Expected: the text goes and comes back in steps, and the caret is where it was.
+4. With a Japanese or Chinese input method, type a word and accept a candidate.
+   Expected: the candidate window stays open while you type, and the accepted word is in the text one time.
+5. Use the dictation of macOS (Fn twice) in the editor.
+   Expected: the spoken words are in the text one time.
+6. Copy a paragraph from a different application and paste it.
+   Expected: the text is there as plain Markdown, with no styles of the source.
+7. Type `Read @comp` and press Enter on the first row of the list.
+   Expected: the list hangs over the card, and the choice is one chip with a space after it.
+8. Drag a picture from the Finder over the first card and drop it.
+   Expected: the card takes the accent line while the picture is over it, and the picture is a tile over the editor.
+
+Result: Open.
+

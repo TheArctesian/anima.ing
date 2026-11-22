@@ -73,6 +73,10 @@ def graphical_install(machine, output, password):
     machine.send('stty -echo')
     machine.command("timeout 90 sh -c 'until DISPLAY=:0 XAUTHORITY=/home/anima/.Xauthority xdotool search --class calamares; do sleep 1; done'", timeout=100)
     time.sleep(8)
+    # Empty stdin keeps this regression non-destructive even if the GUI lock is lost.
+    machine.command("if anima-install </dev/null >/run/anima-cli-busy.out 2>/run/anima-cli-busy.err; then exit 1; fi; "
+                    "test ! -s /run/anima-cli-busy.out; "
+                    "grep -Fx 'Another installer is open. Close it before starting installation.' /run/anima-cli-busy.err")
     machine.command('busctl call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus StartServiceByName su fi.w1.wpa_supplicant1 0; busctl get-property fi.w1.wpa_supplicant1 /fi/w1/wpa_supplicant1 fi.w1.wpa_supplicant1 Interfaces')
     from battery_fixture import install as laptop_fixture
     laptop_fixture(machine)
@@ -138,7 +142,11 @@ def installed_checks(machine, password, output):
     machine.send('admin'); machine.expect('Password:'); machine.send(password)
     machine.expect(r'admin@anima(?:-node-[a-z0-9]{4})?:[^\r\n]*\$'); machine.send('stty -echo')
     machine.command('cmp ~/hostname-before /etc/hostname; cmp ~/hostname-before /proc/sys/kernel/hostname; grep -qx retained ~/gui-sentinel; cmp /etc/machine-id ~/machine-id-before; nmcli -g NAME connection show | grep -qx anima-fixture')
+    machine.command('test ! -r /persist/data-volumes.json')
+    machine.send('sudo -i'); machine.expect('password for admin:'); machine.send(password)
+    machine.expect(r'root@anima(?:-node-[a-z0-9]{4})?:[^\r\n]*#')
     machine.command("volume=$(jq -r '.[0].uuid' /persist/data-volumes.json); mountpoint -q /persist/volumes/$volume; grep -qx volume-retained /persist/volumes/$volume/sentinel")
+    machine.send('exit'); machine.expect(r'admin@anima(?:-node-[a-z0-9]{4})?:[^\r\n]*\$')
 
 
 def run(iso, output, power="shutdown"):

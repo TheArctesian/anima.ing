@@ -1,19 +1,22 @@
-{ pkgs, lib, ... }:
+{ config, pkgs, lib, workspaceRoot ? ../.., ... }:
 let
+  session = import ./session-package.nix { inherit pkgs workspaceRoot; };
   python = pkgs.python3.withPackages (ps: [ ps.pyside6 ]);
   source = pkgs.runCommand "anima-local-console-source" {} ''
     mkdir -p $out
-    cp ${./console}/*.py ${./console}/*.js ${./console}/*.html ${./console}/*.css $out/
+    cp ${./console}/app.py ${./console}/signin.py ${./console}/*.js ${./console}/*.html ${./console}/*.css $out/
     rm -f $out/test_*.py
     cp ${./branding/hero.png} $out/hero.png
     cp ${./branding/wordmark.svg} $out/wordmark.svg
     cp ${./telemetry/readings.py} $out/readings.py
-    cp ${./display/orientation.py} $out/orientation.py
   '';
   privileged = pkgs.writeShellApplication {
     name = "anima-console-privileged";
-    runtimeInputs = with pkgs; [ python3 networkmanager systemd util-linux xrandr xinput coreutils ];
-    text = ''exec python3 ${source}/privileged.py'';
+    runtimeInputs = with pkgs; [ networkmanager systemd util-linux xrandr xinput coreutils ];
+    text = ''
+      ${lib.optionalString config.services.anima-os-control.enable "export ANIMA_OS_CONTROL=${config.services.anima-os-control.package}/bin/anima-osd"}
+      exec ${session}/bin/anima-os-session
+    '';
   };
   console = pkgs.writeShellApplication {
     name = "anima-console";

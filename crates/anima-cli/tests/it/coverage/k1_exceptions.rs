@@ -25,6 +25,11 @@ pub const EXCEPTIONS: &[(&str, &str)] = &[
         "the desktop app's silent join through the link only: returns a token (R-129, HMD-037)",
     ),
     (
+        "Mutation.claimComputerEnrolment",
+        "the install script of a computer with no application only, through its link: returns \
+         a daemon enrolment code (HM-T33)",
+    ),
+    (
         "Mutation.signInBrowser",
         "browser only: sets the __Host-anima cookie (K7)",
     ),

@@ -100,6 +100,26 @@ async fn cmd_014_an_invite_written_with_to_file_never_reaches_stdout_or_stderr()
 }
 
 #[tokio::test]
+async fn hm_t33_link_install_prints_only_the_install_code_with_the_claim_and_the_invite() {
+    let claim = "C".repeat(43);
+    let hub = FakeHub::start().await;
+    hub.answer(
+        "LinkInstall",
+        data(json!({ "createComputerInstall": {
+            "invite": INVITE, "claim": claim, "expiresAt": "2030-05-06T12:00:00+00:00",
+        }})),
+    );
+    let run = signed_in()
+        .run(&["link", "install", "build-1", "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    assert_eq!(run.stdout, format!("anima-install.1.{claim}.{INVITE}\n"));
+    assert!(run.stderr.contains("2030-05-06T12:00:00"), "{}", run.stderr);
+    assert!(!run.stderr.contains(&claim), "{}", run.stderr);
+    assert_eq!(hub.seen()[0].variables, json!({ "name": "build-1" }));
+}
+
+#[tokio::test]
 async fn d_23_an_api_key_is_refused_an_invite_with_exit_5_and_no_invite() {
     let hub = FakeHub::start().await;
     hub.answer(

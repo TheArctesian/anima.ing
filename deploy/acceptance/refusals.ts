@@ -59,6 +59,7 @@ export const REFUSED_ROOTS: readonly string[] = [
   "mergePullRequest",
   "mergePullRequests",
   "createLinkInvite",
+  "createComputerInstall",
   "revokeLinkDevice",
   "createOperationalKey",
   "updateOperationalKey",
