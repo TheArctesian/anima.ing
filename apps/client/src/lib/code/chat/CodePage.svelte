@@ -1,11 +1,12 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import '../kit/code.css';
-  import { keyAction, moved, type KeyAction } from '$lib/agent-threads/keys';
+  import { moved, type KeyAction } from '$lib/agent-threads/keys';
   import type { CallResult, LiveThreads } from '$lib/agent-threads/live/live.svelte';
   import type { ThreadsStore } from '$lib/agent-threads/store.svelte';
   import LimitDialog from '$lib/agent-threads/view/LimitDialog.svelte';
   import NewThread from '$lib/agent-threads/view/NewThread.svelte';
+  import { isMac } from '$lib/platform/mac';
   import { fillRoom } from '$lib/scroll/room';
   import { inboxEngine } from '../inbox/engine';
   import InboxColumn from '../inbox/InboxColumn.svelte';
@@ -16,6 +17,7 @@
   import TopBand from '../shell/TopBand.svelte';
   import ChatColumn from './ChatColumn.svelte';
   import ChatFoot from './ChatFoot.svelte';
+  import { pageKey } from './page-keys';
   import { paletteHost } from './palette-host';
   import ThreadBody from './ThreadBody.svelte';
 
@@ -62,17 +64,7 @@
     return result;
   }
 
-  function typing(target: EventTarget | null): boolean {
-    return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || (target instanceof HTMLElement && target.isContentEditable);
-  }
-
-  /** The action of a key on the page; in the scroll area of the thread the arrows scroll it. */
-  function pageAction(event: KeyboardEvent): KeyAction | null {
-    const mod = event.metaKey || event.ctrlKey;
-    const action = keyAction({ key: event.key, mod, shift: event.shiftKey, alt: event.altKey, typing: typing(event.target) });
-    const inPane = event.target instanceof Element && event.target.closest('[data-own-keys]') !== null;
-    return action?.kind === 'move' && !mod && inPane ? null : action;
-  }
+  const mac = isMac(navigator.userAgent);
 
   /** Does what `action` names over the order of the inbox; false when it is not the page's to do. */
   function run(action: KeyAction, target: EventTarget | null): boolean {
@@ -99,15 +91,16 @@
     }
   }
 
-  /** The keys of the page (THR-016); ⌘N starts a thread (02 section 5.3). */
+  /** The keys of the page (THR-016); ⌘N starts a thread (02 section 5.3). A key that a menu, list or dialog took is not the page's. */
   function onkeydown(event: KeyboardEvent): void {
-    if ((event.metaKey || event.ctrlKey) && !event.shiftKey && event.key.toLowerCase() === 'n') {
+    const action = pageKey(event, mac, document);
+    if (action === null) return;
+    if (action.kind === 'new') {
       event.preventDefault();
       if (newOff === null) starting = true;
       return;
     }
-    const action = pageAction(event);
-    if (action !== null && run(action, event.target)) event.preventDefault();
+    if (run(action, event.target)) event.preventDefault();
   }
 </script>
 
