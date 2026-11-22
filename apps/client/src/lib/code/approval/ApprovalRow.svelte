@@ -24,6 +24,14 @@
 
   const { kind, detail, app, reason, more = DEFAULT_MORE, locked = false, gone = false, onDecide }: Props = $props();
   const look = $derived(APPROVAL_LOOKS[kind]);
+  /** What the detail is, for a screen reader. */
+  const DETAIL_NAMES: Readonly<Record<ApprovalKind, string>> = {
+    command: 'Command',
+    'file-change': 'File',
+    'file-read': 'File',
+    permission: 'Permission',
+    'app-access': 'Access',
+  };
 </script>
 
 <!--
@@ -32,10 +40,10 @@
 -->
 <div class="approval" role="group" aria-label={look.name}>
   <div class="line">
-    <CodeIcon name={look.icon} />
-    <!-- The detail scrolls past 10rem, so the keyboard must reach it. -->
+    <span class="slot"><CodeIcon name={look.icon} /></span>
+    <!-- The detail scrolls past 10rem, so the keyboard must reach it. An empty detail says the kind, as T3 Code. -->
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-    <code tabindex="0">{detail}</code>
+    <code tabindex="0" role="group" aria-label={DETAIL_NAMES[kind]} data-own-keys>{detail.trim() === '' ? look.name : detail}</code>
   </div>
   <div class="under">
     {#if app !== undefined}<span class="quiet">{app}</span>{/if}
@@ -61,14 +69,19 @@
     color: var(--text);
   }
 
+  /* Fidelity 17: the icon in the 24 px slot of the work log with a 6 px gap, so the detail starts 32 px in. */
   .line {
     display: flex;
     align-items: flex-start;
-    gap: var(--space-3);
+    gap: 0.375rem;
   }
 
-  .line > :global(.code-icon) {
-    margin-block-start: 2px;
+  .slot {
+    display: inline-flex;
+    flex: none;
+    justify-content: center;
+    inline-size: var(--space-6);
+    padding-block-start: 2px;
     color: var(--code-quiet-text);
   }
 
@@ -79,7 +92,7 @@
     overflow-y: auto;
     font-family: var(--font-mono);
     font-size: var(--code-text-meta);
-    line-height: var(--leading-normal);
+    line-height: 1.25rem;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     scrollbar-width: thin;
@@ -95,7 +108,7 @@
   .under {
     display: grid;
     gap: var(--space-1);
-    padding-inline-start: var(--code-approval-indent);
+    padding-inline-start: calc(var(--space-6) + 0.375rem);
   }
 
   .quiet {

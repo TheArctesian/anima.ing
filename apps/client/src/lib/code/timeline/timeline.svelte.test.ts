@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LiveEntry } from '$lib/agent-threads/live/timeline';
 import type { ToolCall, ToolKind } from '$lib/agent-threads/thread';
+import { spokenOf } from './spoken';
 import { folded, turnsOf, type Now, type WorkEntry } from './turns';
 import { duration, entryLabel, groupLabel, innerLabel, timer, turnLine } from './words';
 
@@ -177,6 +178,8 @@ describe('times of a turn', () => {
     if (done === undefined || stopped === undefined || running === undefined) throw new Error('a turn');
     expect(turnLine(done, at(99))).toBe('Worked for 1m 12s');
     expect(turnLine(stopped, at(99))).toBe('You stopped after 9s');
+    // Fidelity 7: only the newest turn says that the person stopped it.
+    expect(turnLine(stopped, at(99), false)).toBe('Worked for 9s');
     expect(turnLine(running, at(12))).toBe('Working for 12s');
   });
 
@@ -184,5 +187,15 @@ describe('times of a turn', () => {
     const [same] = turnsOf([prompt('Go', 5), reply('Done', 5), end(5)], IDLE);
     if (same === undefined) throw new Error('a turn');
     expect(turnLine(same, at(99))).toBe('Worked');
+  });
+});
+
+describe('the words of the live region', () => {
+  it('says the stop of a turn, and the first sentence of a reply at most 160 characters', () => {
+    const [stopped] = turnsOf([prompt('Go', 0), end(9, true)], IDLE);
+    const long = 'a'.repeat(400);
+    if (stopped === undefined) throw new Error('a turn');
+    expect(spokenOf([stopped])?.words).toBe('Stopped.');
+    expect(spokenOf(turnsOf([prompt('Go', 0), reply(long, 3), end(3)], IDLE))?.words).toHaveLength('Agent replied: '.length + 160);
   });
 });
