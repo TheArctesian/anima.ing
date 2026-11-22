@@ -7,9 +7,12 @@
     max: number;
     /** Called with the width that the person asks for; the panel holds it to its limits. */
     onresize: (width: number) => void;
+    /** The name of the edge and its narrowest width; the file explorer has its own (report 05, Section 2.9). */
+    label?: string;
+    min?: number;
   }
 
-  const { width, max, onresize }: Props = $props();
+  const { width, max, onresize, label = 'Resize the panel', min = MIN_WIDTH }: Props = $props();
   let dragging = $state(false);
 
   // The panel is at the right of the window, so its width is the distance from the pointer to the right edge of the row.
@@ -38,7 +41,7 @@
       event.key === 'ArrowLeft' ? width + KEY_STEP
       : event.key === 'ArrowRight' ? width - KEY_STEP
       : event.key === 'Home' ? max
-      : event.key === 'End' ? MIN_WIDTH
+      : event.key === 'End' ? min
       : null;
     if (to === null) return;
     event.preventDefault();
@@ -57,9 +60,9 @@
   class:dragging
   role="separator"
   aria-orientation="vertical"
-  aria-label="Resize the panel"
+  aria-label={label}
   aria-valuenow={Math.round(width)}
-  aria-valuemin={MIN_WIDTH}
+  aria-valuemin={min}
   aria-valuemax={Math.round(max)}
   tabindex="0"
   {onpointerdown}
