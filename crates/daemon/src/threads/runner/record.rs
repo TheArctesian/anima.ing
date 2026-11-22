@@ -120,7 +120,8 @@ impl Runner {
     /// updates of that run.
     pub(super) fn restore(&mut self, saved: Vec<Saved>) {
         for saved in saved {
-            let codex = calls::codex_of(&saved.row, saved.effort);
+            let daemon = self.dir.parent().unwrap_or(&self.dir);
+            let codex = calls::codex_of(&saved.row, saved.effort, daemon);
             let mut thread = Thread::restore(saved, codex);
             // A thread of a record from before TH112 learns where it works; the branch is read
             // again at the end of its next turn.
