@@ -31,7 +31,7 @@ function engineOf(over: Partial<ComposerEngine> = {}): { engine: ComposerEngine;
     pick: CAN,
     catalogue: pickerCatalogue,
     choice: pickerChoice,
-    choose: () => undefined,
+    choose: () => Promise.resolve({ ok: true }),
     sources: FIXTURE_SOURCES,
     ...over,
   };
@@ -227,5 +227,36 @@ describe('what the card tells the engine of the queued message that is open', ()
     card.dispose();
     // A composer that goes away with a message open does not let the queue send its old words.
     expect(opened).toEqual(['q1', null, 'q1', null, 'q1', null, 'q1', 'left open']);
+  });
+});
+
+describe('a new choice of the picker', () => {
+  it('goes to the engine, and the words of a refusal go under the editor', async () => {
+    const { engine } = engineOf({ choose: () => Promise.resolve({ ok: false, words: 'Codex has no plan mode.' }) });
+    const card = new CardState(() => engine, undefined, '⌘');
+    await card.choose(pickerChoice);
+    expect(card.problem).toBe('Codex has no plan mode.');
+    const quiet = new CardState(() => engineOf().engine, undefined, '⌘');
+    await quiet.choose(pickerChoice);
+    expect(quiet.problem).toBeNull();
+  });
+});
+
+describe('a choice that the program takes at its next turn', () => {
+  it('is shown as asked until the chat says a different choice, and not at all when it was refused', async () => {
+    const { engine } = engineOf();
+    const card = new CardState(() => engine, undefined, '⌘');
+    const asked = { ...pickerChoice, mode: 'full-access' };
+    await card.choose(asked);
+    expect(card.shownChoice(pickerChoice)).toEqual(asked);
+    card.settled(pickerChoice);
+    expect(card.shownChoice(pickerChoice)).toEqual(asked);
+    const taken = { ...pickerChoice, mode: 'plan' };
+    card.settled(taken);
+    expect(card.shownChoice(taken)).toEqual(taken);
+    const refuses = engineOf({ choose: () => Promise.resolve({ ok: false, words: 'Codex has no plan mode.' }) });
+    const refused = new CardState(() => refuses.engine, undefined, '⌘');
+    await refused.choose(asked);
+    expect(refused.shownChoice(pickerChoice)).toEqual(pickerChoice);
   });
 });

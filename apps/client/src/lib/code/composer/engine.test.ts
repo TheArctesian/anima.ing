@@ -132,3 +132,21 @@ describe('the engine over the queue of the runner', () => {
     expect((await engine.enqueue({ prompt: 'x', attachments: [] })).ok).toBe(false);
   });
 });
+
+describe('the engine over the set call of the runner', () => {
+  it('cannot change the choice without the call, and asks the runner with it', async () => {
+    expect(runEngine(row, calls, null).pick.can).toBe(false);
+    const asked: unknown[] = [];
+    const onSet = (change: unknown) => {
+      asked.push(change);
+      return Promise.resolve(asked.length === 1 ? { ok: true as const, outcome: { outcome: 'ok' as const } } : { ok: false as const, words: 'Claude Code cannot change the effort after the start.' });
+    };
+    const engine = runEngine(row, { ...calls, onSet }, null);
+    expect(engine.pick.can).toBe(true);
+    expect(engine.sources.commands.find((command) => command.name === 'model')?.available.can).toBe(true);
+    expect(await engine.choose(engine.choice)).toEqual({ ok: true });
+    expect(await engine.choose({ ...engine.choice, mode: 'full-access' })).toEqual({ ok: true });
+    expect(await engine.choose({ ...engine.choice, mode: 'plan' })).toEqual({ ok: false, words: 'Claude Code cannot change the effort after the start.' });
+    expect(asked).toEqual([{ mode: 'full_access' }, { mode: 'plan' }]);
+  });
+});
