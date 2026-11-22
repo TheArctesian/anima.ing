@@ -5,7 +5,8 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use agent_threads::drive::{
-    CodexDecoder, CodexInput, CodexTurn, Effort, Mode, Model, Prompt, TurnSettings,
+    CodexDecoder, CodexInput, CodexPlace, CodexTurn, Effort, KeptFolder, Mode, Model, Prompt,
+    TurnSettings,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -24,6 +25,10 @@ enum Call {
 pub struct Codex {
     pub decoder: CodexDecoder,
     folder: PathBuf,
+    /// The folder of Anima in `folder`, which the sandbox keeps read-only (THR-041).
+    kept: Option<KeptFolder>,
+    /// The profile that keeps it is in force: no turn has sent a policy of its own yet.
+    keeps: bool,
     mode: Mode,
     model: Option<Model>,
     effort: Option<Effort>,
@@ -57,6 +62,8 @@ impl Codex {
         Self {
             decoder: CodexDecoder::new(),
             folder,
+            kept: None,
+            keeps: false,
             mode,
             model,
             effort,
@@ -71,11 +78,22 @@ impl Codex {
         }
     }
 
+    /// The folder of Anima that the folder of the thread holds: a start in the sandbox of the
+    /// folder keeps it read-only (THR-041).
+    #[must_use]
+    pub fn keeping(mut self, kept: Option<KeptFolder>) -> Self {
+        self.keeps = kept.is_some() && self.mode.folder_sandbox();
+        self.kept = kept;
+        self
+    }
+
     /// A server that the holder kept while the daemon started again: its thread is known.
     #[must_use]
     pub fn known(mut self, thread: Option<String>, turn: Option<String>, changed: Changed) -> Self {
         self.thread = thread;
         self.turn = turn;
+        // A changed mode may have sent a policy of its own, which took the place of the profile.
+        self.keeps = self.keeps && changed.mode.is_none();
         self.changed = changed;
         self.next = 1_000_000;
         self
@@ -116,7 +134,10 @@ impl Codex {
             model: self.changed.model.as_ref(),
             effort: self.effort,
             mode: self.changed.mode,
+            keeps: self.keeps,
         };
+        // Each policy but that of the folder takes the place of the profile, for good.
+        self.keeps = self.keeps && self.changed.mode.is_none_or(Mode::folder_sandbox);
         vec![CodexInput::turn_start(id, &thread, prompt, &turn)]
     }
 
@@ -216,7 +237,15 @@ impl Codex {
                 let models = self.call(Call::Other);
                 Ok(vec![
                     CodexInput::initialized(),
-                    CodexInput::thread_start(id, &self.folder, self.mode, self.model.as_ref()),
+                    CodexInput::thread_start(
+                        id,
+                        CodexPlace {
+                            folder: &self.folder,
+                            kept: self.kept.as_ref(),
+                        },
+                        self.mode,
+                        self.model.as_ref(),
+                    ),
                     // The account and its limits stay at the machine (THR-051, THR-132).
                     CodexInput::account_read(account),
                     CodexInput::account_limits_read(limits),

@@ -724,14 +724,14 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
         <section class="card" aria-label="Traffic, 24 hours"><div class="stat"><div><span class="label">Requests</span><b>220</b></div><div><span class="label">In</span><b>1 MB</b></div><div><span class="label">Out</span><b>9 MB</b></div><div><span class="label">Refused</span><b>0</b></div></div></section>
         <section class="card" aria-label="Remove" style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3)">
           <div><b style="font-weight: 500">Remove this route</b><p class="note">The hub forgets vault.example.com, its certificate and its key. Delete the DNS records yourself.</p></div>
-          <div class="toolbar" style="gap: var(--space-3); flex-wrap: wrap"><span class="sec">Code of your authenticator</span><div class="otp" role="group" aria-label="Code of your authenticator"><i>4</i><i>8</i><i class="now"></i><i></i><i></i><i></i></div><span class="grow"></span><button class="btn" type="button">Cancel</button><button class="btn danger" type="button" aria-disabled="true" style="opacity: 0.5">Remove route</button></div>
+          <div class="toolbar" style="gap: var(--space-3); flex-wrap: wrap"><span class="grow"></span><button class="btn danger" type="button">Remove route</button></div>
         </section>
       </div>
     </div>
   </div>
 </main>
 </div>
-<figcaption>Frame 3, dark: the details of one route. Make public asks for the second factor and is disabled while the consent at the machine is not given (OD-HOST-43). The checks in the order of ApplicationRouteWait, Check now (checkApplicationRoute), the traffic, and Remove, which asks for the code of the authenticator before it removes the name, its certificate and its key (removeApplicationRoute).</figcaption>
+<figcaption>Frame 3, dark: the details of one route. Make public asks for the second factor and is disabled while the consent at the machine is not given (OD-HOST-43). The checks in the order of ApplicationRouteWait, Check now (checkApplicationRoute), the traffic, and Remove, which asks to confirm in a dialog before it removes the name, its certificate and its key (removeApplicationRoute). Removing needs only the signed-in person, with no code and no approval on the phone: a removal only takes reach away (ruling of 2026-11-22).</figcaption>
 </figure>
 <figure>
 <div class="v2" data-theme="dark" style="width: 1280px; height: 1060px;">
@@ -961,7 +961,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
         <section class="card" aria-label="Traffic, 24 hours"><div class="stat"><div><span class="label">Requests</span><b>220</b></div><div><span class="label">In</span><b>1 MB</b></div><div><span class="label">Out</span><b>9 MB</b></div><div><span class="label">Refused</span><b>0</b></div></div></section>
         <section class="card" aria-label="Remove" style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3)">
           <div><b style="font-weight: 500">Remove this route</b><p class="note">The hub forgets vault.example.com, its certificate and its key. Delete the DNS records yourself.</p></div>
-          <div class="toolbar" style="gap: var(--space-3); flex-wrap: wrap"><span class="sec">Code of your authenticator</span><div class="otp" role="group" aria-label="Code of your authenticator"><i>4</i><i>8</i><i class="now"></i><i></i><i></i><i></i></div><span class="grow"></span><button class="btn" type="button">Cancel</button><button class="btn danger" type="button" aria-disabled="true" style="opacity: 0.5">Remove route</button></div>
+          <div class="toolbar" style="gap: var(--space-3); flex-wrap: wrap"><span class="grow"></span><button class="btn danger" type="button">Remove route</button></div>
         </section>
       </div>
     </div>

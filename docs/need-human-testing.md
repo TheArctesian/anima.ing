@@ -38,6 +38,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-133 | The public names of applications through the route proxy, on a real network (task H21) | A hub that a person hosts with ports 80 and 443 open, a domain name with its DNS, a machine on the link with a web application, and a second hub | Open |
 | HT-134 | Streams of TCP and UDP and the access of a route on a real network (task H40) | A hub that a person hosts, a machine on its network with a test TCP service and an IMAPS server, a device of the network of Anima and a device that is not on it | Open |
 | HT-136 | The section Routes of Settings beside its mockup, and against a real hub (task H21) | The client of the branch `hosted/routes-section` signed in to a test hub on Linux, a second factor on the account, a domain name with its DNS | Open |
+| HT-145 | A Codex thread in the home folder cannot write in the folder of the daemon (THR-041) | A Mac with `codex` 0.170 signed in, the daemon of the branch `threads/start-warns` with a test state folder in the home folder | Open |
 | HT-135 | The mockup of the section Routes of the hub (tasks H21 and H40), approved overnight by the orchestrator | A browser | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
@@ -477,6 +478,30 @@ executable. No person looked at what such a daemon reports.
    `/usr/local/bin` show. Tools in the home folder of a user do not show.
 4. Write down each tool that shows as "not usable" and its reason. `node` and `bun` are
    possible.
+
+Result: Open.
+
+### HT-145: a Codex thread in the home folder cannot write in the folder of the daemon (THR-041)
+
+Built: on the branch `threads/start-warns`, the start of a Codex thread in Accept edits or Ask in a folder
+that holds the folder of the daemon sends a profile of permissions that makes that folder read-only. A
+test of `codex sandbox` with the same profile was refused a write in the folder (2026-11-22), and
+`thread/start` answered with the profile in force. No test ran a turn of a model, because that uses the
+account of the person.
+
+1. Start the daemon of this build with `ANIMA_DAEMON_HOME` set to a new folder in the home folder, for
+   example `~/anima-test-state`. Do not use the folder of the installed application.
+2. Start a Codex thread in the home folder in Ask. Expected: before the start, a warning that names
+   `~/anima-test-state`.
+3. Send the prompt "Run: touch ~/anima-test-state/probe". Allow the command. Expected: the command
+   fails with "Operation not permitted", and the file is not there.
+4. Send the prompt "Run: touch ~/probe-ok". Expected: the file is made. Delete it.
+5. Change the mode to Full access, send a prompt, change it back to Ask, and do step 3 again. Expected:
+   the file is made (the profile is gone, as THR-041 says). Delete it.
+6. Write `sandbox_mode = "danger-full-access"` in `~/.codex/config.toml` (keep a copy of the file first).
+   Start a new Codex thread in the home folder in Ask and do step 3 again. Expected: "Operation not
+   permitted". Put the old file back.
+7. Delete `~/anima-test-state` when the daemon has stopped.
 
 Result: Open.
 
@@ -2806,7 +2831,7 @@ VoiceOver in WebKit, and how often it speaks during a long turn.
 
 Built on the branch `hosted/routes-section`: the section Routes of the Settings page, in the group Hub and account
 (`apps/client/src/lib/application-routes/`). The vitest tests use fake calls of the hub: they prove each state of the
-list, the page of a route, the refusals of the hub that the section shows, Check now, Check all, and Remove off with its reason. No person
+list, the page of a route, the refusals of the hub that the section shows, Check now, Check all and Remove. No person
 looked at the screen, and no picture of it was compared with the frames of [routes/index.html](mockup/routes/index.html):
 the screen was not run on this computer. No test used a real hub, a real DNS or a real second factor.
 
@@ -2824,8 +2849,9 @@ the screen was not run on this computer. No test used a real hub, a real DNS or 
 4. Select Copy beside the TXT value and paste it in a text editor. Expected: the same value as `anima route show`.
 5. Select Check now with an account that has no second factor. Expected: the refusal of the hub under the title. Turn
    on the second factor and select Check now again. Expected: the time of the check changes.
-6. Look at Remove route on the page of the route. Expected: it is off, with the line that removing a route needs a
-   fresh code of your second factor, which the hub cannot check yet. Selecting it opens nothing.
+6. With an account that has no second factor, select Remove route, then Remove route in the dialog. Expected: no
+   code is asked; the list without the route; `anima route list` does not show it; the history of the device has one
+   entry that names the removed route, its access and its port.
 7. On a hub that is not on Linux (for example a test hub on macOS), select Check all. Expected: "Routing needs a hub
    on Linux." in place of the list.
 

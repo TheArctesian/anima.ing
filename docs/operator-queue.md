@@ -325,7 +325,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (114)
+## 4. Checks that only the operator can do (115)
 
 | Check | What |
 | --- | --- |
@@ -341,6 +341,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-121 | the hardware values agree with what each system shows |
 | HT-004 | no window of Apple on a Mac without the developer tools |
 | HT-005 | the tool inventory of a daemon that runs as a system unit |
+| HT-145 | a Codex thread in the home folder cannot write in the folder of the daemon (THR-041) |
 | HT-006 | the probes of `claude` and `codex` leave the account alone |
 | HT-007 | the pinned Rust version on the Linux computer |
 | HT-008 | a macOS release build with the pinned Rust version |
