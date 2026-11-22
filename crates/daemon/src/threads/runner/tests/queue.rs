@@ -213,3 +213,81 @@ fn th109_two_prompts_sent_before_the_program_says_it_runs_are_two_turns() {
     );
     assert_eq!(prompts(&line(&mut thread, DONE)), ["later"]);
 }
+
+#[test]
+fn th109_a_queued_prompt_that_did_not_go_waits_again_first_with_its_id() {
+    let mut thread = held_claude();
+    line(&mut thread, IDLE);
+    let (first, second) = (Uuid::from_u128(1), Uuid::from_u128(2));
+    thread.begin("busy");
+    queue(&mut thread, 1, "first");
+    queue(&mut thread, 2, "second");
+    let (text, _) = thread.take_queued(second).expect("taken");
+    assert!(thread.put_back(second, text).is_some());
+    let ids: Vec<Uuid> = thread.row.queued.iter().map(|queued| queued.id).collect();
+    assert_eq!(ids, [second, first]);
+    assert!(
+        thread.put_back(second, "again".to_owned()).is_none(),
+        "a prompt waits once"
+    );
+    thread.exited(Some(0), None);
+    assert!(
+        thread.put_back(first, "late".to_owned()).is_none(),
+        "a stop ends the queue"
+    );
+}
+
+#[test]
+fn th109_a_queued_prompt_that_went_by_itself_and_was_refused_waits_and_the_queue_stops() {
+    let mut thread = held_claude();
+    queue(&mut thread, 1, "next");
+    let steps = line(&mut thread, DONE);
+    let went: Vec<_> = steps
+        .iter()
+        .filter_map(|step| match step {
+            Step::Queued(queued) => Some((queued.id, queued.text.clone())),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(went, [(Uuid::from_u128(1), "next".to_owned())]);
+    assert!(
+        !steps
+            .iter()
+            .any(|step| matches!(step, Step::Change(Change::Prompt { .. }))),
+        "shown as sent only when the holder took it"
+    );
+    // The holder refused the line: the turn does not come and the prompt waits again.
+    thread.not_sent(true);
+    assert_eq!(thread.turns_waiting(), 0);
+    assert!(
+        thread
+            .put_back(Uuid::from_u128(1), "next".to_owned())
+            .is_some()
+    );
+    assert_eq!(
+        prompts(&line(&mut thread, IDLE)),
+        NONE,
+        "it does not go again by itself"
+    );
+    thread
+        .send(&agent_threads::drive::Prompt::plain("mine"), true)
+        .expect("sent");
+    assert_eq!(prompts(&line(&mut thread, DONE)), ["next"]);
+}
+
+#[test]
+fn th109_a_prompt_of_the_person_that_was_refused_lets_the_queue_go_on() {
+    let mut thread = held_claude();
+    line(&mut thread, DONE);
+    line(&mut thread, IDLE);
+    thread
+        .send(&agent_threads::drive::Prompt::plain("mine"), true)
+        .expect("sent");
+    assert_eq!(
+        prompts(&queue(&mut thread, 1, "next")),
+        NONE,
+        "it waits for mine"
+    );
+    thread.not_sent(true);
+    assert_eq!(prompts(&thread.next_queued()), ["next"]);
+}

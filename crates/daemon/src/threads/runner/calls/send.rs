@@ -1,6 +1,6 @@
 //! The call `send`: a prompt to a thread, with the files that the person attached for it (TH111).
 
-use agent_threads::control::{Action, Outcome, Refusal};
+use agent_threads::control::{Action, Outcome, Queued, Refusal};
 use agent_threads::drive::Prompt;
 use uuid::Uuid;
 
@@ -15,16 +15,60 @@ use crate::threads::wire::Outcome as HolderOutcome;
 /// holds at most 32 MiB.
 const MOST_LINE_BYTES: usize = 24 * 1024 * 1024;
 
+/// Who sends a prompt.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Sender {
+    /// The person, from a client.
+    Person,
+    /// A process of an agent: its prompt does not start a stopped queue (TH109), and it cannot
+    /// take files, which only the person attaches.
+    Agent,
+    /// The person, with a prompt of the queue: it goes back to the queue when it does not go.
+    Queue(Uuid),
+}
+
+/// A prompt whose last line waits for the holder.
+#[derive(Debug)]
+pub struct SentPrompt {
+    thread: Uuid,
+    /// The call that waits for the answer; none for a prompt that the queue sent by itself.
+    pub back: Option<Caller>,
+    shown: Shown,
+    /// The files of the prompt, which wait again when the holder does not take the line.
+    files: Vec<Uuid>,
+    /// The prompt of the queue that this is, which waits again when the holder does not take
+    /// the line.
+    queued: Option<Uuid>,
+    /// The prompt counted as a turn of its own: it does not when the holder refuses it.
+    counted: bool,
+}
+
+impl SentPrompt {
+    /// A prompt that the queue sent by itself, as its next turn.
+    pub(in super::super) fn queued(thread: Uuid, queued: Queued) -> Self {
+        Self {
+            thread,
+            back: None,
+            shown: Shown {
+                text: queued.text,
+                ..Shown::default()
+            },
+            files: Vec::new(),
+            queued: Some(queued.id),
+            counted: true,
+        }
+    }
+}
+
 impl Runner {
-    /// A prompt. The client gets its answer when the holder took the line. `person` is false for
-    /// a prompt of a process of an agent: it does not start a stopped queue (TH109), and it
-    /// cannot take files, which only the person attaches.
+    /// A prompt. The client gets its answer when the holder took the line.
     pub(super) async fn send(
         &mut self,
         action: Action,
         back: Caller,
-        person: bool,
+        sender: Sender,
     ) -> Result<(), Refusal> {
+        let person = sender != Sender::Agent;
         let Action::Send {
             thread: id,
             text,
@@ -37,8 +81,8 @@ impl Runner {
             return Err(Refusal::FromAnAgent);
         }
         let prompt = self.prompt_of(id, text, &attachments)?;
-        let lines = match self.lines_for(id, &prompt, person) {
-            Ok(lines) => lines,
+        let (lines, counted) = match self.lines_for(id, &prompt, person) {
+            Ok(went) => went,
             Err(why) => {
                 self.attached.restore(id, &attachments);
                 return Err(why);
@@ -52,12 +96,17 @@ impl Runner {
                 Err(Refusal::Holder)
             }
             Ok(Some(command)) => {
-                let waits = Waits::Send {
+                let waits = Waits::Send(SentPrompt {
                     thread: id,
-                    back,
+                    back: Some(back),
                     shown,
                     files: attachments,
-                };
+                    queued: match sender {
+                        Sender::Queue(queued) => Some(queued),
+                        Sender::Person | Sender::Agent => None,
+                    },
+                    counted,
+                });
                 self.waits.insert(command, waits);
                 Ok(())
             }
@@ -96,26 +145,51 @@ impl Runner {
         Ok(prompt)
     }
 
-    /// The lines of a prompt to its thread.
+    /// The lines of a prompt to its thread, and whether it counted as a turn of its own.
     fn lines_for(
         &mut self,
         id: Uuid,
         prompt: &Prompt,
         person: bool,
-    ) -> Result<Vec<String>, Refusal> {
-        self.threads
-            .get_mut(&id)
-            .ok_or(Refusal::UnknownThread)
-            .and_then(|thread| thread.send(prompt, person))
+    ) -> Result<(Vec<String>, bool), Refusal> {
+        let thread = self.threads.get_mut(&id).ok_or(Refusal::UnknownThread)?;
+        let before = thread.turns_waiting();
+        let lines = thread.send(prompt, person)?;
+        Ok((lines, thread.turns_waiting() > before))
+    }
+
+    /// The holder answered a prompt: it is shown as sent, or refused, and its files and its
+    /// place in the queue follow; gives the thread and the answer for the client.
+    pub(in super::super) async fn prompt_answered(
+        &mut self,
+        prompt: &SentPrompt,
+        outcome: &HolderOutcome,
+    ) -> (Uuid, Outcome) {
+        let thread = prompt.thread;
+        let result = self.sent(thread, &prompt.shown, outcome).await;
+        self.files_went(thread, &prompt.files, &result);
+        if matches!(result, Outcome::Refused { .. }) {
+            // A prompt that did not go leaves no turn to wait for: the queue may go on, but not
+            // with the refused prompt of the queue itself, which waits for the person.
+            let next = self.threads.get_mut(&thread).map(|waiting| {
+                waiting.not_sent(prompt.counted);
+                if prompt.queued.is_none() {
+                    waiting.next_queued()
+                } else {
+                    Vec::new()
+                }
+            });
+            let _ = self.apply(thread, next.unwrap_or_default()).await;
+            if let Some(queued) = prompt.queued {
+                self.queued_back(thread, queued, prompt.shown.text.clone())
+                    .await;
+            }
+        }
+        (thread, result)
     }
 
     /// The holder answered a prompt: it is shown as sent, or refused.
-    pub(in super::super) async fn sent(
-        &mut self,
-        id: Uuid,
-        shown: &Shown,
-        outcome: &HolderOutcome,
-    ) -> Outcome {
+    async fn sent(&mut self, id: Uuid, shown: &Shown, outcome: &HolderOutcome) -> Outcome {
         if let Some(why) = taken(outcome) {
             return Outcome::Refused { why };
         }
@@ -126,7 +200,7 @@ impl Runner {
 
     /// The files of a prompt stay where the program reads them when it went, and wait again
     /// when it was refused.
-    pub(in super::super) fn files_went(&mut self, thread: Uuid, files: &[Uuid], result: &Outcome) {
+    fn files_went(&mut self, thread: Uuid, files: &[Uuid], result: &Outcome) {
         if matches!(result, Outcome::Refused { .. }) {
             self.attached.restore(thread, files);
         } else {

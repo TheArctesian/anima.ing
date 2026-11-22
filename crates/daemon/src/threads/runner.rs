@@ -63,13 +63,7 @@ enum Waits {
         back: Caller,
     },
     /// The last line of a prompt; the prompt is shown as sent when the holder takes it.
-    Send {
-        thread: Uuid,
-        back: Caller,
-        shown: thread::Shown,
-        /// The files of the prompt, which wait again when the holder does not take the line.
-        files: Vec<Uuid>,
-    },
+    Send(calls::SentPrompt),
     /// The line of an answer; the request closes when the holder takes it (THR-030).
     Answer(Pending),
 }
@@ -265,11 +259,12 @@ impl Runner {
     }
 
     /// Does a step of a thread that is not a command to the holder.
-    fn own_step(&mut self, id: Uuid, step: Step) {
+    fn own_step(&mut self, id: Uuid, step: Step, last_write: Option<u64>) {
         let program = self.threads.get(&id).map(|thread| thread.row.program);
         match (step, program) {
             (Step::Log(what), _) => self.note(Kind::Stop, Some(id), what),
             (Step::Change(change), _) => self.publish(id, change),
+            (Step::Queued(queued), _) => self.queued_went(id, queued, last_write),
             (Step::Account(facts), Some(program)) => {
                 self.said.accounts.note(program, *facts, chrono::Utc::now());
             }
@@ -300,7 +295,7 @@ impl Runner {
                 if step == Step::Workspace {
                     self.look_at_workspace(id).await;
                 }
-                self.own_step(id, step);
+                self.own_step(id, step, last_write);
                 continue;
             };
             let write = matches!(action, Action::Write { .. });
