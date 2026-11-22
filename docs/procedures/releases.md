@@ -119,7 +119,22 @@ Windows job requires Authenticode signing; the installer and sidecars must have 
 timestamped publisher signature. The isolated `sign` job then adds the Tauri updater
 signature after all platform jobs pass. The publish job checks hashes and signatures
 before it writes the versioned files, then writes `windows-x86_64/latest.json` last.
-Windows participates in the release decision, including recovery from a missing feed.
+
+**The switch of Windows.** The Windows part of the `release` workflow runs only while the repository variable
+`ANIMA_PUBLIC_WINDOWS` is `on`. While it is not `on` (unset, or any other value), the job
+`windows` does not run, in a release or in a trial, and no job needs its files: a release
+signs, checks and publishes macOS and Linux, and writes no `windows-x86_64/latest.json` and no
+`anima/<version>/anima-windows-x86_64.zip`. The release decision then does not read the
+Windows feed, so a missing Windows feed does not make each push to `main` a release. While
+the switch is `on`, Windows takes part in the release decision, including recovery from a
+missing feed: while no Windows feed exists, the next push to `main` is a release of each platform.
+The site (repository `anima-site`, `src/lib/release/release.ts`) lists only macOS and Linux,
+and on 2026-11-22 no Windows feed was ever published, so no Windows client reads a feed that a
+release leaves out. The trials of Windows that `gates` runs for `dev` and each train do not
+read this switch. If the switch is set to `on` and later removed again, the Windows feed stays
+at its last version and its clients get no update until the switch is `on` again. To build Windows again, the operator first puts
+the two secrets below in `release-windows`, then sets
+`gh variable set ANIMA_PUBLIC_WINDOWS --body on --repo TheArctesian/anima.ing`.
 
 Before a signed trial, the operator configures environment `release-windows` with
 `WINDOWS_CERTIFICATE` (base64 PFX containing one code-signing private key) and
@@ -219,6 +234,7 @@ Read from GitHub on 2026-11-19 with `gh`. The operator, or the orchestrating ses
 | Branch rule set `main line` | Active since 2026-11-19 (id 27625577). Target `main`. Deletions are restricted and force pushes are blocked. No bypass. The orchestrating session made it on the instruction of the operator |
 | Branch `dev` | Exists since 2026-11-19, made at `eb226c8d` |
 | Variable `ANIMA_PUBLIC_RELEASES` | Does not exist: public releases are off |
+| Variable `ANIMA_PUBLIC_WINDOWS` | Does not exist on 2026-11-22: each release and each trial leaves Windows out ("The switch of Windows") |
 | Environment `release` | Permits the branch `main` and tags `v*`. No required reviewer. Administrators can bypass |
 | Environment `release-sign` | Permits the branch `main` and tags `v*`. No required reviewer. Administrators can bypass |
 | Environment `release-publish` | Permits tags `v*` only (rule id 67371066); the jobs `bucket` and `publish` of a run of `main` are refused until the branch `main` is added ("To switch public releases on"). No required reviewer. Administrators can bypass |
