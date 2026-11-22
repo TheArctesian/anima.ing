@@ -200,7 +200,7 @@ describe('the clipboard', () => {
     box.focus();
     const file = new File(['x'], 'shot.png');
     expect(clipboard(box, 'paste', { files: [file], text: 'shot.png' }).event.defaultPrevented).toBe(true);
-    expect(onFiles).toHaveBeenCalledWith([file], 'paste');
+    expect(onFiles).toHaveBeenCalledWith([file], 'paste', 0);
     expect(props.value).toBe('');
   });
 

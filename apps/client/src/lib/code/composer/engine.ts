@@ -8,6 +8,7 @@ import type { Catalogue, Choice } from './picker/catalogue';
 import type { HeldQueue, QueuePhase } from './queue/held.svelte';
 import type { Queued } from './queue/queue';
 import { catalogueOf, changeOf, type EffortOfRow, type ProgramModel, type SetCall } from './run/choice';
+import { upload, type AttachCall, type Sendable, type Uploaded, type UploadWatch } from './run/upload';
 
 /** How a call to the engine ended; the words of a failure go under the editor. */
 export type Outcome = { readonly ok: true } | { readonly ok: false; readonly words: string };
@@ -33,6 +34,10 @@ export interface ComposerEngine {
   /** Stops the running turn; the program stays. */
   readonly interrupt: () => Promise<Outcome>;
   readonly attach: Can;
+  /** Gives a file to the program's side, part by part; left out by an engine that needs no file before the send. */
+  readonly upload?: (file: Sendable, mime: string, watch: UploadWatch) => Promise<Uploaded>;
+  /** Gives up a file that was given and will not go with a message. */
+  readonly discard?: (remote: string) => void;
   readonly dictate: Can;
   /** A message into the running turn. */
   readonly steer: Can;
@@ -62,8 +67,11 @@ export interface ComposerEngine {
 
 /** The three calls of the runner for a chat that it drives. */
 export interface RunCalls {
-  readonly onSend: (text: string) => Promise<CallResult>;
+  /** `files`: the ids of the runner for the files of this prompt (TH111); left out when it has none. */
+  readonly onSend: (text: string, files?: readonly string[]) => Promise<CallResult>;
   readonly onInterrupt: () => Promise<CallResult>;
+  /** The runner's `attach`, `attach_more` and `unattach` for this chat (TH111); without them nothing is attached. */
+  readonly onAttach?: AttachCall | undefined;
   /** The calls of the runner's own queue (`live.call`), for the chat of this composer; without them the window holds the queue. */
   readonly onQueue?: QueueCall | undefined;
   /** The runner's `set` call for this chat (TH110); without it the model and the permissions cannot be changed. */
@@ -111,6 +119,7 @@ function searching(search: FileSearch, lists: MentionSources): MentionSources {
 }
 
 const NO_ATTACH = 'The runner takes no attachments yet.';
+const NO_FILES_QUEUED: Outcome = { ok: false, words: 'A message that waits in the queue takes no files yet. Remove the files, or send the message into the running turn.' };
 const NO_DICTATE = 'Voice input is not built yet.';
 const NO_QUEUE_WORDS = 'The runner keeps no queue yet: a message goes into the running turn.';
 const STOPPED_TURN = 'The last turn was stopped, so the queue waits. Send a message, or press Send now.';
@@ -193,7 +202,7 @@ function queueOf(queue: HeldQueue, running: boolean, send: (prompt: string) => P
 
 /**
  * The engine of a chat that the runner of this computer drives (TH14). It sends, steers and interrupts. It queues in
- * the runner when the page gives the runner's queue calls, else in this window. It has no attachments and no dictation; it changes the
+ * the runner when the page gives the runner's queue calls, else in this window. It attaches when the page gives the runner's file calls; it has no dictation; it changes the
  * mode and the effort when the page gives the runner's `set` call; it searches the chat's folder when the page gives it the runner's file list.
  *
  * The queue is given, not looked up here: state that is made inside the computation that reads it is not followed.
@@ -201,6 +210,14 @@ function queueOf(queue: HeldQueue, running: boolean, send: (prompt: string) => P
 export function runEngine(row: RunRow & QueueOfRow & EffortOfRow, calls: RunCalls, queue: HeldQueue | null): ComposerEngine {
   const phase = phaseOf(row);
   const send = async (prompt: string): Promise<Outcome> => outcomeOf(await calls.onSend(prompt));
+  const sendAll = async (message: Message): Promise<Outcome> => {
+    const files = message.attachments.flatMap((attachment) => (attachment.remote === undefined ? [] : [attachment.remote]));
+    const outcome = files.length === 0 ? await send(message.prompt) : outcomeOf(await calls.onSend(message.prompt, files));
+    // The person started a turn themself: the queue goes on after it.
+    if (outcome.ok) queue?.release();
+    return outcome;
+  };
+  const attach = calls.onAttach;
   const set = calls.onSet;
   const lists = set === undefined ? SOURCES : SOURCES_SET;
   // The runner's own queue when the page gives its calls (TH109); else the one this window holds; else none.
@@ -208,22 +225,21 @@ export function runEngine(row: RunRow & QueueOfRow & EffortOfRow, calls: RunCall
   return {
     phase,
     ended: phase === 'ended' ? (row.ended ?? 'The program of this chat ended.') : null,
-    send: async (message) => {
-      const outcome = await send(message.prompt);
-      // The person started a turn themself: the queue goes on after it.
-      if (outcome.ok) queue?.release();
-      return outcome;
-    },
+    send: sendAll,
     interrupt: async () => {
       queue?.hold(STOPPED);
       const outcome = outcomeOf(await calls.onInterrupt());
       if (!outcome.ok && queue?.waits === STOPPED) queue.release();
       return outcome;
     },
-    attach: cannot(NO_ATTACH),
+    attach: attach === undefined ? cannot(NO_ATTACH) : CAN,
+    ...(attach === undefined ? {} : { upload: (file, mime, watch) => upload(attach, file, mime, watch), discard: (remote) => void attach({ call: 'unattach', attachment: remote }).catch(() => undefined) }),
     dictate: cannot(NO_DICTATE),
     steer: CAN,
     ...queued,
+    // The queue of the runner and the one of this window hold words only. With no turn on, a message that would wait goes now, with its files.
+    enqueue: (message) => (message.attachments.length === 0 ? queued.enqueue(message) : phase === 'running' ? Promise.resolve(NO_FILES_QUEUED) : sendAll(message)),
+    requeue: (id, message) => (message.attachments.length === 0 ? queued.requeue(id, message) : Promise.resolve(NO_FILES_QUEUED)),
     pick: set === undefined ? cannot(NO_PICK) : CAN,
     ...catalogueOf(row, set !== undefined, calls.models),
     choose: async (next) => {

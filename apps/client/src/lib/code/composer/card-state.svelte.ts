@@ -1,11 +1,15 @@
-import { admit, attachmentOf, type Attachment } from './attachments/attach';
+import { admit, attachmentOf, REFUSAL, type Attachment, type AttachmentState } from './attachments/attach';
 import type { ComposerEngine, Message, Outcome } from './engine';
 import type { Choice } from './picker/catalogue';
+import { shownName } from './run/shown-name';
 import { sendFace, stopAfter, STOP_LANDED_MS, STOP_PENDING_MS, type FollowUp, type SendFace, type StopPhase, type Turn } from './primary/send';
 
 /** The unsent text of each chat, by the key its page gives: it outlives the composer while the window is open. */
 // eslint-disable-next-line svelte/prefer-svelte-reactivity -- read once when a composer is made, never by an effect
 const kept = new Map<string, { readonly prompt: string; readonly attachments: readonly Attachment[] }>();
+
+/** One count for every composer: a draft that is opened again keeps its files, and a new file must not take the id of one of them. */
+let serial = 0;
 
 const STILL_READING = 'An attachment is still being read.';
 const FAILED_FILE = 'Remove the attachment that failed, then send.';
@@ -44,7 +48,9 @@ export class CardState {
   #aside: Message | null = null;
   #before: Choice | null = null;
   #timer: ReturnType<typeof setTimeout> | undefined;
-  #serial = 0;
+  /** The files go to the runner one after the other: a part is 2 MiB, and a hundred files at one time would hold them all in memory. */
+  #line: Promise<void> = Promise.resolve();
+  #gone = false;
 
   constructor(engine: () => ComposerEngine, key: string | undefined, modifier: string) {
     this.#engine = engine;
@@ -53,7 +59,9 @@ export class CardState {
     const draft = key === undefined ? undefined : kept.get(key);
     if (draft !== undefined) {
       this.prompt = draft.prompt;
-      this.attachments = draft.attachments;
+      // A file that was on its way when the composer went stopped there.
+      release(draft.attachments.filter((attachment) => attachment.state.state === 'reading'));
+      this.attachments = draft.attachments.filter((attachment) => attachment.state.state !== 'reading');
     }
   }
 
@@ -115,7 +123,8 @@ export class CardState {
       return;
     }
     const typed = this.prompt === (editing === null ? '' : (aside?.prompt ?? '')) ? '' : this.prompt;
-    this.#fill({ prompt: typed === '' ? message.prompt : `${message.prompt}\n${typed}`, attachments: message.attachments });
+    // What was attached while the message was on its way stays, after the files of the message.
+    this.#fill({ prompt: typed === '' ? message.prompt : `${message.prompt}\n${typed}`, attachments: [...message.attachments, ...this.attachments] });
     if (editing === null) return;
     this.editing = editing;
     this.#aside = aside;
@@ -146,7 +155,10 @@ export class CardState {
    */
   orphaned(): void {
     if (this.editing === null) return;
-    if (this.#aside !== null && (this.#aside.prompt !== '' || this.#aside.attachments.length > 0)) this.#fill(this.#aside);
+    if (this.#aside !== null && (this.#aside.prompt !== '' || this.#aside.attachments.length > 0)) {
+      this.#giveUp(this.attachments);
+      this.#fill(this.#aside);
+    }
     this.#endEdit();
     this.#engine().opened?.(null);
     this.keep();
@@ -155,23 +167,66 @@ export class CardState {
   /** The composer goes away: no timer of it fires after, and the queue is told that a message was left open. */
   dispose(): void {
     clearTimeout(this.#timer);
-    if (this.editing !== null) this.#engine().abandoned?.();
+    if (this.editing !== null) {
+      this.#engine().abandoned?.();
+      // The change of the queued message is lost, and with it the files that were attached to it.
+      this.#giveUp(this.attachments);
+      this.attachments = [];
+    }
+    // A file that is on its way stops at its next part: the page sends for the chat that is open, and that one changed.
+    this.#gone = true;
+    const unsent = this.attachments.filter((attachment) => attachment.state.state === 'reading');
+    if (unsent.length === 0) return;
+    release(unsent);
+    this.attachments = this.attachments.filter((attachment) => !unsent.includes(attachment));
+    this.keep();
   }
 
-  add(files: readonly File[]): void {
+  /** Attaches the files that fit; `folders`: how many folders came with them, which are refused with words. */
+  add(files: readonly File[], folders = 0): void {
     const { taken, refused } = admit(this.attachments, files);
+    const sends = this.#engine().upload !== undefined;
     const made = taken.map((entry) => {
-      this.#serial += 1;
+      serial += 1;
       const preview = entry.kind === 'image' || entry.kind === 'video' ? URL.createObjectURL(entry.file) : null;
-      return attachmentOf(entry, `a${String(this.#serial)}`, preview);
+      // The name that the program is told, not the one of the file: the two differ for a name with marks that hide.
+      const made = attachmentOf(entry, `a${String(serial)}`, preview, sends ? { state: 'reading', sent: 0 } : { state: 'ready' });
+      return { ...made, name: shownName(made.name) };
     });
     this.attachments = [...this.attachments, ...made];
-    this.problem = refused.at(-1)?.words ?? null;
+    this.problem = refused.at(-1)?.words ?? (folders > 0 ? REFUSAL.folders(folders) : null);
+    if (!sends) return;
+    made.forEach((attachment, at) => {
+      const file = taken[at]?.file;
+      // A file that throws does not stop the files after it.
+      if (file !== undefined) this.#line = this.#line.then(() => this.#upload(attachment, file)).catch(() => undefined);
+    });
   }
 
   remove(id: string): void {
-    release(this.attachments.filter((attachment) => attachment.id === id));
+    this.#giveUp(this.attachments.filter((attachment) => attachment.id === id));
     this.attachments = this.attachments.filter((attachment) => attachment.id !== id);
+  }
+
+  /** Files that will not go: their previews are freed, and the runner is told of each that it holds, so that it does not wait there. */
+  #giveUp(attachments: readonly Attachment[]): void {
+    release(attachments);
+    for (const attachment of attachments) if (attachment.remote !== undefined) this.#engine().discard?.(attachment.remote);
+  }
+
+  /** Gives one file to the engine and writes how it went on its attachment; a file that was removed meanwhile is given up by the engine. */
+  async #upload(attachment: Attachment, file: File): Promise<void> {
+    const held = (): boolean => !this.#gone && this.attachments.some((other) => other.id === attachment.id);
+    const write = (state: AttachmentState, remote?: string): void => {
+      if (held()) this.attachments = this.attachments.map((other) => (other.id === attachment.id ? { ...other, state, ...(remote === undefined ? {} : { remote }) } : other));
+    };
+    if (!held()) return;
+    const engine = this.#engine();
+    if (engine.upload === undefined) return;
+    const went = await engine.upload(file, attachment.mime, { told: (sent) => write({ state: 'reading', sent }), gone: () => !held() }).catch((): { state: 'failed'; words: string } => ({ state: 'failed', words: REFUSAL.empty(attachment.name) }));
+    if (went.state === 'sent' && !held()) engine.discard?.(went.id);
+    else if (went.state === 'sent') write({ state: 'ready' }, went.id);
+    else if (went.state === 'failed') write({ state: 'failed', words: went.words });
   }
 
   /** Opens a queued message in the composer; the chat's own unsent text is set aside (03 3.6). */
@@ -187,6 +242,7 @@ export class CardState {
 
   cancelEdit(): void {
     if (this.editing === null) return;
+    this.#giveUp(this.attachments);
     this.#fill(this.#aside);
     this.#endEdit();
     this.#engine().opened?.(null);
@@ -227,7 +283,10 @@ export class CardState {
 
   #fill(message: Message | null): void {
     this.prompt = message?.prompt ?? '';
-    this.attachments = message?.attachments ?? [];
+    // A file that was on its way when it was set aside stopped there: it does not come back as one that is read for ever.
+    const stopped = (message?.attachments ?? []).filter((attachment) => attachment.state.state === 'reading');
+    release(stopped);
+    this.attachments = (message?.attachments ?? []).filter((attachment) => !stopped.includes(attachment));
     // Also when the composer is gone while a message went: the sent text must not come back as the unsent text.
     this.keep();
   }
