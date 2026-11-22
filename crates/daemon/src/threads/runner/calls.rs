@@ -317,7 +317,7 @@ const fn thread_of(action: &Action) -> Option<Uuid> {
         | Action::Stop { thread }
         | Action::ChangeListing { thread, .. }
         | Action::Earlier { thread, .. }
-        | Action::Files { thread, .. } => Some(*thread),
+        | Action::Files { thread, .. }
         | Action::Queue { thread, .. }
         | Action::Requeue { thread, .. }
         | Action::Unqueue { thread, .. }
