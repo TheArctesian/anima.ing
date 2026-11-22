@@ -17,6 +17,7 @@ mod files;
 mod queue;
 mod reads;
 mod refusal_lines;
+mod set;
 pub(super) use files::Walked;
 use refusal_lines::Say;
 pub(super) use refusal_lines::{RefusalLines, refusal_word};
@@ -60,6 +61,7 @@ impl Runner {
                 queued @ (Action::Queue { .. }
                 | Action::Requeue { .. }
                 | Action::Unqueue { .. }) => self.queue_call(queued).await,
+                set @ Action::Set { .. } => self.set(set).await,
                 Action::ChangeListing { thread, change } => self.change_listing(thread, &change),
                 Action::ChangeProject { change } => self.change_project(&change),
                 Action::Files {
@@ -280,8 +282,9 @@ struct Answering {
 }
 
 /// Whether only the person may make this call: an answer to a request, a raise of the limit,
-/// a start, a change of how a thread is listed (TH46) and the queue of a thread (TH109). A process of an agent may not, so that
-/// an agent never approves itself or hides a thread from the person.
+/// a start, a change of how a thread is listed (TH46), the queue of a thread (TH109) and a change
+/// of its model, effort or mode (TH110). A process of an agent may not, so that an agent never
+/// approves itself, gives itself more rights or hides a thread from the person.
 const fn for_the_person(action: &Action) -> bool {
     matches!(
         action,
@@ -295,6 +298,7 @@ const fn for_the_person(action: &Action) -> bool {
             | Action::Requeue { .. }
             | Action::Unqueue { .. }
             | Action::SendQueued { .. }
+            | Action::Set { .. }
     )
 }
 
@@ -311,7 +315,8 @@ const fn thread_of(action: &Action) -> Option<Uuid> {
         | Action::Queue { thread, .. }
         | Action::Requeue { thread, .. }
         | Action::Unqueue { thread, .. }
-        | Action::SendQueued { thread, .. } => Some(*thread),
+        | Action::SendQueued { thread, .. }
+        | Action::Set { thread, .. } => Some(*thread),
         _ => None,
     }
 }

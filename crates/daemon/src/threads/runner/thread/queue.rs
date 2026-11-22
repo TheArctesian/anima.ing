@@ -110,7 +110,7 @@ impl Thread {
     }
 
     /// The row as it is now, for the clients.
-    fn row_change(&self) -> Step {
+    pub(super) fn row_change(&self) -> Step {
         Step::Change(Change::State {
             state: self.row.state,
             row: self.row.clone(),

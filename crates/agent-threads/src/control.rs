@@ -8,14 +8,16 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::drive::{AccountFacts, Answer, DriveEvent, Effort, Mode, ModelChoice, Program, Request};
+use crate::drive::{Answer, DriveEvent, Effort, Mode, Program, Request};
 use crate::files::FoundPath;
 
 mod listing;
+mod programs;
 mod project;
 mod queue;
 mod shelf;
 pub use listing::{BadChange, BadTitle, Listing, ListingChange, MAX_TITLE};
+pub use programs::{AccountRow, ModelRow};
 pub use project::{BadProject, MAX_PROJECTS, Project, ProjectChange, changed as project_changed};
 pub use queue::{LastTurn, MOST_QUEUED, MOST_QUEUED_BYTES, Queued};
 pub use shelf::{Activity, MOST_SNOOZE, Marks, SETTLE_AFTER, Shelf};
@@ -129,6 +131,17 @@ pub enum Action {
     Unqueue { thread: Uuid, id: Uuid },
     /// Sends a prompt that waits now: into the running turn, or as the next turn (TH109).
     SendQueued { thread: Uuid, id: Uuid },
+    /// Changes the model, the effort or the mode of a thread (TH110): the row says it when the
+    /// program has it.
+    Set {
+        thread: Uuid,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        model: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        effort: Option<Effort>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        mode: Option<Mode>,
+    },
 }
 
 /// A frame of the runner to a client.
@@ -235,6 +248,11 @@ pub enum Refusal {
     },
     /// The queue of the thread holds [`MOST_QUEUED`] prompts (TH109).
     QueueFull,
+    /// The program of the thread cannot change that after its start: `said` tells what and
+    /// why, in words for the person (TH110).
+    CannotChange {
+        said: String,
+    },
 }
 
 /// The soft limits of the threads of this computer (THR-114): guidance, raised by the person.
@@ -318,26 +336,9 @@ pub struct ThreadRow {
     /// How the last turn ended, when one ended (TH109).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_turn: Option<LastTurn>,
-}
-
-/// The account of one program of this computer, as its newest report said it (THR-132). It is
-/// kept in the memory of the runner only: it is not saved, logged or sent to the hub (THR-051).
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AccountRow {
-    pub program: Program,
-    #[serde(flatten)]
-    pub facts: AccountFacts,
-    /// The time of the newest report.
-    pub at: chrono::DateTime<chrono::Utc>,
-}
-
-/// The models of one program, as its newest thread named them (TH104). In the memory of the
-/// runner only: a program names its models when one of its threads starts.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ModelRow {
-    pub program: Program,
-    pub models: Vec<ModelChoice>,
-    pub at: chrono::DateTime<chrono::Utc>,
+    /// The effort of the model, when the person chose one (TH110).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effort: Option<Effort>,
 }
 
 /// One update of one thread, in the order the runner made them.

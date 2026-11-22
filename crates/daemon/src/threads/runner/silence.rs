@@ -8,7 +8,7 @@ use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use agent_threads::control::RunState;
+use agent_threads::control::{Refusal, RunState};
 use agent_threads::drive::Program;
 use uuid::Uuid;
 
@@ -100,6 +100,15 @@ impl Silence {
             };
             self.asked.insert(path.clone(), asked);
         }
+    }
+
+    /// The refusal of a start whose copy did not answer, with the other copies that did.
+    #[must_use]
+    pub fn refusal(&self, program: Program, path: &Path, copies: &[PathBuf]) -> Refusal {
+        let others = self.answered_others(path, copies);
+        let said = not_answered(program, path, &others);
+        let answered = others.into_iter().map(|(copy, _)| copy).collect();
+        Refusal::ProgramDoesNotAnswer { said, answered }
     }
 
     /// The other copies of `copies` that answered when they were last asked and are the same

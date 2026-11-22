@@ -4,6 +4,7 @@
 use serde_json::{Value, json};
 
 use super::DriveError;
+use super::launch::{Mode, Model};
 use super::request::{Answer, ProgramRequestId, Request};
 
 /// The writer of the input lines of Claude Code.
@@ -28,6 +29,20 @@ impl ClaudeInput {
     #[must_use]
     pub fn interrupt(id: &str) -> String {
         json!({"type": "control_request", "request_id": id, "request": {"subtype": "interrupt"}})
+            .to_string()
+    }
+
+    /// The model of the next turns (TH110; measured on Claude Code 2.1.311 between two turns).
+    #[must_use]
+    pub fn set_model(id: &str, model: &Model) -> String {
+        json!({"type": "control_request", "request_id": id, "request": {"subtype": "set_model", "model": model.as_str()}})
+            .to_string()
+    }
+
+    /// The permission mode of the next turns (TH110; measured as [`Self::set_model`]).
+    #[must_use]
+    pub fn set_permission_mode(id: &str, mode: Mode) -> String {
+        json!({"type": "control_request", "request_id": id, "request": {"subtype": "set_permission_mode", "mode": mode.claude()}})
             .to_string()
     }
 

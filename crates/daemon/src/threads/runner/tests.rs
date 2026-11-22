@@ -24,6 +24,7 @@ fn row(program: Program) -> ThreadRow {
         open: Vec::new(),
         queued: Vec::new(),
         last_turn: None,
+        effort: None,
     }
 }
 
@@ -83,6 +84,7 @@ mod accounts;
 mod kept;
 mod queue;
 mod restart;
+mod settings;
 
 #[test]
 fn th11_a_claude_thread_writes_its_prompt_and_names_its_session() {
