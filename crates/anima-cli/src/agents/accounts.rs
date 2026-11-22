@@ -42,9 +42,9 @@ pub async fn models(invocation: &Invocation) -> Result<(), Failure> {
         return Ok(());
     };
     if models.is_empty() {
-        invocation
-            .output
-            .message("No agent program of this computer gave its models: none was found, or none answered.");
+        invocation.output.message(
+            "No agent program of this computer gave its models: none was found, or none answered.",
+        );
         return Ok(());
     }
     invocation.output.data(&models, |rows| model_table(rows))
