@@ -12,8 +12,12 @@ impl Runner {
     pub(super) async fn queue_call(&mut self, action: Action) -> Outcome {
         match action {
             Action::Queue { thread, text } => self.queue(thread, text).await,
-            Action::Requeue { thread, id, text } => self.requeue(thread, id, text).await,
-            Action::Unqueue { thread, id } => self.unqueue(thread, id).await,
+            Action::Requeue {
+                thread,
+                queued,
+                text,
+            } => self.requeue(thread, queued, text).await,
+            Action::Unqueue { thread, queued } => self.unqueue(thread, queued).await,
             _ => refused(Refusal::BadValue),
         }
     }
@@ -87,16 +91,20 @@ mod tests {
 
     #[test]
     fn th109_only_the_person_changes_the_queue() {
-        let (thread, id) = (Uuid::nil(), Uuid::nil());
+        let (thread, queued) = (Uuid::nil(), Uuid::nil());
         let text = String::new();
         for action in [
             Action::Queue {
                 thread,
                 text: text.clone(),
             },
-            Action::Requeue { thread, id, text },
-            Action::Unqueue { thread, id },
-            Action::SendQueued { thread, id },
+            Action::Requeue {
+                thread,
+                queued,
+                text,
+            },
+            Action::Unqueue { thread, queued },
+            Action::SendQueued { thread, queued },
         ] {
             assert!(super::super::for_the_person(&action), "{action:?}");
         }

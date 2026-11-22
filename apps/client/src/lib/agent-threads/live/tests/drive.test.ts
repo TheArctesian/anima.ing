@@ -1,10 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { chosenAnswer, composerKey, offeredCopy, startOf, type NewThreadForm } from '../drive';
+import { chosenAnswer, composerKey, offeredCopy, queueAction, startOf, type NewThreadForm } from '../drive';
 import type { Ask } from '../run';
 
 const FORM: NewThreadForm = { program: 'codex', folder: ' /w/anima.ing ', mode: 'full_access', model: '', effort: '', prompt: 'Fix it', programPath: '' };
 
 describe('the controls that drive a thread', () => {
+  it('TH109: a call of the queue names the prompt that waits `queued`, never `id`, which is the frame\'s own', () => {
+    expect(queueAction({ call: 'requeue', id: 'p1', text: 'new' }, 't')).toEqual({ call: 'requeue', thread: 't', queued: 'p1', text: 'new' });
+    expect(queueAction({ call: 'unqueue', id: 'p1' }, 't')).toEqual({ call: 'unqueue', thread: 't', queued: 'p1' });
+    expect(queueAction({ call: 'send_queued', id: 'p1' }, 't')).toEqual({ call: 'send_queued', thread: 't', queued: 'p1' });
+    expect(queueAction({ call: 'queue', text: 'later' }, 't')).toEqual({ call: 'queue', thread: 't', text: 'later' });
+    expect(queueAction({ call: 'unqueue', queued: 'p2' }, 't')).toEqual({ call: 'unqueue', thread: 't', queued: 'p2' });
+  });
+
   it('THR-017: Enter sends; Shift+Enter and a key of an input method type', () => {
     expect(composerKey({ key: 'Enter', shift: false, composing: false })).toBe('send');
     expect(composerKey({ key: 'Enter', shift: true, composing: false })).toBe('type');

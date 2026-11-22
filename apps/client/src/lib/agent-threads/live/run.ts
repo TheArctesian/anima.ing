@@ -156,9 +156,9 @@ export type Action =
   | { readonly call: 'models' }
   /** The queue of a thread (TH109): only the person changes it. */
   | { readonly call: 'queue'; readonly thread: string; readonly text: string }
-  | { readonly call: 'requeue'; readonly thread: string; readonly id: string; readonly text: string }
-  | { readonly call: 'unqueue'; readonly thread: string; readonly id: string }
-  | { readonly call: 'send_queued'; readonly thread: string; readonly id: string }
+  | { readonly call: 'requeue'; readonly thread: string; readonly queued: string; readonly text: string }
+  | { readonly call: 'unqueue'; readonly thread: string; readonly queued: string }
+  | { readonly call: 'send_queued'; readonly thread: string; readonly queued: string }
   /** The model, the effort or the mode of a thread from its next turn (TH110): only the person. */
   | { readonly call: 'set'; readonly thread: string; readonly model?: string; readonly effort?: Effort; readonly mode?: Mode };
 
