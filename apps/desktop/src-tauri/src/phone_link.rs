@@ -75,13 +75,6 @@ impl PhoneLink {
         self.folder.is_dir()
     }
 
-    #[cfg(target_os = "android")]
-    pub(crate) fn metrics_socket(&self, origin: &str, account: &str) -> Option<PathBuf> {
-        let key = listener_key(origin)?;
-        (account.strip_prefix("link:")? == key)
-            .then(|| self.folder.join(format!("metrics-{key}.sock")))
-    }
-
     fn saved_port(&self) -> Option<u16> {
         fs::read_to_string(&self.port).ok()?.trim().parse().ok()
     }
@@ -217,10 +210,23 @@ pub fn link_status(link: State<'_, PhoneLink>) -> LinkStatus {
 /// The key of the link that owns this origin. A reused port must not give another hub an old token.
 pub(crate) fn listener_key(origin: &str) -> Option<String> {
     let running = library::status();
+    scoped_link_key(origin, &running).map(str::to_owned)
+}
+
+pub(crate) fn metrics_socket(origin: &str, account: &str) -> Option<PathBuf> {
+    let running = library::status();
+    let key = scoped_link_key(origin, &running)?;
+    if account.strip_prefix("link:")? != key {
+        return None;
+    }
+    running.metrics_socket
+}
+
+fn scoped_link_key<'a>(origin: &str, running: &'a library::Running) -> Option<&'a str> {
     (running.up
         && !running.device_key.is_empty()
         && origin.strip_prefix("http://") == Some(running.local.as_str()))
-    .then_some(running.device_key)
+    .then_some(running.device_key.as_str())
 }
 
 #[tauri::command]

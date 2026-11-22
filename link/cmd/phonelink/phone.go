@@ -31,12 +31,13 @@ type started struct {
 
 // linkStatus is the answer of a status. Path is "direct", "relayed" or "none" (LNK-006).
 type linkStatus struct {
-	Running   bool    `json:"running"`
-	Local     string  `json:"local,omitempty"`
-	Path      string  `json:"path,omitempty"`
-	LatencyMS float64 `json:"latencyMs,omitempty"`
-	DeviceKey string  `json:"deviceKey,omitempty"`
-	PublicKey string  `json:"publicKey,omitempty"`
+	Running       bool    `json:"running"`
+	Local         string  `json:"local,omitempty"`
+	Path          string  `json:"path,omitempty"`
+	LatencyMS     float64 `json:"latencyMs,omitempty"`
+	DeviceKey     string  `json:"deviceKey,omitempty"`
+	PublicKey     string  `json:"publicKey,omitempty"`
+	MetricsSocket string  `json:"metricsSocket,omitempty"`
 }
 
 // failure is the answer of a call that failed: a stable code, never a path, a key or the invite.
@@ -46,11 +47,12 @@ type failure struct {
 
 // The one link of the app, and the directory that it holds while it runs.
 var (
-	guard     sync.Mutex
-	running   *devicelink.Link
-	held      *statedir.Dir
-	deviceKey string
-	publicKey string
+	guard       sync.Mutex
+	running     *devicelink.Link
+	held        *statedir.Dir
+	deviceKey   string
+	publicKey   string
+	metricsPath string
 )
 
 // join uses the invite in line with the identity in the directory state, and saves the joined identity.
@@ -108,6 +110,9 @@ func start(state, listen string) (started, error) {
 		return started{}, err
 	}
 	running, held = link, dir
+	if socket != nil {
+		metricsPath = socket.Addr().String()
+	}
 	deviceKey = key.Fingerprint()
 	encoded, _ := key.MarshalText() // A populated public key always has a text form.
 	publicKey = string(encoded)
@@ -115,12 +120,15 @@ func start(state, listen string) (started, error) {
 }
 
 func metricsSocket(dir *statedir.Dir, fingerprint string) net.Listener {
-	if runtime.GOOS != "android" {
+	switch runtime.GOOS {
+	case "ios":
+		return iosMetricsSocket()
+	case "android":
+		socket, _ := dir.Listen("metrics-" + fingerprint + ".sock")
+		return socket
+	default:
 		return nil
 	}
-	// Keep the UI link available even when Android cannot open the reporting socket.
-	socket, _ := dir.Listen("metrics-" + fingerprint + ".sock")
-	return socket
 }
 
 // status reads the link that runs, if one does.
@@ -134,7 +142,7 @@ func status() linkStatus {
 	return linkStatus{
 		Running: true, Local: running.LocalAddr().String(),
 		Path: string(path.Kind), LatencyMS: float64(path.Latency.Microseconds()) / 1000,
-		DeviceKey: deviceKey, PublicKey: publicKey,
+		DeviceKey: deviceKey, PublicKey: publicKey, MetricsSocket: metricsPath,
 	}
 }
 
@@ -142,6 +150,7 @@ func status() linkStatus {
 func stop() {
 	guard.Lock()
 	defer guard.Unlock()
+	metricsPath = ""
 	if running == nil {
 		return
 	}
