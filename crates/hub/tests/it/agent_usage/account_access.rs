@@ -4,7 +4,7 @@
 
 use anima_hub::fleet::events::process_log;
 use axum::http::StatusCode;
-use serde_json::json;
+use serde_json::{Value, json};
 use sqlx::PgPool;
 
 use super::accounts::{ACCOUNTS, ADDRESS, Capture, SHARED, account, push};
@@ -31,9 +31,10 @@ async fn thr_149_an_api_key_reads_the_accounts_but_not_their_address(pool: PgPoo
     assert_eq!(answer["data"]["agentUsage"]["accounts"][0]["key"], SHARED);
 
     let answer = daemons.graphql(Some(&key), ACCOUNTS, json!({})).await;
+    assert!(answer["errors"].is_null(), "{answer}");
     assert_eq!(
-        answer["errors"][0]["extensions"]["code"], "FORBIDDEN",
-        "{answer}"
+        answer["data"]["agentUsage"]["accounts"][0]["address"],
+        Value::Null
     );
     assert!(!answer.to_string().contains(ADDRESS), "{answer}");
 

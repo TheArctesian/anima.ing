@@ -1,7 +1,7 @@
 //! K1 `AgentAccount`: an account of an AI agent program and the devices that use it (THR-149,
 //! AIS-022).
 
-use async_graphql::{ComplexObject, SimpleObject};
+use async_graphql::SimpleObject;
 use chrono::{DateTime, Utc};
 use daemon_core::agent_usage::account::Limit;
 
@@ -14,7 +14,6 @@ const SHORT_KEY: usize = 8;
 
 /// K1 `AgentAccount`.
 #[derive(SimpleObject)]
-#[graphql(complex)]
 pub struct AgentAccount {
     /// The key of the account: the HMAC-SHA-256 of the vendor's identifier with the salt of this
     /// hub, never the identifier.
@@ -22,9 +21,9 @@ pub struct AgentAccount {
     /// The first 8 digits of the key, to tell two accounts of one program apart.
     short_key: String,
     source: AgentSource,
-    /// The address, or the refusal of a token that may not read it.
-    #[graphql(skip)]
-    address: async_graphql::Result<Option<String>>,
+    /// The email address that the program is signed in with, of the newest report: personal
+    /// data, for the person's own clients only (THR-149). Null for an API key or a builder token.
+    address: Option<String>,
     /// The name of the plan as the program states it.
     plan: Option<String>,
     /// The limit windows of the newest report; the limit is the account's, shared by its devices.
@@ -45,13 +44,9 @@ pub struct AgentAccountLimit {
 
 impl AgentAccount {
     /// The account of `group` with the devices of `devices` that use it; `None` when none of
-    /// them is left. With `refusal` (the token is not the person's) the address is that error.
+    /// them is left. The address is left out unless `person` (the token is the person's own).
     #[must_use]
-    pub fn of(
-        group: AccountGroup,
-        devices: &[Device],
-        refusal: Option<&async_graphql::Error>,
-    ) -> Option<Self> {
+    pub fn of(group: AccountGroup, devices: &[Device], person: bool) -> Option<Self> {
         let used: Vec<Device> = group
             .devices
             .iter()
@@ -61,10 +56,10 @@ impl AgentAccount {
             short_key: group.key.chars().take(SHORT_KEY).collect(),
             key: group.key,
             source: group.source.into(),
-            address: refusal.map_or_else(
-                || Ok(group.address.as_ref().map(|one| one.reveal().to_owned())),
-                |error| Err(error.clone()),
-            ),
+            address: group
+                .address
+                .filter(|_| person)
+                .map(|one| one.reveal().to_owned()),
             plan: group.plan,
             limits: group
                 .limits
@@ -74,18 +69,6 @@ impl AgentAccount {
             reported_at: group.reported_at,
             devices: used,
         })
-    }
-}
-
-#[ComplexObject]
-impl AgentAccount {
-    /// The email address that the program is signed in with, of the newest report: personal
-    /// data, for the person's own clients only (THR-149). An API key gets `FORBIDDEN`.
-    fn address(&self) -> async_graphql::Result<Option<&str>> {
-        self.address
-            .as_ref()
-            .map(Option::as_deref)
-            .map_err(Clone::clone)
     }
 }
 

@@ -183,10 +183,10 @@ impl Query {
             .collect();
         let states = grouping::states_with_devices(&report.states, &devices);
         // The address of an account is for the person's own clients only (THR-149).
-        let refusal = access::person_only(ctx).err();
+        let person = access::person_only(ctx).is_ok();
         let accounts = accounts::grouped(accounts::list(db).await.map_err(usage_error)?)
             .into_iter()
-            .filter_map(|group| AgentAccount::of(group, &devices, refusal.as_ref()))
+            .filter_map(|group| AgentAccount::of(group, &devices, person))
             .collect();
         Ok(AgentUsageAnswer {
             first_day: ask.first_day.to_string(),
