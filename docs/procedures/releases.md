@@ -427,7 +427,7 @@ target of iOS 15 for uploads from April 2027.
 | Branch | GitHub environment | GitHub variable | TestFlight group |
 | --- | --- | --- | --- |
 | `dev` | `release` | `ANIMA_TESTFLIGHT_DEV=on` | Anima Internal |
-| `main` | `release` | `ANIMA_TESTFLIGHT_MAIN=on` | Anima External |
+| `main` | `release` | `ANIMA_TESTFLIGHT_MAIN=on` | [Public TestFlight beta](https://testflight.apple.com/join/SwDsVg4Z) |
 
 The operator authorized the `release` environment to allow deployments from `dev` and
 `main`. Both jobs use the existing iOS secrets. The operator supplies
@@ -441,9 +441,9 @@ Keep automatic distribution off for Anima Internal. Xcode marks `dev` uploads as
 TestFlight Internal Only. The signed archive carries the export exemption recorded for
 build 900.0.4. Review that declaration before releasing changes that affect the app's
 encryption or its linked libraries. After processing, the workflow checks Apple's recorded
-build audience and testing status, then adds the build to Anima Internal. The `main` job creates Anima External when needed,
-assigns the processed build, enables automatic tester notification and submits it for
-Beta App Review when Apple requires it. The operator supplies the app's beta review
+build audience and testing status, then adds the build to Anima Internal. The `main` job
+looks up the external group by the public invite URL used on the Anima website. It assigns the processed build, enables automatic tester notification and
+submits it for Beta App Review when Apple requires it. The operator supplies the app's beta review
 contact, sign-in instructions and export compliance answers in App Store Connect.
 External testers get the build when Apple clears it. Add the testers you want in the
 external group in App Store Connect.

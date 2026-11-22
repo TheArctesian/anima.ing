@@ -88,6 +88,20 @@ function untyped(file: FileFacts): boolean {
   return type === '' || type === 'application/octet-stream';
 }
 
+/* The types that the runner takes as an image (`ImageKind::of_mime`). */
+const RUNNER_IMAGE = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+
+/** Whether a file of this type goes as an image, with the limits of an image. A different image, as HEIC, is shown as an image and goes as a file: the runner decides by the type, and the composer agrees with it. */
+export function sentAsImage(mime: string): boolean {
+  return RUNNER_IMAGE.includes(bareMime(mime));
+}
+
+/* A photo that the file manager gives no type gets the type of its extension: the runner is never told an empty type. */
+function heicMime(file: FileFacts): string {
+  const typed = bareMime(file.type);
+  return /^image\/hei[cf]$/.test(typed) ? typed : `image/${extension(file.name) === 'heif' ? 'heif' : 'heic'}`;
+}
+
 function isHeic(file: FileFacts): boolean {
   return /^image\/hei[cf]$/i.test(file.type) || (untyped(file) && /\.hei[cf]$/i.test(file.name));
 }
@@ -116,7 +130,7 @@ function plainFile(file: FileFacts, mime?: string): Classified {
 export function classify(file: FileFacts): Classified {
   if (isDng(file)) return plainFile(file, 'image/x-adobe-dng');
   if (isSvg(file)) return plainFile(file, 'image/svg+xml');
-  if (isHeic(file)) return { kind: 'image', mime: file.type };
+  if (isHeic(file)) return { kind: 'image', mime: heicMime(file) };
   const guessed = untyped(file) ? SENT_AS_IMAGE[extension(file.name)] : undefined;
   if (guessed !== undefined) return { kind: 'image', mime: guessed };
   if (!file.type.toLowerCase().startsWith('image/')) return plainFile(file);
@@ -161,12 +175,14 @@ export interface Refused {
 }
 
 /** Why a file of this class cannot be attached, or null. T3 checks the size of a file here and of an image after it compresses it; we do not compress, so both are checked here. */
-function refusal(file: FileFacts, kind: AttachmentKind, limits: Limits): string | null {
-  if (kind === 'image' && file.size > 0) return file.size > limits.imageBytes ? REFUSAL.imageTooLarge(file.name) : null;
-  if (kind === 'image') return REFUSAL.empty(file.name);
-  if (limits.fileBytes === null) return REFUSAL.noFiles();
+function refusal(file: FileFacts, sort: { readonly kind: AttachmentKind; readonly mime: string }, limits: Limits): string | null {
+  if (sort.kind === 'image' && file.size <= 0) return REFUSAL.empty(file.name);
+  if (sentAsImage(sort.mime)) return file.size > limits.imageBytes ? REFUSAL.imageTooLarge(file.name) : null;
+  // An image that the runner takes as a file has the limit of a file.
+  const most = sort.kind === 'image' ? (limits.fileBytes ?? limits.imageBytes) : limits.fileBytes;
+  if (most === null) return REFUSAL.noFiles();
   if (file.size <= 0) return REFUSAL.empty(file.name);
-  return file.size > limits.fileBytes ? REFUSAL.tooLarge(file.name, limits.fileBytes) : null;
+  return file.size > most ? REFUSAL.tooLarge(file.name, most) : null;
 }
 
 /**
@@ -176,7 +192,7 @@ function refusal(file: FileFacts, kind: AttachmentKind, limits: Limits): string 
 export function admit<F extends FileFacts>(current: readonly Attachment[], incoming: readonly F[], limits: Limits = LIMITS): { taken: Admitted<F>[]; refused: Refused[] } {
   const taken: Admitted<F>[] = [];
   const refused: Refused[] = [];
-  let images = current.reduce((sum, attachment) => sum + (attachment.kind === 'image' ? attachment.size : 0), 0);
+  let images = current.reduce((sum, attachment) => sum + (sentAsImage(attachment.mime) ? attachment.size : 0), 0);
   for (const file of incoming) {
     const sort = classify(file);
     // The words of a refusal show the name as a chip would: a mark that hides or turns the text does not reach the line.
@@ -184,11 +200,12 @@ export function admit<F extends FileFacts>(current: readonly Attachment[], incom
     let words: string | null;
     if (current.length + taken.length >= limits.count) words = REFUSAL.full(limits.count);
     else if (sort.kind === 'unsupported') words = REFUSAL.unsupported(named.name);
-    else words = refusal(named, sort.kind, limits);
-    if (words === null && sort.kind === 'image' && images + file.size > limits.imagesBytes) words = REFUSAL.imagesTooLarge(named.name, limits.imagesBytes);
+    else words = refusal(named, sort, limits);
+    const counted = sort.kind !== 'unsupported' && sentAsImage(sort.mime);
+    if (words === null && counted && images + file.size > limits.imagesBytes) words = REFUSAL.imagesTooLarge(named.name, limits.imagesBytes);
     if (words !== null) refused.push({ name: file.name, words });
     else if (sort.kind !== 'unsupported') taken.push({ file, kind: sort.kind, mime: sort.mime });
-    if (words === null && sort.kind === 'image') images += file.size;
+    if (words === null && counted) images += file.size;
   }
   return { taken, refused };
 }
