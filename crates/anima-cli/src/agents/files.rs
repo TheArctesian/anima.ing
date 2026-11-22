@@ -93,9 +93,10 @@ pub async fn folders(args: FoldersArgs, invocation: &Invocation) -> Result<(), F
         return Ok(());
     };
     if folders.is_empty() {
-        invocation
-            .output
-            .message(&format!("No folder in {}.", folder.display()));
+        invocation.output.message(&format!(
+            "No folder in {}.",
+            folder.display().to_string().escape_debug()
+        ));
         return Ok(());
     }
     invocation.output.data(&folders, |rows| {

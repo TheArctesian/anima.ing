@@ -78,7 +78,10 @@ impl Runner {
                     most,
                 } => self.files(thread, &query, most),
                 Action::Folder { folder } => self.folder_notice(&folder),
-                Action::Folders { folder, hidden } => self.folders(folder, hidden).await,
+                Action::Folders { folder, hidden } => {
+                    self.folders(folder, hidden, back);
+                    return;
+                }
                 Action::RaiseLimit => {
                     self.limits = self.limits.raised();
                     self.save();
