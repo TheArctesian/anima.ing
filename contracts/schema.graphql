@@ -1777,7 +1777,7 @@ type AgentAccount {
   "The first 8 digits of key, to tell two accounts of one program apart."
   shortKey: String!
   source: AgentSource!
-  "The email address that the program is signed in with, of the newest report; personal data, shown only to the person (THR-149). Null when the program gives none."
+  "The email address that the program is signed in with, of the newest report; personal data, shown only to the person (THR-149): a login or browser token reads it; it is null for an API key. Null when the program gives none."
   address: String
   "The name of the plan as the program states it."
   plan: String
@@ -3952,6 +3952,111 @@ input PlaceSplitInput {
   links: [ID!]
 }
 
+# ---------------------------------------------------------------- application routes (R-302, R-299; HOST-046; task H21)
+
+"Whether the name of a route is proven to belong to this hub (Section 12.4 of hosted-applications-stage-2.md). A proven name is LOST only after 3 failed reads in a row."
+enum ApplicationRouteProof {
+  WAITING
+  PROVEN
+  LOST
+}
+
+"What a route waits for before it serves, in the order the hub checks."
+enum ApplicationRouteWait {
+  "The name is not proven, or it was lost."
+  PROOF
+  "The second consent at the machine (OD-HOST-43). Nothing can give it yet: no route serves in this version."
+  MACHINE_CONSENT
+  "The hub has no record of the application that names this device and this port and no socket of the engine (task H6). The hub keeps no such record yet: no route serves in this version."
+  APPLICATION_RECORD
+  "The route has no certificate that is valid now. A stream has no TLS of the hub and never waits for it."
+  CERTIFICATE
+}
+
+"What a route carries (HOST-050, task H40; Section 16 of hosted-applications-stage-2.md)."
+enum ApplicationRouteKind {
+  "HTTPS by name to the port of the application (Section 12)."
+  WEB
+  "A proven name that answers 301 (GET, HEAD) or 308 with one fixed https:// address; it reaches no machine."
+  REDIRECT
+  "A port of the hub (listenPort) to the port of the application over TCP, with no TLS of the hub and no look inside. Never on a hosted hub until the door has an address for each hub (OD-HOST-47)."
+  TCP_STREAM
+  "The same over UDP, only to a machine that the hub reaches on its own network, never through the link (OD-HOST-48)."
+  UDP_STREAM
+}
+
+"Who may reach a route (Section 16.7, OD-HOST-49)."
+enum ApplicationRouteAccess {
+  "The internet."
+  PUBLIC
+  "Only the nodes of the network of Anima (each device, machine and container on it), on the address of the hub on that network."
+  PRIVATE
+}
+
+"One name of one application, with its target fixed when the name was added. It holds no certificate and no key."
+type ApplicationRoute {
+  id: ID!
+  "A DNS name in lower case."
+  name: String!
+  kind: ApplicationRouteKind!
+  access: ApplicationRouteAccess!
+  applicationId: ID!
+  deviceId: ID!
+  "The port that the applications program recorded. Never 22, 5900, 3389 or a port of Anima. Null for a redirect."
+  port: Int
+  "The port of the hub that a stream listens on; null for a web route and a redirect."
+  listenPort: Int
+  "The protocol that the person picked for a stream, from the fixed list of the hub; null when none."
+  protocol: String
+  "The one https:// address of a redirect; null for each other kind."
+  redirectTo: String
+  proof: ApplicationRouteProof!
+  "Failed reads of the proof in a row."
+  failedReads: Int!
+  "The name of the TXT record that proves the name, as _anima.<name>; null on a hub that a person hosts, where the name must resolve to the public address of the hub."
+  proofRecordName: String
+  "The text of that TXT record: it names this hub and the token of the route. Null as proofRecordName."
+  proofRecordValue: String
+  machineConsent: Boolean!
+  "The end of the validity of the certificate; null with none."
+  certificateNotAfter: DateTime
+  "Null when the route serves now."
+  waitsFor: ApplicationRouteWait
+  checkedAt: DateTime
+  requests: Float!
+  bytesIn: Float!
+  bytesOut: Float!
+  "Connections that a limit of the route refused."
+  refused: Float!
+  createdAt: DateTime!
+}
+
+"A name that was added, with what the hub warns about."
+type ApplicationRouteAdded {
+  route: ApplicationRoute!
+  "The name and the hub share a domain: the cookie attribute SameSite does not stop a request from the page of the application (SF-227)."
+  sameSiteAsHub: Boolean!
+}
+
+"What a person gives to add a name to an application. Each route of an application goes to one device."
+input ApplicationRouteInput {
+  "A DNS name: never the name of the hub or below it, never at or below a domain that holds a cookie of a hub, never a wildcard."
+  name: String!
+  applicationId: ID!
+  deviceId: ID!
+  "The port of the application; needed by each kind but REDIRECT, which has none. Never a port of a session, of Anima, of the engine of the containers, of a database or of metrics. The route serves only when the hub's record of the application names this device and this port."
+  port: Int
+  kind: ApplicationRouteKind! = WEB
+  "A new route is private unless the person makes it public (Section 16.4)."
+  access: ApplicationRouteAccess! = PRIVATE
+  "The port of the hub of a stream: in the range that the operator set (ANIMA_ROUTES_STREAM_PORTS), never below 1024, never a port of Anima, the link, WireGuard or PostgreSQL. Only for a stream."
+  listenPort: Int
+  "The protocol of a stream: needed for a public stream, one with its own sign-in and TLS (imaps, pop3s, smtps, ldaps, xmpps over TCP; openvpn, wireguard over UDP). The usual port of the protocol is a hint; the hub never opens a port by itself."
+  protocol: String
+  "The one https:// address of a REDIRECT: a host name, an optional port and path; nothing of a request is added to it."
+  redirectTo: String
+}
+
 # ---------------------------------------------------------------- root types
 
 type Query {
@@ -4052,6 +4157,10 @@ type Query {
   composeFileCheck(file: String!): ComposeFileCheck!
   "The Compose file of one `docker run` command (HOST-022). The hub reads the words of the command with its own reader: it expands nothing, runs nothing, reaches no device and keeps nothing; it writes the command to no log, no event and no error (LOG-007). A command that the reader cannot read has a refusal, not an error. An option with no key in a Compose file is in notConverted. Complexity 100: one request holds at most four. Open to a read key."
   composeFromDockerRun(command: String!): ComposeFromDockerRun!
+  "The public names of one application, or of each, by name (HOST-046, task H21). No field holds a certificate or a key. Open to a read key."
+  applicationRoutes(applicationId: ID): [ApplicationRoute!]!
+  "One route with its state; null when no route has this ID. Open to a read key."
+  applicationRoute(id: ID!): ApplicationRoute
 
   # The catalogue (HOST-047, R-300, R-299; task H38)
   "Each entry of the catalogue that ships with Anima and passes the static test, in the order of the identifiers. The hub reads no machine and no network. Open to a read key."
@@ -4196,6 +4305,12 @@ type Mutation {
   dismissWebInterfaceSuggestion(checkId: ID!): ID!
   "Pins the certificate and writes an audit entry (WEB-008, WEB-009). Login or browser token only (D-23, R-100)."
   acceptWebCertificate(id: ID!, fingerprintSha256: String!): WebInterface!
+  "Adds a public name to an application and gives the token of its proof (HOST-046, task H21; SF-232). The device, the port and the address are fixed now: a change is a removal and a new name. VALIDATION for a refused name, port or address; CONFLICT when a route has the name, the application has routes to a different target, or the application holds the socket of the engine; FORBIDDEN when the operator has no second factor. Login or browser token only (D-23, R-100)."
+  addApplicationRoute(input: ApplicationRouteInput!): ApplicationRouteAdded!
+  "Reads the proof of the name once and keeps its new state. One failed read changes nothing. Login or browser token only (D-23, R-100)."
+  checkApplicationRoute(id: ID!): ApplicationRoute!
+  "Removes a public name with its certificate and its key. Returns the removed ID. Login or browser token only (D-23, R-100)."
+  removeApplicationRoute(id: ID!): ID!
 
   # Phase 3
   "Signed out (D-4), or a login or browser token; never an API key (D-23, R-100). Sets the __Host-anima cookie; refused unless Origin is the public origin."

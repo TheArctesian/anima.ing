@@ -35,6 +35,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-115 | A person reads the settings of the ten generated entries of LinuxServer.io and records the review (task H39) | The branch `hosted/catalogue-linuxserver`; no machine | Open |
 | HT-113 | The choice Catalogue shows the tier, the class shell, the streams and the optional parts, and scales with a search and groups (task H39) | The desktop client signed in to a hub of this branch, a device with Docker | Open |
 | HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
+| HT-133 | The public names of applications through the route proxy, on a real network (task H21) | A hub that a person hosts with ports 80 and 443 open, a domain name with its DNS, a machine on the link with a web application, and a second hub | Open |
+| HT-134 | Streams of TCP and UDP and the access of a route on a real network (task H40) | A hub that a person hosts, a machine on its network with a test TCP service and an IMAPS server, a device of the network of Anima and a device that is not on it | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
 | HT-003 | The tool inventory in an MCP client | HT-002 | Open |
@@ -2510,6 +2512,89 @@ It needs: the computer `pop-os`, a terminal as your own user (not root), the int
 After the check you can remove everything again: `podman system reset` removes the images and the
 containers of your user, and `sudo apt remove podman` removes the program.
 
+### HT-133: the public names of applications through the route proxy (task H21)
+
+Built on the branch `hosted/apps-h21`: the routes domain of the hub (`crates/hub/src/work/routes/`), the
+interface of the proxy on a Unix socket (`crates/hub/src/work/routes/door.rs`), the proxy program
+(`crates/route-proxy/`), the command `anima route` and the MCP tools `anima_route_list` and
+`anima_route_get`. The tests use a fake DNS, a fake certificate issuer, a fake machine and a test
+database. They prove each refused name, port and target, the proof by a TXT record, the CAA check, the
+sealed key, the connection by the identifier of an application only, the limit of streams of a link, and
+the rewrite of the headers. No test used a real resolver, a real certificate, a real port 443, the user
+of the operating system of the proxy, or the link to a real machine. The real ACME issuer is not built:
+it answers "not configured", so no route serves on a real hub yet. The consent of the machine
+(OD-HOST-43) is a field that stays "not given", and so is the mark that the hub's record of the
+application names the device and the port (task H6, SF-331). The timeouts and the caps of
+the proxy before the name (SF-327) were tested only with in-memory streams.
+
+1. Before the issuer is built: on a hub that a person hosts, set `ANIMA_ROUTES_SOCKET` and
+   `ANIMA_ROUTES_PROXY_UID` (the user ID of the proxy) and start the hub.
+   Run `anima route add` with a name of a domain that you own, an application identifier, a machine on
+   the link and its port. Expected: the command asks for the second factor, then shows the TXT record
+   `_anima.<name>` with a token of 64 hexadecimal characters.
+2. Put the TXT record in the DNS of the name and run `anima route check <id>`. Expected: the proof is
+   "Proven". The state waits for the consent of the machine, for the record of the application and for a
+   certificate.
+3. Run `anima route add` with a name of the domain of the hub, a name with `*`, and the ports 22, 2375,
+   10250, 5432 and 9090. Expected: each one is refused with its reason.
+4. Start `anima-route-proxy` as a user of the operating system that is not the user of the hub, with
+   `ANIMA_ROUTE_PROXY_LISTEN` unset. Expected: it says that it is off and stops.
+5. As that user, try to open the dial socket of the link, the control socket of the link, the port of
+   the hub and the database. Expected: each one is refused by the permissions of the operating system;
+   only the socket of `ANIMA_ROUTES_SOCKET` opens. As a third user that is in the group of that socket,
+   send `"table"` to it. Expected: the hub closes the connection with no answer.
+6. When the issuer, the consent and the record of the application are built: set `ANIMA_ROUTE_PROXY_LISTEN` to port 443 and
+   `ANIMA_ROUTE_PROXY_LISTEN_PLAIN` to port 80, and open `https://<name>/` from a second network.
+   Expected: the page of the application, with a valid certificate. `http://<name>/` goes to https.
+   A request with a `Host` that is not the name gets 421. The application gets no cookie of the hub
+   and an `X-Forwarded-For` with the address of your client.
+7. On a second hub, run `anima route add` with the same name. Expected: the TXT record of the first hub
+   does not prove the name for the second hub.
+
+Result: Open.
+
+### HT-134: streams of TCP and UDP and the access of a route (task H40)
+
+Built on the branch `hosted/apps-h21`: the kinds `web`, `redirect`, `tcp_stream` and `udp_stream` and the
+access `public` or `private` in the table of routes (migration 1061, `crates/hub/src/work/routes/kinds.rs`),
+`anima route add --kind --access --listen-port --protocol --redirect-to`, the kind and the access in the
+MCP tools `anima_route_list` and `anima_route_get`, and in the proxy (`crates/route-proxy/src/streams/`)
+a TCP listener for each stream, a UDP listener only on a hub that a person hosts, a private TLS listener
+and the answer of a redirect. The tests use a fake hub, a fake machine that echoes, the loopback address
+and a test database. They prove the rules of each kind and port, the refusals of a hosted hub and of UDP
+through the link, the protocols of a public stream, the address of a redirect, the dial by the name of
+the route, and the frames of datagrams. No test used a real network of Anima, a real IMAPS client, a
+port of a real hub or a real machine. No route serves on a real hub yet: each waits for its proof, the
+consent of the machine (OD-HOST-43) and the record of the application (task H6); to try the steps, set
+these marks in the database of a test hub only.
+
+1. On a hub that a person hosts, set `ANIMA_ROUTES_STREAM_PORTS=20000-20999`, `ANIMA_ROUTES_SOCKET` and
+   `ANIMA_ROUTES_PROXY_UID`, start the hub, and run
+   `anima route add test.example.com --kind tcp-stream --listen-port 20007 --port 7 --application <id> --device <machine>`
+   for a test TCP echo service on port 7 of a machine. Expected: a private route that waits for its proof.
+2. Run the same with `--listen-port 993`, `--listen-port 5432` and `--listen-port 30000`. Expected: each one
+   is refused with its reason (below 1024, a port of Anima, outside the range).
+3. Run it with `--access public --protocol imaps --listen-port 20993 --port 993`. Expected: refused, because
+   a public route is added only by a person in the Anima app in a browser. In a browser signed in to the hub,
+   send `addApplicationRoute` with the same fields and no `protocol`. Expected: refused, with the list of
+   protocols and their usual ports. Send it again with `protocol: "imaps"`. Expected: a public route that
+   waits for its proof.
+4. On a test hub only, set `proof`, `machine_consent`, `application_recorded` and `stream_public` of both routes to their
+   serving values. Start `anima-route-proxy` with `ANIMA_ROUTE_PROXY_LISTEN` on the public address and
+   `ANIMA_ROUTE_PROXY_PRIVATE_ADDRESS` and `ANIMA_ROUTE_PROXY_PRIVATE_NETWORKS` for the network of Anima.
+   Expected: within one minute the proxy listens on 20993 on the public address and on 20007 on the
+   private address only.
+5. From a device of the network of Anima, run `nc <private address of the hub> 20007` and type a line.
+   Expected: the echo service answers the line.
+6. From a device that is not on the network of Anima, run `nc <public address of the hub> 20007` and
+   `nc <private address of the hub> 20007`. Expected: no answer from either.
+7. From a second network, connect an IMAPS client to `<public address of the hub>:20993`. Expected: the
+   mail server's own certificate and sign-in; the mailbox opens.
+8. Run `anima route add vpn.example.com --kind udp-stream --listen-port 20194 --port 1194` for a machine on
+   the link. Expected: refused, UDP never goes through the link. For a machine on the network of the hub
+   it is added.
+9. On a hosted hub, run step 1. Expected: refused, a hosted hub has no stream until the door has an address
+   for each hub.
 ### HT-107: the single sessions on the page Agent usage (AIS-025, AIS-026)
 
 Built on the branch `ui/agent-sessions`: the query `agentSessions` of the hub (`crates/hub/src/fleet/agent_usage/`),

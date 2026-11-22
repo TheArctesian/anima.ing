@@ -29,7 +29,7 @@ use entry::{Entry, MachineTest};
 
 /// The ports of Anima on a machine (SF-252): `guacd` (4822), the local hub (8443) and
 /// the link (the tunnel on 41641, STUN on 3478). No recipe publishes one of them on the machine.
-/// The routes of task H21 refuse the same ports; when both are on one branch, they use this list.
+/// The routes of the hub (tasks H21 and H40) refuse these ports as a target and as a port of a stream.
 pub const ANIMA_PORTS: [u16; 4] = [4822, 8443, 41641, 3478];
 
 /// The three texts of one recipe folder. A file that is not in the folder is `None`.

@@ -2075,3 +2075,49 @@ The rules of Section 12.3 apply to each route. For a stream also:
 
 A separate reviewer read Sections 15 and 16 on 2026-11-20: SF-243 to SF-250 in
 [security-findings.md](../security-findings.md). The text above has the corrections.
+
+### 16.8 What the build of task H40 does differently
+
+Task H40 builds steps 1, 2 and the first part of 4 of Section 16.5 with the decisions R-365
+(OD-HOST-46 to OD-HOST-49 and OD-HOST-54, each option A). Where it differs from the text above:
+
+- **The mark `stream-public` waits for task H6.** The catalogue does not give the hub its entries with
+  their ports before task H6, so a public stream needs a protocol that the person picks from a fixed list
+  of the hub: protocols with their own sign-in and TLS (imaps, pop3s, smtps, ldaps and xmpps over TCP;
+  openvpn and wireguard over UDP). The usual port of each is a hint only; the hub never opens a port by
+  itself. The protocol is only a label, so a public stream also waits for the mark `stream-public` on its
+  port in the record of the application (SF-328): no public stream serves before task H6.
+  A private stream needs no protocol and no mark.
+- **A public route needs the browser.** A public route of each kind is added only by a person in the
+  Anima app in a browser, with no agent declared; never by a login token, MCP or an API key
+  (SF-330).
+- **No class `shell` yet.** The hub has no class of an entry before task H6. Each route waits for the
+  record of the application (`APPLICATION_RECORD`), so none serves; the record must refuse each route of
+  an entry of the class `shell` (OD-HOST-54).
+- **No bind test.** The proxy, not the hub, binds the port of a stream, and it can run on a different
+  host. The hub checks the range of the operator (`ANIMA_ROUTES_STREAM_PORTS`; unset: no stream), the
+  ports below 1024 and a fixed list (STUN, PostgreSQL, the link, WireGuard, the gateway, the local hub
+  and the hub's own port). The proxy logs a port that it cannot bind and leaves it out.
+- **UDP answers.** No source proves that it gets the answers, so the proxy never sends to a source more
+  bytes than it received from it, for the life of the flow. Each stream has a limit of flows
+  (`ANIMA_ROUTE_PROXY_UDP_FLOWS`, 64), of new flows each second (8, with a burst of 16), and of flows of
+  one source network (4, the /24 of IPv4 or the /64 of IPv6), and an idle time
+  (`ANIMA_ROUTE_PROXY_UDP_IDLE_SECONDS`, 60 s).
+  The hub sends the datagrams to the machine from a socket of its own, never through the link.
+- **Private.** The proxy has a second TLS listener and the stream listeners on its address on the network
+  of Anima (`ANIMA_ROUTE_PROXY_PRIVATE_ADDRESS`) and answers there only a peer in the networks of
+  `ANIMA_ROUTE_PROXY_PRIVATE_NETWORKS`. A private name is never served on the public listener. A new
+  route is private unless the person asks for public. Nothing is in a table of the door yet.
+- **Redirect.** It answers 301 to `GET` and `HEAD` and 308 to each other method, with the one address of
+  the route and nothing of the request. It has an application and a device (the owner and the target of
+  the audit) and no port.
+- **Priority of the sessions.** The link carries no priorities. Each stream and each request of the routes
+  of one device counts against the limit of that device (`ANIMA_ROUTES_STREAMS_PER_DEVICE`, 16), which is
+  below the streams of its link (`ANIMA_ROUTES_STREAMS_PER_LINK`, 32) and so keeps room for the sessions;
+  each name has the limits of Section 12.7, 16 connections of one route, and the caps of each client of the
+  proxy (SF-327).
+- **A hub on Linux.** The interface of the proxy is a Unix socket, so routing is built only for a hub on
+  Unix; on any other hub the routes API refuses with "Routing needs a hub on Linux." (R-366).
+- **One device for each application.** The routes of one application go to one device and may go to
+  different ports of it (a web page and an IMAPS stream), so the proxy dials a route by the identifier of
+  its application and the name of the route, never a device or a port.

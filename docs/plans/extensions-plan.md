@@ -897,7 +897,8 @@ collector exist. Counts have no text, so they are Class C and need no vault.
   salt of the hub: the same account on two machines of one hub gives the same key, and a different hub gives a
   different key. The key is the stable identifier for grouping. The daemon must not send the identifier. The
   address is personal data: it goes to no log line and no notification (LOG-007, THR-149 point 7), the hub gives it
-  in no diagnostics, and the hub deletes it with its device. The page groups the devices that send the same account
+  in no diagnostics and to no API key (only to a login or a browser token of the person), and the hub deletes it
+  with its device. The page groups the devices that send the same account
   key under that account, with one shared bar for each limit window, and still shows the share of each device. A
   limit that no source gives stays empty.
 - **AIS-023.** The exclusions of AIS-008 apply to the counts. When the collector reads the same
