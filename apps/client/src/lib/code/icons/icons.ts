@@ -1,8 +1,6 @@
 import AlarmClock from '@lucide/svelte/icons/alarm-clock';
 import AlarmClockOff from '@lucide/svelte/icons/alarm-clock-off';
 import ArrowDown from '@lucide/svelte/icons/arrow-down';
-import ArrowLeft from '@lucide/svelte/icons/arrow-left';
-import ArrowRight from '@lucide/svelte/icons/arrow-right';
 import ArrowRightLeft from '@lucide/svelte/icons/arrow-right-left';
 import ArrowUp from '@lucide/svelte/icons/arrow-up';
 import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
@@ -136,8 +134,6 @@ export const CODE_ICONS = {
   'alarm-clock': AlarmClock,
   'alarm-clock-off': AlarmClockOff,
   'arrow-down': ArrowDown,
-  'arrow-left': ArrowLeft,
-  'arrow-right': ArrowRight,
   'arrow-right-left': ArrowRightLeft,
   'arrow-up': ArrowUp,
   'arrow-up-right': ArrowUpRight,
