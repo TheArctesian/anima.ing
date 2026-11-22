@@ -4,7 +4,7 @@
   import Card from './Card.svelte';
   import ReadOnlyBar from './ReadOnlyBar.svelte';
   import { untrack } from 'svelte';
-  import { phaseOf, runEngine, type FileSearch } from './engine';
+  import { phaseOf, runEngine, type FileSearch, type QueueCall } from './engine';
   import { heldQueue, NOT_WATCHED, type Went } from './queue/held.svelte';
   import './composer.css';
 
@@ -15,6 +15,8 @@
     onInterrupt: () => Promise<CallResult>;
     /** Ends the program. The composer has no control for it (T3's Stop interrupts the turn): the chat's header has. */
     onStop: () => Promise<CallResult>;
+    /** The calls of the runner's own queue for this chat (TH109); without them the window holds the queue. */
+    onQueue?: QueueCall;
     /** The runner's file list for this chat (`live.files`), for the `@` list; without it the list says there is no search. */
     onFiles?: FileSearch;
     /** The key under which the unsent text is kept: the chat's id. */
@@ -25,12 +27,12 @@
    * The composer of a chat of the Code section (TC4; 03 Part B). It sets no width and no place: the chat column
    * gives it the lane and pins it to the foot.
    */
-  const { row, onSend, onInterrupt, onFiles, draft }: Props = $props();
+  const { row, onSend, onInterrupt, onQueue, onFiles, draft }: Props = $props();
   const chat = $derived(row?.id);
   // Looked up apart from the engine: the engine must follow the queue's messages, and state is not followed by the
   // computation that made it.
-  const queue = $derived(chat === undefined ? null : heldQueue(chat));
-  const engine = $derived(row === null || queue === null ? null : runEngine(row, { onSend, onInterrupt, onFiles }, queue));
+  const queue = $derived(chat === undefined || onQueue !== undefined ? null : heldQueue(chat));
+  const engine = $derived(row === null ? null : runEngine(row, { onSend, onInterrupt, onQueue, onFiles }, queue));
   // A run whose state is not known says nothing of its turn: the queue is told only of states that are.
   const phase = $derived(row === null || row.state === 'unknown' ? null : phaseOf(row));
 
