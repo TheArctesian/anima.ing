@@ -22,6 +22,7 @@ export type PaletteAction =
   | 'issues.open'
   | 'usage.open'
   | 'settings.open'
+  /** Kept for hosts that still give it; the palette shows no row for it (T3 Code keeps the keys under Settings). */
   | 'keys.open'
   | 'workspace.focusNext'
   | 'workspace.focusPrevious';
@@ -36,24 +37,26 @@ export interface ActionLook {
   readonly inChat?: boolean;
 }
 
-/** T3 Code's root actions in its order, with its Lucide icons; the ones that name its product are left out. */
+/**
+ * T3 Code's root actions in its order (`CommandPalette.tsx`), with its Lucide icons and search terms; the ones that name
+ * its product, its themes and its sub-views are left out. T3 Code has no row for the keys: they live under Settings.
+ */
 export const ACTIONS: readonly ActionLook[] = [
-  { id: 'chat.new', label: 'New chat', icon: 'square-pen', terms: ['thread', 'start', 'create'] },
-  { id: 'chat.newWithoutProject', label: 'New chat without a project', icon: 'message-square-dashed', terms: ['thread', 'scratch'] },
-  { id: 'project.add', label: 'Add project', icon: 'folder-plus', terms: ['folder', 'repository'] },
+  { id: 'chat.new', label: 'New chat', icon: 'square-pen', terms: ['new thread', 'chat', 'create', 'draft'] },
+  { id: 'chat.newWithoutProject', label: 'New chat without a project', icon: 'message-square-dashed', terms: ['new thread', 'no project', 'without project', 'none', 'chat'] },
+  { id: 'chat.find', label: 'Find in current chat', icon: 'text-search', terms: ['find', 'search', 'messages', 'plans'], inChat: true },
+  { id: 'thread.copyReference', label: 'Copy chat', icon: 'link', terms: ['copy', 'thread', 'thread id', 'reference'], inChat: true },
+  { id: 'pullRequest.link', label: 'Link pull request to chat', icon: 'link-2', terms: ['link', 'pull request', 'pr', 'attach', 'stack'], inChat: true },
+  { id: 'session.restart', label: 'Restart agent session', icon: 'rotate-ccw', terms: ['reload', 'agent'], inChat: true },
   { id: 'filePicker.toggle', label: 'Go to file', icon: 'file-search', terms: ['open', 'file'] },
   { id: 'projectSearch.toggle', label: 'Search project contents', icon: 'text-search', terms: ['grep', 'find'] },
-  { id: 'chat.find', label: 'Find in current chat', icon: 'text-search', terms: ['search', 'thread'], inChat: true },
-  { id: 'thread.copyReference', label: 'Copy chat', icon: 'link', terms: ['link', 'reference', 'thread'], inChat: true },
-  { id: 'pullRequest.link', label: 'Link pull request to chat', icon: 'link-2', terms: ['pr', 'github'], inChat: true },
-  { id: 'session.restart', label: 'Restart agent session', icon: 'rotate-ccw', terms: ['reload', 'agent'], inChat: true },
+  { id: 'project.add', label: 'Add project', icon: 'folder-plus', terms: ['folder', 'repository'] },
   { id: 'pullRequests.open', label: 'Open pull requests', icon: 'git-pull-request-arrow', terms: ['pr', 'github'] },
-  { id: 'issues.open', label: 'Open issues', icon: 'circle-dot', terms: ['github', 'bug'] },
-  { id: 'usage.open', label: 'Open usage', icon: 'chart-no-axes-column', terms: ['tokens', 'cost', 'limits'] },
-  { id: 'settings.open', label: 'Open settings', icon: 'settings', terms: ['preferences'] },
-  { id: 'keys.open', label: 'Keyboard shortcuts', icon: 'keyboard', terms: ['keys', 'keybindings', 'hotkeys'] },
-  { id: 'workspace.focusNext', label: 'Focus next workspace area', icon: 'monitor', terms: ['f6'] },
-  { id: 'workspace.focusPrevious', label: 'Focus previous workspace area', icon: 'monitor', terms: ['f6'] },
+  { id: 'issues.open', label: 'Open issues', icon: 'circle-dot', terms: ['issues', 'issue', 'bugs', 'tracker', 'github', 'triage'] },
+  { id: 'usage.open', label: 'Open usage', icon: 'chart-no-axes-column', terms: ['usage', 'use', 'tokens', 'cost', 'spend', 'limits', 'stats', 'analytics'] },
+  { id: 'workspace.focusNext', label: 'Focus Next Workspace Area', icon: 'monitor', terms: ['accessibility', 'navigation', 'focus', 'F6'] },
+  { id: 'workspace.focusPrevious', label: 'Focus Previous Workspace Area', icon: 'monitor', terms: ['accessibility', 'navigation', 'focus', 'F6'] },
+  { id: 'settings.open', label: 'Open settings', icon: 'settings', terms: ['settings', 'preferences', 'configuration', 'keybindings'] },
 ];
 
 /** A chat as the palette lists it. */
@@ -61,6 +64,8 @@ export interface PaletteChat {
   readonly id: string;
   readonly title: string;
   readonly project?: string;
+  /** The Git branch it works on. */
+  readonly branch?: string;
   /** The time of its last activity, in ms since the epoch. */
   readonly at: number;
 }
@@ -71,13 +76,18 @@ export interface PaletteHost {
   readonly chats: readonly PaletteChat[];
   /** `ready`, or `loading` and `failed` while the list of chats has not come. */
   readonly chatsState: 'ready' | 'loading' | 'failed';
-  /** The ids of the chats opened last, newest first. */
+  /** The ids of the chats used last (written in or opened), newest first. */
   readonly recent: readonly string[];
-  /** The chat that is open, if any: its actions show, and it is listed last. */
+  /** The chat that is open, if any: its actions show, it is left out of the recent chats, and a search lists it last. */
   readonly openChat?: string;
   /** The actions this host runs; the rest are disabled with their reason. */
   readonly runs: Partial<Record<PaletteAction, () => void>>;
   openChatById(id: string): void;
+  /**
+   * Where the focus goes when the palette closes and no action moved it (T3 Code's `finalFocus`: the end of the
+   * composer); true when it went there. Without it, or when it gives false, the focus goes back to where it was.
+   */
+  readonly returnFocus?: () => boolean;
 }
 
 /** Why an action is not there yet: the part of the copy that builds it. */
@@ -93,9 +103,9 @@ const NOT_BUILT: Readonly<Record<PaletteAction, string>> = {
   'session.restart': 'The engine cannot restart a session yet',
   'pullRequests.open': 'Comes with Git (TC7)',
   'issues.open': 'Comes with Git (TC7)',
-  'usage.open': 'Agent usage is not linked from Code yet',
-  'settings.open': 'The settings of Code are not built yet (TC6)',
-  'keys.open': 'The settings of Code are not built yet (TC6)',
+  'usage.open': 'This page does not open agent usage',
+  'settings.open': 'This page does not open settings',
+  'keys.open': 'The keys are listed in Settings',
   'workspace.focusNext': 'Comes with the shell (TC2)',
   'workspace.focusPrevious': 'Comes with the shell (TC2)',
 };

@@ -101,6 +101,14 @@ describe('the mention menu', () => {
     expect(bound.activeOption).toBe(rows().at(-1)?.id);
   });
 
+  it('lands on the first row with the first ArrowDown, and moves on from there', () => {
+    const menu = open('/');
+    press(menu, 'ArrowDown');
+    expect(rows()[0]?.getAttribute('aria-selected')).toBe('true');
+    press(menu, 'ArrowDown');
+    expect(rows()[1]?.getAttribute('aria-selected')).toBe('true');
+  });
+
   it('chooses the active row on Enter and on a click, closes on Escape and passes other keys on', () => {
     const menu = open('/');
     expect(press(menu, 'Enter')).toBe(true);
@@ -137,12 +145,15 @@ describe('the mention menu', () => {
 
 describe('the files of the mention menu', () => {
   it('says that it searches, then lists the files, and says so when nothing matches', async () => {
-    open('@draft');
+    const menu = open('@draft');
     expect(document.querySelector('[role="status"]')?.textContent).toBe('Searching workspace files...');
     await vi.advanceTimersByTimeAsync(FILE_SEARCH_DELAY_MS);
     flushSync();
     expect(rows().map((row) => row.querySelector('.label')?.textContent.trim())).toEqual(['draft.ts']);
     expect(document.querySelector('[role="status"]')?.textContent).toBe('');
+    // After a key the lit row is said, for a screen reader that does not follow the active row of an editable text box.
+    press(menu, 'ArrowDown');
+    expect(document.querySelector('[role="status"]')?.textContent).toMatch(/^draft\.ts, .+, 1 of 1$/);
   });
 
   it('says that the search failed', async () => {

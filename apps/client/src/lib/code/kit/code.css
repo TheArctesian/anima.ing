@@ -30,11 +30,16 @@
   --code-slim: 2.25rem;
   --code-shelf: var(--control-md);
   --code-row-gap: var(--space-1);
+  /* T3's dimming: a Working row at 0.7, a one-liner's project icon at 0.4, both back to 1 on hover or focus. */
+  --code-working-dim: 0.7;
+  --code-faded: 0.4;
 
   /* Controls: 32 px, and 28 px in dense rows, menus and the band; icons 16 px. */
   --code-control: var(--control-md);
   --code-control-dense: var(--control-sm);
   --code-icon: var(--icon-sm);
+  /* T3's 14 px icons of the hover actions and the header chevron. */
+  --code-icon-small: 0.875rem;
 
   /* Menus: items 28 px, padding 4 by 8 px, a 4 px offset from the trigger. */
   --code-menu-item: var(--control-sm);

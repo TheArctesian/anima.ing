@@ -40,7 +40,7 @@ const EMPTY: Record<TriggerKind, string> = {
   // No list of pull requests is built: the source's words for a project that has none to offer.
   'pull-request': 'Pull requests are not available for this project.',
   'slash-command': 'No matching command.',
-  skill: 'No skills found. Try / to browse commands.',
+  skill: 'No skills found. Try / to browse provider commands.',
 };
 
 /** The words of a list with no rows, drawn in the popup and said by its status line (03 "Popup design", states). */

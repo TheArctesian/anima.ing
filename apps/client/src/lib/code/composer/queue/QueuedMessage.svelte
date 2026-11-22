@@ -17,6 +17,10 @@
     busy: boolean;
     /** The prompt drawn with its chips; plain words when the caller gives none. */
     body?: Snippet<[string]>;
+    /** The shortcut of "Send now", named in its tip: the first message has it. */
+    sendKey?: string | undefined;
+    /** The shortcut of "Edit", named in its tip: the last message has it. */
+    editKey?: string | undefined;
     onSendNow: () => void;
     onEdit: () => void;
     onRemove: () => void;
@@ -27,7 +31,7 @@
    * One queued message (03 3.3 and 3.4): a dashed bubble on the right, at most 80% wide, shown in full, and under
    * it the line of its actions. The line is always shown: T3 hides part of it until hover (D9).
    */
-  const { message, name, editing, running, busy, body, onSendNow, onEdit, onRemove, onCancel }: Props = $props();
+  const { message, name, editing, running, busy, body, sendKey, editKey, onSendNow, onEdit, onRemove, onCancel }: Props = $props();
   const locked = $derived(busy || message.saving);
 </script>
 
@@ -43,10 +47,10 @@
       <span class="note strong">Editing in the composer</span>
       <button type="button" class="words" aria-label="Cancel editing queued message" onclick={onCancel}>Cancel</button>
     {:else}
-      <Tooltip text={sendNowTip(running)}>
+      <Tooltip text={sendNowTip(running, sendKey)}>
         <button type="button" class="words" disabled={locked} onclick={onSendNow}><CodeIcon name="arrow-up" /> Send now</button>
       </Tooltip>
-      <Tooltip text="Edit in the composer"><IconButton label="Edit queued message" icon="pencil" disabled={locked} onclick={onEdit} /></Tooltip>
+      <Tooltip text={editKey === undefined ? 'Edit in the composer' : `Edit in the composer (${editKey})`}><IconButton label="Edit queued message" icon="pencil" disabled={locked} onclick={onEdit} /></Tooltip>
       <Tooltip text="Remove from queue"><IconButton label="Remove queued message" icon="x" disabled={locked} onclick={onRemove} /></Tooltip>
     {/if}
   </div>

@@ -1,15 +1,17 @@
 <script lang="ts">
   import './palette.css';
   import CodeIcon from '../icons/CodeIcon.svelte';
-  import Kbd from '../kit/Kbd.svelte';
   import { openDialog } from '$lib/forms/modal/stack';
   import { fade, modal } from '$lib/motion/roles/transitions';
   import { coverWhile } from '$lib/overlay/overlay.svelte';
   import type { PaletteHost } from './adapter';
+  import PaletteFoot from './PaletteFoot.svelte';
   import PaletteResults from './PaletteResults.svelte';
   import { parseChord, pressedIs } from './keys/keymap';
   import { keyRules, thisKeySet, type KeySet } from './keys/web';
-  import { emptyWords, paletteGroups, stepped, type PaletteRow } from './results';
+  import { shortcutOf } from './keys/table';
+  import { commandOf, inputContext, rowContext } from './keys/when';
+  import { emptyWords, firstEnabled, keyedRow, paletteGroups, stepped, type PaletteRow } from './results';
 
   interface Props {
     host: PaletteHost;
@@ -37,15 +39,21 @@
   let openedAt = $state(0);
   let input: HTMLInputElement | undefined = $state();
   let portal: HTMLElement | undefined = $state();
+  let results: HTMLElement | null = $state(null);
+  /** Which edges of the results have rows scrolled past them, for the fade (T3 Code's `getVirtualizedScrollFadeClassName`). */
+  let edges = $state({ top: false, bottom: false });
   let entry: ReturnType<typeof openDialog> | undefined;
 
   const groups = $derived(open ? paletteGroups(host, typed, now ?? openedAt) : []);
   const rows = $derived(groups.flatMap((group) => group.rows));
+  /** The shaded row: never a disabled one, the first that can be chosen when none is shaded (T3 Code's `autoHighlight`). */
   const active = $derived.by(() => {
-    const at = rows.findIndex((row) => row.id === shadedId);
-    return at >= 0 ? at : rows.length > 0 ? 0 : -1;
+    const at = rows.findIndex((row) => row.id === shadedId && !row.disabled);
+    return at >= 0 ? at : firstEnabled(rows);
   });
+  /** In the footer, so the list keeps its height (T3 Code's "Searching messages…"). */
   const chatsNote = $derived(typed.startsWith('>') || typed.trim() === '' ? undefined : { loading: 'Loading chats…', failed: "Couldn't load chats.", ready: undefined }[host.chatsState]);
+  const keyOfRow = (command: string): string | undefined => shortcutOf(command, keys.mac, rules, rowContext(keys.web));
   const rowId = (index: number): string => `${id}-row-${String(index)}`;
 
   coverWhile(() => open);
@@ -75,8 +83,8 @@
   }
 
   /**
-   * Each opening starts empty, with the first row shaded. On closing the focus goes back to where it was, unless the
-   * chosen row moved it somewhere else.
+   * Each opening starts empty, with the first row shaded. On closing, unless the chosen row moved the focus, it goes
+   * where the host puts it (the end of the composer), or else back to where it was.
    */
   $effect.pre(() => {
     if (!open) return;
@@ -89,7 +97,8 @@
     return () => {
       opened.close();
       entry = undefined;
-      if (before instanceof HTMLElement && before.isConnected && focusIsLost()) before.focus();
+      if (!focusIsLost() || host.returnFocus?.() === true) return;
+      if (before instanceof HTMLElement && before.isConnected) before.focus();
     };
   });
 
@@ -106,8 +115,17 @@
     };
   });
 
+  function measureFade(): void {
+    if (results === null) return;
+    const { scrollTop, scrollHeight, clientHeight } = results;
+    edges = { top: scrollTop > 0, bottom: scrollTop + clientHeight < scrollHeight - 1 };
+  }
+
+  /** Back on the first row the list scrolls to its top, so the first label shows; other moves keep a margin (CSS). */
   $effect(() => {
-    if (active >= 0) document.getElementById(rowId(active))?.scrollIntoView({ block: 'nearest' });
+    if (active === firstEnabled(rows) && results !== null) results.scrollTop = 0;
+    else if (active >= 0) document.getElementById(rowId(active))?.scrollIntoView({ block: 'nearest' });
+    measureFade();
   });
 
   function shade(index: number): void {
@@ -121,12 +139,23 @@
     row.run();
   }
 
+  /** A key of a row typed in the input runs the row; true when the key was taken. */
+  function rowKey(event: KeyboardEvent): boolean {
+    const taken = keyedRow(commandOf(event, rules, keys.mac, inputContext(keys.web)), rows);
+    if (taken === undefined) return false;
+    event.preventDefault();
+    event.stopPropagation();
+    choose(taken.row);
+    return true;
+  }
+
   function onkey(event: KeyboardEvent): void {
     // A key that ends a composition (IME) belongs to the composition.
     if (event.isComposing || event.keyCode === 229) return;
+    if (rowKey(event)) return;
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
-      shade(stepped(active, event.key === 'ArrowDown' ? 1 : -1, rows.length));
+      shade(stepped(active, event.key === 'ArrowDown' ? 1 : -1, rows));
     } else if (event.key === 'Enter') {
       event.preventDefault();
       choose(rows[active]);
@@ -185,20 +214,15 @@
             spellcheck="false"
           />
         </div>
-        <div class="results">
+        <div class="results" class:fade-top={edges.top} class:fade-bottom={edges.bottom} bind:this={results} onscroll={measureFade}>
           {#if rows.length > 0}
-            <PaletteResults id="{id}-list" {groups} {active} mac={keys.mac} {rules} {rowId} onpoint={shade} onchoose={choose} />
-          {:else if chatsNote === undefined}
+            <PaletteResults id="{id}-list" {groups} {active} shortcut={keyOfRow} {rowId} onpoint={shade} onchoose={choose} />
+          {:else}
             <p class="empty">{emptyWords(typed)}</p>
           {/if}
-          {#if chatsNote !== undefined}<p class="note">{chatsNote}</p>{/if}
         </div>
-        <p class="visually-hidden" role="status">{rows.length === 1 ? '1 result' : `${String(rows.length)} results`}</p>
-        <div class="foot">
-          <span class="hint"><Kbd keys="↑" /><Kbd keys="↓" /> Navigate</span>
-          <span class="hint"><Kbd keys="Enter" /> {rows[active]?.id.startsWith('chat:') === true ? 'Open' : 'Select'}</span>
-          <span class="hint"><Kbd keys="Esc" /> Close</span>
-        </div>
+        <p class="visually-hidden" role="status">{rows.length === 1 ? '1 result' : `${String(rows.length)} results`}{chatsNote === undefined ? '' : `. ${chatsNote}`}</p>
+        <PaletteFoot note={chatsNote} />
       </div>
     </div>
   </div>
@@ -220,7 +244,7 @@
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    padding: var(--code-palette-top-narrow) var(--space-4) var(--space-4);
+    padding: var(--code-palette-top-narrow) var(--space-4) var(--code-palette-bottom-narrow);
   }
 
   .surface {
@@ -252,17 +276,23 @@
     pointer-events: none;
   }
 
+  /* T3 Code's search icon: 18 px on a narrow window, 16 px from 40rem. */
+  .search :global(.code-icon) {
+    inline-size: var(--icon-md);
+    block-size: var(--icon-md);
+  }
+
   input {
     box-sizing: border-box;
     inline-size: 100%;
     block-size: var(--code-palette-input-narrow);
-    padding-inline: var(--code-palette-input-inset) var(--space-2);
+    padding-inline: var(--code-palette-input-inset-narrow) var(--space-2);
     border: none;
     border-radius: var(--radius-sm);
     background: none;
     color: var(--text);
     font: inherit;
-    font-size: var(--code-text-body);
+    font-size: var(--code-palette-input-text-narrow);
   }
 
   input::placeholder {
@@ -281,39 +311,28 @@
     max-block-size: var(--code-palette-results);
     overflow-y: auto;
     overscroll-behavior: contain;
+    scroll-padding-block: var(--code-palette-scroll-margin);
   }
 
-  .empty,
-  .note {
+  /* The rows fade under a scrolled edge; the mask reads only the alpha of its colour. */
+  .fade-top {
+    mask-image: linear-gradient(to bottom, transparent, var(--text) var(--code-palette-fade));
+  }
+
+  .fade-bottom {
+    mask-image: linear-gradient(to top, transparent, var(--text) var(--code-palette-fade));
+  }
+
+  .fade-top.fade-bottom {
+    mask-image: linear-gradient(to bottom, transparent, var(--text) var(--code-palette-fade), var(--text) calc(100% - var(--code-palette-fade)), transparent);
+  }
+
+  .empty {
     margin: 0;
     padding: var(--space-10) 0;
     color: var(--code-quiet-text);
     font-size: var(--code-text-body);
     text-align: center;
-  }
-
-  .note {
-    padding-block: var(--space-2) var(--space-4);
-    font-size: var(--code-text-meta);
-  }
-
-  .foot {
-    display: flex;
-    flex: none;
-    flex-wrap: wrap;
-    gap: var(--space-1) var(--code-palette-hint-gap);
-    padding: var(--code-palette-foot-pad);
-    border-block-start: var(--border-thin) solid var(--code-line);
-    background: var(--surface-sunken);
-    color: var(--code-quiet-text);
-    font-size: var(--code-text-body);
-    font-weight: var(--weight-medium);
-  }
-
-  .hint {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
   }
 
   .visually-hidden {
@@ -327,11 +346,18 @@
 
   @media (width >= 40rem) {
     .frame {
-      padding-block-start: var(--code-palette-top);
+      padding-block: var(--code-palette-top) var(--code-palette-bottom);
+    }
+
+    .search :global(.code-icon) {
+      inline-size: var(--icon-sm);
+      block-size: var(--icon-sm);
     }
 
     input {
       block-size: var(--code-palette-input);
+      padding-inline-start: var(--code-palette-input-inset);
+      font-size: var(--code-text-body);
     }
   }
 </style>

@@ -146,8 +146,9 @@
   }
 
   .field:focus-within {
-    border-block-end-color: var(--focus-ring);
-    box-shadow: 0 var(--border-thin) 0 0 var(--focus-ring);
+    border-radius: var(--radius-sm);
+    outline: var(--border-focus) solid var(--focus-ring);
+    outline-offset: var(--code-composer-picker-frame);
   }
 
   input {

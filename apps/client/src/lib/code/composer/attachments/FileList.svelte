@@ -7,15 +7,13 @@
     /** The files of the draft that are not tiles, in the order they were attached. */
     attachments: readonly Attachment[];
     onRemove: (id: string) => void;
-    /** The name of a ready file was chosen: the composer opens its preview. */
-    onOpen: (id: string) => void;
   }
 
   /*
    * The files under the media row (03 "File list"): one row each, with an icon, the name, the size and a remove
    * button. A file that is still being read says so in place of its size; a failed one gives the reason there.
    */
-  const { attachments, onRemove, onOpen }: Props = $props();
+  const { attachments, onRemove }: Props = $props();
 </script>
 
 <ul>
@@ -23,18 +21,8 @@
     {@const ready = attachment.state.state === 'ready'}
     <li>
       <CodeIcon name={fileIcon(attachment)} />
-      <!-- Not `disabled` while it cannot open: the row keeps its Tab stop and its name. -->
-      <button
-        type="button"
-        class="name"
-        class:ready
-        aria-disabled={!ready}
-        onclick={() => {
-          if (ready) onOpen(attachment.id);
-        }}
-      >
-        {attachment.name}
-      </button>
+      <!-- A name, not a button: only a picture has a preview. -->
+      <span class="name" title={attachment.name}>{attachment.name}</span>
       {#if attachment.state.state === 'failed'}
         <span class="meta failed">{attachment.state.words}</span>
       {:else}
@@ -78,19 +66,9 @@
   .name {
     flex: 1 1 0;
     min-inline-size: 0;
-    padding: 0;
     overflow: hidden;
-    border: 0;
-    background: none;
-    color: inherit;
-    font: inherit;
-    text-align: start;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .name.ready:hover {
-    text-decoration: underline;
   }
 
   .meta {
@@ -129,7 +107,6 @@
     color: var(--text);
   }
 
-  .name:focus-visible,
   .remove:focus-visible {
     outline: var(--border-focus) solid var(--focus-ring);
     outline-offset: calc(var(--border-focus) * -1);
