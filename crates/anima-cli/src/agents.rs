@@ -113,6 +113,10 @@ pub enum AgentCommand {
     /// folders of tools and of build output are left out.
     #[cfg(unix)]
     Files(files::FilesArgs),
+    /// List the folders in one folder of this computer, to choose a project for a thread. Only
+    /// names of folders: no file and no link.
+    #[cfg(unix)]
+    Folders(files::FoldersArgs),
 }
 
 impl AgentCommand {
@@ -156,6 +160,7 @@ impl AgentCommand {
             Self::Accounts => accounts::accounts(invocation).await,
             Self::Models => accounts::models(invocation).await,
             Self::Files(args) => files::files(args, invocation).await,
+            Self::Folders(args) => files::folders(args, invocation).await,
             other => other.run_listing(invocation).await,
         }
     }

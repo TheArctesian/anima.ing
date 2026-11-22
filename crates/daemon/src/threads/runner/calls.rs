@@ -16,6 +16,7 @@ use send::Sender;
 
 mod attach;
 mod files;
+mod folders;
 mod queue;
 mod reads;
 mod refusal_lines;
@@ -77,6 +78,10 @@ impl Runner {
                     most,
                 } => self.files(thread, &query, most),
                 Action::Folder { folder } => self.folder_notice(&folder),
+                Action::Folders { folder, hidden } => {
+                    self.folders(folder, hidden, back);
+                    return;
+                }
                 Action::RaiseLimit => {
                     self.limits = self.limits.raised();
                     self.save();
@@ -275,6 +280,7 @@ const fn for_the_person(action: &Action) -> bool {
             | Action::ChangeListing { .. }
             | Action::ChangeProject { .. }
             | Action::Files { .. }
+            | Action::Folders { .. }
             | Action::Queue { .. }
             | Action::Requeue { .. }
             | Action::Unqueue { .. }
