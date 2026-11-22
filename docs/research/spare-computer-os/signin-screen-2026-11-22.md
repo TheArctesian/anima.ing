@@ -28,7 +28,7 @@ The combined QtWebEngine console then crashed at startup with the new applicatio
 
 The repair scopes input filters to the console's own black cover widgets. Covers keep their input grabs through the waking gesture's release, then disappear. Six isolated lifecycle cases pass; the integrated native fixture now passes startup, the real bridge's screen-off action, black cover, keyboard wake, and rendered lock form with an empty password field. QR decoding and copy/clear checks pass in the same process. Evidence: `/tmp/anima-qr-integrated-final.log` and `/tmp/anima-screen-scoped-tests.log`.
 
-Synchronizing current dev exposed a 301-line runner calls module. Codex construction moved unchanged beside its existing state implementation, preserving the call path. All 84 focused runner tests pass; the limits gate passes. This source-only integration correction does not change the retained OS runtime payload.
+Synchronizing current dev exposed a 301-line runner calls module. Codex construction moved unchanged beside its existing state implementation, preserving the call path. All 84 focused runner tests pass; the limits gate passes. The later dev integration supersedes that temporary move with upstream’s answer-module extraction; calls.rs and codex.rs now match dev. Neither correction changes the retained OS runtime payload.
 
 
 The corrected ISO booted and authenticated successfully. Its first graphical run stopped at an OCR locator: the wider enrollment action changed text segmentation around “Connect to Anima”, while the captured screen showed the unlocked overview. The check now waits for the stable Local resources heading before exercising network, settings, blanking and wake. This is a harness correction; the image is unchanged.

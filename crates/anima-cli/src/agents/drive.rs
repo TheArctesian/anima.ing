@@ -158,6 +158,8 @@ impl StartArgs {
             program_path: self
                 .program_path
                 .map(|path| std::path::absolute(&path).unwrap_or(path)),
+            draft: None,
+            attachments: Vec::new(),
         };
         loop {
             match link.call(action.clone()).await? {

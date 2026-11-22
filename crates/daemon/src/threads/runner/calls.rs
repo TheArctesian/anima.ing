@@ -1,19 +1,20 @@
 //! The calls of the clients of this computer to the runner (TH12, TH13, TH15): each is checked
 //! here, written to the log of the runner (THR-044), and answered on the socket.
 
-use agent_threads::control::{Action, Call, Outcome, Refusal, Reply, RunState};
-use agent_threads::drive::Answer;
+use agent_threads::control::{Action, Call, Outcome, Refusal, Reply, RunState, ThreadRow};
+use agent_threads::drive::{Effort, KeptFolder, Model, Program};
 use uuid::Uuid;
 
-pub(super) use super::codex::codex_of;
+use super::codex::Codex;
 use super::log::{Kind, Line};
 use super::socket::{self, CLIENT_BYTES, CLIENT_QUEUE, Caller, Client, Incoming};
 use super::start::NewThread;
-use super::thread::Step;
-use super::{Pending, Runner, Waits};
+use super::{Runner, Waits};
 use crate::threads::wire;
+use answer::Answering;
 use send::Sender;
 
+mod answer;
 mod attach;
 mod files;
 mod folders;
@@ -31,6 +32,23 @@ pub(super) use send::SentPrompt;
 const SOURCE: &str = "local socket";
 /// The most clients that watch at one time.
 const WATCHERS: usize = 16;
+
+/// The Codex calls of a thread of Codex.
+/// Its sandbox keeps the folder of the daemon read-only when the folder of the thread holds it
+/// (THR-041).
+pub(super) fn codex_of(
+    row: &ThreadRow,
+    effort: Option<Effort>,
+    daemon: &std::path::Path,
+) -> Option<Codex> {
+    (row.program == Program::Codex).then(|| {
+        let model = row.model.as_deref().and_then(|name| Model::new(name).ok());
+        Codex::new(row.folder.clone(), row.mode, model, effort).keeping(
+            crate::threads::notice::held_anima(&row.folder, daemon)
+                .map(|anima| KeptFolder::new(anima, row.id)),
+        )
+    })
+}
 
 impl Runner {
     pub(super) async fn call(&mut self, incoming: Incoming) {
@@ -180,40 +198,6 @@ impl Runner {
         }
     }
 
-    /// An answer of the person. The request closes, and the client gets its answer, when the
-    /// holder took the line (THR-030).
-    async fn answer(
-        &mut self,
-        to: Answering,
-        answer: &Answer,
-        back: Caller,
-    ) -> Result<(), Refusal> {
-        let Answering {
-            thread: id,
-            request,
-        } = to;
-        let thread = self.threads.get_mut(&id).ok_or(Refusal::UnknownThread)?;
-        let line = thread.answer(request, answer)?;
-        // The record says that the answer went, before the line goes (THR-030).
-        self.save();
-        let Ok(Some(command)) = self.apply(id, vec![Step::Write(line)]).await else {
-            if let Some(thread) = self.threads.get_mut(&id) {
-                thread.answer_failed(request);
-            }
-            // The record must not say that the answer went: a restart would close the request.
-            self.save();
-            return Err(Refusal::Holder);
-        };
-        let pending = Pending {
-            thread: id,
-            request,
-            word: answer_word(answer),
-            back,
-        };
-        self.waits.insert(command, Waits::Answer(pending));
-        Ok(())
-    }
-
     async fn interrupt(&mut self, id: Uuid) -> Outcome {
         let Some(thread) = self.threads.get_mut(&id) else {
             return Outcome::Refused {
@@ -251,12 +235,6 @@ impl Runner {
         self.waits.insert(command, Waits::Stop { back });
         Ok(())
     }
-}
-
-/// The request of a thread that an answer is for.
-struct Answering {
-    thread: Uuid,
-    request: Uuid,
 }
 
 /// Whether only the person may make this call: an answer to a request, a raise of the limit,
@@ -303,15 +281,6 @@ const fn thread_of(action: &Action) -> Option<Uuid> {
         | Action::AttachMore { thread, .. }
         | Action::Unattach { thread, .. } => Some(*thread),
         _ => None,
-    }
-}
-
-const fn answer_word(answer: &Answer) -> &'static str {
-    match answer {
-        Answer::Allow => "allow",
-        Answer::AllowForSession { .. } => "allow for the session",
-        Answer::Deny { .. } => "deny",
-        Answer::Choose { .. } => "choose",
     }
 }
 
