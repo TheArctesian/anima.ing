@@ -1,5 +1,5 @@
 //! The calls that only read what the runner holds: the threads, the listings, the projects, the
-//! accounts, the models and the earlier updates of a thread (TH106).
+//! accounts and the earlier updates of a thread (TH106).
 
 use std::path::Path;
 
@@ -24,9 +24,6 @@ impl Runner {
             Action::Projects => self.projects(),
             Action::Accounts => Outcome::Accounts {
                 accounts: self.said.accounts.rows(),
-            },
-            Action::Models => Outcome::Models {
-                models: self.said.models.rows(),
             },
             Action::Earlier {
                 thread,

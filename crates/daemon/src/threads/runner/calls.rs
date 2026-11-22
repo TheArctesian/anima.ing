@@ -61,6 +61,10 @@ impl Runner {
                     self.watch(id, client);
                     return;
                 }
+                Action::Models => {
+                    self.models_call(back, !agent);
+                    return;
+                }
                 Action::Interrupt { thread } => self.interrupt(thread).await,
                 queued @ (Action::Queue { .. }
                 | Action::Requeue { .. }

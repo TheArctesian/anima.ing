@@ -33,7 +33,7 @@ pub use codex_out::CodexDecoder;
 pub use launch::{Effort, Invocation, Launch, Mode, Model, Program, SessionStart};
 pub use prompt::{Attached, Attachment, Prompt};
 pub use request::{Answer, ProgramRequestId, Question, Request, RequestKind};
-pub use turn_facts::{ModelChoice, PlanStep, StepState, Usage};
+pub use turn_facts::{ModelChoice, PlanStep, StepState, Usage, claude_models, codex_models};
 
 use serde::{Deserialize, Serialize};
 

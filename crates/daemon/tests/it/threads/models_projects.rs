@@ -2,7 +2,7 @@
 //! program, plan mode, the updates read back, and the projects of this computer.
 
 use agent_threads::control::{Action, Outcome, Project, ProjectChange, Refusal, RunState};
-use agent_threads::drive::{Mode, Program};
+use agent_threads::drive::{Mode, ModelChoice, Program};
 use uuid::Uuid;
 
 use super::runner::{Client, Kit, state_is};
@@ -38,6 +38,39 @@ fn start(kit: &Kit, program: Program, mode: Mode) -> Action {
     }
 }
 
+/// The list of `program` in the answer to `models`.
+async fn models_of(client: &mut Client, program: Program) -> Vec<ModelChoice> {
+    let asked = client.call(Action::Models).await;
+    let Outcome::Models { models } = client.done(asked).await else {
+        panic!("models");
+    };
+    models
+        .into_iter()
+        .find(|row| row.program == program)
+        .map_or_else(Vec::new, |row| row.models)
+}
+
+#[tokio::test]
+async fn th104_the_models_of_each_program_are_there_before_any_thread() {
+    let kit = Kit::with(CLAUDE_MODELS);
+    let mut client = kit.client().await;
+    let claude = models_of(&mut client, Program::ClaudeCode).await;
+    assert_eq!(
+        claude
+            .iter()
+            .map(|model| model.value.as_str())
+            .collect::<Vec<_>>(),
+        ["opus", "haiku"],
+        "Claude Code names them in its answer to `initialize`, with no prompt"
+    );
+    let codex = models_of(&mut client, Program::Codex).await;
+    assert_eq!(
+        codex[0].value, "made-codex",
+        "Codex names them on `model/list`"
+    );
+    assert_eq!(codex[0].default_effort.as_deref(), Some("low"));
+}
+
 async fn change_project(client: &mut Client, change: ProjectChange) -> Outcome {
     let id = client.call(Action::ChangeProject { change }).await;
     client.done(id).await
@@ -65,20 +98,11 @@ async fn th104_th105_a_claude_start_in_plan_mode_names_its_models_and_codex_in_p
         panic!("the thread started");
     };
     client.until(state_is(RunState::Idle)).await;
-    let asked = client.call(Action::Models).await;
-    let Outcome::Models { models } = client.done(asked).await else {
-        panic!("models");
-    };
-    assert_eq!(models.len(), 1);
-    assert_eq!(models[0].program, Program::ClaudeCode);
-    let values: Vec<&str> = models[0]
-        .models
-        .iter()
-        .map(|model| model.value.as_str())
-        .collect();
+    let claude = models_of(&mut client, Program::ClaudeCode).await;
+    let values: Vec<&str> = claude.iter().map(|model| model.value.as_str()).collect();
     assert_eq!(values, ["opus", "haiku"]);
-    assert_eq!(models[0].models[0].efforts, ["low", "high"]);
-    assert_eq!(models[0].models[1].efforts, Vec::<String>::new());
+    assert_eq!(claude[0].efforts, ["low", "high"]);
+    assert_eq!(claude[1].efforts, Vec::<String>::new());
 
     let list = client.call(Action::List).await;
     let Outcome::Threads { threads, .. } = client.done(list).await else {
