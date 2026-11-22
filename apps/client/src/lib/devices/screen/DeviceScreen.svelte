@@ -1,10 +1,13 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import type { CardDevice } from '$lib/devices/api';
   import LogsPanel from '$lib/events/panel/LogsPanel.svelte';
   import { COLLAPSED } from '$lib/events/resize/resize';
   import { phoneLayout } from '$lib/nav/phone/layout.svelte';
   import '$lib/events/resize/geometry.css';
+  import { hubIsHosted } from '$lib/hosted/mark';
   import { useHub } from '$lib/hub/context';
+  import { capabilities } from '$lib/platform/platform';
   import { press } from '$lib/motion/roles/press';
   import { crossFade } from '$lib/motion/roles/transitions';
   import DeviceGrid from '../card/DeviceGrid.svelte';
@@ -16,6 +19,7 @@
   import { Sites } from '../toolbar/sites.svelte';
   import { Tags } from '../toolbar/tags.svelte';
   import { isFiltered, withoutFilters } from '../toolbar/toolbar';
+  import ErrorState from '$lib/states/ErrorState.svelte';
   import { Listing } from './listing.svelte';
   import { browserClock, type LoadingClock } from '$lib/motion/loading/loading';
   import LiveNotice from '$lib/hub/notice/LiveNotice.svelte';
@@ -28,7 +32,7 @@
   import PageHeader from '$lib/page/PageHeader.svelte';
   import { resolve as entrance } from '$lib/motion/roles/resolve';
   import Tally from '../list/Tally.svelte';
-  import { tallyOf, type Tally as Counts } from '../list/look';
+  import { grouped, tallyOf, type Tally as Counts } from '../list/look';
 
   interface Props {
     /** The query in the URL. */
@@ -48,6 +52,8 @@
 
   const { query, onQueryChange, onAddDevice, onConnect, onOpenWeb, wake, screenSharing, clock = browserClock }: Props = $props();
   const hub = useHub();
+  // A hosted hub in a browser: the application adds a computer, so the empty list says so (HMD-066).
+  const offersApplication = !capabilities().keyStore && hubIsHosted(hub.address.origin);
   // The clock is fixed for the life of the screen.
   // svelte-ignore state_referenced_locally
   const listing = new Listing(hub, clock);
@@ -68,10 +74,15 @@
         },
   );
 
+  /** Which face the results show; a change of face cross-fades, a change inside one does not. */
+  const face = $derived(listing.skeleton ? 'skeleton' : list === null ? 'none' : phoneLayout() ? 'phone' : query.view);
+
   /** The counts are of every device: while a count filters the list, they keep the last unfiltered ones (D18). */
-  let tally = $state<Counts>({ total: 0, parts: [] });
+  const NO_COUNTS: Counts = { total: 0, parts: [] };
+  let tally = $state<Counts | null>(null);
   $effect(() => {
-    if (list !== null && query.statuses.length === 0) tally = tallyOf(list.devices);
+    // The first list gives the first counts, also when it is filtered: no count is better than "0 devices".
+    if (list !== null && (query.statuses.length === 0 || untrack(() => tally) === null)) tally = tallyOf(list.devices);
   });
 
   $effect(() => {
@@ -89,20 +100,23 @@
 
 <!-- The phone layout has its own head and rows (mockup 4): one add button, the counts, the search, and no menus. -->
 {#if phoneLayout()}
-  <PhoneHead {tally} {query} {onQueryChange} {onAddDevice} />
+  <PhoneHead tally={tally ?? NO_COUNTS} {query} {onQueryChange} {onAddDevice} />
 {:else}
 <div class="head" {@attach entrance()}>
   <PageHeader title="Devices">
     {#snippet actions()}<FormButton tone="primary" icon="carbon:add" onclick={onAddDevice}>Add device</FormButton>{/snippet}
   </PageHeader>
-  <Tally {tally} {query} {onQueryChange} />
+  <Tally {tally} waiting={listing.error === null} {query} {onQueryChange} />
   <Toolbar {query} tags={tags.names} tagsNote={tags.note} sites={sites.options} sitesNote={sites.note} {onQueryChange} />
 </div>
 {/if}
 
-<LiveNotice message={listing.liveError?.message ?? null} />
+<LiveNotice message={listing.liveError?.message ?? listing.charges.error?.message ?? listing.memory.error?.message ?? null} />
 
-{#if listing.error !== null}
+{#if listing.error !== null && list === null}
+  <!-- Nothing to show: the failure takes the place of the list, in the look of every other failed load (UI-030). -->
+  <ErrorState message={`Devices did not load. ${listing.error.message}`} onRetry={() => void listing.retry()} />
+{:else if listing.error !== null}
   <div class="notice" role="alert">
     <p>{listing.error.message}</p>
     <button
@@ -116,12 +130,16 @@
   </div>
 {/if}
 
+<!-- One layer for each face: the skeleton, the list, the grid or the phone rows. A new face cross-fades over the old one
+     in the same place (5.7.3, Loading); data that changes in a face stays in its layer and moves by its rows. -->
 <div class="results" aria-busy={listing.skeleton}>
-  {#if listing.skeleton}
-    <div class="layer" transition:crossFade><Skeleton view={query.view} /></div>
-  {:else if list !== null}
+  {#key face}
     <div class="layer" transition:crossFade>
-      {#if list.devices.length === 0}
+      {#if listing.skeleton}
+        <Skeleton view={query.view} grouped={grouped(query)} />
+      {:else if list === null}
+        <!-- Nothing has loaded yet, and the skeleton waits for its threshold. -->
+      {:else if list.devices.length === 0}
         <div class="empty">
           {#if isFiltered(query)}
             <p>No devices match</p>
@@ -135,17 +153,21 @@
             >
           {:else}
             <p>No devices yet</p>
+            {#if offersApplication}
+              <!-- HMD-066: a browser may be the first sign-in of an account, and a hosted hub gets its computers from the application. -->
+              <p class="how">Install the Anima.ing application on a computer and sign in there. The computer then shows here.</p>
+            {/if}
             <button type="button" tabindex="0" onclick={onAddDevice} {@attach press()}>Add device</button>
           {/if}
         </div>
       {:else if phoneLayout()}
         <PhoneRows devices={list.devices} beats={listing.beats} {query} {onConnect} />
       {:else if query.view === 'table'}
-        <DeviceTable devices={list.devices} beats={listing.beats} {query} {onConnect} {onOpenWeb} {wake} screenSharing={sharing} />
+        <DeviceTable devices={list.devices} beats={listing.beats} {query} {onConnect} {onOpenWeb} {wake} screenSharing={sharing} charges={listing.charges} memory={listing.memory} />
       {:else}
-        <DeviceGrid devices={list.devices} beats={listing.beats} {query} {onConnect} {onOpenWeb} {wake} screenSharing={sharing} />
+        <DeviceGrid devices={list.devices} beats={listing.beats} {query} {onConnect} {onOpenWeb} {wake} screenSharing={sharing} charges={listing.charges} memory={listing.memory} />
       {/if}
-      {#if list.hasNextPage}
+      {#if !listing.skeleton && list?.hasNextPage === true}
         <div class="more">
           {#if listing.moreError !== null}<p role="alert">{listing.moreError.message}</p>{/if}
           <button
@@ -160,7 +182,7 @@
         </div>
       {/if}
     </div>
-  {/if}
+  {/key}
 </div>
 
 <!-- In the phone layout the logs are a page of the bar, not a panel over the list (MOB-013). -->
@@ -224,6 +246,12 @@
     padding: var(--space-12);
     color: var(--text-secondary);
     font-size: var(--text-lg);
+  }
+
+  .empty .how {
+    max-inline-size: calc(var(--space-16) * 6);
+    font-size: var(--text-md);
+    text-align: center;
   }
 
   .more {

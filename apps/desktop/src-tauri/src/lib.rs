@@ -3,18 +3,25 @@
 //! One crate builds the desktop application and the mobile application. A module of a desktop
 //! feature does not compile for a mobile target (MOB-003).
 
+#[cfg(all(desktop, unix))]
+mod agent_runner;
+#[cfg(desktop)]
+mod agent_threads;
 #[cfg(desktop)]
 mod builder;
 #[cfg(desktop)]
 mod carried;
 mod cloud;
 #[cfg(desktop)]
+#[cfg_attr(windows, path = "command_line/windows.rs")]
 mod command_line;
 #[cfg(desktop)]
 mod daemon;
 #[cfg(desktop)]
+#[cfg_attr(target_os = "windows", path = "desktop/windows.rs")]
 mod desktop;
 #[cfg(desktop)]
+#[cfg_attr(windows, path = "hub_listener/windows.rs")]
 mod hub_listener;
 #[cfg(desktop)]
 mod keystore;
@@ -26,8 +33,6 @@ mod local_hub;
 mod mcp_agents;
 #[cfg(desktop)]
 mod mcp_permissions;
-#[cfg(mobile)]
-mod memory_tokens;
 #[cfg(mobile)]
 #[cfg_attr(
     target_os = "android",
@@ -49,7 +54,7 @@ mod process_log;
 mod stay_awake;
 #[cfg(desktop)]
 mod system_browser;
-#[cfg(desktop)]
+#[cfg(all(desktop, unix))]
 mod system_settings;
 #[cfg(desktop)]
 mod this_machine;
@@ -62,5 +67,9 @@ mod web_view;
 /// point in `mobile`, which the operating system calls.
 #[cfg(desktop)]
 pub fn run() {
+    #[cfg(windows)]
+    if stay_awake::guard_entry() {
+        return;
+    }
     desktop::run();
 }

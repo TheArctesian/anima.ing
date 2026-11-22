@@ -186,7 +186,8 @@ state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-023, operator, 2
 - A session claims its task (PLN-022). One file in [docs/claims/](docs/claims/README.md) for each task that
   a session builds now. Read them before you take a task; delete yours in the merge.
 - A mockup agrees with the application (PLN-019). If you change the layout of a screen that
-  [docs/mockup/README.md](docs/mockup/README.md) lists, change its mockup in the same commit.
+  [docs/mockup/README.md](docs/mockup/README.md) lists, change its mockup in the same commit, and write the
+  comparison in the record of the mockup (`docs/mockup/records/<name>.md`), not in the table.
 - Do not build from a document that is not in Section 9 of the work plan.
 - Do not make a new plan, proposal or task breakdown unless the same commit adds its row to
   Section 9 and names the row of Section 4 that it serves. If no row applies, ask the operator.
@@ -212,8 +213,20 @@ state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-023, operator, 2
   `socket`, with no space). Use the same placeholder in each file that names the thing, also in a
   file name. Do not write a whole placeholder as an example in a document: the merge would number it. The merge into `dev` gives each
   placeholder the next free number (PLN-021). The documents gate refuses a placeholder on `dev` and on `main`.
-- `docs/plan/register.md` and `docs/operator-queue.md` are generated. Never solve a conflict in them by
-  hand: run `bun run quality:register`, which writes them again from the documents (PLN-020).
+- Do not write a placeholder in a Svelte or CSS file of a screen that [docs/mockup/README.md](docs/mockup/README.md)
+  lists. The merge would number it in the merge commit, after the commit at which the mockup was compared,
+  and the mockup check (PLN-019) would fail on the merge. Name the plan row (for example "W3 of
+  projects-and-builds-plan.md") or a number that exists. The documents gate refuses such a placeholder on
+  each branch (`number-placeholder-in-screen`), so `bun run gates:fast` finds it before the push.
+- When the train leaves a branch out, it says why in one line, also in `bun quality/bin/train.ts --plan`,
+  until the branch moves.
+- `docs/plan/register.md`, `docs/operator-queue.md` and the table of `docs/mockup/README.md` are generated. Never
+  solve a conflict in them by hand: run `bun run quality:register`, which writes them again from the documents
+  (PLN-020) and from the records of the mockups (PLN-019).
+- The comparison of a mockup is in its own record, `docs/mockup/records/<name>.md`, one file for each mockup.
+  Two branches conflict there only when both compared the same mockup; the merge script then keeps the
+  comparison at the later commit and the document gates check it on the merge commit. A branch that changed
+  the table of before the records needs only a merge: each row that it changed becomes its record.
 - The workflow `merge-to-dev` runs `bun quality/bin/merge.ts <branch> --push`; a session that merges by
   hand runs `bun quality/bin/merge.ts <branch>` in a clean worktree on `dev`. It refuses a branch whose
   gates did not pass on GitHub (`quality/merge-rule.json`). It merges
@@ -258,7 +271,8 @@ bun run gates:fast                 # while you work: only what your changed path
 
 `bun run gates:fast` compares your tree with `origin/dev` (`FAST_BASE` names a different ref). Documents
 only: the documents gate. Code: format, Clippy and the tests of the crates and the bun packages that you
-touched, the six Go gates when `link/` changed, then the five quality gates. A path that no rule knows
+touched, the six Go gates when `link/` changed, the quick deploy tests that read the Rust workspace when a crate
+changed (`deploy-maps`: the release maps and the toolchain pins), then the five quality gates. A path that no rule knows
 runs the full list. It does not test the packages that depend on yours and it runs no doctest: the run
 on GitHub does. Its first line says what it chose and why. On a busy machine (a load above the number of
 processor cores; `FAST_BUSY_LOAD` sets a different limit) it leaves out the tests of whole packages and
@@ -266,11 +280,32 @@ runs only the tests that your change names, and says so in its first and its las
 gate, the run on GitHub is (R-268). It leaves nothing out for a change that only a Mac tests.
 `bun run gates:fast -- --whole` runs each test of the tier.
 
+`bun run gates:changed` runs only the checks of the paths that your branch changed against `origin/dev`
+(`FAST_BASE` names a different ref). Use it when the operator or a ruling says to leave the full gates to
+GitHub, or when many sessions share one computer. It runs the documents gate first, always. Then, for each
+crate and bun package that holds a changed file: format, lint, the check of types and its tests (and the
+build of the client when the client changed). The crates and packages that use a changed one get their lint
+and the check of types, not their tests. The quality gates run last. It never runs the full list: a change of
+a file that each package reads (`Cargo.lock`, `package.json`, `contracts/`) gets the lints of each package and
+the tests of only the packages whose own files changed, and a path that no rule knows gets only the quality
+gates. Its first lines say what it chose and what it left to GitHub. Its run is not the gate: push the branch,
+and the run of the workflow `gates` on GitHub is.
+
 The workflow `.github/workflows/gates.yml` runs the full list on Linux machines of GitHub for each pushed
 branch but `main`, in four jobs at the same time; the job `all` passes when each passed. It holds no
 secret. A push of a branch is tested as merged with the `dev` of that moment; if the two do not merge,
 the run fails: merge `origin/dev` into your branch and solve the conflict there. If `dev` moves after
 your run, nothing runs again for your branch: the train tests it with the `dev` that it lands on.
+The push of a branch runs only the jobs that its changes against `dev` need (`bun quality/bin/gates.ts --jobs`,
+`quality/src/gates/jobs.ts`): only the quality gates for a branch of documents, no Rust job when no changed
+path is read by a Rust build or test, no Go job without `link/`. When each changed Rust path is a test of a crate
+(its `tests/` folder, or a module `tests` or `<x>_tests` that its parent declares under a test `cfg`;
+`quality/src/gates/test-only.ts`), the Rust jobs lint and test only those crates. A run for a train or for a call runs each job.
+A push to `dev` (`bun quality/bin/gates.ts --dev-push`) runs only the quality gates when a run on `dev` or on a
+train already passed for its tree, or when it changed only documents on such a tree; each other push to `dev`
+runs each job, so `dev` never holds a tree that no run proved. A push to `dev` does not stop the run of `dev` before it: it waits, and then
+runs only the quality gates when only documents changed on the tree that run proved. The jobs read the compiled Rust dependencies from the caches that the workflow `rust-cache` writes
+under `main`, the one branch whose caches each branch can read; they write no cache.
 
 The gates run in this order and stop at the first failure: `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings`, `cargo nextest run --workspace` (with a throwaway PostgreSQL 17, R-009),
@@ -290,6 +325,10 @@ source file that is older than that build, so a worktree with a fault can pass (
 [quality/README.md](quality/README.md), "The build cache"). Two sessions that build at the same time with
 sccache do not wait on each other: each compiles in its own `target/` and both read and write the cache.
 Set `RUSTC_WRAPPER=` (empty) to run without the cache. `sccache --show-stats` shows the hit rate.
+Cargo never removes an old build, so a `target/` grows to tens of GB. After your branch lands in `dev`, run
+`bun run worktrees:sweep`: for each linked worktree whose branch tip is in `origin/dev`, with no process in its
+folder and no uncommitted change, it removes only `target/` and says how much it freed. It never removes a
+worktree, a branch or the `target/` of a branch that is not in `dev`. `bun run worktrees:sweep -- --plan` only lists.
 cargo-nextest must be on `PATH` (`cargo install cargo-nextest --locked`; put `~/.cargo/bin` on `PATH`).
 Go must be on `PATH` (`brew install go`); `link/go.mod` sets the lowest Go version and pins the two lint tools, so
 nothing else is installed for the Go gates.

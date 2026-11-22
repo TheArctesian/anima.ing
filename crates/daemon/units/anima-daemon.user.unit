@@ -10,6 +10,11 @@ Type=simple
 ExecStart=%h/.local/bin/anima-daemon run
 Restart=on-failure
 RestartSec=10
+# The holder of the agent threads (THR-113) must outlive a stop or a restart of the daemon. Without
+# this line, the control-group mode of systemd kills the holder and each program that it runs. Probes
+# and `ps` end by their own deadlines. At the next start systemd logs "left-over process"; that is
+# expected.
+KillMode=process
 NoNewPrivileges=yes
 PrivateTmp=yes
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
@@ -18,6 +23,9 @@ ProtectHome=read-only
 ReadWritePaths=%E/anima-daemon
 LimitCORE=0
 SocketBindDeny=any
+# The cgroup of this unit is delegated to the daemon, which makes one cgroup for each model server
+# below it (R-334, R-331). systemd delegates only the cgroup of this unit.
+Delegate=yes
 
 [Install]
 WantedBy=default.target

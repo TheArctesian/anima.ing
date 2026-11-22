@@ -10,7 +10,7 @@ The hub groups its domains under parent nouns so `crates/hub/src/` stays within 
 
 | Group | Modules |
 | --- | --- |
-| `crates/hub/src/fleet/` | The device manager: `access`, `agent_usage` (R-135), `builds`, `checks`, `credentials`, `devices`, `events`, `maintenance`, `metrics`, `notifications`, `retention`, `sessions`, `ssh`, `targets` (a leaf), `trust`, `vpn`, `web_interfaces` |
+| `crates/hub/src/fleet/` | The device manager: `access`, `agent_usage` (R-135), `builds`, `checks`, `credentials`, `devices`, `events`, `maintenance`, `metrics`, `notifications`, `retention`, `sessions`, `ssh`, `targets` (a leaf), `trust`, `vpn`, `web_interfaces`; `compute` (folder `compute/`, parts `library` and, task L1-5, `policy`; R-343) |
 
 The leaf modules other than `targets` and the wiring stay at `crates/hub/src/`. A domain path in Rust goes through its group: `crate::fleet::devices`, `anima_hub::fleet::checks`. `quality/hub-modules.json` lists the groups under `groups`; the REPO-004 check reads a module inside a group as a top-level module. Later groups (`engine/`, `vault/`, `life/`, `work/`, Section 6 of `docs/plans/extensions-plan.md`) are added by the task that adds their first code.
 
@@ -210,8 +210,9 @@ are private to `events`.
 | `checks` (Phase 2, adds) | `sessions` (`link`, `SshLink`, `FixedCommand` only; no cycle: `sessions` does not import `checks`) |
 | `checks` (Phase 3, replaces the Phase 2 row above) | `ssh` (`link`, `SshLink`, `FixedCommand`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `notifications` (`observe`, `adopt_defaults`, `Observation`, `for_checks` only) |
 | `metrics` (Phase 2, new) | `devices`, `sessions` (link only), `credentials` (`Vault` only), `events` |
-| `metrics` (Phase 3, replaces the row above) | `devices`, `ssh` (`link`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `credentials` (`Vault` only), `events`, `access` (`Authenticated`, `Operator`, `ClientAddr` only; daemon tokens live in `metrics`, R-092 D-1); crate `daemon-core` (CR-8) |
+| `metrics` (Phase 3, replaces the row above) | `devices`, `ssh` (`link`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `credentials` (`Vault` only), `events`, `access` (`Authenticated`, `Operator`, `ClientAddr` only, and `operator_only` in `metrics/graphql.rs` for `setDaemonNeed`, R-364; daemon tokens live in `metrics`, R-092 D-1); crate `daemon-core` (CR-8) |
 | `web_interfaces` (Phase 2, new) | `checks` (`http_urls` only), `devices` (CR-5), `events` |
+| `compute` (compute plan L1-4, new; R-343) | `events` (`Trail`; the audit target is the setting `compute.library`), `access` (`Authenticated` only, in `library/graphql.rs`) |
 | `trust` (Phase 3, new) | `devices`, `events` |
 | `ssh` (Phase 3, new) | `devices`, `credentials`, `trust`, `events` |
 | `notifications` (Phase 3, new) | `events`, `credentials` (`Vault`, `Secret`, `Sealed` only) |
@@ -227,6 +228,8 @@ are private to `events`.
 | `links` (engine, new; same ruling; K-E4) | `events` (the trail types) |
 | `agent_usage` (R-135, operator, 2026-11-17; AIS-020; AU-2) | `devices` (`Device`, `list` only) |
 | `containers` (work, new; R-149, operator, 2026-11-18; HOST-001, HOST-010) | `devices` (`Device`, `get`, `Error` only), `ssh` (`link`, `FixedCommand`, `HexDigits`, `CommandOutput`, `LinkError` only), `credentials` (`Vault` only) |
+| `catalogue` (work, new; R-299, R-300; HOST-047; task H38) | — (no domain; the crate `catalogue` and the leaf `ids` only) |
+| `routes` (work, new; R-302, R-299; HOST-046; task H21) | `devices` (`get`, `Device`, `Error` only), `events` (the trail types), `credentials` (`Vault`, `Secret`, `Sealed`, `Error` only); the leaves `targets` (`resolve_checked`, `connect`, `on_link`, `AddressPolicy`) and `config`; the crate `anima-route-proxy` (`wire` only) |
 | `metrics` (R-135, adds) | `agent_usage` (`record` only, in the push transaction) |
 | `files` (engine, new; R-148; K-E4 Sections 9, 10) | `events` (the trail types, `audit`, `NewAudit`), `extensions` (`Key`, `Sensitivity` only: the data class of the extension of a form, VIS-002), `access` (`identify`, `client_addr`, `Identity`, `Scope` only, and only in `files/routes.rs`: the bearer of `/files/v1`); the leaves `sealing_keys` and `records` |
 | `places` (engine, new; R-148; K-E4 Section 8) | `links` (`retarget`, `retarget_named`, `count`, `Titles`, `Unavailable` only), `events` (the trail types), `records` (leaf) |
@@ -235,6 +238,7 @@ are private to `events`.
 | `reminders` (engine, new; R-148; K-E6; E0-7 T2 and T3) | `places` (`Place`, `Centre`, `list`, `current`), `locations` (`Sample`, `Seal`, `received`, `inside`, `RULE`), `notifications` (`queue_reminder`, `channels_exist`, `Reminder`, `Error`), `credentials` (`Vault`; `operational::keys`, `OperationalKey`, `VersionState`), `events` (`record`, `after`, `NewEvent`, `EventSummary`, `Bus`, the trail types), `extensions` (`on_keys` only: an extension that is off is not read; K-E6 Section 6 does not list this edge); the leaf `records`. The edge to `sources` of K-E6 Section 6 joins with the health of the accounts |
 | `notifications` (R-148; K-E6 Section 5, adds) | no new edge. New for the engine: `Reminder`, `Queued`, `queue_reminder(conn, vault, channels, (reminder, now)) -> Queued` and `RANDOM_TOPIC_MIN`. The vault opens the topic of an ntfy channel for the rule of REM-008 |
 | `credentials` (operational keys, adds; R-147, R-148; K-E5 Section 2) | `events` (the trail types, `audit`, `NewAudit`, `ClientAddr`, `Operator`); `access` (`Authenticated`, `operator_only`) only in `credentials/graphql.rs`, a graphql edge. A device is a `DeviceId` value only: the consumer rows reference `devices.devices` with a cascading foreign key, so `credentials` imports no `devices` code. `metrics` (its daemon ingest) calls `credentials::operational::{fetch, current_for, record_held}` |
+| `compute` (fleet, adds; compute plan task L1-5; waits for a ruling: R-335) | `devices` (`Device`, `list`, `get`, `Error` only), `events` (the trail types), `metrics` (`hardware`, `Error` only), `jobs` (`machines`, `Machine`, `Error` only: the one switch "takes work", OD-C8, R-165) |
 
 (Phase 3) No cycle: `notifications` imports neither `checks` nor `sessions`. `ssh` and `trust` import neither `sessions` nor `checks`.
 
@@ -244,10 +248,11 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | --- | --- | --- |
 | `devices` | `access` (R-022), `checks`, `sessions` (replaced in Phase 3 by `trust`, see the Phase 3 row below) | the `Authenticated` guard; `Device.status`, `Device.checks`, `Device.uptime`, `DeviceFilter.status`, `DeviceSort.STATUS`/`UPTIME`, `createDevice(addDefaultCheck)`, `SshSettings.hostKey` |
 
-| `devices` (Phase 2, adds) | `metrics`, `web_interfaces` | `Device.readings`, `Device.metrics`, `Device.gpus`, `Device.webInterfaces`, `Device.webInterfaceSuggestions`; Phase 3: `Device.metricsStale` (MET-018, CR-18), `Device.storage` (MET-029) |
+| `devices` (Phase 2, adds) | `metrics`, `web_interfaces` | `Device.readings`, `Device.metrics`, `Device.gpus`, `Device.webInterfaces`, `Device.webInterfaceSuggestions`; Phase 3: `Device.metricsStale` (MET-018, CR-18), `Device.storage` (MET-029), `Device.batteries` (MET-032); `Device.daemonVersion` (R-122), `Device.daemonNeed` (R-364) |
 | `metrics`, `web_interfaces` (Phase 2) | `access` (R-022) | the `Authenticated` guard on their root fields |
 | `builds` (Phase 3, WP-36) | `access` | the `Authenticated` and `BuilderSignedIn` guards |
 | `vpn` (Phase 3, VP-5) | `access` | the `Authenticated` guard |
+| `compute` (task L1-5; waits for R-335) | `access` | the `Authenticated` guard |
 | `checks`, `maintenance`, `events` | `access` (R-022) | the `Authenticated` guard on their root fields (API-003) |
 | `devices` (Phase 3) | `trust` (replaces `sessions` for these fields) | `SshSettings.hostKey`, `RdpSettings.serverCertificate` |
 | `checks` (Phase 3) | `notifications` | `Check.notifications` |
@@ -259,7 +264,10 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | `files` (R-148; K-E4) | `access` | the `Authenticated` guard on `attachments`, `deleteAttachment`, `createArchive`, `deleteArchive`, `extractionProposals`, `proposeExtraction`, `confirmExtraction`, `rejectExtraction` |
 | `locations` (R-145; K-E4 Section 13) | `access` | the `Authenticated` guard on `locationSamples`, `locationIngestTokens`, `transferContext`, `recordLocationSamples`, `createLocationIngestToken`, `revokeLocationIngestToken`; `operator_only` on `createLocationIngestToken`, which joins `API_KEY_REFUSED_ROOTS` (it returns a secret) |
 | `sources` (R-261; K-E1 Section 7b, adds) | `access` | `operator_only` on `connectDawarich`, which joins `API_KEY_REFUSED_ROOTS` (it takes a secret) |
-| `containers` (R-149; R-150 adds) | `access` | the `Authenticated` guard on `containers`, `containerLog`, `containerDetail`, `containerStorage`, `containerNetworks` and `containerImageUpdates`; `containerLog` and `containerDetail` join `API_KEY_REFUSED_ROOTS` (a log, a command or a label can hold a secret) |
+| `containers` (R-149; R-150 adds) | `access` | the `Authenticated` guard on `containers`, `containerLog`, `containerDetail`, `containerStorage`, `containerNetworks`, `containerImageUpdates`, `composeFileCheck` and `composeFromDockerRun`; `containerLog` and `containerDetail` join `API_KEY_REFUSED_ROOTS` (a log, a command or a label can hold a secret) |
+| `catalogue` (task H38) | `access` | the `Authenticated` guard on `catalogueEntries`, `catalogueEntry` and `installCatalogueEntry`; none joins `API_KEY_REFUSED_ROOTS`: a key and an agent may ask for the install of an entry of the tested catalogue (R-234) |
+
+| `routes` (R-302; task H21) | `access` | the `Authenticated` guard on `applicationRoutes`, `applicationRoute`, `addApplicationRoute`, `checkApplicationRoute`, `removeApplicationRoute`; `operator_only` and `operator_status` on the three mutations, which join `API_KEY_REFUSED_ROOTS` (making an application public is for a person with a second factor, SF-232) |
 
 `sessions` already depends on `access`. Through these edges a `graphql.rs` uses only `access::Authenticated`; `Operator` and `ClientAddr` come from `events` (R-019).
 
@@ -563,19 +571,30 @@ pub async fn stale_daemons(db: &Db, devices: &[DeviceId]) -> Result<HashSet<Devi
 // (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned)
 pub struct Capabilities { pub device: DeviceId, pub inventory: daemon_core::inventory::Inventory, pub found_at: DateTime<Utc> }
 pub struct CapabilityFilter { pub tool: Option<String>, pub build_target: Option<String> }
-/// The tool inventory each daemon sent, kept when `filter` admits it: `tool` usable, `build_target` installed (CAP-030).
+/// The tool inventory each daemon sent, kept when `filter` admits it: `tool` usable, `build_target` installed (CAP-030),
+/// each with the hardware values its daemon sent, when it sent them (CAP-032; R-165, task L1-1).
 /// Each tool is usable with its version or not usable with a fixed `daemon_core::inventory::Reason` (CAP-024).
 /// metrics::graphql owns Query.capabilities and joins each to its Device (devices::list), by device name.
 pub async fn capabilities(db: &Db, filter: &CapabilityFilter) -> Result<Vec<Capabilities>, Error>;
 /// (R-122) The version of each device's daemon from its last batch; no entry when it sent none.
 pub async fn daemon_versions(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, String>, Error>;
+/// (R-364) What each device's daemon waits for from a person; no entry when nothing.
+/// metrics::graphql owns Mutation.setDaemonNeed (operator_only); the next accepted batch clears it.
+pub async fn daemon_needs(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, DaemonNeed>, Error>;
+/// (MET-032) The batteries each device's daemon last listed, by name; no entry when it has none.
+pub async fn batteries(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec<Battery>>, Error>;
 ```
 
 ## agent_usage (R-135, operator, 2026-11-17; AIS-018 to AIS-024; AU-2)
 
 ```rust
 /// Stores an accepted `agentUsage` member of a daemon batch in the batch's transaction (K8 Section 4).
-pub async fn record(conn: &mut PgConnection, device: DeviceId, usage: &daemon_core::agent_usage::AgentUsage) -> Result<(), Error>;
+/// With the accounts of the batch (R-313): each replaces the device's report of its source.
+pub async fn record(conn: &mut PgConnection, device: DeviceId, usage: &daemon_core::agent_usage::AgentUsage, now: DateTime<Utc>) -> Result<(), Error>;
+/// The account salt of the hub, made once (K8 Section 8.2; AIS-022, R-313).
+pub async fn accounts::salt(db: &Db) -> Result<[u8; 32], Error>;
+/// Every stored account report; accounts::grouped puts the devices of one key under one account.
+pub async fn accounts::list(db: &Db) -> Result<Vec<Reported>, Error>;
 /// The sums an Ask asks for, the total, and the usage state of each device the filter admits.
 /// agent_usage::graphql owns Query.agentUsage and joins each row to its Device (devices::list).
 pub async fn usage(db: &Db, ask: &Ask) -> Result<Report, Error>;
@@ -588,6 +607,17 @@ pub fn prices::estimate(model: &str, tokens: TokenSums) -> Option<f64>;
 ```rust
 pub async fn for_devices(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec<WebInterface>>, Error>;
 pub async fn suggestions(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec<Suggestion>>, Error>;
+```
+
+## compute (compute plan L1-4; R-343)
+
+The part `compute/library/` keeps the model library (LIBM-001 to LIBM-009, SEL-003). It reads a Hugging Face repository through the trait `Fetch` (the I/O edge, `HuggingFace` in production). No other domain imports it now.
+
+```rust
+pub async fn library::list(db: &Db) -> Result<Vec<Model>, Error>;
+/// A name, an alias or name:tag.
+pub async fn library::get(db: &Db, name: &str) -> Result<Model, Error>;
+pub async fn library::sources(db: &Db) -> Result<Vec<String>, Error>;
 ```
 
 ## notifications (Phase 3, WP-45)
@@ -824,11 +854,39 @@ pub async fn image_updates(reach: Reach<'_>, device: DeviceId, now: DateTime<Utc
 
 This is the one outbound path of the domain that does not go to a device: HTTPS to the fixed hosts of four public registries (`updates/registry.rs`), each resolved once with `targets::resolve_checked` and reached only at those addresses, with no redirect, no credential and no body read but the token (`updates/egress.rs`, as `checks/probe/rdap/egress.rs`).
 
+Addition of R-150 for HOST-022 (task H29), with no new import edge and one new dependency of the hub (`yaml-rust2`, which `compose-rules` already uses). The sub-module `compose_file` holds two pure functions of the text that the caller gives:
+
+```rust
+/// The check of the syntax of a Compose file: is the text YAML, and does it have the form of a Compose file. It is not
+/// the check of HOST-028 (`compose-rules`): it does not say that a machine accepts the file.
+pub fn check(text: &str) -> Check;
+/// The Compose file of one `docker run` command, or the fixed code of why there is none.
+pub fn convert(command: &str) -> Result<Converted, Refusal>;
+```
+
+They reach no device and no network, run nothing and keep nothing, and the two root queries take no device. Each has the complexity 100 (at most four in one request) and runs on a thread for blocking work. `check` reads at most 256 KiB, 64 levels and 100,000 events of the YAML parser, takes the events one at a time (no recursion in the parser), and reads an alias as one node (it expands nothing). `convert` reads at most 64 KiB with its own reader of shell words (`compose_file/words.rs`), which expands nothing and refuses each form that a shell would run, fill or expand; it takes at most 32 networks and 32 network aliases, and refuses a file larger than 256 KiB. A `Problem` holds a fixed code, a line, a column, the number of its service and the name of a key only when Compose defines that name; it holds no text that the operator wrote (LOG-007), because a value or a name in the wrong place can be a secret. The list of the options that are not converted holds the names of options of Docker only. Neither text reaches a log: the request span records no query text and no variables, and the error boundary of the hub replaces each error text that can quote a value (`events/process_log`).
+
 The list of the containers also asks Docker for two more labels of Compose, the folder and the files of the project of a container (R-211, task H15); `Container` has them as `compose_working_dir` and `compose_files`.
 
 Each read is one fixed command line of `docker` words that only read (`container inspect`, `top`, `system df`, `network ls`, `ps`), joined with `&&`. The only operator value in one is the container identifier.
 
 `ssh` gains for this domain (same ruling): `HexDigits` (1 to 64 hex digits kept as values), `FixedCommand::hex(self, &HexDigits)` and `FixedCommand::number(self, u32)`. Both render from values, so operator text still cannot enter a command.
+
+## catalogue (work; R-299, R-300; HOST-047; task H38)
+
+Folder `crates/hub/src/work/catalogue/` (group `work/`). The catalogue that ships with Anima. The recipes of the crate `catalogue` are built into the hub binary by the build script of that crate; at the first read the hub runs the static test of task H36 on each one and keeps, for the life of the process, only those with no finding. The domain has no table, no store, no event and no log line, and it reaches no machine and no network. No domain imports `catalogue`; `schema.rs` merges `catalogue::graphql::Query` and `catalogue::graphql::Mutation`.
+
+```rust
+/// Each entry that passed the static test, in the order of the identifiers.
+pub fn entries() -> &'static [Listed];
+/// The listed entry with this identifier.
+pub fn entry(id: &str) -> Option<&'static Listed>;
+/// The answer to the install of an entry: NOT_LISTED, ENGINE_SOCKET (R-247) or INSTALL_NOT_BUILT (task H6), and whether
+/// the machine needs "Open to the network" (R-229). It never installs: task H6 is not built.
+pub fn install(listed: Option<&Listed>) -> Install;
+```
+
+A `Listed` holds the entry, the text of its Compose file (with no secret: each secret is a variable that the install makes) and the names of the variables of its example environment file, never a value. `installCatalogueEntry` checks only the form of the device ID; it reads no device row and writes no audit entry, because it changes nothing.
 
 ## guac-protocol crate (WP-08)
 
@@ -844,3 +902,19 @@ pub struct Handshake; impl Handshake {
 }
 ```
 No I/O in this crate. `sessions` owns the sockets.
+
+## routes (work; R-302, R-299; HOST-046; task H21)
+
+Folder `crates/hub/src/work/routes/` (group `work/`). The public names of applications, served on the hub (Section 12 of `docs/proposals/hosted-applications-stage-2.md`). Schema `routes` (range 1060). A route is one name of one application with its target fixed when the name is added (SF-233). It serves only when its name is proven (`proof.rs`: a TXT token bound to the hub and the name, or the public address of a hub that a person hosts), the second consent at the machine is given (OD-HOST-43; nothing sets it yet), the hub's record of the application names its device and its port and no socket of the engine (`application_recorded`; task H6, nothing sets it yet) and it has a valid certificate (`certificates.rs`: the `Issuer` interface, with `NotConfigured` as the only issuer of the hub; `caa.rs` before each order). The proxy is the process `anima-route-proxy` (crate `crates/route-proxy`); it reaches the hub only through `door.rs`, a Unix socket served when `ANIMA_ROUTES_SOCKET` is set, with mode `0660` and only to a peer with the user ID `ANIMA_ROUTES_PROXY_UID`, whose `connect` takes the identifier of an application and never a device or a port (SF-231). A route has a kind and an access (`kinds.rs`, pure; HOST-050, task H40): `web`, `redirect` (one fixed `https://` address, no port), `tcp_stream` and `udp_stream` (a port of the hub in `ANIMA_ROUTES_STREAM_PORTS`, never below 1024; no stream on a hosted hub, OD-HOST-47; UDP never to an address of the link, OD-HOST-48), `public` or `private` (OD-HOST-49); a public stream needs a protocol of the fixed list. The routes of one application go to one device; the proxy dials a route by the application and the name of the route, and `serving.rs` gives it the names and the streams that serve now. `schema.rs` merges `routes::graphql::{Query, Mutation}`.
+
+```rust
+pub async fn list(db: &PgPool, application: Option<ApplicationId>) -> Result<Vec<Route>, Error>;
+pub async fn get(db: &PgPool, id: RouteId) -> Result<Route, Error>;
+pub async fn add((db, settings): (&PgPool, &Settings), conn: &mut PgConnection, new: &NewRoute, now: DateTime<Utc>) -> Result<Added, Error>;
+pub async fn check(conn: &mut PgConnection, (resolver, settings): (&dyn Resolver, &Settings), id: RouteId, now: DateTime<Utc>) -> Result<Route, Error>;
+pub async fn remove(conn: &mut PgConnection, id: RouteId) -> Result<(DeviceId, String), Error>;
+pub async fn order_certificate(ordering: Ordering<'_>, id: RouteId, now: DateTime<Utc>) -> Result<bool, Error>;
+pub async fn served(db: &PgPool, vault: &Vault, now: DateTime<Utc>) -> Result<Vec<Served>, Error>;
+pub async fn target_of(db: &PgPool, application: ApplicationId, now: DateTime<Utc>) -> Result<(DeviceId, SocketAddr), Error>;
+pub async fn count(db: &PgPool, name: &str, traffic: Traffic, now: DateTime<Utc>) -> Result<(), Error>;
+```

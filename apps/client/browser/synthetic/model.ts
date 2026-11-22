@@ -46,9 +46,11 @@ export function connection(nodes: readonly unknown[], page: Page = {}): Row {
   };
 }
 
-function heartbeats(): Row[] {
+/** A fixture row may give `status` and `message`, for the pictures of a device that is not up; each other row is up. */
+function heartbeats(row: Row = {}): Row[] {
   const at = (minute: number): string => `2026-11-06T10:0${String(minute)}:00Z`;
-  return [2, 1, 0].map((minute) => ({ at: at(minute), status: 'UP', responseTimeMs: 12 + minute, message: null }));
+  const status = row.status ?? 'UP';
+  return [2, 1, 0].map((minute) => ({ at: at(minute), status, responseTimeMs: status === 'UP' ? 12 + minute : null, message: row.message ?? null }));
 }
 
 export function checkView(state: HubState, row: Row): Row {
@@ -62,10 +64,10 @@ export function checkView(state: HubState, row: Row): Row {
     paused: false,
     ...row,
     config: { __typename: CHECK_CONFIG_TYPES[key] ?? 'IcmpConfig', ...(config as Row) },
-    status: 'UP',
-    lastHeartbeat: heartbeats()[0],
-    heartbeats: (page: Page) => connection(heartbeats(), page),
-    uptime: () => 1,
+    status: row.status ?? 'UP',
+    lastHeartbeat: heartbeats(row)[0],
+    heartbeats: (page: Page) => connection(heartbeats(row), page),
+    uptime: () => row.uptime ?? 1,
     device: () => deviceOf(state, String(row.deviceId)),
   };
 }
@@ -104,15 +106,16 @@ export function deviceView(state: HubState, source: Row): Row {
   return {
     ...row,
     site: site ?? { id: row.siteId, name: 'site', subnet: '10.0.0.0/24' },
-    status: 'UP',
+    status: row.status ?? 'UP',
     metricsStale: false,
     daemonVersion: row.daemonVersion ?? null,
+    daemonNeed: row.daemonNeed ?? null,
     sessionLimit: row.sessionLimit ?? null,
     readings: row.metricsSource === 'SSH' ? { ...READINGS, vramGpu: gpus[0] ?? null } : null,
     gpus,
     checks: () => state.fixtures.checks.filter((found) => found.deviceId === id).map((found) => checkView(state, found)),
     metrics: ({ range }: { range: string }) => seriesOf(state, id, range),
-    uptime: () => 1,
+    uptime: () => row.uptime ?? 1,
     createdAt: '2026-10-01T09:00:00Z',
     updatedAt: '2026-10-01T09:00:00Z',
   };
@@ -127,24 +130,43 @@ export function allDevices(state: HubState): Row[] {
   return state.fixtures.devices.map((row) => deviceView(state, row));
 }
 
-/** A few events so the logs panel has rows; every host is an example host (CON-003). */
-export function eventRows(state: HubState): Row[] {
-  const first = state.fixtures.devices[0];
+type EventLine = readonly [severity: string, source: string, message: string];
+
+function eventsOf(device: Row | undefined, lines: readonly EventLine[], first: number): Row[] {
   const at = (second: number): string => `2026-11-06T09:00:${String(second).padStart(2, '0')}Z`;
-  const rows: [string, string, string][] = [
+  return lines.map(([severity, source, message], index) => ({
+    id: `0190a000-0000-7000-8020-${String(first + index).padStart(12, '0')}`,
+    at: at(first + index - 1),
+    severity,
+    source,
+    deviceId: device?.id ?? null,
+    deviceName: device?.name ?? null,
+    message,
+  }));
+}
+
+/** A few events of the first device, so the logs panel has rows; every host is an example host (CON-003). */
+export function eventRows(state: HubState): Row[] {
+  return eventsOf(state.fixtures.devices[0], [
     ['INFO', 'CHECK', 'Check recovered'],
     ['WARNING', 'DEVICE', 'Device entered maintenance'],
     ['ERROR', 'ACCESS', 'Sign-in refused'],
-  ];
-  return rows.map(([severity, source, message], index) => ({
-    id: `0190a000-0000-7000-8020-00000000000${String(index + 1)}`,
-    at: at(index),
-    severity,
-    source,
-    deviceId: first?.id ?? null,
-    deviceName: first?.name ?? null,
-    message,
-  }));
+  ], 1);
+}
+
+/**
+ * The events of one device, as the hub answers `events(filter: { deviceId })` for the Logs tab of its page (LOG-009).
+ * Another device than the first has two events of its own. They are left out of the whole log: there each device name
+ * is a link, and the specs find each device's link once on the devices page.
+ */
+export function deviceEventRows(state: HubState, deviceId: string): Row[] {
+  const index = state.fixtures.devices.findIndex((device) => device.id === deviceId);
+  if (index === 0) return eventRows(state);
+  if (index < 0) return [];
+  return eventsOf(state.fixtures.devices[index], [
+    ['WARNING', 'CHECK', 'Check went down'],
+    ['INFO', 'CHECK', 'Check is up again'],
+  ], 10 + index * 2);
 }
 
 export function sessionRows(state: HubState): Row[] {

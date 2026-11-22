@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "The main window: core defaults, dragging the window by its top strip on a Mac (data-tauri-drag-region), and the hub access-token key store.",
+  "description": "The main window: core defaults, dragging the window by its top strip (data-tauri-drag-region; on a Mac under the title bar, on Windows and Linux in place of the frame), and the hub access-token key store.",
   "webviews": ["main"],
   "permissions": [
     "core:default",

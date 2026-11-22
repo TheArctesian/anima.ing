@@ -8,9 +8,14 @@ const APP_COMMANDS: &[&str] = &[
     "cloud_sign_in_start",
     "cloud_sign_in_poll",
     "cloud_sign_in_resume",
+    "cloud_sign_out",
+    "mobile_metrics_enrolled",
+    "mobile_metrics_enrol",
+    "mobile_metrics_push",
     "cloud_sign_in_session",
     "cloud_hub",
     "cloud_hub_access",
+    "cloud_hub_usage",
     "cloud_device",
     "builder_token_read",
     "builder_token_write",
@@ -22,6 +27,11 @@ const APP_COMMANDS: &[&str] = &[
     "builder_cancel",
     "builder_release_files",
     "builder_upload",
+    "agent_threads_list",
+    "agent_thread_read",
+    "agent_runner_call",
+    "agent_runner_watch",
+    "agent_thread_notify",
     "mcp_agents_read",
     "mcp_agents_change",
     "mcp_permissions_read",
@@ -31,6 +41,8 @@ const APP_COMMANDS: &[&str] = &[
     "this_machine_read",
     "daemon_bundled",
     "daemon_install",
+    "daemon_remove",
+    "daemon_keychain_waits",
     "local_hub_carried",
     "local_hub_install",
     "local_hub_remove",
@@ -44,6 +56,7 @@ const APP_COMMANDS: &[&str] = &[
     "link_join",
     "link_status",
     "link_leave",
+    "link_ports",
     "hub_listener_check",
     "command_line_read",
     "command_line_install",
@@ -96,9 +109,9 @@ fn link_phone_library() {
     }
     println!("cargo:rustc-link-lib=dylib=phonelink");
     let libraries = manifest.join("gen/android/app/src/main/jniLibs/arm64-v8a");
-    if std::fs::create_dir_all(&libraries).is_ok() {
-        let _ = std::fs::copy(folder.join(file), libraries.join(file));
-    }
+    std::fs::create_dir_all(&libraries).expect("create the Android native libraries directory");
+    std::fs::copy(folder.join(file), libraries.join(file))
+        .expect("copy the phone link into the Android package");
 }
 
 fn main() {

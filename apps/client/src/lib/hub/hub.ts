@@ -11,12 +11,15 @@ export type { HubAddress } from './address';
 export { NO_HUB_ADDRESS, isOnThisComputer, parseHubAddress } from './address';
 export type { FieldError, HubCode, HubError, HubResult } from './error';
 export { TOKEN_UNREADABLE, UNREACHABLE, noAnswer } from './error';
+export { GATEWAY_ENTER_PATH, gatewayInFront, gatewaySignOut, mayEnterGatewayNow } from './gateway/gateway';
 export type { TokenProvider } from './request';
 export type { LiveStatus } from './status/connection';
 export type { Connection, HubStatus } from './status/status';
 export { dataAge } from './status/age';
 export type { Sink } from './socket/socket';
 export { desktopRecentCopy, forgetRecentCopy } from './recent/desktop';
+export type { GatewayAnswer } from './gateway';
+export { readGateway } from './gateway';
 
 /** GraphQL variables: an object, or an empty one for a document without variables. */
 export type Variables = Record<string, unknown>;

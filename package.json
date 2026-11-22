@@ -7,6 +7,8 @@
   "scripts": {
     "gates": "bun quality/bin/gates.ts",
     "gates:fast": "bun quality/bin/gates.ts --fast",
+    "gates:changed": "bun quality/bin/gates.ts --changed",
+    "gates:linux-threads": "bash quality/bin/linux-threads.sh",
     "lint": "bun run --filter '*' lint",
     "check": "bun run --filter '*' check",
     "test": "bun run --filter '*' test",
@@ -15,7 +17,8 @@
     "quality:names": "bun run --cwd quality names",
     "quality:imports": "bun run --cwd quality imports",
     "quality:documents": "bun run --cwd quality documents",
-    "quality:register": "bun run --cwd quality register"
+    "quality:register": "bun run --cwd quality register",
+    "worktrees:sweep": "bun quality/bin/worktrees/sweep.ts"
   },
   "devDependencies": {
     "@eslint-community/eslint-plugin-eslint-comments": "^4.8.1",

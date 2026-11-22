@@ -1,0 +1,222 @@
+//! The connection between the daemon and the holder: a takeover, a frame that does not read, a
+//! command sent again on a new connection, output larger than a frame (H8, H10, THR-128).
+
+use std::time::Duration;
+
+use anima_daemon::threads::link::{HolderLink, LinkError};
+use anima_daemon::threads::wire::{Action, Command, Event, Outcome};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+
+use super::{Holder, exited, start, texts};
+
+fn hello_threads(events: &[Event]) -> Vec<String> {
+    events
+        .iter()
+        .find_map(|event| match event {
+            Event::Hello { threads, .. } => {
+                Some(threads.iter().map(|held| held.thread.clone()).collect())
+            }
+            _ => None,
+        })
+        .unwrap_or_default()
+}
+
+#[tokio::test]
+async fn h10_a_newer_connection_takes_the_place_of_the_older_and_the_older_stops() {
+    let holder = Holder::start(0);
+    let mut older = holder.link().await;
+    older
+        .until(|event| matches!(event, Event::Hello { .. }))
+        .await;
+    let mut newer = holder.link().await;
+    newer
+        .until(|event| matches!(event, Event::Hello { .. }))
+        .await;
+    let closed = tokio::time::timeout(Duration::from_secs(5), async {
+        while older.link.events.recv().await.is_some() {}
+    })
+    .await;
+    assert!(closed.is_ok(), "the older connection is closed in time");
+    let _ = older.link.send(start("late", "/bin/cat", &[])).await;
+    let id = newer
+        .send(Action::Hello {
+            version: anima_daemon::threads::wire::VERSION,
+        })
+        .await;
+    let events = newer
+        .until(|event| matches!(event, Event::Done { id: done, .. } if *done == id))
+        .await;
+    assert!(
+        hello_threads(&events).is_empty(),
+        "a command of the older connection did not run"
+    );
+}
+
+#[tokio::test]
+async fn h10_a_start_sent_again_on_a_new_connection_is_done_one_time() {
+    let holder = Holder::start(0);
+    let command = Command {
+        id: 7,
+        action: start("once", "/bin/cat", &[]),
+    };
+    let mut first = holder.link().await;
+    first.link.resend(&command).await.expect("sent");
+    let Outcome::Started { pid } = first.answer(7).await else {
+        panic!("it started");
+    };
+    drop(first);
+    let mut second = holder.link().await;
+    second.link.resend(&command).await.expect("sent");
+    assert_eq!(second.answer(7).await, Outcome::Started { pid });
+    let id = second
+        .send(Action::Hello {
+            version: anima_daemon::threads::wire::VERSION,
+        })
+        .await;
+    let events = second
+        .until(|event| matches!(event, Event::Done { id: done, .. } if *done == id))
+        .await;
+    assert_eq!(hello_threads(&events), ["once"]);
+    let stop = second
+        .send(Action::Stop {
+            thread: "once".into(),
+        })
+        .await;
+    second.answer(stop).await;
+}
+
+#[tokio::test]
+async fn h8_a_frame_that_does_not_read_closes_the_connection_and_harms_no_program() {
+    let holder = Holder::start(0);
+    let mut link = holder.link().await;
+    let id = link.send(start("kept", "/bin/cat", &[])).await;
+    link.answer(id).await;
+    drop(link);
+    let mut raw = tokio::net::UnixStream::connect(holder.dir.join("holder.sock"))
+        .await
+        .expect("connects");
+    raw.write_all(b"this is not a frame\n")
+        .await
+        .expect("written");
+    let mut rest = Vec::new();
+    let read = tokio::time::timeout(Duration::from_secs(5), raw.read_to_end(&mut rest)).await;
+    assert!(read.is_ok(), "the holder closed the connection");
+    let mut link = holder.link().await;
+    let events = link
+        .until(|event| matches!(event, Event::Hello { .. }))
+        .await;
+    assert_eq!(hello_threads(&events), ["kept"], "the program still runs");
+    let stop = link
+        .send(Action::Stop {
+            thread: "kept".into(),
+        })
+        .await;
+    link.answer(stop).await;
+}
+
+#[tokio::test]
+async fn thr_128_the_daemon_refuses_a_socket_that_others_could_use() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let holder = Holder::start(0);
+    drop(holder.link().await);
+    let socket = holder.dir.join("holder.sock");
+    std::fs::set_permissions(&socket, std::fs::Permissions::from_mode(0o666)).expect("mode");
+    assert!(matches!(
+        HolderLink::connect(&holder.dir).await,
+        Err(LinkError::NotOurs)
+    ));
+}
+
+#[tokio::test]
+async fn h8_output_over_the_limit_of_the_holder_reaches_a_daemon_that_comes_back() {
+    let holder = Holder::start(0);
+    let mut link = holder.link().await;
+    let folder = tempfile::tempdir().expect("a folder");
+    let over = folder.path().join("over");
+    // Four lines of 3 MiB while no daemon is there. The file `over` says that the program wrote
+    // three lines: the holder reads the third at 6 MiB, so it goes over its 8 MiB and the
+    // fourth waits for the daemon.
+    let script = format!(
+        "for n in 1 2 3 4; do head -c 3145728 /dev/zero | tr '\\0' x; echo; \
+         if [ $n = 3 ]; then touch '{}'; fi; done",
+        over.display()
+    );
+    let id = link.send(start("big", "/bin/sh", &["-c", &script])).await;
+    link.answer(id).await;
+    drop(link);
+    assert!(
+        appears(&over, super::WAIT).await,
+        "the program wrote three lines while no daemon was there"
+    );
+    let mut link = holder.link().await;
+    let mut count = 0;
+    loop {
+        let event = tokio::time::timeout(super::WAIT, link.link.events.recv())
+            .await
+            .expect("in time")
+            .expect("the connection stays");
+        let lines = texts(std::slice::from_ref(&event));
+        for (seq, text) in &lines {
+            count += 1;
+            assert_eq!(*seq, count, "each line one time, in order");
+            assert_eq!(text.len(), 3 * 1024 * 1024);
+        }
+        if let Some((seq, _)) = lines.last() {
+            link.send(Action::Ack {
+                thread: "big".into(),
+                seq: *seq,
+            })
+            .await;
+        }
+        if exited("big")(&event) {
+            break;
+        }
+    }
+    assert_eq!(count, 4);
+}
+
+#[tokio::test]
+async fn th98_a_start_sent_after_a_quit_starts_no_program() {
+    let mut holder = Holder::start(0);
+    let mut link = holder.link().await;
+    let folder = tempfile::tempdir().expect("a folder");
+    let ran = folder.path().join("ran");
+    let script = format!("touch '{}'; sleep 300", ran.display());
+    let quit = link.send(Action::Quit).await;
+    // A holder that already ended refuses the start at the socket: that also starts nothing.
+    let late = link
+        .link
+        .send(start("after-quit", "/bin/sh", &["-c", &script]))
+        .await
+        .ok();
+    assert_eq!(link.answer(quit).await, Outcome::Ok);
+    // The holder reads nothing after its Quit: the start gets no answer and no program runs.
+    while let Ok(Some(event)) =
+        tokio::time::timeout(Duration::from_secs(10), link.link.events.recv()).await
+    {
+        assert!(
+            !matches!(&event, Event::Done { id, .. } if Some(*id) == late),
+            "the start was taken: {event:?}"
+        );
+    }
+    assert!(
+        holder.ended_within(super::WAIT).await,
+        "the holder ends after its Quit"
+    );
+    assert!(
+        !appears(&ran, Duration::from_secs(2)).await,
+        "a program started in the holder that ends"
+    );
+}
+
+/// Whether `file` is there within `bound`.
+async fn appears(file: &std::path::Path, bound: Duration) -> bool {
+    let deadline = tokio::time::Instant::now() + bound;
+    while tokio::time::Instant::now() < deadline {
+        if file.exists() {
+            return true;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    file.exists()
+}

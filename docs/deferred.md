@@ -23,7 +23,7 @@ Rules:
 | Area | Lists | Items with a box | Revisit |
 | --- | --- | --- | --- |
 | 1. Releases, signing and installation | 1 | 4 | Before the first public release (tasks R5 to R7 of projects-and-builds-plan.md). |
-| 2. Later phases and proposals | 9 | 27 | When the proposal or the phase of the item gets a ruling. Each proposal has a row in the work plan Section 9. |
+| 2. Later phases and proposals | 11 | 35 | When the proposal or the phase of the item gets a ruling. Each proposal has a row in the work plan Section 9. |
 | 3. Ideas from other products | 2 | 17 | When the plan that owns the subject is changed next. |
 | 4. Hub: access, logs and security | 7 | 24 | Before a hub is hosted for a different person, and at the next security review of access. |
 | 5. Hub: devices, checks and metrics | 9 | 20 | When the domain of the item is changed next. |
@@ -45,7 +45,7 @@ Added 2026-11-04 to 2026-11-13, top of the issue.
 
 - [ ] **iOS TestFlight release pipeline** (Phase 5, spec Section 10). Build and sign the iOS app, upload to TestFlight with an App Store Connect API key, run it in the release workflow on push to `main` (R-005 allows only deployment workflows). iOS updates come from TestFlight / the App Store, not the Tauri updater (UPD-001).
 - [ ] **macOS Developer ID signing and notarization.** Releases start with ad-hoc signing (spec 3.9). Add the Apple secrets (`APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_API_KEY`, `APPLE_API_ISSUER`); the release workflow switches to real signing, `notarytool submit --wait` and stapling when all are present.
-- [ ] **Windows desktop build** (out of scope, spec 1.4). NSIS installer, `windows-x86_64` feed entry, optional Authenticode signing. Needs a spec change first.
+- [ ] **Windows public signing and release.** Native desktop and host-service work is active in WIN1/WIN2 of [projects-and-builds-plan.md](plans/projects-and-builds-plan.md). The release workflow and Authenticode implementation are authorized and built on the Windows branch. Certificate provisioning, a signed trial and a public Windows release remain pending (spec 1.4; releases.md).
 - [ ] **Web client hosting** (Phase 3). Where the web build is served on the private network and how it is deployed.
 
 ## 2. Later phases and proposals
@@ -144,6 +144,24 @@ Added 2026-11-18. From [agent-tools-as-extensions.md](proposals/agent-tools-as-e
 - [ ] The later entries of Section 6.5.1 of the proposal, in waves: A ComfyUI and Unsloth Studio; B OpenClaw (after a security review) and Agent Zero; C JupyterLab and InvokeAI (OD-AXT17, OD-AXT18).
 - [ ] The desktop and phone applications of Herdr, Hermes Agent and T3 Code (AXT-025).
 - [ ] Aider: removed from the six agents of the first version (OD-AXT16). It comes back only with a new decision.
+
+### Hosted applications: an always-on machine for a database
+
+Added 2026-11-20. From R-298 and [hosted-applications-plan.md](plans/hosted-applications-plan.md).
+
+- [ ] Anima hosts a database for a person on a machine that runs all the time, a cloud server that Anima starts for that person. It needs the start of cloud servers for customers, which is not built. Not designed; the operator wants it planned in a conversation of its own.
+
+### TH111: the files of a prompt
+
+Added 2026-11-22. From the security reviews of task TH111 of [agent-threads.md](proposals/agent-threads.md) (branch `threads/runner-attach`). None of them is High.
+
+- [ ] The store opens a file with `O_NOFOLLOW` and `O_NONBLOCK`, checks that it is a regular file, keeps a SHA-256 of the bytes that came and checks it at the take, and reads at most the size that came.
+- [ ] A thread folder that holds the folder of the daemon (`~`, `~/Library`) is refused, as a folder inside it is (THR-041). This is older than TH111, and it refuses a start in `~`: it waits for a decision of the operator.
+- [ ] Each thread, and all threads, keep at most a number of bytes of files that went; a start of the runner removes the folders that no thread knows; a file of a prompt whose holder never answers goes back after a time.
+- [ ] An image goes with its EXIF data, its place (GPS) too. The runner removes it, or the client tells the person before the send.
+- [ ] A process of an agent of the same user can read the files of the other threads (the model of the same user, THR-040).
+- [ ] The runner reads and writes the files in its loop, with no task of its own: up to 10 MiB for one image.
+- [ ] Claude Code in a mode other than full access asks for leave to read a file outside its folder (step 3 of the human check of TH111).
 
 ## 3. Ideas from other products
 

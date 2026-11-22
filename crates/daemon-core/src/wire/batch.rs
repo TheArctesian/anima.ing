@@ -6,7 +6,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{BatchAgentUsage, BatchInventory, BatchKeys, KeyVersion};
+use super::{BatchAgentUsage, BatchBattery, BatchInventory, BatchKeys, BatchUpdate, KeyVersion};
+use crate::hardware::Hardware;
 use crate::points::{Point, SeriesKey};
 use crate::readings::{self, Drive};
 
@@ -25,10 +26,19 @@ pub struct Batch {
     /// (MET-027). A daemon older than drives never sends it.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub drives: Option<Vec<BatchDrive>>,
+    /// The batteries that power the device, sent after start and when one comes, goes or
+    /// changes its state; absent means unchanged (MET-032). A device with no battery never
+    /// sends it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub batteries: Option<Vec<BatchBattery>>,
     /// The device's tool inventory, sent after start and when a probe result changes; absent
     /// means unchanged (CAP-027, CAP-029). A daemon older than the inventory never sends it.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub inventory: Option<BatchInventory>,
+    /// The device's hardware values, sent with the inventory; absent means unchanged (CAP-032,
+    /// R-165). A daemon older than them never sends it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hardware: Option<Hardware>,
     /// The version of the `anima-daemon` that sent the batch (R-122, ROL-051). A daemon older
     /// than R-122 sends none, and a hub older than R-122 ignores it (K8 Section 1).
     #[serde(
@@ -51,6 +61,10 @@ pub struct Batch {
     /// it (K8 Section 1).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub keys: Option<BatchKeys>,
+    /// What the daemon says about its own update (K8 Section 8.1, R-139). A daemon that cannot
+    /// update itself sends none (ROL-044); a hub older than R-139 ignores it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub update: Option<BatchUpdate>,
 }
 
 /// The lists a batch announces besides its points, each `None` when unchanged (K8 Section 4).
@@ -58,7 +72,9 @@ pub struct Batch {
 pub struct Announcements {
     pub gpus: Option<Vec<BatchGpu>>,
     pub drives: Option<Vec<BatchDrive>>,
+    pub batteries: Option<Vec<BatchBattery>>,
     pub inventory: Option<BatchInventory>,
+    pub hardware: Option<Hardware>,
     pub agent_usage: Option<BatchAgentUsage>,
 }
 
@@ -164,7 +180,7 @@ impl Batch {
     /// The batch of `points` for `device`: its series are every series of the points, in
     /// [`SeriesKey`] order, and a point holds `null` for a series it has no value of (K8
     /// Section 4). Give it the points of an [`Outgoing`](crate::points::Outgoing), and the
-    /// GPUs, drives, inventory and agent usage to announce, if any.
+    /// GPUs, drives, batteries, inventory and agent usage to announce, if any.
     #[must_use]
     pub fn new<'a>(
         device: Uuid,
@@ -185,10 +201,13 @@ impl Batch {
                 .collect(),
             gpus: announced.gpus,
             drives: announced.drives,
+            batteries: announced.batteries,
             inventory: announced.inventory,
+            hardware: announced.hardware,
             daemon_version: None,
             agent_usage: announced.agent_usage,
             keys: None,
+            update: None,
         }
     }
 
@@ -197,6 +216,15 @@ impl Batch {
     pub fn with_keys(self, held: Vec<KeyVersion>) -> Self {
         Self {
             keys: Some(BatchKeys { held }),
+            ..self
+        }
+    }
+
+    /// This batch, with what the daemon says about its own update (K8 Section 8.1).
+    #[must_use]
+    pub fn with_update(self, update: BatchUpdate) -> Self {
+        Self {
+            update: Some(update),
             ..self
         }
     }

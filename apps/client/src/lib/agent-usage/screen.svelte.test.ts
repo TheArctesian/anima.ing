@@ -18,7 +18,7 @@ let app: ReturnType<typeof mount> | undefined;
 let hub: FakeUsageHub;
 let changes: UsageQuery[];
 const NOW = new Date('2026-11-17T10:00:00Z');
-const NO_USE = { ...ANSWER, days: [], models: [], devices: [], repositories: [], newest: [], total: sums(), everything: sums() };
+const NO_USE = { ...ANSWER, days: [], models: [], devices: [], repositories: [], newest: [], total: sums(), everything: sums(), sessions: [] };
 
 beforeEach(() => {
   installAnimations();
@@ -32,12 +32,12 @@ afterEach(async () => {
   document.body.replaceChildren();
 });
 
-async function open(query: UsageQuery = DEFAULT_QUERY, hostedLine?: string): Promise<UsageStore> {
+async function open(query: UsageQuery = DEFAULT_QUERY, hostedLine?: string, charges?: { of: (id: string) => ReadonlyMap<string, number> | undefined }): Promise<UsageStore> {
   const store = new UsageStore(agentUsageApi(hub).read);
   const reading = store.load(usageRequest(query, NOW));
   app = mount(AgentUsageScreen, {
     target: document.body,
-    props: { store, query, hostedLine, now: () => NOW, onQueryChange: (next: UsageQuery) => changes.push(next), onRetry: () => void store.load(usageRequest(query, NOW)) },
+    props: { store, query, hostedLine, charges, now: () => NOW, onQueryChange: (next: UsageQuery) => changes.push(next), onRetry: () => void store.load(usageRequest(query, NOW)) },
   });
   flushSync();
   await reading;
@@ -121,6 +121,18 @@ it('AIS-024: each device that reports has a line; one whose daemon sends no coun
   expect(mac?.querySelector('th')?.textContent).toContain('Reads sessions');
   expect(cells(mac)).toEqual(['17', '169', '19.3k', '$12.40']);
   expect(nas?.querySelector('th')?.textContent).toContain("Runs as a system unit: it cannot see a user's sessions");
+});
+
+it('MET-032: a device row with a battery shows its charge and its low warning; a row with none shows nothing new', async () => {
+  const laptop = { state: 'READING' as const, device: { id: 'd-mac', name: 'mac-mini', batteries: [{ name: 'InternalBattery-0', state: 'DISCHARGING' as const }] } };
+  hub = fakeUsageHub({ ...ANSWER, states: DEVICES.map((each) => (each.device.id === laptop.device.id ? laptop : each)) });
+  await open(DEFAULT_QUERY, undefined, { of: (id) => (id === laptop.device.id ? new Map([['InternalBattery-0', 9]]) : undefined) });
+  const [box, mac] = lines('By device');
+  const battery = mac?.querySelector('[role="meter"]');
+  expect(battery?.textContent).toContain('9 %');
+  expect(battery?.getAttribute('aria-valuetext')).toBe('9 %, very low, on battery');
+  expect(battery?.classList.contains('low')).toBe(true);
+  expect(box?.querySelector('.battery')).toBeNull();
 });
 
 it('the repositories stand newest use first with their last use, and a line limits the page to its repository', async () => {
@@ -244,4 +256,47 @@ it('the device choice keeps every device when the use is filtered to one', async
   control('Device')?.click();
   flushSync();
   expect([...document.querySelectorAll('label.option')].map((option) => option.textContent.trim())).toEqual(['All devices', 'gpu-box', 'mac-mini', 'nas']);
+});
+
+it('AIS-025, AIS-026: the sessions come newest use first, a recent one with its dot, and the page never says one runs now', async () => {
+  await open();
+  const rows = lines('Sessions, the newest use first');
+  expect(rows).toHaveLength(2);
+  expect(rows[0]?.querySelector('th')?.textContent).toContain('acme/anima');
+  expect(cells(rows[0]).slice(0, 2)).toEqual(['Claude Codemac-mini', expect.stringContaining('12 minutes ago') as string]);
+  expect(rows[0]?.querySelector('.recent')?.textContent).toBe('Recent');
+  expect(rows[1]?.querySelector('.recent')).toBeNull();
+  expect(cells(rows[1]).at(-1)).toBe('No price');
+  expect(text()).not.toMatch(/running|runs now/i);
+});
+
+it('AIS-025: sessions the hub did not send are counted under the list', async () => {
+  hub.answer = { ...ANSWER, sessionsLeftOut: 3 };
+  await open();
+  expect(text()).toContain('3 older sessions are not shown. Choose fewer days or a repository.');
+});
+
+it('AIS-022 (R-313): an account groups its devices under one bar for each limit, with the share of each device', async () => {
+  await open();
+  const cards = [...document.querySelectorAll('li.card')];
+  expect(cards.map((card) => card.getAttribute('aria-label'))).toEqual(['Codex account 3f9a12c4', 'Claude Code account a71c0e5b']);
+  const codex = cards[0]?.textContent ?? '';
+  expect(codex).toContain('Pro');
+  expect(codex).toContain('reported 20 minutes ago');
+  expect(codex).toMatch(/5 hours\s*35 % used · starts again/);
+  expect(codex).toMatch(/7 days\s*82 % used · starts again/);
+  const meters = [...(cards[0]?.querySelectorAll('[role=meter]') ?? [])].map((meter) => [meter.getAttribute('aria-label'), meter.getAttribute('aria-valuenow')]);
+  expect(meters).toEqual([['5 hours used', '35'], ['7 days used', '82']]);
+  const shares = [...(cards[0]?.querySelectorAll('.device') ?? [])].map((device) => device.textContent.replace(/\s+/g, ' ').trim());
+  expect(shares).toEqual(['mac-mini 65 %', 'gpu-box 35 %']);
+  expect(cards[1]?.textContent).toContain('The program reports no limit yet.');
+  expect(text()).not.toContain(ANSWER.accounts[0]?.key);
+});
+
+it('with no account reported the part By account says that none is sent yet', async () => {
+  hub = fakeUsageHub({ ...ANSWER, accounts: [] });
+  await open();
+  expect(text()).toContain('By account');
+  expect(text()).toContain('No account to show. The devices do not send their accounts yet.');
+  expect(document.querySelectorAll('li.card')).toHaveLength(0);
 });

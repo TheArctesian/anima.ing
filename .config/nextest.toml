@@ -19,3 +19,17 @@ bundled-postgres = { max-threads = 4 }
 # The modules named here are pure or touch files only; they start no server.
 filter = "(package(anima-database) & not test(/^(layout|password|urls|owner_only)::/)) | (package(anima-hub) & test(listening::bundled)) | (package(anima-local-hub) & binary(it))"
 test-group = "bundled-postgres"
+
+[[profile.default.overrides]]
+# These measure SQL batching through the real schema's 10 ms wall-clock window.
+# Reserve the runner slots so unrelated test processes cannot fragment each batch.
+# Keep their query budgets unchanged: per-key loading must still fail the tests.
+filter = "test(wiring::checks_schema::api_005_) | test(wiring::devices_schema::api_005_)"
+threads-required = "num-cpus"
+
+[[profile.default.overrides]]
+# It compares the time of a text with the time of a text four times as long (LOG-007). On
+# Windows it reads the clock on the wall, and the tests that run beside it took the processor
+# from the long text: 38.7 ms and 394.6 ms on the runner of GitHub (run 44931544012). It runs alone.
+filter = "test(redaction::tests::values::log_007_redaction_of_pathological_text_takes_linear_time)"
+threads-required = "num-cpus"

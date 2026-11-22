@@ -9,11 +9,13 @@ use std::collections::BTreeSet;
 use chrono::{DateTime, TimeDelta, Utc};
 use uuid::Uuid;
 
+use super::batteries::batteries_fit;
 use super::{
-    Batch, BatchDrive, BatchGpu, BatchPoint, BatchSeries, GpuVendor, KeyVersion, RefusalCode,
-    versions_fit,
+    Batch, BatchBattery, BatchDrive, BatchGpu, BatchPoint, BatchSeries, BatchUpdate, GpuVendor,
+    KeyVersion, RefusalCode, versions_fit,
 };
 use crate::agent_usage::AgentUsage;
+use crate::hardware::Hardware;
 use crate::inventory::Inventory;
 use crate::points::{
     Kind, MAX_GPU_INDEX, MAX_LABELS, MAX_POINTS, MAX_SERIES, Point, SeriesKey, Summary, ceiling,
@@ -30,7 +32,7 @@ const AHEAD: TimeDelta = TimeDelta::seconds(60);
 const MAX_VERSION_BYTES: usize = 64;
 
 /// What the hub takes from a batch: the points of the series whose kind it knows, each with
-/// its non-null values only, the GPUs, drives and inventory when the batch has them, and the
+/// its non-null values only, the GPUs, drives, batteries and inventory when the batch has them, and the
 /// version of the daemon when it sent one (K8 Section 4, R-122). The inventory holds only the
 /// tools this hub knows by name.
 #[derive(Clone, Debug, PartialEq)]
@@ -38,13 +40,19 @@ pub struct Accepted {
     pub points: Vec<Point>,
     pub gpus: Option<Vec<BatchGpu>>,
     pub drives: Option<Vec<BatchDrive>>,
+    /// The batteries, when the batch has them (MET-032).
+    pub batteries: Option<Vec<BatchBattery>>,
     pub inventory: Option<Inventory>,
+    /// The hardware values, when the batch has them, with the backends this hub knows (CAP-032).
+    pub hardware: Option<Hardware>,
     pub daemon_version: Option<String>,
     /// The agent usage, when the batch has it, with the session days of known sources only
     /// (R-135).
     pub agent_usage: Option<AgentUsage>,
     /// The versions the daemon's key cache holds, when the batch had a `keys` member (R-147).
     pub keys: Option<Vec<KeyVersion>>,
+    /// What the daemon says about its update, when the batch had an `update` member (R-139).
+    pub update: Option<BatchUpdate>,
 }
 
 impl Batch {
@@ -64,15 +72,24 @@ impl Batch {
         let shaped = points_fit(&self.points, &keys)
             && gpus_fit(self.gpus.as_deref())
             && drives_fit(self.drives.as_deref())
+            && batteries_fit(self.batteries.as_deref())
             && self.daemon_version.as_deref().is_none_or(is_version)
             && self
                 .keys
                 .as_ref()
-                .is_none_or(|keys| versions_fit(&keys.held));
+                .is_none_or(|keys| versions_fit(&keys.held))
+            && self
+                .update
+                .as_ref()
+                .is_none_or(|update| update.fits(is_version));
         if !shaped {
             return Err(RefusalCode::Malformed);
         }
         let inventory = match self.inventory {
+            Some(sent) => Some(sent.accepted().ok_or(RefusalCode::Malformed)?),
+            None => None,
+        };
+        let hardware = match self.hardware {
             Some(sent) => Some(sent.accepted().ok_or(RefusalCode::Malformed)?),
             None => None,
         };
@@ -92,10 +109,13 @@ impl Batch {
             points,
             gpus: self.gpus,
             drives: self.drives,
+            batteries: self.batteries,
             inventory,
+            hardware,
             daemon_version: self.daemon_version,
             agent_usage,
             keys: self.keys.map(|keys| keys.held),
+            update: self.update,
         })
     }
 }

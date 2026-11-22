@@ -20,12 +20,25 @@ use crate::{
     sources::{Kit, kit},
 };
 
+/// What `Source.connectPageUrl` of GitHub says on `hub`.
+async fn connect_page(hub: &crate::hub::Hub, token: Option<&str>) -> serde_json::Value {
+    let answer = hub
+        .post(token, "query { sources { key connectPageUrl } }", json!({}))
+        .await;
+    let sources = answer["data"]["sources"].as_array().unwrap().clone();
+    let github = sources.iter().find(|source| source["key"] == "github");
+    github.unwrap()["connectPageUrl"].clone()
+}
+
 /// The same hub in the link mode, as a hub of the pool or of this computer runs: with the
 /// public origin that `given` names, or with none.
 fn linked(kit: &Kit, given: Option<&str>) -> crate::hub::Hub {
     let mut env = std::collections::BTreeMap::from([(
         "ANIMA_LINK_SOCKET".to_owned(),
-        "/run/anima/link.sock".to_owned(),
+        std::env::temp_dir()
+            .join("anima-registration-test.sock")
+            .display()
+            .to_string(),
     )]);
     if let Some(origin) = given {
         env.insert("ANIMA_PUBLIC_ORIGIN".to_owned(), origin.to_owned());
@@ -46,6 +59,10 @@ async fn hmd_070_a_hub_that_no_browser_can_open_starts_no_attempt_and_makes_no_t
     let kit = kit(&pool).await;
     let hub = linked(&kit, None);
     let token = Some(kit.token.as_str());
+    assert!(
+        connect_page(&hub, token).await.is_null(),
+        "the hub tells the client that the browser flow cannot start"
+    );
     let refused = hub
         .post(token, super::START, json!({ "input": null }))
         .await;
@@ -76,6 +93,7 @@ async fn hmd_069_a_hub_that_was_given_its_public_origin_builds_the_link_from_it(
     let kit = kit(&pool).await;
     let hub = linked(&kit, Some("https://hub.anima.ing"));
     let token = Some(kit.token.as_str());
+    assert_eq!(connect_page(&hub, token).await, PAGE);
     let made = hub
         .post(token, super::START, json!({ "input": null }))
         .await;

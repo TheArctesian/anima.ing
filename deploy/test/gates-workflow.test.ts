@@ -11,6 +11,7 @@ const ROOT = join(import.meta.dir, "..", "..");
 const RAW = readFileSync(join(ROOT, ".github", "workflows", "gates.yml"), "utf8");
 
 interface Step {
+  id?: string;
   name?: string;
   uses?: string;
   run?: string;
@@ -18,6 +19,7 @@ interface Step {
   with?: Record<string, string | boolean | number>;
 }
 interface Job {
+  uses?: string;
   "runs-on": string;
   if?: string;
   needs?: string[];
@@ -32,16 +34,17 @@ interface Workflow {
 }
 
 const workflow = Bun.YAML.parse(RAW) as Workflow;
-const jobs = Object.entries(workflow.jobs);
+const jobs = Object.entries(workflow.jobs).map(([name, job]) => [name, { ...job, steps: job.steps ?? [] }] as const);
 const steps = jobs.flatMap(([, job]) => job.steps);
-const gateJobs = jobs.filter(([name]) => name !== "passed" && name !== "base");
+const gateJobs = jobs.filter(([name]) => name !== "passed" && name !== "base" && name !== "windows");
 
 /** The gates that the `run` scripts of the workflow select, in the way `quality/bin/gates.ts` selects them. */
 function gatesThatRun(): string[] {
   const full = gateList("x");
   return steps.flatMap((step) => {
     const command = /quality\/bin\/gates\.ts(.*)/.exec(step.run ?? "")?.[1];
-    if (command === undefined) return [];
+    // `--alone` checks each crate by itself, `--windows-lint` lints for Windows; `--jobs` and `--dev-push` name the jobs of a push: none runs a gate of the list.
+    if (command === undefined || /^\s*--(alone|jobs|dev-push|windows-lint)\b/.test(command)) return [];
     const groups = /--group (\S+)/.exec(command)?.[1]?.split(",");
     const named = /--gate (\S+)/.exec(command)?.[1]?.split(",");
     return full
@@ -64,7 +67,9 @@ describe("the gates workflow (gates.yml)", () => {
     for (const [name, job] of jobs) {
       expect(job.environment, name).toBeUndefined();
       expect(Object.values(job.permissions ?? {}).filter((value) => value !== "read"), name).toEqual([]);
-      expect(Object.keys(job.permissions ?? {}).filter((key) => key !== "contents"), name).toEqual([]);
+      // Only the job base reads the runs of the gates, to find the trees of dev that already passed.
+      const readable = name === "base" ? ["contents", "actions"] : ["contents"];
+      expect(Object.keys(job.permissions ?? {}).filter((key) => !readable.includes(key)), name).toEqual([]);
     }
     for (const step of steps.filter((each) => each.uses?.startsWith("actions/checkout@"))) {
       expect(step.with?.["persist-credentials"]).toBe(false);
@@ -73,9 +78,11 @@ describe("the gates workflow (gates.yml)", () => {
 
   test("PRO-044 no pull request starts it, and no job runs on a self-hosted runner", () => {
     expect(Object.keys(workflow.on).sort()).toEqual(["push", "workflow_call", "workflow_dispatch"]);
-    expect(workflow.on["push"]).toEqual({ "branches-ignore": ["main", "train/**"] });
+    // A branch image/* only starts the hub image (hub-image.yml) at a commit that passed already.
+    expect(workflow.on["push"]).toEqual({ "branches-ignore": ["main", "train/**", "image/**"] });
     for (const [name, job] of jobs) {
-      expect(job["runs-on"], name).toBe("ubuntu-24.04");
+      if (name === "windows") expect(job.uses).toBe("./.github/workflows/windows-trial.yml");
+      else expect(job["runs-on"], name).toBe("ubuntu-24.04");
     }
   });
 
@@ -88,6 +95,9 @@ describe("the gates workflow (gates.yml)", () => {
 
   test("R-252 each job of the gates tests the branch as merged with the dev that the job `base` read", () => {
     expect(workflow.jobs["base"]?.steps.some((step) => step.with?.["name"] === "tested-base")).toBe(true);
+    // The file stays out of the checkout: `--jobs` counts an untracked file as a change of the branch.
+    expect(workflow.jobs["base"]?.steps.find((step) => step.with?.["name"] === "tested-base")?.with?.["path"]).toBe("${{ runner.temp }}/tested-base");
+    expect(workflow.jobs["base"]?.steps.find((step) => step.id === "dev")?.run).toContain('> "$RUNNER_TEMP/tested-base"');
     for (const [name, job] of gateJobs) {
       expect(job.needs, name).toEqual("base" as unknown as string[]);
       const merge = job.steps.find((step) => step.run?.includes("gates-merge.sh"));
@@ -103,14 +113,83 @@ describe("the gates workflow (gates.yml)", () => {
 
   test("the job `passed` waits for each job and fails when one did not pass", () => {
     const passed = workflow.jobs["passed"];
-    expect(passed?.needs?.sort()).toEqual(["base", ...gateJobs.map(([name]) => name)].sort());
+    expect(passed?.needs?.sort()).toEqual(["base", "windows", ...gateJobs.map(([name]) => name)].sort());
     expect(passed?.if).toBe("always()");
   });
 
-  test("a workflow that calls the gates reads the cache and does not write it", () => {
+  test("the jobs of the gates read the Rust cache and never write it: only the workflow rust-cache does", () => {
     for (const step of steps.filter((each) => each.uses?.startsWith("Swatinem/rust-cache@"))) {
-      expect(step.with?.["save-if"]).toBe("${{ inputs.ref == '' }}");
+      expect(step.with?.["save-if"]).toBe(false);
     }
+  });
+});
+
+
+describe("the gates workflow: each crate alone", () => {
+  test("the job rust-lint checks each crate alone, as the release builds `anima` and the application", () => {
+    const lint = workflow.jobs["rust-lint"]?.steps.map((step) => step.run ?? "") ?? [];
+    const merged = lint.findIndex((run) => run.includes("gates-merge.sh"));
+    const alone = lint.findIndex((run) => run.includes("quality/bin/gates.ts --alone"));
+    expect(merged).toBeGreaterThan(-1);
+    expect(alone).toBeGreaterThan(merged);
+  });
+});
+
+describe("the gates workflow: Clippy for Windows on Linux", () => {
+  const job = workflow.jobs["windows-lint"];
+
+  test("it runs when the changes need Rust, after the merge with dev, with the GNU target and mingw-w64", () => {
+    expect(job?.if).toBe("needs.base.outputs.rust == 'true'");
+    const runs = job?.steps.map((step) => step.run ?? "") ?? [];
+    const merged = runs.findIndex((run) => run.includes("gates-merge.sh"));
+    const target = runs.findIndex((run) => run.includes("rustup target add x86_64-pc-windows-gnu") && run.includes("mingw-w64"));
+    const lint = runs.findIndex((run) => run.includes("bun quality/bin/gates.ts --windows-lint"));
+    expect(merged).toBeGreaterThan(-1);
+    expect(target).toBeGreaterThan(merged);
+    expect(lint).toBeGreaterThan(target);
+  });
+
+  test("the job passed takes its skip only when the changes need no Rust", () => {
+    const script = workflow.jobs["passed"]?.steps[0]?.run ?? "exit 9";
+    const run = (rust: string, result: string) =>
+      Bun.spawnSync(["sh", "-c", script], { env: { ...process.env, RUST_NEEDED: rust, RESULTS: JSON.stringify({ "windows-lint": { result } }) }, stdout: "pipe", stderr: "pipe" }).exitCode;
+    expect(run("false", "skipped")).toBe(0);
+    expect(run("true", "skipped")).not.toBe(0);
+    expect(run("true", "failure")).not.toBe(0);
+    expect(run("true", "success")).toBe(0);
+  });
+});
+
+describe("the gates workflow: a branch that changed only tests", () => {
+  test("each step of the Rust jobs that runs the gates takes the crates that the job `base` named", () => {
+    const base = workflow.jobs["base"] as unknown as { outputs?: Record<string, string> };
+    expect(base.outputs?.["rust_crates"]).toBe("${{ steps.jobs.outputs.rust_crates }}");
+    for (const name of ["rust-lint", "rust-test"]) {
+      const runs = workflow.jobs[name]?.steps.filter((step) => step.run?.includes("quality/bin/gates.ts")) ?? [];
+      expect(runs.length, name).toBeGreaterThan(0);
+      for (const step of runs) expect(step.env?.["GATES_RUST_CRATES"], `${name}: ${step.name ?? ""}`).toBe("${{ needs.base.outputs.rust_crates }}");
+    }
+  });
+});
+
+describe("the gates workflow: a push to dev", () => {
+  const base = workflow.jobs["base"]?.steps.find((step) => step.run?.includes("--dev-push")) ?? {};
+
+  test("only a push to dev itself, not a branch, a train or a call, chooses its jobs by the trees that passed", () => {
+    expect(base.run).toContain('elif [ "$EVENT" = "push" ] && [ "$REF_NAME" = "dev" ] && [ -z "$CALLED_REF" ]; then');
+    expect(base.run).toContain('bun quality/bin/gates.ts --dev-push "$BEFORE"');
+    expect(base.run).toContain("pipefail");
+  });
+
+  test("a push to dev waits for the run of dev before it; each other branch stops its older run", () => {
+    const concurrency = (Bun.YAML.parse(RAW) as { concurrency: { group: string; "cancel-in-progress": string } }).concurrency;
+    expect(concurrency.group).toBe("gates-${{ github.workflow }}-${{ inputs.ref || github.ref }}");
+    // The same ref as the group, both of its spellings: the push of dev, and a call or dispatch that names it.
+    expect(concurrency["cancel-in-progress"]).toBe("${{ (inputs.ref || github.ref) != 'refs/heads/dev' && (inputs.ref || github.ref) != 'dev' }}");
+  });
+
+  test("windows does not run when only the quality gates are needed", () => {
+    expect(workflow.jobs["windows"]?.if).toContain("needs.base.outputs.documents_only != 'true'");
   });
 });
 
@@ -157,7 +236,8 @@ describe("the workflow that merges into dev (merge-to-dev.yml; R-252)", () => {
   });
 });
 
-describe("while a train is on the way, nothing else wakes it: the script stays, then starts the workflow again", () => {
+// merge-to-dev.sh runs on a Linux runner of GitHub, under /bin/sh, which Windows does not have.
+describe.skipIf(process.platform === "win32")("while a train is on the way, nothing else wakes it: the script stays, then starts the workflow again", () => {
   /** Runs the script with stand-ins for bun, gh, git and sleep; `trains` says, for each step, if a train exists after it. */
   function steps(trains: boolean[], seconds: number, rule = '{"mergeWithoutCheck": true, "fullGates": "github"}'): string[] {
     const dir = mkdtempSync(join(tmpdir(), "merge-to-dev-"));
@@ -196,5 +276,33 @@ describe("while a train is on the way, nothing else wakes it: the script stays, 
 
   test("the rule of dev is off: no step and no start", () => {
     expect(steps([true], 600, '{"mergeWithoutCheck": false, "fullGates": "github"}')).toEqual([]);
+  });
+});
+
+describe("the workflow rust-cache (rust-cache.yml)", () => {
+  const cacheRaw = readFileSync(join(ROOT, ".github", "workflows", "rust-cache.yml"), "utf8");
+  const cache = Bun.YAML.parse(cacheRaw) as { on: Record<string, unknown>; jobs: Record<string, Job> };
+  const cacheSteps = Object.values(cache.jobs).flatMap((job) => job.steps ?? []);
+  const keysOf = (all: Step[]) => all.filter((step) => step.uses?.startsWith("Swatinem/rust-cache@")).map((step) => step.with?.["shared-key"]);
+
+  test("it writes the caches only on main, the one branch whose caches each branch can read", () => {
+    for (const step of cacheSteps.filter((each) => each.uses?.startsWith("Swatinem/rust-cache@"))) {
+      expect(step.with?.["save-if"]).toBe("${{ github.ref == 'refs/heads/main' }}");
+    }
+    expect(Object.keys(cache.on).sort()).toEqual(["push", "schedule", "workflow_dispatch"]);
+  });
+
+  test("it warms the keys of the Rust jobs of the gates, from the tree of dev", () => {
+    expect(keysOf(cacheSteps).sort()).toEqual(["gates-lint", "gates-test"]);
+    for (const key of keysOf(cacheSteps)) expect(keysOf(steps)).toContain(key);
+    for (const step of cacheSteps.filter((each) => each.uses?.startsWith("actions/checkout@"))) expect(step.with?.["ref"]).toBe("dev");
+  });
+
+  test("it holds no secret, writes nothing but the cache, and pins each action", () => {
+    expect(cacheRaw).not.toMatch(/secrets\.|:\s*write\b/);
+    for (const step of cacheSteps) {
+      if (step.uses !== undefined) expect(step.uses).toMatch(/@[0-9a-f]{40}\b/);
+      expect(step.run ?? "").not.toContain("${{");
+    }
   });
 });

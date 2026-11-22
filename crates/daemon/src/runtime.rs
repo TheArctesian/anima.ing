@@ -1,10 +1,15 @@
 //! `anima-daemon run`: four tasks and the clock. One samples every 2 seconds and hands points
-//! over; one probes the tool inventory at start and every 15 minutes (CAP-027); one reads the
+//! over; one probes the tool inventory and reads the hardware values at start and every 15 minutes
+//! (CAP-027, CAP-032); one reads the
 //! session files of the AI agent programs at start and every 15 minutes (AIS-018); the other
 //! keeps the buffer and pushes every 10 seconds, so a slow hub, probe or read never delays
 //! sampling (MET-014, K8 Section 7). This is the I/O edge: clock, sleep, signals.
 
 mod agent_usage;
+mod link_wait;
+#[cfg(unix)]
+pub mod old_origin;
+mod token_wait;
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -15,19 +20,23 @@ use tokio::sync::mpsc;
 use tokio::time::{Instant, MissedTickBehavior, interval, sleep_until};
 use uuid::Uuid;
 
+use std::path::PathBuf;
+
 use crate::config::home::{Home, HomeError};
 use crate::hub::{HubClient, HubError, TIMEOUT};
 use crate::keys::{keeper::Keeper, store::KeyStore};
 use crate::push::pacing::RHYTHM;
 use crate::push::{Event, Pusher};
-use crate::readers::{self, Platform, gpu};
+use crate::readers::{self, Platform, Source, container::Container, gpu};
 use crate::report;
 use crate::sampling::Sampler;
+use crate::sampling::batteries::BatteryWatch;
 use crate::sampling::drives::DriveWatch;
 use crate::sampling::gpu::Discovery;
-use crate::sampling::inventory::InventoryWatch;
-use crate::token_store::{TokenStore, TokenStoreError};
+use crate::sampling::inventory::{InventoryWatch, Watch as Announced};
+use crate::token_store::{Credential, TokenStore, TokenStoreError};
 use agent_usage::{count, counting};
+use link_wait::LinkWatch;
 
 /// The time between samplings (MET-014).
 const SAMPLE_EVERY: Duration = Duration::from_secs(2);
@@ -54,16 +63,57 @@ pub enum RunError {
     SamplingStopped,
     #[error("the token was issued by another hub than the configuration names")]
     OriginMismatch,
+    #[cfg(unix)]
+    #[error("{0}")]
+    Move(#[from] old_origin::MoveError),
+    #[error("the socket of anima-link passes its check now; starting again to move to it")]
+    LinkAppeared,
+    /// With `--hosted-hub`: the hub refused the token, which is now deleted, so that
+    /// `anima-local-hub` enrols the daemon again at its next start (HMD-046, HM-T35).
+    #[error("the hub refused the token; it is deleted, and the next start of the hub enrols again")]
+    TokenRefused,
+    /// As [`RunError::TokenRefused`], but the delete of the token waits for the person in the
+    /// Keychain (R-322), so the token is still stored.
+    #[error(
+        "the hub refused the token; it is not deleted yet: this computer's daemon needs you to allow it in the Keychain"
+    )]
+    TokenRefusedKept,
 }
 
-/// Samples and pushes until `stop` completes.
+/// Why the push loop ended.
+#[derive(Debug, PartialEq, Eq)]
+enum PushEnd {
+    /// Sampling closed its side.
+    SamplingStopped,
+    /// The hub refused the token, and the run ends on a refusal.
+    TokenRefused,
+}
+
+/// Samples and pushes until `stop` completes. With `hosted_hub`, the folder of the data of a
+/// hosted hub, it reads that container and not the machine (HMD-071), and a refused token ends
+/// the run: the token is deleted, so the next start of the hub enrols again (HM-T35).
 ///
 /// # Errors
-/// [`RunError`] when the daemon is not enrolled or its files or client cannot be set up, or
-/// when sampling ends before `stop` (the service manager then restarts the daemon).
-pub async fn run(home: &Home, stop: impl Future<Output = ()>) -> Result<(), RunError> {
-    let (pusher, device) = prepare(home)?;
+/// [`RunError`] when the daemon is not enrolled or its files or client cannot be set up, when
+/// sampling ends before `stop` (the service manager then restarts the daemon), or, with
+/// `hosted_hub`, when the hub refuses the token.
+pub async fn run(
+    home: &Home,
+    hosted_hub: Option<PathBuf>,
+    stop: impl Future<Output = ()>,
+) -> Result<(), RunError> {
+    let mut stop = std::pin::pin!(stop);
+    // A token read that waits for the person in the Keychain does not end the run (R-322).
+    let credential = tokio::select! {
+        read = token_wait::credential(home) => read?,
+        () = &mut stop => {
+            report::stopping();
+            return Ok(());
+        }
+    };
+    let (pusher, device, link) = prepare(home, credential).await?;
     let (sender, receiver) = mpsc::channel(CHANNEL_ROOM);
+    let refusal_ends = hosted_hub.is_some();
     let probing = tokio::spawn(probe(Platform::current(), sender.clone()));
     let stopping = Arc::new(AtomicBool::new(false));
     let usage = tokio::spawn(count(
@@ -71,15 +121,24 @@ pub async fn run(home: &Home, stop: impl Future<Output = ()>) -> Result<(), RunE
         sender.clone(),
         Arc::clone(&stopping),
     ));
-    let mut sampling = tokio::spawn(sample(Platform::current(), sender));
+    let source = hosted_hub.map_or(Source::Machine(Platform::current()), |data| {
+        let processors = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
+        let processors = u64::try_from(processors).unwrap_or(1);
+        Source::HostedHub(Container::new(PathBuf::from("/"), data, processors))
+    });
+    let mut sampling = tokio::spawn(sample(source, sender));
     report::running(device);
     let outcome = tokio::select! {
-        () = push(pusher, receiver) => Err(RunError::SamplingStopped),
+        ended = push(pusher, receiver, refusal_ends) => match ended {
+            PushEnd::SamplingStopped => Err(RunError::SamplingStopped),
+            PushEnd::TokenRefused => Err(forget_refused(home)),
+        },
+        () = link_wait::passed(&link) => Err(RunError::LinkAppeared),
         ended = &mut sampling => {
             report::sampling_ended(&ended);
             Err(RunError::SamplingStopped)
         }
-        () = stop => {
+        () = &mut stop => {
             report::stopping();
             Ok(())
         }
@@ -94,40 +153,94 @@ pub async fn run(home: &Home, stop: impl Future<Output = ()>) -> Result<(), RunE
     outcome
 }
 
-/// The pusher for the enrolled device, from the configuration and the token store.
-fn prepare(home: &Home) -> Result<(Pusher, Uuid), RunError> {
+/// The pusher for the enrolled device, from the configuration and the `credential` that the
+/// token store held. An old enrolment moves to the socket of the link first, when it can
+/// ([`old_origin`]).
+#[cfg_attr(
+    windows,
+    expect(
+        clippy::unused_async,
+        reason = "only the move of an old enrolment awaits, and Windows has none"
+    )
+)]
+async fn prepare(
+    home: &Home,
+    credential: Option<Credential>,
+) -> Result<(Pusher, Uuid, LinkWatch), RunError> {
     let config = home.read_config()?.ok_or(RunError::NotEnrolled)?;
     let store = TokenStore::open(home);
-    let credential = store.load()?.ok_or(RunError::NotEnrolled)?;
+    let credential = credential.ok_or(RunError::NotEnrolled)?;
+    #[cfg(unix)]
+    let old_origin::Start {
+        enrolled: old_origin::Enrolled { config, credential },
+        watch: link,
+        socket,
+    } = old_origin::at_start(home, &store, old_origin::Enrolled { config, credential }).await?;
+    #[cfg(windows)]
+    let (link, socket) = ((), home.link_socket());
     if credential.hub != config.hub {
         return Err(RunError::OriginMismatch);
     }
-    let hub = HubClient::reaching(config.hub.reach(), &home.link_socket(), TIMEOUT)?;
+    let hub = HubClient::reaching(config.hub.reach(), &socket, TIMEOUT)?;
     Ok((
         Pusher::new(hub, config.device, credential, store)
-            .with_keys(Keeper::open(KeyStore::open(home))),
+            .with_keys(Keeper::open(KeyStore::open(home)))
+            .with_marks(home.clone()),
         config.device,
+        link,
     ))
 }
 
+/// Deletes the token that the hub refused; the key cache went with the refusal (R-147). A
+/// delete that waits for the person in the Keychain is logged and marked for the app, and the
+/// run ends as for any refused token: the token stays until a later delete or enrolment.
+fn forget_refused(home: &Home) -> RunError {
+    refusal_end(TokenStore::open(home).forget(), || {
+        if let Err(error) = crate::keychain_wait::mark(home, true) {
+            report::keychain_mark_refused(&error);
+        }
+    })
+}
+
+/// The end of a run whose token the hub refused, from `forgot`, the delete of that token;
+/// `mark` puts the mark for the app when the delete waits for the person.
+fn refusal_end(forgot: Result<(), TokenStoreError>, mark: impl FnOnce()) -> RunError {
+    match forgot {
+        Ok(()) => RunError::TokenRefused,
+        Err(TokenStoreError::KeychainWaits) => {
+            report::forget_waits();
+            mark();
+            RunError::TokenRefusedKept
+        }
+        Err(error) => error.into(),
+    }
+}
+
 /// Every 2 seconds: read, make a sample, and send the point each 10-second window closes.
-async fn sample(platform: Platform, events: mpsc::Sender<Event>) {
-    let mac = platform == Platform::Macos;
+async fn sample(mut source: Source, events: mpsc::Sender<Event>) {
+    let mac = matches!(source, Source::Machine(Platform::Macos));
+    let gpus = source.has_gpus();
     let mut sampler = Sampler::new();
     let mut drives = DriveWatch::new();
-    let mut watch = Watch::start(discover(mac, &events).await, Instant::now());
+    let mut batteries = BatteryWatch::new();
+    let mut watch = Watch::start(discover(mac, gpus, &events).await, Instant::now());
     let mut ticks = interval(SAMPLE_EVERY);
     ticks.set_missed_tick_behavior(MissedTickBehavior::Skip);
     loop {
         ticks.tick().await;
         if watch.due(Instant::now()) {
-            watch.replace(discover(mac, &events).await, Instant::now());
+            watch.replace(discover(mac, gpus, &events).await, Instant::now());
         }
         let found = &watch.found;
         let now = Utc::now();
-        let reading = readers::reading(platform, now).await;
+        let reading = source.reading(now, std::time::Instant::now()).await;
         if let Some(changed) = drives.changed(reading.drives.as_deref())
             && events.send(Event::Drives(changed)).await.is_err()
+        {
+            return;
+        }
+        if let Some(changed) = batteries.changed(reading.batteries.as_deref())
+            && events.send(Event::Batteries(changed)).await.is_err()
         {
             return;
         }
@@ -142,11 +255,12 @@ async fn sample(platform: Platform, events: mpsc::Sender<Event>) {
     }
 }
 
-/// At start and every 15 minutes: probes the tools and hands the inventory over when it
-/// changed or went 24 hours unannounced (CAP-027). A probe run waits for the one before; a slow
+/// At start and every 15 minutes: probes the tools and reads the hardware values, and hands
+/// each over when it changed or went 24 hours unannounced (CAP-027). A probe run waits for the one before; a slow
 /// one delays the next.
 async fn probe(platform: Platform, events: mpsc::Sender<Event>) {
     let mut watch = InventoryWatch::new();
+    let mut hardware = Announced::new();
     let mut ticks = interval(PROBE_EVERY);
     ticks.set_missed_tick_behavior(MissedTickBehavior::Delay);
     loop {
@@ -154,6 +268,12 @@ async fn probe(platform: Platform, events: mpsc::Sender<Event>) {
         let read = readers::inventory(platform).await;
         if let Some(changed) = watch.changed(read, std::time::Instant::now())
             && events.send(Event::Inventory(changed)).await.is_err()
+        {
+            return;
+        }
+        let read = readers::hardware(platform).await;
+        if let Some(changed) = hardware.changed(read, std::time::Instant::now())
+            && events.send(Event::Hardware(changed.clone())).await.is_err()
         {
             return;
         }
@@ -183,24 +303,38 @@ impl Watch {
     }
 }
 
-/// Finds the GPUs and tells the pusher the whole set, `[]` included (K8 Section 4).
-async fn discover(mac: bool, events: &mpsc::Sender<Event>) -> Discovery {
-    let found = Discovery::new(gpu::read(gpu::Sources::ALL, mac).await);
+/// Finds the GPUs and tells the pusher the whole set, `[]` included (K8 Section 4). With
+/// `look` false (a hosted hub) it finds none.
+async fn discover(mac: bool, look: bool, events: &mpsc::Sender<Event>) -> Discovery {
+    let read = if look {
+        gpu::read(gpu::Sources::ALL, mac).await
+    } else {
+        Vec::new()
+    };
+    let found = Discovery::new(read);
     events.send(Event::Gpus(found.announce.clone())).await.ok();
     found
 }
 
 /// Keeps what sampling sends and pushes it every 10 seconds, or after the wait a failure asks.
-async fn push(mut pusher: Pusher, mut events: mpsc::Receiver<Event>) {
+/// With `refusal_ends`, a refused token ends it; otherwise pushing waits and tries again.
+async fn push(
+    mut pusher: Pusher,
+    mut events: mpsc::Receiver<Event>,
+    refusal_ends: bool,
+) -> PushEnd {
     let mut next = Instant::now() + RHYTHM;
     loop {
         tokio::select! {
             event = events.recv() => match event {
                 Some(event) => pusher.accept(event),
-                None => return,
+                None => return PushEnd::SamplingStopped,
             },
             () = sleep_until(next) => {
                 let wait = pusher.push_due(Utc::now()).await;
+                if refusal_ends && pusher.is_stopped() {
+                    return PushEnd::TokenRefused;
+                }
                 while let Ok(event) = events.try_recv() {
                     pusher.accept(event);
                 }
@@ -211,79 +345,4 @@ async fn push(mut pusher: Pusher, mut events: mpsc::Receiver<Event>) {
 }
 
 #[cfg(all(test, target_os = "linux"))]
-mod tests {
-    use chrono::DateTime;
-    use daemon_core::wire::DaemonToken;
-
-    use super::*;
-    use crate::config::Config;
-    use crate::config::origin::Origin;
-    use crate::token_store::Credential;
-
-    fn setup(issued_by: &str) -> (tempfile::TempDir, Home) {
-        enrolled("https://hub.example", issued_by)
-    }
-
-    /// A daemon's folder as an enrolment at `hub` left it, with a token that `issued_by` gave.
-    fn enrolled(hub: &str, issued_by: &str) -> (tempfile::TempDir, Home) {
-        let dir = tempfile::tempdir().expect("a folder");
-        let home = Home::at(dir.path().join("daemon"));
-        let hub = Origin::parse_kept(hub).expect("origin");
-        let config = Config {
-            hub,
-            device: Uuid::from_u128(1),
-            device_name: "pop-os".to_owned(),
-        };
-        home.write_config(&config).expect("config");
-        let credential = Credential {
-            token: DaemonToken::from_random([1; 32]),
-            expires_at: DateTime::UNIX_EPOCH,
-            hub: Origin::parse_kept(issued_by).expect("origin"),
-        };
-        TokenStore::open(&home)
-            .save_new(&credential)
-            .expect("token");
-        (dir, home)
-    }
-
-    /// The first thing sampling sends is the GPU list, `[]` included (K8 Section 4): the hub
-    /// is told the set before any point arrives.
-    #[tokio::test]
-    async fn k8_4_sampling_starts_by_announcing_the_gpus() {
-        let (sender, mut events) = mpsc::channel(CHANNEL_ROOM);
-        let sampling = tokio::spawn(sample(Platform::Linux, sender));
-        let first = tokio::time::timeout(Duration::from_secs(20), events.recv()).await;
-        sampling.abort();
-        assert!(matches!(first, Ok(Some(Event::Gpus(_)))));
-    }
-
-    #[test]
-    fn met_006_a_stable_discovery_is_not_repeated_on_the_next_tick() {
-        let now = Instant::now();
-        let mut watch = Watch::start(Discovery::new(Vec::new()), now);
-        assert!(!watch.due(now + SAMPLE_EVERY), "no GPU: soon, not at once");
-        watch.replace(Discovery::new(Vec::new()), now);
-        assert!(!watch.due(now + SAMPLE_EVERY));
-        assert!(watch.due(now + Duration::from_hours(25)));
-    }
-
-    #[test]
-    fn rol_018_a_daemon_enrolled_at_a_port_of_the_link_starts_after_its_update() {
-        let (_dir, home) = enrolled("http://127.0.0.1:8443", "http://127.0.0.1:8443");
-        assert!(prepare(&home).is_ok(), "the old files still read");
-        let (_dir, home) = enrolled("http://127.0.0.1:8443", "http://127.0.0.1:9000");
-        assert!(matches!(prepare(&home), Err(RunError::OriginMismatch)));
-    }
-
-    #[test]
-    fn met_020_a_token_issued_by_another_hub_is_not_sent_to_the_configured_one() {
-        let (_dir, home) = setup("https://other.example");
-        assert!(matches!(prepare(&home), Err(RunError::OriginMismatch)));
-    }
-
-    #[test]
-    fn met_020_a_token_issued_by_the_configured_hub_is_used() {
-        let (_dir, home) = setup("https://hub.example");
-        assert!(prepare(&home).is_ok());
-    }
-}
+mod tests;

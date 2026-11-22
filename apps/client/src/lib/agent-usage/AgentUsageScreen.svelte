@@ -1,15 +1,20 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { resolve } from '$app/paths';
   import PageHeader from '$lib/page/PageHeader.svelte';
   import EmptyState from '$lib/states/EmptyState.svelte';
   import ErrorState from '$lib/states/ErrorState.svelte';
   import LoadingState from '$lib/states/LoadingState.svelte';
+  import { batteryBar } from '$lib/metrics/battery/battery';
+  import type { LiveCharges } from '$lib/metrics/battery/charges.svelte';
   import { utcDay, type UsageQuery } from './query';
   import { sourceName, stateWords } from './report/words';
   import type { UsageStore } from './store.svelte';
   import UsageFilters from './UsageFilters.svelte';
+  import AccountList from './view/AccountList.svelte';
   import RepositoryList from './view/RepositoryList.svelte';
-  import { dayBars, repositoryLines, type Picked } from './view/shape';
+  import SessionList from './view/SessionList.svelte';
+  import { dayBars, repositoryLines, sharedHost, type Picked } from './view/shape';
   import ShareTable, { type ShareRow } from './view/ShareTable.svelte';
   import TotalsCard from './view/TotalsCard.svelte';
 
@@ -29,12 +34,16 @@
     hostedLine?: string;
     /** The time of now; a test gives its own. */
     now?: () => Date;
+    /** The latest charge of each battery of each device (MET-032). */
+    charges?: Pick<LiveCharges, 'of'>;
   }
 
-  const { store, query, onQueryChange, onRetry, hostedLine, now = () => new Date() }: Props = $props();
+  const { store, query, onQueryChange, onRetry, hostedLine, now = () => new Date(), charges }: Props = $props();
   const view = $derived(store.view);
   /** No daemon sent counts, whatever the choices: the whole page is the empty state. */
   const noDaemon = $derived(view !== null && view.everyDevice.length === 0);
+  /** The devices whose daemon reads no sessions: an account card says so, not 0 % (AIS-024). */
+  const notCounted = $derived(new Set((view?.everyDevice ?? []).filter((each) => each.state !== 'READING').map((each) => each.device.id)));
 
   /** The program and model that limit the chart: a choice of this page only, since the hub's filter has no model. */
   let picked = $state<Picked | null>(null);
@@ -52,9 +61,22 @@
       key: device.id,
       name: device.name,
       state: stateWords(state),
+      battery: batteryBar(device.batteries, charges?.of(device.id)),
       sums: view?.devices.find((row) => row.device.id === device.id) ?? null,
     })),
   );
+  /** The host of every repository of the page, left out of each name in the list of sessions. */
+  const host = $derived(view === null ? '' : sharedHost(repositoryLines(view)));
+  /** The time of now, taken again each minute, so "12 minutes ago" and Recent stay true on a page left open (AIS-026). */
+  let minute = $state(untrack(() => now().getTime()));
+  $effect(() => {
+    const timer = setInterval(() => {
+      minute = now().getTime();
+    }, 60_000);
+    return () => {
+      clearInterval(timer);
+    };
+  });
   const only = $derived(shown === null ? '' : `${sourceName(shown.source)} ${shown.model ?? 'No model'}`);
 
   function pick(key: string | null): void {
@@ -64,7 +86,8 @@
 </script>
 
 <!-- The use of the AI agent programs (AIS-020): the repositories at the side; the totals with one bar for each day; the
-     use by program and model and by device (AIS-021, AIS-024). Counts only: the hub holds no single session and no text. -->
+     use by program and model, by account (AIS-022) and by device (AIS-021, AIS-024); the single sessions (AIS-025, AIS-026). Counts only: the hub
+     holds no text of a session. -->
 <section class="usage">
   <PageHeader title="Agent usage">
     {#snippet actions()}
@@ -119,6 +142,7 @@
                 onPick={pick}
               />
             {/if}
+            <AccountList accounts={view.accounts} shares={view.shares} count={query.count} now={minute} notCounted={notCounted} />
             <ShareTable
               label="By device"
               note="only devices whose daemon reports; counts only, no text of a session leaves a device"
@@ -126,6 +150,7 @@
               rows={deviceRows}
               count={query.count}
             />
+            <SessionList rows={view.sessions} leftOut={view.sessionsLeftOut} {host} now={minute} />
           </div>
         </div>
       {/if}
@@ -150,9 +175,15 @@
 
   .columns {
     display: grid;
-    grid-template-columns: calc(var(--space-16) * 3.5) minmax(0, 1fr);
+    /* The repositories take the width of their longest name, from 224 px up to 352 px, so a name is cut only when it is
+       longer than that. */
+    grid-template-columns: fit-content(calc(var(--space-16) * 5.5)) minmax(0, 1fr);
     gap: var(--space-6);
     align-items: start;
+  }
+
+  .columns > :global(:first-child) {
+    min-inline-size: calc(var(--space-16) * 3.5);
   }
 
   .main {

@@ -1,4 +1,4 @@
-//! All SQL on `metrics.daemons` and `metrics.enrolments` (K2 0710, 0712, 0716, 0717, 0718). Lookups are by hash
+//! All SQL on `metrics.daemons` and `metrics.enrolments` (K2 0710, 0712, 0716, 0717, 0718, 0722). Lookups are by hash
 //! only; the time is a parameter, and a value is usable until, not at, its expiry.
 
 use daemon_core::wire::{CodeHash, TokenHash};
@@ -57,26 +57,32 @@ pub(super) async fn use_code(
 }
 
 /// Makes `token` the device's only token, with no renewed one beside it. The stale timer
-/// starts again, and the version is forgotten: the new daemon has sent no batch yet (MET-018,
-/// R-122).
+/// starts again, and the version and the need are forgotten: the new daemon has sent no batch
+/// yet (MET-018, R-122, R-364). Whether the daemon it replaced waited for a person.
 pub(super) async fn replace_token(
     conn: &mut PgConnection,
     device: DeviceId,
     token: TokenHash,
     expires_at: DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
+) -> Result<bool, sqlx::Error> {
+    let needed: Option<bool> = sqlx::query_scalar(
+        "SELECT need IS NOT NULL FROM metrics.daemons WHERE device_id = $1 FOR UPDATE",
+    )
+    .bind(device)
+    .fetch_optional(&mut *conn)
+    .await?;
     sqlx::query(
         "INSERT INTO metrics.daemons (device_id, token_sha256, expires_at) VALUES ($1, $2, $3) \
          ON CONFLICT (device_id) DO UPDATE SET token_sha256 = excluded.token_sha256, \
              expires_at = excluded.expires_at, next_token_sha256 = NULL, next_expires_at = NULL, \
-             last_batch_at = NULL, stale_at = NULL, daemon_version = NULL",
+             last_batch_at = NULL, stale_at = NULL, daemon_version = NULL, need = NULL",
     )
     .bind(device)
     .bind(token.to_bytes().as_slice())
     .bind(expires_at)
     .execute(conn)
     .await?;
-    Ok(())
+    Ok(needed.unwrap_or(false))
 }
 
 /// The device whose usable token is `token` at `now`. A renewed token is promoted on its first
@@ -159,29 +165,39 @@ pub(super) async fn revoke(conn: &mut PgConnection, device: DeviceId) -> Result<
     Ok(deleted.rows_affected() > 0)
 }
 
+/// What a batch found when it was taken: whether its daemon was marked stale, and whether it
+/// waited for a person (R-364).
+pub(super) struct Taken {
+    pub(super) was_stale: bool,
+    pub(super) needed: bool,
+}
+
 /// Records a batch accepted at `now` from the device whose usable token is still `token`, in
-/// the caller's transaction, and clears its stale mark; the time of the last batch never moves
-/// back, should a batch that started earlier commit later; whether it was marked stale. `None`
-/// when the token was revoked or replaced since it was checked (MET-013, MET-018).
+/// the caller's transaction, and clears its stale mark and its need (R-364); the
+/// time of the last batch never moves back, should a batch that started earlier commit later.
+/// `None` when the token was revoked or replaced since it was checked (MET-013, MET-018).
 pub(super) async fn take_batch(
     conn: &mut PgConnection,
     device: DeviceId,
     token: TokenHash,
     now: DateTime<Utc>,
-) -> Result<Option<bool>, sqlx::Error> {
-    sqlx::query_scalar(
+) -> Result<Option<Taken>, sqlx::Error> {
+    let row: Option<(bool, bool)> = sqlx::query_as(
         "WITH old AS ( \
-            SELECT device_id, stale_at FROM metrics.daemons \
+            SELECT device_id, stale_at, need FROM metrics.daemons \
             WHERE device_id = $1 AND token_sha256 = $2 AND expires_at > $3 FOR UPDATE) \
          UPDATE metrics.daemons a \
-         SET last_batch_at = GREATEST(a.last_batch_at, $3), stale_at = NULL FROM old \
-         WHERE a.device_id = old.device_id RETURNING old.stale_at IS NOT NULL",
+         SET last_batch_at = GREATEST(a.last_batch_at, $3), stale_at = NULL, need = NULL \
+         FROM old \
+         WHERE a.device_id = old.device_id \
+         RETURNING old.stale_at IS NOT NULL, old.need IS NOT NULL",
     )
     .bind(device)
     .bind(token.to_bytes().as_slice())
     .bind(now)
     .fetch_optional(conn)
-    .await
+    .await?;
+    Ok(row.map(|(was_stale, needed)| Taken { was_stale, needed }))
 }
 
 /// Records `version`, the daemon version of the batch accepted at `at`, in the caller's
@@ -213,6 +229,48 @@ pub(in crate::fleet::metrics) async fn daemon_versions(
     let rows: Vec<(DeviceId, String)> = sqlx::query_as(
         "SELECT device_id, daemon_version FROM metrics.daemons \
          WHERE device_id = ANY($1) AND daemon_version IS NOT NULL",
+    )
+    .bind(devices)
+    .fetch_all(db)
+    .await?;
+    Ok(rows.into_iter().collect())
+}
+
+/// Sets the need of the device's daemon to `need` (`None` clears it) in the caller's
+/// transaction, unless `need` is a need and a batch came after `batch_after`: that daemon holds
+/// its token. `None` when the device has no daemon token, else whether the need changed
+/// (R-364).
+pub(super) async fn set_need(
+    conn: &mut PgConnection,
+    device: DeviceId,
+    need: Option<&str>,
+    batch_after: DateTime<Utc>,
+) -> Result<Option<bool>, sqlx::Error> {
+    sqlx::query_scalar(
+        "WITH old AS ( \
+            SELECT device_id, need, last_batch_at FROM metrics.daemons \
+            WHERE device_id = $1 FOR UPDATE) \
+         UPDATE metrics.daemons a \
+         SET need = CASE WHEN $2::text IS NOT NULL AND old.last_batch_at > $3 \
+             THEN old.need ELSE $2::text END \
+         FROM old \
+         WHERE a.device_id = old.device_id RETURNING a.need IS DISTINCT FROM old.need",
+    )
+    .bind(device)
+    .bind(need)
+    .bind(batch_after)
+    .fetch_optional(conn)
+    .await
+}
+
+/// The need of the daemon of each of `devices` that has one (R-364).
+pub(in crate::fleet::metrics) async fn daemon_needs(
+    db: &PgPool,
+    devices: &[DeviceId],
+) -> Result<HashMap<DeviceId, String>, sqlx::Error> {
+    let rows: Vec<(DeviceId, String)> = sqlx::query_as(
+        "SELECT device_id, need FROM metrics.daemons \
+         WHERE device_id = ANY($1) AND need IS NOT NULL",
     )
     .bind(devices)
     .fetch_all(db)

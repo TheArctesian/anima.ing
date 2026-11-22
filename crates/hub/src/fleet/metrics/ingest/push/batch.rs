@@ -1,7 +1,7 @@
 //! One accepted batch written in one transaction: the daemon's mark and version, the GPU set,
-//! the drives, the tool inventory, the agent usage, the series, the samples and their
+//! the drives, the batteries, the tool inventory, the agent usage, the series, the samples and their
 //! aggregates, and the event of a daemon that is fresh again (K8 Section 4; MET-006, MET-015,
-//! MET-018, CAP-029; R-098 a, b, e; R-122; R-135).
+//! MET-018, MET-032, CAP-029; R-098 a, b, e; R-122; R-135).
 //!
 //! The device row is taken first, the order a device delete and a revoke take the rows in, so
 //! none of them deadlock, and two batches of one device are written one after the other.
@@ -9,6 +9,7 @@
 use chrono::{DateTime, TimeDelta, Utc};
 use daemon_core::{
     agent_usage::AgentUsage,
+    hardware::Hardware,
     inventory::Inventory,
     readings::Drive,
     wire::{RefusalCode, TokenHash},
@@ -22,8 +23,8 @@ use crate::{
         devices::{self, MetricsSource},
         events::{self, ActorKind, Bus, NewEvent, Severity, Source},
         metrics::{
-            Gpu,
-            ingest::{Error, store},
+            Battery, Gpu,
+            ingest::{Error, need_gone, store},
             store::{self as metrics_store, Discovery},
         },
     },
@@ -35,13 +36,14 @@ const NEW_SERIES_SPAN: TimeDelta = TimeDelta::hours(1);
 
 /// The most series one device may create in any hour, a batch's new ones included (R-098 e,
 /// CR-20). Counted by the hub's creation time, so the times of a batch's points cannot reset it.
-/// One daemon has at most 615 series (at most 256 in one batch): one per plain kind, `MAX_LABELS`
-/// per disk, network and drive kind, one per GPU kind for each of the 64 GPU indexes K8 allows;
-/// the rest is room for disks, interfaces and drives that come and go within the hour.
+/// One daemon has at most 623 series (at most 256 in one batch): one per plain kind, `MAX_LABELS`
+/// per disk, network and drive kind, one per GPU kind for each of the 64 GPU indexes K8 allows,
+/// and one per battery (at most 8); the rest is room for disks, interfaces, drives and batteries
+/// that come and go within the hour.
 pub(super) const MAX_NEW_SERIES: i64 = 1024;
 
-/// The batch's device and credential, and its GPUs, drives, inventory and agent usage when it
-/// listed them.
+/// The batch's device and credential, and its GPUs, drives, batteries, inventory and agent usage
+/// when it listed them.
 pub(super) struct Push<'a> {
     pub(super) device: DeviceId,
     /// The device's name, for the event of a daemon that is fresh again.
@@ -52,8 +54,12 @@ pub(super) struct Push<'a> {
     pub(super) gpus: Option<&'a [Gpu]>,
     /// `None`: the drives are unchanged; `Some(&[])`: the device has no drives now (MET-027).
     pub(super) drives: Option<&'a [Drive]>,
+    /// `None`: the batteries are unchanged; `Some(&[])`: the device has no battery now (MET-032).
+    pub(super) batteries: Option<&'a [Battery]>,
     /// `None`: the tool inventory is unchanged; `Some`: it replaces the stored one (CAP-029).
     pub(super) inventory: Option<&'a Inventory>,
+    /// `None`: the hardware values are unchanged; `Some`: they replace the stored ones (CAP-032).
+    pub(super) hardware: Option<&'a Hardware>,
     /// The version of the daemon that sent the batch; `None` from a daemon older than R-122.
     pub(super) daemon_version: Option<&'a str>,
     /// `None`: nothing new; `Some`: its state and session days are stored (R-135, AIS-020).
@@ -90,7 +96,7 @@ pub(super) async fn write(
         }
         Err(other) => return Err(Error::Devices(other)),
     }
-    let Some(was_stale) = store::take_batch(&mut tx, push.device, push.token, now).await? else {
+    let Some(taken) = store::take_batch(&mut tx, push.device, push.token, now).await? else {
         return Ok(Written::Refused(RefusalCode::TokenRefused));
     };
     store::record_version(&mut tx, push.device, push.daemon_version, now).await?;
@@ -102,15 +108,18 @@ pub(super) async fn write(
     write_announcements(&mut tx, &push, now).await?;
     metrics_store::add_series(&mut tx, push.device, &rows.series, now).await?;
     let kept = metrics_store::add_points(&mut tx, push.device, &rows.values).await?;
-    if was_stale {
+    if taken.was_stale {
         events::record(&mut tx, bus, now, fresh_again(push.device, push.name)).await?;
+    }
+    if taken.needed {
+        events::record(&mut tx, bus, now, need_gone(push.device, push.name)).await?;
     }
     tx.commit().await?;
     Ok(Written::Kept(kept))
 }
 
 /// Writes the lists the batch announced, each in place of the stored one: the GPU set, the
-/// drives, the tool inventory and the agent usage (K8 Section 4). An absent list is unchanged.
+/// drives, the batteries, the tool inventory, the hardware values and the agent usage (K8 Section 4). An absent list is unchanged.
 async fn write_announcements(
     tx: &mut PgConnection,
     push: &Push<'_>,
@@ -129,11 +138,17 @@ async fn write_announcements(
     if let Some(drives) = push.drives {
         metrics_store::write_drives(&mut *tx, push.device, drives, now).await?;
     }
+    if let Some(batteries) = push.batteries {
+        metrics_store::write_batteries(&mut *tx, push.device, batteries, now).await?;
+    }
     if let Some(inventory) = push.inventory {
         metrics_store::write_inventory(&mut *tx, push.device, inventory, now).await?;
     }
+    if let Some(hardware) = push.hardware {
+        metrics_store::write_hardware(&mut *tx, push.device, hardware, now).await?;
+    }
     if let Some(usage) = push.agent_usage {
-        agent_usage::record(&mut *tx, push.device, usage).await?;
+        agent_usage::record(&mut *tx, push.device, usage, now).await?;
     }
     Ok(())
 }

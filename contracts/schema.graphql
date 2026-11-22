@@ -6,7 +6,7 @@
 # An addition marked @pending is ignored until the hub declares it; then the
 # programme orchestrator removes @pending (P2-002, P3-002, K7 / WP-17 E-2).
 # Conventions: contracts/conventions.md.
-# Every operation needs a valid token, except `login`, `signInBrowser`, `hostedDeviceInvite`, `claimDeviceToken`, `hostedBrowserTicket` and `hostedBrowserSignIn` (API-003, D-4, R-111, R-129, HMD-061).
+# Every operation needs a valid token, except `login`, `signInBrowser`, `hostedDeviceInvite`, `claimDeviceToken`, `hostedBrowserTicket`, `hostedBrowserSignIn` and `claimComputerEnrolment` (API-003, D-4, R-111, R-129, HMD-061, HM-T33).
 
 scalar DateTime # RFC 3339, UTC
 scalar IpAddr # "10.10.0.12" or an IPv6 address
@@ -278,6 +278,12 @@ enum MetricsSource {
   DAEMON
 }
 
+"What the daemon of a device waits for from a person at that device (R-364)."
+enum DaemonNeed {
+  "macOS waits for the person to allow the daemon to read its token in the Keychain (R-322)."
+  KEYCHAIN
+}
+
 "RA-020. TELNET joins when Telnet exists."
 enum AccessWarning {
   IGNORED_CERTIFICATE
@@ -357,6 +363,8 @@ type Device {
   metricsStale: Boolean!
   "The version of the device's daemon from its last batch; null unless the source is DAEMON and the daemon sent one (R-122, ROL-051)."
   daemonVersion: String
+  "What the device's daemon waits for from a person at the device; null unless the source is DAEMON and the desktop app of that computer reported a need. The next accepted batch clears it (R-364)."
+  daemonNeed: DaemonNeed
   transfer: TransferPolicy!
   accessWarnings: [AccessWarning!]!
   "Most live sessions at once (RA-036); null: no limit. File tunnels do not count."
@@ -371,6 +379,9 @@ type Device {
   metrics(range: MetricRange!): [MetricSeries!]!
   # metrics
   gpus: [Gpu!]!
+  # metrics (MET-032)
+  "The batteries that power the device, by name, as its daemon last listed them; empty for a device with none."
+  batteries: [Battery!]!
   # metrics (MET-026, MET-029)
   storage: Storage!
   checks: [Check!]!
@@ -766,6 +777,8 @@ enum MetricKind {
   DISK_WRITE_BPS
   "The share of time one drive had I/O in flight; the label is the drive name (MET-028)."
   DISK_BUSY_PERCENT
+  "The charge of one battery, 0 to 100; the label is the battery name (MET-032)."
+  BATTERY_PERCENT
 }
 
 # MET-003
@@ -780,6 +793,26 @@ enum GpuVendor {
   AMD
   INTEL
   APPLE
+}
+
+# MET-032
+enum BatteryState {
+  CHARGING
+  DISCHARGING
+  FULL
+  "On mains, not charged."
+  NOT_CHARGING
+  UNKNOWN
+}
+
+"A battery that powers a device (MET-032). Its charge is the series BATTERY_PERCENT with its name as the label."
+type Battery {
+  name: String!
+  state: BatteryState!
+  "Seconds to empty while it discharges or to full while it charges."
+  secondsLeft: Int
+  "The capacity when full against the capacity of its design, 0 to 100."
+  healthPercent: Int
 }
 
 type Gpu {
@@ -872,6 +905,138 @@ type DeviceCapabilities {
   buildTargets: [String!]!
   "When the hub stored this inventory."
   foundAt: DateTime!
+  "The hardware values its daemon last sent; null until it sends them (CAP-001 to CAP-005, CAP-032). R-165 permits this field of the optional K8 member `hardware`."
+  hardware: Hardware
+}
+
+# The device policy of a compute node (CMP-002, CAP-010 to CAP-012). Waits for a ruling: R-335.
+"The device policy of one device and whether it takes model work now."
+type DevicePolicy {
+  device: Device!
+  "The largest part of the usable memory that the daemon reports (Hardware.usableMemoryBytes, else the dedicated or the system memory) that models may use, 1 to 100 percent. Default 100: the fit estimate keeps its own overhead, so the share adds no second margin."
+  memorySharePercent: Int!
+  "The largest part of the free disk that model files may use, 1 to 100 percent. Default 75. The disk reserve of the daemon always wins: the usable disk is the smaller of this share of the free disk and the free disk less the reserve (contracts/compute/model-work.md Section 7)."
+  diskSharePercent: Int!
+  "The hours in which the device takes no new model work; null for none."
+  quietHours: QuietHours
+  "Model work only on mains power (CAP-011). Default true; a computer with no battery always reads mains."
+  mainsOnly: Boolean!
+  "No new model work while the operator is active at the device (CAP-012). Default false."
+  idleOnly: Boolean!
+  "True when the operator set no policy for the device."
+  isDefault: Boolean!
+  "Whether the device takes model work now (CMP-002)."
+  takesModelWork: Boolean!
+  "Why the device takes no model work now; null when it takes it."
+  stopReason: ModelWorkStop
+}
+
+"From start to end (HH:MM) in timeZone (an IANA name); past midnight when end is not after start."
+type QuietHours {
+  start: String!
+  end: String!
+  timeZone: String!
+}
+
+"Why a device takes no model work now."
+enum ModelWorkStop {
+  "The machine never asked this hub for work."
+  NO_SWITCH
+  "The switch \"takes work\" at the machine is off."
+  SWITCH_OFF
+  "The operator set the machine off in the hub, or the hub holds it off for an hour."
+  OFF_IN_HUB
+  QUIET_HOURS
+  ON_BATTERY
+  OPERATOR_ACTIVE
+}
+
+"The whole new device policy of a device."
+input DevicePolicyInput {
+  memorySharePercent: Int!
+  diskSharePercent: Int!
+  quietHours: QuietHoursInput
+  mainsOnly: Boolean!
+  idleOnly: Boolean!
+}
+
+"start and end as HH:MM; timeZone an IANA name, for example Europe/London."
+input QuietHoursInput {
+  start: String!
+  end: String!
+  timeZone: String!
+}
+
+# Hardware values (CAP-001 to CAP-005, CAP-032; R-165, the optional K8 member `hardware` of task L1-1).
+"The hardware values a daemon last sent. A byte count is a Float, as a drive size is; null is a value the daemon could not read, never zero."
+type Hardware {
+  "All system memory."
+  systemMemoryBytes: Float!
+  "The memory the CPU and the GPU share: Apple silicon only."
+  unifiedMemoryBytes: Float
+  "The sum of the video memory of the NVIDIA and AMD GPUs."
+  dedicatedMemoryBytes: Float
+  "Apple silicon: the GPU working-set limit of macOS (CAP-005)."
+  usableMemoryBytes: Float
+  "Where usableMemoryBytes came from."
+  usableMemorySource: UsableMemorySource
+  "The free space of the file system of the daemon's home folder, in whole GiB."
+  freeDiskBytes: Float
+  "Fixed CPU feature names, for example avx2 or neon, in byte order."
+  cpuFeatures: [String!]!
+  "One verdict per backend: metal, cuda, rocm, vulkan, cpu (CAP-002)."
+  backends: [Backend!]!
+  powerSource: PowerSource
+  thermalState: ThermalState
+  "Whether a person used the keyboard or the pointer in the last 5 minutes; macOS only."
+  operatorActive: Boolean
+  "When the hub stored these values."
+  foundAt: DateTime!
+}
+
+"One model backend and its verdict (CAP-002)."
+type Backend {
+  "metal, cuda, rocm, vulkan or cpu."
+  name: String!
+  usable: Boolean!
+  "Why the backend is not usable; null when it is."
+  reason: BackendNotUsable
+}
+
+"Why a backend is not usable: a fixed code, never text from the device (CAP-002)."
+enum BackendNotUsable {
+  "No GPU of the backend's vendor is present."
+  NO_DEVICE
+  "The GPU is present, but its driver is not."
+  NO_DRIVER
+  "The driver is present, but the daemon's user may not open the device."
+  NO_PERMISSION
+  "The backend does not exist on this operating system or processor."
+  NOT_SUPPORTED
+  "A reason this hub does not know (a newer daemon's)."
+  FAILED
+}
+
+"Where the usable memory of Apple silicon came from (CAP-005)."
+enum UsableMemorySource {
+  "The operator set the sysctl iogpu.wired_limit_mb; its value is the limit."
+  WIRED_LIMIT
+  "iogpu.wired_limit_mb is 0: the default share of macOS, three quarters of a memory above 36 GiB, else two thirds."
+  DEFAULT_SHARE
+}
+
+"Where the power comes from (CAP-004)."
+enum PowerSource {
+  MAINS
+  BATTERY
+}
+
+"The thermal state (CAP-004)."
+enum ThermalState {
+  "No thermal limit is in force."
+  NOMINAL
+  "The system limits the CPU speed for heat."
+  THROTTLED
 }
 
 "One tool the daemon found (CAP-024, CAP-025)."
@@ -1149,6 +1314,266 @@ type ContainerImageUpdate {
   registryDigest: String
 }
 
+"""
+What is wrong in a Compose file, as a fixed code (HOST-022; R-150). Errors: TOO_LARGE (the text is larger than 256 KiB),
+NOT_YAML, TOO_DEEP (deeper than 64 levels), TOO_MANY_NODES (more than the check reads), MORE_THAN_ONE_DOCUMENT,
+TOP_LEVEL_NOT_MAPPING, KEY_NOT_TEXT, DUPLICATE_KEY, NO_SERVICES (and no `include`), SERVICES_NOT_MAPPING, SERVICES_EMPTY,
+SERVICE_NOT_MAPPING, NO_IMAGE_OR_BUILD (a service with no `image`, `build`, `extends`, `provider` or merge key),
+WRONG_TYPE (the value of a known key of a service has a form that Compose does not accept), RESTART_NOT_KNOWN (the
+value of `restart` is not a restart policy). Warnings: UNKNOWN_TOP_LEVEL_KEY, UNKNOWN_SERVICE_KEY (Compose does not
+know the key; a key that starts with `x-` is not a problem), VERSION_OBSOLETE (Compose ignores `version`).
+"""
+enum ComposeFileProblemCode {
+  TOO_LARGE
+  NOT_YAML
+  TOO_DEEP
+  TOO_MANY_NODES
+  MORE_THAN_ONE_DOCUMENT
+  TOP_LEVEL_NOT_MAPPING
+  KEY_NOT_TEXT
+  DUPLICATE_KEY
+  NO_SERVICES
+  SERVICES_NOT_MAPPING
+  SERVICES_EMPTY
+  SERVICE_NOT_MAPPING
+  NO_IMAGE_OR_BUILD
+  WRONG_TYPE
+  RESTART_NOT_KNOWN
+  UNKNOWN_TOP_LEVEL_KEY
+  UNKNOWN_SERVICE_KEY
+  VERSION_OBSOLETE
+}
+
+"ERROR: Compose refuses the file. WARNING: Compose reads the file and ignores the part (HOST-022)."
+enum ComposeFileProblemSeverity {
+  ERROR
+  WARNING
+}
+
+"One problem of a Compose file (HOST-022). It holds no text that the operator wrote, because a value, and also a name in the wrong place, can be a secret (LOG-007): a service has its number, and a key its name only when Compose defines that name."
+type ComposeFileProblem {
+  code: ComposeFileProblemCode!
+  severity: ComposeFileProblemSeverity!
+  "The line of the problem in the file, from 1."
+  line: Int!
+  "The column of the problem in its line, from 1."
+  column: Int!
+  "The number of the service in the order of `services`, from 1, when the problem is in one."
+  serviceNumber: Int
+  "The name of the key, when the problem is about a key that Compose defines (such as `ports`). Null for an unknown key, an extension and the name of a service."
+  key: String
+}
+
+"The result of the syntax check of a Compose file (HOST-022). It is a check of the syntax only: it does not say that a machine accepts the file (the rules of HOST-028 are a different check)."
+type ComposeFileCheck {
+  "True when the check found no error. A warning does not make it false."
+  syntaxValid: Boolean!
+  "The problems in the order of the file, errors and warnings. At most 100."
+  problems: [ComposeFileProblem!]!
+  "True when the file has more problems than the 100 that are given."
+  cut: Boolean!
+}
+
+"""
+Why a `docker run` command was not changed into a Compose file, as a fixed code (HOST-022; R-150). TOO_LARGE: the
+command is larger than 64 KiB. NO_COMMAND: the text is empty. NOT_DOCKER_RUN: the command is not `docker run` or
+`docker container run` (an optional `sudo` first). COMMAND_SUBSTITUTION: `$(` or a backtick. PIPE. MORE_THAN_ONE_COMMAND:
+`;`, `&&`, `||`, `&`, or a line break with no backslash before it. REDIRECTION: `<` or `>`. SHELL_SYNTAX: a group in
+round brackets or a comment. VARIABLE_NOT_KEPT: a variable that cannot stay as text in a Compose file (`$1`, `$?`,
+`${NAME%x}`, a quote in `${...}`); `$NAME`, `${NAME}` and `${NAME:-text}` stay. ARITHMETIC_EXPANSION: `$[`.
+BRACE_EXPANSION: a list or a range in braces out of quotes, such as `{80,443}`. TILDE_EXPANSION: a `~` out of quotes at the
+start of a word or after `=` or `:`. PATTERN: `*`, `?` or `[` out of quotes. UNCLOSED_QUOTE. CONTROL_CHARACTER (also a
+carriage return that is not part of a line end). OPTION_WITHOUT_VALUE: the last option needs a value. NO_IMAGE: the
+command names no image. TOO_MANY_NETWORKS: more than 32 networks or more than 32 network aliases. FILE_TOO_LARGE: the
+Compose file would be larger than 256 KiB, the most that composeFileCheck reads.
+"""
+enum ComposeRunRefusal {
+  TOO_LARGE
+  NO_COMMAND
+  NOT_DOCKER_RUN
+  COMMAND_SUBSTITUTION
+  PIPE
+  MORE_THAN_ONE_COMMAND
+  REDIRECTION
+  SHELL_SYNTAX
+  VARIABLE_NOT_KEPT
+  ARITHMETIC_EXPANSION
+  BRACE_EXPANSION
+  TILDE_EXPANSION
+  PATTERN
+  UNCLOSED_QUOTE
+  CONTROL_CHARACTER
+  OPTION_WITHOUT_VALUE
+  NO_IMAGE
+  TOO_MANY_NETWORKS
+  FILE_TOO_LARGE
+}
+
+"""
+What the caller must know about the Compose file of a `docker run` command (HOST-022). DETACH_NOT_NEEDED: `-d` changes
+nothing, Compose starts a service in the background. REMOVE_NOT_KEPT: `--rm` has no key in a Compose file.
+VARIABLES_KEPT: a `$NAME` or `${NAME}` stays as text, and Compose fills it when it starts the project. DOLLAR_WRITTEN: a
+`$` that is a character is written `$$`. EXTERNAL_NETWORK: a network of the command is `external`, it must exist before
+the project starts. VOLUME_NAME_KEPT: a volume keeps its name of Docker, so the project uses the same volume.
+UNKNOWN_OPTION_READ_AS_FLAG: an option that Docker does not have was read as an option with no value; make sure that
+the image is the right word.
+"""
+enum ComposeRunNote {
+  DETACH_NOT_NEEDED
+  REMOVE_NOT_KEPT
+  VARIABLES_KEPT
+  DOLLAR_WRITTEN
+  EXTERNAL_NETWORK
+  VOLUME_NAME_KEPT
+  UNKNOWN_OPTION_READ_AS_FLAG
+}
+
+"The Compose file of one `docker run` command, or why there is none (HOST-022). The file has one service."
+type ComposeFromDockerRun {
+  "The text of the Compose file. Null when refusal is not null. It holds the values of the command, also a secret that the command holds."
+  composeFile: String
+  "The name of the one service: from `--name`, or from the last part of the name of the image."
+  service: String
+  "Not null when the command was not converted."
+  refusal: ComposeRunRefusal
+  "The position in the command where the converter stopped, in characters from 1. Null when refusal is null."
+  refusedAt: Int
+  notes: [ComposeRunNote!]!
+  "The options of Docker in the command that are not in the file, by name only (never a value), each one time; an option that Docker does not have is `(an unknown option)`. An option is not an error."
+  notConverted: [String!]!
+}
+
+"What an entry of the catalogue installs (R-216). DATABASE: a database server for the applications of the machine."
+enum CatalogueEntryKind {
+  APPLICATION
+  DATABASE
+}
+
+"A need of an entry beyond the default rules of a Compose file (HOST-047). NETWORK_PORT: a port on each address of the machine, which needs the setting Open to the network at the machine (R-229). ENGINE_SOCKET: the socket of the container engine; such an entry is never installed (R-247). HOST_NETWORK and DEVICE: no rule permits them yet."
+enum CatalogueMarkKind {
+  NETWORK_PORT
+  ENGINE_SOCKET
+  HOST_NETWORK
+  DEVICE
+}
+
+"Why the hub does not install an entry of the catalogue (task H38). NOT_LISTED: the catalogue lists no entry with this identifier. ENGINE_SOCKET: the entry needs the socket of the container engine (R-247). SHELL_NEEDS_PERSON: the entry is a shell, which only a person signed in to the Anima app in a web browser installs (a browser token), never the anima command, the desktop app or another login token, an API key or an agent (OD-HOST-54, SF-252). GENERATED_NEEDS_DIGEST: the entry is generated from the data of a publisher, and the request does not name the digest of its image (OD-HOST-50). GENERATED_NOT_TESTED: the entry is generated, the request is not from the Anima app in a web browser, and no test on a machine passed with the image of the entry (SF-252). INSTALL_NOT_BUILT: the install needs task H6 of the hosted applications plan, which is not built."
+enum CatalogueInstallRefusal {
+  NOT_LISTED
+  ENGINE_SOCKET
+  SHELL_NEEDS_PERSON
+  GENERATED_NEEDS_DIGEST
+  GENERATED_NOT_TESTED
+  INSTALL_NOT_BUILT
+}
+
+"What a person may do with an entry of the catalogue (OD-HOST-54). SHELL: who reaches it is root in a container (a desktop in a browser, a code editor): it needs a credential that the machine makes at the install, only a person installs it, and it gets no public route."
+enum CatalogueEntryClass {
+  APPLICATION
+  SHELL
+}
+
+"The tier of an entry of the catalogue (OD-HOST-50). TESTED: tier 1, written and checked by the Anima project. GENERATED: tier 2, generated from the data of a publisher and not tested by Anima. Tier 3 is installed at the machine and is not an entry."
+enum CatalogueTier {
+  TESTED
+  GENERATED
+}
+
+"The publisher of a generated entry (task H39)."
+type CatalogueOrigin {
+  "The name of the publisher, for a person, for example LinuxServer.io."
+  publisher: String!
+  "The day (YYYY-MM-DD) of the data of the publisher that the entry was made from."
+  read: String!
+}
+
+"A published port of an entry other than the port of its test: a stream that a route of task H40 can carry."
+type CatalogueStream {
+  "The port in the container."
+  port: Int!
+  "tcp, udp or both."
+  protocols: [String!]!
+}
+
+"The kind of an optional part of an entry. DEVICE: a device of the machine below /dev/."
+enum CatalogueOptionalPartKind {
+  DEVICE
+}
+
+"A part of the application that is off, because it needs a setting of the machine that no rule of a Compose file permits yet (task H39)."
+type CatalogueOptionalPart {
+  kind: CatalogueOptionalPartKind!
+  "The path of the device, for example /dev/dri."
+  path: String!
+  "Whether the install turns the part on. Never today."
+  on: Boolean!
+  "The part needs a setting of the machine."
+  needsMachineSetting: Boolean!
+}
+
+"A port on the network that an entry needs (a NETWORK_PORT mark)."
+type CatalogueNetworkPort {
+  port: Int!
+  "tcp or udp."
+  protocols: [String!]!
+}
+
+"What the hub answers to the install of an entry. No machine is reached and nothing is kept."
+type CatalogueInstall {
+  "Why the hub does not install the entry; null when it would. Never null today."
+  refusal: CatalogueInstallRefusal
+  "The fixed text of the refusal, for a person."
+  reason: String
+  "The entry publishes a port on the network: the machine needs the setting Open to the network (R-229)."
+  needsOpenToNetwork: Boolean!
+}
+
+"An entry of the catalogue that ships with Anima (HOST-047, R-300). The recipes are built into the hub, and the hub lists only those that pass the static test of task H36."
+type CatalogueEntry {
+  "The identifier of the entry, a name of letters, digits, '-' and '_'."
+  id: String!
+  name: String!
+  description: String!
+  "The version of the application."
+  version: String!
+  author: String!
+  tags: [String!]!
+  kind: CatalogueEntryKind!
+  "An https:// address of the icon, or null."
+  iconUrl: String
+  documentationUrl: String!
+  "What the entry needs beyond the default rules of a Compose file. Empty for most entries."
+  marks: [CatalogueMarkKind!]!
+  "The ports on the network of the NETWORK_PORT marks."
+  networkPorts: [CatalogueNetworkPort!]!
+  "What a person may do with the entry (OD-HOST-54)."
+  class: CatalogueEntryClass!
+  "Tested by Anima (tier 1) or generated from the data of a publisher (tier 2, OD-HOST-50)."
+  tier: CatalogueTier!
+  "The publisher of a generated entry; null for a tested entry."
+  origin: CatalogueOrigin
+  "The person who reviewed the generated entry; null when no person did (the client says Not reviewed), and for a tested entry (SF-255). Never an agent or a session."
+  reviewedBy: String
+  "The day (YYYY-MM-DD) of that review; null when no person reviewed the entry."
+  reviewedOn: String
+  "The published ports other than the port of the test."
+  streams: [CatalogueStream!]!
+  "The parts of the application that are off."
+  optionalParts: [CatalogueOptionalPart!]!
+  "The digest of each image (sha256: and 64 hexadecimal digits). An install of a generated entry names it."
+  digests: [String!]!
+  "The day (YYYY-MM-DD) of the last test on a machine, which passed. Null: not tested on a machine. An entry whose last test failed is not listed."
+  lastMachineTest: String
+  "The day (YYYY-MM-DD) of the last pin of the digests of the images (R-233)."
+  pinned: String!
+  "What the hub answers to an install of this entry by this request, with no digest named."
+  install: CatalogueInstall!
+  "The text of the Compose file. It holds no secret: each secret is a variable that the install makes."
+  composeFile: String!
+  "The names of the variables of the environment file of the entry, in its order. Never a value."
+  environmentVariables: [String!]!
+}
+
 "One line of the log of a container: what it wrote to either output stream."
 type ContainerLogLine {
   "When Docker took the line; null when the line has no time."
@@ -1161,6 +1586,129 @@ type ContainerLog {
   lines: [ContainerLogLine!]!
   "True when the lines passed 4 MiB: the newest lines are missing."
   cut: Boolean!
+}
+
+# The model library of the compute domain (compute plan L1-4; LIBM-001 to LIBM-009, SEL-003,
+# SEL-005; ruling R-343).
+"What a model can do, as the files of its repository say (LIBM-008). A tag is not evidence that a runtime of Anima runs the model, and it selects no runtime (LIBM-009)."
+enum ModelCapability {
+  CHAT
+  "Calls the tools that a request names."
+  TOOLS
+  CODING
+  REASONING
+  TRANSLATION
+  SUMMARIZATION
+  TEXT_CLASSIFICATION
+  STRUCTURED_EXTRACTION
+  TOKEN_CLASSIFICATION
+  IMAGE_GENERATION
+  IMAGE_EDITING
+  UPSCALING
+  IMAGE_CLASSIFICATION
+  VIDEO_GENERATION
+  VIDEO_EDITING
+  VIDEO_UNDERSTANDING
+  VIDEO_CLASSIFICATION
+  "Music and sound-effects generation."
+  MUSIC_GENERATION
+  AUDIO_GENERATION
+  AUDIO_UNDERSTANDING
+  AUDIO_CLASSIFICATION
+  AUDIO_TO_AUDIO
+  TRANSCRIPTION
+  SPOKEN_TRANSLATION
+  TEXT_TO_SPEECH
+  CONVERSATIONAL_VOICE
+  IMAGE_UNDERSTANDING
+  OCR
+  DOCUMENT_FIELD_EXTRACTION
+  "Table and document question answering."
+  DOCUMENT_QUESTION_ANSWERING
+  VISUAL_DOCUMENT_RETRIEVAL
+  OBJECT_DETECTION
+  "Image segmentation and background masks."
+  IMAGE_SEGMENTATION
+  DEPTH_ESTIMATION
+  "Keypoint and pose detection."
+  POSE_DETECTION
+  EMBEDDINGS
+  RERANKING
+  TABULAR_CLASSIFICATION
+  TABULAR_REGRESSION
+  "Reinforcement-learning policies: a tag of the catalogue only."
+  POLICY
+  "3D object, mesh and scene generation (later)."
+  THREE_DIMENSIONAL_GENERATION
+}
+
+"How the publisher of a base model gets onto the approved model sources (LIBM-003, R-343)."
+enum ModelPublisherApproval {
+  "When a person (not an API key, not an agent) adds a model from an approved repository, the organisation of its base model joins the approved sources."
+  BASE_MODEL
+  "Only the operator adds an organisation, by hand."
+  BY_HAND
+}
+
+"The file format of a variant."
+enum ModelFormat {
+  GGUF
+  MLX
+  SAFETENSORS
+}
+
+"A model of the library (LIBM-001). A null fact is one that the model files did not give (LIBM-005)."
+type LibraryModel {
+  "The name part of name:tag (LIBM-006): 1 to 64 of a-z, 0-9, dot, dash and underscore."
+  name: String!
+  family: String
+  parameterCount: Float
+  contextLength: Int
+  layerCount: Int
+  hiddenSize: Int
+  attentionHeads: Int
+  keyValueHeads: Int
+  capabilities: [ModelCapability!]!
+  licence: String
+  "The organisation of the base model, as the card of the approved repository names it (LIBM-003)."
+  publisher: String
+  "Each Hugging Face repository of the variants, organisation/name."
+  sourceRepositories: [String!]!
+  aliases: [String!]!
+  "In tag order."
+  variants: [ModelVariant!]!
+  addedAt: DateTime!
+}
+
+"A variant of a model (LIBM-002)."
+type ModelVariant {
+  "name:tag (LIBM-006)."
+  address: String!
+  tag: String!
+  format: ModelFormat!
+  "As the files name it, such as Q4_K_M or 4bit."
+  quantisation: String!
+  sourceRepository: String!
+  "The commit of the repository that the file list is from: 40 lower-case hexadecimal characters."
+  revision: String!
+  "The sum of the sizes of the files."
+  sizeBytes: Float!
+  "In path order."
+  files: [ModelFile!]!
+}
+
+"A file of a variant. A pull verifies it against sha256 (PULL-005)."
+type ModelFile {
+  path: String!
+  sizeBytes: Float!
+  "64 lower-case hexadecimal characters."
+  sha256: String!
+}
+
+"An alias and the model that it points at now (LIBM-007, SEL-003)."
+type ModelAlias {
+  alias: String!
+  model: String!
 }
 
 # The use of the AI agent programs (R-135; AIS-018 to AIS-024; K8 Section 4 agentUsage).
@@ -1216,8 +1764,38 @@ type AgentUsage {
   total: AgentUsageRow!
   "Each device whose daemon sent a usage state, by device name; only the device of filter.deviceId when it is given."
   devices: [AgentUsageDevice!]!
+  "The accounts that the devices report now, each with its devices, newest report first (THR-149, AIS-022). Not narrowed by the filter."
+  accounts: [AgentAccount!]!
   "The day of the public list prices of estimatedCostUsd, YYYY-MM-DD."
   pricesAsOf: String!
+}
+
+"An account of an AI agent program, with its key and its address, and the devices that use it (THR-149, AIS-022)."
+type AgentAccount {
+  "The HMAC-SHA-256 of the vendor's identifier of the account with the salt of this hub, 64 hexadecimal digits; never the identifier."
+  key: String!
+  "The first 8 digits of key, to tell two accounts of one program apart."
+  shortKey: String!
+  source: AgentSource!
+  "The email address that the program is signed in with, of the newest report; personal data, shown only to the person (THR-149): a login or browser token reads it; it is null for an API key. Null when the program gives none."
+  address: String
+  "The name of the plan as the program states it."
+  plan: String
+  "The limit windows of the newest report; the limit is the account's, shared by its devices."
+  limits: [AgentAccountLimit!]!
+  reportedAt: DateTime!
+  "The devices that use the account, newest report first."
+  devices: [Device!]!
+}
+
+"One limit window of an account."
+type AgentAccountLimit {
+  "The name of the window as the program gives it (five_hour, seven_day), or its length (300 min)."
+  window: String!
+  "How much of the window is used, 0 to 100; null when the program says only whether it is reached."
+  usedPercent: Int
+  resetsAt: DateTime
+  reached: Boolean!
 }
 
 "The sums of one group. A dimension that by does not name is null; MODEL and REPOSITORY are also null for use with no model or no repository. Every text comes from a device. Counts are whole numbers; a Float holds a count above 2^31 exactly up to 2^53."
@@ -1241,6 +1819,42 @@ type AgentUsageRow {
   "An estimate in US dollars: the tokens of each model times its public list price of pricesAsOf (AIS-021). It is not the bill of a subscription. Null when no token of the group has a known price; never a guess for a model with no known price."
   estimatedCostUsd: Float
   "The tokens of models with no known price, which estimatedCostUsd leaves out."
+  unpricedTokens: Float!
+}
+
+"The single sessions of agentSessions (AIS-025)."
+type AgentSessions {
+  "The days summed, YYYY-MM-DD, both included."
+  firstDay: String!
+  lastDay: String!
+  "The sessions, the newest last use first (the order of storage breaks a tie)."
+  sessions: [AgentSession!]!
+  "How many sessions the filter admits that are not in sessions."
+  sessionsLeftOut: Int!
+}
+
+"One session with its sums over the days asked for (AIS-025). Every text comes from a device."
+type AgentSession {
+  "The hub's ID of the session, stable while the hub keeps it."
+  id: ID!
+  device: Device!
+  source: AgentSource!
+  "The model with the most output tokens of the whole session; null when it has none."
+  model: String
+  repository: String
+  startedAt: DateTime!
+  "The end of the last entry the daemon counted (it counts every 15 minutes)."
+  lastUseAt: DateTime!
+  "lastUseAt is at most 30 minutes before the clock of the hub (AIS-026). It does not say that the session runs now."
+  recent: Boolean!
+  prompts: Float!
+  toolCalls: Float!
+  inputTokens: Float!
+  outputTokens: Float!
+  cacheReadTokens: Float!
+  cacheWriteTokens: Float!
+  "An estimate in US dollars from public list prices (AIS-021); null when no token has a known price."
+  estimatedCostUsd: Float
   unpricedTokens: Float!
 }
 
@@ -1876,6 +2490,15 @@ type HostedDeviceInvite {
   expiresAt: DateTime!
 }
 
+"""What a hub gives an operator for a computer with no application (hosted-mode.md HM-T33, R-240 c): shown once, never logged (LOG-007)."""
+type ComputerInstall {
+  "The link invite: works once and expires (LNK-003). Null when a device with this name is already on the link: the claim then gives that computer a new enrolment code."
+  invite: String
+  "The one-time claim that the computer that joined with invite trades for a daemon enrolment code (claimComputerEnrolment)."
+  claim: String!
+  expiresAt: DateTime!
+}
+
 """What a hosted hub gives the Anima.ing cloud for a browser of its account (hosted-mode.md HMD-061): shown once, never logged (LOG-007)."""
 type HostedBrowserTicket {
   "The one-time ticket that the gateway trades for the session cookie of the hub (hostedBrowserSignIn). It works once, for 60 seconds."
@@ -2006,6 +2629,7 @@ enum BuildTarget {
   LINUX_X86_64
   "An app and a DMG, built on macOS on aarch64."
   DARWIN_UNIVERSAL
+  WINDOWS_X86_64
 }
 
 "Section 3.10.1 says which changes are permitted (BLD-010)."
@@ -2022,6 +2646,7 @@ enum BuildJobState {
 enum BuilderOs {
   LINUX
   MACOS
+  WINDOWS
 }
 
 "As Tauri names it."
@@ -2196,6 +2821,8 @@ type Source {
   "Keys of the extensions that use it."
   consumers: [String!]!
   accounts: [SourceAccount!]!
+  "The hub page where a browser continues Connect for this source: <public origin>/connect/github, so its host is where the browser must be signed in. Holds no secret and no one-time value. Null: the hub cannot start the flow in a browser (HMD-070), or the source has no such flow. A hub of before this field has none: a client counts that as null (R-311, K-E1 Section 7a)."
+  connectPageUrl: String
 }
 
 type SyncProblem {
@@ -3216,6 +3843,36 @@ enum ReminderFiringState {
   ACKNOWLEDGED
 }
 
+"A record that a client sealed with the vault key of Class A (K-E5 Section 3). The hub stores the bytes and cannot open them."
+type SealedRecord {
+  id: ID!
+  "The record that the bytes belong to, as `kind:id`. One owner has one sealed record."
+  owner: String!
+  "The key of the extension that owns the record."
+  extension: String!
+  "What the client sealed with the vault key, as base64. The hub cannot open it."
+  sealed: String!
+  "The search index that the client sealed, as base64, or null."
+  sealedIndex: String
+  "The SHA-256 of the vault key that sealed the record, as base64."
+  keyId: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+input SealedRecordInput {
+  "The record that the bytes belong to, as `kind:id`."
+  owner: String!
+  "The key of the extension that owns the record."
+  extension: String!
+  "The sealed bytes as base64: 1 byte to 1 MiB."
+  sealed: String!
+  "The sealed search index as base64, at most 1 MiB."
+  sealedIndex: String
+  "The SHA-256 of the vault key as base64: 32 bytes. It is not the key."
+  keyId: String!
+}
+
 "One firing of a rule. A rule fires at most one time for one subject."
 type ReminderFiring {
   id: ID!
@@ -3295,6 +3952,111 @@ input PlaceSplitInput {
   links: [ID!]
 }
 
+# ---------------------------------------------------------------- application routes (R-302, R-299; HOST-046; task H21)
+
+"Whether the name of a route is proven to belong to this hub (Section 12.4 of hosted-applications-stage-2.md). A proven name is LOST only after 3 failed reads in a row."
+enum ApplicationRouteProof {
+  WAITING
+  PROVEN
+  LOST
+}
+
+"What a route waits for before it serves, in the order the hub checks."
+enum ApplicationRouteWait {
+  "The name is not proven, or it was lost."
+  PROOF
+  "The second consent at the machine (OD-HOST-43). Nothing can give it yet: no route serves in this version."
+  MACHINE_CONSENT
+  "The hub has no record of the application that names this device and this port and no socket of the engine (task H6). The hub keeps no such record yet: no route serves in this version."
+  APPLICATION_RECORD
+  "The route has no certificate that is valid now. A stream has no TLS of the hub and never waits for it."
+  CERTIFICATE
+}
+
+"What a route carries (HOST-050, task H40; Section 16 of hosted-applications-stage-2.md)."
+enum ApplicationRouteKind {
+  "HTTPS by name to the port of the application (Section 12)."
+  WEB
+  "A proven name that answers 301 (GET, HEAD) or 308 with one fixed https:// address; it reaches no machine."
+  REDIRECT
+  "A port of the hub (listenPort) to the port of the application over TCP, with no TLS of the hub and no look inside. Never on a hosted hub until the door has an address for each hub (OD-HOST-47)."
+  TCP_STREAM
+  "The same over UDP, only to a machine that the hub reaches on its own network, never through the link (OD-HOST-48)."
+  UDP_STREAM
+}
+
+"Who may reach a route (Section 16.7, OD-HOST-49)."
+enum ApplicationRouteAccess {
+  "The internet."
+  PUBLIC
+  "Only the nodes of the network of Anima (each device, machine and container on it), on the address of the hub on that network."
+  PRIVATE
+}
+
+"One name of one application, with its target fixed when the name was added. It holds no certificate and no key."
+type ApplicationRoute {
+  id: ID!
+  "A DNS name in lower case."
+  name: String!
+  kind: ApplicationRouteKind!
+  access: ApplicationRouteAccess!
+  applicationId: ID!
+  deviceId: ID!
+  "The port that the applications program recorded. Never 22, 5900, 3389 or a port of Anima. Null for a redirect."
+  port: Int
+  "The port of the hub that a stream listens on; null for a web route and a redirect."
+  listenPort: Int
+  "The protocol that the person picked for a stream, from the fixed list of the hub; null when none."
+  protocol: String
+  "The one https:// address of a redirect; null for each other kind."
+  redirectTo: String
+  proof: ApplicationRouteProof!
+  "Failed reads of the proof in a row."
+  failedReads: Int!
+  "The name of the TXT record that proves the name, as _anima.<name>; null on a hub that a person hosts, where the name must resolve to the public address of the hub."
+  proofRecordName: String
+  "The text of that TXT record: it names this hub and the token of the route. Null as proofRecordName."
+  proofRecordValue: String
+  machineConsent: Boolean!
+  "The end of the validity of the certificate; null with none."
+  certificateNotAfter: DateTime
+  "Null when the route serves now."
+  waitsFor: ApplicationRouteWait
+  checkedAt: DateTime
+  requests: Float!
+  bytesIn: Float!
+  bytesOut: Float!
+  "Connections that a limit of the route refused."
+  refused: Float!
+  createdAt: DateTime!
+}
+
+"A name that was added, with what the hub warns about."
+type ApplicationRouteAdded {
+  route: ApplicationRoute!
+  "The name and the hub share a domain: the cookie attribute SameSite does not stop a request from the page of the application (SF-227)."
+  sameSiteAsHub: Boolean!
+}
+
+"What a person gives to add a name to an application. Each route of an application goes to one device."
+input ApplicationRouteInput {
+  "A DNS name: never the name of the hub or below it, never at or below a domain that holds a cookie of a hub, never a wildcard."
+  name: String!
+  applicationId: ID!
+  deviceId: ID!
+  "The port of the application; needed by each kind but REDIRECT, which has none. Never a port of a session, of Anima, of the engine of the containers, of a database or of metrics. The route serves only when the hub's record of the application names this device and this port."
+  port: Int
+  kind: ApplicationRouteKind! = WEB
+  "A new route is private unless the person makes it public (Section 16.4)."
+  access: ApplicationRouteAccess! = PRIVATE
+  "The port of the hub of a stream: in the range that the operator set (ANIMA_ROUTES_STREAM_PORTS), never below 1024, never a port of Anima, the link, WireGuard or PostgreSQL. Only for a stream."
+  listenPort: Int
+  "The protocol of a stream: needed for a public stream, one with its own sign-in and TLS (imaps, pop3s, smtps, ldaps, xmpps over TCP; openvpn, wireguard over UDP). The usual port of the protocol is a hint; the hub never opens a port by itself."
+  protocol: String
+  "The one https:// address of a REDIRECT: a host name, an optional port and path; nothing of a request is added to it."
+  redirectTo: String
+}
+
 # ---------------------------------------------------------------- root types
 
 type Query {
@@ -3359,9 +4121,26 @@ type Query {
   "Each device whose daemon sent a tool inventory, by device name (byte order). tool: only the devices where that tool is usable. buildTarget: only the devices with that Rust target. A name the hub does not know matches no device (CAP-030). Open to a read key."
   capabilities(tool: String, buildTarget: String): [DeviceCapabilities!]!
 
+  # The device policy of a compute node (CMP-002, CAP-010 to CAP-012; compute plan task L1-5). Waits for a ruling: R-335.
+  "The device policy of each device, by device name (byte order), with whether it takes model work now and why not. A device with no policy of its own has the defaults. Open to a read key."
+  devicePolicies: [DevicePolicy!]!
+
   # The use of the AI agent programs (R-135; AIS-020, AIS-021, AIS-024)
   "The use of the AI agent programs (Claude Code, Codex) on the devices whose daemon sends it, summed by the dimensions of by over the UTC days of filter (default: the 30 days that end today), with an estimate of the cost from public list prices and each daemon's usage state. by empty: one row of everything. VALIDATION for a bad deviceId, repository or day, a first day after the last, more than 366 days, or more than 20000 groups before the rows are cut to 1000. Open to a read key."
   agentUsage(filter: AgentUsageFilter, by: [AgentUsageDimension!]! = []): AgentUsage!
+
+  # The model library (compute plan L1-4; R-343)
+  "Every model of the library in name order, with its variants and aliases (SEL-005). Open to a read key."
+  libraryModels: [LibraryModel!]!
+  "The model of this name, alias or name:tag; null when there is none. Open to a read key."
+  libraryModel(name: String!): LibraryModel
+  "The Hugging Face organisations from which a variant can come, in name order (LIBM-003). Open to a read key."
+  approvedModelSources: [String!]!
+  "How the publisher of a base model gets onto the approved sources. Open to a read key."
+  modelPublisherApproval: ModelPublisherApproval!
+  # The single sessions of the AI agent programs (AIS-025, AIS-026)
+  "The single sessions that filter admits (default: the 30 days that end today), the newest last use first, each with its sums over those days and the estimate of its cost. At most first (1 to 200) sessions; sessionsLeftOut counts the rest. VALIDATION for a bad filter or first. Open to a read key."
+  agentSessions(filter: AgentUsageFilter, first: Int! = 50): AgentSessions!
   "The containers of a device, running or not, newest first (HOST-001). CONFLICT when the device has no SSH credential in Anima, SSH is off, no host key is accepted, or it has no docker command. UNAVAILABLE when the device or Docker does not answer. NOT_FOUND for an unknown device."
   containers(deviceId: ID!): [Container!]!
   "The last lines of the log of one container (HOST-001). containerId is 12 to 64 lower-case hexadecimal characters; lines is 1 to 1000, default 200. The errors of containers apply; NOT_FOUND also when the device has no such container. A log can hold a secret: Login or browser token only (D-23, R-100), and no MCP tool returns it (MCP-004)."
@@ -3374,6 +4153,20 @@ type Query {
   containerNetworks(deviceId: ID!): [ContainerNetwork!]!
   "Whether a newer image exists for each container of a device (HOST-021): the hub compares the digest that the device has for the tag of the image with the digest that the public registry of the image gives now. The hub sends no credential to a registry and reads no private image. It updates nothing (ETH-004). A registry that is not read is no error: the container has the state NOT_KNOWN. The read can take up to 40 seconds. Each read asks the registries again: the hub keeps no answer. The errors of containers apply. Open to a read key."
   containerImageUpdates(deviceId: ID!): [ContainerImageUpdate!]!
+  "The check of the syntax of a Compose file before an install (HOST-022): is the text YAML, and does it have the form of a Compose file. It is a check of the syntax only: it does not say that a machine accepts the file. The hub reaches no device, runs nothing and keeps nothing; it writes the text to no log, no event and no error (LOG-007), and a problem holds no text of the file. A text of more than 256 KiB has the one problem TOO_LARGE. Complexity 100: one request holds at most four. Open to a read key."
+  composeFileCheck(file: String!): ComposeFileCheck!
+  "The Compose file of one `docker run` command (HOST-022). The hub reads the words of the command with its own reader: it expands nothing, runs nothing, reaches no device and keeps nothing; it writes the command to no log, no event and no error (LOG-007). A command that the reader cannot read has a refusal, not an error. An option with no key in a Compose file is in notConverted. Complexity 100: one request holds at most four. Open to a read key."
+  composeFromDockerRun(command: String!): ComposeFromDockerRun!
+  "The public names of one application, or of each, by name (HOST-046, task H21). No field holds a certificate or a key. Open to a read key."
+  applicationRoutes(applicationId: ID): [ApplicationRoute!]!
+  "One route with its state; null when no route has this ID. Open to a read key."
+  applicationRoute(id: ID!): ApplicationRoute
+
+  # The catalogue (HOST-047, R-300, R-299; task H38)
+  "Each entry of the catalogue that ships with Anima and passes the static test, in the order of the identifiers. The hub reads no machine and no network. Open to a read key."
+  catalogueEntries: [CatalogueEntry!]!
+  "The listed entry with this identifier; null when none is listed. Open to a read key."
+  catalogueEntry(id: String!): CatalogueEntry
 
   # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4)
   "What happened from `from` up to, not including, `to`, newest first: by start, then by reference, both descending. Entries from the clocks of different machines are in that order only by their recorded instants, not in an exact order (TML-011). categories null: all; empty: none. first is 1 to 200. VALIDATION when to is not after from."
@@ -3401,6 +4194,10 @@ type Query {
   reminderRule(id: ID!): ReminderRule
   "The firings of a rule (or of every rule) in a state (or any), newest first, at most first (1 to 200; 200 when not given)."
   reminderFirings(rule: ID, state: ReminderFiringState, first: Int): [ReminderFiring!]!
+  "The sealed record of `owner` (`kind:id`), or null. The bytes are as the client sealed them; the hub cannot open them."
+  sealedRecord(owner: String!): SealedRecord
+  "The sealed bytes of a vault key offer, as base64, one time: the read deletes the offer. Null for an offer that was read, that is older than 5 minutes, or that never was."
+  vaultKeyOffer(id: ID!): String
 
   # Places (operator, 2026-11-18; R-148; K-E4 Section 8)
   "The places that are not merged, by name."
@@ -3508,6 +4305,12 @@ type Mutation {
   dismissWebInterfaceSuggestion(checkId: ID!): ID!
   "Pins the certificate and writes an audit entry (WEB-008, WEB-009). Login or browser token only (D-23, R-100)."
   acceptWebCertificate(id: ID!, fingerprintSha256: String!): WebInterface!
+  "Adds a public name to an application and gives the token of its proof (HOST-046, task H21; SF-232). The device, the port and the address are fixed now: a change is a removal and a new name. VALIDATION for a refused name, port or address; CONFLICT when a route has the name, the application has routes to a different target, or the application holds the socket of the engine; FORBIDDEN when the operator has no second factor. Login or browser token only (D-23, R-100)."
+  addApplicationRoute(input: ApplicationRouteInput!): ApplicationRouteAdded!
+  "Reads the proof of the name once and keeps its new state. One failed read changes nothing. Login or browser token only (D-23, R-100)."
+  checkApplicationRoute(id: ID!): ApplicationRoute!
+  "Removes a public name with its certificate and its key. Returns the removed ID. Login or browser token only (D-23, R-100)."
+  removeApplicationRoute(id: ID!): ID!
 
   # Phase 3
   "Signed out (D-4), or a login or browser token; never an API key (D-23, R-100). Sets the __Host-anima cookie; refused unless Origin is the public origin."
@@ -3520,6 +4323,8 @@ type Mutation {
   enrolDaemon(deviceId: ID!): DaemonEnrolment!
   "Login or browser token only (D-23, R-100). The source stays DAEMON, shown as stale, until the operator changes it (R-092 D-7)."
   revokeDaemonToken(deviceId: ID!): Device!
+  "Login or browser token only (D-23, R-364). Sets what the device's daemon waits for, or clears it with a null need. NOT_FOUND for a device with no daemon token; changes nothing when the need is already that, or when the need is not null and the last batch of that daemon came less than 5 s before the call (the answer then shows the need the hub keeps)."
+  setDaemonNeed(deviceId: ID!, need: DaemonNeed): Device!
 
   setCheckDefaults(input: CheckDefaultsInput!): CheckDefaults!
 
@@ -3533,6 +4338,10 @@ type Mutation {
 
   "Login or browser token only (D-23, R-100)."
   setRetention(subject: RetentionSubject!, days: Int!): RetentionPeriod!
+
+  # The device policy of a compute node (CAP-010 to CAP-012). Waits for a ruling: R-335.
+  "Replaces the device policy of a device. It sets no switch: the one switch \"takes work\" stays at the machine (USE-004, OD-C8). VALIDATION names the field out of range; NOT_FOUND for an unknown device. Login or browser token only (R-335), until a key permission for the device policy exists."
+  setDevicePolicy(deviceId: ID!, input: DevicePolicyInput!): DevicePolicy!
 
   # Phase 3: builds (WP-36, R-107)
   "One queued job for each target; VALIDATION for a version that is not new (BLD-001, BLD-002). Login or browser token only (D-23, R-107)."
@@ -3630,6 +4439,12 @@ type Mutation {
   "The browser session of this hub in trade for ticket: the answer sets the __Host-anima cookie (Secure, HttpOnly, SameSite=Strict, Path=/, Max-Age 12 hours). The gateway of the pool sends it for the browser, with Origin of the public origin of the hub, and passes the Set-Cookie on; the ticket is never in an address. The ticket works once. Needs no token. FORBIDDEN on a hub that is not hosted and for a request that does not come from the public origin; UNAUTHENTICATED for a ticket that is used, expired or wrong. Writes an audit entry and an event (HMD-061, HMD-062)."
   hostedBrowserSignIn(ticket: String!): HostedBrowserSignIn!
 
+  # A computer with no application (hosted-mode.md HM-T33, R-240 c)
+  "An invite and a one-time claim for the computer named name (1 to 64 visible characters), which has no application. A device already on the link gets a claim and no invite. A new claim for a name ends the open claim of that name. The claim works once, until its invite expires. The response is no-store. Writes an audit entry without the invite or the claim (LOG-007). Login or browser token only (D-23)."
+  createComputerInstall(name: String!): ComputerInstall!
+  "A daemon enrolment code (MET-012) for the computer that sends this through the link, when it joined with the invite of claim. When no device has the link address of the computer as its host, the hub adds one: the name of the computer on the link, the kind server, os, in the site Link. The claim works once. Needs no token. UNAUTHENTICATED for any refusal. The response is no-store. Writes an audit entry and an event without the code."
+  claimComputerEnrolment(claim: String!, os: OperatingSystem!): DaemonEnrolment!
+
   # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E4)
   "Links two records. A second call with the same source, target and kind returns the stored link and writes nothing; with a new label it replaces the label. VALIDATION for text that is not kind:id, for a record linked to itself, and for a repository, place, person or date key that is not in its one form (RLK-004)."
   linkRecords(input: RecordLinkInput!): RecordLink!
@@ -3673,6 +4488,14 @@ type Mutation {
   snoozeReminder(firing: ID!, minutes: Int!): ReminderFiring!
   "Acknowledges a firing that was sent: the hub does not send it again (REM-007). NOT_FOUND; CONFLICT."
   acknowledgeReminder(firing: ID!): ReminderFiring!
+  "Stores the bytes that a client sealed for one owner record. A second call for the same owner replaces the bytes. `VALIDATION` names each field to fix."
+  storeSealedRecord(input: SealedRecordInput!): SealedRecord!
+  "Deletes the sealed record of `owner`. `true` when there was one."
+  deleteSealedRecord(owner: String!): Boolean!
+  "Records that a client opens the sealed record of `owner` for the operator: one audit entry with no value. Only a person who signed in may ask, and the TOTP code of the login must be at most 5 minutes old; else give `totpCode`. `FORBIDDEN` with `reason` `TOTP_REQUIRED` asks for a new code. `UNAVAILABLE` on a hosted hub (OD-E20)."
+  recordReveal(owner: String!, totpCode: String): Boolean!
+  "Keeps a vault key that one client sealed to its key exchange with a new client, as base64 of at most 4096 bytes, and gives the ID of the offer. The offer is read one time in the next 5 minutes. The hub cannot open it."
+  offerVaultKey(sealed: String!): ID!
 
   # Places (operator, 2026-11-18; R-148; K-E4 Section 8)
   "Makes a place (PLC-001, PLC-002). VALIDATION with extensions.fields."
@@ -3703,6 +4526,20 @@ type Mutation {
   grantOperationalKey(name: String!, device: ID!, workload: String!): OperationalKey!
   "Ends a grant; the daemon drops the key at its next report. NOT_FOUND when there is no such grant. Login or browser token only (D-23, R-147)."
   ungrantOperationalKey(name: String!, device: ID!, workload: String!): OperationalKey!
+
+  # The catalogue (HOST-047, R-234; task H38)
+  "Asks for the install of an entry of the catalogue on a device. The answer is a refusal with a fixed reason until task H6 exists (INSTALL_NOT_BUILT); an entry with the mark ENGINE_SOCKET is never installed (R-247). Before that reason: a shell needs a person signed in to the Anima app in a web browser (SHELL_NEEDS_PERSON, OD-HOST-54); a generated entry from anything but that app needs a passed test on a machine with its image (GENERATED_NOT_TESTED), and each generated entry needs digest, the digest of its image (GENERATED_NEEDS_DIGEST, OD-HOST-50). No machine is reached, nothing is kept and no audit entry is written. VALIDATION for a deviceId that is not an ID of a device. Open to a write API key and an AI agent (R-234)."
+  installCatalogueEntry(entryId: String!, deviceId: ID!, digest: String): CatalogueInstall!
+
+  # The model library (compute plan L1-4; R-343)
+  "Reads a Hugging Face repository (organisation/name) of an approved organisation and stores its model and its variants with the size and SHA-256 value of each file (LIBM-002 to LIBM-005). name: the model name; default from the repository name. A variant of the same tag is replaced. With modelPublisherApproval BASE_MODEL, the organisation of the base model joins the approved sources when a person adds the model; when an API key or an agent adds it, the organisation stays out and the audit entry says so. VALIDATION on repository for an organisation that is not approved (the hub reads nothing then), a private or gated repository, or one with no GGUF, MLX or safetensors files; on name for a bad name or an alias. NOT_FOUND when the repository does not exist; UNAVAILABLE when Hugging Face does not answer."
+  addLibraryModel(repository: String!, name: String): LibraryModel!
+  "Points an alias at a model (name, alias or name:tag), in place of the model that it pointed at (SEL-003). VALIDATION on alias for a bad alias or the name of a model; NOT_FOUND for an unknown model."
+  setModelAlias(alias: String!, model: String!): ModelAlias!
+  "Adds a Hugging Face organisation to the approved sources (LIBM-003) and returns the list. An organisation that is there already, in any case, changes nothing. VALIDATION on organisation for a bad name. FORBIDDEN for an agent. Login or browser token only (D-23, R-343)."
+  addApprovedModelSource(organisation: String!): [String!]!
+  "Changes how the publisher of a base model gets onto the approved sources. FORBIDDEN for an agent. Login or browser token only (D-23, R-343)."
+  setModelPublisherApproval(mode: ModelPublisherApproval!): ModelPublisherApproval!
 }
 
 type Subscription {

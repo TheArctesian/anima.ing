@@ -7,6 +7,8 @@
 //! the release workflow, which need no hub (R-179).
 
 mod core_dumps;
+mod shutdown;
+use shutdown::first_stop_signal;
 mod operator;
 mod upkeep;
 
@@ -186,14 +188,26 @@ async fn database(config: &Config) -> Result<PgPool, StartError> {
     Ok(pool)
 }
 
+/// The hub's private sockets: in the link mode the one through which `anima-link` reaches the
+/// hub (one-click plan S5), and in the hosted mode the one through which the hub's own daemon
+/// reaches only the routes of K8 (HMD-071).
+fn private_sockets(
+    config: &Config,
+) -> Result<(Option<listen::LinkSocket>, Option<listen::LinkSocket>), StartError> {
+    let link = config.link_socket.as_deref();
+    let own_daemon = config.own_daemon.as_ref().map(|own| own.socket.as_path());
+    Ok((
+        link.map(listen::link_socket).transpose()?,
+        own_daemon.map(listen::own_daemon_socket).transpose()?,
+    ))
+}
+
 async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     process_log::init(&config.log)?;
     let clock: Arc<dyn anima_hub::clock::Clock> = Arc::new(SystemClock);
     // Bind check and certificate first: a refused address needs no key or database (NET-003).
     let listening = listen::listen(config.listen, tls_files(&config), clock.clone()).await?;
-    // In the link mode `anima-link` reaches the hub through this socket (one-click plan S5).
-    let link = config.link_socket.as_deref();
-    let link = link.map(listen::link_socket).transpose()?;
+    let (link, own_daemon) = private_sockets(&config)?;
     warn_without_probe_deny(&config);
     let vault = vault(&config)?;
     let files = file_store(&config, &vault)?;
@@ -245,13 +259,11 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         clock,
         drain_limit: DRAIN_LIMIT,
     };
-    serve_until(
-        listening.admitting(edge).with_link(link),
-        app,
-        shutdown,
-        first_stop_signal(),
-    )
-    .await;
+    let entrance = listening
+        .admitting(edge)
+        .with_link(link)
+        .with_own_daemon(own_daemon);
+    serve_until(entrance, app, shutdown, first_stop_signal()).await;
     background.iter().for_each(tokio::task::JoinHandle::abort);
     Ok(())
 }
@@ -278,44 +290,6 @@ async fn open_sessions(
     let (live, ended) = sessions::open(pool, now).await?;
     tracing::info!(ended, "stale sessions ended");
     Ok(live)
-}
-
-/// The first stop signal. A second one ends the process at once, without waiting for the
-/// sessions or the drain.
-async fn first_stop_signal() {
-    stop_signal().await;
-    tracing::info!("hub stopping");
-    tokio::spawn(async {
-        stop_signal().await;
-        tracing::warn!("second stop signal; exiting now");
-        std::process::exit(1);
-    });
-}
-
-/// Resolves on Ctrl-C or SIGTERM. A signal that cannot be watched is logged and never
-/// resolves, so the other one still stops the hub.
-async fn stop_signal() {
-    let interrupt = async {
-        if let Err(error) = tokio::signal::ctrl_c().await {
-            tracing::warn!(%error, "cannot watch Ctrl-C");
-            std::future::pending::<()>().await;
-        }
-    };
-    let terminate = async {
-        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
-            Ok(mut terminate) => {
-                terminate.recv().await;
-            }
-            Err(error) => {
-                tracing::warn!(%error, "cannot watch SIGTERM");
-                std::future::pending::<()>().await;
-            }
-        }
-    };
-    tokio::select! {
-        () = interrupt => {}
-        () = terminate => {}
-    }
 }
 
 /// Applies the migrations as the owner role and exits; serving never migrates (R-016).

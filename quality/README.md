@@ -8,7 +8,7 @@ Repository checks that Clippy and ESLint do not cover. Run with bun from `qualit
 | `bun run baseline -- --base <ref>` | CQ-011 | `baseline.json` has no new path, new signal or larger value than at `<ref>` (default `phase-2`) |
 | `bun run names` | CQ-030 | Banned words in file, folder and type names |
 | `bun run imports` | REPO-004 | No hub domain uses another domain's `store`; no domain cycle |
-| `bun run documents` | PLN-016, PLN-017, PLN-019 to PLN-023 | Document links resolve; each plan is in the register, each work item in its index and each mockup in its index (PLN-019); each plan gives its kind and state in its header and the register agrees (PLN-020; `bun run register` writes it); a number of the rulings log names one ruling (PLN-021); a claim is complete and one claim holds a task (PLN-022; `claim-not-complete`, `task-claimed-twice`); a mockup in state Built names the commit it was compared at, and no layout file of its screens has a later commit (PLN-019; `mockup-not-compared`, `mockup-commit-not-found`, `mockup-without-screens`, `screen-changed-after-mockup`); the operator queue agrees with the documents and a task for an agent links to a document whose state permits a build (PLN-023, PLN-007; `queue-out-of-date`, `queue-without-list`, `agent-task-without-link`, `agent-task-in-unapproved-document`); the register has its generated list and each plan has evidence (`register-without-list`, `plan-without-evidence`); a known duplicate still has two owners (`known-duplicate-has-one-owner`); one document defines each requirement identifier (`duplicate-identifiers.txt` is the shrink-only list of the known ones) |
+| `bun run documents` | PLN-016, PLN-017, PLN-019 to PLN-023 | Document links resolve; each plan is in the register, each work item in its index and each mockup in its index (PLN-019); each plan gives its kind and state in its header and the register agrees (PLN-020; `bun run register` writes it); a number of the rulings log names one ruling (PLN-021); a claim is complete and one claim holds a task (PLN-022; `claim-not-complete`, `task-claimed-twice`); a mockup in state Built names the commit it was compared at in its record, and no layout file of its screens has a later commit; the table of the index is the one the records give (PLN-019; `mockup-not-compared`, `mockup-commit-not-found`, `mockup-without-screens`, `screen-changed-after-mockup`, `mockup-table-stale`, `mockup-table-not-generated`, `mockup-record-without-mockup`); the operator queue agrees with the documents and a task for an agent links to a document whose state permits a build (PLN-023, PLN-007; `queue-out-of-date`, `queue-without-list`, `agent-task-without-link`, `agent-task-in-unapproved-document`); the register has its generated list and each plan has evidence (`register-without-list`, `plan-without-evidence`); a known duplicate still has two owners (`known-duplicate-has-one-owner`); one document defines each requirement identifier (`duplicate-identifiers.txt` is the shrink-only list of the known ones) |
 
 ## Local gates
 
@@ -99,6 +99,10 @@ minutes on the same Mac when it is quiet: Rust tests 7, bun tests 3.5, Go tests 
 What it does not do: it does not test a package that depends on a touched one, and it runs the doctests
 only with the whole Rust group. The full list does that. `--group rust,go,bun,quality` and
 `--gate name,name` run a part of the list by name; the jobs of the workflow use them.
+`--keep-going` is for a proof run only, such as the Windows job started by hand: each gate runs after a
+failure, Clippy goes on past a crate that fails (`--keep-going`), the Rust tests go on past a failing test
+(`--no-fail-fast`), and the last line names each gate that failed. The run still fails. It is never the
+gate of a merge.
 
 ### The gates on GitHub
 
@@ -111,6 +115,11 @@ with `ref`, tests the commit as it is. `deploy/test/gates-workflow.test.ts` chec
 together run each gate one time, that the file holds no secret and no token that can write, that each
 action is pinned to a commit, and that no pull request starts it. A different workflow that needs the
 gates of a commit calls this one (`workflow_call`, inputs `ref` and `base_ref`).
+When the changes need Rust, the job `windows-lint` runs Clippy of the workspace for the target
+`x86_64-pc-windows-gnu` on Linux, with mingw-w64 (`bun quality/bin/gates.ts --windows-lint`,
+`quality/src/gates/windows-lint.ts`): it type-checks and lints the code behind `cfg(windows)`, which no other
+Linux job compiles. It keeps going past a crate with a fault, so one run lists the faults of each crate that
+does not depend on that crate. It runs no Windows test; the job `windows` (MSVC, for `dev`, a train or a call) does.
 
 A Linux machine does not run these, so a Mac must (`bun run gates:fast` there): the tests of
 `check-mach-o.sh` and one test of `trial-bundle.sh --marks`, which skip off macOS; the Keychain store of the
@@ -136,19 +145,22 @@ each train with its state and the branches of the next one.
   the `dev` of that moment) and that is not in `dev`; the oldest pass first, then the name; at most 12.
 - **The train.** The conductor merges the batch in that order on the `dev` of the moment, each branch with
   the steps of `bin/merge.ts` (the generated files written again, the numbers, the merge commit, the document
-  gates on the commit). A branch with a conflict, or whose document gates fail, is left out with a line that
-  says why. The result is pushed as the branch `train/<commit of dev>-<time>`, and the gates are started for
+  gates on the commit). A branch with a conflict, or whose document gates fail, is left out with one line
+  that says why: the conflicting files, or the failed check and its first fault. A note on its tip
+  (`refs/notes/train-left-out`) keeps that line, and `--plan` and each later step of the conductor print it
+  until the branch moves. The result is pushed as the branch `train/<commit of dev>-<time>`, and the gates are started for
   it one time, on the commit as it is.
 - **The landing.** When those gates pass and `dev` is still the commit that the train stands on, `dev` moves
   to the commit of the train in one push that is not forced. The tree that was tested is the tree of `dev`,
   so no run of the gates follows for `dev`.
 - **A move of `dev` while the gates of a train run** (R-260; `"carryDocuments": true` in
-  `quality/merge-rule.json`, on since 2026-11-20). The run is never stopped. When it passed and `dev` moved
-  only in documents (the rule of the fast tier, `src/gates/tier.ts`), the conductor merges the same branches
-  again on the new `dev`, with the document gates on each merge commit, and lands that if each file that is
-  not a document is the one that the gates tested (`src/merge/carry.ts`). If one is different, or a branch
-  does not merge again, it says which and lands nothing. When `dev` moved in code, the train is made again
-  on the new `dev` and its gates run one more time.
+  `quality/merge-rule.json`, on since 2026-11-20). The run is never stopped. When it passed and `dev` moved,
+  the conductor merges the branches of the train that are not in the new `dev` again on it, with the document
+  gates on each merge commit, and lands that if each file that is not a document is the one that the gates
+  tested (`src/merge/carry.ts`; a document is one by the rule of the fast tier, `src/gates/tier.ts`). So a
+  `dev` that moved in documents, or by a merge by hand of a branch that the train also holds, does not stop
+  the landing. If a file is different (`dev` moved in other code), or a branch does not merge again, it says
+  which and lands nothing: the train is made again on the new `dev` and its gates run one more time.
 - **Each branch has a reason.** `bun quality/bin/train.ts --plan` names each branch that is not in `dev`:
   ready, or why it is not taken (its gates still run, ended with a failure, passed for an older commit, did
   not run, it failed alone in a train), or the documents in which it has a conflict with `dev`. The
@@ -168,12 +180,22 @@ it, because the mockup check counts the layout files of a branch as changed whil
 The documents that each branch adds to. A conflict in a document leaves a branch out of a train, and its
 session must merge `dev` into the branch. Five documents merge by union (`.gitattributes`): the rulings, the
 human checks, the decisions table, the list of security findings and the table of owners; the documents gate
-finds an entry that a union kept two times (`decision-row-twice`, `finding-twice`, `owner-row-twice`). Two
-hot documents cannot take the union rule, because branches change the same lines of them:
-`docs/mockup/README.md` (each interface branch writes the cell "Compared" of its row again) and
-`docs/proposals/hosted-mode.md` (each task of the hosted work changes the version line, the header and the
-row of its task). They need one file for each entry, as the claims have: one record for each mockup, one
-file for each task. Not built: the two documents have owners.
+finds an entry that a union kept two times (`decision-row-twice`, `finding-twice`, `owner-row-twice`). The
+mockups have one record for each mockup (`docs/mockup/records/`, PLN-019), and the table of
+`docs/mockup/README.md` is generated from them by `bun run register`, so two interface branches conflict only
+when both compared the same mockup. The merge settles that (`src/merge/mockups.ts`, from `finish.ts`): it keeps
+the record whose comparison is at the later commit (`git merge-base --is-ancestor`; with no order, the one of
+the branch), writes the table again, and the documents gate on the merge commit checks the kept comparison. A
+branch that still changes the table of before the records is settled the same way: each row that it changed
+after the merge base becomes its record. Two branches that each add a record touch the same lines of the
+generated table: the merge takes neither table, merges the parts of the index that a person writes three ways
+(`git merge-file`), and `bun run register` writes the table again; a conflict in a part that a person writes
+stops the merge. `conflictsForAHand` leaves the index and the records to the merge, and `--plan` forecasts the
+same. The run of the gates of a branch, which merges `dev` into the branch (`.github/workflows/gates-merge.sh`),
+settles the same conflicts the same way (`bun quality/bin/register.ts --settle`), and the generated files take
+the side of the branch before they are written again; any other conflict still fails the run. One hot document is still a single file: `docs/proposals/hosted-mode.md` (each
+task of the hosted work changes the version line, the header and the row of its task); it needs one file for
+each task. Not built: the document has an owner.
 
 What works from where. GitHub takes `merge-to-dev.yml` from the default branch, `main`; the checkout is
 `dev`, so the conductor and `merge-to-dev.sh` are those of `dev`. With the old file on `main` the train works,
@@ -243,6 +265,18 @@ The root `Cargo.toml` sets `[profile.dev.build-override] debug = 0`: left at car
 macro's dependency gets the normal debuginfo only when the same crate is a normal dependency of that command's targets,
 so gates 4 and 5 (fewer targets) would rebuild sqlx, async-graphql, tauri and the workspace crates (about 70 s cold).
 Gate 3 fails with the install command when `cargo-nextest` is not on `PATH`.
+
+### The thread tests on Linux, from a Mac: `bun run gates:linux-threads`
+
+The runner and the holder of the threads find processes in `/proc` on Linux and with `ps` on a Mac, so a
+fault can pass on a Mac and fail on GitHub. Before you push a change that starts, stops or finds processes,
+run `bun run gates:linux-threads`. It runs the tests of `anima-daemon` and `agent-threads` in Docker
+(`rust:<version of rust-toolchain.toml>-bookworm`, as a user who is not root) and gets the Linux build of
+cargo-nextest one time. The source is mounted read only. The tests `units::` write into the source, so this run
+leaves them out; GitHub runs them. The Docker volumes `anima-linux-target` and `anima-linux-cargo` keep the build
+between runs, one build folder for each worktree (`build-<name of the worktree>`): each worktree is mounted at the
+same path, and cargo would take the build of a different worktree for a source file that is older than it. Arguments after `--` go to nextest, for example `bun run gates:linux-threads -- threads::`. It is
+not a gate: the run on GitHub is.
 
 ### Throwaway PostgreSQL (R-009, R-019)
 

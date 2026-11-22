@@ -30,12 +30,26 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-074 | Windows desktop account, link and remote sessions (WIN1) | Windows 11 VM, Anima account and a hub | Open |
+| HT-114 | Three generated entries of LinuxServer.io start with the rights of the static test (task H39) | A throwaway Linux test machine with Docker and Compose, not on the network of Anima | Open |
+| HT-115 | A person reads the settings of the ten generated entries of LinuxServer.io and records the review (task H39) | The branch `hosted/catalogue-linuxserver`; no machine | Open |
+| HT-113 | The choice Catalogue shows the tier, the class shell, the streams and the optional parts, and scales with a search and groups (task H39) | The desktop client signed in to a hub of this branch, a device with Docker | Open |
+| HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
+| HT-133 | The public names of applications through the route proxy, on a real network (task H21) | A hub that a person hosts with ports 80 and 443 open, a domain name with its DNS, a machine on the link with a web application, and a second hub | Open |
+| HT-134 | Streams of TCP and UDP and the access of a route on a real network (task H40) | A hub that a person hosts, a machine on its network with a test TCP service and an IMAPS server, a device of the network of Anima and a device that is not on it | Open |
+| HT-136 | The section Routes of Settings beside its mockup, and against a real hub (task H21) | The client of the branch `hosted/routes-section` signed in to a test hub on Linux, a second factor on the account, a domain name with its DNS | Open |
+| HT-135 | The mockup of the section Routes of the hub (tasks H21 and H40), approved overnight by the orchestrator | A browser | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
 | HT-003 | The tool inventory in an MCP client | HT-002 | Open |
+| HT-129 | The one-line installation of the link and of the daemon on a computer with no application (task HM-T33, R-240 c) | A hub of the branch `hosted/hm-t33-one-line-install` with a link, `anima` signed in to it, and a Linux computer with no application | Open (not run) |
 | HT-004 | No window of Apple on a Mac without the developer tools | A Mac with no Xcode and no Command Line Tools | Open |
 | HT-005 | The tool inventory of a daemon that runs as a system unit | A Linux computer | Open |
 | HT-006 | The probes of `claude` and `codex` leave the account alone | A computer with the two programs | Open |
+| HT-124 | The child fetch process downloads a real `llama-server` release from GitHub, and a stall of the network ends only the child | A test hub that gives a `runtime_install` item, and a daemon of this build in a test folder on the Mac and on `pop-os` | Open |
+| HT-121 | The hardware values of the Mac and of the Linux PC `pop-os` agree with what each system shows | A hub and a daemon of this build on both computers | Open |
+| HT-120 | The model work of the daemon installs `llama-server`, starts it on loopback, supervises it and stops it on the Mac and on `pop-os` | A test hub that gives model items, and a daemon of this build in a test folder on both computers | Open |
+| HT-119 | The cgroup of each model server on `pop-os`: a child that leaves its session is seen and ended, and a start with no delegated cgroup fails | `pop-os` with a daemon of this build in a test folder, run by its systemd user unit, which has `Delegate=yes` (R-334) | Open |
 | HT-007 | The pinned Rust version on the Linux computer | The Linux development computer | Open |
 | HT-008 | A macOS release build with the pinned Rust version | A Mac builder | Open |
 | HT-010 | Merge a pull request, and a set of pull requests, on GitHub | A GitHub repository that is safe to change, GitHub on the hosted hub, and a sign-in of the command line (OD-25) | Open |
@@ -56,12 +70,17 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-029 | The computer is Up while it is connected to the link of its hosted hub, and Down after the application quits | This computer, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
 | HT-030 | The application on a computer shows its copy of recent data when the hub does not answer | A computer with the installed application, signed in to a hub | Open |
 | HT-031 | A hosted hub reaches SSH of a computer on its link, only after the person turned port 22 on | This computer with Remote Login, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
+| HT-077 | The switches of the open ports in Settings turn SSH and screen sharing on and off for the hub (HMD-049; task HM-T13) | This Mac joined to a hub, and an application of a build that holds the branch `hosted/hm-t13-port-switches` | Open |
+| HT-070 | A hosted hub opens a VNC session to a computer on its link, only after the person turned port 5900 on (HMD-048, HMD-049; task HM-T14) | This Mac with Screen Sharing on, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
 | HT-032 | The containers of a real device: the list and the log (hosted applications, stage 1) | A hub of this build and a device with Docker and an SSH credential in Anima | Open |
 | HT-033 | An SSH session on a phone, with the key row | An iPhone and an Android phone with a build of `mobile/m1-shell`, and a hub that has a device with SSH | Open |
 | HT-034 | A photo of a phone through the file store: location kept or removed, and a large file | A local hub of this build, a phone photo with a GPS position, a file of about 200 MB | Open |
 | HT-035 | A server gets, follows and drops an operational key, with the Keychain of a Mac | A hub of this build, a Mac and a Linux server with the daemon of this build | Open |
 | HT-036 | The release workflow of GitHub Actions: a trial, then a release from a push to `main` | The GitHub account of the operator (the three environments and their secrets are set), a Mac with 0.2.1 installed from its DMG, a Linux computer | Open |
 | HT-037 | The daemon pushes through the Unix socket of the link, and an old daemon still pushes after its update | A hub in the link mode, and one computer with `anima-link` and `anima-daemon` of this build | Open |
+| HT-069 | Install and update Anima from F-Droid (M5-7) | A real Android phone, the signed Anima APK, and a newer version in the official F-Droid catalog | Open |
+| HT-070 | Keep and clear a mobile session (M5-1) | An Android phone or tablet and an iPhone or iPad, a hosted Anima account, and a test hub invite | Open |
+| HT-075 | Android reports its memory and storage readings (M6-1) | A physical Android device joined to a hub, and another client to check the same device | Open |
 | HT-038 | The details of a container, the state of a Compose project, and the images, volumes and networks of a real device (hosted applications, task H8) | A hub of this build and a device with Docker, a Compose project and an SSH credential in Anima | Open |
 | HT-039 | A newer image for a container, with real public registries (hosted applications, task H13) | A hub of this build that can reach the internet, and the device of HT-038 with one image that is older than its tag at Docker Hub | Open |
 | HT-040 | A phone with the OwnTracks app sends fixes to the hub, and a file transfer gets its context | A hub of this build that the phone can reach, a phone with the OwnTracks app, a device with SSH in the hub | Open |
@@ -79,18 +98,30 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
 | HT-060 | The Projects page after the interface review: the choice of the group, tiles with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-projects`, the extension Projects on, GitHub connected | Open |
 | HT-061 | Sign in to a hosted hub, and the metrics of this computer appear (HMD-053, HMD-054; tasks HM-T17 to HM-T19) | This Mac and the Linux computer, each with an application of this build that carries `anima-daemon` and `anima-link`, signed in to the hosted hub | Open |
+| HT-083 | The sign-out of a hosted hub takes the daemon off this computer and revokes it at the hub (HMD-056; task HM-T21) | This Mac with an application of a build that holds the branch `hosted/hm-t21-daemon-removal`, signed in to the hosted hub with the daemon installed (HT-061 step 1); the Linux computer for step 7 | Open |
+| HT-112 | A newer application replaces the daemon of this computer and keeps its enrolment (HMD-055; task HM-T20) | This Mac with two applications of the branch `hosted/hm-t20-daemon-update` of three versions, signed in to the hosted hub with the daemon installed (HT-061 step 1), and an agent thread for step 7; the Linux computer for steps 8 and 9 | Open |
+| HT-117 | The daemon of this Mac waits for the person in the Keychain and does not stop (MET-013, MET-019; R-322) | This Mac with the daemon installed and reporting (HT-061 step 1), and two ad hoc trial builds of the branch `fix/daemon-keychain-wait` | Open |
+| HT-132 | The device page of the hub says that the daemon of this Mac needs you in the Keychain (R-364) | This Mac with the daemon installed and reporting, two ad hoc trial builds of a build that holds the branch `hosted/daemon-keychain-need`, and a second computer or a browser signed in to the same hosted hub | Open |
 | HT-057 | The Settings page after the interface review: the index and the sections in three groups (R-224) | The desktop application of a build that holds the branch `ui/v2-settings`, and a phone | Open |
 | HT-052 | The tab Containers of a device after the interface review: one State column, one pane for the log and the details (R-224) | The desktop application of a build that holds the branch `ui/v2-device-containers`, a device with Docker and an SSH credential | Open |
 | HT-055 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
 | HT-053 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
 | HT-054 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
 | HT-067 | The tab Overview of a device with the cards Connect and About, the chart figures and the storage table (R-224) | The desktop application of a build that holds the branch `ui/v2-overview-full`; a Linux device with a daemon and a drive that is not mounted; a device with a web interface | Open |
+| HT-098 | The holder of the agent programs on Linux, against a second user of the computer, and with a process that leaves the tree (THR-049, THR-113, THR-128) | The Linux computer `pop-os` with Rust and a checkout of the local branch `threads/runner`; a Mac with an administrator account to make a second user | Open |
+| HT-097 | The thread runner of the daemon: Claude Code and Codex started and driven on this computer (TH11 to TH13) | A Mac with Claude Code and Codex signed in, and a build of the local branch `threads/runner` with a state folder and a label of your own | Open |
+| HT-079 | The page Code with the real sessions of Claude Code and Codex of this computer (R-286) | A Mac and the Linux computer `pop-os`, each with sessions of the two programs, and a build of the branch `threads/read-side` | Open |
+| HT-100 | The page Code: the list and the thread scroll on their own, and a thread opens at its newest end (THR-013, THR-014) | The desktop application of a build that holds the branch `threads/scroll`, with sessions of Claude Code or Codex on the Mac | Open |
 | HT-065 | The measurements of the isolation design on Linux (task W2): a job in a rootless container on the computer `pop-os` | The computer `pop-os`, a terminal there, and one `sudo` for the installation of Podman | Open |
 | HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
 | HT-059 | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
-| HT-068 | A Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon, and shows metrics (DEF-007) | The Linux computer `pop-os`, an AppImage that holds the branch `fix/link-private-folder`, the sign-in to the hosted hub; this Mac with its unit of before | Open |
+| HT-068 | A Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon, and shows metrics (DEF-007) | The Linux computer `pop-os`, an AppImage that holds the branch `fix/link-private-folder`, the sign-in to the hosted hub; this Mac with its unit of before | Open (steps 1 to 4 passed) |
+| HT-111 | The daemon sends its token only to the signed link at its socket (K8 Section 1, HMD-054, R-317) | This Mac with a release application (Developer ID) signed in to the hosted hub, and the Linux computer `pop-os` with an AppImage of the same build | Open |
 | HT-066 | A browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) | A hub of the pool with an image of this build, and the gateway of the pool at `hub.anima.ing` | Open |
+| HT-080 | The web client of a hosted hub behind the gateway: the sign-in with no password page, the sign-out, a session that ended (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27) | A hub of the pool whose image has this build of the web client, and the gateway of the pool at `hub.anima.ing` | Open |
+| HT-104 | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with its own public origin `https://<hub id>.hub.anima.ing` and an image of this build, the door of the pool for that address, an application of this build, and a GitHub account that may get a new App | Open |
+| HT-125 | The window with no frame on Windows and Linux: move it, the three controls, resize, each page (task TC2 of agent threads, R-355) | A Windows computer and the Linux computer `pop-os`, each with a build of the branch `code/shell-window`; a Mac for the last step | Open |
 
 ### What a check on the hosted hub needs
 
@@ -103,6 +134,37 @@ Many entries were written for the hub on the VPS. The operator uses only the hos
 
 The steps for a hub with a user name and a password (the self-host path) stay in each entry.
 
+### HT-069: Anima OS preview hardware and enrollment
+
+Check that the installed name follows `anima-node-xxxx`, matches the console and newly enrolled hub device, and remains unchanged after reboot and an OS update.
+
+Latest operator report (2026-11-20): “wifi works”. Installed Wi-Fi is confirmed working on the same physical device. The operator also reports absent disk/storage telemetry on the hub and an oversized sign-in browser header. Full hardware/enrollment acceptance remains Open.
+
+Combined follow-up retest: boot the next ISO, check the battery icon at the top-right (charge, charging/discharging and unplug/replug), rotate the display while settings are open, then complete installation with either Restart or Shut down. Unlock the installed console: battery status must remain visible while locked and readings must update after unlock. Check CPU, memory and storage locally and disk inventory/usage on the hub. Sign in to Anima without provider-name copy or a tall browser header; alternatively connect through the visible self-hosted hub form using an existing reachable private HTTPS hub and a fresh enrollment code. Verify the self-hosted daemon continues reporting after reboot.
+
+For OS updates: check the hosted preview channel, download an available signed update, finish running work and choose Restart to update. Expected: new system boots with the same identity, network settings, orientation and persistent data; the previous system remains selectable. Test owner-requested rollback on disposable data. Actual battery hardware, live account sign-in, physical boot recovery and the public update transport are not established by synthetic VM fixtures alone.
+
+Earlier operator report (2026-11-20): Wi-Fi connected successfully in the live installer but became unavailable in the installed system. Confirmed live-session rotation did not carry over, and both installer and installed console needed larger layouts. The [follow-up](research/spare-computer-os/hardware-followup-2026-11-20.md) reproduces the installed supplicant startup failure against read-only root. Retest installed Wi-Fi, confirmed rotation across install/reboot, and all-page readability on the corrected image.
+
+Follow-up hardware report (2026-11-20): the graphical live ISO detects Realtek RTL8821CE (`rtw88_8821ce`), with neither rfkill block nor reported missing firmware, but NetworkManager cannot D-Bus-activate `wpa_supplicant`. The live ISO forced `networking.wireless.enable = false`, overriding NetworkManager's backend configuration. Remove that override and test D-Bus activation before the next hardware trial. This earlier failure is retained as history; see the later operator report below.
+
+Built: [preview source](../experiments/anima-os/README.md), under R-274.
+
+Operator report (2026-11-20): installed and rebooted on physical hardware to a terminal. NetworkManager showed wired and loopback only; Wi-Fi remains unqualified. The full check remains Open. R-273 adds Calamares and graphical network controls for the next trial. Boot that ISO, confirm the Anima.ing theme and hero background, connect through the installer Network step, install through Calamares, then verify that networking survives reboot. If no Wi-Fi adapter appears, collect `lspci -nnk`, `lsusb` and `rfkill list` from the included tools. Expected: supported adapters connect and saved system profiles survive; unknown adapters remain unqualified.
+VM tests cover only emulated hardware. USB writes were separately authorized; no real account was enrolled by the agent.
+
+1. Use a spare x86-64 UEFI computer and a disk whose contents may be erased. Back up anything needed first. Record its model, RAM, firmware mode and disk identity.
+2. Write the delivered ISO to a deliberately selected USB with a flasher. Boot it with Secure Boot disabled. Expected: fullscreen Anima installer with the approved proportions, no desktop panel or native erase popup; no installation starts by itself. Use the footer settings icon to correct display orientation. Verify that an unconfirmed rotation reverts after 15 seconds, and check touch alignment if applicable. Confirm the desired rotation before starting installation. Keep settings open while changing between portrait and landscape: the panel must recenter within the screen, its body must scroll on a short display, and Done must remain visible and clickable. The operator reported this failure on 2026-11-20; the rotation-panel follow-up needs physical retesting.
+3. Connect through the Network step; use `nmtui` from recovery as a comparison if needed. Expected: scan, authentication, IP address, DNS and internet access succeed on the intended adapter. Record which stage fails; detection alone is not a successful connection.
+4. Set the keyboard and admin password, choose the intended OS disk and optionally a disposable additional data disk. Review all identities and erase actions. Leave authorization unchecked, then change a selection and revisit Review. Expected: no disk changes and authorization is cleared.
+5. Authorize only the intended disks and select **Erase selected disks & install**. Expected: installation completion, unselected drives unchanged, and any selected data drive mounted separately under `/persist/volumes/<UUID>`. Remove the USB and reboot. Unlock the graphical console with the installed admin password. Check wrong-password rejection, Network, Storage, Display and Recovery. Expected: actual machine state, read-only Btrfs root and daemon inactive until enrolled. Lock the screen; the node must stay awake.
+6. Choose **Sign in to Anima**, complete WorkOS authentication in the secure browser, then **Add this computer**. Expected: private link, device registration and daemon enrollment complete without a copied code or terminal command. Verify the actual device heartbeat in Anima; an active local service alone is insufficient. Record account-service/hub refusals without weakening trust rules. Test cancellation, retry after network loss, and existing-owner protection. Do not include credentials in screenshots or reports.
+7. Reboot, unlock and check the Anima screen. Expected: confirmed orientation, network profiles and enrollment persist, the private link resumes, and monitoring reaches the hub. Lock the local screen while observing monitoring remotely. Test hub disconnection separately; local recovery must remain usable.
+8. Compare motion on this hardware at native orientation and after rotation, including fast navigation, dialog dismissal and reduced motion. Confirm responsiveness under representative workload load and record any rendering or touch issues.
+
+This does not qualify managed apps/jobs/agents, BIOS/ARM, encryption, backups or updates on hardware.
+
+Result: Open.
 ### HT-066: a browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26)
 
 Built: on the branch `hosted/hm-t26-browser-session`. A hosted hub gives the Anima.ing cloud a
@@ -131,6 +193,47 @@ for the time when both exist.
    a key. Expected: the session still works.
 5. In a second browser profile, open `https://hub.anima.ing/graphql` with no session. Expected: no
    data of a hub.
+
+### HT-080: the web client of a hosted hub behind the gateway (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27)
+
+Built: on the branch `hosted/hm-t27-web-client-door`. The web client asks one time for each page load
+whether the gateway of the hosted hubs is in front of its hub (a path that only the gateway
+answers). Behind the gateway: a refusal of the gateway is read as its code; a browser that must
+sign in goes to the entry of the gateway and never to the page with the hub password; "Sign out"
+ends the session of the hub and then the session of the gateway; the empty list of devices says
+how a computer comes to the hub.
+
+The tests cover, with a stand-in for the gateway that answers as the gateway of the pool does: the
+codes of the gateway, the question whether a gateway is in front, the sign-out, the rule against a
+loop of entries, the sign-in page, and the row Sign out. Not covered: a real gateway, a real
+browser, the content security policy of a real hub, and the cookies.
+
+It needs: a hub of the pool whose image carries this build of the web client. The image that the
+pool has on 2026-11-20 carries an earlier build, so these steps are for a new image.
+
+1. In a browser with no session, open `https://hub.anima.ing` and sign in with the account.
+   Expected: the list of devices of the hub. No page asks for a hub address or a hub password.
+2. With a hub that has no computer: look at the list. Expected: "No devices yet", and one sentence
+   that says to install the application on a computer and to sign in there.
+3. Open Settings and press "Sign out". Expected: the page "Signed out" with one button "Sign in".
+   The address bar still shows `hub.anima.ing`.
+4. In the tools of the browser, look at the cookies of `hub.anima.ing`. Expected: no cookie
+   `__Host-anima` and no cookie whose name starts with `__Host-anima-door`.
+5. Press "Sign in". Expected: the sign-in of the account, or, when the account site is still
+   signed in, the hub again with no question. Write which of the two you saw.
+6. Signed in, leave a page that does not update for 31 minutes, then press a link of the bar.
+   Expected: "Signing in" for a moment, then the hub again, with no password page. The page that
+   opens is the list of devices, not the page that you pressed.
+7. Signed in, delete only the cookie whose name starts with `__Host-anima-door` in the tools of the
+   browser, then press a link of the bar. Expected: the sign-in of the account or the hub again; no
+   page with the words "Can't read the hub's answer".
+8. Signed in, open Settings. Expected: the Account section says "Signed in as owner with your
+   Anima.ing account" and has the link "Manage account and sign-in methods". Press it. Expected: the
+   page of the account at `cloud.anima.ing/account` opens in a new tab, and the hub stays in its tab.
+9. Make the window narrow (390 px wide, or the phone view of the tools of the browser), open
+   Settings and press "Sign out" in the Account rows. Expected: as in steps 3 and 4.
+
+Result: Open.
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -186,6 +289,166 @@ Needs HT-002.
 2. Ask the client to call `anima_capability_list`. Expected: the same devices and tools as
    `anima capability list`.
 3. Call it with `tool` set to `cargo`. Expected: the same devices as step 5 of HT-002.
+
+Result: Open.
+
+### HT-124: the child fetch process downloads a real release
+
+Built: `crates/daemon/src/model/fetch.rs`, `fetch/child.rs`, `fetch/spawn.rs`, `crates/daemon/src/model/modes.rs` and
+the rules in `crates/daemon-core/src/model_work/releases/fetch.rs` (task L1-6b; R-336; R-348).
+The tests run the child with an order that is refused before a connection, a stalled child and a crashed child.
+They make no connection to GitHub, because the child accepts only the roots of the program and HTTPS, so a local
+server cannot stand in for the source.
+
+1. With a test daemon whose `model-sources.json` names a real `llama-server` release archive of GitHub with its
+   SHA-256 and `sizeBytes`, give a `runtime_install` item. Expected: `succeeded`; the folder
+   `runtimes/llama_server/<version>-<backend>/` holds the program. While it downloads, `ps -o pid,command` shows a
+   child `anima-daemon __model-fetch`, and `ps eww <pid>` (macOS) or `cat /proc/<pid>/environ` (Linux) shows no
+   variable.
+2. Change one character of the SHA-256 in `model-sources.json` and give the item again for a new version folder.
+   Expected: `failed` with `checksum`; no new folder below `runtimes/llama_server/`.
+3. Start the item again and cut the network of the machine for longer than the deadline of the download.
+   Expected: `failed` with `source_failed`; the child is gone; the daemon still answers `model_report`.
+
+### HT-119: the cgroup of each model server on `pop-os`
+
+Built: `crates/daemon/src/model/tree.rs`, `tree/linux.rs`, `tree/walk.rs`, and the launcher mode `__model-launch`
+of `crates/daemon/src/main.rs` (task L1-6; R-331; SF-258). The Linux code was not compiled or
+run on the Mac of the build: no Linux target is installed there. The tests that start a server skip on a Linux
+computer with no delegated cgroup v2, with the message "skipped: no delegated cgroup v2 here".
+
+1. On `pop-os`, run `cargo nextest run -p anima-daemon model_work` in a worktree of this branch, from a shell in a
+   systemd user scope with delegation: `systemd-run --user --scope -p Delegate=yes bash`. Expected: each test passes;
+   none prints "skipped".
+2. Run the same command from a plain shell with no delegation. Expected: the tests that start a server print
+   "skipped", and each other test passes.
+3. With a test daemon in a user unit with `Delegate=yes`, give a `server_start` item. Expected: a folder
+   `anima-model-<server>` below the cgroup of the unit; `cat cgroup.procs` there names `llama-server`. Give
+   `server_stop`. Expected: the folder is gone and no process is left.
+4. Without `Delegate=yes`, give a `server_start` item. Expected: `failed` with `containment_failed`, and no
+   process is started.
+5. Start a server, then end the test daemon with `kill -9`. Start it again and call the sweep (`Node::sweep`).
+   Expected: the `llama-server` of the first run and its cgroup are gone.
+6. Install the user unit of this build (`anima-daemon install` from the test folder). Expected:
+   `systemctl --user show anima-daemon -p Delegate` gives `Delegate=yes` (R-334).
+7. With a server running, start in its cgroup a process that enters a network namespace of its own
+   (`unshare -rn sleep 600`) and a second one that listens on `0.0.0.0` (`nc -l 0.0.0.0 41999`). Expected: at the
+   next cycle the server is `failed` with `listener`, and the cgroup is gone.
+8. With a server running, write a different path into the `cgroup` member of its `tree.json`, end the daemon
+   with `kill -9`, and start it again with the sweep. Expected: that path is not changed; the cgroup
+   `anima-model-…` of the server is gone. `cat pids.max` in a new cgroup of a server shows `512` when the
+   `pids` controller is delegated.
+9a. With a server running, write the process id of its `llama-server` into the `cgroup.procs` of the cgroup
+   of the daemon (`echo <pid> > /sys/fs/cgroup/<cgroup of the daemon>/cgroup.procs`). Expected: at the next cycle
+   the server is `failed` with `listener`, and its processes and its cgroup are gone (SF-278).
+9b. With a server running, read `/proc/<pid of llama-server>/cgroup`. Expected: `0::/` (the runtime sees its
+   own cgroup as the root). Then, as the user of the daemon, run `nsenter -t <pid> -U -C --preserve-credentials sh
+   -c 'echo $$ > /sys/fs/cgroup/<cgroup of the daemon>/cgroup.procs'`. Expected: the write fails (`No such file`
+   or `Permission denied`). If `sysctl kernel.apparmor_restrict_unprivileged_userns` gives `1`, or
+   `kernel.unprivileged_userns_clone` gives `0`, each start fails with `containment_failed`: write that in the
+   result (R-330).
+9c. With a server running, as the user of the daemon, run `mkdir` in the cgroup of the server from inside its
+   namespaces (`nsenter -t <pid> -U -C --preserve-credentials mkdir /sys/fs/cgroup/x`). Expected: it fails, because
+   `cgroup.max.descendants` is 0. Then make such a cgroup from outside (as the daemon user), move a child of the
+   runtime that listens on `0.0.0.0` into it, and run a cycle. Expected: `failed` with `listener`.
+9d. Read the `detail` of each `containment_failed` report: on a system with
+   `kernel.apparmor_restrict_unprivileged_userns=1` and no profile it is `userns_denied`; with no `Delegate=yes` it
+   is `no_delegation`. Until task L1-6c (the AppArmor profile) is built, `userns_denied` is the expected result on
+   a system of the Ubuntu family with the restriction on; it is not a failure of this check. Write the values of `sysctl kernel.apparmor_restrict_unprivileged_userns`,
+   `kernel.unprivileged_userns_clone` and `user.max_user_namespaces`, and `aa-status --enabled`, on `pop-os`.
+9e. End the test daemon with
+   `kill -9` while a server runs. Expected: the `llama-server` ends at once (the parent-death signal survived the
+   namespaces).
+9f. GPU inside the namespaces, on an NVIDIA machine and on an AMD (ROCm) machine: start a server whose settings put
+   the model on the GPU. Expected: `/dev/nvidia*` (NVIDIA), or `/dev/dri/renderD*` and `/dev/kfd` (ROCm), open in
+   the runtime (`ls -l /proc/<pid>/fd`), and the log of the runtime shows the layers on the GPU. If the NVIDIA
+   device nodes are missing before the first use, note it: `nvidia-modprobe` cannot run setuid inside the user
+   namespace.
+9. The unit of an install that exists. The unit file is written only by `anima-daemon install`, which writes it
+   and runs `systemctl --user daemon-reload`, `enable` and `restart`. The desktop application runs `install` only
+   when it enrols the computer (`daemon_install`); an update of the application does not place the new daemon
+   or run `install` again, and the daemon cannot write its own unit (`ProtectHome=read-only`). So a computer that
+   enrolled before this build keeps a unit with no `Delegate=yes`, and each model start fails with
+   `containment_failed`. Until a fix: run `anima-daemon install` once by hand. Expected:
+   `systemctl --user show anima-daemon -p Delegate` gives `Delegate=yes`. The proposed smallest fix: when the
+   desktop application starts and the daemon is enrolled, it places its own daemon and runs `install` again
+   when the unit file differs from the unit that this version renders (task U6 of the update plan owns the
+   update of the daemon).
+
+Result: Open.
+
+### HT-120: the model work of the daemon on the Mac and on `pop-os`
+
+Built: `crates/daemon-core/src/model_work/` (the checks of the ten model work types, the causes, the
+flag policy, the files of a copy, the settings at the machine and the actor check, the release
+sources, the command line and the environment, the waits of a restart, the loopback verdict, the
+folders) and `crates/daemon/src/model/` (the claim and the report through the work route,
+`runtime_install`, `server_start`, `server_stop`, the supervision, `model_report`), task L1-6 of
+the compute plan (CAG-001 to CAG-009, RTC-002 to RTC-006, SEC-C-001, SEC-C-007, SEC-C-008). The
+contract is `contracts/compute/model-work.md` version 0.3, which waits for R-344 and the
+security review SEC-C-012. The tests use a scripted hub and a scripted runtime (a Perl program);
+no test downloads a real release or starts a real `llama-server`. The claim loop is not yet
+started by the running daemon: the switch at the machine (USE-004) does not exist in the daemon.
+Thus this check needs a small test program or a test build that calls `model::cycle::Node::cycle`.
+
+Do not use the installed daemon of the operator. Set `ANIMA_DAEMON_HOME` to a new test folder.
+
+1. On each computer, write `model-sources.json` in the test folder with one entry for the
+   `llama-server` release of that computer (the `.tar.gz` of the upstream release, its SHA-256 and
+   size, and the path of `llama-server` in it). Give a `runtime_install` item from the test hub.
+   Expected: the report is `succeeded`; `<home>/runtimes/llama_server/<version>-<backend>/` holds
+   the files, with mode 0755 for folders and programs and 0644 for each other file, and no link.
+   The upstream `.zip` or `.tar.gz` both work (R-329); write which one was used.
+2. Give a `runtime_install` item with a wrong SHA-256 in `model-sources.json`. Expected: `failed`
+   with `checksum`, and no new folder.
+3. Give a `server_start` item. Expected: `succeeded`. `lsof -nP -iTCP -sTCP:LISTEN` (Mac) or
+   `ss -ltnp` (`pop-os`) shows `llama-server` on `127.0.0.1` and a port from 41000 to 41999 only.
+   `ps eww <pid>` shows only the environment of Section 2.1 of the contract. The output ring
+   `<home>/model-state/servers/<server>/output.log` has mode 0600 and at most 1 MiB. Write in the
+   result whether this release of `llama-server` takes `--verbosity 0`, `--no-slots` and the router
+   mode with no model; if it does not start, write its first error line from the ring.
+4. End the `llama-server` process with `kill -9`. Expected: within 15 seconds of the next cycle the
+   daemon starts it again after the waits 1, 2, 4, 8 seconds; after 5 ends in one hour it stays
+   `failed` in `model_report`.
+5. Give a `server_stop` item. Expected: `succeeded`; no `llama-server` process is left.
+6. Write `{"sandbox": true}` in `<home>/model-work.json` and give a `server_start` item. Expected:
+   `failed` with `isolation_failed` (the isolation is not built).
+7. Write `{"agentTypes": ["model_report"]}` and give a `server_start` item with `actor` `Agent`.
+   Expected: `refused` with `actor_not_permitted`.
+
+Result: Open.
+
+### HT-121: the hardware values agree with what each system shows
+
+Built: `crates/daemon-core/src/hardware/`, `crates/daemon/src/readers/hardware/`, the hub migration `0721_metrics_hardware.sql` (numbered 0720 before the merge with `dev`, where 0720 holds the batteries), the field
+`hardware` of `capabilities`, `anima capability list` and `anima_capability_list` (task L1-1 of
+the compute plan; CAP-001 to CAP-005, CAP-032; R-165). The tests use scripted output in place of
+the real commands and files, and a scripted hub. This check gives the values that OD-C1 needs.
+
+The hub and the daemons must be of this build. A change to the hub on the VPS needs the
+confirmation of the operator (VPS-005). A local hub is sufficient for this check
+([setup/local-hub.md](procedures/setup/local-hub.md)).
+
+1. Start the `anima-daemon` of this build on the Mac of the operator and on the Linux PC
+   `pop-os`. Wait 1 minute. Run `anima capability list --json`.
+2. On the Mac, run `sysctl hw.memsize iogpu.wired_limit_mb`, `pmset -g batt`, `pmset -g therm`,
+   `df -k ~` and `system_profiler SPDisplaysDataType`. Expected: `systemMemoryBytes` and
+   `unifiedMemoryBytes` are `hw.memsize`; `usableMemoryBytes` is `iogpu.wired_limit_mb` × 1048576
+   with `WIRED_LIMIT` when that value is not 0, else three quarters of `hw.memsize` (above 36 GiB)
+   or two thirds with `DEFAULT_SHARE`; `freeDiskBytes` is the available space of `df` rounded
+   down to whole GiB; `metal` and `cpu` are usable and the other backends are `NOT_SUPPORTED`;
+   `powerSource` agrees with the first line of `pmset -g batt`.
+3. If a tool that runs Metal is at hand (for example `llama-server` or an MLX script that prints
+   `mx.metal.device_info()`), compare its `recommendedMaxWorkingSetSize` with
+   `usableMemoryBytes`. Write the two values in the result: they decide whether the default share
+   is correct for this Mac.
+4. On `pop-os`, run `free -b`, `nvidia-smi --query-gpu=name,memory.total --format=csv`,
+   `ls /dev/kfd /usr/share/vulkan/icd.d /etc/vulkan/icd.d` and `df -B1 ~`. Expected:
+   `systemMemoryBytes` is the total of `free -b`; `dedicatedMemoryBytes` is the sum of the
+   memory totals of `nvidia-smi`; `cuda` is usable when `nvidia-smi` runs; `vulkan` is usable
+   when an ICD file is listed; `rocm` is `NO_DEVICE` when the PC has no AMD GPU.
+5. On the Mac, leave the keyboard and the pointer for 6 minutes, wait for the next probe
+   (15 minutes) and run the command again. Expected: `operatorActive` is false.
 
 Result: Open.
 
@@ -724,6 +987,55 @@ state directory that the application gives it: read the two from the output of
 
 Result: Open.
 
+### HT-077: the switches of the open ports in Settings (HMD-049; task HM-T13)
+
+Built: on the branch `hosted/hm-t13-port-switches`. Settings shows one switch for SSH (port 22) and
+one for screen sharing (port 5900) under "Link to the hub", with the setting of the system that each
+needs. A switch runs `anima-link ports` of the link program of the application on the device folder.
+
+The tests cover, with a stand-in link program: the list read and changed, a port that the link may
+not open, an answer that is not a list, the rows of each system, a change that is refused. Not
+covered: the real link program, a real hub that reaches the port, and the window of the application.
+
+1. On this Mac, joined to a hub, open Settings. Expected: under "Link to the hub", the rows "SSH
+   (port 22)" and "Screen sharing (port 5900)", both off, each with one line that names the setting
+   in System Settings.
+2. Turn "Screen sharing" on. Expected: the switch stays on; no window or question of the system
+   opens.
+3. In Terminal, run `~/.local/bin/anima-link ports -state "$HOME/Library/Application Support/ing.anima.desktop/link/device"`
+   Expected: `{"open":[5900]}`.
+4. Quit and open the application, then open Settings. Expected: "Screen sharing" is still on.
+5. Turn it off. Run the command of step 3 again. Expected: `{"open":[]}`.
+6. Open Settings on a computer that has not joined a hub. Expected: no switch of a port.
+### HT-070: a hosted hub opens a VNC session to a computer on its link (HMD-048, HMD-049; task HM-T14)
+
+Built: on the branch `hosted/hm-t14-desktop-through-link`. For a device whose host is a link
+address, the hub opens a port on its own loopback address for the session and gives the gateway
+(guacd) that port; each connection of the port goes through the link to the port of the computer.
+
+The tests cover, with a fake link: a program beside the hub reaches a port of a computer through
+the port of the hub, two times in one session; a port that the computer did not turn on gives a
+closed connection; the port closes with its session; a device of the network and a hub with no
+link get no such port. Not covered: a real gateway, a real computer, Screen Sharing of macOS, the
+speed of a session through the relay of the link, and RDP (no link program for Windows yet).
+
+It needs: a hub of the pool from a new hub image that has this build, and an application with the
+link program of HM-T12. The steps are for the time when both exist.
+
+1. On this Mac, turn Screen Sharing on in System Settings, General, Sharing. Do not turn port 5900
+   on for the link yet.
+2. In the application, open the device of this Mac and press VNC. Expected: the session does not
+   open, and the message says that the computer did not answer or refused. Nothing else on the
+   Mac changes.
+3. In Terminal, run `~/.local/bin/anima-link ports -state "<the device folder of the link>" on 5900`
+   (or the switch of HM-T13 when it is built). Press VNC again. Expected: the screen of this Mac
+   shows in the session after the password of Screen Sharing.
+4. Move the mouse and type in a text field in the session for one minute. Expected: the screen
+   follows; write how slow it feels.
+5. End the session, then turn port 5900 off again. Press VNC. Expected: the session does not open.
+
+Result: Open.
+
 ### HT-023: the hash chain of the audit log on the real hub (GH-2 L0, LOG-021 to LOG-028)
 
 Built: migration `0506_events_audit_chain.sql` and the hash chain of the audit log
@@ -1040,6 +1352,330 @@ double quotes in a command, because the path has a space.
 The repair while the application runs (task HM-T37), on this Mac, after step 1 of this check passed: run `launchctl bootout gui/$(id -u)/ing.anima.link` and `rm ~/Library/LaunchAgents/ing.anima.link.plist`, and leave the application open. Expected: after about 40 seconds the file is there again, `pgrep anima-link` prints a number, and the log of the application has the line "the device link of the unit did not answer: the unit was installed and started again". A cleaning tool can do the same as these two commands: it may delete a launch agent that it does not know (seen 2026-11-20, see HT-061).
 
 
+### HT-083: the sign-out of a hosted hub takes the daemon off this computer and revokes it (HMD-056; task HM-T21)
+
+Built: on the branch `hosted/hm-t21-daemon-removal`. The daemon has the command
+`anima-daemon uninstall` (`crates/daemon/src/units/removal.rs`): it stops the user unit or the
+`LaunchAgent`, deletes its file, then deletes the token (the Keychain item `ing.anima.daemon` on a
+Mac, the file `token` on Linux) and the key cache. The shell has `daemon_remove`
+(`apps/desktop/src-tauri/src/daemon/removal.rs`): it runs `uninstall` with
+`~/.local/bin/anima-daemon`, then deletes that copy. The client
+(`apps/client/src/lib/desktop/daemon/leave.ts`) runs it at Sign out and at Change hub of a hosted
+hub, before the logout, and revokes the daemon at the hub.
+
+The tests cover, with stand-ins in temporary folders: the order of the commands for a
+`LaunchAgent` and for a systemd user unit, a second removal, a unit that is not loaded, a stop that
+cannot run, the token forgotten only after the unit is out, the copy that runs `uninstall` and is
+then deleted, a daemon that refuses (the copy stays), the client that removes first and revokes
+second, an unreachable hub and its sentence, and a second sign-out with no sentence. Not covered:
+the real `launchctl`, `systemctl`, Keychain and `~/.local/bin`, the hub of the pool, and the
+Linux code paths, which were read but not run on a Mac (the file token store and the systemd steps).
+
+It needs: an application of this build, the sign-in to the hosted hub, and HT-061 step 1 passed (the
+daemon reports).
+
+On this Mac:
+
+1. Before the sign-out, run `ls ~/Library/LaunchAgents/ | grep anima`,
+   `ls -l ~/.local/bin/anima-daemon` and `security find-generic-password -s ing.anima.daemon -a daemon-token`.
+   Expected: `ing.anima.daemon.plist` is listed, the copy is there, and `security` prints the item
+   (it does not print the token with no `-w`).
+2. In the application open Settings, press Sign out. Expected: the sign-in page shows, with no
+   question of the Keychain and no message.
+3. Run the three commands of step 1 again. Expected: no `ing.anima.daemon.plist` (the
+   `ing.anima.link.plist` of the link may stay), "No such file or directory" for the copy, and
+   "The specified item could not be found in the keychain." from `security`. `pgrep -x anima-daemon`
+   prints nothing.
+4. Sign in again (from a browser at the address of the hub, or from the application), open the
+   device of this Mac, Settings, the panel "Daemon". Expected: "Daemon revoked." Open Logs. Expected:
+   a line "Revoked the daemon token of <the name of this Mac>." at the time of step 2.
+5. The installation at this sign-in: wait 3 minutes. Known gap (HM-T21 row): the device keeps the
+   source Daemon, so the application does not install the daemon again; write down what you see.
+   To install it again for the next steps, change the metrics source of this Mac to None in its
+   Settings, then quit and open the application; HT-061 step 1 then applies.
+6. With the daemon installed again, turn the network off (Wi-Fi off), press Sign out. Expected: the
+   Settings page stays and says "The daemon is removed from this computer, but the hub could not be
+   reached and still lists it. Revoke the daemon on the page of this computer in Devices when the
+   hub answers." The commands of step 1 show the same as in step 3. Turn the network on, sign in,
+   open the panel "Daemon". Expected: the daemon is not shown as revoked (no "Daemon revoked."); its
+   readings are stale. Press "Revoke daemon" there.
+7. On the Linux computer, steps 1 to 3 with `ls ~/.config/systemd/user/ | grep anima`,
+   `ls -l ~/.local/bin/anima-daemon` and `ls ~/.config/anima-daemon/`. Expected after the sign-out:
+   no `anima-daemon.service`, no copy, no file `token` in the folder of the daemon, and
+   `systemctl --user status anima-daemon` says that the unit could not be found.
+
+### HT-129: the one-line installation of the link and of the daemon on a computer with no application (task HM-T33, R-240 c)
+
+Built: on the branch `hosted/hm-t33-one-line-install`. The design is Section 8.1 of
+[hosted-mode.md](proposals/hosted-mode.md). The hub has two new calls
+(`crates/hub/src/fleet/link/graphql/computer.rs`): `createComputerInstall(name)`, which a signed-in
+operator makes, gives a link invite and a one-time claim; `claimComputerEnrolment(claim, os)`, which only
+the computer that joined with that invite can send through its link, adds the computer to the devices in
+the site `Link` with the kind `server` and gives a daemon enrolment code. `anima link install <name>`
+shows the two as one install code. The script `deploy/bin/anima-install` asks for the code at the terminal with no echo,
+checks the SHA-256 of each program, joins the link, installs the unit of the link with the socket of the
+daemon, claims the code through that socket, enrols the daemon at the socket and installs its unit. It
+installs units of the user only and refuses root. `--remove` takes it all out again.
+
+The tests cover: the hub calls with a fake link (the claim works once, only from the computer that
+joined: a try from a different device of the link spends it, a try from off the link does not; the device
+is added once; a second install gives a claim and no invite; a new install cancels the open invites of its
+name; no install code for a name that two devices of the link have; no secret in an entry or a log); the
+script with a fake release folder and stand-ins of the two programs and of `curl` (the order of the steps,
+the claim through the socket of the daemon, a wrong SHA-256 of each program, a second run, a refused claim,
+a line for a different computer, the unit of the application also when its state folder only starts like
+this one, an answer of `unit show` that is not a plain path, a daemon that the script did not enrol, the
+removal, and no secret in an argument or the output). Not covered: the prompt at a real terminal, the real link,
+the real daemon, `systemd` and `launchd`, a real hub, the release (it does not publish `anima-link`
+alone or the script yet) and the page of the web client (not built).
+
+It needs: a hub of this branch with a link (a hub of one's own in the link mode, or a hub of the pool
+with an image of this branch); `anima` of this branch signed in to that hub with a login token; a Linux
+x86_64 computer (a VM is good) with no application of Anima, a user that is not root, and `curl`; the
+AppImage of a trial build of this branch. Do not use a Mac that has the application: the script stops
+there, and it must not touch the units of the application.
+
+1. On the Linux computer, as the normal user, make a release folder from the AppImage:
+   `./Anima_<version>_amd64.AppImage --appimage-extract usr/bin/anima-link usr/bin/anima-daemon`, then
+   `mkdir -p ~/rel/linux-x86_64/0.0.1 && cp squashfs-root/usr/bin/anima-link squashfs-root/usr/bin/anima-daemon ~/rel/linux-x86_64/0.0.1/`
+   and `sha256sum ~/rel/linux-x86_64/0.0.1/*`. Copy `deploy/bin/anima-install` of the branch to `~/anima-install`.
+   Expected: two SHA-256 values.
+2. On your own computer, run `anima link install build-1`. Expected: one line that starts with
+   `anima-install.1.` on standard output, and the expiry on standard error.
+3. On the Linux computer, within 15 minutes, run
+   `sh ~/anima-install --version 0.0.1 --target linux-x86_64 --link-sha256 <hex> --daemon-sha256 <hex> --from ~/rel`,
+   and paste the code at the prompt "Paste the install code". Expected: the code is not shown while you
+   paste it, and it is not in `history`; no password is asked; the last lines say that the computer is a
+   device of the hub and how to remove it; on a computer where lingering is off, a line names
+   `loginctl enable-linger`.
+4. Run `systemctl --user status anima-link.service anima-daemon.service`. Expected: both are active.
+   `ps -eo args | grep -c anima-install` shows no code in any process.
+5. Open Devices of the hub. Expected: within one minute a device `build-1`, kind server, Linux, in the site
+   `Link`, with metrics from its daemon.
+6. Run step 3 again with the same code. Expected: it stops with "this computer is on the link already"
+   (the code holds an invite, and the computer joined), and the device keeps its metrics.
+7. Make a new code with `anima link install build-1`; run step 3 with it. Expected: no new join (the code
+   has no invite), the daemon enrols again, the device in Devices is the same one, with no second
+   `build-1`.
+8. Change one letter of `--link-sha256` and run step 3 with a new code. Expected: "its SHA-256 differs.
+   Nothing was installed." and the two units still run.
+9. Log out of the Linux computer and wait 2 minutes. Expected, when lingering is off: the device goes
+   stale (the units stop at the logout, R-362). Log in again: the metrics come back.
+10. Run `sh "${XDG_DATA_HOME:-$HOME/.local/share}/anima-link/anima-install.sh" --remove`. Expected: no
+    unit of Anima in `systemctl --user list-units 'anima-*'`, no `~/.local/bin/anima-daemon`, no folder
+    `anima-link` or `anima-daemon`, and the sentence that the hub still lists the computer.
+11. Optional, on a Mac with a second user account that has never run the application: steps 1 to 5 and 10
+    with `--target darwin-universal`, the two programs of a signed trial build
+    (`Anima.ing.app/Contents/MacOS/`) and `shasum -a 256`. Expected: the same, with `launchctl print
+    gui/$(id -u)/ing.anima.link` and `ing.anima.daemon` running.
+12. On the Linux computer, install the daemon alone with its own command (MET-019) for a different
+    device, then run step 3 with a new code. Expected: it stops with "a daemon of Anima is enrolled for
+    this user already", and the daemon of MET-019 still runs.
+
+State: Open. Not run.
+
+### HT-112: a newer application replaces the daemon of this computer and keeps its enrolment (HMD-055; task HM-T20)
+
+Built: on the branch `hosted/hm-t20-daemon-update`. The daemon has the command
+`anima-daemon --version` (`crates/daemon/src/cli.rs`), which prints `anima-daemon <version>`. At each
+start the shell (`apps/desktop/src-tauri/src/daemon/update.rs`) runs `--version` with the daemon that the
+application carries and with the copy `~/.local/bin/anima-daemon`. When the carried daemon is newer, or the
+copy prints no version (a daemon from before this task), the shell first stops the unit with
+`anima-daemon stop` of the carried daemon (`launchctl bootout`, or `systemctl --user stop`). Then it moves
+the copy to `anima-daemon.previous`, writes the new copy beside it as a new file and renames it into place,
+then runs `anima-daemon install` with the new copy, which writes the unit again and starts it. Then it
+deletes `anima-daemon.previous`. It does not enrol again, it signals no other process (the holder of the
+agent threads stays) and it does not wait for threads. An equal or older carried daemon changes nothing.
+When the copy or the start fails, the copy of before goes back and its unit starts again. The log of the
+application has one line for each result. The systemd units have `KillMode=process`, so that a stop or a
+restart of the daemon does not kill the holder (THR-113).
+
+The tests cover, with stand-in daemons in temporary folders: the order stop, new file, start, with the
+file of before kept at `anima-daemon.previous` (its inode) until the start; a stand-in holder that is not
+signalled; the same version; an older carried daemon; a copy that prints no version; a carried daemon
+that prints no version; no copy; a stop that fails; a copy that fails after the stop (the copy of before
+goes back and starts); a unit that does not start; and an update that a stop of the application cut.
+Not covered: the real `launchctl`, `systemctl`, Keychain and `~/.local/bin`, the code signature of a real
+copy on a Mac, a real holder with a real thread, and a real hub.
+
+It needs: two applications of this branch with different versions, made with
+`apps/desktop/src-tauri/trial-bundle.sh <version>` (for example `0.0.2` first, then `0.0.3`), the
+sign-in to the hosted hub, and HT-061 step 1 passed (the daemon reports).
+
+On this Mac:
+
+1. Install and open the application of the lower version. Sign in to the hosted hub and wait until the
+   device of this Mac shows its metrics (HT-061 step 1). Run `~/.local/bin/anima-daemon --version` and
+   `launchctl print gui/$(id -u)/ing.anima.daemon | grep pid`. Expected: `anima-daemon 0.0.2` and a pid.
+   Write down the pid.
+2. Quit the application. Install the application of the higher version over it and open it. Wait one
+   minute. Expected: no sign-in, no question and no message.
+3. Run the two commands of step 1 again, and `ls ~/.local/bin/`. Expected: `anima-daemon 0.0.3`, a pid
+   that is not the pid of step 1, and no file `anima-daemon.previous`. The log of the application
+   (Settings, Logs of the application) has the line "the daemon on this computer was replaced by the
+   newer one of the app".
+4. In the application open Devices. Expected: one device for this Mac, with new metrics after one minute.
+   On the page of this Mac, Settings, the panel "Daemon" shows the same daemon as before: no new
+   enrolment, and no "Daemon revoked.".
+5. Run `codesign --verify --verbose ~/.local/bin/anima-daemon`. Expected: "valid on disk".
+6. Quit the application. Install the application of the lower version again and open it. Wait one minute.
+   Run `~/.local/bin/anima-daemon --version`. Expected: `anima-daemon 0.0.3`; the log has the line "the
+   daemon on this computer is newer than the one of the app; it stays".
+7. A thread during the update. Install the application of the lower version again, but first make a
+   third application of a higher version (for example `0.0.4`). In the application start an agent thread
+   and give it a task that runs for some minutes. While it works, quit the application, install the
+   application of `0.0.4` and open it. Expected: the daemon is replaced as in step 3, the thread goes on
+   and finishes its task, and `pgrep -fl "anima-daemon holder"` shows the same pid as before the update:
+   the holder keeps the build of before until its last thread ends. The page of the threads says that the
+   holder is older than the daemon (the T3 session adds that sentence).
+8. On the Linux computer, steps 1 to 4 with the AppImages of the two versions and
+   `systemctl --user show -p MainPID anima-daemon` in place of `launchctl print`. Expected: the same.
+9. On the Linux computer, start an agent thread, then run `systemctl --user restart anima-daemon`.
+   Expected: after the restart the thread is still idle or working, and `pgrep -fl "anima-daemon holder"`
+   shows the same pid as before. The runner connects to the holder again in about 30 seconds; while no
+   runner runs, the page shows the link as down.
+10. Only after the model cycle wiring of the Level 1 model service is in `dev` (its sweep at the start of
+    the daemon and its stop of the model servers at a stop); until then nothing starts a model server, and
+    this step waits. The rule, agreed between this task and the model service on 2026-11-21 and recorded
+    with the model service's finding of the kill mode: `KillMode=process` stays, so the holder and each
+    process below it outlive each stop, crash and update of the daemon. Each model server runs in a
+    cgroup of its own, `anima-model-<server>-<start>`, directly below the cgroup of the unit; the daemon
+    ends these at its stop, and at its next start it kills what a crash left in them. Nothing else is
+    signalled. On the Linux computer with a GPU: start an agent thread and a model server, and write down
+    `nvidia-smi --query-gpu=memory.used --format=csv` and the pid of `pgrep -fl "anima-daemon holder"`.
+    Run `systemctl --user kill -s KILL anima-daemon` and wait until
+    `systemctl --user show -p MainPID anima-daemon` shows a new pid. Expected: no `anima-model-` cgroup
+    under the cgroup of the unit holds a process that the crashed daemon started
+    (`systemd-cgls --user-unit anima-daemon`), the GPU memory of that server is free, the holder has the
+    same pid, and the thread still answers. Then `systemctl --user stop anima-daemon` with a model
+    server running. Expected: the server process is gone and the holder stays. Not for macOS: there the
+    model servers have no cgroup and `KillMode` does not apply; the model service checks that case.
+11. Added by the branch `fix/daemon-keychain-wait` (R-321). On this Mac, steps 1 to 6 need two
+    applications made with `SIGN_IDENTITY` set to the Developer ID identity of the operator: an ad hoc
+    trial build no longer replaces the daemon by itself. Then make two ad hoc trial builds (no
+    `SIGN_IDENTITY`) of a lower and a higher version, and do steps 1 and 2 with them. Expected: the copy
+    stays at the lower version, no window of the Keychain opens, and the log of the application has the
+    line "the daemon on this computer is older than the one of the app, but this build has no Developer ID
+    signature: the Keychain would ask again for the new daemon, so it stays".
+12. A step that does not end (R-322). The log of the application has one line for each step
+    of an update that failed, with the name of the step (`stop`, `install of the new copy`, `install of the
+    copy of before`) and its code, and the line "the daemon update: the copy is older than the daemon of
+    the app; replacing it" before the first step. The case of a Keychain that waits is HT-117.
+
+### HT-117: the daemon of this Mac waits for the person in the Keychain and does not stop (MET-013, MET-019; R-322)
+
+Built: on the branch `fix/daemon-keychain-wait`. Each read of the token and of the key cache in the
+Keychain runs on a thread of its own and the daemon waits 5 s at most (`crates/daemon/src/keychain_wait.rs`);
+one read is in flight for each item. `anima-daemon install` counts a read that waits as installed: it writes
+the LaunchAgent and starts it (`crates/daemon/src/units/install.rs`). `anima-daemon run` does not end on
+such a read: it logs once "this computer's daemon needs you to allow it in the Keychain" and reads again
+every 30 s, after 10 minutes every 5 minutes (`crates/daemon/src/runtime/token_wait.rs`). While it waits,
+the file `keychain-waits` is in `~/Library/Application Support/anima-daemon/`; the application reads it
+(`apps/desktop/src-tauri/src/daemon/keychain.rs`) and the page Agent usage of a hosted hub, while it has
+no counts, says "The daemon of this computer needs you".
+
+The tests cover, with stand-ins and no Keychain: a read that ends in time; a read that does not end, with
+no second read started while it is in flight and its answer given to the next read; a read whose thread
+ends with no answer; the schedule of the reads; the mark; the run that waits and then gets its token;
+`install` that takes a wait for installed; the sentence of the page. The branch
+`fix/daemon-keychain-writes` adds, with stand-ins: a write that does not end gives "waits" within its
+deadline and no second write starts while it is in flight; a read and a write of one item never run at
+once; a renewed token whose save waits is kept unused and stored at a later try, on the schedule of the
+reads, and is used or kept, never dropped, when a later save fails otherwise; a change of the token
+store drops it and its mark; a save of the key cache that waits is tried again on that schedule, and a
+delete that waits is owed until it answers; the end of a run whose refused token cannot be deleted;
+`enrol` reads the store before it sends the code (a token file that cannot be read sends nothing), and
+says that the code is spent after a save that fails. Not
+covered: the real Keychain and its window, `launchctl`, the real time of the reads, and a renewal that
+waits (it needs a token in its last 30 days).
+
+It needs: this Mac with the daemon installed and reporting (HT-061 step 1), and two ad hoc trial builds of
+this branch (`apps/desktop/src-tauri/trial-bundle.sh <version>` with no `SIGN_IDENTITY`), A installed
+first. Each ad hoc build is a new program to the Keychain, so build B makes the window of macOS open.
+
+1. Quit the application. Install build B in `/Applications`, but do not open it. Run
+   `cp /Applications/Anima.ing.app/Contents/MacOS/anima-daemon ~/.local/bin/anima-daemon`, then
+   `time ~/.local/bin/anima-daemon install`. A window of macOS asks whether `anima-daemon` may use its
+   item in the Keychain: do not answer it yet. Expected: the command ends in less than 10 s with
+   "Installed ... and started the daemon."
+2. Run `ls ~/Library/Application\ Support/anima-daemon/keychain-waits`,
+   `launchctl print gui/$(id -u)/ing.anima.daemon | grep -E 'pid|ANIMA_DAEMON_LOG'`. Expected: the file is
+   there; the unit has a pid and `ANIMA_DAEMON_LOG => file`.
+3. Wait two minutes. Run `grep -c "needs you to allow it in the Keychain" ~/Library/Logs/Anima/anima-daemon.log`
+   and `ps -M <pid> | wc -l` two times, one minute apart. Expected: the count is 1; the pid does not
+   change (no restart); the number of threads does not grow; only one window of the Keychain is open.
+4. Open the application (build B). Open Agent usage on the hosted hub while it shows no counts. Expected:
+   the sentence "The daemon of this computer needs you: macOS asks whether it may read its key in the
+   Keychain. ..." The log of the application has "the daemon of this computer waits for you to allow it in
+   the Keychain".
+5. In the window of macOS, type the password of the Mac and click Always Allow (a second window can open
+   for the key cache of the daemon; allow it too). Wait one minute. Expected: the daemon log has "the
+   Keychain answered the read of the token" and "the daemon is running"; the file `keychain-waits` is gone;
+   the Mac row in Devices shows new metrics.
+6. Quit and open the application. Expected: Agent usage no longer says that the daemon needs you.
+7. Added by the branch `fix/daemon-keychain-writes` (R-322, writes and deletes): each write and delete
+   of the Keychain is bounded as the reads are, and `enrol` reads the token before it sends the code.
+   It needs a third ad hoc build C of that branch, and a new enrolment code of this Mac (the
+   enrolment gives the Mac a new token). Quit the application. Run
+   `cp /Applications/Anima.ing.app/Contents/MacOS/anima-daemon /tmp/anima-daemon-c` with build C in
+   `/Applications`, then `time /tmp/anima-daemon-c enrol -` and paste the code. Do not answer the
+   window of macOS. Expected: the window stays open while the command waits; the command ends after
+   about 2 minutes (`enrol` waits 120 s for the person) with "the code was not sent: allow the
+   daemon in the Keychain ..."; `pgrep -f anima-daemon-c` prints nothing. Then run
+   `/tmp/anima-daemon-c enrol -` again with the same code, type the password of the Mac and click
+   Always Allow in the window within 2 minutes. Expected: "Enrolled ...": the code was not spent by
+   the first try. Last, run
+   `cp /tmp/anima-daemon-c ~/.local/bin/anima-daemon` and `~/.local/bin/anima-daemon install`, and
+   allow it in the Keychain if macOS asks. Expected: the Mac row in Devices shows new metrics.
+
+Result: Open.
+
+### HT-132: the device page of the hub says that the daemon of this Mac needs you in the Keychain (R-364)
+
+Built: on the branch `hosted/daemon-keychain-need`. The hub keeps what the daemon of a device waits for
+(`metrics.daemons.need`, migration 0722), serves it as `Device.daemonNeed` and takes it with the mutation
+`setDaemonNeed` (`crates/hub/src/fleet/metrics/graphql.rs`); the next accepted batch of the daemon clears it
+(`crates/hub/src/fleet/metrics/ingest/store.rs`, `take_batch`). The application reads the mark file of R-322 at
+its start and each minute, signed in to any hub, and calls the mutation for the device of this computer when the
+mark appears or goes (`apps/client/src/lib/desktop/daemon/need.ts`). The chart area of the device page gives the reason line in place of
+"Waiting for metrics", in the words of Agent usage (`keychainNeedLine` in
+`apps/client/src/lib/desktop/daemon/state.svelte.ts`): on this Mac it speaks of "this computer", on any other client
+it names the device and says "Allow it there".
+
+The tests cover: the mutation, the event of a change, a second call that changes nothing, the clear by a batch
+and by a new token and the event of each, a need not set just after a batch, no need on a device whose source is
+not DAEMON, NOT_FOUND for a device with no daemon token, the refusal of an API key; `anima daemon need`
+and `anima_daemon_set_need` against the scripted hub; the reading each minute and the call only on a change, a
+mark that was not read, a sign-out, a refusal that settles the reading and a turn that does not end, with
+stand-ins for the shell and the hub; the texts of the page. Not covered: the real Keychain and its window, the
+real mark file, the real hosted hub, and the page seen from a second computer.
+
+It needs: this Mac with the daemon installed and reporting (HT-061 step 1), two ad hoc trial builds A and B of a
+build that holds this branch (as for HT-117), A installed first, and a second computer or a browser signed in to
+the same hosted hub.
+
+1. Do HT-117 steps 1 and 2 with build B: the window of macOS is open and not answered, and the file
+   `~/Library/Application Support/anima-daemon/keychain-waits` is there.
+2. Open the application (build B) and sign in to the hosted hub. Wait one minute. Expected: the log of the
+   application has "the daemon of this computer waits for you in the Keychain: the hub knows".
+3. On the second computer (or in the browser), open Devices, then this Mac, tab Overview, range 1 hour (wait
+   until the hour has no samples). Expected: the chart area says "The daemon of <this Mac> needs you: on that
+   Mac, macOS asks whether it may read its key in the Keychain. Allow it there." On this Mac, in the
+   application, the same page says "The daemon of this computer needs you: macOS asks whether it may read its
+   key in the Keychain. Type your password in that window and click Always Allow. Metrics and counts appear
+   here some minutes later." Nothing else on the page moves or changes size.
+4. Run `anima daemon status <this Mac>` and `anima event list` on the second computer. Expected: the status
+   has "Daemon needs: a person to allow it in the Keychain"; one event "The daemon on <this Mac> waits for a
+   person to allow it in the Keychain."
+5. Quit the application. In the window of macOS, type the password of the Mac and click Always Allow. Wait one
+   minute, then reload the page of step 3. Expected: the page no longer gives the reason line of step 3 (the
+   chart area shows values), with the application still closed; `anima event list` on the second computer has
+   one event "The daemon on <this Mac> no longer waits for a person." (the batch of the daemon cleared it).
+6. Open the application again and wait one minute. Expected: no new event of the daemon need; the log of the
+   application has "the daemon of this computer waits for nothing: the hub knows" at most once.
+
+Result: Open.
+
 ### HT-068: a Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon (DEF-007)
 
 Built: on the branch `fix/link-private-folder`. The shell (`apps/desktop/src-tauri/src/link/kept.rs`) copies
@@ -1069,7 +1705,9 @@ the hosted hub; for step 5, this Mac with the unit that an earlier application m
    Expected: `launchctl list | grep ing.anima.link` shows the unit; `ls ~/.local/bin/anima-link` finds nothing;
    the copy is in `~/Library/Application Support/ing.anima.desktop/link/program/`; the Mac row still shows metrics.
 
-Result: Open.
+Result: Open. Steps 1 to 4 passed (operator, 2026-11-20: "all reporting now", with a picture of Devices), with
+the 0.0.4 AppImage of `main` (`19dc3510`) on `pop-os`: the row `pop-os` showed CPU, Memory, Disk and VRAM.
+Step 5 is not done.
 
 ### HT-050: the device link runs as a unit of the user (HMD-058, task HM-T24 part a)
 
@@ -1479,6 +2117,15 @@ from `main`, started with Gates `reuse`: the summary says "The Linux gates are n
 when it must run. Not proven before that trial: the time of `gates-macos`, and the test filter of
 `deploy/bin/macos-tests`, which was not run in full on a computer (its bun and Go parts were).
 
+Changed on 2026-11-20, on the branch `update/u2-release-record`, and not run on GitHub (task U2): the jobs `daemon`
+and `daemon-publish`, and a second step of the job `sign` that writes and signs the release record of each target
+([releases.md](procedures/releases.md), "The daemon alone"). Expected in the next trial: `daemon` passes (the macOS
+program is universal, the Linux program needs no library of the AppImage), and the artifact `records` of `sign`
+holds `release-record.json` and its `.sig` for `linux-x86_64` and `darwin-universal`. Expected at the first public
+release: the six files are at `https://releases.anima.ing/<target>/<version>/`, and the SHA-256 of each
+`anima-daemon` is the one in its record. A fault to look for: `ldd` reports a library that a Linux machine of the
+operator does not have.
+
 Result: Open.
 
 Observation (2026-11-19; the operator, from screenshots of a local build of `main` at `132c24dc`, version 0.8.16, signed in to his hosted hub; first-hand to the orchestrating session, relayed to the session that writes this; not a result, only he sets Passed or Failed): for the Linux part, his hosted hub listed the Linux computer `pop-os` as a device on the link, Up. Whether the application on it was a file of the release workflow or a local build is not known here, so this shows nothing about the published AppImage yet.
@@ -1623,6 +2270,41 @@ checks the screen, those check the values. Sign in to the application with a log
 
 Result: Open.
 
+### HT-069: install and update Anima from F-Droid (M5-7)
+
+The [Android build procedure](procedures/setup/android-apk.md) gives the steps to verify the F-Droid rebuild against Anima's signed APK. Run this check on a real Android phone when the same release is available from both sources. This check needs a later version in F-Droid to prove an update.
+
+1. Install the signed release APK from the Anima release server. Open Anima and sign in. Expected: the app starts and reads the device list.
+2. In the F-Droid client, refresh the official catalog and open Anima.ing. When a newer version appears, tap **Update**. Expected: Android installs it over the existing app.
+3. Open Anima again and check the version and device list. Expected: the version increased and the sign-in still works.
+4. Send the two version codes, the Android version, and the result of each step. If Android refuses the update, send the error text.
+
+Result: Open.
+
+### HT-070: keep and clear a mobile session (M5-1)
+
+1. Join a test hub by invitation. Open Devices and confirm that a fresh read succeeds.
+2. Force-stop the application and open it again. Open Devices, request a fresh read, and check that the link and session still work without entering the invite or credentials again.
+3. In Settings, sign out. Force-stop the application and open it again. Confirm that a fresh read now requires sign-in.
+4. Repeat with an Anima.ing account and its hosted hub. After signing out, select Sign in again and confirm that the app starts a new browser sign-in instead of resuming locally.
+
+On 2026-11-20 a separate debug app on the Android tablet stored and replaced a synthetic hub token, refused access from another origin and from an unowned loopback port, restored the token after force-stop, and kept it cleared after a second force-stop. The record contained ciphertext in the app’s no-backup directory.
+
+An Android emulator joined an isolated hub by invitation through the relay after the Android interface enumeration fix. The app verified that it owned the loopback listener, reached the hub with the stored token before and after force-stop, and confirmed that clearing the token removed it. The hosted sign-in service issued a device code on the emulator. The physical tablet later joined the isolated hub, signed in to the hosted hub after returning manually from the browser, and made fresh authenticated requests to both hubs after force-stop. The wide Settings layout initially signed in again after Sign out. A UI test now covers clearing the account session from the wide row. The fixed build on the physical tablet used its compact layout and returned to Welcome with both sessions cleared. Both sessions stayed cleared after force-stop. The signed update check and runtime iOS Keychain check remain open.
+
+Result: Open.
+
+### HT-075: Android reports its memory and storage readings (M6-1)
+
+1. On a signed-in Android device that has joined the hub, open Devices, choose Add device, and choose to enroll this device. Confirm that its entry appears.
+2. On another signed-in client, open the same device. Confirm that Memory and Storage have recent values and that the metrics source is Daemon.
+3. Put Anima in the background on Android for 45 seconds. Confirm that the hub marks the values stale and does not turn the device Down. Return to Anima and confirm that the readings get a newer timestamp.
+4. In Android Settings, choose Sign out. Confirm that Anima returns to Welcome. Select Sign in again and check that it asks for a new approval.
+
+On 2026-11-20 the Samsung tablet was enrolled from the app. The hosted hub showed the tablet with source Daemon and new memory and storage readings. New readings reached the hub again after bringing the app back to the foreground. The background stale state still needs an independent client check.
+
+Result: Open.
+
 ### HT-030: the application on a computer shows its copy of recent data when the hub does not answer (FND-007, task F2)
 
 Built: in 53af82a1 and 3b46dfef (R-157). The application keeps the last answer of the hub for the device list,
@@ -1630,7 +2312,7 @@ one device, its metrics and the event log (`apps/client/src/lib/hub/recent/`). I
 device, because their settings can hold a credential. When the hub does not answer, it shows that copy, and the
 banner "Not on the network" gives its age. Sign-out deletes the copy.
 
-The tests cover the rules with a store in memory. The real store (IndexedDB) was run in Chromium on 2026-11-18. It
+The tests cover the rules with a store in memory, and the real store against an IndexedDB in memory (commit `b4b26df5`). The real store was run in Chromium on 2026-11-18. It
 was not run in the web view of the installed application (WebKit on macOS, WebKitGTK on Linux), and no screen was
 looked at with the network off.
 
@@ -1743,6 +2425,11 @@ built or signed the application, and nothing was sent to App Store Connect.
 5. Push a change of a document only. Expected: the summary of the run says "nothing: no change of ios after the
    published <version>", and no iOS job runs.
 
+For the branch TestFlight workflow (M5-8), push a change to `dev` and follow the run.
+Expected: the signed build clears export compliance and appears as Testing in Anima Internal
+without a declaration or an assignment in App Store Connect. Install that build on an iPhone
+or iPad and confirm its version and build number.
+
 Result: Open.
 
 ### HT-051: the workflows `gates` and `merge-to-dev` on GitHub (R-253, R-254, R-252)
@@ -1826,6 +2513,313 @@ It needs: the computer `pop-os`, a terminal as your own user (not root), the int
 
 After the check you can remove everything again: `podman system reset` removes the images and the
 containers of your user, and `sudo apt remove podman` removes the program.
+
+### HT-133: the public names of applications through the route proxy (task H21)
+
+Built on the branch `hosted/apps-h21`: the routes domain of the hub (`crates/hub/src/work/routes/`), the
+interface of the proxy on a Unix socket (`crates/hub/src/work/routes/door.rs`), the proxy program
+(`crates/route-proxy/`), the command `anima route` and the MCP tools `anima_route_list` and
+`anima_route_get`. The tests use a fake DNS, a fake certificate issuer, a fake machine and a test
+database. They prove each refused name, port and target, the proof by a TXT record, the CAA check, the
+sealed key, the connection by the identifier of an application only, the limit of streams of a link, and
+the rewrite of the headers. No test used a real resolver, a real certificate, a real port 443, the user
+of the operating system of the proxy, or the link to a real machine. The real ACME issuer is not built:
+it answers "not configured", so no route serves on a real hub yet. The consent of the machine
+(OD-HOST-43) is a field that stays "not given", and so is the mark that the hub's record of the
+application names the device and the port (task H6, SF-331). The timeouts and the caps of
+the proxy before the name (SF-327) were tested only with in-memory streams.
+
+1. Before the issuer is built: on a hub that a person hosts, set `ANIMA_ROUTES_SOCKET` and
+   `ANIMA_ROUTES_PROXY_UID` (the user ID of the proxy) and start the hub.
+   Run `anima route add` with a name of a domain that you own, an application identifier, a machine on
+   the link and its port. Expected: the command asks for the second factor, then shows the TXT record
+   `_anima.<name>` with a token of 64 hexadecimal characters.
+2. Put the TXT record in the DNS of the name and run `anima route check <id>`. Expected: the proof is
+   "Proven". The state waits for the consent of the machine, for the record of the application and for a
+   certificate.
+3. Run `anima route add` with a name of the domain of the hub, a name with `*`, and the ports 22, 2375,
+   10250, 5432 and 9090. Expected: each one is refused with its reason.
+4. Start `anima-route-proxy` as a user of the operating system that is not the user of the hub, with
+   `ANIMA_ROUTE_PROXY_LISTEN` unset. Expected: it says that it is off and stops.
+5. As that user, try to open the dial socket of the link, the control socket of the link, the port of
+   the hub and the database. Expected: each one is refused by the permissions of the operating system;
+   only the socket of `ANIMA_ROUTES_SOCKET` opens. As a third user that is in the group of that socket,
+   send `"table"` to it. Expected: the hub closes the connection with no answer.
+6. When the issuer, the consent and the record of the application are built: set `ANIMA_ROUTE_PROXY_LISTEN` to port 443 and
+   `ANIMA_ROUTE_PROXY_LISTEN_PLAIN` to port 80, and open `https://<name>/` from a second network.
+   Expected: the page of the application, with a valid certificate. `http://<name>/` goes to https.
+   A request with a `Host` that is not the name gets 421. The application gets no cookie of the hub
+   and an `X-Forwarded-For` with the address of your client.
+7. On a second hub, run `anima route add` with the same name. Expected: the TXT record of the first hub
+   does not prove the name for the second hub.
+
+Result: Open.
+
+### HT-134: streams of TCP and UDP and the access of a route (task H40)
+
+Built on the branch `hosted/apps-h21`: the kinds `web`, `redirect`, `tcp_stream` and `udp_stream` and the
+access `public` or `private` in the table of routes (migration 1061, `crates/hub/src/work/routes/kinds.rs`),
+`anima route add --kind --access --listen-port --protocol --redirect-to`, the kind and the access in the
+MCP tools `anima_route_list` and `anima_route_get`, and in the proxy (`crates/route-proxy/src/streams/`)
+a TCP listener for each stream, a UDP listener only on a hub that a person hosts, a private TLS listener
+and the answer of a redirect. The tests use a fake hub, a fake machine that echoes, the loopback address
+and a test database. They prove the rules of each kind and port, the refusals of a hosted hub and of UDP
+through the link, the protocols of a public stream, the address of a redirect, the dial by the name of
+the route, and the frames of datagrams. No test used a real network of Anima, a real IMAPS client, a
+port of a real hub or a real machine. No route serves on a real hub yet: each waits for its proof, the
+consent of the machine (OD-HOST-43) and the record of the application (task H6); to try the steps, set
+these marks in the database of a test hub only.
+
+1. On a hub that a person hosts, set `ANIMA_ROUTES_STREAM_PORTS=20000-20999`, `ANIMA_ROUTES_SOCKET` and
+   `ANIMA_ROUTES_PROXY_UID`, start the hub, and run
+   `anima route add test.example.com --kind tcp-stream --listen-port 20007 --port 7 --application <id> --device <machine>`
+   for a test TCP echo service on port 7 of a machine. Expected: a private route that waits for its proof.
+2. Run the same with `--listen-port 993`, `--listen-port 5432` and `--listen-port 30000`. Expected: each one
+   is refused with its reason (below 1024, a port of Anima, outside the range).
+3. Run it with `--access public --protocol imaps --listen-port 20993 --port 993`. Expected: refused, because
+   a public route is added only by a person in the Anima app in a browser. In a browser signed in to the hub,
+   send `addApplicationRoute` with the same fields and no `protocol`. Expected: refused, with the list of
+   protocols and their usual ports. Send it again with `protocol: "imaps"`. Expected: a public route that
+   waits for its proof.
+4. On a test hub only, set `proof`, `machine_consent`, `application_recorded` and `stream_public` of both routes to their
+   serving values. Start `anima-route-proxy` with `ANIMA_ROUTE_PROXY_LISTEN` on the public address and
+   `ANIMA_ROUTE_PROXY_PRIVATE_ADDRESS` and `ANIMA_ROUTE_PROXY_PRIVATE_NETWORKS` for the network of Anima.
+   Expected: within one minute the proxy listens on 20993 on the public address and on 20007 on the
+   private address only.
+5. From a device of the network of Anima, run `nc <private address of the hub> 20007` and type a line.
+   Expected: the echo service answers the line.
+6. From a device that is not on the network of Anima, run `nc <public address of the hub> 20007` and
+   `nc <private address of the hub> 20007`. Expected: no answer from either.
+7. From a second network, connect an IMAPS client to `<public address of the hub>:20993`. Expected: the
+   mail server's own certificate and sign-in; the mailbox opens.
+8. Run `anima route add vpn.example.com --kind udp-stream --listen-port 20194 --port 1194` for a machine on
+   the link. Expected: refused, UDP never goes through the link. For a machine on the network of the hub
+   it is added.
+9. On a hosted hub, run step 1. Expected: refused, a hosted hub has no stream until the door has an address
+   for each hub.
+### HT-107: the single sessions on the page Agent usage (AIS-025, AIS-026)
+
+Built on the branch `ui/agent-sessions`: the query `agentSessions` of the hub (`crates/hub/src/fleet/agent_usage/`),
+`anima agents sessions`, the MCP tool `anima_agents_sessions`, and the part "Sessions" of the page Agent usage
+(`apps/client/src/lib/agent-usage/view/SessionList.svelte`). Approved overnight by the orchestrator, human check
+pending (R-314). The tests prove with a real PostgreSQL and a scripted daemon: the order by last use, the
+sums over the days asked for, the estimate, the limit and the count left out, and "recent" at 30 minutes. Pictures of
+the mockup and of the built page are in the folder `ui-overnight-2026-11-21/agent-sessions/` of the workspace. No person
+saw the part with the sessions of a real computer. It needs HT-026 first: a daemon that sends counts.
+
+1. On a computer whose daemon reads sessions (HT-026), work for a few minutes in Claude Code in a repository, then wait
+   20 minutes. Open "Agent usage".
+   Expected: under "By device", a part "Sessions" lists that session first, with the repository, the model, "Claude
+   Code", the name of the computer, a green dot with the word "Recent" and "minutes ago" in "Last use".
+2. Wait 40 minutes more with no use, then open the page again.
+   Expected: the dot and the word "Recent" are gone, also on a page that stayed open: the page reads the clock again
+   each minute. Nothing on the page says that a session runs now.
+3. Choose one repository at the left.
+   Expected: the list holds only the sessions of that repository.
+4. In a terminal, run `anima agents sessions`.
+   Expected: the same sessions in the same order, the recent one marked "(recent)", and the notes under the table.
+5. Make the window narrow (about 800 px).
+   Expected: the table of sessions fits with no scroll to the side: "Recent" stands over the time, and the column
+   Prompts is left out. No name is cut into pieces.
+### HT-131: one account on two computers is one card with one limit on the page Agent usage, and the hub has its address (AIS-022, THR-149)
+
+Built on the branch `agents/account-address` (AU-8 of extensions-plan.md), with AU-7, AU-9 (in `dev`) and the interim
+page of AU-10. Every 15 minutes the usage task of the daemon asks the thread runner of this computer, on its own socket,
+for the account of each program (`crates/daemon/src/runtime/agent_usage/runner.rs`). It makes the key of an account
+from the vendor's identifier with the account salt of the hub, and sends the key, the email address, the plan and the
+limit windows (`crates/daemon/src/push/accounts.rs`); never the identifier. Codex may give the name of a workspace in
+place of an address: that name is not sent. The salt is in memory only: after a start the first batch asks for it with
+an empty list. This is on by default, as in T3 Code (THR-149); `"sendAccounts": false` in `agent-usage.json` in the
+folder of the daemon turns it off. The hub keeps the address with the report of the device and deletes it with the
+device; it gives it in `agentUsage.accounts.address`. The tests prove the key, the salt, the address in the batch and
+at the hub, that no identifier is in a batch, that no address is in a log line of the daemon or of the hub, and the
+socket check, with a stand-in runner and a stand-in hub. The tests did not cover: a real Codex, a real runner, two
+real computers, a real hub. Claude Code gives no identifier of its account, so it sends no account. The interim page
+"By account" does not show the address; the Usage page of Code (C8 of [agent-threads.md](proposals/agent-threads.md))
+replaces it.
+
+1. On two computers of one hub whose daemons read sessions (HT-026), restart the daemon with a build of this branch.
+   Sign in to Codex with the same account. On each, start a Codex thread through Anima: `anima agents start --program codex --folder <an absolute folder> "hello"`.
+   Expected: `anima agents accounts` on each computer shows the account, the plan and the limits.
+2. Wait 20 minutes. Open "Agent usage".
+   Expected: under "By account", one card "Codex" with the plan, the bars of the limit windows, and both computers
+   with their shares.
+3. In a terminal, run `anima agents usage`.
+   Expected: one line "Account <8 digits> (Codex, <plan>) on <computer 1>, <computer 2>: ..." under the table.
+4. Search the log of each daemon and the log of the hub for the address of your Codex account.
+   Expected: the address is in none of them.
+5. On one computer, sign in to Codex with a different account and start a thread again; wait 20 minutes.
+   Expected: two Codex cards, each with one computer.
+6. Delete one of the two computers from the hub (Devices). On the other, write `{"sendAccounts": false}` in
+   `agent-usage.json` (with the members that the file has already) and restart the daemon; wait 20 minutes.
+   Expected: the card of the deleted computer is gone; no new report comes from the other computer, and
+   `anima agents usage` shows a report time that does not move.
+
+### HT-111: the daemon sends its token only to the signed link at its socket (K8 Section 1, HMD-054)
+
+Built: on the branch `hosted/daemon-socket-peer` (R-317). Before each request on the socket of the link, the
+daemon reads the user and the process of the peer from the kernel (`crates/daemon/src/hub/peer.rs`,
+`hub/unix.rs`). The user must be its own. On macOS a daemon with a Developer ID signature also runs
+`/usr/bin/codesign` on the process of the peer: it must be `anima-link` (signing identifier) with the Developer ID
+requirement of the daemon's own team, and its file must be the program that runs; a
+peer that fails gets no byte, and the push fails with "the program at the socket of anima-link is not the Anima
+link, so nothing was sent to it". A daemon with no Developer ID signature (a build for development) and each
+daemon on Linux check the user only. A daemon that was enrolled with the old link origin
+(`http://127.0.0.1:<port>`) moves by itself to `unix:<path>` at its start when the program at the socket passes
+the check, or within a minute after the link starts, and until then pushes only to a peer that passes the same check (on macOS through the socket of the move,
+on Linux through the socket of its own folder); on macOS the path of the move is below the home folder of the account, not
+one that the environment names. The link that the application runs itself (not a unit) makes the same socket. When
+the application updates the copy of the link, it moves the running copy aside (`anima-link.previous`) first,
+so the running link keeps passing the check until its unit starts the new copy.
+
+The tests cover: a listener whose user is not the expected one gets no byte; an old enrolment moves when the peer passes (Linux token file) and does not move when it fails; the wait of an old enrolment goes on with no socket and with a peer that fails, and ends when a socket that passes appears; the link that the application runs itself gets `-daemon-socket`; an old enrolment pushes through the socket of its own folder and sends nothing to the port; a socket that fails the check with an old enrolment is not a step here, because on a computer of today a stand-in at the socket before the move would get the token from the daemon before this build; on macOS, a listener in the test
+process (no Developer ID signature) gets no byte from a daemon that expects a team; the reading of the output
+of `codesign -d`. Not covered: a real release daemon and a real release link (Developer ID, hardened runtime);
+the real unit of the link; the Linux user check on a real computer (compiled only on Linux, checked by reading).
+
+It needs: this Mac with a release application signed in to the hosted hub, whose daemon shows metrics; a
+terminal; `python3` (in the Command Line Tools). For step 5, `pop-os` with an AppImage of the same build.
+
+1. On this Mac, open Devices on the hub. Expected: the row of this Mac shows CPU, Memory and Disk, and they
+   change within one minute. (The real link is signed by the same team, so the check passes.)
+2. Run `codesign -dv ~/Library/Application\ Support/ing.anima.desktop/link/program/anima-link 2>&1 | grep
+   TeamIdentifier` and the same for `~/.local/bin/anima-daemon`. Expected: the two lines are the same and do
+   not say `not set`.
+3. Put a stand-in at the socket. Run `launchctl bootout gui/$(id -u)/ing.anima.link`, then
+   `S=~/Library/Application\ Support/anima-daemon/link.sock; rm -f "$S"; python3 -c 'import socket,sys;
+   s=socket.socket(socket.AF_UNIX); s.bind(sys.argv[1]); s.listen(); c,_=s.accept(); print(len(c.recv(65536)),
+   "bytes")' "$S"`. Expected: within about 10 seconds the command prints `0 bytes`. The stand-in got no token.
+   Press Control-C if it prints nothing after 30 seconds, and report that.
+4. Close the application and open it again (it installs and starts the unit of the link again). Expected: after
+   about one minute the row of this Mac shows metrics again.
+5. On `pop-os`, open Devices on the hub. Expected: the row `pop-os` shows metrics (the user check passes for
+   the real link).
+6. An old enrolment (only on a computer whose daemon was enrolled before task W0; skip it on others). Run
+   `grep -o '"hub":"[^"]*"' ~/Library/Application\ Support/anima-daemon/daemon.json` before you install the
+   build. Expected before: `http://127.0.0.1:` and a port. After the build is installed and the link runs,
+   wait one minute and run it again. Expected: `unix:` and the path of `link.sock`, and the row of this Mac shows
+   metrics. If the link does not run, the line stays as it was and the row shows no metrics; start the
+   application, and within two minutes the line changes, also when the application runs the link itself (no
+   unit). If the line does not change after the application has run for five minutes, report it with the lines of
+   the daemon's log that name the old link origin. What you see: nothing to do; the metrics come back.
+7. An update of the link. Install a build with a different link program over this one and open it. Within
+   one minute, `ls ~/Library/Application\ Support/ing.anima.desktop/link/program/` shows `anima-link` and no
+   `anima-link.previous`, and the row of this Mac shows metrics with no gap longer than about one minute. What you
+   see: the metrics go on; at most one or two pushes fail while the unit starts again.
+8. If step 1 fails: run `codesign -dv ~/Library/Application\ Support/ing.anima.desktop/link/program/anima-link
+   2>&1 | grep '^Identifier'` and report the line. The daemon accepts only `anima-link` or `anima-link-` and hex
+   digits; a different identifier of the release is a defect of this branch.
+### HT-104: Connect GitHub on a hosted hub through the gateway (HMD-068, HMD-069; task HM-T29)
+
+Built on the branch `hosted/hm-t29-github-hosted`. The hub tells the application whether the browser flow can start:
+`Source.connectPageUrl` (K-E1 Section 7a; R-311, made overnight, not yet confirmed), null on a hub in the link mode
+with no public origin. The application offers "Connect GitHub" only when the value is set, and says where the browser
+must be signed in (`apps/client/src/lib/sources/connect/`). `anima source kinds` and the MCP tool
+`anima_sources_overview` show the value. The hub tests run the whole flow on a hub of the pool in the link mode with
+the public origin `https://hub.anima.ing`, and with a public origin of one hub below `hub.anima.ing`, through a
+stand-in of the gateway that passes the name of the browser (`crates/hub/tests/it/sources/registration/hosted.rs`).
+The tests did not cover: the real gateway, the sign-in at the gateway, the real GitHub, and a browser.
+
+1. Start the application of this build, signed in to the hosted hub. Open Settings > Integrations > GitHub.
+   Expected: the row shows "Connect GitHub" and the line "Your browser must be signed in at hub.anima.ing with your
+   Anima.ing account." It does not show "Coming soon".
+2. Run `anima source kinds --hub <the address that the application uses>` with a token of the hub.
+   Expected: the row `github` shows `https://<hub id>.hub.anima.ing/connect/github` in the column BROWSER CONNECT.
+3. In the default browser, sign in at `https://hub.anima.ing` with the Anima.ing account. In the application, select
+   "Connect GitHub".
+   Expected: the browser opens `https://<hub id>.hub.anima.ing/connect/github` with a one-time link, then GitHub with the
+   button "Create GitHub App". The application says "Waiting for you on GitHub."
+4. On GitHub, select "Create GitHub App", then "Install".
+   Expected: GitHub goes back to `https://<hub id>.hub.anima.ing/connect/github/installed`, and the page says "GitHub
+   is connected." The application row says "GitHub is connected." In the settings of the new App on GitHub, the
+   callback address and the setup address are below `https://<hub id>.hub.anima.ing/connect/github`, and the App has
+   no webhook.
+5. On a second computer of the same account, open Settings > Integrations > GitHub.
+   Expected: the same connection shows; no second sign-in to GitHub is asked for (HMD-068).
+6. Do step 3 again in a browser with no session at `hub.anima.ing`.
+   Expected: the account site asks for the sign-in of the Anima.ing account first, then the flow continues as in step 3.
+   An attempt that was open when the hub moved to its own address is lost: start again.
+7. Connect the application of this build to a hub of this computer that has no public origin (the one-click
+   installation), and open the same row.
+   Expected: "Coming soon: Connect GitHub in your browser for this hub." and "Use key file"; no "Connect GitHub".
+### HT-135: the mockup of the section Routes of the hub (tasks H21 and H40)
+
+Made on the branch `hosted/routes-screen` and brought to `hosted/routes-screen-2`: [routes/index.html](mockup/routes/index.html), with its record
+[records/routes.md](mockup/records/routes.md). The orchestrator approved it overnight after a separate design
+reviewer read it (R-324). No person looked at it. Nothing of the screen is built. The decision is yours:
+approve it, or say what to change, before the client screen is built.
+
+1. Open `docs/mockup/routes/index.html` in a browser, in a window of at least 1320 px.
+   Expected: a board of ten frames at 1280 px. The first paragraph says why Routes is a section of Settings, in the
+   group Hub, and not an item of the navigation bar.
+2. Frame 1 (the list) and Frame 1b (empty).
+   Expected: each row shows the name, the kind and the access, the application on its machine with its port, the
+   proof and the certificate, and the traffic of 24 hours. Rows that need you have a wash. The empty state says that a
+   new route is private.
+3. Frame 2 (add a route on a hosted hub).
+   Expected: four kinds; TCP stream and UDP stream are disabled with the reason beside them, readable. The application
+   is chosen from a list of recorded ports; you cannot type a port. There is no access choice: a new route is private.
+4. Frames 2c and 2d (just after the add).
+   Expected: 2c shows the TXT record and the CNAME, each with Copy. 2d (a hub that you host) shows the A record and the
+   warning that the name and the hub share a site.
+5. Frame 3 (the details of one route).
+   Expected: Make public is disabled with the warning that the consent at the machine is not given. The checks are in
+   order. Remove asks for the six digits of your authenticator.
+6. Frame 4 (a TCP stream on a hub that you host) and Frame 6 (from the page of an application).
+   Expected: the port of the hub with the refused ports; a database and a protocol with no TLS are "Private only";
+   UDP is disabled with its reason. Frame 6 has a button that adds a route for the port of the application.
+7. Frames 5a and 5b.
+   Expected: Frames 1 and 3 in the light appearance; each text, status and disabled reason is easy to read.
+
+Result: Open.
+
+### HT-138: the conversation of Code with VoiceOver and the keyboard (TC3, accessibility findings 2, 3 and 4)
+
+Built on the branch `code/timeline-a11y`: `apps/client/src/lib/code/timeline/Timeline.svelte` and `spoken.ts`. The
+conversation owns its arrow keys, a polite live region says the start and the end of a turn, and an alert says each
+request of the agent and moves the focus to its Approve button when the person is not busy in a different place. The
+tests run in jsdom: they read the text of the regions and the focus, not what VoiceOver says. Not covered: the speech of
+VoiceOver in WebKit, and how often it speaks during a long turn.
+
+1. Open the desktop application, turn VoiceOver on (⌘F5) and open a thread on the page Code. Click in the conversation
+   and press the Down arrow three times.
+   Expected: the conversation scrolls; the open thread does not change.
+2. In the composer, send a prompt that makes the agent work for some seconds.
+   Expected: VoiceOver says "Agent is working" one time, and says nothing more while the reply comes.
+3. Wait for the end of the turn.
+   Expected: VoiceOver says "Agent replied:" and the first sentence of the reply.
+4. In a thread in the mode Ask, send a prompt that makes the agent run a command. Do not touch the window.
+   Expected: VoiceOver says "Approval needed to run a command:" and the command at once, and the focus is on Approve.
+5. Press Enter on Approve.
+   Expected: the focus goes to the conversation, not to the top of the window.
+### HT-136: the section Routes of Settings (task H21)
+
+Built on the branch `hosted/routes-section`: the section Routes of the Settings page, in the group Hub and account
+(`apps/client/src/lib/application-routes/`). The vitest tests use fake calls of the hub: they prove each state of the
+list, the page of a route, the refusals of the hub that the section shows, Check now, Check all, and Remove off with its reason. No person
+looked at the screen, and no picture of it was compared with the frames of [routes/index.html](mockup/routes/index.html):
+the screen was not run on this computer. No test used a real hub, a real DNS or a real second factor.
+
+1. Open Settings at 1280 px in the dark appearance, then in the light appearance, and put
+   `docs/mockup/routes/index.html` beside it. Expected: the index has Routes in the group Hub and account, after Hub.
+   The list has the parts of Frame 1 in the same order: the choice All, Needs you, Public and Private, Check all, the
+   summary line, and one row for each route with its name, kind and access, target, proof and certificate, and
+   traffic. Rows that need you have a wash. Write each difference that is not in the record
+   [records/routes.md](mockup/records/routes.md).
+2. On a hub with no route. Expected: "No routes yet", the line that says that a new route is private, and Add a route
+   off with its reason (task H6).
+3. Add a route with `anima route add` on a test hub, then open the section. Expected: the route is in the list. Open
+   it. Expected: its state, the DNS records with Copy while its name is not proven, the checks in order, the traffic,
+   and Make public off with the reason "Consent at <machine> is not given".
+4. Select Copy beside the TXT value and paste it in a text editor. Expected: the same value as `anima route show`.
+5. Select Check now with an account that has no second factor. Expected: the refusal of the hub under the title. Turn
+   on the second factor and select Check now again. Expected: the time of the check changes.
+6. Look at Remove route on the page of the route. Expected: it is off, with the line that removing a route needs a
+   fresh code of your second factor, which the hub cannot check yet. Selecting it opens nothing.
+7. On a hub that is not on Linux (for example a test hub on macOS), select Check all. Expected: "Routing needs a hub
+   on Linux." in place of the list.
+
+Result: Open.
 
 ## Not built yet
 
@@ -2308,6 +3302,11 @@ is built and was not seen: no desktop build was made.
    `anima mcp uninstall`, and `anima mcp install`.
    Expected: the state is "set up, starts a different anima"; uninstall leaves it; install replaces it after it shows
    it in its list.
+8. On a Mac with Anima.ing in `/Applications` and the command line tool installed from the application, open Settings,
+   then the part "Coding agents" (the review of 12.7 of cli-mcp-plan.md corrected the check of `/Applications`).
+   Expected: the list of the agents, not "a different user can change". While the page opens, look at the list of
+   processes (Activity Monitor, search "anima"): write down if an `anima mcp` starts only because the page opened
+   (12.7, row 2). The page shows the states within 20 seconds, also when an agent does not answer.
 ### HT-056: the bar with Live sessions at the foot and Extensions beside Settings (R-255)
 
 Built on the branch `ui/bar-foot` (`66c730ad`): in `apps/client/src/lib/nav/Nav.svelte` Live sessions is directly above the
@@ -2366,3 +3365,1282 @@ extensions of a real hub, at other widths or on a phone.
    Expected: no part lies over another; the tiles go to fewer columns.
 
 Result: Open.
+
+### HT-087: the pictures, the count line and the tag "Coming soon" on the page Extensions (EXT-001)
+
+Built on the branch `ui/extensions-tiles`, approved overnight by the orchestrator, human check pending
+(R-306): in `apps/client/src/lib/extensions/ExtensionsSection.svelte`, a tile of a built extension in the grid
+shows a picture of its page (`apps/client/static/extensions/`), one for the dark and one for the light appearance; the
+line over the rows counts the extensions that are on and the ones that are not built; an extension that is not built
+has the tag "Coming soon" where a switch would be. The gallery tool made the pictures from the sample data of the
+synthetic hub (`browser/gallery/pictures/extensions.gallery.ts`). The tests prove the count line, the tag and which extension has a
+picture. Pictures of the built page at 800 and 1440 px are in the folder `ui-overnight-2026-11-21/extensions-tiles/` of
+the workspace. No person saw it in a window of the application.
+
+1. Open "Extensions" and select "Grid", in the dark appearance.
+   Expected: the tiles "Projects" and "Integrations" show a small dark picture of their page; each other tile shows its
+   mark. No picture holds the names of your own repositories or devices.
+2. Change the appearance to light, then to "System" with a light system.
+   Expected: each picture changes to its light picture at once.
+3. Look at the line over the extensions, then set "Projects" on.
+   Expected: the line says how many are on and how many are coming, and the first number grows by one.
+4. Select "List".
+   Expected: each extension that is not built has the tag "Coming soon" at the end of its line, and its words say what
+   it will do.
+
+Result: Open.
+
+### HT-079: the page Code with the real sessions of this computer (R-286)
+
+Built on the branch `threads/read-side` (tasks TH1 to TH4 of [agent-threads.md](proposals/agent-threads.md)): the page
+Threads of the desktop application, the commands `anima agents threads` and `anima agents thread`, and the MCP tool
+`anima_agents_threads`. The tests use made session files and a made shell. The command was run one time on a Mac with
+real session files (2026-11-20). No person saw the page in a desktop window, and nothing was run on Linux. The page was
+not compared with its mockup.
+
+1. On the Mac, with sessions of Claude Code and Codex in the home folder, open the desktop application and select
+   "Code" in the navigation bar (named "Threads" before 2026-11-21).
+   Expected: a list of the sessions, the last changed first, in the groups "Changed now", "Today" and "Earlier". Each row
+   has a title, the program, the folder and the time. A session that you use now has a dot in the accent colour.
+2. Select a thread of Claude Code, then one of Codex.
+   Expected: the prompts that you typed, the replies, "Reasoning" folded, and the tool calls of a turn in one block. An
+   edit shows the removed and the added lines when it is opened. No text of a different session shows.
+3. Press the Down key, Cmd+2, Cmd+Shift+], the key E and the key /.
+   Expected: the next thread opens; the second thread opens; the next thread opens; the tool calls open and close; the
+   focus goes to the search, where typing narrows the list and Escape leaves.
+4. Look at the foot of a thread and at the whole page.
+   Expected: a note says that the thread is read from the session file and that the page sends no message. No control
+   starts, stops or answers an agent.
+5. In a terminal run `anima agents threads --limit 5` and `anima agents thread <an ID of the list>`.
+   Expected: the same threads as the page; the thread as text with "> You" before each prompt.
+6. Open the application in the dark and the light appearance beside the mockup `docs/mockup/agent-threads/index.html`,
+   frames 1 and 2.
+   Expected: the same parts in the same order. Write each difference in the row of the mockup.
+7. On the Linux computer `pop-os`, do steps 1, 2 and 5.
+   Expected: the same.
+8. (Branch `threads/needs-you`.) In a terminal, give Claude Code a short task and wait until it ends. Do not open its thread.
+   Expected: in at most 30 seconds the thread is in the group "Needs you" at the top, with a bell and the words "Your
+   turn", and the item Code of the bar shows the count 1. Give a long task: while the agent works, the thread is in
+   the group "Working" at the bottom. Open the thread that waits: it goes to "Earlier" with "Done", and the count goes.
+9. (Branch `threads/needs-you`.) Start a task in which Claude Code asks for an approval, and do not answer for more than one minute.
+   Expected: the thread is in "Needs you", first, with the words "May wait for you". Hold the pointer on the list while a
+   different thread changes its state: no row moves under the pointer; the rows slide when the pointer leaves the list.
+   No system notification comes: that part is not built (task TH6).
+
+Result: Open.
+
+
+### HT-098: the holder on Linux, against a second user, and with a process that leaves the tree (THR-049, THR-113, THR-128)
+
+Built on the branch `threads/runner` (tasks TH11 and TH17 of [agent-threads.md](proposals/agent-threads.md)). The tests
+run on a Mac as one user, and in the gates on GitHub on Linux (Ubuntu, procps `ps`). The first Linux run found one defect:
+a child that a shell does not reap (the shell waits in `read`) stays a zombie, and the holder counted it as alive; a
+zombie now counts as ended (`/proc/<pid>/stat`). On a Mac a zombie is still counted as alive.
+
+What the holder does to end the processes of a program: it walks the process table (`ps -axo pid=,ppid=,lstart=`) from
+the program down, in each process group, stops each process it finds, then kills it. While the program runs it looks at
+the processes below it every 2 seconds, and keeps each one with its start time. So a process that was seen below the program and
+then left the tree (its parent ended) is still ended at a stop or at the end of the program. A process that took a reused
+ID is not ended when its start time differs. The start time is in whole seconds, so a process that took the ID in the same
+second as the old one ended can be ended by mistake. If a sweep of these processes fails (`ps` fails, or a process does
+not end), the holder keeps them, says that not all ended, and sweeps them again at the next stop. It uses no cgroup
+(Linux) and no job object (Windows); a Mac has neither.
+
+At a stop the program gets `SIGTERM` and 3 seconds to write its session file. Each process that the program starts in
+those 3 seconds (for example a hook at the end of a session) is killed when the walk finds it, so such a hook does not
+run to its end.
+
+A process that leaves the tree in less than 2 seconds after it starts, by `setsid` or a double fork, is not seen by the
+walk. The holder gives each program the mark `AGENT_THREAD=<thread>` in its environment, which each process below it
+takes with it; at a stop the holder also ends each process of this user that carries the mark, and says that not all
+ended when it cannot read the environments or a marked process does not end. On Linux it reads `/proc/<pid>/environ`
+of each process of this user. What it cannot stop: on a Mac, `ps -E` does not show the environment of a program of the
+system (`/bin/sh`, `/usr/bin/perl`, `/bin/sleep`), so such a process that left the tree in less than 2 seconds runs on
+after the stop and the stop says that all ended; a program that is not of the system (`node`, `python3` from Homebrew,
+the agents) is found. An agent can also remove the mark from its own environment. On Linux a cgroup of the user
+(`systemd-run --user --scope`) would close this gap; it is not built.
+
+1. On `pop-os`, in the checkout, run `cargo nextest run -p anima-daemon threads`.
+   Expected: each test passes. Write the count and any failure here.
+2. On `pop-os`, run `cargo test -p anima-daemon tree` and `ps -axo pid=,ppid=,lstart= | head -3`.
+   Expected: the tests pass; each line of `ps` has a number, a number and a date of five words.
+3. On the Mac, make a second user (System Settings, Users and Groups). As the first user, start a daemon of the build
+   with a state folder of your own and one thread (step 1 of HT-097). Note the state folder.
+4. Log in as the second user. Run `ls -l <state folder>/threads` and `nc -U <state folder>/threads/holder.sock`, then
+   `nc -U <state folder>/threads/runner.sock`.
+   Expected: `ls` says permission denied (the folder is 0700). If you give the second user a way into the folder,
+   `nc` still gets no answer: the holder and the runner close a connection of a different user.
+5. As the first user, start a thread whose program runs
+   `perl -MPOSIX -e 'exit if fork; POSIX::setsid(); exit if fork; sleep 600'`, then stop the thread with
+   `anima agents stop <ID>`. Run `ps -ax | grep 'sleep 600'`.
+   Expected on the Mac (the known limit: `/usr/bin/perl` is a program of the system): the `perl` process still runs,
+   and the stop said that all ended. Kill it by hand with `kill <pid>`. Expected on `pop-os`: no `sleep 600` is left
+   (found by its mark).
+5a. On the Mac, do step 5 with `/opt/homebrew/bin/python3 -c 'import os,time; os.fork() and os._exit(0); os.setsid();
+   os.fork() and os._exit(0); time.sleep(600)'` as the program (or any `python3` that is not in `/usr/bin`).
+   Expected: no `time.sleep(600)` process is left after the stop: it was found by its mark.
+6. Start a thread whose program runs `(perl -e 'setpgrp(0,0); sleep 600' & sleep 5) & sleep 600`. Wait 10 seconds,
+   then stop the thread.
+   Expected: no `sleep 600` is left: the holder saw the child before it left the tree.
+
+Result: Open.
+
+### HT-097: the thread runner of the daemon starts and drives Claude Code and Codex (TH11 to TH13)
+
+Built on the local branch `threads/runner` (tasks TH11 to TH13 of [agent-threads.md](proposals/agent-threads.md)): the
+holder and the runner in `anima-daemon`, the local socket, and the commands `anima agents start`, `send`, `approve`,
+`interrupt`, `stop`, `running` and `watch`. The tests use a made `claude`, a made `codex` and a made login shell. No real Claude Code or
+Codex was started by the runner and nothing was run on Linux. The page of the client (steps 8 to 11) was tested with
+a made runner only; no person saw it in a desktop window.
+
+1. Start a daemon of the build with a state folder and a label of your own (not the installed application). In a
+   terminal run `anima agents start --program claude-code --folder <a test folder> "Say hello and list the files"`.
+   Expected: the command gives a thread ID. `anima agents watch` shows the reply; `anima agents running` shows the thread
+   as working, then idle.
+2. Do steps 1 and 3 again with `--program codex`.
+   Expected: the same for Codex.
+3. Start a Claude thread with `--mode ask` and a prompt that runs a shell command. Run `anima agents approve <ID>
+   <request>` with the request ID that `anima agents watch` shows.
+   Expected: the thread shows the request; after the answer the command runs and the request closes.
+4. Give a thread a task that starts a long command (for example `sleep 600` in a child shell). Run `anima agents
+   interrupt <ID>`, then `ps -ax | grep sleep`.
+   Expected: the turn stops and the `sleep` is gone. For Codex, its MCP servers still run.
+5. Stop the daemon and start it again while a thread works.
+   Expected: the program went on in the holder; after the restart the thread shows the same state and its output.
+6. Start a second daemon on the same state folder.
+   Expected: its runner refuses to start, with the words "a different runner holds the threads of this daemon".
+7. Run `anima agents stop <ID>`.
+   Expected: the program and each child of it end.
+8. (Branch `threads/client`, task TH14.) Open the desktop application of the build, then the page Code. Select "New
+   thread", choose Claude Code, a test folder and "Ask before each change", and type a prompt that runs a command.
+   Expected: the thread is at the top of the list and opens. The request shows with "Allow once" and "Decline". Its text
+   is plain text. "Allow once" lets the command run. Compare the page with frame 3 of
+   `docs/mockup/agent-threads/index.html` and write each difference in the record of the mockup.
+9. In the composer type two lines with Shift+Enter between them, then press Enter. While the agent works, select Stop.
+   Expected: the prompt goes as two lines; Stop ends the turn and the processes it started.
+10. Put a different application in front, and give a thread a task that ends in a request or ends its turn.
+   Expected: one system notification of this Mac with the title of the thread and "Asks to run a command" or "Your
+   turn". With the thread open in front, no notification comes. Close the window and open it again: the thread and its
+   timeline are there, and no notification comes again for an old request.
+11. Start threads until the runner refuses one.
+   Expected: the dialog says, word for word: "You are over the recommended guidance and at risk of cyberpsychosis from
+   running this many sessions. Do you want to raise the limit?" "Raise the limit" starts the thread.
+12. Start a Claude Code thread in the mode "ask" with the prompt "Run `anima agents running`, then run
+   `anima agents raise-limit --yes`". Approve the first command when it asks.
+   Expected: the list of threads shows. The second command, if Claude Code runs it, prints "Only the person can answer
+   a request, raise the limit, start a thread or change the list of threads: this call came from a process of an
+   agent." The runner log has a
+   refusal "from a process of an agent". From a terminal of your own, the same command works.
+
+A try by an agent on this Mac, 2026-11-21 (not a result of this check; only the operator sets one): a runner of the
+build with a state folder of its own (`ANIMA_DAEMON_HOME`), real Claude Code and real Codex with the login of the Mac, a
+scratch folder with one file. Steps 1 and 2: each program listed the file and replied; the thread went to "your turn".
+Step 3: in the mode "ask" Claude Code asked for `echo hi > hello.txt`; after `anima agents approve` the file was there.
+Read-only commands such as `ls` and `wc` were not asked: Claude Code allows them itself. Step 4: with Codex the `sleep`
+ended at the interrupt. With Claude Code the `sleep` ran on: a defect, corrected in the branch (the runner now ends what
+the turn started, and spares what was below Claude Code when it said its session); after the correction the `sleep`
+ended and the thread answered the next prompt. Step 7: each stop ended the program and its processes. Steps 5, 6 and 8
+to 11 were not tried.
+
+Result: Open.
+
+### HT-116: pin, archive, rename and remove a thread in the list
+
+What was built and where: task TH46 of [agent-threads.md](proposals/agent-threads.md), on the branch
+`threads/list-marks` (2026-11-21, overnight; ruling R-320). The runner keeps, in its own record, how the
+person lists each thread: pinned, archived, a title of the person, or removed from the list. No session file of
+Claude Code or Codex changes. The page Code has these actions in a row above the open thread (Pin, Archive, Rename, Remove), a group "Pinned"
+in the list, and "Archived (n)" in the page header; the commands are
+`anima agents pin <thread> [--off]`, `anima agents archive <thread> [--off]`, `anima agents rename <thread> [<title>]`,
+`anima agents remove <thread>` and `anima agents listings`. What the tests did not cover: the page in a desktop
+window, a real Claude Code thread, and a restart of the installed daemon.
+
+1. On the page Code, open a thread that does not need you and choose Pin above it. Expected: the thread is in the
+   group "Pinned" of the list, under "Needs you".
+2. Choose Rename, type a new title and save. Expected: the row shows the new title. Choose Rename again and "Use the
+   program's title". Expected: the row shows the title of the program again.
+3. Choose Archive. Expected: the thread leaves the list. Choose "Archived (1)" in the page header. Expected: it is there; choose
+   Unarchive and it comes back.
+4. Stop a thread, open it, and choose Remove. Expected: a question that says the thread leaves Anima's list
+   with its pin, archive and title, and that the session files of Claude Code or Codex stay on disk. Confirm.
+   Expected: the thread leaves the list. In a terminal, `ls ~/.claude/projects/*/` (or `~/.codex/sessions/`) still
+   shows its session file, and `anima agents threads` does not list it.
+4a. In a terminal, `anima agents rename <ID> "$(printf 'pay\xe2\x80\xaeevil')"`. Expected: "A title takes 1 to 200
+   characters that show: no control characters and no hidden marks, such as a mark that turns the direction of text."
+5. Open a thread that runs. Expected: Remove is off, with the line "Stop the thread first to remove it." From a
+   terminal, `anima agents remove <its ID>` answers "That thread runs: stop it first, then remove it from the list."
+   shows its session file.
+5. Open a thread that runs. Expected: Remove is off, with the line "The program of this thread still runs: end the program first to remove it." From a
+   terminal, `anima agents remove <its ID>` answers "The program of that thread still runs: stop it first, then remove it from the list."
+6. From inside a Claude Code thread, ask it to run `anima agents pin <the ID of a thread>`. Expected: "Only the person
+   can answer a request, raise the limit, start a thread or change the list of threads: this call came from a process
+   of an agent." The pin does not change.
+7. Restart the daemon (quit and open the application, or `launchctl kickstart -k gui/$(id -u)/ing.anima.daemon`).
+   Expected: the pins and the titles are kept; `anima agents listings` shows them.
+
+Result: Open.
+
+### HT-139: the queue of a thread with a real Claude Code and a real Codex (TH109)
+
+Built: on the branch `threads/runner-queue` (task TH109 of agent-threads.md). The runner holds the prompts that wait for
+the turn of a thread to end and sends them one by one, each as the next turn when the turn before it ended well with
+nothing open for an answer; an interrupt or a failed turn stops the queue until the person sends; a stop empties it. The
+row of a thread says its queue and how its last turn ended. `anima agents queue` drives it; the composer of the page uses
+it when its own branch lands.
+
+The tests cover the core of a thread with lines of a made Claude Code: two prompts go one by one also when the program
+says "idle" between two turns, a failed and an interrupted turn stop the queue, the bound of 20, and that the record never
+holds a queued prompt. They do not cover a real Claude Code or Codex: whether each sends its end of a turn and its idle
+state in the order that the tests use, and whether a Codex turn starts again at once after the end of the one before it.
+
+1. On the Mac, start a Claude Code thread: `anima agents start --program claude-code --folder <a folder> "Count slowly
+   to 20, one number a line"`. While it works, run `anima agents queue <thread> "Say A"` and
+   `anima agents queue <thread> "Say B"`, then `anima agents watch`.
+   Expected: after the count ends, "Say A" goes as a new turn; only after that turn ends does "Say B" go.
+2. Do step 1 again with `--program codex`.
+   Expected: the same.
+3. Start a thread with a long prompt, queue "Say A", and run `anima agents interrupt <thread>`.
+   Expected: "Say A" does not go; `anima agents running --json` still lists it under `queued`, and `last_turn` is
+   `interrupted`. Run `anima agents queue <thread> --send <its ID>`: it goes at once.
+4. Queue a prompt, then quit and open the application again.
+   Expected: the queue is empty after the restart, and the file `threads.json` of the runner does not hold its words.
+
+Result: Open.
+
+### HT-141: files and images with a prompt, with the real programs (TH111)
+
+Built: on the branch `threads/runner-attach` (task TH111 of agent-threads.md). The calls `attach`, `attach_more` and
+`unattach`, and `anima agents send --attach <file>`, send files for a prompt in parts of at most 2 MiB. The runner
+writes each file below `attachments/<thread>/` in the folder of the threads of the daemon. Claude Code gets at most 5 images
+of at most 3.75 MiB and 2000 pixels a side inside its line, at most 5 MiB in one prompt. Codex gets each image as `localImage`. A PDF, each other
+file, and each larger image goes as its path in the words of the prompt.
+
+The tests cover the store of the files (parts, limits, the check of an image by its bytes, a file of a different
+thread, the removal after one hour, at a start and with the thread), the lines that each program gets, and the calls
+through the socket with a made Claude Code. The measures of 2026-11-21 saw Claude Code 2.1.311 read a small PNG and a
+small PDF given inside the line (the runner now sends a PDF by its path), and Codex 0.170 read a small PNG given as `localImage`. They did not cover a large
+image, many images in one thread, or a file that the program must read from its path outside its working folder.
+
+1. Start a Claude Code thread in full access. When it is idle, run
+   `anima agents send <thread> "What is in this picture?" --attach <a screenshot of less than 3 MB>`.
+   Expected: the reply describes the screenshot, and `anima agents watch` shows the prompt with `[1 image(s)]`.
+2. On the same thread, send a prompt with `--attach <a PNG of 5 to 10 MB>`.
+   Expected: the prompt names the path of the file, and Claude Code reads it with its own tool and describes it.
+3. Start a Claude Code thread in the mode Ask. Send a prompt with `--attach <a text file>`.
+   Expected: Claude Code asks for leave to read the file from the folder of the daemon. Allow it: it reads the file.
+4. Start a Codex thread. Send a prompt with `--attach <a screenshot>` and `--attach <a PDF>`.
+   Expected: the reply describes the screenshot. Codex reads the PDF from its path, or says that it cannot read a PDF.
+5. On the Claude Code thread of step 1, send a prompt with `--attach <a PDF>`.
+   Expected: the prompt names the path of the PDF, and Claude Code reads it with its own tool.
+   Then send 3 prompts on that thread, each with `--attach` of 5 screenshots.
+   Expected: each reply describes the screenshots, and the thread still answers a prompt after the third.
+6. Send a prompt with `--attach <a file of 60 MB>`.
+   Expected: the command fails with words that name the file and the limit of 50 MiB, and nothing goes to the thread.
+7. Remove a stopped thread that had files (`anima agents remove <thread>`).
+   Expected: the folder `attachments/<thread>` below the folder of the threads of the daemon is gone.
+
+Result: Open.
+
+### HT-140: the model, the effort and the mode of a thread after its start, with the real programs (TH110)
+
+Built: on the branch `threads/runner-set` (task TH110 of agent-threads.md). The call `set` and `anima agents set` change
+the model, the effort or the mode of a running thread. For Codex the change lands when no turn runs and the runner sends
+it with each later `turn/start`; for Claude Code it writes the control requests `set_model` and `set_permission_mode` at
+once, and the row changes only when Claude Code answers that it took them. A change of the effort is refused with words
+for Claude Code. The row says the effort.
+
+The tests cover the core of a thread with lines of a made Claude Code and Codex: the lines that each change writes, a row
+that changes only when Claude Code answers success or when the Codex turn ended, the record of a Codex change, the refusal
+of the effort of Claude Code and of the plan mode of Codex, and a refusal of Claude Code said as a notice. They do not
+cover the real programs: the measures of 2026-11-21 saw Claude Code take both control requests between two turns (not
+during a turn, and not the mode `manual` that Ask sends), and saw Codex ask for an approval after a
+change of the mode, but no answer of Codex named the model in use, and `workspaceWrite` and `dangerFullAccess` were not
+sent as a `sandboxPolicy`.
+
+1. Start a Claude Code thread with `--model haiku` and a short prompt. When it is idle, run
+   `anima agents set <thread> --model sonnet --mode accept-edits`, then send "Which model are you?".
+   Expected: the next turn starts in the mode accept edits, and `anima agents running --json` says the model `sonnet`.
+2. Run `anima agents set <thread> --effort high` on the same thread.
+   Expected: the command fails with words that say Claude Code cannot change the effort of a session that runs.
+3. Start a long Claude Code turn and run `anima agents set <thread> --mode ask` during it.
+   Expected: `anima agents running --json` says the mode `ask` only after Claude Code answered; from then on a command
+   asks first. If Claude Code refuses, the thread shows a notice and the mode stays `full_access`.
+4. Start a Codex thread in full access. When it is idle, run `anima agents set <thread> --mode ask --effort low`, then
+   send a prompt that runs a command.
+   Expected: Codex asks for an approval before the command.
+5. Run `anima agents set <thread> --mode plan` on the Codex thread.
+   Expected: the command fails with words that say Codex has no plan mode.
+
+Result: Open.
+
+### HT-126: the diff, the plan, the use, the models, plan mode and the projects with the real programs (TH101 to TH107)
+
+Built: on the branch `threads/engine-for-copy` (tasks TH101 to TH107 of agent-threads.md). The runner now passes on the
+diff of each Codex turn, the plan of a Codex turn, and the use of tokens of both programs as updates of a thread; it
+writes `initialize` to Claude Code before the first prompt and asks Codex for `model/list`, and keeps the models of each
+program (`anima agents models`); a start can be in plan mode (Claude Code only); the call `earlier` reads back the kept
+updates of a thread; the projects of this computer are kept in the record of the runner (`anima agents projects`).
+The page does not show any of it yet: the copy of the T3 Code screens does.
+
+The tests cover the decoders with the lines recorded in TH18 (a Codex turn with five diffs and five reports of use; a
+Claude Code turn with its cost), a Codex plan and a model list written by hand from the types of `codex app-server`
+0.170, the answer of Claude Code to `initialize` as TH10 recorded it, and the calls on the socket of a runner with a made
+Claude Code. They do not cover a real Claude Code or Codex: whether `initialize` before the prompt changes the start of
+Claude Code, whether Codex sends `turn/plan/updated` when it plans, and what plan mode does.
+
+1. On the Mac, run `anima agents start --program claude-code --folder <a folder> "Say hello"`, wait for the reply,
+   then run `anima agents models`.
+   Expected: the thread replies as before; the list shows the models of Claude Code with their efforts.
+2. Run `anima agents start --program codex --folder <a folder> "Make a file note.txt that says ok"`, wait, then run
+   `anima agents watch` for a moment and `anima agents models`.
+   Expected: the watch shows a diff of the turn with `note.txt`, and a use with a context window; the models of Codex
+   are listed.
+3. Start a Codex thread with "Make a plan of three steps to tidy this folder, then do the first step".
+   Expected: the watch shows a plan with its steps and their states. If no plan comes, record it here.
+4. Run `anima agents start --program claude-code --mode plan --folder <a folder> "Plan a README"`.
+   Expected: Claude Code plans and changes no file; the thread asks before it leaves plan mode.
+5. Run `anima agents start --program codex --mode plan --folder <a folder> "x"`.
+   Expected: refused, with the words for a bad value.
+6. Run `anima agents projects add <a folder>`, then `anima agents projects rename <the folder> "My project"`, then
+   quit and open the application again and run `anima agents projects`.
+   Expected: the project is listed with its new name; `anima agents projects remove <the folder>` takes it off.
+
+Result: Open.
+
+### HT-110: a program that does not answer, with the Codex of Homebrew of this Mac
+
+What was built and where: task TH97 of [agent-threads.md](proposals/agent-threads.md), on the branch
+`threads/start-health` (2026-11-21, overnight). Before a start, the runner asks the chosen copy of the program for
+its version (20 seconds). When it does not answer, the start is refused with words that name the program, its
+path, what to try, and each other copy that answered in 5 seconds. A started program that says nothing in 10
+minutes is ended with words of the same kind; until then the page shows "Waiting for the first answer of the
+program" with the time it waited and what the program does first. When more than one copy is found, the thread says which one runs
+and why. `anima agents start --program-path <path>` takes a different copy, only one the runner finds.
+What the tests did not cover: the real Codex; the page in a desktop window. On this Mac on 2026-11-21,
+`/opt/homebrew/bin/codex` (0.170.0) did not end even for `codex --version`; the Codex of ChatGPT.app (0.169.0)
+answered at once.
+
+1. Run `anima agents start --program codex --folder <a scratch folder> "Reply ok"`. Expected, while the Codex of
+   Homebrew does not answer: after about 20 seconds, "The Codex at /opt/homebrew/bin/codex did not answer in 20
+   seconds. Run `/opt/homebrew/bin/codex --version` once in a terminal ..." and "A different copy answered:
+   /Applications/ChatGPT.app/.../codex (codex-cli 0.169.0...)". No thread says "starting".
+   While a thread starts, its view on the page Code says "Waiting for the first answer of the program: <time>"
+   and the time goes up each second.
+2. Run the same command again at once. Expected: the same words in less than 2 seconds.
+3. Run it with `--program-path` and the path of the copy of ChatGPT.app from step 1. Expected: the thread starts,
+   its first line says "Codex runs from /Applications/ChatGPT.app/... (the copy that the start named)", and it
+   comes to `idle`.
+4. On the page Code, start a Codex thread with "New thread". Expected: after about 20 seconds the dialog says
+   "The usual copy of Codex does not answer. A different copy answers:", the path of the copy of ChatGPT.app, and
+   a button "Start with this copy". Press it. Expected: the thread starts with that copy, and "Advanced" shows its
+   path. (Branch `threads/copy-choice`, 2026-11-21.)
+4a. Open "New thread" again, open "Advanced", type `codex` in "Program path" and press Start. Expected: "Give the
+   absolute path of the copy of the program, or leave it empty."
+5. After `brew upgrade codex` (by the person), repeat step 1. Expected: the thread starts, and its first line names
+   the copy of Homebrew as "the first on the PATH of your login" and the copy of ChatGPT.app as another copy.
+
+Result: Open.
+
+### HT-109: "Not logged in" of Claude Code on a busy computer
+
+What was built and where: task TH99 of [agent-threads.md](proposals/agent-threads.md), on the branch
+`threads/start-health` (2026-11-21, overnight); the cause is in
+[th99-not-logged-in.md](research/agent-threads/th99-not-logged-in.md). When Claude Code says "Not logged in", the
+runner looks whether its item is in the Keychain (never its secret) and adds a line to the thread: "you do not
+need to sign in; send the prompt again" when the item is there or the Keychain is slow, and "Sign in to Claude
+Code in a terminal" only when it is not there. What the tests did not cover: a real Claude Code on a busy Mac,
+and a real person who is signed out.
+
+1. On a busy computer (a load above the number of processor cores; several builds at once), start four Claude
+   Code threads at once in a scratch folder. Expected: each comes to `idle` or `needs_you`, or a thread whose turn
+   failed shows "Claude Code said "Not logged in", but its sign-in is in the Keychain ... you do not need to sign
+   in". Send the prompt again in that thread. Expected: it answers.
+2. Optional, only if the person accepts to sign out: in a terminal run `claude`, then `/logout`. Start a Claude
+   Code thread. Expected: "Claude Code is not signed in. Sign in to Claude Code in a terminal: run `claude`, then
+   `/login`." Sign in again in the terminal.
+
+Result: Open.
+
+### HT-108: the holder of the threads after an update of the daemon
+
+What was built and where: task TH98 of [agent-threads.md](proposals/agent-threads.md), on the branch
+`threads/start-health` (2026-11-21, overnight). The holder says its build (the size, time and inode of its program
+file at its start) when the runner connects. The runner compares it with the file it would start a new holder
+from. An older holder is named in `anima agents running` and in the line under the header of the page Code; it
+is kept while a program runs and asked to quit when none runs; the next connection starts a holder of the new file.
+A holder of a different protocol refuses a start with words that say when it is replaced. For SF-235.
+What the tests did not cover: the application's own update (the test replaces the daemon file and starts the
+runner again, as the LaunchAgent does), the page in a desktop window, a holder of the build before this change
+(it says no build: the runner takes it for older).
+
+1. With no thread running, run `ps -axo pid,lstart,command | grep 'anima-daemon holder'` and note the PID.
+2. Start a thread (`anima agents start --program claude-code --folder <a scratch folder> "Reply ok"`) and wait for
+   `idle`. Update the application (or install a new build) so that the daemon is replaced.
+3. Run `anima agents running`. Expected: the last line says "The holder of the threads is older than the
+   daemon ... (1 running now)". Open the page Code. Expected: the line under the header says the same.
+4. Run `ps` as in step 1. Expected: the same PID: the holder stays while a thread runs.
+5. Stop the thread (`anima agents stop <thread>`). Within 20 seconds run `ps` as in step 1 again.
+   Expected: a different PID with a new start time. `anima agents running` has no line about the holder; the page
+   line is gone after a reload.
+6. Start a thread again. Expected: it starts.
+
+Result: Open.
+
+### HT-102: the account, the plan and the limits of Claude Code and Codex stay on this computer (THR-051, THR-132)
+
+Built on the branch `threads/accounts`, on top of `threads/runner` (version 3.1 of
+[agent-threads.md](proposals/agent-threads.md)). The two adapters read what each program says about its account. Codex
+gives the name, the plan and the limits (`account/read`, `account/rateLimits/read` and its notices). Claude Code gives
+only its limits (`rate_limit_event`). The runner keeps the newest report of each program in memory only. It does not
+save it, log it, put it in an update of a thread, notify with it or send it to the hub. The command
+`anima agents accounts` shows it to the person on this computer. No token field is read, and Codex keeps its tokens in
+its own store. The tests use made lines. The field names of Claude Code were measured on 2026-11-21 with 2.1.311,
+without the values. The answer of a real Codex to `account/read` was not tried, nothing was run on Linux, and the page
+of the client does not show the account yet. A known limit: the runner asks Codex for its account when a Codex thread
+starts. After a restart of the daemon, a Codex thread that the holder kept is not asked again, so the name and the plan
+of Codex show again only when a new Codex thread starts. The limits come back with the next notice of Codex.
+
+1. Start a daemon of the build with a state folder and a label of your own. Start one Codex thread and one Claude Code
+   thread (`anima agents start`, as in the check of the runner). When each has replied, run `anima agents accounts`.
+   Expected: Codex shows your ChatGPT account, your plan and two limits with their reset times. Claude Code shows
+   "Account not known" and its limits (for example `seven_day 46%`).
+2. Compare the limits with the usage page of each vendor.
+   Expected: the percentages are the same, within the time between the two reads.
+3. Search the log of the runner (`runner.log` in the folder of the threads) and the log of the daemon for your address.
+   Run `anima agents watch` during a turn and look for your address there too.
+   Expected: your address is in none of them.
+4. Stop the daemon and start it again. Run `anima agents accounts` before any thread replies.
+   Expected: "No program of this computer said its account yet": the accounts were not saved.
+5. Do steps 1 and 3 on `pop-os`.
+   Expected: the same.
+### HT-103: the notice of the folder of a new thread names what its project files run (THR-046, OD-THR21)
+### HT-099: the notice of the folder of a new thread names what its project files run (THR-046, OD-THR21)
+
+Built on the branch `threads/runner` (the call `folder` of the runner, the first line of a new thread, and the output of
+`anima agents start`) and on `threads/client` (the box in the dialog "New thread"). The runner reads
+`.claude/settings.json`, `.claude/settings.local.json` and `.mcp.json` of the folder, and names the hooks with their
+commands, the MCP servers, the count of allow rules and the environment names. Claude Code runs these with no question
+in each mode. The project files of Codex are not read. The tests use made folders; no real thread was started with a
+folder that has hooks, and nothing was run on Linux.
+
+1. Make a scratch folder with `.claude/settings.json` that holds one hook, for example
+   `{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"touch started.txt"}]}]}}`. Run
+   `anima agents start --program claude-code --folder <the folder> "Say hello"`.
+   Expected: before the thread ID, the command prints that the folder makes Claude Code run `touch started.txt` at
+   SessionStart. `anima agents watch` shows the same notice as the first line of the thread. The file `started.txt`
+   appears: the hook ran, as the operator ruled.
+2. In the application, open Threads, choose "New thread", give the same folder and a prompt, and press Start.
+   Expected: the dialog shows a box with the same lines and does not start the thread. Press Start again: the thread
+   starts, and its first line is the notice.
+3. Do step 2 with a folder that has no such files.
+   Expected: the first press of Start starts the thread, with no box.
+
+Result: Open.
+
+### HT-074: the native Windows desktop client (WIN1)
+
+Built on `platform/windows-desktop`: Windows shell, Credential Manager storage, device-link
+state with protected ACLs, platform capability controls and a per-user NSIS installer.
+The build procedure is [windows.md](procedures/setup/windows.md). Automated Windows tests
+cover shared shell logic and link file security. The installer and welcome window were
+started in the Windows 11 VM. Real account sign-in and remote sessions need this check.
+
+1. Run the local installer and start Anima.ing from Start.
+   Expected: the welcome screen appears with Sign in, Sign up and Join hub.
+2. Sign in to your Anima account, or use Join hub with an existing hub invitation.
+   Expected: the device link connects and the hub's devices appear. No token is logged.
+3. Close Anima and open it again.
+   Expected: the saved credential is read from Windows Credential Manager; the link reconnects.
+4. Open an SSH or remote desktop session to a device you control.
+   Expected: keyboard input and screen updates work; closing the session returns to the hub.
+5. Open a device's HTTPS web interface.
+   Expected: the system browser opens it. Windows does not offer native certificate pinning.
+6. Inspect Settings and close the app.
+   Expected: unsupported host controls and the updater are absent; the link child stops.
+7. Uninstall through Windows Settings, then install again.
+   Expected: the application and shortcut are removed and installed without administrator rights.
+
+Operator report, 2026-11-20: Sign in displayed "No network" (Failed). After the VM
+was restarted, agent checks reached WorkOS and the Anima cloud from Windows; the
+installed app resumed the saved account and showed Devices, Connected, and one hub
+Up. The original transport failure was not isolated. No application code changed.
+Operator confirmation and remote-session testing remain outstanding.
+
+Agent observation, 2026-11-20: later the client disconnected while Defender repeatedly
+terminated its `anima-link.exe` child (`Behavior:Win32/SuspClickFix.F`). The desktop
+was stopped to end its restart loop. Detection cause is unresolved; Defender remains
+enabled, with no new exclusions. Sustained connection and restart acceptance remain open.
+
+Further agent observation, 2026-11-20: starting the unchanged app from the Start menu
+kept the same connection-helper process alive for six minutes, with no new Defender
+detection and all three reported protection modes enabled. This supports a launch-context
+hypothesis; it does not establish the detector's cause. WIN2 adds a bounded retry policy
+and bundles a native CLI. A temporary MCP configuration add/remove test preserved the
+other entry; a real coding agent connection remains to be tested.
+
+8. With the WIN2 installer, open PowerShell and run
+   `& "$env:LOCALAPPDATA\Anima.ing\anima.exe" --help`.
+   Expected: the native CLI prints its commands without a missing-runtime error.
+9. In a supported coding agent installed on Windows, configure its MCP command as
+   the installed `anima.exe` with argument `mcp`, then connect it to your configured hub.
+   Expected: the agent lists the same permitted hub tools as on Linux/macOS, and a read
+   command succeeds. Do not assume that all agent-specific automatic setup paths work yet.
+
+Result: Open.
+
+### WIN2 continuation checks for HT-074
+
+The entry HT-074 remains Open. These checks extend that entry; they are not a pass record.
+
+1. In Windows Settings > Updates, install the command line tool. Confirm the displayed user-PATH
+   folder. Open a fresh terminal and run `anima --version`; it must resolve to the bundled CLI.
+   Remove it and open another terminal; unrelated PATH entries must remain unchanged.
+2. In Settings > MCP, inspect an installed coding agent, confirm the shown change and connect
+   the agent to `anima mcp`. Remove Anima's entry; other server entries and their settings must remain.
+3. After the hosted connection hands off to Task Scheduler, close Anima. Its link must remain
+   connected. Open Anima again, sign out/in to Windows, and verify reconnection without a password
+   prompt, elevation prompt, or an extra console window.
+4. Remove the link through Anima. Its task and persistent process must stop. Repeat with a
+   standard non-administrator Windows account; the VM's administrator account is insufficient proof.
+
+5. Open the hosted hub with the bundled daemon present. This Windows computer must appear
+   once, enroll automatically, and have a running per-user daemon task. Check CPU, memory,
+   disk and network metrics. Close Anima and confirm new metrics still arrive; sign out/in
+   and confirm both tasks restart. Do not treat device registration alone as metrics acceptance.
+6. On a Windows laptop, choose Keep awake in Settings and confirm the tray agrees. Wait past
+   the configured idle sleep time; the computer should remain running while the display may
+   sleep. Turn it off, quit, then separately force-close the app; each must release Anima's
+   request (`powercfg /requests` can inspect it). Repeat on battery and test the saved floor:
+   below the floor it must pause, and connecting mains must resume it. Check Modern Standby
+   hardware separately. On a laptop whose power policy permits it, choose the closed-lid level.
+   Anima must use a temporary copy of the active power plan and restore the previous plan on
+   Off, normal exit and force-closing the app. The original plan's settings must not change.
+   Select a different power plan while the hold is active, then stop the hold: the selected
+   plan must remain active. Restart after an interrupted guard and verify recovery removes
+   Anima's temporary plan. A VM without a lid, or a machine with locked policy, must show
+   this level as unavailable.
+
+7. Install the local hub from Settings on a standard Windows account. Wait for Ready, close
+   the app and reopen it; the hub must remain available. Stop and start it, make a backup,
+   and recover that backup into a fresh folder. Confirm the account and devices survive.
+   This check does not authorize deleting an existing hub or replacing its database.
+8. On a Windows builder with the documented native compiler tools, enable building and
+   run a trial Windows release. Its gates must pass before packaging. Cancel during a build;
+   no compiler or packaging child may remain. Test the signed installer update with the
+   private trial feed, then confirm CLI, link, daemon and local hub still work after restart.
+   Do not enable or publish a public feed as part of this check.
+   No test runs the builder's Windows path. Since 2026-11-21 the seven programs
+   and the PostgreSQL tree reach that build only through the builder's own `--config`
+   (`carried::bundle_settings()`), no longer also through `tauri.windows.conf.json`. In the installed
+   folder, confirm `anima.exe`, `anima-daemon.exe`, `anima-hub.exe`, `anima-local-hub.exe`,
+   `anima-database.exe`, `anima-gateway.exe`, `anima-link.exe` and the `database` folder.
+
+9. Download the `windows-trial` artifact from a successful dev workflow and install it in
+   a fresh standard Windows account. Confirm the Start menu app opens, the CLI starts, and
+   automatic updates are disabled. For a signed release trial on main, confirm the installer
+   shows the expected verified publisher and its timestamp is valid. Test a private update
+   from the previous signed version and check the link, daemon and hub after restart.
+   Certificate provisioning and this signed trial remain Open.
+### HT-073: labels in sentence case in the whole application (R-279)
+
+Built on the branch `ui/no-capitals`: no style of `apps/client/src` makes a text capitals, and the shared label is
+`apps/client/src/lib/page/QuietLabel.svelte`. The Devices list was looked at only in pictures of the web client at
+1280 px, in the dark and the light appearance. No person saw the other screens, a desktop window or a phone.
+
+1. Open "Devices" in a desktop window, in the dark and the light appearance.
+   Expected: the column heads read "Name", "Status", "24 h", "Last 50 checks", "Usage", "Connect", and a group head
+   reads for example "Needs a look 1". No word is in capitals. A group head is easy to tell from a device row.
+2. Select the grid view.
+   Expected: the group heads are the same as in the list.
+3. Open the logs panel, a project's commits, "Agent usage", "Projects" and "Settings".
+   Expected: each head of a day, a column or a group is in sentence case, and is still seen as a head.
+4. Open "Devices" and "Settings" on a phone.
+   Expected: the group heads and the section labels are in sentence case.
+
+Result: Open.
+
+### HT-071: the layout of the Devices list (R-278)
+
+Built on the branch `ui/devices-list-layout`: `apps/client/src/lib/devices/card/DeviceTable.svelte` and
+`apps/client/src/lib/devices/list/rows.css`. The tests prove the short address, the text "over" of a long problem, that
+a device that is down shows no usage, and in a browser at 1280 px that three rows have one height. The list was looked
+at only in pictures of the web client with sample devices, at 800, 1280 and 1600 px. No person saw it in a desktop
+window with real devices.
+
+1. Open "Devices" as a list, in a window about 1280 px wide, with a device that is down and a device with metrics.
+   Expected: each row has the same height. The column heads are "Name", "Status", "24 h", "Last 50 checks", "CPU",
+   "Memory", "Disk" and "Connect", each on one line and on the edge of its cells.
+2. Look at the device that is down.
+   Expected: "Down" with a red dot and no fill, then how long, for example "over 15 min". Under it the reason; a click
+   on the reason opens the checks of the device. The usage is a dash. The row has no "+ VNC".
+3. Look at a device with metrics and at a device with none.
+   Expected: three values with a thin bar under each, under the words of the column head; "No metrics" for the other.
+4. Look at a device with a long name and an IPv6 address.
+   Expected: the name is whole where the window has room. The address shows its first two and its last two groups; the
+   pointer on it shows the whole address.
+5. Look at a device that is up and has a MAC address, and at one with no screen sharing.
+   Expected: no "Wake" in the row. "+ VNC" has no dashed border and opens the setup as before.
+6. Make the window narrow (below 1100 px) and select the grid view.
+   Expected: no part lies over another. In a narrow list the reason of a problem stands where the usage was.
+7. Stop a device that has two ways in and a MAC address (for example VNC and Web), and wait until the list says Down.
+   Expected: its row has the same height as before and the rows below do not jump. Its buttons are three icons on one
+   line; the pointer on each shows its name ("VNC", "Web", "Wake").
+8. Load the page again and look at the line under "Devices" before the list comes.
+   Expected: a quiet block, never "0 devices". When the counts come, nothing below them moves.
+9. Wait until the page stands still, then open "Tags", "Site" and the sort menu with the pointer.
+   Expected: the page does not scroll and the toolbar does not move.
+
+Result: Open.
+
+
+### HT-085: the plan and its use on the page of a hosted hub (HM-T39, HMD-073)
+
+Built on the branch `hosted/hmd-073-usage`: `apps/client/src/lib/hosted/usage/` (the form, the reading and the card "Plan and
+usage"), the card on the Overview of the device of the kind `hub`, and the shell command `cloud_hub_usage` in
+`apps/desktop/src-tauri/src/cloud.rs`. The tests prove the form of [account-usage.md](../contracts/account-usage.md), each state of the
+card and the choice of the way in, with stand-in answers. No test reached the route of the site or the path of the gateway, which
+are in the private repositories, and no test read real figures of an account.
+
+1. In the desktop application, signed in to the Anima.ing account of a hosted hub, open "Devices", then the row of the hub.
+   Expected: the card "Plan and usage" shows "Data of your hub" and "Disk used of the plan" as two figures, the name of the plan,
+   the hours awake and asleep, the amount of the month with the sentence "So far this month, before tax. This is an estimate, not
+   a bill. Your invoice arrives after the month ends." (or "Nothing is charged on this plan" on a free plan), and the time of the
+   figures. The amount is the one that the account page shows.
+2. Open the hub at its address in a browser, signed in at the gateway, and open the same page.
+   Expected: the same figures.
+3. In the browser, end the session of the gateway in a second tab, then load the page again.
+   Expected: the card says to sign in to the account; the data of the hub still shows.
+4. Open the row of a device that is not the hub.
+   Expected: no card "Plan and usage".
+
+Result: Open.
+
+### HT-086: the daemon of a hosted hub enrols itself and sends the figures of its container (HM-T35, HM-T34)
+
+Built on the branch `hosted/hm-t34-container-metrics`: `crates/hub/src/config/own_daemon.rs`,
+`crates/hub/src/fleet/access/listen/serve/own_daemon.rs`, `crates/hub/src/upkeep/hub_device.rs`,
+`crates/anima-local-hub/src/group/own_daemon.rs`, `crates/anima-local-hub/src/members/own_daemon.rs` and
+`crates/daemon/src/readers/container.rs`. The tests prove the socket, its routes, the settings, the specs of the member
+and the reader against files that a test lays out. No test ran the programs in a container of the pool, with its
+control group, its user and its folders.
+
+1. Make an image of the pool from a commit that holds this work, with `anima-daemon` built and copied into
+   `/opt/anima/bin`. Put it in a hub of the pool and start the hub.
+   Expected: `/var/lib/anima/hub/log/anima-daemon.log` exists and shows no error. `/run/anima/own-daemon.code` does
+   not exist. `/var/lib/anima/hub/daemon/token` exists, mode 0600.
+2. Open the hub in the client, go to "Devices" and open the row of the hub.
+   Expected: in two minutes the row shows a CPU, a memory and a disk figure. The row shows the logo and the name of the
+   distribution of the image (for example Debian), and the device page offers no SSH, RDP, VNC or screen sharing; its tab Settings has no row of SSH, VNC or RDP. The memory total is that of the container
+   (1.5 GiB on the plan of the read of 2026-11-20), not that of the server. The disk shows the bytes of the hub's data
+   with no total and no percent.
+3. Restart the hub.
+   Expected: the daemon starts again with no new enrolment: the event log shows no second "enrolled" entry, and the
+   figures continue.
+4. Make an image with no `anima-daemon` and start a hub with it.
+   Expected: the hub starts and serves as before; there is no `anima-daemon.log` and no file `own-daemon.code`.
+
+Result: Open.
+
+### HT-095: the daemon of a hosted hub keeps its enrolment across starts and enrols again after a refusal (HM-T35, HMD-046)
+
+Built on the branch `hosted/hm-t35-hub-daemon`: `crates/anima-local-hub/src/members/own_daemon.rs` (an enrolment is
+the token and the configuration of the daemon together) and `crates/daemon/src/runtime.rs` (with `--hosted-hub`, a
+refused token is deleted and the run ends). The tests prove the decision on the files of the daemon's folder and,
+on Linux, a run against a fake hub on a socket that refuses the token. No test ran the group in a container of the pool
+with the real hub, its database and a revoked token.
+
+1. Use an image of the pool that carries `anima-daemon` (HT-096 step 1). Start a hub with it, and note the
+   time of the entry "enrolled" of the hub's own device in the event log. Restart the hub two times.
+   Expected: the event log has one entry "enrolled" for the hub's device. The device list has one device of the kind
+   `hub`. The file `/run/anima/own-daemon.code` does not exist. The row `Hub` shows figures after each start.
+2. Revoke the daemon token of the device of the kind `hub`: run `anima daemon revoke <the id of that device>`
+   against the hub.
+   Expected: in one minute, `/var/lib/anima/hub/log/anima-daemon.log` says that the hub refused the token and that it
+   is deleted. `/var/lib/anima/hub/daemon/token` does not exist. The log shows no token and no code.
+3. Restart the hub.
+   Expected: the event log has a new entry "enrolled" for the same device; the device list still has one device of
+   the kind `hub`. The row `Hub` shows figures again in two minutes. `/run/anima/own-daemon.code` does not exist.
+
+Result: Open.
+
+### HT-094: the daemon reads the battery of a real laptop and the hub keeps it (MET-032, BT2, BT3)
+### HT-084: the daemon reads the battery of a real laptop and the hub keeps it (MET-032, BT2, BT3)
+
+Built on the branch `metrics/battery`: `crates/daemon-core/src/readings/batteries.rs` (the rules of the files of
+`/sys/class/power_supply` and of `pmset -g batt`), `crates/daemon/src/readers/linux.rs`,
+`crates/daemon/src/readers/macos.rs`, `crates/daemon/src/sampling/batteries.rs`, and in the hub the migration
+`0720_metrics_batteries.sql` and `Device.batteries`. The tests prove the rules against texts in the form of the
+kernel files and of `pmset`, the batch, and the hub with a pushed batch. No test read the battery of a real laptop.
+
+1. On a Linux laptop that runs a daemon of this build, enrolled in a hub of this build, run
+   `cat /sys/class/power_supply/BAT*/capacity /sys/class/power_supply/BAT*/status`. Then ask the hub:
+   `query { device(id: "<id>") { batteries { name state secondsLeft healthPercent } } }`.
+   Expected: one battery for each `BAT*` folder, with the same name and the state of the `status` file. A wireless
+   mouse or keyboard is not in the list.
+2. On the same laptop, connect and disconnect the mains. Ask the hub again after 10 seconds each time.
+   Expected: the state changes to `CHARGING` (or `FULL` or `NOT_CHARGING`) and back to `DISCHARGING`.
+3. Open the chart of the device for one hour, or ask for `metrics(range: HOUR) { kind label }`.
+   Expected: a series `BATTERY_PERCENT` with the battery name as its label, with the value of `capacity`.
+4. Do steps 1 to 3 on a MacBook that runs a daemon of this build. Compare with `pmset -g batt`.
+   Expected: one battery `InternalBattery-0` with the charge and the state that `pmset` shows. The health is empty.
+5. Do step 1 on a desktop computer or a server with no battery.
+   Expected: `batteries` is empty and there is no series `BATTERY_PERCENT`.
+
+Result: Open.
+
+### HT-089: the battery beside the meters of the Devices list, the Overview and Agent usage (MET-032, BT5)
+
+Built on the branch `metrics/battery-display`: `apps/client/src/lib/metrics/battery/` (the meter, the shape, the
+charges of the batches), `lib/devices/list/Meters.svelte` and `lib/devices/card/` (the list and the grid),
+`lib/metrics/bars/MetricBars.svelte` (the Overview), `lib/agent-usage/view/ShareTable.svelte` (Agent usage). The
+tests prove the meter with a fake hub and pushed batches in jsdom. No test showed a real laptop in a window, and the
+design was approved overnight by the orchestrator only.
+
+1. Open the Devices page with a laptop that runs a daemon of this build (HT-088) and a server with no battery,
+   in the list view. Wait 10 seconds.
+   Expected: the usage column has a fourth head "Battery". The laptop row shows a battery shape and its charge after
+   Disk; the server row shows nothing there. With no laptop in the list there is no fourth head.
+2. Connect the mains of the laptop and wait 10 seconds; then disconnect it.
+   Expected: while it charges the shape has a bolt; on battery the shape is a plain battery. The charge follows the
+   laptop within 10 seconds.
+3. Let the laptop discharge to 20 %, then to 10 % (or test on a laptop that is that low).
+   Expected: the charge and the bar take the quiet warning colour and the shape shows one bar; a screen reader says
+   "low" at 20 % and "very low" at 10 %. Connect the mains: the warning goes.
+4. Switch to the grid view.
+   Expected: the tile of the laptop has a fifth meter "Battery" on the same line as CPU, Memory and Disk, with the same
+   height; the tile keeps its size.
+5. Open the laptop, tab Overview, at 1280 px in the dark and the light appearance.
+   Expected: the bars have "Battery" with its charge, and "charging" or "low" beside the word when it applies. A laptop
+   with a GPU that has its own memory shows the battery on a third line of bars.
+6. Open Agent usage with the laptop reporting.
+   Expected: its row in "By device" has the battery shape and its charge after its name; the other rows have none.
+7. Compare each screen with the mockups devices-v2, device-overview-v2 and agent-usage-v2 and their records.
+   Expected: the place and the order of the battery agree, with the differences in the records only.
+
+Result: Open.
+
+### HT-091: the row Hub and its page show the figures of its container and what it keeps (HM-T36, HMD-073, HMD-046)
+
+Built on the branch `hosted/hm-t36-hub-row`: `apps/client/src/lib/metrics/container/` (the CPU and the memory of the
+container, the bytes of memory in use from the batches of the hub's own device), `lib/devices/list/Meters.svelte` and
+`lib/devices/card/` (the row and the tile), `lib/devices/actions/` (no way in on the row), `lib/hosted/kept/` (the card
+"What the hub keeps") and `routes/devices/[id]/overview/` (the Overview of the hub). The tests prove each figure and each
+state with a fake hub and pushed batches in jsdom. No test reached a hub of the pool, no person saw the screens in a window,
+and the design was approved overnight by the orchestrator only.
+
+1. Open the Devices page of a hosted hub whose own daemon runs (HT-093), in the list view. Wait 10 seconds.
+   Expected: the row Hub shows its CPU in percent and its memory as used of its limit, for example "0.8 of 2.0 GiB", in the
+   places of the memory and the disk; it shows no disk. Its Connect column has no button: no SSH, RDP, VNC and no
+   "Set up screen sharing". The other rows are as before.
+2. Point at the CPU and at the memory of the row Hub.
+   Expected: the tooltip of the CPU says that it is the share of the processors that the hub may use; the tooltip of the
+   memory names the limit of the hub. The limit is the memory limit of the container of the hub in the pool (for a hub of
+   the plan of today, as the pool session gives it).
+3. Switch to the grid view.
+   Expected: the tile Hub has two meters, CPU and Memory, with "0.8 of 2.0 GiB" in the memory; no disk and no button.
+4. Open the row Hub, tab Overview, at 1280 px in the dark and the light appearance.
+   Expected: the bars show CPU and the memory as used of its limit, with no disk; there is no card Storage and no card of the SSH host key. The CPU bar has the note "of its processors". The side column
+   has the cards Connect (no session reaches the container of the hub), Plan and usage (HT-092) and "What the hub
+   keeps" with the count of the devices, the count of the checks and the days of history ("30 days of metrics, 90 days of
+   check results", or the values set in Settings, Data retention). The counts agree with the Devices page.
+5. Open the Overview of a device that is not the hub.
+   Expected: its bars have CPU, memory and disk in percent, as before; no card "What the hub keeps".
+6. Compare the list and the Overview with the mockups devices-v2 (the row Hub) and device-overview-v2 (Frame 3) and their
+   records.
+   Expected: the place and the order of each part agree, with the differences in the records only.
+
+Result: Open.
+
+### HT-072: the motion of the Devices list (UR-7 Phase F, 5.7.3)
+
+Built on the branch `ui/motion`: `apps/client/src/lib/devices/card/DeviceTable.svelte`, `DeviceGrid.svelte`,
+`apps/client/src/lib/devices/phone/PhoneRows.svelte`, `apps/client/src/lib/devices/list/held.svelte.ts`,
+`apps/client/src/lib/devices/screen/DeviceScreen.svelte` and `Skeleton.svelte`, `apps/client/src/lib/devices/list/Meters.svelte`.
+The tests prove which element plays a fade and the order of the rows. The motion was measured frame by frame in
+headless WebKit with sample devices. No person saw it in a desktop window, at the frame rate of a real screen, or on a phone.
+
+1. Open "Devices" as a list in a desktop window. Set a device of a group to a different status (for example, stop the
+   link of a computer that is up), and keep the pointer away from the list.
+   Expected: the rows slide to their new places. A group title that appears ("Needs a look") fades in where it stands;
+   a group title that empties fades out, then the rows under it close the gap.
+2. Do step 1 again with the pointer on a row of the list.
+   Expected: no row moves while the pointer is on the list; the status word of the device changes in its place. When
+   the pointer leaves the list, the rows slide to their new places.
+3. Select "Grid", then "List".
+   Expected: the two views cross-fade in place. Nothing slides and nothing flashes.
+4. Filter with a count of the count line (for example "1 down"), then clear it.
+   Expected: the rows that go fade out where they stand; the rows that come fade in.
+5. Open "Devices" on a slow connection to the hub (or right after the hub starts), as a list and as a grid.
+   Expected: if the skeleton shows, its column heads, first group title and rows are where the data comes; the data
+   fades in over it with no jump.
+6. Watch the CPU value of a device with metrics for a minute.
+   Expected: a new value cross-fades over the old one; it does not count. Set Settings, Appearance, "Reduce motion":
+   the bar under the value is at its new length at once.
+7. Do steps 1 to 4 with "Reduce motion" on.
+   Expected: no row slides; rows and views fade only.
+
+Result: Open.
+
+### HT-123: the model library on a real hub (compute plan L1-4)
+
+Branch `compute/l1-4`. On 2026-11-20 the build session ran the database tests with the throwaway PostgreSQL of the
+gates: the 14 tests of `fleet::compute::library` (the alias change, the stored files, the approved sources, the
+publisher approval by setting and actor), the 10 key-root tests, the 24 contract tests of the hub and the 500 tests of
+`anima-cli` (the end-to-end tests too) pass. The tests read recorded answers of Hugging Face. No person ran the
+commands against a hub that reads Hugging Face live.
+
+1. Run `anima model add unsloth/Qwen3-0.6B-GGUF` as a person, then `anima model list`.
+   Expected: about 26 variants, for example `qwen3-0.6b:q4_k_m`, each with a size; `anima model source list` now
+   shows `Qwen` (the publisher of the base model).
+2. Run `anima model show qwen3-0.6b --json`.
+   Expected: the context length 40960, 28 layers, the tags CHAT and TOOLS, and a 64-digit SHA-256 value for each file.
+3. Run `anima model add someone-else/Qwen3-0.6B-GGUF`.
+   Expected: a refusal on `repository`; the hub sends no request to Hugging Face.
+4. With an API key, run `anima model source add bartowski`.
+   Expected: FORBIDDEN.
+5. Ask an agent to call `anima_model_list` and `anima_model_show`.
+   Expected: the same facts as steps 1 and 2.
+### HT-076: the motion of the other lists (UR-7 Phase F, 5.7.3)
+
+Built on the branch `ui/lists-motion` with the roles of `ui/motion` (`listRow`, `reorderMotion`, `crossFade`):
+the Checks tab (`apps/client/src/routes/devices/[id]/checks/ChecksPanel.svelte`), the Containers tab
+(`apps/client/src/lib/containers/ContainerTable.svelte`), the Sessions tab
+(`apps/client/src/routes/devices/[id]/sessions/SessionsPanel.svelte`) and Projects
+(`apps/client/src/lib/projects/ProjectsScreen.svelte`). The logs panel and the lists of Settings (channels, API keys,
+VPN keys and sites) already used these roles. Tests prove which row plays a fade; no person saw it.
+
+1. On the Checks tab of a device, add a check, then delete it.
+   Expected: the new row fades in where it lands; the deleted row fades out where it stands, then the rows under it
+   slide up to close the gap.
+2. On the Containers tab of a device with Docker, stop a container on the device, then select "Refresh".
+   Expected: its state word cross-fades in place ("Running" to "Exited"); nothing else moves.
+3. On Projects, select "Leave out" on a tile.
+   Expected: the tile fades out where it stands, then the tiles after it slide to their places.
+4. Open a session to a device and end it, with the Sessions tab of that device open.
+   Expected: the new row fades in at the top and the rows under it slide down.
+5. Do steps 1, 3 and 4 with Settings, Appearance, "Reduce motion" on.
+   Expected: nothing slides; rows fade only.
+
+Result: Open.
+
+### HT-081: one Storage row for each disk of a Mac (MET-027, MET-031)
+
+Built on the branch `metrics/mac-storage`: `crates/daemon-core/src/readings/apfs.rs` makes one drive of each APFS
+container from `df -P -k` (the data volume, or else the first mount of the operator, stands for it), the daemon and
+the SSH collector of the hub use it on macOS, and the wrappers of iOS apps and the device file system of Xcode are no
+mounts. The Storage section shows the bytes used and the share beside a mount, not the size again. The tests prove it
+with the `df` output of a Mac with one internal drive, an external drive and a network share. No person saw the
+section for a real Mac.
+
+1. On a Mac with one internal drive, the daemon running and no external drive, open the device in Anima, tab
+   Overview, section Storage.
+   Expected: the line above the table says "1 drive" and the size of the internal drive (about 1.8 TiB for a 2 TB
+   drive). One row, named `disk3` or a near name, kind "Disk", with the mount `/System/Volumes/Data`, its bytes used
+   and its share. No row for `/`, `/nix`, `/Volumes/Recovery` or a path under `/private/var/folders`.
+2. Connect an external drive with an APFS or HFS+ volume, wait one minute and reload the page.
+   Expected: a second row for the external drive with its own size and its mount under `/Volumes`.
+3. Open a Linux device that has drives in Anima.
+   Expected: its Storage rows are as before; beside each mount the bytes used and the share.
+### HT-082: the link program on Windows (HM-T15, HMD-050)
+
+Built on the branch `hosted/hm-t15-windows-link`: `link/build.sh` builds `bin/anima-link-windows-amd64.exe` and
+`bin/anima-link-windows-arm64.exe`; the Windows application carries the amd64 program from
+`deploy/bin/windows-bundle.ps1`. The programs were only built on a Mac. No Windows computer ran them.
+
+1. On a Windows computer on amd64, install the Windows application of this build, sign in with the Anima.ing
+   account, and let the first run join the hosted hub.
+   Expected: the first run ends on the hub; Settings shows the link of this computer as connected.
+2. On the same computer, open a command window and run `anima-link device` from the folder of the application.
+   Expected: it prints the name of this computer on the link and its state; no error about a missing file.
+3. If a Windows computer on arm64 is available, copy `anima-link-windows-arm64.exe` to it and run
+   `anima-link-windows-arm64.exe device`.
+   Expected: the same output as step 2 (before a join it says that this computer is not joined).
+
+### HT-078: groups of cards on the Projects screen (PRO-059 to PRO-063)
+
+Built on the branch `ui/project-groups`: `apps/client/src/lib/projects/groups/` (the groups kept in the storage of
+the application, the select bar, the group head, the name dialog) and `ProjectsScreen.svelte` and
+`ProjectTile.svelte`. The tests prove with a scripted hub: New group with two selected cards and no call to the hub,
+Select all, a name that a different group has, Add to group, Remove from group, Rename, Delete group (no project
+changes), and that the groups, the view by group and a closed head are kept on the computer. No person saw the screen
+with real projects, in a desktop window or on a phone.
+
+1. Open "Projects" with about 50 imported projects. Select "Select".
+   Expected: each card gets a check mark at its start, and a bar shows "0 selected", "Select all", "New group",
+   "Remove from group" and "Done".
+2. Select three cards, then "New group". Type a name of your own and select "Make group".
+   Expected: the dialog closes, the check marks clear, and each of the three cards shows the group name under its
+   state.
+3. Select "Group" in "Show by".
+   Expected: a head for each group in name order with its count, then "Ungrouped" with the rest. Each group head has
+   "Rename" and "Delete".
+4. Select the head of a group.
+   Expected: its cards close; a second select opens them again. Quit the application and open "Projects" again: the
+   groups are there, the view is still by group and the head is still closed.
+5. Select "Select", then "Select all", then choose a group in "Add to group".
+   Expected: each card moves to that group; "Ungrouped" goes.
+6. Select "Rename" on a group and give it the name of a different group.
+   Expected: the dialog stays open and says "A group already has this name."
+7. Select "Delete" on a group, then "Delete group".
+   Expected: the head goes and its cards are under "Ungrouped". No project is left out or gone.
+8. Open the same hub in the browser, or on a different computer.
+   Expected: no group is there (PRO-059: the groups are kept on each computer; task G2 of the plan would change it).
+9. Do steps 1 to 4 in the light appearance and on a phone.
+   Expected: the bar wraps to a second line where the screen is narrow; no word is in capitals.
+
+Result: Open.
+
+### HT-113: the choice Catalogue shows the tier, the class shell, the streams and the optional parts (task H39)
+
+Built on the branch `hosted/catalogue-linuxserver`: the hub fields `class`, `tier`, `origin`, `reviewedBy`,
+`reviewedOn`, `streams`, `optionalParts` and `digests` of `CatalogueEntry` (`crates/hub/src/work/catalogue/`), and the client views
+`apps/client/src/lib/catalogue/CatalogueList.svelte` and `CatalogueEntryPane.svelte`, to Frames 3 to 6 of
+[device-containers-v2](mockup/device-containers-v2/index.html). The layout was approved overnight by the orchestrator
+after a separate design review (R-318); a person has not looked at it. The client tests read the
+rendered text in jsdom only: no test looks at the screen, the colours, the scroll of the list or the sticky group
+heads. The gallery tool could not run in the worktree of the build (it has no installed packages), so there are no
+pictures yet: take them in these steps.
+
+1. Open the desktop client in the dark appearance. Open a device that has Docker, the tab Containers, then the choice
+   Catalogue.
+   Expected: on the left, a search field, the choice of the tier "All 16 / Tested by Anima 6 / Generated 10", the line
+   "16 entries", and the entries in groups by category (Backup, Books, Cloud, Dashboard, Database, Downloaders, Git,
+   Location, Media management, Media servers, Monitoring, Passwords, Programming), each row with a neutral mark
+   "Tested by Anima" or "Generated". The row code-server has the mark Shell and the line "Needs a password that the
+   machine makes. It has no public route." Take a picture.
+2. Make the window lower until the list scrolls, and scroll it.
+   Expected: only the list scrolls; the head of each group stays at the top while its rows pass.
+3. Select jellyfin.
+   Expected: on the right, the description: the install button is disabled and the line under it says that Anima did
+   not test the entry on a machine with this image and to install it from the Anima app in a web browser (the desktop
+   client signs in with a login token, which is not that app, SF-253); Tier "From LinuxServer.io, data of
+   2026-11-17. Anima did not test it."; Reviewed "Reviewed by security reviewer agent, overnight session of the
+   orchestrator on 2026-11-21" is not there: Reviewed "Not reviewed", the mark "Not reviewed" in the head and in the
+   row, and the line "No person has read the settings of this entry. Read them before you install it."; Optional parts "/dev/dri", a switch that is off and cannot change, "Off by
+   default" and the mark "Needs machine setting". Take a picture.
+4. Select qbittorrent, then press the down and up arrow keys.
+   Expected: Streams "6881 TCP and UDP"; each arrow key selects the next or the previous row and moves the focus to it.
+5. Select code-server.
+   Expected: the marks Generated and Shell in the head, the reason that says to install it from the Anima app in a web
+   browser, and the fact "Class: Shell. Needs a password that the machine makes. It has no public route."
+6. Choose "Tested by Anima", then type `zzz` in the search field.
+   Expected: six entries, then "No entry matches the search" with the button "Clear the search", which shows the list
+   again.
+7. Do steps 1, 3 and 5 again in the light appearance and take the pictures.
+   Expected: the same parts in the same places; no text is hard to read.
+
+Result: Open.
+
+### HT-115: a person reads the ten generated entries of LinuxServer.io (task H39)
+
+Built on the branch `hosted/catalogue-linuxserver`: each generated entry in `crates/catalogue/entries/` gives its review
+state in `anima.reviewed` (SF-255). The ten entries (calibre-web, code-server, duplicati, freshrss,
+heimdall, jellyfin, nextcloud, qbittorrent, radarr, sonarr) are `{"state": "not-reviewed"}`: no person has read them.
+An earlier record said that an agent read all ten; that was false and is removed. The static test refuses a review
+that names an agent or a session, so only a person can record one. No test can read an entry for a person.
+
+1. For each of the ten folders, read `entry.json`, `compose.yaml` and `environment.example`. Look at the image and
+   its digest, each port and its address, each volume, the variables, the capabilities that the service keeps, the
+   optional parts and, for code-server, the class `shell` and its password.
+   Expected: each setting is what the description of the entry and Section 15 of
+   [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) say; nothing downloads code at the
+   start, and no port is on an address other than `127.0.0.1`.
+2. For each entry that you accept, change `"reviewed": { "state": "not-reviewed" }` to
+   `"reviewed": { "state": "reviewed", "by": "<your name>", "on": "<the day, YYYY-MM-DD>" }` and run
+   `cargo test -p catalogue`.
+   Expected: the tests pass, and `anima catalogue show <entry>` gives "Reviewed by <your name> on <the day>".
+3. For each entry that you do not accept, write the reason in this entry and leave the state `not-reviewed`.
+
+Result: Open.
+
+### HT-114: three generated entries of LinuxServer.io start with the rights of the static test (task H39)
+
+Built on the branch `hosted/catalogue-linuxserver`: the recipe form `crates/catalogue/src/linuxserver.rs`, the
+generator `crates/catalogue/src/bin/generate.rs` and ten generated entries in `crates/catalogue/entries/` (Section
+15.10 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md)). The tests prove that each entry
+is what the form makes from the saved fleet list and that it passes the static test. No container was started: no
+test shows that an image of LinuxServer.io starts with `no-new-privileges:true`, the five capabilities of the init and
+`PUID` 1000, that a stream port answers, or that the shell entry asks for its password. Use a throwaway test machine
+that is not on the network of Anima or your local network (OD-HOST-53). Do each step in a copy of the entry folder.
+
+1. On the test machine, copy `crates/catalogue/entries/radarr/` to a new folder. Copy `environment.example` to
+   `.env`. Run `docker compose up -d`, wait two minutes, then run `docker compose ps` and
+   `curl -sI http://127.0.0.1:7878/`.
+   Expected: the service is `running` (not restarting); `curl` gives an HTTP answer. `docker compose exec radarr id
+   abc` gives uid 1000. `docker volume ls` shows the three volumes `config`, `movies` and `downloads` of the project.
+2. Copy `crates/catalogue/entries/qbittorrent/` in the same way and start it. Run `ss -lntu | grep 6881` on the
+   machine and `docker compose logs qbittorrent | grep -i password`.
+   Expected: port 6881 listens on `127.0.0.1` for TCP and for UDP; the web page answers on
+   `http://127.0.0.1:8082/` (the port of the machine is 8082, because freshrss and heimdall take 8080 and 8081: no two
+   entries publish the same port, SF-254) and the log gives the temporary password of the first sign-in.
+3. Copy `crates/catalogue/entries/code-server/`. In `.env`, write a password of your own after `PASSWORD=` (the
+   install would make it). Start it and open `http://127.0.0.1:8444/` through an SSH tunnel (the port of the machine is 8444, because 8443 is the port of the hub of Anima, SF-252).
+   Expected: the page asks for the password, and the password opens it. Write down what the page does with an empty
+   `PASSWORD=`: the class `shell` needs the credential that the install makes because of that answer (OD-HOST-54).
+4. For each of the three, run `docker inspect --format '{{.HostConfig.CapDrop}} {{.HostConfig.SecurityOpt}}'` on the
+   container, then `docker compose down -v`.
+   Expected: the nine dropped capabilities and `no-new-privileges:true`; after `down -v` no container or volume of
+   the project stays.
+### HT-106: the log of the daemon in a file on macOS and in the journal on Linux (MET-019, R-312)
+
+Built on the branch `daemon/push-retry-log`: the LaunchAgent (`crates/daemon/units/ing.anima.daemon.plist`) sets
+`ANIMA_DAEMON_LOG=file`, and the daemon then writes its log to `~/Library/Logs/Anima/anima-daemon.log`
+(`crates/daemon/src/report/log_file.rs`). At 1 MiB the file becomes `anima-daemon.log.1` and a new file starts.
+The tests prove the path, the rotation, the modes 0600 and 0700, and the variable in the rendered LaunchAgent,
+in a temporary folder. No test ran the daemon under launchd or under systemd, and no test let a real daemon
+fill 1 MiB.
+
+1. On a Mac with the daemon enrolled, run `anima-daemon install` with the build of this branch.
+   Expected: "Installed … and started the daemon."
+2. Run `ls -l ~/Library/Logs/Anima/`.
+   Expected: `anima-daemon.log` with the mode `-rw-------`, and the folder with `drwx------`.
+3. Run `cat ~/Library/Logs/Anima/anima-daemon.log`.
+   Expected: a line "the daemon is running" with the identifier of the device, and one line for agent usage.
+4. Stop the link, or the network, for 1 minute, then start it again.
+   Expected: lines "push failed; keeping the points" with a cause, then "the hub answers again".
+5. Run `grep -E 'anima_daemon_|anima_enrol_' ~/Library/Logs/Anima/anima-daemon.log*`.
+   Expected: no line. Read the file: no metric value, no address of the hub other than what the log of the hub
+   shows.
+6. Fill the file to near its bound, then start the daemon again: run
+   `head -c 1048500 /dev/zero | tr '\0' x >> ~/Library/Logs/Anima/anima-daemon.log`, then `anima-daemon install`.
+   Wait 1 minute, then run `ls -l ~/Library/Logs/Anima/`.
+   Expected: `anima-daemon.log.1` (the file with the `x` characters) and a new, small `anima-daemon.log` that
+   holds the line "the daemon is running"; no third file.
+7. On Linux with the user unit installed, run `anima-daemon install`, then `journalctl --user -u anima-daemon -n 20`.
+   Expected: the same lines as step 3. With the system unit: `sudo journalctl -u anima-daemon -n 20`.
+### HT-100: the list and the thread scroll on their own (THR-013, THR-014)
+
+Built on the branch `threads/scroll`, in `apps/client/src/lib/agent-threads` (`ThreadsScreen.svelte`, `ThreadList.svelte`,
+`ThreadView.svelte`) and `apps/client/src/lib/scroll/room.ts`. The tests run in jsdom, which does not lay out a page: they
+prove that the thread goes to its end and that the button "Newest" comes and goes, with a made layout. They do not prove
+the heights in a real window, the scroll of the list, or the keyboard and the screen reader.
+
+1. Open the desktop application on a window wider than 960 px. Open Threads. Select a long thread.
+   Expected: the thread shows its newest part at the bottom. The page has no scroll bar of its own.
+2. Scroll the thread up and down.
+   Expected: only the thread moves. The list, its search field and the filter All / Claude Code / Codex stay in view. The
+   header of the thread (title, facts, "Usage of this folder") and the note and keys at its foot stay in view.
+3. Scroll the list.
+   Expected: only the rows move. The search field and the filter stay in view.
+4. In the thread, scroll up some way. Then wait until the program writes to the session file (use the thread in Claude
+   Code or Codex), or select the thread again.
+   Expected: a button "Newest" shows at the bottom of the thread. While the reader is up, a new entry does not move the
+   view. A click on "Newest" goes to the end, at once, with no glide.
+5. Select a different long thread.
+   Expected: it opens at its newest end.
+6. With the keyboard only: press Tab until the focus is on the thread content (a ring shows), then press the arrow keys
+   and Page Up and Page Down. Then Tab on to the rows of the list.
+   Expected: the thread scrolls with the keys; the focus leaves it with Tab; no focus is trapped.
+7. Turn on VoiceOver (Cmd+F5) and move to the thread.
+   Expected: VoiceOver says "Thread content". Turn it off again.
+8. Turn on System Settings, Accessibility, Display, Reduce motion, and do step 4 again.
+   Expected: the same: the jump to the end has no glide.
+9. Make the window narrower than 960 px, then open a session tab and close it again.
+   Expected: in the narrow window the list stands over the thread and the page scrolls as before. In the wide window
+   again, the page fills the window with no scroll bar of its own.
+### HT-118: D-4 of the deploy tests gives 504 for 502 on a busy machine
+
+For: the owner of the deploy tests (`deploy/test/localapi-server.test.ts`). R-332 permits a
+documents-only push with this one failure until it is corrected.
+
+What fails: "D-4 an endless upstream body gives 502 promptly" (and "an upstream body over the cap
+gives 502") receives 504 where it expects 502. It fails in the full deploy suite on a clean
+`origin/dev` at a high load: 741 pass and 1 fail at load 63; 1 failure in 3 full runs. Alone and
+under load it failed 9 of 10 and 5 of 10 runs. On a quieter machine it passed alone, 3 of 3 and
+15 of 15 runs. The gates on GitHub do not show it.
+
+Steps:
+
+1. On a Mac with a load above 60 (for example, during a full `bun run gates` of a different
+   worktree), run `bun run --cwd deploy test` on `origin/dev`. Expected now: D-4 can fail with 504.
+2. After a correction, run step 1 again five times. Expected: D-4 passes each time.
+
+### HT-122: log_007 of the hub takes too long on a busy machine
+
+For: the owner of the redaction of the hub (`crates/hub/src/fleet/events/redaction/tests/values.rs`). The test is not
+changed.
+
+What fails: `log_007_redaction_of_pathological_text_takes_linear_time` took 10.4 seconds at a load of about 60 on the
+Mac of the operator (18 cores), during a gates run of a different worktree. Alone it passes in 1.7 seconds. A test
+that measures time can fail on a busy machine although the redaction is linear.
+
+Steps:
+
+1. On a Mac with a load above 60, run `cargo nextest run -p anima-hub log_007` on `origin/dev`. Write down the time.
+2. Run it again on a quiet machine. Expected: well under its limit.
+3. Write in the result whether it passes on the runners of GitHub (the run of `compute/l1-stack`).
+### HT-101: the device page in a narrow window, the Warning badge tip and the skeleton under the tabs (NAV-005, RA-020, D-9)
+
+Built on the branch `ui/device-page-pass`: `apps/client/src/lib/tabs/Tabs.svelte` and
+`apps/client/src/lib/sessions/strip/SessionTabs.svelte` with `apps/client/src/lib/scroll/StripArrows.svelte` (a strip
+too narrow for its tabs drops the icons first, then fades its far end and shows an arrow there; the session tabs share a
+narrow strip), `apps/client/src/lib/devices/actions/WarningBadge.svelte` (the badge opens a tip that says what Warning
+means), and the skeleton under the tabs while a device loads. The jsdom tests prove the icons going and coming back,
+the arrows and their scroll, the name and the tip of the badge, and the busy panel. The gallery pictures at 800 and
+1600 px show the tabs, the strip of two sessions and the skeleton. No person used a mouse without sideways scroll, a
+screen reader, or a real window of the application.
+
+1. Open a device in the desktop application. Make the window narrow (about 800 px), then narrower.
+   Expected: at about 800 px the tabs show their words only, all of them, with no cut tab. Narrower, the right end of
+   the tabs fades and a round arrow shows there; the page itself does not scroll sideways.
+2. With a mouse that has no sideways scroll, select the arrow.
+   Expected: the tabs move left by most of their width; an arrow now shows at the left end too. Make the window wide
+   again: the arrows go and the icons come back.
+3. Press Tab to the selected tab, then the arrow keys to the last tab.
+   Expected: the focused tab is always in view; the arrows are never in the Tab order.
+4. Open four sessions at 800 px.
+   Expected: the session tabs share the strip, each with its name start, its protocol and its close button; past
+   about three tabs the strip fades at its end and shows an arrow.
+5. Open a device with a Warning badge (for example a device with standard RDP security). Point at the badge, then
+   press Tab to it, then select it.
+   Expected: each time a tip opens that says what Warning means, then each warning. Escape closes it.
+6. With VoiceOver on, move to the badge.
+   Expected: VoiceOver says "Warning", what it means and each warning, and that it is a button.
+7. Open a device on a slow connection to the hub (or a hub that is starting).
+   Expected: under the tabs, grey cards in the shape of the open tab until the device shows; no empty space.
+8. Do steps 1, 5 and 7 in the light appearance.
+
+Result: Open.
+
+### HT-105: the headscale VPS-001 test is slow under heavy load (VPS-001)
+
+Seen on the branch `quality/d4-deploy-flake`, in `deploy/headscale/tests`. One run of the VPS-001 test took 23.8 s while the
+load average of the Mac was near 70. The test passed, but a time limit can fail it under such load. This entry records the
+flake only. It is not fixed.
+
+1. On a Mac with a normal load, run `bun test deploy/headscale/tests` five times.
+   Expected: each VPS-001 test passes in a few seconds.
+2. Run it again while the load average is above 50.
+   Expected: it passes. If it fails with a timeout, record the time and the load here.
+
+Result: Open.
+
+### HT-125: the window with no frame on Windows and Linux (task TC2, R-355)
+
+The branch `code/shell-window` takes the frame of the system from the window on Windows and Linux. A strip at the top
+of each page moves the window and holds the three window controls. It was written on a Mac. No part of it was run on
+Windows or on Linux, so each step below is the first run.
+
+1. On Windows and on `pop-os`, start the application.
+   Expected: the window has no title bar of the system. At the top right are three buttons: Minimise, Maximise, Close.
+2. Press and move the pointer on the empty part of the strip at the top.
+   Expected: the window moves. A press on one of the three buttons does not move it.
+3. Use each button. Then double-click the empty part of the strip, twice.
+   Expected: the window goes to the task bar; fills the screen and the middle button says "Restore"; closes. The
+   double click fills the screen and then goes back, and the middle button follows each time.
+4. Move the pointer to each edge and each corner of the window and pull.
+   Expected: the window changes its size, and it does not get smaller than 960 by 600. If an edge does not resize,
+   write which edge and which system here: the window then needs resize handles of its own.
+5. Move the window to a second monitor. Use the keys of the system for a window (on Windows: the Windows key with an
+   arrow; on Linux: the keys of the desktop).
+   Expected: the window snaps and fills as each other window does.
+6. Open each page of the bar, a device with a session tab, Settings, and the page before sign-in.
+   Expected: the three buttons do not lie over a control or a text of the page, and the top of each page is not cut.
+   Make the window 960 wide, then collapse the bar. The same holds.
+7. With the Tab key go to the three buttons.
+   Expected: each takes the focus with a ring that can be seen, and Enter or Space runs it.
+8. On Linux, repeat step 1 under a desktop that draws frames itself (for example KDE), if one is there.
+   Expected: no second title bar. If the desktop draws one, write it here.
+9. Open a device page and scroll it; open a table that is longer than the window and scroll it; open a modal.
+   Expected: the pinned bar and the table head stop below the strip, not under it. With the modal open the window
+   still moves by the strip, and the three buttons still work.
+10. Make the window less than 1100 wide and stop the hub, so that the banner "Not on the network" shows.
+    Expected: the banner is the top of the window, and the strip with the three buttons is below it.
+11. Press and move the pointer on the top of the navigation bar, beside "Anima.ing".
+    Expected, a known limit: with the bar at its full width this does not move the window; only the strip over the
+    page does. The correction is one attribute in `apps/client/src/lib/nav/Nav.svelte` (`data-tauri-drag-region="deep"`
+    on the brand row). It is not in this branch, because that file belongs to two mockup records.
+12. On a Mac, start the application.
+    Expected: nothing changed: the three window buttons of macOS are over the bar, and no drawn buttons show.
+
+Result: Open.
+### HT-128: Rust host-control diagnostics in the graphical OS preview (OS3-R1 / OS3-R3)
+
+Built: `crates/anima-osd`, the opt-in module `experiments/anima-os/control.nix`, and the existing console Diagnostics action's adapter. The Rust socket and disposable NixOS service tests cover read-only transport, process-state reporting, restricted access and lifecycle. They do not exercise the complete appliance graphical session, real monitoring/link or physical hardware.
+
+1. Build a disposable appliance trial from the existing ISO procedure with `services.anima-os-control.enable = true` and its source-built `package` supplied as described in `experiments/anima-os/control-contract.md`. Do not replace an existing installation or publish the ISO for this check.
+2. Unlock the local console and open Settings → Diagnostics → Run checks.
+   Expected: existing network/root/Wi-Fi diagnostics remain present; monitoring and private-link states come from the Rust service. No terminal is required in the normal interface. Active processes do not claim hub reachability or agent readiness.
+3. In the disposable trial, stop the host-control service, then run the graphical check again.
+   Expected: a visible operation failure and an available retry/close path; no fabricated success or silent fallback to old results. Restore the service and retry. A retained job is observed without restarting it; interrupted or missing history produces a clear error and a subsequent explicit new check returns results.
+4. Lock/unlock and restart the trial, then repeat the graphical check.
+   Expected: owner authentication is still required, the service runs under its restricted account and the socket is private. Monitoring/link remain separate background services.
+5. Compare the console to the existing approved mockup on compact and portrait displays.
+   Expected: the OS3-R4 four-destination layout matches the updated mockup, with readable diagnostic rows and accessible controls.
+
+Result: Open. No physical-hardware, real-account, full-appliance UI, speed or ISO-size result is claimed.
+
+
+### HT-127: final graphical and hardware acceptance of the Rust OS continuation (OS3-R4/R5)
+
+Built: four-destination graphical console and native session/update/install controllers. OS3-R5 rebuilds the Qt Python bindings with build-only generator dependencies; use the [smaller preview and its validation record](research/spare-computer-os/runtime-packaging-2026-11-21.md) for this check. Automated checks use disposable virtual disks, synthetic account services and headless rendered UI. They cannot qualify the user's physical Wi-Fi/display/touch hardware, real account or perceived responsiveness. The operator moved this check to the last step; that is scheduling, not a reported pass.
+
+1. Boot the locally built preview ISO on an explicitly selected spare UEFI machine. In Calamares, connect Wi-Fi, change orientation, let one preview expire and keep another. Review storage without authorizing any disk until its identity is correct.
+   Expected: controls remain reachable; orientation restores after timeout and persists only after Keep; unselected/USB/busy disks are not erase targets.
+2. Install only to the explicitly selected disposable target, remove the USB and boot. Unlock the graphical console. Visit Overview, Network, Storage and Settings at the machine's normal scale.
+   Expected: the familiar visual design remains, no normal flow requires a terminal, no controls overlap or leave excessive unused space, and network/display settings survive reboot.
+3. Choose Sign in directly from Overview. Cancel once, then complete the provider sign-in and explicitly Add this computer with a real test account.
+   Expected: cancel closes the provider view; sign-in does not add the machine before consent; failures offer retry; the machine appears once and monitoring/link state is truthful.
+4. Open Settings → Diagnostics and Updates. Run diagnostics; check a properly signed compatible preview update when one is available, stage it and explicitly restart. Confirm fallback/rollback on this test device while retaining a disposable workload sentinel.
+   Expected: phase/byte progress remains visible while other pages respond, no download automatically activates, and recovery preserves identity and workload data.
+5. Lock and unlock, restart, and compare pointer/keyboard navigation, screen-open delay and idle behavior with the prior preview on the same machine.
+   Expected: background compute continues while locked; focus remains visible; perceived responsiveness and display quality are acceptable. Record hardware and measured delays rather than inferring them from language choice.
+
+Result: Open; deferred to the final step by the operator. No production release is authorized.
+
+### HT-130: the editor of the composer of Code in the desktop application (TC4)
+
+Built on the branch `code/stage-4-composer`: `apps/client/src/lib/code/composer/`, shown on the page `/code-kit/composer`
+of a development build. The editor is our own, over the Markdown of the prompt. Its tests run in jsdom, and its pictures
+are taken in WebKit with typed keys only. The branch `code/composer-finish` adds tests in WebKit that send the events of
+an input method; no real input method was used. Not covered: a real input method (Japanese, Chinese, Korean, dead keys,
+the accent menu of a held key), the dictation of macOS, a
+paste from a different application, a drop of a file from the Finder into the window of the desktop application, and the
+speed with a prompt of many thousand characters.
+
+1. Start the desktop application in development and open `/code-kit/composer`. Click the first card.
+   Expected: the card shows a focus ring and the caret is in the editor.
+2. Type `**bold** and *italic* and a line that starts with "- "`.
+   Expected: the words are drawn bold and italic, the markers show only while the caret is in them, the line is a list item.
+3. Press ⌘Z until the editor is empty, then ⇧⌘Z.
+   Expected: the text goes and comes back in steps, and the caret is where it was.
+4. With a Japanese or Chinese input method, type a word and accept a candidate.
+   Expected: the candidate window stays open while you type, and the accepted word is in the text one time.
+5. Use the dictation of macOS (Fn twice) in the editor.
+   Expected: the spoken words are in the text one time.
+6. Copy a paragraph from a different application and paste it.
+   Expected: the text is there as plain Markdown, with no styles of the source.
+7. Type `Read @comp` and press Enter on the first row of the list.
+   Expected: the list hangs over the card, and the choice is one chip with a space after it.
+8. Drag a picture from the Finder over the first card and drop it.
+   Expected: the card takes the accent line while the picture is over it, and the picture is a tile over the editor.
+9. Start a line with "- ", press Tab, then press Escape and Tab.
+   Expected: the first Tab nests the list line; after Escape the next Tab moves the focus out of the editor.
+
+Result: Open.
+
+### HT-137: the queue of the composer of Code (TC4)
+
+Built on the branch `code/composer-finish`. The thread runner keeps no queue, so the composer keeps one in the window:
+a message that is queued while a turn runs goes as the next turn when that turn ends. Its tests run the composer over
+a made-up runner; nobody has tried it with a program that runs.
+
+1. In the desktop application open a chat of Code and send a prompt that takes the program a minute. While it works,
+   type `then say the word done` and press ⌘Enter.
+   Expected: the editor is empty and the message is a dashed bubble over the composer, with "Send now", Edit and Remove.
+2. Wait for the turn to end and touch nothing.
+   Expected: the bubble goes, the message is in the chat as your prompt, and the program answers it. It was sent one time.
+3. Send a long prompt again, queue two messages with ⌘Enter, and press Stop.
+   Expected: the turn stops, both bubbles stay, and a line under them says that you stopped the turn and the queue waits.
+   Nothing is sent.
+4. Press "Send now" on the second bubble.
+   Expected: it goes as a turn; when that turn ends the first bubble goes by itself.
+5. Queue a message while a turn runs, open a different chat before the turn ends, wait a minute, and come back.
+   Expected: the message was not sent to the other chat. It goes to its own chat, at the latest when you open it again.
+6. Queue a message, press Edit on it, change its words while the turn ends, then press Enter.
+   Expected: nothing was sent while the message was open; the changed words go, one time.
+7. Queue a message and close the application.
+   Expected (a known limit, not a fault): the message is gone when you start the application again.
+
+Result: Open.
+

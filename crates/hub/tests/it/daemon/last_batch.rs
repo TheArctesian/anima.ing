@@ -3,7 +3,8 @@
 //! the next batch clears it with one note. `Device.metricsStale` serves the mark, and a stale
 //! daemon never makes the device Down. The time of the last batch never moves back. R-122: the
 //! version of the newest batch is kept and served as `Device.daemonVersion`, only while the
-//! device's source is the daemon.
+//! device's source is the daemon. R-364: the need the desktop app reports is served
+//! as `Device.daemonNeed` until the app clears it or the next batch is accepted.
 
 use std::time::Duration;
 
@@ -18,8 +19,9 @@ use sqlx::PgPool;
 
 use super::{
     batches::cpu_batch,
-    harness::{Daemons, PVE_01, metrics_events, pushing_now, refusal},
+    harness::{DOCKER_HOST, Daemons, PVE_01, metrics_events, pushing_now, refusal},
 };
+use crate::hub::error;
 
 const STALE: &str = "The daemon on pve-01 sent no metrics for 30 seconds; they are stale.";
 const FRESH: &str = "The daemon on pve-01 sends metrics again.";
@@ -234,5 +236,117 @@ async fn r_122_a_device_that_leaves_the_daemon_or_is_revoked_shows_no_version(po
         daemon_version(&daemons).await,
         Value::Null,
         "a revoked daemon's version is gone"
+    );
+}
+
+const SET_NEED: &str = "mutation($id: ID!, $need: DaemonNeed) { \
+    setDaemonNeed(deviceId: $id, need: $need) { daemonNeed } }";
+const WAITS: &str = "The daemon on pve-01 waits for a person to allow it in the Keychain.";
+const GONE: &str = "The daemon on pve-01 no longer waits for a person.";
+
+/// The device's `daemonNeed` as the operator reads it.
+async fn daemon_need(daemons: &Daemons) -> Value {
+    let query = "query($id: ID!) { device(id: $id) { daemonNeed } }";
+    let answer: Value = daemons.operate(query, json!({ "id": PVE_01 })).await;
+    assert!(answer["errors"].is_null(), "{answer}");
+    answer["data"]["device"]["daemonNeed"].clone()
+}
+
+/// Sets the need of `device`'s daemon as the operator; the answer.
+async fn set_need(daemons: &Daemons, device: &str, need: Value) -> Value {
+    daemons
+        .operate(SET_NEED, json!({ "id": device, "need": need }))
+        .await
+}
+
+/// How many info events of the metrics say `text`.
+async fn said(pool: &PgPool, text: &str) -> usize {
+    let written = metrics_events(pool, "info").await;
+    written.iter().filter(|line| *line == text).count()
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn r_new_daemonneed_the_app_sets_the_need_and_the_next_batch_clears_it(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let daemons = Daemons::at(&pool, now).await;
+    let token = daemons.token_for(PVE_01).await;
+    assert_eq!(daemon_need(&daemons).await, Value::Null);
+
+    let set = set_need(&daemons, PVE_01, json!("KEYCHAIN")).await;
+    assert_eq!(
+        set["data"]["setDaemonNeed"]["daemonNeed"], "KEYCHAIN",
+        "{set}"
+    );
+    set_need(&daemons, PVE_01, json!("KEYCHAIN")).await;
+    assert_eq!(daemon_need(&daemons).await, json!("KEYCHAIN"));
+    assert_eq!(said(&pool, WAITS).await, 1, "only a change is written");
+
+    let pushed = daemons.push(&token, &cpu_batch(PVE_01, now, 5.0)).await;
+    assert_eq!(pushed.0, StatusCode::NO_CONTENT);
+    assert_eq!(daemon_need(&daemons).await, Value::Null, "a batch came");
+    assert_eq!(
+        said(&pool, GONE).await,
+        1,
+        "the batch that clears it says so"
+    );
+
+    let late = set_need(&daemons, PVE_01, json!("KEYCHAIN")).await;
+    assert_eq!(
+        late["data"]["setDaemonNeed"]["daemonNeed"],
+        Value::Null,
+        "a need read before the batch is not set: {late}"
+    );
+    assert_eq!(said(&pool, WAITS).await, 1, "nothing changed");
+
+    daemons.clock.advance(TimeDelta::seconds(6));
+    set_need(&daemons, PVE_01, json!("KEYCHAIN")).await;
+    assert_eq!(daemon_need(&daemons).await, json!("KEYCHAIN"));
+    let cleared = set_need(&daemons, PVE_01, Value::Null).await;
+    assert_eq!(
+        cleared["data"]["setDaemonNeed"]["daemonNeed"],
+        Value::Null,
+        "{cleared}"
+    );
+    assert_eq!(said(&pool, GONE).await, 2);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn r_new_daemonneed_a_device_with_no_daemon_token_has_no_need(pool: PgPool) {
+    let daemons = Daemons::new(&pool).await;
+    let refused = set_need(&daemons, DOCKER_HOST, json!("KEYCHAIN")).await;
+    assert_eq!(error(&refused).1, "NOT_FOUND", "{refused}");
+    daemons.token_for(PVE_01).await;
+    set_need(&daemons, PVE_01, json!("KEYCHAIN")).await;
+    daemons.token_for(PVE_01).await;
+    assert_eq!(
+        daemon_need(&daemons).await,
+        Value::Null,
+        "a new token forgets it"
+    );
+    assert_eq!(said(&pool, GONE).await, 1, "the new token says so");
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn r_new_daemonneed_a_device_whose_source_is_not_the_daemon_shows_no_need(pool: PgPool) {
+    let daemons = Daemons::new(&pool).await;
+    daemons.token_for(PVE_01).await;
+    set_need(&daemons, PVE_01, json!("KEYCHAIN")).await;
+    assert_eq!(daemon_need(&daemons).await, json!("KEYCHAIN"));
+    let switch =
+        "mutation($id: ID!) { updateDevice(id: $id, input: { metricsSource: SSH }) { id } }";
+    daemons.operate(switch, json!({ "id": PVE_01 })).await;
+    assert_eq!(
+        daemon_need(&daemons).await,
+        Value::Null,
+        "the need belongs to a DAEMON device"
     );
 }

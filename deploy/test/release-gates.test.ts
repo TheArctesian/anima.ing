@@ -1,8 +1,8 @@
 // The gates of a release (BLD-042, R-190): the release calls the workflow `gates`, does not
 // call it for a content that passed it on `dev` (deploy/bin/gated-run), and runs the tests
 // that only a Mac runs (deploy/bin/macos-tests). Nothing here runs a workflow.
-import { describe, expect, test } from "bun:test";
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { beforeAll, describe, expect, test } from "bun:test";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -67,7 +67,7 @@ describe("the gates jobs of the release", () => {
   test("only `gates` runs whatever came before it; each job after it names the result of each job that it waits for", () => {
     const after = (name: string): boolean => needs(name).some((one) => one === "gates" || after(one));
     const waiting = Object.keys(jobs).filter(after);
-    expect(waiting.sort()).toEqual(["cli-publish", "crate", "ios-record", "ios-upload", "publish", "sign", "tap", "trial"]);
+    expect(waiting.sort()).toEqual(["cli-publish", "crate", "daemon-publish", "ios-record", "ios-upload", "publish", "sign", "tap", "trial"]);
     for (const name of waiting) expect(() => ownCondition(job(name).if, needs(name))).not.toThrow();
     for (const [name, found] of Object.entries(jobs)) {
       if (name !== "gates") expect(found.if ?? "").not.toContain("always()");
@@ -101,7 +101,7 @@ function repository(): { folder: string; dev: string; main: string; other: strin
   git("init", "-q", "-b", "main");
   git("commit", "-q", "--allow-empty", "-m", "first");
   git("switch", "-q", "-c", "dev");
-  Bun.write(join(folder, "file"), "one\n");
+  writeFileSync(join(folder, "file"), "one\n");
   git("add", "file");
   git("commit", "-q", "-m", "work");
   const dev = git("rev-parse", "HEAD");
@@ -111,7 +111,7 @@ function repository(): { folder: string; dev: string; main: string; other: strin
   git("commit", "-q", "--allow-empty", "-m", "same tree again");
   git("switch", "-q", "dev");
   git("commit", "-q", "--allow-empty", "-m", "x");
-  Bun.write(join(folder, "file"), "two\n");
+  writeFileSync(join(folder, "file"), "two\n");
   git("commit", "-q", "-am", "more work");
   return { folder, dev, main, other: git("rev-parse", "HEAD") };
 }
@@ -135,9 +135,10 @@ function gated(folder: string, commit: string, runs: unknown): { exitCode: numbe
   return { exitCode: done.exitCode, printed: done.stdout.toString().trim() };
 }
 
-describe("gated-run: which run of the gates counts for a commit", () => {
-  const made = repository();
-  const { folder, dev, main, other } = made;
+// gated-run is a Unix release script; retain the workflow checks on every platform.
+describe.skipIf(process.platform === "win32")("gated-run: which run of the gates counts for a commit", () => {
+  let folder: string, dev: string, main: string, other: string;
+  beforeAll(() => { ({ folder, dev, main, other } = repository()); });
 
   test("a run that passed on dev for a commit with the same tree counts, also when the commit is not the same", () => {
     expect(gated(folder, main, [run({ head_sha: dev })])).toEqual({ exitCode: 0, printed: `7 ${dev}` });

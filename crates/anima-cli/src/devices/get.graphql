@@ -15,6 +15,7 @@ query DeviceGet($id: ID!) {
     metricsSource
     metricsStale
     daemonVersion
+    daemonNeed
     sessionLimit
     accessWarnings
     site {
@@ -48,6 +49,12 @@ query DeviceGet($id: ID!) {
       type
       status
       paused
+    }
+    batteries {
+      name
+      state
+      secondsLeft
+      healthPercent
     }
     uptime(window: DAY)
     createdAt

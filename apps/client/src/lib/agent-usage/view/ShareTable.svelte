@@ -1,5 +1,6 @@
 <script lang="ts" module>
   import type { UsageSums } from '../api';
+  import type { BatteryBar } from '$lib/metrics/battery/battery';
 
   /** One line of a table of shares: a program and model, or a device. */
   export interface ShareRow {
@@ -9,12 +10,15 @@
     readonly detail?: string;
     /** The state of a device's daemon, in words; `reads` is the working state. */
     readonly state?: { readonly words: string; readonly reads: boolean };
+    /** The battery of a device that has one (MET-032). */
+    readonly battery?: BatteryBar | null;
     /** The counts; null for a device that sends none. */
     readonly sums: UsageSums | null;
   }
 </script>
 
 <script lang="ts">
+  import BatteryMark from '$lib/metrics/battery/BatteryMark.svelte';
   import type { Count } from '../query';
   import { tokens, whole } from '../report/units';
   import { costText } from '../report/words';
@@ -59,6 +63,7 @@
                 <span class="name">{row.name}</span>
               </button>
             {/if}
+            {#if row.battery != null}<BatteryMark battery={row.battery} />{/if}
             {#if row.detail !== undefined}<span class="detail">{row.detail}</span>{/if}
             {#if row.state !== undefined}<span class="state" class:reads={row.state.reads}>{row.state.words}</span>{/if}
           </th>
@@ -87,6 +92,7 @@
     min-inline-size: 0;
     /* In a narrow window the table scrolls inside its block, and the page does not. */
     overflow-x: auto;
+    container-type: inline-size;
   }
 
   .over {
@@ -100,10 +106,9 @@
   .label,
   thead th {
     color: var(--text-secondary);
-    font-size: var(--text-xs);
+    font-size: var(--text-sm);
     font-weight: var(--weight-medium);
-    letter-spacing: var(--tracking-label);
-    text-transform: uppercase;
+    letter-spacing: var(--tracking-small);
   }
 
   .note {
@@ -137,13 +142,17 @@
     font-weight: var(--weight-regular);
   }
 
-  /* A number column is as wide as its numbers; the name takes the rest, so a state stays on the line of its device. */
+  /* A number column is as wide as its numbers; the name takes the rest. */
   .n {
     inline-size: 1%;
   }
 
-  .n {
+  /* The numbers are in the mono face; their heads are words, in the face of the other heads. */
+  td.n {
     font-family: var(--font-mono);
+  }
+
+  .n {
     font-variant-numeric: tabular-nums;
     text-align: end;
     white-space: nowrap;
@@ -157,10 +166,22 @@
     font-weight: var(--weight-medium);
   }
 
+  /* The name of a line keeps its words whole: the model or the state is its own line under it, and in a narrow window
+     the table scrolls inside its block instead of breaking a name into pieces. */
+  tbody th {
+    min-inline-size: calc(var(--space-16) * 2.5);
+    white-space: nowrap;
+  }
+
   .detail,
   .state {
-    margin-inline-start: var(--space-2);
+    display: block;
     color: var(--text-secondary);
+  }
+
+  /* A state is a sentence: it may wrap. */
+  .state {
+    white-space: normal;
   }
 
   .state.reads {
@@ -209,5 +230,17 @@
     block-size: 1px;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+
+  /* A narrow block keeps the cost in sight: closer cells and no share bar, whose number is the cost beside it. */
+  @container (max-width: 42rem) {
+    th,
+    td {
+      padding-inline: var(--space-2);
+    }
+
+    .track {
+      display: none;
+    }
   }
 </style>

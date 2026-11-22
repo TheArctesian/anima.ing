@@ -16,7 +16,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 
 <!-- generated from the planning documents: bun run quality:register -->
 
-## 1. In the order of the priorities (17)
+## 1. In the order of the priorities (18)
 
 | Row | Work | Waits for |
 | --- | --- | --- |
@@ -26,19 +26,20 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, the release server of OD-ROL-15 (R-158, task U12), and a release for each target for the tasks that need one |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row. Agent: PE-C1, then PE-C2 of planning-evidence-plan.md, read-only preparation (R-152) |
 | 4.22 | User documentation and the docs site docs.anima.ing | Operator: the approval of UDOC-001 to UDOC-050 (task UD20) in user-documentation.md Section 10, and its [NEEDS CLARIFICATION] markers. Agent: nothing; no ruling names a task. UD0 (a record) can start when a ruling names it |
-| 4.4 | The engine (E0) | Agent: the client-sealed records of E0-6 T2 (K-E5 Section 3), then E0-6 T4, of extensions-plan.md Section 5.1 ("Tasks of E0-5, E0-6 and E0-7"); T1 to T4 of E0-7 are built. Operator: OD-E23 (the noun of the operational key commands, E0-6 T3), OD-E26 (plain `http` for a Dawarich server), HT-034, HT-035, HT-040, HT-043 and HT-063. OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7. The launch briefs of XP-01 to XP-14 wait for E0-7 (R-156) |
+| 4.24 | Agent threads: the behaviour of T3 Code as a native part of Anima | Operator: OD-THR1 to OD-THR44 and the approval of THR-001 to THR-141 in agent-threads.md; the check HT-079. Agent: task TH4 in agent-threads.md (the comparison of the screen with its mockup) |
+| 4.4 | The engine (E0) | Agent: E0-6 T4 (the security review of the vault) of extensions-plan.md Section 5.1 ("Tasks of E0-5, E0-6 and E0-7"); T1 to T4 of E0-7 are built. Operator: OD-E23 (the noun of the operational key commands, E0-6 T3), OD-E26 (plain `http` for a Dawarich server), HT-034, HT-035, HT-040, HT-043 and HT-063. OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7. The launch briefs of XP-01 to XP-14 wait for E0-7 (R-156) |
 | 4.5 | Level 1 model service | Operator: no Level 1 task starts until the macOS application 0.2.2 is published and the hosted live checks HT-027, HT-028, HT-029 and HT-031 in need-human-testing.md have a result (the condition of R-165); then the missing values of OD-C1 after task L1-1, and OD-AI1 of ai-direction.md. Agent: nothing before the condition is met |
 | 4.7 | Jobs, builds and AI agent runs | Operator: the steps of HT-065 on his Linux computer `pop-os` for the measurements of task W2 (R-188, R-264), an administrator step on a Mac, the acceptance of the design (W2), the check HT-037 of task W0, and the steps of task B1 on his GitHub account. Agent: task W3 in projects-and-builds-plan.md, the queue of the hub (the contract K10 is accepted, R-209); task W4 comes after the acceptance of W2 |
 | 4.9 | Hosted applications | Operator: the checks HT-032, HT-038, HT-039 and HT-042 on a machine that runs Docker; OD-HOST-13. The choices of the two reads and the design for a Mac are decided (R-226 to R-238, R-246); the third read of the text of the container work types found changes of the text only (SF-049 to SF-069), and the text is in its fourth form for the owner of the contract of the work route. Agent: hosted-applications-plan.md, tasks H28, H29 and H30; version 0.4 of the contract of the work route (task H14) with the owner of that contract |
 | 4.10 | Standby copies of the coordinator database | Operator: the check HT-030 in need-human-testing.md. The standbys: the hosted launch. Nothing for an agent |
 | 4.19 | The watchdog | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.20 | The terminal screen (`anima tui`) | Operator: OD-TUI6 and OD-TUI7 after TU1, then the approval of TUI-001 to TUI-083. Agent: task TU1 in cli-mcp-plan.md Section 11.8 (a record only); TU2 to TU10 wait |
-| 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Agent: task AX0 in agent-tools-as-extensions.md Section 10 (a record only); AX2 to AX16 wait for AX1 |
+| 4.21 | Agent tools as extensions (Hermes, Herdr and T3 Code in a pane) | Operator: the approval of AXT-001 to AXT-045 (task AX1) in agent-tools-as-extensions.md. Operator: OD-AXT25 to OD-AXT30 and the approval of AXT-054 to AXT-078 (task AX21, the shared project folder). Agent: tasks AX0 and AX20 in agent-tools-as-extensions.md Section 10 (records only); AX2 to AX16 wait for AX1; AX22 to AX38 wait for AX21 |
 | 4.23 | The observability suite: status pages, error tracking, product analytics (PostHog) and short links | Operator: the approval of OBS-001 to OBS-066 and OD-OBS7, OD-OBS15 to OD-OBS20 (task OB1) in extensions-plan.md Section 4.17. Agent: nothing; no ruling names a task |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (197)
+## 2. Open decisions (248)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -46,9 +47,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-W29 | The runner conditions for `TheArctesian/anima.ing`, which is public (OD-W18, PRO-044): no runner before tasks W2 and S are accepted, and the fork rule "all exte… | Open. Recommendation: (A), no change. GitHub says that a public repository must almost never use a self-hosted runner (fact F22 of the plan). | [plan/decisions.md](plan/decisions.md) |
 | OD-W35 | What does "C: my hosted hub" (R-174) mean now? R-174 said: his hosted hub holds the Anima project and its runners, and the release server only checks, signs and… | Open. Recommendation: (A), with (A) of OD-W33 and OD-W34. It is the smallest set of parts: one hub, his runners, and the secrets of one environment. | [plan/decisions.md](plan/decisions.md) |
 | OD-W37 | The Builds path of today (the Builds view, the builder of the desktop application) still signs through a hub that holds the key (R-117, BLD-045), and the only s… | Not removed now (R-194, operator, 2026-11-18: "B: leave it for now"; the letter is that of the question card, and its meaning is "leave", not choice (B) of this… | [plan/decisions.md](plan/decisions.md) |
-| OD-W50 | Which fields does the GraphQL contract K1 (`contracts/schema.graphql`) get for the jobs of the work route? K1 changes only by a ruling (CON-001). Part 1 of task… | Open. Recommendation: approve the five fields as proposed; the exact SDL comes with the branch of part 2, for a look before the merge. | [plan/decisions.md](plan/decisions.md) |
 | OD-W51 | Can a branch that changes only documents land in `dev` with the document gates alone, with no run of the full list on GitHub? R-254 says that the full list of 2… | Open. Recommendation: yes, for a branch whose changed paths are all documents by the rule of the fast tier (`quality/src/gates/tier.ts`); the job `base` of `gat… | [plan/decisions.md](plan/decisions.md) |
-| OD-W53 | Which fields does the GraphQL contract K1 (`contracts/schema.graphql`) get for the pins, the exclusion and the reason of a placement? K1 changes only by a rulin… | Open. Recommendation: approve the four with OD-W50, in the same change of K1; the exact SDL comes with the branch of part 2, for a look before the merge. | [plan/decisions.md](plan/decisions.md) |
 | OD-TUI6 | Are three subscriptions plus a re-read every 60 seconds the way to keep the data live (TUI-021)? The other ways are: only a re-read every few seconds (simpler,… | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-TUI7 | Is a growth of the standalone `anima` file up to a limit that you name after TU1 measures it acceptable (TUI-070)? | Open until TU1. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | OD-MI1 | Does "Set up all" also replace an entry `anima` that a person wrote and that starts a different program (state `different`)? | Open. | [plans/cli-mcp-plan.md](plans/cli-mcp-plan.md) |
@@ -58,6 +57,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-C1 | What is the hardware of each compute node? | Open for the values that are missing. The operator said (2026-11-18, through the orchestrating session): "I have a couple other machiens but that is good for no… | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C3 | Level 2, parked: which tolerances does the conformance test use? | Set them from the C4 measurements (RNG-032). | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C4 | Level 2, parked: are the block adapters offered to the Shard project first? | Yes: offer them to the Shard project first. Keep them in `blocks/` only if Shard does not accept them. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-ROL-17 | A machine that is connected and busy (it runs a job, a build or a job of a runner) does not start its update (ROL-028). Does its step wait for it? ROL-039 lets… | Open | [plans/daemon-and-hub-update-plan.md](plans/daemon-and-hub-update-plan.md) |
 | OD-E3 | Aggregator for the US accounts (BofA, Chase, Robinhood, Acorns) | SimpleFIN Bridge. It is for private persons and costs about 15 USD each year (its pages give different prices). Check each institution on bridge.simplefin.org b… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E4 | Hosted vision model for Class B and C extraction | Permit a hosted model for Wardrobe and Library photos, with the operator switch (VIS-003). Use only on-device extraction for Documents. | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E5 | Hub folder grouping (REPO-E-001) | Group by parent nouns as the first task of E0 (`fleet/`, `engine/`, `vault/`, `life/`, `work/`), in a separate change. | [plans/extensions-plan.md](plans/extensions-plan.md) |
@@ -80,10 +80,10 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-HOST-6 | What may a Compose file from the hub do on a machine? | A switch at the machine, off after the install, and the profile `contained`; `full` only at the machine (R-210). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-7 | May Anima manage a stack that it did not install? | Yes, after adoption at the machine, in place; Anima never changes the file in the first version (R-211). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-8 | Is HOST-008 approved? | Yes (R-212). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
-| OD-HOST-9 | The reverse proxy? | Anima installs its own, in stage 3, only where the operator asks; HOST-009 is replaced (R-213). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-9 | The reverse proxy? | Anima installs its own, in stage 3, only where the operator asks; HOST-009 is replaced (R-213). Changed by R-302: the proxy runs on the hub only (HOST-046). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-10 | Deploys from git? | The Compose file from a repository first; a build from source later (R-214). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
-| OD-HOST-11 | Does a catalogue ship with the product? | A small list that is tested, and the lists by address (R-215). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
-| OD-HOST-12 | Are databases a kind of their own? | Yes, in stage 3, PostgreSQL first (R-216). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-11 | Does a catalogue ship with the product? | A small list that is tested, and the lists by address (R-215). Widened by R-300: a large list of popular self-hosted applications, each entry tested and pinned… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-12 | Are databases a kind of their own? | Yes, in stage 3, PostgreSQL first (R-216). No distributed database layer (R-301); the levels are OD-HOST-38. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-14 | How does the daemon hold the right to use Docker (SF-018)? | A separate program with the rights of the administrator is the only one that talks to Docker; the daemon has no such right (R-226). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-15 | Which containers do the container work types reach? | Only the applications of Anima and the adopted projects, with "All containers" at the machine, off after the install (R-227). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-16 | Can a person who controls the hub delete the data of an application? | Only with the setting "The hub may delete volumes" at the machine, off after the install; the signature of the operator when task W7 exists (R-230). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
@@ -98,12 +98,37 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-HOST-25 | A Mac with Docker Desktop? | Version 0.4 waits for the design of task H30 for a Mac and his approval of it; it also covers a rootless Docker (R-237). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-26 | The setting for volumes does not protect the data? | Accepted, and the contract and the screen say so; the protection is the copy of stage 3 (R-238). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-27 | What is the applications program on a machine whose Docker belongs to a user? | It runs as the owner of Docker: as the administrator with the system Docker, as the user with an engine of a user; the settings stay in a file of the administra… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-55 | How does the catalogue know that a person or an agent read a generated entry (SF-255)? | Each generated entry gives its review state: `not-reviewed`, or `reviewed` with `by` (the name of a person) and `on` (the day); the generator writes `not-review… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-56 | Who may install an entry of the class shell, now that the header that names an agent is the claim of the client (SF-253)? | Only a person signed in to the Anima app in a web browser (a browser token whose request does not name an agent). A login token gets `SHELL_NEEDS_PERSON`: the `… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-57 | What does the install of a generated entry need from a request that is not the Anima app in a web browser (SF-253)? | A passed test on a machine with the image of the entry: `last_test` gives the digests that it ran with, and a pass with other digests does not count. Else `GENE… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-58 | The ports of Anima and the interpreters of the shell check (SF-254)? | ` are a shell. A pin update resets a passed test on a machine to `not-tested`; a pass stays only for the digest that it ran with. Made overnight on this recomme… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-1 | How is the data copy of HOST-005 made: a backup of the volume, or replication that the application supplies? | A backup of the volume, kept by bulk-data-placement.md. It is asked when HOST-004 to HOST-008 come to approval; it blocks no task of this plan. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-2 | Do you approve HOST-004 to HOST-007 (the home machine, the data copy, the move, and the start on a different machine)? HOST-008 is approved (R-212) and HOST-009… | Yes, after stage 2 is in use. It blocks no task of this plan. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-13 | Do you approve, for stage 2, HOST-030 and HOST-032 to HOST-036 of hosted-applications-stage-2.md: Anima shows where the file of a stack is; the way back to the… | Yes. Each is small, and each is a thing that the three competitors have. It blocks tasks H18, H19 and H20, and the part of task H15 that the operator sees. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-28 | R-247 makes Arcane an entry of the catalogue that may hold the socket of Docker. R-234 lets an API key or an AI agent make the first install of an entry of the… | B. An agent can be led by text that it reads; the administrator of a machine is then never installed by an agent. It blocks the text of the exception (Section 1… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-29 | Who can turn on the port of an application at a machine, so that a hosted hub reaches it through the link (R-250)? A: only the administrator, in the machine set… | A. The daemon runs as the same user as the link and takes requests from the hub; with B it could open the port of each application by itself. With A he is asked… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-30 | Under which name does the hub serve the web page of an application of a different publisher? A: a name of its own for each application below a separate domain t… | B first, then A. Under the origin of the hub a script of such a page can use his session, and with one gateway for all hosted hubs (R-239) it could reach each o… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-34 | The origin of a hosted hub is `unix:<path>`. Contract K10 Section 6.4.2 names only the scheme, the host and the port, so the applications program of a machine o… | A, through the owner of the contract. Until then the code refuses (SF-135). It blocks container work on each machine of a hosted hub. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-35 | Each folder of `binds/` can be reached only by the user of the applications program (Section 6.4.5 of the contract), so a service that does not run as root cann… | B. The folders above it stay closed, so no other user of the machine reaches the leaf. It blocks no part of part 1 of task H31; part 2 makes the folders. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-36 | Docker writes the key `https://index.docker.io/v1/` for a login at Docker Hub. "Registries with a login" (Section 6.4.2) permits no `/` in a name, so the applic… | A. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-37 | Values that the contract leaves open and that part 1 of task H31 chose: `tmpfs` with `rw,noexec,nosuid,nodev` and no size; the log with `max-size` 10m and `max-… | A, after the two versions are checked against the release notes of Docker and of Compose. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-38 | Which levels of a database does Anima offer (R-301, HOST-048)? A: level 1 only, one server with copies to a second machine. B: levels 1 and 2; level 2 is two se… | B, with level 1 as the default and level 2 after the copies of level 1 work (HOST-042). Not C: sharding needs an application that is written for it, and none of… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-39 | May an application on a free hosted hub have a public name (Section 12.6 of hosted-applications-stage-2.md)? Each byte of public traffic goes through the pool.… | B. An always-on route is the paid step (HM-R6). It blocks the part of task H21 that a free hub sees. Made overnight on this recommendation, not yet confirmed by… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-40 | Which limits does each plan have for the public traffic of its applications: bytes each month, connections at one time, new connections each second for each nam… | No recommendation: a decision with the prices. It blocks the build of the limits at the door, not the design. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-41 | One server of PostgreSQL for each machine, with a database and a user for each application, or a server of its own in the project of each application (Section 1… | A. It matches your words "letting one server be the db", uses less memory, and level 2 makes one replica of one server. It needs a change of contract K10 Sectio… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-42 | Must the operator see the password of a database (HOST-041 says "shows its connection text one time")? A: no; the password is made on the machine and stays in t… | A first; B when a tool outside the machine needs the database. With A the hub never holds the password. Made overnight on this recommendation, not yet confirmed… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-43 | Before an application is public on the internet, is a second consent at the machine needed (Section 12.3 of hosted-applications-stage-2.md, SF-232)? A: yes; the… | A. A port that you opened for a look in the hub can be an administration page that must never be on the internet. It blocks the first public route. Made overnig… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-44 | One ACME account for the pool, held by the cloud service, or one for each hub, held by that hub (Section 12.5, SF-228)? | One for each hub, with a limit of new hubs each hour: with one for the pool, the cloud service holds a key that asks for a certificate of each customer's name.… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-45 | May an entry with the mark `network-port` publish a port below 1024 when the machine has "Open to the network" on (R-229)? The rules of task H28 permit publishe… | A. Port 53 is the reason to install Pi-hole; the mark names the exact port, and the setting at the machine stays the gate. It needs a change of contract K10 Sec… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-46 | For your local network, on a hosted hub, where do the bytes go (Section 16.6 of hosted-applications-stage-2.md)? A: no proxy for the local network; the machine'… | A. One proxy; a hub that you host on your local network gives you the names there. Made overnight on this recommendation, not yet confirmed by the operator (R-3… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-47 | Streams on a hosted hub before the door has an address for each hub (Section 16.6)? A: no; streams only on a hub that a person hosts until then. B: the door giv… | A. A range of ports on one address is hard to keep apart and to limit. Made overnight on this recommendation, not yet confirmed by the operator (R-324). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-48 | UDP through the link (Section 16.6)? A: TCP streams first; UDP after a change of the link contract and its security read. B: no UDP through the link; UDP only w… | A. Made overnight on this recommendation, not yet confirmed by the operator (R-324). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-49 | Which access does a route have in the first version (Section 16.6)? A: public and private (your devices on the network of Anima). B: also a sign-in of Anima in… | A, then B after its design. Made overnight on this recommendation, not yet confirmed by the operator (R-324). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-50 | The three tiers of the catalogue of LinuxServer.io (Section 15.4 of hosted-applications-stage-2.md): tier 1 tested by Anima (one click, also by an API key or an… | A, as a ruling of its own: tier 2 changes R-300 (2) and (3), which keep "each entry is tested" (SF-250). With B the list is nearly empty until a test machine ru… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-51 | May a file from the hub set `shm_size` (Section 15.8)? It lets 85 more images of LinuxServer.io in, mostly desktops in a browser. A: yes, not more than the memo… | A. Shared memory inside the container gives no right on the machine. A change of contract K10 Section 6.4.4, for its owner. Made overnight on this recommendatio… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-52 | How often does Anima pin a new digest of an image of LinuxServer.io (Section 15.5)? A: on a new version of the application, on an advisory, else each month. B:… | A. B is about 200 changes and many machine tests each week. Made overnight on this recommendation, not yet confirmed by the operator (R-324). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-53 | Where do the machine tests of the catalogue run (Section 15.5, task H37)? A: a test machine of yours, each night, a fixed number of entries. B: a machine of the… | A first. It needs a machine that you name; it is your step. Made overnight on this recommendation, not yet confirmed by the operator (R-324). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
+| OD-HOST-54 | Entries that are a shell (desktops in a browser, code editors, SSH, pages with no sign-in; Section 15.7, SF-247): a credential that the machine makes is require… | A first: "private" is each node of the network of Anima, the containers of each machine included. Made overnight on this recommendation, not yet confirmed by th… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-M9 | Does the phone application get to a hosted hub through the link in the application, through the gateway of the web hub at `hub.anima.ing` (hosted-web-hub.md), o… | Open (2026-11-19). Recommendation of the session that built task M3-4: the link now, and the gateway later only as a second path. Reasons: the link is the decis… | [plans/mobile-plan.md](plans/mobile-plan.md) |
 | OD-M10 | Two rules of the App Store review for the sign-in of the iPhone application (read on 2026-11-19 on the page of the guidelines, which a tool cut, so the words ar… | Open (2026-11-19). Recommendation for (a): the rule applies, because the page of the account offers Google and GitHub; it is met when the same page offers Apple… | [plans/mobile-plan.md](plans/mobile-plan.md) |
 | D-1 | Go gates. The gates are Rust and TypeScript. Which Go gates, and where do they join? | Five gates in `bun run gates`, after `pinning` and before `install`: `gofmt -l` (must print nothing), `go vet ./...`, lint (`staticcheck`, and `revive` for func… | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |
@@ -149,6 +174,34 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-AGL18 | Which identifier does a row have at the hub? (SF-122) | A | [proposals/agent-layer.md](proposals/agent-layer.md) |
 | OD-AGL19 | What does an alert give a channel of a different party? (SF-125) | A for ntfy and a webhook; B and C for a channel that the person runs | [proposals/agent-layer.md](proposals/agent-layer.md) |
 | OD-AGL20 | Which gate is before the first code? (SF-130) | A. The rows and the alert go to a hub of a different party too | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-THR54 | Section 11: design-spec.md NAV-001 and AXT-049 change at "the approval of this proposal"; R-287 (3) | Not asked on a card. Taken as yes, because OD-THR50 and R-353 leave no approval of this proposal to wait for: the changes are made now, with the name Code. He c… | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR57 | R-296 (11): "Several repos per thread now" | The ruling and the copy agree: the form of T3 Code is built | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR65 | The tokens of Anima; `00-gap-and-plan.md`, decision 2 | No longer a question (R-352): Code has the skin of Anima, so no page takes the skin of T3 Code | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR60 | "Anima's bar folds to icons" | Code is not the whole window. A rail of icons of Anima stands at the left of the sidebar of T3 Code. It is one strip that T3 Code does not have | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR64 | "Copy it" | Code reads the sign-in token of Claude Code from its file, where the system is not macOS, and calls Anthropic with it under the name of the Claude program. Anth… | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR63 | "Copy, off by default" | The telemetry of T3 Code is built. It sends nothing until the person turns it on. Before the switch can be turned on, a text for the person and a row in the pri… | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR56 | "Move it to `anima code`", then "`anima repo` (Recommended)" | The commands of this function change from `anima agents` to `anima code`. `anima code ls` and `anima code show` of today become `anima repo ls` and `anima repo… | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR59 | "A file in the app bundle only" | No page of licences in the application. The notices are a text file in each built copy | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR61 | "Replace Anima's now" | The page Agent usage is replaced by the Usage page of T3 Code, with the machines of Anima in it. The settings of Code are a group of the Settings of Anima, so t… | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR58 | "Alongside the copy" | The additions of Anima are built while the copy is built. A copied screen can change while he judges it | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR3 | "No we can use account methods everyone else is doing it" | `codex app-server` is used with its account methods; the ban of BOT-033 is lifted. Anima can then read which account and plan Codex uses and its limits, and can… | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR4 | "On the hub", then "Yes, plain on the hub" | The prompts, the code and each secret that an agent prints are kept on the hosted hub in plain form. Whoever controls that server, its database or its copies ca… | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR18 | "Accept it across any device. If my other desicons are contridicarty to this I want them changed." | A program of the same user, also an agent that was steered by text it read, can do what the person can do in Anima: answer an approval, choose a folder, start a… | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR36 | "Yes, like any device" | A machine that an agent started in the pool can open a connection to each other device of the person. THR-106 is changed | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR13 | "Yes, cleaned and capped" | The first line of a prompt, as the title of a thread, goes to the hub, to notifications and to the result of an MCP tool | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR34 | "Yes, from the start" | The holder process is a part of stage 1b and of the launch | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR40 | "Yes, Anima holds them" | Anima stores the tokens of the Codex login of the person, on the hosted hub, to sign other machines in. A party that controls the hub can use his ChatGPT accoun… | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR41 | "Yes, with auto-upgrade on" | With the automatic change of the plan on, text that steers an agent can raise his bill (THR-108) | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-THR42 | "Count, state and title" | The title of each thread of each machine goes to the hosted hub with no switch (THR-126) | [proposals/agent-threads.md](proposals/agent-threads.md) |
+| OD-AXT25 | Does the rule "No MCP tool returns file content" (operator, 2026-11-14) get one exception for the files of a shared project folder, with the read tools `allow`… | Open. Recommendation: yes, an exception for the folder only. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT26 | Do folder tokens follow JOB-010 and MCP-004: minted on the hub, given over the relay as a secret for one job, deleted at the end, and never in a prompt, a URL o… | Open. Recommendation: yes. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT27 | How do short-lived file links work (wave 2)? (one choice: only through the gateway or the relay, to a signed-in caller or a valid folder token; no file links; p… | Open. Recommendation: only through the gateway or the relay, to a signed-in caller or a token. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT28 | Does MCP-008 also cover the content of a file and the line of a search hit, in named fields with a limit? (yes/no) | Open. Recommendation: yes. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT29 | Which sync engine? (one choice: Syncthing (MPL-2.0), hosted as it is through the host of this document; a sync that Anima.ing writes in the daemon) | Open. Recommendation: Syncthing. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT30 | Where is the copy of record? (one choice: on the hub, with a Syncthing peer beside the hub; on one enrolled device that the operator names, and the hub only rou… | Open. Recommendation: on the hub. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT32 | Which path reaches a loopback port? (one choice: the SSH `direct-tcpip` channel of AXT-009 (OD-AXT6, R-250 point 1); a new tunnel through the daemon that works… | Open. Recommendation: the SSH channel. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT33 | Which ports can be previewed? (one choice: any loopback port except Anima.ing's own, with a switch for each device and the hub; only ports that an agent session… | Open. Recommendation: any loopback port except Anima.ing's own. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
+| OD-AXT34 | Which origin does the preview pane use? (one choice: the real `http://localhost:<port>` through a proxy for each web view, with the listener of AXT-011 where a… | Open. Recommendation: the real origin. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AI1 | Does one document own the model address, the list of models and the record of use? | Yes. The model gateway owns the address on each computer, the list and the record. The compute plan owns the machines: runtimes, pulls, placement. The router of… | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI4 | Is a pane that runs the vendor program as the user of the operator the first way to run an AI agent? | Yes. It is the way that works with a subscription. A run in a container stays in agent-runs.md and comes later. The daemon gets one new function, the session se… | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI6 | Does the automatic choice of a model wait? | Yes. The operator or the caller names the model. The rule "cheapest model" of a bot waits for its own decision. | [proposals/ai-direction.md](proposals/ai-direction.md) |
@@ -184,6 +237,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HM-D13 | Does a public client need `client_secret` to refresh a WorkOS token, and does the device request take JSON or a form? | The forms of the shell stay. The refresh of a real token is step 4 of HT-022. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D11 | How does the device list offer "Add this computer" for a computer that reaches its hosted hub only through the link (step 8 of Section 4.1)? | Add a path from the hub to the device through the link, then offer the computer by its link key. Not ruled. The operator saw the empty device list after the fir… | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D12 | What must the phone app have before a phone can use "Sign in"? | Build M5-1 with M3-1. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
+| HM-D20 | Which address does the web client of a hosted hub give for the download of the application, and are the words of its two new texts right? | A link to the download page of the account site, when the operator names its address; the words as built until he changes them. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | OD-ROU7 | After how long is queued work refused? (one choice: 1 hour; 24 hours; never, until cancelled) | Open. Recommendation: 24 hours, then refused with the reasons and one notification. Strength: no work starts days late; a nightly window still fits. Weakness: a… | [proposals/jobs.md](proposals/jobs.md) |
 | OD-ROU8 | Where are queued items seen and cancelled? (one choice: the list of what runs (PRO-052) with the state Queued, plus `anima work list --queued` and an MCP read;… | Open. Recommendation: the list of what runs, the command and MCP, with Cancel for the operator and the caller that queued it. Strength: CMD-030 order; one list.… | [proposals/jobs.md](proposals/jobs.md) |
 | OD-ROU9 | Does the audit entry of a routed command line keep the command text? (yes/no) | Open. Recommendation: no; the entry keeps the caller, the machine, the times and the exit state (LOG-007). Strength: no secret in the log. Weakness: the log can… | [proposals/jobs.md](proposals/jobs.md) |
@@ -210,9 +264,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-RCL16 | The gate (SF-112): "he has decided its findings", or "no finding of severity High is open" as ROU-014 says for routing? | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
 | OD-AOS1 | Confirm NixOS as the base and a separate OS repository? | Open; no repository created | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-AOS2 | Retain this proposal under priority 4.16 or assign a new priority row? | Open; mapping only, no reprioritization | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
-| OD-AOS3 | Confirm the provisional graphical plus text local interface from Decision 7? | Open; side-chat revisit requested | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-AOS4 | Which named PCs, Intel Macs and ARM boards can be used for validation? | Open; no hardware access or result assumed | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
-| OD-AOS5 | Authorize bounded feasibility implementation after the OS0 planning brief? | Open; writing this proposal does not approve its build | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-AOS6 | What custom host configuration is a supported public input? | Open; reconcile with Decision 16, do not narrow it silently | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-AOS7 | How should the work-route owner reconcile offline continuation and retained work with current lease and cleanup rules? | Open; blocks corresponding F4 and OS4 acceptance | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-1 | User interface framework | SvelteKit in static mode. It makes small bundles and works well with Tauri. React is also acceptable. | [spec/design-spec.md](spec/design-spec.md) |
@@ -240,7 +292,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-PAL3 | What does the palette show before a letter is typed? | The pages, then the devices that need a look, at most 8 rows. | [work-items/device-manager/PAL-1.md](work-items/device-manager/PAL-1.md) |
 | OD-PAL4 | What is there on a phone, and in the bar that is collapsed to icons? | On a phone: no field and no shortcut; the Devices page keeps its own search. In the collapsed bar: one icon button with the same accessible name. | [work-items/device-manager/PAL-1.md](work-items/device-manager/PAL-1.md) |
 
-## 3. Documents that wait for an approval (30)
+## 3. Documents that wait for an approval (31)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -251,6 +303,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/add-this-machine.md](proposals/add-this-machine.md) | Proposal | Draft. Deferred; partly built |
 | [proposals/agent-layer.md](proposals/agent-layer.md) | Proposal | Direction decided |
 | [proposals/agent-runs.md](proposals/agent-runs.md) | Proposal | Draft |
+| [proposals/agent-threads.md](proposals/agent-threads.md) | Proposal | Direction decided |
 | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) | Proposal, with a task table | Direction decided |
 | [proposals/ai-direction.md](proposals/ai-direction.md) | Proposal | Draft |
 | [proposals/bots.md](proposals/bots.md) | Proposal, with a task table | Draft |
@@ -275,14 +328,20 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (89)
+## 4. Checks that only the operator can do (114)
 
 | Check | What |
 | --- | --- |
+| HT-069 | Anima OS preview hardware and enrollment |
 | HT-066 | a browser gets the session of a hosted hub through the gateway (HMD-061, HMD-062; tasks HM-T25, HM-T26) |
+| HT-080 | the web client of a hosted hub behind the gateway (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27) |
 | HT-001 | `anima snapshot` against GitHub |
 | HT-002 | the tool inventory from a daemon to the command line |
 | HT-003 | the tool inventory in an MCP client |
+| HT-124 | the child fetch process downloads a real release |
+| HT-119 | the cgroup of each model server on `pop-os` |
+| HT-120 | the model work of the daemon on the Mac and on `pop-os` |
+| HT-121 | the hardware values agree with what each system shows |
 | HT-004 | no window of Apple on a Mac without the developer tools |
 | HT-005 | the tool inventory of a daemon that runs as a system unit |
 | HT-006 | the probes of `claude` and `codex` leave the account alone |
@@ -302,6 +361,8 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-028 | the hosted hub is a device of its own device list (HM-T9) |
 | HT-029 | the computer is Up while it is connected to the link (HM-T11) |
 | HT-031 | a hosted hub reaches SSH of a computer on its link (HM-T12) |
+| HT-077 | the switches of the open ports in Settings (HMD-049; task HM-T13) |
+| HT-070 | a hosted hub opens a VNC session to a computer on its link (HMD-048, HMD-049; task HM-T14) |
 | HT-023 | the hash chain of the audit log on the real hub (GH-2 L0, LOG-021 to LOG-028) |
 | HT-033 | an SSH session on a phone, with the key row |
 | HT-025 | a phone joins a hub with an invite, through the link in the app |
@@ -310,6 +371,11 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-034 | a photo of a phone through the file store (FIL-001 to FIL-005, E0-5 T2 and T4) |
 | HT-061 | sign in to a hosted hub, and the metrics of this computer appear (HMD-053, HMD-054; tasks HM-T17 to HM-T19) |
 | HT-059 | the application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) |
+| HT-083 | the sign-out of a hosted hub takes the daemon off this computer and revokes it (HMD-056; task HM-T21) |
+| HT-129 | the one-line installation of the link and of the daemon on a computer with no application (task HM-T33, R-240 c) |
+| HT-112 | a newer application replaces the daemon of this computer and keeps its enrolment (HMD-055; task HM-T20) |
+| HT-117 | the daemon of this Mac waits for the person in the Keychain and does not stop (MET-013, MET-019; R-322) |
+| HT-132 | the device page of the hub says that the daemon of this Mac needs you in the Keychain (R-364) |
 | HT-068 | a Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon (DEF-007) |
 | HT-050 | the device link runs as a unit of the user (HMD-058, task HM-T24 part a) |
 | HT-049 | the application carries `anima-daemon` (HMD-052, task HM-T16) |
@@ -325,6 +391,9 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-038 | the details of a container, the state of a Compose project, and the images, volumes and networks of a real device (HOST-017, HOST-019, HOST-020; task H8) |
 | HT-039 | a newer image for a container, with real public registries (HOST-021; task H13) |
 | HT-042 | the tab "Containers" with the details, the mark of a newer image, the log tools, and the images, volumes and networks (HOST-015, HOST-017, HOST-019, HOST-020, H… |
+| HT-069 | install and update Anima from F-Droid (M5-7) |
+| HT-070 | keep and clear a mobile session (M5-1) |
+| HT-075 | Android reports its memory and storage readings (M6-1) |
 | HT-030 | the application on a computer shows its copy of recent data when the hub does not answer (FND-007, task F2) |
 | HT-037 | the daemon pushes through the Unix socket of the link (task W0, R-172, SF-004) |
 | HT-041 | the first crate version and the first formula of `anima` alone (INS-010 to INS-012; tasks R8a and R8d) |
@@ -332,6 +401,15 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-051 | the workflows `gates` and `merge-to-dev` on GitHub (R-253, R-254, R-252) |
 | HT-064 | Read the native capability report in Anima.ing Settings |
 | HT-065 | the measurements of the isolation design on Linux (task W2, R-188, R-264) |
+| HT-133 | the public names of applications through the route proxy (task H21) |
+| HT-134 | streams of TCP and UDP and the access of a route (task H40) |
+| HT-107 | the single sessions on the page Agent usage (AIS-025, AIS-026) |
+| HT-131 | one account on two computers is one card with one limit on the page Agent usage, and the hub has its address (AIS-022, THR-149) |
+| HT-111 | the daemon sends its token only to the signed link at its socket (K8 Section 1, HMD-054) |
+| HT-104 | Connect GitHub on a hosted hub through the gateway (HMD-068, HMD-069; task HM-T29) |
+| HT-135 | the mockup of the section Routes of the hub (tasks H21 and H40) |
+| HT-138 | the conversation of Code with VoiceOver and the keyboard (TC3, accessibility findings 2, 3 and 4) |
+| HT-136 | the section Routes of Settings (task H21) |
 | O-4 | SFTP: list, upload, download, the refusals, the audit entries |
 | O-6 | The web view on macOS: fingerprint, a changed certificate, the Down page |
 | O-7 | OD-7 on Linux: the trust hook spike. Also the frame time of the Devices page |

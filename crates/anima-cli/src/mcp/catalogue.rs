@@ -14,6 +14,7 @@ pub enum ToolSet {
     Sessions,
     Notifications,
     Web,
+    Models,
     Releases,
     Vpn,
     Retention,
@@ -24,6 +25,7 @@ pub enum ToolSet {
     Repositories,
     Timeline,
     Records,
+    Agents,
 }
 
 /// What a tool needs from the token.
@@ -73,7 +75,7 @@ impl Kind {
 }
 
 impl ToolSet {
-    pub const ALL: [Self; 17] = [
+    pub const ALL: [Self; 19] = [
         Self::Devices,
         Self::Checks,
         Self::Maintenance,
@@ -81,6 +83,7 @@ impl ToolSet {
         Self::Sessions,
         Self::Notifications,
         Self::Web,
+        Self::Models,
         Self::Releases,
         Self::Vpn,
         Self::Retention,
@@ -91,6 +94,7 @@ impl ToolSet {
         Self::Repositories,
         Self::Timeline,
         Self::Records,
+        Self::Agents,
     ];
 
     /// The set's name as `--toolsets` takes it.
@@ -104,6 +108,7 @@ impl ToolSet {
             Self::Sessions => "sessions",
             Self::Notifications => "notifications",
             Self::Web => "web",
+            Self::Models => "models",
             Self::Releases => "releases",
             Self::Vpn => "vpn",
             Self::Retention => "retention",
@@ -114,6 +119,7 @@ impl ToolSet {
             Self::Repositories => "repositories",
             Self::Timeline => "timeline",
             Self::Records => "records",
+            Self::Agents => "agents",
         }
     }
 

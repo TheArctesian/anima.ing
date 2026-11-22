@@ -6,14 +6,15 @@ use uuid::Uuid;
 use super::{Accepted, Announcements, Batch, RefusalCode};
 
 mod agent_usage;
+mod announcements;
 mod bodies;
-mod drives;
 mod inventory;
 mod keys;
 mod range;
 mod secrets;
 mod series;
 mod shape;
+mod update;
 mod version;
 mod work;
 

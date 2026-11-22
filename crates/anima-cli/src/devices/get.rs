@@ -1,12 +1,14 @@
 //! `anima device get <id-or-name>`: one device, found by ID or by its exact name.
 
+pub mod battery;
+
 use super::documents::{DeviceGet, device_get, device_list};
 use super::list::{Query, fetch};
 use crate::failure::{Failure, Hint};
 use crate::hub::Hub;
 use crate::invocation::Invocation;
 use crate::output::text::{enum_name, shell_word};
-use crate::output::{Cell, Table};
+use crate::output::{Cell, Table, Tone};
 use crate::paging::MAX_PAGE;
 
 #[derive(Debug, clap::Args)]
@@ -31,7 +33,13 @@ impl GetArgs {
             message: format!("No device has the ID {id}."),
             hint: Some(Hint::run("anima device list")),
         })?;
-        invocation.output.data(&device, table)
+        let names: Vec<&str> = device.batteries.iter().map(|b| b.name.as_str()).collect();
+        let charges = battery::charges(&hub, &id, &names).await?;
+        let serialised = serde_json::to_value(&device).map_err(|error| Failure::Write {
+            reason: error.to_string(),
+        })?;
+        let shown = battery::with_charges(serialised, &charges);
+        invocation.output.data(&shown, |_| table(&device, &charges))
     }
 }
 
@@ -90,7 +98,7 @@ pub async fn resolve(hub: &Hub, device: &str) -> Result<String, Failure> {
     }
 }
 
-fn table(device: &device_get::DeviceGetDevice) -> Table {
+fn table(device: &device_get::DeviceGetDevice, charges: &[Option<f64>]) -> Table {
     let mut table = Table::record();
     table.pair("Name", device.name.as_str());
     table.pair("ID", device.id.as_str());
@@ -107,12 +115,17 @@ fn table(device: &device_get::DeviceGetDevice) -> Table {
     if let Some(version) = &device.daemon_version {
         table.pair("Agent version", version.as_str());
     }
+    if let Some(need) = &device.daemon_need {
+        let words = crate::daemons::need::need_words(&enum_name(need));
+        table.pair("Daemon needs", Cell::toned(words, Tone::Bad));
+    }
     table.pair(
         "Uptime 24 h",
         device
             .uptime
             .map_or_else(|| "-".to_owned(), |ratio| format!("{:.2} %", ratio * 100.0)),
     );
+    battery::rows(&mut table, &device.batteries, charges);
     for check in &device.checks {
         let label = format!("Check {} ({})", check.name, enum_name(&check.type_));
         let status = if check.paused {

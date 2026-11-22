@@ -3,8 +3,8 @@
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::{
-    agents, capabilities, checks, containers, daemons, devices, link, maintenance, sessions, sites,
-    tags, web_interfaces,
+    agents, capabilities, catalogue, checks, compute, containers, daemons, devices, link,
+    maintenance, model_library, routes, sessions, sites, tags, web_interfaces,
 };
 
 #[derive(Debug, clap::Subcommand)]
@@ -29,7 +29,12 @@ pub enum FleetCommand {
         #[command(subcommand)]
         command: web_interfaces::WebCommand,
     },
-    /// Metrics daemons (status, enrol, revoke).
+    /// The model library (list, show, add, alias, source).
+    Model {
+        #[command(subcommand)]
+        command: model_library::ModelCommand,
+    },
+    /// Metrics daemons (status, enrol, revoke, need).
     Daemon {
         #[command(subcommand)]
         command: daemons::DaemonCommand,
@@ -39,15 +44,31 @@ pub enum FleetCommand {
         #[command(subcommand)]
         command: capabilities::CapabilityCommand,
     },
+    /// Model compute on the devices: the device policy of each node (policy show, policy set).
+    Compute {
+        #[command(subcommand)]
+        command: compute::ComputeCommand,
+    },
     /// The AI agent programs on the devices (usage).
     Agents {
         #[command(subcommand)]
         command: agents::AgentCommand,
     },
-    /// The Docker containers of a device (list, projects, logs, inspect, images, volumes, networks, updates).
+    /// The Docker containers of a device (list, projects, logs, inspect, images, volumes, networks, updates),
+    /// and the text of a Compose file (check-file, from-run).
     Containers {
         #[command(subcommand)]
         command: containers::ContainerCommand,
+    },
+    /// The catalogue of applications that ships with Anima (list, show, install).
+    Catalogue {
+        #[command(subcommand)]
+        command: catalogue::CatalogueCommand,
+    },
+    /// Public names of applications, served by the hub (list, show, add, check, remove).
+    Route {
+        #[command(subcommand)]
+        command: routes::RouteCommand,
     },
     /// Checks (list, get, create, update, delete, pause, resume, heartbeats, defaults, notifications).
     Check {
@@ -89,10 +110,14 @@ impl FleetCommand {
             Self::Site { command } => command.run(invocation).await,
             Self::Tag { command } => command.run(invocation).await,
             Self::Web { command } => command.run(invocation).await,
+            Self::Model { command } => command.run(invocation).await,
             Self::Daemon { command } => command.run(invocation).await,
             Self::Capability { command } => command.run(invocation).await,
+            Self::Compute { command } => command.run(invocation).await,
             Self::Agents { command } => command.run(invocation).await,
             Self::Containers { command } => command.run(invocation).await,
+            Self::Catalogue { command } => command.run(invocation).await,
+            Self::Route { command } => command.run(invocation).await,
             Self::Check { command } => command.run(invocation).await,
             Self::Maintenance { command } => command.run(invocation).await,
             Self::Link { command } => command.run(invocation).await,

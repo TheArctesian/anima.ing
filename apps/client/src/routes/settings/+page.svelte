@@ -1,6 +1,9 @@
 <script lang="ts">
   import { MediaQuery } from 'svelte/reactivity';
   import ApiKeysSection from '$lib/api-keys/ApiKeysSection.svelte';
+  import { routesApi } from '$lib/application-routes/api';
+  import RoutesSection from '$lib/application-routes/RoutesSection.svelte';
+  import { RoutesStore } from '$lib/application-routes/store.svelte';
   import DefaultsSection from '$lib/checks/defaults/DefaultsSection.svelte';
   import SignOutRow from '$lib/access/SignOutRow.svelte';
   import { hubIsHosted } from '$lib/hosted/mark';
@@ -9,8 +12,10 @@
   import HubRows from '$lib/hub-address/HubRows.svelte';
   import HubLinkRow from '$lib/link/HubLinkRow.svelte';
   import LinkDevicesSection from '$lib/link/LinkDevicesSection.svelte';
+  import OpenPortRows from '$lib/link/ports/OpenPortRows.svelte';
   import { desktopLocalHubShell, LocalHubWatch } from '$lib/local-hub/local-hub.svelte';
   import LocalHubSection from '$lib/local-hub/LocalHubSection.svelte';
+  import ReaderRows from '$lib/code/settings/ReaderRows.svelte';
   import McpSection from '$lib/mcp/McpSection.svelte';
   import NotificationsSection from '$lib/notifications/NotificationsSection.svelte';
   import PaletteRow from '$lib/palette/PaletteRow.svelte';
@@ -42,7 +47,10 @@
   const { updates, commandLine, processLog, builds, keyStore, mcpPermissions, stayAwake, localHub, runnerReport } = capabilities();
   // The hub on this computer: its section, and its origin for the Stay awake notice (FRN-006, AWK-005, FRN-008).
   // A hub that Anima.ing hosts has no VPN, so the page has no VPN section for it (R-222).
-  const vpnShown = !hubIsHosted(useHub().address.origin);
+  const hub = useHub();
+  const vpnShown = !hubIsHosted(hub.address.origin);
+  // The routes of the hub (task H21); a hosted hub has no streams (OD-HOST-47).
+  const routes = new RoutesStore(routesApi(hub), !vpnShown);
   const hubState = localHub ? new LocalHubWatch(desktopLocalHubShell) : null;
   $effect(() => hubState?.watch());
   const desktopRows = updates || commandLine || processLog || builds;
@@ -80,11 +88,15 @@
   {:else if keyStore}
     <SettingsSection {...SECTIONS.hub}>
       <HubRows />
-      {#if localHub}<HubLinkRow />{/if}
+      {#if localHub}<HubLinkRow /><OpenPortRows />{/if}
     </SettingsSection>
   {/if}
 
   <LinkDevicesSection section={SECTIONS.linkDevices} />
+
+  <SettingsSection {...SECTIONS.routes}>
+    <RoutesSection store={routes} />
+  </SettingsSection>
 
   <SettingsSection {...SECTIONS.notifications}>
     <NotificationsSection />
@@ -135,6 +147,11 @@
       <McpSection />
     </SettingsSection>
   {/if}
+
+  <!-- Code: its settings are a group of this page (OD-THR61, TC6). -->
+  <SettingsSection {...SECTIONS.codeAppearance}>
+    <ReaderRows />
+  </SettingsSection>
 
   <!-- Connections (R-224). -->
   <SettingsSection {...SECTIONS.integrations}>

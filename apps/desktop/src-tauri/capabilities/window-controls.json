@@ -1,0 +1,17 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "window-controls",
+  "description": "The main window on Windows and Linux, where the system gives it no frame (tauri.windows.conf.json, tauri.linux.conf.json; task TC2 of agent-threads.md): the three window controls that the client draws. The client sends each command for its own window. The command of Tauri takes the label of a window, so a script of the main web view could also minimise, maximise or close a different window of the application; it can already close a device web view (desktop.json), so this gives it no new reach that matters. Moving the window by its top strip is in main.json.",
+  "webviews": [
+    "main"
+  ],
+  "platforms": [
+    "windows",
+    "linux"
+  ],
+  "permissions": [
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-close"
+  ]
+}

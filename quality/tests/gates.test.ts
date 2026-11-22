@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { gateList, missingRequirement, runGates, type Gate, type GateEvent } from "../src/gates/gates.ts";
+import { delimiter, join } from "node:path";
+import { formatGateEvent, gateList, keptGoing, missingRequirement, runGates, type Gate, type GateEvent } from "../src/gates/gates.ts";
 
 const NAMES = [
   "fmt", "clippy", "rust-test", "doctest", "pinning",
@@ -42,7 +43,7 @@ describe("gateList", () => {
     expect(argvs).toContain("go -C link tool staticcheck ./...");
     expect(argvs).toContain("go -C link tool revive -config revive.toml -set_exit_status ./...");
     expect(argvs).toContain("go -C link test -race ./...");
-    expect(argvs).toContain("go -C link build -o /dev/null ./...");
+    expect(argvs).toContain(`go -C link build -o ${process.platform === "win32" ? "NUL" : "/dev/null"} ./...`);
   });
 
   test("CQ-011 passes the base ref to the baseline gate", () => {
@@ -79,6 +80,33 @@ describe("runGates", () => {
   });
 });
 
+describe("runGates with keepGoing (a proof run)", () => {
+  test("runs each gate after failures, fails with the first exit code and names each failed gate", () => {
+    const { ran, events, run, report } = recorder({ 2: 101, 3: new Error("cargo-nextest is not on PATH"), 13: 1 });
+    const gates = gateList("phase-1");
+    const outcome = runGates(gates, run, report, { keepGoing: true });
+    expect(ran).toHaveLength(21);
+    expect(outcome).toEqual({ exitCode: 101, failed: [gates[1], gates[2], gates[12]] });
+    const done = events.at(-1);
+    expect(done).toEqual({ kind: "done", passed: 18, total: 21, failed: [gates[1], gates[2], gates[12]] });
+    if (done !== undefined) expect(formatGateEvent(done)).toBe("gates: 18/21 pass; failed: clippy, rust-test, lint");
+  });
+
+  test("passes when each gate passed", () => {
+    const { run, report } = recorder();
+    expect(runGates(gateList("phase-1"), run, report, { keepGoing: true })).toEqual({ exitCode: 0 });
+  });
+
+  test("goes on inside cargo too: each crate's lints and each failing test", () => {
+    const argv = (name: string) => keptGoing(gateList("phase-1")).find((gate) => gate.name === name)?.argv.join(" ");
+    expect(argv("clippy")).toBe("cargo clippy --all-targets --keep-going -- -D warnings");
+    expect(argv("rust-test")).toBe("bun quality/bin/with-postgres.ts cargo nextest run --workspace --no-fail-fast");
+    expect(argv("doctest")).toBe("cargo test --workspace --doc --no-fail-fast");
+    expect(argv("pinning")).toBe("cargo test --workspace --test pinning --no-fail-fast");
+    expect(argv("lint")).toBe("bun run lint");
+  });
+});
+
 describe("missingRequirement", () => {
   const rustTest = gateList("phase-1").find((gate) => gate.name === "rust-test");
   if (rustTest === undefined) throw new Error("no rust-test gate");
@@ -90,8 +118,8 @@ describe("missingRequirement", () => {
   });
 
   test("lets the gate run when cargo-nextest is in a PATH folder", () => {
-    const present = (path: string) => path === "/home/op/.cargo/bin/cargo-nextest";
-    expect(missingRequirement(rustTest, "/usr/bin:/home/op/.cargo/bin", present)).toBeUndefined();
+    const present = (path: string) => path === join("/home/op/.cargo/bin", process.platform === "win32" ? "cargo-nextest.exe" : "cargo-nextest");
+    expect(missingRequirement(rustTest, ["/usr/bin", "/home/op/.cargo/bin"].join(delimiter), present)).toBeUndefined();
   });
 
   test("CQ-024 fails a Go gate with the install command when go is not on PATH", () => {

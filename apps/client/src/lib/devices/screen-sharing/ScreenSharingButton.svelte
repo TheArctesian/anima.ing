@@ -14,8 +14,9 @@
     /** The device with VNC on; the button is passed so the session tab grows from it (MOT-005). It runs while the button is still shown. */
     onReady: (device: DeviceDetail, button: HTMLElement) => void;
     /**
-     * Cards and rows show "+ VNC", the width of the VNC button the layout is sized for. The header shows the full text
-     * where it has room (wider than 56rem) and "+ VNC" below that, so its reserved rows hold (DEV-021, MOT-007).
+     * The action has one name, "Set up screen sharing", at each width. Where the words do not fit (cards, rows, and a
+     * header 56rem wide or less) the button shows its icons alone, about as wide as the VNC button the layout is sized
+     * for, and the same words in its tooltip and accessible name, as a tight row does (DEV-021, MOT-007).
      */
     compact?: boolean;
   }
@@ -86,6 +87,7 @@
     type="button"
     class="device-action dashed"
     class:roomy={!compact}
+    class:quiet-setup={compact}
     tabindex="0"
     bind:this={button}
     title="Set up screen sharing"
@@ -98,7 +100,9 @@
     {@attach press()}
   >
     <Icon name="carbon:add" size="sm" />
-    {#if compact}VNC{:else}<span class="full">Set up screen sharing</span><span class="short">VNC</span>{/if}
+    {#if compact}<Icon name="carbon:screen" size="sm" />{:else}<span class="full">Set up screen sharing</span><span class="short"
+        ><Icon name="carbon:screen" size="sm" /></span
+      >{/if}
   </button>
   <!-- Always mounted, so a change is announced; failures have their own alert. -->
   <span class="live" role="status">{liveText(stage)}</span>
@@ -134,10 +138,22 @@
     background: transparent;
   }
 
-  /* Tight, so "+ VNC" is about as wide as the VNC button the card is sized for; the header's full text has the usual padding back. */
+  /* Tight, so the two icons are about as wide as the VNC button the card is sized for; the header's full text has the usual padding back. */
   .setup .dashed {
     gap: 0;
     padding-inline: var(--space-2);
+  }
+
+  /* In a list row or a tile the setup is a quiet action: no border, the secondary colour (row H of the site language plan). */
+  .setup .quiet-setup {
+    min-block-size: var(--control-sm);
+    border-color: transparent;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+  }
+
+  .setup .quiet-setup:hover {
+    color: var(--text);
   }
 
   .dashed[aria-disabled='true'] {
@@ -146,7 +162,7 @@
 
   /* The full text only where the header is wider than 56rem; the header's own container decides (DEV-021). */
   .short {
-    display: inline;
+    display: inline-flex;
   }
 
   .full {

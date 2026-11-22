@@ -36,7 +36,7 @@ pub fn user_home(env: impl Fn(&str) -> Option<String>) -> Option<PathBuf> {
     if env(HOME_VARIABLE).as_deref() == Some(SYSTEM_HOME) {
         return None;
     }
-    let home = PathBuf::from(env("HOME")?);
+    let home = PathBuf::from(env(if cfg!(windows) { "USERPROFILE" } else { "HOME" })?);
     (home.is_absolute() && home != Path::new(SYSTEM_HOME)).then_some(home)
 }
 
@@ -80,6 +80,12 @@ impl AgentSessions {
             followed: HashMap::new(),
             repositories: HashMap::new(),
         }
+    }
+
+    /// Whether the operator's settings send the accounts of the programs (THR-149, on by default).
+    #[must_use]
+    pub const fn sends_accounts(&self) -> bool {
+        self.settings.send_accounts
     }
 
     /// Reads what changed since the last scan and gives every session day of each session one

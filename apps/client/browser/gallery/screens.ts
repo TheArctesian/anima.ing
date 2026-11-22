@@ -2,6 +2,7 @@ import { DEVICE_LIST_SCREENS } from './screens-devices';
 import { DEVICE_PAGE_SCREENS } from './screens-device-page';
 import { SESSION_SCREENS } from './screens-sessions';
 import { SETTINGS_SCREENS } from './screens-settings';
+import { ERROR_SCREENS } from './screens-errors';
 import { SIGN_IN_SCREENS, STATE_SCREENS } from './screens-states';
 import { VPN_SCREENS } from './screens-vpn';
 import type { Screen } from './shots';
@@ -22,6 +23,15 @@ export const SCREENS: readonly Screen[] = [
     open: async (page) => {
       await page.goto(`${HUB_ORIGIN}/agents/usage`);
       await expect(page.getByRole('table', { name: 'By device' })).toBeVisible();
+    },
+  },
+  ...ERROR_SCREENS,
+  {
+    name: 'welcome',
+    signedOut: true,
+    open: async (page) => {
+      await page.goto(`${HUB_ORIGIN}/welcome`);
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     },
   },
 ];

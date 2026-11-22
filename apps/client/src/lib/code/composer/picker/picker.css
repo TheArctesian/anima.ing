@@ -1,0 +1,48 @@
+/*
+ * The sizes of the model picker of the composer: T3 Code's layout (t3-ui-copy-2026-11-21/03, A.2 to A.4), in Anima's
+ * skin (R-354): our corners, opaque surfaces where T3 has glass and tints, no text under 12 px.
+ */
+:root {
+  /* The trigger (A.2.1, A.3.1): the model's name is cut at 224 px, the effort word at 96 px. */
+  --code-composer-picker-label-max: 14rem;
+  --code-composer-picker-word-max: 6rem;
+
+  /* The popup (A.2.2): a 44 px rail, a list that ends 360 px from the start, a 192 px effort column, 346 px high. */
+  --code-composer-picker-rail: calc(var(--space-10) + var(--space-1));
+  --code-composer-picker-list: 22.5rem;
+  --code-composer-picker-effort: calc(var(--space-12) * 4);
+  --code-composer-picker-body: 21.625rem;
+
+  /* Under 640 px the columns stack: the list 224 px high, the effort column 256 px (A.2.2). */
+  --code-composer-picker-list-short: calc(var(--space-16) * 3.5);
+  --code-composer-picker-effort-short: calc(var(--space-16) * 4);
+
+  /* Rows (A.2.4, A.3.3): 32 px high, 2 px apart; the search line is 26 px high over a 6 px gap. */
+  --code-composer-picker-row: var(--control-md);
+  --code-composer-picker-row-gap: calc(var(--space-1) / 2);
+  --code-composer-picker-search: calc(var(--space-6) + var(--space-1) / 2);
+  --code-composer-picker-head-pad: calc(var(--space-2) + var(--space-1) / 2);
+  --code-composer-picker-rule-gap: calc(var(--space-1) * 1.5);
+
+  /* Small marks: the check, the favourite and mode icons 14 px; the bolt and the chevron 12 px. */
+  --code-composer-picker-mark: calc(var(--space-3) + var(--space-1) / 2);
+  --code-composer-picker-bolt: var(--space-3);
+  --code-composer-picker-star: var(--space-6);
+
+  /* The rail (A.2.3): 36 px buttons; the mark of the open tab is 3 px by 20 px. */
+  --code-composer-picker-tab: calc(var(--code-composer-picker-rail) - var(--space-2));
+  --code-composer-picker-tab-mark: 0.1875rem;
+
+  /* The footer (A.3.4): 24 px segments in a 2 px frame; the permissions button 28 px. */
+  --code-composer-picker-segment: var(--space-6);
+  --code-composer-picker-frame: calc(var(--space-1) / 2);
+
+  /* The Permissions section (A.4.2): 288 px wide, two 16 px lines kept for the description. */
+  --code-composer-picker-permissions: calc(var(--space-16) * 4.5);
+  --code-composer-picker-description: var(--space-8);
+
+  /* Colours: the popup is opaque; quiet text is the secondary token (4.5:1), never a fade. */
+  --code-composer-picker-surface: var(--code-composer-popup, var(--surface-overlay));
+  --code-composer-picker-quiet: var(--code-quiet-text, var(--text-secondary));
+  --code-composer-picker-line: var(--border-subtle);
+}

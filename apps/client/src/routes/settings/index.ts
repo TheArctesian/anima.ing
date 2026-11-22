@@ -16,12 +16,15 @@ export const SECTIONS = {
   account: { id: 'settings-account', title: 'Account', icon: 'carbon:user-avatar', description: 'Who is signed in to this hub.' },
   leave: { id: 'settings-leave', title: 'Leave', icon: 'carbon:logout', description: 'Sign out and forget this hub.' },
   hub: { id: 'settings-hub', title: 'Hub', icon: 'carbon:network-enterprise', description: 'The hub this app talks to.' },
+  routes: { id: 'settings-routes', title: 'Routes', icon: 'carbon:server-dns', description: 'Names of yours that the hub sends to your applications.' },
   // The next two show only when the shell or the hub says they apply, so the index leaves them out (FRN-006, FRN-009).
   localHub: { id: 'settings-local-hub', title: "This computer's hub", icon: 'carbon:bare-metal-server', description: 'The hub on this computer, its database and link.' },
   linkDevices: { id: 'settings-link-devices', title: 'Devices on the link', icon: 'carbon:remote-connection', description: 'Devices that reach this hub over the link.' },
   stayAwake: { id: 'settings-stay-awake', title: 'Stay awake', icon: 'carbon:power', description: 'Keeps this computer on for a hub or agent.' },
   runner: { id: 'settings-runner', title: 'Runner capabilities', icon: 'carbon:chip', description: 'Memory, storage, power, and thermal state.' },
   appearance: { id: 'settings-appearance', title: 'Appearance', icon: 'carbon:color-palette', description: 'How Anima.ing looks on this device.' },
+  // The settings of Code are a group of this page, not a window of their own (OD-THR61, R-353; task TC6).
+  codeAppearance: { id: 'settings-code-appearance', title: 'Code appearance', icon: 'carbon:code', description: 'How the Code page shows chats on this device.' },
   notifications: { id: 'settings-notifications', title: 'Notifications', icon: 'carbon:notification', description: 'Where the hub sends alerts.' },
   checkDefaults: { id: 'settings-check-defaults', title: 'Default check settings', icon: 'carbon:settings-adjust', description: 'New checks start with these settings.' },
   retention: { id: 'settings-retention', title: 'Data retention', icon: 'carbon:data-backup', description: 'How long the hub keeps records.' },
@@ -34,15 +37,16 @@ export const SECTIONS = {
   vpn: { id: 'settings-vpn', title: 'VPN', icon: 'carbon:connect', description: 'How the hub reaches each site, and when each VPN key expires.' },
 } as const satisfies Record<string, IndexEntry & { readonly description: string }>;
 
-/** The three groups of the page, in its order: the hub and the account, this computer, what the hub is connected to (R-224). */
-export const GROUPS = { hub: 'Hub and account', computer: 'This computer', connections: 'Connections' } as const;
+/** The groups of the page, in its order: the hub and the account, this computer, Code, what the hub is connected to (R-224, OD-THR61). */
+export const GROUPS = { hub: 'Hub and account', computer: 'This computer', code: 'Code', connections: 'Connections' } as const;
 
 /** The index of the sections the page shows, in the page's order and in its groups (WP-50 F-10, R-224). */
 export function indexOf(shown: IndexShown): readonly IndexEntry[] {
-  const { account, hub, stayAwake, appearance, runner, notifications, checkDefaults, retention, updates, apiKeys, integrations, mcp, vpn } = SECTIONS;
+  const { account, hub, routes, stayAwake, appearance, codeAppearance, runner, notifications, checkDefaults, retention, updates, apiKeys, integrations, mcp, vpn } = SECTIONS;
   const groups: readonly (readonly [string, readonly (IndexEntry | false)[]])[] = [
-    [GROUPS.hub, [account, shown.keyStore && hub, notifications, checkDefaults, retention]],
+    [GROUPS.hub, [account, shown.keyStore && hub, routes, notifications, checkDefaults, retention]],
     [GROUPS.computer, [shown.stayAwake && stayAwake, appearance, (shown.runnerReport ?? false) && runner, shown.desktopRows && updates, shown.mcpPermissions && mcp]],
+    [GROUPS.code, [codeAppearance]],
     [GROUPS.connections, [integrations, apiKeys, shown.vpn && vpn]],
   ];
   return groups.flatMap(([group, entries]) => entries.filter((entry) => entry !== false).map((entry) => ({ ...entry, group })));

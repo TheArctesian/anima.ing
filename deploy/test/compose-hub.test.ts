@@ -264,7 +264,7 @@ describe("hub image build", () => {
 
   test("SEC-005 every workspace member is in the hub build context, so cargo can load the workspace", () => {
     const manifest = readFileSync(join(ROOT, "Cargo.toml"), "utf8");
-    const members = [...(/^members = \[(.*)\]$/m.exec(manifest)?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((match) => match[1] ?? "");
+    const members = (Bun.TOML.parse(manifest) as { workspace?: { members?: string[] } }).workspace?.members ?? [];
     const copied = dockerfile.split("\n").filter((line) => line.startsWith("COPY ") && !line.includes("--from")).map((line) => line.split(" ")[1] ?? "");
     expect(members.length).toBeGreaterThan(0);
     for (const member of members) {
@@ -305,7 +305,7 @@ describe("hub image build context", () => {
     const root = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) as { workspaces: string[] };
     const manifests = ["package.json"];
     for (const glob of root.workspaces) {
-      for (const found of new Bun.Glob(`${glob}/package.json`).scanSync({ cwd: ROOT })) manifests.push(found);
+      for (const found of new Bun.Glob(`${glob}/package.json`).scanSync({ cwd: ROOT })) manifests.push(found.replaceAll("\\", "/"));
     }
     const members = [...new Set(manifests)].filter((path) => !path.includes("node_modules"));
     expect(members).toContain("apps/client/package.json");

@@ -3,7 +3,7 @@ import type { Hub } from '$lib/hub/hub';
 import { capabilities } from '$lib/platform/platform';
 import { readThisMachine, type ThisMachine } from '../this-machine';
 
-/** Why the shell did not install the daemon: its error codes (MET-019, D-10 d). Any other answer is `failed`. */
+/** Why the shell did not install or remove the daemon: its error codes (MET-019, D-10 d, HMD-056). Any other answer is `failed`. */
 export type DaemonShellProblem =
   | 'caller'
   | 'unavailable'
@@ -16,6 +16,8 @@ export type DaemonShellProblem =
   | 'copy'
   | 'enrol'
   | 'install'
+  | 'uninstall'
+  | 'remove'
   | 'timed-out'
   | 'failed';
 
@@ -28,10 +30,12 @@ const MESSAGES: Record<DaemonShellProblem, string> = {
   origin: 'The hub address is not a plain https origin on port 443.',
   'no-home': 'The app could not find your home folder.',
   untrusted:
-    '~/.local/bin, or a folder above it, can be changed by other users (through its group, an ACL or as others). Run `chmod g-w,o-w` on it, and `setfacl -b` for an ACL, then try again.',
-  copy: 'The daemon could not be copied to ~/.local/bin.',
+    'The daemon installation folder or an ancestor can be changed by another user.',
+  copy: 'The daemon could not be copied to its installation folder.',
   enrol: 'The daemon could not enrol. Retry to make a new code.',
   install: 'The daemon enrolled but did not start. Run `anima-daemon install` in a terminal to see why.',
+  uninstall: 'The daemon did not take its unit and its token off this computer.',
+  remove: 'The copy of the daemon in its installation folder could not be deleted.',
   'timed-out': 'The daemon did not finish in time.',
   failed: 'The install did not finish.',
 };
@@ -39,8 +43,12 @@ const MESSAGES: Record<DaemonShellProblem, string> = {
 const PROBLEMS = new Set<string>(Object.keys(MESSAGES));
 
 /** The sentence for a problem of the shell, for a place that shows it later than the call (HMD-053). */
-export function describeDaemonProblem(problem: DaemonShellProblem): string {
-  return MESSAGES[problem];
+export function describeDaemonProblem(problem: DaemonShellProblem, agent = navigator.userAgent): string {
+  if (problem !== 'untrusted') return MESSAGES[problem];
+  const fix = /Windows NT/.test(agent)
+    ? "Open the folder's Properties → Security and remove other users' write access."
+    : 'Run `chmod g-w,o-w` on it, and `setfacl -b` for an ACL.';
+  return `${MESSAGES.untrusted} ${fix}`;
 }
 
 export type DaemonShellResult = { readonly ok: true } | { readonly ok: false; readonly problem: DaemonShellProblem; readonly message: string };
@@ -61,6 +69,24 @@ export async function daemonBundled(): Promise<boolean> {
   }
 }
 
+/** The mark of the daemon of this computer (R-322): it waits for the person in the macOS Keychain, it does not, or the shell did not say. */
+export type KeychainMark = 'waits' | 'free' | 'unknown';
+
+/** The mark of the daemon of this computer; `free` outside the app, where no daemon of this computer can wait, and `unknown` when the shell does not answer. */
+export async function daemonKeychainMark(): Promise<KeychainMark> {
+  if (!isTauri()) return 'free';
+  try {
+    return (await invoke('daemon_keychain_waits')) === true ? 'waits' : 'free';
+  } catch {
+    return 'unknown';
+  }
+}
+
+/** Whether the daemon of this computer waits for the person to allow it in the macOS Keychain; false outside the app or when the shell does not answer. */
+export async function daemonKeychainWaits(): Promise<boolean> {
+  return (await daemonKeychainMark()) === 'waits';
+}
+
 /**
  * Has the shell install the daemon on this computer for this user, enrolled with `code` at `origin` (MET-019). The code goes
  * to the shell and nowhere else; no answer and no message holds it (LOG-007).
@@ -72,7 +98,24 @@ export async function installDaemon(code: string, origin: string): Promise<Daemo
     return { ok: true };
   } catch (reason) {
     const problem = problemOf(reason);
-    return { ok: false, problem, message: MESSAGES[problem] };
+    return { ok: false, problem, message: describeDaemonProblem(problem) };
+  }
+}
+
+/** What the removal did: whether a copy of the daemon was on this computer, or why the shell did not remove it. */
+export type DaemonRemoval = { readonly ok: true; readonly wasHere: boolean } | { readonly ok: false; readonly problem: DaemonShellProblem; readonly message: string };
+
+/**
+ * Has the shell take the daemon off this computer (HMD-056): its unit, its token and its copy. Outside the desktop app
+ * there is nothing to remove.
+ */
+export async function removeDaemon(): Promise<DaemonRemoval> {
+  if (!isTauri()) return { ok: true, wasHere: false };
+  try {
+    return { ok: true, wasHere: (await invoke('daemon_remove')) === true };
+  } catch (reason) {
+    const problem = problemOf(reason);
+    return { ok: false, problem, message: describeDaemonProblem(problem) };
   }
 }
 

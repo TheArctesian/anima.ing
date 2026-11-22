@@ -19,6 +19,7 @@ mod networks;
 mod origin;
 mod password;
 mod rebinding;
+mod recheck;
 mod store;
 #[cfg(test)]
 mod tests;
@@ -44,7 +45,9 @@ pub use builder_tokens::{IssuedToken, issue_builder_token, revoke_builder_token}
 pub use connection::{MESSAGE_LIMIT, SUBPROTOCOL, SocketAccess, accept_socket};
 pub use error::Error;
 pub use graphql::AuthPayload;
-pub use guard::{Authenticated, BUILDER_FIELDS, BuilderSignedIn, SignInRequired, operator_only};
+pub use guard::{
+    Authenticated, BUILDER_FIELDS, BuilderSignedIn, SignInRequired, operator_only, person_only,
+};
 pub use identity::{Identity, client_addr, identify, identify_connection, operator_for_token};
 pub use layer::{Edge, permitted_networks_layer};
 pub use login::browser_ticket::{BrowserTickets, TICKET_BYTES};
@@ -52,6 +55,7 @@ pub use login::hosted::{BrowserSession, HostedDevice, sign_in_hosted, sign_in_ho
 pub use origin::PublicOrigin;
 pub use password::Password;
 pub use rebinding::loopback_names_layer;
+pub use recheck::{RECHECK_WINDOW, Recheck, recheck_totp};
 pub use tokens::{Scope, TokenKind};
 
 use crate::{

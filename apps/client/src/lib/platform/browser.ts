@@ -12,6 +12,7 @@ export const browserCapabilities: Capabilities = {
   systemSettings: false,
   builds: false,
   mcpPermissions: false,
+  agentThreads: false,
   commandLine: false,
   stayAwake: false,
   localHub: false,
@@ -20,6 +21,7 @@ export const browserCapabilities: Capabilities = {
   accountSession: false,
   runnerReport: false,
   overlayTitleBar: false,
+  framelessWindow: false,
   recentCopy: false,
 };
 

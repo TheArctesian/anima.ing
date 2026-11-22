@@ -1,0 +1,130 @@
+/**
+ * The rules of the controls that drive a thread (TH14, THR-017, THR-030): the keys of the composer, the words of a mode,
+ * the form of a new thread, and the answers to a request. Pure.
+ */
+
+import type { Program } from '../thread';
+import type { CallResult } from './live.svelte';
+import type { Action, Answer, Ask, Effort, Mode } from './run';
+
+/** The words of each mode of approvals; full access is the default (decision of the operator, agent-threads.md Section 6.2). */
+export const MODE_WORDS: Readonly<Record<Mode, string>> = {
+  full_access: 'Full access',
+  accept_edits: 'Ask before commands',
+  ask: 'Ask before each change',
+  plan: 'Plan first (Claude Code only)',
+};
+
+export const EFFORTS: readonly Effort[] = ['low', 'medium', 'high', 'xhigh', 'max'];
+
+/** What a key in the composer does: Enter sends, Shift+Enter and a key of an input method type (THR-017). */
+export function composerKey(press: { readonly key: string; readonly shift: boolean; readonly composing: boolean }): 'send' | 'type' {
+  return press.key === 'Enter' && !press.shift && !press.composing ? 'send' : 'type';
+}
+
+/** The fields of the form of a new thread, as the person typed them. */
+export interface NewThreadForm {
+  readonly program: Program;
+  readonly folder: string;
+  readonly mode: Mode;
+  readonly model: string;
+  readonly effort: Effort | '';
+  readonly prompt: string;
+  /** The copy of the program, empty for the usual one. */
+  readonly programPath: string;
+}
+
+/** The start call of a form, or the words of what is wrong with it. The runner checks each value again. */
+export function startOf(form: NewThreadForm): { readonly ok: true; readonly action: Action } | { readonly ok: false; readonly words: string } {
+  const folder = form.folder.trim();
+  if (!folder.startsWith('/')) return { ok: false, words: 'Give an absolute folder of this computer, for example /Users/you/project.' };
+  if (form.prompt.trim() === '') return { ok: false, words: 'Type the first prompt.' };
+  const programPath = form.programPath.trim();
+  if (programPath !== '' && !programPath.startsWith('/')) return { ok: false, words: 'Give the absolute path of the copy of the program, or leave it empty.' };
+  const model = form.model.trim();
+  return {
+    ok: true,
+    action: {
+      call: 'start',
+      program: form.program,
+      folder,
+      mode: form.mode,
+      model: model === '' ? null : model,
+      effort: form.effort === '' ? null : form.effort,
+      prompt: form.prompt,
+      ...(programPath === '' ? {} : { program_path: programPath }),
+    },
+  };
+}
+
+/**
+ * The copy that the dialog offers after a refusal: when the copy that the start chose did not answer and a different one
+ * did, the first of those (TH97); `null` when there is none, or when the start already named that copy.
+ */
+export function offeredCopy(result: CallResult, chosen: string): string | null {
+  if (result.ok) return null;
+  const copy = result.answered?.[0];
+  return copy === undefined || copy === chosen.trim() ? null : copy;
+}
+
+/** The words of the head of a request, as the program asks it. */
+export function askTitle(program: string, ask: Ask): string {
+  switch (ask.kind) {
+    case 'command':
+      return `${program} asks to run a command`;
+    case 'file_change':
+      return `${program} asks to change a file`;
+    case 'tool':
+      return `${program} asks to use ${ask.tool}`;
+    case 'question':
+      return `${program} asks a question`;
+  }
+}
+
+/** The words when a stop could not prove that each process below the program ended (THR-049). */
+export const NOT_ALL_ENDED = 'The program ended, but a process that it started may still run.';
+
+/** The message to the agent when the person declines. */
+export const DECLINED = 'The person declined this.';
+
+/** The answer to the questions of a request: one choice for each question, or `null` while one has none. */
+export function chosenAnswer(ask: Ask, chosen: Readonly<Record<string, readonly string[]>>): Answer | null {
+  const answers: [string, string][] = [];
+  for (const question of ask.questions) {
+    const picks = chosen[question.key] ?? [];
+    if (picks.length === 0) return null;
+    for (const pick of picks) answers.push([question.key, pick]);
+  }
+  return { answer: 'choose', answers };
+}
+
+/** The prompt that waits, as the composer names it: `id` in its first version, `queued` from code/composer-set. */
+type Waiting = { readonly id: string } | { readonly queued: string };
+
+/** A call of the composer's queue, without the thread. */
+export type QueueRequest =
+  | { readonly call: 'queue'; readonly text: string }
+  | ({ readonly call: 'requeue'; readonly text: string } & Waiting)
+  | ({ readonly call: 'unqueue' } & Waiting)
+  | ({ readonly call: 'send_queued' } & Waiting);
+
+function waitingOf(request: Waiting): string {
+  return 'queued' in request ? request.queued : request.id;
+}
+
+/**
+ * The runner's call for a request of the queue of `thread` (TH109). The runner names the prompt that waits `queued`: a
+ * call frame holds its own `id` beside the fields of its action.
+ */
+export function queueAction(request: QueueRequest, thread: string): Action {
+  switch (request.call) {
+    case 'queue':
+      return { call: 'queue', thread, text: request.text };
+    case 'requeue':
+      return { call: 'requeue', thread, queued: waitingOf(request), text: request.text };
+    case 'unqueue':
+      return { call: 'unqueue', thread, queued: waitingOf(request) };
+    case 'send_queued':
+      return { call: 'send_queued', thread, queued: waitingOf(request) };
+  }
+}

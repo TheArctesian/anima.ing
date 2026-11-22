@@ -1,11 +1,12 @@
 import { extensionRows } from './extensions';
+import { projectConnection } from './projects';
 import { GraphQLError } from 'graphql';
 import { BEARER_TOKEN, COOKIE_MAX_AGE_SECONDS, HUB_ORIGIN, OPERATOR, type Caller } from '../access';
 import type { Row } from '../fixtures';
 import { agentUsageFields } from './agent-usage';
 import { containerFields } from './containers';
 import { vpnFields } from '../vpn';
-import { allDevices, channelView, connection, checkView, deviceOf, eventRows, sessionRows, type HubState } from '../model';
+import { allDevices, channelView, connection, checkView, deviceEventRows, deviceOf, eventRows, sessionRows, type HubState } from '../model';
 
 /** What one GraphQL call brings to its resolvers, and what they hand back for the answer's headers. */
 export interface CallContext {
@@ -77,7 +78,8 @@ export function rootValue(state: HubState): Record<string, unknown> {
   return {
     me: () => operatorView(state),
     sites: () => state.fixtures.sites,
-    extensions: () => extensionRows(),
+    extensions: () => extensionRows(state.fixtures.extensionsOn),
+    projects: projectConnection,
     tags: () => [...new Set(state.fixtures.devices.flatMap((device) => (device.tags ?? []) as string[]))],
     device: ({ id }: { id: string }) => deviceOf(state, id),
     devices: (page: Page) => connection(allDevices(state), page),
@@ -85,7 +87,9 @@ export function rootValue(state: HubState): Record<string, unknown> {
       const row = state.fixtures.checks.find((found) => found.id === id);
       return row === undefined ? null : checkView(state, row);
     },
-    events: (page: Page) => connection(eventRows(state), page),
+    // Like the hub, `filter.deviceId` keeps one device's events: the device page's Logs tab asks for them (LOG-009).
+    events: ({ filter, ...page }: Args<{ filter?: { deviceId?: string | null } | null }>) =>
+      connection(filter?.deviceId == null ? eventRows(state) : deviceEventRows(state, filter.deviceId), page),
     sessions: ({ live, deviceId, ...page }: Args<{ live?: boolean | null; deviceId?: string | null }>) => {
       const rows = sessionRows(state).filter(
         (row) => (live !== true || row.endedAt === null) && (deviceId == null || row.deviceId === deviceId),

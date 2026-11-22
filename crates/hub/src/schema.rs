@@ -13,9 +13,11 @@ use sqlx::PgPool;
 use crate::{
     clock::Clock,
     config::Config,
-    engine::{extensions, files, links, locations, places, reminders, sources, timeline},
+    engine::{
+        extensions, files, links, locations, places, reminders, sealed_records, sources, timeline,
+    },
     fleet::{
-        access, agent_usage, builds, checks,
+        access, agent_usage, builds, checks, compute,
         credentials::{self, Vault},
         devices,
         events::{
@@ -27,7 +29,7 @@ use crate::{
         targets::AddressPolicy,
         trust, vpn, web_interfaces,
     },
-    work::{containers, projects},
+    work::{catalogue, containers, projects, routes},
 };
 
 // One line per domain in each root (K3).
@@ -35,8 +37,12 @@ use crate::{
 pub struct Query(
     access::graphql::Query,
     agent_usage::graphql::Query,
+    agent_usage::graphql::SessionsQuery,
     builds::graphql::Query,
+    catalogue::graphql::Query,
+    compute::library::graphql::Query,
     checks::graphql::Query,
+    compute::graphql::Query,
     containers::graphql::Query,
     credentials::graphql::Query,
     devices::graphql::Query,
@@ -49,6 +55,7 @@ pub struct Query(
     notifications::graphql::Query,
     places::graphql::Query,
     projects::graphql::Query,
+    routes::graphql::Query,
     retention::graphql::Query,
     sessions::graphql::Query,
     sources::graphql::Query,
@@ -59,6 +66,7 @@ pub struct Query(
     files::graphql::ProposalQuery,
     locations::graphql::Query,
     reminders::graphql::Query,
+    sealed_records::graphql::Query,
 );
 
 #[derive(MergedObject, Default)]
@@ -66,18 +74,23 @@ pub struct Mutation(
     access::graphql::Mutation,
     builds::graphql::Mutation,
     builds::graphql::BuilderMutation,
+    catalogue::graphql::Mutation,
     checks::graphql::Mutation,
+    compute::graphql::Mutation,
+    compute::library::graphql::Mutation,
     credentials::graphql::Mutation,
     devices::graphql::Mutation,
     extensions::graphql::Mutation,
     link::graphql::Mutation,
     link::graphql::HostedMutation,
+    link::graphql::ComputerMutation,
     links::graphql::Mutation,
     maintenance::graphql::Mutation,
     metrics::graphql::Mutation,
     notifications::graphql::Mutation,
     places::graphql::Mutation,
     projects::graphql::Mutation,
+    routes::graphql::Mutation,
     retention::graphql::Mutation,
     sessions::graphql::Mutation,
     sessions::FilesMutation,
@@ -92,6 +105,7 @@ pub struct Mutation(
     files::graphql::ProposalMutation,
     locations::graphql::Mutation,
     reminders::graphql::Mutation,
+    sealed_records::graphql::Mutation,
 );
 
 #[derive(MergedSubscription, Default)]
@@ -195,6 +209,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(vault)
     // The open claims of a hosted hub (R-129), and its open browser tickets (HMD-061).
     .data(link::Claims::default())
+    .data(link::ComputerClaims::default())
     .data(access::BrowserTickets::default());
     // One block per domain: its loaders (R-014) and its state.
     let builder = with_devices_loaders(builder, &pool, &clock)
@@ -282,8 +297,10 @@ fn with_devices_loaders(builder: Builder, pool: &PgPool, clock: &Arc<dyn Clock>)
         // devices fields that join metrics (API-005)
         .data(devices::graphql::readings_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::gpus_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(devices::graphql::batteries_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::stale_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::daemon_version_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(devices::graphql::daemon_need_loader(pool.clone()).delay(BATCH_WINDOW))
 }
 
 /// API-007: release builds are production builds; debug builds keep introspection for tooling.

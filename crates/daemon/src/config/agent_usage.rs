@@ -2,8 +2,12 @@
 //! (AIS-008, AIS-023, K8 Section 4). The operator writes it; the daemon only reads it, at start.
 //!
 //! ```json
-//! { "off": true, "excludedFolders": ["/Users/me/private"], "excludedRepositories": ["github.com/me/secret"] }
+//! { "off": true, "excludedFolders": ["/Users/me/private"], "excludedRepositories": ["github.com/me/secret"], "sendAccounts": true }
 //! ```
+//!
+//! `sendAccounts` is on by default, as T3 Code sends the account with no switch (THR-149): the
+//! account of each program goes to the hub, for the person's clients. `"sendAccounts": false`
+//! keeps it at the machine.
 
 use std::io;
 use std::path::{Path, PathBuf};
@@ -20,8 +24,8 @@ pub const SETTINGS_FILE: &str = "agent-usage.json";
 /// The most entries of each list.
 const MAX_ENTRIES: usize = 256;
 
-/// What the operator chose; the default reads every session.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+/// What the operator chose; the default reads every session and sends the accounts.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UsageSettings {
     /// No session file is read and no counts are sent.
     pub off: bool,
@@ -33,6 +37,16 @@ pub struct UsageSettings {
     pub excluded_repositories: Vec<String>,
     /// Folders compare without letter case, as the file system of macOS does.
     pub fold_case: bool,
+    /// The key, the address, the plan and the limit windows of each program's account are sent
+    /// (AIS-022, THR-149). On unless the operator writes `"sendAccounts": false`.
+    pub send_accounts: bool,
+}
+
+/// The settings of an empty file: each member at its default.
+impl Default for UsageSettings {
+    fn default() -> Self {
+        Self::parse(b"{}").expect("the empty settings are of the form")
+    }
 }
 
 #[derive(Deserialize)]
@@ -44,6 +58,13 @@ struct Stored {
     excluded_folders: Vec<String>,
     #[serde(default)]
     excluded_repositories: Vec<String>,
+    // Absent is on; `null` is not a bool, so a file with it is refused, as for each member.
+    #[serde(default = "on")]
+    send_accounts: bool,
+}
+
+const fn on() -> bool {
+    true
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -51,7 +72,7 @@ pub enum SettingsError {
     #[error("{SETTINGS_FILE} cannot be read: {0}")]
     Io(#[from] io::Error),
     #[error(
-        "{SETTINGS_FILE} is not JSON of its form (members off, excludedFolders, excludedRepositories)"
+        "{SETTINGS_FILE} is not JSON of its form (members off, excludedFolders, excludedRepositories, sendAccounts)"
     )]
     Unreadable,
     #[error("{SETTINGS_FILE} names a folder that is not an absolute path")]
@@ -85,7 +106,7 @@ impl UsageSettings {
             .filter_map(|folder| std::fs::canonicalize(folder).ok())
             .collect();
         settings.excluded_folders.extend(resolved);
-        settings.fold_case = cfg!(target_os = "macos");
+        settings.fold_case = cfg!(any(target_os = "macos", windows));
         Ok(settings)
     }
 
@@ -124,6 +145,7 @@ impl UsageSettings {
             excluded_folders,
             excluded_repositories: stored.excluded_repositories,
             fold_case: false,
+            send_accounts: stored.send_accounts,
         })
     }
 
@@ -164,18 +186,38 @@ mod tests {
 
     #[test]
     fn ais_008_the_settings_read_back_and_exclude_by_folder_and_repository() {
-        let settings = UsageSettings::parse(
-            br#"{"excludedFolders":["/Users/me/private"],"excludedRepositories":["github.com/Me/Secret"]}"#,
-        )
-        .expect("parses");
+        let folder = if cfg!(windows) {
+            "C:/Users/me/private"
+        } else {
+            "/Users/me/private"
+        };
+        let document = serde_json::json!({"excludedFolders": [folder], "excludedRepositories": ["github.com/Me/Secret"]});
+        let settings =
+            UsageSettings::parse(&serde_json::to_vec(&document).unwrap()).expect("parses");
         assert!(!settings.off);
         let app = Some("github.com/me/app");
-        let private = Path::new("/Users/me/private/app");
+        let private = Path::new(if cfg!(windows) {
+            "C:/Users/me/private/app"
+        } else {
+            "/Users/me/private/app"
+        });
         assert!(settings.excludes(&[private], app));
-        let near = Path::new("/Users/me/private-not");
+        let near = Path::new(if cfg!(windows) {
+            "C:/Users/me/private-not"
+        } else {
+            "/Users/me/private-not"
+        });
         assert!(!settings.excludes(&[near], app), "whole components");
-        let elsewhere = Path::new("/tmp/wt");
-        let main = Path::new("/Users/me/private");
+        let elsewhere = Path::new(if cfg!(windows) {
+            "C:/tmp/wt"
+        } else {
+            "/tmp/wt"
+        });
+        let main = Path::new(if cfg!(windows) {
+            "C:/Users/me/private"
+        } else {
+            "/Users/me/private"
+        });
         assert!(
             settings.excludes(&[elsewhere, main], app),
             "a worktree of an excluded repository"
@@ -187,6 +229,20 @@ mod tests {
             UsageSettings::default()
         );
         assert!(UsageSettings::parse(br#"{"off":true}"#).expect("off").off);
+    }
+
+    #[test]
+    fn thr_149_the_accounts_are_sent_unless_the_operator_turns_it_off() {
+        assert!(UsageSettings::default().send_accounts);
+        assert!(UsageSettings::parse(b"{}").expect("empty").send_accounts);
+        let on = UsageSettings::parse(br#"{"sendAccounts":true}"#).expect("on");
+        assert!(on.send_accounts);
+        let off = UsageSettings::parse(br#"{"sendAccounts":false}"#).expect("off");
+        assert!(!off.send_accounts);
+        assert!(
+            UsageSettings::parse(br#"{"sendAccounts":null}"#).is_err(),
+            "null is refused, so the function turns off"
+        );
     }
 
     #[test]
@@ -219,7 +275,11 @@ mod tests {
     fn ais_023_an_unknown_repository_is_excluded_when_any_repository_is() {
         let listed = UsageSettings::parse(br#"{"excludedRepositories":["github.com/me/secret"]}"#)
             .expect("parses");
-        let folder = Path::new("/Users/me/Documents/secret");
+        let folder = Path::new(if cfg!(windows) {
+            "C:/Users/me/Documents/secret"
+        } else {
+            "/Users/me/Documents/secret"
+        });
         assert!(listed.excludes(&[folder], None));
         assert!(!UsageSettings::default().excludes(&[folder], None));
     }
@@ -249,10 +309,10 @@ mod tests {
         let dir = tempfile::tempdir().expect("a folder");
         let real = dir.path().join("real/secret");
         std::fs::create_dir_all(&real).expect("a folder");
-        std::os::unix::fs::symlink(dir.path().join("real"), dir.path().join("link"))
+        crate::test_links::symlink(dir.path().join("real"), dir.path().join("link"))
             .expect("a link");
         let written = dir.path().join("link/secret");
-        let text = format!(r#"{{"excludedFolders":["{}"]}}"#, written.display());
+        let text = serde_json::to_vec(&serde_json::json!({"excludedFolders": [written]})).unwrap();
         std::fs::write(dir.path().join(SETTINGS_FILE), text).expect("written");
         let settings = UsageSettings::read(&Home::at(dir.path().to_owned())).expect("read");
         let recorded = std::fs::canonicalize(&real).expect("real").join("app");
@@ -266,16 +326,41 @@ mod tests {
     #[test]
     fn ais_008_folders_compare_without_letter_case_on_macos() {
         let settings = UsageSettings {
-            excluded_folders: vec![PathBuf::from("/Users/Me/Private")],
+            excluded_folders: vec![PathBuf::from(if cfg!(windows) {
+                "C:/Users/Me/Private"
+            } else {
+                "/Users/Me/Private"
+            })],
             fold_case: true,
             ..UsageSettings::default()
         };
-        assert!(settings.excludes(&[Path::new("/users/me/private/app")], None));
-        assert!(!settings.excludes(&[Path::new("/users/me/private-not")], None));
+        assert!(settings.excludes(
+            &[Path::new(if cfg!(windows) {
+                "C:/users/me/private/app"
+            } else {
+                "/users/me/private/app"
+            })],
+            None
+        ));
+        assert!(!settings.excludes(
+            &[Path::new(if cfg!(windows) {
+                "C:/users/me/private-not"
+            } else {
+                "/users/me/private-not"
+            })],
+            None
+        ));
         let exact = UsageSettings {
             fold_case: false,
             ..settings
         };
-        assert!(!exact.excludes(&[Path::new("/users/me/private/app")], None));
+        assert!(!exact.excludes(
+            &[Path::new(if cfg!(windows) {
+                "C:/users/me/private/app"
+            } else {
+                "/users/me/private/app"
+            })],
+            None
+        ));
     }
 }

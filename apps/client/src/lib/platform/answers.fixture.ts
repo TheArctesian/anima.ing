@@ -15,6 +15,7 @@ export const DESKTOP_MAC: Capabilities = {
   systemSettings: true,
   builds: true,
   mcpPermissions: true,
+  agentThreads: true,
   commandLine: true,
   stayAwake: true,
   localHub: true,
@@ -23,6 +24,7 @@ export const DESKTOP_MAC: Capabilities = {
   accountSession: false,
   runnerReport: false,
   overlayTitleBar: true,
+  framelessWindow: false,
   recentCopy: true,
 };
 

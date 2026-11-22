@@ -11,14 +11,15 @@
 mod claims;
 pub mod graphql;
 mod model;
+#[cfg(unix)]
 mod owned;
 mod presence;
 mod socket;
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 mod wire;
 
-pub use claims::Claims;
+pub use claims::{Claims, ComputerClaims};
 pub use model::LinkPath;
 pub(crate) use model::Refusal;
 pub use presence::{Presence, presence};

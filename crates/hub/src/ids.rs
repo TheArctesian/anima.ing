@@ -118,6 +118,14 @@ entity_id! {
     ReminderRuleId,
     /// One firing of a reminder rule (K-E6 Section 3).
     FiringId,
+    /// A record that a client sealed (K-E5 Section 3).
+    SealedRecordId,
+    /// An offer of the vault key to a new client (K-E5 Section 3).
+    KeyOfferId,
+    /// An application on a machine, as the applications program names it (HOST-008).
+    ApplicationId,
+    /// A public name of an application on the hub (HOST-046, task H21).
+    RouteId,
 }
 
 #[cfg(test)]

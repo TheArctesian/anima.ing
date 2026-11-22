@@ -16,6 +16,7 @@
     "text",
     "fingerprint",
     "core_dumps",
+    "shutdown",
     "records",
     "instants",
     "sealing_keys"
@@ -30,6 +31,13 @@
   ],
   "domains": {
     "events": [],
+    "compute": [
+      "devices",
+      "events",
+      "metrics",
+      "jobs",
+      "access"
+    ],
     "credentials": [
       "events"
     ],
@@ -137,6 +145,7 @@
       "ssh",
       "credentials"
     ],
+    "catalogue": [],
     "locations": [
       "places",
       "events",
@@ -153,8 +162,19 @@
       "extensions",
       "sources"
     ],
+    "sealed_records": [
+      "events"
+    ],
     "jobs": [
       "events"
+    ],
+    "rollout": [
+      "builds"
+    ],
+    "routes": [
+      "devices",
+      "events",
+      "credentials"
     ]
   },
   "graphql": {
@@ -218,7 +238,9 @@
     ],
     "link": [
       "access",
-      "events"
+      "events",
+      "devices",
+      "metrics"
     ],
     "agent_usage": [
       "access"
@@ -229,6 +251,9 @@
     "containers": [
       "access"
     ],
+    "catalogue": [
+      "access"
+    ],
     "files": [
       "access"
     ],
@@ -236,6 +261,15 @@
       "access"
     ],
     "reminders": [
+      "access"
+    ],
+    "sealed_records": [
+      "access"
+    ],
+    "routes": [
+      "access"
+    ],
+    "compute": [
       "access"
     ]
   }

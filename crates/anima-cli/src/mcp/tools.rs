@@ -1,12 +1,14 @@
 //! Every MCP tool, one module for each tool set. A tool calls the typed documents of its noun
 //! through [`Hub`] (MCP-001, CMD-003); it never starts the `anima` program.
 
+pub mod agents;
 pub mod checks;
 pub mod devices;
 pub mod events;
 pub mod extensions;
 pub mod link;
 pub mod maintenance;
+pub use devices::models;
 pub mod notifications;
 pub mod projects;
 pub mod releases;
@@ -36,6 +38,8 @@ pub enum Tool {
     Sessions(sessions::SessionTool),
     Notifications(notifications::NotificationTool),
     Web(web::WebTool),
+    Routes(devices::routes::RouteTool),
+    Models(models::ModelTool),
     Releases(releases::ReleaseTool),
     Vpn(vpn::VpnTool),
     Retention(retention::RetentionTool),
@@ -51,6 +55,7 @@ pub enum Tool {
     Places(shared_records::places::PlaceTool),
     Locations(shared_records::locations::LocationTool),
     Reminders(shared_records::reminders::ReminderTool),
+    Agents(agents::AgentTool),
 }
 
 impl Tool {
@@ -65,6 +70,8 @@ impl Tool {
         tools.extend(sessions::SessionTool::ALL.map(Self::Sessions));
         tools.extend(notifications::NotificationTool::ALL.map(Self::Notifications));
         tools.extend(web::WebTool::ALL.map(Self::Web));
+        tools.extend(devices::routes::RouteTool::ALL.map(Self::Routes));
+        tools.extend(models::ModelTool::ALL.map(Self::Models));
         tools.extend(releases::ReleaseTool::ALL.map(Self::Releases));
         tools.extend(vpn::VpnTool::ALL.map(Self::Vpn));
         tools.extend(retention::RetentionTool::ALL.map(Self::Retention));
@@ -80,6 +87,7 @@ impl Tool {
         tools.extend(shared_records::places::PlaceTool::ALL.map(Self::Places));
         tools.extend(shared_records::locations::LocationTool::ALL.map(Self::Locations));
         tools.extend(shared_records::reminders::ReminderTool::ALL.map(Self::Reminders));
+        tools.extend(agents::AgentTool::ALL.map(Self::Agents));
         tools
     }
 
@@ -92,7 +100,8 @@ impl Tool {
             Self::Events(_) => ToolSet::Events,
             Self::Sessions(_) => ToolSet::Sessions,
             Self::Notifications(_) => ToolSet::Notifications,
-            Self::Web(_) => ToolSet::Web,
+            Self::Web(_) | Self::Routes(_) => ToolSet::Web,
+            Self::Models(_) => ToolSet::Models,
             Self::Releases(_) => ToolSet::Releases,
             Self::Vpn(_) => ToolSet::Vpn,
             Self::Retention(_) => ToolSet::Retention,
@@ -108,6 +117,7 @@ impl Tool {
             | Self::Places(_)
             | Self::Locations(_)
             | Self::Reminders(_) => ToolSet::Records,
+            Self::Agents(_) => ToolSet::Agents,
         }
     }
 
@@ -121,6 +131,8 @@ impl Tool {
             Self::Sessions(tool) => tool.definition(),
             Self::Notifications(tool) => tool.definition(),
             Self::Web(tool) => tool.definition(),
+            Self::Routes(tool) => tool.definition(),
+            Self::Models(tool) => tool.definition(),
             Self::Releases(tool) => tool.definition(),
             Self::Vpn(tool) => tool.definition(),
             Self::Retention(tool) => tool.definition(),
@@ -136,6 +148,7 @@ impl Tool {
             Self::Places(tool) => tool.definition(),
             Self::Locations(tool) => tool.definition(),
             Self::Reminders(tool) => tool.definition(),
+            Self::Agents(tool) => tool.definition(),
         }
     }
 
@@ -156,6 +169,8 @@ impl Tool {
             Self::Sessions(tool) => tool.call(hub, arguments).await,
             Self::Notifications(tool) => tool.call(hub, arguments).await,
             Self::Web(tool) => tool.call(hub, arguments).await,
+            Self::Routes(tool) => tool.call(hub, arguments).await,
+            Self::Models(tool) => tool.call(hub, arguments).await,
             Self::Releases(tool) => tool.call(hub, arguments).await,
             Self::Vpn(tool) => tool.call(hub, arguments).await,
             Self::Retention(tool) => tool.call(hub, arguments).await,
@@ -171,6 +186,7 @@ impl Tool {
             Self::Places(tool) => tool.call(hub, arguments).await,
             Self::Locations(tool) => tool.call(hub, arguments).await,
             Self::Reminders(tool) => tool.call(hub, arguments).await,
+            Self::Agents(tool) => tool.call(arguments),
         }
     }
 }

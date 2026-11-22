@@ -44,10 +44,17 @@ export interface Capabilities {
    * to and no code to compare (mobile plan M3-5). Only the iPhone app has it; the other shells use the code.
    */
   readonly accountSession: boolean;
+  /** The shell reads the sessions of Claude Code and Codex of this computer as threads (THR-011). */
+  readonly agentThreads: boolean;
   /** The shell can read this device’s local runner capability report (OD-14). */
   readonly runnerReport: boolean;
   /** The window draws its content under the OS title bar, with the window buttons over the navigation bar (macOS). */
   readonly overlayTitleBar: boolean;
+  /**
+   * The system gives the window no frame, so the client draws the window controls and the top of the window moves it
+   * (Windows and Linux; task TC2 of agent-threads.md, "Both together").
+   */
+  readonly framelessWindow: boolean;
   /** The app keeps a read-only copy of recent hub answers on this computer and shows it when the hub does not answer (FND-007). */
   readonly recentCopy: boolean;
 }

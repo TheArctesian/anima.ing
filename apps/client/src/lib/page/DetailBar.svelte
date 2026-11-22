@@ -80,19 +80,20 @@
   /* The bar runs to the page's edges, over the main column's padding, so the page scrolls cleanly under it. */
   header {
     position: sticky;
-    inset-block-start: 0;
+    /* Below the strip that takes the place of the frame of the window, where there is one. */
+    inset-block-start: var(--titlebar-block-size);
     z-index: var(--layer-sticky);
     display: flex;
     flex-direction: column;
-    margin: calc(var(--space-3) * -1) calc(var(--page-gutter, var(--space-6)) * -1) var(--space-4);
-    padding: var(--space-3) var(--page-gutter, var(--space-6)) 0;
+    margin: calc(var(--space-3) * -1) calc((var(--page-gutter, var(--space-6)) + var(--page-room, 0px)) * -1) var(--space-4);
+    padding: var(--space-3) calc(var(--page-gutter, var(--space-6)) + var(--page-room, 0px)) 0;
     border-block-end: var(--border-thin) solid var(--border-subtle);
     background: var(--surface-base);
   }
 
   /* Below the compact breakpoint the unreachable strip takes the top of the window; the bar pins under it. */
   :global(:root[data-nav='icons'][data-hub-banner]) header {
-    inset-block-start: var(--nav-banner-block-size);
+    inset-block-start: calc(var(--nav-banner-block-size) + var(--titlebar-block-size));
   }
 
   header:not(:has(.tabs)) {
@@ -208,8 +209,12 @@
   }
 
   /* The strip sits on the bar's own rule: its underline and gap give way, and the selected tab's line overlaps the rule. */
-  .tabs > :global(*) {
+  /* `header` outweighs the strip's own margin, whichever stylesheet loads last. */
+  header .tabs > :global(*) {
     margin-block-end: calc(var(--border-thin) * -1);
+  }
+
+  .tabs :global([role='tablist']) {
     box-shadow: none;
   }
 

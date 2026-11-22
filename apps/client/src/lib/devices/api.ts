@@ -22,6 +22,7 @@ export const Devices = graphql(`
           name
           host
           ip
+          kind
           tags
           maintenance
           status
@@ -32,6 +33,10 @@ export const Devices = graphql(`
           metricsSource
           readings {
             ...CardReadings
+          }
+          batteries {
+            name
+            state
           }
           accessWarnings
           webInterfaces {
@@ -81,7 +86,9 @@ export const DeviceHosts = graphql(`
       }
       edges {
         node {
+          id
           host
+          metricsSource
         }
       }
     }
@@ -148,6 +155,7 @@ void graphql(`
     metricsSource
     metricsStale
     daemonVersion
+    daemonNeed
     sessionLimit
     accessWarnings
     rdp {

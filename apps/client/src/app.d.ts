@@ -9,4 +9,12 @@ declare global {
   }
 }
 
+declare module '$app/paths' {
+  /**
+   * A path of the app with the base before it. TypeScript checks a union of paths against the
+   * signature of SvelteKit only up to 25 members, and the app has more; this one takes each path.
+   */
+  export function resolve(path: import('$app/types').Pathname): string;
+}
+
 export {};

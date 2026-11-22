@@ -3,14 +3,20 @@
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::net::SocketAddr;
-use std::path::{Component, PathBuf};
+use std::path::PathBuf;
 
 mod link;
 mod origin;
+mod own_daemon;
+mod paths;
+use paths::{optional_path, optional_root, optional_socket, remote_drive_path};
 mod releases;
+mod routes;
 
 pub use link::{LINK_DEVICES, dial_socket};
+pub use own_daemon::OwnDaemon;
 pub use releases::Releases;
+pub use routes::Routes;
 
 const LISTEN: &str = "ANIMA_LISTEN";
 const DATABASE_URL_FILE: &str = "ANIMA_DATABASE_URL_FILE";
@@ -57,6 +63,9 @@ pub struct Config {
     /// R-129): the cloud asks this hub for device invites, and no one signs in with a password.
     /// Only with the link's control socket; `None` when unset or empty.
     pub hosted_cloud_key_file: Option<PathBuf>,
+    /// The socket of the hub's own daemon and the file of its code, in the hosted mode only
+    /// (HMD-071, HM-T35). `None` when unset or empty.
+    pub own_daemon: Option<OwnDaemon>,
     /// Networks checks must never probe: the hub's own Docker networks and public address
     /// (R-030). Empty when unset; `main.rs` warns at start.
     pub probe_deny: Vec<ipnet::IpNet>,
@@ -79,6 +88,18 @@ pub struct Config {
     /// The folder of the sealed file pieces (K-E4 Section 9, FIL-001). `None`: the hub has no
     /// file store.
     pub files_dir: Option<PathBuf>,
+    /// The public names of applications (task H21); off by default.
+    pub routes: Routes,
+}
+
+impl Config {
+    /// Whether browsers reach this hub through the gateway of the pool, at the public origin
+    /// that the pool gave it (HMD-061, HMD-069). The default origin is the old shared address of
+    /// every hub, so a hosted hub that was given none takes no browser (review HM-T32).
+    #[must_use]
+    pub const fn gateway_given(&self) -> bool {
+        self.hosted_cloud_key_file.is_some() && self.public_origin_given
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -135,11 +156,32 @@ pub enum Error {
     LinkControlAlone,
     #[error("{} {}", link::HOSTED_CLOUD_KEY_FILE, link::HOSTED_RULE)]
     HostedWithoutLink,
+    #[error("{variable} is not valid")]
+    Routes { variable: &'static str },
+    #[error("{} {}", own_daemon::OWN_DAEMON_SOCKET, own_daemon::OWN_DAEMON_RULE)]
+    OwnDaemonNotHosted,
+    #[error("{} {}", own_daemon::OWN_DAEMON_CODE_FILE, own_daemon::CODE_FILE_RULE)]
+    OwnDaemonCodeAlone,
     #[error("{present} is set but {missing} is not")]
     TlsIncomplete {
         present: &'static str,
         missing: &'static str,
     },
+}
+
+/// Both TLS files or neither: half of the pair is refused.
+const fn tls_pair(cert: bool, key: bool) -> Result<(), Error> {
+    match (cert, key) {
+        (true, false) => Err(Error::TlsIncomplete {
+            present: TLS_CERT_FILE,
+            missing: TLS_KEY_FILE,
+        }),
+        (false, true) => Err(Error::TlsIncomplete {
+            present: TLS_KEY_FILE,
+            missing: TLS_CERT_FILE,
+        }),
+        _ => Ok(()),
+    }
 }
 
 /// Read `name`, falling back to `default`; a variable that is set but empty is an error.
@@ -155,34 +197,6 @@ fn value<'a>(
     }
 }
 
-/// An empty value (Compose passes `VAR=`) counts as unset.
-fn optional_path(env: &BTreeMap<String, String>, name: &str) -> Option<PathBuf> {
-    env.get(name)
-        .filter(|text| !text.is_empty())
-        .map(PathBuf::from)
-}
-
-/// An absolute folder from `name`; unset or empty is `None`. The root `/` is refused: as a
-/// web root it would serve the whole file system, and so is any path with a `..` part.
-fn optional_root(
-    env: &BTreeMap<String, String>,
-    name: &'static str,
-) -> Result<Option<PathBuf>, Error> {
-    match env.get(name).map(String::as_str) {
-        None | Some("") => Ok(None),
-        Some(text) => {
-            let path = absolute_path(name, text)?;
-            if path.components().any(|part| part == Component::ParentDir) {
-                return Err(Error::ParentDirectory { variable: name });
-            }
-            if path.parent().is_none() {
-                return Err(Error::FilesystemRoot { variable: name });
-            }
-            Ok(Some(path))
-        }
-    }
-}
-
 /// `host:port` where an IPv6 host must be bracketed.
 fn host_port(variable: &'static str, text: &str) -> Result<String, Error> {
     let invalid = || Error::HostPort {
@@ -195,30 +209,6 @@ fn host_port(variable: &'static str, text: &str) -> Result<String, Error> {
         return Err(invalid());
     }
     Ok(text.to_owned())
-}
-
-/// An absolute Unix socket path from `name`; unset or empty is `None`.
-fn optional_socket(
-    env: &BTreeMap<String, String>,
-    name: &'static str,
-) -> Result<Option<PathBuf>, Error> {
-    match env.get(name).map(String::as_str) {
-        None | Some("") => Ok(None),
-        Some(text) => absolute_path(name, text).map(Some),
-    }
-}
-
-/// A path in another filesystem (the guacd container), which only an absolute path names.
-fn absolute_path(variable: &'static str, text: &str) -> Result<PathBuf, Error> {
-    let path = PathBuf::from(text);
-    if path.is_absolute() {
-        Ok(path)
-    } else {
-        Err(Error::NotAbsolute {
-            variable,
-            value: text.to_owned(),
-        })
-    }
 }
 
 /// The permitted networks: the link mode's own, or `ANIMA_PERMITTED_NETWORKS`.
@@ -294,21 +284,7 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
     let listen = value(env, LISTEN, "127.0.0.1:8443")?;
     let tls_cert_file = optional_path(env, TLS_CERT_FILE);
     let tls_key_file = optional_path(env, TLS_KEY_FILE);
-    match (&tls_cert_file, &tls_key_file) {
-        (Some(_), None) => {
-            return Err(Error::TlsIncomplete {
-                present: TLS_CERT_FILE,
-                missing: TLS_KEY_FILE,
-            });
-        }
-        (None, Some(_)) => {
-            return Err(Error::TlsIncomplete {
-                present: TLS_KEY_FILE,
-                missing: TLS_CERT_FILE,
-            });
-        }
-        _ => {}
-    }
+    tls_pair(tls_cert_file.is_some(), tls_key_file.is_some())?;
     let listen: SocketAddr = listen.parse().map_err(|source| Error::Listen {
         value: listen.to_owned(),
         source,
@@ -321,7 +297,7 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
         database_url_file: value(env, DATABASE_URL_FILE, "/run/secrets/database_url")?.into(),
         key_file: value(env, KEY_FILE, "/run/secrets/anima_key")?.into(),
         guacd: host_port(GUACD, value(env, GUACD, "guacd:4822")?)?,
-        guacd_drive_root: absolute_path(
+        guacd_drive_root: remote_drive_path(
             GUACD_DRIVE_ROOT,
             value(env, GUACD_DRIVE_ROOT, "/var/lib/guacd/drives")?,
         )?,
@@ -332,6 +308,7 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
         vpn_broker: optional_socket(env, VPN_BROKER)?,
         permitted_networks: permitted_networks(env, link_socket.is_some())?,
         link_control,
+        own_daemon: own_daemon::own_daemon(env, hosted_cloud_key_file.is_some())?,
         hosted_cloud_key_file,
         link_socket,
         probe_deny: match env.get(PROBE_DENY).map(String::as_str) {
@@ -350,11 +327,14 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
         releases: releases::from_env(env)?,
         data_key_dir: optional_root(env, DATA_KEY_DIR)?,
         files_dir: optional_root(env, FILES_DIR)?,
+        routes: routes::from_env(env)?,
     })
 }
 
 #[cfg(test)]
 mod roots_tests;
+#[cfg(test)]
+mod routes_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

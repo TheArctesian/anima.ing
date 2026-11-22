@@ -6,8 +6,14 @@ import type { Layout, Member } from "./tier.ts";
 function crates(root: string): Member[] {
   const run = Bun.spawnSync(["cargo", "metadata", "--no-deps", "--format-version", "1", "--locked"], { cwd: root });
   if (run.exitCode !== 0) throw new Error("cargo metadata failed: the fast tier cannot find the Rust packages");
-  const metadata = JSON.parse(run.stdout.toString()) as { packages: { name: string; manifest_path: string }[] };
-  return metadata.packages.map((each) => ({ name: each.name, folder: relative(root, dirname(each.manifest_path)) }));
+  const metadata = JSON.parse(run.stdout.toString()) as {
+    packages: { name: string; manifest_path: string; dependencies: { name: string; path?: string }[] }[];
+  };
+  return metadata.packages.map((each) => ({
+    name: each.name,
+    folder: relative(root, dirname(each.manifest_path)),
+    uses: each.dependencies.filter((dependency) => dependency.path !== undefined).map((dependency) => dependency.name),
+  }));
 }
 
 /** The folders that one workspace entry of `package.json` names: a folder, or `folder/*`. */
@@ -26,8 +32,14 @@ function packages(root: string): Member[] {
     .flatMap((entry) => workspaceFolders(root, entry))
     .filter((folder) => existsSync(join(root, folder, "package.json")))
     .map((folder) => {
-      const each = JSON.parse(readFileSync(join(root, folder, "package.json"), "utf8")) as { name?: string };
-      return { folder, name: each.name ?? folder };
+      const each = JSON.parse(readFileSync(join(root, folder, "package.json"), "utf8")) as {
+        name?: string;
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      const versions = { ...each.dependencies, ...each.devDependencies };
+      const uses = Object.keys(versions).filter((name) => versions[name]?.startsWith("workspace:"));
+      return { folder, name: each.name ?? folder, uses };
     });
 }
 
@@ -51,4 +63,23 @@ export function changedPaths(root: string, base: string): string[] | undefined {
   const added = git("ls-files", "-z", "--others", "--exclude-standard");
   if (tracked === undefined || added === undefined) return undefined;
   return [...new Set(`${tracked}${added}`.split("\0").filter((path) => path !== ""))].sort();
+}
+
+/**
+ * The Rust packages whose folders hold `paths`: for each path, the nearest folder above it with a
+ * `Cargo.toml` that has a `[package]` and its name. Reads only files, so it needs no Rust toolchain
+ * (the job `base` of the workflow `gates` has none).
+ */
+export function cratesHolding(root: string, paths: readonly string[]): Member[] {
+  const found = new Map<string, Member>();
+  for (const path of paths) {
+    for (let folder = dirname(path); folder !== "." && folder !== "/" && !found.has(folder); folder = dirname(folder)) {
+      const manifest = join(root, folder, "Cargo.toml");
+      if (!existsSync(manifest)) continue;
+      const name = /^\[package\][^[]*?^name\s*=\s*"([^"]+)"/ms.exec(readFileSync(manifest, "utf8"))?.[1];
+      if (name !== undefined) found.set(folder, { folder, name });
+      break;
+    }
+  }
+  return [...found.values()];
 }

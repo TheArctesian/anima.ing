@@ -1,0 +1,58 @@
+/*
+ * The sizes of the timeline of the Code section (stage 3, t3-ui-copy-2026-11-21/03 sections A.1 to A.11), in Anima's
+ * skin: T3 Code's layout on the kit's sizes and the semantic tokens. Nothing here is under 12 px; nothing moves for
+ * ever (no shimmer); colours are the semantic tokens.
+ */
+:root {
+  /* A.1: side padding of the scroller, 12 px below 640 px wide, 48 px from 640 px; a 16 px spacer at each end. */
+  --code-timeline-gutter: var(--space-3);
+  /* Fidelity 25: 12 px under 640 px wide, 16 px from 640 px. */
+  --code-timeline-spacer: var(--space-3);
+
+  /* A.1: the space under each kind of row. */
+  --code-timeline-row-gap: var(--space-4);
+  --code-timeline-work-gap: var(--space-2);
+  --code-timeline-fold-gap: 0.375rem;
+  --code-timeline-grouped-gap: var(--space-1);
+
+  /* A.2: the user bubble, at most 80 % of the lane, 16 px corners (6 px where it meets another), 12 px padding. */
+  --code-timeline-bubble-max: 80%;
+  --code-timeline-bubble-radius: var(--space-4);
+  --code-timeline-bubble-radius-joined: 0.375rem;
+  --code-timeline-bubble-pad: var(--space-3);
+  --code-timeline-bubble-fold: 11rem;
+  --code-timeline-bubble-fold-at: 22rem;
+  --code-timeline-bubble-fade: 1.75rem;
+
+  /* A.3 and A.4: prose 14 px over 1.625, blocks 0.65rem apart. */
+  --code-timeline-leading: 1.625;
+  --code-timeline-block-gap: 0.65rem;
+  --code-timeline-heading-1: 1.25rem;
+  --code-timeline-heading-2: 1.125rem;
+  --code-timeline-heading-3: 1rem;
+
+  /* A.4.1: the code block, 8 px corners (our 4 px corner token), its header 6 px 6 px 0 12 px, its code 13 px. */
+  --code-timeline-code-pad-block: 0.8rem;
+  --code-timeline-code-pad-inline: 0.9rem;
+  --code-timeline-code-text: var(--text-sm);
+
+  /* A.6, A.8.1, A.9: the 24 px line of the work log, its 24 px icon slot, the working and fold rows. */
+  --code-timeline-line: var(--space-6);
+  --code-timeline-icon-slot: var(--space-6);
+  --code-timeline-group-max: min(18rem, 50dvh);
+  --code-timeline-output-max: 20rem;
+  --code-timeline-detail-text: var(--text-xs);
+  /* The small icons of T3 Code: the 12 px chevron and marks, the 14 px chevron of the fold and of "Scroll to end". */
+  --code-timeline-icon-xs: 0.75rem;
+  --code-timeline-icon-chevron: 0.875rem;
+
+  /* Fidelity 19: "Scroll to end" sits 6 px above the composer. */
+  --code-timeline-end-offset: 0.375rem;
+}
+
+@media (width >= 640px) {
+  :root {
+    --code-timeline-gutter: var(--space-12);
+    --code-timeline-spacer: var(--space-4);
+  }
+}

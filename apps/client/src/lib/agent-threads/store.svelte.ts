@@ -1,0 +1,94 @@
+import type { LiveThreads } from './live/live.svelte';
+import { listed, type Listing } from './listing/listing';
+import { mergedRows } from './live/rows';
+import { markSeen, needsYouCount, storedSeen, type Seen } from './state';
+import type { Thread, ThreadRow, ThreadsShell } from './thread';
+
+/** No listing: where there is no runner. */
+const NO_LISTINGS: ReadonlyMap<string, Listing> = new Map();
+
+/** The threads of this computer and the one that is open (THR-011). The last answer that was asked for wins. */
+export class ThreadsStore {
+  rows = $state<readonly ThreadRow[] | null>(null);
+  listProblem = $state<string | null>(null);
+  thread = $state<Thread | null>(null);
+  threadProblem = $state<string | null>(null);
+  /** The ID of the thread that is asked for or shown. */
+  chosen = $state<string | null>(null);
+  loadingThread = $state(false);
+  /** When the person last opened each thread: a turn that ended needs the person until the thread is opened (THR-055). */
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- replaced whole at each opening, never changed in place
+  seen = $state<Seen>(new Map());
+  /** The time of the last read of the list: the states are of this time. */
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- replaced whole at each read, never changed in place
+  readAt = $state(new Date());
+
+  constructor(
+    private readonly shell: ThreadsShell,
+    private readonly storage: Pick<Storage, 'getItem' | 'setItem'> | null = null,
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- the clock: read once at each call, never kept
+    private readonly now: () => Date = () => new Date(),
+    /** The threads that the runner of this computer drives; `null` where there is no runner. */
+    readonly live: LiveThreads | null = null,
+  ) {
+    if (storage !== null) this.seen = storedSeen(storage);
+  }
+
+  /** The rows of the list: the driven threads, then the session files that are not one of them (THR-056). */
+  readonly allRows = $derived.by(() => (this.rows === null ? null : mergedRows(this.rows, [...(this.live?.threads.values() ?? [])])));
+
+  /** Whether the list shows the archived threads in place of the others (TH46). */
+  archived = $state(false);
+
+  /** The rows as the person lists them: no removed thread, and only the archived ones when asked (TH46). */
+  readonly listedRows = $derived.by(() => (this.allRows === null ? null : listed(this.allRows, this.live?.listings ?? NO_LISTINGS, this.archived)));
+
+  /** How many threads are archived. */
+  readonly archivedCount = $derived.by(() => [...(this.live?.listings.values() ?? [])].filter((listing) => listing.archived && !listing.removed).length);
+
+  /** The driven thread that is open, or `null` when the open thread is a session file. */
+  readonly liveThread = $derived.by(() => (this.chosen === null ? null : (this.live?.threads.get(this.chosen) ?? null)));
+
+  /** How many threads need the person (THR-057). */
+  /** An archived or removed thread is not counted: the person put it away (TH46). */
+  readonly needsYou = $derived.by(() => needsYouCount(this.allRows === null ? [] : listed(this.allRows, this.live?.listings ?? NO_LISTINGS, false), this.readAt, this.seen));
+
+  /** Reads the list again; the rows on the screen stay until the new ones come. */
+  async loadList(): Promise<void> {
+    try {
+      this.rows = await this.shell.list(null);
+      this.readAt = this.now();
+      this.listProblem = null;
+      void this.live?.readListings();
+      // The list is read only while the window is seen: the open thread is in front of the person.
+      if (this.chosen !== null) this.markSeen(this.chosen);
+    } catch (reason) {
+      this.listProblem = reason instanceof Error ? reason.message : 'The threads could not be read.';
+    }
+  }
+
+  /** The person sees the thread `id` now: a turn that ended there does not need the person (THR-055). */
+  markSeen(id: string): void {
+    this.seen = markSeen(this.storage, this.seen, id, this.now());
+  }
+
+  /** Opens the thread `id`; an answer for a thread that is no longer chosen is dropped. */
+  async open(id: string): Promise<void> {
+    this.chosen = id;
+    this.markSeen(id);
+    this.threadProblem = null;
+    if (this.live?.threads.has(id) === true) return;
+    this.loadingThread = true;
+    try {
+      const thread = await this.shell.read(id);
+      if (this.chosen !== id) return;
+      this.thread = thread;
+    } catch (reason) {
+      if (this.chosen !== id) return;
+      this.thread = null;
+      this.threadProblem = reason instanceof Error ? reason.message : 'The thread could not be read.';
+    } finally {
+      if (this.chosen === id) this.loadingThread = false;
+    }
+  }
+}

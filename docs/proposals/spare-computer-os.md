@@ -1,16 +1,16 @@
 ---
 kind: Proposal
 state: Draft
-evidence: Version 0.3 (2026-11-20). Section 13 completes the bounded overnight implementation brief and dependency audit. Three independent council reviewers examined architecture, security/recovery and delivery; Section 12 records the reconciled elaboration. The operator requested an implementation proposal after 28 product decisions recorded in this conversation. Those decisions establish direction; the proposed requirements, contracts and build tasks below are not approved. No implementation or hardware validation has been performed. Serves priority row 4.16, with dependencies on rows 4.7, 4.9 and 4.18. Replaces the spare-computer-os idea; its decisions and source evidence are retained here.
+evidence: Version 0.7 (2026-11-21) adds the operator-requested Rust, usability, aesthetics and measured footprint continuation in Section 15. Section 16 records the subsequent authorization to restructure the graphical UI and the three-reviewer implementation brief. This is planning evidence, not a claim of implemented features or release approval. Version 0.6 (2026-11-20). Section 14 records the approved installed-console direction and motion engineering programme; the experimental console is implemented and VM-tested, while measured motion qualification remains pending. An experimental UEFI installer ISO is built and VM-tested; see the ISO continuation record. The operator authorized the bounded OS1 prototype; implementation and VM evidence are in the OS1 record. Section 13 completes the bounded overnight implementation brief and dependency audit. Three independent council reviewers examined architecture, security/recovery and delivery; Section 12 records the reconciled elaboration. The operator requested an implementation proposal after 28 product decisions recorded in this conversation. Those decisions establish direction; the proposed requirements, contracts and build tasks below are not approved. A disposable x86-64 UEFI prototype is implemented under R-276; no physical hardware support or production integration is validated. Serves priority row 4.16, with dependencies on rows 4.7, 4.9 and 4.18. Replaces the spare-computer-os idea; its decisions and source evidence are retained here.
 ---
 
 # Proposal: Anima OS for spare computers
 
 | Item | Value |
 | --- | --- |
-| Version | 0.3 |
-| Date | 2026-11-20 |
-| Status | Draft. The header holds the state. This proposal is not permission to build or release. |
+| Version | 0.7 |
+| Date | 2026-11-21 |
+| Status | Draft outside the explicitly authorized OS1 recovery experiment and OS2/OS3 installer/console preview slices. The header holds the state. No release is authorized. |
 | Serves | [Priority 4.16](../plan/priorities.md): a dedicated-machine installation path. This mapping adds no new tier and does not delay existing install work. Workload dependencies remain in rows 4.7 and 4.9; updates in 4.18. |
 | Owner | This proposal owns the proposed OS image, installer, host state layout and recovery integration. Existing owners retain application, job, agent, identity and permission semantics. |
 | Identifiers | AOS-001 to AOS-024; open decisions OD-AOS1 to OD-AOS7; proposed tasks OS0 to OS8 |
@@ -103,7 +103,7 @@ These are starting designs, not accepted implementations or support guarantees.
 
 ## 6. First feasibility experiments
 
-All experiments are proposed, not started. Use disposable VM disks and isolated test identities. No real disk may be erased by an experiment without explicit target authorization.
+F1 and the UEFI slice of F2 are authorized and implemented as a bounded experiment; see the [OS1 record](../research/spare-computer-os/os1-prototype-2026-11-20.md) for evidence and limits. F3/F4 remain unapproved and not started. Use disposable VM disks and isolated test identities. No real disk may be erased by an experiment without explicit target authorization.
 
 | Experiment | Question | Pass evidence | If it fails |
 | --- | --- | --- | --- |
@@ -130,19 +130,24 @@ An experimental preview may be prepared after M2 and an explicit preview-scope r
 
 ## 8. Proposed task sequence
 
-No task is buildable from this Draft. Each later claim must name its task and approved requirements. Scope-changing findings return to this proposal and the relevant owner before implementation.
+Authorization is slice-specific: Section 13 records OS1 F1/UEFI-F2 under R-276; the rows below record later authorized and built OS2/OS3/OS5 preview slices. Sections 15 and 16 record the continuation direction and UI restructuring brief. Broader stable milestones and contract changes are not approved merely because a preview slice exists. Each claim must name its task and approved scope. Scope-changing findings return to this proposal and the relevant owner before implementation.
 
 | Task | Work | Depends on | State | Completion evidence |
 | --- | --- | --- | --- | --- |
 | OS0 | Complete dependency audit and bounded experiment brief; propose repository/base and trust boundaries | Planning review; no implementation authority | Planning complete | Section 13 is the OS0 acceptance record: dependency snapshot, proposed contract deltas, bounded experiment protocol and handoff; no implementation approval or runtime evidence |
-| OS1 | Run independently gated F1-F4 experiments; report each separately | OS0 brief, OD-AOS5 experiment authorization; base/repository decisions only where needed; F3/F4 owner contracts | Not started | Four separate pass/fail/blocked records; F1/F2 need not wait for UI, physical models or F4 |
-| OS2 | Build versioned base image and state layout | Approved F1/F2 architecture evidence | Not started | M1 record |
-| OS3 | Build installer/enrollment and local interfaces | OS2, approved identity contracts, OD-AOS3 | Not started | M2 record |
+| OS1 | Run independently gated F1-F4 experiments; report each separately | OS0 brief, OD-AOS5 experiment authorization; base/repository decisions only where needed; F3/F4 owner contracts | Recovery follow-up built; tested UEFI cases passed, full F2 unqualified | [Initial OS1 evidence](../research/spare-computer-os/os1-prototype-2026-11-20.md) and [recovery/ISO continuation](../research/spare-computer-os/iso-preview-2026-11-20.md); pre-initrd deadlock and hardware recovery remain unqualified |
+| OS2 | Build versioned base image and state layout | Approved F1/F2 architecture evidence | Experimental preview built under R-274 | [ISO evidence](../research/spare-computer-os/iso-preview-2026-11-20.md); runtime packaged and installed state tested; full M1 qualification remains open |
+| OS3 | Build installer/enrollment and local interfaces | OS2, approved identity contracts, OD-AOS3 | Experimental local UEFI installer built under R-274 | [Offline ISO install test](../research/spare-computer-os/iso-preview-results.json); [Calamares preview](../research/spare-computer-os/gui-preview-2026-11-20.md) built under R-273; fullscreen, network/display controls and separate data drives built under R-272; [combined-image graphical/CLI install and reboot checks passed](../research/spare-computer-os/fullscreen-preview-results.json); the [installed console and automatic enrollment](../research/spare-computer-os/console-preview-2026-11-20.md) are built under R-271; [hardware follow-up and persona evidence](../research/spare-computer-os/hardware-followup-2026-11-20.md) record scaling, installed Wi-Fi backend and rotation corrections; physical qualification, live-account verification and hub-driven pre-install setup remain open; motion work is sequenced in Section 14 |
 | OS4 | Integrate workload execution, host changes and resource/network profiles | OS3, F4, approved workload dependencies, OD-AOS6/7 | Not started | M3 record |
-| OS5 | Build maintenance, rollback, repair/reset and optional encryption | OS4, update/boot contracts | Not started | M4 record |
+| OS5 | Build maintenance, rollback, repair/reset and optional encryption | OS4, update/boot contracts | Hosted preview updates built under R-282; other maintenance/recovery capabilities remain unimplemented | [Installed-operation preview and VM update/rollback evidence](../research/spare-computer-os/installed-operation-2026-11-20.md); no M4 acceptance claimed |
 | OS6 | Build backup/restore and bounded cleanup | OS4, OS5 recovery interfaces | Not started | M5 record |
 | OS7 | Maintain hardware evidence and user documentation; qualify preview and stable separately | Start matrix with OS1; preview after M2; stable after M1-M5; named hardware from OD-AOS4 | Not started | Separate preview/stable evidence packets and human-check entries; installation docs with M2, recovery docs with M4 |
 | OS8 | Prepare release manifest and publish approved preview or stable artifacts | Corresponding OS7 evidence packet and separate release authorization for that scope | Not started | Published artifact identity and matching evidence |
+| OS3-R1 | Rust read-only local status/diagnostics contract and service, diagnostic client, and opt-in NixOS packaging; first continuation slice. Operator authorization, 2026-11-21: "okay lets go", following the explicit Rust API and status/diagnostics vertical-slice brief. No TUI, network listener, host mutations or release. Existing graphical console stays in place. | Existing OS3 preview; review local socket authorization and bounded reads before integration | Built on os/rust-continuation-plan; focused Rust and NixOS VM checks passed; initial daemon containment gate failures repaired in OS3-R4; installed hardware acceptance remains open | [Local control contract and build commands](../../experiments/anima-os/control-contract.md); HT-128; broader rewrite remains separate |
+| OS3-R2 | Define the next Rust operation contract from existing graphical actions: authorization, durable progress, retries, cancellation and recovery; record the OS3-R1 gate reproduction. Operator continuation, 2026-11-21. | OS3-R1 branch; existing privileged console and update/installer safety boundaries | Draft extension written on os/control-operations-contract; document checks passed; no runtime implementation | Contract review before mutation implementation; no TUI or release |
+| OS3-R3 | Implement persistent read-only diagnostic jobs and the existing graphical adapter: request deduplication, query/list/cancel, restart interruption and bounded retention. Authorized by operator “Go ahead”, 2026-11-21, following OS3-R2. | OS3-R1/R2; no root mutation authority | Built on os/persistent-diagnostics; 11 socket tests, focused Clippy and NixOS reboot/adapter checks passed; five initial daemon containment failures repaired in OS3-R4; HT-128 open | Real socket lifecycle tests and NixOS persistence checks; graphical/hardware acceptance remains separate |
+| OS3-R4 | Complete the authorized continuation: daemon gate repair, Rust updates/network/display/enrollment/install/recovery, four-destination graphical UI, integration and artifact measurements. Operator requested all six remaining items on 2026-11-21 without interim questions; graphical acceptance is moved to the last step. | OS3-R1/R2/R3; preserve existing trust/destructive-action safeguards and visual identity | Built in cfa5709d0 and 566f5e7ca on os/complete-continuation; all 21 repository gates and automated appliance/graphical checks passed | [Implementation, artifact and repeated measurements](../research/spare-computer-os/native-continuation-2026-11-21.md); HT-127 remains the final operator check; no public release |
+| OS3-R5 | Reduce preview ISO size by separating PySide runtime from build-only dependencies; preserve the graphical interface, offline install and hardware support. Operator authorized “go ahead” after the measured packaging recommendation, 2026-11-21. | OS3-R4 closure attribution; rebuild and graphical regression checks | Built in 65d5d2db3 on os/runtime-packaging; graphical installation and persistence checks passed | [Measured packaging result](../research/spare-computer-os/runtime-packaging-2026-11-21.md): ISO 240 MiB smaller (6.41%); HT-127 remains Open; no public release |
 
 Independent packaging and hardware research can proceed in parallel only after authorization and without delaying higher-priority work. Integration follows the dependencies above. Do not estimate calendar dates before OS1 and an audit of missing workload capabilities.
 
@@ -152,9 +157,9 @@ Independent packaging and hardware research can proceed in parallel only after a
 | --- | --- | --- | --- |
 | OD-AOS1 | Confirm NixOS as the base and a separate OS repository? | Yes; working name `anima-os`, actual location/name confirmed before creation. Keep shared Anima code in existing repositories. | Open; no repository created |
 | OD-AOS2 | Retain this proposal under priority 4.16 or assign a new priority row? | Use 4.16 for the installation deliverable now; do not change its tier or authorize work ahead of its existing tasks. | Open; mapping only, no reprioritization |
-| OD-AOS3 | Confirm the provisional graphical plus text local interface from Decision 7? | Yes, sharing one installer backend; no full desktop. | Open; side-chat revisit requested |
+| OD-AOS3 | Confirm the local interface direction from Decision 7? | Graphical-primary setup and administration, shared backend, no full desktop or new TUI; retain authenticated emergency command-line recovery. | Decided by the operator on 2026-11-21: no TUI, user-friendly graphical UI with the same visual identity; pages may be deleted and rearranged (Sections 15/16). Renderer and control-contract details remain C3 work |
 | OD-AOS4 | Which named PCs, Intel Macs and ARM boards can be used for validation? | Select available devices covering UEFI, BIOS, ARM boot, networking and optional TPM. Measure minimum resources. | Open; no hardware access or result assumed |
-| OD-AOS5 | Authorize bounded feasibility implementation after the OS0 planning brief? | Review AOS-001 to AOS-024, Section 12 and the exact experiment brief. Authorize F1/F2 first without implying approval of F3/F4 contract changes or later implementation. | Open; writing this proposal does not approve its build |
+| OD-AOS5 | Authorize bounded feasibility implementation after the OS0 planning brief? | Review AOS-001 to AOS-024, Section 12 and the exact experiment brief. Authorize F1/F2 first without implying approval of F3/F4 contract changes or later implementation. | Decided for the Section 13 F1/UEFI-F2 slice only: R-276; F3/F4 and later work remain unapproved |
 | OD-AOS6 | What custom host configuration is a supported public input? | Start with declared packages/services and reviewed modules; define allowed options, privilege boundaries and update tests before advertising arbitrary Nix modules. | Open; reconcile with Decision 16, do not narrow it silently |
 | OD-AOS7 | How should the work-route owner reconcile offline continuation and retained work with current lease and cleanup rules? | Preserve Decisions 8/19/21 as the desired outcome; review a per-work-type contract delta, duplicate-execution prevention and separate retained datasets. Do not bypass current K10 rules. | Open; blocks corresponding F4 and OS4 acceptance |
 
@@ -162,7 +167,7 @@ The implementation proposal is complete for review with these open decisions. No
 
 ## 10. Validation, risks and planning integration
 
-This is a documentation change only. Run `bun run quality:register`, `bun run quality:documents` and `bun run gates:fast`; the repository's branch/merge-train gates govern landing. No OS build, recovery trial, network integration or backup restore has been run.
+The proposal began as documentation only. OS1 now includes a disposable VM image and test harness; the [OS1 record](../research/spare-computer-os/os1-prototype-2026-11-20.md) owns its results. Run `bun run quality:register`, `bun run quality:documents`, `bun run gates:fast` and the prototype-specific checks. The branch/merge-train gates govern landing. Production network integration and backup restore remain unimplemented.
 
 Primary risks: read-only base plus host customization; fallback differences across firmware; TPM/update policy compatibility; missing ARM/Intel Mac drivers; shared storage exhaustion; workload-consistent backups; secret-bearing restore; and existing contracts that prohibit a proposed action. OS0 must reconcile the recent routed-command-line and agent-layer work instead of treating this proposal as an override.
 
@@ -212,8 +217,8 @@ Backup design separates production, restore and deletion authority. Define key e
 
 | Evidence gate | Prerequisites | Added pass evidence | Current state |
 | --- | --- | --- | --- |
-| F1 state/customization | Approved bounded brief; selected experimental base | Mount inventory and custom-service lifecycle above; normal write restrictions and interrupted activation | Not started |
-| F2 recovery | F1 candidate; boot-path-specific harness | Rejected boot entry, early kernel hang, userspace health failure and shutdown hang; identify what forces the next boot, timeout/retry bounds and outcome when both versions fail | Not started |
+| F1 state/customization | Approved bounded brief; selected experimental base | Mount inventory and custom-service lifecycle above; normal write restrictions and interrupted activation | Fixture proof recorded in OS1; real network/identity integration untested |
+| F2 recovery | F1 candidate; boot-path-specific harness | Rejected boot entry, early kernel hang, userspace health failure and shutdown hang; identify what forces the next boot, timeout/retry bounds and outcome when both versions fail | Partial: local-health fallback and bounded recovery proved; base initrd and shutdown hang cases fail; see OS1 |
 | F3 installation | Approved identity/installation contract deltas; F1/F2 base | Transaction and cutover tests in Section 12.3; unselected-disk hashes unchanged | Not started |
 | F4 workload/storage | Approved owner runtimes and OD-AOS7 resolution for affected behavior | App/job/agent coexistence; partition/reassignment and retained-state tests; workload writes, snapshots and update staging competing for shared capacity | Not started |
 
@@ -305,7 +310,195 @@ Morning deliverables:
 
 Commit source/docs and leave large VM artifacts outside git. Push only the authorized implementation branch through normal gates; publishing an image or merging to `main` requires separate release authorization. Update OS1 with evidence for the slice actually attempted, never mark all F1-F4 complete from this run.
 
-OS0 is complete as planning work through this record. The remaining pre-run actions are concrete: authorize this OS1 slice, choose/provision its build environment, and claim the task. The broader product decisions need not be reopened for the VM experiment.
+OS0 is complete as planning work through this record. The operator authorized this OS1 slice on 2026-11-20 (R-276). The build environment is the local `framework` host with disposable QEMU disks; preparation and claim are recorded on the implementation branch. The broader product decisions need not be reopened for the VM experiment.
+
+## 14. Installed console and motion engineering
+
+The operator approved the installed-console mockup, browser-based WorkOS sign-in direction, local lock and power controls, and consistent icons. They then requested the motion-audit skill and asked that the premium feel be engineered into this plan (R-275). This section is part of OS3, not a separate product plan. Implementation and experimental ISO rebuild are authorized by R-271. The installed console and automatic enrollment integration are now implemented; [build and validation evidence](../research/spare-computer-os/console-preview-2026-11-20.md) distinguishes VM checks from pending live-account and hardware qualification.
+
+### 14.1 Design baseline and evidence
+
+The approved local design sources are `/home/okita/.local/share/anima-os-designs/local-console/anima-local-console.html` and its standalone `anima-local-console-preview.html`. Retain their Graphite surfaces, light IBM Plex headings, white text, frost accent, coloured wordmark and Carbon icons. On 2026-11-21 the operator authorized deleting and rearranging UI pages; spacing, proportions and page structure are now revisable under Section 16, while visual identity and graphical usability remain requirements. Lock, restart and shutdown use icon controls with accessible names and tooltips; primary actions retain useful text. Bring the approved sources into the repository's mockup inventory with the implementation so that the baseline is reviewable on other machines.
+
+The console covers Overview, Network, Anima, Storage, Display and Recovery. WorkOS sign-in returns from the browser, then the owner explicitly adds the computer. Reuse existing identity contracts; animation must not imply enrollment before the backend confirms it. Local recovery and authenticated unlock work without the hub. Lock protects the local session while the node, authorized remote access and workloads continue; restart and shutdown remain separate confirmed actions.
+
+Static source inspection on 2026-11-20 found that `draw()` replaces the main content with `innerHTML`, while dialogs appear and disappear by replacing markup and setting `hidden`. These are motion opportunities, not measured runtime defects. All mockup hardware, authentication and operation results are synthetic. No frame-rate, physical-device or production sign-in success is established by this design.
+
+Use the operator-selected skill at `/home/okita/Scripts/Personal/skills/motion-audit/SKILL.md`, including its measurement and build references. The baseline vocabulary is [Anima's motion tokens](../../design/tokens/motion.tokens.json) and design-spec Sections 5.5/5.7: press 100 ms, fast/exit 150 ms, crossfade 200 ms; critically damped default/snappy/move springs with response values 0.35/0.25/0.4 seconds. Spring response is not a fixed completion deadline. Reuse the web motion helpers where applicable; for Qt, map the same roles explicitly and verify perceptual parity. Do not copy approximate constants into each screen or introduce a second token owner. These are starting values to validate, not evidence that the finished interface feels right.
+
+### 14.2 Motion storyboard
+
+Motion communicates state, continuity and response. It must support the reviewed layout and clear state changes; it cannot compensate for poor information hierarchy. Section 16 permits revising the earlier layout. Proposals below are implementation candidates; the measured audit can amend or drop them.
+
+| Surface and meaning | Proposed behaviour | Interruption and reduced motion |
+| --- | --- | --- |
+| Navigation and first arrival | Keep the shell fixed; crossfade outgoing/incoming content using the base role. Use a snappy selection indicator only where it clarifies the destination. Avoid repeated whole-page slides or staggered forms. | Latest navigation wins; cancel stale arrivals. Reduced motion uses an immediate content swap with stable layout and focus. |
+| Buttons and icon controls | Press feedback uses the press role; hover colour uses fast. Reserve space for pending indicators and preserve the action label. Focus indication is immediate. | Release/cancel restores the current state. Disable duplicate submissions while preserving cancellation where supported. Reduced motion removes transforms and animated feedback. |
+| Dialogs, confirmation and dismissal | Coordinated backdrop and restrained panel arrival; retain the outgoing panel through its fast exit. Keep typography and controls aligned with the app. | Escape and repeated dismissal leave no orphan overlay; restore focus and make background content inert. Reduced motion opens/closes immediately. |
+| WorkOS browser handoff and enrollment | Show truthful waiting, return, add-computer and confirmed-connected states within a stable content region. Crossfade only after each real state change. | Cancellation, stale callbacks and network loss cannot produce a false success. No artificial success delay or animation-dependent authentication. Reduced motion retains every status. |
+| Wi-Fi scan, connect and diagnostics | Preserve adapter/network identity and stable rows. Show scan, authentication, address and connectivity stages separately; update only the affected status. | Rapid selection and late results cannot overwrite the chosen adapter. Reduced motion updates text/icons immediately; never rely on a pulsing colour alone. |
+| Disclosures, storage and async results | Preserve scroll position and stable row identity. Reserve realistic loading space; use the move role for meaningful rearrangement and base crossfade for replacement. | Retarget from the current visual position; no snap-back on repeated input. Reduced motion keeps the same geometry guarantees without travel. |
+| Display orientation and recovery | Keep the confirmation readable after rotation. Show a real deadline for automatic reversion; use stable numerals and immediate error states. | Reversion and recovery continue even if rendering is interrupted. Reduced motion changes neither deadline nor outcome. |
+| Lock, restart and shutdown | Lock conceals sensitive content immediately; an optional surface fade must occur only after concealment. Power confirmation communicates affected workloads and then actual backend state. | No animation may delay locking, unlock authorization or shutdown dispatch. Reduced motion is immediate; locking never sleeps the node. |
+| Door artwork | Optional restrained motion on welcome/completion only, subordinate to content and contingent on measured cost. Forms remain still. | Stop when hidden or locked; use a static image with reduced motion. Drop the effect if it competes with workloads or readability. |
+
+Do not animate health readings, security decisions or progress into invented intermediate values. No fake percentages, celebratory effects, bouncing controls, continuous decorative activity on status screens, or motion-dependent waits. Loading perception thresholds are distinct from animation durations; reduced motion must not collapse them into flashing loaders or delay completed operations.
+
+### 14.3 OS3 execution sequence
+
+| Step | Deliverable and acceptance | State |
+| --- | --- | --- |
+| OS3-M1: baseline and storyboard | Inventory console and installer routes, shared tokens/helpers, exits, async states and reduced-motion gaps. Record static versus measured evidence. Check concurrent motion branches and assign one shared-foundation owner. Rank opportunities by frequency × visibility × meaning divided by cost, with explicit scores and unknowns. | Static starting observations recorded above; measured audit not started |
+| OS3-M2: motion reel | Build a synthetic looping reel of up to 8–12 useful proposals using the approved product layout. Specify each beat, inspect a frame from every beat, and reconcile it with the report before full rendering. Demonstrate normal and reduced-motion behaviour. Store exported media outside git and record its artifact location. | Not started |
+| OS3-M3: shared foundation | Define arrival, exit retention, async-action feedback and cancellation APIs using existing tokens. Map any native equivalents. Preserve keyboard/focus semantics and dynamic reduced-motion changes. Review the foundation before screen integration. | Implemented under R-271; local VM verification recorded |
+| OS3-M4: screen integration | Implement the storyboard against real console operations, preserving the visual identity and icon treatment; revised spacing and navigation follow Section 16. Re-measure each proposal first; document amendments or dropped effects. Review code and behaviour after each implementation step. | Experimental console implemented and reviewed; live-account verification pending |
+| OS3-M5: measured qualification | Publish a ranked audit report with route inventory, durations, sampled properties, interruption results, reduced-motion results, device/build details and unresolved limits. Compare running installer and installed console against the approved design. | VM visual comparison and local behaviour checks recorded; physical motion qualification and full audit remain open |
+
+Audit outputs belong under `docs/research/spare-computer-os/`; the final report must distinguish static inspection, synthetic local runtime, and physical hardware evidence. Each retained proposal specifies property/from/to, motion role, mechanism, choreography, cancellation, reduced variant, performance risk and verification. The reel illustrates proposals; it is not proof that production code implements them.
+
+### 14.4 Completion gates
+
+- Exercise first paint, navigation in both directions, slow/fast/failed operations, empty states, dialogs, disclosures, power confirmation and lock/unlock at compact, medium and wide sizes, including portrait orientation.
+- Interrupt transitions with rapid navigation, Escape, back and repeated activation. Delay responses and count requests: one confirmed action must not submit twice. Verify retained exits do not block input or leave hidden originals, stale overlays or misplaced focus.
+- Sample both position axes after input and under delayed results; a layout-shift score alone can miss interaction-induced movement. Inspect intermediate frames for overlapping text and doubled elements. Verify final screenshots against the approved proportions.
+- Exercise reduced motion at startup and while a transition is active, covering CSS, JavaScript, pseudo-elements and native effects. All functions remain available; no operation or deadline depends on animation completion. Confirm keyboard focus, accessible icon names and non-colour status feedback.
+- Measure frame pacing, long tasks, paint activity and idle cost on the selected physical spare hardware with representative workloads running. Target the device refresh budget (about 16.7 ms per frame at 60 Hz); publish measured results and limitations rather than treating headless rAF rate as hardware performance. Remove or simplify effects that impair management responsiveness. Hidden/locked decorative surfaces must stop painting.
+- Validate real backend states separately from appearance: browser return/cancel, enrollment failure, offline recovery, Wi-Fi failure, authentication rejection, display rollback and power actions. Synthetic success in a reel or mockup is not acceptance evidence.
+- Run relevant existing gates and behavioural regression checks after implementation, then conduct a visual review of the running build. Passing code tests alone does not establish premium motion. Human hardware checks stay pending until the operator records their results.
+
+## 15. Rust appliance and usable interfaces: continuation
+
+### 15.1 Direction and scope
+
+On 2026-11-21 the operator requested a concrete continuation incorporating the existing plan: aesthetics are important, usability must improve substantially, speed is the main performance priority, the roughly 3.9 GB image should become smaller, and the architecture should consider Rust system management and a web/graphical interface. The operator subsequently clarified: no TUI; retain the current visual identity and a user-friendly graphical experience. This records planning direction; it does not claim an approved rewrite, changed contracts or a release. No new terminal user interface is in scope. Existing command-line diagnostics and authenticated text recovery remain maintenance tools, not the normal user journey.
+
+Make the next useful milestone a spare machine that runs one authorized agent workload, explains its state, and remains manageable under load. Preserve the stable target of persistent applications, queued jobs and agents in Section 1. Agent compute leads the implementation sequence; it does not silently withdraw the other workload classes, backup, recovery, optional encryption or selected hardware families.
+
+Aesthetics are acceptance criteria, not optional polish. Retain the Graphite/Plex/frost/Carbon design language and Section 14's motion and accessibility work. Revise the oversized hero and repeated navigation through reviewed mockups rather than replace the console with a visually generic administration panel. A console can be attractive and information-dense without showing everything at once.
+
+### 15.2 Proposed architecture
+
+- **NixOS and systemd remain the system foundation.** Keep declarative image construction, mounts, service supervision and existing boot mechanisms. Rust replaces Anima-owned imperative control code; it does not replace Nix, systemd, filesystem tools or the authentication provider.
+- **One Rust host-control service, working name `anima-osd`.** Own local network/display integration, maintenance operations, installation coordination and host configuration. Keep each domain small. Reuse the daemon, link, applications program and existing scheduler/permission owners; do not build another scheduler, enrollment store or work runtime. Network/display changes should use the existing platform interfaces; fixed external commands can remain where that is the simpler supported boundary.
+- **A local authenticated control contract.** Use a versioned Unix-socket API with typed requests/errors, peer authorization and explicit capabilities. Separate read-only state from privileged mutations. Installation/ownership/power actions retain explicit owner confirmation. Split narrow privileged operations from unprivileged presentation; a Rust binary is not inherently a permission boundary.
+- **Long operations are supervised jobs.** Return an operation identity, phases/progress and final result. Reconnecting a client observes the same job; closing a page neither cancels nor duplicates it. Define cancellation per safe phase. Preserve exclusive locks for disk writes and update activation. Keep diagnostics, status and lock available during downloads.
+- **The graphical interface remains primary.** Preserve the visual identity, branding and familiar control behavior while improving clarity, responsiveness and unnecessary steps. Page structure, labels and layout may change, and redundant pages may be deleted as authorized in Section 16. Existing CLI diagnostics and text recovery can use the same backend; do not build a TUI or require terminal use for normal setup, networking, updates or administration.
+- **One web UI for local graphical use and authorized remote administration.** Reuse product tokens and compatible client components. The browser never receives the privileged local socket or a general-purpose command bridge. Local presentation uses a narrowly authorized adapter; remote access follows existing hub/link/session permissions, with no unauthenticated listener on LAN interfaces. Remote administration is a separate integration slice, not an automatic consequence of serving HTML.
+- **Choose the local renderer by evidence.** Compare packaging options for a minimal graphical shell using the shared web UI, retaining the current look in every candidate. Measure dependency closure, cold start, idle memory and design fidelity on the same machine. Shared web UI is the preferred starting direction; shipping a browser engine has a real cost. A Rust wrapper alone does not remove that cost. Keep the current renderer until its replacement passes sign-in, accessibility and recovery checks.
+
+### 15.3 Baseline and performance decisions
+
+Use the app-optimisation measurement-first principle: baseline and candidate runs on the same named hardware, release build, workload and cold/warm conditions; record distributions and noise. Do not claim a speedup from language choice. No whole-product performance workflow or rewrite is started by this document.
+
+Local artifact inspection on 2026-11-21 found the console/final preview ISO at 3,934,945,280 bytes (3.93 decimal GB, about 3.66 GiB), while an earlier recovery/installer ISO in `delivery/` is 1,686,224,896 bytes. These are different builds/features, not a controlled optimization comparison. Their local paths are under `/home/okita/.local/share/anima-os-prototype/2026-11-20/`; record exact hashes and source closure when establishing the reproducible baseline.
+
+Measure separately: compressed ISO bytes; installed Nix closure; update transfer/staging space; boot-to-local-ready; boot-to-work-ready; console cold start; idle CPU/RAM with screen shown/blanked; interaction latency and frame pacing; workload throughput while management operations run. Record failures and recovery time as well as successful timing.
+
+Inspect closure attribution before removing dependencies: graphical installer base, Calamares/Qt, PySide/QtWebEngine, desktop tools/themes, firmware, documentation/locales and included installed-system closure. Count shared store paths once. Do not remove drivers or recovery tools merely to make the download smaller. Avoid a network-only installer unless its offline/recovery tradeoff is explicitly selected. Compare compression choices against decompression/install time: smallest download is not automatically fastest use.
+
+Proposed design budgets, to validate in the baseline task: immediate visible input acknowledgement within 100 ms; ordinary local navigation within 200 ms when no system operation is required; frame pacing within the selected display's refresh budget; no continuous decorative painting while locked/hidden. These are targets, not measured results or approved product minimums. Set boot, idle-memory and image-size budgets after closure/hardware measurements; do not promise an arbitrary sub-1-GB image. Keep changes only when improvements exceed measurement noise without losing required behavior or visual quality.
+
+### 15.4 Continuation tasks and acceptance
+
+The rows below are proposed subdivisions of OS0-OS8, not a new priority lane. None is marked implemented by this planning change. Before code, claim the authorized slice under the existing repository rules and reconcile its owner contracts. Independent mockup and measurement work can proceed together; performance runs must not contend on one machine.
+
+| Slice | Existing owner | Deliverable | Acceptance / dependency |
+| --- | --- | --- | --- |
+| C1: baseline and dependency reconciliation | OS0, OS2, OS7 | Record exact image/closure, performance baseline, available hardware, current workload-owner task states and known pending human checks. Identify duplicated/heavy closure paths and the missing pieces for one agent job. | Reproducible measurements and an owner/dependency map; no guessed speed or size claims. First task. |
+| C2: coherent visual and interaction design | OS3; Section 14 | Review installer, enrollment, ready/busy/offline, network, storage, update and recovery screens. Replace duplicate sign-in navigation; compact enrollment hero; truthful readiness; useful density and deliberate typography, colour and motion. Include compact/portrait and normal/reduced-motion states. | Approved mockups and interaction storyboard; no fake operational success. Can start beside C1. |
+| C3: control contract and renderer spike | OS0, OS3, OS5 | Specify socket authorization, version compatibility, job progress, cancellation and safe errors. Compare graphical-shell packaging options in 15.2 with the same existing styled screen and real local status. | Security/contract review and measured renderer decision; preserve isolated sign-in and offline recovery. Depends on C1/C2. |
+| C4: Rust service behind the existing graphical UI | OS2, OS3 | Build status/diagnostics and safe journaling in the new service, then connect one existing graphical screen without changing its visual identity. Keep existing diagnostic CLI integration where required. Package Rust/Go artifacts from pinned source in Nix with complete provenance. | Same status facts across graphical UI/API; disconnected operation; management responsive under representative load; current path retained until parity. Depends on C3. |
+| C5: usable graphical console and enrollment | OS3 | Implement UI-only navigation and enrollment-flow improvements against the current backend first (Section 16); then integrate the selected local shell and Rust service; network states, direct sign-in, explicit add-computer consent, truthful enrollment/service/link facts, display blanking independent of suspend, accessible text scale and motion. | Real enrollment return/cancel/failure checks plus local recovery; acceptable cold start, frame pacing and idle cost. UI-only slice depends on C2; Rust/service-dependent slice also depends on C4. |
+| C6: first useful agent compute | OS4 / existing work owners | Integrate one approved agent/job path, resource budget and output retention. Show accepting-work versus busy/blocked/offline and the reason. Reuse existing workload identity, grants and cancellation. | Execute/cancel a real workload; reconnect without duplicate execution; management remains responsive; offline/reboot behavior agrees with the work contract. Depends on C4 and resolved OD-AOS7/work-owner prerequisites; need not wait for all graphical polish. |
+| C7: maintenance and installation migration | OS3, OS5 | Move imperative update/install control into Rust in separate slices. Add streamed progress, local readiness probes, drain/defer, maintenance windows and bounded retention. Preserve signed feed compatibility and existing installed-machine upgrade path. | Disposable-disk erase safeguards; interrupted activation; fallback without data rewind; failed console/link readiness detected; safe low-space behavior. Retire old implementation only after behavior parity and existing-client migration. Draining depends on C6. |
+| C8: supported customization and data protection | OS4, OS5, OS6 | Versioned owner configuration; supported packages/services and workload environments; backup/restore, capacity policy, repair/reset and optional encryption in their existing stages. | Configuration survives supported update/rollback; restore to replacement storage; bounded agent grants; no arbitrary root authority through a settings input. Resolve OD-AOS6 and owner contracts. |
+| C9: image reduction and qualification | OS2, OS7, OS8 | Remove superseded runtimes and installer/UI dependencies only when C5/C7 no longer require them. Publish before/after size, boot, responsiveness and memory evidence; complete named hardware and motion qualification. | Smallest justified closure that passes install/work/update/recovery/restore and visual checks. A new preview/stable publication needs its corresponding evidence and release authorization. |
+
+C1 and C2 come first. C3 chooses the API and renderer before broad migration. C5 UI-only work can follow C2 without waiting for Rust. C4 provides a working Rust foundation behind the graphical interface. The remaining C5 work and C6 then deliver service-dependent usability and useful compute. Migrate destructive installer/recovery paths last within C7 rather than rewriting every boundary at once. Repeat size measurements at each slice; C9 is final cleanup/qualification, not the first chance to remove unused packages.
+
+### 15.5 Customization and retained commitments
+
+Normal owner controls: identity, networking, storage allocation, resource reservations, allowed workloads, update windows, display timeout/scale/orientation and reduced motion. Allow extensive development dependencies inside declared workload environments. Offer host packages/services through an exportable validated declaration with a visible diff and activation/rollback record; arbitrary Nix modules are not yet a supported input. Owner administrative recovery remains available. Agent grants cannot silently modify boot, trust, recovery or update authority.
+
+Retain all unfinished OS1-OS8 acceptance work: hardware and boot qualification, live-account enrollment, workload offline/lease reconciliation, maintenance draining, recovery/repair/reset, optional encryption, backups and replacement-device restore, capacity safeguards, documentation and release provenance. Section 14's motion qualification remains open. This plan does not mark them done, authorize production changes, create a new OS repository or replace the existing scheduler. Establishing Rust as the preferred control implementation is distinct from deciding that every script, UI or build expression must be rewritten.
+
+### 15.6 First Rust implementation record (OS3-R1)
+
+The operator authorized the first Rust API/status/diagnostics slice on 2026-11-21 ("okay lets go"). OS3-R1 in Section 8 is the bounded task on dev; its claim preceded implementation. It implements the read-only portion of C3/C4, with an opt-in adapter behind the existing graphical Diagnostics action. It does not complete C4 or authorize arbitrary host mutations.
+
+The [implementation evidence](../research/spare-computer-os/rust-control-2026-11-21.md) records checks and limitations. The [local control contract](../../experiments/anima-os/control-contract.md) owns the exact version-1 wire format, access policy, limits, build commands and compatibility boundaries. Source is `crates/anima-osd`; OS packaging is `experiments/anima-os/control-package.nix` and `control.nix`. New service enablement is opt-in. Existing GUI, enrollment, update and installer paths stay in place. No TUI or network listener is added.
+
+Outstanding before wider rollout: HT-128, real appliance integration and hardware checks, performance/closure comparisons from C1, the renderer decision, and the operation/mutation contracts for later slices. Nix source builds use the compiler pinned by the OS Nixpkgs; workspace lint/tests use the repository toolchain. Align the production compiler policy before claiming one release toolchain. No new ISO or hosted feed is published by this slice.
+
+OS3-R2 extends the [same control contract](../../experiments/anima-os/control-contract.md#proposed-operation-extension-os3-r2-not-implemented) with the next operation design. The first executable continuation is a persisted read-only diagnostic job; root mutations follow only after authorization, recovery and confirmation review. The design does not mark C3/C4 complete. OS3-R3 implements its read-only persistent diagnostic-job subset behind the existing graphical adapter; [the version-2 contract](../../experiments/anima-os/control-contract.md#implemented-diagnostic-jobs-version-2-os3-r3) defines the supported operations and the remaining limits.
+
+## 16. Graphical UI restructuring brief
+
+### 16.1 Scope and review outcome
+
+On 2026-11-21 the operator authorized deleting pages and rearranging the UI, and asked for parallel planning help. Three read-only reviews covered navigation/function coverage, visual hierarchy and responsive design, and end-to-end journeys/backend dependencies. Their reconciled recommendation follows. This section is the concrete C2 planning deliverable; revised mockups and production UI implementation are not yet complete. No new TUI is planned.
+
+Preserve the recognizable Anima design language, not the existing page count or exact composition. Keep Graphite surfaces, IBM Plex typography, the coloured wordmark, frost accent, Carbon icons and restrained motion. Aesthetics, accessibility and speed are equal acceptance concerns. Existing mockups remain historical approved references until their replacements are reviewed; do not mark them as matching this unbuilt design.
+
+### 16.2 Navigation and complete function mapping
+
+Use four primary destinations: **Overview, Network, Storage, Settings**. Keep Network directly accessible during setup and outages. Keep Storage directly accessible because capacity, persistent data and later allocation are core appliance concerns. Settings is a short index leading to focused subpages, not one long form. Each subpage has a labelled Back action, retained focus and a stable title. Fault and update notices can link directly to a subpage without making the user traverse the index.
+
+| Existing destination or function | Proposed destination | Behavior to retain or improve |
+| --- | --- | --- |
+| Overview; hostname, CPU, memory, uptime, capacity summary | Overview | Machine name leads; current state and next useful action follow; compact network/storage summaries remain visible |
+| Anima sign-in introduction | Remove as a standalone page; Overview setup state | One primary activation opens isolated authentication; a visible secondary action offers an existing self-hosted hub |
+| Add this computer; self-hosted enrollment | Overview setup flow | Preserve explicit account/machine consent, code validation and existing-ownership refusal |
+| Enrollment/service details | Overview → Connection details | Distinguish saved enrollment, local monitoring and verified hub connectivity; unknown is not success |
+| Network adapters, radio, scan, Wi-Fi connection | Network | Distinct not-scanned, scanning, empty, no-adapter, radio-off, failed and connected states |
+| Disk inventory and capacity | Storage | Preserve disk identity; distinguish observed storage from future allocation/backup functions |
+| Display selection/orientation and motion | Settings → Display & accessibility | Keep backend-enforced timed revert and confirmation; scale/blanking controls only when implemented |
+| Update check/download/stage/restart/rollback | Settings → Updates | Overview links directly when an update needs attention; preserve signature checks and restart consent |
+| Diagnostics and emergency recovery guidance | Settings → Diagnostics & recovery | Local access independent of hub; expose only implemented recovery actions |
+| Lock/unlock, battery, session identity | Global shell | Lock keeps background services running; battery only when available |
+| Restart and shutdown | Global power control | Accessible labels, visible consequences and explicit confirmation |
+| Long operation state | Operation detail; future persistent shell strip | Current synchronous constraints remain honest until reconnectable backend jobs exist |
+
+No blank or disabled Work page ships with this navigation change. When the work backend supports actual history/details/actions, add Work as a deliberate destination and an active-work region on Overview. Persistent applications remain in the broader OS scope; this restructuring neither removes them nor invents a competing applications UI.
+
+### 16.3 Visual composition and design deliverables
+
+Overview has one display-sized heading: the machine name. A single state sentence and the next useful action form its top region. An unenrolled machine receives a compact connection panel, not a repeated marketing hero. Below, use a primary region for an actionable problem/current operation (and real work later) and a secondary region for network, storage and capacity. Keep labels and values close; avoid full-width rows whose values are disconnected from their labels. Use aligned tabular figures and subtle separators rather than a grid of equally emphasized cards.
+
+Artwork remains appropriate on installer welcome and completion. On the daily console it may be a small accent, but must not reserve a large empty block. Preserve generous spacing where it groups or emphasizes content. At 1280×800, machine identity, the primary action, network state and available storage should be visible without scrolling with representative normal text. Small/portrait displays may scroll; key controls and confirmations must remain reachable. Wide layouts use a bounded content measure and purposeful columns rather than stretched rows.
+
+C2b delivers six reviewed compositions with state variants: installer welcome; disk review and installation progress; first connection and account confirmation; daily Overview; network repair; update progress and result. Include the Settings index and focused subpage navigation as a shell specimen so every relocated function is inspectable. Exercise 1280×800, 800×600, 640×480, portrait and wide layouts; shared tokens must survive error, loading, empty and reduced-motion states. No screen implies unavailable agent execution, backup or recovery functionality.
+
+Use Section 14's existing motion roles and interruption behavior. Preserve focus and scroll during updates; replace only changing facts where practical. Disable continuous decorative painting when hidden or locked. The renderer comparison uses the same reviewed screen, type, icons and transitions, so size savings cannot silently trade away visual quality. Physical frame pacing and input responsiveness remain measurements, not conclusions from screenshots.
+
+### 16.4 User journeys
+
+**Preview installation:** welcome → network (show usable Ethernet without redundant configuration) → keyboard/local owner credentials → selected OS and optional data disks → exact erase review/consent → truthful installation phases → Restart or Shut down with remove-media guidance. Keep a focused setup shell, not installed-system navigation. Reordering presentation cannot weaken selected-disk identity rechecks or authorization invalidation when selection changes. During unsafe disk-write phases explain why cancellation is unavailable.
+
+**First installed use:** local unlock → Overview connection action → isolated authentication → return to account-and-machine confirmation → Add this computer → observed enrollment result. Cancel/failure returns to an understandable setup state; retry never reports success prematurely. Self-hosted enrollment remains discoverable beside the primary connection action. Saved ownership is never silently replaced.
+
+**Daily use:** Overview reports what is known today: enrollment, monitoring, network and capacity. It does not claim Accepting work from a saved configuration or running daemon. When C6 supplies actual work state, show accepting/busy/paused/blocked with the reason and supported actions. Local lock, repair and navigation do not depend on hub availability. Restart/shutdown explain interrupted services and require consent.
+
+**Update:** check → version/transfer size → download/verify → staged → explicit restart → accepted system or rollback explanation. Current operations remain explicitly blocking where the backend requires it. After C3/C4, show a persistent phase/progress strip and reconnectable operation details, with safe navigation and diagnostic access. Cancellation is phase-specific; a general Cancel button must not imply that disk writes can be interrupted. Draining arrives only with workload-owner support; until then keep the manual finish-work warning.
+
+**Failure:** explain the failed action and one useful next step, retain safe input, and provide expandable redacted diagnostics. Distinguish no adapter from no networks found and authentication failure from missing connectivity. A hub outage must not hide local controls or trigger OS rollback. OS rollback, data restoration, repair and factory reset remain distinct operations, each exposed only when implemented.
+
+**Preview/stable pairing boundary:** Section 1's proposed stable path pairs before installation, while the implemented experimental preview installs offline and enrolls afterward. The journeys above describe the current preview. C1/C3 must reconcile the stable identity/install-session contract with its owner before changing that boundary. This does not block UI-only restructuring and is not an implicit approval to remove pre-install pairing from the stable plan.
+
+### 16.5 First implementation slices
+
+| Slice | Deliverable | Dependency and completion evidence | Current state |
+| --- | --- | --- | --- |
+| C2a: screen/state inventory | The mapping and journeys in 16.2/16.4; distinguish existing facts from future service facts | Three planning reviews reconciled here; every current console action has a destination | Planning brief complete; no runtime acceptance claimed |
+| C2b: visual/state mockups | Six compositions, Settings specimen, responsive/error/loading/reduced-motion variants in 16.3 | Existing visual identity; mockup records distinguish proposed design from shipped UI | Implemented reference and responsive states in OS3-R4; final operator acceptance open |
+| C5a: existing-backend UI restructure | Four destinations; remove duplicate sign-in page; focused Settings subpages; compact Overview; honest enrollment labels and network scan states | C2b; preserve existing auth, confirmations, operation locks and recovery; update matching mockups in the implementation commit | Built in `cfa5709d0` (OS3-R4); rendered/installed-console checks passed; HT-127 open |
+| C3/C4: service contract and Rust foundation | Typed state, safe diagnostics, operation identity/progress, permissions and reconnection | Section 15; existing service-domain ownership | Read-only service and persistent diagnostics built in OS3-R1/R3; native authenticated control adapters built in OS3-R4; generic mutation journal remains separate |
+| C5b: service-backed interaction | Persistent progress, safe nonmodal navigation, verified connectivity, supported persistent preferences and display blanking | Actual C3/C4 capabilities; no simulated readiness or progress | Update progress/navigation and guarded persistent orientation built in OS3-R4; broader preference/blanking qualification remains open |
+| C6/C7: work and lifecycle UI | Actual workload status/cancel/results, drain/defer and streamed install/update phases | Existing workload/maintenance contracts and Section 15 acceptance | Native install/update phases and boot recovery built in OS3-R4; workload status/cancel/results and drain/defer remain unimplemented |
+
+First-slice acceptance: one activation starts sign-in; cancellation/failure retains retry context; saved enrollment with stopped daemon never reads Connected or Ready; no adapter differs from an empty scan; all functions in 16.2 remain reachable; focus, keyboard, touch, reduced motion and rotated/compact displays work; erase/enrollment/power consent remains explicit; pending synchronous operations are not presented as background jobs. Run applicable behavioral checks and compare the real graphical build to the revised mockups. Do not claim physical acceptance from source inspection or synthetic examples.
+
+OS3-R4 implements the bounded continuation in `cfa5709d0`; its [evidence](../research/spare-computer-os/native-continuation-2026-11-21.md) records the runtime checks and artifact measurements. Final graphical/hardware acceptance is HT-127. Next bounded size work should validate runtime-only PySide packaging against the measured closure; broader C6 workload integration, draining, encryption, backup and physical qualification stay open. No production deploy, public ISO publication or release follows automatically.
 
 ## Appendix A. Recorded direction
 
@@ -487,3 +680,38 @@ Process request:
 Final enrollment choice (Decision 26): "A". Update policy (Decision 27): "agreeded". Release readiness (Decision 28): "Yeah A and and C just mention is might not be possible".
 
 The operator requested this implementation proposal with: "okay lets do that".
+
+## Overnight ISO continuation (2026-11-20)
+
+R-274 authorizes the next experimental slice: package existing runtime components, build a guided offline UEFI installer ISO and validate installation on disposable VM disks. Review recovery, runtime packaging, installer safeguards and final image in that order. The existing daemon provides enrollment/monitoring; app/job/agent execution integration is not implied by packaging it. Named hardware, BIOS/ARM, encryption, backups, hub-driven installation and production workload integration remain explicit qualification gaps until implemented and tested. Keep earlier failure records and publish a separate continuation report.
+
+Continuation result: [experimental ISO delivery](../research/spare-computer-os/iso-preview-2026-11-20.md) and [reviews after each stage](../research/spare-computer-os/overnight-reviews-2026-11-20.md). The ISO installs offline and runs local isolated container workloads. It does not complete managed job/agent execution, production update/backup policy or physical qualification.
+
+### Installer display-space correction (2026-11-20)
+
+Physical feedback showed the fullscreen installer using tiny controls and a fixed welcome composition on a high-resolution panel. The operator requested better screen use on every page. Apply one resolution-aware scale to all eight installer steps and all installed-console pages, dialogs and navigation; expand form controls within a readable width and make welcome/completion artwork follow the page. Keep small-screen usability and disk authorization unchanged. Validate both a 1280×800 viewport and a high-resolution viewport; physical readability remains an operator check.
+
+Installed hardware feedback also reported Wi-Fi working in the live installer but unavailable after installation, and confirmed rotation being lost. Reproduce the installed read-only-root Wi-Fi service startup separately from live-media tests. Persist only confirmed rotations, transfer them during installation, apply them before the installed GUI starts and retain the timed rollback. Do not treat VM backend activation as physical radio qualification.
+
+### Installer orientation-panel follow-up
+
+The operator reported that changing orientation can leave the settings panel off-center with Done unreachable. Keep the panel within the current screen's available geometry when rotation or screen changes occur, allow its body to scroll on short displays, and keep Done visible outside the scroll area. Preserve the existing confirmation countdown and automatic orientation rollback. Validate rotation while the panel is open in a disposable VM; physical display and touch behavior remain human checks. The [rotation-panel record](../research/spare-computer-os/rotation-panel-2026-11-20.md) owns the regression evidence and delivery details.
+
+### Current preview follow-up: installed operation
+
+The operator requested one combined build on 2026-11-20: compact sign-in browser,
+provider-neutral copy, visible self-hosted enrollment, completion power actions,
+battery icons in both headers, local telemetry, corrected hub storage reporting,
+and hosted OS updates so subsequent changes do not require reinstalling. This is
+an explicitly authorized continuation of OS3 and an experimental OS5 update slice,
+not completion of the stable release gates. Hosted preview artifacts use a separate
+OS namespace and signing identity; desktop release feeds and `main` stay unchanged.
+The update slice must verify signed metadata and artifact bytes, preserve the last
+bootable system and persistent state, require deliberate activation, and be tested
+on disposable installed VMs before delivery. Existing running installations need a
+bootstrap path; the requested next fresh install carries the updater by default.
+
+The operator also selected `anima-node-xxxx` for installed machine names. Generate
+the four-character suffix once per installation, persist it through reboot and OS
+updates, and show the actual name in the console and new hosted device records.
+Keep the longer enrollment identity separate from this human-readable hostname.

@@ -12,7 +12,7 @@ import { device } from '../page.fixture.svelte';
 import type { DeviceMetrics } from './metrics.svelte';
 import OverviewPanel from './OverviewPanel.svelte';
 import OverviewSkeleton from './OverviewSkeleton.svelte';
-import { checkCounts, hostKeyText, uptimeReadings } from './overview';
+import { checkCounts, daemonNeedLine, hostKeyText, noChartsText, uptimeReadings } from './overview';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -53,20 +53,21 @@ it.each([
   expect(hostKeyText(ssh)).toBe(text);
 });
 
-type Shown = Pick<DeviceMetrics, 'view' | 'span' | 'shownRange' | 'chartShape' | 'readings' | 'error' | 'liveError'>;
+type Shown = Pick<DeviceMetrics, 'view' | 'span' | 'shownRange' | 'chartShape' | 'readings' | 'battery' | 'error' | 'liveError'>;
 
 const NOW = new Date('2026-11-05T09:05:00Z');
 const SPAN = { start: NOW.getTime() - 3_600_000, end: NOW.getTime() };
 const LOADED: Shown = {
-  view: { metricsSource: 'SSH', gpus: [NVIDIA, INTEGRATED], series: TWO_GPUS, drives: [], readings: null },
+  view: { metricsSource: 'SSH', gpus: [NVIDIA, INTEGRATED], series: TWO_GPUS, drives: [], readings: null, batteries: [] },
   span: SPAN,
   shownRange: 'HOUR',
   chartShape: null,
   readings: { ...added('2026-11-05T09:04:00Z', []).readings, cpuPercent: 20, memoryPercent: 45, diskPercent: 61 },
   error: null,
   liveError: null,
+  battery: null,
 };
-const WAITING: Shown = { view: null, span: null, shownRange: null, chartShape: null, readings: null, error: null, liveError: null };
+const WAITING: Shown = { view: null, span: null, shownRange: null, chartShape: null, readings: null, battery: null, error: null, liveError: null };
 
 function show(metrics: Shown, source: 'SSH' | 'NONE' | 'DAEMON' = 'SSH', range: MetricRange = 'HOUR', ssh: Partial<ReturnType<typeof device>['ssh']> = {}) {
   const time = manualClock();
@@ -214,10 +215,31 @@ it('D-7: an error shows the hub message and Retry in the chart area', () => {
   expect(calls.retry).toHaveBeenCalledOnce();
 });
 
-it('MET-007: data with no series says it is waiting for metrics', () => {
-  show({ ...LOADED, view: { metricsSource: 'SSH', gpus: [], series: [], drives: [], readings: null } });
-  expect(document.body.textContent).toContain('Waiting for metrics');
+it('MET-007: data with no series and no readings says it is waiting for metrics', () => {
+  show({ ...LOADED, readings: null, view: { metricsSource: 'SSH', gpus: [], series: [], drives: [], readings: null, batteries: [] } });
+  expect(document.querySelector('.waiting')?.textContent).toBe('Waiting for metrics');
   expect(document.querySelector('h3')).toBeNull();
+});
+
+it('R-322: with no readings, a daemon that waits in the Keychain gives its reason line in place of the wait', () => {
+  expect(noChartsText(false, 'last hour', 'The daemon of nas needs you')).toBe('The daemon of nas needs you');
+  expect(noChartsText(true, 'last hour', 'The daemon of nas needs you')).toBe('No samples in the last hour');
+  expect(noChartsText(false, 'last hour', null)).toBe('Waiting for metrics');
+});
+
+it('R-322: the reason line speaks of this computer on its own page and names the device on any other', () => {
+  const mac = { id: 'm1', name: 'studio-mac', daemonNeed: 'KEYCHAIN' as const };
+  expect(daemonNeedLine(mac, 'm1')).toContain('The daemon of this computer needs you');
+  expect(daemonNeedLine(mac, null)).toBe(
+    'The daemon of studio-mac needs you: on that Mac, macOS asks whether it may read its key in the Keychain. Allow it there.',
+  );
+  expect(daemonNeedLine({ ...mac, daemonNeed: null }, 'm1')).toBeNull();
+});
+
+it('MET-007: a range with no samples while the bars have readings says the range is empty, not waiting', () => {
+  show({ ...LOADED, shownRange: 'DAY', view: { metricsSource: 'SSH', gpus: [], series: [], drives: [], readings: null, batteries: [] } }, 'SSH', 'DAY');
+  expect(document.querySelector('.waiting')?.textContent).toBe('No samples in the last 24 hours');
+  expect(document.body.textContent).not.toContain('Waiting for metrics');
 });
 
 it.each([
@@ -259,7 +281,7 @@ it('MET-003: while a switch is pending the old chart keeps its own range in the 
   const at = (minute: number) => point(`2026-11-05T09:0${String(minute)}:00Z`, 20);
   // Minutes 0, 1, 4, 5: a three-minute hole that breaks an HOUR line but not a DAY one.
   const cpu = series('CPU_PERCENT', 'cpu', [at(0), at(1), at(4), at(5)]);
-  show({ ...LOADED, view: { metricsSource: 'SSH', gpus: [], series: [cpu], drives: [], readings: null }, shownRange: 'HOUR' }, 'SSH', 'DAY');
+  show({ ...LOADED, view: { metricsSource: 'SSH', gpus: [], series: [cpu], drives: [], readings: null, batteries: [] }, shownRange: 'HOUR' }, 'SSH', 'DAY');
   expect(document.querySelector('svg[role="img"]')?.getAttribute('aria-label')).toContain('CPU, last hour');
   expect(document.querySelectorAll('.lines polyline')).toHaveLength(2);
   expect(document.querySelector('[aria-pressed="true"]')?.textContent.trim()).toBe('24 hours');

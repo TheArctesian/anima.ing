@@ -142,6 +142,77 @@ that owns the area.
 | SF-129 | The version of a program and "hooks installed" leave the device but are not in the list of fields | The agent layer of Anima (proposal, no code) | Open |
 | SF-130 | The gate covers the kept sessions and High findings only | The agent layer of Anima (proposal, no code) | Open |
 | SF-131 | A unit of a user ends at logout unless linger is set | The agent layer of Anima (proposal, no code) | Open |
+| SF-147 | "Only a person answers an approval" has no mechanism: an agent of the same user reaches the socket, the command and the login token (High) | Agent threads (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR18: "Accept it across any device. If my other desicons are contridicarty to this I want them changed."). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-148 | Settings of the project or the user of the agent program (allow rules, hooks, MCP servers, the policy of Codex) can answer before the approval tool is asked (not verified) (High) | Agent threads (proposal, no code) | Open |
+| SF-149 | "Relay without a copy" is a promise of the hub: a hub controller can pull each thread of each device that is online (High) | Agent threads (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR4: "Yes, plain on the hub"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-150 | W7 proves the device to the hub, not the hub to the machine; a prompt of the hub is a command that the hub names, with no isolation (High) | Agent threads (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR12 and OD-THR20: "No, with the guards only"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-151 | The daemon token and the login token of the command line are in reach of an agent of the same user; in stage 3 one poisoned file reaches each machine (High) | Agent threads (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR18: "Accept it across any device."). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-152 | THR-034 names a key of a client that no plan owns, and does not say what is signed (High) | Agent threads (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR5: "Through the hub"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-153 | THR-029 bans only MCP tools; an API key and the `anima` command can read entries (High) | Agent threads (proposal, no code) | Open |
+| SF-154 | The main web view is a new reader with open `https:` egress, and later would send prompts and answer approvals; P9 was too kind (High) | Agent threads (proposal; the read side is built on a branch) | Open |
+| SF-155 | The switch, the folder list and the mode can be written by the user of the agent; TH33 misread USE-004; nothing stops the hub from sending Full access (Medium) | Agent threads (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR18: "Accept it across any device."). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-156 | The recommendation of OD-THR8 conflicts with MCP-006 and AGL-003; change tools are `allow` by default (Medium) | Agent threads (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-290, OD-THR8: "Yes, within limits"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-157 | The built MCP tool gave the full title, the path of the folder and the branch, with no exclusion (Medium) | Agent threads (proposal; the read side is built on a branch) | Accepted by the operator (2026-11-20, relayed; R-296, OD-THR13: "Yes, cleaned and capped"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-158 | Nobody is named as the holder of the setting of option A of the event log (Medium) | Agent threads (proposal, no code) | Open |
+| SF-159 | The long poll of THR-026 is not written against K10 and K8 (Medium) | Agent threads (proposal, no code) | Open |
+| SF-160 | The idle stop and the life of a thread have no limits, no containment of child processes, no rule for a restart of the daemon (Medium) | Agent threads (proposal, no code) | Open |
+| SF-161 | The `git` of the runner runs hooks and configuration that the agent can write; checkpoints take untracked secrets; worktree names come from the prompt (Medium) | Agent threads (proposal, no code) | Open |
+| SF-162 | The label of the source of a prompt and the audit rest on the hub; no log at the machine (Medium) | Agent threads (proposal, no code) | Open |
+| SF-163 | The event log is a second copy with no retention, deletion or limit; redaction is best effort (Medium) | Agent threads (proposal, no code) | Open |
+| SF-164 | Wider conflicts with BOT-020, BOT-032, BOT-033 and AXT-045: a subscription login driven through a hosted hub (Medium) | Agent threads (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-290, OD-THR3: "No we can use account methods everyone else is doing it"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-165 | Gaps of THR-040: no deny list, the source of `PATH`, `SSH_AUTH_SOCK`, a prompt in the process list (Medium) | Agent threads (proposal, no code) | Open |
+| SF-166 | A forged session file shows as a thread, and a resume would load its history; the ID of a Codex row came from the content (Medium) | Agent threads (proposal; the read side is built on a branch) | Open |
+| SF-167 | No rule to fail closed for an unknown event, kind of request or version of the program (Medium) | Agent threads (proposal, no code) | Open |
+| SF-168 | Limits missing in the code: the summary title, the patch, the whole thread, the line of a glance (Low) | Agent threads (proposal; the read side is built on a branch) | Open |
+| SF-169 | The file reader followed a link at the root folders and checked no owner and no hard link (Low) | Agent threads (proposal; the read side is built on a branch) | Open |
+| SF-170 | The reader can show what did not happen: the output wrapper of Codex, the rule for typed text, no end of a turn for Claude Code (Low) | Agent threads (proposal; the read side is built on a branch) | Open |
+| SF-171 | TH4 was marked built, but the page was not on the branch at the time of the read (Low) | Agent threads (proposal; the read side is built on a branch) | Open |
+| SF-172 | Rows of Section 8 that were wrong or too kind (P2, P3, P10, P13), and rows that were missing (Low) | Agent threads (proposal, no code) | Open |
+| SF-173 | Open decisions and conflicts that were missing (Low) | Agent threads (proposal, no code) | Open |
+| SF-174 | Members about the account and its limits in the streams of the programs conflict with AIS-022 (not verified) (Low) | Agent threads (proposal, no code) | Open |
+| SF-180 | A start of a child on a different machine has no signer: no person is at a client, and the rule that a child has no more than its parent is kept only by the hub (High) | Agent threads, version 2 (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR20 and OD-THR35: "Trust the hub, keep the guards"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-181 | A machine of the pool has no person at the machine, so each guard at the machine (the switch, the folder list, the trust question) is set by the pool and the hub (High) | Agent threads, version 2 (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR20 and OD-THR35: "Trust the hub, keep the guards"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-182 | "A device of the account" gives a machine of the pool a path to the devices of the owner, a daemon token that claims work, and a place in "any machine" (High) | Agent threads, version 2 (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-294, OD-THR36: "Yes, like any device"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-183 | "Inside the allowance" cannot be checked at the start: the hours are not known, parallel requests race, no cap on machines or size, no end (High) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-184 | The offer of a larger plan can be caused by text that steers an agent and answered by a program; the card rests on figures of the hub (High) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-185 | The hard stops for what cannot be undone were named in THR-065 and enforced nowhere; THR-081 itself deletes a disk with no question (High) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-186 | Who may ask the pool for a machine was a note in P18, not a requirement; a call from the hub to the pool is against CVM-015 (Medium) | Agent threads, version 2 (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR20 and OD-THR35: "Trust the hub, keep the guards"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-187 | Reports and messages are text that steers, and they go up to the machine that is trusted most; no limit on messages or turns (Medium) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-188 | The tools of a tree give content of a thread, against THR-029; briefs and reports go through the hosted hub (Medium) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-189 | The binding of the tools to a tree binds the tools only; a child with full access can use the command, the socket or the login token (Medium) | Agent threads, version 2 (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR18: "Accept it across any device."). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-190 | The placement is not written against the routing rules of jobs.md; THR-049 and THR-071 disagree; OD-THR25 changes BOT-032 without saying so (Medium) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-191 | Each option of OD-THR28 was against a rule or against THR-079; an API key is a bill beyond the plan (Medium) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-192 | The removal rested on the word of the hub; more stays than the disk; the kind of isolation of a machine of the pool was not said (Medium) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-193 | Where the settings "ask first" and the limits are kept was not said; the hub or a steered agent could loosen them (Medium) | Agent threads, version 2 (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-292, OD-THR18: "Accept it across any device."). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-194 | The turned OD-THR7 had no condition for a prompt from the hub; the environment of a child on a different machine was not defined (Medium) | Agent threads, version 2 (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-290, OD-THR7: "Your login's environment"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-195 | The one stop of the turned OD-THR21 (trust a folder one time) does not fit a worktree, a fresh clone or a machine with no person (Medium) | Agent threads, version 2 (proposal, no code) | Accepted by the operator (2026-11-20, relayed; R-290, OD-THR21: "Yes, with a notice"). The weakness stays; Section 8.2 of the proposal has the guard that is left |
+| SF-196 | Stage 8 disagreed with cloud-machines.md and HMD-073, and Section 11 did not list it (Medium) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-197 | The turned text of OD-THR8 was in the wrong table; some rows of Section 8 were stale (Low) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-198 | A side chat with a different program or model sends the whole conversation to a second vendor (Low) | Agent threads, version 2 (proposal, no code) | Open |
+| SF-199 | A stop by one process group leaves commands alive (High; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-200 | With THR-048 withdrawn, "text is drawn as text" is the only wall between a remote author and a command with full access through the main web view, and it was not named as a guard (High; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-201 | The text did not say what leaves the computer in stage 1b, mixed two switches, and did not say if a title goes with the switch off (High; stage 1b, 2) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-202 | The account methods of Codex had no closed list, the sign-in was not held to the machine, and nothing said if the hub gets the account, the plan and the limits (High; stage 1b, 3) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-203 | Sentences that bind still said the opposite of an answer (THR-065, THR-021, THR-051, THR-031, THR-033, THR-040, THR-046) (Medium; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-204 | Rows of Section 8 still claimed a guard that is withdrawn (Medium; stage 1b to 8) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-205 | THR-049 said that no program runs after a restart, against the holder; the ID of a request after a restart of the daemon was not defined (Medium; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-206 | "The holder takes commands only from the daemon" cannot hold against a program of the same user (Medium; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-207 | The end of the holder, its update, the versions of its protocol and agents with no holder were not written (Medium; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-208 | "No byte is lost" had no limit of size, and the kept output is one more copy (Medium; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-209 | THR-040 named variables only: descriptors, the environment of the holder, the working folder and a secret by its value were missing (Medium; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-210 | The credential of the MCP server of a thread was not defined (Medium; stage 1b, 7) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-211 | The soft limits did not say who counts or what a tool gets at the limit; the start tool came before the limits (Medium; stage 1b, 7) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-212 | "Allow for the session" had no rule; "a missing answer is a decline" was against THR-087 (Medium; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-213 | The log at the machine "that the hub cannot change" claimed too much (Medium; stage 1b, 3) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-214 | The socket was not said to be a file; the client did not check its owner; the runner was not forbidden in a system unit (Medium; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-215 | Full access, the default, was not measured in TH10 (Medium; stage 1b) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-216 | The values of the arguments had no rule (Medium; stage 1b, 3) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-217 | TH33 was one line (Medium; stage 3) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-218 | One machine with the switch on can, through an agent, turn the switch on at each machine that it reaches (Medium; stage 3, 7) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-219 | No rule for how long the hub keeps the content of threads, for its delete, its copies and the log of the database (Medium; stage 2) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-220 | The redaction covers tool outputs only, and its clause of known secrets is empty now (Medium; stage 2) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-221 | Task rows that were stale; `approve` had no task in stage 1b (Low; stage 1b to 6) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
+| SF-222 | Section 11 missed MCP-004, AIS-018, BOT-066, BOT-032, LOG-007 (Low; stage 1a to 3) | Agent threads, version 3 (proposal; no code of the drive side) | Open |
 | SF-070 | Sections 6.4.1 and 6.4.2: "the administrator" has two meanings. Medium | Container work types (contract K10 Section 6.4, not built) | Open |
 | SF-071 | Section 6.4.1: the write check names "a real file", and the socket is one. Medium | Container work types (contract K10 Section 6.4, not built) | Open |
 | SF-072 | Sections 6.4.2 and 6.4.7: who writes the adoption record on an engine of a user. Medium | Container work types (contract K10 Section 6.4, not built) | Open |
@@ -162,6 +233,71 @@ that owns the area.
 | SF-087 | Section 6.4.2, row "Registries with a login". Low | Container work types (contract K10 Section 6.4, not built) | Open |
 | SF-088 | Eleven sentences of contract K10 version 0.4 contradict each other | Container work types (contract K10 Section 6.4, not built) | Open |
 | SF-089 | The clean-up with "All containers" on can remove an adopted project, against R-211 | Container work types (contract K10 Section 6.4, not built) | Open |
+| SF-139 | A failed stop or a refused image removal left `files/` with its secret values. High | The applications program (task H31, part 1) | Open |
+| SF-137 | The clean-up compared names of images, not digests, and could remove a kept image. Medium | The applications program (task H31, part 1) | Open |
+| SF-132 | It is not proven that each Compose version obeys `--host` and `--config`. Medium | The applications program (task H31, part 1) | Open |
+| SF-138 | The records said that a new version runs before its start. Medium | The applications program (task H31, part 1) | Open |
+| SF-134 | The debug text of a plan showed values of the environment file. Low | The applications program (task H31, part 1) | Open |
+| SF-136 | A record of the pair that cannot be read looked like no record. Low | The applications program (task H31, part 1) | Open |
+| SF-140 | The settings file is checked for its owner and mode only. Low | The applications program (task H31, part 1) | Open |
+| SF-133 | Forms that compose-rules accepted: carriage returns, `=` in a name, two texts for one target. Low | The applications program (task H31, part 1) | Open |
+| SF-135 | One origin of a hub could have two texts. Low | The applications program (task H31, part 1) | Open |
+| SF-144 | The converter writes each network alias for each network, so a small command makes a very large file. High | Compose file check and `docker run` converter (task H29) | Open |
+| SF-141 | One request can hold about 250 checks of the largest file. Medium | Compose file check and `docker run` converter (task H29) | Open |
+| SF-146 | The writer of the converter leaves characters that YAML does not print. Low | Compose file check and `docker run` converter (task H29) | Open |
+| SF-145 | The reader of shell words keeps as text an expansion that a shell does. Low | Compose file check and `docker run` converter (task H29) | Open |
+| SF-142 | A problem of the check shows a secret that the operator wrote in the place of a key. Low | Compose file check and `docker run` converter (task H29) | Open |
+| SF-143 | The MCP cleaning can change the Compose file that an agent gets. Low | Compose file check and `docker run` converter (task H29) | Open |
+| SF-231 | The proxy of the hub could reach the dial socket of the link, and so port 22 of each machine. High | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-232 | Who may make an application public was not stated. High | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-234 | The token of the proof of a name, and the names that Anima gives, could be taken by a different hub. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-229 | Forwarded headers of the client were kept, and the log could hold tokens of an application. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-233 | The target of a route could change after it was made public, or be a port of a session. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-228 | Certificates under the shared address of the pool, and the owner of the ACME key. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-230 | Public traffic can slow the sessions on the same link. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-227 | Smaller points: claims about the door, wake, abuse and a hub on the same site. Low | The routing of the domains of applications on the hub (task H21, design) | Open |
+| SF-325 | The proof of a name is read again only when a person asks. Low | The routing of the domains of applications on the hub (task H21, code) | Open |
+| SF-330 | A change of a route asks for no new second factor. Low | The routing of the domains of applications on the hub (task H21, code) | Open (built in `bb0bce295`) |
+| SF-331 | The target of a route came from the person, not from the record of the application. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
+| SF-332 | The proxy opened a tunnel for each `Upgrade: websocket` without the answer 101. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
+| SF-327 | No time limit and no cap before the name of a connection was known. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `68c9a7ab5`) |
+| SF-328 | The protocol of a public stream was only a label that the person picked. Medium | The routing of the domains of applications on the hub (task H40, code) | Open (built in `bb0bce295`) |
+| SF-329 | The socket of the interface of the proxy checked no peer and had no set mode. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
+| SF-326 | The head accepted two lengths, a length that is not digits, and `_` in a header name. Low | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
+| SF-224 | The static test of a recipe let a service run as root with each capability, and change its code at the start. High | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
+| SF-226 | A variable could give the image, a published port or its address after the static test. Medium | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
+| SF-225 | The list of secret names was short, and a secret written in the Compose file was not refused. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
+| SF-223 | The password of a database user, the names of two applications and the extensions of PostgreSQL were too permissive. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `a7855335`) |
+| SF-251 | A command, an entrypoint or a health check could run a shell, a download or a variable, and an exception applied to each service. Low | The catalogue and its PostgreSQL entry (tasks H36, H24) | Open (built in `cb5098bb`) |
+| SF-252 | The hub read none of the class, the origin and the optional parts of an entry; the form took any image name; a recipe could publish a port of Anima; an interpreter with inline code passed the shell check. Medium | The catalogue of LinuxServer.io (task H39) | Open (built in `30019f90`) |
+| SF-255 | A new or changed generated entry is merged with no named person who read it. Medium | The catalogue of LinuxServer.io (task H39) | Open (built in `d8efdad0`) |
+| SF-253 | The shell gate trusted the header that names an agent, and the digest gate was friction only. Medium | The catalogue of LinuxServer.io (task H39) | Open (built in `1538959f`) |
+| SF-254 | The ports of Anima missed the link, two entries published one port, more interpreters ran inline code, and a new digest could keep a passed test. Low | The catalogue of LinuxServer.io (task H39) | Open (built in `d8efdad0`) |
+| SF-243 | A pinned image still downloads code at its start. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-244 | No person reads the changes of the generator before the merge. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-250 | Tier 2 goes beyond the rulings, and the tier is checked only at the hub. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-247 | Entries that are a shell: desktops, code editors, SSH, with no password. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-245 | How a private route is limited was not stated. High | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-248 | Streams: a false UDP rule, public TCP of services that trust localhost, an open list of ports, open redirects. Medium | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-246 | Images start as root with nothing added to contain them; the rule of `shm_size`. Medium | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-249 | The machine tests run images that are not trusted. Medium | The catalogue of LinuxServer.io and the streams of the hub (design) | Open |
+| SF-335 | A fetch of an operational key during the removal of its device gives the value, and the removal does not name the key. Low | The operational keys (E0-6, K-E5 Section 2) | Open (built on the branch `engine/e0-6-security-review`) |
+| SF-338 | `anima-daemon uninstall` keeps the key cache when the delete of the token fails. Low | The key cache of the daemon (E0-6, K-E5 Section 2.1) | Open (built on the branch `engine/e0-6-security-review`) |
+| SF-336 | `anima-daemon key read` can give a dropped version while a save or a delete in the Keychain waits for the person. Low | The key cache of the daemon on macOS (E0-6, K-E5 Section 2.1) | Open |
+| SF-334 | An API key can read a vault key offer and can replace or delete a sealed record. Medium | The sealed records (E0-6, K-E5 Section 3) | Open |
+| SF-337 | A reveal with a valid new code passes for a login token that was deleted during the request. Low | The sealed records (E0-6, K-E5 Section 3) | Open |
+| SF-333 | A login token with the declaration of an AI agent can change and grant operational keys. Low | The operational keys (E0-6, K-E5 Section 2.2) | Open |
+| SF-179 | A program of the same user can listen at the socket of the link and get the daemon token and an enrolment code; on macOS this goes around the Keychain. Medium | The daemon on a computer of a person (task HM-T23) | Open |
+| SF-178 | On macOS, a daemon enrolled with an old link origin sends its token to a socket in the folder that the environment names. Low | The daemon on a computer of a person (task HM-T23) | Open |
+| SF-175 | The copy of the daemon in `~/.local/bin` is not checked after the installation. Low | The daemon on a computer of a person (task HM-T23) | Open |
+| SF-177 | On macOS the access lists of the folders of the copy and of the socket are not read. Low | The daemon on a computer of a person (task HM-T23) | Open |
+| SF-176 | On Linux the token and the key cache are plain files that each program of the user and each backup of the home folder can read. Low | The daemon on a computer of a person (task HM-T23) | Open |
+| SF-238 | A hosted hub that the pool gave no public origin took browsers at the old shared address. Medium | The browser session of a hosted hub (task HM-T32) | Open (built) |
+| SF-239 | An open page keeps the browser session from its end after 30 minutes with no request. Medium | The browser session of a hosted hub (task HM-T32) | Open |
+| SF-236 | A browser session of a hosted hub cannot be ended from outside the browser, and each entry leaves the token of before usable. Medium | The browser session of a hosted hub (task HM-T32) | Open |
+| SF-237 | A browser session can make an API key that lasts longer than the session. Low | The browser session of a hosted hub (task HM-T32) | Open |
+| SF-241 | A remote session that a browser opened stays open after the browser session of the hub ends. Low | The browser session of a hosted hub (task HM-T32) | Open |
+| SF-240 | Behind the gateway each browser has the loopback address of the container. Low | The browser session of a hosted hub (task HM-T32) | Open |
 
 ### SF-001: "This machine" can show and probe the address of another overlay network
 
@@ -232,6 +368,14 @@ Options to close it (not built):
   passes nothing.
 
 State: Open.
+
+## The security read of the agent threads proposal (2026-11-20)
+
+R-286 asks for the behaviour of T3 Code as a native part of Anima; the proposal is [agent-threads.md](proposals/agent-threads.md). A separate reviewer agent read version 1 on 2026-11-20. It got the proposal, the documents that it stands on, the code of the read side (the branch `threads/read-side`) and eight positions of an attacker, and no opinion of the session that wrote the proposal. Its report, with the scenario and the proposed change of each finding, is the record [agent-threads-review-2026-11-20.md](research/agent-threads/agent-threads-review-2026-11-20.md). The findings F1 to F28 of that record are the entries SF-147 to SF-174, in the same order: 8 High, 13 Medium, 7 Low. Section 9 of the proposal says what was done for each. No code of the drive side exists; the entries about the read side (F8, F11, F20, F22 to F25) have corrections that are built on the branch and that no person and no second reviewer checked. The choices that only the operator can make are OD-THR18 to OD-THR22 and OD-THR2 to OD-THR8 of the proposal.
+
+A second separate reviewer read the parts that version 2 of the proposal added (the principle of reach, the tree of threads and the tools of an agent, a thread on a chosen machine, machines of the pool inside the allowance of a plan, and the four recommendations that were turned), with the frame of the operator: "maximum agent reach is a good thing". It looked for the ways by which a different party uses the reach of the agent, and for a cost or a loss that cannot be undone. Its report is the record [agent-threads-review-2-2026-11-20.md](research/agent-threads/agent-threads-review-2-2026-11-20.md). Its findings G1 to G19 are the entries SF-180 to SF-198, in the same order: 6 High, 11 Medium, 2 Low. Section 9.1 of the proposal says what was done for each. The choices for the operator are OD-THR20 and OD-THR35 to OD-THR37, and OD-THR25 to OD-THR28.
+
+On 2026-11-20 the operator answered 36 open decisions of the proposal (relayed). Seventeen entries above have the state "Accepted by the operator", with his words; Section 8.2 of the proposal lists each accepted risk and the guard that is left. A third separate reviewer then read version 3 with those answers as given facts, to check that the text says what he accepted and nothing wider, and that each guard that is left can be built and tested. Its report is the record [agent-threads-review-3-2026-11-20.md](research/agent-threads/agent-threads-review-3-2026-11-20.md). Its findings H1 to H24 are the entries SF-199 to SF-222: 4 High, 18 Medium, 2 Low. Section 9.2 of the proposal says what was done for each, and Section 6.2.1 is the list for the review of the code of stage 1b.
 
 ## The security review of the work route (task W1, 2026-11-18)
 
@@ -1901,6 +2045,1820 @@ What it is, in the words of the reviewer:
 - One sentence to add in 6.4.13 (HOST-018), so that R-226 holds on a system engine: "The daemon gets these values from the applications program, not from the engine."
 
 State: Open. The text is the contract (version 0.4) and no code exists. Found by the fourth read of 2026-11-19. Version 0.5 of the contract has the change that this entry proposes.
+
+### SF-139: A failed stop or a refused image removal left `files/` with its secret values. High
+
+Requirements: task H31; contract K10 Section 6.4.8 ("It deletes `files/` of the application in each case").
+
+What it is: the plan of `application_remove` had the steps: no `.env`, `compose down`, one `image rm` for each pulled image, then the deletion of `files/`. The caller stops a plan at the first step that fails. Thus a failed `down`, or an `image rm` that the engine refuses because a different application uses the image, left `files/` with the environment file and the final form.
+
+Where: `crates/anima-applications/src/work/removal.rs`, `crates/anima-applications/src/plan.rs`.
+
+Effect, and who can cause it: the hub, with a removal of an application whose image a different application uses. Effect: the secret values of the application stay on the machine after its removal.
+
+Mitigation now: two new step kinds. `Step::DeleteFolderInEachCase` deletes `files/` directly after the stop and runs also when an earlier step failed. `Step::Attempt` removes an image; its failure does not stop the plan. `binds/` is deleted only after a stop that did not fail. A test shows the order.
+
+State: Open. The correction is built on the branch `hosted/apps-h31`, commit `d2455995`. Found by a separate reviewer of part 1 of task H31 on 2026-11-20.
+
+### SF-137: The clean-up compared names of images, not digests, and could remove a kept image. Medium
+
+Requirements: task H31; contract K10 Section 6.4.10 ("it never removes an image that `keep` holds").
+
+What it is: `docker_prune` held an image when the text `name@digest`, made from the name in the file, was in the `RepoDigests` of the engine. The engine writes the short name (`nginx@sha256:…`); the file can name `docker.io/library/nginx:1`. With "All containers" on, an image of a kept version with no tag and no container was removed.
+
+Where: `crates/anima-applications/src/work/prune.rs`.
+
+Effect, and who can cause it: the hub, with `docker_prune` and `images`. Effect: `application_back` has no image to start.
+
+Mitigation now: an image is held when the digest of one of its names is a digest of the version that runs or of the kept version of an application. The name part is not compared. `application_remove` with `images` true also leaves out an image whose digest a different application holds. Tests show both.
+
+State: Open. The correction is built on the branch `hosted/apps-h31`, commit `d2455995`. Found by a separate reviewer of part 1 of task H31 on 2026-11-20.
+
+### SF-132: It is not proven that each Compose version obeys `--host` and `--config`. Medium
+
+Requirements: task H31; contract K10 Section 6.4.1.
+
+What it is: the program starts the Compose program with `--host unix://<socket> --config <folder>` before the verb, and gave only `DOCKER_CONFIG` in the environment. No test with a real Compose program shows that each version from the lowest that the program knows takes `--config` and obeys `--host`. If a version does not obey `--host`, it uses the engine of its default socket, which the program did not check.
+
+Where: `crates/anima-applications/src/plan.rs`.
+
+Effect, and who can cause it: no attacker; a fault of the program. Effect: a command goes to an engine that the start checks did not check.
+
+Mitigation now: each command also gets `DOCKER_HOST` with the checked socket in the environment that the program sets. The arguments stay. A comment in the code and the row of task H31 say that part 2 proves the exact list of arguments with a real Compose program, the lowest and the current version, before it does a plan.
+
+State: Open until a real Compose program proves the list. The part in the environment is built on the branch `hosted/apps-h31`, commit `2663858d`. Found by a separate reviewer of part 1 of task H31 on 2026-11-20.
+
+### SF-138: The records said that a new version runs before its start. Medium
+
+Requirements: task H31; contract K10 Sections 6.4.6 and 6.4.9.
+
+What it is: the plan of an apply moved the current version to the kept names and wrote the new Compose file, environment file and digests in place before `up`. A failed start thus left records that said that the new version runs, and a `keep` 1 replaced the last good kept version with a version that did not start.
+
+Where: `crates/anima-applications/src/work/apply.rs`, `crates/anima-applications/src/work/back.rs`, `crates/anima-applications/src/plan.rs`.
+
+Effect, and who can cause it: no attacker; a failed start. Effect: `application_back` goes to a wrong version, and `pull` false uses digests that never started.
+
+Mitigation now: an apply and a back write the three records of the new version under staged names before the start, and move them in place only after the start; the kept version is replaced or deleted only after the start. The final form is written in place before the start, because Compose reads it. Tests show the order.
+
+State: Open. The correction is built on the branch `hosted/apps-h31`, commit `2663858d`. Found by a separate reviewer of part 1 of task H31 on 2026-11-20.
+
+### SF-134: The debug text of a plan showed values of the environment file. Low
+
+Requirements: task H31; `LOG-007`.
+
+What it is: `Prepared`, `Files`, `Kept`, `Step::Write`, `Plan`, `FinalForm` and `Checked` of compose-rules had a derived `Debug`. Their debug text holds the bytes of the environment file or the final form, which hold secret values.
+
+Where: `crates/anima-applications/src/work/apply.rs`, `work/back.rs`, `plan.rs`, `final_form.rs`; `crates/compose-rules/src/lib.rs`.
+
+Effect, and who can cause it: no attacker; a log line or a panic message that a later part writes. Effect: a secret value in a log.
+
+Mitigation now: a hand-written `Debug` for each that shows only the length of the bytes. `Plan`, `Planned` and `Accepted` hold only such steps. A test shows that the debug text of each holds no value.
+
+State: Open. The correction is built on the branch `hosted/apps-h31`, commit `2663858d`. Found by a separate reviewer of part 1 of task H31 on 2026-11-20.
+
+### SF-136: A record of the pair that cannot be read looked like no record. Low
+
+Requirements: task H31; contract K10 Section 6.4.2.
+
+What it is: the checks took the record of the pair as `Option`. A file that the caller cannot read was thus the same as no file: the next request became the first pair, and a different hub was accepted.
+
+Where: `crates/anima-applications/src/pair.rs`, `crates/anima-applications/src/work.rs`.
+
+Effect, and who can cause it: a program of the user of the daemon that damages the file, if it can write it; a fault of the disk. Effect: the protection of a machine that moved to a different hub is lost.
+
+Mitigation now: the file has three states: none, cannot be read, a record. "Cannot be read" refuses each container item with `applications_off`. The file must be deleted when the administrator sets "Manage applications" on again; that is a duty of part 2 and of task H32.
+
+State: Open. The correction is built on the branch `hosted/apps-h31`, commit `2663858d`. Found by a separate reviewer of part 1 of task H31 on 2026-11-20.
+
+### SF-140: The settings file is checked for its owner and mode only. Low
+
+Requirements: task H31; contract K10 Sections 6.4.1 and 6.4.2.
+
+What it is: the program checks that the settings file belongs to the identifier 0 and has no write right for a group or for others. Contract Section 6.4.2 asks no more. A link in the path of the file, a folder above it that a different user can write, or an access list, is not checked.
+
+Where: `crates/anima-applications/src/settings/guard.rs`.
+
+Effect, and who can cause it: a user who can write a folder above the settings file. Effect: he can put a settings file of his own in its place.
+
+Mitigation now: none in the code; the code does what the contract says.
+
+Proposed change of the contract text, for the owner of contract K10: in Section 6.4.2, the rule of Section 6.4.1 applies to the settings file and to each folder above it: each link is resolved, and no link, no real file and no folder above it can be written by a user who is neither the identifier 0, nor an administrator account, by the owner, the mode bits and the access list. The contract file is not changed in this branch.
+
+State: Open, for the owner of contract K10. Found by a separate reviewer of part 1 of task H31 on 2026-11-20.
+
+### SF-133: Forms that compose-rules accepted: carriage returns, `=` in a name, two texts for one target. Low
+
+Requirements: task H28, task H31; contract K10 Section 6.4.4.
+
+What it is: the reader of the environment file cut lines with `lines()`, which takes a carriage return before a line feed as part of the line end, and skipped a line of only spaces. The map form of `environment` accepted a name with `=`. A mount target, a config target and a `tmpfs` path accepted `/.`, `//`, an empty part, a `.` part and a `/` at the end, so that two different texts named one path and "different targets" was not exact.
+
+Where: `crates/compose-rules/src/variables.rs`, `declared.rs`, `forms.rs`.
+
+Effect, and who can cause it: the hub, with a file or an environment file. Effect: Compose reads a different value than the check read, or two mounts of one service name one path.
+
+Mitigation now: the lines are cut at the line feed only, and a line with a carriage return is refused. A line of only spaces is not empty and has no `=`, so it is refused (step 3 of Section 6.4.4). A name of `environment` has no `=`. A target and a `tmpfs` path have one form: absolute, not `/`, and no empty part, no `.` part and no `..` part. Tests show each refused case.
+
+State: Open. The correction is built on the branch `hosted/apps-h31`, commit `dccda56b`. Found by a separate reviewer of part 1 of task H31 on 2026-11-20.
+
+### SF-135: One origin of a hub could have two texts. Low
+
+Requirements: task H31; contract K10 Section 6.4.2.
+
+What it is: the origin accepted an IPv6 address in each form that parses (`fd7a:0::1` and `fd7a::1`), an IPv4 address written as IPv6, and a host with an empty label (`http://a..b:1`). One hub could thus send two texts, and the record of the pair would refuse a hub that did not move.
+
+Where: `crates/anima-applications/src/forms.rs`.
+
+Effect, and who can cause it: no attacker; a daemon that writes the origin in a different form. Effect: a false refusal (`applications_off`).
+
+Mitigation now: one text for each address: an IPv6 address only in its canonical short form (RFC 5952), no IPv4 address written as IPv6, an IPv4 address only in its usual form, and a name with no empty label and a last label that is not all digits. `unix:<path>`, the origin of a hosted hub, stays refused; an open decision of the hosted applications plan asks for it.
+
+State: Open. The correction is built on the branch `hosted/apps-h31`, commit `2663858d`. Found by a separate reviewer of part 1 of task H31 on 2026-11-20.
+### SF-144: The converter writes each network alias for each network, so a small command makes a very large file. High
+
+Requirements: HOST-022, R-150; task H29 of [hosted-applications-plan.md](plans/hosted-applications-plan.md).
+
+What it is: `networks()` in `crates/hub/src/work/containers/compose_file/draft.rs` gave each network the whole list of the network aliases, so the size of the file was the number of networks times the number of aliases. A command of 65,515 bytes (about 2,800 `--net` options and aliases) made a `composeFile` of 92.6 MB, with 572 MB of memory in the hub. With aliases of GraphQL, one request could ask for tens of GB.
+
+Who can cause it: each signed-in caller and each API key, also a read key.
+
+The correction: a command has at most 32 networks and at most 32 network aliases; more is the refusal `TOO_MANY_NETWORKS`. A file larger than 256 KiB, the most that the check reads, is the refusal `FILE_TOO_LARGE`, so the converter never makes a file that its own check refuses. No other option is written to more than one place more than a fixed number of times. Tests: `tests/refused.rs` (`host_022_more_than_32_networks_or_aliases_is_refused`, `host_022_a_file_larger_than_the_check_reads_is_refused`).
+
+State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
+
+### SF-141: One request can hold about 250 checks of the largest file. Medium
+
+Requirements: HOST-022, API-004; task H29.
+
+What it is: `composeFileCheck` and `composeFromDockerRun` had the complexity 1. One request of 1 MiB could ask for about 250 checks of a file of 256 KiB through one variable, about 4 seconds of a worker of the runtime.
+
+Who can cause it: each signed-in caller and each API key.
+
+The correction: each of the two fields has the complexity 100 with the limit of 500 of the schema, so one request holds at most four. Each check and each conversion runs on a thread for blocking work (`spawn_blocking`), under the log and the span of the request, so the test of the log still reads its lines. Test: `crates/hub/tests/it/containers/compose_file.rs` (`host_022_one_request_holds_at_most_four_checks_or_conversions`).
+
+State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
+
+### SF-146: The writer of the converter leaves characters that YAML does not print. Low
+
+Requirements: HOST-022; task H29.
+
+What it is: `quoted` in `compose_file/writer.rs` escaped the control characters and three more, but wrote U+FFFE, U+FFFF and other characters outside the printable set of YAML as they are. The reader of Compose refuses such a file.
+
+The correction: the writer escapes each character outside the printable set of YAML 1.2, and also U+0085, U+2028, U+2029 and U+FEFF. Test: `tests/written.rs` (`host_022_each_character_that_yaml_does_not_print_is_an_escape`).
+
+State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
+
+### SF-145: The reader of shell words keeps as text an expansion that a shell does. Low
+
+Requirements: HOST-022; task H29.
+
+What it is: the reader of shell words (`compose_file/words.rs`) kept as text a brace expansion (`{80,443}`), a `~` at the start of a word, `*`, `?` and `[` out of quotes, `$[1+2]` and a quote in `${A:-'x'}`, and read a carriage return alone as a space. A shell changes each of these, so the file did not hold what the command does.
+
+The correction: each is refused with a fixed code: `BRACE_EXPANSION`, `TILDE_EXPANSION` (also after `=` or `:`), `PATTERN`, `ARITHMETIC_EXPANSION`, `VARIABLE_NOT_KEPT` for a quote in a kept variable, and `CONTROL_CHARACTER` for a carriage return that is not part of a line end. In quotes, each stays as text. Test: `tests/refused.rs` (`host_022_each_expansion_of_a_shell_with_no_dollar_is_refused`).
+
+State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
+
+### SF-142: A problem of the check shows a secret that the operator wrote in the place of a key. Low
+
+Requirements: HOST-022, LOG-007; task H29.
+
+What it is: a problem of the check showed a name of a key or of a service when it was made of safe characters. A secret written in the place of a key (`hunter2: 1`) or as the name of a service (a token of GitHub) was shown in the problem, in the output of the command and in the result of the MCP tool. The text of the first commit said that a problem holds "never a value of the file"; that was not true for such a name.
+
+The correction: a problem gives a key by its name only when Compose defines that name, and a service by its number in `services` (`serviceNumber` in K1 in place of `service`). An unknown key, an extension and the name of a service are not shown. The list of the options that are not converted names an option that Docker does not have as `(an unknown option)`. Test: `tests/secrecy.rs` (`host_022_a_problem_names_only_a_key_that_compose_defines_and_a_service_by_its_number`) and the hub test with a secret as a key and as the name of a service.
+
+State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
+
+### SF-143: The MCP cleaning can change the Compose file that an agent gets. Low
+
+Requirements: HOST-022, MCP-008; task H29.
+
+What it is: `mcp/untrusted.rs` gave the cap of 4,000 characters with kept lines to each field named `composeFile` in each result of each tool. The cleaning also removes invisible characters, so an agent could get a Compose file that is different from the file of the hub, with no sign of it.
+
+The correction: only the top-level field `composeFile` of `anima_compose_from_run` keeps its lines (`cleaned_result`). The tool gives the file only when the cleaning does not change it; else `composeFile` is null, `withheld` says why, and `fileLength` gives the length of the whole file. The description of the tool says that an agent must not install a file from the result without a person reading it. Tests: `mcp_008_only_the_file_of_the_compose_tool_keeps_its_lines` and `mcp_008_a_file_that_the_cleaning_would_change_is_withheld`.
+
+State: Open. Found by a separate reviewer on 2026-11-20 in the first commit of task H29 (`2773ddf1`). The correction is built on the branch `hosted/apps-h29` (commit `0f4bbdb7`), with a test. The entry stays Open until the operator closes it.
+
+## The security review of the routing on the hub (task H21, 2026-11-20)
+
+A separate reviewer read Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) on 2026-11-20. No code existed. The text is corrected in the same branch; the build of task H21 builds the rules.
+
+### SF-231: The proxy of the hub could reach the dial socket of the link, and so port 22 of each machine. High
+
+Requirements: HOST-046, task H21; R-302.
+
+What it is: A parser fault in the proxy, which reads each request from the internet, gives its process. If that process can open the dial socket of the link, the control socket of the link, the listener of the hub or the network of the pool, an attacker on the internet gets SSH on each machine whose port 22 is on. The text said that the proxy takes an identifier of an application, but nothing enforced it.
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: Anyone on the internet who finds a fault in the proxy. Effect: the sessions and the machines of each customer of that hub.
+
+Mitigation now: Section 12.3 now says that the user of the proxy cannot open those sockets or the database, has no network route but its one interface to the hub and the outbound ACME and DNS, and that a test shows it.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+### SF-232: Who may make an application public was not stated. High
+
+Requirements: HOST-046, task H21; R-302.
+
+What it is: An API key, an MCP agent or a person who took over the hub could add a public name to an application whose port is open only for a look in the hub: an administration page, or an application that holds the socket of the engine, is then on the internet. The consent of the machine (OD-HOST-29) covers "the hub may reach this port", not "the internet may reach it".
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: A holder of an API key or a taken-over hub. Effect: a page that must stay private is public.
+
+Mitigation now: Section 12.3: only a person with a login or a browser session, after a second factor; no API key and no MCP tool; no application that holds the socket of the engine. OD-HOST-43 asks him for a second consent at the machine.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+### SF-234: The token of the proof of a name, and the names that Anima gives, could be taken by a different hub. Medium
+
+Requirements: HOST-046, task H21; R-302.
+
+What it is: The text did not say who makes the token, so a hub could give a token that it copied from a different hub. A name that Anima gives could be given again to a new customer, who then gets the cookies, saved passwords and callbacks of the old one. One failed DNS read could remove a name.
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: A customer with a hub of the pool. Effect: the traffic of a different customer's name.
+
+Mitigation now: Section 12.4: the cloud service makes a random token of at least 128 bits bound to the hub and the name; hub identifiers are never used again; no wildcard names; a name is removed only after several failed reads; a name that Anima gives is proven by allocation, never given again, and leaves the door with the hub.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+### SF-229: Forwarded headers of the client were kept, and the log could hold tokens of an application. Medium
+
+Requirements: HOST-046, task H21; R-302.
+
+What it is: Adding to an `X-Forwarded-For` that the client sent keeps a false address that an application can trust. A `Host` that is not the SNI name, or content on port 80, makes a second path. A log of the request line keeps reset tokens and OAuth codes.
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: Anyone on the internet. Effect: an application trusts a false address; secrets of an application in the log of the hub (LOG-007).
+
+Mitigation now: Section 12.2 and 12.3: each `Forwarded`, `X-Forwarded-*` and `X-Real-IP` is removed and set again; the PROXY protocol only from the door; 421 when `Host` differs from SNI; port 80 gives only ACME and a redirect; the log has only the name, the bytes, the status and the time.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+### SF-233: The target of a route could change after it was made public, or be a port of a session. Medium
+
+Requirements: HOST-046, task H21; R-302.
+
+What it is: On a hub that a person hosts, a changed host of a device (an API key, or a name that a DNS rebinding changes) points a public name at a different host of the network, a metadata address or the hub itself. A record of an application that names port 22 would pass the rule "a port that the record names".
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: A holder of an API key, or a DNS rebinding. Effect: a public name reaches a host or a port that must stay private.
+
+Mitigation now: Section 12.3: the target is fixed when the name is made public; loopback addresses and ports of the hub, link-local addresses and `169.254.169.254` are refused; a change needs the rights of a publish; the port of an application is never 22, 5900, 3389 or a port of the link or the daemon.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+### SF-228: Certificates under the shared address of the pool, and the owner of the ACME key. Medium
+
+Requirements: HOST-046, task H21; R-302.
+
+What it is: Let's Encrypt limits new accounts for each address, and all hubs of the pool share one. A domain of the names that Anima gives that is not on the Public Suffix List shares one weekly limit. A wildcard certificate would put one key in each hub. The text gave the ACME work to both the hub and the proxy.
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: Many new hubs at one time, or one customer with many names. Effect: no certificate for a time, for each customer.
+
+Mitigation now: Section 12.5: the hub holds the account and its key; no wildcard certificate; no name that Anima gives before its domain is on the Public Suffix List; the door routes the ACME challenges by its table only; the old hub deletes the key when a name moves. OD-HOST-44 asks him for one account for the pool or one for each hub.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+### SF-230: Public traffic can slow the sessions on the same link. Medium
+
+Requirements: HOST-046, task H21; R-302.
+
+What it is: A flood to one name fills the tunnel of the link to a machine, and SSH and VNC on the same tunnel stall. The text said that the door never cuts the sessions, which is true and does not help.
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: Anyone on the internet. Effect: the operator loses his sessions to that machine during the flood.
+
+Mitigation now: Section 12.7: the hub limits the streams and the bandwidth of public routes for each link and gives the sessions priority; the absolute sentence is gone.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+### SF-227: Smaller points: claims about the door, wake, abuse and a hub on the same site. Low
+
+Requirements: HOST-046, task H21; R-302.
+
+What it is: The text wrote what the door does as a fact, but the door is in the private cloud plan. The door cannot answer a page inside TLS with option R1. Requests from the internet could wake a failing hub again and again. The switch for abuse had no message to the customer. A hub that a person hosts on the same registered domain as an application is same-site for cookies. The seal of keys protects nothing if its key is in the same backup.
+
+Where: Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md); the code of task H21.
+
+Effect, and who can cause it: Various. Effect: claims that are not true, and smaller denial of service.
+
+Mitigation now: Section 12: each sentence about the door is a request to the cloud plan; the proxy is installed only when the operator asks; a wake only when a machine is online and a limited number of times each hour; a record, a message and a review for each removal; a warning for the same site; the place of the key of the seal is a question for the cloud plan.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; the code of task H21 is not merged. Found by a separate reviewer on 2026-11-20.
+
+## The code review of the routes (2026-11-21)
+
+A separate reviewer read the code of task H21 on the branch `hosted/apps-h21` on 2026-11-21: `crates/hub/src/work/routes.rs`, `crates/hub/src/work/routes/` and `crates/route-proxy/`. The design is Section 12 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md). Four findings of severity Medium and four of severity Low; two of the Low ones stay open.
+
+### SF-331: The target of a route came from the person, not from the record of the application. Medium
+
+Requirements: HOST-046, task H21; R-302; SF-233.
+
+What it is: `addApplicationRoute` took the port, the application identifier and the mark "holds the socket of the engine" from its input and trusted them. A link address passed the address check with no port check, so each port of a device was reachable, and the refused ports were only 22, 5900, 3389, 8443 and 4822: the Docker API, the kubelet, databases and Prometheus could be made public.
+
+Where: `crates/hub/src/work/routes.rs` (`add`), `crates/hub/src/work/routes/graphql.rs`, `crates/hub/src/work/routes/target.rs`.
+
+Effect, and who can cause it: A person with a login and a second factor, or a person who took over such a session. Effect: a port that controls the machine is on the internet.
+
+Mitigation now: The input has no `holdsEngineSocket`. The hub keeps no record of an application with its ports before task H6, so a route has the new state `APPLICATION_RECORD` (`application_recorded`, false) and never serves until that record names its device and port and no socket of the engine. `check_port` also refuses 2375, 2376, 10250, 41641, 3478, 5432, 3306, 6379, 27017 and 9090, and `check_address` applies it to a link address too. Tests: `the_ports_of_the_engine_the_link_databases_and_metrics_are_refused`, `a_link_address_passes_only_with_the_port_of_an_application`, and the stored route that waits for the record.
+
+State: Open (built in `274463241`). Found by a separate reviewer on 2026-11-21.
+
+### SF-332: The proxy opened a tunnel for each `Upgrade: websocket` without the answer 101. Medium
+
+Requirements: HOST-046, task H21; SF-229.
+
+What it is: After a request with `Upgrade: websocket` the relay copied both ways at once. A client could then send a second request that the proxy never read, past the rewrite of the headers and the check of `Host`.
+
+Where: `crates/route-proxy/src/relay.rs`, `crates/route-proxy/src/head.rs`.
+
+Effect, and who can cause it: Anyone on the internet. Effect: a request with forged forwarded headers or a cookie of a hub reaches the application.
+
+Mitigation now: The relay sends the status line of the application to the client first. It copies both ways only when the application answers 101 and the request had a `Sec-WebSocket-Key`; each other answer goes back as a plain one and the connection ends. A request with no key is a plain request (`connection: close`). Tests: `an_upgrade_goes_both_ways_only_after_a_101`, `an_upgrade_that_the_application_refuses_is_a_plain_answer`, `an_upgrade_without_its_key_is_a_plain_request`.
+
+State: Open (built in `274463241`). Found by a separate reviewer on 2026-11-21.
+
+### SF-327: No time limit and no cap before the name of a connection was known. Medium
+
+Requirements: HOST-046, task H21; Section 12.7.
+
+What it is: The limits of a name applied only after the TLS handshake. A client could open many connections and send no byte, or one byte at a time, to the PROXY header, the handshake, the head or a relay, on port 443 and on port 80. The stream of the hub to an application had no time limit either.
+
+Where: `crates/route-proxy/src/serve.rs`, `crates/route-proxy/src/relay.rs`, `crates/hub/src/work/routes/door.rs`.
+
+Effect, and who can cause it: Anyone on the internet. Effect: the proxy runs out of connections or memory, and each name stops.
+
+Mitigation now: Settings with defaults: 10 s for the handshake with the PROXY header (`ANIMA_ROUTE_PROXY_HANDSHAKE_SECONDS`), 10 s for the head (`ANIMA_ROUTE_PROXY_HEAD_SECONDS`, answer 408), 60 s for the head and the body of one request together (`ANIMA_ROUTE_PROXY_REQUEST_SECONDS`), 300 s with no byte on a stream (`ANIMA_ROUTE_PROXY_IDLE_SECONDS`); 1024 connections in all and 8 for each client before the handshake and for the life of the connection (`ANIMA_ROUTE_PROXY_OPEN_TOTAL`, `ANIMA_ROUTE_PROXY_OPEN_PER_CLIENT`), and 256 on port 80 (`ANIMA_ROUTE_PROXY_OPEN_PLAIN`). The cap of a client is below the 32 streams of one link (`ANIMA_ROUTES_STREAMS_PER_LINK`), so one client cannot hold each stream of a device. A client is the /64 of an IPv6 address and the whole address of IPv4, so a host cannot take more places with more addresses of its own network. In door mode the proxy reads a PROXY header only from a peer in `ANIMA_ROUTE_PROXY_DOOR_ADDRESSES`; with no address, each connection is closed before a byte is read. The hub waits 10 s for a request line of the proxy and ends a stream after 300 s with no byte. Tests: `a_listener_caps_its_connections_in_all_and_for_each_client`, `the_addresses_of_one_64_share_the_cap_of_one_client`, `a_client_is_its_64_of_ipv6_and_its_address_of_ipv4`, `a_stream_with_no_byte_for_its_idle_time_ends`, `each_byte_starts_the_idle_time_again`, `a_body_that_comes_one_byte_at_a_time_ends_at_the_deadline_of_its_request`, `only_an_address_of_the_door_may_send_a_proxy_header`, and the defaults of the settings.
+
+A re-read of `19e7fd03a` on 2026-11-21 found three more points, decided overnight on the recommendation of the orchestrator (R-365): (Medium) slow clients of several networks could hold each stream of the link of one device; (Medium) the answer to a client that reads it one byte at a time had only the idle time; (Low) false UDP sources could fill the flows of a stream. Built in `bb0bce295`: one route keeps at most 16 connections open (`ANIMA_ROUTE_PROXY_CONNECTIONS`, below the 32 streams of a link), and a TCP stream and a WebSocket after its `101` hold their place until they end; each write to a client must finish within 30 s (`ANIMA_ROUTE_PROXY_WRITE_SECONDS`), or the connection ends; a UDP stream opens at most 8 new flows each second with a burst of 16 (`ANIMA_ROUTE_PROXY_UDP_NEW_PER_SECOND`). Tests: `a_tcp_stream_holds_a_place_of_its_route_until_it_ends`, `a_websocket_after_its_101_holds_a_place_of_its_route`, `a_write_to_a_client_that_does_not_read_ends_at_its_time`, `a_udp_stream_opens_only_its_new_flows_each_second`, `a_bucket_takes_its_burst_at_once_and_then_its_rate`, and the defaults of the settings.
+
+A re-read of `33e4fb787` on 2026-11-21 found two more points, decided overnight on the recommendation of the orchestrator (R-365): (Medium) the cap of each route let several routes of one device hold each stream of its link; (Low) the bucket of new UDP flows is one for each stream, so one sender of false sources could take each new flow. Built in `68c9a7ab5`: the hub limits the streams of the routes of one device together (`ANIMA_ROUTES_STREAMS_PER_DEVICE`, 16), and refuses a value at or above the streams of the link (`ANIMA_ROUTES_STREAMS_PER_LINK`, 32); a UDP stream keeps at most 4 flows from one source network, the /24 of IPv4 and the /64 of IPv6 (`ANIMA_ROUTE_PROXY_UDP_FLOWS_PER_NETWORK`). Tests: `two_routes_of_one_device_share_the_limit_of_the_device`, `the_streams_of_one_device_stay_below_the_streams_of_its_link`, `a_udp_stream_opens_only_its_flows_of_one_source_network`, `a_source_of_udp_is_its_24_of_ipv4_and_its_64_of_ipv6`. A re-read of `d00de9969` on 2026-11-21 found the Low of the bucket only partly closed: false sources in many networks still take the shared tokens of the stream. It does not block the merge; task H41 of the plan holds it. Built on the branch `hosted/udp-buckets` (task H41): a new flow takes the place of the oldest waiting flow, never of a flow whose source sent again after the application answered it, so false sources of many networks replace only each other. Waiting flows hold at most half of the connections of the route, set-up flows fewer than the rest, so one connection stays for a new client; a replaced flow ends at once, and set-up flows leave the waiting places free. Still open (Low): a sender that sends again to each false source can set up flows without seeing an answer; the first datagram of a new real client still competes for the tokens of the bucket. Tests: `false_sources_of_many_networks_replace_only_waiting_flows`, `set_up_flows_leave_the_waiting_places_free`, `waiting_and_set_up_flows_leave_one_connection_of_the_route`, `set_up_flows_stop_at_their_own_cap`. Merged into dev in `bc513403a`. A separate reviewer read `08159dcfe`, `2969f5b69` and `1b41cf1f0`; at `1b41cf1f0` no finding of severity High or Medium is open. These Lows stay open:
+
+- A sender of false sources that sends again to each of them sets up flows without seeing an answer, at most 7 of them by default. While those places are full, a real client stays waiting and a new source can replace it.
+- The first datagram of a new real client competes with false sources for the tokens of the bucket (8 each second).
+- One connection of the route stays free for one replacement at a time. In a burst, a new flow can race a replaced flow for its connection, so a real client can be refused once and must send again.
+- When the listener of a stream starts again, the old flows keep their connections until they are idle (60 seconds). The correction: end the flows of a listener when it is stopped, and check that one name has one listener. Built on the branch `hosted/udp-flow-ends`: when the listener of a UDP stream stops, its table drops each flow, which ends it (test `clearing_the_table_drops_each_handle`). One name has one listener: the name of a route is unique (migration 1060) and a route has one kind.
+- When `carry` panics, the connection of the name is not given back (`proxy.release`). The correction: a guard that gives it back on drop. Built on the branch `hosted/udp-flow-ends`.
+- Each replaced flow is a new dial through the hub, up to 8 each second for each stream, each with one query of the hub and one UDP socket.
+- The hub records an error of the door for a frame that a replaced flow cut off; it is a normal end.
+- No test runs a whole flow: the handover of a connection while a flow dials, and the admission of a new client while set-up flows are at their cap.
+
+What stays: a client that takes one segment in each 30 s keeps its connection. Many source networks together can still take the new flows of a stream; the flows answer each source with no more bytes than it sent (SF-248).
+
+State: Open (built in `68c9a7ab5`). A re-read on 2026-11-21 found the first build only partly closed it (an idle time that each byte starts again, a cap of a client equal to the limit of a link, a PROXY header from any peer, a cap for each IPv6 address). Found by a separate reviewer on 2026-11-21.
+
+### SF-329: The socket of the interface of the proxy checked no peer and had no set mode. Medium
+
+Requirements: HOST-046, task H21; SF-231.
+
+What it is: The hub served the interface to each process that could open the socket, and the mode of the socket was what the umask gave. A different local process could read the table, with the private key of each name, and connect to applications.
+
+Where: `crates/hub/src/work/routes/door.rs`, `crates/hub/src/config/routes.rs`.
+
+Effect, and who can cause it: A local user or process of the hub host. Effect: the keys of the certificates and a path to the applications.
+
+Mitigation now: `door::bind` makes the socket with mode `0660`, and `serve` closes each connection whose peer user ID (`SO_PEERCRED` or `getpeereid`) is not `ANIMA_ROUTES_PROXY_UID`. The hub refuses `ANIMA_ROUTES_SOCKET` without that setting. Test: `the_socket_answers_only_the_user_of_the_proxy`.
+
+State: Open (built in `274463241`). Found by a separate reviewer on 2026-11-21.
+
+### SF-326: The head accepted two lengths, a length that is not digits, and `_` in a header name. Low
+
+Requirements: HOST-046, task H21; SF-229.
+
+What it is: A second `Content-Length` replaced the first; a value such as `+5` passed; `Transfer-Encoding` with `Content-Length` was refused only by the order of the lines. A name such as `X_Forwarded_For` passed the removal of the forwarded headers, and some servers read `_` as `-`.
+
+Where: `crates/route-proxy/src/head.rs`.
+
+Effect, and who can cause it: Anyone on the internet. Effect: request smuggling to an application that reads the length in a different way, or a forged forwarded address.
+
+Mitigation now: The head refuses (400) a second `Content-Length`, a value that is not digits only, `Transfer-Encoding` with `Content-Length`, and a header name with `_`. Tests: `a_body_has_one_length_of_digits_and_never_with_a_transfer_encoding`, `a_header_name_with_an_underscore_is_refused`.
+
+State: Open (built in `274463241`). Found by a separate reviewer on 2026-11-21.
+
+### SF-325: The proof of a name is read again only when a person asks. Low
+
+Requirements: HOST-046, task H21; Section 12.4 point 4; SF-234.
+
+What it is: `checkApplicationRoute` reads the TXT record once. Nothing reads it again at intervals, so a name whose owner removed the record, or gave the name to a different hub, stays proven on this hub.
+
+Where: `crates/hub/src/work/routes.rs` (`check`); the upkeep of the hub.
+
+Effect, and who can cause it: The owner of a name who moved it. Effect: the hub keeps a name that it no longer owns, until a person checks it.
+
+Mitigation now: None in the code. No route serves yet (the consent of the machine and the record of the application are not given).
+
+The fix to make: a job of the upkeep of the hub runs `check` for each route at an interval, with the rule of several failed reads in a row, and writes the audit entry of a lost name.
+
+State: Open. Found by a separate reviewer on 2026-11-21.
+
+### SF-330: A change of a route asks for no new second factor. Low
+
+Requirements: HOST-046, task H21; HM-D14; SF-232.
+
+What it is: The mutations of the routes check that the account has a second factor, but not that the person gave it recently. A browser session that a different person took over can make an application public.
+
+Where: `crates/hub/src/work/routes/graphql.rs` (`person_with_second_factor`).
+
+Effect, and who can cause it: A person who took over a browser session of the operator. Effect: an application is made public.
+
+Mitigation now: Only a person with a login or a browser token, on an account with a second factor; no API key and no MCP tool. A re-read of `19e7fd03a` on 2026-11-21 found that a login token, which the `anima` command and an agent hold, could make an application public (Medium). Decided overnight on the recommendation of the orchestrator (R-365), and built in `bb0bce295`: a public route of each kind is added only by a browser token with no agent declared (`Identity::is_person_in_browser`, the rule of the shell gate of the catalogue); a login token, the same token declared as an agent (MCP) and an API key get the refusal `PublicNeedsPerson` (`FORBIDDEN`). A private route keeps the rule above. Tests: `sf_revroutestepup_only_a_person_in_the_browser_adds_a_public_route`, `sf_revroutestepup_an_api_key_adds_no_route`.
+
+The fix to make: `addApplicationRoute` and `removeApplicationRoute` ask for a code of the second factor given in the last minutes (a step-up), and refuse otherwise.
+
+State: Open (built in `bb0bce295`). Found by a separate reviewer on 2026-11-21.
+
+### SF-328: The protocol of a public stream was only a label that the person picked. Medium
+
+Requirements: HOST-050, task H40; SF-248; OD-HOST-54.
+
+What it is: A public `tcp_stream` or `udp_stream` needed a protocol from the fixed list of the hub, but nothing checked that the application on that port speaks it. A person could open a database or a shell to the internet with the label `imaps`.
+
+Where: `crates/hub/src/work/routes/model.rs` (`Route::waits`), `crates/hub/migrations/1061_routes_kinds.sql`.
+
+Effect, and who can cause it: A person who adds a route, or an agent with a login token. Effect: a service that trusts its network is public.
+
+Mitigation now: Decided overnight on the recommendation of the orchestrator (R-365), and built in `bb0bce295`: a public stream also waits for the mark `stream-public` on the port in the record of the application (`routes.route.stream_public`), as part of the wait `APPLICATION_RECORD`. Nothing sets it before task H6, so no public stream serves; a private stream is as before. Test: `a_public_stream_waits_for_the_mark_stream_public_of_the_record`.
+
+State: Open (built in `bb0bce295`). Found by a separate reviewer on 2026-11-21.
+
+## The code review of the catalogue and the routes (2026-11-21)
+
+A separate reviewer read the code of the recipe format and its static test (`crates/catalogue`, `crates/compose-rules`) and the PostgreSQL functions of the catalogue (`crates/catalogue/src/postgresql*`) on the branch `hosted/apps-h38`. The design is in Sections 13 and 14 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md). The corrections are built in the same branch. No entry of the catalogue was tested on a machine (task H37).
+
+### SF-224: The static test of a recipe let a service run as root with each capability, and change its code at the start. High
+
+Requirements: HOST-047, tasks H36 and H38; R-300.
+
+What it is: The static test let through the variables `DOCKER_MODS`, `INSTALL_PACKAGES` and `INSTALL_PIP_PACKAGES`, a `VERSION` that makes the image get a different version at the start, `PUID` or `PGID` of 0 and `user` of `0` or `root`. `no-new-privileges` and the drop of capabilities were optional. Thus a listed recipe could run code that no digest names, as root with each default capability.
+
+Where: `crates/catalogue/src/file.rs`; `crates/compose-rules/src/declared.rs`.
+
+Effect, and who can cause it: The author of a recipe, or the owner of an image that a recipe names. Effect: code that the static test did not see runs on the machine with the rights of root in the container.
+
+Mitigation now: `crates/catalogue/src/privileges.rs` refuses each of these with `privilege_not_permitted` and one fixed reason (`image_mods`, `install_packages`, `install_pip_packages`, `version_not_fixed`, `root_identity`, `root_user`, `new_privileges`, `capabilities_kept`, `exception_not_needed`). Each service must have `security_opt: [no-new-privileges:true]` and `cap_drop: [ALL]`. The one exception of the fixed list, `init-capabilities` in the entry, keeps exactly `CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETGID` and `SETUID` for an init as root (s6 of the LinuxServer images, `gosu`, `su-exec`); contract K10 has no `cap_add`, so the service drops each other default capability by name. The rules read the file before its variables are filled (`compose_rules::Checked::unfilled`). The seven shipped recipes have the new values; five name the exception. Tests: `crates/catalogue/src/tests/privileges.rs`.
+
+State: Open. Built in `a7855335`; no test on a machine has shown that each image starts with these rights (task H37). Found by a separate reviewer on 2026-11-21.
+
+### SF-226: A variable could give the image, a published port or its address after the static test. Medium
+
+Requirements: HOST-047, task H36; R-233.
+
+What it is: The static test checked the image, the published ports and their `host_ip` only after it filled the variables with the values of the example environment file. A value of the install could then give a different image, port or address from the one that the test saw.
+
+Where: `crates/catalogue/src/file.rs`.
+
+Effect, and who can cause it: The person who installs, or a program that writes the environment file. Effect: an image that is not pinned, or a port on the network, in a listed recipe.
+
+Mitigation now: The static test refuses `$` in the text of `image`, of a published port and of `host_ip` as the author wrote it (`variable_not_permitted`). The shipped recipes write each published port; their variables of a port are gone. Tests: `crates/catalogue/src/tests/refused.rs`.
+
+State: Open. Built in `a7855335`. Found by a separate reviewer on 2026-11-21.
+
+### SF-225: The list of secret names was short, and a secret written in the Compose file was not refused. Low
+
+Requirements: HOST-047, task H36.
+
+What it is: The check of the example file did not know `PASSWD`, `APIKEY`, `API_KEY`, `CREDENTIAL` or `PRIVATE_KEY` in all forms, and a literal value in the `environment` of the Compose file was never checked.
+
+Where: `crates/catalogue/src/example.rs`.
+
+Effect, and who can cause it: The author of a recipe. Effect: a fixed secret that each install of the recipe shares.
+
+Mitigation now: The name list is wider and case does not count. In the Compose file a variable whose name marks a secret has exactly `${NAME}` as its value, with no default (`secret_in_file`). Tests: `crates/catalogue/src/tests/refused.rs`.
+
+State: Open. Built in `a7855335`. Found by a separate reviewer on 2026-11-21.
+
+### SF-223: The password of a database user, the names of two applications and the extensions of PostgreSQL were too permissive. Low
+
+Requirements: HOST-048, task H24; R-216.
+
+What it is: The password could hold `$`, a backtick, `#` or `=`, which change it in an environment file that Compose fills, in a shell or in a connection address. The names `my-app` and `my_app` gave the same database and user, and a name such as `notes-back-1` was the name of the way back of `notes`. An extension was any name of a pattern, so also `plpython3u` or `dblink`.
+
+Where: `crates/catalogue/src/postgresql/statements.rs`, `names.rs`, `copies.rs`.
+
+Effect, and who can cause it: The author of a recipe or of an application name. Effect: a broken or changed password, the database of a different application, or an extension that reaches files or programs of the server.
+
+Mitigation now: The password is 22 to 128 letters and digits (at least 128 bits). An application identifier with `_` or `--` is refused, so the names are different for different identifiers; the way back uses `__back_` and `__check`, which no application name has. An extension is one of a fixed list (`vector`, `pg_trgm`, `uuid-ossp`, `citext`, `hstore`, `postgis`, and the contributed extensions that the entry `postgresql` names). Tests: `crates/catalogue/src/postgresql/tests.rs`.
+
+State: Open. Built in `a7855335`. Found by a separate reviewer on 2026-11-21.
+## The security review of the daemon on a computer of a person (task HM-T23, 2026-11-20)
+
+Task HM-T23 of [hosted-mode.md](proposals/hosted-mode.md) asks the security questions of its Section 7.1 before the installation with no question (HMD-053) is used on a computer where jobs of other people can run later. The review read the code on `dev` of 2026-11-20: the token store and the key store of `crates/daemon`, the enrolment, the units (`crates/daemon/src/units`, `crates/daemon/units`), the transport to the hub (`crates/daemon/src/hub.rs`, `hub/link_socket.rs`), the install of the desktop shell (`apps/desktop/src-tauri/src/daemon.rs`, `daemon/`), and the socket of the link (`link/cmd/anima-link/device.go`, `link/statedir`). It ran no program, and it did not read a token file or a key file. An agent did it; no second reviewer read it. The entries are about code that exists. "Severity" is the word of the reviewer.
+
+### The model: what a program of the same user can do
+
+The daemon on a computer of a person runs as that person (a `LaunchAgent`, or a systemd unit of the user). The design does not separate the daemon from the other programs of its user, and it cannot: a program of the same user can change the unit file (`~/Library/LaunchAgents`, `~/.config/systemd/user`), the copy in `~/.local/bin`, the folder of the daemon and the socket in it, and it can stop and start the daemon and the link. The entries below do not repeat this. The design accepts it, and it depends on one rule for the future: a job of another person must not run as the user of the daemon (task W2, SF-004). Until W2 is built, a computer with the daemon of its user is not a computer for the jobs of other people.
+
+What a program of the same user can do now, with no entry, because the model accepts it:
+
+- On Linux, read the token (`~/.config/anima-daemon/token`) and the key cache (`keys`) with no question: they are files of mode 0600 of that user (`crates/daemon/src/token_store/file.rs:29-32`, `config/private_file.rs:95-108`).
+- On both systems, get each cached operational key with `anima-daemon key read <name>` (`crates/daemon/src/keys.rs:34-55`, `main.rs:52-71`). This is the design of K-E5 Section 2.1 (R-147): the reader is for the programs of the user, and the Keychain trusts the daemon program, not the program that starts it.
+- On both systems, enrol the daemon again at a hub of its choice (`anima-daemon enrol`): the enrolment deletes the Keychain item and writes a new one (`token_store/keychain.rs:39-50`), and the running daemon then sends the metrics of the computer to that hub. That program can read the same metrics itself.
+- Replace the copy of the daemon or the unit file, so that its own program starts at each login.
+- On Linux, read the memory of the daemon with `ptrace` where the system permits it (the user unit does not prevent it: `crates/daemon/units/anima-daemon.user.unit`).
+
+What the token gives to a person who has it, at the hub (`crates/hub/src/fleet/metrics/ingest/routes.rs`): pushes of metrics in the name of the device, the operational keys of the device (`daemon/v1/keys/fetch`), and a renewal. A renewal gives a new token for 365 days, and its first use ends the token of the real daemon (`ingest/credential.rs:31-34`, `ingest/renewal.rs:9-13`). Thus a stolen token can stay usable after the theft is found, and it shuts out the real daemon, until the operator switches the device away from the daemon or deletes it (`ingest/credential.rs:46-57`). When the work route is built, the token also claims jobs and gets project secrets (SF-004, SF-006).
+
+### What is safe
+
+- Another local user cannot read the token. On macOS it is one generic password in the login Keychain of the user (`token_store/keychain.rs:11-12`). On Linux it is the file `token`, mode 0600, in a folder of mode 0700 that the daemon refuses when it is a link, is not owned by its user, gives group or others any access, or is below a folder that others can write with no sticky bit (`config/home.rs:97-121`, `config/private_file.rs:19-64`). The file is written to a new temporary file of mode 0600 and renamed, so the token is never in a file that others can read (`private_file.rs:95-108`). A POSIX access list on Linux shows in the group bits of the mode, so it is refused too.
+- Another local user cannot listen at the socket of the link: the daemon refuses a socket whose folder is not private to its user, or a thing at the path that is not a socket of its user (`hub/link_socket.rs:28-50`), and the link makes the socket only in such a folder (`link/statedir/statedir.go:242-266`). Exception: SF-177.
+- Another local user cannot replace the copy in `~/.local/bin`: the shell checks each folder from the root to `~/.local/bin` (owner the user or root, no write for others, write for the group only in the private group of the user, no POSIX access list) and copies with `O_CREAT|O_EXCL` and a rename (`apps/desktop/src-tauri/src/daemon/placement.rs:57-116`, `daemon/trust.rs:100-114`). The `install` of the daemon checks the program and its folders again before it writes the unit (`crates/daemon/src/units/install.rs:119-124`, `units/trust.rs:108-130`). Exception: SF-177.
+- The token is in no log, no argument and no environment. The daemon prints only fixed text (`crates/daemon/src/report.rs`); `DaemonToken` has no `Debug` (`crates/daemon-core/src/wire/secrets.rs`). The shell starts the daemon with fixed arguments (`enrol --hub <origin> -`, `install`), the enrolment code on standard input only, output thrown away, and an environment of `HOME`, `XDG_RUNTIME_DIR` and `DBUS_SESSION_BUS_ADDRESS` only (`daemon/run.rs:69-95`, `run.rs:140-175`). The origin in the arguments is not a secret.
+- The hub of the token cannot be changed in a file on macOS: the origin is kept in the Keychain record with the token, and `run` refuses a configuration whose hub is a different one (`token_store.rs:29-35`, `runtime.rs:98-105`).
+- On an `https` origin a changed environment cannot send the token to a different server: the client uses the fixed web PKI roots of `rustls`, no proxy and no redirect (`Cargo.toml` workspace `reqwest` with `rustls-tls`; `hub.rs:71-77`).
+- On macOS the carried daemon has a Developer ID signature of the Team ID of the release, the hardened runtime and no entitlement (`apps/desktop/src-tauri/src/builder/carried/mach_o.rs:86-140`). Thus `DYLD_INSERT_LIBRARIES` in the unit does not put code into the daemon, and a program of the same user cannot attach to it as a debugger without the rights of an administrator.
+- A backup on macOS: the login Keychain is encrypted with the password of the user, and the keyring crate (feature `apple-native`) writes to the login Keychain, which does not go to iCloud.
+
+### SF-235: After an update of the daemon the old holder of the threads runs on, with its old code, until the computer starts again. Medium
+
+Requirements: THR-113, THR-049; task TH17 of [agent-threads.md](proposals/agent-threads.md).
+
+What it is: the holder (`anima-daemon holder <dir>`) keeps the programs of the threads alive when the daemon stops, also for an update (THR-113). An update replaces `~/.local/bin/anima-daemon` and starts the daemon again; the new daemon finds the old holder at `holder.sock` and keeps it (`crates/daemon/src/threads/link.rs`, `reach_patiently`). The holder is started again only when it ends: at the end of the session or a start of the computer. When the protocol version of the two differs (`wire::VERSION`), the holder only refuses new starts (`state.draining`, `commands.rs`), and it does not end when its last thread ends: no thread can start until the person ends it by hand. When the version is the same, the old holder runs its old code with no sign. Measured on this Mac on 2026-11-21: an install at 01:32:03 left the old holder, and the old daemon even started a fresh old holder in the second before its own replacement. No part of the application shows that the holder is older than the daemon.
+
+Where: `crates/daemon/src/threads/link.rs`, `crates/daemon/src/threads/commands.rs` (`hello`), `crates/daemon/src/threads/holder.rs`.
+
+Effect, and who can cause it: no attacker; each update. A correction in the holder does not reach the computer: for example the stop that ends processes by the mark of their thread (THR-049) and the safe reading of the input of a program. With a new protocol version, Threads stops working after an update until the person finds and ends the holder.
+
+Mitigation now: none in the application. By hand: when no thread runs, `kill <pid of the holder>`, then `launchctl kickstart -k gui/$(id -u)/ing.anima.daemon`.
+
+The fix (not built): the holder says its build in `Hello` (the version of the package and the identity of its program file); the runner compares it with its own. When they differ, the runner tells the client ("the holder is older than the daemon; it is replaced when no thread runs"), the holder starts nothing new, and it ends by itself when its last thread ends, so that the daemon starts the holder of the new build. The page and `anima agents running` show the line while the old holder runs.
+
+State: Open. Found in the trial on the installed pair, 2026-11-21. The fix is built on the branch `threads/start-health` (task TH98; HT-108), not yet in `dev`.
+
+### SF-179: A program of the same user can listen at the socket of the link and get the daemon token and an enrolment code; on macOS this goes around the Keychain. Medium
+
+Requirements: SF-004, R-172 (task W0), HMD-054, MET-013; task HM-T23.
+
+What it is: on a hosted hub the daemon reaches the hub through the socket of the link, `link.sock` in the folder of the daemon (`apps/desktop/src-tauri/src/link/kept.rs:233-256`, `crates/daemon/src/config/home.rs:84-89`). It sends plain HTTP to that socket, with the token as a bearer (`crates/daemon/src/hub.rs:38`, `hub.rs:88-113`, `hub.rs:202-203`), and the enrolment code in the body of `daemon/v1/enrol`. The daemon checks the folder and the owner of the socket when it makes its client (`hub/link_socket.rs:28-50`), and then connects again for each request. It does not check what program listens. A program of the same user can remove `link.sock` and listen at the same path at each time; the link keeps its old socket open but gets no new connection. It can also stop the unit of the link, or wait for it to stop. The link removes a socket of the same user at its start (`link/statedir/statedir.go:253-265`), but the program can do the same again.
+
+Where: `crates/daemon/src/hub.rs`, `crates/daemon/src/hub/link_socket.rs`, `link/cmd/anima-link/device.go:70-79`.
+
+Effect, and who can cause it: a program of the user of the daemon, for example a job, a build script or a package that runs as that user. Effect: the token, within the next push of 10 seconds, with no question to the person; with it the operational keys of the device and a renewal that shuts out the real daemon (see "The model"). At an enrolment, the code, which the program can spend first, so that its own token is the token of the device. On Linux the program can read the token file in any case, so this adds little there. On macOS it is the difference: the Keychain item gives the token only to the daemon program, and `security find-generic-password` from a different program shows a question to the person; the socket gives the token with no question. SF-004 says that a program of the same user "can open the socket"; this entry is the other direction, a program that listens there.
+
+Mitigation now: none in the code. The model of this section: a job of another person must not run as the user of the daemon (W2).
+
+The fix (not built): the daemon must not send a reusable secret to a socket that a program of its user can take. Possible forms: TLS from the daemon to the hub through the socket, with the name or the key of the hub checked, so that the link carries bytes that it cannot read; or a token bound to a key that the daemon keeps in the Keychain (on Linux in the file store), with a signature on each request, so that a listener gets nothing that it can use again. A short-term limit on macOS: the daemon reads the audit token of the peer of the socket (`LOCAL_PEERTOKEN`) and accepts only a peer program with the Developer ID signature of the release. The requirement goes in K8 Section 1 and in HMD-054.
+
+State: Open. Found in the review HM-T23 on 2026-11-20.
+
+### SF-178: On macOS, a daemon enrolled with an old link origin sends its token to a socket in the folder that the environment names. Low
+
+Requirements: R-172 (task W0), MET-013; task HM-T23.
+
+What it is: a record with an old link origin (`http://127.0.0.1:<port>`, made before task W0) reaches the hub through the socket in the folder of the daemon (`crates/daemon/src/config/origin.rs:121-128`, `runtime.rs:105`). That folder comes from `ANIMA_DAEMON_HOME` when it is set (`config/home.rs:51-53`). On macOS the token does not come from that folder: it comes from the Keychain, whose item trusts the daemon program (`token_store/keychain.rs:11-12`). `run` compares the hub of the token with the hub of the configuration in the named folder (`runtime.rs:98-104`); a program can write that configuration with the same old origin. Thus a program of the same user can start `~/.local/bin/anima-daemon run` with `ANIMA_DAEMON_HOME` set to a private folder of its own, with a `daemon.json` that names the old origin and a socket `link.sock` at which it listens, and the daemon reads the token from the Keychain with no question and sends it there.
+
+Where: `crates/daemon/src/config/home.rs`, `crates/daemon/src/runtime.rs`, `crates/daemon/src/config/origin.rs`.
+
+Effect, and who can cause it: a program of the user, on a Mac whose daemon was enrolled with an old link origin and not enrolled again. Effect: the token with no question to the person, as in SF-179. A record with an `https` origin or a `unix:` path is not affected: the path is in the Keychain record.
+
+Mitigation now: a new enrolment cannot use an old link origin (`config/origin.rs:54-57`, `LinkPort`); only old records are affected.
+
+The fix (not built): on macOS, take the socket of an old link origin from a fixed place that does not depend on the environment, or write the record again with its `unix:` path at the first run, or refuse an old link origin with an error that asks for a new enrolment. In general: when the token is in the Keychain, no value of the environment decides where it goes.
+
+State: Open. Found in the review HM-T23 on 2026-11-20.
+
+### SF-175: The copy of the daemon in `~/.local/bin` is not checked after the installation. Low
+
+Requirements: MET-019, HMD-053, HMD-055; task HM-T23; Section 7.1 of [hosted-mode.md](proposals/hosted-mode.md).
+
+What it is: the shell copies the daemon to `~/.local/bin/anima-daemon` and runs that path only during `daemon_install` (`apps/desktop/src-tauri/src/daemon.rs:77-109`; `placement::place` has no other caller for the daemon). The unit starts that path at each login (`crates/daemon/units/ing.anima.daemon.plist`, `anima-daemon.user.unit`). After the installation no part of the application compares the file with the program that the application carries, or checks its signature. A program of the same user can put a different file there, or an older signed version of the daemon. Between the rename and the start of `enrol` (`daemon.rs:85-98`), the same program can replace the file, and the enrolment code then goes to its file.
+
+Where: `apps/desktop/src-tauri/src/daemon.rs`, `apps/desktop/src-tauri/src/daemon/placement.rs`.
+
+Effect, and who can cause it: a program of the user. The model accepts that such a program can start its own program at each login. What this adds: its program runs with the name, the label and the place that the person and the application trust, and the application shows the device as one that the daemon serves. On macOS a file with a different signature does not get the Keychain item with no question; macOS asks the person, with the name `anima-daemon`, and a person who knows the daemon can say yes. An older signed version gets the item with no question if the Keychain trusts the signature, not the exact file (the code sets no access list, so macOS uses its default for the item: `token_store/keychain.rs:39-55`).
+
+Mitigation now: none after the installation. The checks of the folders keep other users out (see "What is safe").
+
+The fix (not built): at each start, the application compares the copy with the program that it carries (bytes or hash; on macOS also `codesign --verify` against the Developer ID requirement of the release), puts the carried program back when they differ, and writes a line to its log. On macOS, a different place: a `LaunchAgent` registered with `SMAppService` that starts the program inside the signed application, which macOS protects from changes by other programs (App Management) and shows in Login Items. The update and the removal of HMD-055 and HMD-056 need the same comparison.
+
+State: Open. Found in the review HM-T23 on 2026-11-20.
+
+### SF-177: On macOS the access lists of the folders of the copy and of the socket are not read. Low
+
+Requirements: MET-019, R-172 (task W0); task HM-T23.
+
+What it is: the checks of the folders read the mode bits, the owner and, on Linux, the POSIX access list. On macOS an access list (`chmod +a`) does not show in the mode, and the code does not read it: `has_acl` returns false on macOS (`apps/desktop/src-tauri/src/daemon/placement.rs:132-140`); the rule of the daemon says the same (`crates/daemon/src/units/trust.rs:6-8`); and `folder_private`, which guards the folder of the daemon and of `link.sock`, reads the mode only (`crates/daemon/src/config/private_file.rs:49-64`).
+
+Where: the three files above.
+
+Effect, and who can cause it: a different local user, when an entry of an access list gives that user the right to add or delete files in `~/.local`, `~/.local/bin`, or `~/Library/Application Support/anima-daemon`. The person or an administrator must make such an entry; macOS does not make one by default. Effect: that user can replace the copy of the daemon, or listen at `link.sock` and get the token (SF-179, by a different user).
+
+Mitigation now: none in the code. The comments of the code say it.
+
+The fix (not built): on macOS, read the access list of each folder (`acl_get_link_np`) and refuse each folder with an entry that allows `add_file`, `add_subdirectory`, `delete_child` or `write` to anyone but the user, in the three checks.
+
+State: Open. Found in the review HM-T23 on 2026-11-20.
+
+### SF-176: On Linux the token and the key cache are plain files that each program of the user and each backup of the home folder can read. Low
+
+Requirements: MET-013, K8 Section 2, K-E5 Section 2.1; task HM-T23.
+
+What it is: on Linux the token is the file `~/.config/anima-daemon/token` and the operational keys are the file `keys` beside it, as plain JSON (`crates/daemon/src/token_store/file.rs`, `crates/daemon/src/keys/store.rs:1-3`). This is what K8 Section 2 says. The model accepts that a program of the user can read them. A backup tool of the home folder (for example Déjà Dup, which backs up the home folder by default) copies them as plain text to its target. The backup keeps the token for up to 365 days and the values of the keys with no limit; the deletion of the cache after 7 days (`keys.rs:1-9`) does not reach a backup. The workspace already builds the keyring crate with `sync-secret-service` for the desktop shell (`Cargo.toml:74`).
+
+Where: `crates/daemon/src/token_store/file.rs`, `crates/daemon/src/keys/store/file.rs`.
+
+Effect, and who can cause it: a person who can read a backup of the home folder, also on a different computer or a disk. Effect: the token (with the renewal of "The model") and the operational keys of the device.
+
+Mitigation now: the operator can end the token at the hub (switch the device away from the daemon, or delete it). The macOS store has no such copy: the Keychain is encrypted with the password of the user.
+
+The fix (not built): on a Linux computer with a session of a person, keep the token and the key cache in the Secret Service (encrypted with the login password), as the shell keeps its keys, and keep the file store for a server with no session and for the system unit. Where the file store stays, write the token and the cache in a folder that backup tools leave out (for example below `$XDG_STATE_HOME` with a `CACHEDIR.TAG`, or a documented exclusion), and say in K8 Section 2 that a backup of the folder holds the token.
+
+State: Open. Found in the review HM-T23 on 2026-11-20.
+## The security read of the model work (task L1-3, 2026-11-20)
+
+A separate reviewer read the draft contract [model-work.md](../contracts/compute/model-work.md), version 0.1, on 2026-11-20. No code exists for it, so each entry is about the text. Version 0.2 of the contract has the corrections of the 14 plain findings and, for the 4 findings that wait for the operator, the safer default. Each entry stays Open until code exists and the operator closes it. "Severity" is the word of the reviewer.
+
+### SF-298: A model file can hold code: a pickle file, a `.py` file through `auto_map`, a chat template. High
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 2.2: a fixed list of files for each format (`file_type`); `auto_map` and `custom_pipelines` refused (`remote_code`); vLLM `--load-format safetensors`; the chat template only from the copy, at most 64 KiB, in the sandboxed renderer of the runtime.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-299: A runtime runs with each right of the user of the daemon, so a fault of a parser reads the token and the configuration. High
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Waits for the operator (OD-C22, MW-P9). Until he decides, Section 9 requires an isolation that denies each thing by default, and a start with no isolation fails (`isolation_failed`).
+
+State: Accepted by the operator (R-346). The stricter form stays a setting at the machine, off by default. Found by a separate reviewer on 2026-11-20.
+
+### SF-300: A runtime can make outgoing connections and gets the environment of the daemon. High
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Sections 2.1 and 4: an empty environment with a fixed list of variables (offline, no usage report, no proxy, no `HF_TOKEN`, no `DYLD_*`, no `LD_PRELOAD`, no `PYTHONPATH`); media only as a `data:` URL; no download folder; a row "runtime: no outgoing connection". The isolation of finding b enforces it.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-301: The hub gives the SHA-256, so the check proves nothing against a hub that is taken over. High
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Waits for the operator (OD-C23, MW-P7). Until he decides, Section 7 checks the hash that Hugging Face publishes at that commit (`hash_mismatch`) and a lowest age of a commit of 7 days (`revision_too_new`).
+
+State: Accepted by the operator (R-339). The stricter form stays a setting at the machine, off by default. Found by a separate reviewer on 2026-11-20.
+
+### SF-302: The default list of the machine has `mlx-community`, an open organisation. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Waits for the operator (OD-C24, MW-P8). Until he decides, the default list is `unsloth` only.
+
+State: Accepted by the operator (R-342). The stricter form stays a setting at the machine, off by default. Found by a separate reviewer on 2026-11-20.
+
+### SF-303: The loopback check ran only at the start, and missed children, later listeners, UDP and mapped IPv4. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 9: the check after each start, restart and `model_load` and each 15 seconds, over the process tree, TCP and UDP, IPv4 and IPv6; only `::ffff:127.0.0.1` counts as mapped loopback; the time of 15 seconds is stated.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-304: Prompts can reach a log through the output of a runtime and its slots. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 2.1: the output goes to a ring file of 1 MiB with mode 0600 that is never sent; owned flags `--log-disable`, `--no-slots`, no slot save path, `--disable-log-requests`.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-305: The memory and the disk of a runtime were not limited. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 9: a server above its share and 10 % is ended (`limit_memory`); `memory.max` or `RLIMIT_AS` on Linux; a temporary folder of 2 GiB, counted as `tempBytes`; the disk reserve checked for each write.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-306: A partial download that nobody continues stays on the disk. Low
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 7: `partial/` counts in the share and in `cacheBytes`; deleted after 7 days or at `copy_delete`; at most 4 partial copies.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-307: The unpack of a runtime archive accepted hard links, devices, setuid bits and very large archives. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 6: regular files and folders only; modes 0755 and 0644, no setuid, setgid or sticky bit; 8 GiB and 50,000 entries at most; no two names equal in lower case; unpack to a temporary folder, then rename; `sizeBytes` for each release source.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-308: A server that fails late is started again with no end. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 9: each end that no item asked for counts; 5 in one hour or 20 in 24 hours make it `failed`; an end in a load makes the copy `failed` (`load_crash`).
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-309: A different process can take the port and receive the API key of a probe. Low
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 9: port 0 where the runtime permits it; before each probe the listener must belong to the process tree of the server (`listener`).
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-310: The index of a GPU and the value of `gpuLayers` were not checked against the machine. Low
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 2.1: a GPU that is not in the inventory is refused (`gpu_unknown`); the only string of `gpuLayers` is `all`.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-311: The list of advisories gave no lowest version of a runtime. Low
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 6: a lowest version of each runtime in the daemon program (`runtime_too_old`), changed only by a signed release.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-312: An API key of an AI agent can start each model work. Medium
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Waits for the operator (OD-C25, MW-P6). Until he decides, an API key can ask only for `model_report`, `server_stop`, `model_unload` and `model_drain`.
+
+State: Accepted by the operator (R-326). The stricter form stays a setting at the machine, off by default. Found by a separate reviewer on 2026-11-20.
+
+### SF-313: The rules of TLS, of redirects and of the hosts of the fetch process were not given. Low
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 4: the roots of the system or of the program only; no proxy; no downgrade; no redirect to an IP address or a host outside the list; at most 5 redirects; at most `sizeBytes`; the fixed list of hosts of Hugging Face.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-314: The Hugging Face token can have more rights than a read of gated repositories. Note
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 7: the hub asks for a fine-grained token with read access to gated repositories only.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-315: The daemon can follow a link when it makes or deletes a file of model work. Note
+
+Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
+
+The correction: Section 10: each change relative to an open folder handle with `O_NOFOLLOW`; `copy_delete` follows no link.
+
+State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+
+## The security review of the model work at the machine (task L1-6, 2026-11-20)
+
+A separate reviewer read the first commit of task L1-6 (`95c1a1e8f`, branch `compute/l1-6`) against the contract [model-work.md](../contracts/compute/model-work.md), version 0.3, on 2026-11-20, by a static reading. "Severity" is the word of the reviewer. Entries q to t are the four departures of the build from the contract.
+
+### SF-257: When the main process of a server ends, its children stay alive and are not checked. High
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/supervise.rs`.
+
+What it is: The daemon dropped the record of a server whose main process ended and signalled no other process. A child could keep a listener on 0.0.0.0 with no check, and a restart made a second tree.
+
+The correction: When the main process ends, the daemon ends the whole tree (the cgroup, or each process of the walk whose identity holds) before it starts the server again. Test: `the_children_of_a_server_end_when_its_main_process_ends`.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-258: The tree of a server was its process group, which a child leaves with one call. High
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/sockets.rs`, `server.rs`.
+
+What it is: A child that called `setsid` or `setpgid` was not in the loopback check and outlived `server_stop` and the stop of the daemon.
+
+The correction: The operator ruled (R-331; his first answer "I like strong containment but check how unsloth handle it", his final words "Strong + Unsloth's four (Recommended)"). On Linux one cgroup v2 for each server, joined before the program runs through the launcher `__model-launch`, with the parent-death signal as a backstop; `containment_failed` when the cgroup cannot be made, with no fallback. On macOS the walk of the parent processes, with the descendants recorded at each poll (best effort without the sandbox). The identity (process id and start time) is checked before each signal, and the records and cgroups are swept at the start of the daemon. The contract says that without the sandbox the loopback check constrains an honest runtime only. Tests: `a_child_that_leaves_the_session_is_still_seen_and_ended`, `a_reused_process_id_is_never_signalled`, `the_sweep_ends_the_processes_of_each_record_whose_identity_holds`, `the_walk_keeps_a_child_that_was_seen_after_its_parent_left`, `the_walk_finds_a_live_child_on_this_mac`. The Linux tests skip, with a message, where no delegated cgroup v2 exists; HT-119 covers `pop-os`.
+
+State: Open. Ruled by the operator (R-331); the correction is built on the branch `compute/l1-6` (not pushed). The Linux code was not compiled or run on this Mac (no Linux target is installed, and nothing may be installed): HT-119. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-259: No supervision loop runs, no server stops with the daemon, and nothing calls the model cycle. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/cycle.rs`, `supervise.rs`.
+
+What it is: The 15-second loopback check, the restarts, the limit of the temporary folder and the stop of the servers at the stop of the daemon do not run, because the running daemon does not start the model loop. `kill_on_drop` ended the main process only.
+
+The correction: A drop of a running server, and so a drop of the node or of the daemon, ends the whole tree. The loop is still not wired: the switch at the machine (USE-004) does not exist in the daemon, so no claim is made and no server can start in the running daemon. The second read (2026-11-20, commit `df8aca4fc`) confirmed that nothing outside `src/model/` builds a `Node`. The wiring task must: call `Node::sweep` when the daemon starts, before any claim; call `Servers::cycle` every 15 seconds; call `stop_all` when the daemon stops; refresh the unit: when the unit file on disk differs from the unit that this version renders, write it again and run `install` again (the decision of the orchestrating session, not a ruling of the operator; the wiring may take this code from task U6 of the update plan if U6 has it by then, or build the small check itself, and it does not ship without it; until then, HT-119 step 9 is the manual step); and start servers from a worker of the async runtime, never from `spawn_blocking` (SF-294). No server can start before that wiring: the branch is not runnable as a server host until then. The plan row of L1-6 records this. Test: `the_whole_group_ends_when_the_node_drops`.
+
+State: Open. The drop is fixed on the branch `compute/l1-6`; the wiring waits for USE-004. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-260: The install blocks the async runtime and has no total time limit. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/install.rs`, `fetch.rs`.
+
+What it is: The unpack of up to 8 GiB ran on a thread of the async runtime, and a release host could send one byte each 59 seconds with no end.
+
+The correction: The unpack runs on a blocking thread (`spawn_blocking`). The download has a total time of 5 minutes and one second for each MiB of `sizeBytes`, at most 1 hour (`source_failed`). Test: the unit of `fetch_deadline` through the install tests.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-261: The download and the unpack were not checked against the free disk and the reserve. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/install.rs`, `unpack.rs`.
+
+What it is: An archive and its unpack could use 16 GiB with no check of the free disk.
+
+The correction: Before the download the daemon checks that the state and runtime folders have `sizeBytes` free above the reserve (default 10 GiB); the unpack checks the reserve before each entry (`limit_disk`). Tests: `the_disk_reserve_stops_the_unpack_and_the_download`, `an_install_with_no_room_for_the_archive_downloads_nothing`.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-262: The API key was not wiped and the daemon kept no copy of it. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/cycle.rs`, `server.rs`.
+
+What it is: The key was in a plain string of the environment list.
+
+The correction: The key is a `Zeroizing<String>`, held by the record of the running server; the values of the environment of a launch are wiped when the launch drops. A process of the same user can still read the environment of the runtime; the contract accepts that channel.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-263: A local process can take the port first. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/server.rs`.
+
+What it is: The free port is found by a bind and a drop, so another process can take it. The readiness needs a listener of the tree, so a squatter is not taken for the server; the effect is a restart loop.
+
+The correction: None in this build: the HTTP probe, which would send the key, does not exist yet (R-329).
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-264: Details of the unpack: folder modes, case collisions of a part. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/unpack.rs`.
+
+What it is: The mode of a new folder passed through the umask, and two names that differ only in case in a parent folder were not refused.
+
+The correction: Each new folder gets `fchmod` 0755. Each part of each path is compared in lower case. Unicode forms (NFC and NFD) are not compared; `O_EXCL` still stops an overwrite. Tests: `a_whole_archive_is_installed_with_plain_modes`, `an_archive_that_breaks_a_rule_is_refused_and_leaves_nothing`, `a_hostile_zip_is_refused_and_leaves_nothing`.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-265: The folders of model work followed a link in a parent. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/folders.rs`.
+
+What it is: `DirBuilder::recursive` followed a link at a parent below the three folders.
+
+The correction: Below each of the three folders, each part is made and opened relative to an open handle with `O_NOFOLLOW`, with mode 0700, and owned by this user (`private_below`). Test: `a_link_in_a_parent_folder_is_not_followed`.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-266: The reading of `lsof` on macOS. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon-core/src/model_work/loopback.rs`, `crates/daemon/src/model/sockets.rs`.
+
+What it is: `lsof` had no time limit; an exit status 1 with output killed the server; a UDP socket with no port counted as exposed.
+
+The correction: A limit of 5 seconds that fails closed; status 1 reads its output; an unbound UDP socket (`*:*`) is not counted; a name that does not read (a zone) counts as exposed. Test: `the_edges_of_the_lsof_output_read`.
+
+State: Open. Fixed on the branch `compute/l1-6` (not pushed), with a test. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-267: Linux reads the tables of the network of the first process only. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/sockets.rs`.
+
+What it is: A socket of a child in another network namespace is not matched; it is not reachable from the network of the host.
+
+The correction: None.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-268: TLS, redirects and proxies of the download. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/fetch.rs`.
+
+What it is: HTTPS only, no proxy, the roots of the program, at most 5 redirects to listed names only, the hash checked before the archive is opened. The first address is the operator's.
+
+The correction: None.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-269: The hub side and the wire. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/hub/src/work/jobs.rs`, `crates/daemon-core/src/model_work/order.rs`.
+
+What it is: The hub makes no model item; the daemon checks the exact members of each item. `actor` binds an honest hub only.
+
+The correction: None.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-270: A runtime can rewrite `model-work.json` and `model-sources.json` when the sandbox is off. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/machine_files.rs`.
+
+What it is: The files are in the daemon folder, which a runtime with the rights of the user can write. Within the risk that the operator accepted (R-346).
+
+The correction: None.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-271: The restart limits. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon-core/src/model_work/supervision.rs`.
+
+What it is: The waits and counts follow the contract. An end during the start wait is not counted (minor).
+
+The correction: None.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-272: Parts of the contract that matter for security are not built. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon-core/src/model_work/command.rs`.
+
+What it is: No `--no-webui` and no `--slot-save-path`; no check that the version has the flags of the logs; no memory limit; the limit of the temporary folder runs only in the cycle, which is not wired.
+
+The correction: None in this build; HT-120 asks which flags the release takes.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`. The entry stays Open until the operator closes it.
+
+### SF-273: The download runs in the daemon, not in a child fetch process. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/fetch.rs`, `install.rs`.
+
+What it is: The parsers of TLS, HTTP, gzip, tar and zip run in the process that holds the daemon token.
+
+The correction: The operator ruled (R-336: "Separate process before L1-7 (Recommended)"). The download in the daemon is permitted for task L1-6 only (contract Section 4); task L1-6b builds the child fetch process, and task L1-7 does not start without it.
+
+State: Open. Waits for task L1-6b. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-316: The first request of the fetch process could go to any HTTPS host. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); SEC-C-001, CAG-008; R-336.
+
+Where: `crates/daemon-core/src/model_work/releases/fetch.rs` (`FetchOrder::checked`).
+
+What it is: The check of the order asked only for `https://`. The host list was applied to redirects only, so an order with an address of a different host was fetched.
+
+The correction: `first_host_permitted`: the host of the address must be a name of the fixed list of the runtime, with no user, no port and no IP address. A runtime with an empty list refuses each address. Tests: `an_order_that_breaks_a_rule_is_refused_before_a_connection`, `the_child_refuses_a_first_host_off_the_list_before_a_connection`.
+
+State: Closed in `04679df6a`; the same separate reviewer read it again and closed it on 2026-11-21 (the second read). Found by a separate reviewer on 2026-11-21 in commit `7a339859a`.
+
+### SF-317: The child did not end with the daemon, and the unpack had no deadline. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); SEC-C-001, CAG-008; R-336.
+
+Where: `crates/daemon/src/model/fetch/child.rs`, `fetch/spawn.rs`.
+
+What it is: When the daemon ended, the child went on until its own download deadline, and the unpack had no time limit inside the child.
+
+The correction: The order carries the process id of the daemon. On Linux the child sets the parent-death signal to SIGKILL and then checks that its parent is that process; if not, it exits. On each system the daemon keeps the standard input of the child open while it runs, and a thread of the child exits when that input closes. The unpack runs on a thread with the deadline `UNPACK_DEADLINE` (25 minutes); past it the child gives back `archive_rejected`. The daemon waits the download, the unpack and 5 minutes. A child that is killed can leave a folder `.unpack-*` below `runtimes/<runtime>/`: the wiring task must remove such stale folders when the daemon starts (not wired in this task). Tests: `the_child_ends_when_its_parent_is_not_the_daemon_of_the_order` (Linux), `the_child_ends_when_its_input_closes_before_the_whole_order`, `the_deadlines_grow_with_the_size_and_stop_at_a_limit`. The thread that watches the input is not tested apart, because a test cannot hold the child after its order without a connection; HT-124 step 3 covers it.
+
+State: Closed in `04679df6a`; the same separate reviewer read it again and closed it on 2026-11-21 (the second read). The sweep of `.unpack-*` waits for the wiring task. Found by a separate reviewer on 2026-11-21 in commit `7a339859a`.
+
+### SF-318: The unpack folder was opened by path only. Note
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); SEC-C-001, CAG-008; R-336.
+
+Where: `crates/daemon/src/model/unpack.rs` (`Writer::new`).
+
+What it is: The child opened the folder that the daemon named with `O_NOFOLLOW` and `O_DIRECTORY`, but did not check that it was empty and belonged to this user.
+
+The correction: After the open, the unpack checks with `fstat` that the folder belongs to the effective user and that it holds no entry, and refuses with `limit_disk` otherwise. Each entry is then made relative to that handle (`openat`), as before. Test: `the_unpack_folder_must_be_an_empty_folder_and_not_a_link`.
+
+State: Closed in `04679df6a`; the same separate reviewer read it again and closed it on 2026-11-21 (the second read). Found by a separate reviewer on 2026-11-21 in commit `7a339859a`.
+
+### SF-319: The daemon cannot check what a child that was taken over wrote. Note
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); SEC-C-001, CAG-008; R-336.
+
+Where: `crates/daemon/src/model/install.rs` (`settle`).
+
+What it is: The child runs as the same user. If a parser fault gives code execution in the child, it can write any file in the unpack folder, and the daemon checks only that the program exists before the rename.
+
+The correction: None in this task. Open options for a later task: (a) the child hands the verified archive back to the daemon by a file descriptor, and the daemon unpacks it in a second child with fewer rights; (b) the child gives back a manifest hash of the unpacked files, which the daemon checks against the release source entry. The sandbox of the runtime (Section 9) is the other limit.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-21 in commit `7a339859a`.
+
+### SF-320: Descriptors opened by a C library could pass into the child. Note
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); SEC-C-001, CAG-008; R-336.
+
+Where: `crates/daemon/src/model/fetch/spawn.rs`.
+
+What it is: Rust opens each descriptor with close-on-exec, so the descriptors of the daemon do not pass into the child. A C library in the daemon that opens a descriptor without that flag would pass it.
+
+The correction: None. The daemon links no C library that opens such a descriptor today; a later change that adds one must set the flag.
+
+State: Open (a note). Found by a separate reviewer on 2026-11-21 in commit `7a339859a`.
+
+### SF-321: On Linux the child checked its parent before it set the parent-death signal. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); SEC-C-001, CAG-008; R-336.
+
+Where: `crates/daemon/src/model/fetch/child.rs` (`watch_parent`).
+
+What it is: A daemon that ended between the check of the parent and the call of `prctl` left a child that no signal would end.
+
+The correction: The child sets the parent-death signal first, then compares its parent with the process id of the order. A comment and the documentation of `spawn::start` say that on Linux the signal fires when the spawning thread exits, so the daemon spawns the child from a long-lived worker of its async runtime, never from `spawn_blocking`. Test: `the_child_ends_when_its_parent_is_not_the_daemon_of_the_order` (Linux; it runs on GitHub, not on the Mac of the build).
+
+State: Closed in `8f5c4d73b`; the same separate reviewer read it again and closed it on 2026-11-21 (the third read). Found by a separate reviewer on 2026-11-21 in commit `04679df6a` (the second read).
+
+### SF-322: A wrong unpack folder was reported as `limit_disk`. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); SEC-C-001, CAG-008; R-336.
+
+Where: `crates/daemon/src/model/unpack.rs` (`Writer::new`).
+
+What it is: A folder that does not open, is a link, belongs to a different user or is not empty is a fault of the order, but the report named the disk.
+
+The correction: These cases give `runtime_not_configured`. Test: `the_unpack_folder_must_be_an_empty_folder_and_not_a_link`.
+
+State: Closed in `8f5c4d73b`; the same separate reviewer read it again and closed it on 2026-11-21 (the third read). Found by a separate reviewer on 2026-11-21 in commit `04679df6a` (the second read).
+
+### SF-323: An interrupted read ended the watch of the input. Note
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); SEC-C-001, CAG-008; R-336.
+
+Where: `crates/daemon/src/model/fetch/child.rs` (`watch_parent`).
+
+What it is: A read of the input that a signal interrupted (`EINTR`) was taken as the end of the daemon, so the child exited.
+
+The correction: The watch reads again after `ErrorKind::Interrupted`, and exits only at the end of the input or at a different error.
+
+State: Closed in `8f5c4d73b`; the same separate reviewer read it again and closed it on 2026-11-21 (the third read). Found by a separate reviewer on 2026-11-21 in commit `04679df6a` (the second read).
+
+### SF-324: No test runs the redirect policy as the client wires it. Note
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); SEC-C-001, CAG-008; R-336.
+
+Where: `crates/daemon/src/model/fetch.rs` (`client`).
+
+What it is: The pure rule `follows` has tests, but no test sends a real redirect through the `reqwest` client. The client accepts HTTPS only, with the roots of the program, so a local test server needs a certificate that those roots trust. That needs TLS fixtures that the repository does not have, and a test seam that trusts a test root would widen the child.
+
+The correction: None in this task; recorded as a gap. HT-124 step 1 runs the real redirect of GitHub (`github.com` to its file host).
+
+State: Open (a note). Found by a separate reviewer on 2026-11-21 in commit `04679df6a` (the second read).
+
+### SF-274: macOS reads the socket table with `lsof`, not `proc_pidinfo`. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/sockets.rs`.
+
+What it is: `lsof` is slower and depends on its output form.
+
+The correction: Accepted by the operator (R-329: "Accept, but add zip (Recommended)"): a limit of 5 seconds that fails closed, and the contract text of Section 9.
+
+State: Accepted (R-329). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-276: Ready means a listener on loopback, with no HTTP probe. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/supervise.rs`.
+
+What it is: A listener can exist before the server answers, so `ready` can come early. No key is sent to a squatter.
+
+The correction: Accepted by the operator (R-329); the contract text of Section 9; the HTTP probe comes with task L1-9 or `model_measure`.
+
+State: Accepted (R-329). Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-277: Only `.tar.gz` archives. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007, CAG-005, CAG-008; SEC-C-012.
+
+Where: `crates/daemon/src/model/unpack.rs`.
+
+What it is: The upstream releases of llama.cpp are mostly `.zip`.
+
+The correction: The operator added `.zip` (R-329), with the same rules and limits: no link, no device, no encrypted entry, no absolute path or `..`, the case of each part, the declared size and the bytes read within the limit, the entry count, and the unpack into a temporary folder and one rename. Tests: `a_whole_zip_is_installed_with_plain_modes`, `a_hostile_zip_is_refused_and_leaves_nothing`, `a_zip_bomb_and_too_many_entries_stop_at_the_limits`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed), with tests. Found by a separate reviewer on 2026-11-20 in commit `95c1a1e8f`.
+
+### SF-279: On Linux the network tables of the first cgroup member only were read. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007; R-331.
+
+Where: `crates/daemon/src/model/sockets.rs`.
+
+What it is: The loopback check read `/proc/<pid>/net/*` of the first process of `cgroup.procs`. A member that moved into a network namespace of its own (unprivileged user namespaces) and sorted first hid the host listener of a different member.
+
+The correction: The daemon reads the tables of each distinct network namespace (`/proc/<pid>/ns/net`) of the members and merges them. A member that still runs but whose `fd` or `ns` files do not read (it made itself not dumpable) fails the read, so the check fails closed. Linux code, not compiled on the Mac of the build; HT-119.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-283: An unreadable cgroup or an empty tree passed the loopback check. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001, SEC-C-007; R-331.
+
+Where: `crates/daemon/src/model/tree/linux.rs`, `server.rs`, `sockets.rs`.
+
+What it is: `members` read `cgroup.procs` with a default of nothing, and an empty table gave the verdict loopback.
+
+The correction: `members` gives an I/O error, `poll` refuses an empty tree while the main process runs, and the socket table of an empty tree is an error. Each of these ends the server with `listener`. Test: `an_empty_tree_of_a_running_server_does_not_read_as_a_safe_table` (the Linux read is not compiled on the Mac).
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-286: One large entry could write past the disk reserve. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001; the rest of SF-261.
+
+Where: `crates/daemon/src/model/unpack.rs`.
+
+What it is: The free disk was asked before each entry only, so one entry of up to 8 GiB could pass the reserve.
+
+The correction: The copy of an entry asks the disk again after each 64 MiB. Test: `the_disk_is_asked_again_while_one_large_entry_is_written`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-294: Races in the launcher of a server. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-331.
+
+Where: `crates/daemon/src/model/tree/linux.rs`, `server.rs`.
+
+What it is: If the daemon ended between the fork and the parent-death signal, the runtime ran on with no backstop. The signal also fires when the thread that started the launcher ends, so a start from `spawn_blocking` would kill each server about 10 seconds later.
+
+The correction: The daemon gives its process id to the launcher, which exits with code 125 when its parent is no longer the daemon after the signal is set. The documentation of `spawn` and `launch` says that a start must come from a thread that lives as long as the daemon. No test: Linux only, and a thread rule (HT-119).
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-295: A cgroup that did not empty blocked the next start, with no log, and no process limit; blocking calls on async threads. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-331.
+
+Where: `crates/daemon/src/model/tree/linux.rs`, `server.rs`.
+
+What it is: The end of a cgroup gave up after 1 second with no log, and the next start of the same server then failed. No `pids.max` was set. The waits of the cgroup and the `ps` and `lsof` reads of macOS ran on the threads of the async runtime.
+
+The correction: A cgroup that does not empty is logged and left; each start has a cgroup of its own name. `pids.max` is 512 when the controller is delegated (a placeholder value in the contract, Section 9). The end and the signals of `kill` and `stop`, and the read of `cgroup.procs`, run on a blocking thread; `lsof` was already a child process with a timeout. The drop of a running server still ends its tree on its own thread, because a drop cannot wait. No test on the Mac for the cgroup part (HT-119).
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-296: The sweep trusted the cgroup path in a record that the runtime can write. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree.rs`, `tree/linux.rs`.
+
+What it is: A forged `tree.json` could make the daemon write `cgroup.kill` in any path and remove any empty folder. The runtime is already that user, so it grants nothing new while the sandbox is off.
+
+The correction: The daemon ends only a cgroup named `anima-model-` directly below its own cgroup. The identities in the record are still trusted (accepted risk while the sandbox is off; with the sandbox, keep the records out of reach of the runtime). Linux code, not compiled on the Mac (HT-119).
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-278: With a delegated cgroup, a runtime can leave the cgroup of its server. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-331, R-334; OD-C22.
+
+Where: `crates/daemon/src/model/server.rs`, `tree/linux.rs`.
+
+What it is: With `Delegate=yes`, the user of the daemon may write to each `cgroup.procs` of the delegated tree. A runtime can write its own process id into the `cgroup.procs` of the cgroup of the daemon and leave the cgroup of its server. When the main process leaves and a child stays, the tree still reads as not empty, and the main process is no longer read or ended by the cgroup.
+
+The correction: The operator ruled R-330: "Hide the daemon's cgroup (Recommended)". The launcher makes a new cgroup namespace (with a user namespace of its own, which a user that is not root needs) after it joins the cgroup of the server and before `exec`. The kernel then refuses a move of a process of the runtime to a cgroup outside the cgroup of its server, a child included. When the namespaces cannot be made, the start fails with `containment_failed`, with no fallback. The launcher now runs before the async runtime starts, because a new user namespace needs a process with one thread. Each poll also checks that the main process, while it runs, is a member of the `cgroup.procs` of its server; when it is not, the server ends with `listener`. Linux only, not compiled on the Mac; HT-119 steps 9a and 9b.
+
+State: Open. Fixed by the ruling R-330 on the branch `compute/l1-6` (not pushed); waits for HT-119. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `65fc31ed7`.
+
+### SF-280: A cgroup below the cgroup of a server hid its processes from the loopback check. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-331, R-330.
+
+Where: `crates/daemon/src/model/tree/linux.rs`.
+
+What it is: The runtime may make a cgroup below the cgroup of its server (its user owns that folder) and move a process into it, inside the root of its namespace. `members` read only the `cgroup.procs` of the server, so the loopback check and the check of the main process missed that process.
+
+The correction: `members` reads the `cgroup.procs` of the cgroup of the server and of each cgroup below it, and a folder that does not read fails closed. `make` sets `cgroup.max.descendants` to 0, so no cgroup can be made below it; with `nsdelegate` the runtime cannot write that file of the root of its namespace. The end removes the cgroups below first. Linux only, not compiled on the Mac; HT-119 step 9c.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `acf0b853b`.
+
+### SF-281: The cgroup namespace stops a move out only with `nsdelegate`. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-330.
+
+Where: `crates/daemon/src/model/tree/linux.rs`, `tree/mounts.rs`.
+
+What it is: The kernel refuses a move to a cgroup outside the root of a cgroup namespace only when cgroup v2 is mounted with `nsdelegate`. systemd mounts it so; a system without systemd, or a mount of its own, may not, and the start then succeeded with the escape of SF-278 open.
+
+The correction: `make` reads `/proc/self/mountinfo` and refuses a start with `containment_failed` and the detail `no_nsdelegate` when the cgroup v2 mount at `/sys/fs/cgroup` has no `nsdelegate`. Test: `the_cgroup_mount_must_delegate_to_namespaces`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `acf0b853b`.
+
+### SF-282: Each failure of the launcher, and an exit 125 of a runtime, read as one `containment_failed`. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; R-330.
+
+Where: `crates/daemon/src/model/tree/linux.rs`, `server.rs`, `supervise.rs`, `cycle.rs`; `crates/daemon-core/src/model_work/cause.rs`.
+
+What it is: The launcher exited 125 at each step, and the daemon took each exit 125 as a failure of containment. A refusal of the user namespace (AppArmor on Ubuntu 24.04 and later, or a sysctl) could not be told from a missing delegation or a missing program, and a runtime that exits 125 was reported as a failure of containment.
+
+The correction: `containment_failed` carries a detail (`no_delegation`, `no_nsdelegate`, `cgroup_join_failed`, `backstop_failed`, `parent_gone`, `userns_denied`, `exec_failed`), which the report gives in the member `detail` of the result. Each launcher step has its own exit code (120 to 124), and the launcher writes it to a failure file in the folder of the server before it exits; an exit code counts as the launcher's only when that file holds it. Tests: `each_failed_step_of_containment_has_its_own_detail_and_launcher_code`, `an_exit_code_of_a_launcher_step_counts_only_with_the_failure_file_of_the_launcher`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `acf0b853b`.
+
+### SF-284: The failure file of the launcher and the record of a tree were read through links, with no size limit. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree.rs`, `server.rs`.
+
+What it is: The daemon read `launch-failure` with `read_to_string` and `tree.json` after a `symlink_metadata` check. A runtime could replace either with a link to a FIFO (the supervision loop waits for ever) or to `/dev/zero` (no end to the read). No new power while the runtime is the user of the daemon, but an escape route once the sandbox exists.
+
+The correction: `read_capped` opens the folder and the file with `O_NOFOLLOW`, the file also with `O_NONBLOCK` and `O_CLOEXEC`, requires a regular file (`fstat`), and reads at most 4 KiB for the failure file and 64 KiB for the record. Tests: `a_file_that_the_runtime_can_replace_is_read_only_when_plain_and_small`, `a_record_that_is_a_link_is_not_swept`.
+
+State: Open. Built on the branch `compute/l1-6`. Found by a separate reviewer on 2026-11-20 in commit `dd8ca6c79`.
+
+### SF-285: The interface files of a sibling server cgroup are writable by the runtime. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree/linux.rs`.
+
+What it is: The daemon makes each server cgroup, so its files belong to the user of the daemon. The cgroup namespace stops moves, but a runtime can write `cgroup.kill` or `pids.max` of a different server cgroup through the full `/sys/fs/cgroup` mount. That ends or limits another server, which a `kill` by the same user already can.
+
+The correction: None now (no new power). The sandbox design must hide `/sys/fs/cgroup` with a mount namespace.
+
+State: Open (Note). Found by a separate reviewer on 2026-11-20 in commit `dd8ca6c79`.
+
+### SF-287: Writing the record of a tree could wait on a FIFO or truncate a hard-linked file. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree.rs`.
+
+What it is: `Record::save` opened `tree.json` without `O_NONBLOCK`, so a FIFO stalled the supervising thread, and with truncate, so a hard link at that name truncated a different file.
+
+The correction: The record is written to a new temporary name (`O_CREAT|O_EXCL|O_NOFOLLOW|O_NONBLOCK`, mode 0600) and renamed over `tree.json`. Test: `a_record_is_written_in_place_of_a_link_or_a_fifo_and_never_through_one`.
+
+State: Open. Built on the branch `compute/l1-stack`. Found by a separate reviewer on 2026-11-21 in commit `6697d2d0b`.
+
+### SF-288: The sweep removed a record through a server folder that is a link. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree.rs`.
+
+What it is: The sweep called `remove_file` on `servers/<entry>/tree.json`, which follows `<entry>` when it is a link.
+
+The correction: The sweep opens each entry with `O_NOFOLLOW|O_DIRECTORY` and reads and removes the record through that one handle (`unlinkat`). Test: `a_server_folder_that_is_a_link_is_neither_read_nor_emptied`.
+
+State: Open. Built on the branch `compute/l1-stack`. Found by a separate reviewer on 2026-11-21 in commit `6697d2d0b`.
+
+### SF-289: The test of a linked record did not check that the named file survives. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/tests/it/model_work/tree.rs`.
+
+What it is: `a_record_that_is_a_link_is_not_swept` did not assert that the file the link names still exists, and no case covered a linked server folder.
+
+The correction: The test asserts that the file survives, and a new test covers a server folder that is a link to a folder with a record.
+
+State: Open. Built on the branch `compute/l1-stack`. Found by a separate reviewer on 2026-11-21 in commit `6697d2d0b`.
+
+### SF-290: The tests of the size caps did not reach the read limit or the real caps. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/tests/it/model_work/tree.rs`.
+
+What it is: No case read exactly the cap, a linked folder, or one byte over the real 4 KiB and 64 KiB caps, and the FIFO case had no time limit.
+
+The correction: Cases at exactly the cap and with a linked folder; the real caps through `launch_failure` (4096 and 4097 bytes) and through the sweep (65536 and 65537 bytes); the FIFO cases wait at most 5 seconds. Tests: `a_file_that_the_runtime_can_replace_is_read_only_when_plain_and_small`, `records_and_failure_files_over_their_real_caps_are_refused`, `an_exit_code_of_a_launcher_step_counts_only_with_the_failure_file_of_the_launcher`.
+
+State: Open. Built on the branch `compute/l1-stack`. Found by a separate reviewer on 2026-11-21 in commit `6697d2d0b`.
+
+### SF-291: The documentation of `read_capped` claimed more than `O_NOFOLLOW` gives. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree.rs`.
+
+What it is: `O_NOFOLLOW` checks the last part of a path only.
+
+The correction: The comment says so: the parent folders are trusted because the daemon made them with `folders::private_below`.
+
+State: Open. Built on the branch `compute/l1-stack`. Found by a separate reviewer on 2026-11-21 in commit `6697d2d0b`.
+
+### SF-292: A device node is opened before `fstat` refuses it. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree.rs`.
+
+What it is: `read_capped` opens the file (with `O_NONBLOCK`) before it can see that it is a device; the open of some devices has effects.
+
+The correction: None now; the comment records it. With the sandbox the runtime cannot place a device node in the state folder.
+
+State: Open (Note). Found by a separate reviewer on 2026-11-21 in commit `6697d2d0b`.
+
+### SF-293: The launcher wrote its failure file through a link. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-007; OD-C22.
+
+Where: `crates/daemon/src/model/tree/linux.rs`.
+
+What it is: The launcher wrote `launch-failure` with `std::fs::write`, which follows a link and truncates an existing file.
+
+The correction: The launcher creates it as a new file only (`O_CREAT|O_EXCL`, `O_NOFOLLOW`, `O_NONBLOCK`, mode 0600); the daemon removes it before each start. Linux code, not compiled on the Mac.
+
+State: Open. Built on the branch `compute/l1-stack`. Found by a separate reviewer on 2026-11-21 in commit `6697d2d0b`.
+
+### SF-256: With KillMode=process, a model runtime's own children can outlive a daemon that systemd killed. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); R-331; R-334; THR-113.
+
+Where: `crates/daemon/units/anima-daemon.user.unit` and `anima-daemon.system.unit` (`KillMode=process`, from hosted/hm-t20-daemon-update), against `Delegate=yes` and the cgroup of each model server.
+
+What it is: systemd now stops only the main process. On a clean stop the daemon ends each model server itself (`Servers::stop_all`), and nothing changes. When the daemon does not end its servers (it is killed with SIGKILL after the stop timeout, or it crashes), systemd leaves the delegated child cgroups alone. The launcher's parent-death signal ends only the runtime it became, not the children that runtime started; those stay alive in the server's cgroup until the sweep at the next start of the daemon. A stopped or disabled daemon has no next start.
+
+The correction: Not made. Both lines stay as they are (KillMode is held by THR-113 for the thread holder). Options for the operator: kill each server cgroup on a stop with an `ExecStopPost=` that writes `cgroup.kill` under the unit's cgroup, excluding the holder; or move the holder out of the unit's cgroup and go back to the control-group mode. Linux code, not compiled on the Mac. Made overnight, not yet confirmed.
+
+State: Open. Found on 2026-11-21 at the merge of dev `b623ae977` into `compute/l1-stack`.
+
+Note: hm-t20 sets `KillMode=process` in both units, so at a stop systemd ends only the main process of the daemon; the model servers in the `anima-model-*` cgroups survive unless the daemon ends them. Today `stop_all` at the stop and the sweep at the start are not wired, but nothing starts a server either. The rule is R-340.
+
+### SF-297: A read error of a zip entry was reported as a full disk. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001; R-328.
+
+Where: `crates/daemon/src/model/unpack.rs`.
+
+What it is: A CRC that does not match, or a cut stream, came through `io::copy` as `limit_disk`.
+
+The correction: The copy tells a read error (`archive_rejected`) from a write error (`limit_disk`). Test: `an_entry_whose_bytes_break_their_check_is_a_rejected_archive`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+
+### SF-275: The three root folders were made with a recursive create. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-001; the rest of SF-266.
+
+Where: `crates/daemon/src/model/folders.rs`.
+
+What it is: `private_folder` made the roots and their missing parents in one recursive call and checked the last folder only.
+
+The correction: It makes each missing part on its own with mode 0700 and checks each part that it made, and the root: a plain folder of this user, not a link. A parent that was already there is used as it is. Test: `the_missing_parents_of_a_folder_of_model_work_are_made_private`.
+
+State: Open. Built on the branch `compute/l1-6` (not pushed). Found by a separate reviewer on 2026-11-20 in commit `df8aca4fc`.
+## The security review of the browser session of a hosted hub and of the trust in the gateway (task HM-T32, 2026-11-21)
+
+Task HM-T32 of [hosted-mode.md](proposals/hosted-mode.md) is the review that HMD-067 asks for before a person other than the operator uses `hub.anima.ing`. This part of it is the side of this repository: the browser session of a hosted hub (`hostedBrowserTicket`, `hostedBrowserSignIn`, the cookie, its life, the sign-out), the web client behind the gateway (HM-T27, HM-T30, HM-T31), Connect GitHub on a hosted hub (HM-T29), and what the hub trusts from the gateway: the public origin, the guard of the host name, the check of `Origin`, the cookies, CORS, the security headers and the paths below `/_door/`. It also looks at the move to one address for each hub (`https://<hub id>.hub.anima.ing`, HMD-068, HMD-069). The review read the code on `dev` of 2026-11-21 (`crates/hub/src/fleet/link/graphql/hosted.rs`, `crates/hub/src/fleet/access/`, `crates/hub/src/lib.rs`, `crates/hub/src/config.rs`, `crates/hub/src/web_client/`, `crates/hub/src/engine/sources/registration*`, `crates/hub/src/fleet/sessions/`, `apps/client/src/lib/hub/gateway/`, `apps/client/src/lib/hosted/`). It read the gateway of the private repository to know what the hub may assume; the findings of the gateway are recorded there, not here. It ran the hub tests of `crates/hub/tests/it/link/hosted_origin.rs`; it contacted no server. An agent did it, and a second agent read the same code with only the list of the flows; this list holds the findings of both. "Severity" is the word of the reviewers.
+
+### The model: who can send what to a hosted hub
+
+A hosted hub listens on the loopback address of its container and on the socket of its link only (`crates/hub/src/config/link.rs`). Three senders reach it: the gateway, through a socket that the pool connects to that loopback address; the devices of the account, through the link; and the programs in the container, where the customer is root. The second and the third belong to the account of the hub, so a request that goes around the gateway gives them nothing that they do not have. The cloud key is new for each hub (anima-cloud ACL-019), so the key of one hub opens no other hub.
+
+Each other address below `hub.anima.ing` is the hub of a different account, and its customer is root there, so its pages can hold any script. For a browser it is the same site as this hub, because `hub.anima.ing` is not a public suffix: `SameSite=Strict` does not keep its requests out. The hub must keep them out by the name and the origin of each request.
+
+### What is safe
+
+- The ticket: 256 random bits, only its SHA-256 hash in memory, one use, 60 seconds, at most 1024 open (`crates/hub/src/fleet/access/login/browser_ticket.rs`). Only the key of the cloud makes one; the key is compared by hash in constant time, and an empty key never matches (`fleet/link/graphql/hosted.rs:214-226`). The ticket is never in an address or in a browser: the gateway trades it in a request of its own.
+- No session fixation: the cookie is made by the hub in the trade, and its value is a new token. A cookie of another hub holds a token that this hub does not know.
+- The cookie: `__Host-anima`, `Path=/`, `Secure`, `HttpOnly`, `SameSite=Strict`, no `Domain` (`fleet/access/browser.rs:16-22`). So no other host can set it, and it goes to no other host. Two cookies of that name, or a `Cookie` header that is not text, give no identity (`browser/cookie.rs`). With an `Authorization` header the cookie does not count.
+- CSRF and a WebSocket of another origin: the cookie is read only for a request whose one `Origin` header is the public origin of the hub, byte for byte, for `POST /graphql` and for the upgrade of `GET /graphql` (`browser.rs:36-55`, `connection/sign_in.rs:24-28`). `POST /graphql` takes only `application/json`, a query is never read from a URL, and CORS admits only the two origins of the desktop application, with no credentials (`crates/hub/src/lib.rs:62-75`). The test `hmd_061_a_sibling_hub_or_the_old_address_cannot_use_the_cookie_of_this_hub` shows it for the origin of a different hub, the old shared address, `null` and `http`.
+- The name of the host: a hosted hub answers a loopback name, or exactly the host of its public origin (with no port or with 443); each other name gets a bare 403 before a route runs (`fleet/access/rebinding.rs:34-91`). The test `hmd_069_a_hub_at_its_own_address_answers_only_its_own_name` shows it for the old shared address, a different hub, a name below this one, a name that starts with this one, a name with a final dot and a different port.
+- The headers that the gateway adds: the hub trusts none. It takes no client address from `X-Forwarded-For`, `Forwarded` or `X-Real-IP` (`fleet/access/identity.rs:343-349`), and the gateway removes them.
+- The life of the session: 12 hours at most and 30 minutes with no request (`fleet/access/tokens.rs:31-36`, `identity.rs:271-300`). The tests `hmd_062_a_browser_session_ends_after_30_minutes_with_no_request` and `hmd_062_a_browser_session_ends_12_hours_after_its_sign_in_however_it_is_used` show both through the whole router. Exception: an open page (see the first Medium entry below).
+- The sign-out: `logout` deletes the token and clears the cookie (`fleet/access/graphql.rs:142-156`); the test `hmd_062_a_sign_out_ends_the_browser_session_and_clears_its_cookie` shows it. The web client then ends the session of the gateway with one `POST` (`apps/client/src/lib/hub/gateway/gateway.ts:73-81`).
+- The signed-out calls: one sign-in mutation for each operation (`fleet/access/guard.rs:658-684`). A hosted hub refuses each sign-in with a password. `claimDeviceToken` admits only an address of the link, so a browser behind the gateway cannot get the token of a device.
+- The web client: no `postMessage` and no listener of messages; the tab of Connect GitHub has no `opener`; the policy has `script-src 'self'` with hashes, `form-action 'none'`, `frame-ancestors 'none'`, `base-uri 'none'`, and the answers have `Referrer-Policy: no-referrer`, `nosniff` and COOP `same-origin` (`crates/hub/src/web_client/headers.rs`). The paths below `/_door/` are only read by the client (`/_door/client`, `/_door/enter`, `/_door/sign-out`, `/_door/usage`); a hub with no gateway answers them with the web client, which the client reads as "no gateway".
+- Connect GitHub: the page of the flow follows the public origin of the hub (`engine/sources/registration.rs:31-41`); `POST /connect/github/open` checks `Origin` and needs a browser token; the cookie `__Host-anima-connect` and the states bind one browser; a hub in the link mode with no address of its own refuses the flow (HMD-070). An attempt that is open when the hub moves to its own address is lost (HM-T29 says so).
+- Across the move: the cookie of a hub at `https://hub.anima.ing` belongs to that host and never goes to `https://<hub id>.hub.anima.ing`. A hub at its own address refuses the name `hub.anima.ing` and the origin `https://hub.anima.ing` (the two tests above), so an old cookie cannot reach it through a fault of the gateway either. The person signs in again.
+
+### SF-238: A hosted hub that the pool gave no public origin took browsers at the old shared address. Medium
+
+Requirements: HMD-061, HMD-069, HMD-070; task HM-T32.
+
+What it is: with no `ANIMA_PUBLIC_ORIGIN`, the public origin of a hub is `https://hub.anima.ing` (`crates/hub/src/config.rs:305-309`). A hosted hub made that origin its gateway in each case (`crates/hub/src/lib.rs:162-165`): it answered the name `hub.anima.ing`, marked a request from `https://hub.anima.ing` as one of its own origin, and traded a ticket for its cookie there. Only Connect GitHub looked at whether the pool gave the origin (`engine/sources/registration.rs:39`).
+
+Where: `crates/hub/src/lib.rs`, `all_routes`.
+
+Effect, and who can cause it: a fault of the pool (a hub made before ACL-049 of anima-cloud, or an old image). Such a hub takes a browser at the one origin where the pages of each hub were before the move: where a hostile hub could leave a service worker, a page in the cache or a cookie that script can read (anima-cloud AC-D45, R1). A gateway that sends a request of `hub.anima.ing` to a hub would then give that hub the old cookies of the shared origin.
+
+Mitigation before: the gateway after the move sends no request of `hub.anima.ing` to a hub (HMD-068).
+
+The fix (built on the branch `hosted/hm-t32-gateway-review`): a hosted hub takes the name and the origin of its public origin only when the pool gave it (`public_origin_given`). With no origin given, it answers a loopback name with no origin, as the cloud calls it, and takes no browser. The test `hmd_069_a_hosted_hub_that_was_given_no_address_takes_no_browser` failed before the fix. Not built: a refusal to start; it would also stop the devices of such a hub.
+
+State: Open (built). Found in the review HM-T32 on 2026-11-21.
+
+### SF-239: An open page keeps the browser session from its end after 30 minutes with no request. Medium
+
+Requirements: HMD-062; tasks HM-T26, HM-T32.
+
+What it is: the web client keeps a subscription open while a page is open. The hub checks the token of an open socket again at each interval and writes that check as a use of the token (`crates/hub/src/fleet/access/connection.rs:322-340`). HM-T26 chose this, so that a person who watches a terminal is not signed out. The effect is that the rule "30 minutes with no request" applies only to a browser with no open page of the hub. The gateway does the same for its own session (an open connection counts as use; anima-cloud R3).
+
+Where: `crates/hub/src/fleet/access/connection.rs`, `lapse`.
+
+Effect, and who can cause it: a person who finds an open page on a computer that someone left. The session stays usable until its 12 hours end. A person who did not close the page cannot be sure that the session ended after 30 minutes, which is what HMD-062 says.
+
+Mitigation now: the 12 hours; "Sign out"; the end of the session of the gateway at the account page.
+
+The fix (not built; it needs the reading of HMD-062 by the operator): count only requests and messages that the client sends as use, not the check of the hub. The web client then sends a sign of use only after an act of the person (a key, a click, a visible page), and the terminal and the desktop count their own input. The gateway must do the same for its session.
+
+State: Open. Found in the review HM-T32 on 2026-11-21.
+
+### SF-236: A browser session of a hosted hub cannot be ended from outside the browser, and each entry leaves the token of before usable. Medium
+
+Requirements: HMD-061, HMD-062; tasks HM-T25, HM-T26, HM-T32.
+
+What it is: HMD-062 says that the account page lists the open browser sessions and ends each one. HM-T25 put that list in the gateway, and the hub has no call of the cloud that lists or ends its browser tokens (`crates/hub/src/fleet/link/graphql/hosted.rs`). The sign-out of the gateway ends the session of the gateway only. `signInBrowser` deletes the token that the cookie of the request held (SEC-002), but the trade of `hostedBrowserSignIn` is a request of the gateway that carries no cookie of the browser, so each entry (`/_door/enter`) leaves the token of before alive until its 30 minutes end.
+
+Where: `crates/hub/src/fleet/link/graphql/hosted.rs:145-170`, `crates/hub/src/fleet/access/login/hosted.rs:291-316`.
+
+Effect, and who can cause it: a person who has a copy of the cookie (a backup of the profile of the browser, a computer that was lost). The account page ends the session of the gateway, which then passes no request; the token stays good at the hub until its idle time or its 12 hours. A gateway with a fault, or a later route that passes requests by the cookie of the hub, would let it in. The tokens of entries that nobody holds make the list of the hub longer for 30 minutes each.
+
+Mitigation now: the gateway passes a request to a hub only with an open session of its own; the token is `HttpOnly`.
+
+The fix (not built; a change of contract K1 and of the gateway): a call of the cloud, `endHostedBrowserSessions(cloudKey)`, that deletes each browser token of the hub, called by the gateway at each sign-out and at each end from the account page; and, for each entry, the gateway sends the cookie of the hub that the browser has, so that `hostedBrowserSignIn` deletes its token as `signInBrowser` does.
+
+State: Open. Found in the review HM-T32 on 2026-11-21.
+
+### SF-237: A browser session can make an API key that lasts longer than the session. Low
+
+Requirements: HMD-062, INT-003, D-23; task HM-T32.
+
+What it is: a browser token may call `createApiKey` (`crates/hub/src/fleet/access/graphql.rs:158-166`), and the key lasts as long as its rules say, longer than the 12 hours of the session. The key is a bearer for the link and for each request that the gateway passes for the account.
+
+Where: `crates/hub/src/fleet/access/graphql.rs`, `crates/hub/src/fleet/access/keys/`.
+
+Effect, and who can cause it: a person with a moment at an open page, or script that runs in the page of the hub. The key outlives the sign-out and the end of the session at the account page. It is shown in the list of keys of the hub, and the operator can delete it there.
+
+Mitigation now: the policy of the web client blocks script that the hub did not serve; the key is in the list of keys.
+
+The fix (not built; a choice of the operator): on a hosted hub, a key that a browser session makes ends with that session, or such a key needs a new sign-in at the account site.
+
+State: Open. Found in the review HM-T32 on 2026-11-21.
+
+### SF-241: A remote session that a browser opened stays open after the browser session of the hub ends. Low
+
+Requirements: HMD-062, D-10; task HM-T32.
+
+What it is: a terminal, a desktop or a file session ends when the person ends it, when the client leaves, or when the hub stops (`crates/hub/src/fleet/sessions/end.rs`). Nothing ends it when the token that opened it expires or is deleted. The subscription socket of the same browser does end then (`fleet/access/connection.rs:319-345`).
+
+Where: `crates/hub/src/fleet/sessions/`.
+
+Effect, and who can cause it: a person at a page where a session is open, after a sign-out in a different tab or after the 12 hours. The gateway ends the carried connection within 60 seconds when its own session ends, but not when only the session of the hub ends.
+
+Mitigation now: the end of the session of the gateway.
+
+The fix (not built): keep the token that opened a session with it, and end the session when that token is gone or expired, as `lapse` does for a subscription.
+
+State: Open. Found in the review HM-T32 on 2026-11-21.
+
+### SF-240: Behind the gateway each browser has the loopback address of the container. Low
+
+Requirements: LOG-005, D-2, D-8; task HM-T32.
+
+What it is: the hub takes the client address from the peer of the connection (`crates/hub/src/fleet/access/identity.rs:343-349`). Behind the gateway that peer is the proxy of the container, so each browser of the account, each program of the container and each call of the pool has the same loopback address.
+
+Where: `crates/hub/src/fleet/access/identity.rs`; the tickets of sessions compare that address (`fleet/sessions/files/opening.rs:47`, `fleet/sessions/live.rs:264`).
+
+Effect, and who can cause it: no one gets in by it. The audit trail of a hosted hub names no browser, and the binding of the ticket of a session to the address of its client adds nothing behind the gateway: a ticket can be used from a different browser of the same account in its 30 seconds. The ticket stays one use and short.
+
+Mitigation now: the gateway removes each header that names an address, so no browser can write one.
+
+The fix (not built): the pool turns on the PROXY protocol on the proxy of the gateway, and the hub reads the address from it on that listener only; or the design says that the binding is void behind the gateway.
+
+State: Open. Found in the review HM-T32 on 2026-11-21.
+
+### What gates the opening to other people (HMD-067)
+
+On the side of this repository, no entry of this review is of the class "must correct" on its own. Before a person other than the operator uses `hub.anima.ing`: SF-238 must be merged and in the image of the hub; the operator decides SF-239 (it is the reading of "30 minutes with no request" in HMD-062) and SF-236 (HMD-062 asks that the account page ends a session; today the hub token outlives that end). The findings of the gateway, which are recorded in the private repository, gate the opening too.
+### SF-251: A command, an entrypoint or a health check could run a shell, a download or a variable, and an exception applied to each service. Low
+
+Requirements: HOST-047, HOST-049, tasks H36 and H39; R-300.
+
+What it is: (1) The static test did not read `command`, `entrypoint` or the test of `healthcheck`. A recipe could set `DOCKER_MODS` there, or run `sh -c "curl … | sh"`, and `${VAR}` was permitted in `command`, `entrypoint` and `hostname`, so a value of the install changed what runs. A secret written in a word of a command was not refused. (2) Once an entry named `init-capabilities`, each service of the file could keep the five capabilities of the init.
+
+Where: `crates/catalogue/src/privileges.rs`, `crates/catalogue/src/file.rs`, `crates/catalogue/src/example.rs`.
+
+Effect, and who can cause it: The author of a recipe, or the data of a publisher that the generator copies. Effect: code that no digest names runs at the start, or a service that needs no init keeps the capabilities of one.
+
+Mitigation now: `$` in `command`, `entrypoint` and `hostname` is `variable_not_permitted`. An `entrypoint` is refused (`entrypoint`), and a `command` or a health check that runs a shell (`sh`, `bash`, `ash`, `dash`, `zsh`, `busybox`, `env`, `-c`, the forms `CMD-SHELL` and one text) is refused (`shell_command`), unless the entry names the exception `reviewed-command` for that service; a generated entry (with `origin`) that names it is refused (`generated_exception`). `DOCKER_MODS`, `INSTALL_PACKAGES` and `INSTALL_PIP_PACKAGES` in a word of a command are `image_mods` in each case. A word that gives a value to a secret name (`--password=x`, `--token x`, `API_KEY=x`) is `secret_in_file`. Each exception is now `{"exception": …, "services": […]}` and applies only to the services that it names; a named service that does not use it is `exception_not_needed`. The health checks of PostgreSQL and of the database of Dawarich are now of the form `CMD`; Dawarich names `reviewed-command` for its services `app` and `sidekiq`. Tests: `crates/catalogue/src/tests/commands.rs`, `crates/catalogue/src/tests/privileges.rs`.
+
+State: Open (built in `cb5098bb`). The words of a command are read as words: a program that a recipe starts can still run a shell of its own, which only the test on a machine shows (task H37). Found by a separate reviewer on 2026-11-21.
+
+### SF-252: The hub read none of the class, the origin and the optional parts of an entry; the form took any image name; a recipe could publish a port of Anima; an interpreter with inline code passed the shell check. Medium
+
+Requirements: HOST-047, HOST-049, tasks H38 and H39; OD-HOST-50, OD-HOST-54; R-234, R-247.
+
+What it is: A separate review of the form of LinuxServer.io on the branch `hosted/catalogue-linuxserver` (2026-11-21) found four points. (M1) The hub (`crates/hub/src/work/catalogue/`) read none of the fields `class`, `origin` and `optional`: an API key or an agent could ask for the install of a shell, and a generated entry needed no more than a tested one. (L1) The form (`crates/catalogue/src/linuxserver/plan.rs`) took the raw name of an image of the fleet list, which reaches the `image:` line and a comment of the Compose file. (L2) code-server published 8443 on the machine, the port of the hub of Anima; the rule "below 1024, add 8000" also makes 443 into 8443 (heimdall, nextcloud). (L3) The shell check (`crates/catalogue/src/privileges/commands.rs`) let `perl -e`, `node -e`, `ruby -e` and `php -r` through.
+
+Effect, and who can cause it: (M1) an API key or an agent installs an entry whose user is root in a container, or a generated entry that no person confirmed, when task H6 exists. (L1) the data of the publisher writes keys into the Compose file. (L2) the application takes the port of the hub, or the hub takes its port. (L3) a recipe runs any text with no `reviewed-command` exception.
+
+Mitigation now: (M1) `install()` gives, before the refusal of task H6, `SHELL_NEEDS_PERSON` for an entry of the class shell unless the request is a person signed in to the client (a login or a browser token whose request is not an agent), and `GENERATED_NEEDS_DIGEST` for an entry with `origin` unless the request names the digest of each of its images (`installCatalogueEntry(digest:)`, `anima catalogue install --digest`, the MCP argument `digest`). The entry gives `class`, `tier`, `origin`, `streams`, `optionalParts` and `digests` in K1, `anima catalogue list` and `show` and the MCP tools. The hub does not record on a token that its sign-in used a second factor; the sign-in asks for it when one is enrolled. (L1) the form refuses an image name that is not `[a-z0-9-]+` (`name_not_permitted`). (L2) `catalogue::ANIMA_PORTS` (4822, 8443): the form moves such a port of the machine to the next port (8444), and the static test refuses a published port of Anima (`anima_port_published`); code-server, heimdall and nextcloud publish 8444. (L3) an interpreter (`perl`, `node`, `python`, `ruby`, `php`, with a version suffix) followed by its inline-code option (a short cluster with `e`, `E`, `p`, `c` or `r`, `--eval`, `--print`) is a shell (`shell_command`). Tests: `crates/hub/src/work/catalogue/tests.rs`, `crates/hub/tests/it/catalogue.rs`, `crates/catalogue/src/tests/linuxserver.rs`, `crates/catalogue/src/tests/commands.rs`, `crates/anima-cli/tests/it/catalogue.rs`.
+
+State: Open (built in `30019f90`). The install is still refused for each entry until task H6. Found by a separate reviewer on 2026-11-21. A second read of `30019f90` found the gaps SF-253 (M1) and SF-254 (L2, L3); the mitigation of M1 above is changed by SF-253.
+
+### SF-255: A new or changed generated entry is merged with no named person who read it. Medium
+
+Requirements: HOST-049, task H39; SF-244.
+
+What it is: A process point. The generator writes new entries in `crates/catalogue/entries/`, and a branch with them can merge with no named person who read each entry. The rule of SF-244 (a named reviewer reads each change of the generator before the merge) is not enforced by a gate.
+
+Effect, and who can cause it: The data of the publisher, or a fault of the generator, puts an entry into the catalogue that no person read.
+
+Correction (2026-11-21): the first build of this mitigation (`1538959f`) wrote in all ten generated entries that the security reviewer agent of the overnight session read them on 2026-11-21. That record was false: the reviewer read code-server in full and only looked at the ports of qbittorrent and searched jellyfin. The record is removed, and no agent is named as a reviewer.
+
+Mitigation now (OD-HOST-55, made overnight, not yet confirmed by the operator): each generated entry gives its review state in `reviewed`: `{"state": "not-reviewed"}`, or `{"state": "reviewed", "by": <the name of a person>, "on": <the day>}`. The generator writes `not-reviewed` for a new entry and keeps the state when it changes only the digest or the version. The static test refuses a generated entry with no state (`not_reviewed`), and a review with a day that is not a date (`date_not_permitted`) or whose `by` is empty or names an agent, a session or a program (`reviewer_not_permitted`: the words agent, claude, bot, automated, session, orchestrator and subagent in any case, a run of 12 or more hexadecimal digits, and `local_`). The hub gives `reviewedBy` and `reviewedOn`, null for `not-reviewed` (K1, `anima catalogue show`, the MCP tool). The client shows the mark "Not reviewed" in the row and in the head of the description, and the line "No person has read the settings of this entry. Read them before you install it." All ten entries are `not-reviewed`: a person still has to read them ([HT-115](need-human-testing.md)). Not built: a merge rule that needs a named person who reviewed each new or changed entry. That is a setting of the repository on GitHub, which this session cannot change; it stays open for the operator. Tests: `crates/catalogue/src/tests/reviewed.rs`, `crates/catalogue/src/tests/generator.rs`, `crates/hub/tests/it/catalogue.rs`, `apps/client/src/lib/catalogue/entry.test.ts`, `apps/client/src/lib/catalogue/view.svelte.test.ts`.
+
+State: Open (built in `d8efdad0`). Found by a separate reviewer on 2026-11-21.
+
+### SF-253: The shell gate trusted the header that names an agent, and the digest gate was friction only. Medium
+
+Requirements: HOST-047, task H39; OD-HOST-50, OD-HOST-54, OD-HOST-56, OD-HOST-57; SF-252.
+
+What it is: A second read of `30019f90` (2026-11-21) found two gaps in M1 of SF-252. (1) The shell gate took a login token whose request did not send the header `Anima-Actor: agent` as a person; the header is the claim of the client, so an agent that holds the stored login token of the `anima` command passes it. (2) The digest gate asks for the digest of the image, which is public: it adds friction, not a check.
+
+Effect, and who can cause it: An agent with the login token of the command installs a shell, or a generated entry that no test on a machine ran, when task H6 exists.
+
+Mitigation now (OD-HOST-56 and OD-HOST-57, made overnight, not yet confirmed by the operator): a shell is installed only with a browser token of a person (`Identity::is_person_in_browser`: the Anima app in a web browser, with no header that names an agent). A login token, an API key and an agent get `SHELL_NEEDS_PERSON`, whose text says to install from the Anima app in a web browser. A generated entry from anything but a browser token needs a passed test on a machine with the digests of its images (`last_test` gives the digests; a pass with other digests does not count), else `GENERATED_NOT_TESTED` (K1, the CLI and the MCP tool). Each request still names the digest (`GENERATED_NEEDS_DIGEST`). The desktop app signs in with a login token, so it is refused too until it has a token of its own. Tests: `crates/hub/src/work/catalogue/tests.rs`, `crates/hub/tests/it/catalogue.rs` (a login token and an API key), `crates/hub/tests/it/browser/catalogue.rs` (a browser token, and a browser token with the header of an agent).
+
+State: Open (built in `1538959f`). The install is still refused for each entry until task H6. Found by a separate reviewer on 2026-11-21.
+
+### SF-254: The ports of Anima missed the link, two entries published one port, more interpreters ran inline code, and a new digest could keep a passed test. Low
+
+Requirements: HOST-047, HOST-049, task H39; OD-HOST-58; SF-252.
+
+What it is: A second read of `30019f90` (2026-11-21). (L2) `catalogue::ANIMA_PORTS` had 4822 and 8443, not the ports of the link (41641, 3478) that the routes of task H21 refuse; heimdall and nextcloud both published 8444, and other entries shared 8080 and 8083. (L3) the shell check let `nodejs`, `pypy`, `lua -e`, `deno eval`, `bun -e` and awk with a program that calls `system` through.
+
+Effect, and who can cause it: (L2) an application takes a port of the link, or two entries cannot run on one machine. (L3) a recipe runs any text with no `reviewed-command` exception.
+
+Mitigation now (OD-HOST-58, made overnight, not yet confirmed by the operator): (L2) `ANIMA_PORTS` is 4822, 8443, 41641 and 3478, the same list as the routes of task H21 on the branch `hosted/apps-h21`; the form moves a port of the machine that a different recipe takes to the next free port (the generator gives each recipe the ports of the others); calibre-web publishes 8084, heimdall 8081 and 8445, nextcloud 8446 and qbittorrent 8082; a test refuses two shipped recipes that publish the same port. (L3) the interpreters `nodejs`, `bun` (`-e`, `-p`, `--eval`, `--print`), `pypy` (`-c`) and `lua` (`-e`), `deno eval`, and `awk`, `gawk`, `mawk` and `nawk` with a program that holds `system`, `getline` or a pipe `|` are a shell (`shell_command`). (Pin) a passed test on a machine stays only for the digest that it ran with: when the generator pins a new digest, the entry is `not-tested` again, and a pin update may change the last test only to `not-tested`. Not built: one list in one crate for the hub routes and the catalogue, because the routes are not on this branch; when both are on one branch, the routes use `catalogue::ANIMA_PORTS`. Tests: `crates/catalogue/src/tests/ports.rs`, `crates/catalogue/src/tests/commands.rs`, `crates/catalogue/src/tests/linuxserver.rs`, `crates/catalogue/src/tests/generator.rs`.
+
+State: Open (built in `d8efdad0`). Found by a separate reviewer on 2026-11-21.
+
+## The security read of the catalogue of LinuxServer.io and the streams of the hub (2026-11-20)
+
+A separate reviewer read Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md) on 2026-11-20. No code exists for them. The text is corrected in the same branch.
+
+### SF-243: A pinned image still downloads code at its start. High
+
+Requirements: HOST-049, HOST-050; R-319.
+
+What it is: The init of LinuxServer.io reads `DOCKER_MODS` and downloads and runs other images; `INSTALL_PACKAGES` and `INSTALL_PIP_PACKAGES` install packages; some images download the application (Plex with `VERSION=latest`). This code is outside the pin and the test.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: A user variable, or data of the publisher that the generator copies, that names an image of an attacker. Effect: code of the attacker runs as root in the container.
+
+Mitigation now: Section 15.1 and 15.9: the text says that only the image is pinned; the generator and the applications program refuse those variables and each `VERSION` but `docker` or a fixed version; the machine test fails on an outbound connection not on its list.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-244: No person reads the changes of the generator before the merge. High
+
+Requirements: HOST-049, HOST-050; R-319.
+
+What it is: The merge train lands each branch whose gates passed, with no approval of a person, and about 200 changed digests cannot be judged by reading them.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: A publisher that is taken over, or a change of the metadata at `api.linuxserver.io`, adds a port, a variable or a volume. Effect: the change lands on `dev` with nobody reading it.
+
+Mitigation now: Section 15.4 and 15.9: the generator fails for each change that is not a digest or a version; such a change needs a named reviewer and the merge rule refuses the branch without one; the digest comes from the registry; a safe reader; a token that pushes only its own branch.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-250: Tier 2 goes beyond the rulings, and the tier is checked only at the hub. High
+
+Requirements: HOST-049, HOST-050; R-319.
+
+What it is: R-300 keeps "each entry is tested"; tier 2 ships entries that are not tested. The applications program cannot tell a tier, and a new pin puts an entry back in tier 2. "Tested" says nothing of default credentials.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: An agent builds tier 2 as if allowed; an agent installs a tier-1 entry that is a shell. Effect: an entry that is not tested, or a shell, installed with no person.
+
+Mitigation now: Section 15.1, 15.4 and OD-HOST-50: tier 2 needs a ruling of its own; an install by an API key or an agent names the digest, and the hub refuses unless that digest passed; the screen says that tested is not a security review.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-247: Entries that are a shell: desktops, code editors, SSH, with no password. High
+
+Requirements: HOST-049, HOST-050; R-319.
+
+What it is: 94 desktop images give the user `abc` `sudo` with no password; `code-server`, `openssh-server` (port 2222), `rdesktop` and pages with no sign-in are the same class. The mark came from data of the publisher.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: Each node of the network of Anima, or of the local network with "Open to the network", reaches a root shell in a container. Effect: a foothold on the machine's networks.
+
+Mitigation now: Section 15.7: the class `shell` from a fixed list of the repository; a credential that the machine makes is required; no public route or stream; a person installs it; OD-HOST-54 asks whether a private route is permitted.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-245: How a private route is limited was not stated. High
+
+Requirements: HOST-049, HOST-050; R-319.
+
+What it is: The text said "private (only his devices)" with no rule of the listener, and the network of Anima also holds each machine and its containers.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: A container on a machine of the network reaches a private route. Effect: a route that he thought private is open to each container.
+
+Mitigation now: Section 16.7: a private route listens only on the address of the hub on the network of Anima and the proxy checks the interface; never in the table of the door; private means each node, containers included; the same rights as a public route.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-248: Streams: a false UDP rule, public TCP of services that trust localhost, an open list of ports, open redirects. Medium
+
+Requirements: HOST-049, HOST-050; R-319.
+
+What it is: The UDP rule never fired for a false source. A public stream to a database or Redis that expects localhost trust; the application sees the address of the hub. The list of ports that a stream may not use was open. A redirect on a name that Anima gives is an open redirect.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: An attacker reflects UDP at a victim, reaches a database, or uses a redirect for phishing.
+
+Mitigation now: Section 16.2 and 16.4: answers bounded by received bytes until a source proves it gets them, a flow limit and idle time, no public syslog; a public stream only for a port marked `stream-public`; a range set by the operator, a fixed list of refused ports, a bind test; a redirect only to `https://` on a proven name.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-246: Images start as root with nothing added to contain them; the rule of `shm_size`. Medium
+
+Requirements: HOST-049, HOST-050; R-319.
+
+What it is: `PUID=0` runs the application as root; `no-new-privileges` is optional; the default capabilities stay. `shm_size` gives no right only while `ipc` stays refused.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: A recipe or a variable with `PUID=0`. Effect: an application that runs as root.
+
+Mitigation now: Section 15.8 and 15.9: `PUID` or `PGID` 0 is refused; `no-new-privileges:true` and four capabilities dropped, with exceptions by name; `shm_size` in the form of Section 4.5 with `ipc` refused.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-249: The machine tests run images that are not trusted. Medium
+
+Requirements: HOST-049, HOST-050; R-319.
+
+What it is: The machine tests of task H37 start about 200 images of a different publisher.
+
+Where: Sections 15 and 16 of [hosted-applications-stage-2.md](proposals/hosted-applications-stage-2.md).
+
+Effect, and who can cause it: An image that a publisher lost control of. Effect: a foothold on the test machine and its networks.
+
+Mitigation now: OD-HOST-53: the test machine is not on the network of Anima or his local network, its outbound traffic is recorded, and it is wiped after each run.
+
+State: Open. The text is corrected on the branch `hosted/stage3-rulings`; no code exists. Found by a separate reviewer on 2026-11-20.
+
+### SF-335: A fetch of an operational key during the removal of its device gives the value, and the removal does not name the key. Low
+
+Requirements: R-147; K-E5 Section 2.1 ("After removal").
+
+What it is: The fetch checked the consumer row of the device with `EXISTS` and did not lock it. A removal of the device that ran during the fetch deleted the row before the fetch recorded it, so the list of the keys that the server had did not name the key, and the fetch still gave the value.
+
+Where: `crates/hub/src/fleet/credentials/operational/store.rs` (`fetchable`), `operational/store/consumers.rs` (`mark_fetched`, `delete_of_device`).
+
+Effect, and who can cause it: A device that fetches a key for the first time while the operator removes it. Effect: the server holds the key, and the removal does not tell the operator to revoke it at the provider. The audit entry of the fetch exists.
+
+Mitigation now: `fetchable` holds the consumer rows of the device shared (`FOR SHARE OF k, c`), so the removal waits for the fetch to commit and then names the key.
+
+State: Open. The correction is built on the branch `engine/e0-6-security-review`; no test makes the race. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
+
+### SF-338: `anima-daemon uninstall` keeps the key cache when the delete of the token fails. Low
+
+Requirements: R-147; K-E5 Section 2.1.
+
+What it is: `uninstall` deleted the token first and stopped at its error, so the key cache stayed. On macOS a delete in the Keychain can wait for the person (R-322).
+
+Where: `crates/daemon/src/main.rs` (`uninstall`).
+
+Effect, and who can cause it: A failed or waiting delete of the token during `anima-daemon uninstall`. Effect: `anima-daemon key read` gives the values for up to 7 days, and no daemon runs to delete them.
+
+Mitigation now: `uninstall` deletes the key cache first, and also when the delete of the token fails.
+
+State: Open. The correction is built on the branch `engine/e0-6-security-review`. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
+
+### SF-336: `anima-daemon key read` can give a dropped version while a save or a delete in the Keychain waits for the person. Low
+
+Requirements: R-147; K-E5 Section 2.1.
+
+What it is: The daemon drops a revoked or replaced version in memory, but the stored record stays until a save or a delete in the Keychain succeeds. `key read` is a different process and reads the stored record.
+
+Where: `crates/daemon/src/keys/keeper.rs` (`follow`, `save`, `forget`), `crates/daemon/src/keys.rs` (`key read`).
+
+Effect, and who can cause it: On macOS, before the person allows the Keychain access, the hub revokes or rotates a key. Effect: a workload that runs `anima-daemon key read` gets the old value. The 7-day rule ends it. Linux is not affected.
+
+Mitigation now: none apart from the 7-day rule. The live check HT-035 covers the Keychain.
+
+State: Open. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
+
+### SF-334: An API key can read a vault key offer and can replace or delete a sealed record. Medium
+
+Requirements: VLT-001, VLT-002; K-E5 Section 3.
+
+What it is: `offerVaultKey`, `vaultKeyOffer`, `storeSealedRecord` and `deleteSealedRecord` take each signed-in token. Only `recordReveal` asks for a person (a login or a browser token, and no declared AI agent).
+
+Where: `crates/hub/src/engine/sealed_records/graphql.rs`; `crates/hub/src/fleet/access/guard/refused.rs` (`API_KEY_REFUSED_ROOTS`).
+
+Effect, and who can cause it: A holder of an API key, also a key made for an AI agent. Effect: it can read an offer and so stop the addition of a client (the bytes stay sealed), or replace or delete the one sealed copy of a record on the hub.
+
+Mitigation now: each change writes an audit entry that names the key.
+
+State: Open. The correction (a person only, on the four fields) waits until `recordReveal` is on `dev`, because it changes the same file. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
+
+### SF-337: A reveal with a valid new code passes for a login token that was deleted during the request. Low
+
+Requirements: VLT-005; K-E5 Section 3.
+
+What it is: The check of the second factor reads no row for a deleted token, and then records the code on no row and passes.
+
+Where: `crates/hub/src/fleet/access/recheck.rs`, `access/store/tokens.rs` (`lock_token_totp`).
+
+Effect, and who can cause it: A sign-out of the login while its reveal runs. Effect: the reveal passes, but only with a valid new TOTP code.
+
+Mitigation now: the reveal needs the code.
+
+State: Open. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
+
+### SF-333: A login token with the declaration of an AI agent can change and grant operational keys. Low
+
+Requirements: R-147; K-E5 Section 2.2.
+
+What it is: The changes of the operational keys refuse an API key but not a request that declares an AI agent. `recordReveal` refuses such a request.
+
+Where: `crates/hub/src/fleet/credentials/graphql.rs`; `crates/hub/src/fleet/access/guard.rs` (`operator_only`).
+
+Effect, and who can cause it: An AI agent that holds the login token of the operator and declares itself. Effect: it can grant a key to a server. The declaration is voluntary, so this is a second defence only; the contract does not ask for it.
+
+Mitigation now: a grant writes an audit entry that names the agent.
+
+State: Open. Found by the security review of the vault (E0-6 T4, ENG-011), a separate reviewer, on 2026-11-21. The review accepts the vault: no finding blocks it.
 
 ## Closed
 

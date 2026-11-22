@@ -1,0 +1,82 @@
+# The hub image, built on a runner of GitHub, so that no computer of the operator needs Docker
+# (deploy/README.md, "Build the hub image on GitHub"). A push of a branch `image/<anything>`
+# builds `deploy/hub/Dockerfile` for linux/amd64 at the commit of that push, saves the image
+# with zstd and keeps the file as an artifact of the run for 3 days. The summary of the run
+# gives the commit, the image ID and the SHA-256 of the file.
+#
+# It publishes nothing: no registry, no secret, no tag. The file is only on GitHub, for the
+# people who can read the runs of this repository. The server steps are done by hand.
+name: hub-image
+
+on:
+  push:
+    branches:
+      - "image/**"
+
+concurrency:
+  group: hub-image-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    env:
+      SHA: ${{ github.sha }}
+      BRANCH: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the hub image for linux/amd64
+        run: |
+          set -eu
+          short=$(printf '%s' "$SHA" | cut -c1-9)
+          echo "SHORT=$short" >> "$GITHUB_ENV"
+          df -h / | tail -1
+          docker buildx build --platform linux/amd64 -f deploy/hub/Dockerfile \
+            --label "org.opencontainers.image.revision=$SHA" \
+            -t "anima-hub:$short" --load .
+          df -h / | tail -1
+      - name: Save the image and record its hashes
+        run: |
+          set -eu
+          mkdir out
+          file="anima-hub-$SHORT.tar.zst"
+          docker save "anima-hub:$SHORT" | zstd -T0 -10 -q -o "out/$file"
+          image_id=$(docker image inspect --format '{{.Id}}' "anima-hub:$SHORT")
+          revision=$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "anima-hub:$SHORT")
+          if [ "$revision" != "$SHA" ]; then
+            echo "::error::The image names the commit $revision, not $SHA."
+            exit 1
+          fi
+          (cd out && sha256sum "$file" > "$file.sha256")
+          file_sha256=$(cut -d ' ' -f 1 "out/$file.sha256")
+          size=$(du -h "out/$file" | cut -f 1)
+          {
+            echo "## Hub image"
+            echo
+            echo "| Item | Value |"
+            echo "| --- | --- |"
+            echo "| Branch | \`$BRANCH\` |"
+            echo "| Commit | \`$SHA\` |"
+            echo "| Tag in the file | \`anima-hub:$SHORT\` |"
+            echo "| Image ID | \`$image_id\` |"
+            echo "| File | \`$file\` ($size) |"
+            echo "| SHA-256 of the file | \`$file_sha256\` |"
+            echo
+            echo "The artifact \`hub-image\` holds the file and \`$file.sha256\` for 3 days."
+            echo "Download, check, load: deploy/README.md, \"Build the hub image on GitHub\"."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: hub-image
+          path: out/
+          if-no-files-found: error
+          retention-days: 3
+          # The file is compressed already.
+          compression-level: 0

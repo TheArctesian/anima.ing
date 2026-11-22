@@ -1,5 +1,10 @@
 //! The task that reads the session files of the AI agent programs at start and every 15
-//! minutes and hands the changed session days to the pusher (AIS-018, AIS-019, AIS-024).
+//! minutes and hands the changed session days to the pusher (AIS-018, AIS-019, AIS-024), with
+//! the accounts that the thread runner of this computer has, unless the operator's setting
+//! `sendAccounts` is false (AIS-022, THR-149: on by default).
+
+#[cfg(unix)]
+mod runner;
 
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
@@ -60,6 +65,7 @@ pub(super) async fn count(
             let silent = UsageReport {
                 state,
                 session_days: Vec::new(),
+                accounts: None,
             };
             events.send(Event::AgentUsage(silent)).await.ok();
             return;
@@ -81,9 +87,19 @@ pub(super) async fn count(
             return;
         };
         sessions = back;
+        #[cfg(unix)]
+        // Turned off, the daemon reports no account, so the hub deletes what it had (THR-149).
+        let accounts = if sessions.sends_accounts() {
+            runner::accounts(|name| std::env::var(name).ok()).await
+        } else {
+            Some(Vec::new())
+        };
+        #[cfg(not(unix))]
+        let accounts = None;
         let report = UsageReport {
             state: UsageState::Reading,
             session_days: watch.changed(read),
+            accounts,
         };
         if events.send(Event::AgentUsage(report)).await.is_err() {
             return;
@@ -104,6 +120,7 @@ mod tests {
         }
         let env = |name: &str| match name {
             "HOME" => Some("/home/me".to_owned()),
+            "USERPROFILE" => Some("C:/Users/me".to_owned()),
             "ANIMA_DAEMON_HOME" => daemon_home.map(str::to_owned),
             _ => None,
         };
@@ -123,7 +140,27 @@ mod tests {
         let misspelt = decided(Some(r#"{"excludeFolders":["/x"]}"#), None);
         assert!(matches!(misspelt, Counting::Silent(UsageState::TurnedOff)));
         assert!(matches!(decided(None, None), Counting::Reading(_)));
-        let excluded = decided(Some(r#"{"excludedFolders":["/x"]}"#), None);
+        let excluded = decided(
+            Some(if cfg!(windows) {
+                r#"{"excludedFolders":["C:/x"]}"#
+            } else {
+                r#"{"excludedFolders":["/x"]}"#
+            }),
+            None,
+        );
         assert!(matches!(excluded, Counting::Reading(_)));
+    }
+
+    /// THR-149: as in T3 Code, a daemon sends the accounts with no switch to turn on; the
+    /// operator can turn it off with `"sendAccounts": false`.
+    #[test]
+    fn thr_149_a_default_daemon_sends_accounts() {
+        let sends = |settings| match decided(settings, None) {
+            Counting::Reading(sessions) => sessions.sends_accounts(),
+            Counting::Silent(_) => panic!("reading"),
+        };
+        assert!(sends(None), "no settings file");
+        assert!(sends(Some("{}")), "an empty settings file");
+        assert!(!sends(Some(r#"{"sendAccounts":false}"#)), "turned off");
     }
 }

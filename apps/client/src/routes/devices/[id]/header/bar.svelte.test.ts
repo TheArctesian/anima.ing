@@ -3,7 +3,7 @@ import { createRawSnippet, flushSync, mount, tick, unmount } from 'svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DeviceCheck } from '$lib/checks/api';
 import { endTransitionsAtOnce } from '$lib/devices/transitions.fixture';
-import { warningLines } from '$lib/devices/actions/actions';
+import { WARNING_MEANING, warningLines } from '$lib/devices/actions/actions';
 import { check, device } from '../page.fixture.svelte';
 import DeviceBar from './DeviceBar.svelte';
 import type { HeaderDevice } from './header';
@@ -55,7 +55,7 @@ describe('DeviceBar (D16, DEV-020, DEV-021)', () => {
     const order = [...(header?.querySelectorAll('a, h1, .status, .mono, button, [role="tablist"]') ?? [])].map((node) =>
       node instanceof HTMLButtonElement ? `button:${node.getAttribute('aria-label') ?? words(node)}` : words(node) || node.getAttribute('role'),
     );
-    expect(order).toEqual(['Devices', 'nas', 'Up', 'nas.home.arpa', '192.168.1.20', 'button:SSH to nas', 'button:More ways to connect to nas', 'button:Edit', 'tablist']);
+    expect(order).toEqual(['Devices', 'nas', 'Up', 'nas.home.arpa', 'button:Copy address', '192.168.1.20', 'button:SSH to nas', 'button:More ways to connect to nas', 'button:Edit', 'tablist']);
   });
 
   it('DEV-021: the name has its full text as a tooltip', () => {
@@ -153,6 +153,10 @@ describe('DeviceBar Web, Edit and badge (D-4, RA-020)', () => {
     show(device({ accessWarnings: ['IGNORED_CERTIFICATE', 'UNENCRYPTED_VNC'] }));
     const badge = document.querySelector<HTMLElement>('.badge');
     expect(words(badge)).toBe('Warning');
-    expect(badge?.title.split('\n')).toEqual(warningLines(['IGNORED_CERTIFICATE', 'UNENCRYPTED_VNC']));
+    const expected = warningLines(['IGNORED_CERTIFICATE', 'UNENCRYPTED_VNC']);
+    labelled(`Warning: ${WARNING_MEANING} ${expected.join(' ')}`).click();
+    flushSync();
+    const lines = [...document.querySelectorAll('[role="status"] li')].map((line) => line.textContent);
+    expect(lines).toEqual(expected);
   });
 });

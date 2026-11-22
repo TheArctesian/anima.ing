@@ -7,9 +7,11 @@
 //! (LOG-005, LOG-007).
 
 mod change;
+mod computer;
 mod hosted;
 
 use change::Change;
+pub use computer::{ComputerInstall, ComputerMutation};
 pub use hosted::{HostedDeviceInvite, HostedMutation};
 
 use std::sync::Arc;

@@ -12,8 +12,17 @@ use super::unit_file::{self, LABEL, Launch, SYSTEMD_UNIT};
 use crate::Folders;
 use crate::members::{Carried, LOCAL_HUB};
 
-/// `launchctl bootstrap` right after `bootout` can fail once.
-const BOOTSTRAP_RETRY: Duration = Duration::from_secs(1);
+/// The pauses before each further try of `launchctl bootstrap`: right after `bootout` launchd
+/// answers an input/output error (5) for some seconds while it still takes the old service out
+/// (seen twice in a row for the daemon on 2026-11-21). Six tries over 15 s in all, as the daemon's
+/// own install.
+const BOOTSTRAP_RETRIES: &[Duration] = &[
+    Duration::from_secs(1),
+    Duration::from_secs(2),
+    Duration::from_secs(3),
+    Duration::from_secs(4),
+    Duration::from_secs(5),
+];
 
 /// Whose unit, and for which hub.
 #[derive(Debug, Clone)]
@@ -34,6 +43,10 @@ pub struct Request<'a> {
 
 impl Request<'_> {
     pub(super) fn unit_file(&self) -> PathBuf {
+        #[cfg(windows)]
+        if self.platform == Platform::Windows {
+            return self.folders.root().join("task.xml");
+        }
         unit_file::file(self.platform, self.home)
     }
 
@@ -56,6 +69,8 @@ impl Request<'_> {
         match self.platform {
             Platform::MacOs => Step::launchctl(&["bootout", &format!("gui/{}/{LABEL}", self.uid)]),
             Platform::Linux => Step::systemctl(&["stop", SYSTEMD_UNIT]),
+            #[cfg(windows)]
+            Platform::Windows => self.task("/End").stopping(self.folders.clone()),
         }
         .may_fail()
     }
@@ -68,7 +83,19 @@ impl Request<'_> {
                     &format!("gui/{}", self.uid),
                     &file.to_string_lossy(),
                 ])
-                .retried_after(BOOTSTRAP_RETRY),
+                .retried_after(BOOTSTRAP_RETRIES),
+            ],
+            #[cfg(windows)]
+            Platform::Windows => vec![
+                Step::task(&[
+                    "/Create",
+                    "/TN",
+                    &self.task_name(),
+                    "/XML",
+                    &file.to_string_lossy(),
+                    "/F",
+                ]),
+                self.task("/Run"),
             ],
             Platform::Linux => vec![
                 Step::systemctl(&["daemon-reload"]),
@@ -88,6 +115,8 @@ impl Request<'_> {
         match self.platform {
             Platform::MacOs => self.start(file),
             Platform::Linux => vec![Step::systemctl(&["start", SYSTEMD_UNIT])],
+            #[cfg(windows)]
+            Platform::Windows => vec![self.task("/Run")],
         }
     }
 
@@ -96,6 +125,20 @@ impl Request<'_> {
         match self.platform {
             Platform::MacOs => self.stop(),
             Platform::Linux => Step::systemctl(&["disable", "--now", SYSTEMD_UNIT]).may_fail(),
+            #[cfg(windows)]
+            Platform::Windows => Step::task(&["/Delete", "/TN", &self.task_name(), "/F"])
+                .stopping(self.folders.clone())
+                .may_fail(),
         }
+    }
+}
+
+#[cfg(windows)]
+impl Request<'_> {
+    fn task_name(&self) -> String {
+        super::windows::task_name(self.folders.root())
+    }
+    fn task(&self, action: &str) -> Step {
+        Step::task(&[action, "/TN", &self.task_name()])
     }
 }

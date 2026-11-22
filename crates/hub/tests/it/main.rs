@@ -4,7 +4,9 @@ mod api_keys;
 mod bearer;
 mod browser;
 mod builds;
+mod catalogue;
 mod checks;
+mod compute;
 mod containers;
 mod contract;
 mod credentials;
@@ -20,6 +22,8 @@ mod jobs;
 mod link;
 mod links;
 mod listening;
+#[path = "transport/local_socket.rs"]
+mod local_socket;
 mod locations;
 mod login;
 mod logs;

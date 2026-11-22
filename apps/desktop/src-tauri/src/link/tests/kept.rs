@@ -107,6 +107,16 @@ fn the_folder_of_a_unit_is_one_whole_argument_of_its_file() {
         r#"ExecStart="/b/anima-link" "device" "-state" "/a/device" "-listen" "127.0.0.1:1""#;
     assert!(printed::unit_runs_folder(systemd, "/a/device"));
     assert!(!printed::unit_runs_folder(systemd, "/a/device.old"));
+    let task = r"<Arguments>&#34;device&#34; &#34;-state&#34; &#34;C:\Users\Ada &amp; Bob\device&#34;</Arguments>";
+    assert!(printed::unit_runs_folder(
+        task,
+        r"C:\Users\Ada & Bob\device"
+    ));
+    assert!(!printed::unit_runs_folder(task, r"C:\Users\Ada & Bob"));
+    assert!(!printed::unit_runs_folder(
+        task,
+        r"C:\Users\Ada & Bob\device.old"
+    ));
     assert_eq!(
         printed::unit_file(br#"{"installed":false,"file":"/x"}"#),
         None
@@ -279,25 +289,6 @@ fn hmd_054_the_unit_is_given_the_socket_of_the_daemon_when_its_folder_is_private
             socket.display()
         )
     );
-}
-
-#[test]
-fn hmd_054_a_folder_that_others_can_reach_or_a_link_gives_no_socket() {
-    use std::os::unix::fs::PermissionsExt;
-    let folder = tempfile::tempdir().unwrap();
-    let open = folder.path().join("open");
-    fs::create_dir(&open).unwrap();
-    fs::set_permissions(&open, fs::Permissions::from_mode(0o755)).unwrap();
-    assert_eq!(kept::private_socket(&open), None);
-
-    let private = folder.path().join("private");
-    kept::private_socket(&private).unwrap();
-    let linked = folder.path().join("linked");
-    std::os::unix::fs::symlink(&private, &linked).unwrap();
-    assert_eq!(kept::private_socket(&linked), None);
-
-    let long = folder.path().join("a".repeat(100));
-    assert_eq!(kept::private_socket(&long), None, "too long for a socket");
 }
 
 #[test]

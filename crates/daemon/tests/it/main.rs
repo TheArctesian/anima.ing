@@ -11,13 +11,22 @@ mod fake_hub;
 mod kit;
 #[cfg(target_os = "linux")]
 mod log;
+#[cfg(unix)]
+mod model_work;
+#[cfg(target_os = "linux")]
+mod old_origin;
+#[cfg(unix)]
+mod peer;
 #[cfg(target_os = "linux")]
 mod push;
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 mod readers;
 #[cfg(target_os = "linux")]
 mod renewal;
+#[cfg(unix)]
+mod threads;
 #[cfg(target_os = "linux")]
 mod token_store;
 mod transport;
+#[cfg(unix)]
 mod units;

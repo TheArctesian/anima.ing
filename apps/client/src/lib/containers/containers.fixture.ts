@@ -1,4 +1,5 @@
 import type { HubError, HubResult } from '$lib/hub/hub';
+import type { CatalogueEntry } from '$lib/catalogue/api';
 import type { Container, ContainerCalls, ContainerDetail, ContainerLog, ContainerNetwork, ContainerStorage, ImageUpdate } from './api';
 
 // Test support: containers in the hub's shape, and calls that answer with them and record what the screen asked.
@@ -83,12 +84,65 @@ export const UPDATES: readonly ImageUpdate[] = [
   update('c'.repeat(64), 'recorder', { state: 'NOT_KNOWN', reason: 'NO_LOCAL_DIGEST' }),
 ];
 
+const GENERATED = {
+  tier: 'GENERATED',
+  origin: { publisher: 'LinuxServer.io', read: '2026-11-17' },
+  reviewedBy: 'Ada Lovelace',
+  reviewedOn: '2026-11-21',
+  install: { refusal: 'GENERATED_NEEDS_DIGEST', reason: 'Anima did not test this entry: it is generated from the data of its publisher. To install it, a person confirms the digest of its image.', needsOpenToNetwork: false },
+} as const;
+
+/**
+ * Tasks H38 and H39: two tested entries and two generated ones (a shell that no one read, and one with a stream and an
+ * optional device).
+ */
+export const ENTRIES: readonly CatalogueEntry[] = [
+  entry('owntracks-recorder', 'OwnTracks Recorder', { lastMachineTest: '2026-11-20', tags: ['location'] }),
+  entry('postgresql', 'PostgreSQL', { kind: 'DATABASE', tags: ['database'] }),
+  entry('code-server', 'code-server', { ...GENERATED, class: 'SHELL', reviewedBy: null, reviewedOn: null, tags: ['linuxserver', 'programming'] }),
+  entry('jellyfin', 'jellyfin', {
+    ...GENERATED,
+    tags: ['linuxserver', 'media servers'],
+    streams: [{ port: 7359, protocols: ['tcp', 'udp'] }],
+    optionalParts: [{ kind: 'DEVICE', path: '/dev/dri', on: false, needsMachineSetting: true }],
+  }),
+];
+
+function entry(id: string, name: string, changes: Partial<CatalogueEntry>): CatalogueEntry {
+  return {
+    id,
+    name,
+    description: `${name} for the tests.`,
+    kind: 'APPLICATION',
+    version: '1.0.0',
+    author: 'Example',
+    tags: ['test'],
+    documentationUrl: 'https://example.org/docs',
+    marks: [],
+    networkPorts: [],
+    class: 'APPLICATION',
+    tier: 'TESTED',
+    origin: null,
+    reviewedBy: null,
+    reviewedOn: null,
+    streams: [],
+    optionalParts: [],
+    lastMachineTest: null,
+    pinned: '2026-11-20',
+    install: { refusal: 'INSTALL_NOT_BUILT', reason: 'The install needs task H6 of the hosted applications plan, which is not built. No machine was reached.', needsOpenToNetwork: false },
+    environmentVariables: ['SECRET_KEY', 'PORT'],
+    composeFile: 'services:\n  app:\n    image: example/app@sha256:0\n',
+    ...changes,
+  };
+}
+
 export interface FakeCalls extends ContainerCalls {
   /** Each read of details, in order: the container. */
   readonly detailsAsked: string[];
   storageAsked: number;
   networksAsked: number;
   updatesAsked: number;
+  entriesAsked: number;
   /** Each log read, in order: the container and the number of lines. */
   readonly logsAsked: [string, number][];
   listsAsked: number;
@@ -106,6 +160,7 @@ export function fakeCalls(containers: readonly Container[] = CONTAINERS): FakeCa
     storageAsked: 0,
     networksAsked: 0,
     updatesAsked: 0,
+    entriesAsked: 0,
     listsAsked: 0,
     fail: null,
     containers,
@@ -133,6 +188,10 @@ export function fakeCalls(containers: readonly Container[] = CONTAINERS): FakeCa
     updates: () => {
       calls.updatesAsked += 1;
       return answer(UPDATES);
+    },
+    entries: () => {
+      calls.entriesAsked += 1;
+      return answer(ENTRIES);
     },
   };
   return calls;

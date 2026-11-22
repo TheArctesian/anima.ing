@@ -42,6 +42,23 @@ fn met_019_the_systemd_units_parse_and_run_the_binary_with_run() {
     }
 }
 
+/// THR-113, HMD-055: a stop or a restart of the daemon (an update) stops only the daemon; the
+/// holder of the agent threads and the programs that it runs stay.
+#[test]
+fn thr_113_a_stop_of_either_systemd_unit_kills_only_the_daemon() {
+    for text in [SYSTEMD_USER, SYSTEMD_SYSTEM] {
+        let lines = unit(text);
+        assert!(
+            lines
+                .iter()
+                .any(|(section, key, value)| section == "Service"
+                    && key == "KillMode"
+                    && value == "process"),
+            "{text}"
+        );
+    }
+}
+
 #[test]
 fn met_019_the_system_unit_is_sandboxed_and_listens_on_nothing() {
     let lines = unit(SYSTEMD_SYSTEM);
@@ -82,6 +99,11 @@ fn met_019_the_user_unit_keeps_the_basic_limits_and_the_network_families() {
     assert_eq!(value(&lines, "ProtectHome"), Some("read-only"));
     assert_eq!(value(&lines, "ReadWritePaths"), Some("%E/anima-daemon"));
     assert_eq!(value(&lines, "SocketBindDeny"), Some("any"));
+}
+
+#[test]
+fn the_user_unit_delegates_its_own_cgroup_for_the_model_servers() {
+    assert_eq!(value(&unit(SYSTEMD_USER), "Delegate"), Some("yes"));
 }
 
 #[test]

@@ -13,8 +13,8 @@ use super::{
     remote::{DeviceRdp, DeviceVnc},
     ssh::DeviceSsh,
     standing::{
-        ChecksOf, DaemonVersionOf, GpusOf, ReadingsOf, ResolvedIpOf, StaleOf, StatusOf,
-        SuggestionsOf, UptimeOf, WebInterfacesOf,
+        BatteriesOf, ChecksOf, DaemonNeedOf, DaemonVersionOf, GpusOf, ReadingsOf, ResolvedIpOf,
+        StaleOf, StatusOf, SuggestionsOf, UptimeOf, WebInterfacesOf,
     },
 };
 use crate::{
@@ -28,7 +28,7 @@ use crate::{
             model::{Device, Site},
             warnings::{AccessWarning, access_warnings},
         },
-        metrics::{self, Gpu, MetricRange, MetricSeries, Readings, Storage},
+        metrics::{self, Battery, DaemonNeed, Gpu, MetricRange, MetricSeries, Readings, Storage},
         web_interfaces::{Suggestion, WebInterface},
     },
     scalars::IpAddr,
@@ -175,6 +175,16 @@ impl Device {
         Ok(gpus.unwrap_or_default())
     }
 
+    /// The batteries that power the device, by name, as its daemon last listed them; empty for
+    /// a device with none (MET-032).
+    async fn batteries(&self, ctx: &Context<'_>) -> Result<Vec<Battery>> {
+        let batteries = schema_dependency::<DataLoader<BatteriesOf>>(ctx)?
+            .load_one(self.id)
+            .await
+            .map_err(internal)?;
+        Ok(batteries.unwrap_or_default())
+    }
+
     async fn ssh(&self) -> DeviceSsh {
         DeviceSsh {
             device: self.id,
@@ -221,6 +231,18 @@ impl Device {
             return Ok(None);
         }
         schema_dependency::<DataLoader<DaemonVersionOf>>(ctx)?
+            .load_one(self.id)
+            .await
+            .map_err(internal)
+    }
+
+    /// What the device's daemon waits for from a person at the device, when the source is
+    /// DAEMON; null when it needs nothing known and for any other source (R-364).
+    async fn daemon_need(&self, ctx: &Context<'_>) -> Result<Option<DaemonNeed>> {
+        if self.metrics_source != MetricsSource::Daemon {
+            return Ok(None);
+        }
+        schema_dependency::<DataLoader<DaemonNeedOf>>(ctx)?
             .load_one(self.id)
             .await
             .map_err(internal)

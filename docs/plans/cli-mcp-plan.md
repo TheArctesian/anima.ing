@@ -151,7 +151,7 @@ read key; change commands with a write key).
 | `ssh <device>` L | A terminal on the device through the hub (K4 Section 8). The credential stays on the hub. |
 | `files` L | `ls`, `get`, `put` (K4 Section 9) |
 | `web` | `list`, `create`, `update`, `delete`, `suggestion accept\|dismiss`, `accept-certificate` L |
-| `agent` | `status`, `enrol` L, `revoke` L |
+| `agent` | `status`, `enrol` L, `revoke` L, `need keychain\|none` L (what the daemon waits for from a person; the desktop application sets it by itself, R-364) |
 | `capability` | `list` (`--tool <name>`, `--target <build target>`): the tool inventory of each device (compute plan CAP-020 to CAP-031) |
 | `agents` | `usage` (`--device <id\|name>`, `--source claude-code\|codex`, `--repository <host/owner/name>`, `--since <day>`, `--until <day>`, `--days <1-366>`, `--by device,source,model,repository,day`, repeatable; device and source by default): the sessions, prompts, tool calls and tokens of Claude Code and Codex with an estimate of the cost, which is not the bill of a subscription, and the AIS-024 sentence for a daemon that runs as a system unit (R-135; AIS-020, AIS-021, AIS-024) |
 | `snapshot` | `push` (`--remote`), `list`, `delete <ref>`: a commit of the working tree on a scratch ref of the forge (JOB-017, JOB-018). It uses git on this computer and makes no hub request. |
@@ -162,6 +162,7 @@ read key; change commands with a write key).
 | `builder` | `list`, `enrol` L, `revoke` L |
 | `vpn` | `status` (`--watch`), `invite` L, `router-key` L, `register` L, `renew` L, `approve-route` L |
 | `timeline` | `list` (`--from`, `--to`, `--category`, `--limit`, `--after`, `--all`; the last 24 hours when no time is given) (K-E3; TML-007) |
+| `route` | `list` (`--application <id>`), `show <id>`, `add` L, `check` L, `remove` L: the public names of the applications (hosted-applications plan, H21, Section 12) |
 | `record-link` | `list <record>`, `add <source> <target> --kind <kind>` (`--label`), `remove <id>`; a record is `kind:id` (K-E4; RLK-001, RLK-002, RLK-004). The noun `link` is the device link of S6 |
 | `file` | `list <record>`, `upload <path> --owner <record>` (`--name`, `--key`, default `engine`, `--archive <id>`, `--keep-location`, `--type <media type>`), `download <id> --output <path>` (a new file only; never to a terminal), `remove <id>` (confirms), `archive add --owner <record> --name <name>`, `archive remove <id>` (confirms: it deletes the records that came from the archive) (K-E4 Section 9; FIL-001 to FIL-005). The bytes go through `/files/v1`, not through GraphQL |
 | `extraction` | `list` (`--owner`, `--state proposed\|confirmed\|rejected`), `propose --owner --form --extension --origin client\|hub --fields <JSON>` (`--attachment <id>`), `confirm <id> --fields <JSON>`, `reject <id>` (K-E4 Section 10; VIS-001 to VIS-004) |
@@ -216,7 +217,11 @@ Not in the command line, with the reason:
 
 - **MCP-001.** `anima mcp` is an MCP server on standard input and output. It uses the same
   context and token as the command line. A remote HTTP server is not planned: it needs OAuth and
-  a hub change.
+  a hub change. Exception (R-280, OD-AXT23: "Yes, reverse MCP-001 for the hosted hub only and
+  extend Remote MCP over HTTP"): a hosted hub also serves MCP over HTTP behind the Anima.ing
+  sign-in ([agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md) AXT-071). A
+  self-hosted hub keeps standard input and output only. Not approved (task AX21); no effect before
+  that approval and the review of HMD-067.
 - **MCP-002.** Each tool has one state: `allow` (listed; the agent may call it), `ask` (listed;
   each call needs the person's approval, MCP-013) or `off` (not listed, and refused if called,
   without a hub request). With nothing saved, every read tool and every change tool is `allow`:
@@ -385,17 +390,17 @@ Every tool is `allow` by default (MCP-002, MCP-024, R-120). The switch of MCP-02
 
 | Set | Read | Change |
 | --- | --- | --- |
-| `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics`, `anima_capability_list`, `anima_agents_usage`, `anima_container_list`, `anima_container_storage`, `anima_container_networks`, `anima_container_updates` | `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L |
+| `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics`, `anima_capability_list`, `anima_compute_policy_list` (waits for R-335), `anima_agents_usage`, `anima_agents_sessions`, `anima_container_list`, `anima_container_storage`, `anima_container_networks`, `anima_container_updates`, `anima_compose_check`, `anima_compose_from_run`, `anima_catalogue_list`, `anima_catalogue_show` | `anima_catalogue_install`, `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L, `anima_compute_policy_set` L (waits for R-335; it sets no switch, so MCP-005 does not stop it), `anima_daemon_set_need` L (R-364; it takes no secret and makes no trust decision: it changes only what the device page says) |
 | `checks` | `anima_check_get` (with heartbeats and uptime) | `anima_check_create`, `anima_check_update`, `anima_check_set_paused`, `anima_check_delete` |
 | `maintenance` | `anima_maintenance_list` | `anima_maintenance_create`, `anima_maintenance_update`, `anima_maintenance_delete`, `anima_maintenance_set_active` |
 | `events` | `anima_events_search`, `anima_audit_list`, `anima_audit_verify` (R-138) | |
 | `sessions` | `anima_sessions_list` | `anima_session_end` |
 | `notifications` | `anima_notifications_overview` (channels with no addresses, settings, deliveries) | `anima_notification_send_test`, `anima_check_set_notifications` |
-| `web` | (in `anima_device_get`) | `anima_web_interface_create`, `anima_web_interface_update`, `anima_web_interface_delete` |
+| `web` | (in `anima_device_get`), `anima_route_list`, `anima_route_get` (a public name with its proof and state; never its certificate or key) | `anima_web_interface_create`, `anima_web_interface_update`, `anima_web_interface_delete`. `addApplicationRoute`, `checkApplicationRoute` and `removeApplicationRoute` have no tool: publishing a name to the internet is a trust decision (MCP-005), and the hub refuses every API key and asks for a second factor (hosted-applications plan, Section 12, SF-232) |
 | `releases` | `anima_releases_list`, `anima_release_publishing` (PRO-037), `anima_build_log` | `anima_release_create` L, `anima_build_cancel` L |
 | `vpn` | `anima_vpn_status` | `anima_vpn_approve_route` L |
 | `retention` | `anima_retention_list` | `anima_retention_set` L |
-| `link` (FRN-009) | `anima_link_devices` | None: `createLinkInvite` returns a secret (MCP-004) and `revokeLinkDevice` is a trust decision (MCP-005). The command line has both (`anima link invite`, `anima link revoke`) |
+| `link` (FRN-009) | `anima_link_devices` | None: `createLinkInvite` and `createComputerInstall` return a secret (MCP-004) and `revokeLinkDevice` is a trust decision (MCP-005). The command line has the three (`anima link invite`, `anima link install`, HM-T33; `anima link revoke`) |
 | `extensions` | `anima_extensions_list` | `anima_extension_set` L |
 | `timeline` | `anima_timeline_list` | |
 | `records` | `anima_record_links_list`, `anima_files_list`, `anima_extractions_list`, `anima_locations_list`, `anima_location_context`, `anima_reminders_list`, `anima_reminder_get`, `anima_reminder_firings` | `anima_location_import`, `anima_reminder_add`, `anima_reminder_set`, `anima_reminder_remove`, `anima_reminder_set_enabled`, `anima_reminder_test`, `anima_reminder_snooze`, `anima_reminder_ack`. The three `anima location token` commands have no tool: an ingest token is a secret (K-E4 Section 13). `anima source connect dawarich` has no tool: it takes the API key of the server (R-261). `anima_record_link_add`, `anima_record_link_remove`, `anima_file_remove`, `anima_file_archive_add`, `anima_file_archive_remove`, `anima_extraction_propose`, `anima_extraction_confirm`, `anima_extraction_reject`. `anima file upload` and `anima file download` have no tool: a tool does not carry the bytes of a file (K-E4 Section 13) |
@@ -415,7 +420,23 @@ the volumes and the networks of one device (HOST-020, R-150); `anima_container_l
 one state of each Compose project (HOST-019) and where Compose found the project (R-211, task H15;
 `anima containers projects` lists the projects). `anima_container_updates` (read, tool set `devices`)
 says for each container whether its public registry has a newer image (HOST-021); it pulls and
-updates nothing. No tool returns the details of a container
+updates nothing. `anima_compose_check` and `anima_compose_from_run` (read, tool set `devices`; HOST-022, task
+H29) give the syntax check of a Compose file and the Compose file of one `docker run` command
+(`anima containers check-file` and `anima containers from-run`). The hub reads only the text that
+the agent gives: it reaches no device, runs nothing and keeps nothing. A problem of the check holds
+a fixed code, a position, the number of its service and the name of a key that Compose defines,
+never a text that the operator wrote. The converted file holds only the values of the command that
+the agent gave. Only the field `composeFile` of `anima_compose_from_run` keeps its lines in the
+cleaning of results (`mcp/untrusted.rs`); the tool gives the file only when that cleaning does not
+change it (at most 4,000 characters, no control or invisible character), and else gives why and the
+length of the whole file. `anima_catalogue_list` and `anima_catalogue_show` (read, tool set
+`devices`; task H38 of [hosted-applications-plan.md](hosted-applications-plan.md)) list the entries
+of the catalogue that ships with Anima and describe one, with the names of its environment variables
+(never a value) and its Compose file, whose field `composeFile` keeps its lines and is cut at 4,000
+characters (`anima catalogue list` and `anima catalogue show`). `anima_catalogue_install` (change,
+tool set `devices`) asks for the install of an entry on a device, which R-234 opens to an API key and
+an agent (`anima catalogue install`); the hub refuses it with a fixed reason until task H6 exists,
+and it reaches no machine. No tool returns the details of a container
 (`containerDetail`, HOST-017): the command, the labels and the health-check command can hold a
 secret as the environment can (MCP-004), so the root is closed to every API key and only
 `anima containers inspect` reads it.
@@ -423,7 +444,8 @@ secret as the environment can (MCP-004), so the root is closed to every API key 
 (CAP-030, CAP-031). `anima_agents_usage` (read, tool set `devices`) gives the use of the AI agent programs on each
 device with the estimate of its cost and each daemon's state (R-135; AIS-020, AIS-021, AIS-024); it takes
 and returns no secret, and the model, repository and device names are named fields capped by
-`mcp/untrusted.rs` (MCP-008). `anima snapshot` has no tool: it changes no hub state and acts on a folder of
+`mcp/untrusted.rs` (MCP-008). `anima_agents_sessions` (read, tool set `devices`) gives the single sessions
+that the daemons counted, the newest use first, with the same limits (AIS-025, AIS-026). `anima snapshot` has no tool: it changes no hub state and acts on a folder of
 the computer that runs `anima mcp`, and an agent with a shell can run the command.
 
 Reserved tools, proposed and not built (jobs proposal JOB-012 to JOB-027):
@@ -1109,7 +1131,7 @@ decides differently.
 | MI2 | The agents of 12.2, their states (MCP-027) and `anima mcp agents`, `install`, `uninstall` with `--agent`, `--dry-run`, `--command`, `--force` (MCP-028, MCP-029, MCP-033, MCP-035, MCP-036), with tests against a temporary home folder (MCP-040) | In progress | `37d557ea` and `5b10f6a6` on the branch `mcp/install`: built and tested against a temporary home folder; not tried with a real agent (HT-062); reviewed (12.6) |
 | MI3 | The mockup of the part "Coding agents" in [docs/mockup](../mockup/README.md) and on the screens canvas (PLN-019) | In progress | The mockup [mcp-agents/index.html](../mockup/mcp-agents/index.html) is drawn and is on the screens canvas; the operator did not see it |
 | MI4 | The shell commands of the desktop application and the part "Coding agents" of the Settings section (MCP-039) | In progress | `3ed276d2` on the branch `mcp/install`: built, with tests of the client part and of the answer of the shell. Not seen: the part is in the desktop application only, and no desktop build was made. The shell commands were not in the review of 12.6 |
-| MI5 | The security review of 12.3 by a reviewer that did not write the code; its findings and the corrections, before the merge | In progress | The review of the command line part is done and its corrections are `5b10f6a6` (12.6). The Settings part (MI4) is built and is not reviewed yet: the shell adds the caller check and takes the installed `anima` and the login `PATH` |
+| MI5 | The security review of 12.3 by a reviewer that did not write the code; its findings and the corrections, before the merge | In progress | The review of the command line part is done and its corrections are `5b10f6a6` (12.6). The review of the Settings part (MI4) is done (12.7); its corrections are on the branch `mcp/settings-review`. Two findings are open (12.7, rows 2 and 5) |
 | MI6 | The entry HT-062: each agent of 12.2 on a real Mac and a real Linux computer | Not started | |
 
 ### 12.6 The security review of the command line part (2026-11-19)
@@ -1136,3 +1158,23 @@ Its findings and what was done (`5b10f6a6`):
 | 12 | A path with `$` or braces is a variable in the files of some agents | Corrected: refused, as is a path that is not text |
 | 13 | A file that an agent saved between the read and the write was overwritten; under `sudo` the files became root's | Corrected: the file is read again before the rename and a change is refused |
 | 14 | Notes | Open: a file that starts with a byte order mark is refused; the home folder itself is not checked; access lists are not read; the path of the running program differs by system (the Settings part must pass the installed path, MCP-039); the copy keeps the other entries of the file for as long as it stays |
+
+### 12.7 The security review of the Settings part (2026-11-21)
+
+A reviewer that did not write the code read the Settings part (MI4, `3ed276d2`) as it is on `dev`: the
+two commands of the desktop shell, their capability, the installed `anima` and the login `PATH`, and the
+client. It changed no file and read no real configuration. It found sound: only the main web view can
+call the two commands (the capability names only `main`, and the command checks the label); the client
+cannot choose a path, a program or arguments; the login shell runs fixed text with a time limit; no
+error carries a path or the text of a file; the work runs off the main thread. Its findings and what was
+done (branch `mcp/settings-review`):
+
+| # | Finding | Done |
+| --- | --- | --- |
+| 1 | High. On macOS, `/Applications` is owned by root with the group `admin`, which can write it (mode 0775). The check of `anima` counted that folder as one that a different user can change, so the part refused the installed `anima` of each normal install | Corrected: on macOS, a folder of root that only the group `admin` can also write counts as fixed, since a member of `admin` can become root. Tests of each case |
+| 2 | Medium. Opening Settings runs the own programs of some agents (`claude mcp get`, `codex mcp get`, `gemini mcp list`) to read their state, with no time limit. Those programs may start the configured server to report its state | Partly: each such program now stops after 20 seconds, and its state is then "cannot be read". Open: whether to read those agents only after a click. The reviewer did not check if they start the server; a person checks it in HT-062 |
+| 3 | Medium. The programs of the agents found on `PATH` were not checked as `anima` is: a program in a folder that a different user can write was run | Corrected: the program, what it links to and each folder above them get the check of `anima`; a program that a different user can replace is not run, and its row says why. A test |
+| 4 | Medium. On Linux the entry runs the launcher, and the launcher runs the `AppImage` file; only the launcher was checked | Corrected: the shell also checks the `AppImage` file with the check of `anima` |
+| 5 | Low. The shell did not enforce the list that the page showed: no agent named meant each agent, and the page could ask to force | Partly: the command of the shell now refuses a change that names no agent or asks to force. Open: the shell does not compare the state that the page showed with the state at the change |
+| 6 | Low. Two changes at the same time could race on the own program of an agent | Corrected: one read or change at a time |
+

@@ -1,6 +1,8 @@
 import { uptimeText } from '$lib/checks/heartbeats';
 import type { DeviceDetail } from '$lib/devices/api';
+import { keychainNeedLine } from '$lib/desktop/daemon/state.svelte';
 import { statusLabel, type DeviceStatus } from '$lib/devices/card/card';
+import type { DaemonNeed } from '$lib/hub/generated/graphql';
 
 /** What the Overview tab reads from a device (D-10). */
 export type OverviewDevice = Pick<DeviceDetail, 'maintenance' | 'day' | 'week' | 'month'> & {
@@ -49,4 +51,26 @@ export function hostKeyText(ssh: OverviewDevice['ssh']): string {
  */
 export function metricsOffText(hosted: boolean): string {
   return hosted ? 'Metrics are off. They appear when the daemon is installed on this device.' : 'Metrics are off. Install the daemon or turn on SSH metrics in Settings.';
+}
+
+/**
+ * What the chart area says when the range has no samples (MET-007). With readings known the bars show values, so the
+ * range is empty and nothing is on its way; only a device with no readings yet is waiting, and a daemon that waits for
+ * the person in the macOS Keychain gives its reason line in place of the wait (R-322).
+ */
+export function noChartsText(readingsKnown: boolean, phrase: string, needLine: string | null = null): string {
+  if (readingsKnown) return `No samples in the ${phrase}`;
+  return needLine ?? 'Waiting for metrics';
+}
+
+/**
+ * The reason line of the device's daemon when it waits for the person in the macOS Keychain (R-322); `null` when it
+ * waits for nothing. `here` is the device of the computer that shows the page, when the app knows it.
+ */
+export function daemonNeedLine(
+  device: { readonly id: string; readonly name: string; readonly daemonNeed?: DaemonNeed | null },
+  here: string | null,
+): string | null {
+  if (device.daemonNeed !== 'KEYCHAIN') return null;
+  return keychainNeedLine(device.id === here ? null : device.name);
 }

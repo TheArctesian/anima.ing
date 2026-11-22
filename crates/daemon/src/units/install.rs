@@ -21,6 +21,7 @@ use super::step::Step;
 use super::token_file::{self, SystemTokenError};
 use super::trust::{self, Installer};
 use crate::config::home::Home;
+use crate::keychain_wait;
 use crate::readers::Platform;
 use crate::token_store::{TokenStore, TokenStoreError};
 
@@ -163,14 +164,32 @@ fn read_text(path: &Path) -> Result<String, InstallError> {
 }
 
 /// The user unit's daemon must find a token that has not expired, in the folder this shell
-/// found: else it fails and restarts for ever.
+/// found: else it fails and restarts for ever. A read that waits for the person in the
+/// Keychain is no failure (R-322): the mark tells the app, the unit goes in, and
+/// its daemon waits for the person.
 fn check_user_ready(plan: &Plan, host: &Host<'_>) -> Result<(), InstallError> {
     ready::same_home(host.home.dir(), &plan.home)?;
-    let expires_at = TokenStore::open(host.home)
-        .load()?
-        .map(|credential| credential.expires_at);
-    ready::token_usable(expires_at, host.now)?;
-    Ok(())
+    let loaded = TokenStore::open(host.home).load();
+    let waits = token_found(loaded.map(|found| found.map(|c| c.expires_at)), host.now)?;
+    keychain_wait::mark(host.home, waits).map_err(|source| InstallError::Write {
+        path: host.home.dir().join(keychain_wait::MARK),
+        source,
+    })
+}
+
+/// Whether the daemon will wait for the person in the Keychain, from what the read of the
+/// token gave (its expiry, `None` when there is no token) at `now`.
+fn token_found(
+    loaded: Result<Option<DateTime<Utc>>, TokenStoreError>,
+    now: DateTime<Utc>,
+) -> Result<bool, InstallError> {
+    match loaded {
+        Err(TokenStoreError::KeychainWaits) => Ok(true),
+        loaded => {
+            ready::token_usable(loaded?, now)?;
+            Ok(false)
+        }
+    }
 }
 
 /// Writes `file` as `name` in `dir` (its folder's checked real path) through a temporary file
@@ -263,6 +282,22 @@ mod tests {
             })
         });
         (result, ran)
+    }
+
+    #[test]
+    fn met_019_a_token_read_that_waits_for_the_keychain_installs_and_marks_the_wait() {
+        let now = DateTime::UNIX_EPOCH;
+        let later = Some(now + chrono::TimeDelta::days(1));
+        assert!(token_found(Err(TokenStoreError::KeychainWaits), now).expect("installs"));
+        assert!(!token_found(Ok(later), now).expect("usable"));
+        assert!(matches!(
+            token_found(Ok(None), now),
+            Err(InstallError::NotReady(ready::NotReady::NotEnrolled))
+        ));
+        assert!(matches!(
+            token_found(Err(TokenStoreError::Corrupt), now),
+            Err(InstallError::Token(TokenStoreError::Corrupt))
+        ));
     }
 
     #[test]

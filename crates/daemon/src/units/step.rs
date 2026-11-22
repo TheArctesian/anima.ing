@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 pub const STEP_DEADLINE: Duration = Duration::from_secs(30);
 
 /// The only search path a command gets: the caller's own environment is not passed on.
+#[cfg(unix)]
 const PATH: &str = "/usr/sbin:/usr/bin:/sbin:/bin";
 
 /// How often a running command is looked at.
@@ -28,9 +29,10 @@ pub struct Step {
     pub may_not_run: bool,
     /// Variables the command gets besides `PATH`: the session bus for `systemctl --user`.
     pub env: Vec<(&'static str, String)>,
-    /// When the first run fails, wait this long and run it once more (`launchctl bootstrap`
-    /// right after `bootout` can fail with EIO while launchd is still taking the old one out).
-    pub retry_after: Option<Duration>,
+    /// While a run fails, wait the next of these pauses and run it again; empty: one run.
+    /// `launchctl bootstrap` right after `bootout` answers EIO (5) for some seconds while
+    /// launchd still takes the old service out, so it gets several tries.
+    pub retries: &'static [Duration],
 }
 
 impl Step {
@@ -41,34 +43,64 @@ impl Step {
             may_fail: false,
             may_not_run: false,
             env: Vec::new(),
-            retry_after: None,
+            retries: &[],
         }
     }
 }
 
-/// Runs `step` with at most `deadline` per run, and once more after its pause when it has one
-/// and the first run fails.
+/// Runs `step` with at most `deadline` per run; while a run fails, waits the next pause of
+/// `step.retries` and runs it again, until a run succeeds or the pauses are spent.
 ///
 /// # Errors
 /// The I/O error when the program cannot start or cannot be waited on; an error of kind
 /// [`io::ErrorKind::TimedOut`] when it ran past `deadline` (it was then killed). `Ok(false)` is
 /// a failure exit.
 pub fn run_step(step: &Step, deadline: Duration) -> io::Result<bool> {
-    let ok = run_once(step, deadline)?;
-    match step.retry_after {
-        Some(pause) if !ok => {
-            thread::sleep(pause);
-            run_once(step, deadline)
+    let mut ok = run_once(step, deadline)?;
+    for pause in step.retries {
+        if ok {
+            break;
         }
-        _ => Ok(ok),
+        thread::sleep(*pause);
+        ok = run_once(step, deadline)?;
     }
+    Ok(ok)
 }
 
 fn run_once(step: &Step, deadline: Duration) -> io::Result<bool> {
-    let mut child = Command::new(step.program)
+    #[cfg(unix)]
+    let program = std::path::PathBuf::from(step.program);
+    #[cfg(windows)]
+    let program = std::env::var_os("SystemRoot")
+        .map(std::path::PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .ok_or(io::ErrorKind::NotFound)?
+        .join("System32")
+        .join(step.program);
+    let mut command = Command::new(program);
+    command.env_clear();
+    #[cfg(unix)]
+    command.env("PATH", PATH);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt as _;
+        command.creation_flags(0x0800_0000);
+        for name in [
+            "SystemRoot",
+            "WINDIR",
+            "USERPROFILE",
+            "LOCALAPPDATA",
+            "APPDATA",
+            "TEMP",
+            "TMP",
+        ] {
+            if let Some(value) = std::env::var_os(name) {
+                command.env(name, value);
+            }
+        }
+    }
+    let mut child = command
         .args(&step.args)
-        .env_clear()
-        .env("PATH", PATH)
         .envs(step.env.iter().map(|(name, value)| (name, value)))
         .stdin(Stdio::null())
         .spawn()?;
@@ -92,9 +124,12 @@ fn run_once(step: &Step, deadline: Duration) -> io::Result<bool> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
+
+    /// A pause short enough that a test does not wait.
+    const SHORT: Duration = Duration::from_millis(10);
 
     #[test]
     fn met_019_a_step_that_runs_past_its_deadline_is_killed_and_is_an_error() {
@@ -123,20 +158,41 @@ mod tests {
     }
 
     #[test]
-    fn met_019_a_failed_step_with_a_retry_runs_once_more_after_its_pause() {
+    fn met_019_a_failed_step_runs_again_after_each_pause_until_they_are_spent() {
         let dir = tempfile::tempdir().expect("a folder");
         let count = dir.path().join("count");
         let mut step = Step::new("/bin/sh", &["-c"]);
         step.args
             .push(format!("echo run >> {}; exit 5", count.display()));
         assert!(!run_step(&step, STEP_DEADLINE).expect("ran"));
-        step.retry_after = Some(Duration::from_millis(10));
+        step.retries = &[SHORT; 2];
         assert!(!run_step(&step, STEP_DEADLINE).expect("ran"));
         let runs = std::fs::read_to_string(&count).expect("written");
         assert_eq!(
             runs.lines().count(),
+            4,
+            "once without retries, three times with two"
+        );
+    }
+
+    #[test]
+    fn met_019_a_bootstrap_that_answers_eio_twice_succeeds_at_the_third_try() {
+        // As launchd at 2026-11-21 15:50 UTC: two answers of error 5 while the old service was
+        // still being taken out, then success.
+        let dir = tempfile::tempdir().expect("a folder");
+        let count = dir.path().join("count");
+        let mut step = Step::new("/bin/sh", &["-c"]);
+        step.args.push(format!(
+            "echo run >> {0}; [ $(wc -l < {0}) -ge 3 ] || exit 5",
+            count.display()
+        ));
+        step.retries = &[SHORT; 4];
+        assert!(run_step(&step, STEP_DEADLINE).expect("ran"));
+        let runs = std::fs::read_to_string(&count).expect("written");
+        assert_eq!(
+            runs.lines().count(),
             3,
-            "once without a retry, twice with one"
+            "no run after the one that succeeded"
         );
     }
 }

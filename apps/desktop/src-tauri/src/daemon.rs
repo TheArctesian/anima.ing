@@ -11,20 +11,37 @@
 //! builder (`src/builder/carried/`) and `trial-bundle.sh` build `anima-daemon` from the same
 //! commit and name it in `bundle.externalBin`. A debug build carries none and says so, and the
 //! client shows the install command instead.
+//!
+//! The removal (HMD-056) runs the daemon's own `uninstall`, then deletes the copy
+//! ([`removal`]); the client calls it at the sign-out of a hosted hub and revokes the daemon at
+//! the hub itself.
+//!
+//! At each start the app replaces an installed copy that is older than the daemon it carries,
+//! and the unit starts again with the same token (HMD-055, [`update`]).
 
 mod error;
 mod installing;
+#[cfg(unix)]
+pub(crate) mod keychain;
+#[cfg_attr(windows, path = "daemon/placement/windows.rs")]
 pub(crate) mod placement;
+mod removal;
 mod request;
 mod run;
+#[cfg(unix)]
+mod signature;
+#[cfg(unix)]
 pub(crate) mod trust;
+#[cfg(unix)]
+mod update;
+#[cfg(unix)]
+mod version;
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 use std::{
     ffi::OsString,
-    fs,
     path::{Path, PathBuf},
     sync::atomic::AtomicBool,
     time::Duration,
@@ -38,22 +55,32 @@ pub use error::DaemonError;
 pub use installing::Installing;
 use request::{EnrolmentCode, HubOrigin};
 use run::{INSTALL_ARGS, Run};
+#[cfg(unix)]
+use std::fs;
+#[cfg(unix)]
 use trust::User;
 
 /// The hub answers an enrolment within its own 10 s timeout; a macOS Keychain write adds a little.
 const ENROL_DEADLINE: Duration = Duration::from_secs(60);
+/// `uninstall` runs at most two steps of 30 s each and deletes a Keychain item; the rest is margin.
+const UNINSTALL_DEADLINE: Duration = Duration::from_secs(120);
 /// `install` runs up to five steps of 30 s each (two take the unit of the old program out,
-/// R-126), one retried after a pause; the rest is margin.
+/// R-126), one retried after a pause; the rest is margin. Its read of the token in the
+/// Keychain stops after 5 s (R-322), so a prompt that nobody answers no longer
+/// holds it: the deadline is for slow service managers, and the update uses it too.
 const INSTALL_DEADLINE: Duration = Duration::from_secs(240);
 
 /// Where accounts and groups are read, to find the user's private group.
+#[cfg(unix)]
 const PASSWD: &str = "/etc/passwd";
+#[cfg(unix)]
 const GROUP: &str = "/etc/group";
 
 /// This computer as the install needs it: the bundled daemon, the user and the daemon's variables.
 struct Here {
     source: PathBuf,
     home: PathBuf,
+    #[cfg(unix)]
     user: User,
     env: Vec<(&'static str, OsString)>,
 }
@@ -74,8 +101,11 @@ fn install_here(
     limits: &Limits<'_>,
 ) -> Result<PathBuf, DaemonError> {
     let destination = placement::destination(&here.home);
-    let installed = placement::place(&here.source, &destination, here.user)
-        .map_err(DaemonError::of_placement)?;
+    #[cfg(unix)]
+    let placed = placement::place(&here.source, &destination, here.user);
+    #[cfg(windows)]
+    let placed = placement::place(&here.source, &destination);
+    let installed = placed.map_err(DaemonError::of_placement)?;
     let input = code.input_line();
     let enrol = Run {
         program: &installed,
@@ -101,22 +131,30 @@ fn install_here(
 /// This computer, read from the process: `HOME` must be an absolute path. An account file that
 /// cannot be read means no private group, so a folder its group may write is refused.
 fn here(source: PathBuf) -> Result<Here, DaemonError> {
-    let home = std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .filter(|home| home.is_absolute())
-        .ok_or(DaemonError::NoHome)?;
+    let home = home_folder()?;
+    #[cfg(unix)]
     let user = this_user();
     let env = run::daemon_env(&home, |name| std::env::var_os(name));
     Ok(Here {
         source,
         home,
+        #[cfg(unix)]
         user,
         env,
     })
 }
 
+/// The home folder of this user: `HOME` (`USERPROFILE` on Windows), an absolute path.
+fn home_folder() -> Result<PathBuf, DaemonError> {
+    std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
+        .map(PathBuf::from)
+        .filter(|home| home.is_absolute())
+        .ok_or(DaemonError::NoHome)
+}
+
 /// The user of this process, with their private group. An account file that cannot be read
 /// means no private group, so a folder its group may write is refused.
+#[cfg(unix)]
 pub(crate) fn this_user() -> User {
     let uid = nix::unistd::getuid().as_raw();
     let passwd = fs::read_to_string(PASSWD).ok();
@@ -140,7 +178,7 @@ fn bundled(executable: &Path, release: bool) -> Result<PathBuf, DaemonError> {
 
 /// The daemon this app carries, when it carries one.
 fn carried() -> Result<PathBuf, DaemonError> {
-    if !cfg!(any(target_os = "macos", target_os = "linux")) {
+    if !cfg!(any(target_os = "macos", target_os = "linux", windows)) {
         return Err(DaemonError::Unavailable);
     }
     let executable = std::env::current_exe().map_err(|_| DaemonError::NotBundled)?;
@@ -178,6 +216,30 @@ async fn install<R: Runtime>(
         .unwrap_or(Err(DaemonError::Failed))
 }
 
+/// Claims the one install or removal and takes the daemon off this computer, off the async runtime.
+async fn remove<R: Runtime>(
+    webview: &Webview<R>,
+    installing: &Installing,
+) -> Result<bool, DaemonError> {
+    from_main(webview.label())?;
+    let claim = installing.claim()?;
+    let work = move || {
+        let home = home_folder()?;
+        let carried = carried().ok();
+        let env = run::daemon_env(&home, |name| std::env::var_os(name));
+        removal::remove_here(&removal::Leave {
+            copy: &placement::destination(&home),
+            carried: carried.as_deref(),
+            env: &env,
+            deadline: UNINSTALL_DEADLINE,
+            stop: &claim.stop,
+        })
+    };
+    tauri::async_runtime::spawn_blocking(work)
+        .await
+        .unwrap_or(Err(DaemonError::Failed))
+}
+
 /// The origin that the daemon is enrolled at: the `https` origin that the web view names, or,
 /// for a hub that the app reaches through its link at `http://127.0.0.1:<port>`, the socket
 /// that the link of that port made for the daemon (HMD-054). The web view never names a path.
@@ -186,6 +248,53 @@ fn hub_origin(origin: &str) -> Option<HubOrigin> {
         let socket = crate::link::daemon_socket(request::link_port(origin)?)?;
         HubOrigin::link(&socket)
     })
+}
+
+/// Replaces an installed copy of the daemon that is older than the one this app carries and
+/// starts its unit again, off the async runtime (HMD-055). It holds the one install while it
+/// runs; when an install or a removal already runs, it does nothing at this start.
+#[cfg(unix)]
+pub fn update_at_start(installing: &Installing) {
+    let (Ok(carried), Ok(home)) = (carried(), home_folder()) else {
+        return;
+    };
+    let Ok(claim) = installing.claim() else {
+        log::info!("the daemon was not compared with the one of the app: an install runs");
+        return;
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        let copy = placement::destination(&home);
+        let env = run::daemon_env(&home, |name| std::env::var_os(name));
+        let swap = update::Swap {
+            copy: &copy,
+            carried: &carried,
+            user: this_user(),
+            env: &env,
+            restart: INSTALL_DEADLINE,
+            stop: &claim.stop,
+            identity: signature::of_program(&carried),
+        };
+        match update::update_here(&swap) {
+            Ok(update::Updated::Replaced) => {
+                log::info!("the daemon on this computer was replaced by the newer one of the app");
+            }
+            Ok(update::Updated::KeptNewer) => {
+                log::info!(
+                    "the daemon on this computer is newer than the one of the app; it stays"
+                );
+            }
+            Ok(update::Updated::CarriedUnknown) => {
+                log::warn!("the version of the daemon of the app could not be read; no update");
+            }
+            Ok(update::Updated::KeptForKeychain) => {
+                log::warn!(
+                    "the daemon on this computer is older than the one of the app, but this build has no Developer ID signature: the Keychain would ask again for the new daemon, so it stays (R-321)"
+                );
+            }
+            Ok(update::Updated::NoCopy | update::Updated::Unchanged) => {}
+            Err(error) => log::warn!("the daemon was not updated: {}", error.code()),
+        }
+    });
 }
 
 /// Whether this build of the app carries the daemon, so the client can offer to install it.
@@ -207,6 +316,23 @@ pub async fn daemon_install<R: Runtime>(
     match &result {
         Ok(()) => log::info!("the daemon was installed on this computer"),
         Err(error) => log::warn!("the daemon was not installed: {}", error.code()),
+    }
+    result
+}
+
+/// Takes the daemon off this computer for this user (HMD-056): its unit, its token and its copy.
+/// It takes no argument: the paths are the ones that the install uses. True when a copy of the
+/// daemon was here.
+#[tauri::command]
+pub async fn daemon_remove<R: Runtime>(
+    webview: Webview<R>,
+    installing: State<'_, Installing>,
+) -> Result<bool, DaemonError> {
+    let result = remove(&webview, &installing).await;
+    match &result {
+        Ok(true) => log::info!("the daemon was removed from this computer"),
+        Ok(false) => log::info!("no copy of the daemon was on this computer to remove"),
+        Err(error) => log::warn!("the daemon was not removed: {}", error.code()),
     }
     result
 }

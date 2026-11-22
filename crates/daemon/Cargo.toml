@@ -16,7 +16,11 @@ name = "anima-daemon"
 path = "src/main.rs"
 
 [dependencies]
+# The protocols of the agent programs and the frames of the local socket of the runner.
+agent-threads = { path = "../agent-threads" }
 daemon-core = { path = "../daemon-core" }
+# The account salt of the hub arrives in base64 (K8 Section 8.2).
+base64.workspace = true
 bytes.workspace = true
 chrono.workspace = true
 # The spread of the retry wait (K8 Section 7) comes from the OS random source.
@@ -29,9 +33,14 @@ rpassword.workspace = true
 # `install` reads a folder's POSIX ACL (an xattr) and opens the system token with
 # O_NOFOLLOW | O_NONBLOCK | O_NOCTTY (MET-019). Safe wrappers: the workspace forbids `unsafe`, so
 # raw `libc` calls are out. Already in Cargo.lock through tempfile.
-rustix = { version = "1.1", features = ["fs", "process"] }
 serde.workspace = true
 serde_json.workspace = true
+# Model work (task L1-6): the SHA-256 of a runtime archive, and the unpack of its `.tar.gz`.
+sha2.workspace = true
+flate2 = "1"
+tar = { version = "0.4", default-features = false }
+# The `.zip` releases of llama.cpp (R-329); deflate only, through flate2.
+zip = { version = "9", default-features = false, features = ["deflate-flate2"] }
 tempfile.workspace = true
 thiserror.workspace = true
 # `process` runs the fixed read-only commands, `signal` ends the daemon on SIGTERM, `fs` reads /proc.
@@ -49,3 +58,21 @@ keyring.workspace = true
 daemon-core = { path = "../daemon-core", features = ["test-support"] }
 axum.workspace = true
 plist.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+anima-windows = { path = "../anima-windows" }
+sysinfo = { version = "0.40.4", default-features = false, features = ["system", "disk", "network"] }
+hyperlocal-with-windows = { version = "0.9", default-features = false, features = ["client"] }
+hyper = { version = "1", features = ["client", "http1"] }
+hyper-util.workspace = true
+http-body-util.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "1.1", features = ["fs", "process", "thread"] }
+# HTTP on the socket of the link, on a connection whose peer the daemon checked first (K8 Section 1).
+hyper = { version = "1", features = ["client", "http1"] }
+hyper-util.workspace = true
+http-body-util.workspace = true
+
+[target.'cfg(windows)'.dev-dependencies]
+uds_windows = "1.2"

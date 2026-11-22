@@ -7,7 +7,7 @@
 //! A refusal is a fixed code and the position of a service, never text of the file.
 
 mod declared;
-mod forms;
+pub mod forms;
 mod keys;
 mod mounts;
 mod project;
@@ -99,11 +99,21 @@ impl Refusal {
 }
 
 /// A Compose file that passed each rule, with its variables filled.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Checked {
     /// The file as a tree, after the variables are filled. The applications program writes
     /// the final form from it.
     pub document: Node,
+    /// The file as a tree before the variables are filled: the values that its author wrote,
+    /// which no environment file changes.
+    pub unfilled: Node,
+}
+
+/// The tree holds values of the environment file, which are secret: `{:?}` shows none.
+impl std::fmt::Debug for Checked {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.debug_struct("Checked").finish_non_exhaustive()
+    }
 }
 
 /// Checks `file` with `environment` as the one source of its variables.
@@ -117,8 +127,9 @@ pub fn check(file: &str, environment: &str, settings: &Settings) -> Result<Check
     let document = yaml::read(file)?;
     keys::permitted(&document)?;
     let values = variables::environment(environment)?;
+    let unfilled = document.clone();
     let document = variables::filled(document, &values)?;
     keys::permitted(&document)?;
     project::checked(&document, settings)?;
-    Ok(Checked { document })
+    Ok(Checked { document, unfilled })
 }

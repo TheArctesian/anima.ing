@@ -1,6 +1,8 @@
 //! The daemon's log lines, in one place: what happened, by code or cause, never a token, a
 //! code or a body (LOG-007). Called from the I/O edge only.
 
+pub mod log_file;
+
 use daemon_core::agent_usage::UsageState;
 use daemon_core::wire::RefusalCode;
 
@@ -51,6 +53,26 @@ pub fn renewal_not_stored(error: &TokenStoreError) {
     tracing::error!(%error, "the new token could not be stored; keeping the current one");
 }
 
+/// Once, when the save of a renewed token first waits for the person in the Keychain (R-322).
+pub fn renewal_waits() {
+    tracing::warn!(
+        "this computer's daemon needs you to allow it in the Keychain to store its renewed token: click Always Allow in the window of macOS; it keeps the current token, which the hub accepts until the new one is used, and tries again every 30 s, after 10 minutes every 5 minutes"
+    );
+}
+
+/// The save of a renewed token failed after a save of it that waited, which may have stored it
+/// (R-322): the token is kept and tried again, and no other renewal is asked for meanwhile.
+pub fn renewal_unsure(error: &TokenStoreError) {
+    tracing::error!(%error, "the renewed token could not be stored; keeping it and the current one, and trying again");
+}
+
+/// The delete of a token that the hub refused waits for the person in the Keychain (R-322).
+pub fn forget_waits() {
+    tracing::warn!(
+        "the refused token could not be deleted: this computer's daemon needs you to allow it in the Keychain; click Always Allow in the window of macOS"
+    );
+}
+
 pub fn renewal_refused(code: RefusalCode) {
     tracing::warn!(code = code.as_str(), "renewal refused");
 }
@@ -97,4 +119,52 @@ fn sampling_panicked() {
 
 fn sampling_returned() {
     tracing::error!("sampling stopped before the daemon was told to stop");
+}
+
+/// An old link origin that did not move: the daemon sends through `socket`, to a peer that passes
+/// the check, and asks the socket of the move again each minute (R-317).
+#[cfg(unix)]
+pub fn old_origin_waits(socket: &std::path::Path) {
+    tracing::warn!(
+        socket = %socket.display(),
+        "enrolled with an old link origin: sending through this socket of anima-link, only to the link of this user that passes the check, until the move to it"
+    );
+}
+
+#[cfg(unix)]
+pub fn moved() {
+    tracing::info!("the old link origin moved to the socket of anima-link");
+}
+
+#[cfg(unix)]
+pub fn move_failed(error: &crate::runtime::old_origin::MoveError) {
+    tracing::error!(%error, "the old link origin could not move; trying again at the next start");
+}
+
+/// Once, when the log file cannot be opened: the log goes to standard error.
+pub fn log_file_refused(error: &std::io::Error) {
+    tracing::error!(%error, "the log file could not be opened; logging to standard error");
+}
+
+/// Once, when the first read of the token waits for the person in the Keychain: the daemon
+/// keeps running without its token and reads again (R-322).
+pub fn keychain_waits() {
+    tracing::warn!(
+        "this computer's daemon needs you to allow it in the Keychain: click Always Allow in the window of macOS; it reads the token again every 30 s, after 10 minutes every 5 minutes"
+    );
+}
+
+/// The read of the token answered after it waited for the person.
+pub fn keychain_answered() {
+    tracing::info!("the Keychain answered the read of the token");
+}
+
+/// The file that tells the app that the daemon waits could not be written or deleted.
+pub fn keychain_mark_refused(error: &std::io::Error) {
+    tracing::warn!(%error, "the mark of the wait for the Keychain could not be changed");
+}
+
+/// The run ended on an error; the service manager starts the daemon again.
+pub fn run_ended(error: &dyn std::error::Error) {
+    tracing::error!(%error, "the daemon stopped on an error");
 }
