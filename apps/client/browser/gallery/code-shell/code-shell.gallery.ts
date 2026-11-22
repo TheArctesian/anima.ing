@@ -204,5 +204,21 @@ for (const theme of ['dark', 'light'] as const) {
       await page.waitForTimeout(SETTLE_MS);
       await page.screenshot({ path: `${FOLDER}${wide.folder}/00-page.png` });
     });
+
+    // The lists of the composer on the real page: they hang over the card, above the timeline (TC4, "Popup design").
+    // The engine gives the composer no files yet, so "@" shows the empty list; "/" lists the built-in commands.
+    for (const [name, text, shows] of [['14-mention-list.png', 'Read @', 'No matching files or folders.'], ['15-command-list.png', '/', null]] as const) {
+      test(name, async ({ page }) => {
+        mkdirSync(`${FOLDER}${wide.folder}`, { recursive: true });
+        const inbox = await prepare(page, wide, EVERY_STATE);
+        await card(inbox, 'Why does the gates run stop at limits').click();
+        await page.getByRole('textbox', { name: /./ }).last().click();
+        await page.keyboard.type(text);
+        await expect(shows === null ? page.getByRole('listbox').last() : page.getByRole('paragraph').filter({ hasText: shows })).toBeVisible();
+        await page.evaluate(() => document.fonts.ready);
+        await page.waitForTimeout(SETTLE_MS);
+        await page.screenshot({ path: `${FOLDER}${wide.folder}/${name}` });
+      });
+    }
   });
 }

@@ -15,8 +15,7 @@
   import InboxToggle from '../shell/InboxToggle.svelte';
   import TopBand from '../shell/TopBand.svelte';
   import ChatColumn from './ChatColumn.svelte';
-  // The foot of the column until the composer of stage 4 lands.
-  import ComposerStandIn from './ComposerStandIn.svelte';
+  import ChatFoot from './ChatFoot.svelte';
   import { paletteHost } from './palette-host';
   import ThreadBody from './ThreadBody.svelte';
 
@@ -129,7 +128,7 @@
     {#snippet header()}<ChatHeader thread={open} start={inboxOpen ? undefined : toggle} onactions={(anchor) => (open === undefined ? undefined : inbox?.openThreadMenu(open.id, anchor.getBoundingClientRect()))} />{/snippet}
     {#snippet notice()}{#if linkWords !== null}<p class="link" role="status">{linkWords}</p>{/if}{/snippet}
     <ThreadBody {store} now={view.moment} {toolsOpen} />
-    {#snippet composer()}{#if store.liveThread !== null && live !== null}<ComposerStandIn thread={store.liveThread} {live} />{/if}{/snippet}
+    {#snippet composer()}{#if store.chosen !== null && (store.liveThread?.row.id === store.chosen || store.thread?.id === store.chosen)}<ChatFoot thread={store.liveThread?.row.id === store.chosen ? store.liveThread : null} {live} id={store.chosen} />{/if}{/snippet}
   </ChatColumn>
 </div>
 <CommandPalette host={palette} />
