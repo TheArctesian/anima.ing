@@ -168,3 +168,75 @@ describe('what the composer card refuses and stops', () => {
     revoke.mockRestore();
   });
 });
+
+describe('the files that the runner holds for the composer card', () => {
+  it('gives up the files of a queued message that was open when a different one is opened', async () => {
+    const { engine, going, discarded } = engineOf();
+    const queued = [
+      { id: 'q1', prompt: 'Then test', saving: false },
+      { id: 'q2', prompt: 'Then lint', saving: false },
+    ];
+    const revoke = vi.spyOn(URL, 'revokeObjectURL');
+    const card = new CardState(() => ({ ...engine, queued }), undefined, '⌘');
+    card.add([text('mine.txt')]);
+    await settle();
+    going[0]?.end({ state: 'sent', id: 'f1' });
+    await settle();
+    card.edit('q1');
+    card.add([new File([new Uint8Array(4)], 'shot.png', { type: 'image/png' })]);
+    await settle();
+    going[1]?.end({ state: 'sent', id: 'f2' });
+    await settle();
+    const preview = card.attachments[0]?.preview;
+    card.edit('q2');
+    // The file of the first change is given up; the one of the chat's own unsent text is set aside, not lost.
+    expect(discarded).toEqual(['f2']);
+    expect(revoke).toHaveBeenCalledWith(preview);
+    card.cancelEdit();
+    expect(card.attachments).toMatchObject([{ name: 'mine.txt', remote: 'f1' }]);
+    revoke.mockRestore();
+  });
+
+  it('says the reason of the runner under the editor when a file does not go', async () => {
+    const said = 'shot.png is too large: too many files wait to go; send or drop some first.';
+    const { engine, going } = engineOf();
+    const card = new CardState(() => engine, undefined, '⌘');
+    card.add([text('shot.png')]);
+    await settle();
+    going[0]?.end({ state: 'failed', words: said });
+    await settle();
+    expect(card.problem).toBe(said);
+    card.remove(card.attachments[0]?.id ?? '');
+    expect(card.problem).toBeNull();
+  });
+
+});
+
+describe('the room of the runner, as the composer card counts it', () => {
+  it('counts the unsent files of the other chats of the window in the 200 files that the runner holds', async () => {
+    const { engine, going } = engineOf();
+    const first = new CardState(() => engine, 'chat-full-a', '⌘');
+    const second = new CardState(() => engine, 'chat-full-b', '⌘');
+    for (const card of [first, second]) {
+      card.add(Array.from({ length: 100 }, (_, at) => text(`f${String(at)}.txt`, 1)));
+      for (let at = 0; at < 100; at += 1) {
+        await settle();
+        going.at(-1)?.end({ state: 'sent', id: `held-${String(going.length)}` });
+      }
+      await settle();
+      card.keep();
+    }
+    going.length = 0;
+    const third = new CardState(() => engine, 'chat-full-c', '⌘');
+    third.add([text('late.txt')]);
+    await settle();
+    expect(third.attachments).toEqual([]);
+    expect(third.problem).toBe('The files that wait to be sent, of all chats together, can be 200 files and 1 GB. Send or remove the files of a different chat, then attach again.');
+    expect(going.map((file) => file.name)).not.toContain('late.txt');
+    for (const card of [first, second]) {
+      card.dispose();
+      for (const attachment of card.attachments) card.remove(attachment.id);
+      card.keep();
+    }
+  });
+});

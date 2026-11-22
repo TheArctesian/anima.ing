@@ -4682,5 +4682,11 @@ branch is in the build.
 12. Attach a file, wait until it is ready, do not send, and come back after more than one hour. Send.
     Expected (a known limit): the runner dropped the file after one hour, so the send is refused with words. Remove
     the file, attach it again and send.
+13. Attach a HEIC photo of an iPhone of more than 10 MB and less than 50 MB.
+    Expected: a tile shows and the photo goes with the prompt as a file: the runner takes HEIC as a file, with the
+    limit of a file.
+14. Attach a file to the unsent text, open a queued message with its pencil, attach a second file there, and open
+    a different queued message.
+    Expected: the second file is gone. Cancel the change: the first file is back with the unsent text.
 
 Result: Open.

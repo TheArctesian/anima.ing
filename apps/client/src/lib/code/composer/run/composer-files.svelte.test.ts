@@ -103,4 +103,16 @@ describe('the files of the composer of a chat that the runner drives', () => {
     expect(acts).toEqual(['chat-c attach', 'chat-c unattach']);
     expect(document.querySelector('li .name')).toBeNull();
   });
+
+  it('sends a file to the chat that the page names for its calls, also when the row of the run says a different id', async () => {
+    const { props, acts, sent } = composer('chat-d');
+    props.row = { ...ROW, id: 'row-of-a-different-chat' };
+    flushSync();
+    choose([new File(['abc'], 'notes.txt', { type: 'text/plain' })]);
+    await settled();
+    button('Submit message')?.click();
+    await settled();
+    expect(acts).toEqual(['chat-d attach']);
+    expect(sent).toEqual([['', ['file-1']]]);
+  });
 });
