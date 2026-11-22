@@ -3,9 +3,17 @@
 // same content passed them on `dev`. So such a job does not use the default condition: it
 // names the result of each job that it waits for, and then its own condition.
 
-/** The start of the condition of a job that waits for `needs`: none failed, and each passed. */
+/**
+ * The jobs that a run leaves out on purpose, each with its condition: it passed, or its switch
+ * left it out of this run. Windows runs only while ANIMA_PUBLIC_WINDOWS is `on`.
+ */
+export const LEFT_OUT: Readonly<Record<string, string>> = {
+  windows: "(needs.windows.result == 'success' || needs.commit.outputs.release_windows != 'true')",
+};
+
+/** The start of the condition of a job that waits for `needs`: none failed, and each passed or was left out. */
 export function eachPassed(needs: readonly string[]): string {
-  return ["!cancelled()", "!failure()", ...needs.map((name) => `needs.${name}.result == 'success'`)].join(" && ");
+  return ["!cancelled()", "!failure()", ...needs.map((name) => LEFT_OUT[name] ?? `needs.${name}.result == 'success'`)].join(" && ");
 }
 
 /**

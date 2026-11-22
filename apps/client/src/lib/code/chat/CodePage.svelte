@@ -7,17 +7,19 @@
   import type { CallResult, LiveThreads } from '$lib/agent-threads/live/live.svelte';
   import type { ThreadsStore } from '$lib/agent-threads/store.svelte';
   import LimitDialog from '$lib/agent-threads/view/LimitDialog.svelte';
-  import NewThread from '$lib/agent-threads/view/NewThread.svelte';
   import { isMac } from '$lib/platform/mac';
   import { fillRoom } from '$lib/scroll/room';
   import { detailedRun } from '../aside/place';
   import { DetailsShown } from '../aside/shown.svelte';
   import ThreadAside from '../aside/ThreadAside.svelte';
   import { inboxEngine } from '../inbox/engine';
+  import { projectsOf } from '../inbox/inbox';
   import PanelToggles from '../panel/PanelToggles.svelte';
   import InboxColumn from '../inbox/InboxColumn.svelte';
   import { InboxView } from '../inbox/view.svelte';
   import CommandPalette from '../palette/CommandPalette.svelte';
+  import DraftThread from '../draft/DraftThread.svelte';
+  import { ThreadDraft } from '../draft/thread-draft.svelte';
   import ChatHeader from '../shell/ChatHeader.svelte';
   import HistoryButtons from '../shell/HistoryButtons.svelte';
   import InboxRail from '../shell/InboxRail.svelte';
@@ -52,7 +54,8 @@
   let renaming = $state(false);
   const visits = new Visits();
   let toolsOpen = $state(false);
-  let starting = $state(false);
+  /** The new thread that is not started yet (T3's draft): the chat column shows it in place of a thread. */
+  let draft = $state<ThreadDraft | null>(null);
   let field = $state<HTMLInputElement>();
   let page = $state<HTMLElement>();
   let inbox = $state<ReturnType<typeof InboxColumn>>();
@@ -66,18 +69,26 @@
       rows: store.listedRows,
       failed: store.listProblem !== null || live?.linked === false,
       chosen: store.chosen,
-      newThread: newOff === null ? () => (starting = true) : undefined,
+      newThread: newOff === null ? newThread : undefined,
       open: (id) => void choose(id),
       settings: () => void goto(resolve('/settings')),
     }),
   );
   const open = $derived(store.chosen === null ? undefined : ((store.listedRows ?? []).find((row) => row.id === store.chosen) ?? (store.thread?.id === store.chosen ? store.thread : undefined)));
   /** The run of the open thread, when the card has something real of it to show: only then is there a details toggle. */
-  const detailed = $derived(detailedRun(store.liveThread?.row, store.chosen));
+  const detailed = $derived(detailedRun(draft === null ? store.liveThread?.row : undefined, store.chosen));
   const details = new DetailsShown();
+
+  /** Opens a new thread in the project of the open one, as T3's New thread does. */
+  function newThread(): void {
+    if (newOff !== null) return;
+    if (narrow) sheetOpen = false;
+    draft = new ThreadDraft(open?.folder ?? null);
+  }
 
   async function choose(id: string): Promise<void> {
     if (narrow) sheetOpen = false;
+    draft = null;
     visits.opened(id);
     await store.open(id);
     await tick();
@@ -103,7 +114,6 @@
   async function raise(threads: LiveThreads): Promise<CallResult> {
     const result = await threads.raiseLimit();
     if (result.ok && result.outcome.outcome === 'started') {
-      starting = false;
       void choose(result.outcome.thread);
     }
     return result;
@@ -142,7 +152,7 @@
     if (action === null) return;
     if (action.kind === 'new') {
       event.preventDefault();
-      if (newOff === null) starting = true;
+      newThread();
       return;
     }
     if (own(action.kind) || run(action as KeyAction, event.target)) event.preventDefault();
@@ -181,7 +191,7 @@
       <span class="name">Code</span>
       {#if !narrow}<HistoryButtons canGoBack={visits.canGoBack} canGoForward={visits.canGoForward} onback={() => step(-1)} onforward={() => step(1)} keys={mac ? { back: '⌘[', forward: '⌘]' } : { back: 'Ctrl+[', forward: 'Ctrl+]' }} />{/if}
     </TopBand>
-    <InboxColumn bind:this={inbox} {view} {store} onOpen={(id) => void choose(id)} {newOff} onNew={() => (starting = true)} onShow={() => (narrow ? (sheetOpen = true) : (inboxOpen = true))} bind:field />
+    <InboxColumn bind:this={inbox} {view} {store} onOpen={(id) => void choose(id)} {newOff} onNew={newThread} onShow={() => (narrow ? (sheetOpen = true) : (inboxOpen = true))} bind:field />
     {#if !narrow && inboxOpen}
       <InboxRail
         width={held}
@@ -200,10 +210,10 @@
   <ChatColumn room={detailed === undefined ? 0 : details.room}>
     {#snippet header()}
       <ChatHeader
-        thread={open}
+        thread={draft === null ? open : undefined}
         end={detailed === undefined ? undefined : toggles}
         inset={!shown || narrow}
-        onproject={newOff === null ? () => (starting = true) : undefined}
+        onproject={newOff === null ? newThread : undefined}
         onactions={(anchor) => (open === undefined ? undefined : inbox?.openThreadMenu(open.id, anchor, () => (renaming = true)))}
         onrename={(title) => (open === undefined ? Promise.resolve(null) : (inbox?.renameThread(open.id, title) ?? Promise.resolve(null)))}
         {renaming}
@@ -212,21 +222,13 @@
     {/snippet}
     {#snippet aside()}{#if detailed !== undefined}<ThreadAside row={detailed} shown={details} />{/if}{/snippet}
     {#snippet notice()}{#if linkWords !== null}<p class="link" role="status">{linkWords}</p>{/if}{/snippet}
-    <ThreadBody {store} now={view.moment} {toolsOpen} />
-    {#snippet composer()}{#if store.chosen !== null && (store.liveThread?.row.id === store.chosen || store.thread?.id === store.chosen)}<ChatFoot thread={store.liveThread?.row.id === store.chosen ? store.liveThread : null} {live} id={store.chosen} />{/if}{/snippet}
+    {#if draft !== null && live !== null}<DraftThread {draft} {live} projects={projectsOf(store.listedRows ?? [])} onStarted={(id) => void choose(id)} />{:else}<ThreadBody {store} now={view.moment} {toolsOpen} />{/if}
+    {#snippet composer()}{#if draft === null && store.chosen !== null && (store.liveThread?.row.id === store.chosen || store.thread?.id === store.chosen)}<ChatFoot thread={store.liveThread?.row.id === store.chosen ? store.liveThread : null} {live} id={store.chosen} />{/if}{/snippet}
   </ChatColumn>
 </div>
 <p class="said" role="status">{said}</p>
 <CommandPalette host={palette} />
 {#if live !== null}
-  <NewThread
-    open={starting}
-    onStart={(action) => live.call(action)}
-    onStarted={(id) => void choose(id)}
-    onClose={() => {
-      starting = false;
-    }}
-  />
   <LimitDialog open={live.overLimit !== null} onRaise={() => raise(live)} onKeep={() => live.keepLimit()} />
 {/if}
 

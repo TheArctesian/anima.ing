@@ -30,6 +30,7 @@ import CornerLeftUp from '@lucide/svelte/icons/corner-left-up';
 import CornerUpRight from '@lucide/svelte/icons/corner-up-right';
 import Download from '@lucide/svelte/icons/download';
 import Ellipsis from '@lucide/svelte/icons/ellipsis';
+import ExternalLink from '@lucide/svelte/icons/external-link';
 import Eye from '@lucide/svelte/icons/eye';
 import EyeOff from '@lucide/svelte/icons/eye-off';
 import File from '@lucide/svelte/icons/file';
@@ -51,6 +52,7 @@ import GitPullRequestArrow from '@lucide/svelte/icons/git-pull-request-arrow';
 import GitPullRequestClosed from '@lucide/svelte/icons/git-pull-request-closed';
 import GitPullRequestDraft from '@lucide/svelte/icons/git-pull-request-draft';
 import Globe from '@lucide/svelte/icons/globe';
+import History from '@lucide/svelte/icons/history';
 import Hammer from '@lucide/svelte/icons/hammer';
 import Image from '@lucide/svelte/icons/image';
 import Keyboard from '@lucide/svelte/icons/keyboard';
@@ -73,6 +75,8 @@ import Mic from '@lucide/svelte/icons/mic';
 import MicOff from '@lucide/svelte/icons/mic-off';
 import Minimize2 from '@lucide/svelte/icons/minimize-2';
 import Minus from '@lucide/svelte/icons/minus';
+import Lock from '@lucide/svelte/icons/lock';
+import LockOpen from '@lucide/svelte/icons/lock-open';
 import Monitor from '@lucide/svelte/icons/monitor';
 import PanelBottom from '@lucide/svelte/icons/panel-bottom';
 import PanelLeft from '@lucide/svelte/icons/panel-left';
@@ -86,6 +90,7 @@ import Play from '@lucide/svelte/icons/play';
 import Plus from '@lucide/svelte/icons/plus';
 import Redo2 from '@lucide/svelte/icons/redo-2';
 import RefreshCw from '@lucide/svelte/icons/refresh-cw';
+import RadioTower from '@lucide/svelte/icons/radio-tower';
 import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 import Scale from '@lucide/svelte/icons/scale';
 import Scan from '@lucide/svelte/icons/scan';
@@ -103,6 +108,9 @@ import Square from '@lucide/svelte/icons/square';
 import SquareArrowOutUpRight from '@lucide/svelte/icons/square-arrow-out-up-right';
 import SquareMenu from '@lucide/svelte/icons/square-menu';
 import SquarePen from '@lucide/svelte/icons/square-pen';
+import SquareSplitHorizontal from '@lucide/svelte/icons/square-split-horizontal';
+import SquareSplitVertical from '@lucide/svelte/icons/square-split-vertical';
+import SquareTerminal from '@lucide/svelte/icons/square-terminal';
 import Table2 from '@lucide/svelte/icons/table-2';
 import Terminal from '@lucide/svelte/icons/terminal';
 import TextSearch from '@lucide/svelte/icons/text-search';
@@ -175,6 +183,7 @@ export const CODE_ICONS = {
   'corner-up-right': CornerUpRight,
   download: Download,
   ellipsis: Ellipsis,
+  'external-link': ExternalLink,
   eye: Eye,
   'eye-off': EyeOff,
   file: File,
@@ -196,6 +205,7 @@ export const CODE_ICONS = {
   'git-pull-request-closed': GitPullRequestClosed,
   'git-pull-request-draft': GitPullRequestDraft,
   globe: Globe,
+  history: History,
   hammer: Hammer,
   image: Image,
   keyboard: Keyboard,
@@ -218,6 +228,8 @@ export const CODE_ICONS = {
   'mic-off': MicOff,
   'minimize-2': Minimize2,
   minus: Minus,
+  lock: Lock,
+  'lock-open': LockOpen,
   monitor: Monitor,
   'panel-bottom': PanelBottom,
   'panel-left': PanelLeft,
@@ -231,6 +243,7 @@ export const CODE_ICONS = {
   plus: Plus,
   'redo-2': Redo2,
   'refresh-cw': RefreshCw,
+  'radio-tower': RadioTower,
   'rotate-ccw': RotateCcw,
   scale: Scale,
   scan: Scan,
@@ -248,6 +261,9 @@ export const CODE_ICONS = {
   'square-arrow-out-up-right': SquareArrowOutUpRight,
   'square-menu': SquareMenu,
   'square-pen': SquarePen,
+  'square-split-horizontal': SquareSplitHorizontal,
+  'square-split-vertical': SquareSplitVertical,
+  'square-terminal': SquareTerminal,
   'table-2': Table2,
   terminal: Terminal,
   'text-search': TextSearch,
