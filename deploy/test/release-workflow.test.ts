@@ -176,8 +176,9 @@ describe("permissions and pinning", () => {
     expect(workflow.permissions).toEqual({});
     for (const [name, found] of Object.entries(jobs)) {
       const granted = JSON.stringify(found.permissions);
-      // The first job also reads the list of the runs of the gates.
-      if (name === "commit") expect(granted).toBe('{"contents":"read","actions":"read"}');
+      // The first job also reads the list of the runs of the gates, and so does the called
+      // workflow `gates`.
+      if (name === "commit" || name === "gates-linux") expect(granted).toBe('{"contents":"read","actions":"read"}');
       else expect(granted === "{}" || granted === '{"contents":"read"}').toBe(true);
     }
     expect(RAW).not.toMatch(/:\s*write\b/);

@@ -36,7 +36,8 @@ describe("the gates jobs of the release", () => {
     const linux = job("gates-linux");
     expect(linux.uses).toBe("./.github/workflows/gates.yml");
     expect(linux.with).toEqual({ ref: "${{ needs.commit.outputs.sha }}" });
-    expect(linux.permissions).toEqual({ contents: "read" });
+    // The called workflow reads the list of the runs (its first job), so the caller must grant it.
+    expect(linux.permissions).toEqual({ contents: "read", actions: "read" });
     expect(linux.steps).toBeUndefined();
     const called = Bun.YAML.parse(read(".github", "workflows", "gates.yml")) as { on: { workflow_call: { inputs: Record<string, unknown> } }; jobs: Record<string, unknown> };
     expect(Object.keys(called.on.workflow_call.inputs)).toContain("ref");
