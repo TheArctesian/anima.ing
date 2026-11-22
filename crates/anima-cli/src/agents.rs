@@ -7,6 +7,8 @@ pub mod documents;
 #[cfg(unix)]
 pub mod drive;
 #[cfg(unix)]
+pub mod files;
+#[cfg(unix)]
 pub mod listing;
 pub mod report;
 #[cfg(unix)]
@@ -99,6 +101,11 @@ pub enum AgentCommand {
     /// whose threads are listed under its name.
     #[cfg(unix)]
     Projects(listing::ProjectsArgs),
+    /// List the files and folders of the working folder of a thread that the runner started,
+    /// the best match for the words first, as the `@` list of the composer. Secrets and the
+    /// folders of tools and of build output are left out.
+    #[cfg(unix)]
+    Files(files::FilesArgs),
 }
 
 impl AgentCommand {
@@ -131,6 +138,7 @@ impl AgentCommand {
             Self::RaiseLimit => drive::raise_limit(invocation).await,
             Self::Accounts => accounts::accounts(invocation).await,
             Self::Models => accounts::models(invocation).await,
+            Self::Files(args) => files::files(args, invocation).await,
             other => other.run_listing(invocation).await,
         }
     }

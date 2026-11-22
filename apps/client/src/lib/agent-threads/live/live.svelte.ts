@@ -1,7 +1,7 @@
 import type { RunnerShell } from '$lib/desktop/agent-threads/runner';
 import type { Listing, ListingChange } from '../listing/listing';
 import { noticeFor, type Looking } from './notify';
-import { REFUSAL_WORDS, type Action, type Outcome, type Update } from './run';
+import { REFUSAL_WORDS, type Action, type FoundFile, type Outcome, type Update } from './run';
 import { applied, begun, type LiveThread } from './timeline';
 
 /**
@@ -108,6 +108,13 @@ export class LiveThreads {
       this.threads = next;
     }
     return result;
+  }
+
+  /** The `@` list of the composer (TH108): the files of the folder of a thread that match `query`, the best first. */
+  async files(thread: string, query: string, most: number): Promise<{ readonly ok: true; readonly paths: readonly FoundFile[] } | { readonly ok: false; readonly words: string }> {
+    const result = await this.call({ call: 'files', thread, query, most });
+    if (!result.ok) return result;
+    return result.outcome.outcome === 'files' ? { ok: true, paths: result.outcome.paths } : { ok: false, words: 'The thread runner did not answer with files.' };
   }
 
   /** One update of the watch; an update of a thread that the page does not know yet waits for its row. */
