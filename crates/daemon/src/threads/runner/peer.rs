@@ -51,26 +51,25 @@ pub async fn of_an_agent(pid: Option<i32>, holder_dir: &Path) -> bool {
     if !GROUPS_KNOWN {
         return false;
     }
-    let Some((mine, line)) = RUNNER.get_or_init(|| runner_line(&table)).await else {
+    let me = std::process::id();
+    let Ok(mine) = RUNNER
+        .get_or_try_init(|| async { origin(me).await.ok_or(()) })
+        .await
+    else {
         return true;
     };
     match origin(pid).await {
         Some(theirs) if theirs != *mine => false,
-        Some(_) => !comes_from(&table, pid, std::process::id(), line),
+        // The line is read from the table of this call: a process that took the ID of a
+        // parent that ended is not above the runner now.
+        Some(_) => !comes_from(&table, pid, me, &line_of(&table, me, mine).await),
         None => true,
     }
 }
 
-/// The group of origin of the runner and its line; they do not change while it runs.
-static RUNNER: tokio::sync::OnceCell<Option<(String, BTreeSet<u32>)>> =
-    tokio::sync::OnceCell::const_new();
-
-async fn runner_line(table: &Commands) -> Option<(String, BTreeSet<u32>)> {
-    let me = std::process::id();
-    let mine = origin(me).await?;
-    let line = line_of(table, me, &mine).await;
-    Some((mine, line))
-}
+/// The group of origin of the runner, which does not change while it runs; a read that failed
+/// is tried again at the next client.
+static RUNNER: tokio::sync::OnceCell<String> = tokio::sync::OnceCell::const_new();
 
 /// Whether this system gives each process a group of origin that [`origin`] can read.
 const GROUPS_KNOWN: bool = cfg!(any(target_os = "macos", target_os = "linux"));
