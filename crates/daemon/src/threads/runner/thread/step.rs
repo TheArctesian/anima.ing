@@ -25,6 +25,9 @@ pub enum Step {
     Account(Box<AccountFacts>),
     /// The models that the program offers (TH104): for the runner, not an update.
     Models(Vec<ModelChoice>),
+    /// Read where the thread works again, as a turn ended: an agent may switch the branch
+    /// (TH112).
+    Workspace,
 }
 
 impl Step {
@@ -40,7 +43,11 @@ impl Step {
             Self::Mark => Action::Mark { thread },
             Self::EndChildren => Action::EndChildren { thread },
             Self::EndProgram => Action::Stop { thread },
-            Self::Log(_) | Self::Change(_) | Self::Account(_) | Self::Models(_) => return None,
+            Self::Log(_)
+            | Self::Change(_)
+            | Self::Account(_)
+            | Self::Models(_)
+            | Self::Workspace => return None,
         })
     }
 }

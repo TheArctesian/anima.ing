@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::drive::{Answer, DriveEvent, Effort, Mode, Program, Request};
+use crate::drive::{Answer, DriveEvent, Effort, Mode, Program, Request, Usage};
 use crate::files::FoundPath;
 
 pub mod attach;
@@ -18,12 +18,14 @@ mod programs;
 mod project;
 mod queue;
 mod shelf;
+mod workspace;
 pub use limits::{Limits, OVER_LIMIT};
 pub use listing::{BadChange, BadTitle, Listing, ListingChange, MAX_TITLE};
 pub use programs::{AccountRow, ModelRow};
 pub use project::{BadProject, MAX_PROJECTS, Project, ProjectChange, changed as project_changed};
 pub use queue::{LastTurn, MOST_QUEUED, MOST_QUEUED_BYTES, Queued};
 pub use shelf::{Activity, MOST_SNOOZE, Marks, SETTLE_AFTER, Shelf};
+pub use workspace::{Workspace, WorkspaceKind};
 
 /// The most bytes of one frame of a client.
 pub const MAX_FRAME: usize = 4 * 1024 * 1024;
@@ -339,6 +341,13 @@ pub struct ThreadRow {
     /// The effort of the model, when the person chose one (TH110).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub effort: Option<Effort>,
+    /// Where the thread works, read at its start (TH112).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workspace: Option<Workspace>,
+    /// The use of tokens that the program last said (TH112). It also comes live, as a
+    /// [`DriveEvent::Usage`]; the row keeps it for a client that comes later.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub usage: Option<Usage>,
 }
 
 /// One update of one thread, in the order the runner made them.
@@ -354,19 +363,11 @@ pub struct Update {
 #[serde(tag = "change", rename_all = "snake_case")]
 pub enum Change {
     /// Something the program said. A request of the program comes as [`Change::Asked`].
-    Said {
-        event: DriveEvent,
-    },
+    Said { event: DriveEvent },
     /// The program asks the person; `request` is the ID of the runner for the answer.
-    Asked {
-        request: Uuid,
-        detail: Request,
-    },
+    Asked { request: Uuid, detail: Request },
     /// A request is closed: answered, or gone with its process or turn.
-    Closed {
-        request: Uuid,
-        why: String,
-    },
+    Closed { request: Uuid, why: String },
     /// A prompt the runner sent, with where it came from (THR-042).
     Prompt {
         text: String,
@@ -377,9 +378,10 @@ pub enum Change {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         files: Vec<String>,
     },
+    /// The state of a thread changed. The row is boxed: it is the largest part of a change.
     State {
         state: RunState,
-        row: ThreadRow,
+        row: Box<ThreadRow>,
     },
 }
 

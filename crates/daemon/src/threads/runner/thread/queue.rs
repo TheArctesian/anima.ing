@@ -121,7 +121,7 @@ impl Thread {
     pub(super) fn row_change(&self) -> Step {
         Step::Change(Change::State {
             state: self.row.state,
-            row: self.row.clone(),
+            row: Box::new(self.row.clone()),
         })
     }
 }

@@ -3,7 +3,7 @@
 
 use std::path::{Path, PathBuf};
 
-use agent_threads::control::{Refusal, RunState, ThreadRow};
+use agent_threads::control::{Refusal, RunState, ThreadRow, Workspace};
 use agent_threads::drive::{Effort, Launch, Mode, Model, Program, SessionStart};
 use uuid::Uuid;
 
@@ -321,6 +321,8 @@ impl Runner {
             queued: Vec::new(),
             last_turn: None,
             effort: new.effort,
+            workspace: Some(Workspace::of(&folder)),
+            usage: None,
         };
         let action = wire::Action::Start {
             thread: id.to_string(),

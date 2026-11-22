@@ -5,6 +5,7 @@
  */
 
 import { attachedFrom, promptFilesFrom, type AttachAction, type Attached, type PromptFiles } from './attachments';
+import { usageFrom, workspaceFrom, type RunUsage, type RunWorkspace } from './details';
 import { filesFrom, type FoundFile } from './files';
 import { modelListsFrom, type ModelLists } from './models';
 import { listingsFrom, type Listing, type ListingChange } from '../listing/listing';
@@ -38,6 +39,9 @@ export interface RunRow {
   readonly lastTurn?: LastTurn | null;
   /** The effort of the model, when the person chose one (TH110). */
   readonly effort?: Effort | null;
+  /** Where the thread works, and the use of tokens that the program last said (TH112). */
+  readonly workspace?: RunWorkspace | null;
+  readonly usage?: RunUsage | null;
 }
 
 export interface Question {
@@ -192,7 +196,7 @@ export function runRowFrom(value: unknown): RunRow | null {
   const open = strings(value.open);
   if (id === null || program === null || folder === null || mode === null || state === null || title === null || open === null) return null;
   if (started === null || Number.isNaN(started.getTime())) return null;
-  return { id, program, folder, mode, model: str(value.model), state, session: str(value.session), title, started, ended: str(value.ended), open, queued: queuedFrom(value.queued), lastTurn: lastTurnFrom(value.last_turn), effort: oneOf<Effort>(value.effort, EFFORTS) };
+  return { id, program, folder, mode, model: str(value.model), state, session: str(value.session), title, started, ended: str(value.ended), open, queued: queuedFrom(value.queued), lastTurn: lastTurnFrom(value.last_turn), effort: oneOf<Effort>(value.effort, EFFORTS), workspace: workspaceFrom(value.workspace), usage: usageFrom(value.usage) };
 }
 
 function questionFrom(value: unknown): Question | null {
