@@ -39,7 +39,7 @@ pub struct Asked<'a> {
     /// Who the commit is from.
     pub who: &'a Person,
     /// The hooks of the repository, for a thread that may run them.
-    pub hooks: Option<Hooks<'a>>,
+    pub hooks: Option<&'a Hooks<'a>>,
 }
 
 /// Commits and gives the ID of the commit with the branch it is on. The commit holds the files

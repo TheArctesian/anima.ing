@@ -95,9 +95,8 @@ pub async fn learn(git: &Git, worktree: &Worktree, commit: &str) -> Result<(), G
         None => format!("{tree}\n"),
     };
     let record = worktree.record();
-    let incoming = record.own.join("incoming");
-    let _ = std::fs::remove_dir_all(&incoming);
-    std::fs::create_dir(&incoming).map_err(GitError::Files)?;
+    lent(&record.common_dir)?;
+    let incoming = fresh(&record.own, "incoming")?;
     let base = incoming.join("p");
     let pack: [&OsStr; 4] = [
         "pack-objects".as_ref(),
@@ -107,14 +106,21 @@ pub async fn learn(git: &Git, worktree: &Worktree, commit: &str) -> Result<(), G
     ];
     let pack = borrowing(Run::new(dir, pack), &record.common_dir);
     git.output(pack.with_input(wanted.into_bytes())).await?;
-    let packs = std::fs::read_dir(&incoming).map_err(GitError::Files)?;
-    for file in packs.flatten() {
-        if file.path().extension().is_some_and(|kind| kind == "pack") {
-            // Only the pack is taken; `index-pack` names each object by its content.
-            let placed = record.own.join("objects/pack").join(file.file_name());
-            std::fs::rename(file.path(), &placed).map_err(GitError::Files)?;
-            let index: [&OsStr; 2] = ["index-pack".as_ref(), placed.as_os_str()];
-            git.output(Run::new(dir, index)).await?;
+    // The store of the person named no second store before the copy and none after it.
+    self::lent(&record.common_dir)?;
+    for pack in packs_in(&incoming)? {
+        // Only the pack is taken; `index-pack` names each object by its content. The pack
+        // comes into the store of the runner after that, with its new list of names.
+        let index = pack.with_extension("idx");
+        let _ = std::fs::remove_file(&index);
+        let name: [&OsStr; 2] = ["index-pack".as_ref(), pack.as_os_str()];
+        git.output(Run::new(dir, name)).await?;
+        for file in [&pack, &index] {
+            let placed = file
+                .file_name()
+                .map(|name| record.own.join("objects/pack").join(name));
+            let placed = placed.ok_or(GitError::NotFound)?;
+            std::fs::rename(file, placed).map_err(GitError::Files)?;
         }
     }
     let _ = std::fs::remove_dir_all(&incoming);
@@ -131,6 +137,50 @@ pub async fn learn(git: &Git, worktree: &Worktree, commit: &str) -> Result<(), G
     whole.map_err(|_| forged())?;
     let keep = ["update-ref", "--no-deref", KNOWN, commit];
     git.output(Run::new(dir, keep)).await.map(drop)
+}
+
+/// A new empty folder `name` in the Git folder of the runner.
+fn fresh(own: &Path, name: &str) -> Result<std::path::PathBuf, GitError> {
+    let folder = own.join(name);
+    let _ = std::fs::remove_dir_all(&folder);
+    std::fs::create_dir(&folder).map_err(GitError::Files)?;
+    Ok(folder)
+}
+
+/// The pack files in `folder`.
+fn packs_in(folder: &Path) -> Result<Vec<std::path::PathBuf>, GitError> {
+    let listed = std::fs::read_dir(folder).map_err(GitError::Files)?;
+    let is_pack = |path: &std::path::PathBuf| path.extension().is_some_and(|kind| kind == "pack");
+    Ok(listed
+        .flatten()
+        .map(|file| file.path())
+        .filter(is_pack)
+        .collect())
+}
+
+/// What the object store of the person borrows from: nothing, in a store that the runner
+/// copies from. A store that names a second store (`info/alternates`) would let an agent
+/// have the runner copy the objects of a repository that the agent cannot read.
+///
+/// # Errors
+/// A refusal when the store is no real folder or names a second store.
+fn lent(common: &Path) -> Result<(), GitError> {
+    let objects = common.join("objects");
+    let real = objects.symlink_metadata().is_ok_and(|about| about.is_dir());
+    let names_more = ["info/alternates", "info/http-alternates"]
+        .iter()
+        .any(|file| objects.join(file).symlink_metadata().is_ok());
+    if real && !names_more {
+        Ok(())
+    } else {
+        Err(GitError::Failed {
+            code: None,
+            said:
+                "the repository borrows objects from a different place (objects/info/alternates); \
+                   Anima does not read such a repository"
+                    .to_owned(),
+        })
+    }
 }
 
 /// The refusal of a commit with an object that did not arrive under its ID.
@@ -191,7 +241,9 @@ pub async fn give(
         Some(known) => format!("{commit}\n^{known}\n"),
         None => format!("{commit}\n"),
     };
-    let named = packs.join("pack");
+    // The pack is made in the folder of the runner and copied: the two can be on two disks.
+    let outgoing = fresh(&worktree.record().own, "outgoing")?;
+    let named = outgoing.join("pack");
     let pack: [&OsStr; 4] = [
         "pack-objects".as_ref(),
         "--revs".as_ref(),
@@ -199,9 +251,17 @@ pub async fn give(
         named.as_os_str(),
     ];
     let run = Run::new(worktree.folder(), pack);
-    git.output(run.with_input(wanted.into_bytes()))
-        .await
-        .map(drop)
+    git.output(run.with_input(wanted.into_bytes())).await?;
+    for pack in packs_in(&outgoing)? {
+        // The pack first: git reads a pack only when its list of names is beside it.
+        for file in [pack.clone(), pack.with_extension("idx")] {
+            let placed = file.file_name().map(|name| packs.join(name));
+            let placed = placed.ok_or(GitError::NotFound)?;
+            std::fs::copy(&file, placed).map_err(GitError::Files)?;
+        }
+    }
+    let _ = std::fs::remove_dir_all(&outgoing);
+    Ok(())
 }
 
 /// Makes the index of the worktree, the one that the `git` of the agent and of the person
@@ -215,7 +275,8 @@ pub async fn follow(git: &Git, worktree: &Worktree, commit: &str) -> Result<(), 
     let fresh = git_dir.join("index.anima");
     // A file of an earlier call that did not end; `git` makes the new one with a lock.
     let _ = std::fs::remove_file(&fresh);
-    let reset = Run::new(worktree.folder(), ["reset", "--quiet", commit, "--"]);
-    git.output(reset.with_env("GIT_INDEX_FILE", &fresh)).await?;
+    // No file of the worktree is read: the index only names what the commit has.
+    let read = Run::new(worktree.folder(), ["read-tree", commit]);
+    git.output(read.with_env("GIT_INDEX_FILE", &fresh)).await?;
     std::fs::rename(&fresh, git_dir.join("index")).map_err(GitError::Files)
 }

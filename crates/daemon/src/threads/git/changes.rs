@@ -112,6 +112,25 @@ pub async fn of(
     Ok(changes)
 }
 
+/// The changes for the page. With `keep`, the snapshot of the uncommitted files goes under a
+/// ref: a commit of the person takes only the one that they last looked at.
+///
+/// # Errors
+/// As [`of`].
+pub async fn shown(
+    git: &Git,
+    worktree: &Worktree,
+    (scope, ignore_whitespace): (Scope, bool),
+    keep: bool,
+) -> Result<Changes, GitRefusal> {
+    let changes = of(git, worktree, scope, ignore_whitespace).await?;
+    if let (true, Some(shown)) = (keep, &changes.snapshot) {
+        let name = checkpoint::reviewed_ref(worktree.thread());
+        checkpoint::keep(git, worktree, &name, shown).await?;
+    }
+    Ok(changes)
+}
+
 /// Reads the three outputs of `git diff` (`--name-status -z`, `--numstat -z`, `--patch`) as one
 /// list of files. `whole` (the patch of all files) is `None` when it was over the limit.
 #[must_use]

@@ -94,7 +94,7 @@ pub fn remote(listed: &[Setting]) -> Option<(String, String)> {
 }
 
 /// The commit of `branch` that the last push of the runner sent; `None` before the first.
-async fn sent(git: &Git, worktree: &Worktree, branch: &str) -> Option<String> {
+pub async fn sent(git: &Git, worktree: &Worktree, branch: &str) -> Option<String> {
     let name = format!("{}^{{commit}}", checkpoint::pushed_ref(branch));
     let verify = [
         "rev-parse",

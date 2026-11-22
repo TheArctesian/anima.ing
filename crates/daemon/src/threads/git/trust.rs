@@ -13,6 +13,7 @@ use agent_threads::git::GitRefusal;
 use sha2::{Digest, Sha256};
 
 use super::place::{Home, Worktree};
+use super::run::hooks::Hooks;
 use super::run::settings::{self, Setting};
 use super::run::{Git, said};
 use super::status;
@@ -37,9 +38,10 @@ fn shown(value: &str) -> String {
 /// that says it, with a digest of the whole value. `listed` is the configuration of the
 /// repository as text.
 #[must_use]
-pub fn now(listed: &[Setting]) -> BTreeMap<String, String> {
+pub fn now(listed: &[Setting], hooks: Option<&Hooks<'_>>) -> BTreeMap<String, String> {
     let digest = |value: &str| crate::model::fetch::hex(&Sha256::digest(value.as_bytes()));
-    let mut seen = BTreeMap::new();
+    // The hooks that a thread with full access runs are files that each thread can write.
+    let mut seen = hooks.map_or_default(Hooks::entries);
     let who = settings::person(listed);
     if who.from_the_repository {
         let (name, email) = (who.name.unwrap_or_default(), who.email.unwrap_or_default());
@@ -52,6 +54,24 @@ pub fn now(listed: &[Setting]) -> BTreeMap<String, String> {
     if let Some((remote, url)) = status::remote(listed) {
         let place = said::without_credentials(&url);
         seen.insert(shown(&format!("push to {remote}: {place}")), digest(&url));
+    }
+    seen
+}
+
+/// [`now`] for the thread of `worktree`. A thread that runs no hook keeps the hooks as the
+/// person accepted them before: none is shown to it as changed, and its yes accepts none.
+#[must_use]
+pub fn seen(
+    worktree: &Worktree,
+    listed: &[Setting],
+    hooks: Option<&Hooks<'_>>,
+) -> BTreeMap<String, String> {
+    let mut seen = now(listed, hooks);
+    if hooks.is_none()
+        && let Some(before) = &worktree.record().trusted
+    {
+        let kept = before.iter().filter(|(name, _)| name.starts_with("hook "));
+        seen.extend(kept.map(|(name, digest)| (name.clone(), digest.clone())));
     }
     seen
 }
@@ -81,8 +101,15 @@ pub fn changed(
 ///
 /// # Errors
 /// [`GitRefusal::Changed`] with the names of what changed.
-pub fn accepted(worktree: &Worktree, listed: &[Setting]) -> Result<(), GitRefusal> {
-    let what = changed(worktree.record().trusted.as_ref(), &now(listed));
+pub fn accepted(
+    worktree: &Worktree,
+    listed: &[Setting],
+    hooks: Option<&Hooks<'_>>,
+) -> Result<(), GitRefusal> {
+    let what = changed(
+        worktree.record().trusted.as_ref(),
+        &seen(worktree, listed, hooks),
+    );
     if what.is_empty() {
         Ok(())
     } else {
@@ -98,9 +125,10 @@ pub async fn status_with(
     git: &Git,
     worktree: &Worktree,
     listed: &[Setting],
+    hooks: Option<&Hooks<'_>>,
 ) -> Result<agent_threads::git::Status, GitRefusal> {
     let mut status = status::of(git, worktree, listed).await?;
-    let seen = now(listed);
+    let seen = seen(worktree, listed, hooks);
     status.changed = first(changed(worktree.record().trusted.as_ref(), &seen));
     status.accept = digest(&seen);
     Ok(status)
@@ -177,12 +205,12 @@ mod tests {
     fn a_planted_author_and_each_place_of_a_push_are_named() {
         let read = |text: &str| settings::read(text);
         let own = "global\0user.name\nAda\0global\0user.email\nada@example.invalid\0";
-        assert!(now(&read(own)).is_empty());
+        assert!(now(&read(own), None).is_empty());
         let planted = format!(
             "{own}local\0user.email\nm@example.invalid\n\u{1b}[2K\0\
              local\0remote.origin.url\nhttps://ada:TOKEN@example.invalid/a.git\0"
         );
-        let seen = now(&read(&planted));
+        let seen = now(&read(&planted), None);
         let names: Vec<&str> = seen.keys().map(String::as_str).collect();
         assert_eq!(
             names,
@@ -193,7 +221,7 @@ mod tests {
         );
         let other = planted.replace("TOKEN", "OTHER");
         assert_ne!(
-            now(&read(&other)),
+            now(&read(&other), None),
             seen,
             "a different credential is a change"
         );

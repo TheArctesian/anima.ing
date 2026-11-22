@@ -30,10 +30,15 @@ impl Bench {
         let as_thread = AsThread::new(move |run| {
             started.fetch_add(1, Ordering::SeqCst);
             Box::pin(async move {
-                let done = tokio::process::Command::new("git")
+                let input = match &run.input {
+                    Some(file) => std::fs::File::open(file)?.into(),
+                    None => std::process::Stdio::null(),
+                };
+                let done = tokio::process::Command::new(&run.program)
                     .args(&run.args)
                     .current_dir(&run.dir)
                     .envs(run.env.iter().map(|(name, value)| (name, value)))
+                    .stdin(input)
                     .output()
                     .await?;
                 Ok(Ended {
@@ -179,6 +184,17 @@ async fn a_thread_with_full_access_runs_the_hooks_of_a_commit_and_a_push_as_the_
     );
     bench.one_hook("pre-commit", &refuse);
     let head = bench.git_in(&folder, &["rev-parse", "HEAD"]).await;
+    // A hook is a file that each thread of the repository can write: none runs before the
+    // person accepted it as it is.
+    let unaccepted = engine
+        .call(FULL, target(), commit(&reviewed, Some(&["new.txt"])))
+        .await;
+    assert!(
+        matches!(refused(&unaccepted), Some(GitRefusal::Changed { what }) if what == &["hook pre-commit"]),
+        "{unaccepted:?}"
+    );
+    assert_eq!(started.load(Ordering::SeqCst), 0, "a hook ran before a yes");
+    accept(&engine).await;
     let stopped = engine
         .call(FULL, target(), commit(&reviewed, Some(&["new.txt"])))
         .await;
@@ -191,7 +207,18 @@ async fn a_thread_with_full_access_runs_the_hooks_of_a_commit_and_a_push_as_the_
         "new.txt\n"
     );
     assert_eq!(bench.git_in(&folder, &["rev-parse", "HEAD"]).await, head);
+}
 
+#[tokio::test]
+async fn the_hooks_of_a_commit_and_a_push_run_in_their_order_and_no_other_hook_does() {
+    let bench = Bench::new().await;
+    bench.with_origin().await;
+    let folder = bench.worktree().await;
+    let root = bench.home.parent().expect("the root");
+    let started = Arc::new(AtomicUsize::new(0));
+    let engine = bench.with_hooks(&started);
+    std::fs::write(folder.join("a.txt"), "changed\n").expect("a file");
+    let reviewed = bench.reviewed().await;
     bench.one_hook("pre-commit", "exit 0");
     bench.one_hook("commit-msg", "echo '[checked]' >> \"$1\"");
     let after = root.join("AFTER");
@@ -202,6 +229,7 @@ async fn a_thread_with_full_access_runs_the_hooks_of_a_commit_and_a_push_as_the_
     let ran = root.join("RAN");
     let moved = format!("touch \"{}\"", ran.display());
     bench.one_hook("reference-transaction", &moved);
+    accept(&engine).await;
 
     let committed = engine.call(FULL, target(), commit(&reviewed, None)).await;
     let GitOutcome::Committed { commit: made, .. } = committed else {
@@ -221,23 +249,73 @@ async fn a_thread_with_full_access_runs_the_hooks_of_a_commit_and_a_push_as_the_
         "{line}"
     );
     assert!(
-        started.load(Ordering::SeqCst) >= 5,
+        started.load(Ordering::SeqCst) >= 4,
         "the hooks were not started as the thread"
     );
     assert!(!ran.exists(), "the runner's own git ran a hook");
 }
 
+/// The yes of the person, in a thread with full access, to the hooks as they are now.
+async fn accept(engine: &Engine) {
+    let GitOutcome::Status(status) = engine.call(FULL, target(), GitAction::Status).await else {
+        panic!("no status");
+    };
+    let trust = GitAction::Trust {
+        shown: status.accept,
+    };
+    assert_eq!(
+        engine.call(FULL, target(), trust).await,
+        GitOutcome::Trusted
+    );
+}
+
 #[tokio::test]
-async fn full_access_runs_no_hook_when_the_runner_gave_no_way_to_start_one() {
+async fn a_hook_that_a_different_thread_changed_runs_only_after_a_new_yes() {
     let bench = Bench::new().await;
     let folder = bench.worktree().await;
-    let ran = folder.with_file_name("RAN");
-    bench.hook(&format!("touch \"{}\"; exit 1", ran.display()));
+    let root = bench.home.parent().expect("the root");
+    let ran = root.join("RAN");
+    let started = Arc::new(AtomicUsize::new(0));
+    let engine = bench.with_hooks(&started);
+    bench.one_hook("pre-commit", "exit 0");
+    accept(&engine).await;
+    // What a confined thread of the same repository can do: write the shared hook, or name a
+    // folder of hooks of its own in the shared configuration.
+    let planted = format!("touch \"{}\"", ran.display());
+    bench.one_hook("pre-commit", &planted);
     std::fs::write(folder.join("a.txt"), "changed\n").expect("a file");
-    let committed = bench.call(FULL, commit("", None)).await;
+    let reviewed = bench.reviewed().await;
+    let stopped = engine.call(FULL, target(), commit(&reviewed, None)).await;
     assert!(
-        matches!(committed, GitOutcome::Committed { .. }),
-        "{committed:?}"
+        matches!(refused(&stopped), Some(GitRefusal::Changed { .. })),
+        "{stopped:?}"
     );
-    assert!(!ran.exists(), "a hook of the repository ran");
+    bench.one_hook("pre-commit", "exit 0");
+    let elsewhere = root.join("planted-hooks");
+    std::fs::create_dir_all(&elsewhere).expect("a folder");
+    std::fs::copy(
+        bench.project.join(".git/hooks/pre-commit"),
+        elsewhere.join("pre-commit"),
+    )
+    .expect("a hook");
+    std::fs::write(
+        elsewhere.join("pre-commit"),
+        format!("#!/bin/sh\n{planted}\n"),
+    )
+    .expect("a hook");
+    let path = elsewhere.to_string_lossy().into_owned();
+    let set = ["config", "core.hooksPath", path.as_str()];
+    bench.git_in(&bench.project, &set).await;
+    let stopped = engine.call(FULL, target(), commit(&reviewed, None)).await;
+    assert!(
+        matches!(refused(&stopped), Some(GitRefusal::Changed { .. })),
+        "{stopped:?}"
+    );
+    assert_eq!(started.load(Ordering::SeqCst), 0, "a hook was started");
+    assert!(
+        !ran.exists(),
+        "a planted hook ran in the thread with full access"
+    );
+    // A confined thread is asked nothing about hooks, and its yes accepts none.
+    assert_eq!(bench.status(PERSON).await.changed, Vec::<String>::new());
 }

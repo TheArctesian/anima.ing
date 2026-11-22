@@ -7,8 +7,9 @@
 use agent_threads::git::Checkpoint;
 use uuid::Uuid;
 
-use super::place::{Worktree, own};
+use super::place::{self, Worktree, own};
 use super::run::{Git, GitError, Run};
+use super::worktree::files;
 
 /// Who a checkpoint commit says it is from: never the person.
 const WHO: [(&str, &str); 4] = [
@@ -59,8 +60,12 @@ pub fn kept_ref(thread: Uuid) -> String {
 /// the last commit of the branch. The index is the one of the runner, which no agent writes:
 /// a file that the index of the worktree marks as unchanged is taken all the same.
 ///
+/// `git` only lists which files differ. Each of them is copied to a folder of the runner with
+/// no link followed ([`files`]), and `git` reads the copy: a link that an agent puts in the
+/// place of a file at the right moment leads the runner to no file outside the worktree.
+///
 /// # Errors
-/// A [`GitError`] when a step of `git` fails.
+/// A [`GitError`] when a step of `git` or a copy fails.
 pub async fn tree_now(
     git: &Git,
     worktree: &Worktree,
@@ -72,16 +77,83 @@ pub async fn tree_now(
         None => vec!["read-tree", "--empty"],
     };
     git.output(Run::new(dir, start)).await?;
-    // `git add` never looks into a nested repository that the last commit names: it would run
-    // `git` there, with the configuration of that repository (THR-050). Such an entry stays
-    // as the last commit has it.
-    let mut add: Vec<String> = ["add", "--all", "--", "."].map(str::to_owned).into();
-    for nested in nested(git, Run::new(dir, LIST)).await? {
-        add.push(format!(":(exclude,literal){nested}"));
+    // Nothing is read from a nested repository that the last commit names: such an entry
+    // stays as the last commit has it (THR-050).
+    let nested = nested(git, Run::new(dir, LIST)).await?;
+    let changed = git.output(Run::new(dir, CHANGED)).await?;
+    let new = git.output(Run::new(dir, NEW)).await?;
+    let rules = git.output(Run::new(dir, RULES)).await?;
+    let staging = worktree.record().own.join("staging");
+    let _ = std::fs::remove_dir_all(&staging);
+    place::private_folder(&staging).map_err(GitError::Files)?;
+    let root = files::Root::open(dir).map_err(GitError::Files)?;
+    let ours = |name: &&[u8]| {
+        let below = |nested: &String| {
+            name.strip_prefix(nested.as_bytes())
+                .is_some_and(|rest| rest.is_empty() || rest.starts_with(b"/"))
+        };
+        // A name that ends with `/` is a repository inside the worktree that nothing names.
+        !name.is_empty() && !name.ends_with(b"/") && !nested.iter().any(below)
+    };
+    let names = |listed: &[u8]| -> Vec<Vec<u8>> {
+        let parts = listed.split(|byte| *byte == 0);
+        parts.filter(ours).map(<[u8]>::to_vec).collect()
+    };
+    let mut staged = Vec::new();
+    // A changed file that is gone is staged too, as a removal. The files of the rules are
+    // only there for `git` to read.
+    for (list, tracked, stage) in [
+        (&changed, true, true),
+        (&new, false, true),
+        (&rules, false, false),
+    ] {
+        for name in names(list) {
+            let path = files::path(&name);
+            if !files::inside(&path) {
+                continue;
+            }
+            let there = root.take(&path, &staging).map_err(GitError::Files)?;
+            if stage && (there || tracked) {
+                staged.extend(name);
+                staged.push(0);
+            }
+        }
     }
-    git.output(Run::new(dir, add)).await?;
+    if !staged.is_empty() {
+        let add = Run::new(&staging, ADD).with_env("GIT_WORK_TREE", &staging);
+        git.output(add.with_input(staged)).await?;
+    }
+    let _ = std::fs::remove_dir_all(&staging);
     git.text(Run::new(dir, ["write-tree"])).await
 }
+
+/// Lists the files of the last commit that differ in the worktree or are gone.
+const CHANGED: [&str; 3] = ["ls-files", "-z", "--modified"];
+
+/// Lists the files that the last commit does not have and that git does not ignore.
+const NEW: [&str; 4] = ["ls-files", "-z", "--others", "--exclude-standard"];
+
+/// Lists each file of rules for the files beside it: filters and line ends.
+const RULES: [&str; 7] = [
+    "ls-files",
+    "-z",
+    "--cached",
+    "--others",
+    "--exclude-standard",
+    "--",
+    ":(glob)**/.gitattributes",
+];
+
+/// Stages the named files of the folder of the runner; a rule of that folder that would
+/// ignore one does not apply, the list is already without the ignored files.
+const ADD: [&str; 6] = [
+    "--literal-pathspecs",
+    "add",
+    "--all",
+    "--force",
+    "--pathspec-from-file=-",
+    "--pathspec-file-nul",
+];
 
 /// Makes a commit of the files of the worktree as they are now, with no ref and no change of
 /// the branch, and gives its ID. Its parent is the last commit of the branch.

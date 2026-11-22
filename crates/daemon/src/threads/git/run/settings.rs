@@ -109,6 +109,17 @@ pub fn person(settings: &[Setting]) -> Person {
     }
 }
 
+/// The folder of the hooks that the configuration names (`core.hooksPath`), when a file
+/// names one. What the runner sets for its own run on the command line does not count.
+#[must_use]
+pub fn hooks_path(settings: &[Setting]) -> Option<&str> {
+    settings
+        .iter()
+        .rfind(|setting| setting.name == "core.hookspath" && setting.scope != "command")
+        .map(|setting| setting.value.as_str())
+        .filter(|path| !path.is_empty())
+}
+
 /// The remote a push goes to: `remote.pushDefault`, else `origin`, else the first one, with
 /// the URL of a push to it. `None` when the repository has no remote with a URL.
 #[must_use]
@@ -190,6 +201,16 @@ mod tests {
         let who = person(&read(&planted));
         assert_eq!(who.email.as_deref(), Some("mallory@example.invalid"));
         assert!(who.from_the_repository);
+    }
+
+    #[test]
+    fn the_folder_of_the_hooks_is_what_a_file_says_not_what_the_runner_set_for_its_run() {
+        let listed = "local\0core.hookspath\n.husky/_\0command\0core.hookspath\n/dev/null\0";
+        assert_eq!(hooks_path(&read(listed)), Some(".husky/_"));
+        assert_eq!(
+            hooks_path(&read("command\0core.hookspath\n/dev/null\0")),
+            None
+        );
     }
 
     #[test]

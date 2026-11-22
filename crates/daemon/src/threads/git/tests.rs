@@ -6,6 +6,8 @@ mod held;
 mod hooks;
 mod late;
 mod left;
+#[cfg(unix)]
+mod links;
 mod person;
 mod planted;
 mod runs;
@@ -55,7 +57,19 @@ impl Bench {
         let records = root.join("records");
         std::fs::create_dir_all(&project).expect("the project");
         std::fs::create_dir_all(&home).expect("the home");
-        let git = Git::find(std::env::vars_os())
+        // As the runner at its start: the records are a folder of this user alone.
+        crate::threads::git::place::private_folder(&records).expect("the records");
+        // The person of the tests has a home with no configuration of git: what the
+        // developer of this computer set for their own git does not reach a test.
+        let person = root.join("person");
+        std::fs::create_dir_all(&person).expect("the home of the person");
+        let env = std::env::vars_os()
+            .filter(|(name, _)| name != "XDG_CONFIG_HOME")
+            .map(|(name, value)| match name.to_str() {
+                Some("HOME") => (name, person.clone().into_os_string()),
+                _ => (name, value),
+            });
+        let git = Git::find(env)
             .expect("git is installed")
             .with_local_remotes();
         let bench = Self {

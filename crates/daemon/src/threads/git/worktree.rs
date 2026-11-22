@@ -7,6 +7,8 @@
 //! Git folder of the runner ([`own`]). So no hook and no setting that somebody left in the
 //! repository applies when a worktree is made or removed (THR-050).
 
+pub mod files;
+
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 

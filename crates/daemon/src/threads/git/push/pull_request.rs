@@ -8,7 +8,7 @@ use std::fmt::Write as _;
 
 use agent_threads::git::{GitRefusal, PullRequestPage};
 
-use super::super::place::Worktree;
+use super::super::place::{Worktree, own};
 use super::super::run::Git;
 use super::super::run::settings::Setting;
 use super::super::status;
@@ -90,7 +90,9 @@ pub async fn prepare(
         return Err(GitRefusal::NotOurBranch);
     }
     let (_, url) = status::remote(listed).ok_or(GitRefusal::NoRemote)?;
-    if now.upstream.is_none() || now.ahead > 0 {
+    // Pushed is what the runner itself sent, not what a ref of the repository says.
+    let tip = own::tip(git, worktree).await?.commit;
+    if tip.is_none() || status::sent(git, worktree, &head).await != tip {
         return Err(GitRefusal::NotPushed);
     }
     if now.ahead_of_default == 0 {

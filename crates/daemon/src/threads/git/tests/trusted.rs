@@ -213,3 +213,22 @@ async fn a_commit_holds_the_files_that_the_person_saw_and_no_later_edit() {
         "the files of the worktree are not changed by a commit"
     );
 }
+
+#[tokio::test]
+async fn full_access_runs_no_hook_when_the_runner_gave_no_way_to_start_one() {
+    let bench = Bench::new().await;
+    let full = Caller {
+        access: crate::threads::git::run::hooks::Access::Full,
+        ..PERSON
+    };
+    let folder = bench.worktree().await;
+    let ran = folder.with_file_name("RAN");
+    bench.hook(&format!("touch \"{}\"; exit 1", ran.display()));
+    std::fs::write(folder.join("a.txt"), "changed\n").expect("a file");
+    let committed = bench.call(full, commit("", None)).await;
+    assert!(
+        matches!(committed, GitOutcome::Committed { .. }),
+        "{committed:?}"
+    );
+    assert!(!ran.exists(), "a hook of the repository ran");
+}

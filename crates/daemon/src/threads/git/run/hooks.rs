@@ -6,8 +6,16 @@
 //! through [`AsThread`], which the runner gives to the engine and which starts a program with
 //! the rights of the thread, not the rights of the runner.
 //!
-//! I/O: writes the files that a hook reads into the Git folder of the worktree.
+//! A hook is a file that each thread of the repository can write, also a confined one. So the
+//! files of the hooks are part of what the person accepts ([`Hooks::entries`]): a hook that
+//! changed since then stops the commit until the person accepts it. The file of a hook is
+//! started directly, not through `git hook run`, so a hook that somebody writes into the
+//! configuration of the repository in the meantime does not run with it.
+//!
+//! I/O: reads the files of the hooks; writes the files that a hook reads into the Git folder
+//! of the runner.
 
+use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::future::Future;
 use std::path::{Path, PathBuf};
@@ -15,11 +23,18 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use agent_threads::git::GitRefusal;
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use super::super::place::Worktree;
-use super::super::project;
+use super::settings::{self, Setting};
 use super::{Git, Run, said};
+
+/// The hooks that a commit and a push of the person run, in this order.
+const NAMES: [&str; 4] = ["pre-commit", "commit-msg", "post-commit", "pre-push"];
+
+/// The most bytes of the file of one hook; a larger file is no hook for Anima.
+const MOST: u64 = 1024 * 1024;
 
 /// How much the agent of a thread may do on this computer, as the runner set it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -31,13 +46,16 @@ pub enum Access {
     Full,
 }
 
-/// One run of the `git` of a thread: `git <args>` in `dir`, with `env` added.
+/// One program to start for a thread: `program` with `args` in `dir`, with `env` added and
+/// the file `input`, when there is one, as its standard input.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ThreadRun {
     pub thread: Uuid,
     pub dir: PathBuf,
+    pub program: PathBuf,
     pub args: Vec<OsString>,
     pub env: Vec<(&'static str, OsString)>,
+    pub input: Option<PathBuf>,
 }
 
 /// How a run of a thread ended: its exit code and what it wrote to standard error.
@@ -67,25 +85,59 @@ impl std::fmt::Debug for AsThread {
     }
 }
 
-/// The hooks of the repository for one action of the person in a thread with full access.
-#[derive(Clone, Copy, Debug)]
+/// The hooks of the repository for one action of the person in a thread with full access:
+/// each file of a hook that is there, with the digest of its content.
+#[derive(Clone, Debug)]
 pub struct Hooks<'a> {
     start: &'a AsThread,
     worktree: &'a Worktree,
+    found: BTreeMap<&'static str, (PathBuf, String)>,
 }
 
 /// The hooks that an action of the person runs in the thread of `worktree`: `None`, and so no
 /// hook at all, for a confined thread and for a runner that gave no way to start one.
+/// `listed` is the configuration of the repository as text; it says where the hooks are.
 #[must_use]
 pub fn of<'a>(
     access: Access,
     start: Option<&'a AsThread>,
-    worktree: &'a Worktree,
+    (worktree, listed): (&'a Worktree, &[Setting]),
 ) -> Option<Hooks<'a>> {
-    match access {
-        Access::Full => start.map(|start| Hooks { start, worktree }),
-        Access::Confined => None,
+    let start = match access {
+        Access::Full => start?,
+        Access::Confined => return None,
+    };
+    let folder = match settings::hooks_path(listed) {
+        // As git: a path that is not absolute is below the top of the worktree.
+        Some(set) => worktree.folder().join(set),
+        None => worktree.record().common_dir.join("hooks"),
+    };
+    let found = NAMES
+        .into_iter()
+        .filter_map(|name| {
+            let file = folder.join(name);
+            let digest = Sha256::digest(runnable(&file)?);
+            Some((name, (file, crate::model::fetch::hex(&digest))))
+        })
+        .collect();
+    Some(Hooks {
+        start,
+        worktree,
+        found,
+    })
+}
+
+/// The bytes of the file of a hook; `None` when it is no file that can run.
+fn runnable(file: &Path) -> Option<Vec<u8>> {
+    let about = std::fs::metadata(file).ok()?;
+    #[cfg(unix)]
+    let runs = std::os::unix::fs::PermissionsExt::mode(&about.permissions()) & 0o111 != 0;
+    #[cfg(not(unix))]
+    let runs = true;
+    if !about.is_file() || !runs || about.len() > MOST {
+        return None;
     }
+    std::fs::read(file).ok()
 }
 
 /// What one hook gets besides its arguments.
@@ -98,34 +150,49 @@ struct With<'a> {
 }
 
 impl Hooks<'_> {
-    /// A file for a hook in the Git folder of the worktree.
-    fn file(&self, name: &str) -> PathBuf {
-        self.worktree.record().git_dir.join(name)
+    /// Each hook that would run, as a line for the person to accept, with the digest of its
+    /// file: `hook pre-commit`.
+    #[must_use]
+    pub fn entries(&self) -> BTreeMap<String, String> {
+        let entry = |(name, (_, digest)): (&&str, &(PathBuf, String))| {
+            (format!("hook {name}"), digest.clone())
+        };
+        self.found.iter().map(entry).collect()
     }
 
-    /// Runs the hook `name` when the repository has it. A hook that ends with a code that is
-    /// not 0 refuses the action; its words are the reason.
+    /// A file for a hook, in the Git folder of the runner: no agent of a different thread can
+    /// put a link at its place.
+    fn file(&self, name: &str) -> Result<PathBuf, GitRefusal> {
+        let folder = self.worktree.record().own.join("hooks");
+        super::super::place::private_folder(&folder).map_err(|failed| unwritten(&failed))?;
+        Ok(folder.join(name))
+    }
+
+    /// Runs the hook `name` when the repository has it and its file is still the one that the
+    /// person accepted. A hook that ends with a code that is not 0 refuses the action; its
+    /// words are the reason.
     async fn run(&self, name: &str, args: &[&Path], with: With<'_>) -> Result<(), GitRefusal> {
-        let mut all: Vec<OsString> = ["hook", "run", "--ignore-missing"].map(Into::into).into();
-        if let Some(input) = with.input {
-            let mut option = OsString::from("--to-stdin=");
-            option.push(input);
-            all.push(option);
+        let Some((file, accepted)) = self.found.get(name) else {
+            return Ok(());
+        };
+        let refused = |why: &str| GitRefusal::Failed {
+            said: format!("the hook {name} of the repository refused: {why}"),
+        };
+        let now = runnable(file).map(|bytes| crate::model::fetch::hex(&Sha256::digest(bytes)));
+        if now.as_ref() != Some(accepted) {
+            return Err(refused("its file changed while the action ran"));
         }
-        all.extend([name.into(), "--".into()]);
-        all.extend(args.iter().map(|arg| arg.as_os_str().to_owned()));
         let run = ThreadRun {
             thread: self.worktree.thread(),
             dir: self.worktree.folder().to_owned(),
-            args: all,
+            program: file.clone(),
+            args: args.iter().map(|arg| arg.as_os_str().to_owned()).collect(),
             env: with
                 .index
                 .map(|index| ("GIT_INDEX_FILE", index.as_os_str().to_owned()))
                 .into_iter()
                 .collect(),
-        };
-        let refused = |why: &str| GitRefusal::Failed {
-            said: format!("the hook {name} of the repository refused: {why}"),
+            input: with.input.map(Path::to_owned),
         };
         match (self.start.0)(run).await {
             Ok(Ended { code: Some(0), .. }) => Ok(()),
@@ -146,33 +213,21 @@ impl Hooks<'_> {
         commit: &str,
         message: &str,
     ) -> Result<String, GitRefusal> {
-        let files = |failed: std::io::Error| GitRefusal::Failed {
-            said: format!("a file for a hook could not be written: {failed}"),
-        };
-        let index = self.file("index.anima-hook");
+        let index = self.file("index")?;
         let _ = std::fs::remove_file(&index);
         let staged = Run::new(self.worktree.folder(), ["read-tree", commit]);
         git.output(staged.with_env("GIT_INDEX_FILE", &index))
             .await?;
-        let checked = self.run(
-            "pre-commit",
-            &[],
-            With {
-                index: Some(&index),
-                input: None,
-            },
-        );
-        let checked = checked.await;
-        let _ = std::fs::remove_file(&index);
-        checked?;
-        let text = self.file("ANIMA_COMMIT_MSG");
-        let _ = std::fs::remove_file(&text);
-        std::fs::write(&text, format!("{message}\n")).map_err(files)?;
-        let checked = self.run("commit-msg", &[&text], With::default()).await;
-        let left = project::limited(&text, 64 * 1024).map_err(files);
-        let _ = std::fs::remove_file(&text);
-        checked?;
-        Ok(String::from_utf8_lossy(&left?).trim().to_owned())
+        let with = With {
+            index: Some(&index),
+            input: None,
+        };
+        self.run("pre-commit", &[], with).await?;
+        let text = self.file("COMMIT_MSG")?;
+        std::fs::write(&text, format!("{message}\n")).map_err(|failed| unwritten(&failed))?;
+        self.run("commit-msg", &[&text], With::default()).await?;
+        let left = std::fs::read(&text).map_err(|failed| unwritten(&failed))?;
+        Ok(String::from_utf8_lossy(&left).trim().to_owned())
     }
 
     /// Runs `post-commit`. What it answers changes nothing: the commit is made.
@@ -190,20 +245,22 @@ impl Hooks<'_> {
         (remote, url): (&str, &str),
         (branch, commit): (&str, &str),
     ) -> Result<(), GitRefusal> {
-        let lines = self.file("ANIMA_PRE_PUSH");
+        let lines = self.file("PRE_PUSH")?;
         let none = "0".repeat(commit.len());
         let line = format!("refs/heads/{branch} {commit} refs/heads/{branch} {none}\n");
-        let _ = std::fs::remove_file(&lines);
-        std::fs::write(&lines, line).map_err(|failed| GitRefusal::Failed {
-            said: format!("a file for a hook could not be written: {failed}"),
-        })?;
+        std::fs::write(&lines, line).map_err(|failed| unwritten(&failed))?;
         let with = With {
             index: None,
             input: Some(&lines),
         };
         let args = [Path::new(remote), Path::new(url)];
-        let checked = self.run("pre-push", &args, with).await;
-        let _ = std::fs::remove_file(&lines);
-        checked
+        self.run("pre-push", &args, with).await
+    }
+}
+
+/// The refusal for a file of a hook that could not be written.
+fn unwritten(failed: &std::io::Error) -> GitRefusal {
+    GitRefusal::Failed {
+        said: format!("a file for a hook could not be written: {failed}"),
     }
 }

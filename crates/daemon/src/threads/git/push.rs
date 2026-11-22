@@ -96,13 +96,17 @@ pub async fn ready(
     let (remote, url) = status::remote(listed).ok_or(GitRefusal::NoRemote)?;
     destination(&url, git.local_remotes())?;
     let commit = own::tip(git, worktree).await?.commit;
+    let commit = commit.ok_or(GitRefusal::NoCommits)?;
+    // Only what the runner itself sent counts as pushed: the refs of the repository are
+    // files that an agent can write.
+    let sent = status::sent(git, worktree, &branch).await;
     Ok(Ready {
         remote,
         shown: now.push_url.unwrap_or_default(),
         url,
         branch,
-        commit: commit.ok_or(GitRefusal::NoCommits)?,
-        up_to_date: now.upstream.is_some() && now.ahead == 0,
+        up_to_date: sent.as_deref() == Some(commit.as_str()),
+        commit,
     })
 }
 
@@ -116,7 +120,7 @@ pub async fn send(
     git: &Git,
     worktree: &Worktree,
     ready: Ready,
-    hooks: Option<Hooks<'_>>,
+    hooks: Option<&Hooks<'_>>,
 ) -> Result<GitOutcome, GitRefusal> {
     let dir = worktree.folder();
     let pushed = |up_to_date| GitOutcome::Pushed {

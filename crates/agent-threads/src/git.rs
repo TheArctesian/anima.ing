@@ -64,6 +64,19 @@ impl GitAction {
             Self::Status | Self::Checkpoints | Self::Changes { .. }
         )
     }
+
+    /// The action is refused while a turn of the thread runs: the files change then.
+    #[must_use]
+    pub const fn waits_for_the_turn(&self) -> bool {
+        matches!(
+            self,
+            Self::Revert { .. }
+                | Self::Remove
+                | Self::Commit { .. }
+                | Self::Push { .. }
+                | Self::Trust { .. }
+        )
+    }
 }
 
 /// Which changes to show.

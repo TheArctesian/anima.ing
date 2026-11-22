@@ -33,6 +33,8 @@ pub enum BadRecords {
     OpenToOthers,
     #[error("the folder of the records could not be made or read")]
     Unreadable,
+    #[error("the folder of the records is not there any more; start Anima again to make it")]
+    Gone,
 }
 
 /// The place of the records for the user with the number `user`: one folder for each user,
@@ -92,17 +94,21 @@ pub fn opened(place: &Path) -> Result<PathBuf, BadRecords> {
 }
 
 /// Checks the folder of the records itself: a real folder of this user with no access for
-/// others. A place with nothing at it passes: nothing is read from it then.
+/// others. Only [`opened`] makes it: a place with nothing at it is refused, so that nobody
+/// else can make the folder between a check and a use.
 ///
 /// # Errors
-/// A [`BadRecords`] for a link, a file, a folder of a different user or one open to others.
+/// A [`BadRecords`] for nothing, a link, a file, a folder of a different user or one open to
+/// others.
 #[cfg(unix)]
 pub fn checked(place: &Path) -> Result<(), BadRecords> {
     use std::os::unix::fs::MetadataExt as _;
 
     let about = match std::fs::symlink_metadata(place) {
         Ok(about) => about,
-        Err(failed) if failed.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(failed) if failed.kind() == std::io::ErrorKind::NotFound => {
+            return Err(BadRecords::Gone);
+        }
         Err(_) => return Err(BadRecords::Unreadable),
     };
     if !about.is_dir() {
@@ -129,14 +135,17 @@ pub const fn checked(_place: &Path) -> Result<(), BadRecords> {
 }
 
 /// A thread whose folder is `folder` holds the records at `records`: its agent can write
-/// them. A folder that cannot be resolved counts as one that holds them.
+/// them, because the folder is above them or inside them. A folder that cannot be resolved
+/// counts as one that holds them.
 #[must_use]
 pub fn held_by(records: &Path, folder: &Path) -> bool {
     let real = |path: &Path| std::fs::canonicalize(path).ok();
     match (real(folder), real(records)) {
-        (Some(folder), Some(records)) => records.starts_with(folder),
+        (Some(folder), Some(records)) => {
+            records.starts_with(&folder) || folder.starts_with(&records)
+        }
         // Records that are not made yet are where their path says.
-        (Some(folder), None) => records.starts_with(folder),
+        (Some(folder), None) => records.starts_with(&folder) || folder.starts_with(records),
         (None, _) => true,
     }
 }
@@ -186,6 +195,7 @@ mod tests {
         std::os::unix::fs::symlink(&ours, &link).expect("a link");
         assert_eq!(opened(&link), Err(BadRecords::NotAFolder));
         assert_eq!(checked(&link), Err(BadRecords::NotAFolder));
+        assert_eq!(checked(&above.join("nothing")), Err(BadRecords::Gone));
         let file = above.join("anima-file");
         std::fs::write(&file, "").expect("a file");
         assert_eq!(opened(&file), Err(BadRecords::NotAFolder));
@@ -222,6 +232,8 @@ mod tests {
         assert!(held_by(&records, &above));
         assert!(held_by(&records, &above.join("shared")));
         assert!(held_by(&records, &records));
+        std::fs::create_dir_all(records.join("inside")).expect("a folder");
+        assert!(held_by(&records, &records.join("inside")));
         assert!(!held_by(&records, &above.join("home")));
         assert!(!held_by(&records, &above.join("home/project")));
         assert!(held_by(&records, &above.join("gone")));
