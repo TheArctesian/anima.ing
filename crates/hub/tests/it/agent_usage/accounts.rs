@@ -16,22 +16,22 @@ use super::Pusher;
 use crate::daemon::batches::cpu_batch;
 use crate::daemon::harness::{DOCKER_HOST, Daemons, PVE_01, pushing_now};
 
-const SHARED: &str = "3f9a0c55e1d24b7aa0b1c2d3e4f5061728394a5b6c7d8e9f00112233445566ff";
+pub(super) const SHARED: &str = "3f9a0c55e1d24b7aa0b1c2d3e4f5061728394a5b6c7d8e9f00112233445566ff";
 const OWN: &str = "aa9a0c55e1d24b7aa0b1c2d3e4f5061728394a5b6c7d8e9f00112233445566ff";
-const ADDRESS: &str = "person-9b2e@example.com";
+pub(super) const ADDRESS: &str = "person-9b2e@example.com";
 
-const ACCOUNTS: &str = "query { agentUsage { accounts {
+pub(super) const ACCOUNTS: &str = "query { agentUsage { accounts {
     key shortKey source address plan reportedAt devices { name }
     limits { window usedPercent resetsAt reached } } } }";
 
-fn account(key: &str, used: u8) -> Value {
+pub(super) fn account(key: &str, used: u8) -> Value {
     json!({ "source": "codex", "key": key, "address": ADDRESS, "plan": "Pro",
             "limits": [{ "window": "five_hour", "usedPercent": used, "reached": false }] })
 }
 
 /// Pushes `accounts` from the device of `pusher`, `step` batches after its first; the status
 /// and the body of the answer.
-async fn push(pusher: &Pusher<'_>, step: i64, accounts: Value) -> (StatusCode, String) {
+pub(super) async fn push(pusher: &Pusher<'_>, step: i64, accounts: Value) -> (StatusCode, String) {
     // Each report is later than the one before, as on a hub whose clock runs.
     pusher.daemons.clock.advance(TimeDelta::seconds(1));
     let at = pusher.now - TimeDelta::seconds(600 - 10 * step);
@@ -295,7 +295,7 @@ async fn thr_149_the_hub_logs_no_address(pool: PgPool) {
 
 /// Collects everything the process log writes.
 #[derive(Clone, Default)]
-struct Capture(Arc<Mutex<Vec<u8>>>);
+pub(super) struct Capture(pub(super) Arc<Mutex<Vec<u8>>>);
 
 impl io::Write for Capture {
     fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {

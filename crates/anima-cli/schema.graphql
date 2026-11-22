@@ -1769,7 +1769,7 @@ type AgentAccount {
   "The first 8 digits of key, to tell two accounts of one program apart."
   shortKey: String!
   source: AgentSource!
-  "The email address that the program is signed in with, of the newest report; personal data, shown only to the person (THR-149). Null when the program gives none."
+  "The email address that the program is signed in with, of the newest report; personal data, shown only to the person (THR-149): a login or browser token reads it, an API key gets FORBIDDEN. Null when the program gives none."
   address: String
   "The name of the plan as the program states it."
   plan: String

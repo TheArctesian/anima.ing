@@ -1,11 +1,12 @@
 //! K1 `AgentAccount`: an account of an AI agent program and the devices that use it (THR-149,
 //! AIS-022).
 
-use async_graphql::SimpleObject;
+use async_graphql::{ComplexObject, Context, SimpleObject};
 use chrono::{DateTime, Utc};
 use daemon_core::agent_usage::account::Limit;
 
 use super::AccountGroup;
+use crate::fleet::access;
 use crate::fleet::agent_usage::graphql::AgentSource;
 use crate::fleet::devices::Device;
 
@@ -14,6 +15,7 @@ const SHORT_KEY: usize = 8;
 
 /// K1 `AgentAccount`.
 #[derive(SimpleObject)]
+#[graphql(complex)]
 pub struct AgentAccount {
     /// The key of the account: the HMAC-SHA-256 of the vendor's identifier with the salt of this
     /// hub, never the identifier.
@@ -21,7 +23,7 @@ pub struct AgentAccount {
     /// The first 8 digits of the key, to tell two accounts of one program apart.
     short_key: String,
     source: AgentSource,
-    /// The email address that the program is signed in with, of the newest report (THR-149).
+    #[graphql(skip)]
     address: Option<String>,
     /// The name of the plan as the program states it.
     plan: Option<String>,
@@ -65,6 +67,16 @@ impl AgentAccount {
             reported_at: group.reported_at,
             devices: used,
         })
+    }
+}
+
+#[ComplexObject]
+impl AgentAccount {
+    /// The email address that the program is signed in with, of the newest report: personal
+    /// data, for the person's own clients only (THR-149). An API key gets `FORBIDDEN`.
+    async fn address(&self, ctx: &Context<'_>) -> async_graphql::Result<Option<&str>> {
+        access::person_only(ctx)?;
+        Ok(self.address.as_deref())
     }
 }
 
