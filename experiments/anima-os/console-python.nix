@@ -10,6 +10,6 @@ let
     nativeBuildInputs = old.nativeBuildInputs ++ [ packages.shiboken6-generator ];
   });
 in
-(pkgs.python3.withPackages (_: [ pyside ])).overrideAttrs (_: {
+(pkgs.python3.withPackages (_: [ (packages.toPythonModule pyside) ])).overrideAttrs (_: {
   disallowedRequisites = [ packages.shiboken6-generator ];
 })
