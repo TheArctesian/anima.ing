@@ -67,17 +67,7 @@ impl Runner {
                     query,
                     most,
                 } => self.files(thread, &query, most),
-                Action::Folder { folder } => {
-                    match super::start::chosen_folder(
-                        &folder,
-                        self.dir.parent().unwrap_or(&self.dir),
-                    ) {
-                        Ok(real) => Outcome::Folder {
-                            notice: crate::threads::notice::of_folder(&real),
-                        },
-                        Err(why) => Outcome::Refused { why },
-                    }
-                }
+                Action::Folder { folder } => self.folder_notice(&folder),
                 Action::RaiseLimit => {
                     self.limits = self.limits.raised();
                     self.save();
