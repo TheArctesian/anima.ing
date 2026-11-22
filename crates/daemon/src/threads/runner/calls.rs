@@ -12,6 +12,7 @@ use super::start::NewThread;
 use super::thread::Step;
 use super::{Pending, Runner, Waits};
 use crate::threads::wire;
+use send::Sender;
 
 mod attach;
 mod files;
@@ -23,6 +24,7 @@ mod set;
 pub(super) use files::Walked;
 use refusal_lines::Say;
 pub(super) use refusal_lines::{RefusalLines, refusal_word};
+pub(super) use send::SentPrompt;
 
 /// What the runner can see of the source of a call: the local socket (THR-044).
 const SOURCE: &str = "local socket";
@@ -102,7 +104,14 @@ impl Runner {
         person: bool,
     ) -> Result<(), Refusal> {
         match action {
-            send @ Action::Send { .. } => self.send(send, back, person).await,
+            send @ Action::Send { .. } => {
+                let sender = if person {
+                    Sender::Person
+                } else {
+                    Sender::Agent
+                };
+                self.send(send, back, sender).await
+            }
             Action::SendQueued { thread, queued } => self.send_queued(thread, queued, back).await,
             Action::Answer {
                 thread,
