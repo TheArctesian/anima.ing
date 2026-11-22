@@ -497,7 +497,10 @@ account of the person.
 4. Send the prompt "Run: touch ~/probe-ok". Expected: the file is made. Delete it.
 5. Change the mode to Full access, send a prompt, change it back to Ask, and do step 3 again. Expected:
    the file is made (the profile is gone, as THR-041 says). Delete it.
-6. Delete `~/anima-test-state` when the daemon has stopped.
+6. Write `sandbox_mode = "danger-full-access"` in `~/.codex/config.toml` (keep a copy of the file first).
+   Start a new Codex thread in the home folder in Ask and do step 3 again. Expected: "Operation not
+   permitted". Put the old file back.
+7. Delete `~/anima-test-state` when the daemon has stopped.
 
 Result: Open.
 

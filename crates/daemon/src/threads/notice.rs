@@ -37,7 +37,8 @@ pub fn of_anima(folder: &Path, daemon: &Path) -> Vec<String> {
         vec![format!(
             "This folder holds the folder of Anima, {}. An agent in Full access, or Claude Code \
              in Accept edits, can change the records and the approvals of Anima there with no \
-             question. Codex in Accept edits or Ask can only read that folder.",
+             question. Codex in Accept edits or Ask can only read that folder, until its mode is \
+             changed.",
             anima.display()
         )]
     })

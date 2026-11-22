@@ -28,7 +28,7 @@ mod turn_facts;
 pub use account::{AccountFacts, Limit, Private};
 pub use claude_in::ClaudeInput;
 pub use claude_out::ClaudeDecoder;
-pub use codex_in::{CodexInput, CodexMethod, CodexPlace, CodexTurn, TurnSettings};
+pub use codex_in::{CodexInput, CodexMethod, CodexPlace, CodexTurn, KeptFolder, TurnSettings};
 pub use codex_out::CodexDecoder;
 pub use launch::{Effort, Invocation, Launch, Mode, Model, Program, SessionStart};
 pub use prompt::{Attached, Attachment, Prompt};

@@ -2,7 +2,7 @@
 //! here, written to the log of the runner (THR-044), and answered on the socket.
 
 use agent_threads::control::{Action, Call, Outcome, Refusal, Reply, RunState, ThreadRow};
-use agent_threads::drive::{Answer, Effort, Model, Program};
+use agent_threads::drive::{Answer, Effort, KeptFolder, Model, Program};
 use uuid::Uuid;
 
 use super::codex::Codex;
@@ -41,8 +41,10 @@ pub(super) fn codex_of(
 ) -> Option<Codex> {
     (row.program == Program::Codex).then(|| {
         let model = row.model.as_deref().and_then(|name| Model::new(name).ok());
-        Codex::new(row.folder.clone(), row.mode, model, effort)
-            .keeping(crate::threads::notice::held_anima(&row.folder, daemon))
+        Codex::new(row.folder.clone(), row.mode, model, effort).keeping(
+            crate::threads::notice::held_anima(&row.folder, daemon)
+                .map(|anima| KeptFolder::new(anima, row.id)),
+        )
     })
 }
 

@@ -5,7 +5,8 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use agent_threads::drive::{
-    CodexDecoder, CodexInput, CodexPlace, CodexTurn, Effort, Mode, Model, Prompt, TurnSettings,
+    CodexDecoder, CodexInput, CodexPlace, CodexTurn, Effort, KeptFolder, Mode, Model, Prompt,
+    TurnSettings,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -25,7 +26,7 @@ pub struct Codex {
     pub decoder: CodexDecoder,
     folder: PathBuf,
     /// The folder of Anima in `folder`, which the sandbox keeps read-only (THR-041).
-    kept: Option<PathBuf>,
+    kept: Option<KeptFolder>,
     /// The profile that keeps it is in force: no turn has sent a policy of its own yet.
     keeps: bool,
     mode: Mode,
@@ -80,8 +81,8 @@ impl Codex {
     /// The folder of Anima that the folder of the thread holds: a start in the sandbox of the
     /// folder keeps it read-only (THR-041).
     #[must_use]
-    pub fn keeping(mut self, kept: Option<PathBuf>) -> Self {
-        self.keeps = kept.is_some() && self.mode.codex().0 == "workspace-write";
+    pub fn keeping(mut self, kept: Option<KeptFolder>) -> Self {
+        self.keeps = kept.is_some() && self.mode.folder_sandbox();
         self.kept = kept;
         self
     }
@@ -136,11 +137,7 @@ impl Codex {
             keeps: self.keeps,
         };
         // Each policy but that of the folder takes the place of the profile, for good.
-        self.keeps = self.keeps
-            && self
-                .changed
-                .mode
-                .is_none_or(|mode| mode.codex().0 == "workspace-write");
+        self.keeps = self.keeps && self.changed.mode.is_none_or(Mode::folder_sandbox);
         vec![CodexInput::turn_start(id, &thread, prompt, &turn)]
     }
 
@@ -244,7 +241,7 @@ impl Codex {
                         id,
                         CodexPlace {
                             folder: &self.folder,
-                            kept: self.kept.as_deref(),
+                            kept: self.kept.as_ref(),
                         },
                         self.mode,
                         self.model.as_ref(),

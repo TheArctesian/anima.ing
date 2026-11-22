@@ -110,8 +110,10 @@ impl CodexInput {
         )
     }
 
+    /// The profile of THR-041 was measured on `thread/start` only, so these two never send it.
     #[must_use]
-    pub fn thread_resume(id: i64, thread: &str, place: CodexPlace<'_>, mode: Mode) -> String {
+    pub fn thread_resume(id: i64, thread: &str, folder: &Path, mode: Mode) -> String {
+        let place = CodexPlace { folder, kept: None };
         call(
             id,
             CodexMethod::ThreadResume,
@@ -120,7 +122,8 @@ impl CodexInput {
     }
 
     #[must_use]
-    pub fn thread_fork(id: i64, thread: &str, place: CodexPlace<'_>, mode: Mode) -> String {
+    pub fn thread_fork(id: i64, thread: &str, folder: &Path, mode: Mode) -> String {
+        let place = CodexPlace { folder, kept: None };
         call(
             id,
             CodexMethod::ThreadFork,
@@ -141,7 +144,7 @@ impl CodexInput {
             let (sandbox, approval) = mode.codex();
             params["approvalPolicy"] = Value::from(approval);
             // A policy of a turn takes the place of the profile of the thread.
-            if !(turn.keeps && sandbox == WORKSPACE_WRITE) {
+            if !(turn.keeps && mode.folder_sandbox()) {
                 params["sandboxPolicy"] = sandbox_policy(sandbox);
             }
         }
@@ -244,14 +247,28 @@ pub struct TurnSettings<'a> {
 #[derive(Clone, Copy, Debug)]
 pub struct CodexPlace<'a> {
     pub folder: &'a Path,
-    pub kept: Option<&'a Path>,
+    pub kept: Option<&'a KeptFolder>,
 }
 
-/// The sandbox of the folder of a thread.
-const WORKSPACE_WRITE: &str = "workspace-write";
+/// A folder that the sandbox of a Codex thread keeps read-only, with the name of the profile of
+/// permissions that does it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct KeptFolder {
+    pub folder: std::path::PathBuf,
+    profile: String,
+}
 
-/// The name of the profile of permissions that keeps a folder read-only.
-const KEEPS: &str = "anima-keeps";
+impl KeptFolder {
+    /// The profile is named for the thread, so that a profile of the same name in a file of
+    /// configuration, written before the start, cannot add to it.
+    #[must_use]
+    pub fn new(folder: std::path::PathBuf, thread: uuid::Uuid) -> Self {
+        Self {
+            folder,
+            profile: format!("anima-keeps-{}", thread.simple()),
+        }
+    }
+}
 
 /// The `sandboxPolicy` of a `turn/start` for the `sandbox` of a `thread/start` (Codex 0.170;
 /// `readOnly` was measured on 2026-11-21).
@@ -277,17 +294,18 @@ fn thread_params(
         "approvalPolicy": approval,
         "approvalsReviewer": "user",
     });
-    if let Some(kept) = place.kept.filter(|_| sandbox == WORKSPACE_WRITE) {
+    if let Some(kept) = place.kept.filter(|_| mode.folder_sandbox()) {
         // The sandbox of the folder, with the folder of Anima read-only: a profile that Codex
-        // takes only when the start names no `sandbox` (Codex 0.170, measured 2026-11-22).
+        // takes only when the start names no `sandbox` (Codex 0.170, measured 2026-11-22). It wins
+        // over `sandbox_mode` and `default_permissions` in the files of the user and the project.
         if let Some(fields) = params.as_object_mut() {
             fields.remove("sandbox");
         }
         params["config"] = json!({
-            "default_permissions": KEEPS,
-            "permissions": {KEEPS: {
+            "default_permissions": kept.profile,
+            "permissions": {kept.profile.as_str(): {
                 "extends": ":workspace",
-                "filesystem": {kept.to_string_lossy(): "read"},
+                "filesystem": {kept.folder.to_string_lossy(): "read"},
             }},
         });
     }

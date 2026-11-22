@@ -226,8 +226,12 @@ fn th110_a_codex_change_waits_while_a_turn_start_is_not_answered() {
 #[test]
 fn thr_041_a_codex_thread_loses_the_profile_that_keeps_anima_once_a_turn_leaves_the_folder_sandbox()
 {
-    let mut codex = Codex::new(PathBuf::from("/home/you"), Mode::Ask, None, None)
-        .keeping(Some(PathBuf::from("/home/you/anima-daemon")));
+    let mut codex = Codex::new(PathBuf::from("/home/you"), Mode::Ask, None, None).keeping(Some(
+        agent_threads::drive::KeptFolder::new(
+            PathBuf::from("/home/you/anima-daemon"),
+            uuid::Uuid::nil(),
+        ),
+    ));
     codex.begin();
     let started = codex
         .reply(1, true, &serde_json::json!({}))
@@ -235,7 +239,7 @@ fn thr_041_a_codex_thread_loses_the_profile_that_keeps_anima_once_a_turn_leaves_
     let thread_start: serde_json::Value = serde_json::from_str(&started[1]).expect("JSON");
     assert_eq!(
         thread_start["params"]["config"]["default_permissions"],
-        "anima-keeps"
+        "anima-keeps-00000000000000000000000000000000"
     );
     codex
         .reply(2, true, &serde_json::json!({"thread": {"id": "th"}}))
@@ -259,5 +263,30 @@ fn thr_041_a_codex_thread_loses_the_profile_that_keeps_anima_once_a_turn_leaves_
         policy(&mut codex, Mode::Ask),
         "workspaceWrite",
         "a policy of a turn took the place of the profile"
+    );
+}
+
+#[test]
+fn thr_041_after_a_restart_a_codex_thread_with_a_changed_mode_does_not_count_on_its_profile() {
+    let kept = || {
+        Some(agent_threads::drive::KeptFolder::new(
+            PathBuf::from("/home/you/anima-daemon"),
+            uuid::Uuid::nil(),
+        ))
+    };
+    let changed = crate::threads::runner::codex::Changed {
+        model: None,
+        mode: Some(Mode::AcceptEdits),
+    };
+    let mut codex = Codex::new(PathBuf::from("/home/you"), Mode::Ask, None, None)
+        .keeping(kept())
+        .known(Some("th".to_owned()), None, changed);
+    let line = codex
+        .prompt(&agent_threads::drive::Prompt::plain("go"))
+        .remove(0);
+    let turn: serde_json::Value = serde_json::from_str(&line).expect("JSON");
+    assert_eq!(
+        turn["params"]["sandboxPolicy"]["type"], "workspaceWrite",
+        "a turn before the restart may have sent a policy of its own"
     );
 }

@@ -136,8 +136,8 @@ fn each_codex_line_the_runner_can_write_names_a_method_of_the_closed_list() {
         CodexInput::initialize(1),
         CodexInput::initialized(),
         CodexInput::thread_start(2, place, Mode::FullAccess, None),
-        CodexInput::thread_resume(3, "t", place, Mode::Ask),
-        CodexInput::thread_fork(4, "t", place, Mode::Ask),
+        CodexInput::thread_resume(3, "t", &folder, Mode::Ask),
+        CodexInput::thread_fork(4, "t", &folder, Mode::Ask),
         CodexInput::turn_start(
             5,
             "t",
@@ -272,7 +272,10 @@ fn th111_a_codex_turn_gets_each_image_as_a_local_image_and_each_other_file_by_it
 #[test]
 fn thr_041_a_codex_thread_in_the_folder_sandbox_keeps_the_folder_of_anima_read_only() {
     let folder = PathBuf::from("/home/you");
-    let anima = PathBuf::from("/home/you/Library/anima-daemon");
+    let anima = KeptFolder::new(
+        PathBuf::from("/home/you/Library/anima-daemon"),
+        uuid::Uuid::from_u128(7),
+    );
     let place = CodexPlace {
         folder: &folder,
         kept: Some(&anima),
@@ -284,8 +287,12 @@ fn thr_041_a_codex_thread_in_the_folder_sandbox_keeps_the_folder_of_anima_read_o
         params.get("sandbox").is_none(),
         "Codex takes the profile only when the start names no sandbox"
     );
-    let profile = &params["config"]["permissions"]["anima-keeps"];
-    assert_eq!(params["config"]["default_permissions"], "anima-keeps");
+    let name = "anima-keeps-00000000000000000000000000000007";
+    let profile = &params["config"]["permissions"][name];
+    assert_eq!(
+        params["config"]["default_permissions"], name,
+        "a name of the thread, which no file of configuration can hold before the start"
+    );
     assert_eq!(profile["extends"], ":workspace");
     assert_eq!(
         profile["filesystem"]["/home/you/Library/anima-daemon"],
