@@ -15,6 +15,8 @@ export type MenuEntry =
       /** It destroys or refuses something; its words take the danger colour. */
       readonly danger?: boolean;
       readonly disabled?: boolean;
+      /** A submenu: the choice opens these beside it (T3's "Snooze ▸", "Copy ▸"); its own id is never chosen. */
+      readonly items?: readonly MenuEntry[];
     }
   | {
       readonly kind: 'group';
@@ -38,7 +40,8 @@ export function reasonOf(entries: readonly MenuEntry[], index: number): number |
 
 /** Which side of the trigger the menu opens on, and which edge it lines up with. */
 export interface MenuSide {
-  readonly side: 'below' | 'above';
+  /** `end`: beside the anchor, after its end edge, as a submenu opens; on the start side when the end has no room. */
+  readonly side: 'below' | 'above' | 'end';
   readonly align: 'start' | 'end';
 }
 
@@ -62,6 +65,7 @@ export function nextChoice(key: string, current: number, choices: readonly MenuC
  * on the other side when the asked one has no room and the other has; always inside a window of `viewport` size.
  */
 export function menuPlace(anchor: Anchor, panel: Size, viewport: Size, at: MenuSide & { gap: number }): { left: number; top: number } {
+  if (at.side === 'end') return besidePlace(anchor, panel, viewport, at.gap);
   const below = anchor.top + anchor.height + at.gap;
   const above = anchor.top - at.gap - panel.height;
   const roomBelow = below + panel.height <= viewport.height;
@@ -72,5 +76,15 @@ export function menuPlace(anchor: Anchor, panel: Size, viewport: Size, at: MenuS
   return {
     left: Math.max(0, Math.min(left, viewport.width - panel.width)),
     top: Math.max(0, Math.min(top, viewport.height - panel.height)),
+  };
+}
+
+/** A submenu's place: after the end edge of its row, its top on the row's top; before the start edge when no room. */
+function besidePlace(anchor: Anchor, panel: Size, viewport: Size, gap: number): { left: number; top: number } {
+  const after = anchor.left + anchor.width + gap;
+  const left = after + panel.width <= viewport.width ? after : anchor.left - gap - panel.width;
+  return {
+    left: Math.max(0, Math.min(left, viewport.width - panel.width)),
+    top: Math.max(0, Math.min(anchor.top, viewport.height - panel.height)),
   };
 }

@@ -12,7 +12,9 @@ const keyOf = (set: KeySet, command: string) => shortcutOf(command, set.mac, key
 describe('the keys of the desktop app and of the web client', () => {
   it("keeps T3 Code's table in the desktop app", () => {
     expect(keyRules(MAC_APP)).toEqual(KEY_RULES);
-    expect(keyOf(MAC_APP, 'chat.new')).toBe('⌘N');
+    // The last rule of a command that acts names its key (T3 Code's `shortcutLabelForCommand`).
+    expect(keyOf(MAC_APP, 'chat.new')).toBe('⇧⌘O');
+    expect(keyOf(MAC_APP, 'workspace.focusNext')).toBe('⌘F6');
   });
 
   it('gives a browser Shift keys where it keeps the T3 key, with Control on the Mac and Alt elsewhere', () => {
