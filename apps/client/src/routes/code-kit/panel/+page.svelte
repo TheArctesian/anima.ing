@@ -12,6 +12,7 @@
   import PageHeader from '$lib/page/PageHeader.svelte';
   import DiffScenes from './DiffScenes.svelte';
   import LibraryTree from '$lib/code/panel/tree/LibraryTree.svelte';
+  import TerminalScenes from './TerminalScenes.svelte';
   import TreeScenes from './TreeScenes.svelte';
   import { PROJECT_PATHS } from './diff-scenes';
   import { FULL, MARKDOWN, PATCH, PICTURE, PLAIN, REFS, SOURCE, TABS, listing } from './scenes';
@@ -120,6 +121,7 @@
   </div>
   <DiffScenes theme={dark ? 'dark' : 'light'} {say} />
   <TreeScenes theme={dark ? 'dark' : 'light'} {say} />
+  <TerminalScenes {say} />
   <p class="said" data-kit-drawn={drawn}>Diff library: {drawn}</p>
   <p class="said" aria-live="polite">Last action: {said}</p>
 </div>

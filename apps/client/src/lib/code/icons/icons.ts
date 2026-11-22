@@ -103,6 +103,9 @@ import Square from '@lucide/svelte/icons/square';
 import SquareArrowOutUpRight from '@lucide/svelte/icons/square-arrow-out-up-right';
 import SquareMenu from '@lucide/svelte/icons/square-menu';
 import SquarePen from '@lucide/svelte/icons/square-pen';
+import SquareSplitHorizontal from '@lucide/svelte/icons/square-split-horizontal';
+import SquareSplitVertical from '@lucide/svelte/icons/square-split-vertical';
+import SquareTerminal from '@lucide/svelte/icons/square-terminal';
 import Table2 from '@lucide/svelte/icons/table-2';
 import Terminal from '@lucide/svelte/icons/terminal';
 import TextSearch from '@lucide/svelte/icons/text-search';
@@ -248,6 +251,9 @@ export const CODE_ICONS = {
   'square-arrow-out-up-right': SquareArrowOutUpRight,
   'square-menu': SquareMenu,
   'square-pen': SquarePen,
+  'square-split-horizontal': SquareSplitHorizontal,
+  'square-split-vertical': SquareSplitVertical,
+  'square-terminal': SquareTerminal,
   'table-2': Table2,
   terminal: Terminal,
   'text-search': TextSearch,
