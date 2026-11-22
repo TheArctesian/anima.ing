@@ -157,14 +157,18 @@ mod tests {
             "a submodule"
         );
 
-        let linked = root.path().join("linked");
-        std::fs::create_dir_all(&linked).expect("a folder");
-        std::os::unix::fs::symlink(side.join(".git"), linked.join(".git")).expect("a link");
-        assert_eq!(
-            Workspace::of(&linked).kind,
-            WorkspaceKind::Checkout,
-            "a .git that is a link is never opened"
-        );
+        // Only a Unix system makes a link without a privilege.
+        #[cfg(unix)]
+        {
+            let linked = root.path().join("linked");
+            std::fs::create_dir_all(&linked).expect("a folder");
+            std::os::unix::fs::symlink(side.join(".git"), linked.join(".git")).expect("a link");
+            assert_eq!(
+                Workspace::of(&linked).kind,
+                WorkspaceKind::Checkout,
+                "a .git that is a link is never opened"
+            );
+        }
 
         let plain = root.path().join("plain");
         std::fs::create_dir_all(&plain).expect("a folder");
