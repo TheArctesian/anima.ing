@@ -32,10 +32,11 @@
   const { row } = $derived(item);
   const title = $derived(row.title ?? 'Untitled thread');
   const age = $derived(item.since === null ? '' : shortAge(item.since.getTime(), now.getTime()));
-  const wakes = $derived(item.wakes?.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) ?? '');
+  /** The time left until a snoozed thread wakes, as T3 Code writes it: "now", "45m", "3h", "2d" (08 inbox 7). */
+  const wakes = $derived(item.wakes === null ? '' : shortAge(now.getTime(), item.wakes.getTime()));
   const meta = $derived(kind === 'card' && row.branch !== null);
   /** What the slot shows, in words: the slot itself is hidden while the row has focus, so the name keeps this copy (09 finding 5). */
-  const said = $derived(kind === 'slim' && shelf === 'snoozed' ? `Wakes ${wakes}` : item.status !== null && (kind === 'card' || item.status === 'woke') ? STATUS_LOOKS[item.status].label : age);
+  const said = $derived(kind === 'slim' && shelf === 'snoozed' ? (wakes === 'now' ? 'Wakes now' : `Wakes in ${wakes}`) : item.status !== null && (kind === 'card' || item.status === 'woke') ? STATUS_LOOKS[item.status].label : age);
 
   function oncontextmenu(event: MouseEvent): void {
     event.preventDefault();
@@ -108,6 +109,11 @@
     padding-block: var(--border-focus);
     /* No content-visibility as in T3: its paint containment would clip the hover tips of the row. */
     list-style: none;
+  }
+
+  /* Only cards keep 2 px above and below; one-liners sit 36 px apart, as in T3 Code (08 inbox 15). */
+  .row.slim {
+    padding-block: 0;
   }
 
   .main {
@@ -241,7 +247,7 @@
   /* The hover actions take the place of the status or the age (02 section 5.5). Hidden from sight only: the words stay
      in the row's name, so a focused row still says "Approval" or "Failed" (09 finding 5). */
   .row:hover .slot,
-  .row:focus-within .slot {
+  .row:has(:focus-visible) .slot {
     opacity: 0;
   }
 
@@ -255,7 +261,7 @@
   }
 
   .row:hover .main,
-  .row:focus-within .main {
+  .row:has(:focus-visible) .main {
     color: var(--text);
   }
 

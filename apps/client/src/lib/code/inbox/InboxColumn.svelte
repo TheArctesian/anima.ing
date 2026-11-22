@@ -154,11 +154,19 @@
     if (next.open) onOpen(id);
   }
 
+  /** A search result opens its thread and ends the search, as in T3 Code (08 inbox 13). */
+  function openHit(id: string): void {
+    view.search = '';
+    onOpen(id);
+  }
+
   function onFieldKey(event: KeyboardEvent): void {
     if (!searching) return;
     if (event.key === 'ArrowDown') hit = Math.min(hit + 1, hits.length - 1);
     else if (event.key === 'ArrowUp') hit = Math.max(hit - 1, 0);
-    else if (event.key === 'Enter' && hits[hit] !== undefined) onOpen(hits[hit].row.id);
+    else if (event.key === 'Enter' && hits[hit] !== undefined) openHit(hits[hit].row.id);
+    // Escape empties the search, as in T3 Code; the page does not take it (08 inbox 13).
+    else if (event.key === 'Escape') view.search = '';
     else return;
     event.preventDefault();
     event.stopPropagation();
@@ -187,9 +195,10 @@
   {:else}
     <ScrollArea label="Threads" bar="hidden">
       {#if searching}
-        <SearchResults {hits} now={view.moment} chosen={store.chosen} at={hit} {onOpen} settled={(id) => view.shelfOf(id) === 'settled'} />
+        <SearchResults {hits} now={view.moment} chosen={store.chosen} at={hit} onOpen={openHit} settled={(id) => view.shelfOf(id) === 'settled'} />
       {:else}
-        {#if quiet}
+        <!-- With threads in Settled and no filter, the shelves alone show, as in T3 Code (08 inbox 2). -->
+        {#if quiet && (view.parts.settled.length === 0 || filteredNames.length > 0)}
           <div class="empty">
             <p>{emptyWords(filteredNames, view.parts.settled.length > 0)}</p>
             {#if filteredNames.length > 0}<button type="button" onclick={() => (view.projects = new Set())}>Show all projects</button>{/if}

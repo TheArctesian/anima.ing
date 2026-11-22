@@ -94,7 +94,8 @@
   }
 
   :global(.row:hover) > .acts,
-  :global(.row:focus-within) > .acts {
+  /* Focus from the keys only: after a click the row keeps focus, and its status must come back (08 inbox 1). */
+  :global(.row:has(:focus-visible)) > .acts {
     opacity: 1;
     pointer-events: auto;
   }
