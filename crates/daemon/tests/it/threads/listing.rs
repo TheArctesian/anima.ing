@@ -5,7 +5,8 @@ use agent_threads::control::{Action, Listing, ListingChange, Outcome, Refusal, R
 use agent_threads::drive::{Mode, Program};
 use uuid::Uuid;
 
-use super::runner::{CLAUDE, Client, Kit};
+use super::attach::CLAUDE_KEEPS;
+use super::runner::{CLAUDE, Client, Kit, state_is};
 
 async fn change(client: &mut Client, thread: Uuid, change: ListingChange) -> Outcome {
     let id = client.call(Action::ChangeListing { thread, change }).await;
@@ -82,7 +83,7 @@ async fn th46_a_thread_that_runs_is_not_removed_and_a_stopped_one_leaves_the_lis
             attachments: Vec::new(),
         })
         .await;
-    let Outcome::Started { thread } = client.done(start).await else {
+    let Outcome::Started { thread, .. } = client.done(start).await else {
         panic!("the thread started");
     };
     assert_eq!(
@@ -158,4 +159,51 @@ async fn th61_a_settle_and_a_snooze_are_kept_after_a_restart_and_a_bad_snooze_is
         .expect("the wake is kept")
         .marks;
     assert!(marks.snoozed_until.is_none() && marks.woke_at.is_some());
+}
+
+/// Stops `thread` and waits until the runner shows it stopped.
+async fn stopped(client: &mut Client, thread: Uuid) {
+    let stop = client.call(Action::Stop { thread }).await;
+    client.done(stop).await;
+    for _ in 0..40 {
+        if state_of(client, thread).await == Some(RunState::Stopped) {
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+    }
+    panic!("the thread did not stop");
+}
+
+#[tokio::test]
+async fn thr_041_a_thread_with_no_project_runs_in_a_new_folder_that_stays_when_it_is_removed() {
+    let kit = Kit::with(CLAUDE_KEEPS);
+    let mut client = kit.client().await;
+    client.call(Action::Watch).await;
+    let start = client
+        .call(Action::Start {
+            program: Program::ClaudeCode,
+            folder: std::path::PathBuf::new(),
+            mode: Mode::FullAccess,
+            model: None,
+            effort: None,
+            prompt: "look".to_owned(),
+            program_path: None,
+            draft: None,
+            attachments: Vec::new(),
+        })
+        .await;
+    let Outcome::Started { thread, folder } = client.done(start).await else {
+        panic!("the thread started");
+    };
+    let scratch = std::fs::canonicalize(kit.path("Anima Scratch")).expect("the scratch folder");
+    assert_eq!(folder.parent(), Some(scratch.as_path()), "{folder:?}");
+    client.until(state_is(RunState::Idle)).await;
+    assert!(
+        folder.join("prompts.jsonl").is_file(),
+        "the program runs in the new folder"
+    );
+    stopped(&mut client, thread).await;
+    let removed = change(&mut client, thread, ListingChange::Remove).await;
+    assert!(matches!(removed, Outcome::Listings { .. }), "{removed:?}");
+    assert!(folder.join("prompts.jsonl").is_file(), "the folder stays");
 }

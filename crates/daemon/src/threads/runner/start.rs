@@ -17,6 +17,7 @@ const ASK_AGAIN: std::time::Duration = std::time::Duration::from_secs(60);
 use crate::threads::wire;
 
 mod new_thread;
+mod scratch;
 pub(super) use crate::threads::notice::chosen_folder;
 pub(super) use new_thread::NewThread;
 
@@ -51,16 +52,22 @@ struct Asking {
 impl Runner {
     /// Checks a new thread, counts it against the soft limit (THR-114) and asks the holder to
     /// start its program; the answer goes to the client when the holder answers.
-    pub(super) async fn start(&mut self, new: NewThread, back: Caller) -> Result<(), Refusal> {
+    pub(super) async fn start(&mut self, mut new: NewThread, back: Caller) -> Result<(), Refusal> {
         // A start whose copy is being asked counts against the soft limit too.
         self.may_start(u32::try_from(self.asks.open.len()).unwrap_or(u32::MAX))?;
-        chosen_folder(&new.folder, self.dir.parent().unwrap_or(&self.dir))?;
+        let no_project = new.folder.as_os_str().is_empty();
+        if !no_project {
+            chosen_folder(&new.folder, self.dir.parent().unwrap_or(&self.dir))?;
+        }
         self.draft_ready(&new)?;
         if login::find(new.program, &self.env, login::executable, login::trusted).is_none() {
             self.ask_login_again(new.program).await;
         }
         let copies = login::copies(new.program, &self.env, login::executable, login::trusted);
         let path = login::chosen_copy(new.program_path.as_deref(), &copies)?;
+        if no_project {
+            new.folder = scratch::made(&self.env, chrono::Local::now().date_naive())?;
+        }
         match self.silence.kept(&path) {
             Some(true) => {
                 let asking = Asking {

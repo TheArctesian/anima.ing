@@ -66,9 +66,11 @@ pub enum Action {
     List,
     /// The updates of each thread from now on, after the updates that the runner keeps of it.
     Watch,
-    /// A new thread in a folder that the person chose at this computer (THR-041).
+    /// A new thread in a folder that the person chose at this computer (THR-041). An empty
+    /// `folder` is "No project": the runner makes a new empty folder for the thread.
     Start {
         program: Program,
+        #[serde(default)]
         folder: PathBuf,
         #[serde(default)]
         mode: Mode,
@@ -205,6 +207,10 @@ pub enum Outcome {
     Ok,
     Started {
         thread: Uuid,
+        /// The folder of the thread: for a start with no project, the new folder that the
+        /// runner made for it (THR-041).
+        #[serde(default)]
+        folder: PathBuf,
     },
     Threads {
         threads: Vec<ThreadRow>,
