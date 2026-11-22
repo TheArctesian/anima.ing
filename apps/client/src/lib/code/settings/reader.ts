@@ -13,10 +13,11 @@ export const CHAT_WIDTHS = [
 export type ChatWidth = (typeof CHAT_WIDTHS)[number]['id'];
 
 /**
- * The contrast in percent, as T3 Code's slider shows it, from 100 (the theme as drawn) up. T3 Code goes down to 50; less
- * than 100 would take quiet text under 4.5:1, so Anima starts at 100 (R-354).
+ * The contrast in percent, as T3 Code's slider shows it, from 100 (the theme as drawn) up. T3 Code goes from 50 to 200 in
+ * steps of 5 and mixes colours; less than 100 would take quiet text under 4.5:1, and Anima's styles mix no colour
+ * (TOK-003), so the slider has the three steps the tokens give: 100, 150 (quiet text as full text), 200 (lines strong too).
  */
-export const CONTRAST = { min: 100, max: 200, step: 5, default: 100 } as const;
+export const CONTRAST = { min: 100, max: 200, step: 50, default: 100 } as const;
 
 /**
  * The size of chat text in pixels; the rest of the Code text follows in proportion. T3 Code goes from 12 to 20 px; under
@@ -69,16 +70,15 @@ export function storeReader(storage: Storage, reader: Reader): void {
   }
 }
 
-/** The values `code.css` reads: the width as an attribute, the text scale and the contrast mix as properties. */
-export function readerTokens(reader: Reader): { width: ChatWidth; textScale: string; contrastMix: string } {
-  const mix = ((reader.contrast - CONTRAST.min) / (CONTRAST.max - CONTRAST.min)) * 100;
-  return { width: reader.width, textScale: (reader.fontSize / FONT_SIZE.default).toFixed(4), contrastMix: `${String(Math.round(mix))}%` };
+/** The values `code.css` reads: the width and the contrast as attributes, the text scale as a property. */
+export function readerTokens(reader: Reader): { width: ChatWidth; contrast: string; textScale: string } {
+  return { width: reader.width, contrast: String(reader.contrast), textScale: (reader.fontSize / FONT_SIZE.default).toFixed(4) };
 }
 
 /** Mark the document root with the settings, so each part of the Code page follows without reading them. */
 export function applyReader(root: HTMLElement, reader: Reader): void {
   const tokens = readerTokens(reader);
   root.dataset['codeWidth'] = tokens.width;
+  root.dataset['codeContrast'] = tokens.contrast;
   root.style.setProperty('--code-text-scale', tokens.textScale);
-  root.style.setProperty('--code-contrast', tokens.contrastMix);
 }

@@ -9,17 +9,18 @@ const root = document.documentElement;
 beforeEach(() => {
   localStorage.clear();
   root.removeAttribute('data-code-width');
+  root.removeAttribute('data-code-contrast');
   root.removeAttribute('style');
 });
 
 describe('the saved reader settings', () => {
-  it('reads the defaults when nothing valid is saved: a width not offered, a contrast under 100 or off its step, a size under 14 px', () => {
+  it('reads the defaults when nothing valid is saved: a width not offered, a contrast under 100 or between its steps, a size under 14 px', () => {
     expect(storedReader(localStorage)).toEqual(DEFAULT_READER);
     localStorage.setItem('anima.code.width', 'huge');
     localStorage.setItem('anima.code.contrast', '50');
     localStorage.setItem('anima.code.font-size', '12');
     expect(storedReader(localStorage)).toEqual(DEFAULT_READER);
-    localStorage.setItem('anima.code.contrast', '103');
+    localStorage.setItem('anima.code.contrast', '140');
     expect(storedReader(localStorage).contrast).toBe(100);
   });
 
@@ -39,16 +40,15 @@ describe('the saved reader settings', () => {
 
 describe('the tokens of the Code page', () => {
   it('only grows text and only adds contrast, so 12 px and 4.5:1 hold at each value (R-354)', () => {
-    expect(readerTokens(DEFAULT_READER)).toEqual({ width: 'comfortable', textScale: '1.0000', contrastMix: '0%' });
-    expect(readerTokens({ width: 'full', contrast: 200, fontSize: 20 })).toEqual({ width: 'full', textScale: '1.4286', contrastMix: '100%' });
-    expect(readerTokens({ ...DEFAULT_READER, contrast: 150 }).contrastMix).toBe('50%');
+    expect(readerTokens(DEFAULT_READER)).toEqual({ width: 'comfortable', contrast: '100', textScale: '1.0000' });
+    expect(readerTokens({ width: 'full', contrast: 200, fontSize: 20 })).toEqual({ width: 'full', contrast: '200', textScale: '1.4286' });
   });
 
   it('marks the document root', () => {
-    applyReader(root, { width: 'wide', contrast: 120, fontSize: 15 });
+    applyReader(root, { width: 'wide', contrast: 150, fontSize: 15 });
     expect(root.dataset['codeWidth']).toBe('wide');
+    expect(root.dataset['codeContrast']).toBe('150');
     expect(root.style.getPropertyValue('--code-text-scale')).toBe('1.0714');
-    expect(root.style.getPropertyValue('--code-contrast')).toBe('20%');
   });
 });
 
@@ -86,15 +86,15 @@ describe('the rows in Settings, Code appearance', () => {
     expect(localStorage.getItem('anima.code.width')).toBeNull();
   });
 
-  it('moves the contrast with the slider and writes the value beside it', () => {
+  it('moves the contrast with the slider in its three steps and writes the value beside it', () => {
     const target = show();
     const slider = target.querySelector<HTMLInputElement>('#code-contrast') ?? expect.fail('slider');
-    expect(slider.min).toBe('100');
-    slider.value = '140';
+    expect([slider.min, slider.max, slider.step]).toEqual(['100', '200', '50']);
+    slider.value = '150';
     slider.dispatchEvent(new Event('input', { bubbles: true }));
     flushSync();
-    expect(target.querySelector('output')?.textContent).toBe('140%');
-    expect(root.style.getPropertyValue('--code-contrast')).toBe('40%');
+    expect(target.querySelector('output')?.textContent).toBe('150%');
+    expect(root.dataset['codeContrast']).toBe('150');
   });
 
   it('offers font sizes from 14 to 20 px', () => {

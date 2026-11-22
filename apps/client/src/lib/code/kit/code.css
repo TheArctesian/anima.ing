@@ -20,7 +20,8 @@
   --code-text-scale: 1;
 
   /* Quiet text and lines: the secondary token, at least 4.5:1 on each surface of the theme; see the contrast below. */
-  --code-contrast: 0%;
+  --code-quiet-text: var(--text-secondary);
+  --code-line: var(--border-subtle);
 
   /* Inbox rows: the card is 78 px with three lines, the one-liner 36 px, the shelf header 32 px. */
   --code-card: 4.875rem;
@@ -57,8 +58,8 @@
 
 /*
  * The reader settings of the Code section (D12, R-354: "All that apply"): chat width, text size and contrast. The
- * settings in Settings, Code (`lib/code/settings/reader.ts`) set `data-code-width`, `--code-text-scale` and
- * `--code-contrast` on the document root; the kit pages set the attributes on their own root. Each value keeps the
+ * settings in Settings, Code (`lib/code/settings/reader.ts`) set `data-code-width`, `data-code-contrast` and
+ * `--code-text-scale` on the document root; the kit pages set the attributes on their own root. Each value keeps the
  * 12 px minimum (the scale only grows) and 4.5:1 (more contrast only moves quiet text toward the full text token).
  */
 [data-code-width='wide'] {
@@ -85,13 +86,14 @@
   --code-text-scale: 1.1429;
 }
 
-/* Contrast: 0% is the theme as drawn; 100% gives quiet text the full text token and lines the strong border. */
-:root,
-[data-code-contrast] {
-  --code-quiet-text: color-mix(in oklab, var(--text) var(--code-contrast), var(--text-secondary));
-  --code-line: color-mix(in oklab, var(--border-strong) var(--code-contrast), var(--border-subtle));
+/* Contrast in three steps of tokens (no colour is mixed, TOK-003): 150% gives quiet text the full text token, 200% also
+   gives lines the strong border. The kit pages call 200% "more". */
+[data-code-contrast='150'] {
+  --code-quiet-text: var(--text);
 }
 
+[data-code-contrast='200'],
 [data-code-contrast='more'] {
-  --code-contrast: 100%;
+  --code-quiet-text: var(--text);
+  --code-line: var(--border-strong);
 }
