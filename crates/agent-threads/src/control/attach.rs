@@ -146,7 +146,8 @@ pub fn most_bytes(mime: &str) -> u64 {
 
 /// The name of a file as the person sees it: the last part of the name only, of letters, digits
 /// and `._ -`; each other character that shows becomes `_`, and a character that does not show
-/// is dropped. At most [`MOST_NAME_BYTES`], with no leading dot. It is never a part of a path.
+/// is dropped. At most [`MOST_NAME_BYTES`], with no leading dot, space or `-`. It is never a
+/// part of a path.
 #[must_use]
 pub fn shown_name(name: &str) -> String {
     let last = name.rsplit(['/', '\\']).next().unwrap_or_default();
@@ -161,7 +162,7 @@ pub fn shown_name(name: &str) -> String {
         }
         safe.push(char);
     }
-    let safe = safe.trim().trim_start_matches('.').trim();
+    let safe = safe.trim_start_matches(['.', ' ', '-']).trim_end();
     if safe.is_empty() {
         "attachment".to_owned()
     } else {
@@ -239,6 +240,7 @@ mod tests {
         assert_eq!(shown_name("a\u{e0041}\u{e0042}b\u{fe0f}.txt"), "ab.txt");
         assert_eq!(shown_name("\u{3164}\u{2800}x.txt"), "_x.txt");
         assert_eq!(shown_name("Résumé 2026.pdf"), "Résumé 2026.pdf");
+        assert_eq!(shown_name(". .-rf\u{2066}x\u{ffa0}.txt"), "rfx_.txt");
     }
 
     #[test]
