@@ -371,3 +371,6 @@ pub async fn watch(args: WatchArgs, invocation: &Invocation) -> Result<(), Failu
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests;

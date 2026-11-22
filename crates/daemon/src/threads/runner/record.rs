@@ -5,11 +5,11 @@
 use std::io::Write as _;
 use std::path::Path;
 
-use agent_threads::control::{Limits, Listing, Project};
+use agent_threads::control::{Limits, Listing, Project, Workspace};
 use serde::{Deserialize, Serialize};
 
-use super::RunnerError;
-use super::thread::Saved;
+use super::thread::{Saved, Step, Thread};
+use super::{Runner, RunnerError, calls};
 
 /// The lock file of the runner in the folder of the threads: one runner for one folder.
 const LOCK: &str = "runner.lock";
@@ -109,4 +109,31 @@ pub(super) fn lock(dir: &Path) -> Result<std::fs::File, RunnerError> {
     rustix::fs::flock(&file, rustix::fs::FlockOperation::NonBlockingLockExclusive)
         .map_err(|_| RunnerError::Busy)?;
     Ok(file)
+}
+
+impl Runner {
+    /// The threads of the record of a run before, each with its updates numbered after the
+    /// updates of that run.
+    pub(super) fn restore(&mut self, saved: Vec<Saved>) {
+        for saved in saved {
+            let codex = calls::codex_of(&saved.row, saved.effort);
+            let mut thread = Thread::restore(saved, codex);
+            // A thread of a record from before TH112 learns where it works now.
+            let folder = thread.row.folder.clone();
+            thread
+                .row
+                .workspace
+                .get_or_insert_with(|| Workspace::of(&folder));
+            // The microseconds of the clock are more than the updates of any run before.
+            thread.number_from(u64::try_from(chrono::Utc::now().timestamp_micros()).unwrap_or(0));
+            let id = thread.row.id;
+            let steps = thread.settle_answering();
+            self.threads.insert(id, thread);
+            for step in steps {
+                if let Step::Change(change) = step {
+                    self.publish(id, change);
+                }
+            }
+        }
+    }
 }

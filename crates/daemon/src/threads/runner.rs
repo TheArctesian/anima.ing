@@ -210,23 +210,6 @@ pub async fn run(
 }
 
 impl Runner {
-    fn restore(&mut self, saved: Vec<thread::Saved>) {
-        for saved in saved {
-            let codex = calls::codex_of(&saved.row, saved.effort);
-            let mut thread = Thread::restore(saved, codex);
-            // The microseconds of the clock are more than the updates of any run before.
-            thread.number_from(u64::try_from(chrono::Utc::now().timestamp_micros()).unwrap_or(0));
-            let id = thread.row.id;
-            let steps = thread.settle_answering();
-            self.threads.insert(id, thread);
-            for step in steps {
-                if let Step::Change(change) = step {
-                    self.publish(id, change);
-                }
-            }
-        }
-    }
-
     /// The loop of the runner: the holder, the clients, and the stop.
     async fn serve(&mut self, listener: tokio::net::UnixListener, stop: impl Future<Output = ()>) {
         let (sender, mut incoming) = mpsc::channel(256);
