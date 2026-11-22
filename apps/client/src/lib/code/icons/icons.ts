@@ -120,6 +120,12 @@ import Trash from '@lucide/svelte/icons/trash';
 import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 import ArrowRight from '@lucide/svelte/icons/arrow-right';
 import Zap from '@lucide/svelte/icons/zap';
+import Rows3 from '@lucide/svelte/icons/rows-3';
+import Columns2 from '@lucide/svelte/icons/columns-2';
+import Pilcrow from '@lucide/svelte/icons/pilcrow';
+import FlaskConicalOff from '@lucide/svelte/icons/flask-conical-off';
+import Info from '@lucide/svelte/icons/info';
+import RotateCw from '@lucide/svelte/icons/rotate-cw';
 
 /**
  * Every Lucide icon the Code section draws, by T3 Code's name for it (D4, operator 2026-11-21: "Lucide now"; ISC
@@ -127,6 +133,12 @@ import Zap from '@lucide/svelte/icons/zap';
  * never import Lucide elsewhere (the lint refuses it).
  */
 export const CODE_ICONS = {
+  'rows-3': Rows3,
+  'columns-2': Columns2,
+  'pilcrow': Pilcrow,
+  'flask-conical-off': FlaskConicalOff,
+  'info': Info,
+  'rotate-cw': RotateCw,
   'arrow-right': ArrowRight,
   'arrow-left': ArrowLeft,
   'trash': Trash,

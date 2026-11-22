@@ -1,9 +1,11 @@
 /**
  * The skin of Anima on the diff library of T3 Code (`@pierre/diffs`). The library draws inside a shadow root and reads
  * its look from CSS variables; the custom properties of the page pass into a shadow root, so each value here is a token
- * of Anima. The list of variables is the one that T3 Code overrides (`lib/diffRendering.ts`).
+ * of Anima. For an added or a removed line the library mixes the colour given here into the surface (12% in the
+ * light, 20% in the dark), so the value is the status colour itself and not a tint of it. The list of variables is the one that T3 Code overrides (`lib/diffRendering.ts`).
  */
 export const DIFF_SKIN = `
+:host,
 [data-diffs-header],
 [data-diff],
 [data-file],
@@ -24,10 +26,10 @@ export const DIFF_SKIN = `
   --diffs-bg-buffer-override: var(--surface-sunken);
   --diffs-addition-color-override: var(--status-up-text);
   --diffs-deletion-color-override: var(--status-down-text);
-  --diffs-bg-addition-override: var(--status-up-tint);
-  --diffs-bg-addition-number-override: var(--status-up-tint);
-  --diffs-bg-deletion-override: var(--status-down-tint);
-  --diffs-bg-deletion-number-override: var(--status-down-tint);
+  --diffs-bg-addition-override: var(--status-up-text);
+  --diffs-bg-addition-number-override: var(--status-up-text);
+  --diffs-bg-deletion-override: var(--status-down-text);
+  --diffs-bg-deletion-number-override: var(--status-down-text);
   --diffs-bg-selection-override: var(--surface-selected);
   background-color: var(--surface-base) !important;
 }

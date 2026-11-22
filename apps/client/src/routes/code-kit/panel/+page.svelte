@@ -10,6 +10,7 @@
   import RightPanel from '$lib/code/panel/RightPanel.svelte';
   import { closed, shown, type PanelTabs } from '$lib/code/panel/tabs';
   import PageHeader from '$lib/page/PageHeader.svelte';
+  import DiffScenes from './DiffScenes.svelte';
   import { FULL, MARKDOWN, PATCH, PICTURE, PLAIN, REFS, SOURCE, TABS, listing } from './scenes';
 
   let choices = $state<ShownChoices>({ usage: true, context: true });
@@ -114,6 +115,7 @@
     <section data-kit="diff-stacked" aria-label="Diff library, stacked"><LibraryDiff patch={PATCH} theme={dark ? 'dark' : 'light'} ondrawn={(failure) => (drawn = failure ?? 'drawn')} /></section>
     <section data-kit="diff-split" aria-label="Diff library, split"><LibraryDiff patch={PATCH} split wrap theme={dark ? 'dark' : 'light'} /></section>
   </div>
+  <DiffScenes theme={dark ? 'dark' : 'light'} {say} />
   <p class="said" data-kit-drawn={drawn}>Diff library: {drawn}</p>
   <p class="said" aria-live="polite">Last action: {said}</p>
 </div>
