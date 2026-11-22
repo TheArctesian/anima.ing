@@ -2327,6 +2327,11 @@ Result: Open.
 
 On 2026-11-20 the Samsung tablet was enrolled from the app. The hosted hub showed the tablet with source Daemon and new memory and storage readings. New readings reached the hub again after bringing the app back to the foreground. The background stale state still needs an independent client check.
 
+On iPhone and iPad, use Devices → Enroll this device on a linked hub, including when
+the device already has an inventory row. Expected: the device reports memory in the
+foreground. Move Anima to the background and reopen it. Expected: reports resume.
+Check that the hub receives no iOS disk-capacity series.
+
 Result: Open.
 
 ### HT-030: the application on a computer shows its copy of recent data when the hub does not answer (FND-007, task F2)

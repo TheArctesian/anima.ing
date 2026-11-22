@@ -42,6 +42,10 @@ fn reads() -> Vec<Action> {
         Action::Folder {
             folder: PathBuf::from("/work"),
         },
+        Action::Folders {
+            folder: PathBuf::from("/work"),
+            hidden: true,
+        },
         Action::Listings,
     ]
 }
@@ -152,10 +156,11 @@ const fn kind(action: &Action) -> usize {
         Action::Attach { .. } => 22,
         Action::AttachMore { .. } => 23,
         Action::Unattach { .. } => 24,
+        Action::Folders { .. } => 25,
     }
 }
 
-const KINDS: usize = 25;
+const KINDS: usize = 26;
 
 #[test]
 fn th109_each_call_reads_back_from_its_frame() {
