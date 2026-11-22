@@ -198,14 +198,21 @@ const updaterImports = [
   },
 ];
 const tsImportsRule = (patterns) => ({ '@typescript-eslint/no-restricted-imports': ['error', { patterns }] });
+// Lucide draws the icons of the Code section only (D4 of the T3 Code copy, operator 2026-11-21: "Lucide now"), and only
+// through its one list, so the icons to redraw later stay in one place.
+const codeIconsFile = 'apps/client/src/lib/code/icons/icons.ts';
+const lucideImports = [
+  { regex: String.raw`^@?lucide(?:[-/]|$)`, message: 'Lucide is only for the Code section (D4): add the icon to CODE_ICONS in $lib/code/icons/icons.ts and use CodeIcon.' },
+];
 const fixtureFiles = ['**/*.fixture.ts', '**/*.fixture.svelte.ts'];
 const faceRules = [
   {
     files: clientFiles,
     // `codegen.ts` is the entry of the hub's own type generator (API-008), a build tool outside the app code.
-    ignores: [...clientTests, ...fixtureFiles, ...hubFolder, 'apps/client/codegen.ts'],
-    rules: tsImportsRule([...updaterImports, ...hubInternalImports, ...hubFakeImports]),
+    ignores: [...clientTests, ...fixtureFiles, ...hubFolder, 'apps/client/codegen.ts', codeIconsFile],
+    rules: tsImportsRule([...updaterImports, ...hubInternalImports, ...hubFakeImports, ...lucideImports]),
   },
+  { files: [codeIconsFile], rules: tsImportsRule([...updaterImports, ...hubInternalImports, ...hubFakeImports]) },
   {
     files: fixtureFiles.map((glob) => `apps/client/${glob}`),
     ignores: hubFolder,

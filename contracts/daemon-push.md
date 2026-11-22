@@ -10,6 +10,10 @@ R-317 (made overnight by the orchestrator, not yet confirmed by the operator).
 The `daemonVersion` member of Section 4 was added by R-122 (operator, 2026-11-16).
 The `agentUsage` member of Section 4 was added by R-135 (operator, 2026-11-17; AIS-018, AIS-019, AIS-022 to
 AIS-024).
+The `address` of `agentUsage.accounts` (Section 4) was added for THR-149 of
+[agent-threads.md](../docs/proposals/agent-threads.md) (the operator's words "we do whatever t3 code does" and
+"Send the address", relayed by the orchestrating session, 2026-11-21). It is an optional member, so it needs no new
+version of this contract (Section 1).
 Section 8 (the update), the `update` member of Section 4 and the two update routes were added by R-139
 (operator, 2026-11-17; ROL-008 to ROL-013, ROL-028 to ROL-032, ROL-040 to ROL-045). They are ruled and
 not built: no hub and no daemon has them yet.
@@ -22,6 +26,8 @@ The kind `battery_percent` and the member `batteries` of Section 4 (MET-032, CAP
 with them by the same ruling. They are optional, so they need no new version of this contract.
 The first wait after a failure in Section 7 was changed from 10 to 2 seconds by R-312 (orchestrator, 2026-11-21,
 made overnight, not yet confirmed; CON-001). It changes no message, so it needs no new version of this contract.
+The clear of the need of a daemon in Section 4 was added by R-364 (made overnight, not yet confirmed; CON-001).
+It changes no message, so it needs no new version of this contract.
 
 This contract and the work route contract K10 ([work-route.md](work-route.md); accepted by R-209, 2026-11-19) are the whole interface between `anima-daemon` and the hub. The daemon makes the requests of K8 and of K10 and no other.
 
@@ -321,9 +327,9 @@ Request:
   `MALFORMED`. A release build carries the release version (`ANIMA_VERSION`, as `anima` does); any other build
   carries the crate version. Absent means a daemon older than R-122, and a hub older than R-122 ignores it.
 - `agentUsage`: optional (R-135; AIS-018, AIS-019). The use of the AI agent programs on the device: counts
-  only, never the text of a session, a title, the path of a folder, a login, a token, the name of an account
-  or the identifier of an account (AIS-018, AIS-022). Its member `accounts` gives the key, the plan and the
-  limits of an account, and nothing else of it (R-313). Absent means "nothing new": a daemon older than R-135 sends none and a hub
+  only, never the text of a session, a title, the path of a folder, a login, a token, or the identifier of an
+  account (AIS-018, AIS-022). Its member `accounts` gives the key, the email address, the plan and the limits
+  of an account, and nothing else of it (THR-149). Absent means "nothing new": a daemon older than R-135 sends none and a hub
   older than R-135 ignores it, so the change needs no `/daemon/v2/`.
   - `state` says what the daemon can read: `reading` (it reads the session files of its user),
     `system_unit` (it runs as the systemd system unit, which cannot see the files of a user, AIS-024) or
@@ -359,7 +365,7 @@ Request:
       `cacheWriteTokens` are the input tokens read from and written to the cache.
     - Every count (`prompts`, `toolCalls` and the four token counts) is a whole number from 0 to
       9 007 199 254 740 991 (2^53 − 1).
-  - `accounts`: optional (R-313, AIS-022). The accounts that the programs of the device use
+  - `accounts`: optional (R-313, AIS-022, THR-149). The accounts that the programs of the device use
     now, 0 to 4 entries, no two with the same `source`. Absent means "nothing new"; a daemon older than
     R-313 sends none, and a hub older than it ignores it. Present, even empty, it asks the hub for
     its account salt (Section 8.2). The daemon sends an entry only when it has the salt of the hub that
@@ -368,14 +374,24 @@ Request:
     - `key`: 64 bytes of `[0-9a-f]`: the HMAC-SHA-256, written in lower-case hexadecimal, of the text
       `<source>:<identifier>` with the account salt as the key, where `<identifier>` is the identifier that
       the vendor gives the account (Codex: `account/read` or `creator_account_id` of a rollout; Claude
-      Code: the account of the runner of threads, THR-132). Never the identifier itself.
+      Code: the account of the runner of threads, THR-132). Never the identifier itself. The key is the
+      stable identifier of the account at the hub: the hub groups devices by it.
+    - `address`: optional (THR-149), the email address that the program is signed in with, as the program
+      gives it: 3 to 254 bytes, one `@` with text before and after it, and no white space, control character,
+      `<` or `>`; the hub refuses another form as `MALFORMED` before it writes. The daemon sends it only when the name that the program gives is such an address (Codex may
+      give the name of a workspace instead, which is not sent). The address is personal data: neither side
+      writes it in a log line, an error text or a notification (LOG-007, THR-149 point 7), the hub gives it in
+      no diagnostics, and the hub deletes it with its device (DEV-015).
     - `plan`: optional, 1 to 32 bytes of `[A-Za-z0-9 ._-]`: the name of the plan as the program states it.
     - `limits` holds 0 to 8 entries with unique `window` names: `window`, 1 to 32 bytes of
       `[a-z0-9_ ]` (`five_hour`, `seven_day`, `300 min`); `usedPercent`, optional, a whole number from 0
       to 100; `resetsAt`, optional, a K8 time (Section 1); `reached`, true when the program said that the
       limit is reached.
-    - Each entry replaces the earlier report of the same device and `source`. An account that the device
-      no longer reports keeps its last report until a batch says that the device uses a different key.
+    - Each entry replaces the earlier report of the same device and `source`. A present list is the whole
+      set of the device: the hub deletes the report of each `source` that it does not name, with its
+      address and its limits (THR-149). So a program that signed out, or a daemon whose `sendAccounts` is
+      false (it then sends an empty list once after each start), leaves no address at the hub. The empty
+      list that asks for the salt after a start also deletes the reports until the next batch gives them.
   - A batch whose `agentUsage` breaks one of these rules is `MALFORMED`. The daemon sends only values that
     pass them.
   - The daemon reads only the session files `~/.claude/projects/*/*.jsonl` (with the sub-agent files
@@ -394,8 +410,8 @@ Request:
     user unit (AIS-024). A daemon whose `HOME` is not set, or is the state folder of the system unit
     (`/var/lib/anima-daemon`), or whose `ANIMA_DAEMON_HOME` is that folder, sends `system_unit`.
   - The operator's settings are the file `agent-usage.json` in the daemon's folder (MET-002):
-    `{ "off": true, "excludedFolders": ["/Users/me/private"], "excludedRepositories": ["github.com/me/secret"] }`,
-    each member optional, at most 64 KiB and at most 256 entries in each list. Each entry of
+    `{ "off": true, "excludedFolders": ["/Users/me/private"], "excludedRepositories": ["github.com/me/secret"], "sendAccounts": false }`,
+    each member optional (`sendAccounts`, true when absent, sends `accounts`; THR-149), at most 64 KiB and at most 256 entries in each list. Each entry of
     `excludedRepositories` is written as `repository` is (above; letter case ignored) and does not end
     in `.git`. A session is not counted and not sent (AIS-008, AIS-023) when its working folder, or the
     main folder of its repository, each as written and with its links resolved when it exists, is under
@@ -456,6 +472,9 @@ The hub:
   whose series the hub all ignores; a refused batch does not. 30 seconds after the last accepted batch the
   device's metrics are stale: the hub writes one event (source `metrics`, severity warning) and serves
   `Device.metricsStale` true. The next accepted batch clears the mark and writes one event (severity info).
+  It also clears what the daemon waits for from a person (`Device.daemonNeed`, which the desktop application of
+  that computer sets through K1 while the daemon has no token, R-364); when it held one, the hub
+  writes one event (source `metrics`, severity info) "The daemon on <name> no longer waits for a person."
   A daemon that has never pushed is not marked, and `metricsStale` is true for it. Stale changes no check:
   a stale daemon is never a Down check.
 

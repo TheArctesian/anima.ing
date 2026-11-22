@@ -25,12 +25,14 @@ pub enum CodexMethod {
     TurnInterrupt,
     AccountRead,
     AccountRateLimitsRead,
+    /// The models of the picker (TH104).
+    ModelList,
     /// Only when the person asks for the sign-in at the client of the same computer.
     AccountLoginStart,
 }
 
 impl CodexMethod {
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 12] = [
         Self::Initialize,
         Self::Initialized,
         Self::ThreadStart,
@@ -41,6 +43,7 @@ impl CodexMethod {
         Self::TurnInterrupt,
         Self::AccountRead,
         Self::AccountRateLimitsRead,
+        Self::ModelList,
         Self::AccountLoginStart,
     ];
 
@@ -57,6 +60,7 @@ impl CodexMethod {
             Self::TurnInterrupt => "turn/interrupt",
             Self::AccountRead => "account/read",
             Self::AccountRateLimitsRead => "account/rateLimits/read",
+            Self::ModelList => "model/list",
             Self::AccountLoginStart => "account/login/start",
         }
     }
@@ -159,6 +163,12 @@ impl CodexInput {
     #[must_use]
     pub fn account_limits_read(id: i64) -> String {
         call(id, CodexMethod::AccountRateLimitsRead, &json!(null))
+    }
+
+    /// The models of the picker, with no hidden one (TH104).
+    #[must_use]
+    pub fn model_list(id: i64) -> String {
+        call(id, CodexMethod::ModelList, &json!({"includeHidden": false}))
     }
 
     /// The reply to a server request. "Allow for the session" sends back one decision that the

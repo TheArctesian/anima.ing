@@ -1,7 +1,10 @@
-//! How the person lists each thread (TH46): pinned, archived, a title of their own, or removed.
-//! Kept in the record of the runner only; no session file of a program changes.
+//! How the person lists each thread (TH46): pinned, archived, a title of their own, or removed;
+//! settled or snoozed (TH61); and the projects that group the threads (TH107). Kept in the record
+//! of the runner only; no session file of a program changes.
 
-use agent_threads::control::{Listing, ListingChange, Outcome, Refusal, RunState};
+use agent_threads::control::{
+    Listing, ListingChange, Outcome, ProjectChange, Refusal, RunState, project_changed,
+};
 use uuid::Uuid;
 
 use super::Runner;
@@ -10,6 +13,39 @@ use super::Runner;
 const MAX_LISTINGS: usize = 10_000;
 
 impl Runner {
+    pub(super) fn projects(&self) -> Outcome {
+        Outcome::Projects {
+            projects: self.projects.clone(),
+        }
+    }
+
+    /// Changes the projects, and answers with each project. An added folder must be a folder of
+    /// this computer (THR-041); a folder that is gone can still be renamed or removed.
+    pub(super) fn change_project(&mut self, change: &ProjectChange) -> Outcome {
+        let folder = match change {
+            ProjectChange::Add { folder, .. } => {
+                match super::start::chosen_folder(folder, self.dir.parent().unwrap_or(&self.dir)) {
+                    Ok(real) => real,
+                    Err(why) => return Outcome::Refused { why },
+                }
+            }
+            // A folder that is gone is named as it was added.
+            other => {
+                std::fs::canonicalize(other.folder()).unwrap_or_else(|_| other.folder().clone())
+            }
+        };
+        match project_changed(self.projects.clone(), change, folder) {
+            Ok(projects) => {
+                self.projects = projects;
+                self.save();
+                self.projects()
+            }
+            Err(_) => Outcome::Refused {
+                why: Refusal::BadValue,
+            },
+        }
+    }
+
     /// Each listing that says more than the files.
     pub(super) fn listings(&self) -> Outcome {
         Outcome::Listings {
@@ -37,7 +73,7 @@ impl Runner {
                 thread,
                 ..Listing::default()
             })
-            .changed(change)
+            .changed(change, chrono::Utc::now())
             .map_err(|_| Refusal::BadValue)?;
         if !self.listings.contains_key(&thread) && self.listings.len() >= MAX_LISTINGS {
             return Err(Refusal::BadValue);

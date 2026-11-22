@@ -6,6 +6,7 @@ query DaemonStatus($id: ID!) {
     metricsSource
     metricsStale
     daemonVersion
+    daemonNeed
     readings {
       at
     }

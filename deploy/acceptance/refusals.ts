@@ -59,6 +59,7 @@ export const REFUSED_ROOTS: readonly string[] = [
   "mergePullRequest",
   "mergePullRequests",
   "createLinkInvite",
+  "createComputerInstall",
   "revokeLinkDevice",
   "createOperationalKey",
   "updateOperationalKey",
@@ -74,6 +75,7 @@ export const REFUSED_ROOTS: readonly string[] = [
   "addApprovedModelSource",
   "setModelPublisherApproval",
   "setDevicePolicy",
+  "setDaemonNeed",
 ];
 
 /** The refused roots that are query fields; every other one is a mutation field. */

@@ -13,6 +13,7 @@ use tempfile::TempDir;
 mod connection;
 mod holder_update;
 mod listing;
+mod models_projects;
 mod requests;
 mod runner;
 mod start;

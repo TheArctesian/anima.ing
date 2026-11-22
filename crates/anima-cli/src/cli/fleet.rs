@@ -34,7 +34,7 @@ pub enum FleetCommand {
         #[command(subcommand)]
         command: model_library::ModelCommand,
     },
-    /// Metrics daemons (status, enrol, revoke).
+    /// Metrics daemons (status, enrol, revoke, need).
     Daemon {
         #[command(subcommand)]
         command: daemons::DaemonCommand,

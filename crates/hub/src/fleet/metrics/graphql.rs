@@ -1,6 +1,6 @@
 //! The metrics GraphQL part: `Query.capabilities` (K1; CAP-030), `Subscription.metricsAdded`
-//! (K1; API-003, MET-005, D-9), and `enrolDaemon` and `revokeDaemonToken` (K1, K8 Section 3;
-//! MET-012, MET-013).
+//! (K1; API-003, MET-005, D-9), `enrolDaemon` and `revokeDaemonToken` (K1, K8 Section 3;
+//! MET-012, MET-013), and `setDaemonNeed` (K1; R-364).
 //!
 //! The metric types are served from `model.rs`; the `Device` fields that return them
 //! (`readings`, `metrics`, `gpus`) belong to the devices domain. Each mutation writes its
@@ -8,13 +8,11 @@
 
 use async_graphql::futures_util::stream::{self, Stream};
 use async_graphql::{Context, Error as GraphQlError, ID, Object, Result, Subscription};
-use chrono::SecondsFormat;
-use daemon_core::wire::{CODE_BYTES, EnrolmentCode};
 use serde_json::json;
 use tokio::sync::broadcast::{Receiver, error::RecvError};
 
 use super::{
-    CapabilityFilter, DeviceCapabilities, Feed, MetricsAdded,
+    CapabilityFilter, DaemonNeed, DeviceCapabilities, Feed, MetricsAdded,
     ingest::{self, DaemonEnrolment},
 };
 use crate::{
@@ -22,7 +20,7 @@ use crate::{
         ErrorCode, FieldError, begin, coded, commit, internal, invalid, pool, schema_dependency,
     },
     fleet::{
-        access::Authenticated,
+        access::{Authenticated, operator_only},
         devices::{self, Device},
         events::{AuditAction, AuditTarget, Severity, Source, Trail, TrailEntry},
     },
@@ -62,14 +60,10 @@ impl Mutation {
     async fn enrol_daemon(&self, ctx: &Context<'_>, device_id: ID) -> Result<DaemonEnrolment> {
         let device = device_of(ctx, wanted(&device_id)?).await?;
         let trail = Trail::from_context(ctx)?;
-        let bytes = ingest::random::<CODE_BYTES>().map_err(internal)?;
-        let code = EnrolmentCode::from_random(*bytes);
         let mut tx = begin(ctx).await?;
-        let enrolment = ingest::make_code(&mut tx, device.id, code, trail.now)
+        let enrolment = ingest::enrol_code(&mut tx, &device, trail)
             .await
             .map_err(ingest_error)?;
-        let entry = code_made(&device, &enrolment);
-        trail.write(&mut tx, entry).await.map_err(internal)?;
         commit(tx).await?;
         Ok(enrolment)
     }
@@ -86,6 +80,35 @@ impl Mutation {
             .map_err(ingest_error)?;
         let entry = token_revoked(&device, had_token);
         trail.write(&mut tx, entry).await.map_err(internal)?;
+        commit(tx).await?;
+        Ok(device)
+    }
+
+    /// Sets what the device's daemon waits for from a person at the device, or clears it with
+    /// no need. The desktop app of that computer reports it, as the daemon has no token to tell
+    /// the hub; the next accepted batch clears it. Login or browser token only (D-23,
+    /// R-364).
+    #[graphql(guard = "Authenticated")]
+    async fn set_daemon_need(
+        &self,
+        ctx: &Context<'_>,
+        device_id: ID,
+        need: Option<DaemonNeed>,
+    ) -> Result<Device> {
+        operator_only(ctx, "setDaemonNeed")?;
+        let device = device_of(ctx, wanted(&device_id)?).await?;
+        let trail = Trail::from_context(ctx)?;
+        let mut tx = begin(ctx).await?;
+        let changed = ingest::set_need(&mut tx, device.id, need.map(DaemonNeed::stored), trail.now)
+            .await
+            .map_err(internal)?
+            .ok_or_else(|| coded("This device has no daemon token.", ErrorCode::NotFound))?;
+        if changed {
+            trail
+                .write(&mut tx, need_changed(&device, need))
+                .await
+                .map_err(internal)?;
+        }
         commit(tx).await?;
         Ok(device)
     }
@@ -111,22 +134,6 @@ fn ingest_error(error: ingest::Error) -> GraphQlError {
     }
 }
 
-/// The audit entry and event of a new code: when it stops working, never the code (LOG-007).
-fn code_made(device: &Device, enrolment: &DaemonEnrolment) -> TrailEntry {
-    let expires_at = enrolment
-        .expiry()
-        .to_rfc3339_opts(SecondsFormat::Secs, true);
-    TrailEntry {
-        source: Source::Metrics,
-        severity: Severity::Info,
-        device: Some((device.id, device.name.clone())),
-        message: format!("Made a daemon enrolment code for {}.", device.name),
-        action: AuditAction::Create,
-        target: AuditTarget::Device(device.id),
-        change: json!({ "daemonEnrolment": { "expiresAt": expires_at } }),
-    }
-}
-
 /// The audit entry and event of a revoked token.
 fn token_revoked(device: &Device, had_token: bool) -> TrailEntry {
     TrailEntry {
@@ -137,6 +144,35 @@ fn token_revoked(device: &Device, had_token: bool) -> TrailEntry {
         action: AuditAction::Delete,
         target: AuditTarget::Device(device.id),
         change: json!({ "daemon": { "tokenRevoked": had_token } }),
+    }
+}
+
+/// The audit entry and event of a changed need of the daemon (R-364).
+fn need_changed(device: &Device, need: Option<DaemonNeed>) -> TrailEntry {
+    let (message, stored) = match need {
+        Some(DaemonNeed::Keychain) => (
+            format!(
+                "The daemon on {} waits for a person to allow it in the Keychain.",
+                device.name
+            ),
+            Some(DaemonNeed::Keychain.stored()),
+        ),
+        None => (
+            format!(
+                "The daemon on {} no longer waits for a person.",
+                device.name
+            ),
+            None,
+        ),
+    };
+    TrailEntry {
+        source: Source::Metrics,
+        severity: Severity::Info,
+        device: Some((device.id, device.name.clone())),
+        message,
+        action: AuditAction::Update,
+        target: AuditTarget::Device(device.id),
+        change: json!({ "daemon": { "need": stored } }),
     }
 }
 

@@ -39,7 +39,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (249)
+## 2. Open decisions (248)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -264,7 +264,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-RCL16 | The gate (SF-112): "he has decided its findings", or "no finding of severity High is open" as ROU-014 says for routing? | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
 | OD-AOS1 | Confirm NixOS as the base and a separate OS repository? | Open; no repository created | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-AOS2 | Retain this proposal under priority 4.16 or assign a new priority row? | Open; mapping only, no reprioritization | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
-| OD-AOS3 | Confirm the provisional graphical plus text local interface from Decision 7? | Open; side-chat revisit requested | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-AOS4 | Which named PCs, Intel Macs and ARM boards can be used for validation? | Open; no hardware access or result assumed | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-AOS6 | What custom host configuration is a supported public input? | Open; reconcile with Decision 16, do not narrow it silently | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-AOS7 | How should the work-route owner reconcile offline continuation and retained work with current lease and cleanup rules? | Open; blocks corresponding F4 and OS4 acceptance | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
@@ -329,7 +328,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (106)
+## 4. Checks that only the operator can do (109)
 
 | Check | What |
 | --- | --- |
@@ -373,8 +372,10 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-061 | sign in to a hosted hub, and the metrics of this computer appear (HMD-053, HMD-054; tasks HM-T17 to HM-T19) |
 | HT-059 | the application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) |
 | HT-083 | the sign-out of a hosted hub takes the daemon off this computer and revokes it (HMD-056; task HM-T21) |
+| HT-129 | the one-line installation of the link and of the daemon on a computer with no application (task HM-T33, R-240 c) |
 | HT-112 | a newer application replaces the daemon of this computer and keeps its enrolment (HMD-055; task HM-T20) |
 | HT-117 | the daemon of this Mac waits for the person in the Keychain and does not stop (MET-013, MET-019; R-322) |
+| HT-132 | the device page of the hub says that the daemon of this Mac needs you in the Keychain (R-364) |
 | HT-068 | a Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon (DEF-007) |
 | HT-050 | the device link runs as a unit of the user (HMD-058, task HM-T24 part a) |
 | HT-049 | the application carries `anima-daemon` (HMD-052, task HM-T16) |
@@ -401,6 +402,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-064 | Read the native capability report in Anima.ing Settings |
 | HT-065 | the measurements of the isolation design on Linux (task W2, R-188, R-264) |
 | HT-107 | the single sessions on the page Agent usage (AIS-025, AIS-026) |
+| HT-131 | one account on two computers is one card with one limit on the page Agent usage, and the hub has its address (AIS-022, THR-149) |
 | HT-111 | the daemon sends its token only to the signed link at its socket (K8 Section 1, HMD-054) |
 | HT-104 | Connect GitHub on a hosted hub through the gateway (HMD-068, HMD-069; task HM-T29) |
 | O-4 | SFTP: list, upload, download, the refusals, the audit entries |

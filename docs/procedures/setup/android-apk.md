@@ -51,7 +51,7 @@ The upstream listing reads the [Fastlane metadata](../../../fastlane/metadata/an
 
 The recipe reads both version fields from Android release tags and downloads the APK from the matching GitHub release. Once the first build is accepted, F-Droid's update checker can add later releases from their tags. F-Droid publishes the upstream-signed APK after its build verifies against that APK.
 
-The checkout includes the [project license](../../../LICENSE), [font notices](../../../apps/client/src/styles/fonts/) and the [Carbon icon license](../../../apps/client/src/lib/icons/LICENSE-Carbon.txt). The F-Droid source scanner flagged a Go test fixture. The recipe removes it from the recipe checkout because the production build does not use it.
+The checkout includes the [project license](../../../LICENSE), [font notices](../../../apps/client/src/styles/fonts/) the [Carbon icon license](../../../apps/client/src/lib/icons/LICENSE-Carbon.txt) and the [Lucide icon license](../../../apps/client/src/lib/code/icons/LICENSE-Lucide.txt) (ISC; the icons of the Code section only). The F-Droid source scanner flagged a Go test fixture. The recipe removes it from the recipe checkout because the production build does not use it.
 
 1. Copy the recipe to `metadata/ing.anima.mobile.yml` in an `fdroiddata` checkout. Set `commit`, `versionName` and `versionCode` to the first release.
 2. Use the signed asset from the matching GitHub release. For a manual build, sign the upstream APK with the Android release keystore. Use build-tools 36.0.0 and let `apksigner` prompt for the passwords. `--alignment-preserved` keeps the APK layout that the [signature comparison tool](https://github.com/obfusk/apksigcopier#what-about-signatures-made-by-apksigner-from-build-tools--3500-rc1) expects.

@@ -1,0 +1,25 @@
+/*
+ * The sizes of the attachments of the composer: T3 Code's layout (t3-ui-copy-2026-11-21/03, "Attachments"), in
+ * Anima's skin (R-354): our corners, opaque fills, no text under 12 px and nothing that moves without end.
+ */
+:root {
+  /* The media row and the file list: 12 px under each; tiles 8 px apart, rows 4 px apart. */
+  --code-composer-attach-after: var(--space-3);
+  --code-composer-attach-gap: var(--space-2);
+  --code-composer-attach-rows-gap: var(--space-1);
+
+  /* A tile of an image or a video: 64 px square; its buttons 4 px from the corner. */
+  --code-composer-attach-tile: var(--space-16);
+  --code-composer-attach-inset: var(--space-1);
+
+  /* The small icon button (remove): 24 px, 28 px under a coarse pointer. */
+  --code-composer-attach-button: var(--space-6);
+  --code-composer-attach-button-coarse: var(--control-sm);
+
+  /* A row of the file list: 4 px above and under, 8 px between its parts. */
+  --code-composer-attach-row-pad: var(--space-1);
+  --code-composer-attach-row-gap: var(--space-2);
+
+  /* The preview dialog: the picture takes at most 70 % of the window's height. */
+  --code-composer-attach-preview-max: 70vh;
+}

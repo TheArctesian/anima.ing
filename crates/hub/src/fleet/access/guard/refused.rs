@@ -24,7 +24,9 @@
 /// trust decision (a grant): login or browser token only (R-147, K-E5 Section 2.2).
 /// The log of a container can hold a secret, as private code can, and so can the command or a
 /// label in its details: login or browser token only (HOST-001, HOST-017, MCP-004, R-149, R-150).
-pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 60] = [
+/// What a daemon waits for is reported by the signed-in desktop app of its computer: login or
+/// browser token only (R-364).
+pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 62] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -70,6 +72,7 @@ pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 60] = [
     "mergePullRequest",
     "mergePullRequests",
     "createLinkInvite",
+    "createComputerInstall",
     "revokeLinkDevice",
     "createOperationalKey",
     "updateOperationalKey",
@@ -87,4 +90,6 @@ pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 60] = [
     "setModelPublisherApproval",
     // The device policy: closed until a key permission for it exists (R-335).
     "setDevicePolicy",
+    // What a daemon waits for: set by the app of its computer (R-364).
+    "setDaemonNeed",
 ];

@@ -109,6 +109,7 @@ export function deviceView(state: HubState, source: Row): Row {
     status: row.status ?? 'UP',
     metricsStale: false,
     daemonVersion: row.daemonVersion ?? null,
+    daemonNeed: row.daemonNeed ?? null,
     sessionLimit: row.sessionLimit ?? null,
     readings: row.metricsSource === 'SSH' ? { ...READINGS, vramGpu: gpus[0] ?? null } : null,
     gpus,
