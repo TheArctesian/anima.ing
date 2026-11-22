@@ -83,6 +83,7 @@ fn s12_d_2_bin_sh_is_never_searched_for_on_the_steps_path() {
 fn s12_d_1_the_work_folder_is_made_anew_with_mode_0700_and_a_planted_link_is_not_followed() {
     let dir = tempfile::tempdir().unwrap();
     let root = fs::canonicalize(dir.path()).unwrap();
+    fs::set_permissions(&root, fs::Permissions::from_mode(0o700)).unwrap();
     let work = root.join("database-tree");
     fs::create_dir_all(work.join("tree")).unwrap();
     fs::write(work.join("tree/STAMP"), b"an old stamp").unwrap();

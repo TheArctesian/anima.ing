@@ -28,3 +28,34 @@ export function storeWidth(storage: Pick<Storage, 'setItem' | 'removeItem'> | nu
     // The width lasts until the page closes.
   }
 }
+
+/**
+ * The room of the page Code and the width of its list: below 768 px the list is a sheet (`narrow`); above, the rail drags
+ * it between 208 px and the room that leaves 640 px for the chat.
+ */
+export class InboxWidth {
+  narrow = $state(false);
+  room = $state(0);
+  width = $state<number>(INBOX_WIDTH.default);
+  readonly held = $derived(heldWidth(this.width, this.room));
+
+  constructor(storage: Pick<Storage, 'getItem'> | null) {
+    this.width = storedWidth(storage);
+  }
+
+  /** Follows the width of the page `node` and whether the window is narrow. */
+  readonly measure = (node: HTMLElement): (() => void) => {
+    const narrowQuery = matchMedia('(width < 48rem)');
+    const follow = (): void => {
+      this.narrow = narrowQuery.matches;
+    };
+    const watcher = new ResizeObserver(() => (this.room = node.clientWidth));
+    follow();
+    narrowQuery.addEventListener('change', follow);
+    watcher.observe(node);
+    return () => {
+      narrowQuery.removeEventListener('change', follow);
+      watcher.disconnect();
+    };
+  };
+}

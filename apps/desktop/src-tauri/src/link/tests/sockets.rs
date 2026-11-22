@@ -5,10 +5,19 @@ use std::fs;
 
 use super::super::kept;
 
+/// A temporary folder that only this user can write to, whatever the umask (0002 on Ubuntu):
+/// the socket is refused below a folder that the group can write to.
+pub fn private_tempdir() -> tempfile::TempDir {
+    use std::os::unix::fs::PermissionsExt;
+    let folder = tempfile::tempdir().unwrap();
+    fs::set_permissions(folder.path(), fs::Permissions::from_mode(0o700)).unwrap();
+    folder
+}
+
 #[test]
 fn hmd_054_a_folder_that_others_can_reach_or_a_link_gives_no_socket() {
     use std::os::unix::fs::PermissionsExt;
-    let folder = tempfile::tempdir().unwrap();
+    let folder = private_tempdir();
     let open = folder.path().join("open");
     fs::create_dir(&open).unwrap();
     fs::set_permissions(&open, fs::Permissions::from_mode(0o755)).unwrap();
@@ -30,7 +39,7 @@ fn hmd_054_a_folder_that_others_can_reach_or_a_link_gives_no_socket() {
 #[test]
 fn hmd_054_a_socket_that_the_link_would_refuse_is_not_given_to_it() {
     use std::os::unix::fs::PermissionsExt;
-    let folder = tempfile::tempdir().unwrap();
+    let folder = private_tempdir();
     let shared = folder.path().join("shared");
     fs::create_dir(&shared).unwrap();
     fs::set_permissions(&shared, fs::Permissions::from_mode(0o777)).unwrap();

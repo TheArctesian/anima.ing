@@ -120,4 +120,40 @@ describe('the name of a file as the program is told it', () => {
     expect(shownName('<img src=x onerror=1>.png')).toBe('_img src_x onerror_1_.png');
     expect(shownName('résumé 2026.pdf')).toBe('résumé 2026.pdf');
   });
+
+  it('TH111: cuts a name at 120 bytes of UTF-8 and never inside a character', () => {
+    const bytes = (name: string): number => new TextEncoder().encode(name).length;
+    const wide = String.fromCodePoint(0x20000);
+    // Two, three and four bytes for each character, at the limit and one byte before it.
+    expect(shownName('é'.repeat(200))).toBe('é'.repeat(60));
+    expect(shownName(`a${'é'.repeat(200)}`)).toBe(`a${'é'.repeat(59)}`);
+    expect(shownName('日'.repeat(200))).toBe('日'.repeat(40));
+    expect(shownName(`ab${'日'.repeat(200)}`)).toBe(`ab${'日'.repeat(39)}`);
+    expect(shownName(wide.repeat(200))).toBe(wide.repeat(30));
+    expect(shownName(`abc${wide.repeat(200)}`)).toBe(`abc${wide.repeat(29)}`);
+    expect([`ab${'日'.repeat(39)}`, `abc${wide.repeat(29)}`].map(bytes)).toEqual([119, 119]);
+    // A name that is cut stays the same when the runner cuts it again.
+    for (const name of ['é'.repeat(200), `ab${'日'.repeat(200)}`, `abc${wide.repeat(200)}`]) expect(shownName(shownName(name))).toBe(shownName(name));
+  });
+});
+
+describe('what the runner is told of a file', () => {
+  it('TH111: the name in the attach frame is the shown one, of at most 120 bytes, whatever the name of the file is', async () => {
+    const { shell, onAttach } = runner();
+    const long = `../${'n'.repeat(5000)}${String.fromCodePoint(0x202e)}gpj.exe`;
+    await upload(onAttach, fileOf(3, long), 'image/png', watch);
+    const first = shell.calls[0];
+    if (first?.call !== 'attach') throw new Error('no attach frame');
+    expect(first.name).toBe('n'.repeat(120));
+    expect(first.name).toBe(shownName(long));
+    // The runner makes its name of this one by the same rule: the two are the same.
+    expect(shownName(first.name)).toBe(first.name);
+  });
+
+  it('TH111: gives the words of the runner when too many files wait there, of all chats together', async () => {
+    const said = 'shot.png is too large: too many files wait to go; send or drop some first.';
+    const { shell, onAttach } = runner((action) => (action.call === 'attach' ? { outcome: 'refused', why: 'too_large', said } : null));
+    expect(await upload(onAttach, fileOf(3), 'image/png', watch)).toEqual({ state: 'failed', words: said });
+    expect(shell.calls.map((action) => action.call)).toEqual(['attach']);
+  });
 });
