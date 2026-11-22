@@ -65,6 +65,23 @@ describe('the engine of a driven chat', () => {
     expect(queue.waits).toBeNull();
   });
 
+});
+
+describe('the lists and the choice of a driven chat', () => {
+  it('searches the folder of the chat through the runner when the page gives its file list', async () => {
+    const asked: [string, number][] = [];
+    const onFiles = (query: string, most: number) => {
+      asked.push([query, most]);
+      return Promise.resolve(query === 'no' ? { ok: false as const, words: 'The runner refused.' } : { ok: true as const, paths: [{ path: 'src/gate.ts', folder: false }], more: false });
+    };
+    const { sources } = engineOf(row, { ...calls, onFiles });
+    expect(sources.search?.can).toBe(true);
+    expect(await sources.files('gate', 80)).toEqual([{ path: 'src/gate.ts', folder: false }]);
+    await expect(sources.files('no', 80)).rejects.toThrow('The runner refused.');
+    await sources.files('x'.repeat(300), 80);
+    expect(asked.map(([query, most]) => [query.length, most])).toEqual([[4, 80], [2, 80], [64, 80]]);
+  });
+
   it('shows the program, its model and its permissions as the one choice', () => {
     const { catalogue, choice } = engineOf(row, calls);
     expect(catalogue.providers.map((provider) => provider.name)).toEqual(['Claude Code']);

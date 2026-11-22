@@ -4,7 +4,7 @@ import { programName } from '$lib/agent-threads/thread';
 import type { Attachment } from './attachments/attach';
 import { CAN, cannot, type Can } from './draft';
 import { builtInCommands } from './mentions/lists/commands';
-import type { MentionSources } from './mentions/sources';
+import type { FoundPath, MentionSources } from './mentions/sources';
 import { PERMISSION_MODES, type Catalogue, type Choice, type PermissionMode } from './picker/catalogue';
 import type { HeldQueue, QueuePhase } from './queue/held.svelte';
 import type { Queued } from './queue/queue';
@@ -63,6 +63,27 @@ export interface ComposerEngine {
 export interface RunCalls {
   readonly onSend: (text: string) => Promise<CallResult>;
   readonly onInterrupt: () => Promise<CallResult>;
+  /** The runner's list of the files of the chat's folder (`live.files`); left out by a page whose runner has none. */
+  readonly onFiles?: FileSearch | undefined;
+}
+
+/** The answer of the runner's file list, as `live.files` gives it. */
+export type FileSearch = (query: string, most: number) => Promise<{ readonly ok: true; readonly paths: readonly FoundPath[]; readonly more: boolean } | { readonly ok: false; readonly words: string }>;
+
+/** The most characters of a query that are sent: the runner refuses one over 256 bytes, and a character is at most four. */
+const QUERY_MOST = 64;
+
+/** The lists of a chat whose runner searches its folder; a search that is refused is one that failed. */
+function searching(search: FileSearch): MentionSources {
+  return {
+    ...SOURCES,
+    search: CAN,
+    files: async (query, most) => {
+      const found = await search(query.slice(0, QUERY_MOST), most);
+      if (!found.ok) throw new Error(found.words);
+      return found.paths;
+    },
+  };
 }
 
 const NO_ATTACH = 'The runner takes no attachments yet.';
@@ -131,7 +152,7 @@ function queueOf(queue: HeldQueue, running: boolean, send: (prompt: string) => P
 /**
  * The engine of a chat that the runner of this computer drives (TH14). It sends, steers and interrupts, and it
  * queues in this window (the runner keeps no queue). It has no attachments, no change of the model after the
- * start, no search of the workspace and no dictation.
+ * start and no dictation; it searches the chat's folder when the page gives it the runner's file list.
  *
  * The queue is given, not looked up here: state that is made inside the computation that reads it is not followed.
  */
@@ -160,6 +181,6 @@ export function runEngine(row: RunRow, calls: RunCalls, queue: HeldQueue): Compo
     pick: cannot(NO_PICK),
     ...catalogueOf(row),
     choose: () => undefined,
-    sources: SOURCES,
+    sources: calls.onFiles === undefined ? SOURCES : searching(calls.onFiles),
   };
 }
