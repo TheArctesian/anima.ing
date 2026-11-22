@@ -25,7 +25,7 @@
     view?: InboxView;
   }
 
-  const { store, view = new InboxView(store, inboxEngine(store.live), globalThis.localStorage ?? null) }: Props = $props();
+  const { store, view = new InboxView(store, inboxEngine(() => store.live), globalThis.localStorage ?? null) }: Props = $props();
   const live = $derived(store.live);
   let inboxOpen = $state(true);
   let toolsOpen = $state(false);

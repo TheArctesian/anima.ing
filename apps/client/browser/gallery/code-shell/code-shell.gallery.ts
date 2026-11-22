@@ -5,7 +5,7 @@ import { HUB_ORIGIN } from '../../synthetic/access';
 import { installSyntheticHub } from '../../synthetic/synthetic-hub';
 import { HEIGHT, MODES, storedSettings, type Mode } from '../shots';
 import { installDesktopShell, type Scenario } from '../threads/desktop-shell';
-import { EVERY_STATE } from '../threads/scenario';
+import { EVERY_STATE as UNMARKED, IDS } from '../threads/scenario';
 
 // Stage 2 of the T3 Code copy (TC2): the inbox of the page Code in each state, and the whole page. The page is only in
 // the desktop application, so the gallery stands in for its shell with the made-up threads of the threads gallery. It
@@ -14,6 +14,24 @@ import { EVERY_STATE } from '../threads/scenario';
 const FOLDER = fileURLToPath(new URL('../../../gallery-shots/code-shell/', import.meta.url));
 const SETTLE_MS = 400;
 const MARGIN = 12;
+/**
+ * The threads of the threads gallery with the marks the runner keeps (TH61): one settled by hand, the pinned "Port the
+ * battery meter" snoozed for two hours (a snooze takes a thread out of the pinned group), and one woken by hand.
+ */
+const MARKS: Readonly<Record<string, Record<string, string>>> = {
+  [IDS.earlier]: { settled_at: '@-100' },
+  [IDS.pinnedFile]: { snoozed_at: '@-30', snoozed_until: '@120' },
+  [IDS.yourTurn]: { woke_at: '@-2' },
+};
+const EVERY_STATE: Scenario = {
+  ...UNMARKED,
+  listings: [
+    ...UNMARKED.listings.map((listing) => ({ ...listing, ...MARKS[String(listing['thread'])] })),
+    ...Object.entries(MARKS)
+      .filter(([thread]) => !UNMARKED.listings.some((listing) => listing['thread'] === thread))
+      .map(([thread, marks]) => ({ thread, pinned: false, archived: false, title: null, removed: false, ...marks })),
+  ],
+};
 const EMPTY: Scenario = { ...EVERY_STATE, rows: [], running: [], listings: [], updates: [] };
 
 interface Shot {
@@ -41,7 +59,7 @@ async function shelf(inbox: Locator, name: string): Promise<void> {
 const SHOTS: readonly Shot[] = [
   { name: 'inbox', act: async (_page, inbox) => (await expect(card(inbox, 'Review the sign-in flow')).toBeVisible(), []) },
   {
-    name: 'row-hover-settle-off',
+    name: 'row-hover-actions',
     act: async (page, inbox) => {
       await card(inbox, 'Review the sign-in flow').hover();
       await inbox.locator('li').filter({ hasText: 'Review the sign-in flow' }).getByRole('button', { name: 'Settle thread' }).hover();
@@ -54,6 +72,7 @@ const SHOTS: readonly Shot[] = [
     name: 'shelves-open',
     act: async (_page, inbox) => {
       await shelf(inbox, 'Working');
+      await shelf(inbox, 'Snoozed');
       await shelf(inbox, 'Settled');
       await inbox.getByRole('region', { name: 'Threads' }).evaluate((node) => node.scrollTo({ top: node.scrollHeight }));
       await expect(card(inbox, 'Tidy the device page')).toBeInViewport();
