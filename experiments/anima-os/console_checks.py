@@ -36,7 +36,7 @@ def installed_console(machine, output, password):
     text(output, 'wrong'); key(output, 'ret')
     wait_label(output, 'Authentication failed')
     text(output, password); key(output, 'ret')
-    wait_label(output, 'Connect to Anima')
+    wait_label(output, 'Local resources')
     screenshot(output, 'console-overview')
     x, y, w, h = locate(output, 'Network'); click(machine, x+w//2, y+h//2)
     wait_label(output, 'No Wi-Fi adapter detected')
