@@ -15,6 +15,11 @@ function release(attachments: readonly Attachment[]): void {
   for (const attachment of attachments) if (attachment.preview?.startsWith('blob:') === true) URL.revokeObjectURL(attachment.preview);
 }
 
+/** Two choices that say the same model, effort and mode. */
+function same(a: Choice, b: Choice | null): boolean {
+  return b !== null && a.model === b.model && a.effort === b.effort && a.mode === b.mode;
+}
+
 /**
  * What one composer holds and does (03 B.7): the prompt, what is attached, the send that is on its way, the stop
  * that was asked for and the queued message that is open for a change. It calls the engine and nothing else.
@@ -30,11 +35,14 @@ export class CardState {
   editing = $state<string | null>(null);
   /** ⌘ or Ctrl is held: the other follow-up (03 B.7.3). */
   alternate = $state(false);
+  /** The choice the person made in the picker that the chat does not say yet. */
+  asked = $state<Choice | null>(null);
   followUp: FollowUp = 'steer';
 
   #engine: () => ComposerEngine;
   #key: string | undefined;
   #aside: Message | null = null;
+  #before: Choice | null = null;
   #timer: ReturnType<typeof setTimeout> | undefined;
   #serial = 0;
 
@@ -187,7 +195,23 @@ export class CardState {
   /** A new choice of the picker: the words of a refusal go under the editor, as those of a send do. */
   async choose(next: Choice): Promise<void> {
     const engine = this.#engine();
-    await this.#run(() => engine.choose(next));
+    const before = engine.choice;
+    if (!(await this.#run(() => engine.choose(next)))) return;
+    this.asked = next;
+    this.#before = before;
+  }
+
+  /**
+   * The choice the picker shows. A program can take a change only at its next turn, and the chat says the old one
+   * until then: what the person asked for is shown until the chat's own choice moves.
+   */
+  shownChoice(now: Choice): Choice {
+    return this.asked !== null && same(now, this.#before) ? this.asked : now;
+  }
+
+  /** The chat's own choice moved: the program has the change, or took a different one. */
+  settled(now: Choice): void {
+    if (this.asked !== null && !same(now, this.#before)) this.asked = null;
   }
 
   /** "Send now" and "Remove" of a queued message. */
