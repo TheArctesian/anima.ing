@@ -1,16 +1,31 @@
-//! Whether a client of the runner is a process of an agent: a process below the holder, or a
-//! process that carries the mark of a thread (THR-049). Such a client may read and write to a
-//! thread, but it may not answer a request, raise the limit or start a thread: an agent with a
-//! shell must not approve itself (Medium 3 of the checklist read).
+//! Whether a client of the runner is a process of an agent: a process below the holder, a
+//! process that carries the mark of a thread, or a process that came from the runner and left
+//! its tree (THR-049). Such a client may read and write to a thread, but it may not answer a
+//! request, raise the limit or start a thread: an agent with a shell must not approve itself
+//! (Medium 3 of the checklist read).
+//!
+//! A process can leave the tree (a new session and a second start make the first process of
+//! the system its parent) and its mark (a new environment). It cannot leave its group of origin:
+//! the system gives it to each process that a process starts, and only the system changes it. On
+//! a Mac that is the resource coalition that launchd gives to each job (the runner of the
+//! installed application, an application such as the Terminal); on Linux it is the control
+//! group (the unit of the runner). So a client in the group of the runner, that the runner and
+//! the processes above it in that group did not start, is of an agent. Known limit: a process of
+//! an agent with full access can still ask a different program of the person to start a call
+//! (launchd, systemd, a terminal by its script interface); it then has the group of that program.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
+use std::time::Duration;
+
+/// The longest wait for the group of one process.
+const ORIGIN_WAIT: Duration = Duration::from_secs(2);
 
 /// Whether the process `pid` is of an agent of the holder whose folder is `holder_dir`.
 /// When the answer cannot be known, the client is taken for an agent: a peer with no process
 /// ID, a process that ended before it was read (a child that connects and exits), or one whose
-/// environment cannot be read. Such a client can still read and write; only the person's calls
-/// are refused (R-315).
+/// environment or group cannot be read. Such a client can still read and write; only the
+/// person's calls are refused (R-315).
 pub async fn of_an_agent(pid: Option<i32>, holder_dir: &Path) -> bool {
     let Some(pid) = pid
         .and_then(|pid| u32::try_from(pid).ok())
@@ -24,7 +39,99 @@ pub async fn of_an_agent(pid: Option<i32>, holder_dir: &Path) -> bool {
     let Some(table) = commands().await else {
         return true;
     };
-    !table.contains_key(&pid) || below_the_holder(&table, pid, &holder_mark(holder_dir))
+    if !table.contains_key(&pid) || below_the_holder(&table, pid, &holder_mark(holder_dir)) {
+        return true;
+    }
+    if !GROUPS_KNOWN {
+        return false;
+    }
+    let me = std::process::id();
+    let Some(mine) = origin(me).await else {
+        return true;
+    };
+    let line = line_of(&table, me, &mine).await;
+    if comes_from(&table, pid, &line) {
+        return false;
+    }
+    origin(pid).await.is_none_or(|theirs| theirs == mine)
+}
+
+/// Whether this system gives each process a group of origin that [`origin`] can read.
+const GROUPS_KNOWN: bool = cfg!(any(target_os = "macos", target_os = "linux"));
+
+/// The runner and each process above it that has the same group: the processes that may start a
+/// client of the person in that group (the runner itself, and in a test the test).
+async fn line_of(table: &Commands, me: u32, mine: &str) -> BTreeSet<u32> {
+    let mut line = BTreeSet::from([me]);
+    let mut at = me;
+    for _ in 0..64 {
+        let Some((parent, _)) = table.get(&at) else {
+            break;
+        };
+        if *parent <= 1 || origin(*parent).await.as_deref() != Some(mine) {
+            break;
+        }
+        line.insert(*parent);
+        at = *parent;
+    }
+    line
+}
+
+/// Whether `pid` or a process above it is in `line`.
+#[must_use]
+pub fn comes_from(table: &Commands, pid: u32, line: &BTreeSet<u32>) -> bool {
+    let mut at = pid;
+    for _ in 0..64 {
+        if line.contains(&at) {
+            return true;
+        }
+        match table.get(&at) {
+            Some((parent, _)) if *parent > 1 => at = *parent,
+            _ => return false,
+        }
+    }
+    false
+}
+
+/// The group of origin of the process `pid`, as the system keeps it; `None` when it cannot be
+/// read.
+async fn origin(pid: u32) -> Option<String> {
+    #[cfg(target_os = "macos")]
+    {
+        let run = tokio::process::Command::new("/bin/launchctl")
+            .args(["print", &format!("pid/{pid}")])
+            .env_clear()
+            .env("LC_ALL", "C")
+            .kill_on_drop(true)
+            .output();
+        let output = tokio::time::timeout(ORIGIN_WAIT, run).await.ok()?.ok()?;
+        coalition(&String::from_utf8_lossy(&output.stdout))
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let read = tokio::fs::read_to_string(format!("/proc/{pid}/cgroup"));
+        let text = tokio::time::timeout(ORIGIN_WAIT, read).await.ok()?.ok()?;
+        let text = text.trim();
+        (!text.is_empty()).then(|| text.to_owned())
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    {
+        let _ = (pid, ORIGIN_WAIT);
+        None
+    }
+}
+
+/// The ID of the resource coalition in the text of `launchctl print pid/<pid>`.
+#[must_use]
+pub fn coalition(text: &str) -> Option<String> {
+    let mut lines = text
+        .lines()
+        .skip_while(|line| line.trim() != "resource coalition = {");
+    lines.next()?;
+    lines
+        .take_while(|line| line.trim() != "}")
+        .find_map(|line| line.trim().strip_prefix("ID = "))
+        .map(str::to_owned)
 }
 
 /// The end of the command of the holder of `holder_dir`, as `ps` shows it.
@@ -84,6 +191,26 @@ mod tests {
     use super::*;
 
     #[test]
+    fn thr_049_the_coalition_is_read_from_launchd() {
+        let text = "pid/7 = {\n\ttype = pid\n\tresource coalition = {\n\t\tID = 87540\n\t\ttype = resource\n\t}\n\tjetsam coalition = {\n\t\tID = 87541\n\t}\n}\n";
+        assert_eq!(coalition(text).as_deref(), Some("87540"));
+        assert_eq!(coalition("pid/7 = {\n}\n"), None);
+    }
+
+    #[test]
+    fn thr_049_a_client_comes_from_the_runner_only_through_its_parents() {
+        let rows =
+            table(" 10 1 runner\n 11 10 anima agents approve\n 12 1 detached\n 13 12 child\n");
+        let line = BTreeSet::from([10]);
+        assert!(comes_from(&rows, 11, &line));
+        assert!(comes_from(&rows, 10, &line));
+        assert!(
+            !comes_from(&rows, 13, &line),
+            "the first process of the system ends the walk"
+        );
+    }
+
+    #[test]
     fn thr_049_a_process_below_the_holder_is_of_an_agent_and_a_terminal_is_not() {
         let rows = table(
             "  1 0 /sbin/launchd\n 50 1 /Applications/Terminal\n 51 50 -zsh\n 52 51 anima agents approve x y\n \
@@ -119,5 +246,58 @@ mod tests {
             let me = i32::try_from(std::process::id()).ok();
             assert!(!of_an_agent(me, dir).await, "this test is not an agent");
         }
+    }
+
+    /// A process of an agent that left the tree of the holder (a new session, then a second
+    /// start, so that its parent is the first process of the system) and its mark (a new
+    /// environment): its parent and its environment no longer show what it is.
+    #[tokio::test]
+    async fn thr_049_a_process_that_left_the_holder_and_its_mark_is_still_of_an_agent() {
+        let dir = tempfile::tempdir().expect("a folder");
+        let pid_file = dir.path().join("pid");
+        let holder_dir = dir.path().join("threads");
+        let left = "use POSIX; my ($exe, $file) = @ARGV; \
+                    if (fork() == 0) { POSIX::setsid(); if (fork() == 0) { \
+                    open(my $h, '>', $file) or die; print $h $$; close $h; %ENV = (HOME => '/'); \
+                    exec {$exe} $exe, '--ignored', '--exact', \
+                    'threads::runner::peer::tests::thr_049_a_process_that_stays'; } exit 0; } \
+                    sleep 60;";
+        let exe = std::env::current_exe().expect("the test program");
+        let mut holder = std::process::Command::new("perl")
+            .arg("-e")
+            .arg(left)
+            .arg(&exe)
+            .arg(&pid_file)
+            .arg("holder")
+            .arg(&holder_dir)
+            .spawn()
+            .expect("a made holder");
+        let mut left_pid = None;
+        for _ in 0..100 {
+            if let Some(pid) = std::fs::read_to_string(&pid_file)
+                .ok()
+                .and_then(|text| text.trim().parse::<i32>().ok())
+            {
+                left_pid = Some(pid);
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+        let left_pid = left_pid.expect("the process that left");
+        // Its parent is now the first process of the system (or the nearest that adopts).
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+        let agent = of_an_agent(Some(left_pid), &holder_dir).await;
+        let _ = holder.kill();
+        let _ = holder.wait();
+        if let Some(pid) = rustix::process::Pid::from_raw(left_pid) {
+            let _ = rustix::process::kill_process(pid, rustix::process::Signal::KILL);
+        }
+        assert!(agent, "a process of an agent passed for the person");
+    }
+
+    #[test]
+    #[ignore = "the process that the test above starts; it only waits"]
+    fn thr_049_a_process_that_stays() {
+        std::thread::sleep(std::time::Duration::from_secs(30));
     }
 }
