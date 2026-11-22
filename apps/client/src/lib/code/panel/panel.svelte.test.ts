@@ -6,6 +6,7 @@ import type { Capabilities } from '$lib/platform/capabilities';
 import EmptyPanel from './EmptyPanel.svelte';
 import PanelEdge from './PanelEdge.svelte';
 import PanelTabBar from './PanelTabBar.svelte';
+import PanelToggles from './PanelToggles.svelte';
 import { NO_TABS, opened, type PanelTabs } from './tabs';
 import { KEY_STEP, MIN_WIDTH } from './width';
 
@@ -111,5 +112,30 @@ describe('the edge of the right panel (TC5)', () => {
     press(edge, 'Home');
     press(edge, 'End');
     expect(onresize.mock.calls).toEqual([[540 + KEY_STEP], [540 - KEY_STEP], [740], [MIN_WIDTH]]);
+  });
+});
+
+describe('the toggles of the panels in the top band', () => {
+  const press = (name: string): HTMLButtonElement | null => document.querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`);
+
+  it('says which part shows, and asks for the part that is pressed', () => {
+    const asked: string[] = [];
+    app = mount(PanelToggles, { target: document.body, props: { open: { details: true, terminal: false, panel: false }, ontoggle: (part) => asked.push(part) } });
+    flushSync();
+    expect(press('Toggle thread details')?.getAttribute('aria-pressed')).toBe('true');
+    expect(press('Toggle right panel')?.getAttribute('aria-pressed')).toBe('false');
+    press('Toggle terminal drawer')?.click();
+    press('Toggle right panel')?.click();
+    expect(asked).toEqual(['terminal', 'panel']);
+    expect(press('Maximize right panel')).toBeNull();
+  });
+
+  it('switches the terminal and the right panel off with no project, and offers Maximize while the panel is open', () => {
+    app = mount(PanelToggles, { target: document.body, props: { open: { details: false, terminal: false, panel: true }, project: false, ontoggle: () => undefined, onmaximise: () => undefined } });
+    flushSync();
+    expect(press('Toggle terminal drawer')?.disabled).toBe(true);
+    expect(press('Toggle right panel')?.disabled).toBe(true);
+    expect(press('Toggle thread details')?.disabled).toBe(false);
+    expect(press('Maximize right panel')).not.toBeNull();
   });
 });

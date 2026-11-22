@@ -6,6 +6,7 @@
   import LibraryDiff from '$lib/code/panel/diff/LibraryDiff.svelte';
   import FileSurface from '$lib/code/panel/files/FileSurface.svelte';
   import FilesSurface from '$lib/code/panel/files/FilesSurface.svelte';
+  import PanelToggles from '$lib/code/panel/PanelToggles.svelte';
   import RightPanel from '$lib/code/panel/RightPanel.svelte';
   import { closed, shown, type PanelTabs } from '$lib/code/panel/tabs';
   import PageHeader from '$lib/page/PageHeader.svelte';
@@ -17,6 +18,8 @@
   let width = $state(640);
   let query = $state('');
   let find = $state('redirect');
+  let parts = $state({ details: true, terminal: false, panel: true });
+  let maximised = $state(false);
   const say =
     (what: string) =>
     (...values: unknown[]): void => {
@@ -78,6 +81,10 @@
     <section data-kit="details-essential" aria-label="Details card, essential"><DetailsCard details={FULL} {choices} onChoices={(next) => (choices = next)} {on} density="essential" /></section>
     <section data-kit="details-plain" aria-label="Details card, no engine"><DetailsCard details={PLAIN} choices={{ usage: true, context: true }} onChoices={noop} /></section>
     <section data-kit="details-empty" aria-label="Details card, empty"><DetailsCard details={{}} {choices} onChoices={(next) => (choices = next)} /></section>
+    <section data-kit="toggles" aria-label="Panel toggles">
+      <PanelToggles open={parts} {maximised} keys={{ details: '⇧⌘B', terminal: '⌘J', panel: '⌥⌘B' }} ontoggle={(part) => (parts = { ...parts, [part]: !parts[part] })} onmaximise={() => (maximised = !maximised)} />
+      <PanelToggles open={{ details: false, terminal: false, panel: false }} project={false} ontoggle={noop} />
+    </section>
     <section data-kit="find" aria-label="Find bar">
       <FindBar query={find} find={{ kind: 'matches', index: 3, total: 17 }} onQuery={(next) => (find = next)} onNext={say('next')} onPrevious={say('previous')} onRetry={noop} onClose={say('close find')} />
       <FindBar query="zzz" find={{ kind: 'matches', index: 0, total: 0 }} onQuery={noop} onNext={noop} onPrevious={noop} onRetry={noop} onClose={noop} />
