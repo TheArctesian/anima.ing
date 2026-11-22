@@ -17,44 +17,44 @@ export const ITEMS = [
   { id: 'context', label: 'Context window', on: false },
 ] as const;
 
-export type ItemId = (typeof ITEMS)[number]['id'];
+export type ShownId = (typeof ITEMS)[number]['id'];
 
 /** The choices of the person that differ from the default; an item that is not here is at its default. */
-export type ItemChoices = Readonly<Partial<Record<ItemId, boolean>>>;
+export type ShownChoices = Readonly<Partial<Record<ShownId, boolean>>>;
 
 export const STORAGE_KEY = 'anima.code.details-items';
 
 /** True when the card shows the item. */
-export function shows(choices: ItemChoices, id: ItemId): boolean {
+export function shows(choices: ShownChoices, id: ShownId): boolean {
   return choices[id] ?? ITEMS.find((item) => item.id === id)?.on ?? false;
 }
 
 /** The choices after the person switched one item; a choice that is the default again is not kept. */
-export function toggled(choices: ItemChoices, id: ItemId): ItemChoices {
+export function toggled(choices: ShownChoices, id: ShownId): ShownChoices {
   const next = !shows(choices, id);
-  const rest = Object.fromEntries(Object.entries(choices).filter(([key]) => key !== id)) as ItemChoices;
+  const rest = Object.fromEntries(Object.entries(choices).filter(([key]) => key !== id)) as ShownChoices;
   return next === ITEMS.find((item) => item.id === id)?.on ? rest : { ...rest, [id]: next };
 }
 
 /** True when each item is at its default, so "Reset to default" has nothing to do. */
-export function atDefault(choices: ItemChoices): boolean {
+export function atDefault(choices: ShownChoices): boolean {
   return ITEMS.every((item) => shows(choices, item.id) === item.on);
 }
 
 /** The choices that the browser kept; none when it kept nothing or the text is not ours. */
-export function storedChoices(store: Pick<Storage, 'getItem'> | undefined): ItemChoices {
+export function storedChoices(store: Pick<Storage, 'getItem'> | undefined): ShownChoices {
   try {
     const kept: unknown = JSON.parse(store?.getItem(STORAGE_KEY) ?? '{}');
     if (typeof kept !== 'object' || kept === null) return {};
     const known = new Set<string>(ITEMS.map((item) => item.id));
-    return Object.fromEntries(Object.entries(kept).filter(([key, value]) => known.has(key) && typeof value === 'boolean')) as ItemChoices;
+    return Object.fromEntries(Object.entries(kept).filter(([key, value]) => known.has(key) && typeof value === 'boolean')) as ShownChoices;
   } catch {
     return {};
   }
 }
 
 /** Keeps the choices; a browser that refuses storage keeps nothing and the card still works. */
-export function keepChoices(store: Pick<Storage, 'setItem'> | undefined, choices: ItemChoices): void {
+export function keepChoices(store: Pick<Storage, 'setItem'> | undefined, choices: ShownChoices): void {
   try {
     store?.setItem(STORAGE_KEY, JSON.stringify(choices));
   } catch {

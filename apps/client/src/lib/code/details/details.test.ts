@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ITEMS, atDefault, densityFor, fits, keepChoices, shows, storedChoices, toggled } from './items';
+import { ITEMS, atDefault, densityFor, fits, keepChoices, shows, storedChoices, toggled } from './shown';
 import { branchLabel, checksCount, ended, matchingRefs, offersNewRef, pullRequestAction, pullRequestName, refBadge, relatedTrail, runningHeading, scheduleLine, scriptLabel, serverLine, workspaceLabel } from './labels';
 import { contextTone, elapsed, limitTone, percent, shortTokens, untilReset } from './meters/format';
 

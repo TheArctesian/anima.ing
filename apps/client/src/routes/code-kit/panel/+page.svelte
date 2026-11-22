@@ -2,7 +2,7 @@
   import '$lib/code/kit/code.css';
   import DetailsCard from '$lib/code/details/DetailsCard.svelte';
   import FindBar from '$lib/code/details/FindBar.svelte';
-  import type { ItemChoices } from '$lib/code/details/items';
+  import type { ShownChoices } from '$lib/code/details/shown';
   import FileSurface from '$lib/code/panel/files/FileSurface.svelte';
   import FilesSurface from '$lib/code/panel/files/FilesSurface.svelte';
   import RightPanel from '$lib/code/panel/RightPanel.svelte';
@@ -10,7 +10,7 @@
   import PageHeader from '$lib/page/PageHeader.svelte';
   import { FULL, MARKDOWN, PICTURE, PLAIN, REFS, SOURCE, TABS, listing } from './scenes';
 
-  let choices = $state<ItemChoices>({ usage: true, context: true });
+  let choices = $state<ShownChoices>({ usage: true, context: true });
   let said = $state('none');
   let tabs = $state<PanelTabs>(TABS);
   let width = $state(640);

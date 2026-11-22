@@ -5,7 +5,7 @@ import {
   fileKind, FILE_TEXT_PREVIEW_MAX_BYTES, limitNotice, rangeLabel, READ_ERRORS, renderToggle, showsRendered, toggleFace, toolbarShows, unsupportedWords,
   viewerFor,
 } from './kinds';
-import { fileRowMenu, ROW_MENU_PROBLEMS, rowMenuEditor } from './rowMenu';
+import { fileRowMenu, ROW_MENU_PROBLEMS, rowMenuEditor } from './row-menu';
 import { centredTop, clampLine, sourceLines, withoutFrontMatter } from './viewers/lines';
 import { fitScale, percent, sizeLabel, zoomIn, zoomOut, ZOOM_MAX, ZOOM_MIN } from './viewers/zoom';
 

@@ -6,8 +6,8 @@
   import Control from './row/Control.svelte';
   import './details.css';
   import IssueRow from './version/IssueRow.svelte';
-  import { fits, shows, type Density, type ItemChoices } from './items';
-  import ItemsMenu from './ItemsMenu.svelte';
+  import { fits, shows, type Density, type ShownChoices } from './shown';
+  import ShownMenu from './ShownMenu.svelte';
   import Lineage from './related/Lineage.svelte';
   import { runningHeading } from './labels';
   import Meters from './meters/Meters.svelte';
@@ -25,8 +25,8 @@
   interface Props {
     details: Details;
     /** The items that the person switched; the owner keeps them (`keepChoices`). */
-    choices: ItemChoices;
-    onChoices: (choices: ItemChoices) => void;
+    choices: ShownChoices;
+    onChoices: (choices: ShownChoices) => void;
     /** How much the card shows; the owner picks it by the room it has (`densityFor`). */
     density?: Density;
     /** What the engine can do; a control whose action is absent is off. */
@@ -123,7 +123,7 @@
 </aside>
 {#if menu !== undefined}
   {@const at = menu}
-  <ItemsMenu
+  <ShownMenu
     {choices}
     anchor={() => at}
     from={chooser}

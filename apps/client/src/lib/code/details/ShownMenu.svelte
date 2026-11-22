@@ -1,14 +1,14 @@
 <script lang="ts">
   import type { Anchor } from '$lib/overlay/helptip/placement';
   import CodeIcon from '../icons/CodeIcon.svelte';
-  import { ITEMS, atDefault, shows, toggled, type ItemChoices } from './items';
+  import { ITEMS, atDefault, shows, toggled, type ShownChoices } from './shown';
   import Popup from './row/Popup.svelte';
 
   interface Props {
-    choices: ItemChoices;
+    choices: ShownChoices;
     anchor: () => Anchor;
     from?: HTMLElement | undefined;
-    onChange: (choices: ItemChoices) => void;
+    onChange: (choices: ShownChoices) => void;
     onClose: (back: boolean) => void;
   }
 
