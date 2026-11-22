@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { admit, attachmentOf, classify, fileIcon, foldedName, laidOut, LIMITS, pasteDecision, previewStep, readingWords, sizeWords, type ClipboardFacts, type DraftFacts, type FileFacts } from './attach';
+import { admit, attachmentOf, classify, fileIcon, foldedName, laidOut, LIMITS, pasteDecision, previewStep, readingWords, sentAsImage, sizeWords, type ClipboardFacts, type DraftFacts, type FileFacts } from './attach';
 import { ATTACHMENTS } from './fixture';
 
 const MB = 1024 * 1024;
@@ -13,7 +13,7 @@ describe('the class of a file', () => {
     ['photo.png', 'image/png', { kind: 'image', mime: 'image/png' }],
     ['photo.JPG', '', { kind: 'image', mime: 'image/jpeg' }],
     ['photo.webp', 'application/octet-stream', { kind: 'image', mime: 'image/webp' }],
-    ['shot.heic', '', { kind: 'image', mime: '' }],
+    ['shot.heic', '', { kind: 'image', mime: 'image/heic' }],
     ['shot.heif', 'image/heif', { kind: 'image', mime: 'image/heif' }],
     ['logo.svg', 'image/svg+xml', { kind: 'file', mime: 'image/svg+xml' }],
     ['logo.svg', '', { kind: 'file', mime: 'image/svg+xml' }],
@@ -187,5 +187,30 @@ describe('the limits of the files of one message', () => {
     expect(readingWords({ size: 200, state: { state: 'reading', sent: 50 } })).toBe('25%');
     expect(readingWords({ size: 200, state: { state: 'reading', sent: 200 } })).toBe('99%');
     expect(readingWords({ size: 200, state: { state: 'reading' } })).toBe('Reading');
+  });
+});
+
+describe('the limits of a file, as the runner decides them by its type', () => {
+  const MB = 1024 * 1024;
+
+  it('takes a HEIC photo with the limit of a file, with or without a type, because the runner takes it as a file', () => {
+    const photos = [
+      { name: 'a.heic', type: '', size: 30 * MB },
+      { name: 'b.HEIF', type: 'image/heif', size: 30 * MB },
+      { name: 'c.heic', type: 'application/octet-stream', size: 51 * MB },
+    ];
+    const { taken, refused } = admit([], photos);
+    expect(taken.map((entry) => [entry.kind, entry.mime])).toEqual([
+      ['image', 'image/heic'],
+      ['image', 'image/heif'],
+    ]);
+    expect(refused).toEqual([{ name: 'c.heic', words: "'c.heic' exceeds the 50 MB attachment limit." }]);
+  });
+
+  it('counts only the images that go as images in the 80 MB of one message', () => {
+    const photos = Array.from({ length: 4 }, (_, at) => ({ name: `p${String(at)}.heic`, type: 'image/heic', size: 40 * MB }));
+    expect(admit([], photos).refused).toEqual([]);
+    expect(sentAsImage('image/heic')).toBe(false);
+    expect(['image/png', 'IMAGE/JPEG', 'image/jpg', 'image/gif', 'image/webp'].map(sentAsImage)).toEqual([true, true, true, true, true]);
   });
 });

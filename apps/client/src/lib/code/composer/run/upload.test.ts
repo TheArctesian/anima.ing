@@ -121,3 +121,24 @@ describe('the name of a file as the program is told it', () => {
     expect(shownName('résumé 2026.pdf')).toBe('résumé 2026.pdf');
   });
 });
+
+describe('what the runner is told of a file', () => {
+  it('TH111: the name in the attach frame is the shown one, of at most 120 bytes, whatever the name of the file is', async () => {
+    const { shell, onAttach } = runner();
+    const long = `../${'n'.repeat(5000)}${String.fromCodePoint(0x202e)}gpj.exe`;
+    await upload(onAttach, fileOf(3, long), 'image/png', watch);
+    const first = shell.calls[0];
+    if (first?.call !== 'attach') throw new Error('no attach frame');
+    expect(first.name).toBe('n'.repeat(120));
+    expect(first.name).toBe(shownName(long));
+    // The runner makes its name of this one by the same rule: the two are the same.
+    expect(shownName(first.name)).toBe(first.name);
+  });
+
+  it('TH111: gives the words of the runner when too many files wait there, of all chats together', async () => {
+    const said = 'shot.png is too large: too many files wait to go; send or drop some first.';
+    const { shell, onAttach } = runner((action) => (action.call === 'attach' ? { outcome: 'refused', why: 'too_large', said } : null));
+    expect(await upload(onAttach, fileOf(3), 'image/png', watch)).toEqual({ state: 'failed', words: said });
+    expect(shell.calls.map((action) => action.call)).toEqual(['attach']);
+  });
+});
