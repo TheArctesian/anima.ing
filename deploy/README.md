@@ -249,6 +249,95 @@ with Docker at every boot; the rules must already be in the boot copy of the fir
 - **Outside the hub's deny list.** Apprise's own onward traffic is not covered by `ANIMA_PROBE_DENY`.
   The allow list and the attachment reject do not contain it. The host firewall rule (step 7) does.
 
+## Build the hub image on GitHub
+
+The workflow `hub-image` (`.github/workflows/hub-image.yml`) builds `deploy/hub/Dockerfile` for
+linux/amd64 on a runner of GitHub, so no computer of the operator needs Docker for the build. It
+publishes nothing: there is no registry, no secret and no tag. The file is kept as an artifact of
+the run for 3 days. `<sha>` below is the full hash of the commit, `<short>` is its first 9
+characters, and `<host>` is the server. Each change to a server needs the operator's confirmation
+first (VPS-005).
+
+**1. Start the build.** Push a branch `image/<sha>` at the commit to deploy, normally a commit of
+`dev` or `main`. The push starts no gates; that commit passed them on `dev` already.
+
+```sh
+# Run on the Mac.
+git fetch origin
+git push origin <sha>:refs/heads/image/<sha>
+```
+
+Check: the run `hub-image` of that branch is green (`gh run list --workflow hub-image.yml --branch
+image/<sha>`). Its summary gives the commit, the image ID and the SHA-256 of the file.
+Undo: nothing to undo. A branch `image/*` is for this build only; delete it when the image runs.
+
+**2. Download the file and check its hash.**
+
+```sh
+# Run on the Mac, in an empty folder.
+gh run download <run id> --repo TheArctesian/anima.ing --name hub-image
+shasum -a 256 -c anima-hub-<short>.tar.zst.sha256
+```
+
+Check: `shasum` says `OK`, and the value in `anima-hub-<short>.tar.zst.sha256` is the SHA-256 of
+the summary of the run.
+
+**3. Copy the file to the server, check it again, and load it.**
+
+```sh
+# Run on the Mac.
+scp anima-hub-<short>.tar.zst anima-hub-<short>.tar.zst.sha256 <host>:/tmp/
+```
+
+```sh
+# Run on the server.
+cd /tmp && sha256sum -c anima-hub-<short>.tar.zst.sha256
+zstd -dc /tmp/anima-hub-<short>.tar.zst | sudo docker load
+sudo docker image inspect --format '{{.Id}} {{index .Config.Labels "org.opencontainers.image.revision"}}' anima-hub:<short>
+```
+
+Check: `sha256sum` says `OK`, `docker load` names `anima-hub:<short>`, and `inspect` gives the
+image ID of the summary and the commit `<sha>`.
+Undo: `sudo docker image rm anima-hub:<short>`. Nothing runs it yet.
+
+**4. Keep the running image as `previous`, then point the hub at the new one.** On the VPS the
+compose file runs `anima-hub:local`. On a host of the shared pool, the pool service chooses the
+image by its own name; follow its runbook for the name and do a snapshot of each hub first.
+
+```sh
+# Run on the server, in /opt/anima/deploy.
+sudo docker tag anima-hub:local anima-hub:previous
+sudo docker tag anima-hub:<short> anima-hub:local
+```
+
+Check: `sudo docker image ls anima-hub` lists `previous` with the old image ID and `local` with
+the new one.
+Undo: `sudo docker tag anima-hub:previous anima-hub:local`.
+
+**5. Start the hub on the new image.**
+
+```sh
+# Run on the server, in /opt/anima/deploy.
+sudo docker compose up -d hub
+```
+
+Check: `sudo docker compose ps hub` says `healthy` within 2 minutes, `sudo docker compose logs
+--tail 50 hub` has no error, and the web client signs in and lists the devices. Then remove the
+files: `rm /tmp/anima-hub-<short>.tar.zst*` on the server, the folder on the Mac, and the branch
+(`git push origin --delete image/<sha>`, a step the operator approves).
+
+**6. Go back.** If a check of step 5 fails:
+
+```sh
+# Run on the server, in /opt/anima/deploy.
+sudo docker tag anima-hub:previous anima-hub:local
+sudo docker compose up -d hub
+```
+
+Check: `sudo docker compose ps hub` says `healthy` and the image ID of `local` is the old one. A new
+image that already ran its database migrations may need the backup of before the change; take one
+first when the commit adds a migration (see "Phase 3 operator changes", step 2).
+
 ## Release publishing (WP-36, R-108, R-117)
 
 The hub publishes the desktop releases its builders upload to the R2 bucket `anima-releases`
@@ -478,7 +567,8 @@ overwrites the earlier `previous` tag (the WP-18 image of 2026-11-06), and that 
 restored from here.
 
 **3. Build the hub image on the Mac for amd64, and load it on the VPS.** Use the commit that you
-want to deploy (`<sha>` is its short hash).
+want to deploy (`<sha>` is its short hash). Without Docker on the Mac, build it on GitHub instead
+("Build the hub image on GitHub").
 
 ```sh
 # Run on the Mac, in the repository root.
