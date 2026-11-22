@@ -17,6 +17,7 @@ impl Runner {
             .get(&id)
             .is_none_or(|thread| thread.row.state == RunState::Stopped)
         {
+            self.attached.give_back(id);
             return refused(Refusal::NotRunning);
         }
         let prompt = self.first_prompt(id, prompt, files);

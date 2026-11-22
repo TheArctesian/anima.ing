@@ -207,6 +207,7 @@ impl Attachments {
 
     /// Removes each file of a thread that the person removed.
     pub fn forget(&mut self, thread: Uuid) {
+        self.drafts.remove(&thread);
         self.pending.retain(|_, upload| upload.thread != thread);
         self.going.retain(|_, upload| upload.thread != thread);
         remove(&self.folder.join(thread.to_string()));
