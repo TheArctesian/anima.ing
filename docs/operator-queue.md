@@ -328,7 +328,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (111)
+## 4. Checks that only the operator can do (112)
 
 | Check | What |
 | --- | --- |
@@ -407,6 +407,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-131 | one account on two computers is one card with one limit on the page Agent usage, and the hub has its address (AIS-022, THR-149) |
 | HT-111 | the daemon sends its token only to the signed link at its socket (K8 Section 1, HMD-054) |
 | HT-104 | Connect GitHub on a hosted hub through the gateway (HMD-068, HMD-069; task HM-T29) |
+| HT-135 | the mockup of the section Routes of the hub (tasks H21 and H40) |
 | O-4 | SFTP: list, upload, download, the refusals, the audit entries |
 | O-6 | The web view on macOS: fingerprint, a changed certificate, the Down page |
 | O-7 | OD-7 on Linux: the trust hook spike. Also the frame time of the Devices page |
