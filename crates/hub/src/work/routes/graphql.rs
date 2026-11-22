@@ -4,8 +4,9 @@
 //! person only, with a login or a browser token: the three mutations are in
 //! `API_KEY_REFUSED_ROOTS`, and each resolver checks the kind of the token again. Adding and
 //! checking a route also need a second factor on the account (SF-232, HM-D14). Removing one
-//! needs only the signed-in person: a removal only takes a name and its reach away, and it
-//! cannot change, point again or make a route (ruling of 2026-11-22). A public route is added only from the Anima app
+//! needs only the signed-in person, with no agent declared: a removal only takes a name and its
+//! reach away, and it cannot change, point again or make a route (ruling of 2026-11-22). An
+//! agent is refused because it could take every route away and nothing could add them again. A public route is added only from the Anima app
 //! in a browser, by a person with no agent declared: never by a login token, which the `anima`
 //! command and an agent hold (SF-330). On a hub that is not on Unix the routes
 //! cannot serve, so adding and checking a route is refused: "Routing needs a hub on Linux."
@@ -238,7 +239,12 @@ impl Mutation {
 
     #[graphql(guard = "Authenticated")]
     async fn remove_application_route(&self, ctx: &Context<'_>, id: ID) -> Result<ID> {
-        operator_only(ctx, "removeApplicationRoute")?;
+        if !operator_only(ctx, "removeApplicationRoute")?.is_person() {
+            return Err(coded(
+                "A route is removed only by a person, never by an AI agent.",
+                ErrorCode::Forbidden,
+            ));
+        }
         let route = parse(&id, "id")?;
         let trail = Trail::from_context(ctx)?;
         // The target of a route never changes after it is added (SF-233), so the route read

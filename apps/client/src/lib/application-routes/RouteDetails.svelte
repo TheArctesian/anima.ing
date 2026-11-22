@@ -3,7 +3,7 @@
   import ConfirmModal from '$lib/forms/modal/ConfirmModal.svelte';
   import Notice from '$lib/states/Notice.svelte';
   import type { ApplicationRoute } from './api';
-  import { makePublicRefusal, routeChecks } from './checks';
+  import { makePublicRefusal, removalBody, routeChecks } from './checks';
   import DnsRecords from './DnsRecords.svelte';
   import { bytes, count, deviceName, kindAndAccess, serving, target } from './route';
   import StatusWord from './StatusWord.svelte';
@@ -72,7 +72,7 @@
 <ConfirmModal
   open={removing}
   title="Remove {route.name}?"
-  body="The hub forgets the name, its certificate and its key. You cannot undo this."
+  body={removalBody(route, to)}
   confirmLabel="Remove route"
   onConfirm={() => store.remove(route.id)}
   onCancel={() => { removing = false; }}

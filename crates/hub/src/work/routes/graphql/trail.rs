@@ -23,6 +23,7 @@ fn fields(route: &Route) -> Value {
         "port": route.port,
         "listenPort": route.listen_port,
         "redirectTo": route.redirect_to,
+        "protocol": route.protocol,
     })
 }
 
@@ -69,7 +70,7 @@ pub(super) fn removed(route: &Route, device: &Device) -> TrailEntry {
     entry(
         device,
         AuditAction::Delete,
-        format!("Public name {} removed.", route.name),
+        format!("Name {} ({}) removed.", route.name, route.access.as_str()),
         fields(route),
     )
 }

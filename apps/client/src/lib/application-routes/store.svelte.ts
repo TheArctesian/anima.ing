@@ -98,10 +98,10 @@ export class RoutesStore {
     }
   }
 
-  /** Removes a route; on success the list no longer has it and the list is shown again. */
+  /** Removes a route; when the hub removed it, or has it no more, the list no longer has it and the list is shown again. */
   async remove(id: string): Promise<HubResult<string>> {
     const result = await this.calls.remove(id);
-    if (result.ok) {
+    if (result.ok || result.error.code === 'NOT_FOUND') {
       this.routes = this.routes.filter((route) => route.id !== id);
       if (this.selected === id) this.selected = null;
     }

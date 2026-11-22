@@ -102,3 +102,6 @@ export const NO_SECOND_FACTOR: HubError = { code: 'FORBIDDEN', message: 'Turn on
 
 /** The hub's answer to a route that is gone already. */
 export const NO_SUCH_ROUTE: HubError = { code: 'NOT_FOUND', message: 'No such route.' };
+
+/** The hub's refusal of a removal by an AI agent. */
+export const AGENT_REFUSED: HubError = { code: 'FORBIDDEN', message: 'A route is removed only by a person, never by an AI agent.' };

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
 import RoutesSection from '../RoutesSection.svelte';
 import { RoutesStore } from '../store.svelte';
-import { NO_SECOND_FACTOR, NO_SUCH_ROUTE, NOT_LINUX_ERROR, NOW, fakeCalls, route, type FakeCalls } from './routes.fixture';
+import { AGENT_REFUSED, NO_SECOND_FACTOR, NOT_LINUX_ERROR, NOW, fakeCalls, route, type FakeCalls } from './routes.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -179,10 +179,12 @@ it('H21: Remove asks first, then removes the route and shows the list; a refusal
   flushSync();
   const dialog = () => document.querySelector('[role="dialog"]');
   expect(dialog()?.textContent).toContain('You cannot undo this.');
-  calls.removeFails = NO_SUCH_ROUTE;
+  expect(dialog()?.textContent).toContain('vault.example.com stops reaching');
+  expect(dialog()?.textContent).toContain('Delete the DNS records');
+  calls.removeFails = AGENT_REFUSED;
   [...(dialog()?.querySelectorAll<HTMLButtonElement>('button') ?? [])].find((each) => each.textContent.trim() === 'Remove route')?.click();
   await settle();
-  expect(dialog()?.textContent).toContain('No such route.');
+  expect(dialog()?.textContent).toContain('never by an AI agent');
   calls.removeFails = undefined;
   [...(dialog()?.querySelectorAll<HTMLButtonElement>('button') ?? [])].find((each) => each.textContent.trim() === 'Remove route')?.click();
   await settle();

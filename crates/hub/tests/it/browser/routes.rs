@@ -205,6 +205,16 @@ async fn sf_revroutestepup_a_signed_in_person_removes_a_route_with_no_second_fac
     );
 
     let bearer = format!("Bearer {token}");
+    let by_agent = [("authorization", bearer.as_str()), ("anima-actor", "agent")];
+    let refused = post(&hub, &by_agent, REMOVE, json!({ "id": PUBLIC_ROUTE }))
+        .await
+        .json();
+    assert_eq!(
+        refused["errors"][0]["extensions"]["code"], "FORBIDDEN",
+        "an agent removes nothing: {refused}"
+    );
+    assert_eq!(routes_left(&pool).await, ["photos.example.com"]);
+
     let by_login = [("authorization", bearer.as_str())];
     let removed = post(&hub, &by_login, REMOVE, json!({ "id": PUBLIC_ROUTE }))
         .await

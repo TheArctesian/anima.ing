@@ -65,3 +65,10 @@ export function makePublicRefusal(route: Pick<ApplicationRoute, 'machineConsent'
   }
   return 'The hub has no step that makes a route public yet.';
 }
+
+/** What the confirm dialog of Remove says: the reach that ends, that it cannot be undone, and the DNS records left to delete. */
+export function removalBody(route: Pick<ApplicationRoute, 'name' | 'access' | 'kind'>, to: { readonly head: string; readonly detail: string }): string {
+  const reach = route.access === 'PUBLIC' ? 'the internet' : 'the devices of your Anima network';
+  const ends = route.kind === 'REDIRECT' ? `${route.name} stops redirecting to ${to.detail}` : `${route.name} stops reaching ${to.head.replace(/^On /, '')}, ${to.detail}`;
+  return `${ends}, for ${reach}. The hub forgets the name, its certificate and its key. You cannot undo this. Delete the DNS records of the name yourself.`;
+}
