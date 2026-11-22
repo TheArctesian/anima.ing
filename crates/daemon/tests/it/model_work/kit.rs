@@ -54,7 +54,10 @@ while (1) { my $c = $s->accept(); close($c) if $c; }
 /// delegated to this user. A test that starts a server is skipped, with a message, when not.
 #[cfg_attr(
     not(target_os = "linux"),
-    expect(clippy::unnecessary_wraps, reason = "only Linux can refuse a server here")
+    expect(
+        clippy::unnecessary_wraps,
+        reason = "only Linux can refuse a server here"
+    )
 )]
 pub fn contained() -> Option<std::fs::File> {
     let lock = containment_lock();
