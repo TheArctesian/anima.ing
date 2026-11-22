@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CallResult } from '$lib/agent-threads/live/live.svelte';
 import type { Action } from '$lib/agent-threads/live/run';
-import { chosen, draftCatalogue, FIRST_CHOICE } from './choice';
+import { chosen, draftCatalogue, FIRST_CHOICE, MODELS_WAITING } from './choice';
 import { noticeParts } from './notice';
 import { addedFolder, draftProjects, headingOf } from './project';
 import { ThreadDraft } from './thread-draft.svelte';
@@ -28,9 +28,9 @@ describe('ThreadDraft', () => {
     const draft = new ThreadDraft('/work/anima');
     const { calls, call } = runner(NOTHING, STARTED);
     const started: string[] = [];
-    const engine = draft.engine(call, (id) => started.push(id), { codex: [{ id: 'gpt-5', label: 'GPT-5', efforts: ['low', 'high'], defaultEffort: null }] });
+    const engine = draft.engine(call, (id) => started.push(id), { state: 'listed', lists: { codex: [{ id: 'gpt-5', label: 'GPT-5', efforts: ['low', 'high'], defaultEffort: null }] } });
     await engine.choose({ ...engine.choice, provider: 'codex', model: 'gpt-5', effort: 'high', mode: 'approval-required' });
-    const outcome = await draft.engine(call, (id) => started.push(id), {}).send(MESSAGE);
+    const outcome = await draft.engine(call, (id) => started.push(id), MODELS_WAITING).send(MESSAGE);
     expect(outcome).toEqual({ ok: true });
     expect(calls).toEqual([
       { call: 'folder', folder: '/work/anima' },
@@ -42,7 +42,7 @@ describe('ThreadDraft', () => {
   it('shows what the folder runs by itself and starts only at the next send', async () => {
     const draft = new ThreadDraft('/work/anima');
     const { calls, call } = runner({ ok: true, outcome: { outcome: 'folder', notice: ['Claude Code runs these hooks:', 'npm test'] } }, STARTED);
-    const engine = draft.engine(call, () => undefined, {});
+    const engine = draft.engine(call, () => undefined, MODELS_WAITING);
     expect((await engine.send(MESSAGE)).ok).toBe(false);
     expect(draft.notice?.lines).toEqual(['Claude Code runs these hooks:', 'npm test']);
     expect(await engine.send(MESSAGE)).toEqual({ ok: true });
@@ -51,10 +51,10 @@ describe('ThreadDraft', () => {
 
   it('asks for a project, and reads the folder again after a refused start', async () => {
     const none = new ThreadDraft(null);
-    expect(await none.engine(runner().call, () => undefined, {}).send(MESSAGE)).toEqual({ ok: false, words: expect.stringContaining('Choose a project') as string });
+    expect(await none.engine(runner().call, () => undefined, MODELS_WAITING).send(MESSAGE)).toEqual({ ok: false, words: expect.stringContaining('Choose a project') as string });
     const draft = new ThreadDraft('/work/anima');
     const { calls, call } = runner(NOTHING, { ok: false, words: 'Over the limit.' }, NOTHING, STARTED);
-    const engine = draft.engine(call, () => undefined, {});
+    const engine = draft.engine(call, () => undefined, MODELS_WAITING);
     expect(await engine.send(MESSAGE)).toEqual({ ok: false, words: 'Over the limit.' });
     expect(await engine.send(MESSAGE)).toEqual({ ok: true });
     expect(calls.map((each) => each.call)).toEqual(['folder', 'start', 'folder', 'start']);
@@ -62,18 +62,31 @@ describe('ThreadDraft', () => {
 
   it('takes no file before the thread has started', async () => {
     const draft = new ThreadDraft('/work/anima');
-    const engine = draft.engine(runner().call, () => undefined, {});
+    const engine = draft.engine(runner().call, () => undefined, MODELS_WAITING);
     expect(engine.attach.can).toBe(false);
     expect((await engine.send({ prompt: 'x', attachments: [{ id: 'a' } as never] })).ok).toBe(false);
   });
 });
 
 describe('the draft choice', () => {
-  it('offers both programs, each with its listed models or its default model', () => {
-    const { catalogue, choice } = draftCatalogue(FIRST_CHOICE, { codex: [{ id: 'gpt-5', label: 'GPT-5', efforts: ['low'], defaultEffort: null }] });
-    expect(catalogue.providers.map((each) => each.id)).toEqual(['claude_code', 'codex']);
-    expect(catalogue.models.map((each) => `${each.provider}:${each.id}`)).toEqual(['claude_code:default', 'codex:gpt-5']);
+  it('offers both programs by their marks, each with its default and then its listed models', () => {
+    const { catalogue, choice } = draftCatalogue(FIRST_CHOICE, { state: 'listed', lists: { codex: [{ id: 'gpt-5', label: 'GPT-5', efforts: ['low', 'minimal'], defaultEffort: null }] } });
+    expect(catalogue.providers.map((each) => `${each.name}:${each.icon}`)).toEqual(['Claude Code:claude', 'Codex:openai']);
+    expect(catalogue.models.map((each) => each.label)).toEqual(['Claude Code default', 'Codex default', 'GPT-5']);
+    expect(catalogue.models.find((each) => each.id === 'gpt-5')?.efforts.map((each) => each.id)).toEqual(['low']);
+    expect(catalogue.models.map((each) => each.subLabel)).toEqual(['The program listed no models', undefined, undefined]);
     expect(choice).toMatchObject({ provider: 'claude_code', model: 'default', mode: 'full-access' });
+  });
+
+  it("a program's default takes only the efforts of that program: Codex has no Max", () => {
+    const efforts = draftCatalogue(FIRST_CHOICE, MODELS_WAITING).catalogue.models.map((each) => `${each.provider}: ${each.efforts.map((one) => one.label).join(', ')}`);
+    expect(efforts).toEqual(['claude_code: Low, Medium, High, Extra high, Max', 'codex: Low, Medium, High, Extra high']);
+  });
+
+  it('says why the default stands alone while the models load, and when they could not', () => {
+    const notes = (models: Parameters<typeof draftCatalogue>[1]) => [...new Set(draftCatalogue(FIRST_CHOICE, models).catalogue.models.map((each) => each.subLabel))];
+    expect(notes(MODELS_WAITING)).toEqual(['Models load when the program answers']);
+    expect(notes({ state: 'failed', words: 'The runner is not running.' })).toEqual(['Models could not load: The runner is not running.']);
   });
 
   it('keeps the default access when a draft in plan mode moves to Codex, which has none', () => {
