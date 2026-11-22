@@ -20,6 +20,8 @@ export interface Attachment {
   readonly state: AttachmentState;
   /** The id under which the runner holds the file, when it has all of it: a `send` names it. */
   readonly remote?: string;
+  /** When the runner had the whole file, in milliseconds: it drops a file that is not sent in one hour. */
+  readonly held?: number;
 }
 
 /** What `classify` and `admit` read of a `File`; a `File` fits as it is. */
