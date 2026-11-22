@@ -1949,7 +1949,7 @@ outside your network.
 6. Run the command of step 2 with a wrong key. Expected: "The server refused this key.", and the
    account of step 2 still works.
 7. If your Dawarich answers only plain `http`, run the command of step 2 with `http://`. Expected:
-   the hub refuses the address (OD-E26 asks if this must change).
+   the hub refuses the address (OD-E26 permits it for a private address; E0-5 T7 builds it).
 8. On a hosted hub, with a Dawarich server that only your home network reaches: run the command
    of step 2. Expected: the hub says that it cannot reach the server; nothing is stored.
 9. Run `anima source pause <account>`. Expected: no new run until you resume it.
