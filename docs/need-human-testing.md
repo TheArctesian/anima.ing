@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-146 | A process that an agent detached cannot answer an approval (R-315, THR-031) | A Mac with `claude` signed in, the daemon of the branch `threads/peer-ancestry` with a test state folder; later the installed application | Open |
 | HT-074 | Windows desktop account, link and remote sessions (WIN1) | Windows 11 VM, Anima account and a hub | Open |
 | HT-114 | Three generated entries of LinuxServer.io start with the rights of the static test (task H39) | A throwaway Linux test machine with Docker and Compose, not on the network of Anima | Open |
 | HT-115 | A person reads the settings of the ten generated entries of LinuxServer.io and records the review (task H39) | The branch `hosted/catalogue-linuxserver`; no machine | Open |
@@ -134,6 +135,29 @@ Many entries were written for the hub on the VPS. The operator uses only the hos
 - A daemon on the hosted hub: the `anima-daemon` of a computer, enrolled at the hosted hub. No document shows such an enrolment and no check ran one (HM-D16 of [hosted-mode.md](proposals/hosted-mode.md), open). If the hub refuses the enrolment, write that in the entry and in HM-D16. Where the entry permits a local hub, do the check with a local hub.
 
 The steps for a hub with a user name and a password (the self-host path) stay in each entry.
+
+### HT-146: a process that an agent detached cannot answer an approval (R-315, THR-031)
+
+Built: on the branch `threads/peer-ancestry`, the runner also takes a client for an agent when the
+client left the tree of the holder (a new session and a second start) and has no mark, but has the
+group of origin of the runner: the coalition that launchd gives to a job on a Mac, the control group on
+Linux. A test proves it with a made holder on the computer of the build. No test ran the daemon as a
+launch agent of the installed application, where the coalition of the daemon is its own.
+
+1. In Terminal, start the daemon of this build with `ANIMA_DAEMON_HOME` set to a new folder, for example
+   `~/anima-test-state`. Do not use the folder of the installed application.
+2. Start a Claude Code thread in a test folder in Ask. Send the prompt "Run: perl -e 'use POSIX; fork and
+   exit; POSIX::setsid(); fork and exit; sleep 2; %ENV=(HOME=>q(/), PATH=>q(/usr/bin:/bin)); exec
+   q(<path of anima>), qw(agents approve <thread> <request> allow)'" with the IDs of a request that waits in a
+   second thread. Allow only that command. Expected: the call of the detached process is refused; the request still
+   waits.
+3. In a different Terminal window, run `anima agents approve <thread> <request> allow`. Expected: the
+   request is answered.
+4. After the next release, do steps 2 and 3 with the installed application, where launchd starts the
+   daemon. Expected: the same.
+5. Delete `~/anima-test-state` when the daemon has stopped.
+
+Result: Open.
 
 ### HT-069: Anima OS preview hardware and enrollment
 
@@ -1975,7 +1999,7 @@ outside your network.
 6. Run the command of step 2 with a wrong key. Expected: "The server refused this key.", and the
    account of step 2 still works.
 7. If your Dawarich answers only plain `http`, run the command of step 2 with `http://`. Expected:
-   the hub refuses the address (OD-E26 asks if this must change).
+   the hub refuses the address (OD-E26 permits it for a private address; E0-5 T7 builds it).
 8. On a hosted hub, with a Dawarich server that only your home network reaches: run the command
    of step 2. Expected: the hub says that it cannot reach the server; nothing is stored.
 9. Run `anima source pause <account>`. Expected: no new run until you resume it.
@@ -2028,7 +2052,7 @@ and reads it with `anima-daemon key read <name>`.
 
 The tests use a throwaway database and in-process requests. The daemon cache was tested as pure logic and as a
 file on this machine. No test used the macOS Keychain item `key-cache`, a real daemon pushing to a real hub, two
-machines, or a wait of 7 days. There is no `anima key` command yet (the noun waits for a ruling), so the steps use
+machines, or a wait of 7 days. There is no `anima secret` command yet (E0-6 T3), so the steps use
 GraphQL through the client's developer tools or `curl` with a login token.
 
 1. On a Linux server with an enrolled `anima-daemon` of this branch, and on the hub, make a key with

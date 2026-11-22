@@ -109,6 +109,7 @@ async fn attach_file(link: &mut RunnerLink, thread: Uuid, path: &Path) -> Result
         mime: mime.to_owned(),
         size: u64::try_from(bytes.len()).unwrap_or(u64::MAX),
         bytes: encoded(parts.next().unwrap_or_default()),
+        draft: false,
     };
     let Outcome::Attached { id, .. } = accepted(link.call(first).await?)? else {
         return Err(unreadable("the runner did not take it".to_owned()));
