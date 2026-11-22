@@ -68,6 +68,7 @@ impl From<BadPlace> for GitRefusal {
     fn from(bad: BadPlace) -> Self {
         match bad {
             BadPlace::NotOurWorktree | BadPlace::MainCheckout => Self::NoWorktree,
+            BadPlace::Expired => Self::Expired,
             BadPlace::Escapes | BadPlace::BadName | BadPlace::InARepository | BadPlace::KeptOut => {
                 Self::BadPath
             }

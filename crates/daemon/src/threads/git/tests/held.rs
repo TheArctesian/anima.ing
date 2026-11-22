@@ -202,3 +202,23 @@ async fn records_that_are_open_to_other_users_stop_each_action() {
         "{outcome:?}"
     );
 }
+
+#[tokio::test]
+async fn a_worktree_whose_records_the_system_removed_says_that_they_expired() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    let records = bench
+        .home
+        .with_file_name("records")
+        .join(THREAD.to_string());
+    std::fs::remove_dir_all(records.join("engine.git")).expect("the runner's Git folder");
+    let outcome = bench.call(PERSON, GitAction::Status).await;
+    assert_eq!(refused(&outcome), Some(&GitRefusal::Expired));
+    std::fs::remove_dir_all(&records).expect("the record");
+    let outcome = bench.call(PERSON, GitAction::Checkpoints).await;
+    assert_eq!(refused(&outcome), Some(&GitRefusal::Expired));
+    assert!(
+        folder.join("a.txt").exists(),
+        "the files of the worktree stay"
+    );
+}

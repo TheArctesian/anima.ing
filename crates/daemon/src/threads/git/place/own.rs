@@ -13,13 +13,13 @@
 //!
 //! I/O: `git init`, `git pack-objects`, `git index-pack`, `git reset`, and a few files.
 
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::path::Path;
 
-use super::super::project::Layout;
 use super::super::project::refs::{self, Head};
 use super::super::run::{Git, GitError, Run};
 use super::Worktree;
+use super::walk::{self, Dir, Make};
 
 /// The ref of the last commit of the branch whose objects the runner copied.
 const KNOWN: &str = "refs/anima/known";
@@ -231,12 +231,11 @@ pub async fn give(
     commit: &str,
     known: Option<&str>,
 ) -> Result<(), GitError> {
-    let common = &worktree.record().common_dir;
-    let packs = common.join("objects/pack");
-    // A link at the place of the packs must not send the file out of the repository.
-    if std::fs::canonicalize(&packs).ok().as_deref() != Some(packs.as_path()) {
-        return Err(GitError::Replaced);
-    }
+    // The folder of the packs is found from the open Git folder: a link in its place or in
+    // the place of `objects` does not send a file out of the repository.
+    let common = Dir::open(&worktree.record().common_dir).map_err(GitError::Files)?;
+    let packs = common.below(Path::new("objects/pack"), Make::No);
+    let packs = packs.map_err(GitError::Files)?.ok_or(GitError::Replaced)?;
     let wanted = match known {
         Some(known) => format!("{commit}\n^{known}\n"),
         None => format!("{commit}\n"),
@@ -255,13 +254,24 @@ pub async fn give(
     for pack in packs_in(&outgoing)? {
         // The pack first: git reads a pack only when its list of names is beside it.
         for file in [pack.clone(), pack.with_extension("idx")] {
-            let placed = file.file_name().map(|name| packs.join(name));
-            let placed = placed.ok_or(GitError::NotFound)?;
-            std::fs::copy(&file, placed).map_err(GitError::Files)?;
+            let name = file.file_name().ok_or(GitError::NotFound)?;
+            placed(&packs, name, &file).map_err(GitError::Files)?;
         }
     }
     let _ = std::fs::remove_dir_all(&outgoing);
     Ok(())
+}
+
+/// Copies the file `from` of the runner into the open folder `into` as `name`: written under
+/// a different name first, then moved into place, so no half file has the name.
+fn placed(into: &Dir, name: &OsStr, from: &Path) -> std::io::Result<()> {
+    let mut partial = OsString::from("anima-");
+    partial.push(name);
+    into.remove(&partial, false)?;
+    let mut written = into.new_file(&partial, false)?;
+    std::io::copy(&mut std::fs::File::open(from)?, &mut written)?;
+    written.sync_all()?;
+    into.rename(&partial, name)
 }
 
 /// Makes the index of the worktree, the one that the `git` of the agent and of the person
@@ -271,12 +281,13 @@ pub async fn give(
 /// # Errors
 /// A [`GitError`] when the index cannot be written.
 pub async fn follow(git: &Git, worktree: &Worktree, commit: &str) -> Result<(), GitError> {
-    let Layout { git_dir, .. } = worktree.layout();
-    let fresh = git_dir.join("index.anima");
-    // A file of an earlier call that did not end; `git` makes the new one with a lock.
+    // The index is made in the folder of the runner; no file of the worktree is read for it:
+    // it only names what the commit has. It comes into the Git folder of the worktree as a
+    // file, found from the open folder.
+    let fresh = worktree.record().own.join("index.worktree");
     let _ = std::fs::remove_file(&fresh);
-    // No file of the worktree is read: the index only names what the commit has.
     let read = Run::new(worktree.folder(), ["read-tree", commit]);
     git.output(read.with_env("GIT_INDEX_FILE", &fresh)).await?;
-    std::fs::rename(&fresh, git_dir.join("index")).map_err(GitError::Files)
+    let git_dir = Dir::open(&worktree.record().git_dir).map_err(GitError::Files)?;
+    placed(&git_dir, walk::name("index"), &fresh).map_err(GitError::Files)
 }

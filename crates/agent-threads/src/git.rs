@@ -171,6 +171,9 @@ pub enum GitRefusal {
     /// A thread of this computer runs in a folder that holds the records of Anima's Git, so
     /// its agent can write them. No Git action of any thread runs until that thread ends.
     RecordsHeld,
+    /// The worktree of the thread is there, but the system removed its checkpoints and its
+    /// record after a long time without use. The files of the worktree are as they were.
+    Expired,
     Failed {
         said: String,
     },

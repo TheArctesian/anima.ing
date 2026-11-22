@@ -7,6 +7,7 @@
 pub mod chosen;
 pub mod own;
 pub mod records;
+pub mod walk;
 
 use std::path::{Component, Path, PathBuf};
 
@@ -29,6 +30,8 @@ pub enum BadPlace {
     MainCheckout,
     #[error("the name has a character that is not allowed")]
     BadName,
+    #[error("the worktree is there, but its record or its checkpoints are gone")]
+    Expired,
     #[error("the folder is inside a repository")]
     InARepository,
     #[error("the folder is inside a folder of Anima or one that an agent can write, or holds one")]
@@ -218,7 +221,15 @@ impl Home {
     /// # Errors
     /// A [`BadPlace`] when a check fails.
     pub fn worktree(&self, thread: Uuid, repository: &str) -> Result<Worktree, BadPlace> {
-        let record = self.recorded(thread, repository)?;
+        let record = match self.recorded(thread, repository) {
+            Ok(record) if record.own.is_dir() => record,
+            // The system removed what was not used for a long time (`/var/tmp` on Linux).
+            Ok(_) => return Err(BadPlace::Expired),
+            Err(_) if self.planned(thread, repository)?.join(".git").is_file() => {
+                return Err(BadPlace::Expired);
+            }
+            Err(none) => return Err(none),
+        };
         // Where the worktree was made, which is not the home of now after a change of it.
         let planned = Self::at(&record.home, &self.records)?.planned(thread, repository)?;
         let home = std::fs::canonicalize(&record.home).map_err(|_| BadPlace::NotOurWorktree)?;

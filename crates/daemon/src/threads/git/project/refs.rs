@@ -2,12 +2,18 @@
 //! The runner reads them and moves a branch of a thread here with no `git`, so that no hook of
 //! the repository runs for it (`reference-transaction`).
 //!
+//! Each file is found from the open Git folder, one path part at a time, with no link followed
+//! ([`walk`]): an agent can put a link in the place of a ref or of a folder of refs at any
+//! moment.
+//!
 //! [`id`], [`name`] and [`in_packed`] are pure; the rest reads and writes files.
 
+use std::ffi::OsStr;
 use std::io::Write as _;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-use super::{Layout, ProjectError, limited, small};
+use super::super::place::walk::{self, Dir, Make};
+use super::{Layout, ProjectError};
 
 /// The most bytes of `packed-refs` that are read.
 const MOST_PACKED: u64 = 64 * 1024 * 1024;
@@ -26,6 +32,11 @@ pub fn id(text: &str) -> Option<&str> {
 /// `refs/` and then the alphabet of a branch name, with no `..` and no part that hides.
 #[must_use]
 pub fn name(text: &str) -> Option<&str> {
+    name_of(text)
+}
+
+/// [`name`], for the places where a local value has that name.
+fn name_of(text: &str) -> Option<&str> {
     let rest = text.strip_prefix("refs/")?;
     crate::threads::git::place::branch_name(rest)
         .is_ok()
@@ -38,15 +49,33 @@ enum Held {
     Ref(String),
 }
 
-/// Reads the file of a ref; `None` when there is no file (a folder is none too).
-fn loose(file: &Path) -> Result<Option<Held>, ProjectError> {
-    if !std::fs::symlink_metadata(file).is_ok_and(|about| !about.is_dir()) {
+/// The most bytes of the file of a loose ref or of `HEAD`.
+const SMALL: u64 = 4096;
+
+/// Opens a Git folder to walk below it with no link followed.
+fn open(folder: &Path) -> Result<Dir, ProjectError> {
+    Ok(Dir::open(folder)?)
+}
+
+/// Reads the file of a ref at `path` below `dir`; `None` when there is no file (a folder is
+/// none too). A link in the place of the file or of a folder above it is never followed.
+fn loose(dir: &Dir, path: &Path) -> Result<Option<Held>, ProjectError> {
+    let Some((above, name)) = dir.above(path, Make::No)? else {
         return Ok(None);
-    }
-    let text = small(file).map_err(|_| ProjectError::Odd("a ref"))?;
+    };
+    let Some(bytes) = above.read(name, SMALL)? else {
+        // Nothing or a folder is no ref; a link or a large file is not one that git wrote.
+        let odd = above.link(name).is_some() || above.file(name)?.is_some();
+        return if odd {
+            Err(ProjectError::Odd("a ref"))
+        } else {
+            Ok(None)
+        };
+    };
+    let text = String::from_utf8(bytes).map_err(|_| ProjectError::Odd("a ref"))?;
     let text = text.trim_end();
     if let Some(to) = text.strip_prefix("ref: ") {
-        return name(to)
+        return name_of(to)
             .map(|to| Some(Held::Ref(to.to_owned())))
             .ok_or(ProjectError::Odd("a ref that names a ref"));
     }
@@ -67,11 +96,11 @@ pub fn in_packed<'a>(packed: &'a str, wanted: &str) -> Option<&'a str> {
 }
 
 /// Where the ref `wanted` of the shared Git folder points, not followed: loose, else packed.
-fn held(common: &Path, wanted: &str) -> Result<Option<Held>, ProjectError> {
-    if let Some(found) = loose(&common.join(wanted))? {
+fn held(common: &Dir, wanted: &str) -> Result<Option<Held>, ProjectError> {
+    if let Some(found) = loose(common, Path::new(wanted))? {
         return Ok(Some(found));
     }
-    let Ok(packed) = limited(&common.join("packed-refs"), MOST_PACKED) else {
+    let Some(packed) = common.read(walk::name("packed-refs"), MOST_PACKED)? else {
         return Ok(None);
     };
     let packed = String::from_utf8_lossy(&packed);
@@ -84,6 +113,7 @@ fn held(common: &Path, wanted: &str) -> Result<Option<Held>, ProjectError> {
 /// A [`ProjectError`] for a name that is not safe or a file that is not a ref.
 pub fn resolve(common: &Path, wanted: &str) -> Result<Option<String>, ProjectError> {
     let mut at = name(wanted).ok_or(ProjectError::Escapes)?.to_owned();
+    let common = &open(common)?;
     for _ in 0..MOST_STEPS {
         match held(common, &at)? {
             Some(Held::Id(id)) => return Ok(Some(id)),
@@ -101,7 +131,7 @@ pub fn resolve(common: &Path, wanted: &str) -> Result<Option<String>, ProjectErr
 /// As [`resolve`].
 pub fn names(common: &Path, wanted: &str) -> Result<Option<String>, ProjectError> {
     let wanted = name(wanted).ok_or(ProjectError::Escapes)?;
-    Ok(match held(common, wanted)? {
+    Ok(match held(&open(common)?, wanted)? {
         Some(Held::Ref(to)) => Some(to),
         _ => None,
     })
@@ -121,7 +151,7 @@ pub struct Head {
 /// # Errors
 /// A [`ProjectError`] when `HEAD` or the ref it names is not as git writes it.
 pub fn head(layout: &Layout) -> Result<Head, ProjectError> {
-    match loose(&layout.git_dir.join("HEAD"))? {
+    match loose(&open(&layout.git_dir)?, Path::new("HEAD"))? {
         Some(Held::Id(commit)) => Ok(Head {
             branch: None,
             commit: Some(commit),
@@ -143,33 +173,34 @@ pub enum Was<'a> {
     Any,
 }
 
-/// Writes `text` to `file` as git does: to `<file>.lock`, made new, then moved into place.
-/// `check` runs while the lock is held. A link at the place of the file is replaced, never
-/// followed.
+/// Writes `text` to the file `name` of the open folder `above` as git does: to `<name>.lock`,
+/// made new, then moved into place. `check` runs while the lock is held. A link at the place
+/// of the file is replaced, never followed, and no folder above it is a link: the folder is
+/// held open.
 fn replace(
-    file: &Path,
+    above: &Dir,
+    name: &OsStr,
     text: &str,
     check: impl FnOnce() -> Result<(), ProjectError>,
 ) -> Result<(), ProjectError> {
-    let mut lock = file.as_os_str().to_owned();
+    let mut lock = name.to_owned();
     lock.push(".lock");
-    let lock = PathBuf::from(lock);
-    let mut held = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&lock)
+    let mut held = above
+        .new_file(&lock, false)
         .map_err(|error| match error.kind() {
-            std::io::ErrorKind::AlreadyExists => ProjectError::Locked(lock.display().to_string()),
+            std::io::ErrorKind::AlreadyExists => {
+                ProjectError::Locked(lock.to_string_lossy().into_owned())
+            }
             _ => ProjectError::Io(error),
         })?;
     let written = check().and_then(|()| {
         held.write_all(text.as_bytes())?;
         held.sync_all()?;
-        Ok(std::fs::rename(&lock, file)?)
+        Ok(above.rename(&lock, name)?)
     });
     if written.is_err() {
         // The lock is of this call alone; the first failure is the answer.
-        let _ = std::fs::remove_file(&lock);
+        let _ = above.remove(&lock, false);
     }
     written
 }
@@ -179,20 +210,18 @@ fn replace(
 ///
 /// # Errors
 /// [`ProjectError::Moved`] when the ref is not as `was` says; [`ProjectError::Locked`] when
-/// git holds the ref; [`ProjectError::Escapes`] for a name or a folder that leaves `refs`.
+/// git holds the ref; [`ProjectError::Escapes`] for a name that is not safe, or when a file
+/// or a link is where a folder of the ref must be.
 pub fn put(common: &Path, wanted: &str, to: &str, was: Was<'_>) -> Result<(), ProjectError> {
     let wanted = name(wanted).ok_or(ProjectError::Escapes)?;
     let to = id(to).ok_or(ProjectError::Odd("an ID"))?;
-    let file = common.join(wanted);
-    let folder = file.parent().ok_or(ProjectError::Escapes)?;
-    std::fs::create_dir_all(folder)?;
-    // A link in the path must not send the write out of the refs of this repository.
-    let refs = std::fs::canonicalize(common.join("refs"))?;
-    if !std::fs::canonicalize(folder)?.starts_with(&refs) {
-        return Err(ProjectError::Escapes);
-    }
-    replace(&file, &format!("{to}\n"), || {
-        let now = match held(common, wanted)? {
+    let common = open(common)?;
+    let (above, last) = common
+        .above(Path::new(wanted), Make::Missing)
+        .map_err(|_| ProjectError::Escapes)?
+        .ok_or(ProjectError::Escapes)?;
+    replace(&above, last, &format!("{to}\n"), || {
+        let now = match held(&common, wanted)? {
             Some(Held::Id(id)) => Some(id),
             Some(Held::Ref(_)) => return Err(ProjectError::Odd("a branch that names a ref")),
             None => None,
@@ -211,12 +240,17 @@ pub fn put(common: &Path, wanted: &str, to: &str, was: Was<'_>) -> Result<(), Pr
 /// # Errors
 /// A [`ProjectError`] for a name that is not safe, or the error of the file system.
 pub fn take_back(common: &Path, wanted: &str, at: &str) -> Result<(), ProjectError> {
-    let wanted = name(wanted).ok_or(ProjectError::Escapes)?;
-    let file = common.join(wanted);
-    match loose(&file)? {
-        Some(Held::Id(now)) if now == at => Ok(std::fs::remove_file(file)?),
-        _ => Ok(()),
+    let wanted = Path::new(name(wanted).ok_or(ProjectError::Escapes)?);
+    let common = open(common)?;
+    let (Some(Held::Id(now)), Some((above, last))) =
+        (loose(&common, wanted)?, common.above(wanted, Make::No)?)
+    else {
+        return Ok(());
+    };
+    if now == at {
+        above.remove(last, false)?;
     }
+    Ok(())
 }
 
 /// Puts the checkout of `layout` on `branch`.
@@ -226,8 +260,10 @@ pub fn take_back(common: &Path, wanted: &str, at: &str) -> Result<(), ProjectErr
 pub fn point_head(layout: &Layout, branch: &str) -> Result<(), ProjectError> {
     let to = format!("refs/heads/{branch}");
     let to = name(&to).ok_or(ProjectError::Escapes)?;
+    let git_dir = open(&layout.git_dir)?;
     replace(
-        &layout.git_dir.join("HEAD"),
+        &git_dir,
+        walk::name("HEAD"),
         &format!("ref: {to}\n"),
         || Ok(()),
     )
