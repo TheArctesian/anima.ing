@@ -11,6 +11,9 @@
   import { closed, shown, type PanelTabs } from '$lib/code/panel/tabs';
   import PageHeader from '$lib/page/PageHeader.svelte';
   import DiffScenes from './DiffScenes.svelte';
+  import LibraryTree from '$lib/code/panel/tree/LibraryTree.svelte';
+  import TreeScenes from './TreeScenes.svelte';
+  import { PROJECT_PATHS } from './diff-scenes';
   import { FULL, MARKDOWN, PATCH, PICTURE, PLAIN, REFS, SOURCE, TABS, listing } from './scenes';
 
   let choices = $state<ShownChoices>({ usage: true, context: true });
@@ -70,7 +73,7 @@
 </script>
 
 {#snippet tree()}
-  <p class="stand-in">The tree of the files is not built: it waits for the choice of a tree library.</p>
+  <LibraryTree label="anima files" paths={PROJECT_PATHS} marks={[{ path: 'node_modules/', status: 'ignored' }]} compact {query} theme={dark ? 'dark' : 'light'} selected="src/routes/sign-in/+page.svelte" onpick={say('open file')} />
 {/snippet}
 
 <!-- Stage 5 of the T3 Code copy: the details card, the find bar and the right panel with its file surfaces, for the gallery. -->
@@ -116,6 +119,7 @@
     <section data-kit="diff-split" aria-label="Diff library, split"><LibraryDiff patch={PATCH} split wrap theme={dark ? 'dark' : 'light'} /></section>
   </div>
   <DiffScenes theme={dark ? 'dark' : 'light'} {say} />
+  <TreeScenes theme={dark ? 'dark' : 'light'} {say} />
   <p class="said" data-kit-drawn={drawn}>Diff library: {drawn}</p>
   <p class="said" aria-live="polite">Last action: {said}</p>
 </div>
@@ -161,7 +165,6 @@
     block-size: 22rem;
   }
 
-  .stand-in,
   .said {
     margin: 0;
     padding: var(--space-3);

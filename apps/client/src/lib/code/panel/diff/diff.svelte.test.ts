@@ -22,6 +22,31 @@ vi.mock('@pierre/diffs', () => ({
   },
 }));
 
+// The tree library is a stand-in too: it keeps the options that it was made with.
+const trees = vi.hoisted(() => ({ made: [] as { paths: string[]; gitStatus: unknown[]; initialExpansion: string; density: string; onSelectionChange: (paths: string[]) => void }[] }));
+vi.mock('@pierre/trees', () => ({
+  FileTree: class {
+    constructor(options: (typeof trees.made)[number]) {
+      trees.made.push(options);
+    }
+    render(): undefined {
+      return undefined;
+    }
+    cleanUp(): undefined {
+      return undefined;
+    }
+    setSearch(): undefined {
+      return undefined;
+    }
+    scrollToPath(): undefined {
+      return undefined;
+    }
+    getItem(): null {
+      return null;
+    }
+  },
+}));
+
 const PATCH = `diff --git a/src/a.ts b/src/a.ts
 --- a/src/a.ts
 +++ b/src/a.ts
@@ -57,6 +82,7 @@ function clear(): void {
 afterEach(() => {
   clear();
   drawn.options.length = 0;
+  trees.made.length = 0;
 });
 
 const named = (label: string): HTMLButtonElement | null => document.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
@@ -138,15 +164,19 @@ describe('the diff surface, what it shows and leaves out', () => {
     expect(document.querySelector('[data-surface-subheader] [role="img"]')?.getAttribute('aria-label')).toBe('2 additions, 1 deletions');
   });
 
-  it('lists the changed files at the right; a pick opens the file and marks it', () => {
+  it('draws the changed files as a tree at the right; a pick in it opens the file', async () => {
     surface({ view: { ...DEFAULT_VIEW, tree: true } });
-    const list = document.querySelector('ul[aria-label="Changes files"]');
-    expect([...(list?.querySelectorAll('.name') ?? [])].map((name) => name.textContent)).toEqual(['a.ts', 'a.test.ts']);
-    expect(list?.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('Modified');
-    list?.querySelectorAll<HTMLButtonElement>('button')[1]?.click();
+    await settle();
+    expect(document.querySelector('[role="group"][aria-label="Changes files"]')).not.toBeNull();
+    expect(document.querySelector('aside [data-surface-subheader]')?.textContent.replace(/\s+/g, ' ').trim()).toBe('Files 2');
+    expect(trees.made).toHaveLength(1);
+    expect(trees.made[0]).toMatchObject({ paths: ['src/a.ts', 'src/a.test.ts'], initialExpansion: 'open', density: 'compact', gitStatus: [{ path: 'src/a.ts', status: 'modified' }, { path: 'src/a.test.ts', status: 'added' }] });
+    trees.made[0]?.onSelectionChange(['src/']);
+    flushSync();
+    expect(named('Collapse src/a.test.ts')).toBeNull();
+    trees.made[0]?.onSelectionChange(['src/a.test.ts']);
     flushSync();
     expect(named('Collapse src/a.test.ts')).not.toBeNull();
-    expect(list?.querySelector('[aria-current="true"]')?.getAttribute('title')).toBe('src/a.test.ts');
   });
 
   it('a file that is asked for by name opens, though the test files are hidden', () => {

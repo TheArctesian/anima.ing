@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte';
+  import LibraryTree from '../../tree/LibraryTree.svelte';
   import type { ChangedFile } from '../patch';
   import { split } from '../view';
   import { KIND_WORDS } from '../words';
@@ -10,24 +10,26 @@
     files: readonly ChangedFile[];
     selected?: string | undefined;
     onpick: (path: string) => void;
-    /** The tree of the tree library, when the owner has one; without it the files are a plain list. */
-    tree?: Snippet | undefined;
+    theme: 'light' | 'dark';
     sheet?: boolean;
   }
 
-  const { section, files, selected, onpick, tree, sheet = false }: Props = $props();
+  const { section, files, selected, onpick, theme, sheet = false }: Props = $props();
+  // The tree library draws the files; when it cannot be loaded the files are a plain list.
+  let failed = $state(false);
+  const marks = $derived(files.map((file) => ({ path: file.path, status: file.kind })));
 </script>
 
 <!--
-  The changed files beside a diff (report 05, Section 1.8): a header with the count, then the files in the order of
-  the diff, each with the mark of its change. A click goes to the file in the diff.
+  The changed files beside a diff (report 05, Section 1.8): a header with the count, then the tree of the files, each
+  with the mark of its change. A click goes to the file in the diff.
 -->
 <div class="subheader" class:sheet data-surface-subheader>
   <span class="title">Files</span>
   <span class="count">{files.length}</span>
 </div>
-{#if tree !== undefined}
-  {@render tree()}
+{#if !failed}
+  <LibraryTree label="{section} files" paths={files.map((file) => file.path)} {marks} open compact {theme} {selected} {onpick} ondrawn={(failure) => (failed = failure !== undefined)} />
 {:else}
   <ul class="list" aria-label="{section} files">
     {#each files as file (file.path)}
