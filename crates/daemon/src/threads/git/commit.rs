@@ -5,7 +5,8 @@
 //! the snapshot. Its objects are then copied to the repository of the person as one pack
 //! file, and the branch is moved there as a file ([`refs::put`]). No `git` runs with the Git
 //! folder of the person, so no hook and no setting of it applies, also not one that is written
-//! while the commit runs. `pre-commit` and `commit-msg` hooks do not run.
+//! while the commit runs. The hooks of a commit run only for a thread with full access, and
+//! then with the rights of that thread ([`Hooks`]).
 //!
 //! I/O: `git commit-tree`, `git pack-objects`, a private index for chosen files, the ref file.
 
@@ -16,6 +17,7 @@ use agent_threads::git::GitRefusal;
 use super::checkpoint;
 use super::place::{self, Worktree, own};
 use super::project::refs::{self, Head, Was};
+use super::run::hooks::Hooks;
 use super::run::settings::Person;
 use super::run::{Git, GitError, Run};
 
@@ -36,6 +38,8 @@ pub struct Asked<'a> {
     pub new_branch: Option<&'a str>,
     /// Who the commit is from.
     pub who: &'a Person,
+    /// The hooks of the repository, for a thread that may run them.
+    pub hooks: Option<Hooks<'a>>,
 }
 
 /// Commits and gives the ID of the commit with the branch it is on. The commit holds the files
@@ -76,9 +80,8 @@ pub async fn make(
     {
         return Err(GitRefusal::NothingToCommit);
     }
-    let commit = written(git, worktree, (&tree, tip), (message, asked.who)).await?;
-    // The repository of the person gets the objects first, then the branch that names them.
-    own::give(git, worktree, &commit, tip).await?;
+    let asked = Asked { message, ..asked };
+    let commit = checked(git, worktree, (&tree, tip), asked).await?;
     // The branch moves only from where it was: a new branch must not exist, the branch of the
     // thread must still be at the parent of the commit.
     let was = match (asked.new_branch, tip) {
@@ -93,7 +96,37 @@ pub async fn make(
     }
     // The index of the worktree follows the branch; its files stay as they are.
     own::follow(git, worktree, &commit).await?;
+    if let Some(hooks) = asked.hooks {
+        hooks.after_commit().await;
+    }
     Ok((commit, Some(branch)))
+}
+
+/// Writes the commit of `tree` on `tip` and gives its objects to the repository of the
+/// person. For a thread that runs the hooks of the repository, they see the commit before a
+/// branch names it, can refuse it, and can change its message.
+async fn checked(
+    git: &Git,
+    worktree: &Worktree,
+    (tree, tip): (&str, Option<&str>),
+    asked: Asked<'_>,
+) -> Result<String, GitRefusal> {
+    let commit = written(git, worktree, (tree, tip), (asked.message, asked.who)).await?;
+    // The repository of the person gets the objects first, then the branch that names them.
+    own::give(git, worktree, &commit, tip).await?;
+    let Some(hooks) = asked.hooks else {
+        return Ok(commit);
+    };
+    let left = hooks.before_commit(git, &commit, asked.message).await?;
+    if left.is_empty() {
+        return Err(GitRefusal::EmptyMessage);
+    }
+    if left == asked.message {
+        return Ok(commit);
+    }
+    let commit = written(git, worktree, (tree, tip), (&left, asked.who)).await?;
+    own::give(git, worktree, &commit, tip).await?;
+    Ok(commit)
 }
 
 /// Writes the commit of `tree` on `tip` in the Git folder of the runner: from the person, and

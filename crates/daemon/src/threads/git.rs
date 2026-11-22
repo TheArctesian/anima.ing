@@ -38,6 +38,7 @@ use uuid::Uuid;
 use place::{BadPlace, Home, Record, Worktree};
 use project::ProjectError;
 use push::pull_request;
+use run::hooks::{self, Access, AsThread};
 use run::settings::Setting;
 use run::{Git, GitError};
 
@@ -67,7 +68,9 @@ impl From<BadPlace> for GitRefusal {
     fn from(bad: BadPlace) -> Self {
         match bad {
             BadPlace::NotOurWorktree | BadPlace::MainCheckout => Self::NoWorktree,
-            BadPlace::Escapes | BadPlace::BadName => Self::BadPath,
+            BadPlace::Escapes | BadPlace::BadName | BadPlace::InARepository | BadPlace::KeptOut => {
+                Self::BadPath
+            }
         }
     }
 }
@@ -81,6 +84,9 @@ pub struct Caller {
     pub running: bool,
     /// The thread whose agent calls; `None` for the person. An agent reads only its own thread.
     pub thread: Option<Uuid>,
+    /// How much the agent of the thread may do: only a thread with full access runs the
+    /// hooks of the repository ([`run::hooks::of`]).
+    pub access: Access,
 }
 
 /// One worktree of a thread, named by the thread and the repository, never by a path.
@@ -104,6 +110,9 @@ pub struct Engine {
     /// One lock for each worktree: a commit of the person and the checkpoint of a turn that
     /// ended never change one worktree at the same time.
     locks: Arc<Mutex<Locks>>,
+    /// How a hook of the repository is started with the rights of a thread; `None` until the
+    /// runner gives it, and then no hook runs for any thread.
+    as_thread: Option<AsThread>,
 }
 
 impl Engine {
@@ -113,7 +122,16 @@ impl Engine {
             git,
             home,
             locks: Arc::default(),
+            as_thread: None,
         }
+    }
+
+    /// This engine with the way to start a hook of a repository as the agent of a thread is
+    /// started. Without it no hook of a repository runs.
+    #[must_use]
+    pub fn with_hooks(mut self, as_thread: AsThread) -> Self {
+        self.as_thread = Some(as_thread);
+        self
     }
 
     /// Waits until no other task changes the worktree of `repository` of `thread`.
@@ -208,7 +226,8 @@ impl Engine {
         trust::accepted(worktree, listed)?;
         let ready = push::ready(git, worktree, listed, default_branch_allowed).await?;
         drop(index);
-        push::send(git, worktree, ready).await
+        let hooks = hooks::of(caller.access, self.as_thread.as_ref(), worktree);
+        push::send(git, worktree, ready, hooks).await
     }
 
     async fn act(
@@ -254,6 +273,7 @@ impl Engine {
                     files: files.as_deref(),
                     new_branch: new_branch.as_deref(),
                     who: &run::settings::person(&listed),
+                    hooks: hooks::of(caller.access, self.as_thread.as_ref(), worktree),
                 };
                 // A branch that this call makes is written to the record as one of the thread.
                 let own = |name: &str| self.rewrite(worktree, |r| r.branches.push(name.to_owned()));

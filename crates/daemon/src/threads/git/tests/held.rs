@@ -7,7 +7,8 @@ use uuid::Uuid;
 
 use super::trusted::{UNCOMMITTED, commit};
 use super::{Bench, PERSON, THREAD, refused};
-use crate::threads::git::Caller;
+use crate::threads::git::place::Home;
+use crate::threads::git::{Caller, Engine};
 
 #[tokio::test]
 async fn an_agent_reads_the_thread_it_runs_in_and_no_other() {
@@ -109,4 +110,35 @@ async fn a_checkpoint_and_a_commit_wait_while_the_worktree_is_held() {
         }
         other => panic!("no commit: {other:?}"),
     }
+}
+
+#[tokio::test]
+async fn a_worktree_stays_where_it_was_made_when_the_home_changes() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    std::fs::write(folder.join("a.txt"), "changed\n").expect("a file");
+    // The person chose a different home in the settings; the records are where they were.
+    let root = bench.home.parent().expect("the root");
+    let chosen = Home::chosen(&root.join("elsewhere/trees"), &root.join("records"), &[]);
+    let engine = Engine::new(bench.git.clone(), chosen.expect("a home"));
+    let GitOutcome::Status(status) = engine
+        .call(PERSON, super::target(), GitAction::Status)
+        .await
+    else {
+        panic!("no status of the worktree that was there");
+    };
+    assert_eq!(status.files.len(), 1);
+    assert!(folder.join("a.txt").exists(), "the worktree was moved");
+    // A new thread gets its worktree in the new home.
+    let plan = crate::threads::git::worktree::Plan {
+        thread: Uuid::from_u128(9),
+        project: &bench.project,
+        base: None,
+    };
+    let made = engine.worktree(plan).await.expect("a worktree");
+    assert!(
+        made.worktree
+            .folder()
+            .starts_with(root.join("elsewhere/trees"))
+    );
 }

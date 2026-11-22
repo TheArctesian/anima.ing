@@ -4,6 +4,7 @@
 //!
 //! The checks of text are pure; [`Home::worktree`] reads the file system.
 
+pub mod chosen;
 pub mod own;
 
 use std::path::{Component, Path, PathBuf};
@@ -27,6 +28,10 @@ pub enum BadPlace {
     MainCheckout,
     #[error("the name has a character that is not allowed")]
     BadName,
+    #[error("the folder is inside a repository")]
+    InARepository,
+    #[error("the folder is inside a folder of Anima or one that an agent can write, or holds one")]
+    KeptOut,
 }
 
 /// The folder of the runner that holds the worktrees, `<home>/<thread>/<repository>`, and the
@@ -43,6 +48,9 @@ pub struct Home {
 pub struct Record {
     /// The repository of the person the worktree was made from.
     pub project: PathBuf,
+    /// The home of the worktrees when this one was made. A worktree stays there when the
+    /// person chooses a different home later.
+    pub home: PathBuf,
     /// The real folder of the worktree.
     pub folder: PathBuf,
     /// The Git folder of the worktree: `<common>/worktrees/<name>`.
@@ -210,8 +218,9 @@ impl Home {
     /// A [`BadPlace`] when a check fails.
     pub fn worktree(&self, thread: Uuid, repository: &str) -> Result<Worktree, BadPlace> {
         let record = self.recorded(thread, repository)?;
-        let planned = self.planned(thread, repository)?;
-        let home = std::fs::canonicalize(&self.folder).map_err(|_| BadPlace::NotOurWorktree)?;
+        // Where the worktree was made, which is not the home of now after a change of it.
+        let planned = Self::at(&record.home, &self.records)?.planned(thread, repository)?;
+        let home = std::fs::canonicalize(&record.home).map_err(|_| BadPlace::NotOurWorktree)?;
         let real = std::fs::canonicalize(&planned).map_err(|_| BadPlace::NotOurWorktree)?;
         if !real.starts_with(&home) || real == home || real != record.folder {
             return Err(BadPlace::Escapes);

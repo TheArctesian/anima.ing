@@ -180,6 +180,7 @@ async fn filled(
     let folder = std::fs::canonicalize(new.folder).map_err(|_| GitRefusal::NoWorktree)?;
     let record = Record {
         project: new.project.to_owned(),
+        home: home.folder().to_owned(),
         folder_id: FolderId::of(&folder),
         folder,
         git_dir: layout.git_dir.clone(),
@@ -248,6 +249,6 @@ pub async fn remove(git: &Git, home: &Home, worktree: &Worktree) -> Result<Strin
         home.forget(worktree.thread(), repository);
     }
     // The folder of the thread goes when it is empty; one with a second repository stays.
-    let _ = std::fs::remove_dir(home.of_thread(worktree.thread()));
+    let _ = record.folder.parent().map(std::fs::remove_dir);
     Ok(kept)
 }

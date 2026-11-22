@@ -2,6 +2,7 @@
 //! and the only remote is a bare repository beside the made one.
 
 mod held;
+mod hooks;
 mod late;
 mod left;
 mod person;
@@ -16,6 +17,7 @@ use agent_threads::git::{GitAction, GitOutcome, GitRefusal, Scope};
 use uuid::Uuid;
 
 use super::place::Home;
+use super::run::hooks::Access;
 use super::run::{Git, Run};
 use super::{Caller, Engine, Target, checkpoint, worktree};
 
@@ -24,6 +26,7 @@ const PERSON: Caller = Caller {
     agent: false,
     running: false,
     thread: None,
+    access: Access::Confined,
 };
 
 /// The worktree of the thread of the tests.

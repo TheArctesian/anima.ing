@@ -10,6 +10,7 @@ pub mod pull_request;
 
 use super::place::{self, Worktree};
 use super::project::refs;
+use super::run::hooks::Hooks;
 use super::run::settings::Setting;
 use super::run::{Git, REMOTE_TIME, Run};
 use super::{checkpoint, status};
@@ -112,7 +113,12 @@ pub async fn ready(
 ///
 /// # Errors
 /// The words of `git` when the push fails.
-pub async fn send(git: &Git, worktree: &Worktree, ready: Ready) -> Result<GitOutcome, GitRefusal> {
+pub async fn send(
+    git: &Git,
+    worktree: &Worktree,
+    ready: Ready,
+    hooks: Option<Hooks<'_>>,
+) -> Result<GitOutcome, GitRefusal> {
     let dir = worktree.folder();
     let pushed = |up_to_date| GitOutcome::Pushed {
         remote: ready.remote.clone(),
@@ -122,6 +128,11 @@ pub async fn send(git: &Git, worktree: &Worktree, ready: Ready) -> Result<GitOut
     };
     if ready.up_to_date {
         return Ok(pushed(true));
+    }
+    if let Some(hooks) = hooks {
+        let to = (ready.remote.as_str(), ready.shown.as_str());
+        let what = (ready.branch.as_str(), ready.commit.as_str());
+        hooks.before_push(to, what).await?;
     }
     let target = format!("{}:refs/heads/{}", ready.commit, ready.branch);
     // The program at the remote is the one of git; no tag, no submodule and no option goes

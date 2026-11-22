@@ -45,6 +45,7 @@ async fn an_agent_is_refused_each_action_that_changes_something_and_may_read() {
         agent: true,
         running: false,
         thread: Some(THREAD),
+        ..PERSON
     };
     for action in [
         commit("by an agent", None, None),
