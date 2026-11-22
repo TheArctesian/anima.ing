@@ -175,11 +175,23 @@ async fn sf_revroutestepup_a_signed_in_person_removes_a_route_with_no_second_fac
         "Bearer {}",
         key["data"]["createApiKey"]["secret"].as_str().unwrap()
     );
-    let refused = post(&hub, &[("authorization", key.as_str())], REMOVE, json!({ "id": PRIVATE_ROUTE }))
-        .await
-        .json();
-    assert_eq!(refused["errors"][0]["extensions"]["code"], "FORBIDDEN", "{refused}");
-    assert_eq!(routes_left(&pool).await.len(), 2, "an API key removes nothing");
+    let refused = post(
+        &hub,
+        &[("authorization", key.as_str())],
+        REMOVE,
+        json!({ "id": PRIVATE_ROUTE }),
+    )
+    .await
+    .json();
+    assert_eq!(
+        refused["errors"][0]["extensions"]["code"], "FORBIDDEN",
+        "{refused}"
+    );
+    assert_eq!(
+        routes_left(&pool).await.len(),
+        2,
+        "an API key removes nothing"
+    );
 
     // The account has no second factor: removing needs only the signed-in person.
     let cookie = cookie(&browser_token(&hub).await);
@@ -187,23 +199,36 @@ async fn sf_revroutestepup_a_signed_in_person_removes_a_route_with_no_second_fac
     let removed = post(&hub, &person, REMOVE, json!({ "id": PRIVATE_ROUTE }))
         .await
         .json();
-    assert_eq!(removed["data"]["removeApplicationRoute"], PRIVATE_ROUTE, "{removed}");
+    assert_eq!(
+        removed["data"]["removeApplicationRoute"], PRIVATE_ROUTE,
+        "{removed}"
+    );
 
     let bearer = format!("Bearer {token}");
     let by_login = [("authorization", bearer.as_str())];
     let removed = post(&hub, &by_login, REMOVE, json!({ "id": PUBLIC_ROUTE }))
         .await
         .json();
-    assert_eq!(removed["data"]["removeApplicationRoute"], PUBLIC_ROUTE, "{removed}");
+    assert_eq!(
+        removed["data"]["removeApplicationRoute"], PUBLIC_ROUTE,
+        "{removed}"
+    );
     assert!(routes_left(&pool).await.is_empty());
 
     let again = post(&hub, &person, REMOVE, json!({ "id": PRIVATE_ROUTE }))
         .await
         .json();
-    assert_eq!(again["errors"][0]["extensions"]["code"], "NOT_FOUND", "{again}");
+    assert_eq!(
+        again["errors"][0]["extensions"]["code"], "NOT_FOUND",
+        "{again}"
+    );
 
     let entries = removals(&pool).await;
-    assert_eq!(entries.len(), 2, "one audit entry for each removal, none for a refusal");
+    assert_eq!(
+        entries.len(),
+        2,
+        "one audit entry for each removal, none for a refusal"
+    );
     assert_eq!(entries[0]["name"], "nas.example.com");
     assert_eq!(entries[0]["access"], "private");
     assert_eq!(entries[0]["port"], 3000);
