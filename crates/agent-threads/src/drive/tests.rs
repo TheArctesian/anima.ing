@@ -8,6 +8,7 @@ use super::*;
 mod account;
 mod claude;
 mod codex;
+mod kept;
 mod launch;
 mod prompt_files;
 mod turn_facts;

@@ -44,6 +44,13 @@ impl Mode {
         }
     }
 
+    /// Whether Codex runs this mode in the sandbox of the folder, where a profile can keep a
+    /// folder in it read-only (THR-041).
+    #[must_use]
+    pub fn folder_sandbox(self) -> bool {
+        self.codex().0 == "workspace-write"
+    }
+
     /// The `sandbox` and the `approvalPolicy` of a Codex thread. `AcceptEdits` has no measured
     /// Codex form; it is the sandbox of the folder with questions when the agent asks.
     #[must_use]

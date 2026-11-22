@@ -24,6 +24,8 @@ fn reads() -> Vec<Action> {
             effort: None,
             prompt: text(),
             program_path: None,
+            draft: None,
+            attachments: Vec::new(),
         },
         Action::Send {
             thread,
@@ -41,6 +43,10 @@ fn reads() -> Vec<Action> {
         Action::Accounts,
         Action::Folder {
             folder: PathBuf::from("/work"),
+        },
+        Action::Folders {
+            folder: PathBuf::from("/work"),
+            hidden: true,
         },
         Action::Listings,
     ]
@@ -110,6 +116,7 @@ fn files() -> Vec<Action> {
             mime: "image/png".to_owned(),
             size: 3,
             bytes: "AAAA".to_owned(),
+            draft: false,
         },
         Action::AttachMore {
             thread,
@@ -152,10 +159,11 @@ const fn kind(action: &Action) -> usize {
         Action::Attach { .. } => 22,
         Action::AttachMore { .. } => 23,
         Action::Unattach { .. } => 24,
+        Action::Folders { .. } => 25,
     }
 }
 
-const KINDS: usize = 25;
+const KINDS: usize = 26;
 
 #[test]
 fn th109_each_call_reads_back_from_its_frame() {

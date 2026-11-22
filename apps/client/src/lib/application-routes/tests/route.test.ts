@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { dnsRecords, makePublicRefusal, routeChecks } from '../checks';
+import { dnsRecords, makePublicRefusal, removalBody, routeChecks } from '../checks';
 import { bytes, certificateStatus, count, filterCounts, filtered, isNotLinux, proofStatus, serving, summary, target, traffic } from '../route';
 import { DEVICE_NAMES, NOT_LINUX_ERROR, NOW, ROUTES, route } from './routes.fixture';
 
@@ -83,4 +83,13 @@ it('OD-HOST-43: Make public is refused while the consent at the machine is not g
 it('R-366: only the refusal of a hub that is not on Linux is that refusal', () => {
   expect(isNotLinux(NOT_LINUX_ERROR)).toBe(true);
   expect(isNotLinux({ code: 'UNAVAILABLE', message: 'The hub did not answer.' })).toBe(false);
+});
+
+it('H21: the dialog of Remove names the reach that ends, public or private, and a redirect', () => {
+  expect(removalBody(route({ name: 'vault.example.com', access: 'PUBLIC' }), { head: 'On atlas', detail: 'port 80' }))
+    .toContain('vault.example.com stops reaching atlas, port 80, for the internet.');
+  expect(removalBody(route({ name: 'nas.example.com', access: 'PRIVATE' }), { head: 'On nas', detail: 'port 5000' }))
+    .toContain('for the devices of your Anima network.');
+  expect(removalBody(route({ name: 'code.example.com', kind: 'REDIRECT', access: 'PUBLIC' }), { head: 'Redirect to', detail: 'git.example.com' }))
+    .toMatch(/^code\.example\.com stops redirecting to git\.example\.com, for the internet\./);
 });

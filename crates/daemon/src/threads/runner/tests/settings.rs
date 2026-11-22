@@ -1,7 +1,11 @@
 //! A change of the model, the effort or the mode after the start (TH110): from the next turn.
 
 use agent_threads::control::{Change, Refusal};
+use std::path::PathBuf;
+
 use agent_threads::drive::{DriveEvent, Effort, Mode, Model};
+
+use crate::threads::runner::codex::Codex;
 
 use super::{claude, codex_in_a_turn, counter, held_claude, writes};
 use crate::threads::runner::thread::{Changes, Step, Thread};
@@ -216,5 +220,73 @@ fn th110_a_codex_change_waits_while_a_turn_start_is_not_answered() {
         thread.row.mode,
         Mode::FullAccess,
         "the turn that starts has the old mode"
+    );
+}
+
+#[test]
+fn thr_041_a_codex_thread_loses_the_profile_that_keeps_anima_once_a_turn_leaves_the_folder_sandbox()
+{
+    let mut codex = Codex::new(PathBuf::from("/home/you"), Mode::Ask, None, None).keeping(Some(
+        agent_threads::drive::KeptFolder::new(
+            PathBuf::from("/home/you/anima-daemon"),
+            uuid::Uuid::nil(),
+        ),
+    ));
+    codex.begin();
+    let started = codex
+        .reply(1, true, &serde_json::json!({}))
+        .expect("an answer");
+    let thread_start: serde_json::Value = serde_json::from_str(&started[1]).expect("JSON");
+    assert_eq!(
+        thread_start["params"]["config"]["default_permissions"],
+        "anima-keeps-00000000000000000000000000000000"
+    );
+    codex
+        .reply(2, true, &serde_json::json!({"thread": {"id": "th"}}))
+        .expect("the thread");
+    let policy = |codex: &mut Codex, mode| {
+        codex.change(None, None, Some(mode));
+        let line = codex
+            .prompt(&agent_threads::drive::Prompt::plain("go"))
+            .remove(0);
+        codex.turn_ended();
+        serde_json::from_str::<serde_json::Value>(&line).expect("JSON")["params"]["sandboxPolicy"]
+            ["type"]
+            .clone()
+    };
+    assert_eq!(
+        policy(&mut codex, Mode::AcceptEdits),
+        serde_json::Value::Null
+    );
+    assert_eq!(policy(&mut codex, Mode::FullAccess), "dangerFullAccess");
+    assert_eq!(
+        policy(&mut codex, Mode::Ask),
+        "workspaceWrite",
+        "a policy of a turn took the place of the profile"
+    );
+}
+
+#[test]
+fn thr_041_after_a_restart_a_codex_thread_with_a_changed_mode_does_not_count_on_its_profile() {
+    let kept = || {
+        Some(agent_threads::drive::KeptFolder::new(
+            PathBuf::from("/home/you/anima-daemon"),
+            uuid::Uuid::nil(),
+        ))
+    };
+    let changed = crate::threads::runner::codex::Changed {
+        model: None,
+        mode: Some(Mode::AcceptEdits),
+    };
+    let mut codex = Codex::new(PathBuf::from("/home/you"), Mode::Ask, None, None)
+        .keeping(kept())
+        .known(Some("th".to_owned()), None, changed);
+    let line = codex
+        .prompt(&agent_threads::drive::Prompt::plain("go"))
+        .remove(0);
+    let turn: serde_json::Value = serde_json::from_str(&line).expect("JSON");
+    assert_eq!(
+        turn["params"]["sandboxPolicy"]["type"], "workspaceWrite",
+        "a turn before the restart may have sent a policy of its own"
     );
 }

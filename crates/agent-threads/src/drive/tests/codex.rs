@@ -124,6 +124,10 @@ fn a_codex_request_of_an_unknown_kind_stops_the_turn_and_is_refused() {
 #[test]
 fn each_codex_line_the_runner_can_write_names_a_method_of_the_closed_list() {
     let folder = PathBuf::from("/w");
+    let place = CodexPlace {
+        folder: &folder,
+        kept: None,
+    };
     let turn = CodexTurn {
         thread: "t",
         turn: "u",
@@ -131,7 +135,7 @@ fn each_codex_line_the_runner_can_write_names_a_method_of_the_closed_list() {
     let written = [
         CodexInput::initialize(1),
         CodexInput::initialized(),
-        CodexInput::thread_start(2, &folder, Mode::FullAccess, None),
+        CodexInput::thread_start(2, place, Mode::FullAccess, None),
         CodexInput::thread_resume(3, "t", &folder, Mode::Ask),
         CodexInput::thread_fork(4, "t", &folder, Mode::Ask),
         CodexInput::turn_start(
@@ -201,6 +205,7 @@ fn th110_a_turn_carries_the_model_the_effort_and_the_mode_that_the_person_change
             model: Some(&model),
             effort: Some(Effort::Medium),
             mode: Some(Mode::Ask),
+            keeps: false,
         },
     ));
     let params = &changed["params"];

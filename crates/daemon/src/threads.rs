@@ -3,9 +3,11 @@
 //!
 //! Pure: [`wire`] (the frames), [`outbox`] (the lines that wait for the daemon) and the walk of
 //! [`tree`]. I/O: [`holder`] with [`commands`] and [`program`] (the holder process), [`record`]
-//! (its file) and [`link`] (the daemon side of the socket); [`runner`] drives the programs.
+//! (its file) and [`link`] (the daemon side of the socket); [`runner`] drives the programs;
+//! [`git`] is the Git of a thread (its worktree, its checkpoints, its commit and its push).
 
 pub mod commands;
+pub mod git;
 pub mod holder;
 pub mod link;
 pub mod marker;
