@@ -5,14 +5,20 @@
 //! (Medium 3 of the checklist read).
 //!
 //! A process can leave the tree (a new session and a second start make the first process of
-//! the system its parent) and its mark (a new environment). It cannot leave its group of origin:
-//! the system gives it to each process that a process starts, and only the system changes it. On
-//! a Mac that is the resource coalition that launchd gives to each job (the runner of the
-//! installed application, an application such as the Terminal); on Linux it is the control
-//! group (the unit of the runner). So a client in the group of the runner, that the runner and
-//! the processes above it in that group did not start, is of an agent. Known limit: a process of
-//! an agent with full access can still ask a different program of the person to start a call
-//! (launchd, systemd, a terminal by its script interface); it then has the group of that program.
+//! the system its parent) and its mark (a new environment). Its group of origin goes with it:
+//! the system gives it to each process that a process starts. On a Mac that is the resource
+//! coalition that launchd gives to each job (the runner of the installed application, an
+//! application such as the Terminal), and only launchd changes it. On Linux it is the control
+//! group (the unit of the runner). So a client in the group of the runner is of an agent, unless
+//! the runner is that client or a process above the runner in that group started it (in a test,
+//! the test). A process that the runner started itself (the ask for a version, the login shell)
+//! is not the person: its program is a file that an agent can change.
+//!
+//! Known limit: this makes a call of an agent harder, not impossible. A process of an agent with
+//! full access can ask any program of the person outside the group to make the call (launchd,
+//! systemd, cron, a terminal by its script interface, a `tmux` server, `ssh` to this computer).
+//! On Linux it can also move itself to a different control group of the user, as systemd gives
+//! the user the groups below `user@.service`.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -45,15 +51,25 @@ pub async fn of_an_agent(pid: Option<i32>, holder_dir: &Path) -> bool {
     if !GROUPS_KNOWN {
         return false;
     }
-    let me = std::process::id();
-    let Some(mine) = origin(me).await else {
+    let Some((mine, line)) = RUNNER.get_or_init(|| runner_line(&table)).await else {
         return true;
     };
-    let line = line_of(&table, me, &mine).await;
-    if comes_from(&table, pid, &line) {
-        return false;
+    match origin(pid).await {
+        Some(theirs) if theirs != *mine => false,
+        Some(_) => !comes_from(&table, pid, std::process::id(), line),
+        None => true,
     }
-    origin(pid).await.is_none_or(|theirs| theirs == mine)
+}
+
+/// The group of origin of the runner and its line; they do not change while it runs.
+static RUNNER: tokio::sync::OnceCell<Option<(String, BTreeSet<u32>)>> =
+    tokio::sync::OnceCell::const_new();
+
+async fn runner_line(table: &Commands) -> Option<(String, BTreeSet<u32>)> {
+    let me = std::process::id();
+    let mine = origin(me).await?;
+    let line = line_of(table, me, &mine).await;
+    Some((mine, line))
 }
 
 /// Whether this system gives each process a group of origin that [`origin`] can read.
@@ -77,11 +93,18 @@ async fn line_of(table: &Commands, me: u32, mine: &str) -> BTreeSet<u32> {
     line
 }
 
-/// Whether `pid` or a process above it is in `line`.
+/// Whether `pid` is the runner `me`, or a process of `line` above the runner started it. A
+/// process that the runner itself started does not come from the line.
 #[must_use]
-pub fn comes_from(table: &Commands, pid: u32, line: &BTreeSet<u32>) -> bool {
+pub fn comes_from(table: &Commands, pid: u32, me: u32, line: &BTreeSet<u32>) -> bool {
+    if pid == me {
+        return true;
+    }
     let mut at = pid;
     for _ in 0..64 {
+        if at == me {
+            return false;
+        }
         if line.contains(&at) {
             return true;
         }
@@ -199,14 +222,20 @@ mod tests {
 
     #[test]
     fn thr_049_a_client_comes_from_the_runner_only_through_its_parents() {
-        let rows =
-            table(" 10 1 runner\n 11 10 anima agents approve\n 12 1 detached\n 13 12 child\n");
-        let line = BTreeSet::from([10]);
-        assert!(comes_from(&rows, 11, &line));
-        assert!(comes_from(&rows, 10, &line));
+        let rows = table(
+            " 9 1 test\n 10 9 runner\n 11 9 anima agents approve\n 12 1 detached\n 13 12 child\n \
+             14 10 claude --version\n 15 14 anima agents approve\n",
+        );
+        let line = BTreeSet::from([9, 10]);
+        assert!(comes_from(&rows, 11, 10, &line), "started by the test");
+        assert!(comes_from(&rows, 10, 10, &line), "the runner itself");
         assert!(
-            !comes_from(&rows, 13, &line),
+            !comes_from(&rows, 13, 10, &line),
             "the first process of the system ends the walk"
+        );
+        assert!(
+            !comes_from(&rows, 15, 10, &line),
+            "a program that the runner started is not the person"
         );
     }
 
@@ -286,11 +315,18 @@ mod tests {
         let left_pid = left_pid.expect("the process that left");
         // Its parent is now the first process of the system (or the nearest that adopts).
         tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+        let seen = u32::try_from(left_pid).expect("a process ID");
+        let table = commands().await.expect("the table");
+        let group = origin(seen).await;
         let agent = of_an_agent(Some(left_pid), &holder_dir).await;
         let _ = holder.kill();
         let _ = holder.wait();
         if let Some(pid) = rustix::process::Pid::from_raw(left_pid) {
             let _ = rustix::process::kill_process(pid, rustix::process::Signal::KILL);
+        }
+        assert!(table.contains_key(&seen), "the process that left is alive");
+        if GROUPS_KNOWN {
+            assert_eq!(group, origin(std::process::id()).await, "it kept the group");
         }
         assert!(agent, "a process of an agent passed for the person");
     }
