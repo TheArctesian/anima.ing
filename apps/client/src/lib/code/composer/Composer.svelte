@@ -28,7 +28,7 @@
     models?: readonly ProgramModel[];
     /** The runner's file list for this chat (`live.files`), for the `@` list; without it the list says there is no search. */
     onFiles?: FileSearch;
-    /** The key under which the unsent text is kept: the chat's id. */
+    /** The chat's id, as the page names it in its calls: the key of the unsent text and the thread of each file. */
     draft?: string;
   }
 
@@ -41,9 +41,11 @@
   // Looked up apart from the engine: the engine must follow the queue's messages, and state is not followed by the
   // computation that made it.
   const queue = $derived(chat === undefined || onQueue !== undefined ? null : heldQueue(chat));
+  // The thread of the files is the one of the page's own calls and of the unsent text: a file never waits at a chat that its `send` does not name. The card is made again when it changes.
+  const thread = $derived(draft ?? row?.id);
   // Each call of a file names the chat of this composer: a part or an `unattach` never goes to the chat that is opened after it.
   const attachHere = $derived.by((): AttachCall | undefined => {
-    const mine = chat;
+    const mine = thread;
     const call = onAttach;
     return call === undefined || mine === undefined ? undefined : (act) => call(act, mine);
   });

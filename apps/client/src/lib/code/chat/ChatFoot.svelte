@@ -50,7 +50,8 @@
   <Composer
     row={thread?.row ?? null}
     draft={id}
-    onSend={(text) => live?.call({ call: 'send', thread: id, text }) ?? Promise.resolve(NO_RUNNER)}
+    onSend={(text, files) => live?.call({ call: 'send', thread: id, text, ...(files === undefined ? {} : { attachments: files }) }) ?? Promise.resolve(NO_RUNNER)}
+    onAttach={(act, thread) => live?.call({ ...act, thread }) ?? Promise.resolve(NO_RUNNER)}
     onInterrupt={() => live?.call({ call: 'interrupt', thread: id }) ?? Promise.resolve(NO_RUNNER)}
     onStop={() => live?.call({ call: 'stop', thread: id }) ?? Promise.resolve(NO_RUNNER)}
     onQueue={(act) => live?.call(queueAction(act, id)) ?? Promise.resolve(NO_RUNNER)}
