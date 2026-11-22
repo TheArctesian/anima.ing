@@ -10,7 +10,7 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 
 From: the business planning session of 2026-11-16, after the operator tried release 0.2.0 on a
 second Mac (report of the S12 packaging session).
-Version: 7. Date: 2026-11-18. Version 2 added HM-R6 (a free hub sleeps) and the cloud design of the
+Version: 8. Date: 2026-11-19. Version 2 added HM-R6 (a free hub sleeps) and the cloud design of the
 business vault (Section 3, fact 5). Version 3 added HM-R7 (Apple Pay and Google Pay), HM-R8 (no
 staff access to hubs), HMD-030 and HMD-031. Version 4 adds HM-R9 (WorkOS AuthKit, which decides
 HM-D3), the device-code sign-in of Section 4.1 and HMD-032 to HMD-036. HM-D4 is not ruled.
@@ -22,6 +22,7 @@ Version 10 (2026-11-20) adds Section 6.11 (the row `Hub`: its metrics and its us
 Version 9 records R-239 (a hosted hub in a browser at `hub.anima.ing`; HM-D17 decided) and R-240 (HM-D18 decided: the link runs as a unit too), the proposed requirements HMD-058 to HMD-070 (Sections 6.8 and 6.9), the list for one approval (Section 6.10) and tasks HM-T24 to HM-T33.
 Version 8 records R-206 (the desktop application includes the daemon; HM-D16 decided), the proposed requirements HMD-052 to HMD-057 (Section 6.8), tasks HM-T16 to HM-T23, and the open decisions HM-D17 and HM-D18.
 Version 7 holds the approval of HMD-001 to HMD-036 (R-163): the approved text is in Sections 6.1 to 6.6, HM-D14 is decided and HMD-051 is proposed.
+Version 8 clarifies HMD-022: with no chosen hub, the desktop app opens the account sign-in screen before a token read, including on an older Linux installation.
 Version 6 adds Section 6.7 (the revision of HMD-001 to HMD-036 for approval), R-159 and the open decisions HM-D14 and HM-D15.
 Version 5 adds the task table of Section 8, task HM-T1 (R-127), HMD-037 (R-128), HMD-038 to HMD-041 with tasks HM-T2 to HM-T4 (R-129), and HMD-043 with tasks HM-T6 and HM-T7 (R-130).
 Status: the header of this document holds the state (PLN-020). History: Draft. The direction is decided by the operator (Section 2). The requirements
@@ -222,7 +223,7 @@ is built in the private repository (fact 5); this repository holds the client an
 
 ### 6.4 First run
 
-- **HMD-022.** "Sign in" must be the primary choice of the first run. The other choices must stay available. The first screen follows frame 1 of the mobile mockup: the doors, the title, "Sign in", then "Sign up" and "Join a hub" side by side under it. The other ways (an invite, a hub address, a hub on this computer) are on the page behind "Join a hub" (operator, 2026-11-17: "1st option is sign in ... the paste invite ... should be split into two buttons, sign up or join a hub"; the line under the title is removed). Approved (R-163).
+- **HMD-022.** "Sign in" must be the primary choice of the first run. The other choices must stay available. The first screen follows frame 1 of the mobile mockup: the doors, the title, "Sign in", then "Sign up" and "Join a hub" side by side under it. The other ways (an invite, a hub address, a hub on this computer) are on the page behind "Join a hub" (operator, 2026-11-17: "1st option is sign in ... the paste invite ... should be split into two buttons, sign up or join a hub"; the line under the title is removed). With no saved hub address, the application must open this screen. The startup decision must not depend on a token for the default hub: a token from an older installation must not skip this screen (operator, 2026-11-19: the Linux app must open to the sign-in screen, as on macOS). Approved (R-163).
 - **HMD-023.** The application must show one state for each step of Section 4.1, and a clear error with a retry for each failure. Approved (R-163).
 
 ### 6.5 Sleep and wake of a free hub (HM-R6)
