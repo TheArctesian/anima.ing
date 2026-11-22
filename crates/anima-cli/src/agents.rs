@@ -43,6 +43,10 @@ pub enum AgentCommand {
     /// Send a prompt to a thread that this computer runs.
     #[cfg(unix)]
     Send(drive::SendArgs),
+    /// Queue a prompt for a thread that this computer runs: it goes as the next turn when the
+    /// turns before it ended well. Change, drop or send a queued prompt now.
+    #[cfg(unix)]
+    Queue(drive::QueueArgs),
     /// Answer a request of a thread: allow (the default), deny, allow for the session, or
     /// choose the answers of a question.
     #[cfg(unix)]
@@ -130,6 +134,7 @@ impl AgentCommand {
         match self {
             Self::Start(args) => args.run(invocation).await,
             Self::Send(args) => args.run(invocation).await,
+            Self::Queue(args) => args.run(invocation).await,
             Self::Approve(args) => args.run(invocation).await,
             Self::Interrupt(args) => drive::interrupt(args, invocation).await,
             Self::Stop(args) => drive::stop(args, invocation).await,

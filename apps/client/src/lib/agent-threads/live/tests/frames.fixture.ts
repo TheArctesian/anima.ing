@@ -1,7 +1,7 @@
 /** Frames of the socket of the runner, as the desktop shell passes them, and a made shell, for the tests. */
 
 import type { RunnerShell } from '$lib/desktop/agent-threads/runner';
-import { updateFrom, type Action, type Outcome, type Update } from './run';
+import { updateFrom, type Action, type Outcome, type Update } from '../run';
 
 export const THREAD = '0190a000-0000-7000-8000-000000000001';
 

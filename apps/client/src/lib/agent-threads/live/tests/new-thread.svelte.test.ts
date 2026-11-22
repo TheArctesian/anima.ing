@@ -2,9 +2,9 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
-import NewThread from '../view/NewThread.svelte';
-import type { CallResult } from './live.svelte';
-import type { Action } from './run';
+import NewThread from '../../view/NewThread.svelte';
+import type { CallResult } from '../live.svelte';
+import type { Action } from '../run';
 
 /** The control that the label with `text` names, as a screen reader finds it. */
 function byLabel<T extends HTMLElement>(text: string): T | null {
