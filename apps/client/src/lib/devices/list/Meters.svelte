@@ -11,8 +11,10 @@
   interface Props {
     readings: BarReadings | null;
     source: MetricsSource | null | undefined;
-    /** The list's form: the value over its bar in a fixed slot, the words in the column head (row H of the site language plan). */
+    /** The list's form: each meter in a fixed slot of the column, its icon and word over its value (row H of the site language plan). */
     compact?: boolean;
+    /** The list's slots, in order: a meter stands in the slot of its key, so the values of one metric make one column. */
+    slots?: readonly Bar['key'][];
     /** The battery of a laptop, a phone or a tablet; `null` for a device with none (MET-032). */
     battery?: BatteryBar | null;
     /** The hub's own device: CPU and memory of its container, the memory as used of its limit, no disk (HMD-073). */
@@ -21,7 +23,7 @@
     memoryBytes?: number | null;
   }
 
-  const { readings, source, compact = false, battery = null, container = false, memoryBytes = null }: Props = $props();
+  const { readings, source, compact = false, slots = [], battery = null, container = false, memoryBytes = null }: Props = $props();
   const preference = motionPreference();
   const row = $derived(container ? containerRow(readings, source, memoryBytes) : barRow(readings, source, battery));
   /** Carbon has no RAM or GPU icon; these are the closest (D18). */
@@ -33,6 +35,13 @@
     battery: 'carbon:battery-half',
   };
   const WORDS: Record<Bar['key'], string> = { cpu: 'CPU', memory: 'Memory', disk: 'Disk', vram: 'VRAM', battery: 'Battery' };
+
+  /** The slot of a meter in the list; the hub's memory also takes the slot of the disk, which the hub has none of (HMD-072). */
+  function slotOf(bar: Bar): string | undefined {
+    const index = slots.indexOf(bar.key);
+    if (!compact || index < 0) return undefined;
+    return container && bar.key === 'memory' ? `${String(index + 1)} / span 2` : String(index + 1);
+  }
 
   /** The battery's shape says charging or low, so neither rests on colour alone (MET-032). */
   function iconOf(bar: Bar): IconName {
@@ -46,7 +55,13 @@
 {#if row.kind === 'empty'}
   <span class="none">{row.text}</span>
 {:else}
-  <span class="meters" class:compact class:container class:reduced={preference.reduced}>
+  <span
+    class="meters"
+    class:compact
+    class:container
+    class:reduced={preference.reduced}
+    style:grid-template-columns={compact ? `repeat(${String(slots.length)}, minmax(0, var(--usage-slot)))` : undefined}
+  >
     {#each row.bars as bar (bar.key)}
       <span
         class="meter {bar.key}"
@@ -58,12 +73,13 @@
         aria-valuenow={bar.percent}
         aria-valuetext={bar.percent === null ? undefined : (bar.spoken ?? (bar.degraded ? `${bar.text}, degraded` : bar.text))}
         title={bar.tooltip}
+        style:grid-column={slotOf(bar)}
       >
         <span class="word"><Icon name={iconOf(bar)} size="sm" /><span class="name">{WORDS[bar.key]}</span></span>
         <!-- A new value cross-fades over the old one in one cell; it never counts (MET-008, MOT-008). -->
         <span class="slot">
           {#key bar.text}<span class="value" transition:crossFade
-              >{#if bar.key === 'battery'}<span class="mark"><Icon name={iconOf(bar)} size="sm" /></span>{/if}{bar.text}</span
+              >{bar.text}</span
             >{/key}
         </span>
         <span class="track" aria-hidden="true"><span class="fill" style:--fill={(bar.percent ?? 0) / 100}></span></span>
@@ -120,9 +136,8 @@
     text-overflow: ellipsis;
   }
 
-  /* The battery's shape is its only mark of charging in a tile and a row, so it has the colour of text, not the quiet one. */
-  .battery .word :global(.icon),
-  .mark :global(.icon) {
+  /* The battery's shape is its only mark of charging, so it has the colour of text, not the quiet one. */
+  .battery .word :global(.icon) {
     color: var(--text-secondary);
   }
 
@@ -154,48 +169,28 @@
   }
 
   /*
-   * The list: three slots of one width, so each row has one height and the values stand under the words of the column
-   * head. The memory of a GPU is not in the list: the tile and the device page show it.
+   * The list: one slot of one width for each metric, so each row has one height and the values of one metric make one
+   * column. Each meter keeps its icon and word: the head of the column is not shown below 1100 px.
    */
   .compact {
-    grid-template-columns: repeat(3, var(--usage-slot));
     gap: var(--space-3);
   }
 
-  .compact .word,
-  .compact .vram {
-    display: none;
+  .compact .meter {
+    container-type: inline-size;
   }
 
-  /* The battery is a fourth slot; the list's head has a word for it only when a device in the list has one. */
-  .compact:has(.battery) {
-    grid-template-columns: repeat(4, var(--usage-slot));
-  }
-
-  /* The list has no word over each value: the battery's own shape stands before its value there. */
-  .mark {
-    display: none;
-  }
-
-  /* The hub's memory, "0.8 of 2.0 GiB", takes the slots of the memory and of the disk, which the hub has none of (HMD-072). */
-  .compact.container .memory {
-    grid-column: span 2;
+  /* A slot narrower than its icon and word, below 1100 px, keeps the word: the word tells the values apart. */
+  @container (max-width: 4.25rem) {
+    .compact .word :global(.icon) {
+      display: none;
+    }
   }
 
   /* "310 of 512 MiB" stays on one line, so the row keeps its one height (MOT-007). */
-  .container .memory .value {
-    white-space: nowrap;
-  }
-
+  .container .memory .value,
   .compact .battery .value {
     white-space: nowrap;
-  }
-
-  .compact .mark {
-    display: inline-flex;
-    margin-inline-end: var(--space-1);
-    max-block-size: 1lh;
-    vertical-align: middle;
   }
 
   .degraded {

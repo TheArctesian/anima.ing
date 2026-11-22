@@ -254,7 +254,7 @@ it('DEV-001: the cards are a list, and the table has column headers', async () =
     'Status',
     '24 h',
     'Last 50 checks',
-    'CPUMemoryDisk',
+    'Usage',
     'Connect',
   ]);
   expect(fake.requests.filter((request) => request.operation === 'Devices')).toHaveLength(1);

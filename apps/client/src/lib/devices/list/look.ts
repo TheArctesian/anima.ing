@@ -141,3 +141,18 @@ export function hasLiveUsage(status: Status): boolean {
 
 /** The order of a list that has no groups: by name, every status. */
 export const UNGROUPED: Pick<ListQuery, 'sort' | 'statuses'> = { sort: 'NAME', statuses: [] };
+
+/** A metric of the usage column of the list. */
+export type UsageSlot = 'cpu' | 'memory' | 'disk' | 'vram' | 'battery';
+
+/**
+ * The slots of the usage column, in the order of the meters: CPU, memory and disk always; the memory of a GPU and the
+ * battery only when a device of the list shows one (MET-008, MET-032).
+ */
+export function usageSlots(devices: readonly Pick<CardDevice, 'status' | 'readings' | 'batteries'>[]): readonly UsageSlot[] {
+  const slots: UsageSlot[] = ['cpu', 'memory', 'disk'];
+  const vram = devices.some((device) => hasLiveUsage(device.status) && device.readings?.vramGpu?.hasVram === true && device.readings.vramPercent !== null);
+  if (vram) slots.push('vram');
+  if (devices.some((device) => device.batteries.length > 0)) slots.push('battery');
+  return slots;
+}

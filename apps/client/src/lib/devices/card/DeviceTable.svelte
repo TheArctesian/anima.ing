@@ -21,7 +21,7 @@
   import { batteryBar } from '$lib/metrics/battery/battery';
   import type { LiveCharges } from '$lib/metrics/battery/charges.svelte';
   import type { LiveMemory } from '$lib/metrics/container/memory.svelte';
-  import { hasLiveUsage, listItems, reasonOf, UNGROUPED } from '../list/look';
+  import { hasLiveUsage, listItems, reasonOf, UNGROUPED, usageSlots } from '../list/look';
   import type { ListQuery } from '../query';
   import { HeldOrder } from '../list/held.svelte';
   import StatusBadge from '../status/StatusBadge.svelte';
@@ -42,8 +42,8 @@
   }
 
   const { devices, beats, query = UNGROUPED, onConnect, onOpenWeb, wake, screenSharing, charges, memory }: Props = $props();
-  /** The usage column has a fourth slot, the battery, only when a device of the list has one (MET-032). */
-  const withBattery = $derived(devices.some((device) => device.batteries.length > 0));
+  /** The usage column has a slot for the memory of a GPU and for the battery only when a device of the list has one (MET-008, MET-032). */
+  const slots = $derived(usageSlots(devices));
   const held = new HeldOrder<CardDevice>(
     () => listItems(devices, query),
     () => `${query.sort} ${query.statuses.join(',')}`,
@@ -56,7 +56,7 @@
      under their own group title. A problem has its reason and how long under its status; the usage has one form in each
      row. Below 1100 px each device takes two lines. -->
 <div class="device-list" {@attach held.hold}>
-  <table class="device-rows" class:with-battery={withBattery}>
+  <table class="device-rows" style:--usage-slots={slots.length}>
     <caption class="caption">Devices</caption>
     <thead>
       <tr>
@@ -64,9 +64,7 @@
         <th scope="col" class="c-status">Status</th>
         <th scope="col" class="c-uptime">24 h</th>
         <th scope="col" class="c-beats">Last 50 checks</th>
-        <th scope="col" class="c-detail" aria-label={withBattery ? 'Usage: CPU, memory, disk, battery' : 'Usage: CPU, memory, disk'}
-          ><span class="usage-heads"><span>CPU</span><span>Memory</span><span>Disk</span>{#if withBattery}<span>Battery</span>{/if}</span></th
-        >
+        <th scope="col" class="c-detail">Usage</th>
         <th scope="col" class="c-connect">Connect</th>
       </tr>
     </thead>
@@ -112,7 +110,7 @@
             <td class="c-beats">{#if deviceBeats !== undefined}<HeartbeatBar beats={deviceBeats} />{/if}</td>
             <td class="c-detail">
               {#if hasLiveUsage(device.status)}
-                <Meters readings={device.readings ?? null} source={device.metricsSource} compact
+                <Meters readings={device.readings ?? null} source={device.metricsSource} compact {slots}
                   battery={batteryBar(device.batteries, charges?.of(device.id))}
                   container={isHubDevice(device)}
                   memoryBytes={memory?.of(device.id) ?? null}

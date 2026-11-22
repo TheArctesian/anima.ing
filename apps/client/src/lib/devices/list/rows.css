@@ -54,35 +54,22 @@
   font-size: var(--text-sm);
 }
 
-.device-rows .c-beats {
-  /* The history widens only after the name has room: its head is on one line from about 7rem. */
-  inline-size: clamp(var(--space-16), calc(100cqi - var(--space-16) * 13 - var(--space-2)), calc(var(--space-16) * 2));
+/*
+ * One slot of one width for each metric: CPU, memory, disk, and the memory of a GPU and the battery when a device of
+ * the list has one (MET-008, MET-032). The table sets the number of slots; each slot holds an icon and a word over a value.
+ */
+.device-rows {
+  --usage-slot: calc(var(--space-16) + var(--space-2));
+  --usage-width: calc(var(--usage-slot) * var(--usage-slots, 3) + var(--space-3) * (var(--usage-slots, 3) - 1) + var(--space-4));
 }
 
-/* Three slots of one width for CPU, memory and disk; the words of the head stand over the values of each row. */
 .device-rows .c-detail {
-  --usage-slot: calc(var(--space-16) - var(--space-2));
-
-  inline-size: calc(var(--usage-slot) * 3 + var(--space-3) * 2 + var(--space-4));
+  inline-size: var(--usage-width);
 }
 
-.device-rows .usage-heads {
-  display: grid;
-  grid-template-columns: repeat(3, var(--usage-slot));
-  gap: var(--space-3);
-}
-
-/* A fourth slot for the battery when a device of the list has one (MET-032); the history gives the name the room back. */
-.device-rows.with-battery .c-beats {
-  inline-size: clamp(var(--space-16), calc(100cqi - var(--space-16) * 14 - var(--space-2) - var(--space-3)), calc(var(--space-16) * 2));
-}
-
-.device-rows.with-battery .c-detail {
-  inline-size: calc(var(--usage-slot) * 4 + var(--space-3) * 3 + var(--space-4));
-}
-
-.device-rows.with-battery .usage-heads {
-  grid-template-columns: repeat(4, var(--usage-slot));
+/* The history widens only after the name has room, and gives the name the room that more slots take. */
+.device-rows .c-beats {
+  inline-size: clamp(var(--space-16), calc(100cqi - var(--usage-width) - var(--space-16) * 10), calc(var(--space-16) * 2));
 }
 
 .device-rows .no-usage {
