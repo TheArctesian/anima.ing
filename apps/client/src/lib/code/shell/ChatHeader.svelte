@@ -39,7 +39,7 @@
 -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="head" class:empty={thread === undefined} class:inset {oncontextmenu}>
-  <TopBand clearsWindowControls keepsPanelRoom {end}>
+  <TopBand clearsWindowControls keepsPanelRoom={end === undefined} {end}>
     {#if thread !== undefined}
       <Breadcrumb
         {project}
