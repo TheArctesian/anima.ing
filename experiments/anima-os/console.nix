@@ -1,7 +1,7 @@
 { config, pkgs, lib, workspaceRoot ? ../.., ... }:
 let
   session = import ./session-package.nix { inherit pkgs workspaceRoot; };
-  python = pkgs.python3.withPackages (ps: [ ps.pyside6 ]);
+  python = import ./console-python.nix { inherit pkgs; };
   source = pkgs.runCommand "anima-local-console-source" {} ''
     mkdir -p $out
     cp ${./console}/app.py ${./console}/signin.py ${./console}/*.js ${./console}/*.html ${./console}/*.css $out/
