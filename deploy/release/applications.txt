@@ -98,7 +98,7 @@ ios out crates/anima-local-hub/
 ios out crates/catalogue/
 ios out crates/compose-rules/
 ios out crates/daemon/
-ios out crates/daemon-core/
+ios in crates/daemon-core/
 ios out crates/guac-protocol/
 ios out crates/hub/
 ios out crates/route-proxy/
