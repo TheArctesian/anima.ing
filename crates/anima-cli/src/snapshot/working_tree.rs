@@ -12,7 +12,7 @@ use super::SnapshotError;
 use super::git::{Git, alternates};
 use super::object_paths::tree_entries;
 use super::scratch_ref::is_hash;
-use super::secret_paths::secret_paths;
+use agent_threads::files::secret_paths;
 
 /// The identity a snapshot commit gets only when git has none for the operator.
 const FALLBACK_NAME: &str = "Anima snapshot";

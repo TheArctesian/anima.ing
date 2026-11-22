@@ -8,7 +8,7 @@ use super::git_output::{RemoteScratchRef, rejection, safe, scratch_refs};
 use super::object_paths::changed_paths;
 use super::remote_name;
 use super::scratch_ref::{PREFIX, ScratchRef};
-use super::secret_paths::secret_paths;
+use agent_threads::files::secret_paths;
 
 /// The remote, once it is a name `git remote` lists. A URL or an option is never passed on.
 ///
