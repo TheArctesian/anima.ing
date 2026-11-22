@@ -58,14 +58,17 @@ export class Sheet {
     return wholeChips(this.sel, this.#chips);
   }
 
-  /** Takes a prompt from outside: another draft, or the prompt cleared after a send. Its history starts again. */
-  load(value: string): void {
+  /**
+   * Takes a prompt from outside: another draft, or the prompt cleared after a send. Its history starts again.
+   * `fresh` draws every line anew, where the browser changed the page itself.
+   */
+  load(value: string, fresh = false): void {
     if (value === this.value) return;
     this.value = value;
     this.anchor = value.length;
     this.focus = value.length;
     this.#history = NO_HISTORY;
-    this.show();
+    this.show(fresh);
   }
 
   apply(change: Edit, kind: ChangeKind): void {
@@ -128,10 +131,17 @@ export class Sheet {
     this.#tell();
   }
 
-  /** The browser changed the page itself, as an input method does: the prompt is read back from the page. */
-  absorb(): void {
+  /**
+   * The browser changed the page itself, as an input method does: the prompt is read back from the page. `settle`
+   * draws the page anew even when its text is the same: a composition that was cancelled can leave a line without
+   * its place for the caret.
+   */
+  absorb(settle = false): void {
     const text = read(this.#ports.root);
-    if (text === this.value) return;
+    if (text === this.value) {
+      if (settle) this.show(true);
+      return;
+    }
     this.#history = recorded(this.#history, this.#moment(), 'insert', this.#ports.now());
     const found = selectionIn(this.#ports.root);
     this.value = text;

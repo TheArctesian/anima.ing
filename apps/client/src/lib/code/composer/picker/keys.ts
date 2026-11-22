@@ -5,6 +5,10 @@ export interface KeyPress {
   readonly altKey: boolean;
   readonly ctrlKey: boolean;
   readonly metaKey: boolean;
+  /** An input method composes in the field: the key is its own. */
+  readonly isComposing?: boolean;
+  /** 229 while an input method composes, on engines that do not set `isComposing`. */
+  readonly keyCode?: number;
 }
 
 /** What a key in the search field asks for (03 A.2.5). */
@@ -31,6 +35,11 @@ export interface SearchAt {
 
 function plain(press: KeyPress): boolean {
   return !press.altKey && !press.ctrlKey && !press.metaKey;
+}
+
+/** Whether the key is one of an input method that composes in the search field: acting on it would lose its words. */
+export function composes(press: KeyPress): boolean {
+  return press.isComposing === true || press.keyCode === 229;
 }
 
 /**

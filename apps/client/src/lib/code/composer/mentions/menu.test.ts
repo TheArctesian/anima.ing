@@ -142,7 +142,8 @@ describe('the files of the mention menu', () => {
     await vi.advanceTimersByTimeAsync(FILE_SEARCH_DELAY_MS);
     flushSync();
     expect(rows().map((row) => row.querySelector('.label')?.textContent.trim())).toEqual(['draft.ts']);
-    expect(document.querySelector('[role="status"]')?.textContent).toBe('');
+    // The lit row is said, for a screen reader that does not follow the active row of an editable text box.
+    expect(document.querySelector('[role="status"]')?.textContent).toMatch(/^draft\.ts, .+, 1 of 1$/);
   });
 
   it('says that the search failed', async () => {

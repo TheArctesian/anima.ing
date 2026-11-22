@@ -4444,3 +4444,28 @@ speed with a prompt of many thousand characters.
 
 Result: Open.
 
+### HT-NEW-composerqueue: the queue of the composer of Code (TC4)
+
+Built on the branch `code/composer-finish`. The thread runner keeps no queue, so the composer keeps one in the window:
+a message that is queued while a turn runs goes as the next turn when that turn ends. Its tests run the composer over
+a made-up runner; nobody has tried it with a program that runs.
+
+1. In the desktop application open a chat of Code and send a prompt that takes the program a minute. While it works,
+   type `then say the word done` and press ⌘Enter.
+   Expected: the editor is empty and the message is a dashed bubble over the composer, with "Send now", Edit and Remove.
+2. Wait for the turn to end and touch nothing.
+   Expected: the bubble goes, the message is in the chat as your prompt, and the program answers it. It was sent one time.
+3. Send a long prompt again, queue two messages with ⌘Enter, and press Stop.
+   Expected: the turn stops, both bubbles stay, and a line under them says that you stopped the turn and the queue waits.
+   Nothing is sent.
+4. Press "Send now" on the second bubble.
+   Expected: it goes as a turn; when that turn ends the first bubble goes by itself.
+5. Queue a message while a turn runs, open a different chat before the turn ends, wait a minute, and come back.
+   Expected: the message was not sent to the other chat. It goes to its own chat, at the latest when you open it again.
+6. Queue a message, press Edit on it, change its words while the turn ends, then press Enter.
+   Expected: nothing was sent while the message was open; the changed words go, one time.
+7. Queue a message and close the application.
+   Expected (a known limit, not a fault): the message is gone when you start the application again.
+
+Result: Open.
+

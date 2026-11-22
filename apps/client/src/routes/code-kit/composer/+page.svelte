@@ -48,6 +48,7 @@
   <Section title="Queued messages">
     <div class="lane" data-kit="queue-three"><Card engine={new SceneEngine('running', QUEUE.slice(0, 3))} /></div>
     <div class="lane" data-kit="queue-folded"><Card engine={new SceneEngine('running', QUEUE)} /></div>
+    <div class="lane" data-kit="queue-waits"><Card engine={new SceneEngine('idle', QUEUE.slice(0, 2), null, 'You stopped the turn, so the queue waits. Send a message, or press Send now.')} /></div>
   </Section>
 
   <Section title="Attachments">
@@ -82,9 +83,9 @@
   </Section>
 
   <Section title="What the runner can do today">
-    <div class="lane" data-kit="real-idle"><Composer {row} onSend={never} onInterrupt={never} onStop={never} /></div>
-    <div class="lane" data-kit="real-running"><Composer row={{ ...row, state: 'working' }} onSend={never} onInterrupt={never} onStop={never} /></div>
-    <div class="lane" data-kit="real-ended"><Composer row={{ ...row, state: 'stopped', ended: 'The program was closed.' }} onSend={never} onInterrupt={never} onStop={never} /></div>
+    <div class="lane" data-kit="real-idle"><Composer row={{ ...row, id: 'r-idle' }} onSend={never} onInterrupt={never} onStop={never} /></div>
+    <div class="lane" data-kit="real-running"><Composer row={{ ...row, id: 'r-running', state: 'working' }} onSend={never} onInterrupt={never} onStop={never} /></div>
+    <div class="lane" data-kit="real-ended"><Composer row={{ ...row, id: 'r-ended', state: 'stopped', ended: 'The program was closed.' }} onSend={never} onInterrupt={never} onStop={never} /></div>
     <div class="lane" data-kit="real-read"><Composer row={null} onSend={never} onInterrupt={never} onStop={never} /></div>
   </Section>
 </div>

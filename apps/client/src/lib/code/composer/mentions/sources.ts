@@ -56,6 +56,8 @@ export interface MentionSources {
   readonly threads?: readonly ThreadRef[];
   /** For `@`: the workspace search, at most `limit` paths; an empty query lists the top of the workspace. */
   readonly files: (query: string, limit: number) => Promise<readonly FoundPath[]>;
+  /** Whether the workspace can be searched at all; when it cannot, the `@` list says why and asks nothing. */
+  readonly search?: Can;
 }
 
 /** The source draws all rows in one group with no header; the group says which list a row came from. */

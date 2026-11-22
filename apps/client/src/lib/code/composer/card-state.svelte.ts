@@ -9,6 +9,11 @@ const kept = new Map<string, { readonly prompt: string; readonly attachments: re
 const STILL_READING = 'An attachment is still being read.';
 const FAILED_FILE = 'Remove the attachment that failed, then send.';
 
+/** Frees the addresses of the previews: nothing draws them after the message went or the attachment was removed. */
+function release(attachments: readonly Attachment[]): void {
+  for (const attachment of attachments) if (attachment.preview?.startsWith('blob:') === true) URL.revokeObjectURL(attachment.preview);
+}
+
 /**
  * What one composer holds and does (03 B.7): the prompt, what is attached, the send that is on its way, the stop
  * that was asked for and the queued message that is open for a change. It calls the engine and nothing else.
@@ -94,7 +99,12 @@ export class CardState {
     this.#endEdit();
     this.#fill(editing === null ? null : aside);
     const went = await this.#run(() => (face.action === 'update' && editing !== null ? engine.requeue(editing, message) : face.action === 'queue' ? engine.enqueue(message) : engine.send(message)));
-    if (went) return;
+    if (went) {
+      // The change is saved: the queue may send the message again. A message that went needs its previews no more.
+      if (editing !== null) engine.opened?.(null);
+      else if (face.action !== 'queue') release(message.attachments);
+      return;
+    }
     const typed = this.prompt === (editing === null ? '' : (aside?.prompt ?? '')) ? '' : this.prompt;
     this.#fill({ prompt: typed === '' ? message.prompt : `${message.prompt}\n${typed}`, attachments: message.attachments });
     if (editing === null) return;
@@ -129,12 +139,14 @@ export class CardState {
     if (this.editing === null) return;
     if (this.#aside !== null && (this.#aside.prompt !== '' || this.#aside.attachments.length > 0)) this.#fill(this.#aside);
     this.#endEdit();
+    this.#engine().opened?.(null);
     this.keep();
   }
 
-  /** The composer goes away: no timer of it fires after. */
+  /** The composer goes away: no timer of it fires after, and no queued message stays held as open. */
   dispose(): void {
     clearTimeout(this.#timer);
+    if (this.editing !== null) this.#engine().opened?.(null);
   }
 
   add(files: readonly File[]): void {
@@ -149,8 +161,7 @@ export class CardState {
   }
 
   remove(id: string): void {
-    const gone = this.attachments.find((attachment) => attachment.id === id);
-    if (gone?.preview?.startsWith('blob:') === true) URL.revokeObjectURL(gone.preview);
+    release(this.attachments.filter((attachment) => attachment.id === id));
     this.attachments = this.attachments.filter((attachment) => attachment.id !== id);
   }
 
@@ -160,6 +171,7 @@ export class CardState {
     if (message === undefined) return;
     if (this.editing === null) this.#aside = { prompt: this.prompt, attachments: this.attachments };
     this.editing = id;
+    this.#engine().opened?.(id);
     this.prompt = message.prompt;
     this.attachments = [];
   }
@@ -168,6 +180,7 @@ export class CardState {
     if (this.editing === null) return;
     this.#fill(this.#aside);
     this.#endEdit();
+    this.#engine().opened?.(null);
   }
 
   /** "Send now" and "Remove" of a queued message. */

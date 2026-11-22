@@ -6,6 +6,7 @@ import { CAN, cannot, type Can } from './draft';
 import { builtInCommands } from './mentions/lists/commands';
 import type { MentionSources } from './mentions/sources';
 import { PERMISSION_MODES, type Catalogue, type Choice, type PermissionMode } from './picker/catalogue';
+import type { HeldQueue, QueuePhase } from './queue/held.svelte';
 import type { Queued } from './queue/queue';
 
 /** How a call to the engine ended; the words of a failure go under the editor. */
@@ -38,6 +39,10 @@ export interface ComposerEngine {
   /** A message that waits for the turn to end. */
   readonly queue: Can;
   readonly queued: readonly Queued[];
+  /** Why the queue sends nothing on its own, when it does not: after a stop, or a message that did not go. */
+  readonly queueWaits?: string | null;
+  /** Tells which queued message is open in the composer (null: none), so that it is not sent while it is changed. */
+  readonly opened?: (id: string | null) => void;
   readonly enqueue: (message: Message) => Promise<Outcome>;
   readonly requeue: (id: string, message: Message) => Promise<Outcome>;
   readonly unqueue: (id: string) => Promise<Outcome>;
@@ -60,7 +65,8 @@ export interface RunCalls {
 
 const NO_ATTACH = 'The runner takes no attachments yet.';
 const NO_DICTATE = 'Voice input is not built yet.';
-const NO_QUEUE = 'The runner keeps no queue yet: a message goes into the running turn.';
+const STOPPED = 'You stopped the turn, so the queue waits. Send a message, or press Send now.';
+const NO_SEARCH = 'The runner cannot search the folder of a chat yet.';
 const NO_PICK = 'The model and the permissions are set when a chat starts; the runner cannot change them after.';
 const NO_COMMAND = 'The runner has no such command yet.';
 
@@ -78,9 +84,8 @@ const SOURCES: MentionSources = {
   commands: builtInCommands({ model: cannot(NO_PICK), clear: cannot(NO_COMMAND) }),
   skills: [],
   files: () => Promise.resolve([]),
+  search: cannot(NO_SEARCH),
 };
-
-const refused = (words: string) => (): Promise<Outcome> => Promise.resolve({ ok: false, words });
 
 /** The one model a driven chat has, as a catalogue: what the picker's trigger shows. */
 function catalogueOf(row: RunRow): { catalogue: Catalogue; choice: Choice } {
@@ -95,27 +100,56 @@ function catalogueOf(row: RunRow): { catalogue: Catalogue; choice: Choice } {
   };
 }
 
-/**
- * The engine of a chat that the runner of this computer drives (TH14). It sends, steers and interrupts; it has no
- * attachments, no queue, no change of the model after the start, no search of the workspace and no dictation.
- */
-export function runEngine(row: RunRow, calls: RunCalls): ComposerEngine {
-  const working = row.state === 'working' || row.state === 'starting' || row.state === 'needs_you';
-  const gone = row.state === 'stopped';
+/** The phase of a chat by the state of its run: a program that waits for an answer is still in its turn. */
+export function phaseOf(row: RunRow): QueuePhase {
+  if (row.state === 'stopped') return 'ended';
+  return row.state === 'working' || row.state === 'starting' || row.state === 'needs_you' ? 'running' : 'idle';
+}
+
+/** The queue calls of the engine, over the queue that this window holds for the chat. */
+function queueOf(queue: HeldQueue, running: boolean, send: (prompt: string) => Promise<Outcome>): Pick<ComposerEngine, 'queue' | 'queued' | 'queueWaits' | 'opened' | 'enqueue' | 'requeue' | 'unqueue' | 'sendQueued'> {
   return {
-    phase: gone ? 'ended' : working ? 'running' : 'idle',
-    ended: gone ? (row.ended ?? 'The program of this chat ended.') : null,
-    send: async (message) => outcomeOf(await calls.onSend(message.prompt)),
-    interrupt: async () => outcomeOf(await calls.onInterrupt()),
+    queue: CAN,
+    queued: queue.messages,
+    queueWaits: queue.waits,
+    opened: (id) => {
+      queue.opened(id);
+    },
+    // The turn can end between the press and this call: what would wait for nothing goes now.
+    enqueue: (message) => (running ? Promise.resolve(queue.add(message.prompt)) : send(message.prompt)),
+    requeue: (id, message) => Promise.resolve(queue.change(id, message.prompt)),
+    unqueue: (id) => Promise.resolve(queue.remove(id)),
+    sendQueued: (id) => queue.sendNow(id, send),
+  };
+}
+
+/**
+ * The engine of a chat that the runner of this computer drives (TH14). It sends, steers and interrupts, and it
+ * queues in this window (the runner keeps no queue). It has no attachments, no change of the model after the
+ * start, no search of the workspace and no dictation.
+ *
+ * The queue is given, not looked up here: state that is made inside the computation that reads it is not followed.
+ */
+export function runEngine(row: RunRow, calls: RunCalls, queue: HeldQueue): ComposerEngine {
+  const phase = phaseOf(row);
+  const send = async (prompt: string): Promise<Outcome> => outcomeOf(await calls.onSend(prompt));
+  return {
+    phase,
+    ended: phase === 'ended' ? (row.ended ?? 'The program of this chat ended.') : null,
+    send: (message) => {
+      queue.release();
+      return send(message.prompt);
+    },
+    interrupt: async () => {
+      queue.hold(STOPPED);
+      const outcome = outcomeOf(await calls.onInterrupt());
+      if (!outcome.ok && queue.waits === STOPPED) queue.release();
+      return outcome;
+    },
     attach: cannot(NO_ATTACH),
     dictate: cannot(NO_DICTATE),
     steer: CAN,
-    queue: cannot(NO_QUEUE),
-    queued: [],
-    enqueue: refused(NO_QUEUE),
-    requeue: refused(NO_QUEUE),
-    unqueue: refused(NO_QUEUE),
-    sendQueued: refused(NO_QUEUE),
+    ...queueOf(queue, phase === 'running', send),
     pick: cannot(NO_PICK),
     ...catalogueOf(row),
     choose: () => undefined,

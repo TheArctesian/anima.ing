@@ -202,3 +202,29 @@ describe('the card while a message goes, and when things go wrong', () => {
     expect(card.face).toMatchObject({ disabled: true, tip: 'The turn cannot be steered now.' });
   });
 });
+
+describe('what the card tells the engine of the queued message that is open', () => {
+  it('names it when it is opened, and lets go only after the change is saved, cancelled or gone', async () => {
+    const opened: (string | null)[] = [];
+    const { engine, calls, answer } = engineOf({ opened: (id) => opened.push(id) });
+    const card = new CardState(() => engine, undefined, '⌘');
+    card.edit('q1');
+    expect(opened).toEqual(['q1']);
+    answer.next = { ok: false, words: 'That message is no longer queued.' };
+    await card.submit(false);
+    // The save failed: the message stays open, so the queue must not send the old words.
+    expect(opened).toEqual(['q1']);
+    expect(card.editing).toBe('q1');
+    answer.next = { ok: true };
+    await card.submit(false);
+    expect(calls.at(-1)).toBe('requeue q1 Then run the gates');
+    expect(opened).toEqual(['q1', null]);
+    card.edit('q1');
+    card.cancelEdit();
+    card.edit('q1');
+    card.orphaned();
+    card.edit('q1');
+    card.dispose();
+    expect(opened).toEqual(['q1', null, 'q1', null, 'q1', null, 'q1', null]);
+  });
+});

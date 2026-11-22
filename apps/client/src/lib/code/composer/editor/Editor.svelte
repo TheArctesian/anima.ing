@@ -8,9 +8,9 @@
   import type { CaretAt, ChipReader } from '../draft';
   import { edit, type Mode } from './edit';
   import './editor.css';
-  import { chordAction } from './keys/chords';
+  import { chordAction, leavesAfter } from './keys/chords';
   import { ticked } from './lists/tasks';
-  import { pasteIsLong, typedAction } from './typing';
+  import { backspaced, pasteIsLong, typedAction } from './typing';
   import { offsetUnder } from './view/caret';
   import { Sheet } from './view/sheet';
 
@@ -40,6 +40,7 @@
   }
 
   let { value = $bindable(), placeholder, label, disabled = false, mode = 'rich', chips, onCaret, onKey, onFiles, onLongPaste, controls, activeDescendant }: Props = $props();
+  const id = $props.id();
   let root: HTMLDivElement;
   let sheet: Sheet | undefined;
   /** An input method is composing: the browser owns the page until it ends (03, The editor: Keyboard behaviour). */
@@ -48,6 +49,8 @@
   let pressing = false;
   /** The editor is giving itself focus and will place the caret itself. */
   let placing = false;
+  /** Escape was pressed where Tab is the editor's: the next Tab is the browser's, and moves focus (see `leavesAfter`). */
+  let leaving = false;
 
   function icon(target: HTMLElement, name: CodeIconName): () => void {
     const drawn = mount(CodeIcon, { target, props: { name } });
@@ -69,7 +72,11 @@
   });
 
   // A prompt from outside is taken; a new mode or a new chip reader draws the prompt again (the sheet asks for both).
-  $effect(() => { sheet?.load(value); });
+  // Not while an input method composes: a drawing would end its composition. The end of the composition takes it.
+  $effect(() => {
+    const next = value;
+    if (!composing) sheet?.load(next);
+  });
   // Not while an input method composes or a pointer selects: the browser owns the selection then, and a drawing would
   // move it. The next change of the selection draws.
   $effect(() => {
@@ -107,13 +114,19 @@
     // A key of an input method does nothing here; 229 is the Enter that ends a composition in WebKit.
     if (sheet === undefined || disabled || composing || event.isComposing || event.keyCode === 229) return;
     sheet.heed();
+    const armed = leaving;
+    leaving = false;
+    // An Escape that the composer took closed a menu: it does not arm the Tab.
     if (onKey?.(event) === true) {
       event.preventDefault();
       return;
     }
     if (event.defaultPrevented) return;
     const { key, shiftKey, altKey, ctrlKey, metaKey } = event;
-    const action = chordAction({ key, shiftKey, altKey, ctrlKey, metaKey, mac: isMac(navigator.userAgent) }, sheet.desk);
+    leaving = leavesAfter(armed, key, sheet.desk);
+    if (armed && key === 'Tab') return;
+    const chord = { key, shiftKey, altKey, ctrlKey, metaKey, mac: isMac(navigator.userAgent) };
+    const action = chordAction(chord, sheet.desk) ?? backspaced(chord, sheet.desk);
     if (action === null) return;
     event.preventDefault();
     sheet.act(action);
@@ -139,9 +152,17 @@
     if (!composing && !(event instanceof InputEvent && event.isComposing)) sheet?.absorb();
   }
 
-  function onCompositionEnd(): void {
+  function onCompositionEnd(event: CompositionEvent): void {
     composing = false;
-    sheet?.absorb();
+    if (sheet === undefined) return;
+    if (value === sheet.value) {
+      sheet.absorb(true);
+      return;
+    }
+    // A prompt came from outside while the method composed, as when a sent message empties the editor: the prompt
+    // is taken, and the composed words, which the page alone holds, go after it.
+    sheet.load(value, true);
+    if (event.data !== '') sheet.apply(edit(sheet.value.length, sheet.value.length, event.data), 'insert');
   }
 
   function put(text: string): void {
@@ -232,6 +253,7 @@
     tabindex="0"
     aria-multiline="true"
     aria-label={label}
+    aria-describedby="{id}-keys"
     aria-placeholder={placeholder}
     aria-readonly={disabled ? 'true' : undefined}
     contenteditable={!disabled}
@@ -247,7 +269,7 @@
     oncut={onCopy}
     ondrop={onDrop}
     ondragstart={(event) => { event.preventDefault(); }}
-    onpointerdown={(event) => { if (event.button === 0) pressing = true; }}
+    onpointerdown={(event) => { leaving = false; if (event.button === 0) pressing = true; }}
     oncontextmenu={() => { pressing = false; }}
     aria-autocomplete={controls === undefined ? undefined : 'list'}
     aria-controls={controls}
@@ -255,8 +277,10 @@
     onmousedown={onMouseDown}
     onclick={onClick}
     onfocus={() => { if (!placing && !pressing) sheet?.follow(true); }}
-    onblur={() => { pressing = false; sheet?.follow(true); }}
+    onblur={() => { pressing = false; leaving = false; sheet?.follow(true); }}
   ></div>
+  <!-- Not drawn: how the keyboard leaves the editor from where Tab indents, for assistive technology. -->
+  <span class="code-editor-keys" id="{id}-keys">In a list or a code block Tab indents. Press Escape, then Tab, to leave the editor.</span>
   {#if value === '' && !composing}
     <div class="code-editor-placeholder" aria-hidden="true">{placeholder}</div>
   {/if}

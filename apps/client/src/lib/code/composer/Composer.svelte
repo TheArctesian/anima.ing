@@ -3,7 +3,9 @@
   import type { RunRow } from '$lib/agent-threads/live/run';
   import Card from './Card.svelte';
   import ReadOnlyBar from './ReadOnlyBar.svelte';
-  import { runEngine } from './engine';
+  import { untrack } from 'svelte';
+  import { phaseOf, runEngine } from './engine';
+  import { heldQueue, NOT_WATCHED, type Went } from './queue/held.svelte';
   import './composer.css';
 
   interface Props {
@@ -22,7 +24,31 @@
    * gives it the lane and pins it to the foot.
    */
   const { row, onSend, onInterrupt, draft }: Props = $props();
-  const engine = $derived(row === null ? null : runEngine(row, { onSend, onInterrupt }));
+  const chat = $derived(row?.id);
+  // Looked up apart from the engine: the engine must follow the queue's messages, and state is not followed by the
+  // computation that made it.
+  const queue = $derived(chat === undefined ? null : heldQueue(chat));
+  const engine = $derived(row === null || queue === null ? null : runEngine(row, { onSend, onInterrupt }, queue));
+  // A run whose state is not known says nothing of its turn: the queue is told only of states that are.
+  const phase = $derived(row === null || row.state === 'unknown' ? null : phaseOf(row));
+
+  // The queue of the chat is told of each turn's end while this composer shows the chat, and sends through it.
+  $effect(() => {
+    if (chat === undefined || phase === null || queue === null) return;
+    const watched = queue;
+    // The page gives one `onSend` for whichever chat is open: a message of this queue never goes to a different chat.
+    const send = async (prompt: string): Promise<Went> => {
+      if (row?.id !== chat) return NOT_WATCHED;
+      const result = await onSend(prompt);
+      return result.ok ? { ok: true } : { ok: false, words: result.words };
+    };
+    untrack(() => {
+      watched.attend(phase, send);
+    });
+    return () => {
+      watched.leave();
+    };
+  });
 </script>
 
 {#if engine === null}

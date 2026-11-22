@@ -10,6 +10,8 @@
     editing: string | null;
     running: boolean;
     busy: boolean;
+    /** Why the queue sends nothing on its own, when it does not. */
+    waits?: string | null;
     body?: Snippet<[string]>;
     /** Every message is shown; "Edit" by the keyboard opens the fold (03 3.5). */
     all?: boolean;
@@ -23,7 +25,7 @@
    * The queue (03 3.1 and 3.2): dashed bubbles on the right, above the composer and with no heading. More than
    * three fold to the first two and a line that shows the rest.
    */
-  let { queue, editing, running, busy, body, all = $bindable(false), onSendNow, onEdit, onRemove, onCancel }: Props = $props();
+  let { queue, editing, running, busy, waits = null, body, all = $bindable(false), onSendNow, onEdit, onRemove, onCancel }: Props = $props();
   const id = $props.id();
   // The message that is open in the composer is never folded away: its Cancel is on its row.
   const rows = $derived(shown(queue, all || editing !== null));
@@ -70,6 +72,7 @@
         <span class="turn" class:up={all}><CodeIcon name="chevron-down" /></span>
       </button>
     {/if}
+    {#if waits !== null}<p class="waits" role="status">{waits}</p>{/if}
   </section>
 {/if}
 
@@ -120,6 +123,15 @@
 
   .fold:focus-visible {
     outline: var(--border-focus) solid var(--focus-ring);
+  }
+
+  .waits {
+    align-self: flex-end;
+    max-inline-size: 80%;
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--code-text-meta);
+    text-align: end;
   }
 
   .turn {
