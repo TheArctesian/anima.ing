@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { onDestroy, untrack } from 'svelte';
+  import { onDestroy, tick, untrack } from 'svelte';
   import { isMac } from '$lib/platform/mac';
   import AttachButton from './attachments/AttachButton.svelte';
   import Attachments from './attachments/Attachments.svelte';
   import Preview from './attachments/Preview.svelte';
+  import { LIMITS, pasteDecision } from './attachments/attach';
   import { dropZone } from './attachments/drop';
   import { CardState } from './card-state.svelte';
   import type { CaretAt } from './draft';
@@ -53,6 +54,7 @@
   let menu = $state<MentionMenu>();
   let activeOption = $state<string>();
   let surface = $state<HTMLElement>();
+  let root = $state<HTMLElement>();
   let over = $state(false);
   let watch = $state(NO_TRIGGER);
   let caret = $state<DOMRect | null>(null);
@@ -110,6 +112,30 @@
     return true;
   }
 
+  /** A long paste (03 "Paste decision"): a text file where the engine takes files, else in the text while it fits. */
+  function longPaste(text: string): void {
+    const end = card.prompt.length;
+    const room = engine.attach.can && card.attachments.length < LIMITS.count;
+    const names = card.attachments.map((attachment) => attachment.name);
+    const decision = pasteDecision({ files: [], folders: 0, plainText: text, asText: false, chips: false }, { promptLength: end, selection: { start: end, end }, names, room });
+    if (decision.act === 'fold') card.add([new File([text], decision.name, { type: decision.mime })]);
+    else if (decision.act === 'refuse') card.problem = `${decision.title}. ${decision.description}`;
+    else editor?.insert(text);
+  }
+
+  /**
+   * A control that goes away when it is pressed (Send, Stop, Remove): if the focus was in the composer and is nowhere
+   * after, it goes to the editor. A press by a pointer never had the focus, so no keyboard comes up on a phone.
+   */
+  function pressed(act: () => unknown): void {
+    const inside = root?.contains(document.activeElement) === true;
+    void act();
+    if (!inside) return;
+    void tick().then(() => {
+      if (document.activeElement === null || document.activeElement === document.body) editor?.focus();
+    });
+  }
+
   function held(event: KeyboardEvent): void {
     card.alternate = event.metaKey || event.ctrlKey;
   }
@@ -117,19 +143,20 @@
 
 <svelte:window onkeydown={held} onkeyup={held} onblur={() => (card.alternate = false)} />
 
-<div class="composer">
+<div class="composer" bind:this={root}>
   <QueuedMessages
     queue={engine.queued}
+    waits={engine.queueWaits ?? null}
     editing={card.editing}
     running={card.running}
     busy={card.busy}
     bind:all={allQueued}
-    onSendNow={(id) => void card.queued(id, 'send')}
+    onSendNow={(id) => pressed(() => card.queued(id, 'send'))}
     onEdit={(id) => {
       card.edit(id);
       editor?.focus();
     }}
-    onRemove={(id) => void card.queued(id, 'remove')}
+    onRemove={(id) => pressed(() => card.queued(id, 'remove'))}
     onCancel={() => {
       card.cancelEdit();
       editor?.focus();
@@ -157,7 +184,10 @@
     }}
   >
     <div class="body">
-      <Attachments attachments={card.attachments} onRemove={(id) => card.remove(id)} onOpen={(id) => (previewed = id)} />
+      <Attachments
+        attachments={card.attachments}
+        onRemove={(id) => pressed(() => card.remove(id))}
+        onOpen={(id) => (previewed = id)} />
       <Editor
         bind:this={editor}
         bind:value={card.prompt}
@@ -175,7 +205,7 @@
           else card.problem = engine.attach.reason;
           return engine.attach.can;
         }}
-        onLongPaste={() => (card.problem = 'Pasted text is too large for this message. Paste a shorter part, or attach it as a file.')}
+        onLongPaste={longPaste}
       />
     </div>
     {#if card.problem !== null}<p class="problem" role="alert">{card.problem}</p>{/if}
@@ -184,8 +214,8 @@
       <div class="actions">
         <ModelPicker catalogue={engine.catalogue} value={engine.choice} onChange={engine.choose} can={engine.pick} align="end" bind:open={picking} />
         <MicButton can={engine.dictate} onStart={() => undefined} />
-        {#if showsSend(card.turn)}<SendButton face={card.face} onPress={(alternate) => void card.submit(alternate)} />{/if}
-        {#if showsStop(card.turn, card.stop)}<StopButton pending={card.stop === 'pending'} onStop={() => void card.interrupt()} />{/if}
+        {#if showsSend(card.turn)}<SendButton face={card.face} onPress={(alternate) => pressed(() => card.submit(alternate))} />{/if}
+        {#if showsStop(card.turn, card.stop)}<StopButton pending={card.stop === 'pending'} onStop={() => pressed(() => card.interrupt())} />{/if}
       </div>
     </div>
   </form>

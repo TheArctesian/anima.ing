@@ -24,12 +24,13 @@
   function label(attachment: Attachment): string {
     if (attachment.state.state === 'failed') return `${attachment.name}: ${attachment.state.words}`;
     if (attachment.state.state === 'reading') return `${attachment.name}, still being read`;
-    return `${attachment.kind === 'video' ? 'Play' : 'Preview'} ${attachment.name}`;
+    // Only a picture has a preview: a video's tile names it and opens nothing.
+    return attachment.kind === 'video' ? attachment.name : `Preview ${attachment.name}`;
   }
 </script>
 
 {#snippet tile(attachment: Attachment)}
-  {@const ready = attachment.state.state === 'ready'}
+  {@const ready = attachment.state.state === 'ready' && attachment.kind === 'image'}
   <div class="tile">
     <!-- Not `disabled` while it cannot open: it stays a Tab stop, so its state can be read. -->
     <button

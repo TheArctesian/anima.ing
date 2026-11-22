@@ -28,17 +28,15 @@
 
   function onkeydown(event: KeyboardEvent): void {
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-    if (event.key === 'ArrowRight') {
-      event.preventDefault();
-      onSearch();
-      return;
-    }
-    if (event.key === 'ArrowLeft') return;
     const all = buttons();
-    const next = nextIndex(event.key, all.indexOf(document.activeElement as HTMLButtonElement), all.length, true);
-    if (next === null) return;
+    const sideways = event.key === 'ArrowRight' || event.key === 'ArrowLeft';
+    const next = sideways ? null : nextIndex(event.key, all.indexOf(document.activeElement as HTMLButtonElement), all.length, true);
+    if (!sideways && next === null) return;
+    // Each arrow is the rail's, Left too, which has nowhere to go: none reaches the keys of the page under the popup.
     event.preventDefault();
-    all[next]?.focus();
+    event.stopPropagation();
+    if (event.key === 'ArrowRight') onSearch();
+    else if (next !== null) all[next]?.focus();
   }
 </script>
 

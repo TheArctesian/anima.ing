@@ -4480,7 +4480,9 @@ Result: Open; deferred to the final step by the operator. No production release 
 
 Built on the branch `code/stage-4-composer`: `apps/client/src/lib/code/composer/`, shown on the page `/code-kit/composer`
 of a development build. The editor is our own, over the Markdown of the prompt. Its tests run in jsdom, and its pictures
-are taken in WebKit with typed keys only. Not covered: an input method (Japanese, Chinese), the dictation of macOS, a
+are taken in WebKit with typed keys only. The branch `code/composer-finish` adds tests in WebKit that send the events of
+an input method; no real input method was used. Not covered: a real input method (Japanese, Chinese, Korean, dead keys,
+the accent menu of a held key), the dictation of macOS, a
 paste from a different application, a drop of a file from the Finder into the window of the desktop application, and the
 speed with a prompt of many thousand characters.
 
@@ -4500,6 +4502,33 @@ speed with a prompt of many thousand characters.
    Expected: the list hangs over the card, and the choice is one chip with a space after it.
 8. Drag a picture from the Finder over the first card and drop it.
    Expected: the card takes the accent line while the picture is over it, and the picture is a tile over the editor.
+9. Start a line with "- ", press Tab, then press Escape and Tab.
+   Expected: the first Tab nests the list line; after Escape the next Tab moves the focus out of the editor.
+
+Result: Open.
+
+### HT-137: the queue of the composer of Code (TC4)
+
+Built on the branch `code/composer-finish`. The thread runner keeps no queue, so the composer keeps one in the window:
+a message that is queued while a turn runs goes as the next turn when that turn ends. Its tests run the composer over
+a made-up runner; nobody has tried it with a program that runs.
+
+1. In the desktop application open a chat of Code and send a prompt that takes the program a minute. While it works,
+   type `then say the word done` and press ⌘Enter.
+   Expected: the editor is empty and the message is a dashed bubble over the composer, with "Send now", Edit and Remove.
+2. Wait for the turn to end and touch nothing.
+   Expected: the bubble goes, the message is in the chat as your prompt, and the program answers it. It was sent one time.
+3. Send a long prompt again, queue two messages with ⌘Enter, and press Stop.
+   Expected: the turn stops, both bubbles stay, and a line under them says that you stopped the turn and the queue waits.
+   Nothing is sent.
+4. Press "Send now" on the second bubble.
+   Expected: it goes as a turn; when that turn ends the first bubble goes by itself.
+5. Queue a message while a turn runs, open a different chat before the turn ends, wait a minute, and come back.
+   Expected: the message was not sent to the other chat. It goes to its own chat, at the latest when you open it again.
+6. Queue a message, press Edit on it, change its words while the turn ends, then press Enter.
+   Expected: nothing was sent while the message was open; the changed words go, one time.
+7. Queue a message and close the application.
+   Expected (a known limit, not a fault): the message is gone when you start the application again.
 
 Result: Open.
 

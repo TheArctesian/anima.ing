@@ -13,13 +13,17 @@
    * used stays in the tab order with `aria-disabled`, so that its tip can say why.
    */
   const { can, onStart }: Props = $props();
+  const why = $props.id();
 </script>
 
+<!-- The reason on the control itself: a tip describes its wrapper, and only while it shows. -->
+<span id={why} hidden>{can.can ? '' : can.reason}</span>
 <Tooltip text={can.can ? 'Start voice input' : can.reason}>
   <button
     type="button"
     aria-label="Start voice input"
     aria-disabled={!can.can}
+    aria-describedby={can.can ? undefined : why}
     onpointerdown={(event) => {
       event.preventDefault();
     }}

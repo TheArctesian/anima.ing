@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Mode } from '../edit';
 import { after, marked } from '../edit.fixture';
-import { chordAction, type Chord } from './chords';
+import { chordAction, leavesAfter, type Chord } from './chords';
 
 const BARE = { shiftKey: false, altKey: false, ctrlKey: false, metaKey: false, mac: true };
 
@@ -81,5 +81,33 @@ describe('the Mod keys', () => {
     expect(press('a|', { key: 'Z', metaKey: true, shiftKey: true })).toBe('redo');
     expect(press('a|', { key: 'y', ctrlKey: true, mac: false })).toBe('redo');
     expect(press('a|', { key: 'y', metaKey: true })).toBeNull();
+  });
+});
+
+describe('Escape, then Tab, out of the editor', () => {
+  const at = (text: string, mode: Mode = 'rich') => ({ ...marked(text), mode });
+  const CODE = at('```\na|\n```');
+
+  it('arms the next Tab after Escape where Tab is the editor\'s: in a code block and on a list line', () => {
+    expect(leavesAfter(false, 'Escape', CODE)).toBe(true);
+    expect(leavesAfter(false, 'Escape', at('```\n[a\nb]\n```'))).toBe(true);
+    expect(leavesAfter(false, 'Escape', at('- a|'))).toBe(true);
+    expect(leavesAfter(false, 'Escape', at('- a\n  1. b|'))).toBe(true);
+  });
+
+  it('does not arm it where Tab moves focus already', () => {
+    expect(leavesAfter(false, 'Escape', at('```\na\n```\nb|'))).toBe(false);
+    expect(leavesAfter(false, 'Escape', at('# Title|'))).toBe(false);
+    expect(leavesAfter(false, 'Escape', at('- a|', 'literal'))).toBe(false);
+    expect(leavesAfter(false, 'Escape', at('```\na|\n```', 'literal'))).toBe(false);
+  });
+
+  it('keeps it while only a modifier goes down, so Shift+Tab leaves too', () => {
+    expect(['Shift', 'Control', 'Alt', 'Meta'].map((key) => leavesAfter(true, key, CODE))).toEqual([true, true, true, true]);
+    expect(leavesAfter(false, 'Shift', CODE)).toBe(false);
+  });
+
+  it('ends it at each other key, the Tab that leaves too', () => {
+    expect(['Tab', 'a', 'ArrowDown', 'Enter', 'Backspace'].map((key) => leavesAfter(true, key, CODE))).toEqual([false, false, false, false, false]);
   });
 });

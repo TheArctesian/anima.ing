@@ -53,3 +53,17 @@ export function chordAction(chord: Chord, page: Page): Action {
   const change = tabbed(page.value, page.sel, page.mode, chord.shiftKey);
   return change === null ? null : { edit: change, kind: 'other' };
 }
+
+const HELD: readonly string[] = ['Shift', 'Control', 'Alt', 'Meta'];
+
+/**
+ * Whether the next Tab is left to the browser, which moves focus with it: so after Escape where Tab or Shift+Tab
+ * is the editor's, as in a code block and on a list line, and a keyboard could not leave the editor (WCAG 2.1.2).
+ * `armed` is the answer the key before gave. A modifier alone keeps it, so Shift+Tab leaves too; each other key
+ * ends it.
+ */
+export function leavesAfter(armed: boolean, key: string, page: Page): boolean {
+  if (HELD.includes(key)) return armed;
+  if (key !== 'Escape') return false;
+  return tabbed(page.value, page.sel, page.mode, false) !== null || tabbed(page.value, page.sel, page.mode, true) !== null;
+}
