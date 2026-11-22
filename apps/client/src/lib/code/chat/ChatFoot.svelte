@@ -35,7 +35,6 @@
     onSend={(text) => live?.call({ call: 'send', thread: id, text }) ?? Promise.resolve(NO_RUNNER)}
     onInterrupt={() => live?.call({ call: 'interrupt', thread: id }) ?? Promise.resolve(NO_RUNNER)}
     onStop={() => live?.call({ call: 'stop', thread: id }) ?? Promise.resolve(NO_RUNNER)}
-    onQueue={(act) => live?.call({ ...act, thread: id }) ?? Promise.resolve(NO_RUNNER)}
   />
 </div></div>
 
