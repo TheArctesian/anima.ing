@@ -274,3 +274,20 @@ fn th109_a_queued_prompt_that_went_by_itself_and_was_refused_waits_and_the_queue
         .expect("sent");
     assert_eq!(prompts(&line(&mut thread, DONE)), ["next"]);
 }
+
+#[test]
+fn th109_a_prompt_of_the_person_that_was_refused_lets_the_queue_go_on() {
+    let mut thread = held_claude();
+    line(&mut thread, DONE);
+    line(&mut thread, IDLE);
+    thread
+        .send(&agent_threads::drive::Prompt::plain("mine"), true)
+        .expect("sent");
+    assert_eq!(
+        prompts(&queue(&mut thread, 1, "next")),
+        NONE,
+        "it waits for mine"
+    );
+    thread.not_sent(true);
+    assert_eq!(prompts(&thread.next_queued()), ["next"]);
+}

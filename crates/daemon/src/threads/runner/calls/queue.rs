@@ -1,10 +1,12 @@
 //! The calls of the queue of a thread (TH109): only the person makes them, as the queue is the
 //! composer of the person. A queued prompt is never written to the log or the record.
 
-use agent_threads::control::{Action, Outcome, Queued, Refusal};
+use agent_threads::control::{Action, Change, Outcome, Queued, Refusal};
+use agent_threads::drive::DriveEvent;
 use uuid::Uuid;
 
 use super::super::log::Kind;
+use super::super::thread::Step;
 use super::super::{Caller, Runner, Waits};
 use super::send::{Sender, SentPrompt};
 
@@ -99,15 +101,15 @@ impl Runner {
         else {
             return;
         };
-        let _ = self.apply(id, vec![step]).await;
+        let notice = Step::Change(Change::Said {
+            event: DriveEvent::Notice {
+                text: "A prompt of the queue did not reach the program: it waits first in the queue, and the queue goes on when you send.".to_owned(),
+            },
+        });
+        let _ = self.apply(id, vec![step, notice]).await;
     }
 
-    async fn queue_steps(
-        &mut self,
-        id: Uuid,
-        steps: Vec<super::Step>,
-        word: &'static str,
-    ) -> Outcome {
+    async fn queue_steps(&mut self, id: Uuid, steps: Vec<Step>, word: &'static str) -> Outcome {
         self.note(Kind::Prompt, Some(id), word);
         if self.apply(id, steps).await.is_err() {
             return refused(Refusal::Holder);

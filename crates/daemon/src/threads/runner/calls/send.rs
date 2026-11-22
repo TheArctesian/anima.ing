@@ -169,9 +169,17 @@ impl Runner {
         let result = self.sent(thread, &prompt.shown, outcome).await;
         self.files_went(thread, &prompt.files, &result);
         if matches!(result, Outcome::Refused { .. }) {
-            if let Some(waiting) = self.threads.get_mut(&thread) {
+            // A prompt that did not go leaves no turn to wait for: the queue may go on, but not
+            // with the refused prompt of the queue itself, which waits for the person.
+            let next = self.threads.get_mut(&thread).map(|waiting| {
                 waiting.not_sent(prompt.counted);
-            }
+                if prompt.queued.is_none() {
+                    waiting.next_queued()
+                } else {
+                    Vec::new()
+                }
+            });
+            let _ = self.apply(thread, next.unwrap_or_default()).await;
             if let Some(queued) = prompt.queued {
                 self.queued_back(thread, queued, prompt.shown.text.clone())
                     .await;

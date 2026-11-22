@@ -98,7 +98,7 @@ impl Thread {
 
     /// The first prompt of the queue as the next turn, when the program waits for one with
     /// nothing open for an answer, and the queue did not stop.
-    pub(super) fn next_queued(&mut self) -> Vec<Step> {
+    pub fn next_queued(&mut self) -> Vec<Step> {
         let waits = self.held
             && self.row.state != RunState::Stopped
             && self.open.is_empty()
