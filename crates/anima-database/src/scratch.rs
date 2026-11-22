@@ -27,6 +27,16 @@ pub const LIMITS: Limits = Limits {
     stop: Duration::from_secs(30),
 };
 
+/// A folder that only this user can change, whatever the umask (0002 on Ubuntu): `backup`
+/// refuses to write into a folder that the group can write to.
+pub fn private_folder() -> TempDir {
+    use std::os::unix::fs::PermissionsExt as _;
+    tempfile::Builder::new()
+        .permissions(std::fs::Permissions::from_mode(0o700))
+        .tempdir()
+        .unwrap()
+}
+
 pub struct Database {
     pub tree: Tree,
     pub layout: Layout,

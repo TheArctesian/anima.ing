@@ -16,7 +16,8 @@ use uuid::Uuid;
 /// The scripted runtime. It reads `mode` beside it: `exit` ends at once, `any` listens on
 /// 0.0.0.0, else it listens on 127.0.0.1. It writes the names of its environment to `env`, and
 /// before it listens it starts a child that leaves the session and process group (`setsid`)
-/// and writes its process id to `child`. That child sleeps; in the mode `escape` it listens
+/// and writes its process id to `child` at once, so a check that ends the tree early still
+/// leaves the id for the test. That child sleeps; in the mode `escape` it listens
 /// on 0.0.0.0 instead.
 pub const FAKE_RUNTIME: &str = r#"#!/usr/bin/perl
 use strict;

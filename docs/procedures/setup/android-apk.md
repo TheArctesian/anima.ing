@@ -47,7 +47,7 @@ Set the keystore secret from Terminal with `base64 -i "$RELEASE_KEYSTORE" | gh s
 
 Use the draft [F-Droid recipe](../../../apps/desktop/fdroid/ing.anima.mobile.yml). The inputs are the release commit, version, upstream APK URL and signing certificate fingerprint. The draft build stays disabled until these inputs are available and the release meets the phone checks in the mobile plan.
 
-The upstream listing reads the [Fastlane metadata](../../../fastlane/metadata/android/en-US/) from the release tag. Before submission, check the Android release against [HT-070](../../need-human-testing.md#ht-070-keep-and-clear-a-mobile-session-m5-1).
+The upstream listing reads the [Fastlane metadata](../../../fastlane/metadata/android/en-US/) from the release tag. Before submission, check the Android release against [HT-144](../../need-human-testing.md#ht-new-mobilesession-keep-and-clear-a-mobile-session-m5-1).
 
 The recipe reads both version fields from Android release tags and downloads the APK from the matching GitHub release. Once the first build is accepted, F-Droid's update checker can add later releases from their tags. F-Droid publishes the upstream-signed APK after its build verifies against that APK.
 
