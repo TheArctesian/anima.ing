@@ -55,6 +55,49 @@ impl ImageKind {
         }
     }
 
+    /// The width and the height that the header of the image says, when it reads.
+    #[must_use]
+    pub fn size(self, bytes: &[u8]) -> Option<(u32, u32)> {
+        let be16 = |at: usize| {
+            Some(u32::from(u16::from_be_bytes([
+                *bytes.get(at)?,
+                *bytes.get(at + 1)?,
+            ])))
+        };
+        let le16 = |at: usize| {
+            Some(u32::from(u16::from_le_bytes([
+                *bytes.get(at)?,
+                *bytes.get(at + 1)?,
+            ])))
+        };
+        let le24 = |at: usize| {
+            Some(u32::from_le_bytes([
+                *bytes.get(at)?,
+                *bytes.get(at + 1)?,
+                *bytes.get(at + 2)?,
+                0,
+            ]))
+        };
+        match self {
+            Self::Png => {
+                let be32 =
+                    |at: usize| Some(u32::from_be_bytes(bytes.get(at..at + 4)?.try_into().ok()?));
+                Some((be32(16)?, be32(20)?))
+            }
+            Self::Gif => Some((le16(6)?, le16(8)?)),
+            Self::Webp => match bytes.get(12..16)? {
+                b"VP8 " => Some((le16(26)? & 0x3fff, le16(28)? & 0x3fff)),
+                b"VP8L" => {
+                    let bits = le24(21)? | (u32::from(*bytes.get(24)?) << 24);
+                    Some(((bits & 0x3fff) + 1, ((bits >> 14) & 0x3fff) + 1))
+                }
+                b"VP8X" => Some((le24(24)? + 1, le24(27)? + 1)),
+                _ => None,
+            },
+            Self::Jpeg => jpeg_size(bytes, be16),
+        }
+    }
+
     /// The MIME type that the programs take.
     #[must_use]
     pub const fn mime(self) -> &'static str {
@@ -64,6 +107,22 @@ impl ImageKind {
             Self::Gif => "image/gif",
             Self::Webp => "image/webp",
         }
+    }
+}
+
+/// The size in the first frame header of a JPEG.
+fn jpeg_size(bytes: &[u8], be16: impl Fn(usize) -> Option<u32>) -> Option<(u32, u32)> {
+    let mut at = 2;
+    loop {
+        if *bytes.get(at)? != 0xff {
+            return None;
+        }
+        let marker = *bytes.get(at + 1)?;
+        let frame = (0xc0..=0xcf).contains(&marker) && !matches!(marker, 0xc4 | 0xc8 | 0xcc);
+        if frame {
+            return Some((be16(at + 7)?, be16(at + 5)?));
+        }
+        at += 2 + usize::try_from(be16(at + 2)?).ok()?;
     }
 }
 
@@ -89,7 +148,10 @@ pub fn most_bytes(mime: &str) -> u64 {
 pub fn safe_name(name: &str) -> String {
     let last = name.rsplit(['/', '\\']).next().unwrap_or_default();
     let mut safe = String::new();
-    for char in last.chars().filter(|char| !char.is_control()) {
+    for char in last
+        .chars()
+        .filter(|char| !char.is_control() && !is_format(*char))
+    {
         if safe.len() + char.len_utf8() > MOST_NAME_BYTES {
             break;
         }
@@ -101,6 +163,12 @@ pub fn safe_name(name: &str) -> String {
     } else {
         safe.to_owned()
     }
+}
+
+/// A character that changes how text shows without showing itself: a mark of direction, a
+/// space of no width, a soft hyphen, a separator of lines or paragraphs.
+const fn is_format(char: char) -> bool {
+    matches!(char, '\u{ad}' | '\u{61c}' | '\u{180e}' | '\u{200b}'..='\u{200f}' | '\u{2028}'..='\u{202e}' | '\u{2060}'..='\u{2069}' | '\u{feff}')
 }
 
 /// For serde: a count of zero is left out.
@@ -118,6 +186,8 @@ mod tests {
         assert_eq!(safe_name("../../etc/passwd"), "passwd");
         assert_eq!(safe_name("..\\x\\.env"), "env");
         assert_eq!(safe_name("a\u{0}b\nc.png"), "abc.png");
+        assert_eq!(safe_name("gpj.\u{202e}exe.png"), "gpj.exe.png");
+        assert_eq!(safe_name("a.txt\u{2028}- b.txt"), "a.txt- b.txt");
         assert_eq!(safe_name(".."), "attachment");
         assert_eq!(safe_name("/"), "attachment");
         assert!(safe_name(&"é".repeat(200)).len() <= super::MOST_NAME_BYTES);
@@ -136,5 +206,22 @@ mod tests {
         assert_eq!(ImageKind::of_bytes(b"<svg>"), None);
         assert_eq!(ImageKind::of_mime("IMAGE/JPG"), Some(ImageKind::Jpeg));
         assert_eq!(ImageKind::of_mime("image/heic"), None);
+    }
+
+    #[test]
+    fn th111_the_size_of_an_image_comes_from_its_header() {
+        let mut png = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR".to_vec();
+        png.extend(640u32.to_be_bytes());
+        png.extend(480u32.to_be_bytes());
+        assert_eq!(ImageKind::Png.size(&png), Some((640, 480)));
+        assert_eq!(
+            ImageKind::Gif.size(b"GIF89a\x20\x03\x58\x02"),
+            Some((800, 600))
+        );
+        let jpeg = [
+            0xff, 0xd8, 0xff, 0xe0, 0, 4, 0, 0, 0xff, 0xc0, 0, 17, 8, 0x01, 0xe0, 0x02, 0x80,
+        ];
+        assert_eq!(ImageKind::Jpeg.size(&jpeg), Some((640, 480)));
+        assert_eq!(ImageKind::Png.size(b"\x89PNG\r\n\x1a\n"), None, "cut short");
     }
 }

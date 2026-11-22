@@ -10,6 +10,7 @@ describe('the controls that drive a thread', () => {
     expect(queueAction({ call: 'unqueue', id: 'p1' }, 't')).toEqual({ call: 'unqueue', thread: 't', queued: 'p1' });
     expect(queueAction({ call: 'send_queued', id: 'p1' }, 't')).toEqual({ call: 'send_queued', thread: 't', queued: 'p1' });
     expect(queueAction({ call: 'queue', text: 'later' }, 't')).toEqual({ call: 'queue', thread: 't', text: 'later' });
+    expect(queueAction({ call: 'unqueue', queued: 'p2' }, 't')).toEqual({ call: 'unqueue', thread: 't', queued: 'p2' });
   });
 
   it('THR-017: Enter sends; Shift+Enter and a key of an input method type', () => {

@@ -82,23 +82,8 @@ export interface Update {
   readonly change: Change;
 }
 
-export type Refusal =
-  | 'unknown_thread'
-  | 'folder_not_permitted'
-  | 'program_not_found'
-  | 'program_does_not_answer'
-  | 'bad_value'
-  | 'request_gone'
-  | 'answer_does_not_fit'
-  | 'not_running'
-  | 'holder'
-  | 'from_an_agent'
-  | 'running'
-  | 'over_limit'
-  | 'queue_full'
-  | 'cannot_change'
-  | 'too_large'
-  | 'cannot_attach';
+/** Why the runner did not do a call. */
+export type Refusal = (typeof REFUSALS)[number];
 
 export interface Limits {
   readonly depth: number;
@@ -150,6 +135,7 @@ export type Action =
     }
   /** `attachments`: the IDs of files that the person attached for this prompt (TH111). */
   | { readonly call: 'send'; readonly thread: string; readonly text: string; readonly attachments?: readonly string[] }
+  | AttachAction
   | { readonly call: 'answer'; readonly thread: string; readonly request: string; readonly answer: Answer }
   | { readonly call: 'interrupt'; readonly thread: string }
   | { readonly call: 'stop'; readonly thread: string }
@@ -172,7 +158,7 @@ const PROGRAMS: readonly string[] = ['claude_code', 'codex'];
 const STATES: readonly string[] = ['starting', 'working', 'needs_you', 'idle', 'stopped', 'unknown'];
 const MODES: readonly string[] = ['full_access', 'accept_edits', 'ask', 'plan'];
 const KINDS: readonly string[] = ['command', 'file_change', 'tool', 'question'];
-const REFUSALS: readonly string[] = ['unknown_thread', 'folder_not_permitted', 'program_not_found', 'program_does_not_answer', 'bad_value', 'request_gone', 'answer_does_not_fit', 'not_running', 'holder', 'from_an_agent', 'running', 'over_limit', 'queue_full', 'cannot_change', 'too_large', 'cannot_attach'];
+const REFUSALS = ['unknown_thread', 'folder_not_permitted', 'program_not_found', 'program_does_not_answer', 'bad_value', 'request_gone', 'answer_does_not_fit', 'not_running', 'holder', 'from_an_agent', 'running', 'over_limit', 'queue_full', 'cannot_change', 'too_large', 'cannot_attach'] as const;
 const EFFORTS: readonly string[] = ['low', 'medium', 'high', 'xhigh', 'max'];
 
 type Fields = Record<string, unknown>;
@@ -336,6 +322,16 @@ function folderFrom(value: Fields): Outcome | null {
   return Array.isArray(value.notice) && value.notice.every((line) => typeof line === 'string') ? { outcome: 'folder', notice: value.notice as string[] } : null;
 }
 
+/** The listings of the threads, or the models of each program. */
+function listsFrom(value: Fields): Outcome | null {
+  if (value.outcome === 'models') {
+    const models = modelListsFrom(value.models);
+    return models === null ? null : { outcome: 'models', models };
+  }
+  const listings = listingsFrom(value.listings);
+  return listings === null ? null : { outcome: 'listings', listings };
+}
+
 /** The result of a call, or `null` when it does not read. */
 export function outcomeFrom(value: unknown): Outcome | null {
   if (!isRecord(value)) return null;
@@ -353,14 +349,9 @@ export function outcomeFrom(value: unknown): Outcome | null {
     case 'folder':
     case 'files':
       return folderFrom(value);
-    case 'listings': {
-      const listings = listingsFrom(value.listings);
-      return listings === null ? null : { outcome: 'listings', listings };
-    }
-    case 'models': {
-      const models = modelListsFrom(value.models);
-      return models === null ? null : { outcome: 'models', models };
-    }
+    case 'listings':
+    case 'models':
+      return listsFrom(value);
     case 'attached':
       return attachedFrom(value);
     case 'refused':

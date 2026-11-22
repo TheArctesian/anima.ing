@@ -3,7 +3,9 @@
 
 use std::path::{Path, PathBuf};
 
-use agent_threads::control::attach::{self, MOST_ATTACHMENTS, MOST_PART_BYTES};
+use agent_threads::control::attach::{
+    self, ImageKind, MOST_ATTACHMENTS, MOST_FILE_BYTES, MOST_PART_BYTES,
+};
 use agent_threads::control::{Action, Outcome};
 use base64::Engine as _;
 use uuid::Uuid;
@@ -45,16 +47,32 @@ impl SendArgs {
         let mut link = RunnerLink::connect().await?;
         let mut attachments = Vec::new();
         for path in &self.attach {
-            attachments.push(attach_file(&mut link, self.thread, path).await?);
+            match attach_file(&mut link, self.thread, path).await {
+                Ok(id) => attachments.push(id),
+                Err(failure) => {
+                    unattach(&mut link, self.thread, attachments).await;
+                    return Err(failure);
+                }
+            }
         }
         let send = Action::Send {
             thread: self.thread,
             text: self.text,
-            attachments,
+            attachments: attachments.clone(),
         };
-        accepted(link.call(send).await?)?;
+        if let Err(failure) = link.call(send).await.and_then(accepted) {
+            unattach(&mut link, self.thread, attachments).await;
+            return Err(failure);
+        }
         invocation.output.message("Sent.");
         Ok(())
+    }
+}
+
+/// Drops the files that wait for a prompt that did not go: now, not after an hour.
+async fn unattach(link: &mut RunnerLink, thread: Uuid, attachments: Vec<Uuid>) {
+    for attachment in attachments {
+        let _ = link.call(Action::Unattach { thread, attachment }).await;
     }
 }
 
@@ -66,19 +84,24 @@ async fn attach_file(link: &mut RunnerLink, thread: Uuid, path: &Path) -> Result
     };
     let name = path
         .file_name()
-        .map(|name| name.to_string_lossy().into_owned())
-        .unwrap_or_default();
-    let mime = mime_of(path);
+        .map_or_else(String::new, |name| name.to_string_lossy().into_owned());
     let size = std::fs::metadata(path)
         .map_err(|error| unreadable(error.to_string()))?
         .len();
+    if size > MOST_FILE_BYTES {
+        return Err(unreadable(format!(
+            "it is larger than {} MiB",
+            MOST_FILE_BYTES >> 20
+        )));
+    }
+    let bytes = std::fs::read(path).map_err(|error| unreadable(error.to_string()))?;
+    let mime = mime_of(path, &bytes);
     if size > attach::most_bytes(mime) {
         return Err(unreadable(format!(
             "it is larger than {} MiB",
             attach::most_bytes(mime) >> 20
         )));
     }
-    let bytes = std::fs::read(path).map_err(|error| unreadable(error.to_string()))?;
     let mut parts = bytes.chunks(MOST_PART_BYTES);
     let first = Action::Attach {
         thread,
@@ -105,16 +128,16 @@ fn encoded(bytes: &[u8]) -> String {
     base64::engine::general_purpose::STANDARD.encode(bytes)
 }
 
-/// The MIME type that the name of a file says; the runner checks an image by its bytes.
-fn mime_of(path: &Path) -> &'static str {
+/// The MIME type of a file: an image by its first bytes, as the runner checks it, else by its
+/// name.
+fn mime_of(path: &Path, bytes: &[u8]) -> &'static str {
+    if let Some(kind) = ImageKind::of_bytes(bytes) {
+        return kind.mime();
+    }
     let extension = path
         .extension()
         .map(|extension| extension.to_string_lossy().to_ascii_lowercase());
     match extension.as_deref() {
-        Some("png") => "image/png",
-        Some("jpg" | "jpeg") => "image/jpeg",
-        Some("gif") => "image/gif",
-        Some("webp") => "image/webp",
         Some("pdf") => "application/pdf",
         Some("txt" | "md" | "log") => "text/plain",
         _ => "application/octet-stream",
@@ -126,9 +149,18 @@ mod tests {
     use std::path::Path;
 
     #[test]
-    fn th111_the_type_of_a_file_comes_from_its_name() {
-        assert_eq!(super::mime_of(Path::new("a/Shot.PNG")), "image/png");
-        assert_eq!(super::mime_of(Path::new("b.jpeg")), "image/jpeg");
-        assert_eq!(super::mime_of(Path::new("c")), "application/octet-stream");
+    fn th111_the_type_of_an_image_comes_from_its_bytes_and_of_a_file_from_its_name() {
+        assert_eq!(
+            super::mime_of(Path::new("a/shot.png"), b"\xff\xd8\xff\xe0"),
+            "image/jpeg"
+        );
+        assert_eq!(
+            super::mime_of(Path::new("b.pdf"), b"%PDF-1.4"),
+            "application/pdf"
+        );
+        assert_eq!(
+            super::mime_of(Path::new("c.png"), b"not a png"),
+            "application/octet-stream"
+        );
     }
 }

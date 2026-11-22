@@ -17,7 +17,7 @@ pub struct Attachment {
 }
 
 /// What a file is, and its bytes in base64 when they go inside the line of a program that takes
-/// them there (Claude Code: images and PDFs, measured on 2.1.311, 2026-11-21).
+/// them there (Claude Code: small images, measured on 2.1.311, 2026-11-21).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Attached {
     Image {
@@ -79,7 +79,9 @@ impl Prompt {
             .collect()
     }
 
-    /// The words, with the path of each file that `by_path` says the program reads from disk.
+    /// The words, with the path of each file that `by_path` says the program reads from disk. Only
+    /// the paths are written, one on each line: the name of a file is the last part of its path,
+    /// so a name cannot point at a different file.
     #[must_use]
     pub fn words(&self, by_path: impl Fn(&Attachment) -> bool) -> String {
         let mut words = self.text.clone();
@@ -91,7 +93,7 @@ impl Prompt {
         if named.peek().is_some() {
             words.push_str("\n\nThe person attached these files. Read each one at its path:");
             for file in named {
-                let _ = write!(words, "\n- {}: {}", file.name, file.path.display());
+                let _ = write!(words, "\n- {}", file.path.display());
             }
         }
         words

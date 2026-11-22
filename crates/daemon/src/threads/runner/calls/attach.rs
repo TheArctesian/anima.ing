@@ -4,6 +4,7 @@
 use agent_threads::control::{Action, Outcome, Refusal};
 
 use super::super::Runner;
+use super::super::attachments::NewFile;
 use super::super::log::Kind;
 
 impl Runner {
@@ -27,7 +28,12 @@ impl Runner {
                     .get(&thread)
                     .ok_or(Refusal::UnknownThread)?
                     .can_take_a_prompt()?;
-                let id = self.attached.begin(thread, &name, &mime, size)?;
+                let file = NewFile {
+                    name: &name,
+                    mime: &mime,
+                    size,
+                };
+                let id = self.attached.begin(thread, file)?;
                 (thread, id, bytes)
             }
             Action::AttachMore {
@@ -42,7 +48,9 @@ impl Runner {
             _ => return Err(Refusal::BadValue),
         };
         let received = self.attached.add(thread, id, &bytes)?;
-        self.note(Kind::Attach, Some(thread), "a part of a file came");
+        if self.attached.complete(id) {
+            self.note(Kind::Attach, Some(thread), "a file came");
+        }
         Ok(Outcome::Attached { id, received })
     }
 }

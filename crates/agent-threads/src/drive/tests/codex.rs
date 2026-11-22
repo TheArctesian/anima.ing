@@ -251,7 +251,7 @@ fn th111_a_codex_turn_gets_each_image_as_a_local_image_and_each_other_file_by_it
     let input = turn["params"]["input"].as_array().expect("an input");
     let words = input[0]["text"].as_str().expect("words");
     assert!(words.starts_with("look\n\n"));
-    assert!(words.contains("- notes.pdf: /a/2/notes.pdf"));
+    assert!(words.contains("\n- /a/2/notes.pdf"));
     assert!(!words.contains("shot.png"), "an image goes as an image");
     assert_eq!(
         input[1],

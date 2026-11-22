@@ -24,7 +24,8 @@ while (my $line = <STDIN>) {
 }
 "#;
 
-const PNG: &[u8] = b"\x89PNG\r\n\x1a\n-the-rest-of-a-png";
+/// The first bytes of a PNG of 64 by 64 pixels.
+const PNG: &[u8] = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x40\0\0\0\x40-the-rest";
 
 fn encoded(bytes: &[u8]) -> String {
     base64::engine::general_purpose::STANDARD.encode(bytes)
@@ -50,13 +51,16 @@ async fn idle_thread(kit: &Kit, client: &mut Client) -> Uuid {
     thread
 }
 
-async fn attach(
-    client: &mut Client,
-    thread: Uuid,
-    name: &str,
-    mime: &str,
-    bytes: &[u8],
-) -> Outcome {
+/// Attaches a whole file in one part; its MIME type comes from its name.
+async fn attach(client: &mut Client, thread: Uuid, name: &str, bytes: &[u8]) -> Outcome {
+    let mime = if std::path::Path::new(name)
+        .extension()
+        .is_some_and(|e| e == "png")
+    {
+        "image/png"
+    } else {
+        "text/plain"
+    };
     let call = client
         .call(Action::Attach {
             thread,
@@ -82,13 +86,8 @@ async fn prompt_line(kit: &Kit, count: usize) -> serde_json::Value {
     panic!("the made program got no prompt {count}");
 }
 
-#[tokio::test]
-async fn th111_an_image_goes_inside_the_line_and_a_file_goes_by_its_path() {
-    let kit = Kit::with(CLAUDE_KEEPS);
-    std::fs::create_dir_all(kit.path("work")).expect("a folder");
-    let mut client = kit.client().await;
-    let thread = idle_thread(&kit, &mut client).await;
-
+/// Attaches [`PNG`] in two parts, as a large file goes.
+async fn attach_in_two_parts(client: &mut Client, thread: Uuid) -> Uuid {
     let (head, rest) = PNG.split_at(5);
     let first = client
         .call(Action::Attach {
@@ -120,8 +119,18 @@ async fn th111_an_image_goes_inside_the_line_and_a_file_goes_by_its_path() {
             received: PNG.len() as u64
         }
     );
+    image
+}
+
+#[tokio::test]
+async fn th111_an_image_goes_inside_the_line_and_a_file_goes_by_its_path() {
+    let kit = Kit::with(CLAUDE_KEEPS);
+    std::fs::create_dir_all(kit.path("work")).expect("a folder");
+    let mut client = kit.client().await;
+    let thread = idle_thread(&kit, &mut client).await;
+    let image = attach_in_two_parts(&mut client, thread).await;
     let Outcome::Attached { id: notes, .. } =
-        attach(&mut client, thread, "../notes.txt", "text/plain", b"hello").await
+        attach(&mut client, thread, "../notes.txt", b"hello").await
     else {
         panic!("the file came");
     };
@@ -149,13 +158,14 @@ async fn th111_an_image_goes_inside_the_line_and_a_file_goes_by_its_path() {
     let content = &last["message"]["content"];
     let words = content[0]["text"].as_str().expect("words");
     let attachments = kit.threads().join("attachments").join(thread.to_string());
+    let named = words.rsplit("\n- ").next().expect("a path");
     assert!(
-        words.contains(&format!("- notes.txt: {}", attachments.display())),
+        named.starts_with(&attachments.display().to_string()),
         "{words}"
     );
+    assert!(named.ends_with("/notes.txt"), "{words}");
     assert_eq!(content[1]["type"], "image");
     assert_eq!(content[1]["source"]["data"], encoded(PNG));
-    let named = words.rsplit(": ").next().expect("a path");
     assert_eq!(std::fs::read(named).expect("the file"), b"hello");
 
     let again = client
@@ -183,7 +193,7 @@ async fn th111_an_image_that_is_not_its_type_and_a_file_over_the_limit_are_refus
     let mut client = kit.client().await;
     let thread = idle_thread(&kit, &mut client).await;
     assert!(matches!(
-        attach(&mut client, thread, "fake.png", "image/png", b"<svg/>").await,
+        attach(&mut client, thread, "fake.png", b"<svg/>").await,
         Outcome::Refused { why: Refusal::CannotAttach { said } } if said.contains("fake.png")
     ));
     let big = client

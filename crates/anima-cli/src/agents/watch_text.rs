@@ -1,6 +1,8 @@
 //! One update of a thread as one line of text for `anima agents watch`. Pure. The words of the
 //! program are shown as text: `stream::line` cleans each line of control characters.
 
+use std::fmt::Write as _;
+
 use agent_threads::control::{Change, RunState};
 use agent_threads::drive::{DriveEvent, RequestKind, StepState};
 
@@ -49,10 +51,10 @@ pub fn text(change: &Change) -> Option<String> {
         } => {
             let mut with = String::new();
             if *images > 0 {
-                with.push_str(&format!(" [{images} image(s)]"));
+                let _ = write!(with, " [{images} image(s)]");
             }
             if !files.is_empty() {
-                with.push_str(&format!(" [files: {}]", files.join(", ")));
+                let _ = write!(with, " [files: {}]", files.join(", "));
             }
             format!("prompt ({source}): {}{with}", short(text))
         }

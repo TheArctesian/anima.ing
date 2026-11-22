@@ -26,7 +26,7 @@ pub enum Kind {
     Refusal,
     /// The person changed the model, the effort or the mode of a thread (TH110).
     Change,
-    /// A part of a file for a prompt came (TH111).
+    /// A file for a prompt came whole (TH111).
     Attach,
 }
 
