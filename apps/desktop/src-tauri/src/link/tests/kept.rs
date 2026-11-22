@@ -270,7 +270,7 @@ fn hmd_058_the_folder_of_a_hosted_link_is_marked_once_and_a_link_is_no_mark() {
 
 #[test]
 fn hmd_054_the_unit_is_given_the_socket_of_the_daemon_when_its_folder_is_private() {
-    let folder = tempfile::tempdir().unwrap();
+    let folder = super::sockets::private_tempdir();
     let daemon = folder.path().join("made/anima-daemon");
     let socket = kept::private_socket(&daemon).expect("a folder that the app made");
     assert_eq!(socket, daemon.join("link.sock"));
