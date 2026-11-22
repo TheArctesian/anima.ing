@@ -24,6 +24,8 @@ fn reads() -> Vec<Action> {
             effort: None,
             prompt: text(),
             program_path: None,
+            draft: None,
+            attachments: Vec::new(),
         },
         Action::Send {
             thread,
@@ -114,6 +116,7 @@ fn files() -> Vec<Action> {
             mime: "image/png".to_owned(),
             size: 3,
             bytes: "AAAA".to_owned(),
+            draft: false,
         },
         Action::AttachMore {
             thread,

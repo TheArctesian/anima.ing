@@ -78,6 +78,8 @@ async fn th46_a_thread_that_runs_is_not_removed_and_a_stopped_one_leaves_the_lis
             effort: None,
             prompt: "Run the command".to_owned(),
             program_path: None,
+            draft: None,
+            attachments: Vec::new(),
         })
         .await;
     let Outcome::Started { thread } = client.done(start).await else {
