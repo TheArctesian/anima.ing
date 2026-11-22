@@ -121,6 +121,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-080 | The web client of a hosted hub behind the gateway: the sign-in with no password page, the sign-out, a session that ended (HMD-059, HMD-062, HMD-063, HMD-066; task HM-T27) | A hub of the pool whose image has this build of the web client, and the gateway of the pool at `hub.anima.ing` | Open |
 | HT-104 | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with its own public origin `https://<hub id>.hub.anima.ing` and an image of this build, the door of the pool for that address, an application of this build, and a GitHub account that may get a new App | Open |
 | HT-125 | The window with no frame on Windows and Linux: move it, the three controls, resize, each page (task TC2 of agent threads, R-355) | A Windows computer and the Linux computer `pop-os`, each with a build of the branch `code/shell-window`; a Mac for the last step | Open |
+| HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | A Linux AppImage of this build | Passed |
 
 ### What a check on the hosted hub needs
 
@@ -2429,6 +2430,11 @@ Expected: the signed build clears export compliance and appears as Testing in An
 without a declaration or an assignment in App Store Connect. Install that build on an iPhone
 or iPad and confirm its version and build number.
 
+For the public beta, follow the first `main` TestFlight run with the public group configured.
+Expected: the workflow assigns the build to the group that owns the public invite URL.
+After Apple approves it, open the TestFlight link from Downloads on the Anima website
+and install the build on an iPhone or iPad.
+
 Result: Open.
 
 ### HT-051: the workflows `gates` and `merge-to-dev` on GitHub (R-253, R-254, R-252)
@@ -3113,6 +3119,8 @@ covers (HM-D11): "the device doesn't auto add it should and the hub is not there
 
 The preview was built from `665fb16a` on `fix/linux-start-sign-in`. Its startup guard in
 `apps/client/src/lib/access/guard.ts` opens `/welcome` when no hub address is saved. Tests cover a missing token, an old token
+The startup guard in `apps/client/src/lib/access/guard.ts` now opens `/welcome`
+before a token read when no hub address is saved. Tests cover a missing token, an old token
 for the default hub and a refused key store. They also check that a chosen hub still resumes
 with its token. An automatic Linux WebKit check reached the screen with an old default-hub
 token and with no token. The packaged preview also showed the screen in a virtual X11 display
@@ -4682,5 +4690,11 @@ branch is in the build.
 12. Attach a file, wait until it is ready, do not send, and come back after more than one hour. Send.
     Expected (a known limit): the runner dropped the file after one hour, so the send is refused with words. Remove
     the file, attach it again and send.
+13. Attach a HEIC photo of an iPhone of more than 10 MB and less than 50 MB.
+    Expected: a tile shows and the photo goes with the prompt as a file: the runner takes HEIC as a file, with the
+    limit of a file.
+14. Attach a file to the unsent text, open a queued message with its pencil, attach a second file there, and open
+    a different queued message.
+    Expected: the second file is gone. Cancel the change: the first file is back with the unsent text.
 
 Result: Open.

@@ -76,3 +76,78 @@ describe('the @ list of the Code page', () => {
     expect(document.body.textContent).not.toContain('The runner cannot search the folder of a chat yet.');
   });
 });
+
+// The files of a prompt (TH111) through the calls the runner reads: `Action::Attach`, `Unattach` and `Send` of
+// crates/agent-threads/src/control.rs, each with only its own fields.
+
+const FILE_ID = '0190a000-0000-7000-8000-0000000000f1';
+const OTHER = '0190a000-0000-7000-8000-000000000002';
+
+/** ChatFoot over a runner that takes each file; `hold` keeps the answer to `attach` back until the test lets it go. */
+async function footWithFiles(hold: boolean) {
+  const waiting: (() => void)[] = [];
+  const base = madeShell((action: Action) => (action.call === 'attach' ? { outcome: 'attached', id: FILE_ID, received: 3 } : { outcome: 'ok' }));
+  const shell = {
+    ...base,
+    call: async (action: Action) => {
+      if (hold && action.call === 'attach') await new Promise<void>((go) => waiting.push(go));
+      return base.call(action);
+    },
+  };
+  const live = new LiveThreads(shell, () => ({ front: true, chosen: THREAD }));
+  await live.begin();
+  base.emit(stateFrame(1, 'idle'));
+  const props = $state({ thread: live.threads.get(THREAD) ?? null, live, id: THREAD });
+  app = mount(ChatFoot, { target: document.body, props });
+  flushSync();
+  return { calls: base.calls, props, waiting };
+}
+
+function choose(file: File): void {
+  const input = document.querySelector<HTMLInputElement>('input[type="file"]');
+  if (input === null) throw new Error('no file input');
+  Object.defineProperty(input, 'files', { value: [file], configurable: true });
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+}
+
+const press = (name: string): void => document.querySelector<HTMLElement>(`button[aria-label="${name}"]`)?.click();
+const keysOf = (calls: readonly Action[], call: string): string[][] => calls.filter((each) => each.call === call).map((each) => Object.keys(each).sort());
+
+describe('the files of a prompt on the Code page', () => {
+  beforeAll(() => {
+    URL.createObjectURL ??= () => 'blob:made';
+    URL.revokeObjectURL ??= () => undefined;
+  });
+
+  it('TH111: attaches, removes and sends with exactly the fields the runner reads', async () => {
+    const { calls } = await footWithFiles(false);
+    choose(new File(['abc'], 'notes.txt', { type: 'text/plain' }));
+    await settled();
+    press('Remove notes.txt');
+    await settled();
+    choose(new File(['abc'], 'plan.txt', { type: 'text/plain' }));
+    await settled();
+    press('Submit message');
+    await settled();
+    expect(keysOf(calls, 'attach')).toEqual([
+      ['bytes', 'call', 'mime', 'name', 'size', 'thread'],
+      ['bytes', 'call', 'mime', 'name', 'size', 'thread'],
+    ]);
+    expect(keysOf(calls, 'unattach')).toEqual([['attachment', 'call', 'thread']]);
+    expect(keysOf(calls, 'send')).toEqual([['attachments', 'call', 'text', 'thread']]);
+    expect(calls.find((each) => each.call === 'send')).toMatchObject({ thread: THREAD, attachments: [FILE_ID] });
+    expect(calls.filter((each) => each.call === 'attach' || each.call === 'unattach').every((each) => 'thread' in each && each.thread === THREAD)).toBe(true);
+  });
+
+  it('gives a file up in the chat it was chosen in when a different chat opens while it is on its way', async () => {
+    const { calls, props, waiting } = await footWithFiles(true);
+    choose(new File(['abc'], 'notes.txt', { type: 'text/plain' }));
+    await settled();
+    props.id = OTHER;
+    flushSync();
+    for (const go of waiting.splice(0)) go();
+    await settled();
+    expect(calls.find((each) => each.call === 'unattach')).toEqual({ call: 'unattach', thread: THREAD, attachment: FILE_ID });
+  });
+});

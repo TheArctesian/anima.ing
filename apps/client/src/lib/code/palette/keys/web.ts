@@ -17,6 +17,8 @@ import { KEY_RULES, type KeyRule } from './keymap';
 export interface KeySet {
   readonly mac: boolean;
   readonly web: boolean;
+  /** Windows, whose desktop app moves two keys off Ctrl+Alt (`WINDOWS_KEYS`); false or absent elsewhere. */
+  readonly windows?: boolean;
 }
 
 /** One T3 Code key that a browser keeps, and the key of the command in a browser. */
@@ -68,6 +70,15 @@ export const WEB_KEYS: readonly WebKey[] = [
   { from: 'mod+shift+k', command: 'pullRequest.copyNumber', key: 'alt+shift+x', only: 'other', why: "Firefox's console; K is the palette, so X" },
 ];
 
+/**
+ * The keys of the desktop app on Windows (user, 2026-11-22): Ctrl+Alt is AltGr there, so the two T3 Code keys on it move
+ * to Ctrl+Shift. The Mac, Linux and the web keys do not change.
+ */
+export const WINDOWS_KEYS: readonly WebKey[] = [
+  { from: 'mod+alt+n', command: 'chat.newWithoutProject', key: 'ctrl+shift+u', why: 'Ctrl+Alt+N starts NVDA, and AltGr+N types ń on a Polish layout' },
+  { from: 'mod+alt+b', command: 'rightPanel.toggle', key: 'ctrl+shift+y', why: 'AltGr+B types { on a Hungarian layout' },
+];
+
 /** A web key on one platform: Alt+Shift on Windows and Linux, Control+Shift (⌃⇧) on the Mac. */
 export function webKeyOn(key: string, mac: boolean): string {
   return mac ? key.replace(/^alt\+shift\+/, 'ctrl+shift+') : key;
@@ -80,7 +91,13 @@ function desktopOnly(rule: KeyRule): boolean {
 
 /** The rules of the key set: T3 Code's table in the desktop app, and in a browser the table with the web keys. */
 export function keyRules(set: KeySet): KeyRule[] {
-  if (!set.web) return [...KEY_RULES];
+  if (!set.web) {
+    if (set.windows !== true) return [...KEY_RULES];
+    return KEY_RULES.map((rule) => {
+      const moved = WINDOWS_KEYS.find((candidate) => candidate.from === rule.key && candidate.command === rule.command);
+      return moved?.key == null ? rule : { ...rule, key: moved.key };
+    });
+  }
   const platform = set.mac ? 'mac' : 'other';
   return KEY_RULES.filter((rule) => !desktopOnly(rule)).flatMap((rule) => {
     const web = WEB_KEYS.find((candidate) => candidate.from === rule.key && candidate.command === rule.command && (candidate.only ?? platform) === platform);
@@ -95,5 +112,5 @@ export function keyRules(set: KeySet): KeyRule[] {
  */
 export function thisKeySet(): KeySet {
   if (typeof navigator === 'undefined') return { mac: false, web: true };
-  return { mac: isMac(navigator.userAgent), web: shellCapabilities() === null || isMobile(navigator) };
+  return { mac: isMac(navigator.userAgent), web: shellCapabilities() === null || isMobile(navigator), windows: /Windows/.test(navigator.userAgent) };
 }
