@@ -13,9 +13,11 @@ use crate::files::FoundPath;
 
 mod listing;
 mod project;
+mod queue;
 mod shelf;
 pub use listing::{BadChange, BadTitle, Listing, ListingChange, MAX_TITLE};
 pub use project::{BadProject, MAX_PROJECTS, Project, ProjectChange, changed as project_changed};
+pub use queue::{LastTurn, MOST_QUEUED, MOST_QUEUED_BYTES, Queued};
 pub use shelf::{Activity, MOST_SNOOZE, Marks, SETTLE_AFTER, Shelf};
 
 /// The most bytes of one frame of a client.
@@ -235,13 +237,6 @@ pub enum Refusal {
     QueueFull,
 }
 
-/// The most prompts that wait in the queue of one thread (TH109).
-pub const MOST_QUEUED: usize = 20;
-
-/// The most bytes of one queued prompt (TH109): each update of the row carries the queue, so a
-/// bound keeps the kept updates of the thread. A longer prompt can still be sent.
-pub const MOST_QUEUED_BYTES: usize = 64 * 1024;
-
 /// The soft limits of the threads of this computer (THR-114): guidance, raised by the person.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Limits {
@@ -323,22 +318,6 @@ pub struct ThreadRow {
     /// How the last turn ended, when one ended (TH109).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_turn: Option<LastTurn>,
-}
-
-/// A prompt that waits in the queue of a thread (TH109).
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Queued {
-    pub id: Uuid,
-    pub text: String,
-}
-
-/// How a turn ended, for the person (TH109).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum LastTurn {
-    Done,
-    Failed,
-    Interrupted,
 }
 
 /// The account of one program of this computer, as its newest report said it (THR-132). It is

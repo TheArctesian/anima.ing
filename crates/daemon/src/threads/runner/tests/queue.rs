@@ -182,3 +182,20 @@ fn th109_a_codex_steer_ends_with_its_turn_and_a_refused_turn_stops_the_queue() {
     assert_eq!(thread.row.last_turn, Some(LastTurn::Failed));
     assert_eq!(thread.row.queued.len(), 1);
 }
+
+#[test]
+fn th109_two_prompts_sent_before_the_program_says_it_runs_are_two_turns() {
+    let mut thread = held_claude();
+    line(&mut thread, DONE);
+    line(&mut thread, IDLE);
+    // The program still says Idle when the person sends twice: each prompt is a turn.
+    thread.send("a", true).expect("sent");
+    thread.send("b", true).expect("sent");
+    queue(&mut thread, 1, "later");
+    assert_eq!(
+        prompts(&line(&mut thread, DONE)),
+        NONE,
+        "the queued prompt waits for the turn of b"
+    );
+    assert_eq!(prompts(&line(&mut thread, DONE)), ["later"]);
+}

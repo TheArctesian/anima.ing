@@ -237,11 +237,11 @@ impl Thread {
         if person {
             self.stalled = false;
         }
+        // Each prompt is a turn that must end before the queue goes on, but a steer of a running
+        // Codex turn. The state of the program is not read here: it says Idle until the program
+        // says that the new turn runs, so a second prompt in that moment would not count.
         let steers = matches!(&self.driver, Driver::Codex(codex) if codex.steers());
-        if self.program == Some(ProgramState::Idle) && self.open.is_empty() {
-            // Nothing runs: each turn before this prompt is over.
-            self.pending = 1;
-        } else if !steers {
+        if !steers || self.pending == 0 {
             self.pending = self.pending.saturating_add(1);
         }
         Ok(match &mut self.driver {

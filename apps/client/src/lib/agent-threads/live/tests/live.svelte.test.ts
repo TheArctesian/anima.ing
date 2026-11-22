@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { askFrame, madeShell, rowFrame, saidFrame, stateFrame, THREAD } from './frames.fixture';
-import { LiveThreads, REPLAY_GAP_MS, REPLAY_MS } from './live.svelte';
-import { TEXT_CHARS, waitingWords } from './timeline';
-import { OVER_LIMIT, outcomeFrom, runRowFrom, type Outcome } from './run';
+import { LiveThreads, REPLAY_GAP_MS, REPLAY_MS } from '../live.svelte';
+import { TEXT_CHARS, waitingWords } from '../timeline';
+import { OVER_LIMIT } from '../refusals';
+import { outcomeFrom, runRowFrom, type Outcome } from '../run';
 
 const AWAY = { front: false, chosen: null };
 

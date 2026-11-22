@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { chosenAnswer, composerKey, offeredCopy, startOf, type NewThreadForm } from './drive';
-import type { Ask } from './run';
+import { chosenAnswer, composerKey, offeredCopy, startOf, type NewThreadForm } from '../drive';
+import type { Ask } from '../run';
 
 const FORM: NewThreadForm = { program: 'codex', folder: ' /w/anima.ing ', mode: 'full_access', model: '', effort: '', prompt: 'Fix it', programPath: '' };
 
