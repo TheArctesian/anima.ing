@@ -124,6 +124,10 @@ fn a_codex_request_of_an_unknown_kind_stops_the_turn_and_is_refused() {
 #[test]
 fn each_codex_line_the_runner_can_write_names_a_method_of_the_closed_list() {
     let folder = PathBuf::from("/w");
+    let place = CodexPlace {
+        folder: &folder,
+        kept: None,
+    };
     let turn = CodexTurn {
         thread: "t",
         turn: "u",
@@ -131,9 +135,9 @@ fn each_codex_line_the_runner_can_write_names_a_method_of_the_closed_list() {
     let written = [
         CodexInput::initialize(1),
         CodexInput::initialized(),
-        CodexInput::thread_start(2, &folder, Mode::FullAccess, None),
-        CodexInput::thread_resume(3, "t", &folder, Mode::Ask),
-        CodexInput::thread_fork(4, "t", &folder, Mode::Ask),
+        CodexInput::thread_start(2, place, Mode::FullAccess, None),
+        CodexInput::thread_resume(3, "t", place, Mode::Ask),
+        CodexInput::thread_fork(4, "t", place, Mode::Ask),
         CodexInput::turn_start(
             5,
             "t",
@@ -201,6 +205,7 @@ fn th110_a_turn_carries_the_model_the_effort_and_the_mode_that_the_person_change
             model: Some(&model),
             effort: Some(Effort::Medium),
             mode: Some(Mode::Ask),
+            keeps: false,
         },
     ));
     let params = &changed["params"];
@@ -261,5 +266,63 @@ fn th111_a_codex_turn_gets_each_image_as_a_local_image_and_each_other_file_by_it
         input.len(),
         2,
         "Codex reads the image itself: no bytes in the line"
+    );
+}
+
+#[test]
+fn thr_041_a_codex_thread_in_the_folder_sandbox_keeps_the_folder_of_anima_read_only() {
+    let folder = PathBuf::from("/home/you");
+    let anima = PathBuf::from("/home/you/Library/anima-daemon");
+    let place = CodexPlace {
+        folder: &folder,
+        kept: Some(&anima),
+    };
+    let start: serde_json::Value =
+        serde_json::from_str(&CodexInput::thread_start(1, place, Mode::Ask, None)).expect("JSON");
+    let params = &start["params"];
+    assert!(
+        params.get("sandbox").is_none(),
+        "Codex takes the profile only when the start names no sandbox"
+    );
+    let profile = &params["config"]["permissions"]["anima-keeps"];
+    assert_eq!(params["config"]["default_permissions"], "anima-keeps");
+    assert_eq!(profile["extends"], ":workspace");
+    assert_eq!(
+        profile["filesystem"]["/home/you/Library/anima-daemon"],
+        "read"
+    );
+
+    let full: serde_json::Value =
+        serde_json::from_str(&CodexInput::thread_start(1, place, Mode::FullAccess, None))
+            .expect("JSON");
+    assert_eq!(full["params"]["sandbox"], "danger-full-access");
+    assert!(
+        full["params"].get("config").is_none(),
+        "Full access has no sandbox"
+    );
+
+    let turn = |mode, keeps| -> serde_json::Value {
+        let settings = TurnSettings {
+            mode: Some(mode),
+            keeps,
+            ..TurnSettings::default()
+        };
+        serde_json::from_str(&CodexInput::turn_start(
+            2,
+            "t",
+            &Prompt::plain("go"),
+            &settings,
+        ))
+        .expect("JSON")
+    };
+    let kept = turn(Mode::AcceptEdits, true);
+    assert!(
+        kept["params"].get("sandboxPolicy").is_none(),
+        "the profile stays"
+    );
+    assert_eq!(kept["params"]["approvalPolicy"], "on-request");
+    assert_eq!(
+        turn(Mode::FullAccess, true)["params"]["sandboxPolicy"]["type"],
+        "dangerFullAccess"
     );
 }

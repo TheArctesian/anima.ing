@@ -20,6 +20,29 @@ pub fn of_folder(folder: &Path) -> Vec<String> {
     lines(&Notice::of(found))
 }
 
+/// The folder of the daemon when `folder` holds it (THR-041, the ruling of 2026-11-22: a start
+/// there goes on, with a warning). `folder` is a real path; `daemon` is made one here.
+#[must_use]
+pub fn held_anima(folder: &Path, daemon: &Path) -> Option<std::path::PathBuf> {
+    std::fs::canonicalize(daemon)
+        .ok()
+        .filter(|daemon| daemon.starts_with(folder))
+}
+
+/// The warning for a folder that holds the folder of the daemon, which holds the records and
+/// the approvals of Anima; none for a different folder.
+#[must_use]
+pub fn of_anima(folder: &Path, daemon: &Path) -> Vec<String> {
+    held_anima(folder, daemon).map_or_else(Vec::new, |anima| {
+        vec![format!(
+            "This folder holds the folder of Anima, {}. An agent in Full access, or Claude Code \
+             in Accept edits, can change the records and the approvals of Anima there with no \
+             question. Codex in Accept edits or Ask can only read that folder.",
+            anima.display()
+        )]
+    })
+}
+
 /// One project file as it was read.
 enum File {
     Absent,
@@ -107,6 +130,27 @@ pub fn lines(notice: &Notice) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn thr_041_a_folder_that_holds_the_folder_of_anima_gets_a_warning_that_names_it() {
+        let home = tempfile::tempdir().expect("a folder");
+        let home = std::fs::canonicalize(home.path()).expect("a real path");
+        let daemon = home.join("Library/anima-daemon");
+        std::fs::create_dir_all(&daemon).expect("the folder of the daemon");
+        let warning = of_anima(&home, &daemon);
+        assert_eq!(warning.len(), 1);
+        assert!(
+            warning[0].contains(&daemon.display().to_string()),
+            "{warning:?}"
+        );
+        let project = home.join("project");
+        std::fs::create_dir(&project).expect("a project");
+        assert!(of_anima(&project, &daemon).is_empty(), "a folder beside it");
+        assert!(
+            of_anima(&home, &home.join("missing")).is_empty(),
+            "no folder of the daemon"
+        );
+    }
 
     #[test]
     fn thr_046_a_folder_with_a_hook_gets_a_notice_that_names_its_command() {

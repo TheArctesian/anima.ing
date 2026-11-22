@@ -32,10 +32,17 @@ const SOURCE: &str = "local socket";
 const WATCHERS: usize = 16;
 
 /// The Codex calls of a thread of Codex.
-pub(super) fn codex_of(row: &ThreadRow, effort: Option<Effort>) -> Option<Codex> {
+/// Its sandbox keeps the folder of the daemon read-only when the folder of the thread holds it
+/// (THR-041).
+pub(super) fn codex_of(
+    row: &ThreadRow,
+    effort: Option<Effort>,
+    daemon: &std::path::Path,
+) -> Option<Codex> {
     (row.program == Program::Codex).then(|| {
         let model = row.model.as_deref().and_then(|name| Model::new(name).ok());
         Codex::new(row.folder.clone(), row.mode, model, effort)
+            .keeping(crate::threads::notice::held_anima(&row.folder, daemon))
     })
 }
 

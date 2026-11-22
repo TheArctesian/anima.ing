@@ -215,11 +215,12 @@ impl Runner {
         self.may_start(0)?;
         let id = Uuid::now_v7();
         let (row, action) = self.prepared(&new, id, &path)?;
-        let mut notice = crate::threads::notice::of_folder(&row.folder);
+        let daemon = self.dir.parent().unwrap_or(&self.dir);
+        let mut notice = notice_of(&row.folder, daemon);
         let named = new.program_path.is_some();
         notice.extend(super::silence::chosen(new.program, &path, named, &copies));
         self.silence.started(id, new.program, path);
-        let codex = codex_of(&row, new.effort);
+        let codex = codex_of(&row, new.effort, daemon);
         self.threads.insert(id, Thread::new(row, new.effort, codex));
         if !notice.is_empty() {
             // The thread keeps the notice as its first line (THR-046).
@@ -333,6 +334,15 @@ impl Runner {
         };
         Ok((row, action))
     }
+}
+
+/// What the person reads of a folder before a thread starts in it, and as the first line of the
+/// thread: the warning when it holds the folder of Anima (THR-041), then what its project files
+/// do by themselves (THR-046).
+pub(super) fn notice_of(folder: &Path, daemon: &Path) -> Vec<String> {
+    let mut notice = crate::threads::notice::of_anima(folder, daemon);
+    notice.extend(crate::threads::notice::of_folder(folder));
+    notice
 }
 
 /// An absolute folder of this computer that exists, as its real path, and not in the folder of
