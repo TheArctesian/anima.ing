@@ -1,6 +1,7 @@
 <script lang="ts">
-  import IconButton from '../kit/IconButton.svelte';
+  import CodeIcon from '../icons/CodeIcon.svelte';
   import Tooltip from '../kit/Tooltip.svelte';
+  import CopyButton from './meta/CopyButton.svelte';
 
   interface Props {
     /** The language of the fence ("ts"); empty for a fence with none. */
@@ -13,21 +14,7 @@
 
   const { language, text, streaming = false }: Props = $props();
   let wrap = $state(false);
-  let copy = $state<'idle' | 'copied' | 'failed'>('idle');
-
-  async function copyCode(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(text);
-      copy = 'copied';
-      setTimeout(() => (copy = 'idle'), 2000);
-    } catch {
-      // No clipboard, or the system refused it; the code stays selectable.
-      copy = 'failed';
-      setTimeout(() => (copy = 'idle'), 2000);
-    }
-  }
-
-  const copyWords = $derived(copy === 'copied' ? 'Copied' : copy === 'failed' ? 'Could not copy' : 'Copy code');
+  const wrapWords = $derived(wrap ? 'Disable line wrap' : 'Wrap lines');
 </script>
 
 <!-- A fenced code block (03 section A.4.1): the language on the left, Wrap and Copy on the right, then the code. -->
@@ -35,28 +22,46 @@
   <div class="head">
     {#if language !== ''}<span class="language">{language}</span>{/if}
     <div class="actions" role="group" aria-label="Code block actions">
-      <Tooltip text={wrap ? 'Disable line wrap' : 'Wrap lines'}>
-        <IconButton label="Wrap lines" icon="wrap-text" pressed={wrap} onclick={() => (wrap = !wrap)} />
+      <!-- Fidelity 15: 24 px buttons with 12 px icons; the tooltip says what a press does, the name and the pressed state say the setting. -->
+      <Tooltip text={wrapWords}>
+        <button type="button" class="wrap-button" aria-label="Wrap lines" aria-pressed={wrap} onclick={() => (wrap = !wrap)}><CodeIcon name="wrap-text" /></button>
       </Tooltip>
-      {#if !streaming}
-        <Tooltip text={copyWords}>
-          <IconButton label={copyWords} icon={copy === 'copied' ? 'check' : 'copy'} onclick={() => void copyCode()} />
-        </Tooltip>
-      <span class="hidden" role="status">{copy === 'idle' ? '' : copyWords}</span>
-      {/if}
+      {#if !streaming}<CopyButton {text} label="Copy code" tint={false} />{/if}
     </div>
   </div>
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-  <pre class:wrap tabindex="0"><code>{text}</code></pre>
+  <pre class:wrap tabindex="0" role="group" aria-label="Code" data-own-keys><code>{text}</code></pre>
 </div>
 
 <style>
-  .hidden {
-    position: absolute;
-    inline-size: 1px;
-    block-size: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
+  .wrap-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--space-6);
+    block-size: var(--space-6);
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-md);
+    background: none;
+    color: var(--code-quiet-text);
+    cursor: pointer;
+  }
+
+  .wrap-button :global(.code-icon) {
+    inline-size: var(--code-timeline-icon-xs);
+    block-size: var(--code-timeline-icon-xs);
+  }
+
+  .wrap-button:hover,
+  .wrap-button[aria-pressed='true'] {
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+
+  .wrap-button:focus-visible {
+    outline: var(--border-focus) solid var(--focus-ring);
+    outline-offset: -2px;
   }
 
   .block {

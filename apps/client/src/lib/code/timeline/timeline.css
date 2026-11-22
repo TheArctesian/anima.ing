@@ -6,7 +6,8 @@
 :root {
   /* A.1: side padding of the scroller, 12 px below 640 px wide, 48 px from 640 px; a 16 px spacer at each end. */
   --code-timeline-gutter: var(--space-3);
-  --code-timeline-spacer: var(--space-4);
+  /* Fidelity 25: 12 px under 640 px wide, 16 px from 640 px. */
+  --code-timeline-spacer: var(--space-3);
 
   /* A.1: the space under each kind of row. */
   --code-timeline-row-gap: var(--space-4);
@@ -41,13 +42,17 @@
   --code-timeline-group-max: min(18rem, 50dvh);
   --code-timeline-output-max: 20rem;
   --code-timeline-detail-text: var(--text-xs);
+  /* The small icons of T3 Code: the 12 px chevron and marks, the 14 px chevron of the fold and of "Scroll to end". */
+  --code-timeline-icon-xs: 0.75rem;
+  --code-timeline-icon-chevron: 0.875rem;
 
-  /* A.19: "Scroll to end" sits 12 px above the bottom of the timeline. */
-  --code-timeline-end-offset: var(--space-3);
+  /* Fidelity 19: "Scroll to end" sits 6 px above the composer. */
+  --code-timeline-end-offset: 0.375rem;
 }
 
 @media (width >= 640px) {
   :root {
     --code-timeline-gutter: var(--space-12);
+    --code-timeline-spacer: var(--space-4);
   }
 }
