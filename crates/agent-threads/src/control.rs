@@ -131,7 +131,8 @@ pub enum Action {
     Unqueue { thread: Uuid, id: Uuid },
     /// Sends a prompt that waits now: into the running turn, or as the next turn (TH109).
     SendQueued { thread: Uuid, id: Uuid },
-    /// Changes the model, the effort or the mode of a thread from its next turn (TH110).
+    /// Changes the model, the effort or the mode of a thread (TH110): the row says it when the
+    /// program has it.
     Set {
         thread: Uuid,
         #[serde(default, skip_serializing_if = "Option::is_none")]

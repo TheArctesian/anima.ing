@@ -166,3 +166,51 @@ fn th110_a_thread_that_does_not_run_changes_nothing() {
         Err(Refusal::NotRunning)
     );
 }
+
+#[test]
+fn th110_an_answer_of_claude_code_after_a_restart_of_the_runner_still_changes_the_row() {
+    let mut thread = idle_claude();
+    let steps = thread
+        .set(Changes {
+            mode: Some(Mode::Ask),
+            ..Changes::default()
+        })
+        .expect("changed");
+    let id = writes(&steps)[0]["request_id"].clone();
+    let mut again = Thread::restore(thread.saved(), None);
+    again.line(&answer(&id, "success"), &mut counter());
+    assert_eq!(again.row.mode, Mode::Ask);
+    let next = again
+        .set(Changes {
+            mode: Some(Mode::FullAccess),
+            ..Changes::default()
+        })
+        .expect("changed");
+    assert_ne!(
+        writes(&next)[0]["request_id"],
+        id,
+        "an ID is never made two times"
+    );
+}
+
+#[test]
+fn th110_a_codex_change_waits_while_a_turn_start_is_not_answered() {
+    let mut ids = counter();
+    let (mut thread, _) = codex_in_a_turn(&mut ids);
+    thread.line(
+        r#"{"method":"turn/completed","params":{"turn":{"id":"u1","status":"completed"}}}"#,
+        &mut ids,
+    );
+    thread.send("next", true).expect("running");
+    thread
+        .set(Changes {
+            mode: Some(Mode::Ask),
+            ..Changes::default()
+        })
+        .expect("changed");
+    assert_eq!(
+        thread.row.mode,
+        Mode::FullAccess,
+        "the turn that starts has the old mode"
+    );
+}

@@ -59,6 +59,9 @@ pub struct Saved {
     /// What the person changed of a Codex thread after its start (TH110).
     #[serde(default)]
     pub codex_changed: Changed,
+    /// The changes of the person that the program did not take yet (TH110).
+    #[serde(default)]
+    pub asked: settings::Asked,
     /// The open requests: the ID of the runner and the line of the program.
     pub open: Vec<(Uuid, String)>,
     /// The open requests whose answer went to the holder: after a restart they close, so that

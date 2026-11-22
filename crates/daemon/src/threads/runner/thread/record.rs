@@ -28,6 +28,7 @@ impl Thread {
                 .map(|(id, open)| (*id, open.line.clone()))
                 .collect(),
             seq: self.seq,
+            asked: self.asked.clone(),
             answering: self
                 .open
                 .iter()
@@ -77,6 +78,7 @@ impl Thread {
         };
         thread.held = thread.row.state != RunState::Stopped;
         thread.seq = saved.seq;
+        thread.asked = saved.asked;
         for (id, line) in saved.open {
             let events = thread.decode(line.as_bytes());
             if let Some(DriveEvent::Request(request)) = events.into_iter().next() {

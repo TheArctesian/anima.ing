@@ -47,8 +47,7 @@ pub enum AgentCommand {
     /// turns before it ended well. Change, drop or send a queued prompt now.
     #[cfg(unix)]
     Queue(drive::QueueArgs),
-    /// Change the model, the effort or the mode of a thread that this computer runs, from its
-    /// next turn.
+    /// Change the model, the effort or the mode of a thread that this computer runs.
     #[cfg(unix)]
     Set(drive::SetArgs),
     /// Answer a request of a thread: allow (the default), deny, allow for the session, or

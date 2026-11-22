@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 
 use agent_threads::control::{Refusal, RunState};
 use agent_threads::drive::{ClaudeInput, DriveEvent, Effort, Mode, Model, ProgramRequestId};
+use serde::{Deserialize, Serialize};
 
 use super::{Driver, Step, Thread, said};
 
@@ -13,7 +14,7 @@ use super::{Driver, Step, Thread, said};
 const CHANGE_ID: &str = "anima-set-";
 
 /// What the person changes; `None` keeps what the thread has.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Changes {
     pub model: Option<Model>,
     pub effort: Option<Effort>,
@@ -31,13 +32,17 @@ impl Changes {
     }
 }
 
-/// The changes that the person asked and the program does not have yet.
-#[derive(Debug, Default)]
-pub(super) struct Asked {
+/// The changes that the person asked and the program does not have yet. The record keeps them,
+/// so that an answer of Claude Code after a restart of the runner still changes the row.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct Asked {
     /// Claude Code: each control request by its ID, until Claude Code answers it.
     claude: BTreeMap<String, Changes>,
     /// Codex: the changes for the turns after the running one.
     codex: Option<Changes>,
+    /// The number of the last control request of a change, kept in the record so that an ID is
+    /// never made two times.
+    last: u64,
 }
 
 impl Thread {
@@ -74,8 +79,8 @@ impl Thread {
     fn claude_lines(&mut self, changes: Changes) -> Vec<Step> {
         let mut steps = Vec::new();
         if let Some(model) = changes.model {
-            self.controls += 1;
-            let id = format!("{CHANGE_ID}model-{}", self.controls);
+            self.asked.last += 1;
+            let id = format!("{CHANGE_ID}model-{}", self.asked.last);
             steps.push(Step::Write(ClaudeInput::set_model(&id, &model)));
             let part = Changes {
                 model: Some(model),
@@ -84,8 +89,8 @@ impl Thread {
             self.asked.claude.insert(id, part);
         }
         if let Some(mode) = changes.mode {
-            self.controls += 1;
-            let id = format!("{CHANGE_ID}mode-{}", self.controls);
+            self.asked.last += 1;
+            let id = format!("{CHANGE_ID}mode-{}", self.asked.last);
             steps.push(Step::Write(ClaudeInput::set_permission_mode(&id, mode)));
             let part = Changes {
                 mode: Some(mode),
@@ -101,7 +106,7 @@ impl Thread {
         let Driver::Codex(codex) = &mut self.driver else {
             return Vec::new();
         };
-        if codex.turn.is_some() {
+        if codex.turn.is_some() || codex.turn_starting() {
             return Vec::new();
         }
         let Some(changes) = self.asked.codex.take() else {

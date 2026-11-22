@@ -144,6 +144,14 @@ impl Codex {
         self.refused_turn.take()
     }
 
+    /// A `turn/start` went and Codex did not answer it yet: that turn starts with what it carried.
+    #[must_use]
+    pub fn turn_starting(&self) -> bool {
+        self.calls
+            .values()
+            .any(|call| matches!(call, Call::TurnStart))
+    }
+
     /// Whether a prompt now goes into the running turn (`turn/steer`) and ends with it, not as a
     /// turn of its own.
     #[must_use]
@@ -158,9 +166,11 @@ impl Codex {
         }
     }
 
-    /// The running turn ended.
+    /// The running turn ended: a `turn/start` that waits for its answer started it, so nothing
+    /// waits for that answer any more.
     pub fn turn_ended(&mut self) {
         self.ended = self.turn.take();
+        self.calls.retain(|_, call| !matches!(call, Call::TurnStart));
     }
 
     /// `turn/interrupt` for the running turn, if one runs.
