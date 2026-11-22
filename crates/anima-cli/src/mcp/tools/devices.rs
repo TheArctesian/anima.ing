@@ -4,8 +4,8 @@
 
 mod agent_sessions;
 mod agent_usage;
+mod applications;
 mod capabilities;
-mod catalogue_entries;
 mod change;
 mod compose_file;
 mod compute_policy;
@@ -16,7 +16,9 @@ pub mod models;
 mod read;
 /// The public names of applications (task H21): its own tool set, kept with the other
 /// application tools of a device.
-pub mod routes;
+pub use applications::routes;
+
+use applications::catalogue_entries;
 
 use rmcp::model::JsonObject;
 use serde_json::Value;
