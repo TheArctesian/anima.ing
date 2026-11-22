@@ -38,7 +38,6 @@ class ScreenOff(QObject):
         self._off_timer = QTimer(self)
         self._off_timer.setSingleShot(True)
         self._off_timer.timeout.connect(self._turn_off)
-        self._app.installEventFilter(self)
         self._app.screenAdded.connect(self._added)
         self._app.screenRemoved.connect(self._removed)
         self._app.aboutToQuit.connect(self.close)
@@ -63,6 +62,7 @@ class ScreenOff(QObject):
             return
         flags = Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.BypassWindowManagerHint
         cover = QWidget(None, flags)
+        cover.installEventFilter(self)
         cover.setWindowTitle('Anima — screen off')
         cover.setScreen(screen)
         palette = cover.palette()
@@ -123,34 +123,22 @@ class ScreenOff(QObject):
     def _wake(self):
         self._active = False
         self._off_timer.stop()
-        for screen in tuple(self._covers):
-            self._removed(screen)
         if self._needs_restore or self._running is not None:
             self._request('on')
 
-    def _consume_sequence(self, event):
+    def _track_input(self, event):
         kind = event.type()
-        if kind in KEYS and event.key() in self._keys:
-            if kind == QEvent.Type.KeyRelease and not event.isAutoRepeat():
-                self._keys.discard(event.key())
-            return True
-        if kind in BUTTONS and event.button() & self._buttons:
-            if kind == QEvent.Type.MouseButtonRelease:
-                self._buttons &= ~event.button()
-            return True
-        if kind in TOUCH and self._touch:
-            if kind in (QEvent.Type.TouchEnd, QEvent.Type.TouchCancel):
-                self._touch = False
-            return True
-        return False
+        if kind == QEvent.Type.KeyPress:
+            self._keys.add(event.key())
+        elif kind == QEvent.Type.KeyRelease and not event.isAutoRepeat():
+            self._keys.discard(event.key())
+        if kind in BUTTONS or kind == QEvent.Type.MouseMove:
+            self._buttons = event.buttons()
+        if kind in TOUCH:
+            self._touch = kind not in (QEvent.Type.TouchEnd, QEvent.Type.TouchCancel)
 
     def eventFilter(self, watched, event):
         if self._closed:
-            return False
-        if self._consume_sequence(event):
-            event.accept()
-            return True
-        if not self._active:
             return False
         kind = event.type()
         if kind == QEvent.Type.ShortcutOverride:
@@ -158,15 +146,15 @@ class ScreenOff(QObject):
             return True
         if kind not in WAKE:
             return False
-        if kind == QEvent.Type.MouseMove and event.globalPosition().toPoint() == self._pointer:
+        if kind == QEvent.Type.MouseMove and self._active and event.globalPosition().toPoint() == self._pointer:
             return True
-        if kind == QEvent.Type.KeyPress:
-            self._keys.add(event.key())
-        if kind in BUTTONS or kind == QEvent.Type.MouseMove:
-            self._buttons = event.buttons()
-        if kind in (QEvent.Type.TouchBegin, QEvent.Type.TouchUpdate):
-            self._touch = True
-        self._wake()
+        self._track_input(event)
+        if self._active:
+            self._wake()
+        # Keep the cover's grabs through release; wake input never reaches the locked UI.
+        if not self._keys and not self._buttons and not self._touch:
+            for screen in tuple(self._covers):
+                self._removed(screen)
         event.accept()
         return True
 
@@ -178,7 +166,6 @@ class ScreenOff(QObject):
         self._off_timer.stop()
         self._deadline.stop()
         self._pending = None
-        self._app.removeEventFilter(self)
         for screen in tuple(self._covers):
             self._removed(screen)
         # Only teardown waits: cancel off before restoring the kiosk's no-idle-DPMS policy.

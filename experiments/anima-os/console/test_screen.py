@@ -98,11 +98,13 @@ class ScreenLifecycle(unittest.TestCase):
         for cover in self.covers():
             self.assertEqual(cover.geometry(), cover.screen().geometry())
             self.assertEqual(cover.grab().toImage().pixelColor(10, 10).name(), '#000000')
-        QTest.keyPress(self.entry, Qt.Key.Key_A)
-        self.assertFalse(self.covers())
+        cover = self.covers()[0]
+        QTest.keyPress(cover, Qt.Key.Key_A)
+        self.assertTrue(self.covers(), "Retain the input grab until the waking key is released")
         repeat = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_A, Qt.KeyboardModifier.NoModifier, 'a', True)
-        self.app.sendEvent(self.entry, repeat)
-        QTest.keyRelease(self.entry, Qt.Key.Key_A)
+        self.app.sendEvent(cover, repeat)
+        QTest.keyRelease(cover, Qt.Key.Key_A)
+        self.assertFalse(self.covers())
         self.assertEqual(self.entry.text(), '')
         QTest.keyClick(self.entry, Qt.Key.Key_B)
         self.assertEqual(self.entry.text(), 'b')
@@ -113,7 +115,7 @@ class ScreenLifecycle(unittest.TestCase):
         clicks = []
         self.button.clicked.connect(lambda: clicks.append(True))
         self.controller.blank()
-        QTest.mouseClick(self.button, Qt.MouseButton.LeftButton)
+        QTest.mouseClick(self.covers()[0], Qt.MouseButton.LeftButton)
         self.assertFalse(self.covers())
         self.assertEqual(clicks, [])
         QTest.mouseClick(self.button, Qt.MouseButton.LeftButton)
@@ -124,9 +126,10 @@ class ScreenLifecycle(unittest.TestCase):
         device = QTest.createTouchDevice(QInputDevice.DeviceType.TouchScreen)
         target.show()
         self.controller.blank()
+        cover = self.covers()[0]
         for kind, state in ((QEvent.Type.TouchBegin, QEventPoint.State.Pressed), (QEvent.Type.TouchUpdate, QEventPoint.State.Updated), (QEvent.Type.TouchEnd, QEventPoint.State.Released)):
             point = QEventPoint(0, state, QPointF(5, 5), QPointF(5, 5))
-            self.app.sendEvent(target, QTouchEvent(kind, device, Qt.KeyboardModifier.NoModifier, [point]))
+            self.app.sendEvent(cover, QTouchEvent(kind, device, Qt.KeyboardModifier.NoModifier, [point]))
         self.assertFalse(self.covers())
         self.assertEqual(target.received, [])
         self.app.sendEvent(target, QTouchEvent(QEvent.Type.TouchBegin, device, Qt.KeyboardModifier.NoModifier, []))
@@ -142,7 +145,7 @@ class ScreenLifecycle(unittest.TestCase):
         timer.start(20)
         self.controller.blank()
         self.until(lambda: any(phase == 'start' and args[-1] == 'off' for phase, args in self.records()))
-        QTest.keyClick(self.entry, Qt.Key.Key_A)
+        QTest.keyClick(self.covers()[0], Qt.Key.Key_A)
         self.until(lambda: any(phase == 'done' and 'on' in args for phase, args in self.records()))
         QTest.qWait(700)
         self.assertFalse(any(phase == 'done' and args[-1] == 'off' for phase, args in self.records()), 'A killed off command must never finish after wake')
@@ -159,7 +162,7 @@ class ScreenLifecycle(unittest.TestCase):
                 self.controller.blank()
                 QTest.qWait(400)
                 self.assertTrue(self.covers())
-                QTest.keyClick(self.entry, Qt.Key.Key_A)
+                QTest.keyClick(self.covers()[0], Qt.Key.Key_A)
                 self.assertFalse(self.covers())
                 QTest.qWait(30)
 
