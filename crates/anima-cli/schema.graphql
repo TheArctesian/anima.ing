@@ -278,6 +278,12 @@ enum MetricsSource {
   DAEMON
 }
 
+"What the daemon of a device waits for from a person at that device (R-364)."
+enum DaemonNeed {
+  "macOS waits for the person to allow the daemon to read its token in the Keychain (R-322)."
+  KEYCHAIN
+}
+
 "RA-020. TELNET joins when Telnet exists."
 enum AccessWarning {
   IGNORED_CERTIFICATE
@@ -357,6 +363,8 @@ type Device {
   metricsStale: Boolean!
   "The version of the device's daemon from its last batch; null unless the source is DAEMON and the daemon sent one (R-122, ROL-051)."
   daemonVersion: String
+  "What the device's daemon waits for from a person at the device; null unless the source is DAEMON and the desktop app of that computer reported a need. The next accepted batch clears it (R-364)."
+  daemonNeed: DaemonNeed
   transfer: TransferPolicy!
   accessWarnings: [AccessWarning!]!
   "Most live sessions at once (RA-036); null: no limit. File tunnels do not count."
@@ -4200,6 +4208,8 @@ type Mutation {
   enrolDaemon(deviceId: ID!): DaemonEnrolment!
   "Login or browser token only (D-23, R-100). The source stays DAEMON, shown as stale, until the operator changes it (R-092 D-7)."
   revokeDaemonToken(deviceId: ID!): Device!
+  "Login or browser token only (D-23, R-364). Sets what the device's daemon waits for, or clears it with a null need. NOT_FOUND for a device with no daemon token; changes nothing when the need is already that, or when the need is not null and the last batch of that daemon came less than 5 s before the call (the answer then shows the need the hub keeps)."
+  setDaemonNeed(deviceId: ID!, need: DaemonNeed): Device!
 
   setCheckDefaults(input: CheckDefaultsInput!): CheckDefaults!
 

@@ -28,6 +28,7 @@ export function device(change: Partial<DeviceDetail> = {}, ssh: Partial<DeviceDe
     metricsSource: 'NONE',
     metricsStale: false,
     daemonVersion: null,
+    daemonNeed: null,
     sessionLimit: null,
     accessWarnings: [],
     rdp: {

@@ -97,6 +97,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-083 | The sign-out of a hosted hub takes the daemon off this computer and revokes it at the hub (HMD-056; task HM-T21) | This Mac with an application of a build that holds the branch `hosted/hm-t21-daemon-removal`, signed in to the hosted hub with the daemon installed (HT-061 step 1); the Linux computer for step 7 | Open |
 | HT-112 | A newer application replaces the daemon of this computer and keeps its enrolment (HMD-055; task HM-T20) | This Mac with two applications of the branch `hosted/hm-t20-daemon-update` of three versions, signed in to the hosted hub with the daemon installed (HT-061 step 1), and an agent thread for step 7; the Linux computer for steps 8 and 9 | Open |
 | HT-117 | The daemon of this Mac waits for the person in the Keychain and does not stop (MET-013, MET-019; R-322) | This Mac with the daemon installed and reporting (HT-061 step 1), and two ad hoc trial builds of the branch `fix/daemon-keychain-wait` | Open |
+| HT-132 | The device page of the hub says that the daemon of this Mac needs you in the Keychain (R-364) | This Mac with the daemon installed and reporting, two ad hoc trial builds of a build that holds the branch `hosted/daemon-keychain-need`, and a second computer or a browser signed in to the same hosted hub | Open |
 | HT-057 | The Settings page after the interface review: the index and the sections in three groups (R-224) | The desktop application of a build that holds the branch `ui/v2-settings`, and a phone | Open |
 | HT-052 | The tab Containers of a device after the interface review: one State column, one pane for the log and the details (R-224) | The desktop application of a build that holds the branch `ui/v2-device-containers`, a device with Docker and an SSH credential | Open |
 | HT-055 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
@@ -1622,6 +1623,52 @@ first. Each ad hoc build is a new program to the Keychain, so build B makes the 
    the first try. Last, run
    `cp /tmp/anima-daemon-c ~/.local/bin/anima-daemon` and `~/.local/bin/anima-daemon install`, and
    allow it in the Keychain if macOS asks. Expected: the Mac row in Devices shows new metrics.
+
+Result: Open.
+
+### HT-132: the device page of the hub says that the daemon of this Mac needs you in the Keychain (R-364)
+
+Built: on the branch `hosted/daemon-keychain-need`. The hub keeps what the daemon of a device waits for
+(`metrics.daemons.need`, migration 0722), serves it as `Device.daemonNeed` and takes it with the mutation
+`setDaemonNeed` (`crates/hub/src/fleet/metrics/graphql.rs`); the next accepted batch of the daemon clears it
+(`crates/hub/src/fleet/metrics/ingest/store.rs`, `take_batch`). The application reads the mark file of R-322 at
+its start and each minute, signed in to any hub, and calls the mutation for the device of this computer when the
+mark appears or goes (`apps/client/src/lib/desktop/daemon/need.ts`). The chart area of the device page gives the reason line in place of
+"Waiting for metrics", in the words of Agent usage (`keychainNeedLine` in
+`apps/client/src/lib/desktop/daemon/state.svelte.ts`): on this Mac it speaks of "this computer", on any other client
+it names the device and says "Allow it there".
+
+The tests cover: the mutation, the event of a change, a second call that changes nothing, the clear by a batch
+and by a new token and the event of each, a need not set just after a batch, no need on a device whose source is
+not DAEMON, NOT_FOUND for a device with no daemon token, the refusal of an API key; `anima daemon need`
+and `anima_daemon_set_need` against the scripted hub; the reading each minute and the call only on a change, a
+mark that was not read, a sign-out, a refusal that settles the reading and a turn that does not end, with
+stand-ins for the shell and the hub; the texts of the page. Not covered: the real Keychain and its window, the
+real mark file, the real hosted hub, and the page seen from a second computer.
+
+It needs: this Mac with the daemon installed and reporting (HT-061 step 1), two ad hoc trial builds A and B of a
+build that holds this branch (as for HT-117), A installed first, and a second computer or a browser signed in to
+the same hosted hub.
+
+1. Do HT-117 steps 1 and 2 with build B: the window of macOS is open and not answered, and the file
+   `~/Library/Application Support/anima-daemon/keychain-waits` is there.
+2. Open the application (build B) and sign in to the hosted hub. Wait one minute. Expected: the log of the
+   application has "the daemon of this computer waits for you in the Keychain: the hub knows".
+3. On the second computer (or in the browser), open Devices, then this Mac, tab Overview, range 1 hour (wait
+   until the hour has no samples). Expected: the chart area says "The daemon of <this Mac> needs you: on that
+   Mac, macOS asks whether it may read its key in the Keychain. Allow it there." On this Mac, in the
+   application, the same page says "The daemon of this computer needs you: macOS asks whether it may read its
+   key in the Keychain. Type your password in that window and click Always Allow. Metrics and counts appear
+   here some minutes later." Nothing else on the page moves or changes size.
+4. Run `anima daemon status <this Mac>` and `anima event list` on the second computer. Expected: the status
+   has "Daemon needs: a person to allow it in the Keychain"; one event "The daemon on <this Mac> waits for a
+   person to allow it in the Keychain."
+5. Quit the application. In the window of macOS, type the password of the Mac and click Always Allow. Wait one
+   minute, then reload the page of step 3. Expected: the page no longer gives the reason line of step 3 (the
+   chart area shows values), with the application still closed; `anima event list` on the second computer has
+   one event "The daemon on <this Mac> no longer waits for a person." (the batch of the daemon cleared it).
+6. Open the application again and wait one minute. Expected: no new event of the daemon need; the log of the
+   application has "the daemon of this computer waits for nothing: the hub knows" at most once.
 
 Result: Open.
 

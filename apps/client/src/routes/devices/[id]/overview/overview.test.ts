@@ -12,7 +12,7 @@ import { device } from '../page.fixture.svelte';
 import type { DeviceMetrics } from './metrics.svelte';
 import OverviewPanel from './OverviewPanel.svelte';
 import OverviewSkeleton from './OverviewSkeleton.svelte';
-import { checkCounts, hostKeyText, uptimeReadings } from './overview';
+import { checkCounts, daemonNeedLine, hostKeyText, noChartsText, uptimeReadings } from './overview';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -219,6 +219,21 @@ it('MET-007: data with no series and no readings says it is waiting for metrics'
   show({ ...LOADED, readings: null, view: { metricsSource: 'SSH', gpus: [], series: [], drives: [], readings: null, batteries: [] } });
   expect(document.querySelector('.waiting')?.textContent).toBe('Waiting for metrics');
   expect(document.querySelector('h3')).toBeNull();
+});
+
+it('R-322: with no readings, a daemon that waits in the Keychain gives its reason line in place of the wait', () => {
+  expect(noChartsText(false, 'last hour', 'The daemon of nas needs you')).toBe('The daemon of nas needs you');
+  expect(noChartsText(true, 'last hour', 'The daemon of nas needs you')).toBe('No samples in the last hour');
+  expect(noChartsText(false, 'last hour', null)).toBe('Waiting for metrics');
+});
+
+it('R-322: the reason line speaks of this computer on its own page and names the device on any other', () => {
+  const mac = { id: 'm1', name: 'studio-mac', daemonNeed: 'KEYCHAIN' as const };
+  expect(daemonNeedLine(mac, 'm1')).toContain('The daemon of this computer needs you');
+  expect(daemonNeedLine(mac, null)).toBe(
+    'The daemon of studio-mac needs you: on that Mac, macOS asks whether it may read its key in the Keychain. Allow it there.',
+  );
+  expect(daemonNeedLine({ ...mac, daemonNeed: null }, 'm1')).toBeNull();
 });
 
 it('MET-007: a range with no samples while the bars have readings says the range is empty, not waiting', () => {

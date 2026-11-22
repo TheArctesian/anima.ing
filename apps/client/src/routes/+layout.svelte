@@ -9,6 +9,7 @@
   import { extensionsApi } from '$lib/extensions/api';
   import { ExtensionsStore, provideExtensions } from '$lib/extensions/store.svelte';
   import { installDaemonOnThisComputer } from '$lib/desktop/daemon/here';
+  import { watchDaemonNeedHere } from '$lib/desktop/daemon/need';
   import { daemonHere, stateAfter } from '$lib/desktop/daemon/state.svelte';
   import { hubIsHosted } from '$lib/hosted/mark';
   import { provideHub } from '$lib/hub/context';
@@ -117,6 +118,9 @@
         daemonHere.current = did === 'installing' ? { kind: 'installing' } : stateAfter(did);
       });
     }
+    // The daemon cannot tell the hub that it waits in the Keychain, as it has no token then: the app tells it, for each
+    // hub, hosted or not (R-322). Signed out, it asks the hub nothing.
+    if (capabilities().thisMachine) $effect(() => watchDaemonNeedHere(hub, () => !showsSignedOutPage(page.url)));
     // A hub that stops answering may come back as another program on the same port: once the connection is not live,
     // the next request checks again (M-C, MF-1).
     $effect(() => {
