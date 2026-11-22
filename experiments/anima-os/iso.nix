@@ -33,7 +33,7 @@ in {
   '';
   isoImage.efiSplashImage = ./branding/boot.png;
   isoImage.splashImage = ./branding/boot.png;
-  isoImage.volumeID = "ANIMA_OS";
+  isoImage.volumeID = "ANIMA_INSTALL";
   isoImage.squashfsCompression = "zstd -Xcompression-level 6";
   isoImage.storeContents = [ installedSystem ];
   services.xserver.windowManager.openbox.enable = true;
