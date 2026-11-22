@@ -46,9 +46,10 @@ impl Runner {
 
     /// What the composer says of a folder that the person chose for a new thread, or the refusal of it.
     pub(super) fn folder_notice(&self, folder: &Path) -> Outcome {
-        match super::super::start::chosen_folder(folder, self.dir.parent().unwrap_or(&self.dir)) {
+        let daemon = self.dir.parent().unwrap_or(&self.dir);
+        match super::super::start::chosen_folder(folder, daemon) {
             Ok(real) => Outcome::Folder {
-                notice: crate::threads::notice::of_folder(&real),
+                notice: crate::threads::notice::before_start(&real, daemon),
             },
             Err(why) => Outcome::Refused { why },
         }

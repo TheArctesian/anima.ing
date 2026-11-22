@@ -287,6 +287,8 @@ that owns the area.
 | SF-334 | An API key can read a vault key offer and can replace or delete a sealed record. Medium | The sealed records (E0-6, K-E5 Section 3) | Open |
 | SF-337 | A reveal with a valid new code passes for a login token that was deleted during the request. Low | The sealed records (E0-6, K-E5 Section 3) | Open |
 | SF-333 | A login token with the declaration of an AI agent can change and grant operational keys. Low | The operational keys (E0-6, K-E5 Section 2.2) | Open |
+| SF-354 | A connection that is open when its route is removed stays up. Medium | The routes of the hub (task H21) | Open |
+| SF-355 | A removed redirect keeps answering until the proxy reads its table again, or while it cannot. Low | The routes of the hub (task H21) | Open |
 | SF-179 | A program of the same user can listen at the socket of the link and get the daemon token and an enrolment code; on macOS this goes around the Keychain. Medium | The daemon on a computer of a person (task HM-T23) | Open |
 | SF-178 | On macOS, a daemon enrolled with an old link origin sends its token to a socket in the folder that the environment names. Low | The daemon on a computer of a person (task HM-T23) | Open |
 | SF-175 | The copy of the daemon in `~/.local/bin` is not checked after the installation. Low | The daemon on a computer of a person (task HM-T23) | Open |
@@ -4003,6 +4005,34 @@ Requirements: task H34; the proposed text "Excepted entries", first form (Sectio
 - Change: None; a decision. Options and recommendation are in OD-HOST-33.
 
 State: Open, narrowed. R-371 (2026-11-22) withdraws the exception, so this is no longer a way to the administrator of the machine. What stays applies to each ordinary entry of the catalogue: a fault before the sign-in of an ordinary entry gives that application, not the machine. The severity above is that of the excepted entry and is not rated again for an ordinary one. Before: The text is a proposal and no code exists. Found by the read of the proposed exception, 2026-11-19.
+
+### SF-354: A connection that is open when its route is removed stays up. Medium
+
+Requirements: HOST-046, HOST-050; Section 12 of hosted-applications-stage-2.md.
+
+What it is: A removal refuses each new connection at once, because the door reads the route again for each connection. A TCP stream or a WebSocket that is already open is a task of its own. The proxy stops only the listener, not the connections that it started, and the door never checks the route of an open relay again. A UDP flow ends when its listener stops, within the refresh of 60 s.
+
+Where: `crates/route-proxy/src/streams/tcp.rs` (`copy_bidirectional`), `streams/listeners.rs` (`keep`), `serve/https.rs` (the upgrade relay), `crates/hub/src/work/routes/door.rs` (`connect`).
+
+Effect, and who can cause it: A client that is connected when the person removes a route, for example because the route is abused. Effect: it keeps its connection until it is idle or closes.
+
+Mitigation now: none in the code. A new connection is refused at once.
+
+State: Open. It existed before Remove came back. Found on 2026-11-22 by the security review of the branch `hosted/routes-remove-signed-in`, a separate reviewer, which found no High.
+
+### SF-355: A removed redirect keeps answering until the proxy reads its table again, or while it cannot. Low
+
+Requirements: HOST-050.
+
+What it is: The proxy answers a redirect from its own table and does not ask the hub. It reads the table every 60 s. When a read fails, it keeps the old table, and with it the certificate of the removed name.
+
+Where: `crates/route-proxy/src/serve/https.rs` (`redirect`), `crates/route-proxy/src/main.rs` and `serve.rs` (`refresh`).
+
+Effect, and who can cause it: Nobody causes it. A removed redirect answers for up to 60 s, or for as long as the hub cannot be read.
+
+Mitigation now: a redirect goes only to the one fixed address that the person gave (SF-248).
+
+State: Open. It existed before Remove came back. Found on 2026-11-22 by the same review.
 
 ## Closed
 

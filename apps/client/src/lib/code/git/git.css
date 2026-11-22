@@ -1,0 +1,50 @@
+/*
+ * The sizes of the Git parts of the Code section: T3 Code's layout (`chat/threadDetailsPanelStyles.ts:1-47`,
+ * `DiffPanelShell.tsx:10-47`, `chat/ChangedFilesTree.tsx:93-399`) in Anima's skin. Colours, type, corners and focus
+ * are the semantic tokens; no glass; no text below 12 px, so T3's 10 and 11 px are our 12 px.
+ * Each `--code-*` name has the value of the kit (`$lib/code/kit/code.css`, stage 1) as its fallback until the kit is in `dev`.
+ */
+:root {
+  --git-quiet: var(--code-quiet-text, var(--text-secondary));
+  --git-line: var(--code-line, var(--border-subtle));
+  --git-meta: var(--code-text-meta, var(--text-xs));
+  --git-small: var(--code-text-small, var(--text-sm));
+
+  /* The details card is 280 px wide; a row is 32 px with 10 px of padding and a 10 px gap. */
+  --git-card: 17.5rem;
+  --git-row: var(--code-control, var(--control-md));
+  --git-row-pad: 0.625rem;
+
+  /* A file row of a list is 28 px; a tree indents 14 px for each level. */
+  --git-file-row: var(--code-control-dense, var(--control-sm));
+  --git-indent: 0.875rem;
+
+  /* The changes panel: its header is 40 px; the commit dialog's file list is 176 px high. */
+  --git-panel-head: var(--space-10);
+  --git-file-list: 11rem;
+
+  /* Added and removed lines: the status colours of the app, text and tint. */
+  --git-added: var(--status-up-text);
+  --git-added-tint: var(--status-up-tint);
+  --git-removed: var(--status-down-text);
+  --git-removed-tint: var(--status-down-tint);
+}
+
+/* "+12 -3": mono, tabular, coloured only when not zero. */
+.git-counts {
+  display: inline-flex;
+  flex: none;
+  gap: var(--space-2);
+  color: var(--git-quiet);
+  font-family: var(--font-mono);
+  font-size: var(--git-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.git-counts .added:not(.zero) {
+  color: var(--git-added);
+}
+
+.git-counts .removed:not(.zero) {
+  color: var(--git-removed);
+}

@@ -35,6 +35,8 @@ fn start(kit: &Kit, program: Program, mode: Mode) -> Action {
         effort: None,
         prompt: "Plan the change".to_owned(),
         program_path: None,
+        draft: None,
+        attachments: Vec::new(),
     }
 }
 

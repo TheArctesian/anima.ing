@@ -59,6 +59,8 @@ enum Waits {
         thread: Uuid,
         back: Caller,
         prompt: String,
+        /// The files of the draft, now of the thread, for the first prompt (TH111).
+        files: Vec<Uuid>,
     },
     Stop {
         back: Caller,

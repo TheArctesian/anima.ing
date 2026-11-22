@@ -55,11 +55,14 @@ export const DEVICE_NAMES: ReadonlyMap<string, string> = new Map([
 export interface FakeCalls extends RouteCalls {
   listAsked: number;
   checked: string[];
+  removed: string[];
   routes: readonly ApplicationRoute[];
   /** When set, the next list fails with it. */
   listFails?: HubError;
   /** When set, each check fails with it. */
   checkFails?: HubError;
+  /** When set, each removal fails with it. */
+  removeFails?: HubError;
   /** What a check answers, by the ID of the route; the route as it was by default. */
   checkAnswers: Map<string, ApplicationRoute>;
 }
@@ -68,6 +71,7 @@ export function fakeCalls(routes: readonly ApplicationRoute[] = ROUTES): FakeCal
   const calls: FakeCalls = {
     listAsked: 0,
     checked: [],
+    removed: [],
     routes,
     checkAnswers: new Map(),
     list(): Promise<HubResult<RouteList>> {
@@ -81,6 +85,11 @@ export function fakeCalls(routes: readonly ApplicationRoute[] = ROUTES): FakeCal
       const answer = calls.checkAnswers.get(id) ?? calls.routes.find((each) => each.id === id);
       return Promise.resolve(answer === undefined ? { ok: false, error: { code: 'NOT_FOUND', message: 'No such route.' } } : { ok: true, value: answer });
     },
+    remove(id: string): Promise<HubResult<string>> {
+      calls.removed.push(id);
+      if (calls.removeFails !== undefined) return Promise.resolve({ ok: false, error: calls.removeFails });
+      return Promise.resolve({ ok: true, value: id });
+    },
   };
   return calls;
 }
@@ -90,3 +99,9 @@ export const NOT_LINUX_ERROR: HubError = { code: 'UNAVAILABLE', message: 'Routin
 
 /** The hub's refusal for an account with no second factor (SF-232). */
 export const NO_SECOND_FACTOR: HubError = { code: 'FORBIDDEN', message: 'Turn on the second factor of the account before an application is made public.' };
+
+/** The hub's answer to a route that is gone already. */
+export const NO_SUCH_ROUTE: HubError = { code: 'NOT_FOUND', message: 'No such route.' };
+
+/** The hub's refusal of a removal by an AI agent. */
+export const AGENT_REFUSED: HubError = { code: 'FORBIDDEN', message: 'A route is removed only by a person, never by an AI agent.' };

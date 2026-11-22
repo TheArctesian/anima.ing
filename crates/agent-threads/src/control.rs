@@ -79,6 +79,12 @@ pub enum Action {
         /// the copies the runner finds (TH97).
         #[serde(default, skip_serializing_if = "Option::is_none")]
         program_path: Option<PathBuf>,
+        /// The key of the draft whose files go with the first prompt (TH111).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        draft: Option<Uuid>,
+        /// The files of the draft for the first prompt, in the order of the person.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        attachments: Vec<Uuid>,
     },
     /// A prompt to a thread: to its running turn, or as a new turn, with the files that the
     /// person attached for it (TH111).
@@ -131,6 +137,14 @@ pub enum Action {
         query: String,
         most: usize,
     },
+    /// The folders in one folder of this computer, so that the person can choose a project by
+    /// browsing (TH113): names only, never a file, a link or what a folder holds. Hidden folders
+    /// only when `hidden`. Only the person asks it.
+    Folders {
+        folder: PathBuf,
+        #[serde(default)]
+        hidden: bool,
+    },
     /// A prompt that waits for the running turn to end, then goes as the next turn (TH109).
     Queue { thread: Uuid, text: String },
     /// New words for a prompt that waits (TH109).
@@ -162,6 +176,10 @@ pub enum Action {
         mime: String,
         size: u64,
         bytes: String,
+        /// `thread` is the key of a draft that the page made, not a thread: the files wait for
+        /// the start that names it (TH111).
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        draft: bool,
     },
     /// The next part of a file that is not complete yet, in base64 (TH111).
     AttachMore {
@@ -231,6 +249,14 @@ pub enum Outcome {
     /// The best match first (TH108); `more` when more paths matched than were asked.
     Files {
         paths: Vec<FoundPath>,
+        #[serde(default)]
+        more: bool,
+    },
+    /// The folders in `folder`, by name; `folder` is its real path. `more` when it held more
+    /// than the answer gives (TH113).
+    Folders {
+        folder: PathBuf,
+        folders: Vec<String>,
         #[serde(default)]
         more: bool,
     },
