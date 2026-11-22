@@ -1,5 +1,6 @@
 <script lang="ts">
   import CodeIcon from '../icons/CodeIcon.svelte';
+  import type { KeyRule } from './keys/keymap';
   import { shortcutOf } from './keys/table';
   import type { PaletteGroup, PaletteRow } from './results';
 
@@ -10,13 +11,15 @@
     /** The index of the shaded row among all rows, or -1. */
     active: number;
     mac: boolean;
+    /** The key rules whose keys the rows show: the desktop app's or the web client's. */
+    rules: readonly KeyRule[];
     /** The id of the row at `index`, for `aria-activedescendant`. */
     rowId: (index: number) => string;
     onpoint: (index: number) => void;
     onchoose: (row: PaletteRow) => void;
   }
 
-  const { id, groups, active, mac, rowId, onpoint, onchoose }: Props = $props();
+  const { id, groups, active, mac, rules, rowId, onpoint, onchoose }: Props = $props();
 
   /** Where each group starts among all rows. */
   const starts = $derived(groups.reduce<number[]>((at, group, index) => [...at, index === 0 ? 0 : (at[index - 1] ?? 0) + (groups[index - 1]?.rows.length ?? 0)], []));
@@ -39,7 +42,7 @@
       <div class="label" id="{id}-{group.id}">{group.label}</div>
       {#each group.rows as row, rowIndex (row.id)}
         {@const index = (starts[groupIndex] ?? 0) + rowIndex}
-        {@const shortcut = row.command === undefined ? undefined : shortcutOf(row.command, mac)}
+        {@const shortcut = row.command === undefined ? undefined : shortcutOf(row.command, mac, rules)}
         <!-- The focus stays in the input, which takes the keys for the rows (a combobox, WAI-ARIA APG). -->
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <div

@@ -8,6 +8,7 @@
   import PageHeader from '$lib/page/PageHeader.svelte';
   import Section from '$lib/page/Section.svelte';
   import KitClashes from './KitClashes.svelte';
+  import KitWebKeys from './KitWebKeys.svelte';
   import { KIT_CHATS, KIT_NOW } from './chats';
 
   // The page of stage 6 (TC6, first half): the command palette with a fixed list of chats, its key table and the clashes.
@@ -15,6 +16,8 @@
   let chats = $state<'ready' | 'loading' | 'failed' | 'none'>('ready');
   let chat = $state<'none' | 'open'>('none');
   let platform = $state<'mac' | 'other'>('mac');
+  let client = $state<'desktop' | 'web'>('desktop');
+  const keys = $derived({ mac: platform === 'mac', web: client === 'web' });
   let ran = $state('Nothing yet');
 
   const say = (action: PaletteAction) => () => {
@@ -39,22 +42,26 @@
     <Segmented label="Chats" size="sm" bind:value={chats} options={[{ value: 'ready', label: 'Ready' }, { value: 'loading', label: 'Loading' }, { value: 'failed', label: 'Failed' }, { value: 'none', label: 'None' }]} />
     <Segmented label="Open chat" size="sm" bind:value={chat} options={[{ value: 'none', label: 'No chat open' }, { value: 'open', label: 'One open' }]} />
     <Segmented label="Keys of" size="sm" bind:value={platform} options={[{ value: 'mac', label: 'Mac' }, { value: 'other', label: 'Windows and Linux' }]} />
+    <Segmented label="Client" size="sm" bind:value={client} options={[{ value: 'desktop', label: 'Desktop app' }, { value: 'web', label: 'Web' }]} />
   </div>
-  <Section title="Palette" icon="carbon:search" lede="⌘K or Ctrl+K opens it anywhere on this page. Three actions run here; the rest wait for their stage.">
+  <Section title="Palette" icon="carbon:search" lede="Its key for the platform and client chosen above opens it anywhere on this page. Three actions run here; the rest wait for their stage.">
     <div class="open" data-kit="palette-open">
       <FormButton tone="secondary" onclick={() => (open = true)}>Open the command palette</FormButton>
       <p role="status">Last action: {ran}</p>
     </div>
   </Section>
   <Section title="Keyboard shortcuts" icon="carbon:list">
-    <div data-kit="key-table"><KeyTable mac={platform === 'mac'} /></div>
+    <div data-kit="key-table"><KeyTable {keys} /></div>
   </Section>
-  <Section title="Clashes with keys Anima already takes" icon="carbon:warning-alt" lede="Listed for a ruling; nothing here overrides a key.">
+  <Section title="Keys of the web client" icon="carbon:earth" lede="Each T3 Code key a browser keeps, and the key the web client uses in its place (ruling: Remap for web).">
+    <div data-kit="web-keys"><KitWebKeys /></div>
+  </Section>
+  <Section title="Clashes with keys Anima already takes" icon="carbon:warning-alt" lede="The clashes left after the web keys, each with the ruling that keeps it.">
     <div data-kit="clashes"><KitClashes /></div>
   </Section>
 </div>
 
-<CommandPalette {host} bind:open now={KIT_NOW} />
+<CommandPalette {host} bind:open now={KIT_NOW} {keys} />
 
 <style>
   .kit {

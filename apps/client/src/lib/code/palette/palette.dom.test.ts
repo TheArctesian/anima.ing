@@ -25,7 +25,7 @@ function host(overrides: Partial<PaletteHost> = {}): PaletteHost {
 }
 
 function show(given: PaletteHost): void {
-  app = mount(CommandPalette, { target: document.body, props: { host: given, now: NOW } });
+  app = mount(CommandPalette, { target: document.body, props: { host: given, now: NOW, keys: { mac: false, web: false } } });
   flushSync();
 }
 
@@ -123,6 +123,18 @@ function search(text: string): void {
   field.dispatchEvent(new Event('input', { bubbles: true }));
   flushSync();
 }
+
+describe('the command palette in a browser on Windows or Linux', () => {
+  it('opens on Alt+Shift+K, leaves Ctrl+K to the browser, and shows the web keys', () => {
+    app = mount(CommandPalette, { target: document.body, props: { host: host(), now: NOW, keys: { mac: false, web: true } } });
+    flushSync();
+    press('k', { ctrlKey: true });
+    expect(input()).toBeNull();
+    press('K', { altKey: true, shiftKey: true, code: 'KeyK' });
+    expect(document.activeElement).toBe(input());
+    expect(shaded()).toContain('Alt+Shift+N');
+  });
+});
 
 describe('the focus and the keys of the command palette', () => {
   it('leaves the focus where an action put it', async () => {

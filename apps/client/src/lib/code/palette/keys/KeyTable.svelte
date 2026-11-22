@@ -1,18 +1,18 @@
 <script lang="ts">
   import Kbd from '../../kit/Kbd.svelte';
-  import { isMac } from '$lib/platform/mac';
   import { keyTable } from './table';
+  import { keyRules, thisKeySet, type KeySet } from './web';
 
   interface Props {
-    /** The platform whose keys are written; this computer's, when absent. */
-    mac?: boolean;
+    /** The platform and the client whose keys are written; this client's, when absent. */
+    keys?: KeySet;
   }
 
-  const { mac = typeof navigator !== 'undefined' && isMac(navigator.userAgent) }: Props = $props();
-  const groups = $derived(keyTable(mac));
+  const { keys = thisKeySet() }: Props = $props();
+  const groups = $derived(keyTable(keys.mac, keyRules(keys)));
 </script>
 
-<!-- The table of keys of the Code section: T3 Code's defaults, one table for each group, as its Keybindings page lists them. -->
+<!-- The table of keys of the Code section: T3 Code's defaults, or the web keys in a browser, one table for each group, as T3 Code's Keybindings page lists them. -->
 <div class="tables">
   {#each groups as group (group.id)}
     <table>
