@@ -1,6 +1,6 @@
 import { touchesChip, wholeChips } from './chips';
 import { edit, type Edit, type Span } from './edit';
-import type { Action, Page } from './keys/chords';
+import type { Action, Chord, Page } from './keys/chords';
 import { broken } from './keys/breaks';
 import { codeUnwrap, fenceGuard } from './keys/code';
 import { erased, inLine, unprefixed, type Reach } from './keys/erase';
@@ -83,6 +83,17 @@ export function typedAction(typed: Typed, desk: Desk): Action {
   if (style === undefined || desk.mode !== 'rich') return null;
   const change = toggled(desk.value, desk.sel, style);
   return change === null ? null : { edit: change, kind: 'other' };
+}
+
+/**
+ * Backspace as a key, where it takes a marker that is not drawn. WebKit sends no input for a Backspace with nothing
+ * drawn before the caret in the editor, as at the start of the first line, so there the key itself is read. Null:
+ * the input that follows the key does the work.
+ */
+export function backspaced(chord: Chord, desk: Desk): Action {
+  if (chord.key !== 'Backspace' || chord.altKey || chord.ctrlKey || chord.metaKey || desk.sel.start !== desk.sel.end) return null;
+  const guard = guarded(desk, true, 'char');
+  return guard === null ? null : { edit: guard, kind: 'other' };
 }
 
 /** Pasted text of this many bytes or more is handed up, not put in the prompt (T3's `PASTED_TEXT_ATTACHMENT_THRESHOLD_BYTES`). */

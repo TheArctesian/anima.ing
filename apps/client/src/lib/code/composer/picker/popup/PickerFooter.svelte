@@ -48,9 +48,9 @@
     if (menuOpen && menuRoot !== undefined && event.target instanceof Node && !menuRoot.contains(event.target)) menuOpen = false;
   }
 
-  /* Left and Right move focus between the speeds; a click, Enter or Space picks, as the source's plain buttons do. */
+  /* The arrows, Home and End move focus between the speeds, as in a radio group; a click, Enter or Space picks, as the source's plain buttons do. */
   function onSpeedKey(event: KeyboardEvent & { currentTarget: HTMLElement }): void {
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
     const segments = [...event.currentTarget.querySelectorAll('button')];
     const next = nextIndex(event.key, segments.indexOf(document.activeElement as HTMLButtonElement), segments.length);
     if (next === null) return;

@@ -1,4 +1,3 @@
-import { shortAge } from '../status/status';
 import type { CodeIconName } from '../icons/icons';
 import { shownActions, type PaletteChat, type PaletteHost, type ShownAction } from './adapter';
 
@@ -15,11 +14,9 @@ export interface PaletteRow {
   readonly id: string;
   readonly title: string;
   readonly icon: CodeIconName;
-  /** The second line: a reason for a disabled action. */
+  /** The second line: the reason of a disabled action, or the project of a chat and whether it is the open one. */
   readonly detail?: string;
-  /** The project of a chat, at the right. */
-  readonly context?: string;
-  /** "now", "5m", "3h", "2d" for a chat. */
+  /** "just now", "5m ago", "3h ago", "2d ago" for a chat. */
   readonly age?: string;
   /** The command whose key the row shows. */
   readonly command?: string;
@@ -64,13 +61,33 @@ function actionRow(action: ShownAction): PaletteRow {
   };
 }
 
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+
+/** The time since a chat's last activity, in T3 Code's words (`timestampFormat.ts`, `relativeElapsedLabel`). */
+export function elapsedWords(since: number, now: number): string {
+  const age = Math.max(0, now - since);
+  if (age < MINUTE) return 'just now';
+  if (age < HOUR) return `${String(Math.floor(age / MINUTE))}m ago`;
+  if (age < DAY) return `${String(Math.floor(age / HOUR))}h ago`;
+  return `${String(Math.floor(age / DAY))}d ago`;
+}
+
+/** The second line of a chat (T3 Code's `ThreadCommandSubtitle`): its project, its branch, and "Current chat" on the open one. */
+function chatSubtitle(chat: PaletteChat, open: string | undefined): string | undefined {
+  const parts = [chat.project?.trim() ?? '', chat.branch?.trim() ?? '', chat.id === open ? 'Current chat' : ''].filter((part) => part !== '');
+  return parts.length === 0 ? undefined : parts.join(' · ');
+}
+
 function chatRow(chat: PaletteChat, host: PaletteHost, now: number): PaletteRow {
+  const detail = chatSubtitle(chat, host.openChat);
   return {
     id: `chat:${chat.id}`,
     title: chat.title,
     icon: 'message-square',
-    ...(chat.project === undefined ? {} : { context: chat.project }),
-    age: shortAge(chat.at, now),
+    ...(detail === undefined ? {} : { detail }),
+    age: elapsedWords(chat.at, now),
     disabled: false,
     run: () => {
       host.openChatById(chat.id);
@@ -78,18 +95,21 @@ function chatRow(chat: PaletteChat, host: PaletteHost, now: number): PaletteRow 
   };
 }
 
-/** The open chat goes last in its group, as T3 Code's `secondary` rows do. */
+/** In a search the open chat goes last in its group, as T3 Code's `secondary` rows do. */
 function openLast(chats: readonly PaletteChat[], open: string | undefined): PaletteChat[] {
   return [...chats.filter((chat) => chat.id !== open), ...chats.filter((chat) => chat.id === open)];
 }
 
-/** The palette with nothing typed: the actions, then the recent chats. */
+/**
+ * The palette with nothing typed: the actions, then the recent chats. The open chat would always lead the recent
+ * ones, so it is left out (T3 Code).
+ */
 function rootGroups(host: PaletteHost, actions: readonly ShownAction[], now: number): PaletteGroup[] {
   const byId = new Map(host.chats.map((chat) => [chat.id, chat]));
-  const recent = host.recent.flatMap((id) => byId.get(id) ?? []).slice(0, RECENT_LIMIT);
+  const recent = host.recent.flatMap((id) => (id === host.openChat ? [] : (byId.get(id) ?? []))).slice(0, RECENT_LIMIT);
   return [
     { id: 'actions', label: 'Actions', rows: actions.map(actionRow) },
-    { id: 'recent', label: 'Recent chats', rows: openLast(recent, host.openChat).map((chat) => chatRow(chat, host, now)) },
+    { id: 'recent', label: 'Recent chats', rows: recent.map((chat) => chatRow(chat, host, now)) },
   ];
 }
 
@@ -141,9 +161,38 @@ export function emptyWords(typed: string): string {
   return typed.startsWith('>') ? 'No matching actions.' : 'No matching commands or chats.';
 }
 
-/** The row after a move of `by` from `active` among `count` rows, round from the last to the first. */
-export function stepped(active: number, by: 1 | -1, count: number): number {
-  if (count === 0) return -1;
-  if (active < 0) return by === 1 ? 0 : count - 1;
-  return (active + by + count) % count;
+const NEW_CHAT = new Set(['chat.new', 'chat.newLocal', 'chat.newWithoutProject']);
+
+/**
+ * What a command typed in the palette's input does (T3 Code's `handleKeyDown`): the keys of a new chat, Copy chat and
+ * Find in current chat run their row; a jump to a chat is taken and does nothing while the palette is open.
+ * `undefined` when the key is not taken; `row` is the row to run, if any.
+ */
+export function keyedRow(command: string | undefined, rows: readonly PaletteRow[]): { readonly row?: PaletteRow } | undefined {
+  if (command === undefined) return undefined;
+  if (command.startsWith('thread.jump.')) return {};
+  const row = rows.find((candidate) => candidate.command === command);
+  // Copy chat takes its key even with no chat to copy, and then leaves the palette open.
+  if (command === 'thread.copyReference') return row === undefined ? {} : { row };
+  if (row === undefined) return undefined;
+  return NEW_CHAT.has(command) || (command === 'chat.find' && !row.disabled) ? { row } : undefined;
+}
+
+/** The first row that can be chosen, or -1: T3 Code highlights only rows that are not disabled. */
+export function firstEnabled(rows: readonly { readonly disabled: boolean }[]): number {
+  return rows.findIndex((row) => !row.disabled);
+}
+
+/**
+ * The row after a move of `by` from `active`, round from the last to the first, over the rows that are not disabled
+ * (T3 Code gives a disabled row no index, so the keys step over it); -1 when no row can be chosen.
+ */
+export function stepped(active: number, by: 1 | -1, rows: readonly { readonly disabled: boolean }[]): number {
+  const count = rows.length;
+  if (firstEnabled(rows) === -1) return -1;
+  let at = active < 0 ? (by === 1 ? -1 : count) : active;
+  do {
+    at = (at + by + count) % count;
+  } while (rows[at]?.disabled !== false);
+  return at;
 }

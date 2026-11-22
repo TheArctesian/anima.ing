@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { PaletteHost } from './adapter';
-import { emptyWords, paletteGroups, score, stepped } from './results';
+import { elapsedWords, emptyWords, paletteGroups, score, stepped } from './results';
 
 const NOW = Date.UTC(2026, 10, 21, 12);
 const MINUTE = 60_000;
@@ -26,18 +26,39 @@ describe('the palette with nothing typed', () => {
   it('lists the actions, then the recent chats newest first, skipping a chat that is gone', () => {
     const groups = paletteGroups(host(), '', NOW);
     expect(groups.map((group) => group.label)).toEqual(['Actions', 'Recent chats']);
-    expect(groups[1]?.rows.map((row) => [row.title, row.context, row.age])).toEqual([
-      ['Release notes', 'site', '3h'],
-      ['Fix the sign-in redirect', 'anima', '5m'],
+    expect(groups[1]?.rows.map((row) => [row.title, row.detail, row.age])).toEqual([
+      ['Release notes', 'site', '3h ago'],
+      ['Fix the sign-in redirect', 'anima', '5m ago'],
     ]);
   });
 
-  it('shows the actions of a chat only while one is open, and puts the open chat last', () => {
+  it('shows the actions of a chat only while one is open, and leaves the open chat out of the recent ones', () => {
     const closed = paletteGroups(host(), '', NOW)[0]?.rows.map((row) => row.title) ?? [];
     expect(closed).not.toContain('Find in current chat');
     const open = paletteGroups(host({ openChat: 'b' }), '', NOW);
     expect(open[0]?.rows.map((row) => row.title)).toContain('Find in current chat');
-    expect(open[1]?.rows.map((row) => row.title)).toEqual(['Fix the sign-in redirect', 'Release notes']);
+    expect(open[1]?.rows.map((row) => row.title)).toEqual(['Fix the sign-in redirect']);
+  });
+
+  it("lists the actions in T3 Code's order, with no row for the keys", () => {
+    const rows = paletteGroups(host({ openChat: 'b' }), '', NOW)[0]?.rows.map((row) => row.title) ?? [];
+    expect(rows).toEqual([
+      'New chat',
+      'New chat without a project',
+      'Find in current chat',
+      'Copy chat',
+      'Link pull request to chat',
+      'Restart agent session',
+      'Go to file',
+      'Search project contents',
+      'Add project',
+      'Open pull requests',
+      'Open issues',
+      'Open usage',
+      'Focus Next Workspace Area',
+      'Focus Previous Workspace Area',
+      'Open settings',
+    ]);
   });
 
   it('disables an action the host does not run, with the reason, and runs one it does', () => {
@@ -115,6 +136,20 @@ describe('a search', () => {
   });
 });
 
+describe('the open chat in a search', () => {
+  it('lists the open chat last in a search, named as the current one', () => {
+    const chats = [
+      { id: 'n', title: 'Deploy the site', project: 'site', at: NOW },
+      { id: 'o', title: 'Deploy the hub', at: NOW - MINUTE },
+    ];
+    const rows = paletteGroups(host({ chats, openChat: 'n' }), 'deploy', NOW).find((group) => group.id === 'chats')?.rows ?? [];
+    expect(rows.map((row) => [row.title, row.detail])).toEqual([
+      ['Deploy the hub', undefined],
+      ['Deploy the site', 'site · Current chat'],
+    ]);
+  });
+});
+
 describe('the recent chats', () => {
   it('lists at most 12', () => {
     const chats = Array.from({ length: 20 }, (_, index) => ({ id: String(index), title: `Chat ${String(index)}`, at: NOW }));
@@ -124,11 +159,30 @@ describe('the recent chats', () => {
 });
 
 describe('moving among the rows', () => {
+  const on = { disabled: false };
+  const off = { disabled: true };
+
   it('goes round from the last row to the first and back', () => {
-    expect(stepped(0, 1, 3)).toBe(1);
-    expect(stepped(2, 1, 3)).toBe(0);
-    expect(stepped(0, -1, 3)).toBe(2);
-    expect(stepped(-1, -1, 3)).toBe(2);
-    expect(stepped(0, 1, 0)).toBe(-1);
+    expect(stepped(0, 1, [on, on, on])).toBe(1);
+    expect(stepped(2, 1, [on, on, on])).toBe(0);
+    expect(stepped(0, -1, [on, on, on])).toBe(2);
+    expect(stepped(-1, -1, [on, on, on])).toBe(2);
+    expect(stepped(0, 1, [])).toBe(-1);
+  });
+
+  it('steps over the disabled rows, and stops nowhere when every row is disabled', () => {
+    expect(stepped(1, 1, [off, on, off, on])).toBe(3);
+    expect(stepped(3, 1, [off, on, off, on])).toBe(1);
+    expect(stepped(-1, 1, [off, off, on])).toBe(2);
+    expect(stepped(0, 1, [off, off])).toBe(-1);
+  });
+});
+
+describe('the time of a chat', () => {
+  it("is written in T3 Code's words", () => {
+    expect(elapsedWords(NOW - 30_000, NOW)).toBe('just now');
+    expect(elapsedWords(NOW - 5 * MINUTE, NOW)).toBe('5m ago');
+    expect(elapsedWords(NOW - 3 * 60 * MINUTE, NOW)).toBe('3h ago');
+    expect(elapsedWords(NOW - 2 * 24 * 60 * MINUTE, NOW)).toBe('2d ago');
   });
 });

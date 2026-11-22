@@ -81,8 +81,11 @@ describe('the command palette', () => {
     expect(input()).toBeNull();
   });
 
+});
+
+describe('the rows of the command palette', () => {
   it('moves the shading with the arrows, round the ends, and names the shaded row to assistive technology', () => {
-    show(host());
+    show(host({ runs: { 'chat.new': vi.fn() } }));
     press('k', { ctrlKey: true });
     expect(shaded()).toContain('New chat');
     press('ArrowUp');
@@ -91,6 +94,17 @@ describe('the command palette', () => {
     expect(document.getElementById(active ?? '')?.textContent).toContain('Release notes');
     press('ArrowDown');
     expect(shaded()).toContain('New chat');
+  });
+
+  it('scrolls back to the top of the list on the first row, so its label shows', () => {
+    show(host({ runs: { 'chat.new': vi.fn() } }));
+    press('k', { ctrlKey: true });
+    const list = document.querySelector<HTMLElement>('.results');
+    if (list === null) throw new Error('no results');
+    press('ArrowUp');
+    list.scrollTop = 120;
+    press('ArrowDown');
+    expect(list.scrollTop).toBe(0);
   });
 
   it('opens the shaded chat on Enter and closes', async () => {
@@ -104,14 +118,39 @@ describe('the command palette', () => {
     expect(input()).toBeNull();
   });
 
-  it('keeps a disabled action reachable, says why, and does nothing on Enter', () => {
+  it('says why an action is disabled, shows no key on it, and steps over it with the arrows and the pointer', () => {
     show(host());
     press('k', { ctrlKey: true });
-    const row = document.querySelector('[role="option"][aria-selected="true"]');
-    expect(row?.getAttribute('aria-disabled')).toBe('true');
-    expect(row?.textContent).toContain('Comes with the composer (TC4)');
+    const disabled = document.querySelector<HTMLElement>('[role="option"][aria-disabled="true"]');
+    expect(disabled?.textContent).toContain('Comes with the composer (TC4)');
+    expect(disabled?.querySelector('.shortcut')).toBeNull();
+    expect(shaded()).toContain('Fix the sign-in redirect');
+    press('ArrowDown');
+    expect(shaded()).toContain('Release notes');
+    press('ArrowDown');
+    expect(shaded()).toContain('Fix the sign-in redirect');
+    disabled?.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
+    flushSync();
+    expect(shaded()).toContain('Fix the sign-in redirect');
+  });
+
+});
+
+describe('the disabled rows and the footer of the command palette', () => {
+  it('shades nothing and runs nothing on Enter when every row is disabled', () => {
+    show(host({ chats: [], recent: [] }));
+    press('k', { ctrlKey: true });
+    expect(shaded()).toBeUndefined();
     press('Enter');
     expect(input()).not.toBeNull();
+  });
+
+  it('says Select for the Enter key on every row', () => {
+    show(host());
+    press('k', { ctrlKey: true });
+    expect(shaded()).toContain('Fix the sign-in redirect');
+    expect(document.querySelector('.foot')?.textContent).toContain('Select');
+    expect(document.querySelector('.foot')?.textContent).not.toContain('Open');
   });
 
 });
@@ -126,7 +165,7 @@ function search(text: string): void {
 
 describe('the command palette in a browser on Windows or Linux', () => {
   it('opens on Alt+Shift+K, leaves Ctrl+K to the browser, and shows the web keys', () => {
-    app = mount(CommandPalette, { target: document.body, props: { host: host(), now: NOW, keys: { mac: false, web: true } } });
+    app = mount(CommandPalette, { target: document.body, props: { host: host({ runs: { 'chat.new': vi.fn() } }), now: NOW, keys: { mac: false, web: true } } });
     flushSync();
     press('k', { ctrlKey: true });
     expect(input()).toBeNull();
@@ -137,6 +176,45 @@ describe('the command palette in a browser on Windows or Linux', () => {
 });
 
 describe('the focus and the keys of the command palette', () => {
+  it('puts the focus where the host says on closing, and back where it was when the host cannot', async () => {
+    const composer = document.createElement('textarea');
+    document.body.append(composer);
+    show(host({ returnFocus: () => (composer.focus(), true) }));
+    press('k', { ctrlKey: true });
+    press('Escape');
+    await settle();
+    expect(document.activeElement).toBe(composer);
+    if (app !== undefined) await unmount(app);
+    app = undefined;
+    opener.focus();
+    show(host({ returnFocus: () => false }));
+    press('k', { ctrlKey: true });
+    press('Escape');
+    await settle();
+    expect(document.activeElement).toBe(opener);
+  });
+
+});
+
+describe('the keys of the rows in the command palette', () => {
+  it('runs the row of a new chat on its key typed in the input, and keeps a jump to a chat from the page', () => {
+    const newChat = vi.fn();
+    const page = vi.fn();
+    show(host({ runs: { 'chat.new': newChat } }));
+    press('k', { ctrlKey: true });
+    document.addEventListener('keydown', page);
+    press('1', { ctrlKey: true });
+    expect(page).not.toHaveBeenCalled();
+    expect(input()).not.toBeNull();
+    press('n', { ctrlKey: true });
+    expect(newChat).toHaveBeenCalledOnce();
+    expect(page).not.toHaveBeenCalled();
+    document.removeEventListener('keydown', page);
+  });
+
+});
+
+describe('the focus and the keys of the command palette, after a choice', () => {
   it('leaves the focus where an action put it', async () => {
     const elsewhere = document.createElement('input');
     document.body.append(elsewhere);
@@ -214,7 +292,7 @@ describe('the actions and the empty states of the command palette', () => {
     expect(document.querySelector('[role="status"]')?.textContent).toBe('0 results');
   });
 
-  it('says that the chats are loading while a search waits for them', () => {
+  it('says in the footer that the chats are loading while a search waits for them', () => {
     show(host({ chats: [], chatsState: 'loading' }));
     press('k', { ctrlKey: true });
     const field = input();
@@ -222,7 +300,7 @@ describe('the actions and the empty states of the command palette', () => {
     field.value = 'release';
     field.dispatchEvent(new Event('input', { bubbles: true }));
     flushSync();
-    expect(document.querySelector('.note')?.textContent).toBe('Loading chats…');
-    expect(document.querySelector('.empty')).toBeNull();
+    expect(document.querySelector('.foot .note')?.textContent).toBe('Loading chats…');
+    expect(document.querySelector('[role="status"]')?.textContent).toBe('0 results. Loading chats…');
   });
 });

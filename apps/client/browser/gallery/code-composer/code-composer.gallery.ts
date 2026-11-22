@@ -94,6 +94,22 @@ const SHOTS: readonly ComposerShot[] = [
   { name: 'runner-running', part: 'real-running' },
   { name: 'runner-ended', part: 'real-ended' },
   { name: 'runner-read-only', part: 'real-read' },
+  // Added after the first set; at the end, so the numbers of the pictures before them stay.
+  { name: 'queue-waits', part: 'queue-waits' },
+  { name: 'runner-queued', part: 'real-running', act: async (page, part) => {
+    await editorOf(part).click();
+    await page.keyboard.type('Then run the gates of the changed paths.');
+    await page.keyboard.press('ControlOrMeta+Enter');
+    await expect(part.getByRole('listitem')).toHaveCount(1);
+    return undefined;
+  } },
+  { name: 'runner-no-search', part: 'real-idle', act: async (page, part) => {
+    await editorOf(part).click();
+    await page.keyboard.type('Read @gate');
+    const words = page.getByRole('paragraph').filter({ hasText: 'The runner cannot search the folder of a chat yet.' });
+    await expect(words).toBeVisible();
+    return words;
+  } },
 ];
 
 /** The smallest box that holds the part and its floating layer, with a margin, inside the window. */

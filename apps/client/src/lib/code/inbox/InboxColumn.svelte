@@ -1,16 +1,15 @@
 <script lang="ts">
-  import { tick } from 'svelte';
-  import { REMOVE_QUESTION, type ListingChange } from '$lib/agent-threads/listing/listing';
+  import type { ListingChange } from '$lib/agent-threads/listing/listing';
   import type { ThreadsStore } from '$lib/agent-threads/store.svelte';
-  import FormButton from '$lib/forms/FormButton.svelte';
-  import Modal from '$lib/forms/modal/Modal.svelte';
   import type { Anchor } from '$lib/overlay/helptip/placement';
   import ErrorState from '$lib/states/ErrorState.svelte';
-  import LoadingState from '$lib/states/LoadingState.svelte';
-  import type { MenuEntry } from '../kit/menu';
+  import type { MenuEntry, MenuSide } from '../kit/menu';
   import MenuPanel from '../kit/MenuPanel.svelte';
   import ScrollArea from '../kit/ScrollArea.svelte';
-  import { intentOf, manyMenu, rowMenu, snoozeMenu } from './actions';
+  import { intentOf, manyMenu, rowMenu, toggled } from './actions';
+  import { changeListings, changeMarks, endProgram, localSnoozes, refocus, renameListing, snoozeSpot } from './changes';
+  import CustomSnoozeDialog from './CustomSnoozeDialog.svelte';
+  import RemoveDialog from './RemoveDialog.svelte';
   import type { InboxChange } from './engine';
   import { emptyWords, type InboxRow } from './inbox';
   import InboxList from './InboxList.svelte';
@@ -38,7 +37,11 @@
   let renaming = $state<string | null>(null);
   let hit = $state(0);
   /** The open right-click menu: its rows, where, and what a choice acts on. */
-  let menu = $state<{ entries: readonly MenuEntry[]; anchor: Anchor; on: readonly InboxRow[] } | null>(null);
+  let menu = $state<{ entries: readonly MenuEntry[]; anchor: Anchor; on: readonly InboxRow[]; side?: MenuSide } | null>(null);
+  /** The rows a Custom snooze is for, while its dialog is open. */
+  let customFor = $state<readonly InboxRow[] | null>(null);
+  /** Where "Rename thread" renames while the header opened the menu: in the header, as in T3 Code (08 band 2). */
+  let headRename: ((id: string) => void) | null = null;
   let removing = $state<readonly InboxRow[] | null>(null);
   /** A failed action, in words (02 section 5.10 shows toasts; Anima has none, so one line under the list). */
   let problem = $state<string | null>(null);
@@ -55,48 +58,15 @@
   });
   const filteredNames = $derived(view.allProjects.filter((project) => view.projects.has(project.folder)).map((project) => project.name));
 
-  const VERBS: Readonly<Record<string, string>> = { pin: 'pin', archive: 'archive', rename: 'rename', remove: 'remove', settle: 'settle', snooze: 'snooze', wake: 'wake' };
-
   async function listing(items: readonly InboxRow[], change: ListingChange): Promise<void> {
     if (live === null) return;
-    for (const item of items) {
-      const result = await live.changeListing(item.row.id, change);
-      if (!result.ok) {
-        problem = `Failed to ${VERBS[change.change] ?? 'change'} thread: ${result.words}`;
-        return;
-      }
-      if (change.change === 'remove' && store.chosen === item.row.id) store.chosen = null;
-    }
-    problem = null;
+    problem = await changeListings(live, items, change, (id) => {
+      if (store.chosen === id) store.chosen = null;
+    });
   }
 
   async function marks(items: readonly InboxRow[], change: InboxChange): Promise<void> {
-    for (const item of items) {
-      const result = await view.engine.change(item.row.id, change);
-      if (!result.ok) {
-        problem = `Failed to ${VERBS[change.change] ?? 'change'} thread: ${result.words}`;
-        return;
-      }
-    }
-    problem = null;
-  }
-
-  async function end(thread: string): Promise<void> {
-    const result = await live?.call({ call: 'stop', thread });
-    problem = result === undefined || result.ok ? null : `Failed to end the program: ${result.words}`;
-  }
-
-  /**
-   * After a row action, focus goes back to the row, or to the row now in its place when it left the list; a focus that
-   * is still on the page is left alone (09 finding 12).
-   */
-  async function refocus(id: string, place: number): Promise<void> {
-    await tick();
-    const now = document.activeElement;
-    if (now !== null && now !== document.body && now.isConnected) return;
-    const rows = [...document.querySelectorAll<HTMLElement>('.inbox [data-thread] > .main')];
-    const own = rows.find((each) => each.parentElement?.dataset['thread'] === id);
-    (own ?? rows[Math.min(place, rows.length - 1)])?.focus();
+    problem = await changeMarks(view.engine, items, change);
   }
 
   function startRename(id: string): void {
@@ -115,37 +85,57 @@
     if (intent.kind === 'listing') void listing(intent.pinnedOnly === true ? items.filter((item) => item.row.pinned) : items, intent.change).then(back);
     else if (intent.kind === 'mark') void marks(items, intent.change).then(back);
     else if (intent.kind === 'copy') navigator.clipboard.writeText(intent.text).catch(() => (problem = 'The text was not copied.'));
-    else if (intent.kind === 'rename') startRename(first.row.id);
+    else if (intent.kind === 'rename') (headRename ?? startRename)(first.row.id);
     else if (intent.kind === 'remove') removing = items;
-    else if (intent.kind === 'end') void end(first.row.id);
-    else {
-      const row = document.querySelector(`[data-thread="${CSS.escape(first.row.id)}"]`);
-      const at = anchor ?? row?.getBoundingClientRect() ?? { left: 0, top: 0, width: 0, height: 0 };
-      // The snooze menu opened from a row's button goes back to the row (09 finding 12).
-      returnTo = row?.querySelector<HTMLElement>('.main') ?? null;
-      menu = { entries: snoozeMenu(new Date(), (when) => when.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })), anchor: at, on: items };
-    }
+    else if (intent.kind === 'end') void endProgram(live, first.row.id).then((words) => (problem = words));
+    else if (intent.kind === 'filter') view.projects = new Set(intent.folder === null ? [] : [intent.folder]);
+    else if (intent.kind === 'snooze-custom') customFor = items;
+    else snoozeFrom(items, anchor);
+  }
+
+  /** The snooze menu of the row's clock button, under it and lined up with its end, as in T3 Code (08 inbox 6). */
+  function snoozeFrom(items: readonly InboxRow[], anchor: Anchor | null): void {
+    const spot = items[0] === undefined ? null : snoozeSpot(items[0].row.id);
+    if (spot === null) return;
+    returnTo = spot.back;
+    menu = { entries: localSnoozes(), anchor: anchor ?? spot.at, on: items, side: { side: 'below', align: 'end' } };
   }
 
   function openMenu(item: InboxRow, anchor: Anchor): void {
+    headRename = null;
     returnTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const chosen = view.selection.ids;
     const able = { listing: live !== null, marks: view.engine.ready, why: view.engine.why };
     if (chosen.size > 1 && chosen.has(item.row.id)) {
       const many = view.order.filter((each) => chosen.has(each.row.id));
-      menu = { entries: manyMenu(many, able), anchor, on: many };
+      menu = { entries: manyMenu(many, able, localSnoozes()), anchor, on: many };
       return;
     }
     const shelf = view.shelfOf(item.row.id);
     const state = live?.threads.get(item.row.id)?.row.state;
     const endable = state !== undefined && state !== 'stopped';
-    menu = { entries: rowMenu(item, { ...able, settled: shelf === 'settled', snoozed: shelf === 'snoozed', endable }), anchor, on: [item] };
+    const filtered = item.row.folder !== null && view.projects.size === 1 && view.projects.has(item.row.folder);
+    const facts = { ...able, settled: shelf === 'settled', snoozed: shelf === 'snoozed', endable, filtered };
+    menu = { entries: rowMenu(item, facts, localSnoozes()), anchor, on: [item] };
   }
 
   /** Opens the menu of the thread `id` at `anchor`: the band's title opens it for the open thread, as in T3 Code. */
-  export function openThreadMenu(id: string, anchor: Anchor): void {
+  export function openThreadMenu(id: string, anchor: Anchor, rename: (id: string) => void): void {
     const item = view.itemOf(id);
-    if (item !== undefined) openMenu(item, anchor);
+    if (item === undefined) return;
+    openMenu(item, anchor);
+    headRename = rename;
+  }
+
+  /** Settles or pins the thread `id` (⇧⌘S, ⇧⌘P): the same action as its menu's, for the open thread. */
+  export function toggleMark(id: string, mark: 'settle' | 'pin'): void {
+    const item = view.itemOf(id);
+    if (item !== undefined && (mark === 'pin' || view.engine.ready)) act([item], toggled(item, mark, view.shelfOf(id) === 'settled'), null);
+  }
+
+  /** Renames the thread `id`; the words of a refusal, or `null`. */
+  export function renameThread(id: string, title: string): Promise<string | null> {
+    return renameListing(live, id, title);
   }
 
   function onRowClick(id: string, event: MouseEvent): void {
@@ -191,7 +181,8 @@
   {#if store.rows === null && store.listProblem !== null}
     <ErrorState message={store.listProblem} onRetry={() => void store.loadList()} />
   {:else if store.rows === null}
-    <LoadingState label="Loading threads" rows={6} />
+    <!-- T3 draws no skeleton: the list is empty until the threads come; a screen reader hears that they load (08 inbox 28). -->
+    <p class="loading" role="status">Loading threads</p>
   {:else}
     <ScrollArea label="Threads" bar="hidden">
       {#if searching}
@@ -217,6 +208,9 @@
           }}
           {onRowClick}
           onMenu={openMenu}
+          onDismiss={(item) => {
+            store.markSeen(item.row.id);
+          }}
           onAct={(item, action) => {
             act([item], action, null);
           }}
@@ -243,6 +237,7 @@
     id="inbox-menu"
     label={on.length > 1 ? `${String(on.length)} threads` : 'Thread actions'}
     entries={menu.entries}
+    side={menu.side}
     anchor={() => anchor}
     onChoose={(choice) => {
       act(on, choice, anchor);
@@ -254,20 +249,25 @@
   />
 {/if}
 
-<Modal open={removing !== null} title={removing !== null && removing.length > 1 ? `Remove ${String(removing.length)} threads from the list` : 'Remove from the list'} onClose={() => (removing = null)} preset="sm" warning>
-  <p>{REMOVE_QUESTION}</p>
-  <div class="acts">
-    <FormButton data-autofocus onclick={() => (removing = null)}>Keep it</FormButton>
-    <FormButton
-      tone="danger"
-      onclick={() => {
-        const items = removing ?? [];
-        removing = null;
-        void listing(items, { change: 'remove' });
-      }}>Remove from the list</FormButton
-    >
-  </div>
-</Modal>
+<CustomSnoozeDialog
+  open={customFor !== null}
+  onClose={() => (customFor = null)}
+  onPick={(until) => {
+    const items = customFor ?? [];
+    customFor = null;
+    void marks(items, { change: 'snooze', until });
+  }}
+/>
+
+<RemoveDialog
+  count={removing?.length ?? 0}
+  onClose={() => (removing = null)}
+  onRemove={() => {
+    const items = removing ?? [];
+    removing = null;
+    void listing(items, { change: 'remove' });
+  }}
+/>
 
 <style>
   .inbox {
@@ -282,6 +282,16 @@
     flex: 1;
     flex-direction: column;
     min-block-size: 0;
+  }
+
+  .loading {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    margin: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   .empty {
@@ -333,11 +343,5 @@
     padding: var(--space-1) var(--space-3) var(--space-2);
     color: var(--status-down-text);
     font-size: var(--code-text-meta);
-  }
-
-  .acts {
-    display: flex;
-    gap: var(--space-2);
-    justify-content: flex-end;
   }
 </style>

@@ -1,4 +1,5 @@
 import { chordText, KEY_RULES, parseChord, type KeyGroup, type KeyRule } from './keymap';
+import { actingRules, rowContext, type KeyContext } from './when';
 import { COMMAND_WORDS, KEY_GROUPS, whenWords } from './words';
 
 /** One line of the key table: a command, its keys and where they act. The jumps 1 to 9 are one line each. */
@@ -57,9 +58,12 @@ export function keyTable(mac: boolean, rules: readonly KeyRule[] = KEY_RULES): {
   })).filter((group) => group.lines.length > 0);
 }
 
-/** The first key of a command for the platform, written for the person; `undefined` when it has none. */
-export function shortcutOf(command: string, mac: boolean, rules: readonly KeyRule[] = KEY_RULES): string | undefined {
-  const rule = rules.find((candidate) => candidate.command === command);
+/**
+ * The key a row shows for a command, written for the person: the last rule of the command that acts in `context`
+ * (T3 Code's `shortcutLabelForCommand`); `undefined` when it has none.
+ */
+export function shortcutOf(command: string, mac: boolean, rules: readonly KeyRule[] = KEY_RULES, context: KeyContext = rowContext(false)): string | undefined {
+  const rule = actingRules(rules, mac, context).find((candidate) => candidate.command === command);
   const chord = rule === undefined ? null : parseChord(rule.key);
   return chord === null ? undefined : chordText(chord, mac);
 }

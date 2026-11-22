@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { ListedRow } from '$lib/agent-threads/listing/listing';
 import type { Tail } from '$lib/agent-threads/thread';
-import { intentOf, manyMenu, rowMenu, type Able } from './actions';
+import type { MenuEntry } from '../kit/menu';
+import { intentOf, manyMenu, rowMenu, snoozeItems, type Able } from './actions';
+import { customWake, snoozePresets } from './engine';
 import { NO_MARKS, type Marks } from '$lib/agent-threads/listing/shelf';
 import { arranged, emptyWords, inOrder, inProjects, projectsOf, type Arranging } from './inbox';
 import { clicked, kept, NO_SELECTION } from './selection';
@@ -120,50 +122,55 @@ describe('selection (02 section 5.11)', () => {
   });
 });
 
-describe('the right-click menus (02 section 5.11)', () => {
+describe('the right-click menus (08 inbox 10 and 26)', () => {
   const able: Able = { listing: true, marks: false, why: 'Needs TH61.', settled: false, snoozed: false };
-  const [item] = arranged([row('a', 'turn_ended', 5, { branch: 'main' })], AT).active;
-  const labels = (entries: ReturnType<typeof rowMenu>): string[] => entries.map((entry) => (entry.kind === 'line' ? '—' : entry.kind === 'group' ? `[${entry.label}]` : `${entry.label}${entry.disabled === true ? ' (off)' : ''}`));
+  const [item] = arranged([row('a', 'turn_ended', 5, { branch: 'main', folder: '/w/anima' })], AT).active;
+  const snooze = snoozeItems(NOW, (at) => at.toISOString().slice(11, 16), () => 'Mon');
+  const labels = (entries: readonly MenuEntry[]): string[] =>
+    entries.map((entry) => {
+      if (entry.kind === 'line') return '—';
+      if (entry.kind === 'group') return `[${entry.label}]`;
+      return `${entry.label}${entry.items === undefined ? '' : ' ▸'}${entry.disabled === true ? ' (off)' : ''}`;
+    });
 
-  it("keeps T3's order, and shows settle and snooze disabled with the reason until the runner keeps them", () => {
+  it("keeps T3's order: Snooze and Copy open submenus, and settle and snooze say why they are off", () => {
     if (item === undefined) throw new Error('no row');
-    expect(labels(rowMenu(item, able))).toEqual([
+    expect(labels(rowMenu(item, able, snooze))).toEqual([
       'Pin thread',
       'Settle thread (off)',
-      'Snooze… (off)',
+      'Snooze ▸ (off)',
       '[Needs TH61.]',
       '—',
       'Rename thread',
+      'Filter by anima',
       '—',
-      '[Copy]',
-      'Path',
-      'Branch',
-      'Thread ID',
+      'Copy ▸',
       '—',
       'Archive thread',
       'Remove from the list',
     ]);
-    expect(labels(rowMenu(item, { ...able, marks: true, settled: true, snoozed: true })).slice(0, 3)).toEqual(['Pin thread', 'Un-settle thread', 'Wake thread']);
+    const copy = rowMenu(item, able, snooze).find((entry) => entry.kind === 'choice' && entry.label === 'Copy');
+    expect(copy?.kind === 'choice' ? labels(copy.items ?? []) : []).toEqual(['Path', 'Branch', 'Thread ID']);
+    expect(labels(rowMenu(item, { ...able, marks: true, settled: true, snoozed: true, filtered: true }, snooze)).slice(0, 7)).toEqual(['Pin thread', 'Un-settle thread', 'Wake thread', '—', 'Rename thread', 'Show all projects', '—']);
   });
 
-  it('offers "End the program" above Archive only while the program runs', () => {
+  it('offers "End the program" while the program runs, and then Archive is off', () => {
     if (item === undefined) throw new Error('no row');
-    expect(labels(rowMenu(item, { ...able, endable: true })).slice(-3)).toEqual(['End the program', 'Archive thread', 'Remove from the list']);
-    expect(labels(rowMenu(item, able))).not.toContain('End the program');
+    expect(labels(rowMenu(item, { ...able, endable: true }, snooze)).slice(-3)).toEqual(['End the program', 'Archive thread (off)', 'Remove from the list']);
+    expect(labels(rowMenu(item, able, snooze))).not.toContain('End the program');
     expect(intentOf('end', [item], NOW)).toEqual({ kind: 'end' });
   });
 
-  it('counts the rows of a multi-selection', () => {
+  it("counts the rows of a multi-selection in T3's order, with no line and no Archive", () => {
     if (item === undefined) throw new Error('no row');
-    expect(labels(manyMenu([item, { ...item, row: { ...item.row, pinned: true } }], { ...able, listing: false }))).toEqual([
+    expect(labels(manyMenu([item, { ...item, row: { ...item.row, pinned: true } }], { ...able, listing: false }, snooze))).toEqual([
       'Unpin (1) (off)',
       'Settle (2) (off)',
-      'Snooze (2)… (off)',
+      'Snooze (2) ▸ (off)',
       '[Needs TH61.]',
-      '—',
-      'Archive (2) (off)',
       'Remove from the list (2) (off)',
     ]);
+    expect(labels(manyMenu([item, { ...item, state: 'asks' }], { ...able, marks: true }, snooze))).not.toContain('Snooze (2) ▸');
   });
 
   it('turns each choice into what it does', () => {
@@ -172,7 +179,46 @@ describe('the right-click menus (02 section 5.11)', () => {
     expect(intentOf('unpin-many', [item], NOW)).toEqual({ kind: 'listing', change: { change: 'pin', on: false }, pinnedOnly: true });
     expect(intentOf('snooze-1h', [item], NOW)).toEqual({ kind: 'mark', change: { change: 'snooze', until: new Date(NOW.getTime() + 60 * MINUTE) } });
     expect(intentOf('snooze', [item], NOW)).toEqual({ kind: 'snooze-menu' });
+    expect(intentOf('snooze-custom', [item], NOW)).toEqual({ kind: 'snooze-custom' });
+    expect(intentOf('filter-project', [item], NOW)).toEqual({ kind: 'filter', folder: '/w/anima' });
+    expect(intentOf('all-projects', [item], NOW)).toEqual({ kind: 'filter', folder: null });
     expect(intentOf('nothing', [item], NOW)).toBeNull();
     expect(intentOf('pin', [], NOW)).toBeNull();
+  });
+});
+
+describe("T3's snooze presets (08 inbox 6)", () => {
+  const ids = (now: Date): string[] => snoozePresets(now).map((preset) => `${preset.label} ${preset.until.getHours().toString()}:${preset.until.getMinutes().toString().padStart(2, '0')}`);
+
+  it('lists this evening until 18:00, then tomorrow and next Monday at 09:00, soonest first', () => {
+    // A Wednesday at 10:00.
+    expect(ids(new Date(2026, 10, 18, 10, 0))).toEqual(['In 1 hour 11:00', 'In 3 hours 13:00', 'This evening 18:00', 'Tomorrow 9:00', 'Next week 9:00']);
+    // At 19:00 the evening has passed.
+    expect(ids(new Date(2026, 10, 18, 19, 0))).toEqual(['In 1 hour 20:00', 'In 3 hours 22:00', 'Tomorrow 9:00', 'Next week 9:00']);
+  });
+
+  it('keeps one row for one wake minute: on a Sunday, Monday 09:00 is "Tomorrow"', () => {
+    expect(ids(new Date(2026, 10, 22, 7, 0)).filter((label) => label.startsWith('Tomorrow'))).toEqual(['Tomorrow 9:00']);
+  });
+
+  it('names the day in the detail only when the label does not and the wake is on another day', () => {
+    const items = snoozeItems(new Date(2026, 10, 18, 22, 0), (at) => `${at.getHours().toString()}h`, () => 'Thu');
+    const details = items.flatMap((entry) => (entry.kind === 'choice' ? [`${entry.label}: ${entry.detail ?? ''}`] : []));
+    expect(details).toEqual(['In 1 hour: 23h', 'In 3 hours: Thu 1h', 'Tomorrow: 9h', 'Next week: Thu 9h', 'Custom…: ']);
+  });
+});
+
+describe('a custom snooze (08 inbox 6)', () => {
+  const now = new Date(2026, 10, 18, 10, 0);
+
+  it('wakes at a date and time in the future, or after a positive duration', () => {
+    expect(customWake({ mode: 'date', date: '2026-11-19', time: '08:30' }, now)).toEqual(new Date(2026, 10, 19, 8, 30));
+    expect(customWake({ mode: 'duration', amount: '2', unit: 'hours' }, now)).toEqual(new Date(now.getTime() + 2 * 3_600_000));
+  });
+
+  it('refuses a time that has passed, a bad date and a duration that is not positive', () => {
+    expect(customWake({ mode: 'date', date: '2026-11-18', time: '09:00' }, now)).toBeNull();
+    expect(customWake({ mode: 'date', date: 'tomorrow', time: '09:00' }, now)).toBeNull();
+    expect(customWake({ mode: 'duration', amount: '0', unit: 'days' }, now)).toBeNull();
   });
 });

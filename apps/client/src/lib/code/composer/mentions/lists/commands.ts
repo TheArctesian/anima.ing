@@ -29,7 +29,7 @@ export function builtInCommands(can: BuiltInCans): Command[] {
           builtIn('btw', 'Same as /side', { anywhere: false, effect: 'text', available: can.side }),
         ];
   return [
-    builtIn('model', 'Switch the model for this chat', { anywhere: true, effect: 'act', available: can.model }),
+    builtIn('model', 'Switch response model for this thread', { anywhere: true, effect: 'act', available: can.model }),
     ...side,
     builtIn('clear', 'Start a fresh session; earlier messages stay visible', { anywhere: false, effect: 'act', available: can.clear }),
   ];

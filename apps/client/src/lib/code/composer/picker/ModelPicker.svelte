@@ -12,7 +12,7 @@
   import { FAVOURITES, chosenModel, describeEffort, jumpKeys, litRow, modelKey, nextRow, nextTab, openingTab, pickModel, rowsOf } from './catalogue';
   import type { Catalogue, Choice, Model, Row } from './catalogue';
   import EffortGlyph from './EffortGlyph.svelte';
-  import { jumpLabel, popupIntent, searchIntent } from './keys';
+  import { composes, jumpLabel, popupIntent, searchIntent } from './keys';
   import EffortColumn from './popup/EffortColumn.svelte';
   import ModelList from './popup/ModelList.svelte';
   import PickerFooter from './popup/PickerFooter.svelte';
@@ -24,6 +24,8 @@
     onChange: (next: Choice) => void;
     /** When the picker cannot be used the trigger is dimmed, keeps focus and its tip says why. */
     can: Can;
+    /** The shortcut that opens it, named in the trigger's tip: "⌘⇧M". */
+    shortcut?: string;
     /** Open from the start, for the specimen page; a shortcut of the composer can set it too. */
     open?: boolean;
     /** The edge of the trigger the popup lines up with: `end` in the wide footer, `start` in the resting row (03 B.6.4). */
@@ -36,7 +38,7 @@
     onFavourite?: (model: Model, favourite: boolean) => void;
   }
 
-  let { catalogue, value, onChange, can, open = $bindable(false), align = 'start', size = 'sm', effortDisplay = 'label', onFavourite }: Props = $props();
+  let { catalogue, value, onChange, can, shortcut, open = $bindable(false), align = 'start', size = 'sm', effortDisplay = 'label', onFavourite }: Props = $props();
   const id = $props.id();
   const mac = typeof navigator !== 'undefined' && isMac(navigator.userAgent);
   let root: HTMLElement | undefined;
@@ -104,7 +106,7 @@
   }
 
   function onSearchKey(event: KeyboardEvent): void {
-    if (event.isComposing) return;
+    if (composes(event)) return;
     const intent = searchIntent(event, { query, caret: list?.caret() ?? null, rail: !searching });
     if (intent.to === 'type') return;
     event.preventDefault();
@@ -117,6 +119,7 @@
   }
 
   function onPopupKey(event: KeyboardEvent): void {
+    if (composes(event)) return;
     const intent = popupIntent(event);
     if (intent.to === 'pass') return;
     event.preventDefault();
@@ -130,6 +133,11 @@
 
   function onOutside(event: PointerEvent): void {
     if (open && root !== undefined && event.target instanceof Node && !root.contains(event.target)) open = false;
+  }
+
+  /* Focus went on, out of the trigger and the popup, as after Tab: the popup would stay open where Escape cannot reach it. */
+  function onFocusOut(event: FocusEvent): void {
+    if (open && event.relatedTarget instanceof Node && root?.contains(event.relatedTarget) === false) open = false;
   }
 
   function onTrigger(): void {
@@ -166,6 +174,7 @@
     aria-expanded={open && can.can}
     aria-controls="{id}-popup"
     aria-disabled={can.can ? undefined : 'true'}
+    aria-describedby={can.can ? undefined : `${id}-why`}
     bind:element={trigger}
     onclick={onTrigger}
   >
@@ -183,8 +192,11 @@
 
 <!-- The model and effort trigger of the composer and its popup (03 A.2, A.3, B.6.4): the rail of providers, the search
      and the list, the effort column, and a foot with the speed and the permissions. It opens over the trigger. -->
-<span class="root" bind:this={root}>
-  {#if can.can}{@render chip()}{:else}<Tooltip text={can.reason}>{@render chip()}</Tooltip>{/if}
+<span class="root" bind:this={root} onfocusout={onFocusOut}>
+  <!-- The reason on the control itself: a tip describes its wrapper, and only while it shows. -->
+  {#if !can.can}<span id="{id}-why" hidden>{can.reason}</span>{/if}
+  <!-- T3 Code `ProviderModelPicker.tsx:275-281`: the model, the effort and the shortcut; ours gives the reason when it cannot open. -->
+  <Tooltip text={can.can ? [name, summary.detail, shortcut ?? ''].filter((part) => part !== '').join(' · ') : can.reason}>{@render chip()}</Tooltip>
   {#if open && can.can}
     <div class="popup" id="{id}-popup" role="dialog" aria-label="Model" tabindex="-1" onkeydown={onPopupKey} transition:popover={{ from: trigger }} {@attach place}>
       <div class="body">

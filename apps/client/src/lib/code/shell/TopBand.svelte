@@ -16,9 +16,11 @@
     clearsWindowControls?: boolean;
     /** This band is the first one of its row, so on a Mac it leaves room for the three window buttons. */
     clearsWindowButtons?: boolean;
+    /** T3's `pr-24`: 96 px on the right, where the panel toggles stand, so a long title never runs under them. */
+    keepsPanelRoom?: boolean;
   }
 
-  const { start, children, end, clearsWindowControls = false, clearsWindowButtons = false }: Props = $props();
+  const { start, children, end, clearsWindowControls = false, clearsWindowButtons = false, keepsPanelRoom = false }: Props = $props();
   const frameless = capabilities().framelessWindow;
   const overlay = capabilities().overlayTitleBar;
 </script>
@@ -31,6 +33,7 @@
 <div
   class="band"
   class:clears={clearsWindowButtons && overlay}
+  class:panels={keepsPanelRoom}
   class:keeps={clearsWindowControls && frameless}
   data-code-band
   data-tauri-drag-region="deep"
@@ -51,6 +54,17 @@
     padding-inline: var(--space-3);
     min-inline-size: 0;
     user-select: none;
+  }
+
+  /* T3's gutter: 12 px, then 20 px from 640 px wide. */
+  @media (width >= 40rem) {
+    .band {
+      padding-inline: var(--space-5);
+    }
+  }
+
+  .panels {
+    padding-inline-end: calc(var(--space-16) + var(--space-8));
   }
 
   /* The three window buttons of a Mac stand over the start of the first band (tauri.macos.conf.json). */

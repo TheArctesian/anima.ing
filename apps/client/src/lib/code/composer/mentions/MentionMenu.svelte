@@ -1,7 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import CodeIcon from '../../icons/CodeIcon.svelte';
-  import ScrollArea from '../../kit/ScrollArea.svelte';
   import { menuKey, movedActive } from './keys';
   import { mentionEntries } from './lists/entries';
   import { emptyWords, FILE_SEARCH_DELAY_MS, FILE_SEARCH_LIMIT, keptInPlace, listLabel, optionId, type ListState } from './menu';
@@ -30,6 +29,8 @@
   let found = $state<{ readonly query: string; readonly paths: readonly FoundPath[] }>();
   let search = $state<'idle' | 'running' | 'failed'>('idle');
   let chosenThisFrame = false;
+  /** The lit row was moved by a key: only then is it said, not at each move of the pointer. */
+  let keyed = $state(false);
 
   const pathQuery = $derived(trigger.kind === 'path' ? trigger.query.trim() : undefined);
   const entries = $derived(mentionEntries(trigger, sources, trigger.kind === 'path' ? (found?.paths ?? []) : []));
@@ -38,12 +39,21 @@
     if (trigger.kind === 'path') return search === 'idle' ? 'empty' : search === 'running' ? 'loading' : 'failed';
     return trigger.kind !== 'pull-request' && sources.scanning === true ? 'loading' : 'empty';
   });
-  const words = $derived(emptyWords(trigger.kind, listState));
+  // A runner with no search of the workspace: the list says so and asks nothing.
+  const noSearch = $derived(trigger.kind === 'path' && sources.search?.can === false ? sources.search.reason : null);
+  const words = $derived(noSearch ?? emptyWords(trigger.kind, listState));
+  // Said as the arrows move: not every screen reader follows `aria-activedescendant` on an editable text box.
+  const spoken = $derived.by(() => {
+    const entry = entries[current];
+    if (entry === undefined) return '';
+    const why = entry.available.can ? '' : `, cannot be chosen: ${entry.available.reason}`;
+    return `${entry.label}${entry.description === '' ? '' : `, ${entry.description}`}${why}, ${String(current + 1)} of ${String(entries.length)}`;
+  });
 
   // The workspace search of the `@` list: asked 120 ms after the last key; the rows of the query before stay meanwhile.
   $effect(() => {
     const query = pathQuery;
-    if (query === undefined) {
+    if (query === undefined || noSearch !== null) {
       search = 'idle';
       return;
     }
@@ -72,12 +82,18 @@
   });
 
   // The highlight goes back to the first row whenever the search changes (03 "Keyboard and mouse").
+  /**
+   * No row was lit by a key or the pointer yet: the first row only looks lit, so the first ArrowDown lands on it and
+   * ArrowUp goes to the last (T3 Code `ChatComposer.tsx:2150-2160`).
+   */
+  let moved = false;
   let searched = untrack(() => `${trigger.kind} ${trigger.query}`);
   $effect(() => {
     const asked = `${trigger.kind} ${trigger.query}`;
     if (asked === searched) return;
     searched = asked;
     active = 0;
+    moved = false;
   });
 
   $effect(() => {
@@ -104,6 +120,7 @@
   export function key(event: KeyboardEvent, otherSend = false): boolean {
     const action = menuKey(event, { count: entries.length, otherSend });
     if (action === 'pass') return false;
+    keyed = true;
     const entry = entries[current];
     // A row that cannot be chosen does not hold the key: Enter then sends, as with no list.
     if (action === 'choose' && (entry === undefined || !entry.available.can || (entry.kind === 'path' && found?.query !== pathQuery))) return false;
@@ -111,7 +128,10 @@
     if (action === 'close') onClose();
     else if (action === 'choose') {
       if (entry !== undefined) choose(entry);
-    } else active = movedActive(current, entries.length, action);
+    } else {
+      active = movedActive(moved ? current : -1, entries.length, action);
+      moved = true;
+    }
     return true;
   }
 
@@ -143,7 +163,8 @@
   >
     {#if entries.length > 0}
       <div class="scroll">
-        <ScrollArea label={listLabel(trigger.kind)}>
+        <!-- Not the kit's scroll area: that one is a Tab stop, and Shift+Tab from the editor would land in it and close the list. The arrow keys scroll it. -->
+        <div class="area" tabindex="-1">
           <div class="list" {id} role="listbox" aria-label={listLabel(trigger.kind)}>
             {#each entries as entry, index (entry.id)}
               <!-- The row takes no focus and no key of its own: the editor holds both (aria-activedescendant). -->
@@ -157,6 +178,8 @@
                 aria-disabled={entry.available.can ? undefined : 'true'}
                 onmousemove={() => {
                   if (index !== current) active = index;
+                  moved = true;
+                  keyed = false;
                 }}
                 onmousedown={(event) => {
                   event.preventDefault();
@@ -177,13 +200,13 @@
               </div>
             {/each}
           </div>
-        </ScrollArea>
+        </div>
       </div>
     {:else}
       <p class="empty">{words}</p>
     {/if}
   </div>
-  <div class="status" role="status" aria-atomic="true">{entries.length === 0 ? words : ''}</div>
+  <div class="status" role="status" aria-atomic="true">{entries.length === 0 ? words : keyed ? spoken : ''}</div>
 </div>
 
 <style>
@@ -231,7 +254,11 @@
     max-block-size: var(--code-composer-mention-list-max);
   }
 
-  .scroll :global([role='region']) {
+  .area {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
     scroll-padding-block: var(--code-composer-mention-list-pad) var(--code-composer-mention-scroll-end);
   }
 
@@ -281,6 +308,13 @@
     text-align: start;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  /* The lit row shows its description in full: a keyboard cannot hover for the cut-off part. */
+  .row.active .description {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
 
   .badge {

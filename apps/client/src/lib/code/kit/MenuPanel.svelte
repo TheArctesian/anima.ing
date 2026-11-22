@@ -3,6 +3,7 @@
   import { popover } from '$lib/motion/roles/transitions';
   import type { Anchor } from '$lib/overlay/helptip/placement';
   import { menuPlace, nextChoice, reasonOf, type MenuChoice, type MenuEntry, type MenuSide } from './menu';
+  import Self from './MenuPanel.svelte';
 
   interface Props {
     /** The panel's ID, which a trigger names in `aria-controls`. */
@@ -19,9 +20,11 @@
     onChoose: (id: string) => void;
     /** The panel closes; `back` says whether focus goes back to where it came from (Escape, a choice) or stays (a press outside, Tab). */
     onClose: (back: boolean) => void;
+    /** A submenu: its keys stay in it, and Left closes it back to its row. */
+    nested?: boolean;
   }
 
-  const { id, label, entries, anchor, side = { side: 'below', align: 'start' }, from, focusFirst = true, onChoose, onClose }: Props = $props();
+  const { id, label, entries, anchor, side = { side: 'below', align: 'start' }, from, focusFirst = true, onChoose, onClose, nested = false }: Props = $props();
   let panel = $state<HTMLElement>();
   const buttons: HTMLButtonElement[] = [];
   const choices = $derived(entries.filter((entry): entry is MenuChoice => entry.kind === 'choice'));
@@ -32,13 +35,33 @@
     return reason === null ? undefined : `${id}-reason-${String(reason)}`;
   }
 
+  /** The choice whose submenu is open, by its index in `choices`, and whether its first row takes focus. */
+  let sub = $state<{ at: number; focus: boolean } | null>(null);
+
   function choose(choice: MenuChoice): void {
     if (choice.disabled === true) return;
+    if (choice.items !== undefined) {
+      sub = { at: choices.indexOf(choice), focus: true };
+      return;
+    }
     onClose(true);
     onChoose(choice.id);
   }
 
   function onkeydown(event: KeyboardEvent): void {
+    // A submenu's keys are its own; Tab goes on up, so the whole menu closes.
+    if (nested && event.key !== 'Tab') event.stopPropagation();
+    const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    if (event.key === 'ArrowRight' && choices[at]?.items !== undefined && choices[at].disabled !== true) {
+      event.preventDefault();
+      sub = { at, focus: true };
+      return;
+    }
+    if (nested && event.key === 'ArrowLeft') {
+      event.preventDefault();
+      onClose(true);
+      return;
+    }
     if (event.key === 'Escape' || event.key === 'Tab') {
       if (event.key === 'Escape') event.preventDefault();
       onClose(event.key === 'Escape');
@@ -87,6 +110,13 @@
         class:danger={entry.danger === true}
         aria-disabled={entry.disabled === true ? 'true' : undefined}
         aria-describedby={described(entry, row)}
+        aria-haspopup={entry.items === undefined ? undefined : 'menu'}
+        aria-expanded={entry.items === undefined ? undefined : sub?.at === choices.indexOf(entry)}
+        onpointerenter={() => {
+          const at = choices.indexOf(entry);
+          if (entry.items !== undefined && entry.disabled !== true) sub = { at, focus: false };
+          else if (sub !== null && sub.at !== at) sub = null;
+        }}
         bind:this={buttons[choices.indexOf(entry)]}
         onclick={() => {
           choose(entry);
@@ -96,7 +126,29 @@
         <span class="label">{entry.label}</span>
         {#if entry.detail !== undefined}<span class="detail">{entry.detail}</span>{/if}
         {#if entry.shortcut !== undefined}<span class="detail">{entry.shortcut}</span>{/if}
+        {#if entry.items !== undefined}<CodeIcon name="chevron-right" />{/if}
       </button>
+      {#if entry.items !== undefined && sub?.at === choices.indexOf(entry)}
+        {@const at = choices.indexOf(entry)}
+        <Self
+          id="{id}-sub-{String(at)}"
+          label={entry.label}
+          entries={entry.items}
+          side={{ side: 'end', align: 'start' }}
+          from={buttons[at]}
+          anchor={() => buttons[at]?.getBoundingClientRect() ?? { left: 0, top: 0, width: 0, height: 0 }}
+          focusFirst={sub.focus}
+          nested
+          onChoose={(chosen) => {
+            onClose(true);
+            onChoose(chosen);
+          }}
+          onClose={(back) => {
+            sub = null;
+            if (back) buttons[at]?.focus();
+          }}
+        />
+      {/if}
     {/if}
   {/each}
 </div>
