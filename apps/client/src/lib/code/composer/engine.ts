@@ -63,9 +63,28 @@ export interface ComposerEngine {
 export interface RunCalls {
   readonly onSend: (text: string) => Promise<CallResult>;
   readonly onInterrupt: () => Promise<CallResult>;
+  /** The calls of the runner's own queue (`live.call`), for the chat of this composer; without them the window holds the queue. */
+  readonly onQueue?: QueueCall | undefined;
   /** The runner's list of the files of the chat's folder (`live.files`); left out by a page whose runner has none. */
   readonly onFiles?: FileSearch | undefined;
 }
+
+/**
+ * The two fields of a row that the runner's queue adds (TH109), as `live/queue.ts` of that task reads them. They are
+ * named here so that the composer does not wait for that task: a row without them has an empty queue.
+ */
+export interface QueueOfRow {
+  readonly queued?: readonly { readonly id: string; readonly text: string }[];
+  readonly lastTurn?: 'done' | 'failed' | 'interrupted' | null;
+}
+
+/** A call of the runner's queue, without the thread: the page adds it. */
+export type QueueAct =
+  | { readonly call: 'queue'; readonly text: string }
+  | { readonly call: 'requeue'; readonly id: string; readonly text: string }
+  | { readonly call: 'unqueue'; readonly id: string }
+  | { readonly call: 'send_queued'; readonly id: string };
+export type QueueCall = (act: QueueAct) => Promise<CallResult>;
 
 /** The answer of the runner's file list, as `live.files` gives it. */
 export type FileSearch = (query: string, most: number) => Promise<{ readonly ok: true; readonly paths: readonly FoundPath[]; readonly more: boolean } | { readonly ok: false; readonly words: string }>;
@@ -88,6 +107,9 @@ function searching(search: FileSearch): MentionSources {
 
 const NO_ATTACH = 'The runner takes no attachments yet.';
 const NO_DICTATE = 'Voice input is not built yet.';
+const NO_QUEUE_WORDS = 'The runner keeps no queue yet: a message goes into the running turn.';
+const STOPPED_TURN = 'The last turn was stopped, so the queue waits. Send a message, or press Send now.';
+const FAILED_TURN = 'The last turn failed, so the queue waits. Send a message, or press Send now.';
 const STOPPED = 'You stopped the turn, so the queue waits. Send a message, or press Send now.';
 const NO_SEARCH = 'The runner cannot search the folder of a chat yet.';
 const NO_PICK = 'The model and the permissions are set when a chat starts; the runner cannot change them after.';
@@ -129,8 +151,38 @@ export function phaseOf(row: RunRow): QueuePhase {
   return row.state === 'working' || row.state === 'starting' || row.state === 'needs_you' ? 'running' : 'idle';
 }
 
+type QueueParts = Pick<ComposerEngine, 'queue' | 'queued' | 'queueWaits' | 'opened' | 'abandoned' | 'enqueue' | 'requeue' | 'unqueue' | 'sendQueued'>;
+
+const refused = (): Promise<Outcome> => Promise.resolve({ ok: false, words: NO_QUEUE_WORDS });
+const NO_QUEUE: QueueParts = { queue: cannot(NO_QUEUE_WORDS), queued: [], enqueue: refused, requeue: refused, unqueue: refused, sendQueued: refused };
+
+/** Why the runner's queue sends nothing on its own, by how the last turn ended; null while it goes on. */
+function runnerWaits(row: RunRow & QueueOfRow): string | null {
+  if (row.queued === undefined || row.queued.length === 0 || phaseOf(row) !== 'idle') return null;
+  if (row.lastTurn === 'interrupted') return STOPPED_TURN;
+  return row.lastTurn === 'failed' ? FAILED_TURN : null;
+}
+
+/**
+ * The queue calls of the engine over the runner's own queue (TH109): the runner holds the prompts, sends the first
+ * when a turn ended well with nothing open, and stops after an interrupt or a failed turn until the person sends.
+ */
+function runnerQueue(row: RunRow & QueueOfRow, call: QueueCall, send: (prompt: string) => Promise<Outcome>): QueueParts {
+  const act = async (action: QueueAct): Promise<Outcome> => outcomeOf(await call(action));
+  return {
+    queue: CAN,
+    queued: (row.queued ?? []).map((prompt) => ({ id: prompt.id, prompt: prompt.text, saving: false })),
+    queueWaits: runnerWaits(row),
+    // The turn can end between the press and this call: what would wait for nothing goes now.
+    enqueue: (message) => (phaseOf(row) === 'running' ? act({ call: 'queue', text: message.prompt }) : send(message.prompt)),
+    requeue: (id, message) => act({ call: 'requeue', id, text: message.prompt }),
+    unqueue: (id) => act({ call: 'unqueue', id }),
+    sendQueued: (id) => act({ call: 'send_queued', id }),
+  };
+}
+
 /** The queue calls of the engine, over the queue that this window holds for the chat. */
-function queueOf(queue: HeldQueue, running: boolean, send: (prompt: string) => Promise<Outcome>): Pick<ComposerEngine, 'queue' | 'queued' | 'queueWaits' | 'opened' | 'abandoned' | 'enqueue' | 'requeue' | 'unqueue' | 'sendQueued'> {
+function queueOf(queue: HeldQueue, running: boolean, send: (prompt: string) => Promise<Outcome>): QueueParts {
   return {
     queue: CAN,
     queued: queue.messages,
@@ -150,34 +202,36 @@ function queueOf(queue: HeldQueue, running: boolean, send: (prompt: string) => P
 }
 
 /**
- * The engine of a chat that the runner of this computer drives (TH14). It sends, steers and interrupts, and it
- * queues in this window (the runner keeps no queue). It has no attachments, no change of the model after the
+ * The engine of a chat that the runner of this computer drives (TH14). It sends, steers and interrupts. It queues in
+ * the runner when the page gives the runner's queue calls, else in this window. It has no attachments, no change of the model after the
  * start and no dictation; it searches the chat's folder when the page gives it the runner's file list.
  *
  * The queue is given, not looked up here: state that is made inside the computation that reads it is not followed.
  */
-export function runEngine(row: RunRow, calls: RunCalls, queue: HeldQueue): ComposerEngine {
+export function runEngine(row: RunRow & QueueOfRow, calls: RunCalls, queue: HeldQueue | null): ComposerEngine {
   const phase = phaseOf(row);
   const send = async (prompt: string): Promise<Outcome> => outcomeOf(await calls.onSend(prompt));
+  // The runner's own queue when the page gives its calls (TH109); else the one this window holds; else none.
+  const queued = calls.onQueue !== undefined ? runnerQueue(row, calls.onQueue, send) : queue !== null ? queueOf(queue, phase === 'running', send) : NO_QUEUE;
   return {
     phase,
     ended: phase === 'ended' ? (row.ended ?? 'The program of this chat ended.') : null,
     send: async (message) => {
       const outcome = await send(message.prompt);
       // The person started a turn themself: the queue goes on after it.
-      if (outcome.ok) queue.release();
+      if (outcome.ok) queue?.release();
       return outcome;
     },
     interrupt: async () => {
-      queue.hold(STOPPED);
+      queue?.hold(STOPPED);
       const outcome = outcomeOf(await calls.onInterrupt());
-      if (!outcome.ok && queue.waits === STOPPED) queue.release();
+      if (!outcome.ok && queue?.waits === STOPPED) queue.release();
       return outcome;
     },
     attach: cannot(NO_ATTACH),
     dictate: cannot(NO_DICTATE),
     steer: CAN,
-    ...queueOf(queue, phase === 'running', send),
+    ...queued,
     pick: cannot(NO_PICK),
     ...catalogueOf(row),
     choose: () => undefined,

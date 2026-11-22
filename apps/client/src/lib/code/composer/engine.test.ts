@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RunRow } from '$lib/agent-threads/live/run';
-import { runEngine, type RunCalls } from './engine';
+import { runEngine, type QueueOfRow, type RunCalls } from './engine';
 import { HeldQueue } from './queue/held.svelte';
 
 const row: RunRow = { id: 'r1', program: 'claude_code', folder: '/work/anima', mode: 'accept_edits', model: null, state: 'idle', session: null, title: 'Fix the gate', started: new Date(0), ended: null, open: [] };
@@ -90,5 +90,45 @@ describe('the lists and the choice of a driven chat', () => {
     expect(engineOf({ ...row, model: 'opus', mode: 'full_access' }, calls).choice).toMatchObject({ model: 'opus', mode: 'full-access' });
     const planning = engineOf({ ...row, mode: 'plan' }, calls);
     expect(planning.catalogue.modes.find((mode) => mode.id === planning.choice.mode)?.label).toBe('Plan');
+  });
+});
+
+describe('the engine over the queue of the runner', () => {
+  const went = { ok: true as const, outcome: { outcome: 'ok' as const } };
+  const acts: unknown[] = [];
+  const onQueue = (act: unknown) => {
+    acts.push(act);
+    return Promise.resolve(went);
+  };
+  const working: RunRow & QueueOfRow = { ...row, state: 'working', queued: [{ id: 'p1', text: 'then push' }] };
+
+  it('shows the prompts the runner holds, and makes each change through the runner', async () => {
+    const engine = runEngine(working, { ...calls, onQueue }, null);
+    expect(engine.queue.can).toBe(true);
+    expect(engine.queued).toEqual([{ id: 'p1', prompt: 'then push', saving: false }]);
+    await engine.enqueue({ prompt: 'then test', attachments: [] });
+    await engine.requeue('p1', { prompt: 'then push the branch', attachments: [] });
+    await engine.unqueue('p1');
+    await engine.sendQueued('p1');
+    expect(acts).toEqual([{ call: 'queue', text: 'then test' }, { call: 'requeue', id: 'p1', text: 'then push the branch' }, { call: 'unqueue', id: 'p1' }, { call: 'send_queued', id: 'p1' }]);
+  });
+
+  it('sends at once what is queued when no turn runs, and says why the queue waits', async () => {
+    const before = sent.length;
+    await runEngine({ ...working, state: 'idle' }, { ...calls, onQueue }, null).enqueue({ prompt: 'now', attachments: [] });
+    expect(sent.slice(before)).toEqual(['now']);
+    const waits = (lastTurn: QueueOfRow['lastTurn'], state: RunRow['state'] = 'idle') => runEngine({ ...working, state, lastTurn }, { ...calls, onQueue }, null).queueWaits;
+    expect(waits('interrupted')).toMatch(/^The last turn was stopped/);
+    expect(waits('failed')).toMatch(/^The last turn failed/);
+    expect(waits('done')).toBeNull();
+    expect(waits('failed', 'working')).toBeNull();
+    const none: RunRow & QueueOfRow = { ...row, lastTurn: 'failed' };
+    expect(runEngine(none, { ...calls, onQueue }, null).queueWaits).toBeNull();
+  });
+
+  it('has no queue when the page gives neither the calls of the runner nor a queue of the window', async () => {
+    const engine = runEngine(working, calls, null);
+    expect(engine.queue.can).toBe(false);
+    expect((await engine.enqueue({ prompt: 'x', attachments: [] })).ok).toBe(false);
   });
 });
