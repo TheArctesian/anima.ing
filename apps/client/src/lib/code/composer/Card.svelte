@@ -196,8 +196,8 @@
     bind:this={surface}
     {@attach dropZone({
       onOver: (now) => (over = now && engine.attach.can),
-      onFiles: (files) => {
-        if (engine.attach.can) card.add(files);
+      onFiles: (files, folders) => {
+        if (engine.attach.can) card.add(files, folders.length);
         else card.problem = engine.attach.reason;
       },
     })}
@@ -220,10 +220,10 @@
         {onKey}
         controls={trigger === null ? undefined : menuId}
         activeDescendant={trigger === null ? undefined : activeOption}
-        onFiles={(files, how) => {
+        onFiles={(files, how, folders) => {
           // A drop goes on to the card's own drop zone, which takes it one time.
           if (how === 'drop') return true;
-          if (engine.attach.can) card.add(files);
+          if (engine.attach.can) card.add(files, folders);
           else card.problem = engine.attach.reason;
           return engine.attach.can;
         }}

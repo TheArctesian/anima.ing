@@ -2,7 +2,7 @@
   import './attachments.css';
   import CodeIcon from '../../icons/CodeIcon.svelte';
   import Tooltip from '../../kit/Tooltip.svelte';
-  import type { Attachment } from './attach';
+  import { readingWords, type Attachment } from './attach';
 
   interface Props {
     /** The images and the videos of the draft, in the order they were attached. */
@@ -56,7 +56,7 @@
       {/if}
     </button>
     {#if attachment.state.state === 'reading'}
-      <span class="strip">Reading</span>
+      <span class="strip">{readingWords(attachment)}</span>
     {:else if attachment.state.state === 'failed'}
       <span class="strip failed">Failed</span>
     {/if}

@@ -6,18 +6,22 @@
   import { untrack } from 'svelte';
   import { phaseOf, runEngine, type FileSearch, type QueueCall } from './engine';
   import type { ProgramModel, SetCall } from './run/choice';
+  import type { AttachCall, AttachTo } from './run/upload';
   import { heldQueue, NOT_WATCHED, type Went } from './queue/held.svelte';
   import './composer.css';
 
   interface Props {
     /** The run of the chat; null for a chat that is only read, which no program of this computer runs. */
     row: RunRow | null;
-    onSend: (text: string) => Promise<CallResult>;
+    /** `files`: the runner's ids of the files of the prompt (TH111), for the `attachments` of its `send`; left out when there are none. */
+    onSend: (text: string, files?: readonly string[]) => Promise<CallResult>;
     onInterrupt: () => Promise<CallResult>;
     /** Ends the program. The composer has no control for it (T3's Stop interrupts the turn): the chat's header has. */
     onStop: () => Promise<CallResult>;
     /** The calls of the runner's own queue for this chat (TH109); without them the window holds the queue. */
     onQueue?: QueueCall;
+    /** The runner's `attach`, `attach_more` and `unattach` (TH111), for the chat that the composer names; without them the paperclip says that nothing is attached. */
+    onAttach?: AttachTo;
     /** The runner's `set` call for this chat (TH110): the mode and the effort after the start. */
     onSet?: SetCall;
     /** The models of this chat's program, from the runner's `models` call (TH104); used only together with `onSet`. */
@@ -32,12 +36,18 @@
    * The composer of a chat of the Code section (TC4; 03 Part B). It sets no width and no place: the chat column
    * gives it the lane and pins it to the foot.
    */
-  const { row, onSend, onInterrupt, onQueue, onSet, models, onFiles, draft }: Props = $props();
+  const { row, onSend, onInterrupt, onQueue, onAttach, onSet, models, onFiles, draft }: Props = $props();
   const chat = $derived(row?.id);
   // Looked up apart from the engine: the engine must follow the queue's messages, and state is not followed by the
   // computation that made it.
   const queue = $derived(chat === undefined || onQueue !== undefined ? null : heldQueue(chat));
-  const engine = $derived(row === null ? null : runEngine(row, { onSend, onInterrupt, onQueue, onSet, models, onFiles }, queue));
+  // Each call of a file names the chat of this composer: a part or an `unattach` never goes to the chat that is opened after it.
+  const attachHere = $derived.by((): AttachCall | undefined => {
+    const mine = chat;
+    const call = onAttach;
+    return call === undefined || mine === undefined ? undefined : (act) => call(act, mine);
+  });
+  const engine = $derived(row === null ? null : runEngine(row, { onSend, onInterrupt, onQueue, onAttach: attachHere, onSet, models, onFiles }, queue));
   // A run whose state is not known says nothing of its turn: the queue is told only of states that are.
   const phase = $derived(row === null || row.state === 'unknown' ? null : phaseOf(row));
 
