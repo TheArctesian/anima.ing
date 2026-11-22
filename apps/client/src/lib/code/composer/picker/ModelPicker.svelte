@@ -24,6 +24,8 @@
     onChange: (next: Choice) => void;
     /** When the picker cannot be used the trigger is dimmed, keeps focus and its tip says why. */
     can: Can;
+    /** The shortcut that opens it, named in the trigger's tip: "⌘⇧M". */
+    shortcut?: string;
     /** Open from the start, for the specimen page; a shortcut of the composer can set it too. */
     open?: boolean;
     /** The edge of the trigger the popup lines up with: `end` in the wide footer, `start` in the resting row (03 B.6.4). */
@@ -36,7 +38,7 @@
     onFavourite?: (model: Model, favourite: boolean) => void;
   }
 
-  let { catalogue, value, onChange, can, open = $bindable(false), align = 'start', size = 'sm', effortDisplay = 'label', onFavourite }: Props = $props();
+  let { catalogue, value, onChange, can, shortcut, open = $bindable(false), align = 'start', size = 'sm', effortDisplay = 'label', onFavourite }: Props = $props();
   const id = $props.id();
   const mac = typeof navigator !== 'undefined' && isMac(navigator.userAgent);
   let root: HTMLElement | undefined;
@@ -193,7 +195,8 @@
 <span class="root" bind:this={root} onfocusout={onFocusOut}>
   <!-- The reason on the control itself: a tip describes its wrapper, and only while it shows. -->
   {#if !can.can}<span id="{id}-why" hidden>{can.reason}</span>{/if}
-  {#if can.can}{@render chip()}{:else}<Tooltip text={can.reason}>{@render chip()}</Tooltip>{/if}
+  <!-- T3 Code `ProviderModelPicker.tsx:275-281`: the model, the effort and the shortcut; ours gives the reason when it cannot open. -->
+  <Tooltip text={can.can ? [name, summary.detail, shortcut ?? ''].filter((part) => part !== '').join(' · ') : can.reason}>{@render chip()}</Tooltip>
   {#if open && can.can}
     <div class="popup" id="{id}-popup" role="dialog" aria-label="Model" tabindex="-1" onkeydown={onPopupKey} transition:popover={{ from: trigger }} {@attach place}>
       <div class="body">

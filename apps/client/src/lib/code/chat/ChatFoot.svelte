@@ -39,13 +39,14 @@
 </div></div>
 
 <style>
+  /* T3 Code `ChatView.tsx:3705, 4008-4011`: 6 px over the composer and 1rem under it, 8 px and 1.25rem from 640 px, over the safe area. */
   .lane {
-    padding: var(--space-2) var(--space-3) var(--space-3);
+    padding: calc(var(--space-3) / 2) var(--space-3) calc(var(--space-4) + env(safe-area-inset-bottom));
   }
 
   @media (width >= 40rem) {
     .lane {
-      padding-inline: var(--space-12);
+      padding: var(--space-2) var(--space-12) calc(var(--space-5) + env(safe-area-inset-bottom));
     }
   }
 

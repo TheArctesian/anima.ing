@@ -26,7 +26,7 @@
       if (!pending) onStop();
     }}
   >
-    <svg viewBox="0 0 12 12" aria-hidden="true" fill="currentColor"><rect x="2" y="2" width="8" height="8" rx="1" /></svg>
+    <svg viewBox="0 0 12 12" aria-hidden="true" fill="currentColor"><rect x="2" y="2" width="8" height="8" rx="1.5" /></svg>
   </button>
 </Tooltip>
 

@@ -111,6 +111,33 @@ describe('the composer of a chat that the runner drives', () => {
 
 });
 
+describe('the keys of the queue in the composer', () => {
+  it('sends the first queued message with ⌘⇧Enter, and opens the last with ⌥↑ over a prompt that has text', async () => {
+    const { sent } = composer({ ...ROW, id: 'c-keys' });
+    for (const words of ['first', 'second']) {
+      type(words);
+      press('Enter', { metaKey: true });
+      await settled();
+    }
+    press('Enter', { metaKey: true, shiftKey: true });
+    await settled();
+    expect(sent).toEqual(['c-keys: first']);
+    expect(bubbles()).toEqual(['second']);
+    type('unsent');
+    press('ArrowUp', { altKey: true });
+    await settled();
+    expect(box().textContent).toBe('unsent');
+    const start = pointAt(box(), 0);
+    document.getSelection()?.setBaseAndExtent(start.node, start.offset, start.node, start.offset);
+    document.dispatchEvent(new Event('selectionchange'));
+    flushSync();
+    press('ArrowUp', { altKey: true });
+    await settled();
+    expect(box().textContent).toBe('second');
+    expect(document.body.textContent).toContain('Editing in the composer');
+  });
+});
+
 describe('the queue of the composer across chats and states', () => {
   it('does not send the queue of one chat to the chat that is opened after it', async () => {
     const { props, sent } = composer({ ...ROW, id: 'c-first' });

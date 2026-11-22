@@ -31,8 +31,19 @@ export function foldWords(count: number, all: boolean): string {
 }
 
 /** The tip of "Send now": into the running turn, or as the next turn (03 3.4). */
-export function sendNowTip(running: boolean): string {
-  return running ? 'Send into the current turn' : 'Start a turn with this message';
+export function sendNowTip(running: boolean, shortcut?: string): string {
+  const words = running ? 'Send into the current turn' : 'Start a turn with this message';
+  return shortcut === undefined ? words : `${words} (${shortcut})`;
+}
+
+/** The keys of the queue as the tips name them (T3 Code `keybindings.ts:94-95`): the first message goes, the last opens. */
+export function queueKeys(mac: boolean): { readonly send: string; readonly edit: string } {
+  return mac ? { send: '⌘⇧Enter', edit: '⌥↑' } : { send: 'Ctrl+Shift+Enter', edit: 'Alt+↑' };
+}
+
+/** ⌘⇧Enter, or Ctrl+Shift+Enter: the first queued message is sent now. */
+export function sendsFirst(press: { readonly key: string; readonly shift: boolean; readonly alt: boolean; readonly command: boolean }): boolean {
+  return press.key === 'Enter' && press.shift && press.command && !press.alt;
 }
 
 /** The prompt as a bubble shows it: each chip by its label, so a file link reads as the file's name (03 3.3). */

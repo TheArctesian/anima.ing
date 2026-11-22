@@ -20,7 +20,7 @@
   import StopButton from './primary/StopButton.svelte';
   import { enterSends, showsSend, showsStop } from './primary/send';
   import QueuedMessages from './queue/QueuedMessages.svelte';
-  import { labelled } from './queue/queue';
+  import { labelled, queueKeys, sendsFirst } from './queue/queue';
   import MicButton from './voice/MicButton.svelte';
   import './composer.css';
   import './mentions/mentions.css';
@@ -59,6 +59,7 @@
   let watch = $state(NO_TRIGGER);
   let caret = $state<DOMRect | null>(null);
   let seen = '';
+  let caretAt = 0;
   let allQueued = $state(false);
   let picking = $state(false);
   let previewed = $state<string | null>(null);
@@ -84,6 +85,7 @@
       const found = at.rect === null ? null : triggerAt(at.prompt, at.caret);
       watch = at.prompt === seen ? afterCaretMove(watch, found) : afterEdit(watch, found);
       seen = at.prompt;
+      caretAt = at.caret;
       caret = at.rect;
     });
   }
@@ -97,14 +99,29 @@
     if (choice.kind === 'command' && choice.command.name === 'model') picking = true;
   }
 
+  /** The two keys of the queue (03 3.5): the first message goes now; the last opens in the composer. */
+  function queueKey(event: KeyboardEvent): boolean {
+    if (card.busy || event.isComposing) return false;
+    if (sendsFirst({ key: event.key, shift: event.shiftKey, alt: event.altKey, command: event.metaKey || event.ctrlKey })) {
+      const first = engine.queued[0];
+      if (first !== undefined && !first.saving) void card.queued(first.id, 'send');
+      return true;
+    }
+    // With the caret at the start, also over a prompt that has text: it is set aside (T3 Code `ChatView.tsx:2895-2900`).
+    const last = engine.queued.at(-1);
+    if (event.key !== 'ArrowUp' || !event.altKey || caretAt !== 0 || card.editing !== null || last === undefined || last.saving) return false;
+    allQueued = true;
+    card.edit(last.id);
+    return true;
+  }
+
   /** The keys of the composer before the editor's own (03 B.12): the open menu first, then the queue, then Enter. */
   function onKey(event: KeyboardEvent): boolean {
     if (trigger !== null && menu?.key(event) === true) return true;
-    if (event.key === 'ArrowUp' && event.altKey && card.prompt === '' && card.editing === null && !card.busy) {
-      const last = engine.queued.at(-1);
-      if (last === undefined || last.saving) return false;
-      allQueued = true;
-      card.edit(last.id);
+    if (queueKey(event)) return true;
+    // ⌘⇧M, or Ctrl+Shift+M: the model picker (T3 Code `keybindings.ts:115`).
+    if (event.code === 'KeyM' && event.shiftKey && (event.metaKey || event.ctrlKey) && !event.altKey) {
+      if (engine.pick.can) picking = !picking;
       return true;
     }
     if (!enterSends({ key: event.key, shift: event.shiftKey, alt: event.altKey, composing: event.isComposing })) return false;
@@ -147,6 +164,7 @@
   <QueuedMessages
     queue={engine.queued}
     waits={engine.queueWaits ?? null}
+    keys={queueKeys(card.modifier === '⌘')}
     editing={card.editing}
     running={card.running}
     busy={card.busy}
@@ -212,7 +230,7 @@
     <div class="footer">
       <AttachButton can={engine.attach} onFiles={(files) => card.add(files)} />
       <div class="actions">
-        <ModelPicker catalogue={engine.catalogue} value={engine.choice} onChange={engine.choose} can={engine.pick} align="end" bind:open={picking} />
+        <ModelPicker catalogue={engine.catalogue} value={engine.choice} onChange={engine.choose} can={engine.pick} shortcut={card.modifier === '⌘' ? '⌘⇧M' : 'Ctrl+Shift+M'} align="end" bind:open={picking} />
         <MicButton can={engine.dictate} onStart={() => undefined} />
         {#if showsSend(card.turn)}<SendButton face={card.face} onPress={(alternate) => pressed(() => card.submit(alternate))} />{/if}
         {#if showsStop(card.turn, card.stop)}<StopButton pending={card.stop === 'pending'} onStop={() => pressed(() => card.interrupt())} />{/if}

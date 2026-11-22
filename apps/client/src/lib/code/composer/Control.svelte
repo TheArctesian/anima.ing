@@ -52,6 +52,26 @@
     color: var(--text);
   }
 
+  /* T3 Code `ComposerControl.tsx:12-16`: an icon gives 2 px back at each side; a press scales a chip that opens nothing. */
+  .chip:not(.xs) :global(svg) {
+    margin-inline: calc(var(--border-focus) * -1);
+  }
+
+  .chip:active:not([aria-haspopup], :disabled) {
+    scale: 0.97;
+  }
+
+  @media (width < 40rem) {
+    .chip:not(.xs) {
+      font-size: var(--text-lg);
+    }
+
+    .chip:not(.xs) :global(svg) {
+      inline-size: 1.125rem;
+      block-size: 1.125rem;
+    }
+  }
+
   .chip:disabled {
     color: var(--text-tertiary);
   }
