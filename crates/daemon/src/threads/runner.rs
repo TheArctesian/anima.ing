@@ -8,6 +8,7 @@
 //! [`socket`], [`login`], [`record`] and [`log`].
 
 mod accounts;
+mod attachments;
 mod calls;
 pub mod codex;
 mod holder_events;
@@ -65,7 +66,9 @@ enum Waits {
     Send {
         thread: Uuid,
         back: Caller,
-        text: String,
+        shown: thread::Shown,
+        /// The files of the prompt, which wait again when the holder does not take the line.
+        files: Vec<Uuid>,
     },
     /// The line of an answer; the request closes when the holder takes it (THR-030).
     Answer(Pending),
@@ -125,6 +128,8 @@ pub struct Runner {
     said: accounts::Said,
     /// The last walk of the folder of each thread, for the `@` list (TH108): in memory only.
     walked: calls::Walked,
+    /// The files that the person attached for a prompt (TH111).
+    attached: attachments::Attachments,
 }
 
 /// Whether the daemon in `daemon_dir` serves a person, so that it may run agents in the login
@@ -192,6 +197,7 @@ pub async fn run(
         sign_in_told: BTreeMap::new(),
         walked: calls::Walked::default(),
         said: accounts::Said::default(),
+        attached: attachments::Attachments::at(&dir),
     };
     runner.restore(saved.threads);
     let listener = socket::bind(&dir)?;
@@ -240,6 +246,7 @@ impl Runner {
                 Some((id, answers)) = asked.recv() => self.asked(id, answers).await,
                 _ = look.tick() => {
                     self.end_the_silent().await;
+                    self.attached.expire(std::time::Instant::now());
                     self.replace_older_holder().await;
                 }
                 () = &mut stop => break,
@@ -362,6 +369,8 @@ impl Runner {
         for (_, id) in stopped.into_iter().take(over) {
             self.threads.remove(&id);
             self.read_up_to.remove(&id);
+            // No prompt can go to it again: its files go with it (TH111).
+            self.attached.forget(id);
         }
         let record = record::Record {
             limits: self.limits,

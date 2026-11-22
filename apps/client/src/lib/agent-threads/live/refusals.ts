@@ -22,4 +22,6 @@ export const REFUSAL_WORDS: Readonly<Record<Refusal, string>> = {
   over_limit: OVER_LIMIT,
   queue_full: 'That thread has 20 queued prompts: send or drop one first.',
   cannot_change: 'The program of that thread cannot change that after its start.',
+  too_large: 'That file is too large to send with the prompt.',
+  cannot_attach: 'That file cannot go with the prompt.',
 };

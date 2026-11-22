@@ -75,6 +75,8 @@ pub(in crate::threads::runner) const fn refusal_word(why: &Refusal) -> &'static 
         Refusal::OverLimit { .. } => "over the soft limit",
         Refusal::QueueFull => "queue full",
         Refusal::CannotChange { .. } => "the program cannot change that",
+        Refusal::TooLarge { .. } => "a file is too large",
+        Refusal::CannotAttach { .. } => "a file cannot go",
     }
 }
 

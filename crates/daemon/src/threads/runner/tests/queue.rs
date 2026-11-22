@@ -57,7 +57,9 @@ fn th109_a_failed_or_stopped_turn_stops_the_queue_until_the_person_sends() {
         assert_eq!(thread.row.queued.len(), 1);
         assert_ne!(thread.row.last_turn, Some(LastTurn::Done));
         // The person sends: after that turn the queue goes again.
-        thread.send("now", true).expect("sent");
+        thread
+            .send(&agent_threads::drive::Prompt::plain("now"), true)
+            .expect("sent");
         assert_eq!(prompts(&line(&mut thread, DONE)), ["next"]);
     }
 }
@@ -118,7 +120,9 @@ fn th109_a_prompt_sent_during_a_turn_keeps_the_queue_one_turn_behind() {
     // Claude Code holds a prompt sent during a turn and runs it as a turn of its own.
     let mut thread = held_claude();
     queue(&mut thread, 1, "queued");
-    thread.send("steer", true).expect("sent");
+    thread
+        .send(&agent_threads::drive::Prompt::plain("steer"), true)
+        .expect("sent");
     assert_eq!(prompts(&line(&mut thread, DONE)), NONE);
     // The held prompt fails: the queue stops, and the queued prompt never went.
     assert_eq!(prompts(&line(&mut thread, FAILED)), NONE);
@@ -130,7 +134,9 @@ fn th109_the_late_end_of_a_stopped_turn_does_not_stop_the_queue_again() {
     let mut thread = held_claude();
     queue(&mut thread, 1, "queued");
     thread.interrupt();
-    thread.send("instead", true).expect("sent");
+    thread
+        .send(&agent_threads::drive::Prompt::plain("instead"), true)
+        .expect("sent");
     assert_eq!(prompts(&line(&mut thread, STOPPED)), NONE);
     assert_eq!(prompts(&line(&mut thread, DONE)), ["queued"]);
 }
@@ -140,7 +146,9 @@ fn th109_a_prompt_of_an_agent_does_not_start_a_stopped_queue() {
     let mut thread = held_claude();
     queue(&mut thread, 1, "queued");
     line(&mut thread, FAILED);
-    thread.send("from an agent", false).expect("sent");
+    thread
+        .send(&agent_threads::drive::Prompt::plain("from an agent"), false)
+        .expect("sent");
     assert_eq!(prompts(&line(&mut thread, DONE)), NONE);
 }
 
@@ -168,7 +176,9 @@ fn th109_a_codex_steer_ends_with_its_turn_and_a_refused_turn_stops_the_queue() {
     queue(&mut thread, 1, "first");
     queue(&mut thread, 2, "second");
     // A steer goes into the running turn: it does not hold the queue back.
-    thread.send("steer", true).expect("sent");
+    thread
+        .send(&agent_threads::drive::Prompt::plain("steer"), true)
+        .expect("sent");
     let sent = writes(&thread.line(CODEX_DONE, &mut ids));
     assert_eq!(sent[0]["method"], "turn/start");
     assert_eq!(sent[0]["params"]["input"][0]["text"], "first");
@@ -189,8 +199,12 @@ fn th109_two_prompts_sent_before_the_program_says_it_runs_are_two_turns() {
     line(&mut thread, DONE);
     line(&mut thread, IDLE);
     // The program still says Idle when the person sends twice: each prompt is a turn.
-    thread.send("a", true).expect("sent");
-    thread.send("b", true).expect("sent");
+    thread
+        .send(&agent_threads::drive::Prompt::plain("a"), true)
+        .expect("sent");
+    thread
+        .send(&agent_threads::drive::Prompt::plain("b"), true)
+        .expect("sent");
     queue(&mut thread, 1, "later");
     assert_eq!(
         prompts(&line(&mut thread, DONE)),

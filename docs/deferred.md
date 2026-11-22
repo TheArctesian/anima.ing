@@ -23,7 +23,7 @@ Rules:
 | Area | Lists | Items with a box | Revisit |
 | --- | --- | --- | --- |
 | 1. Releases, signing and installation | 1 | 4 | Before the first public release (tasks R5 to R7 of projects-and-builds-plan.md). |
-| 2. Later phases and proposals | 10 | 28 | When the proposal or the phase of the item gets a ruling. Each proposal has a row in the work plan Section 9. |
+| 2. Later phases and proposals | 11 | 35 | When the proposal or the phase of the item gets a ruling. Each proposal has a row in the work plan Section 9. |
 | 3. Ideas from other products | 2 | 17 | When the plan that owns the subject is changed next. |
 | 4. Hub: access, logs and security | 7 | 24 | Before a hub is hosted for a different person, and at the next security review of access. |
 | 5. Hub: devices, checks and metrics | 9 | 20 | When the domain of the item is changed next. |
@@ -150,6 +150,18 @@ Added 2026-11-18. From [agent-tools-as-extensions.md](proposals/agent-tools-as-e
 Added 2026-11-20. From R-298 and [hosted-applications-plan.md](plans/hosted-applications-plan.md).
 
 - [ ] Anima hosts a database for a person on a machine that runs all the time, a cloud server that Anima starts for that person. It needs the start of cloud servers for customers, which is not built. Not designed; the operator wants it planned in a conversation of its own.
+
+### TH111: the files of a prompt
+
+Added 2026-11-22. From the security reviews of task TH111 of [agent-threads.md](proposals/agent-threads.md) (branch `threads/runner-attach`). None of them is High.
+
+- [ ] The store opens a file with `O_NOFOLLOW` and `O_NONBLOCK`, checks that it is a regular file, keeps a SHA-256 of the bytes that came and checks it at the take, and reads at most the size that came.
+- [ ] A thread folder that holds the folder of the daemon (`~`, `~/Library`) is refused, as a folder inside it is (THR-041). This is older than TH111, and it refuses a start in `~`: it waits for a decision of the operator.
+- [ ] Each thread, and all threads, keep at most a number of bytes of files that went; a start of the runner removes the folders that no thread knows; a file of a prompt whose holder never answers goes back after a time.
+- [ ] An image goes with its EXIF data, its place (GPS) too. The runner removes it, or the client tells the person before the send.
+- [ ] A process of an agent of the same user can read the files of the other threads (the model of the same user, THR-040).
+- [ ] The runner reads and writes the files in its loop, with no task of its own: up to 10 MiB for one image.
+- [ ] Claude Code in a mode other than full access asks for leave to read a file outside its folder (step 3 of the human check of TH111).
 
 ## 3. Ideas from other products
 

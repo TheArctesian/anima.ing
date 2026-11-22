@@ -4,6 +4,8 @@ use std::path::PathBuf;
 
 use serde_json::json;
 
+use crate::control::attach::ImageKind;
+
 use super::*;
 
 #[test]
@@ -135,13 +137,13 @@ fn each_codex_line_the_runner_can_write_names_a_method_of_the_closed_list() {
         CodexInput::turn_start(
             5,
             "t",
-            "hello",
+            &Prompt::plain("hello"),
             &TurnSettings {
                 effort: Some(Effort::Low),
                 ..TurnSettings::default()
             },
         ),
-        CodexInput::turn_steer(6, turn, "also"),
+        CodexInput::turn_steer(6, turn, &Prompt::plain("also")),
         CodexInput::turn_interrupt(7, turn),
         CodexInput::account_read(8),
         CodexInput::model_list(9),
@@ -194,7 +196,7 @@ fn th110_a_turn_carries_the_model_the_effort_and_the_mode_that_the_person_change
     let changed = line(&CodexInput::turn_start(
         5,
         "t",
-        "go",
+        &Prompt::plain("go"),
         &TurnSettings {
             model: Some(&model),
             effort: Some(Effort::Medium),
@@ -209,7 +211,7 @@ fn th110_a_turn_carries_the_model_the_effort_and_the_mode_that_the_person_change
     let kept = line(&CodexInput::turn_start(
         6,
         "t",
-        "go",
+        &Prompt::plain("go"),
         &TurnSettings::default(),
     ));
     for field in ["model", "effort", "approvalPolicy", "sandboxPolicy"] {
@@ -218,4 +220,46 @@ fn th110_a_turn_carries_the_model_the_effort_and_the_mode_that_the_person_change
             "{field} is the thread's own"
         );
     }
+}
+
+#[test]
+fn th111_a_codex_turn_gets_each_image_as_a_local_image_and_each_other_file_by_its_path() {
+    let prompt = Prompt {
+        text: "look".to_owned(),
+        attachments: vec![
+            Attachment {
+                name: "shot.png".to_owned(),
+                path: PathBuf::from("/a/1/shot.png"),
+                kind: Attached::Image {
+                    kind: ImageKind::Png,
+                    inline: Some("AAAA".to_owned()),
+                },
+            },
+            Attachment {
+                name: "notes.pdf".to_owned(),
+                path: PathBuf::from("/a/2/notes.pdf"),
+                kind: Attached::Pdf { inline: None },
+            },
+        ],
+    };
+    let turn = line(&CodexInput::turn_start(
+        5,
+        "t",
+        &prompt,
+        &TurnSettings::default(),
+    ));
+    let input = turn["params"]["input"].as_array().expect("an input");
+    let words = input[0]["text"].as_str().expect("words");
+    assert!(words.starts_with("look\n\n"));
+    assert!(words.contains("\n- /a/2/notes.pdf"));
+    assert!(!words.contains("shot.png"), "an image goes as an image");
+    assert_eq!(
+        input[1],
+        json!({"type": "localImage", "path": "/a/1/shot.png"})
+    );
+    assert_eq!(
+        input.len(),
+        2,
+        "Codex reads the image itself: no bytes in the line"
+    );
 }

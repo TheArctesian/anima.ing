@@ -1,12 +1,12 @@
 //! Each call reads back after it went as one frame: its fields sit beside the ID of the call, so
-//! a field that the call has too would make the frame unreadable (TH109).
+//! a field that the call has too would make the frame unreadable (TH109, TH111).
 
 use std::path::PathBuf;
 
 use uuid::Uuid;
 
 use super::{Action, Call, ListingChange, ProjectChange};
-use crate::drive::{Answer, Effort, Mode, Program};
+use crate::drive::{Answer, Mode, Program};
 
 /// One of each call that reads, or that starts or drives a thread.
 fn reads() -> Vec<Action> {
@@ -28,6 +28,7 @@ fn reads() -> Vec<Action> {
         Action::Send {
             thread,
             text: text(),
+            attachments: vec![other],
         },
         Action::Answer {
             thread,
@@ -91,9 +92,33 @@ fn changes() -> Vec<Action> {
         },
         Action::Set {
             thread,
-            model: Some(text()),
-            effort: Some(Effort::High),
-            mode: Some(Mode::FullAccess),
+            model: Some("m".to_owned()),
+            effort: None,
+            mode: Some(Mode::Ask),
+        },
+    ]
+}
+
+/// One of each call that sends a file for a prompt (TH111).
+fn files() -> Vec<Action> {
+    let thread = Uuid::from_u128(7);
+    let other = Uuid::from_u128(8);
+    vec![
+        Action::Attach {
+            thread,
+            name: "a.png".to_owned(),
+            mime: "image/png".to_owned(),
+            size: 3,
+            bytes: "AAAA".to_owned(),
+        },
+        Action::AttachMore {
+            thread,
+            attachment: other,
+            bytes: "AAAA".to_owned(),
+        },
+        Action::Unattach {
+            thread,
+            attachment: other,
         },
     ]
 }
@@ -124,15 +149,18 @@ const fn kind(action: &Action) -> usize {
         Action::Unqueue { .. } => 19,
         Action::SendQueued { .. } => 20,
         Action::Set { .. } => 21,
+        Action::Attach { .. } => 22,
+        Action::AttachMore { .. } => 23,
+        Action::Unattach { .. } => 24,
     }
 }
 
-const KINDS: usize = 22;
+const KINDS: usize = 25;
 
 #[test]
 fn th109_each_call_reads_back_from_its_frame() {
     let mut named = [false; KINDS];
-    for action in reads().into_iter().chain(changes()) {
+    for action in reads().into_iter().chain(changes()).chain(files()) {
         named[kind(&action)] = true;
         let call = Call {
             id: 42,

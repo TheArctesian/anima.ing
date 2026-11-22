@@ -131,7 +131,9 @@ pub fn refusal(why: &Refusal) -> Failure {
         ),
         Refusal::ProgramDoesNotAnswer { said, .. }
         | Refusal::HolderOlder { said }
-        | Refusal::CannotChange { said } => {
+        | Refusal::CannotChange { said }
+        | Refusal::TooLarge { said }
+        | Refusal::CannotAttach { said } => {
             return Failure::Forbidden {
                 message: said.clone(),
                 hint: None,

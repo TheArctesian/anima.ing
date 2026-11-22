@@ -169,7 +169,10 @@ fn thr_030_a_request_given_again_keeps_its_one_id() {
 #[test]
 fn th11_nothing_is_written_to_a_program_before_the_holder_started_it() {
     let mut thread = claude();
-    assert_eq!(thread.send("early", true), Err(Refusal::NotRunning));
+    assert_eq!(
+        thread.send(&agent_threads::drive::Prompt::plain("early"), true),
+        Err(Refusal::NotRunning)
+    );
 }
 
 #[test]
@@ -196,7 +199,10 @@ fn thr_030_the_end_of_the_process_closes_its_requests_and_refuses_a_late_answer(
         thread.answer(request, &Answer::Allow),
         Err(Refusal::RequestGone)
     );
-    assert_eq!(thread.send("more", true), Err(Refusal::NotRunning));
+    assert_eq!(
+        thread.send(&agent_threads::drive::Prompt::plain("more"), true),
+        Err(Refusal::NotRunning)
+    );
 }
 
 #[test]
@@ -207,6 +213,8 @@ fn th11_the_updates_kept_for_a_watch_have_a_bound_of_bytes() {
         thread.note(Change::Prompt {
             text: big.clone(),
             source: "test".to_owned(),
+            images: 0,
+            files: Vec::new(),
         });
     }
     let kept = thread.kept().count();
@@ -271,13 +279,17 @@ fn th11_codex_starts_its_server_and_thread_before_the_first_prompt() {
         r#"{"method":"turn/started","params":{"turn":{"id":"u1"}}}"#,
         &mut ids,
     );
-    let steer = thread.send("also this", true).expect("running");
+    let steer = thread
+        .send(&agent_threads::drive::Prompt::plain("also this"), true)
+        .expect("running");
     assert_eq!(json(&steer[0])["method"], "turn/steer");
     thread.line(
         r#"{"method":"turn/completed","params":{"turn":{"id":"u1","status":"completed"}}}"#,
         &mut ids,
     );
-    let next = thread.send("next", true).expect("running");
+    let next = thread
+        .send(&agent_threads::drive::Prompt::plain("next"), true)
+        .expect("running");
     assert_eq!(json(&next[0])["method"], "turn/start");
 }
 

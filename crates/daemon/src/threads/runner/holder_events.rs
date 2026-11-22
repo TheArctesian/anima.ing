@@ -273,8 +273,14 @@ impl Runner {
                 };
                 (back, None, result)
             }
-            Waits::Send { thread, back, text } => {
-                let result = self.sent(thread, &text, &outcome).await;
+            Waits::Send {
+                thread,
+                back,
+                shown,
+                files,
+            } => {
+                let result = self.sent(thread, &shown, &outcome).await;
+                self.files_went(thread, &files, &result);
                 (back, Some(thread), result)
             }
             Waits::Answer(pending) => {
@@ -303,15 +309,6 @@ impl Runner {
         }
     }
 
-    async fn sent(&mut self, id: Uuid, text: &str, outcome: &HolderOutcome) -> Outcome {
-        if let Some(why) = taken(outcome) {
-            return refused(why);
-        }
-        self.note(Kind::Prompt, Some(id), "sent");
-        let _ = self.apply(id, Thread::sent(text)).await;
-        Outcome::Ok
-    }
-
     async fn answered(&mut self, pending: &Pending, outcome: &HolderOutcome) -> Outcome {
         let Some(thread) = self.threads.get_mut(&pending.thread) else {
             return refused(Refusal::UnknownThread);
@@ -329,7 +326,7 @@ impl Runner {
 }
 
 /// Why the holder did not take a line, or `None` when it did.
-const fn taken(outcome: &HolderOutcome) -> Option<Refusal> {
+pub(super) const fn taken(outcome: &HolderOutcome) -> Option<Refusal> {
     match outcome {
         HolderOutcome::Refused {
             why: HolderRefusal::InputClosed | HolderRefusal::UnknownThread,

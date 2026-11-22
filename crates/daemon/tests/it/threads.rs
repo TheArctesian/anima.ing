@@ -10,6 +10,7 @@ use anima_daemon::threads::tree;
 use anima_daemon::threads::wire::{Action, Event, Line, Outcome};
 use tempfile::TempDir;
 
+mod attach;
 mod connection;
 mod files;
 mod holder_update;

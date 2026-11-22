@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, VecDeque};
 
 use agent_threads::control::{Change, Refusal, RunState, ThreadRow, Update};
 use agent_threads::drive::{
-    ClaudeDecoder, ClaudeInput, DriveEvent, Effort, Program, ProgramState, Request,
+    ClaudeDecoder, ClaudeInput, DriveEvent, Effort, Program, ProgramState, Prompt, Request,
 };
 use agent_threads::first_line;
 use serde::{Deserialize, Serialize};
@@ -32,6 +32,25 @@ const KEPT_BYTES: usize = 4 * 1024 * 1024;
 
 /// The source of a prompt that came through the local socket (THR-042).
 pub const THIS_COMPUTER: &str = "this computer";
+
+/// A prompt as the clients see it: its words and what went with it (TH111), never the bytes.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Shown {
+    pub text: String,
+    pub images: u32,
+    pub files: Vec<String>,
+}
+
+impl Shown {
+    #[must_use]
+    pub fn of(prompt: &Prompt) -> Self {
+        Self {
+            text: prompt.text.clone(),
+            images: prompt.images(),
+            files: prompt.files(),
+        }
+    }
+}
 
 /// A request that waits for the person, with the line it came in, so that a runner that starts
 /// again reads it again (THR-030).
@@ -146,7 +165,7 @@ impl Thread {
             }
             Driver::Codex(codex) => {
                 steps.push(Step::Write(codex.begin()));
-                codex.prompt(prompt);
+                codex.prompt(&Prompt::plain(prompt));
             }
         }
         steps
@@ -158,7 +177,7 @@ impl Thread {
     ///
     /// # Errors
     /// [`Refusal::NotRunning`] when the program ended or the holder did not start it yet.
-    pub fn send(&mut self, text: &str, person: bool) -> Result<Vec<String>, Refusal> {
+    pub fn send(&mut self, prompt: &Prompt, person: bool) -> Result<Vec<String>, Refusal> {
         if self.row.state == RunState::Stopped || !self.held {
             return Err(Refusal::NotRunning);
         }
@@ -175,15 +194,21 @@ impl Thread {
             self.pending = self.pending.saturating_add(1);
         }
         Ok(match &mut self.driver {
-            Driver::Claude(_) => vec![ClaudeInput::prompt(text)],
-            Driver::Codex(codex) => codex.prompt(text).into_iter().collect(),
+            Driver::Claude(_) => vec![ClaudeInput::prompt_with(prompt)],
+            Driver::Codex(codex) => codex.prompt(prompt),
         })
     }
 
-    /// The holder took the lines of a prompt: it is shown with its source (THR-042).
+    /// The holder took the lines of a prompt: it is shown with its source (THR-042) and its
+    /// files (TH111).
     #[must_use]
-    pub fn sent(text: &str) -> Vec<Step> {
-        vec![prompt_change(text)]
+    pub fn sent(shown: &Shown) -> Vec<Step> {
+        vec![Step::Change(Change::Prompt {
+            text: shown.text.clone(),
+            source: THIS_COMPUTER.to_owned(),
+            images: shown.images,
+            files: shown.files.clone(),
+        })]
     }
 
     /// The person stops the running turn; the program stays. Each open request closes (THR-087:
@@ -313,5 +338,7 @@ fn prompt_change(text: &str) -> Step {
     Step::Change(Change::Prompt {
         text: text.to_owned(),
         source: THIS_COMPUTER.to_owned(),
+        images: 0,
+        files: Vec::new(),
     })
 }
