@@ -15,6 +15,7 @@
   import OpenPortRows from '$lib/link/ports/OpenPortRows.svelte';
   import { desktopLocalHubShell, LocalHubWatch } from '$lib/local-hub/local-hub.svelte';
   import LocalHubSection from '$lib/local-hub/LocalHubSection.svelte';
+  import ReaderRows from '$lib/code/settings/ReaderRows.svelte';
   import McpSection from '$lib/mcp/McpSection.svelte';
   import NotificationsSection from '$lib/notifications/NotificationsSection.svelte';
   import PaletteRow from '$lib/palette/PaletteRow.svelte';
@@ -146,6 +147,11 @@
       <McpSection />
     </SettingsSection>
   {/if}
+
+  <!-- Code: its settings are a group of this page (OD-THR61, TC6). -->
+  <SettingsSection {...SECTIONS.codeAppearance}>
+    <ReaderRows />
+  </SettingsSection>
 
   <!-- Connections (R-224). -->
   <SettingsSection {...SECTIONS.integrations}>

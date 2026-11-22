@@ -145,8 +145,14 @@ The operator will use only the hosted version (R-130). This changes FND-006:
   application also deletes it when the hub refuses the access token. An answer that arrives after the delete is not
   kept.
 - Not done: a hub at an `http` address on this computer gets no copy, because the application does not read its
-  token when no program listens there. "Load more" with no hub can add an older page below a newer one. The
-  IndexedDB store has no automatic test (PLN-014, HT-030).
+  token when no program listens there. The IndexedDB store has an automatic test against an
+  IndexedDB in memory (`indexed.test.ts`, commit `b4b26df5`); the web view of the installed application stays the check
+  HT-030 (PLN-014).
+- "Load older" in the event log with no hub gives the copy of the page after the same row, when the application
+  kept that page before. That page can be an older copy than the first page. Its rows are correct, because the hub
+  pages the event log by the time and the identifier of a row. Each page of a copy is the newest answer of its
+  filter with no moment (see above), so a page that the application kept for the last hour ends there, also when
+  the filter is now the last week. The banner gives the age of the oldest copy on the screen.
 - A review by agents on 2026-11-18 found these defects in the first build, and they are corrected: the copy held the
   settings of checks, the event log was never given from the copy, and an old copy stayed on the screen with no age
   when the hub answered again.
@@ -168,7 +174,8 @@ The operator will use only the hosted version (R-130). This changes FND-006:
 | Task | Content | Needs | State | Commits |
 | --- | --- | --- | --- | --- |
 | F1 | FND-006 for a hub on a server: the procedure `docs/procedures/restore-and-move.md`, proved by a restore on a new, empty setup in Docker. | R-141 names it | In progress | Built, not checked on a real server: [restore-and-move.md](../procedures/restore-and-move.md), with its proof in Docker, commit `1b135102`. The full gates passed on 2026-11-17 (21 of 21). It waits for HT-024 (PLN-014). R-169 (2026-11-18) defers HT-024 for the self-host path; this task stays In progress and is not Done. |
-| F2 | FND-007 for the application on a computer: a read-only copy of the data that the application showed recently, with its age and with no credential. The phone applications are not in this task (IOS-003, mobile plan). | R-157 names it | In progress | Built in 53af82a1 and corrected after a review in 3b46dfef, not checked in the installed application: `apps/client/src/lib/hub/recent/`. The tests give the copy when the hub does not answer, the age in the banner, the limits, the delete at sign-out and when the hub refuses the token, and the load of the pages when the hub answers again. The store was run in Chromium on 2026-11-18, not in the web view of the application. It waits for HT-030 (PLN-014). |
+| F2 | FND-007 for the application on a computer: a read-only copy of the data that the application showed recently, with its age and with no credential. The phone applications are not in this task (IOS-003, mobile plan). | R-157 names it | In progress | Built in 53af82a1 and corrected after a review in 3b46dfef, not checked in the installed application: `apps/client/src/lib/hub/recent/`. The tests give the copy when the hub does not answer, the age in the banner, the limits, the delete at sign-out and when the hub refuses the token, and the load of the pages when the hub answers again. The store has an automatic test against an IndexedDB in memory (commit `b4b26df5`). It was run in Chromium on 2026-11-18, not in the web view of the application. It waits for HT-030 (PLN-014). |
+| F3 | The corrections of task F2 that its section listed as not done: an automatic test of the IndexedDB store, and the true text for "Load older" in the event log with no hub. No new function. | Task F2 (R-157); a correction needs no ruling (PLN-013) | Done | `b4b26df5` (the test of the store against an IndexedDB in memory) and the commit of this row (the text). "Load older" is not a defect, so the code did not change. |
 
 ## Open points
 
