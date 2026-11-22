@@ -8,18 +8,20 @@
     'session-terminal': 'A session terminal',
     'session-tab': 'A session tab',
     'mac-app-menu': 'The menu of the Mac app',
-    browser: 'The browser, for the web client',
+    browser: 'The browser',
+    windows: 'Windows',
   };
 
   const rows = clashes().map((clash) => {
     const chord = parseChord(clash.key);
     const mac = clash.platform === 'mac';
     return {
-      key: `${clash.platform}|${clash.key}|${clash.command}|${clash.taken.place}`,
+      key: `${clash.client}|${clash.platform}|${clash.key}|${clash.command}|${clash.taken.place}`,
       keys: chord === null ? clash.key : chordText(chord, mac),
-      platform: mac ? 'Mac' : 'Windows and Linux',
+      platform: `${clash.client === 'web' ? 'Web' : 'Desktop app'}, ${mac ? 'Mac' : 'Windows and Linux'}`,
       code: `${COMMAND_WORDS[clash.command]?.label ?? clash.command} (${whenWords(clash.when)})`,
       taken: `${PLACES[clash.taken.place]}: ${clash.taken.does}`,
+      kept: clash.taken.kept ?? 'Not ruled yet',
     };
   });
 </script>
@@ -27,11 +29,11 @@
 <!-- Each key of T3 Code's table that a key Anima, its window or the browser already takes would meet (clashes.ts). -->
 <table>
   <thead>
-    <tr><th scope="col">Keys</th><th scope="col">Platform</th><th scope="col">In Code</th><th scope="col">Already</th></tr>
+    <tr><th scope="col">Keys</th><th scope="col">Client</th><th scope="col">In Code</th><th scope="col">Already</th><th scope="col">Kept because</th></tr>
   </thead>
   <tbody>
     {#each rows as row (row.key)}
-      <tr><th scope="row">{row.keys}</th><td>{row.platform}</td><td>{row.code}</td><td>{row.taken}</td></tr>
+      <tr><th scope="row">{row.keys}</th><td>{row.platform}</td><td>{row.code}</td><td>{row.taken}</td><td>{row.kept}</td></tr>
     {/each}
   </tbody>
 </table>

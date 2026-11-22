@@ -43,6 +43,9 @@ describe('chords of the key table', () => {
     expect(pressedIs({ ...press('{', { metaKey: true, shiftKey: true }), code: 'BracketLeft' }, at('mod+shift+['), true)).toBe(true);
     expect(pressedIs({ ...press('!', { metaKey: true, shiftKey: true }), code: 'Digit1' }, at('mod+shift+1'), true)).toBe(true);
     expect(pressedIs({ ...press('л', { ctrlKey: true }), code: 'KeyK' }, at('mod+k'), false)).toBe(true);
+    // ⌃⇧ on the Mac keeps the letter of the layout: Z on a French keyboard is Z, at the place of W.
+    expect(pressedIs({ ...press('Z', { ctrlKey: true, shiftKey: true }), code: 'KeyW' }, at('ctrl+shift+z'), true)).toBe(true);
+    expect(pressedIs({ ...press('Z', { ctrlKey: true, shiftKey: true }), code: 'KeyW' }, at('ctrl+shift+w'), true)).toBe(false);
     // A French layout types A at the place of Q: the letter typed wins.
     expect(pressedIs({ ...press('a', { ctrlKey: true }), code: 'KeyQ' }, at('mod+q'), false)).toBe(false);
     expect(pressedIs({ ...press('+', { ctrlKey: true, shiftKey: true }), code: 'Equal' }, at('mod++'), false)).toBe(true);

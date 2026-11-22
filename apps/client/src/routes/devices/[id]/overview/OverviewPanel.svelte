@@ -1,7 +1,8 @@
 <script lang="ts">
   import { isHubDevice } from '$lib/devices/actions/actions';
   import type { DeviceStatus } from '$lib/devices/card/card';
-  import type { MetricsSource } from '$lib/hub/generated/graphql';
+  import type { DaemonNeed, MetricsSource } from '$lib/hub/generated/graphql';
+  import { thisComputerDevice } from '$lib/desktop/daemon/state.svelte';
   import type { MetricRange } from '$lib/metrics/api';
   import type { LoadingClock } from '$lib/motion/loading/loading';
   import type { VpnNode } from '$lib/vpn/api';
@@ -17,7 +18,7 @@
   import OverviewFacts from './facts/OverviewFacts.svelte';
   import MetricsSection from './MetricsSection.svelte';
   import type { DeviceMetrics } from './metrics.svelte';
-  import type { OverviewDevice } from './overview';
+  import { daemonNeedLine, type OverviewDevice } from './overview';
   import type { SessionProtocol } from '$lib/sessions/tabs';
   import type { WebInterface } from '$lib/web-interfaces/api';
   import type { SettingsSection } from '../tabs/tabs';
@@ -26,7 +27,8 @@
   import type { SideDevice } from './side/side';
 
   interface Props {
-    device: OverviewDevice & SideDevice & { readonly status: DeviceStatus; readonly metricsSource: MetricsSource };
+    device: OverviewDevice &
+      SideDevice & { readonly status: DeviceStatus; readonly metricsSource: MetricsSource; readonly daemonNeed?: DaemonNeed | null };
     checks: readonly { readonly status: DeviceStatus }[];
     metrics: Pick<DeviceMetrics, 'view' | 'span' | 'shownRange' | 'chartShape' | 'readings' | 'battery' | 'error' | 'liveError'> &
       Partial<Pick<DeviceMetrics, 'memoryBytes'>>;
@@ -56,7 +58,7 @@
     <div class="overview-main">
       <OverviewFacts {device} {checks} hostKey={false} />
 
-      <MetricsSection source={device.metricsSource} {metrics} {range} {now} {clock} {onRange} {onRetry} {onSettings} container={isHubDevice(device)} />
+      <MetricsSection source={device.metricsSource} {metrics} {range} {now} {clock} {onRange} {onRetry} {onSettings} container={isHubDevice(device)} needLine={daemonNeedLine(device, thisComputerDevice.id)} />
 
       <!-- The hub's own device lists no drives: its disk is the bytes of its data, in "Plan and usage" (HMD-072). -->
       {#if !isHubDevice(device)}

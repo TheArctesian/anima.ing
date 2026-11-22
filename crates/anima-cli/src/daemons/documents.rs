@@ -32,3 +32,12 @@ pub struct DaemonEnrol;
     variables_derives = "Debug"
 )]
 pub struct DaemonRevoke;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.graphql",
+    query_path = "src/daemons/need.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug"
+)]
+pub struct DaemonNeedSet;

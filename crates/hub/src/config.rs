@@ -11,10 +11,12 @@ mod own_daemon;
 mod paths;
 use paths::{optional_path, optional_root, optional_socket, remote_drive_path};
 mod releases;
+mod routes;
 
 pub use link::{LINK_DEVICES, dial_socket};
 pub use own_daemon::OwnDaemon;
 pub use releases::Releases;
+pub use routes::Routes;
 
 const LISTEN: &str = "ANIMA_LISTEN";
 const DATABASE_URL_FILE: &str = "ANIMA_DATABASE_URL_FILE";
@@ -86,6 +88,8 @@ pub struct Config {
     /// The folder of the sealed file pieces (K-E4 Section 9, FIL-001). `None`: the hub has no
     /// file store.
     pub files_dir: Option<PathBuf>,
+    /// The public names of applications (task H21); off by default.
+    pub routes: Routes,
 }
 
 impl Config {
@@ -152,6 +156,8 @@ pub enum Error {
     LinkControlAlone,
     #[error("{} {}", link::HOSTED_CLOUD_KEY_FILE, link::HOSTED_RULE)]
     HostedWithoutLink,
+    #[error("{variable} is not valid")]
+    Routes { variable: &'static str },
     #[error("{} {}", own_daemon::OWN_DAEMON_SOCKET, own_daemon::OWN_DAEMON_RULE)]
     OwnDaemonNotHosted,
     #[error("{} {}", own_daemon::OWN_DAEMON_CODE_FILE, own_daemon::CODE_FILE_RULE)]
@@ -321,11 +327,14 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
         releases: releases::from_env(env)?,
         data_key_dir: optional_root(env, DATA_KEY_DIR)?,
         files_dir: optional_root(env, FILES_DIR)?,
+        routes: routes::from_env(env)?,
     })
 }
 
 #[cfg(test)]
 mod roots_tests;
+#[cfg(test)]
+mod routes_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

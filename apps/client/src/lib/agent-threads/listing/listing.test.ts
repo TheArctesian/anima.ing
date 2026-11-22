@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { orderedThreads } from '../state';
 import type { ThreadRow } from '../thread';
 import { listed, titleOf, type Listing } from './listing';
+import { NO_MARKS } from './shelf';
 import { outcomeFrom } from '../live/run';
 
 function row(id: string, title: string): ThreadRow {
@@ -10,7 +11,7 @@ function row(id: string, title: string): ThreadRow {
 }
 
 function listing(thread: string, fields: Partial<Listing>): Listing {
-  return { thread, pinned: false, archived: false, title: null, removed: false, ...fields };
+  return { thread, pinned: false, archived: false, title: null, removed: false, marks: NO_MARKS, ...fields };
 }
 
 describe('TH46: how the person lists a thread', () => {

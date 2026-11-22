@@ -155,6 +155,7 @@ void graphql(`
     metricsSource
     metricsStale
     daemonVersion
+    daemonNeed
     sessionLimit
     accessWarnings
     rdp {

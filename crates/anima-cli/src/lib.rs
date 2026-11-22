@@ -47,6 +47,7 @@ pub mod releases;
 pub mod reminders;
 pub mod repositories;
 pub mod retention;
+pub mod routes;
 pub mod sealed_records;
 pub mod sessions;
 pub mod sites;

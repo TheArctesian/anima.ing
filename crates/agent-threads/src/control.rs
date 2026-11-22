@@ -12,8 +12,10 @@ use crate::drive::{AccountFacts, Answer, DriveEvent, Effort, Mode, ModelChoice, 
 
 mod listing;
 mod project;
-pub use listing::{BadTitle, Listing, ListingChange, MAX_TITLE};
+mod shelf;
+pub use listing::{BadChange, BadTitle, Listing, ListingChange, MAX_TITLE};
 pub use project::{BadProject, MAX_PROJECTS, Project, ProjectChange, changed as project_changed};
+pub use shelf::{Activity, MOST_SNOOZE, Marks, SETTLE_AFTER, Shelf};
 
 /// The most bytes of one frame of a client.
 pub const MAX_FRAME: usize = 4 * 1024 * 1024;

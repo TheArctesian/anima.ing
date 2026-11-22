@@ -35,6 +35,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-115 | A person reads the settings of the ten generated entries of LinuxServer.io and records the review (task H39) | The branch `hosted/catalogue-linuxserver`; no machine | Open |
 | HT-113 | The choice Catalogue shows the tier, the class shell, the streams and the optional parts, and scales with a search and groups (task H39) | The desktop client signed in to a hub of this branch, a device with Docker | Open |
 | HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
+| HT-133 | The public names of applications through the route proxy, on a real network (task H21) | A hub that a person hosts with ports 80 and 443 open, a domain name with its DNS, a machine on the link with a web application, and a second hub | Open |
+| HT-134 | Streams of TCP and UDP and the access of a route on a real network (task H40) | A hub that a person hosts, a machine on its network with a test TCP service and an IMAPS server, a device of the network of Anima and a device that is not on it | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
 | HT-003 | The tool inventory in an MCP client | HT-002 | Open |
@@ -97,6 +99,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-083 | The sign-out of a hosted hub takes the daemon off this computer and revokes it at the hub (HMD-056; task HM-T21) | This Mac with an application of a build that holds the branch `hosted/hm-t21-daemon-removal`, signed in to the hosted hub with the daemon installed (HT-061 step 1); the Linux computer for step 7 | Open |
 | HT-112 | A newer application replaces the daemon of this computer and keeps its enrolment (HMD-055; task HM-T20) | This Mac with two applications of the branch `hosted/hm-t20-daemon-update` of three versions, signed in to the hosted hub with the daemon installed (HT-061 step 1), and an agent thread for step 7; the Linux computer for steps 8 and 9 | Open |
 | HT-117 | The daemon of this Mac waits for the person in the Keychain and does not stop (MET-013, MET-019; R-322) | This Mac with the daemon installed and reporting (HT-061 step 1), and two ad hoc trial builds of the branch `fix/daemon-keychain-wait` | Open |
+| HT-132 | The device page of the hub says that the daemon of this Mac needs you in the Keychain (R-364) | This Mac with the daemon installed and reporting, two ad hoc trial builds of a build that holds the branch `hosted/daemon-keychain-need`, and a second computer or a browser signed in to the same hosted hub | Open |
 | HT-057 | The Settings page after the interface review: the index and the sections in three groups (R-224) | The desktop application of a build that holds the branch `ui/v2-settings`, and a phone | Open |
 | HT-052 | The tab Containers of a device after the interface review: one State column, one pane for the log and the details (R-224) | The desktop application of a build that holds the branch `ui/v2-device-containers`, a device with Docker and an SSH credential | Open |
 | HT-055 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
@@ -1625,6 +1628,52 @@ first. Each ad hoc build is a new program to the Keychain, so build B makes the 
 
 Result: Open.
 
+### HT-132: the device page of the hub says that the daemon of this Mac needs you in the Keychain (R-364)
+
+Built: on the branch `hosted/daemon-keychain-need`. The hub keeps what the daemon of a device waits for
+(`metrics.daemons.need`, migration 0722), serves it as `Device.daemonNeed` and takes it with the mutation
+`setDaemonNeed` (`crates/hub/src/fleet/metrics/graphql.rs`); the next accepted batch of the daemon clears it
+(`crates/hub/src/fleet/metrics/ingest/store.rs`, `take_batch`). The application reads the mark file of R-322 at
+its start and each minute, signed in to any hub, and calls the mutation for the device of this computer when the
+mark appears or goes (`apps/client/src/lib/desktop/daemon/need.ts`). The chart area of the device page gives the reason line in place of
+"Waiting for metrics", in the words of Agent usage (`keychainNeedLine` in
+`apps/client/src/lib/desktop/daemon/state.svelte.ts`): on this Mac it speaks of "this computer", on any other client
+it names the device and says "Allow it there".
+
+The tests cover: the mutation, the event of a change, a second call that changes nothing, the clear by a batch
+and by a new token and the event of each, a need not set just after a batch, no need on a device whose source is
+not DAEMON, NOT_FOUND for a device with no daemon token, the refusal of an API key; `anima daemon need`
+and `anima_daemon_set_need` against the scripted hub; the reading each minute and the call only on a change, a
+mark that was not read, a sign-out, a refusal that settles the reading and a turn that does not end, with
+stand-ins for the shell and the hub; the texts of the page. Not covered: the real Keychain and its window, the
+real mark file, the real hosted hub, and the page seen from a second computer.
+
+It needs: this Mac with the daemon installed and reporting (HT-061 step 1), two ad hoc trial builds A and B of a
+build that holds this branch (as for HT-117), A installed first, and a second computer or a browser signed in to
+the same hosted hub.
+
+1. Do HT-117 steps 1 and 2 with build B: the window of macOS is open and not answered, and the file
+   `~/Library/Application Support/anima-daemon/keychain-waits` is there.
+2. Open the application (build B) and sign in to the hosted hub. Wait one minute. Expected: the log of the
+   application has "the daemon of this computer waits for you in the Keychain: the hub knows".
+3. On the second computer (or in the browser), open Devices, then this Mac, tab Overview, range 1 hour (wait
+   until the hour has no samples). Expected: the chart area says "The daemon of <this Mac> needs you: on that
+   Mac, macOS asks whether it may read its key in the Keychain. Allow it there." On this Mac, in the
+   application, the same page says "The daemon of this computer needs you: macOS asks whether it may read its
+   key in the Keychain. Type your password in that window and click Always Allow. Metrics and counts appear
+   here some minutes later." Nothing else on the page moves or changes size.
+4. Run `anima daemon status <this Mac>` and `anima event list` on the second computer. Expected: the status
+   has "Daemon needs: a person to allow it in the Keychain"; one event "The daemon on <this Mac> waits for a
+   person to allow it in the Keychain."
+5. Quit the application. In the window of macOS, type the password of the Mac and click Always Allow. Wait one
+   minute, then reload the page of step 3. Expected: the page no longer gives the reason line of step 3 (the
+   chart area shows values), with the application still closed; `anima event list` on the second computer has
+   one event "The daemon on <this Mac> no longer waits for a person." (the batch of the daemon cleared it).
+6. Open the application again and wait one minute. Expected: no new event of the daemon need; the log of the
+   application has "the daemon of this computer waits for nothing: the hub knows" at most once.
+
+Result: Open.
+
 ### HT-068: a Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon (DEF-007)
 
 Built: on the branch `fix/link-private-folder`. The shell (`apps/desktop/src-tauri/src/link/kept.rs`) copies
@@ -2463,6 +2512,89 @@ It needs: the computer `pop-os`, a terminal as your own user (not root), the int
 After the check you can remove everything again: `podman system reset` removes the images and the
 containers of your user, and `sudo apt remove podman` removes the program.
 
+### HT-133: the public names of applications through the route proxy (task H21)
+
+Built on the branch `hosted/apps-h21`: the routes domain of the hub (`crates/hub/src/work/routes/`), the
+interface of the proxy on a Unix socket (`crates/hub/src/work/routes/door.rs`), the proxy program
+(`crates/route-proxy/`), the command `anima route` and the MCP tools `anima_route_list` and
+`anima_route_get`. The tests use a fake DNS, a fake certificate issuer, a fake machine and a test
+database. They prove each refused name, port and target, the proof by a TXT record, the CAA check, the
+sealed key, the connection by the identifier of an application only, the limit of streams of a link, and
+the rewrite of the headers. No test used a real resolver, a real certificate, a real port 443, the user
+of the operating system of the proxy, or the link to a real machine. The real ACME issuer is not built:
+it answers "not configured", so no route serves on a real hub yet. The consent of the machine
+(OD-HOST-43) is a field that stays "not given", and so is the mark that the hub's record of the
+application names the device and the port (task H6, SF-331). The timeouts and the caps of
+the proxy before the name (SF-327) were tested only with in-memory streams.
+
+1. Before the issuer is built: on a hub that a person hosts, set `ANIMA_ROUTES_SOCKET` and
+   `ANIMA_ROUTES_PROXY_UID` (the user ID of the proxy) and start the hub.
+   Run `anima route add` with a name of a domain that you own, an application identifier, a machine on
+   the link and its port. Expected: the command asks for the second factor, then shows the TXT record
+   `_anima.<name>` with a token of 64 hexadecimal characters.
+2. Put the TXT record in the DNS of the name and run `anima route check <id>`. Expected: the proof is
+   "Proven". The state waits for the consent of the machine, for the record of the application and for a
+   certificate.
+3. Run `anima route add` with a name of the domain of the hub, a name with `*`, and the ports 22, 2375,
+   10250, 5432 and 9090. Expected: each one is refused with its reason.
+4. Start `anima-route-proxy` as a user of the operating system that is not the user of the hub, with
+   `ANIMA_ROUTE_PROXY_LISTEN` unset. Expected: it says that it is off and stops.
+5. As that user, try to open the dial socket of the link, the control socket of the link, the port of
+   the hub and the database. Expected: each one is refused by the permissions of the operating system;
+   only the socket of `ANIMA_ROUTES_SOCKET` opens. As a third user that is in the group of that socket,
+   send `"table"` to it. Expected: the hub closes the connection with no answer.
+6. When the issuer, the consent and the record of the application are built: set `ANIMA_ROUTE_PROXY_LISTEN` to port 443 and
+   `ANIMA_ROUTE_PROXY_LISTEN_PLAIN` to port 80, and open `https://<name>/` from a second network.
+   Expected: the page of the application, with a valid certificate. `http://<name>/` goes to https.
+   A request with a `Host` that is not the name gets 421. The application gets no cookie of the hub
+   and an `X-Forwarded-For` with the address of your client.
+7. On a second hub, run `anima route add` with the same name. Expected: the TXT record of the first hub
+   does not prove the name for the second hub.
+
+Result: Open.
+
+### HT-134: streams of TCP and UDP and the access of a route (task H40)
+
+Built on the branch `hosted/apps-h21`: the kinds `web`, `redirect`, `tcp_stream` and `udp_stream` and the
+access `public` or `private` in the table of routes (migration 1061, `crates/hub/src/work/routes/kinds.rs`),
+`anima route add --kind --access --listen-port --protocol --redirect-to`, the kind and the access in the
+MCP tools `anima_route_list` and `anima_route_get`, and in the proxy (`crates/route-proxy/src/streams/`)
+a TCP listener for each stream, a UDP listener only on a hub that a person hosts, a private TLS listener
+and the answer of a redirect. The tests use a fake hub, a fake machine that echoes, the loopback address
+and a test database. They prove the rules of each kind and port, the refusals of a hosted hub and of UDP
+through the link, the protocols of a public stream, the address of a redirect, the dial by the name of
+the route, and the frames of datagrams. No test used a real network of Anima, a real IMAPS client, a
+port of a real hub or a real machine. No route serves on a real hub yet: each waits for its proof, the
+consent of the machine (OD-HOST-43) and the record of the application (task H6); to try the steps, set
+these marks in the database of a test hub only.
+
+1. On a hub that a person hosts, set `ANIMA_ROUTES_STREAM_PORTS=20000-20999`, `ANIMA_ROUTES_SOCKET` and
+   `ANIMA_ROUTES_PROXY_UID`, start the hub, and run
+   `anima route add test.example.com --kind tcp-stream --listen-port 20007 --port 7 --application <id> --device <machine>`
+   for a test TCP echo service on port 7 of a machine. Expected: a private route that waits for its proof.
+2. Run the same with `--listen-port 993`, `--listen-port 5432` and `--listen-port 30000`. Expected: each one
+   is refused with its reason (below 1024, a port of Anima, outside the range).
+3. Run it with `--access public --protocol imaps --listen-port 20993 --port 993`. Expected: refused, because
+   a public route is added only by a person in the Anima app in a browser. In a browser signed in to the hub,
+   send `addApplicationRoute` with the same fields and no `protocol`. Expected: refused, with the list of
+   protocols and their usual ports. Send it again with `protocol: "imaps"`. Expected: a public route that
+   waits for its proof.
+4. On a test hub only, set `proof`, `machine_consent`, `application_recorded` and `stream_public` of both routes to their
+   serving values. Start `anima-route-proxy` with `ANIMA_ROUTE_PROXY_LISTEN` on the public address and
+   `ANIMA_ROUTE_PROXY_PRIVATE_ADDRESS` and `ANIMA_ROUTE_PROXY_PRIVATE_NETWORKS` for the network of Anima.
+   Expected: within one minute the proxy listens on 20993 on the public address and on 20007 on the
+   private address only.
+5. From a device of the network of Anima, run `nc <private address of the hub> 20007` and type a line.
+   Expected: the echo service answers the line.
+6. From a device that is not on the network of Anima, run `nc <public address of the hub> 20007` and
+   `nc <private address of the hub> 20007`. Expected: no answer from either.
+7. From a second network, connect an IMAPS client to `<public address of the hub>:20993`. Expected: the
+   mail server's own certificate and sign-in; the mailbox opens.
+8. Run `anima route add vpn.example.com --kind udp-stream --listen-port 20194 --port 1194` for a machine on
+   the link. Expected: refused, UDP never goes through the link. For a machine on the network of the hub
+   it is added.
+9. On a hosted hub, run step 1. Expected: refused, a hosted hub has no stream until the door has an address
+   for each hub.
 ### HT-107: the single sessions on the page Agent usage (AIS-025, AIS-026)
 
 Built on the branch `ui/agent-sessions`: the query `agentSessions` of the hub (`crates/hub/src/fleet/agent_usage/`),
@@ -2487,6 +2619,40 @@ saw the part with the sessions of a real computer. It needs HT-026 first: a daem
 5. Make the window narrow (about 800 px).
    Expected: the table of sessions fits with no scroll to the side: "Recent" stands over the time, and the column
    Prompts is left out. No name is cut into pieces.
+### HT-131: one account on two computers is one card with one limit on the page Agent usage, and the hub has its address (AIS-022, THR-149)
+
+Built on the branch `agents/account-address` (AU-8 of extensions-plan.md), with AU-7, AU-9 (in `dev`) and the interim
+page of AU-10. Every 15 minutes the usage task of the daemon asks the thread runner of this computer, on its own socket,
+for the account of each program (`crates/daemon/src/runtime/agent_usage/runner.rs`). It makes the key of an account
+from the vendor's identifier with the account salt of the hub, and sends the key, the email address, the plan and the
+limit windows (`crates/daemon/src/push/accounts.rs`); never the identifier. Codex may give the name of a workspace in
+place of an address: that name is not sent. The salt is in memory only: after a start the first batch asks for it with
+an empty list. This is on by default, as in T3 Code (THR-149); `"sendAccounts": false` in `agent-usage.json` in the
+folder of the daemon turns it off. The hub keeps the address with the report of the device and deletes it with the
+device; it gives it in `agentUsage.accounts.address`. The tests prove the key, the salt, the address in the batch and
+at the hub, that no identifier is in a batch, that no address is in a log line of the daemon or of the hub, and the
+socket check, with a stand-in runner and a stand-in hub. The tests did not cover: a real Codex, a real runner, two
+real computers, a real hub. Claude Code gives no identifier of its account, so it sends no account. The interim page
+"By account" does not show the address; the Usage page of Code (C8 of [agent-threads.md](proposals/agent-threads.md))
+replaces it.
+
+1. On two computers of one hub whose daemons read sessions (HT-026), restart the daemon with a build of this branch.
+   Sign in to Codex with the same account. On each, start a Codex thread through Anima: `anima agents start --program codex --folder <an absolute folder> "hello"`.
+   Expected: `anima agents accounts` on each computer shows the account, the plan and the limits.
+2. Wait 20 minutes. Open "Agent usage".
+   Expected: under "By account", one card "Codex" with the plan, the bars of the limit windows, and both computers
+   with their shares.
+3. In a terminal, run `anima agents usage`.
+   Expected: one line "Account <8 digits> (Codex, <plan>) on <computer 1>, <computer 2>: ..." under the table.
+4. Search the log of each daemon and the log of the hub for the address of your Codex account.
+   Expected: the address is in none of them.
+5. On one computer, sign in to Codex with a different account and start a thread again; wait 20 minutes.
+   Expected: two Codex cards, each with one computer.
+6. Delete one of the two computers from the hub (Devices). On the other, write `{"sendAccounts": false}` in
+   `agent-usage.json` (with the members that the file has already) and restart the daemon; wait 20 minutes.
+   Expected: the card of the deleted computer is gone; no new report comes from the other computer, and
+   `anima agents usage` shows a report time that does not move.
+
 ### HT-111: the daemon sends its token only to the signed link at its socket (K8 Section 1, HMD-054)
 
 Built: on the branch `hosted/daemon-socket-peer` (R-317). Before each request on the socket of the link, the
@@ -4250,3 +4416,31 @@ Built: four-destination graphical console and native session/update/install cont
    Expected: background compute continues while locked; focus remains visible; perceived responsiveness and display quality are acceptable. Record hardware and measured delays rather than inferring them from language choice.
 
 Result: Open; deferred to the final step by the operator. No production release is authorized.
+
+### HT-130: the editor of the composer of Code in the desktop application (TC4)
+
+Built on the branch `code/stage-4-composer`: `apps/client/src/lib/code/composer/`, shown on the page `/code-kit/composer`
+of a development build. The editor is our own, over the Markdown of the prompt. Its tests run in jsdom, and its pictures
+are taken in WebKit with typed keys only. Not covered: an input method (Japanese, Chinese), the dictation of macOS, a
+paste from a different application, a drop of a file from the Finder into the window of the desktop application, and the
+speed with a prompt of many thousand characters.
+
+1. Start the desktop application in development and open `/code-kit/composer`. Click the first card.
+   Expected: the card shows a focus ring and the caret is in the editor.
+2. Type `**bold** and *italic* and a line that starts with "- "`.
+   Expected: the words are drawn bold and italic, the markers show only while the caret is in them, the line is a list item.
+3. Press ⌘Z until the editor is empty, then ⇧⌘Z.
+   Expected: the text goes and comes back in steps, and the caret is where it was.
+4. With a Japanese or Chinese input method, type a word and accept a candidate.
+   Expected: the candidate window stays open while you type, and the accepted word is in the text one time.
+5. Use the dictation of macOS (Fn twice) in the editor.
+   Expected: the spoken words are in the text one time.
+6. Copy a paragraph from a different application and paste it.
+   Expected: the text is there as plain Markdown, with no styles of the source.
+7. Type `Read @comp` and press Enter on the first row of the list.
+   Expected: the list hangs over the card, and the choice is one chip with a space after it.
+8. Drag a picture from the Finder over the first card and drop it.
+   Expected: the card takes the accent line while the picture is over it, and the picture is a tile over the editor.
+
+Result: Open.
+

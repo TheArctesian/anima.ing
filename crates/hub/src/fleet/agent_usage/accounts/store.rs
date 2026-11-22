@@ -1,17 +1,17 @@
 //! The only SQL of the tables `agent_usage.salt`, `agent_usage.accounts` and
-//! `agent_usage.account_limits` (migration 1021).
+//! `agent_usage.account_limits` (migrations 1021 and 1022).
 
 use chrono::{DateTime, Utc};
 use daemon_core::agent_usage::Source;
-use daemon_core::agent_usage::account::{Account, Limit};
+use daemon_core::agent_usage::account::{Account, Address, Limit};
 use sqlx::{PgConnection, PgPool};
 
 use super::Reported;
 use crate::fleet::agent_usage::Error;
 use crate::ids::DeviceId;
 
-/// Replaces the report of `device` for the source of `account`: its key, plan and time, then
-/// its limit windows.
+/// Replaces the report of `device` for the source of `account`: its key, address, plan and
+/// time, then its limit windows.
 pub(super) async fn write(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -20,14 +20,15 @@ pub(super) async fn write(
 ) -> Result<(), Error> {
     let source = account.source.as_str();
     sqlx::query(
-        "INSERT INTO agent_usage.accounts (device_id, source, key, plan, reported_at) \
-         VALUES ($1, $2, $3, $4, $5) \
+        "INSERT INTO agent_usage.accounts (device_id, source, key, address, plan, reported_at) \
+         VALUES ($1, $2, $3, $4, $5, $6) \
          ON CONFLICT (device_id, source) DO UPDATE SET key = excluded.key, \
-         plan = excluded.plan, reported_at = excluded.reported_at",
+         address = excluded.address, plan = excluded.plan, reported_at = excluded.reported_at",
     )
     .bind(device)
     .bind(source)
     .bind(&account.key)
+    .bind(account.address.as_ref().map(Address::reveal))
     .bind(account.plan.as_deref())
     .bind(now)
     .execute(&mut *conn)
@@ -66,6 +67,20 @@ pub(super) async fn write(
     Ok(())
 }
 
+/// Deletes the report of `device` for each source not in `named`, with its limit windows.
+pub(super) async fn forget_others(
+    conn: &mut PgConnection,
+    device: DeviceId,
+    named: &[&str],
+) -> Result<(), Error> {
+    sqlx::query("DELETE FROM agent_usage.accounts WHERE device_id = $1 AND NOT (source = ANY($2))")
+        .bind(device)
+        .bind(named)
+        .execute(&mut *conn)
+        .await?;
+    Ok(())
+}
+
 /// The salt of the hub: `made` when none is stored yet, else the stored one.
 pub(super) async fn salt(db: &PgPool, made: &[u8; 32]) -> Result<[u8; 32], Error> {
     sqlx::query("INSERT INTO agent_usage.salt (salt) VALUES ($1) ON CONFLICT (one) DO NOTHING")
@@ -78,7 +93,14 @@ pub(super) async fn salt(db: &PgPool, made: &[u8; 32]) -> Result<[u8; 32], Error
     stored.try_into().map_err(|_| Error::Unreadable)
 }
 
-type AccountRow = (DeviceId, String, String, Option<String>, DateTime<Utc>);
+type AccountRow = (
+    DeviceId,
+    String,
+    String,
+    Option<String>,
+    Option<String>,
+    DateTime<Utc>,
+);
 type LimitRow = (
     DeviceId,
     String,
@@ -91,7 +113,7 @@ type LimitRow = (
 /// Every report with its limit windows, in no set order.
 pub(super) async fn read(db: &PgPool) -> Result<Vec<Reported>, Error> {
     let accounts: Vec<AccountRow> = sqlx::query_as(
-        "SELECT device_id, source, key, plan, reported_at FROM agent_usage.accounts",
+        "SELECT device_id, source, key, address, plan, reported_at FROM agent_usage.accounts",
     )
     .fetch_all(db)
     .await?;
@@ -103,7 +125,7 @@ pub(super) async fn read(db: &PgPool) -> Result<Vec<Reported>, Error> {
     .await?;
     accounts
         .into_iter()
-        .map(|(device, source, key, plan, reported_at)| {
+        .map(|(device, source, key, address, plan, reported_at)| {
             let limits = limits
                 .iter()
                 .filter(|row| row.0 == device && row.1 == source)
@@ -119,6 +141,7 @@ pub(super) async fn read(db: &PgPool) -> Result<Vec<Reported>, Error> {
                 account: Account {
                     source: Source::parse(&source).ok_or(Error::Unreadable)?,
                     key,
+                    address: address.as_deref().and_then(Address::parse),
                     plan,
                     limits,
                 },

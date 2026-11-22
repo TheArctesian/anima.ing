@@ -167,12 +167,14 @@ export function timer(milliseconds: number): string {
   return `${String(rest)}s`;
 }
 
-/** A finished duration (A.9): "850ms", "4.2s", "42s", then as the timer. */
+/**
+ * A finished duration (A.9), as T3 Code's `formatDuration` writes it: "850ms" (at least 1ms), "4.3s" (tenths, rounded,
+ * no trailing zero), "42s", then the timer of the rounded seconds.
+ */
 export function duration(milliseconds: number): string {
-  const ms = Math.max(0, Math.round(milliseconds));
-  if (ms < 1000) return `${String(ms)}ms`;
-  if (ms < 10_000) return `${(Math.floor(ms / 100) / 10).toFixed(1)}s`;
-  return timer(ms);
+  if (milliseconds < 1000) return `${String(Math.max(1, Math.round(milliseconds)))}ms`;
+  if (milliseconds < 10_000) return `${String(Math.round(milliseconds / 100) / 10)}s`;
+  return timer(Math.round(milliseconds / 1000) * 1000);
 }
 
 /** The line of the working row or of the fold of a turn (A.6, A.9). */
@@ -180,7 +182,8 @@ export function turnLine(turn: Turn, now: Date): string {
   const start = turn.started?.getTime();
   if (turn.running) return start === undefined ? 'Working...' : `Working for ${timer(now.getTime() - start)}`;
   const end = turn.ended?.getTime();
-  const took = start === undefined || end === undefined ? null : duration(end - start);
+  // No time between the start and the end means the page holds no real times of the turn: no duration, not "0ms".
+  const took = start === undefined || end === undefined || end <= start ? null : duration(end - start);
   if (turn.stopped) return took === null ? 'You stopped this response' : `You stopped after ${took}`;
   return took === null ? 'Worked' : `Worked for ${took}`;
 }

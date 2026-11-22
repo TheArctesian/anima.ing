@@ -8,7 +8,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::DeviceTool;
+use super::super::DeviceTool;
 use crate::catalogue::{install, list, show};
 use crate::hub::Hub;
 use crate::mcp::arguments::{json, object, parse};
