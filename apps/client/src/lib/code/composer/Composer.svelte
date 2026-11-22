@@ -36,14 +36,16 @@
   $effect(() => {
     if (chat === undefined || phase === null || queue === null) return;
     const watched = queue;
+    const mine = chat;
+    const asking = row?.state === 'needs_you';
     // The page gives one `onSend` for whichever chat is open: a message of this queue never goes to a different chat.
     const send = async (prompt: string): Promise<Went> => {
-      if (row?.id !== chat) return NOT_WATCHED;
+      if (row?.id !== mine) return NOT_WATCHED;
       const result = await onSend(prompt);
       return result.ok ? { ok: true } : { ok: false, words: result.words };
     };
     untrack(() => {
-      watched.attend(phase, send);
+      watched.attend(phase, send, asking);
     });
     return () => {
       watched.leave();

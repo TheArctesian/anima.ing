@@ -29,6 +29,8 @@
   let found = $state<{ readonly query: string; readonly paths: readonly FoundPath[] }>();
   let search = $state<'idle' | 'running' | 'failed'>('idle');
   let chosenThisFrame = false;
+  /** The lit row was moved by a key: only then is it said, not at each move of the pointer. */
+  let keyed = $state(false);
 
   const pathQuery = $derived(trigger.kind === 'path' ? trigger.query.trim() : undefined);
   const entries = $derived(mentionEntries(trigger, sources, trigger.kind === 'path' ? (found?.paths ?? []) : []));
@@ -112,6 +114,7 @@
   export function key(event: KeyboardEvent, otherSend = false): boolean {
     const action = menuKey(event, { count: entries.length, otherSend });
     if (action === 'pass') return false;
+    keyed = true;
     const entry = entries[current];
     // A row that cannot be chosen does not hold the key: Enter then sends, as with no list.
     if (action === 'choose' && (entry === undefined || !entry.available.can || (entry.kind === 'path' && found?.query !== pathQuery))) return false;
@@ -152,7 +155,7 @@
     {#if entries.length > 0}
       <div class="scroll">
         <!-- Not the kit's scroll area: that one is a Tab stop, and Shift+Tab from the editor would land in it and close the list. The arrow keys scroll it. -->
-        <div class="area">
+        <div class="area" tabindex="-1">
           <div class="list" {id} role="listbox" aria-label={listLabel(trigger.kind)}>
             {#each entries as entry, index (entry.id)}
               <!-- The row takes no focus and no key of its own: the editor holds both (aria-activedescendant). -->
@@ -166,6 +169,7 @@
                 aria-disabled={entry.available.can ? undefined : 'true'}
                 onmousemove={() => {
                   if (index !== current) active = index;
+                  keyed = false;
                 }}
                 onmousedown={(event) => {
                   event.preventDefault();
@@ -192,7 +196,7 @@
       <p class="empty">{words}</p>
     {/if}
   </div>
-  <div class="status" role="status" aria-atomic="true">{entries.length === 0 ? words : spoken}</div>
+  <div class="status" role="status" aria-atomic="true">{entries.length === 0 ? words : keyed ? spoken : ''}</div>
 </div>
 
 <style>

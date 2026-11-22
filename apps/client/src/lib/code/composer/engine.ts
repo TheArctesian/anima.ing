@@ -43,6 +43,8 @@ export interface ComposerEngine {
   readonly queueWaits?: string | null;
   /** Tells which queued message is open in the composer (null: none), so that it is not sent while it is changed. */
   readonly opened?: (id: string | null) => void;
+  /** The composer went away while a queued message was open: its change is lost, and the queue must not go on alone. */
+  readonly abandoned?: () => void;
   readonly enqueue: (message: Message) => Promise<Outcome>;
   readonly requeue: (id: string, message: Message) => Promise<Outcome>;
   readonly unqueue: (id: string) => Promise<Outcome>;
@@ -107,13 +109,16 @@ export function phaseOf(row: RunRow): QueuePhase {
 }
 
 /** The queue calls of the engine, over the queue that this window holds for the chat. */
-function queueOf(queue: HeldQueue, running: boolean, send: (prompt: string) => Promise<Outcome>): Pick<ComposerEngine, 'queue' | 'queued' | 'queueWaits' | 'opened' | 'enqueue' | 'requeue' | 'unqueue' | 'sendQueued'> {
+function queueOf(queue: HeldQueue, running: boolean, send: (prompt: string) => Promise<Outcome>): Pick<ComposerEngine, 'queue' | 'queued' | 'queueWaits' | 'opened' | 'abandoned' | 'enqueue' | 'requeue' | 'unqueue' | 'sendQueued'> {
   return {
     queue: CAN,
     queued: queue.messages,
     queueWaits: queue.waits,
     opened: (id) => {
       queue.opened(id);
+    },
+    abandoned: () => {
+      queue.abandoned();
     },
     // The turn can end between the press and this call: what would wait for nothing goes now.
     enqueue: (message) => (running ? Promise.resolve(queue.add(message.prompt)) : send(message.prompt)),
@@ -136,9 +141,11 @@ export function runEngine(row: RunRow, calls: RunCalls, queue: HeldQueue): Compo
   return {
     phase,
     ended: phase === 'ended' ? (row.ended ?? 'The program of this chat ended.') : null,
-    send: (message) => {
-      queue.release();
-      return send(message.prompt);
+    send: async (message) => {
+      const outcome = await send(message.prompt);
+      // The person started a turn themself: the queue goes on after it.
+      if (outcome.ok) queue.release();
+      return outcome;
     },
     interrupt: async () => {
       queue.hold(STOPPED);

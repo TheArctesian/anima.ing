@@ -92,12 +92,65 @@ describe('what makes a held queue wait', () => {
     expect(to.sent).toEqual(['after the stop']);
   });
 
-  it('holds nothing back when the queue is empty at the stop', () => {
+  it('waits also for a message that is queued after the stop, while the stop has not landed', async () => {
     const queue = new HeldQueue();
+    const to = chat();
+    queue.attend('running', to.send);
     queue.hold('You stopped the turn.');
-    expect(queue.waits).toBeNull();
+    queue.add('queued while it stops');
+    queue.attend('idle', to.send);
+    await settled();
+    expect(to.sent).toEqual([]);
   });
 
+});
+
+describe('a held queue and a turn that did not end by itself', () => {
+  it('waits when the turn ends from a question of the program: it was called off, not answered', async () => {
+    const queue = new HeldQueue();
+    const to = chat();
+    queue.attend('running', to.send);
+    queue.add('then push');
+    queue.attend('running', to.send, true);
+    queue.attend('idle', to.send);
+    await settled();
+    expect(to.sent).toEqual([]);
+    expect(queue.waits).toMatch(/^The turn was called off/);
+    // A question that was answered: the program worked on before its turn ended.
+    const answered = new HeldQueue();
+    answered.attend('running', to.send, true);
+    answered.add('then test');
+    answered.attend('running', to.send);
+    answered.attend('idle', to.send);
+    await settled();
+    expect(to.sent).toEqual(['then test']);
+  });
+
+  it('sends nothing to a program that ended, and waits when the composer left a message open', async () => {
+    const queue = new HeldQueue();
+    const to = chat();
+    queue.attend('running', to.send);
+    queue.add('draft');
+    queue.opened(queue.messages[0]?.id ?? '');
+    queue.attend('idle', to.send);
+    queue.attend('ended', to.send);
+    queue.opened(null);
+    await settled();
+    expect(to.sent).toEqual([]);
+    const left = new HeldQueue();
+    left.attend('running', to.send);
+    left.add('old words');
+    left.opened(left.messages[0]?.id ?? '');
+    left.attend('idle', to.send);
+    left.abandoned();
+    await settled();
+    expect(to.sent).toEqual([]);
+    expect(left.waits).toMatch(/^You left a queued message open/);
+  });
+
+});
+
+describe('a held queue and the composer that watches it', () => {
   it('does not send the message that is open in the composer, and sends it when it is closed', async () => {
     const queue = new HeldQueue();
     const to = chat();

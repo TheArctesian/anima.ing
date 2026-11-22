@@ -15,6 +15,8 @@ const OK: Went = { ok: true };
 const FULL = `The queue holds ${String(QUEUE_MOST)} messages. Remove one, or wait for the turn to end.`;
 const GONE = 'That message is no longer queued.';
 const FAILED = 'The message could not be sent.';
+const ABANDONED = 'You left a queued message open, so the queue waits. Send a message, or press Send now.';
+const CALLED_OFF = 'The turn was called off at a question of the program, so the queue waits. Send a message, or press Send now.';
 
 /**
  * The answer of a sender whose chat is no longer the one on screen: the message did not go and nothing is wrong. The
@@ -27,8 +29,8 @@ export const NOT_WATCHED: Went = { ok: false, words: 'The chat of this message i
  * runner keeps no queue, so this one does what the runner would: when a turn ends, the first message goes as the
  * next turn. It is lost when the app closes, and it sends only while something watches the chat (`attend`).
  *
- * It sends nothing on its own after a stop by the person, after a message that did not go, and while its first
- * message is open in the composer: a message goes late or not at all, never changed or out of order.
+ * It sends nothing on its own after a stop by the person, after a turn that was called off at a question, after a
+ * message that did not go, and while its first message is open in the composer: a message goes late or not at all, never changed or out of order.
  */
 export class HeldQueue {
   messages = $state<readonly Queued[]>([]);
@@ -36,6 +38,7 @@ export class HeldQueue {
   waits = $state<string | null>(null);
 
   #was: QueuePhase | null = null;
+  #asking = false;
   /** A turn ended and the message that was to go then has not gone yet. */
   #due = false;
   #open: string | null = null;
@@ -63,7 +66,7 @@ export class HeldQueue {
 
   /** The person stopped the turn: what waits behind it is theirs to start. */
   hold(why: string): void {
-    if (this.messages.length > 0) this.waits = why;
+    this.waits = why;
   }
 
   /** The person sent something themself: the queue goes on after that turn. */
@@ -77,6 +80,13 @@ export class HeldQueue {
     if (id === null) void this.#advance();
   }
 
+  /** The composer went away with a queued message open: its change is lost, so the person starts the queue again. */
+  abandoned(): void {
+    if (this.#open === null) return;
+    this.#open = null;
+    this.hold(ABANDONED);
+  }
+
   /** "Send now": this message goes at once, whatever the queue waits for, and the rest go on after its turn. */
   async sendNow(id: string, send: Sender): Promise<Went> {
     const message = this.messages.find((queued) => queued.id === id);
@@ -88,12 +98,15 @@ export class HeldQueue {
 
   /**
    * Tells the queue the phase of its chat, and how to send to it for as long as the caller watches. A turn that
-   * ended sends the first message.
+   * ended sends the first message. `asking`: the program waits for an answer of the person. A turn that ends from
+   * there was not answered but called off (the Cancel of an approval stops the turn), so the queue waits.
    */
-  attend(phase: QueuePhase, send: Sender): void {
+  attend(phase: QueuePhase, send: Sender, asking = false): void {
     this.#send = send;
     const ended = this.#was === 'running' && phase === 'idle';
+    if (ended && this.#asking) this.hold(CALLED_OFF);
     this.#was = phase;
+    this.#asking = asking;
     if (phase === 'running') this.#due = false;
     if (ended) this.#due = true;
     // Also when the turn ended while nobody watched: what was due then goes now.
@@ -111,7 +124,7 @@ export class HeldQueue {
 
   async #advance(): Promise<void> {
     const first = this.messages[0];
-    if (!this.#due || this.waits !== null || first === undefined || first.id === this.#open || this.#send === null) return;
+    if (!this.#due || this.#was !== 'idle' || this.waits !== null || first === undefined || first.id === this.#open || this.#send === null) return;
     this.#due = false;
     const went = await this.#go(first, this.#send);
     if (went === NOT_WATCHED) this.#due = true;
@@ -132,7 +145,6 @@ export class HeldQueue {
 
   #drop(id: string): void {
     this.messages = this.messages.filter((message) => message.id !== id);
-    if (this.messages.length === 0) this.waits = null;
   }
 }
 
@@ -152,11 +164,11 @@ export function heldQueue(chat: string): HeldQueue {
  * For the page that sees every chat: tells each queue that holds a message the phase of its chat, so a queued
  * message goes when its turn ends while a different chat is open. A chat with nothing queued is left alone.
  */
-export function attendAll(chats: readonly { readonly id: string; readonly phase: QueuePhase }[], send: (chat: string, prompt: string) => Promise<Went>): void {
+export function attendAll(chats: readonly { readonly id: string; readonly phase: QueuePhase; readonly asking?: boolean }[], send: (chat: string, prompt: string) => Promise<Went>): void {
   for (const chat of chats) {
     const queue = queues.get(chat.id);
     if (queue === undefined) continue;
     if (chat.phase === 'ended' && queue.empty) queues.delete(chat.id);
-    else queue.attend(chat.phase, (prompt) => send(chat.id, prompt));
+    else queue.attend(chat.phase, (prompt) => send(chat.id, prompt), chat.asking ?? false);
   }
 }

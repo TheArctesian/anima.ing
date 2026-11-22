@@ -72,7 +72,8 @@
         <span class="turn" class:up={all}><CodeIcon name="chevron-down" /></span>
       </button>
     {/if}
-    {#if waits !== null}<p class="waits" role="status">{waits}</p>{/if}
+    <!-- Always there, so that its words are said when they come. -->
+    <p class="waits" role="status">{waits ?? ''}</p>
   </section>
 {/if}
 
@@ -132,6 +133,10 @@
     color: var(--text-secondary);
     font-size: var(--code-text-meta);
     text-align: end;
+  }
+
+  .waits:empty {
+    display: none;
   }
 
   .turn {

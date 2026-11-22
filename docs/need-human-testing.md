@@ -4421,7 +4421,9 @@ Result: Open; deferred to the final step by the operator. No production release 
 
 Built on the branch `code/stage-4-composer`: `apps/client/src/lib/code/composer/`, shown on the page `/code-kit/composer`
 of a development build. The editor is our own, over the Markdown of the prompt. Its tests run in jsdom, and its pictures
-are taken in WebKit with typed keys only. Not covered: an input method (Japanese, Chinese), the dictation of macOS, a
+are taken in WebKit with typed keys only. The branch `code/composer-finish` adds tests in WebKit that send the events of
+an input method; no real input method was used. Not covered: a real input method (Japanese, Chinese, Korean, dead keys,
+the accent menu of a held key), the dictation of macOS, a
 paste from a different application, a drop of a file from the Finder into the window of the desktop application, and the
 speed with a prompt of many thousand characters.
 
@@ -4441,6 +4443,8 @@ speed with a prompt of many thousand characters.
    Expected: the list hangs over the card, and the choice is one chip with a space after it.
 8. Drag a picture from the Finder over the first card and drop it.
    Expected: the card takes the accent line while the picture is over it, and the picture is a tile over the editor.
+9. Start a line with "- ", press Tab, then press Escape and Tab.
+   Expected: the first Tab nests the list line; after Escape the next Tab moves the focus out of the editor.
 
 Result: Open.
 

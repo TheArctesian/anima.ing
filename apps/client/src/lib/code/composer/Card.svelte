@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, untrack } from 'svelte';
+  import { onDestroy, tick, untrack } from 'svelte';
   import { isMac } from '$lib/platform/mac';
   import AttachButton from './attachments/AttachButton.svelte';
   import Attachments from './attachments/Attachments.svelte';
@@ -54,6 +54,7 @@
   let menu = $state<MentionMenu>();
   let activeOption = $state<string>();
   let surface = $state<HTMLElement>();
+  let root = $state<HTMLElement>();
   let over = $state(false);
   let watch = $state(NO_TRIGGER);
   let caret = $state<DOMRect | null>(null);
@@ -122,10 +123,17 @@
     else editor?.insert(text);
   }
 
-  /** Send and Stop take each other's place: the focus of the one that was pressed goes to the editor, not to nothing. */
-  function pressed(act: () => Promise<void>): void {
+  /**
+   * A control that goes away when it is pressed (Send, Stop, Remove): if the focus was in the composer and is nowhere
+   * after, it goes to the editor. A press by a pointer never had the focus, so no keyboard comes up on a phone.
+   */
+  function pressed(act: () => unknown): void {
+    const inside = root?.contains(document.activeElement) === true;
     void act();
-    editor?.focus();
+    if (!inside) return;
+    void tick().then(() => {
+      if (document.activeElement === null || document.activeElement === document.body) editor?.focus();
+    });
   }
 
   function held(event: KeyboardEvent): void {
@@ -135,7 +143,7 @@
 
 <svelte:window onkeydown={held} onkeyup={held} onblur={() => (card.alternate = false)} />
 
-<div class="composer">
+<div class="composer" bind:this={root}>
   <QueuedMessages
     queue={engine.queued}
     waits={engine.queueWaits ?? null}
@@ -143,18 +151,12 @@
     running={card.running}
     busy={card.busy}
     bind:all={allQueued}
-    onSendNow={(id) => {
-      void card.queued(id, 'send');
-      editor?.focus();
-    }}
+    onSendNow={(id) => pressed(() => card.queued(id, 'send'))}
     onEdit={(id) => {
       card.edit(id);
       editor?.focus();
     }}
-    onRemove={(id) => {
-      void card.queued(id, 'remove');
-      editor?.focus();
-    }}
+    onRemove={(id) => pressed(() => card.queued(id, 'remove'))}
     onCancel={() => {
       card.cancelEdit();
       editor?.focus();
@@ -184,10 +186,7 @@
     <div class="body">
       <Attachments
         attachments={card.attachments}
-        onRemove={(id) => {
-          card.remove(id);
-          editor?.focus();
-        }}
+        onRemove={(id) => pressed(() => card.remove(id))}
         onOpen={(id) => (previewed = id)} />
       <Editor
         bind:this={editor}

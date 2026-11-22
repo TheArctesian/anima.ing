@@ -280,7 +280,7 @@
     onblur={() => { pressing = false; leaving = false; sheet?.follow(true); }}
   ></div>
   <!-- Not drawn: how the keyboard leaves the editor from where Tab indents, for assistive technology. -->
-  <span class="code-editor-keys" id="{id}-keys">In a list or a code block Tab indents. Press Escape, then Tab, to leave the editor.</span>
+  <span id="{id}-keys" hidden>In a list or a code block Tab indents. Press Escape, then Tab, to leave the editor.</span>
   {#if value === '' && !composing}
     <div class="code-editor-placeholder" aria-hidden="true">{placeholder}</div>
   {/if}

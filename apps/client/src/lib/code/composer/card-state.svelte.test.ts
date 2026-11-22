@@ -206,7 +206,7 @@ describe('the card while a message goes, and when things go wrong', () => {
 describe('what the card tells the engine of the queued message that is open', () => {
   it('names it when it is opened, and lets go only after the change is saved, cancelled or gone', async () => {
     const opened: (string | null)[] = [];
-    const { engine, calls, answer } = engineOf({ opened: (id) => opened.push(id) });
+    const { engine, calls, answer } = engineOf({ opened: (id) => opened.push(id), abandoned: () => opened.push('left open') });
     const card = new CardState(() => engine, undefined, '⌘');
     card.edit('q1');
     expect(opened).toEqual(['q1']);
@@ -225,6 +225,7 @@ describe('what the card tells the engine of the queued message that is open', ()
     card.orphaned();
     card.edit('q1');
     card.dispose();
-    expect(opened).toEqual(['q1', null, 'q1', null, 'q1', null, 'q1', null]);
+    // A composer that goes away with a message open does not let the queue send its old words.
+    expect(opened).toEqual(['q1', null, 'q1', null, 'q1', null, 'q1', 'left open']);
   });
 });

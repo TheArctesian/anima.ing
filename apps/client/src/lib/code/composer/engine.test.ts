@@ -56,7 +56,10 @@ describe('the engine of a driven chat', () => {
     const stops = { ...calls, onInterrupt: () => Promise.resolve({ ok: true as const, outcome: { outcome: 'ok' as const } }) };
     await engineOf({ ...row, state: 'working' }, stops, queue).interrupt();
     expect(queue.waits).toMatch(/^You stopped the turn/);
+    // A send that did not go starts no turn: the queue still waits.
     await engineOf(row, calls, queue).send({ prompt: 'go on', attachments: [] });
+    expect(queue.waits).toMatch(/^You stopped the turn/);
+    await engineOf(row, { ...calls, onSend: () => Promise.resolve({ ok: true as const, outcome: { outcome: 'ok' as const } }) }, queue).send({ prompt: 'go on', attachments: [] });
     expect(queue.waits).toBeNull();
     await engineOf({ ...row, state: 'working' }, calls, queue).interrupt();
     expect(queue.waits).toBeNull();

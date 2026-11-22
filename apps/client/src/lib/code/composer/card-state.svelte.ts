@@ -143,10 +143,10 @@ export class CardState {
     this.keep();
   }
 
-  /** The composer goes away: no timer of it fires after, and no queued message stays held as open. */
+  /** The composer goes away: no timer of it fires after, and the queue is told that a message was left open. */
   dispose(): void {
     clearTimeout(this.#timer);
-    if (this.editing !== null) this.#engine().opened?.(null);
+    if (this.editing !== null) this.#engine().abandoned?.();
   }
 
   add(files: readonly File[]): void {

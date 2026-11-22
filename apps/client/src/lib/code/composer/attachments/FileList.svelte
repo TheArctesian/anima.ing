@@ -22,7 +22,7 @@
     <li>
       <CodeIcon name={fileIcon(attachment)} />
       <!-- A name, not a button: only a picture has a preview. -->
-      <span class="name">{attachment.name}</span>
+      <span class="name" title={attachment.name}>{attachment.name}</span>
       {#if attachment.state.state === 'failed'}
         <span class="meta failed">{attachment.state.words}</span>
       {:else}

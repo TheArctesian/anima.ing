@@ -106,7 +106,7 @@ const SHOTS: readonly ComposerShot[] = [
   { name: 'runner-no-search', part: 'real-idle', act: async (page, part) => {
     await editorOf(part).click();
     await page.keyboard.type('Read @gate');
-    const words = page.getByText('The runner cannot search the folder of a chat yet.');
+    const words = page.getByRole('paragraph').filter({ hasText: 'The runner cannot search the folder of a chat yet.' });
     await expect(words).toBeVisible();
     return words;
   } },
