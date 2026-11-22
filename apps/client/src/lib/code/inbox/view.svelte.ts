@@ -48,9 +48,19 @@ export class InboxView {
   });
 
   readonly rows = $derived.by(() => this.store.listedRows ?? []);
+  /** The newest prompt of each thread the runner drives: a prompt after a settle takes the thread back (TH61). */
+  readonly prompted = $derived.by(() => {
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a lookup built and read in this derivation only
+    const prompts = new Map<string, Date>();
+    for (const [id, thread] of this.store.live?.threads ?? []) {
+      const at = thread.entries.findLast((entry) => entry.kind === 'prompt')?.at;
+      if (at != null) prompts.set(id, at);
+    }
+    return prompts;
+  });
   readonly allProjects = $derived(projectsOf(this.rows));
   readonly parts = $derived.by(() =>
-    arranged(inProjects(this.rows, this.projects), { now: this.moment, seen: this.store.seen, marks: this.engine.marks, engineReady: this.engine.ready }),
+    arranged(inProjects(this.rows, this.projects), { now: this.moment, seen: this.store.seen, marks: this.engine.marks, prompted: this.prompted }),
   );
 
   /** The rows in the order of the list; a search shows its hits in place of the list (02 section 5.10). */

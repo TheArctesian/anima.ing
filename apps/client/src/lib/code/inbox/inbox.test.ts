@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ListedRow } from '$lib/agent-threads/listing/listing';
 import type { Tail } from '$lib/agent-threads/thread';
 import { intentOf, manyMenu, rowMenu, type Able } from './actions';
-import type { InboxMark } from './engine';
+import { NO_MARKS, type Marks } from '$lib/agent-threads/listing/shelf';
 import { arranged, emptyWords, inOrder, inProjects, projectsOf, type Arranging } from './inbox';
 import { clicked, kept, NO_SELECTION } from './selection';
 
@@ -13,7 +13,8 @@ function row(id: string, tail: Tail, minutesAgo: number, more: Partial<ListedRow
   return { id, program: 'claude_code', title: id, folder: '/w/anima', branch: null, model: null, started: null, last: new Date(NOW.getTime() - minutesAgo * MINUTE), tail, pinned: false, archived: false, ...more };
 }
 
-const AT: Arranging = { now: NOW, seen: new Map(), marks: new Map(), engineReady: false };
+const AT: Arranging = { now: NOW, seen: new Map(), marks: new Map() };
+const DAY = 24 * 60;
 const ids = (items: readonly { row: ListedRow }[]): string[] => items.map((item) => item.row.id);
 
 describe('the parts of the inbox (02 section 5.4, OD-THR55)', () => {
@@ -34,31 +35,44 @@ describe('the parts of the inbox (02 section 5.4, OD-THR55)', () => {
     expect(ids(parts.pinned)).toEqual(['pin']);
   });
 
-  it('until the runner keeps settle (TH61), the quiet threads older than a day stand in Settled; a pin keeps one out', () => {
-    const parts = arranged([row('old', 'turn_ended', 2 * 24 * 60), row('oldpin', 'turn_ended', 2 * 24 * 60, { pinned: true }), row('oldasks', 'asks', 2 * 24 * 60)], AT);
+  it("settles a quiet thread by the runner's rule after 7 days (TH61); a pin or a request keeps one out", () => {
+    const parts = arranged([row('old', 'turn_ended', 8 * DAY), row('young', 'turn_ended', 6 * DAY), row('oldpin', 'turn_ended', 8 * DAY, { pinned: true }), row('oldasks', 'asks', 8 * DAY)], AT);
     expect(ids(parts.settled)).toEqual(['old']);
+    expect(parts.settled[0]?.since).toEqual(new Date(NOW.getTime() - 8 * DAY * MINUTE));
     expect(ids(parts.pinned)).toEqual(['oldpin']);
-    expect(ids(parts.active)).toEqual(['oldasks']);
-    expect(arranged([row('old', 'turn_ended', 2 * 24 * 60)], { ...AT, engineReady: true }).settled).toEqual([]);
+    expect(ids(parts.active).sort()).toEqual(['oldasks', 'young']);
   });
 
-  it('reads the marks of the engine: snoozed until a time, settled, and woke', () => {
-    const mark = (settledAt: Date | null, snoozedUntil: Date | null, wokeAt: Date | null = null): InboxMark => ({ settledAt, snoozedUntil, wokeAt });
+  it('reads the marks of the runner: snoozed until a time, settled by hand (also when pinned), and woke until opened', () => {
+    const ago = (minutes: number): Date => new Date(NOW.getTime() - minutes * MINUTE);
+    const marked = (more: Partial<Marks>): Marks => ({ ...NO_MARKS, ...more });
+    const started = { started: ago(60) };
     const marks = new Map([
-      ['nap', mark(null, new Date(NOW.getTime() + 60 * MINUTE))],
-      ['done', mark(new Date(NOW.getTime() - MINUTE), null)],
-      ['woke', mark(null, new Date(NOW.getTime() - MINUTE), new Date(NOW.getTime() - MINUTE))],
-      ['pin', mark(new Date(NOW.getTime() - MINUTE), null)],
+      ['nap', marked({ snoozedAt: ago(1), snoozedUntil: new Date(NOW.getTime() + 60 * MINUTE) })],
+      ['done', marked({ settledAt: ago(1) })],
+      ['pin', marked({ settledAt: ago(1) })],
+      ['woke', marked({ wokeAt: ago(1) })],
+      ['ranout', marked({ snoozedAt: ago(30), snoozedUntil: ago(2) })],
+      ['seen', marked({ wokeAt: ago(3) })],
     ]);
-    const parts = arranged([row('nap', 'turn_ended', 5), row('done', 'turn_ended', 5), row('woke', 'turn_ended', 5), row('pin', 'turn_ended', 5, { pinned: true })], { ...AT, marks, engineReady: true });
+    const rows = ['nap', 'done', 'woke', 'ranout', 'seen'].map((id) => row(id, 'turn_ended', 5, started));
+    const parts = arranged([...rows, row('pin', 'turn_ended', 5, { ...started, pinned: true })], { ...AT, marks, seen: new Map([['seen', ago(2)]]) });
     expect(ids(parts.snoozed)).toEqual(['nap']);
     expect(parts.snoozed[0]?.wakes).toEqual(new Date(NOW.getTime() + 60 * MINUTE));
     expect(ids(parts.settled).sort()).toEqual(['done', 'pin']);
-    expect(parts.active.find((item) => item.row.id === 'woke')?.status).toBe('woke');
+    const status = (id: string) => parts.active.find((item) => item.row.id === id)?.status;
+    expect([status('woke'), status('ranout'), status('seen')]).toEqual(['woke', 'woke', null]);
+  });
+
+  it('takes a settled thread back when the person prompts it after the settle', () => {
+    const marks = new Map([['back', { ...NO_MARKS, settledAt: new Date(NOW.getTime() - 10 * MINUTE) }]]);
+    const back = row('back', 'turn_ended', 5, { started: new Date(NOW.getTime() - 60 * MINUTE) });
+    expect(ids(arranged([back], { ...AT, marks }).settled)).toEqual(['back']);
+    expect(ids(arranged([back], { ...AT, marks, prompted: new Map([['back', new Date(NOW.getTime() - 5 * MINUTE)]]) }).active)).toEqual(['back']);
   });
 
   it('gives the order of the keys: the shelves count only when open', () => {
-    const parts = arranged([row('a', 'turn_ended', 5), row('w', 'running', 0), row('old', 'turn_ended', 3 * 24 * 60)], AT);
+    const parts = arranged([row('a', 'turn_ended', 5), row('w', 'running', 0), row('old', 'turn_ended', 8 * DAY)], AT);
     expect(ids(inOrder(parts, new Set()))).toEqual(['a']);
     expect(ids(inOrder(parts, new Set(['working', 'settled'])))).toEqual(['a', 'w', 'old']);
   });

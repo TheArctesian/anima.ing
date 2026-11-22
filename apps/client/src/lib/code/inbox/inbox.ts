@@ -4,10 +4,10 @@
  * (one-liners). Pure: the rows, the time, what the person opened and the marks of the engine go in; the parts come out.
  */
 import type { ListedRow } from '$lib/agent-threads/listing/listing';
-import { NEEDS_YOU_MS, needsYou, threadState, type Seen, type ThreadState } from '$lib/agent-threads/state';
+import { NO_MARKS, shelfOf, type Activity, type Marks } from '$lib/agent-threads/listing/shelf';
+import { needsYou, threadState, type Seen, type ThreadState } from '$lib/agent-threads/state';
 import { folderName } from '$lib/agent-threads/thread';
 import type { ChatStatus } from '../status/status';
-import type { InboxMark } from './engine';
 
 /** One row of the inbox with what its look needs. */
 export interface InboxRow {
@@ -61,15 +61,6 @@ function running(state: ThreadState): boolean {
   return state === 'working' || state === 'starting';
 }
 
-/**
- * Whether a thread with no settle mark goes to Settled while the runner keeps no marks: what the folded group
- * "Earlier" held (OD-THR24), a quiet thread whose last change is older than a day.
- */
-function settledByAge(row: ListedRow, state: ThreadState, now: Date): boolean {
-  if (needsYou(state) || running(state)) return false;
-  return row.last === null || now.getTime() - row.last.getTime() >= NEEDS_YOU_MS;
-}
-
 function newestFirst(a: InboxRow, b: InboxRow): number {
   return (b.since?.getTime() ?? 0) - (a.since?.getTime() ?? 0);
 }
@@ -83,40 +74,48 @@ function activeOrder(a: InboxRow, b: InboxRow): number {
 export interface Arranging {
   readonly now: Date;
   readonly seen: Seen;
-  readonly marks: ReadonlyMap<string, InboxMark>;
-  /** Whether the runner keeps the marks; until it does, quiet old threads stand in Settled. */
-  readonly engineReady: boolean;
+  /** The marks the runner keeps for each thread (TH61); a thread with none has `NO_MARKS`. */
+  readonly marks: ReadonlyMap<string, Marks>;
+  /** The newest prompt of each thread the page knows; else the start of the thread counts. */
+  readonly prompted?: ReadonlyMap<string, Date>;
 }
 
 type PartKey = keyof InboxParts;
 
-/** One row, with the part of the inbox it goes in: snoozed, settled, pinned (T3's order), then Working or active. */
+/** What the list knows of the work of a thread, for the runner's rule of the shelves. */
+function activityOf(row: ListedRow, state: ThreadState, at: Arranging): Activity {
+  const last = row.last ?? row.started ?? new Date(0);
+  return { prompted: at.prompted?.get(row.id) ?? row.started ?? last, last, working: running(state), asked: state === 'asks' || state === 'may_wait' ? last : null };
+}
+
+/** A wake the person has not seen: a wake by hand, or a snooze that ran out, after the thread was last opened. */
+function wokeUnseen(id: string, marks: Marks, at: Arranging): boolean {
+  const ranOut = marks.snoozedUntil !== null && marks.snoozedUntil <= at.now ? marks.snoozedUntil : null;
+  const woke = Math.max(marks.wokeAt?.getTime() ?? 0, ranOut?.getTime() ?? 0);
+  return woke > (at.seen.get(id)?.getTime() ?? 0);
+}
+
+/**
+ * One row, with the part of the inbox it goes in: the runner's rule puts it in Snoozed, Settled or the list (TH61; a
+ * pin does not keep a thread from either shelf); in the list, pinned (T3's order), then Working or active.
+ */
 function placed(row: ListedRow, at: Arranging): { readonly item: InboxRow; readonly part: PartKey } {
   const state = threadState(row, at.now, at.seen);
-  const mark = at.marks.get(row.id);
-  const wakes = sleepsUntil(mark, at.now);
-  const settledAt = mark?.settledAt ?? null;
-  // A pin keeps an old thread out of Settled; settling it by hand moves it there.
-  const settled = settledAt !== null || (!at.engineReady && !row.pinned && settledByAge(row, state, at.now));
-  const status = mark?.wokeAt != null && wakes === null ? 'woke' : statusOf(state);
-  const item: InboxRow = { row, state, status, project: folderName(row.folder), recedes: !needsYou(state) && status !== 'woke', since: settledAt ?? row.last, wakes };
-  return { item, part: partOf(wakes !== null, settled, row.pinned, running(state)) };
+  const marks = at.marks.get(row.id) ?? NO_MARKS;
+  const shelf = shelfOf({ pinned: row.pinned, archived: row.archived, marks }, activityOf(row, state, at), at.now);
+  const status = shelf.shelf === 'active' && wokeUnseen(row.id, marks, at) ? 'woke' : statusOf(state);
+  const wakes = shelf.shelf === 'snoozed' ? shelf.until : null;
+  const since = shelf.shelf === 'settled' ? shelf.since : row.last;
+  const item: InboxRow = { row, state, status, project: folderName(row.folder), recedes: !needsYou(state) && status !== 'woke', since, wakes };
+  return { item, part: shelf.shelf === 'active' ? partOf(row.pinned, running(state)) : shelf.shelf };
 }
 
-/** Until when a snooze holds; `null` when there is none or it ended. */
-function sleepsUntil(mark: InboxMark | undefined, now: Date): Date | null {
-  const until = mark?.snoozedUntil ?? null;
-  return until !== null && until.getTime() > now.getTime() ? until : null;
-}
-
-function partOf(snoozed: boolean, settled: boolean, pinned: boolean, working: boolean): PartKey {
-  if (snoozed) return 'snoozed';
-  if (settled) return 'settled';
+function partOf(pinned: boolean, working: boolean): PartKey {
   if (pinned) return 'pinned';
   return working ? 'working' : 'active';
 }
 
-/** The rows in the parts of the inbox. A snooze that ended counts as no snooze. */
+/** The rows in the parts of the inbox. */
 export function arranged(rows: readonly ListedRow[], at: Arranging): InboxParts {
   const parts: Record<PartKey, InboxRow[]> = { pinned: [], active: [], working: [], snoozed: [], settled: [] };
   for (const row of rows) {

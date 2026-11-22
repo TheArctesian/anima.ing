@@ -1,40 +1,31 @@
 /**
- * The one door from the inbox to settle, snooze and wake. The runner does not keep them yet: they are task TH61 of
- * docs/proposals/agent-threads.md, not built, and not on the branch threads/engine-for-copy (TH101 to TH107). Until
- * the runner keeps them, `inboxEngine` gives `WAITING`: the actions show, disabled, with `why` as their reason, and the
- * inbox puts the threads that "Earlier" held (OD-THR24) in Settled (OD-THR55). When TH61 lands, only this file changes.
+ * The one door from the inbox to settle, snooze and wake (TH61). The runner keeps the marks on each listing; the inbox
+ * reads them from `live.listings` and changes them by `changeListing`, as pin and rename. Where the runner of this
+ * computer is not there, the actions show disabled with `why`.
  */
 import type { CallResult, LiveThreads } from '$lib/agent-threads/live/live.svelte';
+import type { Marks } from '$lib/agent-threads/listing/shelf';
 
-/** What the runner is to keep of one thread for the inbox; the shape proposed for TH61. */
-export interface InboxMark {
-  /** When the person settled the thread; `null` when it is not settled. */
-  readonly settledAt: Date | null;
-  /** Until when the thread sleeps; `null` when it is not snoozed. */
-  readonly snoozedUntil: Date | null;
-  /** When a snooze ended, until the person opens or dismisses the thread: the status "Woke". */
-  readonly wokeAt: Date | null;
-}
-
-/** A change of the mark of one thread, in the form proposed for the socket of the runner. */
+/** A change of the marks of one thread. */
 export type InboxChange =
   | { readonly change: 'settle'; readonly on: boolean }
   | { readonly change: 'snooze'; readonly until: Date }
   | { readonly change: 'wake' };
 
 export interface InboxEngine {
-  /** Whether the runner keeps the marks: false until TH61. */
+  /** Whether the runner answers, so the marks can change. */
   readonly ready: boolean;
   /** Why the actions are disabled, in words for the person; empty when ready. */
   readonly why: string;
-  readonly marks: ReadonlyMap<string, InboxMark>;
+  /** The marks of each thread, by its id. */
+  readonly marks: ReadonlyMap<string, Marks>;
   change(thread: string, change: InboxChange): Promise<CallResult>;
 }
 
 /** Shown beside a disabled Settle, Snooze or Wake. */
-export const WAITING_WHY = 'Not yet: the thread runner does not keep settle or snooze (task TH61).';
+export const WAITING_WHY = 'The thread runner of this computer keeps settle and snooze; it is not running.';
 
-/** The engine while the runner has no settle, snooze or wake. */
+/** The engine with no runner: no marks, and the actions disabled. */
 export const WAITING: InboxEngine = {
   ready: false,
   why: WAITING_WHY,
@@ -42,10 +33,26 @@ export const WAITING: InboxEngine = {
   change: () => Promise.resolve({ ok: false, words: WAITING_WHY }),
 };
 
-/** The engine of the runner of this computer. `live` is unused until TH61 gives it the calls. */
-export function inboxEngine(live: LiveThreads | null): InboxEngine {
-  void live;
-  return WAITING;
+/** The engine of the runner of this computer, read through `live` each time (the store links the runner later). */
+export function inboxEngine(live: () => LiveThreads | null): InboxEngine {
+  return {
+    get ready() {
+      const runner = live();
+      return runner !== null && runner.linked !== false;
+    },
+    get why() {
+      return this.ready ? '' : WAITING_WHY;
+    },
+    get marks() {
+      const runner = live();
+      return runner === null ? WAITING.marks : new Map([...runner.listings].map(([id, listing]) => [id, listing.marks]));
+    },
+    change(thread, change) {
+      const runner = live();
+      if (runner === null) return WAITING.change(thread, change);
+      return runner.changeListing(thread, change.change === 'snooze' ? { change: 'snooze', until: change.until.toISOString() } : change);
+    },
+  };
 }
 
 const HOUR = 60 * 60_000;
