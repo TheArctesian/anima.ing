@@ -45,7 +45,6 @@ async fn an_agent_is_refused_each_action_that_changes_something_and_may_read() {
         agent: true,
         running: false,
         thread: Some(THREAD),
-        repository_programs: false,
     };
     for action in [
         commit("by an agent", None, None),
@@ -151,6 +150,16 @@ async fn a_commit_takes_all_files_or_the_chosen_ones_and_refuses_a_path_that_lea
     assert_eq!(branch.as_deref(), Some("feature/rest"));
     let nothing = bench.call(PERSON, commit("again", None, None)).await;
     assert_eq!(refused(&nothing), Some(&GitRefusal::NothingToCommit));
+    // The `git` of the agent sees the branch that the commit made, with nothing left over.
+    let on = ["symbolic-ref", "--short", "HEAD"];
+    assert_eq!(bench.git_in(&folder, &on).await, "feature/rest");
+    assert_eq!(bench.git_in(&folder, &["status", "--porcelain"]).await, "");
+    assert_eq!(
+        bench
+            .git_in(&folder, &["log", "-1", "--format=%an <%ae>"])
+            .await,
+        "Ada <ada@example.invalid>"
+    );
     assert_eq!(
         bench
             .git_in(&bench.project, &["log", "--format=%s", "main"])

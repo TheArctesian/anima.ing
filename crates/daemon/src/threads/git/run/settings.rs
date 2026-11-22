@@ -1,13 +1,8 @@
-//! The configuration of a repository as `git config --list` gives it, and what a run does with
-//! it (THR-050): the filters that a run of the runner turns off, the settings that a run for
-//! the person takes from the person and never from the repository, and the settings of the
-//! repository that the person accepts before a commit or a push.
+//! The configuration as `git config --list` gives it, and what the runner reads from it
+//! (THR-050): the hooks that a run of the runner turns off, who the person is for a commit,
+//! and where the remotes of the repository are. Each value is text to read; none is run.
 //!
 //! Pure: text in, lists out.
-
-use std::collections::BTreeMap;
-
-use sha2::{Digest, Sha256};
 
 /// The arguments that list each setting with the file it is from.
 pub const LIST: [&str; 5] = ["config", "-z", "--show-scope", "--includes", "--list"];
@@ -21,32 +16,10 @@ pub struct Setting {
     value: String,
 }
 
-/// The settings that name a program or decide whom a push trusts, each with what git does
-/// when nobody set it. A run for the person takes them from the person, never from the
-/// repository, which an agent can write.
-const OF_THE_PERSON: [(&str, &str); 12] = [
-    ("core.askpass", ""),
-    ("gpg.program", "gpg"),
-    ("gpg.openpgp.program", "gpg"),
-    ("gpg.format", "openpgp"),
-    ("gpg.ssh.program", "ssh-keygen"),
-    ("gpg.x509.program", "gpgsm"),
-    ("commit.gpgsign", "false"),
-    ("http.proxy", ""),
-    ("http.sslverify", "true"),
-    ("http.cookiefile", ""),
-    ("push.gpgsign", "false"),
-    ("gpg.ssh.defaultkeycommand", ""),
-];
-
 impl Setting {
     /// The setting is in the repository or its worktree, where an agent can write it.
     fn of_the_repository(&self) -> bool {
         matches!(self.scope.as_str(), "local" | "worktree")
-    }
-
-    fn names_a_helper(&self) -> bool {
-        self.name.starts_with("credential.") && self.name.ends_with(".helper")
     }
 }
 
@@ -64,23 +37,6 @@ pub fn read(listed: &str) -> Vec<Setting> {
         });
     }
     settings
-}
-
-/// Each filter setting of the repository with the value that turns it off.
-#[must_use]
-pub fn filters_off(settings: &[Setting]) -> Vec<(String, String)> {
-    settings
-        .iter()
-        .filter(|setting| setting.of_the_repository() && setting.name.starts_with("filter."))
-        .map(|setting| {
-            let off = if setting.name.ends_with(".required") {
-                "false"
-            } else {
-                ""
-            };
-            (setting.name.clone(), off.to_owned())
-        })
-        .collect()
 }
 
 /// Each hook that the configuration names (`hook.<name>.event`, `hook.<name>.command`; git
@@ -102,27 +58,6 @@ pub fn hooks_off(settings: &[Setting]) -> Vec<(String, String)> {
         .collect()
 }
 
-/// The names of the settings of the repository that send a push through a different place
-/// than the remote says, or change whom it trusts there: a setting for one URL (`http.<url>.*`),
-/// a proxy or a helper program of a remote, a rewrite of URLs. No setting of the person can
-/// stand in for them, so a push is refused while the repository has one.
-#[must_use]
-pub fn redirects(settings: &[Setting]) -> Vec<String> {
-    let sends_elsewhere = |name: &str| {
-        let Some((start, last)) = name.rsplit_once('.') else {
-            return false;
-        };
-        (start.starts_with("http.") && start.len() > "http.".len())
-            || (start.starts_with("remote.") && matches!(last, "proxy" | "vcs"))
-            || (start.starts_with("url.") && last.ends_with("insteadof"))
-    };
-    settings
-        .iter()
-        .filter(|setting| setting.of_the_repository() && sends_elsewhere(&setting.name))
-        .map(|setting| super::said::without_credentials(&setting.name))
-        .collect()
-}
-
 /// The person signs their commits: `commit.gpgSign` is on outside the repository.
 #[must_use]
 pub fn signs(settings: &[Setting]) -> bool {
@@ -132,63 +67,79 @@ pub fn signs(settings: &[Setting]) -> bool {
         .is_some_and(|setting| matches!(setting.value.as_str(), "" | "true" | "yes" | "on" | "1"))
 }
 
-/// What a run for the person sets after each file: no push option and no `git://` (so no
-/// proxy program), and each setting of [`OF_THE_PERSON`] and each credential helper as the
-/// person has it, when the repository names one.
-#[must_use]
-pub fn for_the_person(settings: &[Setting]) -> Vec<(String, String)> {
-    let mut over = vec![
-        ("push.pushOption".to_owned(), String::new()),
-        ("push.negotiate".to_owned(), "false".to_owned()),
-        ("protocol.git.allow".to_owned(), "never".to_owned()),
-    ];
-    let planted = |by: &dyn Fn(&Setting) -> bool| {
-        settings
-            .iter()
-            .any(|setting| setting.of_the_repository() && by(setting))
-    };
-    if planted(&Setting::names_a_helper) {
-        // An empty helper empties the list; the helpers of the person follow in their order.
-        over.push(("credential.helper".to_owned(), String::new()));
-        let own = settings
-            .iter()
-            .filter(|setting| !setting.of_the_repository() && setting.names_a_helper());
-        over.extend(own.map(|setting| (setting.name.clone(), setting.value.clone())));
-    }
-    for (name, unset) in OF_THE_PERSON {
-        if planted(&|setting| setting.name == name) {
-            let own = settings
-                .iter()
-                .rfind(|setting| !setting.of_the_repository() && setting.name == name);
-            let value = own.map_or(unset, |setting| setting.value.as_str());
-            over.push((name.to_owned(), value.to_owned()));
-        }
-    }
-    over
+/// The last value of `name`, as git takes it; with `own`, only outside the repository.
+fn last<'a>(settings: &'a [Setting], name: &str, own: bool) -> Option<&'a Setting> {
+    settings
+        .iter()
+        .rfind(|setting| setting.name == name && !(own && setting.of_the_repository()))
 }
 
-/// The settings of the repository, each name with a digest of its values, never a value: a
-/// URL can hold a credential. The upstream of a branch and the note of git-lfs about a login
-/// are left out; git writes them by itself and they name no program.
+/// Who the person is for a commit, as their `git` has it in this repository.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Person {
+    pub name: Option<String>,
+    pub email: Option<String>,
+    /// The name or the address is set in the repository, where an agent can write it.
+    pub from_the_repository: bool,
+    /// The key and the form of a signature, only as the person has them outside the
+    /// repository: settings for a run of `git`.
+    pub signing: Vec<(String, String)>,
+}
+
+/// Reads who the person is from the settings of their repository.
 #[must_use]
-pub fn of_the_repository(settings: &[Setting]) -> BTreeMap<String, String> {
-    let mut digests: BTreeMap<String, Sha256> = BTreeMap::new();
-    for setting in settings
-        .iter()
-        .filter(|setting| setting.of_the_repository())
-    {
-        let name = setting.name.as_str();
-        if name.starts_with("branch.") || (name.starts_with("lfs.") && name.ends_with(".access")) {
-            continue;
-        }
-        let digest = digests.entry(name.to_owned()).or_default();
-        digest.update(setting.value.as_bytes());
-        digest.update([0]);
-    }
-    digests
+pub fn person(settings: &[Setting]) -> Person {
+    let (name, email) = (
+        last(settings, "user.name", false),
+        last(settings, "user.email", false),
+    );
+    let signing = ["user.signingkey", "gpg.format"]
         .into_iter()
-        .map(|(name, digest)| (name, crate::model::fetch::hex(&digest.finalize())))
-        .collect()
+        .filter_map(|key| last(settings, key, true))
+        .map(|setting| (setting.name.clone(), setting.value.clone()))
+        .collect();
+    Person {
+        from_the_repository: [name, email]
+            .into_iter()
+            .flatten()
+            .any(Setting::of_the_repository),
+        name: name.map(|setting| setting.value.clone()),
+        email: email.map(|setting| setting.value.clone()),
+        signing,
+    }
+}
+
+/// The remote a push goes to: `remote.pushDefault`, else `origin`, else the first one, with
+/// the URL of a push to it. `None` when the repository has no remote with a URL.
+#[must_use]
+pub fn push_remote(settings: &[Setting]) -> Option<(String, String)> {
+    let part = |setting: &'_ Setting, key: &str| {
+        let rest = setting.name.strip_prefix("remote.")?;
+        let (name, found) = rest.rsplit_once('.')?;
+        (found == key).then(|| name.to_owned())
+    };
+    let mut names: Vec<String> = settings
+        .iter()
+        .filter_map(|setting| part(setting, "url"))
+        .collect();
+    names.dedup();
+    let set = last(settings, "remote.pushdefault", false).map(|setting| setting.value.as_str());
+    let chosen = set
+        .filter(|set| names.iter().any(|name| name == set))
+        .or_else(|| {
+            names
+                .iter()
+                .map(String::as_str)
+                .find(|name| *name == "origin")
+        })
+        .or_else(|| names.first().map(String::as_str))?
+        .to_owned();
+    let url = ["pushurl", "url"].into_iter().find_map(|key| {
+        settings
+            .iter()
+            .rfind(|setting| part(setting, key).as_deref() == Some(chosen.as_str()))
+    })?;
+    Some((chosen, url.value.clone()))
 }
 
 #[cfg(test)]
@@ -196,19 +147,19 @@ mod tests {
     use super::*;
 
     const LISTED: &str = "system\0credential.helper\nosxkeychain\0\
-        global\0gpg.program\n/usr/bin/gpg\0\
-        global\0filter.lfs.clean\ngit-lfs clean\0\
+        global\0user.name\nAda\0\
+        global\0user.email\nada@example.invalid\0\
+        global\0user.signingkey\nKEY1\0\
         local\0core.bare\nfalse\0\
-        local\0filter.evil.clean\nsh evil\0\
-        local\0filter.evil.required\0\
-        local\0credential.https://example.invalid.helper\n!evil\0\
-        local\0gpg.program\n/tmp/evil\0\
-        local\0core.askpass\n/tmp/ask\0\
+        local\0user.signingkey\nKEY2\0\
         worktree\0commit.gpgsign\ntrue\0\
         local\0hook.evil.event\nreference-transaction\0\
         local\0hook.evil.command\ntouch RAN\0\
         global\0hook.My Lint.command\nlint\0\
         global\0commit.gpgsign\ntrue\0\
+        local\0remote.up.url\nhttps://example.invalid/up.git\0\
+        local\0remote.origin.url\nhttps://example.invalid/a.git\0\
+        local\0remote.origin.pushurl\nhttps://example.invalid/push.git\0\
         local\0branch.main.remote\norigin\0";
 
     #[test]
@@ -227,54 +178,31 @@ mod tests {
     }
 
     #[test]
-    fn only_the_filters_of_the_repository_are_turned_off() {
-        let off = filters_off(&read(LISTED));
-        let off: Vec<_> = off.iter().map(|(n, v)| (n.as_str(), v.as_str())).collect();
+    fn the_person_is_read_with_the_key_that_only_they_set() {
+        let who = person(&read(LISTED));
+        assert_eq!(who.name.as_deref(), Some("Ada"));
+        assert!(!who.from_the_repository);
         assert_eq!(
-            off,
-            [("filter.evil.clean", ""), ("filter.evil.required", "false")]
+            who.signing,
+            [("user.signingkey".to_owned(), "KEY1".to_owned())]
         );
+        let planted = format!("{LISTED}local\0user.email\nmallory@example.invalid\0");
+        let who = person(&read(&planted));
+        assert_eq!(who.email.as_deref(), Some("mallory@example.invalid"));
+        assert!(who.from_the_repository);
     }
 
     #[test]
-    fn a_program_that_the_repository_names_is_replaced_by_the_one_of_the_person() {
-        let over = for_the_person(&read(LISTED));
-        let over: Vec<_> = over.iter().map(|(n, v)| (n.as_str(), v.as_str())).collect();
-        assert_eq!(
-            over,
-            [
-                ("push.pushOption", ""),
-                ("push.negotiate", "false"),
-                ("protocol.git.allow", "never"),
-                ("credential.helper", ""),
-                ("credential.helper", "osxkeychain"),
-                ("core.askpass", ""),
-                ("gpg.program", "/usr/bin/gpg"),
-                ("commit.gpgsign", "true"),
-            ]
+    fn a_push_goes_to_origin_at_its_push_url_unless_the_person_set_a_default() {
+        let found = push_remote(&read(LISTED));
+        let want = (
+            "origin".to_owned(),
+            "https://example.invalid/push.git".to_owned(),
         );
-    }
-
-    #[test]
-    fn the_settings_of_the_repository_are_named_without_their_values() {
-        let kept = of_the_repository(&read(LISTED));
-        let names: Vec<_> = kept.keys().map(String::as_str).collect();
-        assert_eq!(
-            names,
-            [
-                "commit.gpgsign",
-                "core.askpass",
-                "core.bare",
-                "credential.https://example.invalid.helper",
-                "filter.evil.clean",
-                "filter.evil.required",
-                "gpg.program",
-                "hook.evil.command",
-                "hook.evil.event",
-            ]
-        );
-        assert!(kept.values().all(|digest| digest.len() == 64));
-        let other = LISTED.replace("/tmp/evil", "/tmp/else");
-        assert_ne!(of_the_repository(&read(&other)), kept);
+        assert_eq!(found, Some(want));
+        let set = format!("{LISTED}global\0remote.pushdefault\nup\0");
+        let found = push_remote(&read(&set)).map(|(name, _)| name);
+        assert_eq!(found.as_deref(), Some("up"));
+        assert_eq!(push_remote(&read("local\0core.bare\nfalse\0")), None);
     }
 }

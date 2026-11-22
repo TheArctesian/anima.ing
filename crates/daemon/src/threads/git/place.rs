@@ -4,6 +4,8 @@
 //!
 //! The checks of text are pure; [`Home::worktree`] reads the file system.
 
+pub mod own;
+
 use std::path::{Component, Path, PathBuf};
 
 use uuid::Uuid;
@@ -47,10 +49,12 @@ pub struct Record {
     pub git_dir: PathBuf,
     /// The Git folder of the repository of the person.
     pub common_dir: PathBuf,
+    /// The Git folder of the runner for this worktree ([`own`]): the one its `git` runs with.
+    pub own: PathBuf,
     /// The branches the runner made for this thread: the only ones a commit or a push may move.
     pub branches: Vec<String>,
-    /// The settings and the hooks of the repository as the person last accepted them
-    /// (`trust`): first as they were when the worktree was made, before an agent ran.
+    /// Who a commit is from and where a push goes, as the person last accepted them
+    /// (`trust`).
     #[serde(default)]
     pub trusted: Option<std::collections::BTreeMap<String, String>>,
     /// What the work folder was when it was made; `None` where the system has no such number.
@@ -80,6 +84,15 @@ impl Worktree {
     #[must_use]
     pub const fn record(&self) -> &Record {
         &self.record
+    }
+
+    /// The Git folders of this worktree in the repository of the person.
+    #[must_use]
+    pub fn layout(&self) -> super::project::Layout {
+        super::project::Layout {
+            git_dir: self.record.git_dir.clone(),
+            common_dir: self.record.common_dir.clone(),
+        }
     }
 
     /// The runner made the branch `name` for this thread.
@@ -138,6 +151,17 @@ impl Home {
         } else {
             Err(BadPlace::BadName)
         }
+    }
+
+    /// Where the Git folder of the runner for the worktree of `repository` of `thread` is:
+    /// in the folder of the records, where no agent writes.
+    ///
+    /// # Errors
+    /// [`BadPlace::BadName`] for a name outside the alphabet of [`folder_name`].
+    pub fn own(&self, thread: Uuid, repository: &str) -> Result<PathBuf, BadPlace> {
+        self.planned(thread, repository)?;
+        let thread = thread.as_hyphenated().to_string();
+        Ok(self.records.join(thread).join(format!("{repository}.git")))
     }
 
     fn record_file(&self, thread: Uuid, repository: &str) -> Result<PathBuf, BadPlace> {
@@ -201,6 +225,9 @@ impl Home {
             std::fs::canonicalize(&record.git_dir).map_err(|_| BadPlace::NotOurWorktree)?;
         let ours = git_dir.parent() == Some(record.common_dir.join("worktrees").as_path());
         if !meta.is_file() || !ours || git_dir != record.git_dir {
+            return Err(BadPlace::NotOurWorktree);
+        }
+        if record.own != self.own(thread, repository)? || !record.own.is_dir() {
             return Err(BadPlace::NotOurWorktree);
         }
         Ok(Worktree { thread, record })
@@ -314,80 +341,4 @@ pub fn inside(path: &str) -> Result<&str, BadPlace> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    const THREAD: Uuid = Uuid::from_u128(0x1234_5678_9abc_def0_1234_5678_9abc_def0);
-
-    #[test]
-    fn the_branch_of_a_thread_has_only_the_prefix_and_hex_digits() {
-        assert_eq!(thread_branch(THREAD), "anima/12345678");
-    }
-
-    #[test]
-    fn a_folder_name_keeps_the_fixed_alphabet_and_never_hides() {
-        assert_eq!(folder_name("anima.ing"), "anima.ing");
-        assert_eq!(folder_name("../..//etc"), "etc");
-        assert_eq!(folder_name("my repo; rm -rf"), "my-repo--rm--rf");
-        assert_eq!(folder_name("..."), "repository");
-    }
-
-    #[test]
-    fn a_branch_name_that_git_could_read_as_an_option_or_a_range_is_refused() {
-        for bad in [
-            "",
-            "-f",
-            "--upload-pack=x",
-            "a..b",
-            "a b",
-            "a:b",
-            "a~1",
-            "a^",
-            "HEAD",
-            "/a",
-            "a/",
-            "a//b",
-            "a/.b",
-            "refs/x.lock",
-            "x@{1}",
-        ] {
-            assert_eq!(branch_name(bad), Err(BadPlace::BadName), "{bad}");
-        }
-        assert_eq!(
-            branch_name("feature/git-stage_2.0"),
-            Ok("feature/git-stage_2.0")
-        );
-    }
-
-    #[test]
-    fn a_path_that_leaves_the_repository_is_refused() {
-        for bad in [
-            "",
-            "../x",
-            "a/../../x",
-            "/etc/passwd",
-            "-rf",
-            ":(top)x",
-            ".git/config",
-            "a/.GIT/hooks/x",
-            "a\0b",
-            "./a",
-        ] {
-            assert_eq!(inside(bad), Err(BadPlace::Escapes), "{bad:?}");
-        }
-        assert_eq!(inside("src/lib.rs"), Ok("src/lib.rs"));
-        assert_eq!(inside("a file.txt"), Ok("a file.txt"));
-    }
-
-    #[test]
-    fn a_repository_name_with_a_path_in_it_is_not_a_place() {
-        let home =
-            Home::at(Path::new("/tmp/worktrees"), Path::new("/tmp/records")).expect("a home");
-        assert_eq!(home.planned(THREAD, "../other"), Err(BadPlace::BadName));
-        assert_eq!(home.planned(THREAD, "a/b"), Err(BadPlace::BadName));
-        let records = Path::new("/tmp/records");
-        assert!(Home::at(Path::new("relative"), records).is_err());
-        assert!(Home::at(Path::new("/tmp/../etc"), records).is_err());
-        assert!(Home::at(Path::new("/tmp/w"), Path::new("/tmp/w/records")).is_err());
-    }
-}
+mod tests;

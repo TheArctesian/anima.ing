@@ -7,9 +7,8 @@ use super::Asked;
 
 /// The configuration each run gets on its command line, where it wins over each file: no
 /// monitor program, no external diff, no `ext::` transport, no pager, no optional lock, quoted
-/// paths as bytes. A run of the runner itself has no hooks; a run for the person has them only
-/// with `programs` (the hooks and filters of the repository are allowed for this thread).
-pub fn fixed_configuration(asked: Asked, programs: bool) -> Vec<&'static str> {
+/// paths as bytes. A run of the runner itself has no hooks and no transport.
+pub fn fixed_configuration(asked: Asked) -> Vec<&'static str> {
     let mut args = vec![
         "--no-pager",
         "--no-optional-locks",
@@ -28,9 +27,6 @@ pub fn fixed_configuration(asked: Asked, programs: bool) -> Vec<&'static str> {
         "-c",
         "gc.auto=0",
     ];
-    if asked == Asked::Person && !programs {
-        args.extend(["-c", "core.hooksPath=/dev/null"]);
-    }
     if asked == Asked::Runner {
         // No hook, no transport (so no program of a remote, also not for a missing object of a
         // partial clone), and nothing read from a repository inside the worktree.

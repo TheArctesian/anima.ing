@@ -1,10 +1,10 @@
-//! What the person accepts before a commit or a push runs (THR-049, THR-050): the settings of
-//! the repository and its hooks. An agent can write both, and a commit or a push of the person
-//! runs the hooks and obeys the settings. The runner writes them down when it makes the
-//! worktree, before an agent runs; when they differ later, a commit and a push are refused
-//! until the person accepts the change.
+//! What the person accepts before a commit or a push (THR-049): who a commit is from, when
+//! the repository sets it, and where a push goes. Both are in the configuration of the
+//! repository, which an agent can write; the runner reads them as text and obeys nothing else
+//! of that configuration. When one differs from what the person accepted, a commit and a push
+//! are refused until the person accepts the change.
 //!
-//! I/O: reads the folder of the hooks. [`changed`] is pure.
+//! Pure but for the file of what a person accepted for a repository.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -13,99 +13,50 @@ use agent_threads::git::GitRefusal;
 use sha2::{Digest, Sha256};
 
 use super::place::{Home, Worktree};
-use super::run::{Git, Run, said};
-
-/// The most hooks and the most bytes of one hook that are read; more is refused.
-const MOST_HOOKS: usize = 64;
-const MOST_BYTES: u64 = 1024 * 1024;
+use super::run::said;
+use super::run::settings::{self, Setting};
+use super::status;
 
 /// The most names the page gets. More changes than these cannot be shown, so they cannot be
-/// accepted; the count is taken after the hooks that do not run for the thread are left out.
+/// accepted.
 pub const MOST_NAMES: usize = 40;
 
-/// What a commit or a push of the person would run or obey now.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Seen {
-    /// Each setting of the repository and each hook by name, with a digest.
-    pub entries: BTreeMap<String, String>,
-    /// The names of the hooks that can run.
-    pub hooks: Vec<String>,
+/// The most characters of one name that the page gets.
+const MOST_CHARACTERS: usize = 300;
+
+/// A value of the configuration as a part of a name for the page: one line, not too long.
+fn shown(value: &str) -> String {
+    value
+        .chars()
+        .map(|c| if c.is_control() { '?' } else { c })
+        .take(MOST_CHARACTERS)
+        .collect()
 }
 
-/// Reads the settings and the hooks of the repository of `worktree`; `git` is the one of
-/// [`Git::for_worktree`].
-///
-/// # Errors
-/// A [`GitRefusal`] when the folder of the hooks cannot be read or holds too much.
-pub async fn now(git: &Git, worktree: &Worktree) -> Result<Seen, GitRefusal> {
-    let mut seen = Seen {
-        entries: git.of_the_repository().clone(),
-        hooks: Vec::new(),
-    };
-    // Asked as a person whose hooks run: each other run has no folder of hooks at all.
-    let asked = Run::new(worktree.folder(), ["rev-parse", "--git-path", "hooks"]);
-    let with_hooks = git.clone().with_repository_programs(true);
-    let folder = with_hooks.text(asked.for_the_person()).await?;
-    let folder = worktree.folder().join(folder);
-    for (name, bytes, runs) in hooks_in(&folder)? {
-        let mut digest = Sha256::new();
-        digest.update([u8::from(runs)]);
-        digest.update(&bytes);
-        seen.entries.insert(
-            format!("{HOOK}{name}"),
-            crate::model::fetch::hex(&digest.finalize()),
+/// What a commit or a push of the person would take from the repository now: each as a name
+/// that says it, with a digest of the whole value. `listed` is the configuration of the
+/// repository as text.
+#[must_use]
+pub fn now(listed: &[Setting]) -> BTreeMap<String, String> {
+    let digest = |value: &str| crate::model::fetch::hex(&Sha256::digest(value.as_bytes()));
+    let mut seen = BTreeMap::new();
+    let who = settings::person(listed);
+    if who.from_the_repository {
+        let (name, email) = (who.name.unwrap_or_default(), who.email.unwrap_or_default());
+        let whole = format!("{name}\0{email}");
+        seen.insert(
+            shown(&format!("commit as {name} <{email}>")),
+            digest(&whole),
         );
-        if runs {
-            seen.hooks.push(name);
-        }
     }
-    seen.hooks.sort();
-    Ok(seen)
-}
-
-/// Each file of the folder of the hooks that is not a sample: its name, its bytes, and
-/// whether it can run. A folder that is not there has none.
-fn hooks_in(folder: &Path) -> Result<Vec<(String, Vec<u8>, bool)>, GitRefusal> {
-    let too_much = || GitRefusal::Failed {
-        said: "the hooks of the repository are too many or too large to check".to_owned(),
-    };
-    let Ok(listed) = std::fs::read_dir(folder) else {
-        return Ok(Vec::new());
-    };
-    let mut hooks = Vec::new();
-    for entry in listed.flatten() {
-        let name = entry.file_name().to_string_lossy().into_owned();
-        // A link is followed, as git follows it.
-        let Ok(about) = std::fs::metadata(entry.path()) else {
-            continue;
-        };
-        if !about.is_file() || name.ends_with(".sample") {
-            continue;
-        }
-        if hooks.len() == MOST_HOOKS || about.len() > MOST_BYTES {
-            return Err(too_much());
-        }
-        let bytes = std::fs::read(entry.path()).map_err(|_| too_much())?;
-        hooks.push((name, bytes, can_run(&about)));
+    if let Some((remote, url)) = status::remote(listed) {
+        let place = said::without_credentials(&url);
+        seen.insert(shown(&format!("push to {remote}: {place}")), digest(&url));
     }
-    Ok(hooks)
+    seen
 }
 
-#[cfg(unix)]
-fn can_run(about: &std::fs::Metadata) -> bool {
-    use std::os::unix::fs::PermissionsExt as _;
-    about.permissions().mode() & 0o111 != 0
-}
-
-#[cfg(not(unix))]
-const fn can_run(_about: &std::fs::Metadata) -> bool {
-    true
-}
-
-/// The start of the name of a hook in the list; the name of a setting has no space there.
-pub const HOOK: &str = "hook ";
-
-/// The names of the settings and hooks that are not as the person accepted them: new, gone,
+/// The names of what is not as the person accepted it: new, gone,
 /// or with a different value: all of them, however many. A worktree with no accepted list has
 /// each one as changed.
 #[must_use]
@@ -123,6 +74,27 @@ pub fn changed(
         .into_iter()
         .map(|name| said::without_credentials(name))
         .collect()
+}
+
+/// Refuses when who a commit is from or where a push goes is not as the person accepted it
+/// (THR-049). `listed` is the configuration of the repository as text.
+///
+/// # Errors
+/// [`GitRefusal::Changed`] with the names of what changed.
+pub fn accepted(worktree: &Worktree, listed: &[Setting]) -> Result<(), GitRefusal> {
+    let what = changed(worktree.record().trusted.as_ref(), &now(listed));
+    if what.is_empty() {
+        Ok(())
+    } else {
+        Err(GitRefusal::Changed { what: first(what) })
+    }
+}
+
+/// The names that the page gets: one more than can be shown says that there are more.
+#[must_use]
+pub fn first(mut names: Vec<String>) -> Vec<String> {
+    names.truncate(MOST_NAMES + 1);
+    names
 }
 
 /// One digest of a whole list: what the page shows the person and sends back with their yes.
@@ -183,6 +155,32 @@ mod tests {
             .iter()
             .map(|(name, digest)| ((*name).to_owned(), (*digest).to_owned()))
             .collect()
+    }
+
+    #[test]
+    fn a_planted_author_and_each_place_of_a_push_are_named() {
+        let read = |text: &str| settings::read(text);
+        let own = "global\0user.name\nAda\0global\0user.email\nada@example.invalid\0";
+        assert!(now(&read(own)).is_empty());
+        let planted = format!(
+            "{own}local\0user.email\nm@example.invalid\n\u{1b}[2K\0\
+             local\0remote.origin.url\nhttps://ada:TOKEN@example.invalid/a.git\0"
+        );
+        let seen = now(&read(&planted));
+        let names: Vec<&str> = seen.keys().map(String::as_str).collect();
+        assert_eq!(
+            names,
+            [
+                "commit as Ada <m@example.invalid??[2K>",
+                "push to origin: https://***@example.invalid/a.git"
+            ]
+        );
+        let other = planted.replace("TOKEN", "OTHER");
+        assert_ne!(
+            now(&read(&other)),
+            seen,
+            "a different credential is a change"
+        );
     }
 
     #[test]

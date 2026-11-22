@@ -9,7 +9,6 @@ mod one;
 pub mod said;
 pub mod settings;
 
-use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -65,18 +64,21 @@ pub enum GitError {
     TooLarge,
     #[error("the folder of the worktree was replaced; nothing ran in it")]
     Replaced,
+    #[error("a file of the runner could not be written: {0}")]
+    Files(#[source] std::io::Error),
     #[error("git ended with an error: {said}")]
     Failed { code: Option<i32>, said: String },
 }
 
-/// Who asked for a run: it decides whether the hooks of the repository run.
+/// Who asked for a run. No run reads the configuration or the hooks of the repository of the
+/// person (THR-050); this decides only what of the person's own applies.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Asked {
-    /// The runner by itself (a worktree, a checkpoint, a diff, a revert): no hook and no program
-    /// that the configuration of the repository names (THR-050).
+    /// The runner by itself (a worktree, a checkpoint, a diff, a revert): no hook at all, and
+    /// no transport.
     Runner,
-    /// The person, by an action of their own (a commit, a push): their hooks run, as in a
-    /// terminal of their own.
+    /// The person, by an action of their own (a commit, a push): the hooks, the key and the
+    /// credentials that they set for all their repositories apply.
     Person,
 }
 
@@ -85,30 +87,18 @@ pub enum Asked {
 pub struct Git {
     program: PathBuf,
     env: Vec<(OsString, OsString)>,
-    /// The configuration that turns off the filter programs of one repository
-    /// ([`Git::quiet_in`]), for a run of the runner itself.
-    filters_off: Vec<(String, String)>,
-    /// The configuration of a run for the person: the programs of the person, never the ones
-    /// that the repository names ([`settings::for_the_person`]).
-    of_the_person: Vec<(String, String)>,
-    /// The settings of the repository by name, each with a digest of its values.
-    of_the_repository: BTreeMap<String, String>,
     /// Each hook that the configuration names, off ([`settings::hooks_off`]).
     hooks_off: Vec<(String, String)>,
     /// The person signs their commits ([`settings::signs`]).
     signs: bool,
-    /// The settings of the repository that send a push elsewhere ([`settings::redirects`]).
-    redirects: Vec<String>,
     /// A push to a folder of this computer is allowed; only the tests have such a remote.
     local_remotes: bool,
-    /// A run for the person runs the hooks and the filters of the repository
-    /// ([`Git::with_repository_programs`]); off unless the runner says so.
-    repository_programs: bool,
     /// The work folder of [`Git::for_worktree`] with what it was when the worktree was made:
     /// a folder that was put in its place gets no run.
     folder: Option<(PathBuf, FolderId)>,
-    /// The Git folder, the shared Git folder and the work folder of one worktree
-    /// ([`Git::for_worktree`]): with them `git` reads no `.git` file and no `core.worktree`.
+    /// The Git folder of the runner and the work folder of one worktree
+    /// ([`Git::for_worktree`]): with them `git` reads no `.git` file of the worktree and
+    /// nothing of the Git folder of the person but its objects.
     bound: Vec<(&'static str, OsString)>,
 }
 
@@ -138,24 +128,17 @@ impl Git {
         Ok(Self {
             program,
             env,
-            filters_off: Vec::new(),
-            of_the_person: Vec::new(),
-            of_the_repository: BTreeMap::new(),
             hooks_off: Vec::new(),
             signs: false,
-            redirects: Vec::new(),
             local_remotes: false,
-            repository_programs: false,
             folder: None,
             bound: Vec::new(),
         })
     }
 
-    /// This `git` for the repository at `dir`, with each filter program that the configuration
-    /// of the repository or of its worktree names turned off for the runs of the runner itself
-    /// (THR-050): a checkpoint, a status, a diff or a revert then starts none. `git add`,
-    /// `git write-tree`, `git status` and `git restore` can each start one. A run for the
-    /// person gets the programs of the person, not the ones that the repository names.
+    /// This `git` with each hook that the configuration of the person names turned off for
+    /// the runs of the runner itself (THR-050). `dir` is where `git` reads the configuration:
+    /// the folder of the records, or a worktree with the Git folder of the runner.
     ///
     /// # Errors
     /// A [`GitError`] when the configuration cannot be read.
@@ -164,39 +147,19 @@ impl Git {
         // A name that is not text cannot be turned off by name, so nothing runs with it.
         let listed = String::from_utf8(listed).map_err(|_| GitError::Failed {
             code: None,
-            said: "the configuration of the repository has a name or a value that is not text"
-                .to_owned(),
+            said: "the configuration has a name or a value that is not text".to_owned(),
         })?;
         let found = settings::read(&listed);
         let mut quiet = self.clone();
-        quiet.filters_off = settings::filters_off(&found);
-        quiet.of_the_person = settings::for_the_person(&found);
         quiet.hooks_off = settings::hooks_off(&found);
         quiet.signs = settings::signs(&found);
-        quiet.redirects = settings::redirects(&found);
-        quiet.of_the_repository = settings::of_the_repository(&found);
         Ok(quiet)
     }
 
-    /// This `git` with the hooks and the filters of the repository on or off for the runs for
-    /// the person (a commit, a push). Off, a commit runs no hook and no program that the
-    /// repository names; a run of the runner itself never does.
+    /// A push to a folder of this computer is allowed (only in the tests).
     #[must_use]
-    pub fn with_repository_programs(mut self, on: bool) -> Self {
-        self.repository_programs = on;
-        self
-    }
-
-    #[must_use]
-    pub const fn repository_programs(&self) -> bool {
-        self.repository_programs
-    }
-
-    /// The names of the settings of the repository that send a push through a different
-    /// place than its remote says.
-    #[must_use]
-    pub fn redirects(&self) -> &[String] {
-        &self.redirects
+    pub const fn local_remotes(&self) -> bool {
+        self.local_remotes
     }
 
     /// The person signs their commits.
@@ -214,26 +177,29 @@ impl Git {
         self
     }
 
-    /// The settings of the repository of [`Git::quiet_in`] by name, each with a digest of its
-    /// values: what the person accepts before a commit or a push.
-    #[must_use]
-    pub const fn of_the_repository(&self) -> &BTreeMap<String, String> {
-        &self.of_the_repository
-    }
-
-    /// This `git` held to `worktree`: each run names the Git folder, the shared Git folder and
-    /// the work folder that the runner wrote down when it made the worktree, so that a changed
-    /// `.git` file or a `core.worktree` cannot send a run to the checkout of the person or to a
-    /// different folder (P12). The filters of the repository are off as in [`Git::quiet_in`].
+    /// This `git` with the Git folder of the runner at `own` and no work folder, for the
+    /// moment before a worktree has its files: no run looks for a repository above a folder.
     ///
     /// # Errors
-    /// A [`GitError`] when the configuration cannot be read.
+    /// A [`GitError`] when the configuration of the person cannot be read.
+    pub async fn in_own(&self, own: &Path) -> Result<Self, GitError> {
+        let mut held = self.clone();
+        held.bound = vec![("GIT_DIR", own.as_os_str().to_owned())];
+        held.quiet_in(own).await
+    }
+
+    /// This `git` held to `worktree`: each run has the Git folder of the runner for it and
+    /// its work folder. The `.git` file of the worktree, the configuration, the hooks and the
+    /// `info` folder of the repository of the person are not read, whatever an agent wrote
+    /// there (P12, THR-050).
+    ///
+    /// # Errors
+    /// A [`GitError`] when the configuration of the person cannot be read.
     pub async fn for_worktree(&self, worktree: &super::place::Worktree) -> Result<Self, GitError> {
         let record = worktree.record();
         let mut held = self.clone();
         held.bound = vec![
-            ("GIT_DIR", record.git_dir.clone().into_os_string()),
-            ("GIT_COMMON_DIR", record.common_dir.clone().into_os_string()),
+            ("GIT_DIR", record.own.clone().into_os_string()),
             ("GIT_WORK_TREE", record.folder.clone().into_os_string()),
         ];
         held.folder = record.folder_id.map(|id| (record.folder.clone(), id));
@@ -314,14 +280,14 @@ impl Git {
     fn command(&self, run: &Run<'_>) -> tokio::process::Command {
         let mut command = tokio::process::Command::new(&self.program);
         command
-            .args(fixed_configuration(run.asked, self.repository_programs))
+            .args(fixed_configuration(run.asked))
             .args(&run.args)
             .current_dir(run.dir)
             .env_clear()
             .envs(self.env.iter().map(|(name, value)| (name, value)))
             .envs(fixed_environment())
             .envs(self.bound.iter().map(|(name, value)| (name, value)))
-            .envs(self.overrides(run.asked))
+            .envs(self.overrides(run))
             .envs(run.env.iter().map(|(name, value)| (name, value)))
             .stdin(if run.input.is_some() {
                 Stdio::piped()
@@ -360,24 +326,20 @@ impl Git {
         self.env.iter().map(|(name, _)| name.clone()).collect()
     }
 
-    /// The configuration a run gets through its environment, which wins over each file and can
-    /// name a key with any character in it: the filters of the repository, off, for a run of
-    /// the runner itself; the programs of the person for a run for the person.
-    fn overrides(&self, asked: Asked) -> Vec<(String, String)> {
+    /// The configuration a run gets through its environment, which wins over each file and
+    /// can name a key with any character in it: each hook of the configuration, off, for a
+    /// run of the runner itself; no push to a folder of this computer for the person.
+    fn overrides(&self, run: &Run<'_>) -> Vec<(String, String)> {
+        let asked = run.asked;
         let mut set = match asked {
-            Asked::Runner => self.filters_off.clone(),
-            Asked::Person => self.of_the_person.clone(),
+            Asked::Runner => self.hooks_off.clone(),
+            Asked::Person => Vec::new(),
         };
-        if asked == Asked::Person && !self.repository_programs {
-            set.extend(self.filters_off.iter().cloned());
-        }
-        if asked == Asked::Runner || !self.repository_programs {
-            set.extend(self.hooks_off.iter().cloned());
-        }
         if asked == Asked::Person && !self.local_remotes {
             // A push to a folder runs the hooks of that folder, which nothing here turns off.
             set.push(("protocol.file.allow".to_owned(), "never".to_owned()));
         }
+        set.extend(run.settings.iter().cloned());
         let mut env = vec![("GIT_CONFIG_COUNT".to_owned(), set.len().to_string())];
         for (at, (name, value)) in set.iter().enumerate() {
             env.push((format!("GIT_CONFIG_KEY_{at}"), name.clone()));

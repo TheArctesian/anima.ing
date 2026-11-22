@@ -1,24 +1,28 @@
 //! A commit that the person asked for (TH45): all files or the chosen ones, as they are in the
-//! snapshot that the person looked at, on the branch of the thread or on a new one. //!
-//! The commit is made from the tree of the snapshot with `git commit-tree` and the branch is
-//! moved with `git update-ref`: a merge or a cherry-pick that somebody left half done in the
-//! Git folder cannot give the commit a second parent or a different author, and no file of
-//! the worktree is read. `git commit` is not used, so no `pre-commit` hook runs.
+//! snapshot that the person looked at, on the branch of the thread or on a new one.
 //!
-//! I/O: `git commit-tree`, `git update-ref`, a private index for chosen files.
+//! The commit is made in the Git folder of the runner with `git commit-tree`, from the tree of
+//! the snapshot. Its objects are then copied to the repository of the person as one pack
+//! file, and the branch is moved there as a file ([`refs::put`]). No `git` runs with the Git
+//! folder of the person, so no hook and no setting of it applies, also not one that is written
+//! while the commit runs. `pre-commit` and `commit-msg` hooks do not run.
+//!
+//! I/O: `git commit-tree`, `git pack-objects`, a private index for chosen files, the ref file.
 
 use std::time::Duration;
 
 use agent_threads::git::GitRefusal;
 
 use super::checkpoint;
-use super::place::{self, Worktree};
-use super::run::{Git, Run};
+use super::place::{self, Worktree, own};
+use super::project::refs::{self, Head, Was};
+use super::run::settings::Person;
+use super::run::{Git, GitError, Run};
 
 /// The most bytes of a commit message.
 const MOST: usize = 64 * 1024;
 
-/// The time a commit gets: the hooks of the person can be slow.
+/// The time a commit gets: the program that signs can wait for the person.
 const TIME: Duration = Duration::from_secs(600);
 
 /// What the person asked to commit.
@@ -30,6 +34,8 @@ pub struct Asked<'a> {
     /// `None` is each changed file.
     pub files: Option<&'a [String]>,
     pub new_branch: Option<&'a str>,
+    /// Who the commit is from.
+    pub who: &'a Person,
 }
 
 /// Commits and gives the ID of the commit with the branch it is on. The commit holds the files
@@ -39,15 +45,14 @@ pub struct Asked<'a> {
 /// # Errors
 /// A [`GitRefusal`] for an empty message, a path that leaves the worktree, a branch name that
 /// is taken or not allowed, a branch that the runner did not make, a snapshot that is not the
-/// one the person last looked at, nothing to commit, or a failure of `git`. `own` records a
+/// one the person last looked at, nothing to commit, or a failure of `git`. `own_it` records a
 /// branch that this commit made.
 pub async fn make(
     git: &Git,
     worktree: &Worktree,
     asked: Asked<'_>,
-    own: &(dyn Fn(&str) -> Result<(), GitRefusal> + Sync),
+    own_it: &(dyn Fn(&str) -> Result<(), GitRefusal> + Sync),
 ) -> Result<(String, Option<String>), GitRefusal> {
-    let dir = worktree.folder();
     let message = asked.message.trim();
     if message.is_empty() || message.len() > MOST {
         return Err(GitRefusal::EmptyMessage);
@@ -57,73 +62,99 @@ pub async fn make(
         .files
         .map(|files| files.iter().map(|path| place::inside(path)).collect())
         .transpose()?;
-    let branch = branch_for(git, worktree, asked.new_branch).await?;
-    let head = commit_of(git, worktree, "HEAD^{commit}").await;
-    let reviewed = reviewed(git, worktree, asked.reviewed, head.as_deref()).await?;
-    let tree = tree_of(git, worktree, (reviewed, head.as_deref()), files).await?;
-    if let Some(head) = &head
-        && commit_of(git, worktree, &format!("{head}^{{tree}}"))
+    let layout = worktree.layout();
+    let head = refs::head(&layout)?;
+    let branch = branch_for(worktree, &head, asked.new_branch)?;
+    let tip = head.commit.as_deref();
+    let reviewed = reviewed(git, worktree, asked.reviewed, tip).await?;
+    let tree = tree_of(git, worktree, (reviewed, tip), files).await?;
+    if let Some(tip) = tip
+        && commit_of(git, worktree, &format!("{tip}^{{tree}}"))
             .await
             .as_deref()
             == Some(&tree)
     {
         return Err(GitRefusal::NothingToCommit);
     }
-    let mut write = vec!["commit-tree", tree.as_str(), "-m", message];
-    if let Some(head) = &head {
-        write.extend(["-p", head.as_str()]);
-    }
-    if git.signs() {
-        write.push("-S");
-    }
-    let write = Run::new(dir, write).for_the_person().with_time(TIME);
-    let commit = git.text(write).await?;
+    let commit = written(git, worktree, (&tree, tip), (message, asked.who)).await?;
+    // The repository of the person gets the objects first, then the branch that names them.
+    own::give(git, worktree, &commit, tip).await?;
     // The branch moves only from where it was: a new branch must not exist, the branch of the
     // thread must still be at the parent of the commit.
-    let none = "0".repeat(commit.len());
-    let before = match (asked.new_branch, &head) {
-        (None, Some(head)) => head.as_str(),
-        _ => none.as_str(),
+    let was = match (asked.new_branch, tip) {
+        (None, Some(tip)) => Was::At(tip),
+        _ => Was::Absent,
     };
     let name = format!("refs/heads/{branch}");
-    let land = ["update-ref", name.as_str(), commit.as_str(), before];
-    git.output(Run::new(dir, land).for_the_person().with_time(TIME))
-        .await?;
+    refs::put(&layout.common_dir, &name, &commit, was)?;
     if asked.new_branch.is_some() {
-        own(&branch)?;
-        git.output(Run::new(dir, ["symbolic-ref", "HEAD", name.as_str()]))
-            .await?;
+        own_it(&branch)?;
+        refs::point_head(&layout, &branch)?;
     }
-    // The index follows the branch; the files of the worktree stay as they are.
-    git.output(Run::new(dir, ["reset", "--quiet"])).await?;
+    // The index of the worktree follows the branch; its files stay as they are.
+    own::follow(git, worktree, &commit).await?;
     Ok((commit, Some(branch)))
+}
+
+/// Writes the commit of `tree` on `tip` in the Git folder of the runner: from the person, and
+/// signed when they sign their commits.
+async fn written(
+    git: &Git,
+    worktree: &Worktree,
+    (tree, tip): (&str, Option<&str>),
+    (message, who): (&str, &Person),
+) -> Result<String, GitError> {
+    let mut write = Vec::new();
+    for (name, value) in &who.signing {
+        write.extend(["-c".to_owned(), format!("{name}={value}")]);
+    }
+    write.extend(["commit-tree", tree, "-m", message].map(str::to_owned));
+    if let Some(tip) = tip {
+        write.extend(["-p".to_owned(), tip.to_owned()]);
+    }
+    if git.signs() {
+        write.push("-S".to_owned());
+    }
+    let mut write = Run::new(worktree.folder(), write)
+        .for_the_person()
+        .with_time(TIME);
+    if let Some(name) = &who.name {
+        write = write
+            .with_env("GIT_AUTHOR_NAME", name)
+            .with_env("GIT_COMMITTER_NAME", name);
+    }
+    if let Some(email) = &who.email {
+        write = write
+            .with_env("GIT_AUTHOR_EMAIL", email)
+            .with_env("GIT_COMMITTER_EMAIL", email);
+    }
+    git.text(write).await
 }
 
 /// The branch the commit goes to: a new one that does not exist yet, or the one the worktree
 /// is on when the runner made it for this thread (P12).
-async fn branch_for(
-    git: &Git,
+fn branch_for(
     worktree: &Worktree,
+    head: &Head,
     new_branch: Option<&str>,
 ) -> Result<String, GitRefusal> {
-    let dir = worktree.folder();
     let Some(name) = new_branch else {
-        let on = ["symbolic-ref", "--quiet", "--short", "HEAD"];
-        let head = git.text(Run::new(dir, on)).await.ok();
         return head
-            .filter(|head| worktree.owns(head))
+            .branch
+            .clone()
+            .filter(|on| worktree.owns(on))
             .ok_or(GitRefusal::NotOurBranch);
     };
     let name = place::branch_name(name)?;
-    let full = format!("refs/heads/{name}");
-    let verify = ["show-ref", "--verify", "--quiet", full.as_str()];
-    if git.yes(Run::new(dir, verify)).await? {
+    let common = &worktree.record().common_dir;
+    if refs::resolve(common, &format!("refs/heads/{name}"))?.is_some() {
         return Err(GitRefusal::BranchExists);
     }
     Ok(name.to_owned())
 }
 
-/// The ID that `name` resolves to; `None` when it names nothing.
+/// The ID that `name` resolves to in the Git folder of the runner; `None` when it names
+/// nothing.
 async fn commit_of(git: &Git, worktree: &Worktree, name: &str) -> Option<String> {
     let verify = ["rev-parse", "--verify", "--quiet", "--end-of-options", name];
     git.text(Run::new(worktree.folder(), verify)).await.ok()
@@ -136,16 +167,13 @@ async fn reviewed<'a>(
     git: &Git,
     worktree: &Worktree,
     id: &'a str,
-    head: Option<&str>,
+    tip: Option<&str>,
 ) -> Result<&'a str, GitRefusal> {
-    let hex = |c: char| c.is_ascii_digit() || ('a'..='f').contains(&c);
-    if !matches!(id.len(), 40 | 64) || !id.chars().all(hex) {
-        return Err(GitRefusal::NotReviewed);
-    }
+    let id = refs::id(id).ok_or(GitRefusal::NotReviewed)?;
     let kept = checkpoint::reviewed_ref(worktree.thread());
     let shown = commit_of(git, worktree, &format!("{kept}^{{commit}}")).await;
     let parent = commit_of(git, worktree, &format!("{id}^1^{{commit}}")).await;
-    if shown.as_deref() == Some(id) && parent.as_deref() == head {
+    if shown.as_deref() == Some(id) && parent.as_deref() == tip {
         Ok(id)
     } else {
         Err(GitRefusal::NotReviewed)
@@ -154,11 +182,11 @@ async fn reviewed<'a>(
 
 /// The tree to commit: the one of the snapshot, or the last commit with only the chosen files
 /// as the snapshot has them, which passed [`place::inside`]. It is built in a private index:
-/// no file and no index of the worktree is read or changed, and no filter program runs.
+/// no file and no index of the worktree is read or changed.
 async fn tree_of<'a>(
     git: &Git,
     worktree: &'a Worktree,
-    (reviewed, head): (&str, Option<&str>),
+    (reviewed, tip): (&str, Option<&str>),
     files: Option<Vec<&str>>,
 ) -> Result<String, GitRefusal> {
     let dir = worktree.folder();
@@ -174,8 +202,8 @@ async fn tree_of<'a>(
     let scratch = tempfile::tempdir().map_err(|_| GitRefusal::BadPath)?;
     let index = scratch.path().join("index");
     let private = |run: Run<'a>| run.with_env("GIT_INDEX_FILE", index.as_os_str());
-    if let Some(head) = head {
-        git.output(private(Run::new(dir, ["read-tree", head])))
+    if let Some(tip) = tip {
+        git.output(private(Run::new(dir, ["read-tree", tip])))
             .await?;
     }
     let mut paths = Vec::new();

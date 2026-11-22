@@ -41,11 +41,9 @@ export interface GitStatus {
   files: readonly ChangedFile[];
   additions: number;
   deletions: number;
-  /** The hooks of the repository that a commit or a push runs. */
-  hooks?: readonly string[];
-  /** The hooks and settings that changed since the person last accepted them; a commit or a push is refused until they accept (`trust`). */
+  /** Who a commit is from (when the repository sets it) and where a push goes, each as a line to read, when it is not as the person last accepted it; a commit or a push is refused until they accept (`trust`). No hook of the repository runs for either. */
   changed?: readonly string[];
-  /** A digest of the hooks and settings as they are now. The page sends it back with the yes of the person (`trust`), so that the yes counts only for the list they read. */
+  /** A digest of those lines as they are now. The page sends it back with the yes of the person (`trust`), so that the yes counts only for the list they read. */
   accept?: string;
 }
 
@@ -106,7 +104,7 @@ const REFUSALS: Record<GitRefusal, string> = {
   unknown_base: 'The base branch does not resolve to a commit.',
   not_a_repository: 'This folder is not a git repository.',
   git_not_found: 'Git is not installed on this computer.',
-  changed: 'Hooks or settings of the repository changed since you last accepted them. Read what changed and accept it before a commit or a push.',
+  changed: 'Who a commit is from or where a push goes changed in the repository since you last accepted it. Read what changed and accept it before a commit or a push.',
   not_reviewed: 'The files or the branch changed since you looked. Read the changes again, then commit.'
 };
 

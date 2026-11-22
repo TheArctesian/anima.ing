@@ -5,12 +5,22 @@
 
 use std::collections::HashMap;
 
-use agent_threads::git::{ChangeKind, ChangedFile, Changes};
+use agent_threads::git::{ChangeKind, ChangedFile, Changes, GitRefusal, Scope};
 
+use super::checkpoint;
 use super::place::Worktree;
 use super::run::{Git, GitError, Run};
 
-/// The changes from the commit `from` to the commit `to`.
+/// How much of the changes is read.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Look {
+    /// The files, their counts and the patch of each.
+    Patches { ignore_whitespace: bool },
+    /// The files and their counts.
+    Counts,
+}
+
+/// The changes from the commit or tree `from` to the commit or tree `to`.
 ///
 /// # Errors
 /// A [`GitError`] when `git diff` fails. Patches over the limit of output are left out and
@@ -19,8 +29,12 @@ pub async fn between(
     git: &Git,
     worktree: &Worktree,
     range: (&str, &str),
-    ignore_whitespace: bool,
+    look: Look,
 ) -> Result<Changes, GitError> {
+    let ignore_whitespace = look
+        == Look::Patches {
+            ignore_whitespace: true,
+        };
     let diff = |form: &[&str]| {
         let mut args = vec![
             "diff",
@@ -44,12 +58,58 @@ pub async fn between(
     };
     let names = diff(&["--name-status", "-z"]).await?;
     let counts = diff(&["--numstat", "-z"]).await?;
+    if look == Look::Counts {
+        let mut listed = read(&names, &counts, None);
+        listed.truncated = false;
+        return Ok(listed);
+    }
     let patch = match diff(&["--patch"]).await {
         Ok(patch) => Some(String::from_utf8_lossy(&patch).into_owned()),
         Err(GitError::TooLarge) => None,
         Err(other) => return Err(other),
     };
     Ok(read(&names, &counts, patch.as_deref()))
+}
+
+/// The changes of `scope`: between two checkpoints, or from the last commit to the files now.
+/// For the files of now, [`Changes::snapshot`] names the snapshot that holds them.
+///
+/// # Errors
+/// [`GitRefusal::UnknownCheckpoint`] for a turn with no checkpoint; a failure of `git`.
+pub async fn of(
+    git: &Git,
+    worktree: &Worktree,
+    scope: Scope,
+    ignore_whitespace: bool,
+) -> Result<Changes, GitRefusal> {
+    let turns = checkpoint::list(git, worktree).await?;
+    let at = |turn: u32| {
+        turns
+            .iter()
+            .find(|checkpoint| checkpoint.turn == turn)
+            .map(|checkpoint| checkpoint.commit.clone())
+            .ok_or(GitRefusal::UnknownCheckpoint)
+    };
+    let (from, to) = match scope {
+        Scope::Uncommitted => {
+            // Against the commit that the snapshot was made on, not the branch of now.
+            let now = checkpoint::snapshot(git, worktree).await?;
+            (format!("{now}^1"), now)
+        }
+        Scope::Turn { turn } => (
+            at(turn.checked_sub(1).ok_or(GitRefusal::UnknownCheckpoint)?)?,
+            at(turn)?,
+        ),
+        Scope::Thread => match (turns.first(), turns.last()) {
+            (Some(first), Some(last)) => (first.commit.clone(), last.commit.clone()),
+            _ => return Err(GitRefusal::UnknownCheckpoint),
+        },
+    };
+    let look = Look::Patches { ignore_whitespace };
+    let mut changes = between(git, worktree, (&from, &to), look).await?;
+    // A commit of the person names this snapshot: it holds what the page shows.
+    changes.snapshot = (scope == Scope::Uncommitted).then_some(to);
+    Ok(changes)
 }
 
 /// Reads the three outputs of `git diff` (`--name-status -z`, `--numstat -z`, `--patch`) as one

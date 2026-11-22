@@ -2,15 +2,16 @@
 //! of the forge where the person opens it. The runner calls no forge and reads no token: the
 //! person opens the pull request in their own browser.
 //!
-//! [`page`] is pure; [`prepare`] reads the status and the URL of the remote.
+//! [`page`] is pure; [`prepare`] reads the status.
 
 use std::fmt::Write as _;
 
 use agent_threads::git::{GitRefusal, PullRequestPage};
 
-use super::place::Worktree;
-use super::run::{Git, Run};
-use super::status;
+use super::super::place::Worktree;
+use super::super::run::Git;
+use super::super::run::settings::Setting;
+use super::super::status;
 
 /// The page of a forge that compares `head` with `base`, from the URL of the remote. `None` for
 /// a forge that is not known, or a URL whose parts have a character that is not allowed.
@@ -74,8 +75,12 @@ fn in_url(name: &str) -> String {
 ///
 /// # Errors
 /// The [`GitRefusal`] that the page shows as the reason.
-pub async fn prepare(git: &Git, worktree: &Worktree) -> Result<PullRequestPage, GitRefusal> {
-    let now = status::of(git, worktree).await?;
+pub async fn prepare(
+    git: &Git,
+    worktree: &Worktree,
+    listed: &[Setting],
+) -> Result<PullRequestPage, GitRefusal> {
+    let now = status::of(git, worktree, listed).await?;
     let head = now.branch.clone().ok_or(GitRefusal::DetachedHead)?;
     let base = now.default_branch.clone().ok_or(GitRefusal::NoRemote)?;
     if now.is_default_branch {
@@ -84,21 +89,13 @@ pub async fn prepare(git: &Git, worktree: &Worktree) -> Result<PullRequestPage, 
     if !worktree.owns(&head) {
         return Err(GitRefusal::NotOurBranch);
     }
-    let remote = status::remote(git, worktree)
-        .await?
-        .ok_or(GitRefusal::NoRemote)?;
+    let (_, url) = status::remote(listed).ok_or(GitRefusal::NoRemote)?;
     if now.upstream.is_none() || now.ahead > 0 {
         return Err(GitRefusal::NotPushed);
     }
     if now.ahead_of_default == 0 {
         return Err(GitRefusal::NoCommits);
     }
-    let url = git
-        .text(Run::new(
-            worktree.folder(),
-            ["remote", "get-url", "--", remote.as_str()],
-        ))
-        .await?;
     let url = page(&url, &base, &head).ok_or(GitRefusal::UnknownForge)?;
     Ok(PullRequestPage { url, base, head })
 }

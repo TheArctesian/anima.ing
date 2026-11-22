@@ -1,12 +1,14 @@
 //! The revert of the files of a worktree to a checkpoint (TH44, the file part of "Edit from
 //! here"). It takes a [`Worktree`], so it cannot run in the checkout of the person (P12).
 //!
-//! I/O: `git restore`, `git clean` and `git reset`, each held to the folder of the worktree.
+//! I/O: `git restore` and `git clean` with the Git folder of the runner, each held to the
+//! folder of the worktree.
 
 use agent_threads::git::GitRefusal;
 
 use super::checkpoint;
-use super::place::Worktree;
+use super::place::{Worktree, own};
+use super::project::refs;
 use super::run::{Git, GitError, Run};
 
 /// Puts the files back as they were at the checkpoint of `turn`. The files as they were before
@@ -23,6 +25,8 @@ pub async fn to_turn(git: &Git, worktree: &Worktree, turn: u32) -> Result<String
         .find(|checkpoint| checkpoint.turn == turn)
         .ok_or(GitRefusal::UnknownCheckpoint)?;
     let undo = checkpoint::before_revert_ref(worktree.thread());
+    // The snapshot leaves the index of the runner equal to the files of now, so that the
+    // restore knows each file that is not in the checkpoint.
     let before = checkpoint::snapshot(git, worktree).await?;
     checkpoint::keep(git, worktree, &undo, &before).await?;
     if let Err(failed) = files_as_at(git, worktree, &target.commit).await {
@@ -31,12 +35,15 @@ pub async fn to_turn(git: &Git, worktree: &Worktree, turn: u32) -> Result<String
         return Err(failed.into());
     }
     checkpoint::forget(git, worktree, |other| other > turn).await?;
+    // Nothing that was staged before the revert stays staged for the files of now.
+    if let Some(tip) = refs::head(&worktree.layout())?.commit {
+        own::follow(git, worktree, &tip).await?;
+    }
     Ok(undo)
 }
 
-/// Makes the files of the worktree equal to the tree of `commit`: restores each file of it,
-/// removes each file that is not in it and that git does not ignore, and puts the index back to
-/// the branch.
+/// Makes the files of the worktree equal to the tree of `commit`: restores each file of it and
+/// removes each file that is not in it and that git does not ignore.
 async fn files_as_at(git: &Git, worktree: &Worktree, commit: &str) -> Result<(), GitError> {
     let dir = worktree.folder();
     let restore = [
@@ -45,20 +52,11 @@ async fn files_as_at(git: &Git, worktree: &Worktree, commit: &str) -> Result<(),
         commit,
         "--worktree",
         "--staged",
-        // A file that the index marks to skip is put back too.
-        "--ignore-skip-worktree-bits",
         "--",
         ".",
     ];
     git.output(Run::new(dir, restore)).await?;
     git.output(Run::new(dir, ["clean", "-f", "-d", "--", "."]))
-        .await?;
-    match git
-        .output(Run::new(dir, ["reset", "--quiet", "--", "."]))
         .await
-    {
-        // A repository with no commit has no `HEAD` to reset to; the files are right already.
-        Ok(_) | Err(GitError::Failed { .. }) => Ok(()),
-        Err(other) => Err(other),
-    }
+        .map(drop)
 }

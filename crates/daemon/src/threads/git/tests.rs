@@ -24,7 +24,6 @@ const PERSON: Caller = Caller {
     agent: false,
     running: false,
     thread: None,
-    repository_programs: false,
 };
 
 /// The worktree of the thread of the tests.
@@ -94,6 +93,16 @@ impl Bench {
             .unwrap_or_else(|error| panic!("git {args:?}: {error}"))
     }
 
+    /// A command of the test in the Git folder of the runner for the worktree of the thread,
+    /// where the checkpoints are.
+    async fn git_own(&self, args: &[&str]) -> String {
+        let own = self.home.with_file_name("records");
+        let own = own.join(THREAD.to_string()).join("engine.git");
+        let place = format!("--git-dir={}", own.display());
+        let all = [&[place.as_str()][..], args].concat();
+        self.git_in(&self.home, &all).await
+    }
+
     /// The worktree of the thread, made from the project.
     async fn worktree(&self) -> PathBuf {
         let plan = worktree::Plan {
@@ -102,12 +111,12 @@ impl Bench {
             base: None,
         };
         let made = self.engine.worktree(plan).await.expect("a worktree");
-        // The person accepts the settings of their repository once, as on its first commit.
+        // The person accepts who commits and where a push goes once, as on a first commit.
         assert_eq!(self.trust(PERSON).await, GitOutcome::Trusted);
         made.worktree.folder().to_owned()
     }
 
-    /// The yes of the person to the hooks and settings that the status shows now.
+    /// The yes of the person to what the status shows as changed now.
     async fn trust(&self, caller: Caller) -> GitOutcome {
         let shown = self.status(caller).await.accept;
         self.call(caller, GitAction::Trust { shown }).await
@@ -159,20 +168,6 @@ impl Bench {
         match self.call(caller, GitAction::Status).await {
             GitOutcome::Status(status) => status,
             other => panic!("no status: {other:?}"),
-        }
-    }
-
-    /// Writes the hook of the project that runs when a ref moves; each worktree shares it.
-    fn hook(&self, body: &str) {
-        let hooks = self.project.join(".git/hooks");
-        std::fs::create_dir_all(&hooks).expect("the hooks");
-        let file = hooks.join("reference-transaction");
-        std::fs::write(&file, format!("#!/bin/sh\n{body}\n")).expect("a hook");
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt as _;
-            let runs = std::fs::Permissions::from_mode(0o755);
-            std::fs::set_permissions(&file, runs).expect("a mode");
         }
     }
 
@@ -258,16 +253,9 @@ async fn a_checkpoint_takes_new_files_and_no_ignored_file_and_moves_no_branch() 
         .await;
     std::fs::write(folder.join(".gitattributes"), "*.txt filter=mark\n").expect("a file");
     bench.turn_ended(1).await;
+    let turn = checkpoint::turn_ref(THREAD, 1);
     let listed = bench
-        .git_in(
-            &folder,
-            &[
-                "ls-tree",
-                "-r",
-                "--name-only",
-                &checkpoint::turn_ref(THREAD, 1),
-            ],
-        )
+        .git_own(&["ls-tree", "-r", "--name-only", &turn])
         .await;
     assert!(listed.contains("new.txt"), "{listed}");
     assert!(!listed.contains("secret.env"), "{listed}");

@@ -45,11 +45,11 @@ pub enum GitAction {
     PullRequest,
     /// Saves the work to a private ref and removes the worktree. For the person only.
     Remove,
-    /// The person read what changed in the hooks and the settings of the repository
-    /// ([`Status::changed`]) and accepts them for a commit and a push. For the person only.
+    /// The person read what changed in who a commit is from and where a push goes
+    /// ([`Status::changed`]) and accepts it for a commit and a push. For the person only.
     Trust {
         /// The [`Status::accept`] of the status that the page showed: what the person read.
-        /// The runner refuses when the hooks or settings are not these any more.
+        /// The runner refuses when the list is not this one any more.
         shown: String,
     },
 }
@@ -147,8 +147,8 @@ pub enum GitRefusal {
     UnknownBase,
     NotARepository,
     GitNotFound,
-    /// Hooks or settings of the repository changed since the worktree was made or the person
-    /// last accepted them: `what` names each one. A commit or a push would run or obey them.
+    /// Who a commit is from or where a push goes changed in the repository since the person
+    /// last accepted them: `what` names each one. A commit or a push would take them.
     Changed {
         what: Vec<String>,
     },
@@ -182,14 +182,12 @@ pub struct Status {
     pub files: Vec<ChangedFile>,
     pub additions: u32,
     pub deletions: u32,
-    /// The hooks of the repository that a commit or a push of the person runs.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub hooks: Vec<String>,
-    /// The hooks and settings that changed since the person last accepted them; a commit or
-    /// a push is refused until [`GitAction::Trust`].
+    /// Who a commit is from (when the repository sets it) and where a push goes, each as a
+    /// line to read, when it is not as the person last accepted it; a commit or a push is
+    /// refused until [`GitAction::Trust`]. No hook of the repository runs for either.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub changed: Vec<String>,
-    /// A digest of the hooks and settings as they are now, which [`GitAction::Trust`] names.
+    /// A digest of those lines as they are now, which [`GitAction::Trust`] names.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub accept: String,
 }

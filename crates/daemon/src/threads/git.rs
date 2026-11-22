@@ -6,14 +6,20 @@
 //! something (THR-049), and it finds the worktree by the ID of the thread alone, so that no
 //! path of a client reaches `git` and the checkout of the person is never changed (P12).
 //!
-//! Pure: [`place`] (the checks), the readers of [`changes`], [`status`] and [`pull_request`].
-//! I/O: [`run`] starts `git`; the other modules call it.
+//! Each `git` of the runner runs with a Git folder of the runner ([`place::own`]), never with
+//! the one of the repository of the person: an agent can write the configuration and the
+//! hooks there at any moment, and no list of names turns off what is written a moment later
+//! (THR-050). What the repository of the person must give or get goes through [`project`], as
+//! files.
+//!
+//! Pure: [`place`] (the checks), the readers of [`changes`] and [`push::pull_request`].
+//! I/O: [`run`] starts `git`; [`project`] reads and writes files of the person's Git folder.
 
 pub mod changes;
 pub mod checkpoint;
 pub mod commit;
 pub mod place;
-pub mod pull_request;
+pub mod project;
 pub mod push;
 pub mod revert;
 pub mod run;
@@ -30,7 +36,21 @@ use agent_threads::git::{Changes, GitAction, GitOutcome, GitRefusal, Scope};
 use uuid::Uuid;
 
 use place::{BadPlace, Home, Record, Worktree};
+use project::ProjectError;
+use push::pull_request;
+use run::settings::Setting;
 use run::{Git, GitError};
+
+impl From<ProjectError> for GitRefusal {
+    fn from(error: ProjectError) -> Self {
+        match error {
+            ProjectError::NotARepository => Self::NotARepository,
+            other => Self::Failed {
+                said: other.to_string(),
+            },
+        }
+    }
+}
 
 impl From<GitError> for GitRefusal {
     fn from(error: GitError) -> Self {
@@ -61,10 +81,6 @@ pub struct Caller {
     pub running: bool,
     /// The thread whose agent calls; `None` for the person. An agent reads only its own thread.
     pub thread: Option<Uuid>,
-    /// A commit and a push of this thread run the hooks and the filters of the repository.
-    /// Off, they run none: the person commits what they saw, and no program that an agent
-    /// could have written in the repository starts.
-    pub repository_programs: bool,
 }
 
 /// One worktree of a thread, named by the thread and the repository, never by a path.
@@ -74,7 +90,9 @@ pub struct Target<'a> {
     pub repository: &'a str,
 }
 
-/// One lock for each worktree, by its thread and the name of its repository.
+/// The locks of the worktrees, by thread and the name of the repository: one for the actions
+/// that change something, one (with `/index` after the name) for each use of the index of the
+/// runner.
 type Locks = HashMap<(Uuid, String), Arc<tokio::sync::Mutex<()>>>;
 
 /// The Git of the threads of this computer. A clone is cheap and is the same engine: the
@@ -125,6 +143,7 @@ impl Engine {
     /// A [`GitRefusal`] when the thread has no worktree or `git` fails.
     pub async fn turn_ended(&self, target: Target<'_>, turn: u32) -> Result<(), GitRefusal> {
         let _alone = self.alone(target.thread, target.repository).await;
+        let _index = self.index(target).await;
         let worktree = self.home.worktree(target.thread, target.repository)?;
         let git = self.git.for_worktree(&worktree).await?;
         checkpoint::capture(&git, &worktree, turn).await?;
@@ -149,12 +168,47 @@ impl Engine {
         } else {
             None
         };
+        // Each use of the index of the runner waits for the one before it; a push lets go of
+        // it before it speaks to the remote, so that the page can read while a push runs.
+        let index = self.index(target).await;
         let done = match self.home.worktree(target.thread, target.repository) {
-            Ok(worktree) if own_thread => self.act(caller, &worktree, action).await,
+            Ok(worktree) if own_thread => match action {
+                GitAction::Push {
+                    default_branch_allowed,
+                } => {
+                    let asked = (caller, default_branch_allowed);
+                    self.push(asked, &worktree, index).await
+                }
+                action => self.act(caller, &worktree, action).await,
+            },
             Ok(_) => Err(GitRefusal::NoWorktree),
             Err(bad) => Err(bad.into()),
         };
         done.unwrap_or_else(|why| GitOutcome::Refused { why })
+    }
+
+    /// The lock of the index of the runner for the worktree of `target`.
+    async fn index(&self, target: Target<'_>) -> tokio::sync::OwnedMutexGuard<()> {
+        let name = format!("{}/index", target.repository);
+        self.alone(target.thread, &name).await
+    }
+
+    /// A push: the checks with the index held, then the remote without it.
+    async fn push(
+        &self,
+        (caller, default_branch_allowed): (Caller, bool),
+        worktree: &Worktree,
+        index: tokio::sync::OwnedMutexGuard<()>,
+    ) -> Result<GitOutcome, GitRefusal> {
+        if caller.running {
+            return Err(GitRefusal::Running);
+        }
+        let git = &self.git.for_worktree(worktree).await?;
+        let listed = &project::settings(git, &worktree.layout(), worktree.folder()).await?;
+        trust::accepted(worktree, listed)?;
+        let ready = push::ready(git, worktree, listed, default_branch_allowed).await?;
+        drop(index);
+        push::send(git, worktree, ready).await
     }
 
     async fn act(
@@ -163,14 +217,15 @@ impl Engine {
         worktree: &Worktree,
         action: GitAction,
     ) -> Result<GitOutcome, GitRefusal> {
-        let git = self.git.for_worktree(worktree).await?;
-        let git = &git.with_repository_programs(caller.repository_programs);
-        // While a turn runs the files change: nothing is reverted, removed, committed or pushed.
+        let git = &self.git.for_worktree(worktree).await?;
+        // While a turn runs the files change: nothing is reverted, removed or committed.
         if caller.running && waits_for_the_turn(&action) {
             return Err(GitRefusal::Running);
         }
+        let layout = &worktree.layout();
+        let listed = || project::settings(git, layout, worktree.folder());
         Ok(match action {
-            GitAction::Status => GitOutcome::Status(shown(git, worktree).await?),
+            GitAction::Status => GitOutcome::Status(shown(git, worktree, &listed().await?).await?),
             GitAction::Checkpoints => GitOutcome::Checkpoints {
                 checkpoints: checkpoint::list(git, worktree).await?,
             },
@@ -191,52 +246,51 @@ impl Engine {
                 files,
                 new_branch,
             } => {
-                accepted(git, worktree).await?;
+                let listed = listed().await?;
+                trust::accepted(worktree, &listed)?;
                 let asked = commit::Asked {
                     message: &message,
                     reviewed: &reviewed,
                     files: files.as_deref(),
                     new_branch: new_branch.as_deref(),
+                    who: &run::settings::person(&listed),
                 };
                 // A branch that this call makes is written to the record as one of the thread.
                 let own = |name: &str| self.rewrite(worktree, |r| r.branches.push(name.to_owned()));
                 let (commit, branch) = commit::make(git, worktree, asked, &own).await?;
                 GitOutcome::Committed { commit, branch }
             }
-            GitAction::Push {
-                default_branch_allowed,
-            } => {
-                accepted(git, worktree).await?;
-                push::make(git, worktree, default_branch_allowed).await?
-            }
-            GitAction::PullRequest => {
-                GitOutcome::PullRequest(pull_request::prepare(git, worktree).await?)
-            }
+            GitAction::PullRequest => GitOutcome::PullRequest(
+                pull_request::prepare(git, worktree, &listed().await?).await?,
+            ),
             GitAction::Remove => GitOutcome::Removed {
                 kept: Some(worktree::remove(&self.git, &self.home, worktree).await?),
             },
-            GitAction::Trust { shown } => self.trust(git, worktree, &shown).await?,
+            GitAction::Trust { shown } => self.trust(worktree, &listed().await?, &shown)?,
+            // A push has its own way through the locks ([`Engine::push`]).
+            GitAction::Push { .. } => return Err(GitRefusal::Running),
         })
     }
 
-    /// Writes down that the person accepts the hooks and settings as they are now, when they
-    /// are the ones that the page showed (`shown`) and each change could be shown.
-    async fn trust(
+    /// Writes down that the person accepts who a commit is from and where a push goes, as
+    /// they are now, when they are what the page showed (`shown`) and each could be shown.
+    fn trust(
         &self,
-        git: &Git,
         worktree: &Worktree,
+        listed: &[Setting],
         shown: &str,
     ) -> Result<GitOutcome, GitRefusal> {
-        let seen = to_accept(git, worktree).await?;
-        let (what, _) = not_accepted(git, worktree).await?;
+        let seen = trust::now(listed);
+        let what = trust::changed(worktree.record().trusted.as_ref(), &seen);
         if what.len() > trust::MOST_NAMES {
             return Err(GitRefusal::Failed {
-                said: "too many hooks and settings changed to show them; nothing is accepted"
-                    .to_owned(),
+                said: "too many settings changed to show them; nothing is accepted".to_owned(),
             });
         }
         if trust::digest(&seen) != shown {
-            return Err(GitRefusal::Changed { what: first(what) });
+            return Err(GitRefusal::Changed {
+                what: trust::first(what),
+            });
         }
         trust::keep_baseline(&self.home, &worktree.record().project, &seen)?;
         self.rewrite(worktree, |record| record.trusted = Some(seen))?;
@@ -266,7 +320,7 @@ async fn shown_changes(
     (scope, ignore_whitespace): (Scope, bool),
     keep: bool,
 ) -> Result<Changes, GitRefusal> {
-    let changes = changes_of(git, worktree, scope, ignore_whitespace).await?;
+    let changes = changes::of(git, worktree, scope, ignore_whitespace).await?;
     if let (true, Some(shown)) = (keep, &changes.snapshot) {
         let name = checkpoint::reviewed_ref(worktree.thread());
         checkpoint::keep(git, worktree, &name, shown).await?;
@@ -286,97 +340,15 @@ const fn waits_for_the_turn(action: &GitAction) -> bool {
     )
 }
 
-/// Refuses when a hook or a setting of the repository is not as the person accepted it: a
-/// commit or a push would run or obey it (THR-049).
-async fn accepted(git: &Git, worktree: &Worktree) -> Result<(), GitRefusal> {
-    let (what, _) = not_accepted(git, worktree).await?;
-    if what.is_empty() {
-        Ok(())
-    } else {
-        Err(GitRefusal::Changed { what: first(what) })
-    }
-}
-
-/// The status with the hooks that a commit runs and what changed since the person accepted.
-async fn shown(git: &Git, worktree: &Worktree) -> Result<agent_threads::git::Status, GitRefusal> {
-    let mut status = status::of(git, worktree).await?;
-    let (changed, hooks) = not_accepted(git, worktree).await?;
-    (status.changed, status.hooks) = (first(changed), hooks);
-    status.accept = trust::digest(&to_accept(git, worktree).await?);
+/// The status with what changed since the person accepted it.
+async fn shown(
+    git: &Git,
+    worktree: &Worktree,
+    listed: &[Setting],
+) -> Result<agent_threads::git::Status, GitRefusal> {
+    let mut status = status::of(git, worktree, listed).await?;
+    let seen = trust::now(listed);
+    status.changed = trust::first(trust::changed(worktree.record().trusted.as_ref(), &seen));
+    status.accept = trust::digest(&seen);
     Ok(status)
-}
-
-/// The names that the page gets: one more than can be shown says that there are more.
-fn first(mut names: Vec<String>) -> Vec<String> {
-    names.truncate(trust::MOST_NAMES + 1);
-    names
-}
-
-/// Each name of what changed since the person accepted it, and the hooks that a commit runs.
-/// For a thread whose commits run no program of the repository, both are without the hooks.
-async fn not_accepted(
-    git: &Git,
-    worktree: &Worktree,
-) -> Result<(Vec<String>, Vec<String>), GitRefusal> {
-    let seen = trust::now(git, worktree).await?;
-    let mut what = trust::changed(worktree.record().trusted.as_ref(), &seen.entries);
-    if git.repository_programs() {
-        return Ok((what, seen.hooks));
-    }
-    what.retain(|name| !name.starts_with(trust::HOOK));
-    Ok((what, Vec::new()))
-}
-
-/// What the person accepts now. For a thread that runs no hook, no hook was shown as changed,
-/// so the hooks stay as the person accepted them before.
-async fn to_accept(
-    git: &Git,
-    worktree: &Worktree,
-) -> Result<std::collections::BTreeMap<String, String>, GitRefusal> {
-    let mut seen = trust::now(git, worktree).await?.entries;
-    if !git.repository_programs() {
-        let before = worktree.record().trusted.clone().unwrap_or_default();
-        let hook = |name: &String| name.starts_with(trust::HOOK);
-        seen.retain(|name, _| !hook(name));
-        seen.extend(before.into_iter().filter(|(name, _)| hook(name)));
-    }
-    Ok(seen)
-}
-
-/// The changes of `scope`: between two checkpoints, or from the last commit to the files now.
-async fn changes_of(
-    git: &Git,
-    worktree: &Worktree,
-    scope: Scope,
-    ignore_whitespace: bool,
-) -> Result<Changes, GitRefusal> {
-    {
-        let turns = checkpoint::list(git, worktree).await?;
-        let at = |turn: u32| {
-            turns
-                .iter()
-                .find(|checkpoint| checkpoint.turn == turn)
-                .map(|checkpoint| checkpoint.commit.clone())
-                .ok_or(GitRefusal::UnknownCheckpoint)
-        };
-        let (from, to) = match scope {
-            Scope::Uncommitted => {
-                // Against the commit that the snapshot was made on, not the branch of now.
-                let now = checkpoint::snapshot(git, worktree).await?;
-                (format!("{now}^1"), now)
-            }
-            Scope::Turn { turn } => (
-                at(turn.checked_sub(1).ok_or(GitRefusal::UnknownCheckpoint)?)?,
-                at(turn)?,
-            ),
-            Scope::Thread => match (turns.first(), turns.last()) {
-                (Some(first), Some(last)) => (first.commit.clone(), last.commit.clone()),
-                _ => return Err(GitRefusal::UnknownCheckpoint),
-            },
-        };
-        let mut changes = changes::between(git, worktree, (&from, &to), ignore_whitespace).await?;
-        // A commit of the person names this snapshot: it holds what the page shows.
-        changes.snapshot = (scope == Scope::Uncommitted).then_some(to);
-        Ok(changes)
-    }
 }

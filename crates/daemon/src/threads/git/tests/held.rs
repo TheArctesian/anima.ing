@@ -59,9 +59,8 @@ async fn a_folder_put_in_the_place_of_the_worktree_gets_no_run() {
     );
 }
 
-#[cfg(unix)]
 #[tokio::test]
-async fn a_checkpoint_waits_for_a_commit_that_runs_on_the_same_worktree() {
+async fn a_checkpoint_and_a_commit_wait_while_the_worktree_is_held() {
     use std::time::{Duration, Instant};
 
     fn shared<T: Send + Sync + Clone + 'static>(_: &T) {}
@@ -73,34 +72,41 @@ async fn a_checkpoint_waits_for_a_commit_that_runs_on_the_same_worktree() {
     shared(&bench.engine);
     a_task(&bench.call(PERSON, GitAction::Status));
     a_task(&bench.engine.turn_ended(super::target(), 1));
-    bench.hook("sleep 1");
     let folder = bench.worktree().await;
     std::fs::write(folder.join("a.txt"), "changed\n").expect("a file");
     let reviewed = bench.reviewed().await;
-    let allowed = Caller {
-        repository_programs: true,
-        ..PERSON
+    // A different action of the person has the worktree, as a commit that waits for a key.
+    let taken = bench.engine.alone(THREAD, "engine").await;
+    let let_go = async {
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        let at = Instant::now();
+        drop(taken);
+        at
     };
-    assert_eq!(bench.trust(allowed).await, GitOutcome::Trusted);
-    let slow_commit = async {
-        let outcome = bench.call(allowed, commit(&reviewed, None)).await;
+    let committed = async {
+        let outcome = bench.call(PERSON, commit(&reviewed, None)).await;
         (outcome, Instant::now())
     };
     let checkpoint = async {
-        // The commit has the worktree by now, and its hook sleeps.
-        tokio::time::sleep(Duration::from_millis(300)).await;
         bench.turn_ended(1).await;
         Instant::now()
     };
-    let ((committed, commit_done), checkpoint_done) = tokio::join!(slow_commit, checkpoint);
+    // The commit asks first, so it is first when the worktree is free.
+    let (free, (outcome, commit_done), checkpoint_done) =
+        tokio::join!(let_go, committed, checkpoint);
     assert!(
-        matches!(committed, GitOutcome::Committed { .. }),
-        "{committed:?}"
+        checkpoint_done >= free,
+        "a checkpoint ran in a held worktree"
     );
-    assert!(checkpoint_done >= commit_done, "the two ran at one time");
+    assert!(commit_done >= free, "a commit ran in a held worktree");
     // The checkpoint is of the branch after the commit.
     let head = bench.git_in(&folder, &["rev-parse", "HEAD"]).await;
     let turn = super::checkpoint::turn_ref(THREAD, 1);
-    let parent = format!("{turn}^");
-    assert_eq!(bench.git_in(&folder, &["rev-parse", &parent]).await, head);
+    let parent = bench.git_own(&["rev-parse", &format!("{turn}^")]).await;
+    match outcome {
+        GitOutcome::Committed { commit, .. } => {
+            assert_eq!((head, parent), (commit.clone(), commit));
+        }
+        other => panic!("no commit: {other:?}"),
+    }
 }

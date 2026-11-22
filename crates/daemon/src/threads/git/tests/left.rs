@@ -1,5 +1,5 @@
 //! What an agent can leave in the repository for a later run (third security check): a hook
-//! that the configuration names, a setting from before the first worktree, a remote that is a
+//! that the configuration names, a remote from before the first worktree, a remote that is a
 //! folder, a merge left half done, and a yes of the person to a list that changed after.
 
 use agent_threads::git::{GitAction, GitOutcome, GitRefusal};
@@ -40,8 +40,6 @@ async fn a_hook_that_the_configuration_names_runs_for_no_run_of_the_runner() {
         matches!(reverted, GitOutcome::Reverted { .. }),
         "{reverted:?}"
     );
-    // The person accepts the new settings; their thread still runs no hook.
-    assert_eq!(bench.trust(PERSON).await, GitOutcome::Trusted);
     std::fs::write(folder.join("a.txt"), "changed again\n").expect("a file");
     let committed = bench.call(PERSON, commit("", None)).await;
     assert!(
@@ -54,10 +52,9 @@ async fn a_hook_that_the_configuration_names_runs_for_no_run_of_the_runner() {
 #[tokio::test]
 async fn what_was_in_the_repository_before_the_first_worktree_is_shown_before_a_commit() {
     let bench = Bench::new().await;
-    // Left by an agent of an earlier thread, in the configuration that each worktree shares.
-    bench
-        .git_in(&bench.project, &["config", "credential.helper", "!evil"])
-        .await;
+    // Left by an agent of an earlier thread, in the configuration that each worktree shares:
+    // where a push goes.
+    bench.with_origin().await;
     let plan = super::worktree::Plan {
         thread: THREAD,
         project: &bench.project,
@@ -70,35 +67,52 @@ async fn what_was_in_the_repository_before_the_first_worktree_is_shown_before_a_
         status
             .changed
             .iter()
-            .any(|name| name == "credential.helper"),
+            .any(|name| name.starts_with("push to origin: ")),
         "{:?}",
         status.changed
     );
-    let unaccepted = bench.call(PERSON, commit("", None)).await;
-    assert!(
-        matches!(refused(&unaccepted), Some(GitRefusal::Changed { .. })),
-        "{unaccepted:?}"
-    );
+    for action in [commit("", None), PUSH] {
+        let unaccepted = bench.call(PERSON, action).await;
+        assert!(
+            matches!(refused(&unaccepted), Some(GitRefusal::Changed { .. })),
+            "{unaccepted:?}"
+        );
+    }
+    // A second thread of the same repository starts with what the person accepted before.
+    assert_eq!(bench.trust(PERSON).await, GitOutcome::Trusted);
+    let other = uuid::Uuid::from_u128(77);
+    let plan = super::worktree::Plan {
+        thread: other,
+        ..plan
+    };
+    bench.engine.worktree(plan).await.expect("a worktree");
+    let target = crate::threads::git::Target {
+        thread: other,
+        repository: "engine",
+    };
+    let GitOutcome::Status(second) = bench.engine.call(PERSON, target, GitAction::Status).await
+    else {
+        panic!("no status");
+    };
+    assert_eq!(second.changed, Vec::<String>::new());
 }
 
 #[tokio::test]
 async fn a_yes_counts_only_for_the_list_that_was_shown_and_not_while_a_turn_runs() {
     let bench = Bench::new().await;
     let folder = bench.worktree().await;
-    bench
-        .git_in(&folder, &["config", "core.askPass", "/tmp/first"])
-        .await;
+    let planted = ["config", "user.email", "mallory@example.invalid"];
+    bench.git_in(&folder, &planted).await;
     let shown = bench.status(PERSON).await.accept;
-    // After the person read the list, one more setting.
-    bench
-        .git_in(&folder, &["config", "credential.helper", "!evil"])
-        .await;
+    // After the person read the list, one more change: where a push goes.
+    let remote = ["remote", "add", "origin", "https://example.invalid/m.git"];
+    bench.git_in(&folder, &remote).await;
     let late = GitAction::Trust {
         shown: shown.clone(),
     };
     let outcome = bench.call(PERSON, late.clone()).await;
     assert!(
-        matches!(refused(&outcome), Some(GitRefusal::Changed { what }) if what.len() == 2),
+        matches!(refused(&outcome), Some(GitRefusal::Changed { what }) if what.len() == 3),
         "{outcome:?}"
     );
     let busy = Caller {
@@ -110,7 +124,18 @@ async fn a_yes_counts_only_for_the_list_that_was_shown_and_not_while_a_turn_runs
     assert_eq!(refused(&outcome), Some(&GitRefusal::Running));
     assert_eq!(
         bench.status(PERSON).await.changed,
-        ["core.askpass", "credential.helper"]
+        [
+            "commit as Ada <ada@example.invalid>",
+            "commit as Ada <mallory@example.invalid>",
+            "push to origin: https://example.invalid/m.git",
+        ]
+    );
+    // The commit of the person is never from the planted name without their yes.
+    std::fs::write(folder.join("a.txt"), "changed\n").expect("a file");
+    let unaccepted = bench.call(PERSON, commit("", None)).await;
+    assert!(
+        matches!(refused(&unaccepted), Some(GitRefusal::Changed { .. })),
+        "{unaccepted:?}"
     );
 }
 

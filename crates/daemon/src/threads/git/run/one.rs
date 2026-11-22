@@ -15,6 +15,9 @@ pub struct Run<'a> {
     pub args: Vec<OsString>,
     /// More environment for this run alone (a private index file).
     pub env: Vec<(&'static str, OsString)>,
+    /// More configuration for this run alone, given through the environment: a value here is
+    /// in no list of arguments, which each user of the computer can read.
+    pub settings: Vec<(String, String)>,
     pub input: Option<Vec<u8>>,
     pub time: Duration,
 }
@@ -30,6 +33,7 @@ impl<'a> Run<'a> {
                 .map(|arg| arg.as_ref().to_owned())
                 .collect(),
             env: Vec::new(),
+            settings: Vec::new(),
             input: None,
             time: LOCAL_TIME,
         }
@@ -44,6 +48,12 @@ impl<'a> Run<'a> {
     #[must_use]
     pub fn with_env(mut self, name: &'static str, value: impl Into<OsString>) -> Self {
         self.env.push((name, value.into()));
+        self
+    }
+
+    #[must_use]
+    pub fn with_setting(mut self, name: &str, value: &str) -> Self {
+        self.settings.push((name.to_owned(), value.to_owned()));
         self
     }
 

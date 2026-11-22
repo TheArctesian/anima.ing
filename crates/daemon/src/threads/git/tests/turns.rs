@@ -84,9 +84,10 @@ async fn a_revert_puts_the_files_back_and_keeps_what_was_there_for_an_undo() {
         "an ignored file is not removed"
     );
     assert_eq!(bench.git_in(&folder, &["rev-parse", "HEAD"]).await, head);
-    let kept = bench
-        .git_in(&folder, &["show", &format!("{undo}:later.txt")])
-        .await;
+    let kept = bench.git_own(&["show", &format!("{undo}:later.txt")]).await;
+    // Nothing of before the revert is staged in the index that the agent reads.
+    let staged = ["diff", "--cached", "--name-only"];
+    assert_eq!(bench.git_in(&folder, &staged).await, "");
     assert_eq!(kept, "later");
     let GitOutcome::Checkpoints { checkpoints } = bench.call(PERSON, GitAction::Checkpoints).await
     else {

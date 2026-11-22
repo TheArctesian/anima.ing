@@ -25,6 +25,35 @@ pub(super) const UNCOMMITTED: GitAction = GitAction::Changes {
     ignore_whitespace: false,
 };
 
+/// The hooks that git runs for the commands of the engine.
+pub(super) const HOOKS: [&str; 6] = [
+    "reference-transaction",
+    "post-index-change",
+    "post-checkout",
+    "pre-commit",
+    "pre-push",
+    "post-commit",
+];
+
+impl Bench {
+    /// Writes each hook of the project that a commit, a checkout or a push could run; each
+    /// worktree shares them.
+    pub(super) fn hook(&self, body: &str) {
+        let hooks = self.project.join(".git/hooks");
+        std::fs::create_dir_all(&hooks).expect("the hooks");
+        for name in HOOKS {
+            let file = hooks.join(name);
+            std::fs::write(&file, format!("#!/bin/sh\n{body}\n")).expect("a hook");
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt as _;
+                let runs = std::fs::Permissions::from_mode(0o755);
+                std::fs::set_permissions(&file, runs).expect("a mode");
+            }
+        }
+    }
+}
+
 #[tokio::test]
 async fn a_nested_repository_that_gitmodules_opens_runs_no_program_of_its_own() {
     let bench = Bench::new().await;
@@ -83,35 +112,32 @@ async fn a_nested_repository_that_gitmodules_opens_runs_no_program_of_its_own() 
     assert!(!ran.exists(), "a program of the nested repository ran");
 }
 
-const ALLOWED: Caller = Caller {
-    repository_programs: true,
-    ..PERSON
-};
-
-/// A worktree with a changed file, a hook that makes the file of the answer, and a
-/// credential helper that the agent wrote: the folder and the file that the hook makes.
-async fn planted(bench: &Bench) -> (std::path::PathBuf, std::path::PathBuf) {
+#[tokio::test]
+async fn no_hook_of_the_repository_runs_and_a_changed_remote_waits_for_the_person() {
+    let bench = Bench::new().await;
     bench.with_origin().await;
     let folder = bench.worktree().await;
     std::fs::write(folder.join("a.txt"), "changed\n").expect("a file");
     let ran = folder.with_file_name("RAN");
     bench.hook(&format!("touch \"{}\"", ran.display()));
+    // What an agent wrote: a helper for credentials, and a different place for a push.
+    let helper = format!("!touch \"{}\"", ran.display());
     bench
-        .git_in(&folder, &["config", "credential.helper", "!evil"])
+        .git_in(&folder, &["config", "credential.helper", &helper])
         .await;
-    (folder, ran)
-}
-
-#[tokio::test]
-async fn a_thread_runs_no_hook_and_obeys_no_changed_setting_until_the_person_accepts() {
-    let bench = Bench::new().await;
-    let (_, ran) = planted(&bench).await;
+    let origin = bench.project.with_file_name("origin.git");
+    let moved = bench.project.with_file_name("moved.git");
+    std::fs::rename(&origin, &moved).expect("the move");
+    let place = moved.to_string_lossy().into_owned();
+    bench
+        .git_in(&folder, &["remote", "set-url", "origin", &place])
+        .await;
     let status = bench.status(PERSON).await;
-    assert_eq!(status.changed, ["credential.helper"], "no hook runs here");
+    assert_eq!(status.changed.len(), 2, "the old place and the new one");
     for action in [commit("", None), PUSH] {
         let outcome = bench.call(PERSON, action).await;
         assert!(
-            matches!(refused(&outcome), Some(GitRefusal::Changed { what }) if what.len() == 1),
+            matches!(refused(&outcome), Some(GitRefusal::Changed { what }) if what.len() == 2),
             "{outcome:?}"
         );
     }
@@ -123,50 +149,17 @@ async fn a_thread_runs_no_hook_and_obeys_no_changed_setting_until_the_person_acc
     let by_agent = bench.trust(agent).await;
     assert_eq!(refused(&by_agent), Some(&GitRefusal::FromAnAgent));
     assert_eq!(bench.trust(PERSON).await, GitOutcome::Trusted);
-    let status = bench.status(PERSON).await;
-    assert_eq!(status.changed, Vec::<String>::new());
-    assert_eq!(status.hooks, Vec::<String>::new());
+    assert_eq!(bench.status(PERSON).await.changed, Vec::<String>::new());
     let committed = bench.call(PERSON, commit("", None)).await;
     assert!(
         matches!(committed, GitOutcome::Committed { .. }),
         "{committed:?}"
     );
-    assert!(!ran.exists(), "a hook ran for a thread that allows none");
-    // The yes for a thread that runs no hook did not accept the hook.
-    assert_eq!(
-        bench.status(ALLOWED).await.changed,
-        ["hook reference-transaction"]
-    );
-}
-
-#[tokio::test]
-async fn a_thread_that_allows_hooks_runs_one_only_after_the_person_accepted_it() {
-    let bench = Bench::new().await;
-    let (_, ran) = planted(&bench).await;
-    let status = bench.status(ALLOWED).await;
-    assert_eq!(
-        status.changed,
-        ["credential.helper", "hook reference-transaction"]
-    );
-    for action in [commit("", None), PUSH] {
-        let outcome = bench.call(ALLOWED, action).await;
-        assert!(
-            matches!(refused(&outcome), Some(GitRefusal::Changed { what }) if what.len() == 2),
-            "{outcome:?}"
-        );
-    }
-    assert!(!ran.exists(), "the hook ran before the person accepted it");
-    assert_eq!(bench.trust(ALLOWED).await, GitOutcome::Trusted);
-    let committed = bench.call(ALLOWED, commit("", None)).await;
-    assert!(
-        matches!(committed, GitOutcome::Committed { .. }),
-        "{committed:?}"
-    );
-    #[cfg(unix)]
-    {
-        assert_eq!(bench.status(ALLOWED).await.hooks, ["reference-transaction"]);
-        assert!(ran.exists(), "the accepted hook did not run");
-    }
+    let pushed = bench.call(PERSON, PUSH).await;
+    assert!(matches!(pushed, GitOutcome::Pushed { .. }), "{pushed:?}");
+    let sent = ["log", "-1", "--format=%s", "anima/12345678"];
+    assert_eq!(bench.git_in(&moved, &sent).await, "by the person");
+    assert!(!ran.exists(), "a hook or a helper of the repository ran");
 }
 
 #[tokio::test]

@@ -1,13 +1,14 @@
 //! Checkpoints (TH42): the files of a worktree at the end of a turn, kept as a commit under a
-//! private ref of Anima. The index and the branch of the worktree do not move, and a file that
-//! git ignores is not taken (THR-050).
+//! private ref in the Git folder of the runner. The index and the branch of the worktree do
+//! not move, and a file that git ignores is not taken (THR-050).
 //!
-//! I/O: runs `git` with a private index file in a temporary folder.
+//! I/O: runs `git` with the Git folder and the index of the runner.
 
 use agent_threads::git::Checkpoint;
 use uuid::Uuid;
 
 use super::place::Worktree;
+use super::project::refs;
 use super::run::{Git, GitError, Run};
 
 /// Who a checkpoint commit says it is from: never the person.
@@ -42,54 +43,61 @@ pub fn reviewed_ref(thread: Uuid) -> String {
     format!("{}/reviewed", refs_of(thread))
 }
 
-/// The ref that keeps the work of a worktree that was removed (THR-097).
+/// The ref of the commit of `branch` that the last push sent.
+#[must_use]
+pub fn pushed_ref(branch: &str) -> String {
+    format!("refs/anima/pushed/{branch}")
+}
+
+/// The ref in the repository of the person that keeps the work of a worktree that was
+/// removed (THR-097).
 #[must_use]
 pub fn kept_ref(thread: Uuid) -> String {
     format!("refs/anima/kept/{}", thread.as_hyphenated())
 }
 
-/// Makes a commit of the files of the worktree as they are now, with no ref and no change of
-/// the index or the branch, and gives its ID.
+/// Writes the files of the worktree as they are now as a tree and gives its ID. `tip` is
+/// the last commit of the branch. The index is the one of the runner, which no agent writes:
+/// a file that the index of the worktree marks as unchanged is taken all the same.
 ///
 /// # Errors
-/// A [`GitError`] when a step of `git` fails or the temporary folder cannot be made.
-pub async fn snapshot(git: &Git, worktree: &Worktree) -> Result<String, GitError> {
+/// A [`GitError`] when a step of `git` fails.
+pub async fn tree_now(
+    git: &Git,
+    worktree: &Worktree,
+    tip: Option<&str>,
+) -> Result<String, GitError> {
     let dir = worktree.folder();
-    let scratch = tempfile::tempdir().map_err(GitError::Start)?;
-    let index = scratch.path().join("index");
-    let with_index = |run| private_index(run, &index);
-    let head = match git
-        .text(Run::new(
-            dir,
-            ["rev-parse", "--verify", "--quiet", "HEAD^{commit}"],
-        ))
-        .await
-    {
-        Ok(head) => Some(head),
-        Err(GitError::Failed { code: Some(1), .. }) => None,
-        Err(other) => return Err(other),
+    let start = match tip {
+        Some(tip) => vec!["read-tree", "--reset", tip],
+        None => vec!["read-tree", "--empty"],
     };
-    // The private index starts from the last commit, never from the index of the worktree: an
-    // agent can mark a file there as unchanged, and its edit would then be in no checkpoint.
-    if let Some(head) = &head {
-        git.output(with_index(Run::new(dir, ["read-tree", head.as_str()])))
-            .await?;
-    }
+    git.output(Run::new(dir, start)).await?;
     // `git add` never looks into a nested repository that the last commit names: it would run
     // `git` there, with the configuration of that repository (THR-050). Such an entry stays
     // as the last commit has it.
     let mut add: Vec<String> = ["add", "--all", "--", "."].map(str::to_owned).into();
-    for nested in nested(git, with_index(Run::new(dir, LIST))).await? {
+    for nested in nested(git, Run::new(dir, LIST)).await? {
         add.push(format!(":(exclude,literal){nested}"));
     }
-    git.output(with_index(Run::new(dir, add))).await?;
-    let tree = git.text(with_index(Run::new(dir, ["write-tree"]))).await?;
+    git.output(Run::new(dir, add)).await?;
+    git.text(Run::new(dir, ["write-tree"])).await
+}
+
+/// Makes a commit of the files of the worktree as they are now, with no ref and no change of
+/// the branch, and gives its ID. Its parent is the last commit of the branch.
+///
+/// # Errors
+/// A [`GitError`] when the branch cannot be read or a step of `git` fails.
+pub async fn snapshot(git: &Git, worktree: &Worktree) -> Result<String, GitError> {
+    let tip = refs::head(&worktree.layout())?.commit;
+    let tree = tree_now(git, worktree, tip.as_deref()).await?;
     let mut commit = vec!["commit-tree".to_owned(), tree];
-    if let Some(head) = head {
-        commit.extend(["-p".to_owned(), head]);
+    if let Some(tip) = tip {
+        commit.extend(["-p".to_owned(), tip]);
     }
     commit.extend(["-m".to_owned(), "anima checkpoint".to_owned()]);
-    let mut run = Run::new(dir, commit);
+    let mut run = Run::new(worktree.folder(), commit);
     for (name, value) in WHO {
         run = run.with_env(name, value);
     }
@@ -124,11 +132,6 @@ async fn nested(git: &Git, list: Run<'_>) -> Result<Vec<String>, GitError> {
             code: None,
             said: "the worktree has a nested repository that cannot be left out".to_owned(),
         })
-}
-
-/// A run that reads and writes the private index at `index`, never the index of the worktree.
-fn private_index<'a>(run: Run<'a>, index: &std::path::Path) -> Run<'a> {
-    run.with_env("GIT_INDEX_FILE", index.as_os_str())
 }
 
 /// Points `name` at `commit`.
