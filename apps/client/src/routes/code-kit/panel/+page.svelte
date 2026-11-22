@@ -10,6 +10,7 @@
   import RightPanel from '$lib/code/panel/RightPanel.svelte';
   import { closed, shown, type PanelTabs } from '$lib/code/panel/tabs';
   import PageHeader from '$lib/page/PageHeader.svelte';
+  import BrowserScenes from './BrowserScenes.svelte';
   import DiffScenes from './DiffScenes.svelte';
   import LibraryTree from '$lib/code/panel/tree/LibraryTree.svelte';
   import TerminalScenes from './TerminalScenes.svelte';
@@ -122,6 +123,7 @@
   <DiffScenes theme={dark ? 'dark' : 'light'} {say} />
   <TreeScenes theme={dark ? 'dark' : 'light'} {say} />
   <TerminalScenes {say} />
+  <BrowserScenes {say} />
   <p class="said" data-kit-drawn={drawn}>Diff library: {drawn}</p>
   <p class="said" aria-live="polite">Last action: {said}</p>
 </div>
