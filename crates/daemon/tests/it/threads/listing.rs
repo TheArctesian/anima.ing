@@ -207,3 +207,30 @@ async fn thr_041_a_thread_with_no_project_runs_in_a_new_folder_that_stays_when_i
     assert!(matches!(removed, Outcome::Listings { .. }), "{removed:?}");
     assert!(folder.join("prompts.jsonl").is_file(), "the folder stays");
 }
+
+#[tokio::test]
+async fn thr_041_a_refused_start_with_no_project_leaves_no_folder() {
+    let kit = Kit::with(CLAUDE);
+    let mut client = kit.client().await;
+    let start = client
+        .call(Action::Start {
+            program: Program::ClaudeCode,
+            folder: std::path::PathBuf::new(),
+            mode: Mode::FullAccess,
+            model: Some("not a model".to_owned()),
+            effort: None,
+            prompt: "look".to_owned(),
+            program_path: None,
+            draft: None,
+            attachments: Vec::new(),
+        })
+        .await;
+    assert_eq!(
+        client.done(start).await,
+        Outcome::Refused {
+            why: Refusal::BadValue
+        }
+    );
+    let left = std::fs::read_dir(kit.path("Anima Scratch")).map_or(0, Iterator::count);
+    assert_eq!(left, 0, "the folder of the refused start is removed");
+}

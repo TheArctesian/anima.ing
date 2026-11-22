@@ -70,7 +70,6 @@ pub enum Action {
     /// `folder` is "No project": the runner makes a new empty folder for the thread.
     Start {
         program: Program,
-        #[serde(default)]
         folder: PathBuf,
         #[serde(default)]
         mode: Mode,

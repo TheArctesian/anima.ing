@@ -52,7 +52,7 @@ struct Asking {
 impl Runner {
     /// Checks a new thread, counts it against the soft limit (THR-114) and asks the holder to
     /// start its program; the answer goes to the client when the holder answers.
-    pub(super) async fn start(&mut self, mut new: NewThread, back: Caller) -> Result<(), Refusal> {
+    pub(super) async fn start(&mut self, new: NewThread, back: Caller) -> Result<(), Refusal> {
         // A start whose copy is being asked counts against the soft limit too.
         self.may_start(u32::try_from(self.asks.open.len()).unwrap_or(u32::MAX))?;
         let no_project = new.folder.as_os_str().is_empty();
@@ -65,9 +65,6 @@ impl Runner {
         }
         let copies = login::copies(new.program, &self.env, login::executable, login::trusted);
         let path = login::chosen_copy(new.program_path.as_deref(), &copies)?;
-        if no_project {
-            new.folder = scratch::made(&self.env, chrono::Local::now().date_naive())?;
-        }
         match self.silence.kept(&path) {
             Some(true) => {
                 let asking = Asking {
@@ -178,7 +175,22 @@ impl Runner {
     }
 
     /// The start of a thread whose copy answered its version.
-    async fn start_checked(&mut self, asking: Asking) -> Result<(), Refusal> {
+    /// A start with no project gets its new folder here, after each check that needs no folder,
+    /// and loses it again when a later check refuses the start (THR-041).
+    async fn start_checked(&mut self, mut asking: Asking) -> Result<(), Refusal> {
+        let no_project = asking.new.folder.as_os_str().is_empty();
+        if no_project {
+            asking.new.folder = scratch::made(&self.env, chrono::Local::now().date_naive())?;
+        }
+        let folder = asking.new.folder.clone();
+        let started = self.start_in(asking).await;
+        if no_project && started.is_err() {
+            scratch::unmade(&folder);
+        }
+        started
+    }
+
+    async fn start_in(&mut self, asking: Asking) -> Result<(), Refusal> {
         let Asking {
             new,
             back,
