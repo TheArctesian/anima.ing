@@ -28,8 +28,10 @@ pub struct FlowCaps {
     pub total: usize,
     /// Flows of one source network ([`source_network`]), waiting and set up.
     pub per_network: usize,
-    /// Waiting flows. Set-up flows take at most `total` less this number.
+    /// Waiting flows.
     pub waiting: usize,
+    /// Set-up flows: at most `total` less `waiting`, so a new source always finds a waiting place.
+    pub set_up: usize,
 }
 
 /// A flow that [`FlowTable::open`] made: its number, and the handle of a waiting flow that it
@@ -100,10 +102,14 @@ impl<T> FlowTable<T> {
     }
 
     /// Marks the flow `id` of `source` set up; `false` when it is no longer in the table, or when
-    /// the set-up flows already take each place that the waiting flows leave (it stays waiting).
+    /// the set-up flows are at their cap (it stays waiting).
     pub fn set_up(&mut self, source: SocketAddr, id: u64) -> bool {
         let set_up = self.flows.values().filter(|flow| flow.set_up).count();
-        let room = set_up < self.caps.total.saturating_sub(self.caps.waiting);
+        let room = set_up
+            < self
+                .caps
+                .set_up
+                .min(self.caps.total.saturating_sub(self.caps.waiting));
         match self.flows.get_mut(&source) {
             Some(flow) if flow.id == id && (flow.set_up || room) => {
                 flow.set_up = true;

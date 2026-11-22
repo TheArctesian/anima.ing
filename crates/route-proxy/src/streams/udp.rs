@@ -55,11 +55,12 @@ pub async fn serve<H: Hub>(proxy: Arc<Proxy<H>>, socket: UdpSocket, stream: Stre
     let stream = Arc::new(stream);
     let per_second = proxy.udp_new_per_second();
     let burst = per_second.saturating_mul(2);
-    let flows: Flows = Arc::new(Mutex::new(FlowTable::new(FlowCaps {
-        total: proxy.udp_flows(),
-        per_network: proxy.udp_flows_per_network(),
-        waiting: waiting_cap(burst, proxy.route_connections()),
-    })));
+    let flows: Flows = Arc::new(Mutex::new(FlowTable::new(flow_caps(
+        proxy.udp_flows(),
+        proxy.udp_flows_per_network(),
+        burst,
+        proxy.route_connections(),
+    ))));
     let mut arrivals = Bucket::full(per_second, burst, 0);
     let started = Instant::now();
     let mut buffer = vec![0_u8; DATAGRAM_MAX];
@@ -103,13 +104,31 @@ pub async fn serve<H: Hub>(proxy: Arc<Proxy<H>>, socket: UdpSocket, stream: Stre
     }
 }
 
-/// The cap of waiting flows: the burst of the bucket of new flows, and at most half of the
-/// connections of one route, so waiting flows never hold each place of the route and a new
-/// client that gets into the table also gets a connection (SF-327).
+/// The caps of the flows of a stream of `total` flows, `per_network` for each source network, a
+/// bucket of new flows with `burst`, and a route of `route_connections` (SF-327):
+/// - waiting flows: the burst, at most half of the connections of the route, at least one, and
+///   fewer than `total`;
+/// - set-up flows: the places that the waiting flows leave, and fewer than the connections of the
+///   route less the waiting flows. So waiting and set-up flows together hold at most each
+///   connection of the route but one, and a new client that replaces a waiting flow gets that
+///   one connection before the replaced flow gives its own back.
 #[must_use]
-pub fn waiting_cap(burst: u32, route_connections: u32) -> usize {
-    let cap = burst.min(route_connections / 2).max(1);
-    usize::try_from(cap).unwrap_or(usize::MAX)
+pub fn flow_caps(total: usize, per_network: usize, burst: u32, route_connections: u32) -> FlowCaps {
+    let connections = usize::try_from(route_connections).unwrap_or(usize::MAX);
+    let burst = usize::try_from(burst).unwrap_or(usize::MAX);
+    let waiting = burst
+        .min(connections / 2)
+        .min(total.saturating_sub(1))
+        .max(1);
+    let set_up = total
+        .saturating_sub(waiting)
+        .min(connections.saturating_sub(waiting).saturating_sub(1));
+    FlowCaps {
+        total,
+        per_network,
+        waiting,
+        set_up,
+    }
 }
 
 /// A new waiting flow of `source` in `flows`: its number, its datagrams and the signal that the
