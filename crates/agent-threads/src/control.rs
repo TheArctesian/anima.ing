@@ -223,6 +223,10 @@ pub enum Refusal {
 /// The most prompts that wait in the queue of one thread (TH109).
 pub const MOST_QUEUED: usize = 20;
 
+/// The most bytes of one queued prompt (TH109): each update of the row carries the queue, so a
+/// bound keeps the kept updates of the thread. A longer prompt can still be sent.
+pub const MOST_QUEUED_BYTES: usize = 64 * 1024;
+
 /// The soft limits of the threads of this computer (THR-114): guidance, raised by the person.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Limits {

@@ -78,7 +78,7 @@ impl Runner {
                         limits: self.limits,
                     }
                 }
-                waits => match self.held_call(waits, back.clone()).await {
+                waits => match self.held_call(waits, back.clone(), !agent).await {
                     Ok(()) => return,
                     Err(why) => Outcome::Refused { why },
                 },
@@ -91,9 +91,14 @@ impl Runner {
     }
 
     /// A call whose answer waits for the holder: a start, a prompt, an answer or a stop.
-    async fn held_call(&mut self, action: Action, back: Caller) -> Result<(), Refusal> {
+    async fn held_call(
+        &mut self,
+        action: Action,
+        back: Caller,
+        person: bool,
+    ) -> Result<(), Refusal> {
         match action {
-            Action::Send { thread, text } => self.send(thread, text, back).await,
+            Action::Send { thread, text } => self.send(thread, text, (back, person)).await,
             Action::SendQueued { thread, id } => self.send_queued(thread, id, back).await,
             Action::Answer {
                 thread,
@@ -166,9 +171,16 @@ impl Runner {
     }
 
     /// A prompt of the person. The client gets its answer when the holder took the line.
-    async fn send(&mut self, id: Uuid, text: String, back: Caller) -> Result<(), Refusal> {
+    /// `person` is false for a prompt of a process of an agent: it does not start a stopped
+    /// queue (TH109).
+    async fn send(
+        &mut self,
+        id: Uuid,
+        text: String,
+        (back, person): (Caller, bool),
+    ) -> Result<(), Refusal> {
         let thread = self.threads.get_mut(&id).ok_or(Refusal::UnknownThread)?;
-        let lines = thread.send(&text)?;
+        let lines = thread.send(&text, person)?;
         let steps = lines.into_iter().map(Step::Write).collect();
         match self.apply(id, steps).await {
             Err(_) => Err(Refusal::Holder),

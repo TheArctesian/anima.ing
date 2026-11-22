@@ -39,7 +39,7 @@ impl QueueArgs {
                     thread,
                     text: text.unwrap_or_default(),
                 },
-                "Queued: it goes when the turns before it ended well.",
+                "Queued. It goes at once when the thread waits for a prompt.",
             ),
         };
         simple(invocation, action, done).await

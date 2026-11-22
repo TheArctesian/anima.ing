@@ -34,6 +34,8 @@ pub struct Codex {
     ended: Option<String>,
     /// Prompts that wait for the thread of Codex.
     queued: Vec<String>,
+    /// Why Codex refused the last `turn/start`, until the thread reads it (TH109).
+    refused_turn: Option<String>,
 }
 
 impl Codex {
@@ -51,6 +53,7 @@ impl Codex {
             turn: None,
             ended: None,
             queued: Vec::new(),
+            refused_turn: None,
         }
     }
 
@@ -97,6 +100,18 @@ impl Codex {
         vec![CodexInput::turn_start(id, &thread, text, self.effort)]
     }
 
+    /// Why Codex refused the last `turn/start`, once: that turn never runs, so it ended as failed.
+    pub const fn refused_turn(&mut self) -> Option<String> {
+        self.refused_turn.take()
+    }
+
+    /// Whether a prompt now goes into the running turn (`turn/steer`) and ends with it, not as a
+    /// turn of its own.
+    #[must_use]
+    pub const fn steers(&self) -> bool {
+        self.thread.is_some() && self.turn.is_some()
+    }
+
     /// A turn started; Codex names it.
     pub fn turn_started(&mut self, turn: Option<String>) {
         if turn.is_some() {
@@ -136,7 +151,11 @@ impl Codex {
                 Call::Initialize | Call::ThreadStart => {
                     Err(format!("Codex did not start its thread: {message}"))
                 }
-                Call::TurnStart | Call::Other => Ok(Vec::new()),
+                Call::TurnStart => {
+                    self.refused_turn = Some(message.to_owned());
+                    Ok(Vec::new())
+                }
+                Call::Other => Ok(Vec::new()),
             };
         }
         match call {

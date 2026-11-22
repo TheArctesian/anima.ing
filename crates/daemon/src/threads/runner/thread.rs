@@ -82,9 +82,11 @@ pub struct Thread {
     last_error: Option<String>,
     /// The queue stopped after an interrupt or a failed turn, until the person sends (TH109).
     stalled: bool,
-    /// A prompt went and its turn did not end yet: no queued prompt goes before it ends, also
-    /// when the program says that it is idle in between (TH109).
-    awaiting: bool,
+    /// The prompts that went as turns of their own and whose turns did not end yet: a queued
+    /// prompt goes only at none, also when the program says that it is idle in between. Claude
+    /// Code holds a prompt sent during a turn and runs it as a turn of its own (THR-020), so each
+    /// counts; a Codex steer ends with the running turn (TH109).
+    pending: u32,
 }
 
 impl Thread {
@@ -107,7 +109,7 @@ impl Thread {
             held: false,
             last_error: None,
             stalled: false,
-            awaiting: false,
+            pending: 0,
         }
     }
 
@@ -203,7 +205,7 @@ impl Thread {
     /// The first steps of a new thread: its prompt, and the first line of the program.
     pub fn begin(&mut self, prompt: &str) -> Vec<Step> {
         self.held = true;
-        self.awaiting = true;
+        self.pending = 1;
         self.row.title = first_line(prompt, agent_threads::TITLE_LENGTH);
         let mut steps = vec![prompt_change(prompt)];
         match &mut self.driver {
@@ -226,13 +228,22 @@ impl Thread {
     ///
     /// # Errors
     /// [`Refusal::NotRunning`] when the program ended or the holder did not start it yet.
-    pub fn send(&mut self, text: &str) -> Result<Vec<String>, Refusal> {
+    pub fn send(&mut self, text: &str, person: bool) -> Result<Vec<String>, Refusal> {
         if self.row.state == RunState::Stopped || !self.held {
             return Err(Refusal::NotRunning);
         }
-        // A prompt of the person starts the queue again after the turn of it (TH109).
-        self.stalled = false;
-        self.awaiting = true;
+        // A prompt of the person starts the queue again after the turn of it; a prompt of an
+        // agent does not (TH109).
+        if person {
+            self.stalled = false;
+        }
+        let steers = matches!(&self.driver, Driver::Codex(codex) if codex.steers());
+        if self.program == Some(ProgramState::Idle) && self.open.is_empty() {
+            // Nothing runs: each turn before this prompt is over.
+            self.pending = 1;
+        } else if !steers {
+            self.pending = self.pending.saturating_add(1);
+        }
         Ok(match &mut self.driver {
             Driver::Claude(_) => vec![ClaudeInput::prompt(text)],
             Driver::Codex(codex) => codex.prompt(text).into_iter().collect(),

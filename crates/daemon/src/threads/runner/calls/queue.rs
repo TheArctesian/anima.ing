@@ -59,7 +59,7 @@ impl Runner {
         let thread = self.threads.get_mut(&id).ok_or(Refusal::UnknownThread)?;
         let (text, step) = thread.take_queued(queued)?;
         let _ = self.apply(id, vec![step]).await;
-        self.send(id, text, back).await
+        self.send(id, text, (back, true)).await
     }
 
     async fn queue_steps(

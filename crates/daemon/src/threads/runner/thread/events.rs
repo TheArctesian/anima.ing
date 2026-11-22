@@ -91,7 +91,18 @@ impl Thread {
             return Vec::new();
         };
         match codex.reply(*number, ok, result) {
-            Ok(lines) => lines.into_iter().map(Step::Write).collect(),
+            Ok(lines) => {
+                let refused = codex.refused_turn();
+                let mut steps: Vec<Step> = lines.into_iter().map(Step::Write).collect();
+                // A refused `turn/start` is a turn that failed: the queue stops, and the person is told.
+                if let Some(why) = refused {
+                    self.turn_ended(agent_threads::drive::TurnOutcome::Failed);
+                    steps.push(said(DriveEvent::Notice {
+                        text: format!("Codex did not start the turn: {why}"),
+                    }));
+                }
+                steps
+            }
             // Codex did not start its thread: the program ends, and its end stops the thread.
             Err(fault) => {
                 self.last_error = Some(fault.clone());

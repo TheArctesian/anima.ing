@@ -3,7 +3,9 @@
 //! The queue stops, and keeps its prompts, after an interrupt and after a turn that failed,
 //! until the person sends. It is in memory only. Pure.
 
-use agent_threads::control::{Change, LastTurn, MOST_QUEUED, Queued, Refusal, RunState};
+use agent_threads::control::{
+    Change, LastTurn, MOST_QUEUED, MOST_QUEUED_BYTES, Queued, Refusal, RunState,
+};
 use agent_threads::drive::{ProgramState, TurnOutcome};
 use uuid::Uuid;
 
@@ -15,9 +17,11 @@ impl Thread {
     ///
     /// # Errors
     /// [`Refusal::NotRunning`] when the program ended or did not start yet, and
-    /// [`Refusal::QueueFull`] when [`MOST_QUEUED`] prompts wait.
+    /// [`Refusal::QueueFull`] when [`MOST_QUEUED`] prompts wait, and [`Refusal::BadValue`] for
+    /// an empty prompt or one over [`MOST_QUEUED_BYTES`].
     pub fn queue(&mut self, id: Uuid, text: String) -> Result<Vec<Step>, Refusal> {
         self.running()?;
+        fits(&text)?;
         if self.row.queued.len() >= MOST_QUEUED {
             return Err(Refusal::QueueFull);
         }
@@ -30,8 +34,10 @@ impl Thread {
     /// New words for a prompt that waits.
     ///
     /// # Errors
-    /// [`Refusal::RequestGone`] when the prompt went or was taken out.
+    /// [`Refusal::RequestGone`] when the prompt went or was taken out, and [`Refusal::BadValue`]
+    /// for words that do not fit.
     pub fn requeue(&mut self, id: Uuid, text: String) -> Result<Vec<Step>, Refusal> {
+        fits(&text)?;
         let waiting = self.row.queued.iter_mut().find(|queued| queued.id == id);
         waiting.ok_or(Refusal::RequestGone)?.text = text;
         Ok(vec![self.row_change()])
@@ -64,8 +70,10 @@ impl Thread {
             TurnOutcome::Failed => LastTurn::Failed,
             TurnOutcome::Interrupted => LastTurn::Interrupted,
         };
-        self.awaiting = false;
-        self.stalled |= last != LastTurn::Done;
+        self.pending = self.pending.saturating_sub(1);
+        // Only the end of the last turn that went stops the queue: a late end of a turn that the
+        // person stopped before a new prompt does not stop it again.
+        self.stalled |= last != LastTurn::Done && self.pending == 0;
         self.row.last_turn = Some(last);
     }
 
@@ -81,11 +89,11 @@ impl Thread {
             && self.row.state != RunState::Stopped
             && self.open.is_empty()
             && self.program == Some(ProgramState::Idle);
-        if !waits || self.awaiting || self.stalled || self.row.queued.is_empty() {
+        if !waits || self.pending > 0 || self.stalled || self.row.queued.is_empty() {
             return Vec::new();
         }
         let Queued { text, .. } = self.row.queued.remove(0);
-        let mut steps: Vec<Step> = match self.send(&text) {
+        let mut steps: Vec<Step> = match self.send(&text, false) {
             Ok(lines) => lines.into_iter().map(Step::Write).collect(),
             Err(_) => return Vec::new(),
         };
@@ -108,4 +116,11 @@ impl Thread {
             row: self.row.clone(),
         })
     }
+}
+
+fn fits(text: &str) -> Result<(), Refusal> {
+    if text.trim().is_empty() || text.len() > MOST_QUEUED_BYTES {
+        return Err(Refusal::BadValue);
+    }
+    Ok(())
 }

@@ -3,7 +3,7 @@
 use agent_threads::control::{Change, LastTurn, MOST_QUEUED, Refusal};
 use uuid::Uuid;
 
-use super::{counter, held_claude, writes};
+use super::{codex_in_a_turn, counter, held_claude, writes};
 use crate::threads::runner::thread::{Step, Thread};
 
 const DONE: &str = r#"{"type":"result","subtype":"success","is_error":false,"result":"ok","terminal_reason":"completed"}"#;
@@ -57,7 +57,7 @@ fn th109_a_failed_or_stopped_turn_stops_the_queue_until_the_person_sends() {
         assert_eq!(thread.row.queued.len(), 1);
         assert_ne!(thread.row.last_turn, Some(LastTurn::Done));
         // The person sends: after that turn the queue goes again.
-        thread.send("now").expect("sent");
+        thread.send("now", true).expect("sent");
         assert_eq!(prompts(&line(&mut thread, DONE)), ["next"]);
     }
 }
@@ -111,4 +111,74 @@ fn th109_the_record_never_holds_the_queue_and_a_stop_empties_it() {
         thread.queue(Uuid::from_u128(2), "late".to_owned()),
         Err(Refusal::NotRunning)
     );
+}
+
+#[test]
+fn th109_a_prompt_sent_during_a_turn_keeps_the_queue_one_turn_behind() {
+    // Claude Code holds a prompt sent during a turn and runs it as a turn of its own.
+    let mut thread = held_claude();
+    queue(&mut thread, 1, "queued");
+    thread.send("steer", true).expect("sent");
+    assert_eq!(prompts(&line(&mut thread, DONE)), NONE);
+    // The held prompt fails: the queue stops, and the queued prompt never went.
+    assert_eq!(prompts(&line(&mut thread, FAILED)), NONE);
+    assert_eq!(thread.row.queued.len(), 1);
+}
+
+#[test]
+fn th109_the_late_end_of_a_stopped_turn_does_not_stop_the_queue_again() {
+    let mut thread = held_claude();
+    queue(&mut thread, 1, "queued");
+    thread.interrupt();
+    thread.send("instead", true).expect("sent");
+    assert_eq!(prompts(&line(&mut thread, STOPPED)), NONE);
+    assert_eq!(prompts(&line(&mut thread, DONE)), ["queued"]);
+}
+
+#[test]
+fn th109_a_prompt_of_an_agent_does_not_start_a_stopped_queue() {
+    let mut thread = held_claude();
+    queue(&mut thread, 1, "queued");
+    line(&mut thread, FAILED);
+    thread.send("from an agent", false).expect("sent");
+    assert_eq!(prompts(&line(&mut thread, DONE)), NONE);
+}
+
+#[test]
+fn th109_an_empty_or_too_long_prompt_is_refused() {
+    let mut thread = held_claude();
+    assert_eq!(
+        thread.queue(Uuid::from_u128(1), " ".to_owned()),
+        Err(Refusal::BadValue)
+    );
+    let long = "x".repeat(agent_threads::control::MOST_QUEUED_BYTES + 1);
+    assert_eq!(
+        thread.queue(Uuid::from_u128(1), long),
+        Err(Refusal::BadValue)
+    );
+}
+
+const CODEX_DONE: &str =
+    r#"{"method":"turn/completed","params":{"turn":{"id":"u1","status":"completed"}}}"#;
+
+#[test]
+fn th109_a_codex_steer_ends_with_its_turn_and_a_refused_turn_stops_the_queue() {
+    let mut ids = counter();
+    let (mut thread, _) = codex_in_a_turn(&mut ids);
+    queue(&mut thread, 1, "first");
+    queue(&mut thread, 2, "second");
+    // A steer goes into the running turn: it does not hold the queue back.
+    thread.send("steer", true).expect("sent");
+    let sent = writes(&thread.line(CODEX_DONE, &mut ids));
+    assert_eq!(sent[0]["method"], "turn/start");
+    assert_eq!(sent[0]["params"]["input"][0]["text"], "first");
+    // Codex refuses that turn: it ends as failed, the person is told, and "second" waits.
+    let refusal = format!(
+        r#"{{"id":{},"error":{{"code":-32600,"message":"busy"}}}}"#,
+        sent[0]["id"]
+    );
+    let steps = thread.line(&refusal, &mut ids);
+    assert_eq!(writes(&steps).len(), 0);
+    assert_eq!(thread.row.last_turn, Some(LastTurn::Failed));
+    assert_eq!(thread.row.queued.len(), 1);
 }
