@@ -129,10 +129,24 @@ async fn thr_021_ending_the_children_spares_the_servers_marked_before_the_turn()
 
 #[tokio::test]
 async fn thr_049_a_program_that_ends_by_itself_leaves_no_child_in_a_group_of_its_own() {
+    ends_by_itself_after("alone", 3).await;
+}
+
+/// The holder looks below a program every 2 s; a child that left the group of a program that
+/// ended before the first look is found by its mark.
+#[tokio::test]
+async fn thr_049_a_program_that_ends_before_the_first_look_leaves_no_child() {
+    ends_by_itself_after("early", 1).await;
+}
+
+/// A program that puts a child in a group of its own and ends by itself after `seconds`: the
+/// holder ends the child before it says that the program ended. Each test has its own `thread`:
+/// the mark of a thread is its key, and tests run at the same time.
+async fn ends_by_itself_after(thread: &str, seconds: u32) {
     let holder = Holder::start(0);
     let mut link = holder.link().await;
-    let script = "perl -e 'setpgrp(0,0); sleep 300' & echo $!; sleep 3";
-    let id = link.send(start("alone", "/bin/sh", &["-c", script])).await;
+    let script = format!("perl -e 'setpgrp(0,0); sleep 300' & echo $!; sleep {seconds}");
+    let id = link.send(start(thread, "/bin/sh", &["-c", &script])).await;
     link.answer(id).await;
     let child: u32 = texts(
         &link
@@ -142,11 +156,11 @@ async fn thr_049_a_program_that_ends_by_itself_leaves_no_child_in_a_group_of_its
     .1
     .parse()
     .expect("a pid");
-    link.until(exited("alone")).await;
+    link.until(exited(thread)).await;
     assert!(gone(child).await, "the child the program left is ended");
     let stop = link
         .send(Action::Stop {
-            thread: "alone".into(),
+            thread: thread.into(),
         })
         .await;
     assert_eq!(
