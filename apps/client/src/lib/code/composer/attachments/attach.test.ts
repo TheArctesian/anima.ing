@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { admit, attachmentOf, classify, fileIcon, foldedName, laidOut, LIMITS, pasteDecision, previewStep, sizeWords, type ClipboardFacts, type DraftFacts, type FileFacts } from './attach';
+import { admit, attachmentOf, classify, fileIcon, foldedName, laidOut, LIMITS, pasteDecision, previewStep, readingWords, sizeWords, type ClipboardFacts, type DraftFacts, type FileFacts } from './attach';
 import { ATTACHMENTS } from './fixture';
 
 const MB = 1024 * 1024;
@@ -173,5 +173,19 @@ describe('where an attachment shows', () => {
     expect(previewStep(shown, 'a-failed', 1)).toBe('a-image');
     expect(previewStep(shown.slice(0, 1), 'a-image', 1)).toBeNull();
     expect(previewStep(shown, 'gone', 1)).toBeNull();
+  });
+});
+
+describe('the limits of the files of one message', () => {
+  it('refuses the image that brings the images of the message over their limit together, and takes the next that fits', () => {
+    const { taken, refused } = admit([], [file('a.png', 'image/png', 6 * MB), file('b.png', 'image/png', 6 * MB), file('c.png', 'image/png', 3 * MB), file('notes.txt', 'text/plain', 6 * MB)], { ...LIMITS, imagesBytes: 10 * MB });
+    expect(taken.map((one) => one.file.name)).toEqual(['a.png', 'c.png', 'notes.txt']);
+    expect(refused).toEqual([{ name: 'b.png', words: "'b.png' does not fit: the images of one message can be 10 MB together." }]);
+  });
+
+  it('says how far a file is while the runner takes it', () => {
+    expect(readingWords({ size: 200, state: { state: 'reading', sent: 50 } })).toBe('25%');
+    expect(readingWords({ size: 200, state: { state: 'reading', sent: 200 } })).toBe('99%');
+    expect(readingWords({ size: 200, state: { state: 'reading' } })).toBe('Reading');
   });
 });

@@ -4644,3 +4644,44 @@ a made-up runner; nobody has tried it with a program that runs.
 
 Result: Open.
 
+### HT-142: the files of the composer of Code (TC4, TH111)
+
+Built on the branch `code/composer-attach`. The composer sends each file to the thread runner in parts of 2 MiB
+(`attach`, `attach_more`), shows how far it is, and names the files in the `send`. Its tests run it over a made-up
+runner with the frames of the real one; nobody has tried it with a program that runs, with a real drop from the
+Finder, or with a real paste. The page passes the calls to the composer only when the UI change that follows this
+branch is in the build.
+
+1. In the desktop application open a chat of Code and press the paperclip. Choose a PNG picture of less than 1 MB.
+   Expected: a tile with the picture shows over the editor. The send button cannot be pressed for a moment, then can.
+2. Type `what is in this picture?` and press Enter.
+   Expected: the tile goes, the prompt is in the chat, and the program describes the picture.
+3. Drag a text file of about 20 MB from the Finder onto the composer.
+   Expected: the card shows its drop state; then a row with the name of the file and a number of percent that rises
+   in steps. While it rises the send button says that an attachment is still being read.
+4. While the number rises, press the X of the row.
+   Expected: the row goes at once, and the send button can be pressed again when there is text.
+5. Drag a folder from the Finder onto the composer.
+   Expected: nothing is attached, and a line under the editor says that a folder cannot be attached.
+6. Copy a picture in Preview (⌘C) and paste it in the editor (⌘V).
+   Expected: a tile shows, as in step 1.
+   Then copy a text file in the Finder (⌘C on the file) and paste it in the editor.
+   Expected: a row with the name of the file shows. Copy a folder in the Finder and paste it: nothing is attached,
+   and a line says that a folder cannot be attached.
+7. Attach a picture of more than 10 MB.
+   Expected: no tile; a line under the editor says that the file is too large to attach.
+8. Attach a file whose name has a mark of direction or brackets, for example `<b>note<b>.txt`.
+   Expected: the row shows the name with `_` in place of each such mark (`_b_note_b_.txt`), as plain text.
+9. Attach a file, wait until it is ready, and remove it with its X. Then send a prompt with no file.
+   Expected: the prompt goes with no file.
+10. Start a long turn, attach a file, type a message and press ⌘Enter (queue).
+    Expected (a known limit): the message does not go, and a line says that a queued message takes no files yet.
+    Press Enter in its place: the message goes into the running turn with its file.
+11. Attach a file of about 40 MB and open a different chat while its number rises. Come back.
+    Expected (a known limit): the file is not attached; no part of it went to the other chat, and the runner was
+    told to drop what it had of it.
+12. Attach a file, wait until it is ready, do not send, and come back after more than one hour. Send.
+    Expected (a known limit): the runner dropped the file after one hour, so the send is refused with words. Remove
+    the file, attach it again and send.
+
+Result: Open.
