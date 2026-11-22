@@ -2398,8 +2398,8 @@ A re-read of `33e4fb787` on 2026-11-21 found two more points, decided overnight 
 - A sender of false sources that sends again to each of them sets up flows without seeing an answer, at most 7 of them by default. While those places are full, a real client stays waiting and a new source can replace it.
 - The first datagram of a new real client competes with false sources for the tokens of the bucket (8 each second).
 - One connection of the route stays free for one replacement at a time. In a burst, a new flow can race a replaced flow for its connection, so a real client can be refused once and must send again.
-- When the listener of a stream starts again, the old flows keep their connections until they are idle (60 seconds). The correction: end the flows of a listener when it is stopped, and check that one name has one listener.
-- When `carry` panics, the connection of the name is not given back (`proxy.release`). The correction: a guard that gives it back on drop.
+- When the listener of a stream starts again, the old flows keep their connections until they are idle (60 seconds). The correction: end the flows of a listener when it is stopped, and check that one name has one listener. Built on the branch `hosted/udp-flow-ends`: when the listener of a UDP stream stops, its table drops each flow, which ends it (test `clearing_the_table_drops_each_handle`). One name has one listener: the name of a route is unique (migration 1060) and a route has one kind.
+- When `carry` panics, the connection of the name is not given back (`proxy.release`). The correction: a guard that gives it back on drop. Built on the branch `hosted/udp-flow-ends`.
 - Each replaced flow is a new dial through the hub, up to 8 each second for each stream, each with one query of the hub and one UDP socket.
 - The hub records an error of the door for a frame that a replaced flow cut off; it is a normal end.
 - No test runs a whole flow: the handover of a connection while a flow dials, and the admission of a new client while set-up flows are at their cap.
