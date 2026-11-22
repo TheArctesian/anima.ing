@@ -38,6 +38,7 @@ pub enum Tool {
     Sessions(sessions::SessionTool),
     Notifications(notifications::NotificationTool),
     Web(web::WebTool),
+    Routes(devices::routes::RouteTool),
     Models(models::ModelTool),
     Releases(releases::ReleaseTool),
     Vpn(vpn::VpnTool),
@@ -69,6 +70,7 @@ impl Tool {
         tools.extend(sessions::SessionTool::ALL.map(Self::Sessions));
         tools.extend(notifications::NotificationTool::ALL.map(Self::Notifications));
         tools.extend(web::WebTool::ALL.map(Self::Web));
+        tools.extend(devices::routes::RouteTool::ALL.map(Self::Routes));
         tools.extend(models::ModelTool::ALL.map(Self::Models));
         tools.extend(releases::ReleaseTool::ALL.map(Self::Releases));
         tools.extend(vpn::VpnTool::ALL.map(Self::Vpn));
@@ -98,7 +100,7 @@ impl Tool {
             Self::Events(_) => ToolSet::Events,
             Self::Sessions(_) => ToolSet::Sessions,
             Self::Notifications(_) => ToolSet::Notifications,
-            Self::Web(_) => ToolSet::Web,
+            Self::Web(_) | Self::Routes(_) => ToolSet::Web,
             Self::Models(_) => ToolSet::Models,
             Self::Releases(_) => ToolSet::Releases,
             Self::Vpn(_) => ToolSet::Vpn,
@@ -129,6 +131,7 @@ impl Tool {
             Self::Sessions(tool) => tool.definition(),
             Self::Notifications(tool) => tool.definition(),
             Self::Web(tool) => tool.definition(),
+            Self::Routes(tool) => tool.definition(),
             Self::Models(tool) => tool.definition(),
             Self::Releases(tool) => tool.definition(),
             Self::Vpn(tool) => tool.definition(),
@@ -166,6 +169,7 @@ impl Tool {
             Self::Sessions(tool) => tool.call(hub, arguments).await,
             Self::Notifications(tool) => tool.call(hub, arguments).await,
             Self::Web(tool) => tool.call(hub, arguments).await,
+            Self::Routes(tool) => tool.call(hub, arguments).await,
             Self::Models(tool) => tool.call(hub, arguments).await,
             Self::Releases(tool) => tool.call(hub, arguments).await,
             Self::Vpn(tool) => tool.call(hub, arguments).await,

@@ -5,3 +5,4 @@ pub mod catalogue;
 pub mod containers;
 pub mod jobs;
 pub mod projects;
+pub mod routes;

@@ -4,7 +4,7 @@ use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::{
     agents, capabilities, catalogue, checks, compute, containers, daemons, devices, link,
-    maintenance, model_library, sessions, sites, tags, web_interfaces,
+    maintenance, model_library, routes, sessions, sites, tags, web_interfaces,
 };
 
 #[derive(Debug, clap::Subcommand)]
@@ -65,6 +65,11 @@ pub enum FleetCommand {
         #[command(subcommand)]
         command: catalogue::CatalogueCommand,
     },
+    /// Public names of applications, served by the hub (list, show, add, check, remove).
+    Route {
+        #[command(subcommand)]
+        command: routes::RouteCommand,
+    },
     /// Checks (list, get, create, update, delete, pause, resume, heartbeats, defaults, notifications).
     Check {
         #[command(subcommand)]
@@ -112,6 +117,7 @@ impl FleetCommand {
             Self::Agents { command } => command.run(invocation).await,
             Self::Containers { command } => command.run(invocation).await,
             Self::Catalogue { command } => command.run(invocation).await,
+            Self::Route { command } => command.run(invocation).await,
             Self::Check { command } => command.run(invocation).await,
             Self::Maintenance { command } => command.run(invocation).await,
             Self::Link { command } => command.run(invocation).await,

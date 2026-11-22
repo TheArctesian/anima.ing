@@ -24,9 +24,11 @@
 /// trust decision (a grant): login or browser token only (R-147, K-E5 Section 2.2).
 /// The log of a container can hold a secret, as private code can, and so can the command or a
 /// label in its details: login or browser token only (HOST-001, HOST-017, MCP-004, R-149, R-150).
+/// Making an application public on the internet, checking its proof and removing it is for a
+/// person with a second factor (HOST-046, SF-232, task H21).
 /// What a daemon waits for is reported by the signed-in desktop app of its computer: login or
 /// browser token only (R-364).
-pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 62] = [
+pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 65] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -85,6 +87,9 @@ pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 62] = [
     "containerDetail",
     "createLocationIngestToken",
     "connectDawarich",
+    "addApplicationRoute",
+    "checkApplicationRoute",
+    "removeApplicationRoute",
     // The approved model sources: only a person changes them (R-343).
     "addApprovedModelSource",
     "setModelPublisherApproval",
