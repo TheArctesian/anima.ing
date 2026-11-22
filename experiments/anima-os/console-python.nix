@@ -10,6 +10,7 @@ let
     nativeBuildInputs = old.nativeBuildInputs ++ [ packages.shiboken6-generator ];
   });
 in
+# Refresh transitive Python module metadata after changing Shiboken.
 (pkgs.python3.withPackages (_: [ (packages.toPythonModule pyside) ])).overrideAttrs (_: {
   disallowedRequisites = [ packages.shiboken6-generator ];
 })

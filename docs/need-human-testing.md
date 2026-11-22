@@ -4400,9 +4400,9 @@ Built: `crates/anima-osd`, the opt-in module `experiments/anima-os/control.nix`,
 Result: Open. No physical-hardware, real-account, full-appliance UI, speed or ISO-size result is claimed.
 
 
-### HT-127: final graphical and hardware acceptance of the Rust OS continuation (OS3-R4)
+### HT-127: final graphical and hardware acceptance of the Rust OS continuation (OS3-R4/R5)
 
-Built: four-destination graphical console and native session/update/install controllers. Automated checks use disposable virtual disks, synthetic account services and headless rendered UI. They cannot qualify the user's physical Wi-Fi/display/touch hardware, real account or perceived responsiveness. The operator moved this check to the last step; that is scheduling, not a reported pass.
+Built: four-destination graphical console and native session/update/install controllers. OS3-R5 rebuilds the Qt Python bindings with build-only generator dependencies; use the [smaller preview and its validation record](research/spare-computer-os/runtime-packaging-2026-11-21.md) for this check. Automated checks use disposable virtual disks, synthetic account services and headless rendered UI. They cannot qualify the user's physical Wi-Fi/display/touch hardware, real account or perceived responsiveness. The operator moved this check to the last step; that is scheduling, not a reported pass.
 
 1. Boot the locally built preview ISO on an explicitly selected spare UEFI machine. In Calamares, connect Wi-Fi, change orientation, let one preview expire and keep another. Review storage without authorizing any disk until its identity is correct.
    Expected: controls remain reachable; orientation restores after timeout and persists only after Keep; unselected/USB/busy disks are not erase targets.

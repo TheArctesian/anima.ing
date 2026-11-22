@@ -14,6 +14,21 @@ NIX_REMOTE=daemon nix --extra-experimental-features 'nix-command flakes' build \
 
 The image is `/tmp/anima-os-preview-iso/iso/anima-os-preview-x86_64.iso`. Runtime preparation builds the repository daemon with `--locked --release`, strips a copy and records its source revision and hashes. It also projects the four OS Rust crates and locked workspace metadata into `payload/source`; Nix builds those controllers from source. `payload/` is generated and excluded from git. This is a local preview build, not a signed release or a fully hermetic Rust build inside Nix.
 
+## Console runtime packaging
+
+`console-python.nix` builds Shiboken and PySide from the pinned sources. The binding generator is a native build input of both packages, not a propagated runtime dependency. The Python environment rejects a closure that still contains the generator; no libraries are deleted from a completed Nix store output. The graphical renderer, Qt modules, fonts, firmware and offline installer remain included.
+
+Build the environment separately before rebuilding the image:
+
+```sh
+nix --extra-experimental-features 'nix-command flakes' build \
+  path:./experiments/anima-os#console-python --out-link /tmp/anima-console-python -L
+/tmp/anima-console-python/bin/python3 -m unittest discover \
+  -s experiments/anima-os/console -p test_bridge.py
+```
+
+Run `gui_test.py` on the rebuilt ISO to exercise actual installation, console authentication, navigation, read-only root, reboot persistence and untouched disks. Host-only imports or closure metadata do not establish graphical compatibility. Keep payload hashes identical when attributing an ISO size difference to packaging alone; a normal `prepare-runtime.sh` run rebuilds the current daemon/link and can change that comparison.
+
 ## Try and install
 
 1. Write the ISO to an explicitly selected USB with a suitable flasher. Boot the spare machine in UEFI mode with Secure Boot disabled.
