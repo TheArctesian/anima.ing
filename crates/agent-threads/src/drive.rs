@@ -18,6 +18,7 @@ mod claude_out;
 mod codex_in;
 mod codex_out;
 mod launch;
+mod prompt;
 mod request;
 mod session_rule;
 #[cfg(test)]
@@ -30,6 +31,7 @@ pub use claude_out::ClaudeDecoder;
 pub use codex_in::{CodexInput, CodexMethod, CodexTurn, TurnSettings};
 pub use codex_out::CodexDecoder;
 pub use launch::{Effort, Invocation, Launch, Mode, Model, Program, SessionStart};
+pub use prompt::{Attached, Attachment, Prompt};
 pub use request::{Answer, ProgramRequestId, Question, Request, RequestKind};
 pub use turn_facts::{ModelChoice, PlanStep, StepState, Usage};
 

@@ -3607,6 +3607,36 @@ state in the order that the tests use, and whether a Codex turn starts again at 
 
 Result: Open.
 
+### HT-NEW-runnerattach: files and images with a prompt, with the real programs (TH111)
+
+Built: on the branch `threads/runner-attach` (task TH111 of agent-threads.md). The calls `attach`, `attach_more` and
+`unattach`, and `anima agents send --attach <file>`, send files for a prompt in parts of at most 2 MiB. The runner
+writes each file below `attachments/<thread>/` in the folder of the threads of the daemon. Claude Code gets an image or
+a PDF of at most 3.75 MiB inside its line. Codex gets each image as `localImage`. Each other file, and each larger
+file, goes as its path in the words of the prompt.
+
+The tests cover the store of the files (parts, limits, the check of an image by its bytes, a file of a different
+thread, the removal after one hour, at a start and with the thread), the lines that each program gets, and the calls
+through the socket with a made Claude Code. The measures of 2026-11-21 saw Claude Code 2.1.311 read a small PNG and a
+small PDF given inside the line, and Codex 0.170 read a small PNG given as `localImage`. They did not cover a large
+image, or a file that the program must read from its path outside its working folder.
+
+1. Start a Claude Code thread in full access. When it is idle, run
+   `anima agents send <thread> "What is in this picture?" --attach <a screenshot of less than 3 MB>`.
+   Expected: the reply describes the screenshot, and `anima agents watch` shows the prompt with `[1 image(s)]`.
+2. On the same thread, send a prompt with `--attach <a PNG of 5 to 10 MB>`.
+   Expected: the prompt names the path of the file, and Claude Code reads it with its own tool and describes it.
+3. Start a Claude Code thread in the mode Ask. Send a prompt with `--attach <a text file>`.
+   Expected: Claude Code asks for leave to read the file from the folder of the daemon. Allow it: it reads the file.
+4. Start a Codex thread. Send a prompt with `--attach <a screenshot>` and `--attach <a PDF>`.
+   Expected: the reply describes the screenshot. Codex reads the PDF from its path, or says that it cannot read a PDF.
+5. Send a prompt with `--attach <a file of 60 MB>`.
+   Expected: the command fails with words that name the file and the limit of 50 MiB, and nothing goes to the thread.
+6. Remove a stopped thread that had files (`anima agents remove <thread>`).
+   Expected: the folder `attachments/<thread>` below the folder of the threads of the daemon is gone.
+
+Result: Open.
+
 ### HT-NEW-runnerset: the model, the effort and the mode of a thread after its start, with the real programs (TH110)
 
 Built: on the branch `threads/runner-set` (task TH110 of agent-threads.md). The call `set` and `anima agents set` change

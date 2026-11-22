@@ -5,6 +5,7 @@ use serde_json::{Value, json};
 
 use super::DriveError;
 use super::launch::{Mode, Model};
+use super::prompt::{Attached, Prompt};
 use super::request::{Answer, ProgramRequestId, Request};
 
 /// The writer of the input lines of Claude Code.
@@ -15,6 +16,21 @@ impl ClaudeInput {
     #[must_use]
     pub fn prompt(text: &str) -> String {
         json!({"type": "user", "message": {"role": "user", "content": text}}).to_string()
+    }
+
+    /// A prompt with its files (TH111): an image or a PDF with bytes inline goes as a block
+    /// (measured on 2.1.311, 2026-11-21); each other file goes as its path in the words.
+    #[must_use]
+    pub fn prompt_with(prompt: &Prompt) -> String {
+        if prompt.attachments.is_empty() {
+            return Self::prompt(&prompt.text);
+        }
+        let words = prompt.words(|file| file.kind.inline().is_none());
+        let mut content = vec![json!({"type": "text", "text": words})];
+        for file in &prompt.attachments {
+            content.extend(block(&file.kind));
+        }
+        json!({"type": "user", "message": {"role": "user", "content": content}}).to_string()
     }
 
     /// The first line of a thread: its answer names the models of the program (TH10 2b.1,
@@ -94,4 +110,17 @@ fn success(id: &ProgramRequestId, response: &Value) -> String {
         "response": {"subtype": "success", "request_id": id.json(), "response": response},
     })
     .to_string()
+}
+
+/// The content block of a file whose bytes go inline.
+fn block(kind: &Attached) -> Option<Value> {
+    let (block, mime, data) = match kind {
+        Attached::Image {
+            kind,
+            inline: Some(data),
+        } => ("image", kind.mime(), data),
+        Attached::Pdf { inline: Some(data) } => ("document", "application/pdf", data),
+        _ => return None,
+    };
+    Some(json!({"type": block, "source": {"type": "base64", "media_type": mime, "data": data}}))
 }

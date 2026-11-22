@@ -143,7 +143,9 @@ fn th110_codex_carries_the_change_on_each_later_turn_and_refuses_plan_mode() {
         "a restart keeps it"
     );
     for _ in 0..2 {
-        let next = thread.send("go on", true).expect("running");
+        let next = thread
+            .send(&agent_threads::drive::Prompt::plain("go on"), true)
+            .expect("running");
         let params = &serde_json::from_str::<serde_json::Value>(&next[0]).expect("JSON")["params"];
         assert_eq!(params["model"], "gpt-5.6-sol");
         assert_eq!(params["effort"], "medium");
@@ -201,7 +203,9 @@ fn th110_a_codex_change_waits_while_a_turn_start_is_not_answered() {
         r#"{"method":"turn/completed","params":{"turn":{"id":"u1","status":"completed"}}}"#,
         &mut ids,
     );
-    thread.send("next", true).expect("running");
+    thread
+        .send(&agent_threads::drive::Prompt::plain("next"), true)
+        .expect("running");
     thread
         .set(Changes {
             mode: Some(Mode::Ask),

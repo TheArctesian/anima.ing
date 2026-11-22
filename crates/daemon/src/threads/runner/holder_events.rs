@@ -14,7 +14,7 @@ use uuid::Uuid;
 
 use super::log::Kind;
 use super::socket::Caller;
-use super::thread::Thread;
+use super::thread::{Shown, Thread};
 use super::{Pending, Runner, Waits};
 use crate::threads::wire::{
     self, Action, Event, Exit, Held, Line, Outcome as HolderOutcome, Refusal as HolderRefusal,
@@ -273,8 +273,12 @@ impl Runner {
                 };
                 (back, None, result)
             }
-            Waits::Send { thread, back, text } => {
-                let result = self.sent(thread, &text, &outcome).await;
+            Waits::Send {
+                thread,
+                back,
+                shown,
+            } => {
+                let result = self.sent(thread, &shown, &outcome).await;
                 (back, Some(thread), result)
             }
             Waits::Answer(pending) => {
@@ -303,12 +307,12 @@ impl Runner {
         }
     }
 
-    async fn sent(&mut self, id: Uuid, text: &str, outcome: &HolderOutcome) -> Outcome {
+    async fn sent(&mut self, id: Uuid, shown: &Shown, outcome: &HolderOutcome) -> Outcome {
         if let Some(why) = taken(outcome) {
             return refused(why);
         }
         self.note(Kind::Prompt, Some(id), "sent");
-        let _ = self.apply(id, Thread::sent(text)).await;
+        let _ = self.apply(id, Thread::sent(shown)).await;
         Outcome::Ok
     }
 

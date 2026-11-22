@@ -13,12 +13,14 @@ use uuid::Uuid;
 use super::runner::{RunnerLink, refusal};
 
 mod queue;
+mod send;
 mod set;
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::stream::{self, Reader};
 use crate::output::{Cell, Table, Tone};
 pub use queue::QueueArgs;
+pub use send::SendArgs;
 pub use set::SetArgs;
 
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
@@ -69,13 +71,6 @@ pub struct StartArgs {
     program_path: Option<PathBuf>,
     /// The first prompt.
     prompt: String,
-}
-
-#[derive(Debug, clap::Args)]
-pub struct SendArgs {
-    thread: Uuid,
-    /// The prompt: to the running turn, or as a new turn.
-    text: String,
 }
 
 #[derive(Debug, clap::Args)]
@@ -201,18 +196,6 @@ async fn simple(invocation: &Invocation, action: Action, done: &str) -> Result<(
         invocation.output.message(done);
     }
     Ok(())
-}
-
-impl SendArgs {
-    /// # Errors
-    /// [`Failure`] for a refusal of the runner.
-    pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
-        let action = Action::Send {
-            thread: self.thread,
-            text: self.text,
-        };
-        simple(invocation, action, "Sent.").await
-    }
 }
 
 impl ApproveArgs {

@@ -6,7 +6,7 @@
 use agent_threads::control::{
     Change, LastTurn, MOST_QUEUED, MOST_QUEUED_BYTES, Queued, Refusal, RunState,
 };
-use agent_threads::drive::{ProgramState, TurnOutcome};
+use agent_threads::drive::{ProgramState, Prompt, TurnOutcome};
 use uuid::Uuid;
 
 use super::{Step, Thread, prompt_change};
@@ -93,13 +93,21 @@ impl Thread {
             return Vec::new();
         }
         let Queued { text, .. } = self.row.queued.remove(0);
-        let mut steps: Vec<Step> = match self.send(&text, false) {
+        let mut steps: Vec<Step> = match self.send(&Prompt::plain(&text), false) {
             Ok(lines) => lines.into_iter().map(Step::Write).collect(),
             Err(_) => return Vec::new(),
         };
         steps.push(prompt_change(&text));
         steps.push(self.row_change());
         steps
+    }
+
+    /// Whether the thread can take a prompt now.
+    ///
+    /// # Errors
+    /// [`Refusal::NotRunning`] when the program ended or the holder did not start it yet.
+    pub fn can_take_a_prompt(&self) -> Result<(), Refusal> {
+        self.running()
     }
 
     fn running(&self) -> Result<(), Refusal> {

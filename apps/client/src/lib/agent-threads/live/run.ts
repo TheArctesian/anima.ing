@@ -4,6 +4,7 @@
  * boundary, so each field is checked; a frame that does not read is left out.
  */
 
+import { attachedFrom, promptFilesFrom, type AttachAction, type Attached, type PromptFiles } from './attachments';
 import { filesFrom, type FoundFile } from './files';
 import { modelListsFrom, type ModelLists } from './models';
 import { listingsFrom, type Listing, type ListingChange } from '../listing/listing';
@@ -71,7 +72,8 @@ export type Change =
   | { readonly change: 'said'; readonly event: Said }
   | { readonly change: 'asked'; readonly request: string; readonly ask: Ask }
   | { readonly change: 'closed'; readonly request: string; readonly why: string }
-  | { readonly change: 'prompt'; readonly text: string; readonly source: string }
+  /** `images` and `files`: what went with the prompt (TH111). */
+  | ({ readonly change: 'prompt'; readonly text: string; readonly source: string } & PromptFiles)
   | { readonly change: 'state'; readonly state: RunState; readonly row: RunRow };
 
 export interface Update {
@@ -94,7 +96,9 @@ export type Refusal =
   | 'running'
   | 'over_limit'
   | 'queue_full'
-  | 'cannot_change';
+  | 'cannot_change'
+  | 'too_large'
+  | 'cannot_attach';
 
 export interface Limits {
   readonly depth: number;
@@ -117,6 +121,7 @@ export type Outcome =
   | { readonly outcome: 'files'; readonly paths: readonly FoundFile[]; readonly more: boolean }
   /** The models that each program named at the start of its newest thread (TH104). */
   | { readonly outcome: 'models'; readonly models: ModelLists }
+  | Attached
   /**
    * `said`: the words of the runner for a refusal that names a program and its path; `answered`: the other copies of a
    * program that did not answer, which did (TH97).
@@ -143,7 +148,8 @@ export type Action =
       /** The copy of the program to run; only a copy that the runner finds is taken (TH97). */
       readonly program_path?: string;
     }
-  | { readonly call: 'send'; readonly thread: string; readonly text: string }
+  /** `attachments`: the IDs of files that the person attached for this prompt (TH111). */
+  | { readonly call: 'send'; readonly thread: string; readonly text: string; readonly attachments?: readonly string[] }
   | { readonly call: 'answer'; readonly thread: string; readonly request: string; readonly answer: Answer }
   | { readonly call: 'interrupt'; readonly thread: string }
   | { readonly call: 'stop'; readonly thread: string }
@@ -156,9 +162,9 @@ export type Action =
   | { readonly call: 'models' }
   /** The queue of a thread (TH109): only the person changes it. */
   | { readonly call: 'queue'; readonly thread: string; readonly text: string }
-  | { readonly call: 'requeue'; readonly thread: string; readonly id: string; readonly text: string }
-  | { readonly call: 'unqueue'; readonly thread: string; readonly id: string }
-  | { readonly call: 'send_queued'; readonly thread: string; readonly id: string }
+  | { readonly call: 'requeue'; readonly thread: string; readonly queued: string; readonly text: string }
+  | { readonly call: 'unqueue'; readonly thread: string; readonly queued: string }
+  | { readonly call: 'send_queued'; readonly thread: string; readonly queued: string }
   /** The model, the effort or the mode of a thread from its next turn (TH110): only the person. */
   | { readonly call: 'set'; readonly thread: string; readonly model?: string; readonly effort?: Effort; readonly mode?: Mode };
 
@@ -166,7 +172,7 @@ const PROGRAMS: readonly string[] = ['claude_code', 'codex'];
 const STATES: readonly string[] = ['starting', 'working', 'needs_you', 'idle', 'stopped', 'unknown'];
 const MODES: readonly string[] = ['full_access', 'accept_edits', 'ask', 'plan'];
 const KINDS: readonly string[] = ['command', 'file_change', 'tool', 'question'];
-const REFUSALS: readonly string[] = ['unknown_thread', 'folder_not_permitted', 'program_not_found', 'program_does_not_answer', 'bad_value', 'request_gone', 'answer_does_not_fit', 'not_running', 'holder', 'from_an_agent', 'running', 'over_limit', 'queue_full', 'cannot_change'];
+const REFUSALS: readonly string[] = ['unknown_thread', 'folder_not_permitted', 'program_not_found', 'program_does_not_answer', 'bad_value', 'request_gone', 'answer_does_not_fit', 'not_running', 'holder', 'from_an_agent', 'running', 'over_limit', 'queue_full', 'cannot_change', 'too_large', 'cannot_attach'];
 const EFFORTS: readonly string[] = ['low', 'medium', 'high', 'xhigh', 'max'];
 
 type Fields = Record<string, unknown>;
@@ -279,7 +285,7 @@ function changeFrom(value: Fields): Change | null {
     case 'prompt': {
       const text = str(value.text);
       const source = str(value.source);
-      return text === null || source === null ? null : { change: 'prompt', text, source };
+      return text === null || source === null ? null : { change: 'prompt', text, source, ...promptFilesFrom(value) };
     }
     case 'state': {
       const state = oneOf<RunState>(value.state, STATES);
@@ -355,6 +361,8 @@ export function outcomeFrom(value: unknown): Outcome | null {
       const models = modelListsFrom(value.models);
       return models === null ? null : { outcome: 'models', models };
     }
+    case 'attached':
+      return attachedFrom(value);
     case 'refused':
       return refusedFrom(value.why);
     default:

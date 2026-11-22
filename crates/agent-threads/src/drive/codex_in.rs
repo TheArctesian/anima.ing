@@ -8,6 +8,7 @@ use serde_json::{Value, json};
 
 use super::DriveError;
 use super::launch::{Effort, Mode, Model};
+use super::prompt::{Attached, Prompt};
 use super::request::{Answer, ProgramRequestId, Request, RequestKind};
 
 /// The closed list of the Codex methods that Anima may call (THR-021, R-290).
@@ -123,8 +124,8 @@ impl CodexInput {
     }
 
     #[must_use]
-    pub fn turn_start(id: i64, thread: &str, text: &str, turn: &TurnSettings<'_>) -> String {
-        let mut params = json!({"threadId": thread, "input": [{"type": "text", "text": text}]});
+    pub fn turn_start(id: i64, thread: &str, prompt: &Prompt, turn: &TurnSettings<'_>) -> String {
+        let mut params = json!({"threadId": thread, "input": input(prompt)});
         if let Some(effort) = turn.effort {
             params["effort"] = Value::from(effort.as_str());
         }
@@ -141,11 +142,11 @@ impl CodexInput {
 
     /// A message into the running turn.
     #[must_use]
-    pub fn turn_steer(id: i64, turn: CodexTurn<'_>, text: &str) -> String {
+    pub fn turn_steer(id: i64, turn: CodexTurn<'_>, prompt: &Prompt) -> String {
         let params = json!({
             "threadId": turn.thread,
             "expectedTurnId": turn.turn,
-            "input": [{"type": "text", "text": text}],
+            "input": input(prompt),
         });
         call(id, CodexMethod::TurnSteer, &params)
     }
@@ -254,4 +255,20 @@ fn thread_params(thread: Option<&str>, folder: &Path, mode: Mode, model: Option<
         params["model"] = Value::from(model.as_str());
     }
     params
+}
+
+/// The input of a turn (TH111): the words, with the path of each file that is not an image, then
+/// each image as `localImage`, which Codex reads itself (measured on 0.170, 2026-11-21).
+fn input(prompt: &Prompt) -> Value {
+    let is_image = |kind: &Attached| matches!(kind, Attached::Image { .. });
+    let words = prompt.words(|file| !is_image(&file.kind));
+    let mut input = vec![json!({"type": "text", "text": words})];
+    for file in prompt
+        .attachments
+        .iter()
+        .filter(|file| is_image(&file.kind))
+    {
+        input.push(json!({"type": "localImage", "path": file.path}));
+    }
+    Value::Array(input)
 }

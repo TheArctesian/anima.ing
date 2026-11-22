@@ -41,7 +41,21 @@ const fn kind_words(kind: RequestKind) -> &'static str {
 #[must_use]
 pub fn text(change: &Change) -> Option<String> {
     Some(match change {
-        Change::Prompt { text, source } => format!("prompt ({source}): {}", short(text)),
+        Change::Prompt {
+            text,
+            source,
+            images,
+            files,
+        } => {
+            let mut with = String::new();
+            if *images > 0 {
+                with.push_str(&format!(" [{images} image(s)]"));
+            }
+            if !files.is_empty() {
+                with.push_str(&format!(" [files: {}]", files.join(", ")));
+            }
+            format!("prompt ({source}): {}{with}", short(text))
+        }
         Change::Asked { request, detail } => format!(
             "NEEDS YOU: may it {}? {} (request {request})",
             kind_words(detail.kind),

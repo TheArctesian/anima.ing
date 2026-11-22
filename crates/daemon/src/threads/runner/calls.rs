@@ -9,14 +9,16 @@ use super::codex::Codex;
 use super::log::{Kind, Line};
 use super::socket::{self, CLIENT_BYTES, CLIENT_QUEUE, Caller, Client, Incoming};
 use super::start::NewThread;
-use super::thread::{Step, Thread};
+use super::thread::Step;
 use super::{Pending, Runner, Waits};
 use crate::threads::wire;
 
+mod attach;
 mod files;
 mod queue;
 mod reads;
 mod refusal_lines;
+mod send;
 mod set;
 pub(super) use files::Walked;
 use refusal_lines::Say;
@@ -62,6 +64,9 @@ impl Runner {
                 | Action::Requeue { .. }
                 | Action::Unqueue { .. }) => self.queue_call(queued).await,
                 set @ Action::Set { .. } => self.set(set).await,
+                attach @ (Action::Attach { .. }
+                | Action::AttachMore { .. }
+                | Action::Unattach { .. }) => self.attach_call(attach),
                 Action::ChangeListing { thread, change } => self.change_listing(thread, &change),
                 Action::ChangeProject { change } => self.change_project(&change),
                 Action::Files {
@@ -97,8 +102,8 @@ impl Runner {
         person: bool,
     ) -> Result<(), Refusal> {
         match action {
-            Action::Send { thread, text } => self.send(thread, text, (back, person)).await,
-            Action::SendQueued { thread, id } => self.send_queued(thread, id, back).await,
+            send @ Action::Send { .. } => self.send(send, back, person).await,
+            Action::SendQueued { thread, queued } => self.send_queued(thread, queued, back).await,
             Action::Answer {
                 thread,
                 request,
@@ -166,39 +171,6 @@ impl Runner {
         };
         if let Err(error) = self.log.write(&line) {
             tracing::warn!(%error, "the log of the runner was not written");
-        }
-    }
-
-    /// A prompt of the person. The client gets its answer when the holder took the line.
-    /// `person` is false for a prompt of a process of an agent: it does not start a stopped
-    /// queue (TH109).
-    async fn send(
-        &mut self,
-        id: Uuid,
-        text: String,
-        (back, person): (Caller, bool),
-    ) -> Result<(), Refusal> {
-        let thread = self.threads.get_mut(&id).ok_or(Refusal::UnknownThread)?;
-        let lines = thread.send(&text, person)?;
-        let steps = lines.into_iter().map(Step::Write).collect();
-        match self.apply(id, steps).await {
-            Err(_) => Err(Refusal::Holder),
-            Ok(Some(command)) => {
-                let waits = Waits::Send {
-                    thread: id,
-                    back,
-                    text,
-                };
-                self.waits.insert(command, waits);
-                Ok(())
-            }
-            // A Codex prompt that waits in the thread for its ID: it is the thread's now.
-            Ok(None) => {
-                self.note(Kind::Prompt, Some(id), "sent");
-                let _ = self.apply(id, Thread::sent(&text)).await;
-                back.answer(Outcome::Ok);
-                Ok(())
-            }
         }
     }
 
@@ -283,7 +255,7 @@ struct Answering {
 
 /// Whether only the person may make this call: an answer to a request, a raise of the limit,
 /// a start, a change of how a thread is listed (TH46), the queue of a thread (TH109) and a change
-/// of its model, effort or mode (TH110). A process of an agent may not, so that an agent never
+/// of its model, effort or mode (TH110), and the files of a prompt (TH111). A process of an agent may not, so that an agent never
 /// approves itself, gives itself more rights or hides a thread from the person.
 const fn for_the_person(action: &Action) -> bool {
     matches!(
@@ -299,6 +271,9 @@ const fn for_the_person(action: &Action) -> bool {
             | Action::Unqueue { .. }
             | Action::SendQueued { .. }
             | Action::Set { .. }
+            | Action::Attach { .. }
+            | Action::AttachMore { .. }
+            | Action::Unattach { .. }
     )
 }
 
@@ -316,7 +291,10 @@ const fn thread_of(action: &Action) -> Option<Uuid> {
         | Action::Requeue { thread, .. }
         | Action::Unqueue { thread, .. }
         | Action::SendQueued { thread, .. }
-        | Action::Set { thread, .. } => Some(*thread),
+        | Action::Set { thread, .. }
+        | Action::Attach { thread, .. }
+        | Action::AttachMore { thread, .. }
+        | Action::Unattach { thread, .. } => Some(*thread),
         _ => None,
     }
 }

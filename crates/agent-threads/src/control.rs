@@ -11,6 +11,7 @@ use uuid::Uuid;
 use crate::drive::{Answer, DriveEvent, Effort, Mode, Program, Request};
 use crate::files::FoundPath;
 
+pub mod attach;
 mod listing;
 mod programs;
 mod project;
@@ -45,7 +46,8 @@ pub fn folder(env: impl Fn(&str) -> Option<String>, macos: bool) -> Option<PathB
     Some(daemon.join("threads"))
 }
 
-/// A call of a client, with an ID that the client chose.
+/// A call of a client, with an ID that the client chose. The action is beside the ID in one
+/// object, so no action has a field named `id` or `call`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Call {
     pub id: u64,
@@ -74,8 +76,14 @@ pub enum Action {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         program_path: Option<PathBuf>,
     },
-    /// A prompt to a thread: to its running turn, or as a new turn.
-    Send { thread: Uuid, text: String },
+    /// A prompt to a thread: to its running turn, or as a new turn, with the files that the
+    /// person attached for it (TH111).
+    Send {
+        thread: Uuid,
+        text: String,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        attachments: Vec<Uuid>,
+    },
     /// The answer of the person to a request of the program (THR-030).
     Answer {
         thread: Uuid,
@@ -124,13 +132,13 @@ pub enum Action {
     /// New words for a prompt that waits (TH109).
     Requeue {
         thread: Uuid,
-        id: Uuid,
+        queued: Uuid,
         text: String,
     },
     /// Takes a prompt that waits out of the queue (TH109).
-    Unqueue { thread: Uuid, id: Uuid },
+    Unqueue { thread: Uuid, queued: Uuid },
     /// Sends a prompt that waits now: into the running turn, or as the next turn (TH109).
-    SendQueued { thread: Uuid, id: Uuid },
+    SendQueued { thread: Uuid, queued: Uuid },
     /// Changes the model, the effort or the mode of a thread (TH110): the row says it when the
     /// program has it.
     Set {
@@ -142,6 +150,23 @@ pub enum Action {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         mode: Option<Mode>,
     },
+    /// The first part of a file for a prompt, in base64 (TH111): the whole file has `size`
+    /// bytes. Only the person attaches.
+    Attach {
+        thread: Uuid,
+        name: String,
+        mime: String,
+        size: u64,
+        bytes: String,
+    },
+    /// The next part of a file that is not complete yet, in base64 (TH111).
+    AttachMore {
+        thread: Uuid,
+        attachment: Uuid,
+        bytes: String,
+    },
+    /// Drops a file that did not go with a prompt yet (TH111).
+    Unattach { thread: Uuid, attachment: Uuid },
 }
 
 /// A frame of the runner to a client.
@@ -186,6 +211,11 @@ pub enum Outcome {
     },
     Models {
         models: Vec<ModelRow>,
+    },
+    /// A file for a prompt took a part: it is complete when `received` is its size (TH111).
+    Attached {
+        id: Uuid,
+        received: u64,
     },
     /// Oldest first; empty when the runner keeps nothing older.
     Earlier {
@@ -251,6 +281,14 @@ pub enum Refusal {
     /// The program of the thread cannot change that after its start: `said` tells what and
     /// why, in words for the person (TH110).
     CannotChange {
+        said: String,
+    },
+    /// A file is over a limit of [`attach`]: `said` names the file and the limit (TH111).
+    TooLarge {
+        said: String,
+    },
+    /// The runner cannot take or send that file: `said` names the file and why (TH111).
+    CannotAttach {
         said: String,
     },
 }
@@ -371,12 +409,20 @@ pub enum Change {
     Prompt {
         text: String,
         source: String,
+        /// How many images went with the prompt, and the names of the other files (TH111).
+        #[serde(default, skip_serializing_if = "attach::is_zero")]
+        images: u32,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        files: Vec<String>,
     },
     State {
         state: RunState,
         row: ThreadRow,
     },
 }
+
+#[cfg(test)]
+mod call_tests;
 
 #[cfg(test)]
 mod limit_tests {

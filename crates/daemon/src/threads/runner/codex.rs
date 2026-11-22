@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use agent_threads::drive::{
-    CodexDecoder, CodexInput, CodexTurn, Effort, Mode, Model, TurnSettings,
+    CodexDecoder, CodexInput, CodexTurn, Effort, Mode, Model, Prompt, TurnSettings,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -36,7 +36,7 @@ pub struct Codex {
     /// The turn that ended last, so that a late answer to `turn/start` does not open it again.
     ended: Option<String>,
     /// Prompts that wait for the thread of Codex.
-    queued: Vec<String>,
+    queued: Vec<Prompt>,
     /// Why Codex refused the last `turn/start`, until the thread reads it (TH109).
     refused_turn: Option<String>,
     /// What the person changed after the start (TH110).
@@ -95,9 +95,9 @@ impl Codex {
     }
 
     /// A prompt: queued until the thread is there, a steer of the running turn, else a turn.
-    pub fn prompt(&mut self, text: &str) -> Vec<String> {
+    pub fn prompt(&mut self, prompt: &Prompt) -> Vec<String> {
         let Some(thread) = self.thread.clone() else {
-            self.queued.push(text.to_owned());
+            self.queued.push(prompt.clone());
             return Vec::new();
         };
         let id = self.call(Call::Other);
@@ -108,7 +108,7 @@ impl Codex {
                     thread: &thread,
                     turn: &turn,
                 },
-                text,
+                prompt,
             )];
         }
         self.calls.insert(id, Call::TurnStart);
@@ -117,7 +117,7 @@ impl Codex {
             effort: self.effort,
             mode: self.changed.mode,
         };
-        vec![CodexInput::turn_start(id, &thread, text, &turn)]
+        vec![CodexInput::turn_start(id, &thread, prompt, &turn)]
     }
 
     /// The model, the effort or the mode of the next turns (TH110). A turn that runs keeps its own.
@@ -170,7 +170,8 @@ impl Codex {
     /// waits for that answer any more.
     pub fn turn_ended(&mut self) {
         self.ended = self.turn.take();
-        self.calls.retain(|_, call| !matches!(call, Call::TurnStart));
+        self.calls
+            .retain(|_, call| !matches!(call, Call::TurnStart));
     }
 
     /// `turn/interrupt` for the running turn, if one runs.
@@ -228,7 +229,10 @@ impl Codex {
                 };
                 self.thread = Some(thread.to_owned());
                 let queued = std::mem::take(&mut self.queued);
-                Ok(queued.iter().flat_map(|text| self.prompt(text)).collect())
+                Ok(queued
+                    .iter()
+                    .flat_map(|prompt| self.prompt(prompt))
+                    .collect())
             }
             Call::TurnStart => {
                 if let Some(turn) = result["turn"]["id"].as_str()

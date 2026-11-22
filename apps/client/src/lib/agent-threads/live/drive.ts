@@ -97,3 +97,27 @@ export function chosenAnswer(ask: Ask, chosen: Readonly<Record<string, readonly 
   }
   return { answer: 'choose', answers };
 }
+
+/** A call of the composer's queue, as the composer names it: `id` is the prompt that waits. */
+export type QueueRequest =
+  | { readonly call: 'queue'; readonly text: string }
+  | { readonly call: 'requeue'; readonly id: string; readonly text: string }
+  | { readonly call: 'unqueue'; readonly id: string }
+  | { readonly call: 'send_queued'; readonly id: string };
+
+/**
+ * The runner's call for a request of the queue of `thread` (TH109). The runner names the prompt that waits `queued`: a
+ * call frame holds its own `id` beside the fields of its action.
+ */
+export function queueAction(request: QueueRequest, thread: string): Action {
+  switch (request.call) {
+    case 'queue':
+      return { call: 'queue', thread, text: request.text };
+    case 'requeue':
+      return { call: 'requeue', thread, queued: request.id, text: request.text };
+    case 'unqueue':
+      return { call: 'unqueue', thread, queued: request.id };
+    case 'send_queued':
+      return { call: 'send_queued', thread, queued: request.id };
+  }
+}
