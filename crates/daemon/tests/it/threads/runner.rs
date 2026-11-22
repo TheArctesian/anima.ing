@@ -18,8 +18,10 @@ use uuid::Uuid;
 
 use super::gone;
 
-pub(super) use super::made::CLAUDE;
-use super::made::{CODEX, SHELL};
+mod made;
+
+pub(super) use made::CLAUDE;
+use made::{CODEX, SHELL};
 
 /// A secret of Anima in the environment of the daemon.
 pub(super) const SECRET: &str = "s3cret-value";

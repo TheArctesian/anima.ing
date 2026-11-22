@@ -16,7 +16,6 @@ mod drafts;
 mod files;
 mod holder_update;
 mod listing;
-mod made;
 mod models_projects;
 mod queue_frames;
 mod requests;

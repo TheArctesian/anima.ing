@@ -2,7 +2,7 @@
 
 /// A made Claude Code: it names its session, asks to run a command, and after the answer starts
 /// a child in a process group of its own, writes the child's ID to `child.pid`, and ends its turn.
-pub(super) const CLAUDE: &str = r#"#!/usr/bin/perl
+pub(in super::super) const CLAUDE: &str = r#"#!/usr/bin/perl
 $| = 1;
 my $sid = "none";
 for my $i (0 .. $#ARGV) { $sid = $ARGV[$i + 1] if $ARGV[$i] eq "--session-id"; }
@@ -23,11 +23,11 @@ while (my $line = <STDIN>) {
 
 /// A made login shell: it is asked as a login and interactive shell, sets the names of a
 /// profile (one of them with the value of a secret of Anima), and runs the script it is given.
-pub(super) const SHELL: &str = "#!/bin/sh\n[ \"$1\" = -l ] && [ \"$2\" = -i ] || exit 3\nexport LOGIN_ONLY=yes COPY=s3cret-value ANIMA_LEAK=x\nexec /bin/sh -c \"$4\"\n";
+pub(in super::super) const SHELL: &str = "#!/bin/sh\n[ \"$1\" = -l ] && [ \"$2\" = -i ] || exit 3\nexport LOGIN_ONLY=yes COPY=s3cret-value ANIMA_LEAK=x\nexec /bin/sh -c \"$4\"\n";
 
 /// A made `codex app-server` that answers `initialize` and `model/list` only, so that no test
 /// reaches a real copy in the usual folders.
-pub(super) const CODEX: &str = r#"#!/usr/bin/perl
+pub(in super::super) const CODEX: &str = r#"#!/usr/bin/perl
 $| = 1;
 while (my $line = <STDIN>) {
     my ($id) = $line =~ /"id":(\d+)/;
