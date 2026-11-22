@@ -83,15 +83,12 @@ export interface QueueOfRow {
   readonly lastTurn?: 'done' | 'failed' | 'interrupted' | null;
 }
 
-/**
- * A call of the runner's queue, without the thread: the page adds it. The queued prompt is named `queued`, not `id`:
- * a frame of the runner carries the call's own `id` beside these fields, and two would not read.
- */
+/** A call of the runner's queue, without the thread: the page adds it. */
 export type QueueAct =
   | { readonly call: 'queue'; readonly text: string }
-  | { readonly call: 'requeue'; readonly queued: string; readonly text: string }
-  | { readonly call: 'unqueue'; readonly queued: string }
-  | { readonly call: 'send_queued'; readonly queued: string };
+  | { readonly call: 'requeue'; readonly id: string; readonly text: string }
+  | { readonly call: 'unqueue'; readonly id: string }
+  | { readonly call: 'send_queued'; readonly id: string };
 export type QueueCall = (act: QueueAct) => Promise<CallResult>;
 
 /** The answer of the runner's file list, as `live.files` gives it. */
@@ -168,9 +165,9 @@ function runnerQueue(row: RunRow & QueueOfRow, call: QueueCall, send: (prompt: s
     queueWaits: runnerWaits(row),
     // The turn can end between the press and this call: what would wait for nothing goes now.
     enqueue: (message) => (phaseOf(row) === 'running' ? act({ call: 'queue', text: message.prompt }) : send(message.prompt)),
-    requeue: (id, message) => act({ call: 'requeue', queued: id, text: message.prompt }),
-    unqueue: (id) => act({ call: 'unqueue', queued: id }),
-    sendQueued: (id) => act({ call: 'send_queued', queued: id }),
+    requeue: (id, message) => act({ call: 'requeue', id, text: message.prompt }),
+    unqueue: (id) => act({ call: 'unqueue', id }),
+    sendQueued: (id) => act({ call: 'send_queued', id }),
   };
 }
 

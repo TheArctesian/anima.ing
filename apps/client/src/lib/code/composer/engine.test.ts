@@ -110,7 +110,7 @@ describe('the engine over the queue of the runner', () => {
     await engine.requeue('p1', { prompt: 'then push the branch', attachments: [] });
     await engine.unqueue('p1');
     await engine.sendQueued('p1');
-    expect(acts).toEqual([{ call: 'queue', text: 'then test' }, { call: 'requeue', queued: 'p1', text: 'then push the branch' }, { call: 'unqueue', queued: 'p1' }, { call: 'send_queued', queued: 'p1' }]);
+    expect(acts).toEqual([{ call: 'queue', text: 'then test' }, { call: 'requeue', id: 'p1', text: 'then push the branch' }, { call: 'unqueue', id: 'p1' }, { call: 'send_queued', id: 'p1' }]);
   });
 
   it('sends at once what is queued when no turn runs, and says why the queue waits', async () => {
