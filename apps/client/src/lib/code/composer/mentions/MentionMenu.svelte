@@ -82,12 +82,18 @@
   });
 
   // The highlight goes back to the first row whenever the search changes (03 "Keyboard and mouse").
+  /**
+   * No row was lit by a key or the pointer yet: the first row only looks lit, so the first ArrowDown lands on it and
+   * ArrowUp goes to the last (T3 Code `ChatComposer.tsx:2150-2160`).
+   */
+  let moved = false;
   let searched = untrack(() => `${trigger.kind} ${trigger.query}`);
   $effect(() => {
     const asked = `${trigger.kind} ${trigger.query}`;
     if (asked === searched) return;
     searched = asked;
     active = 0;
+    moved = false;
   });
 
   $effect(() => {
@@ -122,7 +128,10 @@
     if (action === 'close') onClose();
     else if (action === 'choose') {
       if (entry !== undefined) choose(entry);
-    } else active = movedActive(current, entries.length, action);
+    } else {
+      active = movedActive(moved ? current : -1, entries.length, action);
+      moved = true;
+    }
     return true;
   }
 
@@ -169,6 +178,7 @@
                 aria-disabled={entry.available.can ? undefined : 'true'}
                 onmousemove={() => {
                   if (index !== current) active = index;
+                  moved = true;
                   keyed = false;
                 }}
                 onmousedown={(event) => {

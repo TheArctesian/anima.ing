@@ -53,8 +53,8 @@
     flex: none;
     align-items: center;
     justify-content: center;
-    inline-size: var(--code-composer-chip);
-    block-size: var(--code-composer-chip);
+    inline-size: var(--code-composer-icon-button);
+    block-size: var(--code-composer-icon-button);
     padding: 0;
     border: 0;
     border-radius: var(--radius-md);

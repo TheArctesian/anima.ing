@@ -101,6 +101,14 @@ describe('the mention menu', () => {
     expect(bound.activeOption).toBe(rows().at(-1)?.id);
   });
 
+  it('lands on the first row with the first ArrowDown, and moves on from there', () => {
+    const menu = open('/');
+    press(menu, 'ArrowDown');
+    expect(rows()[0]?.getAttribute('aria-selected')).toBe('true');
+    press(menu, 'ArrowDown');
+    expect(rows()[1]?.getAttribute('aria-selected')).toBe('true');
+  });
+
   it('chooses the active row on Enter and on a click, closes on Escape and passes other keys on', () => {
     const menu = open('/');
     expect(press(menu, 'Enter')).toBe(true);

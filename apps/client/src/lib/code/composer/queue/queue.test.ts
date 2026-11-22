@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { foldWords, labelled, queueName, sendNowTip, shown, type Queued } from './queue';
+import { foldWords, labelled, queueKeys, queueName, sendNowTip, sendsFirst, shown, type Queued } from './queue';
 
 const queue = (count: number): readonly Queued[] => Array.from({ length: count }, (_, index) => ({ id: String(index), prompt: `message ${String(index)}`, saving: false }));
 
@@ -32,5 +32,20 @@ describe('the queued messages', () => {
     expect(labelled(prompt, chips)).toBe('Read gate.ts then review it');
     expect(labelled('plain', [])).toBe('plain');
     expect(labelled('ab', [{ start: 1, end: 9, label: 'x', icon: 'file' as const, detail: '' }])).toBe('ab');
+  });
+});
+
+describe('the keys of the queue', () => {
+  it('names the shortcut in the tip of the message that has it', () => {
+    expect(sendNowTip(true, queueKeys(true).send)).toBe('Send into the current turn (⌘⇧Enter)');
+    expect(sendNowTip(false, queueKeys(false).send)).toBe('Start a turn with this message (Ctrl+Shift+Enter)');
+    expect(sendNowTip(true)).toBe('Send into the current turn');
+    expect(queueKeys(true).edit).toBe('⌥↑');
+  });
+
+  it('sends the first message on Enter with Shift and ⌘ or Ctrl, and on nothing else', () => {
+    const press = { key: 'Enter', shift: true, alt: false, command: true };
+    expect(sendsFirst(press)).toBe(true);
+    for (const other of [{ shift: false }, { command: false }, { alt: true }, { key: 'a' }]) expect(sendsFirst({ ...press, ...other })).toBe(false);
   });
 });

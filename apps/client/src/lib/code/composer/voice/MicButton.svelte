@@ -41,8 +41,8 @@
     flex: none;
     align-items: center;
     justify-content: center;
-    inline-size: var(--code-control-dense);
-    block-size: var(--code-control-dense);
+    inline-size: var(--code-composer-icon-button);
+    block-size: var(--code-composer-icon-button);
     padding: 0;
     border: 0;
     border-radius: var(--radius-md);

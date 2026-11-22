@@ -27,6 +27,18 @@
   /* Send and stop (B.7.1, B.7.2): a 32 px circle. */
   --code-composer-send: var(--control-md);
 
+  /* The paperclip and the microphone (B.6.3, A.6.1): 28 px. */
+  --code-composer-icon-button: var(--control-sm);
+
   /* Popups of the composer: 4 px from their anchor, opaque. */
   --code-composer-popup: var(--surface-overlay);
+}
+
+/* Under 640 px T3 Code's controls are larger and the card's top padding smaller (its `sm:` sizes). */
+@media (width < 40rem) {
+  :root {
+    --code-composer-pad-start: 0.875rem;
+    --code-composer-send: 2.25rem;
+    --code-composer-icon-button: var(--control-md);
+  }
 }
