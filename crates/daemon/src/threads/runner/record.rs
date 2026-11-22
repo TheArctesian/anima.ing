@@ -5,11 +5,12 @@
 use std::io::Write as _;
 use std::path::Path;
 
-use agent_threads::control::{Limits, Listing, Project};
+use agent_threads::control::{Change, Limits, Listing, Project, Workspace};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-use super::RunnerError;
-use super::thread::Saved;
+use super::thread::{Saved, Step, Thread};
+use super::{Runner, RunnerError, calls};
 
 /// The lock file of the runner in the folder of the threads: one runner for one folder.
 const LOCK: &str = "runner.lock";
@@ -109,4 +110,65 @@ pub(super) fn lock(dir: &Path) -> Result<std::fs::File, RunnerError> {
     rustix::fs::flock(&file, rustix::fs::FlockOperation::NonBlockingLockExclusive)
         .map_err(|_| RunnerError::Busy)?;
     Ok(file)
+}
+
+/// The longest wait for a read of where a thread works.
+const WORKSPACE_READ: std::time::Duration = std::time::Duration::from_secs(2);
+
+impl Runner {
+    /// The threads of the record of a run before, each with its updates numbered after the
+    /// updates of that run.
+    pub(super) fn restore(&mut self, saved: Vec<Saved>) {
+        for saved in saved {
+            let codex = calls::codex_of(&saved.row, saved.effort);
+            let mut thread = Thread::restore(saved, codex);
+            // A thread of a record from before TH112 learns where it works; the branch is read
+            // again at the end of its next turn.
+            let folder = thread.row.folder.clone();
+            thread
+                .row
+                .workspace
+                .get_or_insert_with(|| Workspace::of(&folder));
+            // The microseconds of the clock are more than the updates of any run before.
+            thread.number_from(u64::try_from(chrono::Utc::now().timestamp_micros()).unwrap_or(0));
+            let id = thread.row.id;
+            let steps = thread.settle_answering();
+            self.threads.insert(id, thread);
+            for step in steps {
+                if let Step::Change(change) = step {
+                    self.publish(id, change);
+                }
+            }
+        }
+    }
+
+    /// Reads where a thread works again; the clients get the row when it changed (TH112). The
+    /// read is off the loop of the runner and has a time limit, as the folder can be on a
+    /// network that does not answer; then the row keeps what it had.
+    pub(super) async fn look_at_workspace(&mut self, id: Uuid) {
+        let Some(folder) = self
+            .threads
+            .get(&id)
+            .map(|thread| thread.row.folder.clone())
+        else {
+            return;
+        };
+        let read = tokio::task::spawn_blocking(move || Workspace::of(&folder));
+        let Ok(Ok(now)) = tokio::time::timeout(WORKSPACE_READ, read).await else {
+            tracing::warn!(%id, "the workspace of a thread did not read in time");
+            return;
+        };
+        let Some(thread) = self.threads.get_mut(&id) else {
+            return;
+        };
+        if thread.row.workspace.as_ref() == Some(&now) {
+            return;
+        }
+        thread.row.workspace = Some(now);
+        let change = Change::State {
+            state: thread.row.state,
+            row: Box::new(thread.row.clone()),
+        };
+        self.publish(id, change);
+    }
 }

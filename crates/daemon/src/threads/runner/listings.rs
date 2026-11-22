@@ -114,6 +114,7 @@ impl Runner {
             .and_then(|id| id.parse().ok());
         self.threads.remove(&thread);
         self.read_up_to.remove(&thread);
+        self.attached.forget(thread);
         if let Some(session) = session.filter(|session| *session != thread) {
             let removed = Listing {
                 thread: session,

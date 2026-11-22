@@ -19,9 +19,10 @@
     onMenu: (item: InboxRow, anchor: Anchor) => void;
     onAct: (item: InboxRow, action: RowAction) => void;
     onRename: (item: InboxRow, title: string | null) => void;
+    onDismiss: (item: InboxRow) => void;
   }
 
-  const { parts, now, chosen, selected, renaming, marksOff, shelves, onToggleShelf, onRowClick, onMenu, onAct, onRename }: Props = $props();
+  const { parts, now, chosen, selected, renaming, marksOff, shelves, onToggleShelf, onRowClick, onMenu, onAct, onRename, onDismiss }: Props = $props();
   const id = $props.id();
   /** The first page of Settled holds 10; each "Show more" adds up to 25 (02 section 5.7). */
   let settledShown = $state(10);
@@ -50,6 +51,9 @@
     }}
     onRename={(title) => {
       onRename(item, title);
+    }}
+    onDismiss={() => {
+      onDismiss(item);
     }}
   />
 {/snippet}

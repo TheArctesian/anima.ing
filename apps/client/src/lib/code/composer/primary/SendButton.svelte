@@ -15,14 +15,18 @@
    * the tab order with `aria-disabled`, so that its tip can say why.
    */
   const { face, onPress }: Props = $props();
+  const why = $props.id();
 </script>
 
+<!-- The reason on the control itself: a tip describes its wrapper, and only while it shows. -->
+<span id={why} hidden>{face.tip}</span>
 <Tooltip text={face.tip}>
   <button
     type="button"
     class="send"
     aria-label={face.label}
     aria-disabled={face.disabled}
+    aria-describedby={face.disabled ? why : undefined}
     {@attach press()}
     onpointerdown={(event) => {
       // The editor keeps its focus and its caret.

@@ -13,5 +13,5 @@
   const label = $derived(key ? `Toggle the thread list (${key})` : 'Toggle the thread list');
 </script>
 
-<!-- Shows or hides the column of the threads. It stays at the start of the band in both states (report 02, Section 4.2). -->
-<BandButton icon="carbon:side-panel-close" {label} pressed={open} mirrored={!open} onclick={ontoggle} />
+<!-- Shows or hides the column of the threads; T3's two icons: Panel left close while open, Panel left while closed. -->
+<BandButton icon={open ? 'panel-left-close' : 'panel-left'} {label} pressed={open} onclick={ontoggle} />

@@ -17,8 +17,9 @@ pub(super) use attempts::{
 pub(super) use keys::{KEY_NAME_INDEX, NewKey, StoredKey, delete_key, insert_key, keys_of};
 pub(super) use permitted::{permitted_networks, replace_labelled_networks};
 pub(super) use tokens::{
-    NewToken, delete_builder_token, delete_operator_tokens, delete_token, insert_token,
-    insert_token_with_idle, token_by_hash, token_exists, touch_token,
+    NewToken, delete_builder_token, delete_operator_tokens, delete_token, fail_token_totp,
+    insert_token, insert_token_with_idle, lock_token_totp, pass_token_totp, token_by_hash,
+    token_exists, touch_token,
 };
 
 use crate::ids::OperatorId;

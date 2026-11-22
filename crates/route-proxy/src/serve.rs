@@ -62,6 +62,7 @@ pub struct Proxy<H: Hub> {
     udp_idle: Duration,
     udp_new_per_second: u32,
     udp_flows_per_network: usize,
+    route_connections: u32,
     tls_gate: Arc<Mutex<Gate>>,
     plain_gate: Arc<Mutex<Gate>>,
     stream_gate: Arc<Mutex<Gate>>,
@@ -97,6 +98,7 @@ impl<H: Hub> Proxy<H> {
             udp_idle: settings.udp_idle,
             udp_new_per_second: settings.udp_new_per_second,
             udp_flows_per_network: settings.udp_flows_per_network,
+            route_connections: settings.limits.connections,
             tls_gate: Arc::new(Mutex::new(Gate::new(settings.tls_caps))),
             plain_gate: Arc::new(Mutex::new(Gate::new(settings.plain_caps))),
             stream_gate: Arc::new(Mutex::new(Gate::new(settings.tls_caps))),
@@ -191,6 +193,11 @@ impl<H: Hub> Proxy<H> {
 
     pub(crate) const fn udp_flows_per_network(&self) -> usize {
         self.udp_flows_per_network
+    }
+
+    /// The connections of one route at one time.
+    pub(crate) const fn route_connections(&self) -> u32 {
+        self.route_connections
     }
 
     /// The name that serves as `name`.

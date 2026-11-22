@@ -52,10 +52,6 @@
     cursor: pointer;
   }
 
-  button:hover {
-    color: var(--text);
-  }
-
   button:focus-visible {
     outline: none;
     box-shadow: inset 0 0 0 var(--border-focus) var(--focus-ring);

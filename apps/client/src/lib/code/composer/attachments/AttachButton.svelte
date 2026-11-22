@@ -13,6 +13,7 @@
 
   /* The paperclip of the footer (03 B.6.3): a 28 px ghost icon button over a hidden file input with no filter. */
   const { can, onFiles }: Props = $props();
+  const why = $props.id();
   let input = $state<HTMLInputElement>();
 
   function chosen(event: Event & { currentTarget: HTMLInputElement }): void {
@@ -24,12 +25,15 @@
 </script>
 
 <input type="file" multiple hidden tabindex="-1" bind:this={input} onchange={chosen} />
+<!-- The reason on the control itself: a tip describes its wrapper, and only while it shows. -->
+<span id={why} hidden>{can.can ? '' : can.reason}</span>
 <Tooltip text={can.can ? 'Attach files' : can.reason}>
   <!-- Not `disabled` when it cannot: it stays a Tab stop, so the reason can be read. A pointer-down is stopped, so the editor keeps the focus. -->
   <button
     type="button"
     aria-label="Attach files"
     aria-disabled={!can.can}
+    aria-describedby={can.can ? undefined : why}
     onpointerdown={(event) => {
       event.preventDefault();
     }}
@@ -49,8 +53,8 @@
     flex: none;
     align-items: center;
     justify-content: center;
-    inline-size: var(--code-composer-chip);
-    block-size: var(--code-composer-chip);
+    inline-size: var(--code-composer-icon-button);
+    block-size: var(--code-composer-icon-button);
     padding: 0;
     border: 0;
     border-radius: var(--radius-md);

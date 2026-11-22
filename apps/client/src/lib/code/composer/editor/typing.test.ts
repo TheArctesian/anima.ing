@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Mode, Span } from './edit';
 import { after, marked } from './edit.fixture';
-import { LONG_PASTE_BYTES, pasteIsLong, PROMPT_LIMIT, typedAction, type Typed } from './typing';
+import { backspaced, LONG_PASTE_BYTES, pasteIsLong, PROMPT_LIMIT, typedAction, type Typed } from './typing';
 
 interface Around {
   readonly mode?: Mode;
@@ -96,5 +96,31 @@ describe('a long paste', () => {
   it('is any text that takes the prompt over its limit', () => {
     expect(pasteIsLong('abc', PROMPT_LIMIT - 3)).toBe(false);
     expect(pasteIsLong('abc', PROMPT_LIMIT - 2)).toBe(true);
+  });
+});
+
+describe('Backspace as a key, for the engine that sends no input at the start of the first line', () => {
+  const HELD = { shiftKey: false, altKey: false, ctrlKey: false, metaKey: false, mac: true };
+  const key = (text: string, held: Partial<typeof HELD> = {}, mode: Mode = 'rich'): string | null => {
+    const { value, sel } = marked(text);
+    const action = backspaced({ ...HELD, ...held, key: 'Backspace' }, { value, sel, mode, chips: [] });
+    return action === null || typeof action === 'string' ? action : after(value, action.edit);
+  };
+
+  it('takes the marker of a list line, a heading and a quote, and the fences of a code block', () => {
+    expect(key('- |task')).toBe('|task');
+    expect(key('- |')).toBe('|');
+    expect(key('# |Title')).toBe('|Title');
+    expect(key('> |said')).toBe('|said');
+    expect(key('```\n|code\n```')).toBe('|code');
+  });
+
+  it('leaves each other Backspace to the input that follows it', () => {
+    expect(key('- ta|sk')).toBeNull();
+    expect(key('|plain')).toBeNull();
+    expect(key('- [ta]sk')).toBeNull();
+    expect(key('- |task', { altKey: true })).toBeNull();
+    expect(key('- |task', { metaKey: true })).toBeNull();
+    expect(key('- |task', {}, 'literal')).toBeNull();
   });
 });

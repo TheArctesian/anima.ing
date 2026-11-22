@@ -38,6 +38,11 @@ pub(super) fn removed(record: &Record) -> TrailEntry {
     entry(record, AuditAction::Delete, "deleted")
 }
 
+/// The entry of a reveal: the client opens the record for the operator after it (VLT-004).
+pub(super) fn revealed(record: &Record) -> TrailEntry {
+    entry(record, AuditAction::Reveal, "revealed")
+}
+
 pub(super) fn offered(id: KeyOfferId, bytes: usize) -> TrailEntry {
     TrailEntry {
         source: Source::Hub,

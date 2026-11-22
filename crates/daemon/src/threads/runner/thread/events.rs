@@ -1,6 +1,7 @@
 //! What the program of a thread says: each line of its standard output read as events, and
 //! what each event changes in the thread. Pure.
 
+use agent_threads::control::RunState;
 use agent_threads::drive::{DriveEvent, ProgramRequestId, ProgramState};
 use uuid::Uuid;
 
@@ -10,11 +11,27 @@ impl Thread {
     /// One line of standard output of the program.
     pub fn line(&mut self, text: &str, new_id: &mut impl FnMut() -> Uuid) -> Vec<Step> {
         let events = self.decode(text.as_bytes());
+        let ended = events
+            .iter()
+            .any(|event| matches!(event, DriveEvent::TurnEnded { .. }));
+        let used = self.row.usage.clone();
         let mut steps = Vec::new();
         for event in events {
             steps.extend(self.event(event, text, new_id));
         }
-        steps.extend(self.state_change());
+        // A new use of tokens goes to the clients with the row when no turn runs: the change of
+        // the state at the end of a turn carries the use of that turn, and Codex says it many
+        // times within a turn (TH112).
+        let state = self.state_change();
+        let fresh = state.is_none() && self.row.usage != used && self.row.state == RunState::Idle;
+        steps.extend(state.or_else(|| fresh.then(|| self.row_change())));
+        // A change of Codex lands when the turn ended, before the next queued prompt goes.
+        steps.extend(self.codex_landed());
+        steps.extend(self.next_queued());
+        // Last, so that the row with the new branch is the last row that the clients get.
+        if ended {
+            steps.push(Step::Workspace);
+        }
         steps
     }
 
@@ -73,8 +90,10 @@ impl Thread {
                 }
             }
             DriveEvent::State { state } => self.program = Some(*state),
-            DriveEvent::TurnEnded { .. } => {
+            DriveEvent::Usage { usage } => self.row.usage = Some(usage.clone()),
+            DriveEvent::TurnEnded { outcome, .. } => {
                 self.program = Some(ProgramState::Idle);
+                self.turn_ended(*outcome);
                 if let Driver::Codex(codex) = &mut self.driver {
                     codex.turn_ended();
                 }
@@ -86,10 +105,21 @@ impl Thread {
     fn reply(&mut self, id: &ProgramRequestId, ok: bool, result: &serde_json::Value) -> Vec<Step> {
         let (Driver::Codex(codex), ProgramRequestId::Number(number)) = (&mut self.driver, id)
         else {
-            return Vec::new();
+            return self.change_answered(id, ok);
         };
         match codex.reply(*number, ok, result) {
-            Ok(lines) => lines.into_iter().map(Step::Write).collect(),
+            Ok(lines) => {
+                let refused = codex.refused_turn();
+                let mut steps: Vec<Step> = lines.into_iter().map(Step::Write).collect();
+                // A refused `turn/start` is a turn that failed: the queue stops, and the person is told.
+                if let Some(why) = refused {
+                    self.turn_ended(agent_threads::drive::TurnOutcome::Failed);
+                    steps.push(said(DriveEvent::Notice {
+                        text: format!("Codex did not start the turn: {why}"),
+                    }));
+                }
+                steps
+            }
             // Codex did not start its thread: the program ends, and its end stops the thread.
             Err(fault) => {
                 self.last_error = Some(fault.clone());

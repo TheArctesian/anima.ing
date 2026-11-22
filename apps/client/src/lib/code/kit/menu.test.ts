@@ -59,4 +59,12 @@ describe('where a menu opens', () => {
     expect(tipPlace({ left: 100, top: 14, width: 28, height: 28 }, tip, viewport, { side: 'below', gap: 4 })).toEqual({ left: 74, top: 46 });
     expect(tipPlace({ left: 100, top: 570, width: 28, height: 28 }, tip, viewport, { side: 'below', gap: 4 })).toEqual({ left: 74, top: 542 });
   });
+
+  it("keeps a tip inside the Code page, so the list toggle's tip by its edge does not cover Anima's sidebar", () => {
+    const tip = { width: 160, height: 24 };
+    const toggle = { left: 106, top: 14, width: 28, height: 28 };
+    expect(tipPlace(toggle, tip, viewport, { side: 'below', gap: 4 }).left).toBe(40);
+    expect(tipPlace(toggle, tip, viewport, { side: 'below', gap: 4, room: { left: 96, right: 800 } })).toEqual({ left: 96, top: 46 });
+    expect(tipPlace({ left: 780, top: 14, width: 28, height: 28 }, tip, viewport, { side: 'below', gap: 4, room: { left: 96, right: 760 } }).left).toBe(600);
+  });
 });

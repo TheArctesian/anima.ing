@@ -2773,6 +2773,25 @@ approve it, or say what to change, before the client screen is built.
 
 Result: Open.
 
+### HT-138: the conversation of Code with VoiceOver and the keyboard (TC3, accessibility findings 2, 3 and 4)
+
+Built on the branch `code/timeline-a11y`: `apps/client/src/lib/code/timeline/Timeline.svelte` and `spoken.ts`. The
+conversation owns its arrow keys, a polite live region says the start and the end of a turn, and an alert says each
+request of the agent and moves the focus to its Approve button when the person is not busy in a different place. The
+tests run in jsdom: they read the text of the regions and the focus, not what VoiceOver says. Not covered: the speech of
+VoiceOver in WebKit, and how often it speaks during a long turn.
+
+1. Open the desktop application, turn VoiceOver on (⌘F5) and open a thread on the page Code. Click in the conversation
+   and press the Down arrow three times.
+   Expected: the conversation scrolls; the open thread does not change.
+2. In the composer, send a prompt that makes the agent work for some seconds.
+   Expected: VoiceOver says "Agent is working" one time, and says nothing more while the reply comes.
+3. Wait for the end of the turn.
+   Expected: VoiceOver says "Agent replied:" and the first sentence of the reply.
+4. In a thread in the mode Ask, send a prompt that makes the agent run a command. Do not touch the window.
+   Expected: VoiceOver says "Approval needed to run a command:" and the command at once, and the focus is on Approve.
+5. Press Enter on Approve.
+   Expected: the focus goes to the conversation, not to the top of the window.
 ### HT-136: the section Routes of Settings (task H21)
 
 Built on the branch `hosted/routes-section`: the section Routes of the Settings page, in the group Hub and account
@@ -3558,6 +3577,99 @@ window, a real Claude Code thread, and a restart of the installed daemon.
    of an agent." The pin does not change.
 7. Restart the daemon (quit and open the application, or `launchctl kickstart -k gui/$(id -u)/ing.anima.daemon`).
    Expected: the pins and the titles are kept; `anima agents listings` shows them.
+
+Result: Open.
+
+### HT-139: the queue of a thread with a real Claude Code and a real Codex (TH109)
+
+Built: on the branch `threads/runner-queue` (task TH109 of agent-threads.md). The runner holds the prompts that wait for
+the turn of a thread to end and sends them one by one, each as the next turn when the turn before it ended well with
+nothing open for an answer; an interrupt or a failed turn stops the queue until the person sends; a stop empties it. The
+row of a thread says its queue and how its last turn ended. `anima agents queue` drives it; the composer of the page uses
+it when its own branch lands.
+
+The tests cover the core of a thread with lines of a made Claude Code: two prompts go one by one also when the program
+says "idle" between two turns, a failed and an interrupted turn stop the queue, the bound of 20, and that the record never
+holds a queued prompt. They do not cover a real Claude Code or Codex: whether each sends its end of a turn and its idle
+state in the order that the tests use, and whether a Codex turn starts again at once after the end of the one before it.
+
+1. On the Mac, start a Claude Code thread: `anima agents start --program claude-code --folder <a folder> "Count slowly
+   to 20, one number a line"`. While it works, run `anima agents queue <thread> "Say A"` and
+   `anima agents queue <thread> "Say B"`, then `anima agents watch`.
+   Expected: after the count ends, "Say A" goes as a new turn; only after that turn ends does "Say B" go.
+2. Do step 1 again with `--program codex`.
+   Expected: the same.
+3. Start a thread with a long prompt, queue "Say A", and run `anima agents interrupt <thread>`.
+   Expected: "Say A" does not go; `anima agents running --json` still lists it under `queued`, and `last_turn` is
+   `interrupted`. Run `anima agents queue <thread> --send <its ID>`: it goes at once.
+4. Queue a prompt, then quit and open the application again.
+   Expected: the queue is empty after the restart, and the file `threads.json` of the runner does not hold its words.
+
+Result: Open.
+
+### HT-141: files and images with a prompt, with the real programs (TH111)
+
+Built: on the branch `threads/runner-attach` (task TH111 of agent-threads.md). The calls `attach`, `attach_more` and
+`unattach`, and `anima agents send --attach <file>`, send files for a prompt in parts of at most 2 MiB. The runner
+writes each file below `attachments/<thread>/` in the folder of the threads of the daemon. Claude Code gets at most 5 images
+of at most 3.75 MiB and 2000 pixels a side inside its line, at most 5 MiB in one prompt. Codex gets each image as `localImage`. A PDF, each other
+file, and each larger image goes as its path in the words of the prompt.
+
+The tests cover the store of the files (parts, limits, the check of an image by its bytes, a file of a different
+thread, the removal after one hour, at a start and with the thread), the lines that each program gets, and the calls
+through the socket with a made Claude Code. The measures of 2026-11-21 saw Claude Code 2.1.311 read a small PNG and a
+small PDF given inside the line (the runner now sends a PDF by its path), and Codex 0.170 read a small PNG given as `localImage`. They did not cover a large
+image, many images in one thread, or a file that the program must read from its path outside its working folder.
+
+1. Start a Claude Code thread in full access. When it is idle, run
+   `anima agents send <thread> "What is in this picture?" --attach <a screenshot of less than 3 MB>`.
+   Expected: the reply describes the screenshot, and `anima agents watch` shows the prompt with `[1 image(s)]`.
+2. On the same thread, send a prompt with `--attach <a PNG of 5 to 10 MB>`.
+   Expected: the prompt names the path of the file, and Claude Code reads it with its own tool and describes it.
+3. Start a Claude Code thread in the mode Ask. Send a prompt with `--attach <a text file>`.
+   Expected: Claude Code asks for leave to read the file from the folder of the daemon. Allow it: it reads the file.
+4. Start a Codex thread. Send a prompt with `--attach <a screenshot>` and `--attach <a PDF>`.
+   Expected: the reply describes the screenshot. Codex reads the PDF from its path, or says that it cannot read a PDF.
+5. On the Claude Code thread of step 1, send a prompt with `--attach <a PDF>`.
+   Expected: the prompt names the path of the PDF, and Claude Code reads it with its own tool.
+   Then send 3 prompts on that thread, each with `--attach` of 5 screenshots.
+   Expected: each reply describes the screenshots, and the thread still answers a prompt after the third.
+6. Send a prompt with `--attach <a file of 60 MB>`.
+   Expected: the command fails with words that name the file and the limit of 50 MiB, and nothing goes to the thread.
+7. Remove a stopped thread that had files (`anima agents remove <thread>`).
+   Expected: the folder `attachments/<thread>` below the folder of the threads of the daemon is gone.
+
+Result: Open.
+
+### HT-140: the model, the effort and the mode of a thread after its start, with the real programs (TH110)
+
+Built: on the branch `threads/runner-set` (task TH110 of agent-threads.md). The call `set` and `anima agents set` change
+the model, the effort or the mode of a running thread. For Codex the change lands when no turn runs and the runner sends
+it with each later `turn/start`; for Claude Code it writes the control requests `set_model` and `set_permission_mode` at
+once, and the row changes only when Claude Code answers that it took them. A change of the effort is refused with words
+for Claude Code. The row says the effort.
+
+The tests cover the core of a thread with lines of a made Claude Code and Codex: the lines that each change writes, a row
+that changes only when Claude Code answers success or when the Codex turn ended, the record of a Codex change, the refusal
+of the effort of Claude Code and of the plan mode of Codex, and a refusal of Claude Code said as a notice. They do not
+cover the real programs: the measures of 2026-11-21 saw Claude Code take both control requests between two turns (not
+during a turn, and not the mode `manual` that Ask sends), and saw Codex ask for an approval after a
+change of the mode, but no answer of Codex named the model in use, and `workspaceWrite` and `dangerFullAccess` were not
+sent as a `sandboxPolicy`.
+
+1. Start a Claude Code thread with `--model haiku` and a short prompt. When it is idle, run
+   `anima agents set <thread> --model sonnet --mode accept-edits`, then send "Which model are you?".
+   Expected: the next turn starts in the mode accept edits, and `anima agents running --json` says the model `sonnet`.
+2. Run `anima agents set <thread> --effort high` on the same thread.
+   Expected: the command fails with words that say Claude Code cannot change the effort of a session that runs.
+3. Start a long Claude Code turn and run `anima agents set <thread> --mode ask` during it.
+   Expected: `anima agents running --json` says the mode `ask` only after Claude Code answered; from then on a command
+   asks first. If Claude Code refuses, the thread shows a notice and the mode stays `full_access`.
+4. Start a Codex thread in full access. When it is idle, run `anima agents set <thread> --mode ask --effort low`, then
+   send a prompt that runs a command.
+   Expected: Codex asks for an approval before the command.
+5. Run `anima agents set <thread> --mode plan` on the Codex thread.
+   Expected: the command fails with words that say Codex has no plan mode.
 
 Result: Open.
 
@@ -4480,7 +4592,9 @@ Result: Open; deferred to the final step by the operator. No production release 
 
 Built on the branch `code/stage-4-composer`: `apps/client/src/lib/code/composer/`, shown on the page `/code-kit/composer`
 of a development build. The editor is our own, over the Markdown of the prompt. Its tests run in jsdom, and its pictures
-are taken in WebKit with typed keys only. Not covered: an input method (Japanese, Chinese), the dictation of macOS, a
+are taken in WebKit with typed keys only. The branch `code/composer-finish` adds tests in WebKit that send the events of
+an input method; no real input method was used. Not covered: a real input method (Japanese, Chinese, Korean, dead keys,
+the accent menu of a held key), the dictation of macOS, a
 paste from a different application, a drop of a file from the Finder into the window of the desktop application, and the
 speed with a prompt of many thousand characters.
 
@@ -4500,6 +4614,33 @@ speed with a prompt of many thousand characters.
    Expected: the list hangs over the card, and the choice is one chip with a space after it.
 8. Drag a picture from the Finder over the first card and drop it.
    Expected: the card takes the accent line while the picture is over it, and the picture is a tile over the editor.
+9. Start a line with "- ", press Tab, then press Escape and Tab.
+   Expected: the first Tab nests the list line; after Escape the next Tab moves the focus out of the editor.
+
+Result: Open.
+
+### HT-137: the queue of the composer of Code (TC4)
+
+Built on the branch `code/composer-finish`. The thread runner keeps no queue, so the composer keeps one in the window:
+a message that is queued while a turn runs goes as the next turn when that turn ends. Its tests run the composer over
+a made-up runner; nobody has tried it with a program that runs.
+
+1. In the desktop application open a chat of Code and send a prompt that takes the program a minute. While it works,
+   type `then say the word done` and press ⌘Enter.
+   Expected: the editor is empty and the message is a dashed bubble over the composer, with "Send now", Edit and Remove.
+2. Wait for the turn to end and touch nothing.
+   Expected: the bubble goes, the message is in the chat as your prompt, and the program answers it. It was sent one time.
+3. Send a long prompt again, queue two messages with ⌘Enter, and press Stop.
+   Expected: the turn stops, both bubbles stay, and a line under them says that you stopped the turn and the queue waits.
+   Nothing is sent.
+4. Press "Send now" on the second bubble.
+   Expected: it goes as a turn; when that turn ends the first bubble goes by itself.
+5. Queue a message while a turn runs, open a different chat before the turn ends, wait a minute, and come back.
+   Expected: the message was not sent to the other chat. It goes to its own chat, at the latest when you open it again.
+6. Queue a message, press Edit on it, change its words while the turn ends, then press Enter.
+   Expected: nothing was sent while the message was open; the changed words go, one time.
+7. Queue a message and close the application.
+   Expected (a known limit, not a fault): the message is gone when you start the application again.
 
 Result: Open.
 

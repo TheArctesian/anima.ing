@@ -5,6 +5,7 @@
 //! never by a device or a port, with the limits of each name and the cap of each client.
 
 pub mod datagrams;
+pub mod flows;
 pub mod listeners;
 mod tcp;
 pub mod udp;

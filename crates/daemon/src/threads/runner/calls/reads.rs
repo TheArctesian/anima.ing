@@ -1,6 +1,8 @@
 //! The calls that only read what the runner holds: the threads, the listings, the projects, the
 //! accounts, the models and the earlier updates of a thread (TH106).
 
+use std::path::Path;
+
 use agent_threads::control::{Action, Outcome, Refusal};
 
 use super::super::Runner;
@@ -43,5 +45,15 @@ impl Runner {
             ),
             _ => return None,
         })
+    }
+
+    /// What the composer says of a folder that the person chose for a new thread, or the refusal of it.
+    pub(super) fn folder_notice(&self, folder: &Path) -> Outcome {
+        match super::super::start::chosen_folder(folder, self.dir.parent().unwrap_or(&self.dir)) {
+            Ok(real) => Outcome::Folder {
+                notice: crate::threads::notice::of_folder(&real),
+            },
+            Err(why) => Outcome::Refused { why },
+        }
     }
 }

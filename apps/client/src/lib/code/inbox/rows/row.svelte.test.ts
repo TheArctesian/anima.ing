@@ -27,7 +27,7 @@ function show(item: InboxRow, kind: 'card' | 'slim', shelf: 'list' | 'snoozed' |
   const target = document.createElement('ul');
   document.body.append(target);
   const none = (): void => undefined;
-  app = mount(Row, { target, props: { item, kind, shelf, now: NOW, open: false, selected: false, renaming: false, marksOff: null, onclick: none, onMenu: none, onAct: none, onRename: none } });
+  app = mount(Row, { target, props: { item, kind, shelf, now: NOW, open: false, selected: false, renaming: false, marksOff: null, onclick: none, onMenu: none, onAct: none, onRename: none, onDismiss: none } });
   flushSync();
   return target.querySelector<HTMLButtonElement>('button.main') ?? expect.fail('no row button');
 }

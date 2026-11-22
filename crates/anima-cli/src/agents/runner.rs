@@ -129,7 +129,11 @@ pub fn refusal(why: &Refusal) -> Failure {
             "That program is not on the PATH of your login, or that path is not a copy the runner finds.",
             None,
         ),
-        Refusal::ProgramDoesNotAnswer { said, .. } | Refusal::HolderOlder { said } => {
+        Refusal::ProgramDoesNotAnswer { said, .. }
+        | Refusal::HolderOlder { said }
+        | Refusal::CannotChange { said }
+        | Refusal::TooLarge { said }
+        | Refusal::CannotAttach { said } => {
             return Failure::Forbidden {
                 message: said.clone(),
                 hint: None,
@@ -140,19 +144,23 @@ pub fn refusal(why: &Refusal) -> Failure {
             None,
         ),
         Refusal::RequestGone => (
-            "That request is answered, closed, or its program ended.",
+            "That request or queued prompt is gone: it was answered, closed or sent, or its program ended.",
             None,
         ),
         Refusal::AnswerDoesNotFit => ("That answer does not fit the request.", None),
         Refusal::NotRunning => ("The program of that thread is not running.", None),
         Refusal::Holder => ("The holder of the programs did not take the command.", None),
         Refusal::FromAnAgent => (
-            "Only the person can answer a request, raise the limit, start a thread, change the list of threads or list the files of a thread: this call came from a process of an agent.",
+            "Only the person can answer a request, raise the limit, start a thread, change the list of threads, list the files of a thread, change the queue of a thread or change its model, effort or mode: this call came from a process of an agent.",
             None,
         ),
         Refusal::Running => (
             "The program of that thread still runs: stop it first, then remove it from the list.",
             Some(Hint::run("anima agents stop <thread>")),
+        ),
+        Refusal::QueueFull => (
+            "That thread has 20 queued prompts: send or drop one first.",
+            None,
         ),
         Refusal::OverLimit { .. } => (
             control::OVER_LIMIT,

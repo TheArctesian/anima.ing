@@ -1,5 +1,6 @@
 import { admit, attachmentOf, type Attachment } from './attachments/attach';
 import type { ComposerEngine, Message, Outcome } from './engine';
+import type { Choice } from './picker/catalogue';
 import { sendFace, stopAfter, STOP_LANDED_MS, STOP_PENDING_MS, type FollowUp, type SendFace, type StopPhase, type Turn } from './primary/send';
 
 /** The unsent text of each chat, by the key its page gives: it outlives the composer while the window is open. */
@@ -8,6 +9,16 @@ const kept = new Map<string, { readonly prompt: string; readonly attachments: re
 
 const STILL_READING = 'An attachment is still being read.';
 const FAILED_FILE = 'Remove the attachment that failed, then send.';
+
+/** Frees the addresses of the previews: nothing draws them after the message went or the attachment was removed. */
+function release(attachments: readonly Attachment[]): void {
+  for (const attachment of attachments) if (attachment.preview?.startsWith('blob:') === true) URL.revokeObjectURL(attachment.preview);
+}
+
+/** Two choices that say the same model, effort and mode. */
+function same(a: Choice, b: Choice | null): boolean {
+  return b !== null && a.model === b.model && a.effort === b.effort && a.mode === b.mode;
+}
 
 /**
  * What one composer holds and does (03 B.7): the prompt, what is attached, the send that is on its way, the stop
@@ -24,11 +35,14 @@ export class CardState {
   editing = $state<string | null>(null);
   /** ⌘ or Ctrl is held: the other follow-up (03 B.7.3). */
   alternate = $state(false);
+  /** The choice the person made in the picker that the chat does not say yet. */
+  asked = $state<Choice | null>(null);
   followUp: FollowUp = 'steer';
 
   #engine: () => ComposerEngine;
   #key: string | undefined;
   #aside: Message | null = null;
+  #before: Choice | null = null;
   #timer: ReturnType<typeof setTimeout> | undefined;
   #serial = 0;
 
@@ -94,7 +108,12 @@ export class CardState {
     this.#endEdit();
     this.#fill(editing === null ? null : aside);
     const went = await this.#run(() => (face.action === 'update' && editing !== null ? engine.requeue(editing, message) : face.action === 'queue' ? engine.enqueue(message) : engine.send(message)));
-    if (went) return;
+    if (went) {
+      // The change is saved: the queue may send the message again. A message that went needs its previews no more.
+      if (editing !== null) engine.opened?.(null);
+      else if (face.action !== 'queue') release(message.attachments);
+      return;
+    }
     const typed = this.prompt === (editing === null ? '' : (aside?.prompt ?? '')) ? '' : this.prompt;
     this.#fill({ prompt: typed === '' ? message.prompt : `${message.prompt}\n${typed}`, attachments: message.attachments });
     if (editing === null) return;
@@ -129,12 +148,14 @@ export class CardState {
     if (this.editing === null) return;
     if (this.#aside !== null && (this.#aside.prompt !== '' || this.#aside.attachments.length > 0)) this.#fill(this.#aside);
     this.#endEdit();
+    this.#engine().opened?.(null);
     this.keep();
   }
 
-  /** The composer goes away: no timer of it fires after. */
+  /** The composer goes away: no timer of it fires after, and the queue is told that a message was left open. */
   dispose(): void {
     clearTimeout(this.#timer);
+    if (this.editing !== null) this.#engine().abandoned?.();
   }
 
   add(files: readonly File[]): void {
@@ -149,8 +170,7 @@ export class CardState {
   }
 
   remove(id: string): void {
-    const gone = this.attachments.find((attachment) => attachment.id === id);
-    if (gone?.preview?.startsWith('blob:') === true) URL.revokeObjectURL(gone.preview);
+    release(this.attachments.filter((attachment) => attachment.id === id));
     this.attachments = this.attachments.filter((attachment) => attachment.id !== id);
   }
 
@@ -160,6 +180,7 @@ export class CardState {
     if (message === undefined) return;
     if (this.editing === null) this.#aside = { prompt: this.prompt, attachments: this.attachments };
     this.editing = id;
+    this.#engine().opened?.(id);
     this.prompt = message.prompt;
     this.attachments = [];
   }
@@ -168,6 +189,29 @@ export class CardState {
     if (this.editing === null) return;
     this.#fill(this.#aside);
     this.#endEdit();
+    this.#engine().opened?.(null);
+  }
+
+  /** A new choice of the picker: the words of a refusal go under the editor, as those of a send do. */
+  async choose(next: Choice): Promise<void> {
+    const engine = this.#engine();
+    const before = engine.choice;
+    if (!(await this.#run(() => engine.choose(next)))) return;
+    this.asked = next;
+    this.#before = before;
+  }
+
+  /**
+   * The choice the picker shows. A program can take a change only at its next turn, and the chat says the old one
+   * until then: what the person asked for is shown until the chat's own choice moves.
+   */
+  shownChoice(now: Choice): Choice {
+    return this.asked !== null && same(now, this.#before) ? this.asked : now;
+  }
+
+  /** The chat's own choice moved: the program has the change, or took a different one. */
+  settled(now: Choice): void {
+    if (this.asked !== null && !same(now, this.#before)) this.asked = null;
   }
 
   /** "Send now" and "Remove" of a queued message. */

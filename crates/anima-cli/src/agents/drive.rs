@@ -1,20 +1,29 @@
-//! `anima agents start`, `send`, `approve`, `interrupt`, `stop`, `running`, `watch` and
-//! `raise-limit`: the person drives the agent threads of this computer through the runner of
+//! `anima agents start`, `send`, `queue`, `set`, `approve`, `interrupt`, `stop`, `running`,
+//! `watch` and `raise-limit`: the person drives the agent threads of this computer through the runner of
 //! the daemon (TH13, THR-030, THR-049, THR-114). No MCP tool starts a thread or answers a
 //! request: an answer is a trust decision, and a start waits for the count of THR-114
 //! (Section 7 of cli-mcp-plan.md).
 
 use std::path::PathBuf;
 
-use agent_threads::control::{Action, OVER_LIMIT, Outcome, Refusal, Reply, RunState, ThreadRow};
+use agent_threads::control::{
+    Action, OVER_LIMIT, Outcome, Refusal, Reply, RunState, ThreadRow, WorkspaceKind,
+};
 use agent_threads::drive::{Answer, Effort, Mode, Program};
 use uuid::Uuid;
 
 use super::runner::{RunnerLink, refusal};
+
+mod queue;
+mod send;
+mod set;
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::stream::{self, Reader};
 use crate::output::{Cell, Table, Tone};
+pub use queue::QueueArgs;
+pub use send::SendArgs;
+pub use set::SetArgs;
 
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
 pub enum ProgramName {
@@ -32,6 +41,17 @@ pub enum ModeName {
     Ask,
     /// The program plans and changes nothing until you accept its plan (Claude Code only).
     Plan,
+}
+
+impl ModeName {
+    const fn mode(self) -> Mode {
+        match self {
+            Self::FullAccess => Mode::FullAccess,
+            Self::AcceptEdits => Mode::AcceptEdits,
+            Self::Ask => Mode::Ask,
+            Self::Plan => Mode::Plan,
+        }
+    }
 }
 
 #[derive(Debug, clap::Args)]
@@ -53,13 +73,6 @@ pub struct StartArgs {
     program_path: Option<PathBuf>,
     /// The first prompt.
     prompt: String,
-}
-
-#[derive(Debug, clap::Args)]
-pub struct SendArgs {
-    thread: Uuid,
-    /// The prompt: to the running turn, or as a new turn.
-    text: String,
 }
 
 #[derive(Debug, clap::Args)]
@@ -138,12 +151,7 @@ impl StartArgs {
                 ProgramName::Codex => Program::Codex,
             },
             folder,
-            mode: match self.mode {
-                ModeName::FullAccess => Mode::FullAccess,
-                ModeName::AcceptEdits => Mode::AcceptEdits,
-                ModeName::Ask => Mode::Ask,
-                ModeName::Plan => Mode::Plan,
-            },
+            mode: self.mode.mode(),
             model: self.model,
             effort: self.effort,
             prompt: self.prompt,
@@ -190,18 +198,6 @@ async fn simple(invocation: &Invocation, action: Action, done: &str) -> Result<(
         invocation.output.message(done);
     }
     Ok(())
-}
-
-impl SendArgs {
-    /// # Errors
-    /// [`Failure`] for a refusal of the runner.
-    pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
-        let action = Action::Send {
-            thread: self.thread,
-            text: self.text,
-        };
-        simple(invocation, action, "Sent.").await
-    }
 }
 
 impl ApproveArgs {
@@ -296,7 +292,9 @@ pub async fn running(invocation: &Invocation) -> Result<(), Failure> {
 }
 
 fn table(rows: &[ThreadRow]) -> Table {
-    let mut table = Table::new(vec!["STATE", "PROGRAM", "TITLE", "FOLDER", "THREAD"]);
+    let mut table = Table::new(vec![
+        "STATE", "PROGRAM", "TITLE", "FOLDER", "CONTEXT", "THREAD",
+    ]);
     for row in rows {
         let state = serde_json::to_value(row.state).ok();
         table.row(vec![
@@ -308,11 +306,37 @@ fn table(rows: &[ThreadRow]) -> Table {
                 row.program,
             ))),
             Cell::new(&row.title),
-            Cell::new(&row.folder.display().to_string()),
+            Cell::new(&folder_words(row)),
+            Cell::new(&context_words(row)),
             Cell::new(&row.id.to_string()),
         ]);
     }
     table
+}
+
+/// The folder of a row, with "(worktree)" when it is a linked worktree of Git (TH112).
+fn folder_words(row: &ThreadRow) -> String {
+    let folder = row.folder.display();
+    match &row.workspace {
+        Some(workspace) if workspace.kind == WorkspaceKind::Worktree => {
+            format!("{folder} (worktree)")
+        }
+        _ => folder.to_string(),
+    }
+}
+
+/// How full the context window is, as the program last said it (TH112); "-" when it did not.
+fn context_words(row: &ThreadRow) -> String {
+    match row
+        .usage
+        .as_ref()
+        .and_then(|usage| usage.context.zip(usage.window))
+    {
+        Some((context, window)) if window > 0 => {
+            format!("{}%", context.saturating_mul(100) / window)
+        }
+        _ => "-".to_owned(),
+    }
 }
 
 pub(super) const fn program_key(program: Program) -> &'static str {
@@ -347,3 +371,6 @@ pub async fn watch(args: WatchArgs, invocation: &Invocation) -> Result<(), Failu
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests;

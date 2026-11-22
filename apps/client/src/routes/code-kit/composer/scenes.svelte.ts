@@ -27,12 +27,15 @@ export class SceneEngine implements ComposerEngine {
   readonly catalogue = pickerCatalogue;
   readonly sources = FIXTURE_SOURCES;
   readonly #fails: string | null;
+  /** Why the queue sends nothing on its own: the line under the queued messages. */
+  readonly queueWaits: string | null;
   #serial = 0;
 
-  constructor(phase: 'idle' | 'running' = 'idle', queued: readonly string[] = [], fails: string | null = null) {
+  constructor(phase: 'idle' | 'running' = 'idle', queued: readonly string[] = [], fails: string | null = null, waits: string | null = null) {
     this.phase = phase;
     this.queued = queued.map((prompt, index) => ({ id: `q${String(index)}`, prompt, saving: false }));
     this.#fails = fails;
+    this.queueWaits = waits;
   }
 
   send = (): Promise<Outcome> => (this.#fails === null ? OK : Promise.resolve({ ok: false, words: this.#fails }));
@@ -57,8 +60,9 @@ export class SceneEngine implements ComposerEngine {
 
   sendQueued = (id: string): Promise<Outcome> => this.unqueue(id);
 
-  choose = (next: Choice): void => {
+  choose = (next: Choice): Promise<Outcome> => {
     this.choice = next;
+    return OK;
   };
 }
 

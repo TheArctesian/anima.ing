@@ -177,13 +177,13 @@ export function duration(milliseconds: number): string {
   return timer(Math.round(milliseconds / 1000) * 1000);
 }
 
-/** The line of the working row or of the fold of a turn (A.6, A.9). */
-export function turnLine(turn: Turn, now: Date): string {
+/** The line of the working row or of the fold of a turn (A.6, A.9); only the newest turn says that the person stopped it (fidelity 7). */
+export function turnLine(turn: Turn, now: Date, latest = true): string {
   const start = turn.started?.getTime();
   if (turn.running) return start === undefined ? 'Working...' : `Working for ${timer(now.getTime() - start)}`;
   const end = turn.ended?.getTime();
   // No time between the start and the end means the page holds no real times of the turn: no duration, not "0ms".
   const took = start === undefined || end === undefined || end <= start ? null : duration(end - start);
-  if (turn.stopped) return took === null ? 'You stopped this response' : `You stopped after ${took}`;
+  if (turn.stopped && latest) return took === null ? 'You stopped this response' : `You stopped after ${took}`;
   return took === null ? 'Worked' : `Worked for ${took}`;
 }
