@@ -2,6 +2,10 @@
   import type { Snippet } from 'svelte';
   import { resolve } from '$app/paths';
   import type { Pathname } from '$app/types';
+
+  // TypeScript checks a union of paths against `resolve` only up to 25 members; the app has more.
+  // One plain path stands for each of them: `resolve` only puts the base before it.
+  type PlainPath = '/';
   import Icon from '$lib/icons/Icon.svelte';
 
   interface Props {
@@ -20,7 +24,7 @@
 <!-- One hairline row (UR-7, D9). A link row nudges its content toward the chevron on hover. -->
 <li class:edge={edge !== undefined} data-edge={edge}>
   {#if to !== undefined}
-    <a class="row" href={resolve(to)} style:--row-columns={columns}>
+    <a class="row" href={resolve(to as PlainPath)} style:--row-columns={columns}>
       <span class="cells">{@render children()}</span>
       <span class="go"><Icon name="carbon:chevron-right" size="sm" /></span>
     </a>
