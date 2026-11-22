@@ -1,6 +1,5 @@
 <script lang="ts">
   import FormButton from '$lib/forms/FormButton.svelte';
-  import ConfirmModal from '$lib/forms/modal/ConfirmModal.svelte';
   import Notice from '$lib/states/Notice.svelte';
   import type { ApplicationRoute } from './api';
   import { makePublicRefusal, routeChecks } from './checks';
@@ -9,14 +8,13 @@
   import StatusWord from './StatusWord.svelte';
   import type { RoutesStore } from './store.svelte';
 
-  /** Frame 3: the page of one route, read from the list. Check now and Remove call the hub; Make public stays off. */
+  /** Frame 3: the page of one route, read from the list. Check now calls the hub; Make public and Remove stay off. */
   const { store, route, now = () => new Date() }: { store: RoutesStore; route: ApplicationRoute; now?: () => Date } = $props();
   const id = $props.id();
   const device = $derived(deviceName(route, store.deviceNames));
   const servingNow = $derived(serving(route));
   const to = $derived(target(route, store.deviceNames));
   const problem = $derived(store.checkProblems.get(route.id));
-  let removing = $state(false);
 </script>
 
 <div class="toolbar">
@@ -65,18 +63,10 @@
 <section class="card" aria-label="Remove">
   <div class="toolbar">
     <div class="grow"><b>Remove this route</b><p class="note">The hub forgets {route.name}, its certificate and its key. Delete the DNS records yourself.</p></div>
-    <FormButton tone="danger" onclick={() => { removing = true; }}>Remove route</FormButton>
+    <FormButton tone="danger" aria-disabled="true" aria-describedby="{id}-remove">Remove route</FormButton>
   </div>
+  <p class="why" id="{id}-remove">Removing a route needs a fresh code of your second factor, and the hub cannot check that code yet.</p>
 </section>
-
-<ConfirmModal
-  open={removing}
-  title="Remove {route.name}?"
-  body="The hub forgets the name, its certificate and its key. You cannot undo this. Your account must have its second factor turned on."
-  confirmLabel="Remove route"
-  onConfirm={() => store.remove(route.id)}
-  onCancel={() => { removing = false; }}
-/>
 
 <style>
   .toolbar {

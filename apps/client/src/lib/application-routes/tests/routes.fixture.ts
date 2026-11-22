@@ -55,14 +55,11 @@ export const DEVICE_NAMES: ReadonlyMap<string, string> = new Map([
 export interface FakeCalls extends RouteCalls {
   listAsked: number;
   checked: string[];
-  removed: string[];
   routes: readonly ApplicationRoute[];
   /** When set, the next list fails with it. */
   listFails?: HubError;
   /** When set, each check fails with it. */
   checkFails?: HubError;
-  /** When set, each removal fails with it. */
-  removeFails?: HubError;
   /** What a check answers, by the ID of the route; the route as it was by default. */
   checkAnswers: Map<string, ApplicationRoute>;
 }
@@ -71,7 +68,6 @@ export function fakeCalls(routes: readonly ApplicationRoute[] = ROUTES): FakeCal
   const calls: FakeCalls = {
     listAsked: 0,
     checked: [],
-    removed: [],
     routes,
     checkAnswers: new Map(),
     list(): Promise<HubResult<RouteList>> {
@@ -84,11 +80,6 @@ export function fakeCalls(routes: readonly ApplicationRoute[] = ROUTES): FakeCal
       if (calls.checkFails !== undefined) return Promise.resolve({ ok: false, error: calls.checkFails });
       const answer = calls.checkAnswers.get(id) ?? calls.routes.find((each) => each.id === id);
       return Promise.resolve(answer === undefined ? { ok: false, error: { code: 'NOT_FOUND', message: 'No such route.' } } : { ok: true, value: answer });
-    },
-    remove(id: string): Promise<HubResult<string>> {
-      calls.removed.push(id);
-      if (calls.removeFails !== undefined) return Promise.resolve({ ok: false, error: calls.removeFails });
-      return Promise.resolve({ ok: true, value: id });
     },
   };
   return calls;

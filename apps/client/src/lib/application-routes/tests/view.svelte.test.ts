@@ -171,22 +171,15 @@ it('SF-232: Check now shows the refusal of the hub on the page of the route', as
   expect(document.querySelector('[role="alert"]')?.textContent).toContain('Turn on the second factor');
 });
 
-it('H21: Remove asks first, then removes the route and shows the list; a refusal stays in the dialog', async () => {
+it('H21: Remove is off with its reason: it needs a fresh code of the second factor, which the hub cannot check yet', async () => {
   await open();
   row('vault.example.com')?.click();
   flushSync();
-  button('Remove route')?.click();
+  const remove = button('Remove route');
+  expect(remove?.getAttribute('aria-disabled')).toBe('true');
+  const reason = document.getElementById(remove?.getAttribute('aria-describedby') ?? '');
+  expect(reason?.textContent).toContain('a fresh code of your second factor');
+  remove?.click();
   flushSync();
-  const dialog = () => document.querySelector('[role="dialog"]');
-  expect(dialog()?.textContent).toContain('You cannot undo this.');
-  calls.removeFails = NO_SECOND_FACTOR;
-  [...(dialog()?.querySelectorAll<HTMLButtonElement>('button') ?? [])].find((each) => each.textContent.trim() === 'Remove route')?.click();
-  await settle();
-  expect(dialog()?.textContent).toContain('Turn on the second factor');
-  calls.removeFails = undefined;
-  [...(dialog()?.querySelectorAll<HTMLButtonElement>('button') ?? [])].find((each) => each.textContent.trim() === 'Remove route')?.click();
-  await settle();
-  expect(calls.removed).toEqual(['route-vault', 'route-vault']);
-  expect(row('vault.example.com')).toBeUndefined();
-  expect(row('wiki.example.com')).toBeDefined();
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
 });

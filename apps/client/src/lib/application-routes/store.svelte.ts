@@ -1,4 +1,3 @@
-import type { HubResult } from '$lib/hub/hub';
 import type { ApplicationRoute, RouteCalls } from './api';
 import { filterCounts, filtered, isNotLinux, type RouteFilter } from './route';
 
@@ -96,15 +95,5 @@ export class RoutesStore {
       if (this.notLinux) return;
       await this.check(route.id);
     }
-  }
-
-  /** Removes a route; on success the list no longer has it and the list is shown again. */
-  async remove(id: string): Promise<HubResult<string>> {
-    const result = await this.calls.remove(id);
-    if (result.ok) {
-      this.routes = this.routes.filter((route) => route.id !== id);
-      if (this.selected === id) this.selected = null;
-    }
-    return result;
   }
 }
