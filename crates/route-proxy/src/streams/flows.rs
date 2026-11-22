@@ -4,13 +4,15 @@
 //! real client does that within one round trip. A set-up flow keeps its place until it ends. A
 //! new source that finds the waiting flows at their cap, or the table full, takes the place of
 //! the oldest waiting flow, never of a set-up one. False sources of many networks then replace
-//! only each other, and a real client that answers keeps its flow.
+//! only each other, and a real client that answers keeps its flow. Set-up flows take at most the
+//! places that the waiting flows leave, so a new source always finds a waiting place.
 //!
-//! The caller limits new flows each second with a bucket, and the cap of waiting flows is the
-//! burst of that bucket: when false sources arrive as fast as the bucket lets them, a waiting
-//! flow still lives for at least the burst divided by the rate (2 seconds with the defaults),
-//! longer than the round trip of a real client. No I/O and no clock: the order of the flows is a
-//! counter.
+//! What stays (SF-327): a sender of false sources that sends again to each of them can set up
+//! flows without seeing an answer, and then holds the set-up places until they are idle. The
+//! caller limits new flows each second with a bucket whose burst is at least the cap of waiting
+//! flows: once that bucket is empty, a waiting flow lives for at least the cap divided by the
+//! rate, but a burst of false sources can replace each waiting flow at once. No I/O and no clock:
+//! the order of the flows is a counter.
 
 use std::{
     collections::HashMap,
@@ -26,7 +28,7 @@ pub struct FlowCaps {
     pub total: usize,
     /// Flows of one source network ([`source_network`]), waiting and set up.
     pub per_network: usize,
-    /// Waiting flows.
+    /// Waiting flows. Set-up flows take at most `total` less this number.
     pub waiting: usize,
 }
 
@@ -97,10 +99,13 @@ impl<T> FlowTable<T> {
         Some(Opened { id, replaced })
     }
 
-    /// Marks the flow `id` of `source` set up; `false` when it is no longer in the table.
+    /// Marks the flow `id` of `source` set up; `false` when it is no longer in the table, or when
+    /// the set-up flows already take each place that the waiting flows leave (it stays waiting).
     pub fn set_up(&mut self, source: SocketAddr, id: u64) -> bool {
+        let set_up = self.flows.values().filter(|flow| flow.set_up).count();
+        let room = set_up < self.caps.total.saturating_sub(self.caps.waiting);
         match self.flows.get_mut(&source) {
-            Some(flow) if flow.id == id => {
+            Some(flow) if flow.id == id && (flow.set_up || room) => {
                 flow.set_up = true;
                 true
             }

@@ -3,7 +3,10 @@
 
 use std::net::SocketAddr;
 
-use crate::streams::flows::{FlowCaps, FlowTable};
+use crate::streams::{
+    flows::{FlowCaps, FlowTable},
+    udp::waiting_cap,
+};
 
 const CAPS: FlowCaps = FlowCaps {
     total: 8,
@@ -78,17 +81,47 @@ fn a_new_real_source_gets_a_waiting_place_while_false_sources_arrive() {
 }
 
 #[test]
-fn a_table_of_set_up_flows_refuses_a_new_source() {
+fn set_up_flows_leave_the_waiting_places_free() {
     let mut table = FlowTable::new(CAPS);
     for n in 0..8 {
         let opened = table.open(spread(n), n).unwrap();
-        table.set_up(spread(n), opened.id);
+        assert_eq!(
+            table.set_up(spread(n), opened.id),
+            n < 4,
+            "4 set-up places of 8"
+        );
     }
-    assert!(
-        table.open(spread(9), 9).is_none(),
-        "no waiting flow to replace"
+    assert_eq!(table.counts(), (8, 4));
+    let opened = table.open(spread(9), 9).unwrap();
+    assert_eq!(
+        opened.replaced,
+        Some(4),
+        "the oldest waiting flow, never a set-up one"
     );
-    assert_eq!(table.counts(), (8, 8));
+    for n in 0..4 {
+        assert_eq!(table.get(spread(n)), Some(&n));
+    }
+}
+
+#[test]
+fn a_full_table_replaces_the_oldest_waiting_flow_first() {
+    let caps = FlowCaps {
+        total: 6,
+        per_network: 4,
+        waiting: 4,
+    };
+    let mut table = FlowTable::new(caps);
+    for n in 0..2 {
+        let opened = table.open(spread(n), n).unwrap();
+        assert!(table.set_up(spread(n), opened.id));
+    }
+    for n in 2..6 {
+        assert_eq!(table.open(spread(n), n).unwrap().replaced, None);
+    }
+    let replaced: Vec<_> = (6..9)
+        .filter_map(|n| table.open(spread(n), n).unwrap().replaced)
+        .collect();
+    assert_eq!(replaced, vec![2, 3, 4], "in the order they were opened");
 }
 
 #[test]
@@ -119,4 +152,19 @@ fn closing_an_old_flow_leaves_a_later_flow_of_the_same_source() {
         "the old number does not set up the new flow"
     );
     assert!(table.set_up(source, second.id));
+}
+
+#[test]
+fn waiting_flows_hold_at_most_half_of_the_connections_of_a_route() {
+    assert_eq!(
+        waiting_cap(16, 16),
+        8,
+        "the defaults: a burst of 16, 16 connections"
+    );
+    assert_eq!(
+        waiting_cap(16, 64),
+        16,
+        "the burst when the route has more room"
+    );
+    assert_eq!(waiting_cap(16, 1), 1, "always one place to wait");
 }

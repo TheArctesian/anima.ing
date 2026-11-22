@@ -12,7 +12,10 @@ use std::{
 
 use tokio::{
     net::UdpSocket,
-    sync::mpsc::{self, Receiver, Sender},
+    sync::{
+        mpsc::{self, Receiver, Sender},
+        oneshot,
+    },
     time::Instant,
 };
 
@@ -30,7 +33,14 @@ use crate::{
 /// The datagrams of one flow that wait for the hub; more are dropped, as UDP may.
 const QUEUE: usize = 64;
 
-type Flows = Arc<Mutex<FlowTable<Sender<Vec<u8>>>>>;
+/// What the table holds of a flow: the sender of its datagrams, and a signal that it keeps. When
+/// the table drops it (a new flow took its place), the flow ends at once, also while it dials.
+struct Handle {
+    datagrams: Sender<Vec<u8>>,
+    _kept: oneshot::Sender<()>,
+}
+
+type Flows = Arc<Mutex<FlowTable<Handle>>>;
 
 /// Whether `length` more bytes may go to a source that sent `received` bytes and was sent
 /// `sent`: never more than it sent, so a false source address cannot be made a target.
@@ -48,7 +58,7 @@ pub async fn serve<H: Hub>(proxy: Arc<Proxy<H>>, socket: UdpSocket, stream: Stre
     let flows: Flows = Arc::new(Mutex::new(FlowTable::new(FlowCaps {
         total: proxy.udp_flows(),
         per_network: proxy.udp_flows_per_network(),
-        waiting: usize::try_from(burst).unwrap_or(usize::MAX),
+        waiting: waiting_cap(burst, proxy.route_connections()),
     })));
     let mut arrivals = Bucket::full(per_second, burst, 0);
     let started = Instant::now();
@@ -62,7 +72,7 @@ pub async fn serve<H: Hub>(proxy: Arc<Proxy<H>>, socket: UdpSocket, stream: Stre
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .get(source)
-            .cloned();
+            .map(|handle| handle.datagrams.clone());
         if let Some(sender) = known {
             sender.try_send(datagram).ok();
             continue;
@@ -71,7 +81,7 @@ pub async fn serve<H: Hub>(proxy: Arc<Proxy<H>>, socket: UdpSocket, stream: Stre
         if !arrivals.take(now_ms) {
             continue;
         }
-        let Some((id, receiver)) = open(&proxy, &flows, &stream, source) else {
+        let Some((id, receiver, dropped)) = open(&proxy, &flows, &stream, source) else {
             continue;
         };
         let Some(pass) = Pass::enter(proxy.stream_gate()) else {
@@ -89,31 +99,47 @@ pub async fn serve<H: Hub>(proxy: Arc<Proxy<H>>, socket: UdpSocket, stream: Stre
             source,
             id,
         };
-        tokio::spawn(flow.run(receiver, datagram, pass));
+        tokio::spawn(flow.run((receiver, dropped), datagram, pass));
     }
 }
 
-/// A new waiting flow of `source` in `flows`, with its number; `None` when it is refused. The
-/// sender of a waiting flow that it replaced is dropped here, which ends that flow.
+/// The cap of waiting flows: the burst of the bucket of new flows, and at most half of the
+/// connections of one route, so waiting flows never hold each place of the route and a new
+/// client that gets into the table also gets a connection (SF-327).
+#[must_use]
+pub fn waiting_cap(burst: u32, route_connections: u32) -> usize {
+    let cap = burst.min(route_connections / 2).max(1);
+    usize::try_from(cap).unwrap_or(usize::MAX)
+}
+
+/// A new waiting flow of `source` in `flows`: its number, its datagrams and the signal that the
+/// table dropped it; `None` when it is refused. The handle of a waiting flow that it replaced is
+/// dropped here, which ends that flow.
 fn open<H: Hub>(
     proxy: &Proxy<H>,
     flows: &Flows,
     stream: &StreamRoute,
     source: SocketAddr,
-) -> Option<(u64, Receiver<Vec<u8>>)> {
+) -> Option<(u64, Receiver<Vec<u8>>, oneshot::Receiver<()>)> {
     if !proxy.reaches(stream.reach, source.ip()) {
         return None;
     }
-    let (sender, receiver) = mpsc::channel(QUEUE);
+    let (datagrams, receiver) = mpsc::channel(QUEUE);
+    let (kept, dropped) = oneshot::channel();
+    let handle = Handle {
+        datagrams,
+        _kept: kept,
+    };
     let opened = flows
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
-        .open(source, sender)?;
+        .open(source, handle)?;
     drop(opened.replaced);
-    Some((opened.id, receiver))
+    Some((opened.id, receiver, dropped))
 }
 
-/// One flow of one source through the hub.
+/// One flow of one source through the hub. Its entry in the table goes when it is dropped, also
+/// when its task ends by a panic.
 struct Flow<H: Hub> {
     proxy: Arc<Proxy<H>>,
     socket: Arc<UdpSocket>,
@@ -124,19 +150,23 @@ struct Flow<H: Hub> {
 }
 
 impl<H: Hub> Flow<H> {
-    async fn run(self, receiver: Receiver<Vec<u8>>, first: Vec<u8>, mut pass: Pass) {
+    async fn run(
+        self,
+        (receiver, dropped): (Receiver<Vec<u8>>, oneshot::Receiver<()>),
+        first: Vec<u8>,
+        mut pass: Pass,
+    ) {
         let name = &self.stream.name;
         if pass.admit(self.source.ip()) && self.proxy.admit(name) {
             let moved = Moved::default();
-            self.carry(receiver, first, &moved).await;
+            tokio::select! {
+                () = self.carry(receiver, first, &moved) => {}
+                _ = dropped => {}
+            }
             let (bytes_in, bytes_out) = moved.totals();
             self.proxy.moved(name, bytes_in, bytes_out);
             self.proxy.release(name);
         }
-        self.flows
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .close(self.source, self.id);
     }
 
     /// Marks the flow set up: its source sent again after the application answered it.
@@ -195,5 +225,14 @@ impl<H: Hub> Flow<H> {
             () = back => {}
             () = moved.quiet(self.proxy.udp_idle()) => {}
         }
+    }
+}
+
+impl<H: Hub> Drop for Flow<H> {
+    fn drop(&mut self) {
+        self.flows
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .close(self.source, self.id);
     }
 }
