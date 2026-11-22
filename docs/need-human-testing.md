@@ -4586,7 +4586,7 @@ Built: four-destination graphical console and native session/update/install cont
 5. Lock and unlock, restart, and compare pointer/keyboard navigation, screen-open delay and idle behavior with the prior preview on the same machine.
    Expected: background compute continues while locked; focus remains visible; perceived responsiveness and display quality are acceptable. Record hardware and measured delays rather than inferring them from language choice.
 
-OS3-R6: On 2026-11-22 the operator rejected the Network layout in the VM and asked for the corrected preview to reopen after validation. Review the revised installer and installed Network pages: Ethernet status, Wi-Fi list, contextual connection controls, password entry, and adapter/radio/scan states. Automated fixture checks do not qualify real Wi-Fi hardware.
+OS3-R6: On 2026-11-22 the operator rejected the Network layout in the VM and asked for the corrected preview to reopen after validation. Review the revised installer and installed Network pages: Ethernet status, Wi-Fi list, contextual connection controls, password entry, and adapter/radio/scan states. Automated fixture checks do not qualify real Wi-Fi hardware. The same review requested compact icon-led installer Settings, a clearer disk Review summary, and door artwork with a stationary-progress note on Install; these remain subject to the operator’s graphical acceptance.
 
 Result: Open; deferred to the final step by the operator. No production release is authorized.
 

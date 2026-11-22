@@ -34,3 +34,7 @@ QDialog#animaSettings QScrollBar::handle:vertical { background: #41464E; min-hei
 QDialog#animaSettings QScrollBar::handle:vertical:hover { background: #88C0D0; }
 QDialog#animaSettings QScrollBar::add-line:vertical, QDialog#animaSettings QScrollBar::sub-line:vertical { height: 0; border: none; }
 QDialog#animaSettings QScrollBar::add-page:vertical, QDialog#animaSettings QScrollBar::sub-page:vertical { background: transparent; }
+QDialog#animaSettings QLabel#animaSettingsSection { font-weight: 500; }
+QDialog#animaSettings QWidget#animaSettingsPower { border-top: 1px solid #2C3036; }
+QDialog#animaSettings QPushButton { min-height: 24px; }
+QDialog#animaSettings QComboBox { min-width: 0; }

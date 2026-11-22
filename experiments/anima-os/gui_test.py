@@ -112,6 +112,7 @@ def graphical_install(machine, output, password):
     machine.command('head -c 1048576 /dev/vda | sha256sum | diff /run/before-disk -; head -c 1048576 /dev/vdc | sha256sum | diff /run/before-data -')
     _, y, _, height = locate(output, 'authorize erasing'); click(machine, 220, y+height//2)
     tap(machine, output, 'Erase selected disks')
+    time.sleep(2); screenshot(output, 'installing')
     machine.command("timeout 1200 sh -c 'until grep -q ANIMA_INSTALL_COMPLETE /root/.cache/calamares/session.log; do if grep -q \"Installation failed:\" /root/.cache/calamares/session.log; then exit 1; fi; sleep 2; done'", timeout=1210)
     time.sleep(2); screenshot(output, 'finished')
 

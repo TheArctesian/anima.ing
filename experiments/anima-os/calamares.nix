@@ -12,6 +12,7 @@ let
     cp ${./calamares/branding.desc} $out/share/calamares/branding/anima/branding.desc
     cp ${./calamares/stylesheet.qss} $out/share/calamares/branding/anima/stylesheet.qss
     cp ${./branding/welcome.png} $out/share/calamares/branding/anima/welcome.png
+    cp ${./branding/hero.png} $out/share/calamares/branding/anima/hero.png
     cp ${./branding/back.svg} $out/share/calamares/branding/anima/back.svg
     cp ${./branding/next.svg} $out/share/calamares/branding/anima/next.svg
     cp ${./branding/logo.png} $out/share/calamares/branding/anima/logo.png

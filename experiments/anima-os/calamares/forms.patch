@@ -64,7 +64,7 @@
 +++ b/src/libcalamaresui/ViewManager.cpp
 @@ -419 +419 @@
 -        UPDATE_BUTTON_PROPERTY( nextLabel, nextIsInstallationStep );
-+        UPDATE_BUTTON_PROPERTY( nextLabel, QString("Erase selected disks & install") );
++        UPDATE_BUTTON_PROPERTY( nextLabel, QString("Erase disks and install") );
 @@ -424 +424 @@
 -        UPDATE_BUTTON_PROPERTY( nextLabel, tr( "&Next", "@button" ) );
 +        UPDATE_BUTTON_PROPERTY( nextLabel, tr( "&Continue", "@button" ) );

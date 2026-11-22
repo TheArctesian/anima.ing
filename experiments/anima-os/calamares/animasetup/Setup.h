@@ -8,6 +8,7 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QLabel>
+#include <QScrollArea>
 class PLUGINDLLEXPORT Setup : public Calamares::ViewStep {
     Q_OBJECT
 public:
@@ -30,7 +31,8 @@ private:
     QComboBox* systemDisk = nullptr;
     QList<QCheckBox*> dataDisks;
     QCheckBox* confirmation = nullptr;
-    QLabel* review = nullptr;
+    QScrollArea* review = nullptr;
+    QVariantList reviewSelection;
     bool failed = false;
     void storage();
     void selectionChanged();
