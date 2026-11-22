@@ -38,6 +38,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-133 | The public names of applications through the route proxy, on a real network (task H21) | A hub that a person hosts with ports 80 and 443 open, a domain name with its DNS, a machine on the link with a web application, and a second hub | Open |
 | HT-134 | Streams of TCP and UDP and the access of a route on a real network (task H40) | A hub that a person hosts, a machine on its network with a test TCP service and an IMAPS server, a device of the network of Anima and a device that is not on it | Open |
 | HT-NEW-routesmockup | The mockup of the section Routes of the hub (tasks H21 and H40), approved overnight by the orchestrator | A browser | Open |
+| HT-NEW-routesscreen | The section Routes of Settings beside its mockup, and against a real hub (task H21) | The client of the branch `hosted/routes-section` signed in to a test hub on Linux, a second factor on the account, a domain name with its DNS | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
 | HT-003 | The tool inventory in an MCP client | HT-002 | Open |
@@ -2769,6 +2770,35 @@ approve it, or say what to change, before the client screen is built.
    UDP is disabled with its reason. Frame 6 has a button that adds a route for the port of the application.
 7. Frames 5a and 5b.
    Expected: Frames 1 and 3 in the light appearance; each text, status and disabled reason is easy to read.
+
+Result: Open.
+
+### HT-NEW-routesscreen: the section Routes of Settings (task H21)
+
+Built on the branch `hosted/routes-section`: the section Routes of the Settings page, in the group Hub and account
+(`apps/client/src/lib/application-routes/`). The vitest tests use fake calls of the hub: they prove each state of the
+list, the page of a route, the refusals of the hub that the section shows, Check now, Check all and Remove. No person
+looked at the screen, and no picture of it was compared with the frames of [routes/index.html](mockup/routes/index.html):
+the screen was not run on this computer. No test used a real hub, a real DNS or a real second factor.
+
+1. Open Settings at 1280 px in the dark appearance, then in the light appearance, and put
+   `docs/mockup/routes/index.html` beside it. Expected: the index has Routes in the group Hub and account, after Hub.
+   The list has the parts of Frame 1 in the same order: the choice All, Needs you, Public and Private, Check all, the
+   summary line, and one row for each route with its name, kind and access, target, proof and certificate, and
+   traffic. Rows that need you have a wash. Write each difference that is not in the record
+   [records/routes.md](mockup/records/routes.md).
+2. On a hub with no route. Expected: "No routes yet", the line that says that a new route is private, and Add a route
+   off with its reason (task H6).
+3. Add a route with `anima route add` on a test hub, then open the section. Expected: the route is in the list. Open
+   it. Expected: its state, the DNS records with Copy while its name is not proven, the checks in order, the traffic,
+   and Make public off with the reason "Consent at <machine> is not given".
+4. Select Copy beside the TXT value and paste it in a text editor. Expected: the same value as `anima route show`.
+5. Select Check now with an account that has no second factor. Expected: the refusal of the hub under the title. Turn
+   on the second factor and select Check now again. Expected: the time of the check changes.
+6. Select Remove route, then Remove route in the dialog. Expected: the list without the route; `anima route list`
+   does not show it.
+7. On a hub that is not on Linux (for example a test hub on macOS), select Check all. Expected: "Routing needs a hub
+   on Linux." in place of the list.
 
 Result: Open.
 
