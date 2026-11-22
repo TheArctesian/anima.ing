@@ -82,9 +82,11 @@ impl Thread {
         self.stalled = true;
     }
 
-    /// A prompt of the queue that did not go waits again, first, with its ID. Nothing waits on
-    /// a stopped thread: a stop ends the queue (THR-102).
+    /// A prompt of the queue that did not go waits again, first, with its ID, and the queue stops
+    /// until the person sends, so that a holder that refuses does not get it again and again.
+    /// Nothing waits on a stopped thread: a stop ends the queue (THR-102).
     pub fn put_back(&mut self, id: Uuid, text: String) -> Option<Step> {
+        self.stall();
         if self.row.state == RunState::Stopped
             || self.row.queued.iter().any(|queued| queued.id == id)
         {
@@ -109,10 +111,29 @@ impl Thread {
             self.row.queued.insert(0, Queued { id, text });
             return Vec::new();
         };
+        // A Codex prompt with no line waits in the thread: it is the thread's now.
+        let went = if lines.is_empty() {
+            prompt_change(&text)
+        } else {
+            Step::Queued(Queued { id, text })
+        };
         let mut steps: Vec<Step> = lines.into_iter().map(Step::Write).collect();
-        steps.push(prompt_change(&text));
+        steps.push(went);
         steps.push(self.row_change());
         steps
+    }
+
+    /// The number of the prompts whose turns did not end.
+    #[must_use]
+    pub const fn turns_waiting(&self) -> u32 {
+        self.pending
+    }
+
+    /// The holder did not take a prompt: a turn that it counted will not come.
+    pub const fn not_sent(&mut self, counted: bool) {
+        if counted {
+            self.pending = self.pending.saturating_sub(1);
+        }
     }
 
     /// Whether the thread can take a prompt now.

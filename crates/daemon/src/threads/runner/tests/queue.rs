@@ -236,3 +236,41 @@ fn th109_a_queued_prompt_that_did_not_go_waits_again_first_with_its_id() {
         "a stop ends the queue"
     );
 }
+
+#[test]
+fn th109_a_queued_prompt_that_went_by_itself_and_was_refused_waits_and_the_queue_stops() {
+    let mut thread = held_claude();
+    queue(&mut thread, 1, "next");
+    let steps = line(&mut thread, DONE);
+    let went: Vec<_> = steps
+        .iter()
+        .filter_map(|step| match step {
+            Step::Queued(queued) => Some((queued.id, queued.text.clone())),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(went, [(Uuid::from_u128(1), "next".to_owned())]);
+    assert!(
+        !steps
+            .iter()
+            .any(|step| matches!(step, Step::Change(Change::Prompt { .. }))),
+        "shown as sent only when the holder took it"
+    );
+    // The holder refused the line: the turn does not come and the prompt waits again.
+    thread.not_sent(true);
+    assert_eq!(thread.turns_waiting(), 0);
+    assert!(
+        thread
+            .put_back(Uuid::from_u128(1), "next".to_owned())
+            .is_some()
+    );
+    assert_eq!(
+        prompts(&line(&mut thread, IDLE)),
+        NONE,
+        "it does not go again by itself"
+    );
+    thread
+        .send(&agent_threads::drive::Prompt::plain("mine"), true)
+        .expect("sent");
+    assert_eq!(prompts(&line(&mut thread, DONE)), ["next"]);
+}

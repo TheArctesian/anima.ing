@@ -1,6 +1,6 @@
 //! The call `send`: a prompt to a thread, with the files that the person attached for it (TH111).
 
-use agent_threads::control::{Action, Outcome, Refusal};
+use agent_threads::control::{Action, Outcome, Queued, Refusal};
 use agent_threads::drive::Prompt;
 use uuid::Uuid;
 
@@ -31,13 +31,33 @@ pub(super) enum Sender {
 #[derive(Debug)]
 pub struct SentPrompt {
     thread: Uuid,
-    pub back: Caller,
+    /// The call that waits for the answer; none for a prompt that the queue sent by itself.
+    pub back: Option<Caller>,
     shown: Shown,
     /// The files of the prompt, which wait again when the holder does not take the line.
     files: Vec<Uuid>,
     /// The prompt of the queue that this is, which waits again when the holder does not take
     /// the line.
     queued: Option<Uuid>,
+    /// The prompt counted as a turn of its own: it does not when the holder refuses it.
+    counted: bool,
+}
+
+impl SentPrompt {
+    /// A prompt that the queue sent by itself, as its next turn.
+    pub(in super::super) fn queued(thread: Uuid, queued: Queued) -> Self {
+        Self {
+            thread,
+            back: None,
+            shown: Shown {
+                text: queued.text,
+                ..Shown::default()
+            },
+            files: Vec::new(),
+            queued: Some(queued.id),
+            counted: true,
+        }
+    }
 }
 
 impl Runner {
@@ -61,8 +81,8 @@ impl Runner {
             return Err(Refusal::FromAnAgent);
         }
         let prompt = self.prompt_of(id, text, &attachments)?;
-        let lines = match self.lines_for(id, &prompt, person) {
-            Ok(lines) => lines,
+        let (lines, counted) = match self.lines_for(id, &prompt, person) {
+            Ok(went) => went,
             Err(why) => {
                 self.attached.restore(id, &attachments);
                 return Err(why);
@@ -78,13 +98,14 @@ impl Runner {
             Ok(Some(command)) => {
                 let waits = Waits::Send(SentPrompt {
                     thread: id,
-                    back,
+                    back: Some(back),
                     shown,
                     files: attachments,
                     queued: match sender {
                         Sender::Queue(queued) => Some(queued),
                         Sender::Person | Sender::Agent => None,
                     },
+                    counted,
                 });
                 self.waits.insert(command, waits);
                 Ok(())
@@ -124,17 +145,17 @@ impl Runner {
         Ok(prompt)
     }
 
-    /// The lines of a prompt to its thread.
+    /// The lines of a prompt to its thread, and whether it counted as a turn of its own.
     fn lines_for(
         &mut self,
         id: Uuid,
         prompt: &Prompt,
         person: bool,
-    ) -> Result<Vec<String>, Refusal> {
-        self.threads
-            .get_mut(&id)
-            .ok_or(Refusal::UnknownThread)
-            .and_then(|thread| thread.send(prompt, person))
+    ) -> Result<(Vec<String>, bool), Refusal> {
+        let thread = self.threads.get_mut(&id).ok_or(Refusal::UnknownThread)?;
+        let before = thread.turns_waiting();
+        let lines = thread.send(prompt, person)?;
+        Ok((lines, thread.turns_waiting() > before))
     }
 
     /// The holder answered a prompt: it is shown as sent, or refused, and its files and its
@@ -147,9 +168,14 @@ impl Runner {
         let thread = prompt.thread;
         let result = self.sent(thread, &prompt.shown, outcome).await;
         self.files_went(thread, &prompt.files, &result);
-        if let (Some(queued), Outcome::Refused { .. }) = (prompt.queued, &result) {
-            self.queued_back(thread, queued, prompt.shown.text.clone())
-                .await;
+        if matches!(result, Outcome::Refused { .. }) {
+            if let Some(waiting) = self.threads.get_mut(&thread) {
+                waiting.not_sent(prompt.counted);
+            }
+            if let Some(queued) = prompt.queued {
+                self.queued_back(thread, queued, prompt.shown.text.clone())
+                    .await;
+            }
         }
         (thread, result)
     }

@@ -1,7 +1,7 @@
 //! The steps that the core of a thread gives the runner: commands to the holder, and what the
 //! runner does itself. Pure.
 
-use agent_threads::control::Change;
+use agent_threads::control::{Change, Queued};
 use agent_threads::drive::{AccountFacts, ModelChoice};
 
 use crate::threads::wire::Action;
@@ -25,6 +25,9 @@ pub enum Step {
     Account(Box<AccountFacts>),
     /// The models that the program offers (TH104): for the runner, not an update.
     Models(Vec<ModelChoice>),
+    /// A prompt of the queue whose lines are the writes before this step: it is shown as sent
+    /// when the holder took its last line, and waits again in the queue when not (TH109).
+    Queued(Queued),
 }
 
 impl Step {
@@ -40,7 +43,11 @@ impl Step {
             Self::Mark => Action::Mark { thread },
             Self::EndChildren => Action::EndChildren { thread },
             Self::EndProgram => Action::Stop { thread },
-            Self::Log(_) | Self::Change(_) | Self::Account(_) | Self::Models(_) => return None,
+            Self::Log(_)
+            | Self::Change(_)
+            | Self::Account(_)
+            | Self::Models(_)
+            | Self::Queued(_) => return None,
         })
     }
 }

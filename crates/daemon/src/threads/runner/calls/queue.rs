@@ -1,12 +1,12 @@
 //! The calls of the queue of a thread (TH109): only the person makes them, as the queue is the
 //! composer of the person. A queued prompt is never written to the log or the record.
 
-use agent_threads::control::{Action, Outcome, Refusal};
+use agent_threads::control::{Action, Outcome, Queued, Refusal};
 use uuid::Uuid;
 
 use super::super::log::Kind;
-use super::super::{Caller, Runner};
-use super::send::Sender;
+use super::super::{Caller, Runner, Waits};
+use super::send::{Sender, SentPrompt};
 
 impl Runner {
     /// A call that changes the queue but sends nothing by itself.
@@ -75,6 +75,19 @@ impl Runner {
             self.queued_back(id, queued, text).await;
         }
         went
+    }
+
+    /// A prompt that the queue sent by itself waits for the holder to take its last line.
+    pub(in super::super) fn queued_went(
+        &mut self,
+        thread: Uuid,
+        queued: Queued,
+        line: Option<u64>,
+    ) {
+        if let Some(line) = line {
+            let prompt = SentPrompt::queued(thread, queued);
+            self.waits.insert(line, Waits::Send(prompt));
+        }
     }
 
     /// A prompt of the queue that did not go waits again, first in the queue.

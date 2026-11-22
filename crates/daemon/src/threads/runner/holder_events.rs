@@ -141,7 +141,7 @@ impl Runner {
                 self.threads.remove(&thread);
                 refused(Refusal::Holder)
             };
-            self.answer_late(&back, Some(thread), result);
+            self.answer_late(Some(&back), Some(thread), result);
         }
     }
 
@@ -263,7 +263,7 @@ impl Runner {
                 prompt,
             } => {
                 let result = self.start_done(thread, &prompt, &outcome).await;
-                (back, Some(thread), result)
+                (Some(back), Some(thread), result)
             }
             Waits::Stop { back } => {
                 let result = match outcome {
@@ -271,7 +271,7 @@ impl Runner {
                     HolderOutcome::Refused { .. } => refused(Refusal::Holder),
                     _ => Outcome::Ok,
                 };
-                (back, None, result)
+                (Some(back), None, result)
             }
             Waits::Send(prompt) => {
                 let (thread, result) = self.prompt_answered(&prompt, &outcome).await;
@@ -279,19 +279,21 @@ impl Runner {
             }
             Waits::Answer(pending) => {
                 let result = self.answered(&pending, &outcome).await;
-                (pending.back, Some(pending.thread), result)
+                (Some(pending.back), Some(pending.thread), result)
             }
         };
-        self.answer_late(&back, thread, result);
+        self.answer_late(back.as_ref(), thread, result);
     }
 
     /// Answers a call that waited for the holder; a refusal goes to the log first (THR-044), as
     /// the refusal of a call that did not wait does.
-    fn answer_late(&mut self, back: &Caller, thread: Option<Uuid>, result: Outcome) {
+    fn answer_late(&mut self, back: Option<&Caller>, thread: Option<Uuid>, result: Outcome) {
         if let Outcome::Refused { why } = &result {
             self.note(Kind::Refusal, thread, super::calls::refusal_word(why));
         }
-        back.answer(result);
+        if let Some(back) = back {
+            back.answer(result);
+        }
     }
 
     async fn start_done(&mut self, id: Uuid, prompt: &str, outcome: &HolderOutcome) -> Outcome {

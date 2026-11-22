@@ -276,11 +276,12 @@ impl Runner {
     }
 
     /// Does a step of a thread that is not a command to the holder.
-    fn own_step(&mut self, id: Uuid, step: Step) {
+    fn own_step(&mut self, id: Uuid, step: Step, last_write: Option<u64>) {
         let program = self.threads.get(&id).map(|thread| thread.row.program);
         match (step, program) {
             (Step::Log(what), _) => self.note(Kind::Stop, Some(id), what),
             (Step::Change(change), _) => self.publish(id, change),
+            (Step::Queued(queued), _) => self.queued_went(id, queued, last_write),
             (Step::Account(facts), Some(program)) => {
                 self.said.accounts.note(program, *facts, chrono::Utc::now());
             }
@@ -301,7 +302,7 @@ impl Runner {
         let mut last_write = None;
         for step in steps {
             let Some(action) = step.command(&key) else {
-                self.own_step(id, step);
+                self.own_step(id, step, last_write);
                 continue;
             };
             let write = matches!(action, Action::Write { .. });
