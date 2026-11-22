@@ -8,13 +8,16 @@ use axum::Router;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-use super::{PUBLIC, browser_hub, browser_token, cookie, post};
+#[cfg(unix)]
+use super::{PUBLIC, browser_token, cookie};
+use super::{browser_hub, post};
 use crate::hub::{Hub, set_operator, start};
 
 const ADD: &str = "mutation($input: ApplicationRouteInput!) { \
     addApplicationRoute(input: $input) { route { id } } }";
 const CREATE_KEY: &str =
     "mutation($input: ApiKeyInput!) { createApiKey(input: $input) { secret } }";
+#[cfg(unix)]
 const NEEDS_PERSON: &str = "only by a person in the Anima app in a web browser";
 const NEEDS_SECOND_FACTOR: &str = "Turn on the second factor";
 
@@ -37,6 +40,8 @@ async fn refusal(hub: &Router, headers: &[(&str, &str)], access: &str) -> (Strin
     )
 }
 
+// A hub that is not on Unix refuses every route before it asks who adds it (R-366).
+#[cfg(unix)]
 #[sqlx::test(migrations = "./migrations")]
 async fn sf_revroutestepup_only_a_person_in_the_browser_adds_a_public_route(pool: PgPool) {
     set_operator(&pool).await;
