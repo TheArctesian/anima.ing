@@ -157,7 +157,7 @@ const SHOTS: readonly Shot[] = [
   {
     name: 'inbox-hidden',
     window: true,
-    act: async (page, inbox) => {
+    act: async (page) => {
       // T3 Code keeps the toggle in the corner of the page, outside the column it hides.
       await page.getByRole('button', { name: /^Toggle the thread list/ }).click();
       await expect(page.getByRole('button', { name: /^Toggle the thread list/ })).toHaveAttribute('aria-pressed', 'false');
