@@ -33,6 +33,18 @@ describe('the keys of the desktop app and of the web client', () => {
     expect(keyOf({ mac: false, web: false }, 'chat.newWithoutProject')).toBe('Ctrl+Alt+N');
   });
 
+  it('moves the two Ctrl+Alt keys to Ctrl+Shift in the Windows desktop app only', () => {
+    const windows: KeySet = { mac: false, web: false, windows: true };
+    expect(keyOf(windows, 'chat.newWithoutProject')).toBe('Ctrl+Shift+U');
+    expect(keyOf(windows, 'rightPanel.toggle')).toBe('Ctrl+Shift+Y');
+    expect(keyOf(windows, 'threadPanel.toggle')).toBe('Ctrl+Shift+B');
+    expect(keyOf({ ...PC_WEB, windows: true }, 'rightPanel.toggle')).toBe('Alt+Shift+G');
+    expect(keyOf({ ...MAC_APP, windows: false }, 'rightPanel.toggle')).toBe('⌥⌘B');
+    // No rule of the Windows desktop app shares a key with another.
+    const keys = keyRules(windows).filter((rule) => rule.key === 'ctrl+shift+u' || rule.key === 'ctrl+shift+y');
+    expect(keys.map((rule) => rule.command)).toEqual(['rightPanel.toggle', 'chat.newWithoutProject']);
+  });
+
   it('leaves out the rules of the desktop app alone and the second keys a browser keeps', () => {
     const commands = keyRules(PC_WEB).map((rule) => `${rule.key} ${rule.command}`);
     expect(commands.some((line) => line.includes('thread.jump.'))).toBe(false);

@@ -119,7 +119,22 @@ Windows job requires Authenticode signing; the installer and sidecars must have 
 timestamped publisher signature. The isolated `sign` job then adds the Tauri updater
 signature after all platform jobs pass. The publish job checks hashes and signatures
 before it writes the versioned files, then writes `windows-x86_64/latest.json` last.
-Windows participates in the release decision, including recovery from a missing feed.
+
+**The switch of Windows.** The Windows part of the `release` workflow runs only while the repository variable
+`ANIMA_PUBLIC_WINDOWS` is `on`. While it is not `on` (unset, or any other value), the job
+`windows` does not run, in a release or in a trial, and no job needs its files: a release
+signs, checks and publishes macOS and Linux, and writes no `windows-x86_64/latest.json` and no
+`anima/<version>/anima-windows-x86_64.zip`. The release decision then does not read the
+Windows feed, so a missing Windows feed does not make each push to `main` a release. While
+the switch is `on`, Windows takes part in the release decision, including recovery from a
+missing feed: while no Windows feed exists, the next push to `main` is a release of each platform.
+The site (repository `anima-site`, `src/lib/release/release.ts`) lists only macOS and Linux,
+and on 2026-11-22 no Windows feed was ever published, so no Windows client reads a feed that a
+release leaves out. The trials of Windows that `gates` runs for `dev` and each train do not
+read this switch. If the switch is set to `on` and later removed again, the Windows feed stays
+at its last version and its clients get no update until the switch is `on` again. To build Windows again, the operator first puts
+the two secrets below in `release-windows`, then sets
+`gh variable set ANIMA_PUBLIC_WINDOWS --body on --repo TheArctesian/anima.ing`.
 
 Before a signed trial, the operator configures environment `release-windows` with
 `WINDOWS_CERTIFICATE` (base64 PFX containing one code-signing private key) and
@@ -219,6 +234,7 @@ Read from GitHub on 2026-11-19 with `gh`. The operator, or the orchestrating ses
 | Branch rule set `main line` | Active since 2026-11-19 (id 27625577). Target `main`. Deletions are restricted and force pushes are blocked. No bypass. The orchestrating session made it on the instruction of the operator |
 | Branch `dev` | Exists since 2026-11-19, made at `eb226c8d` |
 | Variable `ANIMA_PUBLIC_RELEASES` | Does not exist: public releases are off |
+| Variable `ANIMA_PUBLIC_WINDOWS` | Does not exist on 2026-11-22: each release and each trial leaves Windows out ("The switch of Windows") |
 | Environment `release` | Permits the branch `main` and tags `v*`. No required reviewer. Administrators can bypass |
 | Environment `release-sign` | Permits the branch `main` and tags `v*`. No required reviewer. Administrators can bypass |
 | Environment `release-publish` | Permits tags `v*` only (rule id 67371066); the jobs `bucket` and `publish` of a run of `main` are refused until the branch `main` is added ("To switch public releases on"). No required reviewer. Administrators can bypass |
@@ -427,7 +443,7 @@ target of iOS 15 for uploads from April 2027.
 | Branch | GitHub environment | GitHub variable | TestFlight group |
 | --- | --- | --- | --- |
 | `dev` | `release` | `ANIMA_TESTFLIGHT_DEV=on` | Anima Internal |
-| `main` | `release` | `ANIMA_TESTFLIGHT_MAIN=on` | Anima External |
+| `main` | `release` | `ANIMA_TESTFLIGHT_MAIN=on` | [Public TestFlight beta](https://testflight.apple.com/join/SwDsVg4Z) |
 
 The operator authorized the `release` environment to allow deployments from `dev` and
 `main`. Both jobs use the existing iOS secrets. The operator supplies
@@ -441,9 +457,9 @@ Keep automatic distribution off for Anima Internal. Xcode marks `dev` uploads as
 TestFlight Internal Only. The signed archive carries the export exemption recorded for
 build 900.0.4. Review that declaration before releasing changes that affect the app's
 encryption or its linked libraries. After processing, the workflow checks Apple's recorded
-build audience and testing status, then adds the build to Anima Internal. The `main` job creates Anima External when needed,
-assigns the processed build, enables automatic tester notification and submits it for
-Beta App Review when Apple requires it. The operator supplies the app's beta review
+build audience and testing status, then adds the build to Anima Internal. The `main` job
+looks up the external group by the public invite URL used on the Anima website. It assigns the processed build, enables automatic tester notification and
+submits it for Beta App Review when Apple requires it. The operator supplies the app's beta review
 contact, sign-in instructions and export compliance answers in App Store Connect.
 External testers get the build when Apple clears it. Add the testers you want in the
 external group in App Store Connect.

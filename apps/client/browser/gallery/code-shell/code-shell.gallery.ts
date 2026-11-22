@@ -194,7 +194,36 @@ const SHOTS: readonly Shot[] = [
   },
   { name: 'details-inline', window: true, scenario: DETAILED, act: (page, inbox) => openDetails(page, inbox, false) },
   { name: 'details-popover', window: true, scenario: DETAILED, act: (page, inbox) => openDetails(page, inbox, true) },
+  // T3 Code's new thread: no form, the composer in the middle under the project's heading (from the open thread).
+  { name: 'new-thread', window: true, act: (page, inbox) => newThread(page, inbox, false) },
+  { name: 'new-thread-project', window: true, act: (page, inbox) => newThread(page, inbox, true) },
+  {
+    name: 'new-thread-no-project',
+    scenario: EMPTY,
+    window: true,
+    act: async (page, inbox) => {
+      await inbox.getByRole('button', { name: 'New thread' }).click();
+      await page.mouse.move(1000, HEIGHT / 2);
+      await expect(page.getByRole('heading', { name: 'Add a project to start' })).toBeVisible();
+      return [];
+    },
+  },
 ];
+
+/** Opens a new thread from the open "Review the sign-in flow"; `picking` opens its project picker too. */
+async function newThread(page: Page, inbox: Locator, picking: boolean): Promise<readonly Locator[]> {
+  await card(inbox, 'Review the sign-in flow').click();
+  await inbox.getByRole('button', { name: 'New thread' }).click();
+  await page.mouse.move(1000, HEIGHT / 2);
+  const heading = page.getByRole('heading', { name: /What should we build in/ });
+  await expect(heading).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  if (picking) {
+    await heading.getByRole('button').click();
+    await expect(page.getByRole('listbox', { name: 'Projects' })).toBeVisible();
+  }
+  return [];
+}
 
 /** The box of the inbox column with its floating layers, in the page. */
 async function frame(inbox: Locator, layers: readonly Locator[]): Promise<{ x: number; y: number; width: number; height: number }> {
