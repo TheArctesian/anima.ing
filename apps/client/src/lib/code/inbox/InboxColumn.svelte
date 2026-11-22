@@ -73,6 +73,11 @@
     problem = null;
   }
 
+  async function end(thread: string): Promise<void> {
+    const result = await live?.call({ call: 'stop', thread });
+    problem = result === undefined || result.ok ? null : `Failed to end the program: ${result.words}`;
+  }
+
   function act(items: readonly InboxRow[], action: string, anchor: Anchor | null): void {
     const intent = intentOf(action, items, new Date());
     const [first] = items;
@@ -82,6 +87,7 @@
     else if (intent.kind === 'copy') navigator.clipboard.writeText(intent.text).catch(() => (problem = 'The text was not copied.'));
     else if (intent.kind === 'rename') renaming = first.row.id;
     else if (intent.kind === 'remove') removing = items;
+    else if (intent.kind === 'end') void end(first.row.id);
     else {
       const row = document.querySelector(`[data-thread="${CSS.escape(first.row.id)}"]`);
       const at = anchor ?? row?.getBoundingClientRect() ?? { left: 0, top: 0, width: 0, height: 0 };
@@ -99,7 +105,15 @@
       return;
     }
     const shelf = view.shelfOf(item.row.id);
-    menu = { entries: rowMenu(item, { ...able, settled: shelf === 'settled', snoozed: shelf === 'snoozed' }), anchor, on: [item] };
+    const state = live?.threads.get(item.row.id)?.row.state;
+    const endable = state !== undefined && state !== 'stopped';
+    menu = { entries: rowMenu(item, { ...able, settled: shelf === 'settled', snoozed: shelf === 'snoozed', endable }), anchor, on: [item] };
+  }
+
+  /** Opens the menu of the thread `id` at `anchor`: the band's title opens it for the open thread, as in T3 Code. */
+  export function openThreadMenu(id: string, anchor: Anchor): void {
+    const item = view.itemOf(id);
+    if (item !== undefined) openMenu(item, anchor);
   }
 
   function onRowClick(id: string, event: MouseEvent): void {
