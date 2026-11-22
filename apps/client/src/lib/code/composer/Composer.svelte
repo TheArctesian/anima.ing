@@ -5,7 +5,7 @@
   import ReadOnlyBar from './ReadOnlyBar.svelte';
   import { untrack } from 'svelte';
   import { phaseOf, runEngine, type FileSearch, type QueueCall } from './engine';
-  import type { SetCall } from './run/choice';
+  import type { ProgramModel, SetCall } from './run/choice';
   import { heldQueue, NOT_WATCHED, type Went } from './queue/held.svelte';
   import './composer.css';
 
@@ -20,6 +20,8 @@
     onQueue?: QueueCall;
     /** The runner's `set` call for this chat (TH110): the mode and the effort after the start. */
     onSet?: SetCall;
+    /** The models of this chat's program, from the runner's `models` call (TH104); used only together with `onSet`. */
+    models?: readonly ProgramModel[];
     /** The runner's file list for this chat (`live.files`), for the `@` list; without it the list says there is no search. */
     onFiles?: FileSearch;
     /** The key under which the unsent text is kept: the chat's id. */
@@ -30,12 +32,12 @@
    * The composer of a chat of the Code section (TC4; 03 Part B). It sets no width and no place: the chat column
    * gives it the lane and pins it to the foot.
    */
-  const { row, onSend, onInterrupt, onQueue, onSet, onFiles, draft }: Props = $props();
+  const { row, onSend, onInterrupt, onQueue, onSet, models, onFiles, draft }: Props = $props();
   const chat = $derived(row?.id);
   // Looked up apart from the engine: the engine must follow the queue's messages, and state is not followed by the
   // computation that made it.
   const queue = $derived(chat === undefined || onQueue !== undefined ? null : heldQueue(chat));
-  const engine = $derived(row === null ? null : runEngine(row, { onSend, onInterrupt, onQueue, onSet, onFiles }, queue));
+  const engine = $derived(row === null ? null : runEngine(row, { onSend, onInterrupt, onQueue, onSet, models, onFiles }, queue));
   // A run whose state is not known says nothing of its turn: the queue is told only of states that are.
   const phase = $derived(row === null || row.state === 'unknown' ? null : phaseOf(row));
 

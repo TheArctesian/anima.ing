@@ -7,7 +7,7 @@ import type { FoundPath, MentionSources } from './mentions/sources';
 import type { Catalogue, Choice } from './picker/catalogue';
 import type { HeldQueue, QueuePhase } from './queue/held.svelte';
 import type { Queued } from './queue/queue';
-import { catalogueOf, changeOf, type EffortOfRow, type SetCall } from './run/choice';
+import { catalogueOf, changeOf, type EffortOfRow, type ProgramModel, type SetCall } from './run/choice';
 
 /** How a call to the engine ended; the words of a failure go under the editor. */
 export type Outcome = { readonly ok: true } | { readonly ok: false; readonly words: string };
@@ -68,6 +68,8 @@ export interface RunCalls {
   readonly onQueue?: QueueCall | undefined;
   /** The runner's `set` call for this chat (TH110); without it the model and the permissions cannot be changed. */
   readonly onSet?: SetCall | undefined;
+  /** The models of the chat's program, as the runner's `models` call names them (TH104); without them the model stays. */
+  readonly models?: readonly ProgramModel[] | undefined;
   /** The runner's list of the files of the chat's folder (`live.files`); left out by a page whose runner has none. */
   readonly onFiles?: FileSearch | undefined;
 }
@@ -223,7 +225,7 @@ export function runEngine(row: RunRow & QueueOfRow & EffortOfRow, calls: RunCall
     steer: CAN,
     ...queued,
     pick: set === undefined ? cannot(NO_PICK) : CAN,
-    ...catalogueOf(row, set !== undefined),
+    ...catalogueOf(row, set !== undefined, calls.models),
     choose: async (next) => {
       const change = changeOf(row, next);
       return set === undefined || change === null ? { ok: true } : outcomeOf(await set(change));

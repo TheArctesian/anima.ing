@@ -33,7 +33,31 @@ describe('the choice of a chat that the runner drives', () => {
     expect(changeOf(row, { ...choice, mode: 'full-access' })).toEqual({ mode: 'full_access' });
     expect(changeOf(row, { ...choice, effort: 'high' })).toEqual({ effort: 'high' });
     expect(changeOf(row, { ...choice, mode: 'plan', effort: 'max' })).toEqual({ mode: 'plan', effort: 'max' });
-    // A mode the runner does not have, a model it cannot change, an effort that is no level: nothing is asked.
-    expect(changeOf(row, { ...choice, mode: 'auto', model: 'other', effort: 'none' })).toBeNull();
+    expect(changeOf(row, { ...choice, model: 'gpt-mini' })).toEqual({ model: 'gpt-mini' });
+    // A mode the runner does not have, the word for no model, an effort that is no level: nothing is asked.
+    expect(changeOf(row, { ...choice, mode: 'auto', model: 'default', effort: 'none' })).toBeNull();
+  });
+});
+
+describe('the models of the program of a chat', () => {
+  const listed = [
+    { id: 'gpt', label: 'GPT', efforts: ['low', 'high', 'odd'], defaultEffort: 'low' },
+    { id: 'gpt-mini', label: 'GPT mini', efforts: [] },
+  ];
+
+  it('lists them where the chat can be changed, each with the efforts it names', () => {
+    const { models } = catalogueOf(row, true, listed).catalogue;
+    expect(models.map((model) => model.label)).toEqual(['GPT', 'GPT mini']);
+    expect(models.map((model) => model.efforts.map((effort) => effort.id))).toEqual([['low', 'high'], []]);
+  });
+
+  it('keeps the model of the chat in the list when the program did not name it', () => {
+    expect(catalogueOf({ ...row, model: 'older' }, true, listed).catalogue.models.map((model) => model.id)).toEqual(['older', 'gpt', 'gpt-mini']);
+    expect(catalogueOf({ ...row, model: null }, true, listed).catalogue.models[0]).toMatchObject({ id: 'default', label: 'Default model' });
+  });
+
+  it('shows only the model of the chat without a list, or where nothing can be changed', () => {
+    expect(catalogueOf(row, true, []).catalogue.models.map((model) => model.id)).toEqual(['gpt']);
+    expect(catalogueOf(row, false, listed).catalogue.models.map((model) => model.id)).toEqual(['gpt']);
   });
 });

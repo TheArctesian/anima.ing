@@ -24,6 +24,17 @@ export interface EffortOfRow {
 
 type Row = RunRow & EffortOfRow;
 
+/**
+ * A model a program named when its newest thread started (TH104), as `live/models.ts` reads the runner's `models`
+ * call: `id` is what `set` takes. A program that started no thread since the runner did has no list.
+ */
+export interface ProgramModel {
+  readonly id: string;
+  readonly label: string;
+  readonly efforts: readonly string[];
+  readonly defaultEffort?: string | null;
+}
+
 const MODE_IDS: Readonly<Record<Mode, string>> = { ask: 'approval-required', accept_edits: 'auto-accept-edits', full_access: 'full-access', plan: 'plan' };
 const EFFORT_WORDS: Readonly<Record<Effort, string>> = { low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Extra high', max: 'Max' };
 const EFFORTS = Object.keys(EFFORT_WORDS) as Effort[];
@@ -44,25 +55,37 @@ function modesOf(row: Row, changes: boolean): readonly PermissionMode[] {
   return [...offered, row.program === 'codex' ? { ...PLAN_MODE, can: cannot(NO_PLAN) } : PLAN_MODE];
 }
 
-/** Claude Code takes no change of the effort after the start: only the one it runs with is listed. */
-function effortsOf(row: Row, changes: boolean): readonly EffortLevel[] {
-  if (changes && row.program === 'codex') return EFFORTS.map(level);
-  return row.effort === undefined || row.effort === null ? [] : [level(row.effort)];
+/**
+ * The efforts of a model. Claude Code takes no change of the effort after the start: only the one it runs with is
+ * listed. For Codex they are the ones its model names, or each one when the runner gave no list.
+ */
+function effortsOf(row: Row, changes: boolean, named?: readonly string[]): readonly EffortLevel[] {
+  if (!changes || row.program !== 'codex') return row.effort === undefined || row.effort === null ? [] : [level(row.effort)];
+  return named === undefined ? EFFORTS.map(level) : EFFORTS.filter((effort) => named.includes(effort)).map(level);
+}
+
+/** The rows of the picker: the program's own models where the runner knows them, with the chat's model among them. */
+function modelsOf(row: Row, changes: boolean, listed: readonly ProgramModel[]): Catalogue['models'] {
+  const current = row.model ?? 'default';
+  const blank = { provider: row.program, favourite: false, can: CAN, speeds: [], toggles: [] } as const;
+  const own = { ...blank, id: current, label: row.model ?? 'Default model', efforts: effortsOf(row, changes) };
+  if (!changes || listed.length === 0) return [own];
+  const rows = listed.map((model) => ({ ...blank, id: model.id, label: model.label, efforts: effortsOf(row, changes, model.efforts) }));
+  return rows.some((model) => model.id === current) ? rows : [own, ...rows];
 }
 
 /**
- * The one model a driven chat has, as a catalogue: what the picker shows. The runner lists no models, so the model
- * stays the one of the start; `changes` says whether the runner takes a change of the mode and the effort.
+ * A driven chat as a catalogue: what the picker shows. `changes` says whether the runner takes a change after the
+ * start; `listed` are the models of the chat's program, when the runner knows them: without them the model stays.
  */
-export function catalogueOf(row: Row, changes: boolean): { catalogue: Catalogue; choice: Choice } {
-  const model = row.model ?? 'default';
+export function catalogueOf(row: Row, changes: boolean, listed: readonly ProgramModel[] = []): { catalogue: Catalogue; choice: Choice } {
   return {
     catalogue: {
       providers: [{ id: row.program, name: programName(row.program), icon: 'bot', can: CAN }],
-      models: [{ id: model, provider: row.program, label: row.model ?? 'Default model', favourite: false, can: CAN, efforts: effortsOf(row, changes), speeds: [], toggles: [] }],
+      models: modelsOf(row, changes, listed),
       modes: modesOf(row, changes),
     },
-    choice: { provider: row.program, model, effort: row.effort ?? null, speed: null, toggles: [], mode: MODE_IDS[row.mode] },
+    choice: { provider: row.program, model: row.model ?? 'default', effort: row.effort ?? null, speed: null, toggles: [], mode: MODE_IDS[row.mode] },
   };
 }
 
@@ -70,7 +93,10 @@ export function catalogueOf(row: Row, changes: boolean): { catalogue: Catalogue;
 export function changeOf(row: Row, next: Choice): SetChange | null {
   const mode = (Object.keys(MODE_IDS) as Mode[]).find((each) => MODE_IDS[each] === next.mode);
   const effort = EFFORTS.find((each) => each === next.effort);
+  // "default" is the composer's own word for a chat that named no model: it is never sent.
+  const model = next.model !== (row.model ?? 'default') && next.model !== 'default' ? next.model : undefined;
   const change: SetChange = {
+    ...(model !== undefined ? { model } : {}),
     ...(mode !== undefined && mode !== row.mode ? { mode } : {}),
     ...(effort !== undefined && effort !== (row.effort ?? null) ? { effort } : {}),
   };
