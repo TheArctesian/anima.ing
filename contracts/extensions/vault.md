@@ -72,7 +72,7 @@ The server proves its identity with its daemon token (K8 Section 2; R-147). To b
 - A value goes in and never comes out through K1: the only path that gives a value is Section 2.1, to a server. No client of the operator gets a stored operational key (CLI-004, SEC-005).
 - Each change needs a login of the operator: an API key cannot create, rotate, revoke, remove, grant or ungrant (a grant is a trust decision). A read key can read the metadata.
 - Each change writes one audit entry and one event in one transaction; neither holds a value.
-- Commands: `anima key list|show|add|set|rotate|revoke|remove|grant|ungrant`. `add` and `rotate` read the value from standard input and refuse a terminal that echoes. MCP tools: `anima_keys_list` and `anima_key_show` only; the others take a secret or make a trust decision (command line plan Section 7), and the coverage test lists them with that reason.
+- Commands: `anima secret list|show|add|set|rotate|revoke|remove|grant|ungrant` (OD-E23; `anima key` is the noun of the API keys). `add` and `rotate` read the value from standard input and refuse a terminal that echoes. MCP tools: `anima_secrets_list` and `anima_secret_show` only; the others take a secret or make a trust decision (command line plan Section 7), and the coverage test lists them with that reason.
 
 ## 3. Class A: records that the client seals (VLT-001, VLT-002, VLT-004 to VLT-006; `crates/hub/src/engine/sealed_records/`, schema `sealed_records`, migrations 2080–2089)
 

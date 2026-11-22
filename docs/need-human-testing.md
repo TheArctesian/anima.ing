@@ -2002,7 +2002,7 @@ and reads it with `anima-daemon key read <name>`.
 
 The tests use a throwaway database and in-process requests. The daemon cache was tested as pure logic and as a
 file on this machine. No test used the macOS Keychain item `key-cache`, a real daemon pushing to a real hub, two
-machines, or a wait of 7 days. There is no `anima key` command yet (the noun waits for a ruling), so the steps use
+machines, or a wait of 7 days. There is no `anima secret` command yet (E0-6 T3), so the steps use
 GraphQL through the client's developer tools or `curl` with a login token.
 
 1. On a Linux server with an enrolled `anima-daemon` of this branch, and on the hub, make a key with
