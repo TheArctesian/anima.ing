@@ -13,17 +13,19 @@
     count: Count;
     /** The time of now, in milliseconds; the page gives a new one each minute. */
     now: number;
+    /** The devices whose daemon reads no sessions (AIS-024): their share is not known. */
+    notCounted?: ReadonlySet<string>;
   }
 
-  const { accounts, shares, count, now }: Props = $props();
+  const { accounts, shares, count, now, notCounted = new Set() }: Props = $props();
 </script>
 
-<!-- One card for each account (AIS-022 as R-313 changed it): its limit windows, which its devices share, and the share of
-     each device. The hub knows an account by its key only; the name of the account stays on each device. -->
+<!-- One card for each account (AIS-022 as THR-149 changed it): its limit windows, which its devices share, and the share
+     of each device, grouped by the key. An interim part: the Usage page of Code replaces it (THR-149). -->
 <div class="block">
   <div class="over">
     <span class="label">By account</span>
-    <span class="note">one limit for each account, shared by its devices; the name of the account stays on each device</span>
+    <span class="note">one limit for each account, shared by its devices</span>
   </div>
   {#if accounts.length === 0}
     <p class="none">No account to show. The devices do not send their accounts yet.</p>
@@ -50,10 +52,12 @@
         {/if}
         <div class="devices">
           <span class="small quiet">Each device's share of this program's {count} in these days</span>
-          {#each deviceShares(account, shares, count) as device (device.id)}
+          {#each deviceShares(account, shares, count, notCounted) as device (device.id)}
             <div class="device">
               <span class="name">{device.name}</span>
-              {#if device.percent === null}
+              {#if !device.counted}
+                <span class="quiet share-none">not counted</span>
+              {:else if device.percent === null}
                 <span class="quiet share-none">no use</span>
               {:else}
                 <span class="share" aria-hidden="true"><i style:inline-size="{device.percent}%"></i></span>

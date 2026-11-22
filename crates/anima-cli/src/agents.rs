@@ -81,6 +81,13 @@ pub enum AgentCommand {
     /// List the threads of this computer that are pinned, archived, renamed or removed.
     #[cfg(unix)]
     Listings,
+    /// Show the models that each agent program of this computer offers for a start.
+    #[cfg(unix)]
+    Models,
+    /// List the projects of this computer, or add, rename or remove one. A project is a folder
+    /// whose threads are listed under its name.
+    #[cfg(unix)]
+    Projects(listing::ProjectsArgs),
 }
 
 impl AgentCommand {
@@ -92,7 +99,7 @@ impl AgentCommand {
         match self {
             Self::Usage(args) => args.run(invocation).await,
             Self::Sessions(args) => args.run(invocation).await,
-            Self::Threads(args) => args.run(invocation),
+            Self::Threads(args) => args.run(invocation).await,
             Self::Thread(args) => args.run(invocation),
             #[cfg(unix)]
             local => local.run_local(invocation).await,
@@ -112,6 +119,7 @@ impl AgentCommand {
             Self::Watch(args) => drive::watch(args, invocation).await,
             Self::RaiseLimit => drive::raise_limit(invocation).await,
             Self::Accounts => accounts::accounts(invocation).await,
+            Self::Models => accounts::models(invocation).await,
             other => other.run_listing(invocation).await,
         }
     }
@@ -125,6 +133,7 @@ impl AgentCommand {
             Self::Rename(args) => listing::rename(args, invocation).await,
             Self::Remove(args) => listing::remove(args, invocation).await,
             Self::Listings => listing::listings(invocation).await,
+            Self::Projects(args) => listing::projects(args, invocation).await,
             _ => unreachable!("the other commands are run by `run` and `run_local`"),
         }
     }

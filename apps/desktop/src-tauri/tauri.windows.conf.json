@@ -1,5 +1,19 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Anima.ing",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 600,
+        "backgroundThrottling": "disabled",
+        "decorations": false
+      }
+    ]
+  },
   "bundle": {
     "targets": [
       "nsis"

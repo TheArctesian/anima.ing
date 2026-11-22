@@ -102,7 +102,9 @@
     }}
   >
     <Field label="Program">
+      {#snippet children(link)}
       <Select
+        {...link}
         bind:value={program}
         onchange={() => {
           // A copy belongs to one program.
@@ -113,32 +115,37 @@
         <option value="claude_code">Claude Code</option>
         <option value="codex">Codex</option>
       </Select>
+      {/snippet}
     </Field>
     <Field label="Folder" constraint="An absolute folder of this computer, for example /Users/you/project">
-      <Input bind:value={folder} mono placeholder="/Users/you/project" autocomplete="off" spellcheck={false} />
+      {#snippet children(link)}<Input {...link} bind:value={folder} mono placeholder="/Users/you/project" autocomplete="off" spellcheck={false} />{/snippet}
     </Field>
     <Field label="Approvals">
-      <Select bind:value={mode}>
+      {#snippet children(link)}
+      <Select {...link} bind:value={mode}>
         {#each MODES as each (each)}<option value={each}>{MODE_WORDS[each]}</option>{/each}
       </Select>
+      {/snippet}
     </Field>
     <Field label="Model" constraint="Empty for the default model of the program">
-      <Input bind:value={model} mono autocomplete="off" spellcheck={false} />
+      {#snippet children(link)}<Input {...link} bind:value={model} mono autocomplete="off" spellcheck={false} />{/snippet}
     </Field>
     <Field label="Effort">
-      <Select bind:value={effort}>
+      {#snippet children(link)}
+      <Select {...link} bind:value={effort}>
         <option value="">Default</option>
         {#each EFFORTS as each (each)}<option value={each}>{each}</option>{/each}
       </Select>
+      {/snippet}
     </Field>
     <Field label="First prompt">
-      <textarea class="prompt" bind:value={prompt} rows="4" aria-label="First prompt"></textarea>
+      {#snippet children(link)}<textarea {...link} class="prompt" bind:value={prompt} rows="4"></textarea>{/snippet}
     </Field>
     <details class="advanced" open={programPath !== ''}>
       <summary>Advanced</summary>
       <Field label="Program path" constraint="Empty for the usual copy. Only a copy that the runner finds is taken">
         <!-- A path typed by hand replaces the offer: the button would overwrite it. -->
-        <Input bind:value={() => programPath, (next) => { programPath = next; offer = null; }} mono placeholder="/Applications/…/codex" autocomplete="off" spellcheck={false} />
+        {#snippet children(link)}<Input {...link} bind:value={() => programPath, (next) => { programPath = next; offer = null; }} mono placeholder="/Applications/…/codex" autocomplete="off" spellcheck={false} />{/snippet}
       </Field>
     </details>
     {#if read === folder && notice.length > 0}

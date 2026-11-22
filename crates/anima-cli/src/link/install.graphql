@@ -1,0 +1,8 @@
+# `anima link install <name>`. The answer holds an invite and a claim, shown once (HM-T33).
+mutation LinkInstall($name: String!) {
+  createComputerInstall(name: $name) {
+    invite
+    claim
+    expiresAt
+  }
+}

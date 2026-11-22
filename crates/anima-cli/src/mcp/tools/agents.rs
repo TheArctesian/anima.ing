@@ -82,7 +82,13 @@ impl AgentTool {
                     ProgramName::Codex => Program::Codex,
                 });
                 let limit = input.limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT);
-                let rows = threads::list(&threads::home()?, program.map(Program::source), limit);
+                // An agent gets the files as they are: the list of the person is not its to read.
+                let rows = threads::list(
+                    &threads::home()?,
+                    program.map(Program::source),
+                    limit,
+                    &std::collections::BTreeSet::new(),
+                );
                 let rows: Vec<Value> = rows.iter().map(narrow).collect();
                 let rows = cleaned(Value::Array(rows));
                 Ok(Value::Object(fitted(object([("threads", rows)]))))

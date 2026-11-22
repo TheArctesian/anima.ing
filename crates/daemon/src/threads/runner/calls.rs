@@ -13,6 +13,7 @@ use super::thread::{Step, Thread};
 use super::{Pending, Runner, Waits};
 use crate::threads::wire;
 
+mod reads;
 mod refusal_lines;
 pub(super) use refusal_lines::RefusalLines;
 use refusal_lines::Say;
@@ -42,46 +43,41 @@ impl Runner {
             client: client.clone(),
         };
         let named = thread_of(&action);
-        let answer = match action {
-            ref asked if agent && for_the_person(asked) => Outcome::Refused {
-                why: Refusal::FromAnAgent,
-            },
-            Action::List => Outcome::Threads {
-                threads: self
-                    .threads
-                    .values()
-                    .map(|thread| thread.row.clone())
-                    .collect(),
-                holder: self.holder_words(),
-            },
-            Action::Watch => {
-                self.watch(id, client);
-                return;
-            }
-            Action::Interrupt { thread } => self.interrupt(thread).await,
-            Action::Listings => self.listings(),
-            Action::ChangeListing { thread, change } => self.change_listing(thread, &change),
-            Action::Accounts => Outcome::Accounts {
-                accounts: self.accounts.rows(),
-            },
-            Action::Folder { folder } => {
-                match super::start::chosen_folder(&folder, self.dir.parent().unwrap_or(&self.dir)) {
-                    Ok(real) => Outcome::Folder {
-                        notice: crate::threads::notice::of_folder(&real),
-                    },
+        let answer = match self.read(&action) {
+            Some(read) => read,
+            None => match action {
+                ref asked if agent && for_the_person(asked) => Outcome::Refused {
+                    why: Refusal::FromAnAgent,
+                },
+                Action::Watch => {
+                    self.watch(id, client);
+                    return;
+                }
+                Action::Interrupt { thread } => self.interrupt(thread).await,
+                Action::ChangeListing { thread, change } => self.change_listing(thread, &change),
+                Action::ChangeProject { change } => self.change_project(&change),
+                Action::Folder { folder } => {
+                    match super::start::chosen_folder(
+                        &folder,
+                        self.dir.parent().unwrap_or(&self.dir),
+                    ) {
+                        Ok(real) => Outcome::Folder {
+                            notice: crate::threads::notice::of_folder(&real),
+                        },
+                        Err(why) => Outcome::Refused { why },
+                    }
+                }
+                Action::RaiseLimit => {
+                    self.limits = self.limits.raised();
+                    self.save();
+                    Outcome::Limits {
+                        limits: self.limits,
+                    }
+                }
+                waits => match self.held_call(waits, back.clone()).await {
+                    Ok(()) => return,
                     Err(why) => Outcome::Refused { why },
-                }
-            }
-            Action::RaiseLimit => {
-                self.limits = self.limits.raised();
-                self.save();
-                Outcome::Limits {
-                    limits: self.limits,
-                }
-            }
-            waits => match self.held_call(waits, back.clone()).await {
-                Ok(()) => return,
-                Err(why) => Outcome::Refused { why },
+                },
             },
         };
         if let Outcome::Refused { why } = &answer {
@@ -279,6 +275,7 @@ const fn for_the_person(action: &Action) -> bool {
             | Action::RaiseLimit
             | Action::Start { .. }
             | Action::ChangeListing { .. }
+            | Action::ChangeProject { .. }
     )
 }
 
@@ -289,7 +286,8 @@ const fn thread_of(action: &Action) -> Option<Uuid> {
         | Action::Answer { thread, .. }
         | Action::Interrupt { thread }
         | Action::Stop { thread }
-        | Action::ChangeListing { thread, .. } => Some(*thread),
+        | Action::ChangeListing { thread, .. }
+        | Action::Earlier { thread, .. } => Some(*thread),
         _ => None,
     }
 }

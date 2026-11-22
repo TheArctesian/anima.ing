@@ -4,7 +4,7 @@ import type { IconName } from '$lib/icons/icons';
 
 /** One destination of the navigation bar. */
 export interface NavDestination {
-  readonly href: '/devices' | '/threads' | '/agents/usage' | '/projects' | '/builds' | '/logs' | '/extensions' | '/settings';
+  readonly href: '/devices' | '/code' | '/agents/usage' | '/projects' | '/builds' | '/logs' | '/extensions' | '/settings';
   readonly label: string;
   readonly icon: IconName;
 }
@@ -13,7 +13,7 @@ export const DEVICES: NavDestination = { href: '/devices', label: 'Devices', ico
 /** The use of the AI agent programs (AIS-020); always there, because the page explains itself when no daemon reports. */
 export const AGENT_USAGE: NavDestination = { href: '/agents/usage', label: 'Agent usage', icon: 'carbon:chart-line' };
 /** The sessions of Claude Code and Codex of this computer as threads; only in the desktop application (THR-017). */
-export const THREADS: NavDestination = { href: '/threads', label: 'Threads', icon: 'carbon:terminal' };
+export const THREADS: NavDestination = { href: '/code', label: 'Code', icon: 'carbon:terminal' };
 /** Shown only while the Projects extension is on (EXT-002). */
 export const PROJECTS: NavDestination = { href: '/projects', label: 'Projects', icon: 'carbon:folder' };
 export const BUILDS: NavDestination = { href: '/builds', label: 'Builds', icon: 'carbon:tool-kit' };

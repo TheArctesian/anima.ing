@@ -27,6 +27,9 @@ pub enum Mode {
     AcceptEdits,
     /// Each tool call that the program does not hold for safe asks.
     Ask,
+    /// The program reads and plans; it changes nothing until the person accepts its plan
+    /// (TH105). Claude Code only: Codex 0.170 has no plan mode that a start can set.
+    Plan,
 }
 
 impl Mode {
@@ -37,6 +40,7 @@ impl Mode {
             Self::FullAccess => "bypassPermissions",
             Self::AcceptEdits => "acceptEdits",
             Self::Ask => "manual",
+            Self::Plan => "plan",
         }
     }
 
@@ -48,6 +52,8 @@ impl Mode {
             Self::FullAccess => ("danger-full-access", "never"),
             Self::AcceptEdits => ("workspace-write", "on-request"),
             Self::Ask => ("workspace-write", "untrusted"),
+            // The runner refuses a Codex start in plan mode; read only, should one come here.
+            Self::Plan => ("read-only", "untrusted"),
         }
     }
 }

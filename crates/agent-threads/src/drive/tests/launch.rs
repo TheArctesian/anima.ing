@@ -30,7 +30,13 @@ fn a_claude_command_line_names_its_mode_and_its_session() {
     assert!(joined.ends_with(
         "--model sonnet --effort low --session-id 00000000-0000-0000-0000-000000000000"
     ));
-    for mode in [Mode::FullAccess, Mode::AcceptEdits, Mode::Ask] {
+    let plan = launch(Program::ClaudeCode, Mode::Plan)
+        .invocation()
+        .expect("absolute")
+        .args
+        .join(" ");
+    assert!(plan.contains("--permission-mode plan"), "TH105");
+    for mode in [Mode::FullAccess, Mode::AcceptEdits, Mode::Ask, Mode::Plan] {
         let args = launch(Program::ClaudeCode, mode)
             .invocation()
             .expect("absolute")

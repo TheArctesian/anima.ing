@@ -1,5 +1,5 @@
 //! The unpack of a runtime archive (Section 6, F10): a `.tar.gz` ([`tar_gz`]) or a `.zip`
-//! ([`zip`]), into a new empty folder, each file and folder made relative to an open handle of
+//! ([`zip`]), into a new empty folder of this user, opened with `O_NOFOLLOW`, each file and folder made relative to an open handle of
 //! its folder with `O_NOFOLLOW`. Only regular files and folders; no link, device or FIFO, no
 //! absolute path, no `..`, no two names that are equal in lower case at any part of their
 //! paths. Folders and program files get 0755, other files 0644, with no setuid, setgid or
@@ -84,6 +84,18 @@ fn names(path: &str) -> Option<Vec<String>> {
     (!names.is_empty()).then_some(names)
 }
 
+/// Whether the folder of `root` belongs to the effective user and holds no entry.
+fn own_empty_folder(root: &OwnedFd) -> bool {
+    let owned = rustix::fs::fstat(root)
+        .is_ok_and(|stat| stat.st_uid == rustix::process::geteuid().as_raw());
+    let Ok(mut entries) = rustix::fs::Dir::read_from(root) else {
+        return false;
+    };
+    let empty = entries
+        .all(|entry| entry.is_ok_and(|entry| matches!(entry.file_name().to_bytes(), b"." | b"..")));
+    owned && empty
+}
+
 /// The writer of one unpack: the folder, the names seen, the bytes and entries left.
 struct Writer<F: Fn() -> bool> {
     root: OwnedFd,
@@ -97,8 +109,13 @@ struct Writer<F: Fn() -> bool> {
 
 impl<F: Fn() -> bool> Writer<F> {
     fn new(into: &Path, limits: Limits, disk_holds: F) -> Result<Self, Cause> {
-        let root =
-            rustix::fs::open(into, DIR_FLAGS, Mode::empty()).map_err(|_| Cause::LimitDisk)?;
+        // A folder that does not open, is a link, is not this user's or is not empty is a fault
+        // of the order, not of the disk.
+        let root = rustix::fs::open(into, DIR_FLAGS, Mode::empty())
+            .map_err(|_| Cause::RuntimeNotConfigured)?;
+        if !own_empty_folder(&root) {
+            return Err(Cause::RuntimeNotConfigured);
+        }
         Ok(Self {
             root,
             seen: HashMap::new(),

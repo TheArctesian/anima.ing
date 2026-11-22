@@ -18,11 +18,7 @@ use crate::token_store::{Credential, TokenStore, TokenStoreError};
 pub async fn credential(home: &Home) -> Result<Option<Credential>, TokenStoreError> {
     let read = || {
         let store = TokenStore::open(home);
-        async move {
-            tokio::task::spawn_blocking(move || store.load())
-                .await
-                .unwrap_or_else(|ended| std::panic::resume_unwind(ended.into_panic()))
-        }
+        keychain_wait::off_loop(move || store.load())
     };
     let mark = |waits| {
         if let Err(error) = keychain_wait::mark(home, waits) {

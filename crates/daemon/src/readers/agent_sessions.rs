@@ -82,6 +82,12 @@ impl AgentSessions {
         }
     }
 
+    /// Whether the operator's settings send the accounts of the programs (THR-149, on by default).
+    #[must_use]
+    pub const fn sends_accounts(&self) -> bool {
+        self.settings.send_accounts
+    }
+
     /// Reads what changed since the last scan and gives every session day of each session one
     /// of whose files changed. Blocking; it ends early when `stopping` is set.
     pub fn scan(&mut self, stopping: &AtomicBool) -> Vec<SessionDay> {

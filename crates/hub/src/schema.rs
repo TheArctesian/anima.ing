@@ -83,6 +83,7 @@ pub struct Mutation(
     extensions::graphql::Mutation,
     link::graphql::Mutation,
     link::graphql::HostedMutation,
+    link::graphql::ComputerMutation,
     links::graphql::Mutation,
     maintenance::graphql::Mutation,
     metrics::graphql::Mutation,
@@ -208,6 +209,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(vault)
     // The open claims of a hosted hub (R-129), and its open browser tickets (HMD-061).
     .data(link::Claims::default())
+    .data(link::ComputerClaims::default())
     .data(access::BrowserTickets::default());
     // One block per domain: its loaders (R-014) and its state.
     let builder = with_devices_loaders(builder, &pool, &clock)

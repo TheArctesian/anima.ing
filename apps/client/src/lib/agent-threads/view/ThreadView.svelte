@@ -135,7 +135,7 @@
     background: var(--status-unknown);
   }
 
-  .state[data-state='working']::before {
+  .state:is([data-state='working'], [data-state='starting'])::before {
     background: var(--accent);
   }
 

@@ -238,7 +238,9 @@
     ],
     "link": [
       "access",
-      "events"
+      "events",
+      "devices",
+      "metrics"
     ],
     "agent_usage": [
       "access"

@@ -17,6 +17,7 @@
   import { crossFade } from '$lib/motion/roles/transitions';
   import { shiftShell } from '$lib/nav/banner-shift';
   import { DATA_AGE_REFRESH_MS } from '$lib/nav/nav';
+  import { BarFolding } from '$lib/nav/collapse/bar-fold.svelte';
   import { storedCollapsed, storeCollapsed } from '$lib/nav/collapse/collapse';
   import { watchIconOnly } from '$lib/nav/collapse/icon-only';
   import { releaseWidth } from '$lib/nav/collapse/resize';
@@ -38,6 +39,7 @@
   import { applyTypefaces, storedTypefaces } from '$lib/typeface/typeface';
   import { provideDesktopUpdates } from '$lib/updates/desktop.svelte';
   import UpdateBanner from '$lib/updates/UpdateBanner.svelte';
+  import WindowStrip from '$lib/code/shell/WindowStrip.svelte';
 
   const { children }: { children: Snippet } = $props();
 
@@ -48,30 +50,39 @@
   applyMotion(document.documentElement, storedMotion(localStorage));
   // On a Mac the window draws under its title bar; the bar keeps room for the window buttons.
   if (capabilities().overlayTitleBar) document.documentElement.dataset['titlebar'] = 'overlay';
+  if (capabilities().framelessWindow) document.documentElement.dataset['titlebar'] = 'frameless';
   if (isAndroid(navigator)) document.documentElement.dataset['os'] = 'android';
   $effect(() => followVisualTop(document.documentElement, window.visualViewport));
   // The bar shows icons only below the compact breakpoint or when the operator collapses it; set before the first
   // render so the width never changes after load.
   let nav = $state({ iconOnly: false, compact: false });
-  const startsCollapsed = storedCollapsed(localStorage);
-  let collapsed = $state(startsCollapsed);
-  const iconOnlyWatch = watchIconOnly(document.documentElement, window, startsCollapsed, (now) => {
+  const folding = new BarFolding(storedCollapsed(localStorage), () => page.url.pathname, (next) => storeCollapsed(localStorage, next));
+  const collapsed = $derived(folding.collapsed);
+  let shownCollapsed = untrack(() => collapsed);
+  const iconOnlyWatch = watchIconOnly(document.documentElement, window, shownCollapsed, (now) => {
     nav = now;
   });
   $effect(() => iconOnlyWatch.stop);
 
-  /** Collapses or expands the bar: its width changes at once and the page glides to its new edge (NAV-006, MOT-006). */
-  function setCollapsed(next: boolean) {
-    const root = document.documentElement;
-    const changed = next !== collapsed;
-    collapsed = next;
-    storeCollapsed(localStorage, next);
-    shiftShell(root, () => {
-      releaseWidth(root);
-      iconOnlyWatch.collapse(next);
+  /** The bar's width changes at once and the page glides to its new edge (NAV-006, MOT-006). */
+  $effect(() => {
+    const next = collapsed;
+    untrack(() => {
+      if (next === shownCollapsed) return;
+      shownCollapsed = next;
+      const root = document.documentElement;
+      shiftShell(root, () => {
+        releaseWidth(root);
+        iconOnlyWatch.collapse(next);
+      });
+      const bar = document.getElementById('main-nav');
+      if (!next && bar !== null) void fadeInWords(bar);
     });
-    const bar = document.getElementById('main-nav');
-    if (changed && !next && bar !== null) void fadeInWords(bar);
+  });
+
+  /** The person collapses or expands the bar; on Code the fold is for the visit (OD-THR60). */
+  function setCollapsed(next: boolean) {
+    folding.toggle(next);
   }
 
   // Decided once, from the page the browser loaded: the operator shell, or a fixed refusal on an origin that cannot be
@@ -194,6 +205,7 @@
   <!-- Before sign-in the window shows the page alone: no bar, no sessions, no hub status (NAV-009). -->
   <div class="bare">
     <div class="drag" data-tauri-drag-region></div>
+    <WindowStrip bare />
     <main>{@render children()}</main>
   </div>
 {:else if shell !== null}
@@ -207,7 +219,7 @@
       buildsOn={publishing.on}
       iconOnly={nav.iconOnly}
       {collapsed}
-      canCollapse={!nav.compact}
+      canCollapse={!nav.compact && folding.canToggle}
       ontogglecollapse={() => {
         setCollapsed(!collapsed);
       }}
@@ -215,6 +227,7 @@
     />
     <!-- On a Mac the strip above the page moves the window, as the title bar it replaces did. -->
     <div class="drag" data-tauri-drag-region></div>
+    <WindowStrip />
     <main data-shifts-with-banner>
       <SessionTabs />
       <div class="stage">
@@ -330,7 +343,7 @@
 
   /* Below the compact breakpoint the unreachable strip takes the top of the window; the page starts below it. */
   :global(:root[data-nav='icons'][data-hub-banner]) main {
-    padding-block-start: calc(var(--space-6) + var(--nav-banner-block-size));
+    padding-block-start: calc(var(--space-6) + var(--nav-banner-block-size) + var(--titlebar-block-size));
   }
 
   /* One column that may shrink below its content, so neither the pages nor a session widen the document (UI-009). */

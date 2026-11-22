@@ -26,7 +26,7 @@
 /// label in its details: login or browser token only (HOST-001, HOST-017, MCP-004, R-149, R-150).
 /// Making an application public on the internet, checking its proof and removing it is for a
 /// person with a second factor (HOST-046, SF-232, task H21).
-pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 63] = [
+pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 64] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -72,6 +72,7 @@ pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 63] = [
     "mergePullRequest",
     "mergePullRequests",
     "createLinkInvite",
+    "createComputerInstall",
     "revokeLinkDevice",
     "createOperationalKey",
     "updateOperationalKey",

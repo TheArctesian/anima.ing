@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use crate::model_work::cause::Cause;
 use crate::model_work::command::{environment, llama_arguments};
-use crate::model_work::folders::{Installation, layout};
 use crate::model_work::machine::{MachineSettings, SettingsError};
 use crate::model_work::names::{Backend, Runtime};
 use crate::model_work::releases::{ArchiveFormat, Release, SourceEntry, accepted};
@@ -67,8 +66,13 @@ fn the_command_line_binds_loopback_and_holds_no_key() {
     );
 }
 
+// The installations are of macOS and Linux, and their folders are Unix paths: on Windows
+// `/home/u` is not an absolute path, so `layout` gives `None` for it.
+#[cfg(unix)]
 #[test]
 fn the_folders_follow_the_table() {
+    use crate::model_work::folders::{Installation, layout};
+
     let env = |name: &str| match name {
         "HOME" => Some("/home/u".to_owned()),
         _ => None,
