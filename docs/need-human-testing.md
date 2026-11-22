@@ -3580,6 +3580,33 @@ window, a real Claude Code thread, and a restart of the installed daemon.
 
 Result: Open.
 
+### HT-139: the queue of a thread with a real Claude Code and a real Codex (TH109)
+
+Built: on the branch `threads/runner-queue` (task TH109 of agent-threads.md). The runner holds the prompts that wait for
+the turn of a thread to end and sends them one by one, each as the next turn when the turn before it ended well with
+nothing open for an answer; an interrupt or a failed turn stops the queue until the person sends; a stop empties it. The
+row of a thread says its queue and how its last turn ended. `anima agents queue` drives it; the composer of the page uses
+it when its own branch lands.
+
+The tests cover the core of a thread with lines of a made Claude Code: two prompts go one by one also when the program
+says "idle" between two turns, a failed and an interrupted turn stop the queue, the bound of 20, and that the record never
+holds a queued prompt. They do not cover a real Claude Code or Codex: whether each sends its end of a turn and its idle
+state in the order that the tests use, and whether a Codex turn starts again at once after the end of the one before it.
+
+1. On the Mac, start a Claude Code thread: `anima agents start --program claude-code --folder <a folder> "Count slowly
+   to 20, one number a line"`. While it works, run `anima agents queue <thread> "Say A"` and
+   `anima agents queue <thread> "Say B"`, then `anima agents watch`.
+   Expected: after the count ends, "Say A" goes as a new turn; only after that turn ends does "Say B" go.
+2. Do step 1 again with `--program codex`.
+   Expected: the same.
+3. Start a thread with a long prompt, queue "Say A", and run `anima agents interrupt <thread>`.
+   Expected: "Say A" does not go; `anima agents running --json` still lists it under `queued`, and `last_turn` is
+   `interrupted`. Run `anima agents queue <thread> --send <its ID>`: it goes at once.
+4. Queue a prompt, then quit and open the application again.
+   Expected: the queue is empty after the restart, and the file `threads.json` of the runner does not hold its words.
+
+Result: Open.
+
 ### HT-126: the diff, the plan, the use, the models, plan mode and the projects with the real programs (TH101 to TH107)
 
 Built: on the branch `threads/engine-for-copy` (tasks TH101 to TH107 of agent-threads.md). The runner now passes on the

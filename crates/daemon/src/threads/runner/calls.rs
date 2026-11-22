@@ -14,11 +14,12 @@ use super::{Pending, Runner, Waits};
 use crate::threads::wire;
 
 mod files;
+mod queue;
 mod reads;
 mod refusal_lines;
 pub(super) use files::Walked;
-pub(super) use refusal_lines::RefusalLines;
 use refusal_lines::Say;
+pub(super) use refusal_lines::{RefusalLines, refusal_word};
 
 /// What the runner can see of the source of a call: the local socket (THR-044).
 const SOURCE: &str = "local socket";
@@ -56,6 +57,9 @@ impl Runner {
                     return;
                 }
                 Action::Interrupt { thread } => self.interrupt(thread).await,
+                queued @ (Action::Queue { .. }
+                | Action::Requeue { .. }
+                | Action::Unqueue { .. }) => self.queue_call(queued).await,
                 Action::ChangeListing { thread, change } => self.change_listing(thread, &change),
                 Action::ChangeProject { change } => self.change_project(&change),
                 Action::Files {
@@ -63,17 +67,7 @@ impl Runner {
                     query,
                     most,
                 } => self.files(thread, &query, most),
-                Action::Folder { folder } => {
-                    match super::start::chosen_folder(
-                        &folder,
-                        self.dir.parent().unwrap_or(&self.dir),
-                    ) {
-                        Ok(real) => Outcome::Folder {
-                            notice: crate::threads::notice::of_folder(&real),
-                        },
-                        Err(why) => Outcome::Refused { why },
-                    }
-                }
+                Action::Folder { folder } => self.folder_notice(&folder),
                 Action::RaiseLimit => {
                     self.limits = self.limits.raised();
                     self.save();
@@ -81,7 +75,7 @@ impl Runner {
                         limits: self.limits,
                     }
                 }
-                waits => match self.held_call(waits, back.clone()).await {
+                waits => match self.held_call(waits, back.clone(), !agent).await {
                     Ok(()) => return,
                     Err(why) => Outcome::Refused { why },
                 },
@@ -94,9 +88,15 @@ impl Runner {
     }
 
     /// A call whose answer waits for the holder: a start, a prompt, an answer or a stop.
-    async fn held_call(&mut self, action: Action, back: Caller) -> Result<(), Refusal> {
+    async fn held_call(
+        &mut self,
+        action: Action,
+        back: Caller,
+        person: bool,
+    ) -> Result<(), Refusal> {
         match action {
-            Action::Send { thread, text } => self.send(thread, text, back).await,
+            Action::Send { thread, text } => self.send(thread, text, (back, person)).await,
+            Action::SendQueued { thread, id } => self.send_queued(thread, id, back).await,
             Action::Answer {
                 thread,
                 request,
@@ -168,9 +168,16 @@ impl Runner {
     }
 
     /// A prompt of the person. The client gets its answer when the holder took the line.
-    async fn send(&mut self, id: Uuid, text: String, back: Caller) -> Result<(), Refusal> {
+    /// `person` is false for a prompt of a process of an agent: it does not start a stopped
+    /// queue (TH109).
+    async fn send(
+        &mut self,
+        id: Uuid,
+        text: String,
+        (back, person): (Caller, bool),
+    ) -> Result<(), Refusal> {
         let thread = self.threads.get_mut(&id).ok_or(Refusal::UnknownThread)?;
-        let lines = thread.send(&text)?;
+        let lines = thread.send(&text, person)?;
         let steps = lines.into_iter().map(Step::Write).collect();
         match self.apply(id, steps).await {
             Err(_) => Err(Refusal::Holder),
@@ -273,7 +280,7 @@ struct Answering {
 }
 
 /// Whether only the person may make this call: an answer to a request, a raise of the limit,
-/// a start and a change of how a thread is listed (TH46). A process of an agent may not, so that
+/// a start, a change of how a thread is listed (TH46) and the queue of a thread (TH109). A process of an agent may not, so that
 /// an agent never approves itself or hides a thread from the person.
 const fn for_the_person(action: &Action) -> bool {
     matches!(
@@ -284,6 +291,10 @@ const fn for_the_person(action: &Action) -> bool {
             | Action::ChangeListing { .. }
             | Action::ChangeProject { .. }
             | Action::Files { .. }
+            | Action::Queue { .. }
+            | Action::Requeue { .. }
+            | Action::Unqueue { .. }
+            | Action::SendQueued { .. }
     )
 }
 
@@ -296,7 +307,11 @@ const fn thread_of(action: &Action) -> Option<Uuid> {
         | Action::Stop { thread }
         | Action::ChangeListing { thread, .. }
         | Action::Earlier { thread, .. }
-        | Action::Files { thread, .. } => Some(*thread),
+        | Action::Files { thread, .. }
+        | Action::Queue { thread, .. }
+        | Action::Requeue { thread, .. }
+        | Action::Unqueue { thread, .. }
+        | Action::SendQueued { thread, .. } => Some(*thread),
         _ => None,
     }
 }
@@ -321,22 +336,4 @@ fn refusal_to_daemon_log(thread: Option<Uuid>, why: &str, say: Say) {
         Say::LastLine => "; more refusals of this minute are only in runner.log",
     };
     tracing::info!(%thread, why, "the runner refused a call{more}");
-}
-
-pub(super) const fn refusal_word(why: &Refusal) -> &'static str {
-    match why {
-        Refusal::UnknownThread => "unknown thread",
-        Refusal::FromAnAgent => "from a process of an agent",
-        Refusal::Running => "the thread runs",
-        Refusal::FolderNotPermitted => "folder not permitted",
-        Refusal::ProgramNotFound => "program not found",
-        Refusal::ProgramDoesNotAnswer { .. } => "program did not answer",
-        Refusal::BadValue => "bad value",
-        Refusal::RequestGone => "request gone",
-        Refusal::AnswerDoesNotFit => "answer does not fit",
-        Refusal::NotRunning => "not running",
-        Refusal::Holder => "holder",
-        Refusal::HolderOlder { .. } => "holder older than the daemon",
-        Refusal::OverLimit { .. } => "over the soft limit",
-    }
 }

@@ -22,6 +22,7 @@ use crate::hub::{
 mod audit;
 mod command;
 mod create;
+mod reveal;
 
 /// Enrols TOTP for the fixture operator; returns the secret read back from the URI.
 pub async fn enrol(pool: &PgPool) -> Vec<u8> {

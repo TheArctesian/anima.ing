@@ -15,6 +15,7 @@ impl Thread {
             steps.extend(self.event(event, text, new_id));
         }
         steps.extend(self.state_change());
+        steps.extend(self.next_queued());
         steps
     }
 
@@ -73,8 +74,9 @@ impl Thread {
                 }
             }
             DriveEvent::State { state } => self.program = Some(*state),
-            DriveEvent::TurnEnded { .. } => {
+            DriveEvent::TurnEnded { outcome, .. } => {
                 self.program = Some(ProgramState::Idle);
+                self.turn_ended(*outcome);
                 if let Driver::Codex(codex) = &mut self.driver {
                     codex.turn_ended();
                 }
@@ -89,7 +91,18 @@ impl Thread {
             return Vec::new();
         };
         match codex.reply(*number, ok, result) {
-            Ok(lines) => lines.into_iter().map(Step::Write).collect(),
+            Ok(lines) => {
+                let refused = codex.refused_turn();
+                let mut steps: Vec<Step> = lines.into_iter().map(Step::Write).collect();
+                // A refused `turn/start` is a turn that failed: the queue stops, and the person is told.
+                if let Some(why) = refused {
+                    self.turn_ended(agent_threads::drive::TurnOutcome::Failed);
+                    steps.push(said(DriveEvent::Notice {
+                        text: format!("Codex did not start the turn: {why}"),
+                    }));
+                }
+                steps
+            }
             // Codex did not start its thread: the program ends, and its end stops the thread.
             Err(fault) => {
                 self.last_error = Some(fault.clone());

@@ -195,3 +195,23 @@ fn set_up_flows_stop_at_their_own_cap() {
     );
     assert_eq!(table.counts(), (15, 7));
 }
+
+#[test]
+fn clearing_the_table_drops_each_handle() {
+    let mut table = FlowTable::new(CAPS);
+    let handle = std::sync::Arc::new(());
+    for n in 0..3 {
+        let opened = table
+            .open(spread(n), std::sync::Arc::clone(&handle))
+            .unwrap();
+        table.set_up(spread(n), opened.id);
+    }
+    assert_eq!(std::sync::Arc::strong_count(&handle), 4);
+    table.clear();
+    assert_eq!(
+        std::sync::Arc::strong_count(&handle),
+        1,
+        "each flow ends, set up or waiting"
+    );
+    assert_eq!(table.counts(), (0, 0));
+}

@@ -2,10 +2,10 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
-import { ThreadsStore } from '../store.svelte';
-import ThreadsScreen from '../ThreadsScreen.svelte';
+import { ThreadsStore } from '../../store.svelte';
+import ThreadsScreen from '../../ThreadsScreen.svelte';
 import { askFrame, frame, madeShell, rowFrame, saidFrame, stateFrame, THREAD } from './frames.fixture';
-import { LiveThreads } from './live.svelte';
+import { LiveThreads } from '../live.svelte';
 
 vi.mock('$app/paths', () => ({ resolve: (path: string) => path }));
 vi.mock('motion', async (importOriginal) => ({

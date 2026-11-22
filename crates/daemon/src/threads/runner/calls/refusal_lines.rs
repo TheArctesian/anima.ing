@@ -4,6 +4,7 @@
 
 use std::collections::HashMap;
 
+use agent_threads::control::Refusal;
 use uuid::Uuid;
 
 /// The most refusal lines of one thread (or of calls with no thread) in one minute.
@@ -53,6 +54,26 @@ impl RefusalLines {
         } else {
             Say::Line
         }
+    }
+}
+
+/// The fixed word of a refusal for the logs (LOG-007): never text of the person or of the program.
+pub(in crate::threads::runner) const fn refusal_word(why: &Refusal) -> &'static str {
+    match why {
+        Refusal::UnknownThread => "unknown thread",
+        Refusal::FromAnAgent => "from a process of an agent",
+        Refusal::Running => "the thread runs",
+        Refusal::FolderNotPermitted => "folder not permitted",
+        Refusal::ProgramNotFound => "program not found",
+        Refusal::ProgramDoesNotAnswer { .. } => "program did not answer",
+        Refusal::BadValue => "bad value",
+        Refusal::RequestGone => "request gone",
+        Refusal::AnswerDoesNotFit => "answer does not fit",
+        Refusal::NotRunning => "not running",
+        Refusal::Holder => "holder",
+        Refusal::HolderOlder { .. } => "holder older than the daemon",
+        Refusal::OverLimit { .. } => "over the soft limit",
+        Refusal::QueueFull => "queue full",
     }
 }
 

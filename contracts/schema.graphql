@@ -4492,6 +4492,8 @@ type Mutation {
   storeSealedRecord(input: SealedRecordInput!): SealedRecord!
   "Deletes the sealed record of `owner`. `true` when there was one."
   deleteSealedRecord(owner: String!): Boolean!
+  "Records that a client opens the sealed record of `owner` for the operator: one audit entry with no value. Only a person who signed in may ask, and the TOTP code of the login must be at most 5 minutes old; else give `totpCode`. `FORBIDDEN` with `reason` `TOTP_REQUIRED` asks for a new code. `UNAVAILABLE` on a hosted hub (OD-E20)."
+  recordReveal(owner: String!, totpCode: String): Boolean!
   "Keeps a vault key that one client sealed to its key exchange with a new client, as base64 of at most 4096 bytes, and gives the ID of the offer. The offer is read one time in the next 5 minutes. The hub cannot open it."
   offerVaultKey(sealed: String!): ID!
 
