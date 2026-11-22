@@ -223,7 +223,7 @@ async fn sf_revroutestepup_a_signed_in_person_removes_a_route_with_no_second_fac
         removed["data"]["removeApplicationRoute"], PUBLIC_ROUTE,
         "{removed}"
     );
-    assert!(routes_left(&pool).await.is_empty());
+    assert_eq!(routes_left(&pool).await, Vec::<String>::new());
 
     let again = post(&hub, &person, REMOVE, json!({ "id": PRIVATE_ROUTE }))
         .await
