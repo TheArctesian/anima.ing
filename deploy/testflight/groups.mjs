@@ -6,6 +6,7 @@ import { setTimeout as wait } from 'node:timers/promises';
 import { URL, URLSearchParams } from 'node:url';
 
 const origin = 'https://api.appstoreconnect.apple.com';
+const publicInvite = 'https://testflight.apple.com/join/SwDsVg4Z';
 const internal = process.env.GITHUB_REF_NAME === 'dev';
 const mode = process.argv[2];
 
@@ -66,20 +67,13 @@ async function groupsFor(app) {
   return list(`/v1/apps/${app}/betaGroups?limit=200`);
 }
 
-async function groupFor(app, groups) {
-  const name = internal ? 'Anima Internal' : 'Anima External';
-  const found = only(groups.filter((group) => group.attributes.name === name), name);
-  if (found) {
-    if (found.attributes.isInternalGroup !== internal) throw new Error(`${name} has the wrong tester type.`);
-    return found;
-  }
-  if (internal) throw new Error('Create Anima Internal and assign the internal testers in App Store Connect.');
-  const created = await apple('POST', '/v1/betaGroups', {
-    type: 'betaGroups',
-    attributes: { name, isInternalGroup: false, publicLinkEnabled: false },
-    relationships: { app: { data: resource('apps', app) } },
-  });
-  return created.data;
+function groupFor(groups) {
+  const testers = internal ? 'Anima Internal' : publicInvite;
+  const group = only(groups.filter(({ attributes }) => internal
+    ? attributes.isInternalGroup && attributes.name === testers
+    : !attributes.isInternalGroup && attributes.publicLinkEnabled && attributes.publicLink === testers), testers);
+  if (!group) throw new Error(`App Store Connect has no active TestFlight group for ${testers}.`);
+  return group;
 }
 
 async function buildFor(app) {
@@ -137,13 +131,12 @@ async function submitExternal(build) {
   console.log('Submitted for TestFlight Beta App Review.');
 }
 
-async function distribute(app, groups) {
+async function distribute(app, group) {
   const build = await processedBuild(app);
   const expected = internal ? 'INTERNAL_ONLY' : 'APP_STORE_ELIGIBLE';
   if (build.attributes.buildAudienceType !== expected || build.attributes.expired) {
     throw new Error('App Store Connect reports an incompatible or expired build.');
   }
-  const group = await groupFor(app, groups);
   if (internal) {
     const { data: beta } = await apple('GET', `/v1/builds/${build.id}/buildBetaDetail`);
     if (!['READY_FOR_BETA_TESTING', 'IN_BETA_TESTING'].includes(beta.attributes.internalBuildState)) {
@@ -171,10 +164,9 @@ async function main() {
   if (!internal && groups.some(({ attributes }) => attributes.name === 'Anima Internal' && attributes.hasAccessToAllBuilds)) {
     throw new Error('Turn off automatic distribution for Anima Internal before uploading on main.');
   }
-  if (mode === 'present') {
-    await groupFor(app, groups);
-    process.exitCode = await buildFor(app) ? 0 : 3;
-  } else await distribute(app, groups);
+  const group = groupFor(groups);
+  if (mode === 'present') process.exitCode = await buildFor(app) ? 0 : 3;
+  else await distribute(app, group);
 }
 
 main().catch((error) => {
