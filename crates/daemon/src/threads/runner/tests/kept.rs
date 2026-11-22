@@ -87,6 +87,18 @@ fn th112_the_row_keeps_the_last_use_of_tokens_for_a_client_that_comes_later() {
         )),
         "the change of the state at the end of the turn carries it"
     );
+    assert!(
+        steps.contains(&Step::Workspace),
+        "a turn end reads the branch again"
+    );
+    // A new use with no change of the state still goes to the clients with the row.
+    let later = result.replace("\"input_tokens\":7", "\"input_tokens\":70");
+    let steps = thread.line(&later, &mut counter());
+    assert!(steps.iter().any(|step| matches!(
+        step,
+        Step::Change(Change::State { row, .. })
+            if row.usage.as_ref().and_then(|usage| usage.context) == Some(73)
+    )));
 }
 
 #[test]

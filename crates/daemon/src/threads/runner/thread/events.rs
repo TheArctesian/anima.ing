@@ -10,11 +10,21 @@ impl Thread {
     /// One line of standard output of the program.
     pub fn line(&mut self, text: &str, new_id: &mut impl FnMut() -> Uuid) -> Vec<Step> {
         let events = self.decode(text.as_bytes());
+        let ended = events
+            .iter()
+            .any(|event| matches!(event, DriveEvent::TurnEnded { .. }));
+        let used = self.row.usage.clone();
         let mut steps = Vec::new();
         for event in events {
             steps.extend(self.event(event, text, new_id));
         }
-        steps.extend(self.state_change());
+        // A new use of tokens goes to the clients with the row, also within a turn (TH112).
+        let state = self.state_change();
+        let fresh = state.is_none() && self.row.usage != used;
+        steps.extend(state.or_else(|| fresh.then(|| self.row_change())));
+        if ended {
+            steps.push(Step::Workspace);
+        }
         // A change of Codex lands when the turn ended, before the next queued prompt goes.
         steps.extend(self.codex_landed());
         steps.extend(self.next_queued());

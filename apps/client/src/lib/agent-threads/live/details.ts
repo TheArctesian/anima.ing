@@ -10,6 +10,8 @@ export interface RunWorkspace {
   readonly kind: WorkspaceKind;
   /** The folder that holds `.git`; the folder of the thread when there is no Git. */
   readonly top: string;
+  /** The branch that `HEAD` names, read again at the end of each turn; `null` on a detached `HEAD` or with no Git. */
+  readonly branch: string | null;
 }
 
 /**
@@ -37,7 +39,8 @@ function count(value: unknown): number | null {
 /** The workspace of a row, or `null` when the row has none or it does not read. */
 export function workspaceFrom(value: unknown): RunWorkspace | null {
   if (!isRecord(value) || typeof value.kind !== 'string' || !KINDS.includes(value.kind) || typeof value.top !== 'string') return null;
-  return { kind: value.kind as WorkspaceKind, top: value.top };
+  const branch = typeof value.branch === 'string' && value.branch !== '' ? value.branch : null;
+  return { kind: value.kind as WorkspaceKind, top: value.top, branch };
 }
 
 /** The use of tokens of a row, or `null` when the row has none or it does not read. */

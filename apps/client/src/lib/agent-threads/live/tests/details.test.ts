@@ -7,11 +7,12 @@ describe('the facts of the details card on a row (TH112)', () => {
   it('reads the workspace and the use of tokens, and leaves out a part that does not read', () => {
     const row = runRowFrom(
       rowFrame('idle', {
-        workspace: { kind: 'worktree', top: '/w/side' },
+        workspace: { kind: 'worktree', top: '/w/side', branch: 'fix/a' },
         usage: { context: 10, window: 200000, input: 10, output: 5, cost_usd: 0.25 },
       }),
     );
-    expect(row?.workspace).toEqual({ kind: 'worktree', top: '/w/side' });
+    expect(row?.workspace).toEqual({ kind: 'worktree', top: '/w/side', branch: 'fix/a' });
+    expect(workspaceFrom({ kind: 'checkout', top: '/w' })).toEqual({ kind: 'checkout', top: '/w', branch: null });
     expect(row?.usage).toEqual({ context: 10, window: 200000, input: 10, output: 5, costUsd: 0.25 });
     expect(runRowFrom(rowFrame('idle'))?.workspace).toBeNull();
     expect(workspaceFrom({ kind: 'svn', top: '/w' })).toBeNull();

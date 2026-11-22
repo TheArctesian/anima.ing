@@ -5,8 +5,9 @@
 use std::io::Write as _;
 use std::path::Path;
 
-use agent_threads::control::{Limits, Listing, Project, Workspace};
+use agent_threads::control::{Change, Limits, Listing, Project, Workspace};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use super::thread::{Saved, Step, Thread};
 use super::{Runner, RunnerError, calls};
@@ -118,12 +119,8 @@ impl Runner {
         for saved in saved {
             let codex = calls::codex_of(&saved.row, saved.effort);
             let mut thread = Thread::restore(saved, codex);
-            // A thread of a record from before TH112 learns where it works now.
-            let folder = thread.row.folder.clone();
-            thread
-                .row
-                .workspace
-                .get_or_insert_with(|| Workspace::of(&folder));
+            // Where it works now: the branch may have moved while the runner was away (TH112).
+            thread.row.workspace = Some(Workspace::of(&thread.row.folder));
             // The microseconds of the clock are more than the updates of any run before.
             thread.number_from(u64::try_from(chrono::Utc::now().timestamp_micros()).unwrap_or(0));
             let id = thread.row.id;
@@ -135,5 +132,22 @@ impl Runner {
                 }
             }
         }
+    }
+
+    /// Reads where a thread works again; the clients get the row when it changed (TH112).
+    pub(super) fn look_at_workspace(&mut self, id: Uuid) {
+        let Some(thread) = self.threads.get_mut(&id) else {
+            return;
+        };
+        let now = Workspace::of(&thread.row.folder);
+        if thread.row.workspace.as_ref() == Some(&now) {
+            return;
+        }
+        thread.row.workspace = Some(now);
+        let change = Change::State {
+            state: thread.row.state,
+            row: Box::new(thread.row.clone()),
+        };
+        self.publish(id, change);
     }
 }

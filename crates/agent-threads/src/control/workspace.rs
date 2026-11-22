@@ -1,6 +1,7 @@
 //! Where a thread works, as the details card of the client shows it (TH112): a Git checkout, a
-//! linked worktree, or a folder with no Git. The runner reads it once at the start, from the
-//! folder of the thread upward, with no process of Git.
+//! linked worktree, or a folder with no Git, and its branch. The runner reads it at the start
+//! and at the end of each turn (an agent may switch the branch), from the folder of the thread
+//! upward, with no process of Git.
 
 use std::io::Read as _;
 use std::path::{Path, PathBuf};
@@ -25,9 +26,13 @@ pub enum WorkspaceKind {
 pub struct Workspace {
     pub kind: WorkspaceKind,
     pub top: PathBuf,
+    /// The branch that `HEAD` names; none on a detached `HEAD`, with no Git, or when it does not
+    /// read.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub branch: Option<String>,
 }
 
-/// The most bytes read of a `.git` file: it holds one line, `gitdir: <path>`.
+/// The most bytes read of a `.git` file (one line, `gitdir: <path>`) or of `HEAD`.
 const MOST_GIT_FILE_BYTES: u64 = 4096;
 
 impl Workspace {
@@ -41,36 +46,68 @@ impl Workspace {
             let Ok(found) = std::fs::symlink_metadata(&git) else {
                 continue;
             };
-            let kind = if found.is_file() && is_worktree(&git) {
-                WorkspaceKind::Worktree
+            // A link or any other thing that is not a plain file or folder is never opened.
+            let gitdir = if found.is_dir() {
+                Some(git)
+            } else if found.is_file() {
+                named_gitdir(&git, top)
             } else {
-                WorkspaceKind::Checkout
+                None
             };
+            let linked = found.is_file() && gitdir.as_deref().is_some_and(is_linked);
             return Self {
-                kind,
+                kind: if linked {
+                    WorkspaceKind::Worktree
+                } else {
+                    WorkspaceKind::Checkout
+                },
                 top: top.to_owned(),
+                branch: gitdir.as_deref().and_then(branch_of),
             };
         }
         Self {
             kind: WorkspaceKind::Folder,
             top: folder.to_owned(),
+            branch: None,
         }
     }
 }
 
-fn is_worktree(git: &Path) -> bool {
-    let mut text = String::new();
-    let read = std::fs::File::open(git)
-        .and_then(|file| file.take(MOST_GIT_FILE_BYTES).read_to_string(&mut text));
-    if read.is_err() {
-        return false;
+/// The start of a plain file, never a link, a pipe or a device, which could block a read.
+fn start_of(file: &Path) -> Option<String> {
+    if !std::fs::symlink_metadata(file).is_ok_and(|found| found.is_file()) {
+        return None;
     }
-    text.lines()
-        .find_map(|line| line.strip_prefix("gitdir:"))
-        .map(|named| Path::new(named.trim()))
-        .and_then(Path::parent)
+    let mut text = String::new();
+    std::fs::File::open(file)
+        .and_then(|open| open.take(MOST_GIT_FILE_BYTES).read_to_string(&mut text))
+        .ok()?;
+    Some(text)
+}
+
+/// The folder of Git that a `.git` file names, from the folder that holds the file.
+fn named_gitdir(git: &Path, top: &Path) -> Option<PathBuf> {
+    let text = start_of(git)?;
+    let named = text.lines().find_map(|line| line.strip_prefix("gitdir:"))?;
+    Some(top.join(named.trim()))
+}
+
+/// A folder of Git below `worktrees/` of a repository is that of a linked worktree.
+fn is_linked(gitdir: &Path) -> bool {
+    gitdir
+        .parent()
         .and_then(Path::file_name)
         .is_some_and(|name| name == "worktrees")
+}
+
+fn branch_of(gitdir: &Path) -> Option<String> {
+    let head = start_of(&gitdir.join("HEAD"))?;
+    let branch = head
+        .lines()
+        .next()?
+        .strip_prefix("ref: refs/heads/")?
+        .trim();
+    (!branch.is_empty()).then(|| branch.to_owned())
 }
 
 #[cfg(test)]
@@ -83,10 +120,11 @@ mod tests {
         let repo = root.path().join("repo");
         std::fs::create_dir_all(repo.join(".git/worktrees/side")).expect("a repository");
         std::fs::create_dir_all(repo.join("src/deep")).expect("a folder");
+        std::fs::write(repo.join(".git/HEAD"), "ref: refs/heads/dev\n").expect("a HEAD");
         let found = Workspace::of(&repo.join("src/deep"));
         assert_eq!(
-            (found.kind, found.top),
-            (WorkspaceKind::Checkout, repo.clone())
+            (found.kind, found.top, found.branch.as_deref()),
+            (WorkspaceKind::Checkout, repo.clone(), Some("dev"))
         );
 
         let side = root.path().join("side");
@@ -94,7 +132,14 @@ mod tests {
         let gitdir = repo.join(".git/worktrees/side");
         std::fs::write(side.join(".git"), format!("gitdir: {}\n", gitdir.display()))
             .expect("a .git file");
-        assert_eq!(Workspace::of(&side).kind, WorkspaceKind::Worktree);
+        std::fs::write(gitdir.join("HEAD"), "ref: refs/heads/fix/a\n").expect("a HEAD");
+        let found = Workspace::of(&side);
+        assert_eq!(
+            (found.kind, found.branch.as_deref()),
+            (WorkspaceKind::Worktree, Some("fix/a"))
+        );
+        std::fs::write(gitdir.join("HEAD"), "0123abcd\n").expect("a HEAD");
+        assert_eq!(Workspace::of(&side).branch, None, "a detached HEAD");
 
         let module = root.path().join("module");
         std::fs::create_dir_all(&module).expect("a folder");
@@ -118,6 +163,9 @@ mod tests {
         let plain = root.path().join("plain");
         std::fs::create_dir_all(&plain).expect("a folder");
         let found = Workspace::of(&plain);
-        assert_eq!((found.kind, found.top), (WorkspaceKind::Folder, plain));
+        assert_eq!(
+            (found.kind, found.top, found.branch),
+            (WorkspaceKind::Folder, plain, None)
+        );
     }
 }

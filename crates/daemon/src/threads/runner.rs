@@ -270,6 +270,7 @@ impl Runner {
         match (step, program) {
             (Step::Log(what), _) => self.note(Kind::Stop, Some(id), what),
             (Step::Change(change), _) => self.publish(id, change),
+            (Step::Workspace, _) => self.look_at_workspace(id),
             (Step::Account(facts), Some(program)) => {
                 self.said.accounts.note(program, *facts, chrono::Utc::now());
             }
