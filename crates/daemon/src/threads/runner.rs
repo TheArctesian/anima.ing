@@ -123,6 +123,8 @@ pub struct Runner {
     /// What the programs said of their accounts (THR-051) and their models (TH104): in memory
     /// only.
     said: accounts::Said,
+    /// The last walk of the folder of each thread, for the `@` list (TH108): in memory only.
+    walked: calls::Walked,
 }
 
 /// Whether the daemon in `daemon_dir` serves a person, so that it may run agents in the login
@@ -188,6 +190,7 @@ pub async fn run(
         silence: silence::Silence::default(),
         asks: start::Asks::default(),
         sign_in_told: BTreeMap::new(),
+        walked: calls::Walked::default(),
         said: accounts::Said::default(),
     };
     runner.restore(saved.threads);

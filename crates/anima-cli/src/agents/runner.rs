@@ -147,7 +147,7 @@ pub fn refusal(why: &Refusal) -> Failure {
         Refusal::NotRunning => ("The program of that thread is not running.", None),
         Refusal::Holder => ("The holder of the programs did not take the command.", None),
         Refusal::FromAnAgent => (
-            "Only the person can answer a request, raise the limit, start a thread or change the list of threads: this call came from a process of an agent.",
+            "Only the person can answer a request, raise the limit, start a thread, change the list of threads or list the files of a thread: this call came from a process of an agent.",
             None,
         ),
         Refusal::Running => (

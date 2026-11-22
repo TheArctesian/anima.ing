@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { createRawSnippet, flushSync, mount, unmount } from 'svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ownsKeys, pageKey } from '$lib/agent-threads/keys';
 import type { LiveEntry, OpenAsk } from '$lib/agent-threads/live/timeline';
 import ScrollArea from '../kit/ScrollArea.svelte';
 import Timeline from '../timeline/Timeline.svelte';
 import { works } from '../timeline/turns';
+import { pageKey, type PageKey } from './page-keys';
 
 // The conversation of a thread for a keyboard and a screen reader (accessibility findings 2, 3, 4 and 17).
 
@@ -35,6 +35,18 @@ afterEach(async () => {
   app = undefined;
   document.body.replaceChildren();
 });
+
+/** What the page does with Down pressed on `target`, as its window handler sees the key. */
+function downOn(target: Element | null): PageKey | null | undefined {
+  let seen: PageKey | null | undefined;
+  const look = (event: KeyboardEvent): void => {
+    seen = pageKey(event, false, document);
+  };
+  document.addEventListener('keydown', look);
+  target?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+  document.removeEventListener('keydown', look);
+  return seen;
+}
 
 const ASK: OpenAsk = {
   request: 'r1',
@@ -78,19 +90,16 @@ describe('the conversation for a keyboard and a screen reader', () => {
     flushSync();
     const conversation = document.querySelector('[aria-label="Conversation"]');
     const code = document.querySelector('pre[aria-label="Code"]');
-    expect(ownsKeys(conversation)).toBe(true);
-    expect(ownsKeys(code)).toBe(true);
-    const down = { key: 'ArrowDown', mod: false, shift: false, alt: false, typing: false };
-    expect(pageKey(down, conversation)).toBeNull();
-    expect(pageKey(down, document.body)).toEqual({ kind: 'move', by: 1 });
+    expect(downOn(conversation)).toBeNull();
+    expect(downOn(code)).toBeNull();
+    expect(downOn(document.body)).toEqual({ kind: 'move', by: 1 });
   });
 
   it('finding 2: a thread of the inbox list still moves to the next thread with the arrows', () => {
     const children = createRawSnippet(() => ({ render: () => '<button type="button">Fix the bug</button>' }));
     app = mount(ScrollArea, { target: document.body, props: { label: 'Threads', children } });
     flushSync();
-    const down = { key: 'ArrowDown', mod: false, shift: false, alt: false, typing: false };
-    expect(pageKey(down, document.querySelector('button'))).toEqual({ kind: 'move', by: 1 });
+    expect(downOn(document.querySelector('button'))).toEqual({ kind: 'move', by: 1 });
   });
 
   it('finding 3: the start and the end of a turn are said once, politely; what was there at the open is not', async () => {

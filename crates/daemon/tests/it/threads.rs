@@ -11,6 +11,7 @@ use anima_daemon::threads::wire::{Action, Event, Line, Outcome};
 use tempfile::TempDir;
 
 mod connection;
+mod files;
 mod holder_update;
 mod listing;
 mod models_projects;
