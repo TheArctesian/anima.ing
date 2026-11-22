@@ -102,6 +102,27 @@ pub fn hooks_off(settings: &[Setting]) -> Vec<(String, String)> {
         .collect()
 }
 
+/// The names of the settings of the repository that send a push through a different place
+/// than the remote says, or change whom it trusts there: a setting for one URL (`http.<url>.*`),
+/// a proxy or a helper program of a remote, a rewrite of URLs. No setting of the person can
+/// stand in for them, so a push is refused while the repository has one.
+#[must_use]
+pub fn redirects(settings: &[Setting]) -> Vec<String> {
+    let sends_elsewhere = |name: &str| {
+        let Some((start, last)) = name.rsplit_once('.') else {
+            return false;
+        };
+        (start.starts_with("http.") && start.len() > "http.".len())
+            || (start.starts_with("remote.") && matches!(last, "proxy" | "vcs"))
+            || (start.starts_with("url.") && last.ends_with("insteadof"))
+    };
+    settings
+        .iter()
+        .filter(|setting| setting.of_the_repository() && sends_elsewhere(&setting.name))
+        .map(|setting| super::said::without_credentials(&setting.name))
+        .collect()
+}
+
 /// The person signs their commits: `commit.gpgSign` is on outside the repository.
 #[must_use]
 pub fn signs(settings: &[Setting]) -> bool {

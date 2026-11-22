@@ -19,8 +19,8 @@ use super::run::{Git, Run, said};
 const MOST_HOOKS: usize = 64;
 const MOST_BYTES: u64 = 1024 * 1024;
 
-/// The most names one refusal gives. More changes than these cannot be shown, so they cannot
-/// be accepted.
+/// The most names the page gets. More changes than these cannot be shown, so they cannot be
+/// accepted; the count is taken after the hooks that do not run for the thread are left out.
 pub const MOST_NAMES: usize = 40;
 
 /// What a commit or a push of the person would run or obey now.
@@ -106,7 +106,8 @@ const fn can_run(_about: &std::fs::Metadata) -> bool {
 pub const HOOK: &str = "hook ";
 
 /// The names of the settings and hooks that are not as the person accepted them: new, gone,
-/// or with a different value. A worktree with no accepted list has each one as changed.
+/// or with a different value: all of them, however many. A worktree with no accepted list has
+/// each one as changed.
 #[must_use]
 pub fn changed(
     accepted: Option<&BTreeMap<String, String>>,
@@ -120,7 +121,6 @@ pub fn changed(
     names.dedup();
     names
         .into_iter()
-        .take(MOST_NAMES + 1)
         .map(|name| said::without_credentials(name))
         .collect()
 }

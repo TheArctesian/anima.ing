@@ -106,9 +106,12 @@ pub async fn make(git: &Git, home: &Home, plan: Plan<'_>) -> Result<Made, GitRef
         ];
         git.output(Run::new(&project, new)).await?;
     }
-    let add: [&OsStr; 5] = [
+    let add: [&OsStr; 6] = [
         "worktree".as_ref(),
         "add".as_ref(),
+        // No file is checked out yet: the configuration that applies inside the new worktree
+        // (an `includeIf` for its branch or its folder) is read first.
+        "--no-checkout".as_ref(),
         "--".as_ref(),
         folder.as_os_str(),
         branch.as_ref(),
@@ -139,6 +142,10 @@ async fn first_kept(
     home.keep(thread, repository, &record)?;
     let worktree = home.worktree(thread, repository)?;
     let git = &git.for_worktree(&worktree).await?;
+    // The files come now, with the hooks and filters that the configuration names for this
+    // worktree turned off.
+    git.output(Run::new(worktree.folder(), ["reset", "--hard", "--quiet"]))
+        .await?;
     // Only what the person accepted for this repository before counts as accepted: an earlier
     // agent can have left a hook or a setting in the repository, which each worktree shares.
     record.trusted = trust::baseline(home, &record.project);

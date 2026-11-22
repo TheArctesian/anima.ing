@@ -236,7 +236,7 @@ impl Engine {
             });
         }
         if trust::digest(&seen) != shown {
-            return Err(GitRefusal::Changed { what });
+            return Err(GitRefusal::Changed { what: first(what) });
         }
         trust::keep_baseline(&self.home, &worktree.record().project, &seen)?;
         self.rewrite(worktree, |record| record.trusted = Some(seen))?;
@@ -293,19 +293,26 @@ async fn accepted(git: &Git, worktree: &Worktree) -> Result<(), GitRefusal> {
     if what.is_empty() {
         Ok(())
     } else {
-        Err(GitRefusal::Changed { what })
+        Err(GitRefusal::Changed { what: first(what) })
     }
 }
 
 /// The status with the hooks that a commit runs and what changed since the person accepted.
 async fn shown(git: &Git, worktree: &Worktree) -> Result<agent_threads::git::Status, GitRefusal> {
     let mut status = status::of(git, worktree).await?;
-    (status.changed, status.hooks) = not_accepted(git, worktree).await?;
+    let (changed, hooks) = not_accepted(git, worktree).await?;
+    (status.changed, status.hooks) = (first(changed), hooks);
     status.accept = trust::digest(&to_accept(git, worktree).await?);
     Ok(status)
 }
 
-/// The names of what changed since the person accepted it, and the hooks that a commit runs.
+/// The names that the page gets: one more than can be shown says that there are more.
+fn first(mut names: Vec<String>) -> Vec<String> {
+    names.truncate(trust::MOST_NAMES + 1);
+    names
+}
+
+/// Each name of what changed since the person accepted it, and the hooks that a commit runs.
 /// For a thread whose commits run no program of the repository, both are without the hooks.
 async fn not_accepted(
     git: &Git,
@@ -353,10 +360,11 @@ async fn changes_of(
                 .ok_or(GitRefusal::UnknownCheckpoint)
         };
         let (from, to) = match scope {
-            Scope::Uncommitted => (
-                "HEAD".to_owned(),
-                checkpoint::snapshot(git, worktree).await?,
-            ),
+            Scope::Uncommitted => {
+                // Against the commit that the snapshot was made on, not the branch of now.
+                let now = checkpoint::snapshot(git, worktree).await?;
+                (format!("{now}^1"), now)
+            }
             Scope::Turn { turn } => (
                 at(turn.checked_sub(1).ok_or(GitRefusal::UnknownCheckpoint)?)?,
                 at(turn)?,

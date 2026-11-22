@@ -97,6 +97,8 @@ pub struct Git {
     hooks_off: Vec<(String, String)>,
     /// The person signs their commits ([`settings::signs`]).
     signs: bool,
+    /// The settings of the repository that send a push elsewhere ([`settings::redirects`]).
+    redirects: Vec<String>,
     /// A push to a folder of this computer is allowed; only the tests have such a remote.
     local_remotes: bool,
     /// A run for the person runs the hooks and the filters of the repository
@@ -141,6 +143,7 @@ impl Git {
             of_the_repository: BTreeMap::new(),
             hooks_off: Vec::new(),
             signs: false,
+            redirects: Vec::new(),
             local_remotes: false,
             repository_programs: false,
             folder: None,
@@ -158,12 +161,19 @@ impl Git {
     /// A [`GitError`] when the configuration cannot be read.
     pub async fn quiet_in(&self, dir: &Path) -> Result<Self, GitError> {
         let listed = self.output(Run::new(dir, settings::LIST)).await?;
-        let found = settings::read(&String::from_utf8_lossy(&listed));
+        // A name that is not text cannot be turned off by name, so nothing runs with it.
+        let listed = String::from_utf8(listed).map_err(|_| GitError::Failed {
+            code: None,
+            said: "the configuration of the repository has a name or a value that is not text"
+                .to_owned(),
+        })?;
+        let found = settings::read(&listed);
         let mut quiet = self.clone();
         quiet.filters_off = settings::filters_off(&found);
         quiet.of_the_person = settings::for_the_person(&found);
         quiet.hooks_off = settings::hooks_off(&found);
         quiet.signs = settings::signs(&found);
+        quiet.redirects = settings::redirects(&found);
         quiet.of_the_repository = settings::of_the_repository(&found);
         Ok(quiet)
     }
@@ -180,6 +190,13 @@ impl Git {
     #[must_use]
     pub const fn repository_programs(&self) -> bool {
         self.repository_programs
+    }
+
+    /// The names of the settings of the repository that send a push through a different
+    /// place than its remote says.
+    #[must_use]
+    pub fn redirects(&self) -> &[String] {
+        &self.redirects
     }
 
     /// The person signs their commits.
