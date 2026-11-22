@@ -174,7 +174,9 @@ impl Codex {
     #[must_use]
     pub fn changed(&self) -> Changed {
         Changed {
-            keeps: self.keeps,
+            // A turn that leaves the profile and waits may be taken while the runner is down:
+            // the record never counts on the profile then.
+            keeps: self.keeps && !self.leaving(),
             ..self.changed.clone()
         }
     }
@@ -225,7 +227,8 @@ impl Codex {
     }
 
     /// A `turn/start` whose policy leaves the profile waits for its answer.
-    fn leaving(&self) -> bool {
+    #[must_use]
+    pub fn leaving(&self) -> bool {
         self.calls
             .values()
             .any(|call| matches!(call, Call::TurnStart { leaves: true }))

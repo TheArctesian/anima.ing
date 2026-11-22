@@ -292,6 +292,12 @@ impl Runner {
     async fn apply(&mut self, id: Uuid, steps: Vec<Step>) -> Result<Option<u64>, LinkDown> {
         let key = id.to_string();
         let mut last_write = None;
+        // A turn that leaves the profile may be taken while the runner is down: the record says
+        // that the profile is gone before the line goes (THR-041).
+        let leaves = self.threads.get(&id).is_some_and(Thread::leaves_profile);
+        if leaves && steps.iter().any(|step| matches!(step, Step::Write(_))) {
+            self.save();
+        }
         for step in steps {
             let Some(action) = step.command(&key) else {
                 if step == Step::Workspace {

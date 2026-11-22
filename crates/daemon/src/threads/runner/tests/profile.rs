@@ -93,3 +93,19 @@ fn thr_041_a_thread_started_in_full_access_never_counts_on_a_profile_after_a_res
     let (_, policy) = turn(&mut again, Mode::Ask);
     assert_eq!(policy, "workspaceWrite");
 }
+
+#[test]
+fn thr_041_a_restart_while_a_full_access_turn_waits_never_counts_on_the_profile() {
+    let mut codex = in_ask();
+    let _ = turn(&mut codex, Mode::FullAccess);
+    let saved = codex.changed();
+    assert!(
+        !saved.keeps,
+        "Codex may take the turn while the runner is down"
+    );
+    let mut again = Codex::new(PathBuf::from("/home/you"), Mode::Ask, None, None)
+        .keeping(Some(kept()))
+        .known(Some("th".to_owned()), None, saved);
+    let (_, policy) = turn(&mut again, Mode::Ask);
+    assert_eq!(policy, "workspaceWrite");
+}

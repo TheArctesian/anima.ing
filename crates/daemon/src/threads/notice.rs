@@ -37,8 +37,9 @@ pub fn of_anima(folder: &Path, daemon: &Path) -> Vec<String> {
         vec![format!(
             "This folder holds the folder of Anima, {}. An agent in Full access, or Claude Code \
              in Accept edits, can change the records and the approvals of Anima there with no \
-             question. Codex started in Accept edits or Ask cannot write that folder itself while \
-             it stays in those modes; Codex started in Full access never has this protection. \
+             question. Codex started in Accept edits or Ask cannot write that folder itself until \
+             its mode goes to Full access, or until Anima can no longer tell that this holds; \
+             Codex started in Full access never has this protection. \
              Each agent can still write other files of this folder that run code later, outside \
              its sandbox, such as a shell profile or a launch agent when this is the home \
              folder, and that code can change Anima.",
