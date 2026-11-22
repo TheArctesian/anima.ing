@@ -317,6 +317,7 @@ A Mac with 0.2.1 from the DMG: the application reads its feed at start and each 
 
 | What | Why a trial does not show it | What is done, and what to do |
 | --- | --- | --- |
+| The puts of `<target>/<version>/anima-link` and `install/<version>/anima-install.sh`, and the SHA-256 values in the summary of `daemon-publish` (HM-T33, R-361) | A trial runs the job `daemon` and writes the records with `anima-link`, but never runs `daemon-publish` | After the first release: `curl -fsSI` of the five files gives `200` with the immutable cache, and `curl -fsSL <url> \| sha256sum` gives the value of the record and of the summary |
 | The environment `release-publish` refuses a run of `main` | A trial never uses that environment | Step 1 of "To switch public releases on". If it is not done, the job `bucket` fails in the first minute |
 | The bucket token is wrong, has no right for `anima-releases`, or is of a different account than `RELEASES_ENDPOINT` | A trial has no token. The orchestrating session set the two secrets from a file of the operator (R-195); no run used them | The job `bucket` reads one object with them in the first minute. The variable has the right form (`https://<32 hex characters>.r2.cloudflarestorage.com`, read on 2026-11-19) |
 | The token can read but cannot write | The job `bucket` only reads | The first write is a file of Linux under a new version folder; the feeds are not changed when it fails. Make a token with "Object Read & Write" for that bucket, set the two secrets, and select "Re-run failed jobs" |

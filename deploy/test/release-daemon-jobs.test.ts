@@ -46,7 +46,7 @@ describe("the daemon alone in a release", () => {
     expect(run).toContain('tar -xzf macos/Anima.app.tar.gz -C work/mac "Anima.ing.app/Contents/MacOS/$program"');
     expect(run).toContain('--appimage-extract "usr/bin/$program"');
     expect(run).toContain("Mach-O universal binary with 2 architectures");
-    expect(run).toContain('if ldd "work/linux/squashfs-root/usr/bin/$program" | grep \'not found\'; then');
+    expect(run).toContain('if ldd "work/linux/$program/squashfs-root/usr/bin/$program" | grep \'not found\'; then');
     expect(run).not.toMatch(/(^|[\s;&|(])(cargo|bun|go|git) /);
     expect(Object.keys(job("daemon").outputs ?? {}).sort()).toEqual(["install_sha256", "link_linux_sha256", "link_macos_sha256", "linux_sha256", "macos_sha256"]);
   });

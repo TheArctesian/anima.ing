@@ -26,9 +26,10 @@
 # The daemon alone (task U2; ROL-002 to ROL-005): the job `daemon` takes `anima-daemon` and
 # `anima-link` out of the two applications, the job `sign` writes and signs the release record
 # of each target, and the job `daemon-publish` puts them under `<target>/<version>/` after the
-# desktop application. The update of the machines (task U6) reads them. The one-line install
-# (HM-T33, R-361) downloads the two programs and `install/<version>/anima-install.sh`, which the
-# job `daemon` takes from the commit; its record gives the SHA-256 of the two programs.
+# desktop application. Nothing reads them yet: the update of the machines is task U6, and the
+# one-line install (HM-T33, R-361) will download the two programs and
+# `install/<version>/anima-install.sh`, which the job `daemon` takes from the commit; the record
+# gives the SHA-256 of the two programs.
 #
 # The gates (BLD-042, R-190). The 21 gates run on Linux in the workflow `gates`
 # (.github/workflows/gates.yml), which this workflow calls for the release commit. When that
@@ -606,7 +607,8 @@ jobs:
     if: needs.commit.outputs.release == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    permissions: {}
+    permissions:
+      contents: read
     outputs:
       macos_sha256: ${{ steps.files.outputs.macos_sha256 }}
       linux_sha256: ${{ steps.files.outputs.linux_sha256 }}
@@ -642,20 +644,21 @@ jobs:
             echo "$MACOS_SHA256  macos/Anima.app.tar.gz"
             echo "$LINUX_SHA256  linux/Anima_${VERSION}_amd64.AppImage"
           } | sha256sum --check --strict
-          mkdir -p work/mac work/linux daemon/darwin-universal daemon/linux-x86_64 daemon/install
+          mkdir -p work/mac daemon/darwin-universal daemon/linux-x86_64 daemon/install
           chmod +x "linux/Anima_${VERSION}_amd64.AppImage"
           for program in anima-daemon anima-link; do
             tar -xzf macos/Anima.app.tar.gz -C work/mac "Anima.ing.app/Contents/MacOS/$program"
             file "work/mac/Anima.ing.app/Contents/MacOS/$program" | grep -q 'Mach-O universal binary with 2 architectures'
             cp "work/mac/Anima.ing.app/Contents/MacOS/$program" "daemon/darwin-universal/$program"
-            (cd work/linux && "../../linux/Anima_${VERSION}_amd64.AppImage" --appimage-extract "usr/bin/$program" > /dev/null)
+            mkdir -p "work/linux/$program"
+            (cd "work/linux/$program" && "../../../linux/Anima_${VERSION}_amd64.AppImage" --appimage-extract "usr/bin/$program" > /dev/null)
             # A machine runs the program alone: each library that it needs must be found without
             # a file of the AppImage.
-            if ldd "work/linux/squashfs-root/usr/bin/$program" | grep 'not found'; then
+            if ldd "work/linux/$program/squashfs-root/usr/bin/$program" | grep 'not found'; then
               echo "::error::$program for Linux needs a library that is not on the machine."
               exit 1
             fi
-            cp "work/linux/squashfs-root/usr/bin/$program" "daemon/linux-x86_64/$program"
+            cp "work/linux/$program/squashfs-root/usr/bin/$program" "daemon/linux-x86_64/$program"
           done
           head -n 1 source/deploy/bin/anima-install | grep -qx '#!/bin/sh'
           cp source/deploy/bin/anima-install daemon/install/anima-install.sh
