@@ -32,6 +32,9 @@ pub struct Workspace {
     pub branch: Option<String>,
 }
 
+/// The most bytes of a branch name that the row says; a longer one is not a branch of a person.
+const MOST_BRANCH_BYTES: usize = 255;
+
 /// The most bytes read of a `.git` file (one line, `gitdir: <path>`) or of `HEAD`.
 const MOST_GIT_FILE_BYTES: u64 = 4096;
 
@@ -107,7 +110,10 @@ fn branch_of(gitdir: &Path) -> Option<String> {
         .next()?
         .strip_prefix("ref: refs/heads/")?
         .trim();
-    (!branch.is_empty()).then(|| branch.to_owned())
+    let named = !branch.is_empty()
+        && branch.len() <= MOST_BRANCH_BYTES
+        && !branch.chars().any(char::is_control);
+    named.then(|| branch.to_owned())
 }
 
 #[cfg(test)]

@@ -270,7 +270,6 @@ impl Runner {
         match (step, program) {
             (Step::Log(what), _) => self.note(Kind::Stop, Some(id), what),
             (Step::Change(change), _) => self.publish(id, change),
-            (Step::Workspace, _) => self.look_at_workspace(id),
             (Step::Account(facts), Some(program)) => {
                 self.said.accounts.note(program, *facts, chrono::Utc::now());
             }
@@ -280,7 +279,14 @@ impl Runner {
             // A fact of a thread that is gone has no program to keep it for; a command is never
             // here, as `apply` sends it to the holder.
             (Step::Account(_) | Step::Models(_), None)
-            | (Step::Write(_) | Step::Mark | Step::EndChildren | Step::EndProgram, _) => {}
+            | (
+                Step::Write(_)
+                | Step::Mark
+                | Step::EndChildren
+                | Step::EndProgram
+                | Step::Workspace,
+                _,
+            ) => {}
         }
     }
 
@@ -291,6 +297,9 @@ impl Runner {
         let mut last_write = None;
         for step in steps {
             let Some(action) = step.command(&key) else {
+                if step == Step::Workspace {
+                    self.look_at_workspace(id).await;
+                }
                 self.own_step(id, step);
                 continue;
             };

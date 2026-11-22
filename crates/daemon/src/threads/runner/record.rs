@@ -112,6 +112,9 @@ pub(super) fn lock(dir: &Path) -> Result<std::fs::File, RunnerError> {
     Ok(file)
 }
 
+/// The longest wait for a read of where a thread works.
+const WORKSPACE_READ: std::time::Duration = std::time::Duration::from_secs(2);
+
 impl Runner {
     /// The threads of the record of a run before, each with its updates numbered after the
     /// updates of that run.
@@ -119,8 +122,13 @@ impl Runner {
         for saved in saved {
             let codex = calls::codex_of(&saved.row, saved.effort);
             let mut thread = Thread::restore(saved, codex);
-            // Where it works now: the branch may have moved while the runner was away (TH112).
-            thread.row.workspace = Some(Workspace::of(&thread.row.folder));
+            // A thread of a record from before TH112 learns where it works; the branch is read
+            // again at the end of its next turn.
+            let folder = thread.row.folder.clone();
+            thread
+                .row
+                .workspace
+                .get_or_insert_with(|| Workspace::of(&folder));
             // The microseconds of the clock are more than the updates of any run before.
             thread.number_from(u64::try_from(chrono::Utc::now().timestamp_micros()).unwrap_or(0));
             let id = thread.row.id;
@@ -134,12 +142,25 @@ impl Runner {
         }
     }
 
-    /// Reads where a thread works again; the clients get the row when it changed (TH112).
-    pub(super) fn look_at_workspace(&mut self, id: Uuid) {
+    /// Reads where a thread works again; the clients get the row when it changed (TH112). The
+    /// read is off the loop of the runner and has a time limit, as the folder can be on a
+    /// network that does not answer; then the row keeps what it had.
+    pub(super) async fn look_at_workspace(&mut self, id: Uuid) {
+        let Some(folder) = self
+            .threads
+            .get(&id)
+            .map(|thread| thread.row.folder.clone())
+        else {
+            return;
+        };
+        let read = tokio::task::spawn_blocking(move || Workspace::of(&folder));
+        let Ok(Ok(now)) = tokio::time::timeout(WORKSPACE_READ, read).await else {
+            tracing::warn!(%id, "the workspace of a thread did not read in time");
+            return;
+        };
         let Some(thread) = self.threads.get_mut(&id) else {
             return;
         };
-        let now = Workspace::of(&thread.row.folder);
         if thread.row.workspace.as_ref() == Some(&now) {
             return;
         }
