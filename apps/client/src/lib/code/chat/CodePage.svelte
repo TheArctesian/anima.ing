@@ -14,6 +14,7 @@
   import ChatHeader from '../shell/ChatHeader.svelte';
   import InboxToggle from '../shell/InboxToggle.svelte';
   import TopBand from '../shell/TopBand.svelte';
+  import { applyReader, storedReader } from '../settings/reader';
   import ChatColumn from './ChatColumn.svelte';
   import ChatFoot from './ChatFoot.svelte';
   import { paletteHost } from './palette-host';
@@ -27,6 +28,8 @@
 
   const { store, view = new InboxView(store, inboxEngine(() => store.live), globalThis.localStorage ?? null) }: Props = $props();
   const live = $derived(store.live);
+  // The chat width, contrast and font size of Settings, Code (TC6), read each time the page opens.
+  applyReader(document.documentElement, storedReader(globalThis.localStorage));
   let inboxOpen = $state(true);
   let toolsOpen = $state(false);
   let starting = $state(false);
