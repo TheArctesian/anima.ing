@@ -2,7 +2,7 @@
 //! here, written to the log of the runner (THR-044), and answered on the socket.
 
 use agent_threads::control::{Action, Call, Outcome, Refusal, Reply, RunState, ThreadRow};
-use agent_threads::drive::{Answer, Effort, Model, Program};
+use agent_threads::drive::{Answer, Effort, KeptFolder, Model, Program};
 use uuid::Uuid;
 
 use super::codex::Codex;
@@ -33,10 +33,19 @@ const SOURCE: &str = "local socket";
 const WATCHERS: usize = 16;
 
 /// The Codex calls of a thread of Codex.
-pub(super) fn codex_of(row: &ThreadRow, effort: Option<Effort>) -> Option<Codex> {
+/// Its sandbox keeps the folder of the daemon read-only when the folder of the thread holds it
+/// (THR-041).
+pub(super) fn codex_of(
+    row: &ThreadRow,
+    effort: Option<Effort>,
+    daemon: &std::path::Path,
+) -> Option<Codex> {
     (row.program == Program::Codex).then(|| {
         let model = row.model.as_deref().and_then(|name| Model::new(name).ok());
-        Codex::new(row.folder.clone(), row.mode, model, effort)
+        Codex::new(row.folder.clone(), row.mode, model, effort).keeping(
+            crate::threads::notice::held_anima(&row.folder, daemon)
+                .map(|anima| KeptFolder::new(anima, row.id)),
+        )
     })
 }
 

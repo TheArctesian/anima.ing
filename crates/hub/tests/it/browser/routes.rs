@@ -2,15 +2,14 @@
 //! browser, with no agent declared. A login token, which the `anima` command and an agent hold,
 //! the same token declared as an agent (MCP), and an API key are refused; a private route keeps
 //! the rule of a login token. No route is stored: the account has no second factor, so even the
-//! person stops at that check.
+//! person stops at that check. Removing a route needs only a signed-in person, never an API key,
+//! and leaves one audit entry that names what it took away (ruling of 2026-11-22).
 
 use axum::Router;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-#[cfg(unix)]
-use super::{PUBLIC, browser_token, cookie};
-use super::{browser_hub, post};
+use super::{PUBLIC, browser_hub, browser_token, cookie, post};
 use crate::hub::{Hub, set_operator, start};
 
 const ADD: &str = "mutation($input: ApplicationRouteInput!) { \
@@ -113,4 +112,142 @@ async fn sf_revroutestepup_an_api_key_adds_no_route(pool: PgPool) {
             "{access}: {message}"
         );
     }
+}
+
+const REMOVE: &str = "mutation($id: ID!) { removeApplicationRoute(id: $id) }";
+const DOCKER_HOST: &str = "0190a000-0000-7000-8002-000000000002";
+const PRIVATE_ROUTE: &str = "0190a000-0000-7000-8030-000000000001";
+const PUBLIC_ROUTE: &str = "0190a000-0000-7000-8030-000000000002";
+
+/// Stores a route of `access` on the docker host, as an addition would.
+async fn stored_route(pool: &PgPool, id: &str, name: &str, access: &str) {
+    sqlx::query(
+        "INSERT INTO routes.route (id, name, application_id, device_id, port, token, access, \
+         created_at) VALUES ($1::text::uuid, $2, gen_random_uuid(), $3::text::uuid, 3000, \
+         repeat('a', 64), $4, now())",
+    )
+    .bind(id)
+    .bind(name)
+    .bind(DOCKER_HOST)
+    .bind(access)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+async fn routes_left(pool: &PgPool) -> Vec<String> {
+    sqlx::query_scalar("SELECT name FROM routes.route ORDER BY name")
+        .fetch_all(pool)
+        .await
+        .unwrap()
+}
+
+/// The `change` of each removal in the audit log of the docker host.
+async fn removals(pool: &PgPool) -> Vec<Value> {
+    sqlx::query_scalar(
+        "SELECT change FROM events.audit_log WHERE target_id = $1 AND action LIKE '%delete%' \
+         ORDER BY at",
+    )
+    .bind(DOCKER_HOST)
+    .fetch_all(pool)
+    .await
+    .unwrap()
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn sf_revroutestepup_a_signed_in_person_removes_a_route_with_no_second_factor(pool: PgPool) {
+    set_operator(&pool).await;
+    stored_route(&pool, PRIVATE_ROUTE, "nas.example.com", "private").await;
+    stored_route(&pool, PUBLIC_ROUTE, "photos.example.com", "public").await;
+    let hub = browser_hub(&pool, start());
+    let login = Hub::new(&pool, start());
+    let token = login.token().await;
+
+    let key = login
+        .post(
+            Some(&token),
+            CREATE_KEY,
+            json!({ "input": { "name": "agent", "scope": "WRITE", "madeFor": "AGENT",
+                "expiresAt": start() + chrono::TimeDelta::days(30) } }),
+        )
+        .await;
+    let key = format!(
+        "Bearer {}",
+        key["data"]["createApiKey"]["secret"].as_str().unwrap()
+    );
+    let refused = post(
+        &hub,
+        &[("authorization", key.as_str())],
+        REMOVE,
+        json!({ "id": PRIVATE_ROUTE }),
+    )
+    .await
+    .json();
+    assert_eq!(
+        refused["errors"][0]["extensions"]["code"], "FORBIDDEN",
+        "{refused}"
+    );
+    assert_eq!(
+        routes_left(&pool).await.len(),
+        2,
+        "an API key removes nothing"
+    );
+
+    // The account has no second factor: removing needs only the signed-in person.
+    let cookie = cookie(&browser_token(&hub).await);
+    let person = [("origin", PUBLIC), ("cookie", cookie.as_str())];
+    let removed = post(&hub, &person, REMOVE, json!({ "id": PRIVATE_ROUTE }))
+        .await
+        .json();
+    assert_eq!(
+        removed["data"]["removeApplicationRoute"], PRIVATE_ROUTE,
+        "{removed}"
+    );
+
+    let bearer = format!("Bearer {token}");
+    let by_agent = [("authorization", bearer.as_str()), ("anima-actor", "agent")];
+    let refused = post(&hub, &by_agent, REMOVE, json!({ "id": PUBLIC_ROUTE }))
+        .await
+        .json();
+    assert_eq!(
+        refused["errors"][0]["extensions"]["code"], "FORBIDDEN",
+        "an agent removes nothing: {refused}"
+    );
+    assert_eq!(routes_left(&pool).await, ["photos.example.com"]);
+
+    let by_login = [("authorization", bearer.as_str())];
+    let removed = post(&hub, &by_login, REMOVE, json!({ "id": PUBLIC_ROUTE }))
+        .await
+        .json();
+    assert_eq!(
+        removed["data"]["removeApplicationRoute"], PUBLIC_ROUTE,
+        "{removed}"
+    );
+    assert_eq!(routes_left(&pool).await, Vec::<String>::new());
+
+    let again = post(&hub, &person, REMOVE, json!({ "id": PRIVATE_ROUTE }))
+        .await
+        .json();
+    assert_eq!(
+        again["errors"][0]["extensions"]["code"], "NOT_FOUND",
+        "{again}"
+    );
+
+    let entries = removals(&pool).await;
+    assert_eq!(
+        entries.len(),
+        2,
+        "one audit entry for each removal, none for a refusal"
+    );
+    assert_eq!(entries[0]["name"], "nas.example.com");
+    assert_eq!(entries[0]["access"], "private");
+    assert_eq!(entries[0]["port"], 3000);
+    assert_eq!(entries[1]["access"], "public");
+    assert!(
+        entries.iter().all(|entry| entry.get("token").is_none()),
+        "the proof token is never in the log (LOG-007)"
+    );
 }

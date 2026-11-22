@@ -17,6 +17,7 @@ const ASK_AGAIN: std::time::Duration = std::time::Duration::from_secs(60);
 use crate::threads::wire;
 
 mod new_thread;
+pub(super) use crate::threads::notice::chosen_folder;
 pub(super) use new_thread::NewThread;
 
 /// The starts whose copy is being asked for its version (TH97).
@@ -181,11 +182,12 @@ impl Runner {
         self.may_start(0)?;
         let id = Uuid::now_v7();
         let (row, action) = self.prepared(&new, id, &path)?;
-        let mut notice = crate::threads::notice::of_folder(&row.folder);
+        let daemon = self.dir.parent().unwrap_or(&self.dir);
+        let mut notice = crate::threads::notice::before_start(&row.folder, daemon);
         let named = new.program_path.is_some();
         notice.extend(super::silence::chosen(new.program, &path, named, &copies));
         self.silence.started(id, new.program, path);
-        let codex = codex_of(&row, new.effort);
+        let codex = codex_of(&row, new.effort, daemon);
         self.threads.insert(id, Thread::new(row, new.effort, codex));
         if !notice.is_empty() {
             // The thread keeps the notice as its first line (THR-046).
@@ -300,21 +302,5 @@ impl Runner {
             folder: folder.to_string_lossy().into_owned(),
         };
         Ok((row, action))
-    }
-}
-
-/// An absolute folder of this computer that exists, as its real path, and not in the folder of
-/// the daemon, which holds its keys and the record, the log and the sockets of the runner
-/// (THR-040, THR-041).
-pub(super) fn chosen_folder(folder: &Path, daemon: &Path) -> Result<PathBuf, Refusal> {
-    if !folder.is_absolute() {
-        return Err(Refusal::FolderNotPermitted);
-    }
-    let real = std::fs::canonicalize(folder).map_err(|_| Refusal::FolderNotPermitted)?;
-    let inside = std::fs::canonicalize(daemon).is_ok_and(|daemon| real.starts_with(daemon));
-    if real.is_dir() && !inside {
-        Ok(real)
-    } else {
-        Err(Refusal::FolderNotPermitted)
     }
 }
