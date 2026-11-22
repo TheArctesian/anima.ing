@@ -47,7 +47,7 @@
     </div>
   </div>
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-  <pre class:wrap tabindex="0" role="region" aria-label="Code" data-own-keys><code>{text}</code></pre>
+  <pre class:wrap tabindex="0" role="group" aria-label="Code" data-own-keys><code>{text}</code></pre>
 </div>
 
 <style>

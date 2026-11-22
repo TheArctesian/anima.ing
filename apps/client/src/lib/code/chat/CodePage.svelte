@@ -1,7 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import '../kit/code.css';
-  import { keyAction, moved, ownsKeys, type KeyAction } from '$lib/agent-threads/keys';
+  import { moved, pageKey, type KeyAction } from '$lib/agent-threads/keys';
   import type { CallResult, LiveThreads } from '$lib/agent-threads/live/live.svelte';
   import type { ThreadsStore } from '$lib/agent-threads/store.svelte';
   import LimitDialog from '$lib/agent-threads/view/LimitDialog.svelte';
@@ -69,8 +69,7 @@
   /** The action of a key on the page; in the scroll area of the thread the arrows scroll it. */
   function pageAction(event: KeyboardEvent): KeyAction | null {
     const mod = event.metaKey || event.ctrlKey;
-    const action = keyAction({ key: event.key, mod, shift: event.shiftKey, alt: event.altKey, typing: typing(event.target) });
-    return action?.kind === 'move' && !mod && ownsKeys(event.target) ? null : action;
+    return pageKey({ key: event.key, mod, shift: event.shiftKey, alt: event.altKey, typing: typing(event.target) }, event.target);
   }
 
   /** Does what `action` names over the order of the inbox; false when it is not the page's to do. */

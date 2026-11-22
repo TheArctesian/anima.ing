@@ -35,7 +35,7 @@
     <CodeIcon name={look.icon} />
     <!-- The detail scrolls past 10rem, so the keyboard must reach it. -->
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-    <code tabindex="0" role="region" aria-label="Command" data-own-keys>{detail}</code>
+    <code tabindex="0" role="group" aria-label="Command" data-own-keys>{detail}</code>
   </div>
   <div class="under">
     {#if app !== undefined}<span class="quiet">{app}</span>{/if}

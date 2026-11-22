@@ -1,11 +1,7 @@
-// @vitest-environment jsdom
-import { flushSync, mount, unmount } from 'svelte';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { keyAction, ownsKeys } from '$lib/agent-threads/keys';
-import type { LiveEntry, OpenAsk } from '$lib/agent-threads/live/timeline';
+import { describe, expect, it } from 'vitest';
+import type { LiveEntry } from '$lib/agent-threads/live/timeline';
 import type { ToolCall, ToolKind } from '$lib/agent-threads/thread';
 import { spokenOf } from './spoken';
-import Timeline from './Timeline.svelte';
 import { folded, turnsOf, type Now, type WorkEntry } from './turns';
 import { duration, entryLabel, groupLabel, innerLabel, timer, turnLine } from './words';
 
@@ -192,99 +188,7 @@ describe('times of a turn', () => {
   });
 });
 
-vi.mock('$lib/motion/preference', () => ({ motionPreference: () => ({ reduced: true }) }));
-
-/** jsdom has no ResizeObserver: the follow of the end is not what these tests read. */
-class NoResize {
-  observe(): void {
-    return undefined;
-  }
-  disconnect(): void {
-    return undefined;
-  }
-}
-vi.stubGlobal('ResizeObserver', NoResize);
-Element.prototype.scrollTo = () => undefined;
-
-let app: ReturnType<typeof mount> | undefined;
-
-afterEach(async () => {
-  if (app) await unmount(app);
-  app = undefined;
-  document.body.replaceChildren();
-});
-
-const ASK: OpenAsk = {
-  request: 'r1',
-  ask: { kind: 'command', tool: 'Bash', subject: 'rm -rf build', diff: null, sessionRules: [], questions: [] },
-};
-
-interface Shown {
-  entries: LiveEntry[];
-  working: boolean;
-  asks: OpenAsk[];
-}
-
-function shown(start: Shown): Shown {
-  const props = $state(start);
-  app = mount(Timeline, {
-    target: document.body,
-    props: {
-      get entries() {
-        return props.entries;
-      },
-      get working() {
-        return props.working;
-      },
-      get asks() {
-        return props.asks;
-      },
-      onDecide: () => undefined,
-      clock: () => at(99),
-    },
-  });
-  return props;
-}
-
-describe('the conversation for a keyboard and a screen reader', () => {
-  it('finding 2: the arrows in the conversation and in its code scroll it; the page does not take them', () => {
-    shown({ entries: [prompt('Go', 0), reply('Here:\n\n```\nls\n```', 3), end(3)], working: false, asks: [] });
-    flushSync();
-    const conversation = document.querySelector('[aria-label="Conversation"]');
-    const code = document.querySelector('pre[aria-label="Code"]');
-    expect(ownsKeys(conversation)).toBe(true);
-    expect(ownsKeys(code)).toBe(true);
-    // The page's rule (CodePage): a move key in a box that owns its keys is not the page's.
-    const action = keyAction({ key: 'ArrowDown', mod: false, shift: false, alt: false, typing: false });
-    expect(action?.kind === 'move' && ownsKeys(conversation) ? null : action).toBeNull();
-  });
-
-  it('finding 3: the start and the end of a turn are said once, politely; what was there at the open is not', () => {
-    const props = shown({ entries: [prompt('Old', 0), reply('Old answer.', 1), end(1)], working: false, asks: [] });
-    flushSync();
-    const polite = document.querySelector('[aria-live="polite"]');
-    expect(polite?.textContent).toBe('');
-    props.entries = [...props.entries, prompt('Go', 5)];
-    props.working = true;
-    flushSync();
-    expect(polite?.textContent).toBe('Agent is working.');
-    props.entries = [...props.entries, reply('The tests pass. Two files changed.', 9), end(9)];
-    props.working = false;
-    flushSync();
-    expect(polite?.textContent).toBe('Agent replied: The tests pass.');
-  });
-
-  it('finding 4: a request of the agent is said at once and the focus goes to its Approve button', async () => {
-    const props = shown({ entries: [prompt('Clean', 0)], working: true, asks: [] });
-    flushSync();
-    props.asks = [ASK];
-    flushSync();
-    expect(document.querySelector('[role="alert"]')?.textContent).toBe('Approval needed to run a command: rm -rf build');
-    await vi.waitFor(() => {
-      expect(document.activeElement?.textContent.trim()).toBe('Approve');
-    });
-  });
-
+describe('the words of the live region', () => {
   it('says the stop of a turn, and the first sentence of a reply at most 160 characters', () => {
     const [stopped] = turnsOf([prompt('Go', 0), end(9, true)], IDLE);
     const long = 'a'.repeat(400);

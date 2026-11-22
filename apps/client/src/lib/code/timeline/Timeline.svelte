@@ -1,5 +1,6 @@
 <script lang="ts">
   import './timeline.css';
+  import { REPLAY_MS } from '$lib/agent-threads/live/live.svelte';
   import type { LiveEntry, OpenAsk } from '$lib/agent-threads/live/timeline';
   import { tick } from 'svelte';
   import { motionPreference } from '$lib/motion/preference';
@@ -19,10 +20,15 @@
     clock?: () => Date;
     /** How many entries the page let go from the front (`LiveThread.dropped`). */
     dropped?: number;
+    /**
+     * For this long after it opens, the conversation says nothing and moves no focus: what it holds then, and what the
+     * runner sends again after its watch connects (THR-059), is not new to the person.
+     */
+    quietMs?: number;
     onDecide: (request: string, decision: string) => void;
   }
 
-  const { entries, streaming = '', asks = [], working = false, clock = () => new Date(), dropped = 0, onDecide: decided }: Props = $props();
+  const { entries, streaming = '', asks = [], working = false, clock = () => new Date(), dropped = 0, quietMs = REPLAY_MS, onDecide: decided }: Props = $props();
   const turns = $derived(turnsOf(entries, { streaming, asks, working, dropped }));
   const motion = motionPreference();
   let now = $state(new Date());
@@ -36,25 +42,38 @@
   let polite = $state('');
   let urgent = $state('');
   const spoken = $derived(spokenOf(turns));
-  /** What the polite region last said; what the conversation held when it opened is not said. */
+  /** What the polite region last said; `undefined` until the first run, which says nothing of what is already there. */
   let said: string | null | undefined;
-  /** The requests already said, so each is said once. */
-  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- read and written only in the effect, never drawn
+  /** The requests already seen, so each is said once. */
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- read and written only in the effects, never drawn
   const heard = new Set<string>();
+  const opened = Date.now();
+  const quiet = (): boolean => Date.now() - opened < quietMs;
+
+  /** Says `words` in a region again even when they are the words it already holds. */
+  async function say(region: 'polite' | 'urgent', words: string): Promise<void> {
+    if (region === 'polite') polite = '';
+    else urgent = '';
+    await tick();
+    if (region === 'polite') polite = words;
+    else urgent = words;
+  }
 
   $effect(() => {
     const now = spoken?.key ?? null;
-    if (said !== undefined && now !== said && spoken !== null) polite = spoken.words;
+    if (said !== undefined && now !== said && spoken !== null && !quiet()) void say('polite', spoken.words);
     said = now;
   });
 
   $effect(() => {
-    for (const open of asks) {
-      if (heard.has(open.request)) continue;
-      heard.add(open.request);
-      urgent = askedWords(open);
-      if (open.ask.kind !== 'question') void offer(open.request);
-    }
+    const fresh = asks.filter((open) => !heard.has(open.request));
+    for (const open of fresh) heard.add(open.request);
+    // A line said for a request that is answered no longer holds.
+    if (urgent !== '' && asks.length === 0) urgent = '';
+    if (fresh.length === 0 || quiet()) return;
+    void say('urgent', fresh.map(askedWords).join(' '));
+    const approval = fresh.find((open) => open.ask.kind !== 'question');
+    if (approval !== undefined) void offer(approval.request);
   });
 
   /** The row of an open request in the conversation. */
