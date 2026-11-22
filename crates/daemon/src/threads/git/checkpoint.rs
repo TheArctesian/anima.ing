@@ -7,8 +7,7 @@
 use agent_threads::git::Checkpoint;
 use uuid::Uuid;
 
-use super::place::Worktree;
-use super::project::refs;
+use super::place::{Worktree, own};
 use super::run::{Git, GitError, Run};
 
 /// Who a checkpoint commit says it is from: never the person.
@@ -90,7 +89,7 @@ pub async fn tree_now(
 /// # Errors
 /// A [`GitError`] when the branch cannot be read or a step of `git` fails.
 pub async fn snapshot(git: &Git, worktree: &Worktree) -> Result<String, GitError> {
-    let tip = refs::head(&worktree.layout())?.commit;
+    let tip = own::tip(git, worktree).await?.commit;
     let tree = tree_now(git, worktree, tip.as_deref()).await?;
     let mut commit = vec!["commit-tree".to_owned(), tree];
     if let Some(tip) = tip {

@@ -67,7 +67,7 @@ pub async fn make(
         .map(|files| files.iter().map(|path| place::inside(path)).collect())
         .transpose()?;
     let layout = worktree.layout();
-    let head = refs::head(&layout)?;
+    let head = own::tip(git, worktree).await?;
     let branch = branch_for(worktree, &head, asked.new_branch)?;
     let tip = head.commit.as_deref();
     let reviewed = reviewed(git, worktree, asked.reviewed, tip).await?;

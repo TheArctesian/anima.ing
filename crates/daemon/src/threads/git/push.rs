@@ -8,8 +8,7 @@ use agent_threads::git::{GitOutcome, GitRefusal, Status};
 
 pub mod pull_request;
 
-use super::place::{self, Worktree};
-use super::project::refs;
+use super::place::{self, Worktree, own};
 use super::run::hooks::Hooks;
 use super::run::settings::Setting;
 use super::run::{Git, REMOTE_TIME, Run};
@@ -96,7 +95,7 @@ pub async fn ready(
     }
     let (remote, url) = status::remote(listed).ok_or(GitRefusal::NoRemote)?;
     destination(&url, git.local_remotes())?;
-    let commit = refs::head(&worktree.layout())?.commit;
+    let commit = own::tip(git, worktree).await?.commit;
     Ok(Ready {
         remote,
         shown: now.push_url.unwrap_or_default(),
@@ -154,7 +153,9 @@ pub async fn send(
         THERE,
         target.as_str(),
     ];
-    let push = Run::new(dir, push)
+    // A push needs the history, which only the repository of the person has; the remote
+    // checks each object that it gets.
+    let push = own::borrowing(Run::new(dir, push), &worktree.record().common_dir)
         .for_the_person()
         .with_time(REMOTE_TIME)
         // In the environment: a URL can hold a credential, and each user reads arguments.

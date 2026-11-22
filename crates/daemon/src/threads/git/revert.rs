@@ -8,7 +8,6 @@ use agent_threads::git::GitRefusal;
 
 use super::checkpoint;
 use super::place::{Worktree, own};
-use super::project::refs;
 use super::run::{Git, GitError, Run};
 
 /// Puts the files back as they were at the checkpoint of `turn`. The files as they were before
@@ -36,7 +35,7 @@ pub async fn to_turn(git: &Git, worktree: &Worktree, turn: u32) -> Result<String
     }
     checkpoint::forget(git, worktree, |other| other > turn).await?;
     // Nothing that was staged before the revert stays staged for the files of now.
-    if let Some(tip) = refs::head(&worktree.layout())?.commit {
+    if let Some(tip) = own::tip(git, worktree).await?.commit {
         own::follow(git, worktree, &tip).await?;
     }
     Ok(undo)

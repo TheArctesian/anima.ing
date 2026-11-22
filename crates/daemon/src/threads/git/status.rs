@@ -8,7 +8,7 @@ use agent_threads::git::Status;
 
 use super::changes::{self, Look};
 use super::checkpoint;
-use super::place::{self, Worktree};
+use super::place::{self, Worktree, own};
 use super::project::refs;
 use super::run::settings::{self, Setting};
 use super::run::{Git, GitError, Run, said};
@@ -21,7 +21,7 @@ use super::run::{Git, GitError, Run, said};
 pub async fn of(git: &Git, worktree: &Worktree, listed: &[Setting]) -> Result<Status, GitError> {
     let layout = worktree.layout();
     let common = layout.common_dir.as_path();
-    let head = refs::head(&layout)?;
+    let head = own::tip(git, worktree).await?;
     let mut status = files(git, worktree, head.commit.as_deref()).await?;
     let remote = remote(listed);
     status.has_remote = remote.is_some();
@@ -131,6 +131,11 @@ fn default_branch(
 async fn ahead(git: &Git, worktree: &Worktree, from: &str, to: &str) -> u32 {
     let range = format!("{from}..{to}");
     let count = ["rev-list", "--count", "--end-of-options", &range, "--"];
-    let count = git.text(Run::new(worktree.folder(), count)).await;
+    // The history is only in the repository of the person; a count decides nothing alone.
+    let count = own::borrowing(
+        Run::new(worktree.folder(), count),
+        &worktree.record().common_dir,
+    );
+    let count = git.text(count).await;
     count.ok().and_then(|count| count.parse().ok()).unwrap_or(0)
 }

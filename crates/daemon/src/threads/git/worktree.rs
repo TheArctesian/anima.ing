@@ -97,7 +97,7 @@ pub async fn make(git: &Git, home: &Home, plan: Plan<'_>) -> Result<Made, GitRef
     let at = existing.clone().unwrap_or(start);
     place::private_folder(&home.of_thread(plan.thread)).map_err(|_| GitRefusal::BadPath)?;
     let own = home.own(plan.thread, &repository)?;
-    own::make(git, &own, common, at.len() == 64).await?;
+    own::make(git, &own, at.len() == 64).await?;
     let new = New {
         project: &project,
         folder: &folder,
@@ -137,9 +137,9 @@ async fn placed(
     (common, fresh): (&Path, bool),
     new: New<'_>,
 ) -> Result<Worktree, GitRefusal> {
-    // The start is a commit that the Git folder of the runner can read.
+    // The start is a commit of the repository.
     let git = &git.in_own(new.own).await?;
-    let kind = Run::new(new.own, ["cat-file", "-t", new.at]);
+    let kind = own::borrowing(Run::new(new.own, ["cat-file", "-t", new.at]), common);
     if git.text(kind).await.ok().as_deref() != Some("commit") {
         return Err(GitRefusal::UnknownBase);
     }
@@ -195,6 +195,7 @@ async fn filled(
     home.keep(thread, repository, &record)?;
     let worktree = home.worktree(thread, repository)?;
     let git = &git.for_worktree(&worktree).await?;
+    own::learn(git, &worktree, new.at).await?;
     let files = ["reset", "--hard", "--quiet", new.at, "--"];
     git.output(Run::new(worktree.folder(), files)).await?;
     own::follow(git, &worktree, new.at).await?;
@@ -232,7 +233,7 @@ pub async fn remove(git: &Git, home: &Home, worktree: &Worktree) -> Result<Strin
     let record = worktree.record();
     let kept = checkpoint::kept_ref(worktree.thread());
     let commit = checkpoint::snapshot(held, worktree).await?;
-    let tip = refs::head(&layout)?.commit;
+    let tip = own::tip(held, worktree).await?.commit;
     own::give(held, worktree, &commit, tip.as_deref()).await?;
     refs::put(&layout.common_dir, &kept, &commit, Was::Any)?;
     // The folder is still the one that the runner made, not one put in its place (P12).

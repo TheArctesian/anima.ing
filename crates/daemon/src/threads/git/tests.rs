@@ -1,6 +1,7 @@
 //! The Git of a thread on made repositories in temporary folders: no test speaks to a network,
 //! and the only remote is a bare repository beside the made one.
 
+mod forged;
 mod held;
 mod hooks;
 mod late;

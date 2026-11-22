@@ -92,10 +92,11 @@ pub fn layout(top: &Path) -> Result<Layout, ProjectError> {
     if common_dir.join("reftable").exists() {
         return Err(ProjectError::Reftable);
     }
-    // The path goes into files of one line each (`alternates`, `gitdir`).
+    // The path goes into a file of one line (`gitdir`) and into a list of object stores.
     let plain = |path: &Path| {
         path.to_str().is_some_and(|text| {
-            !text.chars().any(char::is_control) && !text.starts_with(['#', '"'])
+            // No `:` either: a list of object stores is split at it.
+            !text.chars().any(|c| c.is_control() || c == ':') && !text.starts_with(['#', '"'])
         })
     };
     if !plain(&common_dir) || !plain(&git_dir) {
