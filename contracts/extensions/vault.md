@@ -93,22 +93,32 @@ The server proves its identity with its daemon token (K8 Section 2; R-147). To b
 
 - Commands: `anima sealed-record show|store|remove` move opaque bytes for a test and for a backup; they cannot open a record. No MCP tool takes part in a reveal or in a key offer (a trust decision). The key store, the QR code and the recovery key are client work (Tauri shell: the key store; `$lib/vault/`: sealing).
 
-## 3a. An approval by a device (OD-E20; design, not built)
+## 3a. An approval by a device (OD-E20, OD-E27 to OD-E31; design, not built)
 
-The operator ruled on 2026-11-22 (OD-E20, option 1): on a hosted hub a device does the check of its operating system before a reveal, and the operator added: "send a notification for it that is published to all devices but mostly just approval via face id or password on phone". The same night he ruled that adding an application route is approved on the phone with Face ID by this mechanism; removing a route needs only a signed-in person, with no approval (Routes, branch `hosted/routes-remove-signed-in`) (Routes, `crates/hub/src/work/routes/`). So this section is one mechanism for each action that needs a person at a device; it moves to a contract of its own when it is built. Until then `recordReveal` answers `UNAVAILABLE` on a hosted hub, and `addApplicationRoute` stays off. The requirement numbers are placeholders.
+The operator ruled on 2026-11-22 (OD-E20, option 1): on a hosted hub a device does the check of its operating system before a reveal, and he added: "send a notification for it that is published to all devices but mostly just approval via face id or password on phone". The same night he ruled that adding an application route is approved by this mechanism (Routes, `crates/hub/src/work/routes/`); removing a route needs only a signed-in person, and a private route needs no consent at the machine. On OD-E30 he ruled: "the approval can go to any device that is active so if it's my pop-os linux device it can also approve any running app can approve it". So this is one mechanism, a device approval, for each action that needs a person at a device; it is not tied to a phone. It moves to a contract of its own when it is built. Until then `recordReveal` answers `UNAVAILABLE` on a hosted hub, and `addApplicationRoute` stays off. The requirement numbers are placeholders.
 
-- **APR-NEW-key.** A device that can approve has an approval key: a key pair made in the secure hardware of the device (the Secure Enclave, the Android Keystore), whose private half the device uses only after Face ID, Touch ID, a fingerprint or the password of the device. The private half never leaves the device. The hub stores the public half for the device; removing the device removes its key.
-- **APR-NEW-kinds.** Each kind of request is a text that the domain of the action registers, with its policy; the set stays open (a consent at a machine, OD-HOST-43, may be one). The first kinds:
+**What it protects against, plainly (OD-E27, OD-E28).** The operator chose no number to pick and a first approving device that any signed-in application may enrol. So the approval protects against a person at an unlocked screen; it does not protect against a stolen signed-in session, which can enrol its own approving device when the account has none, and which a habitual tap approves. The guards below cost the operator nothing and stay strong.
+
+- **APR-NEW-key.** A device that can approve has an approval key. Its private half never leaves the device and is used only after the local check of the operating system:
+  - iPhone and Mac: a key in the Secure Enclave with the access rule "user presence" (Face ID, Touch ID, or the passcode or password of the device).
+  - Android: a key in the Android Keystore that needs the person to authenticate at each use (fingerprint, face or the screen lock).
+  - Linux: the login password through polkit. The application asks an action whose rule is `auth_self`, with no kept authorization, and the polkit agent of the desktop shows the password prompt of the system. The key is in the TPM when the computer has one; otherwise it is in the Secret Service key ring of the session, and then only the application enforces the check, which is weaker: another program of the same user can use the key.
+  - Windows: Windows Hello.
+  - A button with no prompt of the system is never a check. A browser tab alone has no key and cannot approve.
+  The hub stores the public half for the device; removing the device removes its key.
+- **APR-NEW-enrol.** Any signed-in application may add the first approval key of an account, at any time, with no email (OD-E28). A later key needs an approval by an existing one. Each enrolment shows at once on every other device of the account, is in the audit log, and shows in the device list with its kind of check (Secure Enclave, Keystore, TPM, key ring, Windows Hello) and the time it was added.
+- **APR-NEW-kinds.** Each kind of request is a text that the domain of the action registers, with its policy; the set stays open. The first kinds:
 
 | Kind | Policy |
 | --- | --- |
-| `sealed_record.reveal` | Every hub when the account has an approval key; on a hosted hub always (no TOTP, R-129). The device that asked may approve its own request (a computer with Touch ID). |
-| `route.add` (later `route.publish`) | Always. Only another device may approve: never the session that asked. A public add still needs a browser token with no agent declaration (SF-330). |
+| `sealed_record.reveal` | Every hub when the account has an approval key; on a hosted hub always (no TOTP, R-129). The application that asked may approve its own request with its local check. |
+| `route.add` (later `route.publish`) | Always. Never approved by the token that asked; another running application of the account approves, which may be on the same computer. A public add still needs a browser token with no agent declaration (SF-330). |
 
-- **APR-NEW-request.** A guarded mutation called with no `approval` makes a request and answers `FORBIDDEN` with `extensions.reason` `APPROVAL_REQUIRED` and `extensions.approvalRequest` (its id). The hub builds the subject of the request from its own stored state, never from text of the client: for a reveal, the asking device and the time; for a route, the fields of `routes.route` (the name, the kind, public or private, the device by name, the application and its port, the hub port and the protocol of a stream, the full target of a redirect). The request holds the kind, the subject, the SHA-256 of the canonical JSON of the subject (the digest), the login token that asked, its device and address, a random value of 32 bytes, and its expiry: 5 minutes, one value for each kind. An account has at most one open request of each kind; a new one ends the older one.
-- **APR-NEW-notify.** The hub publishes each request to every device of the account. The text names the action, the asking device and the time, and says "Open Anima to approve or deny". It never holds a record owner, a record name or a value (OD-E29); a route subject is shown only in the application. No action of the notification approves.
-- **APR-NEW-approve.** A device with an approval key reads the request, shows the subject (public first and plainly for a route), computes the digest of what it shows, asks the check of its operating system, and signs the request id, the random value, the digest, the id of the asking token and the expiry. The hub checks the signature itself, against a key of a device of the same account, before the expiry, one time, and with the self-approval rule of the kind. Deny ends the request and offers to sign the asking token out.
-- **APR-NEW-consume.** The mutation called again with `approval: <id>` succeeds only from the login token that asked, with a request whose digest the hub computes again from the new input and finds equal, within 60 seconds of the approval, and one time. The audit entry of the action names the device that approved.
+- **APR-NEW-request.** A guarded mutation called with no `approval` makes a request and answers `FORBIDDEN` with `extensions.reason` `APPROVAL_REQUIRED` and `extensions.approvalRequest` (its id). The hub builds the subject from its own stored state, never from text of the client: the action; the asking device by the name the hub has for it, or "a browser" or "the command line" for a token with no device; the address from which the hub got the request; the time; for a reveal, the kind of record; for a route, the fields of `routes.route` (the name, the kind, public or private, the device by name, the application and its port, the hub port and the protocol of a stream, the full target of a redirect). The request holds the kind, the subject, the SHA-256 of the canonical JSON of the subject (the digest), the login token that asked, a random value of 32 bytes, and its expiry: 5 minutes for each kind. An account has at most one open request of each kind; a new one ends the older one.
+- **APR-NEW-notify.** The hub publishes each request to every device of the account that runs the application. The text names the action, the kind of record for a reveal (for example "a password", OD-E29), the asking device and the time, and says "Open Anima to approve or deny". It never holds a record owner, a record name or a value. No action of the notification approves.
+- **APR-NEW-approve.** A running application with an approval key reads the request and shows the subject, first the asking device and its address as the hub saw them, and for a route whether it is public. It computes the digest of what it shows, asks the local check, and signs the request id, the random value, the digest, the id of the asking token and the expiry. There is no number to pick (OD-E27). The hub checks the signature itself: against a key of a device of the same account, before the expiry, one time, and with the self-approval rule of the kind. Deny ends the request and offers to sign the asking token out.
+- **APR-NEW-consume.** The mutation called again with `approval: <id>` succeeds only from the login token that asked, when the digest that the hub computes again from the new input is equal, within 60 seconds of the approval, and one time. The audit entry of the action names the device that approved.
+- **No other path (OD-E30).** No code and no link by email. With no application running anywhere, the request waits and then expires.
 
 **K1 (proposed).** No new K7 code: each outcome is a `reason` of `FORBIDDEN`.
 
@@ -116,29 +126,30 @@ The operator ruled on 2026-11-22 (OD-E20, option 1): on a hosted hub a device do
 | --- | --- |
 | `approval: ID` on each guarded mutation | The id of an approved request. |
 | `Query.approvalRequest(id: ID!): ApprovalRequest` | `{ id, kind, state, expiresAt, approvedBy }` for the token that asked; `state` is `WAITING`, `APPROVED`, `DENIED`, `EXPIRED` or `USED`. The client watches it every 2 seconds, or by the change event of the request. |
-| `Query.pendingApprovals: [ApprovalRequest!]!`, `Mutation.answerApproval(id, signature, approve)`, `Mutation.addApprovalKey(publicKey, approval)` | For an approving device: login token of the application only. |
+| `Query.pendingApprovals: [ApprovalRequest!]!`, `Mutation.answerApproval(id, signature, approve)`, `Mutation.addApprovalKey(publicKey, check, approval)` | For an approving application: its login token only. |
 | `APPROVAL_REQUIRED` | Waiting for a device; `extensions.approvalRequest` holds the id. |
 | `APPROVAL_DENIED`, `APPROVAL_EXPIRED` | The request was denied, or ended unanswered or unused. |
-| `NO_APPROVER` | The account has no approval key that may approve this kind; no request is made. |
+| `NO_APPROVER` | The account has no approval key that may approve this kind; no request is made. The client says to open the application on a device to enrol it. |
 
-- **Who may approve.** A device of the account with the application and an approval key. Never an API key, a builder token, a declared AI agent or a browser. A new approval key needs an approval by an existing one (OD-E28 for the first key).
-- **Limits.** At most 5 requests for each account in 10 minutes; a sixth answers `RATE_LIMITED` and writes an `ACCESS` warning event. Each request, approval, denial and expiry writes an audit entry and an event, with no value.
+- **Who may approve.** A device of the account with the application running and an approval key. Never an API key, a builder token, a declared AI agent or a browser tab.
+- **Limits.** At most 5 requests for each account in 10 minutes; a sixth answers `RATE_LIMITED` and writes an `ACCESS` warning event. Each request, approval, denial, expiry and enrolment writes an audit entry and an event, with no value.
 
 **Threat check.**
 
 | Threat | Answer of this design |
 | --- | --- |
-| A stolen login session asks until the operator taps yes (push fatigue) | One open request of each kind, 5 in 10 minutes, the action and the asking device in the text, Deny signs it out; OD-E27 asks for a number to match. |
+| A stolen signed-in session on an account with no approving device | Not prevented (OD-E28): it can enrol its own key. The enrolment shows on every other device and in the audit log. |
+| A stolen session asks until the operator taps yes | Not prevented by a number (OD-E27). One open request of each kind, 5 in 10 minutes, the asking device and its address shown first, and Deny signs the session out. |
 | A replay, or an approval used by another session or for a changed request | The signature covers the request id, the random value, the digest of the subject, the asking token and the expiry; the hub accepts it one time and computes the digest again. |
 | The hub or a changed client shows one subject and gets an approval for another | The device signs the digest of what it showed; a different subject has a different digest. |
 | An approval from a wrong or removed device | Only a public key stored for a device of the account verifies. |
-| The notification leaks what is asked | The text holds the action and the device only. |
-| The hub forges an approval | For a reveal it gives no value: the hub cannot open a Class A record. For a route the hub is the party that writes, so the check limits a stolen session, not the hub. |
+| The notification leaks what is asked | It holds the action, the kind of record (OD-E29), the device and the time; the push service learns these, never a name or a value. |
+| A program of the user on a Linux computer with no TPM uses the key | Possible: the key ring is open to the session. The device list shows that kind of check. |
+| The hub forges an approval | For a reveal it gives no value: the hub cannot open a Class A record. For a route the hub is the party that writes. |
 | A changed client skips the check of a reveal | Not prevented, as with the TOTP check today: the vault key is on the client. |
-| An attacker adds an approval key | The first key is the weak point (OD-E28); later keys need an approval. |
-| No device can approve | `NO_APPROVER`: no reveal on a hosted hub and no route change; OD-E30 asks about a fallback. |
+| No device can approve | `NO_APPROVER`, or the request expires; there is no other path (OD-E30). |
 
-**What the mobile stream builds** (not this stream): the approval key in the Secure Enclave and the Android Keystore with the check of the operating system; the push channel to the phone; the screen that shows a subject and approves or denies; adding the key. A desktop client with Touch ID uses the same path. The hub (E0-6 T6) builds the requests, the public keys, the check of a signature, the K1 fields and the notification; each domain (sealed records, Routes) calls it for its kind.
+**What the mobile and desktop streams build** (not this stream): the approval key with the local check of each platform above; the push to each running application; the screen that shows a subject and approves or denies; enrolling the key and showing a new enrolment on the other devices. The hub (E0-6 T6) builds the requests, the public keys, the check of a signature, the K1 fields and the notification; each domain (sealed records, Routes) calls it for its kind.
 
 ## 4. K2, K3 and the review
 
@@ -149,7 +160,7 @@ The operator ruled on 2026-11-22 (OD-E20, option 1): on a hosted hub a device do
 
 | Question | State in this contract |
 | --- | --- |
-| What replaces the TOTP check of a reveal on a hosted hub (OD-E20) | Decided (2026-11-22): an approval by a device with the check of its operating system (Section 3a). Not built: `recordReveal` is unavailable on a hosted hub. OD-E27 to OD-E30 are open. |
+| What replaces the TOTP check of a reveal on a hosted hub (OD-E20) | Decided (2026-11-22): an approval by a device with its local check (Section 3a; OD-E27 to OD-E30 were ruled the same day). Not built: `recordReveal` is unavailable on a hosted hub. |
 | A new version of a sealing key (Section 1) | Not built. |
 | Automatic rotation at a provider | Not built and not promised. The hub records a rotation that the operator did. |
 | A key for a workload that is not on a machine with a daemon | Not built: retrieval needs a daemon token. |
