@@ -1,6 +1,7 @@
 //! The Git of a thread on made repositories in temporary folders: no test speaks to a network,
 //! and the only remote is a bare repository beside the made one.
 
+mod held;
 mod person;
 mod planted;
 mod runs;
@@ -21,7 +22,16 @@ const PERSON: Caller = Caller {
     agent: false,
     running: false,
     thread: None,
+    repository_programs: false,
 };
+
+/// The worktree of the thread of the tests.
+const fn target() -> Target<'static> {
+    Target {
+        thread: THREAD,
+        repository: "engine",
+    }
+}
 
 /// A made repository of a person with one commit on `main`, and the home of the worktrees.
 struct Bench {
@@ -130,6 +140,28 @@ impl Bench {
             .turn_ended(target, turn)
             .await
             .expect("a checkpoint");
+    }
+
+    /// The status as `caller` gets it.
+    async fn status(&self, caller: Caller) -> agent_threads::git::Status {
+        match self.call(caller, GitAction::Status).await {
+            GitOutcome::Status(status) => status,
+            other => panic!("no status: {other:?}"),
+        }
+    }
+
+    /// Writes the `pre-commit` hook of the project, which each worktree shares.
+    fn hook(&self, body: &str) {
+        let hooks = self.project.join(".git/hooks");
+        std::fs::create_dir_all(&hooks).expect("the hooks");
+        let file = hooks.join("pre-commit");
+        std::fs::write(&file, format!("#!/bin/sh\n{body}\n")).expect("a hook");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt as _;
+            let runs = std::fs::Permissions::from_mode(0o755);
+            std::fs::set_permissions(&file, runs).expect("a mode");
+        }
     }
 
     /// What the checkout of the person looks like: its branch, its commit and its status.

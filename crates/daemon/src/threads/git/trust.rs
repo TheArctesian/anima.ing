@@ -41,16 +41,17 @@ pub async fn now(git: &Git, worktree: &Worktree) -> Result<Seen, GitRefusal> {
         entries: git.of_the_repository().clone(),
         hooks: Vec::new(),
     };
-    // Asked as the person: a run of the runner has no folder of hooks at all.
+    // Asked as a person whose hooks run: each other run has no folder of hooks at all.
     let asked = Run::new(worktree.folder(), ["rev-parse", "--git-path", "hooks"]);
-    let folder = git.text(asked.for_the_person()).await?;
+    let with_hooks = git.clone().with_repository_programs(true);
+    let folder = with_hooks.text(asked.for_the_person()).await?;
     let folder = worktree.folder().join(folder);
     for (name, bytes, runs) in hooks_in(&folder)? {
         let mut digest = Sha256::new();
         digest.update([u8::from(runs)]);
         digest.update(&bytes);
         seen.entries.insert(
-            format!("hook {name}"),
+            format!("{HOOK}{name}"),
             crate::model::fetch::hex(&digest.finalize()),
         );
         if runs {
@@ -99,6 +100,9 @@ fn can_run(about: &std::fs::Metadata) -> bool {
 const fn can_run(_about: &std::fs::Metadata) -> bool {
     true
 }
+
+/// The start of the name of a hook in the list; the name of a setting has no space there.
+pub const HOOK: &str = "hook ";
 
 /// The names of the settings and hooks that are not as the person accepted them: new, gone,
 /// or with a different value. A worktree with no accepted list has each one as changed.

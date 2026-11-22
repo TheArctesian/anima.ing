@@ -192,6 +192,7 @@ async fn record_of(
         .strip_prefix("gitdir: ")
         .ok_or(GitRefusal::NoWorktree)?;
     let git_dir = std::fs::canonicalize(git_dir).map_err(|_| GitRefusal::NoWorktree)?;
+    let folder_id = super::run::folder::FolderId::of(&folder);
     Ok(Record {
         project: project.to_owned(),
         folder,
@@ -199,6 +200,7 @@ async fn record_of(
         common_dir,
         branches: vec![branch.to_owned()],
         trusted: None,
+        folder_id,
     })
 }
 

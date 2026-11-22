@@ -23,11 +23,13 @@ fn only_the_kept_names_of_the_environment_reach_git() {
 
 #[test]
 fn the_runner_has_no_hooks_and_the_person_has_theirs() {
-    assert!(fixed_configuration(Asked::Runner).contains(&"core.hooksPath=/dev/null"));
+    assert!(fixed_configuration(Asked::Runner, true).contains(&"core.hooksPath=/dev/null"));
+    // A run for the person has the hooks of the repository only when the thread allows them.
+    assert!(fixed_configuration(Asked::Person, false).contains(&"core.hooksPath=/dev/null"));
     // No transport for the runner, and no fetch of a missing object for anyone: a remote
     // of a partial clone cannot name a program that a diff then starts.
-    assert!(fixed_configuration(Asked::Runner).contains(&"protocol.allow=never"));
-    assert!(!fixed_configuration(Asked::Person).contains(&"protocol.allow=never"));
+    assert!(fixed_configuration(Asked::Runner, true).contains(&"protocol.allow=never"));
+    assert!(!fixed_configuration(Asked::Person, true).contains(&"protocol.allow=never"));
     assert!(fixed_environment().contains(&("GIT_NO_LAZY_FETCH", "1")));
-    assert!(!fixed_configuration(Asked::Person).contains(&"core.hooksPath=/dev/null"));
+    assert!(!fixed_configuration(Asked::Person, true).contains(&"core.hooksPath=/dev/null"));
 }

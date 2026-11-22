@@ -53,6 +53,9 @@ pub struct Record {
     /// (`trust`): first as they were when the worktree was made, before an agent ran.
     #[serde(default)]
     pub trusted: Option<std::collections::BTreeMap<String, String>>,
+    /// What the work folder was when it was made; `None` where the system has no such number.
+    #[serde(default)]
+    pub folder_id: Option<super::run::folder::FolderId>,
 }
 
 /// A worktree of a thread that passed each check: its real folder is below the home and is the

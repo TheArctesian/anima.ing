@@ -40,7 +40,7 @@ pub async fn make(
     git: &Git,
     worktree: &Worktree,
     asked: Asked<'_>,
-    own: &dyn Fn(&str) -> Result<(), GitRefusal>,
+    own: &(dyn Fn(&str) -> Result<(), GitRefusal> + Sync),
 ) -> Result<(String, Option<String>), GitRefusal> {
     let dir = worktree.folder();
     let message = asked.message.trim();

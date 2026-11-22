@@ -3,6 +3,8 @@
 //!
 //! I/O: this is the only place of the Git stage that starts a process.
 
+mod fixed;
+pub mod folder;
 pub mod said;
 pub mod settings;
 
@@ -13,6 +15,9 @@ use std::process::Stdio;
 use std::time::Duration;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+pub(super) use fixed::{fixed_configuration, fixed_environment};
+use folder::FolderId;
 
 /// The most bytes of output one run keeps; a run that writes more is ended and refused.
 pub const MAX_OUTPUT: usize = 8 * 1024 * 1024;
@@ -56,6 +61,8 @@ pub enum GitError {
     TimedOut(u64),
     #[error("git wrote more than {MAX_OUTPUT} bytes")]
     TooLarge,
+    #[error("the folder of the worktree was replaced; nothing ran in it")]
+    Replaced,
     #[error("git ended with an error: {said}")]
     Failed { code: Option<i32>, said: String },
 }
@@ -84,6 +91,12 @@ pub struct Git {
     of_the_person: Vec<(String, String)>,
     /// The settings of the repository by name, each with a digest of its values.
     of_the_repository: BTreeMap<String, String>,
+    /// A run for the person runs the hooks and the filters of the repository
+    /// ([`Git::with_repository_programs`]); off unless the runner says so.
+    repository_programs: bool,
+    /// The work folder of [`Git::for_worktree`] with what it was when the worktree was made:
+    /// a folder that was put in its place gets no run.
+    folder: Option<(PathBuf, FolderId)>,
     /// The Git folder, the shared Git folder and the work folder of one worktree
     /// ([`Git::for_worktree`]): with them `git` reads no `.git` file and no `core.worktree`.
     bound: Vec<(&'static str, OsString)>,
@@ -142,7 +155,10 @@ impl<'a> Run<'a> {
 }
 
 impl Git {
-    /// Finds `git` and keeps the allowed part of `env` (the environment of the person).
+    /// Finds `git` and keeps the allowed part of `env`. `env` is the login environment of the
+    /// person (THR-040), the one their agents get, not the environment of the daemon: the
+    /// `PATH`, the `HOME` and the `SSH_AUTH_SOCK` of the person are the ones that find their
+    /// `git`, their credential helper and their keys.
     ///
     /// # Errors
     /// [`GitError::NotFound`] when no `git` is at a known place or in the `PATH` of `env`.
@@ -167,6 +183,8 @@ impl Git {
             filters_off: Vec::new(),
             of_the_person: Vec::new(),
             of_the_repository: BTreeMap::new(),
+            repository_programs: false,
+            folder: None,
             bound: Vec::new(),
         })
     }
@@ -187,6 +205,20 @@ impl Git {
         quiet.of_the_person = settings::for_the_person(&found);
         quiet.of_the_repository = settings::of_the_repository(&found);
         Ok(quiet)
+    }
+
+    /// This `git` with the hooks and the filters of the repository on or off for the runs for
+    /// the person (a commit, a push). Off, a commit runs no hook and no program that the
+    /// repository names; a run of the runner itself never does.
+    #[must_use]
+    pub fn with_repository_programs(mut self, on: bool) -> Self {
+        self.repository_programs = on;
+        self
+    }
+
+    #[must_use]
+    pub const fn repository_programs(&self) -> bool {
+        self.repository_programs
     }
 
     /// The settings of the repository of [`Git::quiet_in`] by name, each with a digest of its
@@ -211,6 +243,7 @@ impl Git {
             ("GIT_COMMON_DIR", record.common_dir.clone().into_os_string()),
             ("GIT_WORK_TREE", record.folder.clone().into_os_string()),
         ];
+        held.folder = record.folder_id.map(|id| (record.folder.clone(), id));
         held.quiet_in(&record.folder).await
     }
 
@@ -250,6 +283,13 @@ impl Git {
     }
 
     async fn finished(&self, run: Run<'_>) -> Result<(Option<i32>, Vec<u8>, String), GitError> {
+        // Directly before the run: the work folder is still the one that the runner made, not
+        // a folder or a link that an agent put in its place (P12).
+        if let Some((folder, made)) = &self.folder
+            && FolderId::of(folder) != Some(*made)
+        {
+            return Err(GitError::Replaced);
+        }
         let mut child = self.command(&run).spawn().map_err(GitError::Start)?;
         let group = child.id();
         let input = child.stdin.take().zip(run.input);
@@ -281,7 +321,7 @@ impl Git {
     fn command(&self, run: &Run<'_>) -> tokio::process::Command {
         let mut command = tokio::process::Command::new(&self.program);
         command
-            .args(fixed_configuration(run.asked))
+            .args(fixed_configuration(run.asked, self.repository_programs))
             .args(&run.args)
             .current_dir(run.dir)
             .env_clear()
@@ -331,10 +371,13 @@ impl Git {
     /// name a key with any character in it: the filters of the repository, off, for a run of
     /// the runner itself; the programs of the person for a run for the person.
     fn overrides(&self, asked: Asked) -> Vec<(String, String)> {
-        let set = match asked {
-            Asked::Runner => &self.filters_off,
-            Asked::Person => &self.of_the_person,
+        let mut set = match asked {
+            Asked::Runner => self.filters_off.clone(),
+            Asked::Person => self.of_the_person.clone(),
         };
+        if asked == Asked::Person && !self.repository_programs {
+            set.extend(self.filters_off.iter().cloned());
+        }
         let mut env = vec![("GIT_CONFIG_COUNT".to_owned(), set.len().to_string())];
         for (at, (name, value)) in set.iter().enumerate() {
             env.push((format!("GIT_CONFIG_KEY_{at}"), name.clone()));
@@ -355,57 +398,4 @@ async fn held(pipe: Option<impl tokio::io::AsyncRead + Unpin>) -> Option<Vec<u8>
     // A pipe that fails gives what it gave so far; the exit code tells the rest.
     let _ = pipe.read_to_end(&mut kept).await;
     (kept.len() <= MAX_OUTPUT).then_some(kept)
-}
-
-/// The configuration each run gets on its command line, where it wins over each file: no
-/// monitor program, no external diff, no `ext::` transport, no pager, no optional lock, quoted
-/// paths as bytes. A run of the runner itself has no hooks.
-pub(super) fn fixed_configuration(asked: Asked) -> Vec<&'static str> {
-    let mut args = vec![
-        "--no-pager",
-        "--no-optional-locks",
-        "-c",
-        "core.fsmonitor=false",
-        "-c",
-        "core.quotePath=false",
-        "-c",
-        "core.sshCommand=ssh -o BatchMode=yes",
-        "-c",
-        "protocol.ext.allow=never",
-        "-c",
-        "diff.external=",
-        "-c",
-        "advice.detachedHead=false",
-        "-c",
-        "gc.auto=0",
-    ];
-    if asked == Asked::Runner {
-        // No hook, no transport (so no program of a remote, also not for a missing object of a
-        // partial clone), and nothing read from a repository inside the worktree.
-        args.extend([
-            "-c",
-            "core.hooksPath=/dev/null",
-            "-c",
-            "protocol.allow=never",
-            "-c",
-            "status.submoduleSummary=false",
-            "-c",
-            "diff.ignoreSubmodules=all",
-            "-c",
-            "submodule.recurse=false",
-        ]);
-    }
-    args
-}
-
-/// The environment each run gets after the kept names: no prompt, fixed words, a fixed `ssh`,
-/// and no fetch of an object that a partial clone lacks.
-pub(super) fn fixed_environment() -> [(&'static str, &'static str); 5] {
-    [
-        ("GIT_TERMINAL_PROMPT", "0"),
-        ("GIT_SSH_COMMAND", "ssh -o BatchMode=yes"),
-        ("GIT_PAGER", "cat"),
-        ("LC_ALL", "C"),
-        ("GIT_NO_LAZY_FETCH", "1"),
-    ]
 }

@@ -23,6 +23,9 @@ mod tests;
 pub mod trust;
 pub mod worktree;
 
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, PoisonError};
+
 use agent_threads::git::{Changes, GitAction, GitOutcome, GitRefusal, Scope};
 use uuid::Uuid;
 
@@ -58,6 +61,10 @@ pub struct Caller {
     pub running: bool,
     /// The thread whose agent calls; `None` for the person. An agent reads only its own thread.
     pub thread: Option<Uuid>,
+    /// A commit and a push of this thread run the hooks and the filters of the repository.
+    /// Off, they run none: the person commits what they saw, and no program that an agent
+    /// could have written in the repository starts.
+    pub repository_programs: bool,
 }
 
 /// One worktree of a thread, named by the thread and the repository, never by a path.
@@ -67,17 +74,38 @@ pub struct Target<'a> {
     pub repository: &'a str,
 }
 
-/// The Git of the threads of this computer.
+/// One lock for each worktree, by its thread and the name of its repository.
+type Locks = HashMap<(Uuid, String), Arc<tokio::sync::Mutex<()>>>;
+
+/// The Git of the threads of this computer. A clone is cheap and is the same engine: the
+/// runner gives one to each task that does a call, and a call can take minutes (a hook).
 #[derive(Clone, Debug)]
 pub struct Engine {
     git: Git,
     home: Home,
+    /// One lock for each worktree: a commit of the person and the checkpoint of a turn that
+    /// ended never change one worktree at the same time.
+    locks: Arc<Mutex<Locks>>,
 }
 
 impl Engine {
     #[must_use]
-    pub const fn new(git: Git, home: Home) -> Self {
-        Self { git, home }
+    pub fn new(git: Git, home: Home) -> Self {
+        Self {
+            git,
+            home,
+            locks: Arc::default(),
+        }
+    }
+
+    /// Waits until no other task changes the worktree of `repository` of `thread`.
+    async fn alone(&self, thread: Uuid, repository: &str) -> tokio::sync::OwnedMutexGuard<()> {
+        let lock = {
+            let mut locks = self.locks.lock().unwrap_or_else(PoisonError::into_inner);
+            let key = (thread, repository.to_owned());
+            Arc::clone(locks.entry(key).or_default())
+        };
+        lock.lock_owned().await
     }
 
     /// Makes or finds the worktree of a thread. The runner calls it when the person starts a
@@ -86,6 +114,8 @@ impl Engine {
     /// # Errors
     /// As [`worktree::make`].
     pub async fn worktree(&self, plan: worktree::Plan<'_>) -> Result<worktree::Made, GitRefusal> {
+        // One worktree of a thread is made at a time, whatever its repository.
+        let _alone = self.alone(plan.thread, "").await;
         worktree::make(&self.git, &self.home, plan).await
     }
 
@@ -94,6 +124,7 @@ impl Engine {
     /// # Errors
     /// A [`GitRefusal`] when the thread has no worktree or `git` fails.
     pub async fn turn_ended(&self, target: Target<'_>, turn: u32) -> Result<(), GitRefusal> {
+        let _alone = self.alone(target.thread, target.repository).await;
         let worktree = self.home.worktree(target.thread, target.repository)?;
         let git = self.git.for_worktree(&worktree).await?;
         checkpoint::capture(&git, &worktree, turn).await?;
@@ -112,6 +143,12 @@ impl Engine {
             Some(thread) => thread == target.thread,
             None => !caller.agent,
         };
+        // An action that changes something waits for the one before it on this worktree.
+        let _alone = if action.for_the_person() {
+            Some(self.alone(target.thread, target.repository).await)
+        } else {
+            None
+        };
         let done = match self.home.worktree(target.thread, target.repository) {
             Ok(worktree) if own_thread => self.act(caller, &worktree, action).await,
             Ok(_) => Err(GitRefusal::NoWorktree),
@@ -126,7 +163,8 @@ impl Engine {
         worktree: &Worktree,
         action: GitAction,
     ) -> Result<GitOutcome, GitRefusal> {
-        let git = &self.git.for_worktree(worktree).await?;
+        let git = self.git.for_worktree(worktree).await?;
+        let git = &git.with_repository_programs(caller.repository_programs);
         // While a turn runs the files change: nothing is reverted, removed, committed or pushed.
         if caller.running && waits_for_the_turn(&action) {
             return Err(GitRefusal::Running);
@@ -175,8 +213,8 @@ impl Engine {
                 kept: Some(worktree::remove(&self.git, &self.home, worktree).await?),
             },
             GitAction::Trust => {
-                let seen = trust::now(git, worktree).await?;
-                self.rewrite(worktree, |record| record.trusted = Some(seen.entries))?;
+                let seen = to_accept(git, worktree).await?;
+                self.rewrite(worktree, |record| record.trusted = Some(seen))?;
                 GitOutcome::Trusted
             }
         })
@@ -211,8 +249,7 @@ const fn waits_for_the_turn(action: &GitAction) -> bool {
 /// Refuses when a hook or a setting of the repository is not as the person accepted it: a
 /// commit or a push would run or obey it (THR-049).
 async fn accepted(git: &Git, worktree: &Worktree) -> Result<(), GitRefusal> {
-    let seen = trust::now(git, worktree).await?;
-    let what = trust::changed(worktree.record().trusted.as_ref(), &seen.entries);
+    let (what, _) = not_accepted(git, worktree).await?;
     if what.is_empty() {
         Ok(())
     } else {
@@ -223,10 +260,39 @@ async fn accepted(git: &Git, worktree: &Worktree) -> Result<(), GitRefusal> {
 /// The status with the hooks that a commit runs and what changed since the person accepted.
 async fn shown(git: &Git, worktree: &Worktree) -> Result<agent_threads::git::Status, GitRefusal> {
     let mut status = status::of(git, worktree).await?;
-    let seen = trust::now(git, worktree).await?;
-    status.changed = trust::changed(worktree.record().trusted.as_ref(), &seen.entries);
-    status.hooks = seen.hooks;
+    (status.changed, status.hooks) = not_accepted(git, worktree).await?;
     Ok(status)
+}
+
+/// The names of what changed since the person accepted it, and the hooks that a commit runs.
+/// For a thread whose commits run no program of the repository, both are without the hooks.
+async fn not_accepted(
+    git: &Git,
+    worktree: &Worktree,
+) -> Result<(Vec<String>, Vec<String>), GitRefusal> {
+    let seen = trust::now(git, worktree).await?;
+    let mut what = trust::changed(worktree.record().trusted.as_ref(), &seen.entries);
+    if git.repository_programs() {
+        return Ok((what, seen.hooks));
+    }
+    what.retain(|name| !name.starts_with(trust::HOOK));
+    Ok((what, Vec::new()))
+}
+
+/// What the person accepts now. For a thread that runs no hook, no hook was shown as changed,
+/// so the hooks stay as the person accepted them before.
+async fn to_accept(
+    git: &Git,
+    worktree: &Worktree,
+) -> Result<std::collections::BTreeMap<String, String>, GitRefusal> {
+    let mut seen = trust::now(git, worktree).await?.entries;
+    if !git.repository_programs() {
+        let before = worktree.record().trusted.clone().unwrap_or_default();
+        let hook = |name: &String| name.starts_with(trust::HOOK);
+        seen.retain(|name, _| !hook(name));
+        seen.extend(before.into_iter().filter(|(name, _)| hook(name)));
+    }
+    Ok(seen)
 }
 
 /// The changes of `scope`: between two checkpoints, or from the last commit to the files now.
