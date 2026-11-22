@@ -1,2 +1,2 @@
-2026-11-22T00:07:05.836Z
+2026-11-22T00:27:08.678Z
 `bun run quality:documents` failed on the merge commit: docs/mockup/records/agent-usage-v2.md: screen-changed-after-mockup apps/client/src/lib/agent-usage has 2 layout file(s) that changed after 20fd20dbb; compare [agent-usage-v2/index.html](agent-usage-v2/index.html) again
