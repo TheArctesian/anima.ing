@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
 import RoutesSection from '../RoutesSection.svelte';
 import { RoutesStore } from '../store.svelte';
-import { NO_SECOND_FACTOR, NOT_LINUX_ERROR, NOW, fakeCalls, route, type FakeCalls } from './routes.fixture';
+import { AGENT_REFUSED, NO_SECOND_FACTOR, NOT_LINUX_ERROR, NOW, fakeCalls, route, type FakeCalls } from './routes.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -171,15 +171,24 @@ it('SF-232: Check now shows the refusal of the hub on the page of the route', as
   expect(document.querySelector('[role="alert"]')?.textContent).toContain('Turn on the second factor');
 });
 
-it('H21: Remove is off with its reason: it needs a fresh code of the second factor, which the hub cannot check yet', async () => {
+it('H21: Remove asks first, then removes the route and shows the list; a refusal stays in the dialog', async () => {
   await open();
   row('vault.example.com')?.click();
   flushSync();
-  const remove = button('Remove route');
-  expect(remove?.getAttribute('aria-disabled')).toBe('true');
-  const reason = document.getElementById(remove?.getAttribute('aria-describedby') ?? '');
-  expect(reason?.textContent).toContain('a fresh code of your second factor');
-  remove?.click();
+  button('Remove route')?.click();
   flushSync();
-  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  const dialog = () => document.querySelector('[role="dialog"]');
+  expect(dialog()?.textContent).toContain('You cannot undo this.');
+  expect(dialog()?.textContent).toContain('vault.example.com stops reaching');
+  expect(dialog()?.textContent).toContain('Delete the DNS records');
+  calls.removeFails = AGENT_REFUSED;
+  [...(dialog()?.querySelectorAll<HTMLButtonElement>('button') ?? [])].find((each) => each.textContent.trim() === 'Remove route')?.click();
+  await settle();
+  expect(dialog()?.textContent).toContain('never by an AI agent');
+  calls.removeFails = undefined;
+  [...(dialog()?.querySelectorAll<HTMLButtonElement>('button') ?? [])].find((each) => each.textContent.trim() === 'Remove route')?.click();
+  await settle();
+  expect(calls.removed).toEqual(['route-vault', 'route-vault']);
+  expect(row('vault.example.com')).toBeUndefined();
+  expect(row('wiki.example.com')).toBeDefined();
 });

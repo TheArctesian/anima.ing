@@ -2806,7 +2806,7 @@ VoiceOver in WebKit, and how often it speaks during a long turn.
 
 Built on the branch `hosted/routes-section`: the section Routes of the Settings page, in the group Hub and account
 (`apps/client/src/lib/application-routes/`). The vitest tests use fake calls of the hub: they prove each state of the
-list, the page of a route, the refusals of the hub that the section shows, Check now, Check all, and Remove off with its reason. No person
+list, the page of a route, the refusals of the hub that the section shows, Check now, Check all and Remove. No person
 looked at the screen, and no picture of it was compared with the frames of [routes/index.html](mockup/routes/index.html):
 the screen was not run on this computer. No test used a real hub, a real DNS or a real second factor.
 
@@ -2824,8 +2824,9 @@ the screen was not run on this computer. No test used a real hub, a real DNS or 
 4. Select Copy beside the TXT value and paste it in a text editor. Expected: the same value as `anima route show`.
 5. Select Check now with an account that has no second factor. Expected: the refusal of the hub under the title. Turn
    on the second factor and select Check now again. Expected: the time of the check changes.
-6. Look at Remove route on the page of the route. Expected: it is off, with the line that removing a route needs a
-   fresh code of your second factor, which the hub cannot check yet. Selecting it opens nothing.
+6. With an account that has no second factor, select Remove route, then Remove route in the dialog. Expected: no
+   code is asked; the list without the route; `anima route list` does not show it; the history of the device has one
+   entry that names the removed route, its access and its port.
 7. On a hub that is not on Linux (for example a test hub on macOS), select Check all. Expected: "Routing needs a hub
    on Linux." in place of the list.
 
