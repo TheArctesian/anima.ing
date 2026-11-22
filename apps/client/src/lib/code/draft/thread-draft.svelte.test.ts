@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { CallResult } from '$lib/agent-threads/live/live.svelte';
 import type { Action } from '$lib/agent-threads/live/run';
 import { chosen, draftCatalogue, FIRST_CHOICE } from './choice';
+import { noticeParts } from './notice';
 import { addedFolder, draftProjects, headingOf } from './project';
 import { ThreadDraft } from './thread-draft.svelte';
 
@@ -96,5 +97,14 @@ describe('the draft project', () => {
     const known = [{ folder: '/work/anima', name: 'anima', count: 2 }, { folder: null, name: 'No folder', count: 1 }];
     expect(draftProjects(known, '/work/site').map((each) => each.folder)).toEqual(['/work/anima', '/work/site']);
     expect(draftProjects(known, '/work/anima')).toHaveLength(1);
+  });
+});
+
+describe('the notice of a folder', () => {
+  it('shows a warning before the heading as its own paragraph, and the lines under the heading as its list', () => {
+    expect(noticeParts(['This folder holds Anima’s folder.', 'The project files of this folder make Claude Code do these things with no question:', 'Runs the command `x` at Stop.', 'Starts the MCP servers files.'])).toEqual([
+      { words: 'This folder holds Anima’s folder.', items: [] },
+      { words: 'The project files of this folder make Claude Code do these things with no question:', items: ['Runs the command `x` at Stop.', 'Starts the MCP servers files.'] },
+    ]);
   });
 });

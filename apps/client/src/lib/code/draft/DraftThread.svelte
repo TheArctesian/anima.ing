@@ -3,6 +3,7 @@
   import type { ModelLists } from '$lib/agent-threads/live/models';
   import Card from '../composer/Card.svelte';
   import type { Project } from '../inbox/inbox';
+  import { noticeParts } from './notice';
   import { draftProjects, headingOf } from './project';
   import ProjectPicker from './ProjectPicker.svelte';
   import type { ThreadDraft } from './thread-draft.svelte';
@@ -62,8 +63,10 @@
     </div>
     {#if notice !== null}
       <div class="notice" role="note" aria-label="What this folder runs by itself">
-        <p>{notice[0]}</p>
-        {#if notice.length > 1}<ul>{#each notice.slice(1) as line, index (index)}<li>{line}</li>{/each}</ul>{/if}
+        {#each noticeParts(notice) as part, index (index)}
+          <p>{part.words}</p>
+          {#if part.items.length > 0}<ul>{#each part.items as line, at (at)}<li>{line}</li>{/each}</ul>{/if}
+        {/each}
       </div>
     {/if}
     {#key draft}<Card {engine} title="New thread" />{/key}
@@ -144,8 +147,13 @@
     margin: 0;
   }
 
-  .notice ul {
+  .notice p + p,
+  .notice ul + p {
     margin-block-start: var(--space-2);
+  }
+
+  .notice ul {
+    margin-block: var(--space-2) 0;
     padding-inline-start: var(--space-4);
   }
 </style>
