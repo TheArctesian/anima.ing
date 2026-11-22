@@ -51,6 +51,15 @@ describe('09 finding 1 (High): keys inside menus, pickers and dialogs are not th
   });
 });
 
+describe('08 band 17: ⌘B shows or hides the thread list', () => {
+  it('takes ⌘B on a Mac and Ctrl+B elsewhere, but not a B the editor already took', () => {
+    const field = place('<textarea data-at></textarea>');
+    expect(pageKey(press(field, 'b', { metaKey: true }), true, document)).toEqual({ kind: 'inbox' });
+    expect(pageKey(press(field, 'b', { ctrlKey: true }), false, document)).toEqual({ kind: 'inbox' });
+    expect(pageKey(press(field, 'b', { metaKey: true, taken: true }), true, document)).toBeNull();
+  });
+});
+
 describe('09 finding 16: the modifier is ⌘ on a Mac and Ctrl elsewhere', () => {
   it('leaves Ctrl+N to a Mac text field and takes it elsewhere', () => {
     const field = place('<textarea data-at></textarea>');

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { tick } from 'svelte';
   import '../kit/code.css';
   import { moved, type KeyAction } from '$lib/agent-threads/keys';
@@ -47,6 +49,7 @@
       chosen: store.chosen,
       newThread: newOff === null ? () => (starting = true) : undefined,
       open: (id) => void choose(id),
+      settings: () => void goto(resolve('/settings')),
     }),
   );
   const open = $derived(store.chosen === null ? undefined : ((store.listedRows ?? []).find((row) => row.id === store.chosen) ?? (store.thread?.id === store.chosen ? store.thread : undefined)));
@@ -118,6 +121,11 @@
       if (newOff === null) starting = true;
       return;
     }
+    if (action.kind === 'inbox') {
+      event.preventDefault();
+      void toggleInbox();
+      return;
+    }
     if (run(action, event.target)) event.preventDefault();
   }
 </script>
@@ -125,7 +133,7 @@
 <svelte:window {onkeydown} />
 
 {#snippet toggle()}
-  <InboxToggle open={inboxOpen} ontoggle={() => void toggleInbox()} />
+  <InboxToggle open={inboxOpen} key={mac ? '⌘B' : 'Ctrl+B'} ontoggle={() => void toggleInbox()} />
 {/snippet}
 
 <!-- The page Code as T3 Code lays it out (02 section 4): the inbox column beside the chat column, each under its band. -->

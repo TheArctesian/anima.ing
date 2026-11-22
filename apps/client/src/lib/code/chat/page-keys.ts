@@ -1,7 +1,7 @@
 import { keyAction, type KeyAction } from '$lib/agent-threads/keys';
 
 /** A key of the page Code: one of the thread keys (THR-016), or ⌘N for a new thread (02 section 5.3). */
-export type PageKey = KeyAction | { readonly kind: 'new' };
+export type PageKey = KeyAction | { readonly kind: 'new' } | { readonly kind: 'inbox' };
 
 /**
  * Parts that use the arrow keys, Escape and Enter themselves: a key that starts in one is theirs, never the page's.
@@ -27,7 +27,10 @@ function typing(target: EventTarget | null): boolean {
 export function pageKey(event: KeyboardEvent, mac: boolean, doc: Document): PageKey | null {
   if (event.defaultPrevented || doc.querySelector(MODAL) !== null) return null;
   const mod = mac ? event.metaKey : event.ctrlKey;
-  if (mod && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'n') return { kind: 'new' };
+  const plain = mod && !event.shiftKey && !event.altKey;
+  if (plain && event.key.toLowerCase() === 'n') return { kind: 'new' };
+  // ⌘B shows or hides the thread list, as in T3 Code (08 band 17).
+  if (plain && event.key.toLowerCase() === 'b') return { kind: 'inbox' };
   // The ⌘ keys (previous and next, ⌘1 to ⌘9) still act from inside a part; its plain keys are its own.
   if (!mod && event.target instanceof Element && event.target.closest(OWN_KEYS) !== null) return null;
   // The other control key (Ctrl on a Mac, the Windows key elsewhere) reads as a different chord: no page key.

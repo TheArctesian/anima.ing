@@ -44,5 +44,5 @@ it('a quiet row keeps its age, and a snoozed one-liner its wake time, in its nam
   expect(spokenName(quiet)).toContain('3d.');
   document.body.innerHTML = '';
   const snoozed = show({ row: LISTED, state: 'done', status: null, project: 'anima', recedes: true, since: null, wakes: new Date(NOW.getTime() + 3_600_000) }, 'slim', 'snoozed');
-  expect(spokenName(snoozed)).toMatch(/Wakes \d/);
+  expect(spokenName(snoozed)).toContain('Wakes in 1h.');
 });

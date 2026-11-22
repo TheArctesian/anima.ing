@@ -25,7 +25,8 @@
   const id = $props.id();
   /** The first page of Settled holds 10; each "Show more" adds up to 25 (02 section 5.7). */
   let settledShown = $state(10);
-  const keys = $derived((['working', 'snoozed', 'settled'] as const).filter((key) => parts[key].length > 0));
+  /** Working and Snoozed show when they hold a thread; Settled always shows, as the foot of the list (08 inbox 21). */
+  const keys = $derived((['working', 'snoozed', 'settled'] as const).filter((key) => key === 'settled' || parts[key].length > 0));
 </script>
 
 {#snippet row(item: InboxRow, kind: 'card' | 'slim', shelf: 'list' | 'snoozed' | 'settled')}
@@ -84,7 +85,7 @@
                   class="more"
                   onclick={() => {
                     settledShown += 25;
-                  }}><CodeIcon name="chevron-down" />Show {parts.settled.length - settledShown} more</button
+                  }}><CodeIcon name="chevron-down" />Show {Math.min(parts.settled.length - settledShown, 25)} more</button
                 >
               </li>
             {/if}
