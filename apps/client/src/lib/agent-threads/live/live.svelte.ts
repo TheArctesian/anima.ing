@@ -111,10 +111,10 @@ export class LiveThreads {
   }
 
   /** The `@` list of the composer (TH108): the files of the folder of a thread that match `query`, the best first. */
-  async files(thread: string, query: string, most: number): Promise<{ readonly ok: true; readonly paths: readonly FoundFile[] } | { readonly ok: false; readonly words: string }> {
+  async files(thread: string, query: string, most: number): Promise<{ readonly ok: true; readonly paths: readonly FoundFile[]; readonly more: boolean } | { readonly ok: false; readonly words: string }> {
     const result = await this.call({ call: 'files', thread, query, most });
     if (!result.ok) return result;
-    return result.outcome.outcome === 'files' ? { ok: true, paths: result.outcome.paths } : { ok: false, words: 'The thread runner did not answer with files.' };
+    return result.outcome.outcome === 'files' ? { ok: true, paths: result.outcome.paths, more: result.outcome.more } : { ok: false, words: 'The thread runner did not answer with files.' };
   }
 
   /** One update of the watch; an update of a thread that the page does not know yet waits for its row. */

@@ -48,7 +48,7 @@ async fn th108_the_files_of_a_thread_come_best_first_with_no_secret_and_no_link_
         panic!("the thread started");
     };
 
-    let Outcome::Files { paths } = files(&mut client, thread, "composer").await else {
+    let Outcome::Files { paths, more } = files(&mut client, thread, "composer").await else {
         panic!("files");
     };
     let named: Vec<&str> = paths.iter().map(|found| found.path.as_str()).collect();
@@ -56,7 +56,8 @@ async fn th108_the_files_of_a_thread_come_best_first_with_no_secret_and_no_link_
         named,
         ["src/composer", "src/composer.ts", "src/composer/engine.ts"]
     );
-    let Outcome::Files { paths } = files(&mut client, thread, "").await else {
+    assert!(!more);
+    let Outcome::Files { paths, .. } = files(&mut client, thread, "").await else {
         panic!("files");
     };
     assert!(
@@ -66,6 +67,14 @@ async fn th108_the_files_of_a_thread_come_best_first_with_no_secret_and_no_link_
         "{paths:?}"
     );
 
+    assert_eq!(
+        paths
+            .iter()
+            .map(|found| found.path.as_str())
+            .collect::<Vec<_>>(),
+        ["src"],
+        "the top of the folder"
+    );
     assert_eq!(
         files(&mut client, Uuid::now_v7(), "").await,
         Outcome::Refused {

@@ -108,8 +108,8 @@ export type Outcome =
   | { readonly outcome: 'listings'; readonly listings: readonly Listing[] }
   /** What the project files of a folder make the program do with no question (THR-046); empty when nothing. */
   | { readonly outcome: 'folder'; readonly notice: readonly string[] }
-  /** The files and folders of the folder of a thread, the best match first (TH108). */
-  | { readonly outcome: 'files'; readonly paths: readonly FoundFile[] }
+  /** The files and folders of the folder of a thread, the best match first; `more` when more matched (TH108). */
+  | { readonly outcome: 'files'; readonly paths: readonly FoundFile[]; readonly more: boolean }
   /**
    * `said`: the words of the runner for a refusal that names a program and its path; `answered`: the other copies of a
    * program that did not answer, which did (TH97).
@@ -144,7 +144,7 @@ export type Action =
   | { readonly call: 'folder'; readonly folder: string }
   | { readonly call: 'listings' }
   | { readonly call: 'change_listing'; readonly thread: string; readonly change: ListingChange }
-  /** The `@` list of the composer (TH108): at most `most` paths that match `query`. */
+  /** The `@` list of the composer (TH108): at most `most` paths that match `query`; `most` is 1 to 200. */
   | { readonly call: 'files'; readonly thread: string; readonly query: string; readonly most: number };
 
 /**
@@ -343,7 +343,7 @@ export function outcomeFrom(value: unknown): Outcome | null {
     }
     case 'files': {
       const paths = filesFrom(value.paths);
-      return paths === null ? null : { outcome: 'files', paths };
+      return paths === null ? null : { outcome: 'files', paths, more: value.more === true };
     }
     case 'refused':
       return refusedFrom(value.why);

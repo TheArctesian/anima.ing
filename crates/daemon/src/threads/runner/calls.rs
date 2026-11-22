@@ -16,6 +16,7 @@ use crate::threads::wire;
 mod files;
 mod reads;
 mod refusal_lines;
+pub(super) use files::Walked;
 pub(super) use refusal_lines::RefusalLines;
 use refusal_lines::Say;
 

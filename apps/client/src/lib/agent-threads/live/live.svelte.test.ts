@@ -105,7 +105,7 @@ describe('the calls of the page to the runner', () => {
   });
 
   it('TH108: the files of a thread come as the runner sent them; a frame that does not read is not taken', async () => {
-    const sent = outcomeFrom({ outcome: 'files', paths: [{ path: 'src', folder: true }, { path: 'src/main.rs', folder: false }] });
+    const sent = outcomeFrom({ outcome: 'files', paths: [{ path: 'src', folder: true }, { path: 'src/main.rs', folder: false }], more: true });
     expect(outcomeFrom({ outcome: 'files', paths: [{ path: 'src' }] })).toBeNull();
     const asked: unknown[] = [];
     const live = new LiveThreads(
@@ -115,7 +115,7 @@ describe('the calls of the page to the runner', () => {
       }),
       () => AWAY,
     );
-    expect(await live.files(THREAD, 'main', 20)).toEqual({ ok: true, paths: [{ path: 'src', folder: true }, { path: 'src/main.rs', folder: false }] });
+    expect(await live.files(THREAD, 'main', 20)).toEqual({ ok: true, paths: [{ path: 'src', folder: true }, { path: 'src/main.rs', folder: false }], more: true });
     expect(asked).toEqual([{ call: 'files', thread: THREAD, query: 'main', most: 20 }]);
   });
 

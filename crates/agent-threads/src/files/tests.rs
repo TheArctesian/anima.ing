@@ -10,6 +10,10 @@ fn found(paths: &[(&str, bool)]) -> Vec<FoundPath> {
         .collect()
 }
 
+fn ranked_paths(found: &[FoundPath], query: &str, most: usize) -> Vec<FoundPath> {
+    ranked(found, query, most).0
+}
+
 fn paths(list: &[FoundPath]) -> Vec<&str> {
     list.iter().map(|entry| entry.path.as_str()).collect()
 }
@@ -25,6 +29,9 @@ fn th108_secrets_and_folders_of_tools_are_left_out() {
         (".git", true),
         ("apps/client/node_modules", true),
         ("target", true),
+        ("config/.env", true),
+        ("aws/credentials", true),
+        ("id_rsa.d", true),
     ] {
         assert!(left_out(path, folder), "{path}");
     }
@@ -52,7 +59,7 @@ fn th108_the_best_match_comes_first_and_the_answer_is_held_to_most() {
         ("docs/c-o-m-p.md", false),
     ]);
     assert_eq!(
-        paths(&ranked(&all, " Composer ", 10)),
+        paths(&ranked_paths(&all, " Composer ", 10)),
         [
             "src/composer",
             "src/composer.ts",
@@ -61,20 +68,27 @@ fn th108_the_best_match_comes_first_and_the_answer_is_held_to_most() {
             "src/composer/engine.ts",
         ]
     );
-    assert_eq!(paths(&ranked(&all, "rmd", 10)), ["README.md"]);
-    assert_eq!(paths(&ranked(&all, "composer", 2)).len(), 2);
-    assert!(ranked(&all, "zzz", 10).is_empty());
+    assert_eq!(paths(&ranked_paths(&all, "rmd", 10)), ["README.md"]);
+    assert_eq!(paths(&ranked_paths(&all, "composer", 2)).len(), 2);
+    assert_eq!(ranked(&all, "zzz", 10), (Vec::new(), false));
+    assert!(ranked(&all, "composer", 2).1, "more matched");
+    assert!(!ranked(&all, "composer", 5).1);
 }
 
 #[test]
-fn th108_an_empty_query_lists_the_walk_from_the_top() {
-    let all = found(&[("a", true), ("b.rs", false), ("a/c.rs", false)]);
-    assert_eq!(paths(&ranked(&all, "", 2)), ["a", "b.rs"]);
-    let many: Vec<FoundPath> = (0..MOST_FOUND + 50)
-        .map(|n| FoundPath {
-            path: format!("f{n}"),
-            folder: false,
-        })
-        .collect();
-    assert_eq!(ranked(&many, "", usize::MAX).len(), MOST_FOUND);
+fn th108_an_empty_query_lists_the_top_folders_first_then_the_files() {
+    let all = found(&[
+        ("b.rs", false),
+        ("z", true),
+        ("a", true),
+        ("a/c.rs", false),
+        ("A.md", false),
+    ]);
+    assert_eq!(
+        paths(&ranked_paths(&all, "  ", 10)),
+        ["a", "z", "A.md", "b.rs"]
+    );
+    let (first, more) = ranked(&all, "", 1);
+    assert_eq!(paths(&first), ["a"]);
+    assert!(more);
 }

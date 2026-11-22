@@ -108,7 +108,7 @@ pub enum Action {
     /// A change of the projects (TH107): only the person makes it.
     ChangeProject { change: ProjectChange },
     /// The files and folders of the working folder of a thread that match `query`, at most
-    /// `most` (TH108): the `@` list of the composer. Only the person asks it.
+    /// `most`, which is at most 200 (TH108): the `@` list of the composer. Only the person asks it.
     Files {
         thread: Uuid,
         #[serde(default)]
@@ -167,9 +167,11 @@ pub enum Outcome {
     Projects {
         projects: Vec<Project>,
     },
-    /// The best match first (TH108).
+    /// The best match first (TH108); `more` when more paths matched than were asked.
     Files {
         paths: Vec<FoundPath>,
+        #[serde(default)]
+        more: bool,
     },
     Refused {
         why: Refusal,

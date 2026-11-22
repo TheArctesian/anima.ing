@@ -5,10 +5,12 @@
 //! Pure: the runner walks the folder (I/O) and gives each path here. A path is relative to the
 //! folder, with `/` between its parts. The files are never opened.
 
+mod ignore;
 mod secret;
 #[cfg(test)]
 mod tests;
 
+pub use ignore::Ignored;
 pub use secret::{is_secret, secret_paths};
 
 use serde::{Deserialize, Serialize};
@@ -53,34 +55,40 @@ pub struct FoundPath {
 pub fn left_out(path: &str, folder: bool) -> bool {
     let name = path.rsplit('/').next().unwrap_or_default();
     if folder {
-        SKIPPED_FOLDERS.contains(&name) || name.eq_ignore_ascii_case("secrets")
+        SKIPPED_FOLDERS.contains(&name) || name.eq_ignore_ascii_case("secrets") || is_secret(path)
     } else {
         is_secret(path)
     }
 }
 
-/// The paths that match `query`, the best first, at most `most` of them. An empty query gives
-/// the paths in the order of the walk, which lists the top of the folder first.
+/// The paths that match `query`, the best first, at most `most` of them, and whether more
+/// matched. An empty query gives the top of the folder: its folders, then its files, by name.
 #[must_use]
-pub fn ranked(found: &[FoundPath], query: &str, most: usize) -> Vec<FoundPath> {
+pub fn ranked(found: &[FoundPath], query: &str, most: usize) -> (Vec<FoundPath>, bool) {
     let asked = query.trim().to_lowercase();
-    let most = most.min(MOST_FOUND);
-    if asked.is_empty() {
-        return found.iter().take(most).cloned().collect();
-    }
-    let mut scored: Vec<(u8, usize, &FoundPath)> = found
-        .iter()
-        .filter_map(|entry| {
-            let score = score(&entry.path.to_lowercase(), &asked)?;
-            Some((score, entry.path.matches('/').count(), entry))
-        })
-        .collect();
+    let mut scored: Vec<(u8, usize, &FoundPath)> = if asked.is_empty() {
+        found
+            .iter()
+            .filter(|entry| !entry.path.contains('/'))
+            .map(|entry| (u8::from(!entry.folder), 0, entry))
+            .collect()
+    } else {
+        found
+            .iter()
+            .filter_map(|entry| {
+                let score = score(&entry.path.to_lowercase(), &asked)?;
+                Some((score, entry.path.matches('/').count(), entry))
+            })
+            .collect()
+    };
     scored.sort_by(|a, b| (a.0, a.1, &a.2.path).cmp(&(b.0, b.1, &b.2.path)));
-    scored
+    let more = scored.len() > most;
+    let best = scored
         .into_iter()
         .take(most)
         .map(|(_, _, entry)| entry.clone())
-        .collect()
+        .collect();
+    (best, more)
 }
 
 /// How well `path` matches `asked` (both lower case): 0 is the best; `None` when it does not.

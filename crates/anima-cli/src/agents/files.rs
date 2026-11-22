@@ -1,10 +1,11 @@
 //! `anima agents files`: the files and folders of the working folder of a thread that the runner
 //! started, the best match first (TH108), as the `@` list of the composer gives them. The runner
-//! leaves out secrets and the folders of tools and of build output, and follows no link. Only
-//! the person asks it: the runner refuses it from a process of an agent, so no MCP tool gives it.
+//! leaves out secrets, the folders of tools and of build output and what `.gitignore` leaves
+//! out, and follows no link. Only the person asks it: the runner refuses it from a process of an
+//! agent, so no MCP tool gives it.
 
 use agent_threads::control::{Action, Outcome};
-use agent_threads::files::{FoundPath, MOST_FOUND};
+use agent_threads::files::FoundPath;
 use uuid::Uuid;
 
 use super::drive::accepted;
@@ -34,16 +35,22 @@ pub async fn files(args: FilesArgs, invocation: &Invocation) -> Result<(), Failu
     let action = Action::Files {
         thread: args.thread,
         query: args.query,
-        most: usize::from(args.most).min(MOST_FOUND),
+        most: usize::from(args.most),
     };
-    let Outcome::Files { paths } = accepted(link.call(action).await?)? else {
+    let Outcome::Files { paths, more } = accepted(link.call(action).await?)? else {
         return Ok(());
     };
     if paths.is_empty() {
         invocation.output.message("No file matches.");
         return Ok(());
     }
-    invocation.output.data(&paths, |rows| table(rows))
+    invocation.output.data(&paths, |rows| table(rows))?;
+    if more {
+        invocation
+            .output
+            .message("More files match: give more words, or a larger --most.");
+    }
+    Ok(())
 }
 
 fn table(rows: &[FoundPath]) -> Table {
