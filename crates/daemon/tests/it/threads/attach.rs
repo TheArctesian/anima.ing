@@ -9,7 +9,7 @@ use uuid::Uuid;
 use super::runner::{Client, Kit, change, state_is};
 
 /// A made Claude Code that writes each prompt line it gets to `prompts.jsonl`, then ends the turn.
-const CLAUDE_KEEPS: &str = r#"#!/usr/bin/perl
+pub(super) const CLAUDE_KEEPS: &str = r#"#!/usr/bin/perl
 $| = 1;
 my $sid = "none";
 for my $i (0 .. $#ARGV) { $sid = $ARGV[$i + 1] if $ARGV[$i] eq "--session-id"; }
@@ -27,7 +27,7 @@ while (my $line = <STDIN>) {
 /// The first bytes of a PNG of 64 by 64 pixels.
 const PNG: &[u8] = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x40\0\0\0\x40-the-rest";
 
-fn encoded(bytes: &[u8]) -> String {
+pub(super) fn encoded(bytes: &[u8]) -> String {
     base64::engine::general_purpose::STANDARD.encode(bytes)
 }
 
@@ -42,6 +42,8 @@ async fn idle_thread(kit: &Kit, client: &mut Client) -> Uuid {
             effort: None,
             prompt: "first".to_owned(),
             program_path: None,
+            draft: None,
+            attachments: Vec::new(),
         })
         .await;
     let Outcome::Started { thread } = client.done(start).await else {
@@ -68,13 +70,14 @@ async fn attach(client: &mut Client, thread: Uuid, name: &str, bytes: &[u8]) -> 
             mime: mime.to_owned(),
             size: bytes.len() as u64,
             bytes: encoded(bytes),
+            draft: false,
         })
         .await;
     client.done(call).await
 }
 
 /// The `count`th prompt line that the made program got.
-async fn prompt_line(kit: &Kit, count: usize) -> serde_json::Value {
+pub(super) async fn prompt_line(kit: &Kit, count: usize) -> serde_json::Value {
     for _ in 0..200 {
         let lines =
             std::fs::read_to_string(kit.path("work").join("prompts.jsonl")).unwrap_or_default();
@@ -88,7 +91,7 @@ async fn prompt_line(kit: &Kit, count: usize) -> serde_json::Value {
 
 /// The path of the last file that the words name: below `attachments`, a stored name with no
 /// text of the person, then the name of the person as a JSON string.
-fn last_file<'a>(words: &'a str, attachments: &std::path::Path) -> &'a str {
+pub(super) fn last_file<'a>(words: &'a str, attachments: &std::path::Path) -> &'a str {
     let (path, name) = words
         .rsplit("\n- ")
         .next()
@@ -112,6 +115,7 @@ async fn attach_in_two_parts(client: &mut Client, thread: Uuid) -> Uuid {
             mime: "image/png".to_owned(),
             size: PNG.len() as u64,
             bytes: encoded(head),
+            draft: false,
         })
         .await;
     let Outcome::Attached {
@@ -216,6 +220,7 @@ async fn th111_an_image_that_is_not_its_type_and_a_file_over_the_limit_are_refus
             mime: "video/quicktime".to_owned(),
             size: 51 * 1024 * 1024,
             bytes: String::new(),
+            draft: false,
         })
         .await;
     assert!(matches!(
@@ -229,6 +234,7 @@ async fn th111_an_image_that_is_not_its_type_and_a_file_over_the_limit_are_refus
             mime: "text/plain".to_owned(),
             size: 1,
             bytes: encoded(b"a"),
+            draft: false,
         })
         .await;
     assert_eq!(

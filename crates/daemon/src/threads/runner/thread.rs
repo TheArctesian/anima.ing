@@ -153,19 +153,24 @@ impl Thread {
 
     /// The first steps of a new thread: its prompt, and the first line of the program.
     pub fn begin(&mut self, prompt: &str) -> Vec<Step> {
+        self.begin_with(&Prompt::plain(prompt))
+    }
+
+    /// The first steps of a new thread whose first prompt has files (TH111).
+    pub fn begin_with(&mut self, prompt: &Prompt) -> Vec<Step> {
         self.held = true;
         self.pending = 1;
-        self.row.title = first_line(prompt, agent_threads::TITLE_LENGTH);
-        let mut steps = vec![prompt_change(prompt)];
+        self.row.title = first_line(&prompt.text, agent_threads::TITLE_LENGTH);
+        let mut steps = Self::sent(&Shown::of(prompt));
         match &mut self.driver {
             Driver::Claude(_) => {
                 // Its answer names the models of the program (TH104).
                 steps.push(Step::Write(ClaudeInput::initialize("anima-initialize")));
-                steps.push(Step::Write(ClaudeInput::prompt(prompt)));
+                steps.push(Step::Write(ClaudeInput::prompt_with(prompt)));
             }
             Driver::Codex(codex) => {
                 steps.push(Step::Write(codex.begin()));
-                codex.prompt(&Prompt::plain(prompt));
+                codex.prompt(prompt);
             }
         }
         steps

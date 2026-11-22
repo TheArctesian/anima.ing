@@ -4,7 +4,7 @@
 use std::path::{Path, PathBuf};
 
 use agent_threads::control::{Refusal, RunState, ThreadRow, Workspace};
-use agent_threads::drive::{Effort, Launch, Mode, Model, Program, SessionStart};
+use agent_threads::drive::{Launch, Model, Program, SessionStart};
 use uuid::Uuid;
 
 use super::calls::codex_of;
@@ -15,6 +15,9 @@ use super::{Runner, Waits, login};
 /// The shortest time between two asks of the login shell after a program was not found.
 const ASK_AGAIN: std::time::Duration = std::time::Duration::from_secs(60);
 use crate::threads::wire;
+
+mod new_thread;
+pub(super) use new_thread::NewThread;
 
 /// The starts whose copy is being asked for its version (TH97).
 pub(super) struct Asks {
@@ -44,44 +47,6 @@ struct Asking {
     copies: Vec<PathBuf>,
 }
 
-/// A new thread as the client named it.
-pub(super) struct NewThread {
-    pub program: Program,
-    pub folder: PathBuf,
-    pub mode: Mode,
-    pub model: Option<String>,
-    pub effort: Option<Effort>,
-    pub prompt: String,
-    pub program_path: Option<PathBuf>,
-}
-
-impl NewThread {
-    /// The new thread of a start call; `None` for a different call, and for a start that asks
-    /// Codex to plan first, which Codex cannot do (TH105).
-    pub(super) fn of(action: agent_threads::control::Action) -> Option<Self> {
-        match action {
-            agent_threads::control::Action::Start {
-                program,
-                folder,
-                mode,
-                model,
-                effort,
-                prompt,
-                program_path,
-            } if !(program == Program::Codex && mode == Mode::Plan) => Some(Self {
-                program,
-                folder,
-                mode,
-                model,
-                effort,
-                prompt,
-                program_path,
-            }),
-            _ => None,
-        }
-    }
-}
-
 impl Runner {
     /// Checks a new thread, counts it against the soft limit (THR-114) and asks the holder to
     /// start its program; the answer goes to the client when the holder answers.
@@ -89,6 +54,7 @@ impl Runner {
         // A start whose copy is being asked counts against the soft limit too.
         self.may_start(u32::try_from(self.asks.open.len()).unwrap_or(u32::MAX))?;
         chosen_folder(&new.folder, self.dir.parent().unwrap_or(&self.dir))?;
+        self.attached.ready(new.draft, &new.attachments)?;
         if login::find(new.program, &self.env, login::executable, login::trusted).is_none() {
             self.ask_login_again(new.program).await;
         }
@@ -231,6 +197,7 @@ impl Runner {
             self.threads.remove(&id);
             return Err(Refusal::Holder);
         };
+        let files = self.attached.adopt(new.draft, id, &new.attachments);
         let prompt = new.prompt;
         self.waits.insert(
             command,
@@ -238,6 +205,7 @@ impl Runner {
                 thread: id,
                 back,
                 prompt,
+                files,
             },
         );
         Ok(())

@@ -79,6 +79,12 @@ pub enum Action {
         /// the copies the runner finds (TH97).
         #[serde(default, skip_serializing_if = "Option::is_none")]
         program_path: Option<PathBuf>,
+        /// The key of the draft whose files go with the first prompt (TH111).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        draft: Option<Uuid>,
+        /// The files of the draft for the first prompt, in the order of the person.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        attachments: Vec<Uuid>,
     },
     /// A prompt to a thread: to its running turn, or as a new turn, with the files that the
     /// person attached for it (TH111).
@@ -170,6 +176,10 @@ pub enum Action {
         mime: String,
         size: u64,
         bytes: String,
+        /// `thread` is the key of a draft that the page made, not a thread: the files wait for
+        /// the start that names it (TH111).
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        draft: bool,
     },
     /// The next part of a file that is not complete yet, in base64 (TH111).
     AttachMore {

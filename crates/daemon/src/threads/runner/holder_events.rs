@@ -7,6 +7,7 @@ mod refused;
 
 pub(super) use older::Standing;
 mod signed_out;
+mod started;
 
 use agent_threads::control::{Change, Outcome, Refusal, RunState};
 use agent_threads::drive::DriveEvent;
@@ -127,6 +128,7 @@ impl Runner {
                 thread,
                 back,
                 prompt,
+                files,
             }) = self.waits.remove(&command)
             else {
                 continue;
@@ -136,28 +138,13 @@ impl Runner {
                 .get(&thread)
                 .is_some_and(|thread| thread.row.state != RunState::Stopped);
             let result = if running {
-                self.began(thread, &prompt).await
+                self.began(thread, &prompt, &files).await
             } else {
                 self.threads.remove(&thread);
                 refused(Refusal::Holder)
             };
             self.answer_late(Some(&back), Some(thread), result);
         }
-    }
-
-    /// The program of a new thread runs: its first prompt goes to it.
-    async fn began(&mut self, id: Uuid, prompt: &str) -> Outcome {
-        let Some(thread) = self.threads.get_mut(&id) else {
-            return refused(Refusal::Holder);
-        };
-        if thread.row.state == RunState::Stopped {
-            return refused(Refusal::NotRunning);
-        }
-        let steps = thread.begin(prompt);
-        self.note(Kind::Start, Some(id), "started");
-        let _ = self.apply(id, steps).await;
-        self.save();
-        Outcome::Started { thread: id }
     }
 
     async fn lines(&mut self, key: &str, first: u64, lines: Vec<Line>) {
@@ -261,8 +248,9 @@ impl Runner {
                 thread,
                 back,
                 prompt,
+                files,
             } => {
-                let result = self.start_done(thread, &prompt, &outcome).await;
+                let result = self.start_done(thread, (&prompt, &files), &outcome).await;
                 (Some(back), Some(thread), result)
             }
             Waits::Stop { back } => {
@@ -293,15 +281,6 @@ impl Runner {
         }
         if let Some(back) = back {
             back.answer(result);
-        }
-    }
-
-    async fn start_done(&mut self, id: Uuid, prompt: &str, outcome: &HolderOutcome) -> Outcome {
-        if matches!(outcome, HolderOutcome::Refused { .. }) {
-            self.threads.remove(&id);
-            refused(Refusal::Holder)
-        } else {
-            self.began(id, prompt).await
         }
     }
 

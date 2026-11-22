@@ -309,6 +309,7 @@ fn too_large(name: &str, why: &str) -> Refusal {
     }
 }
 
+mod drafts;
 mod taking;
 #[cfg(test)]
 mod tests;

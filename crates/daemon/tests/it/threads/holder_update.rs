@@ -58,6 +58,8 @@ async fn th98_an_older_holder_is_named_kept_while_a_thread_runs_and_replaced_aft
             effort: None,
             prompt: "Run the command".to_owned(),
             program_path: None,
+            draft: None,
+            attachments: Vec::new(),
         })
         .await;
     let Outcome::Started { thread } = client.done(start).await else {
@@ -110,6 +112,8 @@ fn start_action(kit: &Kit) -> Action {
         effort: None,
         prompt: "Run the command".to_owned(),
         program_path: None,
+        draft: None,
+        attachments: Vec::new(),
     }
 }
 
