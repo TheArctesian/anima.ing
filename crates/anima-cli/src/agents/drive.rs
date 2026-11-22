@@ -6,7 +6,9 @@
 
 use std::path::PathBuf;
 
-use agent_threads::control::{Action, OVER_LIMIT, Outcome, Refusal, Reply, RunState, ThreadRow};
+use agent_threads::control::{
+    Action, OVER_LIMIT, Outcome, Refusal, Reply, RunState, ThreadRow, WorkspaceKind,
+};
 use agent_threads::drive::{Answer, Effort, Mode, Program};
 use uuid::Uuid;
 
@@ -290,7 +292,9 @@ pub async fn running(invocation: &Invocation) -> Result<(), Failure> {
 }
 
 fn table(rows: &[ThreadRow]) -> Table {
-    let mut table = Table::new(vec!["STATE", "PROGRAM", "TITLE", "FOLDER", "THREAD"]);
+    let mut table = Table::new(vec![
+        "STATE", "PROGRAM", "TITLE", "FOLDER", "CONTEXT", "THREAD",
+    ]);
     for row in rows {
         let state = serde_json::to_value(row.state).ok();
         table.row(vec![
@@ -302,11 +306,37 @@ fn table(rows: &[ThreadRow]) -> Table {
                 row.program,
             ))),
             Cell::new(&row.title),
-            Cell::new(&row.folder.display().to_string()),
+            Cell::new(&folder_words(row)),
+            Cell::new(&context_words(row)),
             Cell::new(&row.id.to_string()),
         ]);
     }
     table
+}
+
+/// The folder of a row, with "(worktree)" when it is a linked worktree of Git (TH112).
+fn folder_words(row: &ThreadRow) -> String {
+    let folder = row.folder.display();
+    match &row.workspace {
+        Some(workspace) if workspace.kind == WorkspaceKind::Worktree => {
+            format!("{folder} (worktree)")
+        }
+        _ => folder.to_string(),
+    }
+}
+
+/// How full the context window is, as the program last said it (TH112); "-" when it did not.
+fn context_words(row: &ThreadRow) -> String {
+    match row
+        .usage
+        .as_ref()
+        .and_then(|usage| usage.context.zip(usage.window))
+    {
+        Some((context, window)) if window > 0 => {
+            format!("{}%", context.saturating_mul(100) / window)
+        }
+        _ => "-".to_owned(),
+    }
 }
 
 pub(super) const fn program_key(program: Program) -> &'static str {

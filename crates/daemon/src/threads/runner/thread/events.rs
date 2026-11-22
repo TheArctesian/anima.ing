@@ -76,6 +76,7 @@ impl Thread {
                 }
             }
             DriveEvent::State { state } => self.program = Some(*state),
+            DriveEvent::Usage { usage } => self.row.usage = Some(usage.clone()),
             DriveEvent::TurnEnded { outcome, .. } => {
                 self.program = Some(ProgramState::Idle);
                 self.turn_ended(*outcome);

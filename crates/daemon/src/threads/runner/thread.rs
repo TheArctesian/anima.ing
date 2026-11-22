@@ -258,7 +258,7 @@ impl Thread {
         self.row.open.clear();
         steps.push(Step::Change(Change::State {
             state: RunState::Stopped,
-            row: self.row.clone(),
+            row: Box::new(self.row.clone()),
         }));
         steps
     }
@@ -312,7 +312,7 @@ impl Thread {
         self.row.open = open;
         Some(Step::Change(Change::State {
             state,
-            row: self.row.clone(),
+            row: Box::new(self.row.clone()),
         }))
     }
 
