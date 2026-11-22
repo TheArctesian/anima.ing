@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { RoutesStore } from '../store.svelte';
-import { NO_SECOND_FACTOR, NOT_LINUX_ERROR, NOW, ROUTES, fakeCalls, route } from './routes.fixture';
+import { NO_SECOND_FACTOR, NO_SUCH_ROUTE, NOT_LINUX_ERROR, NOW, ROUTES, fakeCalls, route } from './routes.fixture';
 
 const make = (calls = fakeCalls()) => ({ calls, store: new RoutesStore(calls, true, () => NOW) });
 
@@ -60,3 +60,15 @@ it('H21: Check all checks each route in turn', async () => {
   expect(calls.checked).toEqual(ROUTES.map((each) => each.id));
 });
 
+it('H21: a removal takes the route out of the list and shows the list again; a refused one changes nothing', async () => {
+  const { calls, store } = make();
+  await store.open();
+  store.select('route-vault');
+  calls.removeFails = NO_SUCH_ROUTE;
+  expect((await store.remove('route-vault')).ok).toBe(false);
+  expect(store.shown?.id).toBe('route-vault');
+  calls.removeFails = undefined;
+  expect((await store.remove('route-vault')).ok).toBe(true);
+  expect(store.selected).toBeNull();
+  expect(store.routes.map((each) => each.id)).not.toContain('route-vault');
+});

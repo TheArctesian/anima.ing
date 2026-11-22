@@ -10,7 +10,6 @@ use crate::{
         devices::Device,
         events::{AuditAction, AuditTarget, Severity, Source, TrailEntry},
     },
-    ids::RouteId,
     work::routes::{Route, proof::Proof},
 };
 
@@ -65,11 +64,12 @@ pub(super) fn checked(route: &Route, device: &Device) -> TrailEntry {
     )
 }
 
-pub(super) fn removed(route: RouteId, name: &str, device: &Device) -> TrailEntry {
+/// The removal names what it took away: the same fields as the addition (LOG-005).
+pub(super) fn removed(route: &Route, device: &Device) -> TrailEntry {
     entry(
         device,
         AuditAction::Delete,
-        format!("Public name {name} removed."),
-        json!({ "routeId": route.to_string(), "name": name }),
+        format!("Public name {} removed.", route.name),
+        fields(route),
     )
 }
