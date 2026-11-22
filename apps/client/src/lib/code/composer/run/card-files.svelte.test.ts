@@ -240,3 +240,53 @@ describe('the room of the runner, as the composer card counts it', () => {
     }
   });
 });
+
+describe('the chat of a file of the composer card', () => {
+  it('sends and gives up each file through the engine that took it, also when the engine of a different chat is the one of now', async () => {
+    const first = engineOf();
+    const second = engineOf();
+    let now = first.engine;
+    const card = new CardState(() => now, undefined, '⌘');
+    card.add([text('a.txt'), text('b.txt')]);
+    // A different chat is opened before the line of uploads reaches the files.
+    now = second.engine;
+    await settle();
+    first.going[0]?.end({ state: 'sent', id: 'f1' });
+    await settle();
+    expect(first.going.map((file) => file.name)).toEqual(['a.txt', 'b.txt']);
+    expect(second.going).toEqual([]);
+    card.remove(card.attachments[0]?.id ?? '');
+    card.dispose();
+    first.going[1]?.end({ state: 'sent', id: 'f2' });
+    await settle();
+    expect(first.discarded).toEqual(['f1', 'f2']);
+    expect(second.discarded).toEqual([]);
+  });
+
+  it('counts no file that the runner dropped after one hour in its room', async () => {
+    const { engine, going } = engineOf();
+    let clock = 0;
+    const olds = ['chat-old-a', 'chat-old-b'].map((key) => new CardState(() => engine, key, '⌘', () => clock));
+    for (const old of olds) {
+      old.add(Array.from({ length: 100 }, (_, at) => text(`o${String(at)}.txt`, 1)));
+      for (let at = 0; at < 100; at += 1) {
+        await settle();
+        going.at(-1)?.end({ state: 'sent', id: `old-${String(going.length)}` });
+      }
+      await settle();
+      old.keep();
+    }
+    const card = new CardState(() => engine, 'chat-new-files', '⌘', () => clock);
+    clock = 59 * 60 * 1000;
+    card.add([text('over.txt')]);
+    expect(card.attachments).toEqual([]);
+    clock = 61 * 60 * 1000;
+    card.add([text('room.txt')]);
+    expect(card.attachments).toHaveLength(1);
+    card.dispose();
+    for (const old of olds) {
+      for (const attachment of old.attachments) old.remove(attachment.id);
+      old.keep();
+    }
+  });
+});
