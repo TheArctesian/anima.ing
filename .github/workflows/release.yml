@@ -276,6 +276,7 @@ jobs:
     if: (needs.commit.outputs.release == 'true' || (needs.commit.outputs.release_ios == 'true' && vars.ANIMA_PUBLIC_TESTFLIGHT == 'on')) && needs.commit.outputs.gated != 'true'
     permissions:
       contents: read
+      actions: read
     uses: ./.github/workflows/gates.yml
     with:
       ref: ${{ needs.commit.outputs.sha }}
