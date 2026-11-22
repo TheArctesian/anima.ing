@@ -100,7 +100,8 @@ because a hosted hub keeps its database in the pool (R-130).
 ### Clients
 
 - **FND-007.** Each client must keep a local read-only copy of the data that it showed recently:
-  devices, checks, recent metrics and the event log. The size of the copy must fit the device.
+  devices, the status of the checks, recent metrics and the event log (R-NEW-offlinecopy a). The size of the
+  copy must fit the device.
   The client must show the age of this data (NET-004). The copy must not contain a credential.
   IOS-003 already requires this copy for iOS.
 
@@ -129,8 +130,8 @@ The operator will use only the hosted version (R-130). This changes FND-006:
   device, and the event log. A query is added to the list only when its answer holds no credential. The answer of a
   mutation is never kept.
 - The checks of a device are not kept. The settings of a check can hold a credential: a push path, a header, a body
-  or a URL. The device list and the device still show the status that the checks gave. To keep the checks, the hub
-  must first give them without these values; that is not planned.
+  or a URL. The device list and the device still show the status that the checks gave, and that status is what
+  FND-007 requires (R-NEW-offlinecopy a). The hub gets no field that gives the checks without these values.
 - The event log asks from a moment that moves with the clock. The copy does not use that moment, so the copy of the
   last hour, of the last day and of the last week of one filter are one copy: the newest answer.
 - The copy is read-only. A change that the operator starts while the hub does not answer fails as before.
@@ -141,11 +142,12 @@ The operator will use only the hosted version (R-130). This changes FND-006:
 - The size: at most 100 answers, each of at most 1 MB of text. The oldest answers go first. A copy older than 30 days
   is not shown.
 - The place: the IndexedDB store of the web view of the application, on this computer. It is not encrypted by the
-  application. Sign-out deletes it, and so does "Leave this hub". If the delete fails, the application says so. The
+  application (R-NEW-offlinecopy b): the copy is only as protected as the disk of this computer, so the encryption
+  of the disk by the operating system is its protection. Sign-out deletes it, and so does "Leave this hub". If the delete fails, the application says so. The
   application also deletes it when the hub refuses the access token. An answer that arrives after the delete is not
   kept.
-- Not done: a hub at an `http` address on this computer gets no copy, because the application does not read its
-  token when no program listens there. The IndexedDB store has an automatic test against an
+- A hub at an `http` address on this computer gets no copy, because the application does not read its
+  token when no program listens there. This is decided and is not a defect (R-NEW-offlinecopy c). The IndexedDB store has an automatic test against an
   IndexedDB in memory (`indexed.test.ts`, commit `b4b26df5`); the web view of the installed application stays the check
   HT-030 (PLN-014).
 - "Load older" in the event log with no hub gives the copy of the page after the same row, when the application
@@ -176,6 +178,7 @@ The operator will use only the hosted version (R-130). This changes FND-006:
 | F1 | FND-006 for a hub on a server: the procedure `docs/procedures/restore-and-move.md`, proved by a restore on a new, empty setup in Docker. | R-141 names it | In progress | Built, not checked on a real server: [restore-and-move.md](../procedures/restore-and-move.md), with its proof in Docker, commit `1b135102`. The full gates passed on 2026-11-17 (21 of 21). It waits for HT-024 (PLN-014). R-169 (2026-11-18) defers HT-024 for the self-host path; this task stays In progress and is not Done. |
 | F2 | FND-007 for the application on a computer: a read-only copy of the data that the application showed recently, with its age and with no credential. The phone applications are not in this task (IOS-003, mobile plan). | R-157 names it | In progress | Built in 53af82a1 and corrected after a review in 3b46dfef, not checked in the installed application: `apps/client/src/lib/hub/recent/`. The tests give the copy when the hub does not answer, the age in the banner, the limits, the delete at sign-out and when the hub refuses the token, and the load of the pages when the hub answers again. The store has an automatic test against an IndexedDB in memory (commit `b4b26df5`). It was run in Chromium on 2026-11-18, not in the web view of the application. It waits for HT-030 (PLN-014). |
 | F3 | The corrections of task F2 that its section listed as not done: an automatic test of the IndexedDB store, and the true text for "Load older" in the event log with no hub. No new function. | Task F2 (R-157); a correction needs no ruling (PLN-013) | Done | `b4b26df5` (the test of the store against an IndexedDB in memory) and the commit of this row (the text). "Load older" is not a defect, so the code did not change. |
+| F4 | The text of three decisions about the copy of task F2 (R-NEW-offlinecopy): FND-007 names the status of the checks; the copy is not encrypted by the application; a hub at an `http` address on this computer gets no copy. No code changes. | R-NEW-offlinecopy | Done | The commit of this row. HT-030 of task F2 stays open. |
 
 ## Open points
 
