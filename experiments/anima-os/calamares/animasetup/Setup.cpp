@@ -22,7 +22,10 @@ QString Setup::prettyName() const { return mode; }
 bool Setup::isNextEnabled() const {
     if (mode == "Ready") return false;
     if (mode == "Storage") return systemDisk && systemDisk->currentIndex() > 0;
-    if (mode == "Review") return confirmation && confirmation->isEnabled() && confirmation->isChecked();
+    if (mode == "Review") {
+        const auto selected = Calamares::JobQueue::instance()->globalStorage()->value("animaSelectedDisks").toList();
+        return confirmation && confirmation->isEnabled() && confirmation->isChecked() && selected == reviewSelection;
+    }
     return true;
 }
 void Setup::setConfigurationMap(const QVariantMap& config) {
@@ -48,11 +51,12 @@ void Setup::setConfigurationMap(const QVariantMap& config) {
         review->setFrameShape(QFrame::NoFrame); review->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         layout->addWidget(review);
         auto* gs = Calamares::JobQueue::instance()->globalStorage();
+        // GlobalStorage emits changed while holding its write lock.
         connect(gs, &Calamares::GlobalStorage::changed, this, [this,gs] {
             if (confirmation && confirmation->isEnabled() && gs->value("animaSelectedDisks").toList() != reviewSelection) {
                 confirmation->setChecked(false); confirmation->setEnabled(false); gs->remove("animaAuthorizedDisks");
             }
-        });
+        }, Qt::QueuedConnection);
     }
 }
 void Setup::onActivate() {
