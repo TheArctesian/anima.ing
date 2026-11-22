@@ -1,4 +1,4 @@
-//! Foreground Android reporting through the active link and the hub's device-scoped daemon API.
+//! Foreground mobile reporting through the active link and the hub's device-scoped daemon API.
 
 mod readings;
 
@@ -14,10 +14,8 @@ use super::tokens;
 
 const SCOPE: &str = "ing.anima.mobile.metrics";
 
-fn post(webview: &Webview, account: &str, origin: &str, action: &str) -> Option<RequestBuilder> {
-    let socket = webview
-        .try_state::<crate::phone_link::PhoneLink>()?
-        .metrics_socket(origin, account)?;
+fn post(account: &str, origin: &str, action: &str) -> Option<RequestBuilder> {
+    let socket = crate::phone_link::metrics_socket(origin, account)?;
     let client = Client::builder()
         .unix_socket(socket)
         .redirect(reqwest::redirect::Policy::none())
@@ -54,7 +52,7 @@ pub async fn mobile_metrics_enrol(
     let account = tokens::reporting_link(&webview, &origin)
         .await
         .ok_or("no signed-in device link")?;
-    let enrolled: Enrolled = post(&webview, &account, &origin, "enrol")
+    let enrolled: Enrolled = post(&account, &origin, "enrol")
         .ok_or("device link changed")?
         .json(&EnrolRequest { code })
         .send()
@@ -80,7 +78,7 @@ pub async fn mobile_metrics_enrol(
 pub async fn mobile_metrics_push(webview: Webview, origin: String) -> Result<(), &'static str> {
     send(&webview, &origin)
         .await
-        .ok_or("could not report tablet readings")
+        .ok_or("could not report device readings")
 }
 
 async fn send(webview: &Webview, origin: &str) -> Option<()> {
@@ -89,7 +87,7 @@ async fn send(webview: &Webview, origin: &str) -> Option<()> {
     let now = chrono::Utc::now();
     let path = webview.path().app_local_data_dir().ok()?;
     let sample = readings::batch(enrolled.device, now, &path)?;
-    post(webview, &account, origin, "push")?
+    post(&account, origin, "push")?
         .bearer_auth(enrolled.token.expose())
         .json(&sample)
         .send()

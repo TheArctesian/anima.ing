@@ -41,6 +41,7 @@ pub struct Running {
     pub device_key: String,
     #[serde(default)]
     pub public_key: String,
+    pub metrics_socket: Option<std::path::PathBuf>,
     #[serde(default)]
     pub path: Option<String>,
     #[serde(default)]
