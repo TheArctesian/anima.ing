@@ -230,7 +230,7 @@
     <div class="footer">
       <AttachButton can={engine.attach} onFiles={(files) => card.add(files)} />
       <div class="actions">
-        <ModelPicker catalogue={engine.catalogue} value={engine.choice} onChange={engine.choose} can={engine.pick} shortcut={card.modifier === '⌘' ? '⌘⇧M' : 'Ctrl+Shift+M'} align="end" bind:open={picking} />
+        <ModelPicker catalogue={engine.catalogue} value={engine.choice} onChange={(next) => void card.choose(next)} can={engine.pick} shortcut={card.modifier === '⌘' ? '⌘⇧M' : 'Ctrl+Shift+M'} align="end" bind:open={picking} />
         <MicButton can={engine.dictate} onStart={() => undefined} />
         {#if showsSend(card.turn)}<SendButton face={card.face} onPress={(alternate) => pressed(() => card.submit(alternate))} />{/if}
         {#if showsStop(card.turn, card.stop)}<StopButton pending={card.stop === 'pending'} onStop={() => pressed(() => card.interrupt())} />{/if}

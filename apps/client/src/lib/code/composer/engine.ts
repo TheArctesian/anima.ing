@@ -1,13 +1,13 @@
 import type { CallResult } from '$lib/agent-threads/live/live.svelte';
-import type { Mode, RunRow } from '$lib/agent-threads/live/run';
-import { programName } from '$lib/agent-threads/thread';
+import type { RunRow } from '$lib/agent-threads/live/run';
 import type { Attachment } from './attachments/attach';
 import { CAN, cannot, type Can } from './draft';
 import { builtInCommands } from './mentions/lists/commands';
 import type { FoundPath, MentionSources } from './mentions/sources';
-import { PERMISSION_MODES, type Catalogue, type Choice, type PermissionMode } from './picker/catalogue';
+import type { Catalogue, Choice } from './picker/catalogue';
 import type { HeldQueue, QueuePhase } from './queue/held.svelte';
 import type { Queued } from './queue/queue';
+import { catalogueOf, changeOf, type EffortOfRow, type SetCall } from './run/choice';
 
 /** How a call to the engine ended; the words of a failure go under the editor. */
 export type Outcome = { readonly ok: true } | { readonly ok: false; readonly words: string };
@@ -54,7 +54,8 @@ export interface ComposerEngine {
   readonly pick: Can;
   readonly catalogue: Catalogue;
   readonly choice: Choice;
-  readonly choose: (next: Choice) => void;
+  /** Takes the new choice; the words of a failure when the program refuses it. */
+  readonly choose: (next: Choice) => Promise<Outcome>;
   /** What `@`, `/` and `$` list. */
   readonly sources: MentionSources;
 }
@@ -65,6 +66,8 @@ export interface RunCalls {
   readonly onInterrupt: () => Promise<CallResult>;
   /** The calls of the runner's own queue (`live.call`), for the chat of this composer; without them the window holds the queue. */
   readonly onQueue?: QueueCall | undefined;
+  /** The runner's `set` call for this chat (TH110); without it the model and the permissions cannot be changed. */
+  readonly onSet?: SetCall | undefined;
   /** The runner's list of the files of the chat's folder (`live.files`); left out by a page whose runner has none. */
   readonly onFiles?: FileSearch | undefined;
 }
@@ -93,9 +96,9 @@ export type FileSearch = (query: string, most: number) => Promise<{ readonly ok:
 const QUERY_MOST = 64;
 
 /** The lists of a chat whose runner searches its folder; a search that is refused is one that failed. */
-function searching(search: FileSearch): MentionSources {
+function searching(search: FileSearch, lists: MentionSources): MentionSources {
   return {
-    ...SOURCES,
+    ...lists,
     search: CAN,
     files: async (query, most) => {
       const found = await search(query.slice(0, QUERY_MOST), most);
@@ -115,11 +118,6 @@ const NO_SEARCH = 'The runner cannot search the folder of a chat yet.';
 const NO_PICK = 'The model and the permissions are set when a chat starts; the runner cannot change them after.';
 const NO_COMMAND = 'The runner has no such command yet.';
 
-const MODES: Readonly<Record<Mode, string>> = { ask: 'approval-required', accept_edits: 'auto-accept-edits', full_access: 'full-access', plan: 'plan' };
-
-/** The runner's own fourth mode, which T3 Code's four do not have (03 A.4.1): the program plans and changes nothing. */
-const PLAN_MODE: PermissionMode = { id: 'plan', label: 'Plan', description: 'Plan the work; change no file and run no command.', icon: 'eye', can: CAN };
-
 function outcomeOf(result: CallResult): Outcome {
   return result.ok ? { ok: true } : { ok: false, words: result.words };
 }
@@ -132,18 +130,8 @@ const SOURCES: MentionSources = {
   search: cannot(NO_SEARCH),
 };
 
-/** The one model a driven chat has, as a catalogue: what the picker's trigger shows. */
-function catalogueOf(row: RunRow): { catalogue: Catalogue; choice: Choice } {
-  const model = row.model ?? 'default';
-  return {
-    catalogue: {
-      providers: [{ id: row.program, name: programName(row.program), icon: 'bot', can: CAN }],
-      models: [{ id: model, provider: row.program, label: row.model ?? 'Default model', favourite: false, can: CAN, efforts: [], speeds: [], toggles: [] }],
-      modes: [...PERMISSION_MODES, PLAN_MODE],
-    },
-    choice: { provider: row.program, model, effort: null, speed: null, toggles: [], mode: MODES[row.mode] },
-  };
-}
+/** The same lists for a chat whose runner takes a change of the mode and the effort: `/model` opens the picker. */
+const SOURCES_SET: MentionSources = { ...SOURCES, commands: builtInCommands({ model: CAN, clear: cannot(NO_COMMAND) }) };
 
 /** The phase of a chat by the state of its run: a program that waits for an answer is still in its turn. */
 export function phaseOf(row: RunRow): QueuePhase {
@@ -203,14 +191,16 @@ function queueOf(queue: HeldQueue, running: boolean, send: (prompt: string) => P
 
 /**
  * The engine of a chat that the runner of this computer drives (TH14). It sends, steers and interrupts. It queues in
- * the runner when the page gives the runner's queue calls, else in this window. It has no attachments, no change of the model after the
- * start and no dictation; it searches the chat's folder when the page gives it the runner's file list.
+ * the runner when the page gives the runner's queue calls, else in this window. It has no attachments and no dictation; it changes the
+ * mode and the effort when the page gives the runner's `set` call; it searches the chat's folder when the page gives it the runner's file list.
  *
  * The queue is given, not looked up here: state that is made inside the computation that reads it is not followed.
  */
-export function runEngine(row: RunRow & QueueOfRow, calls: RunCalls, queue: HeldQueue | null): ComposerEngine {
+export function runEngine(row: RunRow & QueueOfRow & EffortOfRow, calls: RunCalls, queue: HeldQueue | null): ComposerEngine {
   const phase = phaseOf(row);
   const send = async (prompt: string): Promise<Outcome> => outcomeOf(await calls.onSend(prompt));
+  const set = calls.onSet;
+  const lists = set === undefined ? SOURCES : SOURCES_SET;
   // The runner's own queue when the page gives its calls (TH109); else the one this window holds; else none.
   const queued = calls.onQueue !== undefined ? runnerQueue(row, calls.onQueue, send) : queue !== null ? queueOf(queue, phase === 'running', send) : NO_QUEUE;
   return {
@@ -232,9 +222,12 @@ export function runEngine(row: RunRow & QueueOfRow, calls: RunCalls, queue: Held
     dictate: cannot(NO_DICTATE),
     steer: CAN,
     ...queued,
-    pick: cannot(NO_PICK),
-    ...catalogueOf(row),
-    choose: () => undefined,
-    sources: calls.onFiles === undefined ? SOURCES : searching(calls.onFiles),
+    pick: set === undefined ? cannot(NO_PICK) : CAN,
+    ...catalogueOf(row, set !== undefined),
+    choose: async (next) => {
+      const change = changeOf(row, next);
+      return set === undefined || change === null ? { ok: true } : outcomeOf(await set(change));
+    },
+    sources: calls.onFiles === undefined ? lists : searching(calls.onFiles, lists),
   };
 }

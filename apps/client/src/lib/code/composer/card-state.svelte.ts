@@ -1,5 +1,6 @@
 import { admit, attachmentOf, type Attachment } from './attachments/attach';
 import type { ComposerEngine, Message, Outcome } from './engine';
+import type { Choice } from './picker/catalogue';
 import { sendFace, stopAfter, STOP_LANDED_MS, STOP_PENDING_MS, type FollowUp, type SendFace, type StopPhase, type Turn } from './primary/send';
 
 /** The unsent text of each chat, by the key its page gives: it outlives the composer while the window is open. */
@@ -181,6 +182,12 @@ export class CardState {
     this.#fill(this.#aside);
     this.#endEdit();
     this.#engine().opened?.(null);
+  }
+
+  /** A new choice of the picker: the words of a refusal go under the editor, as those of a send do. */
+  async choose(next: Choice): Promise<void> {
+    const engine = this.#engine();
+    await this.#run(() => engine.choose(next));
   }
 
   /** "Send now" and "Remove" of a queued message. */
