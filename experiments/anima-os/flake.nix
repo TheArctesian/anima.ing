@@ -8,6 +8,7 @@
     daemonPackage = import ./daemon-package.nix { inherit pkgs; };
   in {
     packages.${system} = {
+      console-python = import ./console-python.nix { inherit pkgs; };
       default = import ./image.nix {
         inherit pkgs;
         systemA = self.nixosConfigurations.prototype.config.system.build.toplevel;

@@ -43,10 +43,22 @@
     if (event.key === 'ArrowDown') at = at >= last ? 0 : at + 1;
     else if (event.key === 'ArrowUp') at = at <= 0 ? last : at - 1;
     else if (event.key === 'Enter') choose(at, event.shiftKey);
-    else if (event.key === 'Escape') close(true);
+    // Tab and Escape close it and give focus back to the trigger, so it never stays open behind the focus (09 finding 18).
+    else if (event.key === 'Escape' || event.key === 'Tab') close(true);
     else return;
     event.preventDefault();
   }
+
+  function onfocusout(event: FocusEvent): void {
+    const next = event.relatedTarget;
+    if (!open || !(next instanceof Node) || panel?.contains(next) === true || trigger?.contains(next) === true) return;
+    close(false);
+  }
+
+  // The highlighted row stays in sight in the scrolling list (09 finding 18).
+  $effect(() => {
+    if (open) document.getElementById(`${id}-${String(at)}`)?.scrollIntoView?.({ block: 'nearest' });
+  });
 
   function onOutside(event: PointerEvent): void {
     if (!open || !(event.target instanceof Node) || panel?.contains(event.target) === true || trigger?.contains(event.target) === true) return;
@@ -89,7 +101,7 @@
   </button>
 </Tooltip>
 {#if open}
-  <div class="panel" bind:this={panel} transition:popover={{ from: trigger }} {@attach place}>
+  <div class="panel" bind:this={panel} {onfocusout} transition:popover={{ from: trigger }} {@attach place}>
     <label class="search">
       <CodeIcon name="search" />
       <input

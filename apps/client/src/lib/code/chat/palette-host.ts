@@ -19,6 +19,8 @@ export interface PageForPalette {
   readonly chosen: string | null;
   readonly newThread: (() => void) | undefined;
   readonly open: (id: string) => void;
+  /** Goes to the Settings page, where Code has its appearance group. */
+  readonly settings: () => void;
 }
 
 export function paletteHost(page: PageForPalette): PaletteHost {
@@ -28,7 +30,7 @@ export function paletteHost(page: PageForPalette): PaletteHost {
     // The palette's "Recent chats" means opened last; the page keeps no such list yet.
     recent: [],
     ...(page.chosen === null ? {} : { openChat: page.chosen }),
-    runs: page.newThread === undefined ? {} : { 'chat.new': page.newThread },
+    runs: { 'settings.open': page.settings, ...(page.newThread === undefined ? {} : { 'chat.new': page.newThread }) },
     openChatById: page.open,
   };
 }
