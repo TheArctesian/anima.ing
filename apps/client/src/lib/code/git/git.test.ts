@@ -59,7 +59,7 @@ describe('the main Git action of the details card', () => {
 describe('the words and the counts', () => {
   it('tells a person that an agent cannot do their Git actions', () => {
     expect(refusalWords('from_an_agent')).toContain('Only you');
-    expect(refusalWords('running')).toBe('Interrupt the current turn before reverting checkpoints.');
+    expect(refusalWords('running')).toBe('Interrupt the current turn before reverting, committing or pushing.');
   });
 
   it('labels a scope, a large count and a running time', () => {

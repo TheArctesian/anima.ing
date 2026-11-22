@@ -22,6 +22,8 @@ export interface Changes {
   deletions: number;
   /** The patches were over the limit: the counts are whole, the patches are left out. */
   truncated: boolean;
+  /** For the uncommitted changes: the snapshot these changes show. A commit names it as `reviewed`, so that it holds what the person saw and no later edit. */
+  snapshot?: string;
 }
 
 export interface GitStatus {
@@ -39,6 +41,10 @@ export interface GitStatus {
   files: readonly ChangedFile[];
   additions: number;
   deletions: number;
+  /** The hooks of the repository that a commit or a push runs. */
+  hooks?: readonly string[];
+  /** The hooks and settings that changed since the person last accepted them; a commit or a push is refused until they accept (`trust`). */
+  changed?: readonly string[];
 }
 
 export interface Checkpoint {
@@ -74,13 +80,15 @@ export type GitRefusal =
   | 'branch_exists'
   | 'unknown_base'
   | 'not_a_repository'
-  | 'git_not_found';
+  | 'git_not_found'
+  | 'changed'
+  | 'not_reviewed';
 
 const REFUSALS: Record<GitRefusal, string> = {
   from_an_agent: 'Only you can do this. An agent cannot commit, push, revert or open a pull request.',
   no_worktree: 'This chat has no worktree of its own, so its files are not changed from here.',
   bad_path: 'A path or a name is not allowed.',
-  running: 'Interrupt the current turn before reverting checkpoints.',
+  running: 'Interrupt the current turn before reverting, committing or pushing.',
   unknown_checkpoint: 'Checkpoint ref is unavailable.',
   nothing_to_commit: 'Worktree is clean. Make changes before committing.',
   empty_message: 'Write a commit message.',
@@ -95,7 +103,9 @@ const REFUSALS: Record<GitRefusal, string> = {
   branch_exists: 'A branch of this name exists.',
   unknown_base: 'The base branch does not resolve to a commit.',
   not_a_repository: 'This folder is not a git repository.',
-  git_not_found: 'Git is not installed on this computer.'
+  git_not_found: 'Git is not installed on this computer.',
+  changed: 'Hooks or settings of the repository changed since you last accepted them. Read what changed and accept it before a commit or a push.',
+  not_reviewed: 'The files or the branch changed since you looked. Read the changes again, then commit.'
 };
 
 /** The words for a refusal of the runner. */
@@ -119,6 +129,7 @@ export function quickAction(status: GitStatus | undefined, busy: boolean): Quick
   if (busy) return off('Commit', 'Git action in progress.');
   if (status === undefined) return off('Commit', 'Git status is unavailable.');
   if (status.branch === undefined) return off('Commit', 'Create and checkout a ref before pushing or opening a pull request.');
+  if ((status.changed ?? []).length > 0) return off('Commit', REFUSALS.changed);
   if (status.files.length > 0) return dirtyAction(status);
   if (status.upstream === undefined) return firstPush(status);
   if (status.ahead > 0 && status.behind > 0) return off('Sync ref', 'Branch has diverged from upstream. Rebase/merge first.');

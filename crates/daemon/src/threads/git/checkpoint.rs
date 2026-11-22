@@ -68,8 +68,14 @@ pub async fn snapshot(git: &Git, worktree: &Worktree) -> Result<String, GitError
         git.output(with_index(Run::new(dir, ["read-tree", head.as_str()])))
             .await?;
     }
-    git.output(with_index(Run::new(dir, ["add", "--all", "--", "."])))
-        .await?;
+    // `git add` never looks into a nested repository that the last commit names: it would run
+    // `git` there, with the configuration of that repository (THR-050). Such an entry stays
+    // as the last commit has it.
+    let mut add: Vec<String> = ["add", "--all", "--", "."].map(str::to_owned).into();
+    for nested in nested(git, with_index(Run::new(dir, LIST))).await? {
+        add.push(format!(":(exclude,literal){nested}"));
+    }
+    git.output(with_index(Run::new(dir, add))).await?;
     let tree = git.text(with_index(Run::new(dir, ["write-tree"]))).await?;
     let mut commit = vec!["commit-tree".to_owned(), tree];
     if let Some(head) = head {
@@ -81,6 +87,36 @@ pub async fn snapshot(git: &Git, worktree: &Worktree) -> Result<String, GitError
         run = run.with_env(name, value);
     }
     git.text(run).await
+}
+
+/// The entries of an index with their modes.
+const LIST: [&str; 3] = ["ls-files", "--stage", "-z"];
+
+/// The mode of an entry that is a nested repository.
+const NESTED: &str = "160000";
+
+/// The most nested repositories one snapshot leaves out; more is refused.
+const MOST_NESTED: usize = 512;
+
+/// The paths of the nested repositories that the index of `list` names.
+async fn nested(git: &Git, list: Run<'_>) -> Result<Vec<String>, GitError> {
+    let listed = git.output(list).await?;
+    let found: Vec<&[u8]> = listed
+        .split(|byte| *byte == 0)
+        .filter(|entry| entry.starts_with(NESTED.as_bytes()))
+        .filter_map(|entry| entry.splitn(2, |byte| *byte == b'\t').nth(1))
+        .collect();
+    let paths: Option<Vec<String>> = found
+        .iter()
+        .map(|path| std::str::from_utf8(path).ok().map(str::to_owned))
+        .collect();
+    // A path that is not text cannot be left out by name, so no snapshot is made.
+    paths
+        .filter(|paths| paths.len() <= MOST_NESTED)
+        .ok_or_else(|| GitError::Failed {
+            code: None,
+            said: "the worktree has a nested repository that cannot be left out".to_owned(),
+        })
 }
 
 /// A run that reads and writes the private index at `index`, never the index of the worktree.

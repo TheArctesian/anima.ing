@@ -4,11 +4,12 @@
 mod person;
 mod planted;
 mod runs;
+mod trusted;
 mod turns;
 
 use std::path::{Path, PathBuf};
 
-use agent_threads::git::{GitAction, GitOutcome, GitRefusal};
+use agent_threads::git::{GitAction, GitOutcome, GitRefusal, Scope};
 use uuid::Uuid;
 
 use super::place::Home;
@@ -19,6 +20,7 @@ const THREAD: Uuid = Uuid::from_u128(0x1234_5678_9abc_def0_1234_5678_9abc_def0);
 const PERSON: Caller = Caller {
     agent: false,
     running: false,
+    thread: None,
 };
 
 /// A made repository of a person with one commit on `main`, and the home of the worktrees.
@@ -89,12 +91,34 @@ impl Bench {
         made.worktree.folder().to_owned()
     }
 
-    async fn call(&self, caller: Caller, action: GitAction) -> GitOutcome {
+    async fn call(&self, caller: Caller, mut action: GitAction) -> GitOutcome {
         let target = Target {
             thread: THREAD,
             repository: "engine",
         };
+        // A commit with no snapshot named is of the files as the page would show them now.
+        if let GitAction::Commit { reviewed, .. } = &mut action
+            && reviewed.is_empty()
+        {
+            *reviewed = self.reviewed().await;
+        }
         self.engine.call(caller, target, action).await
+    }
+
+    /// The snapshot of the uncommitted changes, as the page gets it before a commit.
+    async fn reviewed(&self) -> String {
+        let shown = GitAction::Changes {
+            scope: Scope::Uncommitted,
+            ignore_whitespace: false,
+        };
+        let target = Target {
+            thread: THREAD,
+            repository: "engine",
+        };
+        match self.engine.call(PERSON, target, shown).await {
+            GitOutcome::Changes(changes) => changes.snapshot.unwrap_or_default(),
+            _ => String::new(),
+        }
     }
 
     async fn turn_ended(&self, turn: u32) {

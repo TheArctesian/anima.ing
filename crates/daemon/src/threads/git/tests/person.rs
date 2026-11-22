@@ -9,6 +9,7 @@ use crate::threads::git::Caller;
 fn commit(message: &str, files: Option<&[&str]>, new_branch: Option<&str>) -> GitAction {
     GitAction::Commit {
         message: message.to_owned(),
+        reviewed: String::new(),
         files: files.map(|files| files.iter().map(|&file| file.to_owned()).collect()),
         new_branch: new_branch.map(str::to_owned),
     }
@@ -43,6 +44,7 @@ async fn an_agent_is_refused_each_action_that_changes_something_and_may_read() {
     let agent = Caller {
         agent: true,
         running: false,
+        thread: Some(THREAD),
     };
     for action in [
         commit("by an agent", None, None),
@@ -213,6 +215,11 @@ async fn a_push_is_refused_with_no_remote_and_for_the_default_branch_without_a_y
     let alone = bench.call(PERSON, PUSH).await;
     assert_eq!(refused(&alone), Some(&GitRefusal::NoRemote));
     bench.with_origin().await;
+    // The person added the remote after the worktree was made, and accepts that change.
+    assert_eq!(
+        bench.call(PERSON, GitAction::Trust).await,
+        GitOutcome::Trusted
+    );
     // The checkout of the person leaves `main`, so that the worktree can be on it.
     bench
         .git_in(

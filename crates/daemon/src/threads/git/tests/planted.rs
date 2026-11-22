@@ -10,6 +10,7 @@ use super::{Bench, PERSON, refused};
 fn commit(new_branch: Option<&str>) -> GitAction {
     GitAction::Commit {
         message: "planted".to_owned(),
+        reviewed: String::new(),
         files: None,
         new_branch: new_branch.map(str::to_owned),
     }

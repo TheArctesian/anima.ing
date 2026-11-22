@@ -1,7 +1,8 @@
-//! A commit that the person asked for (TH45): all files of the worktree or the chosen ones, on
-//! the branch of the thread or on a new one. The hooks of the person run, as in a terminal.
+//! A commit that the person asked for (TH45): all files or the chosen ones, as they are in the
+//! snapshot that the person looked at, on the branch of the thread or on a new one. The hooks
+//! that the person accepted run ([`super::trust`]).
 //!
-//! I/O: `git add`, `git commit`, held to the worktree.
+//! I/O: `git read-tree` or `git restore --staged`, then `git commit`, held to the worktree.
 
 use std::time::Duration;
 
@@ -20,17 +21,21 @@ const TIME: Duration = Duration::from_secs(600);
 #[derive(Clone, Copy, Debug)]
 pub struct Asked<'a> {
     pub message: &'a str,
+    /// The snapshot of the files that the person looked at: what is committed is from it.
+    pub reviewed: &'a str,
     /// `None` is each changed file.
     pub files: Option<&'a [String]>,
     pub new_branch: Option<&'a str>,
 }
 
-/// Commits and gives the ID of the commit with the branch it is on.
+/// Commits and gives the ID of the commit with the branch it is on. The commit holds the files
+/// as they are in the snapshot `asked.reviewed`, never an edit that came after it.
 ///
 /// # Errors
 /// A [`GitRefusal`] for an empty message, a path that leaves the worktree, a branch name that
-/// is taken or not allowed, a branch that the runner did not make, nothing to commit, or a
-/// failure of `git`. `own` records a branch that this commit made.
+/// is taken or not allowed, a branch that the runner did not make, a snapshot that is not of
+/// the branch as it is now, nothing to commit, or a failure of `git`. `own` records a branch
+/// that this commit made.
 pub async fn make(
     git: &Git,
     worktree: &Worktree,
@@ -63,7 +68,8 @@ pub async fn make(
             return Err(GitRefusal::BranchExists);
         }
     }
-    stage(git, worktree, files).await?;
+    let reviewed = reviewed(git, worktree, asked.reviewed).await?;
+    stage(git, worktree, reviewed, files).await?;
     let staged = ["diff", "--cached", "--quiet", "--no-ext-diff"];
     if git.yes(Run::new(dir, staged)).await? {
         return Err(GitRefusal::NothingToCommit);
@@ -81,13 +87,41 @@ pub async fn make(
     Ok((commit, git.text(Run::new(dir, on)).await.ok()))
 }
 
-/// Puts into the index each changed file, or only the chosen ones, which passed
-/// [`place::inside`].
-async fn stage(git: &Git, worktree: &Worktree, files: Option<Vec<&str>>) -> Result<(), GitRefusal> {
+/// Checks that `id` is a snapshot of the branch as it is now: the ID of a commit whose parent
+/// is the last commit of the branch (or that has none, in a repository with no commit).
+async fn reviewed<'a>(git: &Git, worktree: &Worktree, id: &'a str) -> Result<&'a str, GitRefusal> {
+    let dir = worktree.folder();
+    let hex = |c: char| c.is_ascii_digit() || ('a'..='f').contains(&c);
+    if !matches!(id.len(), 40 | 64) || !id.chars().all(hex) {
+        return Err(GitRefusal::NotReviewed);
+    }
+    let commit_of = |name: String| async move {
+        let verify = ["rev-parse", "--verify", "--quiet", name.as_str()];
+        git.text(Run::new(dir, verify)).await.ok()
+    };
+    if commit_of(format!("{id}^{{commit}}")).await.as_deref() != Some(id) {
+        return Err(GitRefusal::NotReviewed);
+    }
+    let parent = commit_of(format!("{id}^1^{{commit}}")).await;
+    if parent == commit_of("HEAD^{commit}".to_owned()).await {
+        Ok(id)
+    } else {
+        Err(GitRefusal::NotReviewed)
+    }
+}
+
+/// Makes the index hold the files of the snapshot `reviewed`: each one, or only the chosen
+/// ones, which passed [`place::inside`], over the last commit. No file of the worktree is
+/// read, so an edit after the snapshot is not in the commit and no filter program runs.
+async fn stage(
+    git: &Git,
+    worktree: &Worktree,
+    reviewed: &str,
+    files: Option<Vec<&str>>,
+) -> Result<(), GitRefusal> {
     let dir = worktree.folder();
     let Some(files) = files else {
-        git.output(Run::new(dir, ["add", "--all", "--", "."]).for_the_person())
-            .await?;
+        git.output(Run::new(dir, ["read-tree", reviewed])).await?;
         return Ok(());
     };
     if files.is_empty() {
@@ -101,14 +135,15 @@ async fn stage(git: &Git, worktree: &Worktree, files: Option<Vec<&str>>) -> Resu
         paths.extend_from_slice(path.as_bytes());
         paths.push(0);
     }
-    let add = [
+    let source = format!("--source={reviewed}");
+    let restore = [
         "--literal-pathspecs",
-        "add",
-        "--all",
+        "restore",
+        source.as_str(),
+        "--staged",
         "--pathspec-from-file=-",
         "--pathspec-file-nul",
     ];
-    git.output(Run::new(dir, add).for_the_person().with_input(paths))
-        .await?;
+    git.output(Run::new(dir, restore).with_input(paths)).await?;
     Ok(())
 }

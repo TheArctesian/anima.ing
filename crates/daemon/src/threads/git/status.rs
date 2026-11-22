@@ -23,6 +23,9 @@ pub async fn of(git: &Git, worktree: &Worktree) -> Result<Status, GitError> {
                 "--branch",
                 "-z",
                 "--untracked-files=all",
+                // On the command line: a `.gitmodules` in the worktree cannot turn the look
+                // into a nested repository back on, which would run `git` in it (THR-050).
+                "--ignore-submodules=all",
             ],
         ))
         .await?;
@@ -42,7 +45,7 @@ pub async fn of(git: &Git, worktree: &Worktree) -> Result<Status, GitError> {
             .text(Run::new(dir, url))
             .await
             .ok()
-            .map(|url| super::said::without_credentials(&url));
+            .map(|url| super::run::said::without_credentials(&url));
     }
     if let Some(default) = &status.default_branch {
         status.ahead_of_default = ahead_of(git, worktree, remote.as_deref(), default).await?;
@@ -60,6 +63,7 @@ async fn count(git: &Git, worktree: &Worktree, status: &mut Status) -> Result<()
                 "diff",
                 "--no-ext-diff",
                 "--no-textconv",
+                "--ignore-submodules=all",
                 "--numstat",
                 "-z",
                 "HEAD",

@@ -21,9 +21,13 @@ pub enum GitAction {
     },
     /// Puts the files back as they were at the checkpoint of `turn`. For the person only.
     Revert { turn: u32 },
-    /// Commits all files, or the chosen ones. For the person only.
+    /// Commits all files, or the chosen ones, as they are in the snapshot that the person
+    /// looked at. For the person only.
     Commit {
         message: String,
+        /// The `snapshot` of the [`Changes`] of [`Scope::Uncommitted`] that the page showed:
+        /// the commit holds these files and no later edit.
+        reviewed: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         files: Option<Vec<String>>,
         /// "Commit on new branch": the branch to make and check out first.
@@ -41,6 +45,9 @@ pub enum GitAction {
     PullRequest,
     /// Saves the work to a private ref and removes the worktree. For the person only.
     Remove,
+    /// The person read what changed in the hooks and the settings of the repository
+    /// ([`Status::changed`]) and accepts them for a commit and a push. For the person only.
+    Trust,
 }
 
 impl GitAction {
@@ -95,6 +102,7 @@ pub enum GitOutcome {
     Removed {
         kept: Option<String>,
     },
+    Trusted,
     Refused {
         why: GitRefusal,
     },
@@ -135,6 +143,14 @@ pub enum GitRefusal {
     UnknownBase,
     NotARepository,
     GitNotFound,
+    /// Hooks or settings of the repository changed since the worktree was made or the person
+    /// last accepted them: `what` names each one. A commit or a push would run or obey them.
+    Changed {
+        what: Vec<String>,
+    },
+    /// The snapshot to commit is not one of the files as the person saw them on this branch:
+    /// the branch moved, or the snapshot is unknown. The page reads the changes again.
+    NotReviewed,
     Failed {
         said: String,
     },
@@ -162,6 +178,13 @@ pub struct Status {
     pub files: Vec<ChangedFile>,
     pub additions: u32,
     pub deletions: u32,
+    /// The hooks of the repository that a commit or a push of the person runs.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub hooks: Vec<String>,
+    /// The hooks and settings that changed since the person last accepted them; a commit or
+    /// a push is refused until [`GitAction::Trust`].
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub changed: Vec<String>,
 }
 
 /// One checkpoint: the files of the worktree at the end of a turn (0 is the start).
@@ -181,6 +204,10 @@ pub struct Changes {
     pub deletions: u32,
     /// The patches were over the limit: the counts are whole, the patches are left out.
     pub truncated: bool,
+    /// For [`Scope::Uncommitted`]: the snapshot of the files that these changes show, which a
+    /// [`GitAction::Commit`] names as `reviewed`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub snapshot: Option<String>,
 }
 
 /// How a file changed.
@@ -235,6 +262,7 @@ mod tests {
             GitAction::Revert { turn: 1 },
             GitAction::Commit {
                 message: "m".to_owned(),
+                reviewed: "0".repeat(40),
                 files: None,
                 new_branch: None,
             },
@@ -243,6 +271,7 @@ mod tests {
             },
             GitAction::PullRequest,
             GitAction::Remove,
+            GitAction::Trust,
         ];
         assert!(reads.iter().all(|action| !action.for_the_person()));
         assert!(changes.iter().all(GitAction::for_the_person));

@@ -49,6 +49,10 @@ pub struct Record {
     pub common_dir: PathBuf,
     /// The branches the runner made for this thread: the only ones a commit or a push may move.
     pub branches: Vec<String>,
+    /// The settings and the hooks of the repository as the person last accepted them
+    /// (`trust`): first as they were when the worktree was made, before an agent ran.
+    #[serde(default)]
+    pub trusted: Option<std::collections::BTreeMap<String, String>>,
 }
 
 /// A worktree of a thread that passed each check: its real folder is below the home and is the

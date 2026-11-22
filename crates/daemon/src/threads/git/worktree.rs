@@ -10,9 +10,9 @@ use std::path::{Path, PathBuf};
 use agent_threads::git::GitRefusal;
 use uuid::Uuid;
 
-use super::checkpoint;
 use super::place::{self, Home, Record, Worktree};
 use super::run::{Git, Run};
+use super::{checkpoint, trust};
 
 /// A worktree that is ready for a thread.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -124,11 +124,27 @@ pub async fn make(git: &Git, home: &Home, plan: Plan<'_>) -> Result<Made, GitRef
     // The record is written now, before an agent runs in the worktree: each later run of `git`
     // is held to these places, whatever the files of the worktree say then.
     let record = record_of(git, &project, &folder, &branch).await?;
-    home.keep(plan.thread, &repository, &record)?;
-    let worktree = home.worktree(plan.thread, &repository)?;
-    let git = &git.for_worktree(&worktree).await?;
-    checkpoint::capture(git, &worktree, 0).await?;
+    let worktree = first_kept(git, home, (plan.thread, &repository), record).await?;
     Ok(made(worktree, false))
+}
+
+/// Writes the record of a worktree that was made a moment ago, with the settings and the hooks
+/// of the repository as they are now, and takes the checkpoint of the start. No agent ran in
+/// the worktree yet, so what is written down is of the person.
+async fn first_kept(
+    git: &Git,
+    home: &Home,
+    (thread, repository): (Uuid, &str),
+    mut record: Record,
+) -> Result<Worktree, GitRefusal> {
+    home.keep(thread, repository, &record)?;
+    let worktree = home.worktree(thread, repository)?;
+    let git = &git.for_worktree(&worktree).await?;
+    record.trusted = Some(trust::now(git, &worktree).await?.entries);
+    home.keep(thread, repository, &record)?;
+    let worktree = home.worktree(thread, repository)?;
+    checkpoint::capture(git, &worktree, 0).await?;
+    Ok(worktree)
 }
 
 /// Whether the repository at `project` has the ref `name`.
@@ -182,6 +198,7 @@ async fn record_of(
         git_dir,
         common_dir,
         branches: vec![branch.to_owned()],
+        trusted: None,
     })
 }
 

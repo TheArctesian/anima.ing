@@ -3,6 +3,10 @@
 //!
 //! I/O: this is the only place of the Git stage that starts a process.
 
+pub mod said;
+pub mod settings;
+
+use std::collections::BTreeMap;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -41,7 +45,7 @@ const PLACES: [&str; 3] = [
 ];
 
 /// Why a run gave no result. No variant holds a credential: the words of `git` pass
-/// [`super::said::without_credentials`] first.
+/// [`said::without_credentials`] first.
 #[derive(Debug, thiserror::Error)]
 pub enum GitError {
     #[error("git is not installed on this computer")]
@@ -72,9 +76,14 @@ pub enum Asked {
 pub struct Git {
     program: PathBuf,
     env: Vec<(OsString, OsString)>,
-    /// The configuration names that turn off the filter programs of one repository
-    /// ([`Git::quiet_in`]), each with its value.
-    filters_off: Vec<(String, &'static str)>,
+    /// The configuration that turns off the filter programs of one repository
+    /// ([`Git::quiet_in`]), for a run of the runner itself.
+    filters_off: Vec<(String, String)>,
+    /// The configuration of a run for the person: the programs of the person, never the ones
+    /// that the repository names ([`settings::for_the_person`]).
+    of_the_person: Vec<(String, String)>,
+    /// The settings of the repository by name, each with a digest of its values.
+    of_the_repository: BTreeMap<String, String>,
     /// The Git folder, the shared Git folder and the work folder of one worktree
     /// ([`Git::for_worktree`]): with them `git` reads no `.git` file and no `core.worktree`.
     bound: Vec<(&'static str, OsString)>,
@@ -156,6 +165,8 @@ impl Git {
             program,
             env,
             filters_off: Vec::new(),
+            of_the_person: Vec::new(),
+            of_the_repository: BTreeMap::new(),
             bound: Vec::new(),
         })
     }
@@ -163,42 +174,26 @@ impl Git {
     /// This `git` for the repository at `dir`, with each filter program that the configuration
     /// of the repository or of its worktree names turned off for the runs of the runner itself
     /// (THR-050): a checkpoint, a status, a diff or a revert then starts none. `git add`,
-    /// `git write-tree`, `git status` and `git restore` can each start one. The filters of the
-    /// person's own configuration stay, and a run for the person keeps each filter.
+    /// `git write-tree`, `git status` and `git restore` can each start one. A run for the
+    /// person gets the programs of the person, not the ones that the repository names.
     ///
     /// # Errors
     /// A [`GitError`] when the configuration cannot be read.
     pub async fn quiet_in(&self, dir: &Path) -> Result<Self, GitError> {
-        let list = [
-            "config",
-            "-z",
-            "--show-scope",
-            "--includes",
-            "--name-only",
-            "--get-regexp",
-            r"^filter\.",
-        ];
-        // `git config --get-regexp` ends with 1 when no name matches.
-        let listed = match self.output(Run::new(dir, list)).await {
-            Ok(out) => String::from_utf8_lossy(&out).into_owned(),
-            Err(GitError::Failed { code: Some(1), .. }) => String::new(),
-            Err(other) => return Err(other),
-        };
+        let listed = self.output(Run::new(dir, settings::LIST)).await?;
+        let found = settings::read(&String::from_utf8_lossy(&listed));
         let mut quiet = self.clone();
-        quiet.filters_off.clear();
-        // The fields come in pairs: the scope, then the name. A name can hold any character.
-        let mut fields = listed.split('\0');
-        while let (Some(scope), Some(name)) = (fields.next(), fields.next()) {
-            if matches!(scope, "local" | "worktree") {
-                let off = if name.ends_with(".required") {
-                    "false"
-                } else {
-                    ""
-                };
-                quiet.filters_off.push((name.to_owned(), off));
-            }
-        }
+        quiet.filters_off = settings::filters_off(&found);
+        quiet.of_the_person = settings::for_the_person(&found);
+        quiet.of_the_repository = settings::of_the_repository(&found);
         Ok(quiet)
+    }
+
+    /// The settings of the repository of [`Git::quiet_in`] by name, each with a digest of its
+    /// values: what the person accepts before a commit or a push.
+    #[must_use]
+    pub const fn of_the_repository(&self) -> &BTreeMap<String, String> {
+        &self.of_the_repository
     }
 
     /// This `git` held to `worktree`: each run names the Git folder, the shared Git folder and
@@ -255,6 +250,35 @@ impl Git {
     }
 
     async fn finished(&self, run: Run<'_>) -> Result<(Option<i32>, Vec<u8>, String), GitError> {
+        let mut child = self.command(&run).spawn().map_err(GitError::Start)?;
+        let group = child.id();
+        let input = child.stdin.take().zip(run.input);
+        let (stdout, stderr) = (child.stdout.take(), child.stderr.take());
+        let work = async {
+            let write = async {
+                if let Some((mut pipe, bytes)) = input {
+                    // A `git` that ends before it read all of the input is told by its code.
+                    let _ = pipe.write_all(&bytes).await;
+                }
+            };
+            let ((), out, said) = tokio::join!(write, held(stdout), held(stderr));
+            let status = child.wait().await.map_err(GitError::Start)?;
+            Ok::<_, GitError>((status.code(), out, said))
+        };
+        let done = tokio::time::timeout(run.time, work).await;
+        let whole = matches!(&done, Ok(Ok((_, Some(_), _))));
+        if !whole {
+            // A hook or a helper that `git` started ends with it, not only `git` itself.
+            end_group(group);
+        }
+        let (code, out, said) = done.map_err(|_| GitError::TimedOut(run.time.as_secs()))??;
+        let out = out.ok_or(GitError::TooLarge)?;
+        let said = String::from_utf8_lossy(&said.unwrap_or_default()).into_owned();
+        Ok((code, out, said::without_credentials(&said)))
+    }
+
+    /// The process of one run, in a process group of its own.
+    fn command(&self, run: &Run<'_>) -> tokio::process::Command {
         let mut command = tokio::process::Command::new(&self.program);
         command
             .args(fixed_configuration(run.asked))
@@ -274,28 +298,27 @@ impl Git {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .kill_on_drop(true);
-        let mut child = command.spawn().map_err(GitError::Start)?;
-        let input = child.stdin.take().zip(run.input);
-        let (stdout, stderr) = (child.stdout.take(), child.stderr.take());
-        let work = async {
-            let write = async {
-                if let Some((mut pipe, bytes)) = input {
-                    // A `git` that ends before it read all of the input is told by its code.
-                    let _ = pipe.write_all(&bytes).await;
-                }
-            };
-            let ((), out, said) = tokio::join!(write, held(stdout), held(stderr));
-            let status = child.wait().await.map_err(GitError::Start)?;
-            Ok::<_, GitError>((status.code(), out, said))
-        };
-        let (code, out, said) = tokio::time::timeout(run.time, work)
-            .await
-            .map_err(|_| GitError::TimedOut(run.time.as_secs()))??;
-        let out = out.ok_or(GitError::TooLarge)?;
-        let said = String::from_utf8_lossy(&said.unwrap_or_default()).into_owned();
-        Ok((code, out, super::said::without_credentials(&said)))
+        #[cfg(unix)]
+        command.process_group(0);
+        command
     }
 }
+
+/// Ends each process of the group of a run that did not end well by itself.
+#[cfg(unix)]
+fn end_group(group: Option<u32>) {
+    let pid = group
+        .and_then(|pid| i32::try_from(pid).ok())
+        .and_then(rustix::process::Pid::from_raw);
+    if let Some(pid) = pid {
+        // A group that ended already has nothing to end.
+        let _ = rustix::process::kill_process_group(pid, rustix::process::Signal::KILL);
+    }
+}
+
+/// On Windows `kill_on_drop` ends `git`; a process group is a thing of Unix.
+#[cfg(not(unix))]
+const fn end_group(_group: Option<u32>) {}
 
 impl Git {
     /// The names of the environment that reach `git`, for the tests.
@@ -306,17 +329,16 @@ impl Git {
 
     /// The configuration a run gets through its environment, which wins over each file and can
     /// name a key with any character in it: the filters of the repository, off, for a run of
-    /// the runner itself.
+    /// the runner itself; the programs of the person for a run for the person.
     fn overrides(&self, asked: Asked) -> Vec<(String, String)> {
-        let off: &[(String, &str)] = if asked == Asked::Runner {
-            &self.filters_off
-        } else {
-            &[]
+        let set = match asked {
+            Asked::Runner => &self.filters_off,
+            Asked::Person => &self.of_the_person,
         };
-        let mut env = vec![("GIT_CONFIG_COUNT".to_owned(), off.len().to_string())];
-        for (at, (name, value)) in off.iter().enumerate() {
+        let mut env = vec![("GIT_CONFIG_COUNT".to_owned(), set.len().to_string())];
+        for (at, (name, value)) in set.iter().enumerate() {
             env.push((format!("GIT_CONFIG_KEY_{at}"), name.clone()));
-            env.push((format!("GIT_CONFIG_VALUE_{at}"), (*value).to_owned()));
+            env.push((format!("GIT_CONFIG_VALUE_{at}"), value.clone()));
         }
         env
     }

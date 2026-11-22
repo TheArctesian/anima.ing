@@ -17,16 +17,16 @@ pub mod pull_request;
 pub mod push;
 pub mod revert;
 pub mod run;
-pub mod said;
 pub mod status;
 #[cfg(test)]
 mod tests;
+pub mod trust;
 pub mod worktree;
 
 use agent_threads::git::{Changes, GitAction, GitOutcome, GitRefusal, Scope};
 use uuid::Uuid;
 
-use place::{BadPlace, Home, Worktree};
+use place::{BadPlace, Home, Record, Worktree};
 use run::{Git, GitError};
 
 impl From<GitError> for GitRefusal {
@@ -56,6 +56,8 @@ pub struct Caller {
     pub agent: bool,
     /// A turn of the thread runs now.
     pub running: bool,
+    /// The thread whose agent calls; `None` for the person. An agent reads only its own thread.
+    pub thread: Option<Uuid>,
 }
 
 /// One worktree of a thread, named by the thread and the repository, never by a path.
@@ -105,8 +107,14 @@ impl Engine {
                 why: GitRefusal::FromAnAgent,
             };
         }
+        // An agent, and each caller that the runner bound to a thread, reads that thread alone.
+        let own_thread = match caller.thread {
+            Some(thread) => thread == target.thread,
+            None => !caller.agent,
+        };
         let done = match self.home.worktree(target.thread, target.repository) {
-            Ok(worktree) => self.act(caller, &worktree, action).await,
+            Ok(worktree) if own_thread => self.act(caller, &worktree, action).await,
+            Ok(_) => Err(GitRefusal::NoWorktree),
             Err(bad) => Err(bad.into()),
         };
         done.unwrap_or_else(|why| GitOutcome::Refused { why })
@@ -119,8 +127,12 @@ impl Engine {
         action: GitAction,
     ) -> Result<GitOutcome, GitRefusal> {
         let git = &self.git.for_worktree(worktree).await?;
+        // While a turn runs the files change: nothing is reverted, removed, committed or pushed.
+        if caller.running && waits_for_the_turn(&action) {
+            return Err(GitRefusal::Running);
+        }
         Ok(match action {
-            GitAction::Status => GitOutcome::Status(status::of(git, worktree).await?),
+            GitAction::Status => GitOutcome::Status(shown(git, worktree).await?),
             GitAction::Checkpoints => GitOutcome::Checkpoints {
                 checkpoints: checkpoint::list(git, worktree).await?,
             },
@@ -128,48 +140,93 @@ impl Engine {
                 scope,
                 ignore_whitespace,
             } => GitOutcome::Changes(changes_of(git, worktree, scope, ignore_whitespace).await?),
-            GitAction::Revert { .. } | GitAction::Remove if caller.running => {
-                return Err(GitRefusal::Running);
-            }
             GitAction::Revert { turn } => GitOutcome::Reverted {
                 turn,
                 undo: revert::to_turn(git, worktree, turn).await?,
             },
             GitAction::Commit {
                 message,
+                reviewed,
                 files,
                 new_branch,
             } => {
+                accepted(git, worktree).await?;
                 let asked = commit::Asked {
                     message: &message,
+                    reviewed: &reviewed,
                     files: files.as_deref(),
                     new_branch: new_branch.as_deref(),
                 };
                 // A branch that this call makes is written to the record as one of the thread.
-                let own = |name: &str| self.own(worktree, name);
+                let own = |name: &str| self.rewrite(worktree, |r| r.branches.push(name.to_owned()));
                 let (commit, branch) = commit::make(git, worktree, asked, &own).await?;
                 GitOutcome::Committed { commit, branch }
             }
             GitAction::Push {
                 default_branch_allowed,
-            } => push::make(git, worktree, default_branch_allowed).await?,
+            } => {
+                accepted(git, worktree).await?;
+                push::make(git, worktree, default_branch_allowed).await?
+            }
             GitAction::PullRequest => {
                 GitOutcome::PullRequest(pull_request::prepare(git, worktree).await?)
             }
             GitAction::Remove => GitOutcome::Removed {
                 kept: Some(worktree::remove(&self.git, &self.home, worktree).await?),
             },
+            GitAction::Trust => {
+                let seen = trust::now(git, worktree).await?;
+                self.rewrite(worktree, |record| record.trusted = Some(seen.entries))?;
+                GitOutcome::Trusted
+            }
         })
     }
 
-    /// Writes to the record that the runner made the branch `name` for the thread.
-    fn own(&self, worktree: &Worktree, name: &str) -> Result<(), GitRefusal> {
+    /// Changes the record of the worktree and writes it: a branch that the runner made for the
+    /// thread, or what the person accepted.
+    fn rewrite(
+        &self,
+        worktree: &Worktree,
+        change: impl FnOnce(&mut Record),
+    ) -> Result<(), GitRefusal> {
         let mut record = worktree.record().clone();
-        record.branches.push(name.to_owned());
+        change(&mut record);
         let repository = record.folder.file_name().and_then(|name| name.to_str());
         let repository = repository.ok_or(GitRefusal::BadPath)?;
         Ok(self.home.keep(worktree.thread(), repository, &record)?)
     }
+}
+
+/// The action is refused while a turn of the thread runs.
+const fn waits_for_the_turn(action: &GitAction) -> bool {
+    matches!(
+        action,
+        GitAction::Revert { .. }
+            | GitAction::Remove
+            | GitAction::Commit { .. }
+            | GitAction::Push { .. }
+    )
+}
+
+/// Refuses when a hook or a setting of the repository is not as the person accepted it: a
+/// commit or a push would run or obey it (THR-049).
+async fn accepted(git: &Git, worktree: &Worktree) -> Result<(), GitRefusal> {
+    let seen = trust::now(git, worktree).await?;
+    let what = trust::changed(worktree.record().trusted.as_ref(), &seen.entries);
+    if what.is_empty() {
+        Ok(())
+    } else {
+        Err(GitRefusal::Changed { what })
+    }
+}
+
+/// The status with the hooks that a commit runs and what changed since the person accepted.
+async fn shown(git: &Git, worktree: &Worktree) -> Result<agent_threads::git::Status, GitRefusal> {
+    let mut status = status::of(git, worktree).await?;
+    let seen = trust::now(git, worktree).await?;
+    status.changed = trust::changed(worktree.record().trusted.as_ref(), &seen.entries);
+    status.hooks = seen.hooks;
+    Ok(status)
 }
 
 /// The changes of `scope`: between two checkpoints, or from the last commit to the files now.
@@ -202,6 +259,9 @@ async fn changes_of(
                 _ => return Err(GitRefusal::UnknownCheckpoint),
             },
         };
-        Ok(changes::between(git, worktree, (&from, &to), ignore_whitespace).await?)
+        let mut changes = changes::between(git, worktree, (&from, &to), ignore_whitespace).await?;
+        // A commit of the person names this snapshot: it holds what the page shows.
+        changes.snapshot = (scope == Scope::Uncommitted).then_some(to);
+        Ok(changes)
     }
 }

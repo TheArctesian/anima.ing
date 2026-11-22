@@ -87,6 +87,7 @@ pub fn read(names: &[u8], counts: &[u8], whole: Option<&str>) -> Changes {
         deletions: files.iter().map(|file| file.deletions).sum(),
         files,
         truncated: whole.is_none(),
+        snapshot: None,
     }
 }
 
