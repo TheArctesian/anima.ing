@@ -45,6 +45,8 @@ async fn files_as_at(git: &Git, worktree: &Worktree, commit: &str) -> Result<(),
         commit,
         "--worktree",
         "--staged",
+        // A file that the index marks to skip is put back too.
+        "--ignore-skip-worktree-bits",
         "--",
         ".",
     ];

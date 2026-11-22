@@ -165,3 +165,28 @@ async fn a_filter_with_an_odd_name_or_in_the_configuration_of_the_worktree_is_no
     ));
     assert!(!mark.exists(), "a filter of the repository ran");
 }
+
+#[tokio::test]
+async fn an_edit_that_the_index_is_told_to_skip_is_in_the_checkpoint_and_is_reverted() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    for mark in ["--assume-unchanged", "--skip-worktree"] {
+        bench
+            .git_in(&folder, &["update-index", mark, "a.txt"])
+            .await;
+    }
+    std::fs::write(folder.join("a.txt"), "hidden edit\n").expect("a file");
+    bench.turn_ended(1).await;
+    let turn = super::checkpoint::turn_ref(super::THREAD, 1);
+    let kept = bench
+        .git_in(&folder, &["show", &format!("{turn}:a.txt")])
+        .await;
+    assert_eq!(kept, "hidden edit");
+    let reverted = bench.call(PERSON, GitAction::Revert { turn: 0 }).await;
+    assert!(
+        matches!(reverted, GitOutcome::Reverted { .. }),
+        "{reverted:?}"
+    );
+    let text = std::fs::read_to_string(folder.join("a.txt")).expect("the file");
+    assert_eq!(text, "one\n");
+}
