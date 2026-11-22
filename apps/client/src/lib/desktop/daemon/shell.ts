@@ -69,14 +69,22 @@ export async function daemonBundled(): Promise<boolean> {
   }
 }
 
+/** The mark of the daemon of this computer (R-322): it waits for the person in the macOS Keychain, it does not, or the shell did not say. */
+export type KeychainMark = 'waits' | 'free' | 'unknown';
+
+/** The mark of the daemon of this computer; `free` outside the app, where no daemon of this computer can wait, and `unknown` when the shell does not answer. */
+export async function daemonKeychainMark(): Promise<KeychainMark> {
+  if (!isTauri()) return 'free';
+  try {
+    return (await invoke('daemon_keychain_waits')) === true ? 'waits' : 'free';
+  } catch {
+    return 'unknown';
+  }
+}
+
 /** Whether the daemon of this computer waits for the person to allow it in the macOS Keychain; false outside the app or when the shell does not answer. */
 export async function daemonKeychainWaits(): Promise<boolean> {
-  if (!isTauri()) return false;
-  try {
-    return (await invoke('daemon_keychain_waits')) === true;
-  } catch {
-    return false;
-  }
+  return (await daemonKeychainMark()) === 'waits';
 }
 
 /**

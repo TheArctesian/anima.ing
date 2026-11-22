@@ -24,7 +24,7 @@ use crate::{
         events::{self, ActorKind, Bus, NewEvent, Severity, Source},
         metrics::{
             Battery, Gpu,
-            ingest::{Error, store},
+            ingest::{Error, need_gone, store},
             store::{self as metrics_store, Discovery},
         },
     },
@@ -96,7 +96,7 @@ pub(super) async fn write(
         }
         Err(other) => return Err(Error::Devices(other)),
     }
-    let Some(was_stale) = store::take_batch(&mut tx, push.device, push.token, now).await? else {
+    let Some(taken) = store::take_batch(&mut tx, push.device, push.token, now).await? else {
         return Ok(Written::Refused(RefusalCode::TokenRefused));
     };
     store::record_version(&mut tx, push.device, push.daemon_version, now).await?;
@@ -108,8 +108,11 @@ pub(super) async fn write(
     write_announcements(&mut tx, &push, now).await?;
     metrics_store::add_series(&mut tx, push.device, &rows.series, now).await?;
     let kept = metrics_store::add_points(&mut tx, push.device, &rows.values).await?;
-    if was_stale {
+    if taken.was_stale {
         events::record(&mut tx, bus, now, fresh_again(push.device, push.name)).await?;
+    }
+    if taken.needed {
+        events::record(&mut tx, bus, now, need_gone(push.device, push.name)).await?;
     }
     tx.commit().await?;
     Ok(Written::Kept(kept))

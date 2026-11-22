@@ -1,5 +1,5 @@
 import { graphql } from '$lib/hub/generated';
-import type { DeviceMetricsQuery, MetricRange, MetricsAddedSubscription } from '$lib/hub/generated/graphql';
+import type { DaemonNeed, DeviceMetricsQuery, MetricRange, MetricsAddedSubscription } from '$lib/hub/generated/graphql';
 import type { Hub, HubResult, Sink } from '$lib/hub/hub';
 
 const DeviceMetrics = graphql(`
@@ -124,6 +124,15 @@ const RevokeDaemonToken = graphql(`
   }
 `);
 
+const SetDaemonNeed = graphql(`
+  mutation SetDaemonNeed($deviceId: ID!, $need: DaemonNeed) {
+    setDaemonNeed(deviceId: $deviceId, need: $need) {
+      id
+      daemonNeed
+    }
+  }
+`);
+
 type DeviceNode = NonNullable<DeviceMetricsQuery['device']>;
 
 /** The metric series of one device for one range (WP-28 D-5: HOUR minutes, DAY ten minutes, WEEK hours). */
@@ -192,6 +201,11 @@ export function metricsApi(hub: Hub) {
       if (!result.ok) return result;
       const { metricsSource, metricsStale, daemonVersion } = result.value.revokeDaemonToken;
       return { ok: true, value: { metricsSource, metricsStale, daemonVersion: daemonVersion ?? null } };
+    },
+    /** Says what the device's daemon waits for from the person, or clears it with `null` (R-322); login or browser token only. */
+    setDaemonNeed: async (deviceId: string, need: DaemonNeed | null): Promise<HubResult<DaemonNeed | null>> => {
+      const result = await hub.request(SetDaemonNeed, { deviceId, need });
+      return result.ok ? { ok: true, value: result.value.setDaemonNeed.daemonNeed ?? null } : result;
     },
     /** Listen for new samples of one device; returns the function that stops listening. */
     watch: (deviceId: string, sink: Sink<NewMetrics>): (() => void) =>

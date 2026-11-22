@@ -151,7 +151,7 @@ read key; change commands with a write key).
 | `ssh <device>` L | A terminal on the device through the hub (K4 Section 8). The credential stays on the hub. |
 | `files` L | `ls`, `get`, `put` (K4 Section 9) |
 | `web` | `list`, `create`, `update`, `delete`, `suggestion accept\|dismiss`, `accept-certificate` L |
-| `agent` | `status`, `enrol` L, `revoke` L |
+| `agent` | `status`, `enrol` L, `revoke` L, `need keychain\|none` L (what the daemon waits for from a person; the desktop application sets it by itself, R-364) |
 | `capability` | `list` (`--tool <name>`, `--target <build target>`): the tool inventory of each device (compute plan CAP-020 to CAP-031) |
 | `agents` | `usage` (`--device <id\|name>`, `--source claude-code\|codex`, `--repository <host/owner/name>`, `--since <day>`, `--until <day>`, `--days <1-366>`, `--by device,source,model,repository,day`, repeatable; device and source by default): the sessions, prompts, tool calls and tokens of Claude Code and Codex with an estimate of the cost, which is not the bill of a subscription, and the AIS-024 sentence for a daemon that runs as a system unit (R-135; AIS-020, AIS-021, AIS-024) |
 | `snapshot` | `push` (`--remote`), `list`, `delete <ref>`: a commit of the working tree on a scratch ref of the forge (JOB-017, JOB-018). It uses git on this computer and makes no hub request. |
@@ -390,7 +390,7 @@ Every tool is `allow` by default (MCP-002, MCP-024, R-120). The switch of MCP-02
 
 | Set | Read | Change |
 | --- | --- | --- |
-| `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics`, `anima_capability_list`, `anima_compute_policy_list` (waits for R-335), `anima_agents_usage`, `anima_agents_sessions`, `anima_container_list`, `anima_container_storage`, `anima_container_networks`, `anima_container_updates`, `anima_compose_check`, `anima_compose_from_run`, `anima_catalogue_list`, `anima_catalogue_show` | `anima_catalogue_install`, `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L, `anima_compute_policy_set` L (waits for R-335; it sets no switch, so MCP-005 does not stop it) |
+| `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics`, `anima_capability_list`, `anima_compute_policy_list` (waits for R-335), `anima_agents_usage`, `anima_agents_sessions`, `anima_container_list`, `anima_container_storage`, `anima_container_networks`, `anima_container_updates`, `anima_compose_check`, `anima_compose_from_run`, `anima_catalogue_list`, `anima_catalogue_show` | `anima_catalogue_install`, `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L, `anima_compute_policy_set` L (waits for R-335; it sets no switch, so MCP-005 does not stop it), `anima_daemon_set_need` L (R-364; it takes no secret and makes no trust decision: it changes only what the device page says) |
 | `checks` | `anima_check_get` (with heartbeats and uptime) | `anima_check_create`, `anima_check_update`, `anima_check_set_paused`, `anima_check_delete` |
 | `maintenance` | `anima_maintenance_list` | `anima_maintenance_create`, `anima_maintenance_update`, `anima_maintenance_delete`, `anima_maintenance_set_active` |
 | `events` | `anima_events_search`, `anima_audit_list`, `anima_audit_verify` (R-138) | |

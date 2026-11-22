@@ -8,7 +8,7 @@ use crate::failure::{Failure, Hint};
 use crate::hub::Hub;
 use crate::invocation::Invocation;
 use crate::output::text::{enum_name, shell_word};
-use crate::output::{Cell, Table};
+use crate::output::{Cell, Table, Tone};
 use crate::paging::MAX_PAGE;
 
 #[derive(Debug, clap::Args)]
@@ -114,6 +114,10 @@ fn table(device: &device_get::DeviceGetDevice, charges: &[Option<f64>]) -> Table
     table.pair("Metrics", enum_name(&device.metrics_source));
     if let Some(version) = &device.daemon_version {
         table.pair("Agent version", version.as_str());
+    }
+    if let Some(need) = &device.daemon_need {
+        let words = crate::daemons::need::need_words(&enum_name(need));
+        table.pair("Daemon needs", Cell::toned(words, Tone::Bad));
     }
     table.pair(
         "Uptime 24 h",

@@ -210,7 +210,7 @@ are private to `events`.
 | `checks` (Phase 2, adds) | `sessions` (`link`, `SshLink`, `FixedCommand` only; no cycle: `sessions` does not import `checks`) |
 | `checks` (Phase 3, replaces the Phase 2 row above) | `ssh` (`link`, `SshLink`, `FixedCommand`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `notifications` (`observe`, `adopt_defaults`, `Observation`, `for_checks` only) |
 | `metrics` (Phase 2, new) | `devices`, `sessions` (link only), `credentials` (`Vault` only), `events` |
-| `metrics` (Phase 3, replaces the row above) | `devices`, `ssh` (`link`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `credentials` (`Vault` only), `events`, `access` (`Authenticated`, `Operator`, `ClientAddr` only; daemon tokens live in `metrics`, R-092 D-1); crate `daemon-core` (CR-8) |
+| `metrics` (Phase 3, replaces the row above) | `devices`, `ssh` (`link`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `credentials` (`Vault` only), `events`, `access` (`Authenticated`, `Operator`, `ClientAddr` only, and `operator_only` in `metrics/graphql.rs` for `setDaemonNeed`, R-364; daemon tokens live in `metrics`, R-092 D-1); crate `daemon-core` (CR-8) |
 | `web_interfaces` (Phase 2, new) | `checks` (`http_urls` only), `devices` (CR-5), `events` |
 | `compute` (compute plan L1-4, new; R-343) | `events` (`Trail`; the audit target is the setting `compute.library`), `access` (`Authenticated` only, in `library/graphql.rs`) |
 | `trust` (Phase 3, new) | `devices`, `events` |
@@ -248,7 +248,7 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | --- | --- | --- |
 | `devices` | `access` (R-022), `checks`, `sessions` (replaced in Phase 3 by `trust`, see the Phase 3 row below) | the `Authenticated` guard; `Device.status`, `Device.checks`, `Device.uptime`, `DeviceFilter.status`, `DeviceSort.STATUS`/`UPTIME`, `createDevice(addDefaultCheck)`, `SshSettings.hostKey` |
 
-| `devices` (Phase 2, adds) | `metrics`, `web_interfaces` | `Device.readings`, `Device.metrics`, `Device.gpus`, `Device.webInterfaces`, `Device.webInterfaceSuggestions`; Phase 3: `Device.metricsStale` (MET-018, CR-18), `Device.storage` (MET-029), `Device.batteries` (MET-032) |
+| `devices` (Phase 2, adds) | `metrics`, `web_interfaces` | `Device.readings`, `Device.metrics`, `Device.gpus`, `Device.webInterfaces`, `Device.webInterfaceSuggestions`; Phase 3: `Device.metricsStale` (MET-018, CR-18), `Device.storage` (MET-029), `Device.batteries` (MET-032); `Device.daemonVersion` (R-122), `Device.daemonNeed` (R-364) |
 | `metrics`, `web_interfaces` (Phase 2) | `access` (R-022) | the `Authenticated` guard on their root fields |
 | `builds` (Phase 3, WP-36) | `access` | the `Authenticated` and `BuilderSignedIn` guards |
 | `vpn` (Phase 3, VP-5) | `access` | the `Authenticated` guard |
@@ -578,6 +578,9 @@ pub struct CapabilityFilter { pub tool: Option<String>, pub build_target: Option
 pub async fn capabilities(db: &Db, filter: &CapabilityFilter) -> Result<Vec<Capabilities>, Error>;
 /// (R-122) The version of each device's daemon from its last batch; no entry when it sent none.
 pub async fn daemon_versions(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, String>, Error>;
+/// (R-364) What each device's daemon waits for from a person; no entry when nothing.
+/// metrics::graphql owns Mutation.setDaemonNeed (operator_only); the next accepted batch clears it.
+pub async fn daemon_needs(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, DaemonNeed>, Error>;
 /// (MET-032) The batteries each device's daemon last listed, by name; no entry when it has none.
 pub async fn batteries(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec<Battery>>, Error>;
 ```

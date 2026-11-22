@@ -1,6 +1,6 @@
 //! The `devices` tool set: the fleet, devices, their metrics and capabilities, the use of their
 //! AI agent programs and their single sessions, their containers, the text of a Compose file, the
-//! catalogue of applications, sites, wake, and the changes.
+//! catalogue of applications, sites, wake, what a daemon waits for, and the changes.
 
 mod agent_sessions;
 mod agent_usage;
@@ -10,6 +10,7 @@ mod change;
 mod compose_file;
 mod compute_policy;
 mod containers;
+mod daemon_need;
 mod metrics;
 pub mod models;
 mod read;
@@ -49,10 +50,11 @@ pub enum DeviceTool {
     Wake,
     Update,
     Delete,
+    DaemonNeedSet,
 }
 
 impl DeviceTool {
-    pub const ALL: [Self; 23] = [
+    pub const ALL: [Self; 24] = [
         Self::FleetOverview,
         Self::Search,
         Self::Get,
@@ -76,6 +78,7 @@ impl DeviceTool {
         Self::Update,
         Self::Delete,
         Self::ComputePolicySet,
+        Self::DaemonNeedSet,
     ];
 
     #[must_use]
@@ -84,6 +87,7 @@ impl DeviceTool {
             Self::Metrics => metrics::definition(),
             Self::CapabilityList => capabilities::definition(),
             Self::ComputePolicyList | Self::ComputePolicySet => compute_policy::definition_of(self),
+            Self::DaemonNeedSet => daemon_need::definition(),
             Self::AgentUsage => agent_usage::definition(),
             Self::AgentSessions => agent_sessions::definition(),
             Self::ContainerList
@@ -113,6 +117,7 @@ impl DeviceTool {
             Self::ComputePolicyList | Self::ComputePolicySet => {
                 compute_policy::call(self, hub, arguments).await
             }
+            Self::DaemonNeedSet => daemon_need::set(hub, arguments).await,
             Self::AgentUsage | Self::AgentSessions => self.agents(hub, arguments).await,
             Self::ContainerList
             | Self::ContainerStorage

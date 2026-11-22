@@ -80,7 +80,9 @@ pub fn definition(tool: DeviceTool) -> Definition {
             Access::Read,
             Effect::Reads,
             "Finds devices by part of the name, status, tag or site. Returns for each \
-             device its id, name, status, site and tags (detail adds host, ip, kind, os). \
+             device its id, name, status, site, tags and daemonNeed (KEYCHAIN: its daemon \
+             waits for a person to allow it in the macOS Keychain; null: nothing) (detail \
+             adds host, ip, kind, os). \
              Use it to turn a name into an id. Next: anima_device_get.",
         )
         .returns(&[
@@ -99,7 +101,7 @@ pub fn definition(tool: DeviceTool) -> Definition {
             "One device by id or exact name: status, site, host, tags, maintenance, its \
              checks (id, name, type, status) with uptime of the last 24 hours, its \
              batteries (name, chargePercent, state; empty for a device with none), its web \
-             interfaces and access warnings. detail adds SSH, RDP and VNC settings (never \
+             interfaces, access warnings and daemonNeed (KEYCHAIN or null). detail adds SSH, RDP and VNC settings (never \
              a credential). Next: anima_check_get for a check, anima_device_metrics.",
         )
         .returns(&[
@@ -135,8 +137,8 @@ fn overview_definition() -> Definition {
     ])
 }
 
-const SEARCH_KEYS: [&str; 5] = ["id", "name", "status", "site", "tags"];
-const GET_KEYS: [&str; 13] = [
+const SEARCH_KEYS: [&str; 6] = ["id", "name", "status", "site", "tags", "daemonNeed"];
+const GET_KEYS: [&str; 14] = [
     "id",
     "name",
     "status",
@@ -150,6 +152,7 @@ const GET_KEYS: [&str; 13] = [
     "uptime",
     "accessWarnings",
     "batteries",
+    "daemonNeed",
 ];
 
 pub async fn overview(hub: &Hub) -> Result<Value, ToolError> {

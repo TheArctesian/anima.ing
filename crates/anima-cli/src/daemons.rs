@@ -2,6 +2,7 @@
 
 pub mod documents;
 pub mod enrol;
+pub mod need;
 pub mod revoke;
 pub mod status;
 
@@ -16,6 +17,8 @@ pub enum DaemonCommand {
     Enrol(enrol::EnrolArgs),
     /// Revoke a device's daemon token.
     Revoke(revoke::RevokeArgs),
+    /// Say what a device's daemon waits for from a person (keychain), or clear it (none).
+    Need(need::NeedArgs),
 }
 
 impl DaemonCommand {
@@ -28,6 +31,7 @@ impl DaemonCommand {
             Self::Status(args) => args.run(invocation).await,
             Self::Enrol(args) => args.run(invocation).await,
             Self::Revoke(args) => args.run(invocation).await,
+            Self::Need(args) => args.run(invocation).await,
         }
     }
 }

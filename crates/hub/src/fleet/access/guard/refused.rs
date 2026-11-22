@@ -26,7 +26,9 @@
 /// label in its details: login or browser token only (HOST-001, HOST-017, MCP-004, R-149, R-150).
 /// Making an application public on the internet, checking its proof and removing it is for a
 /// person with a second factor (HOST-046, SF-232, task H21).
-pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 64] = [
+/// What a daemon waits for is reported by the signed-in desktop app of its computer: login or
+/// browser token only (R-364).
+pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 65] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -93,4 +95,6 @@ pub(in crate::fleet::access) const API_KEY_REFUSED_ROOTS: [&str; 64] = [
     "setModelPublisherApproval",
     // The device policy: closed until a key permission for it exists (R-335).
     "setDevicePolicy",
+    // What a daemon waits for: set by the app of its computer (R-364).
+    "setDaemonNeed",
 ];

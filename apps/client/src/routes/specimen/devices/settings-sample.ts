@@ -29,6 +29,7 @@ export const SAMPLE_DEVICE: DeviceDetail = {
   metricsSource: 'SSH',
   metricsStale: false,
   daemonVersion: null,
+  daemonNeed: null,
   sessionLimit: null,
   accessWarnings: ['UNENCRYPTED_VNC'],
   rdp: {

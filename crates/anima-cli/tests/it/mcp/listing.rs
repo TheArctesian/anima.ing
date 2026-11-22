@@ -5,7 +5,7 @@ use serde_json::json;
 use super::session::{API_KEY, Desk, LOGIN_TOKEN, assert_protocol_only, hub};
 use crate::kit::fake_hub::{FakeHub, refusal};
 
-const DEVICE_TOOLS: [&str; 23] = [
+const DEVICE_TOOLS: [&str; 24] = [
     "anima_fleet_overview",
     "anima_devices_search",
     "anima_device_get",
@@ -29,6 +29,7 @@ const DEVICE_TOOLS: [&str; 23] = [
     "anima_device_update",
     "anima_device_delete",
     "anima_compute_policy_set",
+    "anima_daemon_set_need",
 ];
 
 #[tokio::test]

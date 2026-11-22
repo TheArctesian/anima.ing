@@ -1,5 +1,5 @@
 //! `anima daemon status`: whether the metrics daemon of a device is reporting, and its version
-//! (MET-018, R-122).
+//! (MET-018, R-122), and what it waits for from a person (R-364).
 
 use super::documents::{DaemonStatus, daemon_status};
 use crate::devices::get::resolve;
@@ -50,6 +50,10 @@ fn table(device: &daemon_status::DaemonStatusDevice) -> Table {
         "Daemon version",
         version(source.as_str(), device.daemon_version.as_deref()),
     );
+    if let Some(need) = &device.daemon_need {
+        let words = super::need::need_words(&enum_name(need));
+        table.pair("Daemon needs", Cell::toned(words, Tone::Bad));
+    }
     table.pair(
         "Last reading",
         device
