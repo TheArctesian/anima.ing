@@ -198,7 +198,10 @@ pub(super) async fn insert_version(
 /// key is not removed and not past its expiry, and only when `device` is a consumer of it. One
 /// statement for the three refusals, so each takes the same path (K-E5 Section 2.1). The key
 /// row is held shared until the transaction ends: a rotation or a revoke, which hold it for
-/// update, wait, so a fetch never gives or records a version that has ended (R-147).
+/// update, wait, so a fetch never gives or records a version that has ended (R-147). The
+/// consumer rows of the device are held shared too: a removal of the device waits for the fetch
+/// to commit, and then its list of the keys that the server had names this key (K-E5 Section
+/// 2.1, "After removal").
 pub(super) struct Fetchable {
     pub(super) key: OperationalKeyId,
     pub(super) version: OperationalKeyVersionId,
@@ -214,11 +217,10 @@ pub(super) async fn fetchable(
     let row: Option<(OperationalKeyId, OperationalKeyVersionId, i32, Vec<u8>)> = sqlx::query_as(
         "SELECT k.id, v.id, v.number, v.sealed FROM credentials.operational_keys k \
          JOIN credentials.operational_key_versions v ON v.key_id = k.id AND v.state = 'active' \
+         JOIN credentials.operational_key_consumers c ON c.key_id = k.id AND c.device_id = $1 \
          WHERE k.name = $2 AND k.removed_at IS NULL \
          AND (k.expires_at IS NULL OR k.expires_at > $3) \
-         AND EXISTS (SELECT 1 FROM credentials.operational_key_consumers c \
-                     WHERE c.key_id = k.id AND c.device_id = $1) \
-         FOR SHARE OF k",
+         FOR SHARE OF k, c",
     )
     .bind(device)
     .bind(name)

@@ -182,10 +182,12 @@ fn uninstall(home: &Home) -> ExitCode {
         uid,
     };
     let env = |name: &str| std::env::var(name).ok();
+    // The key cache holds the values: it is deleted first, and also when the token delete
+    // fails (K-E5 Section 2.1).
     let forget = || -> Result<(), UninstallError> {
+        let keys = KeyStore::open(home).forget();
         TokenStore::open(home).forget()?;
-        KeyStore::open(home).forget()?;
-        Ok(())
+        keys.map_err(UninstallError::from)
     };
     match removal::uninstall(user, env, |step| run_step(step, STEP_DEADLINE), forget) {
         Ok(done) if done.was_installed => {
