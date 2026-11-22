@@ -340,23 +340,3 @@ pub(super) const fn refusal_word(why: &Refusal) -> &'static str {
         Refusal::OverLimit { .. } => "over the soft limit",
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn th108_only_the_person_asks_the_files_of_a_thread() {
-        let thread = Uuid::now_v7();
-        assert!(for_the_person(&Action::Files {
-            thread,
-            query: String::new(),
-            most: 10,
-        }));
-        assert!(!for_the_person(&Action::Earlier {
-            thread,
-            before: 1,
-            most: 10,
-        }));
-    }
-}

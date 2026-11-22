@@ -4,6 +4,7 @@
  * boundary, so each field is checked; a frame that does not read is left out.
  */
 
+import { filesFrom, type FoundFile } from './files';
 import { listingsFrom, type Listing, type ListingChange } from '../listing/listing';
 import type { Program } from '../thread';
 
@@ -89,12 +90,6 @@ export interface Limits {
   readonly depth: number;
   readonly children: number;
   readonly running: number;
-}
-
-/** A file or a folder of the working folder of a thread, by its path from that folder. */
-export interface FoundFile {
-  readonly path: string;
-  readonly folder: boolean;
 }
 
 export type Outcome =
@@ -311,14 +306,13 @@ function refusedFrom(value: unknown): Outcome | null {
   return { outcome: 'refused', why, ...(said === null ? {} : { said }), ...(answered.length === 0 ? {} : { answered }) };
 }
 
-function filesFrom(value: unknown): FoundFile[] | null {
-  if (!Array.isArray(value)) return null;
-  const paths: FoundFile[] = [];
-  for (const found of value) {
-    if (!isRecord(found) || typeof found.path !== 'string' || typeof found.folder !== 'boolean') return null;
-    paths.push({ path: found.path, folder: found.folder });
+/** The notice of a folder (THR-046), or the files of the folder of a thread (TH108). */
+function folderFrom(value: Fields): Outcome | null {
+  if (value.outcome === 'files') {
+    const paths = filesFrom(value.paths);
+    return paths === null ? null : { outcome: 'files', paths, more: value.more === true };
   }
-  return paths;
+  return Array.isArray(value.notice) && value.notice.every((line) => typeof line === 'string') ? { outcome: 'folder', notice: value.notice as string[] } : null;
 }
 
 /** The result of a call, or `null` when it does not read. */
@@ -336,14 +330,11 @@ export function outcomeFrom(value: unknown): Outcome | null {
     case 'stopped':
       return { outcome: 'stopped', allEnded: value.all_ended === true };
     case 'folder':
-      return Array.isArray(value.notice) && value.notice.every((line) => typeof line === 'string') ? { outcome: 'folder', notice: value.notice as string[] } : null;
+    case 'files':
+      return folderFrom(value);
     case 'listings': {
       const listings = listingsFrom(value.listings);
       return listings === null ? null : { outcome: 'listings', listings };
-    }
-    case 'files': {
-      const paths = filesFrom(value.paths);
-      return paths === null ? null : { outcome: 'files', paths, more: value.more === true };
     }
     case 'refused':
       return refusedFrom(value.why);

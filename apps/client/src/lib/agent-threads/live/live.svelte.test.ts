@@ -104,21 +104,6 @@ describe('the calls of the page to the runner', () => {
     expect(await live.call({ call: 'interrupt', thread: THREAD })).toEqual({ ok: false, words: 'That request is answered, closed, or its program ended.' });
   });
 
-  it('TH108: the files of a thread come as the runner sent them; a frame that does not read is not taken', async () => {
-    const sent = outcomeFrom({ outcome: 'files', paths: [{ path: 'src', folder: true }, { path: 'src/main.rs', folder: false }], more: true });
-    expect(outcomeFrom({ outcome: 'files', paths: [{ path: 'src' }] })).toBeNull();
-    const asked: unknown[] = [];
-    const live = new LiveThreads(
-      madeShell((action) => {
-        asked.push(action);
-        return sent ?? { outcome: 'ok' };
-      }),
-      () => AWAY,
-    );
-    expect(await live.files(THREAD, 'main', 20)).toEqual({ ok: true, paths: [{ path: 'src', folder: true }, { path: 'src/main.rs', folder: false }], more: true });
-    expect(asked).toEqual([{ call: 'files', thread: THREAD, query: 'main', most: 20 }]);
-  });
-
   it('TH97: a starting thread says what it waits for and for how long', () => {
     const started = new Date('2026-11-21T10:00:00Z');
     expect(waitingWords('claude_code', started, new Date('2026-11-21T10:00:42Z'))).toMatch(/^Waiting for the first answer of the program: 42 s\. Claude Code reads its sign-in first/);
@@ -186,5 +171,22 @@ describe('the page after a reload', () => {
     shell.emit(saidFrame(2, { kind: 'message', text: 'x'.repeat(TEXT_CHARS + 10), parent: null }));
     const entry = live.threads.get(THREAD)?.entries[0];
     expect(entry?.kind === 'reply' ? entry.text.length : 0).toBe(TEXT_CHARS + 1);
+  });
+});
+
+describe('the @ list of the composer', () => {
+  it('TH108: the files of a thread come as the runner sent them; a frame that does not read is not taken', async () => {
+    const sent = outcomeFrom({ outcome: 'files', paths: [{ path: 'src', folder: true }, { path: 'src/main.rs', folder: false }], more: true });
+    expect(outcomeFrom({ outcome: 'files', paths: [{ path: 'src' }] })).toBeNull();
+    const asked: unknown[] = [];
+    const live = new LiveThreads(
+      madeShell((action) => {
+        asked.push(action);
+        return sent ?? { outcome: 'ok' };
+      }),
+      () => AWAY,
+    );
+    expect(await live.files(THREAD, 'main', 20)).toEqual({ ok: true, paths: [{ path: 'src', folder: true }, { path: 'src/main.rs', folder: false }], more: true });
+    expect(asked).toEqual([{ call: 'files', thread: THREAD, query: 'main', most: 20 }]);
   });
 });

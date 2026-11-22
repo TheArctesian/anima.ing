@@ -18,6 +18,25 @@ async fn files(client: &mut Client, thread: Uuid, query: &str) -> Outcome {
     client.done(id).await
 }
 
+/// A thread of the made Claude Code in `work`.
+async fn started(client: &mut Client, work: std::path::PathBuf) -> Uuid {
+    let start = client
+        .call(Action::Start {
+            program: Program::ClaudeCode,
+            folder: work,
+            mode: Mode::FullAccess,
+            model: None,
+            effort: None,
+            prompt: "Look at the code".to_owned(),
+            program_path: None,
+        })
+        .await;
+    let Outcome::Started { thread } = client.done(start).await else {
+        panic!("the thread started");
+    };
+    thread
+}
+
 #[tokio::test]
 async fn th108_the_files_of_a_thread_come_best_first_with_no_secret_and_no_link_out() {
     let kit = Kit::new();
@@ -33,20 +52,7 @@ async fn th108_the_files_of_a_thread_come_best_first_with_no_secret_and_no_link_
     }
     std::os::unix::fs::symlink(kit.path("bin"), work.join("bin")).expect("link");
     let mut client = kit.client().await;
-    let start = client
-        .call(Action::Start {
-            program: Program::ClaudeCode,
-            folder: work,
-            mode: Mode::FullAccess,
-            model: None,
-            effort: None,
-            prompt: "Look at the code".to_owned(),
-            program_path: None,
-        })
-        .await;
-    let Outcome::Started { thread } = client.done(start).await else {
-        panic!("the thread started");
-    };
+    let thread = started(&mut client, work).await;
 
     let Outcome::Files { paths, more } = files(&mut client, thread, "composer").await else {
         panic!("files");

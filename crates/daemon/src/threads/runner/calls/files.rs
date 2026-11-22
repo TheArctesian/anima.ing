@@ -243,4 +243,20 @@ mod tests {
         std::os::unix::fs::symlink(outside.path(), root.path().join("src")).expect("link");
         assert!(folder_at(&top, &["src".to_owned()]).is_none());
     }
+
+    #[test]
+    fn th108_only_the_person_asks_the_files_of_a_thread() {
+        use agent_threads::control::Action;
+        let thread = Uuid::now_v7();
+        assert!(super::super::for_the_person(&Action::Files {
+            thread,
+            query: String::new(),
+            most: 10,
+        }));
+        assert!(!super::super::for_the_person(&Action::Earlier {
+            thread,
+            before: 1,
+            most: 10,
+        }));
+    }
 }
