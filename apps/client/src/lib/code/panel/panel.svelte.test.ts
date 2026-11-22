@@ -138,4 +138,10 @@ describe('the toggles of the panels in the top band', () => {
     expect(press('Toggle thread details')?.disabled).toBe(false);
     expect(press('Maximize right panel')).not.toBeNull();
   });
+
+  it('draws only the toggles of the parts that are named, and Maximize only with the right panel', () => {
+    app = mount(PanelToggles, { target: document.body, props: { open: { details: false, terminal: false, panel: true }, parts: ['details'], ontoggle: () => undefined, onmaximise: () => undefined } });
+    flushSync();
+    expect([...document.querySelectorAll('[role="group"][aria-label="Panels"] button')].map((button) => button.getAttribute('aria-label'))).toEqual(['Toggle thread details']);
+  });
 });
