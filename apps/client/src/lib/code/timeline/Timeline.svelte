@@ -58,7 +58,8 @@
     else urgent = '';
     await new Promise((done) => setTimeout(done, CLEAR_MS));
     if (region === 'polite') polite = words;
-    else urgent = words;
+    // Requests that closed in the moment are not said.
+    else if (asks.length > 0) urgent = words;
   }
 
   $effect(() => {
