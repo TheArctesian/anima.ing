@@ -49,6 +49,8 @@
 <!-- T3 Code's 16 px rail on the list's edge: drag to resize, double-click for the default width. -->
 <div class="rail">
   <Tooltip text="Drag to resize sidebar">
+    <!-- A focusable separator with a value is the WAI-ARIA window splitter, an interactive widget that Svelte's check does not know. -->
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
     <div
       class="grip"
       role="separator"
