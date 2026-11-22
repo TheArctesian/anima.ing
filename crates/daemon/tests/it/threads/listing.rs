@@ -231,6 +231,8 @@ async fn thr_041_a_refused_start_with_no_project_leaves_no_folder() {
             why: Refusal::BadValue
         }
     );
-    let left = std::fs::read_dir(kit.path("Anima Scratch")).map_or(0, Iterator::count);
+    let left = std::fs::read_dir(kit.path("Anima Scratch"))
+        .expect("the start made its folder before the model was checked")
+        .count();
     assert_eq!(left, 0, "the folder of the refused start is removed");
 }

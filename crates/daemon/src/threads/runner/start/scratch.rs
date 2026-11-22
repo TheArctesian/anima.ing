@@ -39,7 +39,11 @@ pub fn made(env: &[(String, String)], today: NaiveDate) -> Result<PathBuf, Refus
     let folder = above.join(format!("{today}-{}", &random[24..]));
     std::fs::create_dir(&folder).map_err(|_| Refusal::FolderNotPermitted)?;
     let real = std::fs::canonicalize(&folder).map_err(|_| Refusal::FolderNotPermitted)?;
-    let real_above = std::fs::canonicalize(&above).map_err(|_| Refusal::FolderNotPermitted)?;
+    // The real home, not the real `above`: a link put in place of `above` after the check
+    // would move both.
+    let real_above = std::fs::canonicalize(home)
+        .map_err(|_| Refusal::FolderNotPermitted)?
+        .join(SCRATCH);
     if real.parent() == Some(real_above.as_path()) {
         Ok(real)
     } else {
