@@ -72,7 +72,7 @@ The server proves its identity with its daemon token (K8 Section 2; R-147). To b
 - A value goes in and never comes out through K1: the only path that gives a value is Section 2.1, to a server. No client of the operator gets a stored operational key (CLI-004, SEC-005).
 - Each change needs a login of the operator: an API key cannot create, rotate, revoke, remove, grant or ungrant (a grant is a trust decision). A read key can read the metadata.
 - Each change writes one audit entry and one event in one transaction; neither holds a value.
-- Commands: `anima key list|show|add|set|rotate|revoke|remove|grant|ungrant`. `add` and `rotate` read the value from standard input and refuse a terminal that echoes. MCP tools: `anima_keys_list` and `anima_key_show` only; the others take a secret or make a trust decision (command line plan Section 7), and the coverage test lists them with that reason.
+- Commands: `anima secret list|show|add|set|rotate|revoke|remove|grant|ungrant` (OD-E23; `anima key` is the noun of the API keys). `add` and `rotate` read the value from standard input and refuse a terminal that echoes. MCP tools: `anima_secrets_list` and `anima_secret_show` only; the others take a secret or make a trust decision (command line plan Section 7), and the coverage test lists them with that reason.
 
 ## 3. Class A: records that the client seals (VLT-001, VLT-002, VLT-004 to VLT-006; `crates/hub/src/engine/sealed_records/`, schema `sealed_records`, migrations 2080–2089)
 
@@ -81,7 +81,7 @@ The server proves its identity with its daemon token (K8 Section 2; R-147). To b
 - The vault key of Class A is made on a client and is kept in the key store of the operating system of each client (CLI-003). The hub never receives it, in no call, in no form (VLT-001). `sealed` is what the client made with it; the hub stores and returns these bytes and cannot open them. `key_id` is the SHA-256 of the vault key, so that a client sees that a record is of a different vault key.
 - The hub has no function that takes a vault key, and the K1 schema has no input field for one. A test proves that the hub cannot read a Class A value (PH-E-002): it seals a known value as a client does, stores it through the API, and looks for the value in every table, the event log, the audit log and the log output of the hub.
 - **Add a client (VLT-002).** A client that has the key shows a QR code; the new client reads it. The code holds a one-time public key exchange between the two clients, and the vault key goes from client to client sealed to that exchange. The hub can carry these sealed bytes (`Mutation.offerVaultKey`, `Query.vaultKeyOffer`, one use, 5 minutes) and cannot open them. Recovery is a printed recovery key, which is the vault key in words; the hub never sees it.
-- **Reveal (VLT-004, VLT-005).** The client opens a record and shows it only after `Mutation.recordReveal(owner)` succeeded. The hub writes one audit entry (`target_type` `sealed_record`, action `reveal`, the owner reference, the client; no value) and refuses with `FORBIDDEN` and `extensions.reason` `TOTP_REQUIRED` when the last accepted TOTP code of this login is more than 5 minutes old; the call then takes a new code (`totpCode`), which is used as a sign-in code is (one use for each step). K7 has no new code: the reason is an extension of `FORBIDDEN`. The login token keeps the time of its last accepted code (`access.api_tokens.totp_at`, migration 0032): a sign-in with a code sets it, and so does a reveal with a new code. Five wrong codes for a reveal delete the login token (`UNAUTHENTICATED`, and an `ACCESS` warning). Only a person who signed in may ask (a login or a browser token; an API key, a builder token and a declared AI agent get `FORBIDDEN`). An operator with no TOTP gets `FORBIDDEN` with `reason` `TOTP_NOT_ENROLLED`: a reveal always asks a second factor. An owner with no sealed record gets `NOT_FOUND`. On a hosted hub the operator has no TOTP on the hub (R-129): what replaces the check there is not decided (OD-E20), and until then `recordReveal` answers `UNAVAILABLE` on a hosted hub.
+- **Reveal (VLT-004, VLT-005).** The client opens a record and shows it only after `Mutation.recordReveal(owner)` succeeded. The hub writes one audit entry (`target_type` `sealed_record`, action `reveal`, the owner reference, the client; no value) and refuses with `FORBIDDEN` and `extensions.reason` `TOTP_REQUIRED` when the last accepted TOTP code of this login is more than 5 minutes old; the call then takes a new code (`totpCode`), which is used as a sign-in code is (one use for each step). K7 has no new code: the reason is an extension of `FORBIDDEN`. The login token keeps the time of its last accepted code (`access.api_tokens.totp_at`, migration 0032): a sign-in with a code sets it, and so does a reveal with a new code. Five wrong codes for a reveal delete the login token (`UNAUTHENTICATED`, and an `ACCESS` warning). Only a person who signed in may ask (a login or a browser token; an API key, a builder token and a declared AI agent get `FORBIDDEN`). An operator with no TOTP gets `FORBIDDEN` with `reason` `TOTP_NOT_ENROLLED`: a reveal always asks a second factor. An owner with no sealed record gets `NOT_FOUND`. On a hosted hub the operator has no TOTP on the hub (R-129): an approval by a device replaces the check (OD-E20, Section 3a, kind `sealed_record.reveal`); until it is built, `recordReveal` answers `UNAVAILABLE` on a hosted hub.
 - **Search (VLT-006).** The hub keeps no plain text of a sealed record. `sealed_index` is a search index that the client sealed with the vault key, or null; search runs on the client.
 - The sealing keys (Section 1) and the operational keys (Section 2) never seal a Class A record, and the retrieval of Section 2.1 has no path to `sealed_records`: `credentials` does not import `sealed_records`, and a test asserts it through `quality:imports`.
 
@@ -93,6 +93,64 @@ The server proves its identity with its daemon token (K8 Section 2; R-147). To b
 
 - Commands: `anima sealed-record show|store|remove` move opaque bytes for a test and for a backup; they cannot open a record. No MCP tool takes part in a reveal or in a key offer (a trust decision). The key store, the QR code and the recovery key are client work (Tauri shell: the key store; `$lib/vault/`: sealing).
 
+## 3a. An approval by a device (OD-E20, OD-E27 to OD-E31; design, not built)
+
+The operator ruled on 2026-11-22 (OD-E20, option 1): on a hosted hub a device does the check of its operating system before a reveal, and he added: "send a notification for it that is published to all devices but mostly just approval via face id or password on phone". The same night he ruled that adding an application route is approved by this mechanism (Routes, `crates/hub/src/work/routes/`); removing a route needs only a signed-in person, and a private route needs no consent at the machine. On OD-E30 he ruled: "the approval can go to any device that is active so if it's my pop-os linux device it can also approve any running app can approve it". So this is one mechanism, a device approval, for each action that needs a person at a device; it is not tied to a phone. It moves to a contract of its own when it is built. Until then `recordReveal` answers `UNAVAILABLE` on a hosted hub, and `addApplicationRoute` stays off. The requirement numbers are placeholders.
+
+**What it protects against, plainly (OD-E27, OD-E28).** The operator chose no number to pick and a first approving device that any signed-in application may enrol. So the approval protects against a person at an unlocked screen; it does not protect against a stolen signed-in session, which can enrol its own approving device when the account has none, and which a habitual tap approves. The guards below cost the operator nothing and stay strong.
+
+- **APR-NEW-key.** A device that can approve has an approval key. Its private half never leaves the device and is used only after the local check of the operating system:
+  - iPhone and Mac: a key in the Secure Enclave with the access rule "user presence" (Face ID, Touch ID, or the passcode or password of the device).
+  - Android: a key in the Android Keystore that needs the person to authenticate at each use (fingerprint, face or the screen lock).
+  - Linux: the login password through polkit. The application asks an action whose rule is `auth_self`, with no kept authorization, and the polkit agent of the desktop shows the password prompt of the system. The key is in the TPM when the computer has one; otherwise it is in the Secret Service key ring of the session, and then only the application enforces the check, which is weaker: another program of the same user can use the key.
+  - Windows: Windows Hello.
+  - A button with no prompt of the system is never a check. A browser tab alone has no key and cannot approve.
+  The hub stores the public half for the device; removing the device removes its key.
+- **APR-NEW-enrol.** Any signed-in application may add the first approval key of an account, at any time, with no email (OD-E28). A later key needs an approval by an existing one. Each enrolment shows at once on every other device of the account, is in the audit log, and shows in the device list with its kind of check (Secure Enclave, Keystore, TPM, key ring, Windows Hello) and the time it was added.
+- **APR-NEW-kinds.** Each kind of request is a text that the domain of the action registers, with its policy; the set stays open. The first kinds:
+
+| Kind | Policy |
+| --- | --- |
+| `sealed_record.reveal` | Every hub when the account has an approval key; on a hosted hub always (no TOTP, R-129). The application that asked may approve its own request with its local check. |
+| `route.add` (later `route.publish`) | Always. Never approved by the token that asked; another running application of the account approves, which may be on the same computer. A public add still needs a browser token with no agent declaration (SF-330). |
+
+- **APR-NEW-request.** A guarded mutation called with no `approval` makes a request and answers `FORBIDDEN` with `extensions.reason` `APPROVAL_REQUIRED` and `extensions.approvalRequest` (its id). The hub builds the subject from its own stored state, never from text of the client: the action; the asking device by the name the hub has for it, or "a browser" or "the command line" for a token with no device; the address from which the hub got the request; the time; for a reveal, the kind of record; for a route, the fields of `routes.route` (the name, the kind, public or private, the device by name, the application and its port, the hub port and the protocol of a stream, the full target of a redirect). The request holds the kind, the subject, the SHA-256 of the canonical JSON of the subject (the digest), the login token that asked, a random value of 32 bytes, and its expiry: 5 minutes for each kind. An account has at most one open request of each kind; a new one ends the older one.
+- **APR-NEW-notify.** The hub publishes each request to every device of the account that runs the application. The text names the action, the kind of record for a reveal (for example "a password", OD-E29), the asking device and the time, and says "Open Anima to approve or deny". It never holds a record owner, a record name or a value. No action of the notification approves.
+- **APR-NEW-approve.** A running application with an approval key reads the request and shows the subject, first the asking device and its address as the hub saw them, and for a route whether it is public. It computes the digest of what it shows, asks the local check, and signs the request id, the random value, the digest, the id of the asking token and the expiry. There is no number to pick (OD-E27). The hub checks the signature itself: against a key of a device of the same account, before the expiry, one time, and with the self-approval rule of the kind. Deny ends the request and offers to sign the asking token out.
+- **APR-NEW-consume.** The mutation called again with `approval: <id>` succeeds only from the login token that asked, when the digest that the hub computes again from the new input is equal, within 60 seconds of the approval, and one time. The audit entry of the action names the device that approved.
+- **No other path (OD-E30).** No code and no link by email. With no application running anywhere, the request waits and then expires.
+
+**K1 (proposed).** No new K7 code: each outcome is a `reason` of `FORBIDDEN`.
+
+| Field or reason | Meaning |
+| --- | --- |
+| `approval: ID` on each guarded mutation | The id of an approved request. |
+| `Query.approvalRequest(id: ID!): ApprovalRequest` | `{ id, kind, state, expiresAt, approvedBy }` for the token that asked; `state` is `WAITING`, `APPROVED`, `DENIED`, `EXPIRED` or `USED`. The client watches it every 2 seconds, or by the change event of the request. |
+| `Query.pendingApprovals: [ApprovalRequest!]!`, `Mutation.answerApproval(id, signature, approve)`, `Mutation.addApprovalKey(publicKey, check, approval)` | For an approving application: its login token only. |
+| `APPROVAL_REQUIRED` | Waiting for a device; `extensions.approvalRequest` holds the id. |
+| `APPROVAL_DENIED`, `APPROVAL_EXPIRED` | The request was denied, or ended unanswered or unused. |
+| `NO_APPROVER` | The account has no approval key that may approve this kind; no request is made. The client says to open the application on a device to enrol it. |
+
+- **Who may approve.** A device of the account with the application running and an approval key. Never an API key, a builder token, a declared AI agent or a browser tab.
+- **Limits.** At most 5 requests for each account in 10 minutes; a sixth answers `RATE_LIMITED` and writes an `ACCESS` warning event. Each request, approval, denial, expiry and enrolment writes an audit entry and an event, with no value.
+
+**Threat check.**
+
+| Threat | Answer of this design |
+| --- | --- |
+| A stolen signed-in session on an account with no approving device | Not prevented (OD-E28): it can enrol its own key. The enrolment shows on every other device and in the audit log. |
+| A stolen session asks until the operator taps yes | Not prevented by a number (OD-E27). One open request of each kind, 5 in 10 minutes, the asking device and its address shown first, and Deny signs the session out. |
+| A replay, or an approval used by another session or for a changed request | The signature covers the request id, the random value, the digest of the subject, the asking token and the expiry; the hub accepts it one time and computes the digest again. |
+| The hub or a changed client shows one subject and gets an approval for another | The device signs the digest of what it showed; a different subject has a different digest. |
+| An approval from a wrong or removed device | Only a public key stored for a device of the account verifies. |
+| The notification leaks what is asked | It holds the action, the kind of record (OD-E29), the device and the time; the push service learns these, never a name or a value. |
+| A program of the user on a Linux computer with no TPM uses the key | Possible: the key ring is open to the session. The device list shows that kind of check. |
+| The hub forges an approval | For a reveal it gives no value: the hub cannot open a Class A record. For a route the hub is the party that writes. |
+| A changed client skips the check of a reveal | Not prevented, as with the TOTP check today: the vault key is on the client. |
+| No device can approve | `NO_APPROVER`, or the request expires; there is no other path (OD-E30). |
+
+**What the mobile and desktop streams build** (not this stream): the approval key with the local check of each platform above; the push to each running application; the screen that shows a subject and approves or denies; enrolling the key and showing a new enrolment on the other devices. The hub (E0-6 T6) builds the requests, the public keys, the check of a signature, the K1 fields and the notification; each domain (sealed records, Routes) calls it for its kind.
+
 ## 4. K2, K3 and the review
 
 - K2: 2070–2079 `credentials` (operational keys), 2080–2089 `sealed_records`. K3: `credentials::operational -> events, devices (the device of a token, value only)`; the daemon ingest calls `credentials::operational::{current_for, record_held, fetch}`; `sealed_records -> access (the TOTP age), events, records`.
@@ -102,7 +160,7 @@ The server proves its identity with its daemon token (K8 Section 2; R-147). To b
 
 | Question | State in this contract |
 | --- | --- |
-| What replaces the TOTP check of a reveal on a hosted hub (OD-E20) | Not decided. `recordReveal` is unavailable on a hosted hub. |
+| What replaces the TOTP check of a reveal on a hosted hub (OD-E20) | Decided (2026-11-22): an approval by a device with its local check (Section 3a; OD-E27 to OD-E30 were ruled the same day). Not built: `recordReveal` is unavailable on a hosted hub. |
 | A new version of a sealing key (Section 1) | Not built. |
 | Automatic rotation at a provider | Not built and not promised. The hub records a rotation that the operator did. |
 | A key for a workload that is not on a machine with a daemon | Not built: retrieval needs a daemon token. |
