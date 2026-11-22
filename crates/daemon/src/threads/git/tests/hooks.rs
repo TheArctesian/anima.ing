@@ -12,7 +12,7 @@ use agent_threads::git::{GitAction, GitOutcome, GitRefusal};
 use super::trusted::{HOOKS, PUSH, UNCOMMITTED, commit};
 use super::{Bench, PERSON, refused, target};
 use crate::threads::git::place::Home;
-use crate::threads::git::run::hooks::{Access, AsThread, Ended};
+use crate::threads::git::run::hooks::Access;
 use crate::threads::git::{Caller, Engine};
 
 const FULL: Caller = Caller {
@@ -26,28 +26,8 @@ impl Bench {
     fn with_hooks(&self, started: &Arc<AtomicUsize>) -> Engine {
         let records = self.home.with_file_name("records");
         let home = Home::at(&self.home, &records).expect("a home");
-        let started = Arc::clone(started);
-        let as_thread = AsThread::new(move |run| {
-            started.fetch_add(1, Ordering::SeqCst);
-            Box::pin(async move {
-                let input = match &run.input {
-                    Some(file) => std::fs::File::open(file)?.into(),
-                    None => std::process::Stdio::null(),
-                };
-                let done = tokio::process::Command::new(&run.program)
-                    .args(&run.args)
-                    .current_dir(&run.dir)
-                    .envs(run.env.iter().map(|(name, value)| (name, value)))
-                    .stdin(input)
-                    .output()
-                    .await?;
-                Ok(Ended {
-                    code: done.status.code(),
-                    said: String::from_utf8_lossy(&done.stderr).into_owned(),
-                })
-            })
-        });
-        Engine::new(self.git.clone(), home).with_hooks(as_thread)
+        Engine::new(self.git.clone(), home)
+            .with_launcher(super::copy::as_the_person(Some(Arc::clone(started))))
     }
 
     /// Writes the hook `name` of the project with `body`.

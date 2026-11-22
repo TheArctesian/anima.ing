@@ -5,12 +5,15 @@
 //! The checks of text are pure; [`Home::worktree`] reads the file system.
 
 pub mod chosen;
+pub mod disk;
 pub mod own;
 pub mod records;
+pub mod shared;
 pub mod walk;
 
 use std::path::{Component, Path, PathBuf};
 
+use sha2::Digest as _;
 use uuid::Uuid;
 
 /// The prefix of the branch the runner makes for a thread.
@@ -63,6 +66,8 @@ pub struct Record {
     pub common_dir: PathBuf,
     /// The Git folder of the runner for this worktree ([`own`]): the one its `git` runs with.
     pub own: PathBuf,
+    /// The checked copy of the history of the project ([`shared`]), which `own` borrows from.
+    pub shared: PathBuf,
     /// The branches the runner made for this thread: the only ones a commit or a push may move.
     pub branches: Vec<String>,
     /// Who a commit is from and where a push goes, as the person last accepted them
@@ -176,6 +181,21 @@ impl Home {
         Ok(self.records.join(thread).join(format!("{repository}.git")))
     }
 
+    /// The folder of what the runner keeps for each project: the checked copy of its history
+    /// and what the person accepted for it.
+    #[must_use]
+    pub fn projects(&self) -> PathBuf {
+        self.records.join("projects")
+    }
+
+    /// Where the checked copy of the history of the repository at `project` is.
+    #[must_use]
+    pub fn shared(&self, project: &Path) -> PathBuf {
+        let name = sha2::Sha256::digest(project.as_os_str().as_encoded_bytes());
+        let name = crate::model::fetch::hex(&name);
+        self.projects().join(format!("{name}.git"))
+    }
+
     fn record_file(&self, thread: Uuid, repository: &str) -> Result<PathBuf, BadPlace> {
         self.planned(thread, repository)?;
         let thread = thread.as_hyphenated().to_string();
@@ -248,7 +268,9 @@ impl Home {
         if !meta.is_file() || !ours || git_dir != record.git_dir {
             return Err(BadPlace::NotOurWorktree);
         }
-        if record.own != self.own(thread, repository)? || !record.own.is_dir() {
+        let ours = record.own == self.own(thread, repository)?
+            && record.shared == self.shared(&record.project);
+        if !ours || !record.own.is_dir() {
             return Err(BadPlace::NotOurWorktree);
         }
         Ok(Worktree { thread, record })

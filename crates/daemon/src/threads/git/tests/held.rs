@@ -120,7 +120,8 @@ async fn a_worktree_stays_where_it_was_made_when_the_home_changes() {
     // The person chose a different home in the settings; the records are where they were.
     let root = bench.home.parent().expect("the root");
     let chosen = Home::chosen(&root.join("elsewhere/trees"), &root.join("records"), &[]);
-    let engine = Engine::new(bench.git.clone(), chosen.expect("a home"));
+    let engine = Engine::new(bench.git.clone(), chosen.expect("a home"))
+        .with_launcher(super::copy::as_the_person(None));
     let GitOutcome::Status(status) = engine
         .call(PERSON, super::target(), GitAction::Status)
         .await

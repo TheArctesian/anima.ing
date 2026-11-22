@@ -1,6 +1,7 @@
 //! The Git of a thread on made repositories in temporary folders: no test speaks to a network,
 //! and the only remote is a bare repository beside the made one.
 
+mod copy;
 mod forged;
 mod held;
 mod hooks;
@@ -73,7 +74,8 @@ impl Bench {
             .expect("git is installed")
             .with_local_remotes();
         let bench = Self {
-            engine: Engine::new(git.clone(), Home::at(&home, &records).expect("a home")),
+            engine: Engine::new(git.clone(), Home::at(&home, &records).expect("a home"))
+                .with_launcher(copy::as_the_person(None)),
             _keep: keep,
             git,
             project,

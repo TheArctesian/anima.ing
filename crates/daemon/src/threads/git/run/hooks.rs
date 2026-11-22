@@ -33,6 +33,9 @@ use super::{Git, Run, said};
 /// The hooks that a commit and a push of the person run, in this order.
 const NAMES: [&str; 4] = ["pre-commit", "commit-msg", "post-commit", "pre-push"];
 
+/// The time one hook gets: a hook of a commit can run the tests of a project.
+const HOOK_TIME: std::time::Duration = std::time::Duration::from_secs(600);
+
 /// The most bytes of the file of one hook; a larger file is no hook for Anima.
 const MOST: u64 = 1024 * 1024;
 
@@ -56,6 +59,8 @@ pub struct ThreadRun {
     pub args: Vec<OsString>,
     pub env: Vec<(&'static str, OsString)>,
     pub input: Option<PathBuf>,
+    /// The run is ended, with each process that it started, when it takes longer.
+    pub within: std::time::Duration,
 }
 
 /// How a run of a thread ended: its exit code and what it wrote to standard error.
@@ -76,6 +81,14 @@ pub struct AsThread(Arc<dyn Fn(ThreadRun) -> Running + Send + Sync>);
 impl AsThread {
     pub fn new(start: impl Fn(ThreadRun) -> Running + Send + Sync + 'static) -> Self {
         Self(Arc::new(start))
+    }
+
+    /// Starts `run` and waits for its end.
+    ///
+    /// # Errors
+    /// The error of the runner when the program did not start or was ended.
+    pub async fn start(&self, run: ThreadRun) -> std::io::Result<Ended> {
+        (self.0)(run).await
     }
 }
 
@@ -193,8 +206,9 @@ impl Hooks<'_> {
                 .into_iter()
                 .collect(),
             input: with.input.map(Path::to_owned),
+            within: HOOK_TIME,
         };
-        match (self.start.0)(run).await {
+        match self.start.start(run).await {
             Ok(Ended { code: Some(0), .. }) => Ok(()),
             Ok(ended) => Err(refused(&said::without_credentials(&ended.said))),
             Err(failed) => Err(refused(&failed.to_string())),

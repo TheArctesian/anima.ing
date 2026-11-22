@@ -152,7 +152,8 @@ impl Engine {
     /// This engine with the way to start a hook of a repository as the agent of a thread is
     /// started. Without it no hook of a repository runs.
     #[must_use]
-    pub fn with_hooks(mut self, as_thread: AsThread) -> Self {
+    pub fn with_launcher(mut self, as_thread: AsThread) -> Self {
+        self.git = self.git.with_thread(as_thread.clone());
         self.as_thread = Some(as_thread);
         self
     }
@@ -173,10 +174,27 @@ impl Engine {
     /// # Errors
     /// As [`worktree::make`].
     pub async fn worktree(&self, plan: worktree::Plan<'_>) -> Result<worktree::Made, GitRefusal> {
+        self.worktree_shown(plan, None).await
+    }
+
+    /// As [`Engine::worktree`]; `shown` hears each step, for the page. Dropping the call
+    /// cancels it: what it made so far goes again.
+    ///
+    /// # Errors
+    /// As [`worktree::make`].
+    pub async fn worktree_shown(
+        &self,
+        plan: worktree::Plan<'_>,
+        shown: worktree::Shown<'_>,
+    ) -> Result<worktree::Made, GitRefusal> {
         self.closed()?;
         // One worktree of a thread is made at a time, whatever its repository.
         let _alone = self.alone(plan.thread, "").await;
-        worktree::make(&self.git, &self.home, plan).await
+        // One worktree of a project at a time: the first one copies its history, and the
+        // next one finds the copy.
+        let project = plan.project.to_string_lossy();
+        let _copy = self.alone(Uuid::nil(), &project).await;
+        worktree::make(&self.git, &self.home, plan, shown).await
     }
 
     /// Takes the checkpoint of a turn that ended. The runner calls it at each end of a turn.

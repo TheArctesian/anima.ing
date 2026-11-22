@@ -179,6 +179,17 @@ pub enum GitRefusal {
     },
 }
 
+/// What the runner does while it makes the worktree of a thread. The first worktree of a large
+/// repository takes long: the page shows the step, and the person can cancel.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Preparing {
+    /// The history of the repository is copied and checked. Once for each project.
+    History,
+    /// The files of the worktree are written.
+    Files,
+}
+
 /// How a branch stands, as the details card shows it.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Status {
