@@ -2,10 +2,6 @@
   import type { Snippet } from 'svelte';
   import { resolve } from '$app/paths';
   import type { Pathname } from '$app/types';
-
-  // TypeScript checks a union of paths against `resolve` only up to 25 members; the app has more.
-  // One plain path stands for each of them: `resolve` only puts the base before it.
-  type PlainPath = '/';
   import Icon from '$lib/icons/Icon.svelte';
   import type { IconName } from '$lib/icons/icons';
   import { sharedItem } from '$lib/motion/shared/shared';
@@ -58,7 +54,7 @@
 <header class:stuck>
   <div class="top">
     <nav class="crumb" aria-label="Breadcrumb">
-      <a href={resolve(back.to as PlainPath)}>{back.label}</a>
+      <a href={resolve(back.to)}>{back.label}</a>
       {#if title === null}
         <span class="placeholder" aria-hidden="true"></span>
       {:else}

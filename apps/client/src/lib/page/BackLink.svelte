@@ -1,10 +1,6 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
   import type { Pathname } from '$app/types';
-
-  // TypeScript checks a union of paths against `resolve` only up to 25 members; the app has more.
-  // One plain path stands for each of them: `resolve` only puts the base before it.
-  type PlainPath = '/';
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
 
@@ -19,7 +15,7 @@
 </script>
 
 <!-- A ghost link: a chevron and the word, with a target of at least 24 px (UI-013, finding O8). -->
-<a href={resolve(to as PlainPath)} {@attach press()}><Icon name="carbon:chevron-left" size="sm" />{label}</a>
+<a href={resolve(to)} {@attach press()}><Icon name="carbon:chevron-left" size="sm" />{label}</a>
 
 <style>
   a {

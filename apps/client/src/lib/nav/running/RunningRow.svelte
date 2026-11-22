@@ -1,10 +1,6 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
   import type { Pathname } from '$app/types';
-
-  // TypeScript checks a union of paths against `resolve` only up to 25 members; the app has more.
-  // One plain path stands for each of them: `resolve` only puts the base before it.
-  type PlainPath = '/';
   import Icon from '$lib/icons/Icon.svelte';
   import type { IconName } from '$lib/icons/icons';
   import { ambientMotionAllowed } from '$lib/motion/ambient';
@@ -44,7 +40,7 @@
 <svelte:document onvisibilitychange={() => (visibility = document.visibilityState)} />
 
 <!-- One running thing in the bar's foot (UR-7 P2): smaller than a destination, one line, a status mark legible at that size. -->
-<a class="row" href={resolve(href as PlainPath)} tabindex="0" title={iconOnly ? [label, detail].filter(Boolean).join(' · ') : undefined} {@attach press()}>
+<a class="row" href={resolve(href)} tabindex="0" title={iconOnly ? [label, detail].filter(Boolean).join(' · ') : undefined} {@attach press()}>
   <span class="mark"><Icon name={icon} size="sm" />{#if live}<span class="dot" bind:this={dot} aria-hidden="true"></span>{/if}</span>
   <span class="words">
     <span class="label">{label}</span>
