@@ -117,6 +117,10 @@ import Video from '@lucide/svelte/icons/video';
 import WrapText from '@lucide/svelte/icons/wrap-text';
 import Wrench from '@lucide/svelte/icons/wrench';
 import X from '@lucide/svelte/icons/x';
+import Archive from '@lucide/svelte/icons/archive';
+import Trash from '@lucide/svelte/icons/trash';
+import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+import ArrowRight from '@lucide/svelte/icons/arrow-right';
 import Zap from '@lucide/svelte/icons/zap';
 
 /**
@@ -125,6 +129,10 @@ import Zap from '@lucide/svelte/icons/zap';
  * never import Lucide elsewhere (the lint refuses it).
  */
 export const CODE_ICONS = {
+  'arrow-right': ArrowRight,
+  'arrow-left': ArrowLeft,
+  'trash': Trash,
+  'archive': Archive,
   'alarm-clock': AlarmClock,
   'alarm-clock-off': AlarmClockOff,
   'arrow-down': ArrowDown,

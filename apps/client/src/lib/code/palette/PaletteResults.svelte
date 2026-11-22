@@ -1,7 +1,5 @@
 <script lang="ts">
   import CodeIcon from '../icons/CodeIcon.svelte';
-  import type { KeyRule } from './keys/keymap';
-  import { shortcutOf } from './keys/table';
   import type { PaletteGroup, PaletteRow } from './results';
 
   interface Props {
@@ -10,22 +8,22 @@
     groups: readonly PaletteGroup[];
     /** The index of the shaded row among all rows, or -1. */
     active: number;
-    mac: boolean;
-    /** The key rules whose keys the rows show: the desktop app's or the web client's. */
-    rules: readonly KeyRule[];
+    /** The key a row shows for its command, if any. */
+    shortcut: (command: string) => string | undefined;
     /** The id of the row at `index`, for `aria-activedescendant`. */
     rowId: (index: number) => string;
     onpoint: (index: number) => void;
     onchoose: (row: PaletteRow) => void;
   }
 
-  const { id, groups, active, mac, rules, rowId, onpoint, onchoose }: Props = $props();
+  const { id, groups, active, shortcut, rowId, onpoint, onchoose }: Props = $props();
 
   /** Where each group starts among all rows. */
   const starts = $derived(groups.reduce<number[]>((at, group, index) => [...at, index === 0 ? 0 : (at[index - 1] ?? 0) + (groups[index - 1]?.rows.length ?? 0)], []));
 </script>
 
 <!-- The results (02 section 10.2): groups with a label, one shaded row at a time; the pointer moves the same shading. -->
+<!-- A disabled row takes no shading and shows no key (T3 Code's `DisabledCommandPaletteResultRow`). -->
 <!-- A press on a row keeps the focus in the input, so the keys still reach the palette after a click. -->
 <div
   {id}
@@ -42,7 +40,7 @@
       <div class="label" id="{id}-{group.id}">{group.label}</div>
       {#each group.rows as row, rowIndex (row.id)}
         {@const index = (starts[groupIndex] ?? 0) + rowIndex}
-        {@const shortcut = row.command === undefined ? undefined : shortcutOf(row.command, mac, rules)}
+        {@const key = row.command === undefined || row.disabled ? undefined : shortcut(row.command)}
         <!-- The focus stays in the input, which takes the keys for the rows (a combobox, WAI-ARIA APG). -->
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <div
@@ -54,7 +52,7 @@
           aria-selected={index === active}
           aria-disabled={row.disabled || undefined}
           onpointermove={() => {
-            if (index !== active) onpoint(index);
+            if (index !== active && !row.disabled) onpoint(index);
           }}
           onclick={() => {
             onchoose(row);
@@ -63,11 +61,10 @@
           <span class="icon"><CodeIcon name={row.icon} /></span>
           <span class="words">
             <span class="title">{row.title}</span>
-            {#if row.detail !== undefined}<span class="detail">{row.detail}</span>{/if}
+            {#if row.detail !== undefined}<span class="detail" class:subtitle={row.id.startsWith('chat:')}>{row.detail}</span>{/if}
           </span>
-          {#if row.context !== undefined}<span class="context">{row.context}</span>{/if}
           {#if row.age !== undefined}<span class="age">{row.age}</span>{/if}
-          {#if shortcut !== undefined}<span class="shortcut" aria-hidden="true">{shortcut}</span>{/if}
+          {#if key !== undefined}<span class="shortcut" aria-hidden="true">{key}</span>{/if}
         </div>
       {/each}
     </div>
@@ -92,7 +89,7 @@
 
   .row {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: var(--space-2);
     min-block-size: var(--code-palette-row-narrow);
     padding: var(--code-palette-row-pad);
@@ -106,11 +103,14 @@
     background: var(--surface-selected);
   }
 
+  /* Only the icon sits at the top, 2 px down, so it stays on the title of a row of two lines. */
   .icon {
     display: inline-flex;
     flex: none;
     align-items: center;
+    align-self: flex-start;
     block-size: var(--space-5);
+    padding-block-start: var(--code-palette-icon-inset);
     color: var(--code-quiet-text);
   }
 
@@ -133,16 +133,14 @@
   }
 
   .detail,
-  .context,
   .age,
   .shortcut {
     color: var(--code-quiet-text);
     font-size: var(--code-text-meta);
   }
 
-  .context {
-    flex: none;
-    max-inline-size: var(--code-palette-context);
+  /* A chat's subtitle keeps one line (T3 Code's `ThreadCommandSubtitle`); a reason wraps. */
+  .subtitle {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -159,12 +157,6 @@
     flex: none;
     font-weight: var(--weight-medium);
     letter-spacing: var(--tracking-label);
-  }
-
-  .context,
-  .age,
-  .shortcut {
-    line-height: var(--space-5);
   }
 
   @media (width >= 40rem) {

@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { onDestroy, untrack } from 'svelte';
+  import { onDestroy, tick, untrack } from 'svelte';
   import { isMac } from '$lib/platform/mac';
   import AttachButton from './attachments/AttachButton.svelte';
   import Attachments from './attachments/Attachments.svelte';
   import Preview from './attachments/Preview.svelte';
+  import { LIMITS, pasteDecision } from './attachments/attach';
   import { dropZone } from './attachments/drop';
   import { CardState } from './card-state.svelte';
   import type { CaretAt } from './draft';
@@ -19,7 +20,7 @@
   import StopButton from './primary/StopButton.svelte';
   import { enterSends, showsSend, showsStop } from './primary/send';
   import QueuedMessages from './queue/QueuedMessages.svelte';
-  import { labelled } from './queue/queue';
+  import { labelled, queueKeys, sendsFirst } from './queue/queue';
   import MicButton from './voice/MicButton.svelte';
   import './composer.css';
   import './mentions/mentions.css';
@@ -53,10 +54,12 @@
   let menu = $state<MentionMenu>();
   let activeOption = $state<string>();
   let surface = $state<HTMLElement>();
+  let root = $state<HTMLElement>();
   let over = $state(false);
   let watch = $state(NO_TRIGGER);
   let caret = $state<DOMRect | null>(null);
   let seen = '';
+  let caretAt = 0;
   let allQueued = $state(false);
   let picking = $state(false);
   let previewed = $state<string | null>(null);
@@ -82,6 +85,7 @@
       const found = at.rect === null ? null : triggerAt(at.prompt, at.caret);
       watch = at.prompt === seen ? afterCaretMove(watch, found) : afterEdit(watch, found);
       seen = at.prompt;
+      caretAt = at.caret;
       caret = at.rect;
     });
   }
@@ -95,19 +99,58 @@
     if (choice.kind === 'command' && choice.command.name === 'model') picking = true;
   }
 
+  /** The two keys of the queue (03 3.5): the first message goes now; the last opens in the composer. */
+  function queueKey(event: KeyboardEvent): boolean {
+    if (card.busy || event.isComposing) return false;
+    if (sendsFirst({ key: event.key, shift: event.shiftKey, alt: event.altKey, command: event.metaKey || event.ctrlKey })) {
+      const first = engine.queued[0];
+      if (first !== undefined && !first.saving) void card.queued(first.id, 'send');
+      return true;
+    }
+    // With the caret at the start, also over a prompt that has text: it is set aside (T3 Code `ChatView.tsx:2895-2900`).
+    const last = engine.queued.at(-1);
+    if (event.key !== 'ArrowUp' || !event.altKey || caretAt !== 0 || card.editing !== null || last === undefined || last.saving) return false;
+    allQueued = true;
+    card.edit(last.id);
+    return true;
+  }
+
   /** The keys of the composer before the editor's own (03 B.12): the open menu first, then the queue, then Enter. */
   function onKey(event: KeyboardEvent): boolean {
     if (trigger !== null && menu?.key(event) === true) return true;
-    if (event.key === 'ArrowUp' && event.altKey && card.prompt === '' && card.editing === null && !card.busy) {
-      const last = engine.queued.at(-1);
-      if (last === undefined || last.saving) return false;
-      allQueued = true;
-      card.edit(last.id);
+    if (queueKey(event)) return true;
+    // ⌘⇧M, or Ctrl+Shift+M: the model picker (T3 Code `keybindings.ts:115`).
+    if (event.code === 'KeyM' && event.shiftKey && (event.metaKey || event.ctrlKey) && !event.altKey) {
+      if (engine.pick.can) picking = !picking;
       return true;
     }
     if (!enterSends({ key: event.key, shift: event.shiftKey, alt: event.altKey, composing: event.isComposing })) return false;
     void card.submit(event.metaKey || event.ctrlKey);
     return true;
+  }
+
+  /** A long paste (03 "Paste decision"): a text file where the engine takes files, else in the text while it fits. */
+  function longPaste(text: string): void {
+    const end = card.prompt.length;
+    const room = engine.attach.can && card.attachments.length < LIMITS.count;
+    const names = card.attachments.map((attachment) => attachment.name);
+    const decision = pasteDecision({ files: [], folders: 0, plainText: text, asText: false, chips: false }, { promptLength: end, selection: { start: end, end }, names, room });
+    if (decision.act === 'fold') card.add([new File([text], decision.name, { type: decision.mime })]);
+    else if (decision.act === 'refuse') card.problem = `${decision.title}. ${decision.description}`;
+    else editor?.insert(text);
+  }
+
+  /**
+   * A control that goes away when it is pressed (Send, Stop, Remove): if the focus was in the composer and is nowhere
+   * after, it goes to the editor. A press by a pointer never had the focus, so no keyboard comes up on a phone.
+   */
+  function pressed(act: () => unknown): void {
+    const inside = root?.contains(document.activeElement) === true;
+    void act();
+    if (!inside) return;
+    void tick().then(() => {
+      if (document.activeElement === null || document.activeElement === document.body) editor?.focus();
+    });
   }
 
   function held(event: KeyboardEvent): void {
@@ -117,19 +160,21 @@
 
 <svelte:window onkeydown={held} onkeyup={held} onblur={() => (card.alternate = false)} />
 
-<div class="composer">
+<div class="composer" bind:this={root}>
   <QueuedMessages
     queue={engine.queued}
+    waits={engine.queueWaits ?? null}
+    keys={queueKeys(card.modifier === '⌘')}
     editing={card.editing}
     running={card.running}
     busy={card.busy}
     bind:all={allQueued}
-    onSendNow={(id) => void card.queued(id, 'send')}
+    onSendNow={(id) => pressed(() => card.queued(id, 'send'))}
     onEdit={(id) => {
       card.edit(id);
       editor?.focus();
     }}
-    onRemove={(id) => void card.queued(id, 'remove')}
+    onRemove={(id) => pressed(() => card.queued(id, 'remove'))}
     onCancel={() => {
       card.cancelEdit();
       editor?.focus();
@@ -157,7 +202,10 @@
     }}
   >
     <div class="body">
-      <Attachments attachments={card.attachments} onRemove={(id) => card.remove(id)} onOpen={(id) => (previewed = id)} />
+      <Attachments
+        attachments={card.attachments}
+        onRemove={(id) => pressed(() => card.remove(id))}
+        onOpen={(id) => (previewed = id)} />
       <Editor
         bind:this={editor}
         bind:value={card.prompt}
@@ -175,17 +223,17 @@
           else card.problem = engine.attach.reason;
           return engine.attach.can;
         }}
-        onLongPaste={() => (card.problem = 'Pasted text is too large for this message. Paste a shorter part, or attach it as a file.')}
+        onLongPaste={longPaste}
       />
     </div>
     {#if card.problem !== null}<p class="problem" role="alert">{card.problem}</p>{/if}
     <div class="footer">
       <AttachButton can={engine.attach} onFiles={(files) => card.add(files)} />
       <div class="actions">
-        <ModelPicker catalogue={engine.catalogue} value={engine.choice} onChange={engine.choose} can={engine.pick} align="end" bind:open={picking} />
+        <ModelPicker catalogue={engine.catalogue} value={engine.choice} onChange={engine.choose} can={engine.pick} shortcut={card.modifier === '⌘' ? '⌘⇧M' : 'Ctrl+Shift+M'} align="end" bind:open={picking} />
         <MicButton can={engine.dictate} onStart={() => undefined} />
-        {#if showsSend(card.turn)}<SendButton face={card.face} onPress={(alternate) => void card.submit(alternate)} />{/if}
-        {#if showsStop(card.turn, card.stop)}<StopButton pending={card.stop === 'pending'} onStop={() => void card.interrupt()} />{/if}
+        {#if showsSend(card.turn)}<SendButton face={card.face} onPress={(alternate) => pressed(() => card.submit(alternate))} />{/if}
+        {#if showsStop(card.turn, card.stop)}<StopButton pending={card.stop === 'pending'} onStop={() => pressed(() => card.interrupt())} />{/if}
       </div>
     </div>
   </form>

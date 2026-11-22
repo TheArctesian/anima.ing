@@ -1,5 +1,6 @@
 //! The secret patterns of JOB-018: which paths look like secrets, judged on the path alone.
-//! The files are never opened. A fixed list until a project has its own.
+//! The files are never opened. A fixed list until a project has its own. The snapshot of a
+//! project (`anima` command) and the file list of a thread (the runner) both keep these out.
 
 /// Endings that make a `.env` name a template rather than a secret.
 const TEMPLATE_ENDINGS: [&str; 3] = [".example", ".sample", ".template"];

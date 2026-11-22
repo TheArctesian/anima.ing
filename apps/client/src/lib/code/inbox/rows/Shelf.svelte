@@ -52,10 +52,6 @@
     cursor: pointer;
   }
 
-  button:hover {
-    color: var(--text);
-  }
-
   button:focus-visible {
     outline: none;
     box-shadow: inset 0 0 0 var(--border-focus) var(--focus-ring);
@@ -69,7 +65,8 @@
 
   .chevron {
     display: inline-flex;
-    transition: transform var(--duration-fast) var(--ease-enter);
+    /* A spring token: zero under reduced motion, from the media query or the Settings switch (09 finding 27). */
+    transition: transform var(--spring-snappy);
   }
 
   .chevron :global(.code-icon) {

@@ -28,7 +28,22 @@
 <div class="toolbar">
   <label class="search">
     <CodeIcon name="search" />
-    <input type="search" placeholder="Search" aria-label="Search threads" autocomplete="off" spellcheck="false" bind:value={search} bind:this={field} onkeydown={onFieldKey} aria-activedescendant={activeId} />
+    <!-- A combobox over the search results (09 finding 10): the arrows move the highlight, the focus stays here. -->
+    <input
+      type="search"
+      role="combobox"
+      placeholder="Search"
+      aria-label="Search threads"
+      aria-autocomplete="list"
+      aria-expanded={search.trim() !== ''}
+      aria-controls={search.trim() !== '' ? 'inbox-search-results' : undefined}
+      autocomplete="off"
+      spellcheck="false"
+      bind:value={search}
+      bind:this={field}
+      onkeydown={onFieldKey}
+      aria-activedescendant={activeId}
+    />
     {#if search !== ''}
       <button
         type="button"
@@ -41,6 +56,8 @@
       >
     {/if}
   </label>
+  <!-- T3: 4 px after the search field, no gap between the buttons (08 inbox 25). -->
+  <span class="group">
   {#if projects.length > 0}<ProjectFilter {projects} {chosen} onChoose={onProjects} />{/if}
   <Tooltip text={newOff === null ? 'New thread (⌘N)' : `New thread: ${newOff}`}>
     <button
@@ -55,6 +72,7 @@
       {@attach press()}><CodeIcon name="square-pen" /></button
     >
   </Tooltip>
+  </span>
 </div>
 
 <style>
@@ -64,6 +82,12 @@
     gap: var(--space-1);
     align-items: center;
     padding: var(--space-2);
+  }
+
+  .group {
+    display: flex;
+    flex: none;
+    align-items: center;
   }
 
   .search {
@@ -86,8 +110,9 @@
     color: var(--text);
   }
 
+  /* The 2 px ring of the other controls (09 finding 35). */
   .search:focus-within {
-    box-shadow: inset 0 0 0 var(--border-thin) var(--focus-ring);
+    box-shadow: inset 0 0 0 var(--border-focus) var(--focus-ring);
   }
 
   input {
@@ -125,9 +150,10 @@
     cursor: pointer;
   }
 
+  /* 24 px, the smallest target (09 finding 21). */
   .clear {
-    inline-size: var(--space-5);
-    block-size: var(--space-5);
+    inline-size: var(--space-6);
+    block-size: var(--space-6);
   }
 
   .clear :global(.code-icon) {

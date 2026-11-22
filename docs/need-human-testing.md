@@ -37,6 +37,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
 | HT-133 | The public names of applications through the route proxy, on a real network (task H21) | A hub that a person hosts with ports 80 and 443 open, a domain name with its DNS, a machine on the link with a web application, and a second hub | Open |
 | HT-134 | Streams of TCP and UDP and the access of a route on a real network (task H40) | A hub that a person hosts, a machine on its network with a test TCP service and an IMAPS server, a device of the network of Anima and a device that is not on it | Open |
+| HT-136 | The section Routes of Settings beside its mockup, and against a real hub (task H21) | The client of the branch `hosted/routes-section` signed in to a test hub on Linux, a second factor on the account, a domain name with its DNS | Open |
+| HT-135 | The mockup of the section Routes of the hub (tasks H21 and H40), approved overnight by the orchestrator | A browser | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
 | HT-003 | The tool inventory in an MCP client | HT-002 | Open |
@@ -2310,7 +2312,7 @@ one device, its metrics and the event log (`apps/client/src/lib/hub/recent/`). I
 device, because their settings can hold a credential. When the hub does not answer, it shows that copy, and the
 banner "Not on the network" gives its age. Sign-out deletes the copy.
 
-The tests cover the rules with a store in memory. The real store (IndexedDB) was run in Chromium on 2026-11-18. It
+The tests cover the rules with a store in memory, and the real store against an IndexedDB in memory (commit `b4b26df5`). The real store was run in Chromium on 2026-11-18. It
 was not run in the web view of the installed application (WebKit on macOS, WebKitGTK on Linux), and no screen was
 looked at with the network off.
 
@@ -2740,6 +2742,82 @@ The tests did not cover: the real gateway, the sign-in at the gateway, the real 
 7. Connect the application of this build to a hub of this computer that has no public origin (the one-click
    installation), and open the same row.
    Expected: "Coming soon: Connect GitHub in your browser for this hub." and "Use key file"; no "Connect GitHub".
+### HT-135: the mockup of the section Routes of the hub (tasks H21 and H40)
+
+Made on the branch `hosted/routes-screen` and brought to `hosted/routes-screen-2`: [routes/index.html](mockup/routes/index.html), with its record
+[records/routes.md](mockup/records/routes.md). The orchestrator approved it overnight after a separate design
+reviewer read it (R-324). No person looked at it. Nothing of the screen is built. The decision is yours:
+approve it, or say what to change, before the client screen is built.
+
+1. Open `docs/mockup/routes/index.html` in a browser, in a window of at least 1320 px.
+   Expected: a board of ten frames at 1280 px. The first paragraph says why Routes is a section of Settings, in the
+   group Hub, and not an item of the navigation bar.
+2. Frame 1 (the list) and Frame 1b (empty).
+   Expected: each row shows the name, the kind and the access, the application on its machine with its port, the
+   proof and the certificate, and the traffic of 24 hours. Rows that need you have a wash. The empty state says that a
+   new route is private.
+3. Frame 2 (add a route on a hosted hub).
+   Expected: four kinds; TCP stream and UDP stream are disabled with the reason beside them, readable. The application
+   is chosen from a list of recorded ports; you cannot type a port. There is no access choice: a new route is private.
+4. Frames 2c and 2d (just after the add).
+   Expected: 2c shows the TXT record and the CNAME, each with Copy. 2d (a hub that you host) shows the A record and the
+   warning that the name and the hub share a site.
+5. Frame 3 (the details of one route).
+   Expected: Make public is disabled with the warning that the consent at the machine is not given. The checks are in
+   order. Remove asks for the six digits of your authenticator.
+6. Frame 4 (a TCP stream on a hub that you host) and Frame 6 (from the page of an application).
+   Expected: the port of the hub with the refused ports; a database and a protocol with no TLS are "Private only";
+   UDP is disabled with its reason. Frame 6 has a button that adds a route for the port of the application.
+7. Frames 5a and 5b.
+   Expected: Frames 1 and 3 in the light appearance; each text, status and disabled reason is easy to read.
+
+Result: Open.
+
+### HT-138: the conversation of Code with VoiceOver and the keyboard (TC3, accessibility findings 2, 3 and 4)
+
+Built on the branch `code/timeline-a11y`: `apps/client/src/lib/code/timeline/Timeline.svelte` and `spoken.ts`. The
+conversation owns its arrow keys, a polite live region says the start and the end of a turn, and an alert says each
+request of the agent and moves the focus to its Approve button when the person is not busy in a different place. The
+tests run in jsdom: they read the text of the regions and the focus, not what VoiceOver says. Not covered: the speech of
+VoiceOver in WebKit, and how often it speaks during a long turn.
+
+1. Open the desktop application, turn VoiceOver on (⌘F5) and open a thread on the page Code. Click in the conversation
+   and press the Down arrow three times.
+   Expected: the conversation scrolls; the open thread does not change.
+2. In the composer, send a prompt that makes the agent work for some seconds.
+   Expected: VoiceOver says "Agent is working" one time, and says nothing more while the reply comes.
+3. Wait for the end of the turn.
+   Expected: VoiceOver says "Agent replied:" and the first sentence of the reply.
+4. In a thread in the mode Ask, send a prompt that makes the agent run a command. Do not touch the window.
+   Expected: VoiceOver says "Approval needed to run a command:" and the command at once, and the focus is on Approve.
+5. Press Enter on Approve.
+   Expected: the focus goes to the conversation, not to the top of the window.
+### HT-136: the section Routes of Settings (task H21)
+
+Built on the branch `hosted/routes-section`: the section Routes of the Settings page, in the group Hub and account
+(`apps/client/src/lib/application-routes/`). The vitest tests use fake calls of the hub: they prove each state of the
+list, the page of a route, the refusals of the hub that the section shows, Check now, Check all, and Remove off with its reason. No person
+looked at the screen, and no picture of it was compared with the frames of [routes/index.html](mockup/routes/index.html):
+the screen was not run on this computer. No test used a real hub, a real DNS or a real second factor.
+
+1. Open Settings at 1280 px in the dark appearance, then in the light appearance, and put
+   `docs/mockup/routes/index.html` beside it. Expected: the index has Routes in the group Hub and account, after Hub.
+   The list has the parts of Frame 1 in the same order: the choice All, Needs you, Public and Private, Check all, the
+   summary line, and one row for each route with its name, kind and access, target, proof and certificate, and
+   traffic. Rows that need you have a wash. Write each difference that is not in the record
+   [records/routes.md](mockup/records/routes.md).
+2. On a hub with no route. Expected: "No routes yet", the line that says that a new route is private, and Add a route
+   off with its reason (task H6).
+3. Add a route with `anima route add` on a test hub, then open the section. Expected: the route is in the list. Open
+   it. Expected: its state, the DNS records with Copy while its name is not proven, the checks in order, the traffic,
+   and Make public off with the reason "Consent at <machine> is not given".
+4. Select Copy beside the TXT value and paste it in a text editor. Expected: the same value as `anima route show`.
+5. Select Check now with an account that has no second factor. Expected: the refusal of the hub under the title. Turn
+   on the second factor and select Check now again. Expected: the time of the check changes.
+6. Look at Remove route on the page of the route. Expected: it is off, with the line that removing a route needs a
+   fresh code of your second factor, which the hub cannot check yet. Selecting it opens nothing.
+7. On a hub that is not on Linux (for example a test hub on macOS), select Check all. Expected: "Routing needs a hub
+   on Linux." in place of the list.
 
 Result: Open.
 
@@ -4400,9 +4478,9 @@ Built: `crates/anima-osd`, the opt-in module `experiments/anima-os/control.nix`,
 Result: Open. No physical-hardware, real-account, full-appliance UI, speed or ISO-size result is claimed.
 
 
-### HT-127: final graphical and hardware acceptance of the Rust OS continuation (OS3-R4)
+### HT-127: final graphical and hardware acceptance of the Rust OS continuation (OS3-R4/R5)
 
-Built: four-destination graphical console and native session/update/install controllers. Automated checks use disposable virtual disks, synthetic account services and headless rendered UI. They cannot qualify the user's physical Wi-Fi/display/touch hardware, real account or perceived responsiveness. The operator moved this check to the last step; that is scheduling, not a reported pass.
+Built: four-destination graphical console and native session/update/install controllers. OS3-R5 rebuilds the Qt Python bindings with build-only generator dependencies; use the [smaller preview and its validation record](research/spare-computer-os/runtime-packaging-2026-11-21.md) for this check. Automated checks use disposable virtual disks, synthetic account services and headless rendered UI. They cannot qualify the user's physical Wi-Fi/display/touch hardware, real account or perceived responsiveness. The operator moved this check to the last step; that is scheduling, not a reported pass.
 
 1. Boot the locally built preview ISO on an explicitly selected spare UEFI machine. In Calamares, connect Wi-Fi, change orientation, let one preview expire and keep another. Review storage without authorizing any disk until its identity is correct.
    Expected: controls remain reachable; orientation restores after timeout and persists only after Keep; unselected/USB/busy disks are not erase targets.
@@ -4421,7 +4499,9 @@ Result: Open; deferred to the final step by the operator. No production release 
 
 Built on the branch `code/stage-4-composer`: `apps/client/src/lib/code/composer/`, shown on the page `/code-kit/composer`
 of a development build. The editor is our own, over the Markdown of the prompt. Its tests run in jsdom, and its pictures
-are taken in WebKit with typed keys only. Not covered: an input method (Japanese, Chinese), the dictation of macOS, a
+are taken in WebKit with typed keys only. The branch `code/composer-finish` adds tests in WebKit that send the events of
+an input method; no real input method was used. Not covered: a real input method (Japanese, Chinese, Korean, dead keys,
+the accent menu of a held key), the dictation of macOS, a
 paste from a different application, a drop of a file from the Finder into the window of the desktop application, and the
 speed with a prompt of many thousand characters.
 
@@ -4441,6 +4521,33 @@ speed with a prompt of many thousand characters.
    Expected: the list hangs over the card, and the choice is one chip with a space after it.
 8. Drag a picture from the Finder over the first card and drop it.
    Expected: the card takes the accent line while the picture is over it, and the picture is a tile over the editor.
+9. Start a line with "- ", press Tab, then press Escape and Tab.
+   Expected: the first Tab nests the list line; after Escape the next Tab moves the focus out of the editor.
+
+Result: Open.
+
+### HT-137: the queue of the composer of Code (TC4)
+
+Built on the branch `code/composer-finish`. The thread runner keeps no queue, so the composer keeps one in the window:
+a message that is queued while a turn runs goes as the next turn when that turn ends. Its tests run the composer over
+a made-up runner; nobody has tried it with a program that runs.
+
+1. In the desktop application open a chat of Code and send a prompt that takes the program a minute. While it works,
+   type `then say the word done` and press ⌘Enter.
+   Expected: the editor is empty and the message is a dashed bubble over the composer, with "Send now", Edit and Remove.
+2. Wait for the turn to end and touch nothing.
+   Expected: the bubble goes, the message is in the chat as your prompt, and the program answers it. It was sent one time.
+3. Send a long prompt again, queue two messages with ⌘Enter, and press Stop.
+   Expected: the turn stops, both bubbles stay, and a line under them says that you stopped the turn and the queue waits.
+   Nothing is sent.
+4. Press "Send now" on the second bubble.
+   Expected: it goes as a turn; when that turn ends the first bubble goes by itself.
+5. Queue a message while a turn runs, open a different chat before the turn ends, wait a minute, and come back.
+   Expected: the message was not sent to the other chat. It goes to its own chat, at the latest when you open it again.
+6. Queue a message, press Edit on it, change its words while the turn ends, then press Enter.
+   Expected: nothing was sent while the message was open; the changed words go, one time.
+7. Queue a message and close the application.
+   Expected (a known limit, not a fault): the message is gone when you start the application again.
 
 Result: Open.
 

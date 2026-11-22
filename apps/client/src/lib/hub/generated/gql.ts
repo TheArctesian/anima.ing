@@ -24,6 +24,9 @@ type Documents = {
     "\n  query ApiKeys {\n    apiKeys {\n      id\n      name\n      scope\n      madeFor\n      prefix\n      expiresAt\n      createdAt\n      lastUsedAt\n    }\n  }\n": typeof types.ApiKeysDocument,
     "\n  mutation CreateApiKey($input: ApiKeyInput!) {\n    createApiKey(input: $input) {\n      key {\n        id\n        name\n        scope\n        madeFor\n        prefix\n        expiresAt\n        createdAt\n        lastUsedAt\n      }\n      secret\n    }\n  }\n": typeof types.CreateApiKeyDocument,
     "\n  mutation RevokeApiKey($id: ID!) {\n    revokeApiKey(id: $id)\n  }\n": typeof types.RevokeApiKeyDocument,
+    "\n  fragment RouteFields on ApplicationRoute {\n    id\n    name\n    kind\n    access\n    applicationId\n    deviceId\n    port\n    listenPort\n    protocol\n    redirectTo\n    proof\n    failedReads\n    proofRecordName\n    proofRecordValue\n    machineConsent\n    certificateNotAfter\n    waitsFor\n    checkedAt\n    requests\n    bytesIn\n    bytesOut\n    refused\n    createdAt\n  }\n": typeof types.RouteFieldsFragmentDoc,
+    "\n  query ApplicationRoutes {\n    applicationRoutes {\n      ...RouteFields\n    }\n    devices(first: 200) {\n      edges {\n        node {\n          id\n          name\n        }\n      }\n    }\n  }\n": typeof types.ApplicationRoutesDocument,
+    "\n  mutation CheckApplicationRoute($id: ID!) {\n    checkApplicationRoute(id: $id) {\n      ...RouteFields\n    }\n  }\n": typeof types.CheckApplicationRouteDocument,
     "\n  query Builders {\n    builders {\n      id\n      name\n      platform {\n        os\n        arch\n      }\n      online\n    }\n  }\n": typeof types.BuildersDocument,
     "\n  mutation EnrolBuilder($name: String!, $platform: BuilderPlatformInput!) {\n    enrolBuilder(name: $name, platform: $platform) {\n      builder {\n        id\n      }\n      token\n    }\n  }\n": typeof types.EnrolBuilderDocument,
     "\n  mutation RevokeBuilder($id: ID!) {\n    revokeBuilder(id: $id)\n  }\n": typeof types.RevokeBuilderDocument,
@@ -200,6 +203,9 @@ const documents: Documents = {
     "\n  query ApiKeys {\n    apiKeys {\n      id\n      name\n      scope\n      madeFor\n      prefix\n      expiresAt\n      createdAt\n      lastUsedAt\n    }\n  }\n": types.ApiKeysDocument,
     "\n  mutation CreateApiKey($input: ApiKeyInput!) {\n    createApiKey(input: $input) {\n      key {\n        id\n        name\n        scope\n        madeFor\n        prefix\n        expiresAt\n        createdAt\n        lastUsedAt\n      }\n      secret\n    }\n  }\n": types.CreateApiKeyDocument,
     "\n  mutation RevokeApiKey($id: ID!) {\n    revokeApiKey(id: $id)\n  }\n": types.RevokeApiKeyDocument,
+    "\n  fragment RouteFields on ApplicationRoute {\n    id\n    name\n    kind\n    access\n    applicationId\n    deviceId\n    port\n    listenPort\n    protocol\n    redirectTo\n    proof\n    failedReads\n    proofRecordName\n    proofRecordValue\n    machineConsent\n    certificateNotAfter\n    waitsFor\n    checkedAt\n    requests\n    bytesIn\n    bytesOut\n    refused\n    createdAt\n  }\n": types.RouteFieldsFragmentDoc,
+    "\n  query ApplicationRoutes {\n    applicationRoutes {\n      ...RouteFields\n    }\n    devices(first: 200) {\n      edges {\n        node {\n          id\n          name\n        }\n      }\n    }\n  }\n": types.ApplicationRoutesDocument,
+    "\n  mutation CheckApplicationRoute($id: ID!) {\n    checkApplicationRoute(id: $id) {\n      ...RouteFields\n    }\n  }\n": types.CheckApplicationRouteDocument,
     "\n  query Builders {\n    builders {\n      id\n      name\n      platform {\n        os\n        arch\n      }\n      online\n    }\n  }\n": types.BuildersDocument,
     "\n  mutation EnrolBuilder($name: String!, $platform: BuilderPlatformInput!) {\n    enrolBuilder(name: $name, platform: $platform) {\n      builder {\n        id\n      }\n      token\n    }\n  }\n": types.EnrolBuilderDocument,
     "\n  mutation RevokeBuilder($id: ID!) {\n    revokeBuilder(id: $id)\n  }\n": types.RevokeBuilderDocument,
@@ -420,6 +426,18 @@ export function graphql(source: "\n  mutation CreateApiKey($input: ApiKeyInput!)
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation RevokeApiKey($id: ID!) {\n    revokeApiKey(id: $id)\n  }\n"): (typeof documents)["\n  mutation RevokeApiKey($id: ID!) {\n    revokeApiKey(id: $id)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  fragment RouteFields on ApplicationRoute {\n    id\n    name\n    kind\n    access\n    applicationId\n    deviceId\n    port\n    listenPort\n    protocol\n    redirectTo\n    proof\n    failedReads\n    proofRecordName\n    proofRecordValue\n    machineConsent\n    certificateNotAfter\n    waitsFor\n    checkedAt\n    requests\n    bytesIn\n    bytesOut\n    refused\n    createdAt\n  }\n"): (typeof documents)["\n  fragment RouteFields on ApplicationRoute {\n    id\n    name\n    kind\n    access\n    applicationId\n    deviceId\n    port\n    listenPort\n    protocol\n    redirectTo\n    proof\n    failedReads\n    proofRecordName\n    proofRecordValue\n    machineConsent\n    certificateNotAfter\n    waitsFor\n    checkedAt\n    requests\n    bytesIn\n    bytesOut\n    refused\n    createdAt\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query ApplicationRoutes {\n    applicationRoutes {\n      ...RouteFields\n    }\n    devices(first: 200) {\n      edges {\n        node {\n          id\n          name\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  query ApplicationRoutes {\n    applicationRoutes {\n      ...RouteFields\n    }\n    devices(first: 200) {\n      edges {\n        node {\n          id\n          name\n        }\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation CheckApplicationRoute($id: ID!) {\n    checkApplicationRoute(id: $id) {\n      ...RouteFields\n    }\n  }\n"): (typeof documents)["\n  mutation CheckApplicationRoute($id: ID!) {\n    checkApplicationRoute(id: $id) {\n      ...RouteFields\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

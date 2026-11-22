@@ -52,6 +52,13 @@ while (1) { my $c = $s->accept(); close($c) if $c; }
 
 /// Whether a server can be contained here: on Linux the cgroup v2 of the daemon must be
 /// delegated to this user. A test that starts a server is skipped, with a message, when not.
+#[cfg_attr(
+    not(target_os = "linux"),
+    expect(
+        clippy::unnecessary_wraps,
+        reason = "only Linux can refuse a server here"
+    )
+)]
 pub fn contained() -> Option<std::fs::File> {
     let lock = containment_lock();
     #[cfg(target_os = "linux")]

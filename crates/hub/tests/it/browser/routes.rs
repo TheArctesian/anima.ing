@@ -44,6 +44,14 @@ async fn sf_revroutestepup_only_a_person_in_the_browser_adds_a_public_route(pool
     let cookie = cookie(&browser_token(&hub).await);
     let person = [("origin", PUBLIC), ("cookie", cookie.as_str())];
     let (message, _) = refusal(&hub, &person, "PUBLIC").await;
+    if !cfg!(unix) {
+        // A hub that is not on Unix refuses each route before it asks who adds it (R-366).
+        assert!(
+            message.contains("Routing needs a hub on Linux."),
+            "{message}"
+        );
+        return;
+    }
     assert!(
         message.contains(NEEDS_SECOND_FACTOR),
         "the person passes: {message}"

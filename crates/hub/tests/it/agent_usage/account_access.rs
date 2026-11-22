@@ -1,6 +1,7 @@
 //! Who may read the address of an account (THR-149): the person's own clients, signed in with a
-//! login or a browser token; never an API key, which is made for a program. And a write of a
-//! report that the database refuses puts no address in the log of the hub.
+//! login or a browser token; never an API key, which is made for a program, and never a builder
+//! token. And a write of a report that the database refuses puts no address in the log of the
+//! hub.
 
 use anima_hub::fleet::events::process_log;
 use axum::http::StatusCode;
@@ -43,6 +44,35 @@ async fn thr_149_an_api_key_reads_the_accounts_but_not_their_address(pool: PgPoo
         answer["data"]["agentUsage"]["accounts"][0]["address"],
         ADDRESS
     );
+}
+
+/// A builder token reaches no field but the builder fields (BLD-022), so the accounts, and
+/// their addresses with them, are refused to it as a whole.
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn thr_149_a_builder_token_gets_no_account_and_no_address(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let daemons = Daemons::at(&pool, now).await;
+    let pusher = Pusher::new(&daemons, PVE_01, now).await;
+    assert_eq!(
+        push(&pusher, 0, json!([account(SHARED, 20)])).await.0,
+        StatusCode::OK
+    );
+    let enrol = "mutation { enrolBuilder(name: \"pop-os\", \
+                 platform: { os: LINUX, arch: X86_64 }) { token } }";
+    let enrolment = daemons.operate(enrol, json!({})).await;
+    assert!(enrolment["errors"].is_null(), "{enrolment}");
+    let builder = enrolment["data"]["enrolBuilder"]["token"].as_str().unwrap();
+
+    let answer = daemons.graphql(Some(builder), ACCOUNTS, json!({})).await;
+    assert_eq!(
+        answer["errors"][0]["extensions"]["code"], "FORBIDDEN",
+        "{answer}"
+    );
+    assert!(answer["data"]["agentUsage"].is_null(), "{answer}");
+    assert!(!answer.to_string().contains(ADDRESS), "{answer}");
 }
 
 /// A write that the database refuses (here a check added for the test) makes the push

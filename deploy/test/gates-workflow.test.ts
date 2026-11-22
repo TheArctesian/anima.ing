@@ -78,7 +78,8 @@ describe("the gates workflow (gates.yml)", () => {
 
   test("PRO-044 no pull request starts it, and no job runs on a self-hosted runner", () => {
     expect(Object.keys(workflow.on).sort()).toEqual(["push", "workflow_call", "workflow_dispatch"]);
-    expect(workflow.on["push"]).toEqual({ "branches-ignore": ["main", "train/**"] });
+    // A branch image/* only starts the hub image (hub-image.yml) at a commit that passed already.
+    expect(workflow.on["push"]).toEqual({ "branches-ignore": ["main", "train/**", "image/**"] });
     for (const [name, job] of jobs) {
       if (name === "windows") expect(job.uses).toBe("./.github/workflows/windows-trial.yml");
       else expect(job["runs-on"], name).toBe("ubuntu-24.04");

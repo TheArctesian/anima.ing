@@ -218,6 +218,8 @@ pub enum AuditAction {
     Fetch,
     /// A span of location samples that was read (K-E4 Section 13).
     Read,
+    /// A sealed record that a client opened for the operator (VLT-004, K-E5 Section 3).
+    Reveal,
 }
 
 impl AuditAction {
@@ -245,6 +247,7 @@ impl AuditAction {
             Self::Merge => "merge",
             Self::Fetch => "fetch",
             Self::Read => "read",
+            Self::Reveal => "reveal",
         }
     }
 }

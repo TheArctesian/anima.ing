@@ -3,9 +3,10 @@
   import type { Anchor } from '$lib/overlay/helptip/placement';
   import CodeIcon from '../../icons/CodeIcon.svelte';
   import StatusMark from '../../status/StatusMark.svelte';
-  import { shortAge } from '../../status/status';
+  import { shortAge, STATUS_LOOKS } from '../../status/status';
   import type { RowAction } from '../actions';
   import type { InboxRow } from '../inbox';
+  import Tooltip from '../../kit/Tooltip.svelte';
   import RowActions from './RowActions.svelte';
   import RowTitle from './RowTitle.svelte';
 
@@ -26,14 +27,19 @@
     onMenu: (anchor: Anchor) => void;
     onAct: (action: RowAction) => void;
     onRename: (title: string | null) => void;
+    /** The person saw the wake: Woke goes (T3's "Dismiss Woke notification"). */
+    onDismiss: () => void;
   }
 
-  const { item, kind, shelf, now, open, selected, renaming, marksOff, onclick, onMenu, onAct, onRename }: Props = $props();
+  const { item, kind, shelf, now, open, selected, renaming, marksOff, onclick, onMenu, onAct, onRename, onDismiss }: Props = $props();
   const { row } = $derived(item);
   const title = $derived(row.title ?? 'Untitled thread');
   const age = $derived(item.since === null ? '' : shortAge(item.since.getTime(), now.getTime()));
-  const wakes = $derived(item.wakes?.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) ?? '');
+  /** The time left until a snoozed thread wakes, as T3 Code writes it: "now", "45m", "3h", "2d" (08 inbox 7). */
+  const wakes = $derived(item.wakes === null ? '' : shortAge(now.getTime(), item.wakes.getTime()));
   const meta = $derived(kind === 'card' && row.branch !== null);
+  /** What the slot shows, in words: the slot itself is hidden while the row has focus, so the name keeps this copy (09 finding 5). */
+  const said = $derived(kind === 'slim' && shelf === 'snoozed' ? (wakes === 'now' ? 'Wakes now' : `Wakes in ${wakes}`) : item.status !== null && (kind === 'card' || item.status === 'woke') ? STATUS_LOOKS[item.status].label : age);
 
   function oncontextmenu(event: MouseEvent): void {
     event.preventDefault();
@@ -42,15 +48,26 @@
     onMenu(event.clientX === 0 && event.clientY === 0 ? { left: box.left, top: box.top, width: box.width, height: box.height } : { left: event.clientX, top: event.clientY, width: 0, height: 0 });
   }
 
-  function onkeydown(event: KeyboardEvent): void {
-    if (event.key !== 'F2' || renaming) return;
-    event.preventDefault();
+  /** A double-click with no modifier renames, as in T3 Code (08 inbox 5). */
+  function ondblclick(event: MouseEvent): void {
+    if (renaming || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     onAct('rename');
+  }
+
+  function onkeydown(event: KeyboardEvent): void {
+    if (renaming) return;
+    if (event.key === 'F2') onAct('rename');
+    // The menu key and Shift+F10 open the row's menu under it, as right-click does (09 finding 6).
+    else if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
+      const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
+      onMenu({ left: box.left, top: box.top, width: box.width, height: box.height });
+    } else return;
+    event.preventDefault();
   }
 </script>
 
 <!-- One thread of the inbox (02 sections 5.5 and 5.7). The row is one button; its hover actions sit beside it, not in it. -->
-<li class="row {kind}" class:meta class:open class:selected class:recedes={item.recedes && !open} class:settled={shelf === 'settled'} data-thread={row.id} {oncontextmenu}>
+<li class="row {kind}" class:meta class:open class:selected class:recedes={item.recedes && !open && !selected} class:busy={item.status === 'working' || item.status === 'preparing'} class:woke={item.status === 'woke'} class:settled={shelf === 'settled'} data-thread={row.id} {oncontextmenu}>
   <svelte:element
     this={renaming ? 'div' : 'button'}
     class="main"
@@ -58,6 +75,7 @@
     aria-current={open ? 'true' : undefined}
     aria-pressed={selected ? 'true' : undefined}
     {onclick}
+    {ondblclick}
     {onkeydown}
     role={renaming ? 'group' : undefined}
     aria-label={renaming ? 'Rename thread' : undefined}
@@ -65,9 +83,11 @@
     {#if kind === 'card'}
       <span class="line one">
         <CodeIcon name="folder" />
-        {#if row.pinned}<span class="pin"><CodeIcon name="pin" /></span><span class="hidden">Pinned.</span>{/if}
+        <!-- The room of the pin: its button sits over it, beside the row's button, not in it (08 inbox 8). -->
+        {#if row.pinned}<span class="pin-room" aria-hidden="true"></span><span class="hidden">Pinned.</span>{/if}
         <span class="project">{item.project}</span>
-        <span class="slot">{#if item.status !== null}<StatusMark status={item.status} />{:else}<span class="age">{age}</span>{/if}</span>
+        <span class="slot" aria-hidden="true">{#if item.status !== null}<StatusMark status={item.status} />{:else}<span class="age">{age}</span>{/if}</span>
+        {#if said !== ''}<span class="hidden">{said}.</span>{/if}
       </span>
       <span class="line two">
         <RowTitle {title} {renaming} {onRename} />
@@ -83,14 +103,20 @@
       <CodeIcon name="folder" />
       <RowTitle {title} {renaming} {onRename} />
       <span class="hidden">{item.project}.</span>
-      <span class="slot">
+      {#if said !== ''}<span class="hidden">{said}.</span>{/if}
+      <span class="slot" aria-hidden="true">
         {#if shelf === 'snoozed'}<span class="wakes"><CodeIcon name="alarm-clock" />{wakes}</span>
         {:else if item.status === 'woke'}<StatusMark status="woke" />
         {:else}<span class="age">{age}</span>{/if}
       </span>
     {/if}
   </svelte:element>
-  {#if !renaming}<RowActions {kind} {shelf} pinned={row.pinned} {marksOff} {onAct} />{/if}
+  {#if !renaming}
+    {#if kind === 'card' && row.pinned}
+      <span class="pin"><Tooltip text="Unpin thread"><button type="button" aria-label="Unpin thread" onclick={() => onAct('unpin')}><CodeIcon name="pin" /><CodeIcon name="pin-off" /></button></Tooltip></span>
+    {/if}
+    <RowActions {kind} {shelf} snoozes={item.state !== 'asks'} woke={item.status === 'woke'} {marksOff} {onAct} {onMenu} {onDismiss} />
+  {/if}
 </li>
 
 <style>
@@ -99,6 +125,11 @@
     padding-block: var(--border-focus);
     /* No content-visibility as in T3: its paint containment would clip the hover tips of the row. */
     list-style: none;
+  }
+
+  /* Only cards keep 2 px above and below; one-liners sit 36 px apart, as in T3 Code (08 inbox 15). */
+  .row.slim {
+    padding-block: 0;
   }
 
   .main {
@@ -137,9 +168,10 @@
     background: var(--surface-hover);
   }
 
+  /* As T3 Code: the selected fill and the faint ring of the open row (08 inbox 27). */
   .selected .main {
-    background: var(--surface-hover);
-    box-shadow: inset 0 0 0 var(--border-thin) var(--accent);
+    background: var(--surface-selected);
+    box-shadow: inset 0 0 0 var(--border-thin) var(--border-subtle);
   }
 
   .open .main {
@@ -187,7 +219,48 @@
     block-size: var(--text-xs);
   }
 
+  .pin-room {
+    flex: none;
+    inline-size: var(--text-xs);
+  }
+
+  /* The 12 px pin is a button over its room in line one: Pin at rest, Pin off on hover or focus (T3 Code). */
   .pin {
+    position: absolute;
+    inset-block-start: calc(var(--border-focus) + var(--code-card-pad-block));
+    inset-inline-start: calc(var(--code-row-pad-inline) + var(--icon-sm) + var(--space-1) * 1.5);
+    display: flex;
+    align-items: center;
+    block-size: var(--space-5);
+  }
+
+  .pin button {
+    display: inline-flex;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--code-quiet-text);
+    cursor: pointer;
+  }
+
+  .pin button:hover,
+  .pin button:focus-visible {
+    color: var(--text);
+  }
+
+  .pin button:focus-visible {
+    outline: var(--border-focus) solid var(--focus-ring);
+  }
+
+  .pin button > :global(.code-icon:last-child),
+  .pin button:hover > :global(.code-icon:first-child),
+  .pin button:focus-visible > :global(.code-icon:first-child) {
+    display: none;
+  }
+
+  .pin button:hover > :global(.code-icon:last-child),
+  .pin button:focus-visible > :global(.code-icon:last-child) {
     display: inline-flex;
   }
 
@@ -229,10 +302,36 @@
     color: var(--accent);
   }
 
-  /* The hover actions take the place of the status or the age (02 section 5.5). */
+  /* The hover actions take the place of the status or the age (02 section 5.5). Hidden from sight only: the words stay
+     in the row's name, so a focused row still says "Approval" or "Failed" (09 finding 5). */
   .row:hover .slot,
-  .row:focus-within .slot {
-    visibility: hidden;
+  .row:has(:focus-visible) .slot,
+  .woke .slot {
+    opacity: 0;
+  }
+
+  /* A Working or Setting up row at 0.7, back to 1 on hover or focus (08 inbox 19). */
+  .busy .main {
+    opacity: var(--code-working-dim);
+  }
+
+  /* A one-liner's project icon is faded and grey unless the row is open; always in Settled (08 inbox 20). */
+  .slim .main > :global(.code-icon) {
+    opacity: var(--code-faded);
+    filter: grayscale(1);
+  }
+
+  .slim.open:not(.settled) .main > :global(.code-icon) {
+    opacity: 1;
+    filter: none;
+  }
+
+  .row:hover .main,
+  .row:has(:focus-visible) .main,
+  .row:hover .main > :global(.code-icon),
+  .row:has(:focus-visible) .main > :global(.code-icon) {
+    opacity: 1;
+    filter: none;
   }
 
   .recedes .main,
@@ -245,7 +344,7 @@
   }
 
   .row:hover .main,
-  .row:focus-within .main {
+  .row:has(:focus-visible) .main {
     color: var(--text);
   }
 

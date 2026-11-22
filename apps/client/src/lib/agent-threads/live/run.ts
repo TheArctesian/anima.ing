@@ -4,6 +4,7 @@
  * boundary, so each field is checked; a frame that does not read is left out.
  */
 
+import { filesFrom, type FoundFile } from './files';
 import { listingsFrom, type Listing, type ListingChange } from '../listing/listing';
 import type { Program } from '../thread';
 
@@ -102,6 +103,8 @@ export type Outcome =
   | { readonly outcome: 'listings'; readonly listings: readonly Listing[] }
   /** What the project files of a folder make the program do with no question (THR-046); empty when nothing. */
   | { readonly outcome: 'folder'; readonly notice: readonly string[] }
+  /** The files and folders of the folder of a thread, the best match first; `more` when more matched (TH108). */
+  | { readonly outcome: 'files'; readonly paths: readonly FoundFile[]; readonly more: boolean }
   /**
    * `said`: the words of the runner for a refusal that names a program and its path; `answered`: the other copies of a
    * program that did not answer, which did (TH97).
@@ -135,7 +138,9 @@ export type Action =
   | { readonly call: 'raise_limit' }
   | { readonly call: 'folder'; readonly folder: string }
   | { readonly call: 'listings' }
-  | { readonly call: 'change_listing'; readonly thread: string; readonly change: ListingChange };
+  | { readonly call: 'change_listing'; readonly thread: string; readonly change: ListingChange }
+  /** The `@` list of the composer (TH108): at most `most` paths that match `query`; `most` is 1 to 200. */
+  | { readonly call: 'files'; readonly thread: string; readonly query: string; readonly most: number };
 
 /**
  * The sentence of the operator at the soft limit (THR-114), the same words as `anima agents start` and the runner.
@@ -301,6 +306,15 @@ function refusedFrom(value: unknown): Outcome | null {
   return { outcome: 'refused', why, ...(said === null ? {} : { said }), ...(answered.length === 0 ? {} : { answered }) };
 }
 
+/** The notice of a folder (THR-046), or the files of the folder of a thread (TH108). */
+function folderFrom(value: Fields): Outcome | null {
+  if (value.outcome === 'files') {
+    const paths = filesFrom(value.paths);
+    return paths === null ? null : { outcome: 'files', paths, more: value.more === true };
+  }
+  return Array.isArray(value.notice) && value.notice.every((line) => typeof line === 'string') ? { outcome: 'folder', notice: value.notice as string[] } : null;
+}
+
 /** The result of a call, or `null` when it does not read. */
 export function outcomeFrom(value: unknown): Outcome | null {
   if (!isRecord(value)) return null;
@@ -316,7 +330,8 @@ export function outcomeFrom(value: unknown): Outcome | null {
     case 'stopped':
       return { outcome: 'stopped', allEnded: value.all_ended === true };
     case 'folder':
-      return Array.isArray(value.notice) && value.notice.every((line) => typeof line === 'string') ? { outcome: 'folder', notice: value.notice as string[] } : null;
+    case 'files':
+      return folderFrom(value);
     case 'listings': {
       const listings = listingsFrom(value.listings);
       return listings === null ? null : { outcome: 'listings', listings };
@@ -339,7 +354,7 @@ export const REFUSAL_WORDS: Readonly<Record<Refusal, string>> = {
   answer_does_not_fit: 'That answer does not fit the request.',
   not_running: 'The program of that thread is not running.',
   holder: 'The holder of the programs did not take the command.',
-  from_an_agent: 'Only the person can answer a request, raise the limit, start a thread or change the list of threads: this call came from a process of an agent.',
+  from_an_agent: 'Only the person can answer a request, raise the limit, start a thread, change the list of threads or list the files of a thread: this call came from a process of an agent.',
   running: 'The program of that thread still runs: stop it first, then remove it from the list.',
   over_limit: OVER_LIMIT,
 };

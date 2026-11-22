@@ -1,23 +1,32 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { tick } from 'svelte';
   import '../kit/code.css';
-  import { keyAction, moved, type KeyAction } from '$lib/agent-threads/keys';
+  import { moved, type KeyAction } from '$lib/agent-threads/keys';
   import type { CallResult, LiveThreads } from '$lib/agent-threads/live/live.svelte';
   import type { ThreadsStore } from '$lib/agent-threads/store.svelte';
   import LimitDialog from '$lib/agent-threads/view/LimitDialog.svelte';
   import NewThread from '$lib/agent-threads/view/NewThread.svelte';
+  import { isMac } from '$lib/platform/mac';
   import { fillRoom } from '$lib/scroll/room';
   import { inboxEngine } from '../inbox/engine';
   import InboxColumn from '../inbox/InboxColumn.svelte';
   import { InboxView } from '../inbox/view.svelte';
   import CommandPalette from '../palette/CommandPalette.svelte';
   import ChatHeader from '../shell/ChatHeader.svelte';
+  import HistoryButtons from '../shell/HistoryButtons.svelte';
+  import InboxRail from '../shell/InboxRail.svelte';
   import InboxToggle from '../shell/InboxToggle.svelte';
   import TopBand from '../shell/TopBand.svelte';
+  import { applyReader, storedReader } from '../settings/reader';
   import ChatColumn from './ChatColumn.svelte';
   import ChatFoot from './ChatFoot.svelte';
+  import { heldWidth, INBOX_WIDTH, storedWidth, storeWidth } from './inbox-width';
+  import { pageKey } from './page-keys';
   import { paletteHost } from './palette-host';
   import ThreadBody from './ThreadBody.svelte';
+  import { Visits } from './visits.svelte';
 
   interface Props {
     store: ThreadsStore;
@@ -27,12 +36,25 @@
 
   const { store, view = new InboxView(store, inboxEngine(() => store.live), globalThis.localStorage ?? null) }: Props = $props();
   const live = $derived(store.live);
+  // The chat width, contrast and font size of Settings, Code (TC6), read each time the page opens.
+  applyReader(document.documentElement, storedReader(globalThis.localStorage));
   let inboxOpen = $state(true);
+  /** Below 768 px the list is a sheet over the page, closed at first, as T3 Code's (08 inbox 4, band 22). */
+  let narrow = $state(false);
+  let sheetOpen = $state(false);
+  const shown = $derived(narrow ? sheetOpen : inboxOpen);
+  let room = $state(0);
+  let width = $state(storedWidth(globalThis.localStorage ?? null));
+  const held = $derived(heldWidth(width, room));
+  let renaming = $state(false);
+  const visits = new Visits();
   let toolsOpen = $state(false);
   let starting = $state(false);
   let field = $state<HTMLInputElement>();
   let page = $state<HTMLElement>();
   let inbox = $state<ReturnType<typeof InboxColumn>>();
+  /** The thread the keys opened, said to a screen reader when focus stays where it was (09 finding 13). */
+  let said = $state('');
   const linkWords = $derived(live === null ? null : live.linked === false ? (live.problem ?? 'The thread runner of this computer is not running. Start the Anima daemon to start threads.') : live.holder);
   const newOff = $derived(live === null ? 'Threads start in the desktop application.' : live.linked === false ? 'The thread runner is not running.' : null);
   /** The row of the open thread, for the band. */
@@ -43,14 +65,33 @@
       chosen: store.chosen,
       newThread: newOff === null ? () => (starting = true) : undefined,
       open: (id) => void choose(id),
+      settings: () => void goto(resolve('/settings')),
     }),
   );
   const open = $derived(store.chosen === null ? undefined : ((store.listedRows ?? []).find((row) => row.id === store.chosen) ?? (store.thread?.id === store.chosen ? store.thread : undefined)));
 
   async function choose(id: string): Promise<void> {
+    if (narrow) sheetOpen = false;
+    visits.opened(id);
     await store.open(id);
     await tick();
     page?.querySelector<HTMLElement>(`[data-thread="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' });
+  }
+
+  /** After a key opened `id`: focus follows in the list; elsewhere the title is said (09 finding 13). */
+  async function follow(id: string, from: EventTarget | null): Promise<void> {
+    await choose(id);
+    const row = page?.querySelector<HTMLElement>(`.inbox [data-thread="${CSS.escape(id)}"] > .main`);
+    if (row !== null && row !== undefined && from instanceof Element && from.closest('.inbox [data-thread]') !== null) row.focus();
+    else said = `Opened ${(store.listedRows ?? []).find((each) => each.id === id)?.title ?? 'Untitled thread'}`;
+  }
+
+  /** Shows or hides the list; focus moves to the toggle in its new place (09 finding 14). */
+  async function toggleInbox(): Promise<void> {
+    if (narrow) sheetOpen = !sheetOpen;
+    else inboxOpen = !inboxOpen;
+    await tick();
+    page?.querySelector<HTMLElement>('.corner button')?.focus();
   }
 
   async function raise(threads: LiveThreads): Promise<CallResult> {
@@ -62,17 +103,7 @@
     return result;
   }
 
-  function typing(target: EventTarget | null): boolean {
-    return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || (target instanceof HTMLElement && target.isContentEditable);
-  }
-
-  /** The action of a key on the page; in the scroll area of the thread the arrows scroll it. */
-  function pageAction(event: KeyboardEvent): KeyAction | null {
-    const mod = event.metaKey || event.ctrlKey;
-    const action = keyAction({ key: event.key, mod, shift: event.shiftKey, alt: event.altKey, typing: typing(event.target) });
-    const inPane = event.target instanceof Element && event.target.closest('[data-own-keys]') !== null;
-    return action?.kind === 'move' && !mod && inPane ? null : action;
-  }
+  const mac = isMac(navigator.userAgent);
 
   /** Does what `action` names over the order of the inbox; false when it is not the page's to do. */
   function run(action: KeyAction, target: EventTarget | null): boolean {
@@ -81,7 +112,7 @@
       case 'move':
       case 'jump': {
         const next = order[action.kind === 'jump' ? action.place : moved(order.indexOf(store.chosen ?? ''), action.by, order.length)];
-        if (next !== undefined && next !== store.chosen) void choose(next);
+        if (next !== undefined && next !== store.chosen) void follow(next, target);
         return true;
       }
       case 'search':
@@ -99,38 +130,95 @@
     }
   }
 
-  /** The keys of the page (THR-016); ⌘N starts a thread (02 section 5.3). */
+  /** The keys of the page (THR-016); ⌘N starts a thread (02 section 5.3). A key that a menu, list or dialog took is not the page's. */
   function onkeydown(event: KeyboardEvent): void {
-    if ((event.metaKey || event.ctrlKey) && !event.shiftKey && event.key.toLowerCase() === 'n') {
+    const action = pageKey(event, mac, document);
+    if (action === null) return;
+    if (action.kind === 'new') {
       event.preventDefault();
       if (newOff === null) starting = true;
       return;
     }
-    const action = pageAction(event);
-    if (action !== null && run(action, event.target)) event.preventDefault();
+    if (own(action.kind) || run(action as KeyAction, event.target)) event.preventDefault();
+  }
+
+  /** The page's own keys beyond THR-016 (T3 Code): ⌘B, ⌘[ and ⌘], ⇧⌘S and ⇧⌘P; false for a thread key. */
+  function own(kind: string): boolean {
+    if (kind === 'inbox') void toggleInbox();
+    else if (kind === 'back' || kind === 'forward') step(kind === 'back' ? -1 : 1);
+    else if ((kind === 'settle' || kind === 'pin') && store.chosen !== null) inbox?.toggleMark(store.chosen, kind);
+    else return kind === 'settle' || kind === 'pin';
+    return true;
+  }
+
+  function step(by: -1 | 1): void {
+    const id = visits.step(by);
+    if (id !== undefined) void store.open(id);
+  }
+
+  /** The list's width: T3's rail drags it between 208 px and the room that leaves 640 px for the chat. */
+  function measure(node: HTMLElement): () => void {
+    const narrowQuery = matchMedia('(width < 48rem)');
+    const follow = (): void => {
+      narrow = narrowQuery.matches;
+    };
+    const watcher = new ResizeObserver(() => (room = node.clientWidth));
+    follow();
+    narrowQuery.addEventListener('change', follow);
+    watcher.observe(node);
+    return () => {
+      narrowQuery.removeEventListener('change', follow);
+      watcher.disconnect();
+    };
   }
 </script>
 
 <svelte:window {onkeydown} />
 
-{#snippet toggle()}
-  <InboxToggle open={inboxOpen} ontoggle={() => (inboxOpen = !inboxOpen)} />
-{/snippet}
-
 <!-- The page Code as T3 Code lays it out (02 section 4): the inbox column beside the chat column, each under its band. -->
-<div class="code" class:folded={!inboxOpen} data-code-page bind:this={page} {@attach fillRoom()}>
+<div class="code" class:folded={!inboxOpen} class:narrow class:sheet={narrow && sheetOpen} style:--inbox-width="{held}px" data-code-page bind:this={page} {@attach fillRoom()} {@attach measure}>
+  <!-- T3's toggle stands in the corner, 13 px in, whether the list shows or not (08 band 18). -->
+  <span class="corner"><InboxToggle open={shown} key={mac ? '⌘B' : 'Ctrl+B'} ontoggle={() => void toggleInbox()} /></span>
   <!-- Hidden, not unmounted: the band's title opens a thread's menu through it, and the list keeps its place. -->
-  <aside class="inbox" class:gone={!inboxOpen} aria-label="Threads of this computer">
-    <TopBand start={toggle}><span class="name">Code</span></TopBand>
-    <InboxColumn bind:this={inbox} {view} {store} onOpen={(id) => void choose(id)} {newOff} onNew={() => (starting = true)} bind:field />
+  <aside class="inbox" inert={!shown} aria-label="Threads of this computer">
+    <TopBand>
+      <span class="name">Code</span>
+      {#if !narrow}<HistoryButtons canGoBack={visits.canGoBack} canGoForward={visits.canGoForward} onback={() => step(-1)} onforward={() => step(1)} keys={mac ? { back: '⌘[', forward: '⌘]' } : { back: 'Ctrl+[', forward: 'Ctrl+]' }} />{/if}
+    </TopBand>
+    <InboxColumn bind:this={inbox} {view} {store} onOpen={(id) => void choose(id)} {newOff} onNew={() => (starting = true)} onShow={() => (narrow ? (sheetOpen = true) : (inboxOpen = true))} bind:field />
+    {#if !narrow && inboxOpen}
+      <InboxRail
+        width={held}
+        min={INBOX_WIDTH.min}
+        max={heldWidth(Number.POSITIVE_INFINITY, room)}
+        onwidth={(next) => (width = heldWidth(next, room))}
+        ondone={() => storeWidth(globalThis.localStorage ?? null, held)}
+        onreset={() => {
+          width = INBOX_WIDTH.default;
+          storeWidth(globalThis.localStorage ?? null, width);
+        }}
+      />
+    {/if}
   </aside>
+  {#if narrow && sheetOpen}<button type="button" class="scrim" aria-label="Close the thread list" tabindex="-1" onclick={() => (sheetOpen = false)}></button>{/if}
   <ChatColumn>
-    {#snippet header()}<ChatHeader thread={open} start={inboxOpen ? undefined : toggle} onactions={(anchor) => (open === undefined ? undefined : inbox?.openThreadMenu(open.id, anchor.getBoundingClientRect()))} />{/snippet}
+    {#snippet header()}
+      <ChatHeader
+        thread={open}
+        inset={!shown || narrow}
+        onproject={newOff === null ? () => (starting = true) : undefined}
+        onactions={(anchor) => (open === undefined ? undefined : inbox?.openThreadMenu(open.id, anchor, () => (renaming = true)))}
+        onrename={(title) => (open === undefined ? Promise.resolve(null) : (inbox?.renameThread(open.id, title) ?? Promise.resolve(null)))}
+        {renaming}
+        onrenaming={(on) => (renaming = on)}
+      />
+    {/snippet}
     {#snippet notice()}{#if linkWords !== null}<p class="link" role="status">{linkWords}</p>{/if}{/snippet}
     <ThreadBody {store} now={view.moment} {toolsOpen} />
     {#snippet composer()}{#if store.chosen !== null && (store.liveThread?.row.id === store.chosen || store.thread?.id === store.chosen)}<ChatFoot thread={store.liveThread?.row.id === store.chosen ? store.liveThread : null} {live} id={store.chosen} />{/if}{/snippet}
   </ChatColumn>
 </div>
+<p class="said" role="status">{said}</p>
 <CommandPalette host={palette} />
 {#if live !== null}
   <NewThread
@@ -147,12 +235,14 @@
 <style>
   .code {
     display: grid;
-    grid-template-columns: clamp(var(--code-inbox-min), var(--code-inbox), var(--code-inbox-max)) minmax(0, 1fr);
+    position: relative;
+    grid-template-columns: var(--inbox-width, var(--code-inbox)) minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr);
     block-size: var(--room, auto);
     min-block-size: calc(var(--space-16) * 6);
     overflow: hidden;
     background: var(--surface-base);
+    transition: grid-template-columns var(--spring-default);
   }
 
   /* Code fills the window beside Anima's bar edge to edge, its band at the top of the window, with no frame (02 section
@@ -165,19 +255,50 @@
     padding-inline: 0;
   }
 
+  /* The list slides shut, as T3's offcanvas sidebar; it goes from sight when the slide ends. */
   .folded {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: 0 minmax(0, 1fr);
   }
 
   .inbox {
+    position: relative;
     display: flex;
     flex-direction: column;
+    min-inline-size: 0;
     min-block-size: 0;
     border-inline-end: var(--border-thin) solid var(--border-subtle);
+    background: var(--surface-base);
   }
 
-  .gone {
-    display: none;
+  .folded .inbox {
+    overflow: hidden;
+    visibility: hidden;
+    /* Visibility stays "visible" until the spring ends, then hides: the list leaves sight when the slide ends. */
+    transition: visibility var(--spring-default);
+  }
+
+  /* 12 + 28 + 12 px: the band's words start after the toggle in the corner; T3's brand is 14 px, weight 500. */
+  .inbox :global([data-code-band]) {
+    padding-inline-start: calc(var(--space-3) * 2 + var(--control-sm));
+    font-size: var(--text-md);
+    font-weight: var(--weight-medium);
+  }
+
+  .corner {
+    position: absolute;
+    inset-block-start: calc((var(--code-band) - var(--control-sm)) / 2);
+    inset-inline-start: calc(var(--space-3) + var(--border-thin));
+    z-index: var(--layer-popover);
+  }
+
+  .said {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    margin: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   .name {
@@ -192,20 +313,37 @@
     font-size: var(--code-text-small);
   }
 
-  /* In a narrow window the list stands over the thread (02 section 4.3 keeps the chat at least 640 px). */
-  @media (width <= 60rem) {
-    .code {
-      grid-template-columns: minmax(0, 1fr);
-      grid-template-rows: minmax(0, 2fr) minmax(0, 3fr);
-    }
+  /* Below 768 px the list is a sheet over the page, all but 12 px of its width, over a scrim (T3 Code's mobile sidebar). */
+  .narrow,
+  .narrow.folded {
+    grid-template-columns: minmax(0, 1fr);
+  }
 
-    .folded {
-      grid-template-rows: minmax(0, 1fr);
-    }
+  .narrow .inbox {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    z-index: var(--layer-nav);
+    inline-size: calc(100% - var(--space-3));
+    overflow: hidden;
+    visibility: hidden;
+    transform: translateX(-100%);
+    transition:
+      transform var(--spring-default),
+      visibility var(--spring-default);
+  }
 
-    .inbox {
-      border-inline-end: 0;
-      border-block-end: var(--border-thin) solid var(--border-subtle);
-    }
+  .sheet .inbox {
+    visibility: visible;
+    transform: none;
+  }
+
+  .scrim {
+    position: absolute;
+    inset: 0;
+    z-index: var(--layer-sticky);
+    padding: 0;
+    border: 0;
+    background: var(--scrim);
   }
 </style>

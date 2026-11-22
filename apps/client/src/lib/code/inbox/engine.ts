@@ -57,23 +57,70 @@ export function inboxEngine(live: () => LiveThreads | null): InboxEngine {
 
 const HOUR = 60 * 60_000;
 
-/** The snooze presets (02 section 5.5): a label, and the time it wakes, from now. */
+/** A snooze preset, as T3 Code's defaults resolve it from now (08 inbox 6). */
 export interface SnoozePreset {
   readonly id: string;
   readonly label: string;
-  readonly until: (now: Date) => Date;
+  readonly until: Date;
+  /** Its label names the day ("This evening", "Tomorrow"), so its detail is the time alone. */
+  readonly namesDay: boolean;
 }
 
-function nextMorning(now: Date, days: number): Date {
-  const at = new Date(now);
-  at.setDate(at.getDate() + days);
-  at.setHours(9, 0, 0, 0);
-  return at;
+function at(now: Date, days: number, hour: number): Date {
+  const when = new Date(now);
+  when.setDate(when.getDate() + days);
+  when.setHours(hour, 0, 0, 0);
+  return when;
 }
 
-export const SNOOZE_PRESETS: readonly SnoozePreset[] = [
-  { id: 'snooze-1h', label: 'In 1 hour', until: (now) => new Date(now.getTime() + HOUR) },
-  { id: 'snooze-3h', label: 'In 3 hours', until: (now) => new Date(now.getTime() + 3 * HOUR) },
-  { id: 'snooze-tomorrow', label: 'Tomorrow', until: (now) => nextMorning(now, 1) },
-  { id: 'snooze-week', label: 'Next week', until: (now) => nextMorning(now, 7) },
-];
+/**
+ * T3 Code's five defaults: in 1 hour, in 3 hours, this evening at 18:00 (left out once past), tomorrow at 09:00 and
+ * next Monday at 09:00; soonest first, one row for each wake minute. A Monday that is tomorrow reads "Tomorrow".
+ */
+export function snoozePresets(now: Date): SnoozePreset[] {
+  const monday = (1 - now.getDay() + 7) % 7 || 7;
+  const all: SnoozePreset[] = [
+    { id: 'snooze-1h', label: 'In 1 hour', until: new Date(now.getTime() + HOUR), namesDay: false },
+    { id: 'snooze-3h', label: 'In 3 hours', until: new Date(now.getTime() + 3 * HOUR), namesDay: false },
+    { id: 'snooze-evening', label: 'This evening', until: at(now, 0, 18), namesDay: true },
+    { id: 'snooze-tomorrow', label: 'Tomorrow', until: at(now, 1, 9), namesDay: true },
+    { id: 'snooze-week', label: monday === 1 ? 'Tomorrow' : 'Next week', until: at(now, monday, 9), namesDay: monday === 1 },
+  ];
+  const minute = (preset: SnoozePreset): number => Math.floor(preset.until.getTime() / 60_000);
+  const seen = new Set<number>();
+  return all
+    .filter((preset) => preset.until.getTime() > now.getTime())
+    .sort((a, b) => minute(a) - minute(b))
+    .filter((preset) => {
+      if (seen.has(minute(preset))) return false;
+      seen.add(minute(preset));
+      return true;
+    });
+}
+
+/** What the Custom snooze dialog holds: a date and a time, or a number of minutes, hours or days from now (T3 Code). */
+export type CustomSnooze =
+  | { readonly mode: 'date'; readonly date: string; readonly time: string }
+  | { readonly mode: 'duration'; readonly amount: string; readonly unit: 'minutes' | 'hours' | 'days' };
+
+const UNIT_MS = { minutes: 60_000, hours: 3_600_000, days: 86_400_000 } as const;
+
+/** The local `YYYY-MM-DD` and `HH:MM` of `at`, as the date and time fields take them. */
+export function localFields(at: Date): { date: string; time: string } {
+  const two = (value: number): string => String(value).padStart(2, '0');
+  return { date: `${String(at.getFullYear())}-${two(at.getMonth() + 1)}-${two(at.getDate())}`, time: `${two(at.getHours())}:${two(at.getMinutes())}` };
+}
+
+/** The time a custom snooze wakes, or `null` when it is not a valid time after `now` (T3's resolveCustomSnooze). */
+export function customWake(input: CustomSnooze, now: Date): Date | null {
+  if (input.mode === 'duration') {
+    const amount = Number(input.amount);
+    if (!Number.isFinite(amount) || amount <= 0) return null;
+    return new Date(now.getTime() + amount * UNIT_MS[input.unit]);
+  }
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(input.date);
+  const clock = /^(\d{2}):(\d{2})$/.exec(input.time);
+  if (match === null || clock === null) return null;
+  const wake = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(clock[1]), Number(clock[2]));
+  return Number.isNaN(wake.getTime()) || wake.getTime() <= now.getTime() ? null : wake;
+}

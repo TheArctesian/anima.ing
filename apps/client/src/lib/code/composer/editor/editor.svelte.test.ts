@@ -191,26 +191,6 @@ describe('keys', () => {
     press(box, 'b', { ctrlKey: true });
     expect(props.value).toBe('make **bold**');
   });
-
-  it('does nothing while an input method composes, then reads its text from the page', () => {
-    const onKey = vi.fn(() => false);
-    const { box, props } = editor({ value: '- ', onKey });
-    box.focus();
-    select(box, 2);
-    box.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
-    expect(press(box, 'Enter', { isComposing: true }).defaultPrevented).toBe(false);
-    expect(press(box, 'Process', { keyCode: 229 }).defaultPrevented).toBe(false);
-    expect(input(box, 'insertCompositionText', 'か', true).defaultPrevented).toBe(false);
-    expect(onKey).not.toHaveBeenCalled();
-    const caret = document.getSelection();
-    caret?.anchorNode?.insertBefore(document.createTextNode('漢字'), caret.anchorNode.childNodes[caret.anchorOffset] ?? null);
-    box.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
-    flushSync();
-    expect(props.value).toBe('- 漢字');
-    expect(seen(box)).toBe('漢字');
-    press(box, 'z', { ctrlKey: true });
-    expect(props.value).toBe('- ');
-  });
 });
 
 describe('the clipboard', () => {

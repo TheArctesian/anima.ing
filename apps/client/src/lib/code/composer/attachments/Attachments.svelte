@@ -20,5 +20,5 @@
   <MediaRow attachments={parts.media} {onRemove} {onOpen} />
 {/if}
 {#if parts.files.length > 0}
-  <FileList attachments={parts.files} {onRemove} {onOpen} />
+  <FileList attachments={parts.files} {onRemove} />
 {/if}

@@ -30,6 +30,9 @@ on:
       # The conductor starts the gates of a train itself (`workflow_dispatch`). A train that a
       # person pushed from a checkout must not start a second run, which stops the first.
       - "train/**"
+      # A branch that only starts the build of the hub image (hub-image.yml) points at a
+      # commit of `dev`, which passed its gates already.
+      - "image/**"
   workflow_dispatch:
   workflow_call:
     inputs:

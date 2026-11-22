@@ -1,20 +1,20 @@
 <script lang="ts">
-  import FormButton from '$lib/forms/FormButton.svelte';
   import CodeIcon from '../icons/CodeIcon.svelte';
-  import IconButton from '../kit/IconButton.svelte';
   import Tooltip from '../kit/Tooltip.svelte';
+  import CopyButton from './meta/CopyButton.svelte';
+  import Stamp from './meta/Stamp.svelte';
   import type { Prompt } from './turns';
   import Prose from './Prose.svelte';
 
   interface Props {
     prompt: Prompt;
+    now: Date;
   }
 
-  const { prompt }: Props = $props();
+  const { prompt, now }: Props = $props();
   let open = $state(false);
   let tall = $state(false);
-  let copy = $state<'idle' | 'copied' | 'failed'>('idle');
-  const time = $derived(prompt.at?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) ?? null);
+  const id = $props.id();
 
   /** Folds a body whose real height is at least 22rem (A.2.2); it is measured once it is drawn and when it changes. */
   function measure(body: HTMLElement): () => void {
@@ -30,40 +30,31 @@
     };
   }
 
-  async function copyText(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(prompt.text);
-      copy = 'copied';
-      setTimeout(() => (copy = 'idle'), 2000);
-    } catch {
-      copy = 'failed';
-      setTimeout(() => (copy = 'idle'), 2000);
-    }
-  }
-
-  const copyWords = $derived(copy === 'copied' ? 'Copied' : copy === 'failed' ? 'Could not copy' : 'Copy message');
 </script>
 
 <!-- The person's message (03 section A.2): right aligned, at most 80 % of the lane, then its actions on hover. -->
 <div class="row">
   <h3 class="hidden">You</h3>
   {#if prompt.steer}
-    <span class="steer"><CodeIcon name="redo-2" />Steer<span class="hidden">: sent while the agent worked, to steer the active turn</span></span>
+    <!-- Fidelity 14: the tooltip of T3 Code. Its "waiting to be read" needs the engine to say when the agent read it. -->
+    <Tooltip text="Steered the active turn">
+      <span class="steer"><CodeIcon name="redo-2" />Steer<span class="hidden">: sent while the agent worked, to steer the active turn</span></span>
+    </Tooltip>
   {/if}
   <div class="bubble">
-    <div class="body" class:folded={tall && !open} {@attach measure}>
+    <div class="body" id="{id}-body" class:folded={tall && !open} {@attach measure}>
       <Prose text={prompt.text} />
     </div>
+    {#if tall}
+      <!-- Fidelity 11: inside the bubble, 6 px under the text, a quiet extra-small button that says whether it is open. -->
+      <div class="more">
+        <button type="button" class="show" aria-expanded={open} aria-controls="{id}-body" onclick={() => (open = !open)}>{open ? 'Show less' : 'Show full message'}</button>
+      </div>
+    {/if}
   </div>
-  {#if tall}
-    <FormButton size="sm" onclick={() => (open = !open)}>{open ? 'Show less' : 'Show full message'}</FormButton>
-  {/if}
   <div class="actions">
-    {#if time !== null}<time datetime={prompt.at?.toISOString()}>{time}</time>{/if}
-    <Tooltip text={copyWords}>
-      <IconButton label={copyWords} icon={copy === 'copied' ? 'check' : 'copy'} onclick={() => void copyText()} />
-    </Tooltip>
-      <span class="hidden" role="status">{copy === 'idle' ? '' : copyWords}</span>
+    {#if prompt.at !== null}<Stamp at={prompt.at} {now} />{/if}
+    <div class="buttons"><CopyButton text={prompt.text} /></div>
   </div>
 </div>
 
@@ -107,10 +98,40 @@
     mask-image: linear-gradient(to bottom, var(--text) calc(100% - var(--code-timeline-bubble-fade)), transparent);
   }
 
+  .more {
+    display: flex;
+    justify-content: flex-end;
+    margin-block-start: 0.375rem;
+    margin-inline-start: calc(-1 * var(--space-1));
+  }
+
+  .show {
+    min-block-size: var(--space-6);
+    padding-inline: var(--space-2);
+    border: none;
+    border-radius: var(--radius-md);
+    background: none;
+    color: var(--code-quiet-text);
+    font: inherit;
+    font-size: var(--code-text-meta);
+    cursor: pointer;
+  }
+
+  .show:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+
+  .show:focus-visible {
+    outline: var(--border-focus) solid var(--focus-ring);
+    outline-offset: -2px;
+  }
+
+  /* Fidelity 12: 8 px between the time and the buttons, 2 px between the buttons. */
   .actions {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: var(--space-2);
     padding-inline-end: var(--space-1);
     color: var(--code-quiet-text);
     font-size: var(--code-text-meta);
@@ -124,8 +145,9 @@
     opacity: 1;
   }
 
-  time {
-    margin-inline-end: var(--space-1);
+  .buttons {
+    display: flex;
+    gap: 2px;
   }
 
   @media (hover: none) {

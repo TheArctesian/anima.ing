@@ -73,6 +73,67 @@ it('03 A.2.5: Escape closes the popup and gives focus back to the trigger; a pre
   expect(trigger.getAttribute('aria-expanded')).toBe('false');
 });
 
+it('leaves each key to an input method that composes in the search field: the popup stays, the lit row and the model too', async () => {
+  const { picks, trigger } = show();
+  trigger.click();
+  await settle();
+  const search = one('[role="combobox"]');
+  const lit = search.getAttribute('aria-activedescendant');
+  const composing = [{ isComposing: true }, { keyCode: 229 }];
+  const keys: [string, KeyboardEventInit][] = [['Escape', {}], ['Enter', {}], ['ArrowDown', {}], ['ArrowLeft', {}], ['2', { metaKey: true }], ['ArrowDown', { metaKey: true, shiftKey: true }]];
+  const taken = composing.flatMap((how) => keys.map(([name, held]) => !key(search, name, { ...held, ...how })));
+  await settle();
+  expect(taken).not.toContain(true);
+  expect(trigger.getAttribute('aria-expanded')).toBe('true');
+  expect(document.activeElement).toBe(search);
+  expect(search.getAttribute('aria-activedescendant')).toBe(lit);
+  expect(one('[role="toolbar"] [aria-pressed="true"]').getAttribute('aria-label')).toBe('Favorites');
+  expect(picks).toEqual([]);
+  key(search, 'Escape');
+  await settle();
+  expect(trigger.getAttribute('aria-expanded')).toBe('false');
+});
+
+it('closes when focus goes on out of the trigger and the popup, as after Tab, and not when it stays or goes to nothing', async () => {
+  const { trigger } = show();
+  const outside = document.body.appendChild(document.createElement('button'));
+  const leave = (to: Element | null): boolean => one('[role="combobox"]').dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: to }));
+  trigger.click();
+  await settle();
+  leave(null);
+  leave(one('[role="radio"]'));
+  leave(trigger);
+  await settle();
+  expect(trigger.getAttribute('aria-expanded')).toBe('true');
+  leave(outside);
+  await settle();
+  expect(trigger.getAttribute('aria-expanded')).toBe('false');
+});
+
+it('keeps each arrow of the rail and of the speeds from the keys of the page under the popup', async () => {
+  show(CAN, true);
+  await settle();
+  const escaped: string[] = [];
+  const page = new AbortController();
+  window.addEventListener('keydown', (event) => escaped.push(event.key), { signal: page.signal });
+  const rail = [...document.querySelectorAll<HTMLElement>('[role="toolbar"] button')];
+  rail[0]?.focus();
+  for (const name of ['ArrowDown', 'ArrowUp', 'ArrowUp', 'ArrowLeft']) key(document.activeElement ?? document.body, name);
+  expect(document.activeElement).toBe(rail.at(-1));
+  key(rail[0] as HTMLElement, 'ArrowRight');
+  expect(document.activeElement).toBe(one('[role="combobox"]'));
+  const speeds = [...document.querySelectorAll<HTMLElement>('[aria-label="Speed"] [role="radio"]')];
+  speeds[0]?.focus();
+  key(speeds[0] as HTMLElement, 'ArrowDown');
+  expect(document.activeElement).toBe(speeds[1]);
+  key(speeds[1] as HTMLElement, 'ArrowUp');
+  key(speeds[0] as HTMLElement, 'ArrowRight');
+  key(speeds[1] as HTMLElement, 'ArrowLeft');
+  expect(document.activeElement).toBe(speeds[0]);
+  page.abort();
+  expect(escaped).toEqual([]);
+});
+
 it('03 A.2.5: Down and Enter pick the next model, the popup stays open and focus goes to its effort levels', async () => {
   const { picks, trigger } = show();
   trigger.click();
