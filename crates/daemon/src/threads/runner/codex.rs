@@ -1,15 +1,33 @@
 //! The calls of the runner to one `codex app-server` (THR-021, TH10 Section 3): the start of the
-//! server and of its thread, then a turn for each prompt. Pure: it gives the lines to write.
+//! server and of its thread, then a turn for each prompt. It gives the lines to write.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
+use agent_threads::control::ThreadRow;
 use agent_threads::drive::{
-    CodexDecoder, CodexInput, CodexPlace, CodexTurn, Effort, KeptFolder, Mode, Model, Prompt,
-    TurnSettings,
+    CodexDecoder, CodexInput, CodexPlace, CodexTurn, Effort, KeptFolder, Mode, Model, Program,
+    Prompt, TurnSettings,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
+/// The Codex calls of a thread of Codex.
+/// Its sandbox keeps the folder of the daemon read-only when the folder of the thread holds it
+/// (THR-041).
+pub(super) fn codex_of(
+    row: &ThreadRow,
+    effort: Option<Effort>,
+    daemon: &std::path::Path,
+) -> Option<Codex> {
+    (row.program == Program::Codex).then(|| {
+        let model = row.model.as_deref().and_then(|name| Model::new(name).ok());
+        Codex::new(row.folder.clone(), row.mode, model, effort).keeping(
+            crate::threads::notice::held_anima(&row.folder, daemon)
+                .map(|anima| KeptFolder::new(anima, row.id)),
+        )
+    })
+}
 
 /// What a call of the runner was, so that its answer can be read.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

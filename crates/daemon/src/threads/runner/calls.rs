@@ -1,11 +1,11 @@
 //! The calls of the clients of this computer to the runner (TH12, TH13, TH15): each is checked
 //! here, written to the log of the runner (THR-044), and answered on the socket.
 
-use agent_threads::control::{Action, Call, Outcome, Refusal, Reply, RunState, ThreadRow};
-use agent_threads::drive::{Answer, Effort, KeptFolder, Model, Program};
+use agent_threads::control::{Action, Call, Outcome, Refusal, Reply, RunState};
+use agent_threads::drive::Answer;
 use uuid::Uuid;
 
-use super::codex::Codex;
+pub(super) use super::codex::codex_of;
 use super::log::{Kind, Line};
 use super::socket::{self, CLIENT_BYTES, CLIENT_QUEUE, Caller, Client, Incoming};
 use super::start::NewThread;
@@ -31,23 +31,6 @@ pub(super) use send::SentPrompt;
 const SOURCE: &str = "local socket";
 /// The most clients that watch at one time.
 const WATCHERS: usize = 16;
-
-/// The Codex calls of a thread of Codex.
-/// Its sandbox keeps the folder of the daemon read-only when the folder of the thread holds it
-/// (THR-041).
-pub(super) fn codex_of(
-    row: &ThreadRow,
-    effort: Option<Effort>,
-    daemon: &std::path::Path,
-) -> Option<Codex> {
-    (row.program == Program::Codex).then(|| {
-        let model = row.model.as_deref().and_then(|name| Model::new(name).ok());
-        Codex::new(row.folder.clone(), row.mode, model, effort).keeping(
-            crate::threads::notice::held_anima(&row.folder, daemon)
-                .map(|anima| KeptFolder::new(anima, row.id)),
-        )
-    })
-}
 
 impl Runner {
     pub(super) async fn call(&mut self, incoming: Incoming) {
