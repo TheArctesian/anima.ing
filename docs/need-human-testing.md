@@ -4571,7 +4571,7 @@ Built: `crates/anima-osd`, the opt-in module `experiments/anima-os/control.nix`,
 Result: Open. No physical-hardware, real-account, full-appliance UI, speed or ISO-size result is claimed.
 
 
-### HT-127: final graphical and hardware acceptance of the Rust OS continuation (OS3-R4/R5)
+### HT-127: final graphical and hardware acceptance of the Rust OS continuation (OS3-R4/R5/R6)
 
 Built: four-destination graphical console and native session/update/install controllers. OS3-R5 rebuilds the Qt Python bindings with build-only generator dependencies; use the [smaller preview and its validation record](research/spare-computer-os/runtime-packaging-2026-11-21.md) for this check. Automated checks use disposable virtual disks, synthetic account services and headless rendered UI. They cannot qualify the user's physical Wi-Fi/display/touch hardware, real account or perceived responsiveness. The operator moved this check to the last step; that is scheduling, not a reported pass.
 
@@ -4585,6 +4585,8 @@ Built: four-destination graphical console and native session/update/install cont
    Expected: phase/byte progress remains visible while other pages respond, no download automatically activates, and recovery preserves identity and workload data.
 5. Lock and unlock, restart, and compare pointer/keyboard navigation, screen-open delay and idle behavior with the prior preview on the same machine.
    Expected: background compute continues while locked; focus remains visible; perceived responsiveness and display quality are acceptable. Record hardware and measured delays rather than inferring them from language choice.
+
+OS3-R6: On 2026-11-22 the operator rejected the Network layout in the VM and asked for the corrected preview to reopen after validation. Review the revised installer and installed Network pages: Ethernet status, Wi-Fi list, contextual connection controls, password entry, and adapter/radio/scan states. Automated fixture checks do not qualify real Wi-Fi hardware.
 
 Result: Open; deferred to the final step by the operator. No production release is authorized.
 

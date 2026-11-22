@@ -83,7 +83,10 @@ def graphical_install(machine, output, password):
     screenshot(output, 'welcome')
     machine.command('head -c 1048576 /dev/vda | sha256sum > /run/before-disk; head -c 1048576 /dev/vdc | sha256sum > /run/before-data')
     machine.command('nmcli connection add type ethernet con-name anima-fixture ifname fixture0; nmcli connection modify anima-fixture connection.autoconnect no')
-    tap(machine, output, 'Continue'); screenshot(output, 'network')
+    tap(machine, output, 'Continue')
+    from console_checks import wait_label
+    wait_label(output, 'No Wi-Fi adapter detected')
+    screenshot(output, 'network')
     tap(machine, output, 'Continue'); screenshot(output, 'keyboard')
     tap(machine, output, 'Continue')
     for label in ('at least 12', 'Confirm password'):

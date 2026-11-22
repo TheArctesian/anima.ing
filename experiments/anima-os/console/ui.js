@@ -53,7 +53,7 @@ const row=(name,detail,right)=>`<div class="row"><div class="row-title">${icon(r
 const head=(title,body)=>`<h1 tabindex="-1">${title}</h1><p>${body}</p>`;
 const subhead=(title,body)=>button('Settings','settings-back')+head(title,body);
 const pageLink=(name,title,detail)=>`<button type="button" class="setting-link" data-page="${name}">${icon(name)}<span><strong>${title}</strong><small>${detail}</small></span>${icon('arrow-right')}</button>`;
-let state=null,available=[],displays=[],signedIn=false,email='',locked=true,pending=0,bridge=null,poll=null,powerAction='',selected=null,updateState=null,updateOffer=null,scanState='not-scanned',refreshFailed=false,updateWorking=false,updatePoll=null,updatePolling=false,downloadPending=false,selfhostHub='';
+let state=null,available=[],displays=[],signedIn=false,email='',locked=true,pending=0,bridge=null,poll=null,powerAction='',selected=null,updateState=null,updateOffer=null,scanState='not-scanned',scanVersion=0,networkScans=0,refreshFailed=false,updateWorking=false,updatePoll=null,updatePolling=false,downloadPending=false,selfhostHub='';
 const waiting=new Map();
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const size=value=>(value/1024**3).toFixed(1)+' GB';
@@ -65,14 +65,47 @@ function connectionPanel(){
  if(signedIn)return `<section class="connection"><div><h2>Add this computer</h2><p>Signed in as ${esc(email)}. Add ${esc(state?.hostname||'this computer')} to your account’s hub.</p></div><div class="actions">${button('Add this computer','add-computer',true)}${button('Use another account','switch-account')}</div></section><p class="hint">This enrolls monitoring and the private link. It does not grant new workload or shell permissions.</p>`;
  return `<section class="connection"><div><h2>Connect to Anima</h2><p>Sign in, then confirm that you want to add this computer.</p></div><div class="actions">${button('Sign in to Anima','sign-in',true)}${button('Use your own hub','selfhost')}</div></section>`;
 }
+const wifiReady=()=>state?.devices?.some(d=>d.type==='wifi')&&state.radio==='enabled'&&state.supplicant!=='failed';
+const networkSecurity=n=>!n.security||n.security==='--'?'Open network':/802\.1X|EAP/.test(n.security)?'Enterprise network':'Secured network';
+function wifiNotice(){
+ if(!state)return ['Network information unavailable','Try opening Network again in a moment.'];
+ if(!state.devices.some(d=>d.type==='wifi'))return ['No Wi-Fi adapter detected','Use Ethernet, or connect a Wi-Fi adapter to join a wireless network.'];
+ if(state.radio==='disabled')return ['Wi-Fi is off','Turn on Wi-Fi to see available networks.'];
+ if(state.supplicant==='failed')return ['Wi-Fi needs attention','Open Settings → Diagnostics & recovery to check the Wi-Fi service.'];
+ if(state.radio!=='enabled')return ['Wi-Fi status unavailable','Try opening Network again in a moment.'];
+ if(scanState==='scanning')return ['Looking for networks…','Available networks will appear here.'];
+ if(scanState==='failed')return ['Couldn’t refresh networks','Try again, or check Diagnostics & recovery in Settings.'];
+ if(scanState==='empty')return ['No networks found','Move closer to your router, then refresh.'];
+ return ['Looking for networks…','Available networks will appear here.'];
+}
+function wifiRow(n,i){
+ const signal=Math.max(0,Math.min(100,Number(n.signal)||0)),level=Math.max(1,Math.ceil(signal/25));
+ return `<button class="wifi-network" data-action="wifi-${i}"><span class="wifi-signal" aria-hidden="true">${[1,2,3,4].map(bar=>`<i class="${bar<=level?'lit':''}"></i>`).join('')}</span><span class="network-name"><strong>${esc(n.ssid||'Hidden network')}</strong><small>${networkSecurity(n)} · ${signal}% signal</small></span><span class="network-connect">${networkSecurity(n)==='Enterprise network'?'Details':'Connect'}${icon('arrow-right')}</span></button>`;
+}
 function networkScreen(){
- const adapters=(state?.devices||[]).filter(d=>['wifi','ethernet'].includes(d.type));
- const wifi=adapters.some(d=>d.type==='wifi');
- let notice=state?'No Wi-Fi adapter was detected. Ethernet connections appear above.':'Network information is not yet available.';
- if(wifi)notice=scanState==='empty'?'No networks found. Move closer to an access point and scan again.':scanState==='failed'?'The scan could not finish. Check the Wi-Fi service and try again.':'Scan to see nearby Wi-Fi networks.';
- if(state?.radio==='disabled')notice='Wi-Fi is switched off.';
- if(state?.supplicant==='failed')notice='The Wi-Fi service needs attention. Open Settings → Diagnostics & recovery for checks.';
- return head('Network','Connections on this computer. Local controls remain available offline.')+adapters.map(d=>row(esc(d.device),esc(d.connection||'No saved connection'),esc(d.state))).join('')+`<section class="section"><div class="topline"><h2>Nearby Wi-Fi</h2>${wifi&&state?.radio!=='disabled'?button('Scan networks','scan'):''}</div>${state?.radio==='disabled'?button('Turn Wi-Fi on','radio-on'):''}${available.length&&state?.radio!=='disabled'?available.map((n,i)=>row(esc(n.ssid||'Hidden network'),esc(n.device+' · '+n.signal+'% signal · '+n.security),button('Connect','wifi-'+i))).join(''):`<p class="empty-state">${notice}</p>`}</section>`;
+ const ethernet=(state?.devices||[]).filter(d=>d.type==='ethernet'),wifi=(state?.devices||[]).filter(d=>d.type==='wifi');
+ const connected=wifi.some(d=>d.state==='connected'),scanning=scanState==='scanning',notice=wifiNotice();
+ const wired=ethernet.map(d=>`<section class="network-card wired"><div class="network-heading">${icon('network-3')}<div><h2>Ethernet</h2><small>${esc(d.connection&&d.connection!=='--'?d.connection:d.device)}</small></div><span class="connection-state ${d.state==='connected'?'connected':''}">${d.state==='connected'?'Connected':d.state.startsWith('connecting')?'Connecting…':'Not connected'}</span></div></section>`).join('');
+ const control=wifiReady()?`<button class="quiet" data-action="scan" ${scanning?'disabled':''}>${icon('renew')}${scanning?'Refreshing…':'Refresh'}</button>`:wifi.length&&state?.radio==='disabled'?button('Turn on','radio-on'):'';
+ const list=wifiReady()&&available.length&&!scanning?`<div class="wifi-list" aria-label="Available Wi-Fi networks">${available.map(wifiRow).join('')}</div>`:`<div class="network-empty" role="status"><strong>${notice[0]}</strong><p>${notice[1]}</p></div>`;
+ return head('Network','Manage your Ethernet and Wi-Fi connections.')+`<div class="network-settings">${wired}<section class="network-card"><div class="network-heading">${icon('connection-signal')}<div><h2>Wi-Fi</h2><small>${connected?'Connected':wifi.length?state?.radio==='disabled'?'Off':'Wireless networks':'Not available'}</small></div>${control}</div>${list}</section></div>`;
+}
+async function scanNetworks(){
+ if(!wifiReady()||scanState==='scanning'||locked)return;
+ const version=++scanVersion;networkScans++;scanState='scanning';available=[];if(page==='Network')draw();
+ try{
+  const networks=await call('scan');if(locked||version!==scanVersion||!wifiReady())return;
+  const strongest=new Map();
+  for(const n of networks.sort((a,b)=>Number(b.signal)-Number(a.signal))){const key=JSON.stringify([n.device,n.ssid||n.bssid,n.security]);if(!strongest.has(key))strongest.set(key,n);}
+  available=[...strongest.values()];scanState=available.length?'found':'empty';
+ }catch(error){if(locked||version!==scanVersion)return;scanState='failed';available=[];}
+ finally{networkScans--;if(!locked&&version===scanVersion&&page==='Network')draw();}
+}
+function wifiDialog(network){
+ selected=network;if(!selected)return;
+ const security=networkSecurity(selected),title=esc(selected.ssid||'Hidden network');
+ if(security==='Enterprise network'){modal('Enterprise Wi-Fi',`<p>${title}</p><p>This network requires advanced configuration. Open Settings → Diagnostics & recovery for recovery options.</p>`,button('Close','close'));return;}
+ modal('Connect to Wi-Fi',`<p class="wifi-dialog-name">${title}</p><form id="wifi-form">${security==='Open network'?'<p>This is an open network. No password is required.</p>':'<label>Network password<input name="password" type="password" autocomplete="off"></label>'}<button class="primary">${icon('checkmark')}Connect</button></form>`,button('Cancel','close'));
 }
 function renderOperation(){
  const panel=main.querySelector('#operation-status');if(!panel)return;
@@ -153,13 +186,27 @@ function errorMessage(error){
  if(!locked&&!overlay.querySelector('[data-action=close]'))overlay.querySelector('.actions').innerHTML=button('Close','close');
 }
 function lock(){
- locked=true;signedIn=false;email='';state=null;available=[];scanState='not-scanned';selfhostHub='';
+ locked=true;signedIn=false;email='';state=null;available=[];scanState='not-scanned';scanVersion++;selfhostHub='';
  clearInterval(poll);poll=null;clearInterval(updatePoll);updatePoll=null;updateWorking=false;
  close(true);
  modal('Local session locked','<p>Your node stays awake. Apps, monitoring and authorized remote access continue running.</p><form id="unlock-form"><label>Local admin password<input type="password" name="password" autocomplete="current-password" required></label><button class="primary" type="submit">'+icon('password')+'Unlock</button></form>','');
 }
-async function refresh(redraw=true){try{state=await call('status');refreshFailed=false;}catch(error){refreshFailed=true;throw error;}finally{if(redraw&&!locked)draw();}}
-async function go(n,focus='h1'){if(!names.includes(n)&&!settingsPages.includes(n))return;page=n;close(true);main.scrollTop=0;draw();if(n==='Updates'){updateState=await call('update-status');draw();}if(n==='Display'){displays=await call('displays');draw();}main.querySelector(focus)?.focus({preventScroll:true});}
+const networkSignature=value=>JSON.stringify([value?.radio,value?.supplicant,(value?.devices||[]).filter(d=>d.type==='wifi').map(d=>d.device).sort()]);
+async function refresh(redraw=true){
+ try{
+  const next=await call('status');if(locked)return;
+  if(networkSignature(state)!==networkSignature(next)){scanVersion++;scanState='not-scanned';available=[];}
+  state=next;refreshFailed=false;
+ }catch(error){refreshFailed=true;throw error;}
+ finally{if(redraw&&!locked){draw();if(page==='Network'&&scanState==='not-scanned')void scanNetworks();}}
+}
+async function go(n,focus='h1'){
+ if(!names.includes(n)&&!settingsPages.includes(n))return;page=n;close(true);main.scrollTop=0;draw();
+ if(n==='Updates'){updateState=await call('update-status');draw();}
+ if(n==='Display'){displays=await call('displays');draw();}
+ if(n==='Network'){await refresh(false);draw();if(scanState==='not-scanned')void scanNetworks();}
+ main.querySelector(focus)?.focus({preventScroll:true});
+}
 async function busy(op,args,label){
  modal(label,'<p>Please wait. This is a real operation on this computer.</p>','');
  try{const result=await call(op,args);close(true);return result;}catch(error){errorMessage(error);throw error;}
@@ -169,15 +216,15 @@ root.addEventListener('click',async e=>{
  const a=b.dataset.action;
  if(a==='lock'){bridge.lock();return;}
  if(locked)return;
- if(pending&&!updateWorking)return;
+ if(pending&&!updateWorking&&!(networkScans&&b.dataset.page))return;
  try{
   if(b.dataset.page){await go(b.dataset.page);return;}
   if(a==='close'){close();return;}
   if(a==='settings-back'){const previous=page;await go('Settings',`[data-page="${previous}"]`);return;}
   if(a==='connection-details'){modal('Connection details',row('Enrollment','Saved on this computer','Saved')+row('Monitoring','Local process state',unitLabel(state?.daemon))+'<p>Hub reachability and work readiness have not been verified. Locking the screen keeps background services running.</p>',button('Done','close',true));return;}
-  if(a==='scan'){try{available=await busy('scan',{},'Scanning nearby Wi-Fi');scanState=available.length?'found':'empty';}catch(error){scanState='failed';available=[];throw error;}finally{draw();}}
-  if(a==='radio-on'){await busy('radio-on',{},'Enabling Wi-Fi');state=await call('status');await go('Network');return;}
-  if(a?.startsWith('wifi-')){selected=available[Number(a.slice(5))];if(!selected)return;modal('Connect to Wi-Fi',`<p>${esc(selected.ssid)} · ${esc(selected.device)}</p><form id="wifi-form"><label>Network password<input name="password" type="password" autocomplete="off"></label><p class="hint">Leave blank for an open network. Enterprise Wi-Fi requires advanced recovery configuration.</p><button class="primary">${icon('checkmark')}Connect</button></form>`,button('Cancel','close'));}
+  if(a==='scan'){await scanNetworks();return;}
+  if(a==='radio-on'){await busy('radio-on',{},'Enabling Wi-Fi');state=await call('status');scanState='not-scanned';await go('Network');return;}
+  if(a?.startsWith('wifi-')){wifiDialog(available[Number(a.slice(5))]);return;}
   if(a==='update-check'){updateOffer=await busy('update-check',{},'Checking for updates');updateState=updateOffer.state;draw();}
   if(a==='update-download'){await downloadUpdate();}
   if(a==='update-restart'||a==='update-rollback-prompt'){powerAction=a==='update-restart'?'update-activate':'update-rollback';modal('Restart this computer?', '<p>Finish or stop running jobs before continuing. Services and remote access stop during restart. Persistent data is retained.</p>',button('Cancel','close')+button('Restart now','power-confirm',true));}
@@ -211,7 +258,7 @@ root.addEventListener('submit',async e=>{
    await busy('enroll-selfhost',{hub,code},'Connecting to your hub');await refresh();
   }
   if(form.id==='wifi-form'){
-   const password=form.elements.password.value;form.elements.password.value='';
+   const password=form.elements.password?.value||'';if(form.elements.password)form.elements.password.value='';
    await busy('connect',{device:selected.device,bssid:selected.bssid,password},'Connecting to Wi-Fi');await refresh();
   }
   if(form.id==='display-form'){
@@ -236,7 +283,7 @@ new QWebChannel(qt.webChannelTransport,channel=>{
  bridge.telemetry();
  bridge.answer.connect(text=>{const answer=JSON.parse(text),task=waiting.get(answer.id);if(!task)return;waiting.delete(answer.id);pending=Math.max(0,pending-1);answer.ok?task.resolve(answer.value):task.reject(Error(answer.error));});
  bridge.locked.connect(()=>{for(const task of waiting.values())task.reject(Error('The local session is locked.'));waiting.clear();pending=0;if(!locked)lock();});
- setInterval(()=>{if(!locked&&!pending&&overlay.hidden)refresh(page==='Overview').catch(error=>{root.querySelector('#node-label').textContent='Status unavailable · retrying';});},10000);
+ setInterval(()=>{if(!locked&&(!pending||pending===networkScans)&&overlay.hidden)refresh(page==='Overview'||page==='Network').catch(error=>{root.querySelector('#node-label').textContent='Status unavailable · retrying';});},10000);
 });
 
 })();
