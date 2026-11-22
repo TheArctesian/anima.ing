@@ -131,6 +131,14 @@ pub enum Action {
         query: String,
         most: usize,
     },
+    /// The folders in one folder of this computer, so that the person can choose a project by
+    /// browsing (TH113): names only, never a file, a link or what a folder holds. Hidden folders
+    /// only when `hidden`. Only the person asks it.
+    Folders {
+        folder: PathBuf,
+        #[serde(default)]
+        hidden: bool,
+    },
     /// A prompt that waits for the running turn to end, then goes as the next turn (TH109).
     Queue { thread: Uuid, text: String },
     /// New words for a prompt that waits (TH109).
@@ -231,6 +239,14 @@ pub enum Outcome {
     /// The best match first (TH108); `more` when more paths matched than were asked.
     Files {
         paths: Vec<FoundPath>,
+        #[serde(default)]
+        more: bool,
+    },
+    /// The folders in `folder`, by name; `folder` is its real path. `more` when it held more
+    /// than the answer gives (TH113).
+    Folders {
+        folder: PathBuf,
+        folders: Vec<String>,
         #[serde(default)]
         more: bool,
     },
