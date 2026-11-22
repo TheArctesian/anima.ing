@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Add a computer: mockup</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@200;400;500&amp;display=swap">
+<style>
+/* Layout: a review board of the page "Add a computer with no application" (task HM-T33, Section 8.1 of hosted-mode.md,
+   rulings R-359 to R-363). Each frame is one state of the page. The query `?theme=dark|light` and `?w=1440|390` choose the
+   appearance and the width of every frame; with no query the board shows the dark appearance at 1440 px.
+   The colours, sizes and spaces of the frames are the values of design/tokens (Graphite), copied from devices-v2; no glass. */
+body { margin: 0; padding: 24px 16px 48px; background: #101214; color: #E6E7E9; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+body.light { background: #DADDE1; color: #1D2024; }
+h1.board { margin: 0 0 4px; font-weight: 200; font-size: 28px; }
+p.about { margin: 0 0 12px; color: #A4A8B0; font-size: 14px; max-width: 90ch; }
+body.light p.about, body.light figcaption { color: #5A5F68; }
+.switches { display: flex; gap: 8px; margin: 0 0 24px; font-size: 13px; }
+.switches a { color: inherit; padding: 2px 8px; border: 1px solid #6C7076; border-radius: 4px; text-decoration: none; }
+figure { margin: 0 0 32px; }
+figcaption { margin-top: 8px; font-size: 12px; color: #A4A8B0; max-width: 90ch; line-height: 1.5; }
+.v2[data-theme="dark"] {
+  --surface-sunken: #16181B;
+  --surface-base: #1B1D21;
+  --surface-raised: #23262B;
+  --surface-overlay: #2C3036;
+  --surface-hover: #2C3036;
+  --surface-selected: #333F45;
+  --border-subtle: #2C3036;
+  --border-strong: #6C7076;
+  --text: #E6E7E9;
+  --text-secondary: #A4A8B0;
+  --text-tertiary: #7E838C;
+  --text-quiet: #5C6169;
+  --planned: #B997B3;
+  --accent: #88C0D0;
+  --accent-hover: #96C6D4;
+  --accent-pressed: #5E81AC;
+  --on-accent: #16181B;
+  --accent-tint: #333F45;
+  --status-up: #A3BE8C;
+  --status-down: #BF616A;
+  --status-degraded: #EBCB8B;
+  --status-warning: #D08770;
+  --status-maintenance: #B48EAD;
+  --status-unknown: #7E838C;
+  --status-up-tint: #373E3B;
+  --status-up-text: #A3BE8C;
+  --status-down-tint: #3C2F35;
+  --status-down-text: #CA888F;
+  --status-degraded-tint: #43403A;
+  --status-down-wash: #BF616A12;
+  --status-degraded-wash: #EBCB8B0F;
+  --status-degraded-text: #EBCB8B;
+  --status-warning-tint: #3F3636;
+  --status-warning-text: #D2917C;
+  --status-maintenance-tint: #3A3740;
+  --status-maintenance-text: #B997B3;
+  --status-unknown-tint: #32353B;
+  --status-unknown-text: #999DA4;
+  --danger: #C0656E;
+  --on-danger: #16181B;
+  --scrim: #0000008C;
+  --material-edge: #FFFFFF24;
+  --material-sheen: #FFFFFF0D;
+  --focus-ring: #88C0D0;
+  --shadow: #000000;
+  --chart-grid: #41464E;
+  --chart-axis: #A4A8B0;
+  --chart-threshold: #EBCB8B;
+  --chart-series-1: #88C0D0;
+  --chart-series-2: #81A1C1;
+  --chart-series-3: #5E81AC;
+  --chart-series-4: #8FBCBB;
+  --chart-series-5: #B48EAD;
+  --chart-series-6: #D08770;
+}
+.v2[data-theme="light"] {
+  --surface-sunken: #EEEFF1;
+  --surface-base: #F6F7F8;
+  --surface-raised: #FFFFFF;
+  --surface-overlay: #FFFFFF;
+  --surface-hover: #EEEFF1;
+  --surface-selected: #E2EBED;
+  --border-subtle: #E3E5E8;
+  --border-strong: #86898E;
+  --text: #1D2024;
+  --text-secondary: #5A5F68;
+  --text-tertiary: #71757D;
+  --text-quiet: #A3A7AE;
+  --planned: #7B657A;
+  --accent: #2E6E80;
+  --accent-hover: #2C6575;
+  --accent-pressed: #2A5A69;
+  --on-accent: #FFFFFF;
+  --accent-tint: #E2EBED;
+  --status-up: #7C906E;
+  --status-down: #BF616A;
+  --status-degraded: #998762;
+  --status-warning: #B97A66;
+  --status-maintenance: #A0809B;
+  --status-unknown: #71757D;
+  --status-up-tint: #EDEFEB;
+  --status-up-text: #617159;
+  --status-down-tint: #F6E9EA;
+  --status-down-text: #9F545C;
+  --status-degraded-tint: #F1EEE9;
+  --status-down-wash: #BF616A12;
+  --status-degraded-wash: #9987620F;
+  --status-degraded-text: #786B51;
+  --status-warning-tint: #F5ECEA;
+  --status-warning-text: #8D6154;
+  --status-maintenance-tint: #F2EDF1;
+  --status-maintenance-text: #7B657A;
+  --status-unknown-tint: #EBECED;
+  --status-unknown-text: #676B72;
+  --danger: #9F545C;
+  --on-danger: #FFFFFF;
+  --scrim: #1D202459;
+  --material-edge: #FFFFFFCC;
+  --material-sheen: #FFFFFF0D;
+  --focus-ring: #2E6E80;
+  --shadow: #1D2024;
+  --chart-grid: #C3C7CD;
+  --chart-axis: #5A5F68;
+  --chart-threshold: #998762;
+  --chart-series-1: #5E81AC;
+  --chart-series-2: #5A5F68;
+  --chart-series-3: #7C906E;
+  --chart-series-4: #A0809B;
+  --chart-series-5: #B97A66;
+  --chart-series-6: #BF616A;
+}
+.v2 {
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
+  --radius-pill: 999px;
+  --control-sm: 28px;
+  --control-md: 32px;
+  --control-lg: 40px;
+  --icon-sm: 16px;
+  --icon-md: 18px;
+  --icon-lg: 20px;
+  --content-form: 704px;
+  --content-page: 1440px;
+  --border-thin: 1px;
+  --border-focus: 2px;
+  --target-min-desktop: 24px;
+  --target-min-touch: 44px;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --t-display: 36px; --t-2xl: 24px; --t-xl: 20px; --t-lg: 16px; --t-md: 14px; --t-sm: 13px; --t-xs: 12px;
+}
+
+/* ---------- Base ---------- */
+.v2, .v2 * { box-sizing: border-box; }
+.v2 { display: flex; font-family: var(--font-ui); font-size: var(--t-md); line-height: 1.5; color: var(--text); background: var(--surface-sunken); overflow: hidden; width: 1440px; min-height: 900px; }
+.v2.phone { width: 390px; min-height: 844px; flex-direction: column; }
+.v2 h1, .v2 h2, .v2 h3, .v2 p, .v2 ul, .v2 ol, .v2 dl, .v2 dd { margin: 0; padding: 0; }
+.v2 ul, .v2 ol { list-style: none; }
+.v2 a { color: inherit; text-decoration: none; }
+.v2 button, .v2 input { font: inherit; color: inherit; }
+.v2 .mono { font-family: var(--font-mono); font-size: var(--t-sm); }
+.v2 .sec { color: var(--text-secondary); }
+.v2 .ic { width: var(--icon-sm); height: var(--icon-sm); flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.v2 .link { color: var(--accent); }
+
+/* ---------- Navigation bar (as devices-v2); on a phone a top bar ---------- */
+.v2 .side { width: 224px; flex: none; display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4) var(--space-2); background: var(--surface-base); }
+.v2 .brand { display: flex; align-items: center; gap: var(--space-2); height: var(--control-md); padding: 0 var(--space-2); font-size: var(--t-lg); }
+.v2 .brand i { width: var(--icon-lg); height: var(--icon-lg); border: var(--border-focus) solid var(--accent); border-radius: var(--radius-sm); }
+.v2 .nav { display: flex; flex-direction: column; gap: var(--space-1); }
+.v2 .nav a { display: flex; align-items: center; gap: var(--space-3); height: var(--control-md); padding: 0 var(--space-2); border-radius: var(--radius-md); color: var(--text-secondary); }
+.v2 .nav a.on { background: var(--surface-selected); color: var(--text); font-weight: 500; }
+.v2 .nav .n { margin-left: auto; font-size: var(--t-xs); color: var(--text-secondary); }
+.v2 .side .foot { margin-top: auto; display: flex; flex-direction: column; gap: var(--space-3); }
+.v2 .hubcard { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-2); border-top: var(--border-thin) solid var(--border-subtle); font-size: var(--t-sm); }
+.v2 .topbar { display: none; }
+.v2.phone .side { display: none; }
+.v2.phone .topbar { display: flex; align-items: center; justify-content: space-between; height: var(--target-min-touch); padding: 0 var(--space-4); background: var(--surface-base); flex: none; }
+.v2.phone .topbar .brand { padding: 0; }
+.v2.phone .topbar .menu { width: var(--target-min-touch); height: var(--target-min-touch); display: grid; place-items: center; margin-right: calc(-1 * var(--space-3)); color: var(--text-secondary); }
+
+/* ---------- Page ---------- */
+.v2 .page { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.v2 .head { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-8) var(--space-8) var(--space-6); max-width: calc(var(--content-form) + 448px + var(--space-6) + 2 * var(--space-8)); }
+.v2 .crumb { display: flex; align-items: center; gap: var(--space-2); color: var(--text-secondary); font-size: var(--t-sm); }
+.v2 .head h1 { font-size: var(--t-2xl); font-weight: 500; line-height: 1.2; }
+.v2 .head p { color: var(--text-secondary); max-width: 72ch; }
+.v2 .body { padding: 0 var(--space-8) var(--space-8); display: grid; grid-template-columns: minmax(0, var(--content-form)) 448px; gap: var(--space-6); align-items: start; }
+.v2 .main { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.v2 .aside { display: flex; flex-direction: column; gap: var(--space-4); }
+.v2.phone .head { padding: var(--space-6) var(--space-4) var(--space-4); }
+.v2.phone .head h1 { font-size: var(--t-xl); }
+.v2.phone .body { grid-template-columns: minmax(0, 1fr); padding: 0 var(--space-4) var(--space-6); gap: var(--space-4); }
+
+.v2 .card { background: var(--surface-raised); border-radius: var(--radius-lg); padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); }
+.v2.phone .card { padding: var(--space-4); }
+.v2 .card h2 { font-size: var(--t-lg); font-weight: 500; line-height: 1.2; display: flex; align-items: baseline; gap: var(--space-2); }
+.v2 .card h2 .no { color: var(--text-secondary); font-weight: 400; font-variant-numeric: tabular-nums; }
+.v2 .card.done h2 { color: var(--text-secondary); }
+.v2 .card .row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.v2 .card .row.end { justify-content: flex-end; }
+.v2 .summary { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; padding: var(--space-4) var(--space-6); background: var(--surface-raised); border-radius: var(--radius-lg); font-size: var(--t-sm); }
+.v2.phone .summary { padding: var(--space-3) var(--space-4); }
+.v2 .summary b { font-weight: 500; font-size: var(--t-md); }
+.v2 .summary .btn { margin-left: auto; }
+
+/* ---------- Controls ---------- */
+.v2 .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); height: var(--control-md); padding: 0 var(--space-3); border: var(--border-thin) solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-raised); color: var(--text); white-space: nowrap; font-size: var(--t-sm); }
+.v2.phone .btn { height: var(--target-min-touch); padding: 0 var(--space-4); }
+.v2 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 500; }
+.v2 .btn.quiet { border-color: var(--surface-raised); color: var(--text-secondary); }
+.v2 .btn.off { color: var(--text-tertiary); border-color: var(--border-subtle); }
+.v2.phone .card .row .btn { flex: 1; }
+.v2 .field { display: flex; flex-direction: column; gap: var(--space-1); }
+.v2 .field label { font-size: var(--t-sm); font-weight: 500; }
+.v2 .input { display: flex; align-items: center; gap: var(--space-2); height: var(--control-md); padding: 0 var(--space-3); border: var(--border-thin) solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-sunken); }
+.v2.phone .input { height: var(--target-min-touch); }
+.v2 .input.bad { border-color: var(--status-down); border-width: var(--border-focus); }
+.v2 .hint { font-size: var(--t-sm); color: var(--text-secondary); }
+.v2 .err { font-size: var(--t-sm); color: var(--status-down-text); display: flex; gap: var(--space-2); align-items: flex-start; }
+.v2 .seg { display: inline-flex; align-self: flex-start; height: var(--control-md); padding: var(--space-1); gap: var(--space-1); border-radius: var(--radius-md); background: var(--surface-sunken); }
+.v2.phone .seg { height: var(--target-min-touch); align-self: stretch; }
+.v2 .seg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.v2 .seg label { display: inline-flex; cursor: pointer; }
+.v2 .seg span { display: inline-flex; align-items: center; justify-content: center; flex: 1; padding: 0 var(--space-3); border-radius: var(--radius-sm); color: var(--text-secondary); font-size: var(--t-sm); }
+.v2 .seg input:checked + span, .v2 .seg span.on { background: var(--surface-raised); color: var(--text); font-weight: 500; }
+
+/* ---------- The line and the code ---------- */
+.v2 .line { position: relative; padding: var(--space-3) var(--space-4); background: var(--surface-sunken); border-radius: var(--radius-md); font-family: var(--font-mono); font-size: var(--t-sm); line-height: 1.6; word-break: break-all; color: var(--text); }
+.v2 .line .v { color: var(--accent); }
+.v2 .codebox { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.v2 .codebox input.input { color: var(--text); }
+.v2 .codebox .input { flex: 1; min-width: 200px; font-family: var(--font-mono); font-size: var(--t-sm); letter-spacing: 0.04em; }
+.v2.phone .codebox .input { min-width: 0; flex-basis: 100%; }
+.v2.phone .codebox .btn { flex: 1; }
+.v2 .clock { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--t-sm); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.v2 .clock b { color: var(--text); font-weight: 500; }
+
+/* ---------- Steps: a dot and a word, always ---------- */
+.v2 .steps { display: flex; flex-direction: column; }
+.v2 .steps li { display: grid; grid-template-columns: var(--icon-sm) minmax(0, 1fr) auto; gap: var(--space-3); align-items: start; padding: var(--space-2) 0; border-top: var(--border-thin) solid var(--border-subtle); color: var(--text-secondary); font-size: var(--t-sm); }
+.v2 .steps li:first-child { border-top: 0; }
+.v2 .steps li .t { display: flex; flex-direction: column; }
+.v2 .steps li .t b { font-weight: 400; font-size: var(--t-md); }
+.v2 .steps li.done { color: var(--text-secondary); }
+.v2 .steps li.done .t b { color: var(--text); }
+.v2 .steps li.now .t b { color: var(--text); font-weight: 500; }
+.v2 .steps li.warn .t b { color: var(--status-warning-text); font-weight: 500; }
+.v2 .steps .mk { width: var(--icon-sm); height: var(--icon-sm); margin-top: 3px; display: grid; place-items: center; }
+.v2 .steps .mk::before { content: ""; width: var(--space-2); height: var(--space-2); border-radius: var(--radius-pill); border: var(--border-thin) solid var(--border-strong); }
+.v2 .steps li.now .mk::before { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+.v2 .steps li.done .mk::before { display: none; }
+.v2 .steps li.done .mk { color: var(--status-up); }
+.v2 .steps li.warn .mk::before { background: var(--status-warning); border-color: var(--status-warning); }
+.v2 .steps time { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ---------- Plain words ---------- */
+.v2 .does { display: flex; flex-direction: column; gap: var(--space-3); counter-reset: does; }
+.v2 .does li { display: grid; grid-template-columns: var(--space-6) minmax(0, 1fr); gap: var(--space-2); font-size: var(--t-sm); counter-increment: does; }
+.v2 .does li::before { content: counter(does); display: grid; place-items: center; width: var(--space-5); height: var(--space-5); border-radius: var(--radius-pill); background: var(--surface-base); color: var(--text-secondary); font-size: var(--t-xs); font-variant-numeric: tabular-nums; }
+.v2 .kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-2) var(--space-4); font-size: var(--t-sm); }
+.v2 .kv dt { color: var(--text-secondary); }
+.v2 .rule { border-top: var(--border-thin) solid var(--border-subtle); }
+.v2 .note { font-size: var(--t-sm); color: var(--text-secondary); }
+
+/* ---------- Notices: the status colour as a tint and a word, never the colour alone ---------- */
+.v2 .notice { display: grid; grid-template-columns: var(--icon-sm) minmax(0, 1fr); gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius-md); font-size: var(--t-sm); }
+.v2 .notice b { display: block; font-weight: 500; font-size: var(--t-md); margin-bottom: var(--space-1); }
+.v2 .notice .ic { margin-top: 3px; }
+.v2 .notice.up { background: var(--status-up-tint); }
+.v2 .notice.up .ic, .v2 .notice.up b { color: var(--status-up-text); }
+.v2 .notice.down { background: var(--status-down-tint); }
+.v2 .notice.down .ic, .v2 .notice.down b { color: var(--status-down-text); }
+.v2 .notice.warn { background: var(--status-warning-tint); }
+.v2 .notice.warn .ic, .v2 .notice.warn b { color: var(--status-warning-text); }
+.v2 .notice.info { background: var(--surface-base); }
+.v2 .notice.info .ic { color: var(--text-secondary); }
+.v2 .notice .row { margin-top: var(--space-3); }
+
+/* ---------- Dialog (frame 1) ---------- */
+.v2 .scrimmed { flex: 1; display: flex; }
+.v2.modal { position: relative; }
+.v2.modal::after { content: ""; position: absolute; inset: 0; z-index: 1; background: var(--scrim); }
+.v2 .dialog { position: absolute; z-index: 2; top: 160px; left: 50%; transform: translateX(-50%); width: 560px; background: var(--surface-overlay); border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-lg); padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); }
+.v2.phone .dialog { top: auto; bottom: 0; left: 0; transform: none; width: 100%; border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: var(--space-4) var(--space-4) var(--space-8); }
+.v2 .iconbtn { display: inline-grid; place-items: center; width: var(--control-md); height: var(--control-md); border: 0; border-radius: var(--radius-md); background: none; color: var(--text-secondary); padding: 0; }
+.v2.phone .iconbtn { width: var(--target-min-touch); height: var(--target-min-touch); }
+.v2 .dialog h2 { font-size: var(--t-xl); font-weight: 500; display: flex; justify-content: space-between; align-items: center; }
+.v2 .choice { display: grid; grid-template-columns: var(--icon-lg) minmax(0, 1fr) var(--icon-sm); gap: var(--space-3); align-items: center; padding: var(--space-3) var(--space-4); border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-raised); }
+.v2.phone .choice { min-height: var(--target-min-touch); }
+.v2 .choice.new { border-color: var(--accent); }
+.v2 .choice .ic { color: var(--text-secondary); }
+.v2 .choice b { display: block; font-weight: 500; }
+.v2 .choice span span { font-size: var(--t-sm); color: var(--text-secondary); }
+.v2 .choice.off b, .v2 .choice.off { color: var(--text-tertiary); }
+.v2 .ghostlist { flex: 1; display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-8); }
+.v2.phone .ghostlist { padding: 0 var(--space-4); }
+.v2 .ghostlist i { display: block; height: var(--space-12); background: var(--surface-raised); border-radius: var(--radius-md); }
+
+/* ---------- Board of refusals (frame 6) ---------- */
+.v2 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.v2.phone .grid2 { grid-template-columns: minmax(0, 1fr); }
+.v2 .caption { font-size: var(--t-xs); color: var(--text-secondary); font-weight: 500; letter-spacing: 0.01em; }
+
+/* ---------- What the script prints (frame 7) ---------- */
+.v2 .stops { display: flex; flex-direction: column; }
+.v2 .stops li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-4); padding: var(--space-3) 0; border-top: var(--border-thin) solid var(--border-subtle); font-size: var(--t-sm); }
+.v2.phone .stops li { grid-template-columns: minmax(0, 1fr); gap: var(--space-1); }
+.v2 .stops li:first-child { border-top: 0; }
+.v2 .stops .said { font-family: var(--font-mono); font-size: var(--t-xs); color: var(--text); }
+.v2 .stops .th { color: var(--text-secondary); font-weight: 500; font-size: var(--t-xs); padding-top: 0; }
+.v2.phone .stops .th { display: none; }
+</style>
+</head>
+<body>
+<h1 class="board">Add a computer with no application</h1>
+<p class="about">The page that gives the one line which installs the link and the daemon on a computer with no Anima application (HM-T33, Section 8.1 of hosted-mode.md, rulings R-359 to R-363). Proposed on 2026-11-22, not approved, not built. The names, the version, the times and the SHA-256 values are examples. Open the page from the "Add device" dialog of Devices.</p>
+<p class="switches"><a href="?theme=dark&amp;w=1440">Dark 1440</a><a href="?theme=light&amp;w=1440">Light 1440</a><a href="?theme=dark&amp;w=390">Dark phone</a><a href="?theme=light&amp;w=390">Light phone</a></p>
+
+<template id="side">
+<aside class="side">
+  <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
+  <nav class="nav" aria-label="Main"><a href="#" class="on" aria-current="page">Devices</a><a href="#">Live sessions<span class="n">2</span></a><a href="#">Code</a><a href="#">Agent usage</a></nav>
+  <div class="foot">
+    <div class="hubcard"><span class="sec">Hosted by Anima.ing</span><span>Connected</span></div>
+    <nav class="nav" aria-label="Settings"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg>Settings</a></nav>
+  </div>
+</aside>
+<header class="topbar"><div class="brand"><i aria-hidden="true"></i>Anima.ing</div><button class="menu iconbtn" type="button" aria-label="Menu"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/></svg></button></header>
+</template>
+
+<template id="head">
+<header class="head">
+  <span class="crumb"><a href="#" class="link">Devices</a><span aria-hidden="true">/</span><span>Add a computer</span></span>
+  <h1>Add a computer with no application</h1>
+  <p>For a server, or a computer where you do not want the Anima application. You run one line in its terminal. It joins this hub and reports to it while you are logged in. You do not sign in on that computer.</p>
+</header>
+</template>
+
+<template id="does">
+<section class="card" aria-labelledby="does-h">
+  <h2 id="does-h">What the line does</h2>
+  <ol class="does">
+    <li><span>Downloads the install script of version <span class="mono">0.42.0</span> and checks its SHA-256 fingerprint before it runs it.</span></li>
+    <li><span>Downloads two programs, the link and the daemon, and checks the fingerprint of each. If one does not agree, it stops and installs nothing.</span></li>
+    <li><span>Asks for the install code. What you type does not show and does not go into the shell history.</span></li>
+    <li><span>Joins the private link of this hub, then installs the link and the daemon as services of your user. It needs no administrator password and refuses to run as root.</span></li>
+    <li><span>Enrols the daemon. A new computer shows in Devices as a server in the site Link; a computer that Devices has already keeps its entry.</span></li>
+  </ol>
+  <div class="rule"></div>
+  <dl class="kv">
+    <dt>Needs</dt><dd>A user account, <span class="mono">curl</span>, <span class="mono">sh</span> and <span class="mono">sha256sum</span> (Linux x86_64, with a systemd user session) or <span class="mono">shasum</span> (macOS).</dd>
+    <dt>Checked</dt><dd>The fingerprints come from the signed release record of version 0.42.0.</dd>
+    <dt>To remove</dt><dd>Run <span class="mono">sh ~/.local/share/anima-link/anima-install.sh --remove</span> on the computer (the page shows the path for the system and the folder that the script chose), then remove the computer in Devices and from the link.</dd>
+  </dl>
+</section>
+</template>
+
+<div id="frames">
+
+<figure>
+<div class="v2 modal" data-frame>
+  <slot-side></slot-side>
+  <main class="page">
+    <header class="head"><h1 class="display" style="font-size: var(--t-display); font-weight: 200; letter-spacing: -0.03em;">Devices</h1></header>
+    <div class="scrimmed">
+      <div class="ghostlist" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="dialog" role="dialog" aria-labelledby="dlg-h">
+        <h2 id="dlg-h">Add device<button class="iconbtn" type="button" aria-label="Close"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></h2>
+        <a class="choice" href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M5.5 13.5h5"/></svg><span><b>Enrol this computer</b><span>This computer, where the Anima application runs.</span></span><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></a>
+        <a class="choice" href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="4.5" y="1.5" width="7" height="13" rx="1.5"/><path d="M7.5 12h1"/></svg><span><b>Enrol another device</b><span>A computer or a phone with the Anima application: send it an invite.</span></span><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></a>
+        <a class="choice new" href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" rx="1"/><path d="M4.5 6L6.5 7.75 4.5 9.5M8 9.5h3.5"/></svg><span><b>Add a computer with no application</b><span>A server or any computer: run one line in its terminal.</span></span><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></a>
+      </div>
+    </div>
+  </main>
+</div>
+<figcaption>1. The way in. The "Add device" dialog of Devices gets a third choice, "Add a computer with no application", which opens the page. The other two choices do not change. (The blue edge marks the new choice in this mockup only.)</figcaption>
+</figure>
+
+<figure>
+<div class="v2" data-frame>
+  <slot-side></slot-side>
+  <main class="page">
+    <slot-head></slot-head>
+    <div class="body">
+      <div class="main">
+        <section class="card" aria-labelledby="s1">
+          <h2 id="s1"><span class="no">1</span>Name the computer</h2>
+          <div class="field">
+            <label for="nm">Name</label>
+            <span class="input"><input id="nm" value="build-01" style="border:0;outline:0;background:none;flex:1;min-width:0;"></span>
+            <span class="hint">Its name on the link and in Devices. Letters, digits and hyphens.</span>
+          </div>
+          <div class="field">
+            <span id="sys" class="field-l" style="font-size: var(--t-sm); font-weight: 500;">System</span>
+            <span class="seg" role="radiogroup" aria-labelledby="sys"><label><input type="radio" name="sys" checked><span>Linux x86_64</span></label><label><input type="radio" name="sys"><span>macOS</span></label></span>
+            <span class="hint">For Windows, install the Anima application.</span>
+          </div>
+          <div class="row end"><button class="btn primary" type="button">Make the line</button></div>
+        </section>
+        <section class="card done" aria-labelledby="s2a"><h2 id="s2a"><span class="no">2</span>Run the line on the computer</h2></section>
+        <section class="card done" aria-labelledby="s3a"><h2 id="s3a"><span class="no">3</span>Wait for the computer to join</h2></section>
+      </div>
+      <div class="aside"><slot-does></slot-does></div>
+    </div>
+  </main>
+</div>
+<figcaption>2. The form. One name and one system; Linux x86_64 is chosen first, because most computers with no application are servers. "Make the line" asks the hub for an install code (createComputerInstall, a signed-in operator only). "What the line does" stays beside the steps on each state; on a phone it is under them.</figcaption>
+</figure>
+
+<figure>
+<div class="v2" data-frame>
+  <slot-side></slot-side>
+  <main class="page">
+    <slot-head></slot-head>
+    <div class="body">
+      <div class="main">
+        <div class="summary"><span class="sec">1</span><b>build-01</b><span class="sec">Linux x86_64</span><button class="btn quiet" type="button">Change</button></div>
+        <section class="card" aria-labelledby="s2">
+          <h2 id="s2"><span class="no">2</span>Run the line on build-01</h2>
+          <p class="note">Log in to build-01 as the user that will run it, not as root, and paste this line in its terminal. "Change" makes a new code: the code of this line then stops working.</p>
+          <div class="line" aria-label="The install line">(f=$(mktemp) &amp;&amp; trap 'rm -f "$f"' EXIT &amp;&amp; curl -fsSL --proto '=https' --proto-redir '=https' 'https://releases.anima.ing/install/<span class="v">0.42.0</span>/anima-install.sh' -o "$f" &amp;&amp; printf '%s  %s\n' '9ad6415c67888e6a9e7719db4d5689628d87b80f16c01d964a7dfdcb8d6b83ba' "$f" | sha256sum -c - &amp;&amp; sh "$f" --version '<span class="v">0.42.0</span>' --target 'linux-x86_64' --link-sha256 '8b858e5940f59c508d8af1627b5cbbafac3e8974f0a87770618b782b313e0f03' --daemon-sha256 '99541bb236c5862749f8edceab9896184c225e18894698d8af723bfe2d02776d')</div>
+          <div class="row"><button class="btn primary" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="8.5" height="8.5" rx="1"/><path d="M11 5V3.5a1 1 0 0 0-1-1H3.5a1 1 0 0 0-1 1V10a1 1 0 0 0 1 1H5"/></svg>Copy the line</button></div>
+          <div class="rule"></div>
+          <div class="field">
+            <label for="code">Install code</label>
+            <span class="hint">The script asks for it. Paste it there; it is not in the line.</span>
+            <div class="codebox">
+              <input class="input" id="code" type="password" readonly value="anima-install.1.example-hidden-code" aria-describedby="code-exp">
+              <button class="btn" type="button" aria-pressed="false">Show</button>
+              <button class="btn" type="button">Copy the code</button>
+            </div>
+            <div class="row" style="justify-content: space-between;"><span class="clock" id="code-exp"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>Works once. Expires in <b>14:32</b></span><button class="btn quiet" type="button">Cancel the code</button></div>
+          </div>
+        </section>
+        <section class="card" aria-labelledby="s3">
+          <h2 id="s3"><span class="no">3</span>Wait for build-01 to join</h2>
+          <ol class="steps" aria-live="polite">
+            <li class="now"><span class="mk"></span><span class="t"><b>Waiting for build-01 to run the line</b><span>This page follows it. You can leave the page; the computer joins all the same.</span></span><time></time></li>
+            <li><span class="mk"></span><span class="t"><b>Joins the link</b></span><time>Not yet</time></li>
+            <li><span class="mk"></span><span class="t"><b>The daemon enrols and sends its first report</b></span><time>Not yet</time></li>
+          </ol>
+        </section>
+      </div>
+      <div class="aside"><slot-does></slot-does></div>
+    </div>
+  </main>
+</div>
+<figcaption>3. The line is ready. The whole line shows, wrapped, so the person can read what runs before they copy it; the version is the accent colour. The install code is apart from the line and hidden, with "Show" and "Copy the code", and the time until it expires (15 minutes, LNK-003). "Cancel the code" ends the invite and the claim. The time is not a live region: a screen reader hears it at 5 minutes, at 1 minute and at the end only. The macOS line has <span style="font-family: monospace">shasum -a 256 -c -</span> and the target darwin-universal.</figcaption>
+</figure>
+
+<figure>
+<div class="v2" data-frame>
+  <slot-side></slot-side>
+  <main class="page">
+    <slot-head></slot-head>
+    <div class="body">
+      <div class="main">
+        <div class="summary"><span class="sec">1</span><b>build-01</b><span class="sec">Linux x86_64</span></div>
+        <div class="summary"><span class="sec">2</span><b>build-01 joined</b><span class="sec">The code is in use. It works for nothing else.</span></div>
+        <section class="card" aria-labelledby="s3b">
+          <h2 id="s3b"><span class="no">3</span>build-01 is joining</h2>
+          <ol class="steps" aria-live="polite">
+            <li class="done"><span class="mk"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t"><b>Ran the line</b><span>The fingerprints agreed.</span></span><time>04:31</time></li>
+            <li class="done"><span class="mk"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t"><b>Joined the link</b><span class="mono">100.64.0.12</span></span><time>04:31</time></li>
+            <li class="now"><span class="mk"></span><span class="t"><b>The daemon enrols and sends its first report</b><span>Usually less than a minute. After 3 minutes this step turns to a warning.</span></span><time></time></li>
+          </ol>
+        </section>
+      </div>
+      <div class="aside"><slot-does></slot-does></div>
+    </div>
+  </main>
+</div>
+<figcaption>4. While the computer joins. The page sees the join on the link and then the device and its first report; each step gets its time. Step 1 shows done with the join, because the page cannot see the line run before that. Nothing for the person to do here.</figcaption>
+</figure>
+
+<figure>
+<div class="v2" data-frame>
+  <slot-side></slot-side>
+  <main class="page">
+    <slot-head></slot-head>
+    <div class="body">
+      <div class="main">
+        <div class="notice up" role="status">
+          <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M5 8.25l2 2 4-4.5"/></svg>
+          <div><b>build-01 is in Devices</b>Its daemon sent its first report at 04:32.
+            <div class="row"><button class="btn primary" type="button">Open build-01</button><button class="btn" type="button">Add another computer</button></div>
+          </div>
+        </div>
+        <section class="card" aria-labelledby="s4">
+          <h2 id="s4">build-01</h2>
+          <dl class="kv">
+            <dt>Kind</dt><dd>Server</dd>
+            <dt>System</dt><dd>Linux x86_64</dd>
+            <dt>Site</dt><dd>Link</dd>
+            <dt>Address</dt><dd class="mono">100.64.0.12</dd>
+            <dt>Reports</dt><dd>While you are logged in on build-01</dd>
+          </dl>
+          <div class="notice info">
+            <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 7.5v4M8 5h.01"/></svg>
+            <div>On Linux the link and the daemon stop when you log out. To keep them running, run <span class="mono">loginctl enable-linger</span> on build-01; the script showed this command if it is needed. This is a setting of that computer, so the script does not change it.</div>
+          </div>
+        </section>
+      </div>
+      <div class="aside"><slot-does></slot-does></div>
+    </div>
+  </main>
+</div>
+<figcaption>5. Done. The status word and the tint say it, not the colour alone. The facts are what the hub set (R-362: kind Server, site Link). The lingering note shows for Linux only.</figcaption>
+</figure>
+
+<figure>
+<div class="v2" data-frame>
+  <slot-side></slot-side>
+  <main class="page">
+    <slot-head></slot-head>
+    <div class="body" style="grid-template-columns: minmax(0, 1fr);">
+      <div class="main grid2">
+        <div class="card">
+          <span class="caption">A. The name is on two devices of the link</span>
+          <div class="field">
+            <label for="nm2">Name</label>
+            <span class="input bad"><span>build-01</span></span>
+            <span class="err" role="alert"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5v4M8 11h.01"/></svg>Two computers of the link are named build-01, so a code cannot know which one it is for. Choose a different name, or remove one of them from the link first.</span>
+          </div>
+        </div>
+        <div class="card">
+          <span class="caption">B. The name is on one computer of the link</span>
+          <div class="notice info">
+            <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 7.5v4M8 5h.01"/></svg>
+            <div><b>build-01 is on the link already</b>Run the line on build-01 itself. It puts the programs in place again and enrols its daemon again; it does not join a second time. On a different computer the script stops.</div>
+          </div>
+        </div>
+        <div class="card">
+          <span class="caption">C. The code expired</span>
+          <div class="notice warn" role="alert">
+            <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>
+            <div><b>The install code expired</b>No computer used it. If the script on build-01 still asks for the code, make a new one and paste it there; the line stays the same.
+              <div class="row"><button class="btn primary" type="button">Make a new code</button></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <span class="caption">D. The release cannot be checked</span>
+          <div class="notice down" role="alert">
+            <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2l6.5 11.5h-13z"/><path d="M8 6.5v3M8 11.5h.01"/></svg>
+            <div><b>No line to show</b>The signed release record of version 0.42.0 for Linux x86_64 did not pass its check, so this page cannot vouch for the files. No code was made. Try again in a few minutes.
+              <div class="row"><button class="btn" type="button">Try again</button></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <span class="caption">E. Joined, but the daemon does not report</span>
+          <ol class="steps">
+            <li class="done"><span class="mk"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span class="t"><b>Joined the link</b></span><time>04:31</time></li>
+            <li class="warn"><span class="mk"></span><span class="t"><b>No report from the daemon after 3 minutes</b><span>Look at the terminal of build-01: the script says why it stopped. The reasons are under "If the script stops".</span></span><time></time></li>
+          </ol>
+        </div>
+        <div class="card">
+          <span class="caption">F. This hub cannot take such a computer</span>
+          <div class="choice off"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" rx="1"/><path d="M4.5 6L6.5 7.75 4.5 9.5M8 9.5h3.5"/></svg><span><b>Add a computer with no application</b><span>This hub has no link, so a computer cannot join it this way.</span></span><span></span></div>
+          <p class="note">A person who is not an operator of the hub does not see the choice: only an operator can make an install code.</p>
+        </div>
+        <div class="card">
+          <span class="caption">G. The name has a character that is not allowed</span>
+          <div class="field">
+            <label for="nm3">Name</label>
+            <span class="input bad"><span>build 01!</span></span>
+            <span class="err" role="alert"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5v4M8 11h.01"/></svg>Use only letters, digits and hyphens. A space and "!" are not allowed.</span>
+          </div>
+        </div>
+        <div class="card">
+          <span class="caption">H. The code was cancelled</span>
+          <div class="notice info" role="status">
+            <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 7.5v4M8 5h.01"/></svg>
+            <div><b>The install code was cancelled</b>It no longer works. If a script on build-01 asks for it, stop that script with Ctrl-C.
+              <div class="row"><button class="btn primary" type="button">Make a new code</button><button class="btn" type="button">Back to Devices</button></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <span class="caption">I. A different computer used the code</span>
+          <div class="notice down" role="alert">
+            <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2l6.5 11.5h-13z"/><path d="M8 6.5v3M8 11.5h.01"/></svg>
+            <div><b>The code was used by a different computer of the link</b>The hub refused it, and the code no longer works. Make a new code and run the line on build-01 itself.
+              <div class="row"><button class="btn primary" type="button">Make a new code</button></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <span class="caption">J. The line for macOS</span>
+          <div class="line" aria-label="The install line for macOS">(f=$(mktemp) &amp;&amp; trap 'rm -f "$f"' EXIT &amp;&amp; curl -fsSL --proto '=https' --proto-redir '=https' 'https://releases.anima.ing/install/<span class="v">0.42.0</span>/anima-install.sh' -o "$f" &amp;&amp; printf '%s  %s\n' '9ad6415c67888e6a9e7719db4d5689628d87b80f16c01d964a7dfdcb8d6b83ba' "$f" | shasum -a 256 -c - &amp;&amp; sh "$f" --version '<span class="v">0.42.0</span>' --target 'darwin-universal' --link-sha256 '3f1c0e9a7b2d64e8a5c91f0b6d3e27a48c5b9f1e0d7a3c6b2e8f4a1d9c0b5e73' --daemon-sha256 '6e2a9d1c4b8f07e3a5d2c9b1f6e04a7d3c8b5e2f1a9d6c0b4e7f3a2d8c1b5e09')</div>
+          <p class="note">"To remove" names <span class="mono">~/Library/Application Support/anima-link/anima-install.sh</span>.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<figcaption>6. The refusals that the page can see. A and B come from the hub when the person makes the line (a name must point to at most one computer of the link, R-360). C: the 15 minutes of the invite. D: the page shows no line when the signature of the release record does not hold (R-361). E: after 3 minutes with no report the step turns to a warning. F: the choice in the dialog of frame 1. G: the name rule of frame 2. H: after "Cancel the code" or "Change"; a new code for a name also cancels each open invite of that name. I: a different device of the link sent the claim, which spends it (Section 8.1); the page learns it from the hub, which must say so (not yet in the contract). J: on macOS the line checks with shasum and names darwin-universal, and the removal path is the macOS folder (R-362).</figcaption>
+</figure>
+
+<figure>
+<div class="v2" data-frame>
+  <slot-side></slot-side>
+  <main class="page">
+    <slot-head></slot-head>
+    <div class="body">
+      <div class="main">
+        <section class="card" aria-labelledby="s5">
+          <h2 id="s5">If the script stops</h2>
+          <p class="note">The script stops and says why in the terminal. This page cannot see that terminal, so the reasons are here. Only when a fingerprint does not agree is it sure that nothing was installed; run the line again after you correct the cause.</p>
+          <ul class="stops">
+            <li class="th"><span>The script says</span><span>What to do</span></li>
+            <li><span class="said">Do not run this as root.</span><span>Log in as an ordinary user and run the line again.</span></li>
+            <li><span class="said">A fingerprint does not agree. Nothing was installed.</span><span>Copy the line again from this page. If it stays, do not run it, and report it to Anima.ing support.</span></li>
+            <li><span class="said">The Anima application keeps the link of this computer.</span><span>Nothing to do: the application installs the daemon by itself.</span></li>
+            <li><span class="said">A daemon is enrolled already, and this script did not install it.</span><span>This computer reports already, from the application or from its own daemon install.</span></li>
+            <li><span class="said">This computer joined the link as a different name.</span><span>Make the line again with that name.</span></li>
+            <li><span class="said">The install code is not right, or it expired.</span><span>Make a new code on this page and paste it.</span></li>
+          </ul>
+        </section>
+      </div>
+      <div class="aside"><slot-does></slot-does></div>
+    </div>
+  </main>
+</div>
+<figcaption>7. What the script prints when it stops, and what to do (R-363, Section 8.1). A folded part under step 3 in frames 3 and 4; drawn open here. The words of the script are examples and come from deploy/bin/anima-install when the page is built.</figcaption>
+</figure>
+
+</div>
+
+<script>
+  const q = new URLSearchParams(location.search);
+  const theme = q.get('theme') === 'light' ? 'light' : 'dark';
+  const phone = q.get('w') === '390';
+  if (theme === 'light') document.body.classList.add('light');
+  const fill = (tag, id) => document.querySelectorAll(tag).forEach((slot) => slot.replaceWith(document.getElementById(id).content.cloneNode(true)));
+  fill('slot-side', 'side');
+  fill('slot-head', 'head');
+  fill('slot-does', 'does');
+  document.querySelectorAll('[data-frame]').forEach((frame) => {
+    frame.classList.add('v2');
+    frame.dataset.theme = theme;
+    frame.classList.toggle('phone', phone);
+  });
+</script>
+</body>
+</html>
