@@ -31,9 +31,19 @@ impl QueueArgs {
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let thread = self.thread;
         let (action, done) = match (self.text, self.replace, self.drop, self.send) {
-            (Some(text), Some(id), _, _) => (Action::Requeue { thread, id, text }, "Changed."),
-            (_, _, Some(id), _) => (Action::Unqueue { thread, id }, "Taken out of the queue."),
-            (_, _, _, Some(id)) => (Action::SendQueued { thread, id }, "Sent."),
+            (Some(text), Some(id), _, _) => (
+                Action::Requeue {
+                    thread,
+                    queued: id,
+                    text,
+                },
+                "Changed.",
+            ),
+            (_, _, Some(id), _) => (
+                Action::Unqueue { thread, queued: id },
+                "Taken out of the queue.",
+            ),
+            (_, _, _, Some(id)) => (Action::SendQueued { thread, queued: id }, "Sent."),
             (text, ..) => (
                 Action::Queue {
                     thread,

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
+  import { queueAction } from '$lib/agent-threads/live/drive';
   import type { LiveThreads } from '$lib/agent-threads/live/live.svelte';
   import type { ModelLists } from '$lib/agent-threads/live/models';
   import type { LiveThread } from '$lib/agent-threads/live/timeline';
@@ -52,6 +53,7 @@
     onSend={(text) => live?.call({ call: 'send', thread: id, text }) ?? Promise.resolve(NO_RUNNER)}
     onInterrupt={() => live?.call({ call: 'interrupt', thread: id }) ?? Promise.resolve(NO_RUNNER)}
     onStop={() => live?.call({ call: 'stop', thread: id }) ?? Promise.resolve(NO_RUNNER)}
+    onQueue={(act) => live?.call(queueAction(act, id)) ?? Promise.resolve(NO_RUNNER)}
     onSet={(change) => live?.call({ call: 'set', thread: id, ...change }) ?? Promise.resolve(NO_RUNNER)}
     models={program === undefined ? undefined : lists[program]}
   />
