@@ -45,9 +45,14 @@
   }
 
   function onkeydown(event: KeyboardEvent): void {
-    if (event.key !== 'F2' || renaming) return;
+    if (renaming) return;
+    if (event.key === 'F2') onAct('rename');
+    // The menu key and Shift+F10 open the row's menu under it, as right-click does (09 finding 6).
+    else if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
+      const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
+      onMenu({ left: box.left, top: box.top, width: box.width, height: box.height });
+    } else return;
     event.preventDefault();
-    onAct('rename');
   }
 </script>
 
@@ -94,7 +99,7 @@
       </span>
     {/if}
   </svelte:element>
-  {#if !renaming}<RowActions {kind} {shelf} pinned={row.pinned} {marksOff} {onAct} />{/if}
+  {#if !renaming}<RowActions {kind} {shelf} pinned={row.pinned} {marksOff} {onAct} {onMenu} />{/if}
 </li>
 
 <style>

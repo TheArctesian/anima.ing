@@ -41,6 +41,18 @@
     if (event.key === 'Escape' && open) close();
   }
 
+  /*
+   * The words describe the control itself, at all times, not the wrapper while the tip shows: a dimmed control says why
+   * (09 finding 8). Words that only repeat the control's name are not said twice.
+   */
+  $effect(() => {
+    const control = anchor?.querySelector<HTMLElement>('button, a[href], input, select, textarea, [tabindex]');
+    if (control === null || control === undefined) return;
+    const repeats = control.getAttribute('aria-label') === text;
+    if (repeats) control.removeAttribute('aria-describedby');
+    else control.setAttribute('aria-describedby', `${id}-words`);
+  });
+
   function place(panel: HTMLElement): void {
     if (anchor === undefined) return;
     const spot = tipPlace(
@@ -57,7 +69,6 @@
 <span
   class="anchor"
   role="presentation"
-  aria-describedby={open ? `${id}-tip` : undefined}
   bind:this={anchor}
   onpointerenter={(event) => {
     if (event.pointerType !== 'touch') later();
@@ -68,6 +79,7 @@
   {onkeydown}
 >
   {@render children()}
+  <span id="{id}-words" hidden>{text}</span>
   {#if open}
     <span class="tip" id="{id}-tip" role="tooltip" transition:popover={{ from: anchor }} {@attach place}>{text}</span>
   {/if}

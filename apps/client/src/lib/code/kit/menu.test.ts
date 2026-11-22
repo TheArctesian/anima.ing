@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { menuPlace, nextChoice, type MenuChoice } from './menu';
+import { menuPlace, nextChoice, reasonOf, type MenuChoice, type MenuEntry } from './menu';
 import { tipPlace } from './tip';
 
 const choices: MenuChoice[] = [
@@ -17,6 +17,22 @@ describe('keys in a menu', () => {
     expect(nextChoice('End', 0, choices)).toBe(2);
     expect(nextChoice('a', 0, choices)).toBeNull();
     expect(nextChoice('ArrowDown', 0, [{ kind: 'choice', id: 'x', label: 'X', disabled: true }])).toBeNull();
+  });
+});
+
+describe('09 finding 23: a disabled choice names why it is off', () => {
+  it('finds the reason line after it, but not across a line between groups', () => {
+    const entries: MenuEntry[] = [
+      { kind: 'choice', id: 'settle', label: 'Settle', disabled: true },
+      { kind: 'choice', id: 'snooze', label: 'Snooze…', disabled: true },
+      { kind: 'group', label: 'The runner keeps these.', reason: true },
+      { kind: 'line' },
+      { kind: 'choice', id: 'rename', label: 'Rename', disabled: true },
+      { kind: 'group', label: 'Copy' },
+    ];
+    expect(reasonOf(entries, 0)).toBe(2);
+    expect(reasonOf(entries, 1)).toBe(2);
+    expect(reasonOf(entries, 4)).toBeNull();
   });
 });
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { REMOVE_QUESTION, type ListingChange } from '$lib/agent-threads/listing/listing';
   import type { ThreadsStore } from '$lib/agent-threads/store.svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
@@ -25,10 +26,12 @@
     /** Why no thread can start here; `null` when one can. */
     newOff: string | null;
     onNew: () => void;
+    /** Shows the list when it is hidden: a rename from the band's title needs the row's field (09 finding 15). */
+    onShow?: () => void;
     field?: HTMLInputElement | undefined;
   }
 
-  let { view, store, onOpen, newOff, onNew, field = $bindable() }: Props = $props();
+  let { view, store, onOpen, newOff, onNew, onShow, field = $bindable() }: Props = $props();
   const mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
   const live = $derived(store.live);
   const marksOff = $derived(view.engine.ready ? null : view.engine.why);
@@ -45,6 +48,11 @@
   const quiet = $derived(view.parts.pinned.length + view.parts.active.length + view.parts.working.length + view.parts.snoozed.length === 0);
   /** Where focus goes back when a menu closes: the row it opened on. */
   let returnTo: HTMLElement | null = null;
+  // A new query starts at its first result (09 finding 11).
+  $effect.pre(() => {
+    void view.search;
+    hit = 0;
+  });
   const filteredNames = $derived(view.allProjects.filter((project) => view.projects.has(project.folder)).map((project) => project.name));
 
   const VERBS: Readonly<Record<string, string>> = { pin: 'pin', archive: 'archive', rename: 'rename', remove: 'remove', settle: 'settle', snooze: 'snooze', wake: 'wake' };
@@ -78,19 +86,43 @@
     problem = result === undefined || result.ok ? null : `Failed to end the program: ${result.words}`;
   }
 
+  /**
+   * After a row action, focus goes back to the row, or to the row now in its place when it left the list; a focus that
+   * is still on the page is left alone (09 finding 12).
+   */
+  async function refocus(id: string, place: number): Promise<void> {
+    await tick();
+    const now = document.activeElement;
+    if (now !== null && now !== document.body && now.isConnected) return;
+    const rows = [...document.querySelectorAll<HTMLElement>('.inbox [data-thread] > .main')];
+    const own = rows.find((each) => each.parentElement?.dataset['thread'] === id);
+    (own ?? rows[Math.min(place, rows.length - 1)])?.focus();
+  }
+
+  function startRename(id: string): void {
+    // The field is in the row: the list shows, unsearched, before it opens.
+    onShow?.();
+    view.search = '';
+    renaming = id;
+  }
+
   function act(items: readonly InboxRow[], action: string, anchor: Anchor | null): void {
     const intent = intentOf(action, items, new Date());
     const [first] = items;
     if (intent === null || first === undefined) return;
-    if (intent.kind === 'listing') void listing(intent.pinnedOnly === true ? items.filter((item) => item.row.pinned) : items, intent.change);
-    else if (intent.kind === 'mark') void marks(items, intent.change);
+    const place = view.order.findIndex((item) => item.row.id === first.row.id);
+    const back = (): Promise<void> => refocus(first.row.id, place);
+    if (intent.kind === 'listing') void listing(intent.pinnedOnly === true ? items.filter((item) => item.row.pinned) : items, intent.change).then(back);
+    else if (intent.kind === 'mark') void marks(items, intent.change).then(back);
     else if (intent.kind === 'copy') navigator.clipboard.writeText(intent.text).catch(() => (problem = 'The text was not copied.'));
-    else if (intent.kind === 'rename') renaming = first.row.id;
+    else if (intent.kind === 'rename') startRename(first.row.id);
     else if (intent.kind === 'remove') removing = items;
     else if (intent.kind === 'end') void end(first.row.id);
     else {
       const row = document.querySelector(`[data-thread="${CSS.escape(first.row.id)}"]`);
       const at = anchor ?? row?.getBoundingClientRect() ?? { left: 0, top: 0, width: 0, height: 0 };
+      // The snooze menu opened from a row's button goes back to the row (09 finding 12).
+      returnTo = row?.querySelector<HTMLElement>('.main') ?? null;
       menu = { entries: snoozeMenu(new Date(), (when) => when.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })), anchor: at, on: items };
     }
   }
@@ -181,6 +213,8 @@
           }}
           onRename={(item, title) => {
             renaming = null;
+            const place = view.order.findIndex((each) => each.row.id === item.row.id);
+            void refocus(item.row.id, place);
             if (title !== null && title !== item.row.title) void listing([item], { change: 'rename', title });
           }}
         />
