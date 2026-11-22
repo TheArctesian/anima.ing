@@ -901,7 +901,9 @@ One question remains for the operator from this table: "Do you approve HOST-030 
 HOST-036 for stage 2?" It is decision OD-HOST-13 of
 [hosted-applications-plan.md](../plans/hosted-applications-plan.md).
 
-## 10. A proposed exception to the rules of a file: an entry that may hold the socket of the engine (R-247)
+## 10. A proposed exception to the rules of a file: an entry that may hold the socket of the engine (R-247; withdrawn)
+
+**Withdrawn (2026-11-22, R-NEW-arcanewithdrawn).** No entry of the catalogue may hold the socket of the engine, and Anima does not host the real Arcane program. This section stays as a record of the text and of its read; it is not put in contract K10 and is not built. OD-HOST-28 and OD-HOST-31 to OD-HOST-33 are closed.
 
 This section is a proposal. It is not in contract K10. A separate reviewer read the first form of its text; Section 10.1 is the second form, which no reviewer has read. R-247 (operator,
 2026-11-19) says that Arcane is an entry of the tested catalogue with an exception to the profile
@@ -1464,7 +1466,7 @@ is an error. A need that has no mark is an error.
 | Mark | What it needs | State |
 | --- | --- | --- |
 | `network-port` | A port on each address of the machine. The mark has the port and its protocols (`tcp`, `udp`). The machine needs "Open to the network" (R-229) | Permitted. The ports on an address other than `127.0.0.1` must be exactly the ports of the marks |
-| `engine-socket` | The socket of the engine (R-247) | Refused until the exception of Section 10 exists. Nothing installs such an entry |
+| `engine-socket` | The socket of the engine (R-247) | Refused. No rule permits it (R-NEW-arcanewithdrawn). Nothing installs such an entry |
 | `host-network` | The network of the machine itself, for example for the discovery of devices | Refused. No rule permits it |
 | `device` | A device of the machine, for example a USB stick or a graphics processor | Refused. No rule permits it |
 
@@ -2008,7 +2010,7 @@ with no credential.
 | device | 2 | Tier 3 until a setting of the machine permits a device | `minisatip`, `oscam` |
 | shell without credential | 2 | A credential that the install can make, for each image (the user and password of `openssh-server`, the user of the web page of Syncthing) | `openssh-server`, `syncthing` |
 | privileged | 1 | Tier 3 | `kasm` |
-| engine socket | 1 | Tier 3 until the exception of R-247 (task H34) | `sealskin` |
+| engine socket | 1 | Tier 3 (R-NEW-arcanewithdrawn: no entry holds the socket) | `sealskin` |
 
 The ten entries are tier 2: no test on a machine ran (HT-114 is the check by a person).
 The device of hardware decoding of Jellyfin is an optional part that is off; the streams of
