@@ -9,9 +9,7 @@ use axum::Router;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-#[cfg(unix)]
-use super::{PUBLIC, browser_token, cookie};
-use super::{browser_hub, post};
+use super::{PUBLIC, browser_hub, browser_token, cookie, post};
 use crate::hub::{Hub, set_operator, start};
 
 const ADD: &str = "mutation($input: ApplicationRouteInput!) { \
