@@ -56,6 +56,8 @@
       >
     {/if}
   </label>
+  <!-- T3: 4 px after the search field, no gap between the buttons (08 inbox 25). -->
+  <span class="group">
   {#if projects.length > 0}<ProjectFilter {projects} {chosen} onChoose={onProjects} />{/if}
   <Tooltip text={newOff === null ? 'New thread (⌘N)' : `New thread: ${newOff}`}>
     <button
@@ -70,6 +72,7 @@
       {@attach press()}><CodeIcon name="square-pen" /></button
     >
   </Tooltip>
+  </span>
 </div>
 
 <style>
@@ -79,6 +82,12 @@
     gap: var(--space-1);
     align-items: center;
     padding: var(--space-2);
+  }
+
+  .group {
+    display: flex;
+    flex: none;
+    align-items: center;
   }
 
   .search {

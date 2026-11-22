@@ -16,13 +16,15 @@
 <!-- Back and forward through the pages that the person opened (report 02, Section 5.2). -->
 <div role="group" aria-label="History">
   <BandButton
-    icon="carbon:arrow-left"
+    icon="arrow-left"
+    small
     label={keys ? `Go back (${keys.back})` : 'Go back'}
     disabled={!canGoBack}
     onclick={onback}
   />
   <BandButton
-    icon="carbon:arrow-right"
+    icon="arrow-right"
+    small
     label={keys ? `Go forward (${keys.forward})` : 'Go forward'}
     disabled={!canGoForward}
     onclick={onforward}
