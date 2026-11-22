@@ -155,6 +155,9 @@ pub enum GitRefusal {
     /// The snapshot to commit is not one of the files as the person saw them on this branch:
     /// the branch moved, or the snapshot is unknown. The page reads the changes again.
     NotReviewed,
+    /// A thread of this computer runs in a folder that holds the records of Anima's Git, so
+    /// its agent can write them. No Git action of any thread runs until that thread ends.
+    RecordsHeld,
     Failed {
         said: String,
     },

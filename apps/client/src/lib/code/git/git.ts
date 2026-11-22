@@ -82,7 +82,8 @@ export type GitRefusal =
   | 'not_a_repository'
   | 'git_not_found'
   | 'changed'
-  | 'not_reviewed';
+  | 'not_reviewed'
+  | 'records_held';
 
 const REFUSALS: Record<GitRefusal, string> = {
   from_an_agent: 'Only you can do this. An agent cannot commit, push, revert or open a pull request.',
@@ -105,7 +106,8 @@ const REFUSALS: Record<GitRefusal, string> = {
   not_a_repository: 'This folder is not a git repository.',
   git_not_found: 'Git is not installed on this computer.',
   changed: 'Who a commit is from or where a push goes changed in the repository since you last accepted it. Read what changed and accept it before a commit or a push.',
-  not_reviewed: 'The files or the branch changed since you looked. Read the changes again, then commit.'
+  not_reviewed: 'The files or the branch changed since you looked. Read the changes again, then commit.',
+  records_held: 'A chat on this computer runs in a folder that holds the records of Anima\'s Git, so its agent could change them. Git actions are off for every chat until that chat ends.'
 };
 
 /** The words for a refusal of the runner. */

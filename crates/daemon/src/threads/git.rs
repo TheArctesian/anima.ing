@@ -30,6 +30,7 @@ pub mod trust;
 pub mod worktree;
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 
 use agent_threads::git::{Changes, GitAction, GitOutcome, GitRefusal, Scope};
@@ -113,6 +114,8 @@ pub struct Engine {
     /// How a hook of the repository is started with the rights of a thread; `None` until the
     /// runner gives it, and then no hook runs for any thread.
     as_thread: Option<AsThread>,
+    /// A thread runs in a folder that holds the records ([`Engine::hold`]): nothing runs.
+    held: Arc<AtomicBool>,
 }
 
 impl Engine {
@@ -123,7 +126,27 @@ impl Engine {
             home,
             locks: Arc::default(),
             as_thread: None,
+            held: Arc::default(),
         }
+    }
+
+    /// The runner says whether a thread of this computer runs in a folder that holds the
+    /// records ([`place::records::held_by`]): its agent can write them, and with them the
+    /// Git folder that the runner's `git` runs with. While it is so, each Git action of each
+    /// thread is refused (THR-050). Each clone of the engine sees the same answer.
+    pub fn hold(&self, held: bool) {
+        self.held.store(held, Ordering::SeqCst);
+    }
+
+    /// Refuses while the records can be written by a thread, or are not a folder of this
+    /// user alone any more.
+    fn closed(&self) -> Result<(), GitRefusal> {
+        if self.held.load(Ordering::SeqCst) {
+            return Err(GitRefusal::RecordsHeld);
+        }
+        place::records::checked(self.home.records()).map_err(|bad| GitRefusal::Failed {
+            said: bad.to_string(),
+        })
     }
 
     /// This engine with the way to start a hook of a repository as the agent of a thread is
@@ -150,6 +173,7 @@ impl Engine {
     /// # Errors
     /// As [`worktree::make`].
     pub async fn worktree(&self, plan: worktree::Plan<'_>) -> Result<worktree::Made, GitRefusal> {
+        self.closed()?;
         // One worktree of a thread is made at a time, whatever its repository.
         let _alone = self.alone(plan.thread, "").await;
         worktree::make(&self.git, &self.home, plan).await
@@ -160,6 +184,7 @@ impl Engine {
     /// # Errors
     /// A [`GitRefusal`] when the thread has no worktree or `git` fails.
     pub async fn turn_ended(&self, target: Target<'_>, turn: u32) -> Result<(), GitRefusal> {
+        self.closed()?;
         let _alone = self.alone(target.thread, target.repository).await;
         let _index = self.index(target).await;
         let worktree = self.home.worktree(target.thread, target.repository)?;
@@ -170,6 +195,9 @@ impl Engine {
 
     /// Does `action` for `caller` and gives the answer for the socket.
     pub async fn call(&self, caller: Caller, target: Target<'_>, action: GitAction) -> GitOutcome {
+        if let Err(why) = self.closed() {
+            return GitOutcome::Refused { why };
+        }
         if caller.agent && action.for_the_person() {
             return GitOutcome::Refused {
                 why: GitRefusal::FromAnAgent,
@@ -244,7 +272,9 @@ impl Engine {
         let layout = &worktree.layout();
         let listed = || project::settings(git, layout, worktree.folder());
         Ok(match action {
-            GitAction::Status => GitOutcome::Status(shown(git, worktree, &listed().await?).await?),
+            GitAction::Status => {
+                GitOutcome::Status(trust::status_with(git, worktree, &listed().await?).await?)
+            }
             GitAction::Checkpoints => GitOutcome::Checkpoints {
                 checkpoints: checkpoint::list(git, worktree).await?,
             },
@@ -358,17 +388,4 @@ const fn waits_for_the_turn(action: &GitAction) -> bool {
             | GitAction::Push { .. }
             | GitAction::Trust { .. }
     )
-}
-
-/// The status with what changed since the person accepted it.
-async fn shown(
-    git: &Git,
-    worktree: &Worktree,
-    listed: &[Setting],
-) -> Result<agent_threads::git::Status, GitRefusal> {
-    let mut status = status::of(git, worktree, listed).await?;
-    let seen = trust::now(listed);
-    status.changed = trust::first(trust::changed(worktree.record().trusted.as_ref(), &seen));
-    status.accept = trust::digest(&seen);
-    Ok(status)
 }

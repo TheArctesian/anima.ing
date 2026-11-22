@@ -142,3 +142,63 @@ async fn a_worktree_stays_where_it_was_made_when_the_home_changes() {
             .starts_with(root.join("elsewhere/trees"))
     );
 }
+
+#[tokio::test]
+async fn nothing_runs_for_any_thread_while_a_thread_holds_the_records() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    std::fs::write(folder.join("a.txt"), "changed\n").expect("a file");
+    let ran = folder.with_file_name("RAN");
+    // What a thread that holds the records can write: a hook in the runner's own Git folder.
+    let own = bench.home.with_file_name("records");
+    let own = own.join(THREAD.to_string()).join("engine.git");
+    let planted = format!(
+        "[hook \"held\"]\n\tevent = post-index-change\n\tcommand = touch \"{}\"\n",
+        ran.display()
+    );
+    let config = std::fs::read_to_string(own.join("config")).expect("the configuration");
+    // The runner hears of the thread before that thread runs; a clone is the same engine.
+    bench.engine.clone().hold(true);
+    std::fs::write(own.join("config"), config + &planted).expect("the planted hook");
+    for action in [
+        GitAction::Status,
+        GitAction::Checkpoints,
+        UNCOMMITTED,
+        GitAction::Revert { turn: 0 },
+        commit("", None),
+        GitAction::Remove,
+    ] {
+        let outcome = bench.engine.call(PERSON, super::target(), action).await;
+        assert_eq!(refused(&outcome), Some(&GitRefusal::RecordsHeld));
+    }
+    let checkpoint = bench.engine.turn_ended(super::target(), 1).await;
+    assert_eq!(checkpoint, Err(GitRefusal::RecordsHeld));
+    let plan = crate::threads::git::worktree::Plan {
+        thread: Uuid::from_u128(5),
+        project: &bench.project,
+        base: None,
+    };
+    let made = bench.engine.worktree(plan).await;
+    assert_eq!(made.err(), Some(GitRefusal::RecordsHeld));
+    assert!(
+        !ran.exists(),
+        "git ran with records that a thread could write"
+    );
+    assert!(folder.join("a.txt").exists());
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn records_that_are_open_to_other_users_stop_each_action() {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let bench = Bench::new().await;
+    bench.worktree().await;
+    let records = bench.home.with_file_name("records");
+    std::fs::set_permissions(&records, std::fs::Permissions::from_mode(0o755)).expect("a mode");
+    let outcome = bench.call(PERSON, GitAction::Status).await;
+    assert!(
+        matches!(refused(&outcome), Some(GitRefusal::Failed { said }) if said.contains("other users")),
+        "{outcome:?}"
+    );
+}

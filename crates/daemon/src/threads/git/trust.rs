@@ -13,8 +13,8 @@ use agent_threads::git::GitRefusal;
 use sha2::{Digest, Sha256};
 
 use super::place::{Home, Worktree};
-use super::run::said;
 use super::run::settings::{self, Setting};
+use super::run::{Git, said};
 use super::status;
 
 /// The most names the page gets. More changes than these cannot be shown, so they cannot be
@@ -88,6 +88,22 @@ pub fn accepted(worktree: &Worktree, listed: &[Setting]) -> Result<(), GitRefusa
     } else {
         Err(GitRefusal::Changed { what: first(what) })
     }
+}
+
+/// The status with what changed since the person accepted it.
+///
+/// # Errors
+/// As [`status::of`].
+pub async fn status_with(
+    git: &Git,
+    worktree: &Worktree,
+    listed: &[Setting],
+) -> Result<agent_threads::git::Status, GitRefusal> {
+    let mut status = status::of(git, worktree, listed).await?;
+    let seen = now(listed);
+    status.changed = first(changed(worktree.record().trusted.as_ref(), &seen));
+    status.accept = digest(&seen);
+    Ok(status)
 }
 
 /// The names that the page gets: one more than can be shown says that there are more.
