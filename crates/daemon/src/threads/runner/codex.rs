@@ -16,7 +16,11 @@ use serde_json::Value;
 enum Call {
     Initialize,
     ThreadStart,
-    TurnStart,
+    /// A `turn/start`; `leaves` when its policy takes the place of the profile that keeps the
+    /// folder of Anima (THR-041), which holds only once Codex takes the turn.
+    TurnStart {
+        leaves: bool,
+    },
     Other,
 }
 
@@ -54,6 +58,11 @@ pub struct Codex {
 pub struct Changed {
     pub model: Option<Model>,
     pub mode: Option<Mode>,
+    /// The profile that keeps the folder of Anima read-only is still in force (THR-041). An
+    /// older record has no answer: then the next turn sends its policy, which is never wider
+    /// than the mode of the thread, where leaving it out could leave a wider one in force.
+    #[serde(default)]
+    pub keeps: bool,
 }
 
 impl Codex {
@@ -92,8 +101,8 @@ impl Codex {
     pub fn known(mut self, thread: Option<String>, turn: Option<String>, changed: Changed) -> Self {
         self.thread = thread;
         self.turn = turn;
-        // A changed mode may have sent a policy of its own, which took the place of the profile.
-        self.keeps = self.keeps && changed.mode.is_none();
+        // The record says whether a turn took the place of the profile; it can only narrow.
+        self.keeps = self.keeps && changed.keeps;
         self.changed = changed;
         self.next = 1_000_000;
         self
@@ -129,15 +138,22 @@ impl Codex {
                 prompt,
             )];
         }
-        self.calls.insert(id, Call::TurnStart);
+        // While a turn that leaves the profile waits for its answer, the profile may be gone:
+        // this turn sends its policy too, never counting on the profile.
+        let keeps = self.keeps && !self.leaving();
+        let sends_policy = self
+            .changed
+            .mode
+            .is_some_and(|mode| !(keeps && mode.folder_sandbox()));
+        // A policy takes the place of the profile, for good, once Codex takes the turn.
+        let leaves = self.keeps && sends_policy;
+        self.calls.insert(id, Call::TurnStart { leaves });
         let turn = TurnSettings {
             model: self.changed.model.as_ref(),
             effort: self.effort,
             mode: self.changed.mode,
-            keeps: self.keeps,
+            keeps,
         };
-        // Each policy but that of the folder takes the place of the profile, for good.
-        self.keeps = self.keeps && self.changed.mode.is_none_or(Mode::folder_sandbox);
         vec![CodexInput::turn_start(id, &thread, prompt, &turn)]
     }
 
@@ -157,7 +173,10 @@ impl Codex {
     /// What the person changed, for the record.
     #[must_use]
     pub fn changed(&self) -> Changed {
-        self.changed.clone()
+        Changed {
+            keeps: self.keeps,
+            ..self.changed.clone()
+        }
     }
 
     /// Why Codex refused the last `turn/start`, once: that turn never runs, so it ended as failed.
@@ -170,7 +189,7 @@ impl Codex {
     pub fn turn_starting(&self) -> bool {
         self.calls
             .values()
-            .any(|call| matches!(call, Call::TurnStart))
+            .any(|call| matches!(call, Call::TurnStart { .. }))
     }
 
     /// Whether a prompt now goes into the running turn (`turn/steer`) and ends with it, not as a
@@ -182,6 +201,7 @@ impl Codex {
 
     /// A turn started; Codex names it.
     pub fn turn_started(&mut self, turn: Option<String>) {
+        self.taken();
         if turn.is_some() {
             self.turn = turn;
         }
@@ -190,9 +210,25 @@ impl Codex {
     /// The running turn ended: a `turn/start` that waits for its answer started it, so nothing
     /// waits for that answer any more.
     pub fn turn_ended(&mut self) {
+        self.taken();
         self.ended = self.turn.take();
         self.calls
-            .retain(|_, call| !matches!(call, Call::TurnStart));
+            .retain(|_, call| !matches!(call, Call::TurnStart { .. }));
+    }
+
+    /// Codex took the `turn/start` that waits: when its policy leaves the profile, the profile
+    /// is gone (THR-041).
+    fn taken(&mut self) {
+        if self.leaving() {
+            self.keeps = false;
+        }
+    }
+
+    /// A `turn/start` whose policy leaves the profile waits for its answer.
+    fn leaving(&self) -> bool {
+        self.calls
+            .values()
+            .any(|call| matches!(call, Call::TurnStart { leaves: true }))
     }
 
     /// `turn/interrupt` for the running turn, if one runs.
@@ -222,7 +258,7 @@ impl Codex {
                 Call::Initialize | Call::ThreadStart => {
                     Err(format!("Codex did not start its thread: {message}"))
                 }
-                Call::TurnStart => {
+                Call::TurnStart { .. } => {
                     self.refused_turn = Some(message.to_owned());
                     Ok(Vec::new())
                 }
@@ -263,7 +299,8 @@ impl Codex {
                     .flat_map(|prompt| self.prompt(prompt))
                     .collect())
             }
-            Call::TurnStart => {
+            Call::TurnStart { leaves } => {
+                self.keeps = self.keeps && !leaves;
                 if let Some(turn) = result["turn"]["id"].as_str()
                     && self.ended.as_deref() != Some(turn)
                 {

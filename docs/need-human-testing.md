@@ -509,9 +509,14 @@ Result: Open.
 
 Built: on the branch `threads/start-warns`, the start of a Codex thread in Accept edits or Ask in a folder
 that holds the folder of the daemon sends a profile of permissions that makes that folder read-only. A
-test of `codex sandbox` with the same profile was refused a write in the folder (2026-11-22), and
-`thread/start` answered with the profile in force. No test ran a turn of a model, because that uses the
-account of the person.
+test of `codex sandbox` with the same profile was refused a write in the folder (2026-11-22), also with
+`writable_roots` or `danger-full-access` in the file of the user. `thread/start` answered with the profile
+in force in eight cases: `sandbox_mode = "danger-full-access"`, a `default_permissions` that makes the
+folder writable, or `writable_roots` that names it, each in the file of the user or in a project file of the
+folder of the thread, and `danger-full-access` in a project file of a folder above it. The commands and the
+output are in the note of the builder `codex-kept-profile-measured-2026-11-22.md`. No test ran a turn of a
+model, because that uses the account of the person. The record of the runner says whether the profile
+is still in force, so a restart keeps it after a change between Accept edits and Ask.
 
 1. Start the daemon of this build with `ANIMA_DAEMON_HOME` set to a new folder in the home folder, for
    example `~/anima-test-state`. Do not use the folder of the installed application.
@@ -525,7 +530,13 @@ account of the person.
 6. Write `sandbox_mode = "danger-full-access"` in `~/.codex/config.toml` (keep a copy of the file first).
    Start a new Codex thread in the home folder in Ask and do step 3 again. Expected: "Operation not
    permitted". Put the old file back.
-7. Delete `~/anima-test-state` when the daemon has stopped.
+7. With sudo, write `sandbox_mode = "danger-full-access"` and `[sandbox_workspace_write]` with
+   `writable_roots = ["<home>/anima-test-state"]` in `/Users/.codex/config.toml`. Start a Codex thread in
+   the folder `/Users` in Ask and send "Run: touch <home>/anima-test-state/probe2". Expected: before the
+   start, the warning; then "Operation not permitted". Delete `/Users/.codex`.
+8. Start a Codex thread in the home folder in Ask, change the mode to Accept edits, send a prompt, stop
+   the daemon, start it again, and do step 3 in that thread. Expected: "Operation not permitted".
+9. Delete `~/anima-test-state` when the daemon has stopped.
 
 Result: Open.
 

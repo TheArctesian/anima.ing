@@ -267,7 +267,7 @@ fn thr_041_a_codex_thread_loses_the_profile_that_keeps_anima_once_a_turn_leaves_
 }
 
 #[test]
-fn thr_041_after_a_restart_a_codex_thread_with_a_changed_mode_does_not_count_on_its_profile() {
+fn thr_041_after_a_restart_a_codex_thread_whose_record_lost_the_profile_does_not_count_on_it() {
     let kept = || {
         Some(agent_threads::drive::KeptFolder::new(
             PathBuf::from("/home/you/anima-daemon"),
@@ -277,6 +277,7 @@ fn thr_041_after_a_restart_a_codex_thread_with_a_changed_mode_does_not_count_on_
     let changed = crate::threads::runner::codex::Changed {
         model: None,
         mode: Some(Mode::AcceptEdits),
+        keeps: false,
     };
     let mut codex = Codex::new(PathBuf::from("/home/you"), Mode::Ask, None, None)
         .keeping(kept())
