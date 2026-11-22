@@ -178,6 +178,8 @@ describe('times of a turn', () => {
     if (done === undefined || stopped === undefined || running === undefined) throw new Error('a turn');
     expect(turnLine(done, at(99))).toBe('Worked for 1m 12s');
     expect(turnLine(stopped, at(99))).toBe('You stopped after 9s');
+    // Fidelity 7: only the newest turn says that the person stopped it.
+    expect(turnLine(stopped, at(99), false)).toBe('Worked for 9s');
     expect(turnLine(running, at(12))).toBe('Working for 12s');
   });
 

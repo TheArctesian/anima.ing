@@ -175,14 +175,15 @@
         <p class="empty">Send a message to start the conversation.</p>
       {/if}
       {#each turns as turn (turn.key)}
-        <div class="lane"><TurnView {turn} {now} {onDecide} /></div>
+        <div class="lane"><TurnView {turn} {now} latest={turn === turns.at(-1)} {onDecide} /></div>
       {/each}
     </div>
   </div>
   <p class="hidden" aria-live="polite">{polite}</p>
   <p class="hidden" role="alert">{urgent}</p>
   {#if !following && !atEnd}
-    <button type="button" class="to-end" onclick={jump}>
+    <!-- Fidelity 19: a press of the pointer does not take the focus; a key on it still does, and goes to the conversation. -->
+    <button type="button" class="to-end" onpointerdown={(event) => { event.preventDefault(); }} onclick={jump}>
       <CodeIcon name="chevron-down" />Scroll to end
     </button>
   {/if}
@@ -222,9 +223,16 @@
     margin-inline: auto;
   }
 
+  /* Fidelity 18: the empty message in the middle of the whole height. */
+  .content:has(.empty) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-block-size: 100%;
+  }
+
   .empty {
     margin: 0;
-    padding-block: var(--space-12);
     color: var(--code-quiet-text);
     font-size: var(--code-text-body);
     text-align: center;
@@ -238,8 +246,8 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
-    min-block-size: var(--control-sm);
-    padding-inline: var(--space-3);
+    min-block-size: var(--space-6);
+    padding-inline: 7px;
     border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-pill);
     background: var(--surface-raised);
@@ -258,5 +266,10 @@
 
   .to-end:focus-visible {
     outline: var(--border-focus) solid var(--focus-ring);
+  }
+
+  .to-end :global(.code-icon) {
+    inline-size: var(--code-timeline-icon-chevron);
+    block-size: var(--code-timeline-icon-chevron);
   }
 </style>
