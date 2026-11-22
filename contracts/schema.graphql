@@ -1756,19 +1756,21 @@ type AgentUsage {
   total: AgentUsageRow!
   "Each device whose daemon sent a usage state, by device name; only the device of filter.deviceId when it is given."
   devices: [AgentUsageDevice!]!
-  "The accounts that the devices report now, each with its devices, newest report first (R-313, AIS-022). Not narrowed by the filter."
+  "The accounts that the devices report now, each with its devices, newest report first (THR-149, AIS-022). Not narrowed by the filter."
   accounts: [AgentAccount!]!
   "The day of the public list prices of estimatedCostUsd, YYYY-MM-DD."
   pricesAsOf: String!
 }
 
-"An account of an AI agent program, as a key only, and the devices that use it (R-313, AIS-022)."
+"An account of an AI agent program, with its key and its address, and the devices that use it (THR-149, AIS-022)."
 type AgentAccount {
   "The HMAC-SHA-256 of the vendor's identifier of the account with the salt of this hub, 64 hexadecimal digits; never the identifier."
   key: String!
   "The first 8 digits of key, to tell two accounts of one program apart."
   shortKey: String!
   source: AgentSource!
+  "The email address that the program is signed in with, of the newest report; personal data, shown only to the person (THR-149). Null when the program gives none."
+  address: String
   "The name of the plan as the program states it."
   plan: String
   "The limit windows of the newest report; the limit is the account's, shared by its devices."

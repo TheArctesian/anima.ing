@@ -293,7 +293,7 @@ it('AIS-022 (R-313): an account groups its devices under one bar for each limit,
   expect(text()).not.toContain(ANSWER.accounts[0]?.key);
 });
 
-it('with no account reported the part By account says that the devices do not send their accounts yet', async () => {
+it('with no account reported the part By account says that none is sent yet', async () => {
   hub = fakeUsageHub({ ...ANSWER, accounts: [] });
   await open();
   expect(text()).toContain('By account');

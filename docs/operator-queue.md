@@ -328,7 +328,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (107)
+## 4. Checks that only the operator can do (108)
 
 | Check | What |
 | --- | --- |
@@ -401,6 +401,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-064 | Read the native capability report in Anima.ing Settings |
 | HT-065 | the measurements of the isolation design on Linux (task W2, R-188, R-264) |
 | HT-107 | the single sessions on the page Agent usage (AIS-025, AIS-026) |
+| HT-131 | one account on two computers is one card with one limit on the page Agent usage, and the hub has its address (AIS-022, THR-149) |
 | HT-111 | the daemon sends its token only to the signed link at its socket (K8 Section 1, HMD-054) |
 | HT-104 | Connect GitHub on a hosted hub through the gateway (HMD-068, HMD-069; task HM-T29) |
 | O-4 | SFTP: list, upload, download, the refusals, the audit entries |
