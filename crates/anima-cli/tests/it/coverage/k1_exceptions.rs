@@ -55,6 +55,11 @@ pub const EXCEPTIONS: &[(&str, &str)] = &[
          (K-E5 Section 3, a trust decision)",
     ),
     (
+        "Mutation.recordReveal",
+        "client work: only the client that opens a sealed record asks for its reveal; no \
+         command can open a record (K-E5 Section 3, a trust decision)",
+    ),
+    (
         "Query.vaultKeyOffer",
         "client work: a client adds a client by QR code; no command takes part in a key offer \
          (K-E5 Section 3, a trust decision)",
