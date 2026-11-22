@@ -217,10 +217,7 @@ async fn a_push_is_refused_with_no_remote_and_for_the_default_branch_without_a_y
     assert_eq!(refused(&alone), Some(&GitRefusal::NoRemote));
     bench.with_origin().await;
     // The person added the remote after the worktree was made, and accepts that change.
-    assert_eq!(
-        bench.call(PERSON, GitAction::Trust).await,
-        GitOutcome::Trusted
-    );
+    assert_eq!(bench.trust(PERSON).await, GitOutcome::Trusted);
     // The checkout of the person leaves `main`, so that the worktree can be on it.
     bench
         .git_in(

@@ -88,7 +88,7 @@ const ALLOWED: Caller = Caller {
     ..PERSON
 };
 
-/// A worktree with a changed file, a `pre-commit` hook that makes the file of the answer, and a
+/// A worktree with a changed file, a hook that makes the file of the answer, and a
 /// credential helper that the agent wrote: the folder and the file that the hook makes.
 async fn planted(bench: &Bench) -> (std::path::PathBuf, std::path::PathBuf) {
     bench.with_origin().await;
@@ -120,12 +120,9 @@ async fn a_thread_runs_no_hook_and_obeys_no_changed_setting_until_the_person_acc
         thread: Some(THREAD),
         ..PERSON
     };
-    let by_agent = bench.call(agent, GitAction::Trust).await;
+    let by_agent = bench.trust(agent).await;
     assert_eq!(refused(&by_agent), Some(&GitRefusal::FromAnAgent));
-    assert_eq!(
-        bench.call(PERSON, GitAction::Trust).await,
-        GitOutcome::Trusted
-    );
+    assert_eq!(bench.trust(PERSON).await, GitOutcome::Trusted);
     let status = bench.status(PERSON).await;
     assert_eq!(status.changed, Vec::<String>::new());
     assert_eq!(status.hooks, Vec::<String>::new());
@@ -136,7 +133,10 @@ async fn a_thread_runs_no_hook_and_obeys_no_changed_setting_until_the_person_acc
     );
     assert!(!ran.exists(), "a hook ran for a thread that allows none");
     // The yes for a thread that runs no hook did not accept the hook.
-    assert_eq!(bench.status(ALLOWED).await.changed, ["hook pre-commit"]);
+    assert_eq!(
+        bench.status(ALLOWED).await.changed,
+        ["hook reference-transaction"]
+    );
 }
 
 #[tokio::test]
@@ -144,7 +144,10 @@ async fn a_thread_that_allows_hooks_runs_one_only_after_the_person_accepted_it()
     let bench = Bench::new().await;
     let (_, ran) = planted(&bench).await;
     let status = bench.status(ALLOWED).await;
-    assert_eq!(status.changed, ["credential.helper", "hook pre-commit"]);
+    assert_eq!(
+        status.changed,
+        ["credential.helper", "hook reference-transaction"]
+    );
     for action in [commit("", None), PUSH] {
         let outcome = bench.call(ALLOWED, action).await;
         assert!(
@@ -153,10 +156,7 @@ async fn a_thread_that_allows_hooks_runs_one_only_after_the_person_accepted_it()
         );
     }
     assert!(!ran.exists(), "the hook ran before the person accepted it");
-    assert_eq!(
-        bench.call(ALLOWED, GitAction::Trust).await,
-        GitOutcome::Trusted
-    );
+    assert_eq!(bench.trust(ALLOWED).await, GitOutcome::Trusted);
     let committed = bench.call(ALLOWED, commit("", None)).await;
     assert!(
         matches!(committed, GitOutcome::Committed { .. }),
@@ -164,7 +164,7 @@ async fn a_thread_that_allows_hooks_runs_one_only_after_the_person_accepted_it()
     );
     #[cfg(unix)]
     {
-        assert_eq!(bench.status(ALLOWED).await.hooks, ["pre-commit"]);
+        assert_eq!(bench.status(ALLOWED).await.hooks, ["reference-transaction"]);
         assert!(ran.exists(), "the accepted hook did not run");
     }
 }

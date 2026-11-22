@@ -24,7 +24,7 @@ pub struct Setting {
 /// The settings that name a program or decide whom a push trusts, each with what git does
 /// when nobody set it. A run for the person takes them from the person, never from the
 /// repository, which an agent can write.
-const OF_THE_PERSON: [(&str, &str); 9] = [
+const OF_THE_PERSON: [(&str, &str); 12] = [
     ("core.askpass", ""),
     ("gpg.program", "gpg"),
     ("gpg.openpgp.program", "gpg"),
@@ -34,6 +34,9 @@ const OF_THE_PERSON: [(&str, &str); 9] = [
     ("commit.gpgsign", "false"),
     ("http.proxy", ""),
     ("http.sslverify", "true"),
+    ("http.cookiefile", ""),
+    ("push.gpgsign", "false"),
+    ("gpg.ssh.defaultkeycommand", ""),
 ];
 
 impl Setting {
@@ -80,6 +83,34 @@ pub fn filters_off(settings: &[Setting]) -> Vec<(String, String)> {
         .collect()
 }
 
+/// Each hook that the configuration names (`hook.<name>.event`, `hook.<name>.command`; git
+/// 2.54), from each file, with the setting that turns it off. `core.hooksPath` does not stop
+/// these, and git runs them for `update-ref`, `add`, `restore`, `reset` and more.
+#[must_use]
+pub fn hooks_off(settings: &[Setting]) -> Vec<(String, String)> {
+    let mut names: Vec<&str> = settings
+        .iter()
+        .filter_map(|setting| setting.name.strip_prefix("hook."))
+        .filter_map(|rest| rest.rsplit_once('.'))
+        .map(|(name, _)| name)
+        .collect();
+    names.sort_unstable();
+    names.dedup();
+    names
+        .into_iter()
+        .map(|name| (format!("hook.{name}.enabled"), "false".to_owned()))
+        .collect()
+}
+
+/// The person signs their commits: `commit.gpgSign` is on outside the repository.
+#[must_use]
+pub fn signs(settings: &[Setting]) -> bool {
+    settings
+        .iter()
+        .rfind(|setting| !setting.of_the_repository() && setting.name == "commit.gpgsign")
+        .is_some_and(|setting| matches!(setting.value.as_str(), "" | "true" | "yes" | "on" | "1"))
+}
+
 /// What a run for the person sets after each file: no push option and no `git://` (so no
 /// proxy program), and each setting of [`OF_THE_PERSON`] and each credential helper as the
 /// person has it, when the repository names one.
@@ -87,6 +118,7 @@ pub fn filters_off(settings: &[Setting]) -> Vec<(String, String)> {
 pub fn for_the_person(settings: &[Setting]) -> Vec<(String, String)> {
     let mut over = vec![
         ("push.pushOption".to_owned(), String::new()),
+        ("push.negotiate".to_owned(), "false".to_owned()),
         ("protocol.git.allow".to_owned(), "never".to_owned()),
     ];
     let planted = |by: &dyn Fn(&Setting) -> bool| {
@@ -152,7 +184,26 @@ mod tests {
         local\0gpg.program\n/tmp/evil\0\
         local\0core.askpass\n/tmp/ask\0\
         worktree\0commit.gpgsign\ntrue\0\
+        local\0hook.evil.event\nreference-transaction\0\
+        local\0hook.evil.command\ntouch RAN\0\
+        global\0hook.My Lint.command\nlint\0\
+        global\0commit.gpgsign\ntrue\0\
         local\0branch.main.remote\norigin\0";
+
+    #[test]
+    fn each_hook_of_the_configuration_is_turned_off_by_name() {
+        let off = hooks_off(&read(LISTED));
+        let off: Vec<_> = off.iter().map(|(n, v)| (n.as_str(), v.as_str())).collect();
+        assert_eq!(
+            off,
+            [
+                ("hook.My Lint.enabled", "false"),
+                ("hook.evil.enabled", "false")
+            ]
+        );
+        assert!(signs(&read(LISTED)));
+        assert!(!signs(&read("local\0commit.gpgsign\ntrue\0")));
+    }
 
     #[test]
     fn only_the_filters_of_the_repository_are_turned_off() {
@@ -172,12 +223,13 @@ mod tests {
             over,
             [
                 ("push.pushOption", ""),
+                ("push.negotiate", "false"),
                 ("protocol.git.allow", "never"),
                 ("credential.helper", ""),
                 ("credential.helper", "osxkeychain"),
                 ("core.askpass", ""),
                 ("gpg.program", "/usr/bin/gpg"),
-                ("commit.gpgsign", "false"),
+                ("commit.gpgsign", "true"),
             ]
         );
     }
@@ -196,6 +248,8 @@ mod tests {
                 "filter.evil.clean",
                 "filter.evil.required",
                 "gpg.program",
+                "hook.evil.command",
+                "hook.evil.event",
             ]
         );
         assert!(kept.values().all(|digest| digest.len() == 64));

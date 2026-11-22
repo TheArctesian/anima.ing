@@ -45,6 +45,8 @@ export interface GitStatus {
   hooks?: readonly string[];
   /** The hooks and settings that changed since the person last accepted them; a commit or a push is refused until they accept (`trust`). */
   changed?: readonly string[];
+  /** A digest of the hooks and settings as they are now. The page sends it back with the yes of the person (`trust`), so that the yes counts only for the list they read. */
+  accept?: string;
 }
 
 export interface Checkpoint {

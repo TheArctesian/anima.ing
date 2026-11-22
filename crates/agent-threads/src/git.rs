@@ -47,7 +47,11 @@ pub enum GitAction {
     Remove,
     /// The person read what changed in the hooks and the settings of the repository
     /// ([`Status::changed`]) and accepts them for a commit and a push. For the person only.
-    Trust,
+    Trust {
+        /// The [`Status::accept`] of the status that the page showed: what the person read.
+        /// The runner refuses when the hooks or settings are not these any more.
+        shown: String,
+    },
 }
 
 impl GitAction {
@@ -185,6 +189,9 @@ pub struct Status {
     /// a push is refused until [`GitAction::Trust`].
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub changed: Vec<String>,
+    /// A digest of the hooks and settings as they are now, which [`GitAction::Trust`] names.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub accept: String,
 }
 
 /// One checkpoint: the files of the worktree at the end of a turn (0 is the start).
@@ -271,7 +278,9 @@ mod tests {
             },
             GitAction::PullRequest,
             GitAction::Remove,
-            GitAction::Trust,
+            GitAction::Trust {
+                shown: String::new(),
+            },
         ];
         assert!(reads.iter().all(|action| !action.for_the_person()));
         assert!(changes.iter().all(GitAction::for_the_person));

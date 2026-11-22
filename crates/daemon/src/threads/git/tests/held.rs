@@ -81,6 +81,7 @@ async fn a_checkpoint_waits_for_a_commit_that_runs_on_the_same_worktree() {
         repository_programs: true,
         ..PERSON
     };
+    assert_eq!(bench.trust(allowed).await, GitOutcome::Trusted);
     let slow_commit = async {
         let outcome = bench.call(allowed, commit(&reviewed, None)).await;
         (outcome, Instant::now())

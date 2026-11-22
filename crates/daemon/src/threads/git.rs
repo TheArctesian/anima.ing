@@ -177,7 +177,10 @@ impl Engine {
             GitAction::Changes {
                 scope,
                 ignore_whitespace,
-            } => GitOutcome::Changes(changes_of(git, worktree, scope, ignore_whitespace).await?),
+            } => {
+                let shown = (scope, ignore_whitespace);
+                GitOutcome::Changes(shown_changes(git, worktree, shown, !caller.agent).await?)
+            }
             GitAction::Revert { turn } => GitOutcome::Reverted {
                 turn,
                 undo: revert::to_turn(git, worktree, turn).await?,
@@ -212,12 +215,32 @@ impl Engine {
             GitAction::Remove => GitOutcome::Removed {
                 kept: Some(worktree::remove(&self.git, &self.home, worktree).await?),
             },
-            GitAction::Trust => {
-                let seen = to_accept(git, worktree).await?;
-                self.rewrite(worktree, |record| record.trusted = Some(seen))?;
-                GitOutcome::Trusted
-            }
+            GitAction::Trust { shown } => self.trust(git, worktree, &shown).await?,
         })
+    }
+
+    /// Writes down that the person accepts the hooks and settings as they are now, when they
+    /// are the ones that the page showed (`shown`) and each change could be shown.
+    async fn trust(
+        &self,
+        git: &Git,
+        worktree: &Worktree,
+        shown: &str,
+    ) -> Result<GitOutcome, GitRefusal> {
+        let seen = to_accept(git, worktree).await?;
+        let (what, _) = not_accepted(git, worktree).await?;
+        if what.len() > trust::MOST_NAMES {
+            return Err(GitRefusal::Failed {
+                said: "too many hooks and settings changed to show them; nothing is accepted"
+                    .to_owned(),
+            });
+        }
+        if trust::digest(&seen) != shown {
+            return Err(GitRefusal::Changed { what });
+        }
+        trust::keep_baseline(&self.home, &worktree.record().project, &seen)?;
+        self.rewrite(worktree, |record| record.trusted = Some(seen))?;
+        Ok(GitOutcome::Trusted)
     }
 
     /// Changes the record of the worktree and writes it: a branch that the runner made for the
@@ -235,6 +258,22 @@ impl Engine {
     }
 }
 
+/// The changes for the page. With `keep`, the snapshot of the uncommitted files goes under a
+/// ref: a commit of the person takes only the one that they last looked at.
+async fn shown_changes(
+    git: &Git,
+    worktree: &Worktree,
+    (scope, ignore_whitespace): (Scope, bool),
+    keep: bool,
+) -> Result<Changes, GitRefusal> {
+    let changes = changes_of(git, worktree, scope, ignore_whitespace).await?;
+    if let (true, Some(shown)) = (keep, &changes.snapshot) {
+        let name = checkpoint::reviewed_ref(worktree.thread());
+        checkpoint::keep(git, worktree, &name, shown).await?;
+    }
+    Ok(changes)
+}
+
 /// The action is refused while a turn of the thread runs.
 const fn waits_for_the_turn(action: &GitAction) -> bool {
     matches!(
@@ -243,6 +282,7 @@ const fn waits_for_the_turn(action: &GitAction) -> bool {
             | GitAction::Remove
             | GitAction::Commit { .. }
             | GitAction::Push { .. }
+            | GitAction::Trust { .. }
     )
 }
 
@@ -261,6 +301,7 @@ async fn accepted(git: &Git, worktree: &Worktree) -> Result<(), GitRefusal> {
 async fn shown(git: &Git, worktree: &Worktree) -> Result<agent_threads::git::Status, GitRefusal> {
     let mut status = status::of(git, worktree).await?;
     (status.changed, status.hooks) = not_accepted(git, worktree).await?;
+    status.accept = trust::digest(&to_accept(git, worktree).await?);
     Ok(status)
 }
 

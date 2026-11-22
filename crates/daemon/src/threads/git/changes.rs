@@ -29,7 +29,9 @@ pub async fn between(
             "--no-textconv",
             "--find-renames",
             "--submodule=short",
-            "--ignore-submodules=all",
+            // Between two commits git looks into no nested repository, so one that is new
+            // in a snapshot is shown and not hidden.
+            "--ignore-submodules=none",
             "--src-prefix=a/",
             "--dst-prefix=b/",
         ];

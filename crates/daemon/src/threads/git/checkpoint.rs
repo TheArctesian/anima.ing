@@ -35,6 +35,13 @@ pub fn before_revert_ref(thread: Uuid) -> String {
     format!("{}/before-revert", refs_of(thread))
 }
 
+/// The ref of the snapshot of the uncommitted files that the person last looked at: the only
+/// one that a commit takes, and kept from the clean-up of git.
+#[must_use]
+pub fn reviewed_ref(thread: Uuid) -> String {
+    format!("{}/reviewed", refs_of(thread))
+}
+
 /// The ref that keeps the work of a worktree that was removed (THR-097).
 #[must_use]
 pub fn kept_ref(thread: Uuid) -> String {

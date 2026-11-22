@@ -12,15 +12,16 @@ use std::path::Path;
 use agent_threads::git::GitRefusal;
 use sha2::{Digest, Sha256};
 
-use super::place::Worktree;
+use super::place::{Home, Worktree};
 use super::run::{Git, Run, said};
 
 /// The most hooks and the most bytes of one hook that are read; more is refused.
 const MOST_HOOKS: usize = 64;
 const MOST_BYTES: u64 = 1024 * 1024;
 
-/// The most names one refusal gives.
-const MOST_NAMES: usize = 40;
+/// The most names one refusal gives. More changes than these cannot be shown, so they cannot
+/// be accepted.
+pub const MOST_NAMES: usize = 40;
 
 /// What a commit or a push of the person would run or obey now.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -119,9 +120,58 @@ pub fn changed(
     names.dedup();
     names
         .into_iter()
-        .take(MOST_NAMES)
+        .take(MOST_NAMES + 1)
         .map(|name| said::without_credentials(name))
         .collect()
+}
+
+/// One digest of a whole list: what the page shows the person and sends back with their yes.
+#[must_use]
+pub fn digest(entries: &BTreeMap<String, String>) -> String {
+    let mut all = Sha256::new();
+    for (name, value) in entries {
+        all.update(name.as_bytes());
+        all.update([0]);
+        all.update(value.as_bytes());
+        all.update(b"\n");
+    }
+    crate::model::fetch::hex(&all.finalize())
+}
+
+/// The file of what the person accepted for the repository at `project`, in the folder of the
+/// records: outside the repository, where no agent of a thread writes.
+fn baseline_file(home: &Home, project: &Path) -> std::path::PathBuf {
+    let name = Sha256::digest(project.as_os_str().as_encoded_bytes());
+    let name = crate::model::fetch::hex(&name);
+    home.records().join("projects").join(format!("{name}.json"))
+}
+
+/// What the person last accepted for the repository at `project`, in any thread. `None` when
+/// they accepted nothing yet: a new worktree then starts with nothing accepted, so that what
+/// an earlier agent left in the repository is shown before the first commit.
+#[must_use]
+pub fn baseline(home: &Home, project: &Path) -> Option<BTreeMap<String, String>> {
+    let text = std::fs::read(baseline_file(home, project)).ok()?;
+    serde_json::from_slice(&text).ok()
+}
+
+/// Writes what the person accepted for the repository at `project`.
+///
+/// # Errors
+/// [`GitRefusal::Failed`] when the file cannot be written.
+pub fn keep_baseline(
+    home: &Home,
+    project: &Path,
+    accepted: &BTreeMap<String, String>,
+) -> Result<(), GitRefusal> {
+    let failed = || GitRefusal::Failed {
+        said: "what you accepted could not be written down".to_owned(),
+    };
+    let file = baseline_file(home, project);
+    let folder = file.parent().ok_or_else(failed)?;
+    super::place::private_folder(folder).map_err(|_| failed())?;
+    let text = serde_json::to_vec_pretty(accepted).map_err(|_| failed())?;
+    std::fs::write(&file, text).map_err(|_| failed())
 }
 
 #[cfg(test)]

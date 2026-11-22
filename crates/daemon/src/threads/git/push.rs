@@ -58,6 +58,9 @@ pub async fn make(
         return Ok(pushed(true));
     }
     let target = format!("HEAD:refs/heads/{branch}");
+    // The programs at the remote are the ones of git, whatever the repository says.
+    let receive = format!("remote.{remote}.receivepack=git-receive-pack");
+    let upload = format!("remote.{remote}.uploadpack=git-upload-pack");
     // The program at the remote is the one of git, not one that the configuration names; no
     // tag and no submodule goes with the branch.
     let push = [
@@ -65,6 +68,10 @@ pub async fn make(
         "push.recurseSubmodules=no",
         "-c",
         "push.followTags=false",
+        "-c",
+        receive.as_str(),
+        "-c",
+        upload.as_str(),
         "push",
         "--receive-pack=git-receive-pack",
         "--",

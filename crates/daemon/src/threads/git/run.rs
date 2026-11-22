@@ -5,11 +5,12 @@
 
 mod fixed;
 pub mod folder;
+mod one;
 pub mod said;
 pub mod settings;
 
 use std::collections::BTreeMap;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
@@ -18,6 +19,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 pub(super) use fixed::{fixed_configuration, fixed_environment};
 use folder::FolderId;
+pub use one::Run;
 
 /// The most bytes of output one run keeps; a run that writes more is ended and refused.
 pub const MAX_OUTPUT: usize = 8 * 1024 * 1024;
@@ -91,6 +93,12 @@ pub struct Git {
     of_the_person: Vec<(String, String)>,
     /// The settings of the repository by name, each with a digest of its values.
     of_the_repository: BTreeMap<String, String>,
+    /// Each hook that the configuration names, off ([`settings::hooks_off`]).
+    hooks_off: Vec<(String, String)>,
+    /// The person signs their commits ([`settings::signs`]).
+    signs: bool,
+    /// A push to a folder of this computer is allowed; only the tests have such a remote.
+    local_remotes: bool,
     /// A run for the person runs the hooks and the filters of the repository
     /// ([`Git::with_repository_programs`]); off unless the runner says so.
     repository_programs: bool,
@@ -100,58 +108,6 @@ pub struct Git {
     /// The Git folder, the shared Git folder and the work folder of one worktree
     /// ([`Git::for_worktree`]): with them `git` reads no `.git` file and no `core.worktree`.
     bound: Vec<(&'static str, OsString)>,
-}
-
-/// One run: where, for whom, with which arguments.
-pub struct Run<'a> {
-    pub dir: &'a Path,
-    pub asked: Asked,
-    pub args: Vec<OsString>,
-    /// More environment for this run alone (a private index file).
-    pub env: Vec<(&'static str, OsString)>,
-    pub input: Option<Vec<u8>>,
-    pub time: Duration,
-}
-
-impl<'a> Run<'a> {
-    /// A run of the runner itself in `dir`.
-    pub fn new<S: AsRef<OsStr>>(dir: &'a Path, args: impl IntoIterator<Item = S>) -> Self {
-        Self {
-            dir,
-            asked: Asked::Runner,
-            args: args
-                .into_iter()
-                .map(|arg| arg.as_ref().to_owned())
-                .collect(),
-            env: Vec::new(),
-            input: None,
-            time: LOCAL_TIME,
-        }
-    }
-
-    #[must_use]
-    pub fn for_the_person(mut self) -> Self {
-        self.asked = Asked::Person;
-        self
-    }
-
-    #[must_use]
-    pub fn with_env(mut self, name: &'static str, value: impl Into<OsString>) -> Self {
-        self.env.push((name, value.into()));
-        self
-    }
-
-    #[must_use]
-    pub fn with_input(mut self, input: Vec<u8>) -> Self {
-        self.input = Some(input);
-        self
-    }
-
-    #[must_use]
-    pub const fn with_time(mut self, time: Duration) -> Self {
-        self.time = time;
-        self
-    }
 }
 
 impl Git {
@@ -183,6 +139,9 @@ impl Git {
             filters_off: Vec::new(),
             of_the_person: Vec::new(),
             of_the_repository: BTreeMap::new(),
+            hooks_off: Vec::new(),
+            signs: false,
+            local_remotes: false,
             repository_programs: false,
             folder: None,
             bound: Vec::new(),
@@ -203,6 +162,8 @@ impl Git {
         let mut quiet = self.clone();
         quiet.filters_off = settings::filters_off(&found);
         quiet.of_the_person = settings::for_the_person(&found);
+        quiet.hooks_off = settings::hooks_off(&found);
+        quiet.signs = settings::signs(&found);
         quiet.of_the_repository = settings::of_the_repository(&found);
         Ok(quiet)
     }
@@ -219,6 +180,21 @@ impl Git {
     #[must_use]
     pub const fn repository_programs(&self) -> bool {
         self.repository_programs
+    }
+
+    /// The person signs their commits.
+    #[must_use]
+    pub const fn signs(&self) -> bool {
+        self.signs
+    }
+
+    /// This `git` with a push to a folder of this computer allowed, for the tests: no test
+    /// speaks to a network, so their only remote is a folder.
+    #[cfg(test)]
+    #[must_use]
+    pub(super) fn with_local_remotes(mut self) -> Self {
+        self.local_remotes = true;
+        self
     }
 
     /// The settings of the repository of [`Git::quiet_in`] by name, each with a digest of its
@@ -377,6 +353,13 @@ impl Git {
         };
         if asked == Asked::Person && !self.repository_programs {
             set.extend(self.filters_off.iter().cloned());
+        }
+        if asked == Asked::Runner || !self.repository_programs {
+            set.extend(self.hooks_off.iter().cloned());
+        }
+        if asked == Asked::Person && !self.local_remotes {
+            // A push to a folder runs the hooks of that folder, which nothing here turns off.
+            set.push(("protocol.file.allow".to_owned(), "never".to_owned()));
         }
         let mut env = vec![("GIT_CONFIG_COUNT".to_owned(), set.len().to_string())];
         for (at, (name, value)) in set.iter().enumerate() {

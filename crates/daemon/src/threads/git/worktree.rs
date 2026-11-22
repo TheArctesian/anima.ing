@@ -128,9 +128,8 @@ pub async fn make(git: &Git, home: &Home, plan: Plan<'_>) -> Result<Made, GitRef
     Ok(made(worktree, false))
 }
 
-/// Writes the record of a worktree that was made a moment ago, with the settings and the hooks
-/// of the repository as they are now, and takes the checkpoint of the start. No agent ran in
-/// the worktree yet, so what is written down is of the person.
+/// Writes the record of a worktree that was made a moment ago, with what the person accepted
+/// for its repository before, and takes the checkpoint of the start.
 async fn first_kept(
     git: &Git,
     home: &Home,
@@ -140,7 +139,9 @@ async fn first_kept(
     home.keep(thread, repository, &record)?;
     let worktree = home.worktree(thread, repository)?;
     let git = &git.for_worktree(&worktree).await?;
-    record.trusted = Some(trust::now(git, &worktree).await?.entries);
+    // Only what the person accepted for this repository before counts as accepted: an earlier
+    // agent can have left a hook or a setting in the repository, which each worktree shares.
+    record.trusted = trust::baseline(home, &record.project);
     home.keep(thread, repository, &record)?;
     let worktree = home.worktree(thread, repository)?;
     checkpoint::capture(git, &worktree, 0).await?;

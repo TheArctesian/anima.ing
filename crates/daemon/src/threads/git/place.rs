@@ -115,6 +115,12 @@ impl Home {
         &self.folder
     }
 
+    /// The folder of the records, outside each repository and each worktree.
+    #[must_use]
+    pub fn records(&self) -> &Path {
+        &self.records
+    }
+
     /// The folder of one thread, which holds one worktree for each repository (THR-116).
     #[must_use]
     pub fn of_thread(&self, thread: Uuid) -> PathBuf {

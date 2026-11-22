@@ -2,6 +2,7 @@
 //! and the only remote is a bare repository beside the made one.
 
 mod held;
+mod left;
 mod person;
 mod planted;
 mod runs;
@@ -50,7 +51,9 @@ impl Bench {
         let records = root.join("records");
         std::fs::create_dir_all(&project).expect("the project");
         std::fs::create_dir_all(&home).expect("the home");
-        let git = Git::find(std::env::vars_os()).expect("git is installed");
+        let git = Git::find(std::env::vars_os())
+            .expect("git is installed")
+            .with_local_remotes();
         let bench = Self {
             engine: Engine::new(git.clone(), Home::at(&home, &records).expect("a home")),
             _keep: keep,
@@ -98,7 +101,15 @@ impl Bench {
             base: None,
         };
         let made = self.engine.worktree(plan).await.expect("a worktree");
+        // The person accepts the settings of their repository once, as on its first commit.
+        assert_eq!(self.trust(PERSON).await, GitOutcome::Trusted);
         made.worktree.folder().to_owned()
+    }
+
+    /// The yes of the person to the hooks and settings that the status shows now.
+    async fn trust(&self, caller: Caller) -> GitOutcome {
+        let shown = self.status(caller).await.accept;
+        self.call(caller, GitAction::Trust { shown }).await
     }
 
     async fn call(&self, caller: Caller, mut action: GitAction) -> GitOutcome {
@@ -150,11 +161,11 @@ impl Bench {
         }
     }
 
-    /// Writes the `pre-commit` hook of the project, which each worktree shares.
+    /// Writes the hook of the project that runs when a ref moves; each worktree shares it.
     fn hook(&self, body: &str) {
         let hooks = self.project.join(".git/hooks");
         std::fs::create_dir_all(&hooks).expect("the hooks");
-        let file = hooks.join("pre-commit");
+        let file = hooks.join("reference-transaction");
         std::fs::write(&file, format!("#!/bin/sh\n{body}\n")).expect("a hook");
         #[cfg(unix)]
         {
