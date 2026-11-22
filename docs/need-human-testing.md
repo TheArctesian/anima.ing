@@ -2311,7 +2311,7 @@ one device, its metrics and the event log (`apps/client/src/lib/hub/recent/`). I
 device, because their settings can hold a credential. When the hub does not answer, it shows that copy, and the
 banner "Not on the network" gives its age. Sign-out deletes the copy.
 
-The tests cover the rules with a store in memory. The real store (IndexedDB) was run in Chromium on 2026-11-18. It
+The tests cover the rules with a store in memory, and the real store against an IndexedDB in memory (commit `b4b26df5`). The real store was run in Chromium on 2026-11-18. It
 was not run in the web view of the installed application (WebKit on macOS, WebKitGTK on Linux), and no screen was
 looked at with the network off.
 
