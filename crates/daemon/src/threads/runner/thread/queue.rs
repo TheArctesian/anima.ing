@@ -82,6 +82,18 @@ impl Thread {
         self.stalled = true;
     }
 
+    /// A prompt of the queue that did not go waits again, first, with its ID. Nothing waits on
+    /// a stopped thread: a stop ends the queue (THR-102).
+    pub fn put_back(&mut self, id: Uuid, text: String) -> Option<Step> {
+        if self.row.state == RunState::Stopped
+            || self.row.queued.iter().any(|queued| queued.id == id)
+        {
+            return None;
+        }
+        self.row.queued.insert(0, Queued { id, text });
+        Some(self.row_change())
+    }
+
     /// The first prompt of the queue as the next turn, when the program waits for one with
     /// nothing open for an answer, and the queue did not stop.
     pub(super) fn next_queued(&mut self) -> Vec<Step> {
@@ -92,11 +104,12 @@ impl Thread {
         if !waits || self.pending > 0 || self.stalled || self.row.queued.is_empty() {
             return Vec::new();
         }
-        let Queued { text, .. } = self.row.queued.remove(0);
-        let mut steps: Vec<Step> = match self.send(&Prompt::plain(&text), false) {
-            Ok(lines) => lines.into_iter().map(Step::Write).collect(),
-            Err(_) => return Vec::new(),
+        let Queued { id, text } = self.row.queued.remove(0);
+        let Ok(lines) = self.send(&Prompt::plain(&text), false) else {
+            self.row.queued.insert(0, Queued { id, text });
+            return Vec::new();
         };
+        let mut steps: Vec<Step> = lines.into_iter().map(Step::Write).collect();
         steps.push(prompt_change(&text));
         steps.push(self.row_change());
         steps

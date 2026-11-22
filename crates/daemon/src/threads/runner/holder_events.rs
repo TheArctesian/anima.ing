@@ -273,15 +273,9 @@ impl Runner {
                 };
                 (back, None, result)
             }
-            Waits::Send {
-                thread,
-                back,
-                shown,
-                files,
-            } => {
-                let result = self.sent(thread, &shown, &outcome).await;
-                self.files_went(thread, &files, &result);
-                (back, Some(thread), result)
+            Waits::Send(prompt) => {
+                let (thread, result) = self.prompt_answered(&prompt, &outcome).await;
+                (prompt.back, Some(thread), result)
             }
             Waits::Answer(pending) => {
                 let result = self.answered(&pending, &outcome).await;

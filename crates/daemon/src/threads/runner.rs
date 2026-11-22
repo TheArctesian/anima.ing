@@ -63,13 +63,7 @@ enum Waits {
         back: Caller,
     },
     /// The last line of a prompt; the prompt is shown as sent when the holder takes it.
-    Send {
-        thread: Uuid,
-        back: Caller,
-        shown: thread::Shown,
-        /// The files of the prompt, which wait again when the holder does not take the line.
-        files: Vec<Uuid>,
-    },
+    Send(calls::SentPrompt),
     /// The line of an answer; the request closes when the holder takes it (THR-030).
     Answer(Pending),
 }

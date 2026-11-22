@@ -213,3 +213,26 @@ fn th109_two_prompts_sent_before_the_program_says_it_runs_are_two_turns() {
     );
     assert_eq!(prompts(&line(&mut thread, DONE)), ["later"]);
 }
+
+#[test]
+fn th109_a_queued_prompt_that_did_not_go_waits_again_first_with_its_id() {
+    let mut thread = held_claude();
+    line(&mut thread, IDLE);
+    let (first, second) = (Uuid::from_u128(1), Uuid::from_u128(2));
+    thread.begin("busy");
+    queue(&mut thread, 1, "first");
+    queue(&mut thread, 2, "second");
+    let (text, _) = thread.take_queued(second).expect("taken");
+    assert!(thread.put_back(second, text).is_some());
+    let ids: Vec<Uuid> = thread.row.queued.iter().map(|queued| queued.id).collect();
+    assert_eq!(ids, [second, first]);
+    assert!(
+        thread.put_back(second, "again".to_owned()).is_none(),
+        "a prompt waits once"
+    );
+    thread.exited(Some(0), None);
+    assert!(
+        thread.put_back(first, "late".to_owned()).is_none(),
+        "a stop ends the queue"
+    );
+}

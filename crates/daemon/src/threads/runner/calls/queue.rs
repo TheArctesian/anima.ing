@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use super::super::log::Kind;
 use super::super::{Caller, Runner};
+use super::send::Sender;
 
 impl Runner {
     /// A call that changes the queue but sends nothing by itself.
@@ -53,7 +54,8 @@ impl Runner {
         }
     }
 
-    /// A queued prompt now: it leaves the queue and goes as a prompt of the person does.
+    /// A queued prompt now: it leaves the queue and goes as a prompt of the person does. When
+    /// it does not go, it waits again, first in the queue, with its ID.
     pub(super) async fn send_queued(
         &mut self,
         id: Uuid,
@@ -65,10 +67,26 @@ impl Runner {
         let _ = self.apply(id, vec![step]).await;
         let send = Action::Send {
             thread: id,
-            text,
+            text: text.clone(),
             attachments: Vec::new(),
         };
-        self.send(send, back, true).await
+        let went = self.send(send, back, Sender::Queue(queued)).await;
+        if went.is_err() {
+            self.queued_back(id, queued, text).await;
+        }
+        went
+    }
+
+    /// A prompt of the queue that did not go waits again, first in the queue.
+    pub(in super::super) async fn queued_back(&mut self, id: Uuid, queued: Uuid, text: String) {
+        let Some(step) = self
+            .threads
+            .get_mut(&id)
+            .and_then(|thread| thread.put_back(queued, text))
+        else {
+            return;
+        };
+        let _ = self.apply(id, vec![step]).await;
     }
 
     async fn queue_steps(
