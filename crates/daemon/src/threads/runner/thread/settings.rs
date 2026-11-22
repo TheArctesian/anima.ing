@@ -1,14 +1,15 @@
-//! A change of the model, the effort or the mode of a thread after its start (TH110). Each takes
-//! effect from the next turn. Pure.
+//! A change of the model, the effort or the mode of a thread after its start (TH110). The row
+//! says a change only when the program has it, so the person never sees a mode that the program
+//! does not run in. Pure.
+
+use std::collections::BTreeMap;
 
 use agent_threads::control::{Refusal, RunState};
-use agent_threads::drive::{
-    ClaudeInput, DriveEvent, Effort, Mode, Model, ProgramRequestId, ProgramState,
-};
+use agent_threads::drive::{ClaudeInput, DriveEvent, Effort, Mode, Model, ProgramRequestId};
 
 use super::{Driver, Step, Thread, said};
 
-/// The first words of the ID of a control request of a change: a refusal of it is said.
+/// The first words of the ID of a control request of a change.
 const CHANGE_ID: &str = "anima-set-";
 
 /// What the person changes; `None` keeps what the thread has.
@@ -19,8 +20,30 @@ pub struct Changes {
     pub mode: Option<Mode>,
 }
 
+impl Changes {
+    /// These changes, then `later` over them.
+    fn and(self, later: Self) -> Self {
+        Self {
+            model: later.model.or(self.model),
+            effort: later.effort.or(self.effort),
+            mode: later.mode.or(self.mode),
+        }
+    }
+}
+
+/// The changes that the person asked and the program does not have yet.
+#[derive(Debug, Default)]
+pub(super) struct Asked {
+    /// Claude Code: each control request by its ID, until Claude Code answers it.
+    claude: BTreeMap<String, Changes>,
+    /// Codex: the changes for the turns after the running one.
+    codex: Option<Changes>,
+}
+
 impl Thread {
-    /// Changes the thread from its next turn. A call with a part that the program cannot change
+    /// Changes the thread. Claude Code gets its control requests at once and the row changes
+    /// when it answers that it took them; Codex takes a change with its next turn, and the row
+    /// changes when the running turn ended. A call with a part that the program cannot change
     /// changes nothing.
     ///
     /// # Errors
@@ -30,49 +53,88 @@ impl Thread {
         if self.row.state == RunState::Stopped || !self.held {
             return Err(Refusal::NotRunning);
         }
-        let mut steps = Vec::new();
-        match &mut self.driver {
-            Driver::Codex(codex) => {
-                if changes.mode == Some(Mode::Plan) {
-                    return Err(cannot(
-                        "Codex has no plan mode that the runner can set: choose a different mode.",
-                    ));
-                }
-                codex.change(changes.model.clone(), changes.effort, changes.mode);
+        match &self.driver {
+            Driver::Codex(_) if changes.mode == Some(Mode::Plan) => Err(cannot(
+                "Codex has no plan mode that the runner can set: choose a different mode.",
+            )),
+            Driver::Codex(_) => {
+                let waiting = self.asked.codex.take().unwrap_or_default();
+                self.asked.codex = Some(waiting.and(changes));
+                Ok(self.codex_landed())
             }
-            Driver::Claude(_) => {
-                if changes.effort.is_some() {
-                    return Err(cannot(
-                        "Claude Code cannot change the effort of a session that runs: start a new thread with the effort you want.",
-                    ));
-                }
-                let lines = self.claude_lines(&changes);
-                self.changes.extend(lines);
-                steps.extend(self.waiting_changes());
-            }
+            Driver::Claude(_) if changes.effort.is_some() => Err(cannot(
+                "Claude Code cannot change the effort of a session that runs: start a new thread with the effort you want.",
+            )),
+            Driver::Claude(_) => Ok(self.claude_lines(changes)),
         }
-        self.note_changes(changes);
-        steps.push(self.row_change());
-        Ok(steps)
     }
 
-    fn claude_lines(&mut self, changes: &Changes) -> Vec<String> {
-        let mut lines = Vec::new();
-        if let Some(model) = &changes.model {
+    /// One control request for each part; Claude Code was measured to take them between two
+    /// turns, and its answer says whether it took them.
+    fn claude_lines(&mut self, changes: Changes) -> Vec<Step> {
+        let mut steps = Vec::new();
+        if let Some(model) = changes.model {
             self.controls += 1;
-            lines.push(ClaudeInput::set_model(
-                &format!("{CHANGE_ID}model-{}", self.controls),
-                model,
-            ));
+            let id = format!("{CHANGE_ID}model-{}", self.controls);
+            steps.push(Step::Write(ClaudeInput::set_model(&id, &model)));
+            let part = Changes {
+                model: Some(model),
+                ..Changes::default()
+            };
+            self.asked.claude.insert(id, part);
         }
         if let Some(mode) = changes.mode {
             self.controls += 1;
-            lines.push(ClaudeInput::set_permission_mode(
-                &format!("{CHANGE_ID}mode-{}", self.controls),
-                mode,
-            ));
+            let id = format!("{CHANGE_ID}mode-{}", self.controls);
+            steps.push(Step::Write(ClaudeInput::set_permission_mode(&id, mode)));
+            let part = Changes {
+                mode: Some(mode),
+                ..Changes::default()
+            };
+            self.asked.claude.insert(id, part);
         }
-        lines
+        steps
+    }
+
+    /// The changes of Codex land when no turn runs: the next `turn/start` carries them.
+    pub(super) fn codex_landed(&mut self) -> Vec<Step> {
+        let Driver::Codex(codex) = &mut self.driver else {
+            return Vec::new();
+        };
+        if codex.turn.is_some() {
+            return Vec::new();
+        }
+        let Some(changes) = self.asked.codex.take() else {
+            return Vec::new();
+        };
+        codex.change(changes.model.clone(), changes.effort, changes.mode);
+        self.note_changes(changes);
+        vec![self.row_change()]
+    }
+
+    /// The answer of Claude Code to a control request of a change: the row says it when Claude
+    /// Code took it, and the person is told when it did not.
+    pub(super) fn change_answered(&mut self, id: &ProgramRequestId, ok: bool) -> Vec<Step> {
+        let ProgramRequestId::Text(id) = id else {
+            return Vec::new();
+        };
+        let Some(changes) = self.asked.claude.remove(id) else {
+            return Vec::new();
+        };
+        if ok {
+            self.note_changes(changes);
+            return vec![self.row_change()];
+        }
+        let what = if changes.model.is_some() {
+            "model"
+        } else {
+            "mode"
+        };
+        vec![said(DriveEvent::Notice {
+            text: format!(
+                "Claude Code did not change the {what} of the thread; it keeps the one it had."
+            ),
+        })]
     }
 
     fn note_changes(&mut self, changes: Changes) {
@@ -85,34 +147,6 @@ impl Thread {
         if let Some(mode) = changes.mode {
             self.row.mode = mode;
         }
-    }
-
-    /// The control requests of a change, once no turn runs or waits: Claude Code was measured to
-    /// take them between two turns only.
-    pub(super) fn waiting_changes(&mut self) -> Vec<Step> {
-        let between = self.program == Some(ProgramState::Idle) && self.pending == 0;
-        if !between {
-            return Vec::new();
-        }
-        self.changes.drain(..).map(Step::Write).collect()
-    }
-
-    /// A refusal of Claude Code to change the model or the mode, said to the person.
-    pub(super) fn change_refused(id: &ProgramRequestId, ok: bool) -> Vec<Step> {
-        let ProgramRequestId::Text(id) = id else {
-            return Vec::new();
-        };
-        if ok || !id.starts_with(CHANGE_ID) {
-            return Vec::new();
-        }
-        let what = if id.contains("model") {
-            "model"
-        } else {
-            "mode"
-        };
-        vec![said(DriveEvent::Notice {
-            text: format!("Claude Code did not change the {what} of the thread."),
-        })]
     }
 }
 

@@ -15,8 +15,8 @@ impl Thread {
             steps.extend(self.event(event, text, new_id));
         }
         steps.extend(self.state_change());
-        // A change of the person goes before the next queued prompt, so that prompt has it.
-        steps.extend(self.waiting_changes());
+        // A change of Codex lands when the turn ended, before the next queued prompt goes.
+        steps.extend(self.codex_landed());
         steps.extend(self.next_queued());
         steps
     }
@@ -90,7 +90,7 @@ impl Thread {
     fn reply(&mut self, id: &ProgramRequestId, ok: bool, result: &serde_json::Value) -> Vec<Step> {
         let (Driver::Codex(codex), ProgramRequestId::Number(number)) = (&mut self.driver, id)
         else {
-            return Self::change_refused(id, ok);
+            return self.change_answered(id, ok);
         };
         match codex.reply(*number, ok, result) {
             Ok(lines) => {

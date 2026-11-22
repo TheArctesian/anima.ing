@@ -27,41 +27,63 @@ fn idle_claude() -> Thread {
     thread
 }
 
-#[test]
-fn th110_claude_code_takes_the_model_and_the_mode_at_once_between_turns() {
-    let mut thread = idle_claude();
-    let steps = thread
-        .set(Changes {
-            model: Some(model("sonnet")),
-            mode: Some(Mode::AcceptEdits),
-            ..Changes::default()
-        })
-        .expect("changed");
-    assert_eq!(subtypes(&steps), ["set_model", "set_permission_mode"]);
-    assert_eq!(writes(&steps)[1]["request"]["mode"], "acceptEdits");
-    assert_eq!(thread.row.model.as_deref(), Some("sonnet"));
-    assert_eq!(thread.row.mode, Mode::AcceptEdits);
+/// The answer of Claude Code to the control request with this ID.
+fn answer(id: &serde_json::Value, subtype: &str) -> String {
+    format!(
+        r#"{{"type":"control_response","response":{{"subtype":"{subtype}","request_id":{id}}}}}"#
+    )
 }
 
 #[test]
-fn th110_a_change_during_a_turn_goes_when_the_turn_ends_before_a_queued_prompt() {
+fn th110_claude_code_gets_the_change_at_once_and_the_row_says_it_when_claude_code_took_it() {
     let mut thread = held_claude();
+    let steps = thread
+        .set(Changes {
+            model: Some(model("sonnet")),
+            mode: Some(Mode::Ask),
+            ..Changes::default()
+        })
+        .expect("changed");
+    assert_eq!(
+        subtypes(&steps),
+        ["set_model", "set_permission_mode"],
+        "also while a turn runs"
+    );
+    assert_eq!(writes(&steps)[1]["request"]["mode"], "manual");
+    assert_eq!(
+        thread.row.mode,
+        Mode::FullAccess,
+        "the program does not have it yet"
+    );
+    let ids: Vec<_> = writes(&steps)
+        .iter()
+        .map(|line| line["request_id"].clone())
+        .collect();
+    thread.line(&answer(&ids[1], "success"), &mut counter());
+    assert_eq!(thread.row.mode, Mode::Ask);
+    assert_eq!(thread.row.model, None);
+    thread.line(&answer(&ids[0], "success"), &mut counter());
+    assert_eq!(thread.row.model.as_deref(), Some("sonnet"));
+}
+
+#[test]
+fn th110_a_mode_that_claude_code_refuses_is_never_shown_and_the_person_is_told() {
+    let mut thread = idle_claude();
     let steps = thread
         .set(Changes {
             mode: Some(Mode::Ask),
             ..Changes::default()
         })
         .expect("changed");
-    assert_eq!(subtypes(&steps), Vec::<String>::new(), "a turn runs");
-    thread
-        .queue(uuid::Uuid::from_u128(1), "next".to_owned())
-        .expect("queued");
-    let ended = writes(&thread.line(DONE, &mut counter()));
-    assert_eq!(ended[0]["request"]["subtype"], "set_permission_mode");
-    assert_eq!(
-        ended[1]["message"]["content"], "next",
-        "the queued prompt goes after it"
+    let said = thread.line(
+        &answer(&writes(&steps)[0]["request_id"], "error"),
+        &mut counter(),
     );
+    assert_eq!(thread.row.mode, Mode::FullAccess);
+    assert!(said.iter().any(|step| matches!(
+        step,
+        Step::Change(Change::Said { event: DriveEvent::Notice { text } }) if text.contains("mode")
+    )));
 }
 
 #[test]
@@ -78,26 +100,6 @@ fn th110_claude_code_refuses_a_change_of_the_effort_with_words_and_nothing_chang
         "a call with a refused part changes nothing"
     );
     assert_eq!(thread.row.effort, None);
-}
-
-#[test]
-fn th110_a_refusal_of_claude_code_is_said_to_the_person() {
-    let mut thread = idle_claude();
-    let steps = thread
-        .set(Changes {
-            model: Some(model("nope")),
-            ..Changes::default()
-        })
-        .expect("changed");
-    let id = writes(&steps)[0]["request_id"].clone();
-    let answer = format!(
-        r#"{{"type":"control_response","response":{{"subtype":"error","request_id":{id},"error":"no such model"}}}}"#
-    );
-    let said = thread.line(&answer, &mut counter());
-    assert!(said.iter().any(|step| matches!(
-        step,
-        Step::Change(Change::Said { event: DriveEvent::Notice { text } }) if text.contains("model")
-    )));
 }
 
 #[test]
@@ -119,10 +121,26 @@ fn th110_codex_carries_the_change_on_each_later_turn_and_refuses_plan_mode() {
         })
         .expect("changed");
     assert_eq!(writes(&steps).len(), 0, "nothing goes to the running turn");
-    assert_eq!(thread.row.effort, Some(Effort::Medium));
+    assert_eq!(
+        thread.row.mode,
+        Mode::FullAccess,
+        "the running turn keeps its mode"
+    );
     thread.line(
         r#"{"method":"turn/completed","params":{"turn":{"id":"u1","status":"completed"}}}"#,
         &mut ids,
+    );
+    assert_eq!(
+        thread.row.mode,
+        Mode::Ask,
+        "the change landed with the end of the turn"
+    );
+    assert_eq!(thread.row.effort, Some(Effort::Medium));
+    let saved = thread.saved();
+    assert_eq!(
+        saved.codex_changed.mode,
+        Some(Mode::Ask),
+        "a restart keeps it"
     );
     for _ in 0..2 {
         let next = thread.send("go on", true).expect("running");

@@ -12,12 +12,13 @@ use agent_threads::first_line;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::codex::Codex;
+use super::codex::{Changed, Codex};
 
 mod asks;
 mod events;
 mod kept;
 mod queue;
+mod record;
 mod settings;
 mod step;
 
@@ -55,6 +56,9 @@ pub struct Saved {
     pub effort: Option<Effort>,
     pub codex_thread: Option<String>,
     pub codex_turn: Option<String>,
+    /// What the person changed of a Codex thread after its start (TH110).
+    #[serde(default)]
+    pub codex_changed: Changed,
     /// The open requests: the ID of the runner and the line of the program.
     pub open: Vec<(Uuid, String)>,
     /// The open requests whose answer went to the holder: after a restart they close, so that
@@ -88,9 +92,8 @@ pub struct Thread {
     /// Code holds a prompt sent during a turn and runs it as a turn of its own (THR-020), so each
     /// counts; a Codex steer ends with the running turn (TH109).
     pending: u32,
-    /// The control requests of a change of the person that wait for the turns to end before
-    /// Claude Code takes them (TH110).
-    changes: Vec<String>,
+    /// The changes of the person that the program does not have yet (TH110).
+    asked: settings::Asked,
 }
 
 impl Thread {
@@ -115,90 +118,8 @@ impl Thread {
             last_error: None,
             stalled: false,
             pending: 0,
-            changes: Vec::new(),
+            asked: settings::Asked::default(),
         }
-    }
-
-    /// The record of the thread.
-    #[must_use]
-    pub fn saved(&self) -> Saved {
-        let (codex_thread, codex_turn) = match &self.driver {
-            Driver::Codex(codex) => (codex.thread.clone(), codex.turn.clone()),
-            Driver::Claude(_) => (None, None),
-        };
-        Saved {
-            row: self.recorded_row(),
-            effort: self.row.effort,
-            codex_thread,
-            codex_turn,
-            open: self
-                .open
-                .iter()
-                .map(|(id, open)| (*id, open.line.clone()))
-                .collect(),
-            seq: self.seq,
-            answering: self
-                .open
-                .iter()
-                .filter(|(_, open)| open.answering)
-                .map(|(id, _)| *id)
-                .collect(),
-        }
-    }
-
-    /// What the record holds of this thread but the lines of its requests: when it does not
-    /// change, the record need not be written again.
-    #[must_use]
-    pub fn record_key(&self) -> String {
-        let (codex_thread, codex_turn) = match &self.driver {
-            Driver::Codex(codex) => (codex.thread.as_deref(), codex.turn.as_deref()),
-            Driver::Claude(_) => (None, None),
-        };
-        let open: Vec<(&Uuid, bool)> = self
-            .open
-            .iter()
-            .map(|(id, open)| (id, open.answering))
-            .collect();
-        serde_json::to_string(&(&self.recorded_row(), codex_thread, codex_turn, open))
-            .unwrap_or_default()
-    }
-
-    /// The row as the record holds it: never the prompts that wait (TH109).
-    fn recorded_row(&self) -> ThreadRow {
-        ThreadRow {
-            queued: Vec::new(),
-            ..self.row.clone()
-        }
-    }
-
-    /// A thread from its record, after a start of the runner; its open requests are read again
-    /// from their lines and keep their IDs.
-    #[must_use]
-    pub fn restore(saved: Saved, codex: Option<Codex>) -> Self {
-        let codex = codex.map(|codex| codex.known(saved.codex_thread, saved.codex_turn));
-        let mut thread = Self::new(saved.row, saved.effort, codex);
-        // What the program last said stays true until it says more (THR-085).
-        thread.program = match thread.row.state {
-            RunState::Idle => Some(ProgramState::Idle),
-            RunState::Working | RunState::NeedsYou => Some(ProgramState::Working),
-            RunState::Starting | RunState::Stopped | RunState::Unknown => None,
-        };
-        thread.held = thread.row.state != RunState::Stopped;
-        thread.seq = saved.seq;
-        for (id, line) in saved.open {
-            let events = thread.decode(line.as_bytes());
-            if let Some(DriveEvent::Request(request)) = events.into_iter().next() {
-                thread.open.insert(
-                    id,
-                    Open {
-                        request,
-                        line,
-                        answering: saved.answering.contains(&id),
-                    },
-                );
-            }
-        }
-        thread
     }
 
     fn decode(&mut self, line: &[u8]) -> Vec<DriveEvent> {

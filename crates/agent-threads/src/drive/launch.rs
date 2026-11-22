@@ -58,9 +58,19 @@ impl Mode {
     }
 }
 
-/// A model name the person chose: an alias or a full name, of a closed alphabet (THR-040).
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+/// A model name the person chose: an alias or a full name, of a closed alphabet (THR-040). A
+/// name read from a record is checked again.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "String")]
 pub struct Model(String);
+
+impl TryFrom<String> for Model {
+    type Error = DriveError;
+
+    fn try_from(name: String) -> Result<Self, Self::Error> {
+        Self::new(&name)
+    }
+}
 
 impl Model {
     /// # Errors

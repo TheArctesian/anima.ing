@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use agent_threads::drive::{
     CodexDecoder, CodexInput, CodexTurn, Effort, Mode, Model, TurnSettings,
 };
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// What a call of the runner was, so that its answer can be read.
@@ -38,10 +39,16 @@ pub struct Codex {
     queued: Vec<String>,
     /// Why Codex refused the last `turn/start`, until the thread reads it (TH109).
     refused_turn: Option<String>,
-    /// The model and the mode that the person changed after the start: each later turn carries
-    /// them (TH110). The effort goes with each turn already.
-    changed_model: Option<Model>,
-    changed_mode: Option<Mode>,
+    /// What the person changed after the start (TH110).
+    changed: Changed,
+}
+
+/// The model and the mode that the person changed after the start: each later turn carries them,
+/// also after a restart of the runner (TH110). The effort goes with each turn already.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Changed {
+    pub model: Option<Model>,
+    pub mode: Option<Mode>,
 }
 
 impl Codex {
@@ -60,16 +67,16 @@ impl Codex {
             ended: None,
             queued: Vec::new(),
             refused_turn: None,
-            changed_model: None,
-            changed_mode: None,
+            changed: Changed::default(),
         }
     }
 
     /// A server that the holder kept while the daemon started again: its thread is known.
     #[must_use]
-    pub fn known(mut self, thread: Option<String>, turn: Option<String>) -> Self {
+    pub fn known(mut self, thread: Option<String>, turn: Option<String>, changed: Changed) -> Self {
         self.thread = thread;
         self.turn = turn;
+        self.changed = changed;
         self.next = 1_000_000;
         self
     }
@@ -106,9 +113,9 @@ impl Codex {
         }
         self.calls.insert(id, Call::TurnStart);
         let turn = TurnSettings {
-            model: self.changed_model.as_ref(),
+            model: self.changed.model.as_ref(),
             effort: self.effort,
-            mode: self.changed_mode,
+            mode: self.changed.mode,
         };
         vec![CodexInput::turn_start(id, &thread, text, &turn)]
     }
@@ -116,14 +123,20 @@ impl Codex {
     /// The model, the effort or the mode of the next turns (TH110). A turn that runs keeps its own.
     pub fn change(&mut self, model: Option<Model>, effort: Option<Effort>, mode: Option<Mode>) {
         if model.is_some() {
-            self.changed_model = model;
+            self.changed.model = model;
         }
         if effort.is_some() {
             self.effort = effort;
         }
         if mode.is_some() {
-            self.changed_mode = mode;
+            self.changed.mode = mode;
         }
+    }
+
+    /// What the person changed, for the record.
+    #[must_use]
+    pub fn changed(&self) -> Changed {
+        self.changed.clone()
     }
 
     /// Why Codex refused the last `turn/start`, once: that turn never runs, so it ended as failed.
