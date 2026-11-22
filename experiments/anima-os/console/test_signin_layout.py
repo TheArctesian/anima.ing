@@ -3,10 +3,40 @@ import argparse
 import importlib.util
 from pathlib import Path
 import sys
+import subprocess
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QPushButton
 from PySide6.QtWebEngineWidgets import QWebEngineView
+
+URL = 'https://auth.example/device?user_code=ABCD-EFGH'
+
+
+def check_code(browser, output):
+    browser.qr.set_url(URL)
+    browser.code.setText('ABCD-EFGH')
+    browser.link.setText(URL)
+    browser.confirmation.setText('Confirm code: ABCD-EFGH')
+    browser.show()
+    QTest.mouseClick(browser.alternative, Qt.MouseButton.LeftButton)
+    for width, height in ((1280, 800), (800, 1280), (640, 480)):
+        browser.resize(width, height)
+        QTest.qWait(150)
+        browser.grab().save(str(output / f'qr-{width}x{height}.png'))
+        qr = output / f'code-{width}x{height}.png'
+        browser.qr.grab().save(str(qr))
+        decoded = subprocess.check_output(['zbarimg', '--quiet', '--raw', str(qr)], text=True).strip()
+        assert decoded == URL, 'Phone-readable QR must encode the complete verification link'
+        assert browser.pages.currentWidget().horizontalScrollBar().maximum() == 0
+    for label, expected in (('Copy code', 'ABCD-EFGH'), ('Copy link', URL)):
+        button = next(widget for widget in browser.findChildren(QPushButton) if widget.text() == label)
+        QTest.mouseClick(button, Qt.MouseButton.LeftButton)
+        assert QApplication.clipboard().text() == expected
+    QTest.mouseClick(browser.alternative, Qt.MouseButton.LeftButton)
+    assert browser.pages.currentWidget() is browser.web, 'Local browser sign-in remains available'
+    browser.clear()
+    assert not browser.isVisible() and not browser.code.text() and not browser.link.text()
+    assert not browser.qr.matrix, 'Completion/cancellation must remove the previous QR'
 
 
 def check_windows(output):
@@ -28,6 +58,7 @@ def check_windows(output):
         assert browser.rect().contains(back.geometry()) or browser.rect().contains(back.mapTo(browser, back.rect().center()))
     QTest.mouseClick(back, Qt.MouseButton.LeftButton)
     assert not browser.isVisible(), 'Back must return to the local console'
+    check_code(browser, output)
     return 0
 
 

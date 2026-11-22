@@ -89,7 +89,7 @@ let
   };
   desktop = pkgs.makeDesktopItem {
     name = "anima-setup"; desktopName = "Install Anima.ing";
-    comment = "Install the Anima.ing server preview";
+    comment = "Install Anima OS";
     exec = "${launcher}/bin/anima-setup"; icon = "${./branding/logo.png}";
     categories = [ "System" ];
   };

@@ -48,7 +48,7 @@ void Setup::storage() {
         connect(check, &QCheckBox::toggled, this, [this] { selectionChanged(); });
     }
     list->addStretch();
-    layout->addWidget(description("Added drives become separate data volumes, not a RAID array. Unselected drives stay untouched. Disk encryption is not available in this preview.",page));
+    layout->addWidget(description("Added drives become separate data volumes, not a RAID array. Unselected drives stay untouched. Disk encryption is not available.",page));
     connect(systemDisk, qOverload<int>(&QComboBox::currentIndexChanged), this, [this] { selectionChanged(); });
     selectionChanged();
 }

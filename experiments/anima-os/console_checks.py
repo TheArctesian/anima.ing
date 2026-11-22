@@ -1,5 +1,6 @@
 """Installed-console acceptance through rendered controls, using disposable VM credentials."""
 import time
+import subprocess
 from gui_test import qmp, screenshot
 from gui_actions import locate
 
@@ -45,7 +46,14 @@ def installed_console(machine, output, password):
     x, y, w, h = locate(output, 'Display & accessibility'); click(machine, x+w//2, y+h//2)
     wait_label(output, 'Orientation')
     screenshot(output, 'console-display')
-    machine.command('DISPLAY=:0 XAUTHORITY=/home/admin/.Xauthority xdotool key ctrl+alt+l')
+    machine.command('DISPLAY=:0 XAUTHORITY=/home/admin/.Xauthority xdotool mousemove 800 500 click --repeat 8 --delay 30 5')
+    x, y, w, h = wait_label(output, 'Turn screen off'); click(machine, x+w//2, y+h//2)
+    time.sleep(1)
+    screenshot(output, 'console-screen-off')
+    brightness = subprocess.check_output(['magick', str(output/'console-screen-off.ppm'), '-format', '%[fx:mean]', 'info:'], text=True)
+    assert float(brightness) < .001, 'Screen-off must visibly blank the display'
+    machine.command('systemctl is-active NetworkManager; systemctl is-active display-manager')
+    key(output, 'shift')
     wait_label(output, 'Local session locked')
     machine.command('systemctl is-active NetworkManager; systemctl is-active display-manager')
     screenshot(output, 'console-relocked')

@@ -31,6 +31,11 @@ try{
  await Bun.sleep(300);await js(`document.querySelector('[name=password]').value='synthetic';document.querySelector('#unlock-form').requestSubmit()`);await Bun.sleep(200);
  await assert(`JSON.stringify([...document.querySelectorAll('nav [data-page]')].map(e=>e.dataset.page))===JSON.stringify(['Overview','Network','Storage','Settings'])`,'Four destinations');
  await click('[data-action=sign-in]');await assert(`fixture.calls.includes('sign-in')`,'One action starts sign-in');await click('[data-action=cancel-sign-in]');
+ await click('[data-action=selfhost]');await assert(`fixture.enrollments.length===0`,'Opening enrollment does not connect');
+ await js(`document.querySelector('[name=hub]').value='https://hub.example';document.querySelector('[name=code]').value='synthetic-enrollment';document.querySelector('#selfhost-form').requestSubmit()`);await until('fixture.pending===0');
+ await assert(`fixture.enrollments.length===1&&fixture.enrollments[0].hub==='https://hub.example'&&fixture.enrollments[0].code==='synthetic-enrollment'&&!document.querySelector('[name=code]')`,'Explicit submit sends the pasted enrollment code and clears it');
+ await js('fixture.enrolled=false');
+
  await click('[data-page=Settings]');await click('[data-page=Display]');await assert(`document.querySelector('h1').textContent==='Display & accessibility'`,'Display reachable');await click('[data-action=settings-back]');await assert(`document.activeElement.dataset.page==='Display'`,'Settings back restores focus');
  await cmd('Emulation.setDeviceMetricsOverride',{width:1280,height:800,deviceScaleFactor:1,mobile:false});
  const shot=async name=>{const image=await cmd('Page.captureScreenshot',{format:'png'});writeFileSync(join(out,name+'.png'),Buffer.from(image.data,'base64'));};
@@ -55,6 +60,8 @@ try{
    const shot=await cmd('Page.captureScreenshot',{format:'png'});writeFileSync(join(out,`${page.toLowerCase()}-${width}x${height}.png`),Buffer.from(shot.data,'base64'));records.push({width,height,page,...geometry});
   }
  }
+ await click('[data-action=screen-off]');await assert(`fixture.screenOff===1&&!!document.querySelector('#unlock-form')&&!fixture.calls.includes('shutdown')&&!fixture.calls.includes('restart')`,'Screen-off uses the native display action and locks without a power operation');
+ await js(`document.querySelector('[name=password]').value='synthetic';document.querySelector('#unlock-form').requestSubmit()`);await until('fixture.pending===0');
  await cmd('Input.dispatchKeyEvent',{type:'keyDown',key:'l',code:'KeyL',modifiers:3});await assert(`!!document.querySelector('#unlock-form')`,'Keyboard lock remains available');
  writeFileSync(join(out,'results.json'),JSON.stringify({status:'passed',fontDirectory:fontDirectory||'Host font fallback; installed appliance uses IBM Plex',networkChecks:['adapter absence','radio off and automatic scan','inline scan failure','scan navigation','strongest access point','escaped SSID','secured and open connection','adapter loss and reattach','lock during scan','320px row bounds'],scope:'Synthetic transport, real product HTML/CSS/JS in headless Chromium; not appliance or hardware acceptance',checks:records},null,2));
  console.log('PASS: direct sign-in, four destinations, settings/back focus, network availability/inline scan/connection/lifecycle, concurrent update progress, diagnostics, 20 responsive screenshots. Evidence: '+out);

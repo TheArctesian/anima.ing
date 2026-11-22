@@ -1,9 +1,39 @@
 """Separate, off-record sign-in browser with compact native navigation."""
 from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtGui import QColor, QPainter
+from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea, QSizePolicy, QStackedWidget, QVBoxLayout, QWidget
 from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile
 from PySide6.QtWebEngineWidgets import QWebEngineView
+import qrcode
+
+
+class SigninCode(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.matrix = []
+        self.setFixedSize(240, 240)
+        self.setAccessibleName('Scan to sign in on another device')
+
+    def set_url(self, url):
+        self.matrix = []
+        if url:
+            code = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, border=4)
+            code.add_data(url)
+            code.make(fit=True)
+            self.matrix = code.get_matrix()
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), Qt.GlobalColor.white)
+        if not self.matrix:
+            return
+        unit = self.width() // len(self.matrix)
+        offset = (self.width() - unit * len(self.matrix)) // 2
+        for y, row in enumerate(self.matrix):
+            for x, filled in enumerate(row):
+                if filled:
+                    painter.fillRect(offset+x*unit, offset+y*unit, unit, unit, Qt.GlobalColor.black)
 
 
 class BrowserPage(QWebEnginePage):
@@ -48,7 +78,10 @@ class SigninWindow(QWidget):
         self.confirmation.setTextFormat(Qt.TextFormat.PlainText)
         self.confirmation.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.origin = HostLabel()
+        self.alternative = QPushButton('QR / code', header)
+        self.alternative.setAccessibleName('Sign in with a phone or another computer')
         row.addWidget(back)
+        row.addWidget(self.alternative)
         row.addWidget(self.confirmation, 1)
         row.addWidget(self.origin, 1)
         self.web = QWebEngineView(self)
@@ -57,16 +90,91 @@ class SigninWindow(QWidget):
         page.setBackgroundColor(QColor('#1B1D21'))
         self.web.setPage(page)
         layout.addWidget(header, 0)
-        layout.addWidget(self.web, 1)
+        self.pages = QStackedWidget(self)
+        self.pages.addWidget(self.web)
+        self.pages.addWidget(self.code_page())
+        layout.addWidget(self.pages, 1)
         back.clicked.connect(self.hide)
+        self.alternative.clicked.connect(self.toggle_method)
         self.web.urlChanged.connect(self.origin.show_host)
+
+    def code_page(self):
+        scroll = QScrollArea(self)
+        scroll.setWidgetResizable(True)
+        content = QWidget()
+        outer = QVBoxLayout(content)
+        outer.setContentsMargins(24, 24, 24, 24)
+        self.code_content = QWidget()
+        column = QVBoxLayout(self.code_content)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(12)
+        title = QLabel('Sign in on another device')
+        title.setStyleSheet('font-size:24px;')
+        title.setWordWrap(True)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        note = QLabel('Scan with your phone, or open the sign-in link on another computer.\nConfirm the code below when asked. This computer will continue automatically.')
+        note.setWordWrap(True)
+        note.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.qr = SigninCode()
+        self.code = QLineEdit()
+        self.code.setReadOnly(True)
+        self.code.setAccessibleName('Sign-in confirmation code')
+        self.code.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.code.setStyleSheet('font-size:24px;letter-spacing:3px;padding:8px;')
+        self.code.setMinimumWidth(280)
+        self.code.setMaximumWidth(360)
+        self.link = QLineEdit()
+        self.link.setReadOnly(True)
+        self.link.setAccessibleName('Sign-in link for another device')
+        self.link.setCursorPosition(0)
+        actions = QHBoxLayout()
+        actions.addStretch()
+        for label, field in (('Copy code', self.code), ('Copy link', self.link)):
+            button = QPushButton(label)
+            button.clicked.connect(lambda checked=False, field=field: QApplication.clipboard().setText(field.text()))
+            actions.addWidget(button)
+        actions.addStretch()
+        column.addWidget(title)
+        column.addWidget(note)
+        column.addWidget(self.qr, 0, Qt.AlignmentFlag.AlignHCenter)
+        column.addWidget(self.code, 0, Qt.AlignmentFlag.AlignHCenter)
+        column.addWidget(self.link)
+        column.addLayout(actions)
+        outer.addStretch()
+        outer.addWidget(self.code_content, 0, Qt.AlignmentFlag.AlignHCenter)
+        outer.addStretch()
+        scroll.setWidget(content)
+        return scroll
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.code_content.setFixedWidth(max(280, min(560, self.width()-64)))
+
+    def toggle_method(self):
+        remote = self.pages.currentIndex() == 0
+        self.pages.setCurrentIndex(1 if remote else 0)
+        self.alternative.setText('Sign in here' if remote else 'QR / code')
+        self.alternative.setAccessibleName('Sign in on this computer' if remote else 'Sign in with a phone or another computer')
+        if remote:
+            self.code.setFocus()
 
     def open_signin(self, url, code):
         self.confirmation.setText('Confirm code: '+code)
+        self.qr.set_url(url)
+        self.code.setText(code)
+        self.link.setText(url)
+        self.link.setCursorPosition(0)
+        self.pages.setCurrentIndex(0)
+        self.alternative.setText('QR / code')
+        self.alternative.setAccessibleName('Sign in with a phone or another computer')
         self.web.load(QUrl(url))
         self.showFullScreen()
 
     def clear(self):
         self.hide()
+        self.qr.set_url('')
+        self.code.clear()
+        self.link.clear()
+        self.confirmation.clear()
         self.web.load(QUrl('about:blank'))
         self.profile.cookieStore().deleteAllCookies()

@@ -63,7 +63,7 @@ static QWidget* summary(const QString& keyboard, QWidget* parent) {
     form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
     form->addRow("Local account", text("admin", widget));
     form->addRow("Keyboard", text(keyboard.isEmpty() ? "Default layout" : keyboard, widget));
-    form->addRow("Disk encryption", text("Off · Not available in this preview", widget));
+    form->addRow("Disk encryption", text("Off · Not available", widget));
     return widget;
 }
 static QWidget* untouched(const QJsonArray& disks, const QVariantList& selected, QWidget* parent) {

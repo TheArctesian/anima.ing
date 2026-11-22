@@ -29,15 +29,15 @@ let
 in {
   system.nixos.distroId = "anima";
   system.nixos.distroName = "Anima.ing";
-  system.nixos.label = "Preview";
-  system.nixos.extraOSReleaseArgs = { PRETTY_NAME = "Anima.ing Preview"; HOME_URL = "https://anima.ing"; LOGO = "anima"; ANSI_COLOR = "38;2;136;192;208"; };
+  system.nixos.label = "AnimaOS";
+  system.nixos.extraOSReleaseArgs = { PRETTY_NAME = "Anima OS"; HOME_URL = "https://anima.ing"; LOGO = "anima"; ANSI_COLOR = "38;2;136;192;208"; };
   boot.plymouth = { enable = true; theme = "anima"; themePackages = [ theme ]; logo = ./branding/logo.png; };
   boot.consoleLogLevel = 3;
   boot.kernelParams = [ "quiet" "splash" "plymouth.ignore-serial-consoles" "systemd.show_status=auto" "rd.systemd.show_status=auto" ];
   console.colors = [ "2e3440" "bf616a" "a3be8c" "ebcb8b" "81a1c1" "b48ead" "88c0d0" "e5e9f0" "4c566a" "bf616a" "a3be8c" "ebcb8b" "81a1c1" "b48ead" "8fbcbb" "eceff4" ];
   services.getty.helpLine = lib.mkForce "";
   environment.etc."issue".text = lib.mkForce ''
-    ${escape}[36mAnima.ing${escape}[0m — server preview
+    ${escape}[36mAnima.ing${escape}[0m — Anima OS
     Network: nmtui   Status: anima-status   Enrollment: sudo anima-enroll
 
   '';

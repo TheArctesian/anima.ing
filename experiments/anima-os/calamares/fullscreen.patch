@@ -46,7 +46,7 @@
 +    if ( /* Available in package documentation */ false )
 @@ -218,0 +207,6 @@
 +    navigation->setObjectName("animaFooter");
-+    auto* preview = new QLabel("Anima OS preview", navigation); preview->setObjectName("animaMuted");
++    auto* preview = new QLabel("Anima OS", navigation); preview->setObjectName("animaMuted");
 +    bottomLayout->addWidget(preview);
 +    auto* settings = new QPushButton(QIcon("@settingsIcon@"), "", navigation); settings->setObjectName("animaSettingsButton"); settings->setToolTip("Display and recovery"); settings->setAccessibleName("Display and recovery"); settings->setFixedSize(32,32);
 +    bottomLayout->addWidget(settings);
