@@ -13,10 +13,11 @@ use super::thread::{Step, Thread};
 use super::{Pending, Runner, Waits};
 use crate::threads::wire;
 
+mod queue;
 mod reads;
 mod refusal_lines;
-pub(super) use refusal_lines::RefusalLines;
 use refusal_lines::Say;
+pub(super) use refusal_lines::{RefusalLines, refusal_word};
 
 /// What the runner can see of the source of a call: the local socket (THR-044).
 const SOURCE: &str = "local socket";
@@ -54,6 +55,9 @@ impl Runner {
                     return;
                 }
                 Action::Interrupt { thread } => self.interrupt(thread).await,
+                queued @ (Action::Queue { .. }
+                | Action::Requeue { .. }
+                | Action::Unqueue { .. }) => self.queue_call(queued).await,
                 Action::ChangeListing { thread, change } => self.change_listing(thread, &change),
                 Action::ChangeProject { change } => self.change_project(&change),
                 Action::Folder { folder } => {
@@ -90,6 +94,7 @@ impl Runner {
     async fn held_call(&mut self, action: Action, back: Caller) -> Result<(), Refusal> {
         match action {
             Action::Send { thread, text } => self.send(thread, text, back).await,
+            Action::SendQueued { thread, id } => self.send_queued(thread, id, back).await,
             Action::Answer {
                 thread,
                 request,
@@ -266,7 +271,7 @@ struct Answering {
 }
 
 /// Whether only the person may make this call: an answer to a request, a raise of the limit,
-/// a start and a change of how a thread is listed (TH46). A process of an agent may not, so that
+/// a start, a change of how a thread is listed (TH46) and the queue of a thread (TH109). A process of an agent may not, so that
 /// an agent never approves itself or hides a thread from the person.
 const fn for_the_person(action: &Action) -> bool {
     matches!(
@@ -276,6 +281,10 @@ const fn for_the_person(action: &Action) -> bool {
             | Action::Start { .. }
             | Action::ChangeListing { .. }
             | Action::ChangeProject { .. }
+            | Action::Queue { .. }
+            | Action::Requeue { .. }
+            | Action::Unqueue { .. }
+            | Action::SendQueued { .. }
     )
 }
 
@@ -287,7 +296,11 @@ const fn thread_of(action: &Action) -> Option<Uuid> {
         | Action::Interrupt { thread }
         | Action::Stop { thread }
         | Action::ChangeListing { thread, .. }
-        | Action::Earlier { thread, .. } => Some(*thread),
+        | Action::Earlier { thread, .. }
+        | Action::Queue { thread, .. }
+        | Action::Requeue { thread, .. }
+        | Action::Unqueue { thread, .. }
+        | Action::SendQueued { thread, .. } => Some(*thread),
         _ => None,
     }
 }
@@ -312,22 +325,4 @@ fn refusal_to_daemon_log(thread: Option<Uuid>, why: &str, say: Say) {
         Say::LastLine => "; more refusals of this minute are only in runner.log",
     };
     tracing::info!(%thread, why, "the runner refused a call{more}");
-}
-
-pub(super) const fn refusal_word(why: &Refusal) -> &'static str {
-    match why {
-        Refusal::UnknownThread => "unknown thread",
-        Refusal::FromAnAgent => "from a process of an agent",
-        Refusal::Running => "the thread runs",
-        Refusal::FolderNotPermitted => "folder not permitted",
-        Refusal::ProgramNotFound => "program not found",
-        Refusal::ProgramDoesNotAnswer { .. } => "program did not answer",
-        Refusal::BadValue => "bad value",
-        Refusal::RequestGone => "request gone",
-        Refusal::AnswerDoesNotFit => "answer does not fit",
-        Refusal::NotRunning => "not running",
-        Refusal::Holder => "holder",
-        Refusal::HolderOlder { .. } => "holder older than the daemon",
-        Refusal::OverLimit { .. } => "over the soft limit",
-    }
 }

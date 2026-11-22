@@ -15,6 +15,7 @@ impl Thread {
             steps.extend(self.event(event, text, new_id));
         }
         steps.extend(self.state_change());
+        steps.extend(self.next_queued());
         steps
     }
 
@@ -73,8 +74,9 @@ impl Thread {
                 }
             }
             DriveEvent::State { state } => self.program = Some(*state),
-            DriveEvent::TurnEnded { .. } => {
+            DriveEvent::TurnEnded { outcome, .. } => {
                 self.program = Some(ProgramState::Idle);
+                self.turn_ended(*outcome);
                 if let Driver::Codex(codex) = &mut self.driver {
                     codex.turn_ended();
                 }

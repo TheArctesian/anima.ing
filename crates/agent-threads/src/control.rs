@@ -106,6 +106,18 @@ pub enum Action {
     Projects,
     /// A change of the projects (TH107): only the person makes it.
     ChangeProject { change: ProjectChange },
+    /// A prompt that waits for the running turn to end, then goes as the next turn (TH109).
+    Queue { thread: Uuid, text: String },
+    /// New words for a prompt that waits (TH109).
+    Requeue {
+        thread: Uuid,
+        id: Uuid,
+        text: String,
+    },
+    /// Takes a prompt that waits out of the queue (TH109).
+    Unqueue { thread: Uuid, id: Uuid },
+    /// Sends a prompt that waits now: into the running turn, or as the next turn (TH109).
+    SendQueued { thread: Uuid, id: Uuid },
 }
 
 /// A frame of the runner to a client.
@@ -204,7 +216,12 @@ pub enum Refusal {
     OverLimit {
         limits: Limits,
     },
+    /// The queue of the thread holds [`MOST_QUEUED`] prompts (TH109).
+    QueueFull,
 }
+
+/// The most prompts that wait in the queue of one thread (TH109).
+pub const MOST_QUEUED: usize = 20;
 
 /// The soft limits of the threads of this computer (THR-114): guidance, raised by the person.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -280,6 +297,29 @@ pub struct ThreadRow {
     pub ended: Option<String>,
     /// The requests that wait for the person.
     pub open: Vec<Uuid>,
+    /// The prompts that wait for the turn to end, oldest first (TH109). In the memory of the
+    /// runner only: the record never holds them.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub queued: Vec<Queued>,
+    /// How the last turn ended, when one ended (TH109).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_turn: Option<LastTurn>,
+}
+
+/// A prompt that waits in the queue of a thread (TH109).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Queued {
+    pub id: Uuid,
+    pub text: String,
+}
+
+/// How a turn ended, for the person (TH109).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LastTurn {
+    Done,
+    Failed,
+    Interrupted,
 }
 
 /// The account of one program of this computer, as its newest report said it (THR-132). It is

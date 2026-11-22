@@ -22,6 +22,8 @@ fn row(program: Program) -> ThreadRow {
         started: chrono::DateTime::UNIX_EPOCH,
         ended: None,
         open: Vec::new(),
+        queued: Vec::new(),
+        last_turn: None,
     }
 }
 
@@ -79,6 +81,7 @@ const CLAUDE_DELTA: &str = r#"{"type":"stream_event","event":{"type":"content_bl
 
 mod accounts;
 mod kept;
+mod queue;
 mod restart;
 
 #[test]

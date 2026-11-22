@@ -323,6 +323,8 @@ impl Runner {
             started: chrono::Utc::now(),
             ended: None,
             open: Vec::new(),
+            queued: Vec::new(),
+            last_turn: None,
         };
         let action = wire::Action::Start {
             thread: id.to_string(),

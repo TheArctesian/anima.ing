@@ -17,6 +17,7 @@ use super::codex::Codex;
 mod asks;
 mod events;
 mod kept;
+mod queue;
 mod step;
 
 pub use step::Step;
@@ -79,6 +80,11 @@ pub struct Thread {
     /// The holder started the program: a line may be written to it.
     held: bool,
     last_error: Option<String>,
+    /// The queue stopped after an interrupt or a failed turn, until the person sends (TH109).
+    stalled: bool,
+    /// A prompt went and its turn did not end yet: no queued prompt goes before it ends, also
+    /// when the program says that it is idle in between (TH109).
+    awaiting: bool,
 }
 
 impl Thread {
@@ -100,6 +106,8 @@ impl Thread {
             controls: 0,
             held: false,
             last_error: None,
+            stalled: false,
+            awaiting: false,
         }
     }
 
@@ -111,7 +119,7 @@ impl Thread {
             Driver::Claude(_) => (None, None),
         };
         Saved {
-            row: self.row.clone(),
+            row: self.recorded_row(),
             effort: self.effort,
             codex_thread,
             codex_turn,
@@ -143,7 +151,16 @@ impl Thread {
             .iter()
             .map(|(id, open)| (id, open.answering))
             .collect();
-        serde_json::to_string(&(&self.row, codex_thread, codex_turn, open)).unwrap_or_default()
+        serde_json::to_string(&(&self.recorded_row(), codex_thread, codex_turn, open))
+            .unwrap_or_default()
+    }
+
+    /// The row as the record holds it: never the prompts that wait (TH109).
+    fn recorded_row(&self) -> ThreadRow {
+        ThreadRow {
+            queued: Vec::new(),
+            ..self.row.clone()
+        }
     }
 
     /// A thread from its record, after a start of the runner; its open requests are read again
@@ -186,6 +203,7 @@ impl Thread {
     /// The first steps of a new thread: its prompt, and the first line of the program.
     pub fn begin(&mut self, prompt: &str) -> Vec<Step> {
         self.held = true;
+        self.awaiting = true;
         self.row.title = first_line(prompt, agent_threads::TITLE_LENGTH);
         let mut steps = vec![prompt_change(prompt)];
         match &mut self.driver {
@@ -212,6 +230,9 @@ impl Thread {
         if self.row.state == RunState::Stopped || !self.held {
             return Err(Refusal::NotRunning);
         }
+        // A prompt of the person starts the queue again after the turn of it (TH109).
+        self.stalled = false;
+        self.awaiting = true;
         Ok(match &mut self.driver {
             Driver::Claude(_) => vec![ClaudeInput::prompt(text)],
             Driver::Codex(codex) => codex.prompt(text).into_iter().collect(),
@@ -227,6 +248,7 @@ impl Thread {
     /// The person stops the running turn; the program stays. Each open request closes (THR-087:
     /// a stop by the person).
     pub fn interrupt(&mut self) -> Vec<Step> {
+        self.stall();
         let mut steps = self.turn_stop();
         steps.extend(self.close_all("the turn was stopped"));
         steps.extend(self.state_change());
@@ -265,6 +287,8 @@ impl Thread {
         };
         self.row.ended = Some(why);
         self.row.state = RunState::Stopped;
+        // A stop also stops the queue (THR-102).
+        self.row.queued.clear();
         self.row.open.clear();
         steps.push(Step::Change(Change::State {
             state: RunState::Stopped,

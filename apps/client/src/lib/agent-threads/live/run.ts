@@ -6,6 +6,7 @@
 
 import { listingsFrom, type Listing, type ListingChange } from '../listing/listing';
 import type { Program } from '../thread';
+import { lastTurnFrom, queuedFrom, type LastTurn, type QueuedPrompt } from './queue';
 
 export type RunState = 'starting' | 'working' | 'needs_you' | 'idle' | 'stopped' | 'unknown';
 export type Mode = 'full_access' | 'accept_edits' | 'ask' | 'plan';
@@ -28,6 +29,10 @@ export interface RunRow {
   readonly ended: string | null;
   /** The runner's IDs of the requests that wait for an answer. */
   readonly open: readonly string[];
+  /** The prompts that wait for the turn to end, oldest first (TH109). */
+  readonly queued?: readonly QueuedPrompt[];
+  /** How the last turn ended, when one ended (TH109). */
+  readonly lastTurn?: LastTurn | null;
 }
 
 export interface Question {
@@ -83,7 +88,8 @@ export type Refusal =
   | 'holder'
   | 'from_an_agent'
   | 'running'
-  | 'over_limit';
+  | 'over_limit'
+  | 'queue_full';
 
 export interface Limits {
   readonly depth: number;
@@ -135,7 +141,12 @@ export type Action =
   | { readonly call: 'raise_limit' }
   | { readonly call: 'folder'; readonly folder: string }
   | { readonly call: 'listings' }
-  | { readonly call: 'change_listing'; readonly thread: string; readonly change: ListingChange };
+  | { readonly call: 'change_listing'; readonly thread: string; readonly change: ListingChange }
+  /** The queue of a thread (TH109): only the person changes it. */
+  | { readonly call: 'queue'; readonly thread: string; readonly text: string }
+  | { readonly call: 'requeue'; readonly thread: string; readonly id: string; readonly text: string }
+  | { readonly call: 'unqueue'; readonly thread: string; readonly id: string }
+  | { readonly call: 'send_queued'; readonly thread: string; readonly id: string };
 
 /**
  * The sentence of the operator at the soft limit (THR-114), the same words as `anima agents start` and the runner.
@@ -147,7 +158,7 @@ const PROGRAMS: readonly string[] = ['claude_code', 'codex'];
 const STATES: readonly string[] = ['starting', 'working', 'needs_you', 'idle', 'stopped', 'unknown'];
 const MODES: readonly string[] = ['full_access', 'accept_edits', 'ask', 'plan'];
 const KINDS: readonly string[] = ['command', 'file_change', 'tool', 'question'];
-const REFUSALS: readonly string[] = ['unknown_thread', 'folder_not_permitted', 'program_not_found', 'program_does_not_answer', 'bad_value', 'request_gone', 'answer_does_not_fit', 'not_running', 'holder', 'from_an_agent', 'running', 'over_limit'];
+const REFUSALS: readonly string[] = ['unknown_thread', 'folder_not_permitted', 'program_not_found', 'program_does_not_answer', 'bad_value', 'request_gone', 'answer_does_not_fit', 'not_running', 'holder', 'from_an_agent', 'running', 'over_limit', 'queue_full'];
 
 type Fields = Record<string, unknown>;
 
@@ -180,7 +191,7 @@ export function runRowFrom(value: unknown): RunRow | null {
   const open = strings(value.open);
   if (id === null || program === null || folder === null || mode === null || state === null || title === null || open === null) return null;
   if (started === null || Number.isNaN(started.getTime())) return null;
-  return { id, program, folder, mode, model: str(value.model), state, session: str(value.session), title, started, ended: str(value.ended), open };
+  return { id, program, folder, mode, model: str(value.model), state, session: str(value.session), title, started, ended: str(value.ended), open, queued: queuedFrom(value.queued), lastTurn: lastTurnFrom(value.last_turn) };
 }
 
 function questionFrom(value: unknown): Question | null {
@@ -335,11 +346,12 @@ export const REFUSAL_WORDS: Readonly<Record<Refusal, string>> = {
   program_not_found: 'That program is not on the PATH of your login, or that path is not a copy the runner finds.',
   program_does_not_answer: 'The program did not answer.',
   bad_value: "A value is not permitted (a model name takes letters, digits, '.', '_', '-', '[' and ']').",
-  request_gone: 'That request is answered, closed, or its program ended.',
+  request_gone: 'That request or queued prompt is gone: it was answered, closed or sent, or its program ended.',
   answer_does_not_fit: 'That answer does not fit the request.',
   not_running: 'The program of that thread is not running.',
   holder: 'The holder of the programs did not take the command.',
-  from_an_agent: 'Only the person can answer a request, raise the limit, start a thread or change the list of threads: this call came from a process of an agent.',
+  from_an_agent: 'Only the person can answer a request, raise the limit, start a thread, change the list of threads or change the queue of a thread: this call came from a process of an agent.',
   running: 'The program of that thread still runs: stop it first, then remove it from the list.',
   over_limit: OVER_LIMIT,
+  queue_full: 'That thread has 20 queued prompts: send or drop one first.',
 };
