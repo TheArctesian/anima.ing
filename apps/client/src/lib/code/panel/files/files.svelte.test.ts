@@ -131,7 +131,7 @@ describe('the breadcrumbs of a file', () => {
   it('is a navigation with the project first and the file as the current page', () => {
     const { onnavigate } = crumbs();
     expect(document.querySelector('nav')?.getAttribute('aria-label')).toBe('File path');
-    expect([...document.querySelectorAll('li')].map((part) => part.textContent.trim())).toEqual(['anima', 'src', 'lib', 'a.ts']);
+    expect([...document.querySelectorAll('li .crumb')].map((part) => part.textContent.trim())).toEqual(['anima', 'src', 'lib', 'a.ts']);
     expect(document.querySelector('[aria-current="page"]')?.textContent).toBe('a.ts');
     [...document.querySelectorAll<HTMLButtonElement>('button.crumb')].find((crumb) => crumb.textContent === 'src')?.click();
     expect(onnavigate).toHaveBeenCalledWith('src');
