@@ -16,7 +16,7 @@ Screen-off locks the local console and blanks its displays without suspending th
 
 The native Qt sign-in window renders at supported desktop, portrait and compact sizes. zbar independently decodes the QR at 1280×800, 800×1280 and 640×480; copy-code/copy-link, browser return, and cleared state pass. The new expiry regression fails against the previous bridge and passes on the corrected bridge. Browser fixtures exercise explicit enrollment submission and password-field removal, native screen-off dispatch/lock with no restart/shutdown operation, and the existing responsive/network cases. No real account provider is contacted by these fixtures.
 
-Native screen lifecycle tests pass with a fake xset adapter; no host display is changed. Rebuilt-image and final repository validation are in progress. The operator has installed the previous image and authorized publishing the validated OS update through the existing signed feed under R-NEW-osupgrade. This document does not claim physical hardware or real-account acceptance.
+Native screen lifecycle tests pass with a fake xset adapter; no host display is changed. Rebuilt-image and upgrade acceptance pass; final GitHub gates and publication are pending. The operator has installed the previous image and authorized publishing the validated OS update through the existing signed feed under R-NEW-osupgrade. This document does not claim physical hardware or real-account acceptance.
 
 
 ## Pre-publication failures
@@ -32,3 +32,21 @@ Synchronizing current dev exposed a 301-line runner calls module. Codex construc
 
 
 The corrected ISO booted and authenticated successfully. Its first graphical run stopped at an OCR locator: the wider enrollment action changed text segmentation around “Connect to Anima”, while the captured screen showed the unlocked overview. The check now waits for the stable Local resources heading before exercising network, settings, blanking and wake. This is a harness correction; the image is unchanged.
+
+
+## Release acceptance
+
+Implementation 91ca31ab7 with screen lifecycle repair ac9eec483; media-label fix 1ca1568e3; OCR harness correction cbda993af. The retained Rust runtime payload is 566f5e7ca9a5b51adbee4ccf63a926113091dad2.
+
+- Clean graphical install: all four cases pass in `/home/okita/anima-signin-screen-release-gui-final/results.json`, including explicit disk authorization/reset, shutdown and boot, authentication, network, screen-off/wake while services stay active, read-only root, persistent state and untouched-disk integrity. The blank screenshot has zero mean brightness; wake returns to the local lock screen.
+- Upgrade from the operator's previous ISO c130bc5cf98f2109c4138c21b4eab0a165fc9d0b6e247f91a48e37226f1d911c: all six cases pass in `/home/okita/anima-signin-screen-release-upgrade/results.json`. Signed HTTPS download stages without live activation, reboot uses the new closure and renders the console, identity/hostname/data remain intact, and owner rollback restores the prior closure without data loss.
+- Changed-path gates: 5/5 pass; focused daemon runner tests: 84/84 pass. Final GitHub gates are required before merge/publication. HT-127 remains Open for real account, Wi-Fi hardware, physical DPMS and touch acceptance.
+
+Validated update version: **20261122230147**. System: `/nix/store/lglm3bfgixd8nyfimpamy3valfr416as-nixos-system-anima-AnimaOS`.
+
+| Artifact | Bytes | SHA-256 |
+|---|---:|---|
+| anima-os-x86_64.iso | 3674210304 | 959ca00baa46d8f08c9834761e2b01c2cf0ae0feb9af5bc7cfe9c9d95e0bb1f4 |
+| system.nar.xz | 3047637748 | af439b465dc9b0f3e4963866bdc3f73c35abac6fef03cbb6cbacca865edfc4d3 |
+
+Delivery directories: `/home/okita/.local/share/anima-os-prototype/2026-11-22/signin-screen-release` and `signin-screen-release-update`. Local signature and archive bytes verify against the pinned public key. Publication will verify public ISO and archive bytes before replacing the signed feed. The public feed has not yet been changed for this build.
