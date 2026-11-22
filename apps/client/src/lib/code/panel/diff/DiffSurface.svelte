@@ -36,13 +36,11 @@
     onopen?: ((path: string) => void) | undefined;
     treeWidth?: number;
     ontreewidth?: (width: number) => void;
-    /** The tree of the tree library for the changed files; without it they are a plain list. */
-    tree?: Snippet;
   }
 
   const {
     scope, scopes, onscope, lead, files, status = 'ready', error, banners = [], view, onview, startCollapsed = true, revealed, theme,
-    sheet = false, onrefresh, refreshing = false, onopen, treeWidth = Number.NaN, ontreewidth = () => undefined, tree,
+    sheet = false, onrefresh, refreshing = false, onopen, treeWidth = Number.NaN, ontreewidth = () => undefined,
   }: Props = $props();
 
   // A file is open when it is in `flipped` and the files start collapsed, or is not in it and they start open.
@@ -127,7 +125,7 @@
         </div>
         {#if view.tree}
           <FileExplorerPane width={treeWidth} onresize={ontreewidth}>
-            <DiffTree section={label} files={shown} {selected} onpick={go} {tree} {sheet} />
+            <DiffTree section={label} files={shown} {selected} onpick={go} {theme} {sheet} />
           </FileExplorerPane>
         {/if}
       </div>

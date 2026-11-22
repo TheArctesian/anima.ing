@@ -53,3 +53,17 @@ export const SCOPES: readonly MenuEntry[] = [
     ],
   },
 ];
+
+/** The files of a project, for the tree of the Files surface. */
+export const PROJECT_PATHS: readonly string[] = [
+  'README.md',
+  'package.json',
+  'docs/sign-in.md',
+  'node_modules/',
+  'src/app.d.ts',
+  'src/routes/+layout.svelte',
+  'src/routes/sign-in/+page.svelte',
+  'src/routes/sign-in/back.ts',
+  'src/routes/sign-in/back.test.ts',
+  'static/mark.svg',
+];
