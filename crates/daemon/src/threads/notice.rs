@@ -44,6 +44,39 @@ pub fn of_anima(folder: &Path, daemon: &Path) -> Vec<String> {
     })
 }
 
+/// What the person reads of a folder before a thread starts in it, and as the first line of the
+/// thread: the warning when it holds the folder of Anima (THR-041), then what its project files
+/// do by themselves (THR-046).
+#[must_use]
+pub fn before_start(folder: &Path, daemon: &Path) -> Vec<String> {
+    let mut notice = of_anima(folder, daemon);
+    notice.extend(of_folder(folder));
+    notice
+}
+
+/// An absolute folder of this computer that exists, as its real path, and not in the folder of
+/// the daemon, which holds its keys and the record, the log and the sockets of the runner
+/// (THR-040, THR-041).
+///
+/// # Errors
+/// [`agent_threads::control::Refusal::FolderNotPermitted`] for any other folder.
+pub fn chosen_folder(
+    folder: &Path,
+    daemon: &Path,
+) -> Result<std::path::PathBuf, agent_threads::control::Refusal> {
+    if !folder.is_absolute() {
+        return Err(agent_threads::control::Refusal::FolderNotPermitted);
+    }
+    let real = std::fs::canonicalize(folder)
+        .map_err(|_| agent_threads::control::Refusal::FolderNotPermitted)?;
+    let inside = std::fs::canonicalize(daemon).is_ok_and(|daemon| real.starts_with(daemon));
+    if real.is_dir() && !inside {
+        Ok(real)
+    } else {
+        Err(agent_threads::control::Refusal::FolderNotPermitted)
+    }
+}
+
 /// One project file as it was read.
 enum File {
     Absent,

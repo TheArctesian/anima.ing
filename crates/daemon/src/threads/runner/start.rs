@@ -16,6 +16,8 @@ use super::{Runner, Waits, login};
 const ASK_AGAIN: std::time::Duration = std::time::Duration::from_secs(60);
 use crate::threads::wire;
 
+pub(super) use crate::threads::notice::chosen_folder;
+
 /// The starts whose copy is being asked for its version (TH97).
 pub(super) struct Asks {
     pub sender: tokio::sync::mpsc::Sender<(u64, super::silence::Answers)>,
@@ -216,7 +218,7 @@ impl Runner {
         let id = Uuid::now_v7();
         let (row, action) = self.prepared(&new, id, &path)?;
         let daemon = self.dir.parent().unwrap_or(&self.dir);
-        let mut notice = notice_of(&row.folder, daemon);
+        let mut notice = crate::threads::notice::before_start(&row.folder, daemon);
         let named = new.program_path.is_some();
         notice.extend(super::silence::chosen(new.program, &path, named, &copies));
         self.silence.started(id, new.program, path);
@@ -333,30 +335,5 @@ impl Runner {
             folder: folder.to_string_lossy().into_owned(),
         };
         Ok((row, action))
-    }
-}
-
-/// What the person reads of a folder before a thread starts in it, and as the first line of the
-/// thread: the warning when it holds the folder of Anima (THR-041), then what its project files
-/// do by themselves (THR-046).
-pub(super) fn notice_of(folder: &Path, daemon: &Path) -> Vec<String> {
-    let mut notice = crate::threads::notice::of_anima(folder, daemon);
-    notice.extend(crate::threads::notice::of_folder(folder));
-    notice
-}
-
-/// An absolute folder of this computer that exists, as its real path, and not in the folder of
-/// the daemon, which holds its keys and the record, the log and the sockets of the runner
-/// (THR-040, THR-041).
-pub(super) fn chosen_folder(folder: &Path, daemon: &Path) -> Result<PathBuf, Refusal> {
-    if !folder.is_absolute() {
-        return Err(Refusal::FolderNotPermitted);
-    }
-    let real = std::fs::canonicalize(folder).map_err(|_| Refusal::FolderNotPermitted)?;
-    let inside = std::fs::canonicalize(daemon).is_ok_and(|daemon| real.starts_with(daemon));
-    if real.is_dir() && !inside {
-        Ok(real)
-    } else {
-        Err(Refusal::FolderNotPermitted)
     }
 }

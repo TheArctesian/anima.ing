@@ -52,7 +52,7 @@ impl Runner {
         let daemon = self.dir.parent().unwrap_or(&self.dir);
         match super::super::start::chosen_folder(folder, daemon) {
             Ok(real) => Outcome::Folder {
-                notice: super::super::start::notice_of(&real, daemon),
+                notice: crate::threads::notice::before_start(&real, daemon),
             },
             Err(why) => Outcome::Refused { why },
         }
