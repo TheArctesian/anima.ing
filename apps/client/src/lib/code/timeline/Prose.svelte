@@ -99,7 +99,7 @@
     border-radius: var(--radius-sm);
     background: var(--surface-sunken);
     font-family: var(--font-mono);
-    font-size: 0.85em;
+    font-size: max(0.85em, var(--code-text-meta));
   }
 
   strong {

@@ -38,7 +38,7 @@
     <!-- A.11: a question is a line of the work log; the form that answers it is docked on the composer (stage 4). -->
     <p class="work question"><span class="slot"><CodeIcon name="message-circle" /></span>{each.open.ask.questions[0]?.text ?? each.open.ask.subject}</p>
   {:else if each.kind === 'ask' && each.open.ask.kind !== 'question'}
-    <div class="work approval">
+    <div class="work approval" data-request={each.open.request}>
       <ApprovalRow kind={APPROVALS[each.open.ask.kind]} detail={each.open.ask.subject} app={each.open.ask.tool} onDecide={(decision) => { onDecide(each.open.request, decision); }} />
     </div>
   {:else if each.kind === 'divider'}
@@ -50,7 +50,7 @@
   One turn (03 section A.1): the person's bubble; while it runs, its parts in order and "Working for 12s"; after it, one
   fold line "Worked for 1m 12s" over all its work, then the answer.
 -->
-<section class="turn" aria-label="Turn">
+<section class="turn">
   {#if turn.prompt !== null}<div class="prompt"><UserBubble prompt={turn.prompt} /></div>{/if}
   {#if turn.running}
     {#each shown as each (each.key)}{@render part(each)}{/each}

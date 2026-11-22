@@ -1,8 +1,10 @@
 <script lang="ts">
   import './timeline.css';
   import type { LiveEntry, OpenAsk } from '$lib/agent-threads/live/timeline';
+  import { tick } from 'svelte';
   import { motionPreference } from '$lib/motion/preference';
   import CodeIcon from '../icons/CodeIcon.svelte';
+  import { askedWords, spokenOf } from './spoken';
   import { turnsOf } from './turns';
   import TurnView from './TurnView.svelte';
 
@@ -20,7 +22,7 @@
     onDecide: (request: string, decision: string) => void;
   }
 
-  const { entries, streaming = '', asks = [], working = false, clock = () => new Date(), dropped = 0, onDecide }: Props = $props();
+  const { entries, streaming = '', asks = [], working = false, clock = () => new Date(), dropped = 0, onDecide: decided }: Props = $props();
   const turns = $derived(turnsOf(entries, { streaming, asks, working, dropped }));
   const motion = motionPreference();
   let now = $state(new Date());
@@ -30,6 +32,53 @@
   let scroller = $state<HTMLElement>();
   /** The person moved the list (wheel, touch, keys, the bar): only that releases the follow, not the timeline's own scroll. */
   let moved = false;
+  /** The live regions (findings 3 and 4): the start and the end of a turn, politely; a request of the agent, at once. */
+  let polite = $state('');
+  let urgent = $state('');
+  const spoken = $derived(spokenOf(turns));
+  /** What the polite region last said; what the conversation held when it opened is not said. */
+  let said: string | null | undefined;
+  /** The requests already said, so each is said once. */
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- read and written only in the effect, never drawn
+  const heard = new Set<string>();
+
+  $effect(() => {
+    const now = spoken?.key ?? null;
+    if (said !== undefined && now !== said && spoken !== null) polite = spoken.words;
+    said = now;
+  });
+
+  $effect(() => {
+    for (const open of asks) {
+      if (heard.has(open.request)) continue;
+      heard.add(open.request);
+      urgent = askedWords(open);
+      if (open.ask.kind !== 'question') void offer(open.request);
+    }
+  });
+
+  /** The row of an open request in the conversation. */
+  function rowOf(request: string): HTMLElement | undefined {
+    return [...(scroller?.querySelectorAll<HTMLElement>('[data-request]') ?? [])].find((row) => row.dataset.request === request);
+  }
+
+  /** Moves the focus to the Approve button of a new request, unless the person is busy in a different place. */
+  async function offer(request: string): Promise<void> {
+    await tick();
+    const busy = document.activeElement !== null && document.activeElement !== document.body && !(scroller?.contains(document.activeElement) ?? false);
+    if (busy) return;
+    const row = rowOf(request);
+    const approve = [...(row?.querySelectorAll('button') ?? [])].find((button) => button.textContent.trim() === 'Approve');
+    approve?.focus();
+  }
+
+  /** The answer of the person; the focus goes back to the conversation when it was in the row, which now leaves. */
+  function onDecide(request: string, decision: string): void {
+    const row = rowOf(request);
+    const inRow = row?.contains(document.activeElement) ?? false;
+    decided(request, decision);
+    if (inRow) scroller?.focus({ preventScroll: true });
+  }
 
   $effect(() => {
     now = clock();
@@ -71,19 +120,23 @@
 
   function jump(): void {
     following = true;
-    if (scroller !== undefined) toEnd(scroller, true);
+    if (scroller === undefined) return;
+    toEnd(scroller, true);
+    // The button leaves with its own click: the focus stays in the conversation.
+    scroller.focus({ preventScroll: true });
   }
 </script>
 
 <!-- The conversation of a chat (03 sections A.1 and A.19): turns in a centred 46rem lane, following the end. -->
 <div class="timeline">
-  <!-- The listeners only note that the person moved the list; the region is focusable so the keys can scroll it. -->
+  <!-- The listeners only note that the person moved the list; the region is focusable and owns its keys so they scroll it. -->
   <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
   <div
     class="scroller"
     role="region"
     aria-label="Conversation"
     tabindex="0"
+    data-own-keys
     bind:this={scroller}
     onscroll={scrolled}
     onwheel={byPerson}
@@ -102,6 +155,8 @@
       {/each}
     </div>
   </div>
+  <p class="hidden" aria-live="polite">{polite}</p>
+  <p class="hidden" role="alert">{urgent}</p>
   {#if !following && !atEnd}
     <button type="button" class="to-end" onclick={jump}>
       <CodeIcon name="chevron-down" />Scroll to end

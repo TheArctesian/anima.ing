@@ -86,7 +86,8 @@
   .chevron {
     display: inline-flex;
     flex: none;
-    transition: transform var(--duration-base) var(--ease-enter);
+    /* A spring token: no motion under the reduced setting of the system or of Settings. */
+    transition: transform var(--spring-snappy);
   }
 
   .chevron.open {
@@ -103,11 +104,5 @@
     min-block-size: 0;
     scroll-padding-block: var(--code-timeline-line);
     scrollbar-gutter: stable;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .chevron {
-      transition: none;
-    }
   }
 </style>

@@ -2772,6 +2772,28 @@ approve it, or say what to change, before the client screen is built.
 
 Result: Open.
 
+### HT-NEW-timelinevoice: the conversation of Code with VoiceOver and the keyboard (TC3, accessibility findings 2, 3 and 4)
+
+Built on the branch `code/timeline-a11y`: `apps/client/src/lib/code/timeline/Timeline.svelte` and `spoken.ts`. The
+conversation owns its arrow keys, a polite live region says the start and the end of a turn, and an alert says each
+request of the agent and moves the focus to its Approve button when the person is not busy in a different place. The
+tests run in jsdom: they read the text of the regions and the focus, not what VoiceOver says. Not covered: the speech of
+VoiceOver in WebKit, and how often it speaks during a long turn.
+
+1. Open the desktop application, turn VoiceOver on (⌘F5) and open a thread on the page Code. Click in the conversation
+   and press the Down arrow three times.
+   Expected: the conversation scrolls; the open thread does not change.
+2. In the composer, send a prompt that makes the agent work for some seconds.
+   Expected: VoiceOver says "Agent is working" one time, and says nothing more while the reply comes.
+3. Wait for the end of the turn.
+   Expected: VoiceOver says "Agent replied:" and the first sentence of the reply.
+4. In a thread in the mode Ask, send a prompt that makes the agent run a command. Do not touch the window.
+   Expected: VoiceOver says "Approval needed to run a command:" and the command at once, and the focus is on Approve.
+5. Press Enter on Approve.
+   Expected: the focus goes to the conversation, not to the top of the window.
+
+Result: Open.
+
 ## Not built yet
 
 The Tools section of the Device page and the Tools filter of the device list

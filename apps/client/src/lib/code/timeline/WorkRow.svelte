@@ -38,7 +38,7 @@
         {#if what !== ''}<pre class="mono input">{what}</pre>{/if}
         {#if output !== null && output !== ''}
           <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-          <pre class="mono output" tabindex="0">{output}</pre>
+          <pre class="mono output" tabindex="0" role="region" aria-label="Tool output" data-own-keys>{output}</pre>
         {:else if entry.running}
           <p class="note">Loading output…</p>
         {:else}
@@ -99,7 +99,8 @@
   .chevron {
     display: inline-flex;
     flex: none;
-    transition: transform var(--duration-base) var(--ease-enter);
+    /* A spring token: no motion under the reduced setting of the system or of Settings. */
+    transition: transform var(--spring-snappy);
   }
 
   .chevron.open {
@@ -158,11 +159,5 @@
   .exit {
     margin: 0;
     color: var(--status-down-text);
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .chevron {
-      transition: none;
-    }
   }
 </style>

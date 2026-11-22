@@ -48,6 +48,11 @@ export function keyAction(pressed: Pressed): KeyAction | null {
   return typing ? null : (PLAIN[key] ?? null);
 }
 
+/** Whether a key on `target` belongs to it: a scroll box marked `data-own-keys` scrolls with the arrows, not the page. */
+export function ownsKeys(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest('[data-own-keys]') !== null;
+}
+
 /** The place in a list of `length` rows after a move by `by` from `current` (`-1`: none chosen); it stops at the ends. */
 export function moved(current: number, by: 1 | -1, length: number): number {
   if (length === 0) return -1;

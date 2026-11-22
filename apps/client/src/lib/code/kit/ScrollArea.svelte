@@ -15,7 +15,7 @@
 
 <!-- A scroll area (02 section 3.7): the edges with more content fade, and the thin bar shows on hover only. -->
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-<div class="area {bar}" role="region" aria-label={label} tabindex="0" {@attach edgeFade}>
+<div class="area {bar}" role="region" aria-label={label} tabindex="0" data-own-keys {@attach edgeFade}>
   {@render children()}
 </div>
 

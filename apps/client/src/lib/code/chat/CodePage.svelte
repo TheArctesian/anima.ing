@@ -1,7 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import '../kit/code.css';
-  import { keyAction, moved, type KeyAction } from '$lib/agent-threads/keys';
+  import { keyAction, moved, ownsKeys, type KeyAction } from '$lib/agent-threads/keys';
   import type { CallResult, LiveThreads } from '$lib/agent-threads/live/live.svelte';
   import type { ThreadsStore } from '$lib/agent-threads/store.svelte';
   import LimitDialog from '$lib/agent-threads/view/LimitDialog.svelte';
@@ -70,8 +70,7 @@
   function pageAction(event: KeyboardEvent): KeyAction | null {
     const mod = event.metaKey || event.ctrlKey;
     const action = keyAction({ key: event.key, mod, shift: event.shiftKey, alt: event.altKey, typing: typing(event.target) });
-    const inPane = event.target instanceof Element && event.target.closest('[data-own-keys]') !== null;
-    return action?.kind === 'move' && !mod && inPane ? null : action;
+    return action?.kind === 'move' && !mod && ownsKeys(event.target) ? null : action;
   }
 
   /** Does what `action` names over the order of the inbox; false when it is not the page's to do. */
