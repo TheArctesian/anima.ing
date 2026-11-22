@@ -42,15 +42,10 @@ pub struct UsageSettings {
     pub send_accounts: bool,
 }
 
+/// The settings of an empty file: each member at its default.
 impl Default for UsageSettings {
     fn default() -> Self {
-        Self {
-            off: false,
-            excluded_folders: Vec::new(),
-            excluded_repositories: Vec::new(),
-            fold_case: false,
-            send_accounts: true,
-        }
+        Self::parse(b"{}").expect("the empty settings are of the form")
     }
 }
 
@@ -63,7 +58,13 @@ struct Stored {
     excluded_folders: Vec<String>,
     #[serde(default)]
     excluded_repositories: Vec<String>,
-    send_accounts: Option<bool>,
+    // Absent is on; `null` is not a bool, so a file with it is refused, as for each member.
+    #[serde(default = "on")]
+    send_accounts: bool,
+}
+
+const fn on() -> bool {
+    true
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -144,7 +145,7 @@ impl UsageSettings {
             excluded_folders,
             excluded_repositories: stored.excluded_repositories,
             fold_case: false,
-            send_accounts: stored.send_accounts.unwrap_or(true),
+            send_accounts: stored.send_accounts,
         })
     }
 
@@ -238,6 +239,10 @@ mod tests {
         assert!(on.send_accounts);
         let off = UsageSettings::parse(br#"{"sendAccounts":false}"#).expect("off");
         assert!(!off.send_accounts);
+        assert!(
+            UsageSettings::parse(br#"{"sendAccounts":null}"#).is_err(),
+            "null is refused, so the function turns off"
+        );
     }
 
     #[test]

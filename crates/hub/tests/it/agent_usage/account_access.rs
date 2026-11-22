@@ -79,5 +79,9 @@ async fn thr_149_a_refused_write_logs_no_address(pool: PgPool) {
         text.contains("capture control line"),
         "the log was captured"
     );
+    assert!(
+        text.contains("the agent usage cannot be stored"),
+        "the refused write was logged: {text}"
+    );
     assert!(!text.contains("person-9b2e"), "an address reached the log");
 }
