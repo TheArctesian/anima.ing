@@ -51,7 +51,8 @@ async function part(file: Sendable, from: number): Promise<string | null> {
 
 /**
  * Sends one file to the runner in parts of at most 2 MiB, in order: `attach` with the first part, `attach_more` with
- * each next one. It stops between two parts when the person removed the file. A file that the runner began to take
+ * each next one. The name that goes is the shown one, of at most 120 bytes: the runner makes the same name of it, and
+ * the name of a file never makes a frame longer than its part. It stops between two parts when the person removed the file. A file that the runner began to take
  * and that will not go is given up with `unattach`, so that it does not wait there.
  */
 export async function upload(call: AttachCall, file: Sendable, mime: string, watch: UploadWatch): Promise<Uploaded> {
@@ -65,7 +66,7 @@ export async function upload(call: AttachCall, file: Sendable, mime: string, wat
     if (watch.gone()) return giveUp(DROPPED);
     const bytes = await part(file, sent);
     if (bytes === null) return giveUp({ state: 'failed', words: NOT_READ(shownName(file.name)) });
-    const act: AttachAct = id === null ? { call: 'attach', name: file.name, mime, size: file.size, bytes } : { call: 'attach_more', attachment: id, bytes };
+    const act: AttachAct = id === null ? { call: 'attach', name: shownName(file.name), mime, size: file.size, bytes } : { call: 'attach_more', attachment: id, bytes };
     const result: CallResult = await call(act).catch((): CallResult => ({ ok: false, words: 'The thread runner did not answer.' }));
     // A refusal of the runner names the file and says why.
     if (!result.ok) return giveUp({ state: 'failed', words: result.words });
