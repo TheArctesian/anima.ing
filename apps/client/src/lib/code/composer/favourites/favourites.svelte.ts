@@ -25,6 +25,7 @@ export class Favourites {
 
   /** The catalogue with each favourite marked. */
   apply(catalogue: Catalogue): Catalogue {
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a lookup built and read in this call only
     const keys = new Set(this.#keys);
     return { ...catalogue, models: catalogue.models.map((model) => ({ ...model, favourite: keys.has(modelKey(model)) })) };
   }
