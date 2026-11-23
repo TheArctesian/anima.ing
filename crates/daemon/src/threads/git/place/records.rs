@@ -1,7 +1,8 @@
 //! The place of the records and of the runner's Git folders (ruling of the operator): outside
 //! the home folder of the person, so that a thread that starts in the home folder, which is
 //! allowed with a warning (THR-041), cannot write them. The Git stage is safe only while no
-//! thread can write this place (THR-050).
+//! thread in a sandbox can write this place (THR-050). A thread in Full access has no sandbox
+//! and can write it; by the operator's ruling of 2026-11-23 that is an accepted cost.
 //!
 //! The place is in a folder that each user of the computer can write (`/Users/Shared`,
 //! `/var/tmp`). A different user can make a folder or a link of the same name first. So the
@@ -208,9 +209,11 @@ fn resolved(path: &Path) -> Option<PathBuf> {
     })
 }
 
-/// A running thread holds the records at `records` when one of `roots`, the folders that its
-/// agent can write, holds them ([`held_by`]): its folder, its `TMPDIR`, `/tmp`, and each more
-/// folder that its sandbox lets it write (THR-050).
+/// A running thread in a sandbox holds the records at `records` when one of `roots`, the
+/// folders that its sandbox lets its agent write, holds them ([`held_by`]): its folder, its
+/// `TMPDIR`, `/tmp`, and each more root of the sandbox (THR-050). An agent in Full access has
+/// no sandbox and can write each folder of the person: this check does not cover it (operator's
+/// ruling of 2026-11-23).
 #[must_use]
 pub fn held_by_any(records: &Path, roots: &[PathBuf]) -> bool {
     roots.iter().any(|root| held_by(records, root))
