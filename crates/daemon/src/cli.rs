@@ -14,6 +14,7 @@ pub const USAGE: &str = "usage: anima-daemon enrol <code | -> [--hub <origin>]
        anima-daemon install [--system]
        anima-daemon uninstall
        anima-daemon stop
+       anima-daemon work <on | off>
        anima-daemon key read <name>
        anima-daemon key forget
        anima-daemon threads
@@ -44,6 +45,10 @@ pub enum Command {
     },
     Uninstall,
     Stop,
+    /// The switch at the machine (USE-004).
+    Work {
+        on: bool,
+    },
     KeyRead {
         name: String,
     },
@@ -83,6 +88,7 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Command, CliError
         Some("run") => run(args),
         Some("uninstall") if args.next().is_none() => Ok(Command::Uninstall),
         Some("stop") if args.next().is_none() => Ok(Command::Stop),
+        Some("work") => work(args),
         Some("enrol") => enrol(args),
         Some("install") => install(args),
         Some("key") => key(args),
@@ -123,6 +129,18 @@ fn run(mut args: impl Iterator<Item = String>) -> Result<Command, CliError> {
         return Err(CliError::Usage);
     }
     Ok(Command::Run { hosted_hub })
+}
+
+fn work(mut args: impl Iterator<Item = String>) -> Result<Command, CliError> {
+    let on = match args.next().as_deref() {
+        Some("on") => true,
+        Some("off") => false,
+        _ => return Err(CliError::Usage),
+    };
+    if args.next().is_some() {
+        return Err(CliError::Usage);
+    }
+    Ok(Command::Work { on })
 }
 
 fn key(mut args: impl Iterator<Item = String>) -> Result<Command, CliError> {

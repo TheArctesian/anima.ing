@@ -8,6 +8,7 @@ pub mod install;
 pub mod launcher;
 pub mod plan;
 pub mod ready;
+pub mod refresh;
 pub mod removal;
 pub mod render;
 mod sandbox;

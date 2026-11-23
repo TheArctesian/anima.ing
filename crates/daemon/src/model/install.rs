@@ -14,6 +14,9 @@ use super::{fetch, folders, unpack};
 
 pub const DEFAULT_RESERVE: u64 = 10 << 30;
 
+/// The start of the name of the folder of an install that is not complete.
+const UNPACKING: &str = ".unpack-";
+
 pub struct Place<'a> {
     pub folders: &'a Folders,
     pub sources: &'a Sources,
@@ -105,13 +108,53 @@ fn unpack_folder(target: &Target) -> Result<TempDir, Cause> {
     folders::private_below(&target.folders.runtimes, Path::new(runtime))
         .map_err(|_| Cause::LimitDisk)?;
     let temporary = tempfile::Builder::new()
-        .prefix(".unpack-")
+        .prefix(UNPACKING)
         .tempdir_in(target.folders.runtimes.join(runtime))
         .map_err(|_| Cause::LimitDisk)?;
     // The folder becomes `<version>-<backend>/`; its mode must not follow the umask (Section 6).
     std::fs::set_permissions(temporary.path(), std::fs::Permissions::from_mode(0o755))
         .map_err(|_| Cause::LimitDisk)?;
     Ok(temporary)
+}
+
+/// Removes each folder of an install that an earlier run of the daemon left (SF-317); the daemon
+/// calls it once at start, before any claim. A link is not followed and not removed.
+///
+/// # Errors
+/// An I/O error of a folder of `runtimes`.
+pub fn clear_unpacks(runtimes: &Path) -> std::io::Result<usize> {
+    let mut cleared = 0;
+    for runtime in children(runtimes)? {
+        for entry in children(&runtime)? {
+            let name = entry.file_name().unwrap_or_default().to_string_lossy();
+            if name.starts_with(UNPACKING) && is_real_folder(&entry) {
+                std::fs::remove_dir_all(&entry)?;
+                cleared += 1;
+            }
+        }
+    }
+    Ok(cleared)
+}
+
+/// The real folders in `folder`: none when it is missing.
+fn children(folder: &Path) -> std::io::Result<Vec<PathBuf>> {
+    let entries = match std::fs::read_dir(folder) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(error) => return Err(error),
+    };
+    let mut folders = Vec::new();
+    for entry in entries {
+        let path = entry?.path();
+        if is_real_folder(&path) {
+            folders.push(path);
+        }
+    }
+    Ok(folders)
+}
+
+fn is_real_folder(path: &Path) -> bool {
+    std::fs::symlink_metadata(path).is_ok_and(|meta| meta.is_dir())
 }
 
 fn settle(temporary: TempDir, target: &Target) -> Result<(), Cause> {

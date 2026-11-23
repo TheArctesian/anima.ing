@@ -18,6 +18,8 @@ pub(super) const ACCOUNT: &str = "anima-daemon";
 
 pub(crate) const SYSTEM_HOME: &str = "/var/lib/anima-daemon";
 
+pub(super) const SYSTEM_UNIT_FILE: &str = "/etc/systemd/system/anima-daemon.service";
+
 /// After a `bootout`, launchd answers EIO for some seconds while it takes the old service out.
 const BOOTSTRAP_RETRIES: &[Duration] = &[
     Duration::from_secs(1),
@@ -104,7 +106,7 @@ pub(super) fn plan(
         (Target::System, Platform::Linux) if uid != 0 => Err(PlanError::NeedsRoot),
         (Target::System, Platform::Linux) => Ok(Plan {
             unit: Unit::SystemdSystem,
-            file: PathBuf::from("/etc/systemd/system/anima-daemon.service"),
+            file: PathBuf::from(SYSTEM_UNIT_FILE),
             home: PathBuf::from(SYSTEM_HOME),
             steps: retire_old_systemd(false, &PathBuf::from("/etc/systemd/system").join(OLD_UNIT))
                 .into_iter()

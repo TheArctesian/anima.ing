@@ -58,6 +58,7 @@ async fn daemon() -> ExitCode {
         Command::Install { target } => install(target, &home),
         Command::Uninstall => uninstall(&home),
         Command::Stop => stop_unit(),
+        Command::Work { on } => work(&home, on),
         Command::KeyRead { name } => key_read(&name, &home),
         Command::Holder { .. } | Command::Version => ExitCode::FAILURE,
         Command::KeyForget => match KeyStore::open(&home).forget() {
@@ -165,6 +166,24 @@ fn install(target: Target, home: &Home) -> ExitCode {
     }
 }
 
+/// USE-004: the running daemon reads the switch before each claim, so no restart is needed.
+fn work(home: &Home, on: bool) -> ExitCode {
+    if let Err(error) = home.ensure() {
+        return failure(&error);
+    }
+    if let Err(error) = anima_daemon::work::switch::set(home.dir(), on) {
+        return failure(&error);
+    }
+    if on {
+        eprintln!("This machine takes work from the hub.");
+    } else {
+        eprintln!(
+            "This machine takes no work from the hub. Running servers go on; the hub can still stop them."
+        );
+    }
+    ExitCode::SUCCESS
+}
+
 /// HMD-056.
 #[cfg(unix)]
 fn uninstall(home: &Home) -> ExitCode {
@@ -260,6 +279,9 @@ async fn stop() {
 
 /// The system unit and a hosted hub start no agent (THR-128).
 async fn run(home: &Home, hosted_hub: Option<std::path::PathBuf>) -> ExitCode {
+    // SF-259: a newer unit restarts this daemon here.
+    #[cfg(unix)]
+    units::refresh::at_start(home);
     let runner = (hosted_hub.is_none() && serves_a_person(home.dir()))
         .then(|| tokio::spawn(threads(home.dir().to_owned())));
     let outcome = match runtime::run(home, hosted_hub, stop()).await {

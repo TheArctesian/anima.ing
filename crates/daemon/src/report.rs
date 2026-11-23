@@ -156,3 +156,46 @@ pub fn keychain_mark_refused(error: &std::io::Error) {
 pub fn run_ended(error: &dyn std::error::Error) {
     tracing::error!(%error, "the daemon stopped on an error");
 }
+
+pub fn servers_swept(ended: usize) {
+    if ended > 0 {
+        tracing::info!(ended, "ended the model servers of an earlier run");
+    }
+}
+
+pub fn unpacks_cleared(cleared: usize) {
+    if cleared > 0 {
+        tracing::info!(cleared, "removed runtime installs that an earlier run left");
+    }
+}
+
+pub fn model_folder_failed(error: &std::io::Error) {
+    tracing::warn!(%error, "a folder of model work");
+}
+
+pub fn model_work_off(error: &dyn std::error::Error) {
+    tracing::warn!(%error, "this daemon takes no model work");
+}
+
+pub fn model_work_ended(error: &tokio::task::JoinError) {
+    tracing::error!(%error, "the model work loop ended");
+}
+
+pub fn switch_unreadable(error: &crate::config::private_file::PrivateFileError) {
+    tracing::warn!(%error, "the switch file does not read, so the switch is off");
+}
+
+pub fn claim_failed(cause: Cause) {
+    tracing::warn!(%cause, "a claim of model work failed");
+}
+
+pub fn unit_older(file: &std::path::Path) {
+    tracing::warn!(
+        file = %file.display(),
+        "the unit file is older than this daemon; run `anima-daemon install` again (with --system and sudo for the system unit)"
+    );
+}
+
+pub fn unit_refresh_failed(error: &dyn std::error::Error) {
+    tracing::warn!(%error, "the unit file was not refreshed");
+}

@@ -5289,6 +5289,35 @@ installed daemon of the operator; set `ANIMA_DAEMON_HOME` to a new test folder.
    Expected: each row says Removing, then goes; the folders of each copy in `copies/` and `partial/` are gone, and the
    download process has ended (`pgrep -f __model-pull` gives nothing).
 
+### HT-NEW-modelwiring: the running daemon claims model work on `pop-os`, and the switch at the machine stops it
+
+Built on the branch `compute/l1-6d` (task L1-6d of compute-plan.md; USE-004, CAG-002, CAG-003; SF-259, SF-294, SF-317;
+K10 Sections 3 and 4): the switch at the machine (`crates/daemon/src/work/switch.rs`, the file `work-switch` in the
+daemon folder, set with `anima-daemon work on` and `anima-daemon work off`); the model work of `anima-daemon run`
+(`crates/daemon/src/runtime/model_work.rs`): the end of the servers and of the runtime installs of an earlier run, a
+claim each 10 seconds while the switch is on and one each hour while it is off, the check of the servers each 15
+seconds, and the stop of each server at the stop of the daemon; and the refresh of the unit of a Linux user at the start
+of `run` (`crates/daemon/src/units/refresh.rs`). The tests use a fake hub and temporary folders; on `pop-os` the test of
+the stop of a server is skipped, because AppArmor needs the root launcher of L1-6c. The tests do not run the unit of
+systemd, the real hub, or a wait of an hour.
+
+1. On `pop-os`, build the daemon of the branch and put it where the unit starts it, then run
+   `systemctl --user restart anima-daemon.service`.
+   Expected: `journalctl --user -u anima-daemon -n 20` has no line "the unit file is older than this daemon". If the
+   unit file was older, the log of the first start says nothing of it, and the daemon starts again by itself with the
+   new unit (`systemctl --user show anima-daemon -p Delegate` says `Delegate=yes`).
+2. In the desktop application, open Hosting > Models and press Find models.
+   Expected: within one minute Found on the machines has a group `pop-os`.
+3. Run `anima-daemon work off`, wait 20 seconds, and press Find models again.
+   Expected: the command says that the machine takes no work. No new row comes; the hub shows the switch of `pop-os` as
+   off. `ls -l ~/.config/anima-daemon/work-switch` shows mode `-rw-------` and the user of the daemon.
+4. Run `anima-daemon work on`, wait 20 seconds, and press Find models again.
+   Expected: the found list comes again, with no restart of the daemon.
+5. With a server running (after L1-8), run `systemctl --user stop anima-daemon.service`.
+   Expected: within 15 seconds no process of the runtime runs (`pgrep -a llama-server` prints nothing).
+
+Result: Open.
+
 ### HT-NEW-foundmodels: the models of Ollama, LM Studio and Hugging Face on `pop-os`, used where they are
 
 Built on the branch `compute/l1-22` (task L1-22; PULL-012, R-444; contract K11 Sections 2.3, 8 and 10.2): in the daemon
@@ -5298,9 +5327,9 @@ the walk of the fixed folders and of `modelFolders` (`crates/daemon/src/model/fo
 `anima model found`, `anima model find` and `anima model use`, the MCP tools `anima_model_found`, `anima_model_find` and
 `anima_model_use`; and Found on the machines in Hosting > Models (`apps/client/src/lib/model-copies/FoundList.svelte`).
 The tests use made folders of each program in a temporary folder and a fake hub. They do not read the real folders of
-Ollama, LM Studio or Hugging Face, the system folder of Ollama, or a model of several gigabytes. The running daemon does
-not claim model work yet (the wiring task of L1-6), so steps 2 to 6 wait for it; no server starts with a copy before
-task L1-8, so step 5 also waits for L1-8. A probe of the library of the daemon on the real folders of `pop-os` (2026-11-23)
+Ollama, LM Studio or Hugging Face, the system folder of Ollama, or a model of several gigabytes. The running daemon
+claims model work from task L1-6d (branch `compute/l1-6d`; HT-NEW-modelwiring), so steps 2 to 6 wait for that branch on
+`pop-os`; no server starts with a copy before task L1-8, so step 5 also waits for L1-8. A probe of the library of the daemon on the real folders of `pop-os` (2026-11-23)
 did the walk and `copy_adopt` of steps 2 and 3 with no hub: see the row of L1-22. It found the models of the Hugging Face
 cache only after the corrections of R-NEW-privategroup (umask 002) and of the shared store of Unsloth Studio.
 

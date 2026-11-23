@@ -12,7 +12,7 @@ use super::kit::{FAKE_RUNTIME, PROGRAM, archive, contained, node_on, release, ta
 use anima_daemon::model::cycle::Node;
 use anima_daemon::model::install::place_archive;
 
-const SERVER: Uuid = Uuid::from_u128(0x0192_f6aa_0000_7000_8000_0000_0000_0042);
+pub const SERVER: Uuid = Uuid::from_u128(0x0192_f6aa_0000_7000_8000_0000_0000_0042);
 
 fn order(work_type: WorkType, parameters: Parameters) -> Order {
     Order {
@@ -35,7 +35,7 @@ fn start() -> Order {
     )
 }
 
-fn installed_node(root: &std::path::Path, mode: &str, first_port: u16) -> Node {
+pub fn installed_node(root: &std::path::Path, mode: &str, first_port: u16) -> Node {
     let node = node_on(root, first_port..=first_port + 49);
     place_archive(
         archive(&[(PROGRAM, 0o755, Some(FAKE_RUNTIME.as_bytes()))]),
@@ -58,7 +58,10 @@ async fn a_server_listens_on_loopback_with_the_fixed_environment() {
     let root = tempfile::tempdir().expect("a folder");
     let mut node = installed_node(root.path(), "loopback", 42050);
     assert_eq!(node.run(&start()).await, Ok(None));
-    assert_eq!(node.servers.map[&SERVER].state, ServerState::Ready);
+    assert_eq!(
+        node.servers.lock().await.map[&SERVER].state,
+        ServerState::Ready
+    );
     let env =
         std::fs::read_to_string(node.folders.release(&release()).join("bin/env")).expect("env");
     let mut names: Vec<&str> = env.lines().collect();
@@ -89,7 +92,7 @@ async fn a_listener_on_each_address_is_refused() {
     let root = tempfile::tempdir().expect("a folder");
     let mut node = installed_node(root.path(), "any", 42100);
     assert_eq!(node.run(&start()).await, Err(Cause::Listener));
-    assert!(node.servers.map.is_empty());
+    assert!(node.servers.lock().await.map.is_empty());
 }
 
 #[tokio::test]
@@ -112,7 +115,7 @@ async fn a_runtime_that_stops_is_started_again_then_failed_after_the_limit() {
     let mut node = installed_node(root.path(), "loopback", 42200);
     node.run(&start()).await.expect("started");
     set_mode(&node, "exit");
-    let group = node.servers.map[&SERVER]
+    let group = node.servers.lock().await.map[&SERVER]
         .running
         .as_ref()
         .expect("running")
@@ -126,8 +129,13 @@ async fn a_runtime_that_stops_is_started_again_then_failed_after_the_limit() {
     let mut states = Vec::new();
     for _ in 0..40 {
         tokio::time::sleep(Duration::from_millis(150)).await;
-        node.servers.cycle(now, |_| temporary.clone()).await;
-        let server = &node.servers.map[&SERVER];
+        node.servers
+            .lock()
+            .await
+            .cycle(now, |_| temporary.clone())
+            .await;
+        let servers = node.servers.lock().await;
+        let server = &servers.map[&SERVER];
         states.push((server.state, server.record.restarts()));
         if matches!(server.state, ServerState::Failed(_)) {
             break;
@@ -154,7 +162,7 @@ fn child_of(node: &Node) -> rustix::process::Pid {
     rustix::process::Pid::from_raw(text.trim().parse().expect("a pid")).expect("a pid")
 }
 
-async fn gone(pid: rustix::process::Pid) -> bool {
+pub async fn gone(pid: rustix::process::Pid) -> bool {
     for _ in 0..50 {
         if rustix::process::test_kill_process(pid).is_err() {
             return true;
@@ -175,8 +183,12 @@ async fn the_children_of_a_server_end_when_its_main_process_ends() {
     let child = child_of(&node);
     let temporary = node.folders.server(SERVER).join("tmp");
     // One poll of the cycle records the child; on macOS the walk keeps what a poll saw.
-    node.servers.cycle(900, |_| temporary.clone()).await;
-    let leader = node.servers.map[&SERVER]
+    node.servers
+        .lock()
+        .await
+        .cycle(900, |_| temporary.clone())
+        .await;
+    let leader = node.servers.lock().await.map[&SERVER]
         .running
         .as_ref()
         .expect("running")
@@ -186,7 +198,11 @@ async fn the_children_of_a_server_end_when_its_main_process_ends() {
     let leader = rustix::process::Pid::from_raw(leader).expect("a pid");
     rustix::process::kill_process(leader, rustix::process::Signal::KILL).expect("killed");
     tokio::time::sleep(Duration::from_millis(200)).await;
-    node.servers.cycle(1_000, |_| temporary.clone()).await;
+    node.servers
+        .lock()
+        .await
+        .cycle(1_000, |_| temporary.clone())
+        .await;
     assert!(
         gone(child).await,
         "the child of the ended server still runs"
@@ -220,9 +236,13 @@ async fn a_child_that_leaves_the_session_is_still_seen_and_ended() {
         {
             tokio::time::sleep(Duration::from_millis(500)).await;
             let temporary = node.folders.server(SERVER).join("tmp");
-            node.servers.cycle(1_000, |_| temporary.clone()).await;
+            node.servers
+                .lock()
+                .await
+                .cycle(1_000, |_| temporary.clone())
+                .await;
             assert_eq!(
-                node.servers.map[&SERVER].state,
+                node.servers.lock().await.map[&SERVER].state,
                 ServerState::Failed(Cause::Listener)
             );
         }
@@ -231,7 +251,7 @@ async fn a_child_that_leaves_the_session_is_still_seen_and_ended() {
         gone(child_of(&node)).await,
         "the child that left the session still runs"
     );
-    node.servers.stop_all().await;
+    node.servers.lock().await.stop_all().await;
     set_mode(&node, "loopback");
     node.run(&start()).await.expect("started");
     let child = child_of(&node);
@@ -294,7 +314,7 @@ async fn startup_waits_for_the_launcher_to_exec_before_inspecting_its_cgroup() {
         "uncontained launcher is not an exposed runtime"
     );
     std::fs::write(gate, b"go\n").expect("release launcher");
-    let (mut node, result) = startup.await.expect("start task");
+    let (node, result) = startup.await.expect("start task");
     assert_eq!(result, Ok(None));
-    node.servers.stop_all().await;
+    node.servers.lock().await.stop_all().await;
 }

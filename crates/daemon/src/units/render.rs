@@ -86,6 +86,17 @@ pub(super) fn render(unit: Unit, program: &Program<'_>) -> Result<String, Render
     fill(&slot(unit), program)
 }
 
+/// Whether the unit text `text` starts `program` where `unit` names its program.
+pub(super) fn starts(unit: Unit, text: &str, program: &Program<'_>) -> bool {
+    let slot = slot(unit);
+    text.contains(&format!(
+        "{}{}{}",
+        slot.before,
+        program.as_str(),
+        slot.after
+    ))
+}
+
 fn fill(slot: &Slot, program: &Program<'_>) -> Result<String, RenderError> {
     let marked = format!("{}{}{}", slot.before, slot.placeholder, slot.after);
     if slot.template.matches(&marked).count() != 1 {

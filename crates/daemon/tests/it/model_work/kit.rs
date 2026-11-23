@@ -3,7 +3,7 @@ use std::path::Path;
 use std::time::Instant;
 
 use anima_daemon::model::cycle::Node;
-use anima_daemon::model::supervise::Servers;
+use anima_daemon::model::supervise::Shared;
 use daemon_core::model_work::folders::Folders;
 use daemon_core::model_work::machine::MachineSettings;
 use daemon_core::model_work::names::{Backend, Runtime};
@@ -213,7 +213,7 @@ pub fn node_on(root: &Path, ports: std::ops::RangeInclusive<u16>) -> Node {
             sources: vec![entry()],
         },
         settings: MachineSettings::default(),
-        servers: Servers::default(),
+        servers: Shared::default(),
         switch_on: true,
         started: Instant::now(),
         reserve: 0,

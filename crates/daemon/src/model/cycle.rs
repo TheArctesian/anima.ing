@@ -22,9 +22,12 @@ use super::install::{self, Place};
 use super::pull::watch::{self, Watched};
 use super::server::{self, Launch};
 use super::state;
-use super::supervise::{Server, ServerState, Servers};
+use super::supervise::{Server, ServerState, Servers, Shared};
 use crate::hub::HubClient;
 use crate::hub::answer::{Answer, Cause as HubCause};
+
+/// The folder of a server's temporary files, below its folder in the state folder.
+pub const TEMPORARY: &str = "tmp";
 
 pub const BUILT: [WorkType; 8] = [
     WorkType::ModelReport,
@@ -44,7 +47,7 @@ pub struct Node {
     pub folders: Folders,
     pub sources: Sources,
     pub settings: MachineSettings,
-    pub servers: Servers,
+    pub servers: Shared,
     pub switch_on: bool,
     pub started: Instant,
     pub reserve: u64,
@@ -161,7 +164,7 @@ impl Node {
         let launch = move || {
             let port = server::free_port(ports.clone())?;
             let key = api_key()?;
-            let temporary = place.join("tmp");
+            let temporary = place.join(TEMPORARY);
             Some((
                 Launch {
                     program: program.clone(),
@@ -210,8 +213,9 @@ impl Node {
     }
 
     /// The result of `model_report` with the list `found` of a walk.
-    fn model_state(&self, found: Vec<Value>) -> Value {
-        let mut model = state::model_state(&self.folders, &self.servers, &self.settings);
+    async fn model_state(&self, found: Vec<Value>) -> Value {
+        let servers = self.servers.lock().await;
+        let mut model = state::model_state(&self.folders, &servers, &self.settings);
         model["found"] = Value::Array(found);
         model
     }
@@ -225,7 +229,7 @@ impl Node {
         match &order.parameters {
             Parameters::Report => {
                 let found = super::found::listed(self.found_roots()).await;
-                Ok(Some(self.model_state(found)))
+                Ok(Some(self.model_state(found).await))
             }
             Parameters::Adopt { copy, found } => {
                 let state = self.folders.state.clone();
@@ -244,10 +248,10 @@ impl Node {
                 super::folders::make_all(&self.folders).map_err(|_| Cause::LimitDisk)?;
                 let started = self.server_for(*server, release, settings)?;
                 let clock = self.started;
-                self.servers
-                    .start(*server, started, move || clock.elapsed().as_secs())
-                    .await
-                    .map(|()| None)
+                self.servers.lock().await.stop(*server).await;
+                let ready = Servers::ready(started, move || clock.elapsed().as_secs()).await?;
+                self.servers.lock().await.map.insert(*server, ready);
+                Ok(None)
             }
             // TODO(L1-10): count the requests in progress once the daemon sends any.
             Parameters::Drain { seconds } => {
@@ -260,7 +264,7 @@ impl Node {
                 super::pull::delete(&self.folders.models, *copy)
             }
             Parameters::Stop { server } => {
-                if self.servers.stop(*server).await {
+                if self.servers.lock().await.stop(*server).await {
                     Ok(None)
                 } else {
                     Err(Cause::CopyUnknown)
