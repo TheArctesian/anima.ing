@@ -67,6 +67,35 @@ async fn nowhere() -> Server {
     serve(Behaviour::Silent).await
 }
 
+#[test]
+fn mobile_posts_only_the_versioned_alert_to_the_authenticated_relay() {
+    use crate::fleet::notifications::channels::{WebhookMethod, WebhookSecrets, WebhookSettings};
+
+    let url = "https://push.example.test/installation";
+    let settings = Settings::Mobile(WebhookSettings {
+        origin: "https://push.example.test".into(),
+        method: WebhookMethod::Post,
+        header_names: vec!["Authorization".into()],
+    });
+    let secrets = Secrets::Webhook(WebhookSecrets {
+        url: secret(url),
+        headers: vec![secret("Bearer synthetic-relay-token")],
+    });
+
+    let request = http(request((settings, secrets)));
+    assert_eq!(request.method, Method::POST);
+    assert_eq!(request.url.as_str(), url);
+    assert_eq!(
+        header(&request, "authorization"),
+        "Bearer synthetic-relay-token"
+    );
+    assert_eq!(header(&request, "content-type"), "application/json");
+    assert_eq!(
+        json_body(&request),
+        json!({ "version": 1, "kind": "down", "title": "web on pve-01 is down", "body": "timed out" })
+    );
+}
+
 #[tokio::test]
 async fn not_002_a_webhook_posts_its_json_with_its_headers_to_its_whole_url() {
     let server = nowhere().await;

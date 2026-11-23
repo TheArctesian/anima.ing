@@ -1330,7 +1330,7 @@ The view has these tabs:
 ### 6.8 Notifications (Phase 3)
 
 - **NOT-001.** The hub must send a notification when a check changes to Down and when it changes back to Up.
-- **NOT-002.** The first channels must be webhook, ntfy, email (SMTP) and Apprise (through its HTTP API). Do not start the Apprise command line tool.
+- **NOT-002.** The first channels must be webhook, ntfy, email (SMTP) and Apprise (through its HTTP API). Do not start the Apprise command line tool. The Mobile channel sends alerts through a configured HTTPS push relay (mobile plan M7-1).
 - **NOT-003.** The operator must be able to select the channels for each check. A channel can be "on by default" for new checks.
 - **NOT-004.** Each channel must have a "Send test" button.
 - **NOT-005.** The operator must be able to set a resend interval: send the notification again after each N Down heartbeats.

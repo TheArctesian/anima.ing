@@ -200,14 +200,16 @@ export type CatalogueTier =
 export type ChannelKind =
   | 'APPRISE'
   | 'EMAIL'
+  | 'MOBILE'
   | 'NTFY'
   | 'WEBHOOK';
 
 export type ChannelSettingsInput =
-  {   apprise: AppriseSettingsInput; email?: never; ntfy?: never; webhook?: never; }
-  |  { apprise?: never;   email: EmailSettingsInput; ntfy?: never; webhook?: never; }
-  |  { apprise?: never; email?: never;   ntfy: NtfySettingsInput; webhook?: never; }
-  |  { apprise?: never; email?: never; ntfy?: never;   webhook: WebhookSettingsInput; };
+  {   apprise: AppriseSettingsInput; email?: never; mobile?: never; ntfy?: never; webhook?: never; }
+  |  { apprise?: never;   email: EmailSettingsInput; mobile?: never; ntfy?: never; webhook?: never; }
+  |  { apprise?: never; email?: never;   mobile: MobileRelayInput; ntfy?: never; webhook?: never; }
+  |  { apprise?: never; email?: never; mobile?: never;   ntfy: NtfySettingsInput; webhook?: never; }
+  |  { apprise?: never; email?: never; mobile?: never; ntfy?: never;   webhook: WebhookSettingsInput; };
 
 export type CheckConfigInput =
   {   dns: DnsConfigInput; docker?: never; domainExpiry?: never; group?: never; http?: never; icmp?: never; push?: never; snmp?: never; systemd?: never; tailscalePing?: never; tcp?: never; tls?: never; }
@@ -692,6 +694,11 @@ export type MetricsSource =
   | 'DAEMON'
   | 'NONE'
   | 'SSH';
+
+export type MobileRelayInput = {
+  token?: string | null | undefined;
+  url?: string | null | undefined;
+};
 
 export type NewIssueInput = {
   /** At most 65,536 characters. */

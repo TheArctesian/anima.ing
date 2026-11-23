@@ -27,6 +27,7 @@ pub(in crate::fleet::notifications) enum AppriseMode {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(in crate::fleet::notifications) enum Settings {
     Webhook(WebhookSettings),
+    Mobile(WebhookSettings),
     Ntfy(NtfySettings),
     Email(EmailSettings),
     Apprise(AppriseSettings),
@@ -41,6 +42,7 @@ impl Settings {
     pub(in crate::fleet::notifications) const fn kind(&self) -> ChannelKind {
         match self {
             Self::Webhook(_) => ChannelKind::Webhook,
+            Self::Mobile(_) => ChannelKind::Mobile,
             Self::Ntfy(_) => ChannelKind::Ntfy,
             Self::Email(_) => ChannelKind::Email,
             Self::Apprise(_) => ChannelKind::Apprise,
@@ -57,6 +59,7 @@ impl Settings {
     ) -> Result<Self, Error> {
         Ok(match kind {
             ChannelKind::Webhook => Self::Webhook(read(value)?),
+            ChannelKind::Mobile => Self::Mobile(read(value)?),
             ChannelKind::Ntfy => Self::Ntfy(read(value)?),
             ChannelKind::Email => Self::Email(read(value)?),
             ChannelKind::Apprise => Self::Apprise(read(value)?),
@@ -66,7 +69,7 @@ impl Settings {
     /// The JSON stored in `channels.settings`.
     pub(in crate::fleet::notifications) fn to_stored(&self) -> serde_json::Value {
         let stored = match self {
-            Self::Webhook(settings) => serde_json::to_value(settings),
+            Self::Webhook(settings) | Self::Mobile(settings) => serde_json::to_value(settings),
             Self::Ntfy(settings) => serde_json::to_value(settings),
             Self::Email(settings) => serde_json::to_value(settings),
             Self::Apprise(settings) => serde_json::to_value(settings),
@@ -78,7 +81,7 @@ impl Settings {
     /// port, or the Apprise server. Sealed secrets are bound to it (SEC-003, CR-14 item 1).
     pub(in crate::fleet::notifications) fn target(&self) -> String {
         match self {
-            Self::Webhook(settings) => settings.origin.clone(),
+            Self::Webhook(settings) | Self::Mobile(settings) => settings.origin.clone(),
             Self::Ntfy(settings) => settings.server.clone(),
             Self::Email(settings) => format!("{}:{}", settings.host, settings.port),
             Self::Apprise(settings) => settings.server.clone(),
@@ -89,7 +92,7 @@ impl Settings {
     /// order. Sealed secrets are bound to them too.
     pub(in crate::fleet::notifications) fn secret_names(&self) -> Vec<String> {
         match self {
-            Self::Webhook(settings) => settings
+            Self::Webhook(settings) | Self::Mobile(settings) => settings
                 .header_names
                 .iter()
                 .map(|name| name.to_ascii_lowercase())

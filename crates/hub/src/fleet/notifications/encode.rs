@@ -50,6 +50,15 @@ pub(super) fn webhook(rendered: &Rendered, kind: NotificationKind, values: &Valu
     })
 }
 
+pub(super) fn mobile(rendered: &Rendered, kind: NotificationKind) -> Value {
+    json!({
+        "version": 1,
+        "kind": kind.as_str(),
+        "title": single_line(&rendered.title).chars().take(120).collect::<String>(),
+        "body": plain_body(&rendered.body).chars().take(400).collect::<String>(),
+    })
+}
+
 /// A ntfy message: `Title` header, plain-text body, `Priority` 1 to 5.
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct Ntfy {
