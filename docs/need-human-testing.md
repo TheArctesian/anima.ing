@@ -217,7 +217,7 @@ Do not use a subscription sign-in for this check until the operator decides OD-S
 
 - State: Open.
 - Open the Hub and Pop!_OS Overview pages in landscape and portrait. Check that the charts have room and the Connect explanation stays within the page.
-- Select each time range. Check that the charts keep their values and that axis labels fit. Look for a dashed threshold on a chart that exceeded its threshold.
+- Select each time range. Check that the charts keep their values and that axis labels fit. Check that percent charts have a subtle dashed threshold guide. Check that uptime values are compact, with 100% shown without decimal zeros.
 - Check that the current reading and a different peak remain visible. Check that the lines for read and write are distinguishable.
 
 ### HT-148: phone Devices, offline notice and Integrations (M2-5)

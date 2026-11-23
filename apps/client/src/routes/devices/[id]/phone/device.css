@@ -112,7 +112,7 @@
 
 :root .phone-device-head .figs dd {
   margin: 0;
-  font-size: var(--text-xl);
+  font-size: var(--text-lg);
   font-variant-numeric: tabular-nums;
   letter-spacing: var(--tracking-small);
 }

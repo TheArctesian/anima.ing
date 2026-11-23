@@ -36,11 +36,9 @@
     empty,
     preference = motionPreference(),
   }: Props = $props();
-  const peak = $derived(Math.max(0, ...series.map((one) => highestOf(one.points))));
-  const scale = $derived(valueScale(axis, peak));
-  const visibleThreshold = $derived(quiet && threshold !== undefined && peak <= threshold ? undefined : threshold);
+  const scale = $derived(valueScale(axis, Math.max(0, ...series.map((one) => highestOf(one.points)))));
   const plots = $derived(series.map((one) => ({ ...one, ...seriesPlot(one.points, span, scale, gap) })));
-  const label = $derived(chartLabel({ title, series, top: scale.top, format, threshold: visibleThreshold, empty }));
+  const label = $derived(chartLabel({ title, series, top: scale.top, format, threshold, empty }));
   const length = $derived(lengthOf(span));
   let lines = $state<SVGGElement>();
   let before: TimeWindow | undefined;
@@ -62,7 +60,7 @@
 <div class="chart" class:quiet>
   {#key length}
     <div class="layer" transition:crossFade={{ preference }}>
-      <ChartFrame {span} {scale} {format} threshold={visibleThreshold} {timeAxis} {quiet} legend={series} {label}>
+      <ChartFrame {span} {scale} {format} {threshold} {timeAxis} {quiet} legend={series} {label}>
         <svg class="lines" aria-hidden="true" viewBox="0 0 {PLOT.width} {PLOT.height}" preserveAspectRatio="none">
           <g bind:this={lines}>
             {#each plots as plot, index (index)}

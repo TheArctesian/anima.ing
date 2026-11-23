@@ -131,6 +131,7 @@
   }
 
   .quiet .threshold {
+    opacity: var(--opacity-disabled);
     stroke-dasharray: var(--space-1) var(--space-1);
   }
 

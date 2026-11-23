@@ -30,9 +30,9 @@ afterEach(async () => {
 });
 
 it('D-10: uptime for 24 hours, 7 days and 30 days; no value is "—"', () => {
-  expect(uptimeReadings(device({ day: 0.9995, week: 0.5, month: null }))).toEqual([
-    { label: '24 hours', text: '99.95 %' },
-    { label: '7 days', text: '50.00 %' },
+  expect(uptimeReadings(device({ day: 0.99999, week: 0.5, month: null }))).toEqual([
+    { label: '24 hours', text: '99.99%' },
+    { label: '7 days', text: '50%' },
     { label: '30 days', text: '—' },
   ]);
 });
@@ -104,7 +104,7 @@ const figures = (title: string) => [...(card(title)?.querySelectorAll('dt') ?? [
 it('D-10: the panel shows status, maintenance, uptime, check counts and the key, each in its card', () => {
   show(LOADED);
   expect(figures('Status')).toEqual([['Status', 'Up'], ['Maintenance', 'On']]);
-  expect(figures('Uptime')).toEqual([['24 hours', '99.95 %'], ['7 days', '99.00 %'], ['30 days', '—']]);
+  expect(figures('Uptime')).toEqual([['24 hours', '99.95%'], ['7 days', '99%'], ['30 days', '—']]);
   expect(figures('Checks')).toEqual([['Up', '1']]);
   expect(words(card('SSH host key'))).toContain('ssh-ed25519');
   expect(words(card('SSH host key')?.querySelector('.overview-key'))).toBe('SHA256:abc');

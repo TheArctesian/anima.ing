@@ -36,7 +36,7 @@
     </section>
     <section class="overview-card" aria-labelledby="{id}-uptime">
       <h2 id="{id}-uptime" class="overview-card-title"><Icon name="carbon:timer" />Uptime</h2>
-      <dl class="overview-figures">
+      <dl class="overview-figures overview-uptime">
         {#each uptimeReadings(device) as reading (reading.label)}
           <div class="overview-figure">
             <dt>{reading.label}</dt>

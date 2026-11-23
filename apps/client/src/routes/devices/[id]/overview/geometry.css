@@ -111,7 +111,7 @@
   }
 
   .overview-facts.three .overview-figure dd {
-    font-size: var(--text-lg);
+    font-size: var(--overview-figure-size, var(--text-lg));
     white-space: nowrap;
   }
 }
@@ -125,6 +125,12 @@
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.overview-uptime {
+  --overview-figure-size: var(--text-sm);
+
+  min-block-size: auto;
 }
 
 .overview-figure {
@@ -144,7 +150,7 @@
 .overview-figure dd {
   margin: 0;
   color: var(--text);
-  font-size: var(--text-2xl);
+  font-size: var(--overview-figure-size, var(--text-2xl));
   font-weight: var(--weight-medium);
   font-variant-numeric: tabular-nums;
   letter-spacing: var(--tracking-display);
@@ -159,7 +165,7 @@
   }
 
   .overview-facts .overview-figure dd {
-    font-size: var(--text-lg);
+    font-size: var(--overview-figure-size, var(--text-lg));
     white-space: nowrap;
   }
 }

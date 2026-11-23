@@ -169,6 +169,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 .v2 button, .v2 input { font: inherit; color: inherit; }
 .v2 .mono { font-family: var(--font-mono); font-size: var(--t-sm); }
 .v2 .num { font-variant-numeric: tabular-nums; }
+.v2 .uptime-value { font-size: var(--text-sm); }
 .v2 .sec { color: var(--text-secondary); }
 .v2 .ter { color: var(--text-tertiary); }
 .v2 .ic { width: var(--icon-sm); height: var(--icon-sm); flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
@@ -386,7 +387,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
       <div style="display: flex; flex-direction: column; gap: var(--space-4); min-width: 0">
         <section class="card" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))" aria-label="Health">
           <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Checks</span><span><span class="st up">1 of 1 up</span></span><span class="note">Ping, every 60 s</span></div>
-          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Uptime, 24 h</span><span><span class="num">100%</span></span><span class="note">97.7% in 7 d and 30 d</span></div>
+          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Uptime, 24 h</span><span><span class="num uptime-value">100%</span></span><span class="note">97.7% in 7 d and 30 d</span></div>
           <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Reached by</span><span>The link, direct</span><span class="note">Last seen 4 s ago</span></div>
           <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Host key</span><span><span class="st up">Trusted</span></span><span class="note">Checked at the last session</span></div>
         </section>
@@ -401,7 +402,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 0.5h120 M0 16h120 M0 31.5h120" stroke="var(--chart-grid)" stroke-opacity=".45" stroke-width="1" fill="none"/><polyline points="0,22 20,22 40,21 60,22 80,21 100,22 120,22" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">17.9 of 64 GB</span></figure>
           <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)">
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">Disk /</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">82%</b></div>
-  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 0.5h120 M0 16h120 M0 31.5h120" stroke="var(--chart-grid)" stroke-opacity=".45" stroke-width="1" fill="none"/><polyline points="0,8 30,8 60,7 90,7 120,6" fill="none" stroke="var(--status-degraded)" stroke-width="1.5"/></svg><span class="note">820 GB of 1 TB · over 80%</span></figure>
+  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 0.5h120 M0 16h120 M0 31.5h120" stroke="var(--chart-grid)" stroke-opacity=".45" stroke-width="1" fill="none"/><path d="M0 4.8h120" stroke="var(--chart-threshold)" stroke-opacity=".5" stroke-dasharray="4 4" fill="none"/><polyline points="0,8 30,8 60,7 90,7 120,6" fill="none" stroke="var(--status-degraded)" stroke-width="1.5"/></svg><span class="note">820 GB of 1 TB · over 80%</span></figure>
           <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)">
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">GPU</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">26%</b></div>
   <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 0.5h120 M0 16h120 M0 31.5h120" stroke="var(--chart-grid)" stroke-opacity=".45" stroke-width="1" fill="none"/><polyline points="0,28 15,27 30,12 45,10 60,24 75,22 90,9 105,23 120,24" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">RTX A5000 · VRAM 9%</span></figure>
@@ -473,7 +474,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
       <div style="display: flex; flex-direction: column; gap: var(--space-4); min-width: 0">
         <section class="card" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))" aria-label="Health">
           <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Checks</span><span><span class="st up">1 of 1 up</span></span><span class="note">Ping, every 60 s</span></div>
-          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Uptime, 24 h</span><span><span class="num">100%</span></span><span class="note">97.7% in 7 d and 30 d</span></div>
+          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Uptime, 24 h</span><span><span class="num uptime-value">100%</span></span><span class="note">97.7% in 7 d and 30 d</span></div>
           <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Reached by</span><span>The link, direct</span><span class="note">Last seen 4 s ago</span></div>
           <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Host key</span><span><span class="st up">Trusted</span></span><span class="note">Checked at the last session</span></div>
         </section>
@@ -488,7 +489,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 0.5h120 M0 16h120 M0 31.5h120" stroke="var(--chart-grid)" stroke-opacity=".45" stroke-width="1" fill="none"/><polyline points="0,22 20,22 40,21 60,22 80,21 100,22 120,22" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">17.9 of 64 GB</span></figure>
           <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)">
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">Disk /</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">82%</b></div>
-  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 0.5h120 M0 16h120 M0 31.5h120" stroke="var(--chart-grid)" stroke-opacity=".45" stroke-width="1" fill="none"/><polyline points="0,8 30,8 60,7 90,7 120,6" fill="none" stroke="var(--status-degraded)" stroke-width="1.5"/></svg><span class="note">820 GB of 1 TB · over 80%</span></figure>
+  <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 0.5h120 M0 16h120 M0 31.5h120" stroke="var(--chart-grid)" stroke-opacity=".45" stroke-width="1" fill="none"/><path d="M0 4.8h120" stroke="var(--chart-threshold)" stroke-opacity=".5" stroke-dasharray="4 4" fill="none"/><polyline points="0,8 30,8 60,7 90,7 120,6" fill="none" stroke="var(--status-degraded)" stroke-width="1.5"/></svg><span class="note">820 GB of 1 TB · over 80%</span></figure>
           <figure class="card" style="padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1)">
   <div style="display: flex; align-items: baseline; gap: var(--space-2)"><span class="label">GPU</span><b class="num" style="margin-left: auto; font-weight: 500; font-size: var(--t-lg)">26%</b></div>
   <svg viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" style="width: 100%; height: var(--space-8)"><path d="M0 0.5h120 M0 16h120 M0 31.5h120" stroke="var(--chart-grid)" stroke-opacity=".45" stroke-width="1" fill="none"/><polyline points="0,28 15,27 30,12 45,10 60,24 75,22 90,9 105,23 120,24" fill="none" stroke="var(--chart-series-1)" stroke-width="1.5"/></svg><span class="note">RTX A5000 · VRAM 9%</span></figure>
@@ -554,7 +555,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
       <div style="display: flex; flex-direction: column; gap: var(--space-4); min-width: 0">
         <section class="card" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr))" aria-label="Health">
           <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Checks</span><span class="note">None</span></div>
-          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Uptime, 24 h</span><span><span class="num">100%</span></span><span class="note">100% in 7 d and 30 d</span></div>
+          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Uptime, 24 h</span><span><span class="num uptime-value">100%</span></span><span class="note">100% in 7 d and 30 d</span></div>
         </section>
         <div class="toolbar"><span class="label grow">Resources</span>
           <div class="seg sm" role="group" aria-label="Range"><button class="on" type="button">1 hour</button><button type="button">24 hours</button><button type="button">7 days</button></div></div>

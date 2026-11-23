@@ -51,8 +51,8 @@
     >
   </p>
   <dl class="figs">
-    <div><dt>Uptime 24 h</dt><dd>{uptimeText(device.day ?? null)}</dd></div>
-    <div><dt>30 d</dt><dd>{uptimeText(device.month ?? null)}</dd></div>
+    <div><dt>Uptime 24 h</dt><dd>{uptimeText(device.day ?? null, true)}</dd></div>
+    <div><dt>30 d</dt><dd>{uptimeText(device.month ?? null, true)}</dd></div>
     <div><dt>Response</dt><dd>{responseText(beats ?? [])}</dd></div>
   </dl>
   <p class="beatcap" aria-hidden="true"><span>Last 50 checks</span><span>now</span></p>

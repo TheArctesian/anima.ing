@@ -3,7 +3,7 @@
   import ChartSkeleton from '$lib/charts/ChartSkeleton.svelte';
   import type { SeriesColour } from '$lib/charts/plot';
   import type { MetricRange } from '$lib/metrics/api';
-  import { formatPercent } from '$lib/metrics/units';
+  import { DEGRADED_ABOVE, formatPercent } from '$lib/metrics/units';
   import { rangeWindow } from '$lib/metrics/ranges';
   import './geometry.css';
 
@@ -29,7 +29,7 @@
   {#each SHAPE as series, cell (cell)}
     <div class="cell">
       <p class="chart-title"></p>
-      <ChartSkeleton {span} axis="percent" format={formatPercent} quiet legend={legendOf(series)} />
+      <ChartSkeleton {span} axis="percent" format={formatPercent} threshold={DEGRADED_ABOVE} quiet legend={legendOf(series)} />
     </div>
   {/each}
 </div>
