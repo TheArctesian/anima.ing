@@ -126,8 +126,11 @@ A Linux machine does not run these: the tests of `check-mach-o.sh`, which skip o
 of the daemon and its LaunchAgent; the access-control tests of `link/statedir`; the macOS parts of the desktop
 shell, with the trust hook that `pinning` proves. The job `macos` runs them on `macos-15`
 (`deploy/bin/macos-tests`, the same file as the job `gates-macos` of the release) for the same runs as the job
-`windows`: a push to `dev` that is not only documents, a train, and a run that a person starts
-(`gh workflow run gates.yml --ref <branch>`). The push of a different branch does not run it (operator ruling,
+`windows`: a train, a run that a person starts (`gh workflow run gates.yml --ref <branch>`), and a push to
+`dev` that needs each job (`--dev-push`: a tree that no run proved; after a train, `dev` holds the tree that the
+train proved, so the train's run is the one that runs it). A run that a different workflow calls does not run
+either job: the release runs its own. A run that proved a tree before this job existed did not run it, so the
+first train after this change is the first proof. The push of a different branch does not run it (operator ruling,
 2026-11-22: the release failed on a test that only a Mac runs and that no run of `dev` had run). So a change of
 that code still needs `bun run gates:fast` on a Mac before the push, or a run started by hand.
 
