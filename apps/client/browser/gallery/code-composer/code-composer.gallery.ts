@@ -110,6 +110,22 @@ const SHOTS: readonly ComposerShot[] = [
     await expect(words).toBeVisible();
     return words;
   } },
+  // The `/` list of today's runner: only what can run, so no row at all without the set call, and /model with it.
+  { name: 'runner-no-commands', part: 'real-idle', act: async (page, part) => {
+    await editorOf(part).click();
+    await page.keyboard.type('/');
+    const words = page.getByRole('paragraph').filter({ hasText: 'No matching command.' });
+    await expect(words).toBeVisible();
+    return words;
+  } },
+  { name: 'runner-commands', part: 'real-set', act: async (page, part) => {
+    await editorOf(part).click();
+    await page.keyboard.type('/');
+    // The page's specimen menus come first; the one that this card opened is the last list of commands.
+    const list = page.getByRole('listbox', { name: 'Commands' }).last();
+    await expect(list.getByRole('option')).toHaveCount(1);
+    return list;
+  } },
 ];
 
 /** The smallest box that holds the part and its floating layer, with a margin, inside the window. */
