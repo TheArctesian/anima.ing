@@ -103,7 +103,8 @@ impl Model {
     }
 }
 
-/// The effort of the model, from the closed list of `claude --help`.
+/// The effort of the model, from the closed list of `claude --help`, and `ultra`, which Codex
+/// names for some models: a start or a change takes it only for a model whose program lists it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Effort {
@@ -112,6 +113,7 @@ pub enum Effort {
     High,
     Xhigh,
     Max,
+    Ultra,
 }
 
 impl Effort {
@@ -123,6 +125,7 @@ impl Effort {
             Self::High => "high",
             Self::Xhigh => "xhigh",
             Self::Max => "max",
+            Self::Ultra => "ultra",
         }
     }
 }
