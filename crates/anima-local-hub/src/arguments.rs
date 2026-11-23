@@ -150,6 +150,11 @@ pub(crate) struct RunFiles {
     /// The folder of the web client that the hub serves, on a hub of the pool only
     #[arg(long)]
     pub(crate) web_root: Option<PathBuf>,
+    /// The networks that the hub never reaches, on a hub of the pool only: comma-separated
+    /// CIDRs, such as the bridge of the containers and the address of the host (R-030). The hub
+    /// refuses a list that is not networks
+    #[arg(long)]
+    pub(crate) probe_deny: Option<String>,
 }
 
 impl RunFiles {
@@ -159,6 +164,7 @@ impl RunFiles {
             cloud_key_file: self.hosted_cloud_key_file.clone(),
             public_origin: self.public_origin.clone(),
             web_root: self.web_root.clone(),
+            probe_deny: self.probe_deny.clone(),
         }
     }
 
