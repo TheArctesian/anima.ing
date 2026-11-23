@@ -3606,7 +3606,7 @@ Where: [model-work.md](../contracts/compute/model-work.md) Section 2 and Section
 
 What it is: `revision` had no exact form, and a file name could hold `/`, so a hub that is taken over could choose a branch name or a path that leaves the folder of the copy or meets a link.
 
-The correction: `revision` is exactly 40 lower-case hexadecimal characters. A file name is a flat name from the list of Section 2.2, with no `/`, `..`, `%` or control character. The daemon writes it with `openat`, `O_NOFOLLOW` and `O_EXCL` under a folder of mode 0700, and refuses two names that are equal in lower case, as the unpack does.
+The correction: `revision` is exactly 40 lower-case hexadecimal characters. A file name is a flat name, or one sub-folder and a flat name joined by one `/` (R-408); each of the two parts is checked as a flat name, with no `/`, `..`, `%`, control character or character outside ASCII (SF-362), and the file part is from the list of Section 2.2. The daemon opens each part with `openat` and `O_NOFOLLOW`, flattens the file on write into `copies/<copy>/` with `O_EXCL` under a folder of mode 0700, and refuses two files whose flattened names are equal in lower case, as the unpack does; it never overwrites one.
 
 State: Open. Fixed in the text of K11 (2026-11-22); no code. Found by a separate reviewer on 2026-11-22 (SEC-C-012).
 
@@ -3681,6 +3681,78 @@ What it is: The key is in the environment of the runtime, which a process of the
 The correction: Section 2.1 states that the key protects only against other users and browser pages.
 
 State: Open. Fixed in the text of K11 (2026-11-22). Found by a separate reviewer on 2026-11-22 (SEC-C-012).
+
+### SF-379: The child reports two of its own faults as `source_failed`. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: `crates/daemon/src/model/fetch/child.rs`.
+
+What it is: A child that refused a non-empty environment, or could not build its Tokio runtime, wrote `source_failed`, so a fault of the child read as a fault of the source.
+
+The correction: Both return `fetch_failed`. Tests: `the_child_refuses_to_work_with_any_environment_variable`, `the_reply_of_the_child_reads_back_as_its_cause`.
+
+State: Corrected on the branch `compute/model-causes`. Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-380: The form of a name with a sub-folder is loose. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 2, `files[].name`.
+
+What it is: The text did not say how many `/` a name may hold, that a part may not be empty, `.` or `..`, or whether the limit of 256 characters counts both parts.
+
+The correction: Exactly 0 or 1 `/`; each part has 1 or more characters and is neither `.` nor `..`; at most 256 characters in all.
+
+State: Fixed in the text of K11; no code (task L1-7). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-381: The address of a file in a sub-folder could encode the `/`. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 7, "The source".
+
+What it is: "Each part is encoded as a path segment" read on the whole name gives `%2F`, which a server may read in a different way.
+
+The correction: The folder and the file are each encoded as a path segment, with a literal `/` between them, never `%2F`.
+
+State: Fixed in the text of K11; no code (task L1-7). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-382: Names that Windows reserves are not refused. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 2.2.
+
+What it is: A part such as `nul.gguf`, `COM1`, a name that ends in a dot or a space, or a name with `:` opens a device or a stream on Windows.
+
+The correction: Either part is refused (`file_type`) when it is `CON`, `PRN`, `AUX`, `NUL`, `COM1` to `COM9` or `LPT1` to `LPT9` in any case, with or without an extension, ends in a dot or a space, or holds `:`.
+
+State: Fixed in the text of K11; no code (task L1-7). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-383: Two causes could fire for a file over its size. Note
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 5.
+
+What it is: `size` and `file_rejected` both spoke of a file that is too large.
+
+The correction: `size` fires when the downloaded size differs from the `sizeBytes` given; `file_rejected` fires when a content check of a file finds it too large.
+
+State: Corrected on the branch `compute/model-causes` (text of K11). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-384: A child that exits with code 0 chooses between `source_failed` and the other words. Note
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: `crates/daemon-core/src/model_work/releases/fetch.rs`, `verdict`.
+
+What it is: Only the word of a child that exited with code 0 gives `source_failed`; a child under the control of a hostile archive could write that word in place of `fetch_failed`.
+
+The correction: None needed: the child could already write each word of its fixed list, so the exit-0 path adds no new power, and the cause carries no text of the child.
+
+State: Accepted as reviewed. Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
 
 ## The security review of the browser session of a hosted hub and of the trust in the gateway (task HM-T32, 2026-11-21)
 
