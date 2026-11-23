@@ -17,6 +17,8 @@ const PROFILES: &str = "/sys/kernel/security/apparmor/profiles";
 const SYSTEM_FILE_BYTES: usize = 1 << 20;
 /// The longest wait for `--protocol`.
 const PROTOCOL_WAIT: Duration = Duration::from_secs(5);
+/// The most bytes of the protocol line that are read.
+const PROTOCOL_BYTES: u64 = 256;
 
 /// The launcher of one start.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -45,8 +47,10 @@ pub async fn way(program: &Path, state: &Path) -> Result<Way, Cause> {
     if !is_used() {
         return Ok(Way::Daemon);
     }
-    installed().map_err(Cause::ContainmentFailed)?;
-    protocol().await.map_err(Cause::ContainmentFailed)?;
+    tokio::task::spawn_blocking(check)
+        .await
+        .unwrap_or(Err(Containment::LauncherMissing))
+        .map_err(Cause::ContainmentFailed)?;
     let list = state.join(list::FILE);
     let signature = state.join(list::SIGNATURE_FILE);
     let (program, kept, kept_signature) = (program.to_owned(), list.clone(), signature.clone());
@@ -60,9 +64,13 @@ pub async fn way(program: &Path, state: &Path) -> Result<Way, Cause> {
     Ok(Way::Root { list, signature })
 }
 
-/// The launcher file and each folder above it can be changed only by root, and its profile is
-/// loaded.
-fn installed() -> Result<(), Containment> {
+/// The installed launcher is in order: only root can change it and each folder above it, its
+/// profile is loaded, and its protocol is the one of this daemon. It waits up to 5 seconds for
+/// `--protocol`, so it runs on a blocking thread.
+///
+/// # Errors
+/// `launcher_missing` or `launcher_outdated`.
+pub fn check() -> Result<(), Containment> {
     use std::os::unix::fs::MetadataExt as _;
     let path = Path::new(model_launcher::PATH);
     for (index, part) in path.ancestors().enumerate() {
@@ -77,29 +85,45 @@ fn installed() -> Result<(), Containment> {
         }
     }
     let profiles = read(PROFILES).ok_or(Containment::LauncherMissing)?;
-    if launcher::profile_loaded(&profiles, profile::NAME) {
-        Ok(())
-    } else {
-        Err(Containment::LauncherMissing)
+    if !launcher::profile_loaded(&profiles, profile::NAME) {
+        return Err(Containment::LauncherMissing);
     }
+    protocol()
 }
 
 /// The protocol of the installed launcher is the one of this daemon.
-async fn protocol() -> Result<(), Containment> {
-    let output = tokio::process::Command::new(model_launcher::PATH)
+fn protocol() -> Result<(), Containment> {
+    use std::io::Read as _;
+    let mut child = std::process::Command::new(model_launcher::PATH)
         .arg(model_launcher::PROTOCOL_ARGUMENT)
         .env_clear()
         .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::null())
-        .kill_on_drop(true)
-        .output();
-    match tokio::time::timeout(PROTOCOL_WAIT, output).await {
-        Ok(Ok(output)) if output.status.success() => {
-            launcher::protocol(&output.stdout, &model_launcher::protocol_line())
+        .spawn()
+        .map_err(|_| Containment::LauncherMissing)?;
+    let end = std::time::Instant::now() + PROTOCOL_WAIT;
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) if std::time::Instant::now() < end => {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            _ => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(Containment::LauncherMissing);
+            }
         }
-        Ok(Ok(_)) => Err(Containment::LauncherOutdated),
-        _ => Err(Containment::LauncherMissing),
+    };
+    let mut output = Vec::new();
+    if let Some(stdout) = child.stdout.take() {
+        let _ = stdout.take(PROTOCOL_BYTES).read_to_end(&mut output);
     }
+    if !status.success() {
+        return Err(Containment::LauncherOutdated);
+    }
+    launcher::protocol(&output, &model_launcher::protocol_line())
 }
 
 /// Whether `program` is on the kept list, whose signature holds.

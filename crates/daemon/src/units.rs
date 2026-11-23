@@ -8,6 +8,8 @@
 
 pub mod folders;
 pub mod install;
+#[cfg(target_os = "linux")]
+pub mod launcher;
 pub mod plan;
 pub mod ready;
 pub mod removal;

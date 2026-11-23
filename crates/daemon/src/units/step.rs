@@ -46,6 +46,13 @@ impl Step {
             retries: &[],
         }
     }
+
+    /// The step with `args` in place of its arguments.
+    #[cfg(target_os = "linux")]
+    pub(super) fn with_args(mut self, args: Vec<String>) -> Self {
+        self.args = args;
+        self
+    }
 }
 
 /// Runs `step` with at most `deadline` per run; while a run fails, waits the next pause of
