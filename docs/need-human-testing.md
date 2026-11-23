@@ -4783,6 +4783,30 @@ branch is in the build.
 
 Result: Open.
 
+### HT-NEW-slashmenu: the `/` list of the composer of Code (TC4S)
+
+Built on the branch `code/slash-runnable`. The `/` list of the composer shows only a command that can run now. With
+the runner of today it is `/model` when the runner can change the model of a chat, and nothing else: the program's
+own commands and skills wait for a call of the runner (row TC4S). The tests run it over made-up lists; nobody has
+tried it in the installed application.
+
+1. In the desktop application open a chat of Code with Claude Code. In the composer type `/` as the first character.
+   Expected: a list over the composer with `/model` and its words, or, with a runner that cannot change the model,
+   the words "No matching command." There is no row `/clear` and no row that says that the runner has no such
+   command.
+2. If `/model` shows, press Enter.
+   Expected: the `/` goes from the editor and the model picker opens.
+3. Type `see /` (a `/` after other words).
+   Expected: only `/model`, or "No matching command."
+4. Do steps 1 to 3 in a chat with Codex.
+   Expected: the same as for Claude Code.
+5. Open the page of a new thread (no thread yet) and type `/` in its composer.
+   Expected: `/model` only.
+6. Press Escape.
+   Expected: the list closes, and the `/` stays in the editor.
+
+Result: Open.
+
 ### HT-147: Anima OS private SSH and graphical remote desktop (OS3-R8)
 
 Built on `os/remote-access`. Installed OS SSH and RDP listen only on loopback and are reached through the existing private link. Disposable-VM acceptance covers the services and protocol boundary. A real private hub, GUI trust flow and physical screen behavior still require operator acceptance.
