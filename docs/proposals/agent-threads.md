@@ -1230,7 +1230,7 @@ verification remain in TH50 and TH51.
 
 | Task | Work | Needs | Check | State |
 | --- | --- | --- | --- | --- |
-| TH30 | Contract: the work type `agent_thread` of K10 and the long poll of THR-026. Specify one launch result per request, the hub thread ID after launch, and the result of answering an open approval. | OD-THR12, OD-THR20, R-353 | Contract review and ruling (CON-001) | In progress: local review draft in Section 6.4.2, branch `contract/th30-preparation`. No ruling and no implementation. |
+| TH30 | Contract: the work type `agent_thread` of K10 and the long poll of THR-026. Specify one launch result per request, the hub thread ID after launch, and the result of answering an open approval. | OD-THR12, OD-THR20, R-353 | Contract review and ruling (CON-001) | In progress: local review draft in Section 6.4.2, branch `contract/th30-preparation`. Offline behavior decided by R-NEW-th30offline; remaining contract choices and CON-001 acceptance open. No implementation. |
 | TH31 | The hub: the queue item, the commands of an open thread, the audit events | TH30; W3 | Hub tests and separate security review (R-353) | Not started |
 | TH32 | The daemon: claim, check, run, report (W4 for the run, without a container: an agent program needs the files of the person) | TH30; W4. R-292 (OD-THR12) removes W7 from stage 3. | Tests of Section 8 and separate security review (R-353) | Not started |
 | TH33 | The switch "Threads may start here" at the machine, off by default (USE-004 is on by default; this one is not), and the list of folders where a thread of the hub may run. They are the guards that the operator kept (OD-THR20). They are kept in the settings of the daemon of the user; a program of the same user can change them (accepted, OD-THR18) | TH32 | Tests for the switch and permitted folders | Not started |
@@ -1243,7 +1243,7 @@ verification remain in TH50 and TH51.
 
 #### 6.4.2 TH30: proposed wire contract for review
 
-Version 0.2, 2026-11-23. **Author revision, not accepted or independently re-reviewed.** This is the proposed addition to K10,
+Version 0.3, 2026-11-23. **Reviewed draft; not accepted.** Independent review of `45fa2b0fa` found no remaining actionable findings. The later offline ruling below selects only its stated policy. This is the proposed addition to K10,
 with the K1 operations and K8 concurrency change that it needs. It changes no frozen
 contract and grants no new power. TH30 stays In progress until its separate contract
 and security reviews and the ruling required by CON-001. R-353 removes a further
@@ -1709,13 +1709,24 @@ as an accepted contract while these points remain unresolved.
 
 | Point | Required resolution |
 | --- | --- |
-| Work lifetime and loss of the hub | THR-025 says the K10 lease, stop and report apply; K10 ends a build on lease loss and has maximum job lifetimes, while THR-095/096 preserve turns across reconnect/restart. Specify whether the item covers launch only or the live thread, and the exact stop/expiry behavior, `limits`, `cleanup`, update-busy behavior and reconciliation after expiry. No new timeout, forced termination or indefinite lease is selected here. |
+| Work lifetime and loss of the hub | THR-025 says the K10 lease, stop and report apply; K10 ends a build on lease loss and has maximum job lifetimes, while THR-095/096 preserve turns across reconnect/restart. Specify whether the item covers launch only or the live thread, and the exact stop/expiry behavior, `limits`, `cleanup`, update-busy behavior and reconciliation after expiry. R-NEW-th30offline selects continuing local operation after start; wire mechanics and queued-start expiry still need resolution. |
 | Poll and queue bounds | Approve finite poll wait, request/response sizes, prompt/answer sizes, offer count, pending command count and per-operator/device rate limits. Specify dispatch fairness with existing K10 work and stop priority. Keep resource bounds distinct from the soft agent-tree limits of THR-114. |
 | Retry retention and sensitive content | Specify how long launch/command receipts and retry tombstones survive, when queued prompt/answer bodies are erased, and how receipt recovery works after thread/device deletion without retaining transcript content or allowing replay. THR-130 is the transcript policy, not an automatic command-queue policy. |
 | Approval when the local switch is off | THR-129 names starts and prompts. Decide the handling of a positive answer that would resume execution after this switch goes off, including an answer already queued. Denials and stops must remain available. Do not invent a default in the daemon. |
 | Contract ownership | TH21's owner confirms row creation/tombstones, offers and result integration; the K10 owner confirms the claim/report exceptions and lifetime; the K8 owner confirms the poll slot change. The separate security review identifies any new accepted-risk decision needed before the CON-001 ruling. |
 
-**F1. Work lifetime and loss of the hub — unselected policy choice**
+**F1. Work lifetime and loss of the hub — offline behavior decided**
+
+**R-NEW-th30offline.** Operator, first-hand in the main orchestrator, 2026-11-23:
+selected A when asked whether an already-started thread should continue locally,
+finish its turn then wait for hub authority, or stop after a 90-second lease.
+An already-started thread continues under its local runner despite hub disconnection
+or hub-token revocation. Remote stop cannot take effect until contact is restored.
+This selects A's continuing-local-lifecycle policy, not a grant to accept unauthenticated
+remote commands. The local switch and existing local controls still apply. The
+proposed launch-only wire mechanics require contract-owner reconciliation and
+CON-001 acceptance; the proposed ten-minute queued-start expiry was not in the
+question and is not approved by this answer. F3, F4, D1 and WORK_OFF choices remain open.
 
 Constraints: THR-025 puts the start in K10 and says its claim, lease, stop and report
 apply, but puts later turns outside items. THR-026 puts later stops in the poll.
@@ -1734,8 +1745,9 @@ these lifecycle ambiguities; R-429 does not settle them.
 | C | Keep the live-thread item and stop its process on loss of the 90-second lease, also on token refusal; retain the existing configured maximum lifetime. No automatic replacement. | Gives the hub a short revocation bound while the daemon can measure the lease, but a network outage kills work and an open request. This is a new termination policy, not implied by the rule that an approval is never automatically answered, and must be reconciled explicitly with THR-095. |
 
 The first report after successful creation must still bind to one TH21 ID in every
-option. The parent must select the lifetime and offline/expiry policy; the writer
-cannot select them as retry implementation details. Holder deduplication, atomic
+option. R-NEW-th30offline selects continuing local operation after start; queued-start
+expiry remains unselected and launch mechanics need contract-owner acceptance. The
+writer cannot select expiry as a retry implementation detail. Holder deduplication, atomic
 identity binding and no automatic replacement of an uncertain launch are correctness
 requirements of the requested one-result/retry behavior, not new actor permissions.
 C1 defines the launch-cancellation race independently of the lifetime selection.
