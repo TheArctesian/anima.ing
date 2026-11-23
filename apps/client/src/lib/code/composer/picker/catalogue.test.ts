@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { cannot } from '../draft';
-import { FAVOURITES, PERMISSION_MODES, describeEffort, effortBars, jumpKeys, litRow, nextIndex, nextRow, nextTab, openingTab, pickModel, rowsOf, settledMode } from './catalogue';
+import { FAVOURITES, PERMISSION_MODES, describeEffort, effortBars, jumpKeys, litRow, nextIndex, nextRow, nextTab, openingTab, pickModel, rowsOf, settledMode, shortName } from './catalogue';
 import type { Catalogue, EffortLevel, Model } from './catalogue';
 import { pickerCatalogue, pickerChoice } from './fixture';
 import { barHeights, glyphBox } from './glyph';
@@ -176,5 +176,18 @@ describe('the permission modes (03 A.4.1)', () => {
     expect(settledMode(offered, 'auto-accept-edits')?.id).toBe('auto-accept-edits');
     expect(settledMode(offered, 'full-access')?.id).toBe('approval-required');
     expect(settledMode([], 'auto')).toBeUndefined();
+  });
+});
+
+describe("T3 Code's short name of a model", () => {
+  it('drops the family before a version, and keeps a name with no version whole', () => {
+    expect(['Claude Opus 4.5', 'GPT-5.4-Codex', 'OpenAI: GPT-5.4 mini', 'Opus 4.7', 'Claude Code default', 'Codex default'].map(shortName)).toEqual([
+      'Opus 4.5',
+      '5.4 Codex',
+      '5.4 mini',
+      'Opus 4.7',
+      'Claude Code default',
+      'Codex default',
+    ]);
   });
 });

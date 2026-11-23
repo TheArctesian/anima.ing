@@ -82,8 +82,12 @@ The hub has two tokens that a program can hold (design specification INT-003):
 | Login token (user name, password, authenticator code; 30 days) | All operations | The operator at a terminal |
 | API key (`anima_…`, read or write, expiry at most one year) | Not: sessions, files, credentials, trust decisions, device change or delete, retention, builds, VPN keys, API keys | Scripts and coding agents |
 
-- **CMD-010.** `anima auth login` asks for the user name, the password and the authenticator code
-  at the terminal. It must not accept the password as an argument.
+- **CMD-010.** `anima auth login` signs in by a one-time code, as `gh auth login` does
+  (R-381; SGN-NEW-ask to SGN-NEW-status of Section 3b of
+  [vault.md](../../contracts/extensions/vault.md)): it asks whether the hub is hosted by Anima.ing or
+  self-hosted, shows a code and the address of a page, and waits while the person approves the
+  code in the app or a browser. It never asks for a password or an authenticator code. With the app
+  on the computer the app signs `anima` in, and nobody runs it.
 - **CMD-011.** `anima auth login --with-token` reads an API key from standard input.
 - **CMD-012.** The token is kept in the operating system key store (service `ing.anima.cli`,
   account: the hub origin). On Linux with no key store it is a file with mode `0600`, as the agent
@@ -94,6 +98,13 @@ The hub has two tokens that a program can hold (design specification INT-003):
   an error message (LOG-007, SEC-009).
 - **CMD-015.** A context is a name for one hub origin. `anima context add|use|list|remove`. The
   configuration file (`$XDG_CONFIG_HOME/anima/config.json`) holds contexts and no secret.
+- **One sign-in (R-383, R-382; design in Section 3b of
+  [vault.md](../../contracts/extensions/vault.md)).** The app signs `anima` in with a linked token of
+  the kind `command_line`: `anima auth adopt --hub <origin> -` reads it from standard input
+  (SGN-NEW-adopt). Signing out of the app signs `anima` out. `anima auth login` stays for a computer
+  with no app. In a thread, `ANIMA_TOKEN` holds a token of the kind `thread` (SGN-NEW-thread), and
+  `anima` sends the agent declaration (LOG-016) with each request that uses it. The limits of
+  Section 7 stay limits of the MCP server; the command has no limits of its own for an agent.
 
 ## 5. Output and behaviour
 
@@ -601,6 +612,10 @@ The state of each task is in the table (PLN-006). T1 to T10 are Done: each commi
 | T11 | R-120, the library and the command: the built-in state of the change tools is `allow`, and the switch "Ask before destructive actions" (MCP-024, MCP-025) in `permissions show\|set\|reset` | Opus | security | Not started | — |
 | T12 | R-120, the audit: each destructive call that runs without a question is in the hub's audit log with the tool, the cleaned arguments and the MCP client name (MCP-026) | Opus | security | Not started | — |
 | T13 | R-120, the desktop Settings panel: the switch "Ask before destructive actions", off for a new user (MCP-025), on the library of T11 | Sonnet |  | Not started | — |
+| T14 | R-383, the command: `anima auth adopt --hub <origin> -` (the token on standard input, checked with `me`, stored as CMD-012 says), `anima auth logout --hub <origin>` called by the app, and the agent declaration with each request that uses a thread token from `ANIMA_TOKEN` (K-E5 Section 3b) | Opus | security (E0-6 T9) | Not started. Needs E0-6 T8 | — |
+| T15 | R-382, the desktop app: on each hub, at the sign-in, put `anima` on `PATH` with no click (the checks of INS-002 to INS-009 stay), write the line of `PATH` into the profile of the login shell (zsh, bash or fish) one time, marked as Anima's, never when it is there and never into a link to a place outside the home folder, and name the file; then get the command-line token and run `anima auth adopt`; at the sign-out run `anima auth logout`. After U14 of [daemon-and-hub-update-plan.md](daemon-and-hub-update-plan.md), which changes the same start of the app (`+layout.svelte`) | Opus | security (E0-6 T9) | Not started. Needs T14 and E0-6 T8 | — |
+| T16 | R-381, the command: `anima auth login` by a one-time code (`--hosted`, `--hub`, `--web`, `--clipboard`, `--with-token` for an API key; `--no-input` and `--json` as CMD-020 and CMD-023 say), `anima auth status` and `anima auth logout` in the shape of `gh` (SGN-NEW-ask to SGN-NEW-status); the prompt for a password and a code goes | Opus | security (E0-6 T9) | Not started. Needs E0-6 T8; the hosted path needs HM-T40 of [hosted-mode.md](../proposals/hosted-mode.md) | — |
+| T17 | R-381, the client: the page `/device` of the hub and the same screen in the app: the code, the computer, the address, the time and the plain words of SGN-NEW-approve, then Approve or Deny; the list of sign-ins with revoke | Sonnet | security (E0-6 T9) | Not started. Needs E0-6 T8 | — |
 
 ### Tasks of R-120 (T11 to T13)
 

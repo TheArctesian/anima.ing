@@ -226,6 +226,13 @@ impl Codex {
         }
     }
 
+    /// The ID of `line` when it is a `turn/start` whose policy leaves the profile.
+    #[must_use]
+    pub fn leaving_line(&self, line: &str) -> Option<i64> {
+        let id = serde_json::from_str::<Value>(line).ok()?["id"].as_i64()?;
+        matches!(self.calls.get(&id), Some(Call::TurnStart { leaves: true })).then_some(id)
+    }
+
     /// A `turn/start` whose policy leaves the profile waits for its answer.
     #[must_use]
     pub fn leaving(&self) -> bool {

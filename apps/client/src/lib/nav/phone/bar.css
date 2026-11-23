@@ -28,6 +28,17 @@
     backdrop-filter: blur(var(--material-chrome-blur)) saturate(var(--material-chrome-saturate));
   }
 
+  /* A filter creates a containing block for fixed descendants. Keep the offline strip viewport-relative. */
+  #main-nav:has(.banner) {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  #main-nav .notice .banner {
+    inset-block-start: calc(var(--visual-block-start, 0px) + var(--safe-block-start));
+    padding-inline: calc(var(--space-3) + var(--safe-inline-start)) calc(var(--space-3) + var(--safe-inline-end));
+  }
+
   #main-nav > * {
     display: none;
   }

@@ -175,7 +175,8 @@ impl Runner {
                 }
             };
             signed_out |= steps.iter().any(signed_out::not_logged_in);
-            if self.apply(id, steps).await.is_err() {
+            // A held-back line is not a lost link: the next lines are read.
+            if let Err(super::NotSent::LinkDown) = self.apply(id, steps).await {
                 break;
             }
         }
@@ -186,7 +187,8 @@ impl Runner {
         // The record holds the open requests before the holder drops their lines (THR-030); a
         // line that changed nothing of the record does not write it again.
         let after = self.threads.get(&id).map(Thread::record_key);
-        if after != before {
+        let marked = self.mark_started(id);
+        if after != before || marked {
             self.save();
         }
         self.command(Action::Ack {

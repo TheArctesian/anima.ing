@@ -1,7 +1,7 @@
-# Record: the isolation of a job, with a prototype on one Mac (task W2)
+# Record: the isolation of a job, with a prototype on one Mac and one Linux computer (task W2)
 
-Version: 1. Date: 2026-11-18.
-Status: Partly measured. One Mac is measured. No Linux computer is measured, and no second user of macOS was made: each needs the operator. The design in Section 4 is a proposal. The security reviewer and the operator did not accept it.
+Version: 2. Date: 2026-11-23. Version 1 (2026-11-18) measured the Mac; version 2 adds the Linux computer `pop-os` (Section 3.5).
+Status: Partly measured. One Mac and the Linux computer `pop-os` are measured. No second user of macOS was made, no network rule for a job was tried and no virtual machine for each job was measured: Section 5 says what each needs. The design in Section 4 is a proposal. The security reviewer and the operator did not accept it.
 
 This document is a record (work plan, Section 9; PLN-010). It adds no requirement. Its Section 4 is the input for the owner of the requirements, [projects-and-builds-plan.md](../../plans/projects-and-builds-plan.md) (PRO-022 to PRO-024, PRO-029), and for the contract [work-route.md](../../../contracts/work-route.md).
 
@@ -12,9 +12,11 @@ Task W2 asks for a design with measured results for four subjects: the container
 ## 2. Method
 
 - The computer: a Mac with Apple Silicon, 18 processor cores, 48 GiB of memory, macOS 27.3, Docker Desktop 29.9.3 (a Linux virtual machine with the kernel 7.0.14-linuxkit).
-- The scripts are in this folder: `seatbelt.sh`, `job-keychain.sh`, `container-job.sh`, `docker-in-job.sh`. A fifth script, `linux-job.sh`, is for the Linux computer of the operator and has no log yet (Section 5). They are throwaway code of a prototype, not code of the product; nothing of the product calls them. Their logs are in [results/](results/). In the logs, the home folder of the user is written as `<home>`.
+- The Linux computer (Section 3.5): `pop-os`, Pop!_OS 24.04, kernel 7.2.15, x86_64, 28 processor cores, 94 GiB of memory, Podman 4.9.3 with no root right (cgroup v2, systemd, runc, overlay, netavark with pasta). The load average was about 2 at the start and 0.6 at the end.
+- The scripts are in this folder: `seatbelt.sh`, `job-keychain.sh`, `container-job.sh`, `docker-in-job.sh`, and `linux-job.sh` for the Linux computer. They are throwaway code of a prototype, not code of the product; nothing of the product calls them. Their logs are in [results/](results/). In the logs, the home folder of the user is written as `<home>` and the name of the user as `<user>`.
 - The computer did other work at the same time: the load average was between 18 and 45 for Sections 3.1 to 3.3, and 7 for Section 3.4. Each time below was taken under that load. Read a time as an upper value, not as the time of a quiet machine.
 - No administrator right was used. Thus no user was made, no system unit was installed and no system setting was changed. No certificate of Apple and no key of the operator was read: the signing test made its own throwaway certificate.
+- On `pop-os` a session ran `linux-job.sh` on 2026-11-23, as the steps of HT-065 say, as the user of the operator. Podman was already installed. Podman had a stored login for Docker Hub that Docker Hub refused, so the session gave Podman an empty login file for the run (`REGISTRY_AUTH_FILE`) and pulled the images with no login; it did not read or change the stored login. Three results of the script were not clear; the session measured them again by hand, with the same flags (Section 3.5, "Measured again").
 
 ## 3. Results
 
@@ -87,6 +89,37 @@ The size of the two images: 106 MB and 122 MB to pull, 421 MB and 470 MB on disk
 
 What this shows: a job can get a Docker service of its own with no privileged container. The rootless service needs three protections of its container set off (the seccomp profile, the AppArmor profile, the masked system paths) and the device `/dev/net/tun`. That is less than `--privileged`: the service has no added capability and does not run as root. It is still a weaker wall than the container of a job with no Docker (Section 3.3), and it was measured only inside the virtual machine of Docker Desktop.
 
+### 3.5 Linux: a rootless container job on `pop-os` (`linux-job.sh`)
+
+The log is [results/linux-job-pop-os-24.04.log](results/linux-job-pop-os-24.04.log). Each job had the flags of Section 3.3 under Podman with no root right: `--cap-drop ALL --security-opt no-new-privileges --pids-limit 512 --memory 2g --read-only`, a work folder `/work` on a temporary file system of 64 MiB, the user 1000 inside, and a label to find it. The user of the operator has the controllers `cpu memory pids` from systemd.
+
+| Measure | Result |
+| --- | --- |
+| E1: from `podman run` to the end of the first command, 10 runs | Median 446 ms (417 to 473) |
+| E2: inside: the user, the capabilities, new privileges | The user of the host (uid 1000, with `--userns keep-id`); no capability (`CapPrm`, `CapEff` and `CapBnd` 0); `NoNewPrivs: 1` |
+| E2: a write to `/`; to `/work`; to the folder of the job | "Read-only file system"; permitted; permitted. A file that the job wrote in its folder belongs to the user on the host |
+| E2: a container socket inside; the limits that the job reads | No socket; `memory.max` 2147483648, `pids.max` 512 |
+| E3: a job that fills the memory (limit 256 MiB) | Stopped by the kernel (exit 137) |
+| E3: a job that fills its work folder (limit 64 MiB) | "No space left on device" after 67108864 bytes |
+| E3: a job that starts 300 processes (limit 64) | The limit holds. The log shows "1 1", because the shell of the job ends at its first refused start. Measured again: of 300 starts 62 ran, and `pids.current` was 64, the same as `pids.max` |
+| E3: a job past its time: `timeout 5` around `podman run`, the job `sleep 60` | **The job was not stopped at 5 s.** `podman run` ended after 60.4 s (exit 124). Measured again: the signal of `timeout` goes to the program of the job, which is process 1 in its container and has no handler, so it ignores the signal. With `--init` the same job ended after 5.2 s. No container stayed in both cases |
+| E4: the public internet (`example.com`) | Reached |
+| E4: a server on the computer, bound to each address: by `10.0.2.2`; by the name `host.containers.internal`; by the address of the computer on its network; by its address of the link or VPN (100.64.0.0/10) | Not reached; **reached**; **reached**; **reached** |
+| E4: the router of the network, port 80 | Not reached |
+| E4: `--network none`, the public internet | Not reached |
+| E5: an idle container | 53 kB of memory, 1 process |
+| E5: `kill -9` of `conmon`, the program of Podman that holds the job | **The process of the job still ran**, and Podman still said `running`. `podman rm -f` then took 10.2 s, and after it the process was gone |
+| E6: the rootless Docker service (`docker:dind-rootless`) in a rootless container, with the four sets of flags of the script: none; no seccomp profile and `/dev/net/tun`; the same and `unmask=ALL`; `--privileged` | **The service did not start with any set.** Measured again: its log says `newuidmap: write to uid_map failed: Operation not permitted`. The user of the operator has 65536 subordinate IDs (`/etc/subuid` and `/etc/subgid`: 100000, 65536), so the outer container has 65537 IDs. The rootless service in it asks for a second range of 65536 IDs, and the outer container cannot give it. `--privileged` does not change that |
+| Clean-up | No container of the script stayed; the list of containers was the same before and after. The images `alpine:3` (17 MB) and `docker:dind-rootless` (355 MB) stay |
+
+What this shows:
+
+- On a Linux computer with no virtual machine around the containers, a rootless container with the flags of Section 3.3 holds its limits of memory, disk and processes. Its start costs about 0.45 s and its idle memory is very small.
+- **With no network rule, a job reaches the services of the computer.** The default network of Podman (pasta) gives the job the name `host.containers.internal` and lets it connect to the address of the computer on its network and on the link or VPN. The rule of Section 4.1 is thus necessary, not only a second layer. A service of the computer that listens only on its loopback address was not reached by `10.0.2.2`; by the name `host.containers.internal` the server of the test was reached, but it listened on each address, so the test does not show if a loopback-only service is reached by that name.
+- A limit of time with `timeout` around the client is not a limit: the job must be stopped by its container (`podman stop` or `podman kill`, or `--init` so that process 1 handles the signal).
+- The program that holds a job (`conmon`) is not the job: when it ends, the job runs on. The daemon must stop the container itself and must find a container that it lost at its next start (by its label). The script did not measure `kill -9` of the daemon.
+- A Docker service of its own for a job does not work on this computer as it is: rootless in rootless needs more subordinate IDs for the user of the jobs than the 65536 that a new user gets.
+
 ## 4. The design that these results support (a proposal)
 
 ### 4.1 Linux: the container runtime
@@ -99,6 +132,8 @@ What this shows: a job can get a Docker service of its own with no privileged co
 
 To measure on the Linux computer: the start time and the memory of a rootless container; that the limits hold (a job that fills the memory, the disk, the process table); that the network rule holds; what stays after `kill -9` of the daemon in the middle of a job.
 
+Note of 2026-11-23, after the measurements of Section 3.5: the start time, the memory and the limits of memory, disk and processes are measured and hold. They change three points of this section, for the owner of the requirements to decide: the network rule is necessary, because with no rule a job reached the computer by its address on the network, on the link and by `host.containers.internal`; the limit of time must stop the container, not the client (`--init`, or `podman stop` or `kill` at the deadline); the daemon must remove the container of a job itself, because a job runs on after the end of `conmon`. Still to measure: that a network rule holds, and `kill -9` of the daemon in the middle of a job.
+
 ### 4.2 A workflow that needs Docker
 
 - The Docker socket of the computer never goes into a job (the open point of the plan). The contract has no member that could ask for it.
@@ -106,6 +141,7 @@ To measure on the Linux computer: the start time and the memory of a rootless co
 - Later: a job that needs Docker gets a Docker service of its own beside it, the rootless service of Section 3.4, on a network that only that job can reach, removed with the job. It costs about 1 second and 60 MiB for each job. A privileged service is never used.
 - The security reviewer must judge the three protections that the rootless service needs set off. If they are not acceptable on a shared kernel, such a job gets a small virtual machine of its own in place of the service.
 - To measure on the Linux computer: the same script with a runtime that has no root right, where there is no virtual machine around the service; and one small virtual machine for each job (start time, memory, disk).
+- Note of 2026-11-23, after Section 3.5: on `pop-os` the rootless service did not start in a rootless container with any flags, `--privileged` included, because the user of the jobs has only 65536 subordinate IDs. The user of the jobs of Section 4.1 would need a larger range in `/etc/subuid` and `/etc/subgid` (an administrator step), and the service must then be measured again. Until then, a small virtual machine for each such job is the other way.
 
 ### 4.3 The Mac: the build user
 
@@ -132,7 +168,9 @@ The contract K10 thus has no purpose `signing_identity` in its version 0.2. If t
 
 | Not shown | Needs |
 | --- | --- |
-| Each measurement of Section 4.1 and 4.2 on Linux | One of the operator's own Linux machines (R-188, 2026-11-18: "B: my own Linux box"; not the server of the pool, not a new server), The machine is `pop-os` (R-264, 2026-11-19: "yes popos"). No session reaches it: he installs Podman, runs `linux-job.sh` of this folder and sends its log (HT-065). The script was not run on a Linux computer when it was written: only its syntax was checked. It measures the start time and the memory of a rootless container, the limits, what a job reaches on the network with no rule added, what stays after `kill -9` of the program that holds a job, and a rootless Docker service in a rootless container. It does not measure a virtual machine for each job, and it adds no network rule |
+| A network rule for a job on Linux, and that it holds | The machine `pop-os` (R-188, R-264). Section 3.5 measured what a job reaches with no rule; no rule was tried |
+| `kill -9` of the daemon in the middle of a job on Linux | The machine `pop-os`, with a daemon that starts jobs. Section 3.5 measured only `kill -9` of `conmon` |
+| A rootless Docker service in a rootless container on Linux | An administrator on `pop-os`: a larger range of subordinate IDs for the user of the jobs (Section 3.5, E6). Then the same script again |
 | The build user (Section 4.3) | An administrator on a Mac, one time: make the user and the starter program. Then an agent can measure |
 | A virtual machine for each job, on Linux and on a Mac | The same two computers |
 | A Developer ID signature and a notarization by the recipe of Section 4.4 | The operator: the identity and the notary profile are in his keychain. An agent does not read them |
