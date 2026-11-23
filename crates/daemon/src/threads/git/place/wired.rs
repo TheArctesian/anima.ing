@@ -30,6 +30,10 @@ pub struct Places {
     /// The folder of the records; `None` is the place of this user
     /// ([`records::standard`]).
     pub records: Option<PathBuf>,
+    /// The runner gives each agent a `TMPDIR` of its own, never the one of the login (THR-050).
+    /// While it does not, records in `/tmp` or in the `TMPDIR` of the login are refused: each
+    /// agent can write there.
+    pub private_tmp: bool,
 }
 
 /// Why the runner has no engine. Each Git action of each thread is then refused with
@@ -74,10 +78,14 @@ pub fn engine(
     if cfg!(windows) {
         return Err(Unwired::NotOnWindows);
     }
+    let login: Vec<_> = login.into_iter().collect();
     let place = match &places.records {
         Some(place) => place.clone(),
         None => records::standard(this_user()).ok_or(BadRecords::NoPlace)?,
     };
+    if !places.private_tmp && in_temp(&place, &login) {
+        return Err(BadRecords::InTemp.into());
+    }
     let records = records::opened(&place)?;
     let home = home(places, &records)?;
     let git = Git::find(login)?;
@@ -98,6 +106,19 @@ impl Engine {
     pub fn records_folder(&self) -> &Path {
         self.home.records()
     }
+}
+
+/// The records at `records` are in a temporary folder that each agent can write while agents
+/// get the `TMPDIR` of the login: `/tmp`, or each `TMPDIR` that `login` sets.
+fn in_temp(records: &Path, login: &[(OsString, OsString)]) -> bool {
+    let tmpdirs = login
+        .iter()
+        .filter(|(name, value)| name == "TMPDIR" && !value.is_empty())
+        .map(|(_, value)| PathBuf::from(value));
+    let temps: Vec<_> = std::iter::once(PathBuf::from("/tmp"))
+        .chain(tmpdirs)
+        .collect();
+    records::held_by_any(records, &temps)
 }
 
 /// The home of the worktrees: the one the person chose, or the standard one.

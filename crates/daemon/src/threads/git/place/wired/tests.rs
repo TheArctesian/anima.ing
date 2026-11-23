@@ -7,6 +7,7 @@ use std::time::Duration;
 use agent_threads::git::GitRefusal;
 use uuid::Uuid;
 
+use super::super::records::BadRecords;
 use super::super::shared::pack::{closed, is_read, list_args};
 use super::{Places, Unwired, engine};
 use crate::threads::git::run::GitError;
@@ -154,6 +155,8 @@ fn the_engine_is_made_with_its_records_and_its_home() {
     let places = Places {
         anima: top.join("anima"),
         records: Some(records.clone()),
+        // The folder of this test may be in `/tmp`.
+        private_tmp: true,
         ..Places::default()
     };
     let path = std::env::var_os("PATH").unwrap_or_default();
@@ -185,4 +188,52 @@ fn the_engine_is_made_with_its_records_and_its_home() {
         );
     }
     assert_eq!(Unwired::NotOnWindows.refusal(), GitRefusal::NotOnWindows);
+}
+
+#[test]
+fn records_in_a_temporary_folder_are_refused_until_each_agent_has_its_own() {
+    let keep = tempfile::tempdir_in("/tmp").expect("a folder in /tmp");
+    let in_tmp = keep.path().join("records");
+    let keep_home = tempfile::tempdir().expect("a folder");
+    let home = std::fs::canonicalize(keep_home.path()).expect("its real path");
+    let path = std::env::var_os("PATH").unwrap_or_default();
+    let login = |tmpdir: &Path| {
+        [
+            (OsString::from("PATH"), path.clone()),
+            (OsString::from("TMPDIR"), tmpdir.as_os_str().to_owned()),
+        ]
+    };
+    let places = |records: &Path| Places {
+        anima: home.as_path().join("anima"),
+        records: Some(records.to_owned()),
+        ..Places::default()
+    };
+    let refused = |made: Result<_, Unwired>| {
+        let said = made.expect_err("records in a temporary folder");
+        assert!(
+            matches!(said, Unwired::Records(BadRecords::InTemp)),
+            "{said:?}"
+        );
+        said.refusal()
+    };
+    let words = refused(engine(login(home.as_path()), &places(&in_tmp), nothing()));
+    assert_eq!(
+        words,
+        GitRefusal::Failed {
+            said: "the records of Anima's Git are in a temporary folder that an agent can write"
+                .into()
+        }
+    );
+    assert!(!in_tmp.exists(), "a refused place is never made");
+    // As `TMPDIR=/var/tmp` on Linux: the records of the user are in the `TMPDIR` of the login.
+    let shared = home.as_path().join("shared");
+    std::fs::create_dir(&shared).expect("a folder");
+    let in_tmpdir = shared.join("anima-501");
+    refused(engine(login(&shared), &places(&in_tmpdir), nothing()));
+    // When the runner gives each agent its own `TMPDIR`, the root check of each thread holds.
+    let private = Places {
+        private_tmp: true,
+        ..places(&in_tmpdir)
+    };
+    engine(login(&shared), &private, nothing()).expect("an engine");
 }
