@@ -20,7 +20,6 @@ pub(super) fn completed(reader: &mut ThreadReader, at: Option<Time>, step: &Valu
                 .iter()
                 .filter(|part| matches!(kind(part), "image" | "local_image"))
                 .count();
-            scripts::close_all(reader);
             reader.prompt(
                 at,
                 &texts(&parts, "text"),

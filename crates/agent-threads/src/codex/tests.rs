@@ -273,11 +273,13 @@ fn thr_005_an_empty_poll_adds_to_the_command_it_reads() {
 }
 
 #[test]
-fn thr_005_a_script_left_open_does_not_take_the_steps_after_a_prompt() {
+fn thr_005_a_script_left_open_does_not_take_the_steps_of_the_next_turn() {
     let command = r#"{"type":"event_msg","payload":{"type":"item_completed","item":{"type":"CommandExecution","id":"x","command":["ls"],"status":"completed","aggregated_output":"a","exit_code":0}}}"#;
+    let turn = r#"{"type":"event_msg","payload":{"type":"task_started"}}"#;
     let prompt = r#"{"type":"event_msg","payload":{"type":"user_message","message":"next"}}"#;
     let lines = [
         exec_call("e", "tools.exec_command({cmd:\"ls\"})"),
+        turn.to_owned(),
         prompt.to_owned(),
         command.to_owned(),
     ];
@@ -317,4 +319,49 @@ fn thr_005_an_exec_function_call_with_json_reads_as_before() {
     let thread = read(&lines.join("\n"));
     let call = tools(&thread)[0];
     assert_eq!((call.summary.as_str(), call.failed), ("ls", true));
+}
+
+#[test]
+fn thr_005_a_poll_that_writes_or_calls_more_is_a_call_of_its_own_and_a_poll_keeps_the_tool_open() {
+    let first = [
+        exec_call("e", "tools.exec_command({cmd:\"sleep 5\"})"),
+        exec_out(
+            "e",
+            "custom_tool_call_output",
+            &[
+                "Script completed\nOutput:\n",
+                "{\"session_id\":1,\"output\":\"\"}",
+            ],
+        ),
+    ];
+    let mut writes = first.to_vec();
+    writes.push(exec_call("w", "await tools.write_stdin({session_id:1,chars:\"y\\n\"}); await tools.exec_command({cmd:\"rm -rf build\"})"));
+    assert_eq!(tools(&read(&writes.join("\n"))).len(), 2);
+    let mut polls = first.to_vec();
+    polls.push(exec_call(
+        "p",
+        "tools.write_stdin({session_id:1,chars:\"\"})",
+    ));
+    assert_eq!(read(&polls.join("\n")).tail, crate::Tail::OpenTool);
+}
+
+#[test]
+fn thr_005_a_script_shows_its_own_results_over_the_steps_of_another() {
+    let step = r#"{"type":"event_msg","payload":{"type":"item_completed","item":{"type":"CommandExecution","id":"x","command":["make"],"status":"completed","aggregated_output":"built","exit_code":0}}}"#;
+    let lines = [
+        exec_call("b", "tools.exec_command({cmd:\"ls\"})"),
+        step.to_owned(),
+        exec_out(
+            "b",
+            "custom_tool_call_output",
+            &[
+                "Script completed\nOutput:\n",
+                "{\"exit_code\":0,\"output\":\"a\"}",
+            ],
+        ),
+    ];
+    assert_eq!(
+        tools(&read(&lines.join("\n")))[0].output.as_deref(),
+        Some("a")
+    );
 }

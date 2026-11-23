@@ -83,7 +83,6 @@ fn event(reader: &mut ThreadReader, at: Option<Time>, payload: &Value) {
                 .iter()
                 .filter_map(|name| payload.get(name)?.as_array().map(Vec::len))
                 .sum::<usize>();
-            scripts::close_all(reader);
             reader.prompt(
                 at,
                 field("message"),
@@ -91,6 +90,8 @@ fn event(reader: &mut ThreadReader, at: Option<Time>, payload: &Value) {
             );
         }
         "agent_message" => reader.text(at, false, field("message")),
+        // A prompt in a turn (steering) leaves its scripts open; a new turn does not.
+        "task_started" => scripts::close_all(reader),
         "item_completed" => {
             if let Some(step) = payload.get("item") {
                 steps::completed(reader, at, step);
@@ -128,31 +129,7 @@ fn response(reader: &mut ThreadReader, at: Option<Time>, payload: &Value) {
                 .join("\n\n");
             reader.text(at, true, &summary);
         }
-        "function_call" | "custom_tool_call" => {
-            let raw = payload
-                .get("arguments")
-                .or_else(|| payload.get("input"))
-                .and_then(Value::as_str)
-                .unwrap_or_default();
-            let input: Value = serde_json::from_str(raw).unwrap_or(Value::Null);
-            let (id, name) = (field("call_id"), field("name"));
-            // A `wait` that names a cell waits for a script of `exec`; one for a sub-agent
-            // names none.
-            let cell = input
-                .get("cell_id")
-                .and_then(Value::as_str)
-                .filter(|_| name == "wait");
-            let script = name == "exec" && field("type") == "custom_tool_call";
-            if let Some(cell) = cell {
-                if !scripts::wait(reader, id, cell) {
-                    scripts::begin(reader, at, id, raw);
-                }
-            } else if script {
-                scripts::begin(reader, at, id, raw);
-            } else {
-                reader.call(at, tool::call(id, name, &input, raw));
-            }
-        }
+        "function_call" | "custom_tool_call" => called(reader, at, payload),
         "local_shell_call" => {
             let input = payload.get("action").cloned().unwrap_or(Value::Null);
             let raw = serde_json::to_string_pretty(&input).unwrap_or_default();
@@ -168,6 +145,46 @@ fn response(reader: &mut ThreadReader, at: Option<Time>, payload: &Value) {
         }
         "function_call_output" | "custom_tool_call_output" => output(reader, payload),
         _ => {}
+    }
+}
+
+/// A call of a tool: a script of `exec`, a `wait` for a script, or a call of its own.
+fn called(reader: &mut ThreadReader, at: Option<Time>, payload: &Value) {
+    let field = |name: &str| {
+        payload
+            .get(name)
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+    };
+    let raw = payload
+        .get("arguments")
+        .or_else(|| payload.get("input"))
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let input: Value = serde_json::from_str(raw).unwrap_or(Value::Null);
+    let (id, name) = (field("call_id"), field("name"));
+    // A `wait` that names a cell waits for a script of `exec`; one for a sub-agent
+    // names none.
+    let cell = match input.get("cell_id").filter(|_| name == "wait") {
+        Some(Value::String(cell)) => Some(cell.clone()),
+        Some(Value::Number(cell)) => Some(cell.to_string()),
+        _ => None,
+    };
+    let is_script = name == "exec" && field("type") == "custom_tool_call";
+    if cell
+        .as_deref()
+        .is_some_and(|cell| scripts::wait(reader, id, cell))
+    {
+        // It carries the rest of the output of a script: no row of its own.
+    } else if is_script {
+        scripts::begin(reader, at, id, raw);
+    } else {
+        let mut plain = tool::call(id, name, &input, raw);
+        if cell.is_some() {
+            // A wait for a script this reader no longer holds: still a command.
+            plain.kind = super::ToolKind::Command;
+        }
+        reader.call(at, plain);
     }
 }
 

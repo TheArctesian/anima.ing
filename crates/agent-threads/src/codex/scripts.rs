@@ -39,7 +39,11 @@ struct Script {
 /// command that still runs, more of the call of that command.
 pub(super) fn begin(reader: &mut ThreadReader, at: Option<Time>, id: &str, raw: &str) {
     let first = exec::first_tool(raw);
-    if let Some((_, input)) = first.as_ref().filter(|(name, _)| *name == "write_stdin") {
+    // A poll writes nothing and calls no other tool: anything else is a call of its own.
+    let poll = first.as_ref().filter(|(name, input)| {
+        *name == "write_stdin" && input["chars"] == "" && raw.matches("tools.").count() == 1
+    });
+    if let Some((_, input)) = poll {
         let session = input.get("session_id").and_then(Value::as_u64);
         let polled = reader
             .scripts
@@ -49,6 +53,9 @@ pub(super) fn begin(reader: &mut ThreadReader, at: Option<Time>, id: &str, raw: 
             .find(|(id, _)| Some(*id) == session);
         if let Some((_, call)) = polled {
             let call = call.clone();
+            // The command runs again until the poll ends.
+            reader.open.insert(call.clone());
+            reader.thread.tail = crate::Tail::OpenTool;
             open(reader, Script::new(&call, Some(id), true));
             return;
         }
@@ -102,17 +109,22 @@ pub(super) fn output(reader: &mut ThreadReader, id: &str, text: &str) -> bool {
         shown,
         failed,
         session,
+        reported,
         ..
     } = ended;
+    // A command that still runs can be polled; one that ended cannot.
+    let sessions = &mut reader.scripts.sessions;
+    sessions.retain(|(_, call)| *call != script.call);
     if let Some(session) = session {
-        let sessions = &mut reader.scripts.sessions;
         sessions.push((session, script.call.clone()));
         if sessions.len() > MAX_OPEN {
             sessions.remove(0);
         }
     }
     let failed = failed || script.failed;
-    let shown = if script.output.is_empty() {
+    // The results the script reported are its own; the steps Codex reported fill in for a
+    // script whose results hold no output (a change of a file answers `{}`).
+    let shown = if reported || script.output.is_empty() {
         shown
     } else {
         script.output

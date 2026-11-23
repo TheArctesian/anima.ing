@@ -302,6 +302,9 @@ impl ThreadReader {
     /// Adds more output to the call `call`, which already has a result: a command that still
     /// ran when its first output came. A call that is not kept gets nothing.
     fn more(&mut self, call: &str, output: &str, failed: bool) {
+        if self.open.remove(call) && self.open.is_empty() {
+            self.thread.tail = Tail::Open;
+        }
         let Some(&index) = self.calls.get(call) else {
             return;
         };

@@ -41,7 +41,7 @@ fn field<'a>(text: &'a str, key: &str) -> Option<&'a str> {
         let at = from + found;
         from = at + key.len();
         let before = text[..at].trim_end_matches('"').chars().next_back();
-        if !matches!(before, Some('{' | ',' | ' ' | '\n')) {
+        if !matches!(before, Some('{' | ',' | ' ' | '\n' | '\t')) {
             continue;
         }
         if let Some(value) = text[from..]
@@ -78,6 +78,8 @@ pub(super) struct Ended {
     pub cell: Option<String>,
     /// The session of a command that still runs: a `write_stdin` names it.
     pub session: Option<u64>,
+    /// The results held the output of their commands.
+    pub reported: bool,
 }
 
 /// Reads the output of a script: its first line says whether it completed, failed, was stopped
@@ -110,13 +112,13 @@ pub(super) fn ended(text: &str) -> Ended {
         }
     }
     // A script whose results hold no output (`{}`) shows its first line.
-    let shown = match (shown.is_empty(), results.is_empty()) {
-        (false, _) => shown.concat(),
-        (true, false) => head.to_owned(),
-        (true, true) => text.to_owned(),
-    };
     Ended {
-        shown,
+        reported: !shown.is_empty(),
+        shown: match (shown.is_empty(), results.is_empty()) {
+            (false, _) => shown.concat(),
+            (true, false) => head.to_owned(),
+            (true, true) => text.to_owned(),
+        },
         failed,
         cell,
         session,
