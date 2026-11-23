@@ -174,3 +174,27 @@ pub async fn session_limit<'e>(
 ) -> Result<Option<NonZeroU8>, Error> {
     store::remote::session_limit(db, id).await
 }
+
+/// Initializes untouched connection settings for a private, enrolled device.
+///
+/// # Errors
+/// Returns a database error if the device or its settings cannot be read or written.
+pub async fn configure_private_access(
+    conn: &mut PgConnection,
+    device: DeviceId,
+    access: &daemon_core::inventory::RemoteAccess,
+) -> Result<bool, Error> {
+    let found = store::fetch(&mut *conn, device).await?;
+    let private = found
+        .host
+        .parse::<std::net::Ipv6Addr>()
+        .is_ok_and(|ip| ip.segments()[..3] == [0xfd41, 0x4e49, 0x4d41]);
+    if private
+        && found.metrics_source == MetricsSource::Daemon
+        && found.kind != "hub"
+        && access.accepted()
+    {
+        return store::automatic::configure(conn, device, access).await;
+    }
+    Ok(false)
+}
