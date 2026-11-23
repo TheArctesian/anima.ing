@@ -1,6 +1,5 @@
-//! The two files of model work in the daemon folder (Sections 6 and 10.1): `model-work.json`,
-//! the settings at the machine, and `model-sources.json`, the release sources. Only the owner of
-//! the machine writes them; the hub cannot. A file that is not there has the defaults.
+//! The two files of model work in the daemon folder (Sections 6 and 10.1): only the owner of the
+//! machine writes them, never the hub.
 
 use std::io;
 use std::path::Path;
@@ -11,7 +10,6 @@ use daemon_core::model_work::releases::Sources;
 pub const SETTINGS_FILE: &str = "model-work.json";
 pub const SOURCES_FILE: &str = "model-sources.json";
 
-/// The most bytes of each file.
 const MAX_BYTES: u64 = 256 * 1024;
 
 #[derive(Debug, thiserror::Error)]
@@ -26,7 +24,6 @@ pub enum MachineFileError {
     Sources,
 }
 
-/// The text of `name` in `home`, or `None` when it is not there. No link is followed.
 fn read(home: &Path, name: &str) -> Result<Option<String>, MachineFileError> {
     let path = home.join(name);
     let meta = match std::fs::symlink_metadata(&path) {
@@ -40,11 +37,8 @@ fn read(home: &Path, name: &str) -> Result<Option<String>, MachineFileError> {
     Ok(Some(std::fs::read_to_string(path)?))
 }
 
-/// The settings at the machine.
-///
 /// # Errors
-/// [`MachineFileError`] for a file that is there and does not read; the daemon then takes no
-/// model item.
+/// [`MachineFileError`] for a file that is there and does not read.
 pub fn settings(home: &Path) -> Result<MachineSettings, MachineFileError> {
     match read(home, SETTINGS_FILE)? {
         Some(text) => Ok(MachineSettings::parse(&text)?),
@@ -52,8 +46,6 @@ pub fn settings(home: &Path) -> Result<MachineSettings, MachineFileError> {
     }
 }
 
-/// The release sources.
-///
 /// # Errors
 /// [`MachineFileError`] for a file that is there and does not read.
 pub fn sources(home: &Path) -> Result<Sources, MachineFileError> {

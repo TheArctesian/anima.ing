@@ -2,10 +2,7 @@
 
 use super::{Disk, label, lines};
 
-/// `df -P` output: one [`Disk`] per line of `Filesystem Blocks Used Available Capacity
-/// Mounted-on`. `block_bytes` is the size of a block: 1 for `df -P -B1` (Linux), 1024 for
-/// `df -P -k` (macOS). The mount point is the rest of the line, so it may hold spaces. The
-/// header and any line that does not read are skipped.
+/// One [`Disk`] per line of `df -P`; `block_bytes` is 1 for `-B1` (Linux), 1024 for `-k` (macOS).
 #[must_use]
 pub fn disks(output: &[u8], block_bytes: u64) -> Vec<Disk> {
     lines(output)
@@ -25,7 +22,6 @@ pub fn disks(output: &[u8], block_bytes: u64) -> Vec<Disk> {
         .collect()
 }
 
-/// The first five words of `line` and the rest of it, trimmed.
 fn columns(line: &str) -> Option<([&str; 5], &str)> {
     let mut rest = line;
     let mut words = [""; 5];

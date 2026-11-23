@@ -1,13 +1,10 @@
-//! What the hub's answer means (K8 Sections 3, 5 and 6): pure, from a status and a body.
+//! What the hub's answer means (K8 Sections 3, 5 and 6).
 
 use daemon_core::wire::{Refusal, RefusalCode};
 
-/// The answer to one request.
 #[derive(Debug, PartialEq)]
 pub enum Answer<T> {
-    /// The success status, with what the body held.
     Accepted(T),
-    /// A refusal of the kind K8 Section 6 lists, with the status that goes with it.
     Refused(RefusalCode),
     /// Anything else: no answer, a 5xx, a redirect, or a status and body K8 does not allow.
     Failed(Cause),
@@ -29,16 +26,12 @@ pub enum Cause {
         "this address is the hosted Anima.ing hub in a browser, not a hub for a daemon: enrol again with --hub and the address of your own hub, or sign in with the Anima.ing application, which installs the daemon for a hosted hub"
     )]
     HostedAddress,
-    /// The program at the socket of the link is not the one the daemon expects, and nothing was
-    /// written to it (K8 Section 1).
     #[error(
         "the program at the socket of anima-link is not the Anima link, so nothing was sent to it"
     )]
     NotTheLink,
 }
 
-/// Whether `body` is the refusal of the gateway of the hosted hubs for a request with no
-/// session of a browser: `{ "error": { "code": "sign_in_needed" } }`.
 fn from_gateway(body: &[u8]) -> bool {
     #[derive(serde::Deserialize)]
     struct Gateway {
@@ -52,8 +45,6 @@ fn from_gateway(body: &[u8]) -> bool {
         .is_ok_and(|gateway| gateway.error.code == "sign_in_needed")
 }
 
-/// The meaning of `status` and `body`. `ok_status` is the success status of the route and
-/// `read_ok` reads its body. A refusal counts only when its code goes with its status.
 pub fn answer<T>(
     status: u16,
     body: &[u8],
@@ -114,7 +105,6 @@ mod tests {
         let gateway = r#"{"error":{"code":"sign_in_needed","message":"words"}}"#;
         assert_eq!(push(401, gateway), Answer::Failed(Cause::HostedAddress));
         assert!(Cause::HostedAddress.to_string().contains("--hub"));
-        // The same body with a different status, and a different code, go by the status.
         assert_eq!(push(403, gateway), Answer::Failed(Cause::Status(403)));
         let other = r#"{"error":{"code":"hub_not_ready","message":"words"}}"#;
         assert_eq!(push(401, other), Answer::Failed(Cause::Status(401)));

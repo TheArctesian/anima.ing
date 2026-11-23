@@ -1,16 +1,13 @@
-//! The tool inventory and the hardware values a batch announces (CAP-032 follows CAP-027): after start, each time a probe result changes, and
-//! once every 24 hours even when unchanged, so an unchanged inventory is not sent with every
-//! batch and one lost to a refused batch is sent again (CAP-027, K8 Section 4).
+//! The tool inventory and hardware values a batch announces (CAP-027, CAP-032, K8 Section 4).
+//! An unchanged value goes again every 24 hours, so one lost to a refused batch is sent again.
 
 use std::time::{Duration, Instant};
 
 use daemon_core::inventory::Inventory;
 use daemon_core::wire::BatchInventory;
 
-/// The longest an unchanged inventory goes without being announced again (CAP-027).
 pub const ANNOUNCE_EVERY: Duration = Duration::from_hours(24);
 
-/// A value last handed to the pusher, and when: the tool inventory or the hardware values.
 #[derive(Debug)]
 pub struct Watch<T> {
     announced: Option<(T, Instant)>,
@@ -28,9 +25,6 @@ impl<T: PartialEq> Watch<T> {
         Self::default()
     }
 
-    /// The value to send at `now`: when `read` differs from the one announced last, or that was
-    /// announced 24 hours or more ago; `None` when it is the same and recent, or when nothing
-    /// could be read (the hub keeps what it has).
     pub fn changed(&mut self, read: Option<T>, now: Instant) -> Option<&T> {
         let read = read?;
         if let Some((announced, at)) = &self.announced
@@ -44,7 +38,6 @@ impl<T: PartialEq> Watch<T> {
     }
 }
 
-/// The tool inventory last handed to the pusher, and when.
 #[derive(Debug, Default)]
 pub struct InventoryWatch(Watch<Inventory>);
 
@@ -54,7 +47,6 @@ impl InventoryWatch {
         Self::default()
     }
 
-    /// The `inventory` member to send at `now` (see [`Watch::changed`]).
     pub fn changed(&mut self, read: Option<Inventory>, now: Instant) -> Option<BatchInventory> {
         self.0.changed(read, now).map(BatchInventory::from)
     }

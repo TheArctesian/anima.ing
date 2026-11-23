@@ -3,17 +3,13 @@
 use chrono::{DateTime, NaiveDateTime, SecondsFormat, Utc};
 use serde::{Deserialize as _, Deserializer, Serializer, de::Error as _};
 
-/// `YYYY-MM-DDTHH:MM:SSZ`: the one form K8 writes, 20 bytes.
 const FORM: &[u8; 20] = b"0000-00-00T00:00:00Z";
 
-/// Writes `at` as `2026-11-08T10:00:10Z`; a fraction of a second is cut off.
 pub(super) fn serialize<S: Serializer>(at: &DateTime<Utc>, out: S) -> Result<S::Ok, S::Error> {
     out.serialize_str(&at.to_rfc3339_opts(SecondsFormat::Secs, true))
 }
 
-/// Reads a time written exactly as K8 Section 1 writes it: `YYYY-MM-DDTHH:MM:SSZ`, with an
-/// uppercase `T` and `Z`, no offset, no fraction and no leap second. Anything else is not a K8
-/// body, so the hub answers `MALFORMED`. The error never holds the text.
+/// Reads exactly the form K8 Section 1 writes, else the hub answers `MALFORMED`; the error never holds the text.
 pub(super) fn deserialize<'de, D: Deserializer<'de>>(input: D) -> Result<DateTime<Utc>, D::Error> {
     let text = String::deserialize(input)?;
     parse(&text).ok_or_else(|| D::Error::custom("not a K8 time"))
@@ -29,7 +25,7 @@ fn parse(text: &str) -> Option<DateTime<Utc>> {
     (at.timestamp_subsec_nanos() == 0).then_some(at)
 }
 
-/// Whether `text` has the shape of `form`: a digit where `form` has `0`, the same byte elsewhere.
+/// A digit where `form` has `0`, the same byte elsewhere.
 fn shaped(text: &str, form: &[u8]) -> bool {
     text.len() == form.len()
         && text.bytes().zip(form).all(|(byte, form)| match form {
@@ -56,7 +52,6 @@ pub(super) mod days {
         out.serialize_str(&day.format("%Y-%m-%d").to_string())
     }
 
-    /// Reads exactly `YYYY-MM-DD` of a date that exists; the error never holds the text.
     pub(in super::super) fn deserialize<'de, D: Deserializer<'de>>(
         input: D,
     ) -> Result<NaiveDate, D::Error> {

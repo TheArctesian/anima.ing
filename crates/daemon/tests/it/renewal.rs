@@ -1,4 +1,4 @@
-//! Renewal against the fake hub: inside and outside the last 30 days (MET-013, K8 Section 5).
+//! MET-013, K8 Section 5.
 
 use anima_daemon::push::Event;
 use anima_daemon::token_store::TokenStore;
@@ -90,7 +90,6 @@ async fn k8_5_a_token_that_cannot_be_stored_is_not_used_and_the_current_one_stay
     let hub = FakeHub::start().await;
     let mut rig = rig(&hub, 1, TimeDelta::days(10));
     hub.queue_renew(renewed(2, TimeDelta::days(365)));
-    // A folder nobody can write to: the store cannot take the new token.
     std::fs::set_permissions(rig.home.dir(), std::fs::Permissions::from_mode(0o500))
         .expect("chmod");
     let writable = tempfile::tempfile_in(rig.home.dir()).is_ok();

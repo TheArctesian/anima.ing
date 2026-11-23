@@ -1,5 +1,3 @@
-//! The sample guard and the kind names.
-
 use super::*;
 
 #[test]

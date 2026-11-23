@@ -1,7 +1,4 @@
-//! The stored form of the key cache: one JSON record with the time of the last answer that had
-//! `keys` and each cached key with its value in base64 (K-E5 Section 2.1). Pure. The record is
-//! written into a buffer with room for it from the start, so it never moves and its wipe on
-//! drop covers every value; a record that does not read says only that (LOG-007).
+//! The stored form of the key cache (K-E5 Section 2.1); a record that does not read says only that (LOG-007).
 
 use chrono::{DateTime, Utc};
 use daemon_core::wire::{FetchedKey, MAX_KEYS, MAX_VALUE_BYTES};
@@ -10,8 +7,7 @@ use zeroize::Zeroizing;
 
 use super::cache::KeyCache;
 
-/// The most bytes a record has: each key at its longest value, with room for its name and the
-/// punctuation.
+/// Each key at its longest value, with room for its name and the punctuation.
 pub const RECORD_LIMIT: usize = 64 + MAX_KEYS * (256 + MAX_VALUE_BYTES / 3 * 4 + 4);
 
 #[derive(Serialize)]
@@ -28,7 +24,7 @@ struct Read {
     keys: Vec<FetchedKey>,
 }
 
-/// The cache as stored.
+/// The buffer has room for the record from the start, so it never moves and its wipe covers every value.
 ///
 /// # Panics
 /// Never: names, versions, a time and base64 text always serialise.
@@ -49,8 +45,6 @@ pub fn render(cache: &KeyCache) -> Zeroizing<Vec<u8>> {
     bytes
 }
 
-/// The cache a stored record holds; `None` for a record that does not read, which the caller
-/// treats as no cache.
 #[must_use]
 pub fn parse(bytes: &[u8]) -> Option<KeyCache> {
     let read: Read = serde_json::from_slice(bytes).ok()?;

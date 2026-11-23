@@ -1,14 +1,6 @@
 //! The drives of a macOS device, read from its `df -P -k` volumes (MET-027, MET-031).
-//!
-//! macOS has no `lsblk`. Each APFS volume is a file system of its own in `df`, and every volume
-//! of one container reports the whole container as its total, so a container with the system,
-//! the data, the recovery and a `/nix` volume would be four drives whose sizes add up to four
-//! times the disk. The device name tells the container: `/dev/disk3s5` and `/dev/disk3s1s1` are
-//! volumes of `disk3`. So each container becomes one drive with the container's size, and of
-//! its volumes only one mount stays: the data volume, which holds the operator's files, or else
-//! the first operator mount by path. The other volumes of the container leave the disks, so they
-//! are no series and no rows of their own. A file system that is not `/dev/disk…` (a network
-//! share) stays a lone mount.
+//! Each APFS volume reports its whole container as its total, so each container becomes one
+//! drive and only one of its volumes stays a disk.
 
 use std::collections::BTreeMap;
 
@@ -18,8 +10,7 @@ use crate::points::{MAX_LABELS, is_operator_mount};
 const DEVICE_PREFIX: &str = "/dev/disk";
 const DATA_VOLUME: &str = "/System/Volumes/Data";
 
-/// The container of an APFS volume's device: `disk3` for `/dev/disk3s5` or `/dev/disk3s1s1`;
-/// `None` for a device of another form.
+/// The container of an APFS volume's device: `disk3` for `/dev/disk3s5` or `/dev/disk3s1s1`.
 fn container(filesystem: &str) -> Option<&str> {
     let number = filesystem.strip_prefix(DEVICE_PREFIX)?;
     let digits = number.bytes().take_while(u8::is_ascii_digit).count();
@@ -30,8 +21,6 @@ fn container(filesystem: &str) -> Option<&str> {
     filesystem.get("/dev/".len()..DEVICE_PREFIX.len() + digits)
 }
 
-/// The volume of a container that stands for it: the data volume, else the first operator
-/// mount by path; `None` when no volume holds the operator's files.
 fn chosen(volumes: &[&Disk]) -> Option<usize> {
     volumes
         .iter()
@@ -43,9 +32,8 @@ fn chosen(volumes: &[&Disk]) -> Option<usize> {
         })
 }
 
-/// The disks that keep their own series and the drives of the APFS containers among `disks`,
-/// as `df -P -k` on macOS gave them. The drives are by name (bytewise), at most
-/// [`MAX_LABELS`]; `None` when no disk is a volume of a container, so every mount stands alone.
+/// The disks that keep their own series, and the drives of the APFS containers; `None` when no
+/// disk is a volume of a container.
 #[must_use]
 pub fn containers(disks: Vec<Disk>) -> (Vec<Disk>, Option<Vec<Drive>>) {
     let mut grouped: BTreeMap<String, Vec<&Disk>> = BTreeMap::new();

@@ -58,7 +58,6 @@ impl RefusalCode {
         }
     }
 
-    /// The code as the body spells it, for the event log.
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -77,9 +76,8 @@ impl RefusalCode {
         }
     }
 
-    /// Whether the daemon drops a batch the hub refused with this code, rather than keep its
-    /// points to send again: a batch that is malformed, too large or out of range never
-    /// becomes acceptable (K8 Section 6).
+    /// Whether the daemon drops a batch refused with this code: it never becomes acceptable (K8
+    /// Section 6).
     #[must_use]
     pub const fn drops_batch(self) -> bool {
         matches!(self, Self::Malformed | Self::TooLarge | Self::OutOfRange)

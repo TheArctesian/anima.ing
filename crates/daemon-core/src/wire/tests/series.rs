@@ -1,4 +1,4 @@
-//! The series rules of a batch (K8 Section 4): each refuses its own case only.
+//! K8 Section 4.
 
 use super::*;
 use crate::wire::BatchSeries;
@@ -11,7 +11,6 @@ fn series(kind: &str, label: Option<&str>, gpu: Option<u8>) -> BatchSeries {
     }
 }
 
-/// Adds `added` as a last column, with `value` as its mean in every point.
 fn with_series(batch: &mut Batch, added: BatchSeries, value: Option<f64>) {
     batch.series.push(added);
     for point in &mut batch.points {
@@ -22,7 +21,6 @@ fn with_series(batch: &mut Batch, added: BatchSeries, value: Option<f64>) {
     }
 }
 
-/// Keeps only the first `count` columns.
 fn keep_columns(batch: &mut Batch, count: usize) {
     batch.series.truncate(count);
     for point in &mut batch.points {

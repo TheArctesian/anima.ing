@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use super::{DaemonToken, EnrolmentCode, secrets};
 
-/// `POST /daemon/v1/enrol`: the code the operator made with `enrolDaemon` (K8 Section 3).
+/// `POST /daemon/v1/enrol` (K8 Section 3).
 #[derive(Serialize, Deserialize)]
 pub struct EnrolRequest {
     #[serde(
@@ -17,19 +17,14 @@ pub struct EnrolRequest {
     pub code: EnrolmentCode,
 }
 
-/// The most characters a device name has (K8 Section 3, DEV-010): the hub's device rule takes 1
-/// to this many, so the daemon keeps every name the hub can hold.
+/// The hub's device rule takes 1 to this many characters (K8 Section 3, DEV-010).
 pub const DEVICE_NAME_CHARS: usize = 64;
 
-/// Whether `name` is a device name the daemon keeps and prints: 1 to [`DEVICE_NAME_CHARS`]
-/// characters, no control character. The hub's device rule has the same length and refuses
-/// more characters than this, so every name the hub holds passes (MET-012, K8 Section 3).
 #[must_use]
 pub fn is_device_name(name: &str) -> bool {
     (1..=DEVICE_NAME_CHARS).contains(&name.chars().count()) && !name.chars().any(char::is_control)
 }
 
-/// The answer to a good enrolment: the device the daemon now speaks for and its token.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Enrolled {
@@ -48,7 +43,7 @@ pub struct Enrolled {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RenewRequest {}
 
-/// The answer to a renewal: the next token, which replaces the current one on its first use.
+/// The next token replaces the current one on its first use.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Renewed {

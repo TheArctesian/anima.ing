@@ -1,29 +1,19 @@
-//! Whether systemd delegates the cgroup of the daemon (Section 9; DEF-013). Under
-//! the systemd user manager each unit cgroup belongs to the user, so a cgroup that the daemon
-//! can make below its own proves no delegation: systemd may move a process out of it or remove
-//! it. The daemon asks the manager of the unit that holds its cgroup for the property
-//! `Delegate`, once for each process.
+//! Whether systemd delegates the daemon's cgroup (Section 9; DEF-013): a cgroup that the daemon can make proves no delegation.
 
 use std::io::Read as _;
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
-/// The longest wait for the answer of `systemctl`; past it the cgroup counts as not delegated.
 const ASK_DEADLINE: Duration = Duration::from_secs(5);
 
-/// The unit of systemd that holds a cgroup.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Unit {
     pub name: String,
-    /// Whether the user manager (`systemctl --user`) runs the unit.
     pub user: bool,
 }
 
-/// The unit that holds `cgroup`, a path of `/proc/self/cgroup` such as
-/// `/user.slice/user-1000.slice/user@1000.service/app.slice/anima-daemon.service`: its last part
-/// that is a service or a scope (a slice is never delegated). A unit below a part
-/// `user@<uid>.service` is a unit of the user manager.
+/// The last service or scope of a `/proc/self/cgroup` path (a slice is never delegated); below `user@<uid>.service` it is the user manager's.
 #[must_use]
 pub fn holding_unit(cgroup: &str) -> Option<Unit> {
     let parts: Vec<&str> = cgroup.split('/').filter(|part| !part.is_empty()).collect();
@@ -39,22 +29,17 @@ pub fn holding_unit(cgroup: &str) -> Option<Unit> {
     })
 }
 
-/// The kind of the unit named `part` (`service`, `scope`, `slice`). Unit names of systemd are
-/// case-sensitive: `.Service` is no service.
+/// Unit names of systemd are case-sensitive: `.Service` is no service.
 fn kind(part: &str) -> Option<&str> {
     part.rsplit_once('.').map(|(_, kind)| kind)
 }
 
-/// Whether the answer of `systemctl show --property=Delegate --value` says that the unit
-/// delegates its cgroup.
 #[must_use]
 pub fn says_delegated(answer: &str) -> bool {
     answer.trim() == "yes"
 }
 
-/// Whether the unit of the daemon delegates its cgroup. Asked once for each process: a change
-/// of `Delegate` takes effect only at a restart of the unit. Blocking, at most
-/// [`ASK_DEADLINE`] at the first call.
+/// Asked once for each process, as a change of `Delegate` takes effect only at a restart of the unit.
 #[must_use]
 pub fn own_cgroup_delegated() -> bool {
     static DELEGATED: OnceLock<bool> = OnceLock::new();
@@ -70,8 +55,6 @@ pub fn own_cgroup_delegated() -> bool {
     })
 }
 
-/// The answer of the manager of `unit` for its property `Delegate`; `None` when `systemctl`
-/// does not start, fails or does not answer within [`ASK_DEADLINE`].
 fn ask(unit: &Unit) -> Option<String> {
     let mut command = Command::new("/usr/bin/systemctl");
     if unit.user {

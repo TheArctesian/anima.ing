@@ -1,13 +1,9 @@
-//! The most of an answer the daemon reads, kept in a buffer that is wiped on every path.
-
 use zeroize::Zeroizing;
 
-/// The most of an answer the daemon reads: far above any K8 answer.
+/// Far above any K8 answer.
 pub const LIMIT: usize = 64 * 1024;
 
-/// What has come of an answer so far. Room for [`LIMIT`] bytes is made at the start and the
-/// buffer never grows past it, so it never moves and its wipe on drop covers every byte.
-/// (hyper's and rustls's own buffers are not wiped: a known remainder.)
+/// Room for [`LIMIT`] is made at the start, so the buffer never moves and its wipe covers all.
 pub struct Body(Zeroizing<Vec<u8>>);
 
 impl Body {
@@ -21,7 +17,6 @@ impl Body {
         self.0.len() >= LIMIT
     }
 
-    /// Keeps as much of `chunk` as fits under [`LIMIT`].
     pub fn add(&mut self, chunk: &[u8]) {
         let room = LIMIT - self.0.len();
         self.0.extend_from_slice(&chunk[..chunk.len().min(room)]);

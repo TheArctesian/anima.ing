@@ -1,5 +1,3 @@
-//! One point per 10-second window (MET-014, K8 Section 7).
-
 use super::*;
 use crate::points::{MAX_SERIES, Point, SeriesKey, Summary, Window};
 

@@ -1,9 +1,6 @@
-//! The mount of cgroup v2, read from `/proc/self/mountinfo` (R-330). A cgroup
-//! namespace stops a move of a process out of its root only when cgroup v2 is mounted with
-//! `nsdelegate`; without it the daemon refuses a start (`containment_failed`, `no_nsdelegate`).
+//! A cgroup namespace stops a move of a process out of its root only when cgroup v2 is mounted
+//! with `nsdelegate` (R-330).
 
-/// Whether the cgroup v2 mount at `/sys/fs/cgroup` in `mountinfo` has the option `nsdelegate`.
-/// `false` when no such mount is listed.
 #[must_use]
 pub fn cgroup_has_nsdelegate(mountinfo: &str) -> bool {
     mountinfo.lines().any(|line| {

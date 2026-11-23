@@ -1,13 +1,6 @@
-//! The socket table of the process tree of a server (Section 9). The tree is the cgroup of the
-//! server on Linux and the walk of its descendants on macOS ([`super::tree`]). The daemon
-//! reads the table from the system and never connects to find a socket.
-//!
-//! On Linux: the socket inodes of `/proc/<pid>/fd` of each process of the cgroup, and the
-//! tables `/proc/<pid>/net/{tcp,tcp6,udp,udp6}` of each network namespace that a member is in,
-//! merged, so a member in a namespace of its own hides no listener of a different member. On macOS the contract names
-//! `proc_pidinfo` with `PROC_PIDFDSOCKETINFO`; the workspace forbids `unsafe`, so this build
-//! runs `/usr/sbin/lsof` by its absolute path with an empty environment (a deviation of task
-//! L1-6).
+//! The socket table of a server's tree (Section 9), read from the system, never by connecting.
+//! On Linux each member's network namespace is read, so a member in its own namespace hides no listener.
+//! On macOS `lsof` reads it, as the workspace forbids the `unsafe` that `proc_pidinfo` needs (task L1-6).
 
 use std::io;
 
@@ -15,12 +8,8 @@ use daemon_core::model_work::loopback::Socket;
 
 use super::tree::Identity;
 
-/// The listening TCP sockets and the bound UDP sockets of the processes `members` (the tree of
-/// a server, [`super::tree`]).
-///
 /// # Errors
-/// An I/O error when the table cannot be read, or when `members` is empty (a running server
-/// always has its tree); the caller then treats the server as exposed.
+/// An I/O error when the table cannot be read or `members` is empty; the caller then treats the server as exposed.
 pub async fn table(members: &[Identity]) -> io::Result<Vec<Socket>> {
     if members.is_empty() {
         return Err(io::Error::other("the tree of a running server is empty"));
@@ -35,7 +24,6 @@ pub async fn table(members: &[Identity]) -> io::Result<Vec<Socket>> {
     }
 }
 
-/// The most time of one read of `lsof`; a slower read counts as a table that does not read.
 #[cfg(not(target_os = "linux"))]
 const LSOF_SECONDS: u64 = 5;
 
@@ -94,14 +82,12 @@ async fn linux(members: &[Identity]) -> io::Result<Vec<Socket>> {
     Ok(sockets)
 }
 
-/// Whether the process of `member` has ended since the tree was read. A member that still
-/// runs but whose files do not read (it made itself not dumpable) fails the read: closed.
+/// A member that still runs but whose files do not read (not dumpable) is not gone, so the read fails closed.
 #[cfg(target_os = "linux")]
 fn gone(member: &Identity) -> bool {
     super::tree::start_of(member.pid).as_deref() != Some(member.start.as_str())
 }
 
-/// The socket inodes that the processes `members` hold.
 #[cfg(target_os = "linux")]
 async fn socket_inodes(members: &[Identity]) -> io::Result<std::collections::HashSet<u64>> {
     let mut inodes = std::collections::HashSet::new();
@@ -127,7 +113,6 @@ async fn socket_inodes(members: &[Identity]) -> io::Result<std::collections::Has
     Ok(inodes)
 }
 
-/// The sockets of the network namespace of process `pid` that one of `inodes` names.
 #[cfg(target_os = "linux")]
 async fn namespace_table(
     pid: i32,

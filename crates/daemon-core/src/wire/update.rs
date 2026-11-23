@@ -1,8 +1,5 @@
-//! The update of a daemon between it and its hub (K8 Section 8, R-139): what the daemon says in
-//! each batch, the version the hub tells it, and the bodies of the two update routes.
-//!
-//! The hub tells only a version (ROL-009). The release record is bytes to this contract: its
-//! fields and its signature are the release record's (ROL-003, ROL-004).
+//! The update of a daemon between it and its hub (K8 Section 8, R-139). The hub tells only a
+//! version (ROL-009); the release record is bytes to this contract (ROL-003, ROL-004).
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use serde::{Deserialize, Serialize};
@@ -37,7 +34,6 @@ pub struct BatchUpdate {
     pub last: Option<UpdateTry>,
 }
 
-/// The result of the newest try of an update.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UpdateTry {
     pub version: String,
@@ -49,7 +45,6 @@ pub struct UpdateTry {
     pub tries: u8,
 }
 
-/// How the newest try ended.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TryResult {
@@ -88,8 +83,6 @@ pub enum TryCause {
 }
 
 impl TryCause {
-    /// Whether this cause can end a try with `result`. `Failed` can end either kind that has a
-    /// cause.
     #[must_use]
     pub const fn ends(self, result: TryResult) -> bool {
         match self {
@@ -102,11 +95,8 @@ impl TryCause {
     }
 }
 
-/// The longest target, in bytes.
 const MAX_TARGET_BYTES: usize = 64;
 
-/// A target: 1 to 64 bytes of ASCII letters, digits, `-` and `_` (K8 Section 8.1). A target of
-/// that form that the hub does not know is "no release for this machine", not a fault.
 fn is_target(text: &str) -> bool {
     (1..=MAX_TARGET_BYTES).contains(&text.len())
         && text
@@ -115,8 +105,7 @@ fn is_target(text: &str) -> bool {
 }
 
 impl BatchUpdate {
-    /// Whether this member keeps the rules of K8 Section 8.1, with `is_version` the rule of
-    /// `daemonVersion`; a member that breaks them makes the batch `MALFORMED`.
+    /// A member that breaks the rules of K8 Section 8.1 makes the batch `MALFORMED`.
     pub(super) fn fits(&self, is_version: impl Fn(&str) -> bool) -> bool {
         is_target(&self.target)
             && self.previous.as_deref().is_none_or(&is_version)
@@ -157,7 +146,6 @@ pub struct ReleaseRecord {
 }
 
 impl ReleaseRecord {
-    /// The body for `record` and `signature`; `None` when either is over its limit.
     #[must_use]
     pub fn new(record: &[u8], signature: &str) -> Option<Self> {
         (record.len() <= MAX_RECORD_BYTES && signature.len() <= MAX_SIGNATURE_BYTES).then(|| Self {
@@ -166,8 +154,6 @@ impl ReleaseRecord {
         })
     }
 
-    /// The bytes of the record and the text of the signature; `None` when the record is not
-    /// base64 or either is over its limit.
     #[must_use]
     pub fn parts(&self) -> Option<(Vec<u8>, &str)> {
         if self.record.len() > base64::encoded_len(MAX_RECORD_BYTES, true)?
