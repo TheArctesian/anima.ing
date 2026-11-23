@@ -109,3 +109,62 @@ fn thr_041_a_restart_while_a_full_access_turn_waits_never_counts_on_the_profile(
     let (_, policy) = turn(&mut again, Mode::Ask);
     assert_eq!(policy, "workspaceWrite");
 }
+
+#[test]
+fn thr_041_a_leaving_turn_held_back_for_the_record_ends_and_the_profile_stays() {
+    use agent_threads::control::{Change, ThreadRow};
+    use agent_threads::drive::{DriveEvent, Program};
+
+    use crate::threads::runner::thread::{Changes, Step, Thread};
+
+    let codex = Codex::new(PathBuf::from("/home/you"), Mode::Ask, None, None).keeping(Some(kept()));
+    let row = ThreadRow {
+        folder: PathBuf::from("/home/you"),
+        mode: Mode::Ask,
+        ..super::row(Program::Codex)
+    };
+    let mut thread = Thread::new(row, None, Some(codex));
+    let mut ids = super::counter();
+    thread.begin("go");
+    thread.line(r#"{"id":1,"result":{}}"#, &mut ids);
+    thread.line(r#"{"id":2,"result":{"thread":{"id":"th"}}}"#, &mut ids);
+    thread.line(r#"{"id":3,"result":{"turn":{"id":"u1"}}}"#, &mut ids);
+    thread.line(
+        r#"{"method":"turn/completed","params":{"turn":{"id":"u1","status":"completed"}}}"#,
+        &mut ids,
+    );
+    let to_full = Changes {
+        mode: Some(Mode::FullAccess),
+        ..Changes::default()
+    };
+    thread.set(to_full).expect("changed");
+    let line = thread
+        .send(&Prompt::plain("now"), true)
+        .expect("running")
+        .remove(0);
+    assert!(thread.leaves_with(&line), "this turn leaves the profile");
+    let steps = thread.held_back(&line);
+    let told = steps.iter().any(|step| {
+        matches!(step, Step::Change(Change::Said { event: DriveEvent::Notice { text } })
+            if text.contains("could not write its record"))
+    });
+    assert!(told, "the person is told why the turn did not go");
+    assert!(!thread.leaves_with(&line), "nothing waits for that line");
+    let back_to_ask = Changes {
+        mode: Some(Mode::Ask),
+        ..Changes::default()
+    };
+    thread.set(back_to_ask).expect("changed");
+    let next: Value = serde_json::from_str(
+        &thread
+            .send(&Prompt::plain("again"), true)
+            .expect("running")
+            .remove(0),
+    )
+    .expect("JSON");
+    assert_eq!(
+        next["params"]["sandboxPolicy"]["type"],
+        Value::Null,
+        "the profile still keeps the folder"
+    );
+}

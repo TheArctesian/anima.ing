@@ -175,7 +175,8 @@ impl Runner {
                 }
             };
             signed_out |= steps.iter().any(signed_out::not_logged_in);
-            if self.apply(id, steps).await.is_err() {
+            // A held-back line is not a lost link: the next lines are read.
+            if let Err(super::NotSent::LinkDown) = self.apply(id, steps).await {
                 break;
             }
         }
