@@ -1243,7 +1243,7 @@ verification remain in TH50 and TH51.
 
 #### 6.4.2 TH30: proposed wire contract for review
 
-Version 0.1, 2026-11-23. **Draft, not accepted.** This is the proposed addition to K10,
+Version 0.2, 2026-11-23. **Author revision, not accepted or independently re-reviewed.** This is the proposed addition to K10,
 with the K1 operations and K8 concurrency change that it needs. It changes no frozen
 contract and grants no new power. TH30 stays In progress until its separate contract
 and security reviews and the ruling required by CON-001. R-353 removes a further
@@ -1263,6 +1263,8 @@ trusted under OD-THR20; an approval through it has the accepted risk of OD-THR5.
 | `requestId` | A non-nil UUID made by the calling client before its first send. A retry key, not a hub entity ID or authority. Its namespace is the hub and authenticated operator. The client persists it until the result is known. |
 | `workId` | The K10 item UUID made by the hub, with one selected device and attempt 1. It is distinct from the request and thread IDs. |
 | `runnerId` | The stable UUID made and persisted by the runner before a launch side effect. It is scoped to the enrolled device, as in TH20. It is never the vendor's session ID. |
+| `processId` | A non-nil UUID made by the holder for one process incarnation. It survives daemon restart while that process lives; a replacement process gets a new ID. It is not an OS PID. |
+| `turnId` | The holder's stable identity for one turn within a process incarnation, never a position or display label. |
 | `threadId` | The hub UUID for `(authenticated device, runnerId)`, using TH21's existing row. No second identity or parallel transcript store. |
 | `commandId` | The hub UUID of one accepted prompt, answer or stop. The client supplies a `requestId` for this operation too. |
 | `approvalId` | The exact runner request ID in the open approval entry under TH20. It identifies one request of one process, not its title, position or text. |
@@ -1275,6 +1277,29 @@ create one row and one queue entry. A new `requestId` is a new intent, never an
 automatic remedy for a timeout. Results are stored before their acknowledgement.
 Retention of retry records is a review point in F below; deleting a receipt must not
 turn a retry into a new launch.
+
+A live command binding is `(authenticated device, runnerId, processId)`, independent
+of how the thread started. The proposed daemon-authenticated route
+`POST /work/v1/threads/bindings` takes `{ device, bindings }`. Each binding has
+`runnerId`, `processId`, `revision`, `live`, nullable `turnId`, and nullable
+`launch: { workId, attempt }`. Revisions are persisted and increase per runner ID.
+The hub returns `{ accepted: [{ runnerId, revision }] }` after commit. Batches are
+bounded in F2; omission means unchanged, not ended. A process exit sends `live: false`.
+The daemon checks its holder's live record before publishing; a session-file reader
+cannot make a binding. The same TH21 thread row receives this control metadata; no
+new thread is made by a binding and a deleted row cannot be recreated by one.
+
+TH21 publishes a local thread's summary before its binding; a binding for a row
+not yet stored is refused and retried after summary receipt. A launch can publish
+its binding after its launch result creates the row. K1 adds
+`agentThreadControl(threadId: ID!)`, login-only, returning `processId`, nullable
+`turnId`, `revision`, and `live`, or null when no binding is known. This is a recent
+observation, not proof that a process still lives. Each command is checked against
+the holder again. A locally started live runner thread can be controlled without a
+work item; a historical/imported summary is read-only. Never relaunch, resume a dead
+process, or manufacture a K10 item to adopt such a summary. Existing local approval
+and remote permission checks still apply. A replacement process invalidates queued
+commands for the earlier process; they cannot silently follow the new process.
 
 **B. Proposed K1 operations**
 
@@ -1289,9 +1314,11 @@ token and an unauthenticated caller cannot use these operator operations.
 | `agentThreadStartTargets(device: ID!)` | An accessible device | Its most recent offers: `offerId`, `revision`, `name`, supported `programs`, and whether the device is connected. No local path. This is an offer, not permission to start. |
 | `startAgentThread(input)` | `requestId`, `deviceId`, `offerId`, `offerRevision`, `program`, `mode`, nullable `model` and `effort`, `prompt` | `AgentThreadLaunchReceipt` |
 | `agentThreadLaunch(requestId: ID!)` | The caller's launch retry key | The same receipt or null; never enqueue from a read |
-| `sendAgentThreadPrompt(input)` | `requestId`, `threadId`, `text` | `AgentThreadCommandReceipt` |
-| `answerAgentThreadRequest(input)` | `requestId`, `threadId`, `approvalId`, `answer` | `AgentThreadCommandReceipt` |
-| `stopAgentThread(input)` | `requestId`, `threadId`, `action` (`interrupt_turn` or `end_thread`) | `AgentThreadCommandReceipt` |
+| `cancelAgentThreadLaunch(input)` | A new `requestId` and the original `launchRequestId` | `AgentThreadLaunchCancelReceipt` (C1) |
+| `agentThreadLaunchCancellation(requestId: ID!)` | The caller's cancellation retry key | The same cancellation receipt or null |
+| `sendAgentThreadPrompt(input)` | `requestId`, `threadId`, `processId`, `text` | `AgentThreadCommandReceipt` |
+| `answerAgentThreadRequest(input)` | `requestId`, `threadId`, `processId`, `approvalId`, `answer` | `AgentThreadCommandReceipt` |
+| `stopAgentThread(input)` | `requestId`, `threadId`, `processId`, `action` (`interrupt_turn` or `end_thread`), `turnId` for interrupt (D1) | `AgentThreadCommandReceipt` |
 | `agentThreadCommand(requestId: ID!)` | The caller's command retry key | The same receipt or null |
 
 `program` is `claude_code` or `codex`. `mode` is explicit on the wire:
@@ -1312,14 +1339,17 @@ that the runner recorded the creation of the thread and acceptance of its first
 prompt, not that the turn succeeded. A subsequent failure is the state of that
 thread; it never changes the launch receipt or causes a second launch.
 
-A command receipt has `requestId`, `commandId`, `threadId`, `state`, nullable `cause`,
+A command receipt has `requestId`, `commandId`, `threadId`, `processId`, `state`, nullable `cause`,
 and `updatedAt`; an answer also has `approvalId`. Its states are `queued`,
 `delivered`, `reconciling`, `recorded`, `refused`, `cancelled`. The last three are
 final. `delivered` means that the daemon took the envelope, not that the runner acted.
 `recorded` means that the runner durably accepted that command for the intended live
 thread/request. It does not claim that the program finished a tool or turn. The
 client shows the receipt separately from TH21's transcript; either can arrive first.
-For a stop, the transcript confirms when the turn or thread actually ended.
+For a stop, the receipt also carries its target `turnId` when applicable; the
+transcript confirms when the turn or process actually ended. Acceptance into the
+holder's execution queue is distinct from consumption by the program: D2 defines
+that additional durable progress, including what bodies must remain after `recorded`.
 
 An inaccessible device or thread is refused before queueing, using the existing
 access errors without returning another operator's receipt. Recheck device and
@@ -1335,7 +1365,7 @@ is absent, `project` is null in the K10 envelope, and `secrets` is empty. The of
 project is the machine-local offer in `parameters`, not a grant on a hub project.
 The existing build and container types keep their current rules.
 
-`Claim` gains `agentThreads: { enabled, offersRevision }`; absent means disabled.
+`Claim` gains `agentThreads: { enabled, offersRevision, launchSlots }`; absent means disabled.
 A daemon advertises `agent_thread` only when it implements this contract. Offers are
 published with a proposed daemon-authenticated `POST /work/v1/threads/offers`:
 `{ device, revision, offers: [{ offerId, revision, name, programs }] }`. Its receipt
@@ -1344,6 +1374,41 @@ an offer removes eligibility, not an existing thread. A daemon keeps its local
 mapping from an opaque `offerId` to a real folder. A revision changes when that
 mapping or its eligibility changes. The hub cannot set the mapping or enable it.
 The daemon authenticates through K8, and the body device must match its token.
+
+**Proposed eligibility matrix.** This table applies only to the new type. Its
+launch concurrency and treatment of the hub's work switch are review proposals,
+not new selections of the operator. Build/container eligibility stays in K10.
+
+| Claim condition | New `agent_thread` launch | Claim/poll behavior |
+| --- | --- | --- |
+| No `agentThreads`, or no `agent_thread` in `types`, or no `host` in `kinds` | Never eligible | Old daemon follows existing K10 cadence; no new item is sent to it. |
+| `enabled: false` | No new launch | Recovery reports continue; command poll remains available for live bindings, denial, stop and cancellation, independent of launch eligibility. |
+| `enabled: true`, `switch: off`, `applications: off` | Eligible if other new-type guards pass | Proposed exception to the existing always-204 rule: claim each 10 seconds while launchSlots is positive or a launch needs reconciliation. |
+| `enabled: true`, either old switch on | Evaluate each type independently | Existing job/container cadence remains; also claim for launch/recovery as above. One claim still returns at most one item. |
+| `free.slots: 0` or `unclean: true` | Proposed: not a veto on this type | Those fields concern isolated jobs. Use launchSlots, the local folder/switch checks and the existing runner's capacity. No clearing of a job's unclean flag. |
+| `launchSlots: 0` | No fresh launch; recovery of an existing identity is allowed | Never interpret zero as lost holds. Reports and polls do not wait for a slot. |
+| Hub work switch off (`WORK_OFF` operator cause) | Proposed: no fresh launch | Do not return route-wide WORK_OFF to a capable thread claim; return eligible recovery/other permitted work or 204. Existing container-stop exception stays. |
+| One-hour job refusal/loss backoff (`WORK_OFF` job cause) | Proposed: does not bar this type | The existing count remains jobs only. Agent launch failures do not enter that count. |
+
+Proposed launch concurrency is one dispatch/reconciliation at a time per device,
+not one live thread. `launchSlots` is 0 or 1 and reflects that capacity; the hub also
+checks outstanding launches atomically. A confirmed launch releases this slot even
+under F1's live-item option. An unknown launch holds it, visibly, until reconciled;
+it never stops existing threads. With all launch switches off and no recovery, use
+K10's start/hourly claim announcement, but keep command polling for live bindings.
+K10 reports retain their own cadence, so a busy launcher cannot starve a lease.
+
+A successful new-type offers/bindings receipt is the explicit capability handshake;
+an old hub may silently ignore Claim.agentThreads, so an ordinary claim success is
+not evidence of support. A 404 on the new routes means unsupported and uses the
+one-hour retry. Display remote control unavailable; do not send an agent_thread to
+an old daemon or encode it as another type. A capable daemon receiving WORK_OFF
+from an older hub disables new remote launches and marks support unknown; it must
+not apply the old job-wide kill/clean-up rule to agent processes. Handling token
+revocation or loss of a live work lease still requires F1's selected policy.
+Deny/stop/recovery routes remain separate from job admission. The proposal to make
+the hub work switch bar new agent launches needs the K10 owner's confirmation; if
+that is a new scope for USE-004, the parent decides it before acceptance.
 
 `parameters` is exactly `{ requestId, offerId, offerRevision, program, mode, model,
 effort, prompt }`, with the B meanings. No program path, command line, environment,
@@ -1391,13 +1456,46 @@ K10 work lifetime: a launched thread can still be working or waiting for approva
 The lifetime of its work lease and the effect of lease expiry are unresolved in F;
 this draft does not silently apply build clean-up or container expiry to a thread.
 
+**C1. Proposed cancellation before a hub thread ID exists**
+
+`cancelAgentThreadLaunch` is login-only and uses the same hub/device ownership
+checks as launch. `launchRequestId` is resolved only in the authenticated operator's
+namespace; callers cannot supply a work/device mapping. The new requestId identifies
+the cancellation intent and is deduplicated with its exact target. Its receipt has
+`requestId`, `launchRequestId`, `workId`, `deviceId`, `state`, nullable `cause` and
+nullable `threadId`. States are `queued`, `reconciling`, `cancelled`, `too_late`,
+`refused`; the last three are terminal for cancellation, not a new launch result.
+
+If the hub can prove in the queue transaction that the launch has never been made
+available to a claim response, it removes it from dispatch, stores the launch's
+`cancelled` result and the cancellation receipt together. Once it might have been
+sent, a hub acknowledgement proves only that cancellation was requested. Deliver
+`cancel_launch` through the daemon poll, with `workId`, `attempt` and the original
+launch request ID; it does not need runnerId/processId. The holder serializes this
+with its durable launch intent. It persists a cancellation tombstone before reporting
+`cancelled` only if it proves no program started and prevents any later duplicate
+item from starting. If it already created the thread, return `too_late` with the
+same thread ID once the launch result is reconciled. This does not end that thread;
+the operator uses an explicit end command. If it cannot prove either state, return
+`reconciling`, keep both intents and do not replay the launch. A cancellation received
+before the original item persists its tombstone first. Lost cancellation responses
+return the same receipt; they never cause a new cancellation intent or launch.
+
 **D. Proposed long poll and command receipts**
 
 Add `POST /work/v1/threads/poll`, authenticated by the daemon token. Body:
-`{ device, receipts: [{ commandId, state, cause }] }`; here `state` is `recorded`,
-`refused` or `reconciling`. Return `200` with `{ accepted: [commandId], command }`.
+`{ device, receipts: [{ commandId, state, cause, consumption, consumptionCause }],
+deletionsAccepted: [deletionId] }`; here `state`
+is `recorded`, `refused`, `cancelled` or `reconciling`. `consumption` and nullable fixed-code `consumptionCause` are specified
+in D2; neither may contain program text. Return `200` with `{ accepted: [commandId], deletions: [], command }`. Cancellation intents
+have a hub commandId too; their receipts use C1's states and include the launch
+identity, not a fabricated live-thread identity.
 `command` is null on a normal wait timeout, or one envelope:
-`{ commandId, workId, attempt, runnerId, action, input }`. `action` is `prompt`,
+`{ commandId, runnerId, processId, sequence, launch, action, input }`. `launch`
+is null for a local start, else `{ workId, attempt }` as audit context only; it is
+not command authority. `sequence` is a durable increasing per-process command
+sequence. The separate `cancel_launch` variant has C1's launch identity.
+For a live-thread command, `action` is `prompt`,
 `answer`, `interrupt_turn` or `end_thread`; `input` has only the B fields for that
 action (without the client retry key or hub thread ID). The hub derives the runner
 binding from its stored thread and device; it never trusts a caller's runner ID.
@@ -1413,7 +1511,8 @@ write to a program pipe and its durable receipt cannot be solved by HTTP retries
 when the holder cannot resolve it, report `reconciling`, not success or an automatic
 resend. A command's state does not regress on a stale report.
 
-The hub orders accepted commands for one thread. Concurrent answers with distinct
+The hub assigns sequence order per live process. D1 defines the proposed stop
+barrier exception; it is not permission to replay earlier prompts. Concurrent answers with distinct
 request IDs can both queue, but the runner's atomic check of the live `approvalId`
 accepts at most one. The winner gets `recorded`; the other gets `refused` with
 `already_resolved`. An identical retry of the winning command gets its original
@@ -1427,6 +1526,10 @@ entries, a client cannot invent an approval to display or answer; local use rema
 A disconnected client retries its request ID and reads its receipt. A disconnected
 daemon retains receipts, sends them first on reconnect, then resumes polling. It
 checks the local switch, folder eligibility and live request again before dispatch.
+A denial or stop is explicitly exempt from launch-offer membership and current
+folder-list eligibility, including a removed folder or offer. It still needs the
+same authenticated owner and exact live process/request binding. This exemption
+never permits a new start, prompt, positive answer or folder access.
 Switch off refuses new starts and prompts; the existing choice of whether to stop a
 running turn stays as in THR-129. It must not prevent the operator from sending a
 denial or a stop. The policy for a positive approval after switch off is a review
@@ -1448,17 +1551,98 @@ short-request limits and deadlines. A disconnect releases the poll slot; a secon
 poll is `503 UNAVAILABLE`. The wait deadline, body limits and queue bounds require
 review in F; they are not inherited from a 10-second K8 request by accident.
 
+**D1. Stop targeting and order — policy alternatives remain unselected**
+
+Proposed option A (recommended): `interrupt_turn` names the observed processId and
+turnId from agentThreadControl. It never means whichever turn happens to run later.
+A stale turn yields `refused/turn_ended`. `end_thread` names the process incarnation,
+not a future replacement. The hub atomically assigns the stop sequence and a barrier
+covering earlier commands of that process. The holder applies the same barrier
+before dispatching more queued prompts: an earlier prompt/positive answer not yet
+consumed is discarded with cause `stopped_before_dispatch`, with its own receipt.
+If acceptance was not yet final, its state becomes `cancelled`. If it was already
+`recorded`, that acceptance stays final and its consumption becomes `discarded`
+with a separate `consumptionCause`; no terminal acceptance receipt is rewritten.
+The hub can cancel never-delivered entries immediately; a possibly delivered entry
+remains unresolved until the holder confirms consumption or cancellation. Entries already
+consumed are not declared undone. Denials and earlier stops are not discarded.
+
+A stop can overtake a pending prompt only with this durable barrier. `recorded` for
+a stop confirms installation of the barrier and acceptance of the exact stop target,
+not that the OS process has exited. While it is unresolved, reject new prompts and
+positive answers for the affected process with visible `CONFLICT`. After interrupt
+is confirmed, new explicitly submitted prompts may proceed. After end, the process
+binding remains closed; no command can reopen it. Thus an older queued prompt cannot
+restart work after an acknowledged stop. A lost barrier receipt is reconciled, not
+bypassed. A stale interrupt installs no barrier and cancels nothing.
+
+Alternative B: keep strict FIFO, interrupt only the observed turn, and require a
+separate operator queue-clear action for unconsumed prompts before a stop can
+complete. This avoids implicit queue cancellation but can delay control behind
+prompts and requires another K1 operation. It does not permit a generic interrupt
+of the next turn. Selection of overtaking/cancellation semantics is a new policy
+clarification; no option is selected here. Exact identity checks and reporting
+cancellations individually are required regardless. F2's priority proposal is
+conditional on A, not an override of this unresolved choice.
+
+**D2. Consumption and copies of command content**
+
+A recorded command can still have a durable body in the holder awaiting delivery.
+Report `consumption: pending | consumed | discarded | unknown` with its receipt.
+Consumed means the holder has durably recorded the adapter's handoff boundary for
+that command; it does not prove a tool completed. Discarded means a durable refusal
+or cancellation guarantees it will never be handed off. Unknown preserves the pipe
+write ambiguity; never resend merely because a consumption receipt was lost.
+Pending/unknown progress is monotone to a proven consumed/discarded result, and a
+retry cannot move it backwards. A recorded receipt does not by itself free pending
+storage budget. The holder retains the body until consumption or discard is durable.
+It can then erase its execution copy and keep the content-free deduplication record.
+The hub can erase its delivery copy after the holder durably accepts it, while still
+retaining the receipt/progress and charging unresolved execution against F2 budgets.
+
+Deletion makes a durable hub tombstone first. On reconnect, the daemon obtains and
+persists deletions before it dispatches older commands; the poll returns deletion
+records before executable envelopes, with bounded batches and explicit receipts.
+Each is `{ deletionId, target }`, where target is one tagged identity: a device,
+a runnerId on the authenticated device, or a launch workId on that device. A batch
+has at most 64 records within the poll response byte cap; `command` is null while
+there are deletions for that device awaiting acknowledgement. The daemon sends
+`deletionsAccepted` only after persisting the tombstone and discard intent. It reports
+consumption separately where an effect is already uncertain; this acknowledgement
+does not assert that a running program or an offline backup was erased.
+A device with an unacknowledged deletion receives no executable envelope for that
+binding. The holder discards unconsumed content and records discard receipts, erases
+consumed delivery copies, and never recreates a deleted row from a late receipt.
+An offline holder cannot be promised immediate erasure or prevention of already
+accepted execution. Deletion is not a rollback or an implicit process kill; F1 and
+an explicit stop govern running work. A tombstone wins over later binding/summary,
+launch and command reports. Late reports can reconcile minimal outcome metadata
+without restoring a body or transcript. Deletion intent and acknowledgements count
+against the reserved control budgets, with visible backpressure rather than eviction.
+
+Apply these rules also to failed, refused and cancelled launches with no thread ID:
+key their erasure/deduplication by operator request ID and work ID. A proved refusal
+can discard its body; an uncertain spawn cannot masquerade as a refusal to free
+space. F3 governs durations, abandoned unresolved records and backup policy. Erasure
+from the online hub is not erasure from an offline daemon, a vendor session file or
+a backup. THR-130 already notes that backups lose deleted content only when replaced.
+A restored backup must replay the later deletion ledger before serving commands or
+content; if that ledger is unavailable, remote dispatch stays disabled pending
+reconciliation. Backup retention and restoration guarantees need explicit selection;
+this draft promises neither immediate erasure from all copies nor new retention times.
+
 **E. Refusals, audit and acceptance cases**
 
 Transport errors keep K10's fixed body and status codes. No error echoes input.
 Semantic causes in receipts are a closed list for review: `switch_off`,
 `folder_not_permitted`, `offer_stale`, `program_unavailable`, `mode_not_permitted`,
 `policy`, `member_unknown`, `unknown_request`, `request_ended`, `already_resolved`,
-`answer_not_permitted`, `thread_ended`, `access_revoked`, `deleted`, `start_failed`.
+`answer_not_permitted`, `thread_ended`, `process_changed`, `turn_ended`,
+`stopped_before_dispatch`, `access_revoked`, `deleted`, `start_failed`.
 An unknown cause is displayed as a generic refusal, never interpreted as success.
 An undetermined delivery is `reconciling`, not `start_failed`.
 
-The hub records the authenticated actor, device, work ID, thread ID when known,
+The hub records the authenticated actor, device, optional launch work ID, thread ID when known,
 request/command ID, action, time and fixed result code. The runner records what it
 can itself see, namely source `hub`, with the fields and permissions of THR-044.
 Neither logs prompts, answer feedback, question text, rules, transcript content,
@@ -1484,6 +1668,19 @@ ruling; later TH31 and TH32 must prove them with tests of behavior:
   dispatch, no fallback folder, no resurrection and no leaked content.
 - Empty poll, disconnect, second poll, renewal and lease report during a wait,
   enqueue during registration, old hub and old daemon: no lost command or starvation.
+- Local live thread with no work ID, historical summary, and process replacement:
+  control only the exact live binding, no adoption launch and no cross-process replay.
+- Launch-cancel before claim, after response loss and after spawn: proof-based
+  cancellation or reconciling/too-late; hub acceptance never promises prevention.
+- Stop overtakes prompt, stale-turn interrupt and unconsumed recorded prompt:
+  individual cancellation receipts and no earlier prompt restarts after the barrier.
+- Delivered/reconciling saturation, concurrent hub/device admission, tombstone capacity
+  and a full control reserve: no overcommit, silent eviction or false stop acceptance.
+- Switch/applications off with thread enablement on, zero job slots, unclean jobs,
+  both WORK_OFF causes and old capability responses: the explicit type matrix holds.
+- Offline deletion, lost consumption receipt, failed launch without thread ID and
+  backup restore: tombstone precedence, execution copy retained only while needed,
+  no claim of immediate erasure from an unreachable copy.
 - Transcript opt-out, queue refusal and secret-like prompt/answer: no automatic
   sharing and no content in logs. No approval is answered by a timer.
 
@@ -1525,9 +1722,9 @@ option. The parent must select the lifetime and offline/expiry policy; the write
 cannot select them as retry implementation details. Holder deduplication, atomic
 identity binding and no automatic replacement of an uncertain launch are correctness
 requirements of the requested one-result/retry behavior, not new actor permissions.
-After selection, the final contract must specify the race between stop and dispatch:
-a stop acknowledged before dispatch cancels the launch; after dispatch it targets
-the recorded thread and does not rewrite a successful launch as never started.
+C1 defines the launch-cancellation race independently of the lifetime selection.
+An acknowledgement by the hub alone cannot prove a delivered launch was prevented.
+D1 separately leaves the stop/queued-prompt behavior for a live thread unselected.
 
 **F2. Poll and queue bounds — engineering choices with contract review**
 
@@ -1541,8 +1738,38 @@ number of live threads. K10 Section 4 gives container stops first priority.
 
 | Option | Concrete behavior | Tradeoff |
 | --- | --- | --- |
-| A — recommended for review | One poll per device, at most 25 seconds of waiting, a 30-second client response deadline, and the existing 5-second body deadline. Poll request and response at most 96 KiB each; at most 64 receipts and one command. Prompt or answer payload at most 64 KiB of UTF-8 JSON, including feedback/choices. Offer upload at most 64 KiB, at most 128 offers, names at most 80 characters; response at most 8 KiB. At most 64 undelivered commands per device, 16 per thread; at most 60 new commands per minute per operator/device. Duplicate requests do not consume new queue entries. Of the 64 device slots, reserve 16 for stops and use at most 48 for prompts/answers; at most one pending stop of each kind per thread. Return `UNAVAILABLE` when the relevant capacity is full. Dispatch stops before other thread commands; for non-stop commands rotate across threads, oldest first within a thread. Keep the existing K10 work-type order unchanged and place new launch items after its currently eligible work; this can delay a launch on a busy machine. A full queue returns `UNAVAILABLE`, keeps no request, and reports no acceptance. | Finite memory and payloads with prompt delivery as soon as an event wakes the poll. Rejects very large messages and bursts; these are transport refusals the client must show, not silently truncate. The poll has a deliberate deadline exception while ordinary K8 calls keep theirs. |
+| A — recommended for review | One poll per device, at most 25 seconds waiting, a 30-second client response deadline, and the existing 5-second body deadline. Poll request/response at most 96 KiB each; at most 64 receipts and one command or a bounded deletion batch. Prompt/answer JSON at most 64 KiB. Offer upload at most 64 KiB, at most 128 offers with names of at most 80 characters; response at most 8 KiB. Binding upload at most 64 KiB, at most 64 bindings; response at most 8 KiB. All combined envelopes must also fit the route cap. Use the admission/storage budgets below, including cancellation, recovery and retained metadata. Keep the existing K10 work-type order unchanged and place new launch items after its currently eligible work. Stop priority is conditional on D1 option A. | Bounded memory, storage and network work, without a live-thread cap. A busy machine can delay launches. Capacity refusal is visible; no truncation, eviction or false acceptance. The poll gets a deliberate deadline exception; ordinary K8 calls keep theirs. |
 | B | Keep each poll within the existing 10-second response deadline: at most 5 seconds waiting, then reconnect immediately; use the same payload and queue limits as A. | Smaller deadline change, but more requests and idle network use. It still needs a separate wait slot and must not hold a database connection or block metrics. |
+
+Proposed finite budgets for either wait option (not selected):
+
+| Stored work | Per device | Per hub | Admission/retirement rule |
+| --- | --- | --- | --- |
+| Unresolved launch intents, including claimed/starting/reconciling | 16 records, 2 MiB | 256 records, 32 MiB | Reserve before creating the K10 item; count a possibly dispatched launch until its outcome is proved. One dispatch/reconciliation slot per device as in C. |
+| Ordinary commands and recorded-but-unconsumed execution | 48 records, 4 MiB; at most 16 per process | 768 records, 64 MiB | Includes queued, delivered, reconciling and recorded with pending/unknown consumption. Delivery does not release a slot. |
+| Control intents: denial, stop, launch cancellation and deletion | 32 records, 1 MiB | 512 records, 16 MiB | Separate reservation ordinary work cannot consume; retained until resolved/acknowledged. At most one pending same-action/target stop; distinct duplicate intents alias its outcome without another executable envelope. |
+| Terminal receipts and retry/deletion tombstones | 10,000 records, 16 MiB | 100,000 records, 160 MiB | Reserve room for the eventual compact receipt/tombstone at initial admission, including alias requests. F3 determines retirement, never eviction or reuse. Of these totals reserve 25 percent exclusively for control requests. |
+
+Measure stored canonical envelope bytes plus a fixed accounted metadata allowance;
+charge each retained body copy to its owning store and include holder execution
+journals in the daemon's capacity check. A hub reservation remains charged until the
+holder's consumed/discarded receipt, even if the hub erased its body. Bound active
+binding metadata by the same finite metadata allocation; when full report unavailable
+for additional remote bindings, without ending or refusing local threads. One
+binding batch is not a cap on all live threads; paginate and keep omission unchanged.
+
+Use 12 new launch intents per minute per operator/device and 120 per hub; use 60 new
+ordinary commands per minute per operator/device and 600 per hub. Control admission
+has a separate 60/600 rate budget. Retries of an existing request consume no new
+record or admission rate, but still obey transport limits. Reserve counts and bytes
+atomically at both device and hub levels, including future receipt capacity. Reject
+a new request with visible UNAVAILABLE before acknowledging it if any reservation
+fails. Do not evict accepted work or forget a tombstone to free room. Even reserved
+control capacity is finite; when exhausted, state that the stop was not queued and
+retain the ability to retry/reconcile existing control IDs. A local stop is still
+available. No resource limit stops a live thread or answers an approval. A holder
+that cannot store a received command returns a definite refusal before any effect;
+the hub keeps that result. All limits need owner review/measurement.
 
 These numbers are proposals, not existing requirements. The contract/resource owners
 can normally choose measured transport bounds as engineering details under the
@@ -1568,8 +1795,16 @@ for a command queue or its client retry key.
 
 | Option | Concrete behavior | Tradeoff |
 | --- | --- | --- |
-| A — recommended for review | Erase prompt/answer bodies from hub and delivery journals when a terminal receipt is stored, or on explicit cancellation or thread/device deletion. This does not erase independently opted-in TH21 entries. Keep content-free receipts while the thread exists. After deletion, retain only a retry tombstone scoped to the operator and request ID, the operation kind and a deleted marker for the life of the hub account. Return a generic deleted receipt to a retry and never enqueue it. Persist a private keyed input fingerprint while a full receipt exists to detect changed-input reuse without keeping text; no fingerprint enters an audit log. An unresolved delivery is not terminal, so its body remains until reconciliation or explicit deletion/cancellation. | Avoids a duplicate from an arbitrarily late retry, without permanent command text. Minimal identifiers still remain after deletion; an offline unresolved command can retain sensitive content indefinitely. Both are new retention choices and must be disclosed and selected by the parent. |
+| A — recommended for review | Erase the hub delivery body when the holder durably accepts it, and the holder execution body only after durable consumption/discard under D2. Cancellation/deletion schedules erasure with the offline limits of D2. This does not erase independently opted-in TH21 entries. Keep content-free receipts while the thread exists. After deletion, retain only a retry tombstone scoped to the operator and request ID, the operation kind and a deleted marker for the life of the hub account. Return a generic deleted receipt to a retry and never enqueue it. Persist a private keyed input fingerprint while a full receipt exists to detect changed-input reuse without keeping text; no fingerprint enters an audit log. Unresolved copies remain charged against F2 budgets until reconciliation or proven discard; a received cancellation cannot erase evidence of an uncertain effect. Failed/refused launches without a thread retain only their content-free receipt after proven discard. | Avoids a duplicate from an arbitrarily late retry, without permanent command text. Minimal identifiers still remain after deletion; an offline unresolved command can retain sensitive content indefinitely. Both are new retention choices and must be disclosed and selected by the parent. With permanent tombstones, the finite F2 metadata budget eventually refuses new remote intents; it never evicts old keys to admit them. |
 | B | Retain bodies as in A, but permit retry keys only for a 30-day window. Keep receipts/tombstones through that window. Thereafter reject every key from an expired, server-issued retry namespace; never treat an expired key as a new intent. | Bounds retry metadata. Requires a new server-issued namespace and an issuance step, and loses old result recovery. It cannot be implemented merely by deleting UUID rows and accepting the UUID again; the namespace and expiry check need a revised K1 contract. |
+
+F3 A's permanent tombstones and F3 B's expiring namespaces are alternatives, neither
+selected. In A, metadata exhaustion blocks new remote intent admission until the
+owner approves more capacity or a different retention policy; no silent recycling.
+In B, an expired namespace is rejected from a bounded server generation record even
+after individual rows are removed. Refusing expired keys must not require a row per
+old key; the revised protocol must prove that before B can be accepted. Receipt
+lifetimes, unresolved-content expiry and backup durations remain unselected.
 
 For either option, cancellation of a possibly delivered command does not claim
 that the effect was undone. The minimal tombstone prevents redispatch; the holder
