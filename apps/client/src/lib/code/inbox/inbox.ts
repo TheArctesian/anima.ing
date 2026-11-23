@@ -97,12 +97,26 @@ function wokeUnseen(id: string, marks: Marks, at: Arranging): boolean {
   return woke > (at.seen.get(id)?.getTime() ?? 0);
 }
 
+/** Whether Anima did not start the session of `row`; never while the runner does not say which threads it started. */
+function startedOutside(row: ListedRow, started: ReadonlySet<string> | null | undefined): boolean {
+  return started != null && !started.has(row.id);
+}
+
+/**
+ * The rows of the list: a session that Anima did not start shows only when the person asks for such sessions in the
+ * filter (operator, 2026-11-23: "hide, with filter"), in any state, pinned, working or asking too. Only the display
+ * changes: nothing is settled, archived or deleted.
+ */
+export function shownRows(rows: readonly ListedRow[], started: ReadonlySet<string> | null | undefined, outsideShown: boolean): readonly ListedRow[] {
+  return outsideShown ? rows : rows.filter((row) => !startedOutside(row, started));
+}
+
 /**
  * A session that Anima did not start rests in Settled from its last change, as T3 Code settles the sessions it imports,
  * until the person takes it back or writes in it here; a pinned thread, or one that works or asks, stays in the list.
  */
 function outside(row: ListedRow, state: ThreadState, marks: Marks, at: Arranging): boolean {
-  if (at.started == null || at.started.has(row.id)) return false;
+  if (!startedOutside(row, at.started)) return false;
   if (row.pinned || running(state) || state === 'asks' || state === 'may_wait') return false;
   return marks.unsettledAt === null && marks.wokeAt === null && !(at.prompted?.has(row.id) ?? false);
 }

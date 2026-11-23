@@ -6,6 +6,7 @@ import { installSyntheticHub } from '../../synthetic/synthetic-hub';
 import { HEIGHT, MODES, storedSettings, type Mode } from '../shots';
 import { installDesktopShell, type Scenario } from '../threads/desktop-shell';
 import { EVERY_STATE as UNMARKED, IDS } from '../threads/scenario';
+import { outsideFilter, outsideMarked } from './outside';
 import { addProject, card, newThread, openModels } from './draft';
 
 // Stage 2 of the T3 Code copy (TC2): the inbox of the page Code in each state, and the whole page. The page is only in
@@ -33,6 +34,7 @@ const EVERY_STATE: Scenario = {
       .map(([thread, marks]) => ({ thread, pinned: false, archived: false, title: null, removed: false, ...marks })),
   ],
 };
+const OUTSIDE = outsideMarked(EVERY_STATE);
 /** The models of the two programs, as a runner that asked them before any thread answers `models` (TH104). */
 const MODELS: Scenario = {
   ...EVERY_STATE,
@@ -250,6 +252,8 @@ const SHOTS: readonly Shot[] = [
   // T3's "Add project" palette: its Sources, then the folders of "Local folder" from the runner's `folders`.
   { name: 'add-project-sources', window: true, scenario: DISK, act: (page, inbox) => addProject(page, inbox, false) },
   { name: 'add-project-folder', window: true, scenario: DISK, act: (page, inbox) => addProject(page, inbox, true) },
+  { name: 'outside-hidden', scenario: OUTSIDE, act: (page, inbox) => outsideFilter(page, inbox, false) },
+  { name: 'outside-shown', scenario: OUTSIDE, act: (page, inbox) => outsideFilter(page, inbox, true) },
 ];
 
 
