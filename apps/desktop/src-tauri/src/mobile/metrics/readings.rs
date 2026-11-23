@@ -64,7 +64,11 @@ fn add(
 pub(super) fn batch(device: Uuid, now: DateTime<Utc>, path: &Path) -> Option<Batch> {
     let mut series = Vec::new();
     let mut mean = Vec::new();
-    let mount = if cfg!(target_os = "android") { "/data" } else { "App data" };
+    let mount = if cfg!(target_os = "android") {
+        "/data"
+    } else {
+        "App data"
+    };
     if let Some(reading) = storage(path) {
         add(
             &mut series,
