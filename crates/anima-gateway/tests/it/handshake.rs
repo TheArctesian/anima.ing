@@ -1,5 +1,3 @@
-//! The gateway answers the hub's handshake as guacd does, and refuses what it cannot use.
-
 mod prompt;
 mod rdp;
 
@@ -21,7 +19,6 @@ fn hub_values(extra: &[(&str, &str)]) -> ArgValues {
     values
 }
 
-/// Runs the hub's own handshake against the gateway's, as `tunnel/guacd.rs` does.
 fn hub_opens(protocol: &str, values: ArgValues) -> Result<(Opening, String), Refused> {
     let params = ConnectParams {
         display: Display {
@@ -252,7 +249,6 @@ fn a_view_outside_the_tunnel_limits_is_refused() {
 }
 
 proptest! {
-    /// Whatever the peer sends, the handshake answers or refuses; it does not panic.
     #[test]
     fn no_instructions_break_the_handshake(
         instructions in prop::collection::vec(

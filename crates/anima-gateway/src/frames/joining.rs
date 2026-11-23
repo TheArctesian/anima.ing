@@ -1,26 +1,17 @@
-//! Which changed areas go out as one image.
-//!
-//! Each image costs a fixed number of bytes: its `img` and `end` instructions and the
-//! format's own header. Two areas that lie close together are cheaper as one image over
-//! both, although that image also holds pixels that did not change.
+//! Which changed areas go out as one image; each image has a fixed cost in bytes.
 
 use crate::screen::Area;
 
-/// How many unchanged pixels one image may take in to save another image. About what the
-/// fixed cost of an image buys: unchanged screen content compresses well, and two tiles of
-/// it cost less than a second image's instructions and header.
+/// Unchanged pixels one image may take in to save another image: about what an image's fixed cost buys.
 const SPARE_PIXELS: usize = 2048;
-/// How many of the latest joined areas a new area is compared with. The areas arrive in
-/// row order, so near ones are recent ones; the limit keeps the work linear.
+/// Areas arrive in row order, so near ones are recent ones; the limit keeps the work linear.
 const LOOK_BACK: usize = 32;
 
-/// The pixels in `area`.
 pub(super) const fn pixels(area: Area) -> usize {
     area.width * area.height
 }
 
-/// `areas` with near neighbours joined into one area over both. The result covers every
-/// pixel of `areas`; joined areas may overlap each other.
+/// The result covers every pixel of `areas`; joined areas may overlap each other.
 pub(super) fn joined(areas: &[Area]) -> Vec<Area> {
     let mut joined: Vec<Area> = Vec::new();
     for &area in areas {
@@ -37,12 +28,10 @@ pub(super) fn joined(areas: &[Area]) -> Vec<Area> {
     joined
 }
 
-/// The pixels in the area over both that are in neither.
 const fn spare(a: Area, b: Area) -> usize {
     pixels(over_both(a, b)).saturating_sub(pixels(a) + pixels(b))
 }
 
-/// The smallest area that holds both.
 const fn over_both(a: Area, b: Area) -> Area {
     let x = min(a.x, b.x);
     let y = min(a.y, b.y);

@@ -1,4 +1,4 @@
-//! What each reply status means for each change (design C.6, decisions items 2 and 7).
+//! Design C.6, decisions items 2 and 7.
 
 use chrono::{DateTime, TimeDelta, TimeZone as _, Utc};
 use source_exchange::{Body, Change, ChangeReply, Limit, Receipt, Refusal, Settled};
@@ -34,7 +34,6 @@ const fn refused(refusal: Refusal) -> Settled {
 
 const MADE: Settled = Settled::Done(Receipt::Made);
 
-/// Rows of status, body and outcome for one change, with no rate limit headers.
 fn assert_table(change: &Change, rows: &[(u16, &[u8], Settled)]) {
     for (status, body, expected) in rows {
         assert_eq!(

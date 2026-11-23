@@ -1,9 +1,6 @@
 //! One listener of a UDP stream, only on a hub that reaches the machine on its own network
-//! (OD-HOST-48). Each source address is one flow through the hub, with a limit of flows for each
-//! stream and an idle time. A source address of UDP can be false, so the proxy sends to a source
-//! at most as many bytes as it received from it (Section 16.4, SF-248), the new flows of a stream
-//! each second and from each source network are limited, and a new flow takes the place of a
-//! waiting one, never of a flow whose source answered (SF-327, task H41; [`super::flows`]).
+//! (OD-HOST-48). A UDP source address can be false, so a source gets at most the bytes it sent
+//! (Section 16.4, SF-248), and a new flow replaces only a waiting one (SF-327).
 
 use std::{
     net::SocketAddr,
@@ -33,8 +30,7 @@ use crate::{
 /// The datagrams of one flow that wait for the hub; more are dropped, as UDP may.
 const QUEUE: usize = 64;
 
-/// What the table holds of a flow: the sender of its datagrams, and a signal that it keeps. When
-/// the table drops it (a new flow took its place), the flow ends at once, also while it dials.
+/// When the table drops a handle, its flow ends at once, also while it dials.
 struct Handle {
     datagrams: Sender<Vec<u8>>,
     _kept: oneshot::Sender<()>,
@@ -42,14 +38,11 @@ struct Handle {
 
 type Flows = Arc<Mutex<FlowTable<Handle>>>;
 
-/// Whether `length` more bytes may go to a source that sent `received` bytes and was sent
-/// `sent`: never more than it sent, so a false source address cannot be made a target.
 #[must_use]
 pub const fn may_answer(received: u64, sent: u64, length: usize) -> bool {
     sent.saturating_add(length as u64) <= received
 }
 
-/// Receives the datagrams of `stream` on `socket` until the task is stopped.
 pub async fn serve<H: Hub>(proxy: Arc<Proxy<H>>, socket: UdpSocket, stream: StreamRoute) {
     let socket = Arc::new(socket);
     let stream = Arc::new(stream);
@@ -105,14 +98,8 @@ pub async fn serve<H: Hub>(proxy: Arc<Proxy<H>>, socket: UdpSocket, stream: Stre
     }
 }
 
-/// The caps of the flows of a stream of `total` flows, `per_network` for each source network, a
-/// bucket of new flows with `burst`, and a route of `route_connections` (SF-327):
-/// - waiting flows: the burst, at most half of the connections of the route, at least one, and
-///   fewer than `total`;
-/// - set-up flows: the places that the waiting flows leave, and fewer than the connections of the
-///   route less the waiting flows. So waiting and set-up flows together hold at most each
-///   connection of the route but one, and a new client that replaces a waiting flow gets that
-///   one connection before the replaced flow gives its own back.
+/// Waiting and set-up flows hold each connection of the route but one, so a client that replaces
+/// a waiting flow gets a connection before the replaced flow gives its own back (SF-327).
 #[must_use]
 pub fn flow_caps(total: usize, per_network: usize, burst: u32, route_connections: u32) -> FlowCaps {
     let connections = usize::try_from(route_connections).unwrap_or(usize::MAX);
@@ -132,9 +119,6 @@ pub fn flow_caps(total: usize, per_network: usize, burst: u32, route_connections
     }
 }
 
-/// A new waiting flow of `source` in `flows`: its number, its datagrams and the signal that the
-/// table dropped it; `None` when it is refused. The handle of a waiting flow that it replaced is
-/// dropped here, which ends that flow.
 fn open<H: Hub>(
     proxy: &Proxy<H>,
     flows: &Flows,
@@ -158,8 +142,7 @@ fn open<H: Hub>(
     Some((opened.id, receiver, dropped))
 }
 
-/// One flow of one source through the hub. Its entry in the table goes when it is dropped, also
-/// when its task ends by a panic.
+/// Its table entry goes when it is dropped, also when its task panics.
 struct Flow<H: Hub> {
     proxy: Arc<Proxy<H>>,
     socket: Arc<UdpSocket>,
@@ -200,7 +183,6 @@ impl<H: Hub> Flow<H> {
             .set_up(self.source, self.id)
     }
 
-    /// Carries the datagrams both ways until the hub ends the flow or it is idle.
     async fn carry(&self, mut receiver: Receiver<Vec<u8>>, first: Vec<u8>, moved: &Moved) {
         let dial = Dial {
             application: self.stream.application,
@@ -260,8 +242,7 @@ impl<H: Hub> Drop for Flow<H> {
     }
 }
 
-/// Ends each flow of a stream when its listener stops: when `serve` is aborted, its table drops
-/// each handle, so each flow ends and gives back its connection (SF-327).
+/// When `serve` is aborted, each flow ends and gives back its connection (SF-327).
 struct EndsFlows(Flows);
 
 impl Drop for EndsFlows {
@@ -273,8 +254,7 @@ impl Drop for EndsFlows {
     }
 }
 
-/// A connection of a name that the proxy admitted; given back when it is dropped, also when the
-/// flow ends by a panic.
+/// An admitted connection of a name, given back on drop, also when the flow panics.
 struct Admitted<'a, H: Hub> {
     proxy: &'a Proxy<H>,
     name: &'a str,

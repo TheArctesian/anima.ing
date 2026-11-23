@@ -1,8 +1,6 @@
 package tunnel_test
 
-// Pinning tests: each one states a behaviour of the Tailcat library that the
-// link relies on (UPSTREAM.md). If an update of the library changes one, the
-// test fails here and not in the field.
+// Each test pins a behaviour of the Tailcat library that the link relies on (UPSTREAM.md).
 
 import (
 	"context"
@@ -107,7 +105,6 @@ func TestPinTheAddressIsTheSameAfterARestartFromSavedState(t *testing.T) {
 	first := startHub(t, id, admitAll)
 	address := first.Address()
 
-	// What a state file holds: the two secrets as text and the relay as JSON.
 	keyText, pskText := id.key.Reveal(), id.psk.Reveal()
 	relayText, err := json.Marshal(first.Relay())
 	if err != nil {

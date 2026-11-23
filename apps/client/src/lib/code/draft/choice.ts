@@ -25,11 +25,12 @@ const DEFAULT = 'default';
 
 /**
  * The efforts each program takes when no model names its own: Claude Code the closed list of `claude --help`, Codex
- * the reasoning efforts of its app server that the runner can name (it has no "max").
+ * the levels each of its models lists in the runner's `models` answer (low to max; the captured answer of 2026-11-22).
+ * Ultra is left out: the runner takes it only for a named model that lists it.
  */
 const PROGRAM_EFFORTS: Readonly<Record<Program, readonly Effort[]>> = {
   claude_code: ['low', 'medium', 'high', 'xhigh', 'max'],
-  codex: ['low', 'medium', 'high', 'xhigh'],
+  codex: ['low', 'medium', 'high', 'xhigh', 'max'],
 };
 
 /** The runner's answer to `models`, as far as it came: the picker says why it shows only the default (TH104). */

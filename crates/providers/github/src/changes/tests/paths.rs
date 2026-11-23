@@ -1,5 +1,4 @@
-//! Hostile-looking but valid parts never move a change off its repository's endpoints, and
-//! text goes only into the body (OD-E14, design F leak tests).
+//! Design F leak tests.
 
 use proptest::prelude::*;
 use regex::Regex;
@@ -14,7 +13,6 @@ use crate::changes::render;
 const ENDPOINTS: &str =
     r"^/repos/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/(issues|pulls|actions|statuses)(/|$)";
 
-/// The verb GitHub documents for each function.
 fn documented_verb(function: &str) -> Verb {
     match function {
         "set_issue_open" => Verb::Patch,
@@ -23,7 +21,6 @@ fn documented_verb(function: &str) -> Verb {
     }
 }
 
-/// The parts of one change of each kind.
 #[derive(Debug)]
 struct Parts {
     repository: RepositoryName,
@@ -103,7 +100,6 @@ fn parts() -> impl Strategy<Value = Parts> {
     })
 }
 
-/// One change of each kind, every optional part set.
 fn every_change(p: &Parts) -> Vec<Change> {
     let repository = || p.repository.clone();
     vec![

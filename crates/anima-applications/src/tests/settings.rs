@@ -1,5 +1,3 @@
-//! The settings at the machine (K10 Section 6.4.2).
-
 use crate::settings::{Guarded, Limits, Machine, NotGuarded, Settings, SettingsFault, guard, read};
 
 const AFTER_INSTALL: &str = r#"{
@@ -123,7 +121,6 @@ fn k10_6_4_2_a_value_that_is_not_permitted_is_refused() {
         ("\"version\": 1", "\"version\": 2"),
         ("\"allContainers\": true", "\"allContainers\": \"true\""),
         ("\"engine\": \"user\"", "\"engine\": \"remote\""),
-        // The socket is a Unix socket of the machine: an address of a different machine is refused.
         (
             "\"/Users/ada/.docker/run/docker.sock\"",
             "\"tcp://10.0.0.5:2375\"",
@@ -135,7 +132,7 @@ fn k10_6_4_2_a_value_that_is_not_permitted_is_refused() {
         ("\"/usr/local/bin/docker\"", "\"docker\""),
         ("\"/usr/local/bin/docker\"", "\"/usr/local/../bin/docker\""),
         ("\"acceptedUser\": 501", "\"acceptedUser\": 4294967296"),
-        // A project whose name starts with `anima-` cannot be adopted (Section 6.4.3).
+        // An `anima-` project cannot be adopted (Section 6.4.3).
         (
             "\"name\": \"tracks\"",
             "\"name\": \"anima-0192f6b07c1e7a3b9d2f4e5a6b7c8d9e\"",

@@ -35,17 +35,14 @@ mod tests;
 
 use pid_file::PidFile;
 
-/// How often a wait looks again.
 const POLL: Duration = Duration::from_millis(10);
 
 /// The least time an immediate shutdown gets before the process is killed.
 #[cfg(unix)]
 const QUIT_LIMIT: Duration = Duration::from_secs(5);
 
-/// How long a dropped server gets for its fast shutdown.
 const DROP_LIMIT: Duration = Duration::from_secs(30);
 
-/// The server log moves aside at a start when it is larger than this.
 const LOG_LIMIT: u64 = 8 * 1024 * 1024;
 
 #[derive(Debug, thiserror::Error)]
@@ -70,32 +67,25 @@ fn io_error(step: &'static str) -> impl FnOnce(io::Error) -> ServerError {
     move |source| ServerError::Io { step, source }
 }
 
-/// The server's settings for one computer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Settings {
     pub max_connections: u32,
     pub shared_buffers_mb: u32,
-    /// Ask the drive to empty its cache at each commit (`fsync_writethrough`). macOS needs it
-    /// to keep the cluster whole through a power cut; it makes a commit slower.
+    /// `fsync_writethrough`: macOS needs it to keep the cluster whole through a power cut.
     pub flush_through_drive_cache: bool,
 }
 
-/// How long the waits may take.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Limits {
     pub ready: Duration,
     pub stop: Duration,
 }
 
-/// Held by the one copy that runs this database. The operating system ends the lock with the
-/// process, so a killed copy never leaves it held.
+/// Held by the one copy that runs this database; the operating system releases it with the process.
 #[derive(Debug)]
 pub struct Lock(#[expect(dead_code, reason = "the open file is the lock")] File);
 
 /// Takes the lock of `layout`'s database, and makes the root folder first when it is missing.
-///
-/// Without it two copies that start together both make the cluster, both fail, and each
-/// removes the other's half-made folder.
 ///
 /// # Errors
 /// [`ServerError::AnotherCopy`] when the lock is held.
@@ -109,8 +99,7 @@ pub fn lock(layout: &Layout) -> Result<Lock, ServerError> {
     }
 }
 
-/// Whether a server of this cluster accepts connections now, read from `postmaster.pid`
-/// with no lock taken, so a look never stands in the way of a copy that starts.
+/// Whether a server of this cluster accepts connections now, read from `postmaster.pid` with no lock.
 ///
 /// # Errors
 /// When `postmaster.pid` is there and cannot be read.
@@ -133,13 +122,11 @@ pub fn accepts_connections(layout: &Layout) -> Result<bool, ServerError> {
         .map_err(io_error("inspect the server"))
 }
 
-/// How a stop went.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Stopped {
     /// A fast shutdown: sessions ended, a checkpoint written, no recovery at the next start.
     Clean,
-    /// The fast shutdown took longer than the limit, so the server was told to quit at once.
-    /// The next start recovers from the write-ahead log.
+    /// The fast shutdown took too long, so the server quit at once; the next start recovers.
     Immediate,
 }
 
@@ -157,9 +144,7 @@ pub struct Server {
 }
 
 impl Server {
-    /// Starts `postgres` on `layout`'s cluster as a child of this process, for the copy that
-    /// holds the [`Lock`]. The server listens only on the Unix socket (DB-001) and its log
-    /// holds no statement and no error message of a session (LOG-007).
+    /// Starts `postgres` on `layout`'s cluster as a child, on the Unix socket only (DB-001, LOG-007).
     ///
     /// # Errors
     /// When the socket folder or the log cannot be prepared, or the program cannot start.
@@ -193,11 +178,8 @@ impl Server {
         self.child.id()
     }
 
-    /// Waits until this server accepts connections.
-    ///
-    /// Ready means that `postmaster.pid` names this child, was written after the child started
-    /// and says `ready`. An answer on the socket is not enough: a server that an earlier copy
-    /// left can answer there while this child fails to start.
+    /// Waits until `postmaster.pid` names this child, is newer than it and says `ready`; an answer
+    /// on the socket can come from a server that an earlier copy left.
     ///
     /// # Errors
     /// When the child ends first, or is not ready in `limits.ready`.
@@ -234,9 +216,7 @@ impl Server {
             .map_err(io_error("look at the server process"))
     }
 
-    /// A fast shutdown, and after `limits.stop` an immediate one. A server that had ended
-    /// by itself before the call counts as [`Stopped::Clean`]: nothing was cut short here,
-    /// and [`Server::ended`] is the way to learn of a server that died.
+    /// A fast shutdown, then an immediate one; a server that had already ended counts as clean.
     ///
     /// # Errors
     /// When the server cannot be signalled or waited for.
@@ -291,8 +271,6 @@ impl Server {
     }
 }
 
-/// A server never outlives the value that owns it: a panic or an early return in the caller
-/// must not leave a `postgres` running. The wait has a limit, as every stop has.
 impl Drop for Server {
     fn drop(&mut self) {
         // Nothing can be reported from a drop; `stop` is the call that reports.
@@ -313,11 +291,7 @@ fn arguments(layout: &Layout, settings: Settings) -> Vec<String> {
         format!("max_connections={}", settings.max_connections),
         format!("shared_buffers={}MB", settings.shared_buffers_mb),
         "dynamic_shared_memory_type=posix".to_owned(),
-        // LOG-007. A statement can hold a password, and so can the message of an error:
-        // a syntax error quotes the text near it, a failed cast quotes the value, a
-        // constraint quotes the row. So no statement and no ERROR of a session is logged;
-        // the session itself still gets its error. LOG, FATAL and PANIC stay: starts, stops,
-        // recovery, refused logins. None of these can be changed by the hub's login.
+        // LOG-007: a statement or an error message can quote a password, so neither is logged.
         "log_statement=none".to_owned(),
         "log_min_duration_statement=-1".to_owned(),
         "log_min_duration_sample=-1".to_owned(),
@@ -343,8 +317,6 @@ fn arguments(layout: &Layout, settings: Settings) -> Vec<String> {
     arguments
 }
 
-/// The server log, open for appending. A log above [`LOG_LIMIT`] becomes `server.log.1`
-/// first, in place of the one before it.
 fn open_log(layout: &Layout) -> io::Result<File> {
     let path = layout.server_log();
     if fs::metadata(&path).is_ok_and(|log| log.len() > LOG_LIMIT) {

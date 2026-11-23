@@ -1,5 +1,3 @@
-//! `docker_prune` (K10 Section 6.4.10).
-
 use super::{DIGEST, FIRST, OF_ADOPTED, OF_ANIMA, OF_THE_OWNER, PROJECT, World, commands, pulled};
 use crate::{Image, Network, Pruned, Refusal, work::prune::pruned};
 
@@ -28,7 +26,6 @@ fn image(id: &str, pulled_as: &str, dangling: bool) -> Image {
     }
 }
 
-/// A machine where each container is stopped, with networks and images of each owner.
 fn stopped() -> World {
     let mut world = World::new();
     for container in &mut world.inventory.containers {
@@ -65,7 +62,6 @@ fn stopped() -> World {
     world
 }
 
-/// The arguments of each command of the plan for `what`, after the first four.
 fn removed(world: &World, what: &[Pruned]) -> Vec<String> {
     let plan = pruned(what, &world.facts()).expect("a plan");
     commands(&plan)
@@ -101,7 +97,6 @@ fn k10_6_4_10_a_prune_never_removes_what_runs_what_is_used_or_what_keep_holds() 
     world.inventory.networks[0].used = true;
     world.inventory.images[0].used = true;
     assert_eq!(removed(&world, &ALL), Vec::<String>::new());
-    // The image of the kept version and of the version that runs stay, used or not.
     let world = stopped();
     let images = removed(&world, &[Pruned::Images]).join(" ");
     assert!(!images.contains(KEPT) && !images.contains(RUNS));
@@ -114,7 +109,7 @@ fn k10_6_4_10_with_all_containers_on_the_members_mean_what_the_prune_commands_re
     assert_eq!(
         removed(&world, &ALL),
         [
-            // Never a container and never a network of an adopted project (R-211).
+            // Containers and networks of an adopted project are not pruned (R-211).
             format!("container rm -- {OF_ANIMA} {OF_THE_OWNER}"),
             "network rm -- anima-net lab".to_owned(),
             format!("image rm -- {OLD} {OF_THE_OWNER_IMAGE}"),
@@ -153,7 +148,6 @@ fn k10_6_4_10_an_image_that_keep_holds_stays_when_the_engine_writes_a_different_
     // The engine writes the short name; the file named the long one.
     world.inventory.images = vec![image(OLD, &format!("nginx@{kept_digest}"), true)];
     assert_eq!(removed(&world, &[Pruned::Images]), Vec::<String>::new());
-    // The same image with a digest that no version holds goes.
     world.records.applications[0].kept = None;
     assert_eq!(
         removed(&world, &[Pruned::Images]),

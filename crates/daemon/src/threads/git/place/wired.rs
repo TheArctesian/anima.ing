@@ -84,6 +84,22 @@ pub fn engine(
     Ok(Engine::new(git, home).with_launcher(launcher))
 }
 
+impl Engine {
+    /// The `git` that this engine runs, and that each read of a thread names: the launcher
+    /// checks a read against it ([`super::shared::pack::is_read`]).
+    #[must_use]
+    pub fn program(&self) -> &Path {
+        self.git.program()
+    }
+
+    /// The folder of the records of this engine: the list of a pack read is in it, and the
+    /// runner touches it each day and checks that no thread runs in a folder that holds it.
+    #[must_use]
+    pub fn records_folder(&self) -> &Path {
+        self.home.records()
+    }
+}
+
 /// The home of the worktrees: the one the person chose, or the standard one.
 fn home(places: &Places, records: &Path) -> Result<Home, BadPlace> {
     match &places.chosen {

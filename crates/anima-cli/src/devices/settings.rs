@@ -211,9 +211,17 @@ impl SettingsFlags {
         put(&mut group, "port", self.ssh_port.as_ref());
         put(&mut group, "username", self.ssh_username.as_ref());
         put(&mut group, "auth", self.ssh_auth.as_ref());
+        let first_setup = self.ssh_username.is_some()
+            && current
+                .get("username")
+                .and_then(Value::as_str)
+                .is_none_or(str::is_empty);
+        if first_setup && self.ssh_auth.is_none() {
+            group.insert("auth".into(), json!(SshAuthArg::Password));
+        }
         let group = complete(
             group,
-            self.ssh_enabled,
+            self.ssh_enabled.or_else(|| first_setup.then_some(true)),
             current,
             Some(("username", "--ssh-username")),
         )?;

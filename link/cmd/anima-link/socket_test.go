@@ -51,8 +51,6 @@ func TestLNK002AHubOnItsSocketSeesADeviceByTheAddressThatTheListShows(t *testing
 	}
 }
 
-// seenOf asks the hub link for its devices and returns when each was last
-// seen, by its name. A device that was never seen has nil.
 func seenOf(t *testing.T, hub runningHub) map[string]*time.Time {
 	t.Helper()
 	text, code := hub.ctl(t, "devices.list")
@@ -95,8 +93,6 @@ func TestHMD047TheDeviceListShowsWhenADeviceProgramWasLastSeen(t *testing.T) {
 	}
 }
 
-// dialWord asks the dial socket of a hub link for a local port of a device
-// and returns the answer line.
 func dialWord(t *testing.T, hub runningHub, device, port string) string {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -117,7 +113,6 @@ func dialWord(t *testing.T, hub runningHub, device, port string) string {
 	return strings.TrimSuffix(word, "\n")
 }
 
-// ports runs the command "ports" as a second process would.
 func portsOf(t *testing.T, state string, args ...string) (stdout string, code int) {
 	t.Helper()
 	var out, errs output
@@ -125,8 +120,6 @@ func portsOf(t *testing.T, state string, args ...string) (stdout string, code in
 	return strings.TrimSpace(out.String() + errs.String()), code
 }
 
-// connected starts a device link and returns its state directory and its
-// link address, once the hub link has seen it.
 func connected(t *testing.T, hub runningHub) (state, address string) {
 	t.Helper()
 	state, _ = startDevice(t, hub)
@@ -145,10 +138,7 @@ func connected(t *testing.T, hub runningHub) (state, address string) {
 	return state, listed[0].Address
 }
 
-// The two programs and the command "ports": the device gives no port until
-// its person turns the port on, and the change needs no restart. The test
-// cannot open port 22 itself, so with the port on it accepts "ok" (this
-// computer has Remote Login) and "closed" (it has not).
+// The test cannot open port 22 itself, so with the port on it accepts "ok" and "closed".
 func TestHMD048TheDialSocketReachesAPortOnlyAfterThePersonTurnedItOn(t *testing.T) {
 	hub := startHub(t)
 	state, device := connected(t, hub)
@@ -177,9 +167,7 @@ func TestHMD048TheDialSocketReachesAPortOnlyAfterThePersonTurnedItOn(t *testing.
 	wantPorts("", 2, "sideways", "22")
 }
 
-// TestK8TheDaemonReachesTheHubThroughTheSocketOfTheDeviceLink is the link
-// half of K8 Section 1: a request on the Unix socket of "-daemon-socket"
-// reaches the hub, as a request on the local port does.
+// The link half of K8 Section 1.
 func TestK8TheDaemonReachesTheHubThroughTheSocketOfTheDeviceLink(t *testing.T) {
 	socket := testhub.Start(t)
 	state := stateDir(t)

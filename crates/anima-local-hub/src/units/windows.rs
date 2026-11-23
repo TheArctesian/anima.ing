@@ -1,4 +1,3 @@
-//! Per-user login tasks and graceful stop requests through the hub's private socket.
 use super::unit_file::RenderError;
 use crate::Folders;
 use sha2::{Digest, Sha256};

@@ -1,8 +1,5 @@
-//! The rights of the services of a recipe (SF-224, SF-251): each service
-//! refuses new rights and drops each capability, no setting makes a service root, no setting
-//! makes an image change its code at the start, and no command runs a shell that no person read.
-//! The rules read the file as its author wrote it, before an environment file fills its
-//! variables, so that no value of the install changes the result.
+//! The rights of the services of a recipe (SF-224, SF-251).
+//! The rules read the file before an environment file fills it, so no install value changes the result.
 
 pub(crate) mod commands;
 
@@ -10,14 +7,10 @@ use compose_rules::Node;
 
 use crate::entry::Exception;
 
-/// The one value of `security_opt` that each service has.
 const NO_NEW_PRIVILEGES: &str = "no-new-privileges:true";
-/// The `cap_drop` of each service with no exception.
 const ALL: &str = "ALL";
-/// Each capability that the engine gives by default other than the five of
-/// [`Exception::InitCapabilities`], in the order of the names. Contract K10 has no `cap_add`:
-/// a service with that exception drops these, and keeps only the five, or fewer on an engine
-/// with a smaller default set.
+/// The engine's defaults but the five of [`Exception::InitCapabilities`], sorted; K10 has no
+/// `cap_add`, so a service with that exception drops these.
 const OTHER_DEFAULTS: [&str; 9] = [
     "AUDIT_WRITE",
     "FSETID",
@@ -30,7 +23,7 @@ const OTHER_DEFAULTS: [&str; 9] = [
     "SYS_CHROOT",
 ];
 
-/// Why the rights of a recipe are refused. The code is fixed and holds no text of the file.
+/// Why the rights of a recipe are refused; the code holds no text of the file.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Privilege {
     /// `DOCKER_MODS`: the image gets and runs more code at the start.
@@ -81,7 +74,6 @@ impl Privilege {
     }
 }
 
-/// The scalars of a key that is one scalar or a list of them.
 fn texts<'a>(service: &'a Node, key: &str) -> Vec<&'a str> {
     match service.get(key) {
         Some(Node::Text(text)) => vec![text],
@@ -90,7 +82,6 @@ fn texts<'a>(service: &'a Node, key: &str) -> Vec<&'a str> {
     }
 }
 
-/// The name and the value of each variable of `environment`: a map, or a list of `NAME=value`.
 pub(crate) fn environment(service: &Node) -> Vec<(&str, &str)> {
     match service.get("environment") {
         Some(Node::Map(entries)) => entries
@@ -105,13 +96,10 @@ pub(crate) fn environment(service: &Node) -> Vec<(&str, &str)> {
     }
 }
 
-/// A user or a group identifier that is not root: a whole number above 0, written in the file.
 fn is_not_root_number(text: &str) -> bool {
     text.bytes().all(|byte| byte.is_ascii_digit()) && text.parse::<u32>().is_ok_and(|id| id > 0)
 }
 
-/// `user` as `name`, `id`, `name:group` or `id:group`, with no part that is root or empty, and
-/// no variable.
 fn is_not_root_user(text: &str) -> bool {
     !text.contains('$')
         && text.split(':').all(|part| {
@@ -121,7 +109,6 @@ fn is_not_root_user(text: &str) -> bool {
         })
 }
 
-/// The settings of one service that make it root or change its code at the start.
 fn settings(service: &Node) -> Vec<Privilege> {
     let mut found: Vec<Privilege> = environment(service)
         .into_iter()
@@ -154,15 +141,12 @@ fn dropped(service: &Node, init: bool) -> Option<bool> {
     }
 }
 
-/// True when `exception` is of the kind of `init` (the init as root, else the reviewed command)
-/// and names `service`.
 fn names(exception: &Exception, init: bool, service: &str) -> bool {
     let kind = matches!(exception, Exception::InitCapabilities { .. }) == init;
     kind && exception.services().iter().any(|name| name == service)
 }
 
-/// The codes of one service named `name`. Each exception that the service uses is added to
-/// `used`, with the kind of the exception.
+/// Adds each exception that the service uses to `used`, with its kind.
 fn service_rights<'a>(
     name: &'a str,
     service: &Node,
@@ -200,8 +184,6 @@ fn service_rights<'a>(
     found
 }
 
-/// The codes of the rights of `services`, for an entry that names `exceptions` and that is
-/// `generated` or written by a person. Each code is there one time, in a fixed order.
 pub(crate) fn check(
     services: &[(String, Node)],
     exceptions: &[Exception],

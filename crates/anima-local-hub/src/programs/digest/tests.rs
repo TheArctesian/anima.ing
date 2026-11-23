@@ -1,5 +1,3 @@
-//! The order of the entries that the hash step gets does not change the digest.
-
 use std::fs;
 
 use super::{Entry, Kind, Walk};

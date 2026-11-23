@@ -1,8 +1,5 @@
-//! The listeners of the streams, kept as the table of the hub says: a new stream gets its
-//! listener, a stream that left the table or changed loses it. A public stream listens on the
-//! public address of the proxy, a private one only on its address on the network of Anima
-//! (Section 16.7). In door mode no stream listens (OD-HOST-47); UDP listens only in the mode of
-//! a hub that a person hosts (OD-HOST-48).
+//! Stream listeners follow the hub's table (Section 16.7). In door mode no stream listens
+//! (OD-HOST-47); UDP listens only on a hub that a person hosts (OD-HOST-48).
 
 use std::{
     collections::HashMap,
@@ -22,7 +19,6 @@ use crate::{
     wire::{Reach, StreamRoute, Transport},
 };
 
-/// The addresses that streams listen on.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Places {
     pub public: IpAddr,
@@ -52,7 +48,6 @@ struct Running {
     task: AbortHandle,
 }
 
-/// The listeners that run now, by transport and port.
 #[derive(Default)]
 pub struct Listeners {
     running: Mutex<HashMap<(Transport, u16), Running>>,
@@ -107,7 +102,6 @@ impl Listeners {
     }
 }
 
-/// Binds `address` for `stream` and starts its listener.
 async fn listen<H: Hub>(
     proxy: &Arc<Proxy<H>>,
     address: SocketAddr,

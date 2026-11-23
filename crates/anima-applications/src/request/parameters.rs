@@ -1,5 +1,4 @@
-//! The `parameters` of each container type (contract K10 Sections 6.4.6 to 6.4.11), with the
-//! members exactly as the contract names them.
+//! The `parameters` of each container type, named as the contract names them (K10 6.4.6 to 6.4.11).
 
 use crate::{
     Refusal,
@@ -9,8 +8,7 @@ use crate::{
 
 const UNKNOWN: Refusal = Refusal::MemberUnknown;
 
-/// What `container_action` does to one container. There is no `kill`, no `pause` and no
-/// `remove` (Section 6.4.6).
+/// There is no `kill`, no `pause` and no `remove` (Section 6.4.6).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Action {
     Start,
@@ -37,14 +35,10 @@ pub enum Pruned {
 /// The parameters of `application_apply` (Section 6.4.6).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Apply {
-    /// The UUID of the application, in 36 lower-case characters.
     pub application: String,
-    /// The SHA-256 of the Compose file, in 64 lower-case hexadecimal characters.
     pub file_sha256: String,
-    /// The SHA-256 of the environment file; `None` when the item has none.
     pub environment_sha256: Option<String>,
     pub pull: bool,
-    /// True for `keep` 1, false for `keep` 0.
     pub keep: bool,
 }
 
@@ -56,27 +50,29 @@ pub struct Removal {
     pub images: bool,
 }
 
-/// The work of one item: its type with its parameters.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Work {
-    /// `container_action`.
-    Container { container: String, action: Action },
-    /// `application_apply`.
+    Container {
+        container: String,
+        action: Action,
+    },
     Apply(Apply),
-    /// `adopted_apply`.
     Adopted {
         project: String,
         action: AdoptedAction,
         pull: bool,
     },
-    /// `application_remove`.
     Remove(Removal),
-    /// `application_back`.
-    Back { application: String },
-    /// `docker_prune`.
-    Prune { what: Vec<Pruned> },
-    /// `container_follow`.
-    Follow { container: String, tail: u64 },
+    Back {
+        application: String,
+    },
+    Prune {
+        what: Vec<Pruned>,
+    },
+    Follow {
+        container: String,
+        tail: u64,
+    },
 }
 
 impl Work {
@@ -91,7 +87,6 @@ impl Work {
         }
     }
 
-    /// True for a type that changes Docker. `container_follow` changes nothing.
     #[must_use]
     pub const fn changes_docker(&self) -> bool {
         !matches!(self, Self::Follow { .. })
@@ -111,8 +106,7 @@ pub(super) fn is_container_type(kind: &str) -> bool {
     )
 }
 
-/// The full identifier of a container: 64 lower-case hexadecimal characters. A shorter value
-/// and a name are refused.
+/// The full identifier of a container: a shorter value or a name is refused.
 fn container(members: &mut Members) -> Option<String> {
     members.text("container").filter(|id| is_lower_hex(id, 64))
 }
@@ -157,7 +151,6 @@ fn apply(members: &mut Members) -> Option<Work> {
     }))
 }
 
-/// `pull` true is permitted only with `up` (Section 6.4.7).
 fn adopted(members: &mut Members) -> Option<Work> {
     let project = members
         .text("project")
@@ -184,7 +177,6 @@ fn removal(members: &mut Members) -> Option<Work> {
     }))
 }
 
-/// `what` names one to three of the three members, each one time.
 fn prune(members: &mut Members) -> Option<Work> {
     let mut what = Vec::new();
     for name in members.texts("what")? {
@@ -202,18 +194,12 @@ fn prune(members: &mut Members) -> Option<Work> {
     (!what.is_empty()).then_some(Work::Prune { what })
 }
 
-/// `tail` is 0 to 1,000 (Section 6.4.11).
 fn follow(members: &mut Members) -> Option<Work> {
     let container = container(members)?;
     let tail = members.whole("tail").filter(|tail| *tail <= 1000)?;
     Some(Work::Follow { container, tail })
 }
 
-/// Reads the `parameters` of the container type `kind`.
-///
-/// # Errors
-/// `member_unknown` for a member that the type does not have, a member that is not there, a
-/// value of a wrong type, and a value that breaks a rule of its section.
 pub(super) fn read(kind: &str, parameters: Value) -> Result<Work, Refusal> {
     let mut members = Members::of(parameters).ok_or(UNKNOWN)?;
     let work = match kind {

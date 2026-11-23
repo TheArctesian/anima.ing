@@ -1,10 +1,5 @@
 //! The gateway's copy of a device's screen, and what changed on it since the client was
-//! last told.
-//!
-//! A device often sends pixels that are the same as before: a whole window for one new
-//! line of text, or the whole screen on request. Each write is compared with the copy, so
-//! only pixels that differ count as changed and are sent on to the client. Pure: no I/O,
-//! no clock.
+//! last told: a device often repeats pixels, so only pixels that differ count as changed.
 
 mod area;
 mod changed;
@@ -16,26 +11,19 @@ pub use changed::TILE;
 
 /// Each pixel is three bytes: red, green, blue.
 pub const BYTES_PER_PIXEL: usize = 3;
-/// The longest side of a screen: the largest size the Guacamole tunnel carries (K4
-/// Section 4). A screen of this size on both sides takes 192 MiB.
+/// The longest side of a screen: the largest size the Guacamole tunnel carries (K4 Section 4).
 pub const MAX_SIDE: usize = 8192;
-/// The most moves told to the client between two [`Screen::take_changes`], so in one
-/// frame. A move costs the client about 50 bytes and the device 12, so each frame can cost
-/// about 3 kB for moves and no more; further moves are done as writes. How many frames go
-/// out is the caller's limit (`frames::Pacing`).
+/// The most moves told to the client in one frame, about 3 kB; further moves are done as writes.
 pub const MOST_MOVES: usize = 64;
 
-/// Why a screen cannot have a size.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 #[error("a screen side must be from 1 to {MAX_SIDE} pixels")]
 pub struct BadSize;
 
-/// An area that is not inside the screen.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 #[error("the area is not inside the screen")]
 pub struct OutsideScreen;
 
-/// Why pixels were not written.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum WriteError {
     #[error(transparent)]
@@ -60,14 +48,12 @@ pub struct Moved {
 pub struct Changes {
     /// The screen got a new size (or is new): the client must set its own size first.
     pub resized: bool,
-    /// The moves to do first, in this order.
     pub moved: Vec<Moved>,
     /// The parts to send again. They do not overlap, lie inside the screen and are ordered
     /// by row, then by column.
     pub areas: Vec<Area>,
 }
 
-/// One device's screen as the gateway knows it.
 pub struct Screen {
     width: usize,
     height: usize,
@@ -133,8 +119,7 @@ impl Screen {
     /// as changed.
     ///
     /// # Errors
-    /// [`WriteError`] when `area` is not inside the screen or `rgb` does not fill it; the
-    /// screen is then unchanged.
+    /// [`WriteError`] when `area` is not inside the screen or `rgb` does not fill it; the screen is then unchanged.
     pub fn write(&mut self, area: Area, rgb: &[u8]) -> Result<(), WriteError> {
         let row_bytes = self.row_bytes(area)?;
         if area.pixels().map(|pixels| pixels * BYTES_PER_PIXEL) != Some(rgb.len()) {
@@ -162,8 +147,7 @@ impl Screen {
     /// proportion to the area, so the caller limits how many moves a device may ask for.
     ///
     /// # Errors
-    /// [`OutsideScreen`] when either area is not inside the screen; the screen is then
-    /// unchanged.
+    /// [`OutsideScreen`] when either area is not inside the screen; the screen is then unchanged.
     pub fn move_area(&mut self, from: Area, x: usize, y: usize) -> Result<(), OutsideScreen> {
         let to = Area { x, y, ..from };
         self.row_bytes(to)?;
@@ -240,7 +224,6 @@ impl Screen {
         self.resized = true;
     }
 
-    /// Whether [`Screen::take_changes`] would give something to tell the client.
     #[must_use]
     pub fn has_changes(&self) -> bool {
         self.resized || !self.moved.is_empty() || self.changed.any()
@@ -255,7 +238,6 @@ impl Screen {
         }
     }
 
-    /// The bytes of one row of `area`, when `area` is inside the screen.
     fn row_bytes(&self, area: Area) -> Result<usize, OutsideScreen> {
         if area.is_inside(self.width, self.height) {
             Ok(area.width * BYTES_PER_PIXEL)
@@ -264,7 +246,6 @@ impl Screen {
         }
     }
 
-    /// Where pixel (`x`, `y`) starts in the copy.
     const fn offset(&self, x: usize, y: usize) -> usize {
         (y * self.width + x) * BYTES_PER_PIXEL
     }

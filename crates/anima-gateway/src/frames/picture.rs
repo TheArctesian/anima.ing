@@ -1,5 +1,4 @@
-//! The cheapest form of one changed area: a colour, a PNG with a palette, a JPEG or a
-//! full-colour PNG.
+//! The cheapest form of one changed area.
 
 use super::{Formats, FrameError, palette::Indexed};
 use crate::screen::{Area, BYTES_PER_PIXEL};
@@ -8,12 +7,9 @@ use crate::screen::{Area, BYTES_PER_PIXEL};
 const JPEG_QUALITY: u8 = 80;
 /// Below this many pixels a JPEG's header outweighs what it saves.
 const SMALLEST_JPEG_PIXELS: usize = 4096;
-/// How many rows are looked at to tell a photograph from flat content.
 const SAMPLED_ROWS: usize = 16;
 
-/// How an area goes to the client.
 pub(super) enum Picture {
-    /// Every pixel has this colour.
     OneColour([u8; BYTES_PER_PIXEL]),
     Image {
         mimetype: &'static str,
@@ -22,7 +18,6 @@ pub(super) enum Picture {
 }
 
 impl Picture {
-    /// The form of `area`, whose pixels are `rgb`, for a client that draws `formats`.
     pub(super) fn of(rgb: &[u8], area: Area, formats: Formats) -> Result<Self, FrameError> {
         let (pixels, _) = rgb.as_chunks::<BYTES_PER_PIXEL>();
         let first = pixels.first().copied().unwrap_or_default();
@@ -48,9 +43,7 @@ impl Picture {
     }
 }
 
-/// Whether the pixels are a photograph or a video: in the sampled rows, fewer than one
-/// pixel in four has the colour of the pixel before it. Text, window content and flat
-/// bands repeat colours along a row, and PNG keeps them exact.
+/// Text, window content and flat bands repeat colours along a row; a photograph rarely does.
 fn is_photograph(rgb: &[u8], width: usize) -> bool {
     let (pixels, _) = rgb.as_chunks::<BYTES_PER_PIXEL>();
     if pixels.len() < SMALLEST_JPEG_PIXELS || width < 2 {
@@ -68,8 +61,7 @@ fn is_photograph(rgb: &[u8], width: usize) -> bool {
     alike * 4 < pairs
 }
 
-/// A screen side as PNG wants it. A side is at most 8192, so it fits; one that did not
-/// would fail to encode.
+/// A side is at most 8192, so it fits; one that did not would fail to encode.
 fn side(side: usize) -> u32 {
     u32::try_from(side).unwrap_or(u32::MAX)
 }
@@ -86,7 +78,7 @@ fn png(rgb: &[u8], area: Area) -> Result<Vec<u8>, png::EncodingError> {
     Ok(bytes)
 }
 
-/// A PNG with a palette. Its pixel data is small, so the stronger compression is cheap.
+/// Palette pixel data is small, so the stronger compression is cheap.
 fn indexed_png(indexed: &Indexed, area: Area) -> Result<Vec<u8>, png::EncodingError> {
     let mut bytes = Vec::new();
     let mut encoder = png::Encoder::new(&mut bytes, side(area.width), side(area.height));

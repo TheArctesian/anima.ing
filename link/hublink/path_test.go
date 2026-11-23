@@ -8,7 +8,6 @@ import (
 	"github.com/TheArctesian/anima/link/tunnel/testbed"
 )
 
-// waitForPath waits until the hub link reports the wanted kind of path for a device.
 func (r rig) waitForPath(t *testing.T, device tunnel.DeviceKey, want tunnel.PathKind) tunnel.Path {
 	t.Helper()
 	deadline := time.Now().Add(30 * time.Second)

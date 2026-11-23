@@ -1,8 +1,4 @@
-//! The general recipe form of the images of LinuxServer.io (task H39, HOST-049, Section 15.4 of
-//! the proposal): the recipe of Section 13 for one image, made from the `config` of the fleet
-//! list of the publisher, or the reason that the image cannot fit the rules of a file from the
-//! hub. A recipe made here is tier 2, "generated, not tested". Nothing here reaches a network:
-//! the caller reads the fleet list and the digest.
+//! The tier 2 recipe form of LinuxServer.io images (H39, HOST-049); the caller reads the network.
 
 mod assess;
 mod entry;
@@ -20,7 +16,6 @@ use crate::{
     entry::{MachineTest, Reviewed},
 };
 
-/// The fleet list cannot be read.
 #[derive(Debug, thiserror::Error)]
 #[error("the fleet list cannot be read")]
 pub struct FleetError(#[source] serde_json::Error);
@@ -61,7 +56,6 @@ pub fn list(text: &str) -> Result<List, FleetError> {
     })
 }
 
-/// One image of the fleet list. A key that is not here is not read.
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct Image {
@@ -77,7 +71,6 @@ pub struct Image {
     pub config: Config,
 }
 
-/// What the image needs, as the publisher describes it. Each part has a mark "optional".
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct Config {
@@ -169,8 +162,7 @@ pub struct Pin {
 pub struct Existing<'a> {
     /// The review state of the recipe that exists (SF-255), which the form keeps.
     pub reviewed: Option<&'a Reviewed>,
-    /// The last test on a machine of the recipe that exists. The form keeps a pass only for
-    /// the same digest.
+    /// The last machine test of the recipe that exists; the form keeps a pass only for the same digest.
     pub tested: Option<&'a MachineTest>,
     /// The ports of the machine that the other recipes of the catalogue publish.
     pub taken: &'a [u16],
@@ -252,17 +244,6 @@ impl Unfit {
 }
 
 /// The recipe of `image`, pinned by `pin`, which passes the static test; or why it cannot fit.
-///
-/// The recipe has only the parts that are not optional, with three exceptions: each volume of
-/// a placeholder path, the device of hardware decoding as an optional part that is off, and the
-/// credential of a shell. `PUID` and `PGID` are `1000`; each service refuses new rights and
-/// drops each capability but the five of the init (`init-capabilities`); a port of the machine
-/// below 1024 moves up by 8000; each port is on `127.0.0.1` with its protocol.
-///
-/// A port of the machine that a different recipe of the catalogue publishes moves to the next
-/// free port, so that two entries can run on one machine. The entry keeps the review state of
-/// the recipe that exists, else it is `not-reviewed` (SF-255). It keeps a passed
-/// test on a machine only when the test ran with the same digest; else it is `not-tested`.
 ///
 /// # Errors
 /// The [`Unfit`] reason of the first need that the rules refuse.

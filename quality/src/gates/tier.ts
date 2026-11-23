@@ -1,32 +1,26 @@
 import type { Gate } from "./gates.ts";
 
-/** One Rust package or one bun package: its folder from the repository root, and its name. */
 export interface Member {
   folder: string;
   name: string;
-  /** The names of the other members of the workspace that this one depends on. */
   uses?: string[];
 }
 
-/** The packages of the repository, as `cargo metadata` and the workspaces of `package.json` give them. */
 export interface Layout {
   crates: Member[];
   packages: Member[];
 }
 
-/** The members of one language that a change touches: each of them, or these by name. */
 export type Touched = "all" | string[];
 
-/** What the fast tier runs for a set of changed paths, and why. */
 export type Choice =
   | { tier: "nothing"; reasons: string[] }
   | { tier: "documents"; reasons: string[] }
   | { tier: "code"; rust: Touched; go: boolean; bun: Touched; reasons: string[] }
   | { tier: "full"; reasons: string[] };
 
-/** Files that change how each Rust package builds. */
 const RUST_ROOT = ["Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "clippy.toml", "rustfmt.toml", ".config/", ".cargo/"];
-/** Files that change how each bun package builds, lints or tests. `design/` holds the tokens that the client reads. */
+/** `design/` holds the tokens that the client reads. */
 const BUN_ROOT = ["package.json", "bun.lock", "bun.lockb", "bunfig.toml", "tsconfig.json", "tsconfig.base.json", "eslint.config.js", "eslint.config.ts", "design/"];
 /** `contracts/` holds the GraphQL schema that the command line and the client compile against. */
 const CONTRACTS = "contracts/";
@@ -35,12 +29,7 @@ const GO_MODULE = "link/";
 const WORKFLOWS = ".github/";
 const WORKFLOW_TESTS = "@anima/deploy";
 
-/**
- * The quick tests of the deploy package that read the Rust workspace (its manifests, the folders
- * below `crates/`, the toolchain): a change of a crate can fail them with no file of `deploy/`
- * changed. Together they take seconds; `release-decision.test.ts` also reads the workspace but takes
- * a minute, so the run on GitHub keeps it.
- */
+/** Deploy tests that read the Rust workspace; `release-decision.test.ts` does too but takes a minute, so only GitHub runs it. */
 const WORKSPACE_MAPS = [
   "deploy/test/release-applications.test.ts",
   "deploy/test/release-gates.test.ts",
@@ -49,7 +38,6 @@ const WORKSPACE_MAPS = [
   "deploy/test/compose-hub.test.ts",
 ];
 
-/** The gate of `WORKSPACE_MAPS` when a Rust package is touched, unless the tests of the deploy package already run. */
 export function workspaceMaps(rust: Touched, deployTested: boolean): Gate[] {
   if ((rust !== "all" && rust.length === 0) || deployTested) return [];
   return [{ name: "deploy-maps", group: "bun", argv: ["bun", "test", "--timeout", "30000", ...WORKSPACE_MAPS] }];
@@ -57,10 +45,8 @@ export function workspaceMaps(rust: Touched, deployTested: boolean): Gate[] {
 
 const testsDeploy = (bun: Touched) => bun === "all" || bun.includes(WORKFLOW_TESTS);
 
-/** Files of the root that no build and no test reads. */
 const NEUTRAL = [".gitattributes", "LICENSE"];
 
-/** If the fast tier takes the path as a document: only the document gates read it. */
 export function isDocument(path: string): boolean {
   return path.startsWith("docs/") || (!path.includes("/") && path.endsWith(".md")) || NEUTRAL.includes(path);
 }
@@ -69,7 +55,7 @@ function under(path: string, prefix: string): boolean {
   return prefix.endsWith("/") ? path.startsWith(prefix) : path === prefix;
 }
 
-/** The member whose folder holds `path`; the longest folder wins, so `apps/desktop/src-tauri` is the crate. */
+/** The longest folder wins, so `apps/desktop/src-tauri` is the crate. */
 function ownerOf(path: string, members: { member: Member; rust: boolean }[]) {
   return members
     .filter(({ member }) => path.startsWith(`${member.folder}/`))
@@ -81,10 +67,7 @@ function add(touched: Touched, name: string): Touched {
   return [...touched, name];
 }
 
-/**
- * Chooses the fast tier from the changed paths. Pure. A path that no rule knows gives the full
- * list: the fast tier never guesses that a file is safe.
- */
+/** A path that no rule knows gives the full list: the fast tier never guesses that a file is safe. */
 export function choose(paths: string[], layout: Layout): Choice {
   if (paths.length === 0) return { tier: "nothing", reasons: ["no file is different from the base"] };
   if (paths.every(isDocument)) return { tier: "documents", reasons: [`${paths.length} changed file(s), each a document`] };
@@ -137,7 +120,7 @@ function rustGates(full: Gate[], touched: Touched): Gate[] {
     {
       name: "rust-test",
       group: "rust",
-      // A package with no test must not fail the tier: the full list still runs each test.
+      // A package with no test does not fail the tier: the full list still runs each test.
       argv: ["bun", "quality/bin/with-postgres.ts", "cargo", "nextest", "run", ...flags, "--no-tests=pass"],
       requires: named("rust-test")[0]?.requires,
     },
@@ -159,11 +142,7 @@ function bunGates(full: Gate[], touched: Touched): Gate[] {
   ];
 }
 
-/**
- * The paths whose tests a Linux machine of GitHub does not run or prove (R-254 item 3): the
- * desktop shell with `check-mach-o.sh`, `trial-bundle.sh` and the trust hook of `pinning`, the
- * Keychain stores and the LaunchAgent of the daemon, and the access control of `link/statedir`.
- */
+/** Paths whose tests a Linux machine of GitHub does not run or prove (R-254 item 3). */
 const MAC_ONLY = [
   "apps/desktop/src-tauri/",
   "crates/daemon/src/keys/",
@@ -174,23 +153,16 @@ const MAC_ONLY = [
   "deploy/test/trial-bundle",
 ];
 
-/** The changed paths that only a Mac tests. With one of them, a busy machine leaves no test out. */
 export function macOnly(paths: string[]): string[] {
   return paths.filter((path) => MAC_ONLY.some((prefix) => path.startsWith(prefix)));
 }
 
-/** A machine is busy when its load is above the limit: more work waits than the limit says. */
 export function isBusy(load: number, limit: number): boolean {
   return load > limit;
 }
 
 const TEST_FILE = /\.test\.[cm]?[jt]sx?$/;
 
-/**
- * The test gates of the bun packages on a busy machine. For each package: when the change has
- * test files of that package, only those files; when it changed the package and no test file,
- * the tests of the package. A change of a workflow file runs the tests whose name has "workflow".
- */
 function narrowBunTests(touched: string[], paths: string[], packages: Member[]): Gate[] {
   const files: string[] = [];
   const whole: string[] = [];
@@ -208,19 +180,13 @@ function narrowBunTests(touched: string[], paths: string[], packages: Member[]):
   ];
 }
 
-/** The gate names that a busy machine leaves out when a change names each package of a language. */
 const BROAD = ["rust-test", "doctest", "pinning", "test", "build"];
 
-/**
- * The fast tier of a busy machine (R-268): format, lint and the checks of types stay;
- * the tests of each package of a language are left out; the tests of a named crate stay; the
- * tests of a named bun package are narrowed (`narrowBunTests`). Go and the quality gates stay.
- */
+/** R-268. */
 function busyGates(choice: Extract<Choice, { tier: "code" }>, full: Gate[], busy: Busy): Gate[] {
   const light = (gates: Gate[]) => gates.filter((gate) => !BROAD.includes(gate.name));
   const rust = choice.rust === "all" ? light(rustGates(full, "all")) : rustGates(full, choice.rust);
   const bun = choice.bun === "all" ? light(bunGates(full, "all")) : [...light(bunGates(full, choice.bun)), ...narrowBunTests(choice.bun, busy.paths, busy.packages)];
-  // A busy machine runs each deploy test only for a named deploy package with no changed test file (`narrowBunTests`).
   const deployWhole = choice.bun !== "all" && choice.bun.includes(WORKFLOW_TESTS) && !busy.paths.some((path) => path.startsWith("deploy/") && TEST_FILE.test(path));
   return [
     ...rust,
@@ -231,18 +197,12 @@ function busyGates(choice: Extract<Choice, { tier: "code" }>, full: Gate[], busy
   ];
 }
 
-/** What the fast tier needs to know to leave tests out on a busy machine: the changed paths and the bun packages. */
 export interface Busy {
   paths: string[];
   packages: Member[];
 }
 
-/**
- * The gates of the fast tier for `choice`, taken from the full list `full` so that a gate has one
- * definition. The quality gates run for each code change: they take seconds. The doctests run only
- * with each Rust package, and the dependents of a touched package are not tested: the full list does that.
- * With `busy`, the tier of a busy machine. A change that only a Mac tests never gets it.
- */
+/** Each gate comes from `full`, so that a gate has one definition. */
 export function fastGates(choice: Choice, full: Gate[], busy?: Busy): Gate[] {
   switch (choice.tier) {
     case "nothing":
@@ -263,7 +223,6 @@ export function fastGates(choice: Choice, full: Gate[], busy?: Busy): Gate[] {
   }
 }
 
-/** One line for the start of a fast run: the tier and its reasons. */
 export function describeChoice(choice: Choice): string {
   const part = (label: string, touched: Touched) =>
     touched === "all" ? `${label}: each package` : touched.length > 0 ? `${label}: ${touched.join(", ")}` : undefined;

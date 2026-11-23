@@ -1,5 +1,4 @@
-//! One PostgreSQL tree: a folder with `bin/`, as the application bundle carries it and as a
-//! system package installs it. The server finds its own `lib/` and `share/` from `bin/`.
+//! A PostgreSQL tree is a folder with `bin/`; the server finds its own `lib/` and `share/` from it.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
@@ -7,7 +6,6 @@ use std::process::{Command, ExitStatus};
 #[cfg(all(test, unix))]
 mod tests;
 
-/// The PostgreSQL programs this crate runs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Program {
     Postgres,
@@ -21,7 +19,6 @@ pub enum Program {
 }
 
 impl Program {
-    /// The programs a tree must have before the database can start.
     const NEEDED_TO_START: [Self; 4] = [Self::Postgres, Self::Initdb, Self::PgCtl, Self::PgIsready];
 
     const fn file_name(self) -> &'static str {
@@ -56,8 +53,6 @@ pub struct Tree {
 }
 
 impl Tree {
-    /// The tree in `folder`.
-    ///
     /// # Errors
     /// When `folder/bin` lacks a program the database needs to start.
     pub fn at(folder: &Path) -> Result<Self, TreeError> {
@@ -107,11 +102,8 @@ impl Tree {
     }
 }
 
-/// A command whose environment is fixed: nothing of the caller's environment reaches the
-/// program, so a `PGPASSWORD`, a `PGHOST` or a locale of the operator's shell cannot change
-/// what PostgreSQL does. The client programs would also read a password file and a service
-/// file from the home folder, which they find without `HOME`; both are pointed at a path
-/// that cannot exist (a file that is there and is not a plain file gets a warning).
+/// Nothing of the caller's environment reaches the program; the client programs find a password
+/// and a service file without `HOME`, so both point at a path that cannot exist.
 /// The server does not start on macOS without a valid locale.
 fn sealed_command(program: &Path) -> Command {
     let mut command = Command::new(program);

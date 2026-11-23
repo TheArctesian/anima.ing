@@ -1,4 +1,3 @@
-// Native Windows link build; the pinned Tailcat module owns the required build tags.
 import { spawnSync } from 'node:child_process';
 import { mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';

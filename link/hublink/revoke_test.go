@@ -15,7 +15,6 @@ import (
 	"github.com/TheArctesian/anima/link/tunnel"
 )
 
-// session opens a WebSocket through the link and checks that it works.
 func (r rig) session(t *testing.T, key tunnel.PrivateKey) *websocket.Conn {
 	t.Helper()
 	_, client := r.device(t, key)
@@ -42,7 +41,6 @@ func echoOnce(t *testing.T, socket *websocket.Conn) {
 	}
 }
 
-// ended reports when a session ends for the device.
 func ended(session *websocket.Conn) <-chan time.Time {
 	at := make(chan time.Time, 1)
 	go func() {
@@ -96,9 +94,7 @@ func TestLNK004RevocationEndsTheOpenSessionOfThatDeviceOnly(t *testing.T) {
 		t.Error("the revoked key is still in the list")
 	}
 
-	// The tunnel forgets the device half a second after its streams were
-	// closed. Until then the device still gets the tunnel's own answer, but
-	// no stream (see the next test). After it, the device gets no answer.
+	// The tunnel forgets the device half a second after its streams close; then it gets no answer.
 	time.Sleep(time.Second)
 	device, _ := r.device(t, revoked)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -113,9 +109,7 @@ func TestLNK004RevocationEndsTheOpenSessionOfThatDeviceOnly(t *testing.T) {
 	}
 }
 
-// A revocation can be cut after the key left the list and before the device
-// was disconnected, for example when the hub link is killed. The device's
-// tunnel connection is then still up.
+// A revocation cut after the key left the list leaves the device's tunnel connection up.
 func TestLNK004ADeviceThatLeftTheListGetsNoNewStreamAndIsSweptOut(t *testing.T) {
 	r := start(t)
 	key := tunnel.NewPrivateKey()
@@ -146,8 +140,6 @@ func TestLNK004ADeviceThatLeftTheListGetsNoNewStreamAndIsSweptOut(t *testing.T) 
 	}
 }
 
-// reverse opens a stream to the reverse port as a device does, writes one
-// line "here" and waits until the hub link has recorded it.
 func (r rig) reverse(t *testing.T, device *tunnel.Device, key tunnel.PrivateKey) net.Conn {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -172,7 +164,6 @@ func (r rig) reverse(t *testing.T, device *tunnel.Device, key tunnel.PrivateKey)
 	}
 }
 
-// endedByTheHub reports whether the hub link ends a stream within 10 s.
 func endedByTheHub(stream net.Conn) bool {
 	_ = stream.SetReadDeadline(time.Now().Add(10 * time.Second))
 	_, err := stream.Read(make([]byte, 1))

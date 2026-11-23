@@ -16,7 +16,6 @@ import (
 	"github.com/TheArctesian/anima/link/dial"
 )
 
-// dialSocket serves a dial socket with an opener and returns its path.
 func dialSocket(t *testing.T, open dial.Opener) string {
 	t.Helper()
 	// A socket's path is short, so the folder is not under t.TempDir().
@@ -35,8 +34,6 @@ func dialSocket(t *testing.T, open dial.Opener) string {
 	return path
 }
 
-// request writes one request line and returns the answer line and the
-// connection after it.
 func request(t *testing.T, socket, line string) (string, *bufio.Reader, net.Conn) {
 	t.Helper()
 	conn, err := net.Dial("unix", socket)

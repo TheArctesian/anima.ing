@@ -74,8 +74,7 @@ struct RawRelease {
     body: Option<String>,
 }
 
-/// `GET /repos/{o}/{r}/releases`, 100 to a page. A key with write access sees drafts; they
-/// come back with `draft` true and the hub decides whether to show them.
+/// `GET /repos/{o}/{r}/releases`, 100 to a page; a key with write access also sees drafts.
 ///
 /// # Errors
 /// A [`Problem`] when the repository name cannot go into a path.

@@ -60,6 +60,8 @@ export class ThreadDraft {
   /** The draft starts with no project, in a scratch folder the runner makes. */
   /** The "Add project" palette is open over the draft. */
   adding = $state(false);
+  /** The prompt of the send that is starting the thread: the page shows it at once, with the program at work. */
+  sent = $state<{ readonly text: string; readonly at: Date } | null>(null);
 
   /** Opens the "Add project" palette (T3's Sources); the draft is kept. */
   addProject(): this {
@@ -114,7 +116,10 @@ export class ThreadDraft {
       if (lines.length > 0) return { ok: false, words: SEND_AGAIN };
     }
     const { program, model, effort, mode } = this.choice;
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- the time of the send: read once, never changed
+    this.sent = { text: prompt, at: new Date() };
     const result = await call({ call: 'start', program, folder, mode, model, effort, prompt });
+    if (!result.ok || result.outcome.outcome !== 'started') this.sent = null;
     if (!result.ok) {
       // The files can change before the next send: it reads them again.
       this.notice = null;

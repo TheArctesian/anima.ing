@@ -1,4 +1,4 @@
-//! The head of a request (SF-229).
+//! SF-229.
 
 use std::net::IpAddr;
 

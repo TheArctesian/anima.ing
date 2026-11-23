@@ -5,10 +5,8 @@
 // Source: crates/headroom-core/src/transforms/smart_crusher/analyzer.rs and
 // crates/headroom-core/src/transforms/smart_crusher/stats_math.rs
 
-//! The rows with a number far from the numbers of the other rows (SHA-001). The measure is
-//! the mean and the deviation, as in Headroom: one number that is very large makes the
-//! deviation large, and then a second number that is only large is not far. A field whose
-//! deviation is not a finite number is not looked at.
+//! The rows with a number far from the numbers of the other rows (SHA-001), by mean and deviation as in Headroom.
+//! One very large number widens the deviation, so a second number that is only large is not far.
 
 use std::collections::BTreeMap;
 
@@ -42,8 +40,6 @@ pub fn far_rows(rows: &[Value]) -> Vec<bool> {
     flags
 }
 
-/// The mean and the sample deviation of the numbers that are there; `None` for fewer than 5
-/// numbers or numbers that are all equal.
 fn spread(numbers: &[(usize, f64)]) -> Option<(f64, f64)> {
     let present: Vec<f64> = numbers.iter().map(|(_, number)| *number).collect();
     let count = u32::try_from(present.len())

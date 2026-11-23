@@ -27,6 +27,11 @@
 //! On Linux it can also move itself to a different control group of the user, as systemd gives
 //! the user the groups below `user@.service`.
 
+// The feature `test-person` makes the process that started the runner the person, for the
+// integration tests only: a release build must never have it.
+#[cfg(all(feature = "test-person", not(debug_assertions)))]
+compile_error!("the feature test-person is for the tests of the daemon, never for a release build");
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::time::Duration;
@@ -46,8 +51,12 @@ pub async fn of_an_agent(pid: Option<i32>, holder_dir: &Path) -> bool {
     else {
         return true;
     };
-    let marked = crate::threads::marker::mark_of(pid).await;
-    if marked == Some(true) || (marked.is_none() && !above_the_runner(pid).await) {
+    let mark = crate::threads::marker::mark_of(pid).await;
+    #[cfg(all(feature = "test-person", unix))]
+    if pid == std::os::unix::process::parent_id() {
+        return started_the_runner(pid, mark, holder_dir).await;
+    }
+    if mark == Some(true) || (mark.is_none() && !above_the_runner(pid).await) {
         return true;
     }
     let Some(table) = commands().await else {
@@ -73,6 +82,17 @@ pub async fn of_an_agent(pid: Option<i32>, holder_dir: &Path) -> bool {
         Some(_) => !comes_from(&table, pid, me, &line_of(&table, me, mine).await),
         None => true,
     }
+}
+
+/// The process that started the runner, with the feature `test-person` (the integration
+/// tests): it is the person, though a read of it fails, unless it is of an agent by what can be
+/// read (the mark of a thread, a place below the holder).
+#[cfg(all(feature = "test-person", unix))]
+async fn started_the_runner(pid: u32, mark: Option<bool>, holder_dir: &Path) -> bool {
+    let below = commands()
+        .await
+        .is_some_and(|table| below_the_holder(&table, pid, &holder_mark(holder_dir)));
+    mark == Some(true) || below
 }
 
 /// Whether the user namespace of the process `pid` holds a user ID that the namespace of the

@@ -1,14 +1,13 @@
 //! Where the power comes from (CAP-004, AWK-006): the parse of `pmset -g batt` on macOS and of
-//! the entries of `/sys/class/power_supply` on Linux. The daemon and the desktop's stay-awake
-//! control read with these same rules.
+//! the entries of `/sys/class/power_supply` on Linux.
 
-/// What the power source reports.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Power {
     /// Mains power, or a computer with no battery.
     Mains,
-    /// The battery, at this percentage.
-    Battery { percent: u8 },
+    Battery {
+        percent: u8,
+    },
 }
 
 /// The power source `pmset -g batt` reports. Its first line names the source in quotes
@@ -25,7 +24,6 @@ pub fn from_pmset(report: &str) -> Power {
     }
 }
 
-/// The number before the first `%`.
 fn percent_in(report: &str) -> Option<u8> {
     let before = &report[..report.find('%')?];
     let digits = before

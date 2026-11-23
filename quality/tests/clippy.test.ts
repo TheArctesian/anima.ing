@@ -22,7 +22,6 @@ const tomlValue = (value: TomlValue): string => {
   return JSON.stringify(value);
 };
 
-/** The root `[workspace.lints.*]` tables, rewritten as a crate's `[lints.*]` tables. */
 const workspaceLints = (): string => {
   const root = Bun.TOML.parse(readFileSync(join(repositoryRoot, "Cargo.toml"), "utf8")) as {
     workspace?: { lints?: Record<string, Record<string, TomlValue>> };

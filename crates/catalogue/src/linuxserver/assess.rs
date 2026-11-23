@@ -9,13 +9,11 @@ pub enum Assessment {
     Fits,
     /// It fits, with a port of the machine below 1024 moved up by 8000.
     FitsWithPortMoved,
-    /// It fits, with a device, a capability, a `security_opt` or a Compose key that the
-    /// publisher marks as optional left off.
+    /// It fits, with an optional device, capability, `security_opt` or Compose key left off.
     FitsWithPartOff,
     Unfit(Unfit),
 }
 
-/// True when the image has a part that the form leaves off.
 fn part_off(image: &Image) -> bool {
     let config = &image.config;
     HARDWARE_DECODING.contains(&image.name.as_str())
@@ -25,7 +23,6 @@ fn part_off(image: &Image) -> bool {
         || config.custom.iter().any(|custom| custom.optional)
 }
 
-/// True when a port of the machine that is not optional is below 1024.
 fn port_moved(image: &Image) -> bool {
     image
         .config
@@ -39,7 +36,6 @@ fn port_moved(image: &Image) -> bool {
         })
 }
 
-/// The place of `image` in the report, with `pin` for its recipe.
 #[must_use]
 pub fn assess(image: &Image, pin: &Pin) -> Assessment {
     match recipe(image, pin, Existing::default()) {

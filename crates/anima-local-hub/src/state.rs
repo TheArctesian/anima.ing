@@ -12,8 +12,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(test)]
 mod tests;
 
-/// Why the group cannot start until the operator acts. `run` stays up and idle with it, so
-/// that the unit does not start the group again in a loop.
+/// Why the group cannot start until the operator acts; `run` stays idle so the unit does not loop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Blocked {
@@ -34,7 +33,7 @@ pub enum State {
         hub: SocketAddr,
         /// The database replayed its log after an unclean stop; nothing saved was lost.
         recovered: bool,
-        /// The link to the devices (F-6). Absent in a state that a run before S6 wrote.
+        /// The link to the devices (F-6); absent in a state that an older run wrote.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         link: Option<LinkState>,
     },

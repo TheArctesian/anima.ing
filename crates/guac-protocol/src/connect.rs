@@ -1,8 +1,6 @@
 //! What the hub tells guacd about one connection (GW-012, GW-013).
 //!
-//! The client supplies only [`Display`] and the time zone (the K1
-//! `DisplayInput` fields). Every `connect` value comes from [`ArgValues`],
-//! which the hub fills from the database and the credential store.
+//! The client supplies only [`Display`] and the time zone; every `connect` value comes from [`ArgValues`], which the hub fills.
 
 use std::collections::HashMap;
 
@@ -24,7 +22,6 @@ impl Display {
     /// Largest accepted DPI (K4 Section 4).
     pub const MAX_DPI: u32 = 480;
 
-    /// True when width and height are 1..=8192 and DPI is 48..=480.
     #[must_use]
     pub fn within_bounds(&self) -> bool {
         let sides = Self::MIN_SIDE_PX..=Self::MAX_SIDE_PX;
@@ -34,25 +31,13 @@ impl Display {
     }
 }
 
-/// Longest accepted time zone, in characters.
 const MAX_TIMEZONE_CHARS: usize = 64;
 
-/// True when `text` is an IANA-shaped zone name such as `UTC`,
-/// `America/Argentina/Buenos_Aires` or `Etc/GMT+5`. The full rule:
+/// True when `text` is an IANA-shaped zone name such as `UTC` or `Etc/GMT+5`.
 ///
-/// - 1..=64 characters, each one of `A-Z`, `a-z`, `0-9`, `_`, `+`, `-`, `/`;
-/// - the first character is an ASCII letter;
-/// - no `/` segment is empty (no leading, trailing or doubled `/`).
-///
-/// The time zone comes from the client and reaches the SSH server as `TZ`, so
-/// anything else is refused (GW-012): control characters, spaces, `:`-paths,
-/// `.` and `..`, and a leading `/`, which glibc reads as an absolute file path.
-/// The hub checks `DisplayInput.timezone` with this and falls back to the
-/// site's zone before it builds [`ConnectParams`]; the handshake refuses a
-/// time zone that fails it.
+/// The client's time zone reaches the SSH server as `TZ`, so anything else is refused (GW-012).
 #[must_use]
 pub fn is_zone_name(text: &str) -> bool {
-    // The first-letter test also refuses the empty string.
     text.len() <= MAX_TIMEZONE_CHARS
         && text.bytes().next().is_some_and(|b| b.is_ascii_alphabetic())
         && text
@@ -63,8 +48,7 @@ pub fn is_zone_name(text: &str) -> bool {
 
 /// Hub-trusted `connect` values by argument name.
 ///
-/// Holds passwords and keys, so it implements neither `Debug` nor `Display`
-/// (LOG-007). A name set twice keeps the last value.
+/// Holds passwords and keys, so it implements neither `Debug` nor `Display` (LOG-007).
 #[derive(Default)]
 pub struct ArgValues {
     values: HashMap<String, String>,
@@ -81,7 +65,6 @@ impl ArgValues {
         self.values.insert(name.into(), value.into());
     }
 
-    /// The value for `name`, if the hub set one.
     pub(crate) fn get(&self, name: &str) -> Option<&str> {
         self.values.get(name).map(String::as_str)
     }
@@ -97,9 +80,7 @@ impl FromIterator<(String, String)> for ArgValues {
 
 /// Everything the handshake sends after `select`.
 ///
-/// `display` and `timezone` come from the client; `name` (the operator's
-/// username), `audio` and `values` come from the hub. No `Debug`: `values`
-/// holds secrets.
+/// No `Debug`: `values` holds secrets.
 pub struct ConnectParams {
     pub display: Display,
     pub timezone: String,

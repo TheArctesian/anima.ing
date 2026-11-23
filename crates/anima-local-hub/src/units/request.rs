@@ -1,6 +1,3 @@
-//! Whose unit, and for which hub: the request of `install`, `update`, `remove`, `start` and
-//! `stop`, and the unit tool steps that each platform needs.
-
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -12,10 +9,7 @@ use super::unit_file::{self, LABEL, Launch, SYSTEMD_UNIT};
 use crate::Folders;
 use crate::members::{Carried, LOCAL_HUB};
 
-/// The pauses before each further try of `launchctl bootstrap`: right after `bootout` launchd
-/// answers an input/output error (5) for some seconds while it still takes the old service out
-/// (seen twice in a row for the daemon on 2026-11-21). Six tries over 15 s in all, as the daemon's
-/// own install.
+/// After `bootout`, launchd answers `bootstrap` with error 5 for some seconds.
 const BOOTSTRAP_RETRIES: &[Duration] = &[
     Duration::from_secs(1),
     Duration::from_secs(2),
@@ -24,7 +18,6 @@ const BOOTSTRAP_RETRIES: &[Duration] = &[
     Duration::from_secs(5),
 ];
 
-/// Whose unit, and for which hub.
 #[derive(Debug, Clone)]
 pub struct Request<'a> {
     pub platform: Platform,
@@ -105,7 +98,6 @@ impl Request<'_> {
         }
     }
 
-    /// Succeeds when launchd has the unit loaded.
     pub(super) fn loaded(&self) -> Step {
         Step::launchctl(&["print", &format!("gui/{}/{LABEL}", self.uid)])
     }

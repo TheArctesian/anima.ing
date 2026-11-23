@@ -131,8 +131,9 @@ async fn thr_049_a_process_that_left_the_holder_and_its_mark_is_still_of_an_agen
 }
 
 /// The runner in a user namespace of its own (a systemd user unit with `ProtectHome=`), and
-/// a client outside it: the test that started the runner, a process of the person. The
-/// system hides the environment of the client from the runner (DEF-NEW-peerenviron).
+/// a client outside it: a process that the test started, as a process of the person. It is not
+/// the parent of the runner, which the feature `test-person` takes for the person. The system
+/// hides the environment of the client from the runner (DEF-NEW-peerenviron).
 #[cfg(target_os = "linux")]
 #[test]
 fn thr_049_a_client_above_the_namespace_of_the_runner_is_the_person() {
@@ -144,15 +145,21 @@ fn thr_049_a_client_above_the_namespace_of_the_runner_is_the_person() {
         eprintln!("skipped: this system makes no user namespace (`unshare -U`)");
         return;
     }
+    let mut client = std::process::Command::new("sleep")
+        .arg("30")
+        .spawn()
+        .expect("a client outside the namespace");
     let exe = std::env::current_exe().expect("the test program");
     let output = std::process::Command::new("unshare")
         .arg("-U")
         .arg(&exe)
         .args(["--ignored", "--exact", "--nocapture"])
         .arg("threads::runner::peer::tests::thr_049_a_runner_in_a_namespace_of_its_own")
-        .env(PEER_CLIENT, std::process::id().to_string())
-        .output()
-        .expect("the runner in a namespace");
+        .env(PEER_CLIENT, client.id().to_string())
+        .output();
+    let _ = client.kill();
+    let _ = client.wait();
+    let output = output.expect("the runner in a namespace");
     let text = String::from_utf8_lossy(&output.stdout);
     let line = text
         .lines()

@@ -1,6 +1,3 @@
-//! A session keeps to the pace of both sides: frames wait for the client, update requests
-//! wait for the device, and a side that stops reading cannot hold the session.
-
 use std::time::Duration;
 
 use anima_gateway::listening::{Workers, listen};
@@ -14,7 +11,6 @@ use super::hub_side::{HubSide, session, values};
 use crate::drawn::Drawn;
 use crate::vnc::rfb;
 
-/// Tells the device to show one colour on all of its screen.
 async fn show(device: &Device, colour: [u8; 3]) {
     let update = rfb::update(&[rfb::raw(ALL, &colour.repeat(SIZE.0 * SIZE.1))]);
     device.tell.send(Tell::Bytes(update)).await.expect("told");
@@ -46,8 +42,6 @@ async fn frames_wait_for_the_client_and_requests_wait_for_the_device() {
     }
     assert_eq!(client.rgb, [0, 0, 200].repeat(SIZE.0 * SIZE.1));
 
-    // One request for all of the screen, then one request after each update: none while
-    // the device has not answered the last.
     assert_eq!(
         device.asked(),
         [
@@ -69,11 +63,9 @@ async fn a_client_view_smaller_than_the_device_gets_a_smaller_picture() {
     let first = hub.next_of("sync").await;
     hub.send(&first).await;
 
-    // The client's window becomes half the device's 64 x 48 screen.
     hub.send(&Instruction::new("size", ["32", "24"])).await;
     show(&device, [0, 200, 0]).await;
     assert_eq!(hub.next_of("size").await.args, ["0", "32", "24"]);
-    // The corner of the smaller picture is the corner of the device's screen.
     hub.send(&Instruction::new("mouse", ["31", "23", "0"]))
         .await;
     for _ in 0..500 {
@@ -99,7 +91,6 @@ async fn a_device_that_stops_reading_cannot_hold_the_session() {
     hub.next_of("sync").await;
     device.tell.send(Tell::StopReading).await.expect("told");
 
-    // Far more clipboard text than the connection to the device can hold.
     let blob = base64::engine::general_purpose::STANDARD.encode([b'x'; 6000]);
     'pasting: for stream in 0..400 {
         let stream = stream.to_string();
@@ -107,7 +98,6 @@ async fn a_device_that_stops_reading_cannot_hold_the_session() {
         let blob = Instruction::new("blob", [stream.clone(), blob.clone()]);
         let parts = std::iter::once(&clipboard).chain(std::iter::repeat_n(&blob, 40));
         for part in parts {
-            // The session ending is what the test waits for.
             if served.is_finished() || !hub.try_send(part).await {
                 break 'pasting;
             }

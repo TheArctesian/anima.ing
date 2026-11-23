@@ -158,7 +158,10 @@ fn the_engine_is_made_with_its_records_and_its_home() {
     };
     let path = std::env::var_os("PATH").unwrap_or_default();
     let login = || [(OsString::from("PATH"), path.clone())];
-    engine(login(), &places, nothing()).expect("an engine");
+    let wired = engine(login(), &places, nothing()).expect("an engine");
+    // The launcher checks each read against the same `git` and the same records.
+    assert!(wired.program().is_absolute());
+    assert_eq!(wired.records_folder(), records.as_path());
     let about = std::fs::metadata(&records).expect("the records");
     let mode = std::os::unix::fs::PermissionsExt::mode(&about.permissions());
     assert_eq!(mode & 0o077, 0, "the records are open to others");

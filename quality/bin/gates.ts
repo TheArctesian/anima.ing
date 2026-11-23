@@ -13,10 +13,8 @@ import { REPO_ROOT } from "../src/repository.ts";
 import { LEFT_OUT, windowsLintArgv } from "../src/gates/windows-lint.ts";
 
 const USAGE = "usage: bun quality/bin/gates.ts [--fast [--whole] | --changed] [--group rust,go,bun,quality] [--gate name,name] [--keep-going]";
-/** The last line of a fast run that left tests out. */
 let leftOut: string | undefined;
 
-/** The value of `--name value` in the arguments, when it is there. */
 function option(name: string): string | undefined {
   const at = process.argv.indexOf(name);
   return at === -1 ? undefined : process.argv[at + 1];
@@ -36,7 +34,7 @@ function groupsAsked(): Group[] | undefined {
 /** The crates that the job `base` named because the branch changed only their tests (`--jobs`). */
 const rustCrates = (process.env["GATES_RUST_CRATES"] ?? "").split(",").filter((crate) => crate !== "");
 
-// `--alone`: each crate checked by itself (the job rust-lint on GitHub); it runs no gate of the list.
+// `--alone`: checks each crate by itself (the job rust-lint on GitHub).
 if (process.argv[2] === "--alone") {
   if (process.argv.length > 3) {
     console.error("gates: --alone takes no other argument (usage: bun quality/bin/gates.ts --alone)");
@@ -60,8 +58,7 @@ if (process.argv[2] === "--windows-lint") {
   process.exit(Bun.spawnSync(argv, { cwd: REPO_ROOT, env, stdout: "inherit", stderr: "inherit" }).exitCode ?? 1);
 }
 
-// `--jobs`: the jobs of the workflow `gates` that the changes against `FAST_BASE` need, as lines for
-// `$GITHUB_OUTPUT` (the job `base`). With no base here it names each job.
+// `--jobs`: the jobs that the changes against `FAST_BASE` need, as lines for `$GITHUB_OUTPUT`.
 if (process.argv[2] === "--jobs") {
   const paths = changedPaths(REPO_ROOT, process.env["FAST_BASE"] || "origin/dev");
   const read = (path: string) => (existsSync(join(REPO_ROOT, path)) ? readFileSync(join(REPO_ROOT, path), "utf8") : undefined);
@@ -73,13 +70,11 @@ if (process.argv[2] === "--jobs") {
   process.exit(0);
 }
 
-/** The tree of `commit` here, or undefined when the commit is not here. */
 function treeOf(commit: string): string | undefined {
   const done = Bun.spawnSync(["git", "rev-parse", "--verify", "--quiet", `${commit}^{tree}`], { cwd: REPO_ROOT });
   return done.exitCode === 0 ? done.stdout.toString().trim() : undefined;
 }
 
-/** Each tree whose gates passed as it is: a run on `dev` or on a train (`gh` signed in), with the run. */
 function provedTrees(): Map<string, number> {
   const fields = "databaseId,headBranch,headSha,status,conclusion";
   const listed = Bun.spawnSync(["gh", "run", "list", "--workflow", "gates.yml", "--limit", "400", "--json", fields], { cwd: REPO_ROOT });
@@ -89,8 +84,7 @@ function provedTrees(): Map<string, number> {
   return new Map(asItIs.flatMap((run) => { const tree = treeOf(run.headSha); return tree === undefined ? [] : [[tree, run.databaseId] as const]; }));
 }
 
-// `--dev-push <before>`: the jobs of a push to `dev` from the commit `before` (devPushJobs), as
-// lines for `$GITHUB_OUTPUT`; the reason goes to standard error.
+// `--dev-push <before>`: the jobs of a push to `dev`, as lines for `$GITHUB_OUTPUT`.
 if (process.argv[2] === "--dev-push") {
   const before = process.argv[3] ?? "";
   const tree = treeOf("HEAD") ?? "";
@@ -104,7 +98,6 @@ if (process.argv[2] === "--dev-push") {
   process.exit(0);
 }
 
-/** The gates of the fast tier (`--fast`): chosen by the paths that differ from `FAST_BASE` (default `origin/dev`). */
 function fastList(full: Gate[]): Gate[] {
   const base = process.env["FAST_BASE"] || "origin/dev";
   const paths = changedPaths(REPO_ROOT, base);
@@ -115,7 +108,7 @@ function fastList(full: Gate[]): Gate[] {
   const layout = readLayout(REPO_ROOT);
   const choice = choose(paths, layout);
   console.log(describeChoice(choice));
-  // R-268: a busy machine leaves the broad tests to the run on GitHub. `FAST_BUSY_LOAD` sets the limit.
+  // R-268: a busy machine leaves the broad tests to the run on GitHub.
   const load = loadavg()[0] ?? 0;
   const limit = Number(process.env["FAST_BUSY_LOAD"]) || cpus().length;
   if (choice.tier !== "code" || process.argv.includes("--whole") || !isBusy(load, limit)) return fastGates(choice, full);
@@ -135,10 +128,6 @@ function fastList(full: Gate[]): Gate[] {
   return light;
 }
 
-/**
- * The checks of the changed paths (`--changed`): the documents gate, then the tests and lints of the
- * touched crates and packages. It never runs the full list; the run on GitHub is the gate.
- */
 function changedList(full: Gate[]): Gate[] {
   const base = process.env["FAST_BASE"] || "origin/dev";
   const paths = changedPaths(REPO_ROOT, base);
@@ -168,11 +157,9 @@ console.log(cache.note);
 const full = gateList(baseRef);
 const groups = groupsAsked();
 const tier = process.argv.includes("--changed") ? changedList(full) : process.argv.includes("--fast") ? fastList(full) : full;
-// The job bun of a branch that changed only documents runs only the quality gates (`--jobs`).
 const documentsOnly = process.env["GATES_DOCUMENTS_ONLY"] === "true";
 if (documentsOnly) console.log("gates: the branch changed only documents, so only the quality gates run here");
 const grouped = groups === undefined ? tier : ofGroups(tier, documentsOnly ? groups.filter((group) => group === "quality") : groups);
-// `--gate`: a job on GitHub that runs a part of one group, for example only the Rust tests.
 const named = option("--gate")?.split(",");
 const missingName = named?.find((name) => !full.some((gate) => gate.name === name));
 if (missingName !== undefined) {
@@ -182,7 +169,6 @@ if (missingName !== undefined) {
 const picked = named === undefined ? grouped : grouped.filter((gate) => named.includes(gate.name));
 if (rustCrates.length > 0) console.log(`gates: the branch changed only tests of ${rustCrates.join(", ")}: Clippy and nextest of these crates, no doctest; the train runs each gate`);
 const chosen = rustCrates.length > 0 ? crateGates(picked, rustCrates) : picked;
-// `--keep-going`: a proof run (the Windows job started by hand) shows each failure in one run.
 const keepGoing = process.argv.includes("--keep-going");
 if (keepGoing) console.log("gates: --keep-going: each gate runs after a failure; the failures are listed at the end. Not for a merge");
 const gates = keepGoing ? keptGoing(chosen) : chosen;

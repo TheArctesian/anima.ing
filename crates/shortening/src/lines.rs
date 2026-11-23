@@ -18,7 +18,6 @@ use crate::choice::{Marked, Reason};
 use crate::rows::error_words::names_error;
 use level::{Level, level};
 
-/// What the choice needs to know of each line.
 #[must_use]
 pub fn marked_lines(lines: &[&str]) -> Marked {
     let same: Vec<String> = lines.iter().map(|line| same::shape(line)).collect();

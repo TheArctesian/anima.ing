@@ -1,6 +1,4 @@
-//! The forms of single values: a name of the file, an image, a whole number, a duration, a
-//! size, a path in a container. The applications program reads each value of the final form
-//! with these readers, so that the check and the final form read one value in one way.
+//! The check and the final form read each single value with these readers, so they agree.
 
 /// A name of a service, a volume, a network or a config: 1 to 63 characters of `a-z`, `0-9`,
 /// `-` and `_`, and the first is a letter or a digit.
@@ -113,8 +111,7 @@ pub fn processor_billionths(text: &str) -> Option<u64> {
 }
 
 /// The name of the folder of a bind mount: the source is exactly `binds/<name>` of the
-/// application, with or without `./` before it (K10 Section 6.4.5). The name has the form of
-/// a name of the file, which is inside what Section 6.4.5 permits.
+/// application, with or without `./` before it (K10 Section 6.4.5).
 #[must_use]
 pub fn bind_name(source: &str) -> Option<&str> {
     let relative = source.strip_prefix("./").unwrap_or(source);
