@@ -84,6 +84,7 @@
   const stage = $derived(connection.stage);
   const client = $derived(connection.tunnel?.client);
   const ready = $derived(connection.ready);
+  const displayState = $derived(protocol === 'VNC' && stage.kind === 'open' ? stage.state : undefined);
   const rules = $derived(stage.kind === 'open' ? clipboardRules(stage.policy) : NO_CLIPBOARD);
   const ask = $derived(gatewayAsk(protocol, stage.kind === 'open' ? stage.state.required : undefined, answered));
   /** The parent gives this pane the keyboard, unless the sign-in prompt has it; the pane then takes the focus. */
@@ -115,6 +116,10 @@
     notice = undefined;
     connect(paneSize ?? { width: 0, height: 0 });
   }
+
+  $effect(() => {
+    if (displayState?.displays !== undefined) untrack(() => displayView?.fit());
+  });
 
   function copyToSystem(text: string) {
     navigator.clipboard.writeText(text).catch(() => {
@@ -246,6 +251,9 @@
     {notice}
     fit={mobile ? () => displayView?.fit() : undefined}
     canFit={displayView?.zoomed() ?? false}
+    displays={displayState?.displays}
+    switching={displayState?.displayPending ?? false}
+    selectDisplay={(id) => connection.tunnel?.selectDisplay?.(id)}
     onkeys={sendKeys}
     onpaste={pasteFromClipboard}
     ondismiss={() => (notice = undefined)}
@@ -265,7 +273,7 @@
       {@attach attachPane}
     >
       {#if ready && client !== undefined}
-        <RemoteDisplay bind:this={displayView} {client} pane={paneElement} paneSize={paneSize ?? remote} {remote} {scale} {mobile} interactive={visible && ask.kind !== 'ask'} />
+        <RemoteDisplay bind:this={displayView} {client} pane={paneElement} paneSize={paneSize ?? remote} {remote} {scale} {mobile} interactive={visible && ask.kind !== 'ask' && displayState?.displayPending !== true} />
       {/if}
     </div>
     {#if !ready}

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { KEY_COMBINATIONS, type KeyCombination } from '../guacamole/keys';
   import KeysMenu from '../menu/KeysMenu.svelte';
+  import type { DisplayChoices } from '../../tunnel/guacamole/tunnel';
   import Notice from '../pane/Notice.svelte';
 
   interface Props {
@@ -15,17 +16,28 @@
     notice: string | undefined;
     fit?: (() => void) | undefined;
     canFit?: boolean;
+    displays?: DisplayChoices | undefined;
+    switching?: boolean;
+    selectDisplay: (id: string) => void;
     onkeys: (combination: KeyCombination) => void;
     onpaste: () => void;
     ondismiss: () => void;
   }
 
-  const { deviceName, ready, policy, pasteOff, notice, fit, canFit = false, onkeys, onpaste, ondismiss }: Props = $props();
+  const { deviceName, ready, policy, pasteOff, notice, fit, canFit = false, displays, switching = false, selectDisplay, onkeys, onpaste, ondismiss }: Props = $props();
 </script>
 
 <div class="toolbar">
   <KeysMenu disabled={!ready} entries={KEY_COMBINATIONS} {onkeys} {onpaste} {pasteOff} />
   {#if ready && fit !== undefined}<button type="button" onclick={fit} disabled={!canFit}>Fit</button>{/if}
+  {#if ready && displays !== undefined && displays.monitors.length > 1}
+    <select aria-label="Displays" value={displays.active} disabled={switching} onchange={(event) => selectDisplay(event.currentTarget.value)}>
+      <option value="all">All displays</option>
+      {#each displays.monitors as id, index (id)}
+        <option value={id}>Display {index + 1}</option>
+      {/each}
+    </select>
+  {/if}
   <span class="device">{deviceName}</span>
   {#if ready && policy !== undefined}<span class="policy" data-policy title={policy}>{policy}</span>{/if}
   <!-- Notices lie over the toolbar row, which has a fixed height, so the display never moves for them (MOT-007). -->
@@ -53,17 +65,21 @@
     background: var(--surface-raised);
   }
 
-  button {
+  button,
+  select {
     min-block-size: var(--target-min-touch);
     min-inline-size: var(--target-min-touch);
     padding-inline: var(--space-2);
     border: var(--border-thin) solid var(--border-subtle);
     border-radius: var(--radius-md);
-    background: var(--surface-base);
+    background-color: var(--surface-base);
     color: var(--text);
   }
 
-  button:disabled { opacity: var(--opacity-disabled); }
+  select { padding-inline-end: calc(var(--select-chevron-room) + var(--space-1)); }
+
+  button:disabled,
+  select:disabled { opacity: var(--opacity-disabled); }
 
   .cover {
     position: absolute;

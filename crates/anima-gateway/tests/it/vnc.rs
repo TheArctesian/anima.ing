@@ -39,6 +39,39 @@ pub(crate) fn received(bytes: &[u8]) -> Result<(Screen, Vec<Event>), Malformed> 
 }
 
 #[test]
+fn apple_layout_uses_the_backing_pixel_bounds_of_an_offset_monitor() {
+    let mut message = vec![0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0];
+    message.extend(0x451_i32.to_be_bytes());
+    let mut layout = [0_u8; 76];
+    layout[0..2].copy_from_slice(&5_u16.to_be_bytes());
+    layout[6..8].copy_from_slice(&140_u16.to_be_bytes());
+    layout[8..10].copy_from_slice(&80_u16.to_be_bytes());
+    layout[10..14].copy_from_slice(&u32::MAX.to_be_bytes());
+    layout[18..20].copy_from_slice(&1_u16.to_be_bytes());
+    layout[36..40].copy_from_slice(&12_u32.to_be_bytes());
+    for (offset, edge) in [(48, 10_u16), (50, 50), (52, 70), (54, 130)] {
+        layout[offset..offset + 2].copy_from_slice(&edge.to_be_bytes());
+    }
+    message.extend(76_u16.to_be_bytes());
+    message.extend(layout);
+    let (screen, events) = received(&message).expect("Apple layout");
+    assert_eq!((screen.width(), screen.height()), (140, 80));
+    let area = Area {
+        x: 50,
+        y: 10,
+        width: 80,
+        height: 60,
+    };
+    assert_eq!(
+        events,
+        [
+            Event::Displays(vec![anima_gateway::vnc::Monitor { id: 12, area }]),
+            Event::Updated
+        ]
+    );
+}
+
+#[test]
 fn raw_pixels_arrive_with_their_colours_in_order() {
     let area = Area {
         x: 10,
