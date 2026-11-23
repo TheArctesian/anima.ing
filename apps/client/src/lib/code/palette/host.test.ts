@@ -16,7 +16,7 @@ function row(id: string, minutesAgo: number, more: Partial<ListedRow> = {}): Lis
 }
 
 function page(more: Partial<PageForPalette> = {}): PageForPalette {
-  return { rows: [row('old', 90), row('new', 1), row('open', 5)], failed: false, chosen: 'open', newThread: undefined, open: vi.fn(), settings: vi.fn(), ...more };
+  return { rows: [row('old', 90), row('new', 1), row('open', 5)], failed: false, chosen: 'open', newThread: undefined, addProject: undefined, open: vi.fn(), settings: vi.fn(), ...more };
 }
 
 afterEach(() => {
@@ -32,6 +32,15 @@ describe('the palette of the Code page', () => {
   it('writes the project and the branch of a chat under its title', () => {
     const host = paletteHost(page({ rows: [row('a', 1, { folder: '/src/anima', branch: 'code/palette' })], chosen: null }));
     expect(paletteGroups(host, '', NOW).find((group) => group.id === 'recent')?.rows[0]?.detail).toBe('anima · code/palette');
+  });
+
+  it('runs "Add project" only when the page can open its palette', () => {
+    const addProject = vi.fn();
+    const off = paletteGroups(paletteHost(page()), 'add project', NOW)[0]?.rows.find((action) => action.title === 'Add project');
+    expect(off?.disabled).toBe(true);
+    const on = paletteGroups(paletteHost(page({ addProject })), 'add project', NOW)[0]?.rows.find((action) => action.title === 'Add project');
+    on?.run();
+    expect(addProject).toHaveBeenCalledOnce();
   });
 
   it('opens settings and agent usage', () => {

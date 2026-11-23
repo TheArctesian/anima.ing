@@ -4855,6 +4855,64 @@ Built on `access/ssh-bootstrap`. The shared helper is called by the desktop SSH 
    Expected: its configuration and host key remain intact.
 5. Run `anima link enable-ssh` from an interactive terminal on an enrolled computer.
    Expected: native authorization, then the current username and Ready. Piped invocation is refused before setup.
+### HT-156: the draft page of Code and the menu Add project (TC8, TC9)
+
+Built on the branch `code/draft-start` (R-394). New thread opens the draft page of T3 Code; the first send starts
+the thread; Add project opens the palette of T3 Code, and Local folder lists folders through the runner. The tests run the
+page over a made-up runner in the real order of its answers; nobody has tried it with the real runner and programs.
+
+1. In the desktop application open Code, open a thread that has a folder, and press New thread.
+   Expected: no form. The heading "What should we build in {project}?" over the composer; the model picker is in the composer.
+2. Type a short prompt and send it.
+   Expected: the thread starts and opens by itself, with your prompt as its first bubble. No message "not found".
+3. Press New thread, then "or start without a project".
+   Expected: the heading "What should we work on?" with "No project" under it. A send starts a thread in a new folder under `~/Anima Scratch/`.
+4. Stop the Anima daemon, press New thread, type a prompt and send it.
+   Expected: a line under the composer says why the thread did not start, with Retry; the text stays in the editor. Start the daemon and press Retry: the thread starts.
+5. Press New thread, click the project name, and choose "Add project".
+   Expected: a palette in the middle of the window with the group Sources: New project, Local folder, Git URL, GitHub repository. Three of them are grey and say which call of the runner they need; nothing happens when you press them.
+6. Choose Local folder, go into a folder with Enter, go back with Backspace, then choose "Add this folder".
+   Expected: the folders of your home folder, then of the chosen folder; Backspace goes up one folder; the draft now names the added folder.
+
+Result: Open.
+
+### HT-154: the keys of Code on Windows (R-399)
+
+Built in the key table of the client (`apps/client/src/lib/code/palette/keys/web.ts`). The tests read the table; nobody has
+pressed the keys in the desktop application on Windows.
+
+1. On Windows, in the desktop application, open Code and press Ctrl+Shift+U.
+   Expected: a new thread with no project opens ("What should we work on?").
+2. Open a thread and press Ctrl+Shift+Y twice.
+   Expected: the right panel opens, then closes.
+3. Press Ctrl+Shift+B.
+   Expected: the details card opens or closes; the right panel does not change.
+4. On a Polish or Hungarian keyboard layout, type ń (AltGr+N) and { (AltGr+B) in the composer.
+   Expected: the characters are typed; no thread starts and no panel moves.
+
+Result: Open.
+
+### HT-157: settled threads, outside sessions and the marks of the programs (R-397, R-396)
+
+What the sidebar of Code shows in the installed application. The gallery pictures are made over a made-up runner.
+
+1. Open Code with threads in each state, including threads that you started in a terminal with `claude` or `codex`.
+   Expected: no settled thread and no ended terminal session is in the main list; the shelf Settled at the foot holds them, with their count.
+2. Look at the rows of the main list.
+   Expected: each row shows the mark of its program (Claude or OpenAI), not its name, in the text colour.
+3. Open the model picker of the composer.
+   Expected: each provider has its own mark, in the text colour, and the list of models is there before any thread starts.
+
+Result: Open.
+
+### HT-155: the icons of the Devices list (R-393, R-395)
+
+Not built yet (Phase I of ui-site-language-plan.md). The entry is here so that the look is checked when it is built.
+
+1. Open Devices in the desktop application with a Mac, a Pop!_OS computer and, if there is one, an Anima OS computer.
+   Expected: each metric of a row has its icon and its word.
+2. Look at the operating system of each row and of each device header.
+   Expected: Pop!_OS and Anima OS have their own marks, in the text colour.
 ### HT-152: an approval by a device for a reveal (E0-6 T6; K-E5 Section 3a; OD-E20, OD-E27 to OD-E31)
 
 Not built. The hub part is task T6 of [extensions-plan.md](plans/extensions-plan.md); the key, the notification and the approve screen are of the mobile and desktop streams. The gates cannot prove the check of the operating system (Face ID, Touch ID, the password, polkit), the notification on a phone, or a second device. Do these steps when T6 and the clients are built.
@@ -4913,3 +4971,38 @@ Not built. The gates cannot prove a fresh computer, the profile of a login shell
    Expected: `anima` is signed out too.
 
 Result: Open.
+### HT-158: a Codex thread of the new form reads as it ran (R-402)
+
+Built on the branch `threads/codex-rollout-items`. The tests read rollouts that were made by hand in the shapes of Codex
+0.13x; nobody has read a real rollout of the new form in the application.
+
+1. With Codex 0.13x or later, start a Codex thread in a test folder with the prompt `run pwd, then create a file named
+   codex.txt that holds the word hi, then reply with the word ok`. Let the turn end.
+   Expected: the turn shows the command `pwd` (or `pwd -P`) with its output, a change of `codex.txt` with the line `+hi`,
+   and the reply `ok`.
+2. Close the thread and open it again from the list of threads (so that it is read from its rollout file).
+   Expected: the same steps as in step 1, in the same order, and no row named `exec` or `wait`.
+3. Start a Codex thread with the prompt `run sleep 20 && echo done`. Let the turn end, then open the thread again from
+   the list.
+   Expected: one command row `sleep 20 && echo done` with the output `done`; no separate rows for its waits.
+4. On the page of a new thread, choose a Codex model whose efforts list Ultra, and choose Ultra.
+   Expected: the thread starts. A model whose list has no Ultra does not offer it.
+### HT-159: an agent from Anima is as fast as from a terminal (R-403)
+
+Built on the branch `threads/agents-priority`. The runner lifts the holder of the agent programs, and its own questions to a
+program, out of the background priority of the daemon. The tests lift a child of the test; nobody has timed a turn of a
+real program started from the application.
+
+1. Install the build, quit each thread, and stop the holder (restart the computer, or end `anima-daemon holder`), so that
+   the next thread starts a new holder.
+   Expected: nothing; this makes sure that the holder is a new one.
+2. While the Mac is busy (for example a long build in a terminal), start a Codex thread from the page of a new thread with
+   the prompt `reply with the word ok`, and time it from the press to the answer.
+   Expected: the thread starts; no words "did not answer".
+3. In a terminal of the same Mac, at the same load, run `codex exec "reply with the word ok"` and time it.
+   Expected: the time of step 2 is about the time of step 3, not many times longer.
+4. Open the log of the runner: the file `runner.log` in the folder `threads` of the state folder of the daemon.
+   Expected: no line "a program runs at background priority: the lift failed".
+
+Result: Open.
+
