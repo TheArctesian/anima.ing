@@ -257,7 +257,7 @@ that owns the area.
 | SF-230 | Public traffic can slow the sessions on the same link. Medium | The routing of the domains of applications on the hub (task H21, design) | Open |
 | SF-227 | Smaller points: claims about the door, wake, abuse and a hub on the same site. Low | The routing of the domains of applications on the hub (task H21, design) | Open |
 | SF-325 | The proof of a name is read again only when a person asks. Low | The routing of the domains of applications on the hub (task H21, code) | Open |
-| SF-330 | A change of a route asks for no new second factor. Low | The routing of the domains of applications on the hub (task H21, code) | Open (built in `bb0bce295`) |
+| SF-330 | A change of a route asks for no new second factor. Low | The routing of the domains of applications on the hub (task H21, code) | Accepted by the operator (2026-11-22, relayed; R-NEW-routeadd: a Full access agent adds a route with no approval, one rule for each caller). The rule of `bb0bce295` that only a browser token adds a public route goes; the consent at the machine (OD-HOST-43) stays |
 | SF-331 | The target of a route came from the person, not from the record of the application. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
 | SF-332 | The proxy opened a tunnel for each `Upgrade: websocket` without the answer 101. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
 | SF-327 | No time limit and no cap before the name of a connection was known. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `68c9a7ab5`) |
@@ -2476,7 +2476,9 @@ Mitigation now: Only a person with a login or a browser token, on an account wit
 
 The fix to make: `addApplicationRoute` and `removeApplicationRoute` ask for a code of the second factor given in the last minutes (a step-up), and refuse otherwise.
 
-State: Open (built in `bb0bce295`). Found by a separate reviewer on 2026-11-21.
+Ruling (2026-11-22, R-NEW-routeadd): the operator chose that a Full access agent adds a route with no approval, and one rule for each caller: no step-up and no device approval for adding or removing a route; a thread in a restricted mode asks in the thread (Section 3b of [vault.md](../contracts/extensions/vault.md)). The rule of `bb0bce295` (only a browser token adds a public route, `PublicNeedsPerson`) and the refusal of an agent at a removal go; task H21 removes them. What stays: no API key and no builder token change a route, the second factor of the account (HM-D14) as the Routes session keeps it, and the consent at the machine before a public route serves (OD-HOST-43). The cost, told to him: an agent can make an application public with no question; the consent at the machine is the one guard left.
+
+State: Accepted by the operator (R-NEW-routeadd). Found by a separate reviewer on 2026-11-21.
 
 ### SF-328: The protocol of a public stream was only a label that the person picked. Medium
 

@@ -94,6 +94,13 @@ The hub has two tokens that a program can hold (design specification INT-003):
   an error message (LOG-007, SEC-009).
 - **CMD-015.** A context is a name for one hub origin. `anima context add|use|list|remove`. The
   configuration file (`$XDG_CONFIG_HOME/anima/config.json`) holds contexts and no secret.
+- **One sign-in (R-NEW-onesignin, R-NEW-installall; design in Section 3b of
+  [vault.md](../../contracts/extensions/vault.md)).** The app signs `anima` in with a linked token of
+  the kind `command_line`: `anima auth adopt --hub <origin> -` reads it from standard input
+  (SGN-NEW-adopt). Signing out of the app signs `anima` out. `anima auth login` stays for a computer
+  with no app. In a thread, `ANIMA_TOKEN` holds a token of the kind `thread` (SGN-NEW-thread), and
+  `anima` sends the agent declaration (LOG-016) with each request that uses it. The limits of
+  Section 7 stay limits of the MCP server; the command has no limits of its own for an agent.
 
 ## 5. Output and behaviour
 
@@ -601,6 +608,8 @@ The state of each task is in the table (PLN-006). T1 to T10 are Done: each commi
 | T11 | R-120, the library and the command: the built-in state of the change tools is `allow`, and the switch "Ask before destructive actions" (MCP-024, MCP-025) in `permissions show\|set\|reset` | Opus | security | Not started | — |
 | T12 | R-120, the audit: each destructive call that runs without a question is in the hub's audit log with the tool, the cleaned arguments and the MCP client name (MCP-026) | Opus | security | Not started | — |
 | T13 | R-120, the desktop Settings panel: the switch "Ask before destructive actions", off for a new user (MCP-025), on the library of T11 | Sonnet |  | Not started | — |
+| T14 | R-NEW-onesignin, the command: `anima auth adopt --hub <origin> -` (the token on standard input, checked with `me`, stored as CMD-012 says), `anima auth logout --hub <origin>` called by the app, and the agent declaration with each request that uses a thread token from `ANIMA_TOKEN` (K-E5 Section 3b) | Opus | security (E0-6 T9) | Not started. Needs E0-6 T8 | — |
+| T15 | R-NEW-installall, the desktop app: on each hub, at the sign-in, put `anima` on `PATH` with no click (the checks of INS-002 to INS-009 stay), write the line of `PATH` into the profile of the login shell (zsh, bash or fish) one time, marked as Anima's, never when it is there and never into a link to a place outside the home folder, and name the file; then get the command-line token and run `anima auth adopt`; at the sign-out run `anima auth logout`. After U14 of [daemon-and-hub-update-plan.md](daemon-and-hub-update-plan.md), which changes the same start of the app (`+layout.svelte`) | Opus | security (E0-6 T9) | Not started. Needs T14 and E0-6 T8 | — |
 
 ### Tasks of R-120 (T11 to T13)
 
