@@ -27,8 +27,9 @@ use crate::hub::HubClient;
 use crate::hub::answer::{Answer, Cause as HubCause};
 
 /// The model types that this build does; the claim names only these.
-pub const BUILT: [WorkType; 4] = [
+pub const BUILT: [WorkType; 5] = [
     WorkType::ModelReport,
+    WorkType::ModelDrain,
     WorkType::RuntimeInstall,
     WorkType::ServerStart,
     WorkType::ServerStop,
@@ -238,6 +239,11 @@ impl Node {
                     .start(*server, started, move || clock.elapsed().as_secs())
                     .await
                     .map(|()| None)
+            }
+            // TODO(L1-10): count the requests in progress once the daemon sends any.
+            Parameters::Drain { seconds } => {
+                super::drain::drain(*seconds, || 0).await;
+                Ok(None)
             }
             Parameters::Stop { server } => {
                 if self.servers.stop(*server).await {

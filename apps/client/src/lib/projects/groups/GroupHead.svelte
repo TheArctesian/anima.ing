@@ -2,12 +2,13 @@
   import ConfirmModal from '$lib/forms/modal/ConfirmModal.svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
   import Icon from '$lib/icons/Icon.svelte';
+  import type { SharedProjectGroups } from './shared.svelte';
   import type { ProjectGroups } from './groups.svelte';
   import NameModal from './NameModal.svelte';
   import type { GroupSection } from './view';
 
   interface Props {
-    groups: ProjectGroups;
+    groups: ProjectGroups | SharedProjectGroups;
     section: GroupSection;
     open: boolean;
     onToggle: () => void;
@@ -48,12 +49,9 @@
       <ConfirmModal
         open={deleting}
         title={`Delete the group ${section.title}?`}
-        body="The group goes from this screen. Its cards stay, under Ungrouped: no project changes."
+        body="The projects stay under Ungrouped. The group is removed from the hub."
         confirmLabel="Delete group"
-        onConfirm={() => {
-          groups.delete(id);
-          return Promise.resolve({ ok: true, value: null });
-        }}
+        onConfirm={async () => (await groups.delete(id)) ?? { ok: true, value: null }}
         onCancel={() => (deleting = false)}
       />
     {/if}

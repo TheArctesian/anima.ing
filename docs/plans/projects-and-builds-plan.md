@@ -817,15 +817,12 @@ No run of this trigger was on GitHub. The tests run the two commands in reposito
 
 The operator's words (2026-11-20): "I would also like i think we meantioned it Before but be cable to
 select and create project groups here", then "Like just cluster them together this is just a UI think".
-A group is a choice of the Projects screen. It is not a part of the hub and it is not in K1, so it has
-no `anima` command and no MCP tool (CMD-030 applies to data that the hub keeps).
+On 2026-11-22 the operator chose to share the groups with all users of the same hub. The hub holds group names and membership. Sort order and collapsed groups stay on each client. See R-388. Earlier local groups can be shared one at a time from the Group view.
 
 - **PRO-059. A group of cards.** A group is a name of 1 to 60 characters that the operator gives to
   cards of the Projects screen. Two groups cannot have the same name when the case of the letters is
-  ignored. A card is in one group at most. The application keeps the groups in its own storage on
-  this computer: they do not follow the operator to a different computer, and the desktop
-  application and the browser each have their own. A group never changes a project, and a sync
-  never changes a group. When the storage refuses, the groups hold until the screen closes.
+  ignored. A card is in one group at most. The hub stores the groups for its users. A
+  group never changes a project’s settings, and a source sync never changes a group.
 - **PRO-060. Put cards in a group.** "Select" starts a select mode: each card gets a check mark, and
   "Select all" selects each card that the list shows. With one or more cards selected, "New group"
   asks for a name and makes the group with them, and "Add to group" puts them in a group that
@@ -1190,7 +1187,7 @@ other group.
 | Task | Content | Needs | Done when | State | Commits |
 | --- | --- | --- | --- | --- | --- |
 | G1 | The client: the select mode, "New group", "Add to group", "Remove from group", "Show by" Status or Group with heads that open and close, "Ungrouped", rename and delete, kept in the storage of the application; the list look of R-224 (sentence case). The mockup `projects-v2` changes in the same commit (PLN-019). The branch merges `ui/lists-motion` first, which changes the same rows for motion. | — | The tests of the client pass; the mockup is compared again; an entry in [need-human-testing.md](../need-human-testing.md). | Built (branch `ui/project-groups`): `apps/client/src/lib/projects/groups/`. Waits for HT-078. | — |
-| G2 | The groups follow the operator to each computer and to the browser: the hub keeps them as one screen preference of the operator, a JSON value that the client reads and writes whole, with no rule of the hub about it. The hub has no screen preference today, so this is the first one, and it needs a ruling for K1 (CON-001). | G1; a decision of the operator | The groups are the same in the desktop application and the browser. | Not started: the operator decides if it is wanted. | — |
+| G2 | The hub stores shared Projects group names and membership for its users. Hub access rules govern reads and edits. | G1; operator decision on 2026-11-22 | A change made in one authenticated client appears in another client on the same hub. | Built | The client reads shared membership on entry and refreshes while the Projects page is visible. |
 
 ## Conflicts with text that exists
 

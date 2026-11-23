@@ -124,6 +124,11 @@ type Documents = {
     "\n  fragment ForgePageFields on PageInfo {\n    hasNextPage\n    endCursor\n  }\n": typeof types.ForgePageFieldsFragmentDoc,
     "\n  fragment CommitChecksFields on CommitChecks {\n    state\n    passed\n    failed\n    pending\n    failing\n  }\n": typeof types.CommitChecksFieldsFragmentDoc,
     "\n  query ProjectAccess($slug: String!) {\n    project(slug: $slug) {\n      repositories {\n        id\n        access\n      }\n    }\n  }\n": typeof types.ProjectAccessDocument,
+    "\n  query SharedProjectGroups {\n    projectGroups { id name projectIds }\n  }\n": typeof types.SharedProjectGroupsDocument,
+    "\n  mutation CreateSharedProjectGroup($name: String!, $projects: [ID!]!) {\n    createProjectGroup(name: $name, projects: $projects) { id }\n  }\n": typeof types.CreateSharedProjectGroupDocument,
+    "\n  mutation RenameSharedProjectGroup($id: ID!, $name: String!) {\n    renameProjectGroup(id: $id, name: $name) { id }\n  }\n": typeof types.RenameSharedProjectGroupDocument,
+    "\n  mutation MoveSharedProjects($projects: [ID!]!, $group: ID) {\n    setProjectsGroup(projects: $projects, group: $group)\n  }\n": typeof types.MoveSharedProjectsDocument,
+    "\n  mutation DeleteSharedProjectGroup($id: ID!) {\n    deleteProjectGroup(id: $id)\n  }\n": typeof types.DeleteSharedProjectGroupDocument,
     "\n  fragment CommitFields on Commit {\n    sha\n    title\n    authorName\n    authorLogin\n    committedAt\n    url\n    checks {\n      ...CommitChecksFields\n    }\n  }\n": typeof types.CommitFieldsFragmentDoc,
     "\n  query ForgeCommits($repository: ID!, $ref: String, $after: String, $fresh: Boolean) {\n    commits(repository: $repository, ref: $ref, first: 30, after: $after, fresh: $fresh) {\n      edges {\n        node {\n          ...CommitFields\n        }\n      }\n      pageInfo {\n        ...ForgePageFields\n      }\n      read {\n        ...ForgeReadFields\n      }\n    }\n  }\n": typeof types.ForgeCommitsDocument,
     "\n  query ForgeBranches($repository: ID!, $after: String, $fresh: Boolean) {\n    branches(repository: $repository, first: 100, after: $after, fresh: $fresh) {\n      edges {\n        node {\n          name\n          sha\n          protected\n          default\n        }\n      }\n      pageInfo {\n        ...ForgePageFields\n      }\n      read {\n        ...ForgeReadFields\n      }\n    }\n  }\n": typeof types.ForgeBranchesDocument,
@@ -304,6 +309,11 @@ const documents: Documents = {
     "\n  fragment ForgePageFields on PageInfo {\n    hasNextPage\n    endCursor\n  }\n": types.ForgePageFieldsFragmentDoc,
     "\n  fragment CommitChecksFields on CommitChecks {\n    state\n    passed\n    failed\n    pending\n    failing\n  }\n": types.CommitChecksFieldsFragmentDoc,
     "\n  query ProjectAccess($slug: String!) {\n    project(slug: $slug) {\n      repositories {\n        id\n        access\n      }\n    }\n  }\n": types.ProjectAccessDocument,
+    "\n  query SharedProjectGroups {\n    projectGroups { id name projectIds }\n  }\n": types.SharedProjectGroupsDocument,
+    "\n  mutation CreateSharedProjectGroup($name: String!, $projects: [ID!]!) {\n    createProjectGroup(name: $name, projects: $projects) { id }\n  }\n": types.CreateSharedProjectGroupDocument,
+    "\n  mutation RenameSharedProjectGroup($id: ID!, $name: String!) {\n    renameProjectGroup(id: $id, name: $name) { id }\n  }\n": types.RenameSharedProjectGroupDocument,
+    "\n  mutation MoveSharedProjects($projects: [ID!]!, $group: ID) {\n    setProjectsGroup(projects: $projects, group: $group)\n  }\n": types.MoveSharedProjectsDocument,
+    "\n  mutation DeleteSharedProjectGroup($id: ID!) {\n    deleteProjectGroup(id: $id)\n  }\n": types.DeleteSharedProjectGroupDocument,
     "\n  fragment CommitFields on Commit {\n    sha\n    title\n    authorName\n    authorLogin\n    committedAt\n    url\n    checks {\n      ...CommitChecksFields\n    }\n  }\n": types.CommitFieldsFragmentDoc,
     "\n  query ForgeCommits($repository: ID!, $ref: String, $after: String, $fresh: Boolean) {\n    commits(repository: $repository, ref: $ref, first: 30, after: $after, fresh: $fresh) {\n      edges {\n        node {\n          ...CommitFields\n        }\n      }\n      pageInfo {\n        ...ForgePageFields\n      }\n      read {\n        ...ForgeReadFields\n      }\n    }\n  }\n": types.ForgeCommitsDocument,
     "\n  query ForgeBranches($repository: ID!, $after: String, $fresh: Boolean) {\n    branches(repository: $repository, first: 100, after: $after, fresh: $fresh) {\n      edges {\n        node {\n          name\n          sha\n          protected\n          default\n        }\n      }\n      pageInfo {\n        ...ForgePageFields\n      }\n      read {\n        ...ForgeReadFields\n      }\n    }\n  }\n": types.ForgeBranchesDocument,
@@ -828,6 +838,26 @@ export function graphql(source: "\n  fragment CommitChecksFields on CommitChecks
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  query ProjectAccess($slug: String!) {\n    project(slug: $slug) {\n      repositories {\n        id\n        access\n      }\n    }\n  }\n"): (typeof documents)["\n  query ProjectAccess($slug: String!) {\n    project(slug: $slug) {\n      repositories {\n        id\n        access\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query SharedProjectGroups {\n    projectGroups { id name projectIds }\n  }\n"): (typeof documents)["\n  query SharedProjectGroups {\n    projectGroups { id name projectIds }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation CreateSharedProjectGroup($name: String!, $projects: [ID!]!) {\n    createProjectGroup(name: $name, projects: $projects) { id }\n  }\n"): (typeof documents)["\n  mutation CreateSharedProjectGroup($name: String!, $projects: [ID!]!) {\n    createProjectGroup(name: $name, projects: $projects) { id }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RenameSharedProjectGroup($id: ID!, $name: String!) {\n    renameProjectGroup(id: $id, name: $name) { id }\n  }\n"): (typeof documents)["\n  mutation RenameSharedProjectGroup($id: ID!, $name: String!) {\n    renameProjectGroup(id: $id, name: $name) { id }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation MoveSharedProjects($projects: [ID!]!, $group: ID) {\n    setProjectsGroup(projects: $projects, group: $group)\n  }\n"): (typeof documents)["\n  mutation MoveSharedProjects($projects: [ID!]!, $group: ID) {\n    setProjectsGroup(projects: $projects, group: $group)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation DeleteSharedProjectGroup($id: ID!) {\n    deleteProjectGroup(id: $id)\n  }\n"): (typeof documents)["\n  mutation DeleteSharedProjectGroup($id: ID!) {\n    deleteProjectGroup(id: $id)\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

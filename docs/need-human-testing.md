@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-148 | Phone Devices, offline notice and Integrations fit the screen (M2-5) | An iPhone with a current build and a test hub | Open |
 | HT-146 | A process that an agent detached cannot answer an approval (R-315, THR-031) | A Mac with `claude` signed in, the daemon of the branch `threads/peer-ancestry` with a test state folder; later the installed application | Open |
 | HT-074 | Windows desktop account, link and remote sessions (WIN1) | Windows 11 VM, Anima account and a hub | Open |
 | HT-114 | Three generated entries of LinuxServer.io start with the rights of the static test (task H39) | A throwaway Linux test machine with Docker and Compose, not on the network of Anima | Open |
@@ -124,6 +125,13 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-104 | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with its own public origin `https://<hub id>.hub.anima.ing` and an image of this build, the door of the pool for that address, an application of this build, and a GitHub account that may get a new App | Open |
 | HT-125 | The window with no frame on Windows and Linux: move it, the three controls, resize, each page (task TC2 of agent threads, R-355) | A Windows computer and the Linux computer `pop-os`, each with a build of the branch `code/shell-window`; a Mac for the last step | Open |
 | HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | A Linux AppImage of this build | Passed |
+
+### HT-148: phone Devices, offline notice and Integrations (M2-5)
+
+- State: Open.
+- Open Add device on an iPhone with a Dynamic Island. Check that the title and close button stay below the status bar.
+- Open a device with SSH and RDP off. Check that setup is inline and read the device metrics. In the list, check the OS and the readings that the hub sends.
+- Disconnect from the hub and check that all five tabs remain tappable. Reconnect and check that the GitHub description and buttons wrap in Settings.
 
 ### What a check on the hosted hub needs
 
@@ -340,7 +348,9 @@ server cannot stand in for the source.
 Built: `crates/daemon/src/model/tree.rs`, `tree/linux.rs`, `tree/walk.rs`, and the launcher mode `__model-launch`
 of `crates/daemon/src/main.rs` (task L1-6; R-331; SF-258). The Linux code was not compiled or
 run on the Mac of the build: no Linux target is installed there. The tests that start a server skip on a Linux
-computer with no delegated cgroup v2, with the message "skipped: no delegated cgroup v2 here".
+computer where systemd does not delegate the cgroup v2 of the test process, with a message that starts with
+"skipped: no cgroup v2 delegated by systemd here". The daemon asks systemd for the property `Delegate` of the unit
+that holds its cgroup (DEF-013).
 
 1. On `pop-os`, run `cargo nextest run -p anima-daemon model_work` in a worktree of this branch, from a shell in a
    systemd user scope with delegation: `systemd-run --user --scope -p Delegate=yes bash`. Expected: each test passes;
@@ -350,8 +360,8 @@ computer with no delegated cgroup v2, with the message "skipped: no delegated cg
 3. With a test daemon in a user unit with `Delegate=yes`, give a `server_start` item. Expected: a folder
    `anima-model-<server>` below the cgroup of the unit; `cat cgroup.procs` there names `llama-server`. Give
    `server_stop`. Expected: the folder is gone and no process is left.
-4. Without `Delegate=yes`, give a `server_start` item. Expected: `failed` with `containment_failed`, and no
-   process is started.
+4. Without `Delegate=yes`, give a `server_start` item. Expected: `failed` with `containment_failed` and the
+   detail `no_delegation`, and no process is started.
 5. Start a server, then end the test daemon with `kill -9`. Start it again and call the sweep (`Node::sweep`).
    Expected: the `llama-server` of the first run and its cgroup are gone.
 6. Install the user unit of this build (`anima-daemon install` from the test folder). Expected:
@@ -410,8 +420,10 @@ sources, the command line and the environment, the waits of a restart, the loopb
 folders) and `crates/daemon/src/model/` (the claim and the report through the work route,
 `runtime_install`, `server_start`, `server_stop`, the supervision, `model_report`), task L1-6 of
 the compute plan (CAG-001 to CAG-009, RTC-002 to RTC-006, SEC-C-001, SEC-C-007, SEC-C-008). The
-contract is `contracts/compute/model-work.md` version 0.3, which waits for R-344 and the
+contract is `contracts/compute/model-work.md` version 0.4, which waits for R-344 and the
 security review SEC-C-012. The tests use a scripted hub and a scripted runtime (a Perl program);
+contract is `contracts/compute/model-work.md` version 0.3 (K11), accepted by R-344; the
+security review SEC-C-012 still runs, and SF-298 and SF-300 are Open. The tests use a scripted hub and a scripted runtime (a Perl program);
 no test downloads a real release or starts a real `llama-server`. The claim loop is not yet
 started by the running daemon: the switch at the machine (USE-004) does not exist in the daemon.
 Thus this check needs a small test program or a test build that calls `model::cycle::Node::cycle`.
@@ -423,7 +435,9 @@ Do not use the installed daemon of the operator. Set `ANIMA_DAEMON_HOME` to a ne
    size, and the path of `llama-server` in it). Give a `runtime_install` item from the test hub.
    Expected: the report is `succeeded`; `<home>/runtimes/llama_server/<version>-<backend>/` holds
    the files, with mode 0755 for folders and programs and 0644 for each other file, and no link.
-   The upstream `.zip` or `.tar.gz` both work (R-329); write which one was used.
+   Each symbolic link of the archive (`libllama.so -> libllama.so.1` and the like) is a regular
+   file with the bytes and the mode of the file that it named (R-387, contract
+   version 0.4). The upstream `.zip` or `.tar.gz` both work (R-329); write which one was used.
 2. Give a `runtime_install` item with a wrong SHA-256 in `model-sources.json`. Expected: `failed`
    with `checksum`, and no new folder.
 3. Give a `server_start` item. Expected: `succeeded`. `lsof -nP -iTCP -sTCP:LISTEN` (Mac) or

@@ -131,10 +131,17 @@
 .phone-devices .what {
   display: grid;
   flex: 1;
-  gap: 3px;
+  gap: var(--space-2);
   min-inline-size: 0;
   color: var(--text);
   text-decoration: none;
+}
+
+.phone-devices .identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-inline-size: 0;
 }
 
 .phone-devices .name {
@@ -148,18 +155,19 @@
 .phone-devices .line {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-2);
   min-inline-size: 0;
   color: var(--text-secondary);
   font-size: var(--text-sm);
 }
 
-.phone-devices .host {
-  overflow: hidden;
-  font-family: var(--font-mono);
-  font-variant-ligatures: none;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.phone-devices .uptime {
+  font-variant-numeric: tabular-nums;
+}
+
+.phone-devices .period {
+  color: var(--text-tertiary);
 }
 
 .phone-devices .why {
