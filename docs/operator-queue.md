@@ -39,7 +39,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (230)
+## 2. Open decisions (228)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -202,8 +202,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-BOT21 | Does MCP-006 (no tool runs a command on a device) get a narrow exception, so that an MCP tool can ask the daemon to run a recipe of the catalog (BOT-075)? (yes/… | Open | [proposals/bots.md](proposals/bots.md) |
 | OD-BOT22 | May an AI agent start a recipe before the operator confirmed its terms row on that machine (BOT-041, BOT-065)? (yes/no) | Open | [proposals/bots.md](proposals/bots.md) |
 | OD-BOT23 | May the operator type a key that lasts (Gemini CLI, Pi, OpenCode; Pi replaces Aider, R-196) in the secret-entry pane, when R-153 covers a one-time code only (BO… | Open | [proposals/bots.md](proposals/bots.md) |
-| OD-CLU7 | By default, how long does the hub wait before it takes a member as gone? A: 6 minutes (3 times the lease of 2 minutes). B: 15 minutes. C: 2 minutes, with a leas… | A. Long enough for the restart of a machine and a short loss of the network; B leaves things down longer; C gives false alarms on a busy home network. | [proposals/clusters.md](proposals/clusters.md) |
-| OD-CLU8 | When no copy is new enough, may Anima start a thing from an older copy by itself? A: no; it stays down and a person can start it from the old copy. B: yes, alwa… | A. Starting from an old copy loses data that the person may still get back when the machine returns. | [proposals/clusters.md](proposals/clusters.md) |
 | OD-PNL1 | Are Agents and Projects a part of the foundation, or extensions that are on by default? OD-E13 (operator, 2026-11-13) ruled that Projects is not a part of the f… | Proposed, not ruled: extensions that are on by default (PNL-006). It keeps EXT-005 and OD-E13, and the operator can still turn them off. Only EXT-001 and EXT-00… | [proposals/default-panels.md](proposals/default-panels.md) |
 | OD-PNL2 | What does "runner" mean in "add runners on easily": an agent runner (BOT-039), a build runner of GitHub Actions (PRO-027), or both? | Proposed, not ruled: both, in one choice on "Add runner" (PNL-005). The two flows stay separate. | [proposals/default-panels.md](proposals/default-panels.md) |
 | OD-PNL3 | Which features move out of the foundation as extensions? | Proposed, not ruled: none. Bookshelf (Library, Section 4.14), Maps (Map, Section 4.1) and the others are extensions already. The map canvas component stays shar… | [proposals/default-panels.md](proposals/default-panels.md) |
@@ -290,7 +288,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/ai-direction.md](proposals/ai-direction.md) | Proposal | Draft |
 | [proposals/bots.md](proposals/bots.md) | Proposal, with a task table | Draft |
 | [proposals/cloud-machines.md](proposals/cloud-machines.md) | Proposal | Draft |
-| [proposals/clusters.md](proposals/clusters.md) | Proposal | Draft |
+| [proposals/clusters.md](proposals/clusters.md) | Proposal | Direction decided |
 | [proposals/coordinator-standby.md](proposals/coordinator-standby.md) | Proposal | Direction decided |
 | [proposals/cve-watch-and-network-awareness.md](proposals/cve-watch-and-network-awareness.md) | Proposal | Draft |
 | [proposals/default-panels.md](proposals/default-panels.md) | Proposal | Draft |

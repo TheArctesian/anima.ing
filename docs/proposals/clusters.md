@@ -1,14 +1,14 @@
 ---
 kind: Proposal
-state: Draft
-evidence: Version 1.7 (2026-11-22): R-NEW-clustercopyage decides OD-CLU6 (A: 15 minutes by default). Version 1.6 (2026-11-22): R-NEW-clusterconsent decides OD-CLU4 (A: the join counts as the consent to serve public routes; CLU-009, CLU-032) and R-NEW-clustercallers decides OD-CLU5 (A: the rule of an install). Version 1.5 (2026-11-22): R-NEW-clusterbuild decides OD-CLU3 (A: build it, on the link of each machine to the hub). Version 1.4 (2026-11-22): the operator leans to our own ("maybe we just keep with our own", not a ruling); Sections 4.1 and 4.2 and CLU-031. Version 1.3 (2026-11-22): R-NEW-clusterrestart decides OD-CLU2 (B: placement and restart on a different member); Section 7 designs the restart (CLU-016 to CLU-030), with OD-CLU6 to OD-CLU8. Version 1.2 (2026-11-22): R-NEW-clustermembers decides OD-CLU1 (B: a machine can be in several clusters); CLU-001, CLU-012, CLU-014 and CLU-015 follow it. Version 1 (2026-11-22). From R-NEW-hostingsections: "oh okay then clusters now" (relayed by the side conversation of the orchestrating session). No requirement of this document is approved and no code exists. The open decisions are OD-CLU7 and OD-CLU8.
+state: Direction decided
+evidence: Version 1.9 (2026-11-22): R-NEW-clusteroldcopy decides OD-CLU8 (A: no, it stays down); each open decision is decided (R-NEW-clustermembers, R-NEW-clusterrestart, R-NEW-clusterbuild, R-NEW-clusterconsent, R-NEW-clustercallers, R-NEW-clustercopyage, R-NEW-clustergonewait, R-NEW-clusteroldcopy). The requirements are not approved as tasks: nothing is built before the orchestrating session schedules the first step (CLU-012). Version 1.8 (2026-11-22): R-NEW-clustergonewait decides OD-CLU7 (A: 6 minutes, a lease of 2 minutes). Version 1.7 (2026-11-22): R-NEW-clustercopyage decides OD-CLU6 (A: 15 minutes by default). Version 1.6 (2026-11-22): R-NEW-clusterconsent decides OD-CLU4 (A: the join counts as the consent to serve public routes; CLU-009, CLU-032) and R-NEW-clustercallers decides OD-CLU5 (A: the rule of an install). Version 1.5 (2026-11-22): R-NEW-clusterbuild decides OD-CLU3 (A: build it, on the link of each machine to the hub). Version 1.4 (2026-11-22): the operator leans to our own ("maybe we just keep with our own", not a ruling); Sections 4.1 and 4.2 and CLU-031. Version 1.3 (2026-11-22): R-NEW-clusterrestart decides OD-CLU2 (B: placement and restart on a different member); Section 7 designs the restart (CLU-016 to CLU-030), with OD-CLU6 to OD-CLU8. Version 1.2 (2026-11-22): R-NEW-clustermembers decides OD-CLU1 (B: a machine can be in several clusters); CLU-001, CLU-012, CLU-014 and CLU-015 follow it. Version 1 (2026-11-22). From R-NEW-hostingsections: "oh okay then clusters now" (relayed by the side conversation of the orchestrating session). No requirement of this document is approved and no code exists. Each open decision is decided.
 ---
 
 # Proposal: clusters of machines as a place to run things
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this proposal (PLN-005).
 
-Version: 1.7. Date: 2026-11-22. Version 1.7 writes the answer to OD-CLU6 (R-NEW-clustercopyage). Version 1.6 writes the answers to OD-CLU4 and OD-CLU5 (R-NEW-clusterconsent, R-NEW-clustercallers). Version 1.5 writes the answer to OD-CLU3 (R-NEW-clusterbuild). Version 1.4 records the operator's leaning to our own (not a ruling), orders the steps, says what our own must build (Section 4.1, CLU-031) and keeps the options that he raised (Section 4.2). Version 1.3 writes the answer to OD-CLU2 (R-NEW-clusterrestart) and designs the restart in Section 7. Version 1.2 writes the answer to OD-CLU1 (R-NEW-clustermembers). Version 1.1 (2026-11-22). Version 1.1 says for each level whether a daemon acts for other machines and so whether K11 changes (CLU-013), at the request of the model service session.
+Version: 1.9. Date: 2026-11-22. Version 1.9 writes the answer to OD-CLU8 (R-NEW-clusteroldcopy). Version 1.8 writes the answer to OD-CLU7 (R-NEW-clustergonewait). Version 1.7 writes the answer to OD-CLU6 (R-NEW-clustercopyage). Version 1.6 writes the answers to OD-CLU4 and OD-CLU5 (R-NEW-clusterconsent, R-NEW-clustercallers). Version 1.5 writes the answer to OD-CLU3 (R-NEW-clusterbuild). Version 1.4 records the operator's leaning to our own (not a ruling), orders the steps, says what our own must build (Section 4.1, CLU-031) and keeps the options that he raised (Section 4.2). Version 1.3 writes the answer to OD-CLU2 (R-NEW-clusterrestart) and designs the restart in Section 7. Version 1.2 writes the answer to OD-CLU1 (R-NEW-clustermembers). Version 1.1 (2026-11-22). Version 1.1 says for each level whether a daemon acts for other machines and so whether K11 changes (CLU-013), at the request of the model service session.
 Status: the header of this document holds the state (PLN-020).
 Map: [work-plan.md](../work-plan.md), category Use, row 4.9 of the [priority order](../plan/priorities.md) (hosted applications). It changes HOST-052 of [hosted-applications-plan.md](../plans/hosted-applications-plan.md) when it is approved, and it is shown in the sections Applications, Models and Machines of [hosting-section.md](hosting-section.md).
 Identifiers: CLU-001 to CLU-032, OD-CLU1 to OD-CLU8.
@@ -144,7 +144,7 @@ Each member keeps its own volumes, so two copies of a thing never write to the s
 
 ### 7.3 When a machine is gone
 
-- **CLU-024.** The hub takes a member as gone when, for the time to wait (the default is OD-CLU7, at least 3 times the lease):
+- **CLU-024.** The hub takes a member as gone when, for the time to wait (the default is 6 minutes, 3 times the lease of 2 minutes, R-NEW-clustergonewait; it is never less than 3 times the lease):
   - the hub has had no report from its daemon; and
   - no other member of the cluster reaches it through the link.
   Both are needed: a member that the hub cannot reach but that other members reach is not gone, and nothing restarts.
@@ -154,7 +154,7 @@ Each member keeps its own volumes, so two copies of a thing never write to the s
 ### 7.4 A thing with no copy that is new enough
 
 - **CLU-027.** When its member is gone, a thing restarts on its standby only if the last complete copy is not older than the person allowed (CLU-019) and the standby has the room (CLU-014). If the standby cannot take it, the hub tries each other member that has a complete copy, newest first.
-- **CLU-028.** Otherwise the thing stays down and says why, for example "Down: pop-os is gone since 14:10. The last copy is from 13:20, older than the 15 minutes that you allowed." The actions: wait for the machine, or start it from the old copy and accept the loss. Only a person starts from an old copy (OD-CLU8). A thing with no data restarts on any member with the room.
+- **CLU-028.** Otherwise the thing stays down and says why, for example "Down: pop-os is gone since 14:10. The last copy is from 13:20, older than the 15 minutes that you allowed." The actions: wait for the machine, or start it from the old copy and accept the loss. Only a person starts from an old copy, with one action (R-NEW-clusteroldcopy). A thing with no data restarts on any member with the room.
 
 ### 7.5 A machine in several clusters
 
@@ -173,7 +173,7 @@ Each member keeps its own volumes, so two copies of a thing never write to the s
 | What a machine reports about its room, how a machine joins and agrees at the machine, the machine of the spare-computer image | The OS stream ([spare-computer-os.md](spare-computer-os.md)) |
 | The screens: the section Machines and the choice of a place | The hosted applications plan for the content, the UI session for the shell (HSE-001) |
 
-## 9. Open decisions
+## 9. Decisions
 
 | ID | Question | Recommendation |
 | --- | --- | --- |
@@ -183,5 +183,5 @@ Each member keeps its own volumes, so two copies of a thing never write to the s
 | OD-CLU4 | When a machine joins a cluster, does its agreement at the machine also count as its consent to serve public routes of the things of that cluster? A: yes, one agreement at the join. B: no; each machine still gives the consent for public routes on its own, and a public route stops on a machine without it. | Decided (R-NEW-clusterconsent): A, yes; the join screen says so (CLU-032). |
 | OD-CLU5 | Who can put a thing on a cluster or move it between members? A: the same rule as an install (R-384): the person, the app, `anima` and a Full access thread with no approval; a restricted thread asks. B: a move always needs a person. | Decided (R-NEW-clustercallers): A, the rule of an install (R-384). |
 | OD-CLU6 | By default, how old may the copy of the data of a thing with restart on be (the person can change it for each thing)? A: 15 minutes (a copy each 7.5 minutes). B: 5 minutes. C: 1 hour. | Decided (R-NEW-clustercopyage): A, 15 minutes, a copy each 7.5 minutes; 5 minutes to 24 hours for each thing. |
-| OD-CLU7 | By default, how long does the hub wait before it takes a member as gone? A: 6 minutes (3 times the lease of 2 minutes). B: 15 minutes. C: 2 minutes, with a lease of 40 seconds. | A. Long enough for the restart of a machine and a short loss of the network; B leaves things down longer; C gives false alarms on a busy home network. |
-| OD-CLU8 | When no copy is new enough, may Anima start a thing from an older copy by itself? A: no; it stays down and a person can start it from the old copy. B: yes, always, and it says what was lost. | A. Starting from an old copy loses data that the person may still get back when the machine returns. |
+| OD-CLU7 | By default, how long does the hub wait before it takes a member as gone? A: 6 minutes (3 times the lease of 2 minutes). B: 15 minutes. C: 2 minutes, with a lease of 40 seconds. | Decided (R-NEW-clustergonewait): A, 6 minutes with a lease of 2 minutes. |
+| OD-CLU8 | When no copy is new enough, may Anima start a thing from an older copy by itself? A: no; it stays down and a person can start it from the old copy. B: yes, always, and it says what was lost. | Decided (R-NEW-clusteroldcopy): A, no; it stays down and says why, and a person can start it from the older copy with one action. |
