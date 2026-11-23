@@ -1,4 +1,5 @@
 //! What a Compose file from the hub may have (HOST-028; contract K10 Section 6.4.4).
+//! It runs nothing, opens no file and reaches no machine; a refusal is a fixed code and the position of a service, never text of the file.
 
 mod declared;
 pub mod forms;

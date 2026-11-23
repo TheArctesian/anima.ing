@@ -1,4 +1,4 @@
-//! The rights of the services of a recipe (SF-224, SF-251).
+//! The rights of the services of a recipe (SF-224, SF-251): each service refuses new rights and drops each capability, no setting makes it root or makes its image change its code at the start, and no command runs a shell that no person read.
 //! The rules read the file before an environment file fills it, so no install value changes the result.
 
 pub(crate) mod commands;

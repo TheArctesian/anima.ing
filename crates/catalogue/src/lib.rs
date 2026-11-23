@@ -1,4 +1,5 @@
 //! The shipped recipes and the static test of each recipe (HOST-047, R-300).
+//! The test reaches no machine, and each failure is a fixed code with the recipe's identifier, never text of a file.
 
 mod database;
 pub mod entry;
