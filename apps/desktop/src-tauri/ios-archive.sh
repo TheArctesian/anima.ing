@@ -139,7 +139,7 @@ rm -rf "$PROJECT/anima-app.xcodeproj" "$PROJECT/project.yml" "$ARCHIVE" "$IPA"
 bunx tauri ios init --ci
 grep -q '^      PRODUCT_BUNDLE_IDENTIFIER: ' "$PROJECT/project.yml" || refuse "project.yml of Tauri has no group of settings where the script looks for it"
 cp -R "$HERE/ios/AnimaAppIcon.appiconset" "$PROJECT/Assets.xcassets/"
-cp "$HERE/ios/PrivacyInfo.xcprivacy" "$PROJECT/anima-app_iOS/PrivacyInfo.xcprivacy"
+cp "$HERE/ios/privacy-manifest.plist" "$PROJECT/anima-app_iOS/PrivacyInfo.xcprivacy"
 {
     signature_settings
     echo '      ASSETCATALOG_COMPILER_APPICON_NAME: AnimaAppIcon'
