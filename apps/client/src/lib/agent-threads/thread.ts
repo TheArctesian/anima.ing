@@ -166,6 +166,30 @@ export function narrowed(rows: readonly ThreadRow[], program: Program | null, se
   });
 }
 
+/** What a thread is called when its program gave no title and the person gave none. */
+export const UNTITLED = 'Untitled thread';
+
+/** What names a thread: its title, else its program, folder and start, so that no two rows read the same (TH46). */
+export interface Named {
+  readonly title: string | null;
+  readonly program: Program;
+  readonly folder: string | null;
+  readonly started: Date | null;
+}
+
+/**
+ * The name a list or a head shows: the title of the program or the person (the runner takes the first line of the
+ * first prompt), else "Codex in okita, Nov 22, 6:16 PM". `UNTITLED` only when there is no folder and no time.
+ */
+export function shownTitle(thread: Named): string {
+  const title = thread.title?.trim() ?? '';
+  if (title !== '') return title;
+  if (thread.folder === null && thread.started === null) return UNTITLED;
+  const place = thread.folder === null ? '' : ` in ${folderName(thread.folder)}`;
+  const at = thread.started === null ? '' : `, ${thread.started.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
+  return `${programName(thread.program)}${place}${at}`;
+}
+
 /** How long ago `last` was, in the short words of the list. */
 export function ago(last: Date | null, now: Date): string {
   if (last === null) return '';
