@@ -11,6 +11,7 @@ mod accounts;
 mod attachments;
 mod calls;
 pub mod codex;
+mod git;
 mod holder_events;
 pub mod launcher;
 mod listings;
@@ -137,6 +138,8 @@ pub struct Runner {
     attached: attachments::Attachments,
     /// What the launcher of the Git engine knows of the threads that run.
     rights: launcher::SharedRights,
+    /// The Git engine of the threads (TH116).
+    git: git::Gits,
 }
 
 /// Whether the daemon in `daemon_dir` serves a person, so that it may run agents in the login
@@ -172,6 +175,7 @@ pub async fn run(
     let _lock = record::lock(&dir)?;
     let saved = record::read(&dir)?;
     let env = login::environment(&daemon_env).await;
+    let (rights, gits) = git::Gits::make(&env, &daemon_env, &dir);
     tokio::pin!(stop);
     let link = tokio::select! {
         link = link::reach_patiently(program, &dir) => link,
@@ -206,7 +210,8 @@ pub async fn run(
         said: accounts::Said::default(),
         model_asks: models::Asks::default(),
         attached: attachments::Attachments::at(&dir),
-        rights: launcher::SharedRights::default(),
+        rights,
+        git: gits,
     };
     runner.restore(saved.threads);
     let listener = socket::bind(&dir)?;
@@ -244,37 +249,12 @@ impl Runner {
                     self.end_the_silent().await;
                     self.attached.expire(std::time::Instant::now());
                     self.replace_older_holder().await;
+                    self.git_touch();
                 }
                 () = &mut stop => break,
             }
         }
         accepting.abort();
-    }
-
-    /// A new link to the holder. The commands that the holder did not answer go again with
-    /// their own IDs, so that a line the holder already wrote is not written twice and each call
-    /// that waits gets its answer; a start waits for the holder to say what it holds.
-    async fn reconnect(&mut self) {
-        tracing::warn!("the link to the holder closed; connecting again");
-        self.holder.fits = false;
-        self.holder.newer = false;
-        // Until the next hello nothing is known of the holder: no Quit goes to a new one.
-        self.holder.older = false;
-        let next = self.link.next_id();
-        self.link = link::reach_patiently(&self.program, &self.dir).await;
-        self.link.go_on_from(next);
-        self.send_again().await;
-    }
-
-    /// Sends each command that the holder did not answer again, in the order it went first.
-    async fn send_again(&mut self) {
-        let again: Vec<Command> = self.unanswered.values().cloned().collect();
-        for command in again {
-            if let Err(error) = self.link.resend(&command).await {
-                tracing::warn!(%error, "the holder did not take a command sent again");
-                return;
-            }
-        }
     }
 
     /// Does a step of a thread that is not a command to the holder.

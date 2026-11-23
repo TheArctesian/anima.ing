@@ -302,6 +302,12 @@ impl Runner {
     /// The rights of the launcher as the threads and the login are now: each thread that runs,
     /// or whose worktree the runner makes, with its folder and its rights.
     pub(super) fn rights_now(&self) {
+        self.rights_of_threads();
+        self.git_hold();
+    }
+
+    /// Each thread that runs, or whose worktree the runner makes, with its folder and its rights.
+    fn rights_of_threads(&self) {
         let daemon = self.dir.parent().unwrap_or(&self.dir);
         let mut rights = self.rights.lock().unwrap_or_else(PoisonError::into_inner);
         let live: BTreeMap<Uuid, Seat> = self
