@@ -40,6 +40,7 @@ fn th111_claude_code_gets_inline_images_and_pdfs_as_blocks_and_the_rest_by_path(
             ),
             file("c.txt", Attached::File),
         ],
+        skills: Vec::new(),
     };
     let sent = line(&ClaudeInput::prompt_with(&prompt));
     let content = sent["message"]["content"].as_array().expect("blocks");

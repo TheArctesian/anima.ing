@@ -8,7 +8,9 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::drive::{Answer, DriveEvent, Effort, Mode, Program, Request, Usage};
+use crate::drive::{
+    Answer, ChosenSkill, CommandLists, DriveEvent, Effort, Mode, Program, Request, Usage,
+};
 use crate::files::FoundPath;
 
 pub mod attach;
@@ -106,6 +108,9 @@ pub enum Action {
         text: String,
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         attachments: Vec<Uuid>,
+        /// Codex: skills of the last `commands` answer of the thread (TH117).
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        skills: Vec<ChosenSkill>,
     },
     /// The answer of the person to a request of the program (THR-030).
     Answer {
@@ -131,6 +136,18 @@ pub enum Action {
     ChangeListing { thread: Uuid, change: ListingChange },
     /// The newest list of models that each program named (TH104).
     Models,
+    /// The commands and the skills of a program (TH117): of a thread, or of a program in a
+    /// folder before any thread runs there. Give `thread`, or `program` and `folder`.
+    Commands {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        thread: Option<Uuid>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        program: Option<Program>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        folder: Option<PathBuf>,
+    },
+    /// Codex compacts the context of a thread (TH117). Claude Code takes `/compact` as a prompt.
+    Compact { thread: Uuid },
     /// The updates that the runner keeps of a thread with a number below `before`, at most
     /// `most` of them, the newest of them (TH106).
     Earlier {
@@ -261,6 +278,13 @@ pub enum Outcome {
     /// How the person lists each thread that has a listing (TH46).
     Listings {
         listings: Vec<Listing>,
+    },
+    /// The commands and the skills of a program (TH117). `pending` when the program did not
+    /// name them yet: ask again later.
+    Commands {
+        #[serde(flatten)]
+        lists: CommandLists,
+        pending: bool,
     },
     Models {
         models: Vec<ModelRow>,

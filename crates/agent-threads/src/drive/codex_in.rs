@@ -28,12 +28,16 @@ pub enum CodexMethod {
     AccountRateLimitsRead,
     /// The models of the picker (TH104).
     ModelList,
+    /// The skills of the folder of a thread, for the `$` list (TH117).
+    SkillsList,
+    /// The person asks Codex to compact the context of a thread (TH117).
+    ThreadCompactStart,
     /// Only when the person asks for the sign-in at the client of the same computer.
     AccountLoginStart,
 }
 
 impl CodexMethod {
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 14] = [
         Self::Initialize,
         Self::Initialized,
         Self::ThreadStart,
@@ -45,6 +49,8 @@ impl CodexMethod {
         Self::AccountRead,
         Self::AccountRateLimitsRead,
         Self::ModelList,
+        Self::SkillsList,
+        Self::ThreadCompactStart,
         Self::AccountLoginStart,
     ];
 
@@ -62,6 +68,8 @@ impl CodexMethod {
             Self::AccountRead => "account/read",
             Self::AccountRateLimitsRead => "account/rateLimits/read",
             Self::ModelList => "model/list",
+            Self::SkillsList => "skills/list",
+            Self::ThreadCompactStart => "thread/compact/start",
             Self::AccountLoginStart => "account/login/start",
         }
     }
@@ -192,6 +200,24 @@ impl CodexInput {
     #[must_use]
     pub fn model_list(id: i64) -> String {
         call(id, CodexMethod::ModelList, &json!({"includeHidden": false}))
+    }
+
+    /// The skills that Codex finds for `folder` (TH117). It reads them again from disk, so that a
+    /// skill that was added since the last list is in it.
+    #[must_use]
+    pub fn skills_list(id: i64, folder: &Path) -> String {
+        let params = json!({"cwds": [folder.to_string_lossy()], "forceReload": true});
+        call(id, CodexMethod::SkillsList, &params)
+    }
+
+    /// Compacts the context of the thread (TH117): Codex says it with a `contextCompacted` item.
+    #[must_use]
+    pub fn thread_compact(id: i64, thread: &str) -> String {
+        call(
+            id,
+            CodexMethod::ThreadCompactStart,
+            &json!({"threadId": thread}),
+        )
     }
 
     /// The reply to a server request. "Allow for the session" sends back one decision that the
@@ -329,7 +355,13 @@ fn thread_params(
 fn input(prompt: &Prompt) -> Value {
     let is_image = |kind: &Attached| matches!(kind, Attached::Image { .. });
     let words = prompt.words(|file| !is_image(&file.kind));
-    let mut input = vec![json!({"type": "text", "text": words})];
+    // The skills that the person chose go first, as Codex puts a `$skill` of its own composer.
+    let mut input: Vec<Value> = prompt
+        .skills
+        .iter()
+        .map(|skill| json!({"type": "skill", "name": skill.name, "path": skill.path}))
+        .collect();
+    input.push(json!({"type": "text", "text": words}));
     for file in prompt
         .attachments
         .iter()

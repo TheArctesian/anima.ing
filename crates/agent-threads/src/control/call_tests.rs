@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use uuid::Uuid;
 
 use super::{Action, Call, ListingChange, Outcome, ProjectChange, Reply};
-use crate::drive::{Answer, Mode, Program};
+use crate::drive::{Answer, ChosenSkill, Mode, Program};
 use crate::git::{GitAction, GitOutcome, Scope};
 
 /// One of each call that reads, or that starts or drives a thread.
@@ -35,6 +35,10 @@ fn reads() -> Vec<Action> {
             thread,
             text: text(),
             attachments: vec![other],
+            skills: vec![ChosenSkill {
+                name: "review".to_owned(),
+                path: "/s/SKILL.md".to_owned(),
+            }],
         },
         Action::Answer {
             thread,
@@ -68,6 +72,17 @@ fn changes() -> Vec<Action> {
             change: ListingChange::Remove,
         },
         Action::Models,
+        Action::Commands {
+            thread: Some(thread),
+            program: None,
+            folder: None,
+        },
+        Action::Commands {
+            thread: None,
+            program: Some(Program::Codex),
+            folder: Some(PathBuf::from("/work")),
+        },
+        Action::Compact { thread },
         Action::Earlier {
             thread,
             before: 9,
@@ -186,10 +201,12 @@ const fn kind(action: &Action) -> usize {
         Action::Folders { .. } => 25,
         Action::Git { .. } => 26,
         Action::Version => 27,
+        Action::Commands { .. } => 28,
+        Action::Compact { .. } => 29,
     }
 }
 
-const KINDS: usize = 28;
+const KINDS: usize = 30;
 
 #[test]
 fn th109_each_call_reads_back_from_its_frame() {

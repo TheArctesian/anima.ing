@@ -1,4 +1,5 @@
-//! The call `send`: a prompt to a thread, with the files that the person attached for it (TH111).
+//! The call `send`: a prompt to a thread, with the files that the person attached for it (TH111)
+//! and the skills that the person chose for it (TH117).
 
 use agent_threads::control::{Action, Outcome, Queued, Refusal};
 use agent_threads::drive::Prompt;
@@ -73,14 +74,20 @@ impl Runner {
             thread: id,
             text,
             attachments,
+            skills,
         } = action
         else {
             return Err(Refusal::BadValue);
         };
-        if !person && !attachments.is_empty() {
+        if !person && !(attachments.is_empty() && skills.is_empty()) {
             return Err(Refusal::FromAnAgent);
         }
-        let prompt = self.prompt_of(id, text, &attachments)?;
+        self.threads
+            .get(&id)
+            .ok_or(Refusal::UnknownThread)?
+            .takes(&skills)?;
+        let mut prompt = self.prompt_of(id, text, &attachments)?;
+        prompt.skills = skills;
         let (lines, counted) = match self.lines_for(id, &prompt, person) {
             Ok(went) => went,
             Err(why) => {
@@ -128,7 +135,11 @@ impl Runner {
         thread.can_take_a_prompt()?;
         let program = thread.program();
         let attachments = self.attached.take(id, files, program)?;
-        let prompt = Prompt { text, attachments };
+        let prompt = Prompt {
+            text,
+            attachments,
+            skills: Vec::new(),
+        };
         // The text is written twice escaped at worst: in the line, and in the frame to the holder.
         let inline: usize = prompt
             .attachments

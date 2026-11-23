@@ -4,6 +4,7 @@
 
 use serde_json::Value;
 
+pub mod commands;
 pub mod models;
 
 /// The most characters of one line of words: a name for the person or a description.

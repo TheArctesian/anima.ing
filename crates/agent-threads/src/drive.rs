@@ -32,8 +32,11 @@ pub use claude_out::ClaudeDecoder;
 pub use codex_in::{CodexInput, CodexMethod, CodexPlace, CodexTurn, KeptFolder, TurnSettings};
 pub use codex_out::CodexDecoder;
 pub use launch::{Effort, Invocation, Launch, Mode, Model, Program, SessionStart};
+pub use lists::commands::{
+    CommandLists, CommandRow, MOST_ROWS, SkillRow, claude_commands, claude_file, codex_skills,
+};
 pub use lists::models::{EffortWords, ModelChoice, SpeedChoice, claude_models, codex_models};
-pub use prompt::{Attached, Attachment, Prompt};
+pub use prompt::{Attached, Attachment, ChosenSkill, Prompt};
 pub use request::{Answer, ProgramRequestId, Question, Request, RequestKind};
 pub use turn_facts::{PlanStep, StepState, Usage};
 
@@ -147,6 +150,11 @@ pub enum DriveEvent {
     /// program; it is not an update of a thread.
     Models {
         models: Vec<ModelChoice>,
+    },
+    /// The commands or the skills that the program offers in the folder of the thread (TH117).
+    /// The runner keeps the newest of each thread; it is not an update of a thread.
+    Commands {
+        lists: CommandLists,
     },
     TurnEnded {
         outcome: TurnOutcome,

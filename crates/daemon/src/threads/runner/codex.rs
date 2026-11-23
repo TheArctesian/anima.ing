@@ -161,6 +161,19 @@ impl Codex {
         vec![CodexInput::turn_start(id, &thread, prompt, &turn)]
     }
 
+    /// Asks for the skills of the folder again (TH117).
+    pub fn skills_again(&mut self) -> String {
+        let id = self.call(Call::Other);
+        CodexInput::skills_list(id, &self.folder)
+    }
+
+    /// Compacts the context of the thread (TH117); `None` before Codex named its thread.
+    pub fn compact(&mut self) -> Option<String> {
+        let thread = self.thread.clone()?;
+        let id = self.call(Call::Other);
+        Some(CodexInput::thread_compact(id, &thread))
+    }
+
     /// The speed of the next turns (TH117); `None` keeps the one they have.
     pub fn change_speed(&mut self, speed: Option<String>) {
         if speed.is_some() {
@@ -292,6 +305,7 @@ impl Codex {
                 let account = self.call(Call::Other);
                 let limits = self.call(Call::Other);
                 let models = self.call(Call::Other);
+                let skills = self.call(Call::Other);
                 Ok(vec![
                     CodexInput::initialized(),
                     CodexInput::thread_start(
@@ -307,6 +321,7 @@ impl Codex {
                     CodexInput::account_read(account),
                     CodexInput::account_limits_read(limits),
                     CodexInput::model_list(models),
+                    CodexInput::skills_list(skills, &self.folder),
                 ])
             }
             Call::ThreadStart => {

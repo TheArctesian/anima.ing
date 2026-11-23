@@ -18,6 +18,7 @@ use uuid::Uuid;
 
 use super::gone;
 
+mod commands;
 mod made;
 
 pub(super) use made::CLAUDE;

@@ -61,6 +61,9 @@ pub enum AgentCommand {
     /// Stop the running turn of a thread; the program stays.
     #[cfg(unix)]
     Interrupt(drive::ThreadIdArgs),
+    /// Ask Codex to compact the context of a thread. For Claude Code, send the prompt /compact.
+    #[cfg(unix)]
+    Compact(drive::ThreadIdArgs),
     /// End the program of a thread and each process below it.
     #[cfg(unix)]
     Stop(drive::ThreadIdArgs),
@@ -117,6 +120,10 @@ pub enum AgentCommand {
     /// folders of tools and of build output are left out.
     #[cfg(unix)]
     Files(files::FilesArgs),
+    /// List the commands and the skills of an agent program, as the / and $ lists of the
+    /// composer: of a thread that the runner started, or of a program in a folder.
+    #[cfg(unix)]
+    Commands(files::CommandsArgs),
     /// List the folders in one folder of this computer, to choose a project for a thread. Only
     /// names of folders: no file and no link.
     #[cfg(unix)]
@@ -151,6 +158,7 @@ impl AgentCommand {
             Self::Set(args) => args.run(invocation).await,
             Self::Approve(args) => args.run(invocation).await,
             Self::Interrupt(args) => drive::interrupt(args, invocation).await,
+            Self::Compact(args) => drive::compact(args, invocation).await,
             Self::Stop(args) => drive::stop(args, invocation).await,
             Self::Watch(args) => drive::watch(args, invocation).await,
             Self::RaiseLimit => drive::raise_limit(invocation).await,
@@ -166,6 +174,7 @@ impl AgentCommand {
             Self::Accounts => accounts::accounts(invocation).await,
             Self::Models => accounts::models(invocation).await,
             Self::Files(args) => files::files(args, invocation).await,
+            Self::Commands(args) => files::commands(args, invocation).await,
             Self::Folders(args) => files::folders(args, invocation).await,
             other => other.run_listing(invocation).await,
         }

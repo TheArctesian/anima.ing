@@ -30,6 +30,16 @@ pub enum ProgramName {
     Codex,
 }
 
+impl ProgramName {
+    #[must_use]
+    pub const fn program(self) -> Program {
+        match self {
+            Self::ClaudeCode => Program::ClaudeCode,
+            Self::Codex => Program::Codex,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
 pub enum ModeName {
     /// The program asks nothing (the default, R-308).
@@ -131,10 +141,7 @@ impl StartArgs {
             _ => invocation.output.message(NOT_CHECKED),
         }
         let action = Action::Start {
-            program: match self.program {
-                ProgramName::ClaudeCode => Program::ClaudeCode,
-                ProgramName::Codex => Program::Codex,
-            },
+            program: self.program.program(),
             folder,
             mode: self.mode.mode(),
             model: self.model,
@@ -201,6 +208,21 @@ pub async fn interrupt(args: ThreadIdArgs, invocation: &Invocation) -> Result<()
             thread: args.thread,
         },
         "The turn stopped.",
+    )
+    .await
+}
+
+/// `anima agents compact`: Codex compacts the context of the thread (TH117).
+///
+/// # Errors
+/// [`Failure`] for a refusal of the runner.
+pub async fn compact(args: ThreadIdArgs, invocation: &Invocation) -> Result<(), Failure> {
+    simple(
+        invocation,
+        Action::Compact {
+            thread: args.thread,
+        },
+        "Codex is compacting the context of the thread.",
     )
     .await
 }

@@ -5217,6 +5217,35 @@ list, or seen the tab of a real device.
 
 Result: Open.
 
+### HT-NEW-composercommands: the commands, the skills and the picker extras of real programs (task TH117)
+
+Built on the branch `threads/composer-commands`: the runner reads the commands of Claude Code from its answer to
+`initialize`, the skills of Codex from `skills/list`, and the speeds, the flags and the efforts `none` and `minimal`
+of each Codex model from `model/list`; `start` and `set` send a speed to Codex as `serviceTier`, and the call `compact`
+sends `thread/compact/start`. The tests use made programs and the schema of Codex 0.170; nobody has run them against a
+real account.
+
+1. On this Mac, with Claude Code and Codex signed in, run `anima agents models`.
+   Expected: each Codex model that Codex shows with a fast speed has it in the column SPEEDS; a model that Codex
+   replaces says "(older)".
+2. Start a Codex thread with `anima agents start --program codex --folder <a repository> --prompt "Say hi"` and the
+   `--model` and `--speed` of a model of step 1 that has a speed.
+   Expected: the thread starts and the turn ends well; Codex shows the speed in its own session file for the turn.
+3. Run `anima agents set <thread> --speed default`, then send a prompt.
+   Expected: the turn ends well at the standard speed.
+4. Put a skill in `<the repository>/.codex/skills/hello/SKILL.md`, start a new Codex thread there, and run
+   `anima agents commands --thread <thread>`.
+   Expected: the skill `hello` is listed with its words.
+5. Run `anima agents commands --program codex --folder <the repository>`, wait 30 seconds, and run it again.
+   Expected: the first run says that the program has not named its commands yet; the second lists `hello`.
+6. Run `anima agents compact <the thread of step 4>`.
+   Expected: the answer says that Codex is compacting; the thread shows that its context was compacted.
+7. Start a Claude Code thread in a folder that has `.claude/commands/deploy.md`, and run
+   `anima agents commands --thread <thread>`.
+   Expected: the built-in commands of Claude Code and `deploy` are listed, one line each.
+
+Result: Open.
+
 ### HT-174: Hosting > Storage lists the volumes of each machine (task H48; HSE-015)
 
 Built on the branch `hosted/hse-storage`: the page Hosting, section Storage, reads the devices with SSH on and, for each,
