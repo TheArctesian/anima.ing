@@ -1,9 +1,4 @@
-//! Tests of part 1 of the applications program (task H31; contract K10 Section 6.4): the
-//! settings (`settings`), the pair of a hub (`hub_pair`), the reader of an item (`requests`),
-//! the containers that a type reaches (`reaching`), each type (`applying`, `going_back`,
-//! `adopting`, `removing`, `pruning`), the final form (`final_forms`) and the start
-//! (`starting`). Each test names the rule that it shows, for the permitted and the refused
-//! case.
+//! Tests of part 1 of the applications program (task H31; contract K10 Section 6.4).
 
 mod adopting;
 mod applying;
@@ -24,7 +19,6 @@ use crate::{
     work::Facts,
 };
 
-/// One application, its project and the identifiers of three containers.
 const APPLICATION: &str = "0192f6b0-7c1e-7a3b-9d2f-4e5a6b7c8d9e";
 const PROJECT: &str = "anima-0192f6b07c1e7a3b9d2f4e5a6b7c8d9e";
 const OF_ANIMA: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -34,7 +28,6 @@ const DIGEST: &str = "sha256:f59abe656b692d901e184be3445e084786602108599d2a51d22
 const SET_ON_AT: u64 = 1_795_000_000;
 const FILES: &str = "/var/lib/anima/applications/0192f6b0-7c1e-7a3b-9d2f-4e5a6b7c8d9e/files";
 
-/// The facts of one machine, which a test changes before it asks.
 struct World {
     settings: Settings,
     paths: Paths,
@@ -73,9 +66,6 @@ fn pulled(service: &str, image: &str) -> Pulled {
 }
 
 impl World {
-    /// A machine with "Manage applications" on and each other setting as after the install:
-    /// one application that Anima installed, one adopted project, and one container of the
-    /// owner that Anima does not know.
     fn new() -> Self {
         let mut settings = Settings::after_install();
         settings.managed = Some(Managed {
@@ -144,7 +134,6 @@ impl World {
     }
 }
 
-/// The commands of a plan, in their order.
 fn commands(plan: &Plan) -> Vec<&Command> {
     plan.steps
         .iter()
@@ -155,14 +144,12 @@ fn commands(plan: &Plan) -> Vec<&Command> {
         .collect()
 }
 
-/// The arguments of the one command of a plan.
 fn arguments(plan: &Plan) -> Vec<&str> {
     let commands = commands(plan);
     assert_eq!(commands.len(), 1, "the plan has one command");
     commands[0].arguments.iter().map(String::as_str).collect()
 }
 
-/// The first arguments of each command: the socket and the configuration folder.
 const FIRST: [&str; 4] = [
     "--host",
     "unix:///run/docker.sock",
@@ -170,7 +157,6 @@ const FIRST: [&str; 4] = [
     "/var/lib/anima/docker-configuration",
 ];
 
-/// The text of an item of the type `kind` with `parameters`.
 fn item(kind: &str, parameters: &str) -> String {
     let secrets = if kind == "application_apply" {
         "\"compose_file\""

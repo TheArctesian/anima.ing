@@ -1,6 +1,3 @@
-//! Text an operator writes is bounded and free of NUL and control characters (PRJ-028,
-//! PRJ-035, decisions item 11).
-
 use proptest::prelude::*;
 
 use super::long;

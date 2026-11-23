@@ -1,12 +1,5 @@
-//! The byte budget of a text session (S2 T2). When the device sends its window again for
-//! each line, the client must not get more than twice the device's bytes. When the device
-//! sends only what changed, a line must cost the client at most 600 bytes.
-//!
-//! The device is a terminal that prints one line at a time and scrolls. A VNC server tells
-//! this in one of two ways, and both are measured: it sends its whole window again for each
-//! line, or it sends a `CopyRect` for the scroll and then only the new line. Its bytes are
-//! counted with a ZRLE-like encoding: 64 x 64 tiles, each packed to one bit for a pixel,
-//! through one zlib stream for the session.
+//! The byte budget of a text session (S2 T2), for a terminal that prints one line at a time.
+//! Device bytes use a ZRLE-like encoding: two-colour 64 x 64 tiles through one zlib stream.
 
 use anima_gateway::frames::Formats;
 use anima_gateway::screen::{Area, BYTES_PER_PIXEL, Screen};
@@ -28,7 +21,6 @@ const WINDOW: Area = Area {
 const PAPER: [u8; 3] = [0x2e, 0x34, 0x40];
 const INK: [u8; 3] = [0xd8, 0xde, 0xe9];
 
-/// A small random number generator, the same in each run.
 struct Random(u64);
 
 impl Random {
@@ -55,13 +47,11 @@ fn line(random: &mut Random) -> Vec<usize> {
         .collect()
 }
 
-/// Whether the pixel (`x`, `y`) of character `character` has ink: a fixed shape for each.
 fn has_ink(character: usize, x: usize, y: usize) -> bool {
     let inside = (1..7).contains(&x) && (3..13).contains(&y);
     character != 0 && inside && (character * 31 + x * 7 + y * 13 + x * y).is_multiple_of(3)
 }
 
-/// The window's pixels for `lines`, top to bottom.
 fn window(lines: &[Vec<usize>]) -> Vec<u8> {
     let mut rgb = Vec::with_capacity(WINDOW.width * WINDOW.height * BYTES_PER_PIXEL);
     for y in 0..WINDOW.height {
@@ -74,15 +64,12 @@ fn window(lines: &[Vec<usize>]) -> Vec<u8> {
     rgb
 }
 
-/// Up to eight pixels as one byte, the first in the highest bit.
 fn bits_as_byte(bits: &[bool]) -> u8 {
     bits.iter()
         .enumerate()
         .fold(0, |byte, (bit, ink)| byte | (u8::from(*ink) << (7 - bit)))
 }
 
-/// The bytes a VNC server sends for the first `height` rows of `rgb` (rows as wide as the
-/// window) with a ZRLE-like encoding.
 fn device_bytes(stream: &mut Compress, rgb: &[u8], height: usize) -> usize {
     let mut tiles = Vec::new();
     for top in (0..height).step_by(64) {
@@ -123,7 +110,7 @@ fn a_text_session_costs_the_client_at_most_twice_the_device_bytes() {
     let mut device = Compress::new(Compression::default(), true);
     let formats = Formats { jpeg: true };
 
-    // The window as the session finds it. Both sides pay for it once; it is not counted.
+    // Both sides pay once for the first window; it is not counted.
     screen.write(WINDOW, &window(&lines)).expect("inside");
     send(&mut screen, &mut client, formats, 0);
     device_bytes(&mut device, &window(&lines), WINDOW.height);
@@ -185,10 +172,8 @@ fn a_line_from_a_device_that_scrolls_with_copyrect_costs_the_client_a_small_fixe
     }
     assert_eq!(client.rgb, whole(&screen));
     let to_client = client.wire_bytes - opening;
-    // Such a device sends about 150 bytes for a line. The client's bytes cannot follow it
-    // down: `copy`, `img`, `end`, `sync` and the PNG's own chunks are about 220 bytes
-    // before the first pixel, and the pixels travel in base64. So this case has a budget in
-    // bytes for each line, and a factor that records where the format's fixed cost puts it.
+    // The client pays about 220 bytes of fixed cost before the first pixel, and its pixels
+    // travel in base64, so this case has a budget for each line.
     assert!(
         to_client <= 60 * 600,
         "{to_client} bytes to the client for 60 lines"

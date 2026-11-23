@@ -1,12 +1,8 @@
-//! The keys that a file may have, at each level (K10 Section 6.4.4). A key that is not here is
-//! refused: thus `include`, `extends`, `env_file`, `profiles`, `build`, `name`, `privileged`
-//! and each key of a newer Compose are refused with no rule of their own.
+//! The keys that a file may have, at each level (K10 Section 6.4.4); any other key is refused.
 
 use crate::{Node, Refusal, Rule};
 
-/// The form of a value.
 pub(crate) enum Shape {
-    /// One scalar.
     Text,
     /// One scalar, or a list of scalars.
     Texts,
@@ -16,7 +12,6 @@ pub(crate) enum Shape {
     Record(&'static [(&'static str, &'static Shape)]),
     /// A map of names of the file to values of one form.
     Named(&'static Shape),
-    /// A list of values of one form.
     Each(&'static Shape),
     /// A list of names, or a map of names to values of one form.
     NamesOr(&'static Shape),
@@ -164,12 +159,7 @@ fn walk(node: &Node, shape: &Shape, place: Place) -> Result<(), Refusal> {
     }
 }
 
-/// Checks that `document` has only keys of the list, each with a value of its form.
-///
-/// # Errors
-/// `key_not_permitted` for a key that is not in the list, at any level;
-/// `value_not_permitted` for a value of a different form, also a short form of a port, a
-/// mount or a config.
+/// A short form of a port, a mount or a config is `value_not_permitted`.
 pub(crate) fn permitted(document: &Node) -> Result<(), Refusal> {
     let top = Place(None);
     let entries = document

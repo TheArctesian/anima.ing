@@ -1,5 +1,4 @@
-//! Each key here is made in the test by the reference minisign crate; no real key is read
-//! (UPD-012).
+//! Keys are made by the reference minisign crate; no real key is read (UPD-012).
 
 mod checks;
 mod fields;
@@ -36,7 +35,6 @@ fn daemon_file() -> File {
     }
 }
 
-/// The record of 0.3.0 for Linux, which replaces each version from 0.2.0.
 fn record() -> Record {
     Record {
         format: FORMAT,

@@ -1,5 +1,4 @@
-//! Every key here is made in the test by the reference minisign crate (the one tauri-cli uses);
-//! no real key file is read (UPD-012).
+//! Keys are made by the reference minisign crate; no real key file is read (UPD-012).
 
 use std::io::Cursor;
 
@@ -16,7 +15,6 @@ use crate::{
 const PASSWORD: &str = "correct horse";
 const DATA: &[u8] = b"an AppImage, as far as signing cares";
 
-/// Checks `signature` over the whole of `file` for exactly `version`, as the hub does in chunks.
 fn verify(
     public: &PublicKey,
     file: &[u8],
@@ -29,8 +27,6 @@ fn verify(
     stream.finish(version)
 }
 
-/// A reference key pair: the secret key file as `tauri signer generate` writes it (base64 of the
-/// minisign text) and the reference public key.
 fn tauri_key_file(password: Option<&str>) -> (String, minisign::PublicKey) {
     let pair = match password {
         Some(password) => KeyPair::generate_encrypted_keypair(Some(password.to_owned())).unwrap(),
@@ -40,7 +36,6 @@ fn tauri_key_file(password: Option<&str>) -> (String, minisign::PublicKey) {
     (STANDARD.encode(text), pair.pk)
 }
 
-/// `plugins.updater.pubkey` of the reference public key: base64 of its key file.
 fn tauri_public_key(public: &minisign::PublicKey) -> String {
     STANDARD.encode(public.to_box().unwrap().into_string())
 }
@@ -106,7 +101,6 @@ fn bld_046_the_reference_minisign_accepts_the_signature_and_reads_the_version() 
     let text = String::from_utf8(STANDARD.decode(&signature).unwrap()).unwrap();
     let parsed = SignatureBox::from_string(&text).unwrap();
     minisign::verify(&public, &parsed, Cursor::new(DATA), true, false, false).unwrap();
-    // The trusted comment as tauri-plugin-updater reads it.
     assert_eq!(
         parsed.trusted_comment().unwrap(),
         "timestamp:1700000000\tfile:Anima_0.1.12_amd64.AppImage\tversion:0.1.12"

@@ -2,7 +2,6 @@ use std::time::{Duration, UNIX_EPOCH};
 
 use super::{Blocked, Link, LinkState, State, Status, read, write};
 
-/// 2027-01-15T08:00:00Z and a part of a second.
 fn link(state: Link) -> LinkState {
     LinkState::at(state, UNIX_EPOCH + Duration::from_millis(1_800_000_000_250))
 }

@@ -1,4 +1,4 @@
-//! Who may change a route (operator ruling of 2026-11-22 on adding a route): one rule for each caller. A browser token, a login
+//! Who may change a route (R-384): one rule for each caller. A browser token, a login
 //! token, which the `anima` command and an agent hold, and the same token declared as an agent
 //! (MCP) all pass the check of the caller, for a public and a private route; an API key is
 //! refused. No route is stored: the account has no second factor, so each caller stops at that

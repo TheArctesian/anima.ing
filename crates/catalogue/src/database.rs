@@ -1,6 +1,5 @@
-//! The fields of an entry about databases (R-216, task H24). An entry of kind `database`
-//! describes the server that it installs. An application that needs a database names the
-//! variables of the connection values; the install writes each one, so each is generated.
+//! The database fields of an entry (R-216, task H24). The install writes each connection
+//! variable, so each is generated.
 
 use crate::{
     Code,
@@ -8,7 +7,6 @@ use crate::{
     postgresql::is_extension,
 };
 
-/// A variable name of an environment file: `A-Z`, `0-9` and `_`, not first a digit.
 fn is_variable(name: &str) -> bool {
     name.bytes()
         .next()
@@ -36,7 +34,6 @@ fn need_described(need: &Need, generated: &[String]) -> bool {
             .all(|name| is_variable(name) && generated.iter().any(|made| made == name))
 }
 
-/// The codes of the database fields of `anima`.
 pub(crate) fn check(anima: &Anima) -> Vec<Code> {
     let described = match anima.kind {
         Kind::Database => {

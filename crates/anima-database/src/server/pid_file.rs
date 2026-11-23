@@ -1,8 +1,4 @@
-//! What `postmaster.pid` says about the server that wrote it. Pure.
-//!
-//! PostgreSQL writes one value on each line: 1 the process ID, 3 the start time in seconds
-//! since 1970, and 8 the status, which is `ready` when the server accepts connections.
-//! `pg_ctl` reads the same lines to decide that a start is complete.
+//! Reads `postmaster.pid` as `pg_ctl` does: line 1 the process ID, 3 the start time, 8 the status.
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -32,9 +28,7 @@ impl PidFile {
         self.is_ready.then_some(self.process_id)
     }
 
-    /// Whether this file is the ready mark of the child `process_id` that was started at
-    /// `spawned_at`. A file from before the start is stale, also when an old server had the
-    /// number that the new child has now.
+    /// A file from before `spawned_at` is stale, also when an old server had the same process ID.
     pub fn is_ready_for(self, process_id: u32, spawned_at: SystemTime) -> bool {
         // A clock before 1970 gives no start time to compare with, so nothing is ready.
         self.is_ready

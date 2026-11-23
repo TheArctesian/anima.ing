@@ -258,6 +258,8 @@ that owns the area.
 | SF-227 | Smaller points: claims about the door, wake, abuse and a hub on the same site. Low | The routing of the domains of applications on the hub (task H21, design) | Open |
 | SF-325 | The proof of a name is read again only when a person asks. Low | The routing of the domains of applications on the hub (task H21, code) | Open |
 | SF-330 | A change of a route asks for no new second factor. Low | The routing of the domains of applications on the hub (task H21, code) | Accepted by the operator (2026-11-22, relayed; R-384: a Full access agent adds a route with no approval, one rule for each caller). The rule of `bb0bce295` that only a browser token adds a public route goes; the consent at the machine (OD-HOST-43) stays |
+| SF-391 | The consent at the machine is the one guard left for a public route, and nothing sets it yet. Low | The routing of the domains of applications on the hub (task H21, code) | Open |
+| SF-392 | On a hosted hub a route is added with no second factor. Low | The routing of the domains of applications on the hub (task H21, code) | Accepted by the operator (R-430) |
 | SF-331 | The target of a route came from the person, not from the record of the application. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
 | SF-332 | The proxy opened a tunnel for each `Upgrade: websocket` without the answer 101. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
 | SF-327 | No time limit and no cap before the name of a connection was known. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `68c9a7ab5`) |
@@ -2479,6 +2481,36 @@ The fix to make: `addApplicationRoute` and `removeApplicationRoute` ask for a co
 Ruling (2026-11-22, R-384): the operator chose that a Full access agent adds a route with no approval, and one rule for each caller: no step-up and no device approval for adding or removing a route; a thread in a restricted mode asks in the thread (Section 3b of [vault.md](../contracts/extensions/vault.md)). The rule of `bb0bce295` (only a browser token adds a public route, `PublicNeedsPerson`) and the refusal of an agent at a removal go; task H21 removes them. What stays: no API key and no builder token change a route, the second factor of the account (HM-D14) as the Routes session keeps it, and the consent at the machine before a public route serves (OD-HOST-43). The cost, told to him: an agent can make an application public with no question; the consent at the machine is the one guard left.
 
 State: Accepted by the operator (R-384). Found by a separate reviewer on 2026-11-21.
+
+### SF-391: The consent at the machine is the one guard left for a public route, and nothing sets it yet. Low
+
+Requirements: HOST-046, task H21; OD-HOST-43; R-384.
+
+What it is: After R-384 a login token, also one that an agent holds, adds a public route with no approval. The one guard left before the route serves is the consent at the machine (`routes.route.machine_consent`). Each route is stored with it false, and no code outside the tests sets it.
+
+Where: `crates/hub/src/work/routes.rs` (`add`), `crates/hub/src/work/routes/model.rs` (`Route::waits`), and the setter that is not written.
+
+Effect, and who can cause it: Whoever can reach the setter, when it is written. Effect: an application is public on the internet with no question to a person.
+
+Mitigation now: Nothing sets the consent, so no route serves (the three serving reads filter on `waits`).
+
+The fix to make: The setter gets its own security review by a separate reviewer before it is merged. It is not reachable by an API key, a builder token or a tool of `anima mcp`, and the consent is given at the machine, not at the hub.
+
+State: Open. Found by a separate reviewer on 2026-11-22.
+
+### SF-392: On a hosted hub a route is added with no second factor. Low
+
+Requirements: HM-D14; R-129; task H21.
+
+What it is: A hosted hub has no TOTP of the hub (R-129), so `addApplicationRoute` and `checkApplicationRoute` ask for no second factor there.
+
+Where: `crates/hub/src/work/routes/graphql.rs` (`signed_in_for_routes`).
+
+Effect, and who can cause it: A person or an agent with the login or browser token of a hosted account. Effect: a route is added with the sign-in alone. Today each route, private or public, still waits for the consent at the machine, which nothing sets (SF-391). When R-390 is built, a private route waits for no consent and reaches a port of a machine for each device of the network of Anima, guarded by the sign-in alone.
+
+Mitigation now: The hub knows that it is hosted only from how it was started (`ANIMA_HOSTED_CLOUD_KEY_FILE`), never from a request. API keys and builder tokens stay refused. A public route still waits for the consent at the machine.
+
+State: Accepted by the operator (R-430, 2026-11-23).
 
 ### SF-328: The protocol of a public stream was only a label that the person picked. Medium
 

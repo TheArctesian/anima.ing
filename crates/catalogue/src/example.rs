@@ -1,6 +1,4 @@
-//! No file of a recipe holds a secret value. A secret is made at the install: its line in the
-//! example environment file has no value, and the line above it says so; the Compose file gives
-//! it only as a variable.
+//! No file of a recipe holds a secret value: the install makes each secret.
 
 use compose_rules::Node;
 
@@ -9,13 +7,10 @@ use crate::{
     privileges::{commands, environment},
 };
 
-/// The line above a variable that the install makes.
 pub(crate) const GENERATED: &str = "# generated at install";
 
-/// The parts of a name, between two `_`, that mark a secret: `DB_PASS`, `API_KEY`.
 const SECRET_PARTS: [&str; 2] = ["PASS", "KEY"];
-/// The texts that mark a secret in each place of a name: `DB_PASSWORD`, `SECRET_KEY_BASE`,
-/// `MYAPIKEY`, `SMTP_PASSWD`, `AWS_CREDENTIALS`, `PRIVATE_KEY` (SF-225).
+/// Texts that mark a secret anywhere in a name (SF-225).
 const SECRET_TEXTS: [&str; 7] = [
     "PASSWORD",
     "PASSWD",
@@ -26,14 +21,12 @@ const SECRET_TEXTS: [&str; 7] = [
     "PRIVATE_KEY",
 ];
 
-/// True when the name marks a secret, in capital or small letters.
 pub(crate) fn is_secret_name(name: &str) -> bool {
     let name = name.to_ascii_uppercase();
     name.split('_').any(|part| SECRET_PARTS.contains(&part))
         || SECRET_TEXTS.iter().any(|text| name.contains(text))
 }
 
-/// `${NAME}`: one variable with no default, which the environment file fills.
 fn is_one_variable(value: &str) -> bool {
     value
         .strip_prefix("${")
@@ -46,9 +39,7 @@ fn is_one_variable(value: &str) -> bool {
         })
 }
 
-/// True when a service of the Compose file, as its author wrote it, gives a variable whose
-/// name marks a secret a value that is not one variable: a literal, or a default after `:-`;
-/// or gives such a name a value in a word of its commands (SF-251).
+/// A secret name with a literal or a `:-` default, in the environment or the commands (SF-251).
 pub(crate) fn secret_in_file(services: &[(String, Node)]) -> bool {
     services.iter().any(|(_, service)| {
         environment(service)
@@ -58,7 +49,6 @@ pub(crate) fn secret_in_file(services: &[(String, Node)]) -> bool {
     })
 }
 
-/// One variable of the file, with the line above it.
 struct Line<'a> {
     name: &'a str,
     value: &'a str,
@@ -83,7 +73,6 @@ fn lines(text: &str) -> Vec<Line<'_>> {
     found
 }
 
-/// The codes of the example file `text` of a recipe whose install makes `generated`.
 pub(crate) fn check(text: &str, generated: &[String]) -> Vec<Code> {
     let found = lines(text);
     let mut codes = Vec::new();

@@ -1,12 +1,10 @@
-//! The reader of JSON for a request and for the settings file. It refuses what a second
-//! reader could read in a different way: a member that is there two times, a number that is
-//! not a whole number of 0 or more, and text after the value.
+//! Strict JSON: it refuses what a second reader could read in a different way, as a repeated
+//! member, a number that is not a whole number of 0 or more, or text after the value.
 
 use std::fmt;
 
 use serde::de::{Deserialize, Deserializer, Error, MapAccess, SeqAccess, Visitor};
 
-/// One value of JSON.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Value {
     Null,
@@ -14,7 +12,6 @@ pub(crate) enum Value {
     Whole(u64),
     Text(String),
     List(Vec<Value>),
-    /// The members in the order of the text; no name is there two times.
     Record(Vec<(String, Value)>),
 }
 
@@ -69,8 +66,7 @@ impl<'de> Deserialize<'de> for Value {
     }
 }
 
-/// The one value of `text`; `None` for text that is not strict JSON. The fault of the reader
-/// is dropped: it can hold text of the input.
+/// `None` for text that is not strict JSON; the fault is dropped, as it can hold text of the input.
 pub(crate) fn read(text: &str) -> Option<Value> {
     let mut reader = serde_json::Deserializer::from_str(text);
     let value = Value::deserialize(&mut reader).ok()?;
@@ -78,8 +74,7 @@ pub(crate) fn read(text: &str) -> Option<Value> {
     Some(value)
 }
 
-/// The members of one record, taken one at a time, so that a member that nobody took is
-/// found at the end.
+/// Members are taken one at a time, so that a member that nobody took is found at the end.
 pub(crate) struct Members(Vec<(String, Value)>);
 
 impl Members {
@@ -90,7 +85,6 @@ impl Members {
         }
     }
 
-    /// Takes the member `name`; `None` when it is not there.
     pub(crate) fn take(&mut self, name: &str) -> Option<Value> {
         let at = self.0.iter().position(|(known, _)| known == name)?;
         Some(self.0.remove(at).1)
@@ -117,7 +111,6 @@ impl Members {
         }
     }
 
-    /// The texts of a member that is a list of texts.
     pub(crate) fn texts(&mut self, name: &str) -> Option<Vec<String>> {
         let Value::List(values) = self.take(name)? else {
             return None;
@@ -131,7 +124,6 @@ impl Members {
             .collect()
     }
 
-    /// True when each member was taken: the record had no member that the reader does not know.
     pub(crate) fn is_empty(&self) -> bool {
         self.0.is_empty()
     }

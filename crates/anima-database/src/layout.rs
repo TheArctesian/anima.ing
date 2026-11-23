@@ -1,5 +1,4 @@
-//! Where one bundled PostgreSQL keeps its files. Pure: paths in, paths out; nothing is read,
-//! created or checked on disk.
+//! Where one bundled PostgreSQL keeps its files; nothing is read or checked on disk.
 //!
 //! ```text
 //! <root>/cluster/      the PostgreSQL data folder
@@ -17,14 +16,11 @@ mod tests;
 /// PostgreSQL names its socket file after the port, also when it listens on no port.
 const SOCKET_FILE: &str = ".s.PGSQL.5432";
 
-/// The most bytes a Unix socket path can have on macOS, whose `sun_path` holds 104 with the
-/// final NUL. Linux holds 4 more; one limit for both keeps a root valid on either.
+/// macOS `sun_path` holds 104 bytes with the final NUL; Linux holds more, so one limit suits both.
 const SOCKET_PATH_LIMIT: usize = 103;
 
-/// The application's identifier, which names its folder in `~/Library/Application Support`.
 const MACOS_APPLICATION: &str = "ing.anima.desktop";
 
-/// The operating systems the application hub runs on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Platform {
     MacOs,
@@ -34,7 +30,6 @@ pub enum Platform {
 }
 
 impl Platform {
-    /// The platform this program was built for.
     #[cfg(windows)]
     pub const HOST: Self = Self::Windows;
     #[cfg(not(windows))]
@@ -45,7 +40,6 @@ impl Platform {
     };
 }
 
-/// The folders of the user who runs the hub, as the environment gives them.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UserFolders {
     pub home: PathBuf,
@@ -57,8 +51,7 @@ pub struct UserFolders {
     pub xdg_runtime_dir: Option<PathBuf>,
 }
 
-/// The two logins that get a URL file. The hub is given the owner's file for `migrate` and
-/// its own to serve (K2 "Roles", R-016).
+/// The two logins that get a URL file (R-016).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Role {
     /// Applies migrations and owns every object.
@@ -85,7 +78,6 @@ pub enum LayoutError {
     SocketFolderList,
 }
 
-/// Every path of one bundled database.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Layout {
     root: PathBuf,
@@ -96,13 +88,11 @@ impl Layout {
     /// A layout with its files below `root` and its socket in `socket_folder`.
     ///
     /// # Errors
-    /// When a folder is not absolute, or the socket file's path is longer than a Unix socket
-    /// path can be.
+    /// When a folder is not absolute, or the socket file's path is too long for a Unix socket.
     pub fn new(root: PathBuf, socket_folder: PathBuf) -> Result<Self, LayoutError> {
         absolute(&root, "database root")?;
         absolute(&socket_folder, "socket folder")?;
-        // PostgreSQL writes both paths as lines of `postmaster.pid`; a line break in one
-        // would move the lines that tell if the server is ready.
+        // PostgreSQL writes both paths as lines of `postmaster.pid`; a line break would shift them.
         for (folder, name) in [(&root, "database root"), (&socket_folder, "socket folder")] {
             let has_control = folder
                 .as_os_str()
@@ -113,8 +103,7 @@ impl Layout {
                 return Err(LayoutError::ControlCharacter { folder: name });
             }
         }
-        // `unix_socket_directories` is a list: a comma would split the path, and PostgreSQL
-        // trims spaces at both ends of an entry. Either gives a folder that was never checked.
+        // `unix_socket_directories` is a comma list whose entries PostgreSQL trims.
         let listed = socket_folder
             .to_str()
             .is_none_or(|text| text.contains([',', '"']) || text.trim() != text);
@@ -137,9 +126,7 @@ impl Layout {
 
     /// The layout the application uses for `user` on `platform`.
     ///
-    /// macOS keeps the socket beside the root in a folder with a short name, because
-    /// `Application Support` already takes much of the socket path limit. Linux keeps it in
-    /// the runtime folder, which the system empties at sign-out.
+    /// macOS keeps the socket in a short folder: `Application Support` takes much of the path limit.
     ///
     /// # Errors
     /// As [`Layout::new`]; the home folder is the path that can be too long.
@@ -182,8 +169,7 @@ impl Layout {
         self.root.join("cluster")
     }
 
-    /// Where a new cluster is made before it takes its place. A folder here never held data,
-    /// so one that a crash left is removed.
+    /// Where a new cluster is made before it takes its place; one that a crash left is removed.
     #[must_use]
     pub fn cluster_being_made(&self) -> PathBuf {
         self.root.join("cluster.new")
@@ -195,7 +181,6 @@ impl Layout {
         self.root.join("urls")
     }
 
-    /// The file that holds `role`'s connection URL.
     #[must_use]
     pub fn url_file(&self, role: Role) -> PathBuf {
         self.urls_folder().join(match role {
@@ -233,8 +218,7 @@ fn absolute(path: &Path, folder: &'static str) -> Result<(), LayoutError> {
     }
 }
 
-/// An XDG folder counts only when it is absolute; the specification says to ignore any other
-/// value, an empty one included.
+/// An XDG folder counts only when absolute, as the XDG Base Directory specification says.
 fn given(folder: Option<&Path>) -> Option<&Path> {
     folder.filter(|path| path.is_absolute())
 }

@@ -9,23 +9,18 @@
 // Source: crates/headroom-core/src/transforms/smart_crusher/outliers.rs
 // (`detect_structural_outliers`, `detect_rare_status_values`)
 
-//! The rows that are not like the others: a rare field, or a rare value of a common field
-//! (SHA-001). Only the fields of the row itself are compared, not the fields of an object
-//! inside it, and only a field with 2 to 50 different values.
+//! The rows that are not like the others: a rare field, or a rare value of a common field (SHA-001).
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::Value;
 
-/// A field is common when at least 80 % of the rows have it.
 const COMMON_PERCENT: usize = 80;
-/// A field is rare when fewer than 20 % of the rows have it.
 const RARE_PERCENT: usize = 20;
 /// A field with more different values than this is not a state (a name, an identifier).
 const MOST_VALUES: usize = 50;
 /// The values that cover 80 % of the rows are the usual ones, when they are at most this many.
 const MOST_USUAL: usize = 5;
-/// A value that is not usual is rare when fewer than 10 % of the rows have it.
 const RARE_VALUE_PERCENT: usize = 10;
 /// In a field with many usual values, a value is rare below 2 % of the rows, or in one row.
 const VERY_RARE_PERCENT: usize = 2;
@@ -75,7 +70,6 @@ fn shown(value: &Value) -> String {
     }
 }
 
-/// Flags the rows whose value of `name` is not one of the usual values.
 fn mark_rare_values(rows: &[Value], name: &str, flags: &mut [bool]) {
     let values: Vec<Option<String>> = rows
         .iter()
@@ -110,8 +104,7 @@ fn mark_rare_values(rows: &[Value], name: &str, flags: &mut [bool]) {
     }
 }
 
-/// The most frequent values that together cover 80 % of the rows that have the field; `None`
-/// when they are more than [`MOST_USUAL`], so the field is not a state.
+/// The most frequent values that cover 80 % of the rows; `None` when more than [`MOST_USUAL`].
 fn usual_values<'a>(counts: &BTreeMap<&'a str, usize>) -> Option<BTreeSet<&'a str>> {
     let total: usize = counts.values().sum();
     let mut ordered: Vec<(&str, usize)> = counts

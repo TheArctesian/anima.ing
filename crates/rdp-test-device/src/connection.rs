@@ -1,6 +1,3 @@
-//! One connection to the test device: the acceptor's opening, then the active session,
-//! where the device notes the client's input and does what the test tells it.
-
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -24,8 +21,7 @@ use super::{Offered, Seen, Served, Tell};
 
 type Framed = TokioFramed<TlsStream<TcpStream>>;
 
-/// Why a connection ended. The device does not say why: the test sees `Seen::Ended`, and
-/// the client's side of the test sees its own error.
+/// The device does not say why a connection ended: the client's side of the test sees its own error.
 struct Ended;
 
 impl<E: std::error::Error> From<E> for Ended {
@@ -43,9 +39,7 @@ impl NetworkClient for NoNetwork {
     }
 }
 
-/// Serves `client` to its end, then notes the end.
 pub(super) async fn serve(client: TcpStream, served: Rc<Served>) {
-    // Every way a connection ends is the same to the test: the client's side says why.
     let _ended: Result<(), Ended> = session(client, &served).await;
     // The test may have stopped listening; the device has nobody else to tell.
     let _told = served.seen.send(Seen::Ended).await;
@@ -87,8 +81,7 @@ async fn session(client: TcpStream, served: &Served) -> Result<(), Ended> {
     active(framed, acceptor, result, served).await
 }
 
-/// The X.224 negotiation, up to TLS. A refusal is sent before the acceptor's error ends
-/// the connection, so the client learns why.
+/// A refusal is sent before the acceptor's error ends the connection, so the client learns why.
 async fn negotiated(client: TcpStream, acceptor: &mut Acceptor) -> Result<TcpStream, Ended> {
     let mut framed = TokioFramed::new(client);
     let mut buf = WriteBuf::new();
@@ -103,7 +96,6 @@ async fn negotiated(client: TcpStream, acceptor: &mut Acceptor) -> Result<TcpStr
     Ok(framed.into_inner_no_leftover())
 }
 
-/// The active session, until the client goes or the test closes it.
 async fn active(
     mut framed: Framed,
     mut acceptor: Acceptor,
@@ -152,7 +144,6 @@ async fn active(
     ended
 }
 
-/// Notes the input of one fast-path frame.
 async fn note(frame: &[u8], served: &Served) -> Result<(), Ended> {
     for seen in heard(frame) {
         served.seen.send(seen).await?;

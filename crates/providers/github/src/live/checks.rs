@@ -8,7 +8,6 @@ use super::{get, read};
 use crate::name;
 use crate::problem::problem;
 
-/// The most names of failing checks kept, and the most characters of each.
 const MOST_FAILING: usize = 10;
 const NAME_LENGTH: usize = 100;
 
@@ -26,7 +25,6 @@ pub struct CheckRuns {
     pub runs: Vec<CheckRun>,
 }
 
-/// A commit status `state`, an open string: anything not named here is `Other`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StatusState {
     Success,
@@ -42,8 +40,7 @@ pub struct CommitStatus {
     pub state: StatusState,
 }
 
-/// One page of the combined status. GitHub's own `state` is not kept: it reads `pending` for
-/// a commit with no statuses, so [`count`] works from the statuses themselves.
+/// GitHub's own `state` is not kept: it reads `pending` for a commit with no statuses.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CombinedStatus {
     pub total_count: u64,
@@ -86,8 +83,7 @@ fn ref_path(git_ref: &str, tail: &str) -> Result<String, Problem> {
     Ok(format!("/commits/{}{tail}", name::encode_branch(git_ref)))
 }
 
-/// `GET /repos/{o}/{r}/commits/{ref}/check-runs`, 100 to a page. `git_ref` is a commit sha or
-/// `heads/BRANCH`; one with a dot segment is refused.
+/// `git_ref` is a commit sha or `heads/BRANCH`; one with a dot segment is refused.
 ///
 /// # Errors
 /// A [`Problem`] when the repository name or the ref cannot go into a path.
@@ -118,8 +114,6 @@ pub fn check_runs_parse(response: &Response<'_>) -> Result<CheckRuns, Problem> {
     })
 }
 
-/// `GET /repos/{o}/{r}/commits/{ref}/status`, 100 to a page.
-///
 /// # Errors
 /// A [`Problem`] when the repository name or the ref cannot go into a path.
 pub fn status_request(repository: &str, git_ref: &str, page: u32) -> Result<Request, Problem> {
@@ -150,7 +144,6 @@ pub fn status_parse(response: &Response<'_>) -> Result<CombinedStatus, Problem> 
     })
 }
 
-/// The overall state of a commit's checks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ChecksState {
     None,
@@ -173,7 +166,6 @@ pub struct Counts {
     pub partial: bool,
 }
 
-/// How one check or status counts.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Tally {
     Passed,
@@ -204,10 +196,6 @@ fn tally_status(status: &CommitStatus) -> Tally {
     }
 }
 
-/// Counts check runs and commit statuses together. A combined status with no statuses adds
-/// nothing (GitHub reads it as `pending`, which it is not). A run that is not finished is
-/// pending; a failed, timed out or action-required check is failed; skipped, neutral,
-/// cancelled and unknown results are `other`.
 #[must_use]
 pub fn count(runs: &CheckRuns, statuses: &CombinedStatus) -> Counts {
     let tallies = runs

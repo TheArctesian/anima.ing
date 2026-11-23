@@ -1,5 +1,4 @@
-//! Whether somebody else could swap what the unit runs at each login: the unit file, or the
-//! program it names.
+//! Whether somebody else could swap the unit file or the program it names.
 
 #[cfg(unix)]
 use std::fs;
@@ -13,11 +12,8 @@ const STICKY: u32 = 0o1000;
 #[cfg(unix)]
 const GROUP_OR_OTHERS_WRITE: u32 = 0o022;
 
-/// The first folder, from `folder` up to `/`, that a user other than `uid` and root can
-/// rename an entry of. `None` when there is none.
-///
-/// A folder with the sticky bit passes: there a user can rename only an entry of their own.
-/// Access control lists are not read (the agent reads them on Linux only, MET-019).
+/// The first folder, up to `/`, whose entries a user other than `uid` and root can rename.
+/// Access control lists are not read (MET-019).
 ///
 /// # Errors
 /// When `folder` or a folder above it cannot be looked at.
@@ -52,7 +48,6 @@ mod tests {
         nix::unistd::Uid::effective().as_raw()
     }
 
-    /// `folder` and the folders above it that it makes, closed to others whatever the umask.
     fn make_private(folder: &Path) {
         fs::DirBuilder::new()
             .recursive(true)

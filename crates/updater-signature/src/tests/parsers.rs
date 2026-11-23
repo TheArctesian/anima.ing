@@ -1,6 +1,3 @@
-//! Property tests of the parsers: no text or byte string panics them, and a key shaped like a
-//! real one but with random bytes is refused by its checksum (BLD-045, BLD-046).
-
 use base64::{Engine, engine::general_purpose::STANDARD};
 use proptest::prelude::*;
 
