@@ -38,7 +38,8 @@ it('MOB-015: a row names its device and status, and opens the device page', () =
   const page = show([device('a', { name: 'nas', status: 'DOWN' }), device('b', { name: 'pi', status: 'UP' })]);
   const rows = [...page.querySelectorAll('.dev')];
   expect(rows.map((row) => row.querySelector('.name')?.textContent)).toEqual(['nas', 'pi']);
-  expect(rows.map((row) => row.querySelector('.line')?.textContent.replace(/\s+/g, ' ').trim().split(' ')[0])).toEqual(['Down', 'Up']);
+  expect(rows[0]?.textContent).toContain('Down');
+  expect(rows[1]?.querySelector('[aria-label="Up"]')).not.toBeNull();
   expect(rows[0]?.querySelector('a')?.getAttribute('href')).toBe('/devices/a');
 });
 

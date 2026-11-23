@@ -36,8 +36,10 @@ func Open(dir *statedir.Dir) (*Store, error) {
 
 // Make makes an invite; the store keeps only the public half of its temporary key.
 func (s *Store) Make(hub tunnel.Address, name string, now time.Time, random io.Reader) (Invite, Record, error) {
-	if err := devices.ValidName(name); err != nil {
-		return Invite{}, Record{}, err
+	if name != "" {
+		if err := devices.ValidName(name); err != nil {
+			return Invite{}, Record{}, err
+		}
 	}
 	invite, err := newInvite(hub, random)
 	if err != nil {

@@ -47,7 +47,7 @@ func (l *Link) enrol(stream net.Conn) {
 		_ = json.NewEncoder(stream).Encode(l.renewOrConfirm(sender, request.Key))
 		return
 	}
-	reply, answered := l.join(sender, request.Key)
+	reply, answered := l.join(sender, request)
 	if !answered {
 		return
 	}
@@ -57,23 +57,35 @@ func (l *Link) enrol(stream net.Conn) {
 }
 
 // join ends the invite first, so a second use fails even when this use fails later.
-func (l *Link) join(temporary, device tunnel.DeviceKey) (reply invites.EnrolReply, answered bool) {
+func (l *Link) join(temporary tunnel.DeviceKey, request invites.EnrolRequest) (reply invites.EnrolReply, answered bool) {
 	now := l.now()
 	invite, err := l.invites.Use(temporary, now)
 	if err != nil {
 		return invites.EnrolReply{}, false
 	}
+	device := request.Key
+	name := invite.Name
+	if name == "" {
+		name = suggestedName(request.Name)
+	}
 	if device == temporary || !l.deviceKey(device) {
-		l.log.Warn("an invite was used with a key that cannot be a device key", "name", invite.Name)
+		l.log.Warn("an invite was used with a key that cannot be a device key", "name", name)
 		return invites.EnrolReply{Code: codeBadKey}, true
 	}
-	permitted, err := l.devices.Permit(devices.Device{Key: device, Name: invite.Name, Permitted: now.UTC()})
+	permitted, err := l.devices.Permit(devices.Device{Key: device, Name: name, Permitted: now.UTC()})
 	if err != nil {
-		l.log.Warn("an invite was used, but the device was not permitted", "name", invite.Name, "cause", codeOf(err))
+		l.log.Warn("an invite was used, but the device was not permitted", "name", name, "cause", codeOf(err))
 		return invites.EnrolReply{Code: codeOf(err)}, true
 	}
-	l.log.Info("a device joined with an invite", "device", device, "name", invite.Name)
+	l.log.Info("a device joined with an invite", "device", device, "name", name)
 	return invites.EnrolReply{OK: true, Expires: permitted.Expires}, true
+}
+
+func suggestedName(name string) string {
+	if devices.ValidName(name) == nil {
+		return name
+	}
+	return "Device"
 }
 
 // renewOrConfirm serves a permitted device (LNK-005): a stream from its next key proves it holds that key.

@@ -160,6 +160,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 - Open Add device on an iPhone with a Dynamic Island. Check that the title and close button stay below the status bar.
 - Open a device with SSH and RDP off. Check that setup is inline and read the device metrics. In the list, check the OS and the readings that the hub sends.
 - Disconnect from the hub and check that all five tabs remain tappable. Reconnect and check that the GitHub description and buttons wrap in Settings.
+- On a physical iPhone, scroll Devices and open and close Search. Check that the background continues behind the status bar and that the navigation surface reaches the bottom while the icons clear the home indicator. Open Add device on iOS and Android, scan a disposable invite and confirm the code is ready to review before joining. Create another invite with no name, redeem it from a test computer and check that its own name appears and can be edited.
+
 
 ### What a check on the hosted hub needs
 

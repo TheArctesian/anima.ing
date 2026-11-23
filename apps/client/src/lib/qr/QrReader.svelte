@@ -8,9 +8,11 @@
   interface Props {
     onread: (text: string) => boolean;
     label?: string;
+    embedded?: boolean;
+    disabled?: boolean;
   }
 
-  const { onread, label = 'Scan QR code' }: Props = $props();
+  const { onread, label = 'Scan QR code', embedded = false, disabled = false }: Props = $props();
   let open = $state(false);
   let video = $state<HTMLVideoElement>();
   let file = $state<HTMLInputElement>();
@@ -108,8 +110,7 @@
   onDestroy(stop);
 </script>
 
-<FormButton onclick={() => void start()}>{label}</FormButton>
-<Modal {open} title={label} preset="md" dismissible onClose={close}>
+{#snippet preview()}
   <div class="scanner">
     {#if active}
       <video bind:this={video} muted playsinline aria-label="QR camera preview"></video>
@@ -122,7 +123,19 @@
     {/if}
     <FormButton onclick={() => file?.click()}>Choose QR image</FormButton>
   </div>
-</Modal>
+{/snippet}
+
+{#if embedded && open}
+  {@render preview()}
+  <FormButton tone="ghost" onclick={close}>Close scanner</FormButton>
+{:else}
+  <FormButton tone={embedded ? 'primary' : 'secondary'} size={embedded ? 'lg' : 'md'} fill={embedded} aria-disabled={disabled} onclick={() => void start()}>{label}</FormButton>
+  {#if !embedded}
+    <Modal {open} title={label} preset="md" dismissible onClose={close}>
+      {@render preview()}
+    </Modal>
+  {/if}
+{/if}
 
 <style>
   .scanner { display: grid; gap: var(--space-3); justify-items: start; }

@@ -50,5 +50,5 @@ func (l *Link) renewIfDue(ctx context.Context) {
 func step(ctx context.Context, sender *tunnel.Device, key tunnel.DeviceKey) (invites.EnrolReply, error) {
 	ctx, cancel := context.WithTimeout(ctx, renewStepLimit)
 	defer cancel()
-	return enrol(ctx, sender, key)
+	return enrol(ctx, sender, key, "")
 }

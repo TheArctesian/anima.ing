@@ -11,7 +11,8 @@ use crate::one_time_secret::{Secret, ToFile, Works, show_once};
 
 #[derive(Debug, clap::Args)]
 pub struct InviteArgs {
-    /// The new device's name, 1 to 64 visible characters.
+    /// Optional override for the device's own name (up to 64 visible characters).
+    #[arg(default_value = "")]
     name: String,
     #[command(flatten)]
     to_file: ToFile,
@@ -34,9 +35,14 @@ impl InviteArgs {
             .await?
             .create_link_invite;
         let invite = Zeroizing::new(answer.invite);
+        let device = if self.name.is_empty() {
+            "the joining device"
+        } else {
+            &self.name
+        };
         invocation.output.note(&format!(
-            "Invite for the device {}; it expires {}. On the device: anima-link join, then paste it.",
-            self.name, answer.expires_at
+            "Invite for {}; it expires {}. On the device: anima-link join, then paste it.",
+            device, answer.expires_at
         ));
         let public = json!({ "name": self.name, "expiresAt": answer.expires_at });
         let secret = Secret {

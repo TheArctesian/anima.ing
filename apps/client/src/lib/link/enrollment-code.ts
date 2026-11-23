@@ -3,3 +3,16 @@ export function enrollmentCode(text: string): string | null {
   const code = text.trim();
   return code.length <= 4096 && /^anima-invite\.1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_.-]+$/.test(code) ? code : null;
 }
+
+// A scan from Devices reaches the existing Join screen without placing the invite in the URL or history.
+let scanned: string | undefined;
+
+export function carryEnrollmentCode(code: string): void {
+  scanned = code;
+}
+
+export function takeEnrollmentCode(): string | undefined {
+  const code = scanned;
+  scanned = undefined;
+  return code;
+}

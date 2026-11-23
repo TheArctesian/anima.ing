@@ -1,5 +1,5 @@
 /*
- * The Devices page in the phone layout, with the sizes of mockup 4 (docs/mockup/mobile/index.html): a title of 36 px,
+ * The Devices page in the phone layout, with the sizes of mockup 4 (docs/mockup/mobile/index.html): a 24 px title,
  * an add button and counts of 44 px, a search of 44 px, group titles of 40 px, rows of at least 68 px with a name of
  * 16 px and a second line of 13 px, and a connect button of 76 px by 44 px. The page's gutter is the shell's.
  */
@@ -15,8 +15,8 @@
 
 .phone-devices-head h1 {
   margin: 0;
-  font-size: var(--text-display);
-  font-weight: var(--weight-light);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-medium);
   line-height: var(--leading-tight);
   letter-spacing: var(--tracking-tight);
 }
@@ -131,7 +131,7 @@
 .phone-devices .what {
   display: grid;
   flex: 1;
-  gap: var(--space-2);
+  gap: var(--space-1);
   min-inline-size: 0;
   color: var(--text);
   text-decoration: none;

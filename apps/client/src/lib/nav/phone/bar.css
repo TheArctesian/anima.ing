@@ -15,23 +15,14 @@
     inset-block: auto 0;
     inset-inline: 0;
     inline-size: auto;
-    block-size: calc(var(--phone-bar-size) + var(--safe-block-end));
+    block-size: var(--phone-bar-block-size);
     flex-direction: row;
     align-items: stretch;
     gap: 0;
     padding: 0 calc(6px + var(--safe-inline-end)) var(--safe-block-end) calc(6px + var(--safe-inline-start));
     border-right: 0;
     border-block-start: var(--border-thin) solid var(--border-subtle);
-    /* The chrome material (5.6): the tokens give the mockup's blur and its translucent colour (76 %, the mockup has 78 %). */
-    background: var(--material-chrome-bg);
-    -webkit-backdrop-filter: blur(var(--material-chrome-blur)) saturate(var(--material-chrome-saturate));
-    backdrop-filter: blur(var(--material-chrome-blur)) saturate(var(--material-chrome-saturate));
-  }
-
-  /* A filter creates a containing block for fixed descendants. Keep the offline strip viewport-relative. */
-  #main-nav:has(.banner) {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
+    background: var(--surface-base);
   }
 
   #main-nav .notice .banner {
@@ -136,9 +127,7 @@
     display: none;
   }
 
-  /* iOS draws the page under its status bar, so the page scrolls under the clock. A band of the same material as the
-     bar covers the top inset; where there is no inset (Android, a browser) the band has no height. When the keyboard
-     opens, iOS moves the visible area down the page and the band follows it (`visual-top.ts`). */
+  /* Keep the status area the same colour as the page as content scrolls underneath it. */
   body::before {
     content: "";
     position: fixed;
@@ -146,9 +135,7 @@
     inset-inline: 0;
     z-index: var(--layer-nav);
     block-size: var(--safe-block-start);
-    background: var(--material-chrome-bg);
-    -webkit-backdrop-filter: blur(var(--material-chrome-blur)) saturate(var(--material-chrome-saturate));
-    backdrop-filter: blur(var(--material-chrome-blur)) saturate(var(--material-chrome-saturate));
+    background: var(--surface-sunken);
     pointer-events: none;
   }
 }

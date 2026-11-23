@@ -56,15 +56,15 @@
             </span>
             <span class="line">
               {#if device.status === 'UP'}
-                <span class="dot up" aria-hidden="true"></span>{statusLabel(device.status)}
+                <span class="dot up" role="img" aria-label={statusLabel(device.status)}></span>
               {:else}
                 <span class="badge {device.status.toLowerCase()}">{statusLabel(device.status)}</span>
               {/if}
-              {#if device.uptime !== null}<span class="uptime">Uptime {uptimeText(device.uptime)} <span class="period">24 h</span></span>{/if}
+              {#if device.uptime !== null}<span class="uptime"><span class="period">24 h uptime</span> {uptimeText(device.uptime)}</span>{/if}
             </span>
             {#if reason !== null}<span class="why">{reason.text}</span>{/if}
             {#if (device.metricsSource !== 'NONE' && device.metricsSource != null) || device.batteries?.length}
-              <Meters readings={device.readings ?? null} source={device.metricsSource} battery={batteryBar(device.batteries, charges?.of(device.id))} container={isHubDevice(device)} memoryBytes={memory?.of(device.id) ?? null} />
+              <Meters phone readings={device.readings ?? null} source={device.metricsSource} battery={batteryBar(device.batteries, charges?.of(device.id))} container={isHubDevice(device)} memoryBytes={memory?.of(device.id) ?? null} />
             {/if}
           </a>
           {#if protocol !== undefined}

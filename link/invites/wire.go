@@ -10,7 +10,8 @@ import (
 // a current key gives its next key (LNK-005), and a next key confirms the renewal.
 type EnrolRequest struct {
 	// Key is the device's new public key; the hub does not read it in a confirmation.
-	Key tunnel.DeviceKey `json:"key"`
+	Key  tunnel.DeviceKey `json:"key"`
+	Name string           `json:"name,omitempty"`
 }
 
 // Notice is the one line that the hub link writes on the notice port.

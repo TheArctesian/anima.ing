@@ -106,7 +106,7 @@ func (h invitingHub) invite(t *testing.T, name string) invites.Invite {
 func join(invite invites.Invite, device identity.Device, limit time.Duration) (identity.Device, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), limit)
 	defer cancel()
-	return devicelink.Join(ctx, invite, device)
+	return devicelink.Join(ctx, invite, device, "workstation")
 }
 
 func TestLNK003ADeviceJoinsWithAnInviteAndThenReachesTheHub(t *testing.T) {
@@ -131,6 +131,18 @@ func TestLNK003ADeviceJoinsWithAnInviteAndThenReachesTheHub(t *testing.T) {
 	}
 	defer link.Close()
 	getUntil(t, link, 30*time.Second)
+}
+
+func TestUnnamedInviteUsesTheJoiningDevicesName(t *testing.T) {
+	hub := startInvitingHub(t)
+	device := identity.Device{Key: tunnel.NewPrivateKey()}
+	if _, err := join(hub.invite(t, ""), device, 30*time.Second); err != nil {
+		t.Fatal(err)
+	}
+	admitted := hub.devices.All()
+	if len(admitted) != 1 || admitted[0].Name != "workstation" {
+		t.Errorf("permitted devices = %+v, want workstation", admitted)
+	}
 }
 
 func TestLNK003AnInviteWorksOnce(t *testing.T) {

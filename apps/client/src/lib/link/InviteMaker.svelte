@@ -24,8 +24,8 @@
     event.preventDefault();
     if (busy) return;
     const chosen = name.trim();
-    if (chosen === '' || chosen.length > 64) {
-      problem = 'Use 1 to 64 visible characters for the name.';
+    if ([...chosen].length > 64) {
+      problem = 'Use up to 64 visible characters for the name.';
       return;
     }
     busy = true;
@@ -48,7 +48,7 @@
 
 {#if made === null}
   <form onsubmit={make} novalidate>
-    <Field label="Device name" constraint="The hub lists the device by it." error={problem ?? undefined}>
+    <Field label="Device name (optional)" constraint="The device supplies its own name when left blank." error={problem ?? undefined}>
       {#snippet children(link)}<Input {...link} autocomplete="off" spellcheck="false" maxlength={64} bind:value={name} />{/snippet}
     </Field>
     <FormButton type="submit" tone="primary" busy={busy}>Make invite</FormButton>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount, tick } from 'svelte';
+  import { onDestroy, onMount, tick, untrack } from 'svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { loadClientAt } from '$lib/access/navigation';
@@ -8,7 +8,7 @@
   import { clearAccessToken } from '$lib/desktop/token';
   import FormButton from '$lib/forms/FormButton.svelte';
   import { markPendingEnrolment } from '$lib/devices/enrollment/pending-enrolment';
-  import { enrollmentCode } from '$lib/link/enrollment-code';
+  import { enrollmentCode, takeEnrollmentCode } from '$lib/link/enrollment-code';
   import Icon from '$lib/icons/Icon.svelte';
   import { crossFade } from '$lib/motion/roles/transitions';
   import QrReader from '$lib/qr/QrReader.svelte';
@@ -18,7 +18,8 @@
   import './phone.css';
 
   /** The invite as pasted: in this field only, never logged; dropped once the hub may have used it (LOG-007, MOB-035). */
-  let invite = $state('');
+  let invite = $state(takeEnrollmentCode() ?? '');
+  const fromDevices = untrack(() => invite !== '');
   let busy = $state(false);
   let problem = $state<string | null>(null);
   /** The joined device: its key and link port, which are not secrets. */
@@ -119,7 +120,7 @@
 <div class="stack" data-join>
 {#if device === null}
   <form onsubmit={join} novalidate transition:crossFade>
-    <a class="back" href={resolve('/welcome/hub')}><Icon name="carbon:chevron-left" size="lg" />Back</a>
+    <a class="back" href={resolve(fromDevices ? '/devices' : '/welcome/hub')}><Icon name="carbon:chevron-left" size="lg" />Back</a>
     <h1 tabindex="-1" bind:this={title}>Join with an invite</h1>
     <QrReader onread={readInvite} label="Scan enrollment QR" />
     <div class="invite-label">

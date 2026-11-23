@@ -27,7 +27,7 @@ var (
 // Record is what the hub keeps of one invite. It holds no secret: Key is the public half of the temporary key.
 type Record struct {
 	Key tunnel.DeviceKey `json:"key"`
-	// Name is the name that the new device gets.
+	// An empty Name lets the joining device supply its own name.
 	Name    string    `json:"name"`
 	Expires time.Time `json:"expires"`
 }

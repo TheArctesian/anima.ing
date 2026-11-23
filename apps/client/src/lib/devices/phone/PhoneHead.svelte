@@ -37,13 +37,15 @@
     <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable (NAV-005). -->
     <button type="button" class="phone-head-button" tabindex="0" aria-label="Add device" onclick={onAddDevice} {@attach press()}><Icon name="carbon:add" size="lg" /></button>
   </div>
-  <div class="tally" role="group" aria-label="Show devices by status">
-    {#each tally.parts as part (part.status)}
-      <button type="button" tabindex="0" aria-pressed={only === part.status} onclick={() => { onQueryChange(tallyQuery(query, part.status)); }}>
-        <span class="dot {part.status.toLowerCase()}" aria-hidden="true"></span><b>{part.count}</b>{part.words.replace(/^./, (first) => first.toUpperCase())}
-      </button>
-    {/each}
-  </div>
+  {#if tally.parts.length > 1 || only !== null}
+    <div class="tally" role="group" aria-label="Show devices by status">
+      {#each tally.parts as part (part.status)}
+        <button type="button" tabindex="0" aria-pressed={only === part.status} onclick={() => { onQueryChange(tallyQuery(query, part.status)); }}>
+          <span class="dot {part.status.toLowerCase()}" aria-hidden="true"></span><b>{part.count}</b>{part.words.replace(/^./, (first) => first.toUpperCase())}
+        </button>
+      {/each}
+    </div>
+  {/if}
   <label class="phone-search" role="search">
     <span class="label">Search by name</span>
     <Icon name="carbon:search" size="lg" />

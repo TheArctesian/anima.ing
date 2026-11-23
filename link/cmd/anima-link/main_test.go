@@ -278,9 +278,6 @@ func TestLNK003TheOperatorCancelsAnInvite(t *testing.T) {
 	if code := run(context.Background(), []string{"join", "-state", stateDir(t)}, stdio{strings.NewReader(invite.Invite), io.Discard, &errs}); code != 1 {
 		t.Errorf("join with a cancelled invite: exit %d", code)
 	}
-	if text, code := hub.ctl(t, "invites.make", `{"name":""}`); code != 1 || !strings.Contains(text, "name") {
-		t.Errorf("an invite with no name: %q, exit %d", text, code)
-	}
 }
 
 func TestLNK006TheOperatorSeesThePathOfEachDevice(t *testing.T) {

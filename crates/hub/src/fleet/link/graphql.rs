@@ -124,7 +124,7 @@ impl Mutation {
         operator_only(ctx, "createLinkInvite")?;
         let control = control_of(ctx)?;
         let length = name.chars().count();
-        if length == 0 || length > NAME_CHARS || name.chars().any(char::is_control) {
+        if length > NAME_CHARS || name.chars().any(char::is_control) {
             return Err(invalid(&[FieldError::new("name", NAME_RULE)]));
         }
         // The answer holds a secret: no cache may keep it.

@@ -18,6 +18,8 @@
   import { VPN_SITE } from '$lib/devices/form/site';
   import FormButton from '$lib/forms/FormButton.svelte';
   import Modal from '$lib/forms/modal/Modal.svelte';
+  import { carryEnrollmentCode, enrollmentCode, takeEnrollmentCode } from '$lib/link/enrollment-code';
+  import QrReader from '$lib/qr/QrReader.svelte';
   import InviteMaker from '$lib/link/InviteMaker.svelte';
   import { createClock } from '$lib/nav/clock.svelte';
   import { isAndroid, isIPad, isMobile } from '$lib/platform/mobile';
@@ -42,6 +44,7 @@
   const platform = capabilities();
   const deviceName = isIPad(navigator) ? 'iPad' : isAndroid(navigator) ? 'Android device' : 'iPhone';
   const selfLabel = platform.thisMachine ? 'Enroll this computer' : `Enroll this ${deviceName}`;
+  const canScan = platform.deviceLink && isMobile(navigator);
   const canEnrolHere = platform.thisMachine || platform.deviceLink;
   const inventory = { hosts: devices.hosts, sites: devices.sites, createSite: devices.createSite, createDevice: devices.create };
   const hostedComputer = { ...inventory, device: readCloudDevice, linkDevices: link.devices };
@@ -96,6 +99,15 @@
     } finally {
       busy = false;
     }
+  }
+
+  function scannedInvite(text: string): boolean {
+    const code = enrollmentCode(text);
+    if (code === null) return false;
+    carryEnrollmentCode(code);
+    panel = null;
+    void goto(resolve('/welcome/join')).then(takeEnrollmentCode, takeEnrollmentCode);
+    return true;
   }
 
   function close(): void {
@@ -158,13 +170,14 @@
       <FormButton tone="ghost" onclick={() => (panel = 'choose')}>Back</FormButton>
     </div>
   {:else if panel === 'choose'}
-    <div class="choices">
+    <div class="choices" class:mobile={canScan}>
+      {#if canScan}<QrReader embedded disabled={busy} label="Scan enrollment QR" onread={scannedInvite} />{/if}
       {#if canEnrolHere}
-        <FormButton tone="primary" {busy} onclick={() => void enroll()}>{selfLabel}</FormButton>
+        <FormButton tone={canScan ? 'secondary' : 'primary'} fill={canScan} size={canScan ? 'lg' : 'md'} {busy} onclick={() => void enroll()}>{selfLabel}</FormButton>
       {:else}
         <p>Open the Anima app on the device you want to enroll.</p>
       {/if}
-      <FormButton aria-disabled={busy} onclick={() => (panel = 'invite')}>Enroll another device</FormButton>
+      <FormButton fill={canScan} size={canScan ? 'lg' : 'md'} aria-disabled={busy} onclick={() => (panel = 'invite')}>Create an invite</FormButton>
       {#if result === 'added'}<p role="status">Added to Devices.</p>
       {:else if result === 'already-added'}<p role="status">This device is already in Devices.</p>
       {:else if result === 'not-linked'}<p role="alert">Connect this device to this hub before enrolling it.</p>
@@ -178,5 +191,6 @@
 <style>
   section { min-inline-size: 0; }
   .choices { display: grid; gap: var(--space-3); justify-items: start; }
+  .choices.mobile { justify-items: stretch; }
   .choices p { margin: 0; }
 </style>

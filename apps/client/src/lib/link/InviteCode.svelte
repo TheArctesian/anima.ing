@@ -19,9 +19,9 @@
 <div class="invite">
   {#if left > 0}
     <div class="pair">
-      <QrCode text={invite.invite} label="Invite for {name}" />
+      <QrCode text={invite.invite} label={name === '' ? 'Device enrollment invite' : `Invite for ${name}`} />
       <div class="side">
-        <p>On {name}, open Anima.ing and choose <strong>Scan enrollment QR</strong> on the sign-in screen. You can also paste the key. It works once.</p>
+        <p>On {name || 'the device you’re adding'}, open Anima.ing and choose <strong>Scan enrollment QR</strong>. You can also paste the key. It works once.</p>
         <!-- Not a live region: a countdown read out every second would drown the page. -->
         <p class="left">Expires in <time datetime={invite.expiresAt}>{countdownText(left)}</time></p>
       </div>

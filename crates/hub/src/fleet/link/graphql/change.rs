@@ -128,7 +128,11 @@ pub(super) fn invite_made(name: &str, made: &MadeInvite) -> TrailEntry {
     let expires_at = made.expires.to_rfc3339_opts(SecondsFormat::Secs, true);
     entry(
         AuditAction::Create,
-        format!("Made a link invite for the device {name}."),
+        if name.is_empty() {
+            "Made a link invite for a device with an automatic name.".into()
+        } else {
+            format!("Made a link invite for the device {name}.")
+        },
         json!({ "device": name, "expiresAt": expires_at }),
     )
 }

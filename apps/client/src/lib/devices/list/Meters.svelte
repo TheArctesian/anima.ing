@@ -13,6 +13,7 @@
     source: MetricsSource | null | undefined;
     /** The list's form: each meter in a fixed slot of the column, its icon and word over its value (row H of the site language plan). */
     compact?: boolean;
+    phone?: boolean;
     /** The list's slots, in order: a meter stands in the slot of its key, so the values of one metric make one column. */
     slots?: readonly Bar['key'][];
     /** The battery of a laptop, a phone or a tablet; `null` for a device with none (MET-032). */
@@ -23,7 +24,7 @@
     memoryBytes?: number | null;
   }
 
-  const { readings, source, compact = false, slots = [], battery = null, container = false, memoryBytes = null }: Props = $props();
+  const { readings, source, compact = false, phone = false, slots = [], battery = null, container = false, memoryBytes = null }: Props = $props();
   const preference = motionPreference();
   const row = $derived(container ? containerRow(readings, source, memoryBytes) : barRow(readings, source, battery));
   /** Carbon has no RAM or GPU icon; these are the closest (D18). */
@@ -58,6 +59,7 @@
   <span
     class="meters"
     class:compact
+    class:phone
     class:container
     class:reduced={preference.reduced}
     style:grid-template-columns={compact ? `repeat(${String(slots.length)}, minmax(0, var(--usage-slot)))` : undefined}
@@ -75,7 +77,7 @@
         title={bar.tooltip}
         style:grid-column={slotOf(bar)}
       >
-        <span class="word"><Icon name={iconOf(bar)} size="sm" /><span class="name">{WORDS[bar.key]}</span></span>
+        <span class="word"><Icon name={iconOf(bar)} size="sm" />{#if !phone}<span class="name">{WORDS[bar.key]}</span>{/if}</span>
         <!-- A new value cross-fades over the old one in one cell; it never counts (MET-008, MOT-008). -->
         <span class="slot">
           {#key bar.text}<span class="value" transition:crossFade
@@ -149,6 +151,27 @@
     grid-area: 1 / 1;
     font-variant-numeric: tabular-nums;
     line-height: var(--leading-tight);
+  }
+
+  .phone .meter {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .phone .value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .phone .track {
+    grid-column: 1 / -1;
+  }
+
+  .phone.container .memory {
+    grid-column: span 2;
   }
 
   .track {

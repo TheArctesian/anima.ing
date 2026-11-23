@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/TheArctesian/anima/link/devicelink"
@@ -41,7 +42,8 @@ func runJoin(ctx context.Context, args []string, streams stdio) error {
 	}
 	ctx, cancel := context.WithTimeout(ctx, joinLimit)
 	defer cancel()
-	joined, err := devicelink.Join(ctx, invite, device)
+	name, _ := os.Hostname()
+	joined, err := devicelink.Join(ctx, invite, device, name)
 	if err != nil {
 		return err
 	}

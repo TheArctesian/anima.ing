@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"os"
 	"runtime"
 	"sync"
 	"time"
@@ -69,7 +70,8 @@ func join(state, line string) (joined, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), joinLimit)
 	defer cancel()
-	done, err := devicelink.Join(ctx, invite, device)
+	name, _ := os.Hostname()
+	done, err := devicelink.Join(ctx, invite, device, name)
 	if err != nil {
 		return joined{}, err
 	}
