@@ -259,7 +259,7 @@ that owns the area.
 | SF-325 | The proof of a name is read again only when a person asks. Low | The routing of the domains of applications on the hub (task H21, code) | Open |
 | SF-330 | A change of a route asks for no new second factor. Low | The routing of the domains of applications on the hub (task H21, code) | Accepted by the operator (2026-11-22, relayed; R-384: a Full access agent adds a route with no approval, one rule for each caller). The rule of `bb0bce295` that only a browser token adds a public route goes; the consent at the machine (OD-HOST-43) stays |
 | SF-391 | The consent at the machine is the one guard left for a public route, and nothing sets it yet. Low | The routing of the domains of applications on the hub (task H21, code) | Open |
-| SF-392 | On a hosted hub a route is added with no second factor. Medium | The routing of the domains of applications on the hub (task H21, code) | Accepted by the operator (R-430) |
+| SF-392 | On a hosted hub a route is added with no second factor. Medium | The routing of the domains of applications on the hub (task H21, code) | Accepted by the operator (R-430; option B, 2026-11-23) |
 | SF-331 | The target of a route came from the person, not from the record of the application. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
 | SF-332 | The proxy opened a tunnel for each `Upgrade: websocket` without the answer 101. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `274463241`) |
 | SF-327 | No time limit and no cap before the name of a connection was known. Medium | The routing of the domains of applications on the hub (task H21, code) | Open (built in `68c9a7ab5`) |
@@ -2508,11 +2508,13 @@ Where: `crates/hub/src/work/routes/graphql.rs` (`signed_in_for_routes`).
 
 Effect, and who can cause it: A person or an agent with the login or browser token of a hosted account. Effect: a route is added with the sign-in alone. A public route still waits for the consent at the machine, which nothing sets (SF-391). Since R-390 (branch `hosted/routes-private-consent`) a private route waits for no consent and reaches a port of a machine, also of a database (R-391), for each node of the network of Anima, guarded by the sign-in alone (SF-245).
 
-Severity: raised from Low to Medium by the review of R-390 and R-391 (2026-11-22): with them, the sign-in alone makes a database reachable from each node, containers included. The acceptance of R-430 named a private route guarded by the sign-in alone, not a database; the operator confirms it again.
+Severity: raised from Low to Medium by the review of R-390 and R-391 (2026-11-22): with them, the sign-in alone makes a database reachable from each node, containers included. The acceptance of R-430 named a private route guarded by the sign-in alone, not a database, so the operator was asked again.
+
+The ruling of the operator (2026-11-23): option B, accept as is. He did not choose option A (ask at the machine for a database port also on a private route) or option C (a private route answers only the devices of the account). The cost that he accepted: "on a hosted hub, the sign-in alone, including an agent's login token, makes a database reachable from every node of the Anima network, containers included, with no question at the machine". SF-245 stays Open.
 
 Mitigation now: The hub knows that it is hosted only from how it was started (`ANIMA_HOSTED_CLOUD_KEY_FILE`), never from a request. API keys and builder tokens stay refused. A public route still waits for the consent at the machine.
 
-State: Accepted by the operator (R-430, 2026-11-23).
+State: Accepted by the operator on 2026-11-23 (R-430, and option B for the database ports of R-390 and R-391). Severity stays Medium.
 
 ### SF-328: The protocol of a public stream was only a label that the person picked. Medium
 
