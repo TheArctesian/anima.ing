@@ -12,6 +12,10 @@ The base image SHA256 was `04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b
 
 Package service units are masked before first installation to prevent package scripts from opening a public listener. Anima uses its own configuration and host key. Existing working SSH servers retain their configuration. A setup failure does not open the private link port; a package operation can continue after the UI timeout.
 
+## Automated checks
+
+Linux workspace Clippy and the Windows-target Clippy build of `remote-login` passed. Client type checking, lint and 11 private-port UI tests passed. The tests include pending authorization, duplicate clicks and cancellation restoring the switch to off. The release dependency-map checks passed. The broader changed-package gate is required before push; CI remains the merge gate.
+
 ## Limits
 
 Native macOS and Windows setup and administrator dialogs remain unverified. The operator explicitly waived the AGENTS.md Mac-before-push check and requested landing on dev. Windows setup supports ordinary local account names; domain and Entra account handling is not established. Linux distributions other than the tested Ubuntu image need acceptance. Unsupported package managers fail without exposing a port. Login still uses the existing account password or authorized keys; setup creates neither credentials nor trust exceptions.
