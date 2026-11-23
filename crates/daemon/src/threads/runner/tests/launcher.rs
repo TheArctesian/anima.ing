@@ -11,7 +11,7 @@ use std::time::Duration;
 use agent_threads::drive::{Mode, Program};
 use uuid::Uuid;
 
-use crate::threads::git::run::hooks::{Ended, ThreadRun};
+use crate::threads::git::run::hooks::{Ended, Kind, ThreadRun};
 use crate::threads::runner::launcher::read::Confinement;
 use crate::threads::runner::launcher::{Rights, Seat, SharedRights, start};
 
@@ -43,6 +43,7 @@ fn of(program: Program, mode: Mode, folder: &Path) -> (SharedRights, Uuid) {
         ],
         threads: [(thread, seat)].into(),
         git: Some(PathBuf::from("/usr/bin/git")),
+        records: Some(folder.join(".records")),
         ..Rights::default()
     };
     (Arc::new(Mutex::new(rights)), thread)
@@ -51,6 +52,7 @@ fn of(program: Program, mode: Mode, folder: &Path) -> (SharedRights, Uuid) {
 /// `/bin/sh -c script` for `thread` in `dir`.
 fn shell(thread: Uuid, dir: &Path, script: &str) -> ThreadRun {
     ThreadRun {
+        kind: Kind::Hook,
         thread,
         dir: dir.to_owned(),
         program: PathBuf::from("/bin/sh"),

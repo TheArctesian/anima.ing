@@ -26,11 +26,12 @@ use agent_threads::drive::Mode;
 use tokio::io::AsyncReadExt as _;
 use uuid::Uuid;
 
-use read::{Confinement, Reading};
+use read::Confinement;
 
 use super::Runner;
 use crate::threads::git::place::records::held_by;
-use crate::threads::git::run::hooks::{AsThread, Ended, ThreadRun};
+use crate::threads::git::place::shared::pack::is_read;
+use crate::threads::git::run::hooks::{AsThread, Ended, Kind, ThreadRun};
 use crate::threads::marker;
 
 pub mod read;
@@ -54,6 +55,8 @@ pub struct Rights {
     pub(super) threads: BTreeMap<Uuid, Seat>,
     /// The `git` of the Git engine: the one program of a read.
     pub(super) git: Option<PathBuf>,
+    /// The records folder of the Git engine, where the input of a pack is.
+    pub(super) records: Option<PathBuf>,
     /// The copy of the program that started each thread of this runner.
     pub(super) copies: BTreeMap<Uuid, PathBuf>,
     /// The threads whose worktree the runner makes before they start: known from that moment.
@@ -105,7 +108,7 @@ impl Rights {
         }
         let (mark, key) = marker::entry(&run.thread.to_string());
         let mark = (OsString::from(mark), OsString::from(key));
-        if self.git.as_deref() == Some(run.program.as_path()) {
+        if run.kind == Kind::Read {
             return self.read(run, seat, (dir, mark));
         }
         if seat.confinement.mode != Mode::FullAccess {
@@ -148,7 +151,14 @@ impl Rights {
         seat: &Seat,
         (dir, mark): (PathBuf, (OsString, OsString)),
     ) -> io::Result<Checked> {
-        let reading = read::shape(run, self.git.as_deref())?;
+        let (Some(git), Some(records)) = (&self.git, &self.records) else {
+            return Err(denied(
+                "the runner gave the Git engine no git or no records",
+            ));
+        };
+        if !is_read(run, git, records) {
+            return Err(denied("the run is not a read of the Git engine"));
+        }
         let git = (run.program.as_path(), dir.as_path(), run.args.as_slice());
         let (program, args, sandboxed) = read::confined(run.thread, &seat.confinement, git)?;
         let home = if sandboxed {
@@ -160,17 +170,17 @@ impl Rights {
         } else {
             None
         };
-        let input = match (reading, &run.input) {
-            (Reading::Pack, Some(file)) => Some(read::listed(file)?),
-            _ => None,
-        };
+        let input = run.input.as_deref().map(read::listed).transpose()?;
         let login = self
             .env
             .iter()
             .filter(|(name, _)| read::login_env(name.as_ref()) && name != "CODEX_HOME")
             .map(|(name, value)| (OsString::from(name), OsString::from(value)));
-        let quiet = read::QUIET.map(|(name, value)| (name.into(), value.into()));
-        let env = login.chain(quiet).chain(home).chain([mark]).collect();
+        let own = run
+            .env
+            .iter()
+            .map(|(name, value)| (OsString::from(name), value.clone()));
+        let env = login.chain(own).chain(home).chain([mark]).collect();
         Ok(Checked {
             program,
             args,

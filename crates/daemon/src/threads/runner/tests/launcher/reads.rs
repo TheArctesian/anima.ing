@@ -11,25 +11,26 @@ use agent_threads::drive::{Mode, Program};
 use uuid::Uuid;
 
 use super::of;
-use crate::threads::git::run::hooks::ThreadRun;
-use crate::threads::runner::launcher::read::{CLOSED, Confinement, codex_home, confined};
+use crate::threads::git::place::shared::pack::{closed, list_args};
+use crate::threads::git::run::hooks::{Kind, ThreadRun};
+use crate::threads::runner::launcher::read::{Confinement, codex_home, confined};
 use crate::threads::runner::launcher::start;
 
 const GIT: &str = "/usr/bin/git";
+
+/// What the engine sets for each read.
+const QUIET: [(&str, &str); 3] = [
+    ("GIT_NO_LAZY_FETCH", "1"),
+    ("GIT_TERMINAL_PROMPT", "0"),
+    ("GIT_SSH_COMMAND", "false"),
+];
 
 /// A repository with one commit in a new folder, and the name of that commit.
 fn repository() -> (tempfile::TempDir, String) {
     let folder = tempfile::tempdir().expect("a folder");
     let git = |args: &[&str]| {
         let out = Command::new(GIT)
-            .args([
-                "-c",
-                "user.name=t",
-                "-c",
-                "user.email=t@t",
-                "-c",
-                "init.defaultBranch=main",
-            ])
+            .args(["-c", "user.name=t", "-c", "user.email=t@t"])
             .args(args)
             .current_dir(folder.path())
             .output()
@@ -45,47 +46,79 @@ fn repository() -> (tempfile::TempDir, String) {
     (folder, head)
 }
 
-/// A read with `own` after the closed arguments, for `thread` in `dir`.
-fn read(thread: Uuid, dir: &Path, own: &[&str]) -> ThreadRun {
-    let args = CLOSED.iter().chain(own).map(OsString::from).collect();
+/// A read as the engine sends it: the closed options, then `own`, with the environment of
+/// [`QUIET`] and `more`.
+fn read(
+    thread: Uuid,
+    dir: &Path,
+    own: Vec<OsString>,
+    more: Vec<(&'static str, OsString)>,
+) -> ThreadRun {
+    let env = QUIET.map(|(name, value)| (name, OsString::from(value)));
     ThreadRun {
+        kind: Kind::Read,
         thread,
         dir: dir.to_owned(),
         program: PathBuf::from(GIT),
-        args,
-        env: Vec::new(),
+        args: closed().into_iter().chain(own).collect(),
+        env: env.into_iter().chain(more).collect(),
         input: None,
         within: Duration::from_secs(30),
     }
 }
 
-fn objects(head: &str) -> Vec<&str> {
-    vec!["rev-list", "--objects", "--quiet", head, "--not"]
+/// The list read of `head` in `dir`.
+fn list(thread: Uuid, dir: &Path, head: &str) -> ThreadRun {
+    read(thread, dir, list_args(&[head], &[]), Vec::new())
+}
+
+/// The pack read of `want` (a list) in `dir`, as the engine makes it: its folder, its objects and
+/// its list in the records.
+fn pack(thread: Uuid, dir: &Path, want: &str) -> ThreadRun {
+    let ours = dir.join(format!(".anima-pack-{}", thread.as_simple()));
+    std::fs::create_dir_all(ours.join("objects/pack")).expect("the pack folder");
+    let own = dir.join(".records").join(thread.to_string()).join("a.git");
+    std::fs::create_dir_all(&own).expect("the records of the thread");
+    std::fs::write(own.join("want"), want).expect("the list");
+    let args = ["pack-objects", "--revs", "--quiet"].map(OsString::from);
+    let args = args
+        .into_iter()
+        .chain([ours.join("p").into_os_string()])
+        .collect();
+    let more = vec![
+        (
+            "GIT_OBJECT_DIRECTORY",
+            ours.join("objects").into_os_string(),
+        ),
+        (
+            "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+            dir.join(".git/objects").into_os_string(),
+        ),
+    ];
+    let mut run = read(thread, dir, args, more);
+    run.input = Some(own.join("want"));
+    run
+}
+
+/// A folder with no link in its path, as the engine gives it.
+fn real(folder: &tempfile::TempDir) -> PathBuf {
+    std::fs::canonicalize(folder.path()).expect("a real path")
 }
 
 #[tokio::test]
 async fn th116_a_confined_claude_code_thread_reads_its_repository_and_makes_its_pack() {
     let (folder, head) = repository();
-    let (rights, thread) = of(Program::ClaudeCode, Mode::Ask, folder.path());
-    let ended = start(&rights, read(thread, folder.path(), &objects(&head))).await;
+    let dir = real(&folder);
+    let (rights, thread) = of(Program::ClaudeCode, Mode::Ask, &dir);
+    let ended = start(&rights, list(thread, &dir, &head))
+        .await
+        .expect("it ran");
+    assert_eq!(ended.code, Some(0), "{}", ended.said);
+    let ended = start(&rights, pack(thread, &dir, &format!("{head}\n"))).await;
     let ended = ended.expect("it ran");
     assert_eq!(ended.code, Some(0), "{}", ended.said);
-    let pack = folder
-        .path()
-        .join(format!(".anima-pack-{}", thread.as_simple()));
-    std::fs::create_dir(&pack).expect("the pack folder");
-    let want = folder.path().join("want");
-    std::fs::write(&want, format!("{head}\n")).expect("the list");
-    let base = pack.join("p").to_string_lossy().into_owned();
-    let mut run = read(
-        thread,
-        folder.path(),
-        &["pack-objects", "--revs", "--quiet", &base],
-    );
-    run.input = Some(want);
-    let ended = start(&rights, run).await.expect("it ran");
-    assert_eq!(ended.code, Some(0), "{}", ended.said);
-    let made = std::fs::read_dir(&pack)
+    let ours = dir.join(format!(".anima-pack-{}", thread.as_simple()));
+    let made = std::fs::read_dir(&ours)
         .expect("the pack folder")
         .filter_map(Result::ok)
         .any(|entry| entry.path().extension().is_some_and(|end| end == "pack"));
@@ -95,7 +128,8 @@ async fn th116_a_confined_claude_code_thread_reads_its_repository_and_makes_its_
 #[tokio::test]
 async fn th116_each_run_that_is_not_exactly_a_read_is_refused_for_a_confined_thread() {
     let (folder, head) = repository();
-    let (rights, thread) = of(Program::ClaudeCode, Mode::AcceptEdits, folder.path());
+    let dir = real(&folder);
+    let (rights, thread) = of(Program::ClaudeCode, Mode::AcceptEdits, &dir);
     let refused = async |run: ThreadRun| {
         let ended = start(&rights, run).await;
         assert_eq!(
@@ -103,30 +137,30 @@ async fn th116_each_run_that_is_not_exactly_a_read_is_refused_for_a_confined_thr
             Err(ErrorKind::PermissionDenied)
         );
     };
-    let mut hook = read(thread, folder.path(), &objects(&head));
-    hook.program = PathBuf::from("/bin/sh");
+    let mut hook = list(thread, &dir, &head);
+    hook.kind = Kind::Hook;
     refused(hook).await;
-    let mut env = read(thread, folder.path(), &objects(&head));
-    env.env = vec![("GIT_DIR", OsString::from("/elsewhere"))];
+    let mut env = list(thread, &dir, &head);
+    env.env.push(("GIT_DIR", OsString::from("/elsewhere")));
     refused(env).await;
-    let mut open = read(thread, folder.path(), &objects(&head));
+    let mut open = list(thread, &dir, &head);
     open.args.remove(0);
     refused(open).await;
-    let option = ["rev-list", "--objects", "--quiet", "--all", "--not"];
-    refused(read(thread, folder.path(), &option)).await;
+    refused(read(thread, &dir, list_args(&["--all"], &[]), Vec::new())).await;
     refused(read(
         thread,
-        folder.path(),
-        &["rev-list", "--objects", "--quiet", &head],
+        &dir,
+        ["log", "-p"].map(OsString::from).into(),
+        Vec::new(),
     ))
     .await;
-    refused(read(thread, folder.path(), &["log", "-p"])).await;
 }
 
 #[tokio::test]
-async fn th116_a_pack_is_refused_outside_its_folder_or_with_a_list_of_more_than_names() {
+async fn th116_a_pack_with_a_list_of_more_than_names_or_a_linked_list_is_refused() {
     let (folder, head) = repository();
-    let (rights, thread) = of(Program::ClaudeCode, Mode::Ask, folder.path());
+    let dir = real(&folder);
+    let (rights, thread) = of(Program::ClaudeCode, Mode::Ask, &dir);
     let refused = async |run: ThreadRun| {
         let ended = start(&rights, run).await;
         assert_eq!(
@@ -134,36 +168,21 @@ async fn th116_a_pack_is_refused_outside_its_folder_or_with_a_list_of_more_than_
             Err(ErrorKind::PermissionDenied)
         );
     };
-    let elsewhere = folder.path().join("p").to_string_lossy().into_owned();
-    let mut pack = read(
-        thread,
-        folder.path(),
-        &["pack-objects", "--revs", "--quiet", &elsewhere],
-    );
-    pack.input = Some(folder.path().join("a"));
-    refused(pack).await;
-    let base = folder
-        .path()
-        .join(format!(".anima-pack-{}", thread.as_simple()))
-        .join("p")
-        .to_string_lossy()
-        .into_owned();
-    let list = folder.path().join("list");
-    std::fs::write(&list, format!("{head}\n--all\n")).expect("a list");
-    let mut listed = read(
-        thread,
-        folder.path(),
-        &["pack-objects", "--revs", "--quiet", &base],
-    );
-    listed.input = Some(list);
-    refused(listed).await;
+    refused(pack(thread, &dir, &format!("{head}\n--all\n"))).await;
+    let linked = pack(thread, &dir, &format!("{head}\n"));
+    let want = linked.input.clone().expect("a list");
+    std::fs::remove_file(&want).expect("the list goes");
+    std::os::unix::fs::symlink(dir.join("a"), &want).expect("a link in its place");
+    let ended = start(&rights, linked).await;
+    assert!(ended.is_err(), "a list that is a link is not read");
 }
 
 #[tokio::test]
 async fn th116_a_confined_codex_thread_whose_copy_is_not_known_reads_nothing() {
     let (folder, head) = repository();
-    let (rights, thread) = of(Program::Codex, Mode::Ask, folder.path());
-    let ended = start(&rights, read(thread, folder.path(), &objects(&head))).await;
+    let dir = real(&folder);
+    let (rights, thread) = of(Program::Codex, Mode::Ask, &dir);
+    let ended = start(&rights, list(thread, &dir, &head)).await;
     assert_eq!(
         ended.map_err(|error| error.kind()),
         Err(ErrorKind::PermissionDenied)

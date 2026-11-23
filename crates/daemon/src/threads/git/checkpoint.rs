@@ -7,9 +7,11 @@
 use agent_threads::git::Checkpoint;
 use uuid::Uuid;
 
-use super::place::{self, Worktree, own, shared};
+use super::place::{Worktree, own, shared};
 use super::run::{Git, GitError, Run};
-use super::worktree::files;
+mod staged;
+
+use staged::{Lists, Staged, Staging, fitted};
 
 /// Who a checkpoint commit says it is from: never the person.
 const WHO: [(&str, &str); 4] = [
@@ -72,6 +74,7 @@ pub async fn tree_now(
     tip: Option<&str>,
 ) -> Result<String, GitError> {
     let dir = worktree.folder();
+    let left = own::within(git, worktree).await?;
     let start = match tip {
         Some(tip) => vec!["read-tree", "--reset", tip],
         None => vec!["read-tree", "--empty"],
@@ -83,50 +86,42 @@ pub async fn tree_now(
     let changed = git.output(Run::new(dir, CHANGED)).await?;
     let new = git.output(Run::new(dir, NEW)).await?;
     let rules = git.output(Run::new(dir, RULES)).await?;
-    let staging = worktree.record().own.join("staging");
-    let _ = std::fs::remove_dir_all(&staging);
-    place::private_folder(&staging).map_err(GitError::Files)?;
-    let root = files::Root::open(dir).map_err(GitError::Files)?;
-    let ours = |name: &&[u8]| {
-        let below = |nested: &String| {
-            name.strip_prefix(nested.as_bytes())
-                .is_some_and(|rest| rest.is_empty() || rest.starts_with(b"/"))
-        };
-        // A name that ends with `/` is a repository inside the worktree that nothing names.
-        // The folder of a copy of the history that was cancelled is no file of the thread.
-        let of_a_copy = name.starts_with(shared::pack::PREFIX.as_bytes());
-        !name.is_empty() && !name.ends_with(b"/") && !of_a_copy && !nested.iter().any(below)
+    // The copies go when this call ends, on each way out.
+    let held = Staging(worktree.record().own.join("staging"));
+    // A removal saves the files of each repository inside the worktree too.
+    let inner = if git.removing() {
+        staged::inner_files(git, worktree, (&new, &nested)).await?
+    } else {
+        Vec::new()
     };
-    let names = |listed: &[u8]| -> Vec<Vec<u8>> {
-        let parts = listed.split(|byte| *byte == 0);
-        parts.filter(ours).map(<[u8]>::to_vec).collect()
+    let lists = Lists {
+        changed: &changed,
+        new: &new,
+        rules: &rules,
+        nested: &nested,
+        inner: &inner,
     };
-    let mut staged = Vec::new();
-    // A changed file that is gone is staged too, as a removal. The files of the rules are
-    // only there for `git` to read.
-    for (list, tracked, stage) in [
-        (&changed, true, true),
-        (&new, false, true),
-        (&rules, false, false),
-    ] {
-        for name in names(list) {
-            let path = files::path(&name);
-            if !files::inside(&path) {
-                continue;
-            }
-            let there = root.take(&path, &staging).map_err(GitError::Files)?;
-            if stage && (there || tracked) {
-                staged.extend(name);
-                staged.push(0);
-            }
-        }
-    }
-    if !staged.is_empty() {
-        let add = Run::new(&staging, ADD).with_env("GIT_WORK_TREE", &staging);
-        git.output(add.with_input(staged)).await?;
-    }
-    let _ = std::fs::remove_dir_all(&staging);
+    let staged = fitted(git, worktree, (&held.0, &lists), left).await?;
+    index_of(git, &held.0, staged).await?;
+    drop(held);
     git.text(Run::new(dir, ["write-tree"])).await
+}
+
+/// Puts what was copied into `staging` in the index of the runner: the files that are gone
+/// leave it first, then the copies come in.
+async fn index_of(git: &Git, staging: &std::path::Path, staged: Staged) -> Result<(), GitError> {
+    if !staged.gone.is_empty() {
+        let gone = Run::new(staging, GONE).with_env("GIT_WORK_TREE", staging);
+        git.output(gone.with_input(staged.gone)).await?;
+    }
+    if !staged.there.is_empty() {
+        // Large files take long to pack; a `git` that is ended in the middle helps nobody.
+        let add = Run::new(staging, ADD)
+            .with_env("GIT_WORK_TREE", staging)
+            .with_time(shared::LONG);
+        git.output(add.with_input(staged.there)).await?;
+    }
+    Ok(())
 }
 
 /// Lists the files of the last commit that differ in the worktree or are gone.
@@ -157,6 +152,10 @@ const ADD: [&str; 6] = [
     "--pathspec-file-nul",
 ];
 
+/// Takes the named files out of the index, with no look at the folder: the name of a file
+/// that is gone can be below a folder that is now a link or a file.
+const GONE: [&str; 4] = ["update-index", "-z", "--force-remove", "--stdin"];
+
 /// Makes a commit of the files of the worktree as they are now, with no ref and no change of
 /// the branch, and gives its ID. Its parent is the last commit of the branch.
 ///
@@ -164,6 +163,18 @@ const ADD: [&str; 6] = [
 /// A [`GitError`] when the branch cannot be read or a step of `git` fails.
 pub async fn snapshot(git: &Git, worktree: &Worktree) -> Result<String, GitError> {
     let tip = own::tip(git, worktree).await?.commit;
+    snapshot_on(git, worktree, tip).await
+}
+
+/// As [`snapshot`], on `tip`; with no tip the commit holds each file and has no parent.
+///
+/// # Errors
+/// A [`GitError`] when a step of `git` fails.
+pub async fn snapshot_on(
+    git: &Git,
+    worktree: &Worktree,
+    tip: Option<String>,
+) -> Result<String, GitError> {
     let tree = tree_now(git, worktree, tip.as_deref()).await?;
     let mut commit = vec!["commit-tree".to_owned(), tree];
     if let Some(tip) = tip {
@@ -203,7 +214,9 @@ async fn nested(git: &Git, list: Run<'_>) -> Result<Vec<String>, GitError> {
         .filter(|paths| paths.len() <= MOST_NESTED)
         .ok_or_else(|| GitError::Failed {
             code: None,
-            said: "the worktree has a nested repository that cannot be left out".to_owned(),
+            said: "the worktree has a nested repository that cannot be left out (its name is \
+                   not text, or there are too many); commit its removal"
+                .to_owned(),
         })
 }
 
@@ -269,6 +282,31 @@ pub async fn list(git: &Git, worktree: &Worktree) -> Result<Vec<Checkpoint>, Git
         .collect();
     found.sort_by_key(|checkpoint| checkpoint.turn);
     Ok(found)
+}
+
+/// Removes the checkpoints of the turns before `before` and what only they needed on the disk,
+/// and gives the checkpoints that stay.
+///
+/// # Errors
+/// A [`GitError`] when a step of `git` fails.
+pub async fn forget_before(
+    git: &Git,
+    worktree: &Worktree,
+    before: u32,
+) -> Result<Vec<Checkpoint>, GitError> {
+    forget(git, worktree, |turn| turn < before).await?;
+    // The last reviewed snapshot goes: the next look at the changes makes a new one. The
+    // undo of the last revert goes only with the last checkpoint.
+    let mut old = vec![reviewed_ref(worktree.thread())];
+    if list(git, worktree).await?.is_empty() {
+        old.push(before_revert_ref(worktree.thread()));
+    }
+    for old in old {
+        let gone = ["update-ref", "--no-deref", "-d", old.as_str()];
+        git.output(Run::new(worktree.folder(), gone)).await?;
+    }
+    own::emptied(git, worktree).await?;
+    list(git, worktree).await
 }
 
 /// Deletes the refs of the checkpoints for which `gone` says yes.

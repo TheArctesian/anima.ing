@@ -62,6 +62,17 @@ impl From<ProjectError> for GitError {
     }
 }
 
+impl From<ProjectError> for agent_threads::git::GitRefusal {
+    fn from(error: ProjectError) -> Self {
+        match error {
+            ProjectError::NotARepository => Self::NotARepository,
+            other => Self::Failed {
+                said: other.to_string(),
+            },
+        }
+    }
+}
+
 /// The two Git folders of one checkout: its own (`HEAD`, the index) and the shared one (the
 /// refs, the objects). They are the same folder for the first checkout of a repository.
 #[derive(Clone, Debug, PartialEq, Eq)]

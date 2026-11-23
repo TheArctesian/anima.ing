@@ -11,6 +11,7 @@
 //!
 //! I/O: opens, reads, writes and removes files below one folder.
 
+use std::io::BufRead as _;
 use std::path::{Component, Path, PathBuf};
 
 use super::super::place::walk::{Dir, Make};
@@ -51,16 +52,64 @@ const fn runs(_about: &std::fs::Metadata) -> bool {
     false
 }
 
-/// Makes a link with the text `to` at `at`, a path in a folder of the runner.
-#[cfg(unix)]
-fn link(to: &std::ffi::OsStr, at: &Path) -> std::io::Result<()> {
-    std::os::unix::fs::symlink(to, at)
+/// The most entries and the most folders in folders that [`Root::files_below`] looks at.
+const MOST_BELOW: usize = 200_000;
+const DEEPEST: usize = 64;
+
+/// Adds to `found` each file and each link of the open folder `folder`, which is at `at`.
+fn listed(folder: &Dir, at: &Path, left: usize, found: &mut Vec<PathBuf>) -> std::io::Result<()> {
+    let too_many = || {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "a folder of a repository in the worktree holds too much to save; delete or move \
+             that folder, then remove the worktree again",
+        )
+    };
+    for name in folder.names()? {
+        if name.eq_ignore_ascii_case(".git") {
+            continue;
+        }
+        let path = at.join(&name);
+        if folder.link(&name).is_some() || folder.file(&name)?.is_some() {
+            found.push(path);
+        } else if let Some(inside) = folder.below(Path::new(&name), Make::No)? {
+            listed(
+                &inside,
+                &path,
+                left.checked_sub(1).ok_or_else(too_many)?,
+                found,
+            )?;
+        }
+        if found.len() > MOST_BELOW {
+            return Err(too_many());
+        }
+    }
+    Ok(())
 }
 
-#[cfg(not(unix))]
-fn link(_to: &std::ffi::OsStr, _at: &Path) -> std::io::Result<()> {
-    Err(std::io::ErrorKind::Unsupported.into())
+/// A path of the worktree for a text that a person reads: no control character of the name
+/// is shown as it is, and a long name is cut.
+#[must_use]
+pub fn shown(path: &Path) -> String {
+    let whole = path.to_string_lossy();
+    let (count, most) = (whole.chars().count(), 200);
+    // The start and the end of a long name are kept: the end is the name of the file.
+    let kept: String = if count > most {
+        let end = whole.chars().skip(count - most / 2);
+        whole
+            .chars()
+            .take(most / 2)
+            .chain("...".chars())
+            .chain(end)
+            .collect()
+    } else {
+        whole.into_owned()
+    };
+    kept.escape_debug().collect()
 }
+
+/// The least bytes that one file of a snapshot costs: a block of the disk.
+const BLOCK: u64 = 4096;
 
 /// The open folder of a worktree. Each path is found from it, part by part.
 #[derive(Debug)]
@@ -77,34 +126,140 @@ impl Root {
 
     /// Copies the file or the link at `path` of the worktree to the same path below `into`,
     /// a folder of the runner. A link is copied as a link, never followed. `false` when
-    /// there is no file and no link at the path.
+    /// there is no file and no link at the path. At most `left` bytes are copied; `left` gets
+    /// smaller by what was copied.
     ///
     /// # Errors
-    /// The error of the system when the copy cannot be written.
-    pub fn take(&self, path: &Path, into: &Path) -> std::io::Result<bool> {
+    /// The error of the system when the copy cannot be written, or the file is larger than
+    /// `left`.
+    pub fn take(&self, path: &Path, into: &Dir, left: &mut u64) -> std::io::Result<bool> {
+        match self.take_to(path, (into, path), left) {
+            // Two names of the worktree that differ only in the case of a letter are one
+            // name on a disk that does not tell them apart: the copy is there. Two
+            // different files with such names cannot both be kept there.
+            Err(there) if there.kind() == std::io::ErrorKind::AlreadyExists => {
+                if self.same(path, into)? {
+                    return Ok(true);
+                }
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!(
+                        "the file {} and a different file have names that differ only in the \
+                         case of a letter; give one of them a different name",
+                        shown(path)
+                    ),
+                ))
+            }
+            taken => taken,
+        }
+    }
+
+    /// Whether the copy at `path` below `into` has the content of the file or the link at
+    /// `path` of the worktree.
+    fn same(&self, path: &Path, into: &Dir) -> std::io::Result<bool> {
+        let (Some((above, name)), Some((copies, last))) =
+            (self.0.above(path, Make::No)?, into.above(path, Make::No)?)
+        else {
+            return Ok(false);
+        };
+        if let Some(to) = above.link(name) {
+            return Ok(copies.link(last) == Some(to));
+        }
+        let (Some(ours), Some(theirs)) = (above.file(name)?, copies.file(last)?) else {
+            return Ok(false);
+        };
+        if ours.metadata()?.len() != theirs.metadata()?.len() {
+            return Ok(false);
+        }
+        let (mut ours, mut theirs) = (
+            std::io::BufReader::new(ours),
+            std::io::BufReader::new(theirs),
+        );
+        loop {
+            let (one, other) = (ours.fill_buf()?, theirs.fill_buf()?);
+            let most = one.len().min(other.len());
+            if one[..most] != other[..most] {
+                return Ok(false);
+            }
+            if most == 0 {
+                return Ok(one.len() == other.len());
+            }
+            ours.consume(most);
+            theirs.consume(most);
+        }
+    }
+
+    /// As [`Root::take`], with the place of the copy named: the path `at` below `into`, the
+    /// open folder of the runner. The copy is made new, one path part at a time: a link that
+    /// an earlier copy put on the way (a link of the worktree is copied as a link) is never
+    /// written through, and a copy never takes the place of a different one.
+    ///
+    /// # Errors
+    /// As [`Root::take`]; `AlreadyExists` when a copy is at `at` already.
+    pub fn take_to(
+        &self,
+        path: &Path,
+        (into, at): (&Dir, &Path),
+        left: &mut u64,
+    ) -> std::io::Result<bool> {
+        use std::io::Read as _;
         let Some((above, name)) = self.0.above(path, Make::No)? else {
             return Ok(false);
         };
-        let copy = into.join(path);
-        if let Some(folder) = copy.parent() {
-            std::fs::create_dir_all(folder)?;
+        let too_large = || {
+            std::io::Error::new(
+                std::io::ErrorKind::FileTooLarge,
+                "the changed files are larger than what the checkpoints of this chat can still \
+                 hold; remove old checkpoints of the chat or make the files smaller",
+            )
+        };
+        // Each file and each link uses at least one block of the disk of the records.
+        let pay = |left: &mut u64, bytes: u64| {
+            *left = left.checked_sub(bytes.max(BLOCK)).ok_or_else(too_large)?;
+            Ok::<_, std::io::Error>(())
+        };
+        let link_text = above.link(name);
+        let found = match &link_text {
+            Some(_) => None,
+            None => above.file(name)?,
+        };
+        if link_text.is_none() && found.is_none() {
+            return Ok(false);
         }
-        if let Some(to) = above.link(name) {
-            return link(&to, &copy).map(|()| true);
+        let (copies, last) = into
+            .above(at, Make::Missing)?
+            .ok_or(std::io::ErrorKind::InvalidInput)?;
+        if let Some(to) = link_text {
+            pay(left, u64::try_from(to.len()).unwrap_or(u64::MAX))?;
+            return copies.new_link(last, &to).map(|()| true);
         }
-        let Some(mut found) = above.file(name)? else {
+        let Some(found) = found else {
             return Ok(false);
         };
-        let runs = runs(&found.metadata()?);
-        let mut written = std::fs::File::create(&copy)?;
-        std::io::copy(&mut found, &mut written)?;
-        if runs {
-            let mut can = written.metadata()?.permissions();
-            #[cfg(unix)]
-            std::os::unix::fs::PermissionsExt::set_mode(&mut can, 0o755);
-            written.set_permissions(can)?;
+        let about = found.metadata()?;
+        // A file that says a size over what is left is not read at all.
+        if about.len() > *left {
+            return Err(too_large());
         }
+        let mut written = copies.new_file(last, runs(&about))?;
+        // One byte more than what is left shows a file that grew while it was read.
+        let taken = std::io::copy(&mut found.take(left.saturating_add(1)), &mut written)?;
+        pay(left, taken)?;
         Ok(true)
+    }
+
+    /// Each file and each link below the folder `path` of the worktree, as paths from the top
+    /// of the worktree. A Git folder (`.git`) in it is not gone into, and no link is
+    /// followed. At most [`MOST_BELOW`] entries and [`DEEPEST`] folders in folders.
+    ///
+    /// # Errors
+    /// The error of the system; `InvalidData` for a folder with more than that.
+    pub fn files_below(&self, path: &Path) -> std::io::Result<Vec<PathBuf>> {
+        let mut found = Vec::new();
+        if let Some(folder) = self.0.below(path, Make::No)? {
+            listed(&folder, path, DEEPEST, &mut found)?;
+        }
+        Ok(found)
     }
 
     /// Writes the file or the link at `path` below `from`, a folder of the runner, to the
@@ -144,7 +299,8 @@ impl Root {
         above.remove(name, false)?;
         let mut folder = path.parent();
         while let Some(empty) = folder.filter(|folder| folder.file_name().is_some()) {
-            let Some((above, name)) = self.0.above(empty, Make::No)? else {
+            // The file is gone; an empty folder that cannot be reached stays.
+            let Ok(Some((above, name))) = self.0.above(empty, Make::No) else {
                 break;
             };
             if above.remove(name, true).is_err() {
@@ -157,104 +313,4 @@ impl Root {
 }
 
 #[cfg(all(test, unix))]
-mod tests {
-    use super::*;
-
-    fn folders() -> (tempfile::TempDir, PathBuf, PathBuf, PathBuf) {
-        let keep = tempfile::tempdir().expect("a folder");
-        let top = std::fs::canonicalize(keep.path()).expect("its real path");
-        let (worktree, own, outside) = (top.join("worktree"), top.join("own"), top.join("outside"));
-        for folder in [&worktree, &own, &outside] {
-            std::fs::create_dir_all(folder).expect("a folder");
-        }
-        std::fs::write(outside.join("secret"), "SECRET\n").expect("a file");
-        (keep, worktree, own, outside)
-    }
-
-    #[test]
-    fn a_path_with_dots_or_a_git_folder_is_not_inside() {
-        for bad in [
-            "",
-            "../x",
-            "/etc/hosts",
-            "a/../b",
-            ".git/config",
-            "a/.GIT/x",
-            "./a",
-        ] {
-            assert!(!inside(Path::new(bad)), "{bad}");
-        }
-        assert!(inside(Path::new("src/a file.rs")));
-        assert!(inside(Path::new("-odd:name")));
-    }
-
-    #[test]
-    fn a_link_is_copied_as_a_link_and_a_folder_that_is_a_link_is_not_passed() {
-        let (_keep, worktree, own, outside) = folders();
-        std::fs::write(worktree.join("plain.txt"), "plain\n").expect("a file");
-        std::os::unix::fs::symlink(outside.join("secret"), worktree.join("link")).expect("a link");
-        std::os::unix::fs::symlink(&outside, worktree.join("dir")).expect("a link");
-        let root = Root::open(&worktree).expect("the worktree");
-        assert!(root.take(Path::new("plain.txt"), &own).expect("a copy"));
-        assert!(root.take(Path::new("link"), &own).expect("a copy"));
-        assert!(own.join("link").is_symlink(), "the link was followed");
-        // `dir` is a link: nothing below it is a file of the worktree.
-        assert!(!root.take(Path::new("dir/secret"), &own).expect("no copy"));
-        assert!(!own.join("dir").exists());
-        assert!(!root.take(Path::new("gone"), &own).expect("no copy"));
-        assert!(Root::open(&worktree.join("dir")).is_err());
-    }
-
-    #[test]
-    fn a_file_is_never_written_or_removed_through_a_link() {
-        let (_keep, worktree, own, outside) = folders();
-        std::fs::create_dir_all(own.join("d")).expect("a folder");
-        std::fs::write(own.join("d/f"), "PAYLOAD\n").expect("a file");
-        std::fs::write(own.join("top"), "PAYLOAD\n").expect("a file");
-        // What a process of an agent leaves: a link where a folder and where a file should be.
-        std::os::unix::fs::symlink(&outside, worktree.join("d")).expect("a link");
-        std::os::unix::fs::symlink(outside.join("secret"), worktree.join("top")).expect("a link");
-        let root = Root::open(&worktree).expect("the worktree");
-        root.put(Path::new("d/f"), &own).expect("a write");
-        root.put(Path::new("top"), &own).expect("a write");
-        assert!(!outside.join("f").exists(), "a file was written outside");
-        let secret = std::fs::read_to_string(outside.join("secret")).expect("the file");
-        assert_eq!(
-            secret, "SECRET\n",
-            "a file outside was written through a link"
-        );
-        assert_eq!(
-            std::fs::read_to_string(worktree.join("d/f")).expect("the file"),
-            "PAYLOAD\n"
-        );
-        assert!(
-            worktree
-                .join("d")
-                .symlink_metadata()
-                .expect("a folder")
-                .is_dir()
-        );
-        std::fs::remove_dir_all(worktree.join("d")).expect("the folder");
-        std::os::unix::fs::symlink(&outside, worktree.join("d")).expect("a link");
-        root.remove(Path::new("d/secret"))
-            .expect("nothing to remove");
-        assert!(
-            outside.join("secret").exists(),
-            "a file outside was removed"
-        );
-        root.remove(Path::new("top")).expect("the removal");
-        assert!(!worktree.join("top").exists());
-    }
-
-    #[test]
-    fn a_removed_file_takes_its_empty_folders_with_it() {
-        let (_keep, worktree, _own, _outside) = folders();
-        std::fs::create_dir_all(worktree.join("a/b")).expect("folders");
-        std::fs::write(worktree.join("a/b/f"), "x").expect("a file");
-        std::fs::write(worktree.join("a/keep"), "x").expect("a file");
-        let root = Root::open(&worktree).expect("the worktree");
-        root.remove(Path::new("a/b/f")).expect("the removal");
-        assert!(!worktree.join("a/b").exists());
-        assert!(worktree.join("a/keep").exists());
-    }
-}
+mod tests;

@@ -16,6 +16,8 @@
 
 use std::path::{Path, PathBuf};
 
+use agent_threads::git::GitRefusal;
+
 /// Why the place of the records is not used.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum BadRecords {
@@ -161,6 +163,24 @@ pub fn opened(_place: &Path) -> Result<PathBuf, BadRecords> {
 #[cfg(not(unix))]
 pub const fn checked(_place: &Path) -> Result<(), BadRecords> {
     Ok(())
+}
+
+/// Whether a Git action may run now: not on Windows (ruling of the operator: "not available on
+/// Windows yet"), not while a thread holds the records (`held`), and only while the records
+/// are a folder of this user alone.
+///
+/// # Errors
+/// The refusal that says why.
+pub fn open_for_actions(records: &Path, held: bool) -> Result<(), GitRefusal> {
+    if cfg!(windows) {
+        return Err(GitRefusal::NotOnWindows);
+    }
+    if held {
+        return Err(GitRefusal::RecordsHeld);
+    }
+    checked(records).map_err(|bad| GitRefusal::Failed {
+        said: bad.to_string(),
+    })
 }
 
 /// A thread whose folder is `folder` holds the records at `records`: its agent can write
