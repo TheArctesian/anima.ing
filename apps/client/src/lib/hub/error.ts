@@ -58,6 +58,7 @@ const UNCODED_MESSAGE = 'The hub could not run the request.';
 export const UNSERVED: HubError = { code: 'unserved', message: 'This hub is older than this application. Update the hub to use this.' };
 
 const UNKNOWN_FIELD = /^Unknown field "[^"]+" on type "[^"]+"/u;
+const UNKNOWN_GROUP_IMPORT = /^Unknown type "ProjectGroupImportInput"\.?$/u;
 const UNKNOWN_INPUT_FIELD = /^Invalid value for argument "[^"]+", unknown field "[^"]+" of type "[^"]+"/u;
 
 /** Shown as a quiet note, not as an error with Retry. */
@@ -96,7 +97,7 @@ function parseError(value: unknown): HubError {
     return fields === undefined ? MALFORMED : { code, message, fields };
   }
   if (isHubCode(code) && code !== 'VALIDATION') return { code, message };
-  if (UNKNOWN_FIELD.test(message) || UNKNOWN_INPUT_FIELD.test(message)) return UNSERVED;
+  if (UNKNOWN_FIELD.test(message) || UNKNOWN_INPUT_FIELD.test(message) || UNKNOWN_GROUP_IMPORT.test(message)) return UNSERVED;
   return { code: 'INTERNAL', message: message === '' ? UNCODED_MESSAGE : message };
 }
 
