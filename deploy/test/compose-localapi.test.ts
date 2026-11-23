@@ -1,4 +1,4 @@
-// What deploy/compose.yaml gives the LocalAPI proxy (D-4, VPN-005, NET-003, SEC-001). Nothing here starts Docker.
+// deploy/compose.yaml LocalAPI proxy (D-4, VPN-005, NET-003, SEC-001).
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join, posix } from "node:path";

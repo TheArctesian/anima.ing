@@ -1,4 +1,3 @@
-// Runs deploy/bin/make-secrets in a temporary folder for the secrets tests.
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -17,7 +16,6 @@ export const GENERATED = [
 
 const scratchFolders: string[] = [];
 
-/** A new empty folder that `removeScratchFolders` deletes. */
 export function scratchFolder(): string {
   const folder = mkdtempSync(join(tmpdir(), "anima-secrets-"));
   scratchFolders.push(folder);
@@ -28,16 +26,13 @@ export function removeScratchFolders(): void {
   for (const folder of scratchFolders.splice(0)) rmSync(folder, { recursive: true, force: true });
 }
 
-/** A folder path that does not exist yet, so make-secrets creates it. */
 export function newSecretsPath(): string {
   return join(scratchFolder(), "secrets");
 }
 
 export interface RunOptions {
   args?: string[];
-  /** Directories put in front of PATH. */
   shimDirectories?: string[];
-  /** Replaces PATH entirely. */
   path?: string;
   chown?: "0" | "1";
   stdin?: string;
@@ -71,7 +66,7 @@ export async function makeSecrets(folder: string, options: RunOptions = {}): Pro
   return { exitCode, output: stdout + stderr, stdout, stderr };
 }
 
-/** Starts the script with a stdin pipe that stays open, so a test can signal it while it reads. */
+/** The stdin pipe stays open, so a test can signal the script while it reads. */
 export function startMakeSecrets(folder: string, options: RunOptions = {}) {
   return Bun.spawn(["/bin/sh", SCRIPT, ...(options.args ?? [])], {
     env: environment(folder, options),
@@ -85,7 +80,6 @@ export function read(folder: string, name: string): string {
   return readFileSync(join(folder, name), "utf8");
 }
 
-/** A folder of executable shell scripts named after the commands they replace. */
 export function shimFolder(scripts: Record<string, string>): string {
   const folder = scratchFolder();
   for (const [name, body] of Object.entries(scripts)) {
@@ -96,7 +90,6 @@ export function shimFolder(scripts: Record<string, string>): string {
   return folder;
 }
 
-/** A folder that links only the named commands, found on the real PATH. */
 export function toolsOnly(names: string[]): string {
   const folder = scratchFolder();
   for (const name of names) {

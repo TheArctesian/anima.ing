@@ -1,7 +1,4 @@
-// Rules for the jobs of the daemon alone in .github/workflows/release.yml (task U2; ROL-002 to
-// ROL-005) and of the one-line install (HM-T33, R-361): where the files come from, who signs
-// their record, and that nothing of it is public before the desktop application of the same run. Nothing here runs the workflow or reads a
-// secret; no run has proved these jobs.
+// Task U2; ROL-002 to ROL-005; HM-T33, R-361.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

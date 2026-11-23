@@ -174,7 +174,6 @@ for (const proto of ['tcp', 'udp', 'icmp']) {
   });
 }
 
-// Malformed input the parser and evaluator must refuse, with the error code each raises.
 const valid = { src: ['operator@'], dst: ['site-home'], ip: ['*'] };
 const grant = (change: Record<string, unknown>): (() => unknown) => () => withGrants([{ ...valid, ...change }]);
 const tests = (row: Record<string, unknown>): (() => unknown) => () => withTests([row]);

@@ -1,6 +1,3 @@
-// Rules for .github/workflows/gates.yml, checked on the parsed file: the gates on GitHub hold no
-// secret, can write nothing, give a pull request of a fork nothing, and run the list of
-// quality/src/gates/gates.ts. Nothing here runs the workflow.
 import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -38,12 +35,12 @@ const jobs = Object.entries(workflow.jobs).map(([name, job]) => [name, { ...job,
 const steps = jobs.flatMap(([, job]) => job.steps);
 const gateJobs = jobs.filter(([name]) => name !== "passed" && name !== "base" && name !== "windows");
 
-/** The gates that the `run` scripts of the workflow select, in the way `quality/bin/gates.ts` selects them. */
+/** Mirrors the gate selection of `quality/bin/gates.ts`. */
 function gatesThatRun(): string[] {
   const full = gateList("x");
   return steps.flatMap((step) => {
     const command = /quality\/bin\/gates\.ts(.*)/.exec(step.run ?? "")?.[1];
-    // `--alone` checks each crate by itself, `--windows-lint` lints for Windows; `--jobs` and `--dev-push` name the jobs of a push: none runs a gate of the list.
+    // These modes run no gate of the list.
     if (command === undefined || /^\s*--(alone|jobs|dev-push|windows-lint)\b/.test(command)) return [];
     const groups = /--group (\S+)/.exec(command)?.[1]?.split(",");
     const named = /--gate (\S+)/.exec(command)?.[1]?.split(",");
@@ -236,9 +233,8 @@ describe("the workflow that merges into dev (merge-to-dev.yml; R-252)", () => {
   });
 });
 
-// merge-to-dev.sh runs on a Linux runner of GitHub, under /bin/sh, which Windows does not have.
 describe.skipIf(process.platform === "win32")("while a train is on the way, nothing else wakes it: the script stays, then starts the workflow again", () => {
-  /** Runs the script with stand-ins for bun, gh, git and sleep; `trains` says, for each step, if a train exists after it. */
+  /** `trains` says, for each step, if a train exists after it. */
   function steps(trains: boolean[], seconds: number, rule = '{"mergeWithoutCheck": true, "fullGates": "github"}'): string[] {
     const dir = mkdtempSync(join(tmpdir(), "merge-to-dev-"));
     mkdirSync(join(dir, "bin"));

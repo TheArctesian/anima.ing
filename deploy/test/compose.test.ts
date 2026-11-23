@@ -1,5 +1,4 @@
-// Rules for deploy/compose.yaml, checked on the parsed file (DB-002, SEC-001, NET-003).
-// Nothing here starts Docker, and no test writes a file.
+// DB-002, SEC-001, NET-003.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -43,7 +42,6 @@ function networksOf(service: Container): string[] {
   return Array.isArray(networks) ? networks : Object.keys(networks);
 }
 
-// The mode ("rw" or "ro") and target of every mount of one named volume in one service.
 function namedMounts(service: Container, volume: string): string[] {
   return (service.volumes ?? []).flatMap((entry) => {
     if (typeof entry === "string") {
@@ -186,9 +184,9 @@ describe("host integration (AlmaLinux host firewall)", () => {
           continue;
         }
         if (volume.type !== "bind") continue;
-        // The tailscale socket directory is a host path outside the repository; see compose-localapi.test.ts.
+        // The tailscale socket directory is a host path outside the repository.
         if (name === "localapi") continue;
-        // So is the broker socket directory the hub mounts; see compose-hub.test.ts (R-054).
+        // So is the broker socket directory the hub mounts (R-054).
         if (name === "hub" && volume.source === "/run/anima-broker") continue;
         binds += 1;
         expect(volume.bind?.selinux).toBe("z");
@@ -288,7 +286,7 @@ describe("process logs (LOG-007, SEC-009)", () => {
 });
 
 describe("drives (RA-021, GW-001, GW-002)", () => {
-  // Built from two parts, as in the last test of this file, so the literal word is not in the source.
+  // Built from two parts so that the literal word is not in the source.
   const makeDir = ["mk", "dir"].join("");
 
   test("RA-021 the gateway_drives volume is mounted only in guacd, read-write, at the drives root", () => {

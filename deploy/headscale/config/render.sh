@@ -3,14 +3,8 @@
 #
 #   VPS_PUBLIC_IPV4=<ip> ACME_EMAIL=<address> render.sh <template> <out>
 #
-# Refuses, and writes nothing, unless VPS_PUBLIC_IPV4 is a public dotted-quad IPv4
-# address on a local interface and ACME_EMAIL looks like an address. Without this,
-# envsubst would turn an unset VPS_PUBLIC_IPV4 into "", and the listeners ":443" and
-# ":3478" would bind every interface. The output is written to a private temp file,
-# checked, then moved into place, so <out> is never partial.
-# ENVSUBST and IP name the envsubst and ip commands (tests pass fakes).
-# Run it as root (sudo): the output is 0600, and the container runs as root without
-# DAC_OVERRIDE, so it can read the file only if root owns it.
+# An unset VPS_PUBLIC_IPV4 would render ":443" and ":3478", which bind every interface, so it is checked first.
+# Run it as root: the output is 0600, and the container's root has no DAC_OVERRIDE.
 set -euo pipefail
 
 ENVSUBST=${ENVSUBST:-envsubst}
@@ -23,7 +17,6 @@ fail() {
 
 octet='(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])'
 
-# Prints nothing; exits non-zero unless $1 is a strict, public dotted quad.
 check_ipv4() {
   local address=$1
   [[ $address =~ ^$octet\.$octet\.$octet\.$octet$ ]] || fail "VPS_PUBLIC_IPV4 is not a dotted-quad IPv4 address"

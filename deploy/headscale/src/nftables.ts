@@ -1,21 +1,15 @@
-/**
- * Reads the structure of an nftables file so the tests can check what the VPS firewall
- * opens (VPS-002). It accepts the subset `vps/nftables.conf` uses: top-level commands,
- * tables, chains and one rule per line. Anything else is refused, never guessed.
- */
+/** Reads the subset of nftables that `vps/nftables.conf` uses (VPS-002); anything else is refused, never guessed. */
 
 export interface Chain {
   table: string;
   name: string;
   hook?: string;
-  /** Numeric priority; named priorities (raw, dstnat, filter...) are resolved. */
   priority?: number;
   policy?: string;
   rules: string[];
 }
 
 interface Ruleset {
-  /** Statements outside any table block, such as `delete table inet x`. */
   commands: string[];
   chains: Chain[];
 }
@@ -67,7 +61,6 @@ function addStatements(chain: Chain, text: string, line: number): void {
   }
 }
 
-/** Parse the text of an nftables file; throws NftParseError on anything unexpected. */
 export function parseNftables(text: string): Ruleset {
   const ruleset: Ruleset = { commands: [], chains: [] };
   let table: string | undefined;
@@ -99,12 +92,10 @@ export function parseNftables(text: string): Ruleset {
   return ruleset;
 }
 
-/** The input interface a rule requires, or undefined if it matches every interface. */
 function ruleInterface(rule: string): string | undefined {
   return /\biifname\s+"([^"]+)"/.exec(rule)?.[1] ?? /\biif\s+"?([\w.-]+)"?/.exec(rule)?.[1];
 }
 
-/** Destination ports a rule matches, as `port/protocol`. */
 function rulePorts(rule: string): string[] {
   const ports: string[] = [];
   for (const [, protocol, value] of rule.matchAll(/\b(tcp|udp)\s+dport\s+(\{[^}]*\}|\d+)/g)) {
@@ -117,14 +108,12 @@ function rulePorts(rule: string): string[] {
 
 const isAccept = (rule: string): boolean => /\baccept$/.test(rule);
 
-/** Ports a chain accepts from any interface. */
 export function publicPorts(chain: Chain): string[] {
   return chain.rules
     .filter((rule) => isAccept(rule) && ruleInterface(rule) === undefined)
     .flatMap(rulePorts);
 }
 
-/** Ports a chain accepts only from the given interface. */
 export function interfacePorts(chain: Chain, name: string): string[] {
   return chain.rules
     .filter((rule) => isAccept(rule) && ruleInterface(rule) === name)
@@ -133,7 +122,6 @@ export function interfacePorts(chain: Chain, name: string): string[] {
 
 const EXPECTED_ACCEPT = [/^ct state established,related accept$/, /^iif "?lo"? accept$/, /^icmp(v6)? type /];
 
-/** Accept rules that open no port and are not connection state, loopback or ICMP. */
 export function unexplainedAccepts(chain: Chain): string[] {
   return chain.rules.filter(
     (rule) => isAccept(rule) && rulePorts(rule).length === 0 && !EXPECTED_ACCEPT.some((re) => re.test(rule)),

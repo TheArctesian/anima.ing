@@ -1,6 +1,4 @@
-// The broker's audit and limits end to end against a fake Headscale (vpn-plan.md Section 5.1):
-// the audit timer (H2), unreadable nodes (L3), keys not yet used (M1), one router per site (M2)
-// and the request deadline (H1).
+// The broker's audit and limits against a fake Headscale (vpn-plan.md Section 5.1).
 import { afterEach, describe, expect, it } from 'bun:test';
 import { changes, STEP_MS, withDeadline } from '../broker/deadline.ts';
 import { serve, type Served } from '../broker/serve.ts';

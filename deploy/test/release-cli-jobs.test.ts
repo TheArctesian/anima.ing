@@ -1,6 +1,4 @@
-// Rules for the jobs of `anima` alone in .github/workflows/release.yml (INS-010 to INS-012;
-// R-217 to R-219; task B8h): what each may hold, and that nothing of them is public while a
-// switch of the operator is off. Nothing here runs the workflow or reads a secret.
+// INS-010 to INS-012; R-217 to R-219; task B8h.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

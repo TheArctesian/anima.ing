@@ -1,6 +1,4 @@
-// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
-// deploy/bin/commit-version: the version of a commit from the number of commits on the first
-// line of its history (R-183, R-201). Each repository here is made in a temporary folder.
+// R-183, R-201.
 import { afterAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -31,7 +29,6 @@ function version(folder: string, ...given: string[]): { exitCode: number; printe
   return run(["/bin/sh", COMMAND, ...given], folder);
 }
 
-/** A repository with `count` commits on one line; it gives its folder. */
 function repositoryWith(count: number): string {
   const folder = mkdtempSync(join(ROOM, "repository-"));
   expect(run(["git", "init", "--quiet", "--initial-branch=main"], folder).exitCode).toBe(0);

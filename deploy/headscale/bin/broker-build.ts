@@ -1,7 +1,5 @@
 // Usage: bun deploy/headscale/bin/broker-build.ts [arm64]
-// Compiles the broker into one Linux binary, deploy/headscale/broker/dist/anima-broker (BD-7),
-// and prints its SHA-256 for `harden.sh --sha256=<hash> broker` (L5).
-// The first cross-compile downloads the Bun runtime for the target (network).
+// Compiles the broker into one Linux binary (BD-7) and prints its SHA-256 for `harden.sh --sha256=<hash> broker` (L5).
 import { join } from 'node:path';
 
 const [arch, ...rest] = process.argv.slice(2);

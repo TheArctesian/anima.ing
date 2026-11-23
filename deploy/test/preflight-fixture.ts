@@ -1,5 +1,4 @@
-// The secrets folder fixture of the bin/preflight tests: a folder of secret files with the modes
-// make-secrets sets, and the updater key pair (DB-002, R-108, D-44).
+// Secret files with the modes make-secrets sets, and the updater key pair (DB-002, R-108, D-44).
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -16,7 +15,6 @@ export async function preflight(...args: string[]): Promise<{ ok: boolean; messa
   return { ok: result.exitCode === 0, message: result.stderr };
 }
 
-/** The secrets check of `folder`, with the test's user and group as the owner and hub group. */
 export async function secrets(folder: string): Promise<{ ok: boolean; message: string }> {
   return preflight("secrets", folder, OWNER, GROUP);
 }

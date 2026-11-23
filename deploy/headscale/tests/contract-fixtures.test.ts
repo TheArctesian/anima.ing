@@ -1,5 +1,4 @@
-// The fixtures that test/contract.sh captured from Headscale 0.29.7 and Tailscale: the parsers
-// and the hub's reading rules must accept the real shapes (VPN-009, VPN-013, VPN-014).
+// VPN-009, VPN-013, VPN-014: the parsers accept the shapes test/contract.sh captured from Headscale 0.29.7 and Tailscale.
 import { describe, expect, it } from 'bun:test';
 import { parseNodes, parseRoutes } from '../src/inventory.ts';
 import { PREAUTH_PLACEHOLDER } from '../src/redact.ts';
