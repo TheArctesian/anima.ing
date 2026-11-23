@@ -12,8 +12,9 @@ use crate::mcp::catalogue::Access;
 use crate::mcp::definition::{Definition, Effect};
 use crate::mcp::outcome::ToolError;
 use crate::projects::group::documents::{
-    ProjectGroupCreate, ProjectGroupDelete, ProjectGroupRename, ProjectsGroupSet,
-    project_group_create, project_group_delete, project_group_rename, projects_group_set,
+    ProjectGroupCreate, ProjectGroupDelete, ProjectGroupImport, ProjectGroupRename,
+    ProjectsGroupSet, project_group_create, project_group_delete, project_group_import,
+    project_group_rename, projects_group_set,
 };
 use crate::projects::group::lookup::{group_id, groups, project_ids};
 
@@ -21,6 +22,7 @@ use crate::projects::group::lookup::{group_id, groups, project_ids};
 pub enum GroupTool {
     List,
     Create,
+    Import,
     Rename,
     Delete,
     SetProjects,
@@ -37,6 +39,17 @@ pub struct CreateInput {
     name: String,
     /// The slugs of the projects to put in it; a project in a different group moves.
     #[serde(default)]
+    projects: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ImportInput {
+    /// Stable UUID of the device group; reuse for every retry and batch.
+    source: String,
+    /// The device group's name, 1 to 60 characters.
+    name: String,
+    /// At most 200 project IDs, not slugs. Unknown IDs are not acknowledged.
     projects: Vec<String>,
 }
 
@@ -96,6 +109,13 @@ impl GroupTool {
                  project that is in a different group moves. Returns the group.",
             )
             .returns(&[("group", "object", "The new group.")]),
+            Self::Import => Definition::new::<ImportInput>(
+                "anima_project_group_import",
+                Access::Write,
+                Effect::Sets,
+                "Imports a device group into this hub, reusing a matching name and preserving \
+                 existing shared assignments. Reuse the source UUID on retry. Returns acknowledged project IDs.",
+            ).returns(&[("acknowledged", "array", "Project IDs known to this hub.")]),
             Self::Rename => Definition::new::<RenameInput>(
                 "anima_project_group_rename",
                 Access::Write,
@@ -148,6 +168,7 @@ impl GroupTool {
                     json(&made.create_project_group),
                 )])))
             }
+            Self::Import => import(hub, arguments).await,
             Self::Rename => {
                 let input: RenameInput = parse(arguments)?;
                 let id = group_id(hub, &input.group).await.map_err(lookup)?;
@@ -188,5 +209,21 @@ async fn set_projects(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value,
     Ok(Value::Object(object([(
         "moved",
         json(&moved.set_projects_group),
+    )])))
+}
+
+async fn import(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
+    let input: ImportInput = parse(arguments)?;
+    let input = project_group_import::ProjectGroupImportInput {
+        source: input.source,
+        name: input.name,
+        projects: input.projects,
+    };
+    let imported = hub
+        .run::<ProjectGroupImport>(project_group_import::Variables { input })
+        .await?;
+    Ok(Value::Object(object([(
+        "acknowledged",
+        json(&imported.import_project_group),
     )])))
 }

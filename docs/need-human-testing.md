@@ -5392,3 +5392,25 @@ with SSH on. The tests use a fake hub; nobody has seen the list with real device
    Expected: that device is no longer listed.
 
 Result: Open.
+
+
+### HT-NEW-autogroups: Earlier project groups sync across devices (G3)
+
+Built on `projects/auto-share-groups`. Automated tests cover hub receipts, duplicate names,
+existing assignments and client retries. They do not cover two real devices or application storage upgrades.
+
+1. Use two clients of this build with the same updated hub. On a device that holds earlier local
+   project groups, open Projects in either Status or Group view. Expected: the earlier groups
+   appear without Share buttons. On the second device, open Projects or wait up to 30 seconds
+   while it is visible. Expected: the same shared groups appear.
+2. Put a project in a different shared group on the second device before the first device imports
+   its earlier local group. Expected: the shared assignment stays; no import moves it back.
+3. Open Projects with the hub unavailable, then reconnect. Expected: an error explains the failure;
+   the next refresh imports the group, with no duplicate name and no lost membership.
+4. Keep Projects open on both devices and rename a shared group. Expected: the other device shows
+   the new name after its next visible refresh.
+
+The old device storage has no hub address. Unknown or foreign-hub memberships and empty local
+names remain stored on the device; they are not imported into another hub or deleted.
+
+Result: Open.

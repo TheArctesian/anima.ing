@@ -1,5 +1,7 @@
 //! PRJ-002, PRJ-016, PRO-004.
 
+mod groups;
+
 use serde_json::{Value, json};
 
 use crate::kit::Anima;
@@ -234,64 +236,4 @@ async fn pro_004_resource_confirm_shows_the_hubs_conflict_for_a_confirmed_resour
         ])
         .await;
     assert_eq!(run.code, 6, "{run:?}");
-}
-
-#[tokio::test]
-async fn pro_060_project_group_add_names_the_group_by_name_and_the_projects_by_slug() {
-    let hub = FakeHub::start().await;
-    hub.answer(
-        "ProjectGroups",
-        data(
-            json!({ "projectGroups": [{ "id": "group-1", "name": "Work", "projectCount": 0,
-                                          "createdAt": "2026-11-20T10:00:00Z" }] }),
-        ),
-    );
-    hub.answer(
-        "ProjectIdBySlug",
-        data(json!({ "project": { "id": "project-1" } })),
-    );
-    hub.answer(
-        "ProjectsGroupSet",
-        data(json!({ "setProjectsGroup": ["project-1"] })),
-    );
-    let run = signed_in()
-        .run(&[
-            "project",
-            "group",
-            "add",
-            "work",
-            "anima",
-            "--hub",
-            &hub.origin,
-        ])
-        .await;
-    assert_eq!(run.code, 0, "{run:?}");
-    assert!(run.stdout.contains("project-1"), "{run:?}");
-    let set: Vec<Value> = hub
-        .seen()
-        .into_iter()
-        .filter(|seen| seen.operation == "ProjectsGroupSet")
-        .map(|seen| seen.variables)
-        .collect();
-    assert_eq!(
-        set,
-        [json!({ "projects": ["project-1"], "group": "group-1" })]
-    );
-
-    let run = signed_in()
-        .run(&[
-            "project",
-            "group",
-            "add",
-            "home",
-            "anima",
-            "--hub",
-            &hub.origin,
-        ])
-        .await;
-    assert_ne!(run.code, 0, "{run:?}");
-    assert!(
-        run.stderr.contains("no project group named home"),
-        "{run:?}"
-    );
 }

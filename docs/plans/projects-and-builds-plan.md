@@ -817,7 +817,7 @@ No run of this trigger was on GitHub. The tests run the two commands in reposito
 
 The operator's words (2026-11-20): "I would also like i think we meantioned it Before but be cable to
 select and create project groups here", then "Like just cluster them together this is just a UI think".
-On 2026-11-22 the operator chose to share the groups with all users of the same hub. The hub holds group names and membership. Sort order and collapsed groups stay on each client. See R-388. Earlier local groups can be shared one at a time from the Group view.
+On 2026-11-22 the operator chose to share the groups with all users of the same hub. The hub holds group names and membership. Sort order and collapsed groups stay on each client. See R-388. On 2026-11-23 the operator asked for automatic sharing of earlier device groups (G3). The client imports them when it opens Projects and retries on the usual refresh. The hub reuses a matching name without regard to case and only assigns projects that have no shared group. A receipt prevents a retry from undoing a later rename, deletion or removal from a group. The client removes only acknowledged memberships from local storage. Unknown projects, foreign-hub memberships and empty local groups stay on the device: the old storage has no hub address, so their hub cannot be inferred. New groups are shared from creation.
 
 - **PRO-059. A group of cards.** A group is a name of 1 to 60 characters that the operator gives to
   cards of the Projects screen. Two groups cannot have the same name when the case of the letters is
@@ -1190,6 +1190,7 @@ other group.
 | --- | --- | --- | --- | --- | --- |
 | G1 | The client: the select mode, "New group", "Add to group", "Remove from group", "Show by" Status or Group with heads that open and close, "Ungrouped", rename and delete, kept in the storage of the application; the list look of R-224 (sentence case). The mockup `projects-v2` changes in the same commit (PLN-019). The branch merges `ui/lists-motion` first, which changes the same rows for motion. | — | The tests of the client pass; the mockup is compared again; an entry in [need-human-testing.md](../need-human-testing.md). | Built (branch `ui/project-groups`): `apps/client/src/lib/projects/groups/`. Waits for HT-078. | — |
 | G2 | The hub stores shared Projects group names and membership for its users. Hub access rules govern reads and edits. | G1; operator decision on 2026-11-22 | A change made in one authenticated client appears in another client on the same hub. | Built | The client reads shared membership on entry and refreshes while the Projects page is visible. |
+| G3 | Automatically import earlier device groups into the same hub (PRO-059). No Share step; preserve existing assignments, unknown projects and local data until acknowledgement. Hub API, CLI, MCP and client. | G2; operator instruction on 2026-11-23 | Concurrent imports and retries cannot replace shared assignments; local memberships remain until the hub acknowledges them. | Built; waits for HT-NEW-autogroups | Branch `projects/auto-share-groups`: import API with receipts, CLI, MCP and automatic client import. |
 
 ## Conflicts with text that exists
 

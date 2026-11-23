@@ -277,3 +277,23 @@ async fn pro_063_set_group_finds_a_group_by_name_and_with_none_takes_projects_ou
     assert_eq!(missing["isError"], true, "{missing}");
     session.finish().await;
 }
+
+#[tokio::test]
+async fn g3_import_preserves_the_source_and_reports_only_acknowledged_project_ids() {
+    let hub = hub().await;
+    hub.answer(
+        "ProjectGroupImport",
+        data(json!({ "importProjectGroup": ["p-1"] })),
+    );
+    let mut session = writing(&hub, &Desk::new()).await;
+    let input = json!({ "source": GROUP, "name": "Work", "projects": ["p-1", "foreign"] });
+    let answer = session
+        .call("anima_project_group_import", input.clone())
+        .await;
+    assert_eq!(structured(&answer)["acknowledged"], json!(["p-1"]));
+    assert_eq!(
+        sent(&hub, "ProjectGroupImport"),
+        [json!({ "input": input })]
+    );
+    session.finish().await;
+}

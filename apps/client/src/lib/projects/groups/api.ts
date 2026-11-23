@@ -24,3 +24,9 @@ export const DELETE = graphql(`
     deleteProjectGroup(id: $id)
   }
 `);
+
+export const IMPORT = graphql(`
+  mutation ImportDeviceProjectGroup($input: ProjectGroupImportInput!) {
+    importProjectGroup(input: $input)
+  }
+`);
