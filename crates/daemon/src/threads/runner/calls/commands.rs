@@ -3,6 +3,7 @@
 //! person makes them: the lists name files of the person.
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use agent_threads::control::{Action, Outcome, Refusal};
 use agent_threads::drive::{CommandLists, Program};
@@ -68,10 +69,15 @@ impl Runner {
     }
 
     /// The command files of Claude Code in `folder` and the home, read off the loop of the
-    /// runner: a folder that does not answer in time (a hung mount) gives `pending`.
+    /// runner: a folder that does not answer in time (a hung mount) gives `pending`. One read
+    /// runs at a time, so a read that never ends holds one thread, not one for each call.
     async fn claude_files(&self, folder: PathBuf, daemon: PathBuf) -> Outcome {
+        if READING.swap(true, Ordering::AcqRel) {
+            return answer(None);
+        }
         let home = self.home();
         let read = tokio::task::spawn_blocking(move || {
+            let _done = Reading;
             let real = super::super::start::chosen_folder(&folder, &daemon)?;
             Ok(claude_files::commands(&real, home.as_deref()))
         });
@@ -109,6 +115,18 @@ impl Runner {
             }
             Err(why) => refused(why),
         }
+    }
+}
+
+/// A read of command files runs.
+static READING: AtomicBool = AtomicBool::new(false);
+
+/// The end of a read, also by a panic.
+struct Reading;
+
+impl Drop for Reading {
+    fn drop(&mut self) {
+        READING.store(false, Ordering::Release);
     }
 }
 

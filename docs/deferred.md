@@ -185,7 +185,7 @@ Added 2026-11-23. From task TH117 of [agent-threads.md](proposals/agent-threads.
 - [ ] The walk of the Claude Code files checks that a folder is not a link, then opens `SKILL.md` in it by its path: a process that changes the folder between the two can put a link in the path. The read stays a plain file of at most 8 KiB. Opening the folder first and the file relative to it would close the gap.
 - [ ] A skill chosen from the list of a folder before a thread starts cannot go with the first prompt: the start takes no skill, and a prompt takes only skills of the list of its own thread.
 - [ ] Links in `~/.claude/commands` and `~/.claude/skills` are left out, as in a repository. Many people keep these folders as links to their dotfiles.
-- [ ] The Claude Code files of a folder that does not answer in 5 seconds (a hung mount) give `pending`, and each later call starts one more read that waits.
+- [ ] The Claude Code files of a folder that does not answer in 5 seconds (a hung mount) give `pending`; one read runs at a time, so a read that never ends makes each later call of a Claude Code folder answer `pending` until the runner starts again. The Codex path still checks its folder on the loop of the runner, as `start` does.
 
 ## 3. Ideas from other products
 
