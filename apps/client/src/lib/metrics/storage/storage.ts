@@ -65,9 +65,12 @@ function activityText(drive: StorageDrive): string | null {
   return parts.length === 0 ? null : parts.join(' · ');
 }
 
+/** Mount label used by the retired iOS reporter that sent raw filesystem block counts. */
+export const LEGACY_IOS_DISK_MOUNT = 'App data';
+
 /** The rows in the hub's order: mounted drives, lone mounts, then drives that are not mounted (MET-029). */
 export function storageRows(drives: readonly StorageDrive[]): readonly StorageRow[] {
-  return drives.map((drive) => {
+  return drives.filter((drive) => drive.name !== null || drive.mounts[0]?.path !== LEGACY_IOS_DISK_MOUNT).map((drive) => {
     const lone = drive.name === null;
     const title = drive.name ?? drive.mounts[0]?.path ?? '—';
     return {

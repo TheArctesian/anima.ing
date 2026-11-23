@@ -79,7 +79,16 @@ mod held {
         fn step(&self, part: &OsStr, make: Make) -> io::Result<Option<Self>> {
             match openat(&self.0, part, FOLDER, Mode::empty()) {
                 Ok(next) => return Ok(Some(Self(next))),
-                Err(_) if make == Make::No => return Ok(None),
+                // Nothing, a link or a file at the name: no folder. Each other failure (no
+                // right to open it) is a failure: what is below a folder that is there and
+                // is not read would be taken as gone.
+                // A name that is too long for the disk cannot be on it.
+                Err(
+                    Errno::NOENT | Errno::NOTDIR | Errno::LOOP | Errno::MLINK | Errno::NAMETOOLONG,
+                ) if make == Make::No => {
+                    return Ok(None);
+                }
+                Err(failed) if make == Make::No => return Err(failed.into()),
                 Err(_) => {}
             }
             if make == Make::Over {
@@ -129,8 +138,23 @@ mod held {
         /// # Errors
         /// The error of the system for a file that is there and cannot be read.
         pub fn file(&self, name: &OsStr) -> io::Result<Option<File>> {
-            let Ok(found) = openat(&self.0, name, FILE | OFlags::RDONLY, Mode::empty()) else {
-                return Ok(None);
+            let found = match openat(&self.0, name, FILE | OFlags::RDONLY, Mode::empty()) {
+                Ok(found) => found,
+                // Nothing, a link, or a part of the path that is no folder: no file. Each
+                // other failure (no right to read it) is a failure, not "no file": a file
+                // that is there and is not read would be missing from what is saved.
+                Err(
+                    Errno::NOENT
+                    | Errno::LOOP
+                    | Errno::MLINK
+                    | Errno::NOTDIR
+                    | Errno::NXIO
+                    | Errno::OPNOTSUPP
+                    | Errno::NAMETOOLONG,
+                ) => {
+                    return Ok(None);
+                }
+                Err(failed) => return Err(failed.into()),
             };
             let found = File::from(found);
             Ok(found.metadata()?.is_file().then_some(found))
@@ -208,7 +232,7 @@ mod held {
                 AtFlags::empty()
             };
             match unlinkat(&self.0, name, how) {
-                Ok(()) | Err(Errno::NOENT) => Ok(()),
+                Ok(()) | Err(Errno::NOENT | Errno::NAMETOOLONG) => Ok(()),
                 Err(failed) => Err(failed.into()),
             }
         }

@@ -4,6 +4,7 @@
 //! own log has no subscriber, so it prints nothing.
 
 use std::borrow::Cow;
+use std::time::SystemTime;
 
 use rmcp::model::{
     CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock, Implementation,
@@ -20,6 +21,7 @@ use super::selection::{Row, statement};
 use super::untrusted::{cleaned_result, fitted};
 use crate::failure::Failure;
 use crate::hub::{Hub, TokenKind};
+use crate::shortening::{Shortening, original};
 
 /// The server: one hub client and the tools it lists.
 pub struct Server {
@@ -30,6 +32,8 @@ pub struct Server {
     /// The tools that need the operator's sign-in, when the token is an API key (MCP-003).
     sign_in_only: Vec<&'static str>,
     instructions: String,
+    /// Long answers lose rows that say the same when this is on (SHA-001 to SHA-008).
+    shortening: Shortening,
 }
 
 impl Server {
@@ -52,7 +56,16 @@ impl Server {
             listed,
             sign_in_only,
             instructions,
+            shortening: Shortening::off(),
         }
+    }
+
+    /// The same server with this shortening. When it is on, the server also lists the tool
+    /// that gives an original (SHA-016).
+    #[must_use]
+    pub fn with_shortening(mut self, shortening: Shortening) -> Self {
+        self.shortening = shortening;
+        self
     }
 
     /// How many tools are listed.
@@ -82,6 +95,14 @@ impl Server {
         request: CallToolRequestParams,
         context: RequestContext<RoleServer>,
     ) -> CallToolResult {
+        if let Some(store) = self
+            .shortening
+            .store()
+            .filter(|_| request.name == original::TOOL)
+        {
+            let outcome = original::call(store, request.arguments, SystemTime::now()).map(fit);
+            return result(outcome, self.token);
+        }
         let Some(row) = self
             .listed
             .iter()
@@ -106,11 +127,24 @@ impl Server {
         let outcome =
             row.entry.tool.call(&self.hub, request.arguments).await.map(
                 |value| match cleaned_result(&request.name, value) {
-                    Value::Object(fields) => Value::Object(fitted(fields)),
+                    // After MCP-008, so that the stored original is the cleaned answer (SHA-008).
+                    Value::Object(fields) => fit(Value::Object(self.shortening.applied(
+                        &request.name,
+                        fields,
+                        SystemTime::now(),
+                    ))),
                     other => other,
                 },
             );
         result(outcome, self.token)
+    }
+}
+
+/// `value` under the limit of a whole result (MCP-008).
+fn fit(value: Value) -> Value {
+    match value {
+        Value::Object(fields) => Value::Object(fitted(fields)),
+        other => other,
     }
 }
 
@@ -173,10 +207,15 @@ impl ServerHandler for Server {
         _request: Option<PaginatedRequestParams>,
         _context: RequestContext<RoleServer>,
     ) -> impl Future<Output = Result<ListToolsResult, ErrorData>> + Send + '_ {
+        let original = self
+            .shortening
+            .store()
+            .map(|_| original::definition().tool());
         let tools = self
             .listed
             .iter()
             .map(|row| row.entry.definition.tool())
+            .chain(original)
             .collect();
         std::future::ready(Ok(ListToolsResult::with_all_items(tools)))
     }
