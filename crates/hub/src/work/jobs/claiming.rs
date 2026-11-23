@@ -34,14 +34,14 @@ pub struct Claimant<'a> {
 /// null `project` and the member `actor` (K11 Section 2).
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(untagged)]
-pub enum Item {
+pub enum Work {
     Job(WorkJob),
-    Model(ModelItem),
+    Model(ModelWork),
 }
 
 /// A model item as the machine gets it (K11 Section 2).
 #[derive(Clone, Debug, PartialEq, Serialize)]
-pub struct ModelItem {
+pub struct ModelWork {
     pub id: Uuid,
     #[serde(rename = "type")]
     pub work_type: WorkType,
@@ -160,17 +160,17 @@ async fn place(
     store::save(conn, &job).await?;
     let decisions = store::decisions_of(conn, job.id).await?;
     trail::attempt_started(conn, &job, (offer.device, &decisions), (client, now)).await?;
-    Ok(Claimed::Job(Box::new(item_of(&job))))
+    Ok(Claimed::Job(Box::new(work_of(&job))))
 }
 
 /// The job as the machine gets it.
-fn item_of(job: &Job) -> Item {
+fn work_of(job: &Job) -> Work {
     let asked = &job.asked;
     let lease = Lease {
         until: job.lease_ends_at.unwrap_or(job.changed_at),
     };
     match &asked.target {
-        Target::Repository(repository) => Item::Job(WorkJob {
+        Target::Repository(repository) => Work::Job(WorkJob {
             id: job.id.into(),
             work_type: asked.work_type,
             kind: asked.kind,
@@ -182,7 +182,7 @@ fn item_of(job: &Job) -> Item {
             secrets: asked.secrets.clone(),
             parameters: asked.parameters.clone(),
         }),
-        Target::Model { actor } => Item::Model(ModelItem {
+        Target::Model { actor } => Work::Model(ModelWork {
             id: job.id.into(),
             work_type: asked.work_type,
             kind: asked.kind,

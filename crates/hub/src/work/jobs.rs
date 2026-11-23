@@ -26,7 +26,7 @@ use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
 pub use claiming::claim;
-pub use claiming::{Claimant, Item, ModelItem};
+pub use claiming::{Claimant, ModelWork, Work};
 pub use model::{Fault, Job, Machine, NewJob, State, Target};
 pub use pinning::{exclude, pin_project, placement_reason, unpin_project};
 pub use placement::{Unfit, Verdict};
@@ -99,7 +99,7 @@ pub enum Claimed {
     Nothing,
     /// The hub gives this machine no work (`403 WORK_OFF`).
     Off,
-    Job(Box<Item>),
+    Job(Box<Work>),
 }
 
 /// The answer to a report.

@@ -63,7 +63,7 @@ pub fn app(pool: &PgPool, clock: Arc<dyn Clock>) -> Router {
         Feed::new(),
         (
             crate::hub::test_vault(),
-            anima_hub::policy_gate(pool.clone()),
+            anima_hub::fleet::compute::policy::gate(pool.clone()),
         ),
     );
     let edge = access::Edge::new(pool.clone(), bus, clock.clone());

@@ -148,26 +148,9 @@ pub fn pushes(dependencies: &schema::Dependencies) -> Router {
     let daemon = fleet::metrics::daemon_router(
         (pool.clone(), bus.clone(), clock.clone()),
         metrics_feed.clone(),
-        (vault.clone(), policy_gate(pool.clone())),
+        (vault.clone(), fleet::compute::policy::gate(pool.clone())),
     );
     logged(fleet::checks::push_router(pool.clone(), bus.clone(), clock.clone()).merge(daemon))
-}
-
-/// The read of the device policy for the hand-out of model items (K11 Section 3). A read that
-/// fails is logged here, at the boundary, and the claim fails.
-#[must_use]
-pub fn policy_gate(db: sqlx::PgPool) -> work::jobs::PolicyGate {
-    std::sync::Arc::new(move |device, now| {
-        let db = db.clone();
-        Box::pin(async move {
-            fleet::compute::policy::permits(&db, device, now)
-                .await
-                .map_err(|error| {
-                    tracing::error!(%error, "the device policy cannot be read");
-                    work::jobs::Error::Policy
-                })
-        })
-    })
 }
 
 /// Every route the hub serves, as `main.rs` serves it: `/graphql` and `/health` at the public

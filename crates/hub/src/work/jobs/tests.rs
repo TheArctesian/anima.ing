@@ -1,7 +1,7 @@
 //! Tests of the pure rules of a job and of the placement.
 
 mod lifecycle;
-mod model_items;
+mod model_work;
 mod placement;
 mod reasons;
 

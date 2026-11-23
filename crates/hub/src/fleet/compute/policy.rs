@@ -108,6 +108,21 @@ pub async fn permits(db: &PgPool, device: DeviceId, now: DateTime<Utc>) -> Resul
     Ok(takes_model_work(&policy, WorkSwitch::On, node, now).is_ok())
 }
 
+/// [`permits`] as the work route reads it for the hand-out of model items (K11 Section 3). A
+/// read that fails is logged here, at the boundary, and the claim fails.
+#[must_use]
+pub fn gate(db: PgPool) -> jobs::PolicyGate {
+    std::sync::Arc::new(move |device, now| {
+        let db = db.clone();
+        Box::pin(async move {
+            permits(&db, device, now).await.map_err(|error| {
+                tracing::error!(%error, "the device policy cannot be read");
+                jobs::Error::Policy
+            })
+        })
+    })
+}
+
 /// Writes the policy of `device` in the caller's transaction.
 ///
 /// # Errors
