@@ -152,9 +152,20 @@ pub(crate) struct RunFiles {
     pub(crate) web_root: Option<PathBuf>,
     /// The networks that the hub never reaches, on a hub of the pool only: comma-separated
     /// CIDRs, such as the bridge of the containers and the address of the host (R-030). The hub
-    /// refuses a list that is not networks
-    #[arg(long)]
+    /// refuses a list that is not networks; this program refuses an empty one, which the hub
+    /// would read as no list at all
+    #[arg(long, value_parser = denied_networks)]
     pub(crate) probe_deny: Option<String>,
+}
+
+/// `text` unless it is blank: an unset variable in the unit of a hub of the pool must stop the
+/// hub, not start it with no networks denied (R-030).
+fn denied_networks(text: &str) -> Result<String, &'static str> {
+    if text.trim().is_empty() {
+        Err("give at least one network, such as 10.130.6.0/24")
+    } else {
+        Ok(text.to_owned())
+    }
 }
 
 impl RunFiles {
@@ -174,5 +185,20 @@ impl RunFiles {
         }
         Carried::around(&std::env::current_exe()?)
             .ok_or_else(|| "this program is not in a bin folder beside its PostgreSQL tree".into())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::denied_networks;
+
+    #[test]
+    fn r_030_a_blank_list_of_denied_networks_is_refused() {
+        assert!(denied_networks("").is_err());
+        assert!(denied_networks("  ").is_err());
+        assert_eq!(
+            denied_networks("10.130.6.0/24,203.0.113.7/32"),
+            Ok("10.130.6.0/24,203.0.113.7/32".to_owned())
+        );
     }
 }
