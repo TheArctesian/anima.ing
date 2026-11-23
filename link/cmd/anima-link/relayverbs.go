@@ -12,14 +12,11 @@ import (
 	"github.com/TheArctesian/anima/link/tunnel"
 )
 
-// relayStatus is the answer of "relay.show".
 type relayStatus struct {
 	Relay string `json:"relay"`
-	// Next is the relay that the hub has announced, or empty.
-	Next string `json:"next,omitempty"`
+	Next  string `json:"next,omitempty"`
 }
 
-// relayRequest is the arguments of "relay.announce".
 type relayRequest struct {
 	// Relay is "host" or "host:port".
 	Relay string `json:"relay"`
@@ -27,9 +24,7 @@ type relayRequest struct {
 
 var errNoNextRelay = &control.Error{Code: "no_next_relay", Message: "no relay is announced; use relay.announce first"}
 
-// relayVerbs are the two steps of a relay change (LNK-007): relay.announce
-// tells the connected devices the hub's next address; relay.switch makes the
-// next relay the relay and stops the hub link, which starts on it again.
+// relayVerbs are the two steps of a relay change (LNK-007): announce the next address, then switch and restart.
 func relayVerbs(link *hublink.Link, dir *statedir.Dir, stop context.CancelFunc) map[string]control.Verb {
 	return map[string]control.Verb{
 		"relay.show": func(context.Context, json.RawMessage) (any, error) {
@@ -68,7 +63,6 @@ func relayVerbs(link *hublink.Link, dir *statedir.Dir, stop context.CancelFunc) 
 			if err := switched.Save(dir); err != nil {
 				return nil, err
 			}
-			// The server sends this reply before it stops.
 			stop()
 			return relayStatus{Relay: switched.Relay.Name()}, nil
 		},

@@ -111,7 +111,6 @@ function commit(root: string, path: string, text: string): string {
   return git(root, "rev-parse", "HEAD");
 }
 
-/** A repository on `dev` with three branches: two that merge, and one that changes the same line as the first. */
 function repository(): { root: string; tips: Tip[] } {
   const root = mkdtempSync(join(tmpdir(), "anima-train-"));
   git(root, "init", "--quiet", "--initial-branch=dev");

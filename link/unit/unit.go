@@ -1,10 +1,4 @@
-// Package unit is the unit of the user that keeps the device link running
-// with no application open (HMD-058, R-240): a LaunchAgent on macOS, a
-// systemd user unit on Linux. It writes the file, starts it and removes it.
-// Nothing here runs as root, and nothing asks for a password.
-//
-// This file is pure: what the unit says, where its file is, and which
-// commands start and stop it. The work on the system is in install.go.
+// Package unit manages the user's unit that keeps the device link running, never as root (HMD-058, R-240).
 package unit
 
 import (
@@ -16,30 +10,24 @@ import (
 	"time"
 )
 
-// ErrRefused means that the unit cannot be made from what was given. The
-// message says which value is wrong.
+// ErrRefused means that the unit cannot be made from what was given; the message names the wrong value.
 var ErrRefused = errors.New("unit: refused")
 
-// Label is the name of the LaunchAgent, and ServiceName the name of the
-// systemd unit.
+// Label is the name of the LaunchAgent, and ServiceName the name of the systemd unit.
 const (
 	Label       = "ing.anima.link"
 	ServiceName = "anima-link.service"
 )
 
-// Settings is what the unit runs: `Program device -state State -listen
-// 127.0.0.1:Port [-daemon-socket DaemonSocket]`.
+// Settings is what the unit runs: `Program device -state State -listen 127.0.0.1:Port [-daemon-socket DaemonSocket]`.
 type Settings struct {
-	// Program is the absolute path of anima-link. It must be a file that
-	// stays: not a file inside an application or a mounted image.
+	// Program is the absolute path of anima-link, outside an application or a mounted image.
 	Program string
 	// State is the absolute path of the state directory of the device.
 	State string
-	// Port is the loopback port that the link listens on. A unit has a fixed
-	// port, so that the application finds the link again.
+	// Port is the fixed loopback port of the link, so that the application finds the link again.
 	Port uint16
-	// DaemonSocket is the absolute path of the socket of the metrics daemon;
-	// empty means no socket.
+	// DaemonSocket is the absolute path of the socket of the metrics daemon; empty means no socket.
 	DaemonSocket string
 }
 
@@ -51,8 +39,7 @@ type System struct {
 	SID     string
 	Windows string
 	UID     int
-	// Home is the home folder of the user, and ConfigHome the value of
-	// XDG_CONFIG_HOME (empty when it is not set).
+	// Home is the home folder of the user, and ConfigHome the value of XDG_CONFIG_HOME (empty when it is not set).
 	Home       string
 	ConfigHome string
 	// RuntimeDir is the value of XDG_RUNTIME_DIR (empty when it is not set).
@@ -64,11 +51,9 @@ type Step struct {
 	Program string
 	Args    []string
 	Env     []string
-	// MayFail means that a failure is expected and fine: to stop a unit
-	// that is not loaded.
+	// MayFail means that a failure is expected, such as to stop a unit that is not loaded.
 	MayFail bool
-	// RetryAfter, when not zero, runs the command once more after this
-	// pause when its first run fails.
+	// RetryAfter, when not zero, runs a failed command once more after this pause.
 	RetryAfter time.Duration
 }
 
@@ -76,8 +61,7 @@ type Step struct {
 type Plan struct {
 	File    string
 	Content string
-	// Start runs after the file is written, Stop before it is deleted, and
-	// After after it is deleted.
+	// Start runs after the file is written, Stop before it is deleted, and After after it is deleted.
 	Start []Step
 	Stop  []Step
 	After []Step
@@ -87,10 +71,7 @@ func refused(format string, args ...any) error {
 	return fmt.Errorf("%w: %s", ErrRefused, fmt.Sprintf(format, args...))
 }
 
-// plainPath checks Unix unit paths independently of the OS running this pure planner.
-// A path must be absolute, clean, and hold no
-// character that could end a value in a unit file: a control character, a
-// quote, a backslash, a percent sign, a dollar sign or an angle bracket.
+// plainPath accepts an absolute, clean Unix path, whatever the OS, with no character that could end a value in a unit file.
 func plainPath(path string) bool {
 	if !unixpath.IsAbs(path) || unixpath.Clean(path) != path {
 		return false
@@ -103,8 +84,7 @@ func plainPath(path string) bool {
 	return true
 }
 
-// carried reports whether a path is inside an application bundle or a
-// mounted image: such a file is gone or changed after an update or a move.
+// carried reports whether a path is in an application bundle or a mounted image, which an update or a move changes.
 func carried(path string) bool {
 	return strings.Contains(path, ".app/") || strings.HasPrefix(path, "/Volumes/") ||
 		strings.HasPrefix(path, "/tmp/.mount_") || strings.Contains(path, "/AppTranslocation/")
@@ -126,7 +106,6 @@ func (s Settings) check() error {
 	return nil
 }
 
-// arguments is the command line of the link, with the program first.
 func (s Settings) arguments() []string {
 	args := []string{s.Program, "device", "-state", s.State, "-listen", "127.0.0.1:" + strconv.Itoa(int(s.Port))}
 	if s.DaemonSocket != "" {
@@ -135,8 +114,7 @@ func (s Settings) arguments() []string {
 	return args
 }
 
-// launchAgent is the text of the LaunchAgent. plainPath lets no character
-// through that XML must escape.
+// launchAgent needs no XML escaping: plainPath lets no such character through.
 func launchAgent(s Settings) string {
 	var text strings.Builder
 	text.WriteString(`<?xml version="1.0" encoding="UTF-8"?>
@@ -167,8 +145,7 @@ func launchAgent(s Settings) string {
 	return text.String()
 }
 
-// systemdUnit is the text of the systemd user unit. Each argument is in
-// double quotes; plainPath lets no character through that ends them.
+// systemdUnit puts each argument in double quotes; plainPath lets no character through that ends them.
 func systemdUnit(s Settings) string {
 	quoted := make([]string, 0, 8)
 	for _, arg := range s.arguments() {
@@ -238,10 +215,8 @@ func linuxPlace(on System) (Plan, error) {
 	}, nil
 }
 
-// Place is where the unit of the user is on the system on, with the
-// commands that start and stop it and no content: enough to remove a unit
-// and to see whether one is there. It returns ErrRefused for a system that
-// has no unit of the user.
+// Place is where the user's unit is on the system on, with its start and stop commands and no content.
+// It returns ErrRefused for a system that has no unit of the user.
 func Place(on System) (Plan, error) {
 	if on.GOOS == "windows" {
 		return windowsPlace(on)
@@ -259,9 +234,8 @@ func Place(on System) (Plan, error) {
 	}
 }
 
-// PlanFor is the file, the content and the commands of the unit of s on
-// the system on. It returns ErrRefused for a value that cannot go into a
-// unit, and for a system that has no unit of the user.
+// PlanFor is the file, the content and the commands of the unit of s on the system on.
+// It returns ErrRefused for a value that cannot go into a unit, and for a system that has no unit of the user.
 func PlanFor(s Settings, on System) (Plan, error) {
 	if on.GOOS == "windows" {
 		return windowsTask(s, on)

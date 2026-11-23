@@ -16,8 +16,7 @@ func (l metricsListener) Close() error {
 	return errors.Join(l.Listener.Close(), os.Remove(l.folder))
 }
 
-// iOS application support paths are too long for sun_path. The sandbox's
-// temporary directory is shorter and MkdirTemp makes an owner-only directory.
+// iOS application support paths are too long for sun_path; MkdirTemp gives a shorter, owner-only folder.
 func iosMetricsSocket() net.Listener {
 	folder, err := os.MkdirTemp("", "")
 	if err != nil {

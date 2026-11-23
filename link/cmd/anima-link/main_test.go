@@ -143,7 +143,6 @@ func TestLNK008NoSecretIsInTheLogOrInAControlAnswer(t *testing.T) {
 	hub.stdin.Close()
 	<-hub.exited
 
-	// The address is the answer of address.show and of nothing else.
 	everywhereElse := hub.log.String() + answers + unknown + permitted + listed
 	for _, secret := range append(secretsOf(t, hub.state), address, address[len(address)/2:]) {
 		if strings.Contains(everywhereElse, secret) {
@@ -303,7 +302,6 @@ func TestLNK006TheOperatorSeesThePathOfEachDevice(t *testing.T) {
 	}
 }
 
-// checkJoined checks what a join leaves on the device and prints.
 func checkJoined(t *testing.T, state, printed string) {
 	t.Helper()
 	device := loadDevice(t, state)

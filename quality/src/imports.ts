@@ -9,13 +9,11 @@ export const HUB_MODULES_FILE = "quality/hub-modules.json";
 
 interface Reference {
   from: string;
-  /** The folder of `from`, such as `crates/hub/src/fleet/devices`. */
   home: string;
   to: string;
   path: string;
   isStore: boolean;
   isGlob: boolean;
-  /** The file is the domain's `graphql` module (R-011). */
   isGraphql: boolean;
   target: string;
 }
@@ -30,7 +28,6 @@ function topOf(module: ModulePath, own: ModulePath): ModulePath {
   return module.slice(0, module.length - own.length + 1);
 }
 
-/** Domains a file refers to (`from` is its own top-level module), by `use` and inline paths, through aliases. */
 function referencesFrom(file: SourceFile, module: ModulePath, modules: HubModules): Reference[] {
   const own = ungrouped(modules, module);
   const from = own[0];

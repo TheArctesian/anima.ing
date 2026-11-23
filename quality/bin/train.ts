@@ -1,8 +1,5 @@
-// The conductor of the merge train (R-252): `bun quality/bin/train.ts`, in a clean checkout that
-// is on `dev`, with `gh` signed in. The workflow `merge-to-dev` runs it; a session can run it too.
-// `--plan` only prints. One call does one step and ends: it settles the train that exists (waits, lands it, splits
-// it), and if no train is on the way it builds the next one and starts its gates. It moves `dev`
-// only forward, to a commit whose gates passed, and never touches `main`.
+// The merge train (R-252). One call does one step: it settles the train that exists, or builds the next one.
+// It moves `dev` only forward, to a commit whose gates passed, and never touches `main`.
 import { appendFileSync } from "node:fs";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -51,19 +48,16 @@ function gatesRuns(): GatesRun[] {
   return JSON.parse(must(["gh", "run", "list", "--workflow", "gates.yml", "--limit", "400", "--json", fields])) as GatesRun[];
 }
 
-/** Each commit that has a note in `ref`, with the text of the note. */
 function notes(ref: string): Map<string, string> {
   run(["git", "fetch", "--quiet", "origin", `+${ref}:${ref}`]);
   const noted = run(["git", "notes", "--ref", ref, "list"]).out.split("\n").map((line) => line.split(" ")[1] ?? "");
   return new Map(noted.filter((sha) => sha !== "").map((sha) => [sha, run(["git", "notes", "--ref", ref, "show", sha]).out]));
 }
 
-/** The tips that failed alone in a train, with the time of that failure (the first line of the note). */
 function refused(): Map<string, string> {
   return new Map([...notes(NOTES)].map(([sha, text]) => [sha, text.split("\n")[0] ?? ""]));
 }
 
-/** Keeps the reason that a train left a tip out, so that `--plan` and the next steps say it. */
 function noteLeftOut(each: LeftOut, sha: string, now: Date): void {
   run(["git", "notes", "--ref", LEFT_OUT, "add", "--force", "-m", `${now.toISOString()}\n${oneLine(each.reason)}`, sha]);
   run(["git", "push", "--quiet", "origin", LEFT_OUT]);
@@ -84,28 +78,20 @@ function inDev(sha: string): boolean {
   return run(["git", "merge-base", "--is-ancestor", sha, `origin/${INTO}`]).ok;
 }
 
-/** Ends one merge into the local `dev` with the steps of the merge script. */
 function finish(tip: Tip): string | undefined {
   const finished = finishMerge(REPO_ROOT, `origin/${tip.branch}`, INTO);
   return "failure" in finished ? finished.failure : undefined;
 }
 
-/** If the rule permits the carry-over of a train (`carryDocuments`). */
 function carryOn(): boolean {
   const rule = parseMergeRule(readFileSync(join(REPO_ROOT, "quality", "merge-rule.json"), "utf8"));
   return typeof rule !== "string" && rule.carryDocuments;
 }
 
-/** If the rule permits it: `dev` moved from `base` only in documents, by the rule of the fast tier. */
 function movedOnlyInDocuments(base: string): boolean {
   return carryOn() && changed(REPO_ROOT, base, `origin/${INTO}`).every(isDocument);
 }
 
-/**
- * Lands a train whose gates passed: `dev` moves to its commit when `dev` did not move, or to the
- * train made again on the new `dev` when each file that is not a document is the one that the
- * gates tested (carry). Returns false when the train stays for the next step.
- */
 function land(train: Tip, base: string): boolean {
   const held = members(REPO_ROOT, base, train.sha);
   const names = held.map((tip) => tip.branch).join(", ");
@@ -125,15 +111,11 @@ function land(train: Tip, base: string): boolean {
   return true;
 }
 
-/**
- * Settles a train that exists. Returns "wait" when it is still on the way, the branches that the
- * next train must hold after a failure, or undefined when the next train is built by the rule.
- */
 function settle(train: Tip, runs: GatesRun[], now: Date): Tip[] | "wait" | undefined {
   const base = must(["git", "merge-base", train.sha, `origin/${INTO}`]);
   const moved = base !== must(["git", "rev-parse", `origin/${INTO}`]);
   const what = verdict(train.sha, runs);
-  // A run of the gates is never stopped because `dev` moved: what it proves is used when it ends.
+  // A run of the gates is not stopped because `dev` moved: what it proves is used when it ends.
   if (what === "wait" || (what === "land" && !land(train, base))) return "wait";
   if (what === "land") return undefined;
   const stale = moved && !movedOnlyInDocuments(base);
@@ -151,7 +133,6 @@ function settle(train: Tip, runs: GatesRun[], now: Date): Tip[] | "wait" | undef
   return firstHalf(held);
 }
 
-/** Says, for each branch that is not in `dev` and not ready, why the next train does not take it. */
 function sayWhoWaits(runs: GatesRun[], also: "each" | "with-a-run"): void {
   const left = notes(LEFT_OUT);
   for (const each of standing(tips(), runs, refused(), inDev)) {
@@ -163,13 +144,11 @@ function sayWhoWaits(runs: GatesRun[], also: "each" | "with-a-run"): void {
   }
 }
 
-/** The paths in which the branch has a conflict with `dev` as it is now; no merge is made. */
 function conflictWithDev(tip: Tip): string[] {
   const tried = run(["git", "merge-tree", "--write-tree", "--name-only", "--no-messages", `origin/${INTO}`, tip.sha]);
   return tried.ok ? [] : conflictsForAHand(tried.out.split("\n").slice(1).filter((path) => path !== ""));
 }
 
-/** Builds a train of `wanted` on the local `dev`, pushes it as a train branch and starts its gates. */
 function build(wanted: Tip[], now: Date): void {
   if (wanted.length === 0) return say("no branch is ready: each is in dev, or has a reason above");
   const base = must(["git", "rev-parse", "HEAD"]);
@@ -187,7 +166,7 @@ function build(wanted: Tip[], now: Date): void {
 }
 
 const now = new Date();
-// `--plan` changes nothing, in any worktree: it prints each train with its verdict and the batch of the next train.
+// `--plan` changes nothing, in any worktree.
 if (process.argv.includes("--plan")) {
   must(["git", "fetch", "--quiet", "--prune", "origin"]);
   const listed = gatesRuns();

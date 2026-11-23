@@ -13,13 +13,11 @@ import (
 	"runtime"
 )
 
-// shown is the answer of "unit show".
 type shown struct {
 	Installed bool   `json:"installed"`
 	File      string `json:"file"`
 }
 
-// here is this computer and this user.
 func here() (System, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -41,8 +39,6 @@ func here() (System, error) {
 	return on, nil
 }
 
-// settingsFrom reads the flags of "unit install". The program of the unit
-// is the program that runs now, by its real path.
 func settingsFrom(args []string) (Settings, error) {
 	flags := flag.NewFlagSet("unit install", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
@@ -85,8 +81,7 @@ func install(ctx context.Context, args []string, run Runner) error {
 	return Install(ctx, plan, run)
 }
 
-// Command does "anima-link unit install|remove|show" for this user. It
-// writes the answer of "show" to out as one line of JSON.
+// Command does "anima-link unit install|remove|show" for this user; show writes one JSON line to out.
 func Command(ctx context.Context, args []string, out io.Writer) error {
 	if len(args) == 0 {
 		return refused("use: unit install|remove|show")

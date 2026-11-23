@@ -12,11 +12,9 @@ const START = "<!-- generated from the planning documents: bun run quality:regis
 const END = "<!-- end of the generated queue -->";
 const LINK = /\[([^\]]*)\]\(([^)\s]+)\)/g;
 const DECISION = /^(?:OD-(?:[A-Z]+-?)?\d+|HM-D\d+|D-\d+|Q\d+)$/;
-/** A number of one document: it waits for the operator only in a table that asks a question. */
 const LOCAL = /^(?:D-\d+|Q\d+)$/;
 /** A number that is one decision in the whole project; `D-1` and `Q1` are numbers of one document. */
 const GLOBAL = /^(?:OD-|HM-D)/;
-/** The result of a decision row is its last cell. It is settled only when that cell starts with one of these words. */
 const SETTLED = /^\W*(?:decided|not a decision|withdrawn|closed|superseded)\b/i;
 /** Finished phases and the index of the work items repeat decisions; they are not the owner of one. */
 const NOT_OWNER = /^docs\/(?:plans\/phase-3\/|work-items\/README\.md$)/;
@@ -42,7 +40,6 @@ function linked(path: string): string {
   return `[${target}](${target})`;
 }
 
-/** The rows of the priority order, as [row, work, waits for]. */
 function priorityRows(documents: Document[]): string[][] {
   const text = documents.find((document) => document.path === PRIORITIES)?.text ?? "";
   return text.split("\n").filter((line) => /^\| 4\.\d+ \|/.test(line)).map(cells);
@@ -54,7 +51,6 @@ function ordered(documents: Document[]): string[] {
     .map((row) => `| ${row[0] ?? ""} | ${row[2] ?? ""} | ${plain(row.at(-1) ?? "")} |`);
 }
 
-/** A row of a table, with the lower-case cells of the header row of its table. */
 interface TableRow {
   row: string[];
   head: string[];
@@ -79,7 +75,6 @@ function asks(head: string[]): boolean {
   return head.includes("question") || head.includes("recommendation");
 }
 
-/** The rows of a decision table whose result does not say that it is settled, with the recommendation. */
 function decisions(documents: Document[]): string[] {
   const seen = new Set<string>();
   const rows: string[] = [];
@@ -103,12 +98,10 @@ function approvals(documents: Document[]): string[] {
     .map(({ path, fields }) => `| ${linked(path)} | ${fields.get("kind") ?? ""} | ${fields.get("state") ?? ""} |`);
 }
 
-/** A row of an older check is open when its last cell starts with "Open". */
 function isOpen(row: string[]): boolean {
   return row.length > 1 && /^Open\b/.test(row.at(-1) ?? "");
 }
 
-/** The open entries (`### HT-nnn`), then the open rows of the tables of older checks. */
 function humanChecks(documents: Document[]): string[] {
   const text = documents.find((document) => document.path === CHECKS)?.text ?? "";
   const rows: string[] = [];
@@ -129,7 +122,6 @@ function table(title: string, head: string, rows: string[]): string[] {
   return [`## ${title} (${rows.length})`, "", `| ${head} |`, rule, ...rows, ""];
 }
 
-/** The generated queue: what waits for the operator, from the documents that own each fact. */
 export function queueRows(all: Document[]): string {
   // The queue is not a source of itself, and the archive is finished.
   const documents = all
@@ -146,12 +138,11 @@ export function queueRows(all: Document[]): string {
   ].join("\n");
 }
 
-/** `queue` with its generated part replaced; undefined when it has no markers. */
 export function withQueue(queue: string, rows: string): string | undefined {
   return replaceBlock(queue, START, END, rows);
 }
 
-/** A state that permits a build (PLN-007). A document with no header, such as a work item, has no state to refuse. */
+/** States that permit a build (PLN-007); a document with no header has no state to refuse. */
 const BUILDABLE = /^(?:Approved|In progress|Direction decided)\b/;
 
 /** Each `Agent:` clause of a cell: the label starts the cell or follows a sentence, and the clause ends at `Operator:` or the next label. */
@@ -172,10 +163,6 @@ function clauseViolations(documents: Document[], row: string[], clause: string):
   return violations;
 }
 
-/**
- * The tasks for an agent in the priority order: each `Agent:` clause has a link, and each linked
- * document that has a state has a state that permits a build (PLN-007).
- */
 function agentTasks(documents: Document[]): Violation[] {
   return priorityRows(documents).flatMap((row) =>
     [...(row.at(-1) ?? "").matchAll(AGENT)]
@@ -185,7 +172,6 @@ function agentTasks(documents: Document[]): Violation[] {
   );
 }
 
-/** PLN-023: the queue agrees with the documents, and a task for an agent is in a plan. */
 export function checkQueue(documents: Document[]): Violation[] {
   const queue = documents.find((document) => document.path === QUEUE);
   const current = queue === undefined ? undefined : withQueue(queue.text, queueRows(documents));

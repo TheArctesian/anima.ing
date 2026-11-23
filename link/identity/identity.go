@@ -1,5 +1,4 @@
-// Package identity holds what a hub or a device must keep between starts to
-// stay the same hub or device (LNK-001).
+// Package identity holds what a hub or a device keeps between starts to stay the same (LNK-001).
 package identity
 
 import (
@@ -16,19 +15,17 @@ const (
 	deviceFile = "device.json"
 )
 
-// Hub is the saved identity of a hub. The key, the pre-shared key and the
-// relay together give the hub address, so all three are kept.
+// Hub is the saved identity of a hub; its key, pre-shared key and relay give the hub address.
 type Hub struct {
 	Key          tunnel.PrivateKey
 	PresharedKey tunnel.PresharedKey
 	// Relay is zero until the first start has chosen a relay.
 	Relay tunnel.Relay
-	// NextRelay is the relay that the hub will change to. While it is set,
-	// the hub tells its devices the address that it will have (LNK-007).
+	// NextRelay is the relay that the hub will change to; while it is set, devices are told the next address (LNK-007).
 	NextRelay tunnel.Relay
 }
 
-// savedHub is the file form of Hub. Only this form holds the secrets as text.
+// savedHub is the file form of Hub, the only form that holds the secrets as text.
 type savedHub struct {
 	Key          string       `json:"key"`
 	PresharedKey string       `json:"presharedKey"`
@@ -36,8 +33,7 @@ type savedHub struct {
 	NextRelay    tunnel.Relay `json:"nextRelay"`
 }
 
-// LoadHub reads the hub's identity. At the first call it makes the keys and
-// saves them.
+// LoadHub reads the hub's identity; at the first call it makes the keys and saves them.
 func LoadHub(dir *statedir.Dir) (Hub, error) {
 	var saved savedHub
 	err := dir.Read(hubFile, &saved)
@@ -59,8 +55,7 @@ func LoadHub(dir *statedir.Dir) (Hub, error) {
 // ErrNoNextRelay means that the hub has announced no relay to change to.
 var ErrNoNextRelay = errors.New("identity: no relay is announced")
 
-// Switched returns the identity in which the announced relay is the hub's
-// relay (LNK-007). The hub link starts on it at its next start.
+// Switched returns the identity with the announced relay as the hub's relay (LNK-007).
 func (h Hub) Switched() (Hub, error) {
 	if h.NextRelay.IsZero() {
 		return Hub{}, ErrNoNextRelay
@@ -69,8 +64,7 @@ func (h Hub) Switched() (Hub, error) {
 	return h, nil
 }
 
-// Save writes the hub's identity. A hub calls it when its relay is chosen
-// or changed.
+// Save writes the hub's identity.
 func (h Hub) Save(dir *statedir.Dir) error {
 	return dir.Write(hubFile, savedHub{h.Key.Reveal(), h.PresharedKey.Reveal(), h.Relay, h.NextRelay})
 }
@@ -80,21 +74,16 @@ type Device struct {
 	Key tunnel.PrivateKey
 	// Hub is the address of the device's hub. It is zero before enrolment.
 	Hub tunnel.Address
-	// HubName is a domain name that holds the hub's address in a TXT
-	// record, or empty (LNK-007). The device asks it when the hub answers at
-	// no address that the device has.
+	// HubName is a domain name whose TXT record holds the hub's address, or empty (LNK-007).
 	HubName string
-	// NextHub is the address that the hub has announced for after its relay
-	// change. The device tries it when Hub does not answer (LNK-007).
+	// NextHub is the hub's announced address after its relay change, tried when Hub does not answer (LNK-007).
 	NextHub tunnel.Address
 	// Expires is when the hub stops permitting Key (LNK-005).
 	Expires time.Time
-	// NextKey is the key that replaces Key. It is set from the moment the
-	// device starts a renewal until the hub has accepted it.
+	// NextKey is the key that replaces Key, set from the start of a renewal until the hub accepts it.
 	NextKey tunnel.PrivateKey
 }
 
-// savedDevice is the file form of Device.
 type savedDevice struct {
 	Key     string    `json:"key"`
 	Hub     string    `json:"hub,omitempty"`
@@ -104,8 +93,7 @@ type savedDevice struct {
 	NextKey string    `json:"nextKey,omitempty"`
 }
 
-// LoadDevice reads the device's identity. At the first call it makes the
-// key and saves it.
+// LoadDevice reads the device's identity; at the first call it makes the key and saves it.
 func LoadDevice(dir *statedir.Dir) (Device, error) {
 	var saved savedDevice
 	err := dir.Read(deviceFile, &saved)

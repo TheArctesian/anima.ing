@@ -9,8 +9,6 @@ import (
 	"github.com/TheArctesian/anima/link/tunnel"
 )
 
-// failuresBeforeNextHub is how many keepalives in a row must fail before
-// the device tries the address that the hub announced.
 const failuresBeforeNextHub = 3
 
 // readNotice asks the hub for its next address and keeps it (LNK-007).
@@ -44,10 +42,6 @@ func (l *Link) readNotice(ctx context.Context) {
 	}
 }
 
-// followHub looks for the hub after it has stopped answering at its
-// address: first at the address that the hub announced, then at the
-// addresses that the hub's domain name holds. When the hub answers at one,
-// that address becomes the hub's address.
 func (l *Link) followHub(ctx context.Context) {
 	current := l.identity()
 	if l.save == nil {
@@ -69,10 +63,6 @@ func (l *Link) followHub(ctx context.Context) {
 	}
 }
 
-// moveTo makes an address the hub's address if the hub answers there. The
-// address must name the hub that the device joined: the same key and the
-// same pre-shared key, on another relay. An address with another key is
-// refused, wherever it comes from.
 func (l *Link) moveTo(ctx context.Context, address tunnel.Address) bool {
 	current := l.identity()
 	if !address.SameHub(current.Hub) {
@@ -97,10 +87,8 @@ func (l *Link) moveTo(ctx context.Context, address tunnel.Address) bool {
 	return true
 }
 
-// answersAsHub reports whether the hub itself answers through a tunnel. An
-// answer to Register is not enough: the relay can give it, and so can
-// anybody on the relay. A stream needs the tunnel's handshake, which only
-// the holder of the hub's private key and pre-shared key can complete.
+// answersAsHub needs a stream, not a Register answer: anybody on the relay can answer Register,
+// but only the holder of the hub's keys completes the tunnel handshake.
 func answersAsHub(ctx context.Context, device *tunnel.Device) bool {
 	if device.Register(ctx) != nil {
 		return false
@@ -113,19 +101,15 @@ func answersAsHub(ctx context.Context, device *tunnel.Device) bool {
 	if deadline, ok := ctx.Deadline(); ok {
 		_ = stream.SetDeadline(deadline)
 	}
-	// The hub writes one line and closes. A relay cannot make these bytes.
 	_, err = bufio.NewReader(stream).ReadBytes('\n')
 	return err == nil
 }
 
-// hubNameLabel comes before the hub's domain name in the name of the TXT
-// record that holds the hub address.
+// hubNameLabel prefixes the hub's domain name in the TXT record that holds the hub address.
 const hubNameLabel = "_anima-link."
 
-// addressesOfName reads the hub addresses that a domain name holds
-// (LNK-007). A name only finds the hub: the hub still admits only the keys
-// in its list. The address in the record is public, so its pre-shared key
-// protects nothing for a hub with a name.
+// addressesOfName reads the hub addresses that a domain name holds (LNK-007).
+// The record is public, so only the hub's key list, not the pre-shared key, protects a named hub.
 func (l *Link) addressesOfName(ctx context.Context, name string) []tunnel.Address {
 	if name == "" {
 		return nil
