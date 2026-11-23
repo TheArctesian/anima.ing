@@ -37,10 +37,29 @@ in {
   systemd.services.xrdp.serviceConfig.ExecStart = lib.mkForce
     "${config.services.xrdp.package}/bin/xrdp --nodaemon --config ${config.services.xrdp.confDir}/xrdp.ini";
   security.pam.services.xrdp-sesman.allowNullPassword = lib.mkForce false;
+  systemd.services.anima-remote-access = {
+    description = "Initialize private remote access defaults";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "systemd-tmpfiles-setup.service" ];
+    before = [ "anima-link.service" ];
+    unitConfig.ConditionPathExists = "!/var/lib/anima-link/open-ports";
+    serviceConfig = { Type = "oneshot"; User = "anima-daemon"; Group = "anima-daemon"; UMask = "0077"; };
+    path = [ pkgs.coreutils ];
+    script = ''
+      target=/var/lib/anima-link/open-ports
+      temporary=$(mktemp /var/lib/anima-link/.open-ports.XXXXXX)
+      trap 'rm -f "$temporary"' EXIT
+      printf '[22,3389]\n' > "$temporary"
+      # Publish complete JSON atomically without replacing an owner's saved choice.
+      ln "$temporary" "$target" || test -e "$target"
+    '';
+  };
+  systemd.services.anima-link = {
+    requires = [ "anima-remote-access.service" ];
+    after = [ "anima-remote-access.service" ];
+  };
   systemd.tmpfiles.rules = [
     "d /persist/ssh 0700 root root -"
     "d /persist/rdp 0750 root xrdp -"
-    # Create defaults once; a locally disabled port stays disabled across reboot/update.
-    "f /var/lib/anima-link/open-ports 0600 anima-daemon anima-daemon - [22,3389]"
   ];
 }
