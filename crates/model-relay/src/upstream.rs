@@ -22,13 +22,25 @@ impl Program {
     }
 }
 
+/// How the relay knows that the host is the provider. Outside of tests there is one way.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Trust {
+    /// TLS, with a certificate that the public roots sign.
+    WebRoots,
+    /// TLS, with this one certificate (DER): a provider that a test plays.
+    #[cfg(test)]
+    Root(Vec<u8>),
+    /// No TLS: a provider that a test plays.
+    #[cfg(test)]
+    Plain,
+}
+
 /// One host of a provider.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Upstream {
     pub(crate) host: String,
     pub(crate) port: u16,
-    /// TLS with the web PKI roots. Only a test turns it off, for a listener of its own.
-    pub(crate) tls: bool,
+    pub(crate) trust: Trust,
     /// What the path of a request starts with at this host.
     pub(crate) prefix: &'static str,
 }
@@ -38,7 +50,7 @@ impl Upstream {
         Self {
             host,
             port: 443,
-            tls: true,
+            trust: Trust::WebRoots,
             prefix,
         }
     }

@@ -3,7 +3,7 @@
 use hyper::{Method, StatusCode};
 
 use super::{call, relay, seen};
-use crate::upstream::{Program, Upstreams};
+use crate::upstream::{Program, Trust, Upstreams};
 
 #[tokio::test]
 async fn sa6_no_secret_no_relay() {
@@ -92,7 +92,7 @@ async fn sa6_a_request_cannot_name_a_different_host_and_no_redirect_is_followed(
     assert_eq!(got[0].path, "//elsewhere.invalid/v1/messages");
     let own = Upstreams::providers();
     let hosts = [&own.anthropic, &own.openai, &own.chatgpt]
-        .map(|each| (each.host.as_str(), each.port, each.tls));
+        .map(|each| (each.host.as_str(), each.port, each.trust == Trust::WebRoots));
     assert_eq!(
         hosts,
         [

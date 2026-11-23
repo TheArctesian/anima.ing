@@ -15,7 +15,7 @@ use hyper_util::rt::TokioIo;
 use tokio::net::{TcpListener, TcpStream};
 
 use crate::Relay;
-use crate::upstream::{Upstream, Upstreams};
+use crate::upstream::{Trust, Upstream, Upstreams};
 
 /// What the played provider got.
 #[derive(Debug, Clone)]
@@ -82,7 +82,7 @@ async fn relay() -> (Relay, Seen) {
     let host = |prefix| Upstream {
         host: address.ip().to_string(),
         port: address.port(),
-        tls: false,
+        trust: Trust::Plain,
         prefix,
     };
     let upstreams = Upstreams {
@@ -99,8 +99,14 @@ struct Answer {
     body: String,
 }
 
-/// One request to `url` (`http://127.0.0.1:port/path`), as an agent program makes it.
-async fn call(method: Method, url: &str, headers: &[(&str, &str)], body: &'static str) -> Answer {
+/// One request to `url` (`http://127.0.0.1:port/path`), as an agent program makes it; the
+/// body of the answer is not read yet.
+async fn send(
+    method: Method,
+    url: &str,
+    headers: &[(&str, &str)],
+    body: &'static str,
+) -> Response<Incoming> {
     let rest = url.strip_prefix("http://").expect("a plain address");
     let (authority, path) = rest.split_at(rest.find('/').unwrap_or(rest.len()));
     let stream = TcpStream::connect(authority).await.expect("a connection");
@@ -118,11 +124,12 @@ async fn call(method: Method, url: &str, headers: &[(&str, &str)], body: &'stati
     let request = request
         .body(Full::new(Bytes::from_static(body.as_bytes())))
         .expect("a request");
-    let (parts, body) = sender
-        .send_request(request)
-        .await
-        .expect("an answer")
-        .into_parts();
+    sender.send_request(request).await.expect("an answer")
+}
+
+/// As [`send`], with the whole body of the answer.
+async fn call(method: Method, url: &str, headers: &[(&str, &str)], body: &'static str) -> Answer {
+    let (parts, body) = send(method, url, headers, body).await.into_parts();
     let body = body.collect().await.expect("a body").to_bytes();
     Answer {
         status: parts.status,
@@ -138,3 +145,4 @@ fn seen(seen: &Seen) -> Vec<Got> {
 mod log;
 mod passing;
 mod refusals;
+mod streams;

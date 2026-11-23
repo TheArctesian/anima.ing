@@ -7,7 +7,7 @@ use hyper::{Method, StatusCode};
 
 use super::{call, relay, seen};
 use crate::Relay;
-use crate::upstream::{Program, Upstream, Upstreams};
+use crate::upstream::{Program, Trust, Upstream, Upstreams};
 
 /// The log lines of a test, in memory.
 #[derive(Clone, Default)]
@@ -86,7 +86,7 @@ async fn sa6_a_provider_that_is_not_reached_gives_502_and_no_sign_in_data_in_the
     let dead = Upstream {
         host: "127.0.0.1".to_owned(),
         port: 1,
-        tls: false,
+        trust: Trust::Plain,
         prefix: "",
     };
     let upstreams = Upstreams {

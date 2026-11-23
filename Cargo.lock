@@ -4805,6 +4805,7 @@ dependencies = [
  "http-body-util",
  "hyper",
  "hyper-util",
+ "rcgen",
  "rustls",
  "subtle",
  "thiserror 2.0.21",

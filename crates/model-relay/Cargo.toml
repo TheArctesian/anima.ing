@@ -28,4 +28,8 @@ tracing.workspace = true
 webpki-roots.workspace = true
 
 [dev-dependencies]
+# A certificate for the provider that a test plays with TLS.
+rcgen.workspace = true
+# The example stops with Ctrl-C.
+tokio = { workspace = true, features = ["signal"] }
 tracing-subscriber.workspace = true
