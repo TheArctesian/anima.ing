@@ -78,11 +78,6 @@ export function capabilityWords(capability: ModelCapability): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-/** The mark of a model: the first letter of its publisher, else of its name. */
-export function markOf(model: Pick<LibraryModel, 'name' | 'publisher'>): string {
-  return (model.publisher ?? model.name).charAt(0).toUpperCase();
-}
-
 /** The facts of a model in one line: the publisher, the parameters and the context. */
 export function factsLine(model: LibraryModel): string {
   return [

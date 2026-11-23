@@ -1,7 +1,8 @@
 <script lang="ts">
   import Segmented from '$lib/forms/segmented/Segmented.svelte';
   import FitBadge from './FitBadge.svelte';
-  import { capabilityWords, factsLine, markOf, runs } from './fit';
+  import { capabilityWords, factsLine, runs } from './fit';
+  import PublisherMark from './PublisherMark.svelte';
   import type { LibraryStore } from './store.svelte';
 
   /**
@@ -28,7 +29,7 @@
     {#each store.shown as model (model.name)}
       <li>
         <button type="button" class:on={model.name === store.selected} aria-current={model.name === store.selected || undefined} onclick={() => { store.select(model.name); }}>
-          <span class="mark" aria-hidden="true">{markOf(model)}</span>
+          <span class="mark" aria-hidden="true"><PublisherMark {model} /></span>
           <span class="name">{model.name}</span>
           <FitBadge fit={store.best(model.name)} />
           <span class="facts">{factsLine(model)}</span>

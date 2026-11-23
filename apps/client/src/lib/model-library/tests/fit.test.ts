@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bestFit, capabilityWords, factsLine, fitBadge, markOf, shortParameters, shortTokens } from '../fit';
+import { bestFit, capabilityWords, factsLine, fitBadge, shortParameters, shortTokens } from '../fit';
 import { LLAMA, QWEN, fit } from './library.fixture';
 
 describe('the words of a fit (FIT-005)', () => {
@@ -37,7 +37,7 @@ describe('the facts of a model as a list shows them (SEL-005, LIBM-008)', () => 
     expect([shortParameters(8.2e9), shortParameters(137e6), shortParameters(405e9)]).toEqual(['8.2B', '137M', '405B']);
     expect([shortTokens(8192), shortTokens(131072), shortTokens(512)]).toEqual(['8K', '128K', '512']);
     expect([capabilityWords('IMAGE_UNDERSTANDING'), capabilityWords('OCR')]).toEqual(['Image understanding', 'OCR']);
-    expect([factsLine(QWEN), markOf(QWEN), markOf({ name: 'tiny', publisher: null })]).toEqual(['Qwen · 8.2B · 32K', 'Q', 'T']);
+    expect(factsLine(QWEN)).toBe('Qwen · 8.2B · 32K');
     expect(factsLine(LLAMA)).toBe('Meta · 70B · 128K');
   });
 });

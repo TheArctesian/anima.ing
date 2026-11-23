@@ -4,7 +4,8 @@
   import { formatBytes } from '$lib/metrics/units';
   import type { LibraryModel } from './api';
   import FitBadge from './FitBadge.svelte';
-  import { capabilityWords, markOf, shortParameters, shortTokens } from './fit';
+  import { capabilityWords, shortParameters, shortTokens } from './fit';
+  import PublisherMark from './PublisherMark.svelte';
   import type { Context, LibraryStore } from './store.svelte';
 
   /**
@@ -51,7 +52,7 @@
 
 <section class="pane" aria-label={model.name}>
   <header class="head">
-    <span class="mark" aria-hidden="true">{markOf(model)}</span>
+    <span class="mark" aria-hidden="true"><PublisherMark {model} /></span>
     <h2>{model.name}{#if model.aliases.length > 0} <span class="alias">alias {model.aliases.join(', ')}</span>{/if}</h2>
     <FormButton tone="primary" size="sm" icon="carbon:download" disabled={target === null} {busy} onclick={() => void pull()}>
       {target === null ? 'Fits no machine' : `Pull to ${target.place.name}`}
