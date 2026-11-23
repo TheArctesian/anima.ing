@@ -98,7 +98,7 @@ export function fakeCalls(routes: readonly ApplicationRoute[] = ROUTES): FakeCal
 export const NOT_LINUX_ERROR: HubError = { code: 'UNAVAILABLE', message: 'Routing needs a hub on Linux.' };
 
 /** The hub's refusal for an account with no second factor (SF-232). */
-export const NO_SECOND_FACTOR: HubError = { code: 'FORBIDDEN', message: 'Turn on the second factor of the account before an application is made public.' };
+export const NO_SECOND_FACTOR: HubError = { code: 'FORBIDDEN', message: 'Turn on the second factor of the account before a route is added or checked.' };
 
 /** The hub's answer to a route that is gone already. */
 export const NO_SUCH_ROUTE: HubError = { code: 'NOT_FOUND', message: 'No such route.' };

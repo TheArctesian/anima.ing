@@ -99,7 +99,7 @@ async fn person_with_second_factor(ctx: &Context<'_>, root: &str) -> Result<()> 
         Ok(())
     } else {
         Err(coded(
-            "Turn on the second factor of the account before an application is made public.",
+            "Turn on the second factor of the account before a route is added or checked.",
             ErrorCode::Forbidden,
         ))
     }
