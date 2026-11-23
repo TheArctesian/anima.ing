@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
   import FormButton from '$lib/forms/FormButton.svelte';
   import Input from '$lib/forms/input/Input.svelte';
   import Select from '$lib/forms/input/Select.svelte';
@@ -55,7 +56,10 @@
         <tr class="group">
           <th scope="rowgroup" colspan="3">
             <span class="name">{group.name}</span>
-            {#if group.empty}· Nothing installed{:else if group.status === 'ready'}· {count(group.rows.length, 'item')} <span class="summary">{group.summary}</span>{/if}
+            {#if group.empty}· Nothing installed{:else if group.status === 'ready'}· {count(group.rows.length, 'item')}{/if}
+            <span class="summary state {group.tone}"><span class="dot" aria-hidden="true"></span>{group.state}</span>
+            {#if group.status === 'ready' && !group.empty}<span class="summary">{group.summary}</span>{/if}
+            {#if group.empty}<a class="summary to" href={resolve('/hosting/catalogue')}>Install from the catalogue</a>{/if}
             {#if group.status === 'loading'}<span class="summary">Reading…</span>{/if}
             {#if group.status === 'failed'}<span class="summary problem">{group.problem}</span>{/if}
           </th>
@@ -165,6 +169,10 @@
   .summary {
     margin-inline-start: var(--space-3);
     font-weight: var(--weight-regular);
+  }
+
+  .to {
+    color: var(--accent);
   }
 
   /* A row that needs the operator has the wash of its status, as in Routes (HSE-002). */

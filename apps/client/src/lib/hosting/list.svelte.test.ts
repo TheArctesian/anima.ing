@@ -30,10 +30,10 @@ async function open(): Promise<HostingStore> {
 
 const text = (selector: string) => [...document.querySelectorAll(selector)].map((each) => each.textContent.replace(/\s+/g, ' ').trim());
 
-it('HSE-002: reads the containers of each machine and shows one group for each, with Nothing installed for an empty one', async () => {
+it('HSE-002: reads the containers of each machine and shows one group for each with the status of the machine, and Nothing installed with the catalogue for an empty one', async () => {
   await open();
   expect(calls.containersAsked.toSorted()).toEqual(['m-mini', 'm-nas', 'm-pop']);
-  expect(text('tr.group th')).toEqual(['mini · Nothing installed', 'nas · 1 item 0 of 1 running', 'pop-os · 2 items 3 of 3 running']);
+  expect(text('tr.group th')).toEqual(['mini · Nothing installed Down Install from the catalogue', 'nas · 1 item Up 0 of 1 running', 'pop-os · 2 items Up 3 of 3 running']);
   expect(text('tbody th[scope="row"]')).toEqual(['samba Not managed example/samba', '▸ immich Not managed Compose project · 2 containers', 'watchtower Not managed containrrr/watchtower']);
 });
 
@@ -51,13 +51,13 @@ it('HSE-002: the field finds a container on any machine and hides the machines w
   const store = await open();
   store.search = 'watch';
   flushSync();
-  expect(text('tr.group th')).toEqual(['pop-os · 1 item 3 of 3 running']);
+  expect(text('tr.group th')).toEqual(['pop-os · 1 item Up 3 of 3 running']);
 });
 
 it('HSE-002: a machine that does not answer keeps its group with the words of the hub, and the others still show', async () => {
   calls.failing['m-nas'] = 'Docker was not read: the device has no SSH credential in Anima.';
   await open();
-  expect(text('tr.group th')[1]).toBe('nas Docker was not read: the device has no SSH credential in Anima.');
+  expect(text('tr.group th')[1]).toBe('nas Up Docker was not read: the device has no SSH credential in Anima.');
   expect(text('tbody th[scope="row"]')).toHaveLength(2);
 });
 
