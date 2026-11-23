@@ -78,6 +78,8 @@ export interface Arranging {
   readonly marks: ReadonlyMap<string, Marks>;
   /** The newest prompt of each thread the page knows; else the start of the thread counts. */
   readonly prompted?: ReadonlyMap<string, Date>;
+  /** The threads the runner started; `null` while not known, and then no thread settles for its origin. */
+  readonly started?: ReadonlySet<string> | null;
 }
 
 type PartKey = keyof InboxParts;
@@ -96,13 +98,24 @@ function wokeUnseen(id: string, marks: Marks, at: Arranging): boolean {
 }
 
 /**
+ * A session that Anima did not start rests in Settled from its last change, as T3 Code settles the sessions it imports,
+ * until the person takes it back or writes in it here; a pinned thread, or one that works or asks, stays in the list.
+ */
+function outside(row: ListedRow, state: ThreadState, marks: Marks, at: Arranging): boolean {
+  if (at.started == null || at.started.has(row.id)) return false;
+  if (row.pinned || running(state) || state === 'asks' || state === 'may_wait') return false;
+  return marks.unsettledAt === null && marks.wokeAt === null && !(at.prompted?.has(row.id) ?? false);
+}
+
+/**
  * One row, with the part of the inbox it goes in: the runner's rule puts it in Snoozed, Settled or the list (TH61; a
  * pin does not keep a thread from either shelf); in the list, pinned (T3's order), then Working or active.
  */
 function placed(row: ListedRow, at: Arranging): { readonly item: InboxRow; readonly part: PartKey } {
   const state = threadState(row, at.now, at.seen);
   const marks = at.marks.get(row.id) ?? NO_MARKS;
-  const shelf = shelfOf({ pinned: row.pinned, archived: row.archived, marks }, activityOf(row, state, at), at.now);
+  const ruled = shelfOf({ pinned: row.pinned, archived: row.archived, marks }, activityOf(row, state, at), at.now);
+  const shelf = ruled.shelf === 'active' && outside(row, state, marks, at) ? { shelf: 'settled' as const, since: row.last ?? row.started ?? at.now, auto: true } : ruled;
   const status = shelf.shelf === 'active' && wokeUnseen(row.id, marks, at) ? 'woke' : statusOf(state);
   const wakes = shelf.shelf === 'snoozed' ? shelf.until : null;
   const since = shelf.shelf === 'settled' ? shelf.since : row.last;

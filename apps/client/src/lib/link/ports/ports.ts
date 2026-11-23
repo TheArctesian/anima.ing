@@ -19,6 +19,7 @@ const NEEDS: Readonly<Record<System, Readonly<Record<number, string>>>> = {
   },
   linux: {
     22: 'Needs an SSH server on this computer, such as OpenSSH.',
+    3389: 'Needs an RDP server on this computer, such as xrdp. Included in Anima OS.',
     5900: 'Needs a VNC server on this computer, such as the screen sharing of your desktop.',
   },
   windows: {
@@ -41,7 +42,7 @@ export function systemOf(userAgent: string): System {
   return 'linux';
 }
 
-/** The rows for `system`, in port order, each on when `open` holds its port. Remote Desktop only on Windows. */
+/** The rows for `system`, in port order, each on when `open` holds its port. Remote Desktop on Windows and Linux. */
 export function portRows(system: System, open: readonly number[]): readonly PortRow[] {
   return Object.entries(NEEDS[system]).map(([port, needs]) => {
     const number = Number(port);

@@ -4768,3 +4768,24 @@ branch is in the build.
     Expected: the second file is gone. Cancel the change: the first file is back with the unsent text.
 
 Result: Open.
+
+### HT-147: Anima OS private SSH and graphical remote desktop (OS3-R8)
+
+Built on `os/remote-access`. Installed OS SSH and RDP listen only on loopback and are reached through the existing private link. Disposable-VM acceptance covers the services and protocol boundary. A real private hub, GUI trust flow and physical screen behavior still require operator acceptance.
+
+1. Upgrade the OS, retain its enrollment and open its device in your private hub. If disabled there, enable SSH port 22 and RDP port 3389, with user `admin`.
+   Expected: existing device identity, permissions and saved credentials remain unchanged.
+2. From another machine signed into the hub, run `anima ssh <device>`, verify the host key and authenticate with the installation's admin password. Run `id -un`.
+   Expected: the terminal prints `admin`; a wrong password is refused.
+3. In the Anima GUI, connect using SSH, then RDP. Verify the RDP certificate and use the same admin credentials.
+   Expected: SSH opens a terminal; RDP opens a separate graphical Anima console. Unlock it with the admin password. No external port forwarding is required.
+4. Disconnect and reconnect RDP, then turn off the physical screen using the OS control while the remote session is open.
+   Expected: the remote session and workloads continue; physical input wakes the physical screen.
+5. Restart the OS and reconnect from both clients.
+   Expected: the SSH host key and RDP certificate remain the same, and both access paths still work.
+6. On the OS, run `sudo -u anima-daemon anima-link ports -state /var/lib/anima-link off 3389`, disconnect RDP and retry. Restart the OS and repeat.
+   Expected: new RDP connections are refused before and after restart; SSH remains available. Restore with the same command using `on`.
+7. Revoke the requesting user's device/session permissions in your hub and retry.
+   Expected: the hub denies access before remote login. Restore your intended permissions afterwards.
+
+Result: Open.
