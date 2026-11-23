@@ -92,9 +92,13 @@
                   <!-- A tile: the name, the highest value of the range and the newest value on the title line (R-224). -->
                   <div class="tile-title">
                     <h3 class="chart-title tile-name">{chart.title}</h3>
-                    {#if figures !== null}<span class="tile-peak">peak {figures.peak}</span><span class="tile-now">{figures.now}</span>{/if}
+                    {#if figures !== null}
+                      {#if figures.peak !== figures.now}<span class="tile-peak">peak {figures.peak}</span>{/if}
+                      <span class="tile-now">{figures.now}</span>
+                    {/if}
                   </div>
                   <LineChart
+                    quiet
                     title={`${chart.title}, ${phrase}`}
                     gap={rangeGap(drawn)}
                     series={chart.series}
@@ -129,6 +133,21 @@
   .range {
     display: flex;
     gap: var(--space-1);
+  }
+
+  .range button {
+    min-block-size: var(--target-min-touch);
+    border-color: transparent;
+    background: transparent;
+    color: var(--text-secondary);
+  }
+
+  .range button[aria-pressed='true'] {
+    border-color: transparent;
+    background: var(--surface-selected);
+    color: var(--text);
+    text-decoration: none;
+    font-weight: var(--weight-medium);
   }
 
   .area {
@@ -175,6 +194,7 @@
   }
 
   .tile-now {
+    font-size: var(--text-lg);
     color: var(--text);
     font-weight: var(--weight-medium);
     font-variant-numeric: tabular-nums;

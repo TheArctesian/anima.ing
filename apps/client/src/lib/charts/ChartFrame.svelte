@@ -11,22 +11,29 @@
     format?: (value: number) => string;
     threshold?: number;
     timeAxis: boolean;
+    quiet?: boolean;
     legend: readonly { readonly label: string; readonly colour: SeriesColour }[];
     label?: string;
     children?: Snippet;
   }
 
-  const { span, scale, format, threshold, timeAxis, legend, label, children }: Props = $props();
-  const values = $derived(valueTicks(scale));
+  const { span, scale, format, threshold, timeAxis, quiet = false, legend, label, children }: Props = $props();
+  const values = $derived.by(() => {
+    const ticks = valueTicks(scale);
+    if (!quiet) return ticks;
+    const spaced = ticks.filter((_tick, index) => index % 2 === 0);
+    if (format === undefined) return spaced;
+    return [...new Map(spaced.map((tick) => [format(tick.value), tick])).values()];
+  });
   const thresholdAt = $derived(thresholdY(scale, threshold));
   // The zone is read here, at the edge; the tick rule takes it as a parameter.
   const localOffset = (at: number) => -new Date(at).getTimezoneOffset() * 60_000;
-  const times = $derived(timeAxis ? timeTicks(span, localOffset) : []);
+  const times = $derived(timeAxis ? timeTicks(span, localOffset, quiet ? 4 : undefined) : []);
   const percentOf = (part: number, whole: number) => `${String((part / whole) * 100)}%`;
 </script>
 
 <!-- Only `children` differs between a chart and its skeleton (MOT-007). -->
-<div class="frame" aria-hidden={label === undefined ? 'true' : undefined}>
+<div class="frame" class:quiet aria-hidden={label === undefined ? 'true' : undefined}>
   <div class="values" aria-hidden="true">
     {#each values as tick (tick.value)}
       <span style:inset-block-start={percentOf(tick.y, PLOT.height)}>{format?.(tick.value) ?? ''}</span>
@@ -117,6 +124,14 @@
 
   .threshold {
     stroke: var(--chart-threshold);
+  }
+
+  .quiet .grid {
+    opacity: var(--opacity-disabled);
+  }
+
+  .quiet .threshold {
+    stroke-dasharray: var(--space-1) var(--space-1);
   }
 
   .times {

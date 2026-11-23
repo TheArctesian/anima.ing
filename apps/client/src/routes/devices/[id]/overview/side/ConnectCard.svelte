@@ -75,6 +75,11 @@
     font-weight: var(--weight-medium);
   }
 
+  .way:only-child .detail {
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
   /* Machine text: a login, a port, a scheme. A long one is cut, and its full text is the tooltip. */
   .detail {
     overflow: hidden;

@@ -51,8 +51,7 @@
   const { device, checks, metrics, range, vpn = null, now, clock, onRange, onRetry, onSettings, onConnect, onOpenWeb, onSection, readKept }: Props = $props();
 </script>
 
-<!-- The facts and the resources in the main column; beside them, how to get in and what the device is (R-224). On a
-     narrow panel the two cards come first, as one row or one column. -->
+<!-- Facts and metrics lead the Overview. On narrow layouts, connection and device details move below them. -->
 <div class="overview-fit">
   <div class="overview-columns">
     <div class="overview-main">

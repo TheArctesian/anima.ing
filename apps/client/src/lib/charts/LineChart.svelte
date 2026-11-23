@@ -18,6 +18,7 @@
     /** A wider gap between two points, in the `at` unit, breaks the line. */
     gap?: number;
     timeAxis?: boolean;
+    quiet?: boolean;
     empty?: string;
     preference?: MotionPreference;
   }
@@ -31,12 +32,15 @@
     threshold,
     gap,
     timeAxis = true,
+    quiet = false,
     empty,
     preference = motionPreference(),
   }: Props = $props();
-  const scale = $derived(valueScale(axis, Math.max(0, ...series.map((one) => highestOf(one.points)))));
+  const peak = $derived(Math.max(0, ...series.map((one) => highestOf(one.points))));
+  const scale = $derived(valueScale(axis, peak));
+  const visibleThreshold = $derived(quiet && threshold !== undefined && peak <= threshold ? undefined : threshold);
   const plots = $derived(series.map((one) => ({ ...one, ...seriesPlot(one.points, span, scale, gap) })));
-  const label = $derived(chartLabel({ title, series, top: scale.top, format, threshold, empty }));
+  const label = $derived(chartLabel({ title, series, top: scale.top, format, threshold: visibleThreshold, empty }));
   const length = $derived(lengthOf(span));
   let lines = $state<SVGGElement>();
   let before: TimeWindow | undefined;
@@ -55,10 +59,10 @@
   });
 </script>
 
-<div class="chart">
+<div class="chart" class:quiet>
   {#key length}
     <div class="layer" transition:crossFade={{ preference }}>
-      <ChartFrame {span} {scale} {format} {threshold} {timeAxis} legend={series} {label}>
+      <ChartFrame {span} {scale} {format} threshold={visibleThreshold} {timeAxis} {quiet} legend={series} {label}>
         <svg class="lines" aria-hidden="true" viewBox="0 0 {PLOT.width} {PLOT.height}" preserveAspectRatio="none">
           <g bind:this={lines}>
             {#each plots as plot, index (index)}
@@ -115,6 +119,8 @@
   .dot polyline {
     stroke-dasharray: var(--border-focus) var(--space-1);
   }
+
+  .quiet polygon { opacity: var(--opacity-disabled); }
 
   polygon {
     fill: var(--series);

@@ -34,6 +34,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
 | HT-170-code-handoff | Open and follow a shared Code thread on iOS and Android (TH50, TH51) | A build of this branch on each phone, a hub with TH21, and an enrolled computer with transcript sharing enabled | Open |
 | HT-149 | Reporting after an iPad update and the phone Code tab | A physical iPad with an existing device row, another client, and a phone with the updated app | Open |
+| HT-NEW-devicecharts | Check the Overview chart layout and surfaces for the Hub and Pop!_OS (M2-7) | iPad with a current build, and a linked Linux device with several metric types | Open |
 | HT-148 | Phone Devices, offline notice and Integrations fit the screen (M2-5) | An iPhone with a current build and a test hub | Open |
 | HT-146 | A process that an agent detached cannot answer an approval (R-315, THR-031) | A Mac with `claude` signed in, the daemon of the branch `threads/peer-ancestry` with a test state folder; later the installed application | Open |
 | HT-176 | On Linux the person starts a thread and answers a request through the installed daemon, and an agent still cannot (DEF-015, R-315) | The Linux computer `pop-os` with `claude` signed in, and a build of the branch `fix/peer-environ-userns` installed as the user unit | Open |
@@ -211,6 +212,13 @@ Do not use a subscription sign-in for this check until the operator decides OD-S
 - State: Open.
 - On an enrolled iPad that previously showed No metrics, open Anima and wait for a new reading. Confirm from another client that memory shows for the existing device row. Keep the app open for two samples and check that CPU also shows. On the iPad, compare the local Disk estimate on Devices with iPad Storage. On the other client, confirm that the old disk reading is absent.
 - On a phone, tap Code in the bottom bar. It opens the Code screen. Open a device page and check that the device's sessions are still available there.
+
+### HT-NEW-devicecharts: device Overview on iPad
+
+- State: Open.
+- Open the Hub and Pop!_OS Overview pages in landscape and portrait. Check that the charts have room and the Connect explanation stays within the page.
+- Select each time range. Check that the charts keep their values and that axis labels fit. Look for a dashed threshold on a chart that exceeded its threshold.
+- Check that the current reading and a different peak remain visible. Check that the lines for read and write are distinguishable.
 
 ### HT-148: phone Devices, offline notice and Integrations (M2-5)
 

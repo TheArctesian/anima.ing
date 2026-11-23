@@ -11,11 +11,11 @@
 .chart-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--space-16) * 5)), 1fr));
-  gap: var(--space-4);
+  gap: var(--space-8) var(--space-5);
 }
 
 /*
- * The Overview in two columns from a panel of 56rem: the main column, and a column of fixed width for the cards
+ * The Overview in two columns from a panel of 68rem: the main column, and a column of fixed width for the sections
  * "Connect" and "About". The widths are fixed, so a card that arrives moves nothing (R-224, MOT-007).
  */
 .overview-fit {
@@ -32,11 +32,7 @@
   min-inline-size: 0;
 }
 
-.overview-columns {
-  flex-direction: column-reverse;
-}
-
-@container (min-inline-size: 56rem) {
+@container (min-inline-size: 68rem) {
   .overview-columns {
     display: grid;
     grid-template-columns: minmax(0, 1fr) calc(var(--space-16) * 4.5);
@@ -52,10 +48,9 @@
   gap: var(--space-3);
   min-inline-size: 0;
   margin: 0;
-  padding: var(--space-4);
-  /* A card steps from the page by its surface, with no border: the strong border is for inputs (R-221, R-224). */
-  border-radius: var(--radius-lg);
-  background: var(--surface-raised);
+  padding-block: var(--space-4);
+  border-block-start: var(--border-thin) solid var(--border-subtle);
+  background: transparent;
 }
 
 /* A card's heading: an icon and the words, on one line of fixed block size, so a font swap moves nothing (MOT-007). */

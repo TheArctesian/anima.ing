@@ -35,9 +35,9 @@ function utcOf(local: number, offsetAt: (at: number) => number): number {
 }
 
 /** `offsetAt(at)` is the zone's distance from UTC in ms at `at` (east positive), so labels stay on local times across daylight saving. */
-export function timeTicks(span: TimeWindow, offsetAt: (at: number) => number): readonly TimeTick[] {
+export function timeTicks(span: TimeWindow, offsetAt: (at: number) => number, limit = MAX_TIME_TICKS): readonly TimeTick[] {
   const length = lengthOf(span);
-  const step = TIME_STEPS.find((candidate) => length / candidate <= MAX_TIME_TICKS);
+  const step = TIME_STEPS.find((candidate) => length / candidate <= limit);
   if (length === 0 || step === undefined || !Number.isFinite(offsetAt(span.start))) return [];
   const x = timeScale(span);
   const ticks: TimeTick[] = [];

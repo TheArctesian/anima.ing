@@ -90,7 +90,7 @@
   }
 
   .ssh {
-    min-block-size: var(--target-min-desktop);
+    min-block-size: var(--target-min-touch);
   }
 
   .bars {
