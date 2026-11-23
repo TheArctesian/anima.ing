@@ -44,6 +44,8 @@ pub enum SourceCommand {
 }
 
 impl SourceCommand {
+    /// Runs the command.
+    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown account or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

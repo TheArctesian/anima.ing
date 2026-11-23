@@ -23,7 +23,8 @@ pub struct InstallArgs {
     digest: Option<String>,
 }
 
-/// The hub's answer to installing `entry` on `device` (an ID or an exact name).
+/// The answer of the hub to the install of `entry` on `device` (an ID or an exact name),
+/// with the digest that the request names.
 ///
 /// # Errors
 /// [`Failure::NotFound`] for an unknown device; the hub's refusal.
@@ -45,8 +46,11 @@ pub async fn ask(
 }
 
 impl InstallArgs {
+    /// Prints the answer, or with `--json` the K1 `CatalogueInstall`.
+    ///
     /// # Errors
-    /// [`Failure::Ended`] with exit status 1 when the hub refuses; the errors of [`ask`].
+    /// [`Failure::Ended`] with exit status 1 when the hub refuses the install; the errors of
+    /// [`ask`].
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let answer = ask(&invocation.hub()?, &self.id, &self.device, self.digest).await?;
         if invocation.output.json() {

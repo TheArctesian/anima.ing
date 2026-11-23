@@ -16,6 +16,8 @@ pub struct GetArgs {
 }
 
 impl GetArgs {
+    /// Prints the account and its runs or, with `--json`, the K1 `SourceAccount` with `runs`.
+    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown account; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

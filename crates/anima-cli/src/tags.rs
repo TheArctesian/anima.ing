@@ -13,6 +13,8 @@ pub enum TagCommand {
 }
 
 impl TagCommand {
+    /// Runs the command.
+    ///
     /// # Errors
     /// [`Failure`] for a refusal or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

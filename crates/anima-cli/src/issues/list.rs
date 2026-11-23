@@ -44,6 +44,8 @@ const fn state(arg: StateArg) -> issue_list::OpenOrClosed {
 }
 
 impl ListArgs {
+    /// Prints the issues as a table or, with `--json`, as the K1 `IssueConnection`.
+    ///
     /// # Errors
     /// [`Failure`] for an unknown repository or a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

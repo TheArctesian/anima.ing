@@ -32,8 +32,11 @@ pub enum WorkflowCommand {
 }
 
 impl WorkflowCommand {
+    /// Runs the command.
+    ///
     /// # Errors
-    /// [`Failure`] for an unknown repository, workflow or run, a declined confirmation, or a refusal.
+    /// [`Failure`] for an unknown repository, workflow or run, a declined confirmation, or a
+    /// hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
             Self::List(args) => args.run(invocation).await,

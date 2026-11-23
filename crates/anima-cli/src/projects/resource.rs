@@ -22,6 +22,7 @@ pub struct ConfirmArgs {
     kind: KindArg,
 }
 
+/// K1 `ResourceKind`.
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
 enum KindArg {
     Cloudflare,
@@ -42,6 +43,8 @@ impl KindArg {
 }
 
 impl ResourceCommand {
+    /// Runs the command.
+    ///
     /// # Errors
     /// [`Failure`] for an unknown project, no resource of the kind, or a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -52,7 +55,9 @@ impl ResourceCommand {
 }
 
 impl ConfirmArgs {
-    /// With `--json`, prints the K1 `ProjectResource` list.
+    /// Confirms each resource of the kind that is not yet confirmed (all of them, when every
+    /// one is, so the hub says `CONFLICT`) and prints them or, with `--json`, the K1
+    /// `ProjectResource` list.
     ///
     /// # Errors
     /// [`Failure::NotFound`] when the project has no resource of the kind; the hub's refusal.
@@ -63,10 +68,13 @@ impl ConfirmArgs {
     }
 }
 
-/// Confirms the waiting resources of `kind`, or all of that kind when none waits, so the hub says `CONFLICT`.
+/// Confirms the resources of `kind` (a K1 `ResourceKind` name) in the project `slug` that wait
+/// for it, or all of that kind when none waits, and returns them as the hub answers. The
+/// command and the MCP tool share it.
 ///
 /// # Errors
-/// [`Failure::NotFound`] for an unknown project or no resource of that kind; the hub's refusal.
+/// [`Failure::NotFound`] for an unknown project or one with no resource of that kind; the
+/// hub's refusal.
 pub async fn confirm(
     hub: &Hub,
     slug: &str,

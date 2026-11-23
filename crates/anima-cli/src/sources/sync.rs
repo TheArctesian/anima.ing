@@ -13,8 +13,11 @@ pub struct SyncArgs {
 }
 
 impl SyncArgs {
+    /// Starts the sync, which the hub runs on its own, and prints the account.
+    ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown account; the hub's refusal (`CONFLICT` while paused).
+    /// [`Failure::NotFound`] for an unknown account; the hub's refusal (`CONFLICT` while the
+    /// account is paused).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let named = resolve(&hub, &self.account).await?;

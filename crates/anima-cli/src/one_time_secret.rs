@@ -22,9 +22,12 @@ pub struct ToFile {
     force: bool,
 }
 
+/// How long a secret that is shown one time can be used.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Works {
+    /// One use: an invite, a pre-auth key, an enrolment code.
     Once,
+    /// Until the operator revokes it: an ingest token.
     UntilRevoked,
 }
 
@@ -37,7 +40,9 @@ impl Works {
     }
 }
 
+/// A secret a command shows once, and where it goes.
 pub struct Secret<'a> {
+    /// What the person calls it: "pre-auth key".
     pub label: &'a str,
     /// Its field in the `--json` answer.
     pub field: &'a str,
@@ -46,7 +51,9 @@ pub struct Secret<'a> {
     pub works: Works,
 }
 
-/// With `--json`, `public` is the answer, with the secret under its field unless it went to a file.
+/// Shows `secret` once: as a line on standard output, or in its file with nothing secret
+/// printed. With `--json`, `public` is the answer, with the secret under its field unless it
+/// went to a file. The notes go to standard error.
 ///
 /// # Errors
 /// [`Failure::Write`] when the file or standard output cannot be written; [`Failure::Usage`]
@@ -126,7 +133,8 @@ fn exists(path: &Path) -> Failure {
 }
 
 impl ToFile {
-    /// Runs before the hub is asked for a secret, which is lost if its file cannot be written.
+    /// Fails before the hub is asked for a secret when the file is there and `--force` is not
+    /// set: a secret made for a file that cannot be written would be lost.
     ///
     /// # Errors
     /// [`Failure::Conflict`] when `--to-file` names an existing file.

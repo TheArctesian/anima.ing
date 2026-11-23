@@ -13,8 +13,11 @@ pub struct DeleteArgs {
 }
 
 impl DeleteArgs {
+    /// Deletes the window and prints its ID.
+    ///
     /// # Errors
-    /// [`Failure::Usage`] when it cannot ask; [`Failure::NotFound`] for an unknown window; the hub's refusal.
+    /// [`Failure::Usage`] when it cannot ask and `--yes` is not set, or the operator says no;
+    /// [`Failure::NotFound`] for an unknown window; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let window = find(&hub, &self.window).await?;

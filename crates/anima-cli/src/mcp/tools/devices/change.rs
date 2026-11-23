@@ -136,6 +136,8 @@ pub fn definition(tool: DeviceTool) -> Definition {
     }
 }
 
+/// Runs a change tool of the `devices` set.
+///
 /// # Errors
 /// [`ToolError`] for wrong arguments or the hub's refusal.
 pub async fn call(

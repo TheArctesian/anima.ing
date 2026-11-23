@@ -69,8 +69,11 @@ struct StartFlags {
 }
 
 impl McpArgs {
+    /// Starts the server, or shows or saves the permissions.
+    ///
     /// # Errors
-    /// [`Failure`] for a missing or refused token, an unreadable configuration, or a failed connection.
+    /// [`Failure`] for a missing or refused token, an unreadable configuration, or a failed
+    /// connection.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self.command {
             None => start(self.start, invocation).await,
@@ -81,7 +84,7 @@ impl McpArgs {
     }
 }
 
-/// Checks the token with `me` before any protocol output.
+/// Checks the token with `me` before any protocol output, then serves.
 async fn start(flags: StartFlags, invocation: &Invocation) -> Result<(), Failure> {
     let permissions = saved(invocation)?;
     // Every request declares an AI agent, the `me` check too (LOG-016).

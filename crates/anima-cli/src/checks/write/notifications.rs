@@ -23,8 +23,11 @@ pub struct NotificationsSetArgs {
 }
 
 impl NotificationsSetArgs {
+    /// Replaces the check's channels and prints the result.
+    ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown check; the hub's refusal.
+    /// [`Failure::NotFound`] for an unknown check; the hub's refusal (VALIDATION for an
+    /// unknown channel).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let check_id = self.check.resolve(&hub).await?;

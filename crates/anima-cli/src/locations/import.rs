@@ -14,6 +14,7 @@ type SampleInput = location_record::LocationSampleInput;
 
 /// The most samples the hub takes in one call.
 const BATCH: usize = 500;
+/// Kilometres in an hour for each metre in a second.
 const KMH_PER_MPS: f64 = 3.6;
 
 #[derive(Debug, clap::Args)]

@@ -40,8 +40,9 @@ pub struct Fields {
 #[derive(Clone, Debug, Default)]
 pub struct Change {
     pub fields: Fields,
-    /// Take the place out of its parent; it then needs its own centre and radius.
+    /// Take the place out of its parent. It then needs its own centre and radius.
     pub top_level: bool,
+    /// Remove the name from a geocoder.
     pub clear_geocoder_name: bool,
 }
 
@@ -52,6 +53,7 @@ fn usage(message: &str) -> Failure {
     }
 }
 
+/// `from` as the generated K1 type `T`.
 fn typed<T: DeserializeOwned>(from: &impl Serialize) -> Result<T, Failure> {
     serde_json::to_value(from)
         .and_then(serde_json::from_value)
@@ -69,7 +71,7 @@ pub async fn list(hub: &Hub) -> Result<Value, Failure> {
     Ok(json(&answer.places))
 }
 
-/// Null when there is none; a merged place gives the place it was merged into.
+/// The place, or null when there is none. A merged place gives the place it was merged into.
 ///
 /// # Errors
 /// The hub's refusal.
@@ -89,10 +91,12 @@ pub async fn add(hub: &Hub, fields: &Fields) -> Result<Value, Failure> {
     Ok(json(&answer.create_place))
 }
 
-/// One `updatePlace`, so that the hub makes one change with one audit entry.
+/// One `updatePlace`, so that the hub makes one change with one audit entry: the fields that
+/// are given, a null parent for `top_level` and a null geocoder name for `clear_geocoder_name`.
 ///
 /// # Errors
-/// `Usage` when nothing is to change or the changes conflict; the hub's refusal.
+/// `Usage` when nothing is to change, when `top_level` has a parent or no centre and radius, or
+/// when a geocoder name is given and removed; the hub's refusal.
 pub async fn set(hub: &Hub, id: String, change: Change) -> Result<Value, Failure> {
     let Change {
         fields,

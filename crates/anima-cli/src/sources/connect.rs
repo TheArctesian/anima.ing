@@ -65,7 +65,7 @@ pub struct GithubArgs {
     from_file: Option<PathBuf>,
 }
 
-/// Names the file, never the key it holds.
+/// Debug output of the arguments names the file, never the key it holds.
 impl std::fmt::Debug for GithubArgs {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter
@@ -85,6 +85,8 @@ fn digits(text: &str) -> Result<String, String> {
 }
 
 impl ConnectCommand {
+    /// Runs the command.
+    ///
     /// # Errors
     /// [`Failure`] for an unreadable or exposed key file or a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -96,8 +98,14 @@ impl ConnectCommand {
 }
 
 impl GithubArgs {
+    /// Connects GitHub and prints the account (or, with `--state` and `--cancel`, the attempt).
+    ///
     /// # Errors
-    /// [`Failure::Input`] for a bad key file; the hub's refusal; [`Failure::Ended`] for a failed or cancelled attempt and for Ctrl-C.
+    /// [`Failure::Input`] for a key file that is missing, looser than 0600, empty or not text;
+    /// the hub's refusal (`CONFLICT` at start while an App waits for Install, `VALIDATION`
+    /// when GitHub refuses a key, `UNAVAILABLE` when GitHub cannot be reached, `FORBIDDEN` for
+    /// an API key); [`Failure::Ended`] when the attempt failed or was cancelled (exit 1, or 7
+    /// for `GITHUB_UNREACHABLE`) and for Ctrl-C (exit 130).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         if self.from_file.is_some() {
             return self.with_key_file(invocation).await;
@@ -112,6 +120,7 @@ impl GithubArgs {
         self.in_three_presses(&hub, invocation).await
     }
 
+    /// The hub checks the key with GitHub before it stores it.
     async fn with_key_file(self, invocation: &Invocation) -> Result<(), Failure> {
         let key = from_file_only(
             invocation.prompter,

@@ -26,6 +26,7 @@ pub struct GetInput {
     page: Page,
 }
 
+/// `anima_check_get`.
 pub fn definition() -> Definition {
     Definition::new::<GetInput>(
         "anima_check_get",
@@ -111,7 +112,8 @@ pub async fn fetched(hub: &Hub, id: &str) -> Result<check_get::CheckGetCheck, To
         })
 }
 
-/// Without its push path: it holds the push token (MCP-004).
+/// The check `id` as K1 JSON for an agent: without its push path (it holds the push token,
+/// MCP-004) and with an HTTP check's URL shown by [`shown_url`].
 ///
 /// # Errors
 /// [`ToolError`] when the hub has no such check, or refuses.
@@ -126,7 +128,8 @@ pub async fn current(hub: &Hub, id: &str) -> Result<Value, ToolError> {
     Ok(check)
 }
 
-/// Leaves out the parts that can hold a secret: the query, the fragment, a user name and a password.
+/// `url` without the parts that can hold a secret: the query string, the fragment and a user
+/// name or password. Says so when it removed any; a URL that does not parse is not shown.
 fn shown_url(url: &str) -> String {
     let Ok(mut parsed) = reqwest::Url::parse(url) else {
         return "(not shown: not a valid URL)".to_owned();

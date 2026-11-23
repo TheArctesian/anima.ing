@@ -35,8 +35,11 @@ pub enum ArchiveCommand {
 }
 
 impl FileCommand {
+    /// Runs the command.
+    ///
     /// # Errors
-    /// [`Failure`] for a refusal, a local file that cannot be read or written, or a missing token.
+    /// [`Failure`] for a refusal (`VALIDATION`, `NOT_FOUND`, `UNAVAILABLE` with no file store),
+    /// a file of this computer that cannot be read or written, or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
             Self::List(args) => args.run(invocation).await,

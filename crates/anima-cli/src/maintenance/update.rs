@@ -18,8 +18,11 @@ pub struct UpdateArgs {
 }
 
 impl UpdateArgs {
+    /// Prints the changed window.
+    ///
     /// # Errors
-    /// [`Failure::Usage`] when no flag is given; [`Failure::NotFound`] for an unknown window.
+    /// [`Failure::Usage`] when no flag is given; [`Failure::NotFound`] for an unknown window;
+    /// the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         if self.fields.is_empty() {
             return Err(Failure::Usage {

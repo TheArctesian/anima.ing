@@ -67,6 +67,7 @@ pub async fn list(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, Too
     ])))
 }
 
+/// The K1 entry of `row`, each tool and backend that is not usable with its repair hint.
 fn with_hints(row: &CapabilityListCapabilities) -> Value {
     let mut shown = json(row);
     let tools = row.tools.iter().map(|tool| {

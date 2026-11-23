@@ -24,8 +24,11 @@ pub struct SshArgs {
 }
 
 impl SshArgs {
+    /// Runs the terminal session until it ends, then reports how it ended.
+    ///
     /// # Errors
-    /// [`Failure`] for a refusal, a changed host key or a lost connection.
+    /// [`Failure`] for a refusal, a changed host key, a refused credential, or a lost
+    /// connection.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let device_id = resolve(&hub, &self.device).await?;

@@ -76,6 +76,8 @@ enum ProjectCommand {
     Remove { folder: std::path::PathBuf },
 }
 
+/// `anima agents projects`: lists the projects, after the change that the arguments name.
+///
 /// # Errors
 /// [`Failure`] for a refusal of the runner, or a runner that is not there.
 pub async fn projects(args: ProjectsArgs, invocation: &Invocation) -> Result<(), Failure> {
@@ -122,6 +124,7 @@ fn project_table(rows: &[Project]) -> Table {
     table
 }
 
+/// The question before a thread is removed from the list.
 pub const REMOVE: &str = "Remove this thread from Anima's list? Its pin, archive and title go too. The session files of Claude Code or Codex stay on disk.";
 
 async fn change(thread: Uuid, change: ListingChange) -> Result<(), Failure> {
@@ -130,6 +133,8 @@ async fn change(thread: Uuid, change: ListingChange) -> Result<(), Failure> {
     Ok(())
 }
 
+/// `anima agents pin`: the thread is listed first.
+///
 /// # Errors
 /// [`Failure`] for a refusal of the runner, or a runner that is not there.
 pub async fn pin(args: SwitchArgs, invocation: &Invocation) -> Result<(), Failure> {
@@ -140,6 +145,8 @@ pub async fn pin(args: SwitchArgs, invocation: &Invocation) -> Result<(), Failur
     Ok(())
 }
 
+/// `anima agents archive`: the thread is listed only with the archived threads.
+///
 /// # Errors
 /// [`Failure`] for a refusal of the runner, or a runner that is not there.
 pub async fn archive(args: SwitchArgs, invocation: &Invocation) -> Result<(), Failure> {
@@ -152,6 +159,8 @@ pub async fn archive(args: SwitchArgs, invocation: &Invocation) -> Result<(), Fa
     Ok(())
 }
 
+/// `anima agents rename`: a title of the person's own, or the title of the program again.
+///
 /// # Errors
 /// [`Failure`] for a refusal of the runner (a title that is empty, too long or has hidden
 /// marks), or a runner that is not there.
@@ -179,7 +188,8 @@ pub async fn rename(args: RenameArgs, invocation: &Invocation) -> Result<(), Fai
     Ok(())
 }
 
-/// The runner refuses a thread that runs.
+/// `anima agents remove`: the thread leaves the list of Anima, after the question. The runner
+/// refuses a thread that runs.
 ///
 /// # Errors
 /// [`Failure::Declined`] for a no; a refusal of the runner.
@@ -192,6 +202,8 @@ pub async fn remove(args: RemoveArgs, invocation: &Invocation) -> Result<(), Fai
     Ok(())
 }
 
+/// `anima agents settle`: the thread goes to the shelf Settled; `--off` takes it back.
+///
 /// # Errors
 /// [`Failure`] for a refusal of the runner, or a runner that is not there.
 pub async fn settle(args: SwitchArgs, invocation: &Invocation) -> Result<(), Failure> {
@@ -204,6 +216,9 @@ pub async fn settle(args: SwitchArgs, invocation: &Invocation) -> Result<(), Fai
     Ok(())
 }
 
+/// `anima agents snooze`: the thread waits on the shelf Snoozed until a time, at most 30 days
+/// away. A prompt, or a request of the program, wakes it before.
+///
 /// # Errors
 /// [`Failure::Usage`] for a time that is not ahead or too far; a refusal of the runner.
 pub async fn snooze(args: SnoozeArgs, invocation: &Invocation) -> Result<(), Failure> {
@@ -226,6 +241,8 @@ pub async fn snooze(args: SnoozeArgs, invocation: &Invocation) -> Result<(), Fai
     Ok(())
 }
 
+/// `anima agents wake`: ends the snooze of the thread now.
+///
 /// # Errors
 /// [`Failure`] for a refusal of the runner, or a runner that is not there.
 pub async fn wake(args: WakeArgs, invocation: &Invocation) -> Result<(), Failure> {
@@ -234,6 +251,7 @@ pub async fn wake(args: WakeArgs, invocation: &Invocation) -> Result<(), Failure
     Ok(())
 }
 
+/// The length of a snooze from `90m`, `3h` or `2d`, at most 30 days.
 fn snooze_for(text: &str) -> Result<TimeDelta, String> {
     let unit = text.chars().last().unwrap_or(' ');
     let number = &text[..text.len() - unit.len_utf8().min(text.len())];
@@ -253,6 +271,9 @@ fn snooze_for(text: &str) -> Result<TimeDelta, String> {
         .ok_or_else(|| format!("{text:?}: a snooze is at most 30 days"))
 }
 
+/// `anima agents listings`: each thread that is pinned, archived, renamed, removed, settled or
+/// snoozed.
+///
 /// # Errors
 /// [`Failure`] when the runner is not there.
 pub async fn listings(invocation: &Invocation) -> Result<(), Failure> {
@@ -266,6 +287,8 @@ pub async fn listings(invocation: &Invocation) -> Result<(), Failure> {
     Ok(())
 }
 
+/// The IDs of the threads that the person removed from the list, from the runner.
+///
 /// # Errors
 /// [`Failure`] when the runner is not there or refuses.
 pub async fn removed() -> Result<BTreeSet<String>, Failure> {

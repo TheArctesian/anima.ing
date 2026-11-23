@@ -11,10 +11,13 @@ use crate::hub::Hub;
 use crate::invocation::Invocation;
 use crate::output::{Cell, Table, Tone};
 
+/// The sessions one answer lists when no limit is given.
 pub const DEFAULT_FIRST: i64 = 50;
 
+/// What a sessions query asks, as the command and the MCP tool give it.
 #[derive(Debug, Default)]
 pub struct SessionsAsk {
+    /// A device's ID or its exact name.
     pub device: Option<String>,
     pub source: Option<agent_sessions::AgentSource>,
     pub repository: Option<String>,
@@ -24,6 +27,8 @@ pub struct SessionsAsk {
     pub first: i64,
 }
 
+/// The K1 `AgentSessions` answer to `ask`.
+///
 /// # Errors
 /// [`Failure::NotFound`] for an unknown device name; the hub's refusal.
 pub async fn fetch(
@@ -72,6 +77,7 @@ pub struct SessionsArgs {
     limit: i64,
 }
 
+/// K1 `AgentSource`.
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
 enum SourceArg {
     ClaudeCode,
@@ -79,6 +85,9 @@ enum SourceArg {
 }
 
 impl SessionsArgs {
+    /// Prints a row for each session and the notes under the table or, with `--json`, the K1
+    /// `AgentSessions` answer.
+    ///
     /// # Errors
     /// [`Failure::Usage`] for a bad `--until` with `--days`; as [`fetch`].
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -107,6 +116,7 @@ impl SessionsArgs {
     }
 }
 
+/// One row for each session, the newest use first; a recent one is marked (AIS-026).
 #[must_use]
 pub fn table(answer: &agent_sessions::AgentSessionsAgentSessions) -> Table {
     let mut table = Table::new(vec![
@@ -156,6 +166,8 @@ pub fn table(answer: &agent_sessions::AgentSessionsAgentSessions) -> Table {
     table
 }
 
+/// The lines under the table: the days, the sessions left out, what "recent" means and what the
+/// estimate is.
 #[must_use]
 pub fn notes(answer: &agent_sessions::AgentSessionsAgentSessions) -> Vec<String> {
     let mut lines = vec![format!(
@@ -173,10 +185,11 @@ pub fn notes(answer: &agent_sessions::AgentSessionsAgentSessions) -> Vec<String>
     lines
 }
 
-/// The estimate's disclaimer (AIS-021).
+/// What the estimate is, and what it is not (AIS-021).
 pub const ESTIMATE_NOTE: &str =
     "The cost is an estimate from public list prices; it is not the bill of a subscription.";
 
+/// What "recent" says, and what it does not (AIS-026).
 pub const RECENT_NOTE: &str = "Recent: used in the last 30 minutes. The daemon counts every 15 \
      minutes, so this does not say that a session runs now.";
 

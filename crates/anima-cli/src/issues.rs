@@ -29,8 +29,11 @@ pub enum IssueCommand {
 }
 
 impl IssueCommand {
+    /// Runs the command.
+    ///
     /// # Errors
-    /// [`Failure`] for an unknown repository or issue, a body that cannot be read, or a refusal.
+    /// [`Failure`] for an unknown repository or issue, a body that cannot be read, or a hub
+    /// refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
             Self::List(args) => args.run(invocation).await,

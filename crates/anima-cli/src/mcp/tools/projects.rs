@@ -160,6 +160,8 @@ impl ProjectTool {
         }
     }
 
+    /// Runs the tool.
+    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments, an unknown project or repository, or the hub's
     /// refusal.
@@ -174,6 +176,7 @@ impl ProjectTool {
     }
 }
 
+/// A missing project or repository as a refusal the agent can act on.
 fn lookup(failure: Failure) -> ToolError {
     match failure {
         Failure::NotFound { message, .. } | Failure::Usage { message, .. } => ToolError::Refused(

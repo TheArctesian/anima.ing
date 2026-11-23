@@ -33,8 +33,11 @@ pub struct UpdateArgs {
 }
 
 impl UpdateArgs {
+    /// Prints the device after the change.
+    ///
     /// # Errors
-    /// [`Failure::Usage`] for no change or an incomplete settings group; [`Failure::NotFound`].
+    /// [`Failure::Usage`] when no flag changes anything or a settings group is incomplete;
+    /// [`Failure::NotFound`] for an unknown device or site; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let id = resolve(&hub, &self.device).await?;

@@ -43,6 +43,7 @@ pub struct DownloadArgs {
     output: PathBuf,
 }
 
+/// The media type of a file from its extension; `application/octet-stream` for any other.
 #[must_use]
 pub fn media_type_of(path: &Path) -> &'static str {
     let extension = path
@@ -69,6 +70,8 @@ fn local(what: &Path, error: &std::io::Error) -> Failure {
 }
 
 impl UploadArgs {
+    /// Sends the file and prints the attachment.
+    ///
     /// # Errors
     /// [`Failure::Input`] when the file cannot be read; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -115,6 +118,9 @@ impl UploadArgs {
 }
 
 impl DownloadArgs {
+    /// Writes the bytes to a new file, and says whether the hub removed the location of a photo.
+    /// A download that fails leaves no file.
+    ///
     /// # Errors
     /// [`Failure::Input`] when the file exists or cannot be made; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

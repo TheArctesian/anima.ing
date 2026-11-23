@@ -18,14 +18,19 @@ pub struct StopArgs {
 }
 
 impl StartArgs {
+    /// Turns the window on and prints it.
+    ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown window; the hub's refusal (VALIDATION when not manual).
+    /// [`Failure::NotFound`] for an unknown window; the hub's refusal (VALIDATION when the
+    /// window is not manual).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         set_active(&self.window, true, invocation).await
     }
 }
 
 impl StopArgs {
+    /// Turns the window off and prints it.
+    ///
     /// # Errors
     /// As [`StartArgs::run`].
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

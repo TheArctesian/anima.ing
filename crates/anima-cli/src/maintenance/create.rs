@@ -13,8 +13,11 @@ pub struct CreateArgs {
 }
 
 impl CreateArgs {
+    /// Prints the new window.
+    ///
     /// # Errors
-    /// [`Failure::Usage`] for a missing or unreadable flag; the hub's refusal.
+    /// [`Failure::Usage`] for a missing or unreadable flag; the hub's refusal (VALIDATION
+    /// for a schedule that does not fit its kind).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let mut input = self.fields.apply(serde_json::Map::new())?;
         require(&input)?;

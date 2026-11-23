@@ -18,6 +18,8 @@ pub struct StorageArgs {
     device: String,
 }
 
+/// The images and the volumes of the device with this ID or exact name.
+///
 /// # Errors
 /// [`Failure::NotFound`] for an unknown device; the hub's refusal.
 pub async fn fetch(hub: &Hub, device: &str) -> Result<Storage, Failure> {
@@ -30,6 +32,8 @@ pub async fn fetch(hub: &Hub, device: &str) -> Result<Storage, Failure> {
 }
 
 impl StorageArgs {
+    /// Prints a row for each image or, with `--json`, the K1 `ContainerImage` list.
+    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown device; the hub's refusal when the device has no
     /// SSH credential, has no Docker or does not answer.
@@ -40,6 +44,8 @@ impl StorageArgs {
         Ok(())
     }
 
+    /// Prints a row for each volume or, with `--json`, the K1 `ContainerVolume` list.
+    ///
     /// # Errors
     /// As [`Self::images`].
     pub async fn volumes(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -50,6 +56,7 @@ impl StorageArgs {
     }
 }
 
+/// Says, apart from the rows, how much space a clean-up of this type can free.
 fn reclaimable(invocation: &Invocation, found: &Storage, kind: &str) {
     if invocation.output.json() {
         return;
@@ -62,6 +69,8 @@ fn reclaimable(invocation: &Invocation, found: &Storage, kind: &str) {
     }
 }
 
+/// The names of the containers, with how many more Docker counts when the hub found not
+/// all of them; the number alone when it found none.
 fn users(count: Option<i64>, names: &[String]) -> String {
     let found = i64::try_from(names.len()).unwrap_or(i64::MAX);
     match count {

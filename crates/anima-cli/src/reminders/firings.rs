@@ -80,6 +80,8 @@ impl ListArgs {
     }
 }
 
+/// `anima reminder test <id>`: one firing that the hub sends in the next minute.
+///
 /// # Errors
 /// [`Failure`] for a hub refusal.
 pub async fn test(invocation: &Invocation, id: String) -> Result<(), Failure> {
@@ -94,6 +96,8 @@ pub async fn test(invocation: &Invocation, id: String) -> Result<(), Failure> {
 }
 
 impl SnoozeArgs {
+    /// Snoozes the firing and prints it.
+    ///
     /// # Errors
     /// [`Failure`] for a hub refusal (`CONFLICT` for a firing that was not sent).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -108,6 +112,8 @@ impl SnoozeArgs {
 }
 
 impl AckArgs {
+    /// Acknowledges the firing and prints it.
+    ///
     /// # Errors
     /// [`Failure`] for a hub refusal (`CONFLICT` for a firing that was not sent).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

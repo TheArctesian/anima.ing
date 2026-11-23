@@ -17,11 +17,12 @@ pub struct ProjectsArgs {
     device: String,
 }
 
+/// One Compose project of a device, made from its containers.
 #[derive(Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Project {
     pub name: String,
-    /// The K1 `ComposeProjectState`, as its name.
+    /// The state the hub made (K1 `ComposeProjectState`), as its name.
     pub state: Option<String>,
     pub containers: usize,
     pub running: usize,
@@ -31,6 +32,7 @@ pub struct Project {
     pub files: Vec<String>,
 }
 
+/// The projects of these containers, by name. A container with no project is in none.
 #[must_use]
 pub fn projects(containers: &[ContainerListContainers]) -> Vec<Project> {
     let mut found: BTreeMap<&str, Project> = BTreeMap::new();
@@ -62,8 +64,11 @@ pub fn projects(containers: &[ContainerListContainers]) -> Vec<Project> {
 }
 
 impl ProjectsArgs {
+    /// Prints a row for each project or, with `--json`, the list of [`Project`].
+    ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown device; the hub's refusal.
+    /// [`Failure::NotFound`] for an unknown device; the hub's refusal when the device has no
+    /// SSH credential, has no Docker or does not answer.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let containers = fetch(&invocation.hub()?, &self.device).await?;
         invocation.output.data(&projects(&containers), table)

@@ -16,6 +16,8 @@ pub struct PutArgs {
 }
 
 impl PutArgs {
+    /// Uploads the file and notes where; `--json` prints `{"path", "size"}`.
+    ///
     /// # Errors
     /// [`Failure::Input`] when the local file cannot be read; [`Failure::Conflict`] when
     /// the device path exists; the hub's refusal, a policy that forbids uploads, or a failed

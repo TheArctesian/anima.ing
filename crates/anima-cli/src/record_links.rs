@@ -19,8 +19,11 @@ pub enum RecordLinkCommand {
 }
 
 impl RecordLinkCommand {
+    /// Runs the command.
+    ///
     /// # Errors
-    /// [`Failure`] for a refusal (`VALIDATION`, `NOT_FOUND`) or a missing token.
+    /// [`Failure`] for a refusal (`VALIDATION` for text that is not a record, `NOT_FOUND` for
+    /// an unknown link) or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
             Self::List(args) => args.run(invocation).await,

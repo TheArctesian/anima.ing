@@ -17,8 +17,11 @@ pub struct HostKeyArgs {
 }
 
 impl HostKeyArgs {
+    /// Trusts the key and prints what was accepted.
+    ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown device; `CONFLICT` (exit 6) for another key.
+    /// [`Failure::NotFound`] for an unknown device; the hub's `CONFLICT` (exit 6) when the
+    /// fingerprint is not the key the hub saw.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let variables = host_key_accept::Variables {

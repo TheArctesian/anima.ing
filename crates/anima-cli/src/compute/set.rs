@@ -34,8 +34,11 @@ pub struct SetArgs {
 }
 
 impl SetArgs {
+    /// Prints the new policy as a record or, with `--json`, as the K1 `DevicePolicy`.
+    ///
     /// # Errors
-    /// [`Failure::Usage`], [`Failure::NotFound`] for an unknown device, or the hub's refusal.
+    /// [`Failure::Usage`] for quiet hours that are not HH:MM-HH:MM; [`Failure::NotFound`] for an
+    /// unknown device; the hub's refusal (`VALIDATION` names the value out of range).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let rows = fetch(&hub).await?;

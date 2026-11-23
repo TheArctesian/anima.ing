@@ -13,7 +13,8 @@ pub struct ListArgs {
 }
 
 impl ListArgs {
-    /// With `--json`, prints the device with its interfaces and suggestions.
+    /// Prints the web interfaces as a table or, with `--json`, the device with its interfaces
+    /// and suggestions.
     ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown device; the hub's refusal.

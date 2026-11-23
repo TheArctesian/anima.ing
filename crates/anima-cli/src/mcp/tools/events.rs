@@ -147,6 +147,8 @@ impl EventTool {
         }
     }
 
+    /// Runs the tool.
+    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments or the hub's refusal.
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
@@ -215,7 +217,8 @@ async fn verify(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolE
     Ok(json(&check.audit_chain))
 }
 
-/// An entry without an actor kind says "Not recorded" (LOG-020).
+/// One audit entry with its actor kind, token kind and key name; an entry from before the hub
+/// recorded them says "Not recorded" (LOG-020).
 fn entry(node: &audit_list::AuditListAuditEdgesNode) -> Value {
     let mut entry = json(node);
     if node.actor_kind.is_none() {
@@ -224,7 +227,7 @@ fn entry(node: &audit_list::AuditListAuditEdgesNode) -> Value {
     entry
 }
 
-/// The generated enums read K1 names; `None` when empty.
+/// The K1 enum values of `values` (the generated enums read K1 names); none when empty.
 fn k1_list<V: Serialize, T: serde::de::DeserializeOwned>(
     values: &[V],
 ) -> Result<Option<Vec<T>>, ToolError> {

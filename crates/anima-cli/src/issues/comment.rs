@@ -23,7 +23,8 @@ pub struct AddCommentArgs {
 }
 
 impl AddCommentArgs {
-    /// With `--json`, prints the K1 `IssueComment` without its body; after `UNAVAILABLE` the comment may exist.
+    /// Prints the new comment's ID and link or, with `--json`, the K1 `IssueComment` without
+    /// its body. The hub does not repeat it: after `UNAVAILABLE` the comment may exist.
     ///
     /// # Errors
     /// [`Failure::Input`] for a body that cannot be read; the hub's refusal.

@@ -24,7 +24,8 @@ impl GetArgs {
     /// Saves the file and notes where; `--json` prints `{"path", "size"}`.
     ///
     /// # Errors
-    /// [`Failure::Conflict`] when the local file exists without `--force`; a refusal or failure.
+    /// [`Failure::Conflict`] when the local file exists without `--force`; the hub's
+    /// refusal, a policy that forbids downloads, or a failed tunnel or write.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let remote = Remote::parse(&self.remote)?;
         let local_is_dir = self.local.as_deref().is_some_and(Path::is_dir);

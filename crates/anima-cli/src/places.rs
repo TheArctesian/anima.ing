@@ -118,6 +118,8 @@ pub enum PlaceCommand {
 }
 
 impl PlaceCommand {
+    /// Runs the command.
+    ///
     /// # Errors
     /// [`Failure`] for a refusal (`VALIDATION`, `NOT_FOUND`, `CONFLICT` with the counts of a
     /// refused delete) or a missing token.

@@ -28,6 +28,8 @@ pub struct RouterKeyArgs {
 }
 
 impl InviteArgs {
+    /// Makes the key for a Linux computer of the operator and shows it once.
+    ///
     /// # Errors
     /// [`Failure`] for a hub refusal (the broker's limits) or a file that cannot be written.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -52,6 +54,8 @@ impl InviteArgs {
 }
 
 impl RouterKeyArgs {
+    /// Makes the key for the subnet router of a site and shows it once.
+    ///
     /// # Errors
     /// [`Failure`] for an unknown site, a hub refusal or a file that cannot be written.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

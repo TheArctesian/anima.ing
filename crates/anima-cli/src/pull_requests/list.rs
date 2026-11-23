@@ -36,6 +36,9 @@ pub struct ListArgs {
 }
 
 impl ListArgs {
+    /// Prints the pull requests as a table or, with `--json`, as the K1
+    /// `PullRequestConnection`.
+    ///
     /// # Errors
     /// [`Failure`] for an unknown repository or a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

@@ -7,6 +7,8 @@ use crate::failure::{Failure, Hint};
 use crate::hub::Hub;
 use crate::invocation::Invocation;
 
+/// The shape of the document `create` and `update` read, for `--help`. It is the K1
+/// `NotificationChannelInput` as JSON; exactly one key under `settings`.
 const DOCUMENT_HELP: &str = r#"The document is JSON in the shape of K1 NotificationChannelInput; exactly one key under "settings":
   {"name": "ops", "onByDefault": true,
    "settings": {"ntfy": {"server": "https://ntfy.sh", "topic": "<a random topic>", "token": "tk_..."}}}
@@ -35,6 +37,8 @@ pub enum ChannelCommand {
 }
 
 impl ChannelCommand {
+    /// Runs the command.
+    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown channel, unreadable input or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

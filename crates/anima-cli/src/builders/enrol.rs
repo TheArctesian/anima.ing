@@ -39,6 +39,8 @@ enum ArchArg {
 }
 
 impl EnrolArgs {
+    /// Enrols the builder (from this request's address) and shows its token once.
+    ///
     /// # Errors
     /// [`Failure`] for a hub refusal (a name in use, not a VPN address) or an unwritable file.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

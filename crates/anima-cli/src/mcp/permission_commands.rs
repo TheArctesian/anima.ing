@@ -67,6 +67,7 @@ struct Bulk {
 }
 
 impl Bulk {
+    /// The state chosen for many tools; clap lets only one of the flags through.
     const fn state(&self) -> Option<State> {
         if self.allow_all {
             Some(State::Allow)
@@ -81,8 +82,12 @@ impl Bulk {
 }
 
 impl PermissionsCommand {
+    /// Shows, saves or resets this hub's permissions.
+    ///
     /// # Errors
-    /// [`Failure::Usage`] for an unknown name, an unconfirmed change or a widening with no terminal.
+    /// [`Failure::Usage`] for an unknown name, an unconfirmed `--allow-all` or a widening
+    /// without a terminal on standard input (MCP-014); [`Failure`] for
+    /// an unreadable or unwritable configuration.
     pub fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
             Self::Show => show(invocation, &saved(invocation)?),
@@ -168,6 +173,7 @@ impl SetArgs {
         show(invocation, &permissions)
     }
 
+    /// The new states as changes, in order: bulk, allow, ask, off.
     fn changes(&self) -> Vec<Change> {
         let mut changes = Vec::new();
         if self.read_only {

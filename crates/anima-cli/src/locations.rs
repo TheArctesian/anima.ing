@@ -26,6 +26,8 @@ pub enum LocationCommand {
 }
 
 impl LocationCommand {
+    /// Runs the command.
+    ///
     /// # Errors
     /// [`Failure`] for an unusable time or file, a refusal or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

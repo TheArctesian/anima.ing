@@ -28,6 +28,8 @@ pub struct SetArgs {
 }
 
 impl SettingsCommand {
+    /// Runs the command.
+    ///
     /// # Errors
     /// [`Failure`] for a refusal, or for `set` with nothing to change.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

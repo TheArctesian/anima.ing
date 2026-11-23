@@ -65,6 +65,7 @@ pub struct SetInput {
     group: Option<String>,
 }
 
+/// A missing group or project as a refusal the agent can act on.
 fn lookup(failure: Failure) -> ToolError {
     match failure {
         Failure::NotFound { message, .. } => ToolError::Refused(format!(
@@ -121,6 +122,8 @@ impl GroupTool {
         }
     }
 
+    /// Runs the tool.
+    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments, an unknown group or project, or the hub's refusal.
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {

@@ -11,8 +11,11 @@ pub struct DeleteArgs {
 }
 
 impl DeleteArgs {
+    /// Asks to confirm (or takes `--yes`, CMD-024), deletes the channel and prints its ID.
+    ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown channel; [`Failure::Usage`] when no one can be asked; the hub's refusal.
+    /// [`Failure::NotFound`] for an unknown channel; [`Failure::Usage`] without a
+    /// confirmation when no one can be asked; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let id = resolve(&hub, &self.channel).await?;

@@ -26,6 +26,8 @@ pub struct DeliveriesArgs {
 }
 
 impl DeliveriesArgs {
+    /// Prints the deliveries as a table or, with `--json`, as the K1 `DeliveryConnection`.
+    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown channel; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -69,7 +71,8 @@ fn table(deliveries: &delivery_list::DeliveryListDeliveries) -> Table {
     table
 }
 
-/// The hub's reasons are fixed words, so no text from the target is shown (CR-14).
+/// `ok`, or `failed:` with the K1 reason and the HTTP or SMTP code. The hub's reasons are
+/// fixed words, so no text from the target is shown (CR-14).
 pub fn result_cell(ok: bool, reason: Option<&impl serde::Serialize>, code: Option<i64>) -> Cell {
     if ok {
         return Cell::toned("ok", Tone::Good);

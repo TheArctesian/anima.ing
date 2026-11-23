@@ -30,6 +30,8 @@ pub enum MaintenanceCommand {
 }
 
 impl MaintenanceCommand {
+    /// Runs the command.
+    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown window or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

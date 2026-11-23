@@ -13,6 +13,8 @@ pub struct DeleteArgs {
 }
 
 impl DeleteArgs {
+    /// Deletes the check and its heartbeats, and prints the deleted ID.
+    ///
     /// # Errors
     /// [`Failure::Usage`] when it cannot ask and `--yes` is not set, or the operator says no;
     /// the hub's refusal.

@@ -13,6 +13,8 @@ pub struct CancelArgs {
 }
 
 impl CancelArgs {
+    /// Asks for confirmation (`--yes`), cancels the job and prints it.
+    ///
     /// # Errors
     /// [`Failure`] for a hub refusal: an unknown job, or one that already ended.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

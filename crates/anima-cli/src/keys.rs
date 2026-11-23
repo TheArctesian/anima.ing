@@ -21,8 +21,11 @@ pub enum KeyCommand {
 }
 
 impl KeyCommand {
+    /// Runs the command.
+    ///
     /// # Errors
-    /// [`Failure`] for a refusal, an unknown key or a missing token.
+    /// [`Failure`] for a refusal (an API key cannot manage keys), an unknown key or a missing
+    /// token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
             Self::List(args) => args.run(invocation).await,

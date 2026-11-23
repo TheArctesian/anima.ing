@@ -13,8 +13,11 @@ pub struct DeleteArgs {
 }
 
 impl DeleteArgs {
+    /// Asks for confirmation (`--yes` skips it), deletes and prints the deleted ID.
+    ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown device; [`Failure::Usage`] when it cannot ask; the hub's refusal.
+    /// [`Failure::NotFound`] for an unknown device; [`Failure::Usage`] when it cannot ask;
+    /// the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let id = resolve(&hub, &self.device).await?;

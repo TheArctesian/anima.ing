@@ -13,7 +13,7 @@ pub struct EndArgs {
 }
 
 impl EndArgs {
-    /// With `--json`, prints the K1 `Session`.
+    /// Ends the session and prints it, or with `--json` the K1 `Session`.
     ///
     /// # Errors
     /// [`Failure::Usage`] for an ID that is not a UUID; the hub's refusal.

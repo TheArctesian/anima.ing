@@ -16,6 +16,8 @@ pub enum TrustCommand {
 }
 
 impl TrustCommand {
+    /// Runs the command.
+    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown device or a fingerprint the hub did not see.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -26,6 +28,8 @@ impl TrustCommand {
     }
 }
 
+/// A fingerprint argument: not empty and without spaces.
+///
 /// # Errors
 /// The reason, for clap to print.
 pub fn fingerprint(text: &str) -> Result<String, String> {

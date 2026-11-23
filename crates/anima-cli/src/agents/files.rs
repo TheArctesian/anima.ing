@@ -22,6 +22,8 @@ pub struct FilesArgs {
     most: u16,
 }
 
+/// `anima agents files`.
+///
 /// # Errors
 /// [`Failure`] for a refusal of the runner (a thread it did not start, a query that is too long),
 /// or a runner that is not there.
@@ -67,6 +69,8 @@ pub struct FoldersArgs {
     hidden: bool,
 }
 
+/// `anima agents folders`.
+///
 /// # Errors
 /// [`Failure`] for a refusal of the runner (no such folder, or the folder of Anima), or a runner
 /// that is not there.

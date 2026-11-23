@@ -29,6 +29,8 @@ pub struct UpdateArgs {
 }
 
 impl CreateArgs {
+    /// Prints the new channel as a record or, with `--json`, as the K1 answer (no secret).
+    ///
     /// # Errors
     /// [`Failure::Input`] for an unreadable document; the hub's refusal (`VALIDATION` names
     /// the fields, `CONFLICT` a name in use).
@@ -52,6 +54,8 @@ impl CreateArgs {
 }
 
 impl UpdateArgs {
+    /// Prints the changed channel as a record or, with `--json`, as the K1 answer.
+    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown channel; [`Failure::Input`] for an unreadable
     /// document; the hub's refusal (a changed target needs every secret sent again).

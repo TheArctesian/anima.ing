@@ -28,6 +28,8 @@ pub enum LinkCommand {
 }
 
 impl LinkCommand {
+    /// Runs the command.
+    ///
     /// # Errors
     /// [`Failure`] for a refusal, a hub with no link or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

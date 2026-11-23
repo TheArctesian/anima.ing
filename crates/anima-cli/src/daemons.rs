@@ -22,6 +22,8 @@ pub enum DaemonCommand {
 }
 
 impl DaemonCommand {
+    /// Runs the command.
+    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown device or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

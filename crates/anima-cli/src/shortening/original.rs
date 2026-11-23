@@ -13,12 +13,14 @@ use crate::mcp::catalogue::Access;
 use crate::mcp::definition::{Definition, Effect};
 use crate::mcp::outcome::ToolError;
 
+/// The name of the tool, which the mark of a shortened answer gives.
 pub const TOOL: &str = "anima_original_get";
 
-/// Under the limit of a whole result (MCP-008).
+/// The most bytes of JSON of one part: under the limit of a whole result (MCP-008).
 const PART: usize = 40_000;
+/// The most names of lists in a refusal.
 const MOST_NAMES: usize = 20;
-/// As deep as the shortener looks.
+/// The deepest list that is looked for, as deep as the shortener looks.
 const DEEPEST: usize = 50;
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -35,6 +37,7 @@ pub struct OriginalInput {
     from: Option<usize>,
 }
 
+/// What the agent sees of the tool.
 #[must_use]
 pub fn definition() -> Definition {
     Definition::new::<OriginalInput>(
@@ -62,8 +65,11 @@ pub fn definition() -> Definition {
     ])
 }
 
+/// Runs the tool on `store`.
+///
 /// # Errors
-/// [`ToolError::Refused`] for wrong arguments, a handle that is gone, or an unknown list.
+/// [`ToolError::Refused`] for wrong arguments, a handle that is gone, or a list that the
+/// original does not have.
 pub fn call(
     store: &Store,
     arguments: Option<JsonObject>,
@@ -110,7 +116,8 @@ pub fn call(
     }))
 }
 
-/// Paths as the mark of a shortened answer names them: `events`, `page.entries`, `builds[3].lines`.
+/// Each list of `answer` with its path, as the mark of a shortened answer names it: `events`,
+/// `page.entries`, `builds[3].lines`.
 fn lists_of(answer: &Value) -> Vec<(String, &Vec<Value>)> {
     let mut lists = Vec::new();
     let mut open = vec![(String::new(), answer, 0_usize)];
@@ -143,7 +150,7 @@ fn lists_of(answer: &Value) -> Vec<(String, &Vec<Value>)> {
     lists
 }
 
-/// The list with the most rows is the shortened one, when there is one.
+/// The name of the list with the most rows: the one that was shortened, when there is one.
 fn longest(lists: &[(String, &Vec<Value>)]) -> Option<String> {
     lists
         .iter()
@@ -152,6 +159,7 @@ fn longest(lists: &[(String, &Vec<Value>)]) -> Option<String> {
         .map(|(path, _)| path.clone())
 }
 
+/// The first rows of `rows` that fit one part; none when the first row alone does not fit.
 fn part(rows: &[Value]) -> Vec<Value> {
     let mut bytes = 0;
     let mut part = Vec::new();

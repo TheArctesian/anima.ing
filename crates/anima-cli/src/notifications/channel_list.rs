@@ -11,6 +11,9 @@ type Channel = channel_list::ChannelListNotificationChannels;
 type Settings = channel_list::ChannelListNotificationChannelsSettings;
 
 impl ListArgs {
+    /// Prints the channels as a table or, with `--json`, as the K1 `NotificationChannel`
+    /// list.
+    ///
     /// # Errors
     /// [`Failure`] for a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

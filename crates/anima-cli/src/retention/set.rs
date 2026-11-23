@@ -22,10 +22,11 @@ enum SubjectArg {
 }
 
 impl SetArgs {
-    /// With `--json`, prints the K1 `RetentionPeriod`.
+    /// Prints the new period as a record or, with `--json`, as the K1 `RetentionPeriod`.
     ///
     /// # Errors
-    /// [`Failure`] for a hub refusal: `VALIDATION` out of range, `FORBIDDEN` for an API key.
+    /// [`Failure`] for a hub refusal (`VALIDATION` for days outside the range, `FORBIDDEN`
+    /// for an API key).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let variables = retention_set::Variables {

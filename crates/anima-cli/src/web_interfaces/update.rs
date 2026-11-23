@@ -15,6 +15,8 @@ pub struct UpdateArgs {
 }
 
 impl UpdateArgs {
+    /// Prints the web interface after the change.
+    ///
     /// # Errors
     /// The hub's refusal, such as `NOT_FOUND` for an unknown ID.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

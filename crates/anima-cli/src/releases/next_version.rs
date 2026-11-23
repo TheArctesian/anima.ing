@@ -7,6 +7,8 @@ use crate::output::Table;
 pub struct NextVersionArgs;
 
 impl NextVersionArgs {
+    /// Prints the version, or `-` before the first release; with `--json` the K1 value.
+    ///
     /// # Errors
     /// [`Failure`] for a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

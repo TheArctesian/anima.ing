@@ -12,13 +12,20 @@ use crate::output::text::shell_word;
 /// The hub's largest page for devices, sessions, events, audit entries and deliveries.
 pub const MAX_PAGE: i64 = 200;
 
+/// The most rows `--all` collects before it stops.
 pub const MAX_ROWS: usize = 100_000;
 
+/// A page of rows and where the next one starts.
 pub trait Page {
+    /// What the hub calls the place a page starts after: a cursor string, a line sequence.
     type Cursor: Clone + Eq + Hash + Display;
+    /// The cursor of the next page, when there is one.
     fn next_cursor(&self) -> Option<Self::Cursor>;
+    /// Adds the rows of `later`, which becomes the last page.
     fn append(&mut self, later: Self);
+    /// Says there is no next page: `--all` has read them all.
     fn end(&mut self);
+    /// How many rows this holds.
     fn edge_count(&self) -> usize;
 }
 
@@ -52,6 +59,9 @@ macro_rules! connection_page {
     };
 }
 
+/// The page after `after`, or with `all` every page joined into one. `fetch` takes the references
+/// it needs by copy and returns an `async move` block, so the future owns what it uses.
+///
 /// # Errors
 /// The failure of `fetch`; [`Failure::Paging`] when the hub repeats a cursor or `--all` passes
 /// [`MAX_ROWS`].
@@ -87,12 +97,14 @@ pub async fn fetch<P: Page, Next: Future<Output = Result<P, Failure>>>(
     Ok(joined)
 }
 
+/// The page size: `--limit`, or the largest page for `--all`.
 #[must_use]
 pub const fn page_size(limit: i64, all: bool, largest: i64) -> i64 {
     if all { largest } else { limit }
 }
 
-/// The next-page hint repeats the filters and the page size (CMD-026).
+/// A command as the operator would type it, for a hint that repeats the filters in use and
+/// the page size, so the next page is as long as this one (CMD-026).
 #[derive(Clone, Debug)]
 pub struct CommandLine {
     words: Vec<String>,
@@ -100,6 +112,7 @@ pub struct CommandLine {
 }
 
 impl CommandLine {
+    /// `command` with pages of `limit` rows (`--limit`).
     #[must_use]
     pub fn new(command: &str, limit: i64) -> Self {
         Self {
@@ -108,17 +121,20 @@ impl CommandLine {
         }
     }
 
+    /// Adds `word` as it is typed, quoted when it needs it.
     #[must_use]
     pub fn word(mut self, word: &str) -> Self {
         self.words.push(shell_word(word));
         self
     }
 
+    /// Adds `--name value` when there is a value.
     #[must_use]
     pub fn flag(self, name: &str, value: Option<&str>) -> Self {
         self.flags(name, value)
     }
 
+    /// Adds `--name value` for each value.
     #[must_use]
     pub fn flags<'a>(mut self, name: &str, values: impl IntoIterator<Item = &'a str>) -> Self {
         for value in values {
@@ -127,6 +143,7 @@ impl CommandLine {
         self
     }
 
+    /// Adds `--name choice` for each choice of a `clap::ValueEnum`.
     #[must_use]
     pub fn choices<'a, T: clap::ValueEnum + 'a>(
         self,
@@ -141,6 +158,7 @@ impl CommandLine {
         self.flags(name, names.iter().map(String::as_str))
     }
 
+    /// Adds `--name` when `on`.
     #[must_use]
     pub fn switch(mut self, name: &str, on: bool) -> Self {
         if on {
@@ -156,6 +174,7 @@ impl Display for CommandLine {
     }
 }
 
+/// Tells a person where the next page starts (not with `--json`).
 pub fn note_next(invocation: &Invocation, page: &impl Page, what: &str, command: &CommandLine) {
     if let Some(cursor) = page.next_cursor() {
         let cursor = shell_word(&cursor.to_string());

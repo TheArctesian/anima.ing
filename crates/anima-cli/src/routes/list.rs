@@ -13,6 +13,8 @@ pub struct ListArgs {
 }
 
 impl ListArgs {
+    /// Prints a row for each route or, with `--json`, the K1 `ApplicationRoute` list.
+    ///
     /// # Errors
     /// The hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

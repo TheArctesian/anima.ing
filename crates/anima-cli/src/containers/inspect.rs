@@ -22,7 +22,8 @@ impl InspectArgs {
     /// Prints a row for each detail or, with `--json`, the K1 `ContainerDetail`.
     ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown device or container; the hub's refusal.
+    /// [`Failure::NotFound`] for an unknown device or container; the hub's refusal for an API
+    /// key, or when the device cannot be read.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let container_id = identifier(&hub, &self.device, &self.container).await?;

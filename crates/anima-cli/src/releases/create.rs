@@ -32,7 +32,7 @@ enum TargetArg {
 }
 
 impl CreateArgs {
-    /// With `--json`, prints the K1 `Release`.
+    /// Prints the new release or, with `--json`, the K1 `Release`.
     ///
     /// # Errors
     /// [`Failure`] for a hub refusal (a version that exists, a commit that is not there).

@@ -11,6 +11,8 @@ use crate::output::text::enum_name;
 pub struct ListArgs {}
 
 impl ListArgs {
+    /// Prints one row for each variant, or with `--json` the models.
+    ///
     /// # Errors
     /// The hub's refusal; a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

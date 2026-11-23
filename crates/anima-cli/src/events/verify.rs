@@ -10,6 +10,9 @@ use crate::output::text::enum_name;
 pub struct VerifyArgs;
 
 impl VerifyArgs {
+    /// Prints whether the chain is whole, the first fault, and the head to keep outside the
+    /// hub; with `--json` the K1 `AuditChainCheck`.
+    ///
     /// # Errors
     /// [`Failure`] for a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

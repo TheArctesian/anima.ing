@@ -70,6 +70,8 @@ impl ModelTool {
         }
     }
 
+    /// Runs the tool.
+    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments or the hub's refusal.
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {

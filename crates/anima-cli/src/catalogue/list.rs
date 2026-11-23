@@ -7,11 +7,14 @@ use crate::output::text::enum_name;
 
 pub type Entry = catalogue_list::CatalogueListCatalogueEntries;
 
+/// What the list says of an entry with no test on a machine.
 pub const NOT_TESTED: &str = "not tested on a machine";
 
 #[derive(Debug, clap::Args)]
 pub struct ListArgs {}
 
+/// Each entry that the hub lists.
+///
 /// # Errors
 /// The hub's refusal.
 pub async fn fetch(hub: &Hub) -> Result<Vec<Entry>, Failure> {
@@ -20,6 +23,8 @@ pub async fn fetch(hub: &Hub) -> Result<Vec<Entry>, Failure> {
 }
 
 impl ListArgs {
+    /// Prints a row for each entry or, with `--json`, the K1 `CatalogueEntry` list.
+    ///
     /// # Errors
     /// The hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -28,6 +33,7 @@ impl ListArgs {
     }
 }
 
+/// `NETWORK_PORT` as `network port`.
 pub fn words<T: serde::Serialize>(name: &T) -> String {
     enum_name(name).to_lowercase().replace('_', " ")
 }

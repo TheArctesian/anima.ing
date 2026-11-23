@@ -13,6 +13,7 @@ use crate::output::{Cell, Table, Tone};
 /// The most bytes of a Compose file: the limit of the hub.
 pub const LARGEST_FILE: usize = 256 * 1024;
 
+/// What the check does not say, for each way to show its result.
 pub const SYNTAX_ONLY: &str = "This is a check of the syntax only: it does not say that a \
                                machine accepts the file.";
 
@@ -25,6 +26,8 @@ pub struct CheckFileArgs {
     file: PathBuf,
 }
 
+/// The result of the check of the text `file`.
+///
 /// # Errors
 /// The hub's refusal.
 pub async fn fetch(hub: &Hub, file: String) -> Result<Check, Failure> {
@@ -35,6 +38,7 @@ pub async fn fetch(hub: &Hub, file: String) -> Result<Check, Failure> {
         .compose_file_check)
 }
 
+/// How many problems of the check are errors.
 #[must_use]
 pub fn errors(check: &Check) -> usize {
     let error = |severity: &Severity| matches!(severity, Severity::ERROR);
@@ -43,6 +47,8 @@ pub fn errors(check: &Check) -> usize {
 }
 
 impl CheckFileArgs {
+    /// Prints a row for each problem or, with `--json`, the K1 `ComposeFileCheck`.
+    ///
     /// # Errors
     /// [`Failure::Input`] for a file that cannot be read, is not UTF-8 text or is larger than
     /// 256 KiB; the hub's refusal; [`Failure::Ended`] with exit status 1 when the check found
@@ -76,6 +82,7 @@ impl CheckFileArgs {
     }
 }
 
+/// `NO_IMAGE_OR_BUILD` as `no image or build`.
 fn words<T: serde::Serialize>(name: &T) -> String {
     enum_name(name).to_lowercase().replace('_', " ")
 }

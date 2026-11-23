@@ -34,6 +34,8 @@ enum ReasonArg {
 }
 
 impl CloseArgs {
+    /// Closes the issue and prints it or, with `--json`, the K1 `Issue` without its body.
+    ///
     /// # Errors
     /// The hub's refusal (`VALIDATION` for the number of a pull request).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -46,6 +48,8 @@ impl CloseArgs {
 }
 
 impl ReopenArgs {
+    /// Opens the issue and prints it or, with `--json`, the K1 `Issue` without its body.
+    ///
     /// # Errors
     /// The hub's refusal (`VALIDATION` for the number of a pull request).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -53,6 +57,7 @@ impl ReopenArgs {
     }
 }
 
+/// Sends `setIssueOpen` with `open` and the reason for closing.
 async fn set(
     invocation: &Invocation,
     repository: &str,

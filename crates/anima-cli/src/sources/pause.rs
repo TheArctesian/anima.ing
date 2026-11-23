@@ -17,6 +17,8 @@ pub struct ResumeArgs {
 }
 
 impl PauseArgs {
+    /// Pauses the account's syncs and prints it.
+    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown account; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -25,6 +27,8 @@ impl PauseArgs {
 }
 
 impl ResumeArgs {
+    /// Resumes the account's syncs and prints it.
+    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown account; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

@@ -18,6 +18,8 @@ pub struct NetworksArgs {
     device: String,
 }
 
+/// The networks of the device with this ID or exact name.
+///
 /// # Errors
 /// [`Failure::NotFound`] for an unknown device; the hub's refusal.
 pub async fn fetch(hub: &Hub, device: &str) -> Result<Vec<Network>, Failure> {
@@ -33,7 +35,8 @@ impl NetworksArgs {
     /// Prints a row for each network or, with `--json`, the K1 `ContainerNetwork` list.
     ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown device; the hub's refusal.
+    /// [`Failure::NotFound`] for an unknown device; the hub's refusal when the device has no
+    /// SSH credential, has no Docker or does not answer.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let found = fetch(&invocation.hub()?, &self.device).await?;
         invocation.output.data(&found, table)

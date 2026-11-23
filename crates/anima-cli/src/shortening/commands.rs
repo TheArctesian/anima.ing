@@ -80,8 +80,11 @@ const ESTIMATE: &str =
     "Tokens are an estimate: the bytes of JSON divided by 4. No tokenizer of a model is used.";
 
 impl ShorteningCommand {
+    /// Runs the command on the folder of this user.
+    ///
     /// # Errors
-    /// [`Failure`] for a missing configuration folder, a gone handle, or a file error.
+    /// [`Failure`] for a missing configuration folder, a handle that is gone, or a file that
+    /// cannot be read or written.
     pub fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let dir = invocation.config_dir()?.join(FOLDER);
         match self {
@@ -129,11 +132,13 @@ impl ShorteningCommand {
     }
 }
 
+/// The originals of the selected hub.
 fn store(invocation: &Invocation) -> Result<Store, Failure> {
     let origin = invocation.origin()?.as_text();
     Ok(Store::new(originals_dir(invocation.config_dir()?, &origin)))
 }
 
+/// The state, and what the store of the selected hub holds when a hub is selected.
 fn show(invocation: &Invocation) -> Result<(), Failure> {
     let kept = match store(invocation) {
         Ok(store) => store.list().map_err(|error| lost(&error))?,
@@ -210,6 +215,8 @@ fn age_minutes(written: SystemTime) -> u64 {
         .map_or(0, |age| age.as_secs() / 60)
 }
 
+/// Shortens the answer in `file` with the handle of its text, and prints the sizes or the
+/// answer. It writes nothing.
 fn try_file(invocation: &Invocation, file: &std::path::Path, answer: bool) -> Result<(), Failure> {
     let input = |reason: String| Failure::Input {
         what: file.display().to_string(),

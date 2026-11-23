@@ -17,6 +17,8 @@ pub struct AddArgs {
 }
 
 impl AddArgs {
+    /// Prints the variants that the hub stored.
+    ///
     /// # Errors
     /// The hub's refusal, for example for an organisation that is not approved.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

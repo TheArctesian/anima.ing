@@ -17,8 +17,11 @@ pub struct CertificateArgs {
 }
 
 impl CertificateArgs {
+    /// Trusts the certificate and prints what was accepted.
+    ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown device; the hub's `CONFLICT` (exit 6) for a different certificate.
+    /// [`Failure::NotFound`] for an unknown device; the hub's `CONFLICT` (exit 6) when the
+    /// fingerprint is not the certificate the hub saw.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let variables = certificate_accept::Variables {

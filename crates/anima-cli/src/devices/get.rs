@@ -16,7 +16,7 @@ pub struct GetArgs {
 }
 
 impl GetArgs {
-    /// With `--json`, prints K1 `Device`.
+    /// Prints the device as label and value lines or, with `--json`, as the K1 `Device`.
     ///
     /// # Errors
     /// [`Failure::NotFound`] when no device has the ID or name; [`Failure::Usage`] when more
@@ -41,6 +41,8 @@ impl GetArgs {
     }
 }
 
+/// The ID `device` names: an ID as it is, or the one device with exactly that name.
+///
 /// # Errors
 /// [`Failure::NotFound`] when no device has the name; [`Failure::Usage`], listing them, when
 /// more than one has it.
@@ -135,6 +137,7 @@ fn table(device: &device_get::DeviceGetDevice, charges: &[Option<f64>]) -> Table
     table
 }
 
+/// The SSH, RDP and VNC rows, and the SSH host key when the hub has one.
 fn access_rows(table: &mut Table, device: &device_get::DeviceGetDevice) {
     table.pair(
         "SSH",

@@ -18,8 +18,12 @@ pub struct InviteArgs {
 }
 
 impl InviteArgs {
+    /// Makes the invite and shows it once; its expiry goes to standard error (or the `--json`
+    /// answer).
+    ///
     /// # Errors
-    /// [`Failure`] for a hub refusal or a file that cannot be written.
+    /// [`Failure`] for a hub refusal (`VALIDATION` for the name, `FORBIDDEN` for an API key,
+    /// `UNAVAILABLE` when the hub has no link) or a file that cannot be written.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         self.to_file.check()?;
         let hub = invocation.hub()?;

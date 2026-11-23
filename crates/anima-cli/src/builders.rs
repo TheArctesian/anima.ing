@@ -19,6 +19,8 @@ pub enum BuilderCommand {
 }
 
 impl BuilderCommand {
+    /// Runs the command.
+    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown builder or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

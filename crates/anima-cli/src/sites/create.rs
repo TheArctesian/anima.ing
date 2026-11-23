@@ -13,6 +13,8 @@ pub struct CreateArgs {
 }
 
 impl CreateArgs {
+    /// Prints the new site.
+    ///
     /// # Errors
     /// The hub's refusal, such as `VALIDATION` for a subnet that is not a network.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

@@ -26,7 +26,7 @@ pub struct DawarichArgs {
     from_file: Option<PathBuf>,
 }
 
-/// Names the file, never the key it holds.
+/// Debug output of the arguments names the file, never the key it holds.
 impl std::fmt::Debug for DawarichArgs {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter
@@ -39,8 +39,13 @@ impl std::fmt::Debug for DawarichArgs {
 }
 
 impl DawarichArgs {
+    /// Connects the server and prints the account. The hub reads one point with the key before
+    /// it stores it.
+    ///
     /// # Errors
-    /// [`Failure::Input`] for an unusable key file; the hub's refusal.
+    /// [`Failure::Input`] for a key file that is missing, looser than 0600, empty or not text;
+    /// the hub's refusal (`VALIDATION` for the address, the key or the label, `UNAVAILABLE`
+    /// when the server does not answer, `FORBIDDEN` for an API key of Anima).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let key = password(
             invocation.prompter,

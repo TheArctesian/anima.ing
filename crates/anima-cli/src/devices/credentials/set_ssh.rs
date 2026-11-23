@@ -30,8 +30,11 @@ pub struct SshArgs {
 }
 
 impl SshArgs {
+    /// Stores the credential and prints whether the device now has one.
+    ///
     /// # Errors
-    /// [`Failure::Usage`], [`Failure::Input`], [`Failure::NotFound`] or the hub's refusal.
+    /// [`Failure::Usage`] when a secret cannot be asked for; [`Failure::Input`] for an unreadable
+    /// file; [`Failure::NotFound`] for an unknown device; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let device_id = resolve(&hub, &self.device).await?;
@@ -48,6 +51,7 @@ impl SshArgs {
         })
     }
 
+    /// The `@oneOf` input: the password, or the key with its passphrase.
     fn credential(&self, invocation: &Invocation) -> Result<Input, Failure> {
         let prompter = invocation.prompter;
         let from_file = self.from_file.as_deref();

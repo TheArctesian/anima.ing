@@ -27,6 +27,7 @@ pub struct ArchiveRemoveArgs {
     id: String,
 }
 
+/// Prints `{ "id": … }` with `--json`, else `sentence`.
 fn removed(invocation: &Invocation, id: &str, sentence: &str) -> Result<(), Failure> {
     if invocation.output.json() {
         return invocation.output.raw(&serde_json::json!({ "id": id }));
@@ -35,6 +36,8 @@ fn removed(invocation: &Invocation, id: &str, sentence: &str) -> Result<(), Fail
 }
 
 impl RemoveArgs {
+    /// Asks, then removes the file. It cannot be undone.
+    ///
     /// # Errors
     /// [`Failure::Declined`]; the hub's refusal: `NOT_FOUND` when no file has this ID.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -51,6 +54,8 @@ impl RemoveArgs {
 }
 
 impl ArchiveAddArgs {
+    /// Makes the archive and prints it.
+    ///
     /// # Errors
     /// The hub's refusal: `VALIDATION` for a record or a name it does not take.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -72,6 +77,8 @@ impl ArchiveAddArgs {
 }
 
 impl ArchiveRemoveArgs {
+    /// Asks, then deletes the archive with its files and every record that came from it.
+    ///
     /// # Errors
     /// [`Failure::Declined`]; the hub's refusal: `NOT_FOUND` when there is no such archive.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

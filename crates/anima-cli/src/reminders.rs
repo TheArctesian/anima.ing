@@ -39,8 +39,11 @@ pub enum ReminderCommand {
 }
 
 impl ReminderCommand {
+    /// Runs the command.
+    ///
     /// # Errors
-    /// [`Failure`] for a refusal, JSON that does not parse, or a missing token.
+    /// [`Failure`] for a refusal (`VALIDATION` with the fields to fix, `NOT_FOUND`, `CONFLICT`
+    /// for a firing that was not sent), JSON that does not parse, or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
             Self::List => rules::list(invocation).await,

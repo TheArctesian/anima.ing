@@ -16,6 +16,8 @@ pub struct UpdatesArgs {
     device: String,
 }
 
+/// The answer for each container of the device with this ID or exact name.
+///
 /// # Errors
 /// [`Failure::NotFound`] for an unknown device; the hub's refusal.
 pub async fn fetch(hub: &Hub, device: &str) -> Result<Vec<Update>, Failure> {
@@ -31,13 +33,15 @@ impl UpdatesArgs {
     /// Prints a row for each container or, with `--json`, the K1 `ContainerImageUpdate` list.
     ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown device; the hub's refusal.
+    /// [`Failure::NotFound`] for an unknown device; the hub's refusal when the device has no
+    /// SSH credential, has no Docker or does not answer.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let found = fetch(&invocation.hub()?, &self.device).await?;
         invocation.output.data(&found, table)
     }
 }
 
+/// `NEWER_IMAGE` as `newer image`.
 fn words<T: serde::Serialize>(name: &T) -> String {
     enum_name(name).to_lowercase().replace('_', " ")
 }

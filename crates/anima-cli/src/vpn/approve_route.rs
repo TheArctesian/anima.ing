@@ -12,6 +12,8 @@ pub struct ApproveRouteArgs {
 }
 
 impl ApproveRouteArgs {
+    /// Approves the route and prints the site.
+    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown site; the hub's refusal (no router waits).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

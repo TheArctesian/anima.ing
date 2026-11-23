@@ -15,8 +15,11 @@ pub struct CreateArgs {
 }
 
 impl CreateArgs {
+    /// Prints the new web interface.
+    ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown device; the hub's refusal.
+    /// [`Failure::NotFound`] for an unknown device; the hub's refusal, such as `VALIDATION`
+    /// for a URL it does not accept.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let variables = web_create::Variables {

@@ -54,6 +54,8 @@ enum AccessArg {
 }
 
 impl AddArgs {
+    /// Asks for confirmation (`--yes` skips it), adds the route and prints it.
+    ///
     /// # Errors
     /// [`Failure::Usage`] when it cannot ask; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

@@ -14,6 +14,8 @@ pub enum StatusCommand {
 }
 
 impl StatusCommand {
+    /// Runs the command.
+    ///
     /// # Errors
     /// [`Failure`] for an unknown repository or a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

@@ -17,7 +17,8 @@ pub struct StatusArgs {
 }
 
 impl StatusArgs {
-    /// With `--json`, prints K1 `VpnPicture` alone, `null` while the hub has none.
+    /// Prints the login server and the picture as label and value lines or, with `--json`, the
+    /// K1 `VpnPicture` alone (`null` while the hub has none).
     ///
     /// # Errors
     /// [`Failure`] for a hub refusal.

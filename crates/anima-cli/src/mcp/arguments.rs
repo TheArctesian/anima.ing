@@ -8,6 +8,8 @@ use serde_json::{Map, Value};
 
 use super::outcome::ToolError;
 
+/// The arguments of a call as the tool's input type.
+///
 /// # Errors
 /// [`ToolError::Refused`] naming what does not fit the input schema.
 pub fn parse<T: DeserializeOwned>(arguments: Option<JsonObject>) -> Result<T, ToolError> {
@@ -30,16 +32,20 @@ pub struct Page {
     pub after: Option<String>,
 }
 
+/// The default page size.
 const DEFAULT_LIMIT: u32 = 25;
 
+/// The largest page.
 const MAX_LIMIT: u32 = 100;
 
 impl Page {
+    /// The page size, between 1 and 100.
     #[must_use]
     pub fn size(&self) -> i64 {
         i64::from(self.limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT))
     }
 
+    /// This page of a whole list the hub returns at once; the cursor is the next position.
     #[must_use]
     pub fn of(&self, all: Vec<Value>) -> (Vec<Value>, Option<String>) {
         let start = self
@@ -55,8 +61,8 @@ impl Page {
     }
 }
 
-/// An empty name confirms nothing: a thing without a name, or one the lookup did not find, is
-/// never deleted here (MCP-007).
+/// Refuses a delete unless `confirm` is exactly `name` (MCP-007). An empty name confirms
+/// nothing: a thing without a name, or one the lookup did not find, is never deleted here.
 ///
 /// # Errors
 /// [`ToolError::Refused`] saying which name to give.
@@ -76,6 +82,7 @@ pub fn confirmed(confirm: &str, name: &str, what: &str) -> Result<(), ToolError>
     )))
 }
 
+/// `value` (a K1 object) with only these keys, unless `detail` asks for all of them.
 #[must_use]
 pub fn short(value: Value, keys: &[&str], detail: bool) -> Value {
     match value {
@@ -89,12 +96,13 @@ pub fn short(value: Value, keys: &[&str], detail: bool) -> Value {
     }
 }
 
-/// A generated K1 answer always serialises.
+/// `value` serialised; a generated K1 answer always serialises.
 #[must_use]
 pub fn json<T: serde::Serialize>(value: &T) -> Value {
     serde_json::to_value(value).unwrap_or(Value::Null)
 }
 
+/// The fields of `value` that are given (not null), as K1 input fields.
 #[must_use]
 pub fn present(value: &impl serde::Serialize) -> Map<String, Value> {
     match json(value) {
@@ -106,6 +114,8 @@ pub fn present(value: &impl serde::Serialize) -> Map<String, Value> {
     }
 }
 
+/// `fields` as the generated K1 input type `T`; serde checks every value.
+///
 /// # Errors
 /// [`ToolError::Refused`] naming `what` and the field that does not fit.
 pub fn k1_input<T: DeserializeOwned>(
@@ -119,6 +129,7 @@ pub fn k1_input<T: DeserializeOwned>(
     })
 }
 
+/// The JSON object of these named values.
 #[must_use]
 pub fn object<const N: usize>(fields: [(&str, Value); N]) -> Map<String, Value> {
     fields

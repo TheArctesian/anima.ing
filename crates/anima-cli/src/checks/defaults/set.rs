@@ -22,8 +22,11 @@ pub struct SetArgs {
 }
 
 impl SetArgs {
+    /// Prints the defaults as they are now.
+    ///
     /// # Errors
-    /// [`Failure::Usage`] when no value is given; the hub's refusal.
+    /// [`Failure::Usage`] when no value is given; the hub's refusal (VALIDATION for a value
+    /// out of bounds).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         if self.interval_seconds.is_none()
             && self.retries.is_none()

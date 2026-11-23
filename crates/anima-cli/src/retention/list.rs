@@ -8,6 +8,8 @@ use crate::output::text::enum_name;
 pub struct ListArgs;
 
 impl ListArgs {
+    /// Prints the periods as a table or, with `--json`, as the K1 `RetentionPeriod` list.
+    ///
     /// # Errors
     /// [`Failure`] for a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

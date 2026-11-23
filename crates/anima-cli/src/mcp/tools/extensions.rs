@@ -68,6 +68,8 @@ impl ExtensionTool {
         }
     }
 
+    /// Runs the tool.
+    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments, an unknown extension or the hub's refusal.
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
@@ -130,6 +132,7 @@ async fn set(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolErro
     ])))
 }
 
+/// The keys other than `key` whose state differs between `was` and `now`, sorted.
 fn also_changed<'a>(
     was: &BTreeMap<&str, bool>,
     now: impl Iterator<Item = (&'a str, bool)>,

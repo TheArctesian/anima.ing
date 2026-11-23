@@ -15,8 +15,11 @@ pub struct ClearArgs {
 }
 
 impl ClearArgs {
+    /// Asks for confirmation (`--yes` skips it), clears the SSH credential and prints the result.
+    ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown device; [`Failure::Usage`] when it cannot ask.
+    /// [`Failure::NotFound`] for an unknown device; [`Failure::Usage`] when it cannot ask; the
+    /// hub's refusal.
     pub async fn ssh(self, invocation: &Invocation) -> Result<(), Failure> {
         let (hub, device_id) = self.confirmed(invocation, "SSH").await?;
         let variables = ssh_credential_clear::Variables { device_id };
@@ -26,6 +29,8 @@ impl ClearArgs {
         })
     }
 
+    /// As [`ClearArgs::ssh`], for RDP.
+    ///
     /// # Errors
     /// As [`ClearArgs::ssh`].
     pub async fn rdp(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -37,6 +42,8 @@ impl ClearArgs {
         })
     }
 
+    /// As [`ClearArgs::ssh`], for VNC.
+    ///
     /// # Errors
     /// As [`ClearArgs::ssh`].
     pub async fn vnc(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -48,6 +55,7 @@ impl ClearArgs {
         })
     }
 
+    /// The hub and the device's ID once the operator has agreed.
     async fn confirmed(
         &self,
         invocation: &Invocation,

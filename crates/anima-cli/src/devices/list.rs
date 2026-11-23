@@ -52,6 +52,7 @@ enum SortArg {
     Uptime,
 }
 
+/// One page request: the filter, the order and the page size.
 pub struct Query {
     pub filter: device_list::DeviceFilter,
     pub sort: device_list::DeviceSort,
@@ -59,7 +60,7 @@ pub struct Query {
 }
 
 impl ListArgs {
-    /// With `--json`, prints the K1 `DeviceConnection`.
+    /// Prints the devices as a table or, with `--json`, as the K1 `DeviceConnection`.
     ///
     /// # Errors
     /// [`Failure`] for an unknown site or a hub refusal.
@@ -94,6 +95,8 @@ impl ListArgs {
     }
 }
 
+/// The first page after `after`, or with `all` every page joined into one connection.
+///
 /// # Errors
 /// The hub's refusal; [`Failure::Paging`] when the hub does not page.
 pub async fn fetch(
@@ -139,6 +142,8 @@ impl Page for device_list::DeviceListDevices {
     }
 }
 
+/// The ID of the site `site` names: an ID as it is, or the site with exactly that name.
+///
 /// # Errors
 /// [`Failure::NotFound`] when no site has the name; the hub's refusal.
 pub async fn site_id(hub: &Hub, site: &str) -> Result<String, Failure> {

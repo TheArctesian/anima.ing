@@ -22,6 +22,7 @@ pub struct ContainerListInput {
     device: String,
 }
 
+/// The definition of a container tool.
 pub fn definition_of(tool: DeviceTool) -> Definition {
     match tool {
         DeviceTool::ContainerStorage => storage_definition(),
@@ -31,6 +32,8 @@ pub fn definition_of(tool: DeviceTool) -> Definition {
     }
 }
 
+/// Runs a container tool.
+///
 /// # Errors
 /// [`ToolError`] for wrong arguments or the hub's refusal.
 pub async fn call(

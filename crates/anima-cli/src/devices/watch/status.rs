@@ -28,8 +28,12 @@ pub struct WatchArgs {
 }
 
 impl WatchArgs {
+    /// Prints each change as a line (time, device ID, status) or, with `--json`, as one K1
+    /// `DeviceStatusChange` object per line.
+    ///
     /// # Errors
-    /// [`Failure`] for an unknown device, a refused token or a lost connection.
+    /// [`Failure`] for an unknown device, or when the hub refuses the token or the connection
+    /// is lost.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let device_id = match &self.device {

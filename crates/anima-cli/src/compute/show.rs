@@ -14,6 +14,8 @@ pub struct ShowArgs {
 }
 
 impl ShowArgs {
+    /// Prints the policies as a table or, with `--json`, as the K1 `DevicePolicy` list.
+    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown device; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -27,6 +29,8 @@ impl ShowArgs {
     }
 }
 
+/// The device policy of each device.
+///
 /// # Errors
 /// The hub's refusal.
 pub async fn fetch(hub: &Hub) -> Result<Vec<Row>, Failure> {
@@ -36,6 +40,8 @@ pub async fn fetch(hub: &Hub) -> Result<Vec<Row>, Failure> {
         .device_policies)
 }
 
+/// The row of the device whose ID or exact name is `wanted`.
+///
 /// # Errors
 /// [`Failure::NotFound`] when no device has it; [`Failure::Usage`] when several have the name.
 pub fn find<'a>(rows: &'a [Row], wanted: &str) -> Result<&'a Row, Failure> {

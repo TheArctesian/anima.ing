@@ -29,7 +29,7 @@ pub struct ListArgs {
 }
 
 impl ListArgs {
-    /// With `--json`, prints the K1 `SessionConnection`.
+    /// Prints the sessions as a table or, with `--json`, as the K1 `SessionConnection`.
     ///
     /// # Errors
     /// [`Failure`] for an unknown device or a hub refusal.

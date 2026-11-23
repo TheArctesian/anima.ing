@@ -29,6 +29,7 @@ pub struct ComposeFromRunInput {
     command: String,
 }
 
+/// The definition of a Compose tool.
 pub fn definition_of(tool: DeviceTool) -> Definition {
     match tool {
         DeviceTool::ComposeCheck => check_definition(),
@@ -36,6 +37,8 @@ pub fn definition_of(tool: DeviceTool) -> Definition {
     }
 }
 
+/// Runs a Compose tool.
+///
 /// # Errors
 /// [`ToolError`] for wrong arguments or the hub's refusal.
 pub async fn call(
@@ -101,6 +104,7 @@ async fn check(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolEr
     ])))
 }
 
+/// What `anima_compose_from_run` does, for the agent.
 const FROM_RUN_DESCRIPTION: &str = "Changes one `docker run` command that you give as text into a Compose file with one \
      service. The hub reads the words of the command with its own reader: it expands \
      nothing, runs nothing, reaches no device and keeps nothing. It refuses a command \
@@ -193,7 +197,9 @@ async fn from_run(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, Too
     ])))
 }
 
-/// The cleaning of a result must not change the file; it takes only the final line break.
+/// The file as this result can give it, or why it does not: the cleaning of each result
+/// (`mcp/untrusted.rs`) must not change it, so that an agent never gets a file that differs
+/// from the file of the hub. The line break at its end is the one thing that the cleaning takes.
 fn given(file: Option<&str>) -> (Option<&str>, Option<&'static str>) {
     let Some(file) = file else {
         return (None, None);

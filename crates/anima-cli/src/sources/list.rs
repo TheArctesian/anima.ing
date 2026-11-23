@@ -11,6 +11,9 @@ pub struct ListArgs {
 }
 
 impl ListArgs {
+    /// Prints the accounts as a table or, with `--json`, as the K1 `SourceAccount` list with
+    /// each account's last run.
+    ///
     /// # Errors
     /// [`Failure`] for a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

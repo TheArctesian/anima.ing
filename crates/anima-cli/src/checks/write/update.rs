@@ -42,6 +42,8 @@ pub struct UpdateArgs {
 }
 
 impl UpdateArgs {
+    /// Prints the changed check.
+    ///
     /// # Errors
     /// [`Failure::Usage`] when nothing is to change or the file is wrong; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

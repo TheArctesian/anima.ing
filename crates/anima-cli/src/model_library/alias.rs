@@ -14,6 +14,8 @@ pub struct AliasArgs {
 }
 
 impl AliasArgs {
+    /// Prints the alias and its model.
+    ///
     /// # Errors
     /// The hub's refusal; [`Failure::NotFound`] for an unknown model.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

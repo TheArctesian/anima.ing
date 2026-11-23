@@ -20,8 +20,11 @@ pub enum ExtractionCommand {
 }
 
 impl ExtractionCommand {
+    /// Runs the command.
+    ///
     /// # Errors
-    /// [`Failure`] for a refusal, fields that are not JSON, or a missing token.
+    /// [`Failure`] for a refusal (`VALIDATION`, `NOT_FOUND`, `CONFLICT` for a decided proposal),
+    /// fields that are not JSON, or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
             Self::List(args) => args.run(invocation).await,

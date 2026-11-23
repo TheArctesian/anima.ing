@@ -21,6 +21,8 @@ pub struct SetWakeRelayArgs {
 }
 
 impl SetWakeRelayArgs {
+    /// Prints the site with its new relay.
+    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown site or device; the hub's refusal, such as a relay
     /// at another site.

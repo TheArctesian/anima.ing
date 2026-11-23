@@ -25,7 +25,8 @@ pub struct CreateArgs {
 }
 
 impl CreateArgs {
-    /// The hub does not repeat it: after `UNAVAILABLE` the issue may exist.
+    /// Prints the new issue's number and link or, with `--json`, the K1 `Issue` without its
+    /// body. The hub does not repeat it: after `UNAVAILABLE` the issue may exist.
     ///
     /// # Errors
     /// [`Failure::Input`] for a body that cannot be read; the hub's refusal.

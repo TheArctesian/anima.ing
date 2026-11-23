@@ -34,12 +34,14 @@ pub struct UsageArgs {
     by: Vec<DimensionArg>,
 }
 
+/// K1 `AgentSource`.
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
 enum SourceArg {
     ClaudeCode,
     Codex,
 }
 
+/// K1 `AgentUsageDimension`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum)]
 enum DimensionArg {
     Device,
@@ -62,8 +64,10 @@ impl DimensionArg {
     }
 }
 
+/// What a usage query asks, as the command and the MCP tool give it.
 #[derive(Debug, Default)]
 pub struct UsageAsk {
+    /// A device's ID or its exact name.
     pub device: Option<String>,
     pub source: Option<agent_usage::AgentSource>,
     pub repository: Option<String>,
@@ -72,6 +76,8 @@ pub struct UsageAsk {
     pub by: Vec<agent_usage::AgentUsageDimension>,
 }
 
+/// The K1 `AgentUsage` answer to `ask`.
+///
 /// # Errors
 /// [`Failure::NotFound`] for an unknown device name; the hub's refusal.
 pub async fn fetch(hub: &Hub, ask: UsageAsk) -> Result<agent_usage::AgentUsageAgentUsage, Failure> {
@@ -94,6 +100,9 @@ pub async fn fetch(hub: &Hub, ask: UsageAsk) -> Result<agent_usage::AgentUsageAg
 }
 
 impl UsageArgs {
+    /// Prints a row for each group, the total and the notes on the estimate and the daemons
+    /// or, with `--json`, the K1 `AgentUsage` answer.
+    ///
     /// # Errors
     /// [`Failure::Usage`] for a bad `--until` with `--days`; as [`fetch`].
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -135,6 +144,11 @@ impl UsageArgs {
     }
 }
 
+/// The first and last day to send: as given, or with `--days` the days that end on `--until`
+/// or on `today` (UTC).
+///
+/// # Errors
+/// [`Failure::Usage`] when `--days` comes with an `--until` that is not `YYYY-MM-DD`.
 pub(super) fn day_range(
     (since, until): (Option<String>, Option<String>),
     days: Option<u16>,

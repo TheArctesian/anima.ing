@@ -49,8 +49,11 @@ pub enum ContainerCommand {
 }
 
 impl ContainerCommand {
+    /// Runs the command.
+    ///
     /// # Errors
-    /// [`Failure`] for an unknown device or container, a device the hub cannot read, or a refusal.
+    /// [`Failure`] for an unknown device or container, a device the hub cannot read, or a hub
+    /// refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
             Self::List(args) => args.run(invocation).await,

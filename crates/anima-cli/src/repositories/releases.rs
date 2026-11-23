@@ -29,6 +29,9 @@ pub struct ReleasesArgs {
 }
 
 impl ReleasesArgs {
+    /// Prints the releases as a table or, with `--json`, as the K1
+    /// `RepositoryReleaseConnection`.
+    ///
     /// # Errors
     /// [`Failure`] for an unknown repository or a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

@@ -25,6 +25,8 @@ pub enum CatalogueCommand {
 }
 
 impl CatalogueCommand {
+    /// Runs the command.
+    ///
     /// # Errors
     /// [`Failure`] for an unknown entry or device, the hub's refusal, or a refused install.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

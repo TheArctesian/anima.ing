@@ -30,6 +30,7 @@ pub enum ContextCommand {
     Remove { name: String },
 }
 
+/// One context as `context list --json` prints it.
 #[derive(Serialize)]
 struct Listed<'a> {
     name: &'a str,
@@ -38,6 +39,8 @@ struct Listed<'a> {
 }
 
 impl ContextCommand {
+    /// Runs the command.
+    ///
     /// # Errors
     /// [`Failure`] for a bad name or hub, or a configuration file that cannot be changed.
     pub fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -139,7 +142,7 @@ fn known(config: &Config, name: &str) -> Result<(), Failure> {
     })
 }
 
-/// Keeps a name safe in a table and a shell.
+/// 1 to 64 letters, digits, `.`, `_` or `-`, so a name is safe in a table and a shell.
 fn check_name(name: &str) -> Result<(), Failure> {
     let fits = (1..=64).contains(&name.len())
         && name

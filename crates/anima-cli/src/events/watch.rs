@@ -14,7 +14,9 @@ pub struct WatchArgs {
 }
 
 impl WatchArgs {
-    /// Ends when the hub completes the subscription, the pipe closes or an error ends it.
+    /// Prints each new event as a line for a person or, with `--json`, as one K1 `Event`
+    /// object per line. Ends when the hub completes the subscription, the pipe closes or an
+    /// error ends it.
     ///
     /// # Errors
     /// [`Failure`] when the hub refuses the token or the connection is lost.
@@ -34,6 +36,7 @@ impl WatchArgs {
     }
 }
 
+/// An event as one line: time, severity, source, device and message.
 fn line(event: &event_added::EventAddedEventAdded) -> String {
     format!(
         "{}  {:<7}  {:<12}  {}  {}",

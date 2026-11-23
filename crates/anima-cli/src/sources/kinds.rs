@@ -9,6 +9,8 @@ use crate::output::Table;
 pub struct KindsArgs;
 
 impl KindsArgs {
+    /// Prints the kinds as a table or, with `--json`, as the K1 `Source` list.
+    ///
     /// # Errors
     /// [`Failure`] for a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

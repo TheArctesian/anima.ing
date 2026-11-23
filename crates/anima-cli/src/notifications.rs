@@ -31,6 +31,8 @@ pub enum NotifyCommand {
 }
 
 impl NotifyCommand {
+    /// Runs the command.
+    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown channel, unreadable input or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

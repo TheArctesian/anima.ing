@@ -102,7 +102,8 @@ pub fn set_open_definition() -> Definition {
     .returns(&[("issue", "object", "The issue after the change.")])
 }
 
-/// The hub's limits (K-E1), checked before any request so a refusal never repeats the text.
+/// The hub's limits (K-E1 `NewIssueInput`, `addIssueComment`), checked here too so text over
+/// them is refused before any request, in fixed words that never repeat it.
 const TITLE_LONGEST: usize = 256;
 const BODY_LONGEST: usize = 65_536;
 const LABELS_MOST: usize = 20;
@@ -120,6 +121,7 @@ fn over_limit(rule: &str) -> ToolError {
     ))
 }
 
+/// The new issue's text within the hub's limits.
 fn issue_fits(input: &CreateInput) -> Result<(), ToolError> {
     if !bounded(&input.title, 1, TITLE_LONGEST) {
         return Err(over_limit("title must be 1 to 256 characters"));

@@ -37,6 +37,7 @@ pub struct InstallInput {
     digest: Option<String>,
 }
 
+/// The definition of a catalogue tool.
 pub fn definition_of(tool: DeviceTool) -> Definition {
     match tool {
         DeviceTool::CatalogueShow => show_definition(),
@@ -45,6 +46,8 @@ pub fn definition_of(tool: DeviceTool) -> Definition {
     }
 }
 
+/// Runs a catalogue tool.
+///
 /// # Errors
 /// [`ToolError`] for wrong arguments or the hub's refusal.
 pub async fn call(

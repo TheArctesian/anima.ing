@@ -16,7 +16,8 @@ impl WatchArgs {
     /// Prints each change as a line or, with `--json`, as one K1 `SourceAccount` per line.
     ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown account; [`Failure`] for a refused token or a lost connection.
+    /// [`Failure::NotFound`] for an unknown account; [`Failure`] when the hub refuses the token
+    /// or the connection is lost.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let id = match &self.account {

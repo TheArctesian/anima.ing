@@ -22,8 +22,12 @@ pub struct OffArgs {
 }
 
 impl OnArgs {
+    /// Turns the extension on, after a confirmation (or `--yes`, CMD-024) when that also turns
+    /// others on, and prints each extension whose switch changed, or that none did.
+    ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown key; [`Failure::Declined`] for a no; the hub's refusal.
+    /// [`Failure::NotFound`] for an unknown key; [`Failure::Declined`] when the operator says
+    /// no; the hub's refusal (`CONFLICT` for an extension that is not built).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let listed = hub.run::<ExtensionList>(extension_list::Variables).await?;
@@ -56,6 +60,8 @@ impl OnArgs {
 }
 
 impl OffArgs {
+    /// Turns the extension off and prints it, or that it was already off.
+    ///
     /// # Errors
     /// The hub's refusal: `CONFLICT`, naming the extension that needs it (exit 6).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

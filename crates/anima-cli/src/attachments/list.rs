@@ -10,7 +10,7 @@ pub struct ListArgs {
 }
 
 impl ListArgs {
-    /// With `--json`, prints the K1 `Attachment` list.
+    /// Prints the files as a table or, with `--json`, as the K1 `Attachment` list.
     ///
     /// # Errors
     /// [`Failure`] for a hub refusal.
@@ -22,6 +22,7 @@ impl ListArgs {
     }
 }
 
+/// `latitude, longitude` when the position was kept at upload, else `-`.
 #[must_use]
 pub fn position(latitude: Option<f64>, longitude: Option<f64>) -> String {
     match latitude.zip(longitude) {

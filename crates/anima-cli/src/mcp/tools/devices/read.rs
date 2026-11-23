@@ -113,6 +113,7 @@ pub fn definition(tool: DeviceTool) -> Definition {
     }
 }
 
+/// `anima_fleet_overview`: the first tool an agent calls.
 fn overview_definition() -> Definition {
     Definition::new::<Nothing>(
         "anima_fleet_overview",

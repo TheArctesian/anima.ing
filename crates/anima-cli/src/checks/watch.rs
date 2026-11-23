@@ -32,8 +32,12 @@ pub struct WatchArgs {
 }
 
 impl WatchArgs {
+    /// Prints each heartbeat as a line (time, check ID, status, response time, message) or,
+    /// with `--json`, as one K1 `HeartbeatAdded` object per line.
+    ///
     /// # Errors
-    /// [`Failure`] for an unknown check or device, a refused token or a lost connection.
+    /// [`Failure`] for an unknown check or device, or when the hub refuses the token or the
+    /// connection is lost.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let check_id = match &self.check {

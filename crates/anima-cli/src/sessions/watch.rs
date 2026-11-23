@@ -11,6 +11,9 @@ use crate::output::text::enum_name;
 pub struct WatchArgs;
 
 impl WatchArgs {
+    /// Prints each change as a line (time, device, protocol, operator, started or ended,
+    /// client) or, with `--json`, as one K1 `SessionChange` object per line.
+    ///
     /// # Errors
     /// [`Failure`] when the hub refuses the token or the connection is lost.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

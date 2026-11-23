@@ -12,6 +12,8 @@ pub struct ShowArgs {
 }
 
 impl ShowArgs {
+    /// Prints the model as a record and a line for each file, or with `--json` the model.
+    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown model; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

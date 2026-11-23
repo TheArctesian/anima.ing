@@ -26,6 +26,8 @@ pub struct CreateArgs {
 }
 
 impl CreateArgs {
+    /// Prints the new device or, with `--json`, the K1 `Device` fields selected.
+    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown site; [`Failure::Usage`] for incomplete settings;
     /// the hub's refusal.

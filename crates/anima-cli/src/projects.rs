@@ -35,6 +35,8 @@ pub enum ProjectCommand {
 }
 
 impl ProjectCommand {
+    /// Runs the command.
+    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown project or repository, or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

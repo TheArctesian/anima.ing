@@ -42,11 +42,12 @@ enum MadeForArg {
 }
 
 impl CreateArgs {
-    /// The secret goes alone to standard output; the note that it shows one time goes to standard
-    /// error.
+    /// Shows the secret alone on standard output, with the key and the note that the secret is
+    /// shown one time on standard error. With `--json`, the K1 `ApiKeyCreated`.
     ///
     /// # Errors
-    /// [`Failure::Usage`] for an unusable `--expires`; the hub's refusal.
+    /// [`Failure::Usage`] for an unusable `--expires`; the hub's refusal (`VALIDATION`,
+    /// `CONFLICT` for a name in use, `FORBIDDEN` for an API key).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let expires_at =
             expiry::parse(&self.expires, Utc::now()).map_err(|error| Failure::Usage {

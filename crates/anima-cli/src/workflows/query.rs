@@ -4,6 +4,7 @@ use super::documents::{
 use crate::forge::rows::Rows;
 use crate::hub::{Hub, HubError};
 
+/// K1 `WorkflowRunStatus`.
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
 pub enum RunStatus {
     Queued,
@@ -11,7 +12,8 @@ pub enum RunStatus {
     Completed,
 }
 
-/// `jobs` adds the job counts, which cost a GitHub request for each run (PRJ-034).
+/// What `workflowRuns` is asked: `jobs` adds the job counts, which cost a GitHub request for
+/// each run (PRJ-034).
 #[derive(Debug)]
 pub struct Query {
     pub repository: String,
@@ -24,6 +26,8 @@ pub struct Query {
 }
 
 impl Query {
+    /// The page the hub reads from GitHub.
+    ///
     /// # Errors
     /// [`HubError`] for a refusal or a failed request.
     pub async fn run(&self, hub: &Hub) -> Result<Rows, HubError> {

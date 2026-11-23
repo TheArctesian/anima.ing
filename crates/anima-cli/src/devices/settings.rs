@@ -117,6 +117,7 @@ pub struct SettingsFlags {
     transfer_paste: Option<bool>,
 }
 
+/// The values of a device's groups now, under their K1 input names; empty for a new device.
 #[derive(Debug, Default)]
 pub struct Current {
     ssh: Map<String, Value>,
@@ -126,7 +127,7 @@ pub struct Current {
 }
 
 impl Current {
-    /// `device` must select only the input fields of each group.
+    /// The groups of `device`, an answer that selects only input fields of each group.
     #[must_use]
     pub fn of<T: Serialize>(device: &T) -> Self {
         let value = serde_json::to_value(device).unwrap_or(Value::Null);
@@ -144,6 +145,7 @@ impl Current {
 }
 
 impl SettingsFlags {
+    /// Whether any flag changes a group, so that the current values are needed.
     #[must_use]
     pub fn touches_groups(&self) -> bool {
         [
@@ -172,6 +174,9 @@ impl SettingsFlags {
         .contains(&true)
     }
 
+    /// The K1 input fields these flags set, with each changed group laid over its `current`
+    /// values; a field with no flag is left out.
+    ///
     /// # Errors
     /// [`Failure::Usage`] when a group lacks the user name K1 requires.
     pub fn fields(&self, current: &Current) -> Result<Map<String, Value>, Failure> {
@@ -262,6 +267,8 @@ impl SettingsFlags {
     }
 }
 
+/// `input` as the K1 input type `T` of a document.
+///
 /// # Errors
 /// [`Failure::Usage`] when K1 would not accept it.
 pub fn typed<T: DeserializeOwned>(input: Map<String, Value>) -> Result<T, Failure> {
@@ -277,6 +284,8 @@ fn put<T: Serialize>(map: &mut Map<String, Value>, key: &str, value: Option<&T>)
     }
 }
 
+/// The group the flags change, laid over `current`, with `enabled` (kept, else on); none when
+/// no flag of it was given. `needs` is a field K1 requires and the flag that sets it.
 fn complete(
     flags: Map<String, Value>,
     enabled: Option<bool>,

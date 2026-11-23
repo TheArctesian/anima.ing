@@ -18,8 +18,13 @@ pub struct ShowArgs {
 }
 
 impl ShowArgs {
+    /// Prints the file's text and nothing else (to a terminal with its control characters made
+    /// harmless) or, with `--json`, the whole K1 `CodeFile`, whatever its `content`.
+    ///
     /// # Errors
-    /// [`Failure::Ended`] with exit 1 for a binary or too large file; the hub's refusal.
+    /// [`Failure::Ended`] with exit 1 for a file that is binary or too large (the message holds
+    /// its link on GitHub); the hub's refusal for an API key, a directory, a symbolic link or a
+    /// submodule.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let variables = code_file_read::Variables {

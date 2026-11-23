@@ -17,8 +17,11 @@ pub struct AcceptCertificateArgs {
 }
 
 impl AcceptCertificateArgs {
+    /// Pins the certificate and prints the web interface with its pin.
+    ///
     /// # Errors
-    /// The hub's `CONFLICT` (exit 6) when the fingerprint is not the certificate it saw.
+    /// The hub's `CONFLICT` (exit 6) when the fingerprint is not the certificate it saw;
+    /// `NOT_FOUND` for an unknown ID.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let variables = web_certificate_accept::Variables {

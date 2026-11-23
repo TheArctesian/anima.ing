@@ -10,6 +10,8 @@ pub struct RemoveArgs {
 }
 
 impl RemoveArgs {
+    /// Asks for confirmation (`--yes` skips it), removes and prints the removed ID.
+    ///
     /// # Errors
     /// [`Failure::Usage`] when it cannot ask; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

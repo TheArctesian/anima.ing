@@ -21,6 +21,8 @@ pub struct RestoreArgs {
 }
 
 impl LeaveOutArgs {
+    /// Leaves the repository out and prints its project.
+    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown repository; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -36,6 +38,8 @@ impl LeaveOutArgs {
 }
 
 impl RestoreArgs {
+    /// Restores the repository and prints its project.
+    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown repository; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

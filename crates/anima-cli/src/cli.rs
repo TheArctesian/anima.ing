@@ -36,6 +36,7 @@ pub struct Cli {
     command: Command,
 }
 
+/// The groups the operator thinks in; each noun lives in exactly one.
 #[derive(Debug, clap::Subcommand)]
 enum Command {
     #[command(flatten)]
@@ -59,7 +60,7 @@ impl Command {
     }
 }
 
-/// Returns the exit code (CMD-021).
+/// Parses `args`, runs the command and returns the exit code (CMD-021).
 pub async fn run(args: Vec<OsString>, environment: Environment) -> ExitCode {
     let json = args.iter().any(|arg| arg == "--json");
     let cli = match Cli::try_parse_from(&args) {
@@ -76,7 +77,8 @@ pub async fn run(args: Vec<OsString>, environment: Environment) -> ExitCode {
     }
 }
 
-/// A usage error is exit 2 (CMD-021), as JSON with `--json` (CMD-022).
+/// Help and the version print as clap prints them; a usage error is exit 2 (CMD-021), as JSON
+/// with `--json` (CMD-022).
 fn usage(error: &clap::Error, json: bool, environment: &Environment) -> ExitCode {
     if !error.use_stderr() {
         let _ = error.print();
@@ -91,7 +93,8 @@ fn usage(error: &clap::Error, json: bool, environment: &Environment) -> ExitCode
     ExitCode::from(exit::USAGE)
 }
 
-/// The CMD-022 failure; the first paragraph of clap's text names the missing flags.
+/// The CMD-022 failure for what clap printed: its first paragraph as the message, so the
+/// missing flags are named, and the help of the command that was being run as the hint.
 fn usage_failure(rendered: &str) -> Failure {
     let mut paragraph = rendered
         .lines()

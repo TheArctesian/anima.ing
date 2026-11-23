@@ -18,6 +18,8 @@ pub struct RenewArgs {
 }
 
 impl RegisterArgs {
+    /// Registers the computer and prints its name, address and key expiry.
+    ///
     /// # Errors
     /// [`Failure`] for a hub refusal (an unknown auth ID, the broker's limits).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -34,6 +36,8 @@ impl RegisterArgs {
 }
 
 impl RenewArgs {
+    /// Sets a new key expiry and prints the node.
+    ///
     /// # Errors
     /// [`Failure`] for a hub refusal (an unknown or tagged node).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

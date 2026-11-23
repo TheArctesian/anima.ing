@@ -9,7 +9,7 @@ use crate::output::text::enum_name;
 use crate::output::{Cell, Table};
 use crate::paging::{CommandLine, fetch, note_next, page_size};
 
-/// The hub's largest heartbeat page.
+/// The hub's largest heartbeat page; `--all` asks for pages of this size.
 const MAX_PAGE: i64 = 500;
 
 #[derive(Debug, clap::Args)]
@@ -28,7 +28,7 @@ pub struct HeartbeatsArgs {
 }
 
 impl HeartbeatsArgs {
-    /// With `--json`, prints the K1 `HeartbeatConnection`.
+    /// Prints the heartbeats as a table or, with `--json`, as the K1 `HeartbeatConnection`.
     ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown check; the hub's refusal.

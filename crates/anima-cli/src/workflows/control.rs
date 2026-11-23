@@ -32,6 +32,7 @@ pub struct CancelArgs {
     run: String,
 }
 
+/// What to do to the run.
 #[derive(Clone, Copy)]
 enum Control {
     Rerun,
@@ -40,6 +41,7 @@ enum Control {
 }
 
 impl Control {
+    /// The `WorkflowRun` field that says the hub would take it.
     const fn allowed_by(self) -> &'static str {
         match self {
             Self::Rerun => "rerunnable",
@@ -68,8 +70,12 @@ impl Control {
 }
 
 impl RerunArgs {
+    /// Asks to confirm (or takes `--yes`, CMD-024), then prints the run or, with `--json`, the
+    /// K1 `WorkflowRun`.
+    ///
     /// # Errors
-    /// [`Failure::NotFound`], [`Failure::Conflict`] or [`Failure::Declined`]; the hub's refusal.
+    /// [`Failure::NotFound`] for an unknown run; [`Failure::Conflict`] for a run that cannot
+    /// run again; [`Failure::Declined`] when the operator says no; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let control = if self.failed {
             Control::RerunFailed
@@ -81,8 +87,12 @@ impl RerunArgs {
 }
 
 impl CancelArgs {
+    /// Asks to confirm (or takes `--yes`, CMD-024), then prints the run or, with `--json`, the
+    /// K1 `WorkflowRun`.
+    ///
     /// # Errors
-    /// [`Failure::NotFound`], [`Failure::Conflict`] or [`Failure::Declined`]; the hub's refusal.
+    /// [`Failure::NotFound`] for an unknown run; [`Failure::Conflict`] for a run that is not
+    /// running; [`Failure::Declined`] when the operator says no; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         apply(invocation, &self.repository, &self.run, Control::Cancel).await
     }
@@ -137,6 +147,7 @@ async fn read(hub: &Hub, repository: &str, name: &str, run_id: &str) -> Result<V
     Ok(serde_json::to_value(&run).unwrap_or_default())
 }
 
+/// Sends the change for the run `(repository, run, head)`; the answer as JSON.
 async fn send(
     hub: &Hub,
     (repository, run_id, expected_head_sha): (String, String, String),

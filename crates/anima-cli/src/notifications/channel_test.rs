@@ -13,8 +13,12 @@ pub struct TestArgs {
 }
 
 impl TestArgs {
+    /// Prints the delivery as a record or, with `--json`, as the K1 `Delivery`. A message that
+    /// did not arrive is printed too, and then the command fails with exit 1.
+    ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown channel; [`Failure::NotDelivered`] when `ok` is false.
+    /// [`Failure::NotFound`] for an unknown channel; [`Failure::NotDelivered`] when `ok` is
+    /// false; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let id = resolve(&hub, &self.channel).await?;
@@ -32,6 +36,7 @@ impl TestArgs {
     }
 }
 
+/// The hub's fixed reason for the failure, and the HTTP or SMTP code when it has one.
 fn not_delivered(delivery: &channel_test::ChannelTestSendTestNotification) -> String {
     let reason = delivery.reason.as_ref().map_or_default(enum_name);
     let code = delivery

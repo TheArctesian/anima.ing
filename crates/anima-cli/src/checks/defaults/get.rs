@@ -7,6 +7,8 @@ use crate::output::Table;
 pub struct GetArgs;
 
 impl GetArgs {
+    /// Prints the defaults or, with `--json`, the K1 `CheckDefaults`.
+    ///
     /// # Errors
     /// The hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -25,6 +27,7 @@ impl GetArgs {
     }
 }
 
+/// The four defaults as label and value lines.
 #[must_use]
 pub fn table(interval: i64, retries: i64, retry_interval: i64, degraded: i64) -> Table {
     let mut table = Table::record();

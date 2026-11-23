@@ -11,10 +11,11 @@ pub struct RevokeArgs {
 }
 
 impl RevokeArgs {
-    /// Asks to confirm first (CMD-024).
+    /// Asks to confirm (or takes `--yes`, CMD-024), revokes the key and prints its ID.
     ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown key; [`Failure::Usage`] when no one can confirm.
+    /// [`Failure::NotFound`] for an unknown key; [`Failure::Usage`] without a confirmation
+    /// when no one can be asked; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let id = resolve(&hub, &self.key).await?;
@@ -30,6 +31,7 @@ impl RevokeArgs {
     }
 }
 
+/// The ID `key` names: an ID as it is, or the one key with exactly that name.
 async fn resolve(hub: &Hub, key: &str) -> Result<String, Failure> {
     if uuid::Uuid::parse_str(key).is_ok() {
         return Ok(key.to_owned());

@@ -25,7 +25,7 @@ pub struct StartArgs {
     inputs: Vec<String>,
 }
 
-/// Shows how many inputs were given, never a value (LOG-007).
+/// Never an input's value, which may be a secret (LOG-007): only how many were given.
 impl std::fmt::Debug for StartArgs {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter
@@ -39,10 +39,14 @@ impl std::fmt::Debug for StartArgs {
 }
 
 impl StartArgs {
-    /// Asks to confirm (or takes `--yes`, CMD-024), then prints what GitHub accepted.
+    /// Asks to confirm (or takes `--yes`, CMD-024), then prints what GitHub accepted or, with
+    /// `--json`, the K1 `WorkflowDispatch`. The run shows in `anima workflow runs` a moment
+    /// later.
     ///
     /// # Errors
-    /// [`Failure::Usage`], [`Failure::NotFound`], [`Failure::Conflict`], [`Failure::Declined`] or the hub's refusal.
+    /// [`Failure::Usage`] for an input that is not `name=value`; [`Failure::NotFound`] for an
+    /// unknown workflow; [`Failure::Conflict`] for a disabled one; [`Failure::Declined`] when
+    /// the operator says no; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let inputs = inputs::parse(&self.inputs)?;
         let hub = invocation.hub()?;
@@ -90,6 +94,7 @@ fn k1(input: Input) -> workflow_start::WorkflowInputValue {
     }
 }
 
+/// The workflow `wanted` names, by its ID or its exact path; one that is disabled is refused.
 async fn find(hub: &Hub, repository: &str, name: &str, wanted: &str) -> Result<Workflow, Failure> {
     let variables = workflow_list::Variables {
         repository: repository.to_owned(),
@@ -162,9 +167,11 @@ mod tests {
         assert!(!shown.contains(MARK), "{shown}");
     }
 
+    /// A type with no `Debug`.
     struct Opaque;
 
-    /// Its `Debug` text, or nothing without `Debug`: the inherent method wins when `T: Debug`.
+    /// Its `Debug` text, or nothing when the type has no `Debug`: the inherent method wins
+    /// when `T: Debug`, the trait's otherwise.
     struct Probe<T>(T);
 
     impl<T: std::fmt::Debug> Probe<T> {

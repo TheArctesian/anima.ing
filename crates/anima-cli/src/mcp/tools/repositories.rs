@@ -100,8 +100,11 @@ impl RepositoryTool {
         }
     }
 
+    /// Runs the tool.
+    ///
     /// # Errors
-    /// [`ToolError`] for wrong arguments, an unknown target, or the hub's refusal.
+    /// [`ToolError`] for wrong arguments, an unknown repository, pull request, issue or run,
+    /// or the hub's refusal.
     #[expect(
         clippy::cognitive_complexity,
         reason = "a flat dispatch with one arm for each tool"
@@ -129,6 +132,7 @@ impl RepositoryTool {
 /// The most a page of pull requests or runs may hold; the hub refuses more.
 const SMALL_PAGE: i64 = 50;
 
+/// The ID of the repository the agent named, or a refusal it can act on.
 async fn repository_id(hub: &Hub, name: &str) -> Result<String, ToolError> {
     resolve(hub, name).await.map_err(|failure| match failure {
         Failure::NotFound { message, .. } | Failure::Usage { message, .. } => ToolError::Refused(
@@ -138,10 +142,14 @@ async fn repository_id(hub: &Hub, name: &str) -> Result<String, ToolError> {
     })
 }
 
+/// The page size for a list the hub limits to `largest` rows.
 fn size(page: &Page, largest: i64) -> i64 {
     page.size().min(largest)
 }
 
+/// A page of a K1 connection as named fields: its rows (`key`), `nextCursor`, `read` (when the
+/// hub read it from GitHub, and whether that is an old answer) and what else the connection
+/// holds (`mergeMethods`).
 fn listing(key: &str, connection: &impl Serialize) -> Value {
     let connection = json(connection);
     let rows: Vec<Value> = connection["edges"]
@@ -166,6 +174,8 @@ fn listing(key: &str, connection: &impl Serialize) -> Value {
     Value::Object(fields)
 }
 
+/// The first page of comments of a pull request or an issue, as `comments` and `nextCursor`,
+/// added to `answer` (`limit` and `after` of the call page them).
 async fn with_comments(
     hub: &Hub,
     mut answer: Value,

@@ -19,6 +19,7 @@ use crate::sources::connect::documents::{
     github_connect_start, github_connect_state,
 };
 
+/// The longest name from GitHub that is passed on, in characters.
 const NAME_CAP: usize = 100;
 
 const GITHUB: &str = "https://github.com/";
@@ -83,8 +84,11 @@ pub fn cancel_definition() -> Definition {
     .returns(&[("attempt", "object", "The cancelled attempt.")])
 }
 
+/// Starts an attempt; returns it and the fixed page link.
+///
 /// # Errors
-/// [`ToolError`] for wrong arguments or the hub's refusal.
+/// [`ToolError`] for wrong arguments or the hub's refusal (`CONFLICT` while an App waits for
+/// Install).
 pub async fn start(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
     let _: NoInput = parse(arguments)?;
     let answer = hub
@@ -98,6 +102,8 @@ pub async fn start(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, To
     ])))
 }
 
+/// The open attempt, or null.
+///
 /// # Errors
 /// [`ToolError`] for the hub's refusal.
 pub async fn state(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
@@ -106,6 +112,8 @@ pub async fn state(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, To
     Ok(Value::Object(object([("attempt", attempt)])))
 }
 
+/// Cancels the open attempt.
+///
 /// # Errors
 /// [`ToolError::Refused`] when none is open; the hub's refusal (`CONFLICT` once connected).
 pub async fn cancel(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
@@ -134,8 +142,8 @@ async fn current(hub: &Hub) -> Result<Option<Value>, ToolError> {
     Ok(answer.github_connect.as_ref().map(json))
 }
 
-/// What the agent may see of an attempt: no page link, no ticket, no state, and a link only to
-/// `github.com`.
+/// What the agent may see of an attempt: no page link, no ticket, no state. Text from GitHub
+/// is cleaned and cut; a link is kept only when it points at `github.com`.
 fn shown(held: &Value) -> Value {
     let mut fields = Map::new();
     for key in ["id", "phase", "expiresAt", "failure"] {
@@ -163,6 +171,7 @@ fn account(held: &Value) -> Value {
     ]))
 }
 
+/// `text` cleaned and cut to `cap` characters; null stays null.
 fn named(text: &Value, cap: usize) -> Value {
     text.as_str()
         .map_or(Value::Null, |text| Value::String(capped(text, cap)))
@@ -180,6 +189,7 @@ fn page_only(page: &str) -> &str {
     page.split(['?', '#']).next().unwrap_or_default()
 }
 
+/// `value` with only these keys.
 fn pick(value: &Value, keys: &[&str]) -> Value {
     Value::Object(
         keys.iter()

@@ -15,6 +15,9 @@ pub struct EnrolArgs {
 }
 
 impl EnrolArgs {
+    /// Prints the enrolment code and when it expires. The code works once; a new code makes
+    /// the device's earlier unused codes useless.
+    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown device; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

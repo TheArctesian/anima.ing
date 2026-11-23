@@ -24,6 +24,8 @@ pub struct CheckArgs {
 }
 
 impl SuggestionCommand {
+    /// Runs the command.
+    ///
     /// # Errors
     /// The hub's refusal, such as `NOT_FOUND` when there is no such suggestion.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

@@ -24,8 +24,11 @@ enum ProtocolArg {
 }
 
 impl TestArgs {
+    /// Prints what the hub found.
+    ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown device; the hub's refusal. An unreachable device is a result.
+    /// [`Failure::NotFound`] for an unknown device; the hub's refusal. A device that cannot be
+    /// reached is a result, not a failure.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let input = device_test::ConnectionTestInput {
@@ -95,6 +98,7 @@ fn table(result: &device_test::DeviceTestTestConnection) -> Table {
     table
 }
 
+/// "yes" or "no", green when it is the wanted answer and red when it is not.
 fn yes_no(value: bool, wanted: bool) -> Cell {
     let tone = if value == wanted {
         Tone::Good

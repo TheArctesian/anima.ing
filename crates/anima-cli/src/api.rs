@@ -16,6 +16,8 @@ pub struct ApiArgs {
 }
 
 impl ApiArgs {
+    /// Sends the document and prints the answer; a GraphQL error in it sets the exit code.
+    ///
     /// # Errors
     /// [`Failure`] for unreadable input, a failed request or the answer's first error.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

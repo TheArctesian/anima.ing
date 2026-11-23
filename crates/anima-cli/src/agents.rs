@@ -124,6 +124,8 @@ pub enum AgentCommand {
 }
 
 impl AgentCommand {
+    /// Runs the command.
+    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown device or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -139,6 +141,7 @@ impl AgentCommand {
         }
     }
 
+    /// Runs a command that drives the runner of this computer.
     #[cfg(unix)]
     async fn run_local(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
@@ -155,6 +158,7 @@ impl AgentCommand {
         }
     }
 
+    /// Runs a command that only reads what the runner holds.
     #[cfg(unix)]
     async fn run_read(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
@@ -167,6 +171,7 @@ impl AgentCommand {
         }
     }
 
+    /// Runs a command that changes how a thread is listed (TH46, TH61).
     #[cfg(unix)]
     async fn run_listing(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {

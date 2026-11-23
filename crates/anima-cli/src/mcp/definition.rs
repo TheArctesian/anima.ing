@@ -8,8 +8,10 @@ use serde_json::{Value, json};
 
 use super::catalogue::Access;
 
+/// What a tool does to the hub, for the hints.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Effect {
+    /// Reads only.
     Reads,
     /// Adds something new; a second call adds another.
     Adds,
@@ -21,6 +23,7 @@ pub enum Effect {
     Removes,
 }
 
+/// One tool, before the server turns it into the MCP form.
 #[derive(Clone, Debug)]
 pub struct Definition {
     /// `anima_<noun>_<verb>` (MCP-011).
@@ -34,6 +37,7 @@ pub struct Definition {
 }
 
 impl Definition {
+    /// A definition whose input is the type `I`.
     #[must_use]
     pub fn new<I: JsonSchema + 'static>(
         name: &'static str,
@@ -54,14 +58,15 @@ impl Definition {
         }
     }
 
-    /// Each field is (name, JSON type, meaning).
+    /// The same definition with an output schema of these top-level fields (name, JSON type,
+    /// meaning).
     #[must_use]
     pub fn returns(mut self, fields: &[(&str, &str, &str)]) -> Self {
         self.output = Arc::new(output(fields));
         self
     }
 
-    /// The MCP tool, with its hints from the effect (MCP-009).
+    /// The MCP tool (MCP-009): annotations from the effect, `openWorldHint` false.
     #[must_use]
     pub fn tool(&self) -> Tool {
         let reads = self.effect == Effect::Reads;
@@ -79,6 +84,8 @@ impl Definition {
     }
 }
 
+/// An object schema with these properties; every result may also say it was cut
+/// (`truncated`, `note`).
 fn output(fields: &[(&str, &str, &str)]) -> JsonObject {
     let mut properties = serde_json::Map::new();
     for (name, kind, meaning) in fields {

@@ -14,8 +14,11 @@ pub struct RevokeArgs {
 }
 
 impl RevokeArgs {
+    /// Asks for confirmation (`--yes` skips it), revokes and prints the device's metrics source.
+    ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown device; [`Failure::Usage`] when it cannot ask; the hub's refusal.
+    /// [`Failure::NotFound`] for an unknown device; [`Failure::Usage`] when it cannot ask; the
+    /// hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let device_id = resolve(&hub, &self.device).await?;

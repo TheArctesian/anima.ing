@@ -49,6 +49,7 @@ pub struct RemoteArg {
     name: String,
 }
 
+/// Why a snapshot command failed.
 #[derive(Debug, thiserror::Error)]
 pub enum SnapshotError {
     #[error("This folder is not inside a git working tree.")]
@@ -138,6 +139,7 @@ impl From<SnapshotError> for Failure {
     }
 }
 
+/// A pushed snapshot, as `snapshot push --json` prints it.
 #[derive(Serialize)]
 struct Pushed<'a> {
     #[serde(rename = "ref")]
@@ -149,6 +151,7 @@ struct Pushed<'a> {
     gitlinks: &'a [String],
 }
 
+/// A deleted scratch ref, as `snapshot delete --json` prints it.
 #[derive(Serialize)]
 struct Deleted<'a> {
     #[serde(rename = "ref")]
@@ -158,6 +161,8 @@ struct Deleted<'a> {
 }
 
 impl SnapshotCommand {
+    /// Runs the command in the folder the program was started in.
+    ///
     /// # Errors
     /// [`Failure`] from a [`SnapshotError`], a declined confirmation or the output.
     pub fn run(self, invocation: &Invocation) -> Result<(), Failure> {

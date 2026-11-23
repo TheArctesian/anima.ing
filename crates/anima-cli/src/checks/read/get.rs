@@ -15,6 +15,8 @@ pub struct GetArgs {
 }
 
 impl GetArgs {
+    /// Prints the check as label and value lines or, with `--json`, as the K1 `Check`.
+    ///
     /// # Errors
     /// [`Failure::NotFound`] when no check has the ID or name; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

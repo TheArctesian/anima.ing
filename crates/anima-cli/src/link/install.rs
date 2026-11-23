@@ -20,6 +20,7 @@ pub struct InstallArgs {
     to_file: ToFile,
 }
 
+/// The install code: the prefix, the claim, and the invite after a dot when the hub gave one.
 /// A claim is base64url, so the first dot after the prefix ends it.
 fn install_code(claim: &str, invite: Option<&str>) -> String {
     match invite {
@@ -29,6 +30,9 @@ fn install_code(claim: &str, invite: Option<&str>) -> String {
 }
 
 impl InstallArgs {
+    /// Makes the invite and the claim and shows them once as one install code; the expiry goes
+    /// to standard error (or the `--json` answer).
+    ///
     /// # Errors
     /// [`Failure`] for a hub refusal (`VALIDATION` for the name, `FORBIDDEN` for an API key,
     /// `UNAVAILABLE` when the hub has no link) or a file that cannot be written.
