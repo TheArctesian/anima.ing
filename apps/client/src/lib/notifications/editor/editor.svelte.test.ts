@@ -81,9 +81,9 @@ it('adds the Mobile channel with relay credentials and clears them after saving'
   button('Add channel').click();
   flushSync();
   pick(choice('Mobile'));
-  typeInto(field('Name'), saved.name);
-  typeInto(field('Push relay URL'), FAKE_WEBHOOK_URL);
-  typeInto(field('Relay token'), FAKE_SECRET);
+  typeInto(field('Name') as HTMLInputElement, saved.name);
+  typeInto(field('Push relay URL') as HTMLInputElement, FAKE_WEBHOOK_URL);
+  typeInto(field('Relay token') as HTMLInputElement, FAKE_SECRET);
   inDialog('Save').click();
   await settled();
 
