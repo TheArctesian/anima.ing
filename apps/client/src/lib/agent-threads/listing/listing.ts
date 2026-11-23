@@ -1,7 +1,7 @@
 /** How the person lists each thread (TH46): pinned, archived, a title of their own, or removed; settled or snoozed (TH61). Pure. */
 
 import type { ThreadRow } from '../thread';
-import { marksFrom, type Marks } from './shelf';
+import { marksFrom, NO_MARKS, type Marks } from './shelf';
 
 export interface Listing {
   readonly thread: string;
@@ -101,4 +101,32 @@ export function titleOf(text: string): string | null {
   const title = text.trim();
   if (title.length === 0 || [...title].length > MAX_TITLE) return null;
   return [...title].some(hidden) ? null : title;
+}
+
+const BLANK = (thread: string): Listing => ({ thread, pinned: false, archived: false, title: null, removed: false, marks: NO_MARKS, startedByAnima: false });
+
+/**
+ * The listing after `change` at `now`, as the runner will keep it (`control/shelf.rs` for the marks), so the row moves
+ * at once and the runner's answer only confirms it. `remove` is not foreseen: the row leaves on the answer. Pure.
+ */
+export function foreseen(listing: Listing | undefined, thread: string, change: ListingChange, now: Date): Listing | null {
+  const was = listing ?? BLANK(thread);
+  const marks = was.marks;
+  switch (change.change) {
+    case 'pin':
+      return { ...was, pinned: change.on };
+    case 'archive':
+      return { ...was, archived: change.on };
+    case 'rename':
+      return { ...was, title: change.title };
+    case 'remove':
+      return null;
+    case 'settle':
+      if (change.on) return { ...was, marks: { ...marks, settledAt: now, snoozedAt: null, snoozedUntil: null, wokeAt: null } };
+      return marks.settledAt === null ? was : { ...was, marks: { ...marks, settledAt: null, unsettledAt: now } };
+    case 'snooze':
+      return { ...was, marks: { ...marks, settledAt: null, wokeAt: null, snoozedAt: now, snoozedUntil: new Date(change.until) } };
+    case 'wake':
+      return marks.snoozedUntil === null ? was : { ...was, marks: { ...marks, snoozedAt: null, snoozedUntil: null, wokeAt: now } };
+  }
 }

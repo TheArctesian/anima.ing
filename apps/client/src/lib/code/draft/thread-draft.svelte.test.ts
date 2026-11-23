@@ -89,9 +89,9 @@ describe('the draft choice', () => {
     expect(choice).toMatchObject({ provider: 'claude_code', model: 'default', mode: 'full-access' });
   });
 
-  it("a program's default takes only the efforts of that program: Codex has no Max", () => {
+  it("a program's default takes the efforts its models list, but Ultra, which only a named model takes", () => {
     const efforts = draftCatalogue(FIRST_CHOICE, MODELS_WAITING).catalogue.models.map((each) => `${each.provider}: ${each.efforts.map((one) => one.label).join(', ')}`);
-    expect(efforts).toEqual(['claude_code: Low, Medium, High, Extra High, Max', 'codex: Low, Medium, High, Extra High']);
+    expect(efforts).toEqual(['claude_code: Low, Medium, High, Extra High, Max', 'codex: Low, Medium, High, Extra High, Max']);
   });
 
   it('says on a line of its own why the default stands alone, never in a row, and offers to ask again on a failure', () => {

@@ -1,4 +1,5 @@
 import { SvelteMap } from 'svelte/reactivity';
+import { keepChoices, storedChoices, type ShownChoices } from '../details/shown';
 
 /**
  * Whether the details card of each thread shows (T3 Code `rightPanelStore.ts` thread panel visibility): inline it shows
@@ -11,6 +12,13 @@ export class DetailsShown {
   #mode = $state<'inline' | 'popover'>('inline');
   /** The room, in px, that the lanes leave at their end for the inline card; 0 when it is not inline. */
   room = $state(0);
+  /** The items of the card that the person switched ("Choose what to show"), kept in the browser. */
+  choices = $state<ShownChoices>(storedChoices(globalThis.localStorage));
+
+  choose(next: ShownChoices): void {
+    this.choices = next;
+    keepChoices(globalThis.localStorage, next);
+  }
 
   get mode(): 'inline' | 'popover' {
     return this.#mode;
