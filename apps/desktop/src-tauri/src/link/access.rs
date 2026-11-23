@@ -58,10 +58,12 @@ async fn prepare(port: u16) -> Result<(), String> {
             .map_err(|error| error.to_string());
     }
     remote_login::desktop::enable(port, remote_login::Prompt::Desktop).await.map_err(|error| {
-        if matches!(error, remote_login::Error::Unsupported) {
+        if matches!(error, remote_login::Error::VncAuthentication) {
+            error.to_string()
+        } else if matches!(error, remote_login::Error::Unsupported) {
             match (std::env::consts::OS, port) {
                 ("macos", 5900) => "Turn on Screen Sharing in System Settings → General → Sharing, then try again.",
-                ("linux", 5900) => "Enable screen sharing in your desktop settings, then try again. Automatic VNC setup needs an X11 desktop on display :0.",
+                ("linux", 5900) => "Configure a VNC server with mandatory protocol authentication, then try again.",
                 ("windows", 5900) => "Install and configure an authenticated VNC server, then try again. Windows has no built-in VNC server.",
                 _ => "This system cannot prepare this protocol automatically. Configure its sharing server, then try again.",
             }.to_owned()

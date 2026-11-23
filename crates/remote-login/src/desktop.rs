@@ -34,9 +34,7 @@ pub async fn ready(port: u16) -> bool {
         let mut stream =
             tokio::net::TcpStream::connect((std::net::Ipv4Addr::LOCALHOST, port)).await?;
         if port == 5900 {
-            let mut banner = [0; 12];
-            stream.read_exact(&mut banner).await?;
-            return Ok::<_, std::io::Error>(banner.starts_with(b"RFB 003.") && banner[11] == b'\n');
+            return Ok::<_, std::io::Error>(crate::vnc::requires_authentication(&mut stream).await);
         }
         if port != 3389 {
             return Ok(false);
@@ -63,6 +61,9 @@ pub async fn enable(port: u16, prompt: Prompt) -> Result<(), Error> {
     if ready(port).await {
         return Ok(());
     }
+    if port == 5900 {
+        return Err(Error::VncAuthentication);
+    }
     let user = whoami::username().map_err(|_| Error::User)?;
     if !super::valid_user(&user) {
         return Err(Error::User);
@@ -81,9 +82,6 @@ pub async fn enable(port: u16, prompt: Prompt) -> Result<(), Error> {
 fn source(port: u16) -> Option<&'static str> {
     match (std::env::consts::OS, port) {
         ("linux", 3389) => Some(include_str!("rdp-linux.sh")),
-        ("linux", 5900) if Path::new("/tmp/.X11-unix/X0").exists() => {
-            Some(include_str!("vnc-linux.sh"))
-        }
         ("windows", 3389) => Some(include_str!("rdp-windows.ps1")),
         _ => None,
     }

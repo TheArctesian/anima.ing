@@ -3,6 +3,7 @@
 pub mod desktop;
 mod elevation;
 mod probe;
+mod vnc;
 
 use std::time::Duration;
 
@@ -20,6 +21,10 @@ pub enum Error {
     User,
     #[error("Automatic SSH setup is not available on this operating system.")]
     Unsupported,
+    #[error(
+        "VNC authentication could not be verified. Configure mandatory VNC password or Apple account authentication, then try again. Screen-login modes such as x11vnc unixpw cannot be verified automatically. No private port was opened."
+    )]
+    VncAuthentication,
     #[error(
         "Administrator authorization was cancelled or SSH setup failed. No private port was opened."
     )]
