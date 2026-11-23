@@ -1,5 +1,4 @@
-// Rules for .github/workflows/release.yml, checked on the parsed file (R-179, R-180; BLD-041,
-// BLD-045, UPD-007, UPD-008). Nothing here runs the workflow or reads a secret.
+// .github/workflows/release.yml rules (R-179, R-180; BLD-041, BLD-045, UPD-007, UPD-008).
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -35,11 +34,9 @@ interface Workflow {
 }
 
 const workflow = Bun.YAML.parse(RAW) as Workflow;
-// The job that calls the workflow `gates` has no steps of its own (release-gates.test.ts).
 const jobs = Object.fromEntries(Object.entries(workflow.jobs).map(([name, found]) => [name, { ...found, steps: found.steps ?? [] }]));
 const allSteps = Object.values(jobs).flatMap((job) => job.steps);
 
-/** The environment of each job that has one, and the secrets that only that job may name. */
 const HOLDERS: Record<string, { environment: string; secrets: string[] }> = {
   macos: {
     environment: "release",
@@ -69,7 +66,6 @@ function needsOf(name: string): string[] {
   return Array.isArray(needs) ? [...needs] : needs === undefined ? [] : [needs];
 }
 
-/** Each job that `name` waits for, directly or through a job that it needs. */
 function waitsFor(name: string): Set<string> {
   const all = new Set<string>();
   const queue = needsOf(name);
@@ -81,7 +77,6 @@ function waitsFor(name: string): Set<string> {
   return all;
 }
 
-/** The names of the secrets that the text of one job names. */
 function secretsNamed(found: Job): string[] {
   const names = [...JSON.stringify(found).matchAll(/secrets\.([A-Z0-9_]+)/g)].map((match) => match[1] ?? "");
   return [...new Set(names)].sort();
@@ -178,8 +173,7 @@ describe("permissions and pinning", () => {
     expect(workflow.permissions).toEqual({});
     for (const [name, found] of Object.entries(jobs)) {
       const granted = JSON.stringify(found.permissions);
-      // The first job also reads the list of the runs of the gates, and so does the called
-      // workflow `gates`.
+      // These two jobs read the list of the runs of the gates.
       if (name === "commit" || name === "gates-linux") expect(granted).toBe('{"contents":"read","actions":"read"}');
       else expect(granted === "{}" || granted === '{"contents":"read"}').toBe(true);
     }
@@ -311,7 +305,6 @@ const BUNDLE_SCRIPT = join(ROOT, "apps", "desktop", "src-tauri", "trial-bundle.s
 const UPDATER_OFF = "ANIMA_LOCAL_BUILD=1 VITE_ANIMA_LOCAL_BUILD=1";
 const UPDATER_ON = "ANIMA_LOCAL_BUILD=unset VITE_ANIMA_LOCAL_BUILD=unset";
 
-/** The marks of a local build that `trial-bundle.sh` gives a build with the variables `set`; it builds nothing. */
 function marks(set: Record<string, string>): { exitCode: number; printed: string } {
   const env = { PATH: process.env["PATH"] ?? "/usr/bin:/bin", ...set };
   const result = Bun.spawnSync(["/bin/sh", BUNDLE_SCRIPT, "--marks", "0.2.2"], { env, stdout: "pipe", stderr: "pipe" });

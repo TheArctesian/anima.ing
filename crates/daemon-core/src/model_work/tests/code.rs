@@ -32,7 +32,6 @@ fn a_member_of_remote_code_is_refused_at_any_depth() {
         assert_eq!(check_config(text.as_bytes()), REFUSED, "{text}");
         assert_eq!(check_tokenizer_config(text.as_bytes()), REFUSED, "{text}");
     }
-    // A value that only names the member is not the member.
     assert_eq!(check_config(br#"{"note":"auto_map"}"#), Ok(()));
 }
 

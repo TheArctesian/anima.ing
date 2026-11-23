@@ -1,6 +1,3 @@
-//! The reader on a synthetic home folder (never the operator's): which files it reads, how a
-//! session gathers its sub-agents, the exclusions, and the reads after the first.
-
 use std::fs;
 use std::io::Write as _;
 use std::path::Path;
@@ -55,8 +52,6 @@ fn find<'a>(days: &'a [SessionDay], source: Source, id: &str) -> &'a SessionDay 
         .expect("the session")
 }
 
-/// A home with a Claude Code session and its sub-agent, a Codex thread and its sub-agent, a
-/// session in an excluded folder, a settings file of Claude Code, and a link to a session.
 fn home() -> tempfile::TempDir {
     let home = tempfile::tempdir().expect("a home");
     let root = home.path();
@@ -217,8 +212,7 @@ fn ais_024_only_a_daemon_of_a_user_reads_sessions() {
     assert_eq!(user_home(env(&[("HOME", "relative")])), None);
 }
 
-/// Counts read before the file names its folder are not sent: a later line may name an
-/// excluded folder, and the hub would keep what it had (AIS-023, AU-5 security review).
+/// A later line may name an excluded folder, and the hub would keep what it had (AU-5 security review).
 #[test]
 fn ais_023_nothing_of_a_file_is_sent_before_its_folder_is_known() {
     let home = tempfile::tempdir().expect("a home");
@@ -231,8 +225,6 @@ fn ais_023_nothing_of_a_file_is_sent_before_its_folder_is_known() {
     assert_eq!(scan(&mut sessions).len(), 0, "the folder is excluded");
 }
 
-/// A session recorded through a link to an excluded folder is excluded (AIS-008, AU-5
-/// security review).
 #[test]
 fn ais_008_a_working_folder_reached_through_a_link_is_excluded() {
     let home = tempfile::tempdir().expect("a home");

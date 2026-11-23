@@ -1,28 +1,7 @@
 #!/usr/bin/env bash
 # Weekly retention for the Headscale backups, run on the home Linux PC (VPS-006, D-12).
-#
-# Run as the `restic` user by restic-prune.service, directly against the local repository
-# folder: the home PC has full access, the VPS only appends through rest-server.
-#
-# The VPS chooses its snapshot times, so a compromised VPS could append junk snapshots
-# dated in the future, in the past, or many per day, to push real snapshots out of the
-# retention policy. Three defences:
-#   - retention is `--keep-within 1y` only: every snapshot less than a year older than the
-#     newest is kept, so no junk snapshot can evict a real one. Anything older is pruned.
-#   - before forgetting anything, refuse when a snapshot is dated more than an hour in
-#     the future: keep-within counts from the newest snapshot, so a future-dated one
-#     would shift the window;
-#   - and refuse when a UTC day has more than two snapshots, which bounds growth.
-#     The operator then inspects the list by hand.
-# Snapshots are grouped by host and tag because each backup comes from a new temporary
-# folder, so the default grouping by path would keep every snapshot.
-#
-# Settings (environment, set by the unit):
-#   RESTIC_REPOSITORY_PATH  default /srv/restic/headscale-vps/headscale
-#   RESTIC_PASSWORD_FILE    default $CREDENTIALS_DIRECTORY/restic-password
-#   CACHE_DIRECTORY         restic cache (systemd CacheDirectory=); none when unset
-#   PRUNE_NOW               current time in Unix seconds (tests); default `date -u +%s`
-#   RESTIC, JQ              command overrides for tests
+# A compromised VPS picks its snapshot times, so retention is `--keep-within` only, and future-dated or crowded days stop the prune.
+# Each backup comes from a new temporary folder, so snapshots are grouped by host and tag, not path.
 set -euo pipefail
 
 readonly RESTIC="${RESTIC:-restic}"
@@ -35,8 +14,7 @@ readonly MAX_SNAPSHOTS_PER_DAY=2
 
 unset RESTIC_REPOSITORY RESTIC_PASSWORD RESTIC_PASSWORD_COMMAND RESTIC_REPOSITORY_FILE RESTIC_PASSWORD_FILE
 
-# Reads `restic snapshots --json`; prints "<snapshots after $latest> <most snapshots on one UTC day>".
-# A time it cannot parse is an error, so an odd list is refused rather than half-checked.
+# Prints "<snapshots after $latest> <most snapshots on one UTC day>".
 # shellcheck disable=SC2016 # a jq program: $times and $latest are jq variables, not shell.
 readonly GUARD='
 def epoch:

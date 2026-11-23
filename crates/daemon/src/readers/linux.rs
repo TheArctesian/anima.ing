@@ -1,5 +1,4 @@
-//! The Linux collection: six `/proc` files, `df -P -B1`, `lsblk -J -b` and the power supplies of
-//! `/sys/class/power_supply` (MET-002, MET-027, MET-032).
+//! The Linux sources of a reading (MET-002, MET-027, MET-032).
 
 use std::time::Duration;
 
@@ -68,8 +67,6 @@ pub async fn reading() -> Reading {
     }
 }
 
-/// The drives `lsblk` lists, with the older column name when the newer one is refused; `None`
-/// when neither form gives a readable list.
 async fn drive_list() -> Option<Vec<Drive>> {
     let output = match LSBLK.run().await {
         Ok(output) => Ok(output),
@@ -84,8 +81,6 @@ async fn drive_list() -> Option<Vec<Drive>> {
     }
 }
 
-/// The batteries among the power supplies; `None` when the folder cannot be listed. A file
-/// that cannot be read is left out, so its value is unknown.
 async fn battery_list() -> Option<Vec<Battery>> {
     let mut entries = match tokio::fs::read_dir(POWER_SUPPLY).await {
         Ok(entries) => entries,

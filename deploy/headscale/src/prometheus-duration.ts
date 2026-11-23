@@ -1,8 +1,4 @@
-// Headscale's grammar for `node.expiry` only (Prometheus `model.ParseDuration`):
-// optional integer parts in the fixed order y w d h m s ms, at least one part, or "0".
-// The total must fit a Go `time.Duration` (int64 nanoseconds, about 292 years).
-// Anything else is rejected, as Headscale rejects it (and then silently never expires).
-// Other Headscale durations use Go's grammar: see go-duration.ts.
+// Headscale reads `node.expiry` with Prometheus `model.ParseDuration`, and never expires a node on a value it rejects.
 
 const second = 1000;
 const minute = 60 * second;
@@ -16,7 +12,7 @@ const maxMilliseconds = 9_223_372_036_854;
 
 const grammar = /^(?:(\d+)y)?(?:(\d+)w)?(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?(?:(\d+)ms)?$/;
 
-/** Milliseconds for a `node.expiry` string, or `null` if Headscale cannot parse it. */
+/** Milliseconds, or `null` when Headscale cannot parse the text. */
 export function parsePrometheusDuration(text: string): number | null {
   if (text === '0') {
     return 0;

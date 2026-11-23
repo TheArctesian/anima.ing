@@ -1,6 +1,4 @@
-//! Reads the hardware values of this computer (CAP-001 to CAP-005, CAP-032): fixed commands and
-//! fixed files only, nothing written, and hands the bytes to `daemon_core::hardware`, which
-//! reads them. This is the I/O edge.
+//! Reads the hardware values (CAP-001 to CAP-005, CAP-032): fixed commands and files only, nothing written.
 
 #[cfg(unix)]
 mod linux;
@@ -17,8 +15,7 @@ use super::command::FixedCommand;
 #[cfg(unix)]
 const GIB: u64 = 1024 * 1024 * 1024;
 
-/// The hardware values of this computer; `None` when its memory cannot be read, so nothing is
-/// sent (the hub keeps what it has). Windows sends none yet.
+/// `None` sends nothing, so the hub keeps what it has. Windows sends none.
 pub async fn hardware(platform: Platform) -> Option<Hardware> {
     match platform {
         #[cfg(unix)]
@@ -30,8 +27,6 @@ pub async fn hardware(platform: Platform) -> Option<Hardware> {
     }
 }
 
-/// The free space of the file system of the daemon's home folder (`/` without one), in whole
-/// GiB.
 #[cfg(unix)]
 fn free_disk_bytes() -> Option<u64> {
     let home = std::env::var_os("HOME").unwrap_or_else(|| "/".into());
@@ -79,7 +74,6 @@ pub fn cpu_features() -> Vec<String> {
     features
 }
 
-/// What `command` printed; `None` when it did not run or failed.
 #[cfg(unix)]
 async fn output(command: &FixedCommand) -> Option<Vec<u8>> {
     command

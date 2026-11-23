@@ -1,4 +1,4 @@
-//! Which disks and interfaces become series, and the network rates (MET-002, D-4, D-5).
+//! MET-002, D-4, D-5.
 
 use std::time::Duration;
 
@@ -60,7 +60,7 @@ fn met_002_d5_pseudo_file_systems_and_mounts_are_left_out() {
 #[test]
 fn met_002_d5_running_appimages_and_the_pop_os_recovery_partition_are_left_out() {
     // From a Pop!_OS machine: AppImages mount their read-only image at 100%, and /recovery
-    // holds a copy of the installer; both outranked the root disk on the card.
+    // holds a copy of the installer.
     let disks = vec![
         disk("/dev/mapper/data-root", "/", 1000, 810),
         disk(

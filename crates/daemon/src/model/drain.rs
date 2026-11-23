@@ -7,11 +7,6 @@ use tokio::time::Instant;
 
 use daemon_core::model_work::drain::{Drain, Step};
 
-/// Waits until `in_progress` reports no request or the drain's deadline comes, and returns the
-/// requests still in progress then.
-///
-/// This build sends no request to a server: the model address (L1-10) and `model_measure`
-/// (L1-8) are not built, so the caller counts none and the drain ends at once.
 pub async fn drain(seconds: u32, in_progress: impl Fn() -> usize) -> usize {
     let clock = Instant::now();
     let drain = Drain::new(seconds, 0);

@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
-# Sends the newest dump (or the dump you name) and its counts manifest to the restic
-# repository on the home PC (VPS-006). Usage: offsite.sh [<dump>]
+# Usage: offsite.sh [<dump>]; sends a dump and its counts manifest to the home PC (VPS-006).
 # The repository is append-only for this host: pruning happens on the home PC.
-# Secret files (never printed): $ANIMA_RESTIC_REPOSITORY_FILE holds the repository URL with
-# its rest-server password; $ANIMA_RESTIC_PASSWORD_FILE holds the restic password.
 set -euo pipefail
 umask 077
 
@@ -34,7 +31,6 @@ fi
 cache=()
 if [ -n "${ANIMA_RESTIC_CACHE_DIR:-}" ]; then cache=(--cache-dir "$ANIMA_RESTIC_CACHE_DIR"); fi
 
-# restic exits 0 only when the snapshot is saved.
 "$restic" ${cache[@]+"${cache[@]}"} --repository-file "$repository_file" --password-file "$password_file" \
     backup --host anima-vps --tag anima-db "$dump" "$dump.counts" >/dev/null ||
     fail "restic backup failed (no snapshot is guaranteed)"

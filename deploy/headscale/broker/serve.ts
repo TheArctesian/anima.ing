@@ -1,9 +1,4 @@
-/**
- * One broker request, from the request line to the reply (R-055, VP-7, VP-8): check the
- * nodes the broker is responsible for, check the limits, run the verb, check its result.
- * Headscale is reached only through `runner`, so tests pass a fake. The pre-auth key goes
- * only into the reply; the log line holds the verb, the outcome, a node id and counts.
- */
+/** One broker request, from the request line to the reply (R-055, VP-7, VP-8). */
 
 import { readFile } from 'node:fs/promises';
 import { admit, record } from './limits.ts';
@@ -55,7 +50,6 @@ async function perform(run: Run, request: Request, state: BrokerState, planned: 
   }
 }
 
-/** The state to write before the step: the count, and for `register` the node ids before it (H1). */
 function beforeStep(request: Request, state: BrokerState, tailnet: BrokerTailnet, now: Date): BrokerState {
   const counted = { ...state, ...record(request.verb, state, now) };
   return request.verb === 'register' ? { ...counted, pendingRegister: { before: nodeIdsOf(tailnet), node: null } } : counted;
@@ -85,7 +79,7 @@ function served(verb: Verb | '-', reply: Reply<unknown>, trace: Trace): Served {
 
 const refusal = (refused: Refusal, detail = DETAILS[refused]): Reply<unknown> => ({ ok: false, refusal: refused, detail });
 
-/** Answers one request line. Every failure is a refusal; nothing here throws. */
+/** Every failure is a refusal; this never throws. */
 export async function serve(line: string, runner: Runner, files: BrokerFiles, now: Date): Promise<Served> {
   const trace = newTrace();
   const request = parseRequest(line);

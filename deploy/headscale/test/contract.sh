@@ -1,14 +1,6 @@
 #!/bin/sh
 # Manual contract test for Headscale and Tailscale (VPN-014). Needs Docker. Not a gate.
-#
-# It starts a throwaway Headscale (image and digest from deploy/headscale/compose.yaml, the
-# repository policy.hujson, test/contract-config.yaml) and six Tailscale containers, captures
-# the status and node JSON that the hub and the deploy tools parse, redacts every key, and writes
-# the fixtures. It contacts no live system. The public DERP map is fetched from Tailscale Inc.
-# Pre-auth keys go into container files, never onto a command line, and are never printed.
-# Raw captures stay in a mode 0700 temporary folder that the exit trap deletes. Fixtures are
-# written to the repository only after every file passed the redaction.
-#
+# Pre-auth keys go into container files, never onto a command line; fixtures are written only after redaction.
 #   sh deploy/headscale/test/contract.sh
 set -eu
 umask 077
@@ -26,7 +18,6 @@ LOGIN=http://172.29.250.10:8080
 dc() { docker compose -p "$project" -f "$work/compose.yaml" "$@"; }
 hs() { dc exec -T headscale headscale "$@" </dev/null; }
 ts() { name=$1; shift; dc exec -T "$name" tailscale "$@" </dev/null; }
-# js FILE EXPR: print EXPR (over the parsed file as `j`); prints nothing for undefined.
 js() { bun -e 'const j = await Bun.file(process.argv[1]).json(); const v = eval(process.argv[2]); if (v !== undefined) console.log(v);' "$1" "$2"; }
 step() { printf '\n== %s\n' "$1"; }
 fail() { echo "contract: $1" >&2; exit 1; }
@@ -85,7 +76,6 @@ operator_id=$(js "$work/raw/user-operator.json" 'j.id')
 intruder_id=$(js "$work/raw/user-intruder.json" 'j.id')
 
 step "Join five nodes with keys"
-# join NAME SERVICE KEY-ARGS... -- UP-ARGS...: the key is read from the JSON reply into a file.
 join() {
     name=$1; service=$2; shift 2
     key_args=""
@@ -105,7 +95,7 @@ join stranger stranger --user "$intruder_id" --
 join odd odd --tags tag:unknown --
 
 step "Register mac2 by auth ID, then again (renewal)"
-# auth_id [OLD-URL]: wait for a login URL that differs from OLD-URL and print it (it holds the auth ID: keep it out of logs).
+# The login URL holds the auth ID: keep it out of logs.
 auth_id() {
     n=0
     while :; do
@@ -125,7 +115,6 @@ case "$id" in hskey-authreq-*) body=${id#hskey-authreq-}; prefix=yes ;; *) body=
 auth_shape="prefix hskey-authreq-: $prefix; $(printf '%s' "$body" | wc -c | tr -d ' ') characters after it; $(printf '%s' "$body" | tr -d 'A-Za-z0-9' | wc -c | tr -d ' ') outside A-Za-z0-9 (those are: $(printf '%s' "$body" | tr -d 'A-Za-z0-9' | fold -w1 | sort -u | tr -d '\n'))"
 hs auth register --user operator --auth-id "$id" -o json > "$work/raw/register.json"
 wait "$first_pid" || fail "mac2 did not finish its login"
-# Let the first login settle before the renewal starts.
 sleep 5
 ts mac2 up --force-reauth --login-server "$LOGIN" --hostname mac2 >/dev/null 2>&1 &
 second_pid=$!
@@ -192,7 +181,7 @@ for pair in "status-idle:hub" "status-active:hub" "status-after-60s:hub" "nodes:
     bun "$tool/bin/redact.ts" < "$work/raw/$file.json" > "$work/out/${pair##*:}/$file.json" || fail "redaction of $file failed"
 done
 mkdir -p "$hub_fixtures" "$deploy_fixtures"
-# The hub's own tests use hand-made fixtures; the real captures sit beside them (Build notes).
+# The hub's own tests use hand-made fixtures; the real captures sit beside them.
 for f in "$work/out/hub/"*.json; do cp "$f" "$hub_fixtures/captured-$(basename "$f")"; done
 cp "$work/out/deploy/"*.json "$deploy_fixtures/"
 grep -q REDACTED-PREAUTH-KEY "$deploy_fixtures/preauthkey.json" || fail "preauthkey.json has no placeholder"

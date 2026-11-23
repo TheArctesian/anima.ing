@@ -1,6 +1,3 @@
-// Rules for .github/workflows/hub-image.yml, checked on the parsed file: the build of the hub image
-// holds no secret, can write nothing, publishes nothing, and only a branch image/* starts it.
-// Nothing here runs the workflow.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

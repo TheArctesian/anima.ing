@@ -1,6 +1,5 @@
-//! The output ring of a runtime (Section 2.1, SEC-C-010): its standard output and standard
-//! error go to one file of mode 0600 of at most 1 MiB. The daemon never sends it to the hub
-//! and never copies it into a log line.
+//! The output ring of a runtime: never sent to the hub nor copied into a log line (Section 2.1, SEC-C-010).
+//! Its standard output and standard error go to one file of mode 0600 of at most 1 MiB.
 
 use std::fs::{File, OpenOptions};
 use std::io::{self, Seek as _, SeekFrom, Write as _};
@@ -10,18 +9,14 @@ use std::sync::{Arc, Mutex};
 
 use tokio::io::{AsyncRead, AsyncReadExt as _};
 
-/// The most bytes of the ring.
 pub const RING_BYTES: u64 = 1 << 20;
 
-/// The file of one ring, shared by the readers of the two outputs.
 #[derive(Clone)]
 pub struct Ring {
     file: Arc<Mutex<(File, u64)>>,
 }
 
 impl Ring {
-    /// Makes the ring at `path`, empty, with mode 0600 and no link followed.
-    ///
     /// # Errors
     /// An I/O error of the file.
     pub fn create(path: &Path) -> io::Result<Self> {
@@ -55,7 +50,6 @@ impl Ring {
         }
     }
 
-    /// Copies `output` into the ring until it ends.
     pub fn follow(&self, mut output: impl AsyncRead + Unpin + Send + 'static) {
         let ring = self.clone();
         tokio::spawn(async move {

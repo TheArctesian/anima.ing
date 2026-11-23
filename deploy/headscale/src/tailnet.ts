@@ -1,7 +1,4 @@
-/**
- * The tailnet as Anima's policy sees it (VPN-004): a node inventory, LAN addresses behind
- * subnet routers, and whether the policy permits a connection between them. Pure.
- */
+/** The tailnet as Anima's policy sees it (VPN-004). */
 
 import {
   checkPort,
@@ -19,16 +16,14 @@ import {
   type Selector,
 } from './policy.ts';
 
-/** A tailnet node: a personal node of a user, or a tagged node (VPN-003, D-1). */
+/** A personal node of a user, or a tagged node (VPN-003, D-1). */
 export interface TailnetNode {
   readonly name: string;
   readonly identity: { readonly user: string } | { readonly tags: readonly string[] };
   readonly ip: string;
-  /** Approved subnet routes; set only on subnet routers. */
   readonly routes?: readonly string[];
 }
 
-/** A node, or a LAN address that reaches the tailnet through its site's subnet router. */
 export type Source = { readonly node: string } | { readonly lan: string };
 export type Destination = { readonly node: string } | { readonly address: string };
 
@@ -62,7 +57,6 @@ interface Packet {
   readonly port: number;
 }
 
-/** Whether the policy permits the connection; anything no grant names is denied. */
 export function allows(policy: Policy, nodes: readonly TailnetNode[], connection: Connection): boolean {
   const network = resolveNetwork(nodes);
   const packet = { proto: checkProto(connection.proto ?? 'tcp'), port: checkPort(connection.port) };
@@ -73,10 +67,8 @@ export function allows(policy: Policy, nodes: readonly TailnetNode[], connection
 }
 
 /**
- * Runs the policy's own `tests` block against an inventory; an empty result means all pass.
- * This is the authoritative check: a row holds only if it holds for every source address
- * and every protocol it names. `headscale policy check` on the server is a weaker smoke
- * test, because it passes a deny row when any one source address is denied.
+ * A row holds only if it holds for every source address and protocol it names; `headscale policy check`
+ * is weaker, because it passes a deny row when any one source address is denied.
  */
 export function runPolicyTests(policy: Policy, nodes: readonly TailnetNode[]): TestFailure[] {
   const network = resolveNetwork(nodes);
@@ -137,11 +129,8 @@ function portMatches(rule: PortRule, packet: Packet): boolean {
   return (rule.proto === '*' || rule.proto === packet.proto) && packet.port >= rule.first && packet.port <= rule.last;
 }
 
-// Subnet routers masquerade LAN traffic by default (--snat-subnet-routes), so a LAN source
-// is checked both as its own address and as its router's identity, and either one being
-// permitted allows it. That is conservative for deny checks: a LAN source is denied only
-// if neither identity is permitted. Traffic between two addresses of the same site never
-// enters the tailnet; the model still answers for it through the router's own-site grant.
+// Subnet routers masquerade LAN traffic (--snat-subnet-routes), so a LAN source is checked as its own
+// address and as its router's identity; either one being permitted allows it.
 function lanParties(network: Network, ip: number): Party[] {
   const routers = network.routes.filter((route) => contains(route.prefix, ip)).map((route) => route.router);
   return routers.length === 0 ? [] : [{ ip }, ...routers.map(partyOf)];

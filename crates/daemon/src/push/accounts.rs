@@ -1,8 +1,4 @@
-//! The accounts as a batch carries them (K8 Section 4 `agentUsage.accounts`; AIS-022 as THR-149
-//! changed it): for each program, the key made from the vendor's identifier with the account
-//! salt of the hub, the email address, the name of the plan and the limit windows. The
-//! identifier is read only to make the key. The name of the account goes only when it is an
-//! address (Codex may give the name of a workspace instead). Pure.
+//! The accounts a batch carries (K8 Section 4, AIS-022, THR-149); the vendor's identifier is read only to make the key.
 
 use base64::Engine as _;
 use chrono::DateTime;
@@ -13,8 +9,7 @@ use daemon_core::wire::BatchAccount;
 
 use crate::sampling::agent_usage::ProgramAccount;
 
-/// The account salt of the hub from the `accountSalt` of its answer; `None` for a text that is
-/// not 32 bytes in standard base64.
+/// The hub's `accountSalt`; `None` for text that is not standard base64 of [`SALT_BYTES`] bytes.
 #[must_use]
 pub fn salt(text: &str) -> Option<[u8; SALT_BYTES]> {
     let bytes = base64::engine::general_purpose::STANDARD
@@ -23,9 +18,7 @@ pub fn salt(text: &str) -> Option<[u8; SALT_BYTES]> {
     bytes.try_into().ok()
 }
 
-/// The accounts member of the next batch. With no salt yet it is empty, which asks the hub for
-/// its salt (K8 Section 8.2). A program that is signed out or gave no identifier is left out:
-/// with no identifier there is no key. One account for each program, at most [`MAX_ACCOUNTS`].
+/// Empty with no salt yet, which asks the hub for its salt (K8 Section 8.2).
 #[must_use]
 pub fn outgoing(salt: Option<&[u8; SALT_BYTES]>, accounts: &[ProgramAccount]) -> Vec<BatchAccount> {
     let Some(salt) = salt else {

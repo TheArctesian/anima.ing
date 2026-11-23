@@ -7,12 +7,8 @@ use super::{GpuReading, GpuVendor};
 /// Intel's JSON does not name the device in every version, so the reading has this name.
 const NAME: &str = "Intel GPU";
 
-/// The last complete sample of `intel_gpu_top -J` output, as GPU 0. The output is either a JSON
-/// array of samples or, in older versions, objects separated by commas with no brackets; both
-/// read the same. A sample cut off by the link is ignored. Busy is the highest `busy` among the
-/// `engines`; power is `power.GPU`. An integrated GPU shares system memory, so there is no VRAM
-/// (MET-007). The sample used is the last complete one that has a usable
-/// engine, so a final sample with no engines is passed over. `None` when there is none.
+/// The last complete sample with a usable engine, as GPU 0; older versions omit the array brackets.
+/// An integrated GPU shares system memory, so there is no VRAM (MET-007).
 #[must_use]
 pub fn gpu(output: &[u8]) -> Option<GpuReading> {
     let text = String::from_utf8_lossy(output);
@@ -51,8 +47,6 @@ fn power(sample: &Value) -> Option<f64> {
         .filter(|watts| *watts >= 0.0)
 }
 
-/// The top-level `{...}` texts of `text` that close, in order. Brackets and commas between them,
-/// and an object still open at the end, are not returned.
 fn objects(text: &str) -> impl Iterator<Item = &str> {
     let (mut depth, mut start, mut in_string, mut escaped) = (0_usize, 0, false, false);
     text.char_indices().filter_map(move |(at, c)| {

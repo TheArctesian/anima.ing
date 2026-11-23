@@ -1,8 +1,4 @@
-/**
- * Each broker request as the Headscale command lines it runs (R-055, BD-9, VP-10). Pure.
- * Each flag and its value are one argv element (`--auth-id=<id>`), so a value can never be
- * read as a flag; no step makes a reusable or ephemeral key.
- */
+/** Each flag and its value are one argv element, so a value is never read as a flag; no key is reusable or ephemeral (R-055, BD-9, VP-10). */
 
 import { prefixText, type Policy } from '../src/policy.ts';
 import { OPERATOR, type BrokerNode } from './nodes.ts';
@@ -10,18 +6,15 @@ import { expiryValue, staggered } from './outcome.ts';
 import { Refused, type Refusal, type Request } from './protocol.ts';
 
 export interface PolicyView {
-  /** Site name `x` → the subnet of the policy host `site-<x>`. */
   readonly sites: ReadonlyMap<string, string>;
   readonly tags: ReadonlySet<string>;
 }
 
-/** The argv after `headscale`; one element for each flag=value. */
 export type Step = readonly string[];
 
-/** What a plan needs besides the request, the policy and the nodes. */
 export interface Moment {
   readonly now: Date;
-  /** The `operator` user's id (`users list`); `preauthkeys create --user` takes an id. */
+  /** `preauthkeys create --user` takes an id. */
   readonly operatorId: number | null;
 }
 
@@ -42,7 +35,6 @@ export function siteTag(site: string): string {
   return `tag:site-${site}`;
 }
 
-/** The sites and tags of the policy (`policy.scope.hosts` and `policy.scope.tags`). */
 export function policyView(policy: Policy): PolicyView {
   const sites = new Map<string, string>();
   for (const [host, prefix] of policy.scope.hosts) {
@@ -52,7 +44,6 @@ export function policyView(policy: Policy): PolicyView {
   return { sites, tags: policy.scope.tags };
 }
 
-/** The id of a node other than `except` that has the subnet approved, or undefined (M2). */
 function approvedElsewhere(subnet: string, nodes: readonly BrokerNode[], except: number | null): number | undefined {
   return nodes.find((node) => node.id !== except && node.approved.includes(subnet))?.id;
 }
@@ -61,7 +52,7 @@ function routerKey(site: string, policy: PolicyView, nodes: readonly BrokerNode[
   // BD-9: Headscale accepts a tag the policy does not know, so the broker checks it first.
   const subnet = policy.sites.get(site);
   if (subnet === undefined || !policy.tags.has(siteTag(site)) || !policy.tags.has(ROUTER_TAG)) return 'unknown-site';
-  // M2: a site has one router. The operator removes the old one first (README).
+  // M2: a site has one router.
   if (approvedElsewhere(subnet, nodes, null) !== undefined) return 'not-allowed';
   return [['preauthkeys', 'create', `--tags=${ROUTER_TAG},${siteTag(site)}`, '--expiration=1h', JSON_OUTPUT]];
 }
@@ -76,12 +67,10 @@ function approveRoute(request: { node: number; site: string }, policy: PolicyVie
   return [['nodes', 'approve-routes', `--identifier=${String(node.id)}`, `--routes=${subnet}`]];
 }
 
-/** VP-12: the key expired more than `RENEW_GRACE_MS` before `now`; exactly at the limit is allowed. */
 export function expiredTooLong(node: BrokerNode, now: Date): boolean {
   return node.expiry !== null && now.getTime() - Date.parse(node.expiry) > RENEW_GRACE_MS;
 }
 
-/** Throws `Refused` (`not-allowed`, `RENEW_TOO_LATE`) for a key that expired too long ago. */
 function renew(nodeId: number, nodes: readonly BrokerNode[], now: Date): readonly Step[] | Refusal {
   const node = nodes.find((candidate) => candidate.id === nodeId);
   if (node === undefined || node.tags.length > 0 || node.user !== OPERATOR) return 'not-allowed';
@@ -92,7 +81,6 @@ function renew(nodeId: number, nodes: readonly BrokerNode[], now: Date): readonl
   return [['nodes', 'expire', `--identifier=${String(nodeId)}`, `--expiry=${expiryValue(staggered(now, others))}`]];
 }
 
-/** The steps for a request, or the refusal; checks every value against the policy and the nodes. */
 export function plan(request: Request, policy: PolicyView, nodes: readonly BrokerNode[], moment: Moment): readonly Step[] | Refusal {
   switch (request.verb) {
     case 'nodes':

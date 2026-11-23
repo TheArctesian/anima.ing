@@ -4,8 +4,7 @@ use chrono::{DateTime, Utc};
 
 use super::{Cpu, Interface, Load, label, lines, load, number, positional_lines};
 
-/// What `sysctl -n hw.memsize hw.pagesize vm.loadavg kern.boottime` printed, one value per line
-/// in that order. A line that does not read leaves its field empty.
+/// What `sysctl -n hw.memsize hw.pagesize vm.loadavg kern.boottime` printed; a line that does not read leaves its field empty.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Sysctl {
     pub memory_bytes: Option<u64>,
@@ -16,7 +15,6 @@ pub struct Sysctl {
 }
 
 impl Sysctl {
-    /// Seconds from boot to `now`; `None` without a boot time or when it is after `now`.
     #[must_use]
     pub fn uptime_seconds(&self, now: DateTime<Utc>) -> Option<f64> {
         let seconds = now.timestamp().checked_sub(self.boot_unix?)?;
@@ -43,7 +41,6 @@ pub fn sysctl(output: &[u8]) -> Sysctl {
     }
 }
 
-/// The inside of `{ ... }`.
 fn braced(text: &str) -> Option<&str> {
     text.strip_prefix('{')?.split('}').next()
 }
@@ -54,11 +51,7 @@ fn boot_seconds(text: &str) -> Option<i64> {
     after.split(',').next()?.trim().parse().ok()
 }
 
-/// Memory in use, in bytes, from `vm_stat`, as Activity Monitor counts it: app memory
-/// (anonymous pages less purgeable pages) plus wired plus compressed pages, times the page
-/// size. Without an "Anonymous pages" line, active pages stand for app memory. The page size is
-/// the one in the header; `fallback_page_size` (sysctl `hw.pagesize`) is used when the header
-/// has none. `None` without wired and compressed counts.
+/// Memory in use from `vm_stat` as Activity Monitor counts it: anonymous less purgeable (else active), plus wired and compressed.
 #[must_use]
 pub fn memory_used_bytes(output: &[u8], fallback_page_size: Option<u64>) -> Option<u64> {
     let mut page_size = None;
@@ -90,10 +83,7 @@ pub fn memory_used_bytes(output: &[u8], fallback_page_size: Option<u64>) -> Opti
     pages.checked_mul(page_size.or(fallback_page_size)?)
 }
 
-/// `netstat -ib -n`: received and sent bytes per interface, from the `<Link#n>` row only (the
-/// other rows repeat the counters once per address). The counters are the fifth and second
-/// columns from the right, since a link row may have no address. A trailing `*` (interface
-/// down) is dropped from the name.
+/// `netstat -ib -n`: only `<Link#n>` rows, counted from the right, since a link row may have no address.
 #[must_use]
 pub fn interfaces(output: &[u8]) -> Vec<Interface> {
     lines(output)
@@ -114,9 +104,7 @@ pub fn interfaces(output: &[u8]) -> Vec<Interface> {
         .collect()
 }
 
-/// `top -l 2 -n 0 -s 1`: busy share is 100 less the idle share of the last `CPU usage:` line. The
-/// first such line is the average since boot, so one line alone (output cut early) gives `None`,
-/// as does a last line that does not read.
+/// `top -l 2 -n 0 -s 1`: the first `CPU usage:` line is the average since boot, so the last one is read.
 #[must_use]
 pub fn cpu(output: &[u8]) -> Option<Cpu> {
     let mut usage = lines(output).filter(|line| line.trim_start().starts_with("CPU usage:"));

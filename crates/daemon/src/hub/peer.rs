@@ -1,13 +1,6 @@
-//! Who listens at the socket of `anima-link`: the check of the peer of each connection, made
-//! before the daemon writes a byte to it (K8 Section 1, HMD-054).
-//!
-//! The kernel gives the user of the peer, and its process id. The user must be the daemon's own.
-//! On macOS a daemon with a Developer ID signature also requires that the process of the peer is
-//! `anima-link` with a Developer ID signature of the same team ([`signature`]). What this does
-//! not close: a program of the same user that makes the socket, gives it to a process of its own
-//! and lets the signed link take the process id (`exec`), or waits until a process id that it
-//! knows goes to the signed link, or starts the signed link with settings of its own. The ruling
-//! that chose this check says so.
+//! The check of the peer at the socket of `anima-link`, made before the daemon writes a byte to
+//! it (K8 Section 1, HMD-054). A same-user program that hands its socket or process id to the
+//! signed link passes; the ruling that chose this check says so.
 
 mod signature;
 
@@ -29,25 +22,20 @@ pub enum PeerError {
     OwnSignature,
 }
 
-/// What the program at the socket must be.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Program {
-    /// Any program of the user: a daemon with no Developer ID signature (a build for
-    /// development), and each daemon on Linux, where the token file is open to the programs of
-    /// the user in any case (K8 Section 2).
+    /// An unsigned daemon, and each daemon on Linux, where the token file is open to the user
+    /// anyway (K8 Section 2).
     OfTheUser,
-    /// `anima-link` with a Developer ID signature of this team (macOS only).
     SignedBy(TeamId),
 }
 
-/// The peer that the daemon accepts at the socket of the link.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Expected {
     pub user: u32,
     pub program: Program,
 }
 
-/// The user and the process at the other end of one connection, as the kernel gives them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Peer {
     pub user: u32,
@@ -55,11 +43,9 @@ pub struct Peer {
 }
 
 impl Expected {
-    /// The peer for this daemon: its own user, and on macOS the team of its own signature.
-    ///
     /// # Errors
-    /// [`PeerError::Io`] when the user cannot be read; [`PeerError::OwnSignature`] when the
-    /// signature of this daemon cannot be read or its file is not the program that runs.
+    /// [`PeerError::Io`] or [`PeerError::OwnSignature`] when the own user or signature cannot
+    /// be read.
     pub fn of_this_daemon() -> Result<Self, PeerError> {
         let user = crate::config::private_file::running_user()?;
         #[cfg(target_os = "macos")]
@@ -69,11 +55,8 @@ impl Expected {
         Ok(Self { user, program })
     }
 
-    /// Whether `peer` may get the request.
-    ///
     /// # Errors
-    /// [`PeerError::OtherUser`] or [`PeerError::NotTheLink`] when it may not; the request must
-    /// then not be written.
+    /// [`PeerError::OtherUser`] or [`PeerError::NotTheLink`]; the caller then writes no request.
     pub async fn admit(&self, peer: Peer) -> Result<(), PeerError> {
         if peer.user != self.user {
             return Err(PeerError::OtherUser);

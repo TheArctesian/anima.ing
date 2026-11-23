@@ -1,7 +1,5 @@
-//! The symbolic links of an archive (Section 6, R-387): a link is kept until the last
-//! entry is written, then replaced by a copy of the regular file of the archive that it names. A
-//! target must be relative and stay in the archive; a chain of links ends at a file within
-//! [`MAX_HOPS`] steps. The folder of the runtime never holds a link.
+//! The symbolic links of an archive (Section 6, R-387): each becomes a copy of the archive's
+//! regular file that it names, so the folder of the runtime holds no link.
 
 use std::collections::HashMap;
 use std::fs::File;
@@ -14,21 +12,18 @@ use rustix::fs::{Mode, OFlags};
 
 use super::{BAD_ARCHIVE, DIR_FLAGS, Kind, Writer, open_dir};
 
-/// The most links that one link may pass through to reach its file.
 const MAX_HOPS: usize = 8;
 
-/// The longest target of a link that the unpack reads (the `PATH_MAX` of Linux).
+/// The `PATH_MAX` of Linux.
 const MAX_TARGET_BYTES: u64 = 4096;
 
 impl<F: Fn() -> bool> Writer<F> {
-    /// Keeps the link at `path` to `target` for [`Writer::finish_links`].
     pub(super) fn link(&mut self, path: &str, target: &str) -> Result<(), Cause> {
         let names = self.claim(path, false)?;
         self.links.push((names, target.to_owned()));
         Ok(())
     }
 
-    /// Writes a copy of its file in the place of each link, in the order of the archive.
     pub(super) fn finish_links(&mut self) -> Result<(), Cause> {
         let links = std::mem::take(&mut self.links);
         let targets: HashMap<String, &str> = links
@@ -45,7 +40,6 @@ impl<F: Fn() -> bool> Writer<F> {
     }
 }
 
-/// Reads the target of a `.zip` link: its bytes, UTF-8, at most [`MAX_TARGET_BYTES`].
 pub(super) fn read_target(bytes: &mut dyn Read) -> Result<String, Cause> {
     let mut target = Vec::new();
     bytes
@@ -58,8 +52,6 @@ pub(super) fn read_target(bytes: &mut dyn Read) -> Result<String, Cause> {
     String::from_utf8(target).map_err(|_| BAD_ARCHIVE)
 }
 
-/// The path of the regular file that the link at `link` names, through at most [`MAX_HOPS`]
-/// links of `targets`; `None` for a target that leaves the archive or names no file.
 fn resolve(
     link: &[String],
     targets: &HashMap<String, &str>,
@@ -76,8 +68,6 @@ fn resolve(
     None
 }
 
-/// The names of `target` read from the folder of the link at `link`; `None` for a target that
-/// is empty, absolute, ends in `/`, holds a `\` or leaves the archive by `..`.
 fn join(link: &[String], target: &str) -> Option<Vec<String>> {
     if target.is_empty() || target.ends_with('/') || target.contains('\\') {
         return None;
@@ -94,7 +84,7 @@ fn join(link: &[String], target: &str) -> Option<Vec<String>> {
     (!names.is_empty()).then_some(names)
 }
 
-/// Opens the file at `path` below `root` for reading, with no link followed at any part.
+/// No link is followed at any part of `path`.
 fn open_file(root: &OwnedFd, path: &str) -> io::Result<File> {
     let names: Vec<&str> = path.split('/').collect();
     let (last, parents) = names.split_last().ok_or(io::ErrorKind::InvalidInput)?;

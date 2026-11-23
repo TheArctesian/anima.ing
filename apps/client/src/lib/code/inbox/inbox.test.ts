@@ -6,7 +6,7 @@ import { intentOf, manyMenu, rowMenu, snoozeItems, type Able } from './actions';
 import { customWake, inboxEngine, snoozePresets } from './engine';
 import type { LiveThreads } from '$lib/agent-threads/live/live.svelte';
 import { NO_MARKS, type Marks } from '$lib/agent-threads/listing/shelf';
-import { arranged, emptyWords, inOrder, inProjects, projectsOf, type Arranging } from './inbox';
+import { arranged, emptyWords, inOrder, inProjects, projectsOf, shownRows, type Arranging } from './inbox';
 import { clicked, kept, NO_SELECTION } from './selection';
 
 const NOW = new Date('2026-11-21T15:00:00Z');
@@ -93,6 +93,12 @@ describe('the project filter (02 section 5.3) and the empty inbox (section 5.10)
     ]);
     expect(ids(inProjects(rows, new Set(['/w/zeta', null])).map((each) => ({ row: each })))).toEqual(['a', 'd']);
     expect(inProjects(rows, new Set())).toBe(rows);
+  });
+
+  it('THR-041: the threads with no project are one project, "No project", whatever their scratch folders', () => {
+    const scratch = [row('s1', 'turn_ended', 1, { folder: '/h/Anima Scratch/2026-11-23-aa' }), row('s2', 'turn_ended', 1, { folder: '/h/Anima Scratch/2026-11-23-bb' }), row('a', 'turn_ended', 1, { folder: '/w/zeta' })];
+    expect(projectsOf(scratch).map((project) => [project.name, project.count])).toEqual([['No project', 2], ['zeta', 1]]);
+    expect(ids(inProjects(scratch, new Set(['/h/Anima Scratch'])).map((each) => ({ row: each })))).toEqual(['s1', 's2']);
   });
 
   it('says why the inbox is empty', () => {
@@ -235,6 +241,18 @@ describe('the sessions Anima did not start (T3 Code\'s import)', () => {
     expect(ids(parts.active).sort()).toEqual(['back', 'ours', 'wrote']);
     expect([ids(parts.working), ids(parts.pinned)]).toEqual([['runs'], ['pin']]);
     expect(arranged(rows, { ...at, started: null }).settled).toEqual([]);
+  });
+
+  it('hides each session Anima did not start until the filter shows them, pinned, working, asking, waiting or snoozed too (operator, 2026-11-23)', () => {
+    const snoozed = { ...NO_MARKS, snoozedUntil: new Date(NOW.getTime() + DAY * MINUTE) };
+    const rows = [row('ours', 'turn_ended', 5), row('ended', 'turn_ended', 5), row('runs', 'running', 0), row('asks', 'asks', 5), row('waits', 'open_tool', 5), row('pin', 'turn_ended', 5, { pinned: true }), row('later', 'turn_ended', 5)];
+    const at: Arranging = { ...AT, marks: new Map([['later', snoozed]]), started: new Set(['ours']) };
+    const every = (parts: ReturnType<typeof arranged>) => [...parts.pinned, ...parts.active, ...parts.working, ...parts.snoozed, ...parts.settled].map((item) => item.row.id).sort();
+    expect(every(arranged(shownRows(rows, at.started, false), at))).toEqual(['ours']);
+    expect(every(arranged(shownRows(rows, at.started, true), at))).toEqual(rows.map((each) => each.id).sort());
+    expect(arranged(shownRows(rows, at.started, true), at)).toEqual(arranged(rows, at));
+    // While the runner does not say which threads it started, no session is taken for one from outside.
+    expect(shownRows(rows, null, false)).toEqual(rows);
   });
 
   it('counts the threads the runner drives as Anima\'s, by its ID and the program\'s, once a listing carries the mark', () => {

@@ -1,5 +1,5 @@
-//! The `accounts` member of `agentUsage` (K8 Section 4; AIS-022, THR-149): the key, the
-//! address, the plan and the limit windows of each account, and the hub's pure check of them.
+//! The `accounts` member of `agentUsage` and the hub's check of it (K8 Section 4; AIS-022,
+//! THR-149).
 
 use std::collections::BTreeSet;
 
@@ -11,14 +11,13 @@ use crate::agent_usage::account::{
 };
 use crate::agent_usage::{Source, is_word};
 
-/// One account as a batch spells it. `source` is text, so an account of a source this hub
-/// does not know can be dropped.
+/// `source` is text, so an account of a source this hub does not know can be dropped.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BatchAccount {
     pub source: String,
     pub key: String,
-    /// The email address of the account; a text that is not one makes the batch `MALFORMED`.
+    /// A text that is not an email address makes the batch `MALFORMED`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub address: Option<Address>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -27,7 +26,6 @@ pub struct BatchAccount {
     pub limits: Vec<BatchLimit>,
 }
 
-/// One limit window of an account.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BatchLimit {
@@ -44,8 +42,7 @@ pub struct BatchLimit {
     pub reached: bool,
 }
 
-/// The accounts of the known sources; `None` when the list breaks K8 Section 4: more than
-/// [`MAX_ACCOUNTS`] entries, two of one source, or an entry that breaks [`BatchAccount::fits`].
+/// The accounts of the known sources; `None` when the list breaks K8 Section 4.
 #[must_use]
 pub fn accepted(accounts: Vec<BatchAccount>) -> Option<Vec<Account>> {
     let sources: BTreeSet<&str> = accounts.iter().map(|one| one.source.as_str()).collect();
@@ -61,9 +58,6 @@ pub fn accepted(accounts: Vec<BatchAccount>) -> Option<Vec<Account>> {
 }
 
 impl BatchAccount {
-    /// Whether the entry keeps the K8 rules: a `source` of `[a-z_]`, a key by [`is_key`], a plan
-    /// by [`is_plan`], and at most [`MAX_LIMITS`] windows with unique names by [`is_window`] and
-    /// a used share of at most 100.
     #[must_use]
     pub fn fits(&self) -> bool {
         let windows: BTreeSet<&str> = self.limits.iter().map(|one| one.window.as_str()).collect();

@@ -37,7 +37,7 @@ const file = (row: FileRow) => ({ ...row, branch: 'main', model: row.program ===
 const ROWS = [
   file({ id: IDS.mayWait, program: 'claude_code', title: 'Bump the Rust toolchain to 1.92', folder: '/Users/you/anima', tail: 'open_tool', last: '@-6' }),
   file({ id: IDS.yourTurn, program: 'codex', title: 'Review the sign-in flow', folder: '/Users/you/anima', tail: 'turn_ended', last: '@-14' }),
-  file({ id: IDS.writing, program: 'claude_code', title: 'Write the release notes', folder: '/Users/you/notes', tail: 'open', last: '@-1' }),
+  file({ id: IDS.writing, program: 'claude_code', title: 'Write the release notes', folder: '/Users/you/Anima Scratch/2026-11-23-475cde9e', tail: 'open', last: '@-1' }),
   file({ id: IDS.earlier, program: 'claude_code', title: 'Tidy the device page', folder: '/Users/you/anima', tail: 'turn_ended', last: '@-2900' }),
   file({ id: IDS.pinnedFile, program: 'codex', title: 'Port the battery meter', folder: '/Users/you/anima', tail: 'turn_ended', last: '@-4400' }),
   file({ id: IDS.archivedA, program: 'claude_code', title: 'Spike: WebGPU charts', folder: '/Users/you/spikes', tail: 'turn_ended', last: '@-12000' }),

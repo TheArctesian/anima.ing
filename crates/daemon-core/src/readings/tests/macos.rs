@@ -1,4 +1,4 @@
-//! The macOS readers (MET-002).
+//! MET-002.
 
 use chrono::DateTime;
 

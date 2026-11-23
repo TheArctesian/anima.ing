@@ -121,10 +121,12 @@ impl Engine {
         }
     }
 
-    /// The runner says whether a thread of this computer runs in a folder that holds the
-    /// records ([`place::records::held_by`]): its agent can write them, and with them the
-    /// Git folder that the runner's `git` runs with. While it is so, each Git action of each
-    /// thread is refused (THR-050). Each clone of the engine sees the same answer.
+    /// The runner says whether a thread of this computer can write the records
+    /// ([`place::records::held_by_any`]), and with them the Git folder that the runner's `git`
+    /// runs with. While it is so, each Git action of each thread is refused (THR-050). The hold
+    /// must cover each thread in a sandbox; a thread in Full access has no sandbox and can write
+    /// them from any folder, which the operator's ruling of 2026-11-23 accepts. Each clone of
+    /// the engine sees the same answer.
     pub fn hold(&self, held: bool) {
         self.held.store(held, Ordering::SeqCst);
     }

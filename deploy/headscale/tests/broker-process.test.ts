@@ -1,5 +1,4 @@
-// The broker process edge (R-055, VP-8): the request line from the socket, the entry points and
-// the state and config files.
+// R-055, VP-8.
 import { afterEach, describe, expect, it } from 'bun:test';
 import { mkdtempSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -70,7 +69,6 @@ describe('broker files', () => {
     expect(parseState(JSON.stringify(EMPTY_STATE))).toEqual(EMPTY_STATE);
   });
 
-  // The Linux broker's file boundary uses Unix permission bits.
   it.skipIf(process.platform === 'win32')('5.1: the state is written whole, mode 0600, and read back', async () => {
     const folder = mkdtempSync(join(tmpdir(), 'anima-broker-'));
     folders.push(folder);

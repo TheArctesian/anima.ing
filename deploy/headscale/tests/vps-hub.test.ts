@@ -4,9 +4,7 @@ import { join } from "node:path";
 import { parseNftables, type Chain } from "../src/nftables.ts";
 import { evaluateChain, resolvedChain, type Packet, type Verdict } from "./nft-eval.ts";
 
-// VP-13, VPS-001, DNS-005: the hub container (172.30.0.10 on the gateway bridge, the network of
-// its default route) may reach this host's VPN address 100.64.0.1 on 22/tcp and ICMP echo, so
-// the VPS can be a device in Anima. Nothing else on a bridge reaches that address.
+// VP-13, VPS-001, DNS-005.
 const ruleset = parseNftables(readFileSync(join(import.meta.dir, "..", "vps", "nftables.conf"), "utf8"));
 const chain = (name: string): Chain => resolvedChain(ruleset, "inet anima_filter", name);
 
@@ -20,7 +18,6 @@ const GATEWAY_BRIDGE = "br-5c0a77d1e2f3";
 const NOTIFY_BRIDGE = "br-3f9a0c1d2e4b";
 const DATABASE_BRIDGE = "br-0db0db0db0db";
 
-/** The interface of this host's route back to a source: the bridge whose subnet holds it. */
 function routeTo(saddr: string): string {
   if (saddr.startsWith("172.30.0.")) return GATEWAY_BRIDGE;
   if (saddr.startsWith("172.30.3.")) return NOTIFY_BRIDGE;
@@ -28,7 +25,6 @@ function routeTo(saddr: string): string {
   return "eth0";
 }
 
-/** A packet for this host: raw prerouting, then input if prerouting let it through. */
 function delivered(packet: Packet): Verdict {
   if (evaluateChain(chain("prerouting"), packet) === "drop") return "drop";
   return evaluateChain(chain("input"), packet);
@@ -130,8 +126,6 @@ describe("the exception admits only well-formed hub packets (VP-13 security revi
   });
 
   test("VP-13 F2 the hub's address is accepted only on the bridge its route goes back to", () => {
-    // The real hub, but the route to 172.30.0.10 left the gateway bridge (a tailnet route over it):
-    // the exception closes rather than trust the source.
     expect(delivered(fromBridge(HUB, { ...SSH, saddrRoute: "tailscale0" }))).toBe("drop");
     expect(delivered(fromBridge(HUB, { ...SSH, iifname: DATABASE_BRIDGE }))).toBe("drop");
     expect(delivered(fromBridge(HUB, { ...ECHO, iifname: DATABASE_BRIDGE }))).toBe("drop");
@@ -158,8 +152,7 @@ describe("the hub addresses in the firewall and in compose.yaml (VP-13)", () => 
   test("VP-13 hub_source is the hub's fixed gateway address, and gateway holds its default route", () => {
     const address = /^\$\{ANIMA_HUB_IP:-(\S+)\}$/.exec(networks["gateway"]?.ipv4_address ?? "")?.[1];
     expect(ruleset.commands).toContain(`define hub_source = ${String(address)}`);
-    // Docker gives the default route to the highest gw_priority (default 0) among the networks
-    // that have a gateway; gateway's is above every other network's.
+    // Docker gives the default route to the highest gw_priority (default 0) among the networks that have a gateway.
     const priority = (name: string): number => networks[name]?.gw_priority ?? 0;
     const others = Object.keys(networks).filter((name) => name !== "gateway");
     expect(others.length).toBeGreaterThan(0);

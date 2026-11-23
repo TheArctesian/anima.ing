@@ -1,5 +1,4 @@
-//! One session made of the tallies of its files (its own and its sub-agents'), and the session
-//! days a batch sends of it (K8 Section 4).
+//! A session's tallies across its files, and the session days a batch sends (K8 Section 4).
 
 use std::collections::BTreeMap;
 
@@ -10,7 +9,6 @@ use super::{
     is_repository, is_session_id,
 };
 
-/// The counts of one session so far, from all its files.
 #[derive(Clone, Debug)]
 pub struct Session {
     source: Source,
@@ -21,7 +19,7 @@ pub struct Session {
 }
 
 impl Session {
-    /// A session with no counts. A `repository` that breaks the K8 rule is not kept.
+    /// A `repository` that breaks the K8 rule is not kept.
     #[must_use]
     pub fn new(source: Source, id: &str, repository: Option<String>) -> Self {
         Self {
@@ -33,7 +31,6 @@ impl Session {
         }
     }
 
-    /// Adds the counts of one of the session's files.
     pub fn add(&mut self, tally: &Tally) {
         for (date, more) in tally.days() {
             let day = self.days.entry(*date).or_default();
@@ -55,8 +52,7 @@ impl Session {
         }
     }
 
-    /// The session's days, in date order; none when its ID breaks the K8 rule or no line had
-    /// a time.
+    /// In date order; none when the ID breaks the K8 rule or no line had a time.
     #[must_use]
     pub fn session_days(&self) -> Vec<SessionDay> {
         let Some((started_at, ended_at)) = self.span.filter(|_| is_session_id(&self.id)) else {
@@ -79,14 +75,11 @@ impl Session {
     }
 }
 
-/// The models of a day, in name order, at most [`MAX_MODELS`]: past that, the models with the
-/// fewest output tokens are added up under [`OTHER_MODEL`].
 fn folded(models: &BTreeMap<String, Tokens>) -> Vec<ModelTokens> {
     let mut ranked: Vec<(&String, &Tokens)> = models.iter().collect();
     if ranked.len() > MAX_MODELS {
         ranked.sort_by(|a, b| b.1.output.cmp(&a.1.output).then_with(|| a.0.cmp(b.0)));
     }
-    // The first 15 keep their names and the rest share `other`: at most 16 names.
     let mut kept: BTreeMap<String, Tokens> = BTreeMap::new();
     for (rank, (model, tokens)) in ranked.into_iter().enumerate() {
         let name = if rank < MAX_MODELS - 1 || models.len() <= MAX_MODELS {

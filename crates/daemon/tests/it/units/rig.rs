@@ -1,5 +1,4 @@
-//! A temporary HOME with an enrolled daemon and a stand-in binary, and `install` run against it
-//! with a recording stand-in for the commands, so no systemd is touched (D-10).
+//! `install` against a temporary HOME with a recording stand-in for the commands (D-10).
 
 use std::fs;
 use std::os::unix::fs::PermissionsExt as _;
@@ -24,12 +23,8 @@ pub struct Rig {
     pub uid: u32,
 }
 
-/// A HOME whose default daemon folder holds a token expiring `expires_in` after `kit::at(0)`
-/// (none when `None`), and a stand-in binary. It lives in the crate's own `target/rig` (ignored
-/// by git), not in a temporary folder or the target folder, which may be under `/tmp`: the
-/// units' `PrivateTmp=yes` hides `/tmp`, so `install` rightly refuses a binary there. The
-/// checkout itself must therefore sit outside `/tmp` and `/var/tmp`, in folders only root or
-/// the user can write.
+/// It lives in the crate's own `target/rig`, not under `/tmp`: the units' `PrivateTmp=yes`
+/// hides `/tmp`, so `install` refuses a binary there.
 pub fn rig(expires_in: Option<TimeDelta>) -> Rig {
     let scratch = concat!(env!("CARGO_MANIFEST_DIR"), "/target/rig");
     fs::create_dir_all(scratch).expect("the scratch folder");
@@ -92,7 +87,6 @@ impl Rig {
             .join(".config/systemd/user/anima-daemon.service")
     }
 
-    /// Runs `install` for the user, returning the commands it ran.
     pub fn install(&self, succeed: bool) -> (Result<PathBuf, InstallError>, Vec<String>) {
         let mut ran = Vec::new();
         let result = install(Target::User, &self.host(), self.env(), |step: &Step| {

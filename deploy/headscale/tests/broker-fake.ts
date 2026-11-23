@@ -1,8 +1,4 @@
-/**
- * A fake Headscale 0.29.7 for the broker tests: a `runner` that keeps nodes in memory and answers
- * each step with the shapes the contract harness captured (nodes.json, routes.json,
- * preauthkey.json, register.json). Keys use the placeholder of vpn-build.md rule 0.6.
- */
+/** A fake Headscale 0.29.7 that answers in the captured contract shapes; keys use the placeholder of vpn-build.md rule 0.6. */
 import { copyFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -39,7 +35,6 @@ function flag(step: Step, name: string): string | undefined {
 
 const folders: string[] = [];
 
-/** A temporary broker.conf, the repository policy and a state path; `removeBrokerFiles` cleans up. */
 export function brokerFiles(maxNodes = 10): BrokerFiles {
   const folder = mkdtempSync(join(tmpdir(), 'anima-broker-'));
   folders.push(folder);
@@ -49,7 +44,6 @@ export function brokerFiles(maxNodes = 10): BrokerFiles {
   return files;
 }
 
-/** Removes every folder `brokerFiles` made; call from `afterEach`. */
 export function removeBrokerFiles(): void {
   for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
 }
@@ -58,9 +52,7 @@ export class FakeHeadscale {
   readonly nodes: FakeNode[] = [];
   readonly steps: Step[] = [];
   readonly keys: FakeKey[] = [];
-  /** Auth IDs of computers waiting for `auth register`, with what they will become. */
   readonly waiting = new Map<string, { name: string; tags: string[]; id?: number }>();
-  /** Runs after a step changed the fake, before it answers (a kill, or another node joining). */
   afterStep: (step: Step) => void = () => undefined;
   now: Date;
   private nextId = 1;
@@ -83,7 +75,6 @@ export class FakeHeadscale {
     return node;
   }
 
-  /** A computer joins with the pre-auth key `keyId`; the key's tags apply unless `tags` is given. */
   join(keyId: number, name: string, fields: Partial<FakeNode> = {}): FakeNode {
     const key = this.keys.find((candidate) => candidate.id === keyId);
     if (key === undefined) throw new Error(`fake: no key ${String(keyId)}`);
@@ -142,7 +133,6 @@ export class FakeHeadscale {
     const existing = waiting.id === undefined ? undefined : this.node(waiting.id);
     const node = existing ?? this.add(waiting.name, { tags: waiting.tags, expiry });
     node.expiry = node.tags.length > 0 ? null : expiry;
-    // register.json: the node itself, with no pre_auth_key and no online key.
     const reply = Object.fromEntries(Object.entries(this.raw(node)).filter(([field]) => field !== 'pre_auth_key' && field !== 'online'));
     return JSON.stringify({ ...reply, register_method: 2 });
   }
