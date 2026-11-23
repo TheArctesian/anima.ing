@@ -1,5 +1,3 @@
-//! PRJ-031: issues and the comments of an issue or pull request.
-
 use super::{fixture, ok, path_and_query};
 use crate::live::StateFilter;
 use crate::live::comments;

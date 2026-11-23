@@ -1,5 +1,3 @@
-//! `start` and `stop` (FRN-006): the unit stays installed, and a stop waits for the hub.
-
 use std::io;
 
 use anima_database::Platform;
@@ -9,7 +7,6 @@ use super::{Rig, rig};
 use crate::run;
 use crate::units::Step;
 
-/// Runs `command` with each step answered by `answer`, and returns the steps.
 fn steps(
     command: impl FnOnce(&mut dyn FnMut(&Step) -> io::Result<bool>) -> Result<(), InstallError>,
     answer: impl Fn(&Step) -> bool,

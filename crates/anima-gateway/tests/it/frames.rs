@@ -1,5 +1,3 @@
-//! A frame draws the screen in the client, in the cheapest form for each part.
-
 mod budget;
 mod pacing;
 
@@ -14,13 +12,11 @@ use crate::screen::whole;
 const PNG_ONLY: Formats = Formats { jpeg: false };
 const WITH_JPEG: Formats = Formats { jpeg: true };
 
-/// Sends the screen's changes to `client` as one frame.
 pub(crate) fn send(screen: &mut Screen, client: &mut Drawn, formats: Formats, timestamp: u64) {
     let changes = screen.take_changes();
     client.receive(&frame(screen, &changes, formats, timestamp).expect("a frame"));
 }
 
-/// A screen and a client that already shows it.
 fn shown(width: usize, height: usize) -> (Screen, Drawn) {
     let mut screen = Screen::new(width, height).expect("a valid size");
     let mut client = Drawn::default();
@@ -28,7 +24,6 @@ fn shown(width: usize, height: usize) -> (Screen, Drawn) {
     (screen, client.counted_from_here())
 }
 
-/// Pixels with noise in every part: the hardest content, with a colour for each pixel.
 fn noise(area: Area) -> Vec<u8> {
     let mut state = 0x2545_f491_4f6c_dd1d_u64;
     (0..area.width * area.height * BYTES_PER_PIXEL)
@@ -41,7 +36,6 @@ fn noise(area: Area) -> Vec<u8> {
         .collect()
 }
 
-/// Smooth colour with a little grain, as a photograph has.
 fn photograph(area: Area) -> Vec<u8> {
     let grain = noise(area);
     let part = |value: usize, grain: u8| u8::try_from(value % 200).unwrap_or(0) + grain % 8;
@@ -58,7 +52,6 @@ fn photograph(area: Area) -> Vec<u8> {
         .collect()
 }
 
-/// Two colours in a pattern, as text has.
 fn text(area: Area) -> Vec<u8> {
     (0..area.width * area.height)
         .flat_map(|pixel| {
@@ -163,7 +156,6 @@ fn a_photograph_goes_out_as_jpeg_only_when_the_client_draws_jpeg() {
     send(&mut screen, &mut lossy, WITH_JPEG, 1);
     assert_eq!(lossy.images, ["image/jpeg"]);
     assert!(lossy.wire_bytes < exact.wire_bytes);
-    // Lossy, but the same picture.
     let off: usize = lossy
         .rgb
         .iter()
@@ -242,7 +234,6 @@ fn a_scroll_goes_out_as_a_copy_and_the_new_rows() {
     send(&mut screen, &mut client, PNG_ONLY, 1);
     let first = client.wire_bytes;
 
-    // The page moves up by 16 rows; 16 new rows come in at the bottom.
     screen
         .write(area, &page[16 * row_bytes..(16 + area.height) * row_bytes])
         .expect("inside");
@@ -259,7 +250,6 @@ fn a_scroll_goes_out_as_a_copy_and_the_new_rows() {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
 
-    /// Whatever a device does, a client that draws each frame shows the device's picture.
     #[test]
     fn a_client_that_draws_the_frames_shows_the_screen(
         (width, height) in (1..160usize, 1..160usize),

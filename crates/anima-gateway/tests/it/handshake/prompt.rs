@@ -1,5 +1,4 @@
-//! The operator is asked for a missing credential, and only the asked names are taken
-//! (GW-015).
+//! Credential prompts (GW-015).
 
 use anima_gateway::handshake::{Credential, Prompt, PromptStep};
 use base64::Engine as _;
@@ -21,7 +20,6 @@ fn end(stream: &str) -> Instruction {
     Instruction::new("end", [stream])
 }
 
-/// The status of the `ack` the step sends, and the answer when one is complete.
 fn outcome(step: PromptStep) -> (Option<String>, Option<(Credential, String)>) {
     match step {
         PromptStep::NotAnAnswer => (None, None),
@@ -184,7 +182,6 @@ fn what_follows_a_refused_answer_on_its_stream_is_dropped_and_the_name_is_asked_
     let (mut prompt, _) = Prompt::ask(&[Credential::Username, Credential::Password]);
     prompt.on_instruction(&argv("5", "password"));
     prompt.on_instruction(&blob("5", &[b'p'; 4097]));
-    // The rest of the password must not pass for another stream's content.
     for rest in [blob("5", b"rest of it"), end("5")] {
         assert_eq!(
             outcome(prompt.on_instruction(&rest)).0.as_deref(),

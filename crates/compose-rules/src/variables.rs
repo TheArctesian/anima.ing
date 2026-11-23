@@ -14,18 +14,10 @@ fn is_name(name: &str) -> bool {
             .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit() || byte == b'_')
 }
 
-/// The names and the values of an environment file: lines `NAME=value`. The value is the text
-/// after the first `=`, with no rule for quotes. An empty line and a line that starts with
-/// `#` are not read.
-///
-/// # Errors
-/// `variable_not_permitted` for a line with no `=`, also a line of only spaces, a line with a
-/// carriage return or a NUL, a name with a different character, and a name that is there two
-/// times.
+/// The names and the values of an environment file of `NAME=value` lines, with no rule for quotes.
 pub(crate) fn environment(text: &str) -> Result<BTreeMap<String, String>, Refusal> {
     let mut values = BTreeMap::new();
-    // The lines are cut at the line feed only: a carriage return is a character of its line,
-    // and such a line is refused. A line of only spaces is not empty and has no `=`.
+    // Lines are cut at the line feed only, so a carriage return is refused.
     for line in text.split('\n') {
         if line.contains(['\r', '\0']) {
             return Err(REFUSED);
@@ -41,8 +33,7 @@ pub(crate) fn environment(text: &str) -> Result<BTreeMap<String, String>, Refusa
     Ok(values)
 }
 
-/// `text` with each variable filled. `$$` is one `$`; each other `$` is refused. The result
-/// is not filled a second time.
+/// `$$` is one `$` and each other bare `$` is refused; the result is not filled a second time.
 fn fill(text: &str, values: &BTreeMap<String, String>) -> Result<String, Refusal> {
     let mut filled = String::with_capacity(text.len());
     let mut rest = text;
@@ -75,12 +66,6 @@ fn fill(text: &str, values: &BTreeMap<String, String>) -> Result<String, Refusal
     Ok(filled)
 }
 
-/// `node` with the variables of each scalar value filled. A key is never filled: a key that
-/// holds `$` is refused.
-///
-/// # Errors
-/// `variable_not_permitted` for a `$` that is not one of the two forms or `$$`, and for a
-/// name that the environment file does not have and that has no default.
 pub(crate) fn filled(node: Node, values: &BTreeMap<String, String>) -> Result<Node, Refusal> {
     Ok(match node {
         Node::Null => Node::Null,

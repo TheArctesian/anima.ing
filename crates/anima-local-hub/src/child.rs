@@ -1,5 +1,4 @@
-//! One member of the group as a child process: a sealed environment, its output in its own
-//! log file, a line that tells it is ready, and a stop with a limit.
+//! One member of the group as a child process with a sealed environment and its own log file.
 
 use std::ffi::OsString;
 use std::io;
@@ -27,13 +26,11 @@ mod tests;
 #[cfg(windows)]
 mod windows;
 
-/// The most bytes of one output line that go to the log.
 const LINE_LIMIT: usize = 16 * 1024;
 
-/// How long the last lines of a member that ended are waited for.
 const LAST_LINES: Duration = Duration::from_millis(500);
 
-/// What to run. The child gets `env` and nothing else of this program's environment.
+/// What to run; the child gets `env` and nothing else of this program's environment.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Spec {
     pub name: &'static str,
@@ -76,7 +73,6 @@ impl ChildError {
 pub struct Stop(watch::Receiver<bool>);
 
 impl Stop {
-    /// A request that `ask` makes.
     #[must_use]
     pub fn new() -> (watch::Sender<bool>, Self) {
         let (ask, asked) = watch::channel(false);
@@ -118,16 +114,13 @@ impl Stop {
     }
 }
 
-/// How a member ended when it was asked to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Stopped {
     /// It ended by itself, before or after SIGTERM.
     Ended(ExitStatus),
-    /// It did not end in the limit and was killed.
     Killed,
 }
 
-/// A running member.
 #[derive(Debug)]
 pub struct Child {
     name: &'static str,
@@ -142,12 +135,10 @@ pub struct Child {
 }
 
 impl Child {
-    /// Starts `spec`. `ended` gets the member's name when it ends.
+    /// Starts `spec`; `ended` gets the member's name when it ends.
     ///
-    /// The member stays in this program's process group. When this program is killed, launchd
-    /// kills what is left of its process group and systemd what is left of its control group,
-    /// so no member outlives a unit's run and holds the database or the hub's port. The price:
-    /// Ctrl-C in a terminal reaches every member at once, not in order.
+    /// The member stays in this program's process group, so launchd or systemd kills it with this
+    /// program; Ctrl-C in a terminal then reaches every member at once.
     ///
     /// # Errors
     /// [`ChildError::Start`] when the program cannot be run.
@@ -162,8 +153,7 @@ impl Child {
             name,
             kind: error.kind(),
         };
-        // One pipe for both outputs: the lines arrive in the order the member wrote them, so
-        // a notice on standard error is read before the `ready` on standard output after it.
+        // One pipe for both outputs keeps the order, so a notice on stderr is read before a later `ready`.
         let (output, input) = std::io::pipe().map_err(failed)?;
         let mut child = Command::new(&spec.program)
             .args(&spec.args)
@@ -204,7 +194,6 @@ impl Child {
         self.name
     }
 
-    /// The exit status when the member has ended.
     #[must_use]
     pub fn ended(&self) -> Option<ExitStatus> {
         *self.exit.borrow()
@@ -223,8 +212,7 @@ impl Child {
         let mut exit = self.exit.clone();
         let read = async {
             while let Some(lines) = self.lines.as_mut() {
-                // The exit is watched too: a process that the member started can keep the
-                // output open long after the member ended.
+                // A process that the member started can keep the output open after the member ended.
                 let line = tokio::select! {
                     biased;
                     line = lines.recv() => line,
@@ -233,7 +221,6 @@ impl Child {
                 match line.as_deref().map(&mut pick) {
                     Some(Some(picked)) => return Ok(picked),
                     Some(None) => {}
-                    // Both outputs are closed. The member ends, or writes no more.
                     None => self.lines = None,
                 }
             }
@@ -311,8 +298,7 @@ async fn wait(exit: &mut watch::Receiver<Option<ExitStatus>>) -> ExitStatus {
     }
 }
 
-/// Copies each line of `output` to the log and to whoever reads for a ready line. It reads to
-/// the end also when nobody takes the lines: a full pipe would stop the member.
+/// Reads to the end also when nobody takes the lines: a full pipe would stop the member.
 async fn copy_lines(
     output: impl AsyncRead + Unpin,
     mut log: LogFile,

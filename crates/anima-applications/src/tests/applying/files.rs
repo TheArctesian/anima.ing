@@ -1,5 +1,3 @@
-//! The check of the two files of an `application_apply` (K10 Sections 6.4.4 and 6.4.6).
-
 use compose_rules::Rule;
 
 use super::{COMPOSE, ENVIRONMENT, apply, digests, prepare};
@@ -36,7 +34,6 @@ fn k10_6_4_6_a_file_whose_sha_256_is_different_is_refused() {
             environment: Some(b"TOKEN=other\n"),
             ..sound
         },
-        // The item names an environment file and the daemon gives none.
         Files {
             environment: None,
             ..sound
@@ -47,7 +44,6 @@ fn k10_6_4_6_a_file_whose_sha_256_is_different_is_refused() {
             Err(Refusal::ProgramMismatch)
         );
     }
-    // The daemon gives an environment file that the item does not name.
     let unnamed = apply(COMPOSE, None);
     assert_eq!(
         prepared(&unnamed, &sound, &world.facts()),
@@ -71,7 +67,6 @@ fn k10_6_4_4_a_file_that_breaks_a_rule_is_refused_with_the_code_and_the_position
             service: Some(1)
         }
     );
-    // No refusal holds text of a file or of a value.
     let secret = COMPOSE.replacen("target: /store", "target: /hunter2/../etc", 1);
     let refusal = prepare(&world, &secret).expect_err("refused");
     assert_eq!(refusal.code(), "file_not_permitted");
@@ -130,7 +125,6 @@ fn k10_6_4_6_pull_false_uses_the_digests_of_the_last_apply_and_is_refused_with_n
     let prepared = prepared(&apply, &files, &world.facts()).expect("each service has a digest");
     assert_eq!(prepared.pulls, Vec::new());
     assert!(planned(&prepared, &[], &world.facts()).is_ok());
-    // A digest of the same service with a different image is not a digest of this image.
     world.records.applications[0].current[1].image = "postgres:16".to_owned();
     assert_eq!(
         crate::work::apply::prepared(&apply, &files, &world.facts()),

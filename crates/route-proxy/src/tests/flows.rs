@@ -1,5 +1,4 @@
-//! The flows of a UDP stream (task H41, SF-327): false sources of many networks replace only
-//! each other's waiting flows, and a flow whose source answered keeps its place.
+//! False UDP sources replace only waiting flows (SF-327).
 
 use std::net::SocketAddr;
 

@@ -4,6 +4,8 @@
 //! An accepted batch stores each mean at 10 seconds, its max in the aggregates, and nothing
 //! twice.
 
+mod thread_summaries;
+
 use axum::http::StatusCode;
 use chrono::{DurationRound as _, TimeDelta};
 use serde_json::json;

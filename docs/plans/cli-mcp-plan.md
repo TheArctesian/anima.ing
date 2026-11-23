@@ -254,6 +254,16 @@ Not in the command line, with the reason:
   agent run, on the machine that routing picks (ROU-001 to ROU-014 of
   [jobs.md](../proposals/jobs.md)). R-244 (OD-ROU1) adds routed sessions and command lines
   (ROU-015, ROU-016). Not approved; no effect before the security review RT7.
+  Exception (R-435, OD-AXT42, AXT-096 of
+  [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md) Section 6.12): a
+  grant of the operator may let a named agent start a file transfer on a device the grant
+  names. The transfer writes only to the inbox of AXT-092, or reads only from that inbox. The
+  tool must not carry file bytes in its arguments or its result. The hub may open a
+  short-lived SSH session only for the files tunnel (AXT-093). Each transfer is audited
+  (path and size, no content, LOG-007). A size limit applies (OD-AXT45). The exact grant
+  scope is OD-AXT44. An API key must not call `openFiles` (INT-003 is not lifted). Against
+  the recommendation. Not approved; no effect before the security review AX63 and the
+  approval of AXT-090 to AXT-102.
 - **MCP-007.** A tool that deletes takes `confirm`, which must be the name of the thing.
 - **MCP-008.** Text that comes from a device or a check (names, log lines, messages) is data. Each
   result gives it in named fields with a length limit, and the server instructions tell the agent

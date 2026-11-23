@@ -1,5 +1,4 @@
-//! `select rdp`: the hub's values become a typed opening, and a session that would not
-//! check the device's certificate is refused (SEC-007).
+//! SEC-007.
 
 use anima_gateway::handshake::{Certificate, Desktop, Opening, Rdp, Refused, Secret, Security};
 

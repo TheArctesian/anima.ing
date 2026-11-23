@@ -1,5 +1,3 @@
-//! PRJ-030: the listing of a directory of the repository.
-
 use super::{fixture, ok};
 use crate::live::contents::{DirectoryRead, EntryKind, directory_parse};
 

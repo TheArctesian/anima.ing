@@ -1,7 +1,5 @@
 //! The Nord palette and the terminal colour scheme the hub hands to guacd (RA-010).
-//!
-//! The palette is generated from `design/tokens` (TOK-001); this file holds the colour type and
-//! the guacd `color-scheme` text built from it.
+//! The palette is generated from `design/tokens` (TOK-001).
 
 mod generated;
 
@@ -21,17 +19,13 @@ impl Rgb {
         Self { r, g, b }
     }
 
-    /// The X11 colour spec `rgb:RR/GG/BB` in lower-case hex.
     fn x11(self) -> String {
         format!("rgb:{:02x}/{:02x}/{:02x}", self.r, self.g, self.b)
     }
 }
 
-/// The Nord terminal palette as guacd's `color-scheme` connection parameter (RA-010).
-///
-/// Format: `name: rgb:RR/GG/BB` entries separated by `;`, for `background`, `foreground` and
-/// `color0` to `color15`. Source: the Guacamole manual, "Configuring Guacamole", SSH/telnet
-/// terminal display parameter `color-scheme`, which takes X11 `rgb:` colour specs.
+/// The Nord terminal palette as guacd's `color-scheme` parameter, which takes X11 `rgb:` colours
+/// (Guacamole manual, "Configuring Guacamole", RA-010).
 #[must_use]
 pub fn guac_color_scheme() -> String {
     let named = [

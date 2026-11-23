@@ -104,7 +104,15 @@ jobs:
           $cli = "target/x86_64-pc-windows-msvc/release/anima.exe"
           if ((& $cli --version) -ne "anima $env:VERSION" -or $LASTEXITCODE -ne 0) { throw 'The standalone CLI did not start at the release version' }
           New-Item -ItemType Directory out-cli | Out-Null
-          Compress-Archive -Path $cli -DestinationPath out-cli/anima-windows-x86_64.zip
+          # The zip carries the licence files of deploy/release/licences.txt beside anima.exe, as in release.yml.
+          New-Item -ItemType Directory cli-stage | Out-Null
+          Copy-Item $cli cli-stage/anima.exe
+          foreach ($line in Get-Content deploy/release/licences.txt) {
+            if ($line -match '^\s*(#|$)') { continue }
+            $source, $name = -split $line
+            Copy-Item $source "cli-stage/$name"
+          }
+          Compress-Archive -Path cli-stage/* -DestinationPath out-cli/anima-windows-x86_64.zip
           $cliDigest = (Get-FileHash out-cli/anima-windows-x86_64.zip -Algorithm SHA256).Hash.ToLowerInvariant()
           "cli_sha256=$cliDigest" >> $env:GITHUB_OUTPUT
           "$cliDigest  anima-windows-x86_64.zip" | Set-Content out-cli/SHA256SUMS

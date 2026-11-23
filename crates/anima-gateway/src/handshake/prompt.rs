@@ -1,9 +1,5 @@
-//! Asking the operator for a credential the hub did not send (GW-015): the gateway sends
-//! `required` with the names, and the client answers each with an `argv` stream: `argv`,
-//! `blob` with the value in base64, `end` (guacamole-server `src/libguac/argv.c`).
-//!
-//! The hub's relay lets the client answer only the names of the latest `required`, once
-//! each (K4 Section 4). The gateway checks the same again.
+//! Asking the operator for a credential the hub did not send (GW-015), as guacamole-server
+//! `src/libguac/argv.c` does. The gateway checks again what the hub's relay checks (K4 Section 4).
 
 use base64::Engine as _;
 use guac_protocol::Instruction;
@@ -16,7 +12,6 @@ const SUCCESS: &str = "0";
 /// `GUAC_PROTOCOL_STATUS_CLIENT_BAD_REQUEST`.
 const BAD_REQUEST: &str = "768";
 
-/// A credential the operator can be asked for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Credential {
     Username,
@@ -47,14 +42,11 @@ pub enum PromptStep {
     },
 }
 
-/// One open `required`, and the answer stream being read.
 pub struct Prompt {
     wanted: Vec<Credential>,
     /// The stream index of the answer being read, what it answers, and its bytes so far.
     reading: Option<(String, Credential, Zeroizing<Vec<u8>>)>,
-    /// The stream index of the last answer that was refused. What the client still sends
-    /// on it is dropped, so the rest of a refused password never passes for anything else,
-    /// such as clipboard text on a stream with the same index.
+    /// What still comes on a refused stream is dropped, so a refused password never passes as clipboard text.
     refused: Option<String>,
 }
 
@@ -77,20 +69,17 @@ impl Prompt {
         (prompt, required)
     }
 
-    /// `required` with the names still asked for. The hub lets the client answer each name
-    /// of a `required` once (K4 Section 4), so after a refused answer this is sent again.
+    /// `required` with the names still asked for, sent again after a refused answer (K4 Section 4).
     #[must_use]
     pub fn required(&self) -> Instruction {
         Instruction::new("required", self.wanted.iter().map(|wanted| wanted.name()))
     }
 
-    /// Whether every credential asked for has been answered.
     #[must_use]
     pub const fn is_answered(&self) -> bool {
         self.wanted.is_empty() && self.reading.is_none()
     }
 
-    /// Takes one instruction from the client.
     pub fn on_instruction(&mut self, instruction: &Instruction) -> PromptStep {
         let args = &instruction.args;
         let reading_this = |reading: &Option<(String, _, _)>| {
@@ -120,8 +109,7 @@ impl Prompt {
         match (asked, &self.reading) {
             (Some(at), None) => {
                 let credential = self.wanted.remove(at);
-                // Its full size from the start: a buffer that grows would leave parts of
-                // the value behind in memory that is freed and not zeroed.
+                // Full size from the start: a growing buffer leaves parts of the value in freed, unzeroed memory.
                 let bytes = Zeroizing::new(Vec::with_capacity(LONGEST_SECRET));
                 self.reading = Some((stream.clone(), credential, bytes));
                 self.refused = None;
@@ -131,9 +119,7 @@ impl Prompt {
         }
     }
 
-    /// `blob,<stream>,<base64>`: more of the answer. One that does not decode, or makes
-    /// the answer too long, ends the stream. The credential is asked for again with
-    /// [`Prompt::required`].
+    /// `blob,<stream>,<base64>`.
     fn on_blob(&mut self, args: &[String]) -> PromptStep {
         let Some((stream, credential, mut bytes)) = self.reading.take() else {
             return PromptStep::NotAnAnswer;
@@ -153,7 +139,6 @@ impl Prompt {
         }
     }
 
-    /// Ends the answer on `stream` as refused; `credential` is asked for again.
     fn refuse(&mut self, stream: String, credential: Credential) -> PromptStep {
         self.wanted.push(credential);
         let ack = ack(&stream, BAD_REQUEST);
@@ -161,7 +146,7 @@ impl Prompt {
         PromptStep::Acknowledge(ack)
     }
 
-    /// `end,<stream>`: the answer is complete, when it is text and not empty.
+    /// `end,<stream>`.
     fn on_end(&mut self) -> PromptStep {
         let Some((stream, credential, bytes)) = self.reading.take() else {
             return PromptStep::NotAnAnswer;

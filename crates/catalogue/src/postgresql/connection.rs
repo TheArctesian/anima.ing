@@ -1,21 +1,18 @@
-//! The connection values that the program writes into the variables that the recipe of an
-//! application names (Section 14.2, step 5).
+//! The connection values for the variables that a recipe names (Section 14.2, step 5).
 
 use std::fmt;
 
 use super::{names::Names, statements::Password};
 use crate::entry::Variables;
 
-/// Where the application reaches the server: the name of the server on the network of the
-/// pair (`anima-db-<application>`) and its port in the container.
+/// The server's name on the pair's network (`anima-db-<application>`) and its container port.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Address {
     pub host: String,
     pub port: u16,
 }
 
-/// One line of the environment file of the application. The value of the password and of the
-/// address that holds it are not shown by `Debug`.
+/// One line of the application's environment file; `Debug` hides a secret value.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Value {
     pub variable: String,
@@ -30,7 +27,6 @@ impl fmt::Debug for Value {
     }
 }
 
-/// A host name of the network of Docker: letters, digits, `.`, `_` and `-`.
 fn is_host(host: &str) -> bool {
     !host.is_empty()
         && host.len() <= 253

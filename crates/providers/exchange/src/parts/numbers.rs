@@ -1,11 +1,8 @@
-//! Numbers and commit hashes: the parts that name one thing in a repository.
-
 use std::fmt;
 
 use super::PartError;
 
-/// The largest number a part may hold: 2^53, the largest whole number a JSON reader that
-/// uses doubles keeps exactly.
+/// 2^53: the largest whole number a JSON reader that uses doubles keeps exactly.
 const LARGEST: u64 = 1 << 53;
 
 /// The number of an issue or a pull request, 1 to 2^53.
@@ -60,7 +57,6 @@ impl fmt::Display for RunId {
     }
 }
 
-/// Decimal digits with no sign and no leading zero, 1 to 2^53.
 pub(super) fn digits(text: &str) -> Result<u64, PartError> {
     let canonical = !text.is_empty()
         && text.len() <= 16

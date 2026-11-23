@@ -1,5 +1,3 @@
-//! The one hub that the settings are made for (K10 Section 6.4.2).
-
 use super::{OF_ANIMA, SET_ON_AT, World, item, pair};
 use crate::{
     Pair, PairDecision, PairFile, PairRecord, Refusal, pair_decided, request,
@@ -88,12 +86,11 @@ fn k10_6_4_2_a_different_pair_refuses_each_item_until_the_setting_is_set_on_agai
     };
     assert!(marked.different_seen);
     assert_eq!(marked.first, pair());
-    // Also the recorded pair is then refused.
     assert_eq!(
         pair_decided(PairFile::Read(&marked), SET_ON_AT, &pair()),
         PairDecision::Different(None)
     );
-    // The administrator sets "Manage applications" on again: the record is not valid.
+    // A later set-on time means the administrator set "Manage applications" on again.
     let again = pair_decided(PairFile::Read(&marked), SET_ON_AT + 60, &other());
     assert!(matches!(again, PairDecision::First(record) if record.first == other()));
 }

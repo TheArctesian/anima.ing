@@ -1,5 +1,3 @@
-//! Property and fuzz-style behaviour of `Decoder` over hostile input (GW-011).
-
 use guac_protocol::{
     DecodeError, Decoder, Instruction, MAX_ELEMENTS, MAX_INSTRUCTION_BYTES, encode,
 };
@@ -23,7 +21,6 @@ fn stream(instructions: &[Instruction]) -> Vec<u8> {
         .into_bytes()
 }
 
-/// Feeds `bytes` in chunks of the given sizes (cycled) and collects every result.
 fn feed_in_chunks(bytes: &[u8], sizes: &[usize]) -> Result<Vec<Instruction>, DecodeError> {
     let mut decoder = Decoder::new();
     let mut instructions = Vec::new();
@@ -39,7 +36,6 @@ fn feed_in_chunks(bytes: &[u8], sizes: &[usize]) -> Result<Vec<Instruction>, Dec
     Ok(instructions)
 }
 
-/// Every instruction a decoder returns fits guacd's limits and holds no NUL.
 fn assert_acceptable(decoded: &[Instruction]) {
     for i in decoded {
         assert!(encode(i).len() <= MAX_INSTRUCTION_BYTES);
@@ -49,7 +45,6 @@ fn assert_acceptable(decoded: &[Instruction]) {
     }
 }
 
-/// Byte offsets of the first byte of every code point inside a value of `i`'s encoding.
 fn value_byte_offsets(i: &Instruction) -> Vec<usize> {
     let mut offsets = Vec::new();
     let mut at = 0;

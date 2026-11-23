@@ -72,6 +72,12 @@ pub struct PushAccepted {
         skip_serializing_if = "Option::is_none"
     )]
     pub account_salt: Option<String>,
+    #[serde(
+        rename = "agentThreads",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub agent_threads: Option<super::ThreadSummariesReceipt>,
 }
 
 /// `POST /daemon/v1/keys/fetch`: the device of the bearer token and the name of one key.

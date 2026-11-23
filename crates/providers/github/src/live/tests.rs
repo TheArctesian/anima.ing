@@ -1,5 +1,3 @@
-//! Live reads run from JSON fixtures under `tests/fixtures`, shaped like GitHub's replies.
-
 use source_exchange::{Body, Request, Response};
 
 mod checks;
@@ -26,7 +24,6 @@ pub(super) fn ok(body: &[u8]) -> Response<'_> {
     }
 }
 
-/// The path and query of `request` as one string, as the engine would send them.
 pub(super) fn path_and_query(request: &Request) -> String {
     let query: Vec<String> = request
         .query

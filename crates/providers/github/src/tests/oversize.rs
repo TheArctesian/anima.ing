@@ -1,11 +1,9 @@
-//! A reply larger than the hub reads (SRC-006, SRC-007, PRO-003): for one repository it is that
-//! repository's problem, read for its `pushed_at`; for the listing it stops the run.
+//! Replies larger than the hub reads (SRC-006, SRC-007, PRO-003).
 
 use super::*;
 
 const PUSHED: &str = "2026-11-10T17:01:58Z";
 
-/// Three repositories, `me/a`, `me/b` and `me/c`, with ids 1, 2 and 3.
 fn three() -> Vec<u8> {
     let repositories: Vec<Value> = ["me/a", "me/b", "me/c"]
         .iter()
@@ -15,7 +13,6 @@ fn three() -> Vec<u8> {
     listing(3, &repositories)
 }
 
-/// The state after the listing of `page`, from `state`.
 fn listed(state: &Value, page: &[u8]) -> Value {
     let state = begin(state);
     let request = next_request(&state).unwrap();
@@ -27,7 +24,6 @@ fn listed(state: &Value, page: &[u8]) -> Value {
     normalise(&request, &response, &state).state
 }
 
-/// The answer to the next request of `state` with `body` and status 200.
 fn answer(state: &Value, body: Body<'_>) -> (Request, Normalised<Record>) {
     let request = next_request(state).unwrap();
     let out = normalise(
@@ -42,7 +38,6 @@ fn answer(state: &Value, body: Body<'_>) -> (Request, Normalised<Record>) {
     (request, out)
 }
 
-/// Reads one repository’s tree, deployments and history.
 fn read_first(state: &Value) -> Value {
     let tree = empty_tree();
     let (_, out) = answer(state, Body::Read(&tree));
@@ -178,7 +173,6 @@ fn pro_003_a_truncated_tree_is_read_for_its_pushed_at_and_its_signs_are_kept() {
     );
 }
 
-/// The requests of a second run over the same listing.
 fn run_again(state: &Value) -> Vec<Request> {
     run(state, &Replies::new(one_repository())).requests
 }

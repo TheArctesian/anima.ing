@@ -1,5 +1,4 @@
-//! The bytes of a record and their signature, for the job of a release that holds the key
-//! (R-173).
+//! The bytes of a record and their signature, for the release job that holds the key (R-173).
 
 use updater_signature::{Prehash, SecretKey, Signed};
 

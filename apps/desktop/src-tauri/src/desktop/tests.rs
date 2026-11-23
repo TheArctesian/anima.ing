@@ -6,7 +6,11 @@
 use std::collections::BTreeSet;
 
 /// Commands that only the macOS and Linux application registers, each with its reason.
-const NOT_ON_WINDOWS: [(&str, &str); 5] = [
+const NOT_ON_WINDOWS: [(&str, &str); 6] = [
+    (
+        "daemon::at_start::daemon_update_notice",
+        "tells the page what the update of the daemon at the start did; module daemon::at_start is Unix only (HMD-055)",
+    ),
     (
         "daemon::keychain::daemon_keychain_waits",
         "reads the mark of a daemon that waits in the macOS Keychain; module daemon::keychain is Unix only (R-322)",

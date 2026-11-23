@@ -1,4 +1,4 @@
-//! The checked parts accept ordinary values and refuse hostile ones (OD-E14, PRJ-027 to PRJ-035).
+//! OD-E14, PRJ-027 to PRJ-035.
 
 use proptest::prelude::*;
 
@@ -8,7 +8,6 @@ use crate::{
     WorkflowId,
 };
 
-/// Hostile text that tries to leave a path segment or a value.
 const HOSTILE: &[&str] = &[
     "",
     ".",
@@ -267,7 +266,6 @@ fn log_007_a_refusal_never_quotes_the_refused_value() {
     }
 }
 
-/// Whether `segment` is one segment a URL parser leaves as it is.
 fn is_plain(segment: &str) -> bool {
     segment != "."
         && segment != ".."

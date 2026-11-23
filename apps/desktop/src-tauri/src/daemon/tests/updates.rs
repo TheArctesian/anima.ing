@@ -18,9 +18,8 @@ use std::{
 use super::rig::{NEVER, Rig, WIDE, names_in, rig};
 use crate::daemon::{
     DaemonError,
-    signature::Identity,
     update::{STOP_ARGS, Swap, Updated, previous, update_here},
-    version::{Decision, decide, parse},
+    version::{Decision, Version, decide, parse},
 };
 
 /// How a stand-in answers `--version`.
@@ -63,25 +62,53 @@ pub(super) fn installed(installed: &str, carried: &str, then: &str) -> (Rig, Str
 }
 
 fn update(rig: &Rig) -> Result<Updated, DaemonError> {
-    update_with(rig, WIDE, Identity::Kept)
+    update_with(rig, WIDE)
 }
 
-/// The update with `restart` as the deadline of each `stop` and `install`, for a carried daemon
-/// of `identity`.
-pub(super) fn update_with(
-    rig: &Rig,
-    restart: Duration,
-    identity: Identity,
-) -> Result<Updated, DaemonError> {
+/// The checks of the update, as the app makes them: by default each passes.
+#[derive(Clone, Copy)]
+pub(super) struct Checks {
+    pub restart: Duration,
+    pub sealed: bool,
+    pub signed: fn(&Path) -> bool,
+    pub healthy: fn(Version) -> bool,
+}
+
+impl Default for Checks {
+    fn default() -> Self {
+        Self {
+            restart: WIDE,
+            sealed: true,
+            signed: |_| true,
+            healthy: |_| true,
+        }
+    }
+}
+
+/// The update with `restart` as the deadline of each `stop` and `install`.
+pub(super) fn update_with(rig: &Rig, restart: Duration) -> Result<Updated, DaemonError> {
+    update_checked(
+        rig,
+        &Checks {
+            restart,
+            ..Checks::default()
+        },
+    )
+}
+
+/// The update with `checks`.
+pub(super) fn update_checked(rig: &Rig, checks: &Checks) -> Result<Updated, DaemonError> {
     let env = rig.here().env;
     update_here(&Swap {
         copy: &rig.installed(),
         carried: &rig.source,
         user: rig.user,
         env: &env,
-        restart,
+        restart: checks.restart,
         stop: &NEVER,
-        identity,
+        sealed: checks.sealed,
+        signed: &checks.signed,
+        healthy: &checks.healthy,
     })
 }
 
@@ -145,7 +172,11 @@ fn hmd_055_the_unit_stops_then_a_new_file_takes_the_place_then_the_unit_starts()
          aside; no enrolment"
     );
     assert_eq!(STOP_ARGS, ["stop"]);
-    assert_eq!(bin(&rig), ["anima-daemon"]);
+    assert_eq!(
+        bin(&rig),
+        ["anima-daemon", "anima-daemon.0.1.9"],
+        "the copy of before stays under its version"
+    );
 }
 
 #[test]
@@ -277,7 +308,7 @@ fn hmd_055_an_update_cut_between_its_renames_puts_the_copy_of_before_back_first(
 }
 
 #[test]
-fn hmd_055_an_update_cut_before_its_start_starts_the_unit_and_forgets_the_copy_of_before() {
+fn hmd_055_an_update_cut_before_its_start_starts_the_unit_and_keeps_the_copy_of_before() {
     let (rig, _, new) = installed(NEW, NEW, "exit 0");
     write_program(
         &previous(&rig.installed()),
@@ -289,5 +320,5 @@ fn hmd_055_an_update_cut_before_its_start_starts_the_unit_and_forgets_the_copy_o
 
     assert_eq!(copy_text(&rig), new);
     assert_eq!(rig.runs().matches(" install ").count(), 1);
-    assert_eq!(bin(&rig), ["anima-daemon"]);
+    assert_eq!(bin(&rig), ["anima-daemon", "anima-daemon.0.1.9"]);
 }

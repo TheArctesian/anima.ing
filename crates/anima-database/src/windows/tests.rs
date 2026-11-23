@@ -1,4 +1,3 @@
-//! Native PostgreSQL acceptance: private TLS, role separation, backup, restore and restart.
 use super::*;
 use crate::{Limits, Role, Settings, Stopped, backup, startup};
 use sqlx::{ConnectOptions, Connection};
@@ -86,8 +85,7 @@ fn native_database_verifies_tls_and_preserves_data_across_backup_and_restart() {
     assert_eq!(running.stop(LIMITS).unwrap(), Stopped::Clean);
 }
 
-/// Windows can retain file handles briefly after process exit (including scanners).
-/// Wait for the move itself; a persistent permission failure still fails the test.
+/// Windows can hold file handles briefly after a process exits, so the move is retried.
 fn move_stopped(from: &Layout, to: &Layout) {
     let until = Instant::now() + Duration::from_secs(5);
     loop {

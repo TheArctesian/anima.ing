@@ -1,9 +1,8 @@
-//! Why the applications program refuses an item: one fixed code each (contract K10 Sections 5
-//! and 7). No refusal holds text of a request, of a file or of a value.
+//! One fixed code for each refusal (contract K10 Sections 5 and 7). No refusal holds text of
+//! a request, of a file or of a value.
 
 use compose_rules::Rule;
 
-/// The fixed cause of a refusal of a container item.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum Refusal {
     #[error("type_unknown")]
@@ -69,7 +68,6 @@ impl Refusal {
         }
     }
 
-    /// A refusal of a file for a rule of the top level.
     pub(crate) const fn file(rule: Rule) -> Self {
         Self::FileNotPermitted {
             rule,
@@ -79,8 +77,7 @@ impl Refusal {
 }
 
 impl From<compose_rules::Refusal> for Refusal {
-    /// The refusal of the check of a file. For `not_at_machine` the result of an item has no
-    /// member for the position of the service (K10 Section 7), so the position is dropped.
+    /// `not_at_machine` drops the service position: an item's result has no member for it (K10 Section 7).
     fn from(refusal: compose_rules::Refusal) -> Self {
         match refusal {
             compose_rules::Refusal::File { rule, service } => {

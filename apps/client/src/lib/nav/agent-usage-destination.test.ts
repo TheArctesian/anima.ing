@@ -35,7 +35,7 @@ function show(iconOnly = false): HTMLElement {
 }
 
 it('AIS-020: a wide window has Agent usage between Devices and Settings', () => {
-  expect([...show().querySelectorAll('a')].map((link) => link.getAttribute('href'))).toEqual(['/devices', '/agents/usage', '/extensions', '/settings']);
+  expect([...show().querySelectorAll('a')].map((link) => link.getAttribute('href'))).toEqual(['/devices', '/hosting', '/agents/usage', '/extensions', '/settings']);
 });
 
 it('UI-015, AIS-020, MOB-010: phone destinations include Code and show their names as tooltips', () => {

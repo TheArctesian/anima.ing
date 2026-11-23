@@ -227,7 +227,6 @@ fn remove_stops_the_unit_and_takes_the_file_and_the_programs_but_never_the_datab
         assert!(!is_installed(&rig.request(platform)));
         assert!(rig.folders.database().cluster().is_dir());
         assert!(rig.folders.vault_key().is_file());
-        // A second remove finds nothing and is not an error.
         rig.remove(platform);
     }
 }

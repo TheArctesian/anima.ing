@@ -1,6 +1,4 @@
-//! The commands of the services (SF-251): a variable, a shell, an entrypoint, a
-//! setting that changes the code of the image, a secret in a word, and the services that an
-//! exception names.
+//! SF-251.
 
 use super::{codes, replaced, sound, with_compose};
 use crate::{Code, Privilege, Recipe, check};
@@ -11,12 +9,10 @@ const REVIEWED: &str =
 const ORIGIN: &str = r#""origin": { "from": "linuxserver", "read": "2026-11-17" },
     "reviewed": { "state": "not-reviewed" }, "marks""#;
 
-/// [`sound`] with `lines` before the `security_opt` of its service.
 fn with_lines(lines: &str) -> Recipe {
     with_compose(OPTION, &format!("{lines}\n{OPTION}"))
 }
 
-/// `recipe` whose entry names a reviewed command for its service.
 fn reviewed(recipe: Recipe) -> Recipe {
     Recipe {
         entry: recipe

@@ -25,13 +25,11 @@ use windows::{
 pub struct Request(OwnedHandle);
 
 impl Request {
-    /// Whether this object still owns its active request handle.
     #[must_use]
     pub fn active(&self) -> bool {
         !self.0.as_raw_handle().is_null()
     }
 
-    /// Request that Windows keep this process's computer running while it works.
     /// # Errors
     /// Windows refuses to create or activate the request.
     pub fn idle() -> io::Result<Self> {
@@ -62,8 +60,7 @@ impl Drop for Request {
     }
 }
 
-/// Current battery percentage only when discharging, with a known battery and percentage.
-/// Unknown power readings and computers without batteries return None.
+/// The battery percentage while discharging; `None` for an unknown reading or no battery.
 #[must_use]
 pub fn battery_percent() -> Option<u8> {
     let mut status = SYSTEM_POWER_STATUS::default();

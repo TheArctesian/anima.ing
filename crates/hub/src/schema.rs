@@ -17,7 +17,7 @@ use crate::{
         extensions, files, links, locations, places, reminders, sealed_records, sources, timeline,
     },
     fleet::{
-        access, agent_usage, builds, checks, compute,
+        access, agent_threads, agent_usage, builds, checks, compute,
         credentials::{self, Vault},
         devices,
         events::{
@@ -36,6 +36,7 @@ use crate::{
 #[derive(MergedObject, Default)]
 pub struct Query(
     access::graphql::Query,
+    agent_threads::graphql::Query,
     agent_usage::graphql::Query,
     agent_usage::graphql::SessionsQuery,
     builds::graphql::Query,
@@ -110,6 +111,7 @@ pub struct Mutation(
 
 #[derive(MergedSubscription, Default)]
 pub struct Subscription(
+    agent_threads::graphql::Subscription,
     builds::graphql::Subscription,
     checks::graphql::Subscription,
     events::graphql::Subscription,

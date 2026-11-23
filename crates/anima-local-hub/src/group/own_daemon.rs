@@ -1,6 +1,5 @@
-//! The daemon in the container of a hosted hub (HMD-071, task HM-T35 of hosted-mode.md): the
-//! hub is told of it, it is enrolled once with the code that the hub writes, and then it runs
-//! beside the hub. Its end does not end the group: the hub serves without its figures.
+//! The daemon in the container of a hosted hub (HMD-071). Its end does not end the group: the
+//! hub serves without its figures.
 
 use std::net::SocketAddr;
 use std::process::Stdio;
@@ -14,8 +13,7 @@ use super::{Group, Plan, log};
 use crate::child::{Child, Spec};
 use crate::members::{self, OwnDaemon};
 
-/// How long the hub may take to write the code after its ready line: it writes it after it
-/// has added its own device.
+/// The hub writes the code after its ready line, once it has added its own device.
 const CODE_WAIT: Duration = Duration::from_secs(30);
 const CODE_LOOK: Duration = Duration::from_millis(250);
 /// How long `anima-daemon enrol` may take; it sends one request (K8: ten seconds).
@@ -25,9 +23,7 @@ const DAEMON_STOP: Duration = Duration::from_secs(5);
 /// The most bytes of the code file that are read: a code is 34.
 const CODE_FILE_LIMIT: u64 = 256;
 
-/// The hub of `plan` as the pool runs it, with its gateway at `gateway`, and its daemon with
-/// whether the daemon has its token. The daemon is `None` outside the hosted mode and when the
-/// folder of the programs has none.
+/// The daemon, with whether it has its token, is `None` outside the hosted mode or when absent.
 pub(super) fn hub_and_daemon(
     plan: &Plan,
     gateway: SocketAddr,
@@ -49,15 +45,13 @@ pub(super) fn hub_and_daemon(
 }
 
 impl Group {
-    /// Enrols the daemon when it holds no enrolment, then starts it. A failure is written to standard
-    /// error and leaves the hub running; the next start of the group tries again.
+    /// A failure goes to standard error and leaves the hub running; the next group start tries again.
     pub(super) async fn start_own_daemon(&mut self, plan: &Plan, own: &OwnDaemon, enrolled: bool) {
         if !enrolled && let Err(fault) = enrol(own).await {
             eprintln!("anima-local-hub: the hub's own daemon is not enrolled: {fault}");
             return;
         }
         let spec = own.collection();
-        // Its end is reported to nobody: the group goes on without it.
         let (report_end, _ended) = mpsc::unbounded_channel();
         let started = log(plan, spec.name)
             .map_err(|error| error.to_string())
@@ -71,8 +65,7 @@ impl Group {
     }
 }
 
-/// `anima-daemon enrol -` with the code that the hub wrote, which is then removed. The code is
-/// held only in memory that is wiped and reaches no log (LOG-007).
+/// The code is held only in memory that is wiped and reaches no log (LOG-007).
 async fn enrol(own: &OwnDaemon) -> Result<(), &'static str> {
     let code = written_code(own).await;
     let _ = tokio::fs::remove_file(own.code_file()).await;

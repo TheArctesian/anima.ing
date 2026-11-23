@@ -1,7 +1,5 @@
-//! The copy of the database of an application (`pg_dump` in the custom format), the way back
-//! (`pg_restore` into a new database) and the test of the way back (Section 14.3), as
-//! argument lists that the program runs in the server container. HOST-042 is not approved:
-//! nothing runs them yet.
+//! The copy of an application's database, the way back and its test (Section 14.3), as
+//! argument lists that the program runs in the server container.
 
 use std::collections::BTreeSet;
 
@@ -13,17 +11,14 @@ use super::{
 /// The superuser of the official image.
 const SUPERUSER: &str = "--username=postgres";
 
-/// The tables of a database, as `schema.table`, one on each line, with no header.
 const TABLES: &str = "SELECT schemaname || '.' || tablename FROM pg_catalog.pg_tables \
      WHERE schemaname NOT IN ('pg_catalog', 'information_schema') ORDER BY 1";
 
-/// The file of one copy in the server container: an absolute path of letters, digits, `/`,
-/// `.`, `_` and `-`, with no `..` part.
+/// The file of one copy in the server container: an absolute path with no `..` part.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DumpFile(String);
 
 impl DumpFile {
-    /// `None` for a path that is not permitted.
     #[must_use]
     pub fn new(path: &str) -> Option<Self> {
         let permitted = path.starts_with('/')
@@ -41,7 +36,6 @@ impl DumpFile {
     }
 }
 
-/// The copy of the database of `names` into `copy`, in the custom format of `pg_dump`.
 #[must_use]
 pub fn dump_command(names: &Names, copy: &DumpFile) -> Vec<String> {
     vec![
@@ -54,8 +48,7 @@ pub fn dump_command(names: &Names, copy: &DumpFile) -> Vec<String> {
     ]
 }
 
-/// The restore of `copy` into the empty database `target`. Each object belongs to `owner`;
-/// the restore stops at the first error and changes nothing then.
+/// The restore of `copy` into the empty database `target`, owned by `owner`; all or nothing.
 #[must_use]
 pub fn restore_command(
     target: &DatabaseName,
@@ -85,7 +78,6 @@ pub fn list_command(copy: &DumpFile) -> Vec<String> {
     ]
 }
 
-/// The query of the tables of a database, which [`check_command`] runs.
 #[must_use]
 pub const fn tables_query() -> &'static str {
     TABLES
@@ -106,9 +98,8 @@ pub fn check_command(target: &DatabaseName) -> Vec<String> {
     ]
 }
 
-/// Each table of the table of contents that `pg_restore --list` wrote, as `schema.table`. A
-/// line of a table is `<id>; <oid> <oid> TABLE <schema> <table> <owner>`; a line of its rows
-/// (`TABLE DATA`) and a comment (`;`) are not tables.
+/// Each table that `pg_restore --list` wrote, as `schema.table`; a table line is
+/// `<id>; <oid> <oid> TABLE <schema> <table> <owner>`.
 #[must_use]
 pub fn tables_in_list(list: &str) -> BTreeSet<String> {
     list.lines()
@@ -125,8 +116,7 @@ pub fn tables_in_list(list: &str) -> BTreeSet<String> {
         .collect()
 }
 
-/// Each table of `listed` that is not a line of `found`, the answer of [`check_command`]. An
-/// empty list: the way back is good.
+/// Each table of `listed` that is not a line of `found`; an empty list means the way back is good.
 #[must_use]
 pub fn missing_tables(listed: &BTreeSet<String>, found: &str) -> Vec<String> {
     let found: BTreeSet<&str> = found.lines().map(str::trim).collect();
@@ -137,8 +127,7 @@ pub fn missing_tables(listed: &BTreeSet<String>, found: &str) -> Vec<String> {
         .collect()
 }
 
-/// The steps of the way back or of its test, in order: make `target`, list the copy, restore
-/// it, read the tables, and (for the test only) delete `target`.
+/// The steps of the way back or of its test, in order.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Restore {
     pub target: DatabaseName,
@@ -146,8 +135,7 @@ pub struct Restore {
     pub list: Vec<String>,
     pub restore: Vec<String>,
     pub tables: Vec<String>,
-    /// For the test of the way back only. The way back keeps its database: the operator
-    /// switches the application to it, and the old database stays until he deletes it.
+    /// For the test only; the way back keeps its database.
     pub drop: Option<Statement>,
 }
 
@@ -162,8 +150,7 @@ fn restore(names: &Names, copy: &DumpFile, target: DatabaseName, test: bool) -> 
     }
 }
 
-/// The way back number `number`: `copy` restored into the new database
-/// `<database>__back_<number>`.
+/// The way back number `number`: `copy` restored into `<database>__back_<number>`.
 ///
 /// # Errors
 /// [`NameError::NotPermitted`] when that name is longer than 63 bytes.

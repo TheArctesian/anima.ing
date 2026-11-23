@@ -25,6 +25,7 @@
     "allow-daemon-install",
     "allow-daemon-remove",
     "allow-daemon-keychain-waits",
+    "allow-daemon-update-notice",
     "allow-local-hub-carried",
     "allow-local-hub-install",
     "allow-local-hub-remove",

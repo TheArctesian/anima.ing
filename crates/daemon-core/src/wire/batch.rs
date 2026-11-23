@@ -6,7 +6,10 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{BatchAgentUsage, BatchBattery, BatchInventory, BatchKeys, BatchUpdate, KeyVersion};
+use super::{
+    BatchAgentUsage, BatchBattery, BatchInventory, BatchKeys, BatchUpdate, KeyVersion,
+    ThreadSummaries,
+};
 use crate::hardware::Hardware;
 use crate::points::{Point, SeriesKey};
 use crate::readings::{self, Drive};
@@ -56,6 +59,12 @@ pub struct Batch {
         skip_serializing_if = "Option::is_none"
     )]
     pub agent_usage: Option<BatchAgentUsage>,
+    #[serde(
+        rename = "agentThreads",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub agent_threads: Option<ThreadSummaries>,
     /// The versions of the operational keys in the daemon's cache (K-E5 Section 2.1, R-147). A
     /// daemon without a key cache sends none and is told no keys; a hub older than R-147 ignores
     /// it (K8 Section 1).
@@ -76,6 +85,7 @@ pub struct Announcements {
     pub inventory: Option<BatchInventory>,
     pub hardware: Option<Hardware>,
     pub agent_usage: Option<BatchAgentUsage>,
+    pub agent_threads: Option<ThreadSummaries>,
 }
 
 /// One column of a batch. `kind` is text, so a kind this hub does not know can be ignored.
@@ -206,6 +216,7 @@ impl Batch {
             hardware: announced.hardware,
             daemon_version: None,
             agent_usage: announced.agent_usage,
+            agent_threads: announced.agent_threads,
             keys: None,
             update: None,
         }

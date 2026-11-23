@@ -1,7 +1,5 @@
-//! A session from the hub's first instruction to a signed-in device: the handshake, the
-//! connection to the device, a prompt for what the sign-in still needs (GW-015), and the
-//! sign-in. Each way it can fail is told to the hub with the status that gives the session
-//! its end reason (K4 Section 5). I/O edge.
+//! A session from the hub's first instruction to a signed-in device (GW-015).
+//! Each failure tells the hub the status that gives the session its end reason (K4 Section 5).
 
 use guac_protocol::Instruction;
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -22,8 +20,7 @@ const MOST_BEFORE_CONNECT: usize = 32;
 /// Random bytes for one sign-in: the longest secret number and the filler of Apple's method.
 const RANDOM_BYTES: usize = 512 + 128;
 
-/// What a signed-in session still needs of its opening. The account is not among it: it
-/// is dropped, and so zeroed, when the sign-in ends.
+/// Holds no account, so the account is dropped and zeroed when the sign-in ends.
 #[derive(Clone, Copy)]
 pub(super) struct Allowed {
     /// The device's clipboard may go to the client (RA-033).
@@ -35,23 +32,18 @@ pub(super) struct Allowed {
     pub(super) view: (usize, usize),
 }
 
-/// A session with its device signed in.
 pub(super) struct Opened {
     pub(super) allowed: Allowed,
     pub(super) device: TcpStream,
-    /// The device's screen size.
     pub(super) size: (usize, usize),
 }
 
-/// How the opening goes on after the first instruction.
 pub(super) enum First {
     Vnc(Opening),
-    /// `select` of a protocol the gateway does not serve, or is told to pass on: for
-    /// another gateway, if any.
+    /// `select` of a protocol this gateway does not serve or passes on, for another gateway.
     Other(Instruction),
 }
 
-/// Reads the hub's handshake up to `connect` and answers it with `ready`.
 pub(super) async fn handshake<S>(
     hub: &mut Hub<S>,
     connection_id: &str,
@@ -88,7 +80,6 @@ where
     Err(refuse(hub, Refused::Unexpected.status(), Ended::Refused).await)
 }
 
-/// Tells the hub the session ends with `status`, and gives `ended` back.
 pub(super) async fn refuse<S>(hub: &mut Hub<S>, status: u16, ended: Ended) -> Ended
 where
     S: AsyncRead + AsyncWrite + Send + 'static,
@@ -98,7 +89,6 @@ where
     ended
 }
 
-/// Connects to the device and signs in, asking the operator for what is missing.
 pub(super) async fn sign_in<S>(
     hub: &mut Hub<S>,
     mut opening: Opening,
@@ -164,8 +154,6 @@ where
     }
 }
 
-/// Asks the operator for each credential in `needs` that the hub did not send, and puts
-/// the answers into `opening`.
 pub(super) async fn ask_for_missing<S>(
     hub: &mut Hub<S>,
     opening: &mut Opening,
