@@ -7,6 +7,9 @@
   import { noticeParts } from './notice';
   import { draftProjects, headingOf } from './project';
   import ProjectPicker from './ProjectPicker.svelte';
+  import AddProject from '../add-project/AddProject.svelte';
+  import { startFolder } from '../add-project/sources';
+  import { folderListOf } from '../add-project/walk.svelte';
   import type { ThreadDraft } from './thread-draft.svelte';
 
   interface Props {
@@ -25,7 +28,7 @@
   /** A folder the person added from the picker, listed until a thread of it is. */
   let added = $state<string | null>(null);
   const known = $derived(draftProjects(projects, added));
-  const heading = $derived(headingOf(draft.folder, known));
+  const heading = $derived(headingOf(draft.folder, known, draft.scratch));
   const engine = $derived(draft.engine((action) => live.call(action), onStarted, models, loadModels));
   const notice = $derived(draft.notice !== null && draft.notice.folder === draft.folder && draft.notice.lines.length > 0 ? draft.notice.lines : null);
 
@@ -52,7 +55,7 @@
 
   function choose(folder: string): void {
     if (!projects.some((project) => project.folder === folder)) added = folder;
-    draft.folder = folder;
+    draft.inFolder(folder);
   }
 </script>
 
@@ -68,13 +71,23 @@
         {#if heading.kind === 'build'}
           <span>What should we build in</span>
           <!-- The mark follows the name with no space, as T3's suffix does. -->
-          <span class="project"><ProjectPicker projects={known} folder={draft.folder} words={heading.name} onChoose={choose} open={picking} /><span>?</span></span>
+          <span class="project"><ProjectPicker projects={known} folder={draft.folder} words={heading.name} onChoose={choose} onAdd={() => draft.addProject()} open={picking} /><span>?</span></span>
+        {:else if heading.kind === 'scratch'}
+          <span>What should we work on?</span>
         {:else if heading.kind === 'choose'}
-          <span><ProjectPicker projects={known} folder={null} words="Choose a project" onChoose={choose} open={picking} /> to start</span>
+          <span><ProjectPicker projects={known} folder={null} words="Choose a project" onChoose={choose} onAdd={() => draft.addProject()} open={picking} /> to start</span>
         {:else}
-          <span><ProjectPicker projects={known} folder={null} words="Add a project" onChoose={choose} open={picking} /> to start</span>
+          <span><ProjectPicker projects={known} folder={null} words="Add a project" onChoose={choose} onAdd={() => draft.addProject()} open={picking} /> to start</span>
         {/if}
       </h1>
+      <!-- T3: under a scratch draft its project picker says "No project"; under any other, the way to one. -->
+      <p class="sub">
+        {#if heading.kind === 'scratch'}
+          <ProjectPicker projects={known} folder={null} words="No project" onChoose={choose} onAdd={() => draft.addProject()} open={picking} />
+        {:else}
+          <button type="button" class="quiet" onclick={() => draft.withoutProject()}>or start without a project</button>
+        {/if}
+      </p>
     </div>
     {#if notice !== null}
       <div class="notice" role="note" aria-label="What this folder runs by itself">
@@ -87,6 +100,8 @@
     {#key draft}<Card {engine} title="New thread" />{/key}
   </div>
 </div>
+
+<AddProject bind:open={draft.adding} list={(folder) => live.call({ call: 'folders', folder }).then(folderListOf)} start={startFolder(known)} onAdd={choose} />
 
 <style>
   /* The composer in the middle of the canvas, low when the window is short (T3: items-center, items-end under 34rem). */
@@ -139,6 +154,34 @@
     h1 {
       font-size: calc(var(--text-2xl) * 1.25);
     }
+  }
+
+  .sub {
+    display: flex;
+    justify-content: center;
+    min-block-size: var(--space-6);
+    margin: var(--space-2) 0 0;
+    font-size: var(--code-text-small);
+  }
+
+  /* T3's InlineButton tone "muted": quiet words that brighten on hover. */
+  .quiet {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text-quiet);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .quiet:hover {
+    color: var(--text-secondary);
+  }
+
+  .quiet:focus-visible {
+    border-radius: var(--radius-sm);
+    outline: var(--border-focus) solid var(--focus-ring);
+    outline-offset: var(--border-focus);
   }
 
   .project {

@@ -60,6 +60,13 @@ impl Runner {
             chosen_folder(&new.folder, self.dir.parent().unwrap_or(&self.dir))?;
         }
         self.draft_ready(&new)?;
+        if !self
+            .said
+            .models
+            .offers(new.program, new.model.as_deref(), new.effort)
+        {
+            return Err(Refusal::BadValue);
+        }
         if login::find(new.program, &self.env, login::executable, login::trusted).is_none() {
             self.ask_login_again(new.program).await;
         }
@@ -81,7 +88,13 @@ impl Runner {
                 // One ask for each copy at a time: a later start waits for the same answer.
                 let asked = self.asks.open.values().any(|open| open.path == path);
                 let env = login::with_folder_of(self.env.clone(), &path);
-                let ask = super::silence::ask(path.clone(), copies.clone(), env);
+                let ask = {
+                    let (path, copies) = (path.clone(), copies.clone());
+                    async move {
+                        let load = super::silence::load().await;
+                        super::silence::ask(path, copies, env, load).await
+                    }
+                };
                 let sender = self.asks.sender.clone();
                 let id = self.asks.next;
                 self.asks.next += 1;
@@ -114,6 +127,7 @@ impl Runner {
         };
         // The answer itself decides: a copy replaced while it was asked keeps this answer.
         let answered = answers
+            .copies
             .iter()
             .any(|(copy, version)| *copy == path && version.is_some());
         let waiting: Vec<u64> = self
@@ -208,6 +222,7 @@ impl Runner {
         self.silence.started(id, new.program, path);
         let codex = codex_of(&row, new.effort, daemon);
         self.threads.insert(id, Thread::new(row, new.effort, codex));
+        self.say_priority();
         if !notice.is_empty() {
             // The thread keeps the notice as its first line (THR-046).
             let text = notice.join("\n");

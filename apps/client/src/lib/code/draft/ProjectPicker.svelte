@@ -14,19 +14,21 @@
     /** The trigger's words: the project's name, "Choose a project" or "Add a project". */
     words: string;
     onChoose: (folder: string) => void;
+    /** Opens the "Add project" palette; without it, "Add project" takes a typed folder in this list. */
+    onAdd?: (() => void) | undefined;
     /** Open from the start, for the gallery. */
     open?: boolean;
   }
 
-  let { projects, folder, words, onChoose, open = $bindable(false) }: Props = $props();
+  let { projects, folder, words, onChoose, onAdd, open = $bindable(false) }: Props = $props();
   const id = $props.id();
   let trigger = $state<HTMLButtonElement>();
   let panel = $state<HTMLElement>();
   let query = $state('');
   /** "Add project" was chosen. */
   let chose = $state(false);
-  /** The field takes a folder's path: "Add project" was chosen, or there is no project to list. */
-  const adding = $derived(chose || projects.length === 0);
+  /** The field takes a folder's path: "Add project" was chosen, or there is no project to list, and there is no palette for it. */
+  const adding = $derived(onAdd === undefined && (chose || projects.length === 0));
   let problem = $state<string | null>(null);
   let at = $state(0);
   const shown = $derived(shownProjects(projects, query));
@@ -44,6 +46,11 @@
 
   function choose(index: number, keys: boolean): void {
     const project = shown[index];
+    if (project === undefined && onAdd !== undefined) {
+      close(false);
+      onAdd();
+      return;
+    }
     if (project === undefined) {
       chose = true;
       query = '';

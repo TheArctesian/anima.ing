@@ -50,6 +50,7 @@ pub mod retention;
 pub mod routes;
 pub mod sealed_records;
 pub mod sessions;
+pub mod shortening;
 pub mod sites;
 pub mod snapshot;
 pub mod sources;

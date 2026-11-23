@@ -129,7 +129,6 @@ const FAILED_TURN = 'The last turn failed, so the queue waits. Send a message, o
 const STOPPED = 'You stopped the turn, so the queue waits. Send a message, or press Send now.';
 const NO_SEARCH = 'The runner cannot search the folder of a chat yet.';
 const NO_PICK = 'The model and the permissions are set when a chat starts; the runner cannot change them after.';
-const NO_COMMAND = 'The runner has no such command yet.';
 
 function outcomeOf(result: CallResult): Outcome {
   return result.ok ? { ok: true } : { ok: false, words: result.words };
@@ -137,14 +136,14 @@ function outcomeOf(result: CallResult): Outcome {
 
 /** One list for every row, so that what reads it is not told of a change at each update of the chat. */
 const SOURCES: MentionSources = {
-  commands: builtInCommands({ model: cannot(NO_PICK), clear: cannot(NO_COMMAND) }),
+  commands: builtInCommands({ model: cannot(NO_PICK) }),
   skills: [],
   files: () => Promise.resolve([]),
   search: cannot(NO_SEARCH),
 };
 
 /** The same lists for a chat whose runner takes a change of the mode and the effort: `/model` opens the picker. */
-const SOURCES_SET: MentionSources = { ...SOURCES, commands: builtInCommands({ model: CAN, clear: cannot(NO_COMMAND) }) };
+const SOURCES_SET: MentionSources = { ...SOURCES, commands: builtInCommands({ model: CAN }) };
 
 /** The phase of a chat by the state of its run: a program that waits for an answer is still in its turn. */
 export function phaseOf(row: RunRow): QueuePhase {

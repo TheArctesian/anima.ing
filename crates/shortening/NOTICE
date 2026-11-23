@@ -1,0 +1,25 @@
+Anima.ing shortening
+Parts of this crate are from Headroom (https://github.com/headroomlabs-ai/headroom),
+read at commit ce0460cfa8598dc939243dbc7aec4b2d35f4e44a.
+
+    Headroom
+    Copyright 2025 Headroom Contributors
+
+    This product includes software developed by the Headroom Contributors.
+
+Headroom is licensed under the Apache License, Version 2.0 (see LICENSE-APACHE).
+Anima.ing changed each part in 2026; each file that holds such a part says what changed.
+This crate as a whole is distributed under the licence of Anima.ing (AGPL-3.0-or-later).
+
+Source files of Headroom that parts were taken from (crates/headroom-core/src/transforms/):
+
+    smart_crusher/error_keywords.rs   -> src/rows/error_words.rs
+    smart_crusher/outliers.rs         -> src/rows/error_words.rs, src/rows/rare.rs
+    smart_crusher/analyzer.rs         -> src/rows/numbers.rs
+    smart_crusher/stats_math.rs       -> src/rows/numbers.rs
+    smart_crusher/config.rs           -> src/limits.rs
+    smart_crusher/crushers.rs         -> src/choice.rs
+    smart_crusher/orchestration.rs    -> src/choice.rs
+    smart_crusher/crusher.rs          -> src/rows.rs
+    log_compressor.rs                 -> src/lines.rs, src/lines/level.rs, src/lines/same.rs,
+                                         src/lines/trace.rs

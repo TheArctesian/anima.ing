@@ -36,6 +36,8 @@ export class CardState {
   busy = $state(false);
   /** The words of the last failure, shown under the editor until the next try. */
   problem = $state<string | null>(null);
+  /** The problem is a send that did not go: its text is back in the editor, and Retry sends it again. */
+  unsent = $state(false);
   stop = $state<StopPhase>('none');
   /** The id of the queued message that is open in the composer. */
   editing = $state<string | null>(null);
@@ -129,6 +131,12 @@ export class CardState {
       else if (face.action !== 'queue') release(message.attachments);
       return;
     }
+    this.#putBack(message, editing, aside);
+    this.unsent = editing === null && face.action === 'send';
+  }
+
+  /** A message that did not go comes back in front of what was typed meanwhile, and an edit stays open. */
+  #putBack(message: Message, editing: string | null, aside: Message | null): void {
     const typed = this.prompt === (editing === null ? '' : (aside?.prompt ?? '')) ? '' : this.prompt;
     // What was attached while the message was on its way stays, after the files of the message.
     this.#fill({ prompt: typed === '' ? message.prompt : `${message.prompt}\n${typed}`, attachments: [...message.attachments, ...this.attachments] });
@@ -332,6 +340,7 @@ export class CardState {
     if (this.busy) return false;
     this.busy = true;
     this.problem = null;
+    this.unsent = false;
     let outcome: Outcome;
     try {
       outcome = await call();

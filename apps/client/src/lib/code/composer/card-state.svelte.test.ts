@@ -58,6 +58,12 @@ describe('the composer card', () => {
     await card.submit(false);
     expect(card.prompt).toBe('Again');
     expect(card.problem).toBe('The runner did not answer.');
+    // Retry sends the text that came back; a send that goes takes the words and the Retry away.
+    expect(card.unsent).toBe(true);
+    answer.next = { ok: true };
+    await card.submit(false);
+    expect(calls.at(-1)).toBe('send Again');
+    expect(card).toMatchObject({ unsent: false, problem: null, prompt: '' });
   });
 
   it('sends nothing for an empty prompt or a chat that ended', async () => {

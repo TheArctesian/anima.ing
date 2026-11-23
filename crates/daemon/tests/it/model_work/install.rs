@@ -32,6 +32,24 @@ fn a_whole_archive_is_installed_with_plain_modes() {
 }
 
 #[test]
+fn the_release_folder_is_0755_whatever_the_umask() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let root = tempfile::tempdir().expect("a folder");
+    let folders = folders(root.path());
+    let file = archive(&[(PROGRAM, 0o755, Some(FAKE_RUNTIME.as_bytes()))]);
+    // nextest runs each test in its own process, so the umask of this one touches no other test.
+    let previous = rustix::process::umask(rustix::fs::Mode::from_raw_mode(0o077));
+    let placed = place_archive(file, &target(&folders, 0));
+    rustix::process::umask(previous);
+    placed.expect("installed");
+    let mode = std::fs::metadata(folders.release(&release()))
+        .expect("the release folder")
+        .permissions()
+        .mode();
+    assert_eq!(mode & 0o7777, 0o755);
+}
+
+#[test]
 fn an_archive_that_breaks_a_rule_is_refused_and_leaves_nothing() {
     let cases: [&[Entry<'_>]; 5] = [
         &[(PROGRAM, 0o755, Some(b"x")), ("bin/link", 0o777, None)],
