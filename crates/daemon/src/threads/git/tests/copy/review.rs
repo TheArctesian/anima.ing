@@ -122,3 +122,215 @@ async fn a_pack_of_a_thread_never_takes_the_place_of_a_pack_of_the_copy() {
         "the new pack has a name of its own"
     );
 }
+
+/// An engine on the records of the bench whose copies can always have `room` bytes.
+fn engine_with_room(bench: &Bench, room: u64, as_thread: AsThread) -> crate::threads::git::Engine {
+    let records = bench.home.with_file_name("records");
+    let home = crate::threads::git::place::Home::at(&bench.home, &records).expect("a home");
+    let git = bench.git.clone().with_copy_room(room);
+    crate::threads::git::Engine::new(git, home).with_launcher(as_thread)
+}
+
+/// The copy of the project of the bench.
+fn copy_of(bench: &Bench) -> std::path::PathBuf {
+    let projects = bench.home.with_file_name("records").join("projects");
+    let all = std::fs::read_dir(projects).expect("the projects").flatten();
+    let copy = all
+        .map(|entry| entry.path())
+        .find(|path| path.extension().is_some_and(|kind| kind == "git"));
+    copy.expect("the copy")
+}
+
+/// Bytes that do not get smaller when they are packed.
+pub(super) fn noise(bytes: usize) -> Vec<u8> {
+    let mut at = 0x2545_f491_4f6c_dd1d_u64;
+    let next = || {
+        at ^= at << 13;
+        at ^= at >> 7;
+        at ^= at << 17;
+        at.to_le_bytes()[0]
+    };
+    std::iter::repeat_with(next).take(bytes).collect()
+}
+
+/// Puts a large file with the name of a pack into each folder of a pack in `worktree`.
+fn enlarged(worktree: &std::path::Path) -> std::io::Result<()> {
+    let folders = std::fs::read_dir(worktree)?.flatten();
+    let of_a_pack = |out: &std::fs::DirEntry| {
+        let name = out.file_name();
+        name.to_string_lossy().starts_with(".anima-pack-")
+    };
+    for out in folders.filter(of_a_pack) {
+        std::fs::write(out.path().join("large.pack"), noise(4 * 1024 * 1024))?;
+    }
+    Ok(())
+}
+
+/// A launcher that runs the program and then puts a large file with the name of a pack
+/// beside the pack that the program made.
+fn greedy() -> AsThread {
+    let honest = as_the_person(None);
+    AsThread::new(move |run| {
+        let (honest, dir) = (honest.clone(), run.dir.clone());
+        Box::pin(async move {
+            let ended = honest.start(run).await?;
+            enlarged(&dir)?;
+            Ok(ended)
+        })
+    })
+}
+
+#[tokio::test]
+async fn a_thread_that_leaves_more_than_the_copy_can_hold_brings_nothing() {
+    let bench = Bench::new().await;
+    // The first history of the project is in the copy: its size is the measure from now on.
+    let folder = bench.worktree().await;
+    // What costs an agent nothing does not make the copy larger: a file with a hole in the
+    // store of the person says a large size and uses no disk.
+    let hole = std::fs::File::create(bench.project.join(".git/objects/hole")).expect("a file");
+    hole.set_len(256 * 1024 * 1024).expect("a size");
+    let who = [
+        "-c",
+        "user.name=Agent",
+        "-c",
+        "user.email=a@example.invalid",
+    ];
+    std::fs::write(folder.join("a.txt"), "second\n").expect("a file");
+    let made = [&who[..], &["commit", "--quiet", "--all", "--message=agent"]].concat();
+    bench.git_in(&folder, &made).await;
+    let engine = engine_with_room(&bench, 64 * 1024, greedy());
+    let refusal = engine.call(PERSON, target(), GitAction::Status).await;
+    assert!(
+        matches!(refused(&refusal), Some(GitRefusal::Failed { said }) if said.contains("can hold")),
+        "{refusal:?}"
+    );
+    let used = engine.disk().first().map_or(0, |used| used.bytes);
+    assert!(used < 1024 * 1024, "the copy took {used} bytes");
+    // With an honest run the same small copy takes the small commit.
+    let engine = engine_with_room(&bench, 64 * 1024, as_the_person(None));
+    let status = engine.call(PERSON, target(), GitAction::Status).await;
+    assert!(matches!(status, GitOutcome::Status(_)), "{status:?}");
+}
+
+#[tokio::test]
+async fn a_list_of_shallow_ends_that_comes_later_does_not_change_the_copy() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    let copy = copy_of(&bench);
+    assert!(!copy.join("shallow").exists());
+    // What an agent can write after the first history: "the history ends at this commit".
+    let tip = bench.git_in(&folder, &["rev-parse", "HEAD"]).await;
+    std::fs::write(bench.project.join(".git/shallow"), format!("{tip}\n")).expect("a list");
+    let who = [
+        "-c",
+        "user.name=Agent",
+        "-c",
+        "user.email=a@example.invalid",
+    ];
+    std::fs::write(folder.join("a.txt"), "second\n").expect("a file");
+    let made = [&who[..], &["commit", "--quiet", "--all", "--message=agent"]].concat();
+    bench.git_in(&folder, &made).await;
+    let _ = bench.call(PERSON, GitAction::Status).await;
+    assert!(
+        !copy.join("shallow").exists(),
+        "the copy of the project took a list that a thread wrote"
+    );
+}
+
+#[tokio::test]
+async fn what_a_thread_leaves_besides_the_history_never_comes_into_the_copy() {
+    let bench = Bench::new().await;
+    // An object of the project that no commit names, and a second pack of the thread with it.
+    let loose = bench.home.with_file_name("loose.bin");
+    std::fs::write(&loose, noise(64 * 1024)).expect("a file");
+    let path = loose.to_string_lossy().into_owned();
+    let written = ["hash-object", "-w", "--", path.as_str()];
+    let extra = bench.git_in(&bench.project, &written).await;
+    let honest = as_the_person(None);
+    let wanted = extra.clone();
+    let padding = AsThread::new(move |run| {
+        let (honest, dir, wanted) = (honest.clone(), run.dir.clone(), wanted.clone());
+        Box::pin(async move {
+            let ended = honest.start(run).await?;
+            second_pack(&dir, &wanted)?;
+            Ok(ended)
+        })
+    });
+    let engine = engine_with_room(&bench, 1024 * 1024, padding);
+    engine
+        .worktree(bench.plan(THREAD))
+        .await
+        .expect("a worktree");
+    let copy = copy_of(&bench);
+    let place = format!("--git-dir={}", copy.display());
+    let there = [place.as_str(), "cat-file", "-e", extra.as_str()];
+    let found = bench
+        .git
+        .yes(crate::threads::git::run::Run::new(&bench.home, there))
+        .await;
+    assert!(
+        !found.unwrap_or(true),
+        "the copy holds what no commit needs"
+    );
+    let left_over = std::fs::read_dir(&copy).expect("the copy").flatten();
+    let quarantines = left_over.filter(|entry| {
+        entry
+            .file_name()
+            .to_string_lossy()
+            .starts_with("quarantine-")
+    });
+    assert_eq!(quarantines.count(), 0, "a quarantine is left");
+}
+
+/// Makes a second pack, with the object `id` alone, in each folder of a pack in `worktree`.
+fn second_pack(worktree: &std::path::Path, id: &str) -> std::io::Result<()> {
+    use std::io::Write as _;
+    let folders = std::fs::read_dir(worktree)?.flatten();
+    let of_a_pack = |out: &std::fs::DirEntry| {
+        let name = out.file_name();
+        name.to_string_lossy().starts_with(".anima-pack-")
+    };
+    for out in folders.filter(of_a_pack) {
+        let mut packing = std::process::Command::new("git")
+            .args(["pack-objects", "--quiet"])
+            .arg(out.path().join("extra"))
+            .current_dir(worktree)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::null())
+            .spawn()?;
+        let mut list = packing.stdin.take().ok_or(std::io::ErrorKind::BrokenPipe)?;
+        writeln!(list, "{id}")?;
+        drop(list);
+        packing.wait()?;
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_copy_that_is_full_takes_nothing_more_and_loses_nothing() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    let engine = engine_with_room(&bench, 64 * 1024, as_the_person(None));
+    let copy = copy_of(&bench);
+    // The copy is over its size.
+    std::fs::write(copy.join("objects/kept.bin"), noise(512 * 1024)).expect("a file");
+    let who = [
+        "-c",
+        "user.name=Agent",
+        "-c",
+        "user.email=a@example.invalid",
+    ];
+    std::fs::write(folder.join("a.txt"), "second\n").expect("a file");
+    let made = [&who[..], &["commit", "--quiet", "--all", "--message=agent"]].concat();
+    bench.git_in(&folder, &made).await;
+    let full = engine.call(PERSON, target(), GitAction::Status).await;
+    assert!(
+        matches!(refused(&full), Some(GitRefusal::Failed { said }) if said.contains("reached the size")),
+        "{full:?}"
+    );
+    // Nothing of the copy went: a thread whose commit is known works as before.
+    let first = ["update-ref", "refs/heads/anima/12345678", "HEAD~1"];
+    bench.git_in(&folder, &first).await;
+    let status = engine.call(PERSON, target(), GitAction::Status).await;
+    assert!(matches!(status, GitOutcome::Status(_)), "{status:?}");
+}

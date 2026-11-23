@@ -187,6 +187,18 @@ impl Runner {
         }
     }
 
+    /// Says once in the runner log that a program runs at background priority, because its
+    /// lift failed (R-403).
+    pub(super) fn say_priority(&mut self) {
+        if crate::threads::priority::failure_to_say() {
+            self.note(
+                Kind::Start,
+                None,
+                "a program runs at background priority: the lift failed",
+            );
+        }
+    }
+
     pub(super) fn note(&mut self, kind: Kind, thread: Option<Uuid>, what: &str) {
         let at = chrono::Utc::now();
         if kind == Kind::Refusal {

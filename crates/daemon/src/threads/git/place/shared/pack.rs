@@ -13,7 +13,7 @@
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 
-use super::super::super::run::hooks::{AsThread, ThreadRun};
+use super::super::super::run::hooks::{AsThread, Kind, ThreadRun};
 use super::super::super::run::{Git, GitError, Run, said};
 use super::super::Worktree;
 use super::super::walk::{Dir, Make};
@@ -26,7 +26,7 @@ const MOST_PACKS: usize = 16;
 /// configuration. Only options that the oldest `git` of a supported system knows: `git` 2.43
 /// (Ubuntu 24.04) refuses `--no-lazy-fetch`, so the fetch of a missing object is closed by the
 /// environment ([`QUIET`]) and, for a `git` that does not read it, by `protocol.allow`.
-const CLOSED: [&str; 13] = [
+const CLOSED: [&str; 21] = [
     "--no-optional-locks",
     "--no-pager",
     "-c",
@@ -40,6 +40,16 @@ const CLOSED: [&str; 13] = [
     "-c",
     "core.alternateRefsCommand=",
     "--no-replace-objects",
+    // How a pack is made is not for the repository to say: a pack that is not packed is
+    // many times larger.
+    "-c",
+    "core.compression=-1",
+    "-c",
+    "pack.compression=-1",
+    "-c",
+    "pack.window=10",
+    "-c",
+    "pack.depth=50",
 ];
 
 /// The environment of each run of a thread: no fetch of a missing object, no prompt.
@@ -62,6 +72,11 @@ pub fn folder(worktree: &Worktree) -> OsString {
 /// The start of the name of each such folder.
 pub const PREFIX: &str = ".anima-pack-";
 
+mod shape;
+
+pub use shape::is_read;
+use shape::{LIST, PACK};
+
 /// Runs `git <args>` with the rights of the thread of `worktree`, in its worktree, with the
 /// file `input` as standard input. `false` when `git` ended with a code that is not 0.
 ///
@@ -70,8 +85,8 @@ pub const PREFIX: &str = ".anima-pack-";
 async fn as_thread(
     git: &Git,
     worktree: &Worktree,
-    args: Vec<OsString>,
-    input: Option<&Path>,
+    (args, input): (Vec<OsString>, Option<&Path>),
+    objects: Vec<(&'static str, OsString)>,
 ) -> Result<Result<(), String>, GitError> {
     let start = git.as_thread().ok_or_else(|| {
         failed(
@@ -81,6 +96,7 @@ async fn as_thread(
     })?;
     let closed = CLOSED.iter().map(OsString::from);
     let run = ThreadRun {
+        kind: Kind::Read,
         thread: worktree.thread(),
         dir: worktree.folder().to_owned(),
         program: git.program().to_owned(),
@@ -88,6 +104,7 @@ async fn as_thread(
         env: QUIET
             .iter()
             .map(|(name, value)| (*name, OsString::from(value)))
+            .chain(objects)
             .collect(),
         input: input.map(Path::to_owned),
         within: LONG,
@@ -110,13 +127,30 @@ pub async fn reads(
     worktree: &Worktree,
     (commits, known): (&[&str], &[&str]),
 ) -> Result<bool, GitError> {
-    let mut args: Vec<OsString> = ["rev-list", "--objects", "--quiet", "--end-of-options"]
-        .map(Into::into)
-        .into();
+    let args = list_args(commits, known);
+    Ok(as_thread(git, worktree, (args, None), Vec::new())
+        .await?
+        .is_ok())
+}
+
+/// The arguments of the read of [`reads`], after the closed options: `git` refuses `--not`
+/// after the commits, so each known commit has `^` instead.
+#[must_use]
+pub fn list_args(commits: &[&str], known: &[&str]) -> Vec<OsString> {
+    let mut args: Vec<OsString> = LIST.map(Into::into).into();
     args.extend(commits.iter().map(OsString::from));
-    args.push("--not".into());
-    args.extend(known.iter().map(OsString::from));
-    Ok(as_thread(git, worktree, args, None).await?.is_ok())
+    args.extend(
+        known
+            .iter()
+            .map(|known| OsString::from(format!("^{known}"))),
+    );
+    args
+}
+
+/// The options that each read of a thread gets first.
+#[must_use]
+pub fn closed() -> Vec<OsString> {
+    CLOSED.map(OsString::from).into()
 }
 
 /// Has the thread make one pack of the history of `wanted` without the history of `known`,
@@ -145,10 +179,37 @@ pub async fn make(
     let top = Dir::open(worktree.folder()).map_err(GitError::Files)?;
     let made = top.remove_all(&name).and_then(|()| top.new_folder(&name));
     made.map_err(GitError::Files)?;
-    let base = worktree.folder().join(&name).join("p");
-    let args = ["pack-objects", "--revs", "--quiet"].map(OsString::from);
-    let args = args.into_iter().chain([base.into_os_string()]).collect();
-    let packed = as_thread(git, worktree, args, Some(&want)).await;
+    let store = Path::new(&name).join("objects");
+    let below = |path: &Path| {
+        top.below(path, Make::No)?
+            .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))
+    };
+    below(Path::new(&name))
+        .and_then(|ours| ours.new_folder("objects".as_ref()))
+        .and_then(|()| below(&store))
+        .and_then(|objects| objects.new_folder("pack".as_ref()))
+        .map_err(GitError::Files)?;
+    let at = worktree.folder().join(&name);
+    let args = PACK.map(OsString::from);
+    let args = args
+        .into_iter()
+        .chain([at.join("p").into_os_string()])
+        .collect();
+    // `git` writes the files of a pack in a folder of the object store first. The store of
+    // the person stays as it is: the thread writes only in the folder of its pack, and reads
+    // the store of the person as one more store.
+    let store = record.common_dir.join("objects");
+    if shape::no_list(store.as_os_str()) {
+        return Err(failed(
+            "the path of the repository has a character that a list of folders of git cannot hold"
+                .to_owned(),
+        ));
+    }
+    let objects = vec![
+        ("GIT_OBJECT_DIRECTORY", at.join("objects").into_os_string()),
+        ("GIT_ALTERNATE_OBJECT_DIRECTORIES", store.into_os_string()),
+    ];
+    let packed = as_thread(git, worktree, (args, Some(&want)), objects).await;
     let packed = packed.and_then(|ended| {
         ended.map_err(|said| failed(format!("the repository could not be read: {said}")))
     });
@@ -159,54 +220,63 @@ pub async fn make(
     packed
 }
 
-/// Takes each pack that the thread made, as a file with no link followed, and brings it into
-/// the copy of the project. `git index-pack` names each object by its content first, and the
-/// pack gets the name that `git` gives it from its bytes: a pack of a thread never has the
-/// name of a pack that is there, unless it is the same pack.
+/// Takes each pack that the thread made, as a file with no link followed, into the quarantine
+/// at `quarantine` (the `git` of `checked` runs with it). `git index-pack` names each object
+/// by its content, and each pack gets the name that `git` gives it from its bytes. At most
+/// `left` bytes are taken: what a thread leaves is not copied without end.
 ///
 /// # Errors
-/// A [`GitError`] when a pack cannot be copied or is no pack.
-pub async fn take(store: &Git, worktree: &Worktree) -> Result<(), GitError> {
-    let record = worktree.record();
+/// A [`GitError`] when a pack cannot be copied, is no pack, or the packs are larger than
+/// `left`.
+pub async fn take(
+    checked: &Git,
+    (worktree, quarantine): (&Worktree, &Path),
+    left: u64,
+) -> Result<(), GitError> {
     let name = folder(worktree);
-    let incoming = format!("incoming-{}", worktree.thread().as_simple());
-    let incoming = super::super::own::fresh(&record.shared, &incoming)?;
+    let incoming = super::super::own::fresh(quarantine, "incoming")?;
     let copied = (|| {
+        use std::io::Read as _;
         let top = Dir::open(worktree.folder())?;
         let mut packs = Vec::new();
+        let mut left = left;
         if let Some(out) = top.below(Path::new(&name), Make::No)? {
             for name in out.names()?.into_iter().take(MOST_PACKS) {
                 let is_pack = Path::new(&name).extension() == Some(OsStr::new("pack"));
-                let Some(mut found) = out.file(&name)?.filter(|_| is_pack) else {
+                let Some(found) = out.file(&name)?.filter(|_| is_pack) else {
                     continue;
                 };
                 // The name in the folder of the runner is one that the runner chose.
                 let copy = incoming.join(format!("in-{}.pack", packs.len()));
-                std::io::copy(&mut found, &mut std::fs::File::create(&copy)?)?;
+                // One byte more than what is left shows a pack that is too large.
+                let mut found = found.take(left.saturating_add(1));
+                let taken = std::io::copy(&mut found, &mut std::fs::File::create(&copy)?)?;
+                left = left.checked_sub(taken).ok_or_else(|| {
+                    std::io::Error::other(
+                        "the thread left more than the copy of this project can hold",
+                    )
+                })?;
                 packs.push(copy);
             }
         }
-        top.remove_all(&name)?;
         Ok::<_, std::io::Error>(packs)
     })();
+    // The folder of the thread goes on each way out.
+    if let Ok(top) = Dir::open(worktree.folder()) {
+        let _ = top.remove_all(&name);
+    }
     for pack in copied.map_err(GitError::Files)? {
         let index: [&OsStr; 2] = ["index-pack".as_ref(), pack.as_os_str()];
-        let index = Run::new(&record.shared, index).with_time(LONG);
-        let named = store.text(index).await?;
+        let index = Run::new(quarantine, index).with_time(LONG);
+        let named = checked.text(index).await?;
         // `git` prints the name of the pack: the hash of what it holds.
         let named = named.split_whitespace().next_back().unwrap_or_default();
         let named = super::super::super::project::refs::id(named)
             .ok_or_else(|| failed("git gave no name for a pack of the repository".to_owned()))?;
         for kind in ["pack", "idx"] {
-            let placed = record
-                .shared
-                .join(format!("objects/pack/pack-{named}.{kind}"));
-            // A pack of this name that is there holds the same bytes: it stays.
-            if !placed.exists() {
-                std::fs::rename(pack.with_extension(kind), placed).map_err(GitError::Files)?;
-            }
+            let placed = quarantine.join(format!("objects/pack/pack-{named}.{kind}"));
+            std::fs::rename(pack.with_extension(kind), placed).map_err(GitError::Files)?;
         }
     }
-    let _ = std::fs::remove_dir_all(&incoming);
     Ok(())
 }

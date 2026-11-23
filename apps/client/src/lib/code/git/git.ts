@@ -84,7 +84,8 @@ export type GitRefusal =
   | 'changed'
   | 'not_reviewed'
   | 'records_held'
-  | 'expired';
+  | 'expired'
+  | 'not_on_windows';
 
 const REFUSALS: Record<GitRefusal, string> = {
   from_an_agent: 'Only you can do this. An agent cannot commit, push, revert or open a pull request.',
@@ -109,7 +110,8 @@ const REFUSALS: Record<GitRefusal, string> = {
   changed: 'Who a commit is from or where a push goes changed in the repository since you last accepted it. Read what changed and accept it before a commit or a push.',
   not_reviewed: 'The files or the branch changed since you looked. Read the changes again, then commit.',
   records_held: 'A chat on this computer runs in a folder that holds the records of Anima\'s Git, so its agent could change them. Git actions are off for every chat until that chat ends.',
-  expired: 'The checkpoints of this chat expired: the system removed them after a long time without use. The files of the worktree are as they were. Use git in a terminal for this chat, or start a new chat.'
+  expired: 'The checkpoints of this chat expired: the system removed them after a long time without use. The files of the worktree are as they were. Use git in a terminal for this chat, or start a new chat.',
+  not_on_windows: 'Worktrees, checkpoints and the Git actions of a chat are not available on Windows yet.'
 };
 
 /** The words for a refusal of the runner. */

@@ -509,3 +509,24 @@ Result of the review: no High open; two Mediums, both fixed in d44e975e4.
     that names no folder.
   - A records disk with a shorter limit for a name than the disk of the worktree gives a raw
     error.
+
+## Branch `threads/git-wired` (step W1, part of the engine), two reviews (2026-11-23)
+
+- **First review (on 331747272): no High, three Mediums, fixed in 188a196e0.**
+  - The thread's one look at the history (`rev-list ... --end-of-options <ids> --not <ids>`) is
+    refused by git, so it never ran and the engine always made a pack. The known commits now
+    have `^`; a test runs the exact arguments with git.
+  - `pack-objects` wrote its temporary files into the object store of the person. A confined
+    thread whose sandbox keeps `.git` read-only failed; with the right to write, it wrote into
+    that store. The run now has its own object folder in the folder of its pack, with the
+    store of the person as one more store; a test makes that store read-only.
+  - `is_read` did not check the input file, which the launcher opens with the rights of the
+    runner. It now accepts only the list `want` of a worktree of the same thread in the
+    records; the folder of a run must be a full path with no dots (a Low).
+- **Second review (on 188a196e0): no High open, no Medium open.** Merged into `dev` at
+  `de1349823`, with the branch `threads/git-copy-limit` that it holds.
+- Lows open: the copy of the packs takes the first 16 names before it looks for packs, so an
+  agent can push its own pack out (only that thread fails); an early failure of a pack run can
+  leave the folder of the pack in the worktree until the next run; a repository whose path has
+  `:` cannot make a pack, and the refusal says so. The review could not see the launcher of the
+  runner (another branch).
