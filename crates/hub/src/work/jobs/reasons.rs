@@ -67,6 +67,7 @@ fn refusal(job: &Job, decision: &Decision) -> String {
         Verdict::WaitsForBetter => {
             "a machine with more free memory asked a short time before".to_owned()
         }
+        Verdict::Policy => "its device policy takes no model work now".to_owned(),
     }
 }
 

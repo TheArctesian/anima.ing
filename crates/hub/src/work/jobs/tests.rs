@@ -1,6 +1,7 @@
 //! Tests of the pure rules of a job and of the placement.
 
 mod lifecycle;
+mod model_items;
 mod placement;
 mod reasons;
 
@@ -10,7 +11,7 @@ use daemon_core::wire::{
 };
 use serde_json::json;
 
-use super::model::{Job, NewJob, State};
+use super::model::{Job, NewJob, State, Target};
 use crate::ids::{DeviceId, JobId};
 
 const JOB: &str = "0192f6aa-0000-7000-8000-000000000001";
@@ -32,11 +33,11 @@ fn asked(work_type: WorkType) -> NewJob {
         os: Some(WorkOs::Linux),
         architecture: Some(WorkArchitecture::X86_64),
         project: None,
-        repository: WorkRepository {
+        target: Target::Repository(WorkRepository {
             forge: "github".to_owned(),
             owner: "example".to_owned(),
             name: "app".to_owned(),
-        },
+        }),
         parameters: json!({}),
         secrets: Vec::new(),
         limits: Limits {

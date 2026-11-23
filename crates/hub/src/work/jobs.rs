@@ -20,12 +20,14 @@ mod tests;
 mod trail;
 
 use chrono::{DateTime, Utc};
-use daemon_core::wire::{Reported, StopReason, WorkJob, WorkType};
+use daemon_core::wire::{Reported, StopReason, WorkType};
+use futures_util::future::BoxFuture;
 use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
 pub use claiming::claim;
-pub use model::{Fault, Job, Machine, NewJob, State};
+pub use claiming::{Claimant, Item, ModelItem};
+pub use model::{Fault, Job, Machine, NewJob, State, Target};
 pub use pinning::{exclude, pin_project, placement_reason, unpin_project};
 pub use placement::{Unfit, Verdict};
 pub use reasons::Decision;
@@ -67,7 +69,18 @@ pub enum Error {
     Unreadable,
     #[error("the event log cannot be written")]
     Events(#[from] events::Error),
+    /// The device policy of the machine that asks cannot be read; the wiring logs its cause.
+    #[error("the device policy cannot be read")]
+    Policy,
 }
+
+/// Reads whether the device policy of a machine permits model work at a time (CAP-010 to
+/// CAP-012). The wiring gives it, so neither this domain nor the work route imports the policy.
+pub type PolicyGate = std::sync::Arc<
+    dyn Fn(crate::ids::DeviceId, DateTime<Utc>) -> BoxFuture<'static, Result<bool, Error>>
+        + Send
+        + Sync,
+>;
 
 /// What the jobs need to work: the database and the bus of the events.
 #[derive(Clone, Copy)]
@@ -86,7 +99,7 @@ pub enum Claimed {
     Nothing,
     /// The hub gives this machine no work (`403 WORK_OFF`).
     Off,
-    Job(Box<WorkJob>),
+    Job(Box<Item>),
 }
 
 /// The answer to a report.
@@ -122,7 +135,8 @@ fn secrets_permitted(job: &NewJob) -> bool {
     let permitted: &[&str] = match job.work_type {
         WorkType::Runner => &["jit_config"],
         WorkType::Build => &["repository_token", "project_secret"],
-        // The hub makes no model item yet (model work contract; tasks L1-6 to L1-8).
+        // The token of a gated repository (K11 Section 7, PULL-010).
+        WorkType::ModelPull => &["hf_token"],
         _ => &[],
     };
     job.secrets
@@ -137,8 +151,16 @@ fn validate(job: &NewJob) -> Result<(), Error> {
             "the type and the kind are of the fixed lists",
         ));
     }
-    if job.work_type.is_model() || job.kind == WorkKind::Model {
-        return Err(Error::Invalid("the hub does not make model items yet"));
+    let model_target = matches!(job.target, Target::Model { .. });
+    if job.work_type.is_model() != (job.kind == WorkKind::Model)
+        || model_target != (job.kind == WorkKind::Model)
+    {
+        return Err(Error::Invalid(
+            "a model item has a model type, the kind model and an actor",
+        ));
+    }
+    if model_target && job.project.is_some() {
+        return Err(Error::Invalid("a model item has no project"));
     }
     if !job.parameters.is_object() {
         return Err(Error::Invalid("the parameters are an object"));

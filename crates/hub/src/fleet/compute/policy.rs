@@ -91,6 +91,23 @@ pub async fn statuses(
         .collect())
 }
 
+/// Whether the device policy of `device` permits model work at `now`, with the switch left to
+/// the work route, which checks it in the claim (K11 Section 3).
+///
+/// # Errors
+/// [`Error`] when a store cannot be read.
+pub async fn permits(db: &PgPool, device: DeviceId, now: DateTime<Utc>) -> Result<bool, Error> {
+    let policy = store::policies(db)
+        .await?
+        .remove(&device)
+        .unwrap_or_default();
+    let node = metrics::hardware(db)
+        .await?
+        .get(&device)
+        .map_or_else(NodeState::default, |(values, _)| NodeState::from(values));
+    Ok(takes_model_work(&policy, WorkSwitch::On, node, now).is_ok())
+}
+
 /// Writes the policy of `device` in the caller's transaction.
 ///
 /// # Errors

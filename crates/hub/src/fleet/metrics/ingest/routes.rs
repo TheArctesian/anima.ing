@@ -41,6 +41,7 @@ use crate::{
         events::{Bus, ClientAddr},
         metrics::Feed,
     },
+    work::jobs::PolicyGate,
 };
 
 /// The enrol and renew bodies are small JSON objects (K8 Section 1).
@@ -79,18 +80,21 @@ pub(super) struct DaemonState {
     pub(super) turns: Turns,
     recorder: Recorder,
     pub(super) deadlines: Deadlines,
+    /// Whether the device policy of a machine permits model work now (K11 Section 3).
+    pub(super) policy: PolicyGate,
 }
 
 /// `POST /daemon/v1/enrol`, `POST /daemon/v1/push`, `POST /daemon/v1/renew` and
 /// `POST /daemon/v1/keys/fetch`, each answering within ten seconds (K8). `vault` opens the
-/// operational keys a daemon fetches (R-147).
+/// operational keys a daemon fetches (R-147). `policy` reads the device policy for the
+/// hand-out of model items (K11 Section 3).
 /// The caller mounts it inside `crate::logged` and behind the permitted-networks layer, whose
 /// client address every refusal event names (NET-002); without that layer each request is
 /// refused as `UNAVAILABLE`.
 pub fn daemon_router(
     (db, bus, clock): (PgPool, Bus, Arc<dyn Clock>),
     feed: Feed,
-    vault: Vault,
+    (vault, policy): (Vault, PolicyGate),
 ) -> Router {
     let recorder = Recorder::new(db.clone(), bus.clone());
     routes(DaemonState {
@@ -102,6 +106,7 @@ pub fn daemon_router(
         turns: Turns::new(DAEMON_REQUESTS, Deadlines::HUB.request),
         recorder,
         deadlines: Deadlines::HUB,
+        policy,
     })
 }
 
@@ -124,6 +129,7 @@ pub(in crate::fleet::metrics) fn daemon_router_within(
         turns: Turns::new(DAEMON_REQUESTS, deadlines.request),
         recorder,
         deadlines,
+        policy: Arc::new(|_, _| Box::pin(async { Ok(true) })),
     })
 }
 

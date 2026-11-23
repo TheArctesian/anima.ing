@@ -61,7 +61,10 @@ pub fn app(pool: &PgPool, clock: Arc<dyn Clock>) -> Router {
     let daemon = daemon_router(
         (pool.clone(), bus.clone(), clock.clone()),
         Feed::new(),
-        crate::hub::test_vault(),
+        (
+            crate::hub::test_vault(),
+            anima_hub::policy_gate(pool.clone()),
+        ),
     );
     let edge = access::Edge::new(pool.clone(), bus, clock.clone());
     router(schema, pool.clone(), clock)

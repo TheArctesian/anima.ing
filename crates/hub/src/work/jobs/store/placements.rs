@@ -73,6 +73,8 @@ fn offer(
         memory_bytes: count(memory)?,
         disk_bytes: count(disk)?,
         excluded,
+        // The hub reads the policy only of the machine that asks (see `Offer`).
+        policy_permits: true,
     })
 }
 

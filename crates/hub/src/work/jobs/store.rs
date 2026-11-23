@@ -6,6 +6,7 @@ mod machines;
 mod placements;
 
 use chrono::{DateTime, Utc};
+use daemon_core::model_work::names::{Actor, Word as _};
 use daemon_core::wire::{
     Limits, StopReason, WorkArchitecture, WorkKind, WorkOs, WorkRepository, WorkType,
 };
@@ -20,7 +21,7 @@ pub(super) use placements::{
 
 use super::{
     Error,
-    model::{Job, NewJob, State},
+    model::{Job, NewJob, State, Target},
 };
 use crate::ids::{DeviceId, JobId, ProjectId};
 
@@ -31,7 +32,7 @@ const SELECT_JOB: &str = "SELECT id, work_type, kind, os, architecture, project_
      name, parameters, secrets, limit_seconds, limit_idle_seconds, limit_memory_bytes, \
      limit_disk_bytes, limit_orphan_seconds, state, attempt, lost, device_id, last_device_id, \
      refused_by, lease_ends_at, claimed_at, stop_reason, reason, result, log_end, created_at, \
-     state_changed_at, ended_at, machine_id FROM jobs.jobs ";
+     state_changed_at, ended_at, machine_id, actor FROM jobs.jobs ";
 
 #[derive(sqlx::FromRow)]
 struct JobRow {
@@ -41,9 +42,9 @@ struct JobRow {
     os: Option<String>,
     architecture: Option<String>,
     project_id: Option<ProjectId>,
-    forge: String,
-    owner: String,
-    name: String,
+    forge: Option<String>,
+    owner: Option<String>,
+    name: Option<String>,
     parameters: serde_json::Value,
     secrets: Vec<String>,
     limit_seconds: i64,
@@ -67,6 +68,7 @@ struct JobRow {
     state_changed_at: DateTime<Utc>,
     ended_at: Option<DateTime<Utc>>,
     machine_id: Option<DeviceId>,
+    actor: Option<String>,
 }
 
 /// A word of the contract as the database holds it: the JSON string of its type.
@@ -102,11 +104,7 @@ impl JobRow {
                 .map(read_word::<WorkArchitecture>)
                 .transpose()?,
             project: self.project_id,
-            repository: WorkRepository {
-                forge: self.forge.clone(),
-                owner: self.owner.clone(),
-                name: self.name.clone(),
-            },
+            target: self.target()?,
             parameters: self.parameters.clone(),
             secrets: self.secrets.clone(),
             limits: Limits {
@@ -118,6 +116,24 @@ impl JobRow {
             },
             machine: self.machine_id,
         })
+    }
+}
+
+impl JobRow {
+    fn target(&self) -> Result<Target, Error> {
+        match (&self.actor, &self.forge, &self.owner, &self.name) {
+            (Some(actor), None, None, None) => Ok(Target::Model {
+                actor: Actor::parse(actor).ok_or(Error::Unreadable)?,
+            }),
+            (None, Some(forge), Some(owner), Some(name)) => {
+                Ok(Target::Repository(WorkRepository {
+                    forge: forge.clone(),
+                    owner: owner.clone(),
+                    name: name.clone(),
+                }))
+            }
+            _ => Err(Error::Unreadable),
+        }
     }
 }
 
@@ -218,12 +234,17 @@ pub(super) async fn over_time(
 /// Writes a new job.
 pub(super) async fn insert(conn: &mut PgConnection, job: &Job) -> Result<(), Error> {
     let asked = &job.asked;
+    let (repository, actor) = match &asked.target {
+        Target::Repository(repository) => (Some(repository), None),
+        Target::Model { actor } => (None, Some(actor.as_str())),
+    };
     sqlx::query(
         "INSERT INTO jobs.jobs (id, work_type, kind, os, architecture, project_id, forge, owner, \
          name, parameters, secrets, limit_seconds, limit_idle_seconds, limit_memory_bytes, \
-         limit_disk_bytes, limit_orphan_seconds, state, created_at, state_changed_at, machine_id) \
+         limit_disk_bytes, limit_orphan_seconds, state, created_at, state_changed_at, machine_id, \
+         actor) \
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, \
-         $18, $18, $19)",
+         $18, $18, $19, $20)",
     )
     .bind(job.id)
     .bind(word(&asked.work_type)?)
@@ -231,9 +252,9 @@ pub(super) async fn insert(conn: &mut PgConnection, job: &Job) -> Result<(), Err
     .bind(asked.os.as_ref().map(word).transpose()?)
     .bind(asked.architecture.as_ref().map(word).transpose()?)
     .bind(asked.project)
-    .bind(&asked.repository.forge)
-    .bind(&asked.repository.owner)
-    .bind(&asked.repository.name)
+    .bind(repository.map(|each| &each.forge))
+    .bind(repository.map(|each| &each.owner))
+    .bind(repository.map(|each| &each.name))
     .bind(&asked.parameters)
     .bind(&asked.secrets)
     .bind(stored(asked.limits.seconds)?)
@@ -244,6 +265,7 @@ pub(super) async fn insert(conn: &mut PgConnection, job: &Job) -> Result<(), Err
     .bind(job.state.as_str())
     .bind(job.created_at)
     .bind(asked.machine)
+    .bind(actor)
     .execute(conn)
     .await?;
     Ok(())

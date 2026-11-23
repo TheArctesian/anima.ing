@@ -2,6 +2,7 @@
 //! claims a job with its token, reports it, and the hub ends what a machine lost.
 
 mod flow;
+mod model;
 mod placement;
 mod refusals;
 
@@ -9,7 +10,7 @@ use anima_hub::{
     clock::Clock as _,
     fleet::events::{Bus, ClientAddr, Operator},
     ids::JobId,
-    work::jobs::{self, Job, NewJob, Queue},
+    work::jobs::{self, Job, NewJob, Queue, Target},
 };
 use axum::{
     body::Body,
@@ -35,11 +36,11 @@ fn build() -> NewJob {
         os: Some(WorkOs::Linux),
         architecture: Some(WorkArchitecture::X86_64),
         project: None,
-        repository: WorkRepository {
+        target: Target::Repository(WorkRepository {
             forge: "github".to_owned(),
             owner: "example".to_owned(),
             name: "app".to_owned(),
-        },
+        }),
         parameters: json!({
             "recipe": "desktop_release", "commit": "0123456789abcdef0123456789abcdef01234567",
             "target": "linux-x86_64", "version": "0.3.0", "trigger": "operator", "origin": "default_branch"

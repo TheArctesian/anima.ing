@@ -25,7 +25,7 @@ pub(super) fn machine(device: DeviceId) -> Machine {
 }
 
 pub(super) fn offer(claim: &Claim) -> Offer {
-    Offer::of(claim, &machine(claim.device.into()))
+    Offer::of(claim, &machine(claim.device.into()), true)
 }
 
 /// The verdict of each job for the machine of `claim`, with the other machines that asked.

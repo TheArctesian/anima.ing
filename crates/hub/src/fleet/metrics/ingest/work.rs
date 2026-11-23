@@ -18,7 +18,7 @@ use axum::{
     routing::post,
 };
 use chrono::{DateTime, Utc};
-use daemon_core::wire::{Claim, RefusalCode, SecretRequest, WorkReport};
+use daemon_core::wire::{Claim, RefusalCode, SecretRequest, WorkKind, WorkReport};
 use serde::de::DeserializeOwned;
 
 use super::{
@@ -32,7 +32,7 @@ use super::{
 use crate::{
     fleet::events::ClientAddr,
     ids::DeviceId,
-    work::jobs::{self, Claimed, Queue, Reporting},
+    work::jobs::{self, Claimant, Claimed, Queue, Reporting},
 };
 
 /// The body limits of K10 Section 2.
@@ -146,7 +146,18 @@ async fn claimed(
         db: &state.db,
         bus: &state.bus,
     };
-    match jobs::claim(queue, (device, &asked.name), &asked.body, (client, now))
+    // The policy matters only to a machine that takes model items (K11 Section 3).
+    let policy_permits = if asked.body.kinds.contains(&WorkKind::Model) {
+        (state.policy)(device, now).await.map_err(failed)?
+    } else {
+        false
+    };
+    let claimant = Claimant {
+        device,
+        name: &asked.name,
+        policy_permits,
+    };
+    match jobs::claim(queue, claimant, &asked.body, (client, now))
         .await
         .map_err(failed)?
     {

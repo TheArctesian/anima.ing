@@ -5,13 +5,14 @@
 use std::net::{IpAddr, Ipv4Addr};
 
 use chrono::{DateTime, Utc};
+use daemon_core::model_work::names::Word as _;
 use daemon_core::wire::StopReason;
 use serde_json::json;
 use sqlx::PgConnection;
 
 use super::{
     Asker, Error,
-    model::Job,
+    model::{Job, Target},
     reasons::{self, Decision},
 };
 use crate::{
@@ -48,13 +49,21 @@ async fn audit(
 
 fn described(job: &Job) -> serde_json::Value {
     let asked = &job.asked;
-    json!({
+    let mut change = json!({
         "type": asked.work_type,
         "kind": asked.kind,
         "project": asked.project,
-        "repository": format!("{}/{}", asked.repository.owner, asked.repository.name),
         "secrets": asked.secrets,
-    })
+    });
+    let (member, value) = match &asked.target {
+        Target::Repository(repository) => (
+            "repository",
+            format!("{}/{}", repository.owner, repository.name),
+        ),
+        Target::Model { actor } => ("actor", actor.as_str().to_owned()),
+    };
+    change[member] = json!(value);
+    change
 }
 
 /// A job came into the queue.

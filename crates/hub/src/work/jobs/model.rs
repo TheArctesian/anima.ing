@@ -2,6 +2,7 @@
 //! The contract calls a job an "item of work".
 
 use chrono::{DateTime, Utc};
+use daemon_core::model_work::names::Actor;
 use daemon_core::wire::{
     Limits, StopReason, Switch, WorkArchitecture, WorkKind, WorkOs, WorkRepository, WorkResult,
     WorkState, WorkType,
@@ -94,7 +95,7 @@ pub struct NewJob {
     pub os: Option<WorkOs>,
     pub architecture: Option<WorkArchitecture>,
     pub project: Option<ProjectId>,
-    pub repository: WorkRepository,
+    pub target: Target,
     /// The object of the work type (K10 Section 6).
     pub parameters: serde_json::Value,
     /// The purposes of the secrets that the job needs; never a value.
@@ -102,6 +103,14 @@ pub struct NewJob {
     pub limits: Limits,
     /// The one machine that may get the job; no different machine ever gets it (ROU-006).
     pub machine: Option<DeviceId>,
+}
+
+/// What a job works on: a repository (K10), or the machine itself for a model item, which
+/// names the actor that asked for it (K11 Sections 2 and 3).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Target {
+    Repository(WorkRepository),
+    Model { actor: Actor },
 }
 
 /// One job, as the hub holds it.
