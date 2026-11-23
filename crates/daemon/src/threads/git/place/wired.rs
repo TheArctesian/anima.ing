@@ -113,16 +113,17 @@ impl Engine {
 const TEMPS: [&str; 4] = ["TMPDIR", "TMP", "TEMP", "XDG_RUNTIME_DIR"];
 
 /// The records at `records` are in a temporary folder that each agent can write while agents
-/// get the ones of the login: `/tmp`, or each folder that `login` names in [`TEMPS`].
+/// get the ones of the login: `/tmp`, or each folder that `login` names in [`TEMPS`]. A name
+/// that is not a full path counts as one that holds them: each agent reads it from its own
+/// folder.
 fn in_temp(records: &Path, login: &[(OsString, OsString)]) -> bool {
-    let tmpdirs = login
+    let temps: Vec<_> = login
         .iter()
         .filter(|(name, value)| TEMPS.iter().any(|temp| name == temp) && !value.is_empty())
-        .map(|(_, value)| PathBuf::from(value));
-    let temps: Vec<_> = std::iter::once(PathBuf::from("/tmp"))
-        .chain(tmpdirs)
+        .map(|(_, value)| PathBuf::from(value))
+        .chain(std::iter::once(PathBuf::from("/tmp")))
         .collect();
-    records::held_by_any(records, &temps)
+    temps.iter().any(|temp| !temp.is_absolute()) || records::held_by_any(records, &temps)
 }
 
 /// The home of the worktrees: the one the person chose, or the standard one.

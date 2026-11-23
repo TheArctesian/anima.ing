@@ -194,8 +194,11 @@ fn the_engine_is_made_with_its_records_and_its_home() {
 fn records_in_a_temporary_folder_are_refused_until_each_agent_has_its_own() {
     let keep = tempfile::tempdir_in("/tmp").expect("a folder in /tmp");
     let in_tmp = keep.path().join("records");
-    let keep_home = tempfile::tempdir().expect("a folder");
+    // Not in `/tmp`, so that only the name of the login refuses the records below.
+    let keep_home = tempfile::tempdir_in("/var/tmp").expect("a folder in /var/tmp");
     let home = std::fs::canonicalize(keep_home.path()).expect("its real path");
+    let real_tmp = std::fs::canonicalize("/tmp").expect("/tmp");
+    assert!(!home.starts_with(&real_tmp));
     let path = std::env::var_os("PATH").unwrap_or_default();
     let login_with = |name: &str, tmpdir: &Path| {
         [
@@ -237,6 +240,11 @@ fn records_in_a_temporary_folder_are_refused_until_each_agent_has_its_own() {
             nothing(),
         ));
     }
+    refused(engine(
+        login(Path::new("tmp")),
+        &places(&in_tmpdir),
+        nothing(),
+    ));
     // When the runner gives each agent its own `TMPDIR`, the root check of each thread holds.
     let private = Places {
         private_tmp: true,
