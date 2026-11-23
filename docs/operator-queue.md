@@ -398,7 +398,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-104 | Connect GitHub on a hosted hub through the gateway (HMD-068, HMD-069; task HM-T29) |
 | HT-135 | the mockup of the section Routes of the hub (tasks H21 and H40) |
 | HT-138 | the conversation of Code with VoiceOver and the keyboard (TC3, accessibility findings 2, 3 and 4) |
-| HT-136 | the section Routes of Settings (task H21) |
+| HT-136 | the section Routes of Hosting (task H21) |
 | O-4 | SFTP: list, upload, download, the refusals, the audit entries |
 | O-6 | The web view on macOS: fingerprint, a changed certificate, the Down page |
 | O-7 | OD-7 on Linux: the trust hook spike. Also the frame time of the Devices page |

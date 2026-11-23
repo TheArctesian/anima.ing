@@ -40,7 +40,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
 | HT-133 | The public names of applications through the route proxy, on a real network (task H21) | A hub that a person hosts with ports 80 and 443 open, a domain name with its DNS, a machine on the link with a web application, and a second hub | Open |
 | HT-134 | Streams of TCP and UDP and the access of a route on a real network (task H40) | A hub that a person hosts, a machine on its network with a test TCP service and an IMAPS server, a device of the network of Anima and a device that is not on it | Open |
-| HT-136 | The section Routes of Settings beside its mockup, and against a real hub (task H21) | The client of the branch `hosted/routes-section` signed in to a test hub on Linux, a second factor on the account, a domain name with its DNS | Open |
+| HT-136 | The section Routes of Hosting beside its mockup, and against a real hub (task H21) | The client of the branch `hosted/routes-section` signed in to a test hub on Linux, a second factor on the account, a domain name with its DNS | Open |
 | HT-145 | A Codex thread in the home folder cannot write in the folder of the daemon (THR-041) | A Mac with `codex` 0.170 signed in, the daemon of the branch `threads/start-warns` with a test state folder in the home folder | Open |
 | HT-135 | The mockup of the section Routes of the hub (tasks H21 and H40), approved overnight by the orchestrator | A browser | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
@@ -2887,8 +2887,8 @@ reviewer read it (R-324). No person looked at it. Nothing of the screen is built
 approve it, or say what to change, before the client screen is built.
 
 1. Open `docs/mockup/routes/index.html` in a browser, in a window of at least 1320 px.
-   Expected: a board of ten frames at 1280 px. The first paragraph says why Routes is a section of Settings, in the
-   group Hub, and not an item of the navigation bar.
+   Expected: a board of ten frames at 1280 px. The first paragraph says that Routes is a section of Hosting, in the
+   list on the left with Applications, Catalogue, Models, Storage and Machines, and that Hosting is in the bar below Code.
 2. Frame 1 (the list) and Frame 1b (empty).
    Expected: each row shows the name, the kind and the access, the application on its machine with its port, the
    proof and the certificate, and the traffic of 24 hours. Rows that need you have a wash. The empty state says that a
@@ -2929,16 +2929,18 @@ VoiceOver in WebKit, and how often it speaks during a long turn.
    Expected: VoiceOver says "Approval needed to run a command:" and the command at once, and the focus is on Approve.
 5. Press Enter on Approve.
    Expected: the focus goes to the conversation, not to the top of the window.
-### HT-136: the section Routes of Settings (task H21)
+### HT-136: the section Routes of Hosting (task H21)
 
-Built on the branch `hosted/routes-section`: the section Routes of the Settings page, in the group Hub and account
-(`apps/client/src/lib/application-routes/`). The vitest tests use fake calls of the hub: they prove each state of the
+Built on the branch `hosted/routes-section`: the section Routes (`apps/client/src/lib/application-routes/`), first in
+Settings; the move to the section Routes of Hosting (`/hosting/routes`, hosting-section.md) is the work of the session
+of the Hosting screen. The vitest tests use fake calls of the hub: they prove each state of the
 list, the page of a route, the refusals of the hub that the section shows, Check now, Check all and Remove. No person
 looked at the screen, and no picture of it was compared with the frames of [routes/index.html](mockup/routes/index.html):
 the screen was not run on this computer. No test used a real hub, a real DNS or a real second factor.
 
-1. Open Settings at 1280 px in the dark appearance, then in the light appearance, and put
-   `docs/mockup/routes/index.html` beside it. Expected: the index has Routes in the group Hub and account, after Hub.
+1. Open Hosting > Routes at 1280 px in the dark appearance, then in the light appearance, and put
+   `docs/mockup/routes/index.html` beside it. Expected: the list on the left has Applications, Catalogue, Models,
+   Storage, Routes and Machines, with Routes selected, and the page title is Hosting with Add a route in its header.
    The list has the parts of Frame 1 in the same order: the choice All, Needs you, Public and Private, Check all, the
    summary line, and one row for each route with its name, kind and access, target, proof and certificate, and
    traffic. Rows that need you have a wash. Write each difference that is not in the record
