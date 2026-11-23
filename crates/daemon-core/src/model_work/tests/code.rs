@@ -3,9 +3,10 @@ use std::path::PathBuf;
 use crate::model_work::cause::Cause;
 use crate::model_work::command::vllm_arguments;
 use crate::model_work::files::code::{
-    MAX_CONFIG_BYTES, MAX_TEMPLATE_BYTES, check_config, check_copy, check_template_length,
-    check_tokenizer_config,
+    CopyFiles, MAX_CONFIG_BYTES, MAX_TEMPLATE_BYTES, check_config, check_copy,
+    check_template_length, check_tokenizer_config,
 };
+use crate::model_work::names::Runtime;
 
 const REFUSED: Result<(), Cause> = Err(Cause::RemoteCode);
 
@@ -14,8 +15,7 @@ fn a_plain_config_is_accepted() {
     let config =
         br#"{"architectures":["LlamaForCausalLM"],"model_type":"llama","rope":{"auto":1}}"#;
     assert_eq!(check_config(config), Ok(()));
-    assert_eq!(check_copy(Some(config), Some(b"{}"), Some(10)), Ok(()));
-    assert_eq!(check_copy(None, None, None), Ok(()));
+    assert_eq!(check_copy(Runtime::MlxLm, &CopyFiles::default()), Ok(()));
 }
 
 #[test]
@@ -27,6 +27,7 @@ fn a_member_of_remote_code_is_refused_at_any_depth() {
         r#"{"text_config":{"auto_map":{}}}"#,
         r#"{"a":[1,{"b":[[{"custom_pipelines":1}]]}]}"#,
         r#"{"x":1,"auto_map":1,"x":2}"#,
+        r#"{"auto_map":null,"auto_map":{"AutoModel":"m.M"}}"#,
     ] {
         assert_eq!(check_config(text.as_bytes()), REFUSED, "{text}");
         assert_eq!(check_tokenizer_config(text.as_bytes()), REFUSED, "{text}");
@@ -84,7 +85,11 @@ fn a_chat_template_is_at_most_64_kib() {
     assert_eq!(check_tokenizer_config(br#"{"chat_template":null}"#), Ok(()));
     assert_eq!(check_template_length(MAX_TEMPLATE_BYTES), Ok(()));
     assert_eq!(check_template_length(MAX_TEMPLATE_BYTES + 1), REFUSED);
-    assert_eq!(check_copy(None, None, Some(u64::MAX)), REFUSED);
+    let over = CopyFiles {
+        json: &[],
+        template_file: Some(MAX_TEMPLATE_BYTES + 1),
+    };
+    assert_eq!(check_copy(Runtime::Vllm, &over), REFUSED);
 }
 
 #[test]

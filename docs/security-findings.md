@@ -2689,6 +2689,56 @@ The correction: Section 2.2: a fixed list of files for each format (`file_type`)
 
 State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
+### SF-NEW-sf298a: The check of a copy does not refuse a class that is not in the list of the runtime. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 30d09f830 (branch `compute/sf-298-model-files`).
+
+The correction: a fixed list of classes for each runtime (`files/classes.rs`): for vLLM the 131 text-generation architectures of vLLM v0.34.0, and a list of tokenizer classes; each entry of `architectures` and `tokenizer_class` must be on it and has no `.`, `/`, `--` or `:`, else `remote_code`. `llama_server` loads only GGUF and reads no `config.json`; `mlx_lm` has no list yet.
+
+State: Built on branch `compute/sf-298-model-files`, pending a re-read. Found by a separate reviewer on 2026-11-22 in 30d09f830.
+
+### SF-NEW-sf298b: Only `config.json` and `tokenizer_config.json` are checked for remote-code members. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 30d09f830 (branch `compute/sf-298-model-files`).
+
+The correction: `check_copy` walks each JSON file of the Section 2.2 list but `tokenizer.json`: also `generation_config.json`, `special_tokens_map.json`, `preprocessor_config.json` and each `*.safetensors.index.json`.
+
+State: Built on branch `compute/sf-298-model-files`, pending a re-read. Found by a separate reviewer on 2026-11-22 in 30d09f830.
+
+### SF-NEW-sf298c: An over-long chat template, an unparsable file and an oversized file are all reported as `remote_code`. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 30d09f830 (branch `compute/sf-298-model-files`).
+
+The correction: Waits for the operator: a separate cause word, or the text of `remote_code` in Section 5 made wider. The cause words do not change in this branch.
+
+State: Open; the decision goes to the operator. Found by a separate reviewer on 2026-11-22 in 30d09f830.
+
+### SF-NEW-sf298d: The read of the files of a copy is not bounded in the code that reads them. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 30d09f830 (branch `compute/sf-298-model-files`).
+
+The correction: The caller of the checks (`model_load`, task L1-8) must read at most 2 MiB of each file (`MAX_CONFIG_BYTES`) and take the length of `chat_template.jinja` from its metadata before it reads it.
+
+State: Open; owned by the `model_load` caller (L1-8). Found by a separate reviewer on 2026-11-22 in 30d09f830.
+
+### SF-NEW-sf298e: Tests are missing for a duplicate key, a long `chat_template.jinja` through `check_copy` and a large real tokenizer configuration. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 30d09f830 (branch `compute/sf-298-model-files`).
+
+The correction: Tests for each, with a fixture of about 1.2 MB of `added_tokens_decoder` (the size of Gemma 3).
+
+State: Built on branch `compute/sf-298-model-files`. Found by a separate reviewer on 2026-11-22 in 30d09f830.
+
 ### SF-299: A runtime runs with each right of the user of the daemon, so a fault of a parser reads the token and the configuration. High
 
 Requirements: task L1-3 of [compute-plan.md](plans/compute-plan.md); SEC-C-012.

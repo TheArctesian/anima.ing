@@ -6,7 +6,9 @@
 
 use serde_json::Value;
 
+use super::classes;
 use crate::model_work::cause::Cause;
+use crate::model_work::names::Runtime;
 
 /// The largest `config.json` or `tokenizer_config.json` that the daemon reads (2 MiB).
 pub const MAX_CONFIG_BYTES: usize = 2 * 1024 * 1024;
@@ -17,26 +19,76 @@ pub const MAX_TEMPLATE_BYTES: u64 = 64 * 1024;
 /// The members that make a runtime load code of the repository.
 const REMOTE_CODE_MEMBERS: [&str; 2] = ["auto_map", "custom_pipelines"];
 
-/// The checks of one copy: `config` and `tokenizer` are the bytes of `config.json` and
-/// `tokenizer_config.json` when the copy has them, `template_file` the length of
-/// `chat_template.jinja`.
+/// The JSON files of the Section 2.2 list that the daemon reads before a load. `tokenizer.json`
+/// is not read: it holds no class or code member for these runtimes and can be tens of MiB.
+pub const CHECKED_JSON: [&str; 5] = [
+    "config.json",
+    "generation_config.json",
+    "tokenizer_config.json",
+    "special_tokens_map.json",
+    "preprocessor_config.json",
+];
+
+/// The files of one copy that the daemon read: each checked JSON file (and each
+/// `*.safetensors.index.json`) as its name in the copy and its bytes, and the length of
+/// `chat_template.jinja` when the copy has it.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct CopyFiles<'a> {
+    pub json: &'a [(&'a str, &'a [u8])],
+    pub template_file: Option<u64>,
+}
+
+/// The checks of one copy for `runtime`: no remote-code member in any JSON file, only the
+/// classes of the runtime (Section 2.2), and a chat template of at most 64 KiB.
 ///
 /// # Errors
 ///
-/// `remote_code` when a file asks for remote code, does not read, is too large, or a chat
-/// template is longer than [`MAX_TEMPLATE_BYTES`].
-pub fn check_copy(
-    config: Option<&[u8]>,
-    tokenizer: Option<&[u8]>,
-    template_file: Option<u64>,
+/// `remote_code` when a file asks for remote code or names a class that is not in the list of
+/// the runtime, a file does not read or is too large, a name is not a checked JSON file, or a
+/// chat template is longer than [`MAX_TEMPLATE_BYTES`].
+pub fn check_copy(runtime: Runtime, files: &CopyFiles<'_>) -> Result<(), Cause> {
+    let list = classes::architectures(runtime);
+    for (name, bytes) in files.json {
+        let base = name.rsplit('/').next().unwrap_or_default();
+        match base {
+            "config.json" => check_classes(&read_object(bytes)?, list, "architectures")?,
+            "tokenizer_config.json" => {
+                check_tokenizer_config(bytes)?;
+                check_classes(&read_object(bytes)?, list, "tokenizer_class")?;
+            }
+            _ if CHECKED_JSON.contains(&base) || is_index(base) => check_config(bytes)?,
+            _ => return Err(Cause::RemoteCode),
+        }
+    }
+    files.template_file.map_or(Ok(()), check_template_length)
+}
+
+fn is_index(base: &str) -> bool {
+    base.len() > ".safetensors.index.json".len() && base.ends_with(".safetensors.index.json")
+}
+
+/// `architectures` must be a list of permitted classes; `tokenizer_class`, when present, one
+/// permitted class. With no list for the runtime, nothing is checked here.
+fn check_classes(
+    object: &serde_json::Map<String, Value>,
+    list: Option<&[&str]>,
+    member: &str,
 ) -> Result<(), Cause> {
-    if let Some(bytes) = config {
-        check_config(bytes)?;
-    }
-    if let Some(bytes) = tokenizer {
-        check_tokenizer_config(bytes)?;
-    }
-    template_file.map_or(Ok(()), check_template_length)
+    let Some(list) = list else { return Ok(()) };
+    let allowed = |value: &Value| match value {
+        Value::String(name) if member == "architectures" => classes::permitted(list, name),
+        Value::String(name) => classes::permitted(&classes::TOKENIZER_CLASSES, name),
+        _ => false,
+    };
+    let ok = match (member, object.get(member)) {
+        ("architectures", Some(Value::Array(names))) => {
+            !names.is_empty() && names.iter().all(allowed)
+        }
+        ("tokenizer_class", None) => true,
+        ("tokenizer_class", Some(value)) => allowed(value),
+        _ => false,
+    };
+    if ok { Ok(()) } else { Err(Cause::RemoteCode) }
 }
 
 /// Refuses a `config.json` that has the member `auto_map` or `custom_pipelines` at any depth.
