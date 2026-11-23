@@ -18,19 +18,6 @@ describe('placeGroups (HSE-002)', () => {
     expect(immich?.what).toBe('Compose project');
   });
 
-  it.each([false, true])('keeps project paths when folder and file labels are on different containers (reverse: %s)', (reverse) => {
-    const split = places.map((place) => {
-      const containers = place.containers.map((container) => ({
-        ...container,
-        composeWorkingDir: container.name === 'immich-server' ? '/srv/immich' : null,
-        composeFiles: container.name === 'immich-redis' ? ['/srv/immich/compose.yaml'] : [],
-      }));
-      return { ...place, containers: reverse ? containers.reverse() : containers };
-    });
-    const project = placeGroups(split, every).flatMap((group) => group.rows).find((row) => row.name === 'immich');
-    expect(project).toMatchObject({ folder: '/srv/immich', files: ['/srv/immich/compose.yaml'] });
-  });
-
   it('marks each row Not managed in stage 1: Anima has installed nothing', () => {
     expect(placeGroups(places, every).flatMap((group) => group.rows).every((row) => !row.managed)).toBe(true);
   });
@@ -79,4 +66,17 @@ describe('placeGroups (HSE-002)', () => {
     expect(redis?.what).toBe('example/tracks:0.36 · Container of immich');
     expect(redis?.containers).toHaveLength(1);
   });
+});
+
+it.each([false, true])('keeps project paths when folder and file labels are on different containers (reverse: %s)', (reverse) => {
+  const split = places.map((place) => {
+    const containers = place.containers.map((container) => ({
+      ...container,
+      composeWorkingDir: container.name === 'immich-server' ? '/srv/immich' : null,
+      composeFiles: container.name === 'immich-redis' ? ['/srv/immich/compose.yaml'] : [],
+    }));
+    return { ...place, containers: reverse ? containers.reverse() : containers };
+  });
+  const project = placeGroups(split, every).flatMap((group) => group.rows).find((row) => row.name === 'immich');
+  expect(project).toMatchObject({ folder: '/srv/immich', files: ['/srv/immich/compose.yaml'] });
 });
