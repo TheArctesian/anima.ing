@@ -5138,3 +5138,22 @@ containers of each through the hub. The tests use a fake hub; nobody has seen th
    Expected: the column Updates says "Up to date" or "Newer image" for each row of a machine that answered.
 
 Result: Open.
+
+### HT-OS5-A1: automatic Anima OS staging on installed hardware
+
+Status: Open. Task OS5-A1, AOS-016. Build: `os/automatic-update-staging`.
+
+The Rust updater and disposable VM exercise signed staging, pending-state preservation,
+and refusal to automatically retry a rolled-back release. They do not qualify physical
+network/storage behavior or a real published release on an installed machine.
+
+1. Install an image carrying OS5-A1 on a designated test machine. Leave it connected.
+   Expect `anima-update-check.timer` to be active and a check within 15 to 30 minutes.
+2. Offer a newer signed preview through the existing release procedure. Expect the update
+   to download and stage without changing the running system or rebooting it.
+3. Disconnect the network with that update staged and run the automatic service again.
+   Expect the pending update and previous system to remain intact.
+4. Complete the existing activation/recovery test, then offer the same rolled-back release.
+   Expect automatic checks to hold it; a newer signed release can be considered again.
+
+Automatic activation, workload drain and unattended reboots are not part of OS5-A1.

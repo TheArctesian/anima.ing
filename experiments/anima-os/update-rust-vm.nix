@@ -43,6 +43,8 @@ in pkgs.testers.runNixOSTest {
     import json
     machine.start()
     machine.wait_for_unit("multi-user.target")
+    machine.succeed("systemctl is-active anima-update-check.timer")
+    machine.succeed("systemctl stop anima-update-check.timer")
     machine.succeed("mkdir -p /run/update-origin/os/preview/x86_64-linux/20261121000000 /persist/anima-updates")
     machine.succeed("nix-store --export ${candidate} > /run/system.nar; xz -1 -k /run/system.nar; cp /run/system.nar.xz /run/update-origin/os/preview/x86_64-linux/20261121000000/system.nar.xz")
     machine.succeed("openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=AnimaTestCA -addext basicConstraints=critical,CA:TRUE -keyout /run/update-origin/ca-key.pem -out /run/update-origin/ca.pem 2>/dev/null")
@@ -72,13 +74,21 @@ in pkgs.testers.runNixOSTest {
     machine.succeed("python3 -c " + shlex.quote(corrupt))
     machine.fail(prefix + "download")
     machine.succeed("test ! -e /boot/loader/entries/anima-candidate+2.conf; cp /run/system.nar.xz " + artifact)
-    staged = json.loads(machine.succeed(prefix + "download", timeout=120))
+    machine.succeed("mkdir -p /run/systemd/system/anima-update-check.service.d")
+    machine.succeed("printf '[Service]\nEnvironment=SSL_CERT_FILE=/run/update-origin/ca.pem\n' > /run/systemd/system/anima-update-check.service.d/test.conf; systemctl daemon-reload")
+    machine.succeed("systemctl start anima-update-check.service", timeout=120)
+    staged = json.loads(machine.succeed(prefix + "status"))
     assert staged["ok"] and staged["value"]["phase"] == "staged"
     assert staged["value"]["system"] == "${candidate}"
     machine.succeed("test -f /boot/loader/entries/anima-candidate+2.conf; test -f /boot/loader/entries/anima-current.conf; test ! -e /persist/anima-updates/download.nar.xz")
     status = json.loads(machine.succeed(prefix + "status"))
     assert status["value"]["phase"] == "staged" and "operation" not in status["value"]
     machine.fail(prefix + "download")
+    machine.succeed("systemctl stop update-fixture.service")
+    pending = json.loads(machine.succeed(prefix + "automatic"))
+    assert pending["value"]["phase"] == "staged"
+    machine.succeed("systemd-run --unit=update-fixture ${pkgs.python3}/bin/python3 ${server}")
+    machine.wait_for_open_port(443, timeout=15)
     machine.succeed("printf '{\"phase\":\"downloading\",\"bytes\":10,\"totalBytes\":100}' > /persist/anima-updates/progress.json")
     assert json.loads(machine.succeed(prefix + "status"))["value"]["operation"]["phase"] == "interrupted"
     machine.succeed("test $(readlink -f /run/current-system) != '${candidate}'")
@@ -86,6 +96,9 @@ in pkgs.testers.runNixOSTest {
     machine.succeed("python3 -c " + shlex.quote(interrupted))
     recovered = json.loads(machine.succeed(prefix + "health"))["value"]
     assert recovered["phase"] == "rolled-back" and recovered["highest"] == "20261121000000"
+    held = json.loads(machine.succeed(prefix + "automatic"))["value"]
+    assert held["phase"] == "held" and held["reason"] == "previous-rollback"
+    assert json.loads(machine.succeed(prefix + "status"))["value"]["phase"] == "rolled-back"
     older = "import json,pathlib; p=pathlib.Path('/run/payload.json'); r=json.loads(p.read_text()); r['version']='20261120000000'; r['url']='https://releases.anima.ing/os/preview/x86_64-linux/20261120000000/system.nar.xz'; p.write_text(json.dumps(r))"
     machine.succeed("python3 -c " + shlex.quote(older))
     machine.succeed("openssl dgst -sha256 -sign ${keys}/private.pem -out /run/signature /run/payload.json")
