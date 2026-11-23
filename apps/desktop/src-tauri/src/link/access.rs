@@ -15,6 +15,7 @@ pub struct Access {
     selected: Vec<u16>,
     open: Vec<u16>,
     ready: Vec<u16>,
+    listening: Vec<u16>,
     notes: Vec<Note>,
 }
 
@@ -129,18 +130,26 @@ async fn apply(
     Ok(notes)
 }
 
-async fn readiness(rdp: bool) -> Vec<u16> {
+async fn readiness(rdp: bool) -> (Vec<u16>, Vec<u16>) {
+    use remote_login::desktop::Status;
     let mut ready = Vec::new();
-    for port in [22, 3389, 5900] {
-        if (port == 22 && remote_login::ready().await)
-            || (port != 22
-                && open_ports::may_open(port, rdp)
-                && remote_login::desktop::ready(port).await)
-        {
-            ready.push(port);
+    let mut listening = Vec::new();
+    if remote_login::ready().await {
+        ready.push(22);
+    }
+    for port in [3389, 5900] {
+        if open_ports::may_open(port, rdp) {
+            match remote_login::desktop::status(port).await {
+                Status::Unavailable => {}
+                Status::Listening => listening.push(port),
+                Status::Ready => {
+                    listening.push(port);
+                    ready.push(port);
+                }
+            }
         }
     }
-    ready
+    (ready, listening)
 }
 
 /// Reads the setup choices, or applies the person's selections. It never runs on app startup.
@@ -189,6 +198,7 @@ pub async fn link_access<R: Runtime>(
         selected = ports;
         notes = apply(&folder, &program, &selected, target).await?;
     }
+    let (ready, listening) = readiness(rdp).await;
     Ok(Access {
         configured: configured || applying,
         desktop,
@@ -196,7 +206,8 @@ pub async fn link_access<R: Runtime>(
         selected,
         open: open_ports::ask(&program, &folder, None)?.open,
         notes,
-        ready: readiness(rdp).await,
+        ready,
+        listening,
     })
 }
 

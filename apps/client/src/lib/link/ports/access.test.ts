@@ -19,7 +19,7 @@ it('publishes SSH alone without rewriting another account or port used by VNC', 
   const { hub } = fakeHub();
   await publishAccess(hub, {
     configured: true, desktop: true, username: 'local-user',
-    selected: [22, 5900], open: [22, 5900], ready: [22, 5900], notes: [],
+    selected: [22, 5900], open: [22, 5900], ready: [22, 5900], listening: [], notes: [],
   }, 22);
   expect(calls.update).toHaveBeenCalledExactlyOnceWith('device-id', {
     ssh: { enabled: true, port: 22, username: 'ssh-user', auth: 'PASSWORD' },

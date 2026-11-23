@@ -88,7 +88,7 @@
       await checkAccessHub(hub);
       await openSharingSettings();
       waitingSettings = true;
-      messages[5900] = 'Turn on Screen Sharing in General → Sharing. Anima checks when you return.';
+      messages[5900] = 'Review Screen Sharing in General → Sharing. Anima checks when you return.';
     } catch { messages[5900] = 'Could not open Sharing. Open System Settings → General → Sharing, then check again.'; waitingSettings = true; }
     finally { busy = false; active = undefined; }
   }
@@ -112,6 +112,7 @@
           {@const enabled = access.open.includes(row.port) && ready && published.includes(row.port)}
           {@const needsSync = access.open.includes(row.port) && ready && !enabled}
           {@const unavailable = row.port !== 22 && !access.desktop}
+          {@const unverified = row.port === 5900 && access.listening.includes(row.port) && !ready}
           {@const macSharing = system === 'mac' && row.port === 5900 && !ready}
           <section class="capability" aria-labelledby="setup-label-{row.port}">
             <div class="heading">
@@ -126,10 +127,13 @@
                 {:else if enabled}Ready in Anima
                 {:else if needsSync}Ready locally · sync with Anima
                 {:else if ready}Server ready · not enabled in Anima
+                {:else if unverified}Server detected · authentication not verified
                 {:else}Not enabled{/if}
               </p>
               {#if !unavailable}
-                {#if macSharing}
+                {#if unverified}
+                  <FormButton aria-disabled={busy} onclick={() => void apply(row.port)}>Check again</FormButton>
+                {:else if macSharing}
                   <div class="actions">
                     <FormButton aria-disabled={busy} onclick={() => void settings()}>Open settings…</FormButton>
                     {#if waitingSettings}<FormButton aria-disabled={busy} onclick={checkSharing}>Check again</FormButton>{/if}
@@ -140,7 +144,8 @@
               {/if}
             </div>
             {#if row.port === 22 && !enabled}<p class="hint">Anima prepares private SSH access. Your system may ask for administrator approval.</p>{/if}
-            {#if macSharing}<p class="hint">macOS requires you to turn on Screen Sharing in System Settings.</p>{/if}
+            {#if unverified}<p class="hint">Anima could not verify a supported sign-in method. Review the server’s sharing permissions, then check again.</p>
+            {:else if macSharing}<p class="hint">macOS requires you to turn on Screen Sharing in System Settings.</p>{/if}
             {#if system === 'windows' && row.port === 5900 && !enabled}<p class="hint">Needs an existing authenticated VNC server.</p>{/if}
           </section>
         {/each}

@@ -28,7 +28,13 @@ async fn offered<S: AsyncRead + AsyncWrite + Unpin>(stream: &mut S) -> std::io::
     let mut methods = vec![0; usize::from(count)];
     stream.read_exact(&mut methods).await?;
     // Every offered path must require authentication, not merely the path we would prefer.
-    Ok(methods.iter().all(|method| matches!(method, 2 | 30)))
+    // Apple-only companion types: RSA/SRP (33), Kerberos/GSSAPI (35), direct SRP (36).
+    // Classification evidence and limits are recorded in HM-T41 of hosted-mode.md.
+    let apple = &banner == b"RFB 003.889\n";
+    Ok(methods.iter().any(|method| matches!(method, 2 | 30))
+        && methods
+            .iter()
+            .all(|method| matches!(method, 2 | 30) || (apple && matches!(method, 33 | 35 | 36))))
 }
 
 #[cfg(test)]
@@ -62,6 +68,7 @@ mod tests {
         for (banner, methods) in [
             (b"RFB 003.008\n", vec![2]),
             (b"RFB 003.889\n", vec![30]),
+            (b"RFB 003.889\n", vec![30, 33, 36, 35]),
             (b"RFB 003.889\n", vec![2, 30]),
             (b"RFB 003.008\n", vec![2; 255]),
         ] {
@@ -83,6 +90,26 @@ mod tests {
                 extra.is_empty(),
                 "the probe never submits a credential or opens a session"
             );
+        }
+    }
+
+    #[tokio::test]
+    async fn apple_companions_need_the_apple_dialect_and_a_supported_authentication_path() {
+        for (banner, methods) in [
+            (b"RFB 003.008\n", vec![30, 33, 36, 35]),
+            (b"RFB 003.889\n", vec![33, 36, 35]),
+            (b"RFB 003.889\n", vec![30, 33, 36, 35, 1]),
+            (b"RFB 003.889\n", vec![30, 33, 36, 35, 19]),
+            (b"RFB 003.889\n", vec![30, 33, 36, 35, 255]),
+        ] {
+            let bytes = [
+                banner.as_slice(),
+                &[u8::try_from(methods.len()).unwrap()],
+                &methods,
+            ]
+            .concat();
+            let (mut client, _server) = server(&bytes).await;
+            assert!(!requires_authentication(&mut client).await, "{methods:?}");
         }
     }
 

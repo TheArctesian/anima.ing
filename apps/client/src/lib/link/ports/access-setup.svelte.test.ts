@@ -11,7 +11,7 @@ vi.mock('$lib/desktop/system-settings', () => ({ openSharingSettings: calls.sett
 vi.mock('$lib/hub/context', () => ({ useHub: () => ({}) }));
 vi.mock('motion', async (original) => ({ ...(await original<typeof import('motion')>()), animate: (await import('$lib/motion/engine.fixture')).fakeRun }));
 
-const fresh: import('$lib/desktop/link/access').Access = { configured: false, desktop: true, username: 'operator', selected: [22, 5900], open: [], ready: [], notes: [] };
+const fresh: import('$lib/desktop/link/access').Access = { configured: false, desktop: true, username: 'operator', selected: [22, 5900], open: [], ready: [], listening: [], notes: [] };
 let app: ReturnType<typeof mount> | undefined;
 
 async function settle(): Promise<void> {
@@ -158,4 +158,19 @@ it('retries failed publication without preparing protocols and never calls unpub
   expect(calls.localAccess.mock.calls.filter((args) => args.length > 0)).toHaveLength(1);
   expect(calls.publishAccess).toHaveBeenCalledTimes(2);
   expect(document.body.textContent).toContain('Ready in Anima');
+});
+
+it('distinguishes a listening server from verified authentication and retries without a settings detour', async () => {
+  calls.localAccess.mockResolvedValue({ ...fresh, listening: [5900] });
+  await show();
+  expect(document.body.textContent).toContain('Server detected · authentication not verified');
+  expect(document.body.textContent).not.toContain('macOS requires you to turn on');
+  expect(document.querySelector('[aria-label="Enable Screen sharing"]')).toBeNull();
+  const retry = [...document.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Check again');
+  expect(retry).toBeDefined();
+  retry?.click();
+  await settle();
+  expect(calls.localAccess).toHaveBeenLastCalledWith([22, 5900], 5900);
+  expect(calls.settings).not.toHaveBeenCalled();
+  expect(document.body.textContent).not.toContain('Ready in Anima');
 });
