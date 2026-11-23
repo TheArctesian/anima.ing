@@ -156,6 +156,13 @@ pub enum Error {
     LinkControlAlone,
     #[error("{} {}", link::HOSTED_CLOUD_KEY_FILE, link::HOSTED_RULE)]
     HostedWithoutLink,
+    /// A hosted hub with no networks to refuse reaches the hubs of other accounts and the host
+    /// of the pool (R-030, R-129).
+    #[error(
+        "{} needs {PROBE_DENY}: a hosted hub refuses the networks of its pool",
+        link::HOSTED_CLOUD_KEY_FILE
+    )]
+    HostedWithoutProbeDeny,
     #[error("{variable} is not valid")]
     Routes { variable: &'static str },
     #[error("{} {}", own_daemon::OWN_DAEMON_SOCKET, own_daemon::OWN_DAEMON_RULE)]
@@ -226,6 +233,18 @@ fn permitted_networks(
 }
 
 /// Comma-separated CIDR networks from `variable`.
+/// The networks that the hub never reaches; empty by default, but never on a hosted hub.
+fn probe_deny(env: &BTreeMap<String, String>, hosted: bool) -> Result<Vec<ipnet::IpNet>, Error> {
+    let denied = match env.get(PROBE_DENY).map(String::as_str) {
+        None | Some("") => Vec::new(),
+        Some(text) => networks(PROBE_DENY, text)?,
+    };
+    if hosted && denied.is_empty() {
+        return Err(Error::HostedWithoutProbeDeny);
+    }
+    Ok(denied)
+}
+
 fn networks(variable: &'static str, text: &str) -> Result<Vec<ipnet::IpNet>, Error> {
     text.split(',')
         .map(|entry| {
@@ -292,6 +311,7 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
     let link_socket = link::socket(env, listen)?;
     let link_control = link::control(env, link_socket.is_some())?;
     let hosted_cloud_key_file = link::hosted(env, link_control.is_some())?;
+    let probe_deny = probe_deny(env, hosted_cloud_key_file.is_some())?;
     Ok(Config {
         listen,
         database_url_file: value(env, DATABASE_URL_FILE, "/run/secrets/database_url")?.into(),
@@ -311,10 +331,7 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
         own_daemon: own_daemon::own_daemon(env, hosted_cloud_key_file.is_some())?,
         hosted_cloud_key_file,
         link_socket,
-        probe_deny: match env.get(PROBE_DENY).map(String::as_str) {
-            None | Some("") => Vec::new(),
-            Some(text) => networks(PROBE_DENY, text)?,
-        },
+        probe_deny,
         log: value(env, LOG, "info")?.to_owned(),
         tls_cert_file,
         tls_key_file,
