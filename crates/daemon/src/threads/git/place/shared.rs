@@ -44,6 +44,9 @@ pub const ROOM: u64 = 1024 * 1024 * 1024;
 /// How many times the size of the object store of the project its copy can have.
 const TIMES: u64 = 3;
 
+/// The bytes that stay free on the disk of the records, whatever a project brings.
+const MIN_FREE: u64 = 1024 * 1024 * 1024;
+
 /// The most bytes of the list of the commits where a shallow clone ends.
 const MOST_SHALLOW: u64 = 16 * 1024 * 1024;
 
@@ -109,10 +112,9 @@ async fn mark(store: &Git, worktree: &Worktree, commit: &str) -> Result<(), GitE
     store.output(keep).await.map(drop)
 }
 
-/// Whether the copy alone has `commit` as a commit with each object of its history, but for
-/// the history of `known`.
-async fn whole(store: &Git, worktree: &Worktree, commit: &str, known: &[&str]) -> bool {
-    let shared = &worktree.record().shared;
+/// Whether the Git folder at `folder` (the `git` of `store` runs with it) has `commit` as a
+/// commit with each object of its history, but for the history of `known`.
+async fn whole(store: &Git, folder: &Path, commit: &str, known: &[&str]) -> bool {
     let itself = format!("{commit}^{{commit}}");
     let is = [
         "rev-parse",
@@ -121,10 +123,10 @@ async fn whole(store: &Git, worktree: &Worktree, commit: &str, known: &[&str]) -
         "--end-of-options",
         &itself,
     ];
-    let is = store.text(Run::new(shared, is)).await;
+    let is = store.text(Run::new(folder, is)).await;
     let mut all = vec!["rev-list", "--objects", "--quiet", commit, "--not"];
     all.extend(known);
-    let all = Run::new(shared, all).with_time(LONG);
+    let all = Run::new(folder, all).with_time(LONG);
     is.ok().as_deref() == Some(commit) && store.output(all).await.is_ok()
 }
 
@@ -173,8 +175,7 @@ pub async fn learn(git: &Git, worktree: &Worktree, commits: &[&str]) -> Result<(
     }
     let known: Vec<&str> = mine.iter().map(String::as_str).take(MOST_KNOWN).collect();
     for commit in wanted {
-        let left = left(git, (store, worktree)).await?;
-        brought(git, (store, worktree), commit, (&known, left)).await?;
+        brought(git, (store, worktree), commit, &known).await?;
         mark(store, worktree, commit).await?;
     }
     Ok(())
@@ -183,72 +184,135 @@ pub async fn learn(git: &Git, worktree: &Worktree, commits: &[&str]) -> Result<(
 /// The bytes that the copy of the project of `worktree` can still take. Each thread of each
 /// project writes to the one disk of the records, and what a thread brings is bytes that its
 /// agent chose. So the copy of a project is held to a size that follows the project: three
-/// times the object store of the person, and [`ROOM`] for a small one. An agent that wants
-/// the runner to keep more must first use that much of the disk of the project itself.
-fn room(git: &Git, worktree: &Worktree) -> u64 {
-    let record = worktree.record();
-    let theirs = Dir::open(&record.common_dir)
-        .and_then(|common| common.below(Path::new("objects"), walk::Make::No))
-        .ok()
-        .flatten()
-        .map_or(0, |objects| objects.bytes());
-    let most = theirs.saturating_mul(TIMES).saturating_add(git.copy_room());
-    most.saturating_sub(super::disk::bytes(&record.shared))
-}
-
-/// [`room`], after the copy was made small when it is full: what no known commit needs goes
-/// (a pack that a thread left besides the history that was asked for).
+/// times the disk that the object store of the person really uses, and the room that each
+/// project has ([`ROOM`]). An agent that wants the runner to keep more must use that much of
+/// the disk of the project itself, with real bytes. The disk of the records also keeps
+/// [`MIN_FREE`] free.
 ///
 /// # Errors
-/// A [`GitError`] when the copy is full all the same: nothing more is brought.
-async fn left(git: &Git, (store, worktree): (&Git, &Worktree)) -> Result<u64, GitError> {
-    let free = room(git, worktree);
-    if free > 0 {
-        return Ok(free);
-    }
-    let shared = &worktree.record().shared;
-    for small in [
-        &["repack", "-a", "-d", "-q"][..],
-        &["prune", "--expire=now"],
-    ] {
-        store
-            .output(Run::new(shared, small).with_time(LONG))
-            .await?;
-    }
-    match room(git, worktree) {
+/// A [`GitError`] when nothing is left: nothing more is brought.
+async fn left(git: &Git, worktree: &Worktree) -> Result<u64, GitError> {
+    let record = worktree.record();
+    let common = record.common_dir.clone();
+    // The store of the person can be large: it is counted off the thread of the calls.
+    let theirs = tokio::task::spawn_blocking(move || {
+        let objects = Dir::open(&common)
+            .and_then(|common| common.below(Path::new("objects"), walk::Make::No));
+        objects.ok().flatten().map_or(0, |objects| objects.used())
+    });
+    let theirs = theirs.await.unwrap_or(0);
+    let most = theirs.saturating_mul(TIMES).saturating_add(git.copy_room());
+    let used = super::disk::bytes(&record.shared);
+    let free = free_at(&record.shared).saturating_sub(MIN_FREE);
+    match most.saturating_sub(used).min(free) {
         0 => Err(failed(
             "the copy of the history of this project reached the size that the project \
-             allows. Remove the worktrees of this project, then remove its copy; the next \
-             chat builds it again"
+             allows, or the disk of Anima's records is nearly full. Remove the worktrees \
+             of this project, then remove its copy; the next chat builds it again"
                 .to_owned(),
         )),
-        free => Ok(free),
+        left => Ok(left),
     }
 }
 
-/// Has the thread bring the history of `commit` without the history of `known`, and checks
-/// in the copy that each object of it is there. When that fails, the whole history again:
-/// the repository of the person or the copy can have lost what was known.
+/// The bytes that are free on the disk that holds `folder`.
+#[cfg(unix)]
+fn free_at(folder: &Path) -> u64 {
+    rustix::fs::statvfs(folder).map_or(0, |disk| disk.f_bavail.saturating_mul(disk.f_frsize))
+}
+
+#[cfg(not(unix))]
+const fn free_at(_folder: &Path) -> u64 {
+    u64::MAX
+}
+
+/// A Git folder of the runner beside the copy, for one pack of a thread: what the thread left
+/// is named and checked in it, and only what a known commit needs goes on into the copy. It
+/// is removed when the value is dropped, on each way out.
+struct Quarantine(std::path::PathBuf);
+
+impl Drop for Quarantine {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+/// Has the thread bring the history of `commit` without the history of `known`. When that
+/// gives no whole history, the whole history again: the repository of the person or the copy
+/// can have lost what was known.
 async fn brought(
     git: &Git,
     (store, worktree): (&Git, &Worktree),
     commit: &str,
-    (known, left): (&[&str], u64),
+    known: &[&str],
 ) -> Result<(), GitError> {
-    let first: Result<(), GitError> = async {
-        pack::make(git, worktree, (&[commit], known)).await?;
-        pack::take(store, worktree, left).await
+    let first = once(git, (store, worktree), commit, known).await;
+    if first.is_ok() || known.is_empty() {
+        return first;
     }
-    .await;
-    if first.is_ok() && whole(store, worktree, commit, known).await {
-        return Ok(());
+    once(git, (store, worktree), commit, &[]).await
+}
+
+/// One try of [`brought`]. The pack of the thread goes into a quarantine, never into the
+/// copy: `git index-pack` names its objects there, the history of `commit` is checked there,
+/// and the runner's own `git pack-objects` then writes into the copy only the objects of
+/// that history that the copy lacks. What a thread left besides them never comes into the
+/// copy, and nothing is ever removed from the copy.
+async fn once(
+    git: &Git,
+    (store, worktree): (&Git, &Worktree),
+    commit: &str,
+    known: &[&str],
+) -> Result<(), GitError> {
+    let record = worktree.record();
+    let left = left(git, worktree).await?;
+    pack::make(git, worktree, (&[commit], known)).await?;
+    let name = format!("quarantine-{}.git", worktree.thread().as_simple());
+    let held = Quarantine(record.shared.join(name));
+    let folder = held.0.as_path();
+    let free = git.unbound();
+    super::own::make(&free, folder, &record.shared, commit.len() == 64).await?;
+    // The copy can end at the commits of a shallow clone: the quarantine ends there too.
+    if let Ok(ends) = std::fs::read(record.shared.join("shallow")) {
+        std::fs::write(folder.join("shallow"), ends).map_err(GitError::Files)?;
     }
-    if known.is_empty() {
-        return first.and(Err(forged()));
+    let checked = &git.in_own(folder).await?;
+    pack::take(checked, (worktree, folder), left).await?;
+    if !whole(checked, folder, commit, known).await {
+        return Err(forged());
     }
-    pack::make(git, worktree, (&[commit], &[])).await?;
-    pack::take(store, worktree, left).await?;
-    if whole(store, worktree, commit, &[]).await {
+    let mut wanted = format!("{commit}\n");
+    for commit in known {
+        wanted.extend(["^", commit, "\n"]);
+    }
+    let out = super::own::fresh(folder, "out")?;
+    let base = out.join("pack");
+    // `--local`: only what is in the quarantine, not what the copy has already.
+    let pack: [&std::ffi::OsStr; 5] = [
+        "pack-objects".as_ref(),
+        "--revs".as_ref(),
+        "--local".as_ref(),
+        "--quiet".as_ref(),
+        base.as_os_str(),
+    ];
+    let pack = Run::new(folder, pack).with_time(LONG);
+    checked.output(pack.with_input(wanted.into_bytes())).await?;
+    if super::disk::bytes(&out) > left {
+        return Err(failed(
+            "the history of this commit is larger than the copy of this project can hold"
+                .to_owned(),
+        ));
+    }
+    let made = std::fs::read_dir(&out).map_err(GitError::Files)?;
+    for file in made.flatten() {
+        let placed = record.shared.join("objects/pack").join(file.file_name());
+        // A pack of this name that is there holds the same bytes: it stays.
+        if !placed.exists() {
+            std::fs::rename(file.path(), placed).map_err(GitError::Files)?;
+        }
+    }
+    // The copy alone has the whole history now, or the commit is not known.
+    if whole(store, &record.shared, commit, known).await {
         Ok(())
     } else {
         Err(forged())

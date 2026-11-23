@@ -156,21 +156,21 @@ pub async fn make(
     packed
 }
 
-/// Takes each pack that the thread made, as a file with no link followed, and brings it into
-/// the copy of the project. `git index-pack` names each object by its content first, and the
-/// pack gets the name that `git` gives it from its bytes: a pack of a thread never has the
-/// name of a pack that is there, unless it is the same pack.
-///
-/// At most `left` bytes are taken: what a thread leaves is not copied without end.
+/// Takes each pack that the thread made, as a file with no link followed, into the quarantine
+/// at `quarantine` (the `git` of `checked` runs with it). `git index-pack` names each object
+/// by its content, and each pack gets the name that `git` gives it from its bytes. At most
+/// `left` bytes are taken: what a thread leaves is not copied without end.
 ///
 /// # Errors
 /// A [`GitError`] when a pack cannot be copied, is no pack, or the packs are larger than
 /// `left`.
-pub async fn take(store: &Git, worktree: &Worktree, left: u64) -> Result<(), GitError> {
-    let record = worktree.record();
+pub async fn take(
+    checked: &Git,
+    (worktree, quarantine): (&Worktree, &Path),
+    left: u64,
+) -> Result<(), GitError> {
     let name = folder(worktree);
-    let incoming = format!("incoming-{}", worktree.thread().as_simple());
-    let incoming = super::super::own::fresh(&record.shared, &incoming)?;
+    let incoming = super::super::own::fresh(quarantine, "incoming")?;
     let copied = (|| {
         use std::io::Read as _;
         let top = Dir::open(worktree.folder())?;
@@ -197,31 +197,22 @@ pub async fn take(store: &Git, worktree: &Worktree, left: u64) -> Result<(), Git
         }
         Ok::<_, std::io::Error>(packs)
     })();
-    // The folder of the thread and, when the copy failed, what was copied so far both go.
+    // The folder of the thread goes on each way out.
     if let Ok(top) = Dir::open(worktree.folder()) {
         let _ = top.remove_all(&name);
     }
-    if copied.is_err() {
-        let _ = std::fs::remove_dir_all(&incoming);
-    }
     for pack in copied.map_err(GitError::Files)? {
         let index: [&OsStr; 2] = ["index-pack".as_ref(), pack.as_os_str()];
-        let index = Run::new(&record.shared, index).with_time(LONG);
-        let named = store.text(index).await?;
+        let index = Run::new(quarantine, index).with_time(LONG);
+        let named = checked.text(index).await?;
         // `git` prints the name of the pack: the hash of what it holds.
         let named = named.split_whitespace().next_back().unwrap_or_default();
         let named = super::super::super::project::refs::id(named)
             .ok_or_else(|| failed("git gave no name for a pack of the repository".to_owned()))?;
         for kind in ["pack", "idx"] {
-            let placed = record
-                .shared
-                .join(format!("objects/pack/pack-{named}.{kind}"));
-            // A pack of this name that is there holds the same bytes: it stays.
-            if !placed.exists() {
-                std::fs::rename(pack.with_extension(kind), placed).map_err(GitError::Files)?;
-            }
+            let placed = quarantine.join(format!("objects/pack/pack-{named}.{kind}"));
+            std::fs::rename(pack.with_extension(kind), placed).map_err(GitError::Files)?;
         }
     }
-    let _ = std::fs::remove_dir_all(&incoming);
     Ok(())
 }

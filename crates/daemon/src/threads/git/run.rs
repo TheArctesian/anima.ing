@@ -220,6 +220,15 @@ impl Git {
         self
     }
 
+    /// This `git` held to no worktree and no Git folder: to make a new Git folder of the runner.
+    #[must_use]
+    pub fn unbound(&self) -> Self {
+        let mut free = self.clone();
+        free.bound = Vec::new();
+        free.folder = None;
+        free
+    }
+
     /// This `git` with the Git folder of the runner at `own` and no work folder, for the
     /// moment before a worktree has its files: no run looks for a repository above a folder.
     ///
