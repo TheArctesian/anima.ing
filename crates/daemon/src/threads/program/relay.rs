@@ -9,18 +9,25 @@ use tokio::sync::OnceCell;
 use super::Start;
 use crate::threads::wire::Refusal;
 
+mod certificate;
 mod input;
 mod settings;
 
 /// Started lazily: ordinary threads open no TCP listener.
 #[derive(Default)]
-pub struct Relays(OnceCell<Arc<Relay>>);
+pub struct Relays(OnceCell<Arc<Listener>>);
 
-/// Neither debug nor serializable: this address contains a bearer secret.
+struct Listener {
+    relay: Relay,
+    certificate: certificate::Certificate,
+}
+
+/// Neither debug nor serializable: the lease holds a per-thread bearer secret.
 pub struct Lease {
-    relay: Arc<Relay>,
+    relay: Arc<Listener>,
     thread: String,
     address: String,
+    secret: String,
     program: upstream::Program,
 }
 
@@ -29,10 +36,10 @@ impl Relays {
         let relay = self
             .0
             .get_or_try_init(|| async {
-                Relay::start()
-                    .await
-                    .map(Arc::new)
-                    .map_err(|_| Refusal::RelayFailed)
+                let relay = Relay::start().await.map_err(|_| Refusal::RelayFailed)?;
+                let certificate = certificate::Certificate::publish(relay.certificate())
+                    .map_err(|_| Refusal::RelayFailed)?;
+                Ok::<_, Refusal>(Arc::new(Listener { relay, certificate }))
             })
             .await?;
         let program = match program {
@@ -40,9 +47,21 @@ impl Relays {
             Program::Codex => upstream::Program::Codex,
         };
         let address = relay
+            .relay
             .open(thread, program)
             .map_err(|_| Refusal::RelayFailed)?;
+        let secret = address
+            .split('/')
+            .nth(3)
+            .ok_or(Refusal::RelayFailed)?
+            .to_owned();
+        let address = if program == upstream::Program::Codex {
+            address.replacen(&format!("/{secret}"), "", 1)
+        } else {
+            address
+        };
         Ok(Lease {
+            secret,
             relay: Arc::clone(relay),
             thread: thread.to_owned(),
             address,
@@ -53,7 +72,7 @@ impl Relays {
 
 impl Lease {
     pub fn close(&self) {
-        self.relay.close(&self.thread);
+        self.relay.relay.close(&self.thread);
     }
 
     /// Only the child receives the address. No personal configuration file is changed.
@@ -66,13 +85,31 @@ impl Lease {
         let mut env = start.env.to_vec();
         match program {
             Program::ClaudeCode => {
-                env.retain(|(name, _)| name != "ANTHROPIC_BASE_URL");
+                env.retain(|(name, _)| {
+                    !matches!(
+                        name.as_str(),
+                        "ANTHROPIC_BASE_URL"
+                            | "NODE_EXTRA_CA_CERTS"
+                            | "NODE_TLS_REJECT_UNAUTHORIZED"
+                    )
+                });
+                env.push((
+                    "NODE_EXTRA_CA_CERTS".to_owned(),
+                    self.relay.certificate.path().display().to_string(),
+                ));
                 env.push(("ANTHROPIC_BASE_URL".to_owned(), self.address.clone()));
             }
             Program::Codex => {
+                env.retain(|(name, _)| name != "CODEX_CA_CERTIFICATE");
+                env.push((
+                    "CODEX_CA_CERTIFICATE".to_owned(),
+                    self.relay.certificate.path().display().to_string(),
+                ));
                 // Before a thread exists, provider requests must not use the default vendor
                 // endpoint. Port zero cannot host a listener; this value contains no bearer.
                 args.extend([
+                    "-c".to_owned(),
+                    "model_provider=\"openai\"".to_owned(),
                     "-c".to_owned(),
                     "openai_base_url=\"http://127.0.0.1:0/v1\"".to_owned(),
                 ]);
@@ -90,7 +127,7 @@ impl Lease {
     /// Programs can print their base URL in errors. Remove its secret before the outbox,
     /// runner events or disk records can receive that output.
     pub fn redact(&self, text: &str) -> String {
-        let secret = self.address.split('/').nth(3).unwrap_or("");
+        let secret = &self.secret;
         if secret.is_empty() {
             text.to_owned()
         } else {
@@ -101,7 +138,7 @@ impl Lease {
 
 impl Drop for Lease {
     fn drop(&mut self) {
-        self.relay.close(&self.thread);
+        self.relay.relay.close(&self.thread);
     }
 }
 

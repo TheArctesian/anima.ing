@@ -46,8 +46,9 @@ async fn collect(listener: tokio::net::TcpListener) -> String {
     String::from_utf8(body).expect("ASCII URL")
 }
 
-async fn status(address: &str) -> u16 {
+async fn status(address: &str, certificate: &[u8]) -> u16 {
     reqwest::Client::builder()
+        .add_root_certificate(reqwest::Certificate::from_pem(certificate).expect("public CA"))
         .no_proxy()
         .timeout(super::WAIT)
         .build()
@@ -69,9 +70,9 @@ async fn th118_the_holder_keeps_the_relay_across_reconnection_and_revokes_it_at_
     let target = collector.local_addr().expect("address");
     let receiving = tokio::spawn(collect(collector));
     let script = format!(
-        "/usr/bin/curl --silent --noproxy '*' --data-binary \"$ANTHROPIC_BASE_URL\" http://{target}/; echo \"$ANTHROPIC_BASE_URL\"; read line; echo \"$ANTHROPIC_BASE_URL\""
+        "/usr/bin/curl --silent --noproxy '*' --data-binary \"$ANTHROPIC_BASE_URL\n$NODE_EXTRA_CA_CERTS\" http://{target}/; echo \"$ANTHROPIC_BASE_URL\"; read line; echo \"$ANTHROPIC_BASE_URL\""
     );
-    let holder = Holder::start(0);
+    let mut holder = Holder::start(0);
     let mut link = holder.link().await;
     let id = link
         .send(relayed("lease", &script, Program::ClaudeCode))
@@ -81,19 +82,18 @@ async fn th118_the_holder_keeps_the_relay_across_reconnection_and_revokes_it_at_
         .await
         .expect("in time")
         .expect("collected");
-    assert!(address.starts_with("http://127.0.0.1:"));
-    assert_eq!(status(&address).await, 501);
+    let (address, certificate_path) = address.split_once('\n').expect("URL and public CA path");
+    let certificate = std::fs::read(certificate_path).expect("public CA");
+    assert_eq!(status(address, &certificate).await, 501);
     drop(link);
-    assert_eq!(status(&address).await, 501, "works while daemon is absent");
-    let mut link = holder.link().await;
-    let hello = link
-        .send(Action::Hello {
-            version: anima_daemon::threads::wire::VERSION,
-        })
-        .await;
-    link.answer(hello).await;
     assert_eq!(
-        status(&address).await,
+        status(address, &certificate).await,
+        501,
+        "works while daemon is absent"
+    );
+    let mut link = holder.link().await;
+    assert_eq!(
+        status(address, &certificate).await,
         501,
         "same secret and port after reconnect"
     );
@@ -102,9 +102,13 @@ async fn th118_the_holder_keeps_the_relay_across_reconnection_and_revokes_it_at_
     })
     .await;
     let events = link.until(exited("lease")).await;
-    assert_eq!(status(&address).await, 404, "exit revokes the secret");
+    assert_eq!(
+        status(address, &certificate).await,
+        404,
+        "exit revokes the secret"
+    );
     let serialized = serde_json::to_string(&events).expect("events");
-    assert!(!serialized.contains(&address));
+    assert!(!serialized.contains(address));
     let secret = address.rsplit('/').next().expect("secret");
     assert!(
         !serialized.contains(secret),
@@ -117,6 +121,9 @@ async fn th118_the_holder_keeps_the_relay_across_reconnection_and_revokes_it_at_
     );
     let record = std::fs::read_to_string(holder.dir.join("holder.json")).expect("holder record");
     assert!(!record.contains(secret));
+    link.send(Action::Quit).await;
+    assert!(holder.ended_within(super::WAIT).await);
+    assert!(!std::path::Path::new(certificate_path).exists());
 }
 
 #[tokio::test]
@@ -129,6 +136,8 @@ async fn th118_a_conflicting_or_unreadable_setting_refuses_before_start() {
     for settings in [
         r#"{"env":{"ANTHROPIC_BASE_URL":"https://example.invalid"}}"#,
         "broken json",
+        r#"{"env":{"NODE_TLS_REJECT_UNAUTHORIZED":"0"}}"#,
+        r#"{"env":{"NODE_EXTRA_CA_CERTS":"/synthetic-ca.pem"}}"#,
     ] {
         std::fs::write(&path, settings).expect("synthetic settings");
         let mut action = relayed("conflict", "echo should-not-start", Program::ClaudeCode);
@@ -176,7 +185,7 @@ async fn th118_a_failed_spawn_releases_the_lease_for_a_retry() {
     let id = link
         .send(relayed(
             "retry",
-            "printf '%s\\n' \"$0\" \"$1\"",
+            "printf '%s\\n' \"$0\" \"$3\"",
             Program::Codex,
         ))
         .await;
@@ -230,16 +239,25 @@ async fn th118_codex_receives_private_routing_on_start_resume_and_fork() {
             thread: "private".into(),
         })
         .await;
-    let lines = texts(&connection.until(exited("private")).await);
+    // Output can replay across reconnect until acknowledged; sequence numbers identify it.
+    let lines: std::collections::BTreeMap<_, _> = texts(&connection.until(exited("private")).await)
+        .into_iter()
+        .collect();
     assert_eq!(lines.len(), 4);
     for (index, (_, line)) in lines.iter().enumerate() {
         let message: serde_json::Value = serde_json::from_str(line).expect("child input");
         let config = &message["params"]["config"];
-        let address = config["openai_base_url"].as_str().expect("private URL");
-        assert!(address.starts_with("http://127.0.0.1:"));
-        assert!(address.ends_with("/[relay]/v1"));
+        assert_eq!(config["model_provider"], "anima_relay");
+        let provider = &config["model_providers.anima_relay"];
+        let address = provider["base_url"].as_str().expect("nonsecret URL");
+        assert!(address.starts_with("https://127.0.0.1:"));
+        assert!(address.ends_with("/v1"));
+        assert!(!address.contains("[relay]"));
+        assert_eq!(provider["http_headers"]["x-anima-relay"], "[relay]");
         if index < 3 {
             assert_eq!(config["unrelated"], "kept");
         }
     }
 }
+
+mod crash;

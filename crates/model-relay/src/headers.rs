@@ -43,6 +43,7 @@ fn passed(headers: &HeaderMap) -> HeaderMap {
     for (name, value) in headers {
         let stays = !ONE_CONNECTION.contains(name)
             && name != HOST
+            && name.as_str() != "x-anima-relay"
             && name.as_str() != "keep-alive"
             && !named.iter().any(|named| named == name.as_str());
         if stays {

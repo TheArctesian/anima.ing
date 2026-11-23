@@ -19,12 +19,31 @@ impl Lease {
         ) {
             let params = frame.entry("params").or_insert_with(|| json!({}));
             let params = params.as_object_mut().ok_or(Refusal::BadInput)?;
+            params.insert("modelProvider".to_owned(), json!("anima_relay"));
             let config = params.entry("config").or_insert_with(|| json!({}));
             if config.is_null() {
                 *config = json!({});
             }
             let config = config.as_object_mut().ok_or(Refusal::BadInput)?;
-            config.insert("openai_base_url".to_owned(), json!(self.address));
+            config.retain(|name, _| !name.starts_with("model_providers.anima_relay."));
+            if let Some(providers) = config
+                .get_mut("model_providers")
+                .and_then(Value::as_object_mut)
+            {
+                providers.remove("anima_relay");
+            }
+            config.insert("model_provider".to_owned(), json!("anima_relay"));
+            config.insert(
+                "model_providers.anima_relay".to_owned(),
+                json!({
+                    "name": "Anima relay",
+                    "base_url": self.address,
+                    "wire_api": "responses",
+                    "requires_openai_auth": true,
+                    "supports_websockets": true,
+                    "http_headers": {"x-anima-relay": self.secret},
+                }),
+            );
         }
         let mut line = serde_json::to_string(frame).map_err(|_| Refusal::BadInput)?;
         line.push('\n');

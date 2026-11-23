@@ -56,7 +56,13 @@ fn clear(path: &Path) -> bool {
     };
     match settings.get("env") {
         None => true,
-        Some(serde_json::Value::Object(env)) => !env.contains_key("ANTHROPIC_BASE_URL"),
+        Some(serde_json::Value::Object(env)) => [
+            "ANTHROPIC_BASE_URL",
+            "NODE_EXTRA_CA_CERTS",
+            "NODE_TLS_REJECT_UNAUTHORIZED",
+        ]
+        .iter()
+        .all(|name| !env.contains_key(*name)),
         Some(_) => false,
     }
 }
