@@ -1,5 +1,4 @@
-//! `operator create`: the account and its second factor are saved together, only with a right
-//! code, and that code is then used (FRN-004, SEC-002, OD-2).
+//! `operator create` saves the account and its second factor together, only with a right code (FRN-004, SEC-002, OD-2).
 
 use anima_hub::fleet::access::{self, NewOperator, Password};
 use chrono::TimeDelta;
@@ -12,7 +11,6 @@ use crate::hub::{
     Hub, PASSWORD, USERNAME, error, set_operator, start, test_vault, unauthenticated,
 };
 
-/// A new secret from `operator totp --new`: its base32 text and its bytes.
 pub(super) fn new_secret() -> (String, Vec<u8>) {
     let made = access::new_totp(USERNAME).unwrap();
     (made.secret().to_owned(), secret_of(made.uri()))
@@ -32,7 +30,6 @@ async fn create(pool: &PgPool, new: NewOperator) -> Result<(), access::Error> {
     created.map(|_| ())
 }
 
-/// `operator create` at [`start`] with this password, secret text and code.
 pub(super) async fn create_with(
     pool: &PgPool,
     password: &str,
@@ -42,8 +39,7 @@ pub(super) async fn create_with(
     create(pool, new_operator(password, secret, typed)).await
 }
 
-/// Makes every later write of a TOTP secret fail inside its transaction: the step after the
-/// account row is written.
+/// Fails each later TOTP secret write, the step after the account row is written.
 async fn refuse_totp_writes(pool: &PgPool) {
     for sql in [
         "create function access.refuse_totp() returns trigger language plpgsql as \
@@ -79,7 +75,6 @@ async fn frn_004_a_failure_after_the_account_is_written_leaves_nothing(pool: PgP
     );
     assert_eq!(audit_entries(&pool).await, 0);
 
-    // An existing account keeps its password, its tokens and its sign-ins.
     set_operator(&pool).await;
     let hub = Hub::new(&pool, start());
     let token = hub.token().await;

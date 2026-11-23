@@ -3,8 +3,7 @@ import { flushSync } from 'svelte';
 import { createSubscriber } from 'svelte/reactivity';
 import { describe, expect, it } from 'vitest';
 
-// Guards the `browser` resolve condition in vite.config.ts: with the server build of svelte,
-// effects never run and these tests fail.
+// Guards the `browser` resolve condition in vite.config.ts: the server build of svelte runs no effects.
 describe('Svelte runtime in tests', () => {
   it('CQ-043: an effect re-runs when a $state value changes', () => {
     const seen: number[] = [];

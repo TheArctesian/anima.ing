@@ -3,13 +3,12 @@
   import { stepped } from './stepper';
 
   interface Props {
-    /** The number as text, so a half-typed value is never read as a number; empty means none. */
+    /** Text, so a half-typed value is never read as a number; empty means none. */
     value: string;
-    /** The accessible name of the number field. */
     label: string;
     min: number;
     max: number;
-    /** Shown while the value is empty; one step down from `min` empties it. Without it the value stays at `min` or above. */
+    /** When set, one step down from `min` empties the value; without it the value stays at `min` or above. */
     placeholder?: string | undefined;
     id?: string | undefined;
     invalid?: boolean;

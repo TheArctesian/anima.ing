@@ -2,13 +2,10 @@ import { expect, test } from '@playwright/test';
 import { escapedAttempts } from './escapes';
 import type { Attempt } from './deny-proxy';
 
-// Ruling S3: no test browser reaches a real host. The wall is a deny-all proxy under every engine (isolation/deny-proxy.ts);
-// `global-teardown.ts` fails the run when an engine's proxy holds an attempt the harness does not explain. These specs prove
-// the wall stands in each engine, and that the check reads it.
+// Ruling S3: no test browser reaches a real host; each engine runs behind a deny-all proxy (isolation/deny-proxy.ts).
 
 const PROBE = 'isolation-probe.invalid';
 
-/** What this engine's proxy has been asked for so far; the config gave it to the project, the spec asks it by address. */
 async function attemptsOf(address: string): Promise<readonly Attempt[]> {
   // eslint-disable-next-line no-restricted-globals -- test code in Node: it reads the proxy's own record, not the hub
   const response = await fetch(`${address}/attempts`);
@@ -22,7 +19,7 @@ test('S3: a connection the browser makes by itself reaches this engine\'s deny-a
   const context = await browser.newContext();
   const page = await context.newPage();
   await expect(page.goto(`https://${PROBE}/`)).rejects.toThrow();
-  // A refused plain request may show as an error page or as a failed load, by engine; either way it got no further.
+  // A refused plain request shows as an error page or as a failed load, by engine.
   const refused = await page.goto(`http://${PROBE}/`).catch(() => null);
   expect(refused?.ok() ?? false).toBe(false);
   await context.close();

@@ -6,17 +6,15 @@
     text: string;
     /** The icon that leads the label, in the accent colour (UI-026). */
     icon?: IconName | undefined;
-    /** The heading level, when the label heads a section; a plain label otherwise. */
     level?: 2 | 3 | undefined;
     id?: string | undefined;
-    /** The heading can take focus from code (`tabindex="-1"`), for a page opened at its section. */
     focusable?: boolean;
   }
 
   const { text, icon, level, id, focusable = false }: Props = $props();
 </script>
 
-<!-- The section head of the website's language (UR-7, D6): an icon, a short rule, then the words. -->
+<!-- UR-7, D6. -->
 <div class="label">
   {#if icon !== undefined}<span class="mark"><Icon name={icon} size="sm" /></span>{/if}
   <span class="rule" aria-hidden="true"></span>

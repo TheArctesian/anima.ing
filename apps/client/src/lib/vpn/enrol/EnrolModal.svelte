@@ -12,13 +12,10 @@
 
   interface Props {
     api: EnrolApi;
-    /** The live sites: a router that connects shows here as the site's `waitingRouter`. */
     sites: readonly SitePath[];
-    /** A site with no router: the modal makes a key for its router. `null`: a computer of the operator. */
     siteId: string | null;
     now?: () => Date;
     clipboard?: ClipboardSink;
-    /** Runs `run` after `milliseconds`; returns the function that cancels it. */
     later?: (run: () => void, milliseconds: number) => () => void;
     onClose: () => void;
   }
@@ -62,7 +59,7 @@
 
   let surface: HTMLDivElement | undefined = $state();
 
-  /** The key field had focus and is gone; focus goes to the Approve route button, or the dialog if there is none. */
+  /** The key field held focus and is gone, so focus moves on. */
   async function focusApprove(): Promise<void> {
     await tick();
     const target = surface?.querySelector<HTMLElement>('.approve button') ?? surface?.closest<HTMLElement>('[role="dialog"], [role="alertdialog"]');
@@ -111,7 +108,6 @@
             </FormButton>
           {/if}
         </div>
-        <!-- Always mounted, one line high, so a refusal moves nothing (MOT-007). -->
         <p class="notice" role="alert">{notice}</p>
       {:else if view === 'key'}
         <p id="{ids}-about">Shown once, works once. Run these steps on the new computer.</p>

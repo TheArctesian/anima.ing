@@ -2,34 +2,27 @@ import { expect, test, type Page } from '@playwright/test';
 import { HUB_ORIGIN } from '../../synthetic/access';
 import { installSyntheticHub } from '../../synthetic/synthetic-hub';
 
-// The composer's editor with an input method, in WebKit (the engine of the Mac application). No browser test can
-// run a real input method, so each composition here is the sequence of events that WebKit sends, with the page
-// changed between them as the browser changes it. It needs a build made with `VITE_ANIMA_SPECIMEN=1` and runs
-// only when asked, `GALLERY_CODE_COMPOSER=1`. It makes no pictures.
+// No browser test can run a real input method, so each composition is the event sequence WebKit sends.
+// It needs a build made with `VITE_ANIMA_SPECIMEN=1`.
 
 const BOX = '[data-kit="rest"] [role="textbox"]';
 
 interface Composition {
-  /** What the method shows at each key, in order: "k", "か", "かな". */
   readonly steps: readonly string[];
-  /** The words it puts in at the end; empty with `cancel`. */
   readonly final: string;
   /** `webkit`: the composed text is deleted and put in again, then the composition ends. `chromium`: it only ends. */
   readonly ending: 'webkit' | 'chromium' | 'cancel';
-  /** The key that ends it, which WebKit sends after the end with code 229. */
   readonly endKey: 'Enter' | 'Escape';
-  /** A button to press when the method shows its last step, before the end. */
   readonly midway?: string;
 }
 
 interface Composed {
-  /** A key of the composition that the page refused: the editor took a key that was the method's. */
+  /** Keys of the composition that the editor took from the method. */
   readonly refused: readonly string[];
   /** The text node of the composition was still in the page just before the end. */
   readonly kept: boolean;
 }
 
-/** Runs in the page: one composition at the caret of the first composer's editor. */
 async function composeInPage({ box: selector, steps, final, ending, endKey, midway }: Composition & { box: string }): Promise<Composed> {
   const wait = (ms: number): Promise<void> => new Promise((done) => setTimeout(done, ms));
   const box = document.querySelector<HTMLElement>(selector);
@@ -90,7 +83,6 @@ async function composeInPage({ box: selector, steps, final, ending, endKey, midw
   return { refused, kept };
 }
 
-/** Runs in the page: the prompt as Markdown, read from the page as the editor reads it. */
 function markdownInPage(selector: string): string {
   const textOf = (node: Node): string => {
     if (node.nodeType === Node.TEXT_NODE) return node.nodeValue ?? '';
@@ -100,7 +92,6 @@ function markdownInPage(selector: string): string {
   return Array.from(document.querySelector(selector)?.childNodes ?? [], textOf).join('\n');
 }
 
-/** Runs in the page: puts the caret `offset` characters into the first shown text that holds `words`. */
 async function caretInPage({ box, words, offset }: { box: string; words: string; offset: number }): Promise<void> {
   const walker = document.createTreeWalker(document.querySelector(box) ?? document.body, NodeFilter.SHOW_TEXT);
   let found: Node | null = null;
@@ -116,10 +107,9 @@ const compose = (page: Page, composition: Composition): Promise<Composed> => pag
 const caret = (page: Page, words: string, offset: number): Promise<void> => page.evaluate(caretInPage, { box: BOX, words, offset });
 const KANA: Composition = { steps: ['k', 'か', 'かn', 'かな'], final: '仮名', ending: 'webkit', endKey: 'Enter' };
 
-/** The page as a send leaves it: the composer empties the prompt from outside while the method still composes. */
 const SEND = '[data-kit="rest"] button[aria-label="Submit message"]';
 
-/** Types lines into the editor; Shift+Enter breaks a line, as Enter alone sends. */
+/** Shift+Enter breaks a line, as Enter alone sends. */
 async function write(page: Page, lines: readonly string[]): Promise<void> {
   await page.locator(BOX).click();
   for (const [index, line] of lines.entries()) {
@@ -128,7 +118,6 @@ async function write(page: Page, lines: readonly string[]): Promise<void> {
   }
 }
 
-/** Where the caret is, shown by a character typed there. */
 async function marked(page: Page): Promise<string> {
   await page.keyboard.type('|');
   return markdown(page);
@@ -236,7 +225,6 @@ test.describe('code-composer-keys', () => {
     await expect(page.locator(BOX).locator('.ce-chip')).toHaveCount(1);
     const withChip = await markdown(page);
     expect(withChip.startsWith('Read ')).toBe(true);
-    // One Backspace for the space after the chip, where there is one, and one for the chip, whole.
     for (let presses = withChip.endsWith(' ') ? 2 : 1; presses > 0; presses -= 1) await page.keyboard.press('Backspace');
     await expect(page.locator(BOX).locator('.ce-chip')).toHaveCount(0);
     expect(await markdown(page)).toBe('Read ');
@@ -259,7 +247,6 @@ test.describe('code-composer-keys', () => {
       document.querySelector(selector)?.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }));
     }, BOX);
     expect(await marked(page)).toBe('x and\n**pasted**|');
-    // The composed words are typing: one undo takes them with the character typed before them.
     await compose(page, KANA);
     expect(await markdown(page)).toBe('x and\n**pasted**|仮名');
     await page.keyboard.press('Meta+z');

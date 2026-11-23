@@ -4,13 +4,11 @@ import type { ConnectionTestResult } from '../../connection-test';
 import { normalizedValues, type DeviceFormValues } from '../../values';
 import { rdpCredentialInput, rdpInput, vncCredentialInput, vncInput } from '../input';
 
-/** The protocols that have their own connection test; SSH keeps `connection-test.ts`. */
 export type RemoteProtocol = Exclude<Protocol, 'SSH'>;
 
 /** The connection test input with the K1 additions (DEV-013). */
 export type RemoteTestInput = ConnectionTestInput;
 
-/** The connection test answer; the certificate fields are missing until the hub declares K1. */
 export type RemoteTestResult = ConnectionTestResult & Partial<Pick<ConnectionTest, 'serverCertificate' | 'certificateChanged'>>;
 
 function sameJson(a: unknown, b: unknown): boolean {
@@ -34,8 +32,7 @@ export function testsSavedRemote(
 }
 
 /**
- * DEV-013: a saved device whose host and `protocol` settings are unchanged is tested by ID (plus a newly typed
- * password). Anything else sends the form's values with no ID, since the hub refuses both together. The SSH
+ * DEV-013: an unchanged saved device is tested by ID, else by values, since the hub refuses both together. The SSH
  * credential is never part of it, nor is the other protocol's password.
  */
 export function remoteTestInput(
@@ -63,11 +60,8 @@ export type RemoteOutcome =
 const UNREACHABLE_MESSAGE = 'The device did not answer.';
 
 /**
- * DEV-013, SEC-007: one outcome per result. An unreachable host wins, then a changed RDP certificate (never
- * reachable-only, even without the certificate), then a new one (not the saved accepted one, `acceptedFingerprint`).
- * VNC has no certificate. `authenticated` is not read: the hub answers false for RDP and VNC, which sign in only
- * when a session starts. A `null` certificate says nothing about the pin: the outcome is `reachable`, with the
- * hub's message (STANDARD_ONLY, NEGOTIATION_REFUSED, NO_TLS).
+ * DEV-013, SEC-007: a changed RDP certificate is never reachable-only. `authenticated` is not read: RDP and VNC sign in
+ * only when a session starts. A `null` certificate says nothing about the pin.
  */
 export function remoteOutcome(protocol: RemoteProtocol, result: RemoteTestResult, acceptedFingerprint: string | null = null): RemoteOutcome {
   const message = result.message ?? '';
@@ -83,11 +77,10 @@ export function remoteOutcome(protocol: RemoteProtocol, result: RemoteTestResult
 const REACHABLE_TEXT = 'The device answered. Anima.ing signs in when a session starts.';
 const CHANGED_CERTIFICATE_WARNING = 'The server certificate changed. Do not trust this device until you check it.';
 
-/** DEV-013, SEC-007: the sentence for a test outcome. */
 export function remoteOutcomeText(outcome: RemoteOutcome): string {
   switch (outcome.kind) {
     case 'reachable':
-      // The hub's message is fixed text (R-035); without one, the sign-in sentence.
+      // The hub's message is fixed text (R-035).
       return outcome.message === '' ? REACHABLE_TEXT : outcome.message;
     case 'unreachable':
       return outcome.message;
@@ -98,7 +91,6 @@ export function remoteOutcomeText(outcome: RemoteOutcome): string {
   }
 }
 
-/** Whether the outcome is one the operator must not ignore. */
 export function isRemoteWarning(outcome: RemoteOutcome): boolean {
   return outcome.kind === 'certificateChanged';
 }

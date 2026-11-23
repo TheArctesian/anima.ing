@@ -1,6 +1,3 @@
-// Test support: mounts `RemoteView` in jsdom on the real Guacamole tunnel over `FakeTunnelSocket`, with a fake
-// sessions API that answers the start, the end and the transfer policy as K1 and K4 describe. It reuses the
-// browser fakes of the SSH view fixture (ResizeObserver, system clipboard, Web Animations).
 import { flushSync, mount, unmount } from 'svelte';
 import type { HubResult } from '$lib/hub/hub';
 import type { ConnectionTestInput, EndedSession, RemoteProtocol, SessionDisplay, SessionsApi, SessionTicket, SessionTransfer } from '../../api';
@@ -14,24 +11,18 @@ import RemoteView from './RemoteView.svelte';
 
 type Client = SessionTunnel['client'];
 
-/** What the fake hub answers; tests change it between steps. */
 export interface RemoteAnswers {
   endReason: SessionEndReason | null;
   /** The device's policy, or `unread` for a hub that cannot answer it (D-3). */
   transfer: SessionTransfer | 'unread';
-  /** A refusal of `startSession`, by K7 code. */
   refuse: 'CONFLICT' | undefined;
   /** While set, the policy read waits for it, so the start has not answered yet. */
   policyGate: Promise<void> | undefined;
-  /** While set, `setCredential` waits for it. */
   credentialGate: Promise<void> | undefined;
-  /** `startSession` says it sent a Wake-on-LAN packet. */
   wakeSent: boolean;
-  /** The path the ticket names; a test sets one the client refuses. */
   tunnelPath: string;
 }
 
-/** Every call the fake API heard, in order per method. */
 export interface RemoteCalls {
   startSession: [string, string, SessionDisplay][];
   endSession: string[];
@@ -96,12 +87,11 @@ function remoteApi() {
   return { api, calls, answers };
 }
 
-/** The flags the parent passes, as state so that a test can change them on a mounted view. */
+/** State, so that a test can change the flags on a mounted view. */
 export const remoteFlags = $state({ visible: true, focused: true });
 
 export const REMOTE_DEVICE = { id: 'device-1', name: 'desk' };
 
-/** Mount a `RemoteView` for `REMOTE_DEVICE` over `protocol`, with `remoteFlags` as its flags. */
 export function showRemote(protocol: RemoteProtocol = 'RDP') {
   const { api, calls, answers } = remoteApi();
   const heard = { ended: [] as SessionEnding[], clients: [] as Client[], gone: 0 };
@@ -133,7 +123,7 @@ export function showRemote(protocol: RemoteProtocol = 'RDP') {
   return { calls, answers, heard, target, close: () => unmount(component) };
 }
 
-/** Measure the pane (which starts the session), let the hub answer, open the tunnel and draw the first frame. */
+/** Measuring the pane starts the session. */
 export async function connectRemote(width = 800, height = 600): Promise<FakeTunnelSocket> {
   FakeResizeObserver.resize(width, height);
   await settle();
@@ -144,14 +134,12 @@ export async function connectRemote(width = 800, height = 600): Promise<FakeTunn
   return socket;
 }
 
-/** The pane the keyboard listens to. */
 export function remotePaneOf(target: HTMLElement): HTMLElement {
   const pane = target.querySelector<HTMLElement>('[role="application"]');
   if (pane === null) throw new Error('no remote pane');
   return pane;
 }
 
-/** The instructions the client sent with `opcode`, without their opcode. */
 export function sentOf(socket: FakeTunnelSocket, opcode: string): string[][] {
   return socket.sentInstructions().filter(([name]) => name === opcode).map(([, ...args]) => args);
 }
@@ -161,7 +149,7 @@ export function keysOf(socket: FakeTunnelSocket): [number, number][] {
   return sentOf(socket, 'key').map(([keysym, pressed]) => [Number(pressed), Number(keysym)]);
 }
 
-/** A key event on `target` (the Guacamole keyboard reads `keyCode`, which the event constructor does not take). */
+/** The Guacamole keyboard reads `keyCode`, which the event constructor does not take. */
 export function keyOn(target: EventTarget, type: 'keydown' | 'keyup', init: KeyboardEventInit & { keyCode: number }): KeyboardEvent {
   const event = new KeyboardEvent(type, { bubbles: true, cancelable: true, ...init });
   Object.defineProperty(event, 'keyCode', { value: init.keyCode });
@@ -169,7 +157,6 @@ export function keyOn(target: EventTarget, type: 'keydown' | 'keyup', init: Keyb
   return event;
 }
 
-/** A `paste` event on `target` carrying `text`. */
 export function pasteOn(target: EventTarget, text: string): Event {
   const event = new Event('paste', { bubbles: true, cancelable: true });
   Object.defineProperty(event, 'clipboardData', { value: { getData: (type: string) => (type === 'text/plain' ? text : '') } });
@@ -177,7 +164,6 @@ export function pasteOn(target: EventTarget, text: string): Event {
   return event;
 }
 
-/** Open the Keys menu and choose the item named `label`. */
 export function chooseKey(target: HTMLElement, label: string): HTMLButtonElement | undefined {
   target.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')?.click();
   flushSync();

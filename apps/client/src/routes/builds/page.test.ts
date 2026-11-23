@@ -9,7 +9,6 @@ const mocks = vi.hoisted(() => ({ platform: undefined as Capabilities | undefine
 
 vi.mock('$lib/platform/platform', () => ({ capabilities: () => mocks.platform }));
 vi.mock('$app/navigation', () => ({ goto: mocks.goto }));
-// The view loads its own data and has its own tests in `$lib/builds/view/tests/`.
 vi.mock('$lib/builds/view/BuildsView.svelte', () => ({ default: () => undefined }));
 
 let app: ReturnType<typeof mount> | undefined;

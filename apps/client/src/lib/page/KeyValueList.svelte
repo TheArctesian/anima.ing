@@ -4,15 +4,12 @@
 
   interface Props {
     pairs: readonly Pair[];
-    /** Where values sit in their column; the labels are always at the start. */
     align?: 'start' | 'end';
   }
 
   const { pairs, align = 'start' }: Props = $props();
 </script>
 
-<!-- Structured text in place of prose (O6): hairline rows (UR-7, D9), a quiet label column led by an icon, values that wrap
-     and never overflow. -->
 <dl class:end={align === 'end'}>
   {#each pairs as pair (pair.label)}
     <div class="pair">
@@ -79,7 +76,6 @@
     word-break: break-all;
   }
 
-  /* A narrow container stacks the value under its label. */
   @container (max-inline-size: 24rem) {
     .pair {
       grid-template-columns: minmax(0, 1fr);

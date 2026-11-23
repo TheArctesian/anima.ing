@@ -1,7 +1,6 @@
 const MAX_HOST_LENGTH = 253;
 const MAX_LABEL_LENGTH = 63;
 
-/** A host as stored: trimmed, and an IPv6 literal without its brackets. */
 export function normalizeHost(raw: string): string {
   const host = raw.trim();
   const inner = host.startsWith('[') && host.endsWith(']') ? host.slice(1, -1) : host;

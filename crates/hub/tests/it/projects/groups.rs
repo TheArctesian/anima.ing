@@ -1,5 +1,4 @@
-//! Project groups (PRO-059 to PRO-064) through GraphQL with a database: make a group with
-//! projects, move a project, rename, delete, remove, and the list by group.
+//! Project groups (PRO-059 to PRO-064).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -10,7 +9,6 @@ use crate::hub::error;
 
 const GROUP: &str = "id name projectCount createdAt";
 
-/// Imports `me/site`, `me/blog` and `me/docs`; returns the id of each project by slug.
 async fn imported(kit: &Kit) -> [String; 3] {
     let id = kit.connect().await;
     for name in ["me/site", "me/blog", "me/docs"] {

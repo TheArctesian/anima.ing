@@ -9,9 +9,8 @@
     node: VpnNode;
     renew: (name: string) => Promise<HubResult<VpnRegistration>>;
     now: Date;
-    /** Why the broker actions are off; `null` when the broker is ready. */
+    /** `null` when the broker is ready. */
     reason: string | null;
-    /** The id of the line that says `reason`. */
     reasonId: string;
   }
 
@@ -39,7 +38,7 @@
   }
 </script>
 
-<!-- Renews an untagged operator key (BD-17). The line is always laid out, so a result moves nothing (MOT-007). -->
+<!-- BD-17. The line is always laid out, so a result moves nothing (MOT-007). -->
 <div class="renew">
   <FormButton tabindex={0} aria-disabled={busy || reason !== null} aria-busy={busy} aria-describedby={reason === null ? undefined : reasonId} onclick={run}>Renew key</FormButton>
   <p class="outcome" role={failure === null ? 'status' : 'alert'}>{line}</p>

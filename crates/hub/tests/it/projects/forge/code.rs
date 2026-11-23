@@ -1,6 +1,4 @@
-//! PRJ-033, K-E1 Section 13.8: one directory of a repository and one file in K1's shape, with
-//! every kind of answer GitHub gives: text, binary, too large, a directory or a file where the
-//! other was asked, a link, a submodule, the 1,000-entry mark and GitHub's failures.
+//! PRJ-033, K-E1 Section 13.8: the code browser over each kind of answer GitHub gives.
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -16,7 +14,6 @@ pub const FILE: &str = "query($repository: ID!, $ref: String, $path: String!) { 
     codeFile(repository: $repository, ref: $ref, path: $path) { repository ref path name sha \
     size content text url readAt } }";
 
-/// A file as GitHub's contents answer gives it, at `path`, holding `bytes`.
 pub fn file(path: &str, bytes: &[u8]) -> Value {
     use base64::{Engine as _, engine::general_purpose::STANDARD};
     json!({
@@ -26,7 +23,6 @@ pub fn file(path: &str, bytes: &[u8]) -> Value {
     })
 }
 
-/// A directory listing of `count` files.
 fn listing(count: usize) -> Value {
     Value::Array(
         (0..count)

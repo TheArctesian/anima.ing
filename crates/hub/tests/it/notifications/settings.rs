@@ -1,5 +1,4 @@
-//! The notification settings: certificate thresholds and the default template (NOT-006,
-//! NOT-007, D-21, D-22), through the API.
+//! The notification settings through the API (NOT-006, NOT-007, D-21, D-22).
 
 use anima_hub::fleet::events::Source;
 use serde_json::{Value, json};

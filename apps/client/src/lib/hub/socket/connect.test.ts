@@ -98,7 +98,6 @@ describe('Hub connects when it is created, and the hub ends the connection', () 
   });
 });
 
-/** Open the newest socket and refuse its token, as the hub does. */
 async function refuseNewest(): Promise<void> {
   const socket = FakeSocket.opened.at(-1);
   socket?.accept();

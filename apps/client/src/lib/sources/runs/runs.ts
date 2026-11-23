@@ -4,7 +4,7 @@ import { agoText } from '../health';
 const TRIGGER: Record<SyncTrigger, string> = { CONNECT: 'On connect', SCHEDULE: 'On schedule', MANUAL: 'By hand' };
 const OUTCOME: Record<SyncOutcome, string> = { OK: 'Done', FAILED: 'Failed', STOPPED: 'Stopped' };
 
-/** One run as lines of words: when it began, how it went, and the four counts (SRC-005). */
+/** One sync run in words (SRC-005). */
 export interface RunLine {
   readonly id: string;
   readonly trigger: string;

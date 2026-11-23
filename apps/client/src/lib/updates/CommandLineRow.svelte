@@ -35,7 +35,6 @@
   }
 </script>
 
-<!-- The `anima` program the app carries, on the PATH through a link (macOS) or a launcher (Linux) (INS-004 to INS-006). -->
 <SettingRow label="Command line tool">
   {#snippet hint()}
     <p class="hint state" aria-live="polite">
@@ -104,7 +103,6 @@
     background: var(--surface-hover);
   }
 
-  /* As FormButton: a control that cannot be pressed must not look like one that can. */
   button:disabled {
     color: var(--text-secondary);
     opacity: var(--opacity-disabled);

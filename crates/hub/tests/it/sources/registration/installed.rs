@@ -1,6 +1,4 @@
-//! PRJ-041 (K-E1 Sections 7a and 10a): the bound browser back from Install gets the page of how
-//! the attempt ended, even when the installation watch, not this request, stores the connection.
-//! The page waits for the attempt to end up to a bound, then shows the "finishing" page.
+//! PRJ-041 (K-E1 Sections 7a and 10a): the page from Install waits up to a bound for the attempt to end.
 
 use std::time::{Duration, Instant};
 
@@ -17,7 +15,6 @@ use super::{
 const SLOW: Duration = Duration::from_secs(3600);
 const MINT: &str = "/app/installations/4321/access_tokens";
 
-/// The bound browser, back on `/installed` from Install with the right state.
 async fn back_from_install(served: &Served) -> (Browser, Answer) {
     let (mut browser, s1) = at_github(served).await;
     let s2 = install_state(&browser.created(&s1).await);

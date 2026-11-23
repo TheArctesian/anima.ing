@@ -8,11 +8,7 @@ export interface SharedOptions {
   readonly preference?: MotionPreference;
 }
 
-/**
- * The other element on the page with `key`: the last one in document order. The layout's
- * keyed block mounts each new page after the pages still fading out, so the last other match
- * is the most recently mounted outgoing page.
- */
+/** The last match: the layout's keyed block mounts each new page after the pages still fading out. */
 function counterpart(element: HTMLElement, key: string): HTMLElement | undefined {
   const matches = [...document.querySelectorAll<HTMLElement>('[data-shared]')].filter(
     (other) => other !== element && other.dataset.shared === key,
@@ -20,10 +16,7 @@ function counterpart(element: HTMLElement, key: string): HTMLElement | undefined
   return matches.at(-1);
 }
 
-/**
- * Hides `element` until the returned function runs, so the item is not seen twice while its
- * page fades out; the function puts back the inline opacity it found and is safe to call twice.
- */
+/** Hides `element` so the item is not seen twice while its page fades out. */
 function hide(element: Animatable): () => void {
   const before = element.style.opacity;
   element.style.opacity = '0';
@@ -53,10 +46,7 @@ const LOOK = [
   'text-overflow',
 ] as const;
 
-/**
- * A copy of `element` fixed at `place`, above both pages, so it flies at full strength while the pages cross-fade
- * beneath it (5.7.3, card to detail). It carries the shared key, so a page that mounts mid-flight departs from it.
- */
+/** Above both pages, so it flies at full strength while they cross-fade (5.7.3); a page that mounts mid-flight departs from it. */
 function copyAt(element: HTMLElement, place: DOMRectReadOnly): HTMLElement {
   const copy = element.cloneNode(true) as HTMLElement;
   const style = getComputedStyle(element);
@@ -88,21 +78,14 @@ function ratio(before: number, after: number): number {
 }
 
 /**
- * The card to detail role (5.7.3): a copy of the item flies from where the same `key` is on the
- * outgoing page to its place on this one, with `spring-move`, by `translate` and `scale` only
- * (MOT-006), above both pages at full opacity; the item itself shows when the copy lands. The outgoing element starts from where it is on screen, even mid-flight
- * (MOT-002). Under reduced motion nothing moves; the page cross-fade is the reduced form
- * (MOT-040, MOT-041). Detaching mid-flight stops the flight and clears the styles it wrote.
- *
- * A key must be unique on a page, so each page has one counterpart for it. The element must
- * keep the default `transform-origin` (its centre), because the flight runs centre to centre,
- * and must not be a non-replaced inline element, to which `translate` and `scale` do not apply.
+ * The card to detail role (5.7.3, MOT-002, MOT-006); under reduced motion the page cross-fade is the reduced form (MOT-040, MOT-041).
+ * A key is unique on a page; the element keeps the default `transform-origin` and is not a non-replaced inline element.
  */
 export function sharedItem(key: string, options: SharedOptions = {}): Attachment<HTMLElement> {
   const { preference = motionPreference() } = options;
   return (element) => {
     element.dataset.shared = key;
-    // The preference is read once per attach; a later change must not re-run the flight.
+    // Read once per attach, so a later change does not re-run the flight.
     const flight = untrack(() => depart(element, key, preference));
     return () => {
       delete element.dataset.shared;
@@ -114,11 +97,9 @@ export function sharedItem(key: string, options: SharedOptions = {}): Attachment
 
 interface Flight {
   readonly playback: Playback;
-  /** Stops the copy, removes it and shows both ends; safe to call twice. */
   readonly land: () => void;
 }
 
-/** Flies `copy` from `from` to its own place, centre to centre, by `translate` and `scale` on `spring-move`. */
 function fly(copy: Animatable, from: DOMRectReadOnly, to: DOMRectReadOnly, preference: MotionPreference): Playback {
   const translate = {
     x: from.left + from.width / 2 - (to.left + to.width / 2),

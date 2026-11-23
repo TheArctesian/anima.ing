@@ -1,6 +1,5 @@
-//! The whole hub as `main.rs` serves it ([`all_routes`]): `/graphql` at a public origin, the
-//! daemon routes, `/metrics` and the tunnels behind the permitted networks, with a VPN feed and
-//! broker, at one fixed instant; and the requests the canary test sends to it.
+//! The whole hub as `main.rs` serves it ([`all_routes`]), at one fixed instant, and the requests
+//! the canary test sends to it.
 
 use std::{collections::BTreeMap, net::SocketAddr, sync::Arc};
 
@@ -30,10 +29,8 @@ use tower::ServiceExt as _;
 
 use crate::hub::{CLIENT, dependencies};
 
-/// The public origin the hub serves, as `ANIMA_PUBLIC_ORIGIN` sets it.
 pub const PUBLIC: &str = "https://hub.anima.ing";
 
-/// What the hub answered: the status, every `Set-Cookie` value and the body text.
 pub struct Answer {
     pub status: StatusCode,
     pub set_cookies: Vec<String>,
@@ -46,12 +43,10 @@ impl Answer {
     }
 }
 
-/// Every route of the hub, served to `CLIENT`.
 pub struct WholeHub(Router);
 
 impl WholeHub {
-    /// The hub at `now`, its VPN reading `feed` and calling `broker`, with `CLIENT`'s network
-    /// permitted (NET-002).
+    /// The hub at `now`, with `CLIENT`'s network permitted (NET-002).
     pub async fn new(pool: &PgPool, now: DateTime<Utc>, (feed, broker): (Feed, Broker)) -> Self {
         let networks: Vec<IpNet> = vec!["100.64.0.0/10".parse().unwrap()];
         access::permit_networks(pool, &networks).await.unwrap();
@@ -68,7 +63,6 @@ impl WholeHub {
         Self(all_routes(parts, edge))
     }
 
-    /// Sends `request` from `CLIENT`.
     pub async fn send(&self, request: Request<Body>) -> Answer {
         let mut request = request;
         let peer: SocketAddr = format!("{CLIENT}:50000").parse().unwrap();
@@ -87,7 +81,6 @@ impl WholeHub {
         }
     }
 
-    /// `POST uri` with `headers` and `body`.
     pub async fn post(&self, uri: &str, headers: &[(&str, &str)], body: String) -> Answer {
         let mut request = Request::post(uri).header(header::CONTENT_TYPE, "application/json");
         for (name, value) in headers {
@@ -96,12 +89,10 @@ impl WholeHub {
         self.send(request.body(Body::from(body)).unwrap()).await
     }
 
-    /// A GraphQL request with `headers`; the response as JSON.
     pub async fn graphql(&self, headers: &[(&str, &str)], query: &str, variables: Value) -> Value {
         self.graphql_answer(headers, query, variables).await.json()
     }
 
-    /// A GraphQL request with `headers`; the whole answer, for its cookies.
     pub async fn graphql_answer(
         &self,
         headers: &[(&str, &str)],
@@ -114,7 +105,6 @@ impl WholeHub {
         answer
     }
 
-    /// A GraphQL request with `token` as the bearer, which must have no errors; its data.
     pub async fn data(&self, token: &str, query: &str, variables: Value) -> Value {
         let response = self.as_bearer(token, query, variables).await;
         assert!(
@@ -125,14 +115,12 @@ impl WholeHub {
         response["data"].clone()
     }
 
-    /// A GraphQL request with `token` as the bearer; the whole response.
     pub async fn as_bearer(&self, token: &str, query: &str, variables: Value) -> Value {
         let bearer = format!("Bearer {token}");
         let headers = [("authorization", bearer.as_str())];
         self.graphql(&headers, query, variables).await
     }
 
-    /// `GET uri` with `token` as the bearer.
     pub async fn get_as(&self, uri: &str, token: &str) -> Answer {
         let request = Request::get(uri).header(header::AUTHORIZATION, format!("Bearer {token}"));
         self.send(request.body(Body::empty()).unwrap()).await
@@ -148,7 +136,6 @@ pub fn codes(response: &Value) -> Vec<Value> {
         .collect()
 }
 
-/// The code of the one error of `response`.
 pub fn code(response: &Value) -> String {
     let codes = codes(response);
     assert_eq!(codes.len(), 1, "{codes:?}");

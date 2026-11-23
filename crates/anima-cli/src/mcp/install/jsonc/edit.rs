@@ -1,13 +1,11 @@
-//! The two changes of the text: one member set, one member taken out (MCP-030).
+//! MCP-030.
 
 use super::{JsoncError, Object, Scan, object_at, only};
 
-/// The line break that the file uses.
 fn line_break(text: &str) -> &'static str {
     if text.contains("\r\n") { "\r\n" } else { "\n" }
 }
 
-/// The white space at the start of the line that holds `at`.
 fn indent_of(text: &str, at: usize) -> &str {
     let line = text[..at].rfind('\n').map_or(0, |newline| newline + 1);
     let end = text[line..]
@@ -16,12 +14,10 @@ fn indent_of(text: &str, at: usize) -> &str {
     &text[line..end.min(at)]
 }
 
-/// `value` with each line after the first moved in by `indent`, with the line break `eol`.
 fn indented(value: &str, indent: &str, eol: &str) -> String {
     value.replace('\n', &format!("{eol}{indent}"))
 }
 
-/// `"name": value` put into `object` as its last member.
 fn insert(text: &str, object: &Object, name: &str, value: &str) -> String {
     let key = serde_json::Value::from(name).to_string();
     let eol = line_break(text);
@@ -63,15 +59,13 @@ fn insert(text: &str, object: &Object, name: &str, value: &str) -> String {
 /// it with two spaces). An object of the path that is not there is made. Only that member changes.
 ///
 /// # Errors
-/// [`JsoncError`] when the text is not an object, cannot be read, holds a different kind of
-/// value at the path, or holds a key of the path or `name` twice.
+/// [`JsoncError`] when the text is not a readable object, holds another kind of value at the path, or a key twice.
 pub fn set(text: &str, path: &[&str], name: &str, value: &str) -> Result<String, JsoncError> {
     let text = if text.trim().is_empty() { "{}\n" } else { text };
     let scan = Scan {
         bytes: text.as_bytes(),
     };
     let eol = line_break(text);
-    // The deepest object of the path that is there; the rest of the path is made inside the value.
     for depth in (0..=path.len()).rev() {
         let Some(object) = object_at(&scan, &path[..depth])? else {
             continue;
@@ -105,13 +99,11 @@ pub fn set(text: &str, path: &[&str], name: &str, value: &str) -> Result<String,
     Err(JsoncError::NotAnObject)
 }
 
-/// Whether `text` holds only spaces, tabs and line breaks.
 fn blank(text: &str) -> bool {
     text.bytes()
         .all(|byte| matches!(byte, b' ' | b'\t' | b'\r' | b'\n'))
 }
 
-/// The index of the line break before `at` when only spaces are between them, else `at`.
 fn line_start(text: &str, at: usize) -> usize {
     let before = text[..at].trim_end_matches([' ', '\t']);
     match before.strip_suffix('\n') {
@@ -120,7 +112,6 @@ fn line_start(text: &str, at: usize) -> usize {
     }
 }
 
-/// `text` without the bytes of `cuts`, which are in order and do not overlap.
 fn without(text: &str, cuts: &[(usize, usize)]) -> String {
     let mut kept = String::with_capacity(text.len());
     let mut at = 0;
@@ -159,8 +150,7 @@ pub fn remove(text: &str, path: &[&str], name: &str) -> Result<Option<String>, J
     let place = found.span.clone();
     let cuts = match (found.comma, before) {
         (Some(comma), _) => {
-            // The member goes with its comma. It takes the line break before it only when it has
-            // its line to itself: a member that follows on the same line must not join a comment.
+            // The line break before goes only when the member has its line, so none joins a comment.
             let rest = text[comma + 1..].split('\n').next().unwrap_or_default();
             let start = if blank(rest) {
                 line_start(text, place.start)
@@ -173,7 +163,6 @@ pub fn remove(text: &str, path: &[&str], name: &str) -> Result<Option<String>, J
                 vec![(start, place.end), (comma, comma + 1)]
             }
         }
-        // The last member of several: the member before it loses its comma.
         (None, Some(before)) => match before.comma {
             Some(comma) if !blank(&text[comma + 1..place.start]) => {
                 vec![
@@ -183,7 +172,6 @@ pub fn remove(text: &str, path: &[&str], name: &str) -> Result<Option<String>, J
             }
             _ => vec![(before.span.end, place.end)],
         },
-        // The only member: the object is then empty, but for a comment that it holds.
         (None, None)
             if blank(&text[object.open + 1..place.start])
                 && blank(&text[place.end..object.close]) =>

@@ -3,7 +3,7 @@ import { useHub } from '$lib/hub/context';
 import type { Hub, HubResult } from '$lib/hub/hub';
 import type { PolicyInput, StoredPolicy } from './policy';
 
-/** The two calls of the session policy: the hub's pending fields have their own documents (F-3). */
+/** The hub's pending fields have their own documents (F-3). */
 export interface PolicyCalls {
   load: (deviceId: string) => Promise<HubResult<StoredPolicy>>;
   save: (deviceId: string, input: PolicyInput) => Promise<HubResult<StoredPolicy>>;
@@ -30,7 +30,7 @@ function isMissingContext(error: unknown): boolean {
   return error instanceof Error && error.message.includes('missing_context');
 }
 
-/** The calls of the hub above the form, or `null` when there is none: the form then has no policy to edit. Call it while the component is created. */
+/** `null` when no hub is above the form. Call it while the component is created. */
 export function contextPolicyCalls(): PolicyCalls | null {
   try {
     return policyCalls(useHub());

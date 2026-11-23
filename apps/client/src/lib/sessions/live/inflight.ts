@@ -7,7 +7,6 @@ export class InFlight {
   #pushed: SessionChange[] = [];
   #stopped: string[] = [];
 
-  /** A new query begins: earlier queries are superseded and what was recorded is dropped. Returns the query's number. */
   begin(): number {
     this.#sequence += 1;
     this.#pushed = [];
@@ -15,7 +14,6 @@ export class InFlight {
     return this.#sequence;
   }
 
-  /** Whether query `number` is the newest one asked. */
   isNewest(number: number): boolean {
     return number === this.#sequence;
   }
@@ -28,7 +26,6 @@ export class InFlight {
     this.#stopped.push(id);
   }
 
-  /** The query's answer with the changes pushed and the sessions stopped since it was asked. */
   catchUp(answer: readonly LiveSession[]): readonly LiveSession[] {
     return this.#stopped.reduce(withoutSession, this.#pushed.reduce(applyChange, answer));
   }

@@ -1,5 +1,4 @@
-//! PRJ-039, SRC-008: the manifest code is converted with one POST that carries no credential
-//! and no body, only a plain code reaches a path, and each reply maps to one fixed failure.
+//! PRJ-039, SRC-008: one POST with no credential and no body; only a plain code reaches a path.
 
 use std::time::{Duration, Instant};
 
@@ -47,7 +46,6 @@ pub fn reply(status: u16, headers: &[(&'static str, &str)], body: &str) -> Reply
     }
 }
 
-/// Converts `code` with GitHub's declaration, never waiting before the second try.
 pub async fn converting(transport: &Transport, code: &str) -> Result<Converted, ConvertFailure> {
     convert(
         transport,

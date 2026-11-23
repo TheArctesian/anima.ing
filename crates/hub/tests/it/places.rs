@@ -18,13 +18,11 @@ pub async fn signed_in(pool: &PgPool) -> (Hub, String) {
     (hub, token)
 }
 
-/// A top-level place with a centre and a radius.
 pub fn top(name: &str) -> Value {
     json!({ "name": name, "latitude": 52.0, "longitude": 4.0, "radiusM": 100,
             "category": "home", "icon": "house" })
 }
 
-/// A child place: no centre and no radius.
 pub fn child(name: &str, parent: &str) -> Value {
     json!({ "name": name, "parentId": parent, "category": "home", "icon": "box" })
 }
@@ -33,7 +31,6 @@ pub async fn run(hub: &Hub, token: &str, query: &str, variables: Value) -> Value
     hub.post(Some(token), query, variables).await
 }
 
-/// Makes the place and returns its response data; panics when the hub refuses.
 pub async fn add(hub: &Hub, token: &str, input: Value) -> Value {
     let query = format!("mutation($i: PlaceInput!) {{ createPlace(input: $i) {{ {FIELDS} }} }}");
     let made = run(hub, token, &query, json!({ "i": input })).await;
@@ -215,7 +212,6 @@ async fn plc_006_a_site_links_to_one_place_and_a_place_has_many_sites(pool: PgPo
         2
     );
 
-    // The same site moves: it has at most one place.
     run(&hub, &token, set, json!({ "s": sites[0], "p": home })).await;
     assert_eq!(
         place(&hub, &token, &office).await["siteIds"],
@@ -250,7 +246,6 @@ async fn plc_001_each_change_has_one_audit_entry_and_no_position(pool: PgPool) {
         json!({ "id": home, "i": { "icon": "cabin" } }),
     )
     .await;
-    // The same value again changes nothing and writes nothing.
     run(
         &hub,
         &token,

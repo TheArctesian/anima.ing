@@ -6,9 +6,7 @@
   interface Props {
     label: string;
     url: string;
-    /** The pinned fingerprint, or `null` while it is being read. */
     pin: Fingerprint | null;
-    /** Whether an open is running: the certificate is read and compared first. */
     opening: boolean;
     onopen: () => void;
   }

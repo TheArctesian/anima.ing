@@ -7,7 +7,6 @@
   import { attemptsByVersion, isEnded } from './release';
 
   interface Props {
-    /** Already newest first. */
     releases: readonly ReleaseView[];
     builders: readonly Builder[] | null;
     now: Date;
@@ -24,7 +23,7 @@
     return count === 1 ? `1 earlier attempt at ${version}` : `${String(count)} earlier attempts at ${version}`;
   }
 
-  /** Earlier attempts start folded away when they have all ended; one still running starts in view. The operator's choice then stays. */
+  /** Earlier attempts start folded only when all have ended; after that the operator's choice stays. */
   const settled = (earlier: readonly ReleaseView[]) => earlier.every((release) => release.jobs.every(isEnded));
 </script>
 
@@ -61,7 +60,6 @@
     gap: var(--space-2);
   }
 
-  /* Earlier attempts sit under the release that replaced them, quieter than it. */
   .earlier {
     margin-inline-start: var(--space-4);
     color: var(--text-secondary);

@@ -14,18 +14,14 @@ import { serveGuacamole, serveTerminal } from './tunnels';
 /** A hub that lives inside one browser context. Every request of the context ends here, so no network is used. */
 export interface SyntheticHub {
   readonly recording: Recorder;
-  /** Gives the context a valid `__Host-anima` cookie, as a good `signInBrowser` would. */
   signIn(): Promise<void>;
-  /** Removes the cookie. */
   signOut(): Promise<void>;
-  /** Pushes one event to the open subscriptions of `operation` (the document's operation name); returns how many got it. */
+  /** `operation` is the document's operation name; returns how many subscriptions got the event. */
   push(operation: string, data: Record<string, unknown>): number;
 }
 
 interface Options {
-  /** The clock for tickets and cookie expiry; a spec may fix it. */
   readonly now?: () => Date;
-  /** Reshapes the contract fixtures before the hub serves them; the gallery empties lists with it. */
   readonly fixtures?: (loaded: Fixtures) => Fixtures;
 }
 
@@ -67,11 +63,7 @@ async function serveSocket(socket: WebSocketRoute, serve: Record<string, SocketS
   }
 }
 
-/**
- * Installs the hub on `context`. The page origin is `https://hub.anima.ing`: navigate there. It serves `apps/client/build/`
- * with the K7 headers, runs the K1 schema over the contract fixtures, answers graphql-ws and both tunnels, and aborts and
- * counts every request to another origin. A request still in flight when the test closes its context is dropped quietly.
- */
+/** Installs the hub on `context` at `https://hub.anima.ing`; it aborts and counts every request to another origin. */
 export async function installSyntheticHub(context: BrowserContext, options: Options = {}): Promise<SyntheticHub> {
   const now = options.now ?? (() => new Date());
   const state = newHubState((options.fixtures ?? ((loaded) => loaded))(loadFixtures()), now);

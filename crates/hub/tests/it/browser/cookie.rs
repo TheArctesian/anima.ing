@@ -11,7 +11,6 @@ use sqlx::PgPool;
 use super::{PUBLIC, browser_hub, browser_token, cookie, hash, me, post};
 use crate::hub::{Hub, USERNAME, set_operator, start};
 
-/// What `me` answers a signed-out request.
 fn signed_out() -> Result<String, String> {
     Err("UNAUTHENTICATED".to_owned())
 }
@@ -185,7 +184,7 @@ async fn a_8_a_desktop_logout_sets_no_cookie(pool: PgPool) {
     assert!(answer.headers.get(header::SET_COOKIE).is_none());
 }
 
-/// R-108: a browser token gets no upload URLs, even from the public origin.
+/// Even from the public origin (R-108).
 #[sqlx::test(migrations = "./migrations")]
 async fn r_108_a_browser_token_gets_no_upload_urls(pool: PgPool) {
     set_operator(&pool).await;

@@ -2,11 +2,8 @@
   import type { Snippet } from 'svelte';
 
   interface Props {
-    /** What is empty, in a few words: "No devices yet". */
     title: string;
-    /** One line: what the operator can do about it. */
     line: string;
-    /** The one action (UI-030), for example an "Add device" button. */
     action?: Snippet;
     /** 1 when the state is the whole page, such as an address that has no page; 3 inside a page. */
     level?: 1 | 3;
@@ -15,7 +12,6 @@
   const { title, line, action, level = 3 }: Props = $props();
 </script>
 
-<!-- Sized to its message (UI-027): no fixed height, no padding to fill a card. -->
 <div class="empty">
   <svelte:element this={`h${level}`} class="title">{title}</svelte:element>
   <p>{line}</p>

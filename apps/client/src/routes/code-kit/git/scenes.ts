@@ -2,7 +2,6 @@ import type { Done, Running } from '$lib/code/git/DetailsGit.svelte';
 import type { SetupStage } from '$lib/code/git/WorktreeSetupCard.svelte';
 import type { ChangedFile, Changes, Checkpoint, GitStatus } from '$lib/code/git/git';
 
-/** Made states of a branch for the Git page of the kit: no runner is asked. */
 const file = (path: string, additions: number, deletions: number, more: Partial<ChangedFile> = {}): ChangedFile => ({ path, kind: 'modified', additions, deletions, ...more });
 
 const PATCH = `diff --git a/crates/daemon/src/threads/git/push.rs b/crates/daemon/src/threads/git/push.rs
@@ -52,7 +51,6 @@ const without = (status: GitStatus, key: 'branch' | 'upstream'): GitStatus => Ob
 const detached = without(dirty, 'branch');
 const unpushed = without(clean, 'upstream');
 
-/** One state of the Git rows of the details card. */
 export interface CardScene {
   status?: GitStatus;
   running?: Running;
@@ -84,7 +82,6 @@ export const CHECKPOINTS: readonly Checkpoint[] = [0, 1, 2, 3].map((turn) => ({ 
 
 export const CHANGES: Changes = { files: FILES, additions: 254, deletions: 22, truncated: false };
 
-/** The same files with no patch: the patches were over the limit of the runner. */
 export const OVER_LIMIT: Changes = { ...CHANGES, files: FILES.map((one) => file(one.path, one.additions, one.deletions, { kind: one.kind })), truncated: true };
 
 export const STAGES: Readonly<Record<string, readonly SetupStage[]>> = {

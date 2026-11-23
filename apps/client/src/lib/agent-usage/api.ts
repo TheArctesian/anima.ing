@@ -3,9 +3,8 @@ import type { AgentSource, AgentUsageFilter, AgentUsageState } from '$lib/hub/ge
 import type { Hub, HubResult } from '$lib/hub/hub';
 import type { BatteryListing } from '$lib/metrics/battery/battery';
 
-// One read gives the page everything it draws (AIS-020). `$filter` holds the choices of the page; `$everything` is the
-// same without the repository, so the list of repositories stays whole when one is chosen; `$everyone` asks one day with
-// no device or program, so the device choice still has every device whose daemon sends counts.
+// One read (AIS-020). `$everything` drops the repository so the repository list stays whole; `$everyone` drops the
+// device and program so the device choice keeps every device whose daemon sends counts.
 const AGENT_USAGE = graphql(`
   query AgentUsage($filter: AgentUsageFilter, $everything: AgentUsageFilter, $everyone: AgentUsageFilter) {
     days: agentUsage(filter: $filter, by: [DAY, SOURCE, MODEL]) {
@@ -147,7 +146,7 @@ void graphql(`
   }
 `);
 
-/** The counts of one group. The cost is null when no model of the group has a known price. */
+/** The cost is null when no model of the group has a known price. */
 export interface UsageSums {
   readonly sessions: number;
   readonly prompts: number;
@@ -174,10 +173,9 @@ export interface UsageDevice {
 export type DayRow = UsageSums & { readonly day: string; readonly source: AgentSource | null; readonly model: string | null };
 export type ModelRow = UsageSums & { readonly source: AgentSource | null; readonly model: string | null };
 export type DeviceRow = UsageSums & { readonly device: NamedDevice };
-/** `repository` is null for the use that has none. */
 export type RepositoryRow = UsageSums & { readonly repository: string | null };
 
-/** One session with its sums over the days of the page (AIS-025). `recent`: used in the last 30 minutes (AIS-026). */
+/** Sums over the days of the page (AIS-025); `recent` means used in the last 30 minutes (AIS-026). */
 export type SessionRow = Omit<UsageSums, 'sessions'> & {
   readonly id: string;
   readonly device: NamedDevice;
@@ -189,10 +187,8 @@ export type SessionRow = Omit<UsageSums, 'sessions'> & {
   readonly recent: boolean;
 };
 
-/** The use of one program on one device: each device's share of an account. */
 export type DeviceSourceRow = UsageSums & { readonly device: NamedDevice; readonly source: AgentSource };
 
-/** One limit window of an account, as the program said it. */
 export interface AccountLimit {
   readonly window: string;
   /** 0 to 100; null when the program says only whether it is reached. */
@@ -201,10 +197,7 @@ export interface AccountLimit {
   readonly reached: boolean;
 }
 
-/**
- * An account of a program, known to the hub only by its key, with the devices that use it (AIS-022 as R-313 changed it).
- * The limit is the account's, shared by its devices; the name of the account never leaves a device.
- */
+/** Known to the hub only by its key; the name of the account never leaves a device (AIS-022, R-313). */
 export interface AgentAccount {
   readonly key: string;
   readonly shortKey: string;
@@ -215,41 +208,26 @@ export interface AgentAccount {
   readonly limits: readonly AccountLimit[];
 }
 
-/** The use of the AI agent programs for the choices of the page, as the hub sums it. */
 export interface AgentUsageView {
   readonly firstDay: string;
   readonly lastDay: string;
-  /** The day of the public list prices of the estimate. */
   readonly pricesAsOf: string;
-  /** Everything that the choices admit. */
   readonly total: UsageSums;
   readonly days: readonly DayRow[];
   readonly models: readonly ModelRow[];
   readonly devices: readonly DeviceRow[];
-  /** The state of each device that the choices admit. */
   readonly states: readonly UsageDevice[];
-  /** Each repository with use, whatever repository is chosen. */
   readonly repositories: readonly RepositoryRow[];
-  /** The total with no repository chosen: the line "All repositories". */
   readonly everything: UsageSums;
-  /** The newest day with use of each repository. */
   readonly newest: readonly { readonly repository: string | null; readonly day: string }[];
-  /** How many repositories are not in `repositories` because of the hub's limit of rows. */
   readonly repositoriesLeftOut: number;
-  /** Every device that reports, whatever the choices. */
   readonly everyDevice: readonly UsageDevice[];
-  /** The single sessions that the choices admit, the newest use first: at most 50. */
   readonly sessions: readonly SessionRow[];
-  /** How many sessions are not in `sessions`. */
   readonly sessionsLeftOut: number;
-  /** Each account of a program that a daemon reported, whatever the choices. */
   readonly accounts: readonly AgentAccount[];
-  /** The use of each program on each device, for the share of each device of an account. */
   readonly shares: readonly DeviceSourceRow[];
 }
 
-// The two types below serve only `report/columns.ts` and `UsageNotes.svelte`, which the page no longer uses and which
-// wait for a person to take them out of the repository.
 export type UsageRow = UsageSums & {
   readonly device: NamedDevice | null;
   readonly source: AgentSource | null;
@@ -264,17 +242,14 @@ export interface UsageAnswer {
   readonly devices: readonly UsageDevice[];
 }
 
-/** What one read asks for. */
 export interface UsageRequest {
   readonly filter: AgentUsageFilter;
 }
 
-/** `filter` with no repository. */
 function everyRepository(filter: AgentUsageFilter): AgentUsageFilter {
   return Object.fromEntries(Object.entries(filter).filter(([key]) => key !== 'repository'));
 }
 
-/** The agent usage call of the hub (AIS-020). */
 export function agentUsageApi(hub: Pick<Hub, 'request'>) {
   return {
     read: async ({ filter }: UsageRequest): Promise<HubResult<AgentUsageView>> => {

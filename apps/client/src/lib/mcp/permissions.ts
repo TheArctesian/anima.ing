@@ -62,18 +62,15 @@ export interface ToolGroup {
   readonly label: string;
   readonly tools: readonly McpTool[];
   readonly counts: StateCounts;
-  /** How many tools are not in the state they have when nothing is saved. */
   readonly changed: number;
 }
 
-/** How many of `tools` are in each state. */
 export function countStates(tools: readonly McpTool[]): StateCounts {
   const counts = { allow: 0, ask: 0, off: 0 };
   for (const { state } of tools) counts[state] += 1;
   return counts;
 }
 
-/** How many of `tools` are not in their default state (MCP-012). */
 export function countChanged(tools: readonly McpTool[]): number {
   return tools.filter((tool) => tool.state !== defaultState(tool.kind)).length;
 }
@@ -93,7 +90,6 @@ export function toolsetLabel(toolset: string): string {
   return TOOLSET_NAMES[toolset] ?? toolset;
 }
 
-/** `anima_check_update` as "Check update": the id without its prefix, in words. */
 export function toolLabel(tool: string): string {
   const words = tool.replace(/^anima_/, '').replaceAll('_', ' ');
   return words.charAt(0).toUpperCase() + words.slice(1);
@@ -104,7 +100,7 @@ export function defaultState(kind: McpKind): McpState {
   return kind === 'read' ? 'allow' : 'off';
 }
 
-/** The tools after `change`, as the shell will answer; used to show a change before it is saved. */
+/** The tools as the shell will answer after `change`, to show it before it is saved. */
 export function applyChange(tools: readonly McpTool[], change: McpChange): readonly McpTool[] {
   return tools.map((tool) => {
     switch (change.type) {
@@ -120,17 +116,15 @@ export function applyChange(tools: readonly McpTool[], change: McpChange): reado
 
 type Bulk = Extract<McpChange, { type: 'bulk' }>;
 
-/** Whether a bulk change covers the tool: its set and its kind, when the change names them. */
 function inBulk(tool: McpTool, change: Bulk): boolean {
   return (change.toolset === undefined || change.toolset === tool.toolset) && (change.kind === undefined || change.kind === tool.kind);
 }
 
-/** Whether the change turns change tools on without a question per call: the operator confirms it first (MCP-020). */
+/** A bulk change that turns change tools on without a question per call is confirmed first (MCP-020). */
 export function needsConfirmation(change: McpChange): boolean {
   return change.type === 'bulk' && change.state === 'allow' && change.kind !== 'read';
 }
 
-/** What a change did, for the quiet "Saved" line and the screen reader: "Devices: every tool set to ask (7 tools)." */
 export function describeChange(change: McpChange, tools: readonly McpTool[]): string {
   if (change.type === 'reset') return 'Defaults restored: read tools allow, change tools off.';
   if (change.type === 'choose') {
@@ -165,7 +159,6 @@ export function countsText(counts: StateCounts): string {
   return STATES.map(({ value }) => `${String(counts[value])} ${value}`).join(', ');
 }
 
-/** A group's header text: its name, its counts in words, and how many differ from the default when any do. */
 export function groupLabel(group: ToolGroup): string {
   const changed = group.changed > 0 ? `; ${String(group.changed)} changed from default` : '';
   return `${group.label}: ${countsText(group.counts)}${changed}`;
@@ -186,7 +179,6 @@ export function controlOf(change: McpChange): string {
   }
 }
 
-/** What a change tried to do, for a failure that must name it: "Check update to allow" or "Every Checks tool to ask". */
 export function nameChange(change: McpChange): string {
   switch (change.type) {
     case 'reset':

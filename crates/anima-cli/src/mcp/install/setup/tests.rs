@@ -8,7 +8,6 @@ use super::super::files::copy_path;
 use super::super::{Asked, change, listing};
 use super::{Action, Checked, Here, Step, check_command};
 
-/// Groups whose every one lists `members`, by name and account number, besides no one else.
 pub(super) fn groups(members: &[(&str, Option<u32>)]) -> Groups {
     let members: Vec<Member> = members
         .iter()
@@ -23,8 +22,6 @@ pub(super) fn groups(members: &[(&str, Option<u32>)]) -> Groups {
     })
 }
 
-/// A temporary home with a folder of programs on `PATH` and an `anima` in it. Each group lists
-/// only root.
 pub(super) fn computer() -> (tempfile::TempDir, Here, Checked) {
     let home = tempfile::tempdir().expect("a temporary home");
     let user = fs::metadata(home.path()).expect("owner").uid();
@@ -100,7 +97,6 @@ fn mcp_028_030_032_install_changes_only_the_entry_keeps_a_copy_and_uninstall_giv
     assert!(after.starts_with("// my settings\n{\n  \"theme\": \"One Dark\", // keep\n  \"context_servers\": {\n    \"mine\": { \"command\": \"x\" },\n    \"anima\": {"));
     assert!(after.contains(&format!("\"command\": \"{}\"", anima.path().display())));
     assert_eq!(fs::read_to_string(copy_path(&file)).expect("copy"), before);
-    // A second install has no work and writes nothing.
     let stamp = fs::metadata(&file).expect("file").mtime_nsec();
     let _ = change(
         &here,

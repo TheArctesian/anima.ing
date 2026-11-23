@@ -6,18 +6,16 @@
   import { placeInside } from './placement';
 
   interface Props {
-    /** The button's name: "About <label>" under the information icon; under a `face`, `label` itself. */
     label: string;
-    /** The tip: short text, a fingerprint, a list. Errors do not go here (UI-028). */
+    /** Errors do not go here (UI-028). */
     children: Snippet;
-    /** What the button shows in place of the information icon, for a badge that opens its own tip; drawn only, not spoken. */
+    /** Replaces the information icon; drawn only, not spoken. */
     face?: Snippet;
   }
 
   /*
-   * Never place a HelpTip over a live remote display (MAT-008). While it is open it covers the panes, so native web
-   * views hide (WEB-005). WCAG 1.4.13: Escape dismisses it, the pointer can move onto it, and it stays until the
-   * operator moves away, presses Escape or clicks elsewhere.
+   * A HelpTip never sits over a live remote display (MAT-008); while open it covers the panes (WEB-005).
+   * WCAG 1.4.13: Escape dismisses it, the pointer can move onto it, and it stays until dismissed.
    */
   const { label, children, face }: Props = $props();
   const id = $props.id();
@@ -26,13 +24,11 @@
   let pinned = $state(false);
   let hovered = $state(false);
   let focused = $state(false);
-  /** Escape or a second click closed it; it stays closed until the operator comes back. */
   let dismissed = $state(false);
   const open = $derived(!dismissed && (pinned || hovered || focused));
 
   coverWhile(() => open);
 
-  /** Click or Enter pins the tip open; the next one closes it. */
   function toggle(): void {
     dismissed = pinned;
     pinned = !pinned;
@@ -54,7 +50,6 @@
     dismissed = false;
   }
 
-  /** Focus moving to something else inside the tip keeps it open; moving away closes it. */
   function onfocusout(event: FocusEvent): void {
     if (event.relatedTarget instanceof Node && root?.contains(event.relatedTarget)) return;
     focused = false;
@@ -75,7 +70,6 @@
     focused = false;
   }
 
-  /** The tip reacts to the pointer and to focus anywhere inside it, so the listeners sit on its root, not on a control. */
   function watch(element: HTMLElement): () => void {
     element.addEventListener('pointerenter', onpointerenter);
     element.addEventListener('pointerleave', onpointerleave);
@@ -89,7 +83,6 @@
     };
   }
 
-  /** Keeps the panel under the button, inside the window, through scroll and resize. */
   function place(panel: HTMLElement): () => void {
     const reposition = () => {
       if (button === undefined) return;
@@ -150,7 +143,6 @@
     color: var(--text);
   }
 
-  /* A face draws itself: the button keeps only its target height and takes the face's width and colour. */
   button.face,
   button.face:hover,
   button.face[aria-expanded='true'] {

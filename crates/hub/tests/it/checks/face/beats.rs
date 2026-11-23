@@ -26,7 +26,6 @@ macro_rules! fixture_test {
 const UPTIME_TABLES: [&str; 3] = ["uptime_minute", "uptime_hour", "uptime_day"];
 const HEARTBEATS: &str = "SELECT count(*) FROM checks.heartbeats WHERE check_id = $1";
 
-/// (bucket, up, down, degraded, unknown, response count, average) of each aggregate table.
 type Aggregate = (DateTime<Utc>, i32, i32, i32, i32, i32, Option<f32>);
 
 async fn aggregates(pool: &PgPool, id: CheckId) -> Vec<Vec<Aggregate>> {
@@ -50,7 +49,6 @@ fn truncated(at: DateTime<Utc>, step: TimeDelta) -> DateTime<Utc> {
     at.duration_trunc(step).unwrap()
 }
 
-/// (status, failures, next due, last beat, resolved address, certificate expiry).
 type State = (
     String,
     i32,

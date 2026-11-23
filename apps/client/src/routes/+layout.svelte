@@ -54,8 +54,7 @@
   if (capabilities().framelessWindow) document.documentElement.dataset['titlebar'] = 'frameless';
   if (isAndroid(navigator)) document.documentElement.dataset['os'] = 'android';
   $effect(() => followVisualTop(document.documentElement, window.visualViewport));
-  // The bar shows icons only below the compact breakpoint or when the operator collapses it; set before the first
-  // render so the width never changes after load.
+  // Set before the first render so the bar's width never changes after load.
   let nav = $state({ iconOnly: false, compact: false });
   const folding = new BarFolding(storedCollapsed(localStorage), () => page.url.pathname, (next) => storeCollapsed(localStorage, next));
   const collapsed = $derived(folding.collapsed);
@@ -81,13 +80,13 @@
     });
   });
 
-  /** The person collapses or expands the bar; on Code the fold is for the visit (OD-THR60). */
+  /** On Code the fold is for the visit (OD-THR60). */
   function setCollapsed(next: boolean) {
     folding.toggle(next);
   }
 
-  // Decided once, from the page the browser loaded: the operator shell, or a fixed refusal on an origin that cannot be
-  // a hub (E-2). Every route but sign-in needs sign-in, so the shell's start guard runs on all of them (API-003, R-111).
+  // Decided once from the loaded page (E-2). Every route but sign-in needs sign-in, so the start guard runs on all of
+  // them (API-003, R-111).
   const start = startAt(page.url);
   const shell = start.kind === 'shell' ? startShell(start.address) : null;
   const reportsMetrics = capabilities().deviceLink && isMobile(navigator);
@@ -96,12 +95,9 @@
     if (shell !== null && reportsMetrics && !signedOut) return watchMobileMetrics(shell.hub);
   });
 
-  /** The hub the shell talks to, provided to every page, with its token read behind the listener check (F-10). */
   function startHub(address: HubAddress) {
-    // The hub address is the stored setting on desktop and the serving origin in a browser (CLI-002, E-2); the token is
-    // read from the desktop key store per call, and is none in a browser, where the cookie travels by itself (CLI-003).
-    // On this computer's hub address the token is read only once a program of this user is found listening there (F-10).
-    // The socket reconnects by itself after a dead hub, so its reader asks the shell before every connection (MF-1).
+    // The token comes from the desktop key store per call; a browser sends the cookie instead (CLI-002, CLI-003, E-2).
+    // On this computer's hub address it is read only once a program of this user listens there (F-10, MF-1).
     const desktop = capabilities().keyStore;
     // Only the app on a computer keeps a copy of recent answers for when the hub does not answer (FND-007).
     const recent = capabilities().recentCopy ? desktopRecentCopy() : undefined;
@@ -112,28 +108,25 @@
       ...(recent === undefined ? {} : { recent }),
     });
     provideHub(hub);
-    // On a hosted hub the daemon of this computer is installed with no question (HMD-053). It waits for the sign-in.
+    // On a hosted hub the daemon of this computer is installed with no question (HMD-053).
     if (capabilities().thisMachine && hubIsHosted(address.origin)) {
       void installDaemonOnThisComputer(hub, (did) => {
         daemonHere.current = did === 'installing' ? { kind: 'installing' } : stateAfter(did);
       });
     }
-    // The daemon cannot tell the hub that it waits in the Keychain, as it has no token then: the app tells it, for each
-    // hub, hosted or not (R-322). Signed out, it asks the hub nothing.
+    // The daemon has no token while it waits in the Keychain, so the app tells each hub (R-322).
     if (capabilities().thisMachine) $effect(() => watchDaemonNeedHere(hub, () => !showsSignedOutPage(page.url)));
-    // A hub that stops answering may come back as another program on the same port: once the connection is not live,
-    // the next request checks again (M-C, MF-1).
+    // A hub that stops answering may come back as another program on the same port (M-C, MF-1).
     $effect(() => {
       if (hub.status.current.connection !== 'connected') untrack(() => forgetListener(address.origin));
     });
     return hub;
   }
 
-  /** The operator shell's parts: the hub and its start guard, the clock, updates, the builder and the session strip. */
   function startShell(address: HubAddress) {
     const hub = startHub(address);
     guardStart(page.url, hub);
-    // Which extensions are on decides the bar's entries and Settings (EXT-002); read once signed in.
+    // Which extensions are on decides the bar's entries and Settings (EXT-002).
     const extensions = new ExtensionsStore(extensionsApi(hub));
     provideExtensions(extensions);
     $effect(() => {
@@ -143,7 +136,7 @@
     provideDesktopUpdates();
     // A computer enrolled as a builder builds while the app runs (BLD-026).
     provideDesktopBuilder(hub);
-    // Builds show only for a hub that can publish a release (PRO-038); read once signed in.
+    // Builds show only for a hub that can publish a release (PRO-038).
     const publishing = new ReleasePublishing(hub);
     providePublishing(publishing);
     $effect(() => {
@@ -156,8 +149,6 @@
       start: (deviceId) => sessionStart(api, deviceId, hub.address.origin),
       end: (sessionId) => api.endSession(sessionId),
     };
-    // WP-16 passes its pop-out window port as the second argument when `capabilities().popOut` is yes (WP-42 D-4,
-    // WP-14 H-2); no platform says yes yet, so none is offered.
     const sessions = createSessions(sessionsPort);
     provideSessions(sessions);
     // A route change (link, back, goto) shows the pages; the session tabs stay open (D-11).
@@ -168,9 +159,7 @@
       });
     });
 
-    // A covered page has no height, so the document loses its scroll position: read it before the session covers the
-    // page and give it back when the same page shows again (WP-14 E-2). A nav click is a navigation, so it drops the
-    // saved position and keeps the scroll the router gives it (see `navigate`).
+    // A covered page has no height, so the document loses its scroll position; it comes back with the page (WP-14 E-2).
     let covered: CoveredScroll | null = null;
     $effect.pre(() => {
       const covering = sessions.active !== null;
@@ -229,7 +218,7 @@
       }}
       oncollapse={setCollapsed}
     />
-    <!-- On a Mac the strip above the page moves the window, as the title bar it replaces did. -->
+    <!-- On a Mac the strip above the page moves the window. -->
     <div class="drag" data-tauri-drag-region></div>
     <WindowStrip />
     <main data-shifts-with-banner>
@@ -321,7 +310,6 @@
     }
   }
 
-  /* Sign-in fills the window edge to edge; the gutter is the shell's pages' alone. */
   .bare > main {
     padding: 0;
   }
@@ -340,7 +328,6 @@
     z-index: var(--layer-nav);
   }
 
-  /* With no bar the strip spans the window; the window buttons are drawn over it. */
   :global(:root[data-titlebar='overlay']) .bare .drag {
     inset-inline-start: 0;
   }
@@ -364,9 +351,7 @@
     min-inline-size: 0;
   }
 
-  /* On a very wide window the pages keep the page measure (`content-page`) in the middle of the room beside the bar,
-     with the same room at each side, so a row does not spread over the window. A session keeps the full width. The
-     room is part of the gutter, so a detail bar still runs to the edges. */
+  /* A very wide window centres the page measure beside the bar; the room is gutter, so a detail bar runs to the edges. */
   .pages {
     --page-room: max(0px, calc((100vw - var(--nav-inline-size) - var(--page-gutter) * 2 - var(--content-page)) / 2));
     padding-inline: var(--page-room);

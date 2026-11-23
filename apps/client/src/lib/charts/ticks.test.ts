@@ -5,7 +5,6 @@ import { timeTicks, valueTicks } from './ticks';
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
-/** Thursday 5 November 2026, 10:07:30 UTC. */
 const now = Date.UTC(2026, 10, 5, 10, 7, 30);
 const utc = () => 0;
 const texts = (ticks: readonly { text: string }[]) => ticks.map((tick) => tick.text);

@@ -1,5 +1,4 @@
-//! A program run with no shell, no input and no error output, for a limited time: an agent's own
-//! program (MCP-035) or a program of the system that lists the members of a group.
+//! A program run with no shell, no input and no error output, for a limited time (MCP-035).
 
 use std::io::Read as _;
 use std::process::{Command, Stdio};
@@ -10,10 +9,8 @@ use std::time::{Duration, Instant};
 /// started can keep it open. Such a program is not stopped, and the output is not waited for.
 const CLOSE: Duration = Duration::from_secs(1);
 
-/// What a program that ended wrote, and whether it ended without failure.
 pub(super) struct Output {
     pub success: bool,
-    /// At most one byte more than the `most` of [`run`]: more means that it wrote more.
     pub stdout: Vec<u8>,
 }
 
@@ -81,7 +78,6 @@ mod tests {
         );
         assert!(left.is_none());
         assert!(start.elapsed() < Duration::from_secs(30));
-        // A program that ends and closes its output is read whole.
         let output =
             super::run(shell("echo done"), Duration::from_secs(30), 100).expect("it ended");
         assert!(output.success && output.stdout == b"done\n");

@@ -2,9 +2,6 @@ import { capabilities } from '$lib/platform/platform';
 import { GATEWAY_ENTER_PATH, gatewayInFront, gatewaySignOut, mayEnterGatewayNow } from '$lib/hub/hub';
 import { markHosted } from '../mark';
 
-// The gateway as this browser page meets it: the one question per page load, the entry and the sign-out. Rules are in
-// `$lib/hub/gateway`.
-
 const ENTERED_KEY = 'anima.gatewayEntered';
 const LEFT_KEY = 'anima.gatewayLeft';
 
@@ -19,11 +16,7 @@ function session(): Storage | null {
   }
 }
 
-/**
- * Whether this page came through the gateway of the hosted hubs (HMD-059). Asked once for each page load, and never by
- * the desktop app, which reaches a hosted hub through its link. A hub behind the gateway is a hosted one, so it is
- * marked: no screen then names a VPN or a hub password for it (R-222, HMD-038).
- */
+/** Whether this page came through the hosted hubs' gateway (HMD-059); a hub behind it is marked hosted (R-222, HMD-038). */
 export function behindGateway(): Promise<boolean> {
   if (capabilities().keyStore) return Promise.resolve(false);
   asked ??= gatewayInFront(location.origin).then((behind) => {
@@ -39,7 +32,6 @@ export function behindGateway(): Promise<boolean> {
   return asked;
 }
 
-/** Whether this browser signed out here and has not entered since: the sign-in page then waits for the person. */
 export function leftGateway(): boolean {
   return session()?.getItem(LEFT_KEY) === '1';
 }
@@ -51,7 +43,6 @@ export function mayEnterByItself(now: number = Date.now()): boolean {
   return mayEnterGatewayNow(Number.isFinite(last) ? last : null, now);
 }
 
-/** Goes to the entry of the gateway: a new page, on which the gateway makes the session of the hub or starts a sign-in. */
 export function enterGateway(now: number = Date.now()): void {
   const store = session();
   store?.removeItem(LEFT_KEY);
@@ -59,10 +50,7 @@ export function enterGateway(now: number = Date.now()): void {
   location.assign(GATEWAY_ENTER_PATH);
 }
 
-/**
- * Ends the session of the gateway after the hub ended its own (HMD-062). `none`: no gateway is in front of this hub.
- * `kept`: the gateway did not confirm, so this browser may still be signed in.
- */
+/** Ends the gateway's session after the hub ended its own (HMD-062); `kept`: the gateway did not confirm. */
 export async function signOutOfGateway(): Promise<'none' | 'left' | 'kept'> {
   if (!(await behindGateway())) return 'none';
   if (!(await gatewaySignOut(location.origin))) return 'kept';

@@ -1,8 +1,5 @@
 //! API-005: a nested selection costs the same number of SQL statements however many devices it returns.
-//!
-//! The test counts statements at the wire: a TCP proxy between the hub's pool and PostgreSQL
-//! counts the client's Bind and simple Query messages. That is exact, needs no database
-//! privileges and does not wait for statistics to flush.
+//! A TCP proxy counts statements at the wire: exact, with no database privileges and no wait for statistics.
 
 use std::{
     sync::{
@@ -82,11 +79,6 @@ async fn api_005_nested_site_device_site_costs_a_constant_few_statements_for_13_
     let many_statements = statements.load(Ordering::SeqCst);
 
     assert_eq!((rendered_devices(&few), rendered_devices(&many)), (13, 163));
-    // The batched cost is 3: the sites, one batch of devices for all sites, one batch of sites
-    // for all devices. A loader that queries once per key costs about one statement per site, so
-    // at least 33 on this data. The test loaders wait 20 ms, not the default 1 ms, so a loaded
-    // machine cannot split a batch; the bound sits far below the per-key cost so it does not
-    // depend on timing.
     assert!(
         few_statements <= BATCHED_AT_MOST && many_statements <= BATCHED_AT_MOST,
         "{few_statements} statements for 13 devices, {many_statements} for 163"
@@ -131,8 +123,6 @@ async fn api_005_credential_stored_costs_a_constant_few_statements_for_13_or_163
 
     assert_eq!(stored_flags(&few), (vec!["pve-01"], 13));
     assert_eq!(stored_flags(&many), (vec!["pve-01"], 163));
-    // The batched cost is 3: the page, its count, one batch of secrets for every device. A
-    // per-device lookup costs one statement per device, at least 15 on this data.
     assert!(
         few_statements <= BATCHED_AT_MOST && many_statements <= BATCHED_AT_MOST,
         "{few_statements} statements for 13 devices, {many_statements} for 163"
@@ -194,7 +184,6 @@ async fn api_005_host_key_costs_a_constant_few_statements_for_13_or_163_devices(
 
     assert_eq!(host_keys(&few), (vec![FINGERPRINT], 13));
     assert_eq!(host_keys(&many), (vec![FINGERPRINT], 163));
-    // The page, its count, one batch of host keys for every device (WP-10 T3).
     assert!(
         few_statements <= BATCHED_AT_MOST && many_statements <= BATCHED_AT_MOST,
         "{few_statements} statements for 13 devices, {many_statements} for 163"

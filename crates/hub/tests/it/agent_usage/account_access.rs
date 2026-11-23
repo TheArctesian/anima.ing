@@ -1,7 +1,4 @@
-//! Who may read the address of an account (THR-149): the person's own clients, signed in with a
-//! login or a browser token; never an API key, which is made for a program, and never a builder
-//! token. And a write of a report that the database refuses puts no address in the log of the
-//! hub.
+//! Only the person's own clients read an account's address, and no log holds one (THR-149).
 
 use anima_hub::fleet::events::process_log;
 use axum::http::StatusCode;
@@ -46,8 +43,7 @@ async fn thr_149_an_api_key_reads_the_accounts_but_not_their_address(pool: PgPoo
     );
 }
 
-/// A builder token reaches no field but the builder fields (BLD-022), so the accounts, and
-/// their addresses with them, are refused to it as a whole.
+/// A builder token reaches only the builder fields (BLD-022), so the accounts are refused whole.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
@@ -75,8 +71,7 @@ async fn thr_149_a_builder_token_gets_no_account_and_no_address(pool: PgPool) {
     assert!(!answer.to_string().contains(ADDRESS), "{answer}");
 }
 
-/// A write that the database refuses (here a check added for the test) makes the push
-/// `UNAVAILABLE` and writes the address in no log line of the hub (THR-149 point 7).
+/// THR-149 point 7.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
@@ -92,8 +87,7 @@ async fn thr_149_a_refused_write_logs_no_address(pool: PgPool) {
     let capture = Capture::default();
     let writer = capture.clone();
     let log = process_log::subscriber("trace", move || writer.clone()).unwrap();
-    // As in bearer::metrics: a second dispatcher keeps another test thread from caching this
-    // test's callsites as disabled.
+    // A second dispatcher keeps another test thread from caching these callsites as disabled.
     let _second = tracing::Dispatch::new(tracing::subscriber::NoSubscriber::default());
     let _default = tracing::subscriber::set_default(log);
     tracing::callsite::rebuild_interest_cache();

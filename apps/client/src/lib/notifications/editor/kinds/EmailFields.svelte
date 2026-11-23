@@ -13,7 +13,6 @@
 
   let { email = $bindable(), stored, problemOf }: Props = $props();
 
-  /** A port still at the other mode's standard follows the mode; a port the operator chose stays. */
   function securityChanged(next: SmtpSecurity): void {
     if (email.port === String(SMTP_PORT[email.security])) email.port = String(SMTP_PORT[next]);
     email.security = next;

@@ -1,7 +1,4 @@
-//! An API key never enrols or revokes a builder, publishes or cancels a release, or claims a job:
-//! a builder token outlives the key that would have enrolled it (D-23, R-100, R-107). A builder
-//! token reaches no root field but the builder mutations, by fragment, introspection or socket
-//! (BLD-022). Only a builder token gets upload URLs (R-108).
+//! An API key may not change builders or releases; a builder token reaches only builder mutations (D-23, R-100, R-107, R-108, BLD-022).
 
 use std::sync::Arc;
 
@@ -17,7 +14,6 @@ use crate::{
     hub::{Hub, error, start},
 };
 
-/// An API key of the operator with `scope`, made of `fill`, as `createApiKey` stores one.
 async fn api_key(pool: &PgPool, scope: &str, fill: u8) -> String {
     let secret = [fill; 32];
     let name = format!("script-{scope}");
@@ -38,7 +34,6 @@ async fn api_key(pool: &PgPool, scope: &str, fill: u8) -> String {
     format!("anima_{}", URL_SAFE_NO_PAD.encode(secret))
 }
 
-/// A WRITE API key of the operator.
 async fn write_key(pool: &PgPool) -> String {
     api_key(pool, "write", 7).await
 }
@@ -99,8 +94,6 @@ async fn bld_022_a_write_api_key_may_not_claim_a_job(pool: PgPool) {
     forbidden(&claim(&hub, &key).await, "claimBuildJob");
 }
 
-/// R-108: only a builder token gets upload URLs; an API key of either scope and an operator
-/// token are refused before any resolver, so no URL is signed for them.
 #[sqlx::test(migrations = "./migrations")]
 async fn r_108_only_a_builder_token_may_get_upload_urls(pool: PgPool) {
     let operator = operator(&pool).await;

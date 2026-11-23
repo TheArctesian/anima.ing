@@ -24,7 +24,6 @@ mod command;
 mod create;
 mod reveal;
 
-/// Enrols TOTP for the fixture operator; returns the secret read back from the URI.
 pub async fn enrol(pool: &PgPool) -> Vec<u8> {
     set_operator(pool).await;
     let enrolment = access::enrol_totp(pool, &test_vault(), USERNAME)
@@ -33,7 +32,6 @@ pub async fn enrol(pool: &PgPool) -> Vec<u8> {
     secret_of(enrolment.uri())
 }
 
-/// The `secret` parameter of an `otpauth://` URI, base32-decoded (RFC 4648).
 fn secret_of(uri: &str) -> Vec<u8> {
     let encoded = uri
         .split(['?', '&'])
@@ -121,8 +119,7 @@ async fn sec_002_a_missing_wrong_or_malformed_code_is_refused_like_a_wrong_passw
     ] {
         assert_refused_like_a_wrong_password(&login(&hub, PASSWORD, typed).await);
     }
-    // Five failures lock this address (D-8); the rest come from another one. A right code
-    // with a wrong password is refused the same way, and leaves the code unused.
+    // Five failures lock this address (D-8); the rest come from another one.
     let elsewhere = Hub::from_client(&pool, start(), "100.64.0.99");
     let wrong_password = login(&elsewhere, "wrong password", Some(&current)).await;
     assert_refused_like_a_wrong_password(&wrong_password);
@@ -224,7 +221,6 @@ async fn sec_002_enrolment_signs_every_client_out(pool: PgPool) {
     assert_eq!(error(&me), unauthenticated());
 }
 
-/// Collects everything the process log writes.
 #[derive(Clone, Default)]
 struct Capture(Arc<Mutex<Vec<u8>>>);
 

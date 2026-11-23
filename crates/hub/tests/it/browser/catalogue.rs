@@ -1,6 +1,4 @@
-//! The install of an entry of the catalogue from the Anima app in a browser (OD-HOST-54,
-//! SF-252): only the browser token of a person passes the gate of a shell and of a
-//! generated entry with no test on a machine. The header that declares an agent stops it.
+//! Only a person's browser token passes the shell gate; an agent header stops it (OD-HOST-54, SF-252).
 
 use axum::Router;
 use serde_json::{Value, json};
@@ -14,7 +12,6 @@ const INSTALL: &str = "mutation($entry: String!, $device: ID!, $digest: String) 
 const DIGESTS: &str = "query($id: String!) { catalogueEntry(id: $id) { digests } }";
 const DEVICE: &str = "0190a000-0000-7000-8002-000000000002";
 
-/// The refusal of the install of code-server with `headers` and `digest`.
 async fn refusal(hub: &Router, headers: &[(&str, &str)], digest: Value) -> Value {
     let variables = json!({ "entry": "code-server", "device": DEVICE, "digest": digest });
     let answer = post(hub, headers, INSTALL, variables).await.json();

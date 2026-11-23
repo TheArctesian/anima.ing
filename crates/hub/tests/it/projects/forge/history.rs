@@ -1,5 +1,4 @@
-//! PRJ-030, PRJ-031: a repository's commits with their checks, its branches and its releases
-//! in K1's shape, paged one GitHub page at a time.
+//! A repository's commits, branches and releases (PRJ-030, PRJ-031).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -20,7 +19,6 @@ const RELEASES: &str = "query($repository: ID!) { repositoryReleases(repository:
     { edges { node { id tag name draft prerelease authorLogin createdAt publishedAt url } } \
     pageInfo { hasNextPage } read { stale } } }";
 
-/// A commit as GitHub lists it, numbered `n`, with one parent.
 fn commit(n: u64) -> Value {
     json!({
         "sha": sha(n), "html_url": format!("https://github.com/octo/widgets/commit/{}", sha(n)),

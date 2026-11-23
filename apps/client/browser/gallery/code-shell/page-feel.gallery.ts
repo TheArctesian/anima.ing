@@ -8,13 +8,11 @@ import { installDesktopShell, type Scenario } from '../threads/desktop-shell';
 import { OLDER_HOLDER } from '../threads/scenario';
 import { card, newThread } from './draft';
 
-// How the page feels on a busy computer: the runner's line in one row with its stop, the chat's model by the runner's
-// name, and a new thread's prompt at once. `GALLERY_CODE_SHELL=1`; pictures go to `gallery-shots/code-shell/<mode>/`.
+// Runs with `GALLERY_CODE_SHELL=1`.
 
 const FOLDER = fileURLToPath(new URL('../../../gallery-shots/code-shell/', import.meta.url));
 const MODELS = [{ program: 'claude_code', models: [{ value: 'opus', name: 'Opus 5.5', efforts: ['low', 'medium', 'high', 'xhigh', 'max'], default_effort: null }] }];
 const HOLDER: Scenario = { ...OLDER_HOLDER, models: MODELS };
-/** A thread the send starts: the runner lists it, and the program has not taken its prompt yet. */
 const FRESH = { id: 'th-fresh', program: 'claude_code', folder: '', mode: 'full_access', model: 'claude-opus-5-5', session: null, ended: null, open: [], title: 'New thread', state: 'starting', started: '@-0.1' };
 const SENDING: Scenario = { ...OLDER_HOLDER, holder: undefined, models: MODELS, running: [FRESH, ...OLDER_HOLDER.running] } as Scenario;
 

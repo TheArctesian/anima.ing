@@ -1,8 +1,5 @@
-//! Whether the daemon of this computer waits for the person to allow it in the macOS Keychain
-//! (R-322). The daemon cannot tell the hub (without its token it cannot reach
-//! it), so it puts the empty file [`MARK`] in its own folder while it waits and deletes it when
-//! the Keychain answers; `anima-daemon install` puts it too when its read of the token waits.
-//! The app only looks for the file: the client then shows that the daemon needs the person.
+//! Whether the daemon waits for the person in the macOS Keychain (R-322): without its token it
+//! cannot tell the hub, so it puts [`MARK`] in its own folder while it waits.
 
 use std::path::Path;
 
@@ -10,14 +7,13 @@ use tauri::{Runtime, Webview};
 
 use super::{DaemonError, from_main};
 
-/// The name of the file, the same as `keychain_wait::MARK` of the daemon.
+/// The same as `keychain_wait::MARK` of the daemon.
 #[cfg_attr(
     all(not(target_os = "macos"), not(test)),
     expect(dead_code, reason = "read only on macOS and by its tests")
 )]
 pub const MARK: &str = "keychain-waits";
 
-/// Whether the daemon's folder `folder` holds the mark.
 #[cfg_attr(
     all(not(target_os = "macos"), not(test)),
     expect(dead_code, reason = "read only on macOS and by its tests")
@@ -26,8 +22,6 @@ pub fn waits_in(folder: &Path) -> bool {
     folder.join(MARK).is_file()
 }
 
-/// Whether the daemon of this computer waits for the person in the Keychain. Only macOS has a
-/// Keychain; elsewhere it never waits.
 #[tauri::command]
 pub async fn daemon_keychain_waits<R: Runtime>(webview: Webview<R>) -> Result<bool, DaemonError> {
     from_main(webview.label())?;

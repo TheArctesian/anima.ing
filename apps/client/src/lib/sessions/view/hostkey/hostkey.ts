@@ -7,10 +7,7 @@ export interface ReviewedKey {
   readonly fingerprintSha256: string;
 }
 
-/**
- * Where the host key warning stands (D-6, SEC-007). Accepting needs a review first (`reviewed`), then a second,
- * explicit step (`confirming`); `accepting` sends the reviewed fingerprint once.
- */
+/** Accepting needs a review, then an explicit confirm; `accepting` sends the reviewed fingerprint once (D-6, SEC-007). */
 export type HostKeyStep =
   | { readonly step: 'warned'; readonly problem?: string }
   | { readonly step: 'reviewing' }
@@ -50,10 +47,7 @@ function accepted(key: ReviewedKey, result: HubResult<AcceptedHostKey>): HostKey
   return { step: 'warned', problem: PROBLEM.accept };
 }
 
-/**
- * The step `event` leads to, or undefined when it does not apply to `current`. Results apply only in the step that
- * asked for them, so a late or repeated answer, or a second click, does nothing; a new review clears an older key.
- */
+/** Undefined when `event` does not apply to `current`, so a late or repeated answer, or a second click, does nothing. */
 export function transition(current: HostKeyStep, event: HostKeyEvent): HostKeyStep | undefined {
   switch (event.event) {
     case 'review':

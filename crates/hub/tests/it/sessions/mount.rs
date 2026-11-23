@@ -1,7 +1,4 @@
-//! `/terminal` as `main.rs` mounts it: logged and behind the permitted-networks layer, so a
-//! peer outside every permitted network never reaches the ticket, even with a valid one from
-//! the address it was issued to (K3, K4 Section 8.1, NET-002, R-051); and the session tunnels
-//! `main.rs` merges serve `/terminal`, `/tunnel` and `/files` (K4 Sections 2 and 9).
+//! A peer outside every permitted network never reaches a ticket (K3, K4 Sections 2, 8.1 and 9, NET-002, R-051).
 
 use std::{net::SocketAddr, sync::Arc};
 
@@ -33,14 +30,12 @@ use super::{
     starting::{ready, redeem, started},
 };
 
-/// The terminal route wrapped as `main.rs` wraps it, permitting only `permitted`.
 async fn mounted(pool: &PgPool, live: &Live, permitted: &str) -> Router {
     let networks: Vec<IpNet> = vec![permitted.parse().unwrap()];
     access::permit_networks(pool, &networks).await.unwrap();
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now()));
     let bus = Bus::new(16);
-    // No request in these tests gets past the ticket, so no device is reached; the terminal
-    // never uses guacd.
+    // No request here gets past the ticket, and the terminal never uses guacd.
     let terminal = terminal_router(&Serving {
         db: pool.clone(),
         vault: vault(),
@@ -57,12 +52,10 @@ async fn mounted(pool: &PgPool, live: &Live, permitted: &str) -> Router {
     )))
 }
 
-/// Opens `/terminal?token=<token>` from `peer`; returns the status and the body text.
 async fn open_from(app: &Router, peer: &str, token: &str) -> (StatusCode, String) {
     open_at(app, "/terminal", peer, token).await
 }
 
-/// Opens `<path>?token=<token>` from `peer`; returns the status and the body text.
 async fn open_at(app: &Router, path: &str, peer: &str, token: &str) -> (StatusCode, String) {
     let mut request = Request::get(format!("{path}?token={token}"))
         .body(Body::empty())
@@ -111,7 +104,7 @@ async fn net_002_a_permitted_peer_reaches_the_terminal_route(pool: PgPool) {
 
     let (status, body) = open_from(&app, CLIENT_ADDR, "unknown").await;
 
-    // The route's own refusal of an unknown ticket: 403 with no body (K4 Section 8.1).
+    // The route's own refusal of an unknown ticket (K4 Section 8.1).
     assert_eq!((status, body.as_str()), (StatusCode::FORBIDDEN, ""));
 }
 

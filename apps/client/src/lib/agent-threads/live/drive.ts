@@ -1,13 +1,10 @@
-/**
- * The rules of the controls that drive a thread (TH14, THR-017, THR-030): the keys of the composer, the words of a mode,
- * the form of a new thread, and the answers to a request. Pure.
- */
+/** The rules of the controls that drive a thread (TH14, THR-017, THR-030). */
 
 import type { Program } from '../thread';
 import type { CallResult } from './live.svelte';
 import type { Action, Answer, Ask, Effort, Mode } from './run';
 
-/** The words of each mode of approvals; full access is the default (decision of the operator, agent-threads.md Section 6.2). */
+/** Full access is the default (agent-threads.md Section 6.2). */
 export const MODE_WORDS: Readonly<Record<Mode, string>> = {
   full_access: 'Full access',
   accept_edits: 'Ask before commands',
@@ -22,7 +19,6 @@ export function composerKey(press: { readonly key: string; readonly shift: boole
   return press.key === 'Enter' && !press.shift && !press.composing ? 'send' : 'type';
 }
 
-/** The fields of the form of a new thread, as the person typed them. */
 export interface NewThreadForm {
   readonly program: Program;
   readonly folder: string;
@@ -34,7 +30,7 @@ export interface NewThreadForm {
   readonly programPath: string;
 }
 
-/** The start call of a form, or the words of what is wrong with it. The runner checks each value again. */
+/** The runner checks each value again. */
 export function startOf(form: NewThreadForm): { readonly ok: true; readonly action: Action } | { readonly ok: false; readonly words: string } {
   const folder = form.folder.trim();
   if (!folder.startsWith('/')) return { ok: false, words: 'Give an absolute folder of this computer, for example /Users/you/project.' };
@@ -57,17 +53,13 @@ export function startOf(form: NewThreadForm): { readonly ok: true; readonly acti
   };
 }
 
-/**
- * The copy that the dialog offers after a refusal: when the copy that the start chose did not answer and a different one
- * did, the first of those (TH97); `null` when there is none, or when the start already named that copy.
- */
+/** After a refusal, the first other copy of the program that answered (TH97). */
 export function offeredCopy(result: CallResult, chosen: string): string | null {
   if (result.ok) return null;
   const copy = result.answered?.[0];
   return copy === undefined || copy === chosen.trim() ? null : copy;
 }
 
-/** The words of the head of a request, as the program asks it. */
 export function askTitle(program: string, ask: Ask): string {
   switch (ask.kind) {
     case 'command':
@@ -84,10 +76,8 @@ export function askTitle(program: string, ask: Ask): string {
 /** The words when a stop could not prove that each process below the program ended (THR-049). */
 export const NOT_ALL_ENDED = 'The program ended, but a process that it started may still run.';
 
-/** The message to the agent when the person declines. */
 export const DECLINED = 'The person declined this.';
 
-/** The answer to the questions of a request: one choice for each question, or `null` while one has none. */
 export function chosenAnswer(ask: Ask, chosen: Readonly<Record<string, readonly string[]>>): Answer | null {
   const answers: [string, string][] = [];
   for (const question of ask.questions) {
@@ -98,10 +88,8 @@ export function chosenAnswer(ask: Ask, chosen: Readonly<Record<string, readonly 
   return { answer: 'choose', answers };
 }
 
-/** The prompt that waits, as the composer names it: `id` in its first version, `queued` from code/composer-set. */
 type Waiting = { readonly id: string } | { readonly queued: string };
 
-/** A call of the composer's queue, without the thread. */
 export type QueueRequest =
   | { readonly call: 'queue'; readonly text: string }
   | ({ readonly call: 'requeue'; readonly text: string } & Waiting)
@@ -112,10 +100,7 @@ function waitingOf(request: Waiting): string {
   return 'queued' in request ? request.queued : request.id;
 }
 
-/**
- * The runner's call for a request of the queue of `thread` (TH109). The runner names the prompt that waits `queued`: a
- * call frame holds its own `id` beside the fields of its action.
- */
+/** The runner names the waiting prompt `queued`, since a call frame holds its own `id` (TH109). */
 export function queueAction(request: QueueRequest, thread: string): Action {
   switch (request.call) {
     case 'queue':

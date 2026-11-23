@@ -5,8 +5,6 @@ import type { Fixtures } from '../synthetic/fixtures';
 import type { Screen } from './shots';
 import { DEVICE_IDS, failOperations, holdOperations, onOperations, openDevice } from './steps';
 
-// The states between the good ones: sign-in, nothing to show, still loading, and the hub failing or gone.
-
 const noDevices = (loaded: Fixtures): Fixtures => ({ ...loaded, devices: [], checks: [], sessions: [], metrics: [] });
 const noChecks = (loaded: Fixtures): Fixtures => ({ ...loaded, checks: [] });
 const noChannels = (loaded: Fixtures): Fixtures => ({ ...loaded, channels: [], deliveries: [] });

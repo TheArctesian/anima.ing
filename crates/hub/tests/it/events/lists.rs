@@ -20,7 +20,6 @@ fn hours_ago(hours: i64) -> DateTime<Utc> {
     start() - TimeDelta::hours(hours)
 }
 
-/// Records one event and returns its id as text.
 async fn record(
     pool: &PgPool,
     hub: &Hub,
@@ -42,7 +41,6 @@ async fn record(
         .to_string()
 }
 
-/// A signed-in hub with four events recorded after the sign-in event, oldest first.
 async fn filter_fixtures(pool: &PgPool) -> (Hub, String) {
     set_operator(pool).await;
     let hub = Hub::new(pool, start());
@@ -162,7 +160,6 @@ async fn api_006_event_pages_are_newest_first_without_gaps_or_repeats(pool: PgPo
     let token = hub.token().await;
     let event = (Severity::Info, Source::Hub, None, "tick");
     let mut stored = Vec::new();
-    // Two events share an instant: the id decides their order.
     for hours in [4, 2, 2, 1, 0] {
         let at = hours_ago(hours);
         let id = record(&pool, &hub, at, event).await;

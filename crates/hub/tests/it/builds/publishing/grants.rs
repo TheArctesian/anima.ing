@@ -1,5 +1,5 @@
-//! A builder gets upload URLs only for its target's release files, each signed with its content
-//! type, and a job that fails leaves none of its files in the bucket (BLD-061, BLD-063, BLD-070).
+//! A builder gets signed upload URLs only for its target's release files; a failed job leaves
+//! none in the bucket (BLD-061, BLD-063, BLD-070).
 
 use sqlx::PgPool;
 
@@ -9,7 +9,6 @@ use crate::{
     hub::error,
 };
 
-/// The review's case: a page or a file of another target gets no URL, and nothing is granted.
 #[sqlx::test(migrations = "./migrations")]
 async fn bld_061_only_the_release_files_of_the_target_are_granted(pool: PgPool) {
     let publishing = Publishing::start(&pool).await;
@@ -81,7 +80,6 @@ async fn bld_070_a_job_that_fails_leaves_none_of_its_files_in_the_bucket(pool: P
     }
 }
 
-/// A macOS job is granted only its archive, its DMG and `SHA256SUMS`.
 #[sqlx::test(migrations = "./migrations")]
 async fn bld_063_a_macos_job_is_granted_only_its_release_files(pool: PgPool) {
     let publishing = Publishing::start(&pool).await;
@@ -106,7 +104,6 @@ async fn bld_063_a_macos_job_is_granted_only_its_release_files(pool: PgPool) {
     assert_eq!(granted["buildUploadUrls"].as_array().unwrap().len(), 3);
 }
 
-/// The content types as stored: the bucket keeps what the URL signed.
 #[sqlx::test(migrations = "./migrations")]
 async fn bld_061_the_bucket_keeps_the_signed_content_type(pool: PgPool) {
     let publishing = Publishing::start(&pool).await;
@@ -116,7 +113,6 @@ async fn bld_061_the_bucket_keeps_the_signed_content_type(pool: PgPool) {
     assert_eq!(stored.as_deref(), Some("application/vnd.appimage"));
 }
 
-/// R-108: a builder that does not hold the job's lease gets no upload URL for it.
 #[sqlx::test(migrations = "./migrations")]
 async fn r_108_only_the_lease_holder_gets_upload_urls(pool: PgPool) {
     let publishing = Publishing::start(&pool).await;

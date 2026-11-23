@@ -28,7 +28,6 @@ function show(...args: Parameters<typeof showRemote>) {
   return view;
 }
 
-/** Start the session and open its tunnel, without the first frame. */
 async function opened(...args: Parameters<typeof showRemote>) {
   const view = show(...args);
   FakeResizeObserver.resize(800, 600);
@@ -51,7 +50,6 @@ function type(name: string, value: string) {
   input.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-/** The `argv` streams the client opened, as `[name, text]`. */
 function argvOf(socket: FakeTunnelSocket): [string, string][] {
   const instructions = socket.sentInstructions();
   const opened = instructions.filter(([opcode]) => opcode === 'argv');

@@ -17,21 +17,17 @@
     api: NotificationsApi;
     /** What a channel without its own template sends (NOT-007). */
     defaultTemplate: NotificationTemplateInput;
-    /** The hub's placeholders (D-21). */
     placeholders: readonly string[];
-    /** The clock of the loading thresholds; tests pass their own. */
     clock?: LoadingClock;
   }
 
   const { api, defaultTemplate, placeholders, clock }: Props = $props();
-  /** `null` while loading or after a failed load. */
   let channels = $state<readonly NotificationChannel[] | null>(null);
   let loadFailed = $state(false);
   let retrying = $state(false);
-  /** The open editor: `channel` is `null` for a new one. */
   let editing = $state<{ readonly channel: NotificationChannel | null } | null>(null);
   let deleting = $state<NotificationChannel | null>(null);
-  /** True while the hub deletes: the dialog stays until it answers, so the outcome is never lost unseen. */
+  /** The dialog stays open until the hub answers the delete. */
   let removing = $state(false);
   let root: HTMLElement | undefined = $state();
   const loading = $derived(channels === null && !loadFailed);
@@ -47,7 +43,7 @@
     } else loadFailed = true;
   }
 
-  /** Retry: the button stays mounted, and aria-disabled, while the hub answers; on success focus goes to Add channel (NAV-005). */
+  /** On success focus goes to Add channel (NAV-005). */
   async function retry(): Promise<void> {
     if (retrying) return;
     retrying = true;
@@ -72,12 +68,11 @@
     return result;
   }
 
-  /** A new channel goes at the end of the list. */
   function saved(channel: NotificationChannel): void {
     if (channels !== null) channels = withSaved(channels, channel);
   }
 
-  /** Focus for the operator after a delete: the row that took its place, the row before, or Add channel (NAV-005). */
+  /** Focus after a delete (NAV-005). */
   function focusRow(id: string | null): void {
     const deletes = [...(root?.querySelectorAll<HTMLElement>('.list [data-delete]') ?? [])];
     const target = deletes.find((button) => button.dataset.delete === id) ?? root?.querySelector<HTMLElement>('[data-add]');
@@ -97,7 +92,7 @@
     channels = rest;
     // Only the dialog of this delete closes; one opened for another channel meanwhile stays.
     if (deleting?.id === id) deleting = null;
-    // After the dialog has closed and given focus back to the button that left with its row.
+    // The dialog closes and returns its focus first.
     await tick();
     focusRow(focusAfterDelete(rest, index));
     return result;
@@ -111,7 +106,6 @@
     {/snippet}
     <FormButton tabindex={0} data-add onclick={() => { editing = { channel: null }; }}>Add channel</FormButton>
   </SettingRow>
-  <!-- The channel count is unknown until the hub answers: the space of one channel is kept until then (MOT-007). -->
   <div class="stack" aria-busy={loading}>
     {#if loadFailed}
       <SettingRow>
@@ -179,11 +173,7 @@
     line-height: var(--leading-tight);
   }
 
-  /*
-   * While the hub answers, the stack keeps the space of one channel, the usual count, so the first answer moves nothing
-   * below it (MOT-007). Once it has answered, the stack is as tall as its channels: a fixed height cut a channel's own
-   * buttons off, and left a blank space under "No channels".
-   */
+  /* While the hub answers, the stack keeps the space of one channel (MOT-007). */
   .stack {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -214,7 +204,6 @@
     line-height: var(--leading-tight);
   }
 
-  /* The skeleton covers what lies under it with the card's own colour, and draws the line as a block. */
   .skeleton {
     background: var(--surface-overlay);
   }

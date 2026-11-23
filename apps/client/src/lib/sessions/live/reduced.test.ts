@@ -9,7 +9,6 @@ vi.mock('motion', async (importOriginal) => ({
   animate: (await import('../../motion/engine.fixture')).fakeRun,
 }));
 
-/** The keyframes each transition asked the browser to play. */
 const played: Keyframe[][] = [];
 
 function reducedMotion(): void {

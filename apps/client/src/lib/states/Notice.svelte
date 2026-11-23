@@ -5,9 +5,7 @@
 
   interface Props {
     tone: NoticeTone;
-    /** What happened, in a few words: "Saved", "Test failed". */
     title: string;
-    /** One line of detail: what it means or what to do. */
     line?: string;
   }
 
@@ -21,7 +19,6 @@
   };
 </script>
 
-<!-- A result inside a section (SET-005): an icon and the title, so the tone never relies on colour (UI-003). Errors interrupt (`alert`); the rest are polite (`status`). -->
 <div class="notice {tone}" role={noticeRole(tone)}>
   <span class="mark"><Icon name={ICONS[tone]} size="sm" /></span>
   <p class="title">{title}</p>

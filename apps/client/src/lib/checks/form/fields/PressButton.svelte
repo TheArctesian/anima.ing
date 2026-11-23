@@ -5,10 +5,9 @@
     label: string;
     kind?: 'primary' | 'quiet';
     submit?: boolean;
-    /** The ID of the form a submit button outside that form submits. */
     form?: string;
     disabled?: boolean;
-    /** Working: the button stays focusable and says so with `aria-disabled`; the owner ignores the press. */
+    /** The button stays focusable with `aria-disabled`; the owner ignores the press. */
     busy?: boolean;
     onclick?: () => void;
   }
@@ -50,7 +49,6 @@
     color: var(--text-secondary);
   }
 
-  /* UI-004: accent with a --surface-base label, accent-deep while pressed, as WakeButton. */
   .primary {
     border-color: var(--accent);
     background: var(--accent);

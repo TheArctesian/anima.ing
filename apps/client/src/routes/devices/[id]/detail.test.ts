@@ -6,7 +6,6 @@ import { parseDeviceId, type DeviceId } from './device-id';
 import { ID, OTHER_ID, answers, beatsPage, check, device, heartbeat } from './page.fixture.svelte';
 import { Pages, type Connection } from './pages.svelte';
 
-/** The well-formed ID the fixtures use; a test that cannot parse it fails at once. */
 function deviceId(text: string): DeviceId {
   const parsed = parseDeviceId(text);
   if (parsed === null) throw new Error(`not a device ID: ${text}`);

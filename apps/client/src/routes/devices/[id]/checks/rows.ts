@@ -23,14 +23,10 @@ const NONE = '—';
 export interface CheckRowText {
   readonly type: string;
   readonly responseTime: string;
-  /**
-   * CHK-007, D-29: days until the certificate or the domain registration expires;
-   * null for a check that reads neither. One line, so the row keeps its height (MOT-007).
-   */
+  /** Null for a check that reads neither; one line, so the row keeps its height (CHK-007, D-29, MOT-007). */
   readonly expiry: string | null;
 }
 
-/** A response time in milliseconds as text, "—" for none. */
 export function msText(ms: number | null | undefined): string {
   return ms == null ? NONE : `${String(ms)} ms`;
 }

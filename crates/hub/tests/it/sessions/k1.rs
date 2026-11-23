@@ -1,6 +1,5 @@
-//! The sessions part of the hub declares exactly its K1 root fields (CON-002; the exact schema
-//! comparison is `contract`). `acceptHostKey` and `acceptServerCertificate` are trust's
-//! (`crate::trust::k1`).
+//! The sessions part declares exactly its K1 root fields (CON-002); `acceptHostKey` and
+//! `acceptServerCertificate` are trust's (`crate::trust::k1`).
 
 use crate::contract::{Schema, k1, schema};
 use anima_hub::fleet::sessions::{

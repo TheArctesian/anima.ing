@@ -25,7 +25,6 @@ const LIST: &str = "{ apiKeys { id name scope prefix expiresAt createdAt lastUse
 
 const ME: &str = "{ me { username } }";
 
-/// A hub at `start()` with the fixture operator and a login token.
 async fn signed_in(pool: &PgPool) -> (Hub, String) {
     set_operator(pool).await;
     let hub = Hub::new(pool, start());
@@ -33,18 +32,15 @@ async fn signed_in(pool: &PgPool) -> (Hub, String) {
     (hub, token)
 }
 
-/// Runs `createApiKey` with `token`; returns the whole response.
 async fn create(hub: &Hub, token: &str, input: Value) -> Value {
     hub.post(Some(token), CREATE, json!({ "input": input }))
         .await
 }
 
-/// The input of a key named `name` with `scope` that expires in 30 days.
 fn input(name: &str, scope: &str) -> Value {
     json!({ "name": name, "scope": scope, "madeFor": "USER", "expiresAt": start() + TimeDelta::days(30) })
 }
 
-/// A key made with `token`, as `createApiKey` answered it.
 async fn made(hub: &Hub, token: &str, name: &str, scope: &str) -> Value {
     let response = create(hub, token, input(name, scope)).await;
     let created = &response["data"]["createApiKey"];
@@ -52,7 +48,6 @@ async fn made(hub: &Hub, token: &str, name: &str, scope: &str) -> Value {
     created.clone()
 }
 
-/// The secret of a key made with `token`.
 async fn secret(hub: &Hub, token: &str, name: &str, scope: &str) -> String {
     made(hub, token, name, scope).await["secret"]
         .as_str()
@@ -68,17 +63,14 @@ fn kind_refused() -> (String, String) {
     )
 }
 
-/// The text after `anima_` in a key's secret.
 fn body(secret: &str) -> &str {
     secret.strip_prefix("anima_").expect("an API key secret")
 }
 
-/// The hash the hub stores for a key's secret.
 fn hash(secret: &str) -> Vec<u8> {
     Sha256::digest(URL_SAFE_NO_PAD.decode(body(secret)).unwrap()).to_vec()
 }
 
-/// The response's one error as `(code, fields)`.
 fn coded(response: &Value) -> (String, Value) {
     let errors = response["errors"].as_array().expect("errors");
     assert_eq!(errors.len(), 1, "{response}");
@@ -89,7 +81,6 @@ fn coded(response: &Value) -> (String, Value) {
     )
 }
 
-/// Every row of `table` as JSON text.
 async fn rows(pool: &PgPool, table: &str) -> Vec<String> {
     sqlx::query_scalar(&format!("select row_to_json(t)::text from {table} t"))
         .fetch_all(pool)
@@ -97,7 +88,6 @@ async fn rows(pool: &PgPool, table: &str) -> Vec<String> {
         .unwrap()
 }
 
-/// How many rows `table` holds.
 async fn count(pool: &PgPool, table: &str) -> i64 {
     sqlx::query_scalar(&format!("select count(*) from {table}"))
         .fetch_one(pool)

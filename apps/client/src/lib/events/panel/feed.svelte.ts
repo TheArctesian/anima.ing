@@ -11,11 +11,7 @@ import {
   type LogFilter,
 } from '../log';
 
-/**
- * What the logs panel shows and the hub calls behind it (LOG-009, LOG-010): the filter, the rows, the errors.
- * A filter change loads the first page again and listens again with the new `minSeverity`.
- * `now` is read once for each load and each live event, so the time window follows the clock.
- */
+/** The logs panel's feed (LOG-009, LOG-010); `now` is read for each load and each live event, so the time window follows the clock. */
 export class LogFeed {
   filter = $state.raw<LogFilter>(DEFAULT_LOG_FILTER);
   log = $state.raw<EventLog | null>(null);
@@ -23,7 +19,6 @@ export class LogFeed {
   olderError = $state.raw<HubError | null>(null);
   liveError = $state.raw<HubError | null>(null);
   loadingOlder = $state(false);
-  /** The id of the row that arrived live last; the panel moves and highlights it. */
   fresh = $state.raw<string | null>(null);
   /** Whether live rows join the list as they come; off while the operator is away from the newest rows or paused (LOG-011). */
   following = $state(true);
@@ -44,7 +39,6 @@ export class LogFeed {
     this.#now = now;
   }
 
-  /** Loads the first page and starts listening; `stop` ends it. */
   start(): void {
     void this.#reload();
     this.#listen();
@@ -65,7 +59,6 @@ export class LogFeed {
     this.#listen();
   }
 
-  /** Starts or stops following; starting puts the waiting rows in the list, and the newest of them is the fresh one (LOG-011). */
   follow(on: boolean): void {
     this.following = on;
     if (!on || this.waiting.length === 0 || this.log === null) return;
@@ -75,7 +68,6 @@ export class LogFeed {
     this.fresh = waiting[0]?.id ?? null;
   }
 
-  /** Loads the first page again, after a failure. */
   retry(): Promise<void> {
     return this.#reload();
   }

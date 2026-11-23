@@ -101,7 +101,6 @@ export interface ProjectRepository {
   /** owner/name (PRJ-016). */
   readonly fullName: string;
   readonly url: string;
-  /** The branch Code and History open on, and a workflow starts on by default. */
   readonly defaultBranch?: string | null;
   readonly description?: string | null;
   readonly private: boolean;
@@ -133,16 +132,16 @@ export interface Project {
   readonly resources: readonly ProjectResource[];
 }
 
-/** One page of projects, with where the next one starts (null: no more). */
+/** `next` is null when no page follows. */
 export interface ProjectsPage {
   readonly projects: readonly Project[];
   readonly next: string | null;
   readonly languages?: readonly string[];
 }
 
-/** The project calls of the hub (PRO-001, PRO-002, PRO-004). */
+/** PRO-001, PRO-002, PRO-004. */
 export interface ProjectsApi {
-  /** One page in the requested order; `leftOut` true lists the projects whose repositories are all left out. */
+  /** `leftOut` true lists the projects whose repositories are all left out. */
   list(leftOut: boolean, after: string | null, browse?: ProjectBrowse): Promise<HubResult<ProjectsPage>>;
   /** Null when no project has the slug. */
   find(slug: string): Promise<HubResult<Project | null>>;

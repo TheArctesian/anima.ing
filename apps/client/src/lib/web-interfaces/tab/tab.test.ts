@@ -11,7 +11,6 @@ const HTTPS = 'https://nas.lan:5001/';
 const start = (overrides: Partial<Parameters<typeof startTab>[0]> = {}) =>
   startTab({ url: HTTPS, pinned: null, pinning: true, down: false, now: 0, ...overrides });
 
-/** The tab after `events` in order; an event that does not apply leaves it as it was. */
 function after(tab: WebTab, ...events: WebTabEvent[]): WebTab {
   return events.reduce((current, event) => transition(current, event, 0) ?? current, tab);
 }

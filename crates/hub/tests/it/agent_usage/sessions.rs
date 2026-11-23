@@ -1,5 +1,4 @@
-//! `agentSessions` lists the single sessions the daemons sent, the newest use first, with their
-//! sums over the days asked for and whether their use is recent (AIS-025, AIS-026).
+//! `agentSessions`: the single sessions the daemons sent (AIS-025, AIS-026).
 
 use chrono::{Days, SecondsFormat, TimeDelta};
 use serde_json::{Value, json};
@@ -21,10 +20,7 @@ async fn sessions(daemons: &Daemons, filter: Value, first: i64) -> Value {
         .await
 }
 
-/// pve-01: Claude Code session "a" on yesterday and today, last used 10 minutes ago, or at
-/// midnight when the hub's clock is less than 10 minutes into its day, so that the session always
-/// ends on `today` (K8 Section 4); docker-host:
-/// Codex session "b" yesterday, ended at 09:00.
+/// The last use is no earlier than midnight, so session "a" always ends on `today` (K8 Section 4).
 async fn seeded(pool: &PgPool) -> Daemons {
     let now = pushing_now(pool).await;
     let daemons = Daemons::at(pool, now).await;

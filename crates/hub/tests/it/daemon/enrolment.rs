@@ -1,6 +1,4 @@
-//! MET-012, K8 Section 3: a code is made by a signed-in operator, works once within 15
-//! minutes, and makes earlier unused codes of its device useless; enrolling replaces the
-//! device's token and sets its metrics source to `daemon` (MET-011).
+//! MET-012, MET-011, K8 Section 3: an enrolment code works once, within 15 minutes.
 
 use axum::{
     body::Body,
@@ -111,8 +109,7 @@ async fn met_012_uses_of_one_code_at_once_enrol_once(pool: PgPool) {
         .iter()
         .filter(|(status, _)| *status == StatusCode::OK);
     assert_eq!(accepted.count(), 1, "{answers:?}");
-    // The rest are refused, or sent back while the hub answers as many daemon requests as it
-    // takes at once (MET-017); those never reached the code.
+    // The rest are refused, or turned away by the daemon request limit (MET-017) before the code.
     let refused = (StatusCode::UNAUTHORIZED, refusal("ENROLMENT_REFUSED"));
     let unavailable = (StatusCode::SERVICE_UNAVAILABLE, refusal("UNAVAILABLE"));
     let others = answers
@@ -193,7 +190,6 @@ async fn k8_every_bad_enrol_body_is_the_same_refusal_and_a_large_one_is_too_larg
         too_large,
         (StatusCode::PAYLOAD_TOO_LARGE, refusal("TOO_LARGE"))
     );
-    // None of the refusals used the code; unknown members are ignored.
     let extra = json!({ "code": code, "daemonVersion": "0.1.0" }).to_string();
     let accepted = daemons.enrol_body(extra, PERMITTED).await;
     assert_eq!(accepted.0, StatusCode::OK, "{}", accepted.1);
@@ -217,7 +213,6 @@ async fn k8_a_declared_length_past_4_kib_is_too_large_before_the_body_is_read(po
         answer,
         (StatusCode::PAYLOAD_TOO_LARGE, refusal("TOO_LARGE"))
     );
-    // The code was never read, so it still works.
     assert_eq!(daemons.enrol(&code).await.0, StatusCode::OK);
 }
 
@@ -240,9 +235,7 @@ async fn met_012_only_a_signed_in_operator_makes_a_code_for_a_device_that_exists
     assert_eq!(error(&malformed).1, "VALIDATION");
 }
 
-/// T8 S1: the longest name the device rule takes (`DEVICE_NAME_CHARS` characters, 192 bytes
-/// here) reaches the daemon as a name it keeps, so no code is spent on an answer the daemon must
-/// throw away.
+/// T8 S1: no code is spent on a device name the daemon would throw away.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))

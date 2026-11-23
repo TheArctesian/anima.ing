@@ -1,15 +1,12 @@
-//! The update of the installed copy (HMD-055) when a step does not end. Stand-in daemons as in
-//! [`super::updates`]; no real unit, Keychain or `~/.local/bin` is touched.
+//! The update of the installed copy (HMD-055) when a step does not end.
 
 use std::{fs, path::Path, process::Command, time::Duration};
 
 use super::updates::{NEW, NEW_COPY, OLD, OLD_COPY, bin, copy_text, installed, update_with};
 use crate::daemon::DaemonError;
 
-/// The deadline of each `stop` and `install`, for a stand-in that never ends.
 const SHORT: Duration = Duration::from_secs(1);
 
-/// `then` of a stand-in whose `verb` writes its process number to `pid` and never ends.
 fn hangs_at(verb: &str, pid: &Path) -> String {
     format!(
         "[ \"$1\" = {verb} ] && {{ echo $$ > '{}'; sleep 600; }}; exit 0",
@@ -17,7 +14,6 @@ fn hangs_at(verb: &str, pid: &Path) -> String {
     )
 }
 
-/// Whether the process whose number is in `pid` still runs.
 fn still_runs(pid: &Path) -> bool {
     let pid = fs::read_to_string(pid).expect("the process number");
     Command::new("/bin/kill")

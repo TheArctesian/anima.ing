@@ -11,7 +11,6 @@ function addressOf(text: string): HubAddress {
   return parsed.value;
 }
 
-/** A key store holding the default hub's token only, looked up by the address the hub passes. */
 function keyStore(): { read: TokenProvider; reads: HubAddress[] } {
   const reads: HubAddress[] = [];
   const read: TokenProvider = (address) => {

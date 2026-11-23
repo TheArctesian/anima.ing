@@ -82,7 +82,6 @@ describe('web tab run (H-4, WEB-008, SEC-007)', () => {
   });
 });
 
-/** A promise and the function that resolves it. */
 function held<T = void>() {
   let release: (value: T) => void = () => undefined;
   const promise = new Promise<T>((resolve) => (release = resolve));
@@ -115,7 +114,6 @@ describe('web tab restarts and late answers (H-4, WEB-008)', () => {
     await settle();
     opening.release();
     await settle();
-    // The second.lan view is still alive until its queued close runs.
     emit({ tabId: 'tab-1', kind: 'UNTRUSTED', fingerprintSha256: OLD });
     await settle();
     closing.release();
@@ -152,7 +150,6 @@ describe('web tab restarts and late answers (H-4, WEB-008)', () => {
 describe('web tab old-run answers (H-4)', () => {
   it('H-4: a certificate read for the old URL never reaches the new run', async () => {
     const { props } = await showTab({ pinning: false });
-    // The first run's read is already waiting; hold the next one too, and answer the old one first.
     const reads = [held<Fingerprint>(), held<Fingerprint>()];
     let read = 0;
     props.shell.readCertificate = () => reads[Math.min((read += 1), 2) - 1]?.promise ?? Promise.reject(new Error('extra read'));

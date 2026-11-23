@@ -195,7 +195,6 @@ describe('Web menu closing (WEB-003)', () => {
 });
 
 describe('warning badge (RA-020, D-6)', () => {
-  /** The badge's button: its name is the word and what the word means. */
   const badgeButton = () => document.querySelector<HTMLButtonElement>('button:has(.badge)');
 
   it('RA-020: a card with warnings shows the word Warning, says what it means and lists each warning in its tip', () => {
@@ -205,7 +204,6 @@ describe('warning badge (RA-020, D-6)', () => {
     // Below bp-compact the word is visually hidden but stays in its own element (RA-020, UI-003).
     expect(badge?.querySelector('.label')?.textContent).toBe('Warning');
     const lines = warningLines(['RDP_SECURITY', 'UNENCRYPTED_VNC']);
-    // The spoken name carries all of it, so a screen reader needs no tip.
     expect(badgeButton()?.getAttribute('aria-label')).toBe(`Warning: ${WARNING_MEANING} ${lines.join(' ')}`);
     badgeButton()?.click();
     flushSync();

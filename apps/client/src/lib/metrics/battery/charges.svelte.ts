@@ -3,10 +3,7 @@ import type { Hub, HubError } from '$lib/hub/hub';
 import { batteryApi } from './api';
 import { mergeCharges, NO_CHARGES, type Charges } from './battery';
 
-/**
- * The latest charge of each battery of every device, from the batches as the hub pushes them (MET-032). A device has
- * no charge until its first batch after `start`: its daemon pushes one every 10 seconds (MET-018).
- */
+/** The latest charge of each battery (MET-032); a device has none until its first batch after `start`, pushed every 10 s (MET-018). */
 export class LiveCharges {
   readonly #byDevice = new SvelteMap<string, Charges>();
   error = $state.raw<HubError | null>(null);

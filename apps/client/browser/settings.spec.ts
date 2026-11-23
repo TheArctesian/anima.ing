@@ -63,7 +63,6 @@ test('MOT-043: a switch follows the Reduce motion choice of Settings, also again
     await page.goto('/settings');
     await page.getByRole('radiogroup', { name: 'Reduce motion' }).getByRole('radio', { name: choice }).click();
     await page.goto('/extensions');
-    // The knob's slide: the transition of the switch's ::after.
     const seconds = await page.getByRole('switch', { name: /Projects/u }).evaluate((node) => getComputedStyle(node, '::after').transitionDuration);
     return Number.parseFloat(seconds);
   };

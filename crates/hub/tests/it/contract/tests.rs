@@ -80,13 +80,12 @@ async fn con_002_a_missing_member_a_changed_signature_and_a_stray_type_are_each_
     );
 }
 
-// The `@pending` rule (D-1, P2-002) on small synthetic schemas.
+// The `@pending` rule (D-1, P2-002).
 
 fn found(hub: &str, k1: &str) -> Vec<String> {
     differences(&schema(hub), &schema(k1))
 }
 
-/// Asserts that the hub and K1 differ nowhere.
 fn agree(hub: &str, k1: &str) {
     let found = found(hub, k1);
     assert!(found.is_empty(), "{found:?}");

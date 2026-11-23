@@ -4,7 +4,7 @@ import { LIMITS, toNumber } from '../form/model/range';
 import type { CheckSettingsText } from '../form/model/validate';
 import { defaultsText } from '../form/model/values';
 
-/** The four settings of D-26, in form order, with the label the check form uses and the hub's bounds for each. */
+/** The four settings of D-26, in form order. */
 export const SETTING_FIELDS = [
   { key: 'intervalSeconds', label: 'Interval (seconds)', bounds: LIMITS.intervalSeconds },
   { key: 'retries', label: 'Retries before Down', bounds: LIMITS.retries },
@@ -24,7 +24,7 @@ export function defaultsInput(text: CheckSettingsText): CheckDefaultsInput {
 
 export type SettingKey = (typeof SETTING_FIELDS)[number]['key'];
 
-/** D-26: `defaults` for the settings of a new check's form that the operator has not touched; a touched one is left out. */
+/** D-26: defaults fill only the settings the operator has not touched. */
 export function untouchedSettings(touched: ReadonlySet<SettingKey>, defaults: CheckDefaults): Partial<CheckSettingsText> {
   const wanted = defaultsText(defaults);
   const patch: Partial<CheckSettingsText> = {};

@@ -1,6 +1,4 @@
-//! PRJ-041, K-E1 Section 7a: each refusal of the flow leaves the attempt as it was: a used or
-//! wrong ticket, a wrong or missing state, a missing cookie, a second browser, and `/open`
-//! without a session or from another origin.
+//! PRJ-041, K-E1 Section 7a: each refusal of the connect flow leaves the attempt as it was.
 
 use std::time::Duration;
 
@@ -81,9 +79,7 @@ async fn prj_039_a_wrong_state_a_missing_cookie_and_a_second_browser_change_noth
     );
 }
 
-/// The install link carries S2 and GitHub sends it back, so the bound browser back from
-/// Install without a state is treated as one with a wrong state: it only wakes the poll and
-/// the hub looks up no installation it named.
+/// GitHub sends S2 back from Install, so a return without a state counts as a wrong state.
 #[sqlx::test(migrations = "./migrations")]
 async fn prj_039_the_bound_browser_back_from_install_without_a_state_looks_up_nothing(
     pool: PgPool,

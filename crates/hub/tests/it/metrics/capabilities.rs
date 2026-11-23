@@ -1,6 +1,4 @@
-//! CAP-020 to CAP-031 through the hub's routes: a pushed batch's `inventory` replaces the
-//! device's tool inventory, its absence (an older daemon) leaves it, and `capabilities` lists it
-//! to a read key, filtered by tool and build target.
+//! The tool inventory and `capabilities` through the hub's routes (CAP-020 to CAP-031).
 
 use axum::http::StatusCode;
 use chrono::{DateTime, TimeDelta, Utc};
@@ -20,7 +18,6 @@ const CAPABILITIES: &str = "query($tool: String, $buildTarget: String) {
 const CREATE_KEY: &str =
     "mutation($input: ApiKeyInput!) { createApiKey(input: $input) { secret } }";
 
-/// A batch of `device` at `at` with one CPU point, and `inventory` when given.
 fn inventory_batch(device: &str, at: DateTime<Utc>, inventory: Option<Value>) -> Value {
     let mut pushed = cpu_batch(device, at, 5.0);
     if let Some(inventory) = inventory {
@@ -36,7 +33,6 @@ fn linux(tools: Value, targets: Value) -> Value {
     inventory
 }
 
-/// A read key's secret, made by the signed-in operator.
 async fn read_key(daemons: &Daemons, now: DateTime<Utc>) -> String {
     let input = json!({ "name": "inventory reader", "scope": "READ", "madeFor": "AGENT",
                         "expiresAt": now + TimeDelta::days(30) });

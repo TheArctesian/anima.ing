@@ -63,7 +63,6 @@ function rangeErrors(ranges: HttpValues['acceptedStatus']): FieldError[] {
   return errors;
 }
 
-/** A stored secret may stay empty ("keep"); a new one must be entered. */
 function authErrors(http: HttpValues): FieldError[] {
   const errors: FieldError[] = [];
   if (http.authKind === 'BASIC') {
@@ -94,10 +93,7 @@ function bodyErrors(http: HttpValues): FieldError[] {
   ];
 }
 
-/**
- * Section 6.4 (HTTP): every reason the settings cannot be saved. The authentication is checked only
- * when the config is sent (`configSent`); an edit that leaves it out keeps all stored secrets.
- */
+/** Section 6.4 (HTTP): authentication is checked only when the config is sent; an edit without it keeps all stored secrets. */
 export function validateHttp(http: HttpValues, configSent: boolean): FieldError[] {
   return [
     ...urlErrors(http.url),

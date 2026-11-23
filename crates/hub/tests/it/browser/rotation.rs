@@ -1,6 +1,5 @@
-//! A second `signInBrowser` whose request still carries a browser's cookie deletes the token that
-//! cookie held, so no browser token outlives the cookie that held it; a refused or failed sign-in
-//! deletes nothing (SEC-002, D-3, A-3, A-4).
+//! No browser token outlives the cookie that held it; a refused or failed sign-in deletes
+//! nothing (SEC-002, D-3, A-3, A-4).
 
 use std::{sync::Arc, time::Duration};
 
@@ -14,12 +13,10 @@ use super::{
 };
 use crate::hub::{Hub, PASSWORD, USERNAME, error, set_operator, start, wrong_credentials};
 
-/// The headers of a request from the public origin with `cookie`.
 fn from_public(cookie: &str) -> [(&'static str, &str); 2] {
     [("origin", PUBLIC), ("cookie", cookie)]
 }
 
-/// Whether `token` still has its row.
 async fn stored(pool: &PgPool, token: &str) -> bool {
     sqlx::query_scalar("select exists (select from access.api_tokens where token_hash = $1)")
         .bind(hash(token))
@@ -28,7 +25,6 @@ async fn stored(pool: &PgPool, token: &str) -> bool {
         .unwrap()
 }
 
-/// The audit actions, sorted.
 async fn audit_actions(pool: &PgPool) -> Vec<String> {
     sqlx::query_scalar("select action from events.audit_log order by action")
         .fetch_all(pool)
@@ -36,7 +32,6 @@ async fn audit_actions(pool: &PgPool) -> Vec<String> {
         .unwrap()
 }
 
-/// The token the signed-in `answer` set.
 fn signed_in(answer: &Answer) -> String {
     assert!(
         answer.json()["data"]["signInBrowser"].is_object(),
@@ -92,8 +87,7 @@ async fn sec_002_a_failed_or_throttled_second_sign_in_keeps_the_first_token(pool
     assert_eq!(audit_actions(&pool).await, ["login"]);
 }
 
-/// Waits until a session on this test's database waits for a lock (a row lock waits on a
-/// transaction id, which `pg_locks` does not tie to a database).
+/// A row lock waits on a transaction id, which `pg_locks` does not tie to a database.
 async fn wait_for_lock_wait(pool: &PgPool) {
     for _ in 0..500 {
         let waiting: i64 = sqlx::query_scalar(
@@ -111,8 +105,6 @@ async fn wait_for_lock_wait(pool: &PgPool) {
     panic!("the sign-in never waited for the operator lock");
 }
 
-/// The account changes while the sign-in waits for the operator lock: the sign-in is refused
-/// inside its transaction, and the delete of the cookie's token rolls back with it.
 #[sqlx::test(migrations = "./migrations")]
 async fn sec_002_a_sign_in_refused_inside_its_transaction_keeps_the_cookie_token(pool: PgPool) {
     set_operator(&pool).await;

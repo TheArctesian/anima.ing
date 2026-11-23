@@ -1,5 +1,4 @@
-//! PRJ-031: a repository's issues in K1's shape with no pull request among them, one issue,
-//! and the comments of an issue or a pull request.
+//! A repository's issues and their comments in K1's shape (PRJ-031).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;

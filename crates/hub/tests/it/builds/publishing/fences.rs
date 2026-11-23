@@ -1,7 +1,4 @@
-//! Every job the hub publishes ends, and only the try that holds it writes (D-25): a try taken
-//! over writes no feed, each signed request carries the time it was sent, spent tries fail the
-//! job, a hub with publishing off fails what it was given, and the operator cannot cancel a job
-//! the hub publishes. The database keeps the publishing columns' rules.
+//! Every job the hub publishes ends, and only the try that holds it writes (D-25).
 
 use std::sync::Arc;
 
@@ -19,9 +16,7 @@ use super::{
 };
 use crate::hub::error;
 
-/// The review's case: a try waits on the bucket after its copy while a later try takes the job
-/// over and fails it. The first try checks its hold before the feed and writes nothing, so the
-/// `latest.json` people read stays as it was (BLD-070).
+/// A taken-over try checks its hold before the feed, so `latest.json` stays as it was (BLD-070).
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_taken_over_try_does_not_write_the_feed_of_a_failed_job(pool: PgPool) {
     let publishing = Arc::new(Publishing::start(&pool).await);
@@ -49,8 +44,7 @@ async fn d_25_a_taken_over_try_does_not_write_the_feed_of_a_failed_job(pool: PgP
     assert_eq!(publishing.fake.object(LINUX_FEED).unwrap().bytes, old.bytes);
 }
 
-/// A try that waits minutes on the bucket signs its next request with the time it sends it,
-/// which the bucket checks against its own clock.
+/// The bucket checks each signed request's time against its own clock.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_each_signed_request_reads_the_clock_again(pool: PgPool) {
     let publishing = Arc::new(Publishing::start(&pool).await);
@@ -70,8 +64,6 @@ async fn d_25_each_signed_request_reads_the_clock_again(pool: PgPool) {
     assert!(publishing.fake.object(LINUX_FEED).is_some());
 }
 
-/// A try still running when its hold ran out writes nothing: another try may hold the job now.
-/// Here the same sweep takes the job again, and that second try publishes it.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_try_past_its_hold_writes_nothing(pool: PgPool) {
     let publishing = Arc::new(Publishing::start(&pool).await);
@@ -122,8 +114,6 @@ async fn d_25_a_job_whose_tries_are_spent_fails(pool: PgPool) {
     assert!(publishing.fake.object(LINUX_FEED).is_none());
 }
 
-/// A try that was taken over and then refuses a file does not fail the job: only the try that
-/// holds the job ends it.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_taken_over_try_that_refuses_does_not_fail_the_job(pool: PgPool) {
     let publishing = Arc::new(Publishing::start(&pool).await);
@@ -151,8 +141,7 @@ async fn d_25_a_taken_over_try_that_refuses_does_not_fail_the_job(pool: PgPool) 
     assert!(publishing.fake.with(|store| store.deletes.is_empty()));
 }
 
-/// N-8: a job handed over before publishing was turned off fails with a fixed reason, instead
-/// of waiting for a publisher that never comes.
+/// N-8: a job given to a hub with publishing off fails instead of waiting for a publisher.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_hub_with_publishing_off_fails_the_jobs_it_was_given(pool: PgPool) {
     let publishing = Publishing::start(&pool).await;
@@ -171,7 +160,6 @@ async fn d_25_a_hub_with_publishing_off_fails_the_jobs_it_was_given(pool: PgPool
     assert_eq!(builds::publishing_off(queue, ready()).await.unwrap(), 0);
 }
 
-/// D-25: the operator cannot cancel a job the hub publishes; only a queued job is cancelled.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_job_the_hub_publishes_cannot_be_cancelled(pool: PgPool) {
     let publishing = Publishing::start(&pool).await;
@@ -189,7 +177,6 @@ async fn d_25_a_job_the_hub_publishes_cannot_be_cancelled(pool: PgPool) {
     assert_eq!(publishing.job(&held).await.0, "uploading");
 }
 
-/// The constraint `sql` breaks, if it fails.
 async fn broken(pool: &PgPool, sql: &str, job: &str) -> Option<String> {
     let result = sqlx::query(sql).bind(job).execute(pool).await;
     let error = result.err()?;

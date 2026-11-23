@@ -4,10 +4,7 @@ import { daemonUpdateWords } from '$lib/desktop/daemon/update-notice';
 import { LiveThreads } from './live/live.svelte';
 import { ThreadsStore } from './store.svelte';
 
-/**
- * How often the list is read again while the window is seen (THR-058). The desktop shell has no watcher of the session
- * files yet, so this is a read at an interval, and at each return to the window; a hidden window reads nothing.
- */
+/** THR-058: the desktop shell has no watcher of the session files, so the list is read at an interval. */
 export const REFRESH_MS = 30_000;
 
 let shared: ThreadsStore | undefined;
@@ -28,10 +25,6 @@ export function threadsStore(): ThreadsStore {
   return shared;
 }
 
-/**
- * Keeps `store` fresh while something shows it: a read now, one each `REFRESH_MS` while the document is visible, and one
- * when the window is seen again. Returns the stop. Call from an effect.
- */
 export function keepFresh(store: ThreadsStore, target: Pick<Document, 'visibilityState' | 'addEventListener' | 'removeEventListener'> = document): () => void {
   const read = (): void => {
     if (target.visibilityState === 'visible') void store.loadList();

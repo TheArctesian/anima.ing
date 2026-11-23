@@ -8,7 +8,6 @@ import ConfirmModal from './ConfirmModal.svelte';
 const OK: HubResult<unknown> = { ok: true, value: undefined };
 installAnimations();
 
-/** Two ConfirmModals open together, the second on top; Escape counts in `heard` and closes the dialog. */
 function stacked() {
   const heard = { outer: 0, inner: 0 };
   const outer = $state({ open: true });
@@ -21,7 +20,6 @@ function stacked() {
     body: 'Sure?',
     confirmLabel: 'Confirm',
     onConfirm: () => Promise.resolve(OK),
-    // Like the real owners, Escape closes the dialog.
     onCancel: () => {
       heard[name] += 1;
       state.open = false;
@@ -30,8 +28,7 @@ function stacked() {
   // Mounted in a container, as the app is: a dialog is moved to `body`, so its events reach Svelte's handler on the document.
   const target = document.body.appendChild(document.createElement('div'));
   const apps = [mount(ConfirmModal, { target, props: props(outer, 'outer') }), mount(ConfirmModal, { target, props: props(inner, 'inner') })];
-  // A browser runs Svelte's effects between two listeners of one event; this listener, added before the
-  // dialogs' own document listeners exist, does the same here.
+  // A browser runs Svelte's effects between two listeners of one event; this earlier listener does the same.
   const checkpoint = () => {
     flushSync();
   };

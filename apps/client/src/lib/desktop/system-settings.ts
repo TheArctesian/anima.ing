@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 
-/** Why System Settings did not open. `unavailable` and `failed` are the shell's codes (R-059). */
+/** The shell's codes (R-059). */
 export type SystemSettingsProblem = 'unavailable' | 'failed';
 
 const MESSAGES: Record<SystemSettingsProblem, string> = {
@@ -8,7 +8,7 @@ const MESSAGES: Record<SystemSettingsProblem, string> = {
   failed: 'System Settings did not open.',
 };
 
-/** A failure to open System Settings. The message is fixed text; nothing from the shell's error is kept. */
+/** The message is fixed text; nothing from the shell's error is kept. */
 export class SystemSettingsError extends Error {
   constructor(readonly problem: SystemSettingsProblem) {
     super(MESSAGES[problem]);

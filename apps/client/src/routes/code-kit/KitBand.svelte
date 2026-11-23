@@ -9,7 +9,6 @@
   let panel = $state(false);
 </script>
 
-<!-- The band over a chat, with the inbox toggle at its start and the panel toggles at its end (02 sections 4.2, 6). -->
 <div class="frames">
   <div class="frame" data-kit="band-chat">
     <Band>

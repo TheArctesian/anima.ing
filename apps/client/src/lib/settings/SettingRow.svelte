@@ -2,28 +2,23 @@
   import type { Snippet } from 'svelte';
 
   interface Props {
-    /** The row's name. A string is drawn as a `<label>` for the control with the id `for`, or as text without one. */
     label: string | Snippet;
-    /** The id of the control the label names. */
     for?: string;
-    /** A short muted line under the name; give its element the class `hint`. */
+    /** Give its element the class `hint`. */
     hint?: Snippet;
-    /** The control, at the end of the line. */
     children: Snippet;
-    /** The row's message line under it; give its element `role="alert"`. It keeps one line while empty (MOT-007). */
+    /** Give its element `role="alert"`. It keeps one line while empty (MOT-007). */
     message?: Snippet;
-    /** Beside the name: how the row's last save went (D17, `SaveMark`). */
+    /** How the row's last save went (D17, `SaveMark`). */
     status?: Snippet;
-    /** A control column wide enough for a name or an address, whose fields fill it (D17); the default fits a number. */
+    /** A control column wide enough for a name or an address (D17). */
     wide?: boolean;
-    /** Put a group of controls and its guidance below the name and hint. */
     stacked?: boolean;
   }
 
   const { label, for: control, hint, children, message, status, wide = false, stacked = false }: Props = $props();
 </script>
 
-<!-- One setting, a hairline row (UR-7, D9). Controls sit at the end of the line or below the name. -->
 <div class="row" class:wide class:stacked>
   <div class="line">
     <div class="text">
@@ -105,7 +100,6 @@
     border-color: var(--status-down);
   }
 
-  /* A wide row: one column for the control, which its fields fill (D17). */
   .wide .line {
     grid-template-columns: minmax(0, 1fr) minmax(0, calc(var(--space-16) * 4.75));
   }
@@ -150,7 +144,7 @@
   }
 
   /* One line is kept for the message, so its arrival moves nothing below (MOT-007, MV-005).
-     --status-down text is 3.05:1 (MAT-005 needs 4.5:1): the text stays --text and a bar marks the error. */
+     --status-down text is 3.05:1 (MAT-005 needs 4.5:1), so a bar marks the error. */
   .row > :global([role='alert']) {
     margin: 0;
     min-block-size: calc(var(--text-sm) * var(--leading-tight));
@@ -181,7 +175,6 @@
     }
   }
 
-  /* A narrow card stacks the control under its name. */
   @container (max-inline-size: 28rem) {
     .line,
     .wide .line {

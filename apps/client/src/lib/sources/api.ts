@@ -158,7 +158,7 @@ export type PauseReason = 'OPERATOR' | 'EXTENSION_OFF';
 export type SyncTrigger = 'CONNECT' | 'SCHEDULE' | 'MANUAL';
 export type SyncOutcome = 'OK' | 'FAILED' | 'STOPPED';
 
-/** One sync run with its four counts (SRC-005). `outcome` is null while it runs. */
+/** `outcome` is null while the run goes on (SRC-005). */
 export interface SyncRun {
   readonly id: string;
   readonly trigger: SyncTrigger;
@@ -172,7 +172,7 @@ export interface SyncRun {
   readonly error: string | null;
 }
 
-/** One source account as the hub lists it (SRC-003, SRC-009). The credential never comes back (KEY-002). */
+/** The credential never comes back (KEY-002). */
 export interface SourceAccount {
   readonly id: string;
   readonly sourceKey: string;
@@ -186,14 +186,13 @@ export interface SourceAccount {
   readonly runs: readonly SyncRun[];
 }
 
-/** A source the hub reads, with its accounts. */
 export interface Source {
   readonly key: string;
   readonly name: string;
   readonly accounts: readonly SourceAccount[];
 }
 
-/** What the operator types to connect a GitHub App (PRJ-018). `privateKey` is a secret: send it, then drop it. */
+/** `privateKey` is a secret: send it, then drop it (PRJ-018). */
 export interface GithubAppInput {
   readonly label: string;
   readonly appId: string;
@@ -201,7 +200,7 @@ export interface GithubAppInput {
   readonly privateKey: string;
 }
 
-/** The source calls of the hub. A refused call comes back with the hub's own words. */
+/** A refused call comes back with the hub's own words. */
 export interface SourcesApi {
   list(): Promise<HubResult<readonly Source[]>>;
   connectGithubApp(input: GithubAppInput): Promise<HubResult<SourceAccount>>;
@@ -209,7 +208,6 @@ export interface SourcesApi {
   setPaused(id: string, paused: boolean): Promise<HubResult<SourceAccount>>;
   /** `deleteRecords` false keeps the records the account brought in. */
   remove(id: string, deleteRecords: boolean): Promise<HubResult<string>>;
-  /** Listens for each change of an account; returns the function that stops listening. */
   watch(sink: Sink<SourceAccount>): () => void;
 }
 

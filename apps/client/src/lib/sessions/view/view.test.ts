@@ -117,10 +117,7 @@ describe('wake line (RA-031)', () => {
   });
 });
 
-/**
- * The rules of a component's stylesheet as Svelte compiles it, by selector without the scoping class. jsdom applies
- * no component CSS, so the structural style checks read the compiled rules.
- */
+/** jsdom applies no component CSS, so the style checks read the rules Svelte compiles. */
 function componentRules(file: string): Map<string, Map<string, string>> {
   const source = readFileSync(new URL(file, import.meta.url), 'utf8');
   const code = (compile(source, { filename: file, css: 'external' }).css?.code ?? '').replaceAll(/\/\*[\s\S]*?\*\//g, '');

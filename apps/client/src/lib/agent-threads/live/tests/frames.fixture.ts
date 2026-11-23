@@ -1,5 +1,3 @@
-/** Frames of the socket of the runner, as the desktop shell passes them, and a made shell, for the tests. */
-
 import type { RunnerShell } from '$lib/desktop/agent-threads/runner';
 import { updateFrom, type Action, type Outcome, type Update } from '../run';
 
@@ -11,7 +9,6 @@ export function rowFrame(state: string, more: Record<string, unknown> = {}): Rec
 
 export function frame(seq: number, change: Record<string, unknown>): Update {
   const update = updateFrom({ thread: THREAD, seq, ...change });
-  // A change may name its own thread.
   if (update === null) throw new Error('the frame does not read');
   return update;
 }
@@ -23,7 +20,6 @@ export const askFrame = (seq: number, request: string, subject = 'bun test'): Up
 
 export const saidFrame = (seq: number, event: Record<string, unknown>): Update => frame(seq, { change: 'said', event });
 
-/** A made shell: each call is kept, and the answers are given by `answer`. */
 export function madeShell(answer: (action: Action) => Outcome = () => ({ outcome: 'ok' })): RunnerShell & {
   readonly calls: Action[];
   readonly notices: [string, string][];

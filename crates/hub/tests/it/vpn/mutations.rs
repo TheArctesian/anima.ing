@@ -28,7 +28,6 @@ const REGISTER: &str =
     "mutation($a: String!) { registerVpnNode(authId: $a) { name address keyExpiry } }";
 const RENEW: &str = "mutation($n: String!) { renewVpnKey(name: $n) { name address keyExpiry } }";
 
-/// The broker's answer to one request line: `nodes` as `nodes_value`, the rest by `others`.
 pub(super) fn answering(others: impl Fn(&Value) -> String + Send + Sync + 'static) -> FakeBroker {
     start(Duration::ZERO, move |line| {
         let request: Value = serde_json::from_str(line).unwrap();
@@ -44,8 +43,6 @@ pub(super) fn new_key() -> String {
     ok(&json!({ "key": KEY, "expiresAt": "2030-05-05T13:00:00.000Z", "keyId": 7 }))
 }
 
-/// A signed-in hub over `fake`, after one read, with the sites home and office1; returns the
-/// hub, its token and home's id.
 pub(super) async fn hub_over(
     pool: &PgPool,
     fake: &FakeBroker,
@@ -58,7 +55,6 @@ pub(super) async fn hub_over(
     (hub, token, home, reader)
 }
 
-/// The requests the fake saw, other than `nodes`.
 pub(super) fn asked(fake: &FakeBroker) -> Vec<Value> {
     fake.seen()
         .iter()
@@ -71,7 +67,6 @@ pub(super) fn code(response: &Value) -> &Value {
     &response["errors"][0]["extensions"]["code"]
 }
 
-/// Every audit change and event message the hub wrote, as one text.
 async fn written(pool: &PgPool) -> String {
     sqlx::query_scalar(
         "select coalesce((select string_agg(change::text || ' ' || target_type || ' ' || action, ' ') \

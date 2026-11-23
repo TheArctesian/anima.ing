@@ -1,5 +1,4 @@
 <script lang="ts" module>
-  /** What the control must carry so its label, hint and problem reach a screen reader. */
   export interface ControlAttributes {
     id: string;
     'aria-invalid': boolean;
@@ -12,9 +11,9 @@
 
   interface Props {
     label: string;
-    /** A fixed hint under the control; never a value the operator typed. */
+    /** A fixed hint; never a value the operator typed. */
     hint?: string;
-    /** Empty when the value is fine. A fixed sentence: it never repeats a secret (F-8). */
+    /** Empty when fine; a fixed sentence that never repeats a secret (F-8). */
     problem: string;
     control: Snippet<[ControlAttributes]>;
   }

@@ -7,11 +7,7 @@ const HUB_SILENT = 'The hub did not answer.';
 const HUB_ODD = 'The hub sent an odd answer.';
 const TOKEN_UNREAD = "Can't read Anima.ing's token.";
 
-/**
- * The sentence for a connection test. Any answer from the hub, including a refusal because nobody is signed in, shows
- * that the address reaches a hub; only silence and unreadable answers are failures, and an unreadable token means nothing
- * was sent (CLI-002).
- */
+/** Any answer from the hub, a refusal included, shows that the address reaches a hub; an unreadable token sent nothing (CLI-002). */
 export function connectionSentence(answer: HubResult<unknown>): string {
   if (answer.ok) return HUB_ANSWERED;
   if (answer.error === TOKEN_UNREADABLE) return TOKEN_UNREAD;

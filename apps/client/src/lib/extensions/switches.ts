@@ -1,7 +1,6 @@
 import type { Extension } from './api';
 import { willDo } from './coming';
 
-/** What a row of the Extensions section offers: a live switch, or the reason there is none. */
 export type SwitchKind = 'switch' | 'unbuilt' | 'fixed' | 'needed';
 
 export interface ExtensionRow {

@@ -20,7 +20,6 @@ function snmpInput({ snmp }: ProbeValues): SnmpConfigInput {
   };
 }
 
-/** The `@oneOf` config of a Phase 2 check type. */
 export function probeInput(values: ProbeValues, type: ProbeCheckType): CheckConfigInput {
   switch (type) {
     case 'DOCKER':

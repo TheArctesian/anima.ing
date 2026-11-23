@@ -8,10 +8,7 @@ export interface ShownCertificate {
   readonly notAfter: string | null;
 }
 
-/**
- * Where the certificate warning stands (SEC-007, K4 §3). It opens `reading`; `accepting` sends the shown
- * fingerprint once. `notice` says why a certificate is shown again.
- */
+/** The certificate warning (SEC-007, K4 §3): `accepting` sends the shown fingerprint once. */
 export type CertificateStep =
   | { readonly step: 'reading'; readonly notice?: string }
   | { readonly step: 'failed'; readonly problem: string }
@@ -42,11 +39,10 @@ export const PROBLEM = {
 function readDone(notice: string | undefined, result: HubResult<ConnectionTest>): CertificateStep {
   if (!result.ok) return { step: 'failed', problem: PROBLEM.read };
   const { serverCertificate, reachable, certificateMatched, message } = result.value;
-  // A null certificate proves nothing by itself (STANDARD_ONLY, NEGOTIATION_REFUSED and NO_TLS answer it too):
-  // only `certificateMatched` says the device presents the accepted certificate (CR-3, SEC-007).
+  // Only `certificateMatched` proves the accepted certificate; a null certificate proves nothing (CR-3, SEC-007).
   if (certificateMatched === true) return { step: 'unchanged' };
   if (serverCertificate === undefined || serverCertificate === null) {
-    // The hub's message is fixed text (R-035); the fixed fallback stands in when it has none.
+    // The hub's message is fixed text (R-035).
     const fallback = reachable ? PROBLEM.none : PROBLEM.unreachable;
     return { step: 'failed', problem: message === null || message === '' ? fallback : message };
   }
@@ -63,10 +59,7 @@ function accepted(certificate: ShownCertificate, result: HubResult<ServerCertifi
   return { step: 'shown', certificate, notice: PROBLEM.accept };
 }
 
-/**
- * The step `event` leads to, or undefined when it does not apply to `current`. Answers apply only in the step
- * that asked for them, so a late answer or a second click does nothing.
- */
+/** Answers apply only in the step that asked for them, so a late answer or a second click does nothing. */
 export function transition(current: CertificateStep, event: CertificateEvent): CertificateStep | undefined {
   switch (event.event) {
     case 'read':

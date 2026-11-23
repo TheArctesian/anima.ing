@@ -1,8 +1,6 @@
 import type { Copy, CopyStore } from './copy';
 
-// Test support: a copy store in memory, with the same oldest-first rule as the real one.
-
-/** A store that holds its copies in a map; `failing` makes every call reject, as a refused IndexedDB does. */
+/** `failing` makes every call reject, as a refused IndexedDB does. */
 export function memoryCopyStore(failing = false): CopyStore & { readonly copies: Map<string, Copy> } {
   const copies = new Map<string, Copy>();
   const run = <T>(work: () => T): Promise<T> => (failing ? Promise.reject(new Error('refused')) : Promise.resolve(work()));

@@ -13,10 +13,6 @@ import { LiveMemory } from '$lib/metrics/container/memory.svelte';
 import { isHubDevice } from '../actions/actions';
 import { browserClock, skeletonGate, type LoadingClock, type SkeletonGate } from '$lib/motion/loading/loading';
 
-/**
- * The devices the page shows and the hub calls behind them: the loaded list, the beats of each device,
- * the skeleton flag and the errors. `load` follows the URL query; `start` and `stop` bracket the live updates.
- */
 export class Listing {
   list = $state.raw<DeviceList | null>(null);
   error = $state.raw<HubError | null>(null);
@@ -25,9 +21,9 @@ export class Listing {
   loadingMore = $state(false);
   skeleton = $state(false);
   readonly beats = new SvelteMap<string, readonly Beat[]>();
-  /** The latest charge of each battery of each device, from the batches since `start` (MET-032). */
+  /** The latest charge of each battery of each device (MET-032). */
   readonly charges = new LiveCharges();
-  /** The bytes of memory in use of the hub's own device, for its memory as used of its limit (HMD-073). */
+  /** The memory in use of the hub's own device (HMD-073). */
   readonly memory = new LiveMemory();
 
   readonly #hub: Hub;
@@ -40,7 +36,6 @@ export class Listing {
   #stopLive: (() => void) | undefined;
   #query: ListQuery = DEFAULT_QUERY;
   #loadedKey: string | undefined;
-  /** Counts the loads that replace the list; an answer from an earlier one is dropped. */
   #generation = 0;
   #stopped = false;
 
@@ -52,7 +47,7 @@ export class Listing {
     });
   }
 
-  /** Shows the devices for `next`; the same hub variables as before do not load again, so a view change is free. */
+  /** The same hub variables do not load again, so a view change is free. */
   load(next: ListQuery): Promise<void> {
     const key = JSON.stringify(listVariables(next));
     this.#query = next;
@@ -61,7 +56,6 @@ export class Listing {
     return this.#loadFirst();
   }
 
-  /** Loads the first page again after a failure. */
   retry(): Promise<void> {
     return this.#loadFirst();
   }
@@ -90,7 +84,6 @@ export class Listing {
     if (this.list !== null) this.list = applyVncEnabled(this.list, id);
   }
 
-  /** Starts the live status, readings and heartbeat updates; `stop` ends them. */
   start(): void {
     this.#stopped = false;
     this.charges.start(this.#hub);
@@ -114,7 +107,6 @@ export class Listing {
     });
   }
 
-  /** Ends the live updates and drops every answer still on its way; a later `load` fetches again. */
   stop(): void {
     this.#stopped = true;
     this.#stopLive?.();
@@ -135,10 +127,7 @@ export class Listing {
     this.#watchHubDevice();
   }
 
-  /**
-   * Listens to the batches of the hub's own device while the list holds it and the live updates run. `start` runs in
-   * an effect: the list is read untracked, so a new list does not restart the live updates.
-   */
+  /** `start` runs in an effect: the list is read untracked, so a new list does not restart the live updates. */
   #watchHubDevice(): void {
     const hubDevice = untrack(() => this.list)?.devices.find(isHubDevice);
     if (hubDevice !== undefined && !this.#stopped) this.memory.watch(this.#hub, hubDevice.id);
@@ -163,7 +152,7 @@ export class Listing {
     }
   }
 
-  /** Fetches the first page again without the skeleton: a device entered the filter (DEV-003). It drops a Load more in flight. */
+  /** No skeleton: a device entered the filter (DEV-003). */
   async #refreshOnce(): Promise<void> {
     this.#generation += 1;
     const mine = this.#generation;
@@ -177,10 +166,7 @@ export class Listing {
     }
   }
 
-  /**
-   * Shows the new readings. A device that the list holds with no metrics source has gained one since the list loaded,
-   * for example a daemon that enrolled meanwhile: the first page loads again, so that its row shows its bars (MET-007).
-   */
+  /** A listed device with no metrics source has gained one: the first page loads again (MET-007). */
   #onReadings(change: ReadingsChange): void {
     if (this.list === null) return;
     const listed = this.list.devices.find((device) => device.id === change.deviceId);

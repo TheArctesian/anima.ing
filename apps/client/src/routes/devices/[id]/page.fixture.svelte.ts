@@ -94,7 +94,6 @@ export function event(id: string, deviceId: string | null, message: string): Log
   return { id, at: '2026-11-04T10:00:00Z', severity: 'INFO', source: 'CHECK', deviceId, deviceName: 'nas', message };
 }
 
-/** The hub answers for a page of this device with one check. */
 export function answers(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     Device: { device: device() },

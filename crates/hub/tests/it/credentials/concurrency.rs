@@ -41,7 +41,7 @@ async fn lock_waiter(pool: &PgPool) -> bool {
 }
 
 /// Whether a session waits for an advisory lock in this test's database (only the second
-/// store can; `pg_locks` spans the whole server).
+/// store can).
 async fn advisory_lock_waiter(pool: &PgPool) -> bool {
     sqlx::query_scalar(
         "SELECT EXISTS (SELECT 1 FROM pg_locks l JOIN pg_database d ON d.oid = l.database \
@@ -73,8 +73,7 @@ async fn concurrent_stores_for_one_device_are_serialised(pool: PgPool) {
             tx.commit().await.unwrap();
         }
     });
-    // Synchronise on the database's own lock table, not on a sleep: the bound only stops a
-    // broken lock from hanging the test.
+    // Synchronise on the database's own lock table, not on a sleep.
     tokio::time::timeout(BLOCK_WAIT, async {
         while !advisory_lock_waiter(&pool).await {
             tokio::task::yield_now().await;

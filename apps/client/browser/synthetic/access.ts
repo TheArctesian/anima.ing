@@ -8,13 +8,12 @@ export const SESSION_COOKIE = '__Host-anima';
 /** Seven days, as K7 says. */
 export const COOKIE_MAX_AGE_SECONDS = 604_800;
 
-/** The bearer value `login` hands out; the hub accepts it, as it would a real access token. */
 export const BEARER_TOKEN = 'synthetic-bearer-not-a-secret';
 
-/** The one operator the synthetic hub knows. Nothing here is a real credential (CON-003). */
+/** Nothing here is a real credential (CON-003). */
 export const OPERATOR = { username: 'ann', password: 'correct-horse-synthetic', code: '123456' } as const;
 
-/** What a request shows about itself. The cookie value is read from the context's cookie jar, never from a header. */
+/** The cookie value is read from the context's cookie jar, never from a header. */
 export interface RequestFacts {
   readonly origin: string | null;
   /** The `Authorization` header, if any. Used to decide, never kept or printed. */
@@ -44,17 +43,13 @@ export function browserSessions(): BrowserSessions {
   };
 }
 
-/**
- * An `Authorization` header wins and the cookie is then ignored: the request is signed in only if the bearer value is good.
- * The cookie counts only without an `Authorization` header and with an `Origin` equal to the public origin (K7).
- */
+/** An `Authorization` header wins; the cookie counts only without one and with the public `Origin` (K7). */
 export function callerOf(facts: RequestFacts, sessions: BrowserSessions): Caller {
   if (facts.authorization !== null) return facts.authorization === `Bearer ${BEARER_TOKEN}` ? 'bearer' : 'signed-out';
   const cookieAllowed = facts.cookie !== null && facts.origin === HUB_ORIGIN && sessions.isIssued(facts.cookie);
   return cookieAllowed ? 'cookie' : 'signed-out';
 }
 
-/** `Set-Cookie` text for a good sign-in, and for a sign-out. */
 export function sessionCookie(token: string): string {
   return `${SESSION_COOKIE}=${token}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=${COOKIE_MAX_AGE_SECONDS}`;
 }

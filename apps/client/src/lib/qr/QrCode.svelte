@@ -2,7 +2,7 @@
   import { qrDrawing } from './qr';
 
   interface Props {
-    /** What the code says. It may be a secret (an invite, a TOTP URI): it is never logged or put in an attribute. */
+    /** May be a secret (an invite, a TOTP URI): never logged or put in an attribute. */
     text: string;
     /** What a screen reader says in place of the code; it must not repeat `text`. */
     label: string;
@@ -28,7 +28,7 @@
 {/if}
 
 <style>
-  /* 192 px: three of the largest space step. K5 has no size name for a code, so the length comes from a space token (TOK-003). */
+  /* No size token fits a code, so the length comes from a space token (TOK-003). */
   .qr {
     display: block;
     inline-size: calc(var(--space-16) * 3);

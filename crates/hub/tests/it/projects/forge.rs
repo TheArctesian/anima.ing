@@ -1,7 +1,5 @@
 //! Live reads of a project repository through GraphQL against the loopback GitHub (K-E1
-//! Section 13; PRJ-027 to PRJ-035): pull requests, issues, workflow runs, history and code in K1's shapes,
-//! the repository's access, the cache, GitHub's failures as fixed words, the token kinds, and
-//! GitHub's text passed through unchanged and never logged.
+//! Section 13; PRJ-027 to PRJ-035); GitHub's text passes through unchanged and is never logged.
 
 mod access;
 mod cache;
@@ -33,10 +31,8 @@ use super::{Kit, kit_at};
 use crate::{hub::start, sources::stub::Reply};
 
 pub const NAME: &str = "octo/widgets";
-/// Every live read of the repository is below this path.
 pub const BASE: &str = "/repos/octo/widgets";
 
-/// A clock the test moves on; it starts at `start()`.
 #[derive(Clone, Default)]
 pub struct Moving(Arc<AtomicI64>);
 
@@ -52,7 +48,6 @@ impl Moving {
     }
 }
 
-/// A signed-in hub with Projects on and one READY repository, `octo/widgets`.
 pub struct Forge {
     pub kit: Kit,
     pub clock: Moving,
@@ -61,23 +56,19 @@ pub struct Forge {
 }
 
 impl Forge {
-    /// Posts `query` as the signed-in operator, with `$repository` set.
     pub async fn ask(&self, query: &str, mut variables: Value) -> Value {
         variables["repository"] = json!(self.repository);
         self.kit.post(query, variables).await
     }
 
-    /// GitHub answers `BASE` + `tail` with `reply`.
     pub fn reply(&self, tail: &str, reply: Reply) {
         self.kit.stub.reply(&format!("{BASE}{tail}"), reply);
     }
 
-    /// GitHub answers `BASE` + `tail` with 200 and `body`.
     pub fn ok(&self, tail: &str, body: &Value) {
         self.reply(tail, ok(&body.to_string()));
     }
 
-    /// Live GET requests for `BASE` + `tail`, with their queries.
     pub fn heard(&self, tail: &str) -> Vec<String> {
         let path = format!("{BASE}{tail}");
         self.kit
@@ -89,7 +80,6 @@ impl Forge {
             .collect()
     }
 
-    /// Every live GET request below `BASE` so far.
     pub fn live_reads(&self) -> usize {
         self.kit
             .stub
@@ -111,7 +101,6 @@ fn sync_history(path: &str) -> bool {
     })
 }
 
-/// The repository synced once from the stub, at `start()`.
 pub async fn forge(pool: &PgPool) -> Forge {
     let clock = Moving::default();
     let kit = kit_at(pool, Arc::new(clock.clone())).await;
@@ -131,7 +120,6 @@ pub async fn forge(pool: &PgPool) -> Forge {
     }
 }
 
-/// 200 with `body`.
 pub fn ok(body: &str) -> Reply {
     reply(200, &[], body)
 }
@@ -144,12 +132,10 @@ pub fn reply(status: u16, headers: &[(&'static str, &str)], body: &str) -> Reply
     }
 }
 
-/// A sha of 40 hex digits made from `n`.
 pub fn sha(n: u64) -> String {
     format!("{n:040x}")
 }
 
-/// A pull request as GitHub lists it, from this repository, open unless `state` says not.
 pub fn pull(number: u64, state: &str) -> Value {
     let side = |branch: &str| json!({ "ref": branch, "sha": sha(number), "repo": { "id": 1, "full_name": NAME } });
     json!({
@@ -161,7 +147,6 @@ pub fn pull(number: u64, state: &str) -> Value {
     })
 }
 
-/// An issue as GitHub lists it.
 pub fn issue(number: u64) -> Value {
     json!({
         "number": number, "title": format!("Issue {number}"), "state": "open", "state_reason": null,
@@ -179,7 +164,6 @@ pub fn pull_as_issue(number: u64) -> Value {
     entry
 }
 
-/// A completed, successful run of this repository.
 pub fn run(id: u64) -> Value {
     json!({
         "id": id, "workflow_id": 7, "name": "CI", "run_number": id, "run_attempt": 1,
@@ -192,7 +176,6 @@ pub fn run(id: u64) -> Value {
     })
 }
 
-/// The nodes of the connection at `response.data[root]`.
 pub fn nodes(response: &Value, root: &str) -> Vec<Value> {
     response["data"][root]["edges"]
         .as_array()
@@ -202,7 +185,6 @@ pub fn nodes(response: &Value, root: &str) -> Vec<Value> {
         .collect()
 }
 
-/// The `number` of each of `nodes`.
 pub fn numbers(nodes: &[Value]) -> Vec<u64> {
     nodes
         .iter()

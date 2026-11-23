@@ -1,7 +1,4 @@
-//! The fake R2's own check of Signature Version 4, written apart from the hub's, from the
-//! request as it came over the wire: a presigned URL must be in date and at most 15 minutes
-//! long (D-28), and a header-signed request must be dated within 5 minutes of the fake's clock,
-//! as R2 refuses a skewed one.
+//! The fake R2's own Signature Version 4 check, written apart from the hub's, from the request as sent.
 
 use std::fmt::Write as _;
 
@@ -15,7 +12,7 @@ use super::fake_r2::{KEY_ID, SECRET};
 /// The longest presigned URL the fake takes, in seconds (D-28).
 const MAX_EXPIRES: i64 = 900;
 
-/// How far a header-signed request's date may be from the fake's clock.
+/// R2 refuses a header-signed request dated further than this from its clock.
 const MAX_SKEW: TimeDelta = TimeDelta::minutes(5);
 
 pub fn text<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
@@ -35,19 +32,15 @@ fn query_pairs(uri: &Uri) -> Vec<(String, String)> {
         .collect()
 }
 
-/// What a request's signature claims.
 struct Claim {
     date: String,
     credential: String,
     signed_headers: String,
     signature: String,
     payload: String,
-    /// The query in the canonical request: every pair but the signature.
     query: Vec<(String, String)>,
 }
 
-/// Checks the signature of the request `parts` with `body` at the fake's `now` (`None` takes
-/// the request's own date).
 pub fn verify(parts: &Parts, body: &[u8], now: Option<DateTime<Utc>>) -> Result<(), String> {
     let (method, uri, headers) = (&parts.method, &parts.uri, &parts.headers);
     let claim = if uri.query().is_some_and(|q| q.contains("X-Amz-Signature=")) {

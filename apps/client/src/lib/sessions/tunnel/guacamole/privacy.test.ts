@@ -14,7 +14,7 @@ const CLIPBOARD_MARKER = 'CLIPBOARDMARKER-secret-paste';
 const KEYSYM_MARKER = 0x1008ff13;
 const MARKERS = [TOKEN_MARKER, CLIPBOARD_MARKER, String(KEYSYM_MARKER), 'Aborted. See logs.'];
 
-/** Every function on `console` (log, info, warn, error, debug, trace, dir, dirxml, table, …), read at run time. */
+/** Every function on `console`, read at run time. */
 const METHODS = Object.keys(console).filter(
   (key): key is keyof Console => typeof (console as unknown as Record<string, unknown>)[key] === 'function',
 );
@@ -36,10 +36,7 @@ function spyOnConsole() {
   return METHODS.map((method) => vi.spyOn(console, method).mockImplementation(() => undefined));
 }
 
-/**
- * Every way a value could show its text: `JSON.stringify` alone gives `{}` for an Error, so errors also give
- * `String(e)`, `e.message`, `e.stack` and `inspect(e)` (which includes the cause and own properties).
- */
+/** `JSON.stringify` gives `{}` for an Error, so errors also give `String(e)`, `e.message`, `e.stack` and `inspect(e)`. */
 function rendered(value: unknown): string {
   const inspected = inspect(value, { depth: Infinity, showHidden: true });
   if (typeof value === 'string') return value;
@@ -47,7 +44,6 @@ function rendered(value: unknown): string {
   return inspected;
 }
 
-/** Everything written to the console, one string per call. */
 function logged(spies: ReturnType<typeof spyOnConsole>): string[] {
   return spies.flatMap((spy) => spy.mock.calls.map((args) => args.map(rendered).join(' ')));
 }

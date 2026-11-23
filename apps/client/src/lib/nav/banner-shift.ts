@@ -2,30 +2,22 @@ import type { Animatable } from '$lib/motion/animate';
 import { motionPreference, type MotionPreference } from '$lib/motion/preference';
 import { flip, measure, type Places } from '$lib/motion/roles/flip';
 
-/**
- * The attribute on the root element while the unreachable strip shows. The stylesheets of the bar and of the page read it
- * to make room for the strip below `bp-compact`.
- */
+/** The stylesheets of the bar and of the page read it to make room for the strip below `bp-compact`. */
 const ATTRIBUTE = 'data-hub-banner';
 
-/** Marks a container whose children make room for the strip; each child moves by FLIP when the strip comes or goes. */
+/** Each child of a marked container moves by FLIP when the strip comes or goes. */
 const SHIFTS_WITH_BANNER = 'data-shifts-with-banner';
 
 /** Marks the child that holds the fixed strip: a `translate` on it would become the strip's containing block. */
 const HOLDS_BANNER = 'data-holds-banner';
 
-/** Every element under `root` that is laid out against the window, not against an ancestor. */
 function pinned(root: HTMLElement): HTMLElement[] {
   return [...root.querySelectorAll<HTMLElement>(`[${SHIFTS_WITH_BANNER}] *`)].filter(
     (element) => getComputedStyle(element).position === 'fixed',
   );
 }
 
-/**
- * The in-flow content of the marked containers. A `translate` makes its element the containing block of the fixed
- * elements inside it (the logs panel, the host key prompt), which would then be laid out against the moving box and jump
- * on arrival. So an element with a fixed element inside is not moved; its children are, and the fixed element stays.
- */
+/** A `translate` makes its element the containing block of fixed elements inside it, so such an element is not moved; its children are. */
 function shifting(root: HTMLElement): Animatable[] {
   const fixed = pinned(root);
   const found: Animatable[] = [];
@@ -43,7 +35,7 @@ function shifting(root: HTMLElement): Animatable[] {
   return found;
 }
 
-/** The measured elements whose place changed; an element that stays put gets no `translate` (it would hold fixed children). */
+/** An element that stays put gets no `translate`, which would hold fixed children. */
 function moved(first: Places): Places {
   return new Map(
     [...first].filter(([element, before]) => {
@@ -61,10 +53,7 @@ function settle(places: Places): void {
   }
 }
 
-/**
- * Runs `change`, which moves the shell's layout at once, and glides what sits in the marked containers from where it was
- * to where it is on `spring-default`; a change mid-flight starts from the place on screen (MOT-002, MOT-007).
- */
+/** A change mid-flight starts from the place on screen (MOT-002, MOT-007). */
 export function shiftShell(root: HTMLElement, change: () => void, preference: MotionPreference = motionPreference()): void {
   const first = measure(shifting(root));
   change();
@@ -74,11 +63,7 @@ export function shiftShell(root: HTMLElement, change: () => void, preference: Mo
   });
 }
 
-/**
- * Sets `data-hub-banner` on `root` while the strip shows. The page's room for the strip changes at once; what sits in the
- * marked containers moves from where it was to where it is on `spring-default`, and a change mid-flight starts from the
- * place on screen (MOT-002, MOT-007). The first call sets the state with no motion, since nothing was on screen before.
- */
+/** The first call sets the state with no motion, since nothing was on screen before. */
 export function watchHubBanner(root: HTMLElement, preference: MotionPreference = motionPreference()) {
   let known = false;
   return {

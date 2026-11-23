@@ -2,8 +2,7 @@ import { expect, test } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import { inlineScriptHashes } from '../synthetic/inline-scripts';
 
-// The synthetic hub must read index.html exactly as the hub does (WP-43 A-2), or a page the hub blocks would pass here.
-// These are the cases of `crates/hub/src/web_client/tests/scripts.rs`, with the same expected hashes, in Node.
+// These mirror `crates/hub/src/web_client/tests/scripts.rs` (WP-43 A-2), so the synthetic hub reads index.html as the hub does.
 
 const FIRST = "'sha256-fDYmfWjvur9AxjhDbjHe6RvExc05MbXhhrbgz2vvy/A='";
 const SECOND = "'sha256-VRcK3v7WYQJL3yHheBe4dsvLYjAYwFTyoPi2odncRio='";

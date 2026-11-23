@@ -1,34 +1,22 @@
 import type { ThreadRow } from './thread';
 
-/**
- * The state of a thread as the session file and the clock give it (THR-055 to THR-057). It is a reading of a file, not a
- * report of the program: a file does not say that a tool call waits for an approval, only that it has no result yet.
- */
+/** A reading of the session file, not a report of the program: a file does not say that a tool call waits for an approval (THR-055 to THR-057). */
 export type ThreadState =
   /** A program that the runner drives asks the person: an approval or a question waits (THR-030). */
   | 'asks'
-  /** A tool call has had no result for a minute: it runs long, or it waits for an approval. */
   | 'may_wait'
-  /** The agent ended its turn and the person did not open the thread since. */
   | 'your_turn'
   /** A program that the runner starts has not given its first answer yet (TH97). */
   | 'starting'
-  /** The file changed in the last 2 minutes and the turn is open. */
   | 'working'
-  /** The turn ended and the person saw it, or it ended more than a day ago. */
   | 'done'
   | 'stopped'
-  /** An open turn in a file that did not change for 2 minutes or more. */
   | 'idle';
 
-/** A file that changed in this time has an agent at work, when its turn is open. */
 export const WORKING_MS = 2 * 60_000;
-/** A tool call with no result for this long may wait for an approval. */
 export const QUIET_TOOL_MS = 60_000;
-/** A thread that waits is in the group "Needs you" for this long; after it, it is in "Earlier". */
 export const NEEDS_YOU_MS = 24 * 60 * 60_000;
 
-/** When the person last opened each thread, by its ID. */
 export type Seen = ReadonlyMap<string, Date>;
 
 function seenSince(row: ThreadRow, seen: Seen): boolean {
@@ -36,7 +24,6 @@ function seenSince(row: ThreadRow, seen: Seen): boolean {
   return at !== undefined && row.last !== null && at.getTime() >= row.last.getTime();
 }
 
-/** The state of `row` at `now`, with what the person opened. */
 export function threadState(row: ThreadRow, now: Date, seen: Seen): ThreadState {
   const age = row.last === null ? Number.POSITIVE_INFINITY : now.getTime() - row.last.getTime();
   const fresh = age < NEEDS_YOU_MS && !seenSince(row, seen);
@@ -61,7 +48,6 @@ export function threadState(row: ThreadRow, now: Date, seen: Seen): ThreadState 
   }
 }
 
-/** Whether a state is one that waits for the person. */
 export function needsYou(state: ThreadState): boolean {
   return state === 'asks' || state === 'may_wait' || state === 'your_turn';
 }
@@ -80,19 +66,16 @@ export const STATE_MARKS: Readonly<Record<ThreadState, { readonly words: string;
 
 export type GroupKey = 'needs' | 'pinned' | 'earlier' | 'working';
 
-/** The key of the entry of the group "Earlier", which the list can fold. */
 export const EARLIER_KEY = 'group:earlier';
 
 const GROUP_TITLES: Readonly<Record<GroupKey, string>> = { needs: 'Needs you', pinned: 'Pinned', earlier: 'Earlier', working: 'Working' };
 
-/** A thread that needs the person stays in "Needs you", and one that works in "Working"; a pinned thread is next (TH46). */
 function groupOf(state: ThreadState, pinned: boolean): GroupKey {
   if (needsYou(state)) return 'needs';
   if (state === 'working' || state === 'starting') return 'working';
   return pinned ? 'pinned' : 'earlier';
 }
 
-/** A row of the list with its state. */
 export interface StatedRow {
   readonly row: ThreadRow;
   readonly state: ThreadState;
@@ -103,24 +86,17 @@ export type ThreadEntry = { readonly kind: 'group'; readonly key: string; readon
 
 const newestFirst = (a: StatedRow, b: StatedRow): number => (b.row.last?.getTime() ?? 0) - (a.row.last?.getTime() ?? 0);
 
-/** In the group "Needs you": a request first, then a tool call that may wait, then a turn that ended. */
 function urgency(state: ThreadState): number {
   if (state === 'asks') return 2;
   return state === 'may_wait' ? 1 : 0;
 }
 
-/** Whether the group "Earlier" shows its threads, and the thread that is open. */
 export interface Fold {
   readonly earlierOpen: boolean;
   readonly chosen: string | null;
 }
 
-/**
- * The list in its order (THR-056): the threads that need the person at the top, a request of a driven program first,
- * then a tool call that may wait for an approval, then a turn that ended, the newest first; then the threads that are done, stopped or idle, by their last
- * change; the threads that work at the bottom. Each group opens with its title and its count; an empty group is left out.
- * The group "Earlier" is folded unless `fold.earlierOpen`: then only its title, its count and the thread that is open (`fold.chosen`) are in the list.
- */
+/** The list in its order (THR-056); an empty group is left out. */
 export function orderedThreads(rows: readonly ThreadRow[], now: Date, seen: Seen, fold: Fold = { earlierOpen: true, chosen: null }): readonly ThreadEntry[] {
   const stated = rows.map((row) => ({ row, state: threadState(row, now, seen), pinned: 'pinned' in row && row.pinned === true }));
   const entries: ThreadEntry[] = [];
@@ -136,16 +112,14 @@ export function orderedThreads(rows: readonly ThreadRow[], now: Date, seen: Seen
   return entries;
 }
 
-/** How many threads need the person: the count on the item Code of the bar (THR-057). */
+/** How many threads need the person (THR-057). */
 export function needsYouCount(rows: readonly ThreadRow[], now: Date, seen: Seen): number {
   return rows.filter((row) => needsYou(threadState(row, now, seen))).length;
 }
 
 const SEEN_KEY = 'anima.threads.seen';
-/** The most threads whose last opening is kept. */
 const SEEN_LIMIT = 500;
 
-/** What the person opened, as kept on this computer; an unreadable value is nothing. */
 export function storedSeen(storage: Pick<Storage, 'getItem'>): Seen {
   try {
     const parsed: unknown = JSON.parse(storage.getItem(SEEN_KEY) ?? '{}');
@@ -160,7 +134,6 @@ export function storedSeen(storage: Pick<Storage, 'getItem'>): Seen {
   }
 }
 
-/** `seen` with the thread `id` opened at `now`, kept in `storage` when there is one; only the newest openings are kept. */
 export function markSeen(storage: Pick<Storage, 'setItem'> | null, seen: Seen, id: string, now: Date): Seen {
   const next = [...seen.entries(), [id, now] as const].sort((a, b) => b[1].getTime() - a[1].getTime());
   const kept = new Map(next.reverse().slice(-SEEN_LIMIT));

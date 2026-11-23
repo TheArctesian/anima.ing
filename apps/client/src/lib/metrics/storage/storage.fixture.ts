@@ -13,7 +13,6 @@ export function mount(path: string, percent: number | null, usedBytes: number | 
 
 const TB = 1_000_000_000_000;
 
-/** Four drives, 31 TB, one not mounted; the system drive is 81 % full. */
 export const POP_OS: readonly StorageDrive[] = [
   drive('nvme0n1', {
     kind: 'NVME',

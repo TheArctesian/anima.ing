@@ -58,7 +58,6 @@ fixture_test! {
             let id: DeviceId = edge["node"]["id"].as_str().unwrap().parse().unwrap();
             assert_eq!(edge["node"]["status"], status_name(expected[&id]), "{}", edge["node"]["name"]);
         }
-        // The seed makes the check mean something: all five statuses show.
         let shown: std::collections::BTreeSet<_> = edges.iter().map(|e| e["node"]["status"].as_str().unwrap()).collect();
         assert_eq!(shown.len(), 5, "{shown:?}");
     }

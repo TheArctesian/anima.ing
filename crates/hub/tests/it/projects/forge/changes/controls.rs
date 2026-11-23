@@ -1,7 +1,4 @@
-//! OD-E14, PRJ-034, PRJ-028: run again, run the failed jobs again and cancel each read the run
-//! fresh, send exactly the request of K-E1 Section 13.3 once, return the run read back from
-//! GitHub, leave one audit entry and one event, and drop the held run list. Every answer GitHub
-//! gives reaches the client as its K7 code and fixed words.
+//! Run controls send the K-E1 Section 13.3 request once and answer in fixed words (OD-E14, PRJ-034, PRJ-028).
 
 use chrono::TimeDelta;
 use serde_json::{Value, json};
@@ -13,7 +10,6 @@ use crate::{
     projects::forge::{BASE, Forge, forge, ok, reply, run, sha},
 };
 
-/// The K1 document of a run control `root`, with `$runId` and `$sha`.
 pub fn control(root: &str) -> String {
     format!(
         "mutation($repository: ID!, $runId: ID!, $sha: String!) {{ {root}(repository: \
@@ -22,7 +18,6 @@ pub fn control(root: &str) -> String {
     )
 }
 
-/// Run `id` as GitHub has it: `status`, `conclusion`, the attempt, the head `sha(id)`.
 pub fn run_in(id: u64, status: &str, conclusion: Option<&str>, attempt: u32) -> Value {
     let mut found = run(id);
     found["status"] = json!(status);
@@ -31,7 +26,6 @@ pub fn run_in(id: u64, status: &str, conclusion: Option<&str>, attempt: u32) -> 
     found
 }
 
-/// The variables of a control of run `id`, as the operator saw its head.
 pub fn asked(id: u64) -> Value {
     json!({ "runId": id.to_string(), "sha": sha(id) })
 }
@@ -39,7 +33,7 @@ pub fn asked(id: u64) -> Value {
 const LIST: &str =
     "query($repository: ID!) { workflowRuns(repository: $repository) { edges { cursor } } }";
 
-/// Reads the run list once, so a held answer is there to drop.
+/// Holds a run list answer for the control to drop.
 async fn listed(forge: &Forge) {
     forge.ok(
         "/actions/runs",
@@ -49,7 +43,6 @@ async fn listed(forge: &Forge) {
     assert!(response["errors"].is_null(), "{response}");
 }
 
-/// GitHub has run `id` as `before` for the next read, and as `after` from then on.
 fn script(forge: &Forge, id: u64, before: &Value, after: &Value) {
     let path = format!("{BASE}/actions/runs/{id}");
     (forge.kit.stub).reply_once("GET", &path, ok(&before.to_string()));

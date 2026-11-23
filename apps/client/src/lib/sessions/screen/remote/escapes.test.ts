@@ -5,7 +5,6 @@ import { TITLE_MAX, cleanTitle, guardEscapes } from './escapes';
 
 const RANGE = { start: { x: 1, y: 1 }, end: { x: 2, y: 1 } };
 
-/** A terminal with the guards on, and what they reported once `output` was written. */
 async function after(output: string, earlier?: (data: string) => boolean) {
   const terminal = new Terminal({ allowProposedApi: true });
   if (earlier !== undefined) terminal.parser.registerOscHandler(52, earlier);

@@ -6,7 +6,7 @@ import { integerError, isIntegerIn, lengthError, timeoutError, toNumber } from '
 
 /** D-29: RDAP is slow to change, so a domain expiry check runs at most once an hour. */
 const MIN_INTERVAL_SECONDS = 3600;
-/** D-29: the interval the form proposes for a new domain expiry check, 12 hours. */
+/** The interval proposed for a new domain expiry check (D-29). */
 const PROPOSED_INTERVAL_SECONDS = 43_200;
 
 const DOMAIN_BYTES = 253;
@@ -32,24 +32,17 @@ export function blankDomainExpiry(): DomainExpiryValues {
   return { domain: '', warnDays: '30', timeoutMs: '10000', daysLeft: null };
 }
 
-/** The form's values for a saved domain expiry config (CHK-009) and the days the hub last read. */
 export function withDomainExpiryConfig(config: DomainExpiryStored, daysLeft: number | null): DomainExpiryValues {
   return { domain: config.domain, warnDays: String(config.warnDays), timeoutMs: String(config.timeoutMs), daysLeft };
 }
 
-/**
- * D-29: the interval a new check of `type` shows. A touched interval stays as the operator typed it;
- * otherwise a domain expiry check proposes 12 hours and any other type takes `ordinary`.
- */
+/** D-29: a touched interval stays as the operator typed it. */
 export function intervalFor(type: CheckType, current: string, ordinary: string, touched: boolean): string {
   if (touched) return current;
   return type === 'DOMAIN_EXPIRY' ? String(PROPOSED_INTERVAL_SECONDS) : ordinary;
 }
 
-/**
- * R-102, D-29, CHK-009: a domain expiry check takes no retries (RDAP is queried at most once an hour), so its form
- * has no retries or retry-interval fields; the input sends `retries: 0` and no retry interval.
- */
+/** R-102, D-29, CHK-009: a domain expiry check takes no retries, since RDAP is queried at most once an hour. */
 export function takesRetries(type: CheckType): boolean {
   return type !== 'DOMAIN_EXPIRY';
 }
@@ -68,7 +61,7 @@ function domainError(name: string): FieldError[] {
   return lengthError('domain', name, DOMAIN_BYTES, 'The domain');
 }
 
-/** CHK-009, D-29: every reason the domain, warn days or timeout cannot be saved. */
+/** CHK-009, D-29. */
 export function domainExpiryErrors({ domain, warnDays, timeoutMs }: DomainExpiryValues): FieldError[] {
   return [
     ...domainError(normalizeHost(domain)),
@@ -77,12 +70,10 @@ export function domainExpiryErrors({ domain, warnDays, timeoutMs }: DomainExpiry
   ];
 }
 
-/** The `@oneOf` config of a domain expiry check. */
 export function domainExpiryInput({ domain, warnDays, timeoutMs }: DomainExpiryValues): CheckConfigInput {
   return { domainExpiry: { domain: normalizeHost(domain), warnDays: toNumber(warnDays), timeoutMs: toNumber(timeoutMs) } };
 }
 
-/** The days-left line of the domain expiry check form; a check row words it its own way (rows.ts). */
 export function daysLeftText(daysLeft: number | null): string {
   if (daysLeft === null) return 'Days left: not known yet';
   if (daysLeft < 0) return `Expired ${dayCount(-daysLeft)} ago`;

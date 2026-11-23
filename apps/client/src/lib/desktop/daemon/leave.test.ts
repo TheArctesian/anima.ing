@@ -22,7 +22,6 @@ interface Answers {
   readonly revoke?: HubResult<unknown>;
 }
 
-/** A hosted hub that lists this Mac with its daemon, and a shell that removes a daemon that was here. */
 function parts(answers: Answers = {}) {
   return {
     device: vi.fn(() => Promise.resolve<CloudDevice | null>(MAC)),

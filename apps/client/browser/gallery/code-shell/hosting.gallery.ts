@@ -7,9 +7,7 @@ import { HEIGHT, MODES, storedSettings } from '../shots';
 import { installDesktopShell } from '../threads/desktop-shell';
 import { EVERY_STATE } from '../threads/scenario';
 
-// The frame of Hosting (HSE-001, HSE-010) in the desktop application, so the bar has Code above Hosting: each section
-// that the frame draws, and Settings with Routes gone from its page and kept in its index. `GALLERY_CODE_SHELL=1`;
-// pictures go to `gallery-shots/code-shell/<mode>/hosting-*.png`.
+// HSE-001, HSE-010. Runs with `GALLERY_CODE_SHELL=1`.
 
 const FOLDER = fileURLToPath(new URL('../../../gallery-shots/code-shell/', import.meta.url));
 const SHOTS = [

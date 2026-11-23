@@ -18,49 +18,40 @@ const FIELD_ORDER = [
   'vnc.port',
 ] as const;
 
-/** The disclosure that holds an error's input, or undefined for General and for errors that have no input. */
 export function sectionOf(field: string): 'ssh' | 'rdp' | 'vnc' | undefined {
   if (field.startsWith('ssh.') || field.startsWith('credential.')) return 'ssh';
   if (field.startsWith('rdp.')) return 'rdp';
   return field.startsWith('vnc.') ? 'vnc' : undefined;
 }
 
-/** The first error of `field`, or undefined. */
 export function errorFor(errors: readonly FieldError[], field: string): FieldError | undefined {
   return errors.find((error) => error.field === field);
 }
 
-/** `errors` with those of `field` replaced by `next`; used when one input is validated alone (D-3, blur). */
 export function replaceField(errors: readonly FieldError[], field: string, next: readonly FieldError[]): FieldError[] {
   return [...errors.filter((error) => error.field !== field), ...next.filter((error) => error.field === field)];
 }
 
-/** The errors that belong to no input (shown in the form-level alert). */
 export function formErrors(errors: readonly FieldError[]): FieldError[] {
   return errors.filter((error) => error.field === FORM_FIELD || !FIELD_ORDER.some((field) => field === error.field));
 }
 
-/** The field to focus first: the earliest on screen that has an error. */
 export function firstInvalidField(errors: readonly FieldError[]): string | undefined {
   return FIELD_ORDER.find((field) => errors.some((error) => error.field === field));
 }
 
-/** The DOM id of the input for a field path. */
 export function inputId(field: string): string {
   return `device-${field.replaceAll('.', '-')}`;
 }
 
-/** The DOM id of the hint under the input of a field path. */
 export function hintId(field: string): string {
   return `${inputId(field)}-hint`;
 }
 
-/** The DOM id of the error text for a field path. */
 export function errorId(field: string): string {
   return `${inputId(field)}-error`;
 }
 
-/** The `aria-describedby` of a control: its hint, then its error, whichever exist; undefined when neither does. */
 export function describedBy(field: string, hasHint: boolean, hasError: boolean): string | undefined {
   const ids = [...(hasHint ? [hintId(field)] : []), ...(hasError ? [errorId(field)] : [])];
   return ids.length > 0 ? ids.join(' ') : undefined;
@@ -84,7 +75,6 @@ export function outcomeText(outcome: TestOutcome): string {
   }
 }
 
-/** Whether the outcome is one the operator must not ignore. */
 export function isWarning(outcome: TestOutcome): boolean {
   return outcome.kind === 'hostKeyChanged' || outcome.kind === 'hostKeyChangedUnknown';
 }

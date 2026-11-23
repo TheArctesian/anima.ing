@@ -1,10 +1,7 @@
 import { untrack } from 'svelte';
 import { afterLeaving, afterToggle, shownFolded, type BarFold } from './code-fold';
 
-/**
- * The fold of the bar as the root layout keeps it: the stored choice, and the fold of the page Code for its visit
- * (OD-THR60). Made while the layout starts: leaving Code ends the visit.
- */
+/** The stored fold and the fold of the page Code for its visit (OD-THR60); made while the layout starts. */
 export class BarFolding {
   #fold = $state<BarFold>({ stored: false, openedHere: false });
 
@@ -20,10 +17,8 @@ export class BarFolding {
     });
   }
 
-  /** Whether the bar shows folded now. */
   readonly collapsed = $derived.by(() => shownFolded(this.#fold, this.path()));
 
-  /** The person folds (`true`) or opens the bar. */
   toggle(next: boolean): void {
     const after = afterToggle(this.#fold, next, this.path());
     this.#fold = after.fold;

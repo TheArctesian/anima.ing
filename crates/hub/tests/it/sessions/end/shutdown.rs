@@ -1,6 +1,4 @@
-//! Ends at the hub's edges (D-10, LOG-005, MV-003): `shut_down` ends every session this hub
-//! holds, and `close_stale` at the next start ends what a previous process left open, each
-//! with one `session.end` audit entry.
+//! Sessions end at the hub's edges, each with one `session.end` audit entry (D-10, LOG-005, MV-003).
 
 use anima_hub::fleet::sessions::Presented;
 use std::time::Duration;
@@ -76,7 +74,6 @@ async fn log_005_close_stale_audits_each_row_it_ends_naming_its_operator_and_cli
         ],
     )
     .await;
-    // Another operator's session, from another address.
     sqlx::query(
         "insert into sessions.sessions (id, device_id, device_name, protocol, operator_id, \
                 operator_name, client_addr, started_at) \
@@ -175,7 +172,6 @@ async fn d_10_shut_down_ends_every_session_the_hub_holds_hub_shutdown_once(pool:
         "the ticket is withdrawn"
     );
 
-    // Shutting down again finds nothing left to end.
     sessions::shut_down(&pool, &live, at + TimeDelta::seconds(1))
         .await
         .unwrap();
@@ -190,7 +186,6 @@ fn id_of(ticket: &Value) -> String {
     ticket["sessionId"].as_str().unwrap().to_owned()
 }
 
-/// A stand-in for the tunnel task: on the signal it ends its row, then deregisters.
 async fn stand_in_tunnel(pool: PgPool, mut tunnel: Tunnel, id: String) -> EndReason {
     let cause = tunnel.ended().await;
     sqlx::query(
@@ -231,10 +226,8 @@ async fn mv_003_close_stale_ends_a_row_started_ahead_of_the_clock_at_its_start(p
     }
 }
 
-/// The advisory lock the test holds to keep a start's commit waiting.
 const COMMIT_HOLD: i64 = 4210;
 
-/// Makes every commit that inserted a session row wait for `COMMIT_HOLD`.
 async fn hold_commits_on_lock(pool: &PgPool) {
     sqlx::raw_sql(
         "create function public.hold_commit() returns trigger language plpgsql as $$ \
@@ -247,7 +240,6 @@ async fn hold_commits_on_lock(pool: &PgPool) {
     .unwrap();
 }
 
-/// Waits until some transaction waits for `COMMIT_HOLD`.
 async fn commit_waiting(pool: &PgPool) {
     let waiting = async {
         loop {
@@ -311,7 +303,6 @@ async fn d_10_a_start_that_commits_after_shut_down_ends_its_row_and_is_unavailab
     let audits = end_audits(&pool, &id.to_string()).await;
     assert_eq!(audits.len(), 1);
     assert_eq!(audits[0].change, json!({ "reason": "hub_shutdown" }));
-    // The refused start is never published; the end of its row is.
     let change = changes.try_recv().unwrap().session;
     assert_eq!(
         (change.id.to_string(), change.is_live()),

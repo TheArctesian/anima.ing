@@ -1,5 +1,4 @@
-//! The sources engine through the hub, against a loopback stub of GitHub and a stub intake in
-//! the place of Projects (K-E1; SRC-003 to SRC-012, PRJ-018, EXT-002).
+//! The sources engine against a loopback GitHub (K-E1; SRC-003 to SRC-012, PRJ-018, EXT-002).
 
 mod changes;
 mod connect;
@@ -12,7 +11,6 @@ mod leaks;
 mod live;
 mod registration;
 mod runs;
-/// The loopback GitHub; the Projects tests script it with GitHub's own replies.
 pub mod stub;
 mod transport;
 
@@ -48,8 +46,6 @@ pub static TEST_KEY: LazyLock<String> = LazyLock::new(|| {
 pub const CONNECT: &str = "mutation($input: GithubAppInput!) { connectGithubApp(input: $input) { \
     id sourceKey label instanceKey credentialStored health pausedBy syncing failureCount } }";
 
-/// A hub whose sources reach `stub` only, with the stub intake wired in, and the parts a run
-/// needs to be driven by the test.
 pub struct Kit {
     pub pool: PgPool,
     pub hub: Hub,
@@ -60,7 +56,6 @@ pub struct Kit {
 }
 
 impl Kit {
-    /// The scheduler's parts at `now`.
     pub fn at(&self, now: DateTime<Utc>) -> Scheduling {
         let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
         Scheduling::new(
@@ -70,14 +65,12 @@ impl Kit {
         )
     }
 
-    /// Runs one sync of `id` now, as "Sync now" would, and waits for its end.
     pub async fn run(&self, id: SourceAccountId) -> Option<Outcome> {
         sources::run(&self.at(start()), id, Trigger::Manual)
             .await
             .unwrap()
     }
 
-    /// Connects the test App key; returns the response and the account id.
     pub async fn connect(&self) -> (Value, SourceAccountId) {
         let response = self
             .hub
@@ -92,12 +85,10 @@ impl Kit {
     }
 }
 
-/// The connect input for `key`, App 4242, installation 77.
 pub fn input(key: &str) -> Value {
     json!({ "input": { "label": "Mine", "appId": "4242", "installationId": "77", "privateKey": key } })
 }
 
-/// A signed-in hub with Projects off, its sources reaching the stub.
 pub async fn kit(pool: &PgPool) -> Kit {
     let stub = Stub::start(pool).await;
     let transport = Transport::to_stub(
@@ -108,12 +99,10 @@ pub async fn kit(pool: &PgPool) -> Kit {
     kit_with(pool, stub, transport).await
 }
 
-/// A kit whose transport is `transport` (an unreachable one, say).
 pub async fn kit_with(pool: &PgPool, stub: Stub, transport: Transport) -> Kit {
     kit_of(pool, (stub, transport), provider_github::DECLARATION).await
 }
 
-/// A kit whose GitHub is declared by `declaration` (one that makes changes, say).
 pub async fn kit_of(
     pool: &PgPool,
     (stub, transport): (Stub, Transport),
@@ -141,13 +130,11 @@ pub async fn kit_of(
     }
 }
 
-/// A transport to a loopback port nothing listens on.
 pub fn unreachable() -> Transport {
     let closed = Url::parse("http://127.0.0.1:9").unwrap();
     Transport::to_stub(closed, AddressPolicy::default().allowing_loopback()).unwrap()
 }
 
-/// Sets Projects, the stub intake's consumer, on or off.
 pub async fn set_projects(pool: &PgPool, on: bool) {
     sqlx::query(
         "INSERT INTO extensions.switches (key, is_on, changed_at, changed_by) \
@@ -159,7 +146,6 @@ pub async fn set_projects(pool: &PgPool, on: bool) {
     .unwrap();
 }
 
-/// The stub intake's stored items of `account`, as `(id, value, writes)`, by id.
 pub async fn items(pool: &PgPool, account: SourceAccountId) -> Vec<(String, String, i32)> {
     sqlx::query_as(
         "SELECT id, value, writes FROM public.stub_records WHERE account_id = $1 ORDER BY id",
@@ -170,7 +156,6 @@ pub async fn items(pool: &PgPool, account: SourceAccountId) -> Vec<(String, Stri
     .unwrap()
 }
 
-/// The stub intake's stored slice of `account`.
 pub async fn slice(pool: &PgPool, account: SourceAccountId) -> Value {
     sqlx::query_scalar(
         "SELECT coalesce(sync_state -> 'test.items', 'null') FROM sources.accounts WHERE id = $1",
@@ -181,7 +166,6 @@ pub async fn slice(pool: &PgPool, account: SourceAccountId) -> Value {
     .unwrap()
 }
 
-/// The newest run row: `(trigger, outcome, inserted, changed, unchanged, removed, error)`.
 pub type RunRow = (String, Option<String>, i32, i32, i32, i32, Option<String>);
 
 pub async fn last_run(pool: &PgPool, account: SourceAccountId) -> RunRow {

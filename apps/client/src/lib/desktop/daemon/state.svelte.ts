@@ -1,11 +1,7 @@
 import type { DaemonHere } from './here';
 import { describeDaemonProblem } from './shell';
 
-/**
- * Where the install of the daemon on the computer the app runs on stands (HMD-053): nothing started (also in a
- * browser, where no install runs), it runs, the daemon is there, or it ended with a reason in words for a person.
- * It is known only on the computer that runs the app and only for that computer; no hub field holds it.
- */
+/** The daemon install on this computer (HMD-053): known only on the computer that runs the app; no hub field holds it. */
 export type DaemonHereState =
   | { readonly kind: 'idle' }
   | { readonly kind: 'installing' }
@@ -16,7 +12,6 @@ export type DaemonHereState =
 const NOT_FOUND = 'The application did not find this computer among the devices of the hub.';
 const NO_CODE = 'The hub made no enrolment code.';
 
-/** The state after an install that ended with `did`. */
 export function stateAfter(did: DaemonHere): DaemonHereState {
   switch (did.kind) {
     case 'installed':
@@ -31,10 +26,7 @@ export function stateAfter(did: DaemonHere): DaemonHereState {
   }
 }
 
-/**
- * The reason line of a daemon that waits for the person in the macOS Keychain (R-322), the one wording of each page that
- * says it: `null` for the daemon of the computer that shows the page, else the name of the device seen from another.
- */
+/** R-322: `null` names the daemon of the computer that shows the page, else the device seen from another. */
 export function keychainNeedLine(deviceName: string | null): string {
   if (deviceName === null) {
     return 'The daemon of this computer needs you: macOS asks whether it may read its key in the Keychain. Type your password in that window and click Always Allow. Metrics and counts appear here some minutes later.';
@@ -58,7 +50,7 @@ export function daemonHereLine(state: DaemonHereState): string {
   }
 }
 
-/** The state of this start of the app. Pages read `daemonHere.current`; only the install writes it. */
+/** Pages read it; only the install writes it. */
 export const daemonHere = $state<{ current: DaemonHereState }>({ current: { kind: 'idle' } });
 
 /** The device of the hub that is the computer the app runs on, once the watch of its daemon found it; `null` before. */

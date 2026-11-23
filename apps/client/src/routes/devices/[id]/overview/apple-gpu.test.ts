@@ -26,7 +26,6 @@ const NOW = new Date('2026-11-05T09:05:00Z');
 const AT = '2026-11-05T09:04:00Z';
 const THREE_GIB = 3 * 1024 ** 3;
 
-/** The detail view of an Apple silicon Mac with the daemon: usage and shared memory, and no VRAM series. */
 function showApple(): void {
   const metrics = {
     view: {

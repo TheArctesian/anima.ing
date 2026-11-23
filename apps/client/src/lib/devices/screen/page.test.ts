@@ -87,7 +87,6 @@ it('DEV-003: the URL query is what the page shows (Back and Forward restore the 
   url.query = { ...url.query, view: 'grid' };
   flushSync();
   expect(document.querySelector('ul.grid')).not.toBeNull();
-  // The list fades out under the grid, then leaves (5.7.3).
   await vi.waitFor(() => {
     expect(document.querySelector('table')).toBeNull();
   });

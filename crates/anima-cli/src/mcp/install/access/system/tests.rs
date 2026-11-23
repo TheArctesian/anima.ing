@@ -1,5 +1,4 @@
-//! How the account databases of Linux and macOS are read (R-442): each source of a
-//! member, and each text that cannot be trusted counts as unread.
+//! R-442.
 
 use std::fs;
 use std::os::unix::fs::MetadataExt as _;
@@ -29,7 +28,6 @@ fn r_exactgroup_getent_gives_the_members_of_each_entry_and_each_account_whose_ow
         Some(vec![member("me", 1000), member("alice", 1001)])
     );
     assert_eq!(passwd(text, 7), Some(Vec::new()));
-    // A line that is not an account: the list cannot be trusted.
     assert_eq!(passwd("me:x:1000\n", 1000), None);
     assert_eq!(passwd("me:x:one:1000::/:/bin/sh\n", 1000), None);
 }
@@ -44,7 +42,6 @@ fn r_exactgroup_only_sources_that_list_each_account_and_group_are_read() {
     assert!(!local_only("passwd: files sss\ngroup: files\n"));
     assert!(!local_only("passwd: files\ngroup: files winbind\n"));
     assert!(!local_only("passwd: compat\ngroup: compat\n"));
-    // A line that is not there, that names no source, or that comes again (the last one counts).
     assert!(!local_only("passwd: files\n"));
     assert!(!local_only("passwd:\ngroup: files\n"));
     assert!(!local_only(
@@ -55,7 +52,6 @@ fn r_exactgroup_only_sources_that_list_each_account_and_group_are_read() {
         "passwd: files\ngroup: files\npasswd files sss\n"
     ));
     assert!(!local_only("passwd: files\ngroup: files\npasswd\u{b}sss\n"));
-    // The groups given at login.
     assert!(local_only(
         "passwd: files\ngroup: files\ninitgroups: files\n"
     ));
@@ -97,16 +93,13 @@ fn r_exactgroup_a_dscl_record_names_each_member_and_refuses_what_it_cannot_name(
         "GroupMembers: FFFF-0 AAAA-501 BBBB-502\nGroupMembership: root me me\nPrimaryGroupID: 80\n";
     let (listed, identifiers) = record(admin, 80).expect("a record");
     assert_eq!(listed, names(&["root", "me", "me"]));
-    // Each member by identifier is named, also one that the list of names leaves out.
     let accounts = "root FFFF-0\nme AAAA-501\nbob BBBB-502\n";
     assert_eq!(
         resolve(&identifiers, accounts),
         Some(names(&["root", "me", "bob"]))
     );
     assert_eq!(resolve(&identifiers, "root FFFF-0\nme AAAA-501\n"), None);
-    // The record of a different group of the same name.
     assert_eq!(record(admin, 20), None);
-    // A value on the next line, after a space.
     assert_eq!(
         record("GroupMembership:\n root me\nPrimaryGroupID: 20\n", 20),
         Some((names(&["root", "me"]), Vec::new()))
@@ -131,7 +124,6 @@ fn r_exactgroup_the_system_lists_the_person_in_the_group_of_a_new_file() {
     {
         return;
     }
-    // A new file belongs to the user of the process, in the group of that user or of its folder.
     let file = tempfile::NamedTempFile::new().expect("a file");
     let metadata = fs::metadata(file.path()).expect("metadata");
     let user = metadata.uid();

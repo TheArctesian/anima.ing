@@ -18,22 +18,17 @@ export interface DragOptions {
   readonly origin: () => number;
   readonly onGrab?: () => void;
   readonly onMove: (dragged: Dragged) => void;
-  /** Called on pointer up and on pointer cancel. */
   readonly onRelease: (released: Released) => void;
 }
 
 interface Grip {
   readonly pointerId: number;
-  /** Pointer minus item at the grab, kept for the whole drag (MOT-030). */
   readonly offset: number;
   readonly grabbed: number;
   readonly samples: Sample[];
 }
 
-/**
- * Direct manipulation along one axis (5.7.4): the item follows the pointer 1:1 and keeps the offset from the grab point
- * (MOT-030), with the pointer captured. It reports positions and the release velocity and moves nothing itself.
- */
+/** Direct manipulation along one axis (5.7.4, MOT-030); it reports positions and moves nothing itself. */
 export function drag(options: DragOptions): Attachment<HTMLElement> {
   const { axis, origin, onGrab, onMove, onRelease } = options;
   const coordinate = (event: PointerEvent) => (axis === 'x' ? event.clientX : event.clientY);

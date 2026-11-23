@@ -1,22 +1,18 @@
-/**
- * The facts of a row that the details card of a thread shows (TH112): where the thread works, and the use of tokens that
- * the program last said. Each crosses a process boundary, so each field is checked; a part that does not read is absent.
- */
+/** Each fact of a row crosses a process boundary, so each field is checked; a part that does not read is absent (TH112). */
 
-/** What holds the folder of a thread: a Git checkout, a linked worktree, or a folder with no Git. */
 export type WorkspaceKind = 'checkout' | 'worktree' | 'folder';
 
 export interface RunWorkspace {
   readonly kind: WorkspaceKind;
-  /** The folder that holds `.git`; the folder of the thread when there is no Git. */
+  /** The folder of the thread when there is no Git. */
   readonly top: string;
-  /** The branch that `HEAD` names, read again at the end of each turn; `null` on a detached `HEAD` or with no Git. */
+  /** Read again at the end of each turn; `null` on a detached `HEAD` or with no Git. */
   readonly branch: string | null;
 }
 
 /**
- * The use of tokens: `context` is what the next request sends and `window` the size of the context of the model. Codex
- * counts `input` and `output` for the whole thread, Claude Code for the last turn; only Claude Code says a cost.
+ * `context` is what the next request sends and `window` the model's context size. Codex counts `input` and `output`
+ * for the whole thread, Claude Code for the last turn; only Claude Code says a cost.
  */
 export interface RunUsage {
   readonly context: number | null;
@@ -36,14 +32,12 @@ function count(value: unknown): number | null {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
 }
 
-/** The workspace of a row, or `null` when the row has none or it does not read. */
 export function workspaceFrom(value: unknown): RunWorkspace | null {
   if (!isRecord(value) || typeof value.kind !== 'string' || !KINDS.includes(value.kind) || typeof value.top !== 'string') return null;
   const branch = typeof value.branch === 'string' && value.branch !== '' ? value.branch : null;
   return { kind: value.kind as WorkspaceKind, top: value.top, branch };
 }
 
-/** The use of tokens of a row, or `null` when the row has none or it does not read. */
 export function usageFrom(value: unknown): RunUsage | null {
   if (!isRecord(value)) return null;
   const input = count(value.input);

@@ -1,8 +1,6 @@
 import { applyChange, type McpChange, type McpPermissions, type McpTool } from './permissions';
 import { McpShellError, type McpShell, type McpShellProblem } from '$lib/desktop/mcp/shell';
 
-// Test support: a few tools in the shell's shape, and a shell that keeps their states in memory.
-
 function tool(toolset: string, name: string, kind: McpTool['kind'], needsSignIn = false): McpTool {
   return { toolset, tool: name, kind, needsSignIn, state: kind === 'read' ? 'allow' : 'off', description: `About ${name}.` };
 }
@@ -23,12 +21,9 @@ function shown(tools: readonly McpTool[]): McpPermissions {
 }
 
 export interface FakeShell extends McpShell {
-  /** The changes the shell was asked to save, in order. */
   readonly writes: McpChange[];
-  /** What the next reads and writes fail with; `null` for none. */
   readProblem: McpShellProblem | null;
   writeProblem: McpShellProblem | null;
-  /** Holds each write until `release` is called, to look at the screen while it is on its way. */
   hold: boolean;
   release: () => void;
 }

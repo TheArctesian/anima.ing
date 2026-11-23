@@ -6,7 +6,6 @@ export type PhoneKey =
 
 export type Modifier = 'ctrl' | 'alt';
 
-/** Ctrl and Alt each latch for the next key; both may be latched at once. */
 export interface Latch {
   readonly ctrl: boolean;
   readonly alt: boolean;
@@ -18,7 +17,7 @@ const ESCAPE = 0x1b;
 const text = (value: string) => Uint8Array.from(new TextEncoder().encode(value));
 const key = (label: string, name: string, value: string): PhoneKey => ({ kind: 'bytes', label, name, bytes: text(value) });
 
-/** The row, in the order of mockup 8. The arrows send the cursor keys of a terminal in its normal mode. */
+/** In the order of mockup 8; the arrows send a terminal's normal-mode cursor keys. */
 export const PHONE_KEYS: readonly PhoneKey[] = [
   key('Esc', 'Escape', '\u001b'),
   key('Tab', 'Tab', '\t'),
@@ -36,7 +35,6 @@ export const PHONE_KEYS: readonly PhoneKey[] = [
   key('-', 'Hyphen', '-'),
 ];
 
-/** `latch` with `modifier` turned on if it was off, or off if it was on. */
 export function toggled(latch: Latch, modifier: Modifier): Latch {
   return { ...latch, [modifier]: !latch[modifier] };
 }
@@ -45,10 +43,7 @@ export function latched(latch: Latch): boolean {
   return latch.ctrl || latch.alt;
 }
 
-/**
- * What a terminal sends for `bytes` typed with `latch`: Ctrl turns one letter (or `@ [ \ ] ^ _`, or a space) into its
- * control code, and Alt puts Escape before the key. Input of more than one byte (a paste, a sequence) is sent as it is.
- */
+/** Ctrl turns one byte into its control code and Alt puts Escape before it; input of more than one byte is sent as it is. */
 export function withLatch(bytes: Uint8Array<ArrayBuffer>, latch: Latch): Uint8Array<ArrayBuffer> {
   if (!latched(latch) || bytes.length !== 1) return bytes;
   let code = bytes[0] ?? 0;

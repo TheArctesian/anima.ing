@@ -1,5 +1,4 @@
-//! Who may not use the link fields, and the errors of a hub with no link or a link that
-//! fails (D-23, FRN-009, LOG-007).
+//! Who may not use the link fields, and the link errors (D-23, FRN-009, LOG-007).
 
 #[cfg(unix)]
 use std::{fs, os::unix::fs::PermissionsExt as _};

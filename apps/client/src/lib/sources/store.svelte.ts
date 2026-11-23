@@ -3,22 +3,15 @@ import type { GithubAppInput, Source, SourceAccount, SourcesApi } from './api';
 
 export type SourcesStatus = 'loading' | 'ready' | 'failed';
 
-/** An account with the name of its source, for the row. */
 export interface AccountRow extends SourceAccount {
   readonly sourceName: string;
 }
 
-/**
- * The source accounts the hub lists (SRC-003). One `sourceAccountChanged` event replaces its row with no reload; a
- * refused action keeps the hub's words for its row (`refusals`). Nothing here holds a credential: `connect` passes
- * the input on and keeps no copy (PRJ-018).
- */
+/** The source accounts the hub lists (SRC-003). Nothing here holds a credential: `connect` keeps no copy (PRJ-018). */
 export class SourcesStore {
   status = $state<SourcesStatus>('loading');
   loadProblem = $state('');
-  /** The hub's words for each account whose last action it refused, by account id. */
   refusals = $state.raw<Readonly<Record<string, string>>>({});
-  /** The accounts whose action is on its way, by account id. */
   working = $state.raw<Readonly<Record<string, boolean>>>({});
   #sources = $state.raw<readonly Source[]>([]);
   #unwatch: (() => void) | null = null;
@@ -39,7 +32,6 @@ export class SourcesStore {
     }
   }
 
-  /** Reads the list unless it is read, and listens for changes (once). */
   async ensureLoaded(): Promise<void> {
     if (this.status !== 'ready') await this.load();
     this.#unwatch ??= this.api.watch({
@@ -51,7 +43,6 @@ export class SourcesStore {
     });
   }
 
-  /** Stops listening. */
   stop(): void {
     this.#unwatch?.();
     this.#unwatch = null;
@@ -65,7 +56,6 @@ export class SourcesStore {
     return this.#act(id, () => this.api.setPaused(id, paused));
   }
 
-  /** Disconnects an account and keeps or deletes the records it brought in (the operator's choice, sent as it is). */
   async remove(id: string, deleteRecords: boolean): Promise<void> {
     this.#begin(id);
     const result = await this.api.remove(id, deleteRecords);
@@ -75,7 +65,7 @@ export class SourcesStore {
     this.#end(id, result);
   }
 
-  /** Sends a new GitHub App connection. The input is passed on and not kept; the answer holds no credential (KEY-002). */
+  /** The input is passed on and not kept; the answer holds no credential (KEY-002, PRJ-018). */
   async connect(input: GithubAppInput): Promise<HubResult<SourceAccount>> {
     const result = await this.api.connectGithubApp(input);
     if (result.ok) this.#place(result.value);
@@ -99,7 +89,6 @@ export class SourcesStore {
     if (!result.ok) this.refusals = { ...this.refusals, [id]: result.error.message };
   }
 
-  /** Replaces the account's row, or adds it under its source when it is new. */
   #place(account: SourceAccount): void {
     const known = this.#sources.some((source) => source.accounts.some((each) => each.id === account.id));
     this.#sources = this.#sources.map((source) => {

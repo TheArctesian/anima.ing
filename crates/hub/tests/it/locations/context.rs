@@ -6,7 +6,6 @@ use sqlx::PgPool;
 use super::{LocationHub, NOW, fix};
 use crate::hub::start;
 
-/// The context of the event `event`, or null.
 async fn context(hub: &LocationHub, event: uuid::Uuid) -> Value {
     let query = "query($e: ID!) { transferContext(event: $e) { eventId direction actorKind \
                  actor clientDeviceId source { deviceId siteId placeId } \
@@ -81,7 +80,6 @@ async fn r_145_the_context_of_a_transfer_gives_the_roles_and_the_operator_apart(
         "the device is not"
     );
 
-    // A newer position elsewhere does not replace the evidence of the older event.
     let later = json!({ "_type": "location", "tst": NOW + 7200, "lat": 48.0, "lon": 11.0,
                         "acc": 5, "tid": "ph" });
     hub.owntracks(&token, &later.to_string()).await;

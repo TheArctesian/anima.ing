@@ -1,6 +1,4 @@
-//! The audit entries of the hub's own account commands (LOG-005, LOG-007): `operator create`
-//! and `operator totp --disable` each write one, with the hub as the actor, this computer as
-//! the client and no password or secret in the change. `operator set` writes none.
+//! Account commands audit with the hub as actor and no password or secret in the change (LOG-005, LOG-007).
 
 use anima_hub::fleet::access;
 use serde_json::{Value, json};
@@ -9,7 +7,6 @@ use sqlx::PgPool;
 use super::{code, create::create_with, enrol};
 use crate::hub::{PASSWORD, USERNAME, start};
 
-/// Each audit entry, oldest first: (operator name, action, target type, client, change).
 async fn entries(pool: &PgPool) -> Vec<(String, String, String, String, Value)> {
     sqlx::query_as(
         "select operator_name, action, target_type, host(client_addr), change \

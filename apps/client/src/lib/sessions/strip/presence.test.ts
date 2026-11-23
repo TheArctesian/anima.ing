@@ -38,7 +38,6 @@ vi.mock('$lib/hub/hub', async (importOriginal) => ({
     }) as unknown as Hub,
 }));
 
-// The layout's sessions API is the fixture's fake hub; its port is spied on, and `popOut` is the test's port.
 vi.mock('$lib/sessions/api', async (importOriginal) => {
   const { fake: state } = await import('./layout.fixture');
   return { ...(await importOriginal<typeof import('$lib/sessions/api')>()), sessionsApi: () => state.api };
@@ -151,7 +150,6 @@ it('MOT-005 / MV-002: the last tab closes with the strip still shown and out of 
   const strip = document.querySelector('[role="tablist"]');
   expect(strip?.hasAttribute('hidden')).toBe(false);
   document.querySelector<HTMLButtonElement>('button[aria-label="Close web-1 SSH session"]')?.click();
-  // The exit is playing: the slot is still drawn in a laid-out strip that no longer holds the page down.
   expect(strip?.hasAttribute('hidden')).toBe(false);
   expect(strip?.classList.contains('leaving')).toBe(true);
   expect(strip?.querySelector('[data-slot]')).not.toBeNull();
@@ -166,7 +164,6 @@ it('MOT-005: with two tabs closed in quick succession the strip stays shown unti
   await openStarted(sessions);
   await openStarted(sessions);
   const strip = document.querySelector('[role="tablist"]');
-  // Exits that end only when the test says so.
   const pending: { element: Element; done: () => void }[] = [];
   Object.defineProperty(Element.prototype, 'animate', {
     configurable: true,
@@ -209,7 +206,6 @@ it('MOT-005: with two tabs closed in quick succession the strip stays shown unti
     }
   };
   await finish(closing[0]);
-  // One exit has ended and the other still plays: the strip is still shown.
   expect(strip?.hasAttribute('hidden')).toBe(false);
   expect(strip?.querySelectorAll('[data-slot]')).toHaveLength(1);
   await finish(closing[1]);

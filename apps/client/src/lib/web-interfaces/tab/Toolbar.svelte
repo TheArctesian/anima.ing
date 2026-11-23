@@ -5,10 +5,8 @@
   import type { TlsStatus } from './tab';
 
   interface Props {
-    /** The page shown now, as read-only text. */
     url: string;
     tls: TlsStatus;
-    /** Whether back and forward can be used: a web view is open in the tab. */
     navigable: boolean;
     reloadable: boolean;
     browsable: boolean;
@@ -18,7 +16,7 @@
     onreload: () => void;
     onbrowser: () => void;
     onpopout: () => void;
-    /** The Reload button, so focus can go to it after an accept. */
+    /** Focus goes here after an accept. */
     reloadButton?: HTMLButtonElement;
   }
 
@@ -51,10 +49,7 @@
   const title = $derived(pinned === undefined ? TLS_TEXT[tls.tls] : `Pinned certificate, SHA-256 ${pinned}`);
 </script>
 
-<!--
-  WEB-005: back, forward, reload, the URL, the TLS status, "Open in system browser" and "Pop out". One line of a
-  fixed height in every state and width, so the view area below never moves (MV-004); the URL takes the slack.
--->
+<!-- WEB-005. One line of fixed height in every state and width, so the view below never moves (MV-004). -->
 <div class="toolbar" role="toolbar" aria-label="Web page">
   <button type="button" disabled={!navigable} onclick={onback} {@attach press()}>Back</button>
   <button type="button" disabled={!navigable} onclick={onforward} {@attach press()}>Forward</button>
@@ -127,7 +122,6 @@
     color: var(--status-warning);
   }
 
-  /* Read by assistive technology, not drawn: the full fingerprint is in the title as well. */
   .hidden {
     position: absolute;
     inline-size: 1px;

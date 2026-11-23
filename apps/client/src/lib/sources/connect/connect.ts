@@ -1,6 +1,6 @@
 import type { GithubAppInput } from '../api';
 
-/** What the operator has typed. `privateKey` is a secret: it lives in the dialog until the form is sent, then is emptied. */
+/** `privateKey` is a secret: it lives in the dialog until the form is sent, then is emptied. */
 export interface ConnectForm {
   label: string;
   appId: string;
@@ -24,10 +24,7 @@ const MAX_KEY_BYTES = 16 * 1024;
 const DIGITS = /^\d+$/;
 const BLOCK = /^(-----BEGIN [A-Z ]+-----)\s*([\s\S]*?)\s*(-----END [A-Z ]+-----)$/;
 
-/**
- * A password field removes line breaks from what is pasted. This puts the lines back, 64 characters each, so the hub
- * gets the PEM it expects; text that is already in lines, or is not a PEM block, goes through unchanged.
- */
+/** A password field removes line breaks from a paste; the hub expects PEM lines of 64 characters. */
 export function restorePem(text: string): string {
   const trimmed = text.trim();
   const block = BLOCK.exec(trimmed);
@@ -37,12 +34,11 @@ export function restorePem(text: string): string {
   return [begin, ...lines, end].join('\n');
 }
 
-/** Whether a chosen file can be a key, before the browser reads it. */
 export function keyFileProblem(file: Pick<File, 'size'>): string | null {
   return file.size > MAX_KEY_BYTES ? KEY_FILE_TOO_LARGE : null;
 }
 
-/** The form as the hub's input, or each field that is wrong (SRC-003: digits only for both IDs). */
+/** SRC-003: both IDs are digits only. */
 export function checkConnect(form: Readonly<ConnectForm>): { ok: true; input: GithubAppInput } | { ok: false; problems: readonly ConnectProblem[] } {
   const problems: ConnectProblem[] = [];
   const label = form.label.trim();

@@ -9,21 +9,15 @@
   import { PLOT, slideOffset, lengthOf, valueScale, type TimeWindow, type ValueAxis } from './scales';
 
   interface Props {
-    /** What the chart shows, said first in its text alternative ("CPU, last hour"). */
     title: string;
     series: readonly ChartSeries[];
-    /** The left and right edges of the x axis, in the points' `at` unit. */
     span: TimeWindow;
     axis: ValueAxis;
-    /** The text of a value with its unit, for the axis labels and the text alternative. */
     format: (value: number) => string;
-    /** A value marked with a line across the plot, such as 85 for the percent threshold (MET-004). */
     threshold?: number;
     /** A wider gap between two points, in the `at` unit, breaks the line. */
     gap?: number;
-    /** Whether the x axis is time in milliseconds and gets time labels; true by default. */
     timeAxis?: boolean;
-    /** The text alternative when no series has a value. */
     empty?: string;
     preference?: MotionPreference;
   }
@@ -47,12 +41,7 @@
   let lines = $state<SVGGElement>();
   let before: TimeWindow | undefined;
 
-  /**
-   * Chart update (5.7.3): the new points are already drawn at the right edge, so the lines start right by the distance
-   * the time axis moved and spring to rest on `spring-default`, from where they are on screen (MOT-002). Only
-   * `translate` moves (MOT-006), in viewBox units, which the SVG scales with the plot. Instant under reduced motion
-   * (MOT-041). The grid and the axes stay still. A range change does not slide: the `{#key}` below cross-fades it.
-   */
+  /** The lines start offset by how far the time axis moved and spring to rest; only `translate` moves (5.7.3, MOT-002, MOT-006, MOT-041). */
   $effect(() => {
     const now = span;
     const was = before;
@@ -127,7 +116,6 @@
     stroke-dasharray: var(--border-focus) var(--space-1);
   }
 
-  /* The min–max band sits faintly behind its line. */
   polygon {
     fill: var(--series);
     fill-opacity: var(--opacity-band);

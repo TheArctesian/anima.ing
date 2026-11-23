@@ -25,10 +25,8 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-/** A shell whose calls a test can replace. */
 type Fake = { -readonly [Call in keyof StayAwakeShell]: StayAwakeShell[Call] } & {
   readonly calls: string[];
-  /** The answer of the next change; without one, the change is applied to the status. */
   next: StayAwakeResult | null;
   announce: (status: StayAwakeStatus) => void;
   stopped: boolean;

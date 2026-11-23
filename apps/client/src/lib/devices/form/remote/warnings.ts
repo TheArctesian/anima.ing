@@ -5,7 +5,7 @@ const RDP_WARNINGS = {
   weakSecurity: 'Standard RDP security is weak: the sign-in is poorly protected.',
 } as const;
 
-/** RA-020: the warnings the RDP choices earn, as the operator is about to save them. */
+/** The warnings the RDP choices earn (RA-020). */
 export function rdpWarnings(rdp: { readonly ignoreCertificate: boolean; readonly security: string }): string[] {
   return [
     ...(rdp.ignoreCertificate ? [RDP_WARNINGS.ignoreCertificate] : []),
@@ -13,7 +13,7 @@ export function rdpWarnings(rdp: { readonly ignoreCertificate: boolean; readonly
   ];
 }
 
-/** RA-020: the sentence for a warning the hub reports on the saved VNC settings, or null for one that is not about VNC. */
+/** The sentence for the hub's VNC warning (RA-020). */
 export function vncWarning(warnings: readonly AccessWarning[]): string | null {
   return warnings.includes('UNENCRYPTED_VNC')
     ? 'VNC is not encrypted. Use it only over the VPN; prefer RDP or SSH.'

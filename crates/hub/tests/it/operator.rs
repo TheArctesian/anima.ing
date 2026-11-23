@@ -136,8 +136,7 @@ async fn sec_002_d_9_the_database_refuses_a_username_outside_the_pattern(pool: P
 async fn sec_002_d_8_failures_older_than_the_window_still_hold_a_lockout(pool: PgPool) {
     set_operator(&pool).await;
     let now = start();
-    // Five failures within 8 minutes, the fifth 12 minutes ago: locked for 3 more minutes,
-    // so the store must look back past the 15-minute window to find the first two.
+    // The fifth failure is 12 minutes ago: the store looks past the 15-minute window for the first two.
     for minutes in [20, 18, 16, 14, 12] {
         insert_attempt(&pool, now - TimeDelta::minutes(minutes)).await;
     }

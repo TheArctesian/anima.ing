@@ -1,7 +1,4 @@
-//! K-E1 Section 13.1, decisions 5 and 7: live reads stop at the sync's reserve of the count in
-//! the headers, as does a change that keeps the reserve, while the operator's change still
-//! goes; a 429, a 403 with no request left and a 403 with `retry-after` are limits while any
-//! other 403 is the provider's to read.
+//! K-E1 Section 13.1, decisions 5 and 7: live reads stop at the sync's reserve of the rate limit.
 
 use anima_hub::engine::sources::{Keep, LiveFailure, Reserve, ask, change};
 use chrono::{DateTime, TimeDelta, Utc};

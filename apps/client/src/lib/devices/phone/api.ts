@@ -22,7 +22,6 @@ const DeviceBeats = graphql(`
   }
 `);
 
-/** The device's last 50 heartbeats from all its checks, oldest first, for its bar in the phone layout (D-6, mockup 5). */
 export async function deviceBeats(hub: Hub, deviceId: string): Promise<HubResult<readonly Beat[]>> {
   const result = await hub.request(DeviceBeats, { deviceId });
   return result.ok ? { ok: true, value: latestBeats(result.value.device?.checks ?? []) } : result;

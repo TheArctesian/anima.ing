@@ -1,6 +1,5 @@
-//! MET-013, K8 Section 2: a daemon token or an enrolment code is no sign-in anywhere but the
-//! daemon routes: `/graphql` over HTTP and the WebSocket refuse both. An API key may not make a
-//! code or revoke a token (INT-003, D-23).
+//! A daemon token or an enrolment code signs in only on the daemon routes (MET-013, K8 Section 2);
+//! an API key may not make a code or revoke a token (INT-003, D-23).
 
 use std::{net::SocketAddr, sync::Arc};
 
@@ -72,7 +71,6 @@ async fn met_013_a_daemon_token_or_code_is_refused_on_the_websocket(pool: PgPool
         };
         assert_eq!(u16::from(frame.code), 4403);
     }
-    // The operator's token on the same socket route is accepted.
     let bearer = format!("Bearer {}", daemons.operator);
     let accepted = socket_answer(addr, json!({ "authorization": bearer })).await;
     assert_eq!(accepted, Message::text(r#"{"type":"connection_ack"}"#));

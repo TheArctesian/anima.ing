@@ -1,6 +1,4 @@
-//! A reply larger than the hub reads, or a tree GitHub cut short, is the problem of one
-//! repository: the run goes on to the next one and the account stays healthy (SRC-006,
-//! SRC-007, PRO-003). Only the listing, without which nothing can be imported, fails the run.
+//! An oversize or cut tree fails one repository, not the run; an oversize listing fails it (SRC-006, SRC-007, PRO-003).
 
 use anima_hub::{engine::sources::Outcome, ids::SourceAccountId};
 use serde_json::{Value, json};
@@ -10,7 +8,6 @@ use super::github::{Repo, files, list, reads_of, tree_reads, truncated_files};
 use super::{Kit, kit};
 use crate::sources::last_run;
 
-/// The problems of the newest run, as `(code, subject)`.
 async fn problems(pool: &PgPool, account: SourceAccountId) -> Vec<(String, String)> {
     let stored: Value = sqlx::query_scalar(
         "SELECT problems FROM sources.sync_runs WHERE account_id = $1 \
@@ -33,7 +30,6 @@ async fn problems(pool: &PgPool, account: SourceAccountId) -> Vec<(String, Strin
         .collect()
 }
 
-/// The account's health and failure count as the client reads them.
 async fn health(kit: &Kit) -> Value {
     let response = kit
         .post("{ sourceAccounts { health failureCount } }", json!({}))
@@ -41,7 +37,6 @@ async fn health(kit: &Kit) -> Value {
     response["data"]["sourceAccounts"][0].clone()
 }
 
-/// The kinds of the project's resources, sorted.
 async fn kinds(kit: &Kit, slug: &str) -> Vec<String> {
     let project = kit.project(slug).await;
     let mut kinds: Vec<String> = project["resources"]

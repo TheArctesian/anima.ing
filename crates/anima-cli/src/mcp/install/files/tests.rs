@@ -10,7 +10,6 @@ fn home() -> (tempfile::TempDir, u32) {
     (home, user)
 }
 
-/// Groups whose every one lists `members`.
 fn groups(members: &[(&str, u32)]) -> Groups {
     let members: Vec<Member> = members
         .iter()
@@ -47,7 +46,6 @@ fn mcp_031_032_a_file_is_replaced_whole_with_its_mode_and_one_copy_of_it_as_it_w
         0o640
     );
     assert_eq!(fs::read_to_string(copy_path(&path)).expect("copy"), "first");
-    // A second change keeps the first copy: it is the file as it was before Anima.
     replace(root, &path, Some("second"), "third").expect("replace");
     assert_eq!(fs::read_to_string(copy_path(&path)).expect("copy"), "first");
     let names: Vec<_> = fs::read_dir(home.path().join(".cursor"))
@@ -180,7 +178,6 @@ fn mcp_032_034_a_link_at_the_name_of_the_copy_is_refused_and_a_file_changed_mean
     ));
     assert_eq!(fs::read_to_string(&path).expect("kept"), "first");
     fs::remove_file(copy_path(&path)).expect("link");
-    // The agent saved the file after it was read.
     fs::write(&path, "theirs").expect("file");
     assert!(matches!(
         replace(root, &path, Some("first"), "second"),
@@ -198,7 +195,6 @@ fn r_exactgroup_a_file_that_its_group_can_write_is_shared_only_when_the_group_ha
     fs::write(&path, "{}").expect("file");
     fs::set_permissions(&path, fs::Permissions::from_mode(0o664)).expect("mode");
     let metadata = fs::metadata(&path).expect("metadata");
-    // The private group of the person on Linux, or a group of only the person and root.
     assert_eq!(
         writer(&metadata, user, &groups(&[("me", user), ("root", 0)])),
         None

@@ -35,7 +35,6 @@ function scalarDefault(name: string): unknown {
   }
 }
 
-/** What a field the fixtures do not hold answers: null when it may be, else the emptiest value of its type. */
 function emptyValue(type: GraphQLOutputType): unknown {
   if (!isNonNullType(type)) return null;
   const inner = type.ofType;
@@ -46,10 +45,7 @@ function emptyValue(type: GraphQLOutputType): unknown {
   return isObjectType(named) ? {} : null;
 }
 
-/**
- * Reads the field from the source object; a function is called with the field's arguments. A field the source does not
- * hold answers `emptyValue`, so a query never fails on a gap in the fixtures.
- */
+/** A field the source does not hold answers `emptyValue`, so a query never fails on a gap in the fixtures. */
 export const fieldFromFixtures: GraphQLFieldResolver<unknown, unknown> = (source, args, context, info) => {
   const held = defaultFieldResolver(source, args, context, info) as unknown;
   return held === undefined ? emptyValue(info.returnType) : held;

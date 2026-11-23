@@ -1,19 +1,15 @@
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
-// The wall under every test browser (WP-44 ruling S3): all three engines are launched with this proxy, so a connection a
-// browser makes on its own, past `context.route` (a preconnect, a CSP report), has nowhere to go. The proxy refuses every
-// request and every CONNECT and records the host the browser asked for. It never connects out and never sees a path, a
-// query or a body (LOG-007): a CONNECT carries only a host, and a plain request is refused before its body is read.
+// Every test browser runs behind this proxy, so a connection past `context.route` has nowhere to go (WP-44 ruling S3).
+// It never connects out and records only the host, never a path, a query or a body (LOG-007).
 
 export interface Attempt {
   readonly via: 'CONNECT' | 'HTTP';
-  /** `host:port` as the browser asked for it. */
   readonly target: string;
 }
 
 export interface DenyProxy {
-  /** `http://127.0.0.1:<port>`, the Playwright `proxy.server`. */
   readonly url: string;
   attempts(): Promise<readonly Attempt[]>;
   close(): Promise<void>;
@@ -22,7 +18,6 @@ export interface DenyProxy {
 const ATTEMPTS_PATH = '/attempts';
 const REFUSED = 403;
 
-/** The `host:port` of an absolute-form request target (`http://host/path`), without the path or query. */
 function targetOfAbsolute(requestUrl: string): string {
   if (!URL.canParse(requestUrl)) return 'unparsable';
   const url = new URL(requestUrl);
@@ -36,7 +31,6 @@ function listening(server: Server): Promise<number> {
   });
 }
 
-/** Starts the proxy on a free loopback port. */
 export async function startDenyProxy(): Promise<DenyProxy> {
   const seen: Attempt[] = [];
   const server = createServer((request, response) => {

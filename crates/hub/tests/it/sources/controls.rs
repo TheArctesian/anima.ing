@@ -1,5 +1,4 @@
-//! Pause, sync now and remove (SRC-004, SRC-011, ITG-004): a paused account refuses "Sync now"
-//! with CONFLICT, and removing it can keep or forget what it imported.
+//! Pause, sync now and remove (SRC-004, SRC-011, ITG-004).
 
 use std::time::Duration;
 
@@ -35,8 +34,7 @@ async fn actions(pool: &PgPool) -> Vec<String> {
     .unwrap()
 }
 
-/// Waits for the run a mutation started to end. One query reads both facts, a run exists and
-/// none is open, from one snapshot: with two queries a run that starts between them looks ended.
+/// One query reads both facts from one snapshot, so a run starting between two reads cannot look ended.
 async fn ended(pool: &PgPool) {
     for _ in 0..200 {
         let ended: bool = sqlx::query_scalar(
@@ -123,9 +121,7 @@ async fn itg_004_removing_an_account_keeps_or_forgets_its_records(pool: PgPool) 
     .unwrap();
     assert_eq!(left, (0, 0, 0));
 
-    // Connected with Projects off, as above, so `establish` starts no first run of its own: a
-    // first run that held the claim would make this run skip, and the removal could then come
-    // before any page was stored.
+    // Projects off keeps `establish` from starting a first run that would hold the claim.
     set_projects(&pool, false).await;
     let (_, again) = kit.connect().await;
     set_projects(&pool, true).await;
@@ -173,7 +169,6 @@ async fn src_008_removing_an_account_never_deletes_another_accounts_key(pool: Pg
             .fetch_one(&pool)
             .await
             .unwrap();
-    // A database writer points A's reference at B's key.
     sqlx::query("UPDATE sources.accounts SET credential_id = $1 WHERE id = $2")
         .bind(b_secret)
         .bind(a)

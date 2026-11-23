@@ -23,7 +23,6 @@ export class AgentsShellError extends Error {
   }
 }
 
-/** What the part needs from the shell; tests pass their own. */
 export interface AgentsShell {
   read(uninstall: boolean): Promise<readonly AgentRow[]>;
   change(wanted: { readonly uninstall: boolean; readonly agents: readonly string[]; readonly force: boolean }): Promise<readonly AgentRow[]>;
@@ -53,7 +52,7 @@ function rowFrom(value: unknown): AgentRow | null {
   return { id: value.id, name: value.name, state: value.state as AgentState, steps: steps as AgentStep[], problem: value.problem };
 }
 
-/** The shell's answer as rows, or `null` when it is not one. The answer crosses a process boundary, so each field is checked. */
+/** The answer crosses a process boundary, so each field is checked. */
 export function rowsFrom(answer: unknown): readonly AgentRow[] | null {
   if (!Array.isArray(answer)) return null;
   const rows = (answer as unknown[]).map(rowFrom);

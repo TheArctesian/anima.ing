@@ -1,13 +1,11 @@
-//! A notification fault never loses a heartbeat: an unreadable notification state or a
-//! statement that fails inside observe keeps the beat, and the log names only the check's id
-//! and the fault word (R-104, LOG-007).
+//! A notification fault keeps the heartbeat, and its log names only the check's id and the
+//! fault word (R-104, LOG-007).
 
 use sqlx::PgPool;
 
 use super::heartbeats::{PVE_01, kinds, rig};
 use crate::notifications::{harness::holds_no_secret, unreadable::logged};
 
-/// Expiry marks this version cannot read: a later version or a database writer put them there.
 async fn break_state(pool: &PgPool, check: &str) {
     sqlx::query(
         "INSERT INTO notifications.check_state (check_id, expiry_marks) \
@@ -19,7 +17,6 @@ async fn break_state(pool: &PgPool, check: &str) {
     .unwrap();
 }
 
-/// Asserts that the log names the check and the fault word and nothing the operator set up.
 fn names_only_the_check(log: &str, check: &str, fault: &str, hidden: &[&str]) {
     let line = log
         .lines()
@@ -68,8 +65,7 @@ async fn r_104_an_unreadable_notification_state_keeps_the_beat_and_logs_only_the
     names_only_the_check(&log, &id, "unreadable", &hidden);
 }
 
-/// Makes every outbox insert fail with an SQL error, which aborts the statement's
-/// transaction unless a savepoint contains it.
+/// An SQL error aborts the statement's transaction unless a savepoint contains it.
 async fn fail_outbox_inserts(pool: &PgPool) {
     for statement in [
         "CREATE FUNCTION notifications.refuse_outbox() RETURNS trigger LANGUAGE plpgsql AS \

@@ -8,14 +8,10 @@ export const SAVE_SENTENCE = 'Sessions were not saved.';
 /** `loading` and `failed` keep the fields disabled and send nothing; `absent`: an edit with no hub to ask. */
 type PolicyPhase = 'ready' | 'loading' | 'failed' | 'absent';
 
-/**
- * The session limit of one device in the form (RA-036). A new device starts from the
- * defaults; a saved one reads its own values through `calls.load` and saves through `calls.save` (F-3).
- */
+/** The session limit of one device in the form (RA-036, F-3). */
 export class PolicyDraft {
   values = $state<PolicyValues>({ ...DEFAULT_POLICY });
   phase = $state<PolicyPhase>('ready');
-  /** The fixed sentence for the last failure or refusal; empty when there is none. */
   message = $state('');
   /** The partial-save sentence, shown outside the Sessions disclosure so it is seen and announced when that is closed. */
   notice = $state('');
@@ -25,7 +21,6 @@ export class PolicyDraft {
   retrying = $state(false);
   readonly #deviceId: string | null;
   readonly #calls: PolicyCalls | null;
-  /** What the hub holds; null until read, and for a new device. */
   #stored: PolicyValues | null = null;
 
   constructor(deviceId: string | null, calls: PolicyCalls | null) {
@@ -40,7 +35,7 @@ export class PolicyDraft {
     return this.#deviceId === null;
   }
 
-  /** Reads the stored values; a failure leaves the other fields alone and the policy fields disabled. Answers whether they are read. */
+  /** A failure leaves the other fields alone and the policy fields disabled. */
   async load(): Promise<boolean> {
     if (this.#deviceId === null || this.#calls === null) return false;
     this.retrying = this.retrying || this.phase === 'failed';
@@ -69,7 +64,6 @@ export class PolicyDraft {
     if (this.#savedPolicy) this.notice = PARTIAL_SENTENCE;
   }
 
-  /** The device is saved too: nothing is left to warn about. */
   deviceSaved(): void {
     this.#savedPolicy = false;
     this.notice = '';
@@ -83,15 +77,11 @@ export class PolicyDraft {
     return problem === null;
   }
 
-  /** Whether the values differ from what the hub holds; false until they are read. */
   get changed(): boolean {
     return this.#stored !== null && Object.keys(updatePolicyInput(this.#stored, this.values)).length > 0;
   }
 
-  /**
-   * Saves the changed `values` of a saved device, by default those shown; answers false, with the sentence, when the
-   * hub did not take them. The Settings tab passes the values as they were when the change was made (D17).
-   */
+  /** The Settings tab passes the values as they were when the change was made (D17). */
   async save(values: PolicyValues = this.values): Promise<boolean> {
     if (this.#deviceId === null || this.#calls === null || this.#stored === null) return true;
     const input = updatePolicyInput(this.#stored, values);

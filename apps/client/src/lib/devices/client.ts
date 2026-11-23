@@ -31,13 +31,13 @@ import {
 } from './api';
 import { readHosts } from './address/api';
 
-/** A new site (VPN-001); the hub refuses a subnet that overlaps another site's. */
+/** The hub refuses a subnet that overlaps another site's (VPN-001). */
 async function createSite(hub: Hub, name: string, subnet: string): Promise<HubResult<Site>> {
   const result = await hub.request(CreateSite, { name, subnet });
   return result.ok ? { ok: true, value: result.value.createSite } : result;
 }
 
-/** The stored SSH, RDP and VNC secrets: set (SSH only here; RDP and VNC are set through the sessions client) and clear. */
+/** RDP and VNC secrets are set through the sessions client. */
 function credentialCalls(hub: Hub) {
   return {
     setSshCredential: async (deviceId: string, credential: SshCredentialInput): Promise<HubResult<StoredCredential>> => {
@@ -48,12 +48,10 @@ function credentialCalls(hub: Hub) {
       const result = await hub.request(ClearSshCredential, { deviceId });
       return result.ok ? { ok: true, value: result.value.clearSshCredential } : result;
     },
-    /** Removes the stored RDP password; resolves to the RDP settings' new `credentialStored`. */
     clearRdpCredential: async (deviceId: string): Promise<HubResult<ClearRdpCredentialMutation['clearRdpCredential']>> => {
       const result = await hub.request(ClearRdpCredential, { deviceId });
       return result.ok ? { ok: true, value: result.value.clearRdpCredential } : result;
     },
-    /** Removes the stored VNC password; resolves to the VNC settings' new `credentialStored`. */
     clearVncCredential: async (deviceId: string): Promise<HubResult<ClearVncCredentialMutation['clearVncCredential']>> => {
       const result = await hub.request(ClearVncCredential, { deviceId });
       return result.ok ? { ok: true, value: result.value.clearVncCredential } : result;
@@ -61,7 +59,6 @@ function credentialCalls(hub: Hub) {
   };
 }
 
-/** The live updates of every device: status changes and the latest readings. Each returns the function that stops listening. */
 function liveCalls(hub: Hub) {
   return {
     watchStatus: (sink: Sink<StatusChange>): (() => void) =>
@@ -82,7 +79,7 @@ function liveCalls(hub: Hub) {
   };
 }
 
-/** The device list, tags and live status changes through a `Hub` (CQ-045). */
+/** CQ-045. */
 export function devicesApi(hub: Hub) {
   return {
     list: async (variables: DevicesQueryVariables): Promise<HubResult<DevicePage>> => {
@@ -117,7 +114,7 @@ export function devicesApi(hub: Hub) {
       const result = await hub.request(UpdateDevice, { id, input });
       return result.ok ? { ok: true, value: result.value.updateDevice } : result;
     },
-    /** Deletes the device with its credentials, checks and history (DEV-015); resolves to the deleted ID. */
+    /** Deletes the device with its credentials, checks and history (DEV-015). */
     delete: async (id: string): Promise<HubResult<string>> => {
       const result = await hub.request(DeleteDevice, { id });
       return result.ok ? { ok: true, value: result.value.deleteDevice } : result;

@@ -4,28 +4,22 @@ import { LOG_PAGE, releasesApi, type BuildTarget, type JobChange, type JobView, 
 import { lastSequence, mergeLines } from './log';
 import { newestFirst, withChange } from './release';
 
-/** How often the view reads the builders and moves its clock: the hub marks a builder online for 60 seconds (BLD-007). */
+/** The hub marks a builder online for 60 seconds (BLD-007). */
 export const REFRESH_MS = 30_000;
 
-/**
- * What the Builds view shows and does: the releases, the builders, the selected job's log, and the calls that change
- * them (BLD-001, BLD-007, BLD-008, BLD-080, BLD-081). The hub's changes arrive through one subscription for every job.
- */
+/** The Builds view (BLD-001, BLD-007, BLD-008, BLD-080, BLD-081). */
 export class ReleaseBoard {
   releases = $state<readonly ReleaseView[] | null>(null);
   /** `null` until the builders have loaded once: without them nothing can be said about a waiting job (BLD-007). */
   builders = $state<readonly Builder[] | null>(null);
   buildersFailed = $state(false);
-  /** The subscription ended, so the list and the log may be out of date until the operator resumes it (BLD-081). */
   liveStopped = $state(false);
   nextVersion = $state<string | null>(null);
   loadFailed = $state(false);
-  /** The refusal of the last cancel, shown beside the job. */
   cancelError = $state<{ readonly jobId: string; readonly message: string } | null>(null);
   selectedId = $state<string | null>(null);
   logLines = $state<readonly LogLineView[]>([]);
   logFailed = $state(false);
-  /** The time "time in state" is measured against, in ms. */
   nowMs = $state(0);
 
   readonly #api: ReturnType<typeof releasesApi>;
@@ -45,7 +39,6 @@ export class ReleaseBoard {
     return new Date(this.nowMs);
   }
 
-  /** The releases, newest first. */
   get ordered(): readonly ReleaseView[] {
     return newestFirst(this.releases ?? []);
   }
@@ -54,13 +47,11 @@ export class ReleaseBoard {
     return this.releases?.flatMap((release) => release.jobs).find((job) => job.id === this.selectedId) ?? null;
   }
 
-  /** Reads the releases, the builders and the proposed version, and starts the live changes; `stop` ends them. */
   async open(): Promise<void> {
     this.#watch();
     await Promise.all([this.loadReleases(), this.loadBuilders(), this.loadNextVersion()]);
   }
 
-  /** Starts the live changes again after they stopped, and reads what was missed (BLD-081). */
   async resume(): Promise<void> {
     this.#watch();
     await this.#catchUp();
@@ -82,7 +73,6 @@ export class ReleaseBoard {
     });
   }
 
-  /** The hub closed or refused the subscription: say so, and read the releases and the log once, so nothing shown is stale. */
   #ended(): void {
     this.#stop = null;
     this.liveStopped = true;
@@ -123,7 +113,6 @@ export class ReleaseBoard {
     await this.loadBuilders();
   }
 
-  /** Starts a release; the hub's refusal comes back as an error for the form to show (BLD-001, BLD-002). */
   async release(version: string, commit: string, targets: readonly BuildTarget[]): Promise<HubError | null> {
     const result = await this.#api.create(version, commit, targets);
     if (!result.ok) return result.error;
@@ -131,14 +120,12 @@ export class ReleaseBoard {
     return null;
   }
 
-  /** Cancels a queued job; the change arrives through the subscription, and a refusal is kept for the row (BLD-008). */
   async cancel(job: JobView): Promise<void> {
     const result = await this.#api.cancel(job.id);
     this.cancelError = result.ok ? null : { jobId: job.id, message: result.error.message };
     if (result.ok) await this.loadReleases();
   }
 
-  /** Shows the log of `job`: the stored lines now, and the lines that arrive after (BLD-081). */
   async select(job: JobView): Promise<void> {
     this.selectedId = job.id;
     this.logLines = [];
@@ -163,7 +150,6 @@ export class ReleaseBoard {
     if (this.releases !== null) this.releases = withChange(this.releases, change);
     if (change.job.id === this.selectedId) this.logLines = mergeLines(this.logLines, change.logLines);
     if (change.job.state === 'QUEUED') void this.loadBuilders();
-    // A release made elsewhere: the list does not hold it yet.
     if (this.releases?.every((release) => release.id !== change.job.releaseId)) void this.loadReleases();
   }
 }

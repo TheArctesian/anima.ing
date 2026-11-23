@@ -4,15 +4,11 @@ import { defineConfig, devices } from '@playwright/test';
 import { runProxyUrl } from './isolation/shared-proxy';
 import { BUILD_FOLDER, BUILD_MISSING } from './synthetic/static-files';
 
-// Not part of `bun run gates`: gate 7 runs before the build exists. Build first (`bun run --cwd apps/client build`), install
-// the engines once (`bunx playwright install chromium webkit firefox`), then `bun run --cwd apps/client test:browsers`.
-// Browser tests run against the production build, which the synthetic hub serves from `apps/client/build/` (WP-44 E-7).
+// Not part of `bun run gates`: the tests run against the production build, which the synthetic hub serves (WP-44 E-7).
 // There is no web server and no network: every request ends in the hub inside the browser context.
 if (!existsSync(`${BUILD_FOLDER}index.html`)) throw new Error(`apps/client/build/ is missing: ${BUILD_MISSING}`);
 
-// The machines that run this are often loaded far past their core count (a load average of 40 to 90 on a 28-core host): the
-// engines then start slowly, and many at once make each other slower still. So the default is a few workers, whatever the
-// core count, and a test has room for a slow start. `ANIMA_BROWSER_WORKERS` sets the number for a quiet machine or a bad one.
+// Loaded machines start the engines slowly, so the default is a few workers; `ANIMA_BROWSER_WORKERS` sets the number.
 const TEST_TIMEOUT_MS = 60_000;
 const EXPECT_TIMEOUT_MS = 10_000;
 const DEFAULT_WORKERS = Math.min(4, Math.max(1, Math.floor(availableParallelism() / 4)));

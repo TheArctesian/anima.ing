@@ -1,6 +1,4 @@
-//! A builder token is its own token kind with the builder scope (R-107, D-1, D-23): it travels
-//! only as a plain bearer, stands for no operator on the tunnels, and the database keeps the kind
-//! and the scope together (BLD-022).
+//! A builder token is its own kind and scope and stands for no operator (R-107, D-1, D-23, BLD-022).
 
 use anima_hub::fleet::access;
 use sqlx::PgPool;

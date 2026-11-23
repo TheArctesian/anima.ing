@@ -5,9 +5,8 @@ import { toNumber } from './range';
 import type { CheckFormValues } from './values';
 
 /**
- * CHK-008, CHK-009: the create mutation input; every common setting is sent, so the hub applies no default of its own.
- * R-102: a domain expiry check is the exception. It always sends `retries: 0` explicitly, whatever the hub does with an
- * omitted value, and leaves out the retry interval.
+ * Every common setting is sent, so the hub applies no default of its own (CHK-008, CHK-009).
+ * A domain expiry check sends `retries: 0` explicitly and no retry interval (R-102).
  */
 export function createCheckInput(values: CheckFormValues, deviceId: string): CreateCheckInput {
   return {
@@ -23,11 +22,7 @@ export function createCheckInput(values: CheckFormValues, deviceId: string): Cre
   };
 }
 
-/**
- * CHK-009: only the fields that differ from `initial`; an unchanged form gives `{}`. The type is
- * that of `initial` and never changes after create. The config goes whole (the hub replaces it) and
- * only when it changed, so an edit of the name or interval never touches a stored secret.
- */
+/** The config goes whole and only when it changed, so an edit of the name or interval never touches a stored secret (CHK-009). */
 export function updateCheckInput(initial: CheckFormValues, formValues: CheckFormValues): UpdateCheckInput {
   // R-102: a domain expiry check is saved with 0 retries, so a stored value above 0 is corrected on the next save.
   const values = takesRetries(initial.type) ? formValues : { ...formValues, retries: '0', retryIntervalSeconds: initial.retryIntervalSeconds };

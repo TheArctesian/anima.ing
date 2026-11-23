@@ -7,9 +7,8 @@ import { HEIGHT, MODES, storedSettings } from '../shots';
 import { installDesktopShell } from '../threads/desktop-shell';
 import { EVERY_STATE } from '../threads/scenario';
 
-// The collapsed bar of Anima, collapsed by its button on Devices and folded by the page Code, side by side: one rail
-// (operator, 2026-11-22). The gallery's WebKit reports a Mac, so the rail keeps room for the window buttons.
-// `GALLERY_CODE_SHELL=1`; pictures go to `gallery-shots/code-shell/<theme>-1280/20-nav-rail.png`.
+// Collapsed by its button or folded by Code, the bar is one rail (operator, 2026-11-22).
+// The gallery's WebKit reports a Mac, so the rail keeps room for the window buttons.
 
 const FOLDER = fileURLToPath(new URL('../../../gallery-shots/code-shell/', import.meta.url));
 const SETTLE_MS = 400;

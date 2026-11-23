@@ -41,7 +41,7 @@
     if (kept === null) return;
     busy = false;
     problem = kept;
-    // The disabled button lost focus; give it back once it is enabled again, so the keyboard user stays here.
+    // The disabled button lost focus; it gets it back so the keyboard user stays here.
     await tick();
     button?.focus();
   }
@@ -49,7 +49,6 @@
 
 <SettingRow>
   {#snippet label()}
-    <!-- Always rendered, with its line reserved, so nothing moves when the name arrives (MOT-007); a long name is cut. -->
     <p class="who" class:pending={username === null}>
       Signed in as <strong>{username ?? ''}</strong>{#if hosted}&#32;with your Anima.ing account{/if}
     </p>
@@ -64,14 +63,13 @@
     <Icon name="carbon:logout" size="sm" />Sign out
   </button>
   {#snippet message()}
-    <!-- Always rendered and empty when idle: a live region that is already there is announced more reliably than one
-         that appears filled, and its line is kept (MOT-007). -->
+    <!-- Always rendered: a live region already present is announced more reliably, and its line is kept (MOT-007). -->
     <p role="alert">{problem ?? ''}</p>
   {/snippet}
 </SettingRow>
 
 <style>
-  /* One line, reserved; the name never wraps, it is cut with an ellipsis, so its arrival cannot change the height (MOT-007). */
+  /* One reserved line; a long name is cut, so its arrival cannot change the height (MOT-007). */
   .who {
     margin: 0;
     min-block-size: calc(var(--text-md) * var(--leading-tight));

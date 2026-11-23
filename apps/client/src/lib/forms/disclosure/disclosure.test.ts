@@ -25,7 +25,6 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-/** The section, plus an element after it whose place depends on whether the content is in the layout. */
 function show(preference: MotionPreference = { reduced: false }) {
   app = mount(Disclosure, { target: document.body, props: { label: 'Advanced', children: content, preference } });
   flushSync();

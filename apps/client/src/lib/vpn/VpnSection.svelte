@@ -46,7 +46,6 @@
     };
   });
 
-  /** Retry; the button stays mounted, and aria-disabled, while the hub answers. */
   async function retry(): Promise<void> {
     if (retrying) return;
     retrying = true;
@@ -96,8 +95,7 @@
 {/if}
 
 <style>
-  /* The placeholder rows keep their shape and lines, but show no words: the rows inside set their own colours, which a
-     transparent `color` here would not reach; the inherited text fill wins over each of them. */
+  /* The inner rows set their own colours, which a transparent `color` does not reach; the inherited text fill does. */
   .waiting {
     color: transparent;
     -webkit-text-fill-color: transparent;

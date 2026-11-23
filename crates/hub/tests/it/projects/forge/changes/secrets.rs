@@ -1,5 +1,4 @@
-//! LOG-007, PRJ-028: what the operator wrote (title, body, labels, comment) and what GitHub
-//! answered reach no process log line, no error message, no audit entry and no event.
+//! LOG-007, PRJ-028: operator text and GitHub's answers reach no log, error, audit entry or event.
 
 use anima_hub::fleet::events::process_log;
 use serde_json::json;

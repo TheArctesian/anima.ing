@@ -71,8 +71,7 @@ devices_test! {
         assert_eq!(due[0].device, super::device(PVE_01));
         assert!(matches!(due[0].config, Some(CheckConfig::Icmp { .. })));
 
-        // A configuration this version cannot read does not stop the schedule: a wrong value,
-        // a key in another spelling, or a stored tag.
+        // A configuration this version cannot read does not stop the schedule.
         for bad in [r#"{"timeoutMs": "soon"}"#, r#"{"timeout_ms": 2000}"#, r#"{"type": "icmp"}"#] {
             sqlx::query("UPDATE checks.checks SET config = $2::jsonb WHERE id = $1")
                 .bind(id)

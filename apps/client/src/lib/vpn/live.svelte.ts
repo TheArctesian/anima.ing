@@ -11,7 +11,6 @@ export class VpnLive {
 
   constructor(private readonly api: ReturnType<typeof vpnApi>) {}
 
-  /** Reads the picture and, on success, starts listening for new ones (once). */
   async load(): Promise<void> {
     this.#stopped = false;
     const result = await this.api.picture();
@@ -34,7 +33,6 @@ export class VpnLive {
     });
   }
 
-  /** Stops listening. */
   stop(): void {
     this.#stopped = true;
     this.#unwatch?.();

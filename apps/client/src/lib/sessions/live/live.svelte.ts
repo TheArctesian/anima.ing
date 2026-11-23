@@ -4,16 +4,11 @@ import { InFlight } from './inflight';
 import { applyChange, newestFirst, withoutSession } from './list';
 import { Stopping } from './stopping.svelte';
 
-/** More than one operator's sessions at once. */
 const LIVE_LIMIT = 200;
 const NOT_LOADED = 'Could not load live sessions.';
-/** Shown while `sessionChanged` is in error; the re-query on open keeps the list as current as it can be. */
 const LIVE_STOPPED = 'Live updates stopped. Reopen to refresh.';
 
-/**
- * The live sessions as the nav bar shows them (RA-034, D-6): the query's answer, kept current by `sessionChanged`.
- * When the subscription fails, `updatesStopped` says so and `refresh` (the query on open) keeps the list current.
- */
+/** The live sessions of the nav bar (RA-034, D-6). */
 export function watchLiveSessions(hub: Hub) {
   const api = liveSessionsApi(hub);
   let sessions = $state<readonly LiveSession[]>([]);
@@ -26,7 +21,6 @@ export function watchLiveSessions(hub: Hub) {
   async function refresh(): Promise<void> {
     const mine = inFlight.begin();
     const result = await api.list(LIVE_LIMIT);
-    // A newer refresh has been asked: its answer is the one to show.
     if (!inFlight.isNewest(mine)) return;
     loadFailure = result.ok ? null : NOT_LOADED;
     if (result.ok) sessions = newestFirst(inFlight.catchUp(result.value));
@@ -42,7 +36,6 @@ export function watchLiveSessions(hub: Hub) {
     }
   }
 
-  /** Query once and listen; returns the function that stops listening. */
   function start(): () => void {
     void refresh();
     return api.watch({
@@ -51,7 +44,6 @@ export function watchLiveSessions(hub: Hub) {
         inFlight.pushed(change);
         sessions = applyChange(sessions, change);
       },
-      // The list keeps what it has; the text tells the operator it will not change by itself.
       error: () => {
         updatesStopped = LIVE_STOPPED;
       },

@@ -6,9 +6,8 @@
   import { checkAccount, firstProblem, PASSWORD_MIN, type AccountProblems } from './account';
 
   interface Props {
-    /** The step's heading; focus moves to it when the step shows. */
     heading: string;
-    /** The name and password the operator chose. The page keeps the password only until it has signed in (LOG-007). */
+    /** The page keeps the password only until it has signed in (LOG-007). */
     onnext: (account: { name: string; password: string }) => void;
   }
 

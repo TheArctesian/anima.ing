@@ -94,7 +94,6 @@ async fn log_010_device_status_changed_filters_by_device_and_carries_the_signals
         (&change["deviceId"], &change["status"]),
         (&json!(PVE_01), &json!("DOWN"))
     );
-    // Compare the instant, not its text.
     let at: chrono::DateTime<chrono::Utc> = change["at"].as_str().unwrap().parse().unwrap();
     assert_eq!(at, now());
     let all = "subscription { deviceStatusChanged { deviceId } }";

@@ -2,7 +2,7 @@ import type { FieldError } from '$lib/hub/hub';
 import { isValidPort } from '../values';
 import { isValidMac, type RemoteValues } from './values';
 
-/** DEV-010, RA-031: every reason the remote part of the form cannot be saved. A password is optional. */
+/** DEV-010, RA-031: a password is optional. */
 export function validateRemote(values: RemoteValues): FieldError[] {
   const errors: FieldError[] = [];
   const { rdp, vnc } = values;

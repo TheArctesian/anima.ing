@@ -1,19 +1,13 @@
 import type { ConnectAttempt } from './api';
 
-// The words of the three-press GitHub connection, for each phase and each failure (PRJ-039, PRJ-041). Pure: the
-// attempt in, the line and the actions out.
+// PRJ-039, PRJ-041.
 
-/** What the row shows for one attempt: a line, and which actions it offers. */
 export interface AttemptView {
   readonly line: string;
-  /** "Continue in browser": a new one-time link for the open attempt. */
   readonly continueInBrowser: boolean;
   readonly cancel: boolean;
-  /** Where "Install on GitHub" goes; null: no such action. Only a github.com address. */
   readonly installUrl: string | null;
-  /** Where "Delete the App on GitHub" goes; null: no such action. Only a github.com address. */
   readonly appSettingsUrl: string | null;
-  /** "Connect GitHub": start a new attempt. */
   readonly start: boolean;
 }
 
@@ -24,18 +18,13 @@ export const HUB_RESTARTED =
   'The hub restarted and dropped the connection. Delete any App you made on GitHub, then start again.';
 export const TAB_BLOCKED = 'The tab did not open. Open this page in a browser signed in to Anima.ing and press Continue.';
 
-/** On a hub that says that it cannot start the flow in a browser, or that does not say (a hub of before): not offered. */
+/** For a hub that cannot start the flow in a browser, or does not say. */
 export const NO_BROWSER_ADDRESS =
   'Coming soon: Connect GitHub in your browser for this hub. Today a browser cannot open a page of this hub, so nothing is opened. If you made a GitHub App yourself, use its key file.';
 
 /** The address of the gateway of the hosted hubs, where a browser signs in with the Anima.ing account (HMD-068). */
 const GATEWAY_HOST = 'hub.anima.ing';
 
-/**
- * Where the browser must be signed in for the flow, from the hub page `page`: the gateway for a hosted hub, whose page
- * is at `hub.anima.ing` or at a name below it; the host of the page for each other hub. Empty for an address that is
- * not one.
- */
 export function signInLine(page: string): string {
   let host: string;
   try {
@@ -59,7 +48,6 @@ export function githubAddress(url: string | null): string | null {
   return url?.startsWith(GITHUB) === true ? url : null;
 }
 
-/** A hub page address the client may link to (http or https), or null. */
 export function hubPageAddress(url: string): string | null {
   return /^https?:\/\//.test(url) ? url : null;
 }
@@ -126,13 +114,11 @@ function phaseView(attempt: ConnectAttempt): AttemptView {
   }
 }
 
-/** The line and the actions for an attempt; an agent's start puts its words first. */
 export function describeAttempt(attempt: ConnectAttempt): AttemptView {
   const view = phaseView(attempt);
   return attempt.startedBy === 'AGENT' ? { ...view, line: `${AGENT_STARTED} ${view.line}` } : view;
 }
 
-/** The row when the hub no longer holds an attempt the client had open. */
 export const RESTARTED: AttemptView = { ...NO_ATTEMPT, line: HUB_RESTARTED };
 
 /** The attempt is still going: the hub may drop it by restarting. */

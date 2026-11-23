@@ -1,7 +1,4 @@
-//! The hub binary's edge as `main.rs` wires it: the bind check stops start-up (NET-003,
-//! SEC-008), and a hub served over TLS as a runtime login seeds `ANIMA_PERMITTED_NETWORKS`
-//! and refuses other addresses (SEC-001, NET-001, NET-002). Ports are chosen by the system;
-//! every spawn has a deadline and is killed when the test ends.
+//! The hub binary's edge as `main.rs` wires it (NET-003, SEC-008, SEC-001, NET-001, NET-002).
 
 mod bundled;
 mod served;
@@ -15,7 +12,6 @@ use std::{
 
 const DEADLINE: Duration = Duration::from_secs(20);
 
-/// A hub process, killed when dropped.
 struct Running(Child);
 
 impl Drop for Running {
@@ -37,7 +33,6 @@ fn spawn(args: &[&str], envs: &[(&str, &str)]) -> Running {
     Running(child)
 }
 
-/// As [`spawn`], with a pipe for standard input.
 fn spawn_with_input(args: &[&str], envs: &[(&str, &str)]) -> Running {
     let child = crate::transport::process::hub()
         .args(args)
@@ -51,12 +46,10 @@ fn spawn_with_input(args: &[&str], envs: &[(&str, &str)]) -> Running {
     Running(child)
 }
 
-/// The standard error of a hub that must stop by itself, and whether it succeeded.
 fn refused_start(envs: &[(&str, &str)]) -> (bool, String) {
     finished(spawn(&[], envs))
 }
 
-/// Whether `hub`, which must stop by itself within [`DEADLINE`], succeeded, and its stderr.
 fn finished(mut hub: Running) -> (bool, String) {
     let started = Instant::now();
     let status = loop {

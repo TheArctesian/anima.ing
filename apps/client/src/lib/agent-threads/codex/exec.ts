@@ -1,13 +1,7 @@
-/**
- * Codex's code mode: since about 2026-11-21 Codex runs its tools from one `exec` call that holds JavaScript
- * (`text(await tools.exec_command({cmd:"…"}))`, `tools.apply_patch("*** Begin Patch…")`), and polls a running script
- * with `wait` (`{"cell_id":…,"yield_time_ms":…}`) or `tools.write_stdin({chars:""})`. The runner passes these on as
- * they are; this reads them into the command, the edit or the search that a person would name. Pure.
- */
+/** Reads Codex's code-mode `exec` calls, JavaScript that runs its tools, into the command, edit or search a person would name. Pure. */
 
 import type { ToolCall } from '../thread';
 
-/** The JavaScript string literals given to `name:` in `source`, decoded. */
 function literals(source: string, name: string): string[] {
   const found: string[] = [];
   for (const match of source.matchAll(new RegExp(`\\b${name}"?\\s*:\\s*("(?:[^"\\\\]|\\\\.)*")`, 'g'))) {
@@ -20,17 +14,14 @@ function literals(source: string, name: string): string[] {
   return found;
 }
 
-/** The files a patch adds, changes or deletes, by the patch's own headers. */
 function patched(source: string): string[] {
   return [...source.matchAll(/\*\*\* (?:Add|Update|Delete) File: ([^\n\\`]+)/g)].map((match) => (match[1] ?? '').trim());
 }
 
-/** The last part of a path. */
 function base(path: string): string {
   return path.split('/').filter((part) => part !== '').at(-1) ?? path;
 }
 
-/** "first" or "first and 2 more". */
 function andMore(names: readonly string[]): string {
   const [first = '', ...rest] = names;
   return rest.length === 0 ? first : `${first} and ${String(rest.length)} more`;
@@ -69,7 +60,6 @@ export function cellOf(tool: ToolCall): string | null {
   return /^Script running with cell ID (\S+)/.exec(tool.output ?? '')?.[1] ?? null;
 }
 
-/** The call that left a script running, with the output that a `wait` on its cell brought. */
 export function waited(ran: ToolCall, wait: ToolCall): ToolCall {
   const { output, failed } = execOutput(wait.output);
   const both = [ran.output, output].filter((part) => part !== null).join('\n');

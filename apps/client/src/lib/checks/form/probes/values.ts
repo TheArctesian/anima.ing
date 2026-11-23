@@ -7,17 +7,14 @@ import type {
   TailscalePingCheckConfigFragment,
 } from '$lib/hub/generated/graphql';
 
-/** The check types of the Docker, systemd, SNMP and Tailscale ping probes (CHK-009). */
 export type ProbeCheckType = Extract<CheckType, 'DOCKER' | 'SNMP' | 'SYSTEMD' | 'TAILSCALE_PING'>;
 
-/** The Phase 2 configs with their fields, as `CheckFields` selects them (CHK-009). */
 export type ProbeConfig =
   | DockerCheckConfigFragment
   | SystemdCheckConfigFragment
   | SnmpCheckConfigFragment
   | TailscalePingCheckConfigFragment;
 
-/** What the operator typed for the Docker, systemd, SNMP and Tailscale ping checks (CHK-009). */
 export interface ProbeValues {
   docker: { container: string; timeoutMs: string };
   systemd: { unit: string; timeoutMs: string };

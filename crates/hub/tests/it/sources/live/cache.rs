@@ -1,6 +1,4 @@
-//! PRJ-032, K-E1 Section 13.1: the cache sends nothing while an answer is fresh, reads again on
-//! `fresh` and on expiry, serves the held answer stale when a refresh fails, keeps no file
-//! content, forgets exactly one repository's paths, and serves nothing of a paused account.
+//! The live source cache keeps no file content (PRJ-032, K-E1 Section 13.1).
 
 use anima_hub::engine::sources::{Keep, LiveFailure, ask, forget};
 use chrono::TimeDelta;

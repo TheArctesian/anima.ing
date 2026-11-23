@@ -53,7 +53,6 @@ async fn dev_015_deleting_the_device_deletes_its_secrets(pool: PgPool) {
     store(&pool, &vault, id, private_key(Some(PASSPHRASE)))
         .await
         .unwrap();
-    // devices exposes no delete function yet; this deletes the row the way it will.
     sqlx::query("DELETE FROM devices.devices WHERE id = $1")
         .bind(id)
         .execute(&pool)
@@ -96,8 +95,7 @@ async fn dev_015_clear_ssh_then_device_delete_removes_its_passwords(pool: PgPool
     for kind in [PasswordKind::Rdp, PasswordKind::Vnc] {
         store_pw(&pool, id, kind, RDP_PASSWORD).await.unwrap();
     }
-    // The order `deleteDevice` takes: the SSH secret under the device lock, then the row,
-    // whose foreign key cascades to the passwords.
+    // The order `deleteDevice` takes: the SSH secret under the device lock, then the row.
     let mut tx = pool.begin().await.unwrap();
     assert!(clear_ssh(&mut tx, id).await.unwrap());
     sqlx::query("DELETE FROM devices.devices WHERE id = $1")

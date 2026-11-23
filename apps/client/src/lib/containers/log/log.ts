@@ -1,8 +1,7 @@
 import type { LogLine } from '../api';
 import { lineTime } from '../rows';
 
-// HOST-015: the search, the filter by level, and the text of a download. All of it is work on the lines that the hub
-// gave (HOST-001): no hub function, and nothing is kept.
+// HOST-015, HOST-001: work only on the lines the hub gave; no hub function, and nothing is kept.
 
 export type Level = 'error' | 'warning' | 'info' | 'debug';
 
@@ -42,7 +41,6 @@ const LEVELS: Readonly<Record<string, Level>> = {
 };
 
 const WORDS = 'fatal|fata|panic|pani|critical|crit|severe|emerg|alert|error|erro|err|warning|warn|wrn|info|inf|notice|debug|debu|dbg|trace|trac';
-/** The colour codes of a terminal, which some programs write around the level word. */
 // eslint-disable-next-line no-control-regex -- the escape character is what a colour code starts with
 const COLOUR = /\u001b\[[0-9;]*m/g;
 /** A field that names the level: `level=warn`, `"level":"error"`, `lvl=info`, `severity: ERROR`. It wins over every other word. */
@@ -61,11 +59,7 @@ function word(found: RegExpExecArray | null): Level | null {
   return text === undefined ? null : (LEVELS[text.toLowerCase()] ?? null);
 }
 
-/**
- * The level a line states; null when it states none. A field that names the level wins; then the first level word in
- * capitals, in brackets or before a colon. A word in small letters in the text (`GET /api/info`, `error.log`) is not a
- * level. Programs write levels in many forms, and this reads the common ones.
- */
+/** A word in small letters in the text (`GET /api/info`, `error.log`) is not a level. */
 export function levelOf(text: string): Level | null {
   const plain = text.replace(COLOUR, '');
   const klog = KLOG.exec(plain)?.[1];
@@ -75,15 +69,11 @@ export function levelOf(text: string): Level | null {
 }
 
 export interface LogView {
-  /** Text a line must hold, in any case; empty for no search. */
   readonly search: string;
   readonly level: LevelChoice;
 }
 
-/**
- * The lines the view shows: those that hold the search text and have the chosen level. A line that states no level has
- * the level of the line before it, so the lines of a stack trace stay with their error.
- */
+/** A line that states no level has the level of the line before it, so a stack trace stays with its error. */
 export function shownLines(lines: readonly LogLine[], view: LogView): readonly LogLine[] {
   const wanted = view.search.trim().toLowerCase();
   let level: Level | null = null;
@@ -93,12 +83,10 @@ export function shownLines(lines: readonly LogLine[], view: LogView): readonly L
   });
 }
 
-/** The text of a download: one line for each shown line, with its time as the hub gave it when `timestamps` is on. */
 export function downloadText(lines: readonly LogLine[], timestamps: boolean): string {
   return lines.map((line) => (timestamps && line.at != null ? `${line.at} ${line.text}` : line.text)).join('\n') + '\n';
 }
 
-/** The name of the file of a download: the name of the container with only safe characters, and `.log`. */
 export function downloadName(container: string): string {
   const safe = container.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[-.]+|-+$/g, '');
   return `${safe === '' ? 'container' : safe}.log`;

@@ -2,7 +2,6 @@ import type { Details } from '$lib/code/details/model';
 import type { FolderListing } from '$lib/code/panel/files/crumbs';
 import { NO_TABS, opened, type PanelTabs } from '$lib/code/panel/tabs';
 
-/** The scenes of the specimen of stage 5: made-up threads, no engine. */
 export const FULL: Details = {
   runContext: {
     environments: [
@@ -115,7 +114,6 @@ back('//evil.example'); // '/'
 
 export const TABS: PanelTabs = opened(opened(NO_TABS, { id: 'files', kind: 'files', title: 'Files' }), { id: 'file:login', kind: 'file', title: '+page.svelte', path: 'src/routes/sign-in/+page.svelte' });
 
-/** The folders of the made-up project, for the menus of the breadcrumbs. */
 export function listing(folder: string): FolderListing {
   if (folder.endsWith('sign-in')) {
     return { state: 'ready', entries: [{ name: '+page.svelte', path: 'src/routes/sign-in/+page.svelte', folder: false }, { name: '+page.ts', path: 'src/routes/sign-in/+page.ts', folder: false }] };
@@ -123,10 +121,8 @@ export function listing(folder: string): FolderListing {
   return { state: 'ready', entries: [{ name: 'sign-in', path: 'src/routes/sign-in', folder: true }, { name: 'devices', path: 'src/routes/devices', folder: true }, { name: '+layout.svelte', path: 'src/routes/+layout.svelte', folder: false }] };
 }
 
-/** A small picture drawn in the page, for the image viewer. */
 export const PICTURE = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400"><rect width="640" height="400" fill="steelblue"/><circle cx="320" cy="200" r="120" fill="white"/></svg>')}`;
 
-/** A patch of one file, for the trial of the diff library. */
 export const PATCH = `diff --git a/src/routes/sign-in/back.ts b/src/routes/sign-in/back.ts
 index 3f1c2aa..9b7d410 100644
 --- a/src/routes/sign-in/back.ts

@@ -1,5 +1,5 @@
-//! The sealed records through the hub API (K-E5 Section 3; VLT-001, VLT-002, VLT-004, VLT-006;
-//! PH-E-002): the hub stores what a client sealed and cannot read it.
+//! The hub stores what a client sealed and cannot read it (K-E5 Section 3; VLT-001, VLT-002,
+//! VLT-004, VLT-006; PH-E-002).
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use chrono::TimeDelta;
@@ -17,8 +17,6 @@ const RECORD: &str = "id owner extension sealed sealedIndex keyId createdAt upda
 const STORE: &str = "mutation($i: SealedRecordInput!) { storeSealedRecord(input: $i) \
                      { id owner extension sealed sealedIndex keyId createdAt updatedAt } }";
 const OWNER: &str = "passport:0190a000-0000-7000-8000-00000000aaaa";
-/// A value that a client would seal. The test seals it as a client does, with a key that the
-/// hub never gets, and then looks for it in each place that the hub writes.
 const PLAIN: &str = "P4551-secret-passport-number";
 
 async fn signed_in(pool: &PgPool) -> (Hub, String) {
@@ -28,8 +26,7 @@ async fn signed_in(pool: &PgPool) -> (Hub, String) {
     (hub, token)
 }
 
-/// What a client does with its vault key: here, each byte of the value with one byte of a key
-/// stream. The test needs only that the hub gets no plain byte sequence of the value.
+/// Stands in for vault-key sealing; the test needs only that the hub gets no plain byte sequence.
 fn sealed_by_a_client(plain: &str) -> Vec<u8> {
     plain
         .bytes()
@@ -109,7 +106,6 @@ async fn ph_e_002_the_hub_holds_no_plain_byte_of_a_value_that_a_client_sealed(po
     assert!(made["errors"].is_null(), "{made}");
     assert!(!capture.text().is_empty(), "the log output is read");
 
-    // Each text, JSON and bytea column of each table of the hub.
     let columns: Vec<(String, String, String, String)> = sqlx::query_as(
         "select c.table_schema, c.table_name, c.column_name, c.data_type \
          from information_schema.columns c join pg_tables t \
@@ -144,7 +140,6 @@ async fn ph_e_002_the_hub_holds_no_plain_byte_of_a_value_that_a_client_sealed(po
             .unwrap_or_else(|error| panic!("{schema}.{table}.{column}: {error}"));
         assert_eq!(found, 0, "{schema}.{table}.{column} holds the value");
     }
-    // The stored bytes are the bytes of the client, not changed.
     let stored: Vec<u8> = sqlx::query_scalar("select sealed from sealed_records.record")
         .fetch_one(&pool)
         .await

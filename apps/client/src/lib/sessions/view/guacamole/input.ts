@@ -9,7 +9,7 @@ function send(client: Client, strokes: readonly KeyStroke[]): void {
   for (const [pressed, keysym] of strokes) client.sendKeyEvent(pressed, keysym);
 }
 
-/** The route of the pane's keyboard to `client`: keys `filter` passes are sent as 1 or 0 (T1 note F-3). */
+/** Keys that `filter` passes go to `client` (T1 note F-3). */
 export function keyRoute(client: Client, filter: KeyFilter): KeyRoute {
   return {
     down: (keysym) => {
@@ -23,26 +23,19 @@ export function keyRoute(client: Client, filter: KeyFilter): KeyRoute {
   };
 }
 
-/** Send a Keys menu combination as its press and release sequence (RA-006). */
+/** The Keys menu (RA-006). */
 export function sendCombination(client: Client, combination: KeyCombination): void {
   send(client, keyStrokes(combination));
 }
 
-/**
- * Paste `text` on the device (RA-005): one `text/plain` clipboard stream, which sets the device's clipboard, then
- * Ctrl+V, which pastes it, leaving down any Ctrl in `held` (the keys the device holds). Empty text sends nothing.
- */
+/** Sets the device clipboard, then sends Ctrl+V; a Ctrl in `held` stays down (RA-005). */
 export function pasteText(client: Client, text: string, held: ReadonlySet<number>): void {
   if (text === '') return;
   sendClipboard(client, text);
   send(client, pasteStrokes(held));
 }
 
-/**
- * Follow whether the keyboard focus is inside `pane` (D-8): `change(true)` when focus enters it, `change(false)`
- * when focus moves out of it, the window loses focus, or the page is hidden. In those three cases no `keyup` will
- * reach the pane for a key still held, so the caller must release it at once. Returns the function that stops.
- */
+/** On `change(false)` no `keyup` reaches the pane for a held key, so the caller releases it (D-8). */
 export function followPaneFocus(pane: HTMLElement, change: (inside: boolean) => void): () => void {
   const inside = () => {
     change(pane.contains(document.activeElement));
@@ -72,10 +65,7 @@ export function followPaneFocus(pane: HTMLElement, change: (inside: boolean) => 
   };
 }
 
-/**
- * Show the client's display in the host element; nothing animates it (MAT-008), and its scale is the caller's.
- * Pointer and touch input are forwarded while it is shown.
- */
+/** Nothing animates the display (MAT-008); its scale is the caller's. */
 export function showDisplay(client: Client, directTouch = true): Attachment<HTMLElement> {
   return (host) => {
     const element = client.getDisplay().getElement();

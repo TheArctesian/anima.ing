@@ -52,7 +52,6 @@ describe('the state of a thread from its session file', () => {
   });
 
   it('TH97: a program that starts is "Starting" in the list, as in its header, and is in the group Working', () => {
-    // A driven thread, not a file: its row comes from the runner (live/rows.ts).
     const starting: ThreadRow = { ...row('new', 'open', 5), tail: 'starting' };
     expect(threadState(starting, NOW, NONE)).toBe('starting');
     const entries = orderedThreads([starting], NOW, NONE).map((entry) => (entry.kind === 'group' ? entry.title : entry.key));

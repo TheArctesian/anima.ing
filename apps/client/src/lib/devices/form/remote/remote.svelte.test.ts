@@ -40,7 +40,6 @@ const K1: RemoteDeviceFields = {
 };
 const WITH_K1: DeviceFields = { ...SAVED, ...K1 };
 
-/** The disclosure button of `label`; its text starts with an icon. */
 function disclosure(label: string): HTMLButtonElement {
   const found = [...document.querySelectorAll('button')].find((candidate) => candidate.textContent.includes(label));
   if (!found) throw new Error(`no disclosure ${label}`);

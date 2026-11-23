@@ -45,7 +45,6 @@ async function addAtLinkAddress(parts: LinkedDeviceParts, device: DeviceIdentity
 
 const adding = new Map<string, Promise<DeviceEnrolment>>();
 
-/** One explicit inventory enrollment per app and hub at a time, using the current link's public identity. */
 export function enrolLinkedDevice(origin: string, parts: LinkedDeviceParts, device: DeviceIdentity): Promise<DeviceEnrolment> {
   const pending = adding.get(origin);
   if (pending !== undefined) return pending;

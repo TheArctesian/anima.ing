@@ -50,10 +50,7 @@ const ApproveSiteRoute = graphql(`
 
 const NOT_APPROVED: HubError = { code: 'INTERNAL', message: 'The hub did not approve the route.' };
 
-/**
- * A pre-auth key the hub has just made. `key` is shown once: the caller holds it only while the dialog that shows it is
- * open and never logs, stores or sends it anywhere (LOG-007). `steps` are the commands for the new computer; none holds the key.
- */
+/** `key` is shown once and never logged, stored or sent anywhere (LOG-007); no step holds it. */
 export interface VpnKey {
   readonly key: string;
   readonly expiresAt: string;
@@ -67,7 +64,7 @@ export interface VpnRegistration {
   readonly keyExpiry: string | null;
 }
 
-/** The VPN enrolment, renewal and approval calls of the hub (VPN-001, VPN-003, VP-7) as plain functions of a `Hub`. */
+/** The VPN enrolment, renewal and approval calls of the hub (VPN-001, VPN-003, VP-7). */
 export function enrolApi(hub: Hub) {
   return {
     /** A one-use, one-hour key for a Linux computer of the operator (VPN-003). */

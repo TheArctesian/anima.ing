@@ -22,7 +22,6 @@ test('DEV-007: the wide device list gives the name and address separate lines', 
   expect(nameBox.y + nameBox.height).toBeLessThanOrEqual(addressBox.y);
   expect(rowBox.x + rowBox.width).toBeLessThanOrEqual(1280);
 
-  // The words of the usage are in the column head, whole; a row has the values only, so each row has one height.
   const memory = table.getByRole('columnheader', { name: 'Usage: CPU, memory, disk' }).getByText('Memory', { exact: true });
   await expect(memory).toBeVisible();
   expect(await memory.evaluate((label) => label.scrollWidth)).toBeLessThanOrEqual(await memory.evaluate((label) => label.clientWidth));
@@ -62,9 +61,6 @@ test('DEV-007, RA-020: status and warning sit side by side inside the Status col
     }).toPass({ timeout: 5000 });
   }
 });
-
-// A panel that opens from a row of the Devices list is inside a table cell that does not wrap its text. The panel
-// must wrap its own sentences and stay inside the window, at any width.
 
 for (const width of [1600, 1280, 820]) {
   test(`R-079: the panel of "Set up screen sharing" wraps its text and stays inside a window ${String(width)} px wide`, async ({ page }) => {
@@ -122,7 +118,6 @@ test('MOT-007: a device that goes down keeps the height of its row, and the rows
   expect(hub.push('DeviceStatusChanged', {
     deviceStatusChanged: { deviceId: DEVICE_IDS.macMini, status: 'DOWN', at: '2026-11-15T20:00:00Z' },
   })).toBe(1);
-  // Down: VNC, Web and now Wake, on one line.
   await expect(row.getByRole('button', { name: 'Wake' })).toBeVisible();
   await expect(row.getByRole('button', { name: 'VNC to mac-mini' })).toBeVisible();
   await settledTop(row);

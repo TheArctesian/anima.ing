@@ -39,7 +39,6 @@ vi.mock('$lib/hub/hub', async (importOriginal) => ({
     }) as unknown as Hub,
 }));
 
-// The layout's sessions API is the fixture's fake hub; its port is spied on.
 vi.mock('$lib/sessions/api', async (importOriginal) => {
   const { fake: state } = await import('./layout.fixture');
   return { ...(await importOriginal<typeof import('$lib/sessions/api')>()), sessionsApi: () => state.api };
@@ -66,14 +65,12 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-/** The session pane of the `index`th tab. */
 function paneAt(index: number): HTMLElement {
   const pane = document.querySelectorAll<HTMLElement>('[role="tabpanel"] [role="group"]')[index];
   if (pane === undefined) throw new Error(`no session pane ${String(index)}`);
   return pane;
 }
 
-/** The terminal's text field in the `index`th pane. */
 function fieldAt(index: number): HTMLTextAreaElement {
   const field = paneAt(index).querySelector<HTMLTextAreaElement>('textarea');
   if (field === null) throw new Error(`no terminal in pane ${String(index)}`);
@@ -86,14 +83,12 @@ function typeEnter(target: EventTarget) {
   target.dispatchEvent(event);
 }
 
-/** The socket opens, so its pane is ready and may take the keyboard. */
 async function ready(socket: FakeTerminalSocket): Promise<FakeTerminalSocket> {
   socket.open();
   await settle();
   return socket;
 }
 
-/** The next `startSession` waits until the function this returns is called. */
 function holdStart(): () => void {
   const answer = fake.api.startSession.bind(fake.api);
   let release: () => void = () => undefined;
@@ -257,7 +252,7 @@ it('no temporary adapter or placeholder pane remains', async () => {
 });
 
 describe('covered pages keep their scroll (WP-14 E-2)', () => {
-  /** The pages scrolled to `y` before a session covers them; `scrollTo` is spied on (jsdom has none). */
+  /** jsdom has no `scrollTo`, so it is spied on. */
   function scrolledTo(y: number) {
     Object.defineProperty(window, 'scrollY', { configurable: true, value: y });
     return vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);

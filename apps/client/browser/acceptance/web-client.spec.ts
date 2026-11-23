@@ -3,8 +3,7 @@ import { HUB_ORIGIN } from '../synthetic/access';
 import { DEVICE_IDS, openDevices } from './screens';
 import { updaterChunkPaths } from './updater-files';
 
-// Plan criterion 2, client side, against the synthetic hub: the web client lists devices, shows one, follows live status
-// and the logs, and offers none of the desktop-only controls. Sessions have their own spec.
+// Plan criterion 2, client side.
 
 const DEVICE_NAMES = ['win-desktop', 'win-legacy', 'mac-mini', 'gpu-box', 'nas', 'build-box', 'amd-box', 'mac-studio'];
 const AT = '2026-11-06T10:30:00Z';
@@ -38,7 +37,6 @@ test.describe('what works', () => {
     expect(hub.push('DeviceStatusChanged', { deviceStatusChanged: { deviceId: DEVICE_IDS.macMini, status: 'DOWN', at: AT } })).toBe(1);
     await expect(macMini.getByText('Down', { exact: true })).toBeVisible();
     await expect(macMini.getByText('Up', { exact: true })).toHaveCount(0);
-    // Only that device changed.
     await expect(page.getByText('Down', { exact: true })).toHaveCount(1);
     await expect(page.getByText('Connected', { exact: true })).toBeVisible();
   });

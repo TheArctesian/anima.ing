@@ -1,6 +1,6 @@
 import type { IndexEntry } from '$lib/page/contents/PageIndex.svelte';
 
-/** The groups of the device's Settings tab, in order, as their heads and the "On this page" index name them (D17). */
+/** The groups of the device's Settings tab, in order (D17). */
 export const SECTIONS = {
   device: { id: 'device-settings-device', title: 'Device', icon: 'carbon:data-base' },
   monitoring: { id: 'device-settings-monitoring', title: 'Monitoring', icon: 'carbon:activity' },

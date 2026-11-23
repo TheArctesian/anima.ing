@@ -1,7 +1,4 @@
-//! PRJ-039, PRJ-041, NET-002 (K-E1 Section 7a): what the security review of the flow found,
-//! held as behaviour. A browser that leaves in the middle of `/created` or `/installed` does
-//! not stop the work it started; a device that is not the bound browser makes the hub ask
-//! GitHub nothing; a cross-site hit on `/start` or `/created` changes nothing.
+//! Only the bound browser makes the hub ask GitHub; a cross-site hit changes nothing (PRJ-039, PRJ-041, NET-002, K-E1 7a).
 
 use std::time::Duration;
 
@@ -25,7 +22,6 @@ async fn accounts(pool: &PgPool) -> i64 {
         .unwrap()
 }
 
-/// How many times the hub asked GitHub for the App's installations.
 fn lists(served: &Served) -> usize {
     let asked = served.kit.stub.gets();
     asked
@@ -34,7 +30,6 @@ fn lists(served: &Served) -> usize {
         .count()
 }
 
-/// Waits up to 10 seconds until `githubConnect` shows `phase`.
 async fn until_phase(served: &Served, phase: &str) -> Value {
     for _ in 0..400 {
         let attempt = shown(&served.kit).await;
@@ -46,7 +41,6 @@ async fn until_phase(served: &Served, phase: &str) -> Value {
     panic!("never reached {phase}: {}", shown(&served.kit).await);
 }
 
-/// `GET path` with `browser`'s cookies from a browser that gives up after 300 ms.
 async fn given_up(served: &Served, browser: &Browser, path: &str) {
     let cookie: Vec<String> = (browser.cookies.iter())
         .map(|(name, value)| format!("{name}={value}"))
@@ -108,7 +102,6 @@ async fn prj_039_a_created_request_dropped_mid_conversion_reaches_app_created_an
     .await
     .unwrap();
     assert_eq!(audited, 1, "App created was audited");
-    // The operator's browser comes back with S1 and is sent to Install; the flow goes on.
     let s2 = install_state(&browser.created(&s1).await);
     assert_eq!(conversions(&served.kit), 1, "converted once");
     let done = browser.installed(INSTALLATION, &s2).await;
@@ -187,7 +180,6 @@ async fn prj_041_a_second_start_returns_the_same_state_and_the_first_return_stil
 ) {
     let served = served(&pool, SLOW).await;
     let (mut browser, s1) = at_github(&served).await;
-    // A cross-site hit, or the operator's reload: the same form, the same S1.
     assert_eq!(browser.form_state().await, s1, "the same state");
     let back = browser.created(&s1).await;
     assert_eq!(back.status, StatusCode::SEE_OTHER, "{}", back.body);

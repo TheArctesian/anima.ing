@@ -1,7 +1,4 @@
-//! What guards the update of each build (R-437): no link and no file of another user
-//! at the place of the copy, a new copy that is checked before its rename, a new daemon that
-//! must answer after its start, and the copy of before that stays under its version. Stand-in
-//! daemons as in [`super::updates`]; no real unit or `~/.local/bin` is touched.
+//! The update guards of R-437.
 
 use std::{fs, os::unix::fs::PermissionsExt, path::Path};
 
