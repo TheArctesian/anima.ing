@@ -18,7 +18,7 @@ interface DeviceIdentity {
   readonly invitedKey?: string;
 }
 
-function activeLinkKey(origin: string, { joined, state, port, publicKey }: DeviceLinkStatus): string | undefined {
+export function activeLinkKey(origin: string, { joined, state, port, publicKey }: DeviceLinkStatus): string | undefined {
   if (!joined || state !== 'up' || port === undefined || deviceLinkAddress(port)?.origin !== origin) return undefined;
   return publicKey;
 }

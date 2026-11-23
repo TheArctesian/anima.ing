@@ -5,7 +5,7 @@
   import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
   import QuietLabel from '$lib/page/QuietLabel.svelte';
   import { EARLIER_KEY, orderedThreads, STATE_MARKS, type Seen, type StatedRow } from '../state';
-  import { ago, folderName, programName, type Program, type ThreadRow } from '../thread';
+  import { ago, folderName, programName, shownTitle, type Program, type ThreadRow } from '../thread';
 
   type Choice = 'all' | Program;
 
@@ -91,7 +91,7 @@
         {@const mark = STATE_MARKS[item.device.state]}
         <li {@attach track(item.key)}>
           <button type="button" class="row" aria-current={row.id === chosen ? 'true' : undefined} data-thread={row.id} data-state={item.device.state} onclick={() => { onChoose(row.id); }}>
-            <span class="title"><span class="words">{row.title ?? 'Untitled thread'}</span></span>
+            <span class="title"><span class="words">{shownTitle(row)}</span></span>
             <span class="facts">
               <span class="state" title={mark.detail}><Icon name={mark.icon} size="sm" />{mark.words}</span>
               <span>{programName(row.program)}</span>

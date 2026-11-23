@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { shownTitle } from '$lib/agent-threads/thread';
   import type { Anchor } from '$lib/overlay/helptip/placement';
   import CodeIcon from '../../icons/CodeIcon.svelte';
   import ProgramMark from '../../icons/ProgramMark.svelte';
@@ -33,7 +34,7 @@
 
   const { item, kind, shelf, now, open, selected, renaming, marksOff, onclick, onMenu, onAct, onRename, onDismiss }: Props = $props();
   const { row } = $derived(item);
-  const title = $derived(row.title ?? 'Untitled thread');
+  const title = $derived(shownTitle(row));
   const age = $derived(item.since === null ? '' : shortAge(item.since.getTime(), now.getTime()));
   /** The time left until a snoozed thread wakes, as T3 Code writes it: "now", "45m", "3h", "2d" (08 inbox 7). */
   const wakes = $derived(item.wakes === null ? '' : shortAge(now.getTime(), item.wakes.getTime()));

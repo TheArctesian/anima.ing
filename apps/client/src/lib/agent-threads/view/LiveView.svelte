@@ -2,7 +2,7 @@
   import type { CallResult } from '../live/live.svelte';
   import type { Answer, RunState } from '../live/run';
   import { liveParts, waitingWords, type LiveThread } from '../live/timeline';
-  import { folderName, programName } from '../thread';
+  import { folderName, programName, shownTitle } from '../thread';
   import AskCard from './AskCard.svelte';
   import Composer from './Composer.svelte';
   import Markdown from './Markdown.svelte';
@@ -46,9 +46,9 @@
 
 <!-- A thread that the runner of this computer drives (TH14): the timeline as the program says it, each request that
      waits, and the composer. Each text of the program is drawn as text (THR-032). -->
-<article aria-label={row.title === '' ? 'Untitled thread' : row.title}>
+<article aria-label={shownTitle(row)}>
   <header>
-    <h2>{row.title === '' ? 'Untitled thread' : row.title}</h2>
+    <h2>{shownTitle(row)}</h2>
     <p class="facts">
       <span>{program}</span>
       <span class="state" data-state={row.state}>{STATE_WORDS[row.state]}</span>
