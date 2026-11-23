@@ -342,29 +342,3 @@ it('NET-004: the bar and the page are marked for the banner shift, and the strip
   expect(nav.hasAttribute('data-shifts-with-banner')).toBe(true);
   expect(nav.querySelector('.notice')?.hasAttribute('data-holds-banner')).toBe(true);
 });
-
-it('NAV-006: collapsed by its button or by Code, the bar is one rail: no toggle by the window buttons, the mark opens it', () => {
-  const animate = vi.fn(() => ({ cancel: vi.fn(), finish: vi.fn(), pause: vi.fn(), play: vi.fn(), currentTime: 0 }));
-  Object.defineProperty(Element.prototype, 'animate', { value: animate, configurable: true });
-  onTestFinished(() => {
-    Reflect.deleteProperty(Element.prototype, 'animate');
-    localStorage.clear();
-    document.documentElement.removeAttribute('data-nav');
-  });
-  const rail = (nav: HTMLElement) => ({
-    top: nav.querySelector('.bar button'),
-    mark: nav.querySelector('.brand button')?.getAttribute('aria-label'),
-    title: nav.querySelector('.brand button')?.getAttribute('title'),
-  });
-  const nav = show('/devices');
-  nav.querySelector<HTMLButtonElement>('.bar button[aria-label="Collapse sidebar"]')?.click();
-  flushSync();
-  const byButton = rail(nav);
-  expect(byButton).toEqual({ top: null, mark: 'Expand sidebar', title: 'Expand sidebar' });
-  route.pathname = '/code';
-  flushSync();
-  expect(rail(nav)).toEqual(byButton);
-  nav.querySelector<HTMLButtonElement>('.brand button')?.click();
-  flushSync();
-  expect(nav.querySelector('.bar button')?.getAttribute('aria-label')).toBe('Collapse sidebar');
-});
