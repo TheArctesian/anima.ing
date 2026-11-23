@@ -41,7 +41,7 @@ mod held {
     use std::path::Path;
 
     use rustix::fs::{
-        AtFlags, Mode, OFlags, mkdirat, openat, readlinkat, renameat, symlinkat, unlinkat,
+        AtFlags, Mode, OFlags, mkdirat, openat, readlinkat, renameat, statat, symlinkat, unlinkat,
     };
     use rustix::io::Errno;
 
@@ -228,6 +228,34 @@ mod held {
             Ok(names)
         }
 
+        /// The bytes of each file below this folder. A link is not followed and counts as
+        /// nothing; folders deeper than [`DEEPEST`] are not counted.
+        #[must_use]
+        pub fn bytes(&self) -> u64 {
+            self.counted(DEEPEST)
+        }
+
+        fn counted(&self, left: usize) -> u64 {
+            let Ok(names) = self.names() else {
+                return 0;
+            };
+            let one = |name: &OsString| {
+                let Ok(about) = statat(&self.0, name, AtFlags::SYMLINK_NOFOLLOW) else {
+                    return 0;
+                };
+                match rustix::fs::FileType::from_raw_mode(about.st_mode) {
+                    rustix::fs::FileType::RegularFile => u64::try_from(about.st_size).unwrap_or(0),
+                    rustix::fs::FileType::Directory if left > 0 => self
+                        .step(name, Make::No)
+                        .ok()
+                        .flatten()
+                        .map_or(0, |inside| inside.counted(left - 1)),
+                    _ => 0,
+                }
+            };
+            names.iter().map(one).sum()
+        }
+
         /// Removes the folder `name` with all that it holds. A link in it is removed, never
         /// followed. A tree of folders deeper than [`DEEPEST`] is refused: an agent can make one.
         ///
@@ -327,6 +355,11 @@ mod none {
 
         pub fn names(&self) -> io::Result<Vec<OsString>> {
             none()
+        }
+
+        #[must_use]
+        pub const fn bytes(&self) -> u64 {
+            0
         }
 
         pub fn remove_all(&self, _name: &OsStr) -> io::Result<()> {

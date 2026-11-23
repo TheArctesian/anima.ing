@@ -37,6 +37,13 @@ const MOST_KNOWN: usize = 64;
 /// The time the copy of a history gets: the first one of a large repository is long.
 pub const LONG: Duration = Duration::from_hours(1);
 
+/// The bytes that the copy of a project can always have. Above them it can have three times
+/// the bytes of the object store of the project ([`room`]).
+pub const ROOM: u64 = 1024 * 1024 * 1024;
+
+/// How many times the size of the object store of the project its copy can have.
+const TIMES: u64 = 3;
+
 /// The most bytes of the list of the commits where a shallow clone ends.
 const MOST_SHALLOW: u64 = 16 * 1024 * 1024;
 
@@ -166,10 +173,57 @@ pub async fn learn(git: &Git, worktree: &Worktree, commits: &[&str]) -> Result<(
     }
     let known: Vec<&str> = mine.iter().map(String::as_str).take(MOST_KNOWN).collect();
     for commit in wanted {
-        brought(git, (store, worktree), commit, &known).await?;
+        let left = left(git, (store, worktree)).await?;
+        brought(git, (store, worktree), commit, (&known, left)).await?;
         mark(store, worktree, commit).await?;
     }
     Ok(())
+}
+
+/// The bytes that the copy of the project of `worktree` can still take. Each thread of each
+/// project writes to the one disk of the records, and what a thread brings is bytes that its
+/// agent chose. So the copy of a project is held to a size that follows the project: three
+/// times the object store of the person, and [`ROOM`] for a small one. An agent that wants
+/// the runner to keep more must first use that much of the disk of the project itself.
+fn room(git: &Git, worktree: &Worktree) -> u64 {
+    let record = worktree.record();
+    let theirs = Dir::open(&record.common_dir)
+        .and_then(|common| common.below(Path::new("objects"), walk::Make::No))
+        .ok()
+        .flatten()
+        .map_or(0, |objects| objects.bytes());
+    let most = theirs.saturating_mul(TIMES).saturating_add(git.copy_room());
+    most.saturating_sub(super::disk::bytes(&record.shared))
+}
+
+/// [`room`], after the copy was made small when it is full: what no known commit needs goes
+/// (a pack that a thread left besides the history that was asked for).
+///
+/// # Errors
+/// A [`GitError`] when the copy is full all the same: nothing more is brought.
+async fn left(git: &Git, (store, worktree): (&Git, &Worktree)) -> Result<u64, GitError> {
+    let free = room(git, worktree);
+    if free > 0 {
+        return Ok(free);
+    }
+    let shared = &worktree.record().shared;
+    for small in [
+        &["repack", "-a", "-d", "-q"][..],
+        &["prune", "--expire=now"],
+    ] {
+        store
+            .output(Run::new(shared, small).with_time(LONG))
+            .await?;
+    }
+    match room(git, worktree) {
+        0 => Err(failed(
+            "the copy of the history of this project reached the size that the project \
+             allows. Remove the worktrees of this project, then remove its copy; the next \
+             chat builds it again"
+                .to_owned(),
+        )),
+        free => Ok(free),
+    }
 }
 
 /// Has the thread bring the history of `commit` without the history of `known`, and checks
@@ -179,11 +233,11 @@ async fn brought(
     git: &Git,
     (store, worktree): (&Git, &Worktree),
     commit: &str,
-    known: &[&str],
+    (known, left): (&[&str], u64),
 ) -> Result<(), GitError> {
     let first: Result<(), GitError> = async {
         pack::make(git, worktree, (&[commit], known)).await?;
-        pack::take(store, worktree).await
+        pack::take(store, worktree, left).await
     }
     .await;
     if first.is_ok() && whole(store, worktree, commit, known).await {
@@ -193,7 +247,7 @@ async fn brought(
         return first.and(Err(forged()));
     }
     pack::make(git, worktree, (&[commit], &[])).await?;
-    pack::take(store, worktree).await?;
+    pack::take(store, worktree, left).await?;
     if whole(store, worktree, commit, &[]).await {
         Ok(())
     } else {

@@ -122,3 +122,116 @@ async fn a_pack_of_a_thread_never_takes_the_place_of_a_pack_of_the_copy() {
         "the new pack has a name of its own"
     );
 }
+
+/// An engine on the records of the bench whose copies can always have `room` bytes.
+fn engine_with_room(bench: &Bench, room: u64, as_thread: AsThread) -> crate::threads::git::Engine {
+    let records = bench.home.with_file_name("records");
+    let home = crate::threads::git::place::Home::at(&bench.home, &records).expect("a home");
+    let git = bench.git.clone().with_copy_room(room);
+    crate::threads::git::Engine::new(git, home).with_launcher(as_thread)
+}
+
+/// The copy of the project of the bench.
+fn copy_of(bench: &Bench) -> std::path::PathBuf {
+    let projects = bench.home.with_file_name("records").join("projects");
+    let all = std::fs::read_dir(projects).expect("the projects").flatten();
+    let copy = all
+        .map(|entry| entry.path())
+        .find(|path| path.extension().is_some_and(|kind| kind == "git"));
+    copy.expect("the copy")
+}
+
+/// Bytes that do not get smaller when they are packed.
+fn noise(bytes: usize) -> Vec<u8> {
+    let mut at = 0x2545_f491_4f6c_dd1d_u64;
+    let next = || {
+        at ^= at << 13;
+        at ^= at >> 7;
+        at ^= at << 17;
+        at.to_le_bytes()[0]
+    };
+    std::iter::repeat_with(next).take(bytes).collect()
+}
+
+/// Puts a large file with the name of a pack into each folder of a pack in `worktree`.
+fn enlarged(worktree: &std::path::Path) -> std::io::Result<()> {
+    let folders = std::fs::read_dir(worktree)?.flatten();
+    let of_a_pack = |out: &std::fs::DirEntry| {
+        let name = out.file_name();
+        name.to_string_lossy().starts_with(".anima-pack-")
+    };
+    for out in folders.filter(of_a_pack) {
+        std::fs::write(out.path().join("large.pack"), noise(4 * 1024 * 1024))?;
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_thread_that_leaves_more_than_the_copy_can_hold_brings_nothing() {
+    let bench = Bench::new().await;
+    // The run of the thread leaves a second, large file besides its pack.
+    let honest = as_the_person(None);
+    let greedy = AsThread::new(move |run| {
+        let (honest, dir) = (honest.clone(), run.dir.clone());
+        Box::pin(async move {
+            let ended = honest.start(run).await?;
+            enlarged(&dir)?;
+            Ok(ended)
+        })
+    });
+    let engine = engine_with_room(&bench, 64 * 1024, greedy);
+    let made = engine.worktree(bench.plan(THREAD)).await;
+    assert!(
+        matches!(&made, Err(GitRefusal::Failed { said }) if said.contains("can hold")),
+        "{made:?}"
+    );
+    let used = engine.disk().first().map_or(0, |used| used.bytes);
+    assert!(used < 1024 * 1024, "the copy took {used} bytes");
+    // With an honest run the same small copy takes the small project.
+    let engine = engine_with_room(&bench, 64 * 1024, as_the_person(None));
+    engine
+        .worktree(bench.plan(THREAD))
+        .await
+        .expect("a worktree");
+}
+
+#[tokio::test]
+async fn a_full_copy_is_made_small_and_refuses_only_when_that_does_not_help() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    let engine = engine_with_room(&bench, 64 * 1024, as_the_person(None));
+    let copy = copy_of(&bench);
+    let who = [
+        "-c",
+        "user.name=Agent",
+        "-c",
+        "user.email=a@example.invalid",
+    ];
+    let commit = |text: &'static str| {
+        std::fs::write(folder.join("a.txt"), text).expect("a file");
+        [&who[..], &["commit", "--quiet", "--all", "--message=agent"]].concat()
+    };
+    // An object in the copy that no known commit needs: it goes when the copy is full.
+    let loose = bench.home.with_file_name("loose.bin");
+    std::fs::write(&loose, noise(512 * 1024)).expect("a file");
+    let place = format!("--git-dir={}", copy.display());
+    let path = loose.to_string_lossy().into_owned();
+    let written = [place.as_str(), "hash-object", "-w", "--", path.as_str()];
+    bench.git_in(&bench.home, &written).await;
+    bench.git_in(&folder, &commit("second\n")).await;
+    let status = engine.call(PERSON, target(), GitAction::Status).await;
+    assert!(matches!(status, GitOutcome::Status(_)), "{status:?}");
+    let used = engine.disk()[0].bytes;
+    assert!(
+        used < 256 * 1024,
+        "the copy was not made small: {used} bytes"
+    );
+    // What cannot go: the copy stays full, and nothing more is brought.
+    std::fs::write(copy.join("kept.bin"), noise(512 * 1024)).expect("a file");
+    bench.git_in(&folder, &commit("third\n")).await;
+    let full = engine.call(PERSON, target(), GitAction::Status).await;
+    assert!(
+        matches!(refused(&full), Some(GitRefusal::Failed { said }) if said.contains("reached the size")),
+        "{full:?}"
+    );
+}

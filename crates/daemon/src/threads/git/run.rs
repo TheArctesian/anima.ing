@@ -94,6 +94,9 @@ pub struct Git {
     signs: bool,
     /// A push to a folder of this computer is allowed; only the tests have such a remote.
     local_remotes: bool,
+    /// The bytes that the checked copy of a project can hold besides three times the size of
+    /// the object store of the project (`place::shared::room`).
+    copy_room: u64,
     /// How a program is started with the rights of a thread ([`hooks::AsThread`]): the only
     /// way the repository of the person is read.
     as_thread: Option<hooks::AsThread>,
@@ -135,6 +138,7 @@ impl Git {
             hooks_off: Vec::new(),
             signs: false,
             local_remotes: false,
+            copy_room: super::place::shared::ROOM,
             as_thread: None,
             folder: None,
             bound: Vec::new(),
@@ -159,6 +163,21 @@ impl Git {
         quiet.hooks_off = settings::hooks_off(&found);
         quiet.signs = settings::signs(&found);
         Ok(quiet)
+    }
+
+    /// This `git` with a different size that the copy of a project can always have, for the
+    /// tests: their repositories are small.
+    #[cfg(test)]
+    #[must_use]
+    pub(super) const fn with_copy_room(mut self, bytes: u64) -> Self {
+        self.copy_room = bytes;
+        self
+    }
+
+    /// The bytes that the copy of a project can always have.
+    #[must_use]
+    pub const fn copy_room(&self) -> u64 {
+        self.copy_room
     }
 
     /// This `git` with the way to start a program as the agent of a thread is started.

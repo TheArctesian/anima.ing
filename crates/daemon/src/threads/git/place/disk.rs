@@ -35,7 +35,7 @@ pub fn name(shared: &Path, project: &Path) -> std::io::Result<()> {
 }
 
 /// The bytes of each file below `folder`; a link is counted as a link, never followed.
-fn bytes(folder: &Path) -> u64 {
+pub(super) fn bytes(folder: &Path) -> u64 {
     let Ok(listed) = std::fs::read_dir(folder) else {
         return 0;
     };

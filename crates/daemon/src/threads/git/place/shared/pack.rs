@@ -161,31 +161,49 @@ pub async fn make(
 /// pack gets the name that `git` gives it from its bytes: a pack of a thread never has the
 /// name of a pack that is there, unless it is the same pack.
 ///
+/// At most `left` bytes are taken: what a thread leaves is not copied without end.
+///
 /// # Errors
-/// A [`GitError`] when a pack cannot be copied or is no pack.
-pub async fn take(store: &Git, worktree: &Worktree) -> Result<(), GitError> {
+/// A [`GitError`] when a pack cannot be copied, is no pack, or the packs are larger than
+/// `left`.
+pub async fn take(store: &Git, worktree: &Worktree, left: u64) -> Result<(), GitError> {
     let record = worktree.record();
     let name = folder(worktree);
     let incoming = format!("incoming-{}", worktree.thread().as_simple());
     let incoming = super::super::own::fresh(&record.shared, &incoming)?;
     let copied = (|| {
+        use std::io::Read as _;
         let top = Dir::open(worktree.folder())?;
         let mut packs = Vec::new();
+        let mut left = left;
         if let Some(out) = top.below(Path::new(&name), Make::No)? {
             for name in out.names()?.into_iter().take(MOST_PACKS) {
                 let is_pack = Path::new(&name).extension() == Some(OsStr::new("pack"));
-                let Some(mut found) = out.file(&name)?.filter(|_| is_pack) else {
+                let Some(found) = out.file(&name)?.filter(|_| is_pack) else {
                     continue;
                 };
                 // The name in the folder of the runner is one that the runner chose.
                 let copy = incoming.join(format!("in-{}.pack", packs.len()));
-                std::io::copy(&mut found, &mut std::fs::File::create(&copy)?)?;
+                // One byte more than what is left shows a pack that is too large.
+                let mut found = found.take(left.saturating_add(1));
+                let taken = std::io::copy(&mut found, &mut std::fs::File::create(&copy)?)?;
+                left = left.checked_sub(taken).ok_or_else(|| {
+                    std::io::Error::other(
+                        "the thread left more than the copy of this project can hold",
+                    )
+                })?;
                 packs.push(copy);
             }
         }
-        top.remove_all(&name)?;
         Ok::<_, std::io::Error>(packs)
     })();
+    // The folder of the thread and, when the copy failed, what was copied so far both go.
+    if let Ok(top) = Dir::open(worktree.folder()) {
+        let _ = top.remove_all(&name);
+    }
+    if copied.is_err() {
+        let _ = std::fs::remove_dir_all(&incoming);
+    }
     for pack in copied.map_err(GitError::Files)? {
         let index: [&OsStr; 2] = ["index-pack".as_ref(), pack.as_os_str()];
         let index = Run::new(&record.shared, index).with_time(LONG);
