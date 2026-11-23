@@ -56,7 +56,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-160 | A crash or a stall of the child fetch process is reported as `fetch_failed`, and a source that does not answer as `source_failed` (R-406) | A daemon of this build in a test folder on the Mac, and a network that a person can cut | Open |
 | HT-121 | The hardware values of the Mac and of the Linux PC `pop-os` agree with what each system shows | A hub and a daemon of this build on both computers | Open |
 | HT-120 | The model work of the daemon installs `llama-server`, starts it on loopback, supervises it and stops it on the Mac and on `pop-os` | A test hub that gives model items, and a daemon of this build in a test folder on both computers | Open |
-| HT-119 | The cgroup of each model server on `pop-os`: a child that leaves its session is seen and ended, and a start with no delegated cgroup fails | `pop-os` with a daemon of this build in a test folder, run by its systemd user unit, which has `Delegate=yes` (R-334) | Open |
+| HT-119 | The cgroup of each model server on `pop-os`: a child that leaves its session is seen and ended, and a start with no delegated cgroup fails | `pop-os` with a daemon of this build in a test folder, run by its systemd user unit, which has `Delegate=yes` (R-334) | Passed |
 | HT-007 | The pinned Rust version on the Linux computer | The Linux development computer | Open |
 | HT-008 | A macOS release build with the pinned Rust version | A Mac builder | Open |
 | HT-010 | Merge a pull request, and a set of pull requests, on GitHub | A GitHub repository that is safe to change, GitHub on the hosted hub, and a sign-in of the command line (OD-25) | Open |
@@ -457,7 +457,18 @@ that holds its cgroup (DEF-013).
    when the unit file differs from the unit that this version renders (task U6 of the update plan owns the
    update of the daemon).
 
-Result: Open.
+Result: Passed (operator, 2026-11-22: "Passed, layers to L1-8"), on `pop-os` (Pop!_OS 24.04, kernel 7.2.15,
+systemd 255, NVIDIA RTX A5000). Steps 1 to 5, 7, 8 and 9a to 9e gave the expected result: the agent run of
+2026-11-21 and the run on `dev` 2d24b1269 of 2026-11-22. In the first run, step 4 started the server without
+`Delegate=yes`. The run on 2d24b1269, with DEF-013, gave `containment_failed` and `no_delegation`. Steps 6 and 9:
+the operator ran `anima-daemon install` of `dev` 2d24b1269 on 2026-11-22, and `systemctl --user show anima-daemon
+-p Delegate` gave `Delegate=yes`. Step 8: `pids.max` is not there, because the unit enables no controller (the L1-6
+row says so). Step 9d values: no `kernel.apparmor_restrict_unprivileged_userns`, no
+`kernel.unprivileged_userns_clone`, `user.max_user_namespaces` 384318, AppArmor enabled. Step 9f, NVIDIA only:
+`/dev/nvidia0`, `/dev/nvidiactl`, `/dev/nvidia-modeset` and `/dev/dri/renderD128` were open in the runtime.
+The layers on the GPU were not seen, because no model can be loaded before `model_load`. The operator moved
+that part, and the ROCm machine, to the human check of task L1-8 of
+[compute-plan.md](plans/compute-plan.md).
 
 ### HT-120: the model work of the daemon on the Mac and on `pop-os`
 
