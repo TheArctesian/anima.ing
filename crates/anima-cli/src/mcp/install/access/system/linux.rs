@@ -27,12 +27,13 @@ const LISTED: [&str; 2] = ["files", "systemd"];
 
 pub(super) fn members(group: &Group) -> Option<Vec<Member>> {
     // The private group of an account (its number, its name and its own group), as each user has
-    // on the usual systems: a directory service gives it no member that only the administrator
-    // of the directory could not also give as an account of the same number.
-    let private = User::from_uid(Uid::from_raw(group.gid.as_raw()))
+    // on the usual systems, is read also with a directory service: only the administrator of the
+    // directory, or of the group, can give it a member that `getent` does not list.
+    let owner = User::from_uid(Uid::from_raw(group.gid.as_raw()))
         .ok()
         .flatten()
-        .is_some_and(|user| user.name == group.name && user.gid == group.gid);
+        .filter(|user| user.name == group.name && user.gid == group.gid);
+    let private = owner.is_some();
     // With no such file (as with musl), the system reads only its files.
     match fs::read_to_string(NSSWITCH) {
         Ok(text) => (private || local_only(&text)).then_some(())?,
@@ -46,6 +47,11 @@ pub(super) fn members(group: &Group) -> Option<Vec<Member>> {
     let number = group.gid.as_raw();
     let mut members = by_name(entries(&ask(getent, &["group"])?, number)?)?;
     members.extend(passwd(&ask(getent, &["passwd"])?, number)?);
+    // The account whose private group it is, also when `getent passwd` does not list it.
+    members.extend(owner.map(|user| Member {
+        name: user.name,
+        uid: Some(user.uid.as_raw()),
+    }));
     Some(members)
 }
 
@@ -55,7 +61,12 @@ pub(in super::super) fn local_only(text: &str) -> bool {
     let lines = |database: &str| -> Vec<&str> {
         text.lines()
             .map(|line| line.split('#').next().unwrap_or_default().trim())
-            .filter_map(|line| line.strip_prefix(database)?.trim_start().strip_prefix(':'))
+            .filter_map(|line| {
+                // glibc ends the name of the database at a colon or a blank.
+                let rest = line.strip_prefix(database)?;
+                rest.starts_with([':', ' ', '\t'])
+                    .then(|| rest.trim_start().trim_start_matches(':'))
+            })
             .collect()
     };
     let listed = |line: &&str| {

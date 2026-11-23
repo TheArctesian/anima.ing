@@ -1,5 +1,5 @@
-//! Runs an agent's own program (MCP-035): fixed arguments, no shell, the home folder, the `PATH`
-//! that was checked, a time limit.
+//! Runs an agent's own program (MCP-035): fixed arguments, no shell, the home folder, the folders
+//! of `PATH` that the check accepted, a time limit.
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -40,9 +40,14 @@ pub(super) fn run(here: &Here, name: &str, arguments: &[String]) -> Ran {
         Found::Replaceable { program, others } => return Ran::Replaceable { program, others },
         Found::Missing => return Ran::Missing,
     };
-    // The `PATH` that the check read: a script that starts `env node` finds the `node` that was
-    // checked, also when the caller (the desktop application) has a different `PATH`.
-    let Ok(path) = std::env::join_paths(&here.path) else {
+    // Only the folders of `PATH` that the check accepted: a script that starts `env node` finds
+    // the `node` that was checked, and a program that the agent starts by name comes from them,
+    // also when the caller (the desktop application) has a different `PATH`.
+    #[cfg(unix)]
+    let folders = super::script::folders(here);
+    #[cfg(windows)]
+    let folders = here.path.clone();
+    let Ok(path) = std::env::join_paths(&folders) else {
         return Ran::Failed;
     };
     let mut command = Command::new(program);

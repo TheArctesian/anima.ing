@@ -1075,9 +1075,9 @@ library (CMD-030: the command line first).
   secret. It does not read or parse the agent's file. The program gets the check of MCP-033, and so
   does the interpreter that a script names on its first line; for `env`, each folder of `PATH` that
   `env` looks in until it finds the program; an option of `env` or a `PATH=` that changes which
-  program `env` finds fails the check. In each folder that `env` looks in, up to the program that
-  it runs, no user other than the person and root may make an entry (the sticky bit does not stop
-  that). The program runs with that `PATH`. A program that fails
+  program `env` finds fails the check. The program runs with only the folders of `PATH` in which no
+  user other than the person and root can replace a program or make one (the sticky bit does not
+  stop that); `env` looks only there. A program that fails
   the check is not run: the list names who can change it and gives the command that the person can
   run themselves.
 - **MCP-036.** `uninstall` removes only an entry that is `set_up`: one that starts the `anima` of
@@ -1232,7 +1232,8 @@ What the check reads, before and after:
 | A part of root that root's group, or on macOS the group `admin`, can write | Fixed | Fixed, as before (12.7, row 1) |
 | A different owner (not the person or root), a write bit for each user | Counts | Counts, as before |
 | The program on `PATH` and what it links to | The path and the folders above it, and the real file and the folders above it | Each link of the chain, also a link inside a link, the real file, and the folders above each of them |
-| A script | Not read | The interpreter of its first line, and for `env` each folder of `PATH` that `env` looks in until it finds the program, and that program: the first file of that name that the person can run, each entry of that name before it, and in each of those folders who can make an entry, also with the sticky bit; up to four scripts that start one another. A script that cannot be read, an option of `env` other than `-S` and `-v`, a `PATH=`, a quote, an escape or a variable before the program, and a program that `env` does not find count as not known |
+| A script | Not read | The interpreter of its first line, and for `env` each folder of `PATH` that `env` looks in until it finds the program, and that program: the first file of that name that the person can run, and each entry of that name, in the folders of `PATH` that the program runs with; up to four scripts that start one another. An interpreter that is not a file that the person can run, a script that cannot be read, a line with a blank other than a space or a tab or with a control character, on Linux more than one word after `env` without `-S`, an option of `env` other than `-S` and `-v`, a `PATH=`, a quote, an escape or a variable before the program, and a program that `env` does not find count as not known |
+| The `PATH` that the program runs with | The `PATH` of the caller | Only the folders in which no user other than the person and root can replace a program or make one, also with the sticky bit; a folder that is not there counts by the nearest folder above it. The others are left out, not refused (as the folders under `/var/run` that macOS puts on each login `PATH`) |
 | The programs that read the members | | `/usr/bin/dscl` and `getent` from a fixed path, only when no user but root can change them, with no environment but `LC_ALL=C`. A program, also an agent's, that runs past its time is stopped, and its output is not waited for past the limit |
 
 When the check refuses, the row says which part, who can change it (the owner, each user, the group
@@ -1240,9 +1241,13 @@ and its other member, or a group whose members could not be read) and what the p
 themselves: the command of the agent's own program, or the member to add to the file.
 
 What it does not cover: a group administrator or a group password of `/etc/gshadow`, which only
-root can read and set; a library or a module that a program loads when it runs, and a program that
-it starts by name from a folder of `PATH` after the one that `env` runs; access lists on Linux and
-macOS; a part that changes between the check and the run.
+root can read and set, and a member of the private group of the person that a directory service
+gives and `getent` does not list; a library or a module that a program loads when it runs; on
+Linux, a program whose loader is not there, after which `env` goes on to the next entry of the
+name without its interpreter being read; access lists on Linux and macOS; a part that changes
+between the check and the run. The account database is read with no time limit of its own
+(`getgrgid`, `getpwuid`); a program that a stopped agent's program started (as the native program
+that the `codex` of npm starts) is not stopped.
 
 A reviewer that did not write the code read the change (`b10e185f`) and changed no file. It found
 nothing High. It found sound: each source of a member that fails, or a text that cannot be read, gives
@@ -1276,3 +1281,15 @@ answered, and these new findings:
 | 4 | Low. A line of `nsswitch.conf` that comes again counts, and `initgroups` was not read | Corrected: a database named twice, or `initgroups` with a different source, gives unread |
 | 5 | Low. Only the interpreter of the first entry with an execute bit was followed | Corrected with row 4 above: the entry that the person can run is followed |
 | 6 | Low. A process group of its own keeps Ctrl-C from the agent's program, and stops a helper of a program that ended | Corrected: no process group of its own; the output is not waited for past the limit. A program that ended but left its output open past the limit still counts as failed, which is the safe reading |
+
+A different reviewer, new to the change, then read only those corrections (`39f9e533`). It found
+nothing High, found the check of each folder that `env` looks in sound, and found these:
+
+| # | Finding | Done |
+| --- | --- | --- |
+| 1 | Medium. The private group of a different account was read with a directory service: without enumeration, `getent` does not list that account, so the group of a directory user `bob` had no member | Corrected: the account whose private group it is counts as a member, found by its number |
+| 2 | Medium. With only the folders that `env` looks in checked, the agent's program ran with the whole `PATH`: a program that it or a server that it starts (`npx`, `uvx`) finds by name came from a folder that was not checked | Corrected: the program runs with only the folders of `PATH` that pass the check, and `env` is read over the same folders. A folder that a different user can write is left out, not refused |
+| 3 | Low. `env` goes on to the next folder when the program that it found does not start (its interpreter cannot be run, or is a folder), to an entry that was not read | Corrected: each interpreter must be a file that the person can run, and each entry of the name in the folders of `PATH` is checked. The loader of Linux is not read (the limits above) |
+| 4 | Low. The kernel splits the first line only at spaces and tabs, and Linux gives `env` the rest of the line as one word: a line of Windows (`\r`) or `node --flag` made `env` look for a different name | Corrected: such a line counts as not known |
+| 5 | Low. glibc also reads `passwd files sss`, with a blank in place of the colon | Corrected: such a line counts |
+| 6 | Low. The account database has no time limit of its own; a program that a stopped program started lives on | Answered: written in the limits above |

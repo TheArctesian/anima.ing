@@ -106,18 +106,17 @@ fn mcp_033_the_interpreter_that_a_script_names_and_the_path_that_env_searches_ar
     assert_eq!(problem(&install(&here, &anima, "codex"), "codex"), "");
     assert!(ran.exists(), "the interpreter did not run");
     fs::remove_file(&ran).expect("reset");
-    // A folder of `PATH` before the interpreter that each user can write: a different user could
-    // put a `fake-node` there.
+    // A folder of `PATH` before the interpreter that each user can write, where a different user
+    // put a `fake-node`: it is left out of the `PATH` that the program gets.
     let open = here.home.join("open");
     fs::create_dir(&open).expect("folder");
     fs::set_permissions(&open, fs::Permissions::from_mode(0o777)).expect("mode");
+    let planted = here.home.join("planted");
+    script(&open, "fake-node", &format!(": > {}", planted.display()));
     here.path.insert(1, open.clone());
-    let refused = problem(&install(&here, &anima, "codex"), "codex");
-    assert!(
-        refused.contains(&format!("{} can be changed by each user", open.display())),
-        "{refused}"
-    );
-    assert!(!ran.exists(), "the interpreter ran");
+    assert_eq!(problem(&install(&here, &anima, "codex"), "codex"), "");
+    assert!(ran.exists() && !planted.exists(), "the planted program ran");
+    fs::remove_file(&ran).expect("reset");
     // An option or a `PATH` that makes `env` look elsewhere: who can change that is not known.
     here.path.remove(1);
     for line in [
@@ -127,6 +126,8 @@ fn mcp_033_the_interpreter_that_a_script_names_and_the_path_that_env_searches_ar
         "-i fake-node",
         "-S 'fake-node'",
         "missing-node",
+        // A line of Windows: `env` looks for `fake-node\r`.
+        "fake-node\r",
     ] {
         fs::write(bin.join("codex"), format!("#!/usr/bin/env {line}\n")).expect("script");
         let refused = problem(&install(&here, &anima, "codex"), "codex");
@@ -140,11 +141,10 @@ fn mcp_033_the_interpreter_that_a_script_names_and_the_path_that_env_searches_ar
     fs::write(bin.join("codex"), "#!/usr/bin/env -S fake-node --flag\n").expect("script");
     fs::set_permissions(bin.join("codex"), fs::Permissions::from_mode(0o755)).expect("mode");
     assert_eq!(problem(&install(&here, &anima, "codex"), "codex"), "");
-    // The interpreter's own folder.
+    // The interpreter's own folder: left out, so that `env` finds no `fake-node`.
     fs::set_permissions(&tools, fs::Permissions::from_mode(0o777)).expect("mode");
-    assert!(
-        problem(&install(&here, &anima, "codex"), "codex").contains("can be changed by each user")
-    );
+    let refused = problem(&install(&here, &anima, "codex"), "codex");
+    assert!(refused.contains("fake-node cannot be checked"), "{refused}");
 }
 
 #[test]
@@ -176,7 +176,7 @@ fn r_exactgroup_a_refused_file_names_who_and_the_member_to_add_by_hand() {
 }
 
 #[test]
-fn mcp_035_env_runs_the_first_program_the_person_can_run_and_each_folder_before_it_is_checked() {
+fn mcp_035_the_program_runs_with_only_the_folders_of_path_that_no_other_user_can_write() {
     let (_home, mut here, anima) = computer();
     let ran = here.home.join("ran");
     let tools = here.home.join("tools");
@@ -184,29 +184,41 @@ fn mcp_035_env_runs_the_first_program_the_person_can_run_and_each_folder_before_
     for folder in [&tools, &skipped] {
         fs::create_dir(folder).expect("folder");
     }
-    script(&tools, "fake-node", &format!(": > {}", ran.display()));
+    // The interpreter writes the `PATH` that it gets.
+    script(
+        &tools,
+        "fake-node",
+        &format!("echo \"$PATH\" > {}", ran.display()),
+    );
     // An entry that the person cannot run: `env` goes on to the next folder.
     fs::write(skipped.join("fake-node"), "#!/bin/sh\n").expect("file");
     let bin = here.path[0].clone();
     fs::write(bin.join("codex"), "#!/usr/bin/env fake-node\n").expect("script");
     fs::set_permissions(bin.join("codex"), fs::Permissions::from_mode(0o755)).expect("mode");
-    // A folder with the sticky bit that each user can write: it holds nothing yet, but a
-    // different user could make the folder that `PATH` names in it, and a `fake-node` there.
+    // A folder with the sticky bit that each user can write, which holds nothing yet: a different
+    // user could make the folder that `PATH` names in it, and a `fake-node` there. As the folders
+    // under `/var/run` that macOS puts on each login `PATH`, it is left out, not refused.
     let sticky = here.home.join("sticky");
     fs::create_dir(&sticky).expect("folder");
     fs::set_permissions(&sticky, fs::Permissions::from_mode(0o1777)).expect("mode");
     here.path
-        .extend([skipped, sticky.join("not-yet/bin"), tools]);
-    let refused = problem(&install(&here, &anima, "codex"), "codex");
-    assert!(
-        refused.contains(&format!("{} can be changed by each user", sticky.display())),
-        "{refused}"
-    );
-    assert!(!ran.exists(), "the interpreter ran");
-    // After the program that `env` runs, a folder of `PATH` is not one that `env` looks in: macOS
-    // puts folders under `/var/run`, which the group `daemon` can write, on each login `PATH`.
-    let sticky = here.path.remove(2);
-    here.path.push(sticky);
+        .extend([skipped.clone(), sticky.join("not-yet/bin"), tools.clone()]);
     assert_eq!(problem(&install(&here, &anima, "codex"), "codex"), "");
-    assert!(ran.exists(), "the interpreter did not run");
+    let path = fs::read_to_string(&ran).expect("the interpreter ran");
+    let checked = std::env::join_paths([bin, skipped.clone(), tools]).expect("a PATH");
+    assert_eq!(path.trim_end(), checked.to_string_lossy());
+    // An entry whose interpreter the person cannot run: `env` would go on to the next folder.
+    fs::remove_file(&ran).expect("reset");
+    let plain = here.home.join("plain");
+    fs::write(&plain, "").expect("file");
+    fs::write(
+        skipped.join("fake-node"),
+        format!("#!{}\n", plain.display()),
+    )
+    .expect("script");
+    fs::set_permissions(skipped.join("fake-node"), fs::Permissions::from_mode(0o755))
+        .expect("mode");
+    let refused = problem(&install(&here, &anima, "codex"), "codex");
+    assert!(refused.contains("cannot be checked"), "{refused}");
+    assert!(!ran.exists(), "the interpreter ran");
 }
