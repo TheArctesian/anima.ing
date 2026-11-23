@@ -2,7 +2,9 @@
 
 Status: **accepted** (R-344, operator, 2026-11-22: "all of it review after"; version 0.3 as written). The security review
 SEC-C-012 still runs, after the acceptance and beside the build; SF-298 and SF-300 stay Open until code closes them or the
-operator accepts them ([security-findings.md](../../docs/security-findings.md)). Version 0.3,
+operator accepts them ([security-findings.md](../../docs/security-findings.md)). Version 0.4,
+2026-11-23 (version 0.4 takes R-387: a relative symbolic link to a regular file of the same archive
+is unpacked as a copy of that file, Section 6). Version 0.3,
 2026-11-20 (version 0.3 takes the answers of the operator to OD-C22 to OD-C25: R-346,
 R-339, R-342, R-326; each stricter form is a setting at the machine,
 Section 10.1. Version 0.1, 2026-11-20, was the text of the first security read; version 0.2 has the corrections of
@@ -279,16 +281,24 @@ server before it exits; the daemon takes an exit code as the launcher's only whe
   GitHub, a broad list) is not (SEC-C-012, SF-363).
 - The archive is a `.tar.gz` (or `.tgz`) or a `.zip`, by the end of the path of its address; another form is
   `runtime_not_configured` (R-329). Each rule of the unpack below applies to both forms in the same way;
-  a `.zip` entry that is a symbolic link, or that is encrypted, is refused, and the declared size of an entry
-  counts in the limit before a byte is read. A break of a rule fails the item with `archive_rejected`.
+  a `.zip` entry that is encrypted is refused, a `.zip` entry is a symbolic link when its Unix type bits say so
+  (its bytes are the target, at most 4096 bytes), and the declared size of an entry counts in the limit before a
+  byte is read. A break of a rule fails the item with `archive_rejected`.
 - The daemon downloads the archive with the fetch process and verifies the SHA-256 before it opens the archive.
   It unpacks it into a new temporary folder, then renames that folder to `runtimes/<runtime>/<version>-<backend>/`
-  of its runtime folder (Section 10). It accepts only regular files and folders: it refuses an entry that is a
-  symbolic link, a hard link, a device, a FIFO, an absolute path or a path with `..`, an entry whose name has a
-  character outside ASCII (two names can be equal after Unicode normalisation on APFS; SEC-C-012, SF-362),
-  and two entries whose names are equal when they are in lower case. It sets the mode of each folder and of each program file to 0755 and of
+  of its runtime folder (Section 10). It accepts only regular files, folders and the symbolic links of the next
+  item: it refuses an entry that is a hard link, a device, a FIFO, an absolute path or a path with `..`, an entry
+  whose name has a character outside ASCII (two names can be equal after Unicode normalisation on APFS; SEC-C-012,
+  SF-362), and two entries whose names are equal when they are in lower case. It sets the mode of each folder and of each program file to 0755 and of
   each other file to 0644; it clears each setuid, setgid and sticky bit. It stops at 8 GiB of unpacked bytes or at
   50,000 entries (`limit_disk`).
+- A symbolic link is accepted only when its target is relative and names, from the folder of the link, a regular
+  file of the same archive, directly or through other such links (at most 8 steps). `..` in a target is accepted
+  only while the path stays in the archive. The daemon writes a copy of that file in the place of the link, with
+  the mode of that file, after the last entry; the folder of the runtime holds no link. The bytes of each copy
+  count in the limit of 8 GiB. A link that is absolute, that leaves the archive, that names a folder or nothing,
+  or that is in a loop is refused (R-387). Reason: each upstream `llama.cpp` release for Linux holds
+  such links (`libllama.so -> libllama.so.1`).
 - The daemon program holds the lowest version of each runtime that it accepts, and a list of versions with a
   published advisory (SEC-C-005). It refuses a lower version (`runtime_too_old`) and a listed version
   (`runtime_advisory`). Only a signed release of the daemon (K8 Section 8) changes the two lists; the
