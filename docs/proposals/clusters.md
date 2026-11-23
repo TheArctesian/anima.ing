@@ -1,17 +1,17 @@
 ---
 kind: Proposal
 state: Draft
-evidence: Version 1.2 (2026-11-22): R-NEW-clustermembers decides OD-CLU1 (B: a machine can be in several clusters); CLU-001, CLU-012, CLU-014 and CLU-015 follow it. Version 1 (2026-11-22). From R-NEW-hostingsections: "oh okay then clusters now" (relayed by the side conversation of the orchestrating session). No requirement of this document is approved and no code exists. The open decisions are OD-CLU2 to OD-CLU5.
+evidence: Version 1.3 (2026-11-22): R-NEW-clusterrestart decides OD-CLU2 (B: placement and restart on a different member); Section 7 designs the restart (CLU-016 to CLU-030), with OD-CLU6 to OD-CLU8. Version 1.2 (2026-11-22): R-NEW-clustermembers decides OD-CLU1 (B: a machine can be in several clusters); CLU-001, CLU-012, CLU-014 and CLU-015 follow it. Version 1 (2026-11-22). From R-NEW-hostingsections: "oh okay then clusters now" (relayed by the side conversation of the orchestrating session). No requirement of this document is approved and no code exists. The open decisions are OD-CLU3 to OD-CLU8.
 ---
 
 # Proposal: clusters of machines as a place to run things
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this proposal (PLN-005).
 
-Version: 1.2. Date: 2026-11-22. Version 1.2 writes the answer to OD-CLU1 (R-NEW-clustermembers). Version 1.1 (2026-11-22). Version 1.1 says for each level whether a daemon acts for other machines and so whether K11 changes (CLU-013), at the request of the model service session.
+Version: 1.3. Date: 2026-11-22. Version 1.3 writes the answer to OD-CLU2 (R-NEW-clusterrestart) and designs the restart in Section 7. Version 1.2 writes the answer to OD-CLU1 (R-NEW-clustermembers). Version 1.1 (2026-11-22). Version 1.1 says for each level whether a daemon acts for other machines and so whether K11 changes (CLU-013), at the request of the model service session.
 Status: the header of this document holds the state (PLN-020).
 Map: [work-plan.md](../work-plan.md), category Use, row 4.9 of the [priority order](../plan/priorities.md) (hosted applications). It changes HOST-052 of [hosted-applications-plan.md](../plans/hosted-applications-plan.md) when it is approved, and it is shown in the sections Applications, Models and Machines of [hosting-section.md](hosting-section.md).
-Identifiers: CLU-001 to CLU-015, OD-CLU1 to OD-CLU5.
+Identifiers: CLU-001 to CLU-030, OD-CLU1 to OD-CLU8.
 
 ## 1. What the operator decided
 
@@ -51,7 +51,7 @@ Does a daemon act for other machines? This decides whether the contract of model
 
 - **CLU-013.** At levels (a) and (b), the hub chooses and acts across the machines of a cluster, and each daemon acts only for its own machine. No daemon acts for another machine before Level 2 of the compute plan, and then only through a new version of K11.
 
-- **CLU-004.** Anima builds level (a) first (OD-CLU2). Level (b) is a later step for each kind of thing, and only for a thing whose data can follow it. Level (c) is not built for applications; for models it stays Level 2 of the compute plan.
+- **CLU-004.** Anima builds level (b): placement, and a restart on a different member when a machine goes away (R-NEW-clusterrestart). Placement (level a, CLU-012) is built first and the restart on it (the reading of the orchestrating session, not confirmed by the operator). The restart is for a thing whose data has a copy that is new enough (Section 7). Level (c) is not built for applications; for models it stays Level 2 of the compute plan.
 
 ## 4. Build it, or drive an existing engine
 
@@ -82,11 +82,57 @@ The main point: each engine moves the power to run anything on a machine from th
 
 ## 6. The smallest first step that is useful by itself
 
-- **CLU-012.** Clusters as named groups, and placement only: when you install from the catalogue or start a model, you can pick a cluster, and Anima picks the member with the most room at that moment that can run it (CLU-014) and says which one it picked. No move and no restart. It is useful at once (you no longer choose a machine), it changes no machine program, and each later level builds on it.
+- **CLU-012.** Clusters as named groups, and placement only: when you install from the catalogue or start a model, you can pick a cluster, and Anima picks the member with the most room at that moment that can run it (CLU-014) and says which one it picked. No move and no restart in this first step; the restart of Section 7 comes next. It is useful at once (you no longer choose a machine), it changes no machine program, and each later level builds on it.
 
 It waits for the record of the applications with their machine (task H6) and for the install of stage 2.
 
-## 7. Owners
+## 7. Restart on a different member (level b)
+
+This section is the design of R-NEW-clusterrestart. A thing that restarts is called a "thing with restart on". A person turns restart on for each thing placed on a cluster; a thing with no data can always restart.
+
+### 7.1 The copies of the data, before a failure
+
+- **CLU-016.** A thing with restart on has one standby member: a different member of its cluster, chosen at the placement as the member with the most room after the first (CLU-014). The standby keeps a copy of each volume of the thing. The standby runs nothing of the thing.
+- **CLU-017.** The hub asks for a new copy at a fixed interval. The daemon of the running member sends the changes of each volume since the last copy to the daemon of the standby, through the link; each daemon acts only for its own machine (CLU-013). A copy is complete only when the standby has all of it; an incomplete copy never replaces the last complete one.
+- **CLU-018.** A copy must be consistent, or a database restarts on broken files. The entry of the catalogue says how its data is copied:
+  - files: the volume is copied as it is (an application that keeps no open database);
+  - pause: the containers are paused for the copy, then go on (a short stop at each copy);
+  - dump: a command of the entry writes a consistent dump (for example `pg_dump` for PostgreSQL), and the dump is copied.
+  An entry with a database and no way to copy is not offered restart. A plain container that is not from the catalogue uses pause.
+- **CLU-019.** Each copy has a number and the time it was complete. The thing shows how old its last complete copy is. The person sets how old the copy may be at most (from 5 minutes to 24 hours; the default is OD-CLU6). The interval of the copies is half of that.
+- **CLU-020.** A model with restart on needs no copy of data: the standby must have the model downloaded and validated (CMP-006). The model service session owns this.
+
+### 7.2 One copy running, never two
+
+Each member keeps its own volumes, so two copies of a thing never write to the same files. The harm of two copies is different: the old one goes on working (it sends mail, answers a bot, takes writes) and what it does is lost, and a route can send traffic to it. The guard has three parts.
+
+- **CLU-021. A lease.** The running member holds a lease for each thing with restart on, from the hub. The daemon renews it every 30 seconds. The applications program on the member stops the thing when the lease ends and the member has reached neither the hub nor any other member of the cluster for the length of the lease (the default is 2 minutes). So a member that is cut off from everything stops its things by itself. A member that is cut off only from the hub, while it still reaches other members, keeps running: that is a fault of the hub or of its path, not of the member (CLU-024).
+- **CLU-022. A number for each start.** Each start of a thing has a number, one more than the start before. The hub gives the new member the new number. The routes of the thing go to the member with the newest number only (CLU-006), so the old member gets no traffic through the hub from the moment of the restart.
+- **CLU-023. When the old machine comes back.** Its daemon reports its things with their numbers. A thing with an old number is not started again: the containers of a thing with restart on have no restart policy of the engine of their own, so the engine does not start them by itself. The thing shows "Moved to <member> at <time>". Its old volumes are kept, not merged: what the old copy did after the last complete copy is shown as lost, with the time span. The person can remove the old volumes or make the old member the new standby; then a full copy is made from the running member.
+
+### 7.3 When a machine is gone
+
+- **CLU-024.** The hub takes a member as gone when, for the time to wait (the default is OD-CLU7, at least 3 times the lease):
+  - the hub has had no report from its daemon; and
+  - no other member of the cluster reaches it through the link.
+  Both are needed: a member that the hub cannot reach but that other members reach is not gone, and nothing restarts.
+- **CLU-025.** A member that says it goes away (a shut down or a restart from Anima, an update of the system) is moved before it goes: the thing stops, a last copy is made, and it starts on the standby with no loss. A planned restart of the machine shorter than the time to wait needs no move.
+- **CLU-026.** False alarms are counted: a restart after which the old member came back within the time to wait plus 10 minutes is shown in the section Machines, with a hint to make the wait longer. A laptop that sleeps is a member that goes away often: the section Machines says so, and a laptop is offered as a standby, not as the member that runs a thing with restart on.
+
+### 7.4 A thing with no copy that is new enough
+
+- **CLU-027.** When its member is gone, a thing restarts on its standby only if the last complete copy is not older than the person allowed (CLU-019) and the standby has the room (CLU-014). If the standby cannot take it, the hub tries each other member that has a complete copy, newest first.
+- **CLU-028.** Otherwise the thing stays down and says why, for example "Down: pop-os is gone since 14:10. The last copy is from 13:20, older than the 15 minutes that you allowed." The actions: wait for the machine, or start it from the old copy and accept the loss. Only a person starts from an old copy (OD-CLU8). A thing with no data restarts on any member with the room.
+
+### 7.5 A machine in several clusters
+
+- **CLU-029.** A thing is placed on one cluster, its place. When a machine that is in two clusters goes away, each thing on it follows the rule of its own place: the time to wait, the standby and the members it may restart on are those of the cluster on which it was placed. The things restart one after the other, each with the room check of CLU-014, in the order that the person set for them, then the oldest placement first.
+
+### 7.6 What the rest sees
+
+- **CLU-030.** A restart is done by the hub, not by a caller, so the rules for callers (R-384) do not apply to it; each restart writes one audit entry with the old member, the new member, the age of the copy and the span that was lost. A public route waits for the consent of the new member, as OD-CLU4 decides. The model address finds the model on its new member (CLU-008). K11 does not change: each daemon acts only for its own machine (CLU-013).
+
+## 8. Owners
 
 | Part | Owner |
 | --- | --- |
@@ -95,12 +141,15 @@ It waits for the record of the applications with their machine (task H6) and for
 | What a machine reports about its room, how a machine joins and agrees at the machine, the machine of the spare-computer image | The OS stream ([spare-computer-os.md](spare-computer-os.md)) |
 | The screens: the section Machines and the choice of a place | The hosted applications plan for the content, the UI session for the shell (HSE-001) |
 
-## 8. Open decisions
+## 9. Open decisions
 
 | ID | Question | Recommendation |
 | --- | --- | --- |
 | OD-CLU1 | What is a cluster? A: a named group of your machines that you treat as one place to run things; a machine is in one cluster at most. B: the same, but a machine can be in several clusters. | Decided (R-NEW-clustermembers): B, several clusters. The recommendation was A. The room of a machine counts in each of its clusters and is checked on the machine at each placement (CLU-014). |
-| OD-CLU2 | How much does "run on a cluster" do? A: placement only, with a move by hand (level a). B: A, and a restart on a different machine by itself when a machine goes away (level b). C: B, and one thing on several machines at once (level c). | A now. B needs the data to follow the thing (copies of volumes kept up to date), which is a large piece of work of its own; ask again after A is in use. C is the work of Kubernetes, and few applications gain from it. |
+| OD-CLU2 | How much does "run on a cluster" do? A: placement only, with a move by hand (level a). B: A, and a restart on a different machine by itself when a machine goes away (level b). C: B, and one thing on several machines at once (level c). | Decided (R-NEW-clusterrestart): B, placement and a restart on a different member. The recommendation was A. Section 7 is the design. |
 | OD-CLU3 | Does Anima build the cluster or drive an existing engine? A: build it on the work route of each machine. B: Docker Swarm. C: k3s. D: Incus clustering. E: Nomad. | A. Each engine makes its manager root on each member and skips the check at the machine; k3s and Incus do not run Compose files or run on a Mac; Nomad is not open source. An engine is worth a new look only for level c. |
 | OD-CLU4 | When a machine joins a cluster, does its agreement at the machine also count as its consent to serve public routes of the things of that cluster? A: yes, one agreement at the join. B: no; each machine still gives the consent for public routes on its own, and a public route stops on a machine without it. | A. With B, a move or a restart can stop a public route with no warning until a person goes to the new machine. The join is already a person at the machine, which is what the consent asks for. |
 | OD-CLU5 | Who can put a thing on a cluster or move it between members? A: the same rule as an install (R-384): the person, the app, `anima` and a Full access thread with no approval; a restricted thread asks. B: a move always needs a person. | A. A move does no more than an install and a remove, which that rule already allows. |
+| OD-CLU6 | By default, how old may the copy of the data of a thing with restart on be (the person can change it for each thing)? A: 15 minutes (a copy each 7.5 minutes). B: 5 minutes. C: 1 hour. | A. It keeps the loss of a failure to minutes with little load; B doubles the copies for a few minutes less; C loses up to an hour of writes. |
+| OD-CLU7 | By default, how long does the hub wait before it takes a member as gone? A: 6 minutes (3 times the lease of 2 minutes). B: 15 minutes. C: 2 minutes, with a lease of 40 seconds. | A. Long enough for the restart of a machine and a short loss of the network; B leaves things down longer; C gives false alarms on a busy home network. |
+| OD-CLU8 | When no copy is new enough, may Anima start a thing from an older copy by itself? A: no; it stays down and a person can start it from the old copy. B: yes, always, and it says what was lost. | A. Starting from an old copy loses data that the person may still get back when the machine returns. |

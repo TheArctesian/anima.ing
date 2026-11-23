@@ -8,7 +8,7 @@ evidence: Approved by R-149 (operator, 2026-11-18): stage 1 (the containers of a
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
-Version: 7.3. Date: 2026-11-22. Version 7.3 records that a machine can be in several clusters (R-NEW-clustermembers). Version 7.2 points HOST-052 to the cluster proposal (R-NEW-hostingsections). Version 7.1 adds HOST-051 and HOST-052 and the task H42 from R-NEW-hostedsection (one list of applications and containers; the place where a thing runs). Version 7 records the direction of stage 3 (R-302, R-300, R-301, R-298, R-299, R-319). Version 5 records the build of task H8 and moves HOST-021 from H8 to the new task H13. Version 1 (2026-11-12) was the proposal. Version 2 is the plan: R-149
+Version: 7.4. Date: 2026-11-22. Version 7.4 records the restart on a different member of a cluster and the direction of HOST-005 for it (R-NEW-clusterrestart). Version 7.3 records that a machine can be in several clusters (R-NEW-clustermembers). Version 7.2 points HOST-052 to the cluster proposal (R-NEW-hostingsections). Version 7.1 adds HOST-051 and HOST-052 and the task H42 from R-NEW-hostedsection (one list of applications and containers; the place where a thing runs). Version 7 records the direction of stage 3 (R-302, R-300, R-301, R-298, R-299, R-319). Version 5 records the build of task H8 and moves HOST-021 from H8 to the new task H13. Version 1 (2026-11-12) was the proposal. Version 2 is the plan: R-149
 approves it in two stages and decides the open decisions of version 1. Version 3 adds the comparison
 with Arcane and the proposed requirements HOST-015 to HOST-025 (operator, 2026-11-18: "find more of
 their features and styling components that we could use, and expand our plan"). Version 4 records
@@ -192,7 +192,7 @@ for the approval of that proposal.
 No ruling names these requirements. They are not built (PLN-007).
 
 - **HOST-004.** Not approved. Each hosted application has one home machine (ETH-003).
-- **HOST-005.** Not approved. An application that keeps data must have a copy of its data on a
+- **HOST-005.** Not approved for a thing on one machine. For a thing placed on a cluster with restart on, R-NEW-clusterrestart approves its direction; the design is Section 7 of [clusters.md](../proposals/clusters.md). An application that keeps data must have a copy of its data on a
   second machine.
 - **HOST-006.** Not approved. The operator must be able to move an application to the machine that
   has the copy. Anima must not move it automatically (ETH-004).
