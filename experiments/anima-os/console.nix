@@ -4,7 +4,7 @@ let
   python = import ./console-python.nix { inherit pkgs; };
   source = pkgs.runCommand "anima-local-console-source" {} ''
     mkdir -p $out
-    cp ${./console}/app.py ${./console}/signin.py ${./console}/*.js ${./console}/*.html ${./console}/*.css $out/
+    cp ${./console}/app.py ${./console}/signin.py ${./console}/screen.py ${./console}/*.js ${./console}/*.html ${./console}/*.css $out/
     rm -f $out/test_*.py
     cp ${./branding/hero.png} $out/hero.png
     cp ${./branding/wordmark.svg} $out/wordmark.svg
@@ -20,7 +20,7 @@ let
   };
   console = pkgs.writeShellApplication {
     name = "anima-console";
-    runtimeInputs = [ python pkgs.xrandr ];
+    runtimeInputs = [ python pkgs.xrandr pkgs.xset ];
     text = ''
       ulimit -c 0
       export QT_FONT_DPI=96

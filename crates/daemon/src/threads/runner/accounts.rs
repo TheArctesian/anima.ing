@@ -38,7 +38,8 @@ impl Accounts {
 }
 
 /// The newest list of models of each program (TH104): what a start can name. In memory only,
-/// as the accounts: a program names its models when one of its threads starts.
+/// as the accounts: a program names its models when one of its threads starts, or when the
+/// runner asks it before any thread (`models.rs`).
 #[derive(Debug, Default)]
 pub struct Models {
     rows: Vec<ModelRow>,

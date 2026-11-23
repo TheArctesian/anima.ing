@@ -31,7 +31,8 @@ pub async fn accounts(invocation: &Invocation) -> Result<(), Failure> {
     invocation.output.data(&accounts, |rows| table(rows))
 }
 
-/// `anima agents models`: the models that each program named when its newest thread started.
+/// `anima agents models`: the models that each program named, at the start of its newest thread
+/// or when the runner asked it.
 ///
 /// # Errors
 /// [`Failure`] when the runner is not there.
@@ -41,9 +42,9 @@ pub async fn models(invocation: &Invocation) -> Result<(), Failure> {
         return Ok(());
     };
     if models.is_empty() {
-        invocation
-            .output
-            .message("No program of this computer named its models yet. Start a thread first.");
+        invocation.output.message(
+            "No agent program of this computer gave its models: none was found, or none answered.",
+        );
         return Ok(());
     }
     invocation.output.data(&models, |rows| model_table(rows))

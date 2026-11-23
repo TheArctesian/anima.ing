@@ -100,6 +100,7 @@ pub fn codex_usage(params: &Value) -> DriveEvent {
 
 /// The answer to `model/list` of Codex, or `None` when `result` is not one. A hidden model is
 /// left out, as the picker of Codex leaves it out.
+#[must_use]
 pub fn codex_models(result: &Value) -> Option<DriveEvent> {
     let data = result.get("data")?.as_array()?;
     if !data.iter().all(|model| model.get("model").is_some()) {
@@ -157,6 +158,7 @@ pub fn claude_usage(value: &Value) -> Option<DriveEvent> {
 
 /// The list `models` of the answer of Claude Code to `initialize`, or `None` when the answer has
 /// none. Only this list is read: the rest of the answer names the account (THR-051).
+#[must_use]
 pub fn claude_models(answer: &Value) -> Option<DriveEvent> {
     let models = answer.get("models")?.as_array()?;
     let models = models

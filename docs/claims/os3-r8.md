@@ -1,10 +1,10 @@
 ---
-task: OS3-R7
+task: OS3-R8
 plan: docs/proposals/spare-computer-os.md
 machine: framework
 agent: Codex
-branch: os/network-layout
+branch: os/remote-access
 started: 2026-11-22
 ---
 
-QR and code sign-in using the existing account device flow.
+Private SSH and RDP from the Anima CLI and GUI.

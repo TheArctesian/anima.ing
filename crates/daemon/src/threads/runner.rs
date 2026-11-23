@@ -15,6 +15,7 @@ mod holder_events;
 mod listings;
 pub mod log;
 pub mod login;
+mod models;
 pub mod peer;
 pub mod record;
 mod silence;
@@ -122,6 +123,7 @@ pub struct Runner {
     /// What the programs said of their accounts (THR-051) and their models (TH104): in memory
     /// only.
     said: accounts::Said,
+    model_asks: models::Asks,
     /// The last walk of the folder of each thread, for the `@` list (TH108): in memory only.
     walked: calls::Walked,
     /// The files that the person attached for a prompt (TH111).
@@ -193,6 +195,7 @@ pub async fn run(
         sign_in_told: BTreeMap::new(),
         walked: calls::Walked::default(),
         said: accounts::Said::default(),
+        model_asks: models::Asks::default(),
         attached: attachments::Attachments::at(&dir),
     };
     runner.restore(saved.threads);
@@ -215,6 +218,9 @@ impl Runner {
         let Some(mut asked) = self.asks.receiver.take() else {
             return;
         };
+        let Some(mut listed) = self.model_asks.receiver.take() else {
+            return;
+        };
         loop {
             tokio::select! {
                 event = self.link.events.recv() => match event {
@@ -223,6 +229,7 @@ impl Runner {
                 },
                 Some(call) = incoming.recv() => self.call(call).await,
                 Some((id, answers)) = asked.recv() => self.asked(id, answers).await,
+                Some((program, models)) = listed.recv() => self.models_asked(program, models),
                 _ = look.tick() => {
                     self.end_the_silent().await;
                     self.attached.expire(std::time::Instant::now());

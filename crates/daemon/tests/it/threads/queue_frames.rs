@@ -26,7 +26,7 @@ async fn th109_each_call_of_the_queue_is_read_and_answered_through_the_socket() 
             attachments: Vec::new(),
         })
         .await;
-    let Outcome::Started { thread } = client.done(start).await else {
+    let Outcome::Started { thread, .. } = client.done(start).await else {
         panic!("the thread started");
     };
     // The made Claude Code waits for an answer, so a queued prompt waits too.

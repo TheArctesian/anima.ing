@@ -23,8 +23,8 @@ in {
   boot.kernelParams = [ "console=tty0" "console=ttyS0,115200" ];
   environment.systemPackages = with pkgs; [ installer installerProgram mkpasswd ckbcomp nano gui.launcher gui.desktop gui.calamares networkmanagerapplet xdotool ];
   environment.etc."anima-install-system".text = "${installedSystem}\n";
-  image.baseName = lib.mkForce "anima-os-preview-x86_64";
-  image.fileName = lib.mkForce "anima-os-preview-x86_64.iso";
+  image.baseName = lib.mkForce "anima-os-x86_64";
+  image.fileName = lib.mkForce "anima-os-x86_64.iso";
   boot.zfs.forceImportRoot = false;
   isoImage.grubTheme = pkgs.runCommand "anima-grub-theme" {} ''
     mkdir -p $out
@@ -33,7 +33,7 @@ in {
   '';
   isoImage.efiSplashImage = ./branding/boot.png;
   isoImage.splashImage = ./branding/boot.png;
-  isoImage.volumeID = "ANIMA_PREVIEW";
+  isoImage.volumeID = "ANIMA_INSTALL";
   isoImage.squashfsCompression = "zstd -Xcompression-level 6";
   isoImage.storeContents = [ installedSystem ];
   services.xserver.windowManager.openbox.enable = true;
