@@ -98,10 +98,10 @@ export function fakeCalls(routes: readonly ApplicationRoute[] = ROUTES): FakeCal
 export const NOT_LINUX_ERROR: HubError = { code: 'UNAVAILABLE', message: 'Routing needs a hub on Linux.' };
 
 /** The hub's refusal for an account with no second factor (SF-232). */
-export const NO_SECOND_FACTOR: HubError = { code: 'FORBIDDEN', message: 'Turn on the second factor of the account before an application is made public.' };
+export const NO_SECOND_FACTOR: HubError = { code: 'FORBIDDEN', message: 'Turn on the second factor of the account before a route is added or checked.' };
 
 /** The hub's answer to a route that is gone already. */
 export const NO_SUCH_ROUTE: HubError = { code: 'NOT_FOUND', message: 'No such route.' };
 
-/** The hub's refusal of a removal by an AI agent. */
-export const AGENT_REFUSED: HubError = { code: 'FORBIDDEN', message: 'A route is removed only by a person, never by an AI agent.' };
+/** The hub's refusal of a removal by a token that may not change a route, such as an API key. */
+export const KEY_REFUSED: HubError = { code: 'FORBIDDEN', message: 'This token cannot do that. Sign in to the hub to do it.' };
