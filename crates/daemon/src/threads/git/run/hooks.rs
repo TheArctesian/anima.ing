@@ -188,19 +188,21 @@ impl Hooks<'_> {
     /// of the hooks, can be changed by any thread of the repository, also a confined one, and
     /// the hook reads it as it is then. A hook that reads files beside itself (`$0`, as husky
     /// does) does not find them beside the copy, and refuses with the words of its shell.
+    /// Each run has a folder of its own, so two runs of one hook never share a file; the
+    /// caller deletes it after the run ([`Self::drop_copy`]).
     fn copy(&self, name: &str, bytes: &[u8]) -> Result<PathBuf, GitRefusal> {
         use std::io::Write as _;
         #[cfg(unix)]
-        use std::os::unix::fs::OpenOptionsExt as _;
-        let folder = self.file("run")?;
-        super::super::place::private_folder(&folder).map_err(|failed| unwritten(&failed))?;
+        use std::os::unix::fs::{DirBuilderExt as _, OpenOptionsExt as _};
+        let runs = self.file("run")?;
+        super::super::place::private_folder(&runs).map_err(|failed| unwritten(&failed))?;
+        own_folder(&runs)?;
+        let folder = runs.join(Uuid::now_v7().to_string());
+        let mut made = std::fs::DirBuilder::new();
+        #[cfg(unix)]
+        made.mode(0o700);
+        made.create(&folder).map_err(|failed| unwritten(&failed))?;
         let copy = folder.join(name);
-        match std::fs::remove_file(&copy) {
-            Err(failed) if failed.kind() != std::io::ErrorKind::NotFound => {
-                return Err(unwritten(&failed));
-            }
-            _ => {}
-        }
         let mut open = std::fs::OpenOptions::new();
         open.create_new(true).write(true);
         #[cfg(unix)]
@@ -209,6 +211,14 @@ impl Hooks<'_> {
             .and_then(|mut file| file.write_all(bytes))
             .map_err(|failed| unwritten(&failed))?;
         Ok(copy)
+    }
+
+    /// Deletes the copy of a run and its folder; a copy that is already gone is no fault.
+    fn drop_copy(copy: &Path) {
+        let _ = std::fs::remove_file(copy);
+        if let Some(folder) = copy.parent() {
+            let _ = std::fs::remove_dir(folder);
+        }
     }
 
     /// Runs the hook `name` when the repository has it and its file is still the one that the
@@ -227,11 +237,11 @@ impl Hooks<'_> {
         }
         // The bytes that were checked run, from a copy that no agent can change; the file of
         // the repository can change after the check.
-        let program = self.copy(name, &bytes)?;
+        let program_of_run = self.copy(name, &bytes)?;
         let run = ThreadRun {
             thread: self.worktree.thread(),
             dir: self.worktree.folder().to_owned(),
-            program,
+            program: program_of_run.clone(),
             args: args.iter().map(|arg| arg.as_os_str().to_owned()).collect(),
             env: with
                 .index
@@ -241,7 +251,9 @@ impl Hooks<'_> {
             input: with.input.map(Path::to_owned),
             within: HOOK_TIME,
         };
-        match self.start.start(run).await {
+        let ended = self.start.start(run).await;
+        Self::drop_copy(&program_of_run);
+        match ended {
             Ok(Ended { code: Some(0), .. }) => Ok(()),
             Ok(ended) => Err(refused(&said::without_credentials(&ended.said))),
             Err(failed) => Err(refused(&failed.to_string())),
@@ -309,5 +321,26 @@ impl Hooks<'_> {
 fn unwritten(failed: &std::io::Error) -> GitRefusal {
     GitRefusal::Failed {
         said: format!("a file for a hook could not be written: {failed}"),
+    }
+}
+
+/// Refuses a folder for the copies that is a link, is not of this user or that others may use:
+/// the copy would be written through it.
+fn own_folder(folder: &Path) -> Result<(), GitRefusal> {
+    let meta = std::fs::symlink_metadata(folder).map_err(|failed| unwritten(&failed))?;
+    #[cfg(unix)]
+    let ours = {
+        use std::os::unix::fs::MetadataExt as _;
+        meta.uid() == rustix::process::getuid().as_raw() && meta.mode().trailing_zeros() >= 6
+    };
+    #[cfg(not(unix))]
+    let ours = true;
+    if meta.is_dir() && ours {
+        Ok(())
+    } else {
+        Err(unwritten(&std::io::Error::new(
+            std::io::ErrorKind::PermissionDenied,
+            "the folder of the copies of the hooks is not a private folder of this user",
+        )))
     }
 }

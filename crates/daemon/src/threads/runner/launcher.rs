@@ -145,12 +145,18 @@ pub(super) async fn start(rights: &SharedRights, run: ThreadRun) -> io::Result<E
         let ended = async {
             tokio::select! {
                 status = child.wait() => {
+                    // Reaped: its ID may now be of a different process, so it is never killed.
+                    group.0 = None;
                     // As git: the run ends with its program; what it wrote just before its end
                     // is still read, for a moment.
                     let _ = tokio::time::timeout(SAID_AFTER_END, &mut reading).await;
                     status
                 }
-                () = &mut reading => child.wait().await,
+                () = &mut reading => {
+                    let status = child.wait().await;
+                    group.0 = None;
+                    status
+                }
             }
         };
         tokio::time::timeout(run.within, ended).await
@@ -161,9 +167,8 @@ pub(super) async fn start(rights: &SharedRights, run: ThreadRun) -> io::Result<E
             "the run took too long",
         ));
     };
-    let status = status?;
     // A process that the program left in the background is not waited for, and keeps running.
-    group.0 = None;
+    let status = status?;
     Ok(Ended {
         code: status.code(),
         said: String::from_utf8_lossy(&kept).into_owned(),
