@@ -37,6 +37,10 @@ pub use keys::{
 };
 pub use refusal::{Refusal, RefusalCode};
 pub use secrets::{CODE_BYTES, CodeHash, DaemonToken, EnrolmentCode, TOKEN_BYTES, TokenHash};
+pub use thread_summaries::entries::{
+    MAX_THREAD_ENTRIES, MAX_THREAD_ENTRY, MAX_THREAD_UPLOAD, ThreadEntry, ThreadUpload,
+    ThreadUploadReceipt,
+};
 pub use thread_summaries::{
     ThreadSummaries, ThreadSummariesReceipt, ThreadSummary, ThreadSummaryReceipt,
 };

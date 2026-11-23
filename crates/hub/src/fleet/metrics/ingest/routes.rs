@@ -131,6 +131,10 @@ fn routes(state: DaemonState) -> Router {
     Router::new()
         .route("/daemon/v1/enrol", post(enrol))
         .route("/daemon/v1/push", post(push))
+        .route(
+            "/daemon/v1/threads/entries",
+            post(push::thread_upload::serve),
+        )
         .route("/daemon/v1/renew", post(renew))
         .route("/daemon/v1/keys/fetch", post(fetch_key))
         .merge(work::routes())

@@ -105,6 +105,7 @@ This contract and the work route contract K10 ([work-route.md](work-route.md); a
 | Route | Credential | Body limit | Success |
 | --- | --- | --- | --- |
 | `POST /daemon/v1/enrol` | Enrolment code, in the body | 4 KiB | 200, `Enrolled` |
+| `POST /daemon/v1/threads/entries` | Daemon token, `Authorization: Bearer` | 512 KiB | 200, `ThreadUploadReceipt` (Section 4.2) |
 | `POST /daemon/v1/push` | Daemon token, `Authorization: Bearer` | 512 KiB (MET-017) | 204, empty; or 200, `Accepted` (Section 8) |
 | `POST /daemon/v1/renew` | Daemon token, `Authorization: Bearer` | 4 KiB | 200, `Renewed` |
 | `POST /daemon/v1/update/record` | Daemon token, `Authorization: Bearer` | 4 KiB | 200, `ReleaseRecord` (Section 8) |
@@ -518,6 +519,23 @@ The transcript upload is separate from the metrics push. It uses daemon authenti
 requires local transcript opt-in, and acknowledges the highest contiguous stored sequence after
 commit. See [agent threads, Section 6.3.1](../docs/proposals/agent-threads.md#631-th20-approved-hub-sync-contract).
 An approval or transcript entry does not go in `agentThreads`.
+
+### 4.2 Agent thread entries (TH21, R-431)
+
+`POST /daemon/v1/threads/entries` takes `device`, `summary` (as in Section 4.1), and
+`entries`, with 1 to 12 entries in sequence order. Each entry has a `sequence` from 1 to
+2⁵³ − 1 and a normalized `content` object, at most 32 KiB as JSON. The daemon assigns
+contiguous sequence numbers. On Unix, uploads require a private `thread-sync.json` in the
+daemon's home with `{"shareTranscripts": true}`. Missing or invalid settings leave sharing off.
+The daemon uses a private journal to keep queued entries across restarts. It discards
+queued content when sharing is disabled or a thread is excluded. A placeholder can
+occupy the sequence of an entry whose receipt was lost before sharing was disabled.
+
+The daemon token determines the device. The hub locks that device, checks that its
+token still works, and writes the summary and entries in one transaction. A request
+that skips a sequence is `MALFORMED`. A retry can repeat stored sequences and does not
+change their content. After commit, the hub returns the thread `id` and `lastSequence`,
+the highest contiguous stored sequence. An upload does not refresh the device's metrics.
 
 ## 5. Renewal (MET-013)
 

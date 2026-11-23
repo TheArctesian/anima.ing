@@ -1,6 +1,11 @@
 //! Thread summaries from enrolled devices (TH21).
 
+pub mod graphql;
+mod model;
 mod store;
+mod upload;
+
+pub(in crate::fleet) use upload::append;
 
 use daemon_core::wire::{ThreadSummaries, ThreadSummariesReceipt};
 use sqlx::PgConnection;
