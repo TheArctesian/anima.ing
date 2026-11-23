@@ -7,4 +7,4 @@ One row of the index in [README.md](../README.md) (PLN-019). `bun run quality:re
 - Screens: The tab Containers of [devices](../../../apps/client/src/routes/devices), [containers](../../../apps/client/src/lib/containers)
 - State: Proposed
 - Compared: Not compared
-- Differences: None known. The mockup was drawn with the screen; compare it at 1040 px in the light and dark appearance when the operator has seen the screen (HT-032; frames 4 and 5 and the log tools of frame 1 in HT-042).
+- Differences: None known. R-NEW-hostedsection (2026-11-22) makes this screen the one list of applications and containers of HOST-051 (task H42, Frame 1 of [hosting/index.html](../hosting/index.html)); until H42 is built, this mockup is the screen. The mockup was drawn with the screen; compare it at 1040 px in the light and dark appearance when the operator has seen the screen (HT-032; frames 4 and 5 and the log tools of frame 1 in HT-042).
