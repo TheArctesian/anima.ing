@@ -1,5 +1,4 @@
-//! `anima device trust accept-certificate`: trusts the RDP server certificate with this
-//! fingerprint, and no other (SEC-007).
+//! Trusts only the certificate with this fingerprint (SEC-007).
 
 use super::documents::{CertificateAccept, certificate_accept};
 use super::fingerprint;

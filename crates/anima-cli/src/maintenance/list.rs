@@ -1,5 +1,3 @@
-//! `anima maintenance list`, and the lookup of a window by ID or exact name.
-
 use super::documents::{MaintenanceList, maintenance_list};
 use crate::failure::{Failure, Hint};
 use crate::hub::Hub;

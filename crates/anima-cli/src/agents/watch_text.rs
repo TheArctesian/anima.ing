@@ -1,12 +1,10 @@
-//! One update of a thread as one line of text for `anima agents watch`. Pure. The words of the
-//! program are shown as text: `stream::line` cleans each line of control characters.
+//! One thread update as one line for `anima agents watch`; `stream::line` cleans control characters.
 
 use std::fmt::Write as _;
 
 use agent_threads::control::{Change, RunState};
 use agent_threads::drive::{DriveEvent, RequestKind, StepState};
 
-/// The most characters of a reply, a command or a result on one line.
 const WIDTH: usize = 200;
 
 fn short(text: &str) -> String {

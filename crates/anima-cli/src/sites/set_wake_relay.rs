@@ -1,4 +1,4 @@
-//! `anima site set-wake-relay`: the device that sends Wake-on-LAN packets at a site (D-2).
+//! `anima site set-wake-relay` (D-2).
 
 use super::documents::{SiteSetWakeRelay, site_set_wake_relay};
 use super::shown::Shown;

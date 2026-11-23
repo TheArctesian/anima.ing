@@ -1,7 +1,5 @@
-//! The credential documents. The variables of a `*Set` document hold the password or key, so
-//! they derive no `Debug` (the generated code adds `Serialize` only, to send them) and the
-//! caller wipes them after the request (CMD-014, CMD-025, LOG-007). The answers say only
-//! whether a credential is kept, so they may print.
+//! The variables of a `*Set` document hold the password or key, so they derive no `Debug`
+//! and the caller wipes them after the request (CMD-014, CMD-025, LOG-007).
 
 use graphql_client::GraphQLQuery;
 

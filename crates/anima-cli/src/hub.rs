@@ -1,8 +1,5 @@
-//! The only code that talks to the hub (CMD-003): `POST /graphql` with the bearer token over
-//! rustls (K7). Commands and, later, the MCP tools call [`Hub::run`] with a typed document.
-//!
-//! The client follows no redirect, ignores proxy variables, keeps no cookie and gives up after
-//! [`TIMEOUT`]. It logs nothing; no error it returns holds the token or the body (CMD-014).
+//! The only code that talks to the hub (CMD-003). It follows no redirect, ignores proxy variables
+//! and keeps no cookie. It logs nothing, and no error it returns holds the token or the body (CMD-014).
 
 pub mod answer;
 pub mod attachments;
@@ -31,14 +28,13 @@ pub use token::{Token, TokenKind};
 /// How long one request may take, connection and answer together.
 pub const TIMEOUT: Duration = Duration::from_secs(30);
 
-/// The largest answer read; a page of 200 devices is well under it (the hub's page limit).
+/// A page of 200 devices, the hub's page limit, is well under it.
 const MAX_ANSWER: usize = 32 * 1024 * 1024;
 
 /// The header of the agent declaration and its one value (K7, LOG-016).
 pub const ACTOR_HEADER: &str = "anima-actor";
 pub const AGENT: &str = "agent";
 
-/// One hub and the token sent to it, and whether this program declares itself an AI agent.
 /// `Debug` shows the origin and the token's kind only.
 #[derive(Debug)]
 pub struct Hub {
@@ -49,7 +45,7 @@ pub struct Hub {
 }
 
 impl Hub {
-    /// A client for `origin` that sends `token`, or none (only `login` works without one).
+    /// Only `login` works without a token.
     ///
     /// # Errors
     /// [`HubError::Setup`] when the TLS roots cannot be loaded.
@@ -68,16 +64,13 @@ impl Hub {
         })
     }
 
-    /// The same client, sending the agent declaration with every request it makes: the
-    /// `Anima-Actor: agent` header, and `"actor": "agent"` in a socket's `connection_init`, so
-    /// the hub records its work as an AI agent's (LOG-016). Only `anima mcp` uses it.
+    /// Declares an AI agent on every request and socket, so the hub records its work as an agent's (LOG-016).
     #[must_use]
     pub const fn declaring_agent(mut self) -> Self {
         self.declares_agent = true;
         self
     }
 
-    /// Whether this client declares itself an AI agent.
     #[must_use]
     pub const fn declares_agent(&self) -> bool {
         self.declares_agent
@@ -93,14 +86,11 @@ impl Hub {
         self.token.as_ref()
     }
 
-    /// The token this client sent, to store it once the hub has accepted it.
     #[must_use]
     pub fn into_token(self) -> Option<Token> {
         self.token
     }
 
-    /// Runs document `Q` with `variables` and returns its typed `data`.
-    ///
     /// # Errors
     /// [`HubError`] for a refusal (with its K7 code) or a failed request.
     pub async fn run<Q: GraphQLQuery>(
@@ -110,8 +100,7 @@ impl Hub {
         self.send(&Q::build_query(variables)).await
     }
 
-    /// Sends a request body that the caller built, so it can wipe secrets in the variables
-    /// after the call (as `auth login` does with the password).
+    /// For a caller that wipes secrets in the variables after the call.
     ///
     /// # Errors
     /// As [`Hub::run`].
@@ -123,11 +112,8 @@ impl Hub {
         answer::read(status, &answer)
     }
 
-    /// Sends a document the operator wrote (`anima api`) and returns the whole answer.
-    ///
     /// # Errors
-    /// [`HubError`] when no JSON answer came; the answer's first GraphQL error is returned
-    /// beside it, not as an error.
+    /// [`HubError`] when no JSON answer came; a GraphQL error comes back beside the answer.
     pub async fn send_raw(
         &self,
         body: &serde_json::Value,
@@ -171,7 +157,7 @@ impl Hub {
         Ok((status, answer))
     }
 
-    /// The failure in words. The request's URL is the public origin; no header is in it.
+    /// The request's URL is the public origin; no header is in it.
     fn unreachable(&self, error: &reqwest::Error) -> HubError {
         let reason = if error.is_timeout() {
             "it took longer than 30 seconds".to_owned()
@@ -185,14 +171,13 @@ impl Hub {
     }
 }
 
-/// The request body as JSON, in a buffer that is wiped when the request drops.
 fn encode(body: &impl Serialize) -> Zeroizing<Vec<u8>> {
     let mut bytes = Zeroizing::new(Vec::with_capacity(8 * 1024));
     serde_json::to_writer(&mut *bytes, body).expect("a GraphQL request body serialises");
     bytes
 }
 
-/// `Bearer <token>`, marked sensitive so the HTTP stack never shows it.
+/// Marked sensitive, so the HTTP stack never shows the token.
 fn bearer(token: &Token) -> Result<HeaderValue, HubError> {
     let text = Zeroizing::new(format!("Bearer {}", token.expose()));
     let mut value = HeaderValue::from_str(&text).map_err(|_| HubError::Setup)?;
@@ -200,8 +185,6 @@ fn bearer(token: &Token) -> Result<HeaderValue, HubError> {
     Ok(value)
 }
 
-/// The innermost cause of a request error, such as a refused connection or an unknown
-/// certificate issuer.
 fn deepest_cause(error: &reqwest::Error) -> String {
     let mut cause: &dyn std::error::Error = error;
     while let Some(inner) = cause.source() {

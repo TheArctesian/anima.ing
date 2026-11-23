@@ -1,5 +1,4 @@
-//! `anima check watch`: one line for each heartbeat of the checks of the hub, of one device, or
-//! of one check (K1 `heartbeatAdded`).
+//! `anima check watch` (K1 `heartbeatAdded`).
 
 use graphql_client::GraphQLQuery;
 

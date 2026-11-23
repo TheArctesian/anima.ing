@@ -1,5 +1,4 @@
-//! How workflows and runs read in a table. The documents select different parts of the K1
-//! `WorkflowRun`, so each is rendered from its JSON.
+//! The documents select different parts of the K1 `WorkflowRun`, so each is rendered from its JSON.
 
 use serde::Serialize;
 use serde_json::Value;
@@ -7,7 +6,6 @@ use serde_json::Value;
 use crate::forge::render::{flag, many, names, number, text};
 use crate::output::{Cell, Table, Tone};
 
-/// The workflows as rows: ID, name, path, whether it is active.
 #[must_use]
 pub fn workflows<T: Serialize>(workflows: &T) -> Table {
     let workflows = serde_json::to_value(workflows).unwrap_or_default();
@@ -28,7 +26,6 @@ pub fn workflows<T: Serialize>(workflows: &T) -> Table {
     table
 }
 
-/// A run's status, or its conclusion once it has one, in its colour.
 fn outcome(run: &Value) -> Cell {
     let conclusion = run.get("conclusion").and_then(Value::as_str);
     let word = conclusion.unwrap_or_else(|| text(run, "status"));
@@ -41,7 +38,6 @@ fn outcome(run: &Value) -> Cell {
     Cell::toned(word, tone)
 }
 
-/// `3 passed, 1 failed, ...` for the jobs of a run; `-` when they were not asked for.
 fn jobs(run: &Value) -> String {
     let Some(jobs) = run.get("jobs").filter(|jobs| !jobs.is_null()) else {
         return "-".to_owned();
@@ -70,7 +66,6 @@ fn jobs(run: &Value) -> String {
     }
 }
 
-/// The runs of a page as rows: ID, workflow, outcome, branch, commit, event, jobs.
 #[must_use]
 pub fn runs<T: Serialize>(runs: &T) -> Table {
     let runs = serde_json::to_value(runs).unwrap_or_default();
@@ -93,7 +88,6 @@ pub fn runs<T: Serialize>(runs: &T) -> Table {
     table
 }
 
-/// One run as label and value lines, with its jobs.
 #[must_use]
 pub fn run<T: Serialize>(run: &T) -> Table {
     let run = serde_json::to_value(run).unwrap_or_default();

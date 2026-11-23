@@ -1,5 +1,4 @@
-//! The project group tools of the `projects` set (PRO-059 to PRO-063). A group is the
-//! operator's own label; its name is his text, not text from GitHub.
+//! PRO-059 to PRO-063; a group name is the operator's text, not text from GitHub.
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

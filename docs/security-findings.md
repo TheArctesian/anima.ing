@@ -4521,7 +4521,9 @@ The fix to make: Two parts, both needed.
 
 A note from the review, not a change: a network written in the IPv6 form of an IPv4 address (`::ffff:10.130.6.0/120`) in `ANIMA_PROBE_DENY` does not refuse the IPv4 address. `AddressPolicy::permits` makes the target canonical but not the networks of the list. `probe-deny.sh` writes IPv4 networks in their IPv4 form. Write them so by hand too.
 
-Mitigation now: None. The ruling of the operator on 2026-11-23, relayed: "B: full fix only". There is no interim block on the server, by his choice; nothing on the server changes until the full fix is ready and he approves the deploy.
+The deploy (2026-11-23, by the orchestrating session with the approval of the operator, relayed): both hubs of `pool-hil-1` have the deny list and pass the checks of the deploy steps. One fault was found and corrected at the deploy. `probe-deny.sh` passed the route of the DHCP gateway, `10.130.6.1` with no prefix (`ip -o -4 route show dev eth0 scope link` lists it). The hub refused the whole list ("invalid configuration"), so the first hub was down about 2 minutes. Corrected on the server and in the repository of the cloud service: a bare address gets /32 or /128 (branch `probe-deny-bare-address`, `b524aa0`). The script now also names an entry that is not a network and stops, and a test runs it with the answers of `ip` on `pool-hil-1` (branch `probe-deny-checked`, `945111c`). Neither branch is merged; the operator decides.
+
+Mitigation now: the deny list of the hub on each hub of `pool-hil-1` since 2026-11-23. The ruling of the operator on 2026-11-23, relayed: "B: full fix only". There is no interim block on the server, by his choice; nothing on the server changes until the full fix is ready and he approves the deploy.
 
 State: Open. Found by the orchestrating session on 2026-11-23 from the start warning of the hubs; confirmed from the code on 2026-11-23.
 

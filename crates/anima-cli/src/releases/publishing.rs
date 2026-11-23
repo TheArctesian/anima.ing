@@ -1,5 +1,4 @@
-//! `anima release publishing`: whether this hub can publish a release. A hub without the release
-//! bucket and the updater key refuses `release create` (PRO-037).
+//! A hub without the release bucket and the updater key refuses `release create` (PRO-037).
 
 use super::documents::{ReleasePublishing, release_publishing};
 use crate::failure::Failure;

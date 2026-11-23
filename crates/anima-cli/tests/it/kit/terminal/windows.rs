@@ -1,4 +1,3 @@
-//! Native `ConPTY` fixtures: the command sees real Windows console handles.
 use super::Anima;
 use portable_pty::{Child, CommandBuilder, MasterPty, PtySize, native_pty_system};
 use std::{
@@ -8,11 +7,9 @@ use std::{
 };
 use tokio::sync::Notify;
 const DEADLINE: Duration = Duration::from_secs(30);
-/// Windows PowerShell starts and compiles the console-mode reader (`Add-Type`) before `anima`
-/// runs; on a busy runner of GitHub that took longer than `DEADLINE`.
+/// Windows PowerShell compiles the console-mode reader (`Add-Type`) before `anima` runs.
 const SHELL_DEADLINE: Duration = Duration::from_secs(120);
-/// The variables of the user profile that Windows PowerShell and its compiler read at their start.
-/// `modes.ps1` removes them again before it starts `anima`, so `anima` gets the clean environment.
+/// Windows PowerShell and its compiler read these at their start; `modes.ps1` removes them for `anima`.
 const SHELL_ONLY: [&str; 6] = [
     "USERPROFILE",
     "APPDATA",

@@ -103,6 +103,9 @@ tokio = { workspace = true, features = ["process"] }
 [target.'cfg(unix)'.dependencies]
 # `O_NOFOLLOW` for other programs' configuration files (MCP-034); the user ID of the process for session files.
 rustix = { version = "1.1", features = ["fs", "process"] }
+# `anima mcp install`: the members of a group and the names of accounts (R-442), and
+# whether the person can run a program that `env` would find.
+nix = { version = "0.31", default-features = false, features = ["fs", "user"] }
 
 [target.'cfg(windows)'.dependencies]
 anima-windows = { path = "../anima-windows" }

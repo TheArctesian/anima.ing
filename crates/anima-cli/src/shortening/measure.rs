@@ -1,5 +1,4 @@
-//! The measure of the shortening (SHA-018, SHA-013): for each tool, how many answers were
-//! shortened and their size before and after. It holds no content of an answer.
+//! The measure of the shortening (SHA-018, SHA-013); it holds no content of an answer.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -10,16 +9,13 @@ use crate::private_file;
 
 const FILE: &str = "measure.json";
 
-/// The bytes of JSON that are about one token. An estimate: no tokenizer of a model is used.
+/// An estimate: no tokenizer of a model is used.
 pub const BYTES_FOR_A_TOKEN: usize = 4;
 
-/// The sum for one tool.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Sizes {
-    /// The answers that were shortened.
     pub answers: u64,
-    /// Their bytes of JSON before.
     pub bytes_before: u64,
     /// Their bytes of JSON after, with the mark.
     pub bytes_after: u64,
@@ -36,7 +32,6 @@ impl Sizes {
         self.bytes_after / BYTES_FOR_A_TOKEN as u64
     }
 
-    /// The part that was saved, in percent.
     #[must_use]
     pub const fn saved_percent(&self) -> u64 {
         if self.bytes_before == 0 {
@@ -52,10 +47,8 @@ impl Sizes {
     }
 }
 
-/// The sums of each tool, by the name of the tool.
 pub type Measure = BTreeMap<String, Sizes>;
 
-/// The saved measure; a file that is missing or not readable gives an empty one.
 #[must_use]
 pub fn read(dir: &Path) -> Measure {
     private_file::read(&dir.join(FILE))
@@ -65,8 +58,7 @@ pub fn read(dir: &Path) -> Measure {
         .unwrap_or_default()
 }
 
-/// Adds one shortened answer of `tool`. A fault loses the count and nothing else: the measure
-/// never stops an answer. Two servers that write at the same time can lose one count.
+/// Two servers that write at the same time can lose one count.
 pub fn record(dir: &Path, tool: &str, before: usize, after: usize) {
     let mut measure = read(dir);
     measure

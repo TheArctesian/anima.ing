@@ -1,5 +1,4 @@
-//! `anima device create|update|delete|wake|test|metrics|uptime` against the scripted hub
-//! (CMD-020, CMD-024, CMD-021).
+//! CMD-020, CMD-024, CMD-021.
 
 mod update;
 
@@ -16,7 +15,6 @@ fn signed_in() -> Anima {
     Anima::new().with("ANIMA_TOKEN", TOKEN)
 }
 
-/// A saved device as `create.graphql` and `update.graphql` select it.
 fn saved(name: &str) -> Value {
     json!({
         "id": DEVICE, "name": name, "host": "10.0.0.9", "kind": "server", "os": "LINUX",

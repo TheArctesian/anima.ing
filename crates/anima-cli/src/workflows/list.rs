@@ -1,5 +1,3 @@
-//! `anima workflow list <repository>`.
-
 use super::documents::{WorkflowList, workflow_list};
 use super::render;
 use crate::failure::Failure;

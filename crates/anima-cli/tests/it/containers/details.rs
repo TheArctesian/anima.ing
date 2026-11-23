@@ -1,6 +1,5 @@
-//! `anima containers inspect`, `images`, `volumes` and `networks`, and the MCP tools
-//! `anima_container_storage` and `anima_container_networks`, against the scripted hub
-//! (HOST-017, HOST-020, CMD-020, CMD-030, MCP-004).
+//! Container details, storage and networks against the scripted hub (HOST-017, HOST-020,
+//! CMD-020, CMD-030, MCP-004).
 
 use serde_json::{Value, json};
 
@@ -13,7 +12,6 @@ const DEVICE: &str = "0190a000-0000-7000-8002-000000000002";
 const APP: &str = "4f5c1d2e3a4b5c6d7e8f90123456789abcdef0123456789abcdef0123456789a";
 const IMAGE: &str = "sha256:5a703ad0d72cd5e4fb4beca8024d6eddef6d22a46ed1d9812bf3d24ff43ccbce";
 
-/// The K1 `containerDetail` answer for a running container with a health check.
 fn detail() -> Value {
     json!({ "containerDetail": {
         "id": APP, "name": "dawarich_app", "image": "freikin/dawarich:latest", "imageId": IMAGE,
@@ -145,9 +143,7 @@ async fn host_020_containers_images_lists_each_image_and_says_what_a_clean_up_ca
         "{}",
         run.stdout
     );
-    // Docker counts three containers for the first image and the hub found the name of one.
-    // An image with no name, and containers that name it in a way the hub cannot match: the
-    // number that Docker counts.
+    // Docker's count stands for the containers whose names the hub cannot match.
     assert!(
         lines[2].contains("<none>") && lines[2].ends_with('2'),
         "{}",

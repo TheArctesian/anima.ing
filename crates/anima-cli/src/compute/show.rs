@@ -1,6 +1,3 @@
-//! `anima compute policy show [device]`: the device policy of each device, or of one, and
-//! whether it takes model work now.
-
 use super::documents::{DevicePolicies, device_policies};
 use crate::failure::{Failure, Hint};
 use crate::hub::Hub;

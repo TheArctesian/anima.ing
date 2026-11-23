@@ -1,5 +1,4 @@
-//! Tool calls: structured results, hub errors as tool errors, and deletes that need the exact
-//! name (MCP-007, MCP-009, MCP-010). The agent's version is in a device's detail (R-122).
+//! MCP tool calls (MCP-007, MCP-009, MCP-010, R-122).
 
 use serde_json::json;
 

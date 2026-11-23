@@ -1,6 +1,4 @@
-//! `anima daemon need`: says what a device's daemon waits for from a person at the device, or
-//! that it waits for nothing. The desktop app of that computer says it by itself; the next
-//! batch the hub accepts from the daemon clears it (R-364).
+//! `anima daemon need`; the next batch the hub accepts from the daemon clears it (R-364).
 
 use super::documents::{DaemonNeedSet, daemon_need_set};
 use crate::devices::get::resolve;

@@ -1,7 +1,3 @@
-//! What a maintenance window covers: `device:ID-or-name`, `check:ID` or `check:DEVICE/NAME`
-//! and `tag:NAME`, as K1 `WindowTargetInput` values. Names become IDs here, as in every other
-//! noun.
-
 use serde_json::{Value, json};
 
 use crate::checks::resolve::find as find_check;
@@ -9,8 +5,6 @@ use crate::devices::get::resolve as resolve_device;
 use crate::failure::{Failure, Hint};
 use crate::hub::Hub;
 
-/// `device:ID`, `check:ID` or `tag:NAME` as a K1 `WindowTargetInput`, names still unresolved.
-///
 /// # Errors
 /// [`Failure::Usage`] for a target that is not `TYPE:TARGET`.
 pub fn parse(text: &str) -> Result<Value, Failure> {

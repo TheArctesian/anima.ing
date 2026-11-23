@@ -1,5 +1,4 @@
-//! `anima repo`: the history of a repository the hub reads live from GitHub: commits,
-//! branches and releases (PRJ-036 to PRJ-038), and the commit statuses Anima writes (PRO-010).
+//! `anima repo`: history read live from GitHub (PRJ-036 to PRJ-038) and Anima's statuses (PRO-010).
 
 pub mod branches;
 pub mod commits;

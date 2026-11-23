@@ -1,5 +1,3 @@
-//! One page of pull requests, asked the same way by the command and by the MCP tool.
-
 use super::documents::{
     PullRequestList, PullRequestListChecked, pull_request_list, pull_request_list_checked,
 };
@@ -7,8 +5,7 @@ use crate::forge::StateArg;
 use crate::forge::rows::Rows;
 use crate::hub::{Hub, HubError};
 
-/// What `pullRequests` is asked: `checked` adds mergeability, checks and merge methods, which
-/// cost GitHub requests (PRJ-033).
+/// `checked` adds mergeability, checks and merge methods, which cost GitHub requests (PRJ-033).
 #[derive(Debug)]
 pub struct Query {
     pub repository: String,

@@ -6,7 +6,7 @@ use sqlx::PgPool;
 
 use super::harness::{
     DELETE, WEBHOOK_URL, channels, create, create_query, data, error_json, holds_no_secret,
-    instant, now, run, schema_for, stored_row, validation_fields, webhook,
+    instant, now, run, schema_for, stored_row, update, validation_fields, webhook,
 };
 
 #[sqlx::test(migrations = "./migrations")]
@@ -86,6 +86,38 @@ async fn not_002_each_kind_is_created_with_the_k1_defaults(pool: PgPool) {
     let names: Vec<&str> = listed.iter().map(|c| c["name"].as_str().unwrap()).collect();
     assert_eq!(names, ["Apprise", "Mail", "Phone"]);
     holds_no_secret("the channel list", &Value::Array(listed).to_string());
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn a_mobile_channel_seals_its_relay_credentials_and_requires_the_token_for_a_new_url(
+    pool: PgPool,
+) {
+    let schema = schema_for(&pool);
+    let mobile = create(
+        &schema,
+        json!({ "name": "Mobile", "settings": { "mobile": {
+            "url": "https://push.example.test/private-relay-path",
+            "token": "synthetic-relay-secret",
+        } } }),
+    )
+    .await;
+    assert_eq!(mobile["kind"], "MOBILE");
+    assert_eq!(mobile["settings"]["origin"], "https://push.example.test");
+    let encoded = mobile.to_string();
+    assert!(!encoded.contains("private-relay-path"));
+    assert!(!encoded.contains("synthetic-relay-secret"));
+    let listed = channels(&schema).await;
+    assert_eq!(listed, std::slice::from_ref(&mobile));
+
+    let changed = update(
+        &schema,
+        &mobile["id"],
+        json!({ "name": "Mobile", "settings": { "mobile": {
+            "url": "https://push.example.test/different-target",
+        } } }),
+    )
+    .await;
+    assert!(validation_fields(&changed).contains(&"settings.mobile.token".to_owned()));
 }
 
 /// An explicit null takes the K1 default, as an absent field does.

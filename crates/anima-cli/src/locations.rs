@@ -1,6 +1,5 @@
 //! `anima location`: the samples of the position of the operator's phone, the ingest tokens
 //! of the OwnTracks path, and the context of a transfer event (K-E4 Sections 11 to 13; R-145).
-//! The newest sample is not the position of a past event.
 
 pub mod context;
 pub mod documents;

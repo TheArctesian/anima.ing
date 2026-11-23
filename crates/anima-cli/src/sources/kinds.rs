@@ -1,5 +1,4 @@
-//! `anima source kinds`: the sources the hub can read from (ITG-001), and for each the page
-//! where a browser continues Connect, when this hub can start that flow (K-E1 Section 7a).
+//! `anima source kinds` (ITG-001, K-E1 Section 7a).
 
 use super::documents::{SourceKinds, source_kinds};
 use crate::failure::Failure;

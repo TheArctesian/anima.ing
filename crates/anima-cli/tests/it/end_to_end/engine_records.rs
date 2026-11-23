@@ -1,6 +1,4 @@
-//! The timeline and the record links from the command line against the real hub: the event
-//! log shows in `anima timeline list` (TML-007), and a link to a record that does not exist
-//! keeps its label (RLK-002).
+//! The timeline and the record links against the real hub (TML-007, RLK-002).
 
 use serde_json::Value;
 use sqlx::PgPool;
@@ -9,7 +7,6 @@ use super::words;
 use crate::kit::Anima;
 use crate::kit::real_hub::RealHub;
 
-/// Runs `line` with `--json`; its JSON output.
 async fn json_of(anima: &Anima, line: &[&str]) -> Value {
     let mut line = line.to_vec();
     line.push("--json");

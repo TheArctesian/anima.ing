@@ -1,6 +1,4 @@
-//! The terminal's raw mode, always undone: `anima ssh` (K4 Section 8) and the hidden prompts
-//! (CMD-010) enter it. `crossterm` does the `unsafe` work, so this crate keeps `unsafe_code`
-//! forbidden.
+//! `crossterm` does the `unsafe` work, so this crate keeps `unsafe_code` forbidden (CMD-010).
 
 use std::io;
 use std::sync::Once;
@@ -8,16 +6,12 @@ use std::sync::Once;
 #[cfg(unix)]
 use crossterm::terminal;
 
-/// Raw mode while it lives: no line editing, no echo, no signals from keys; keys arrive as
-/// they are. Dropping it restores the terminal's previous mode, on every return, error and
-/// unwinding panic.
+/// Raw mode while it lives; dropping it, or a panic, restores the previous mode.
 pub struct RawMode(());
 
 static PANIC_RESTORES: Once = Once::new();
 
 impl RawMode {
-    /// Enters raw mode, and makes a panic restore the terminal before it prints.
-    ///
     /// # Errors
     /// The OS error when the terminal cannot change mode.
     pub fn enter() -> io::Result<Self> {
@@ -35,8 +29,7 @@ impl RawMode {
         Ok(Self(()))
     }
 
-    /// Restores the previous mode when raw mode is on; does nothing otherwise. For an exit
-    /// that skips destructors.
+    /// For an exit that skips destructors; does nothing when raw mode is off.
     pub fn restore() {
         #[cfg(unix)]
         let _restored = terminal::disable_raw_mode();

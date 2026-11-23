@@ -1,5 +1,3 @@
-//! `anima notify channel list`: what K1 returns about each channel, and nothing more.
-
 use super::documents::{ChannelList, channel_list};
 use crate::failure::Failure;
 use crate::invocation::Invocation;

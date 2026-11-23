@@ -1,5 +1,3 @@
-//! The arguments of the reminder tools, as an agent gives them.
-
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
 use serde::Deserialize;

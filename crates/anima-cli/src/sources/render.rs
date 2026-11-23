@@ -1,12 +1,10 @@
-//! How a source account and its runs read in a table. The accounts of several documents have
-//! one shape here: their JSON, which is the K1 `SourceAccount` with the fields each selected.
+//! The accounts of several documents share one shape here: their JSON, the K1 `SourceAccount`.
 
 use serde::Serialize;
 use serde_json::Value;
 
 use crate::output::{Cell, Table, Tone};
 
-/// The text under `key`, or `-` when it is null or missing.
 fn text<'a>(value: &'a Value, key: &str) -> &'a str {
     value.get(key).and_then(Value::as_str).unwrap_or("-")
 }
@@ -15,7 +13,6 @@ fn number(value: &Value, key: &str) -> i64 {
     value.get(key).and_then(Value::as_i64).unwrap_or(0)
 }
 
-/// A K1 `SourceHealth` in its colour.
 fn health(name: &str) -> Cell {
     let tone = match name {
         "OK" => Tone::Good,
@@ -26,7 +23,6 @@ fn health(name: &str) -> Cell {
     Cell::toned(name, tone)
 }
 
-/// One run as a line: trigger, outcome, the four counts and when it started.
 fn run_line(run: &Value) -> String {
     format!(
         "{} {} +{} ~{} ={} -{} at {}",
@@ -42,7 +38,6 @@ fn run_line(run: &Value) -> String {
     )
 }
 
-/// The accounts as rows: label, source, health, last sync, next sync and ID.
 #[must_use]
 pub fn list<T: Serialize>(accounts: &T) -> Table {
     let accounts = serde_json::to_value(accounts).unwrap_or_default();
@@ -67,7 +62,6 @@ pub fn list<T: Serialize>(accounts: &T) -> Table {
     table
 }
 
-/// One account as label and value lines, with its runs when it has them.
 #[must_use]
 pub fn record<T: Serialize>(account: &T) -> Table {
     let account = serde_json::to_value(account).unwrap_or_default();
@@ -102,7 +96,6 @@ pub fn record<T: Serialize>(account: &T) -> Table {
     table
 }
 
-/// One line for a change of an account: label, health and last sync.
 #[must_use]
 pub fn change_line<T: Serialize>(account: &T) -> String {
     let account = serde_json::to_value(account).unwrap_or_default();

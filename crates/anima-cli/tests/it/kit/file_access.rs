@@ -1,4 +1,3 @@
-//! Secret-file fixtures use the host's access controls.
 use std::path::Path;
 pub fn mode(path: &Path, mode: u32) {
     #[cfg(unix)]
@@ -34,7 +33,6 @@ pub fn assert_private(path: &Path) {
     assert!(anima_windows::files::secure(path, true).unwrap());
 }
 
-/// The refusal names the access controls of the current host.
 pub fn assert_refused(stderr: &str) {
     #[cfg(unix)]
     assert!(

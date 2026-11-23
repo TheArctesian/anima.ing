@@ -1,5 +1,3 @@
-//! `anima notify channel test <channel>`: sends a test message and shows what happened.
-
 use super::channel::resolve;
 use super::deliveries::result_cell;
 use super::documents::{ChannelTest, channel_test};

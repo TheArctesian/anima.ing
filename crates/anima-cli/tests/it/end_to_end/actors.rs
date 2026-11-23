@@ -1,6 +1,4 @@
-//! Who made each change, as the real hub records it (LOG-012..020): the operator's login token
-//! is a User, an agent key and `anima mcp` with any token are an Agent, the key's name is kept,
-//! `audit list --actor agent` gives only the agent's rows, and no row holds a token.
+//! Who made each change, as the real hub records it (LOG-012..020).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -10,7 +8,6 @@ use super::words;
 use crate::kit::real_hub::RealHub;
 use crate::mcp::session::Desk;
 
-/// Every audit row on the hub, newest first, read by the hub's own query.
 pub async fn audit_rows(hub: &RealHub, reader: &str) -> Vec<Value> {
     let query = "{ audit(first: 200) { edges { node { id action targetType targetId \
         operatorName actorKind tokenKind apiKeyName change } } } }";
@@ -19,7 +16,6 @@ pub async fn audit_rows(hub: &RealHub, reader: &str) -> Vec<Value> {
     edges.map(|edge| edge["node"].clone()).collect()
 }
 
-/// The actor kind, token kind and key name of the one row about `target`.
 async fn actor_of(hub: &RealHub, reader: &str, target: &str) -> (Value, Value, Value) {
     let rows = audit_rows(hub, reader).await;
     let about: Vec<&Value> = rows
@@ -35,8 +31,6 @@ async fn actor_of(hub: &RealHub, reader: &str, target: &str) -> (Value, Value, V
     )
 }
 
-/// Creates the device `name` through `anima mcp` with `token`, the tool allowed in the saved
-/// permissions; its ID.
 async fn create_through_mcp(hub: &RealHub, token: &str, name: &str) -> String {
     let desk = Desk::on(hub.anima());
     desk.save_permissions(

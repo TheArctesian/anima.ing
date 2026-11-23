@@ -1,9 +1,7 @@
-//! What turning an extension on turns on with it (EXT-011): its needs, and theirs, that are off.
+//! What turning an extension on turns on with it (EXT-011).
 
 use std::collections::BTreeMap;
 
-/// The keys that are off and that `key` needs, directly or through other needs, sorted.
-/// `extensions` maps each key to `(on, needs)`.
 #[must_use]
 pub fn also_turned_on(extensions: &BTreeMap<&str, (bool, &[String])>, key: &str) -> Vec<String> {
     let mut pending = vec![key];

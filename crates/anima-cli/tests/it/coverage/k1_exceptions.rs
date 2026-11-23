@@ -1,8 +1,5 @@
-//! The K1 root fields the command line never uses, each with its reason (CMD-031). A builder who
-//! adds a document for a field deletes its entry here; the coverage test fails until they do,
-//! and for any K1 root field that is neither used nor listed.
+//! The K1 root fields the command line never uses, each with its reason (CMD-031).
 
-/// The operational keys have no command yet: K-E5 Section 2.2 names `anima key`, the API key noun.
 const NO_KEY_NOUN: &str = "no command yet: K-E5 Section 2.2 names the noun `anima key`, which is \
     already the API key noun (INT-003, `key list|create|revoke`); the noun waits for a ruling \
     (E0-6 T3)";

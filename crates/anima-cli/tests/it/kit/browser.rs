@@ -1,23 +1,16 @@
-//! A stand-in for the operator's browser at the Connect GitHub pages of the real hub: a
-//! `reqwest` client with redirects off and a cookie jar of its own, which opens the one-time
-//! link, reads the form from the start page and plays GitHub's redirect after "Create GitHub
-//! App". It is the hub's own flow-test browser (`crates/hub/tests/it/sources/registration/
-//! browser.rs`) cut to what the command line's test needs; that one cannot be included by path,
-//! for it stands on the hub suite's own kit.
+//! A cut of the hub's flow-test browser, which cannot be included by path: it stands on the hub suite's kit.
 
 use std::collections::BTreeMap;
 
 use reqwest::StatusCode;
 use reqwest::redirect::Policy;
 
-/// What the hub answered one request of the browser.
 pub struct Answer {
     pub status: StatusCode,
     pub location: Option<String>,
     pub body: String,
 }
 
-/// The operator's browser: its own cookies, no redirect followed unless the test plays it.
 pub struct Browser {
     client: reqwest::Client,
     base: String,
@@ -25,7 +18,6 @@ pub struct Browser {
 }
 
 impl Browser {
-    /// A browser that reaches the hub at `base`, which the links name by its public origin.
     pub fn at(base: &str) -> Self {
         Self {
             client: reqwest::Client::builder()
@@ -73,9 +65,7 @@ impl Browser {
         }
     }
 
-    /// Opens the one-time `link` (it names the hub's public origin; the path and query go to
-    /// `base`), follows the hub to the start page and returns the state in the form's action,
-    /// as GitHub would get it.
+    /// The link names the hub's public origin; only its path and query go to `base`.
     pub async fn open(&mut self, link: &str) -> String {
         let at = link.find("/connect/github").expect("a link to the hub");
         let bound = self.get(&link[at..]).await;
@@ -93,7 +83,6 @@ impl Browser {
         action.split("?state=").nth(1).expect("a state").to_owned()
     }
 
-    /// GitHub's redirect after "Create GitHub App", with the `code` GitHub gave and `state`.
     pub async fn created(&mut self, code: &str, state: &str) -> Answer {
         self.get(&format!(
             "/connect/github/created?code={code}&state={state}"

@@ -1,4 +1,4 @@
-//! `anima model add`: reads a repository of an approved organisation (LIBM-004).
+//! `anima model add` (LIBM-004).
 
 use super::documents::{ModelAdd, model_add};
 use super::gib;

@@ -1,7 +1,4 @@
-//! `anima source connect github` without `--from-file` against the scripted hub: the three
-//! presses, every phase line, `--state`, `--cancel`, every exit code and the one-time link that
-//! is printed once and is in no other output (PRJ-039, PRJ-041, CMD-021, CMD-030, MCP-004).
-//! This file holds the scripted hub and the attempts it plays; the tests are in the folder.
+//! PRJ-039, PRJ-041, CMD-021, CMD-030, MCP-004.
 
 mod link;
 mod phases;
@@ -15,7 +12,6 @@ use crate::kit::subscription_hub::{Script, Socket, socket};
 
 const ID: &str = "0190b000-0000-7000-8000-000000000001";
 const PAGE: &str = "https://hub.example/connect/github";
-/// The one-time link of the scripted hub; no output but the terminal's may hold it.
 const TICKET: &str = "TICKET-MARKER-0123456789012345678901234567";
 const LINK: &str =
     "https://hub.example/connect/github?ticket=TICKET-MARKER-0123456789012345678901234567";
@@ -74,13 +70,11 @@ fn changes(attempts: &[Value]) -> Vec<Value> {
         .collect()
 }
 
-/// A hub that starts attempt `ID` and plays `script` on its subscription.
 async fn scripted(script: Script) -> (FakeHub, Socket) {
     let start = data(json!({ "startGithubConnect": attempt("WAITING_FOR_BROWSER") }));
     scripted_start(script, start).await
 }
 
-/// As [`scripted`], with `start` as the answer to the start.
 async fn scripted_start(script: Script, start: Value) -> (FakeHub, Socket) {
     let (route, socket) = socket(script);
     let hub = FakeHub::start_with(route).await;

@@ -1,7 +1,3 @@
-//! `anima files get <device>:<path> [local]`: downloads one file. The bytes go to a temporary
-//! file beside the target, which takes the target's name only when every byte came; an
-//! existing file is replaced only with `--force`.
-
 use std::io;
 use std::path::{Path, PathBuf};
 

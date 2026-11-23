@@ -1,5 +1,4 @@
-//! `anima source kinds`, `list`, `get`, `sync`, `pause`, `resume` and `watch` against the
-//! scripted hub (ITG-001 to ITG-003).
+//! `anima source` against the scripted hub (ITG-001 to ITG-003).
 
 mod connect;
 
@@ -26,7 +25,6 @@ pub fn account(health: &str) -> Value {
     })
 }
 
-/// The account as `SourceAccounts` returns it, with no runs.
 pub fn listed(health: &str) -> Value {
     let mut account = account(health);
     account["runs"] = json!([]);

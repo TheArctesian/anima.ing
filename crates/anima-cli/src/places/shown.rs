@@ -1,5 +1,3 @@
-//! How a place looks to a person: a table of places and one place as a record.
-
 use serde_json::Value;
 
 use crate::output::Table;
@@ -32,7 +30,6 @@ fn names(place: &Value, field: &str) -> String {
     }
 }
 
-/// The places, one row each.
 pub fn rows(places: &Value) -> Table {
     let mut table = Table::new(vec!["NAME", "CATEGORY", "PARENT", "CENTRE", "SITES", "ID"]);
     for place in places.as_array().map_or_default(Vec::as_slice) {
@@ -49,7 +46,6 @@ pub fn rows(places: &Value) -> Table {
     table
 }
 
-/// One place with each of its fields.
 pub fn record(place: &Value) -> Table {
     let mut table = Table::record();
     table.pair("ID", text(place, "id"));

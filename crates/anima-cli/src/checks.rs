@@ -1,5 +1,4 @@
-//! `anima check`: the checks of the hub's devices (CMD-002). A check's kind and settings are
-//! a JSON file (`--from-file`) holding the K1 `CheckConfigInput`; see `config_file`.
+//! `anima check`: the checks of the hub's devices (CMD-002).
 
 pub mod config_file;
 pub mod defaults;

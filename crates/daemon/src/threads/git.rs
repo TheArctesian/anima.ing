@@ -156,36 +156,6 @@ impl Engine {
         lock.lock_owned().await
     }
 
-    /// Makes or finds the worktree of a thread. The runner calls it when the person starts a
-    /// thread in a worktree; it is not an action of a client.
-    ///
-    /// # Errors
-    /// As [`worktree::make`].
-    pub async fn worktree(&self, plan: worktree::Plan<'_>) -> Result<worktree::Made, GitRefusal> {
-        self.worktree_shown(plan, None).await
-    }
-
-    /// As [`Engine::worktree`]; `shown` hears each step, for the page. Dropping the call
-    /// cancels it: what it made so far goes again.
-    ///
-    /// # Errors
-    /// As [`worktree::make`].
-    pub async fn worktree_shown(
-        &self,
-        plan: worktree::Plan<'_>,
-        shown: worktree::Shown<'_>,
-    ) -> Result<worktree::Made, GitRefusal> {
-        self.closed()?;
-        // One worktree of a thread is made at a time, whatever its repository.
-        let _alone = self.alone(plan.thread, "").await;
-        // One worktree of a project at a time: the first one copies its history, and the
-        // next one finds the copy.
-        let real = std::fs::canonicalize(plan.project);
-        let project = real.as_deref().unwrap_or(plan.project).to_string_lossy();
-        let _copy = self.alone(Uuid::nil(), &project).await;
-        worktree::make(&self.git, &self.home, plan, shown).await
-    }
-
     /// Takes the checkpoint of a turn that ended. The runner calls it at each end of a turn.
     ///
     /// # Errors

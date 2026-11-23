@@ -1,8 +1,5 @@
-//! A device as `create` and `update` print it after the hub saved it.
-
 use crate::output::{Cell, Table};
 
-/// The fields both documents select, as text.
 pub struct Saved<'a> {
     pub id: &'a str,
     pub name: &'a str,
