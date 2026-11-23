@@ -16,7 +16,7 @@
   import { watchHubBanner } from './banner-shift';
   import { phoneLayout } from './phone/layout.svelte';
   import './phone/bar.css';
-  import { AGENT_USAGE, DEVICES, THREADS, LOGS, EXTENSIONS, SETTINGS, isActive, optionalDestinations, unreachableBanner, type NavDestination } from './nav';
+  import { AGENT_USAGE, DEVICES, HOSTING, THREADS, LOGS, EXTENSIONS, SETTINGS, isActive, optionalDestinations, unreachableBanner, type NavDestination } from './nav';
 
   interface Props {
     /** The current route, for the active item. */
@@ -96,6 +96,8 @@
   {/if}
   {@render destination(DEVICES)}
   {#if !phoneLayout() && (capabilities().agentThreads || capabilities().runnerReport)}{@render destination(THREADS)}{/if}
+  <!-- The phone layout's place for Hosting is the mobile plan's call (HSE-012). -->
+  {#if !phoneLayout()}{@render destination(HOSTING)}{/if}
   {#if !phoneLayout()}{@render destination(AGENT_USAGE)}{/if}
   {#each optionalDestinations(projectsOn, capabilities().builds && buildsOn) as item (item.href)}
     {@render destination(item)}
