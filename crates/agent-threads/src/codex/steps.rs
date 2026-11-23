@@ -1,45 +1,47 @@
 //! The `item_completed` events of the newer Codex rollouts: `UserMessage` and `AgentMessage`
 //! hold the prompts and the replies as the person saw them; `CommandExecution` and
 //! `FileChange` hold the commands and the changes of files, with their outputs. A
-//! `Reasoning` item repeats the `reasoning` response item, so it is not read.
+//! `Reasoning` step repeats the `reasoning` response item, so it is not read.
 
 use serde_json::Value;
 
-use super::super::{MAX_OUTPUT, ThreadReader, Time, ToolCall, tool};
+use super::super::{ThreadReader, Time, tool};
+use super::scripts;
 
 /// The most files of one change that are shown; the others are counted.
 const MAX_FILES: usize = 64;
 
-pub(super) fn completed(reader: &mut ThreadReader, at: Option<Time>, item: &Value) {
-    let field = |name: &str| item.get(name).and_then(Value::as_str).unwrap_or_default();
+pub(super) fn completed(reader: &mut ThreadReader, at: Option<Time>, step: &Value) {
+    let field = |name: &str| step.get(name).and_then(Value::as_str).unwrap_or_default();
     match field("type") {
         "UserMessage" => {
-            let parts = parts(item);
+            let parts = parts(step);
             let images = parts
                 .iter()
                 .filter(|part| matches!(kind(part), "image" | "local_image"))
                 .count();
+            scripts::close_all(reader);
             reader.prompt(
                 at,
                 &texts(&parts, "text"),
                 u32::try_from(images).unwrap_or(u32::MAX),
             );
         }
-        "AgentMessage" => reader.text(at, false, &texts(&parts(item), "Text")),
+        "AgentMessage" => reader.text(at, false, &texts(&parts(step), "Text")),
         "CommandExecution" => {
-            let command = command(item.get("command"));
+            let command = command(step.get("command"));
             let failed = field("status") != "completed"
-                || item
+                || step
                     .get("exit_code")
                     .and_then(Value::as_i64)
                     .is_some_and(|code| code != 0);
             let input = serde_json::json!({ "command": command, "cwd": field("cwd") });
             let mut call = tool::call(field("id"), "exec_command", &input, &command);
             (call.output, call.failed) = (Some(field("aggregated_output").to_owned()), failed);
-            done(reader, at, call);
+            scripts::step(reader, at, call);
         }
         "FileChange" => {
-            let patch = patch(item.get("changes"));
+            let patch = patch(step.get("changes"));
             let output = [field("stdout"), field("stderr")]
                 .into_iter()
                 .filter(|text| !text.is_empty())
@@ -47,35 +49,14 @@ pub(super) fn completed(reader: &mut ThreadReader, at: Option<Time>, item: &Valu
                 .join("\n");
             let mut call = tool::call(field("id"), "apply_patch", &Value::Null, &patch);
             (call.output, call.failed) = (Some(output), field("status") != "completed");
-            done(reader, at, call);
+            scripts::step(reader, at, call);
         }
         _ => {}
     }
 }
 
-/// A call that came with its result. Inside a script of `exec` it is a step of that call: its
-/// output and its failure go to the call of the script, which is already shown.
-fn done(reader: &mut ThreadReader, at: Option<Time>, mut call: ToolCall) {
-    let (output, failed) = (call.output.take().unwrap_or_default(), call.failed);
-    if let Some(script) = reader.script.as_mut() {
-        script.failed |= failed;
-        // The result is held to its limit; what lies past it is not gathered.
-        if script.output.len() > MAX_OUTPUT {
-            return;
-        }
-        if !script.output.is_empty() {
-            script.output.push('\n');
-        }
-        script.output.push_str(&output);
-        return;
-    }
-    let id = call.call.clone();
-    reader.call(at, call);
-    reader.result(&id, &output, failed);
-}
-
-fn parts(item: &Value) -> Vec<&Value> {
-    item.get("content")
+fn parts(step: &Value) -> Vec<&Value> {
+    step.get("content")
         .and_then(Value::as_array)
         .map_or_default(|parts| parts.iter().collect())
 }
