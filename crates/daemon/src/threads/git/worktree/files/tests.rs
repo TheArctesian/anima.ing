@@ -123,3 +123,16 @@ fn a_removed_file_takes_its_empty_folders_with_it() {
     assert!(!worktree.join("a/b").exists());
     assert!(worktree.join("a/keep").exists());
 }
+
+#[test]
+fn a_name_that_is_too_long_for_the_disk_is_no_file_and_no_failure() {
+    let (_keep, worktree, own, _outside) = folders();
+    let root = Root::open(&worktree).expect("the worktree");
+    let into = Dir::open(&own).expect("the folder of the runner");
+    let long = "x".repeat(300);
+    for path in [format!("{long}/f"), long.clone()] {
+        let taken = root.take(Path::new(&path), &into, &mut { u64::MAX });
+        assert!(!taken.expect("no failure"), "{path}");
+    }
+    assert!(shown(Path::new(&format!("{long}/end\n"))).ends_with("/end\\n"));
+}

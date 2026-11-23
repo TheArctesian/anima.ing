@@ -91,8 +91,21 @@ fn listed(folder: &Dir, at: &Path, left: usize, found: &mut Vec<PathBuf>) -> std
 /// is shown as it is, and a long name is cut.
 #[must_use]
 pub fn shown(path: &Path) -> String {
-    let text: String = path.to_string_lossy().escape_debug().collect();
-    text.chars().take(200).collect()
+    let whole = path.to_string_lossy();
+    let (count, most) = (whole.chars().count(), 200);
+    // The start and the end of a long name are kept: the end is the name of the file.
+    let kept: String = if count > most {
+        let end = whole.chars().skip(count - most / 2);
+        whole
+            .chars()
+            .take(most / 2)
+            .chain("...".chars())
+            .chain(end)
+            .collect()
+    } else {
+        whole.into_owned()
+    };
+    kept.escape_debug().collect()
 }
 
 /// The least bytes that one file of a snapshot costs: a block of the disk.
@@ -286,7 +299,8 @@ impl Root {
         above.remove(name, false)?;
         let mut folder = path.parent();
         while let Some(empty) = folder.filter(|folder| folder.file_name().is_some()) {
-            let Some((above, name)) = self.0.above(empty, Make::No)? else {
+            // The file is gone; an empty folder that cannot be reached stays.
+            let Ok(Some((above, name))) = self.0.above(empty, Make::No) else {
                 break;
             };
             if above.remove(name, true).is_err() {
