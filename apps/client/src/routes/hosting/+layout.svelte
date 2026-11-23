@@ -37,10 +37,11 @@
     margin-block-end: var(--space-8);
   }
 
-  /* The columns of Settings, so the two pages line up. */
+  /* The list of Settings on the left; the section takes the rest of the page, as the hosting mockup draws it, so its lists
+     and tables end where the action of the page header ends. */
   .hosting {
     display: grid;
-    grid-template-columns: calc(var(--space-16) * 3 + var(--space-4)) minmax(0, calc(var(--space-16) * 11));
+    grid-template-columns: calc(var(--space-16) * 3 + var(--space-4)) minmax(0, 1fr);
     gap: var(--space-12);
     align-items: start;
   }
