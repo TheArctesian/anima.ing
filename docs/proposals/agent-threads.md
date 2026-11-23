@@ -968,7 +968,7 @@ Stages 1 to 4 hold each function marked must or should in Section 3.3. Stage 5 h
 
 **Note for the mobile stream.** The mobile plan owns the phone bar (MOB-010: "four destinations: Devices, Sessions, Logs and Settings"; mockup 6; task M2-2) and all phone and iOS code. This proposal and the tasks TH1 to TH4 change none of it: the page Threads is shown only where the capability `agentThreads` is true, which is the desktop application; the browser and the phone have it false. What the mobile stream gets from R-288:
 
-1. MOB-010 changes when stage 2 is built: the second destination of the phone bar is Threads, not Sessions. Until then the phone bar stays as it is.
+1. On 2026-11-22 the operator asked to put Code in the phone bar in place of Sessions. The entry opens Code. Reading threads from another device still needs stage 2.
 2. Open point, OD-THR23 here and OD-M11 in the mobile plan: where the live remote sessions (MOB-020 to MOB-022; NAV-008) are reached from on the phone when Sessions is no longer in the bar.
 3. The phone needs the hub API of stage 2 (THR-023) and the decisions OD-THR4, OD-THR16 and OD-THR19, because each thread that a phone shows comes through the hub.
 
