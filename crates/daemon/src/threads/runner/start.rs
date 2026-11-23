@@ -18,6 +18,7 @@ const ASK_AGAIN: std::time::Duration = std::time::Duration::from_secs(60);
 use crate::threads::wire;
 
 mod new_thread;
+pub(super) mod private_tmp;
 mod scratch;
 mod worktree;
 pub(super) use crate::threads::notice::chosen_folder;
@@ -252,6 +253,14 @@ impl Runner {
         self.silence.started(id, new.program, path);
         let codex = codex_of(&row, new.effort, daemon);
         self.threads.insert(id, Thread::new(row, new.effort, codex));
+        // The hold of the Git engine counts the roots of this thread before its agent starts,
+        // and no root of its sandbox is shared with a different running thread (THR-050).
+        self.rights_now();
+        if let Some(said) = self.shared_root(id) {
+            self.threads.remove(&id);
+            self.rights_now();
+            return Err(Refusal::FolderShared { said });
+        }
         self.say_priority();
         if !notice.is_empty() {
             // The thread keeps the notice as its first line (THR-046).
