@@ -237,6 +237,42 @@ pub async fn give(
         }
     }
     let _ = std::fs::remove_dir_all(&outgoing);
+    large_files(&common, &worktree.record().own).map_err(GitError::Files)
+}
+
+/// Copies the contents that Git LFS keeps for the runner's folder at `own` into the store of
+/// the repository of the person. When the person uses Git LFS for all their repositories, a
+/// snapshot holds only a short pointer for each such file and the content is beside the Git
+/// folder (`lfs/objects`). A commit or a saved worktree without that content would name
+/// files that are nowhere. Each content is a file named by its hash; one that is there stays.
+fn large_files(common: &Dir, own: &Path) -> std::io::Result<()> {
+    let mut folders = vec![(
+        own.join("lfs/objects"),
+        std::path::PathBuf::from("lfs/objects"),
+    )];
+    while let Some((from, to)) = folders.pop() {
+        let Ok(listed) = std::fs::read_dir(&from) else {
+            continue;
+        };
+        for entry in listed.flatten() {
+            let (path, kind) = (entry.path(), entry.file_type()?);
+            let at = to.join(entry.file_name());
+            if kind.is_dir() {
+                folders.push((path, at));
+            } else if kind.is_file() {
+                let Some((into, name)) = common.above(&at, Make::Missing)? else {
+                    continue;
+                };
+                match into.new_file(name, false) {
+                    Ok(mut written) => {
+                        std::io::copy(&mut std::fs::File::open(path)?, &mut written)?
+                    }
+                    Err(there) if there.kind() == std::io::ErrorKind::AlreadyExists => 0,
+                    Err(failed) => return Err(failed),
+                };
+            }
+        }
+    }
     Ok(())
 }
 

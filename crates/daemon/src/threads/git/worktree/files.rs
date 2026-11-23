@@ -51,17 +51,6 @@ const fn runs(_about: &std::fs::Metadata) -> bool {
     false
 }
 
-/// Makes a link with the text `to` at `at`, a path in a folder of the runner.
-#[cfg(unix)]
-fn link(to: &std::ffi::OsStr, at: &Path) -> std::io::Result<()> {
-    std::os::unix::fs::symlink(to, at)
-}
-
-#[cfg(not(unix))]
-fn link(_to: &std::ffi::OsStr, _at: &Path) -> std::io::Result<()> {
-    Err(std::io::ErrorKind::Unsupported.into())
-}
-
 /// The most entries and the most folders in folders that [`Root::files_below`] looks at.
 const MOST_BELOW: usize = 200_000;
 const DEEPEST: usize = 64;
@@ -120,23 +109,27 @@ impl Root {
     /// # Errors
     /// The error of the system when the copy cannot be written, or the file is larger than
     /// `left`.
-    pub fn take(&self, path: &Path, into: &Path, left: &mut u64) -> std::io::Result<bool> {
-        self.take_to(path, &into.join(path), left)
+    pub fn take(&self, path: &Path, into: &Dir, left: &mut u64) -> std::io::Result<bool> {
+        self.take_to(path, (into, path), left)
     }
 
-    /// As [`Root::take`], with the place of the copy named: `copy`, a path in a folder of the
-    /// runner.
+    /// As [`Root::take`], with the place of the copy named: the path `at` below `into`, the
+    /// open folder of the runner. The copy is made new, one path part at a time: a link that
+    /// an earlier copy put on the way (a link of the worktree is copied as a link) is never
+    /// written through, and a copy never takes the place of a different one.
     ///
     /// # Errors
-    /// As [`Root::take`].
-    pub fn take_to(&self, path: &Path, copy: &Path, left: &mut u64) -> std::io::Result<bool> {
+    /// As [`Root::take`]; `AlreadyExists` when a copy is at `at` already.
+    pub fn take_to(
+        &self,
+        path: &Path,
+        (into, at): (&Dir, &Path),
+        left: &mut u64,
+    ) -> std::io::Result<bool> {
         use std::io::Read as _;
         let Some((above, name)) = self.0.above(path, Make::No)? else {
             return Ok(false);
         };
-        if let Some(folder) = copy.parent() {
-            std::fs::create_dir_all(folder)?;
-        }
         let too_large = || {
             std::io::Error::new(
                 std::io::ErrorKind::FileTooLarge,
@@ -149,29 +142,33 @@ impl Root {
             *left = left.checked_sub(bytes.max(BLOCK)).ok_or_else(too_large)?;
             Ok::<_, std::io::Error>(())
         };
-        if let Some(to) = above.link(name) {
-            pay(left, u64::try_from(to.len()).unwrap_or(u64::MAX))?;
-            return link(&to, copy).map(|()| true);
+        let link_text = above.link(name);
+        let found = match &link_text {
+            Some(_) => None,
+            None => above.file(name)?,
+        };
+        if link_text.is_none() && found.is_none() {
+            return Ok(false);
         }
-        let Some(found) = above.file(name)? else {
+        let (copies, last) = into
+            .above(at, Make::Missing)?
+            .ok_or(std::io::ErrorKind::InvalidInput)?;
+        if let Some(to) = link_text {
+            pay(left, u64::try_from(to.len()).unwrap_or(u64::MAX))?;
+            return copies.new_link(last, &to).map(|()| true);
+        }
+        let Some(found) = found else {
             return Ok(false);
         };
         let about = found.metadata()?;
-        let runs = runs(&about);
         // A file that says a size over what is left is not read at all.
         if about.len() > *left {
             return Err(too_large());
         }
-        let mut written = std::fs::File::create(copy)?;
+        let mut written = copies.new_file(last, runs(&about))?;
         // One byte more than what is left shows a file that grew while it was read.
         let taken = std::io::copy(&mut found.take(left.saturating_add(1)), &mut written)?;
         pay(left, taken)?;
-        if runs {
-            let mut can = written.metadata()?.permissions();
-            #[cfg(unix)]
-            std::os::unix::fs::PermissionsExt::set_mode(&mut can, 0o755);
-            written.set_permissions(can)?;
-        }
         Ok(true)
     }
 
@@ -277,27 +274,30 @@ mod tests {
         std::os::unix::fs::symlink(outside.join("secret"), worktree.join("link")).expect("a link");
         std::os::unix::fs::symlink(&outside, worktree.join("dir")).expect("a link");
         let root = Root::open(&worktree).expect("the worktree");
-        assert!(
-            root.take(Path::new("plain.txt"), &own, &mut { u64::MAX })
-                .expect("a copy")
-        );
-        assert!(
-            root.take(Path::new("link"), &own, &mut { u64::MAX })
-                .expect("a copy")
-        );
+        let into = Dir::open(&own).expect("the folder of the runner");
+        let take = |path: &str| root.take(Path::new(path), &into, &mut { u64::MAX });
+        assert!(take("plain.txt").expect("a copy"));
+        assert!(take("link").expect("a copy"));
         assert!(own.join("link").is_symlink(), "the link was followed");
         // `dir` is a link: nothing below it is a file of the worktree.
-        assert!(
-            !root
-                .take(Path::new("dir/secret"), &own, &mut { u64::MAX })
-                .expect("no copy")
-        );
+        assert!(!take("dir/secret").expect("no copy"));
         assert!(!own.join("dir").exists());
-        assert!(
-            !root
-                .take(Path::new("gone"), &own, &mut { u64::MAX })
-                .expect("no copy")
-        );
+        assert!(!take("gone").expect("no copy"));
+        // A copy is never written through a link that an earlier copy put there, and never
+        // over a copy that is there.
+        std::fs::create_dir_all(worktree.join("d")).expect("a folder");
+        std::fs::write(worktree.join("d/f"), "PAYLOAD\n").expect("a file");
+        let through = root.take_to(Path::new("d/f"), (&into, Path::new("link")), &mut {
+            u64::MAX
+        });
+        assert!(through.is_err(), "a copy went over a link");
+        let below = root.take_to(Path::new("d/f"), (&into, Path::new("link/f")), &mut {
+            u64::MAX
+        });
+        assert!(below.is_err(), "a copy went through a link");
+        let secret = std::fs::read_to_string(outside.join("secret")).expect("the file");
+        assert_eq!(secret, "SECRET\n");
+        assert!(!outside.join("f").exists());
         assert!(Root::open(&worktree.join("dir")).is_err());
     }
 

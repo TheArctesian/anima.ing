@@ -163,3 +163,89 @@ async fn what_a_thread_puts_at_the_names_of_the_saved_work_does_not_stop_a_remov
     let saved = ["show", &format!("{kept}:work.txt")];
     assert_eq!(bench.git_in(&bench.project, &saved).await, "work");
 }
+
+#[cfg(unix)]
+#[tokio::test]
+async fn links_beside_a_named_repository_send_no_saved_file_out_of_the_runner_s_folder() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    let outside = bench.home.with_file_name("outside");
+    std::fs::create_dir_all(&outside).expect("a folder");
+    std::fs::write(outside.join("victim"), "VICTIM\n").expect("a file");
+    // The last commit of the branch names a repository at `sub`, and `sub` holds files.
+    let id = bench.git_in(&folder, &["rev-parse", "HEAD"]).await;
+    let entry = format!("160000,{id},sub");
+    let add_entry = ["update-index", "--add", "--cacheinfo", entry.as_str()];
+    bench.git_in(&folder, &add_entry).await;
+    let who = [
+        "-c",
+        "user.name=Agent",
+        "-c",
+        "user.email=a@example.invalid",
+    ];
+    let made = [&who[..], &["commit", "--quiet", "--message=named"]].concat();
+    bench.git_in(&folder, &made).await;
+    std::fs::create_dir_all(folder.join("sub/deep")).expect("a folder");
+    std::fs::write(folder.join("sub/a"), "AGENT\n").expect("a file");
+    std::fs::write(folder.join("sub/deep/new"), "AGENT\n").expect("a file");
+    // Links where a guessed name for the saved files would be.
+    std::fs::create_dir_all(folder.join("sub.files")).expect("a folder");
+    let link = |to: &str, at: &str| {
+        std::os::unix::fs::symlink(outside.join(to), folder.join(at)).expect("a link");
+    };
+    link("victim", "sub.files/a");
+    link("", "sub.files/deep");
+    let removed = bench.call(PERSON, GitAction::Remove).await;
+    let GitOutcome::Removed { kept: Some(kept) } = removed else {
+        panic!("not removed: {removed:?}");
+    };
+    let victim = std::fs::read_to_string(outside.join("victim")).expect("the file");
+    assert_eq!(
+        victim, "VICTIM\n",
+        "a saved file was written through a link"
+    );
+    assert!(!outside.join("new").exists(), "a file was made outside");
+    // The files of the named repository are saved, below a name that nothing could plant.
+    let names = ["ls-tree", "-r", "--name-only", kept.as_str()];
+    let names = bench.git_in(&bench.project, &names).await;
+    let saved: Vec<&str> = names
+        .lines()
+        .filter(|name| name.starts_with("anima-kept-"))
+        .collect();
+    assert_eq!(saved.len(), 2, "{names}");
+    assert!(
+        saved.iter().any(|name| name.ends_with("/sub/deep/new")),
+        "{names}"
+    );
+}
+
+#[tokio::test]
+async fn what_a_repository_inside_ignores_is_not_saved_and_large_file_contents_are() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    let inside = folder.join("sub");
+    std::fs::create_dir_all(inside.join("build")).expect("a folder");
+    let init = ["init", "--quiet", "--initial-branch=main"];
+    bench.git_in(&inside, &init).await;
+    std::fs::write(inside.join(".gitignore"), "build/\n").expect("a file");
+    std::fs::write(inside.join("build/out.o"), "built\n").expect("a file");
+    std::fs::write(inside.join("src.c"), "source\n").expect("a file");
+    // What Git LFS keeps beside the Git folder of the runner for a file of a snapshot.
+    let content = own_of(&bench).join("lfs/objects/ab/cd");
+    std::fs::create_dir_all(&content).expect("a folder");
+    std::fs::write(content.join("abcd1234"), "the large file\n").expect("a file");
+    let GitOutcome::Removed { kept: Some(kept) } = bench.call(PERSON, GitAction::Remove).await
+    else {
+        panic!("not removed");
+    };
+    let names = ["ls-tree", "-r", "--name-only", kept.as_str()];
+    let names = bench.git_in(&bench.project, &names).await;
+    assert!(names.contains("sub/src.c"), "{names}");
+    assert!(
+        !names.contains("out.o"),
+        "what the repository ignores was saved: {names}"
+    );
+    let kept_content = bench.project.join(".git/lfs/objects/ab/cd/abcd1234");
+    let text = std::fs::read_to_string(kept_content).expect("the content of the large file");
+    assert_eq!(text, "the large file\n");
+}

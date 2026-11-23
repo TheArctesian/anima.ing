@@ -4,8 +4,11 @@
 //!
 //! I/O: copies files of the worktree into a folder of the runner.
 
+use std::path::{Path, PathBuf};
+
+use super::super::place::walk::Dir;
 use super::super::place::{self, Worktree, own, shared};
-use super::super::run::{Git, GitError};
+use super::super::run::{Git, GitError, Run};
 use super::super::worktree::files;
 
 /// The copies of the listed files in `staging`, and the names to stage. When the files are
@@ -14,7 +17,7 @@ use super::super::worktree::files;
 pub(super) async fn fitted(
     git: &Git,
     worktree: &Worktree,
-    (staging, lists): (&std::path::Path, &Lists<'_>),
+    (staging, lists): (&Path, &Lists<'_>),
     mut left: u64,
 ) -> Result<Vec<u8>, GitError> {
     let dir = worktree.folder();
@@ -49,23 +52,26 @@ pub(super) struct Lists<'a> {
     pub(super) rules: &'a [u8],
     /// The nested repositories that the last commit names.
     pub(super) nested: &'a [String],
-    /// A removal: the files of each repository inside the worktree are taken too. A
-    /// checkpoint leaves them alone; a removal deletes them, so it saves them first.
-    pub(super) whole: bool,
+    /// For a removal: each file of a repository inside the worktree, and where it is saved
+    /// ([`inner_files`]). Empty for a checkpoint.
+    pub(super) inner: &'a [(PathBuf, PathBuf)],
 }
 
 /// Copies each listed file of the worktree at `dir` into the new folder `staging`, with no
 /// link followed and at most `left` bytes in all, and gives the names to stage. A changed
-/// file that is gone is staged too, as a removal.
+/// file that is gone is staged too, as a removal. The copies are written through the open
+/// folder `staging`, each made new: no copy is written through a link that an earlier copy
+/// put there.
 fn copied(
-    dir: &std::path::Path,
-    staging: &std::path::Path,
+    dir: &Path,
+    staging: &Path,
     lists: &Lists<'_>,
     left: &mut u64,
 ) -> std::io::Result<Vec<u8>> {
     let _ = std::fs::remove_dir_all(staging);
     place::private_folder(staging)?;
     let root = files::Root::open(dir)?;
+    let into = Dir::open(staging)?;
     let ours = |name: &&[u8]| {
         let below = |nested: &String| {
             name.strip_prefix(nested.as_bytes())
@@ -77,6 +83,7 @@ fn copied(
         !name.is_empty() && !name.ends_with(b"/") && !of_a_copy && !lists.nested.iter().any(below)
     };
     let mut staged = Vec::new();
+    let mut taken = std::collections::HashSet::new();
     for (list, tracked, stage) in [
         (lists.changed, true, true),
         (lists.new, false, true),
@@ -84,68 +91,111 @@ fn copied(
     ] {
         for name in list.split(|byte| *byte == 0).filter(ours) {
             let path = files::path(name);
-            if !files::inside(&path) {
+            // A file of rules that changed is in two lists: it is copied one time.
+            if !files::inside(&path) || !taken.insert(name) {
                 continue;
             }
-            let there = root.take(&path, staging, left)?;
+            let there = root.take(&path, &into, left)?;
             if stage && (there || tracked) {
                 staged.extend_from_slice(name);
                 staged.push(0);
             }
         }
     }
-    if lists.whole {
-        inner(&root, staging, lists, (&mut staged, left))?;
+    for (file, kept_at) in lists.inner {
+        if root.take_to(file, (&into, kept_at), left)? {
+            staged.extend_from_slice(kept_at.as_os_str().as_encoded_bytes());
+            staged.push(0);
+        }
     }
     Ok(staged)
 }
 
-/// Copies the files of each repository inside the worktree for a removal. One that nothing
-/// names (a `git init` or a clone of an agent) is saved as plain files at its place. One
-/// that the last commit names keeps its entry, and its files are saved beside it, in a
-/// folder with `.files` after its name.
-fn inner(
-    root: &files::Root,
-    staging: &std::path::Path,
-    lists: &Lists<'_>,
-    (staged, left): (&mut Vec<u8>, &mut u64),
-) -> std::io::Result<()> {
-    let unnamed = lists
-        .new
+/// The most repositories inside a worktree whose files one removal saves.
+const MOST_INNER: usize = 64;
+
+/// The files of each repository inside the worktree, for a removal: where each is, and where
+/// it is saved. A checkpoint leaves such a repository alone; a removal deletes it, so it saves
+/// its files first, as plain files. The Git folder of the repository (its own history) is
+/// not saved.
+///
+/// - A repository that nothing names (a `git init` or a clone of an agent, in `new` with `/`
+///   after its name) is saved at its place.
+/// - A repository that the last commit names (`nested`) keeps its entry; its files are saved
+///   below one folder with a name that nothing in the worktree can have, `kept`.
+///
+/// `git` lists the files of each with the rules of that repository for what is ignored, as
+/// for the worktree itself: what is built there (`node_modules`, `target`) is not saved.
+///
+/// # Errors
+/// A [`GitError`] when a listing fails or there are more than [`MOST_INNER`] repositories.
+pub(super) async fn inner_files(
+    git: &Git,
+    worktree: &Worktree,
+    (new, nested): (&[u8], &[String]),
+) -> Result<Vec<(PathBuf, PathBuf)>, GitError> {
+    let dir = worktree.folder();
+    let kept = PathBuf::from(format!("anima-kept-{}", uuid::Uuid::now_v7().as_simple()));
+    let unnamed = new
         .split(|byte| *byte == 0)
         .filter_map(|name| name.strip_suffix(b"/"))
         .map(|name| (files::path(name), files::path(name)));
-    let named = lists.nested.iter().map(|name| {
-        let beside = format!("{name}.files");
-        (
-            std::path::PathBuf::from(name),
-            std::path::PathBuf::from(beside),
-        )
-    });
-    for (folder, saved_at) in unnamed
+    let named = nested
+        .iter()
+        .map(|name| (PathBuf::from(name), kept.join(name)));
+    let folders: Vec<(PathBuf, PathBuf)> = unnamed
         .chain(named)
         .filter(|(folder, _)| files::inside(folder))
-    {
-        for file in root.files_below(&folder)? {
-            let Ok(rest) = file.strip_prefix(&folder) else {
+        .collect();
+    if folders.len() > MOST_INNER {
+        return Err(GitError::Failed {
+            code: None,
+            said: "the worktree holds too many repositories of its own to save them".to_owned(),
+        });
+    }
+    let root = files::Root::open(dir).map_err(GitError::Files)?;
+    // An index that is not there: each file of the repository is new to this listing.
+    let none = worktree.record().own.join("index.none");
+    let _ = std::fs::remove_file(&none);
+    let mut found = Vec::new();
+    for (folder, saved_at) in folders {
+        let at = dir.join(&folder);
+        if !at.is_dir() {
+            continue;
+        }
+        let list = Run::new(&at, NEW_FILES)
+            .with_env("GIT_WORK_TREE", &at)
+            .with_env("GIT_INDEX_FILE", &none);
+        let listed = git.output(list).await?;
+        for name in listed
+            .split(|byte| *byte == 0)
+            .filter(|name| !name.is_empty())
+        {
+            let inside = files::path(name.strip_suffix(b"/").unwrap_or(name));
+            if !files::inside(&inside) {
                 continue;
-            };
-            let kept_at = saved_at.join(rest);
-            let copy = staging.join(&kept_at);
-            if let Some(above) = copy.parent() {
-                std::fs::create_dir_all(above)?;
             }
-            if root.take_to(&file, &copy, left)? {
-                staged.extend_from_slice(kept_at.as_os_str().as_encoded_bytes());
-                staged.push(0);
+            // A repository deeper down is listed as one name: its files are walked.
+            let deeper = if name.ends_with(b"/") {
+                root.files_below(&folder.join(&inside))
+                    .map_err(GitError::Files)?
+            } else {
+                vec![folder.join(&inside)]
+            };
+            for file in deeper {
+                let rest = file.strip_prefix(&folder).unwrap_or(&file).to_owned();
+                found.push((file, saved_at.join(rest)));
             }
         }
     }
-    Ok(())
+    Ok(found)
 }
 
+/// Lists the files of a work folder that are in no index and that git does not ignore.
+const NEW_FILES: [&str; 4] = ["ls-files", "-z", "--others", "--exclude-standard"];
+
 /// The folder of the copies of one snapshot; it is removed when the value is dropped.
-pub(super) struct Staging(pub(super) std::path::PathBuf);
+pub(super) struct Staging(pub(super) PathBuf);
 
 impl Drop for Staging {
     fn drop(&mut self) {

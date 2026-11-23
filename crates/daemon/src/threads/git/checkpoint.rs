@@ -88,12 +88,18 @@ pub async fn tree_now(
     let rules = git.output(Run::new(dir, RULES)).await?;
     // The copies go when this call ends, on each way out.
     let held = Staging(worktree.record().own.join("staging"));
+    // A removal saves the files of each repository inside the worktree too.
+    let inner = if git.removing() {
+        staged::inner_files(git, worktree, (&new, &nested)).await?
+    } else {
+        Vec::new()
+    };
     let lists = Lists {
         changed: &changed,
         new: &new,
         rules: &rules,
         nested: &nested,
-        whole: git.removing(),
+        inner: &inner,
     };
     let staged = fitted(git, worktree, (&held.0, &lists), left).await?;
     if !staged.is_empty() {
