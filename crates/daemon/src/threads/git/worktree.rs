@@ -8,8 +8,14 @@
 //! repository applies when a worktree is made or removed (THR-050).
 
 pub mod files;
+mod removal;
+mod undo;
 
-use std::ffi::OsStr;
+pub use removal::{remove, remove_broken};
+
+pub use undo::Pending;
+pub(super) use undo::Undo;
+
 use std::path::{Path, PathBuf};
 
 use agent_threads::git::{GitRefusal, Preparing};
@@ -74,6 +80,24 @@ pub async fn make(
     plan: Plan<'_>,
     shown: Shown<'_>,
 ) -> Result<Made, GitRefusal> {
+    let (made, undo) = undoable(git, home, plan, shown).await?;
+    if let Some(undo) = undo {
+        undo.keep();
+    }
+    Ok(made)
+}
+
+/// As [`make`], with what the call made: the caller keeps it, or drops it and it goes again.
+/// `None` for a worktree that was there already.
+///
+/// # Errors
+/// As [`make`].
+pub(super) async fn undoable(
+    git: &Git,
+    home: &Home,
+    plan: Plan<'_>,
+    shown: Shown<'_>,
+) -> Result<(Made, Option<Undo>), GitRefusal> {
     let (project, layout) = repository(home, plan.project)?;
     let name = project.file_name().map(|name| name.to_string_lossy());
     let repository = place::folder_name(name.as_deref().unwrap_or_default());
@@ -87,7 +111,7 @@ pub async fn make(
     if let Ok(worktree) = home.worktree(plan.thread, &repository) {
         // A worktree of the same name from a different repository is not this one.
         return if worktree.record().project == project {
-            Ok(made(worktree, true))
+            Ok((made(worktree, true), None))
         } else {
             Err(GitRefusal::BadPath)
         };
@@ -108,25 +132,76 @@ pub async fn make(
     };
     // From here each thing that this call makes goes again unless the call comes to its end.
     let mut undo = Undo {
-        home,
-        target: (plan.thread, repository.as_str()),
-        new,
+        home: home.clone(),
+        thread: plan.thread,
+        repository: repository.clone(),
+        own: own.clone(),
+        folder: folder.clone(),
         entry: None,
         branch: None,
+        at: at.clone(),
         kept: false,
     };
     shared::ensure(git, (&shared, &project), at.len() == 64).await?;
     own::make(git, &own, &shared, at.len() == 64).await?;
     if existing.is_none() {
         refs::put(common, &full, &at, Was::Absent)?;
-        undo.branch = Some((common, full.as_str()));
+        undo.branch = Some((common.to_owned(), full.clone()));
     }
     let entry = format!("anima-{}", plan.thread.as_simple());
     let layout = linked::add(common, &entry, &folder, &branch)?;
     undo.entry = Some(layout.clone());
-    let worktree = filled((git, home), undo.target, (&layout, new), shown).await?;
-    undo.kept = true;
-    Ok(made(worktree, false))
+    let target = (plan.thread, repository.as_str());
+    let worktree = filled((git, home), target, (&layout, new), shown).await?;
+    Ok((made(worktree, false), Some(undo)))
+}
+
+impl super::Engine {
+    /// Makes or finds the worktree of a thread. The runner calls it when the person starts a
+    /// thread in a worktree; it is not an action of a client.
+    ///
+    /// # Errors
+    /// As [`make`].
+    pub async fn worktree(&self, plan: Plan<'_>) -> Result<Made, GitRefusal> {
+        self.worktree_shown(plan, None).await
+    }
+
+    /// As [`Engine::worktree`]; `shown` hears each step, for the page. Dropping the call
+    /// cancels it: what it made so far goes again.
+    ///
+    /// # Errors
+    /// As [`make`].
+    pub async fn worktree_shown(
+        &self,
+        plan: Plan<'_>,
+        shown: Shown<'_>,
+    ) -> Result<Made, GitRefusal> {
+        self.worktree_pending(plan, shown).await.map(Pending::keep)
+    }
+
+    /// As [`Engine::worktree_shown`], before the start of the thread: the runner keeps the
+    /// worktree when the start passed, or drops it and what this call made goes again, with
+    /// nothing saved ([`Pending`]).
+    ///
+    /// # Errors
+    /// As [`make`].
+    pub async fn worktree_pending(
+        &self,
+        plan: Plan<'_>,
+        shown: Shown<'_>,
+    ) -> Result<Pending, GitRefusal> {
+        self.closed()?;
+        // One worktree of a thread is made at a time, whatever its repository.
+        // It is held until the worktree is kept or gone again.
+        let alone = self.alone(plan.thread, "").await;
+        // One worktree of a project at a time: the first one copies its history, and the
+        // next one finds the copy.
+        let real = std::fs::canonicalize(plan.project);
+        let project = real.as_deref().unwrap_or(plan.project).to_string_lossy();
+        let _copy = self.alone(Uuid::nil(), &project).await;
+        let (made, undo) = undoable(&self.git, &self.home, plan, shown).await?;
+        Ok(Pending::new(made, undo, alone))
+    }
 }
 
 /// Where the worktree of `repository` of `thread` will be, when nothing is there and the
@@ -178,38 +253,6 @@ struct New<'a> {
     branch: &'a str,
     /// The commit that the branch starts at.
     at: &'a str,
-}
-
-/// What a call that makes a worktree made so far. When it is dropped before the worktree is
-/// whole (a step failed, or the call was cancelled), each of them goes again: they hold no
-/// work of a thread.
-struct Undo<'a> {
-    home: &'a Home,
-    target: (Uuid, &'a str),
-    new: New<'a>,
-    /// The entry of the worktree in the Git folder of the person.
-    entry: Option<Layout>,
-    /// The branch that this call made: the shared Git folder and the name of its ref.
-    branch: Option<(&'a Path, &'a str)>,
-    kept: bool,
-}
-
-impl Drop for Undo<'_> {
-    fn drop(&mut self) {
-        if self.kept {
-            return;
-        }
-        let _ = std::fs::remove_dir_all(self.new.own);
-        self.home.forget(self.target.0, self.target.1);
-        // The folder was not there when the call started: what is there now is of this call.
-        let _ = std::fs::remove_dir_all(self.new.folder);
-        if let Some(entry) = &self.entry {
-            let _ = linked::remove(entry);
-        }
-        if let Some((common, full)) = self.branch {
-            let _ = refs::take_back(common, full, self.new.at);
-        }
-    }
 }
 
 /// Writes the record of a worktree whose entry was made a moment ago, copies the history of
@@ -271,132 +314,4 @@ fn start_of(layout: &Layout, base: Option<&str>) -> Result<String, GitRefusal> {
         None => refs::head(layout)?.commit,
     };
     found.ok_or(GitRefusal::UnknownBase)
-}
-
-/// Saves the files of the worktree to the private ref of its thread in the repository of the
-/// person, then removes the worktree, its entry and the Git folder of the runner with the
-/// checkpoints of the thread. The branch stays. Gives the name of the ref.
-///
-/// The work is saved one time. A removal that stops in the middle (a folder that cannot be
-/// emptied) leaves a note that the work is saved; the next try does not save again what is
-/// left of the files over the whole work.
-///
-/// # Errors
-/// A [`GitRefusal`] when the work could not be saved (nothing is removed then) or a step
-/// fails.
-pub async fn remove(git: &Git, home: &Home, worktree: &Worktree) -> Result<String, GitRefusal> {
-    let record = worktree.record();
-    let common = &record.common_dir;
-    let kept = checkpoint::kept_ref(worktree.thread());
-    let started = record.own.join(own::SAVED).exists();
-    // The work is saved whatever the size of the checkpoints of the thread is: it goes to
-    // the repository of the person, and the folder of the runner is removed after.
-    let held = &git.for_worktree(worktree).await?.with_own_room(u64::MAX);
-    // A last commit that cannot be brought (the copy of the project is full, or the branch
-    // names a commit that is not there) does not keep the worktree: the saved commit then
-    // holds each file and has no parent.
-    let tip = match own::tip(held, worktree).await {
-        Ok(at) => at.commit,
-        // The place of the worktree cannot be read: the branch that the runner made for the
-        // thread says what the last commit is, when the thread can bring it.
-        Err(_) => made_branch(held, worktree).await,
-    };
-    let commit = checkpoint::snapshot_on(held, worktree, tip.clone()).await?;
-    own::give(held, worktree, &commit, tip.as_deref()).await?;
-    if started {
-        // A removal that stopped in the middle saved the whole work. What is left of the
-        // files now, with what changed since, is saved beside it and never over it.
-        let rest = format!("refs/anima/kept-rest/{}/{commit}", worktree.thread());
-        refs::own_put(common, &rest, &commit)?;
-    } else {
-        // The work that an earlier removal of this thread saved stays under a name of its own.
-        // A ref there that is no ref of the runner (an agent can write it) names no work.
-        if let Ok(Some(earlier)) = refs::resolve(common, &kept) {
-            let aside = format!("refs/anima/kept-before/{}/{earlier}", worktree.thread());
-            refs::own_put(common, &aside, &earlier)?;
-        }
-        refs::own_put(common, &kept, &commit)?;
-        std::fs::write(record.own.join(own::SAVED), &commit).map_err(|failed| gone(&failed))?;
-    }
-    // The folder is still the one that the runner made, not one put in its place (P12).
-    if record.folder_id.is_some() && FolderId::of(&record.folder) != record.folder_id {
-        return Err(GitRefusal::NoWorktree);
-    }
-    std::fs::remove_dir_all(&record.folder).map_err(|failed| gone(&failed))?;
-    cleared(home, worktree.thread(), record)?;
-    Ok(kept)
-}
-
-/// The last commit of the branch that the runner made for the thread, when the thread can
-/// bring it into the copy of the project.
-async fn made_branch(git: &Git, worktree: &Worktree) -> Option<String> {
-    let record = worktree.record();
-    let branch = format!("refs/heads/{}", record.branches.first()?);
-    let commit = refs::resolve(&record.common_dir, &branch).ok()??;
-    let known = shared::learn(git, worktree, &[&commit]).await;
-    known.is_ok().then_some(commit)
-}
-
-fn gone(failed: &std::io::Error) -> GitRefusal {
-    GitRefusal::Failed {
-        said: format!("the worktree could not be removed: {failed}"),
-    }
-}
-
-/// Removes what the runner keeps for a worktree whose folder is gone or is not removed by
-/// the runner: its entry in the repository of the person, the Git folder of the runner with
-/// the checkpoints, and the record.
-fn cleared(home: &Home, thread: Uuid, record: &Record) -> Result<(), GitRefusal> {
-    let layout = Layout {
-        git_dir: record.git_dir.clone(),
-        common_dir: record.common_dir.clone(),
-    };
-    // An entry that is gone already, with its Git folder, is the wanted state.
-    if record.common_dir.is_dir() {
-        linked::remove(&layout)?;
-    }
-    match std::fs::remove_dir_all(&record.own) {
-        Err(failed) if failed.kind() != std::io::ErrorKind::NotFound => {
-            return Err(gone(&failed));
-        }
-        _ => {}
-    }
-    if let Some(repository) = record.folder.file_name().and_then(OsStr::to_str) {
-        home.forget(thread, repository);
-    }
-    // The folder of the thread goes when it is empty; one with a second repository stays.
-    let _ = record.folder.parent().map(std::fs::remove_dir);
-    Ok(())
-}
-
-/// Removes a worktree that is not whole any more (its `.git` file or its entry is gone, or an
-/// earlier removal stopped in the middle), so that the thread and its project are never held
-/// by it. When its folder is still the one that the runner made, the work is saved first, as
-/// in [`remove`]. When the work cannot be saved and was not saved before, no file of the
-/// folder is touched: the person can still take them; the answer then names no saved work.
-///
-/// # Errors
-/// A [`GitRefusal`] when the runner has no record of the worktree, or a step fails.
-pub async fn remove_broken(
-    git: &Git,
-    home: &Home,
-    (thread, repository): (Uuid, &str),
-) -> Result<Option<String>, GitRefusal> {
-    let record = home.recorded(thread, repository)?;
-    // A folder that is still the one of the runner is saved as in each removal. When that
-    // fails, nothing goes: the failure is the answer, and the next try saves again.
-    if let Some(worktree) = home.for_removal(thread, repository) {
-        return remove(git, home, &worktree).await.map(Some);
-    }
-    let saved = record.own.join(own::SAVED).exists();
-    // What is left of a folder whose work is saved goes too, when it is still the folder
-    // that the runner made at the place that the runner planned.
-    let planned = Home::at(&record.home, home.records())?.planned(thread, repository)?;
-    let ours = std::fs::canonicalize(&planned).is_ok_and(|real| real == record.folder)
-        && (record.folder_id.is_none() || FolderId::of(&record.folder) == record.folder_id);
-    if saved && ours {
-        std::fs::remove_dir_all(&record.folder).map_err(|failed| gone(&failed))?;
-    }
-    cleared(home, thread, &record)?;
-    Ok(saved.then(|| checkpoint::kept_ref(thread)))
 }
