@@ -50,25 +50,27 @@ fn bytes(folder: &Path) -> u64 {
 }
 
 impl Engine {
-    /// The record of each worktree that the runner made.
-    fn records(&self) -> Vec<Record> {
+    /// The record of each worktree that the runner made; `None` for one that cannot be read.
+    fn records(&self) -> Vec<Option<Record>> {
         let Ok(threads) = std::fs::read_dir(self.home.records()) else {
             return Vec::new();
         };
         let files = threads
             .flatten()
+            // The folder of the projects holds no record of a worktree.
+            .filter(|thread| thread.path() != self.home.projects())
             .filter_map(|thread| std::fs::read_dir(thread.path()).ok())
             .flat_map(|files| files.flatten().map(|file| file.path()));
         files
             .filter(|file| file.extension().is_some_and(|kind| kind == "json"))
-            .filter_map(|file| serde_json::from_slice(&std::fs::read(file).ok()?).ok())
+            .map(|file| serde_json::from_slice(&std::fs::read(file).ok()?).ok())
             .collect()
     }
 
     /// What each project uses on the disk, the largest first.
     #[must_use]
     pub fn disk(&self) -> Vec<Used> {
-        let records = self.records();
+        let records: Vec<Record> = self.records().into_iter().flatten().collect();
         let Ok(copies) = std::fs::read_dir(self.home.projects()) else {
             return Vec::new();
         };
@@ -103,11 +105,16 @@ impl Engine {
     /// first), while a thread holds the records, or when a folder cannot be removed.
     pub fn forget_project(&self, project: &Path) -> Result<u64, GitRefusal> {
         self.closed()?;
-        if self
-            .records()
-            .iter()
-            .any(|record| record.project == project)
-        {
+        // The same spelling of the path as when the worktrees were made.
+        let real = std::fs::canonicalize(project);
+        let project = real.as_deref().unwrap_or(project);
+        // A record that cannot be read can be of this project: nothing is removed then.
+        let uses = |record: &Option<Record>| {
+            record
+                .as_ref()
+                .is_none_or(|record| record.project == project)
+        };
+        if self.records().iter().any(uses) {
             return Err(GitRefusal::Failed {
                 said: "a chat still has a worktree of this project; remove the worktree first"
                     .to_owned(),

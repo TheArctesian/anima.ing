@@ -94,9 +94,7 @@ pub async fn tree_now(
         };
         // A name that ends with `/` is a repository inside the worktree that nothing names.
         // The folder of a copy of the history that was cancelled is no file of the thread.
-        let of_a_copy = name
-            .strip_prefix(shared::OUT.as_bytes())
-            .is_some_and(|rest| rest.starts_with(b"/"));
+        let of_a_copy = name.starts_with(shared::pack::PREFIX.as_bytes());
         !name.is_empty() && !name.ends_with(b"/") && !of_a_copy && !nested.iter().any(below)
     };
     let names = |listed: &[u8]| -> Vec<Vec<u8>> {

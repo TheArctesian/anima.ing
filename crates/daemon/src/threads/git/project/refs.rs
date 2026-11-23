@@ -151,7 +151,7 @@ pub struct Head {
 /// # Errors
 /// A [`ProjectError`] when `HEAD` or the ref it names is not as git writes it.
 pub fn head(layout: &Layout) -> Result<Head, ProjectError> {
-    match loose(&open(&layout.git_dir)?, Path::new("HEAD"))? {
+    match loose(&layout.entry()?, Path::new("HEAD"))? {
         Some(Held::Id(commit)) => Ok(Head {
             branch: None,
             commit: Some(commit),
@@ -260,7 +260,7 @@ pub fn take_back(common: &Path, wanted: &str, at: &str) -> Result<(), ProjectErr
 pub fn point_head(layout: &Layout, branch: &str) -> Result<(), ProjectError> {
     let to = format!("refs/heads/{branch}");
     let to = name(&to).ok_or(ProjectError::Escapes)?;
-    let git_dir = open(&layout.git_dir)?;
+    let git_dir = layout.entry()?;
     replace(
         &git_dir,
         walk::name("HEAD"),

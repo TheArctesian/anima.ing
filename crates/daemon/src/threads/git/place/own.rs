@@ -156,6 +156,6 @@ pub async fn follow(git: &Git, worktree: &Worktree, commit: &str) -> Result<(), 
     let _ = std::fs::remove_file(&fresh);
     let read = Run::new(worktree.folder(), ["read-tree", commit]);
     git.output(read.with_env("GIT_INDEX_FILE", &fresh)).await?;
-    let git_dir = Dir::open(&worktree.record().git_dir).map_err(GitError::Files)?;
+    let git_dir = worktree.layout().entry().map_err(GitError::Files)?;
     placed(&git_dir, walk::name("index"), &fresh).map_err(GitError::Files)
 }

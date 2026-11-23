@@ -54,6 +54,9 @@ mod held {
         .union(OFlags::NONBLOCK)
         .union(OFlags::CLOEXEC);
 
+    /// The most folders in folders that [`Dir::remove_all`] goes into.
+    const DEEPEST: usize = 128;
+
     /// A folder that is held open.
     #[derive(Debug)]
     pub struct Dir(OwnedFd);
@@ -226,18 +229,25 @@ mod held {
         }
 
         /// Removes the folder `name` with all that it holds. A link in it is removed, never
-        /// followed.
+        /// followed. A tree of folders deeper than [`DEEPEST`] is refused: an agent can make one.
         ///
         /// # Errors
         /// The error of the system.
         pub fn remove_all(&self, name: &OsStr) -> io::Result<()> {
+            self.remove_tree(name, DEEPEST)
+        }
+
+        fn remove_tree(&self, name: &OsStr, left: usize) -> io::Result<()> {
             let Some(inside) = self.step(name, Make::No)? else {
                 return self.remove(name, false);
             };
+            let left = left
+                .checked_sub(1)
+                .ok_or_else(|| io::Error::other("the folders are too deep to remove"))?;
             for entry in inside.names()? {
                 // A file or a link goes at once; what stays is a folder.
                 let gone = inside.remove(&entry, false);
-                gone.or_else(|_| inside.remove_all(&entry))?;
+                gone.or_else(|_| inside.remove_tree(&entry, left))?;
             }
             self.remove(name, true)
         }

@@ -92,11 +92,7 @@ pub async fn make(
             Err(GitRefusal::BadPath)
         };
     }
-    let folder = home.planned(plan.thread, &repository)?;
-    if folder.symlink_metadata().is_ok() {
-        // Something is at the place and it is not a worktree of the runner: it is not touched.
-        return Err(GitRefusal::BadPath);
-    }
+    let folder = free_place(home, plan.thread, &repository)?;
     let common = layout.common_dir.as_path();
     let full = format!("refs/heads/{branch}");
     let (existing, at) = branch_at(&layout, plan, &full)?;
@@ -131,6 +127,27 @@ pub async fn make(
     let worktree = filled((git, home), undo.target, (&layout, new), shown).await?;
     undo.kept = true;
     Ok(made(worktree, false))
+}
+
+/// Where the worktree of `repository` of `thread` will be, when nothing is there and the
+/// runner made none before.
+fn free_place(home: &Home, thread: Uuid, repository: &str) -> Result<PathBuf, GitRefusal> {
+    if home.recorded(thread, repository).is_ok() {
+        // The runner made this worktree before and it is not whole now (its folder is gone or
+        // was replaced). Its checkpoints are in the folder of the runner: nothing is made
+        // new over them.
+        return Err(GitRefusal::Failed {
+            said: "the worktree of this chat is gone or was replaced; its checkpoints are \
+                   kept. Remove the worktree of the chat before a new one is made"
+                .to_owned(),
+        });
+    }
+    let folder = home.planned(thread, repository)?;
+    if folder.symlink_metadata().is_ok() {
+        // Something is at the place and it is not a worktree of the runner: it is not touched.
+        return Err(GitRefusal::BadPath);
+    }
+    Ok(folder)
 }
 
 /// Whether the branch `full` of the thread is there already, and the commit that the worktree

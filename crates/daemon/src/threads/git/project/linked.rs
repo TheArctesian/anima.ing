@@ -37,7 +37,16 @@ pub fn add(common: &Path, name: &str, folder: &Path, branch: &str) -> Result<Lay
         let inside = entries
             .below(Path::new(name), Make::No)?
             .ok_or(std::io::ErrorKind::NotFound)?;
-        std::fs::create_dir(folder)?;
+        // The folder of the worktree is made in its open folder, and its `.git` file in it.
+        let (above, last) = (folder.parent(), folder.file_name());
+        let (Some(above), Some(last)) = (above, last) else {
+            return Err(std::io::ErrorKind::InvalidInput.into());
+        };
+        let above = Dir::open(above)?;
+        above.new_folder(last)?;
+        let made = above
+            .below(Path::new(last), Make::No)?
+            .ok_or(std::io::ErrorKind::NotFound)?;
         let dot_git = folder.join(".git");
         let texts = [
             ("HEAD", format!("ref: refs/heads/{branch}\n")),
@@ -49,7 +58,8 @@ pub fn add(common: &Path, name: &str, folder: &Path, branch: &str) -> Result<Lay
                 .new_file(walk::name(file), false)?
                 .write_all(text.as_bytes())?;
         }
-        std::fs::write(dot_git, format!("gitdir: {}\n", entry.display()))
+        made.new_file(walk::name(".git"), false)?
+            .write_all(format!("gitdir: {}\n", entry.display()).as_bytes())
     })();
     if let Err(failed) = made {
         // The entry was made a moment ago by this call and names no work.

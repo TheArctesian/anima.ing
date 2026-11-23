@@ -14,33 +14,28 @@
 //!
 //! I/O: `git init`, `git index-pack`, `git rev-list`, one run of the thread, a few files.
 
-use std::ffi::OsStr;
+pub mod pack;
+
 use std::path::Path;
 use std::time::Duration;
 
 use super::super::project::refs;
-use super::super::run::hooks::{AsThread, ThreadRun};
-use super::super::run::{Git, GitError, Run, said};
+use super::super::run::{Git, GitError, Run};
 use super::Worktree;
-use super::walk::{self, Dir, Make};
+use super::walk::{self, Dir};
 
-/// The refs of the commits whose whole history is in the copy, one for each commit.
+/// The refs that say which thread proved which commit: `refs/anima/seen/<commit>/<thread>`.
+/// The whole history of the commit is in the copy, and the thread showed that it can read
+/// each object of it in the repository of the person: by bringing it, or by a look that reads
+/// no content. A commit that a different thread brought is not known to a thread before that:
+/// the other thread can have more rights.
 const SEEN: &str = "refs/anima/seen";
 
-/// The most commits that are named as known when the thread makes a pack.
+/// The most commits that are named as known in one run of a thread.
 const MOST_KNOWN: usize = 64;
 
 /// The time the copy of a history gets: the first one of a large repository is long.
 pub const LONG: Duration = Duration::from_hours(1);
-
-/// The folder in the worktree that the thread writes its pack to: the one place that each
-/// thread can write, also a confined one whose sandbox keeps the Git folder read-only. It is
-/// there only while a copy runs.
-pub const OUT: &str = ".anima-pack";
-
-/// The file in the Git folder of the runner that says what is wanted. The runner opens it for
-/// the program; no thread writes it.
-const WANT: &str = "want";
 
 /// The most bytes of the list of the commits where a shallow clone ends.
 const MOST_SHALLOW: u64 = 16 * 1024 * 1024;
@@ -74,23 +69,74 @@ fn failed(said: String) -> GitError {
     GitError::Failed { code: None, said }
 }
 
-/// Makes each commit of `commits` known: its whole history is copied from the repository of
-/// the person into the copy of the project, read with the rights of the thread of `worktree`
-/// and checked by the runner. `git` is the one of [`Git::for_worktree`]. A commit that is
-/// known already costs one look.
+/// The commits that the copy has whole: the ones that this thread proved, and the ones that
+/// only a different thread proved.
+async fn marked(store: &Git, worktree: &Worktree) -> Result<(Vec<String>, Vec<String>), GitError> {
+    let listed = ["for-each-ref", "--format=%(refname)", SEEN];
+    let listed = store
+        .text(Run::new(&worktree.record().shared, listed))
+        .await?;
+    let thread = worktree.thread().as_simple().to_string();
+    let (mut mine, mut others) = (Vec::new(), Vec::new());
+    for name in listed.lines() {
+        let mut parts = name.rsplit('/');
+        let (Some(by), Some(commit)) = (parts.next(), parts.next().and_then(refs::id)) else {
+            continue;
+        };
+        if by == thread {
+            mine.push(commit.to_owned());
+        } else {
+            others.push(commit.to_owned());
+        }
+    }
+    others.retain(|commit| !mine.contains(commit));
+    others.dedup();
+    Ok((mine, others))
+}
+
+/// Writes down that the thread of `worktree` proved `commit`.
+async fn mark(store: &Git, worktree: &Worktree, commit: &str) -> Result<(), GitError> {
+    let seen = format!("{SEEN}/{commit}/{}", worktree.thread().as_simple());
+    let keep = ["update-ref", "--no-deref", seen.as_str(), commit];
+    let keep = Run::new(&worktree.record().shared, keep);
+    store.output(keep).await.map(drop)
+}
+
+/// Whether the copy alone has `commit` as a commit with each object of its history, but for
+/// the history of `known`.
+async fn whole(store: &Git, worktree: &Worktree, commit: &str, known: &[&str]) -> bool {
+    let shared = &worktree.record().shared;
+    let itself = format!("{commit}^{{commit}}");
+    let is = [
+        "rev-parse",
+        "--verify",
+        "--quiet",
+        "--end-of-options",
+        &itself,
+    ];
+    let is = store.text(Run::new(shared, is)).await;
+    let mut all = vec!["rev-list", "--objects", "--quiet", commit, "--not"];
+    all.extend(known);
+    let all = Run::new(shared, all).with_time(LONG);
+    is.ok().as_deref() == Some(commit) && store.output(all).await.is_ok()
+}
+
+/// Makes each commit of `commits` known to the thread of `worktree`: its whole history is in
+/// the copy of the project, checked by the runner, and the thread showed that it can read it
+/// in the repository of the person. What the copy lacks is read with the rights of the thread
+/// and comes as a pack. `git` is the one of [`Git::for_worktree`]. A commit that the thread
+/// proved before costs one look.
 ///
 /// # Errors
-/// A [`GitError`] when the runner has no way to read as the thread, the thread could not
-/// make the pack, a commit is no commit, or an object of it is missing or forged.
+/// A [`GitError`] when the runner has no way to run as the thread, the thread cannot read
+/// the commit, a commit is no commit, or an object of it is missing or forged.
 pub async fn learn(git: &Git, worktree: &Worktree, commits: &[&str]) -> Result<(), GitError> {
-    let record = worktree.record();
-    let store = &git.in_own(&record.shared).await?;
+    let store = &git.in_own(&worktree.record().shared).await?;
+    let (mut mine, others) = marked(store, worktree).await?;
     let mut wanted = Vec::new();
     for commit in commits {
         let commit = refs::id(commit).ok_or_else(forged)?;
-        let seen = format!("{SEEN}/{commit}");
-        let known = ["show-ref", "--verify", "--quiet", seen.as_str()];
-        if !store.yes(Run::new(&record.shared, known)).await? {
+        if !mine.iter().any(|known| known == commit) {
             wanted.push(commit);
         }
     }
@@ -98,45 +144,61 @@ pub async fn learn(git: &Git, worktree: &Worktree, commits: &[&str]) -> Result<(
         return Ok(());
     }
     shallow(worktree)?;
-    let listed = ["for-each-ref", "--format=%(objectname)", SEEN];
-    let listed = store.text(Run::new(&record.shared, listed)).await?;
-    let known: Vec<&str> = listed.lines().take(MOST_KNOWN).collect();
-    // First without what is known already; when the repository of the person lost one of
-    // those commits, the whole history again.
-    let mut packed = pack(git, worktree, (&wanted, &known)).await;
-    if packed.is_err() && !known.is_empty() {
-        packed = pack(git, worktree, (&wanted, &[])).await;
+    mine.truncate(MOST_KNOWN);
+    // What a different thread brought: one look with the rights of this thread, which reads
+    // no content, shows whether this thread can read it too.
+    let mut there: Vec<&str> = wanted
+        .iter()
+        .copied()
+        .filter(|commit| others.iter().any(|other| other == commit))
+        .collect();
+    if mine.is_empty() {
+        there.extend(others.iter().map(String::as_str).take(MOST_KNOWN));
+        there.dedup();
     }
-    if let Err(failed) = packed {
-        // The folder of the pack does not stay in the worktree of the thread.
-        if let Ok(folder) = Dir::open(worktree.folder()) {
-            let _ = folder.remove_all(walk::name(OUT));
+    let known: Vec<&str> = mine.iter().map(String::as_str).collect();
+    if !there.is_empty() && pack::reads(git, worktree, (&there, &known)).await? {
+        for commit in &there {
+            mark(store, worktree, commit).await?;
         }
-        return Err(failed);
+        wanted.retain(|commit| !there.contains(commit));
+        mine.extend(there.iter().map(|commit| (*commit).to_owned()));
     }
-    taken(store, worktree).await?;
+    let known: Vec<&str> = mine.iter().map(String::as_str).take(MOST_KNOWN).collect();
     for commit in wanted {
-        // Each object of the commit is in the folders of the runner now, or it is refused.
-        let itself = format!("{commit}^{{commit}}");
-        let is = [
-            "rev-parse",
-            "--verify",
-            "--quiet",
-            "--end-of-options",
-            &itself,
-        ];
-        let is = git.text(Run::new(worktree.folder(), is)).await;
-        let mut whole = vec!["rev-list", "--objects", "--quiet", commit, "--not"];
-        whole.extend(&known);
-        let whole = Run::new(worktree.folder(), whole).with_time(LONG);
-        if is.ok().as_deref() != Some(commit) || git.output(whole).await.is_err() {
-            return Err(forged());
-        }
-        let seen = format!("{SEEN}/{commit}");
-        let keep = ["update-ref", "--no-deref", seen.as_str(), commit];
-        store.output(Run::new(&record.shared, keep)).await?;
+        brought(git, (store, worktree), commit, &known).await?;
+        mark(store, worktree, commit).await?;
     }
     Ok(())
+}
+
+/// Has the thread bring the history of `commit` without the history of `known`, and checks
+/// in the copy that each object of it is there. When that fails, the whole history again:
+/// the repository of the person or the copy can have lost what was known.
+async fn brought(
+    git: &Git,
+    (store, worktree): (&Git, &Worktree),
+    commit: &str,
+    known: &[&str],
+) -> Result<(), GitError> {
+    let first: Result<(), GitError> = async {
+        pack::make(git, worktree, (&[commit], known)).await?;
+        pack::take(store, worktree).await
+    }
+    .await;
+    if first.is_ok() && whole(store, worktree, commit, known).await {
+        return Ok(());
+    }
+    if known.is_empty() {
+        return first.and(Err(forged()));
+    }
+    pack::make(git, worktree, (&[commit], &[])).await?;
+    pack::take(store, worktree).await?;
+    if whole(store, worktree, commit, &[]).await {
+        Ok(())
+    } else {
+        Err(forged())
+    }
 }
 
 /// Copies the list of the commits where a shallow clone ends into the Git folder of the
@@ -152,108 +214,14 @@ fn shallow(worktree: &Worktree) -> Result<(), GitError> {
         .filter_map(refs::id)
         .flat_map(|id| [id, "\n"])
         .collect();
-    let file = record.own.join("shallow");
-    if ends.is_empty() {
-        let _ = std::fs::remove_file(file);
-        return Ok(());
-    }
-    std::fs::write(file, ends).map_err(GitError::Files)
-}
-
-/// Has the thread make one pack of the history of `wanted` without the history of `known`,
-/// in a folder of its worktree.
-async fn pack(
-    git: &Git,
-    worktree: &Worktree,
-    (wanted, known): (&[&str], &[&str]),
-) -> Result<(), GitError> {
-    let as_thread = git.as_thread().ok_or_else(|| {
-        failed(
-            "the runner gave no way to read the repository with the rights of the thread"
-                .to_owned(),
-        )
-    })?;
-    let record = worktree.record();
-    let mut list = String::new();
-    for commit in wanted {
-        list.extend([commit, "\n"]);
-    }
-    for commit in known {
-        list.extend(["^", commit, "\n"]);
-    }
-    let want = record.own.join(WANT);
-    std::fs::write(&want, list).map_err(GitError::Files)?;
-    // The folder is made new by the runner, with no link followed on the way.
-    let folder = Dir::open(worktree.folder()).map_err(GitError::Files)?;
-    let made = folder
-        .remove_all(walk::name(OUT))
-        .and_then(|()| folder.new_folder(walk::name(OUT)));
-    made.map_err(GitError::Files)?;
-    let base = worktree.folder().join(OUT).join("p");
-    let args: [&OsStr; 4] = [
-        "pack-objects".as_ref(),
-        "--revs".as_ref(),
-        "--quiet".as_ref(),
-        base.as_os_str(),
-    ];
-    let run = ThreadRun {
-        thread: worktree.thread(),
-        dir: worktree.folder().to_owned(),
-        program: git.program().to_owned(),
-        args: args.map(OsStr::to_owned).into(),
-        env: Vec::new(),
-        input: Some(want),
-        within: LONG,
-    };
-    match AsThread::start(as_thread, run).await {
-        Ok(ended) if ended.code == Some(0) => Ok(()),
-        Ok(ended) => Err(failed(format!(
-            "the repository could not be read: {}",
-            said::without_credentials(&ended.said)
-        ))),
-        Err(error) => Err(failed(format!("the repository could not be read: {error}"))),
-    }
-}
-
-/// Takes each pack that the thread made, as a file with no link followed, and brings it into
-/// the copy of the project: `git index-pack` names each object by its content first.
-async fn taken(store: &Git, worktree: &Worktree) -> Result<(), GitError> {
-    let record = worktree.record();
-    let entry = Dir::open(worktree.folder()).map_err(GitError::Files)?;
-    let incoming = format!("incoming-{}", worktree.thread().as_simple());
-    let incoming = super::own::fresh(&record.shared, &incoming)?;
-    let copied = (|| {
-        let Some(out) = entry.below(Path::new(OUT), Make::No)? else {
-            return Ok(Vec::new());
-        };
-        let mut packs = Vec::new();
-        for name in out.names()? {
-            let is_pack = Path::new(&name)
-                .extension()
-                .is_some_and(|kind| kind == "pack");
-            let Some(mut found) = out.file(&name)?.filter(|_| is_pack) else {
-                continue;
-            };
-            let copy = incoming.join(&name);
-            std::io::copy(&mut found, &mut std::fs::File::create(&copy)?)?;
-            packs.push(copy);
-        }
-        entry.remove_all(walk::name(OUT))?;
-        Ok::<_, std::io::Error>(packs)
-    })();
-    for pack in copied.map_err(GitError::Files)? {
-        let name: [&OsStr; 2] = ["index-pack".as_ref(), pack.as_os_str()];
-        store
-            .output(Run::new(&record.shared, name).with_time(LONG))
-            .await?;
-        for file in [pack.clone(), pack.with_extension("idx")] {
-            let placed = file
-                .file_name()
-                .map(|name| record.shared.join("objects/pack").join(name))
-                .ok_or(GitError::NotFound)?;
-            std::fs::rename(file, placed).map_err(GitError::Files)?;
+    // The copy of the project and the Git folder of the runner both stop at these commits.
+    for folder in [&record.shared, &record.own] {
+        let file = folder.join("shallow");
+        if ends.is_empty() {
+            let _ = std::fs::remove_file(file);
+        } else {
+            std::fs::write(file, &ends).map_err(GitError::Files)?;
         }
     }
-    let _ = std::fs::remove_dir_all(&incoming);
     Ok(())
 }

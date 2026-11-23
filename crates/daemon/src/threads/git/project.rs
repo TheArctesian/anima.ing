@@ -20,6 +20,7 @@ pub mod refs;
 use std::io::Read as _;
 use std::path::{Path, PathBuf};
 
+use super::place::walk::{Dir, Make};
 use super::run::settings::{self, Setting};
 use super::run::{Git, GitError, Run};
 
@@ -67,6 +68,23 @@ impl From<ProjectError> for GitError {
 pub struct Layout {
     pub git_dir: PathBuf,
     pub common_dir: PathBuf,
+}
+
+impl Layout {
+    /// The Git folder of this checkout, held open. The entry of a linked worktree is found
+    /// from the shared Git folder, one part at a time: a link in the place of the folder of
+    /// the entries is not followed.
+    ///
+    /// # Errors
+    /// The error of the system; `NotFound` when a part is no folder.
+    pub fn entry(&self) -> std::io::Result<Dir> {
+        match self.git_dir.strip_prefix(&self.common_dir) {
+            Ok(inside) if inside.file_name().is_some() => Dir::open(&self.common_dir)?
+                .below(inside, Make::No)?
+                .ok_or_else(|| std::io::ErrorKind::NotFound.into()),
+            _ => Dir::open(&self.git_dir),
+        }
+    }
 }
 
 /// The Git folders of the checkout whose top folder is `top`.

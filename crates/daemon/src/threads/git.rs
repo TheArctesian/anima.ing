@@ -192,7 +192,8 @@ impl Engine {
         let _alone = self.alone(plan.thread, "").await;
         // One worktree of a project at a time: the first one copies its history, and the
         // next one finds the copy.
-        let project = plan.project.to_string_lossy();
+        let real = std::fs::canonicalize(plan.project);
+        let project = real.as_deref().unwrap_or(plan.project).to_string_lossy();
         let _copy = self.alone(Uuid::nil(), &project).await;
         worktree::make(&self.git, &self.home, plan, shown).await
     }

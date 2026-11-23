@@ -43,6 +43,8 @@ pub(super) fn as_the_person(hooks: Option<Arc<AtomicUsize>>) -> AsThread {
     })
 }
 
+mod review;
+
 impl Bench {
     /// An engine on the records of the bench with the launcher `as_thread`, or with none.
     fn engine_with(&self, as_thread: Option<AsThread>) -> Engine {
