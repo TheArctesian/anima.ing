@@ -103,6 +103,18 @@ const SHOTS: readonly ComposerShot[] = [
     await expect(part.getByRole('listitem')).toHaveCount(1);
     return undefined;
   } },
+  { name: 'picker-full-access', part: 'picker', act: async (page, part) => {
+    await part.getByRole('button').first().click();
+    await page.getByRole('dialog').first().getByRole('button', { name: /^Permissions: / }).click();
+    const menu = page.getByRole('dialog', { name: 'Permissions' });
+    await menu.getByRole('radio', { name: 'Full access' }).hover();
+    await expect(menu.getByText(/checkpoints/u).last()).toBeVisible();
+    const tall = (await menu.boundingBox())?.height;
+    await menu.getByRole('radio', { name: 'Supervised' }).hover();
+    expect((await menu.boundingBox())?.height).toBe(tall);
+    await menu.getByRole('radio', { name: 'Full access' }).hover();
+    return page.getByRole('dialog').first();
+  } },
   { name: 'runner-no-search', part: 'real-idle', act: async (page, part) => {
     await editorOf(part).click();
     await page.keyboard.type('Read @gate');
