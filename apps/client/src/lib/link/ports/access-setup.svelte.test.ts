@@ -138,3 +138,23 @@ it('honors a screen-sharing opt-out while System Settings is open', async () => 
   expect(calls.localAccess).toHaveBeenCalledExactlyOnceWith();
   expect(calls.publishAccess).not.toHaveBeenCalled();
 });
+
+
+it('retries failed publication without preparing protocols and never calls unpublished access ready', async () => {
+  await show();
+  const ready = { ...fresh, configured: true, open: [22], ready: [22] };
+  calls.localAccess.mockResolvedValue(ready);
+  calls.publishAccess.mockRejectedValueOnce(new Error('Hub update failed. Retry.'));
+  document.querySelector<HTMLButtonElement>('[aria-label="Enable SSH"]')?.click();
+  await settle();
+  expect(document.body.textContent).toContain('Hub update failed. Retry.');
+  expect(document.body.textContent).not.toContain('Ready in Anima');
+  const sync = document.querySelector<HTMLButtonElement>('[aria-label="Sync SSH"]');
+  expect(sync?.getAttribute('aria-disabled')).toBe('false');
+  sync?.click();
+  await settle();
+  expect(calls.localAccess).toHaveBeenLastCalledWith();
+  expect(calls.localAccess.mock.calls.filter((args) => args.length > 0)).toHaveLength(1);
+  expect(calls.publishAccess).toHaveBeenCalledTimes(2);
+  expect(document.body.textContent).toContain('Ready in Anima');
+});

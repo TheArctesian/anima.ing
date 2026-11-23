@@ -20,6 +20,7 @@
   let problem = $state('');
   let messages = $state<Record<number, string>>({});
   let waitingSettings = $state(false);
+  let published = $state<readonly number[]>([]);
   const rows = $derived(portRows(system, selected));
 
   async function read(show: boolean): Promise<void> {
@@ -28,6 +29,7 @@
       access = await localAccess();
       if (access === null) return;
       selected = access.selected;
+      published = [];
       waitingSettings = false;
       messages = {};
       problem = '';
@@ -38,6 +40,14 @@
   }
 
   onMount(() => { if (automatic) void read(false); });
+
+  async function prepare(target?: number): Promise<Access | null> {
+    if (target !== undefined && access?.open.includes(target) && access.ready.includes(target)) {
+      const current = await localAccess();
+      if (current?.open.includes(target) && current.ready.includes(target)) return current;
+    }
+    return localAccess(selected, target);
+  }
 
   async function apply(target?: number): Promise<void> {
     if (busy) return;
@@ -50,11 +60,13 @@
     } else messages = {};
     try {
       await checkAccessHub(hub);
-      const result = await localAccess(selected, target);
+      const result = await prepare(target);
       if (result === null) throw new Error('Remote access setup needs the desktop app.');
       access = result;
+      published = [];
       for (const note of result.notes) messages[note.port] = note.message;
       await publishAccess(hub, result);
+      published = result.open;
       onSaved();
       if (target === undefined && result.notes.length === 0) opened = false;
     } catch (error) {
@@ -97,7 +109,8 @@
       <div class="capabilities">
         {#each rows as row (row.port)}
           {@const ready = access.ready.includes(row.port)}
-          {@const enabled = access.open.includes(row.port) && ready}
+          {@const enabled = access.open.includes(row.port) && ready && published.includes(row.port)}
+          {@const needsSync = access.open.includes(row.port) && ready && !enabled}
           {@const unavailable = row.port !== 22 && !access.desktop}
           {@const macSharing = system === 'mac' && row.port === 5900 && !ready}
           <section class="capability" aria-labelledby="setup-label-{row.port}">
@@ -111,6 +124,7 @@
                 {:else if messages[row.port]}{messages[row.port]}
                 {:else if unavailable}No graphical desktop detected.
                 {:else if enabled}Ready in Anima
+                {:else if needsSync}Ready locally · sync with Anima
                 {:else if ready}Server ready · not enabled in Anima
                 {:else}Not enabled{/if}
               </p>
@@ -121,7 +135,7 @@
                     {#if waitingSettings}<FormButton aria-disabled={busy} onclick={checkSharing}>Check again</FormButton>{/if}
                   </div>
                 {:else}
-                  <FormButton busy={busy && active === row.port} aria-disabled={busy || enabled} aria-label="{enabled ? 'Enabled' : 'Enable'} {row.port === 22 ? 'SSH' : row.port === 5900 ? 'Screen sharing' : 'Remote Desktop'}" onclick={() => void apply(row.port)}>{busy && active === row.port ? 'Enabling…' : enabled ? 'Enabled' : 'Enable'}</FormButton>
+                  <FormButton busy={busy && active === row.port} aria-disabled={busy || enabled} aria-label="{enabled ? 'Enabled' : needsSync ? 'Sync' : 'Enable'} {row.port === 22 ? 'SSH' : row.port === 5900 ? 'Screen sharing' : 'Remote Desktop'}" onclick={() => void apply(row.port)}>{busy && active === row.port ? 'Enabling…' : enabled ? 'Enabled' : needsSync ? 'Sync with Anima' : 'Enable'}</FormButton>
                 {/if}
               {/if}
             </div>
