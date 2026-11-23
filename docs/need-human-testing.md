@@ -5392,3 +5392,39 @@ with SSH on. The tests use a fake hub; nobody has seen the list with real device
    Expected: that device is no longer listed.
 
 Result: Open.
+
+### HT-178: the containers of all machines in one list (task H18; HOST-034)
+
+Built on the branch `hosted/h18-containers`: the choice List of Hosting > Applications, with the view Containers. The
+tests use a fake hub; nobody has seen it with real machines.
+
+1. In the desktop application of this build, signed in to a hub with at least two devices that have SSH on and Docker,
+   one of them with a Compose project of two services, open Hosting > Applications and choose List: Containers.
+   Expected: each container of each machine is its own row, under the header of its machine; a container of the project
+   says its image and "Container of" the project; each row has Details and Log.
+2. Press Log on a container of the second machine.
+   Expected: its log shows below the list.
+3. Stop Docker on one machine, or turn off its SSH credential in Anima, and press Refresh.
+   Expected: its group stays, with the words of the hub that say why; the containers of the other machines are listed.
+4. Choose List: Applications.
+   Expected: the project is one row again, as before.
+
+Result: Open.
+
+### HT-179: an open Compose project says where it was started from (task H15; HOST-030)
+
+Built on the branch `hosted/h15-project-files`: Hosting > Applications reads the folder and the files of each Compose
+project, as the Docker labels give them, and shows them when the project is open. The tests use a fake hub; nobody has
+seen it with a real machine.
+
+1. On a machine with SSH on and Docker, start a Compose project from a folder, with an override file
+   (`docker compose -f compose.yaml -f compose.override.yaml up -d`). In the desktop application of this build, open
+   Hosting > Applications and open the project with its arrow.
+   Expected: the first line under the project says "Started by Compose in" the folder "from" the two files, with full
+   paths, in the order of the command; the same paths that `anima containers projects` gives.
+2. Choose List: Containers.
+   Expected: no such line; each container is its own row.
+3. Start a container with `docker run -d`.
+   Expected: its row has no such line.
+
+Result: Open.

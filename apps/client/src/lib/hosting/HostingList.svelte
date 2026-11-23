@@ -7,7 +7,7 @@
   import Select from '$lib/forms/input/Select.svelte';
   import Segmented from '$lib/forms/segmented/Segmented.svelte';
   import ErrorState from '$lib/states/ErrorState.svelte';
-  import { needingYou, placeGroups, type ApplicationRow, type Show } from './list';
+  import { needingYou, placeGroups, type ApplicationRow, type Show, type View } from './list';
   import type { HostingStore } from './store.svelte';
 
   /**
@@ -17,11 +17,16 @@
    */
   const { store }: { store: HostingStore } = $props();
 
-  const groups = $derived(placeGroups(store.places, { search: store.search, machine: store.machine, show: store.show }));
-  const all = $derived(placeGroups(store.places, { search: '', machine: '', show: 'all' }).flatMap((group) => group.rows));
+  const groups = $derived(placeGroups(store.places, { search: store.search, machine: store.machine, show: store.show, view: store.view }));
+  const all = $derived(placeGroups(store.places, { search: '', machine: '', show: 'all', view: store.view }).flatMap((group) => group.rows));
+  /** HOST-034: the same list, with each container of each machine as its own row. */
+  const VIEWS = [
+    { value: 'applications' as View, label: 'Applications' },
+    { value: 'containers' as View, label: 'Containers' },
+  ];
   const options = $derived([
     { value: 'all' as Show, label: 'All', count: all.length },
-    { value: 'needs-you' as Show, label: 'Needs you', count: needingYou(store.places) },
+    { value: 'needs-you' as Show, label: 'Needs you', count: needingYou(store.places, store.view) },
     { value: 'not-managed' as Show, label: 'Not managed', count: all.filter((row) => !row.managed).length },
   ]);
   const count = (n: number, word: string) => `${String(n)} ${word}${n === 1 ? '' : 's'}`;
@@ -51,6 +56,7 @@
         </Select>
       </label>
     {/if}
+    <Segmented label="List" size="sm" options={VIEWS} bind:value={store.view} />
     <Segmented label="Show" size="sm" {options} bind:value={store.show} />
     <span class="grow"></span>
     <FormButton size="sm" tone="ghost" icon="carbon:update-now" busy={store.updatesStatus === 'loading'} onclick={() => void store.checkUpdates()}>Look for newer images</FormButton>
@@ -61,7 +67,7 @@
   <table>
     <caption>The applications and the containers of each machine</caption>
     <thead>
-      <tr><th scope="col">Application or container</th><th scope="col">State</th><th scope="col">Updates</th><th scope="col"><span class="hidden">Log and details</span></th></tr>
+      <tr><th scope="col">{store.view === 'containers' ? 'Container' : 'Application or container'}</th><th scope="col">State</th><th scope="col">Updates</th><th scope="col"><span class="hidden">Log and details</span></th></tr>
     </thead>
     {#each groups as group (group.id)}
       <tbody>
@@ -91,6 +97,16 @@
             <td class="action">{#if !opens && row.containers[0] !== undefined}{@render actions(group.id, row.containers[0])}{/if}</td>
           </tr>
           {#if opens && open}
+            {#if row.folder !== null || row.files.length > 0}
+              <!-- HOST-030: where the project was started from, as Docker says; read only. -->
+              <tr class="inner started">
+                <th scope="row" colspan="4"><span class="line">
+                  <span class="sub">Started by Compose</span>
+                  {#if row.folder !== null}<span class="path">in <code>{row.folder}</code></span>{/if}
+                  {#if row.files.length > 0}<span class="path">from <code>{row.files.join(', ')}</code></span>{/if}
+                </span></th>
+              </tr>
+            {/if}
             {#each row.containers as container (container.id)}
               <tr class="inner">
                 <th scope="row">{container.name} <span class="sub">Container of {row.name}</span></th>
@@ -232,6 +248,23 @@
 
   .inner th {
     padding-inline-start: var(--space-6);
+  }
+
+  .started .line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+    color: var(--text-secondary);
+  }
+
+  .started .sub {
+    display: inline;
+  }
+
+  code {
+    color: var(--text);
+    font-family: var(--font-mono);
+    overflow-wrap: anywhere;
   }
 
   .sub {
