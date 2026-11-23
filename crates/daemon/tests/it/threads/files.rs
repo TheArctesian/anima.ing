@@ -33,7 +33,7 @@ async fn started(client: &mut Client, work: std::path::PathBuf) -> Uuid {
             attachments: Vec::new(),
         })
         .await;
-    let Outcome::Started { thread } = client.done(start).await else {
+    let Outcome::Started { thread, .. } = client.done(start).await else {
         panic!("the thread started");
     };
     thread

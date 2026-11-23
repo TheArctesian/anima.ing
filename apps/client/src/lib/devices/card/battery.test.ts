@@ -73,17 +73,16 @@ it('MET-032: under 20 % while it discharges the meter warns in words and in its 
   expect(meter?.getAttribute('aria-valuetext')).toBe('18 %, low, on battery');
 });
 
-it('MET-032: the list has a Battery head only when a listed device has a battery, and the battery is a fourth slot', async () => {
+it('MET-032: each row names its metrics, and the battery is a fourth slot only when a listed device has a battery', async () => {
   const fake = await show(DEFAULT_QUERY);
   charge(fake, 80);
-  const head = document.querySelector('thead .c-detail');
-  expect(head?.textContent).toContain('Battery');
-  expect(head?.getAttribute('aria-label')).toBe('Usage: CPU, memory, disk, battery');
   const rows = [...document.querySelectorAll('tbody tr.device')];
-  expect(rows.map((row) => row.querySelectorAll('[role="meter"]').length)).toEqual([4, 3]);
+  const words = rows.map((row) => [...row.querySelectorAll('[role="meter"] .name')].map((node) => node.textContent));
+  expect(words).toEqual([['CPU', 'Memory', 'Disk', 'Battery'], ['CPU', 'Memory', 'Disk']]);
+  expect(document.querySelector<HTMLElement>('table.device-rows')?.style.getPropertyValue('--usage-slots')).toBe('4');
 });
 
-it('MET-032: a list with no battery keeps its three usage heads', async () => {
+it('MET-032: a list with no battery keeps three usage slots', async () => {
   const fake = fakeHub({ Devices: devicesAnswer([SERVER]), Tags: { tags: [] } });
   current.hub = fake.hub;
   app = mount(DeviceScreen, {
@@ -91,5 +90,5 @@ it('MET-032: a list with no battery keeps its three usage heads', async () => {
     props: { query: DEFAULT_QUERY, onQueryChange: () => undefined, onAddDevice: () => undefined, onConnect: () => undefined },
   });
   await settle();
-  expect(document.querySelector('thead .c-detail')?.getAttribute('aria-label')).toBe('Usage: CPU, memory, disk');
+  expect(document.querySelector<HTMLElement>('table.device-rows')?.style.getPropertyValue('--usage-slots')).toBe('3');
 });

@@ -25,6 +25,7 @@ impl Runner {
             return refused(Refusal::Holder);
         };
         let steps = thread.begin_with(&prompt);
+        let folder = thread.row.folder.clone();
         self.note(Kind::Start, Some(id), "started");
         let went = self.apply(id, steps).await.is_ok();
         let taken = if prompt.attachments.is_empty() {
@@ -34,7 +35,7 @@ impl Runner {
         };
         self.first_files_went(id, taken, went);
         self.save();
-        Outcome::Started { thread: id }
+        Outcome::Started { thread: id, folder }
     }
 
     pub(super) async fn start_done(

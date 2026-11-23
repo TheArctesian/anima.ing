@@ -72,6 +72,10 @@ impl Runner {
                     self.watch(id, client);
                     return;
                 }
+                Action::Models => {
+                    self.models_call(back, !agent);
+                    return;
+                }
                 Action::Interrupt { thread } => self.interrupt(thread).await,
                 queued @ (Action::Queue { .. }
                 | Action::Requeue { .. }
@@ -92,13 +96,7 @@ impl Runner {
                     self.folders(folder, hidden, back);
                     return;
                 }
-                Action::RaiseLimit => {
-                    self.limits = self.limits.raised();
-                    self.save();
-                    Outcome::Limits {
-                        limits: self.limits,
-                    }
-                }
+                Action::RaiseLimit => self.raise_limit(),
                 waits => match self.held_call(waits, back.clone(), !agent).await {
                     Ok(()) => return,
                     Err(why) => Outcome::Refused { why },
@@ -109,6 +107,15 @@ impl Runner {
             self.note(Kind::Refusal, named, refusal_word(why));
         }
         back.answer(answer);
+    }
+
+    /// The soft limits one step up, kept across a restart (THR-114).
+    fn raise_limit(&mut self) -> Outcome {
+        self.limits = self.limits.raised();
+        self.save();
+        Outcome::Limits {
+            limits: self.limits,
+        }
     }
 
     /// A call whose answer waits for the holder: a start, a prompt, an answer or a stop.

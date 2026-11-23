@@ -32,6 +32,27 @@ const EVERY_STATE: Scenario = {
       .map(([thread, marks]) => ({ thread, pinned: false, archived: false, title: null, removed: false, ...marks })),
   ],
 };
+/** The models of the two programs, as a runner that asked them before any thread answers `models` (TH104). */
+const MODELS: Scenario = {
+  ...EVERY_STATE,
+  models: [
+    {
+      program: 'claude_code',
+      models: [
+        { value: 'opus', name: 'Opus 4.7', efforts: ['low', 'medium', 'high', 'xhigh', 'max'], default_effort: 'high' },
+        { value: 'sonnet', name: 'Sonnet 4.6', efforts: ['low', 'medium', 'high'], default_effort: 'medium' },
+        { value: 'haiku', name: 'Haiku 4.5', efforts: [], default_effort: null },
+      ],
+    },
+    {
+      program: 'codex',
+      models: [
+        { value: 'gpt-5.4-codex', name: 'GPT-5.4 Codex', efforts: ['minimal', 'low', 'medium', 'high', 'xhigh'], default_effort: 'medium' },
+        { value: 'gpt-5.4-mini', name: 'GPT-5.4 mini', efforts: ['low', 'medium', 'high'], default_effort: 'medium' },
+      ],
+    },
+  ],
+};
 const EMPTY: Scenario = { ...EVERY_STATE, rows: [], running: [], listings: [], updates: [] };
 const TALKED = 'Why does the gates run stop at limits?';
 /** The idle thread works in a linked worktree on a branch, with the context window its program last said (TH112). */
@@ -197,6 +218,9 @@ const SHOTS: readonly Shot[] = [
   // T3 Code's new thread: no form, the composer in the middle under the project's heading (from the open thread).
   { name: 'new-thread', window: true, act: (page, inbox) => newThread(page, inbox, false) },
   { name: 'new-thread-project', window: true, act: (page, inbox) => newThread(page, inbox, true) },
+  // The picker of the draft with the models each program listed, on each program's tab.
+  { name: 'new-thread-models-claude', window: true, scenario: MODELS, act: (page, inbox) => openModels(page, inbox, null) },
+  { name: 'new-thread-models-codex', window: true, scenario: MODELS, act: (page, inbox) => openModels(page, inbox, 'Codex') },
   {
     name: 'new-thread-no-project',
     scenario: EMPTY,
@@ -223,6 +247,17 @@ async function newThread(page: Page, inbox: Locator, picking: boolean): Promise<
     await expect(page.getByRole('listbox', { name: 'Projects' })).toBeVisible();
   }
   return [];
+}
+
+/** Opens the draft's model picker; `program` opens that program's tab of the rail. */
+async function openModels(page: Page, inbox: Locator, program: string | null): Promise<readonly Locator[]> {
+  await newThread(page, inbox, false);
+  await page.getByRole('button', { name: /^Claude Code default/ }).click();
+  const picker = page.getByRole('dialog', { name: 'Model' });
+  await expect(picker.getByText('Opus 4.7')).toBeVisible();
+  if (program !== null) await picker.getByRole('button', { name: program, exact: true }).click();
+  await page.mouse.move(1000, HEIGHT - 20);
+  return [picker];
 }
 
 /** The box of the inbox column with its floating layers, in the page. */

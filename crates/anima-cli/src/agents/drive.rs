@@ -163,7 +163,7 @@ impl StartArgs {
         };
         loop {
             match link.call(action.clone()).await? {
-                Outcome::Started { thread } => {
+                Outcome::Started { thread, .. } => {
                     return invocation
                         .output
                         .data(&thread, |thread| one(&thread.to_string()));

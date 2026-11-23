@@ -46,3 +46,17 @@ it('a quiet row keeps its age, and a snoozed one-liner its wake time, in its nam
   const snoozed = show({ row: LISTED, state: 'done', status: null, project: 'anima', recedes: true, since: null, wakes: new Date(NOW.getTime() + 3_600_000) }, 'slim', 'snoozed');
   expect(spokenName(snoozed)).toContain('Wakes in 1h.');
 });
+
+it('a row names its program by its mark, with the name as its spoken name and tip', () => {
+  const button = show({ row: { ...LISTED, program: 'codex' }, state: 'done', status: null, project: 'anima', recedes: true, since: null, wakes: null }, 'card');
+  const mark = button.querySelector('.program [role="img"]');
+  expect(mark?.getAttribute('aria-label')).toBe('Codex');
+  expect(mark?.querySelector('svg')).not.toBeNull();
+});
+
+it('a branch shows by its name; "HEAD", a checkout on no branch, is not shown', () => {
+  const card = (branch: string): HTMLButtonElement => show({ row: { ...LISTED, branch }, state: 'done', status: null, project: 'anima', recedes: true, since: null, wakes: null }, 'card');
+  expect(card('code/sidebar-rows').querySelector('.branch')?.textContent).toBe('code/sidebar-rows');
+  document.body.innerHTML = '';
+  expect(card('HEAD').querySelector('.branch')).toBeNull();
+});
