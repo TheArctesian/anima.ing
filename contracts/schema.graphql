@@ -4080,7 +4080,37 @@ input ApplicationRouteInput {
 
 # ---------------------------------------------------------------- root types
 
+type AgentThreadSummary {
+  id: ID!
+  deviceId: ID!
+  program: String!
+  state: String!
+  title: String!
+  startedAt: DateTime!
+  activityAt: DateTime!
+  repository: String
+}
+
+type AgentThreadPage {
+  nodes: [AgentThreadSummary!]!
+  pageInfo: PageInfo!
+}
+
+type AgentThreadEntry {
+  sequence: String!
+  content: JSON!
+}
+
+type AgentThreadSnapshot {
+  summary: AgentThreadSummary!
+  entries: [AgentThreadEntry!]!
+  lastSequence: String!
+}
+
 type Query {
+  agentThreads(device: ID, program: String, project: String, state: String, first: Int! = 50, after: String): AgentThreadPage!
+  agentThread(id: ID!): AgentThreadSnapshot
+
   me: Operator!
 
   sites: [Site!]!
@@ -4574,6 +4604,8 @@ type Mutation {
 }
 
 type Subscription {
+  agentThreadEntries(id: ID!, afterSequence: String!): AgentThreadEntry!
+
   deviceStatusChanged(deviceId: ID): DeviceStatusChange!
   heartbeatAdded(checkId: ID, deviceId: ID): HeartbeatAdded!
   eventAdded(minSeverity: Severity = INFO): Event!

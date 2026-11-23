@@ -271,6 +271,7 @@ dependencies = [
  "hyperlocal-with-windows",
  "keyring",
  "plist",
+ "redaction",
  "reqwest 0.12.28",
  "rpassword",
  "rustix",

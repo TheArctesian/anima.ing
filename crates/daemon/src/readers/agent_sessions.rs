@@ -23,7 +23,8 @@ use crate::config::agent_usage::UsageSettings;
 use crate::config::home::HOME_VARIABLE;
 use crate::units::plan::SYSTEM_HOME;
 use files::{Found, Stamp};
-use git::{Bounds, Repository};
+use git::Bounds;
+pub(crate) use git::Repository;
 
 /// The most working folders whose repository is remembered between reads.
 const MAX_REMEMBERED: usize = 4096;
@@ -38,6 +39,30 @@ pub fn user_home(env: impl Fn(&str) -> Option<String>) -> Option<PathBuf> {
     }
     let home = PathBuf::from(env(if cfg!(windows) { "USERPROFILE" } else { "HOME" })?);
     (home.is_absolute() && home != Path::new(SYSTEM_HOME)).then_some(home)
+}
+
+/// Resolves the session exclusion across its working folder and main repository.
+pub(crate) fn shared_repository(
+    home: &Path,
+    folder: &Path,
+    settings: &UsageSettings,
+) -> Option<Repository> {
+    if settings.off
+        || settings.excludes(&[folder], None) && settings.excluded_repositories.is_empty()
+    {
+        return None;
+    }
+    let real_home = std::fs::canonicalize(home).unwrap_or_else(|_| home.to_path_buf());
+    let current = std::fs::canonicalize(folder).unwrap_or_else(|_| folder.to_path_buf());
+    let bounds = Bounds {
+        home,
+        real_home: &real_home,
+        macos: cfg!(target_os = "macos"),
+    };
+    let repo = git::repository(&current, &bounds);
+    let mut folders = vec![folder, current.as_path()];
+    folders.extend(repo.main.as_deref());
+    (!settings.excludes(&folders, repo.name.as_deref())).then_some(repo)
 }
 
 /// The session files followed so far, and the repositories of their folders.

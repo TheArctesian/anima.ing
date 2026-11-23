@@ -35,6 +35,7 @@ rpassword.workspace = true
 # raw `libc` calls are out. Already in Cargo.lock through tempfile.
 serde.workspace = true
 serde_json.workspace = true
+redaction = { path = "../redaction" }
 # Model work (task L1-6): the SHA-256 of a runtime archive, and the unpack of its `.tar.gz`.
 sha2.workspace = true
 flate2 = "1"

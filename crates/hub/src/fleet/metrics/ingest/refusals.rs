@@ -30,6 +30,7 @@ use crate::{
 pub(super) enum Route {
     Enrol,
     Push,
+    ThreadUpload,
     Renew,
     KeysFetch,
     WorkClaim,
@@ -42,6 +43,7 @@ impl Route {
         match self {
             Self::Enrol => "a daemon enrolment",
             Self::Push => "a daemon push",
+            Self::ThreadUpload => "a daemon thread upload",
             Self::Renew => "a daemon token renewal",
             Self::KeysFetch => "a daemon key fetch",
             Self::WorkClaim => "a claim of work",

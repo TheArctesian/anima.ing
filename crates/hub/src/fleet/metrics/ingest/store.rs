@@ -172,6 +172,25 @@ pub(super) struct Taken {
     pub(super) needed: bool,
 }
 
+/// Locks the current token without changing the device's metrics freshness.
+pub(super) async fn lock_token(
+    conn: &mut PgConnection,
+    device: DeviceId,
+    token: TokenHash,
+    now: DateTime<Utc>,
+) -> Result<bool, sqlx::Error> {
+    let found: Option<DeviceId> = sqlx::query_scalar(
+        "SELECT device_id FROM metrics.daemons
+         WHERE device_id = $1 AND token_sha256 = $2 AND expires_at > $3 FOR UPDATE",
+    )
+    .bind(device)
+    .bind(token.to_bytes().as_slice())
+    .bind(now)
+    .fetch_optional(conn)
+    .await?;
+    Ok(found.is_some())
+}
+
 /// Records a batch accepted at `now` from the device whose usable token is still `token`, in
 /// the caller's transaction, and clears its stale mark and its need (R-364); the
 /// time of the last batch never moves back, should a batch that started earlier commit later.

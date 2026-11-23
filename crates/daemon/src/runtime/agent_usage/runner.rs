@@ -21,50 +21,54 @@ use crate::sampling::agent_usage::ProgramAccount;
 /// batch then goes with no accounts, and the next read in 15 minutes asks again.
 const ANSWER_WITHIN: Duration = Duration::from_secs(10);
 /// The longest answer read: a few accounts with their limits.
-const MAX_ANSWER: u64 = 64 * 1024;
+const MAX_ANSWER: u64 = control::MAX_FRAME as u64;
 
 /// The accounts the runner has; `None` when no runner of this user answered in time.
 pub(super) async fn accounts(env: impl Fn(&str) -> Option<String>) -> Option<Vec<ProgramAccount>> {
+    let Outcome::Accounts { accounts } = call(env, Action::Accounts).await? else {
+        return None;
+    };
+    Some(
+        accounts
+            .into_iter()
+            .map(|row| ProgramAccount {
+                source: source_of(row.program),
+                facts: row.facts,
+            })
+            .collect(),
+    )
+}
+
+pub(in crate::runtime) async fn call(
+    env: impl Fn(&str) -> Option<String>,
+    action: Action,
+) -> Option<Outcome> {
     let folder = control::folder(env, cfg!(target_os = "macos"))?;
-    tokio::time::timeout(ANSWER_WITHIN, ask(&folder.join(control::SOCKET)))
+    tokio::time::timeout(ANSWER_WITHIN, ask(&folder.join(control::SOCKET), action))
         .await
         .ok()
         .flatten()
 }
 
-async fn ask(socket: &Path) -> Option<Vec<ProgramAccount>> {
+async fn ask(socket: &Path, action: Action) -> Option<Outcome> {
     let meta = std::fs::symlink_metadata(socket).ok()?;
-    let ours = meta.uid() == rustix::process::getuid().as_raw()
-        && meta.permissions().mode().trailing_zeros() >= 6
-        && meta.file_type().is_socket();
-    if !ours {
+    let uid = rustix::process::getuid().as_raw();
+    if meta.uid() != uid || meta.permissions().mode() & 0o077 != 0 || !meta.file_type().is_socket()
+    {
         return None;
     }
     let stream = UnixStream::connect(socket).await.ok()?;
+    if stream.peer_cred().ok()?.uid() != uid {
+        return None;
+    }
     let (read, mut write) = stream.into_split();
-    let mut call = serde_json::to_string(&Call {
-        id: 1,
-        action: Action::Accounts,
-    })
-    .ok()?;
+    let mut call = serde_json::to_string(&Call { id: 1, action }).ok()?;
     call.push('\n');
     write.write_all(call.as_bytes()).await.ok()?;
     let mut lines = BufReader::new(tokio::io::AsyncReadExt::take(read, MAX_ANSWER)).lines();
     while let Some(line) = lines.next_line().await.ok()? {
-        if let Ok(Reply::Done {
-            id: 1,
-            result: Outcome::Accounts { accounts },
-        }) = serde_json::from_str::<Reply>(&line)
-        {
-            return Some(
-                accounts
-                    .into_iter()
-                    .map(|row| ProgramAccount {
-                        source: source_of(row.program),
-                        facts: row.facts,
-                    })
-                    .collect(),
-            );
+        if let Ok(Reply::Done { id: 1, result }) = serde_json::from_str::<Reply>(&line) {
+            return Some(result);
         }
     }
     None
