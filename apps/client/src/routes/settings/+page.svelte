@@ -1,12 +1,10 @@
 <script lang="ts">
   import { MediaQuery } from 'svelte/reactivity';
   import ApiKeysSection from '$lib/api-keys/ApiKeysSection.svelte';
-  import { routesApi } from '$lib/application-routes/api';
-  import RoutesSection from '$lib/application-routes/RoutesSection.svelte';
-  import { RoutesStore } from '$lib/application-routes/store.svelte';
   import DefaultsSection from '$lib/checks/defaults/DefaultsSection.svelte';
   import SignOutRow from '$lib/access/SignOutRow.svelte';
   import { hubIsHosted } from '$lib/hosted/mark';
+  import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { useHub } from '$lib/hub/context';
   import HubRows from '$lib/hub-address/HubRows.svelte';
@@ -49,14 +47,16 @@
   // A hub that Anima.ing hosts has no VPN, so the page has no VPN section for it (R-222).
   const hub = useHub();
   const vpnShown = !hubIsHosted(hub.address.origin);
-  // The routes of the hub (task H21); a hosted hub has no streams (OD-HOST-47).
-  const routes = new RoutesStore(routesApi(hub), !vpnShown);
   const hubState = localHub ? new LocalHubWatch(desktopLocalHubShell) : null;
   $effect(() => hubState?.watch());
   const desktopRows = updates || commandLine || processLog || builds;
   const index = indexOf({ keyStore, stayAwake, desktopRows, mcpPermissions, runnerReport, vpn: vpnShown });
   // The phone layout has the rows of mockup 7 for Account and Hub, and Leave hub at the end.
   const phone = $derived(phoneLayout());
+  // Routes moved to Hosting (HSE-010): an old link to its place in Settings opens it there.
+  $effect(() => {
+    if (['#routes', '#settings-routes'].includes(location.hash)) void goto(resolve('/hosting/routes'), { replaceState: true });
+  });
   const compactIndex = typeof window.matchMedia === 'function' ? new MediaQuery('(max-width: 1100.98px)') : undefined;
 </script>
 
@@ -93,10 +93,6 @@
   {/if}
 
   <LinkDevicesSection section={SECTIONS.linkDevices} />
-
-  <SettingsSection {...SECTIONS.routes}>
-    <RoutesSection store={routes} />
-  </SettingsSection>
 
   <SettingsSection {...SECTIONS.notifications}>
     <NotificationsSection />

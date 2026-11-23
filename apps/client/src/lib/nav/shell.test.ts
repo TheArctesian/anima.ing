@@ -99,7 +99,7 @@ it('NAV-001: Devices comes first, then the divider, Live sessions and the status
   const nav = show();
   const destinations = [...nav.querySelectorAll('a, hr, .status')];
   expect(destinations.map((node) => node.getAttribute('href') ?? node.textContent?.trim())).toEqual([
-    '/devices', '/agents/usage', '', 'Connected', '/extensions', '/settings',
+    '/devices', '/hosting', '/agents/usage', '', 'Connected', '/extensions', '/settings',
   ]);
   // Live sessions is at the foot: after the divider, with only the name of the hub between it and the status.
   const children = [...nav.children];
@@ -129,15 +129,16 @@ it.each([
 it('NAV-005: the items are real links to their pages, with the server and cog icons', () => {
   const nav = show();
   const links = [...nav.querySelectorAll('a')];
-  expect(links.map((link) => link.getAttribute('href'))).toEqual(['/devices', '/agents/usage', '/extensions', '/settings']);
+  expect(links.map((link) => link.getAttribute('href'))).toEqual(['/devices', '/hosting', '/agents/usage', '/extensions', '/settings']);
   const firstShape = (name: IconName) => iconShape(name).parts.find(([tag]) => tag === 'path')?.[1]['d'];
-  expect(links.map((link) => link.querySelector('.icon path')?.getAttribute('d'))).toEqual([firstShape('carbon:bare-metal-server'), firstShape('carbon:chart-line'), firstShape('carbon:grid'), firstShape('carbon:settings')]);
+  expect(links.map((link) => link.querySelector('.icon path')?.getAttribute('d'))).toEqual([firstShape('carbon:bare-metal-server'), firstShape('carbon:data-base'), firstShape('carbon:chart-line'), firstShape('carbon:grid'), firstShape('carbon:settings')]);
 });
 
 it('UI-015: each item keeps its words as its name; the tooltip is set only when the bar shows icons', () => {
   const wide = show();
   expect([...wide.querySelectorAll('a')].map((link) => [link.querySelector('.words')?.textContent, link.getAttribute('title')])).toEqual([
     ['Devices', null],
+    ['Hosting', null],
     ['Agent usage', null],
     ['Extensions', null],
     ['Settings', null],
@@ -151,7 +152,7 @@ it('NET-004: when unreachable the banner has an icon besides its text, so the st
 
 it('NAV-005: every link is focusable by Tab (tabindex 0 for WebKit)', () => {
   const links = [...show().querySelectorAll('a')];
-  expect(links.map((link) => link.getAttribute('tabindex'))).toEqual(['0', '0', '0', '0']);
+  expect(links.map((link) => link.getAttribute('tabindex'))).toEqual(['0', '0', '0', '0', '0']);
 });
 
 it('NET-004: when unreachable the banner shows the problem, the hub, the advice and the data age', () => {
