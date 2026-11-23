@@ -94,6 +94,9 @@ pub struct Git {
     signs: bool,
     /// A push to a folder of this computer is allowed; only the tests have such a remote.
     local_remotes: bool,
+    /// How a program is started with the rights of a thread ([`hooks::AsThread`]): the only
+    /// way the repository of the person is read.
+    as_thread: Option<hooks::AsThread>,
     /// The work folder of [`Git::for_worktree`] with what it was when the worktree was made:
     /// a folder that was put in its place gets no run.
     folder: Option<(PathBuf, FolderId)>,
@@ -132,6 +135,7 @@ impl Git {
             hooks_off: Vec::new(),
             signs: false,
             local_remotes: false,
+            as_thread: None,
             folder: None,
             bound: Vec::new(),
         })
@@ -155,6 +159,25 @@ impl Git {
         quiet.hooks_off = settings::hooks_off(&found);
         quiet.signs = settings::signs(&found);
         Ok(quiet)
+    }
+
+    /// This `git` with the way to start a program as the agent of a thread is started.
+    #[must_use]
+    pub fn with_thread(mut self, as_thread: hooks::AsThread) -> Self {
+        self.as_thread = Some(as_thread);
+        self
+    }
+
+    /// How a program is started with the rights of a thread, when the runner gave a way.
+    #[must_use]
+    pub const fn as_thread(&self) -> Option<&hooks::AsThread> {
+        self.as_thread.as_ref()
+    }
+
+    /// The `git` program of this computer.
+    #[must_use]
+    pub fn program(&self) -> &Path {
+        &self.program
     }
 
     /// A push to a folder of this computer is allowed (only in the tests).

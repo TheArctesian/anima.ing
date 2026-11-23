@@ -171,9 +171,23 @@ pub enum GitRefusal {
     /// A thread of this computer runs in a folder that holds the records of Anima's Git, so
     /// its agent can write them. No Git action of any thread runs until that thread ends.
     RecordsHeld,
+    /// The worktree of the thread is there, but the system removed its checkpoints and its
+    /// record after a long time without use. The files of the worktree are as they were.
+    Expired,
     Failed {
         said: String,
     },
+}
+
+/// What the runner does while it makes the worktree of a thread. The first worktree of a large
+/// repository takes long: the page shows the step, and the person can cancel.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Preparing {
+    /// The history of the repository is copied and checked. Once for each project.
+    History,
+    /// The files of the worktree are written.
+    Files,
 }
 
 /// How a branch stands, as the details card shows it.

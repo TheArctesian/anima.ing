@@ -225,7 +225,14 @@ async fn full_access_runs_no_hook_when_the_runner_gave_no_way_to_start_one() {
     let ran = folder.with_file_name("RAN");
     bench.hook(&format!("touch \"{}\"; exit 1", ran.display()));
     std::fs::write(folder.join("a.txt"), "changed\n").expect("a file");
-    let committed = bench.call(full, commit("", None)).await;
+    let reviewed = bench.reviewed().await;
+    // The same records, and an engine that got no launcher from the runner.
+    let records = bench.home.with_file_name("records");
+    let home = crate::threads::git::place::Home::at(&bench.home, &records).expect("a home");
+    let engine = crate::threads::git::Engine::new(bench.git.clone(), home);
+    let committed = engine
+        .call(full, super::target(), commit(&reviewed, None))
+        .await;
     assert!(
         matches!(committed, GitOutcome::Committed { .. }),
         "{committed:?}"

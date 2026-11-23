@@ -189,3 +189,36 @@ async fn an_edit_that_the_index_is_told_to_skip_is_in_the_checkpoint_and_is_reve
     let text = std::fs::read_to_string(folder.join("a.txt")).expect("the file");
     assert_eq!(text, "one\n");
 }
+
+#[cfg(unix)]
+#[tokio::test]
+async fn a_link_in_the_git_folder_sends_no_file_of_a_commit_or_a_worktree_outside() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    let outside = bench.home.with_file_name("outside");
+    std::fs::create_dir_all(&outside).expect("a folder");
+    let empty = || std::fs::read_dir(&outside).expect("the folder").count() == 0;
+    // The folder of the packs, then the folder of the refs of threads, then the entries of
+    // the worktrees: each as a link to a folder outside the repository.
+    let git = bench.project.join(".git");
+    for inside in ["objects/pack", "refs/heads/anima", "worktrees"] {
+        let place = git.join(inside);
+        let aside = git.join("moved-aside");
+        std::fs::rename(&place, &aside).expect("the folder");
+        std::os::unix::fs::symlink(&outside, &place).expect("a link");
+        std::fs::write(folder.join("a.txt"), format!("changed for {inside}\n")).expect("a file");
+        let committed = bench.call(PERSON, commit(None)).await;
+        let plan = super::worktree::Plan {
+            thread: uuid::Uuid::from_u128(31),
+            project: &bench.project,
+            base: Some("main"),
+        };
+        let made = bench.engine.worktree(plan).await;
+        std::fs::remove_file(&place).expect("the link");
+        std::fs::rename(&aside, &place).expect("the folder");
+        assert!(
+            empty(),
+            "{inside}: a file went outside ({committed:?}, {made:?})"
+        );
+    }
+}
