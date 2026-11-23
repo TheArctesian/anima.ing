@@ -3,7 +3,8 @@ import type { Effort, Mode } from '$lib/agent-threads/live/run';
 import { programName, type Program } from '$lib/agent-threads/thread';
 import { CAN, cannot } from '../composer/draft';
 import { PROGRAM_ICONS } from '../icons/program';
-import { PERMISSION_MODES, type Catalogue, type Choice, type EffortLevel, type PermissionMode } from '../composer/picker/catalogue';
+import { PERMISSION_MODES, type Catalogue, type Choice, type ModelsNotice, type PermissionMode } from '../composer/picker/catalogue';
+import { EFFORT_HEAD, EFFORT_WORDS, level } from '../composer/run/choice';
 
 /** What a new thread starts with, as the composer's pickers set it before the first send. */
 export interface DraftChoice {
@@ -19,7 +20,6 @@ export const FIRST_CHOICE: DraftChoice = { program: 'claude_code', model: null, 
 
 const PROGRAMS: readonly Program[] = ['claude_code', 'codex'];
 const MODE_IDS: Readonly<Record<Mode, string>> = { ask: 'approval-required', accept_edits: 'auto-accept-edits', full_access: 'full-access', plan: 'plan' };
-const EFFORT_WORDS: Readonly<Record<Effort, string>> = { low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Extra high', max: 'Max' };
 const EFFORTS = Object.keys(EFFORT_WORDS) as Effort[];
 const DEFAULT = 'default';
 
@@ -44,7 +44,6 @@ const NO_AUTO = 'The runner has no such mode.';
 const NO_PLAN = 'Codex has no plan mode.';
 const PLAN_MODE: PermissionMode = { id: 'plan', label: 'Plan', description: 'Plan the work; change no file and run no command.', icon: 'eye', can: CAN };
 
-const level = (effort: Effort): EffortLevel => ({ id: effort, label: EFFORT_WORDS[effort] });
 
 /** The modes of a program: T3's four, of which the runner has three, and the runner's plan mode, which Codex lacks. */
 function modesOf(program: Program): readonly PermissionMode[] {
@@ -53,32 +52,34 @@ function modesOf(program: Program): readonly PermissionMode[] {
   return [...offered, program === 'codex' ? { ...PLAN_MODE, can: cannot(NO_PLAN) } : PLAN_MODE];
 }
 
-/** Why the default stands alone, under its name; `undefined` once the program listed its models. */
-function defaultNote(models: DraftModels, listed: number): string | undefined {
-  if (models.state === 'waiting') return 'Models load when the program answers';
-  if (models.state === 'failed') return `Models could not load: ${models.words}`;
-  return listed === 0 ? 'The program listed no models' : undefined;
+/** Why a program has only its default: the picker shows it on a line of its own; `undefined` once each listed models. */
+function noticeOf(models: DraftModels): ModelsNotice | undefined {
+  if (models.state === 'waiting') return { words: 'Models load when the programs answer.', failed: false };
+  if (models.state === 'failed') return { words: `Models could not load: ${models.words}`, failed: true };
+  const none = PROGRAMS.filter((program) => (models.lists[program] ?? []).length === 0).map(programName);
+  return none.length === 0 ? undefined : { words: `${none.join(' and ')} listed no models.`, failed: false };
 }
 
 /** The models of each program: its default, named for the program, then the ones the runner listed (TH104). */
 function modelsOf(models: DraftModels): Catalogue['models'] {
   return PROGRAMS.flatMap((program) => {
-    const blank = { provider: program, favourite: false, can: CAN, speeds: [], toggles: [] } as const;
+    const blank = { provider: program, favourite: false, can: CAN, speeds: [], toggles: [], effortLabel: EFFORT_HEAD } as const;
     const listed = models.state === 'listed' ? (models.lists[program] ?? []) : [];
-    const note = defaultNote(models, listed.length);
-    const own = { ...blank, id: DEFAULT, label: `${programName(program)} default`, efforts: PROGRAM_EFFORTS[program].map(level) };
-    const named = listed.map((model) => ({ ...blank, id: model.id, label: model.label, efforts: EFFORTS.filter((effort) => model.efforts.includes(effort)).map(level) }));
-    return [note === undefined ? own : { ...own, subLabel: note }, ...named];
+    const own = { ...blank, id: DEFAULT, label: `${programName(program)} default`, efforts: PROGRAM_EFFORTS[program].map((effort) => level(effort)) };
+    const named = listed.map((model) => ({ ...blank, id: model.id, label: model.label, efforts: EFFORTS.filter((effort) => model.efforts.includes(effort)).map((effort) => level(effort, model.defaultEffort)) }));
+    return [own, ...named];
   });
 }
 
 /** The picker's catalogue and choice for a thread that has not started: both programs, each with its models. */
 export function draftCatalogue(choice: DraftChoice, models: DraftModels): { catalogue: Catalogue; choice: Choice } {
+  const notice = noticeOf(models);
   return {
     catalogue: {
       providers: PROGRAMS.map((program) => ({ id: program, name: programName(program), icon: PROGRAM_ICONS[program], can: CAN })),
       models: modelsOf(models),
       modes: modesOf(choice.program),
+      ...(notice === undefined ? {} : { notice }),
     },
     choice: { provider: choice.program, model: choice.model ?? DEFAULT, effort: choice.effort, speed: null, toggles: [], mode: MODE_IDS[choice.mode] },
   };

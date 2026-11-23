@@ -74,19 +74,23 @@ describe('the draft choice', () => {
     expect(catalogue.providers.map((each) => `${each.name}:${each.icon}`)).toEqual(['Claude Code:claude', 'Codex:openai']);
     expect(catalogue.models.map((each) => each.label)).toEqual(['Claude Code default', 'Codex default', 'GPT-5']);
     expect(catalogue.models.find((each) => each.id === 'gpt-5')?.efforts.map((each) => each.id)).toEqual(['low']);
-    expect(catalogue.models.map((each) => each.subLabel)).toEqual(['The program listed no models', undefined, undefined]);
+    expect(catalogue.models.map((each) => each.subLabel)).toEqual([undefined, undefined, undefined]);
+    expect(catalogue.notice).toEqual({ words: 'Claude Code listed no models.', failed: false });
     expect(choice).toMatchObject({ provider: 'claude_code', model: 'default', mode: 'full-access' });
   });
 
   it("a program's default takes only the efforts of that program: Codex has no Max", () => {
     const efforts = draftCatalogue(FIRST_CHOICE, MODELS_WAITING).catalogue.models.map((each) => `${each.provider}: ${each.efforts.map((one) => one.label).join(', ')}`);
-    expect(efforts).toEqual(['claude_code: Low, Medium, High, Extra high, Max', 'codex: Low, Medium, High, Extra high']);
+    expect(efforts).toEqual(['claude_code: Low, Medium, High, Extra High, Max', 'codex: Low, Medium, High, Extra High']);
   });
 
-  it('says why the default stands alone while the models load, and when they could not', () => {
-    const notes = (models: Parameters<typeof draftCatalogue>[1]) => [...new Set(draftCatalogue(FIRST_CHOICE, models).catalogue.models.map((each) => each.subLabel))];
-    expect(notes(MODELS_WAITING)).toEqual(['Models load when the program answers']);
-    expect(notes({ state: 'failed', words: 'The runner is not running.' })).toEqual(['Models could not load: The runner is not running.']);
+  it('says on a line of its own why the default stands alone, never in a row, and offers to ask again on a failure', () => {
+    const notice = (models: Parameters<typeof draftCatalogue>[1]) => draftCatalogue(FIRST_CHOICE, models).catalogue.notice;
+    expect(notice(MODELS_WAITING)).toEqual({ words: 'Models load when the programs answer.', failed: false });
+    expect(notice({ state: 'failed', words: 'The runner is not running.' })).toEqual({ words: 'Models could not load: The runner is not running.', failed: true });
+    const listed = { id: 'm', label: 'M', efforts: [], defaultEffort: null };
+    expect(notice({ state: 'listed', lists: { claude_code: [listed], codex: [listed] } })).toBeUndefined();
+    expect(draftCatalogue(FIRST_CHOICE, MODELS_WAITING).catalogue.models.every((each) => each.subLabel === undefined)).toBe(true);
   });
 
   it('keeps the default access when a draft in plan mode moves to Codex, which has none', () => {

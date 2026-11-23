@@ -38,11 +38,11 @@ impl Thread {
         }
     }
 
-    /// A turn of Codex that leaves the profile of the folder of Anima waits (THR-041): the
-    /// record must say so before its line goes.
+    /// Whether `line` is the `turn/start` of a turn of Codex that leaves the profile of the
+    /// folder of Anima (THR-041): the record must say so before the line goes.
     #[must_use]
-    pub fn leaves_profile(&self) -> bool {
-        matches!(&self.driver, Driver::Codex(codex) if codex.leaving())
+    pub fn leaves_with(&self, line: &str) -> bool {
+        matches!(&self.driver, Driver::Codex(codex) if codex.leaving_line(line).is_some())
     }
 
     /// What the record holds of this thread but the lines of its requests: when it does not
