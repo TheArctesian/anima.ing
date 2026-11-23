@@ -4034,6 +4034,62 @@ Mitigation now: a redirect goes only to the one fixed address that the person ga
 
 State: Open. It existed before Remove came back. Found on 2026-11-22 by the same review.
 
+## The security review of the daemon side of the drain (task L1-5, 2026-11-22)
+
+A separate reviewer read commits `1440a9ddb` and `9038ff2a2` (branch `compute/l1-5-drain`) against the contract [model-work.md](../contracts/compute/model-work.md), Section 2 (`model_drain`) and Section 3, on 2026-11-22. The review found no High and no Medium. Task L1-10 of [compute-plan.md](plans/compute-plan.md) owns SF-NEW-l1draina, SF-NEW-l1drainb and SF-NEW-l1draind.
+
+### SF-NEW-l1draina: Drains one after the other can starve other model work. Low
+
+Requirements: task L1-5 of [compute-plan.md](plans/compute-plan.md); CAP-013.
+
+Where: `crates/daemon/src/model/cycle.rs`, `crates/daemon/src/model/drain.rs`.
+
+What it is: The drain runs inline in the claim loop. While it waits, the daemon claims no other item. When task L1-10 counts real requests, a hub that sends one 60-second drain after the other can keep the machine from other work.
+
+Effect, and who can cause it: The hub, or an actor that can make `model_drain` items. Effect: the model work of the machine stops. Today the count is zero, so each drain ends at once.
+
+The correction: In task L1-10, run the drain off the claim path, or refuse a new drain while one is in progress.
+
+State: Open. Found by a separate reviewer on 2026-11-22 in commit `1440a9ddb`.
+
+### SF-NEW-l1drainb: A long drain sends no report and can pass its lease. Low
+
+Requirements: task L1-5 of [compute-plan.md](plans/compute-plan.md); CAP-013; K10 Section 7.
+
+Where: `crates/daemon/src/model/drain.rs`.
+
+What it is: The daemon sends no report during a drain. A drain of up to 60 seconds can pass a lease or a report deadline of K10.
+
+Effect, and who can cause it: No attacker. Effect: the hub can end the item as lost while the drain still runs.
+
+The correction: In task L1-10, report during the drain, or keep the drain shorter than the lease.
+
+State: Open. Found by a separate reviewer on 2026-11-22 in commit `1440a9ddb`.
+
+### SF-NEW-l1drainc: The tests of the drain did not check its limits. Note
+
+Requirements: task L1-5 of [compute-plan.md](plans/compute-plan.md); CAP-013.
+
+Where: `crates/daemon-core/src/model_work/tests/`, `crates/daemon/src/model/drain.rs`.
+
+What it is: The first tests did not check the refusal of bad `seconds`, the drain with the switch off or the policy against work, the actor check, or the deadline of the I/O drain with requests left.
+
+The correction: Tests `seconds_outside_1_to_60_or_not_an_integer_are_refused`, `a_drain_runs_with_the_switch_off_or_the_policy_against_work`, `an_agent_types_list_without_model_drain_refuses_an_agent_drain` and `a_drain_with_requests_left_ends_at_its_deadline_with_the_count` (paused tokio time). Built on the branch `compute/l1-5-drain`.
+
+State: Open. Found by a separate reviewer on 2026-11-22 in commit `1440a9ddb`. Built; the entry stays Open until the operator closes it.
+
+### SF-NEW-l1draind: The count of requests in progress is always zero. Note
+
+Requirements: task L1-5 of [compute-plan.md](plans/compute-plan.md); CAP-013.
+
+Where: `crates/daemon/src/model/cycle.rs` (`TODO(L1-10)`).
+
+What it is: The daemon sends no request to a server yet, so the drain counts zero and ends at once. That is safe now. When task L1-10 adds the model address, a zero count would end a drain while requests are still in progress.
+
+The correction: Task L1-10 must bind the counter to the real requests in progress.
+
+State: Open. Found by a separate reviewer on 2026-11-22 in commit `1440a9ddb`.
+
 ## Closed
 
 | Entry | Subject | Area | State |
