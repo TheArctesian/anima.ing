@@ -180,7 +180,6 @@ fn made_stand_ins() -> PathBuf {
     folder
 }
 
-/// A link with each event it got, so that an event that comes before an answer is not lost.
 /// Signs `program` ad hoc, so that it is no program of the system.
 #[cfg(target_os = "macos")]
 fn signed_ad_hoc(program: &Path) {
@@ -202,6 +201,7 @@ fn runs(program: &Path, args: &[&str]) -> bool {
         .is_ok_and(|status| status.success())
 }
 
+/// A link with each event it got, so that an event that comes before an answer is not lost.
 struct Talk {
     link: HolderLink,
     log: Vec<Event>,
