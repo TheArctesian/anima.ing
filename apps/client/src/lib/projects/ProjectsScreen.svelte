@@ -43,7 +43,7 @@
   /** The group heads that are closed: a group ID, or "" for "Ungrouped". */
   const closed = new SvelteSet<string>(storedClosed(localStorage));
   $effect(() => storeView(localStorage, showBy, [...closed]));
-  const byOwnGroup = $derived(showing === 'main' && showBy === 'group');
+  const byOwnGroup = $derived(showing === 'main' && showBy === 'group' && shared?.unserved !== true);
   const grouped = $derived(showing === 'main' && store.byName && !byOwnGroup);
   const byGroup = $derived(GROUP_ORDER.map((group) => ({ group, title: GROUP_TITLES[group], projects: projects.filter((project) => groupOf(project) === group) })));
   /** The main view in groups, problems first, or in the operator's groups; the left-out view is one plain group. */
@@ -100,15 +100,17 @@
   <!-- With no project and no filter there is nothing to sort or to filter, so the controls are not drawn. -->
   {#if projects.length > 0 || store.filtered || !store.byName}
     <div class="tools">
-      {#if showing === 'main' && store.byName}<Segmented label="Show by" size="sm" options={SHOW_BY} bind:value={showBy} />{/if}
+      {#if showing === 'main' && store.byName && shared?.unserved !== true}<Segmented label="Show by" size="sm" options={SHOW_BY} bind:value={showBy} />{/if}
       {#if grouped && projects.length > 0}<Segmented label="Which group" size="sm" options={choices} bind:value={only} />{/if}
       <ProjectBrowse {store} />
-      {#if projects.length > 0}
+      {#if projects.length > 0 && shared?.unserved !== true}
         <span class="select"><FormButton size="sm" tone={selecting ? 'secondary' : 'ghost'} aria-pressed={selecting} onclick={toggleSelecting}>Select</FormButton></span>
       {/if}
     </div>
   {/if}
-  {#if shared?.problem}
+  {#if shared?.unserved}
+    <Notice tone="info" title="Groups need a newer hub" line="This hub is older than project groups. Update the hub to group your projects." />
+  {:else if shared?.problem}
     <ErrorState message={`Project groups did not sync. ${shared.problem}`} onRetry={() => void shared?.refresh()} />
   {/if}
   {#if byOwnGroup && shared?.ready}

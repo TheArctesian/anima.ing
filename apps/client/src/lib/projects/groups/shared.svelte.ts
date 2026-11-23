@@ -1,4 +1,4 @@
-import type { Hub, HubResult } from '$lib/hub/hub';
+import { needsNewerHub, type Hub, type HubResult } from '$lib/hub/hub';
 import { NO_CLUSTERS, type Clusters, type Group } from './clusters';
 
 import { CREATE, DELETE, GROUPS, MOVE, RENAME } from './api';
@@ -9,6 +9,8 @@ export class SharedProjectGroups {
   busy = $state(false);
   problem = $state('');
   ready = $state(false);
+  /** The hub is older than project groups (PRO-059): the page hides them and says so, with no error and no Retry. */
+  unserved = $state(false);
   readonly groups = $derived(this.#clusters.groups);
 
   constructor(private readonly hub: Pick<Hub, 'request'>) {}
@@ -23,7 +25,8 @@ export class SharedProjectGroups {
     const result = await this.hub.request(GROUPS, {});
     if (request !== this.#request) return;
     if (!result.ok) {
-      this.problem = result.error.message;
+      this.unserved = needsNewerHub(result.error);
+      this.problem = this.unserved ? '' : result.error.message;
       return;
     }
     const groups = result.value.projectGroups;

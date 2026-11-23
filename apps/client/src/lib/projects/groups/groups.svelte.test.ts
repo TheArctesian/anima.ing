@@ -8,6 +8,7 @@ import ProjectsScreen from '../ProjectsScreen.svelte';
 import { ProjectsStore } from '../store.svelte';
 import { storedClusters } from './clusters';
 import { ProjectGroups } from './groups.svelte';
+import { SharedProjectGroups } from './shared.svelte';
 import { storedShowBy } from './view';
 
 vi.mock('$app/paths', () => ({ resolve: (path: string) => path }));
@@ -161,4 +162,19 @@ it('PRO-059: a storage that refuses or holds a broken value gives no group, and 
   expect(kept.of('p1')?.name).toBe('Work');
   localStorage.setItem('anima.projects.groups', '{"groups": 3');
   expect(storedClusters(localStorage)).toEqual({ groups: [], of: {} });
+});
+
+it('PRO-059: a hub older than project groups hides them with a quiet note, not an error with Retry', async () => {
+  // What the hub's error parser makes of 'Unknown field "projectGroups" on type "Query".' (lib/hub/error.test.ts).
+  const older = { request: () => Promise.resolve({ ok: false, error: { code: 'unserved', message: 'This hub is older than this application.' } }) };
+  const shared = new SharedProjectGroups(older as unknown as ConstructorParameters<typeof SharedProjectGroups>[0]);
+  await shared.refresh();
+  await store.load();
+  app = mount(ProjectsScreen, { target: document.body, props: { store, projectGroups: shared } });
+  flushSync();
+  expect(text()).toContain('Groups need a newer hub');
+  expect(text()).not.toContain('Unknown field');
+  expect(document.querySelector('[role="alert"]')).toBeNull();
+  expect([...document.querySelectorAll('button')].map((each) => each.textContent.trim())).not.toContain('Retry');
+  expect(document.querySelector('[aria-label="Show by"]')).toBeNull();
 });
