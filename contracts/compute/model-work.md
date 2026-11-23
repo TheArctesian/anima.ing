@@ -2,7 +2,11 @@
 
 Status: **accepted** (R-344, operator, 2026-11-22: "all of it review after"; version 0.3 as written). The security review
 SEC-C-012 still runs, after the acceptance and beside the build; SF-298 and SF-300 stay Open until code closes them or the
-operator accepts them ([security-findings.md](../../docs/security-findings.md)). Version 0.5,
+operator accepts them ([security-findings.md](../../docs/security-findings.md)). Version 0.6,
+2026-11-23 (version 0.6 takes R-443 and R-444, OD-C28 (b), PULL-012, task L1-22: the
+models that Ollama, LM Studio and the Hugging Face cache keep on the machine are found and used where they are, with
+no copy; the type `copy_adopt`; the check of each such file at each load; the causes `found_unknown`,
+`copy_changed` and `copy_missing`; Sections 1, 2, 2.3, 3, 5, 8, 10.1, 10.2, 11 and 13). Version 0.5,
 2026-11-23 (version 0.5 takes R-347, R-NEW-launcherkey and R-NEW-launcherlist: the root-owned model launcher of task
 L1-6c, the cause `runtime_not_signed`, the details `launcher_missing` and `launcher_outdated`, Sections 5 and 9;
 the launcher waits for its own security review before a merge). Version 0.4,
@@ -32,8 +36,8 @@ This file holds no secret, no token, no key and no example value of a secret.
   the pattern of `agent_install` (R-153) would need without K10. It adds the model work types to the fixed list of
   K10, with a new kind `model`. K10 Section 13, point W1-P5, says: "Each is one more type of the fixed list, added
   with a ruling." R-344 is that ruling.
-- **Changes to K10 that R-344 permits.** The text of this contract is the change. The changes are: the list of work types of K10 Section 1 and Section 6 gets the ten
-  types of Section 2 below; the kind `model` (Section 1 below); the purpose `hf_token` of K10 Section 8
+- **Changes to K10 that R-344 permits.** The text of this contract is the change. The changes are: the list of work types of K10 Section 1 and Section 6 gets the eleven
+  types of Section 2 below (`copy_adopt` by R-444); the kind `model` (Section 1 below); the purpose `hf_token` of K10 Section 8
   (Section 7 below); the causes of refusal of Section 5 below; the order of the claim (Section 3 below).
 - **Changes to K8 that R-344 permits.** The optional member `runtimes` of the `Batch` of K8 Section 4
   (Section 8 below). It is an optional member, so it needs no `/daemon/v2/` (K8 Section 1).
@@ -54,7 +58,9 @@ This file holds no secret, no token, no key and no example value of a secret.
 | Runtime | A model server program of a fixed list in the daemon: `llama_server`, `mlx_lm`, `vllm`. The list grows only with a new version of this contract. |
 | Server | One running process of a runtime, with its own loopback port. A node can have more than one (RTC-002). |
 | Variant | A set of model files in one format and one quantisation (LIBM-002). |
-| Copy | The files of one variant on one node, in the model cache. |
+| Copy | The files of one variant on one node, in the model cache; or a found copy. |
+| Found model | A model file, or the set of files of one model, that a different program keeps on the node: Ollama, LM Studio, the Hugging Face cache, or a folder that the owner of the machine names (Section 10.2). Anima did not write it and does not own it. |
+| Found copy | A copy whose files are those of a found model, used where they are, with no second file (`copy_adopt`, Section 2.3; OD-C28 (b)). |
 | Owned flag | A flag of a runtime that only the daemon sets (SEC-C-007). |
 
 ## 2. The work types (CAG-003)
@@ -73,7 +79,8 @@ a command, an argument, a flag or an environment variable.
 | `model_report` | `{}` | Sends the full model state of the node as the result: runtimes and versions, copies and their states, servers (Section 8). Changes nothing. |
 | `runtime_install` | `{ "runtime": "llama_server", "version": "b8100", "backend": "metal" }` | Installs that runtime from its release source in the daemon configuration (Section 6). |
 | `model_pull` | `{ "copy": "<uuid>", "variant": "<uuid>", "source": { "organisation": "unsloth", "repository": "Qwen3-8B-GGUF", "revision": "<40 hexadecimal characters>" }, "format": "gguf", "files": [ { "name": "Qwen3-8B-Q4_K_M.gguf", "sizeBytes": 5027783488, "sha256": "<64 hexadecimal characters>" } ], "gated": false }` | Downloads the files to the model cache and verifies them (Section 7). |
-| `copy_delete` | `{ "copy": "<uuid>" }` | Unloads the copy if a server has it, then deletes its folder in the model cache (PULL-009). |
+| `copy_delete` | `{ "copy": "<uuid>" }` | Unloads the copy if a server has it, then deletes its folder in the model cache (PULL-009). For a found copy it deletes only the record of Section 2.3; it never writes, moves or deletes a file of the found model. |
+| `copy_adopt` | `{ "copy": "<uuid>", "found": "<64 hexadecimal characters>" }` | Makes the found model with that key a found copy: reads each of its files, records the size and the SHA-256 of each, and uses the files where they are (Section 2.3; PULL-012). |
 | `server_start` | `{ "server": "<uuid>", "runtime": "llama_server", "version": "b8100", "backend": "metal", "settings": { … } }` | Starts one server of an installed runtime on loopback and checks the listener (Section 9). |
 | `server_stop` | `{ "server": "<uuid>" }` | Stops the server: it asks it to end, waits at most 10 seconds, then ends the process. |
 | `model_load` | `{ "server": "<uuid>", "copy": "<uuid>", "settings": { … } }` | Loads a copy on a server. For a runtime that cannot unload (vLLM), the daemon stops and starts the process with the new copy (RTC-004). llama-server runs in router mode and loads with no restart (RTC-005). |
@@ -98,6 +105,9 @@ a command, an argument, a flag or an environment variable.
   `copies/<copy>/` under its file part. Two names whose flattened names are equal when they are in lower case are
   refused, never overwritten (as in the unpack of Section 6) (SEC-C-012, SF-359). `sizeBytes` is above 0. The daemon makes each
   address from a fixed pattern (Section 7).
+- `found` is the key of a found model, as the daemon gave it in `found` of `model_report` (Section 8): exactly
+  64 lower-case hexadecimal characters; each other value is refused (`member_unknown`). It is not a path, and the
+  daemon never reads a path from it: it finds the model again with its own walk of the folders of Section 10.2.
 - `probe` is a word of a fixed list in the daemon. Today: `text_short` (one fixed prompt, a fixed answer check)
   and `vision_short` (one fixed image in the daemon program). The hub sends no prompt.
 
@@ -174,6 +184,51 @@ daemon, and the daemon refuses each other file of `files` (`file_type`) before i
   no such sandbox is not in the list of release sources. The runtime and its parsers still read files that the
   hub chose, so the isolation of Section 9 is the limit for a fault of a parser.
 
+### 2.3 A file that Anima does not own: the found copy (PULL-012, R-444)
+
+The operator decided that a model that is already on the machine is used where it is, as Unsloth Studio does
+(OD-C28 (b)). The checks of Section 7 hold for a file that the daemon wrote; they do not hold for such a file,
+because a different program, and each user who can write its folder, can change or delete it. Thus:
+
+- **Formats.** A found model is GGUF only in this version: one `.gguf` file, or the parts of one split GGUF
+  (`<name>-00001-of-0000N.gguf` to `-0000N-of-0000N`), and at most one projector file of Ollama
+  (`application/vnd.ollama.image.projector`, also GGUF). A found model of safetensors is listed with
+  `usable` false and cannot be adopted (open point MW-P10). The file names follow Section 2.2 (`*.gguf`) and
+  the length and character rules of Section 2, applied to the name of each file as the daemon reads it.
+- **The key.** The daemon gives each found model a key: the SHA-256, in lower-case hexadecimal, of the tool word,
+  a zero byte, and the location of the model in that folder (the Ollama name and tag, the repository folder and
+  the commit of the Hugging Face cache, or the path of the first file below the folder). The key is stable while
+  the model stays where it is. The hub only stores it and sends it back.
+- **`copy_adopt`.** In `preparing` the daemon walks the folders of Section 10.2 again and finds the model with
+  the key (else `found_unknown`). It checks the layout of each file (below), reads each file from byte 0, and
+  computes its size and SHA-256. Where the program names a file by its SHA-256 (a blob of Ollama,
+  `sha256-<hex>`, and a blob of the Hugging Face cache whose name has 64 hexadecimal characters), a different
+  value is refused (`checksum`). It writes the record of the copy to `<model-state>/found/<copy>.json` (mode
+  0600, with `openat` and `O_EXCL`; Section 10): the tool word, the folder of Section 10.2 by its index in the
+  fixed list or in `modelFolders`, the location below that folder, and for each file its location, its size,
+  its SHA-256, its device and inode numbers and its modification time. The result is that of a pull
+  (`copyState` `downloaded`, `bytes`, `files`), with `origin` `found`. The copy is `downloaded`, not
+  `validated`: only `model_measure` validates it (PULL-011).
+- **The check at each load.** Before each `model_load` and each `model_measure` of a found copy, the daemon
+  opens each file of the record as the layout rules below say, and requires a regular file whose size and
+  SHA-256, read again from byte 0, are those of the record. A file that is not there, or that is not a regular
+  file, is `copy_missing`; a different size or SHA-256 is `copy_changed`. Each ends the item `failed` and sets
+  the copy `failed` with that cause (Section 11). The daemon then gives the runtime the open descriptor that it
+  checked (on Linux `/proc/self/fd/<n>` of the launcher, on macOS `/dev/fd/<n>`), never the path, so a rename or
+  a replacement of the file after the check does not change what the runtime reads. A write into the same file
+  after the check can still reach the runtime: that file belongs to a user of the machine, as the files of
+  `partial/` do (Section 7, R-346), and the operator accepted it (R-444; Section 13).
+- **The layout rules.** The daemon opens each folder and file of Section 10.2 relative to an open handle, with
+  `O_NOFOLLOW`, `O_NONBLOCK` and no write access. It follows a symbolic link only in the Hugging Face cache, and
+  only a link of `snapshots/<commit>/` whose text is `../../blobs/<name>` with a flat name, read with
+  `readlinkat` and opened relative to the `blobs` folder of the same repository folder; it follows no other link.
+  Each file and folder it uses must belong to the user of the daemon, to root, or to the owner of the folder of
+  Section 10.2 it is in, and no group or other user may write it; else it is not listed. A walk reads at most
+  6 levels, 4096 entries in one folder and 256 found models.
+- **Never written.** The daemon never writes, renames, deletes, locks or changes the mode of a file or folder of
+  Section 10.2, also not at `copy_delete`, at a `failed` state or at the end of a found model. It runs no file of
+  such a folder: it gives a GGUF file to a runtime as data, as for a pulled copy.
+
 ## 3. How the daemon asks and reports (CAG-002, CAG-003)
 
 - The transport, the token and the routes are those of K10 Section 2: `POST /work/v1/claim`, `/work/v1/report`
@@ -185,16 +240,16 @@ daemon, and the daemon refuses each other file of `files` (`file_type`) before i
   switch and the policy again before each item (K10 Section 3: `switch_off`, `policy`). `server_stop`,
   `model_unload`, `model_drain`, `copy_delete` and `model_report` are never refused for `policy` or `switch_off`:
   they only reduce the work of the machine.
-- **Who may ask (R-326).** The hub makes each of the ten types for an API key or an AI agent,
+- **Who may ask (R-326).** The hub makes each of the eleven types for an API key or an AI agent,
   with the MCP state of its tool, as R-153 does for `agent_install`. Each model item has the member `actor`:
   `User`, `Agent` or `Hub` (LOG-012). The setting `agentTypes` at the machine (Section 10.1) lists the types
-  that the machine takes from an item whose `actor` is `Agent`; by default it has the ten types. The daemon
+  that the machine takes from an item whose `actor` is `Agent`; by default it has the eleven types. The daemon
   refuses another (`actor_not_permitted`). The hub writes `actor`, so the setting limits an honest hub only.
-- The `Claim` gets `model` in `kinds` and the ten types in `types` when the daemon has the model function. The
+- The `Claim` gets `model` in `kinds` and the eleven types in `types` when the daemon has the model function. The
   model function is on when the switch is on; there is no second switch (OD-C8).
 - Model items do not use the job slot of K10 (`free.slots` counts jobs). The hub counts its own leases: one
-  machine has at most one model item that changes the machine (`runtime_install`, `model_pull`, `copy_delete`,
-  `server_start`, `server_stop`, `model_load`, `model_unload`) and one `model_measure` at a time. A `model_report`
+  machine has at most one model item that changes the machine (`runtime_install`, `model_pull`, `copy_adopt`,
+  `copy_delete`, `server_start`, `server_stop`, `model_load`, `model_unload`) and one `model_measure` at a time. A `model_report`
   and a `model_drain` are not counted. One claim gets at most one item. The order: `model_drain`, `server_stop`,
   `model_unload`, then each other model item the oldest first, then a job.
 - A model item has the states, the reports, the lease, the stop and the refusals of K10 Section 7 and Section 11.
@@ -207,6 +262,10 @@ daemon, and the daemon refuses each other file of `files` (`file_type`) before i
 { "outcome": "succeeded", "cause": null, "seconds": 412,
   "model": { "copy": "<uuid>", "copyState": "downloaded", "bytes": 5027783488, "files": 1 } }
 ```
+
+- The result of `copy_adopt` also has `"origin": "found"` in `model` and, for each file, its size and its SHA-256
+  in the order of the record (`"fileHashes": [ { "sizeBytes": 5027783488, "sha256": "<64 hexadecimal characters>" } ]`),
+  so that the hub knows the copy as the daemon checked it. It holds no file name and no path.
 
 - The log of a model item holds only the lines of the daemon: the step, the sizes, the codes. It never holds the
   output of a runtime, a prompt, an answer or an image (SEC-C-010, LOG-007), and never a token (Section 7).
@@ -270,6 +329,7 @@ the causes of K10 Section 5, and these:
 | `runtime_too_old` | The version is lower than the lowest version of that runtime that the daemon program holds |
 | `actor_not_permitted` | `actor` is `Agent` and the setting `agentTypes` does not name the type |
 | `revision_too_new` | The commit of the source is newer than the lowest age that the machine holds (Section 7) |
+| `found_unknown` | `copy_adopt` names a key that the walk of Section 10.2 does not find now, or a found model that is not `usable` (Section 2.3) |
 
 Causes after `preparing`, reported with the state `failed`: `checksum` (a SHA-256 is different), `size` (the downloaded size of a file
 differs from the `sizeBytes` that the order gave; a file over the cap of a content check of Section 2.2 is
@@ -282,7 +342,9 @@ no correct answer), `limit_disk`, `program_mismatch` (the SHA-256 of a runtime f
 `runtime_install` whose archive breaks a rule of the unpack of Section 6, or has no server program at the path of its
 release source entry; R-328), `containment_failed` (Linux: the tree of the server cannot be contained,
 Section 9; R-331), `runtime_not_signed` (Linux, only where the model launcher of Section 9 is used: the SHA-256 of the
-runtime program is on no valid signed list of runtimes; R-347). A `containment_failed` result also has the member `detail`, one of `no_delegation`,
+runtime program is on no valid signed list of runtimes; R-347), `copy_changed` (a file of a found copy has a
+different size or SHA-256 than its record, Section 2.3), `copy_missing` (a file of a found copy is not there or is
+not a regular file, Section 2.3). A `containment_failed` result also has the member `detail`, one of `no_delegation`,
 `no_nsdelegate`, `cgroup_join_failed`, `backstop_failed`, `parent_gone`, `userns_denied`, `exec_failed`,
 `launcher_missing` (the model launcher is used and it, or its profile, is not installed), `launcher_outdated` (the
 model launcher gives a different protocol number). The launcher
@@ -374,6 +436,9 @@ server before it exits; the daemon takes an exit code as the launcher's only whe
   operator which copy to remove. The daemon never removes a copy by itself: only `copy_delete` removes one.
   While the pull runs, the daemon stops it (`limit_disk`) when the free disk drops below the reserve of the
   daemon configuration (default 10 GiB).
+- **A found copy is not pulled.** `copy_adopt` (Section 2.3) makes a copy from files that are already on the
+  machine. This section does not apply to it; the disk share does not count its bytes, because Anima did not
+  write them.
 - **The copy is downloaded, not validated (PULL-011).** A pull that succeeds makes the state `downloaded`. Only
   `model_measure` with a correct answer makes `validated` (Section 11).
 - **The token of a gated repository (PULL-010, SEC-C-003).** When `gated` is true, `secrets` of the item is
@@ -468,6 +533,27 @@ of the batches between.
   and 64 copies.
 - A hub that does not know the member ignores it (K8 Section 1).
 - `model_report` gives the same object as its `result.model`, for the hub to read the whole state at once.
+- Each entry of `copies` has `origin`: `pulled` or `found` (Section 2.3). A found copy does not count in
+  `cacheBytes`.
+- Only `result.model` of `model_report` has the list `found` (PULL-012), never the push batch: the walk of
+  Section 10.2 reads many folders, so the daemon does it only when the hub asks. When the setting `findModels` is
+  `false`, the list is empty.
+
+```json
+"found": [
+  { "found": "<64 hexadecimal characters>", "tool": "ollama", "name": "qwen3:8b", "format": "gguf",
+    "files": 1, "bytes": 5225376047, "usable": true }
+]
+```
+
+- `tool` is `ollama`, `lm_studio`, `huggingface` or `folder` (a folder of `modelFolders`). `name` is the name that
+  the tool shows: the Ollama name and tag (`qwen3:8b`, `hf.co/unsloth/Qwen3-8B-GGUF:Q4_K_M`), the organisation and
+  repository of the Hugging Face cache with the file part (`unsloth/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf`), the
+  publisher, repository and file of LM Studio, or the path below the folder of `modelFolders`. It is text from
+  the device: at most 256 bytes of letters, digits, `-`, `_`, `.`, `:`, `/` and `+`; another name is not listed.
+  The hub shows it as text only and never sends it back.
+- At most 256 entries. `bytes` is the sum of the sizes of the files. A found model that is a found copy already
+  is still listed, so that the hub can match the two by `found`.
 
 ## 9. Start, the isolation, the loopback check and the supervision (SEC-C-001, CAG-005)
 
@@ -621,10 +707,30 @@ stricter value is permitted; the defaults are the answers of the operator.
 | `secondHash` | `false` (R-339) | `true`: Section 7, the hash of Hugging Face |
 | `revisionAgeDays` | `0` (R-339) | Days, for example 7: Section 7 |
 | `organisations` | `unsloth`, `mlx-community`, the publishers of the release (R-342) | A shorter list |
-| `agentTypes` | The ten types (R-326) | A shorter list, for example `model_report`, `server_stop`, `model_unload`, `model_drain` |
+| `agentTypes` | The eleven types (R-326) | A shorter list, for example `model_report`, `server_stop`, `model_unload`, `model_drain` |
+| `findModels` | `true` (R-443) | `false`: no folder of Section 10.2 is read, `found` is empty, and `copy_adopt` is refused (`found_unknown`) |
+| `modelFolders` | Empty | At most 16 absolute folders that the owner of the machine adds (R-444: "the operator can add other folders"); Section 10.2. This is the one setting whose change permits more, and only the owner of the machine makes it |
 
 The daemon reports the values in `model_report`, so the hub can show them. The plain controls (Section 2.2, the
 hash of the hub, Sections 4, 6 and 10) are not settings.
+
+### 10.2 The folders that model work reads and never writes (PULL-012, R-444)
+
+Model work reads these folders, to find the models of Section 2.3, when the setting `findModels` is `true`. It
+never writes in them (Section 2.3). The folders below a home folder are those of the user of the daemon; a
+daemon of the system unit reads only the Ollama folder of the system and `modelFolders`.
+
+| Tool | Folders (each that exists) | What a found model is |
+| --- | --- | --- |
+| `ollama` | `~/.ollama/models/`; on Linux also `/usr/share/ollama/.ollama/models/` (the service of the Ollama installer) | A manifest below `manifests/` (at most 4 levels: host, namespace, model, tag) that names one layer of the type `application/vnd.ollama.image.model`, a file `blobs/sha256-<hex>` |
+| `huggingface` | `~/.cache/huggingface/hub/` (the cache of `huggingface_hub`, which Unsloth Studio and the Hugging Face tools use) | A folder `models--<organisation>--<repository>/snapshots/<commit>/` with GGUF files, each a link to `../../blobs/<name>` (Section 2.3) |
+| `lm_studio` | `~/.lmstudio/models/` and `~/.cache/lm-studio/models/` | A GGUF file at `<publisher>/<repository>/<file>` |
+| `folder` | Each folder of `modelFolders` (Section 10.1) | A GGUF file at most 3 levels below the folder |
+
+- The daemon reads no environment variable for these folders (`OLLAMA_MODELS`, `HF_HOME`, `HF_HUB_CACHE`): a
+  service does not have the environment of a terminal. The owner of the machine names such a folder in
+  `modelFolders`; the human check of task L1-22 measures where each tool keeps its models on `pop-os`.
+- A model that two folders list is two found models, with two keys.
 
 ## 11. The states of a copy (CMP-006, PULL-011)
 
@@ -638,6 +744,10 @@ The daemon keeps the state of each copy in its state folder. The hub keeps the r
                            ▼                               ▼
                          failed ◄──────────────────────── failed
             copy_delete from each state ──► (none)
+
+            copy_adopt (Section 2.3)
+(none) ─────────────────────────────► downloaded
+            a check at a load: copy_changed or copy_missing ──► failed
 ```
 
 - `downloading`: the files are in `partial/`. `downloaded`: each file is verified and the copy was not validated
@@ -645,6 +755,10 @@ The daemon keeps the state of each copy in its state folder. The hub keeps the r
   runtime and this hardware. `failed`: the copy cannot be used; `cause` says why. A `model_pull` of a `failed`
   copy starts it again.
 - A `validated` copy goes back to `downloaded` when the runtime version or the backend that validated it changes.
+- A found copy has the same states. It has no `downloading`: `copy_adopt` makes it `downloaded` when each file is
+  read and recorded. A found copy that is `failed` with `copy_changed` or `copy_missing` is never checked again by
+  itself; a new `copy_adopt` of the same key, with a new copy, records the files as they are now. Its record in
+  `<model-state>/found/` is the state that the daemon keeps.
 - **Hook for task L1-15 (not defined here).** The states `loading`, `loaded` and `active` of a copy on a server,
   and the change between them, are for the contract of loading and readiness (task L1-15, FIT-020 to FIT-026).
   This version reports only `loaded` (the list `servers[].loaded` of Section 8). L1-15 adds its states as members
@@ -662,6 +776,7 @@ The daemon keeps the state of each copy in its state folder. The hub keeps the r
 | MW-P3 | Is the runtime report a member of the push batch or a report of the work route? | The push batch (Section 8) |
 | MW-P4 | How is an archive of `mlx_lm` or `vllm` with its Python environment made and signed? | Anima builds it with the release (task L1-6 decides the recipe); until then only `llama_server` from its upstream releases |
 | MW-P5 | Does the daemon start its servers again by itself after its own restart? | No: the hub sends `server_start` again, so that the machine runs nothing that the hub does not know |
+| MW-P10 | A found model of safetensors (a folder of the Hugging Face cache for vLLM or MLX) | Not in this version: it is listed with `usable` false. A runtime reads a folder, not one descriptor, so the check at each load of Section 2.3 does not bind what it reads. A later version can make a folder of links in the model cache, checked at each load |
 | MW-P6 | Can an AI agent through an API key make a model item? (F15) | Decided (R-326): each type; `agentTypes` is a setting at the machine |
 
 ## 13. What a person who controls the hub can do with this contract
@@ -671,6 +786,9 @@ machine holds; download files of the permitted types from an approved organisati
 also `mlx-community`), at a commit of their choice and with their own hash (R-339), and fill the disk
 share; load such a file in a runtime, whose parser can have faults (SEC-C-009), with the rights of the user of
 the daemon when `sandbox` is off (R-346), and so take that account; use memory and power
-within the device policy; stop each model server. The person cannot name a command, a flag that the daemon owns,
-an address, a path or a host outside the lists of the machine. The security review (SEC-C-012) reads this
+within the device policy; stop each model server; make a found model a found copy and load it, which reads a
+file that a different program or a user of the machine put there and can change (Section 2.3; the operator
+accepted this, R-444); learn the names and sizes of the found models. The person cannot name a command, a flag that the daemon owns,
+an address, a path or a host outside the lists of the machine, and cannot make the daemon read a folder that is
+not in Section 10.2 or write in one that is. The security review (SEC-C-012) reads this
 section.
