@@ -155,7 +155,11 @@ fn content(change: Change) -> Option<Value> {
     let value = match change {
         Change::State { state, .. } => json!({"change": "state", "state": state}),
         Change::Said {
-            event: DriveEvent::Account { .. } | DriveEvent::Reply { .. } | DriveEvent::Models { .. },
+            event:
+                DriveEvent::Account { .. }
+                | DriveEvent::Reply { .. }
+                | DriveEvent::Models { .. }
+                | DriveEvent::Commands { .. },
         } => return None,
         other => serde_json::to_value(other).ok()?,
     };

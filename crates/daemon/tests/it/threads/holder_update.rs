@@ -90,6 +90,7 @@ fn start_action(kit: &Kit) -> Action {
         mode: Mode::FullAccess,
         model: None,
         effort: None,
+        speed: None,
         prompt: "Run the command".to_owned(),
         program_path: None,
         draft: None,

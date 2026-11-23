@@ -119,6 +119,7 @@ async fn th116_a_thread_in_a_new_worktree_runs_there_and_each_turn_leaves_a_chec
             mode: Mode::Ask,
             model: None,
             effort: None,
+            speed: None,
             prompt: "Change it".to_owned(),
             program_path: None,
             draft: None,

@@ -25,6 +25,7 @@ fn row(program: Program) -> ThreadRow {
         queued: Vec::new(),
         last_turn: None,
         effort: None,
+        speed: None,
         workspace: None,
         usage: None,
     }
@@ -83,6 +84,7 @@ const CLAUDE_ASK: &str = r#"{"type":"control_request","request_id":"r-1","reques
 const CLAUDE_DELTA: &str = r#"{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"text_delta","text":"hi"}}}"#;
 
 mod accounts;
+mod commands;
 mod kept;
 #[cfg(unix)]
 mod launcher;

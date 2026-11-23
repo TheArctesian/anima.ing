@@ -7,6 +7,7 @@ use agent_threads::control::{Refusal, RunState};
 use agent_threads::drive::Program;
 use uuid::Uuid;
 
+use super::accounts::Asked;
 use super::calls::codex_of;
 use super::socket::Caller;
 use super::thread::Thread;
@@ -127,11 +128,16 @@ impl Runner {
             chosen_folder(&new.folder, self.dir.parent().unwrap_or(&self.dir))?;
         }
         self.draft_ready(new)?;
-        if !self
-            .said
-            .models
-            .offers(new.program, new.model.as_deref(), new.effort)
-        {
+        // Only Codex takes a speed from the runner (TH117).
+        if new.speed.is_some() && new.program != Program::Codex {
+            return Err(Refusal::BadValue);
+        }
+        let asked = Asked {
+            model: new.model.as_deref(),
+            effort: new.effort,
+            speed: new.speed.as_deref(),
+        };
+        if !self.said.models.offers(new.program, &asked) {
             return Err(Refusal::BadValue);
         }
         Ok(())

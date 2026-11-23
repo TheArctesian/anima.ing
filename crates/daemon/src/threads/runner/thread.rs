@@ -15,6 +15,7 @@ use uuid::Uuid;
 use super::codex::{Changed, Codex};
 
 mod asks;
+mod commands;
 mod events;
 mod kept;
 mod queue;
@@ -116,6 +117,10 @@ pub struct Thread {
     pending: u32,
     /// The changes of the person that the program does not have yet (TH110).
     asked: settings::Asked,
+    /// The commands and the skills that the program last named (TH117). In memory only.
+    lists: Option<agent_threads::drive::CommandLists>,
+    /// When a call last asked Codex for its skills again (TH117).
+    lists_asked: Option<std::time::Instant>,
 }
 
 impl Thread {
@@ -141,6 +146,8 @@ impl Thread {
             stalled: false,
             pending: 0,
             asked: settings::Asked::default(),
+            lists: None,
+            lists_asked: None,
         }
     }
 

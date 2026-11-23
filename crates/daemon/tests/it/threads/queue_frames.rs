@@ -20,6 +20,7 @@ async fn th109_each_call_of_the_queue_is_read_and_answered_through_the_socket() 
             mode: Mode::FullAccess,
             model: None,
             effort: None,
+            speed: None,
             prompt: "first".to_owned(),
             program_path: None,
             draft: None,
