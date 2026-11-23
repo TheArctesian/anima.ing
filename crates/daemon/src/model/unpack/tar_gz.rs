@@ -1,4 +1,5 @@
-//! The entries of a `.tar.gz`: a regular file or a folder; each other type is refused.
+//! The entries of a `.tar.gz`: a regular file, a folder or a symbolic link (kept for
+//! [`super::links`]); each other type is refused.
 
 use std::fs::File;
 
@@ -13,15 +14,21 @@ pub(super) fn unpack<F: Fn() -> bool>(archive: File, writer: &mut Writer<F>) -> 
     for entry in tar.entries().map_err(|_| BAD_ARCHIVE)? {
         writer.next_entry()?;
         let mut entry = entry.map_err(|_| BAD_ARCHIVE)?;
+        let path = entry.path().map_err(|_| BAD_ARCHIVE)?;
+        let path = path.to_str().ok_or(BAD_ARCHIVE)?.to_owned();
         let kind = match entry.header().entry_type() {
+            EntryType::Symlink => {
+                let target = entry.link_name().map_err(|_| BAD_ARCHIVE)?;
+                let target = target.as_deref().and_then(|target| target.to_str());
+                writer.link(&path, target.ok_or(BAD_ARCHIVE)?)?;
+                continue;
+            }
             EntryType::Directory => Kind::Folder,
             EntryType::Regular | EntryType::Continuous => {
                 Kind::File(entry.header().mode().map_err(|_| BAD_ARCHIVE)?)
             }
             _ => return Err(BAD_ARCHIVE),
         };
-        let path = entry.path().map_err(|_| BAD_ARCHIVE)?;
-        let path = path.to_str().ok_or(BAD_ARCHIVE)?.to_owned();
         writer.write(&path, kind, &mut entry)?;
     }
     Ok(())

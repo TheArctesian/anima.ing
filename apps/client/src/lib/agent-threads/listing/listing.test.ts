@@ -11,7 +11,7 @@ function row(id: string, title: string): ThreadRow {
 }
 
 function listing(thread: string, fields: Partial<Listing>): Listing {
-  return { thread, pinned: false, archived: false, title: null, removed: false, marks: NO_MARKS, ...fields };
+  return { thread, pinned: false, archived: false, title: null, removed: false, marks: NO_MARKS, startedByAnima: false, ...fields };
 }
 
 describe('TH46: how the person lists a thread', () => {

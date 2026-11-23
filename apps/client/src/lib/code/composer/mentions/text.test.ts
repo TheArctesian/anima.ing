@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { cannot } from '../draft';
 import { chipReader, fileLink, readChips, threadLink } from './chips';
 import { FIXTURE_SKILLS, FIXTURE_SOURCES } from './fixture';
 import { insertionOf } from './insertion';
@@ -153,7 +154,9 @@ describe('what a choice writes', () => {
     const side = entryOf('/si', 'command:side');
     expect(insertionOf(side.trigger, side.entry, '/si x')).toEqual({ start: 0, end: 3, text: '/side ' });
     const clear = entryOf('/cle', 'command:clear');
-    expect(insertionOf(clear.trigger, clear.entry, '/cle')).toBeNull();
+    expect(insertionOf(clear.trigger, clear.entry, '/cle')).toEqual({ start: 0, end: 4, text: '' });
+    const busy = { ...clear.entry, available: cannot('A turn is running') };
+    expect(insertionOf(clear.trigger, busy, '/cle')).toBeNull();
   });
 
   it('writes a thread as a link that reads back as a chip', () => {

@@ -2,11 +2,13 @@
   import type { SvelteSet } from 'svelte/reactivity';
   import FormButton from '$lib/forms/FormButton.svelte';
   import Select from '$lib/forms/input/Select.svelte';
+  import type { SharedProjectGroups } from './shared.svelte';
   import type { ProjectGroups } from './groups.svelte';
   import NameModal from './NameModal.svelte';
 
   interface Props {
-    groups: ProjectGroups;
+    groups: ProjectGroups | SharedProjectGroups;
+    canEdit: boolean;
     /** The IDs of the selected projects; the bar adds and clears them. */
     selected: SvelteSet<string>;
     /** The IDs of each project that the list shows with the present filter: "Select all" takes these (PRO-060). */
@@ -14,10 +16,12 @@
     onDone: () => void;
   }
 
-  const { groups, selected, shown, onDone }: Props = $props();
+  const { groups, canEdit, selected, shown, onDone }: Props = $props();
   let naming = $state(false);
+  let moving = $state(false);
+  let error = $state('');
   const count = $derived(selected.size);
-  const none = $derived(count === 0);
+  const disabled = $derived(count === 0 || !canEdit || moving);
   const allShown = $derived(shown.length > 0 && shown.every((id) => selected.has(id)));
 
   function selectAll(): void {
@@ -26,14 +30,28 @@
   }
 
   function put(groupId: string | null): void {
-    groups.put([...selected], groupId);
-    selected.clear();
+    if (disabled) return;
+    error = '';
+    const result = groups.put([...selected], groupId);
+    if (result === undefined) {
+      selected.clear();
+      return;
+    }
+    moving = true;
+    void result.then((problem) => {
+      moving = false;
+      if (problem === null) selected.clear();
+      else error = problem;
+    });
   }
 
-  function create(name: string): string | null {
-    const problem = groups.create(name, [...selected]);
-    if (problem === null) selected.clear();
-    return problem;
+  function create(name: string): string | null | Promise<string | null> {
+    const finish = (problem: string | null) => {
+      if (problem === null) selected.clear();
+      return problem;
+    };
+    const result = groups.create(name, [...selected]);
+    return result instanceof Promise ? result.then(finish) : finish(result);
   }
 </script>
 
@@ -41,15 +59,15 @@
      projects; none starts with no project selected. -->
 <div class="bar" role="toolbar" aria-label="Selected projects">
   <span class="count" aria-live="polite">{count === 1 ? '1 selected' : `${String(count)} selected`}</span>
-  <FormButton tone="ghost" size="sm" onclick={selectAll} aria-disabled={shown.length === 0}>{allShown ? 'Clear selection' : 'Select all'}</FormButton>
+  <FormButton tone="ghost" size="sm" onclick={selectAll} aria-disabled={shown.length === 0 || moving}>{allShown ? 'Clear selection' : 'Select all'}</FormButton>
   <span class="actions">
-    <FormButton size="sm" onclick={() => (naming = true)} aria-disabled={none}>New group</FormButton>
+    <FormButton size="sm" onclick={() => (naming = true)} aria-disabled={disabled}>New group</FormButton>
     {#if groups.groups.length > 0}
       <label>
         <span class="hidden">Add to group</span>
         <Select
           value=""
-          disabled={none}
+          {disabled}
           onchange={(event) => {
             const value = event.currentTarget.value;
             event.currentTarget.value = '';
@@ -63,10 +81,11 @@
         </Select>
       </label>
     {/if}
-    <FormButton size="sm" onclick={() => put(null)} aria-disabled={none}>Remove from group</FormButton>
-    <FormButton tone="primary" size="sm" onclick={onDone}>Done</FormButton>
+    <FormButton size="sm" onclick={() => put(null)} aria-disabled={disabled}>Remove from group</FormButton>
+    <FormButton tone="primary" size="sm" onclick={onDone} aria-disabled={moving}>Done</FormButton>
   </span>
 </div>
+{#if error}<p role="alert">{error}</p>{/if}
 <NameModal open={naming} title="New group" saveLabel="Make group" onSave={create} onClose={() => (naming = false)} />
 
 <style>

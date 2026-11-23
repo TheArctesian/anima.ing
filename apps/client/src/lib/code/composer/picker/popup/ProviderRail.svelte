@@ -45,7 +45,7 @@
 <div class="rail" role="toolbar" aria-label="Providers" aria-orientation="vertical" tabindex="-1" bind:this={rail} {onkeydown}>
   <Tooltip text="Favorites">
     <button type="button" class="favourites" aria-label="Favorites" aria-pressed={tab === FAVOURITES} tabindex={tab === FAVOURITES ? 0 : -1} onclick={() => { onTab(FAVOURITES); }}>
-      <CodeIcon name="pin" size="lg" />
+      <CodeIcon name="star" size="lg" />
     </button>
   </Tooltip>
   <div class="rule" aria-hidden="true"></div>

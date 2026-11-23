@@ -145,3 +145,19 @@ Use a fresh disk-backed output directory with at least 32 GiB free. The boot run
 The staging VM verifies signature/hash/downgrade refusal, locking, progress interruption and import/staging; its candidate is deliberately not bootable. The separate EFI fixture boots real A/B kernels on a persistent 1 GiB ESP, checks activation and health blessing, explicitly rolls back, then masks a candidate health dependency to prove two failed boots recover the previous system. Identity/work sentinels and an unselected disk must remain unchanged. Its headless services stand in for graphical health dependencies; it does not qualify the full graphical appliance, physical hardware or real enrollment.
 
 `updates/package.py`, `publish.py`, `feed.py` and their Python tests remain publishing/test tools. The native updater package and its installed shell wrapper contain no Python runtime dependency; retained `updates/update.py` and `boot.py` are reference implementations, not installed control paths.
+
+## Private remote access
+
+Installed Anima OS provides SSH and RDP through the authenticated Anima link. SSH listens on loopback port 22 and RDP on loopback port 3389; neither opens a LAN or public firewall port. The live installer has no remote service. VNC is not enabled.
+
+After connecting the OS to your private hub, use `anima ssh <device>` for a CLI terminal, or choose SSH or RDP on the device in the Anima GUI. Use the installation's `admin` account and password, and verify the SSH host key or RDP certificate through the existing trust flow. Root and blank-password remote login are disabled. RDP starts a separate graphical Anima console; it does not mirror the physical display. Unlock that console with the same admin password.
+
+New hosted enrollments enable the device's SSH and RDP settings. An existing device, including one referenced by an enrollment code from your own hub, retains its settings: enable SSH on port 22 and RDP on port 3389 in that device's settings if they are off. Existing credentials and certificate trust are never replaced automatically.
+
+The OS initializes its local private-link port list only if absent. A local admin can disable access with `sudo -u anima-daemon anima-link ports -state /var/lib/anima-link off 3389` (or `22`), and restore it with `on`. These local choices and the SSH host identity and RDP certificate persist across restart and system updates. Disabling a port rejects new link connections; close existing sessions separately.
+
+## Publishing an OS release
+
+Publish only after the tested ISO and signed update target the same installed-system closure. Upload the immutable ISO under `os/preview/x86_64-linux/<version>/anima-os-x86_64.iso`, verify its complete public bytes, then publish the signed installed-OS package with `updates/publish.py`. Keep the local artifact and public verification receipts.
+
+Finish every ISO publication with the site repository's `scripts/publish-os.py <version> /path/to/anima-os-x86_64.iso --credentials /path/to/r2.env`. It verifies the complete public ISO and atomically advances `latest-iso.json`, preserving the previous pointer if verification fails. The permanent website address `https://anima.ing/download/os` and its version/size/checksum display read this manifest at runtime. No website rebuild is needed. Confirm both the signed update feed and `/download/os?format=json` name the intended version before reporting publication complete.

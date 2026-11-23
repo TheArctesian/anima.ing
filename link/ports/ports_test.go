@@ -58,10 +58,10 @@ func TestHMD049OnlyThePortsOfTheSessionsCanBeOpen(t *testing.T) {
 			t.Errorf("port %d: %v, want ErrNotAllowed", port, err)
 		}
 	}
-	if !ports.Allowed(3389, "windows") || ports.Allowed(3389, "darwin") || ports.Allowed(3389, "linux") {
-		t.Fatal("port 3389 must be allowed on Windows only")
+	if !ports.Allowed(3389, "windows") || ports.Allowed(3389, "darwin") || !ports.Allowed(3389, "linux") {
+		t.Fatal("port 3389 must be allowed on Windows and Linux only")
 	}
-	if err := ports.Turn(dir, 3389, true); (err == nil) != (runtime.GOOS == "windows") {
+	if err := ports.Turn(dir, 3389, true); (err == nil) != (runtime.GOOS == "windows" || runtime.GOOS == "linux") {
 		t.Fatalf("port 3389 on %s: %v", runtime.GOOS, err)
 	}
 }

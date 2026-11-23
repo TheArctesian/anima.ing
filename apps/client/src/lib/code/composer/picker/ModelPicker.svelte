@@ -9,12 +9,13 @@
   import Control from '../Control.svelte';
   import type { Can } from '../draft';
   import Bolt from './Bolt.svelte';
-  import { FAVOURITES, chosenModel, describeEffort, jumpKeys, litRow, modelKey, nextRow, nextTab, openingTab, pickModel, rowsOf } from './catalogue';
+  import { FAVOURITES, chosenModel, describeEffort, jumpKeys, litRow, modelKey, nextRow, nextTab, openingTab, pickModel, rowsOf, shortName } from './catalogue';
   import type { Catalogue, Choice, Model, Row } from './catalogue';
   import EffortGlyph from './EffortGlyph.svelte';
   import { composes, jumpLabel, popupIntent, searchIntent } from './keys';
   import EffortColumn from './popup/EffortColumn.svelte';
   import ModelList from './popup/ModelList.svelte';
+  import ModelsNotice from './popup/ModelsNotice.svelte';
   import PickerFooter from './popup/PickerFooter.svelte';
   import ProviderRail from './popup/ProviderRail.svelte';
 
@@ -36,9 +37,11 @@
     effortDisplay?: 'label' | 'bars';
     /** Left out, the favourites are shown and cannot be changed. */
     onFavourite?: (model: Model, favourite: boolean) => void;
+    /** Asks for the models again, each time the popup opens (as T3's picker does) and from the notice's Retry. */
+    onAsk?: (() => void) | undefined;
   }
 
-  let { catalogue, value, onChange, can, shortcut, open = $bindable(false), align = 'start', size = 'sm', effortDisplay = 'label', onFavourite }: Props = $props();
+  let { catalogue, value, onChange, can, shortcut, open = $bindable(false), align = 'start', size = 'sm', effortDisplay = 'label', onFavourite, onAsk }: Props = $props();
   const id = $props.id();
   const mac = typeof navigator !== 'undefined' && isMac(navigator.userAgent);
   let root: HTMLElement | undefined;
@@ -67,7 +70,10 @@
   /* Each opening after the first drawing starts on its tab with an empty search, and focus goes to the search field. */
   let drawn = false;
   $effect(() => {
-    if (open && drawn) untrack(() => void enter());
+    if (open && drawn) untrack(() => {
+      onAsk?.();
+      void enter();
+    });
     drawn = true;
   });
 
@@ -179,7 +185,7 @@
     onclick={onTrigger}
   >
     {#if provider !== undefined}<CodeIcon name={provider.icon} />{/if}
-    <span class="name">{name}</span>
+    <span class="name">{shortName(name)}</span>
     {#if summary.word !== null || summary.bars !== null || summary.bolt !== null}
       <span class="suffix" class:sm={size === 'sm'}>
         {#if summary.word !== null}<span class="word">{summary.word}</span>{:else if summary.bars !== null}<EffortGlyph bars={summary.bars} {size} />{/if}
@@ -221,6 +227,8 @@
         </div>
         <EffortColumn {model} {value} {onChange} onSearch={() => list?.focus()} bind:this={column} />
       </div>
+      <!-- Why the list is short, on a line of its own under the list with the whole reason, never inside a row. -->
+      {#if catalogue.notice !== undefined}<ModelsNotice notice={catalogue.notice} onRetry={onAsk} />{/if}
       <PickerFooter {model} modes={catalogue.modes} {value} {onChange} />
       <span class="unseen" role="status">{said}</span>
     </div>

@@ -93,7 +93,7 @@
   const reportsMetrics = capabilities().deviceLink && isMobile(navigator);
   const signedOut = $derived(showsSignedOutPage(page.url));
   $effect(() => {
-    if (shell !== null && reportsMetrics && !signedOut) return watchMobileMetrics(shell.hub.address.origin);
+    if (shell !== null && reportsMetrics && !signedOut) return watchMobileMetrics(shell.hub);
   });
 
   /** The hub the shell talks to, provided to every page, with its token read behind the listener check (F-10). */
