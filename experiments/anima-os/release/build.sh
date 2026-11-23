@@ -17,7 +17,7 @@ import json, os, subprocess, sys
 from pathlib import Path
 out = Path(sys.argv[1])
 paths = {}
-for name, attr in [('freerdp', 'freerdp'), ('xorg', 'xorg.xorgserver'), ('openssl', 'openssl')]:
+for name, attr in [('freerdp', 'freerdp'), ('xorg', 'xorg.xorgserver'), ('openssl', 'openssl.bin')]:
     expr = 'let f = builtins.getFlake ("path:" + builtins.getEnv "ANIMA_OS_WORKSPACE" + "/experiments/anima-os"); p = import f.inputs.nixpkgs { system = "x86_64-linux"; }; in p.' + attr
     paths[name] = subprocess.check_output(['nix', '--extra-experimental-features', 'nix-command flakes', 'build', '--impure', '--expr', expr, '--no-link', '--print-out-paths'], text=True).strip()
 (out / 'package/test-tools.json').write_text(json.dumps(paths))
