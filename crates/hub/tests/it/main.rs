@@ -32,6 +32,8 @@ mod metrics;
 mod networks;
 mod notifications;
 mod operator;
+#[path = "os_updates/confirmation.rs"]
+mod os_updates;
 mod places;
 mod projects;
 mod reminders;

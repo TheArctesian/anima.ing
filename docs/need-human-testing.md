@@ -5564,3 +5564,15 @@ For the HM-T41 refinement, use the keyboard to reach each row action. Click Enab
 On macOS, use Open settings… when Screen Sharing is off. Enable Screen Sharing, then return to Anima: only Screen Sharing is checked and opened through Anima after its server replies. Return without enabling it: the row must stay not ready, with the settings action available. If no focus event arrives, use Check again. Resize the dialog and check light and dark appearance and enlarged text. Verify an authenticated SSH and VNC session from another enrolled computer. macOS has no bundled RDP server. On Windows Pro, verify RDP with NLA and existing firewall policy; Windows Home must not be presented as a working RDP host. Windows VNC needs an existing authenticated server. On Debian/Ubuntu, verify xrdp installation and authenticated sessions; confirm newly installed servers bind only loopback. Automatic x11vnc installation is suspended: a unixpw screen login cannot be established by the RFB security-type check. A preexisting VNC listener with None, unknown or mixed unauthenticated methods must remain closed through Anima, with an authentication-verification explanation. A server that requires VNC password or Apple account authentication must still complete a real authenticated session; the probe alone does not prove this. On Wayland, verify the manual sharing path. Linux package installation and Windows UAC have not been exercised on this Mac.
 
 On a headless Linux machine, only SSH must be selected. Turn every protocol off in Settings, restart the application and upgrade it: choices must stay off and connection attempts through the link must fail. Anima closes its link access; it does not stop an existing operating-system sharing service or change access configured outside Anima.
+
+## HT-NEW-os-remote-update — Hosted desktop OS updates
+
+Status: Open. Owner: OS5-R1 in [spare-computer-os.md](proposals/spare-computer-os.md).
+
+The hub, CLI and desktop invoke the signed OS updater over pinned private SSH. Automated checks cover restart confirmation and the OS service boundary; they do not prove a deployed hosted account, physical reboot or the installed desktop bundle.
+
+1. Install the matching hub, desktop and OS versions. Open the enrolled OS device's Overview and choose View OS update status. Expect its retained update state, or a specific SSH/trust/version error.
+2. Check and download a signed newer release. Close the desktop during download, then reopen the device page. Expect progress or the verified staged release, without starting another download.
+3. Choose Restart to update, then Cancel. Expect no restart. Repeat and confirm. Expect the connection to drop and the applied version to appear only after reconnection and startup checks.
+4. Request Restore previous OS and confirm. Expect the prior OS and retained owner data after reconnecting.
+5. Verify SSH and RDP on the same physical device, including a locked local screen. The earlier reported automatic setup and RDP reachability failures remain unverified.

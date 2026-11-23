@@ -1,4 +1,6 @@
 <script lang="ts">
+  import OsUpdatePanel from '$lib/os-updates/OsUpdatePanel.svelte';
+  import type { OsUpdateCalls } from '$lib/os-updates/api';
   import { isHubDevice } from '$lib/devices/actions/actions';
   import type { DeviceStatus } from '$lib/devices/card/card';
   import type { DaemonNeed, MetricsSource } from '$lib/hub/generated/graphql';
@@ -45,10 +47,11 @@
     onOpenWeb?: ((webInterface: WebInterface, button: HTMLElement) => void) | undefined;
     onSection?: ((section: SettingsSection | null) => void) | undefined;
     /** Asks the hub what it keeps; the card is drawn only for the hub's own device (HMD-073). */
+    osUpdates?: OsUpdateCalls | undefined;
     readKept?: (() => Promise<HubKept>) | undefined;
   }
 
-  const { device, checks, metrics, range, vpn = null, now, clock, onRange, onRetry, onSettings, onConnect, onOpenWeb, onSection, readKept }: Props = $props();
+  const { device, checks, metrics, range, vpn = null, now, clock, onRange, onRetry, onSettings, onConnect, onOpenWeb, onSection, readKept, osUpdates }: Props = $props();
 </script>
 
 <!-- The facts and the resources in the main column; beside them, how to get in and what the device is (R-224). On a
@@ -82,6 +85,7 @@
       <!-- No session reaches the container of the hub, so it has no host key to show (HMD-046). -->
       {#if !isHubDevice(device)}<HostKeyCard ssh={device.ssh} />{/if}
       <AboutCard {device} />
+      {#if osUpdates}<OsUpdatePanel calls={osUpdates} deviceId={device.id} />{/if}
     </aside>
   </div>
 </div>

@@ -14,6 +14,7 @@
   import { HostingStore } from '$lib/hosting/store.svelte';
   import { thisComputerShell } from '$lib/desktop/daemon/shell';
   import { screenSharingCalls } from '$lib/devices/screen-sharing/calls';
+  import { osUpdatesApi } from '$lib/os-updates/api';
   import { readKept } from '$lib/hosted/kept/api';
   import { metricsApi } from '$lib/metrics/api';
   import { useHub } from '$lib/hub/context';
@@ -49,6 +50,7 @@
 
   // The panels take data and callbacks; `Detail` and `detailCalls` reach the hub (D-1).
   const hub = useHub();
+  const osUpdates = osUpdatesApi(hub);
   const sessions = useSessions();
   const screenSharing = { calls: screenSharingCalls(hub), onEnabled: (next: DeviceDetail) => { detail.setDevice(next); } };
   const now = () => new Date();
@@ -204,6 +206,7 @@
             onOpenWeb={openWeb}
             onSection={settings}
             readKept={() => readKept(hub)}
+            osUpdates={device.os === 'LINUX' && device.host.toLowerCase().startsWith('fd41:4e49:4d41:') ? osUpdates : undefined}
           />
         {/if}
       </TabPanel>
