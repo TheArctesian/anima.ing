@@ -28,7 +28,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use agent_threads::control::{Limits, Reply, RunState};
+use agent_threads::control::{Limits, Reply};
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
@@ -292,13 +292,39 @@ impl Runner {
     async fn apply(&mut self, id: Uuid, steps: Vec<Step>) -> Result<Option<u64>, LinkDown> {
         let key = id.to_string();
         let mut last_write = None;
-        // A turn that leaves the profile may be taken while the runner is down: the record says
-        // that the profile is gone before the line goes (THR-041).
-        let leaves = self.threads.get(&id).is_some_and(Thread::leaves_profile);
-        if leaves && steps.iter().any(|step| matches!(step, Step::Write(_))) {
-            self.save();
-        }
+        let mut held = false;
         for step in steps {
+            // A turn that leaves the profile may be taken while the runner is down: the record
+            // says that the profile is gone before its line goes, or the line does not go
+            // (THR-041).
+            if let Step::Write(line) = &step
+                && self
+                    .threads
+                    .get(&id)
+                    .is_some_and(|thread| thread.leaves_with(line))
+                && !self.written()
+            {
+                let ended = self
+                    .threads
+                    .get_mut(&id)
+                    .map(|thread| thread.held_back(line));
+                for step in ended.unwrap_or_default() {
+                    self.own_step(id, step, None);
+                }
+                held = true;
+                continue;
+            }
+            // The prompt of the queue whose line was held back waits again, first.
+            if let (true, Step::Queued(queued)) = (held, &step) {
+                let back = self
+                    .threads
+                    .get_mut(&id)
+                    .and_then(|thread| thread.put_back(queued.id, queued.text.clone()));
+                if let Some(back) = back {
+                    self.own_step(id, back, None);
+                }
+                continue;
+            }
             let Some(action) = step.command(&key) else {
                 if step == Step::Workspace {
                     self.look_at_workspace(id).await;
@@ -349,33 +375,6 @@ impl Runner {
                 tracing::warn!(%error, "the holder did not take a command");
                 kept.then_some(id)
             }
-        }
-    }
-
-    /// Writes the record, after it lets go of the oldest stopped threads.
-    fn save(&mut self) {
-        let mut stopped: Vec<(chrono::DateTime<chrono::Utc>, Uuid)> = self
-            .threads
-            .values()
-            .filter(|thread| thread.row.state == RunState::Stopped)
-            .map(|thread| (thread.row.started, thread.row.id))
-            .collect();
-        stopped.sort();
-        let over = stopped.len().saturating_sub(STOPPED_KEPT);
-        for (_, id) in stopped.into_iter().take(over) {
-            self.threads.remove(&id);
-            self.read_up_to.remove(&id);
-            // No prompt can go to it again: its files go with it (TH111).
-            self.attached.forget(id);
-        }
-        let record = record::Record {
-            limits: self.limits,
-            threads: self.threads.values().map(Thread::saved).collect(),
-            listings: self.listings.values().cloned().collect(),
-            projects: self.projects.clone(),
-        };
-        if let Err(error) = record::write(&self.dir, &record) {
-            tracing::warn!(%error, "the record of the runner was not written");
         }
     }
 }

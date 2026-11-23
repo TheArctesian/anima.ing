@@ -102,6 +102,25 @@ impl Thread {
         }
     }
 
+    /// The line of a turn that leaves the profile of the folder of Anima did not go, because the
+    /// record could not say so first (THR-041): the turn ends as one that Codex refused, so
+    /// nothing waits for it and the profile stays.
+    pub fn held_back(&mut self, line: &str) -> Vec<Step> {
+        let Driver::Codex(codex) = &self.driver else {
+            return Vec::new();
+        };
+        let Some(number) = codex.leaving_line(line) else {
+            return Vec::new();
+        };
+        let why = "Anima could not write its record, so this turn, which leaves the sandbox of the \
+                   folder, did not go. Make room on the disk, then send again.";
+        self.reply(
+            &ProgramRequestId::Number(number),
+            false,
+            &serde_json::json!({ "message": why }),
+        )
+    }
+
     fn reply(&mut self, id: &ProgramRequestId, ok: bool, result: &serde_json::Value) -> Vec<Step> {
         let (Driver::Codex(codex), ProgramRequestId::Number(number)) = (&mut self.driver, id)
         else {
