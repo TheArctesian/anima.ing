@@ -1,7 +1,7 @@
 //! Thread summaries from enrolled devices (TH21).
 
 pub mod graphql;
-mod read;
+mod model;
 mod store;
 mod upload;
 

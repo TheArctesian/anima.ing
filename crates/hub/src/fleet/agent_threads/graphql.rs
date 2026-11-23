@@ -6,7 +6,10 @@ use futures_util::{Stream, stream};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use super::read::{self, Entry, Filter, Summary};
+use super::{
+    model::{Entry, Filter, Summary},
+    store,
+};
 use crate::{
     api_errors::{FieldError, internal, invalid, pool},
     fleet::access::{Authenticated, person_only},
@@ -77,7 +80,7 @@ impl Query {
             state,
             after: after.as_deref().map(cursor).transpose()?,
         };
-        let mut rows = read::list(pool(ctx)?, filter, i64::from(first) + 1)
+        let mut rows = store::list(pool(ctx)?, filter, i64::from(first) + 1)
             .await
             .map_err(internal)?;
         let has_next_page = rows.len() > limit;
@@ -97,16 +100,10 @@ impl Query {
     async fn agent_thread(&self, ctx: &Context<'_>, id: ID) -> Result<Option<AgentThreadSnapshot>> {
         person_only(ctx)?;
         let id = id.parse().map_err(|_| bad("id"))?;
-        let mut tx = pool(ctx)?.begin().await.map_err(internal)?;
-        sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
-            .execute(&mut *tx)
-            .await
-            .map_err(internal)?;
-        let Some(summary) = read::summary(&mut tx, id).await.map_err(internal)? else {
+        let Some((summary, entries)) = store::snapshot(pool(ctx)?, id).await.map_err(internal)?
+        else {
             return Ok(None);
         };
-        let entries = read::entries(&mut *tx, id, 0).await.map_err(internal)?;
-        tx.commit().await.map_err(internal)?;
         let last_sequence = entries.last().map_or(0, |entry| entry.sequence).to_string();
         Ok(Some(AgentThreadSnapshot {
             summary: summary.into(),
@@ -156,7 +153,7 @@ async fn next(position: Option<Position>) -> Option<(Result<AgentThreadEntry>, O
             sequence = entry.sequence;
             return Some((Ok(entry.into()), Some((pool, id, sequence, pending))));
         }
-        match read::entries(&pool, id, sequence).await {
+        match store::entries(&pool, id, sequence).await {
             Ok(rows) if rows.is_empty() => tokio::time::sleep(Duration::from_millis(500)).await,
             Ok(rows) => pending = rows.into(),
             Err(error) => return Some((Err(internal(error)), None)),

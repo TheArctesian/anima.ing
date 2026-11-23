@@ -40,16 +40,6 @@ struct HubThread;
 struct WatchHubThread;
 
 #[derive(Debug, clap::Args)]
-pub struct ListArgs {
-    #[arg(long)]
-    device: Option<String>,
-    #[arg(long, default_value_t = 50, value_parser = clap::value_parser!(i64).range(1..=200))]
-    first: i64,
-    #[arg(long)]
-    after: Option<String>,
-}
-
-#[derive(Debug, clap::Args)]
 pub struct ReadArgs {
     id: String,
 }
@@ -82,24 +72,18 @@ pub(crate) async fn list(
         .agent_threads)
 }
 
-impl ListArgs {
-    pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
-        let hub = invocation.hub()?;
-        let answer = list(&hub, (self.device.as_deref(), None), self.first, self.after).await?;
-        invocation.output.data(&answer, |answer| {
-            let mut table = Table::new(vec!["ID", "DEVICE", "PROGRAM", "STATE", "TITLE"]);
-            for row in &answer.nodes {
-                table.row(vec![
-                    Cell::new(&row.id),
-                    Cell::new(&row.device_id),
-                    Cell::new(&row.program),
-                    Cell::new(&row.state),
-                    Cell::new(&row.title),
-                ]);
-            }
-            table
-        })
+pub(crate) fn list_table(page: &hub_threads::HubThreadsAgentThreads) -> Table {
+    let mut table = Table::new(vec!["ID", "DEVICE", "PROGRAM", "STATE", "TITLE"]);
+    for row in &page.nodes {
+        table.row(vec![
+            Cell::new(&row.id),
+            Cell::new(&row.device_id),
+            Cell::new(&row.program),
+            Cell::new(&row.state),
+            Cell::new(&row.title),
+        ]);
     }
+    table
 }
 
 impl ReadArgs {

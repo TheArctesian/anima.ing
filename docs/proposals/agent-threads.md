@@ -943,7 +943,7 @@ The order of the build of stage 1b: (1) TH18, the measurement of Full access; (2
 | --- | --- | --- | --- | --- |
 | TH20 | Contract change for the device thread rows and the upload of entries (THR-012, THR-022, THR-126). See Section 6.3.1. | OD-THR4, OD-THR9, OD-THR19 | Contract review and ruling (CON-001) | Approved by R-431. Section 6.3.1 and K8 Section 4. |
 | TH21 | The hub domain for thread rows, queries `agentThreads` and `agentThread`, and subscription `agentThreadEntries` (THR-023). Store entries from opted-in devices under THR-126 and THR-130. | TH20 | Hub tests for access, retries, reconnect and deletion | In progress. Summary ingestion is on `code/hub-thread-sync`. The daemon publisher, transcript upload and K1 read path are on `code/thread-handoff`. The full phone check is TH51. |
-| TH22 | `anima agents hub-threads --device`, `hub-thread` and `watch-hub-thread --after`. The MCP tool with `device` gives summaries only. | TH21 | Tests | In progress on `code/thread-handoff` |
+| TH22 | `anima agents threads --device`, `hub-thread` and `watch-hub-thread --after`. The MCP tool with `device` gives summaries only. | TH21 | Tests | In progress on `code/thread-handoff` |
 | TH23 | The page Threads with the choice of a device | TH21 | Client tests, a human check with `pop-os` | Not started |
 
 Needs: W0 (the socket of the link) for a machine that reaches the hub through the link. Not W3, W4 or W7: nothing starts.

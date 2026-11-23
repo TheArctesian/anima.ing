@@ -37,8 +37,6 @@ pub enum AgentCommand {
     /// Show one thread of this computer: the prompts, the replies, the reasoning and the tool
     /// calls with their results.
     Thread(threads::ThreadArgs),
-    /// List threads from connected devices.
-    HubThreads(hub_threads::ListArgs),
     /// Read a connected thread and its initial transcript.
     HubThread(hub_threads::ReadArgs),
     /// Stream a connected thread starting after an acknowledged sequence.
@@ -137,7 +135,6 @@ impl AgentCommand {
             Self::Sessions(args) => args.run(invocation).await,
             Self::Threads(args) => args.run(invocation).await,
             Self::Thread(args) => args.run(invocation),
-            Self::HubThreads(args) => args.run(invocation).await,
             Self::HubThread(args) => args.run(invocation).await,
             Self::WatchHubThread(args) => args.run(invocation).await,
             #[cfg(unix)]

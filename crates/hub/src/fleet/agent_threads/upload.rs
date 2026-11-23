@@ -15,12 +15,7 @@ pub(in crate::fleet) async fn append(
         return Ok(None);
     };
     let receipt = store::record_summary(tx, device, &upload.summary).await?;
-    let mut last_sequence: i64 = sqlx::query_scalar(
-        "SELECT COALESCE(max(sequence), 0) FROM agent_threads.entries WHERE thread_id = $1",
-    )
-    .bind(receipt.id)
-    .fetch_one(&mut *tx)
-    .await?;
+    let mut last_sequence = store::last_sequence(tx, receipt.id).await?;
     if first.sequence > last_sequence + 1 {
         return Ok(None);
     }
@@ -28,14 +23,7 @@ pub(in crate::fleet) async fn append(
         if entry.sequence <= last_sequence {
             continue;
         }
-        sqlx::query(
-            "INSERT INTO agent_threads.entries (thread_id, sequence, content) VALUES ($1, $2, $3)",
-        )
-        .bind(receipt.id)
-        .bind(entry.sequence)
-        .bind(&entry.content)
-        .execute(&mut *tx)
-        .await?;
+        store::insert_entry(tx, receipt.id, entry).await?;
         last_sequence = entry.sequence;
     }
     Ok(Some(ThreadUploadReceipt {

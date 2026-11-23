@@ -4103,6 +4103,7 @@ type AgentThreadEntry {
 
 type AgentThreadSnapshot {
   summary: AgentThreadSummary!
+  # The newest 64 stored entries in sequence order.
   entries: [AgentThreadEntry!]!
   lastSequence: String!
 }

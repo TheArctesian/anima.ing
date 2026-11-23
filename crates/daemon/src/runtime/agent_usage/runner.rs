@@ -20,12 +20,13 @@ use crate::sampling::agent_usage::ProgramAccount;
 /// reconnects to its holder, or checks a peer on a busy Mac, may not answer for up to 30 s: the
 /// batch then goes with no accounts, and the next read in 15 minutes asks again.
 const ANSWER_WITHIN: Duration = Duration::from_secs(10);
-/// The longest answer read: a few accounts with their limits.
-const MAX_ANSWER: u64 = control::MAX_FRAME as u64;
+/// The longest account answer read: a few accounts with their limits.
+const MAX_ACCOUNTS: u64 = 64 * 1024;
 
 /// The accounts the runner has; `None` when no runner of this user answered in time.
 pub(super) async fn accounts(env: impl Fn(&str) -> Option<String>) -> Option<Vec<ProgramAccount>> {
-    let Outcome::Accounts { accounts } = call(env, Action::Accounts).await? else {
+    let Outcome::Accounts { accounts } = call_within(env, Action::Accounts, MAX_ACCOUNTS).await?
+    else {
         return None;
     };
     Some(
@@ -43,14 +44,25 @@ pub(in crate::runtime) async fn call(
     env: impl Fn(&str) -> Option<String>,
     action: Action,
 ) -> Option<Outcome> {
-    let folder = control::folder(env, cfg!(target_os = "macos"))?;
-    tokio::time::timeout(ANSWER_WITHIN, ask(&folder.join(control::SOCKET), action))
-        .await
-        .ok()
-        .flatten()
+    call_within(env, action, control::MAX_FRAME as u64).await
 }
 
-async fn ask(socket: &Path, action: Action) -> Option<Outcome> {
+async fn call_within(
+    env: impl Fn(&str) -> Option<String>,
+    action: Action,
+    limit: u64,
+) -> Option<Outcome> {
+    let folder = control::folder(env, cfg!(target_os = "macos"))?;
+    tokio::time::timeout(
+        ANSWER_WITHIN,
+        ask(&folder.join(control::SOCKET), action, limit),
+    )
+    .await
+    .ok()
+    .flatten()
+}
+
+async fn ask(socket: &Path, action: Action, limit: u64) -> Option<Outcome> {
     let meta = std::fs::symlink_metadata(socket).ok()?;
     let uid = rustix::process::getuid().as_raw();
     if meta.uid() != uid || meta.permissions().mode() & 0o077 != 0 || !meta.file_type().is_socket()
@@ -65,7 +77,7 @@ async fn ask(socket: &Path, action: Action) -> Option<Outcome> {
     let mut call = serde_json::to_string(&Call { id: 1, action }).ok()?;
     call.push('\n');
     write.write_all(call.as_bytes()).await.ok()?;
-    let mut lines = BufReader::new(tokio::io::AsyncReadExt::take(read, MAX_ANSWER)).lines();
+    let mut lines = BufReader::new(tokio::io::AsyncReadExt::take(read, limit)).lines();
     while let Some(line) = lines.next_line().await.ok()? {
         if let Ok(Reply::Done { id: 1, result }) = serde_json::from_str::<Reply>(&line) {
             return Some(result);
