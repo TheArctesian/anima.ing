@@ -4803,3 +4803,20 @@ Built on `os/remote-access`. Installed OS SSH and RDP listen only on loopback an
    Expected: the hub denies access before remote login. Restore your intended permissions afterwards.
 
 Result: Open.
+
+### HT-NEW-ssh-bootstrap: One-action local SSH setup (OS3-R12)
+
+Built on `access/ssh-bootstrap`. The shared helper is called by the desktop SSH switch and `anima link enable-ssh`. Native macOS and Windows installation and system authorization dialogs have not been verified. The operator waived the Mac-before-push check for this change.
+
+1. On an enrolled computer without an active SSH server, turn on SSH in Settings. Approve the operating system’s administrator prompt.
+   Expected: the server is installed if needed, the switch turns on after SSH is ready, and no host firewall port is opened. The new server listens only on 127.0.0.1.
+2. Connect through the private hub with the local account and verify its host key. Restart the computer and reconnect.
+   Expected: login works and the host key stays the same.
+3. Turn SSH off, then on again. Cancel administrator authorization if requested.
+   Expected: turning off needs no elevation. A cancelled setup leaves the private port off and shows an error.
+4. Repeat setup on a computer with a working SSH service and custom configuration.
+   Expected: its configuration and host key remain intact.
+5. Run `anima link enable-ssh` from an interactive terminal on an enrolled computer.
+   Expected: native authorization, then the current username and Ready. Piped invocation is refused before setup.
+
+Result: Open.

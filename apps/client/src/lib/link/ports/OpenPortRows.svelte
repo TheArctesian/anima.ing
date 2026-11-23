@@ -21,6 +21,7 @@
   });
 
   async function turn(port: number, on: boolean): Promise<void> {
+    if (busy) return;
     busy = true;
     const result = await linkPorts({ port, on });
     busy = false;
@@ -50,6 +51,7 @@
       />
     </SettingRow>
   {/each}
+  {#if busy}<p role="status">Preparing private access… Check for a system authorization prompt.</p>{/if}
   <p class="problem" role="alert">{problem ?? ''}</p>
 {/if}
 
