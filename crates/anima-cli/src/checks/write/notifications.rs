@@ -1,5 +1,4 @@
-//! `anima check notifications set <id-or-name>`: which channels a check tells, and how often it
-//! repeats while Down (NOT-005). The channels are given by ID (see `anima notify channel list`).
+//! `anima check notifications set` (NOT-005).
 
 use super::documents::{CheckNotificationsSet, check_notifications_set};
 use crate::checks::resolve::CheckRef;
@@ -24,11 +23,8 @@ pub struct NotificationsSetArgs {
 }
 
 impl NotificationsSetArgs {
-    /// Replaces the check's channels and prints the result.
-    ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown check; the hub's refusal (VALIDATION for an
-    /// unknown channel).
+    /// [`Failure::NotFound`] for an unknown check; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let check_id = self.check.resolve(&hub).await?;

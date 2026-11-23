@@ -1,5 +1,4 @@
-//! One line at a time for a command that runs until interrupted (`event watch`, `device watch`): each line is
-//! written and flushed at once, so a pipe or a terminal sees it when it happens.
+//! One flushed line at a time for a command that runs until interrupted.
 
 use std::io::{self, Write as _};
 
@@ -8,16 +7,14 @@ use serde::Serialize;
 use crate::failure::Failure;
 use crate::output::text::clean;
 
-/// Whether the reader is still there after a line.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Reader {
     Open,
-    /// The pipe closed (`anima event watch | head -1`): the command should stop.
+    /// The pipe closed: the command should stop.
     Gone,
 }
 
-/// Writes `line` and a line break to standard output. The line is cleaned here, whatever the
-/// command made it from: a hub or a device chose some of its words (S3).
+/// Cleans the line here because a hub or a device chose some of its words (S3).
 ///
 /// # Errors
 /// [`Failure::Write`] when standard output fails, other than a closed pipe.
@@ -36,8 +33,6 @@ pub fn line(line: &str) -> Result<Reader, Failure> {
     }
 }
 
-/// Writes `value` as one JSON object on a line.
-///
 /// # Errors
 /// [`Failure::Write`] when `value` cannot be written as JSON or standard output fails.
 pub fn json_line<T: Serialize>(value: &T) -> Result<Reader, Failure> {
@@ -47,8 +42,6 @@ pub fn json_line<T: Serialize>(value: &T) -> Result<Reader, Failure> {
     line(&text)
 }
 
-/// One change as one line: JSON of `value` with `--json`, otherwise `text(value)`.
-///
 /// # Errors
 /// As [`json_line`].
 pub fn emit<T: Serialize>(

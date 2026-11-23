@@ -1,9 +1,5 @@
-//! `anima ssh <device>`: a terminal on the device through the hub (K4 Section 8). The hub
-//! holds the credential and pins the host key; this program only relays bytes. Login token
-//! only (INT-003). K4 runs the login shell and nothing else, so there is no `-- <command>`.
-//!
-//! At a terminal the keys go raw and the window size follows the window; with standard input
-//! from a pipe, the input is sent as it is and raw mode is never entered.
+//! `anima ssh` (K4 Section 8), login token only (INT-003): the hub holds the credential and pins
+//! the host key; this program only relays bytes.
 
 pub mod codec;
 pub mod console;
@@ -28,11 +24,8 @@ pub struct SshArgs {
 }
 
 impl SshArgs {
-    /// Runs the terminal session until it ends, then reports how it ended.
-    ///
     /// # Errors
-    /// [`Failure`] for a refusal, a changed host key, a refused credential, or a lost
-    /// connection.
+    /// [`Failure`] for a refusal, a changed host key or a lost connection.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let device_id = resolve(&hub, &self.device).await?;

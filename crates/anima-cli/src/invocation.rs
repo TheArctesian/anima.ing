@@ -1,6 +1,3 @@
-//! One run of `anima`: its environment, its global flags, and from them the hub, the token
-//! and the output. Commands take an [`Invocation`] and ask it for what they need.
-
 use std::path::Path;
 
 use serde::Serialize;
@@ -73,8 +70,6 @@ impl Invocation {
         }
     }
 
-    /// The configuration folder.
-    ///
     /// # Errors
     /// [`ConfigError::NoFolder`] when neither `XDG_CONFIG_HOME` nor `HOME` is set.
     pub fn config_dir(&self) -> Result<&Path, Failure> {
@@ -85,8 +80,6 @@ impl Invocation {
             .ok_or(ConfigError::NoFolder)?)
     }
 
-    /// The contexts file.
-    ///
     /// # Errors
     /// [`Failure::Config`] when it cannot be read.
     pub fn config(&self) -> Result<Config, Failure> {
@@ -118,26 +111,22 @@ impl Invocation {
         TokenStore::for_system(file, self.environment.token_file)
     }
 
-    /// Whether standard input is a terminal.
     #[must_use]
     pub const fn stdin_terminal(&self) -> bool {
         self.environment.terminals.stdin
     }
 
-    /// Whether standard error is a terminal.
     #[must_use]
     pub const fn stderr_terminal(&self) -> bool {
         self.environment.terminals.stderr
     }
 
-    /// Whether `ANIMA_TOKEN` is set.
     #[must_use]
     pub const fn has_token_variable(&self) -> bool {
         self.environment.token.is_some()
     }
 
-    /// A client for the selected hub with the operator's token: `ANIMA_TOKEN`, else the stored
-    /// one (CMD-013).
+    /// `ANIMA_TOKEN` comes before the stored token (CMD-013).
     ///
     /// # Errors
     /// [`Failure::SignedOut`] when there is no token; a store or hub setup failure.
@@ -157,9 +146,7 @@ impl Invocation {
         Ok((Hub::new(origin, Some(token))?, source))
     }
 
-    /// Shows what the next question is about on standard error (CMD-024). A person at the
-    /// terminal sees it with `--json` too, since they agree to it; with `--json` and no one
-    /// to ask it is left out, as every note is.
+    /// A person who is asked sees the subject even with `--json` (CMD-024).
     pub fn before_question(&self, about: &str) {
         if self.prompter.interactive() {
             self.output.message(about);
@@ -168,8 +155,6 @@ impl Invocation {
         }
     }
 
-    /// [`Invocation::signed_in`] without the source.
-    ///
     /// # Errors
     /// As [`Invocation::signed_in`].
     pub fn hub(&self) -> Result<Hub, Failure> {

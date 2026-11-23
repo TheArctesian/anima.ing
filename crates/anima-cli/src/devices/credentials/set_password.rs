@@ -1,5 +1,3 @@
-//! `anima device credential set rdp|vnc`: the password the hub signs in to the display with.
-
 use std::path::PathBuf;
 
 use zeroize::Zeroize as _;
@@ -24,11 +22,8 @@ pub struct PasswordArgs {
 }
 
 impl PasswordArgs {
-    /// Stores the RDP password and prints whether the device now has a credential.
-    ///
     /// # Errors
-    /// [`Failure::Usage`] when the password cannot be asked for; [`Failure::Input`] for an
-    /// unreadable file; [`Failure::NotFound`] for an unknown device; the hub's refusal.
+    /// [`Failure::Usage`], [`Failure::Input`], [`Failure::NotFound`] or the hub's refusal.
     pub async fn run_rdp(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let device_id = resolve(&hub, &self.device).await?;
@@ -48,8 +43,6 @@ impl PasswordArgs {
         })
     }
 
-    /// Stores the VNC password and prints whether the device now has a credential.
-    ///
     /// # Errors
     /// As [`PasswordArgs::run_rdp`].
     pub async fn run_vnc(self, invocation: &Invocation) -> Result<(), Failure> {

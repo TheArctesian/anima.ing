@@ -1,5 +1,4 @@
-//! `anima agents send`: a prompt to a thread that this computer runs, with files (TH111). Each
-//! file goes to the runner in parts, then the prompt names them.
+//! A prompt with files to a thread that this computer runs (TH111).
 
 use std::path::{Path, PathBuf};
 
@@ -76,7 +75,6 @@ async fn unattach(link: &mut RunnerLink, thread: Uuid, attachments: Vec<Uuid>) {
     }
 }
 
-/// Sends one file in parts; gives its ID.
 async fn attach_file(link: &mut RunnerLink, thread: Uuid, path: &Path) -> Result<Uuid, Failure> {
     let unreadable = |reason: String| Failure::Input {
         what: path.display().to_string(),
@@ -129,8 +127,7 @@ fn encoded(bytes: &[u8]) -> String {
     base64::engine::general_purpose::STANDARD.encode(bytes)
 }
 
-/// The MIME type of a file: an image by its first bytes, as the runner checks it, else by its
-/// name.
+/// An image is typed by its first bytes, as the runner checks it.
 fn mime_of(path: &Path, bytes: &[u8]) -> &'static str {
     if let Some(kind) = ImageKind::of_bytes(bytes) {
         return kind.mime();

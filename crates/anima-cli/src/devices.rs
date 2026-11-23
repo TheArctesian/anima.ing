@@ -1,5 +1,4 @@
-//! `anima device`: the devices of the hub (CMD-002). The worked example for every other noun;
-//! see the crate README.
+//! `anima device`: the devices of the hub (CMD-002).
 
 pub mod create;
 pub mod credentials;
@@ -51,8 +50,6 @@ pub enum DeviceCommand {
 }
 
 impl DeviceCommand {
-    /// Runs the command.
-    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown device or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

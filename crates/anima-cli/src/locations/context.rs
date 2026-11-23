@@ -1,6 +1,4 @@
-//! `anima location context <event>`: the roles of one file transfer and the evidence for
-//! where the operator was (K-E4 Section 12). The place of a device is configured; the place of
-//! the operator comes only from a sample at the time.
+//! The operator's place comes only from a sample at the time (K-E4 Section 12).
 
 use serde_json::Value;
 
@@ -16,7 +14,7 @@ pub struct ContextArgs {
 }
 
 impl ContextArgs {
-    /// Prints the context as a record or, with `--json`, as the K1 `TransferContext`.
+    /// With `--json`, prints K1 `TransferContext`.
     ///
     /// # Errors
     /// [`Failure::NotFound`] when the event is not a transfer; the hub's refusal.
@@ -55,8 +53,7 @@ fn end(table: &mut Table, role: &str, end: &Value) {
     }
 }
 
-/// The words for the evidence of the operator's position: an inferred or uncertain sample is
-/// never shown as a confirmed place.
+/// An inferred or uncertain sample is never shown as a confirmed place.
 #[must_use]
 pub fn evidence(operator: &Value) -> String {
     let offset = operator["offsetSeconds"].as_i64().unwrap_or_default();

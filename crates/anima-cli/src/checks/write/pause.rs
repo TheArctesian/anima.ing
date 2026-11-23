@@ -1,5 +1,3 @@
-//! `anima check pause` and `anima check resume`: stop or restart a check's runs.
-
 use super::documents::{CheckSetPaused, check_set_paused};
 use crate::checks::resolve::CheckRef;
 use crate::checks::summary::{state, written};
@@ -20,8 +18,6 @@ pub struct ResumeArgs {
 }
 
 impl PauseArgs {
-    /// Pauses the check and prints it.
-    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown check; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -30,8 +26,6 @@ impl PauseArgs {
 }
 
 impl ResumeArgs {
-    /// Resumes the check and prints it.
-    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown check; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

@@ -1,5 +1,4 @@
-//! `anima route`: the public names of applications, served by the hub (HOST-046, task H21).
-//! A name serves only after its proof, the consent of the machine and its certificate.
+//! `anima route`: the public names of applications, served by the hub (HOST-046).
 
 pub mod add;
 pub mod check;
@@ -27,8 +26,6 @@ pub enum RouteCommand {
 }
 
 impl RouteCommand {
-    /// Runs the command.
-    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown route, or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

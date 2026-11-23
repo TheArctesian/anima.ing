@@ -1,6 +1,4 @@
-//! The `notifications` tool set: channels by name and kind only, test messages, and which
-//! channels a check tells. No tool makes or changes a channel: its address can hold a secret
-//! (MCP-004).
+//! No tool makes or changes a channel: its address can hold a secret (MCP-004).
 
 use graphql_client::GraphQLQuery;
 use rmcp::model::JsonObject;
@@ -112,8 +110,6 @@ impl NotificationTool {
         }
     }
 
-    /// Runs the tool.
-    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments or the hub's refusal.
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {

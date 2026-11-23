@@ -1,5 +1,3 @@
-//! `anima notify channel list`: what K1 returns about each channel, and nothing more.
-
 use super::documents::{ChannelList, channel_list};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
@@ -13,9 +11,6 @@ type Channel = channel_list::ChannelListNotificationChannels;
 type Settings = channel_list::ChannelListNotificationChannelsSettings;
 
 impl ListArgs {
-    /// Prints the channels as a table or, with `--json`, as the K1 `NotificationChannel`
-    /// list.
-    ///
     /// # Errors
     /// [`Failure`] for a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

@@ -1,7 +1,5 @@
-//! `anima_capability_list`: what each device can run, from its daemon's tool inventory and
-//! hardware values (CAP-030 to CAP-032). The tool names, versions and targets come from the devices; the server cleans and
-//! caps each string before the agent sees it (MCP-008). A tool that is not usable carries its
-//! reason code and a fixed repair hint (CAP-024).
+//! CAP-030 to CAP-032; the server cleans and caps each device string (MCP-008). An unusable tool
+//! carries a fixed repair hint (CAP-024).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
@@ -69,7 +67,6 @@ pub async fn list(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, Too
     ])))
 }
 
-/// The K1 entry of `row`, each tool and backend that is not usable with its repair hint.
 fn with_hints(row: &CapabilityListCapabilities) -> Value {
     let mut shown = json(row);
     let tools = row.tools.iter().map(|tool| {

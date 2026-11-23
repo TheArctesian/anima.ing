@@ -42,8 +42,6 @@ pub enum ClearCommand {
 }
 
 impl CredentialCommand {
-    /// Runs the command.
-    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown device or a secret that cannot be read.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

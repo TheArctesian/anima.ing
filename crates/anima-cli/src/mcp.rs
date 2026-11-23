@@ -1,7 +1,4 @@
-//! `anima mcp`: an MCP server on standard input and output for coding agents (MCP-001..016).
-//! It uses the context and token of every other command, checks the token once with `me`,
-//! then lists the tools that the saved permissions, the flags and the token allow (MCP-002,
-//! MCP-003, MCP-015).
+//! MCP-001 to MCP-016.
 
 pub mod approval;
 pub mod arguments;
@@ -72,11 +69,8 @@ struct StartFlags {
 }
 
 impl McpArgs {
-    /// Starts the server, or shows or saves the permissions.
-    ///
     /// # Errors
-    /// [`Failure`] for a missing or refused token, an unreadable configuration, or a failed
-    /// connection.
+    /// [`Failure`] for a missing or refused token, an unreadable configuration, or a failed connection.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self.command {
             None => start(self.start, invocation).await,
@@ -87,10 +81,10 @@ impl McpArgs {
     }
 }
 
-/// Checks the token with `me` before any protocol output, then serves.
+/// Checks the token with `me` before any protocol output.
 async fn start(flags: StartFlags, invocation: &Invocation) -> Result<(), Failure> {
     let permissions = saved(invocation)?;
-    // Every request of the server declares an AI agent, the check below too (LOG-016).
+    // Every request declares an AI agent, the `me` check too (LOG-016).
     let hub = invocation.hub()?.declaring_agent();
     hub.run::<Me>(me::Variables).await?;
     let token = hub.token().map_or(TokenKind::Login, Token::kind);

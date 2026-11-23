@@ -1,5 +1,4 @@
-//! `anima web accept-certificate`: pins the certificate of a web interface by its fingerprint
-//! and writes an audit entry (WEB-008, WEB-009). The operator always gives the fingerprint.
+//! WEB-008, WEB-009.
 
 use super::documents::{WebCertificateAccept, web_certificate_accept};
 use super::shown::Shown;
@@ -18,11 +17,8 @@ pub struct AcceptCertificateArgs {
 }
 
 impl AcceptCertificateArgs {
-    /// Pins the certificate and prints the web interface with its pin.
-    ///
     /// # Errors
-    /// The hub's `CONFLICT` (exit 6) when the fingerprint is not the certificate it saw;
-    /// `NOT_FOUND` for an unknown ID.
+    /// The hub's `CONFLICT` (exit 6) when the fingerprint is not the certificate it saw.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let variables = web_certificate_accept::Variables {

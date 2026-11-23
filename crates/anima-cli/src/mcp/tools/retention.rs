@@ -1,6 +1,3 @@
-//! The `retention` tool set: how long the hub keeps heartbeats, metrics, events and
-//! deliveries.
-
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -75,8 +72,6 @@ impl RetentionTool {
         }
     }
 
-    /// Runs the tool.
-    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments or the hub's refusal.
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {

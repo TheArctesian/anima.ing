@@ -14,8 +14,6 @@ pub enum TimelineCommand {
 }
 
 impl TimelineCommand {
-    /// Runs the command.
-    ///
     /// # Errors
     /// [`Failure`] for an unusable time, a refusal or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

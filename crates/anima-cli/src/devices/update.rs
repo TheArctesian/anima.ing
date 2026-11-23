@@ -1,6 +1,3 @@
-//! `anima device update`: changes the fields that have a flag and leaves the rest. A flag of a
-//! settings group is laid over the group's current values, which are read first.
-
 use serde_json::json;
 
 use super::documents::{DeviceCurrent, DeviceUpdate, device_current, device_update};
@@ -36,11 +33,8 @@ pub struct UpdateArgs {
 }
 
 impl UpdateArgs {
-    /// Prints the device after the change.
-    ///
     /// # Errors
-    /// [`Failure::Usage`] when no flag changes anything or a settings group is incomplete;
-    /// [`Failure::NotFound`] for an unknown device or site; the hub's refusal.
+    /// [`Failure::Usage`] for no change or an incomplete settings group; [`Failure::NotFound`].
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let id = resolve(&hub, &self.device).await?;

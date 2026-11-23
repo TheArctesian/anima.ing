@@ -1,5 +1,4 @@
-//! `anima capability list`: each device's tool inventory and hardware values, filtered by a
-//! usable tool or a build target (CAP-030, CAP-032). K1 has no pages for it.
+//! `anima capability list` (CAP-030, CAP-032); K1 has no pages for it.
 
 use super::documents::{CapabilityList, capability_list};
 use super::hint::{backend_hint, backend_repairable, hint};
@@ -19,8 +18,6 @@ pub struct ListArgs {
 }
 
 impl ListArgs {
-    /// Prints a row for each device or, with `--json`, the K1 `DeviceCapabilities` list.
-    ///
     /// # Errors
     /// [`Failure`] for a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -34,8 +31,6 @@ impl ListArgs {
     }
 }
 
-/// The devices the hub lists for `tool` and `build_target`.
-///
 /// # Errors
 /// The hub's refusal.
 pub async fn fetch(
@@ -72,7 +67,6 @@ fn table(found: &Vec<capability_list::CapabilityListCapabilities>) -> Table {
     table
 }
 
-/// `git 2.43.0, bun not usable (timed out)`; `-` for none.
 fn tools(tools: &[capability_list::CapabilityListCapabilitiesTools]) -> String {
     let shown: Vec<String> = tools
         .iter()
@@ -85,8 +79,6 @@ fn tools(tools: &[capability_list::CapabilityListCapabilitiesTools]) -> String {
     or_dash(&shown.join(", "))
 }
 
-/// `48 GiB memory, 48 GiB unified, 36 GiB usable (default share), 390 GiB free; backends
-/// metal, cpu; mains, nominal, active`.
 fn hardware(values: &capability_list::CapabilityListCapabilitiesHardware) -> String {
     use capability_list::UsableMemorySource as Source;
     let mut memory = vec![format!("{} memory", gib(values.system_memory_bytes))];
@@ -139,13 +131,10 @@ fn hardware(values: &capability_list::CapabilityListCapabilitiesHardware) -> Str
     )
 }
 
-/// Whole GiB, rounded down: `36 GiB`.
 fn gib(bytes: f64) -> String {
     format!("{:.0} GiB", (bytes / 1_073_741_824.0).floor())
 }
 
-/// `pve-01: bun: <hint>` for each tool that is not usable, and `pve-01: rocm: <hint>` for each
-/// backend the operator can repair, for standard error.
 fn hints(found: &[capability_list::CapabilityListCapabilities]) -> Vec<String> {
     let mut notes = Vec::new();
     for row in found {

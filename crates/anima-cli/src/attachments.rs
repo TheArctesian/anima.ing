@@ -1,6 +1,5 @@
 //! `anima file`: the files of a record and the archives of an import (K-E4 Section 9;
-//! FIL-001 to FIL-005). A record is `kind:id`. The bytes stream between a file of this computer
-//! and the hub; they never go to a terminal.
+//! FIL-001 to FIL-005).
 
 pub mod change;
 pub mod documents;
@@ -36,11 +35,8 @@ pub enum ArchiveCommand {
 }
 
 impl FileCommand {
-    /// Runs the command.
-    ///
     /// # Errors
-    /// [`Failure`] for a refusal (`VALIDATION`, `NOT_FOUND`, `UNAVAILABLE` with no file store),
-    /// a file of this computer that cannot be read or written, or a missing token.
+    /// [`Failure`] for a refusal, a local file that cannot be read or written, or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
             Self::List(args) => args.run(invocation).await,

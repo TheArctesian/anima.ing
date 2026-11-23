@@ -1,6 +1,4 @@
-//! `anima source connect github` and `anima source remove`: the private key stays out of
-//! arguments and output, and a removal needs a stated choice and a confirmation (PRJ-018,
-//! ITG-004, CMD-024, CMD-025, CMD-014).
+//! PRJ-018, ITG-004, CMD-024, CMD-025, CMD-014.
 
 use std::path::Path;
 

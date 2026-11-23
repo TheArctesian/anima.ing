@@ -1,5 +1,3 @@
-//! `anima route remove <id>`: removes a public name with its certificate and its key.
-
 use super::documents::{RouteRemove, route_remove};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
@@ -12,8 +10,6 @@ pub struct RemoveArgs {
 }
 
 impl RemoveArgs {
-    /// Asks for confirmation (`--yes` skips it), removes and prints the removed ID.
-    ///
     /// # Errors
     /// [`Failure::Usage`] when it cannot ask; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

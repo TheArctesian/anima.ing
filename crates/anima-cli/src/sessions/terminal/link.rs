@@ -1,10 +1,6 @@
-//! The running terminal tunnel (K4 Section 8.4): the first `resize`, then input and output
-//! bytes both ways, a `resize` when the window changes, a `ping` after 5 quiet seconds, until
-//! the hub closes, 15 seconds pass with nothing from the hub, or the operator's side stops.
-//!
-//! One `select!` over cancel-safe branches; sends happen in branch bodies, each bounded by the
-//! socket's send wait. Input waits in a bounded queue: a slow hub slows the reader of standard
-//! input, never a growing buffer.
+//! The running terminal tunnel (K4 Section 8.4).
+//! One `select!` over cancel-safe branches; input waits in a bounded queue, so a slow hub slows
+//! the reader of standard input, never a growing buffer.
 
 use std::io::Write;
 use std::pin::Pin;
@@ -17,15 +13,11 @@ use super::ending::{EndReason, Ending, Stop};
 use crate::hub::tunnel::{Frame, Socket, TunnelError};
 use crate::sessions::pace::{Due, Pace};
 
-/// What the link reads from and writes to on the operator's side.
 pub struct Streams<'a> {
-    /// What the operator types or pipes in; closed at the end of input.
     pub keys: mpsc::Receiver<Vec<u8>>,
-    /// The window size in cells; the link sends each new value.
     pub sizes: watch::Receiver<CellSize>,
     /// Where the device's output goes, unchanged (it is the operator's terminal by design).
     pub output: &'a mut (dyn Write + Send),
-    /// Resolves when the operator's side ends the session (a signal).
     pub stop: Pin<Box<dyn Future<Output = ()> + Send + 'a>>,
 }
 
@@ -46,7 +38,6 @@ struct Link<'s> {
     sizes_open: bool,
 }
 
-/// Runs the tunnel on `socket` until it ends, and says how.
 pub async fn relay(socket: &mut Socket, mut streams: Streams<'_>) -> Ending {
     let mut link = Link {
         socket,
@@ -92,7 +83,6 @@ pub async fn relay(socket: &mut Socket, mut streams: Streams<'_>) -> Ending {
     }
 }
 
-/// Why the loop ends, with the hub's close code when it closed.
 type Step = Result<(), (Stop, Option<u16>)>;
 
 impl Link<'_> {
@@ -104,7 +94,6 @@ impl Link<'_> {
         }
     }
 
-    /// One message from the hub: output goes out unchanged; `end` is remembered.
     fn on_frame(&mut self, frame: Result<Frame, TunnelError>, output: &mut dyn Write) -> Step {
         self.pace.heard(Instant::now());
         match frame {

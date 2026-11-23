@@ -1,5 +1,4 @@
-//! `anima catalogue show <id>`: one entry of the catalogue, with the names of its environment
-//! variables (never a value) and its Compose file (task H38).
+//! `anima catalogue show` (task H38): environment variables by name, never a value.
 
 use super::documents::{CatalogueShow, catalogue_show};
 use super::list::{NOT_TESTED, words};
@@ -16,8 +15,6 @@ pub struct ShowArgs {
     id: String,
 }
 
-/// The listed entry `id`.
-///
 /// # Errors
 /// [`Failure::NotFound`] when the hub lists no such entry; the hub's refusal.
 pub async fn fetch(hub: &Hub, id: &str) -> Result<Entry, Failure> {
@@ -32,8 +29,7 @@ pub async fn fetch(hub: &Hub, id: &str) -> Result<Entry, Failure> {
 }
 
 impl ShowArgs {
-    /// Prints the fields of the entry, then its Compose file; with `--json`, the K1
-    /// `CatalogueEntry`.
+    /// With `--json`, prints the K1 `CatalogueEntry`; else the fields, then the Compose file.
     ///
     /// # Errors
     /// [`Failure::NotFound`] for an entry that is not listed; the hub's refusal.
@@ -56,7 +52,6 @@ fn or_dash(list: &[String]) -> String {
     }
 }
 
-/// The tier in words, with the publisher and the day of its data for a generated entry.
 fn tier(entry: &Entry) -> String {
     match &entry.origin {
         Some(origin) => format!(
@@ -69,7 +64,7 @@ fn tier(entry: &Entry) -> String {
     }
 }
 
-/// Who read a generated entry and when (SF-255); `-` for a tested entry.
+/// Who read a generated entry and when (SF-255).
 fn reviewed(entry: &Entry) -> String {
     match (&entry.origin, &entry.reviewed_by, &entry.reviewed_on) {
         (_, Some(by), Some(on)) => format!("by {by} on {on}"),

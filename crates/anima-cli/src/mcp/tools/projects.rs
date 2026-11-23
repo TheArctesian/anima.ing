@@ -1,8 +1,4 @@
-//! The `projects` tool set: the projects the hub found in the repositories of a source
-//! account, which repositories it leaves out, and confirming a resource (PRJ-002, PRJ-016,
-//! PRO-004), and the operator's groups of projects (PRO-059 to PRO-063, in [`groups`]).
-//! Repository names and descriptions come from GitHub: they are cleaned and cut on
-//! their way out (MCP-008).
+//! The `projects` tool set (PRJ-002, PRJ-016, PRO-004; groups PRO-059 to PRO-063).
 
 mod groups;
 
@@ -164,8 +160,6 @@ impl ProjectTool {
         }
     }
 
-    /// Runs the tool.
-    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments, an unknown project or repository, or the hub's
     /// refusal.
@@ -180,7 +174,6 @@ impl ProjectTool {
     }
 }
 
-/// A missing project or repository as a refusal the agent can act on.
 fn lookup(failure: Failure) -> ToolError {
     match failure {
         Failure::NotFound { message, .. } | Failure::Usage { message, .. } => ToolError::Refused(

@@ -1,5 +1,3 @@
-//! `anima web create`: a web page of a device, such as its admin console.
-
 use super::documents::{WebCreate, web_create};
 use super::fields::WebFields;
 use super::shown::Shown;
@@ -17,11 +15,8 @@ pub struct CreateArgs {
 }
 
 impl CreateArgs {
-    /// Prints the new web interface.
-    ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown device; the hub's refusal, such as `VALIDATION`
-    /// for a URL it does not accept.
+    /// [`Failure::NotFound`] for an unknown device; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let variables = web_create::Variables {

@@ -1,4 +1,4 @@
-//! `anima site set-wake-relay`: the device that sends Wake-on-LAN packets at a site (D-2).
+//! `anima site set-wake-relay` (D-2).
 
 use super::documents::{SiteSetWakeRelay, site_set_wake_relay};
 use super::shown::Shown;
@@ -21,8 +21,6 @@ pub struct SetWakeRelayArgs {
 }
 
 impl SetWakeRelayArgs {
-    /// Prints the site with its new relay.
-    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown site or device; the hub's refusal, such as a relay
     /// at another site.

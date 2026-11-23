@@ -1,5 +1,3 @@
-//! `anima route show <id>`: one public name with its proof, certificate and counts.
-
 use super::documents::{RouteShow, route_show};
 use super::shown;
 use crate::failure::{Failure, Hint};

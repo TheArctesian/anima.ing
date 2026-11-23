@@ -1,6 +1,4 @@
-//! `anima audit list` with who did each change: the actor kind, the token kind and the key name,
-//! and the `--actor` filter (LOG-012, LOG-018, LOG-020). The command line never declares an
-//! AI agent itself (LOG-016).
+//! `anima audit list` and `anima audit verify` (LOG-012, LOG-016, LOG-018, LOG-020).
 
 use serde_json::{Value, json};
 
@@ -13,7 +11,6 @@ fn signed_in() -> Anima {
     Anima::new().with("ANIMA_TOKEN", TOKEN)
 }
 
-/// An audit node by `operator` with `who` (actor kind, token kind, key name).
 fn node(id: u32, operator: &str, who: [Value; 3]) -> Value {
     let [actor, token, key] = who;
     json!({ "cursor": format!("a{id}"), "node": {
@@ -93,7 +90,6 @@ async fn log_020_audit_list_actor_filters_on_the_hub_and_keeps_it_for_the_next_p
     assert_eq!(wrong.code, 2, "{wrong:?}");
 }
 
-/// An audit node of a change the hub sent to GitHub, with `record` as its change record.
 fn sent(id: u32, operator: &str, record: &Value) -> Value {
     let mut entry = node(id, operator, [json!("USER"), json!("LOGIN"), Value::Null]);
     entry["node"]["targetType"] = json!("repository");
@@ -144,7 +140,6 @@ async fn prj_028_audit_list_names_what_a_change_sent_to_github_did_and_to_what()
     );
 }
 
-/// A K1 `AuditChainCheck`: whole with five links, or broken at link 3 by a changed entry.
 fn chain_check(broken: bool) -> Value {
     let fault = broken.then(|| {
         json!({ "kind": "CHANGED", "seq": 3,

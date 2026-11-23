@@ -1,5 +1,4 @@
-//! `anima files ls` and `anima files get` (K4 Section 9): each opens an SSH session and its
-//! terminal, then the files tunnel, and ends the session after.
+//! `anima files ls` and `anima files get` (K4 Section 9).
 
 use serde_json::json;
 

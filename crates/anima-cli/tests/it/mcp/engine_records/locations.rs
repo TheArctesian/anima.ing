@@ -1,5 +1,5 @@
-//! The location tools of the `records` set against the scripted hub (MCP-002, MCP-017; K-E4
-//! Sections 11 to 13, R-145). No tool makes or returns an ingest token (CMD-030).
+//! The location tools of the `records` set (MCP-002, MCP-017, CMD-030; K-E4 Sections 11 to 13,
+//! R-145).
 
 use serde_json::{Value, json};
 

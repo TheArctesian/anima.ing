@@ -1,5 +1,4 @@
-//! `anima source kinds`: the sources the hub can read from (ITG-001), and for each the page
-//! where a browser continues Connect, when this hub can start that flow (K-E1 Section 7a).
+//! `anima source kinds` (ITG-001, K-E1 Section 7a).
 
 use super::documents::{SourceKinds, source_kinds};
 use crate::failure::Failure;
@@ -10,8 +9,6 @@ use crate::output::Table;
 pub struct KindsArgs;
 
 impl KindsArgs {
-    /// Prints the kinds as a table or, with `--json`, as the K1 `Source` list.
-    ///
     /// # Errors
     /// [`Failure`] for a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

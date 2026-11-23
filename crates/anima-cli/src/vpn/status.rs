@@ -1,4 +1,4 @@
-//! `anima vpn status`: the VPN as the hub's own node sees it (VPN-005, VPN-008).
+//! VPN-005, VPN-008.
 
 use std::fmt::Write as _;
 
@@ -17,8 +17,7 @@ pub struct StatusArgs {
 }
 
 impl StatusArgs {
-    /// Prints the login server and the picture as label and value lines or, with `--json`, the
-    /// K1 `VpnPicture` alone (`null` while the hub has none).
+    /// With `--json`, prints K1 `VpnPicture` alone, `null` while the hub has none.
     ///
     /// # Errors
     /// [`Failure`] for a hub refusal.

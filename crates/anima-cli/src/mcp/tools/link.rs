@@ -1,9 +1,4 @@
-//! The `link` tool set: the devices of the hub's link (LNK-004). It has one tool, a read.
-//!
-//! No tool makes an invite: the invite is a secret, and no tool returns one (MCP-004). No tool
-//! revokes a device: removing a device from the link is a trust decision, which a person
-//! makes in the client or with `anima link revoke` (MCP-005). The hub also refuses both
-//! mutations to every API key (D-23).
+//! The `link` tools (LNK-004): no tool makes an invite (MCP-004) or revokes a device (MCP-005).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
@@ -49,8 +44,6 @@ impl LinkTool {
         }
     }
 
-    /// Runs the tool.
-    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments or the hub's refusal.
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {

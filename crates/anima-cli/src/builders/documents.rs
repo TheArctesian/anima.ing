@@ -1,5 +1,5 @@
-//! The builder documents, typed from K1 at build time (CMD-004). `BuilderEnrol` derives neither
-//! `Debug` nor `Serialize`: its answer holds the builder token (CMD-014).
+//! `BuilderEnrol` derives neither `Debug` nor `Serialize`: its answer holds the builder token
+//! (CMD-014).
 
 use graphql_client::GraphQLQuery;
 

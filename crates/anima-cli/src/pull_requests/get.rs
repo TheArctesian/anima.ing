@@ -1,5 +1,3 @@
-//! `anima pr get <repository> <number>`.
-
 use super::documents::{PullRequestGet, pull_request_get};
 use super::render;
 use crate::failure::{Failure, Hint};
@@ -22,9 +20,6 @@ pub struct GetArgs {
 }
 
 impl GetArgs {
-    /// Prints the pull request or, with `--json`, the K1 `PullRequest` (with a `comments`
-    /// connection under `--comments`).
-    ///
     /// # Errors
     /// [`Failure::NotFound`] when the repository has no such pull request; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

@@ -1,7 +1,3 @@
-//! `anima files get <device>:<path> [local]`: downloads one file. The bytes go to a temporary
-//! file beside the target, which takes the target's name only when every byte came; an
-//! existing file is replaced only with `--force`.
-
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -28,8 +24,7 @@ impl GetArgs {
     /// Saves the file and notes where; `--json` prints `{"path", "size"}`.
     ///
     /// # Errors
-    /// [`Failure::Conflict`] when the local file exists without `--force`; the hub's
-    /// refusal, a policy that forbids downloads, or a failed tunnel or write.
+    /// [`Failure::Conflict`] when the local file exists without `--force`; a refusal or failure.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let remote = Remote::parse(&self.remote)?;
         let local_is_dir = self.local.as_deref().is_some_and(Path::is_dir);

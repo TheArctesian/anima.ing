@@ -1,7 +1,3 @@
-//! `anima check create`: a check on a device. Its kind and settings come from a JSON file
-//! (`--from-file`, `-` for standard input) holding the K1 `CheckConfigInput`, such as
-//! `{"tcp": {"port": 22}}`.
-
 use std::path::PathBuf;
 
 use super::documents::{CheckCreate, check_create};
@@ -45,11 +41,8 @@ pub struct CreateArgs {
 }
 
 impl CreateArgs {
-    /// Prints the new check.
-    ///
     /// # Errors
-    /// [`Failure::Usage`] for a bad configuration file or an unknown name; the hub's refusal
-    /// (VALIDATION for settings the hub rejects).
+    /// [`Failure::Usage`] for a bad configuration file or an unknown name; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let config = config_file::read(invocation.prompter, &self.from_file)?;
         let hub = invocation.hub()?;

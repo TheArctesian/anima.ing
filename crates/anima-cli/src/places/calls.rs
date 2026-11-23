@@ -1,5 +1,4 @@
-//! What the command and the MCP tools ask of the hub about places. Both call these, so the two
-//! make the same requests (CMD-030). Each answer is the K1 `Place` as JSON.
+//! The command and the MCP tools both call these, so both make the same requests (CMD-030).
 
 use graphql_client::{GraphQLQuery, QueryBody};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
@@ -41,9 +40,8 @@ pub struct Fields {
 #[derive(Clone, Debug, Default)]
 pub struct Change {
     pub fields: Fields,
-    /// Take the place out of its parent. It then needs its own centre and radius.
+    /// Take the place out of its parent; it then needs its own centre and radius.
     pub top_level: bool,
-    /// Remove the name from a geocoder.
     pub clear_geocoder_name: bool,
 }
 
@@ -54,7 +52,6 @@ fn usage(message: &str) -> Failure {
     }
 }
 
-/// `from` as the generated K1 type `T`.
 fn typed<T: DeserializeOwned>(from: &impl Serialize) -> Result<T, Failure> {
     serde_json::to_value(from)
         .and_then(serde_json::from_value)
@@ -72,7 +69,7 @@ pub async fn list(hub: &Hub) -> Result<Value, Failure> {
     Ok(json(&answer.places))
 }
 
-/// The place, or null when there is none. A merged place gives the place it was merged into.
+/// Null when there is none; a merged place gives the place it was merged into.
 ///
 /// # Errors
 /// The hub's refusal.
@@ -92,12 +89,10 @@ pub async fn add(hub: &Hub, fields: &Fields) -> Result<Value, Failure> {
     Ok(json(&answer.create_place))
 }
 
-/// One `updatePlace`, so that the hub makes one change with one audit entry: the fields that
-/// are given, a null parent for `top_level` and a null geocoder name for `clear_geocoder_name`.
+/// One `updatePlace`, so that the hub makes one change with one audit entry.
 ///
 /// # Errors
-/// `Usage` when nothing is to change, when `top_level` has a parent or no centre and radius, or
-/// when a geocoder name is given and removed; the hub's refusal.
+/// `Usage` when nothing is to change or the changes conflict; the hub's refusal.
 pub async fn set(hub: &Hub, id: String, change: Change) -> Result<Value, Failure> {
     let Change {
         fields,
@@ -130,8 +125,7 @@ pub async fn set(hub: &Hub, id: String, change: Change) -> Result<Value, Failure
     if input.is_empty() {
         return Err(usage("Give at least one field to change."));
     }
-    // The variables are written here, not through the generated type, because that type
-    // cannot say "null" and "left out" apart, and K1 reads them differently.
+    // The generated type cannot tell null from left out, and K1 reads them differently.
     let body = QueryBody {
         variables: serde_json::json!({ "id": id, "input": input }),
         query: place_set::QUERY,

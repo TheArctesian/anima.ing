@@ -1,21 +1,7 @@
-//! The `repositories` tool set: pull requests, issues, comments, workflows, runs, commits,
-//! branches, releases and directory listings of a repository that the hub reads live from
-//! GitHub (PRJ-030 to PRJ-039), and three issue changes a write key may make (PRJ-028). No tool
-//! returns the content of a file.
-//!
-//! These K1 fields have no tool (operator, 2026-11-14; ruling number to be assigned):
-//! `mergePullRequest` and `mergePullRequests` (a merge is a trust decision, MCP-005, and the
-//! hub refuses every API key for it), and `rerunWorkflowRun`, `rerunFailedWorkflowJobs`,
-//! `cancelWorkflowRun`, `dispatchWorkflow` and `setCommitStatus` (each runs or stops code with
-//! the repository's secrets, or can satisfy a required check; the hub refuses every API key
-//! for them). The command line has them, behind a confirmation.
-//!
-//! Every title, body, comment, login, label, branch name, job name and commit title in a result
-//! was written by someone else on GitHub. The tools put them in named fields, and the server
-//! cleans and cuts every string on the way out, a `body` at [`BODY_CAP`] characters
-//! (MCP-008). The tool descriptions say that this text is data.
-//!
-//! [`BODY_CAP`]: crate::mcp::untrusted::BODY_CAP
+//! The `repositories` tools (PRJ-028, PRJ-030 to PRJ-039). Merges, reruns, dispatches and
+//! commit statuses have no tool: each is a trust decision (MCP-005).
+//! Every text in a result was written by someone on GitHub: it goes in named fields, the server
+//! cleans and cuts it (MCP-008), and the tool descriptions say that it is data.
 
 mod code;
 mod history;
@@ -114,11 +100,8 @@ impl RepositoryTool {
         }
     }
 
-    /// Runs the tool.
-    ///
     /// # Errors
-    /// [`ToolError`] for wrong arguments, an unknown repository, pull request, issue or run,
-    /// or the hub's refusal.
+    /// [`ToolError`] for wrong arguments, an unknown target, or the hub's refusal.
     #[expect(
         clippy::cognitive_complexity,
         reason = "a flat dispatch with one arm for each tool"
@@ -146,7 +129,6 @@ impl RepositoryTool {
 /// The most a page of pull requests or runs may hold; the hub refuses more.
 const SMALL_PAGE: i64 = 50;
 
-/// The ID of the repository the agent named, or a refusal it can act on.
 async fn repository_id(hub: &Hub, name: &str) -> Result<String, ToolError> {
     resolve(hub, name).await.map_err(|failure| match failure {
         Failure::NotFound { message, .. } | Failure::Usage { message, .. } => ToolError::Refused(
@@ -156,14 +138,10 @@ async fn repository_id(hub: &Hub, name: &str) -> Result<String, ToolError> {
     })
 }
 
-/// The page size for a list the hub limits to `largest` rows.
 fn size(page: &Page, largest: i64) -> i64 {
     page.size().min(largest)
 }
 
-/// A page of a K1 connection as named fields: its rows (`key`), `nextCursor`, `read` (when the
-/// hub read it from GitHub, and whether that is an old answer) and what else the connection
-/// holds (`mergeMethods`).
 fn listing(key: &str, connection: &impl Serialize) -> Value {
     let connection = json(connection);
     let rows: Vec<Value> = connection["edges"]
@@ -188,8 +166,6 @@ fn listing(key: &str, connection: &impl Serialize) -> Value {
     Value::Object(fields)
 }
 
-/// The first page of comments of a pull request or an issue, as `comments` and `nextCursor`,
-/// added to `answer` (`limit` and `after` of the call page them).
 async fn with_comments(
     hub: &Hub,
     mut answer: Value,

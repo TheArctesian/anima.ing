@@ -1,6 +1,4 @@
-//! `anima notify`: where alerts go (NOT-001..007). Channels (a webhook, ntfy, e-mail or
-//! Apprise), the installation's settings, and the record of what was sent. A channel's
-//! secrets come from a file or standard input, never an argument (CMD-025).
+//! `anima notify` (NOT-001..007); a channel's secrets never come from an argument (CMD-025).
 
 pub mod channel;
 pub mod channel_input;
@@ -33,8 +31,6 @@ pub enum NotifyCommand {
 }
 
 impl NotifyCommand {
-    /// Runs the command.
-    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown channel, unreadable input or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

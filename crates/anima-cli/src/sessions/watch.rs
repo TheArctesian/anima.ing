@@ -1,5 +1,4 @@
-//! `anima session watch`: one line for each start and end of a session, from every client (K1
-//! `sessionChanged`).
+//! `anima session watch` (K1 `sessionChanged`).
 
 use super::documents::{SessionChanged, session_changed};
 use crate::failure::Failure;
@@ -12,9 +11,6 @@ use crate::output::text::enum_name;
 pub struct WatchArgs;
 
 impl WatchArgs {
-    /// Prints each change as a line (time, device, protocol, operator, started or ended,
-    /// client) or, with `--json`, as one K1 `SessionChange` object per line.
-    ///
     /// # Errors
     /// [`Failure`] when the hub refuses the token or the connection is lost.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

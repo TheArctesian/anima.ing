@@ -1,32 +1,25 @@
-//! Scratch refs: the git refs under `refs/anima/wip/` that hold a snapshot of a working tree
-//! (JOB-017). Pure: no git, no clock.
+//! Git refs that hold a snapshot of a working tree (JOB-017); pure: no git, no clock.
 
 use serde::Serialize;
 
 use super::SnapshotError;
 
-/// Every scratch ref starts with this; nothing outside it is ever pushed or deleted.
+/// Nothing outside this prefix is pushed or deleted.
 pub const PREFIX: &str = "refs/anima/wip/";
 
-/// How many hex characters of the commit hash name a snapshot.
 const ID_LENGTH: usize = 16;
 
-/// A ref under [`PREFIX`] whose last part is a safe single name.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(transparent)]
 pub struct ScratchRef(String);
 
 impl ScratchRef {
-    /// The ref for `commit`: its first 16 hex characters, so the same commit always gets the
-    /// same ref. None when `commit` is not a hex hash.
     #[must_use]
     pub fn for_commit(commit: &str) -> Option<Self> {
         let id = commit.get(..ID_LENGTH).filter(|_| is_hash(commit))?;
         Some(Self(format!("{PREFIX}{id}")))
     }
 
-    /// What the operator typed: a full ref under [`PREFIX`], or the name after it.
-    ///
     /// # Errors
     /// [`SnapshotError::NotScratchRef`] for any other ref or an unsafe name.
     pub fn parse(text: &str) -> Result<Self, SnapshotError> {
@@ -48,20 +41,17 @@ impl ScratchRef {
     }
 }
 
-/// The line a second machine runs to get the snapshot.
 #[must_use]
 pub fn fetch_line(remote: &str, scratch: &ScratchRef) -> String {
     format!("git fetch {remote} {}", scratch.as_str())
 }
 
-/// At least 16 hex characters, as SHA-1 (40) and SHA-256 (64) hashes are.
 #[must_use]
 pub fn is_hash(text: &str) -> bool {
     text.len() >= ID_LENGTH && text.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
 
-/// One ref part git accepts and no shell or option can misread: letters, digits, `.`, `_` and
-/// `-`; not starting with `.` or `-`; no `..`; not ending in `.lock` in any case.
+/// One ref part that git accepts and no shell or option parser can misread.
 fn is_safe_name(name: &str) -> bool {
     !name.is_empty()
         && name.len() <= 200

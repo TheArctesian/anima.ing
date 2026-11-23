@@ -1,7 +1,5 @@
-//! `anima vpn invite` and `anima vpn router-key`: a one-use, one-hour pre-auth key (VPN-001,
-//! VPN-003). The key is the one secret these commands exist to show: on standard output, once,
-//! or with `--to-file` in a `0600` file and nowhere else. It never goes on a command line, into
-//! a log or into a note (CMD-014, LOG-007).
+//! `anima vpn invite` and `anima vpn router-key` (VPN-001, VPN-003): the pre-auth key goes only to
+//! standard output, once, or to a `0600` file; never to a command line, a log or a note (CMD-014, LOG-007).
 
 use std::fmt::Write as _;
 
@@ -30,8 +28,6 @@ pub struct RouterKeyArgs {
 }
 
 impl InviteArgs {
-    /// Makes the key for a Linux computer of the operator and shows it once.
-    ///
     /// # Errors
     /// [`Failure`] for a hub refusal (the broker's limits) or a file that cannot be written.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -56,8 +52,6 @@ impl InviteArgs {
 }
 
 impl RouterKeyArgs {
-    /// Makes the key for the subnet router of a site and shows it once.
-    ///
     /// # Errors
     /// [`Failure`] for an unknown site, a hub refusal or a file that cannot be written.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

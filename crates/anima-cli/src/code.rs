@@ -1,5 +1,4 @@
 //! `anima code`: the files of a repository the hub reads live from GitHub (PRJ-039, PRJ-040).
-//! A directory listing gives names; a file's text needs a login (D-23).
 
 pub mod documents;
 pub mod ls;
@@ -19,11 +18,8 @@ pub enum CodeCommand {
 }
 
 impl CodeCommand {
-    /// Runs the command.
-    ///
     /// # Errors
-    /// [`Failure`] for an unknown repository, a path that is not a directory (or not a file),
-    /// a file that cannot be shown, or a hub refusal.
+    /// [`Failure`] for an unknown repository or path, a file that cannot be shown, or a refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
             Self::Ls(args) => args.run(invocation).await,

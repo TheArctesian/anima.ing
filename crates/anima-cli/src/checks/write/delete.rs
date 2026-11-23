@@ -1,4 +1,4 @@
-//! `anima check delete <id-or-name>`: asks first, or takes `--yes` (CMD-024).
+//! `anima check delete` asks first, or takes `--yes` (CMD-024).
 
 use super::documents::{CheckDelete, check_delete};
 use crate::checks::resolve::CheckRef;
@@ -13,8 +13,6 @@ pub struct DeleteArgs {
 }
 
 impl DeleteArgs {
-    /// Deletes the check and its heartbeats, and prints the deleted ID.
-    ///
     /// # Errors
     /// [`Failure::Usage`] when it cannot ask and `--yes` is not set, or the operator says no;
     /// the hub's refusal.

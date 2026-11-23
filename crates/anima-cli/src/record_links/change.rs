@@ -1,5 +1,3 @@
-//! `anima record-link add` and `anima record-link remove`.
-
 use super::documents::{RecordLinkAdd, RecordLinkRemove, record_link_add, record_link_remove};
 use super::list::shown;
 use crate::failure::Failure;
@@ -27,8 +25,7 @@ pub struct RemoveArgs {
 }
 
 impl AddArgs {
-    /// Makes the link and prints it. The same link again changes nothing; a new label replaces
-    /// the old one.
+    /// The same link again changes nothing; a new label replaces the old one.
     ///
     /// # Errors
     /// The hub's refusal: `VALIDATION` for text that is not a record, a kind or a label.
@@ -68,8 +65,7 @@ fn record(link: &record_link_add::RecordLinkAddLinkRecords) -> Table {
 }
 
 impl RemoveArgs {
-    /// Removes the link and says so. The two records are not changed, so it asks no
-    /// confirmation.
+    /// Asks no confirmation: the two records are not changed.
     ///
     /// # Errors
     /// The hub's refusal: `NOT_FOUND` when no link has this ID.

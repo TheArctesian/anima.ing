@@ -1,5 +1,4 @@
-//! `anima device trust accept-certificate`: trusts the RDP server certificate with this
-//! fingerprint, and no other (SEC-007).
+//! Trusts only the certificate with this fingerprint (SEC-007).
 
 use super::documents::{CertificateAccept, certificate_accept};
 use super::fingerprint;
@@ -18,11 +17,8 @@ pub struct CertificateArgs {
 }
 
 impl CertificateArgs {
-    /// Trusts the certificate and prints what was accepted.
-    ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown device; the hub's `CONFLICT` (exit 6) when the
-    /// fingerprint is not the certificate the hub saw.
+    /// [`Failure::NotFound`] for an unknown device; the hub's `CONFLICT` (exit 6) for a different certificate.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let variables = certificate_accept::Variables {

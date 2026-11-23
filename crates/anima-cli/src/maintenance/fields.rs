@@ -1,7 +1,3 @@
-//! The flags of a maintenance window, one for each field of the K1 `MaintenanceWindowInput`
-//! (kebab-case), and the JSON input they make. Create and update each deserialise that JSON
-//! into their own generated input type, so serde checks every value.
-
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, json};
 
@@ -80,7 +76,6 @@ const SCHEDULE: [&str; 8] = [
     "durationMinutes",
 ];
 
-/// The fields of `MaintenanceWindowInput`; the rest of a listed window is not input.
 pub const INPUT: [&str; 12] = [
     "name",
     "kind",
@@ -97,7 +92,6 @@ pub const INPUT: [&str; 12] = [
 ];
 
 impl WindowFields {
-    /// Whether no flag is given.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.name.is_none()
@@ -114,9 +108,6 @@ impl WindowFields {
             && self.targets.is_empty()
     }
 
-    /// `base` (a window's input fields, or none) with the flags laid over it. A new kind drops
-    /// the old kind's schedule fields.
-    ///
     /// # Errors
     /// [`Failure::Usage`] for a target that is not `TYPE:TARGET`.
     pub fn apply(&self, mut base: Map<String, Value>) -> Result<Value, Failure> {
@@ -168,8 +159,6 @@ impl WindowFields {
     }
 }
 
-/// Fails when `input` lacks a field every window needs.
-///
 /// # Errors
 /// [`Failure::Usage`] naming the missing flag.
 pub fn require(input: &Value) -> Result<(), Failure> {
@@ -184,8 +173,6 @@ pub fn require(input: &Value) -> Result<(), Failure> {
     Ok(())
 }
 
-/// The input as one operation's generated type; serde checks every value.
-///
 /// # Errors
 /// [`Failure::Usage`] naming the fields a new window needs, or the one that does not fit.
 pub fn into_input<T: DeserializeOwned>(input: Value) -> Result<T, Failure> {

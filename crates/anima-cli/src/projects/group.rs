@@ -1,5 +1,4 @@
-//! `anima project group`: the operator's own groups of projects (PRO-059 to PRO-063). A group
-//! is named by its name or its ID; projects by their slugs.
+//! `anima project group` (PRO-059 to PRO-063).
 
 pub mod documents;
 pub mod lookup;
@@ -55,7 +54,6 @@ pub enum GroupCommand {
     },
 }
 
-/// Groups as rows: name, projects, ID.
 fn table<T: Serialize>(value: &T) -> Table {
     let value = serde_json::to_value(value).unwrap_or_default();
     let rows = match value {
@@ -73,7 +71,6 @@ fn table<T: Serialize>(value: &T) -> Table {
     table
 }
 
-/// The IDs a change returns, one for each line.
 fn ids<T: Serialize>(value: &T) -> Table {
     let value = serde_json::to_value(value).unwrap_or_default();
     let mut table = Table::new(vec!["ID"]);
@@ -84,8 +81,6 @@ fn ids<T: Serialize>(value: &T) -> Table {
 }
 
 impl GroupCommand {
-    /// Runs the command.
-    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown group or project; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

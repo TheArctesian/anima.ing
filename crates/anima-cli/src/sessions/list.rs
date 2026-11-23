@@ -1,4 +1,4 @@
-//! `anima session list`: sessions newest first, with a device filter and pages (CMD-026).
+//! `anima session list`: sessions newest first (CMD-026).
 
 use super::documents::{SessionList, session_list};
 use crate::connection_page;
@@ -29,7 +29,7 @@ pub struct ListArgs {
 }
 
 impl ListArgs {
-    /// Prints the sessions as a table or, with `--json`, as the K1 `SessionConnection`.
+    /// With `--json`, prints the K1 `SessionConnection`.
     ///
     /// # Errors
     /// [`Failure`] for an unknown device or a hub refusal.

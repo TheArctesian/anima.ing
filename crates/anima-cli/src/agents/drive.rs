@@ -1,8 +1,5 @@
-//! `anima agents start`, `send`, `queue`, `set`, `approve`, `interrupt`, `stop`, `running`,
-//! `watch` and `raise-limit`: the person drives the agent threads of this computer through the runner of
-//! the daemon (TH13, THR-030, THR-049, THR-114). No MCP tool starts a thread or answers a
-//! request: an answer is a trust decision, and a start waits for the count of THR-114
-//! (Section 7 of cli-mcp-plan.md).
+//! The agent threads of this computer, through the daemon's runner (TH13, THR-030, THR-049).
+//! No MCP tool starts a thread or answers a request: an answer is a trust decision (THR-114).
 
 use std::path::PathBuf;
 
@@ -113,7 +110,6 @@ fn parse_choice(text: &str) -> Result<(String, String), String> {
         .ok_or_else(|| "KEY=CHOICE".to_owned())
 }
 
-/// Gives a result that is not a refusal.
 pub(super) fn accepted(outcome: Outcome) -> Result<Outcome, Failure> {
     match outcome {
         Outcome::Refused { why } => Err(refusal(&why)),
@@ -121,20 +117,17 @@ pub(super) fn accepted(outcome: Outcome) -> Result<Outcome, Failure> {
     }
 }
 
-/// Said when the project files of the folder could not be checked before a start.
 const NOT_CHECKED: &str = "The project files of this folder could not be checked: they can make Claude Code run commands with no question.";
 
 impl StartArgs {
-    /// Starts a thread. At the soft limit the person is asked whether to raise it (THR-114).
+    /// At the soft limit the person is asked whether to raise it (THR-114).
     ///
     /// # Errors
     /// [`Failure`] for a refusal of the runner, a no at the limit, or a runner that is not there.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let mut link = RunnerLink::connect().await?;
         let folder = std::path::absolute(&self.folder).unwrap_or(self.folder);
-        // What the files of the folder make the program do by itself, before the prompt goes
-        // (THR-046, OD-THR21: honoured, with a notice). A check that fails is said and does
-        // not stop the start.
+        // A failed folder check is said and does not stop the start (THR-046, OD-THR21).
         let checked = link
             .call(Action::Folder {
                 folder: folder.clone(),
@@ -189,7 +182,6 @@ fn one(text: &str) -> Table {
     table
 }
 
-/// Sends one call whose answer is only that it was done.
 async fn simple(invocation: &Invocation, action: Action, done: &str) -> Result<(), Failure> {
     let mut link = RunnerLink::connect().await?;
     if let Outcome::Stopped { all_ended: false } = accepted(link.call(action).await?)? {
@@ -223,8 +215,6 @@ impl ApproveArgs {
     }
 }
 
-/// `anima agents interrupt`: the running turn stops; the program stays.
-///
 /// # Errors
 /// [`Failure`] for a refusal of the runner.
 pub async fn interrupt(args: ThreadIdArgs, invocation: &Invocation) -> Result<(), Failure> {
@@ -238,8 +228,6 @@ pub async fn interrupt(args: ThreadIdArgs, invocation: &Invocation) -> Result<()
     .await
 }
 
-/// `anima agents stop`: the program and each process below it end.
-///
 /// # Errors
 /// [`Failure`] for a refusal of the runner.
 pub async fn stop(args: ThreadIdArgs, invocation: &Invocation) -> Result<(), Failure> {
@@ -253,8 +241,6 @@ pub async fn stop(args: ThreadIdArgs, invocation: &Invocation) -> Result<(), Fai
     .await
 }
 
-/// `anima agents raise-limit`: the person raises the soft limit one step (THR-114).
-///
 /// # Errors
 /// [`Failure::Declined`] for a no; a refusal of the runner.
 pub async fn raise_limit(invocation: &Invocation) -> Result<(), Failure> {
@@ -269,8 +255,6 @@ pub async fn raise_limit(invocation: &Invocation) -> Result<(), Failure> {
     Ok(())
 }
 
-/// `anima agents running`: the threads the runner started, with their state.
-///
 /// # Errors
 /// [`Failure`] when the runner is not there.
 pub async fn running(invocation: &Invocation) -> Result<(), Failure> {
@@ -279,8 +263,7 @@ pub async fn running(invocation: &Invocation) -> Result<(), Failure> {
         return Ok(());
     };
     invocation.output.data(&threads, |threads| table(threads))?;
-    // Why a recent thread stopped, and an older holder (TH97, TH98): words the table has no
-    // room for.
+    // Stop reasons and the holder go below the table (TH97, TH98).
     let day_ago = chrono::Utc::now() - chrono::Duration::days(1);
     for row in threads.iter().filter(|row| row.started > day_ago) {
         if let (RunState::Stopped, Some(ended)) = (row.state, &row.ended) {
@@ -316,7 +299,7 @@ fn table(rows: &[ThreadRow]) -> Table {
     table
 }
 
-/// The folder of a row, with "(worktree)" when it is a linked worktree of Git (TH112).
+/// The folder, marked when it is a linked worktree (TH112).
 fn folder_words(row: &ThreadRow) -> String {
     let folder = row.folder.display();
     match &row.workspace {
@@ -327,7 +310,7 @@ fn folder_words(row: &ThreadRow) -> String {
     }
 }
 
-/// How full the context window is, as the program last said it (TH112); "-" when it did not.
+/// The context window's fill, as the program last said it (TH112).
 fn context_words(row: &ThreadRow) -> String {
     match row
         .usage
@@ -348,8 +331,6 @@ pub(super) const fn program_key(program: Program) -> &'static str {
     }
 }
 
-/// `anima agents watch`: the updates of the threads as they happen, one line each.
-///
 /// # Errors
 /// [`Failure`] when the runner is not there or standard output fails.
 pub async fn watch(args: WatchArgs, invocation: &Invocation) -> Result<(), Failure> {

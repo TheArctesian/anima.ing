@@ -1,4 +1,4 @@
-//! `anima containers list <device>`: the containers of a device, running or not (HOST-001).
+//! `anima containers list` (HOST-001).
 
 use super::documents::{ContainerList, container_list};
 use crate::devices::get::resolve;
@@ -18,8 +18,6 @@ pub struct ListArgs {
 }
 
 impl ListArgs {
-    /// Prints a row for each container or, with `--json`, the K1 `Container` list.
-    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown device; the hub's refusal when the device has no
     /// SSH credential, has no Docker or does not answer.
@@ -30,8 +28,6 @@ impl ListArgs {
     }
 }
 
-/// The containers of the device with this ID or exact name.
-///
 /// # Errors
 /// [`Failure::NotFound`] for an unknown device; the hub's refusal.
 pub async fn fetch(

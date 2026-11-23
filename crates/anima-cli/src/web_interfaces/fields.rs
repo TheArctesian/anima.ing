@@ -1,6 +1,3 @@
-//! The K1 `WebInterfaceInput` as flags: `--label`, `--url`, `--open-in`. `create` takes them
-//! all with `--url` required; `update` takes each as a change over the current values.
-
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, json};
@@ -29,8 +26,6 @@ pub struct WebFields {
 }
 
 impl WebFields {
-    /// The input as the K1 input type `T` of a document.
-    ///
     /// # Errors
     /// [`Failure::Usage`] when K1 would not accept it.
     pub fn typed<T: DeserializeOwned>(&self) -> Result<T, Failure> {
@@ -63,14 +58,11 @@ pub struct WebChanges {
 }
 
 impl WebChanges {
-    /// Whether no flag was given.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.url.is_none() && self.label.is_none() && self.open_in.is_none()
     }
 
-    /// The input as the K1 input type `T`: the flags laid over the `current` values.
-    ///
     /// # Errors
     /// [`Failure::Usage`] when K1 would not accept it.
     pub fn typed_over<T: DeserializeOwned>(&self, current: Current) -> Result<T, Failure> {

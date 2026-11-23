@@ -1,5 +1,3 @@
-//! `anima vpn approve-route --site <site>`: approves the waiting route of the site's router.
-
 use super::documents::{VpnApproveRoute, vpn_approve_route};
 use crate::devices::list::site_id;
 use crate::failure::Failure;
@@ -14,8 +12,6 @@ pub struct ApproveRouteArgs {
 }
 
 impl ApproveRouteArgs {
-    /// Approves the route and prints the site.
-    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown site; the hub's refusal (no router waits).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

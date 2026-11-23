@@ -1,7 +1,5 @@
-//! The person's approval of one call of a tool in state `ask` (MCP-013): an MCP elicitation
-//! request in form mode with one yes-or-no field. Anything but a clear yes refuses the call
-//! before the hub is asked: a client without elicitation, a decline, a cancel, an error, or no
-//! answer within [`ASK_TIMEOUT`].
+//! The person's approval of one call of a tool in state `ask` (MCP-013).
+//! Anything but a clear yes refuses the call before the hub is asked.
 
 use std::time::Duration;
 
@@ -17,7 +15,6 @@ use super::definition::Definition;
 use super::outcome::OPERATOR_ONLY;
 use question::{MAX_LENGTH, MAX_VALUES, TooLarge, question};
 
-/// How long the server waits for the person's answer.
 pub const ASK_TIMEOUT: Duration = Duration::from_secs(120);
 
 /// The form the person fills in.
@@ -29,22 +26,14 @@ pub struct Approval {
 
 rmcp::elicit_safe!(Approval);
 
-/// Why a call was not approved.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Refusal {
-    /// The client did not declare form elicitation, so it cannot ask the person.
     NoAsking,
-    /// The person said no or closed the question.
     Declined,
-    /// No answer in time, or the request failed.
     NoAnswer,
-    /// The arguments are too many or too long to show in full, so the person was not asked.
     TooLarge { values: usize },
 }
 
-/// Asks the person at the client to approve one call; `Ok` only for a clear yes. Stops
-/// waiting when `cancelled` ends (the agent cancelled the call).
-///
 /// # Errors
 /// [`Refusal`] saying why the call must not run.
 pub async fn ask(
@@ -62,8 +51,6 @@ pub async fn ask(
     }
 }
 
-/// The answer as a decision.
-///
 /// # Errors
 /// [`Refusal`] for anything but `approve: true`.
 pub fn verdict(answer: &Result<Option<Approval>, ElicitationError>) -> Result<(), Refusal> {

@@ -1,8 +1,5 @@
-//! `anima link install <name>`: the install code of a computer with no application
-//! (hosted-mode.md HM-T33, R-240 c). The code holds the link invite and the claim of the daemon
-//! enrolment, and is the one secret this command exists to show: on standard output, once, or
-//! with `--to-file` in a `0600` file and nowhere else. The install script reads it on standard
-//! input (CMD-014, LOG-007).
+//! `anima link install` (HM-T33, R-240 c) shows the install code once, on standard output or in a
+//! `0600` file and nowhere else (CMD-014, LOG-007).
 
 use serde_json::json;
 use zeroize::Zeroizing;
@@ -23,7 +20,6 @@ pub struct InstallArgs {
     to_file: ToFile,
 }
 
-/// The install code: the prefix, the claim, and the invite after a dot when the hub gave one.
 /// A claim is base64url, so the first dot after the prefix ends it.
 fn install_code(claim: &str, invite: Option<&str>) -> String {
     match invite {
@@ -33,9 +29,6 @@ fn install_code(claim: &str, invite: Option<&str>) -> String {
 }
 
 impl InstallArgs {
-    /// Makes the invite and the claim and shows them once as one install code; the expiry goes
-    /// to standard error (or the `--json` answer).
-    ///
     /// # Errors
     /// [`Failure`] for a hub refusal (`VALIDATION` for the name, `FORBIDDEN` for an API key,
     /// `UNAVAILABLE` when the hub has no link) or a file that cannot be written.

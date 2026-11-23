@@ -1,5 +1,4 @@
-//! The `sessions` tool set: the remote sessions and ending a live one. No tool opens a session
-//! (MCP-006).
+//! No tool opens a session (MCP-006).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
@@ -77,8 +76,6 @@ impl SessionTool {
         }
     }
 
-    /// Runs the tool.
-    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments or the hub's refusal.
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {

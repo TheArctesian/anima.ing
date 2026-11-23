@@ -1,6 +1,4 @@
-//! `anima pr merge <repository> <number>...`: merges one pull request, or up to twenty one after
-//! another, through the hub (PRJ-029, PRJ-033, PRO-013). Each merge sends the head commit the
-//! operator saw, so a pull request that changed since is refused.
+//! Each merge sends the head commit the operator saw, so a pull request that changed since is refused (PRJ-029, PRJ-033, PRO-013).
 
 mod consent;
 mod many;
@@ -48,7 +46,6 @@ pub enum MethodArg {
 }
 
 impl MethodArg {
-    /// The word as `--method` takes it.
     const fn word(self) -> &'static str {
         match self {
             Self::Merge => "merge",
@@ -59,14 +56,10 @@ impl MethodArg {
 }
 
 impl MergeArgs {
-    /// Reads each pull request, shows it, asks once (or takes `--yes`, CMD-024) and merges. One
-    /// line for each pull request; with `--json`, the K1 `PullRequest` for one number and the
-    /// list of K1 `PullRequestMerge` for several.
+    /// With `--json`, prints the K1 `PullRequest` for one number and the K1 `PullRequestMerge` list for several.
     ///
     /// # Errors
-    /// [`Failure::Usage`] for flags that need one number, a number given twice, or a missing
-    /// `--sha` or `--fork`; [`Failure::Declined`] when the operator says no; the hub's refusal;
-    /// [`Failure::Ended`] (exit 1) when any of several was not merged.
+    /// [`Failure::Usage`]; [`Failure::Declined`]; the hub's refusal; [`Failure::Ended`] (exit 1) when any of several was not merged.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         if let [number] = self.numbers[..] {
             let asked = one::Asked {
@@ -98,7 +91,7 @@ impl MergeArgs {
     }
 }
 
-/// The pull request as the hub reads it from GitHub now, never from its cache.
+/// The pull request as GitHub has it now, never from the hub's cache.
 async fn read(hub: &Hub, repository: &str, shown: &str, number: i64) -> Result<Value, Failure> {
     let variables = pull_request_get::Variables {
         repository: repository.to_owned(),
@@ -116,7 +109,6 @@ async fn read(hub: &Hub, repository: &str, shown: &str, number: i64) -> Result<V
     Ok(serde_json::to_value(&pull).unwrap_or_default())
 }
 
-/// One line for each pull request: which, the outcome, and what to know of it.
 fn outcomes(rows: Vec<[String; 3]>) -> Table {
     let mut table = Table::new(vec!["PULL REQUEST", "OUTCOME", "DETAIL"]);
     for [pull, outcome, detail] in rows {

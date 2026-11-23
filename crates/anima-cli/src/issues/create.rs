@@ -1,5 +1,4 @@
-//! `anima issue create <repository>`: makes an issue on GitHub through the hub (OD-E14,
-//! PRJ-028).
+//! `anima issue create` (OD-E14, PRJ-028).
 
 use std::path::PathBuf;
 
@@ -26,8 +25,7 @@ pub struct CreateArgs {
 }
 
 impl CreateArgs {
-    /// Prints the new issue's number and link or, with `--json`, the K1 `Issue` without its
-    /// body. The hub does not repeat it: after `UNAVAILABLE` the issue may exist.
+    /// The hub does not repeat it: after `UNAVAILABLE` the issue may exist.
     ///
     /// # Errors
     /// [`Failure::Input`] for a body that cannot be read; the hub's refusal.

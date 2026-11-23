@@ -29,8 +29,6 @@ pub enum ReleaseCommand {
 }
 
 impl ReleaseCommand {
-    /// Runs the command.
-    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown job or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

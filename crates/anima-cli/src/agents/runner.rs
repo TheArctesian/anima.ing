@@ -1,5 +1,4 @@
-//! The local socket of the thread runner of this computer (TH12, THR-128): the `anima` command
-//! is a client of the daemon here, not of the hub. Nothing goes to the network.
+//! The local socket of this computer's thread runner (TH12, THR-128); nothing goes to the network.
 
 use std::os::unix::fs::{FileTypeExt as _, MetadataExt as _, PermissionsExt as _};
 use std::path::PathBuf;
@@ -11,7 +10,6 @@ use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
 
 use crate::failure::{Failure, Hint};
 
-/// A connection to the runner.
 pub struct RunnerLink {
     lines: Lines<BufReader<OwnedReadHalf>>,
     write: OwnedWriteHalf,
@@ -25,19 +23,16 @@ fn not_running() -> Failure {
     }
 }
 
-/// The socket file of the runner, as the daemon finds its folder.
 fn socket() -> Option<PathBuf> {
     let folder = control::folder(|name| std::env::var(name).ok(), cfg!(target_os = "macos"))?;
     Some(folder.join(control::SOCKET))
 }
 
 impl RunnerLink {
-    /// Connects, after a check that the socket file is a socket of this user that no one else
-    /// may use (THR-128).
+    /// Connects only to a private socket of this user (THR-128).
     ///
     /// # Errors
-    /// [`Failure::NotFound`] when no runner listens; [`Failure::Forbidden`] for a socket of a
-    /// different user or mode.
+    /// [`Failure::NotFound`] when no runner listens; [`Failure::Forbidden`] for a socket that is not private.
     pub async fn connect() -> Result<Self, Failure> {
         let socket = socket().ok_or_else(not_running)?;
         let meta = std::fs::symlink_metadata(&socket).map_err(|_| not_running())?;
@@ -61,8 +56,6 @@ impl RunnerLink {
         })
     }
 
-    /// Sends a call and gives its ID.
-    ///
     /// # Errors
     /// [`Failure::NotFound`] when the runner is gone.
     pub async fn send(&mut self, action: Action) -> Result<u64, Failure> {
@@ -82,8 +75,6 @@ impl RunnerLink {
         Ok(self.next)
     }
 
-    /// The next frame of the runner; `None` when it closed the connection.
-    ///
     /// # Errors
     /// [`Failure::Input`] for a frame that does not read.
     pub async fn next(&mut self) -> Result<Option<Reply>, Failure> {
@@ -98,8 +89,6 @@ impl RunnerLink {
             })
     }
 
-    /// Sends a call and waits for its answer.
-    ///
     /// # Errors
     /// As [`Self::send`] and [`Self::next`].
     pub async fn call(&mut self, action: Action) -> Result<Outcome, Failure> {
@@ -113,7 +102,6 @@ impl RunnerLink {
     }
 }
 
-/// A refusal of the runner as a failure of the command, in words for the person.
 #[must_use]
 pub fn refusal(why: &Refusal) -> Failure {
     let (message, hint) = match why {

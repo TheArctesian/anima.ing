@@ -1,5 +1,3 @@
-//! `anima maintenance list`, and the lookup of a window by ID or exact name.
-
 use super::documents::{MaintenanceList, maintenance_list};
 use crate::failure::{Failure, Hint};
 use crate::hub::Hub;
@@ -7,14 +5,13 @@ use crate::invocation::Invocation;
 use crate::output::text::enum_name;
 use crate::output::{Cell, Table, Tone};
 
-/// One window as `maintenanceWindows` returns it.
 pub type Window = maintenance_list::MaintenanceListMaintenanceWindows;
 
 #[derive(Debug, clap::Args)]
 pub struct ListArgs;
 
 impl ListArgs {
-    /// Prints the windows as a table or, with `--json`, as K1 `[MaintenanceWindow]`.
+    /// With `--json`, prints K1 `[MaintenanceWindow]`.
     ///
     /// # Errors
     /// The hub's refusal.
@@ -85,7 +82,6 @@ fn table(windows: &[Window]) -> Table {
     table
 }
 
-/// The schedule in words, with its time zone.
 fn schedule(window: &Window) -> String {
     let zone = &window.timezone;
     let at = window.start_time.as_deref().unwrap_or("?");

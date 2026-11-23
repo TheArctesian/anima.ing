@@ -1,6 +1,5 @@
-//! `anima containers logs <device> <container>`: the last lines of the log of one container on
-//! standard output (HOST-001). A log can hold a secret, so the hub refuses an API key (D-23)
-//! and no MCP tool returns it (MCP-004).
+//! `anima containers logs` (HOST-001): a log can hold a secret, so the hub refuses an API key
+//! (D-23) and no MCP tool returns it (MCP-004).
 
 use super::documents::{ContainerLogRead, container_log_read};
 use super::list::fetch;
@@ -24,12 +23,8 @@ pub struct LogsArgs {
 }
 
 impl LogsArgs {
-    /// Prints the lines, oldest first (to a terminal with their control characters made
-    /// harmless) or, with `--json`, the K1 `ContainerLog`.
-    ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown device or container; the hub's refusal for an API
-    /// key, or when the device cannot be read.
+    /// [`Failure::NotFound`] for an unknown device or container; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let container_id = identifier(&hub, &self.device, &self.container).await?;
@@ -62,7 +57,6 @@ impl LogsArgs {
     }
 }
 
-/// True for what the hub accepts as a container identifier: 12 to 64 lower-case hex digits.
 fn is_identifier(text: &str) -> bool {
     (12..=64).contains(&text.len())
         && text
@@ -70,8 +64,7 @@ fn is_identifier(text: &str) -> bool {
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
-/// The identifier of `container`: itself when it is one, or that of the device's one container
-/// with this exact name. The name never goes to the hub's command.
+/// The name never goes to the hub's command.
 pub(super) async fn identifier(
     hub: &Hub,
     device: &str,

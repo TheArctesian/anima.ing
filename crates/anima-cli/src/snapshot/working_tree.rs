@@ -1,8 +1,6 @@
-//! A commit of the working tree (JOB-017) made beside the operator's repository: the tree is
-//! built in a temporary index and every new object goes to a temporary object folder that
-//! reads the repository's objects as an alternate. The index, the branch, HEAD, the stash, the
-//! working tree and the object store stay as they were. A tree with a path that looks like a
-//! secret is refused before a commit is made (JOB-018).
+//! A commit of the working tree beside the operator's repository: the index, HEAD and the
+//! object store stay as they were (JOB-017), and a tree with a path that looks like a secret is
+//! refused before a commit is made (JOB-018).
 
 use std::path::Path;
 
@@ -14,13 +12,11 @@ use super::object_paths::tree_entries;
 use super::scratch_ref::is_hash;
 use agent_threads::files::secret_paths;
 
-/// The identity a snapshot commit gets only when git has none for the operator.
 const FALLBACK_NAME: &str = "Anima snapshot";
 const FALLBACK_EMAIL: &str = "snapshot@anima.invalid";
 
 const MESSAGE: &str = "Snapshot of the working tree (anima snapshot push)";
 
-/// The commit to push, and the git that can see it.
 #[derive(Debug)]
 pub struct Snapshot {
     pub commit: String,
@@ -33,19 +29,14 @@ pub struct Snapshot {
     _scratch: TempDir,
 }
 
-/// HEAD's commit and tree; none on a branch with no commit yet.
 struct Head {
     commit: String,
     tree: String,
 }
 
-/// Commits the working tree: tracked changes and the untracked files the ignore rules let in.
-///
 /// # Errors
-/// [`SnapshotError::SecretPaths`] before any commit is made when the tree holds a path that
-/// matches a secret pattern; [`SnapshotError::Git`] when a git step fails.
+/// [`SnapshotError::SecretPaths`] for a path like a secret; [`SnapshotError::Git`] otherwise.
 pub fn take(git: &Git) -> Result<Snapshot, SnapshotError> {
-    // Dropped on every return, so the temporary index and objects never stay behind.
     let scratch = tempfile::tempdir().map_err(|error| temporary(&error))?;
     let staged = beside(git, scratch.path())?;
     staged.bytes(&["add", "--all"])?;
@@ -74,9 +65,7 @@ pub fn take(git: &Git) -> Result<Snapshot, SnapshotError> {
     })
 }
 
-/// git with an index and an object folder of its own in `scratch`. The index starts as a copy
-/// of the operator's, so files git already knows are not read again and sparse-checkout
-/// entries keep their flags; with no index yet it starts empty.
+/// The index starts as a copy of the operator's, so sparse-checkout entries keep their flags.
 fn beside(git: &Git, scratch: &Path) -> Result<Git, SnapshotError> {
     let index = scratch.join("index");
     let objects = scratch.join("objects");
@@ -111,8 +100,6 @@ fn head(git: &Git) -> Result<Option<Head>, SnapshotError> {
     Ok(Some(Head { commit, tree }))
 }
 
-/// A commit of `tree` on top of HEAD, by the operator's git identity or, when git has none,
-/// the fallback.
 fn commit(git: &Git, tree: &str, head: Option<&Head>) -> Result<String, SnapshotError> {
     let mut args = vec!["commit-tree", tree, "-m", MESSAGE];
     if let Some(head) = head {
@@ -133,7 +120,6 @@ fn commit(git: &Git, tree: &str, head: Option<&Head>) -> Result<String, Snapshot
     hash(&git, &args)
 }
 
-/// The one hash `git <args>` prints.
 fn hash(git: &Git, args: &[&str]) -> Result<String, SnapshotError> {
     let text = git.text(args)?.trim_end().to_owned();
     if is_hash(&text) {

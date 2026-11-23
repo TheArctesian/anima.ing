@@ -1,7 +1,6 @@
-//! A secret the hub shows once: an API key, an agent code, a VPN pre-auth key, a builder token.
-//! Every command that has one shows it the same way (CMD-014, LOG-007): alone on standard
-//! output as one line, or under its field with `--json`, or in a `0600` file with nothing
-//! secret printed. The note that it is shown one time goes to standard error.
+//! A secret the hub shows once; every command that has one shows it this way (CMD-014, LOG-007):
+//! alone on standard output, under its field with `--json`, or in a `0600` file with nothing secret
+//! printed, and the note that it shows one time goes to standard error.
 
 use std::path::{Path, PathBuf};
 
@@ -23,12 +22,9 @@ pub struct ToFile {
     force: bool,
 }
 
-/// How long a secret that is shown one time can be used.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Works {
-    /// One use: an invite, a pre-auth key, an enrolment code.
     Once,
-    /// Until the operator revokes it: an ingest token.
     UntilRevoked,
 }
 
@@ -41,9 +37,7 @@ impl Works {
     }
 }
 
-/// A secret a command shows once, and where it goes.
 pub struct Secret<'a> {
-    /// What the person calls it: "pre-auth key".
     pub label: &'a str,
     /// Its field in the `--json` answer.
     pub field: &'a str,
@@ -52,9 +46,7 @@ pub struct Secret<'a> {
     pub works: Works,
 }
 
-/// Shows `secret` once: as a line on standard output, or in its file with nothing secret
-/// printed. With `--json`, `public` is the answer, with the secret under its field unless it
-/// went to a file. The notes go to standard error.
+/// With `--json`, `public` is the answer, with the secret under its field unless it went to a file.
 ///
 /// # Errors
 /// [`Failure::Write`] when the file or standard output cannot be written; [`Failure::Usage`]
@@ -134,8 +126,7 @@ fn exists(path: &Path) -> Failure {
 }
 
 impl ToFile {
-    /// Fails before the hub is asked for a secret when the file is there and `--force` is not
-    /// set: a secret made for a file that cannot be written would be lost.
+    /// Runs before the hub is asked for a secret, which is lost if its file cannot be written.
     ///
     /// # Errors
     /// [`Failure::Conflict`] when `--to-file` names an existing file.

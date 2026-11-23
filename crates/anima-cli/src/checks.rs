@@ -1,5 +1,4 @@
-//! `anima check`: the checks of the hub's devices (CMD-002). A check's kind and settings are
-//! a JSON file (`--from-file`) holding the K1 `CheckConfigInput`; see `config_file`.
+//! `anima check`: the checks of the hub's devices (CMD-002).
 
 pub mod config_file;
 pub mod defaults;
@@ -60,8 +59,6 @@ pub enum NotificationsCommand {
 }
 
 impl CheckCommand {
-    /// Runs the command.
-    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown device or check, or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

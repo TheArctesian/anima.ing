@@ -1,5 +1,4 @@
-//! `anima issue close` and `anima issue reopen`: close or open an issue on GitHub through the
-//! hub (OD-E14, PRJ-028). Nothing changes when it is already so.
+//! `anima issue close` and `anima issue reopen` (OD-E14, PRJ-028).
 
 use super::documents::{IssueSetOpen, issue_set_open};
 use super::render;
@@ -35,8 +34,6 @@ enum ReasonArg {
 }
 
 impl CloseArgs {
-    /// Closes the issue and prints it or, with `--json`, the K1 `Issue` without its body.
-    ///
     /// # Errors
     /// The hub's refusal (`VALIDATION` for the number of a pull request).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -49,8 +46,6 @@ impl CloseArgs {
 }
 
 impl ReopenArgs {
-    /// Opens the issue and prints it or, with `--json`, the K1 `Issue` without its body.
-    ///
     /// # Errors
     /// The hub's refusal (`VALIDATION` for the number of a pull request).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -58,7 +53,6 @@ impl ReopenArgs {
     }
 }
 
-/// Sends `setIssueOpen` with `open` and the reason for closing.
 async fn set(
     invocation: &Invocation,
     repository: &str,

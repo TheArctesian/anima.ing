@@ -1,4 +1,4 @@
-//! `anima session end <id>`: ends a live session; an ended one comes back unchanged (K1).
+//! `anima session end`: an ended session comes back unchanged (K1).
 
 use super::documents::{SessionEnd, session_end};
 use crate::failure::{Failure, Hint};
@@ -13,7 +13,7 @@ pub struct EndArgs {
 }
 
 impl EndArgs {
-    /// Ends the session and prints it, or with `--json` the K1 `Session`.
+    /// With `--json`, prints the K1 `Session`.
     ///
     /// # Errors
     /// [`Failure::Usage`] for an ID that is not a UUID; the hub's refusal.

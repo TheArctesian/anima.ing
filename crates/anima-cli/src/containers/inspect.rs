@@ -1,7 +1,5 @@
-//! `anima containers inspect <device> <container>`: the details of one container (HOST-017).
-//! The hub gives the names of the environment variables and never a value. A command or a
-//! label can hold a secret, so the hub refuses an API key (D-23) and no MCP tool returns the
-//! details (MCP-004).
+//! Container details can hold a secret (HOST-017): the hub gives environment variables by name,
+//! never a value, refuses an API key (D-23), and no MCP tool returns them (MCP-004).
 
 use super::documents::{ContainerInspect, container_inspect};
 use super::logs::identifier;
@@ -24,8 +22,7 @@ impl InspectArgs {
     /// Prints a row for each detail or, with `--json`, the K1 `ContainerDetail`.
     ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown device or container; the hub's refusal for an API
-    /// key, or when the device cannot be read.
+    /// [`Failure::NotFound`] for an unknown device or container; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let container_id = identifier(&hub, &self.device, &self.container).await?;

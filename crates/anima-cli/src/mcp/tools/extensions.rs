@@ -1,5 +1,4 @@
-//! The `extensions` tool set: which extensions of the hub are on, and turning one on or off
-//! (EXT-011, EXT-012). Turning one on can turn others on with it; the result says which.
+//! EXT-011, EXT-012.
 
 use std::collections::BTreeMap;
 
@@ -69,8 +68,6 @@ impl ExtensionTool {
         }
     }
 
-    /// Runs the tool.
-    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments, an unknown extension or the hub's refusal.
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
@@ -133,7 +130,6 @@ async fn set(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolErro
     ])))
 }
 
-/// The keys other than `key` whose state differs between `was` and `now`, sorted.
 fn also_changed<'a>(
     was: &BTreeMap<&str, bool>,
     now: impl Iterator<Item = (&'a str, bool)>,

@@ -1,35 +1,27 @@
-//! What the server does with each tool in this run (MCP-002, MCP-003, MCP-015): a pure
-//! function of the catalogue, the token's kind, the saved permissions and the flags at start.
-//! The flags only narrow, with one exception: `--allow-write` allows the change tools that
-//! have no saved choice. A saved `off` or `ask` is never weakened by a flag.
+//! What the server does with each tool in this run (MCP-002, MCP-003, MCP-015). A flag only
+//! narrows, except that `--allow-write` allows the change tools with no saved choice: a saved `off`
+//! or `ask` is never weakened by a flag.
 
 use super::catalogue::{Kind, ToolSet};
 use super::permissions::{Permissions, State};
 use super::tools::Entry;
 use crate::hub::TokenKind;
 
-/// The flags of `anima mcp`, for one run.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Flags {
-    /// `--toolsets`: every tool outside these sets is off.
     pub toolsets: Option<Vec<ToolSet>>,
-    /// `--allow-write [sets]`: the change tools of these sets (`Some(empty)`: every set) that
-    /// have no saved choice are allowed.
+    /// `Some(empty)` means every set.
     pub allow_write: Option<Vec<ToolSet>>,
-    /// `--read-only`: every change tool is off.
     pub read_only: bool,
 }
 
-/// One tool and what the server does with it.
 #[derive(Clone, Debug)]
 pub struct Row {
     pub entry: Entry,
-    /// `off`: not listed and refused if called.
     pub state: State,
 }
 
-/// Each tool of `catalogue` with its state for this run. With no token kind (`permissions
-/// show`) the tools that need sign-in keep their saved state.
+/// With no token kind (`permissions show`), the tools that need sign-in keep their saved state.
 #[must_use]
 pub fn select(
     catalogue: Vec<Entry>,
@@ -69,7 +61,6 @@ fn state(entry: &Entry, token: Option<TokenKind>, saved: &Permissions, flags: &F
     }
 }
 
-/// The plain picture of `rows`, for the server's instructions and `permissions show`.
 #[must_use]
 pub fn statement(rows: &[Row]) -> String {
     let sets: Vec<&str> = ToolSet::ALL
@@ -95,8 +86,6 @@ pub fn statement(rows: &[Row]) -> String {
     )
 }
 
-/// The rows that `matches`, by set: `checks (change tools)` or `checks (all)` when the whole
-/// group matches, else the tool names.
 fn grouped(rows: &[Row], matches: impl Fn(&Row) -> bool) -> String {
     let mut parts: Vec<String> = Vec::new();
     for set in ToolSet::ALL {

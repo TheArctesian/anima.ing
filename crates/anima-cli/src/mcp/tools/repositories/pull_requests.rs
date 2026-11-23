@@ -1,4 +1,4 @@
-//! `anima_pull_requests_list` and `anima_pull_request_get` (PRJ-030, PRJ-031, PRJ-033).
+//! PRJ-030, PRJ-031, PRJ-033.
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

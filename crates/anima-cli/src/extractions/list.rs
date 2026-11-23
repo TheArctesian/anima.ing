@@ -1,5 +1,3 @@
-//! `anima extraction list [--owner <record>] [--state proposed|confirmed|rejected]`.
-
 use serde::Serialize;
 
 use super::documents::{ExtractionList, extraction_list};
@@ -25,8 +23,6 @@ pub struct ListArgs {
 }
 
 impl ListArgs {
-    /// Prints the proposals as a table or, with `--json`, as the K1 `ExtractionProposal` list.
-    ///
     /// # Errors
     /// [`Failure`] for a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -47,7 +43,6 @@ impl ListArgs {
     }
 }
 
-/// One field as a table shows it: `name = value (confidence)`, with `?` for no confidence.
 #[must_use]
 pub fn field_line(name: &str, value: &str, confidence: Option<f64>) -> String {
     match confidence {

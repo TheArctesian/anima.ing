@@ -1,7 +1,5 @@
-//! The text of the approval question (MCP-013): every argument the agent gave, one per line,
-//! so the person sees all of what the call would do. Nested keys become dotted paths; each
-//! value is cleaned and cut on its own, with the length it had. The identifying arguments come
-//! first. The line breaks are the server's own: a cleaned value cannot hold one.
+//! The approval question (MCP-013) shows every argument, so the person sees all the call would do.
+//! The line breaks are the server's own: a cleaned value cannot hold one.
 
 use rmcp::model::JsonObject;
 use serde_json::Value;
@@ -9,34 +7,24 @@ use serde_json::Value;
 use crate::mcp::definition::Definition;
 use crate::output::text::clean;
 
-/// The most characters of one value the question shows.
 pub const VALUE_CAP: usize = 120;
 
-/// The most values (leaves of the argument tree) a question shows; more are refused.
 pub const MAX_VALUES: usize = 40;
 
-/// The longest question, in characters; a longer one is refused.
 pub const MAX_LENGTH: usize = 4_000;
 
-/// The most characters of one key the question shows.
 const KEY_CAP: usize = 60;
 
-/// The arguments that say what a call acts on, shown first in this order.
 const IDENTIFYING: [&str; 6] = ["device", "check", "site", "id", "name", "confirm"];
 
-/// Arguments too many or too long to show in full: the call is refused before it is asked.
+/// Arguments too many or too long to show in full: the call is refused before the person is asked.
 #[derive(Debug, PartialEq, Eq)]
 pub struct TooLarge {
-    /// How many values the agent gave.
     pub values: usize,
 }
 
-/// What the person is asked: the tool, what it does, how many values the agent gave and
-/// each of them on its own line.
-///
 /// # Errors
-/// [`TooLarge`] when there are more than [`MAX_VALUES`] values or the question would be
-/// longer than [`MAX_LENGTH`] characters.
+/// [`TooLarge`] past [`MAX_VALUES`] values or [`MAX_LENGTH`] characters.
 pub fn question(
     definition: &Definition,
     arguments: Option<&JsonObject>,
@@ -67,7 +55,6 @@ pub fn question(
     Ok(text)
 }
 
-/// One `path: value` line for each leaf, identifying arguments first, the rest in key order.
 fn lines(definition: &Definition, arguments: Option<&JsonObject>) -> Vec<String> {
     let known = definition
         .input
@@ -93,7 +80,6 @@ fn lines(definition: &Definition, arguments: Option<&JsonObject>) -> Vec<String>
     ranked.into_iter().map(|(_, line)| line).collect()
 }
 
-/// The leaves under `value` as lines, depth first; an empty object or list is one leaf.
 fn flatten(path: &str, value: &Value, lines: &mut Vec<String>) {
     match value {
         Value::Object(fields) if !fields.is_empty() => {
@@ -111,8 +97,7 @@ fn flatten(path: &str, value: &Value, lines: &mut Vec<String>) {
     }
 }
 
-/// A key as one path segment: plain when it is a plain name, else quoted, so a key with a dot
-/// cannot pass for a nested one. Cut at [`KEY_CAP`] characters.
+/// A key that is not a plain name is quoted, so a key with a dot cannot pass for a nested one.
 fn segment(key: &str) -> String {
     let plain = !key.is_empty()
         && key
@@ -128,7 +113,6 @@ fn segment(key: &str) -> String {
     }
 }
 
-/// A text value cleaned, quoted and cut at [`VALUE_CAP`] characters with its full length.
 fn shown(text: &str) -> String {
     let cleaned = clean(text);
     let length = cleaned.chars().count();

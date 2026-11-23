@@ -1,8 +1,4 @@
-//! The `sources` tool set: where the hub reads data from and the accounts it reads with
-//! (ITG-001 to ITG-004), and the three tools of the Connect GitHub flow (`connect`). No tool
-//! connects an account with a key, for that takes the GitHub App's private key (MCP-004), and
-//! none watches changes (no subscription has a tool). Text from GitHub (labels, problem
-//! messages) is cleaned and cut on its way out (MCP-008).
+//! The `sources` tool set (ITG-001 to ITG-004); no tool connects an account with a key (MCP-004).
 
 mod connect;
 
@@ -141,8 +137,6 @@ impl SourceTool {
         }
     }
 
-    /// Runs the tool.
-    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments, a refusal before the hub, or the hub's refusal.
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
@@ -158,8 +152,6 @@ impl SourceTool {
     }
 }
 
-/// The account `name` is the id or exact label of; a missing or ambiguous one is a refusal the
-/// agent can act on.
 async fn account(hub: &Hub, name: &str) -> Result<Named, ToolError> {
     resolve(hub, name).await.map_err(|failure| match failure {
         Failure::NotFound { message, .. } | Failure::Usage { message, .. } => ToolError::Refused(

@@ -1,5 +1,4 @@
-//! `anima device trust`: accepts a host key or a certificate. The operator always gives the
-//! fingerprint; nothing is accepted on trust alone (SEC-006, SEC-007).
+//! `anima device trust`: the operator gives the fingerprint; nothing is accepted on trust alone (SEC-006, SEC-007).
 
 pub mod accept_certificate;
 pub mod accept_host_key;
@@ -17,8 +16,6 @@ pub enum TrustCommand {
 }
 
 impl TrustCommand {
-    /// Runs the command.
-    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown device or a fingerprint the hub did not see.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -29,8 +26,6 @@ impl TrustCommand {
     }
 }
 
-/// A fingerprint argument: not empty and without spaces.
-///
 /// # Errors
 /// The reason, for clap to print.
 pub fn fingerprint(text: &str) -> Result<String, String> {

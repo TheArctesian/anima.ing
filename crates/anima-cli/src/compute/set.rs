@@ -1,6 +1,4 @@
-//! `anima compute policy set <device>`: changes the named values of the device policy of a
-//! device and keeps the others. It sets no switch: the one switch "takes work" stays at the
-//! machine (USE-004, OD-C8).
+//! The switch "takes work" stays at the machine; this command sets no switch (USE-004, OD-C8).
 
 use super::documents::{SetDevicePolicy, set_device_policy};
 use super::show::{Row, fetch, find};
@@ -36,11 +34,8 @@ pub struct SetArgs {
 }
 
 impl SetArgs {
-    /// Prints the new policy as a record or, with `--json`, as the K1 `DevicePolicy`.
-    ///
     /// # Errors
-    /// [`Failure::Usage`] for quiet hours that are not HH:MM-HH:MM; [`Failure::NotFound`] for an
-    /// unknown device; the hub's refusal (`VALIDATION` names the value out of range).
+    /// [`Failure::Usage`], [`Failure::NotFound`] for an unknown device, or the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let rows = fetch(&hub).await?;

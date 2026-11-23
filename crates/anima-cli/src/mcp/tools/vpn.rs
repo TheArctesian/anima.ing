@@ -1,4 +1,4 @@
-//! The `vpn` tool set: the VPN picture and route approval. No tool makes a VPN key (MCP-004).
+//! No tool makes a VPN key (MCP-004).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
@@ -75,8 +75,6 @@ impl VpnTool {
         }
     }
 
-    /// Runs the tool.
-    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments or the hub's refusal.
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {

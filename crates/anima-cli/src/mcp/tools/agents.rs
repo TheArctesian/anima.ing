@@ -1,14 +1,7 @@
-//! The `agents` tool set: the sessions of Claude Code and Codex on the computer where
-//! `anima mcp` runs, read from their files as threads (THR-018). It has one tool, a read, and
-//! it asks no hub.
-//!
-//! No tool gives the entries of a thread: a prompt or a tool output can hold a secret, and no
-//! tool returns one (MCP-004). The person reads a thread with `anima agents thread` or in the
-//! client. The result of a tool goes to the vendor of the agent that called it, so a row is
-//! narrow: the title (the operator decided that a title may leave the computer, cleaned and
-//! capped, also when it is the start of a prompt: OD-THR13 of the proposal), the name of the
-//! folder and not its path, and no branch. Each text is cleaned and capped as each text from a
-//! device is (MCP-008).
+//! The `agents` tool set (THR-018, MCP-008): local session files, no hub.
+//! No tool returns a thread's entries, which can hold a secret (MCP-004).
+//! A result goes to the agent's vendor, so a row holds only the cleaned, capped title (OD-THR13),
+//! the folder's name and not its path, and no branch.
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
@@ -69,8 +62,6 @@ impl AgentTool {
         }
     }
 
-    /// Runs the tool.
-    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments or a home folder that is not known.
     pub fn call(self, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
@@ -97,8 +88,6 @@ impl AgentTool {
     }
 }
 
-/// What an agent gets of a row: the title, the name of the folder, the times; no path and no
-/// branch.
 fn narrow(row: &ThreadRow) -> Value {
     let folder = row.folder.as_deref().and_then(threads::folder_name);
     serde_json::json!({

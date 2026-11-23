@@ -1,5 +1,3 @@
-//! `anima retention list`: the days kept for each kind of record.
-
 use super::documents::{RetentionList, retention_list};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
@@ -10,8 +8,6 @@ use crate::output::text::enum_name;
 pub struct ListArgs;
 
 impl ListArgs {
-    /// Prints the periods as a table or, with `--json`, as the K1 `RetentionPeriod` list.
-    ///
     /// # Errors
     /// [`Failure`] for a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

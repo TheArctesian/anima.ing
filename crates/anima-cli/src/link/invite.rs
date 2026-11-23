@@ -1,7 +1,5 @@
-//! `anima link invite <name>`: a single-use invite for a new device (LNK-003). The invite is
-//! the one secret this command exists to show: on standard output, once, or with `--to-file`
-//! in a `0600` file and nowhere else. It never goes on a command line, into a log or into a
-//! note (CMD-014, LOG-007).
+//! The invite shows once, on standard output or in a `0600` file only, and never goes on a command
+//! line, into a log or into a note (LNK-003, CMD-014, LOG-007).
 
 use serde_json::json;
 use zeroize::Zeroizing;
@@ -20,12 +18,8 @@ pub struct InviteArgs {
 }
 
 impl InviteArgs {
-    /// Makes the invite and shows it once; its expiry goes to standard error (or the `--json`
-    /// answer).
-    ///
     /// # Errors
-    /// [`Failure`] for a hub refusal (`VALIDATION` for the name, `FORBIDDEN` for an API key,
-    /// `UNAVAILABLE` when the hub has no link) or a file that cannot be written.
+    /// [`Failure`] for a hub refusal or a file that cannot be written.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         self.to_file.check()?;
         let hub = invocation.hub()?;

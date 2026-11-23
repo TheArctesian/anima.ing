@@ -1,5 +1,3 @@
-//! `anima retention set <subject> <days>`.
-
 use super::documents::{RetentionSet, retention_set};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
@@ -24,11 +22,10 @@ enum SubjectArg {
 }
 
 impl SetArgs {
-    /// Prints the new period as a record or, with `--json`, as the K1 `RetentionPeriod`.
+    /// With `--json`, prints the K1 `RetentionPeriod`.
     ///
     /// # Errors
-    /// [`Failure`] for a hub refusal (`VALIDATION` for days outside the range, `FORBIDDEN`
-    /// for an API key).
+    /// [`Failure`] for a hub refusal: `VALIDATION` out of range, `FORBIDDEN` for an API key.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let variables = retention_set::Variables {

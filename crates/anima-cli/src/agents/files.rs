@@ -1,9 +1,5 @@
-//! `anima agents files`: the files and folders of the working folder of a thread that the runner
-//! started, the best match first (TH108), as the `@` list of the composer gives them. The runner
-//! leaves out secrets, the folders of tools and of build output and what `.gitignore` leaves
-//! out, and follows no link. `anima agents folders`: the folders in one folder of this computer
-//! (TH113), to choose a project by browsing. Only the person asks either: the runner refuses them
-//! from a process of an agent, so no MCP tool gives them.
+//! `anima agents files` (TH108) and `anima agents folders` (TH113): the runner refuses both from
+//! an agent's process, so no MCP tool gives them.
 
 use agent_threads::control::{Action, Outcome};
 use agent_threads::files::FoundPath;
@@ -26,8 +22,6 @@ pub struct FilesArgs {
     most: u16,
 }
 
-/// `anima agents files`.
-///
 /// # Errors
 /// [`Failure`] for a refusal of the runner (a thread it did not start, a query that is too long),
 /// or a runner that is not there.
@@ -73,8 +67,6 @@ pub struct FoldersArgs {
     hidden: bool,
 }
 
-/// `anima agents folders`.
-///
 /// # Errors
 /// [`Failure`] for a refusal of the runner (no such folder, or the folder of Anima), or a runner
 /// that is not there.

@@ -1,5 +1,4 @@
-//! The usage table for a person: one row for each group and the total, tokens in readable
-//! units, the cost marked as an estimate; and the notes below it (AIS-021, AIS-024).
+//! The usage table for a person and the notes below it (AIS-021, AIS-024).
 
 use super::documents::agent_usage::{
     AgentSource, AgentUsageAgentUsage, AgentUsageAgentUsageAccounts, AgentUsageDimension,
@@ -7,14 +6,11 @@ use super::documents::agent_usage::{
 };
 use crate::output::{Cell, Table, Tone};
 
-/// The sentence for a device whose daemon runs as the systemd system unit (AIS-024).
 pub const SYSTEM_UNIT: &str =
     "This daemon runs as a system unit and cannot see the sessions of a user.";
 
-/// The sentence for a device where the operator turned the counts off.
 pub const TURNED_OFF: &str = "The use counts are turned off on this device.";
 
-/// What the estimate is, and what it is not (AIS-021).
 #[must_use]
 pub fn estimate_note(prices_as_of: &str) -> String {
     format!(
@@ -23,7 +19,6 @@ pub fn estimate_note(prices_as_of: &str) -> String {
     )
 }
 
-/// A key column of the table.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Column {
     Day,
@@ -81,7 +76,6 @@ const COUNTS: [&str; 8] = [
     "EST. COST (USD)",
 ];
 
-/// The rows of `answer` under the `columns` asked for, in the hub's order, then the total.
 #[must_use]
 pub fn table(answer: &AgentUsageAgentUsage, columns: &[Column]) -> Table {
     let mut header: Vec<&'static str> = columns.iter().map(|column| column.header()).collect();
@@ -128,8 +122,6 @@ fn sums(row: &UsageSums) -> Vec<Cell> {
     ]
 }
 
-/// The lines under the table: the days, the rows left out, what the estimate is, the tokens
-/// it leaves out, and each device whose daemon cannot count.
 #[must_use]
 pub fn notes(answer: &AgentUsageAgentUsage) -> Vec<String> {
     let mut lines = vec![format!(
@@ -158,9 +150,7 @@ pub fn notes(answer: &AgentUsageAgentUsage) -> Vec<String> {
     lines
 }
 
-/// One account and its devices, by its short key: the limit is shared by its devices
-/// (R-313). `Account 3f9a0c55 (Codex, Pro) on nas, studio: five_hour 35 % used,
-/// resets 2026-11-21T14:00:00Z.`
+/// The limit of an account is shared by its devices (R-313).
 #[must_use]
 pub fn account_line(account: &AgentUsageAgentUsageAccounts) -> String {
     let plan = account
@@ -201,7 +191,6 @@ pub fn account_line(account: &AgentUsageAgentUsageAccounts) -> String {
     )
 }
 
-/// The sentence for a daemon that sends no counts; `None` for one that reads.
 #[must_use]
 pub const fn state_sentence(state: &AgentUsageState) -> Option<&'static str> {
     match state {
@@ -219,12 +208,10 @@ const fn source_name(source: &AgentSource) -> &'static str {
     }
 }
 
-/// A count as a whole number.
 fn whole(count: f64) -> String {
     format!("{count:.0}")
 }
 
-/// A token count in readable units: `950`, `18.3k`, `2.2M`, `1.4B`.
 #[must_use]
 pub fn tokens(count: f64) -> String {
     for (size, unit) in [(1e9, "B"), (1e6, "M"), (1e3, "k")] {
@@ -235,7 +222,6 @@ pub fn tokens(count: f64) -> String {
     whole(count)
 }
 
-/// US dollars with cents; `<0.01` for a cost above zero that rounds to none.
 fn dollars(usd: f64) -> String {
     if usd > 0.0 && usd < 0.005 {
         "<0.01".to_owned()

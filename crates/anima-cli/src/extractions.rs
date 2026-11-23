@@ -1,5 +1,4 @@
 //! `anima extraction`: the proposals of an extraction (K-E4 Section 10; VIS-001 to VIS-004).
-//! Nothing of a proposal is a record until the operator confirms it.
 
 pub mod change;
 pub mod documents;
@@ -21,11 +20,8 @@ pub enum ExtractionCommand {
 }
 
 impl ExtractionCommand {
-    /// Runs the command.
-    ///
     /// # Errors
-    /// [`Failure`] for a refusal (`VALIDATION`, `NOT_FOUND`, `CONFLICT` for a decided proposal),
-    /// fields that are not JSON, or a missing token.
+    /// [`Failure`] for a refusal, fields that are not JSON, or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
             Self::List(args) => args.run(invocation).await,

@@ -1,6 +1,4 @@
-//! `anima reminder list|show|add|set|remove|enable|disable`. `--trigger` and `--unless` are
-//! JSON in the form of K-E6 Section 2, for example
-//! `{"type":"time","at":"09:00","zone":"Europe/Amsterdam"}`.
+//! `--trigger` and `--unless` are JSON in the form of K-E6 Section 2.
 
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -66,7 +64,7 @@ pub struct SetArgs {
     fields: FieldArgs,
 }
 
-/// The JSON of a flag. A refusal names the flag, never the text.
+/// A refusal names the flag, never the text.
 fn parsed(flag: &str, text: &str) -> Result<Value, Failure> {
     serde_json::from_str(text).map_err(|_| Failure::Usage {
         message: format!("{flag} is not JSON. Give it as in K-E6 Section 2, in single quotes."),
@@ -74,7 +72,6 @@ fn parsed(flag: &str, text: &str) -> Result<Value, Failure> {
     })
 }
 
-/// The K1 input that `json` holds. Each document has its own input type of the same shape.
 fn k1<T: DeserializeOwned>(json: Value) -> Result<T, Failure> {
     serde_json::from_value(json).map_err(|_| Failure::Usage {
         message: "The fields of the rule do not make a rule.".to_owned(),
@@ -83,7 +80,6 @@ fn k1<T: DeserializeOwned>(json: Value) -> Result<T, Failure> {
 }
 
 impl FieldArgs {
-    /// `current` with each field that a flag gives.
     fn over(self, mut current: Value) -> Result<Value, Failure> {
         if let Some(name) = self.name {
             current["name"] = json!(name);
@@ -116,8 +112,6 @@ fn show_rule<T: Serialize>(invocation: &Invocation, rule: &T) -> Result<(), Fail
     })
 }
 
-/// `anima reminder list`.
-///
 /// # Errors
 /// [`Failure`] for a hub refusal.
 pub async fn list(invocation: &Invocation) -> Result<(), Failure> {
@@ -141,8 +135,6 @@ async fn fetch(
     })
 }
 
-/// `anima reminder show <id>`.
-///
 /// # Errors
 /// [`Failure::NotFound`] when no rule has this ID; a hub refusal.
 pub async fn show(invocation: &Invocation, id: &str) -> Result<(), Failure> {
@@ -150,11 +142,8 @@ pub async fn show(invocation: &Invocation, id: &str) -> Result<(), Failure> {
 }
 
 impl AddArgs {
-    /// Makes the rule and prints it.
-    ///
     /// # Errors
-    /// [`Failure::Usage`] without a name, a message or a trigger, or for JSON that does not
-    /// parse; the hub's refusal.
+    /// [`Failure::Usage`] without a name, a message or a trigger, or for bad JSON; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         for (given, what, flag) in [
             (self.fields.name.is_some(), "the name", "--name"),
@@ -175,11 +164,8 @@ impl AddArgs {
 }
 
 impl SetArgs {
-    /// Reads the rule, changes what the flags give, and writes it back.
-    ///
     /// # Errors
-    /// [`Failure::NotFound`]; [`Failure::Usage`] for JSON that does not parse; the hub's
-    /// refusal.
+    /// [`Failure::NotFound`]; [`Failure::Usage`] for bad JSON; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let current = serde_json::to_value(fetch(invocation, &self.id).await?).unwrap_or_default();
         let mut input = json!({});
@@ -206,8 +192,6 @@ impl SetArgs {
     }
 }
 
-/// `anima reminder remove <id>`.
-///
 /// # Errors
 /// [`Failure`] for a hub refusal.
 pub async fn remove(invocation: &Invocation, id: String) -> Result<(), Failure> {
@@ -226,8 +210,6 @@ pub async fn remove(invocation: &Invocation, id: String) -> Result<(), Failure> 
     ))
 }
 
-/// `anima reminder enable <id>` and `disable <id>`.
-///
 /// # Errors
 /// [`Failure`] for a hub refusal.
 pub async fn enable(invocation: &Invocation, id: String, enabled: bool) -> Result<(), Failure> {

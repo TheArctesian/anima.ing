@@ -1,5 +1,3 @@
-//! `anima web delete`: removes a web interface from its device.
-
 use super::documents::{WebDelete, web_delete};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
@@ -12,8 +10,6 @@ pub struct DeleteArgs {
 }
 
 impl DeleteArgs {
-    /// Asks for confirmation (`--yes` skips it), deletes and prints the deleted ID.
-    ///
     /// # Errors
     /// [`Failure::Usage`] when it cannot ask; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

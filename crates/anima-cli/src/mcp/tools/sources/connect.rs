@@ -1,12 +1,7 @@
-//! The three Connect GitHub tools of the `sources` set (PRJ-041, MCP-004, MCP-005): start an
-//! attempt, read it, cancel it. Starting grants nothing: the operator presses Continue on the
-//! hub page with their own login, then Create and Install on GitHub.
-//!
-//! There is no tool for `openGithubConnect`, whose answer is the one-time link (MCP-004), and
-//! none for the change subscription. The server declares itself an AI agent to the hub on every
-//! call, so the hub would refuse `openGithubConnect` here too. Text from GitHub (the App's slug
-//! and owner, the account's label, the hub's sentence) is cleaned and cut (MCP-008), and a link
-//! from the answer is passed on only when it points at `github.com`.
+//! The Connect GitHub tools of the `sources` set (PRJ-041, MCP-005, MCP-008).
+//! Starting an attempt grants nothing: the operator finishes it on the hub page and on GitHub.
+//! No tool opens `openGithubConnect`: its answer is the one-time link (MCP-004).
+//! A link from an answer is passed on only when it points at `github.com`.
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
@@ -24,7 +19,6 @@ use crate::sources::connect::documents::{
     github_connect_start, github_connect_state,
 };
 
-/// The longest name from GitHub that is passed on, in characters.
 const NAME_CAP: usize = 100;
 
 const GITHUB: &str = "https://github.com/";
@@ -89,11 +83,8 @@ pub fn cancel_definition() -> Definition {
     .returns(&[("attempt", "object", "The cancelled attempt.")])
 }
 
-/// Starts an attempt; returns it and the fixed page link.
-///
 /// # Errors
-/// [`ToolError`] for wrong arguments or the hub's refusal (`CONFLICT` while an App waits for
-/// Install).
+/// [`ToolError`] for wrong arguments or the hub's refusal.
 pub async fn start(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
     let _: NoInput = parse(arguments)?;
     let answer = hub
@@ -107,8 +98,6 @@ pub async fn start(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, To
     ])))
 }
 
-/// The open attempt, or null.
-///
 /// # Errors
 /// [`ToolError`] for the hub's refusal.
 pub async fn state(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
@@ -117,8 +106,6 @@ pub async fn state(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, To
     Ok(Value::Object(object([("attempt", attempt)])))
 }
 
-/// Cancels the open attempt.
-///
 /// # Errors
 /// [`ToolError::Refused`] when none is open; the hub's refusal (`CONFLICT` once connected).
 pub async fn cancel(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
@@ -147,8 +134,8 @@ async fn current(hub: &Hub) -> Result<Option<Value>, ToolError> {
     Ok(answer.github_connect.as_ref().map(json))
 }
 
-/// What the agent may see of an attempt: no page link, no ticket, no state. Text from GitHub
-/// is cleaned and cut; a link is kept only when it points at `github.com`.
+/// What the agent may see of an attempt: no page link, no ticket, no state, and a link only to
+/// `github.com`.
 fn shown(held: &Value) -> Value {
     let mut fields = Map::new();
     for key in ["id", "phase", "expiresAt", "failure"] {
@@ -176,7 +163,6 @@ fn account(held: &Value) -> Value {
     ]))
 }
 
-/// `text` cleaned and cut to `cap` characters; null stays null.
 fn named(text: &Value, cap: usize) -> Value {
     text.as_str()
         .map_or(Value::Null, |text| Value::String(capped(text, cap)))
@@ -194,7 +180,6 @@ fn page_only(page: &str) -> &str {
     page.split(['?', '#']).next().unwrap_or_default()
 }
 
-/// `value` with only these keys.
 fn pick(value: &Value, keys: &[&str]) -> Value {
     Value::Object(
         keys.iter()

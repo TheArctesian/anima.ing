@@ -1,8 +1,4 @@
-//! `anima_agents_sessions`: the single sessions of the AI agent programs, the newest use first,
-//! with their sums and the estimate of their cost (AIS-025), and which were used in the last 30
-//! minutes (AIS-026). It takes no secret and returns none. Model, repository and device names
-//! come from the devices: they are in named fields, and the server cleans and caps each string
-//! before the agent sees it (MCP-008).
+//! `anima_agents_sessions` (AIS-025, AIS-026): it takes no secret and returns none.
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

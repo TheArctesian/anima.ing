@@ -1,5 +1,3 @@
-//! `anima workflow list <repository>`.
-
 use super::documents::{WorkflowList, workflow_list};
 use super::render;
 use crate::failure::Failure;
@@ -16,8 +14,6 @@ pub struct ListArgs {
 }
 
 impl ListArgs {
-    /// Prints the workflows as a table or, with `--json`, as a list of K1 `Workflow`.
-    ///
     /// # Errors
     /// [`Failure`] for an unknown repository or a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

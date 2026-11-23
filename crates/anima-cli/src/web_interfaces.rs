@@ -1,5 +1,4 @@
-//! `anima web`: the web pages of devices, such as admin consoles (CMD-002). Their pixels stay
-//! in the desktop application; these commands manage the list.
+//! `anima web`: the web pages of devices, such as admin consoles (CMD-002).
 
 pub mod accept_certificate;
 pub mod create;
@@ -33,8 +32,6 @@ pub enum WebCommand {
 }
 
 impl WebCommand {
-    /// Runs the command.
-    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown device or web interface, or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

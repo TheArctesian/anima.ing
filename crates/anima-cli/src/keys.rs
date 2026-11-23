@@ -1,5 +1,5 @@
-//! `anima key`: API keys for scripts and coding agents (INT-003). Only a login token makes,
-//! lists or revokes them.
+//! `anima key`: API keys for scripts and coding agents; only a login token makes, lists or
+//! revokes them (INT-003).
 
 pub mod create;
 pub mod documents;
@@ -21,11 +21,8 @@ pub enum KeyCommand {
 }
 
 impl KeyCommand {
-    /// Runs the command.
-    ///
     /// # Errors
-    /// [`Failure`] for a refusal (an API key cannot manage keys), an unknown key or a missing
-    /// token.
+    /// [`Failure`] for a refusal, an unknown key or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
             Self::List(args) => args.run(invocation).await,

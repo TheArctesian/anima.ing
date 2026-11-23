@@ -26,8 +26,6 @@ pub enum ModelCommand {
 }
 
 impl ModelCommand {
-    /// Runs the command.
-    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown model, or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -41,7 +39,6 @@ impl ModelCommand {
     }
 }
 
-/// A size in bytes as GiB with one decimal, for a table.
 #[must_use]
 pub fn gib(bytes: f64) -> String {
     format!("{:.1} GiB", bytes / 1_073_741_824.0)

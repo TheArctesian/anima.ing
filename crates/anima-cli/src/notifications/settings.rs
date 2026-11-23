@@ -1,5 +1,4 @@
-//! `anima notify settings get|set`: the days before a certificate expires at which the hub
-//! warns, and the message template (NOT-006, NOT-007).
+//! `anima notify settings get|set` (NOT-006, NOT-007).
 
 use super::documents::{SettingsGet, SettingsSet, settings_get, settings_set};
 use crate::failure::{Failure, Hint};
@@ -29,8 +28,6 @@ pub struct SetArgs {
 }
 
 impl SettingsCommand {
-    /// Runs the command.
-    ///
     /// # Errors
     /// [`Failure`] for a refusal, or for `set` with nothing to change.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

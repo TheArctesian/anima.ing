@@ -1,5 +1,4 @@
-//! Exit codes (CMD-021), JSON errors (CMD-022), `--no-input` (CMD-023) and the rule that no
-//! output ever holds the token (CMD-014).
+//! Exit codes (CMD-021), JSON errors (CMD-022), `--no-input` (CMD-023) and the token (CMD-014).
 
 use serde_json::json;
 
@@ -160,7 +159,6 @@ async fn cmd_021_wrong_usage_is_exit_2_and_json_when_asked() {
     );
 }
 
-/// Every path that prints, success and failure, table and JSON: the token is in none.
 #[tokio::test]
 async fn cmd_014_the_token_never_appears_in_any_output() {
     let hub = FakeHub::start().await;

@@ -1,5 +1,4 @@
-//! The `timeline` tool set: what happened, from the records of every domain (TML-001 to
-//! TML-007). The first source is the hub's event log.
+//! TML-001 to TML-007.
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
@@ -80,8 +79,6 @@ impl TimelineTool {
         ])
     }
 
-    /// Runs the tool.
-    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments or the hub's refusal.
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {

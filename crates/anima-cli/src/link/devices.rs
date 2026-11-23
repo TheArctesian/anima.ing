@@ -10,8 +10,6 @@ use crate::output::text::enum_name;
 pub struct DevicesArgs;
 
 impl DevicesArgs {
-    /// Prints the devices as a table or, with `--json`, as the K1 `LinkDevice` list.
-    ///
     /// # Errors
     /// [`Failure`] for a hub refusal (`UNAVAILABLE` when the hub has no link).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

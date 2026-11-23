@@ -1,6 +1,3 @@
-//! `anima check update <id-or-name>`: changes the settings you name and leaves the rest.
-//! `--from-file` replaces the kind's settings as a whole (K1 `CheckConfigInput`).
-
 use std::path::PathBuf;
 
 use super::documents::{CheckUpdate, CheckUpdateUngrouped, check_update, check_update_ungrouped};
@@ -45,8 +42,6 @@ pub struct UpdateArgs {
 }
 
 impl UpdateArgs {
-    /// Prints the changed check.
-    ///
     /// # Errors
     /// [`Failure::Usage`] when nothing is to change or the file is wrong; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

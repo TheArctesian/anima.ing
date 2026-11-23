@@ -1,5 +1,4 @@
-//! `anima device watch`: one line for each status change of any device, or of one (K1
-//! `deviceStatusChanged`).
+//! `anima device watch` (K1 `deviceStatusChanged`).
 
 use graphql_client::GraphQLQuery;
 
@@ -29,12 +28,8 @@ pub struct WatchArgs {
 }
 
 impl WatchArgs {
-    /// Prints each change as a line (time, device ID, status) or, with `--json`, as one K1
-    /// `DeviceStatusChange` object per line.
-    ///
     /// # Errors
-    /// [`Failure`] for an unknown device, or when the hub refuses the token or the connection
-    /// is lost.
+    /// [`Failure`] for an unknown device, a refused token or a lost connection.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let device_id = match &self.device {

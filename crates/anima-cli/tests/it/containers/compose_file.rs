@@ -1,5 +1,4 @@
-//! `anima containers check-file` and `from-run`, and the MCP tools `anima_compose_check` and
-//! `anima_compose_from_run`, against the scripted hub (HOST-022, CMD-030, MCP-004).
+//! The compose commands and MCP tools against the scripted hub (HOST-022, CMD-030, MCP-004).
 
 use serde_json::{Value, json};
 
@@ -10,7 +9,6 @@ use crate::mcp::session::{API_KEY, Desk, assert_protocol_only, hub};
 const TOKEN: &str = "login-token-for-compose-tests";
 const FILE: &str = "version: '3'\nservices:\n  web:\n    ports: 80\n";
 
-/// The K1 `composeFileCheck` answer for [`FILE`].
 fn found() -> Value {
     json!({ "composeFileCheck": { "syntaxValid": false, "cut": false, "problems": [
         { "code": "VERSION_OBSOLETE", "severity": "WARNING", "line": 1, "column": 1,
@@ -53,7 +51,6 @@ async fn anima(hub: &FakeHub, words: &[&str], input: &str) -> crate::kit::Outcom
         .await
 }
 
-/// The variables of the last request of `operation`.
 fn sent(hub: &FakeHub, operation: &str) -> Value {
     let seen = hub.seen();
     let last = seen.iter().rev().find(|seen| seen.operation == operation);

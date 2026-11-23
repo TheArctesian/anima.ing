@@ -1,4 +1,4 @@
-//! `anima model add`: reads a repository of an approved organisation (LIBM-004).
+//! `anima model add` (LIBM-004).
 
 use super::documents::{ModelAdd, model_add};
 use super::gib;
@@ -17,8 +17,6 @@ pub struct AddArgs {
 }
 
 impl AddArgs {
-    /// Prints the variants that the hub stored.
-    ///
     /// # Errors
     /// The hub's refusal, for example for an organisation that is not approved.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

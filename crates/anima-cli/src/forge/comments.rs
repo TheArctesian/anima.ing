@@ -39,7 +39,6 @@ pub struct CommentArgs {
     all_comments: bool,
 }
 
-/// The issue or pull request whose comments are read.
 #[derive(Debug)]
 pub struct Thread {
     pub repository: String,
@@ -48,8 +47,6 @@ pub struct Thread {
 }
 
 impl CommentArgs {
-    /// `value` with a `comments` connection added when `--comments` is given.
-    ///
     /// # Errors
     /// [`Failure`] for a hub refusal.
     pub async fn add_to(
@@ -87,7 +84,6 @@ impl CommentArgs {
     }
 }
 
-/// The comments of `value`, one line for each, after the fields of a record.
 pub fn lines(table: &mut Table, value: &Value) {
     let Some(connection) = value.get("comments") else {
         return;

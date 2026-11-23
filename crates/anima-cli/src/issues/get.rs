@@ -1,5 +1,3 @@
-//! `anima issue get <repository> <number>`.
-
 use super::documents::{IssueGet, issue_get};
 use super::render;
 use crate::failure::{Failure, Hint};
@@ -22,9 +20,6 @@ pub struct GetArgs {
 }
 
 impl GetArgs {
-    /// Prints the issue or, with `--json`, the K1 `Issue` (with a `comments` connection under
-    /// `--comments`).
-    ///
     /// # Errors
     /// [`Failure::NotFound`] when the repository has no such issue; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

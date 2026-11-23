@@ -1,5 +1,3 @@
-//! `anima check defaults set`: changes the values you name and keeps the others.
-
 use super::documents::{
     CheckDefaultsGet, CheckDefaultsSet, check_defaults_get, check_defaults_set,
 };
@@ -24,11 +22,8 @@ pub struct SetArgs {
 }
 
 impl SetArgs {
-    /// Prints the defaults as they are now.
-    ///
     /// # Errors
-    /// [`Failure::Usage`] when no value is given; the hub's refusal (VALIDATION for a value
-    /// out of bounds).
+    /// [`Failure::Usage`] when no value is given; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         if self.interval_seconds.is_none()
             && self.retries.is_none()

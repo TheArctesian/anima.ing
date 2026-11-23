@@ -1,5 +1,3 @@
-//! `anima source connect github --state` and `--cancel`: what the hub holds of the one attempt.
-
 use serde_json::Value;
 
 use super::attempt::Attempt;
@@ -11,8 +9,6 @@ use crate::failure::Failure;
 use crate::hub::Hub;
 use crate::invocation::Invocation;
 
-/// Prints the attempt, or that none is in progress.
-///
 /// # Errors
 /// The hub's refusal.
 pub async fn show(hub: &Hub, invocation: &Invocation) -> Result<(), Failure> {
@@ -23,8 +19,6 @@ pub async fn show(hub: &Hub, invocation: &Invocation) -> Result<(), Failure> {
     }
 }
 
-/// Cancels the open attempt and prints it; says so when none is open.
-///
 /// # Errors
 /// The hub's refusal (`CONFLICT` when it connected in the meantime).
 pub async fn cancel(hub: &Hub, invocation: &Invocation) -> Result<(), Failure> {
@@ -52,7 +46,6 @@ async fn current(hub: &Hub) -> Result<Option<(Attempt, Value)>, Failure> {
         .transpose()
 }
 
-/// `value` with `--json`, else `words`, on standard output.
 fn print(invocation: &Invocation, value: &Value, words: &str) -> Result<(), Failure> {
     if invocation.output.json() {
         invocation.output.raw(value)

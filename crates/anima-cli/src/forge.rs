@@ -1,5 +1,5 @@
-//! What `anima pr`, `anima issue`, `anima workflow`, `anima code` and `anima repo` share: the rows a repository on GitHub
-//! gives (PRJ-030 to PRJ-035). The hub reads them live; the command line only asks and prints.
+//! GitHub repository nouns (PRJ-030 to PRJ-035): the hub reads GitHub; the command line only
+//! asks and prints.
 
 pub mod body;
 pub mod comments;
@@ -41,8 +41,6 @@ pub enum ForgeCommand {
 }
 
 impl ForgeCommand {
-    /// Runs the command.
-    ///
     /// # Errors
     /// [`Failure`] for an unknown repository, pull request, issue or run, or a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -56,7 +54,6 @@ impl ForgeCommand {
     }
 }
 
-/// `--state`: which pull requests or issues to list.
 #[derive(Clone, Copy, Debug, Default, clap::ValueEnum)]
 pub enum StateArg {
     #[default]
@@ -66,7 +63,6 @@ pub enum StateArg {
 }
 
 impl StateArg {
-    /// The word as `--state` takes it, for the next-page hint.
     #[must_use]
     pub const fn word(self) -> &'static str {
         match self {

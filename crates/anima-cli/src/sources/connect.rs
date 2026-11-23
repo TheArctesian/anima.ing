@@ -1,10 +1,4 @@
-//! `anima source connect github`: connects a GitHub account. Without `--from-file` the hub
-//! makes the GitHub App and the operator presses Create and Install on GitHub (PRJ-039,
-//! PRJ-040, PRJ-041); the command prints each phase. With `--from-file` the App's private key
-//! is the secret: it comes from a private file (mode 0600) or from standard input, never from
-//! an argument, and is wiped after the request. It is never printed (CMD-025, CMD-014,
-//! PRJ-018). The one-time link is shown once, at a terminal, and is in no other output
-//! (MCP-004, LOG-007).
+//! The App's private key comes from a 0600 file or standard input, is wiped after the request and is never printed (CMD-025, CMD-014, PRJ-018).
 
 pub mod attempt;
 pub mod dawarich;
@@ -71,7 +65,7 @@ pub struct GithubArgs {
     from_file: Option<PathBuf>,
 }
 
-/// Debug output of the arguments names the file, never the key it holds.
+/// Names the file, never the key it holds.
 impl std::fmt::Debug for GithubArgs {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter
@@ -91,8 +85,6 @@ fn digits(text: &str) -> Result<String, String> {
 }
 
 impl ConnectCommand {
-    /// Runs the command.
-    ///
     /// # Errors
     /// [`Failure`] for an unreadable or exposed key file or a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -104,14 +96,8 @@ impl ConnectCommand {
 }
 
 impl GithubArgs {
-    /// Connects GitHub and prints the account (or, with `--state` and `--cancel`, the attempt).
-    ///
     /// # Errors
-    /// [`Failure::Input`] for a key file that is missing, looser than 0600, empty or not text;
-    /// the hub's refusal (`CONFLICT` at start while an App waits for Install, `VALIDATION`
-    /// when GitHub refuses a key, `UNAVAILABLE` when GitHub cannot be reached, `FORBIDDEN` for
-    /// an API key); [`Failure::Ended`] when the attempt failed or was cancelled (exit 1, or 7
-    /// for `GITHUB_UNREACHABLE`) and for Ctrl-C (exit 130).
+    /// [`Failure::Input`] for a bad key file; the hub's refusal; [`Failure::Ended`] for a failed or cancelled attempt and for Ctrl-C.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         if self.from_file.is_some() {
             return self.with_key_file(invocation).await;
@@ -126,7 +112,6 @@ impl GithubArgs {
         self.in_three_presses(&hub, invocation).await
     }
 
-    /// The hub checks the key with GitHub before it stores it.
     async fn with_key_file(self, invocation: &Invocation) -> Result<(), Failure> {
         let key = from_file_only(
             invocation.prompter,

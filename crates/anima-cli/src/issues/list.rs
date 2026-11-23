@@ -1,4 +1,4 @@
-//! `anima issue list <repository>`: issues, newest updated first, with pages (CMD-026).
+//! `anima issue list` (CMD-026).
 
 use super::documents::{IssueList, issue_list};
 use super::render;
@@ -44,8 +44,6 @@ const fn state(arg: StateArg) -> issue_list::OpenOrClosed {
 }
 
 impl ListArgs {
-    /// Prints the issues as a table or, with `--json`, as the K1 `IssueConnection`.
-    ///
     /// # Errors
     /// [`Failure`] for an unknown repository or a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

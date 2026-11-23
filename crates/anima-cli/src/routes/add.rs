@@ -1,8 +1,5 @@
-//! `anima route add <name>`: adds a route of an application (a web name, a redirect, or a
-//! stream of TCP or UDP; private unless `--access public`), and prints the TXT record that
-//! proves the name. A login token only, with a second factor on the account
-//! (SF-232). A stream needs a port of the hub (`--listen-port`) and, when public, a
-//! protocol with its own sign-in and TLS (`--protocol`): the hub never picks a port by itself.
+//! `anima route add`: a login token only, with a second factor on the account (SF-232); a public
+//! stream needs a protocol with its own sign-in and TLS, and the hub never picks a port by itself.
 
 use super::documents::{RouteAdd, route_add};
 use super::shown;
@@ -57,8 +54,6 @@ enum AccessArg {
 }
 
 impl AddArgs {
-    /// Asks for confirmation (`--yes` skips it), adds the route and prints it.
-    ///
     /// # Errors
     /// [`Failure::Usage`] when it cannot ask; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

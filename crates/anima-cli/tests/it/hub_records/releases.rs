@@ -1,4 +1,4 @@
-//! `anima release` against the scripted hub (BLD-001, BLD-048, CMD-024, CMD-026).
+//! BLD-001, BLD-048, CMD-024, CMD-026.
 
 use serde_json::{Value, json};
 

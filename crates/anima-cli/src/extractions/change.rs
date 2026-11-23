@@ -1,6 +1,4 @@
-//! `anima extraction propose`, `confirm` and `reject`. The fields are a JSON list, as K1
-//! `ExtractedFieldInput` writes them: `[{"name":"title","type":"TEXT","value":"Emma",
-//! "confidence":0.8}]`; a confidence left out or null is unknown, not certain (VIS-004).
+//! `--fields` is a JSON list of K1 `ExtractedFieldInput`; a missing confidence is unknown (VIS-004).
 
 use serde::de::DeserializeOwned;
 
@@ -57,7 +55,7 @@ pub struct RejectArgs {
     id: String,
 }
 
-/// The fields of `--fields`. A refusal names the flag, never the text.
+/// A refusal names the flag, never the text.
 ///
 /// # Errors
 /// [`Failure::Usage`] when the text is not a JSON list of fields.
@@ -70,8 +68,6 @@ pub fn parsed_fields<T: DeserializeOwned>(text: &str) -> Result<Vec<T>, Failure>
 }
 
 impl ProposeArgs {
-    /// Stores the proposal and prints it.
-    ///
     /// # Errors
     /// [`Failure::Usage`] for fields that are not JSON; the hub's refusal (`VALIDATION`).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -98,11 +94,8 @@ impl ProposeArgs {
 }
 
 impl ConfirmArgs {
-    /// Confirms the proposal with the fields given and prints it.
-    ///
     /// # Errors
-    /// [`Failure::Usage`] for fields that are not JSON; the hub's refusal (`CONFLICT` for a
-    /// decided proposal).
+    /// [`Failure::Usage`] for fields that are not JSON; the hub's refusal (`CONFLICT`).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let fields = parsed_fields(&self.fields)?;
         let hub = invocation.hub()?;
@@ -119,8 +112,6 @@ impl ConfirmArgs {
 }
 
 impl RejectArgs {
-    /// Rejects the proposal and prints it.
-    ///
     /// # Errors
     /// The hub's refusal (`NOT_FOUND`, `CONFLICT` for a decided proposal).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

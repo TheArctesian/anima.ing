@@ -1,5 +1,3 @@
-//! `anima model show`: one model with its variants, files and SHA-256 values.
-
 use super::documents::{ModelShow, model_show};
 use super::gib;
 use crate::failure::{Failure, Hint};
@@ -14,8 +12,6 @@ pub struct ShowArgs {
 }
 
 impl ShowArgs {
-    /// Prints the model as a record and a line for each file, or with `--json` the model.
-    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown model; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

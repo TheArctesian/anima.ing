@@ -1,4 +1,4 @@
-//! `anima release create`: starts a release with one build job for each target (BLD-001).
+//! `anima release create` (BLD-001).
 
 use super::documents::{ReleaseCreate, release_create};
 use super::list::job_summary;
@@ -32,7 +32,7 @@ enum TargetArg {
 }
 
 impl CreateArgs {
-    /// Prints the new release or, with `--json`, the K1 `Release`.
+    /// With `--json`, prints the K1 `Release`.
     ///
     /// # Errors
     /// [`Failure`] for a hub refusal (a version that exists, a commit that is not there).

@@ -1,5 +1,4 @@
-//! The project group tools of the `projects` set (PRO-059 to PRO-063). A group is the
-//! operator's own label; its name is his text, not text from GitHub.
+//! PRO-059 to PRO-063; a group name is the operator's text, not text from GitHub.
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
@@ -66,7 +65,6 @@ pub struct SetInput {
     group: Option<String>,
 }
 
-/// A missing group or project as a refusal the agent can act on.
 fn lookup(failure: Failure) -> ToolError {
     match failure {
         Failure::NotFound { message, .. } => ToolError::Refused(format!(
@@ -123,8 +121,6 @@ impl GroupTool {
         }
     }
 
-    /// Runs the tool.
-    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments, an unknown group or project, or the hub's refusal.
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {

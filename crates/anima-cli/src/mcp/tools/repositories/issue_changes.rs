@@ -1,6 +1,5 @@
-//! `anima_issue_create`, `anima_issue_comment_add` and `anima_issue_set_open`: the issue changes
-//! a write key may make (PRJ-028, OD-E14). Change tools, so `off` until the operator allows
-//! them (MCP-002). The answers leave out the body the agent sent.
+//! The issue changes a write key may make (PRJ-028, OD-E14); they are `off` until the operator
+//! allows them (MCP-002).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
@@ -103,8 +102,7 @@ pub fn set_open_definition() -> Definition {
     .returns(&[("issue", "object", "The issue after the change.")])
 }
 
-/// The hub's limits (K-E1 `NewIssueInput`, `addIssueComment`), checked here too so text over
-/// them is refused before any request, in fixed words that never repeat it.
+/// The hub's limits (K-E1), checked before any request so a refusal never repeats the text.
 const TITLE_LONGEST: usize = 256;
 const BODY_LONGEST: usize = 65_536;
 const LABELS_MOST: usize = 20;
@@ -122,7 +120,6 @@ fn over_limit(rule: &str) -> ToolError {
     ))
 }
 
-/// The new issue's text within the hub's limits.
 fn issue_fits(input: &CreateInput) -> Result<(), ToolError> {
     if !bounded(&input.title, 1, TITLE_LONGEST) {
         return Err(over_limit("title must be 1 to 256 characters"));

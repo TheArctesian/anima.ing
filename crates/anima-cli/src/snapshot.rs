@@ -1,6 +1,5 @@
-//! `anima snapshot`: a commit of the working tree on a scratch ref of the forge, so a second
-//! machine can build changes that are not committed (JOB-017, JOB-018). It runs git on this
-//! computer and makes no hub request, so it needs no context and no sign-in.
+//! `anima snapshot` runs git on this computer and makes no hub request, so it needs no sign-in
+//! (JOB-017, JOB-018).
 
 mod forge;
 mod git;
@@ -50,7 +49,6 @@ pub struct RemoteArg {
     name: String,
 }
 
-/// Why a snapshot command failed.
 #[derive(Debug, thiserror::Error)]
 pub enum SnapshotError {
     #[error("This folder is not inside a git working tree.")]
@@ -140,7 +138,6 @@ impl From<SnapshotError> for Failure {
     }
 }
 
-/// A pushed snapshot, as `snapshot push --json` prints it.
 #[derive(Serialize)]
 struct Pushed<'a> {
     #[serde(rename = "ref")]
@@ -152,7 +149,6 @@ struct Pushed<'a> {
     gitlinks: &'a [String],
 }
 
-/// A deleted scratch ref, as `snapshot delete --json` prints it.
 #[derive(Serialize)]
 struct Deleted<'a> {
     #[serde(rename = "ref")]
@@ -162,8 +158,6 @@ struct Deleted<'a> {
 }
 
 impl SnapshotCommand {
-    /// Runs the command in the folder the program was started in.
-    ///
     /// # Errors
     /// [`Failure`] from a [`SnapshotError`], a declined confirmation or the output.
     pub fn run(self, invocation: &Invocation) -> Result<(), Failure> {

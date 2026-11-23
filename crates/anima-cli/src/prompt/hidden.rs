@@ -1,7 +1,4 @@
-//! Questions with the terminal's echo off from before the first one is shown until after the
-//! last answer (CMD-010). Keys typed ahead are never echoed by the terminal: they wait in its
-//! input queue and become the next answer. An answer that may be seen is shown by this program
-//! as it is typed; a secret shows nothing at all.
+//! Echo stays off from before the first question until after the last answer (CMD-010).
 
 use std::fs::File;
 use std::io::{self, Read as _, Write};
@@ -17,21 +14,15 @@ use super::{MAX_ANSWER, prompt_text, terminal_failure};
 use crate::failure::Failure;
 use crate::raw_mode::RawMode;
 
-/// Whether a hidden question is on screen, so that a signal ends its line before the exit.
 static ON_SCREEN: AtomicBool = AtomicBool::new(false);
 static SIGNALS: Once = Once::new();
 
-/// The terminal with echo off while it lives; dropping it restores the previous mode.
 pub struct Hidden {
     keys: Keys,
     raw: Option<RawMode>,
 }
 
 impl Hidden {
-    /// Turns echo off; nothing has been shown yet.
-    ///
-    /// # Errors
-    /// The OS error when the terminal cannot change mode.
     pub(super) fn start() -> io::Result<Self> {
         watch_signals();
         let raw = RawMode::enter()?;
@@ -42,18 +33,14 @@ impl Hidden {
         })
     }
 
-    /// Asks for `what`, showing the answer as it is typed; the answer without surrounding
-    /// spaces.
-    ///
     /// # Errors
-    /// [`Failure::Cancelled`] for Ctrl-C; [`Failure::Input`] for an answer over the limit, the
-    /// end of input, or a terminal that fails.
+    /// [`Failure::Cancelled`] for Ctrl-C; [`Failure::Input`] for a long answer or a failed terminal.
     pub fn ask(&mut self, what: &str) -> Result<String, Failure> {
         let answer = self.line(&prompt_text(what), true)?;
         Ok(answer.trim().to_owned())
     }
 
-    /// Asks for the secret `what`, showing nothing as it is typed.
+    /// Shows nothing as the secret is typed.
     ///
     /// # Errors
     /// As [`Hidden::ask`].
@@ -84,8 +71,6 @@ impl Hidden {
         }
     }
 
-    /// Reads keys into `line` until it ends. With the `shown` prompt, keeps the answer on
-    /// screen after it; without, shows nothing.
     fn read(
         &mut self,
         line: &mut Line,
@@ -128,8 +113,7 @@ impl Drop for Hidden {
     }
 }
 
-/// Where questions are shown: the controlling terminal, so that neither a question nor a
-/// shown answer lands in a redirected standard error; standard error when there is none.
+/// The controlling terminal, so that no question or shown answer lands in a redirected standard error.
 fn screen() -> Box<dyn Write> {
     match File::options()
         .write(true)
@@ -140,8 +124,6 @@ fn screen() -> Box<dyn Write> {
     }
 }
 
-/// Shows a change to a shown answer: the `added` character is printed; any other edit
-/// redraws the line. The answer holds no control characters (the keys never give one).
 fn show(screen: &mut impl Write, prompt: &str, text: &str, added: Option<char>) -> io::Result<()> {
     match added {
         Some(character) => write!(screen, "{character}")?,
@@ -150,11 +132,8 @@ fn show(screen: &mut impl Write, prompt: &str, text: &str, added: Option<char>) 
     screen.flush()
 }
 
-/// Makes `SIGINT`, `SIGTERM` and `SIGHUP` restore the terminal, then end the program with 128
-/// plus the signal's number, as the default action would have. In raw mode the keys send no
-/// signal, so these come from another program. They are watched on a thread of their own: a
-/// question blocks the runtime's only thread while it waits for a key. Returns once the
-/// signals are watched.
+/// Exits with 128 plus the signal's number, as the default action does. The signals are
+/// watched on a thread of their own because a question blocks the runtime's only thread.
 fn watch_signals() {
     SIGNALS.call_once(|| {
         let (ready, watched) = std::sync::mpsc::sync_channel::<()>(1);
@@ -181,8 +160,6 @@ fn watch_signals() {
     });
 }
 
-/// The number of the first of `SIGINT`, `SIGTERM` and `SIGHUP`; says on `ready` once they
-/// are watched. Never resolves when they cannot be.
 #[cfg(unix)]
 async fn first_signal(ready: std::sync::mpsc::SyncSender<()>) -> i32 {
     let kinds = (

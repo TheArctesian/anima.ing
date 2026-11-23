@@ -1,5 +1,4 @@
-//! `anima compute`: model compute on the devices. Today the device policy of each node
-//! (CAP-010 to CAP-012, CMD-030); the switch "takes work" is not here (USE-004, OD-C8).
+//! `anima compute` (CAP-010 to CAP-012); the switch "takes work" is not here (USE-004, OD-C8).
 
 pub mod documents;
 pub mod set;
@@ -26,8 +25,6 @@ pub enum PolicyCommand {
 }
 
 impl ComputeCommand {
-    /// Runs the command.
-    ///
     /// # Errors
     /// [`Failure`] for a refusal or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

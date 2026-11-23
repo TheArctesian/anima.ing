@@ -1,6 +1,3 @@
-//! `anima source watch [<id-or-label>]`: one line for each change of a source account (K1
-//! `sourceAccountChanged`).
-
 use super::account::resolve;
 use super::documents::{SourceAccountChanged, source_account_changed};
 use super::render;
@@ -19,8 +16,7 @@ impl WatchArgs {
     /// Prints each change as a line or, with `--json`, as one K1 `SourceAccount` per line.
     ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown account; [`Failure`] when the hub refuses the token
-    /// or the connection is lost.
+    /// [`Failure::NotFound`] for an unknown account; [`Failure`] for a refused token or a lost connection.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let id = match &self.account {

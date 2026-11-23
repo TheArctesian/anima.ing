@@ -1,5 +1,4 @@
-//! `anima api`: sends a GraphQL document the operator wrote and prints the hub's whole answer.
-//! The document is not checked against K1 here; the hub checks it.
+//! `anima api`: the document is not checked against K1 here; the hub checks it.
 
 use std::path::PathBuf;
 
@@ -17,8 +16,6 @@ pub struct ApiArgs {
 }
 
 impl ApiArgs {
-    /// Sends the document and prints the answer; a GraphQL error in it sets the exit code.
-    ///
     /// # Errors
     /// [`Failure`] for unreadable input, a failed request or the answer's first error.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

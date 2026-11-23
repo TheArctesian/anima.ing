@@ -1,4 +1,4 @@
-//! `anima release cancel <job id>`: stops a build job that has not finished (BLD-010).
+//! `anima release cancel` (BLD-010).
 
 use super::documents::{ReleaseCancel, release_cancel};
 use crate::failure::Failure;
@@ -13,8 +13,6 @@ pub struct CancelArgs {
 }
 
 impl CancelArgs {
-    /// Asks for confirmation (`--yes`), cancels the job and prints it.
-    ///
     /// # Errors
     /// [`Failure`] for a hub refusal: an unknown job, or one that already ended.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

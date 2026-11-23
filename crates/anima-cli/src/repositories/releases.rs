@@ -1,5 +1,4 @@
-//! `anima repo releases <repository>`: the releases on GitHub, newest first, with pages
-//! (CMD-026).
+//! `anima repo releases`: releases on GitHub, newest first, with pages (CMD-026).
 
 use super::query::{History, Query};
 use super::render;
@@ -30,9 +29,6 @@ pub struct ReleasesArgs {
 }
 
 impl ReleasesArgs {
-    /// Prints the releases as a table or, with `--json`, as the K1
-    /// `RepositoryReleaseConnection`.
-    ///
     /// # Errors
     /// [`Failure`] for an unknown repository or a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

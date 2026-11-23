@@ -12,12 +12,10 @@ pub struct RevokeArgs {
 }
 
 impl RevokeArgs {
-    /// Asks to confirm (or takes `--yes`, CMD-024), revokes the device and prints how many
-    /// streams closed.
+    /// Asks to confirm, or takes `--yes` (CMD-024).
     ///
     /// # Errors
-    /// [`Failure::Usage`] without a confirmation when no one can be asked; the hub's refusal
-    /// (`NOT_FOUND` for a key the link does not list, `FORBIDDEN` for an API key).
+    /// [`Failure::Usage`] without a confirmation when no one can be asked; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         invocation

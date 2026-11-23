@@ -1,5 +1,4 @@
-//! `anima issue create`, `comment`, `close` and `reopen` against the scripted hub (PRJ-028,
-//! OD-E14, CMD-021, CMD-025). The text of a body is sent, never printed back (LOG-007).
+//! `anima issue` changes (PRJ-028, OD-E14, CMD-021, CMD-025, LOG-007).
 
 use serde_json::{Value, json};
 
@@ -14,7 +13,6 @@ fn body() -> String {
     format!("Steps to reproduce:\n\n1. {MARK}\n")
 }
 
-/// Runs `anima <args> --hub <origin>` with `input` on standard input.
 async fn with_input(hub: &FakeHub, args: &[&str], input: &str) -> Outcome {
     let mut all = args.to_vec();
     all.extend(["--hub", &hub.origin]);

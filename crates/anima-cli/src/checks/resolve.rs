@@ -1,5 +1,4 @@
-//! A check given as an ID or as an exact name. A name is only unique on its device, so a name
-//! needs `--device`.
+//! A check name is unique only on its device, so a name needs `--device`.
 
 use graphql_client::GraphQLQuery;
 
@@ -27,20 +26,16 @@ pub struct CheckRef {
 }
 
 impl CheckRef {
-    /// What the operator typed, for questions and messages.
     #[must_use]
     pub fn label(&self) -> &str {
         &self.check
     }
 
-    /// The device the operator named, if any.
     #[must_use]
     pub fn device(&self) -> Option<&str> {
         self.device.as_deref()
     }
 
-    /// The check's ID, as [`find`] returns it.
-    ///
     /// # Errors
     /// As [`find`].
     pub async fn resolve(&self, hub: &Hub) -> Result<String, Failure> {
@@ -48,8 +43,6 @@ impl CheckRef {
     }
 }
 
-/// The ID `check` names: an ID as it is, or the one check of `device` with exactly that name.
-///
 /// # Errors
 /// [`Failure::Usage`] for a name without a device; [`Failure::NotFound`] when the device has
 /// no check of that name; the hub's refusal.

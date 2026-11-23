@@ -1,6 +1,3 @@
-//! `anima location list [--from <time>] [--to <time>] [--first <n>]`. The hub writes one audit
-//! entry for each read.
-
 use chrono::Utc;
 
 use super::documents::{LocationList, location_list};
@@ -25,7 +22,7 @@ pub struct ListArgs {
 }
 
 impl ListArgs {
-    /// Prints the samples as a table or, with `--json`, as the K1 `LocationSample` list.
+    /// With `--json`, prints the K1 `LocationSample` list.
     ///
     /// # Errors
     /// [`Failure::Usage`] for an unusable `--from` or `--to`; the hub's refusal.
@@ -48,7 +45,6 @@ impl ListArgs {
     }
 }
 
-/// A number with `places` decimals, or `?` when the provider gave none: unknown, not zero.
 #[must_use]
 pub fn number(value: Option<f64>, places: usize) -> String {
     value.map_or_else(|| "?".to_owned(), |value| format!("{value:.places$}"))

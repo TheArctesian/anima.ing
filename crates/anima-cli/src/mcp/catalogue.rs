@@ -1,5 +1,4 @@
-//! The words of the tool catalogue: the tool sets, what a tool needs from the token, and its
-//! kind (MCP-002, MCP-003).
+//! MCP-002, MCP-003.
 
 use serde::{Deserialize, Serialize};
 
@@ -28,19 +27,16 @@ pub enum ToolSet {
     Agents,
 }
 
-/// What a tool needs from the token.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Access {
-    /// Reads only.
     Read,
-    /// Changes something; a read-scope key gets FORBIDDEN from the hub.
+    /// A read-scope key gets FORBIDDEN from the hub.
     Write,
-    /// Changes something an API key may never do (INT-003, "L" in the plan's table); listed
-    /// only for a login token (MCP-003).
+    /// An API key may never do it (INT-003); listed only for a login token (MCP-003).
     Login,
 }
 
-/// Whether a tool reads or changes things; each kind has its own default state (MCP-002).
+/// Each kind has its own default state (MCP-002).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]
 #[serde(rename_all = "lowercase")]
 pub enum Kind {
@@ -97,7 +93,6 @@ impl ToolSet {
         Self::Agents,
     ];
 
-    /// The set's name as `--toolsets` takes it.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
@@ -123,14 +118,12 @@ impl ToolSet {
         }
     }
 
-    /// The set named `name`, as [`ToolSet::name`] writes it.
     #[must_use]
     pub fn named(name: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|set| set.name() == name)
     }
 }
 
-/// `names` joined with commas; `none` when empty.
 #[must_use]
 pub fn joined<S: AsRef<str>>(names: &[S]) -> String {
     if names.is_empty() {
@@ -143,7 +136,6 @@ pub fn joined<S: AsRef<str>>(names: &[S]) -> String {
         .join(", ")
 }
 
-/// `sets` by name, joined with commas; `none` when empty.
 #[must_use]
 pub fn names(sets: &[ToolSet]) -> String {
     joined(&sets.iter().map(|set| set.name()).collect::<Vec<_>>())

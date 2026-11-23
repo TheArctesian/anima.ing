@@ -1,4 +1,4 @@
-//! `anima project leave-out <repository>` and `anima project restore <repository>` (PRJ-002).
+//! PRJ-002.
 
 use super::documents::{
     RepositoryLeaveOut, RepositoryRestore, repository_leave_out, repository_restore,
@@ -21,8 +21,6 @@ pub struct RestoreArgs {
 }
 
 impl LeaveOutArgs {
-    /// Leaves the repository out and prints its project.
-    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown repository; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -38,8 +36,6 @@ impl LeaveOutArgs {
 }
 
 impl RestoreArgs {
-    /// Restores the repository and prints its project.
-    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown repository; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

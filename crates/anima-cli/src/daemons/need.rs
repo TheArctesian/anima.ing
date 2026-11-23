@@ -1,6 +1,4 @@
-//! `anima daemon need`: says what a device's daemon waits for from a person at the device, or
-//! that it waits for nothing. The desktop app of that computer says it by itself; the next
-//! batch the hub accepts from the daemon clears it (R-364).
+//! `anima daemon need`; the next batch the hub accepts from the daemon clears it (R-364).
 
 use super::documents::{DaemonNeedSet, daemon_need_set};
 use crate::devices::get::resolve;
@@ -9,7 +7,6 @@ use crate::invocation::Invocation;
 use crate::output::Table;
 use crate::output::text::enum_name;
 
-/// What the daemon waits for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum)]
 pub enum Need {
     /// macOS waits for the person to allow the daemon in the Keychain.
@@ -28,11 +25,8 @@ pub struct NeedArgs {
 }
 
 impl NeedArgs {
-    /// Sets or clears the need and prints it.
-    ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown device or one with no daemon token; the hub's
-    /// refusal.
+    /// [`Failure::NotFound`] for an unknown device or one with no daemon token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let device_id = resolve(&hub, &self.device).await?;
@@ -57,7 +51,6 @@ impl NeedArgs {
     }
 }
 
-/// What the daemon waits for in words, from the K1 name of the `DaemonNeed`.
 #[must_use]
 pub fn need_words(name: &str) -> &'static str {
     match name {

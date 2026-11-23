@@ -1,5 +1,3 @@
-//! The change tools of the `checks` set.
-
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
 use serde::Deserialize;

@@ -1,7 +1,5 @@
-//! `anima builder enrol`: records this computer's VPN address as a builder and shows the builder
-//! token, the one secret this command exists to show (BLD-023). The token goes to standard
-//! output once, or with `--to-file` to a `0600` file; the answer derives neither `Debug` nor
-//! `Serialize`.
+//! `anima builder enrol` shows the builder token, the one secret it exists to show (BLD-023): once
+//! on standard output or in a `0600` file, and the answer derives neither `Debug` nor `Serialize`.
 
 use serde_json::json;
 use zeroize::Zeroizing;
@@ -41,8 +39,6 @@ enum ArchArg {
 }
 
 impl EnrolArgs {
-    /// Enrols the builder (from this request's address) and shows its token once.
-    ///
     /// # Errors
     /// [`Failure`] for a hub refusal (a name in use, not a VPN address) or an unwritable file.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

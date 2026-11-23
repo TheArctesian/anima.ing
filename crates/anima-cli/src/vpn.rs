@@ -27,8 +27,6 @@ pub enum VpnCommand {
 }
 
 impl VpnCommand {
-    /// Runs the command.
-    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown site or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

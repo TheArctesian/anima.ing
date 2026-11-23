@@ -1,5 +1,4 @@
-//! `anima key create`: makes an API key and prints its secret. This is the one place the
-//! secret is shown (INT-003); the hub keeps only its hash.
+//! `anima key create`: the one place an API key's secret is shown (INT-003).
 
 use chrono::Utc;
 use serde_json::json;
@@ -43,12 +42,11 @@ enum MadeForArg {
 }
 
 impl CreateArgs {
-    /// Shows the secret alone on standard output, with the key and the note that the secret is
-    /// shown one time on standard error. With `--json`, the K1 `ApiKeyCreated`.
+    /// The secret goes alone to standard output; the note that it shows one time goes to standard
+    /// error.
     ///
     /// # Errors
-    /// [`Failure::Usage`] for an unusable `--expires`; the hub's refusal (`VALIDATION`,
-    /// `CONFLICT` for a name in use, `FORBIDDEN` for an API key).
+    /// [`Failure::Usage`] for an unusable `--expires`; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let expires_at =
             expiry::parse(&self.expires, Utc::now()).map_err(|error| Failure::Usage {

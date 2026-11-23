@@ -1,5 +1,4 @@
-//! `anima vpn register <auth id>` and `anima vpn renew <name>`: both answer with the node the
-//! broker registered or renewed (vpn.md 6B and Section 7).
+//! vpn.md 6B and Section 7.
 
 use super::documents::{VpnRegister, VpnRenew, vpn_register, vpn_renew};
 use crate::failure::Failure;
@@ -19,8 +18,6 @@ pub struct RenewArgs {
 }
 
 impl RegisterArgs {
-    /// Registers the computer and prints its name, address and key expiry.
-    ///
     /// # Errors
     /// [`Failure`] for a hub refusal (an unknown auth ID, the broker's limits).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -37,8 +34,6 @@ impl RegisterArgs {
 }
 
 impl RenewArgs {
-    /// Sets a new key expiry and prints the node.
-    ///
     /// # Errors
     /// [`Failure`] for a hub refusal (an unknown or tagged node).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

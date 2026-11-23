@@ -1,7 +1,4 @@
-//! The device: an SSH server on loopback, a `russh` server in the test. It presents a host key,
-//! accepts one user and password, runs a tiny shell (`echo <words>` and `exit`) on a terminal
-//! channel, serves the `sftp` subsystem over a temporary directory, and counts every
-//! authentication attempt, so a test can show the hub sent none (SEC-011).
+//! The device counts every authentication attempt, so a test can show the hub sent none (SEC-011).
 
 use std::future::ready;
 use std::sync::Arc;
@@ -18,7 +15,6 @@ use super::sftp::Disk;
 pub const USER: &str = "operator";
 pub const PASSWORD: &str = "device password for the e2e";
 
-/// A running device: its port, its directory and how many sign-ins it was asked for.
 pub struct Device {
     pub port: u16,
     pub root: TempDir,
@@ -26,7 +22,6 @@ pub struct Device {
 }
 
 impl Device {
-    /// Starts a device presenting the Ed25519 key made from `seed`.
     pub async fn start(seed: u8) -> Self {
         let key = PrivateKey::from(Ed25519Keypair::from_seed(&[seed; 32]));
         let config = Arc::new(server::Config {
@@ -57,26 +52,21 @@ impl Device {
         }
     }
 
-    /// How many authentication attempts reached the device.
     pub fn attempts(&self) -> usize {
         self.attempts.load(Ordering::SeqCst)
     }
 }
 
-/// Serves one SSH connection until it ends.
 async fn serve(config: Arc<server::Config>, stream: TcpStream, connection: Connection) {
     if let Ok(session) = server::run_stream(config, stream, connection).await {
         let _ended = session.await;
     }
 }
 
-/// The device's side of one connection.
 struct Connection {
     disk: Disk,
     attempts: Arc<AtomicUsize>,
-    /// Session channels not yet given a subsystem.
     pending: Vec<Channel<Msg>>,
-    /// The shell's input not yet ended by a line break.
     typed: Vec<u8>,
 }
 
@@ -90,7 +80,6 @@ impl Connection {
         }
     }
 
-    /// Runs one shell line: `echo` prints its words, `exit` ends the shell.
     fn run_line(line: &str, channel: ChannelId, session: &mut Session) -> Result<(), russh::Error> {
         let line = line.trim();
         if let Some(words) = line.strip_prefix("echo ") {

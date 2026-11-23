@@ -1,5 +1,3 @@
-//! The nouns for what the hub keeps and decides: its records and its settings.
-
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::{

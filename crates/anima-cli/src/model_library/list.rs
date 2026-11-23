@@ -1,4 +1,4 @@
-//! `anima model list`: the models of the library (SEL-005).
+//! SEL-005.
 
 use super::documents::{ModelList, model_list};
 use super::gib;
@@ -11,8 +11,6 @@ use crate::output::text::enum_name;
 pub struct ListArgs {}
 
 impl ListArgs {
-    /// Prints one row for each variant, or with `--json` the models.
-    ///
     /// # Errors
     /// The hub's refusal; a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

@@ -1,5 +1,4 @@
-//! `anima project`: the projects the hub found in the repositories of a source account, their
-//! resources, and which repositories it leaves out (PRJ-002, PRJ-016, PRO-004).
+//! `anima project`: projects found in source repositories (PRJ-002, PRJ-016, PRO-004).
 
 pub mod documents;
 pub mod get;
@@ -36,8 +35,6 @@ pub enum ProjectCommand {
 }
 
 impl ProjectCommand {
-    /// Runs the command.
-    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown project or repository, or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

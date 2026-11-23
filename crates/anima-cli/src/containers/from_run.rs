@@ -1,6 +1,4 @@
-//! `anima containers from-run -- docker run ...`: the Compose file of one `docker run` command
-//! (HOST-022). The hub reads the words of the command: it expands nothing, runs nothing and
-//! reaches no device. The file goes to standard output and the notes to standard error.
+//! The hub reads the words of the `docker run` command; it expands, runs and reaches nothing (HOST-022).
 
 use std::path::Path;
 
@@ -68,7 +66,6 @@ fn place_in_words(words: &[String], at: u32) -> Option<(usize, usize)> {
     places.get(index).or_else(|| places.last()).copied()
 }
 
-/// Why the hub did not convert the command, as a sentence.
 #[must_use]
 pub fn refusal_sentence(refusal: &Refusal) -> &'static str {
     match refusal {
@@ -120,7 +117,6 @@ pub fn refusal_sentence(refusal: &Refusal) -> &'static str {
     }
 }
 
-/// What a note tells the operator, as a sentence.
 #[must_use]
 pub fn note_sentence(note: &Note) -> &'static str {
     match note {
@@ -152,8 +148,7 @@ impl FromRunArgs {
     /// not converted on standard error; with `--json`, the K1 `ComposeFromDockerRun`.
     ///
     /// # Errors
-    /// [`Failure::Input`] when standard input cannot be read or is larger than 64 KiB; the
-    /// hub's refusal; [`Failure::Usage`] for a command that the hub did not convert.
+    /// [`Failure::Input`] for bad standard input; [`Failure::Usage`] for a refused command; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let words = (!self.command.is_empty()).then_some(self.command.as_slice());
         let command = if self.command.is_empty() {
@@ -192,8 +187,7 @@ impl FromRunArgs {
     }
 }
 
-/// The failure of a command that the hub did not convert. The place is in the words that the
-/// operator gave after `--`, or in the line read from standard input.
+/// The place of a refusal is in the words given after `--`, or in the line read from standard input.
 fn refused(converted: &Converted, words: Option<&[String]>) -> Failure {
     let sentence = converted
         .refusal

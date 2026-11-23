@@ -1,6 +1,4 @@
-//! `anima repo status set <repository> <sha>`: writes a commit status under an `anima/`
-//! context through the hub (PRO-010, PRJ-028). The hub refuses any other context, so Anima
-//! cannot write the status of another system.
+//! PRO-010, PRJ-028.
 
 use super::documents::{CommitStatusSet, commit_status_set};
 use crate::failure::Failure;
@@ -16,8 +14,6 @@ pub enum StatusCommand {
 }
 
 impl StatusCommand {
-    /// Runs the command.
-    ///
     /// # Errors
     /// [`Failure`] for an unknown repository or a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

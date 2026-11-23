@@ -1,5 +1,3 @@
-//! `anima device create`: a device at a site, with its access settings as flags.
-
 use serde_json::json;
 
 use super::documents::{DeviceCreate, device_create};
@@ -28,8 +26,6 @@ pub struct CreateArgs {
 }
 
 impl CreateArgs {
-    /// Prints the new device or, with `--json`, the K1 `Device` fields selected.
-    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown site; [`Failure::Usage`] for incomplete settings;
     /// the hub's refusal.

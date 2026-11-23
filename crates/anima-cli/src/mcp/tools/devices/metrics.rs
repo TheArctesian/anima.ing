@@ -1,5 +1,3 @@
-//! `anima_device_metrics`: a device's metric series, short by default.
-
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -78,7 +76,6 @@ pub async fn metrics(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, 
     ])))
 }
 
-/// One series with its last, lowest and highest value; `detail` keeps up to 60 points.
 fn summary(mut series: Value, detail: bool) -> Value {
     let points = series
         .as_object_mut()

@@ -1,4 +1,4 @@
-//! `anima route list`: the public names of one application, or of each (HOST-046).
+//! `anima route list` (HOST-046).
 
 use super::documents::{RouteList, route_list};
 use super::shown;
@@ -13,8 +13,6 @@ pub struct ListArgs {
 }
 
 impl ListArgs {
-    /// Prints a row for each route or, with `--json`, the K1 `ApplicationRoute` list.
-    ///
     /// # Errors
     /// The hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

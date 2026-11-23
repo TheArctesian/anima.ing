@@ -1,7 +1,4 @@
-//! `anima_catalogue_list`, `anima_catalogue_show` and `anima_catalogue_install`: the
-//! catalogue of applications that ships with Anima (HOST-047, task H38). An agent may ask for
-//! the install of an entry of the tested catalogue (R-234), never of a shell (OD-HOST-54); the
-//! hub refuses it with a fixed reason until task H6 exists, and reaches no machine.
+//! HOST-047; an agent may install an entry of the tested catalogue (R-234), never a shell (OD-HOST-54).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
@@ -40,7 +37,6 @@ pub struct InstallInput {
     digest: Option<String>,
 }
 
-/// The definition of a catalogue tool.
 pub fn definition_of(tool: DeviceTool) -> Definition {
     match tool {
         DeviceTool::CatalogueShow => show_definition(),
@@ -49,8 +45,6 @@ pub fn definition_of(tool: DeviceTool) -> Definition {
     }
 }
 
-/// Runs a catalogue tool.
-///
 /// # Errors
 /// [`ToolError`] for wrong arguments or the hub's refusal.
 pub async fn call(

@@ -1,5 +1,3 @@
-//! The `maintenance` tool set: windows in which devices, checks or tags raise no alert.
-
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -153,8 +151,6 @@ impl MaintenanceTool {
         }
     }
 
-    /// Runs the tool.
-    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments or the hub's refusal.
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {

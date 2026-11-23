@@ -1,5 +1,4 @@
-//! `anima agents`: the AI agent programs on the devices; today the use their daemons count
-//! (R-135; AIS-020, CMD-030) and their single sessions (AIS-025), and the sessions of this computer read as threads (THR-007).
+//! `anima agents`: the AI agent programs on the devices (R-135, AIS-020, AIS-025, CMD-030, THR-007).
 
 #[cfg(unix)]
 pub mod accounts;
@@ -120,8 +119,6 @@ pub enum AgentCommand {
 }
 
 impl AgentCommand {
-    /// Runs the command.
-    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown device or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -135,7 +132,6 @@ impl AgentCommand {
         }
     }
 
-    /// Runs a command that drives the runner of this computer.
     #[cfg(unix)]
     async fn run_local(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
@@ -152,7 +148,6 @@ impl AgentCommand {
         }
     }
 
-    /// Runs a command that only reads what the runner holds.
     #[cfg(unix)]
     async fn run_read(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
@@ -165,7 +160,6 @@ impl AgentCommand {
         }
     }
 
-    /// Runs a command that changes how a thread is listed (TH46, TH61).
     #[cfg(unix)]
     async fn run_listing(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {

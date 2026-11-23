@@ -1,5 +1,4 @@
-//! `anima audit list`: who changed what (K1 `audit`), newest first, in pages (CMD-026), with
-//! who did it: a person, an AI agent or the hub (LOG-012, LOG-020).
+//! `anima audit list` (K1 `audit`, CMD-026, LOG-012, LOG-020).
 
 use super::documents::{AuditList, audit_list};
 use crate::connection_page;
@@ -9,7 +8,7 @@ use crate::output::Table;
 use crate::output::text::enum_name;
 use crate::paging::{CommandLine, MAX_PAGE, fetch, note_next, page_size};
 
-/// What the list shows for an entry written before the hub recorded actor kinds (LOG-020).
+/// Shown for an entry written before the hub recorded actor kinds (LOG-020).
 pub const NOT_RECORDED: &str = "Not recorded";
 
 #[derive(Debug, clap::Args)]
@@ -28,7 +27,6 @@ pub struct ListArgs {
     all: bool,
 }
 
-/// K1 `ActorKind`.
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
 enum ActorArg {
     User,
@@ -37,8 +35,7 @@ enum ActorArg {
 }
 
 impl ListArgs {
-    /// Prints the entries as a table or, with `--json`, as the K1 `AuditConnection`, change
-    /// records included (the hub has already replaced secret values in them).
+    /// The hub has already replaced secret values in the change records that `--json` prints.
     ///
     /// # Errors
     /// [`Failure`] for a hub refusal.
@@ -99,9 +96,7 @@ fn table(entries: &audit_list::AuditListAudit) -> Table {
     table
 }
 
-/// The action and the target of a change the hub sent to GitHub, from its record (K-E1
-/// Section 13.6): the function, with the outcome when it was not done, and the repository by
-/// name with the issue, pull request, run or commit. `None` for every other entry.
+/// The action and target of a change the hub sent to GitHub (K-E1 Section 13.6); `None` otherwise.
 fn sent_to_github(change: &serde_json::Value) -> Option<(String, String)> {
     let word = |name: &str| change.get(name).and_then(serde_json::Value::as_str);
     let (function, repository, target) = (word("function")?, word("repository")?, word("target")?);

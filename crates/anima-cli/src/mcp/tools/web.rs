@@ -1,6 +1,4 @@
-//! The `web` tool set: a device's web interfaces (its admin pages). They are read through
-//! `anima_device_get`. A URL with a user name or password in it is refused (MCP-004), and no
-//! tool accepts a certificate (MCP-005).
+//! The `web` tool set: a device's web interfaces; no tool accepts a certificate (MCP-005).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
@@ -113,8 +111,6 @@ impl WebTool {
         }
     }
 
-    /// Runs the tool.
-    ///
     /// # Errors
     /// [`ToolError`] for wrong arguments, a URL with credentials or the hub's refusal.
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
@@ -161,7 +157,6 @@ async fn delete(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolE
     Ok(Value::Object(object([("deleted", json!(deleted))])))
 }
 
-/// The id and label of the device's interface with this id or exact label.
 async fn interface(hub: &Hub, device: &str, wanted: &str) -> Result<(String, String), ToolError> {
     let id = resolve(hub, device).await?;
     let interfaces = hub
@@ -188,8 +183,7 @@ async fn interface(hub: &Hub, device: &str, wanted: &str) -> Result<(String, Str
     }
 }
 
-/// Refuses `https://user:password@host`: the user name and password would be stored in the
-/// URL, outside the credential store (MCP-004).
+/// Credentials in a URL would be stored outside the credential store (MCP-004).
 fn without_credentials(url: &str) -> Result<(), ToolError> {
     let parsed = reqwest::Url::parse(url)
         .map_err(|_| ToolError::Refused("url is not a valid URL.".to_owned()))?;

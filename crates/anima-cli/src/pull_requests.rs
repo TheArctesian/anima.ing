@@ -23,11 +23,8 @@ pub enum PullRequestCommand {
 }
 
 impl PullRequestCommand {
-    /// Runs the command.
-    ///
     /// # Errors
-    /// [`Failure`] for an unknown repository or pull request, a declined confirmation, or a
-    /// hub refusal.
+    /// [`Failure`] for an unknown repository or pull request, a declined confirmation, or a refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
             Self::List(args) => args.run(invocation).await,

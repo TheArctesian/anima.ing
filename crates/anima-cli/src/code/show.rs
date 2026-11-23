@@ -1,5 +1,4 @@
-//! `anima code show <repository> <path>` (alias `cat`): the text of one file on standard
-//! output (PRJ-040). The hub refuses an API key (D-23), so this needs a login.
+//! `anima code show` (PRJ-040); the hub refuses an API key (D-23), so it needs a login.
 
 use super::documents::{CodeFileRead, code_file_read};
 use crate::failure::{Failure, exit};
@@ -19,13 +18,8 @@ pub struct ShowArgs {
 }
 
 impl ShowArgs {
-    /// Prints the file's text and nothing else (to a terminal with its control characters made
-    /// harmless) or, with `--json`, the whole K1 `CodeFile`, whatever its `content`.
-    ///
     /// # Errors
-    /// [`Failure::Ended`] with exit 1 for a file that is binary or too large (the message holds
-    /// its link on GitHub); the hub's refusal for an API key, a directory, a symbolic link or a
-    /// submodule.
+    /// [`Failure::Ended`] with exit 1 for a binary or too large file; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let variables = code_file_read::Variables {
@@ -35,7 +29,6 @@ impl ShowArgs {
         };
         let file = hub.run::<CodeFileRead>(variables).await?.code_file;
         if invocation.output.json() {
-            // With `--json` the object is printed whole and no table is made.
             return invocation.output.data(&file, |_| Table::record());
         }
         let cannot = |why: &str| Failure::Ended {

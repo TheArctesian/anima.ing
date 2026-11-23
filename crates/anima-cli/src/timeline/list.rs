@@ -76,7 +76,6 @@ impl CategoryArg {
 }
 
 impl ListArgs {
-    /// `anima timeline list` with the span and filters in use, for the next-page hint.
     fn next_page_command(&self, (from, to): (&str, &str)) -> CommandLine {
         CommandLine::new("anima timeline list", self.limit)
             .flag("--from", Some(from))
@@ -84,8 +83,6 @@ impl ListArgs {
             .choices("--category", &self.category)
     }
 
-    /// Prints the entries as a table or, with `--json`, as the K1 `EvidenceConnection`.
-    ///
     /// # Errors
     /// [`Failure::Usage`] for an unusable `--from` or `--to`; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

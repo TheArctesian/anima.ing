@@ -1,5 +1,4 @@
-//! `anima check get <id-or-name>`: one check, its kind and settings. The only command that
-//! shows a push check's path, which holds its token.
+//! The only command that shows a push check's path, which holds its token.
 
 use super::documents::{CheckGet, check_get};
 use crate::checks::resolve::CheckRef;
@@ -16,8 +15,6 @@ pub struct GetArgs {
 }
 
 impl GetArgs {
-    /// Prints the check as label and value lines or, with `--json`, as the K1 `Check`.
-    ///
     /// # Errors
     /// [`Failure::NotFound`] when no check has the ID or name; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

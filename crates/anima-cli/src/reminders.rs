@@ -1,5 +1,4 @@
 //! `anima reminder`: the reminder rules and their firings (K-E6 Section 6; REM-001 to REM-007).
-//! A rule has one trigger and can have one `unless`, each as JSON in the form of K-E6 Section 2.
 
 pub mod documents;
 pub mod firings;
@@ -40,11 +39,8 @@ pub enum ReminderCommand {
 }
 
 impl ReminderCommand {
-    /// Runs the command.
-    ///
     /// # Errors
-    /// [`Failure`] for a refusal (`VALIDATION` with the fields to fix, `NOT_FOUND`, `CONFLICT`
-    /// for a firing that was not sent), JSON that does not parse, or a missing token.
+    /// [`Failure`] for a refusal, JSON that does not parse, or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
             Self::List => rules::list(invocation).await,

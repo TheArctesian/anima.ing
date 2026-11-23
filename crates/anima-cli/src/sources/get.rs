@@ -1,4 +1,4 @@
-//! `anima source get <id-or-label>`: one account with its runs and their counts (ITG-003).
+//! `anima source get` (ITG-003).
 
 use super::account::resolve;
 use super::documents::{SourceAccounts, source_accounts};
@@ -16,8 +16,6 @@ pub struct GetArgs {
 }
 
 impl GetArgs {
-    /// Prints the account and its runs or, with `--json`, the K1 `SourceAccount` with `runs`.
-    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown account; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

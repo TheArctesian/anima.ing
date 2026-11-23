@@ -1,5 +1,3 @@
-//! `anima web list`: a device's web interfaces. Suggestions wait for `web suggestion`.
-
 use super::documents::{WebList, web_list};
 use super::shown::Shown;
 use crate::devices::get::resolve;
@@ -15,8 +13,7 @@ pub struct ListArgs {
 }
 
 impl ListArgs {
-    /// Prints the web interfaces as a table or, with `--json`, the device with its interfaces
-    /// and suggestions.
+    /// With `--json`, prints the device with its interfaces and suggestions.
     ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown device; the hub's refusal.

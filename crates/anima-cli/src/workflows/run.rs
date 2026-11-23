@@ -1,5 +1,3 @@
-//! `anima workflow run <repository> <run>`: one run with its jobs.
-
 use super::documents::{WorkflowRunGet, workflow_run_get};
 use super::render;
 use crate::failure::{Failure, Hint};
@@ -18,8 +16,6 @@ pub struct RunArgs {
 }
 
 impl RunArgs {
-    /// Prints the run or, with `--json`, the K1 `WorkflowRun`.
-    ///
     /// # Errors
     /// [`Failure::NotFound`] when the repository has no such run; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

@@ -1,7 +1,5 @@
-//! The source documents, typed from K1 at build time (CMD-004). The variables of `SourceConnect`
-//! hold the GitHub App's private key, so they derive no `Debug` (the generated code adds
-//! `Serialize` only, to send them) and the caller wipes them after the request (CMD-014,
-//! PRJ-018, LOG-007).
+//! The variables of `SourceConnect` hold the GitHub App's private key, so they derive no `Debug`
+//! and the caller wipes them after the request (CMD-014, PRJ-018, LOG-007).
 
 use graphql_client::GraphQLQuery;
 

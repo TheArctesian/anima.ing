@@ -1,6 +1,4 @@
-//! `anima event` and `anima audit`: what happened on the hub, who changed what, and whether
-//! the audit log is whole. `watch`
-//! follows the hub's event stream (the crate README shows how a `watch` command is built).
+//! `anima event` and `anima audit`.
 
 pub mod audit;
 pub mod documents;
@@ -28,8 +26,6 @@ pub enum AuditCommand {
 }
 
 impl EventCommand {
-    /// Runs the command.
-    ///
     /// # Errors
     /// [`Failure`] for a refusal, an unknown device or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -41,8 +37,6 @@ impl EventCommand {
 }
 
 impl AuditCommand {
-    /// Runs the command.
-    ///
     /// # Errors
     /// [`Failure`] for a refusal or a missing token.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {

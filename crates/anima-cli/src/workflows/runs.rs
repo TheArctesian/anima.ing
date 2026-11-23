@@ -1,4 +1,4 @@
-//! `anima workflow runs <repository>`: runs, newest first, with pages (CMD-026).
+//! Runs, newest first, with pages (CMD-026).
 
 use super::query::{Query, RunStatus};
 use super::render;

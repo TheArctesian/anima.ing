@@ -1,11 +1,5 @@
-//! The device settings that `device create` and `device update` take as flags (CMD-020). Each K1
-//! input field is a flag with its K1 name in kebab-case. The flags become the K1 input as JSON,
-//! and the generated input type of the document reads it back, so K1 still decides what is valid.
-//!
-//! A group (`--ssh-*`, `--rdp-*`, `--vnc-*`, `--transfer-*`) is sent whole, because the hub
-//! replaces the group. A new device has no current values, so its SSH and RDP groups need
-//! `--ssh-username` or `--rdp-username`. `device update` reads the current values first (never a
-//! credential) and lays the flags over them.
+//! The device settings that `device create` and `device update` take as flags (CMD-020).
+//! `device update` lays the flags over the current values, which it reads without any credential.
 
 use clap::ValueEnum;
 use serde::Serialize;
@@ -123,7 +117,6 @@ pub struct SettingsFlags {
     transfer_paste: Option<bool>,
 }
 
-/// The values of a device's groups now, under their K1 input names; empty for a new device.
 #[derive(Debug, Default)]
 pub struct Current {
     ssh: Map<String, Value>,
@@ -133,7 +126,7 @@ pub struct Current {
 }
 
 impl Current {
-    /// The groups of `device`, an answer that selects only input fields of each group.
+    /// `device` must select only the input fields of each group.
     #[must_use]
     pub fn of<T: Serialize>(device: &T) -> Self {
         let value = serde_json::to_value(device).unwrap_or(Value::Null);
@@ -151,7 +144,6 @@ impl Current {
 }
 
 impl SettingsFlags {
-    /// Whether any flag changes a group, so that the current values are needed.
     #[must_use]
     pub fn touches_groups(&self) -> bool {
         [
@@ -180,9 +172,6 @@ impl SettingsFlags {
         .contains(&true)
     }
 
-    /// The K1 input fields these flags set, with each changed group laid over its `current`
-    /// values; a field with no flag is left out.
-    ///
     /// # Errors
     /// [`Failure::Usage`] when a group lacks the user name K1 requires.
     pub fn fields(&self, current: &Current) -> Result<Map<String, Value>, Failure> {
@@ -273,8 +262,6 @@ impl SettingsFlags {
     }
 }
 
-/// `input` as the K1 input type `T` of a document.
-///
 /// # Errors
 /// [`Failure::Usage`] when K1 would not accept it.
 pub fn typed<T: DeserializeOwned>(input: Map<String, Value>) -> Result<T, Failure> {
@@ -290,8 +277,6 @@ fn put<T: Serialize>(map: &mut Map<String, Value>, key: &str, value: Option<&T>)
     }
 }
 
-/// The group the flags change, laid over `current`, with `enabled` (kept, else on); none when
-/// no flag of it was given. `needs` is a field K1 requires and the flag that sets it.
 fn complete(
     flags: Map<String, Value>,
     enabled: Option<bool>,

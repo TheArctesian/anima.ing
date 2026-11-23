@@ -1,5 +1,3 @@
-//! `anima device wake`: a Wake-on-LAN packet from the site's relay.
-
 use super::documents::{DeviceWake, device_wake};
 use super::get::resolve;
 use crate::failure::Failure;
@@ -13,11 +11,8 @@ pub struct WakeArgs {
 }
 
 impl WakeArgs {
-    /// Prints when the packet was sent and which device sent it.
-    ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown device; the hub's refusal, such as a site with
-    /// no wake relay.
+    /// [`Failure::NotFound`] for an unknown device; the hub's refusal, such as for a site with no wake relay.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let device_id = resolve(&hub, &self.device).await?;

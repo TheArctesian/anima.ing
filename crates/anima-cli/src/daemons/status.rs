@@ -1,5 +1,4 @@
-//! `anima daemon status`: whether the metrics daemon of a device is reporting, and its version
-//! (MET-018, R-122), and what it waits for from a person (R-364).
+//! `anima daemon status` (MET-018, R-122, R-364).
 
 use super::documents::{DaemonStatus, daemon_status};
 use crate::devices::get::resolve;
@@ -15,9 +14,6 @@ pub struct StatusArgs {
 }
 
 impl StatusArgs {
-    /// Prints the metrics source, whether it is stale, the daemon's version and when the last
-    /// reading came in.
-    ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown device; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
@@ -64,7 +60,7 @@ fn table(device: &daemon_status::DaemonStatusDevice) -> Table {
     table
 }
 
-/// The daemon's version as its last batch gave it; a daemon older than R-122 gives none.
+/// A daemon older than R-122 reports no version.
 fn version(source: &str, version: Option<&str>) -> Cell {
     match (source, version) {
         ("DAEMON", Some(version)) => Cell::from(version),

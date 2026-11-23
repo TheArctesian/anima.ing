@@ -34,7 +34,7 @@ pub struct LogArgs {
 }
 
 impl LogArgs {
-    /// Prints the lines, or with `--json` the K1 `BuildLogLine` list.
+    /// With `--json`, prints the K1 `BuildLogLine` list.
     ///
     /// # Errors
     /// [`Failure`] for an unknown job or a hub refusal.
@@ -69,8 +69,7 @@ impl LogArgs {
     }
 }
 
-/// Log lines and whether the page was full, which is the only sign there may be more: the
-/// hub pages the log by line sequence, with no page info.
+/// A full page is the only sign of more: the hub pages the log by line sequence, with no page info.
 struct LogPage {
     lines: Lines,
     full: bool,

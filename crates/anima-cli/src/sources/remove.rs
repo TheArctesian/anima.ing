@@ -20,13 +20,10 @@ pub struct RemoveArgs {
 }
 
 impl RemoveArgs {
-    /// Asks to confirm, naming the account (or takes `--yes`, CMD-024), removes it and prints
-    /// its ID. Nothing is sent when the operator declines.
+    /// Asks to confirm, or takes `--yes` (CMD-024).
     ///
     /// # Errors
-    /// [`Failure::NotFound`] for an unknown account; [`Failure::Declined`] when the operator
-    /// says no; [`Failure::Usage`] without a confirmation when no one can be asked; the hub's
-    /// refusal.
+    /// [`Failure::NotFound`], [`Failure::Declined`] or [`Failure::Usage`]; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let named = resolve(&hub, &self.account).await?;

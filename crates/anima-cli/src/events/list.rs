@@ -58,7 +58,6 @@ enum SourceArg {
 }
 
 impl ListArgs {
-    /// `anima event list` with the filters in use, for the next-page hint.
     fn next_page_command(&self) -> CommandLine {
         CommandLine::new("anima event list", self.limit)
             .choices("--severity", &self.severity)
@@ -130,7 +129,6 @@ fn table(events: &event_list::EventListEvents) -> Table {
     table
 }
 
-/// A K1 `Severity` in its colour.
 fn severity_cell(name: &str) -> Cell {
     let tone = match name {
         "ERROR" => Tone::Bad,

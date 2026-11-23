@@ -1,7 +1,5 @@
-//! `anima_compute_policy_list` and `anima_compute_policy_set`: the device policy of each node
-//! and whether it takes model work now (CMP-002, CAP-010 to CAP-012). Neither tool sets the
-//! switch "takes work" (USE-004, OD-C8). Device names come from the hub; the server cleans and
-//! caps each string (MCP-008).
+//! `anima_compute_policy_list` and `anima_compute_policy_set` (CMP-002, CAP-010 to CAP-012).
+//! Neither tool sets the switch "takes work" (USE-004, OD-C8).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

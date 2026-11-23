@@ -1,5 +1,3 @@
-//! `anima maintenance create`: a window that silences the checks of its targets while it is on.
-
 use super::documents::{MaintenanceCreate, maintenance_create};
 use super::fields::{WindowFields, into_input, require};
 use super::targets;
@@ -15,11 +13,8 @@ pub struct CreateArgs {
 }
 
 impl CreateArgs {
-    /// Prints the new window.
-    ///
     /// # Errors
-    /// [`Failure::Usage`] for a missing or unreadable flag; the hub's refusal (VALIDATION
-    /// for a schedule that does not fit its kind).
+    /// [`Failure::Usage`] for a missing or unreadable flag; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let mut input = self.fields.apply(serde_json::Map::new())?;
         require(&input)?;
