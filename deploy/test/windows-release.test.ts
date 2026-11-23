@@ -121,11 +121,11 @@ test("merge trains build Windows from the same dev base and provide its trial ar
   expect(steps.find((step) => step.uses?.startsWith("actions/checkout@"))?.with?.["ref"]).toBe("${{ inputs.ref }}");
 });
 
-test.skipIf(process.platform === "win32")("the gates reject failed Windows builds and never excuse a skipped Linux gate", () => {
+test.skipIf(process.platform === "win32")("the gates reject a failed Windows or Mac job and never excuse a skipped Linux gate", () => {
   const script = gates.jobs["passed"]?.steps?.[0]?.run;
   expect(script).toBeDefined();
   for (const [windows, linux, success] of [["success", "success", true], ["skipped", "success", true], ["failure", "success", false], ["cancelled", "success", false], ["success", "skipped", false]] as const) {
-    const results = { windows: { result: windows }, "rust-test": { result: linux } };
+    const results = { windows: { result: windows }, macos: { result: windows }, "rust-test": { result: linux } };
     const ran = Bun.spawnSync(["sh", "-c", script ?? "exit 9"], { env: { ...process.env, RESULTS: JSON.stringify(results) }, stdout: "pipe", stderr: "pipe" });
     expect(ran.exitCode === 0).toBe(success);
   }

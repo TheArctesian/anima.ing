@@ -107,7 +107,8 @@ gate of a merge.
 ### The gates on GitHub
 
 `.github/workflows/gates.yml` runs the full list on `ubuntu-24.04` machines of GitHub for each pushed branch
-but `main` (R-254). No pull request starts it. The job `base` reads the commit of `dev`; then four
+but `main` (R-254), and for `dev`, a train and a run started by hand also the Windows gates and the tests that
+only a Mac runs (below). No pull request starts it. The job `base` reads the commit of `dev`; then four
 jobs run at the same time, each on the branch as merged with that commit (`gates-merge.sh`): `rust-lint`
 (`fmt`, `clippy`), `rust-test` (`rust-test`, `doctest`, `pinning`), `go`, and `bun` (the bun gates and the
 quality gates). The job `passed` passes when each passed. A run for `dev`, and a run that a workflow calls
@@ -121,11 +122,22 @@ When the changes need Rust, the job `windows-lint` runs Clippy of the workspace 
 Linux job compiles. It keeps going past a crate with a fault, so one run lists the faults of each crate that
 does not depend on that crate. It runs no Windows test; the job `windows` (MSVC, for `dev`, a train or a call) does.
 
-A Linux machine does not run these, so a Mac must (`bun run gates:fast` there): the tests of
-`check-mach-o.sh` and one test of `trial-bundle.sh --marks`, which skip off macOS; the Keychain store of the
-daemon and its LaunchAgent; the access-control tests of `link/statedir`; the macOS parts of the desktop
-shell, with the trust hook that `pinning` proves. No job on GitHub runs macOS: the trial of the release
-workflow measured 82 minutes for the gates on `macos-15`.
+A Linux machine does not run these: the tests of `check-mach-o.sh`, which skip off macOS; the Keychain store
+of the daemon and its LaunchAgent; the access-control tests of `link/statedir`; the macOS parts of the desktop
+shell, with the trust hook that `pinning` proves. The job `macos` runs them on `macos-15`
+(`deploy/bin/macos-tests`, the same file as the job `gates-macos` of the release) for the same runs as the job
+`windows`: a push to `dev` that is not only documents, a train, and a run that a person starts
+(`gh workflow run gates.yml --ref <branch>`). The push of a different branch does not run it (operator ruling,
+2026-11-22: the release failed on a test that only a Mac runs and that no run of `dev` had run). So a change of
+that code still needs `bun run gates:fast` on a Mac before the push, or a run started by hand.
+
+Measured on the job `gates-macos` of the release, which runs the same file with no cache: 34 minutes
+(run 44779969903, 2026-11-20) and 47 minutes (run 45095045255, 2026-11-23). Of the 47, the compile of the
+tests took 42.5 minutes: the dependencies took 8 minutes, and the test binaries of the workspace (most of all
+`anima-hub`) took the rest; the tests took 3.5 minutes. A cache of the dependencies from the workflow
+`rust-cache` would save at most those 8 minutes, and a cache of the crates of the workspace is lost at each
+change of `anima-hub`. The job `macos` reads no cache. On `dev` and a train it takes no time from the run:
+the job `windows` takes longer (64 to 92 minutes in the runs of 2026-11-22 and 2026-11-23).
 
 Measured on 2026-11-19, the first run in which each job passed (run 44652644005, commit `152773ff`): 31.5
 minutes from the start of `base` to the end of `passed`. `go` 2 minutes, `bun` with the quality gates 6
