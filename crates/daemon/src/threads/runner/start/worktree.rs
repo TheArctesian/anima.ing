@@ -25,13 +25,13 @@ impl Runner {
         let Some(base) = asking.new.worktree.clone().map(|worktree| worktree.base) else {
             return Err(Refusal::BadValue);
         };
-        // The worktrees being made count against the soft limit, before a history is copied for
-        // a start that would be refused after (THR-114).
-        self.may_start(u32::try_from(self.asks.making.len()).unwrap_or(u32::MAX))?;
         // A worktree is of a repository: a start with no project has none.
         if asking.new.folder.as_os_str().is_empty() {
             return Err(Refusal::BadValue);
         }
+        // The worktrees being made count against the soft limit, before a history is copied for
+        // a start that would be refused after (THR-114).
+        self.may_start(u32::try_from(self.asks.making.len()).unwrap_or(u32::MAX))?;
         let worktree = |why| Refusal::Worktree { why };
         let engine = self.git.engine().map_err(worktree)?.clone();
         let id = Uuid::now_v7();

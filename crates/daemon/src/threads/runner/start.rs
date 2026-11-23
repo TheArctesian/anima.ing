@@ -255,6 +255,7 @@ impl Runner {
         }
         let Some(command) = self.command(action).await else {
             self.threads.remove(&id);
+            self.rights_now();
             return Err(Refusal::Holder);
         };
         let files = self.adopt_draft(&new, id);
