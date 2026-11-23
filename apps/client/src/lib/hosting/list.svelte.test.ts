@@ -44,7 +44,7 @@ it('HSE-002: an application opens to its containers', async () => {
   toggle?.click();
   flushSync();
   expect(toggle?.getAttribute('aria-expanded')).toBe('true');
-  expect(text('tr.inner th')).toEqual(['immich-redis Container of immich', 'immich-server Container of immich']);
+  expect(text('tr.inner:not(.started) th')).toEqual(['immich-redis Container of immich', 'immich-server Container of immich']);
 });
 
 it('HSE-002: the field finds a container on any machine and hides the machines with no match', async () => {
@@ -86,4 +86,24 @@ it('HOST-001 HOST-017: a container on any machine opens its log or its details b
   expect(calls.logMachines).toEqual(['m-pop', 'm-nas']);
   expect(document.querySelector('.log')).toBeNull();
   expect(document.querySelector('.detail h3')?.textContent).toBe('Details of samba');
+});
+
+it('HOST-034: the choice Containers lists each container of each machine, and a machine that did not answer stays with its reason', async () => {
+  calls.failing['m-nas'] = 'The device has no SSH credential.';
+  const store = await open();
+  store.view = 'containers';
+  flushSync();
+  expect(text('tbody th[scope="row"]')).toEqual(['immich-redis Not managed example/tracks:0.36 · Container of immich', 'immich-server Not managed example/tracks:0.36 · Container of immich', 'watchtower Not managed containrrr/watchtower']);
+  expect(text('tr.group th')).toContain('nas Up The device has no SSH credential.');
+  expect(document.querySelectorAll('button[aria-label^="Log of"]')).toHaveLength(3);
+});
+
+it('HOST-030: an open project says the folder and the files that Compose started it from, as Docker says', async () => {
+  const store = await open();
+  store.toggle('m-pop/project/immich');
+  flushSync();
+  expect(text('tr.started th')).toEqual(['Started by Compose in /srv/immich from /srv/immich/compose.yaml, /srv/immich/compose.override.yaml']);
+  store.view = 'containers';
+  flushSync();
+  expect(document.querySelector('tr.started')).toBeNull();
 });

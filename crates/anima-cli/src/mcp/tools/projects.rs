@@ -101,13 +101,14 @@ pub struct ConfirmInput {
 }
 
 impl ProjectTool {
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 10] = [
         Self::Search,
         Self::Get,
         Self::SetLeftOut,
         Self::ConfirmResource,
         Self::Group(GroupTool::List),
         Self::Group(GroupTool::Create),
+        Self::Group(GroupTool::Import),
         Self::Group(GroupTool::Rename),
         Self::Group(GroupTool::Delete),
         Self::Group(GroupTool::SetProjects),

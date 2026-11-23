@@ -3,7 +3,7 @@ import { CONTAINERS, MACHINES } from './hosting.fixture';
 import { needingYou, placeGroups, type Narrowing, type Place } from './list';
 
 const places: readonly Place[] = MACHINES.map((machine) => ({ ...machine, status: 'ready', problem: '', containers: CONTAINERS[machine.id] ?? [], updates: [] }));
-const every: Narrowing = { search: '', machine: '', show: 'all' };
+const every: Narrowing = { search: '', machine: '', show: 'all', view: 'applications' };
 const names = (narrowing: Narrowing, from: readonly Place[] = places) => placeGroups(from, narrowing).map((group) => [group.name, group.rows.map((row) => row.name)]);
 
 describe('placeGroups (HSE-002)', () => {
@@ -40,7 +40,7 @@ describe('placeGroups (HSE-002)', () => {
 
   it('shows only the rows that need the operator under Needs you, and counts them', () => {
     expect(names({ ...every, show: 'needs-you' })).toEqual([['nas', ['samba']]]);
-    expect(needingYou(places)).toBe(1);
+    expect(needingYou(places, 'applications')).toBe(1);
   });
 
   it('keeps a machine that did not answer, with the words of the hub', () => {
@@ -55,4 +55,28 @@ describe('placeGroups (HSE-002)', () => {
     expect(pop?.rows.map((row) => row.newer)).toEqual([1, 0]);
     expect(placeGroups(places, every)[2]?.rows[0]?.newer).toBeNull();
   });
+
+  it('HOST-034: the view Containers has each container of each machine as its own row, with its project under it', () => {
+    expect(names({ ...every, view: 'containers' })).toEqual([
+      ['mini', []],
+      ['nas', ['samba']],
+      ['pop-os', ['immich-redis', 'immich-server', 'watchtower']],
+    ]);
+    const redis = placeGroups(places, { ...every, view: 'containers' })[2]?.rows[0];
+    expect(redis?.what).toBe('example/tracks:0.36 · Container of immich');
+    expect(redis?.containers).toHaveLength(1);
+  });
+});
+
+it.each([false, true])('keeps project paths when folder and file labels are on different containers (reverse: %s)', (reverse) => {
+  const split = places.map((place) => {
+    const containers = place.containers.map((container) => ({
+      ...container,
+      composeWorkingDir: container.name === 'immich-server' ? '/srv/immich' : null,
+      composeFiles: container.name === 'immich-redis' ? ['/srv/immich/compose.yaml'] : [],
+    }));
+    return { ...place, containers: reverse ? containers.reverse() : containers };
+  });
+  const project = placeGroups(split, every).flatMap((group) => group.rows).find((row) => row.name === 'immich');
+  expect(project).toMatchObject({ folder: '/srv/immich', files: ['/srv/immich/compose.yaml'] });
 });

@@ -1,0 +1,3 @@
+mutation ProjectGroupImport($input: ProjectGroupImportInput!) {
+  importProjectGroup(input: $input)
+}

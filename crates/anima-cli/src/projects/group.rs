@@ -7,8 +7,9 @@ use serde::Serialize;
 use serde_json::Value;
 
 use self::documents::{
-    ProjectGroupCreate, ProjectGroupDelete, ProjectGroupRename, ProjectsGroupSet,
-    project_group_create, project_group_delete, project_group_rename, projects_group_set,
+    ProjectGroupCreate, ProjectGroupDelete, ProjectGroupImport, ProjectGroupRename,
+    ProjectsGroupSet, project_group_create, project_group_delete, project_group_import,
+    project_group_rename, projects_group_set,
 };
 use self::lookup::{group_id, groups, project_ids};
 use crate::failure::Failure;
@@ -24,6 +25,15 @@ pub enum GroupCommand {
         /// 1 to 60 characters.
         name: String,
         /// The slugs of the projects to put in it; a project in a different group moves.
+        projects: Vec<String>,
+    },
+    /// Import a device group, including an empty one, without replacing shared assignments.
+    Import {
+        /// Stable UUID of the device group; reuse on every retry.
+        source: String,
+        /// The device group's name.
+        name: String,
+        /// Project IDs (not slugs); unknown IDs stay unacknowledged.
         projects: Vec<String>,
     },
     /// Give a group a different name.
@@ -96,6 +106,22 @@ impl GroupCommand {
                 let variables = project_group_create::Variables { name, projects };
                 let made = hub.run::<ProjectGroupCreate>(variables).await?;
                 invocation.output.data(&made.create_project_group, table)
+            }
+            Self::Import {
+                source,
+                name,
+                projects,
+            } => {
+                let input = project_group_import::ProjectGroupImportInput {
+                    include_empty: projects.is_empty().then_some(true),
+                    source,
+                    name,
+                    projects,
+                };
+                let imported = hub
+                    .run::<ProjectGroupImport>(project_group_import::Variables { input })
+                    .await?;
+                invocation.output.data(&imported.import_project_group, ids)
             }
             Self::Rename { group, name } => {
                 let id = group_id(&hub, &group).await?;
