@@ -1,5 +1,5 @@
 /** The project of a draft thread: which folder it starts in and what its heading says (T3 Code `DraftHeroHeadline.tsx`). Pure. */
-import { folderName } from '$lib/agent-threads/thread';
+import { folderName, isScratchHome } from '$lib/agent-threads/thread';
 import type { Project } from '../inbox/inbox';
 
 /** A folder that the person typed for "Add project", or the words of what is wrong with it. The runner checks it again. */
@@ -8,9 +8,9 @@ export function addedFolder(typed: string): { readonly ok: true; readonly folder
   return folder.startsWith('/') ? { ok: true, folder } : { ok: false, words: 'Give an absolute folder of this computer, for example /Users/you/project.' };
 }
 
-/** The projects that a draft can start in: those of the threads with a folder, and the one the person added. */
+/** The projects that a draft can start in: those of the threads with a folder, and the one the person added; "No project" is its own choice. */
 export function draftProjects(projects: readonly Project[], added: string | null): readonly Project[] {
-  const known = projects.filter((project) => project.folder !== null);
+  const known = projects.filter((project) => project.folder !== null && !isScratchHome(project.folder));
   if (added === null || known.some((project) => project.folder === added)) return known;
   return [...known, { folder: added, name: folderName(added), count: 0 }];
 }
