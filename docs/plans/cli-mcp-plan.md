@@ -82,8 +82,12 @@ The hub has two tokens that a program can hold (design specification INT-003):
 | Login token (user name, password, authenticator code; 30 days) | All operations | The operator at a terminal |
 | API key (`anima_…`, read or write, expiry at most one year) | Not: sessions, files, credentials, trust decisions, device change or delete, retention, builds, VPN keys, API keys | Scripts and coding agents |
 
-- **CMD-010.** `anima auth login` asks for the user name, the password and the authenticator code
-  at the terminal. It must not accept the password as an argument.
+- **CMD-010.** `anima auth login` signs in by a one-time code, as `gh auth login` does
+  (R-381; SGN-NEW-ask to SGN-NEW-status of Section 3b of
+  [vault.md](../../contracts/extensions/vault.md)): it asks whether the hub is hosted by Anima.ing or
+  self-hosted, shows a code and the address of a page, and waits while the person approves the
+  code in the app or a browser. It never asks for a password or an authenticator code. With the app
+  on the computer the app signs `anima` in, and nobody runs it.
 - **CMD-011.** `anima auth login --with-token` reads an API key from standard input.
 - **CMD-012.** The token is kept in the operating system key store (service `ing.anima.cli`,
   account: the hub origin). On Linux with no key store it is a file with mode `0600`, as the agent
@@ -94,6 +98,13 @@ The hub has two tokens that a program can hold (design specification INT-003):
   an error message (LOG-007, SEC-009).
 - **CMD-015.** A context is a name for one hub origin. `anima context add|use|list|remove`. The
   configuration file (`$XDG_CONFIG_HOME/anima/config.json`) holds contexts and no secret.
+- **One sign-in (R-383, R-382; design in Section 3b of
+  [vault.md](../../contracts/extensions/vault.md)).** The app signs `anima` in with a linked token of
+  the kind `command_line`: `anima auth adopt --hub <origin> -` reads it from standard input
+  (SGN-NEW-adopt). Signing out of the app signs `anima` out. `anima auth login` stays for a computer
+  with no app. In a thread, `ANIMA_TOKEN` holds a token of the kind `thread` (SGN-NEW-thread), and
+  `anima` sends the agent declaration (LOG-016) with each request that uses it. The limits of
+  Section 7 stay limits of the MCP server; the command has no limits of its own for an agent.
 
 ## 5. Output and behaviour
 
@@ -405,7 +416,7 @@ Every tool is `allow` by default (MCP-002, MCP-024, R-120). The switch of MCP-02
 | `timeline` | `anima_timeline_list` | |
 | `records` | `anima_record_links_list`, `anima_files_list`, `anima_extractions_list`, `anima_locations_list`, `anima_location_context`, `anima_reminders_list`, `anima_reminder_get`, `anima_reminder_firings` | `anima_location_import`, `anima_reminder_add`, `anima_reminder_set`, `anima_reminder_remove`, `anima_reminder_set_enabled`, `anima_reminder_test`, `anima_reminder_snooze`, `anima_reminder_ack`. The three `anima location token` commands have no tool: an ingest token is a secret (K-E4 Section 13). `anima source connect dawarich` has no tool: it takes the API key of the server (R-261). `anima_record_link_add`, `anima_record_link_remove`, `anima_file_remove`, `anima_file_archive_add`, `anima_file_archive_remove`, `anima_extraction_propose`, `anima_extraction_confirm`, `anima_extraction_reject`. `anima file upload` and `anima file download` have no tool: a tool does not carry the bytes of a file (K-E4 Section 13) |
 | `sources` | `anima_sources_overview` (declarations, accounts and their last runs; covers `Query.sources` and `Query.sourceAccounts`) | `anima_source_account_sync`, `anima_source_account_set_paused`, `anima_source_account_remove` L (`confirm` must equal the account label, MCP-007), `anima_github_connect_start` L, `anima_github_connect_cancel` L, and the read tool `anima_github_connect_state` (any token; phase, failure, message, `appSlug`, `ownerLogin`, `installUrl`, `appSettingsUrl`, and the account id, label and health). The start tool returns `{ attempt: { id, phase, expiresAt }, link }` where `link` is the fixed `https://<hub>/connect/github`: no state, no ticket, no attempt id. Alone it does nothing until a signed-in operator presses Continue. The start tool's description tells the agent to give the link to the operator and not to open it. `appSlug`, `ownerLogin` and the label go through `mcp/untrusted.rs` (operator, 2026-11-14; ruling number to be assigned) |
-| `projects` | `anima_projects_search`, `anima_project_get` | `anima_repository_set_left_out` (one tool, `leftOut: bool`), `anima_project_resource_confirm` |
+| `projects` | `anima_projects_search` (with `group` and `ungrouped`), `anima_project_get`, `anima_project_groups_list` (PRO-059) | `anima_repository_set_left_out` (one tool, `leftOut: bool`), `anima_project_resource_confirm`, `anima_project_group_create`, `anima_project_group_rename`, `anima_project_group_delete`, `anima_projects_set_group` (PRO-060 to PRO-063) |
 | `repositories` (operator, 2026-11-14; ruling number to be assigned; PRJ-027 to PRJ-035, OD-E14) | `anima_pull_requests_list` (`pullRequests`; `detail: true` adds mergeability and checks), `anima_pull_request_get` (`pullRequest`, `issueComments`), `anima_issues_list` (`issues`), `anima_issue_get` (`issue`, `issueComments`), `anima_workflows_list` (`workflows`), `anima_workflow_runs_list` (`workflowRuns`), `anima_workflow_run_get` (`workflowRun`, with jobs), `anima_commits_list` (`commits`), `anima_branches_list` (`branches`), `anima_repository_releases_list` (`repositoryReleases`), `anima_code_directory_list` (`codeDirectory`; names only) | `anima_issue_create` (`createIssue`), `anima_issue_comment_add` (`addIssueComment`), `anima_issue_set_open` (`setIssueOpen`). A write key may call them; they return the issue or the comment without its body. The other GitHub changes have no tool (below) |
 
 Fields with no MCP tool, with the reason (MCP-004): `Mutation.connectGithubApp` takes a secret (`GithubAppInput.privateKey`); `Subscription.sourceAccountChanged` is a subscription, and no subscription has a tool; `Mutation.openGithubConnect` returns a ONE-TIME link that opens the connection in a browser, and a tool may not return one (the hub also refuses it, FORBIDDEN, for a request that declares an agent); `Subscription.githubConnectChanged` is a subscription (operator, 2026-11-14; ruling number to be assigned); `Query.codeFile` returns the content of a file (operator, 2026-11-14; ruling number to be assigned). `Mutation.mergePullRequest` and `Mutation.mergePullRequests`: a merge is a trust decision (MCP-005), and the hub refuses every API key for them; `Mutation.rerunWorkflowRun`, `Mutation.rerunFailedWorkflowJobs` and `Mutation.dispatchWorkflow` run code with the repository's secrets, `Mutation.cancelWorkflowRun` stops a run, and `Mutation.setCommitStatus` can satisfy a required check and open a merge; the hub refuses every API key for each (operator, 2026-11-14; ruling number to be assigned). The command line has all seven, behind a confirmation. Text from GitHub (names, descriptions, paths) goes through `mcp/untrusted.rs` as named, length-limited fields (MCP-008).
@@ -601,6 +612,10 @@ The state of each task is in the table (PLN-006). T1 to T10 are Done: each commi
 | T11 | R-120, the library and the command: the built-in state of the change tools is `allow`, and the switch "Ask before destructive actions" (MCP-024, MCP-025) in `permissions show\|set\|reset` | Opus | security | Not started | — |
 | T12 | R-120, the audit: each destructive call that runs without a question is in the hub's audit log with the tool, the cleaned arguments and the MCP client name (MCP-026) | Opus | security | Not started | — |
 | T13 | R-120, the desktop Settings panel: the switch "Ask before destructive actions", off for a new user (MCP-025), on the library of T11 | Sonnet |  | Not started | — |
+| T14 | R-383, the command: `anima auth adopt --hub <origin> -` (the token on standard input, checked with `me`, stored as CMD-012 says), `anima auth logout --hub <origin>` called by the app, and the agent declaration with each request that uses a thread token from `ANIMA_TOKEN` (K-E5 Section 3b) | Opus | security (E0-6 T9) | Not started. Needs E0-6 T8 | — |
+| T15 | R-382, the desktop app: on each hub, at the sign-in, put `anima` on `PATH` with no click (the checks of INS-002 to INS-009 stay), write the line of `PATH` into the profile of the login shell (zsh, bash or fish) one time, marked as Anima's, never when it is there and never into a link to a place outside the home folder, and name the file; then get the command-line token and run `anima auth adopt`; at the sign-out run `anima auth logout`. After U14 of [daemon-and-hub-update-plan.md](daemon-and-hub-update-plan.md), which changes the same start of the app (`+layout.svelte`) | Opus | security (E0-6 T9) | Not started. Needs T14 and E0-6 T8 | — |
+| T16 | R-381, the command: `anima auth login` by a one-time code (`--hosted`, `--hub`, `--web`, `--clipboard`, `--with-token` for an API key; `--no-input` and `--json` as CMD-020 and CMD-023 say), `anima auth status` and `anima auth logout` in the shape of `gh` (SGN-NEW-ask to SGN-NEW-status); the prompt for a password and a code goes | Opus | security (E0-6 T9) | Not started. Needs E0-6 T8; the hosted path needs HM-T40 of [hosted-mode.md](../proposals/hosted-mode.md) | — |
+| T17 | R-381, the client: the page `/device` of the hub and the same screen in the app: the code, the computer, the address, the time and the plain words of SGN-NEW-approve, then Approve or Deny; the list of sign-ins with revoke | Sonnet | security (E0-6 T9) | Not started. Needs E0-6 T8 | — |
 
 ### Tasks of R-120 (T11 to T13)
 

@@ -18,6 +18,10 @@ export class ProjectGroups {
     return id === undefined ? undefined : this.#clusters.groups.find((group) => group.id === id);
   }
 
+  members(id: string): string[] {
+    return Object.keys(this.#clusters.of).filter((project) => this.#clusters.of[project] === id);
+  }
+
   /** Makes the group with the projects; the reason when the name cannot be used, else null (PRO-060). */
   create(name: string, projectIds: readonly string[]): string | null {
     return this.#change(nameProblem(this.#clusters, name), () => created(this.#clusters, this.newId(), name, projectIds));

@@ -1,7 +1,12 @@
 use anima_daemon::model::install::{installed, place_archive};
 use daemon_core::model_work::cause::Cause;
 
-use super::kit::{Entry, FAKE_RUNTIME, PROGRAM, archive, entry, folders, node, release, target};
+use super::kit::{
+    Entry, FAKE_RUNTIME, PROGRAM, archive, entry, folders, linked_archive, node, release, target,
+};
+
+/// The links of a test archive: (path, target).
+type Links<'a> = &'a [(&'a str, &'a str)];
 
 #[test]
 fn a_whole_archive_is_installed_with_plain_modes() {
@@ -51,6 +56,62 @@ fn an_archive_that_breaks_a_rule_is_refused_and_leaves_nothing() {
         assert_eq!(refused, Err(Cause::ArchiveRejected), "case {index}");
         assert!(!folders.release(&release()).exists(), "case {index}");
         assert!(!root.path().join("escape").exists());
+    }
+}
+
+#[test]
+fn a_link_to_a_file_of_the_archive_is_installed_as_a_copy_of_that_file() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let root = tempfile::tempdir().expect("a folder");
+    let folders = folders(root.path());
+    // The links come first in the archive, before the files that they name.
+    let links = [
+        ("bin/libllama.so", "libllama.so.1"),
+        ("lib/libggml.so", "../bin/libggml.so.0"),
+        ("bin/libggml.so.0", "./libggml.so.0.9"),
+    ];
+    let file = linked_archive(
+        &links,
+        &[
+            (PROGRAM, 0o755, Some(FAKE_RUNTIME.as_bytes())),
+            ("bin/libllama.so.1", 0o775, Some(b"llama")),
+            ("bin/libggml.so.0.9", 0o664, Some(b"ggml")),
+        ],
+    );
+    place_archive(file, &target(&folders, 0)).expect("installed");
+    let release = folders.release(&release());
+    for (link, bytes, mode) in [
+        ("bin/libllama.so", &b"llama"[..], 0o755),
+        ("lib/libggml.so", b"ggml", 0o644),
+        ("bin/libggml.so.0", b"ggml", 0o644),
+    ] {
+        let meta = std::fs::symlink_metadata(release.join(link)).expect("a file");
+        assert!(meta.file_type().is_file(), "{link}");
+        assert_eq!(meta.permissions().mode() & 0o7777, mode, "{link}");
+        assert_eq!(std::fs::read(release.join(link)).expect("read"), bytes);
+    }
+}
+
+#[test]
+fn a_link_that_names_no_file_of_the_archive_is_refused_and_leaves_nothing() {
+    let file: Entry<'_> = (PROGRAM, 0o755, Some(b"x"));
+    let cases: [(Links<'_>, &[Entry<'_>]); 6] = [
+        (&[("bin/link", "../../escape")], &[file]),
+        (&[("bin/link", "../bin")], &[file]),
+        (&[("bin/link", "missing")], &[file]),
+        (&[("bin/a", "b"), ("bin/b", "a")], &[file]),
+        (&[("bin/link", "")], &[file]),
+        (
+            &[("bin/link", "llama-server")],
+            &[file, ("bin/link", 0o644, Some(b"y"))],
+        ),
+    ];
+    for (index, (links, entries)) in cases.iter().enumerate() {
+        let root = tempfile::tempdir().expect("a folder");
+        let folders = folders(root.path());
+        let refused = place_archive(linked_archive(links, entries), &target(&folders, 0));
+        assert_eq!(refused, Err(Cause::ArchiveRejected), "case {index}");
+        assert!(!folders.release(&release()).exists(), "case {index}");
     }
 }
 
