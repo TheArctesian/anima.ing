@@ -1,8 +1,8 @@
 <script lang="ts">
   import type { LiveThreads } from '$lib/agent-threads/live/live.svelte';
-  import type { ModelLists } from '$lib/agent-threads/live/models';
   import Card from '../composer/Card.svelte';
   import type { Project } from '../inbox/inbox';
+  import { MODELS_WAITING, type DraftModels } from './choice';
   import { noticeParts } from './notice';
   import { draftProjects, headingOf } from './project';
   import ProjectPicker from './ProjectPicker.svelte';
@@ -20,18 +20,20 @@
   }
 
   const { draft, live, projects, onStarted, picking = false }: Props = $props();
-  let lists = $state<ModelLists>({});
+  let models = $state<DraftModels>(MODELS_WAITING);
   /** A folder the person added from the picker, listed until a thread of it is. */
   let added = $state<string | null>(null);
   const known = $derived(draftProjects(projects, added));
   const heading = $derived(headingOf(draft.folder, known));
-  const engine = $derived(draft.engine((action) => live.call(action), onStarted, lists));
+  const engine = $derived(draft.engine((action) => live.call(action), onStarted, models));
   const notice = $derived(draft.notice !== null && draft.notice.folder === draft.folder && draft.notice.lines.length > 0 ? draft.notice.lines : null);
 
-  // The models each program named at its newest start (TH104), for the composer's picker.
+  // The models of each program (TH104), for the composer's picker; until they come, it says why it has only the default.
   $effect(() => {
     void live.call({ call: 'models' }).then((answer) => {
-      if (answer.ok && answer.outcome.outcome === 'models') lists = answer.outcome.models;
+      if (!answer.ok) models = { state: 'failed', words: answer.words };
+      else if (answer.outcome.outcome === 'models') models = { state: 'listed', lists: answer.outcome.models };
+      else models = { state: 'failed', words: 'the runner gave no list' };
     });
   });
 

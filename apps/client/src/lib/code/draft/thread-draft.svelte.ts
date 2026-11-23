@@ -1,11 +1,10 @@
 import type { CallResult } from '$lib/agent-threads/live/live.svelte';
-import type { ModelLists } from '$lib/agent-threads/live/models';
 import type { Action } from '$lib/agent-threads/live/run';
 import { CAN, cannot } from '../composer/draft';
 import type { ComposerEngine, Outcome } from '../composer/engine';
 import { builtInCommands } from '../composer/mentions/lists/commands';
 import type { MentionSources } from '../composer/mentions/sources';
-import { chosen, draftCatalogue, FIRST_CHOICE, type DraftChoice } from './choice';
+import { chosen, draftCatalogue, FIRST_CHOICE, type DraftChoice, type DraftModels } from './choice';
 
 /** What a folder's own project files make the program do with no question (THR-046), as read for that folder. */
 export interface FolderNotice {
@@ -47,7 +46,7 @@ export class ThreadDraft {
   }
 
   /** The composer's engine for this draft: `call` is the runner, `started` takes the new thread. */
-  engine(call: (action: Action) => Promise<CallResult>, started: (thread: string) => void, lists: ModelLists): ComposerEngine {
+  engine(call: (action: Action) => Promise<CallResult>, started: (thread: string) => void, models: DraftModels): ComposerEngine {
     return {
       phase: 'idle',
       ended: null,
@@ -63,7 +62,7 @@ export class ThreadDraft {
       unqueue: refused(NO_QUEUE),
       sendQueued: refused(NO_QUEUE),
       pick: CAN,
-      ...draftCatalogue(this.choice, lists),
+      ...draftCatalogue(this.choice, models),
       choose: (next) => {
         this.choice = chosen(this.choice, next);
         return Promise.resolve({ ok: true });

@@ -140,7 +140,12 @@ import RotateCw from '@lucide/svelte/icons/rotate-cw';
  * licence in `LICENSE-Lucide.txt`). This is the one list of icons to redraw in Anima's own set later: add an icon here,
  * never import Lucide elsewhere (the lint refuses it).
  */
+import ClaudeMark from './ClaudeMark.svelte';
+import OpenAiMark from './OpenAiMark.svelte';
+
 export const CODE_ICONS = {
+  claude: ClaudeMark,
+  openai: OpenAiMark,
   'rows-3': Rows3,
   'columns-2': Columns2,
   'pilcrow': Pilcrow,
