@@ -9,13 +9,14 @@ from gui_test import screenshot, click
 
 def locate(output, phrase, footer=False):
     screenshot(output, 'current')
-    result = subprocess.run(['tesseract', str(output / 'current.ppm'), 'stdout', 'tsv'],
-                            capture_output=True, text=True, check=True,
+    enlarged = subprocess.check_output(['magick', str(output / 'current.ppm'), '-resize', '200%', 'ppm:-'])
+    result = subprocess.run(['tesseract', 'stdin', 'stdout', 'tsv'],
+                            input=enlarged, capture_output=True, check=True,
                             env={**os.environ, 'OMP_THREAD_LIMIT': '1'})
     height = int(subprocess.check_output(['magick', 'identify', '-format', '%h', str(output / 'current.ppm')], text=True)) if footer else 0
     lines = {}
-    for word in csv.DictReader(io.StringIO(result.stdout), delimiter='\t'):
-        if word['text'].strip() and (not footer or int(word['top']) > height-80):
+    for word in csv.DictReader(io.StringIO(result.stdout.decode()), delimiter='\t'):
+        if word['text'].strip() and (not footer or int(word['top'])//2 > height-80):
             key = tuple(word[key] for key in ('block_num', 'par_num', 'line_num'))
             lines.setdefault(key, []).append(word)
     for words in lines.values():
@@ -28,7 +29,7 @@ def locate(output, phrase, footer=False):
             top = min(int(word['top']) for word in words)
             right = max(int(word['left'])+int(word['width']) for word in words)
             bottom = max(int(word['top'])+int(word['height']) for word in words)
-            return left, top, right-left, bottom-top
+            return left//2, top//2, (right-left)//2, (bottom-top)//2
     raise ValueError(f'Rendered text not found: {phrase}')
 
 

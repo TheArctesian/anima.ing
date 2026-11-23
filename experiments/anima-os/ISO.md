@@ -161,3 +161,35 @@ The OS initializes its local private-link port list only if absent. A local admi
 Publish only after the tested ISO and signed update target the same installed-system closure. Upload the immutable ISO under `os/preview/x86_64-linux/<version>/anima-os-x86_64.iso`, verify its complete public bytes, then publish the signed installed-OS package with `updates/publish.py`. Keep the local artifact and public verification receipts.
 
 Finish every ISO publication with the site repository's `scripts/publish-os.py <version> /path/to/anima-os-x86_64.iso --credentials /path/to/r2.env`. It verifies the complete public ISO and atomically advances `latest-iso.json`, preserving the previous pointer if verification fails. The permanent website address `https://anima.ing/download/os` and its version/size/checksum display read this manifest at runtime. No website rebuild is needed. Confirm both the signed update feed and `/download/os?format=json` name the intended version before reporting publication complete.
+
+## Automatic preview releases
+
+OS3-R10 uses `.github/workflows/os-release.yml` on GitHub-hosted Ubuntu runners.
+Changes to the OS, Rust workspace, link or toolchain on `dev` enqueue a release.
+The merge conductor also dispatches this workflow: pushes made with its GitHub token
+cannot trigger another push workflow. A source fingerprint skips already-published
+inputs; failed runs remain visible and require a deliberate rerun rather than an
+endless build loop. `main` and desktop/mobile feeds are not changed.
+
+The `os-preview` environment supplies `OS_PREVIEW_SIGNING_KEY` (the existing key,
+not a new identity) and `OS_RELEASE_CREDENTIALS` (the existing publisher env-file
+format). Its deployment branch policy admits only the authorized release branch.
+`ANIMA_OS_RELEASES=on` enables dispatch; changing it to `off` stops new releases.
+`ANIMA_OS_RUNNER` optionally selects a larger **GitHub-hosted** Ubuntu runner.
+The runner checks KVM and requires 64 GiB free after removing unused hosted SDKs.
+Insufficient disk fails before the expensive build; it must not bypass VM checks.
+
+One serialized workflow builds the matching ISO and signed closure, then fresh
+runners test graphical installation and an upgrade from the public ISO. The
+upgrade includes private SSH, RDP TLS and desktop login, reboot, owner port choices,
+and rollback with identity and work preserved. Candidate artifacts last three days;
+result JSON and screenshots last fourteen days. VM disks, passwords, private
+fixture keys and raw serial transcripts are not uploaded as Actions artifacts.
+
+Publication verifies all public artifact bytes before advancing either pointer.
+Conditional writes reject a concurrent publisher and older release versions. The
+two object pointers cannot be changed as one transaction: a failure between writes
+is visible as a failed release, and a rerun of the same qualified publication job
+can complete the second pointer. Do not rebuild/re-sign a version to repair it.
+The pipeline fails closed if the baseline ISO and update feed disagree.
+Installed machines still require the owner's explicit activation/restart.

@@ -1,0 +1,155 @@
+name: OS preview release
+
+on:
+  push:
+    branches: [dev, os/automatic-releases]
+  workflow_dispatch:
+
+permissions: {}
+concurrency:
+  group: os-preview-release
+  cancel-in-progress: false
+
+jobs:
+  select:
+    if: vars.ANIMA_OS_RELEASES == 'on'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      needed: ${{ steps.select.outputs.needed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: python3 -m pip install boto3==1.42.6
+      - run: python3 -m unittest discover -s experiments/anima-os/release -p 'test_*.py'
+      - id: select
+        run: python3 experiments/anima-os/release/candidate.py
+
+  build:
+    needs: select
+    if: needs.select.outputs.needed == 'true'
+    runs-on: ${{ vars.ANIMA_OS_RUNNER || 'ubuntu-24.04' }}
+    timeout-minutes: 350
+    environment: os-preview
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: bash experiments/anima-os/release/hosted.sh
+      - uses: cachix/install-nix-action@d698718aa798980d17dd749f03beae0b51183399 # v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            max-jobs = 2
+            cores = 2
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: link/go.mod
+          cache: false
+      - name: Build and sign the matching ISO and update
+        env:
+          SIGNING_KEY: ${{ secrets.OS_PREVIEW_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          export OS_SIGNING_KEY="$RUNNER_TEMP/os-signing.pem"
+          trap 'rm -f "$OS_SIGNING_KEY"' EXIT
+          umask 077
+          test -n "$SIGNING_KEY"
+          printf '%s\n' "$SIGNING_KEY" > "$OS_SIGNING_KEY"
+          unset SIGNING_KEY
+          mkdir -p "$RUNNER_TEMP/release"
+          bash experiments/anima-os/release/build.sh "$RUNNER_TEMP/release"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: os-candidate
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/release/anima-os-x86_64.iso
+            ${{ runner.temp }}/release/release.json
+            ${{ runner.temp }}/release/package
+
+  qualify:
+    needs: build
+    runs-on: ${{ vars.ANIMA_OS_RUNNER || 'ubuntu-24.04' }}
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [fresh-install, upgrade]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: bash experiments/anima-os/release/hosted.sh
+      - run: python3 -m pip install boto3==1.42.6
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: os-candidate
+          path: ${{ runner.temp }}/release
+      - name: Qualify the actual release bytes
+        env:
+          CHECK: ${{ matrix.check }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/release"
+          if [[ "$CHECK" == fresh-install ]]; then
+            python3 experiments/anima-os/gui_test.py "$out/anima-os-x86_64.iso" "$RUNNER_TEMP/acceptance"
+          else
+            python3 experiments/anima-os/release/channel.py baseline "$out"
+            python3 experiments/anima-os/update_test.py "$out/baseline.iso" "$out/package" "$RUNNER_TEMP/acceptance" --remote
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: os-proof-${{ matrix.check }}
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/acceptance/results.json
+            ${{ runner.temp }}/acceptance/*.ppm
+            ${{ runner.temp }}/release/baseline.json
+
+  publish:
+    needs: [build, qualify]
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment: os-preview
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install boto3==1.42.6
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: os-candidate
+          path: ${{ runner.temp }}/release
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: os-proof-upgrade
+          path: ${{ runner.temp }}/proof
+      - name: Verify public artifacts and promote the two feeds
+        env:
+          OS_RELEASE_CREDENTIALS: ${{ secrets.OS_RELEASE_CREDENTIALS }}
+        run: |
+          set -euo pipefail
+          credentials="$RUNNER_TEMP/os-release.env"
+          trap 'rm -f "$credentials"' EXIT
+          umask 077
+          test -n "$OS_RELEASE_CREDENTIALS"
+          printf '%s\n' "$OS_RELEASE_CREDENTIALS" > "$credentials"
+          unset OS_RELEASE_CREDENTIALS
+          cp "$RUNNER_TEMP/proof/release/baseline.json" "$RUNNER_TEMP/release/baseline.json"
+          python3 experiments/anima-os/release/channel.py publish "$RUNNER_TEMP/release" --credentials "$credentials"
