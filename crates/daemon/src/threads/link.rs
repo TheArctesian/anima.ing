@@ -135,7 +135,8 @@ impl HolderLink {
 
 /// Starts `program holder <dir>` with an empty environment, no open input or output, and a
 /// process group of its own, so that the end of the daemon does not end it (THR-113). The
-/// holder takes the lock of the folder; a second one ends at once.
+/// holder takes the lock of the folder; a second one ends at once. It runs at normal priority,
+/// and so does each agent program it starts ([`super::priority`]).
 ///
 /// # Errors
 /// The I/O error when the program cannot start.
@@ -149,6 +150,7 @@ pub fn start_holder(program: &Path, dir: &Path) -> io::Result<()> {
         .stderr(Stdio::null())
         .process_group(0)
         .spawn()?;
+    super::priority::lift(child.id());
     // The daemon reaps the holder when it ends, so that it leaves no zombie.
     std::thread::spawn(move || child.wait());
     Ok(())

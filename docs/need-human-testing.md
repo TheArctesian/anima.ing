@@ -4809,3 +4809,23 @@ Built on `os/remote-access`. Installed OS SSH and RDP listen only on loopback an
    Expected: the hub denies access before remote login. Restore your intended permissions afterwards.
 
 Result: Open.
+
+### HT-NEW-agentpriority: an agent from Anima is as fast as from a terminal (R-NEW-agentpriority)
+
+Built on the branch `threads/agents-priority`. The runner lifts the holder of the agent programs, and its own questions to a
+program, out of the background priority of the daemon. The tests lift a child of the test; nobody has timed a turn of a
+real program started from the application.
+
+1. Install the build, quit each thread, and stop the holder (restart the computer, or end `anima-daemon holder`), so that
+   the next thread starts a new holder.
+   Expected: nothing; this makes sure that the holder is a new one.
+2. While the Mac is busy (for example a long build in a terminal), start a Codex thread from the page of a new thread with
+   the prompt `reply with the word ok`, and time it from the press to the answer.
+   Expected: the thread starts; no words "did not answer".
+3. In a terminal of the same Mac, at the same load, run `codex exec "reply with the word ok"` and time it.
+   Expected: the time of step 2 is about the time of step 3, not many times longer.
+4. Open the log of the runner: the file `runner.log` in the folder `threads` of the state folder of the daemon.
+   Expected: no line "a program runs at background priority: the lift failed".
+
+Result: Open.
+

@@ -262,6 +262,7 @@ impl Runner {
         self.holder.older = false;
         let next = self.link.next_id();
         self.link = link::reach_patiently(&self.program, &self.dir).await;
+        self.say_priority();
         self.link.go_on_from(next);
         self.send_again().await;
     }
