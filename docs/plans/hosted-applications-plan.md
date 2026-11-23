@@ -1,14 +1,14 @@
 ---
 kind: Plan
 state: In progress
-evidence: Approved by R-149 (operator, 2026-11-18): stage 1 (the containers of a machine, read-only, with a screen in the client) and stage 2 (start, stop, install, update, remove, the catalogue). Stage 2 waits for the work route (task W1). HOST-004 to HOST-009 are marked "Not approved". Version 2 (2026-11-18). Version 4 (2026-11-18): R-150 approves HOST-015 to HOST-025, which came from a comparison with Arcane, in three groups (with stage 1, with stage 2, and HOST-024 after a security review); the tasks are H8 to H12. Task H8 is built on 2026-11-18 (HOST-017, HOST-019, HOST-020) and waits for the check HT-038; HOST-021 moved to the new task H13 (version 5), which is built on 2026-11-19 and waits for the check HT-039. Tasks H1 to H3 (stage 1) are built on 2026-11-18 (commits `9fb61504`, `9b5fa08b`, `1bb37a55`) and wait for the check HT-032 of task H4 on a real machine; task H9 (the client for H8 and H13) is built on 2026-11-19 and waits for the check HT-042; task H29 (the syntax check of a Compose file and the `docker run` converter, with no machine) is built on 2026-11-20 and needs no check by a person; tasks H5 to H7 and H10 to H12 are Not started. Version 6 (2026-11-19): R-209 to R-216 accept the contract of the work route, approve HOST-008, replace HOST-009 and decide OD-HOST-5 to OD-HOST-12; the tasks H14 to H21, H23, H24, H28 and H29 are added; OD-HOST-13 is open. The review of task H14 is done (SF-015 to SF-033) and R-226 to R-233 decide OD-HOST-14 to OD-HOST-21; R-228 changes R-210 (no profile `full`); tasks H30 to H33 are the applications program of R-226. A second read found SF-034 to SF-048; R-234 to R-238 decide OD-HOST-22 to OD-HOST-26, and R-246 decides OD-HOST-27, the design for a Mac that R-237 asked for. The third read is done (SF-049 to SF-069, changes of the text only); the text is in its fourth form and goes to the owner of the contract file. OD-HOST-1 and OD-HOST-2 are open. Version 7 (2026-11-20): stage 3 gets its direction. R-302 puts the reverse proxy for the domains of applications on the hub and only there (HOST-046; it changes R-213); R-300 makes three ways in and a large catalogue that stays tested (HOST-047; it widens R-215); R-301 proposes three levels for databases with the open decision OD-HOST-38 (HOST-048); R-298 defers a hosted database machine; R-319 makes the images of LinuxServer.io the base of the catalogue (HOST-049) and the hub the proxy manager with streams (HOST-050), with OD-HOST-46 to OD-HOST-53. The tasks H22, H36 to H40 are added; H21 and H24 may start their design now. Version 7.1 (2026-11-22): R-426 gives the direction of HOST-051 and HOST-052; task H42 waits for the approval of hosting-section.md.
+evidence: Approved by R-149 (operator, 2026-11-18): stage 1 (the containers of a machine, read-only, with a screen in the client) and stage 2 (start, stop, install, update, remove, the catalogue). Stage 2 waits for the work route (task W1). HOST-004 to HOST-009 are marked "Not approved". Version 2 (2026-11-18). Version 4 (2026-11-18): R-150 approves HOST-015 to HOST-025, which came from a comparison with Arcane, in three groups (with stage 1, with stage 2, and HOST-024 after a security review); the tasks are H8 to H12. Task H8 is built on 2026-11-18 (HOST-017, HOST-019, HOST-020) and waits for the check HT-038; HOST-021 moved to the new task H13 (version 5), which is built on 2026-11-19 and waits for the check HT-039. Tasks H1 to H3 (stage 1) are built on 2026-11-18 (commits `9fb61504`, `9b5fa08b`, `1bb37a55`) and wait for the check HT-032 of task H4 on a real machine; task H9 (the client for H8 and H13) is built on 2026-11-19 and waits for the check HT-042; task H29 (the syntax check of a Compose file and the `docker run` converter, with no machine) is built on 2026-11-20 and needs no check by a person; tasks H5 to H7 and H10 to H12 are Not started. Version 6 (2026-11-19): R-209 to R-216 accept the contract of the work route, approve HOST-008, replace HOST-009 and decide OD-HOST-5 to OD-HOST-12; the tasks H14 to H21, H23, H24, H28 and H29 are added; OD-HOST-13 is open. The review of task H14 is done (SF-015 to SF-033) and R-226 to R-233 decide OD-HOST-14 to OD-HOST-21; R-228 changes R-210 (no profile `full`); tasks H30 to H33 are the applications program of R-226. A second read found SF-034 to SF-048; R-234 to R-238 decide OD-HOST-22 to OD-HOST-26, and R-246 decides OD-HOST-27, the design for a Mac that R-237 asked for. The third read is done (SF-049 to SF-069, changes of the text only); the text is in its fourth form and goes to the owner of the contract file. OD-HOST-1 and OD-HOST-2 are open. Version 7 (2026-11-20): stage 3 gets its direction. R-302 puts the reverse proxy for the domains of applications on the hub and only there (HOST-046; it changes R-213); R-300 makes three ways in and a large catalogue that stays tested (HOST-047; it widens R-215); R-301 proposes three levels for databases with the open decision OD-HOST-38 (HOST-048); R-298 defers a hosted database machine; R-319 makes the images of LinuxServer.io the base of the catalogue (HOST-049) and the hub the proxy manager with streams (HOST-050), with OD-HOST-46 to OD-HOST-53. The tasks H22, H36 to H40 are added; H21 and H24 may start their design now. Version 7.1 (2026-11-22): R-426 gives the direction of HOST-051 and HOST-052; task H42 waits for the approval of hosting-section.md. Version 7.8 (2026-11-22): proposes HOST-053, a first-party catalogue recipe for ARTEX; OD-HOST-59 to OD-HOST-64 are open; tasks H43 to H46 are not approved.
 ---
 
 # Plan: hosted applications (containers that run all the time)
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
-Version: 7.7. Date: 2026-11-22. Version 7.7 records the defaults of the restart on a cluster (R-421, R-422, R-424). Version 7.6 records the consent of a cluster member and the rule for callers on a cluster (R-420, R-419). Version 7.5 records that Anima builds clustering itself (R-418). Version 7.4 records the restart on a different member of a cluster and the direction of HOST-005 for it (R-425). Version 7.3 records that a machine can be in several clusters (R-423). Version 7.2 points HOST-052 to the cluster proposal (R-428). Version 7.1 adds HOST-051 and HOST-052 and the task H42 from R-426 (one list of applications and containers; the place where a thing runs). Version 7 records the direction of stage 3 (R-302, R-300, R-301, R-298, R-299, R-319). Version 5 records the build of task H8 and moves HOST-021 from H8 to the new task H13. Version 1 (2026-11-12) was the proposal. Version 2 is the plan: R-149
+Version: 7.8. Date: 2026-11-22. Version 7.8 proposes a first-party catalogue recipe for ARTEX (HOST-053, OD-HOST-59 to OD-HOST-64, tasks H43 to H46). Version 7.7 records the defaults of the restart on a cluster (R-421, R-422, R-424). Version 7.6 records the consent of a cluster member and the rule for callers on a cluster (R-420, R-419). Version 7.5 records that Anima builds clustering itself (R-418). Version 7.4 records the restart on a different member of a cluster and the direction of HOST-005 for it (R-425). Version 7.3 records that a machine can be in several clusters (R-423). Version 7.2 points HOST-052 to the cluster proposal (R-428). Version 7.1 adds HOST-051 and HOST-052 and the task H42 from R-426 (one list of applications and containers; the place where a thing runs). Version 7 records the direction of stage 3 (R-302, R-300, R-301, R-298, R-299, R-319). Version 5 records the build of task H8 and moves HOST-021 from H8 to the new task H13. Version 1 (2026-11-12) was the proposal. Version 2 is the plan: R-149
 approves it in two stages and decides the open decisions of version 1. Version 3 adds the comparison
 with Arcane and the proposed requirements HOST-015 to HOST-025 (operator, 2026-11-18: "find more of
 their features and styling components that we could use, and expand our plan"). Version 4 records
@@ -22,7 +22,7 @@ Status: the header of this document holds the state (PLN-020). History: a propos
 the operator approved it on 2026-11-18 (R-149). A requirement with the words "Not approved" has no
 ruling and is not built (PLN-007).
 Map: [work-plan.md](../work-plan.md), category Use, row 4.9.
-Identifiers: HOST-001 to HOST-025.
+Identifiers: HOST-001 to HOST-025, HOST-051 to HOST-053. HOST-026 to HOST-050 live in [hosted-applications-stage-2.md](../proposals/hosted-applications-stage-2.md).
 
 ## Problem
 
@@ -194,6 +194,19 @@ for the approval of that proposal.
   at each placement (CLU-014). Until the other decisions of that proposal are taken, no kind other than
   `machine` is built.
 
+### A catalogue recipe for ARTEX (proposed, 2026-11-22)
+
+- **HOST-053.** Proposed. [NEEDS CLARIFICATION] (OD-HOST-59 to OD-HOST-64). The catalogue of
+  HOST-012 and HOST-047 has a first-party recipe for ARTEX, the self-hosted application at
+  https://github.com/BaaRai/ARTEX, in the format of task H36 (Section 13 of
+  [hosted-applications-stage-2.md](../proposals/hosted-applications-stage-2.md)). The recipe is one
+  entry, not a new hosting system and not a fork. Anima copies no source of ARTEX (HOST-012). A
+  hosted instance runs only on a machine of the operator (HOST-011). The Compose file of the recipe
+  follows Section 4.5; each image that the entry lists is named by a digest (R-233) when the entry
+  is listed. The design, the two ship paths, the reviews and the rules that always, ask or never
+  apply are in the section "A catalogue recipe for ARTEX" below. This requirement is not approved
+  and is not built (PLN-007).
+
 ### Not approved
 
 No ruling names these requirements. They are not built (PLN-007).
@@ -345,6 +358,12 @@ Paths are from `frontend/src/lib/components/` of Arcane. "Anima has" names the p
 | OD-HOST-52 | How often does Anima pin a new digest of an image of LinuxServer.io (Section 15.5)? A: on a new version of the application, on an advisory, else each month. B: at each build of the publisher, about each week. | A. B is about 200 changes and many machine tests each week. Made overnight on this recommendation, not yet confirmed by the operator (R-324). |
 | OD-HOST-53 | Where do the machine tests of the catalogue run (Section 15.5, task H37)? A: a test machine of yours, each night, a fixed number of entries. B: a machine of the cloud for each run, with a cost each month. | A first. It needs a machine that you name; it is your step. Made overnight on this recommendation, not yet confirmed by the operator (R-324). |
 | OD-HOST-54 | Entries that are a shell (desktops in a browser, code editors, SSH, pages with no sign-in; Section 15.7, SF-247): a credential that the machine makes is required, a person installs them, and they get no public route or stream. May they have a private route? A: no route at all. B: a private route with the made credential. | A first: "private" is each node of the network of Anima, the containers of each machine included. Made overnight on this recommendation, not yet confirmed by the operator (R-324). |
+| OD-HOST-59 | Confirm: ARTEX is offered as a shipped first-party catalogue recipe in the format of task H36 (row 4.9), not only as a Compose file the operator pastes or pulls from a repository (HOST-022 / HOST-039)? | Yes, a catalogue recipe. It uses the catalogue that already exists. It is not a new hosting system. |
+| OD-HOST-60 | Reopen R-214 for this one recipe, so it may build from the BaaRai/ARTEX source before a published image exists? Yes / No, wait for a published image. | No, wait for a published, digest-pinned image. The recipe is written now and the entry is listed when the first public digest of `ghcr.io/baarai/artex` exists (upstream: the next tag after v0.7.0). A source build is the other path only if this answer is Yes; then task H44 runs. |
+| OD-HOST-61 | If a source build is allowed (OD-HOST-60 Yes), relax R-233 so this recipe may be listed without a digest? Yes, omit the digest until a registry image exists / No, a listed recipe always names each image by digest. | No. Do not relax R-233. If OD-HOST-60 is Yes, pin a git commit of BaaRai/ARTEX, build, record the digest of the image that was built, and list the entry only after that digest is in the recipe and the machine test of task H46 has passed. |
+| OD-HOST-62 | How does the ARTEX recipe meet Section 4.5? A: rewrite the official Compose in our recipe (long-form ports, named volumes, no `build` once an image exists, no short bind mounts) and add no exception to the validator. B: allow exceptions in the validator (`build`, short-form ports, short bind mounts) for this entry or for all files. C: rewrite the file, and add a narrow, time-boxed `build` mark for this entry only if OD-HOST-60 is Yes. | A if OD-HOST-60 is No; C if OD-HOST-60 is Yes. Never B: a change of the validator reaches every Compose file from the hub. |
+| OD-HOST-63 | The relayed choice was "Ship with no notice." HOST-011 (own machines only) still applies and is not a notice. A: no authorised-testing notice; HOST-011 stands; ports on `127.0.0.1` and no `network-port` mark; the catalogue description may say that it is a penetration-testing platform. B: show a short authorised-testing-only notice on the catalogue card and at install. C: same as A, and also refuse a public route for this entry, as a product rule. | A. HOST-011 does not change. A public route for this entry is not in this plan. This is not legal advice. |
+| OD-HOST-64 | Which PostgreSQL does the ARTEX recipe use? A: a digest-pinned official PostgreSQL 16 image bundled in the same Compose file. B: the catalogue PostgreSQL entry (HOST-041, task H24; the image today is 18.7). | A. ARTEX is documented for PostgreSQL 16; use of 18 is Not verified. The machine path of H24 waits for H6, as does this install. Dawarich already bundles its database in the same recipe. |
 
 ## Tasks
 
@@ -393,6 +412,219 @@ The order is hub API, `anima` command, MCP tool, client (CMD-030). A task is bui
 | H41 | The bucket of new UDP flows of a public stream, the Low that the re-read of `d00de9969` left open on 2026-11-21: the cap of 4 flows of one source network stops one network, but a sender of false sources in many networks still takes the shared tokens of the stream (8 each second), so real new clients wait. A flow opens only after the application answers, or each source network gets its own bucket; a test with false sources of many networks. | H40 | Built: merged into dev in `bc513403a` on 2026-11-21 (branch `hosted/udp-buckets`, `1b41cf1f0`), after three reads by a separate reviewer with no finding of severity High or Medium open; the Lows that stay are in [security-findings.md](../security-findings.md), in the note of the re-read of `d00de9969`. The flows of a UDP stream are in a table (`crates/route-proxy/src/streams/flows.rs`): a flow starts as waiting and is set up when its source sends again after the application answered it. A new source that finds the waiting flows at their cap or the table full takes the place of the oldest waiting flow, never of a set-up one, and the flow that it replaced ends at once, also while it dials. The cap of waiting flows is the burst of the bucket of new flows and at most half of the connections of one route (8 by default); set-up flows take at most the places that the waiting flows leave and fewer than the connections of the route less the waiting flows (7 by default), so waiting and set-up flows together hold each connection of the route but one, and a new client that replaces a waiting flow gets that one; the cap of 4 flows for each source network stays. So false sources of many networks that send once replace only each other. Residuals (Low, from the separate review): a sender of false sources that sends again to each of them can set up flows without seeing an answer and hold the set-up places until they are idle, and then a real client stays waiting and can be replaced; the first datagram of a new real client still waits for a token of the bucket with the false sources, and a burst of false sources can replace each waiting flow at once. Tests: `crates/route-proxy/src/tests/flows.rs`. A separate security review reads it before the merge. | |
 | H42 | The one list of applications and containers (HOST-051, HSE-002 of [hosting-section.md](../proposals/hosting-section.md)) in the section Hosting, grouped by place (HOST-052), with the containers that Anima did not install marked as not managed; the tab Containers of the device page shows it narrowed to its machine (HSE-008). The mockup is [hosting/index.html](../mockup/hosting/index.html). | The approval of hosting-section.md; the bar destination and the page of the UI session; H6 for the rows of the catalogue | In progress | Stage 1 is approved by R-426, R-427 and R-428 (the reading of the operator's session). Stage 1 is built in the client on the branch `hosted/h42-list`: `apps/client/src/lib/hosting/` reads the machines (the devices with SSH on) and the containers of each with the fields of H1, H8 and H13, makes one group for each machine, an application of each Compose project (HSE-009), Not managed on each row, the search across machines, the choice Machine and the choice All, Needs you, Not managed. It adds no hub field, so CMD-030 needs no new command or tool. It is not mounted yet: the section Applications of the UI session's page mounts it. Its check by a person is written when it is mounted. |
 | H37 | The test of each entry on a machine (HOST-047): a throwaway machine installs the entry, waits for health, runs the test of the entry, removes it, and records the date and the result; a scheduled pin of new digests, then the test again; an entry that fails leaves the list. | H36; H6 | Not started | |
+| H43 | The ARTEX recipe in the format of task H36 (HOST-053): the folder `crates/catalogue/entries/artex/` with `entry.json`, a Compose file that meets Section 4.5 (no `build`, long-form ports 8787 and 8788 on `127.0.0.1`, named volumes `data` and `keys`, no short bind mounts, no host `skills/` mount, a digest-pinned official PostgreSQL 16 image in the same file when OD-HOST-64 is A), and `environment.example` with no secret value. The description names it as a penetration-testing platform and links to https://github.com/BaaRai/ARTEX. The static test of task H36 must pass. The entry is listed only when each image has a digest (R-233). If no public digest of `ghcr.io/baarai/artex` exists yet, the files may sit on the branch, but a missing digest must fail the static test so the hub does not list the entry (task H38 lists only recipes that pass). Pin the repository BaaRai/ARTEX. An authorised-testing notice is included only if OD-HOST-63 is B. Check: `cargo test -p catalogue`; `cargo test -p compose-rules`; `bun run quality:register`; `bun run quality:documents`. Pass: the static test passes and the hub list, when a digest exists, holds the entry; fail: a missing digest, a refused Section 4.5 key, or a secret value in the example file. | A ruling on OD-HOST-59 to OD-HOST-64; H36 (built) | Not started | |
+| H44 | A narrow, time-boxed mark that lets this one recipe name a build from a pinned git commit of BaaRai/ARTEX, and the change of `crates/compose-rules` and of the recipe format that it needs, with tests that every other recipe is unchanged and that a file with `build` is still refused unless it is this marked entry. After a public digest exists, the mark expires and task H45 runs. If OD-HOST-60 is No, this task is Cancelled. Check: `cargo test -p compose-rules`; `cargo test -p catalogue`; `bun run quality:documents`. Pass: only the marked ARTEX recipe may name a build, and each other fixture still fails on `build`. | OD-HOST-60 Yes; H28; H43 | Not started | |
+| H45 | When a public digest of `ghcr.io/baarai/artex` exists, or when task H44 has recorded the digest of a source build that passed the machine test: write that digest in the recipe, run the static test, and remove any source-build mark. If OD-HOST-60 is No and H43 already waited for the public digest, this task is the pin step of the same entry and may be the same pull request as H43 when the digest is already public. Check: `cargo test -p catalogue`; the `image` field is `repository@sha256:` and 64 hexadecimal digits, with the day of the read recorded. Pass: the entry is listed with that digest and with no `build` key. | H43; a public digest or H44 | Not started | |
+| H46 | The machine test of HOST-047 for the ARTEX entry: a throwaway machine installs the entry, waits for health, reaches the web UI of the `artex` service on loopback port 8787 by the test field of the recipe, and removes it. It uses the runner of task H37 when that exists; it does not invent a second test system. The MITM proxy port 8788 is not a test target of the first version. Check: the runner of H37, or its check command once H37 is built. Pass: the test field succeeds within `limit_seconds` and the entry stays listed; fail: HOST-047 removes the entry from the list. | H43; H45 or a listed entry; H6; H37 or its runner | Not started | |
+
+
+## A catalogue recipe for ARTEX (proposed, 2026-11-22)
+
+This section is the design of HOST-053. Nothing in it is approved (PLN-007). It adds no ruling.
+The answers that Product Ideas relayed on 2026-11-22 ("Ship it as a catalogue recipe"; "No, allow
+a build from source"; "Ship with no notice") are not first-hand in this chat and are not rulings.
+They are recorded as the source of OD-HOST-59, OD-HOST-60 and OD-HOST-63.
+
+### Overlap (PLN-004)
+
+Checked on origin/dev `9057435c6` (2026-11-22, America/Los_Angeles), and on anima-cloud
+`0935d855d` (2026-11-21 8:23 PM PT).
+
+- [ownership.md](../plan/ownership.md): Hosted applications are owned by this plan.
+- [register.md](../plan/register.md): this plan is In progress (R-149). Stage 2 includes the
+  catalogue. Stage 3 includes a Compose file from a repository and a large catalogue that stays
+  tested.
+- [deferred.md](../deferred.md): no ARTEX, and no item about a pentest or offensive-security
+  application. Coolify is a source of deferred notification and session ideas, not of this entry.
+- [priorities.md](../plan/priorities.md) row 4.9: Hosted applications; stage 2 is "control,
+  install, the catalogue". Row 4.16 is the one-click install of Anima.ing itself. This work stays
+  on row 4.9.
+- The catalogue and the recipe format already exist as plan and, in part, as code (tasks H36 and
+  H38). ARTEX is not an entry in Section 13.9 or in the proposed first thirty (Section 13.10), and
+  it is not an image of LinuxServer.io (HOST-049). HOST-049 does not exclude a first-party recipe;
+  OwnTracks Recorder and Dawarich are already first-party recipes.
+- HOST-011, HOST-012, HOST-025, HOST-039, HOST-040, HOST-041, HOST-047 and Section 4.5 already
+  own the mechanism. This section changes this plan rather than add a document.
+- The agent-tools catalogue (row 4.21) is a different list. ARTEX is not an agent runtime for
+  the agents of Anima.ing.
+- anima-cloud: no ARTEX and no application catalogue. It mentions hosted applications only as a
+  public branch that a hub image waits on.
+- [docs/ideas/](../ideas/): no folder for this idea, so none is deleted.
+
+### Code that was checked (origin/dev `9057435c6`)
+
+- The recipe format of task H36 is built (`931b1ba4`): crate `crates/catalogue`, recipes in
+  `crates/catalogue/entries/`, static test in that crate. Task H36 built six first-party recipes
+  and the runner. Task H24 added `postgresql`. Task H39 added ten generated LinuxServer.io
+  entries. The tree of this commit holds 17 recipe folders. The check command is
+  `cargo test -p catalogue`.
+- Task H38 is built (`15002818`): the hub lists the recipes that pass the static test
+  (`Query.catalogueEntries`, `Query.catalogueEntry`; `anima catalogue list` and `show`). The
+  mutation `installCatalogueEntry` is refused (`INSTALL_NOT_BUILT`) until task H6 exists. A
+  one-click install of ARTEX therefore waits for H6 even after the recipe is listed.
+- Task H6 (install, update, remove) is Not started. Task H37 (the machine test of each entry) is
+  Not started. No recipe has a passed machine test (`last_test` is `not-tested`).
+- The rules of Section 4.5 are the crate `crates/compose-rules`. A file that contains `build: .`
+  is refused as `KeyNotPermitted` (`crates/compose-rules/src/tests/listed.rs`,
+  `host_028_each_key_that_gives_the_rights_of_the_machine_is_refused_because_it_is_not_listed`).
+  The same list refuses a short-form port and a short bind mount (`./data`). A permitted bind
+  mount uses the long form with source `binds/<name>`. `security_opt` may only be
+  `no-new-privileges:true`. A published port uses the long form, from 1024, and with
+  "Open to the network" off must set `host_ip` to `127.0.0.1`. A recipe of the catalogue names
+  each image by a digest (R-233; the `anima.images` field is `repository@sha256:` and 64
+  hexadecimal digits).
+- First-party recipes that already rewrite an upstream Compose file: OwnTracks Recorder and
+  Dawarich (`crates/catalogue/entries/owntracks-recorder/`, `crates/catalogue/entries/dawarich/`).
+  They use named volumes, long-form ports on `127.0.0.1`, and digest-pinned images. Dawarich
+  bundles its database in the same file.
+- The choice Catalogue of the tab Containers is built (task H38, task H39; mockup
+  [device-containers-v2](../mockup/device-containers-v2/index.html), Frames 3 to 6). A new
+  screen type is not needed. The mockup of the ARTEX entry is
+  [artex-recipe/index.html](../mockup/artex-recipe/index.html).
+
+### Upstream that was checked (2026-11-22, America/Los_Angeles)
+
+Checked against the public GitHub repository `BaaRai/ARTEX` and its raw files, not by a run of
+the application.
+
+- Default branch `main`, latest commit `38c7477c51636c9221c78683f4aa9c4f08f65c19` (merge of
+  pull request 483), committer date 2026-11-22 2:01 PM PT.
+- Latest release v0.7.0, published 2026-11-21 12:44 AM PT
+  (https://github.com/BaaRai/ARTEX/releases/tag/v0.7.0). The release holds platform archives;
+  it holds no container image.
+- Licence: GNU AGPL-3.0 (GitHub API `license.spdx_id` `AGPL-3.0`; the file `LICENSE` is the
+  GNU Affero General Public License Version 3). Anima.ing is also AGPL-3.0. HOST-012 already
+  says: use the published images and copy no code of a GPL or AGPL catalogue application.
+- GitHub reports the repository as not a fork (`fork` false). The description calls it an
+  English translation of work by Autumn-27. `go.mod` on `main` is still
+  `module github.com/Autumn-27/artex`, with
+  `replace github.com/Autumn-27/norma => github.com/BaaRai/Norma v0.4.11`. The recipe pins the
+  repository that was named, `BaaRai/ARTEX`, unless a later ruling says otherwise.
+- GitHub API figures on 2026-11-22: 16,580 stars, 6,219 forks, 112 subscribers, 39 open issues,
+  created 2026-10-08 2:14 PM PT. The star and fork counts are unusually high for a repository
+  this new. They are the API's figures, not a verified organic audience.
+- Official `docker-compose.yml` (raw file on `main`): service `artex` uses `build` from the
+  checkout (`context: .`, `image: artex:local`); service `postgres` uses `postgres:16-alpine`
+  with no digest; ports are short form (`${ARTEX_BIND_ADDR:-127.0.0.1}:8787:8787` and
+  `127.0.0.1:8788:8788`); volumes are short bind mounts (`./data`, `./keys`, `./skills`);
+  `security_opt` is `no-new-privileges:true`; `POSTGRES_PASSWORD` is required. That file would
+  be refused by Section 4.5 as it stands.
+- Official `docker-compose.ghcr.yml` on `main` names `ghcr.io/baarai/artex:${ARTEX_IMAGE_TAG:-latest}`
+  with no digest, and still uses short-form ports and short bind mounts (`./data`, `./keys`).
+  Its header says the image is published from the next tagged release and that v0.7.0 predates
+  the publish step.
+- A pull token for `ghcr.io/baarai/artex` was denied (`{"errors":[{"code":"DENIED"...}]}`).
+  `https://github.com/BaaRai/ARTEX/pkgs/container/artex` answered 404. Issue 485
+  (2026-11-22, 6:44 AM PT) records that the package has never been published: the docker job
+  of the v0.7.0 tag was skipped, and a later dry run built without a push. The maintainer
+  BaaRai confirmed this at 7:05 AM PT and said the next release will publish the image.
+- The README quick start is a checkout build (`docker compose up -d --build`). The web UI is
+  on port 8787. A recording MITM proxy is on port 8788. On first start, `/setup` asks for a
+  one-time setup token that is printed in the container log
+  (`docker compose logs artex | grep "Setup token"`). The v0.7.0 notes say the token is no
+  longer written to the log that the ARTEX API exposes. Not verified: that the container log
+  which HOST-001 reads still holds that line.
+- Required environment: `POSTGRES_PASSWORD`. Optional: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
+  `ARTEX_LLM_*`, `ARTEX_SECRET_KEY`, bind address, budgets, noise profile. Exploration needs
+  an LLM key, which can also be set in the UI after install.
+- The application was not run. Behaviour of the workers, of the MITM proxy, and of a first-run
+  claim on a machine of Anima is Not verified.
+
+### Scope
+
+In scope: one first-party catalogue recipe for ARTEX, in the format of task H36, that a person
+can install on a machine of their own once task H6 exists, with the machine test of HOST-047
+(task H46, through the runner of task H37).
+
+Out of scope: a new hosting system; a fork of ARTEX; a vendor copy of its source in this
+repository; a change of the work type `build` for every application (HOST-040 stays later,
+R-214); a general reopen of R-214 or R-233; a change of Section 4.5 that weakens the
+validator for every file from the hub; a public route for this entry; an authorised-testing
+notice unless OD-HOST-63 is B; legal advice; a run of ARTEX against a target.
+
+### Design
+
+The recipe is a folder `crates/catalogue/entries/artex/` with the three files of Section 13.1.
+The Compose file is a rewrite of the official files, as Dawarich already rewrites its upstream
+file, so that Section 4.5 passes with no exception (OD-HOST-62 A).
+
+- Service `artex`: the published image `ghcr.io/baarai/artex` named by digest when that digest
+  exists; ports 8787 and 8788 in the long form, `host_ip` `127.0.0.1`, published from 1024;
+  `security_opt: [no-new-privileges:true]`; named volumes `data` and `keys` at `/app/data` and
+  `/app/keys`. No host `skills/` mount: the image's built-in skills are used (the official
+  GHCR Compose file already does this).
+- Service `postgres`, when OD-HOST-64 is A: the official PostgreSQL 16 image, named by digest,
+  with no published port, a health check, and the exception `init-capabilities` if the image
+  starts as root, as the catalogue PostgreSQL entry does. `POSTGRES_PASSWORD` is a generated
+  value. The example file holds no secret.
+- No `network-port` mark. With "Open to the network" off, Section 4.5 already refuses a
+  different `host_ip`. A public route is not part of this plan.
+- The catalogue description says that ARTEX is a self-hosted, LLM-driven penetration testing
+  platform, and it links to the upstream documentation. That sentence is a description, not a
+  legal notice.
+- The operator gets the first-run setup token from the container log of HOST-001, as upstream
+  documents. Not verified on a machine of Anima.
+- Two ship paths: the default path waits for a public digest and lists the entry only then
+  (OD-HOST-60 No). The other path, only if OD-HOST-60 is Yes, is task H44: a narrow mark, a
+  pinned git commit, a recorded digest of the built image, and a listing only after that
+  digest and after task H46. If the rulings refuse a source build, the recipe still ships
+  when the published image exists. If no published digest appears and OD-HOST-60 stays No,
+  the official recipe is not listed (the kill criterion of the brief).
+
+### Reviews
+
+**Scope.** The work is one recipe. It does not change how a person pastes a Compose file, how
+a repository file is followed (HOST-039), or how LinuxServer.io entries are generated. It
+does not move row 4.9.
+
+**Design.** The operator already has a catalogue card (task H38). The ARTEX mockup reuses that
+layout. Install still waits for task H6. The first version does not add a second install path.
+
+**Engineering, failure modes, trust boundaries, blast radius.**
+
+- Trust boundary 1: the image and the source. A listed recipe starts only an image that the
+  applications program pulled for this application, by digest (Section 4.5, SF-041, R-233).
+  A `build` key on a customer machine would run a Dockerfile of a third-party repository,
+  with the blast radius of that Dockerfile (network, the Docker engine, the build context).
+  That is why the recommendation is not to reopen R-214, and why a change of the validator
+  (OD-HOST-62 B) is refused: the validator is a shared contract for every Compose file from
+  the hub.
+- Trust boundary 2: the ports. Port 8787 is the web UI. Port 8788 is a recording MITM proxy.
+  Both stay on `127.0.0.1` in the recipe. An open publish of 8788 to a network would expose
+  captured traffic. The first version does not mark `network-port`.
+- Trust boundary 3: secrets and the first-run claim. `POSTGRES_PASSWORD`, optional LLM keys
+  and `ARTEX_SECRET_KEY` are secrets of the operator (LOG-007). The setup token must not be
+  written to an audit log. The hub gives log lines to a person with a login, and no MCP tool
+  returns a log (HOST-001, MCP-004). Not verified: that a setup token does not appear in a
+  log that an API key can read.
+- Trust boundary 4: where it runs. HOST-011 already forbids a run in the container of a
+  hosted hub. The recipe does not change that.
+- Failure modes: no public image (the entry is not listed); a later GHCR package that starts
+  private (the pin step fails the anonymous digest read, as issue 485 warns); a Section 4.5
+  refusal of a future official Compose change (the rewrite is ours, so we update the recipe);
+  a machine test failure (HOST-047 removes the entry); task H6 still not built (the card
+  shows the entry and refuses the install with `INSTALL_NOT_BUILT`); PostgreSQL 16 vs the
+  catalogue's 18.7 (OD-HOST-64, use of 18 is Not verified).
+- Shared contracts: Section 4.5 and `crates/compose-rules` change only if OD-HOST-60 is Yes
+  and only through task H44, with tests that every other recipe is unchanged. The H36 folder
+  format does not change. K10 does not change.
+
+### Always, ask, never
+
+- Always: HOST-011 (a machine of the operator); HOST-012 (copy no source; use a published
+  image when one exists); name each listed image by digest (R-233); long-form ports on
+  `127.0.0.1` and named volumes in the recipe; pin the repository BaaRai/ARTEX; run
+  `cargo test -p catalogue`, `cargo test -p compose-rules`, `bun run quality:register` and
+  `bun run quality:documents` on the task commits; write "Not verified" for a step that was
+  not run.
+- Ask: OD-HOST-59 to OD-HOST-64; a public route for this entry; a later move to the catalogue
+  PostgreSQL entry; a reopen of R-214 or R-233 beyond this recipe.
+- Never: a new hosting system; a fork or a vendor copy of ARTEX; a push to `main`; a
+  force-push; a change of Section 4.5 that permits `build`, short-form ports or short bind
+  mounts for every file; a general reopen of R-214 or R-233; a published port below 1024; a
+  copy of a private vault fact (a price, a cost, funding, a trademark note) into this
+  repository; legal advice; a guide for the use of ARTEX against a target.
+
 
 ## Needs
 
