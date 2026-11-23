@@ -14,6 +14,7 @@ Version: 8. Date: 2026-11-19. Version 2 added HM-R6 (a free hub sleeps) and the 
 business vault (Section 3, fact 5). Version 3 added HM-R7 (Apple Pay and Google Pay), HM-R8 (no
 staff access to hubs), HMD-030 and HMD-031. Version 4 adds HM-R9 (WorkOS AuthKit, which decides
 HM-D3), the device-code sign-in of Section 4.1 and HMD-032 to HMD-036. HM-D4 is not ruled.
+Version 17 (2026-11-23) records R-NEW-workospilot: option A permits design of one project-bound read action through a trusted private-cloud broker. Section 6.14 proposes the concrete contract; provider, deployment, grant policy and implementation are not approved.
 Version 16 (2026-11-23) adds the bounded Pipes and Relay preparation in Section 6.13 and task HM-PIPES-PREP. It approves no integration, provider, deployment or grant policy.
 Version 15 (2026-11-23) amends HM-T33 for an explicit Linux lingering offer (R-447). The earlier installer is merged; real logout and reboot checks remain open.
 Version 14 (2026-11-21) adds Section 8.1, the design of task HM-T33 (the one-line installation of a computer with no application), with four choices made overnight.
@@ -430,7 +431,8 @@ The operator asked for broader WorkOS use, relayed by the orchestrating session 
 The same session limited this task to plan and contract preparation until the policy is decided.
 This section serves row 4.17 of the priorities. It is a proposal within this owner document, not
 an approved contract or permission to build. It adds no requirement identifier. The primary
-decision is OD-W-NEW-workospilot in Section 7. No production configuration was inspected.
+decision OD-W-NEW-workospilot in Section 7 is now decided: option A, design only
+(R-NEW-workospilot). The next decision is OD-W-NEW-workosaction. No production configuration was inspected.
 
 **Existing owners and limits.** This document owns account sign-in and the cloud boundary
 (HMD-032 to HMD-035, HMD-061). [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)
@@ -462,9 +464,12 @@ distinguishes provider responses. These facts do not establish Anima's authoriza
 The [authorization guide](https://workos.com/docs/pipes/securing-authorizations) describes
 server-held session binding with a verifier and a one-time completion code. The
 [multiple-connections guide](https://workos.com/docs/pipes/multiple-connections) identifies
-each connection by `connected_account_id`, not its display label. Before code, confirm how
-Relay selects that exact connection: the Relay header table checked here does not document
-that selector. Do not infer one or silently select a different connection.
+each connection by `connected_account_id`, not its display label. A second read on 2026-11-23
+resolved the selector: its section "Using a specific connection" documents
+`X-Relay-Connected-Account`; Relay strips it before forwarding. Its compatibility section
+says that Relay without a selector uses the compatibility connection. The Relay page's header
+table does not list this header; the multiple-connections guide is the evidence, not an
+inferred header. No live request was made.
 
 **Recommended smallest useful slice, subject to the decision.** One signed-in person connects
 one provider, selects one already confirmed resource of one project, grants one named
@@ -508,11 +513,120 @@ disconnect and provider-side revoke require a human-check entry when built (PLN-
 The independent security review precedes any push of executable work. This preparation uses
 no live account, credential, cloud write or deployment.
 
+### 6.14 Concrete Pipes pilot contract proposal
+
+**Status: proposed, not accepted.** R-NEW-workospilot permits this design, not its implementation.
+Every choice below remains subject to the provider decision, the existing owners' review and
+separate approval of the complete contract under CON-001. No route, schema or deployment is
+created by this text. The base checked again on 2026-11-23 is `536d92dff`; origin/dev and its
+claims did not move since the first preparation. HM-T41, Code and hosting claims remain with
+their owners. The local preparation claim holds no implementation task.
+
+**Provider and action recommendation.** GitHub, one public repository already confirmed as
+a resource of the selected project, action `repository.summary.read`. Purpose: an agent can
+check the default branch and whether the project repository is archived before proposing work.
+Use `GET https://api.github.com/repos/{owner}/{repo}` only. The broker builds the path from
+the confirmed resource, encodes path segments, and takes no URL, method, header or body from
+the agent. Pin the expected numeric repository ID at person confirmation; refuse a different
+ID, a private response or a redirect. A rename or transfer needs fresh person confirmation.
+Return only repository ID, full name, default branch, archived flag, disabled flag and
+observation time. No code, issue text, description, owner profile, permissions or raw response.
+Proposed bounds: one upstream request, 256 KiB decompressed input, 4 KiB result, 10 seconds
+total, no redirect and no automatic retry. Reject oversized or malformed fields and responses.
+
+[GitHub's OAuth scope table](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps)
+says that no scope permits public reads; `repo` permits private reads and writes. Thus request
+no OAuth scopes for this candidate, not `repo`, `public_repo`, `read:org` or user scopes.
+The [repository endpoint](https://docs.github.com/en/rest/repos/repos#get-a-repository) supports
+public reads without authentication. This pilot therefore demonstrates Anima's authority path,
+not exclusive access to private records. It deliberately makes no anonymous fallback through
+Anima after revocation. A person or agent can still read that public resource outside Anima.
+A private-repository version would need a separate credential design; do not assume that
+GitHub App fine-grained permissions apply to the Pipes OAuth provider. Before build, verify
+that the configured Pipes integration supports the proposed empty scope set and that the
+connection does not carry an older broader grant. Do not silently reuse the existing GitHub App.
+
+**Account and project binding.** Recommend a private-cloud broker that also owns the pilot
+grant records. Its repository, service placement and storage are still open. At connect, it
+validates the account session under HMD-033 and derives the WorkOS subject; the caller cannot
+choose it. Use person-bound completion from the WorkOS authorization guide, CSRF protection,
+a single-use pending record and an exact registered callback. Keep the verifier server-side.
+List connections with multiple-connection support and bind the selected connected account ID,
+provider and owner to the verified account. The pilot uses a user-owned connection with no
+organization scope; do not fall back to organization or compatibility connections.
+
+The cloud directory verifies that the hosted hub belongs to the account. An authenticated
+exchange with that hub resolves the project and confirmed resource. It yields a versioned
+binding `(account, hub, project, resource, repository ID, connection ID)`, approved by the
+person in the account session. A project ID or hub token supplied by an agent is insufficient.
+Do not treat project contents as proof of provider account ownership. Any resource or binding
+version change invalidates the grant; check the current version at dispatch and release.
+The private cloud and hub owners must define that authenticated exchange before code. No
+cloud-wide credential goes to the hub and no WorkOS identity is inferred from a hub owner label.
+
+**Agent authority recommendation.** Bind one grant to one Code run, not to every process that
+shares a hub token. A trusted holder outside the agent process keeps a per-run signing key in
+memory, registered through an authenticated holder enrollment. The person selects that run
+when granting access. The agent calls one typed tool over a run-scoped channel; it gets no
+signing key, account session or WorkOS key. The holder signs the action, grant ID, request ID,
+body hash, audience and short validity interval; the broker checks replay and the current
+grant. Merely supplying a run ID is not proof. Recommend this path for the first MCP tool;
+unmanaged external agents wait for a separate enrollment design. This depends on the Code
+owner proving run isolation and holder identity. Do not claim the existing Code relay already
+provides that proof, and do not reuse device-lease token authority as a provider grant.
+
+**Proposed operations and lifecycle.** Names below describe semantics, not accepted API names.
+
+| Operation | Caller and result |
+| --- | --- |
+| Connect/status | Person starts and completes connect. Status returns an opaque connection reference and safe state; no credentials or authorization URL goes to an agent. |
+| Grant | Person confirms the exact project resource, connected account, Code run and one read action. Proposed duration: 15 minutes, one successful dispatch, no renewal by the agent. The broker stores the binding version and grant generation. A second action needs a new grant. |
+| Read | Run-bound tool submits only opaque grant and request IDs. The broker derives every other field. Atomically admit at most one request, durably record dispatch intent, then call Relay with the environment key and explicit user, provider and `X-Relay-Connected-Account`. |
+| Result | After parsing and bounding output, serialize the release decision with revoke, recheck account/run/binding/grant state, and durably record the result decision before releasing a response. No response content is stored in the audit. |
+| Revoke | Person revokes a grant; the transaction increments its generation and denies pending dispatch and release. Run end, account termination or binding change invalidates it too. A grant never becomes active again; issue a new one after reconnect. |
+| Disconnect | First block new use of the connection and invalidate all its grants. Then request deletion of that exact Pipes connection. A failed external delete remains visibly pending and locally blocked; it never re-enables access. |
+
+Admission consumes the one dispatch even when the outcome is ambiguous. A duplicate request
+ID returns safe operation status, not a second provider call or a cached content response.
+The person can inspect the audit and issue a fresh grant. No automatic replay after a timeout
+or process restart. A provider-side revoke may only become visible through a provider response
+or verified event; do not promise instantaneous detection. Known disconnect or reauthorization
+events invalidate affected grants. A new connection, even with the same label, is a new binding.
+
+**Revocation and audit semantics.** Recommend a durable transaction store at the broker as
+the authority for grant state and audit admission; the hub can show a redacted projection.
+Do not rely on a delayed projection to authorize. Store dispatch intent and terminal decisions
+with request ID, person and run identities, project/resource references, grant generation,
+action, time and a typed outcome. Avoid raw provider headers, content and secret material.
+Unknown accounts or unauthorized callers receive a uniform refusal without connection detail.
+If admission audit storage fails, send no upstream request. If result audit storage fails,
+release no content; the durable intent remains an unresolved attempt for recovery. If revoke
+cannot commit, report failure, do not claim success, and deny reads while state is unavailable.
+Audit retention and tamper evidence need the LOG owner; do not claim the hub hash chain covers
+the broker. A release committed before revoke may still arrive over the network afterwards;
+revocation prevents later release decisions, not retrieval of bytes already released.
+
+**Self-hosted boundary.** Recommend hosted-only enrollment for this pilot. Local sign-in,
+local sources and machine operations remain independent. The broker tool reports unavailable
+on a self-hosted hub and never uploads local credentials. A later optional account link for a
+self-hosted project would require explicit consent, authenticated hub enrollment, a disclosure
+of the project/resource fields sent to the cloud, and a way to unlink. None is approved here.
+
+**Before an implementation task.** Resolve OD-W-NEW-workosaction, obtain the private-cloud,
+Projects, Code, CLI and audit owners' review, and approve the complete binding, grant, holder,
+storage and callback contract. Record the source-credential ownership exception to SRC-008
+if the accepted design needs one. The account CLI path and holder enrollment are prerequisites,
+not deferred implementation details. Require independent security review of the final design
+and implementation, plus non-live cross-tenant, replay, revoke-race, disconnect-failure,
+scope and output-bound tests. Real provider behavior needs a human check when built. This
+document specifies no deployed host and authorizes no WorkOS configuration change.
+
 ## 7. Open decisions
 
 | ID | Decision | Facts | Proposal |
 | --- | --- | --- | --- |
-| OD-W-NEW-workospilot | Which bounded Pipes and Relay direction should be designed next? | Section 6.13: HMD-035 keeps the environment key in the private cloud; source connection is not identity or a project grant. No broker, provider or grant policy is selected. | Open. A (recommended): design one project-bound read action through a trusted private-cloud broker, then approve its concrete policy and contract; demonstrates useful agent access but needs private-cloud and grant-owner work. B: connection and status only; smaller identity scope, but does not demonstrate a permitted agent action or Relay. C: defer Pipes and Relay; preserves the present architecture but adds no managed tool access. Choosing A does not select the provider, deployment or grant policy. |
+| OD-W-NEW-workospilot | Which bounded Pipes and Relay direction should be designed next? | Section 6.13: HMD-035 keeps the environment key in the private cloud; source connection is not identity or a project grant. | Decided: A, design one project-bound read-only action through a trusted private-cloud broker, then separately approve the concrete provider, policy and contract (R-NEW-workospilot). No provider, deployment, grant policy or executable integration is approved. |
+| OD-W-NEW-workosaction | Which provider and read operation should the pilot contract target? | Section 6.14 proposes GitHub public-repository metadata with no OAuth scopes. Public reads exercise the Anima authority path but do not demonstrate private-data access. GitHub's classic `repo` OAuth scope includes writes. | Open. A (recommended): GitHub public-repository summary, no scopes, no private records. B: private GitHub repository summary; more useful for private projects, but wait for verified fine-grained credential support rather than approve broad `repo`. C: name another provider and one read operation; research its scope and resource boundary before proceeding. This decision selects the design target only; the complete contract and deployment still need separate approval. |
 | HM-D1 | How can each free hub cost less than the paid hubs earn? | Estimates: a paid Solo hub earns about $13 a month after its hardware and the payment fee. A free always-on slice costs about $2 to $3. At a conversion of 1% to 3%, one paid hub carries 33 to 99 free hubs, so a free hub must cost less than about $0.13 to $0.40 a month. | Decided: HM-R6. The free hub sleeps. |
 | HM-D8 | What does a hub that sleeps cost, and how fast does it start? | The cost is the disk of the hub and its share of memory while it is on. One hub with no device, on the first pool host on 2026-11-17 (the private service's plan, T5): 308 MiB of memory and 56 MiB of disk in use, a sleep in 1.3 seconds, a wake in 0.2 seconds, and about 10 seconds from a make to a ready hub. Not measured: a hub with devices, and many hubs on one host. | Measure on one pool host in step 5. Change the 15 minutes of HMD-024 and the 30 seconds of HMD-026 from the result. |
 | HM-D2 | Where does the usage line sit? | Hub memory is not measured. | Set it after the load test of [shared-pool-hosting.md](shared-pool-hosting.md). |
@@ -644,7 +758,7 @@ Tasks that a ruling names:
 
 | Task | Work | Ruling | State |
 | --- | --- | --- | --- |
-| HM-PIPES-PREP | Prepare the bounded Pipes and Relay decision, owner map and contract prerequisites in Section 6.13. Build no integration. | Operator request relayed by the orchestrating session, 2026-11-23; preparation only | Prepared for decision in Section 6.13. No executable integration; OD-W-NEW-workospilot is open. Local branch `t3/workos-pipes-relay`, held for review before push. |
+| HM-PIPES-PREP | Prepare the bounded Pipes and Relay owner map and concrete contract proposal in Sections 6.13 and 6.14. Build no integration. | R-NEW-workospilot; design only | Direction A recorded; concrete proposal prepared for OD-W-NEW-workosaction and separate contract review. No executable integration. Local branch `t3/workos-pipes-relay`, held for independent review before push. |
 | HM-T2 | The hub side of HMD-038 to HMD-040: the hosted mode (`ANIMA_HOSTED_CLOUD_KEY_FILE`, which needs `ANIMA_LINK_CONTROL`), `hostedDeviceInvite` and `claimDeviceToken` (K1), the claim book in memory (`crates/hub/src/fleet/link/claims.rs`), the token of the operator `owner` (`crates/hub/src/fleet/access/login/hosted.rs`), and the refusal of the password sign-in. Tests: `crates/hub/tests/it/link/hosted.rs`. | R-129 | Done: built in 921ee045, 2f7a4eff; merged to main; HT-022 Passed (operator, 2026-11-17). |
 | HM-T3 | The client side of HMD-040 and HMD-041: the `HubAccess` holds the invite (or none) and the claim; `apps/client/src/lib/hosted/join.ts` joins the link, trades the claim for the token through the link, keeps it, saves and marks the address; a hosted hub signs in again through the first-run choices (`signInPathFor`). | R-129 | Done: built in 921ee045; merged to main; HT-022 Passed (operator, 2026-11-17). |
 | HM-T7 | `anima-local-hub run --hosted-cloud-key-file <path>` passes `ANIMA_HOSTED_CLOUD_KEY_FILE` to the hub, so a hub of the pool can run in the hosted mode of HM-T2: `anima-local-hub` starts the hub with a cleared environment, and without the option no hub could be hosted. `crates/anima-local-hub/src/members.rs` (`hosted`), the procedure in [local-hub.md](../procedures/setup/local-hub.md). | R-129 | Done: built in 9babe035; merged to main. The pool's hub image `anima-hub-9babe035` uses it. HT-022 Passed (operator, 2026-11-17). |

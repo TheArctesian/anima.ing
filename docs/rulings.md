@@ -660,3 +660,16 @@ private keys in memory, public certificates scoped to the child, certificate and
 verification enabled, and personal/global trust unchanged. Keep the branch local until a
 new independent final-diff security review has no High. Real forwarding remains subject
 to R-400 and the operator's explicit word.
+
+### R-NEW-workospilot — design the bounded Pipes and Relay pilot
+
+Operator, 2026-11-23, explicit selection in the main conversation, relayed by the
+orchestrating session; not first-hand in the session that records it. This records the
+reported choice, not a verbatim quotation. OD-W-NEW-workospilot in
+[hosted-mode.md](proposals/hosted-mode.md) is decided as A: design one project-bound
+read-only action through a trusted private-cloud broker, then separately approve the
+concrete provider, policy and contract. This authorizes task HM-PIPES-PREP to prepare
+that design. It does not select a provider, broker deployment, grant policy or credential
+scope, and does not authorize executable integration, cloud writes or deployment.
+The branch stays local until independent review. HMD-035 and the identity boundaries
+remain in force; self-hosted and local operation remain independent of WorkOS.
