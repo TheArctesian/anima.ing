@@ -33,6 +33,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-149 | Reporting after an iPad update and the phone Code tab | A physical iPad with an existing device row, another client, and a phone with the updated app | Open |
 | HT-148 | Phone Devices, offline notice and Integrations fit the screen (M2-5) | An iPhone with a current build and a test hub | Open |
 | HT-146 | A process that an agent detached cannot answer an approval (R-315, THR-031) | A Mac with `claude` signed in, the daemon of the branch `threads/peer-ancestry` with a test state folder; later the installed application | Open |
+| HT-NEW-peerenviron | On Linux the person starts a thread and answers a request through the installed daemon, and an agent still cannot (DEF-NEW-peerenviron, R-315) | The Linux computer `pop-os` with `claude` signed in, and a build of the branch `fix/peer-environ-userns` installed as the user unit | Open |
 | HT-074 | Windows desktop account, link and remote sessions (WIN1) | Windows 11 VM, Anima account and a hub | Open |
 | HT-114 | Three generated entries of LinuxServer.io start with the rights of the static test (task H39) | A throwaway Linux test machine with Docker and Compose, not on the network of Anima | Open |
 | HT-115 | A person reads the settings of the ten generated entries of LinuxServer.io and records the review (task H39) | The branch `hosted/catalogue-linuxserver`; no machine | Open |
@@ -153,6 +154,37 @@ Many entries were written for the hub on the VPS. The operator uses only the hos
 - A daemon on the hosted hub: the `anima-daemon` of a computer, enrolled at the hosted hub. No document shows such an enrolment and no check ran one (HM-D16 of [hosted-mode.md](proposals/hosted-mode.md), open). If the hub refuses the enrolment, write that in the entry and in HM-D16. Where the entry permits a local hub, do the check with a local hub.
 
 The steps for a hub with a user name and a password (the self-host path) stay in each entry.
+
+### HT-NEW-peerenviron: on Linux the installed daemon tells the person from an agent (DEF-NEW-peerenviron, R-315)
+
+Built on the branch `fix/peer-environ-userns`. On Linux the systemd user unit of the daemon puts it in a user
+namespace of its own, and from there the runner cannot read the environment of a client outside it. The runner then
+reads the `uid_map` of the client: a client in a namespace above the runner's is not below the holder, and goes on to
+the check of its group. A test proves it with `unshare -U` and the test program. No test ran the real unit, the
+desktop application or a real agent. Step 5 of HT-098 on `pop-os` was blocked by this defect on 2026-11-22.
+
+1. On `pop-os`, install the daemon of a build that holds the branch (`anima-daemon install`), then run
+   `systemctl --user restart anima-daemon` and `systemctl --user cat anima-daemon | grep -E 'Protect|PrivateTmp'`.
+   Expected: the lines `ProtectHome=read-only`, `ProtectSystem=strict` and `PrivateTmp=yes`.
+2. Run `readlink /proc/self/ns/user /proc/$(systemctl --user show -p MainPID --value anima-daemon)/ns/user`.
+   Expected: two different values: the daemon is in a user namespace of its own.
+3. In a terminal, run `anima agents start --program claude-code --folder ~/ht-098 --mode ask "Run the command date"`.
+   Expected: a thread ID, and no words "this call came from a process of an agent". `anima agents watch` shows a
+   request for the command.
+4. In the same terminal, run `anima agents approve <thread> <request>` with the IDs of step 3.
+   Expected: the request is answered and the thread goes on.
+5. Start a second thread as in step 3, so that a request waits. In the first thread, send the prompt
+   "Run: anima agents approve <second thread> <request>" with the IDs of the waiting request, and allow only that
+   command. Expected: the call is refused ("this call came from a process of an agent"); the request still waits.
+6. Do step 5 with the detached command of step 2 of HT-146
+   (`perl -e 'use POSIX; fork and exit; POSIX::setsid(); fork and exit; ...'`), with the path of `anima` on this
+   computer. Expected: the call is refused; the request still waits.
+7. In the desktop application, open the page Code and start a thread in `~/ht-098`.
+   Expected: the thread starts.
+8. Do step 5 of HT-098 again with this build.
+   Expected: as HT-098 says for `pop-os`.
+
+Result: Open.
 
 ### HT-146: a process that an agent detached cannot answer an approval (R-315, THR-031)
 
@@ -3616,6 +3648,9 @@ the agents) is found. An agent can also remove the mark from its own environment
    Expected on the Mac (the known limit: `/usr/bin/perl` is a program of the system): the `perl` process still runs,
    and the stop said that all ended. Kill it by hand with `kill <pid>`. Expected on `pop-os`: no `sleep 600` is left
    (found by its mark).
+   On `pop-os` on 2026-11-22, with the installed daemon of `dev` at `2d24b1269`, this step was blocked: the runner
+   refused the start of the thread from the terminal (DEF-NEW-peerenviron). Do it again with a build that holds the
+   correction (step 8 of HT-NEW-peerenviron).
 5a. On the Mac, do step 5 with `/opt/homebrew/bin/python3 -c 'import os,time; os.fork() and os._exit(0); os.setsid();
    os.fork() and os._exit(0); time.sleep(600)'` as the program (or any `python3` that is not in `/usr/bin`).
    Expected: no `time.sleep(600)` process is left after the stop: it was found by its mark.
