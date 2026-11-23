@@ -1,5 +1,3 @@
-//! The lines of a log: what must stay, the level of a line and its shape (SHA-001, SHA-005).
-
 use serde_json::json;
 
 use crate::lines::{level, same};

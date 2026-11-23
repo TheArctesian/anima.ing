@@ -1,8 +1,5 @@
-//! `anima-route-proxy`: the reverse proxy of the public names of applications, a process apart
-//! from the hub (task H21). It wires the settings, the hub socket and the listeners; it holds no
-//! rule. With `ANIMA_ROUTE_PROXY_LISTEN` unset it says that it is off and ends. Its interface to
-//! the hub is a Unix socket: on any other system it says that routing needs a hub on Linux and
-//! ends (R-366).
+//! The reverse proxy of the public names of applications, a process apart from the hub (task H21).
+//! Its interface to the hub is a Unix socket, so it runs only on Unix (R-366).
 
 #[cfg(unix)]
 mod running {
@@ -17,7 +14,6 @@ mod running {
     };
     use tokio::net::TcpListener;
 
-    /// How often the proxy reads the table again and reports its counts.
     const REFRESH: Duration = Duration::from_secs(60);
 
     #[tokio::main]
@@ -77,7 +73,6 @@ mod running {
         }
     }
 
-    /// A listener on `address`, or `None` after it says why not.
     async fn bind(address: SocketAddr) -> Option<TcpListener> {
         let bound = TcpListener::bind(address).await.ok();
         if bound.is_none() {

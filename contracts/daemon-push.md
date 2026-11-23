@@ -487,6 +487,38 @@ The hub:
   A daemon that has never pushed is not marked, and `metricsStale` is true for it. Stale changes no check:
   a stale daemon is never a Down check.
 
+### 4.1 Agent thread summaries (TH20, R-431)
+
+`agentThreads` is optional. An absent member leaves stored thread data unchanged. The member has
+`count` (zero or more, at most 2³² − 1), `countRevision` and `summaries` (zero to 256 rows).
+`count` gives the device's total after the exclusions of AIS-008. The device persists revisions
+across restarts, increasing the revision of a count or row when it changes. Every revision
+is an integer from 1 to 2⁵³ − 1. A batch can send a subset of summaries.
+
+A summary has `runnerId` (a non-nil UUID, unique within the list), `program` (`claude_code` or
+`codex`), `state` (`starting`, `working`, `needs_you`, `idle`, `stopped` or `unknown`), `title`
+(at most 80 characters, no control characters), `startedAt` and `activityAt` (Section 1 times,
+with activity at or after start), and `revision`. The optional `repository` is the normalized
+repository name of `agentUsage.sessionDays.repository`. A summary carries no local path or
+full transcript. The daemon applies the exclusions of AIS-008 before it collects and sends the
+count or rows. A malformed member refuses the batch.
+
+The hub writes the count and rows in the push transaction. It takes the device from the
+authenticated push and keys each row by that device and `runnerId`. It assigns a stable UUID to
+each row. Only a strictly greater revision replaces a stored count or row. Device deletion
+removes its thread data.
+
+After commit, a push with this member gets `200 Accepted` with `agentThreads`. This receipt
+contains `countRevision` as stored and `summaries` in request order, each with `runnerId`, the
+hub `id` and the stored `revision`. This member can appear alongside any other optional member
+of `Accepted`. A daemon clears a pending summary or count only if this explicit receipt covers
+its revision. An old hub can still acknowledge the metrics batch without this receipt.
+
+The transcript upload is separate from the metrics push. It uses daemon authentication,
+requires local transcript opt-in, and acknowledges the highest contiguous stored sequence after
+commit. See [agent threads, Section 6.3.1](../docs/proposals/agent-threads.md#631-th20-approved-hub-sync-contract).
+An approval or transcript entry does not go in `agentThreads`.
+
 ## 5. Renewal (MET-013)
 
 The daemon calls renew with its current token when fewer than 30 days remain, at most once an hour. The body is
@@ -622,8 +654,9 @@ different version, and the batch had an `update` member, it answers 200 with `Ac
 { "update": { "version": "0.3.0", "again": false } }
 ```
 
-- 200 and 204 mean the same for the batch: it is stored. A daemon that sent no `update` member and no
-  `agentUsage.accounts` member always gets 204, so a daemon older than R-139 keeps working.
+- 200 and 204 acknowledge the metrics batch. A push with no optional answer member gets 204.
+  For thread summaries, only the explicit `agentThreads` receipt acknowledges their revisions
+  (Section 4.1).
 - `accountSalt` (R-313, AIS-022): in each answer to a batch with an `agentUsage.accounts` member,
   the account salt of the hub, 32 bytes in standard base64. The hub makes it once, from a random source,
   and keeps it in its database; it does not change. The daemon keeps it in its state folder with the token

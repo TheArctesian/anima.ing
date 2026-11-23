@@ -2,10 +2,7 @@ import { isRecord } from "./record.ts";
 
 /** The hub's top-level modules and which domains each domain may import (the hub-domains contract, REPO-004). */
 export interface HubModules {
-  /**
-   * Parent nouns that only group domains, such as `fleet` (REPO-E-001, OD-E5). A module inside a
-   * group counts as a top-level module: `fleet/devices/store.rs` is in the domain `devices`.
-   */
+  /** Parent nouns that only group domains (REPO-E-001, OD-E5): `fleet/devices/store.rs` is in the domain `devices`. */
   groups: string[];
   /** May be imported by everyone; import no domain. */
   leaves: string[];
@@ -13,10 +10,7 @@ export interface HubModules {
   wiring: string[];
   /** Domain -> domains it may import. */
   domains: Record<string, string[]>;
-  /**
-   * Domain -> extra domains its `graphql` module only may import, to resolve K1 fields that join
-   * domains (R-011). These edges are left out of the cycle checks.
-   */
+  /** Domain -> extra domains only its `graphql` module may import (R-011); left out of the cycle checks. */
   graphql: Record<string, string[]>;
 }
 
@@ -69,7 +63,6 @@ export function parseHubModules(text: string): HubModules {
   return { groups, leaves, wiring, domains, graphql };
 }
 
-/** A module path without its group: `[fleet, devices, store]` is `[devices, store]`; a group's own face is `[]`. */
 export function ungrouped(modules: HubModules, path: string[]): string[] {
   return modules.groups.includes(path[0] ?? "") ? path.slice(1) : path;
 }
@@ -78,7 +71,6 @@ export function isListed(modules: HubModules, name: string): boolean {
   return modules.leaves.includes(name) || modules.wiring.includes(name) || Object.hasOwn(modules.domains, name);
 }
 
-/** The first cycle in a graph of node -> neighbours, as `a -> b -> a`, or undefined. */
 export function findCycle(graph: Map<string, Set<string>>): string[] | undefined {
   const done = new Set<string>();
   const visit = (node: string, stack: string[]): string[] | undefined => {

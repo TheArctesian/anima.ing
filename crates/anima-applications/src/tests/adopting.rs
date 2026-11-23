@@ -1,5 +1,3 @@
-//! `adopted_apply` (K10 Section 6.4.7).
-
 use super::{FIRST, World, arguments, commands};
 use crate::{AdoptedAction, Refusal, work::adopted::applied};
 
@@ -15,7 +13,6 @@ const NAMED: [&str; 6] = [
 #[test]
 fn k10_6_4_7_an_adopted_project_is_started_from_its_recorded_paths() {
     let mut world = World::new();
-    // A label of a container at the time of the item is never used.
     world.inventory.containers[1].folder = Some("/tmp/other".to_owned());
     let plan = applied("tracks", (AdoptedAction::Up, false), &world.facts()).expect("adopted");
     let arguments = arguments(&plan);
@@ -28,7 +25,6 @@ fn k10_6_4_7_an_adopted_project_is_started_from_its_recorded_paths() {
         "/usr/libexec/docker/cli-plugins/docker-compose"
     );
     assert_eq!(command.folder.as_deref(), Some("/srv/tracks"));
-    // The plan writes no file: the program never changes a file of an adopted project.
     assert_eq!(plan.steps.len(), 1);
 }
 
@@ -64,11 +60,8 @@ fn k10_6_4_3_a_project_that_is_not_adopted_is_refused() {
     let up =
         |world: &World, project: &str| applied(project, (AdoptedAction::Up, false), &world.facts());
     assert_eq!(up(&world, "other"), Err(Refusal::NotAdopted));
-    // "All containers" does not adopt a project.
     world.settings.all_containers = true;
     assert_eq!(up(&world, "other"), Err(Refusal::NotAdopted));
-    // A project whose name starts with `anima-` cannot be adopted, also when a settings
-    // value names it.
     world.settings.adopted[0].name = super::PROJECT.to_owned();
     assert_eq!(up(&world, super::PROJECT), Err(Refusal::NotAdopted));
 }

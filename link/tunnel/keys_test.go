@@ -14,7 +14,6 @@ import (
 	"github.com/TheArctesian/anima/link/tunnel/testbed"
 )
 
-// everyPrinting gives the text of each ordinary way to print or log values.
 func everyPrinting(t *testing.T, values ...any) string {
 	t.Helper()
 	var shown bytes.Buffer

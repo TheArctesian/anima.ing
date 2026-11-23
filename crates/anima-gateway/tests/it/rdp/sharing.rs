@@ -1,5 +1,4 @@
-//! The clipboard of an RDP session under the device's switches (RA-033), and when the
-//! device is asked for a screen of the size of the client's view (RA-004).
+//! RDP clipboard switches (RA-033) and screen requests of the client view's size (RA-004).
 
 use std::time::Duration;
 

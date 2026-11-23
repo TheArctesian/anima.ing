@@ -7,8 +7,7 @@ pub struct Requested {
 }
 
 impl Requested {
-    /// Buffer shutdown requests before startup begins. EOF alone is not a request;
-    /// an owned job is responsible for ending children when the parent crashes.
+    /// EOF alone is not a request: the owning job ends the children when the parent crashes.
     /// # Errors
     /// Windows cannot install the console signal listeners.
     pub fn new() -> std::io::Result<Self> {

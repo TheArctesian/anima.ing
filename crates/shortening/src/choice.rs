@@ -50,9 +50,7 @@ impl Reason {
     }
 }
 
-/// What is known of each row before the choice.
 pub struct Marked {
-    /// For each row, why it must stay, if it must.
     pub must: Vec<Option<Reason>>,
     /// For each row, a text that is equal for rows that say the same.
     pub same: Vec<String>,
@@ -61,7 +59,6 @@ pub struct Marked {
 /// The rows that stay, in their order, each with its reason.
 pub type Kept = BTreeMap<usize, Reason>;
 
-/// The rows of a list that stay; `None` when the list is short or no row is left out.
 #[must_use]
 pub fn choice(rows: &Marked, limits: &Limits) -> Option<Kept> {
     let total = rows.must.len();
@@ -87,7 +84,6 @@ pub fn choice(rows: &Marked, limits: &Limits) -> Option<Kept> {
     (kept.len() < total).then_some(kept)
 }
 
-/// The rows that are not kept and that say something no row before them said.
 fn new_rows(rows: &Marked, kept: &Kept) -> Vec<usize> {
     let mut seen = BTreeSet::new();
     let mut new = Vec::new();
@@ -99,7 +95,6 @@ fn new_rows(rows: &Marked, kept: &Kept) -> Vec<usize> {
     new
 }
 
-/// `count` of `rows` at an even step.
 fn sample(rows: &[usize], count: usize) -> Vec<usize> {
     let count = count.min(rows.len());
     (0..count)

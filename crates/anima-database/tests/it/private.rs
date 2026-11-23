@@ -1,9 +1,6 @@
-//! A folder of a test that only this user can change.
-
 use tempfile::TempDir;
 
-/// A new temporary folder that the group and others cannot write to, whatever the umask
-/// (0002 on Ubuntu): a backup refuses a folder that others can write to.
+/// Not writable by group or others whatever the umask: a backup refuses a folder that others can write to.
 pub fn folder() -> TempDir {
     let folder = tempfile::tempdir().unwrap();
     #[cfg(windows)]

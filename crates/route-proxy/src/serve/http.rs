@@ -1,5 +1,4 @@
-//! The plain HTTP listener (port 80): the ACME challenge of a name and the redirect to
-//! `https://` of a public name (Section 12.2). It never carries the content of an application.
+//! Plain HTTP serves only the ACME challenge and the redirect to `https://` (Section 12.2).
 
 use std::{
     net::IpAddr,
@@ -15,7 +14,6 @@ use tokio::{
 use super::Proxy;
 use crate::{hub::Hub, limits::Pass, plain, relay::read_head, wire::Reach};
 
-/// Serves plain HTTP on `listener` until the task is stopped.
 pub async fn serve<H: Hub>(proxy: Arc<Proxy<H>>, listener: TcpListener) {
     loop {
         let Ok((stream, peer)) = listener.accept().await else {
@@ -29,7 +27,6 @@ pub async fn serve<H: Hub>(proxy: Arc<Proxy<H>>, listener: TcpListener) {
     }
 }
 
-/// One plain connection: the challenge or the redirect, each step within its time.
 async fn one<H: Hub>(proxy: &Proxy<H>, mut stream: TcpStream, peer: IpAddr, mut pass: Pass) {
     let times = proxy.timeouts;
     let Some(client) = proxy.client(&mut stream, peer).await else {

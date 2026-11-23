@@ -1,5 +1,3 @@
-//! The names, the statements, the connection values and the commands of the PostgreSQL entry.
-
 use super::{
     Address, DatabaseName, DumpFile, NameError, Names, Password, PasswordError, dump_command,
     missing_tables, removal, setup, tables_in_list, values, way_back, way_back_test,

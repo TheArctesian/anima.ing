@@ -1,5 +1,4 @@
-// Package redacted gives the secrets of the link one behaviour: no way of
-// printing, logging or encoding shows them (LNK-008).
+// Package redacted keeps the link's secrets out of printing, logging and encoding (LNK-008).
 package redacted
 
 import (
@@ -10,14 +9,8 @@ import (
 // Text is what a secret shows as.
 const Text = "[secret]"
 
-// Secret is put in a struct that holds a secret, as an embedded field. The
-// struct then shows as Text for every fmt verb, in structured logs, in JSON
-// and in every other text encoding. The struct gives its text only by a
-// method of its own, by convention named Reveal.
-//
-// Two cases are not covered: a printer that reads memory by reflection, and
-// fmt on a struct that holds a secret in an unexported field (fmt cannot
-// call the methods of such a field). Keep secrets in exported fields.
+// Secret makes a struct that embeds it show as Text in fmt, structured logs and text encodings.
+// fmt cannot call the methods of an unexported field, so keep secrets in exported fields.
 type Secret struct{}
 
 // String hides the secret.

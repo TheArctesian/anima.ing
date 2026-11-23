@@ -1,14 +1,11 @@
-//! The answers of the proxy itself (Section 12.2, SF-229): on port 80 the ACME
-//! `HTTP-01` challenge of a name and a redirect to `https://`, and the answer of a route of the
-//! kind redirect (Section 16.2). Port 80 never carries the content of an application. Pure.
+//! The answers of the proxy itself (Sections 12.2 and 16.2, SF-229). Port 80 never carries the
+//! content of an application. Pure.
 
 use std::{collections::HashMap, hash::BuildHasher};
 
-/// The path of an ACME challenge.
 const CHALLENGE: &str = "/.well-known/acme-challenge/";
 
-/// The answer to a request on port 80 for `host` and `target`. `names` holds the names that
-/// serve; `challenges` maps each open token to its key authorization.
+/// `names` holds the names that serve; `challenges` maps each open token to its key authorization.
 #[must_use]
 pub fn answer<S: BuildHasher>(
     host: &str,
@@ -40,7 +37,6 @@ pub fn answer<S: BuildHasher>(
     b"HTTP/1.1 404 Not Found\r\ncontent-length: 0\r\nconnection: close\r\n\r\n".to_vec()
 }
 
-/// The `Host` and the target of a plain request head; `None` when it cannot be read.
 #[must_use]
 pub fn host_and_target(head: &[u8]) -> Option<(String, String)> {
     let text = std::str::from_utf8(head).ok()?;

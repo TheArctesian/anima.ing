@@ -1,4 +1,4 @@
-//! Port 80: the ACME challenge and the redirect, never content (SF-229).
+//! Port 80 serves only the ACME challenge and the redirect (SF-229).
 
 use std::collections::HashMap;
 

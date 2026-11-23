@@ -1,6 +1,4 @@
-//! API keys that a provider issues with a fixed prefix (RED-002): Anthropic, `OpenAI`, GitHub,
-//! AWS, Google, Slack and Stripe. Such a key is a secret wherever it stands, with no key name
-//! or scheme word before it.
+//! API keys that a provider issues with a fixed prefix (RED-002): a secret wherever it stands.
 
 use super::{REDACTED, text::starts_word};
 
@@ -33,14 +31,11 @@ const PREFIXES: [(&str, usize); 25] = [
     ("whsec_", 16),
 ];
 
-/// A byte of a provider key after its prefix.
 fn is_key_byte(byte: u8) -> bool {
     byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-')
 }
 
-/// Replaces every provider key: a prefix that starts a word, then enough key bytes with a digit
-/// or a capital among them, so `sk-learn-is-a-fine-library` stays. Linear in the length of
-/// `text`: a run of key bytes that is not a key is skipped as a whole.
+/// A key needs a digit or a capital after its prefix, so `sk-learn-is-a-fine-library` stays.
 pub(super) fn mask_provider_keys(text: &str) -> String {
     let mut masked = String::with_capacity(text.len());
     let (mut copied, mut index) = (0, 0);
@@ -59,7 +54,6 @@ pub(super) fn mask_provider_keys(text: &str) -> String {
     masked
 }
 
-/// The length of the provider key that starts at byte `index`, prefix included.
 fn key_len(text: &str, index: usize) -> Option<usize> {
     if !starts_word(text, index) {
         return None;

@@ -1,6 +1,3 @@
-//! PRJ-030: a file path and a ref put into a request cannot change the host, leave the
-//! repository's contents, or add a query or a fragment.
-
 use proptest::prelude::*;
 
 use super::path_and_query;

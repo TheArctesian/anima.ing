@@ -13,50 +13,38 @@ import (
 	"github.com/TheArctesian/anima/link/tunnel"
 )
 
-// hubStatus is the answer of the "status" verb.
 type hubStatus struct {
 	Role    string `json:"role"`
 	Relay   string `json:"relay"`
 	Devices int    `json:"devices"`
 }
 
-// listedDevice is one line of the "devices.list" answer.
 type listedDevice struct {
 	Key tunnel.DeviceKey `json:"key"`
-	// Fingerprint is the short form of Key that "anima-link join" prints
-	// on the device, so that the operator can compare the two.
-	Fingerprint string `json:"fingerprint"`
-	Name        string `json:"name"`
-	// Address is the name of the device in the hub's records.
-	Address   netip.Addr `json:"address"`
-	Permitted time.Time  `json:"permitted"`
-	Expires   time.Time  `json:"expires"`
-	Streams   int        `json:"streams"`
-	// NextFingerprint is set while the device renews its key: the short
-	// form of the key that will replace Key (LNK-005).
+	// Fingerprint matches what "anima-link join" prints on the device, for the operator to compare.
+	Fingerprint string     `json:"fingerprint"`
+	Name        string     `json:"name"`
+	Address     netip.Addr `json:"address"`
+	Permitted   time.Time  `json:"permitted"`
+	Expires     time.Time  `json:"expires"`
+	Streams     int        `json:"streams"`
+	// NextFingerprint is set while the device renews its key (LNK-005).
 	NextFingerprint string `json:"nextFingerprint,omitempty"`
 	// Path is "direct", "relayed" or "none" (LNK-006).
-	Path string `json:"path"`
-	// Relay is the relay's name when the path is relayed.
+	Path  string `json:"path"`
 	Relay string `json:"relay,omitempty"`
-	// Seen is the time of the last line "here" that the device wrote on the
-	// reverse port (HMD-047). It is absent for a device that wrote none
-	// since the hub link started: the device is off, or its link program is
-	// older than the reverse port.
+	// Seen is the last "here" line on the reverse port (HMD-047), absent when none came since the hub link started.
 	Seen *time.Time `json:"seen,omitempty"`
 }
 
-// revokeRequest is the arguments of "devices.revoke".
 type revokeRequest struct {
 	Key tunnel.DeviceKey `json:"key"`
 }
 
-// revoked is the answer of "devices.revoke".
 type revoked struct {
 	StreamsClosed int `json:"streamsClosed"`
 }
 
-// permitRequest is the arguments of "devices.permit".
 type permitRequest struct {
 	Key  tunnel.DeviceKey `json:"key"`
 	Name string           `json:"name"`
@@ -67,8 +55,7 @@ func hubVerbs(link *hublink.Link, permitted *devices.Store) map[string]control.V
 		"status": func(context.Context, json.RawMessage) (any, error) {
 			return hubStatus{Role: "hub", Relay: link.Relay().Name(), Devices: permitted.Count()}, nil
 		},
-		// The answer is the hub address: a secret. It goes only to the caller
-		// of the control socket, never to a log (LNK-008).
+		// The hub address is a secret: it goes only to the caller, never to a log (LNK-008).
 		"address.show": func(context.Context, json.RawMessage) (any, error) {
 			return link.Address().Reveal(), nil
 		},
@@ -112,8 +99,6 @@ func hubVerbs(link *hublink.Link, permitted *devices.Store) map[string]control.V
 	}
 }
 
-// refusalOf passes a rule of the device list or of the invites to the caller of the control
-// socket with its code. Other errors stay inside.
 func refusalOf(err error) error {
 	var rule interface {
 		error

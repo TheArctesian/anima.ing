@@ -12,8 +12,6 @@ import (
 	"testing"
 )
 
-// recorded is a Runner that runs nothing: it notes each step and answers
-// from a list, then with success.
 type recorded struct {
 	ran     []string
 	answers []bool

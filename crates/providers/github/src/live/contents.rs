@@ -25,9 +25,9 @@ pub enum EntryKind {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Entry {
-    /// One path segment. Text from GitHub.
+    /// One path segment.
     pub name: String,
-    /// From the repository root. Text from GitHub.
+    /// From the repository root.
     pub path: String,
     pub kind: EntryKind,
     /// Bytes; 0 for anything but a file.
@@ -39,11 +39,10 @@ pub struct Entry {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Directory {
     pub entries: Vec<Entry>,
-    /// GitHub lists at most 1,000 entries: this one may have more.
+    /// The directory may have more entries than GitHub lists.
     pub partial: bool,
 }
 
-/// What a directory request got.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DirectoryRead {
     Directory(Directory),
@@ -60,17 +59,17 @@ pub struct File {
     pub sha: String,
 }
 
-/// What a file request got.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FileRead {
-    /// The content, decoded as UTF-8 and holding no NUL. Bytes from a repository: untrusted.
-    Text { file: File, text: String },
+    /// UTF-8 with no NUL; untrusted bytes from a repository.
+    Text {
+        file: File,
+        text: String,
+    },
     /// Not valid UTF-8, or it holds a NUL. No content is kept.
     Binary(File),
-    /// Over the size this crate reads. The file is `None` when the reply was cut before it
-    /// could be read.
+    /// Over the size this crate reads; `None` when the reply was cut before the file could be read.
     TooLarge(Option<File>),
-    /// The path names a directory.
     Directory,
     /// A link to another path. The target is text, never followed.
     Symlink {
@@ -110,9 +109,7 @@ enum Answer {
 }
 
 impl Raw {
-    /// The kind of entry. On the 2022-11-28 version a submodule in a listing has the type
-    /// `file`; it is told apart by its `submodule_git_url`, or by a null `download_url`, which
-    /// every real file has. A type this crate does not know is `None`.
+    /// On 2022-11-28 a listed submodule has the type `file`; a real file always has a `download_url`.
     fn entry_kind(&self) -> Option<EntryKind> {
         match self.kind.as_str() {
             "dir" => Some(EntryKind::Directory),
@@ -136,8 +133,6 @@ impl Raw {
     }
 }
 
-/// `GET /repos/{o}/{r}/contents/{path}`, with `ref` when one is given. The path is checked and
-/// encoded segment by segment; the empty path is the repository root. The ref is a query value.
 fn request(repository: &str, path: &str, git_ref: Option<&str>) -> Result<Request, Problem> {
     let tail = contents_tail(path)?;
     let mut filters = Vec::new();
@@ -147,8 +142,7 @@ fn request(repository: &str, path: &str, git_ref: Option<&str>) -> Result<Reques
     get(repository, &tail, &filters, None)
 }
 
-/// The contents of a directory (the root when `path` is empty). A path or ref that cannot go
-/// into a request, or a repository name that cannot, is refused before any request is built.
+/// The contents of a directory (the root when `path` is empty).
 ///
 /// # Errors
 /// A [`Problem`] when the repository name, the path or the ref cannot go into a request.
@@ -233,8 +227,6 @@ pub fn file_parse(response: &Response<'_>) -> Result<FileRead, Problem> {
     }
 }
 
-/// The decoded content of a file. Size is judged from the reply's `size` before decoding, and
-/// again on the decoded bytes; no lossy decoding.
 fn file_content(raw: &Raw) -> Result<FileRead, Problem> {
     let file = raw.file();
     let content = raw.content.as_deref().unwrap_or_default();

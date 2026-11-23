@@ -12,8 +12,6 @@ import (
 	"github.com/TheArctesian/anima/link/statedir"
 )
 
-// socketIn makes a listening socket that only this user can reach, in a
-// new folder with a short path, and returns the folder and the socket.
 func socketIn(t *testing.T) (folder, socket string) {
 	t.Helper()
 	// Under /tmp, not t.TempDir(): a socket's path must be short.
@@ -43,8 +41,6 @@ func TestDialOwnedConnectsToThisUsersSocketInAPrivateFolder(t *testing.T) {
 	conn.Close()
 }
 
-// exposures change a private socket, or the path to it, into what another
-// user could put in its place. Each returns the path to dial.
 func exposures() map[string]func(t *testing.T, folder, socket string) string {
 	return map[string]func(t *testing.T, folder, socket string) string{
 		"a file that is not a socket": func(t *testing.T, folder, _ string) string {
@@ -67,8 +63,7 @@ func exposures() map[string]func(t *testing.T, folder, socket string) string {
 			}
 			return socket
 		},
-		// The folder is private, but the path goes through a link that any
-		// user could turn to a folder of their own after the check.
+		// The folder is private, but any user could turn the link to a folder of their own after the check.
 		"a path through a link in a folder that others can write": func(t *testing.T, folder, _ string) string {
 			shared, err := testpath.MkdirTemp("shared")
 			if err != nil {

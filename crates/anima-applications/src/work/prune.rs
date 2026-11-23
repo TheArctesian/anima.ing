@@ -1,7 +1,5 @@
-//! `docker_prune` (contract K10 Section 6.4.10): removes stopped containers, networks that
-//! no container uses, and images that no container uses. The program names each thing that
-//! it removes: it never gives the engine a prune command, which cannot leave out what the
-//! list "Protected", an adopted project or `keep` holds.
+//! `docker_prune` (K10 Section 6.4.10). The program names each thing it removes: an engine prune
+//! cannot leave out what the list "Protected", an adopted project or `keep` holds.
 
 use super::{Facts, free, managed};
 use crate::{
@@ -18,8 +16,6 @@ fn label_is_protected(label: Option<&str>, facts: &Facts<'_>) -> bool {
     label.is_some_and(|project| facts.settings.protects(project))
 }
 
-/// A stopped container of an application that Anima installed; with "All containers" on,
-/// each stopped container. Never one of the list "Protected" or of an adopted project.
 fn container_goes(container: &Container, facts: &Facts<'_>) -> bool {
     let reached = facts.settings.all_containers || is_installed(container, facts.records);
     reached
@@ -29,8 +25,6 @@ fn container_goes(container: &Container, facts: &Facts<'_>) -> bool {
         && !label_is_adopted(container.project.as_deref(), facts)
 }
 
-/// A network that no container uses, of the project of an application that Anima installed;
-/// with "All containers" on, each such network that the engine did not make itself.
 fn network_goes(network: &Network, facts: &Facts<'_>) -> bool {
     let label = network.project.as_deref();
     let installed = label.is_some_and(|project| facts.records.has_project(project));
@@ -43,10 +37,7 @@ fn network_goes(network: &Network, facts: &Facts<'_>) -> bool {
         && !label_is_adopted(label, facts)
 }
 
-/// An image that no container uses and that the program pulled for an application; with
-/// "All containers" on, also each image with no tag. Never an image that a version that
-/// runs or a kept version holds: an image is held when a digest of one of its names is the
-/// digest of such a version, whatever name the engine or the file writes.
+/// An image is held when a digest of any of its names is that of a running or kept version.
 fn image_goes(image: &Image, facts: &Facts<'_>) -> bool {
     let records = facts.records;
     let named = |name: &String| image.pulled_as.contains(name);
@@ -63,8 +54,7 @@ fn image_goes(image: &Image, facts: &Facts<'_>) -> bool {
     reached && !image.used && !held && is_digest(&image.id)
 }
 
-/// The plan of `docker_prune` for the members `what`, in the order containers, networks,
-/// images, so that an image of a removed container is not held by it.
+/// Containers, networks, then images, so that an image of a removed container is not held by it.
 ///
 /// # Errors
 /// `applications_off`; `busy`.

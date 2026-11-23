@@ -1,6 +1,4 @@
-//! The Compose file of a recipe against its entry: the rules of task H28 with the settings
-//! that exactly the marks permit, the images by digest, the volumes, the rights of the
-//! services and the test of a machine.
+//! The Compose file of a recipe against its entry (task H28).
 
 use compose_rules::{Node, Settings, forms::whole};
 
@@ -10,12 +8,9 @@ use crate::{
     example, privileges,
 };
 
-/// The longest time limit of a test of a machine, in seconds.
 const LONGEST_TEST: u32 = 900;
-/// The address of the machine itself.
 const LOCAL: &str = "127.0.0.1";
 
-/// `repository@sha256:<64 hex digits>`, with no tag.
 fn is_pinned(image: &str) -> bool {
     let Some((repository, digest)) = image.split_once('@') else {
         return false;
@@ -48,7 +43,6 @@ fn ports(service: &Node) -> &[Node] {
     }
 }
 
-/// The published ports of the file on an address other than the machine itself.
 fn open_ports(document: &Node) -> Vec<(u64, Protocol)> {
     let mut open: Vec<(u64, Protocol)> = services(document)
         .iter()
@@ -68,7 +62,6 @@ fn open_ports(document: &Node) -> Vec<(u64, Protocol)> {
     open
 }
 
-/// The ports of the machine that the services publish, on any address, each once.
 pub(crate) fn published(document: &Node) -> Vec<u16> {
     let mut published: Vec<u16> = services(document)
         .iter()
@@ -81,14 +74,12 @@ pub(crate) fn published(document: &Node) -> Vec<u16> {
     published
 }
 
-/// True when a service publishes a port of Anima on the machine, on any address.
 fn publishes_anima_port(document: &Node) -> bool {
     published(document)
         .iter()
         .any(|port| ANIMA_PORTS.contains(port))
 }
 
-/// The ports that the `network-port` marks name.
 fn marked_ports(marks: &[Mark]) -> Vec<(u64, Protocol)> {
     let mut marked: Vec<(u64, Protocol)> = marks
         .iter()
@@ -157,16 +148,13 @@ fn volumes_described(anima: &Anima, document: &Node) -> bool {
     declared == described
 }
 
-/// True when a service of the file has a `ports` entry.
 fn publishes(document: &Node) -> bool {
     services(document)
         .iter()
         .any(|(_, service)| !ports(service).is_empty())
 }
 
-/// The test reaches a port that its service publishes, and says what a healthy answer is. A
-/// database server publishes no port: its test reaches a port that the service exposes on the
-/// network of its project.
+/// A database server publishes no port, so its test reaches a port that the service exposes.
 fn test_complete(test: &HealthTest, kind: Kind, document: &Node) -> bool {
     let port = test.port.to_string();
     let published = services(document)
@@ -200,9 +188,7 @@ fn test_complete(test: &HealthTest, kind: Kind, document: &Node) -> bool {
     published && answer && (1..=LONGEST_TEST).contains(&test.limit_seconds)
 }
 
-/// True when the image, a published port, its address, the command, the entrypoint or the
-/// host name is written with a variable: the install fills it after the static test, so that
-/// the test would not see the value that runs (SF-226, SF-251).
+/// The install fills a variable after the static test, which would not see it (SF-226, SF-251).
 fn variable_in_fixed_value(unfilled: &Node) -> bool {
     let has_variable = |node: Option<&Node>| match node {
         Some(Node::Text(text)) => text.contains('$'),
@@ -221,7 +207,6 @@ fn variable_in_fixed_value(unfilled: &Node) -> bool {
     })
 }
 
-/// True when each stream of the entry is a port of the file with each of its protocols.
 fn streams_published(anima: &Anima, document: &Node) -> bool {
     let published: Vec<(String, Protocol)> = services(document)
         .iter()
@@ -244,8 +229,6 @@ fn streams_published(anima: &Anima, document: &Node) -> bool {
     })
 }
 
-/// The codes of the file as its author wrote it: the values that no variable may give, the
-/// secrets and the rights of the services.
 fn written(anima: &Anima, unfilled: &Node) -> Vec<Code> {
     let mut codes = Vec::new();
     if variable_in_fixed_value(unfilled) {
@@ -266,7 +249,6 @@ fn written(anima: &Anima, unfilled: &Node) -> Vec<Code> {
     codes
 }
 
-/// The codes of the Compose file `compose`, filled from the example `environment`.
 pub(crate) fn check(anima: &Anima, compose: &str, environment: &str) -> Vec<Code> {
     let mut codes: Vec<Code> = anima
         .marks

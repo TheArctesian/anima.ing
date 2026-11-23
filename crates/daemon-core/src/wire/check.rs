@@ -12,7 +12,7 @@ use uuid::Uuid;
 use super::batteries::batteries_fit;
 use super::{
     Batch, BatchBattery, BatchDrive, BatchGpu, BatchPoint, BatchSeries, BatchUpdate, GpuVendor,
-    KeyVersion, RefusalCode, versions_fit,
+    KeyVersion, RefusalCode, ThreadSummaries, versions_fit,
 };
 use crate::agent_usage::AgentUsage;
 use crate::hardware::Hardware;
@@ -49,6 +49,7 @@ pub struct Accepted {
     /// The agent usage, when the batch has it, with the session days of known sources only
     /// (R-135).
     pub agent_usage: Option<AgentUsage>,
+    pub agent_threads: Option<ThreadSummaries>,
     /// The versions the daemon's key cache holds, when the batch had a `keys` member (R-147).
     pub keys: Option<Vec<KeyVersion>>,
     /// What the daemon says about its update, when the batch had an `update` member (R-139).
@@ -74,6 +75,10 @@ impl Batch {
             && drives_fit(self.drives.as_deref())
             && batteries_fit(self.batteries.as_deref())
             && self.daemon_version.as_deref().is_none_or(is_version)
+            && self
+                .agent_threads
+                .as_ref()
+                .is_none_or(ThreadSummaries::fits)
             && self
                 .keys
                 .as_ref()
@@ -114,6 +119,7 @@ impl Batch {
             hardware,
             daemon_version: self.daemon_version,
             agent_usage,
+            agent_threads: self.agent_threads,
             keys: self.keys.map(|keys| keys.held),
             update: self.update,
         })

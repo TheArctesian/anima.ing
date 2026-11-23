@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Persistent attachable sessions mockups</title>
+<style>
+/* Layout: a review board for the attachable session layer (agent-threads.md Section 4.15,
+   THR-150 to THR-164, tasks TH124, TH125, TH127). Frame 1 is the list of live sessions and a
+   terminal tab (dark). Frame 2 is the same session after the tab was closed and opened again
+   (light). Frame 3 is reattach from the phone (dark). Frame 4 is the command line (dark).
+   Proposed, not approved. No font, script or image comes from a third party. */
+:root {
+  color-scheme: dark;
+  --pg-bg: #101214; --pg-fg: #E6E7E9; --pg-muted: #A4A8B0; --pg-rule: #2C3036;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  color-scheme: light; --pg-bg: #E6E8EB; --pg-fg: #1D2024; --pg-muted: #5A5F68; --pg-rule: #C9CDD3;
+} }
+
+/* The app's own tokens, copied from design/tokens (Graphite palette, status roles, sizes, type), as in the other mockups.
+   A frame is dark (.gd) or light (.gl). */
+.gd {
+  --surface-base: #1B1D21; --surface-raised: #23262B; --surface-sunken: #141618; --surface-hover: #2A2D33;
+  --border-subtle: #34383E; --border-strong: #6C7076;
+  --text: #E6E7E9; --text-secondary: #A4A8B0; --accent: #88C0D0; --on-accent: #1B1D21;
+  --status-up: #A3BE8C; --status-down: #BF616A; --status-degraded: #EBCB8B; --status-unknown: #7B8089;
+}
+.gl {
+  --surface-base: #F6F7F8; --surface-raised: #FFFFFF; --surface-sunken: #ECEEF0; --surface-hover: #ECEEF0;
+  --border-subtle: #D8DBDF; --border-strong: #86898E;
+  --text: #1D2024; --text-secondary: #5A5F68; --accent: #2E6E80; --on-accent: #FFFFFF;
+  --status-up: #4F7A3A; --status-down: #A8424C; --status-degraded: #9A7215; --status-unknown: #7B8089;
+}
+.gd, .gl {
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-6: 1.5rem; --space-8: 2rem;
+  --text-sm: 0.8125rem; --text-md: 0.875rem; --text-lg: 1rem; --text-display: 2.25rem;
+  --leading-tight: 1.2; --leading-normal: 1.5; --tracking-tight: -0.03em;
+  --weight-light: 200; --weight-medium: 500; --radius-md: 4px; --radius-pill: 999px; --border-thin: 1px;
+  --control-sm: 1.75rem; --control-md: 2rem;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 16px 48px; background: var(--pg-bg); color: var(--pg-fg); font-family: var(--font-ui); }
+h1.board { margin: 0 0 4px; font-weight: 200; font-size: 28px; }
+p.about { margin: 0 0 24px; color: var(--pg-muted); font-size: 14px; max-width: 70ch; }
+.frames { display: grid; gap: 32px; }
+figure { margin: 0; }
+figcaption { margin-top: 6px; font-size: 12px; color: var(--pg-muted); max-width: 90ch; }
+.frame { max-inline-size: 1040px; border: var(--border-thin) solid var(--pg-rule); background: var(--surface-base); color: var(--text); font-size: var(--text-md); }
+.app { display: grid; grid-template-columns: 13rem 1fr; min-block-size: 30rem; }
+.side { border-inline-end: var(--border-thin) solid var(--border-subtle); padding: var(--space-6) var(--space-4); display: grid; gap: var(--space-2); align-content: start; }
+.nav { color: var(--text-secondary); } .nav.on { color: var(--text); font-weight: var(--weight-medium); }
+.group { font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary); margin-block-start: var(--space-3); }
+.main { display: grid; grid-template-rows: auto auto 1fr auto; min-block-size: 30rem; }
+.tabs { display: flex; gap: var(--space-1); padding: var(--space-3) var(--space-4) 0; border-block-end: var(--border-thin) solid var(--border-subtle); }
+.tab { display: inline-flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border: var(--border-thin) solid transparent; border-block-end: 0; border-radius: var(--radius-md) var(--radius-md) 0 0; color: var(--text-secondary); font-size: var(--text-sm); }
+.tab.on { background: var(--surface-raised); color: var(--text); border-color: var(--border-subtle); margin-block-end: -1px; padding-block-end: calc(var(--space-2) + 1px); }
+.banner { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--surface-raised); border-block-end: var(--border-thin) solid var(--border-subtle); }
+.muted { color: var(--text-secondary); font-size: var(--text-sm); }
+.chip { display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2); border-radius: var(--radius-pill); border: var(--border-thin) solid var(--border-subtle); font-size: 0.75rem; color: var(--text-secondary); }
+.dot { inline-size: 0.5rem; block-size: 0.5rem; border-radius: 50%; background: var(--status-up); flex: none; }
+.btn { display: inline-flex; align-items: center; block-size: var(--control-sm); padding: 0 var(--space-3); border: var(--border-thin) solid var(--border-strong); border-radius: var(--radius-md); font-size: var(--text-sm); }
+.btn.pri { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.term { margin: 0; padding: var(--space-4); background: var(--surface-sunken); color: var(--text); font-family: var(--font-mono); font-size: 0.8125rem; line-height: 1.45; white-space: pre-wrap; overflow: auto; }
+.term .dim { color: var(--text-secondary); }
+.cursor { display: inline-block; width: 0.5ch; height: 1em; background: var(--accent); vertical-align: text-bottom; }
+.bar { display: flex; align-items: center; justify-content: space-between; padding: var(--space-2) var(--space-4); border-block-start: var(--border-thin) solid var(--border-subtle); font-size: var(--text-sm); color: var(--text-secondary); }
+.list { display: grid; gap: var(--space-1); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2); border-radius: var(--radius-md); }
+.row.on { background: var(--surface-hover); }
+.phone { width: 24rem; margin: var(--space-6); border: var(--border-thin) solid var(--border-strong); border-radius: 24px; overflow: hidden; background: var(--surface-base); }
+.phone-top { text-align: center; padding: var(--space-3); font-size: var(--text-sm); color: var(--text-secondary); border-block-end: var(--border-thin) solid var(--border-subtle); }
+.phone .main { min-block-size: 28rem; grid-template-columns: 1fr; }
+.phone-nav { display: flex; justify-content: space-around; padding: var(--space-3); border-block-start: var(--border-thin) solid var(--border-subtle); font-size: var(--text-sm); color: var(--text-secondary); }
+.phone-nav .on { color: var(--text); font-weight: var(--weight-medium); }
+.cli { margin: 0; padding: var(--space-6); background: var(--surface-sunken); font-family: var(--font-mono); font-size: 0.8125rem; line-height: 1.5; white-space: pre-wrap; }
+.cli .cmt { color: var(--text-secondary); }
+.cli .ok { color: var(--status-up); }
+</style>
+</head>
+<body>
+<h1 class="board">Persistent attachable sessions</h1>
+<p class="about">A program lives on the machine, not in the window. Closing a tab does not end it. The same signed-in person reattaches from this computer, the phone, or another desktop. Each client draws the terminal. Proposed, not approved (agent-threads.md Section 4.15). OSC 52 stays off.</p>
+<div class="frames">
+
+<figure>
+  <div class="frame gd">
+    <div class="app">
+      <aside class="side">
+        <div class="nav">Devices</div>
+        <div class="nav on">Sessions</div>
+        <div class="nav">Code</div>
+        <div class="group">Live on workshop</div>
+        <div class="list">
+          <div class="row on"><span>release build</span><span class="chip"><span class="dot"></span> live</span></div>
+          <div class="row"><span>log tail · api</span><span class="chip"><span class="dot"></span> live</span></div>
+          <div class="row"><span>Code · auth crate</span><span class="chip"><span class="dot"></span> live</span></div>
+        </div>
+        <div class="muted" style="margin-block-start:var(--space-4)">These run until you stop them. A Code thread is in the same list, but Code is not this layer.</div>
+      </aside>
+      <div class="main">
+        <div class="tabs">
+          <span class="tab on">release build</span>
+          <span class="tab">log tail · api</span>
+          <span class="tab">+</span>
+        </div>
+        <div class="banner">
+          <span><span class="chip"><span class="dot"></span> live on workshop</span> <span class="muted">started 18 min ago · runs until you stop it</span></span>
+          <span><span class="btn">Detach</span> <span class="btn pri">Stop</span></span>
+        </div>
+        <pre class="term"><span class="dim">$ cargo build --release</span>
+   Compiling anima-daemon v0.1.0
+   Compiling anima-cli v0.1.0
+    Finished <span class="dim">release</span> in 11.4s
+$ ./target/release/anima attach list
+release-build    live    workshop
+<span class="cursor"></span></pre>
+        <div class="bar"><span>workshop · /src/anima · 80×24</span><span>OSC 52 off</span></div>
+      </div>
+    </div>
+  </div>
+  <figcaption>Frame 1. The list of live sessions on an enrolled machine, and a terminal tab. The program is already running in the holder. Sessions of this layer have no idle end; Stop is explicit. Dark appearance.</figcaption>
+</figure>
+
+<figure>
+  <div class="frame gl">
+    <div class="app">
+      <aside class="side">
+        <div class="nav">Devices</div>
+        <div class="nav on">Sessions</div>
+        <div class="nav">Code</div>
+        <div class="group">Live on workshop</div>
+        <div class="list">
+          <div class="row on"><span>release build</span><span class="chip"><span class="dot"></span> live</span></div>
+          <div class="row"><span>log tail · api</span><span class="chip"><span class="dot"></span> live</span></div>
+          <div class="row"><span>Code · auth crate</span><span class="chip"><span class="dot"></span> live</span></div>
+        </div>
+      </aside>
+      <div class="main">
+        <div class="tabs">
+          <span class="tab on">release build</span>
+          <span class="tab">+</span>
+        </div>
+        <div class="banner">
+          <span><span class="chip"><span class="dot"></span> reattached</span> <span class="muted">tab was closed 4 min ago · no idle end · runs until you stop it</span></span>
+          <span><span class="btn">Detach</span> <span class="btn pri">Stop</span></span>
+        </div>
+        <pre class="term"><span class="dim">$ cargo build --release</span>
+   Compiling anima-daemon v0.1.0
+   Compiling anima-cli v0.1.0
+    Finished <span class="dim">release</span> in 11.4s
+$ ./target/release/anima attach list
+release-build    live    workshop
+$ cargo test -p anima-cli
+   Compiling anima-cli v0.1.0
+    Finished <span class="dim">test</span> in 3.1s
+     Running tests
+ok. 41 passed<span class="cursor"></span></pre>
+        <div class="bar"><span>workshop · /src/anima · 80×24</span><span>same session · OSC 52 off</span></div>
+      </div>
+    </div>
+  </div>
+  <figcaption>Frame 2. The same session after the tab was closed and opened again on this computer. The program kept running; the screen is current, not a replay. It is not ended after 60 idle minutes (R-432, OD-THR73). Light appearance.</figcaption>
+</figure>
+
+<figure>
+  <div class="frame gd">
+    <div class="phone">
+      <div class="phone-top">9:41</div>
+      <div class="banner">
+        <span>release build</span>
+        <span class="chip"><span class="dot"></span> live on workshop</span>
+      </div>
+      <pre class="term" style="min-block-size:18rem">    Finished <span class="dim">test</span> in 3.1s
+     Running tests
+ok. 41 passed
+$ cargo test -p anima-daemon --test it
+    Finished <span class="dim">test</span> in 8.0s
+     Running threads
+<span class="cursor"></span></pre>
+      <div class="bar"><span>reattached from this phone · runs until you stop it</span><span>OSC 52 off</span></div>
+      <div class="phone-nav"><span>Devices</span><span class="on">Sessions</span><span>Code</span></div>
+    </div>
+  </div>
+  <figcaption>Frame 3. The same live session on the phone, after the desktop tab was left open or closed. The same signed-in person attaches again. This is not a share link (RA-035 stays). Dark appearance.</figcaption>
+</figure>
+
+<figure>
+  <div class="frame gd">
+    <pre class="cli"><span class="cmt"># this computer, enrolled machine, first version (THR-157)</span>
+$ anima attach start --name release-build -- cargo build --release
+started  release-build  on workshop
+
+$ anima attach list
+release-build    live    workshop    18m
+log-tail-api     live    workshop    1h
+<span class="cmt"># closing the tab or this command does not end the program
+# no idle end: it runs until anima attach stop, or Stop in the app</span>
+
+$ anima attach screen release-build
+    Finished release in 11.4s
+
+$ anima attach send release-build "cargo test -p anima-cli"
+sent
+
+$ anima attach wait release-build
+<span class="ok">ended 0</span>
+
+<span class="cmt"># MCP tools are not in the first version (THR-159, MCP-006)</span></pre>
+  </div>
+  <figcaption>Frame 4. The command line on this computer. Names are proposed (`anima session` already lists K4 SSH sessions). No MCP tool in the first version.</figcaption>
+</figure>
+
+</div>
+</body>
+</html>

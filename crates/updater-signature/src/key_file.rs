@@ -1,11 +1,5 @@
-//! A minisign key pair: the secret key read from the key file `tauri signer generate` writes and
-//! decrypted in memory, and the public key (BLD-045, R-117). Pure: no file, no store, no log.
-//!
-//! The key file is the minisign text (an untrusted comment line, then base64 of the key) or, as
-//! Tauri writes it, base64 of that text. The key bytes are, in order: signature algorithm `Ed`,
-//! KDF algorithm (`Sc` for scrypt or two zero bytes), checksum algorithm `B2`, the scrypt salt,
-//! opslimit and memlimit, then the sealed part: key number, Ed25519 secret key (seed then public
-//! key) and a `BLAKE2b-256` checksum. With `Sc` the sealed part is XOR-ed with an `scrypt` stream.
+//! A minisign key pair, decrypted in memory (BLD-045, R-117). Pure: no file, no store, no log.
+//! The key file is minisign text or, as Tauri writes it, base64 of that text.
 
 use base64::{Engine, engine::general_purpose::STANDARD};
 use ed25519_dalek::SigningKey;
@@ -27,7 +21,6 @@ pub(crate) const SEED_BYTES: usize = 32;
 pub(crate) const PUBLIC_BYTES: usize = 32;
 pub(crate) const SALT_BYTES: usize = 32;
 pub(crate) const CHK_BYTES: usize = 32;
-/// Where the salt, the two limits and the sealed part start in the key bytes.
 pub(crate) const SALT_AT: usize = 6;
 pub(crate) const OPS_AT: usize = SALT_AT + SALT_BYTES;
 pub(crate) const MEM_AT: usize = OPS_AT + 8;
@@ -37,15 +30,14 @@ pub(crate) const KEY_BYTES: usize = SEALED_AT + SEALED_BYTES;
 
 pub(crate) const PASSWORD_MAX_BYTES: usize = 1024;
 
-/// The updater secret key. No `Debug`, no `Clone`, no `Display`: the seed is only ever read to
-/// sign, and is wiped when the value drops (LOG-007).
+/// The updater secret key; it has no `Debug`, `Clone` or `Display`, and its seed is wiped on drop (LOG-007).
 pub struct SecretKey {
     keynum: [u8; KEYNUM_BYTES],
     seed: Zeroizing<[u8; SEED_BYTES]>,
     public: [u8; PUBLIC_BYTES],
 }
 
-/// A minisign public key: its key number and Ed25519 key. Public; safe to show.
+/// A minisign public key; safe to show.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PublicKey {
     keynum: [u8; KEYNUM_BYTES],
@@ -53,8 +45,7 @@ pub struct PublicKey {
 }
 
 impl PublicKey {
-    /// The key line of a minisign public key file (`RWQ...`), as `minisign -p` and
-    /// `minisign-verify` read it.
+    /// The key line of a minisign public key file (`RWQ...`).
     #[must_use]
     pub(crate) fn line(&self) -> String {
         let mut bytes = Vec::with_capacity(2 + KEYNUM_BYTES + PUBLIC_BYTES);
@@ -64,11 +55,6 @@ impl PublicKey {
         STANDARD.encode(bytes)
     }
 
-    /// Reads what `line` wrote; anything else is `Format`.
-    ///
-    /// # Errors
-    ///
-    /// `Format` for anything but one key line.
     pub(crate) fn from_line(text: &str) -> Result<Self, SignatureError> {
         let bytes = STANDARD
             .decode(text.trim())
@@ -83,9 +69,7 @@ impl PublicKey {
         Ok(Self { keynum, key })
     }
 
-    /// Reads a public key file, as minisign writes it (an untrusted comment line, then the key
-    /// line) or, as `plugins.updater.pubkey` and `ANIMA_UPDATER_PUBLIC_KEY` hold it, base64 of
-    /// that text. The last line that is not blank is the key line.
+    /// Reads a minisign public key file, or base64 of it as `ANIMA_UPDATER_PUBLIC_KEY` holds it.
     ///
     /// # Errors
     ///
@@ -115,8 +99,7 @@ impl PublicKey {
 }
 
 impl SecretKey {
-    /// Reads a key file. `password` opens an encrypted file; a file encrypted with an empty
-    /// password (what `tauri signer generate` makes without one) opens with `None` or `""`.
+    /// Reads a key file; one encrypted with an empty password opens with `None` or `""`.
     ///
     /// # Errors
     ///
@@ -145,7 +128,6 @@ impl SecretKey {
         Self::from_sealed(&bytes[SEALED_AT..])
     }
 
-    /// Key number, seed and public key; the public key must be the seed's.
     fn from_sealed(sealed: &[u8]) -> Result<Self, SignatureError> {
         let mut keynum = [0; KEYNUM_BYTES];
         keynum.copy_from_slice(&sealed[..KEYNUM_BYTES]);
@@ -180,7 +162,6 @@ impl SecretKey {
     }
 }
 
-/// The 158 key bytes of a key file in either form. Lengths are checked, never trusted.
 fn key_bytes(file: &[u8]) -> Result<Zeroizing<Vec<u8>>, SignatureError> {
     let text = std::str::from_utf8(file).map_err(|_| SignatureError::Format)?;
     let text = text.trim();

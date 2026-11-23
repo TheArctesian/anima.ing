@@ -21,8 +21,6 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// seenBy waits until a hub link has seen the site's device, and returns how
-// long it took.
 func (s *site) seenBy(t *testing.T, hub *hublink.Link, limit time.Duration) time.Duration {
 	t.Helper()
 	address, permitted := s.permitted.AddressOf(s.device.Key.Public())
@@ -67,7 +65,6 @@ func TestHMD047ARunningDeviceLinkIsSeenByItsHubAndAgainAfterAHubRestart(t *testi
 	getUntil(t, device, 30*time.Second)
 }
 
-// A hub link that is older than the reverse port serves the hub port only.
 func TestHMD047AHubWithNoReversePortStillAnswersThroughTheLocalPort(t *testing.T) {
 	s := newSite(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -117,8 +114,6 @@ func TestHMD047AHubWithNoReversePortStillAnswersThroughTheLocalPort(t *testing.T
 	}
 }
 
-// localPort is a port on loopback of this computer. With answers, a program
-// on it sends back what it reads; without, each connection waits unread.
 func localPort(t *testing.T, answers bool) uint16 {
 	t.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -140,9 +135,6 @@ func localPort(t *testing.T, answers bool) uint16 {
 	return uint16(listener.Addr().(*net.TCPAddr).Port)
 }
 
-// The whole path over a real tunnel: the hub link asks on the device's
-// stream of the reverse port, and the device gives a stream to its local
-// port, only for a port of its list.
 func TestHMD048TheHubLinkReachesOnlyTheOpenLocalPortsOfADevice(t *testing.T) {
 	open, shut := localPort(t, true), localPort(t, false)
 	s := newSite(t)
@@ -177,7 +169,6 @@ func TestHMD048TheHubLinkReachesOnlyTheOpenLocalPortsOfADevice(t *testing.T) {
 	}
 }
 
-// This case runs inside the disposable OS VM against its real loopback services.
 func TestOSPrivateSSHAndRDPTLS(t *testing.T) {
 	password := os.Getenv("ANIMA_OS_TEST_PASSWORD")
 	if password == "" {
@@ -260,7 +251,7 @@ func checkOSRDP(t *testing.T, stream net.Conn) {
 	if certificate == nil {
 		t.Fatal("fixture certificate is missing")
 	}
-	// Pin the certificate exported by the VM owner; never accept an arbitrary peer.
+	// VerifyConnection pins the certificate that the VM exports.
 	secure := tls.Client(stream, &tls.Config{MinVersion: tls.VersionTLS12, InsecureSkipVerify: true, VerifyConnection: func(state tls.ConnectionState) error {
 		if len(state.PeerCertificates) != 1 || !bytes.Equal(state.PeerCertificates[0].Raw, certificate.Bytes) {
 			return fmt.Errorf("RDP certificate changed")

@@ -1,7 +1,5 @@
-//! An RDP session from `connect` to its end: a prompt for the account when the device
-//! will ask for it before the session (GW-015), the opening, and then the open session
-//! (`running`). Each way the opening can fail is told to the hub with the status that
-//! gives the session its end reason (K4 Section 5). I/O edge.
+//! An RDP session from `connect` to its end; each opening failure reaches the hub as the status
+//! of its end reason (K4 Section 5).
 
 mod running;
 
@@ -15,14 +13,12 @@ use super::{Ended, Settings, status};
 use crate::handshake::{Credential, Opening, Rdp, Secret};
 use crate::rdp::{ClipboardNotes, OpenError, Wanted, open, screen_for};
 
-/// What the hub set for an open session.
 struct Terms {
     allowed: Allowed,
     /// The device is asked for a screen of the size of the client's view.
     resizes: bool,
 }
 
-/// Opens the session `opening` asks for on its device and runs it to its end.
 pub(super) async fn serve<S>(
     hub: &mut Hub<S>,
     mut opening: Opening,
@@ -32,9 +28,7 @@ pub(super) async fn serve<S>(
 where
     S: AsyncRead + AsyncWrite + Send + 'static,
 {
-    // A device that signs in before the session (NLA) must get the whole account at
-    // once. The operator is asked before the device is reached, so the device does not
-    // wait with an open connection while the operator types.
+    // NLA takes the whole account at once; asking before the device is reached keeps it from waiting open (GW-015).
     if rdp.security.may_be_nla() {
         let account = [Credential::Username, Credential::Password];
         if let Err(ended) = ask_for_missing(hub, &mut opening, &account, settings).await {
@@ -77,15 +71,13 @@ where
         Ok(Err(OpenError::Refused)) => (status::CLIENT_UNAUTHORIZED, Ended::SignInRefused),
         Ok(Err(OpenError::NotRdp)) => (status::UPSTREAM_ERROR, Ended::NotRdp),
         Ok(Err(OpenError::Security)) => (status::UPSTREAM_ERROR, Ended::SecurityNotOffered),
-        // The hub read the certificate first and tells the operator when it changed (K4
-        // Section 6). One that changes between the two reads ends as a gateway error.
+        // The hub reads the certificate first (K4 Section 6); a change between the reads is a gateway error.
         Ok(Err(OpenError::Certificate)) => (status::UPSTREAM_ERROR, Ended::OtherCertificate),
         Ok(Err(OpenError::Failed)) | Err(_) => (status::UPSTREAM_ERROR, Ended::SignInFailed),
     };
     refuse(hub, status, ended).await
 }
 
-/// The text of a part of the account; empty when there is none.
 fn text(secret: Option<&Secret>) -> &str {
     secret.map_or("", Secret::expose)
 }

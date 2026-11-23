@@ -1,5 +1,4 @@
-//! The Guacamole protocol codec (`encode`, `Decoder`) and the hub side of the
-//! guacd handshake (`Handshake`), with no I/O and no async.
+//! The Guacamole codec and the hub side of the guacd handshake, with no I/O and no async.
 
 mod connect;
 mod decoder;

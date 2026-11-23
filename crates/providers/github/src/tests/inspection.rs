@@ -126,7 +126,6 @@ fn src_007_an_interrupted_signs_phase_resumes_where_it_stopped() {
     .state;
     let tree_request = next_request(&state).unwrap();
     assert!(tree_request.path.contains("/git/trees/"));
-    // The tree page is stored; the run dies before the deployments request.
     let state = normalise(
         &tree_request,
         &Response {
