@@ -3,7 +3,7 @@ use std::path::Path;
 #[cfg(target_os = "ios")]
 mod ios;
 #[cfg(target_os = "ios")]
-use ios::memory;
+use ios::{cpu_percent, memory};
 
 use chrono::{DateTime, Utc};
 use daemon_core::{
@@ -66,7 +66,17 @@ pub(super) fn batch(device: Uuid, now: DateTime<Utc>, path: &Path) -> Option<Bat
     let mut series = Vec::new();
     let mut mean = Vec::new();
     #[cfg(target_os = "ios")]
-    let _ = path;
+    {
+        let _ = path;
+        if let Some(percent) = cpu_percent() {
+            series.push(BatchSeries {
+                kind: Kind::CpuPercent.as_str().to_owned(),
+                label: None,
+                gpu: None,
+            });
+            mean.push(Some(percent));
+        }
+    }
     #[cfg(target_os = "android")]
     if let Some(reading) = storage(path) {
         add(

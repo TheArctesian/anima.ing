@@ -130,7 +130,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 ### HT-149: reporting after an iPad update and the phone Code tab
 
 - State: Open.
-- On an enrolled iPad that previously showed No metrics, open Anima and wait for a new reading. Confirm from another client that memory shows for the existing device row. On the iPad, compare the local Disk estimate on Devices with iPad Storage. On the other client, confirm that the old disk reading is absent.
+- On an enrolled iPad that previously showed No metrics, open Anima and wait for a new reading. Confirm from another client that memory shows for the existing device row. Keep the app open for two samples and check that CPU also shows. On the iPad, compare the local Disk estimate on Devices with iPad Storage. On the other client, confirm that the old disk reading is absent.
 - On a phone, tap Code in the bottom bar. It opens the Code screen. Open a device page and check that the device's sessions are still available there.
 
 ### HT-148: phone Devices, offline notice and Integrations (M2-5)
