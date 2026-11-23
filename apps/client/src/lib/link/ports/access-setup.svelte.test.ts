@@ -4,13 +4,14 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
 import AccessSetup from './AccessSetup.svelte';
 
-const calls = vi.hoisted(() => ({ localAccess: vi.fn(), publishAccess: vi.fn(), checkAccessHub: vi.fn() }));
+const calls = vi.hoisted(() => ({ localAccess: vi.fn(), publishAccess: vi.fn(), checkAccessHub: vi.fn(), settings: vi.fn() }));
 vi.mock('$lib/desktop/link/access', () => ({ localAccess: calls.localAccess }));
 vi.mock('./access', () => ({ publishAccess: calls.publishAccess, checkAccessHub: calls.checkAccessHub }));
+vi.mock('$lib/desktop/system-settings', () => ({ openSharingSettings: calls.settings }));
 vi.mock('$lib/hub/context', () => ({ useHub: () => ({}) }));
 vi.mock('motion', async (original) => ({ ...(await original<typeof import('motion')>()), animate: (await import('$lib/motion/engine.fixture')).fakeRun }));
 
-const fresh = { configured: false, desktop: true, username: 'operator', selected: [22, 5900], open: [], notes: [] };
+const fresh: import('$lib/desktop/link/access').Access = { configured: false, desktop: true, username: 'operator', selected: [22, 5900], open: [], ready: [], notes: [] };
 let app: ReturnType<typeof mount> | undefined;
 
 async function settle(): Promise<void> {
@@ -26,6 +27,7 @@ async function show(): Promise<void> {
 
 beforeEach(() => {
   installAnimations();
+  calls.settings.mockReset().mockResolvedValue(undefined);
   calls.checkAccessHub.mockReset().mockResolvedValue('local-key');
   vi.stubGlobal('navigator', { userAgent: 'Macintosh' });
   calls.localAccess.mockReset().mockResolvedValue(fresh);
@@ -46,10 +48,10 @@ it('offers defaults before making changes and submits a setup opt-out', async ()
   expect(calls.localAccess).toHaveBeenCalledExactlyOnceWith();
   switches[1]?.click();
   await settle();
-  calls.localAccess.mockResolvedValueOnce({ ...fresh, configured: true, selected: [22], open: [22] });
+  calls.localAccess.mockResolvedValueOnce({ ...fresh, configured: true, selected: [22], open: [22], ready: [22] });
   [...document.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Continue')?.click();
   await settle();
-  expect(calls.localAccess).toHaveBeenLastCalledWith([22]);
+  expect(calls.localAccess).toHaveBeenLastCalledWith([22], undefined);
   expect(calls.publishAccess).toHaveBeenCalledOnce();
 });
 
@@ -77,4 +79,62 @@ it('refuses setup before changing this computer when the selected hub no longer 
   expect(calls.localAccess).toHaveBeenCalledExactlyOnceWith();
   expect(calls.publishAccess).not.toHaveBeenCalled();
   expect(document.body.textContent).toContain('Connect this computer to this hub.');
+});
+
+
+it('enables only the requested capability and reports progress until verified', async () => {
+  await show();
+  let finish: (value: typeof fresh) => void = () => undefined;
+  calls.localAccess.mockImplementationOnce(() => new Promise<typeof fresh>((resolve) => { finish = resolve; }));
+  const enable = document.querySelector<HTMLButtonElement>('[aria-label="Enable SSH"]');
+  enable?.focus();
+  enable?.click();
+  await settle();
+  expect(calls.localAccess).toHaveBeenLastCalledWith([22, 5900], 22);
+  expect(document.body.textContent).toContain('Preparing…');
+  expect(document.body.textContent).not.toContain('Ready in Anima');
+  expect(document.activeElement).toBe(enable);
+  enable?.click();
+  expect(calls.localAccess).toHaveBeenCalledTimes(2);
+  finish({ ...fresh, configured: true, open: [22], ready: [22] });
+  await settle();
+  expect(document.body.textContent).toContain('Ready in Anima');
+  expect(calls.publishAccess).toHaveBeenCalledOnce();
+  expect(document.activeElement).toBe(enable);
+});
+
+it('keeps a failed capability actionable and does not call it ready', async () => {
+  await show();
+  calls.localAccess.mockResolvedValueOnce({ ...fresh, notes: [{ port: 22, message: 'Administrator authorization was cancelled.' }] });
+  document.querySelector<HTMLButtonElement>('[aria-label="Enable SSH"]')?.click();
+  await settle();
+  expect(document.body.textContent).toContain('Administrator authorization was cancelled.');
+  expect(document.body.textContent).not.toContain('Ready in Anima');
+  expect(document.querySelector('[aria-label="Enable SSH"]')).not.toBeNull();
+});
+
+it('opens the required macOS setting and verifies just screen sharing on return', async () => {
+  await show();
+  [...document.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Open settings…')?.click();
+  await settle();
+  expect(calls.settings).toHaveBeenCalledOnce();
+  expect(calls.localAccess).toHaveBeenCalledTimes(1);
+  expect(document.body.textContent).not.toContain('Ready in Anima');
+  calls.localAccess.mockResolvedValueOnce({ ...fresh, configured: true, open: [5900], ready: [5900] });
+  window.dispatchEvent(new Event('focus'));
+  await settle();
+  expect(calls.localAccess).toHaveBeenLastCalledWith([22, 5900], 5900);
+  expect(document.body.textContent).toContain('Ready in Anima');
+});
+
+
+it('honors a screen-sharing opt-out while System Settings is open', async () => {
+  await show();
+  [...document.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Open settings…')?.click();
+  await settle();
+  document.querySelector<HTMLButtonElement>('#setup-port-5900')?.click();
+  window.dispatchEvent(new Event('focus'));
+  await settle();
+  expect(calls.localAccess).toHaveBeenCalledExactlyOnceWith();
+  expect(calls.publishAccess).not.toHaveBeenCalled();
 });

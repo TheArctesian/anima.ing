@@ -14,6 +14,7 @@ pub struct Access {
     username: String,
     selected: Vec<u16>,
     open: Vec<u16>,
+    ready: Vec<u16>,
     notes: Vec<Note>,
 }
 
@@ -59,12 +60,12 @@ async fn prepare(port: u16) -> Result<(), String> {
     remote_login::desktop::enable(port, remote_login::Prompt::Desktop).await.map_err(|error| {
         if matches!(error, remote_login::Error::Unsupported) {
             match (std::env::consts::OS, port) {
-                ("macos", 5900) => "Turn on Screen Sharing in System Settings → General → Sharing, then Retry.",
-                ("linux", 5900) => "Enable screen sharing in your desktop settings, then Retry. Automatic VNC setup needs an X11 desktop on display :0.",
-                ("windows", 5900) => "Install and configure an authenticated VNC server, then Retry. Windows has no built-in VNC server.",
-                _ => "This system cannot prepare this protocol automatically. Configure its sharing server, then Retry.",
+                ("macos", 5900) => "Turn on Screen Sharing in System Settings → General → Sharing, then try again.",
+                ("linux", 5900) => "Enable screen sharing in your desktop settings, then try again. Automatic VNC setup needs an X11 desktop on display :0.",
+                ("windows", 5900) => "Install and configure an authenticated VNC server, then try again. Windows has no built-in VNC server.",
+                _ => "This system cannot prepare this protocol automatically. Configure its sharing server, then try again.",
             }.to_owned()
-        } else { "Desktop sharing setup failed, permission was cancelled, or the server did not become ready. Check the system prompt and Retry.".to_owned() }
+        } else { "Desktop sharing setup failed, permission was cancelled, or the server did not become ready. Check the system prompt and try again.".to_owned() }
     })
 }
 
@@ -84,37 +85,60 @@ pub(super) fn remember(folder: &Path, port: u16, on: bool) -> Result<(), LinkErr
     Ok(())
 }
 
-async fn apply(folder: &Path, program: &Path, selected: &[u16]) -> Result<Vec<Note>, LinkError> {
-    store(folder, selected.to_vec())?;
-    let rdp = cfg!(any(target_os = "linux", target_os = "windows"));
-    for port in [22, 3389, 5900]
+fn changes(selected: &[u16], target: Option<u16>, rdp: bool) -> Vec<(u16, bool)> {
+    let mut ports: Vec<_> = [22, 3389, 5900]
         .into_iter()
-        .filter(|port| open_ports::may_open(*port, rdp))
-    {
-        if !selected.contains(&port) {
-            open_ports::ask(program, folder, Some((port, false)))?;
-        }
-    }
+        .filter(|port| {
+            open_ports::may_open(*port, rdp) && target.is_none_or(|value| value == *port)
+        })
+        .map(|port| (port, selected.contains(&port)))
+        .collect();
+    ports.sort_by_key(|(_, on)| *on);
+    ports
+}
+
+async fn apply(
+    folder: &Path,
+    program: &Path,
+    selected: &[u16],
+    target: Option<u16>,
+) -> Result<Vec<Note>, LinkError> {
+    store(folder, selected.to_vec())?;
     let mut notes = Vec::new();
-    for port in selected {
-        if *port == 22 && remote_login::ready().await {
-            open_ports::ask(program, folder, Some((*port, true)))?;
+    for (port, on) in changes(
+        selected,
+        target,
+        cfg!(any(target_os = "linux", target_os = "windows")),
+    ) {
+        if !on || (port == 22 && remote_login::ready().await) {
+            open_ports::ask(program, folder, Some((port, on)))?;
             continue;
         }
-        match prepare(*port).await {
+        match prepare(port).await {
             Ok(()) => {
-                open_ports::ask(program, folder, Some((*port, true)))?;
+                open_ports::ask(program, folder, Some((port, true)))?;
             }
             Err(message) => {
-                open_ports::ask(program, folder, Some((*port, false)))?;
-                notes.push(Note {
-                    port: *port,
-                    message,
-                });
+                open_ports::ask(program, folder, Some((port, false)))?;
+                notes.push(Note { port, message });
             }
         }
     }
     Ok(notes)
+}
+
+async fn readiness(rdp: bool) -> Vec<u16> {
+    let mut ready = Vec::new();
+    for port in [22, 3389, 5900] {
+        if (port == 22 && remote_login::ready().await)
+            || (port != 22
+                && open_ports::may_open(port, rdp)
+                && remote_login::desktop::ready(port).await)
+        {
+            ready.push(port);
+        }
+    }
+    ready
 }
 
 /// Reads the setup choices, or applies the person's selections. It never runs on app startup.
@@ -123,6 +147,7 @@ pub async fn link_access<R: Runtime>(
     webview: Webview<R>,
     changing: State<'_, Changing>,
     ports: Option<Vec<u16>>,
+    target: Option<u16>,
 ) -> Result<Access, LinkError> {
     from_main(webview.label())?;
     let _claim = changing.claim()?;
@@ -145,6 +170,11 @@ pub async fn link_access<R: Runtime>(
     });
     let mut notes = Vec::new();
     let applying = ports.is_some();
+    if target.is_some_and(|port| !open_ports::may_open(port, rdp))
+        || (target.is_some() && !applying)
+    {
+        return Err(LinkError::Failed);
+    }
     if let Some(mut ports) = ports {
         if ports
             .iter()
@@ -155,7 +185,7 @@ pub async fn link_access<R: Runtime>(
         ports.sort_unstable();
         ports.dedup();
         selected = ports;
-        notes = apply(&folder, &program, &selected).await?;
+        notes = apply(&folder, &program, &selected, target).await?;
     }
     Ok(Access {
         configured: configured || applying,
@@ -164,12 +194,21 @@ pub async fn link_access<R: Runtime>(
         selected,
         open: open_ports::ask(&program, &folder, None)?.open,
         notes,
+        ready: readiness(rdp).await,
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn one_capability_action_never_changes_a_sibling_port() {
+        assert_eq!(changes(&[22, 5900], Some(22), false), [(22, true)]);
+        assert_eq!(changes(&[5900], Some(5900), false), [(5900, true)]);
+        assert_eq!(changes(&[5900], Some(22), false), [(22, false)]);
+        assert_eq!(changes(&[22], None, false), [(5900, false), (22, true)]);
+    }
 
     #[test]
     fn new_machines_offer_only_applicable_protocols() {
