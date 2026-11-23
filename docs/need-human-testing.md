@@ -50,6 +50,9 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-005 | The tool inventory of a daemon that runs as a system unit | A Linux computer | Open |
 | HT-006 | The probes of `claude` and `codex` leave the account alone | A computer with the two programs | Open |
 | HT-124 | The child fetch process downloads a real `llama-server` release from GitHub, and a stall of the network ends only the child | A test hub that gives a `runtime_install` item, and a daemon of this build in a test folder on the Mac and on `pop-os` | Open |
+| HT-NEW-modeldrain | A policy that stops a node ends its model servers within 60 seconds, and a machine that is off gets no model work (task L1-5) | A hub of this build with the hand-out of model work, and a daemon of this build in a test folder on `pop-os` | Open |
+| HT-NEW-modelfiles | A real Hugging Face copy with remote code, or with a long chat template, is refused before a server starts, and a clean copy starts in vLLM with `--load-format safetensors` (SF-298) | A daemon of this build in a test folder on `pop-os` with an NVIDIA GPU and vLLM | Open |
+| HT-NEW-fetchfailed | A crash or a stall of the child fetch process is reported as `fetch_failed`, and a source that does not answer as `source_failed` (R-NEW-fetchcause) | A daemon of this build in a test folder on the Mac, and a network that a person can cut | Open |
 | HT-121 | The hardware values of the Mac and of the Linux PC `pop-os` agree with what each system shows | A hub and a daemon of this build on both computers | Open |
 | HT-120 | The model work of the daemon installs `llama-server`, starts it on loopback, supervises it and stops it on the Mac and on `pop-os` | A test hub that gives model items, and a daemon of this build in a test folder on both computers | Open |
 | HT-119 | The cgroup of each model server on `pop-os`: a child that leaves its session is seen and ended, and a start with no delegated cgroup fails | `pop-os` with a daemon of this build in a test folder, run by its systemd user unit, which has `Delegate=yes` (R-334) | Open |
@@ -322,6 +325,43 @@ Needs HT-002.
 2. Ask the client to call `anima_capability_list`. Expected: the same devices and tools as
    `anima capability list`.
 3. Call it with `tool` set to `cargo`. Expected: the same devices as step 5 of HT-002.
+
+Result: Open.
+
+### HT-NEW-modeldrain: a stopped node drains its model servers
+
+Built: `crates/daemon-core/src/model_work/drain.rs` and `crates/daemon/src/model/drain.rs` (task L1-5; SF-366 to SF-369).
+The daemon counts no request in progress until the model address exists (L1-10), so this check waits for L1-10 and
+for the hand-out of model work by the hub. Do not use the installed daemon of the operator; set `ANIMA_DAEMON_HOME`
+to a new test folder.
+
+1. Start a model server on the node through a test hub. Set the device policy of the node to off with
+   `anima compute policy set`. Expected: the server stops within 60 seconds.
+2. Give the hub a model work item for that node. Expected: the node gets no item.
+
+Result: Open.
+
+### HT-NEW-modelfiles: the checks of the files of a copy on real copies
+
+Built: `crates/daemon-core/src/model_work/files/code.rs` and `classes.rs` (SF-298; task L1-6). The tests use small
+made files; no test reads a real copy from Hugging Face.
+
+1. Put a real copy that has `auto_map` in `config.json` in the copies folder of a test daemon. Expected: the copy is
+   refused with `remote_code`, and no server starts.
+2. Do the same with a copy whose chat template is more than 64 KiB. Expected: the copy is refused.
+3. Start a clean copy of a class on the vLLM list. Expected: the server starts, and its command line has
+   `--load-format safetensors`.
+
+Result: Open.
+
+### HT-NEW-fetchfailed: a fault of the child fetch process has its own cause
+
+Built: `crates/daemon/src/model/fetch/child.rs` and `fetch/spawn.rs` (R-NEW-fetchcause; task L1-6b). Not in `dev`
+before the branch `compute/model-causes` is merged.
+
+1. Start a `runtime_install` through a test hub, and cut the network during the download. Expected: the report is
+   `source_failed` only when the child ended with code 0 and wrote that word; else `fetch_failed`.
+2. End the child with a signal during the download. Expected: `fetch_failed`, and the daemon continues.
 
 Result: Open.
 
