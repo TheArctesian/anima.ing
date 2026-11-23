@@ -30,7 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
-| HT-181 | Default-on remote setup (HM-T41, R-446): OS permission prompts, authenticated connections, headless machines and opt-outs | Open |
+| HT-NEW-defaultremoteaccess | Default-on remote setup (HM-T41, R-NEW-defaultremoteaccess): OS permission prompts, authenticated connections, headless machines and opt-outs | Open |
 | HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
 | HT-170-code-handoff | Open and follow a shared Code thread on iOS and Android (TH50, TH51) | A build of this branch on each phone, a hub with TH21, and an enrolled computer with transcript sharing enabled | Open |
 | HT-149 | Reporting after an iPad update and the phone Code tab | A physical iPad with an existing device row, another client, and a phone with the updated app | Open |
@@ -5454,7 +5454,7 @@ on the device; they are not imported into another hub or deleted. The operator c
 
 Result: Open.
 
-## HT-181: Default-on remote setup (HM-T41, R-446)
+## HT-NEW-defaultremoteaccess: Default-on remote setup (HM-T41, R-NEW-defaultremoteaccess)
 
 State: Open.
 
