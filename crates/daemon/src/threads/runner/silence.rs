@@ -215,6 +215,7 @@ pub const fn name(program: Program) -> &'static str {
     match program {
         Program::ClaudeCode => "Claude Code",
         Program::Codex => "Codex",
+        Program::Grok => "Grok",
     }
 }
 

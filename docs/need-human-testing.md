@@ -5428,3 +5428,26 @@ seen it with a real machine.
    Expected: its row has no such line.
 
 Result: Open.
+
+
+## HT-NEW-grok-code — Grok in Code (TH119)
+
+State: Open. Operator check required.
+
+Built: the local Grok ACP adapter, its model picker, Ask and Full access, streamed tool and reply
+entries, interruption, queued turns and changes of model or effort while idle. Protocol tests
+use synthetic frames; they do not prove the real account or desktop behavior.
+
+1. Open Code on a machine signed in with `grok`. Select Grok: its installed model list and
+   reasoning levels appear, without Max or Ultra unless Grok reports them.
+2. Start a harmless prompt in a disposable folder in Ask. The reply streams and remains after
+   the turn ends. Request a file change: any approval Grok asks for is shown with its input;
+   Deny does not run it, and Allow grants only that request.
+3. Queue a second prompt during a turn: it goes only after the first turn succeeds. Stop a
+   running turn: no queued prompt goes automatically after the interruption.
+4. Between turns, change the model or effort: the row changes only after Grok accepts it.
+5. Restart the daemon while the Grok thread is idle: the thread remains usable.
+6. Navigate from Code to Devices and back. Open the thread and send another prompt: its title,
+   reply and completed state update; the page does not stay at “Working” after the reply.
+7. Repeat on macOS and Linux. Sessions started outside Anima and hub synchronization of Grok
+   threads are not included in this local slice.

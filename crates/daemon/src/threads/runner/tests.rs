@@ -85,6 +85,7 @@ const CLAUDE_DELTA: &str = r#"{"type":"stream_event","event":{"type":"content_bl
 
 mod accounts;
 mod commands;
+mod grok;
 mod kept;
 #[cfg(unix)]
 mod launcher;

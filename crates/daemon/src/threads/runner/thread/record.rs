@@ -6,15 +6,25 @@ use agent_threads::drive::{DriveEvent, ProgramState};
 use uuid::Uuid;
 
 use super::super::codex::{Changed, Codex};
-use super::{Driver, Open, Saved, Thread};
+use super::{Driver, Open, Saved, Step, Thread, said};
 
 impl Thread {
+    /// An interrupted setup cannot safely replay the original prompt after a restart.
+    #[must_use]
+    pub fn recovered(&self) -> Vec<Step> {
+        if matches!(&self.driver, Driver::Grok(grok) if grok.failed) {
+            vec![said(DriveEvent::Notice { text: "Grok setup was interrupted by a daemon restart. Start a new thread to retry the prompt.".into() }), Step::EndProgram]
+        } else {
+            Vec::new()
+        }
+    }
+
     /// The record of the thread.
     #[must_use]
     pub fn saved(&self) -> Saved {
         let (codex_thread, codex_turn, codex_changed) = match &self.driver {
             Driver::Codex(codex) => (codex.thread.clone(), codex.turn.clone(), codex.changed()),
-            Driver::Claude(_) => (None, None, Changed::default()),
+            Driver::Claude(_) | Driver::Grok(_) => (None, None, Changed::default()),
         };
         Saved {
             row: self.recorded_row(),
@@ -22,6 +32,10 @@ impl Thread {
             codex_thread,
             codex_turn,
             codex_changed,
+            grok: match &self.driver {
+                Driver::Grok(grok) => Some(grok.saved.clone()),
+                _ => None,
+            },
             open: self
                 .open
                 .iter()
@@ -55,7 +69,7 @@ impl Thread {
                 codex.turn.as_deref(),
                 Some(codex.changed()),
             ),
-            Driver::Claude(_) => (None, None, None),
+            Driver::Claude(_) | Driver::Grok(_) => (None, None, None),
         };
         let open: Vec<(&Uuid, bool)> = self
             .open
@@ -67,6 +81,10 @@ impl Thread {
             codex_thread,
             codex_turn,
             codex_changed,
+            match &self.driver {
+                Driver::Grok(grok) => Some(&grok.saved),
+                _ => None,
+            },
             open,
         ))
         .unwrap_or_default()
@@ -87,6 +105,14 @@ impl Thread {
         let codex = codex
             .map(|codex| codex.known(saved.codex_thread, saved.codex_turn, saved.codex_changed));
         let mut thread = Self::new(saved.row, saved.effort, codex);
+        if let (Driver::Grok(grok), Some(saved)) = (&mut thread.driver, saved.grok) {
+            thread.pending = u32::from(saved.turn.is_some());
+            grok.failed = !saved.ready;
+            if saved.turn.is_some() && thread.row.state == RunState::Idle {
+                thread.row.state = RunState::Working;
+            }
+            grok.saved = saved;
+        }
         // What the program last said stays true until it says more (THR-085).
         thread.program = match thread.row.state {
             RunState::Idle => Some(ProgramState::Idle),

@@ -96,6 +96,7 @@ impl Runner {
                 return Err(why);
             }
         };
+        self.persist_send(id, counted, &attachments)?;
         let shown = Shown::of(&prompt);
         let steps = lines.into_iter().map(Step::Write).collect();
         match self.apply(id, steps).await {
@@ -127,6 +128,27 @@ impl Runner {
                 Ok(())
             }
         }
+    }
+
+    fn persist_send(
+        &mut self,
+        id: Uuid,
+        counted: bool,
+        attachments: &[Uuid],
+    ) -> Result<(), Refusal> {
+        let grok = self
+            .threads
+            .get(&id)
+            .is_some_and(|thread| thread.program() == agent_threads::drive::Program::Grok);
+        // Persist the reply ID before dispatch. After a crash an uncertain send is never replayed.
+        if grok && !self.written() {
+            if let Some(thread) = self.threads.get_mut(&id) {
+                thread.not_sent(counted);
+            }
+            self.attached.restore(id, attachments);
+            return Err(Refusal::Holder);
+        }
+        Ok(())
     }
 
     /// A prompt with its files, taken from where they wait. A refusal leaves the files waiting
@@ -206,7 +228,12 @@ impl Runner {
             return Outcome::Refused { why };
         }
         self.note(Kind::Prompt, Some(id), "sent");
-        let _ = self.apply(id, Thread::sent(shown)).await;
+        let steps = self
+            .threads
+            .get_mut(&id)
+            .map_or_else(Vec::new, |thread| thread.sent_to(shown));
+        let _ = self.apply(id, steps).await;
+        self.save();
         Outcome::Ok
     }
 

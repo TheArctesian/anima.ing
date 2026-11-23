@@ -87,7 +87,7 @@ impl Runner {
                 Some(Held {
                     exit: Some(exit), ..
                 }) => thread.exited(exit.code, exit.signal),
-                Some(_) => continue,
+                Some(_) => thread.recovered(),
             };
             // The link is new: a command that does not reach it is found by the loop.
             let _ = self.apply(id, steps).await;

@@ -28,6 +28,7 @@ pub use set::SetArgs;
 pub enum ProgramName {
     ClaudeCode,
     Codex,
+    Grok,
 }
 
 impl ProgramName {
@@ -36,6 +37,7 @@ impl ProgramName {
         match self {
             Self::ClaudeCode => Program::ClaudeCode,
             Self::Codex => Program::Codex,
+            Self::Grok => Program::Grok,
         }
     }
 }
@@ -346,6 +348,7 @@ pub(super) const fn program_key(program: Program) -> &'static str {
     match program {
         Program::ClaudeCode => "claude_code",
         Program::Codex => "codex",
+        Program::Grok => "grok",
     }
 }
 

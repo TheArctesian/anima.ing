@@ -148,7 +148,7 @@ export type Action =
   /** The model, the effort or the mode of a thread from its next turn (TH110): only the person. */
   | { readonly call: 'set'; readonly thread: string; readonly model?: string; readonly effort?: Effort; readonly mode?: Mode };
 
-const PROGRAMS: readonly string[] = ['claude_code', 'codex'];
+const PROGRAMS: readonly string[] = ['claude_code', 'codex', 'grok'];
 const STATES: readonly string[] = ['starting', 'working', 'needs_you', 'idle', 'stopped', 'unknown'];
 const MODES: readonly string[] = ['full_access', 'accept_edits', 'ask', 'plan'];
 const KINDS: readonly string[] = ['command', 'file_change', 'tool', 'question'];

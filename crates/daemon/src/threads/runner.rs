@@ -12,6 +12,7 @@ mod attachments;
 mod calls;
 pub mod codex;
 mod git;
+mod grok;
 mod holder_events;
 pub mod launcher;
 mod listings;

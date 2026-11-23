@@ -23,6 +23,19 @@ function runner(...answers: CallResult[]): { calls: Action[]; call: (action: Act
 const NOTHING: CallResult = { ok: true, outcome: { outcome: 'folder', notice: [] } };
 const STARTED: CallResult = { ok: true, outcome: { outcome: 'started', thread: 'th-9' } };
 
+it('sends the selected Grok model and only its reported effort through the draft', async () => {
+  const draft = new ThreadDraft('/work/grok');
+  const { calls, call } = runner(NOTHING, STARTED);
+  const models = { state: 'listed', lists: { grok: [{ id: 'grok-future', label: 'Future Grok', efforts: ['low', 'high'], defaultEffort: null }] } } as const;
+  const engine = draft.engine(call, () => undefined, models);
+  await engine.choose({ ...engine.choice, provider: 'grok', model: 'grok-future', effort: 'low', mode: 'approval-required' });
+  const selected = draft.engine(call, () => undefined, models);
+  await selected.send(MESSAGE);
+  expect(calls.at(-1)).toMatchObject({ call: 'start', program: 'grok', model: 'grok-future', effort: 'low', mode: 'ask' });
+  const { catalogue } = draftCatalogue({ ...FIRST_CHOICE, program: 'grok', model: 'grok-future' }, models);
+  expect(catalogue.models.find((model) => model.id === 'grok-future')?.efforts.map((effort) => effort.id)).toEqual(['low', 'high']);
+});
+
 describe('ThreadDraft', () => {
   it('starts the thread at the first send with the folder, the picked choice and the prompt', async () => {
     const draft = new ThreadDraft('/work/anima');
@@ -79,19 +92,19 @@ describe('ThreadDraft', () => {
 });
 
 describe('the draft choice', () => {
-  it('offers both programs by their marks, each with its default and then its listed models', () => {
+  it('offers programs by their marks, each with its default and then its listed models', () => {
     const { catalogue, choice } = draftCatalogue(FIRST_CHOICE, { state: 'listed', lists: { codex: [{ id: 'gpt-5', label: 'GPT-5', efforts: ['low', 'minimal'], defaultEffort: null }] } });
-    expect(catalogue.providers.map((each) => `${each.name}:${each.icon}`)).toEqual(['Claude Code:claude', 'Codex:openai']);
-    expect(catalogue.models.map((each) => each.label)).toEqual(['Claude Code default', 'Codex default', 'GPT-5']);
+    expect(catalogue.providers.map((each) => `${each.name}:${each.icon}`)).toEqual(['Claude Code:claude', 'Codex:openai', 'Grok:grok']);
+    expect(catalogue.models.map((each) => each.label)).toEqual(['Claude Code default', 'Codex default', 'GPT-5', 'Grok default']);
     expect(catalogue.models.find((each) => each.id === 'gpt-5')?.efforts.map((each) => each.id)).toEqual(['low']);
-    expect(catalogue.models.map((each) => each.subLabel)).toEqual([undefined, undefined, undefined]);
-    expect(catalogue.notice).toEqual({ words: 'Claude Code listed no models.', failed: false });
+    expect(catalogue.models.every((each) => each.subLabel === undefined)).toBe(true);
+    expect(catalogue.notice).toEqual({ words: 'Claude Code and Grok listed no models.', failed: false });
     expect(choice).toMatchObject({ provider: 'claude_code', model: 'default', mode: 'full-access' });
   });
 
   it("a program's default takes the efforts its models list, but Ultra, which only a named model takes", () => {
     const efforts = draftCatalogue(FIRST_CHOICE, MODELS_WAITING).catalogue.models.map((each) => `${each.provider}: ${each.efforts.map((one) => one.label).join(', ')}`);
-    expect(efforts).toEqual(['claude_code: Low, Medium, High, Extra High, Max', 'codex: Low, Medium, High, Extra High, Max']);
+    expect(efforts).toEqual(['claude_code: Low, Medium, High, Extra High, Max', 'codex: Low, Medium, High, Extra High, Max', 'grok: ']);
   });
 
   it('says on a line of its own why the default stands alone, never in a row, and offers to ask again on a failure', () => {
@@ -99,7 +112,7 @@ describe('the draft choice', () => {
     expect(notice(MODELS_WAITING)).toEqual({ words: 'Models load when the programs answer.', failed: false });
     expect(notice({ state: 'failed', words: 'The runner is not running.' })).toEqual({ words: 'Models could not load: The runner is not running.', failed: true });
     const listed = { id: 'm', label: 'M', efforts: [], defaultEffort: null };
-    expect(notice({ state: 'listed', lists: { claude_code: [listed], codex: [listed] } })).toBeUndefined();
+    expect(notice({ state: 'listed', lists: { claude_code: [listed], codex: [listed], grok: [listed] } })).toBeUndefined();
     expect(draftCatalogue(FIRST_CHOICE, MODELS_WAITING).catalogue.models.every((each) => each.subLabel === undefined)).toBe(true);
   });
 
