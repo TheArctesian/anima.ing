@@ -335,7 +335,7 @@ Result: Open.
 ### HT-124: the child fetch process downloads a real release
 
 Built: `crates/daemon/src/model/fetch.rs`, `fetch/child.rs`, `fetch/spawn.rs`, `crates/daemon/src/model/modes.rs` and
-the rules in `crates/daemon-core/src/model_work/releases/fetch.rs` (task L1-6b; R-336; R-348).
+the rules in `crates/daemon-core/src/model_work/releases/fetch.rs` (task L1-6b; R-336; R-348; R-406).
 The tests run the child with an order that is refused before a connection, a stalled child and a crashed child.
 They make no connection to GitHub, because the child accepts only the roots of the program and HTTPS, so a local
 server cannot stand in for the source.
