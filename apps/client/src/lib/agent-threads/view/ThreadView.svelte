@@ -2,7 +2,7 @@
   import { resolve } from '$app/paths';
   import { KEY_WORDS } from '../keys';
   import { STATE_MARKS, type ThreadState } from '../state';
-  import { folderName, parts, programName, type Thread } from '../thread';
+  import { folderName, parts, programName, shownTitle, type Thread } from '../thread';
   import Markdown from './Markdown.svelte';
   import Follow from './Follow.svelte';
   import ToolBlock from './ToolBlock.svelte';
@@ -24,10 +24,10 @@
 
 <!-- One thread as a timeline (THR-014): prompts at the trailing side, replies, reasoning folded, the tool calls of a
      turn in one block, the end of each turn. The foot says that the page reads and starts nothing (THR-015). -->
-<article aria-label={thread.title ?? 'Untitled thread'}>
+<article aria-label={shownTitle(thread)}>
   <header>
     <div class="first">
-      <h2>{thread.title ?? 'Untitled thread'}</h2>
+      <h2>{shownTitle(thread)}</h2>
       <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the path comes from resolve(); only the query string is added -->
       <a class="usage" href={usage}>Usage of this folder</a>
     </div>

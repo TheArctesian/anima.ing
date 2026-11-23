@@ -13,6 +13,8 @@
 //! [`sweep`] ends what a record names when the daemon starts.
 
 #[cfg(target_os = "linux")]
+pub mod delegation;
+#[cfg(target_os = "linux")]
 pub mod linux;
 pub mod mounts;
 pub mod walk;

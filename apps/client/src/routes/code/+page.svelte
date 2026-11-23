@@ -11,4 +11,4 @@
 
 <!-- The page Code (THR-011, TC2): the copy of T3 Code's shell and inbox. It reads the session files of this computer
      through the desktop shell; it sends nothing to the hub. -->
-{#if here}<CodePage {store} />{:else}<EmptyState title="Anima Code is in the desktop application" line="This page reads the sessions of Claude Code and Codex on the computer where the application runs." />{/if}
+{#if here}<CodePage {store} />{:else}<EmptyState title="Open Code on your computer" line="Open Anima on the computer running Claude Code or Codex to view its threads. Mobile access to those threads is not available yet." />{/if}
