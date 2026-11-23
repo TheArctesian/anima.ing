@@ -14,7 +14,6 @@ import (
 	"github.com/TheArctesian/anima/link/tunnel/testbed"
 )
 
-// zone is a resolver that a test fills.
 type zone struct {
 	mu      sync.Mutex
 	records map[string][]string
@@ -46,8 +45,6 @@ func (z *zone) set(name string, records ...string) {
 	z.records[name] = records
 }
 
-// A device that was off while the hub changed its relay has only the old
-// address. With the hub's domain name it finds the hub again.
 func TestLNK007ADeviceFindsAHubThatMovedByItsDomainName(t *testing.T) {
 	hub := startInvitingHub(t)
 	device := hub.joined(t)
@@ -72,8 +69,7 @@ func TestLNK007ADeviceFindsAHubThatMovedByItsDomainName(t *testing.T) {
 		return link, saved
 	}
 
-	// The stranger starts at the same time, so it has as long as the device
-	// to read the name and to try.
+	// The stranger starts at the same time, so it has as long as the device to find the hub.
 	strangerLink, _ := start(stranger)
 	link, saved := start(device)
 	getUntil(t, link, 90*time.Second)
@@ -81,14 +77,11 @@ func TestLNK007ADeviceFindsAHubThatMovedByItsDomainName(t *testing.T) {
 		t.Error("the device did not save the address from the domain name as the hub's address")
 	}
 
-	// A name only finds the hub. A key that is not in the list is still refused.
 	if got, err := get(strangerLink, 4*time.Second); err == nil {
 		t.Errorf("a device that is not permitted reached the hub through its domain name: %q", got)
 	}
 }
 
-// DNS can be answered by anybody. An address in it with another hub's keys
-// is another hub, and the device must not move to it.
 func TestLNK007ADeviceDoesNotFollowADomainNameToAnotherHub(t *testing.T) {
 	hub := startInvitingHub(t)
 	device := hub.joined(t)

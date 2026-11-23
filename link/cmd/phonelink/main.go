@@ -1,7 +1,5 @@
-// Command phonelink is the device link as a C library for the phone apps (mobile plan M3-1, MOB-031): an
-// iPhone app cannot start a program, so the mobile shell links this archive and calls its functions. Each
-// answer is JSON that the caller gives back to AnimaLinkFree. The files of this package wire; the rules are
-// in devicelink.
+// Command phonelink is the device link as a C library, because an iPhone app cannot start a program (mobile plan M3-1, MOB-031).
+// Each JSON answer goes back to AnimaLinkFree.
 package main
 
 /*
@@ -16,8 +14,7 @@ import (
 
 func main() {}
 
-// AnimaLinkJoin uses an invite and keeps the device's identity in the directory state. The invite is
-// read from memory and never written to a log (MOB-035, LOG-007).
+// AnimaLinkJoin uses an invite and keeps the device's identity in the directory state; the invite is not logged (MOB-035, LOG-007).
 //
 //export AnimaLinkJoin
 func AnimaLinkJoin(state, invite *C.char) *C.char {
@@ -48,7 +45,6 @@ func AnimaLinkStop() { stop() }
 //export AnimaLinkFree
 func AnimaLinkFree(text *C.char) { C.free(unsafe.Pointer(text)) }
 
-// answer is the JSON of value, or of the code of err.
 func answer(value any, err error) *C.char {
 	if err != nil {
 		value = failure{Error: code(err)}

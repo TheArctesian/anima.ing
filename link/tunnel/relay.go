@@ -15,8 +15,7 @@ var ErrBadRelay = errors.New("tunnel: a relay is a host name, or a host name and
 // ownRegion is the region number of a relay that is not in Tailscale's map.
 const ownRegion = 900
 
-// OwnRelay describes a relay that the operator runs (LNK-007), given as
-// "host" or "host:port". The port is 443 when it is not given.
+// OwnRelay describes an operator-run relay (LNK-007) from "host" or "host:port"; the port defaults to 443.
 func OwnRelay(hostPort string) (Relay, error) {
 	host, port := hostPort, 443
 	if h, p, err := net.SplitHostPort(hostPort); err == nil {
@@ -42,8 +41,7 @@ func (r Relay) SameAs(other Relay) bool {
 	return one.HostName == two.HostName && one.DERPPort == two.DERPPort
 }
 
-// ValidHostName reports whether a text can be a host name: letters, digits,
-// hyphens and dots, at most 253 characters.
+// ValidHostName reports whether a text can be a host name.
 func ValidHostName(host string) bool {
 	if host == "" || len(host) > 253 {
 		return false
@@ -57,9 +55,8 @@ func ValidHostName(host string) bool {
 	return true
 }
 
-// Relay is the relay region that a hub uses. The hub address contains it, so
-// a hub must save it to keep its address (LNK-001). The zero value means
-// "not chosen yet": the hub then takes the nearest region of the default map.
+// Relay is a hub's relay region; the hub address contains it, so a hub saves it to keep its address (LNK-001).
+// The zero value means not chosen yet: the hub then takes the nearest region of the default map.
 type Relay struct{ region *tailcfg.DERPRegion }
 
 // IsZero reports whether no relay was chosen.

@@ -11,11 +11,9 @@ import (
 	"time"
 )
 
-// stepDeadline is how long launchctl or systemctl may take.
 const stepDeadline = 30 * time.Second
 
-// Runner runs one step and reports whether it ended with success. The
-// error is for a step that could not run at all.
+// Runner runs one step and reports success; the error means the step could not run.
 type Runner func(ctx context.Context, step Step) (bool, error)
 
 // Run is the Runner of the real system.
@@ -34,8 +32,6 @@ func Run(ctx context.Context, step Step) (bool, error) {
 	return err == nil, err
 }
 
-// runAll runs the steps in order and stops at the first that fails and may
-// not fail.
 func runAll(ctx context.Context, run Runner, steps []Step) error {
 	for _, step := range steps {
 		ok, err := run(ctx, step)
@@ -58,15 +54,12 @@ func runAll(ctx context.Context, run Runner, steps []Step) error {
 	return nil
 }
 
-// Install writes the file of the unit and starts it. A unit that runs is
-// started again, so that it uses the file and the program of now. The
-// folder of the file is made when it is absent.
+// Install writes the unit's file and starts it, restarting a running unit so it uses the new file.
 func Install(ctx context.Context, plan Plan, run Runner) error {
 	if err := prepareDirectory(filepath.Dir(plan.File)); err != nil {
 		return err
 	}
-	// The file is written beside its place and renamed, so that a reader
-	// never finds half a file.
+	// The rename keeps a reader from finding half a file.
 	next := plan.File + ".next"
 	if err := os.WriteFile(next, unitBytes(plan.Content), 0o644); err != nil {
 		return err
@@ -78,8 +71,7 @@ func Install(ctx context.Context, plan Plan, run Runner) error {
 	return runAll(ctx, run, plan.Start)
 }
 
-// Remove stops the unit and deletes its file. A unit that is not there is
-// not an error.
+// Remove stops the unit and deletes its file; an absent unit is not an error.
 func Remove(ctx context.Context, plan Plan, run Runner) error {
 	if err := runAll(ctx, run, plan.Stop); err != nil {
 		return err

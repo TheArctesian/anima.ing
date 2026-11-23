@@ -15,9 +15,7 @@ import (
 
 const joinLimit = 30 * time.Second
 
-// runJoin uses an invite. The invite comes on standard input, not as an
-// argument: other users of the computer can read the arguments of a process
-// (LNK-008).
+// runJoin reads the invite from stdin, not an argument, as other users can read a process's arguments (LNK-008).
 func runJoin(ctx context.Context, args []string, streams stdio) error {
 	flags, statePath := stateFlags("join")
 	hubName := flags.String("hub-name", "", "a domain name that holds the hub's address in a TXT record (optional)")
@@ -51,8 +49,7 @@ func runJoin(ctx context.Context, args []string, streams stdio) error {
 	if err := joined.Save(dir); err != nil {
 		return err
 	}
-	// The fingerprint lets the operator check, in devices.list on the hub,
-	// that the device that joined is this one and not a thief of the invite.
+	// The fingerprint lets the operator check in devices.list that this device, not a thief, used the invite.
 	_, err = fmt.Fprintf(streams.out, "This device has joined the hub. Its key fingerprint is %s.\nStart the link with: anima-link device -state %s\n",
 		joined.Key.Public().Fingerprint(), *statePath)
 	return err

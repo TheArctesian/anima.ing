@@ -15,11 +15,8 @@ import (
 	"github.com/TheArctesian/anima/link/tunnel"
 )
 
-// These tests put the hub link in front of a hub's socket, as plan item S5
-// runs it, and check each rule of the link by what the hub sees: which
-// device, by its link address, and no other.
+// These tests put the hub link in front of a hub's socket, as plan item S5 runs it.
 
-// seenAs asks the hub, through a device's local port, which device it sees.
 func seenAs(link *devicelink.Link, limit time.Duration) (netip.Addr, error) {
 	text, err := get(link, limit)
 	if err != nil {
@@ -28,7 +25,6 @@ func seenAs(link *devicelink.Link, limit time.Duration) (netip.Addr, error) {
 	return netip.ParseAddr(text)
 }
 
-// seenUntil repeats the question until the hub answers.
 func seenUntil(t *testing.T, link *devicelink.Link) netip.Addr {
 	t.Helper()
 	deadline := time.Now().Add(30 * time.Second)
@@ -54,7 +50,6 @@ func startJoined(t *testing.T, device identity.Device) *devicelink.Link {
 	return link
 }
 
-// hold opens a request that the hub keeps open, as a session.
 func hold(t *testing.T, link *devicelink.Link) net.Conn {
 	t.Helper()
 	session, err := net.DialTimeout("tcp", link.LocalAddr().String(), 5*time.Second)
@@ -87,7 +82,6 @@ func TestLNK003ADeviceThatJoinedIsSeenByTheHubUnderItsOwnAddress(t *testing.T) {
 		t.Errorf("the hub saw the device as %v, want %v", seen, want)
 	}
 
-	// A second use of the invite gives no device and no address.
 	second := identity.Device{Key: tunnel.NewPrivateKey()}
 	if _, err := join(invite, second, 5*time.Second); err == nil {
 		t.Fatal("the invite worked twice")

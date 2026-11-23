@@ -9,18 +9,11 @@ import (
 	"path/filepath"
 )
 
-// chmodBatch keeps one chmod command far below the system's limit for the
-// length of its arguments.
+// chmodBatch keeps one chmod command far below the system's limit for the length of its arguments.
 const chmodBatch = 256
 
-// dropInheritedAccess removes each access-control entry from the directory
-// and from what it holds. On macOS a folder above can give such entries to
-// everything made in it, and they give access that the mode bits do not show
-// (LNK-008). The system has no call for this without C, so it runs chmod.
-//
-// chmod gets each path by name. Its -R opens each file, and the system
-// refuses to open a socket, so -R fails on a directory that holds the socket
-// of a running or killed anima-link.
+// dropInheritedAccess removes inherited access-control entries, which the mode bits do not show (LNK-008).
+// chmod gets each path by name: -R fails on the socket of a running or killed anima-link.
 func dropInheritedAccess(path string) error {
 	var links, others []string
 	err := filepath.WalkDir(path, func(entry string, found fs.DirEntry, err error) error {

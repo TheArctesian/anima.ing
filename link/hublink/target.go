@@ -9,15 +9,10 @@ import (
 	"github.com/TheArctesian/anima/link/statedir"
 )
 
-// ErrTarget means that the target is neither a loopback address with a port
-// nor the path of a socket. The link must not send a device's traffic to
-// another computer.
+// ErrTarget means that the target is neither a loopback address with a port nor the path of a socket.
 var ErrTarget = errors.New("hublink: the target must be the path of the hub's socket, or a loopback address and a port, for example 127.0.0.1:8443")
 
-// target is where the hub link sends each stream of a device.
 type target struct {
-	// socket is the path of the hub's Unix socket. Empty means that the
-	// target is the loopback address.
 	socket   string
 	loopback string
 }
@@ -33,9 +28,7 @@ func parseTarget(text string) (target, error) {
 	return target{loopback: loopback.String()}, nil
 }
 
-// dial connects to the hub. A socket is checked at each connection: the hub
-// makes it when it starts, which can be after the link, and makes it again
-// at each restart.
+// dial checks the socket at each connection: the hub makes it again at each start, which can be after the link.
 func (t target) dial() (net.Conn, error) {
 	if t.socket != "" {
 		return statedir.DialOwned(t.socket, targetDialLimit)
