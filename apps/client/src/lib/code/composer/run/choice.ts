@@ -1,6 +1,7 @@
 import type { CallResult } from '$lib/agent-threads/live/live.svelte';
 import type { Effort, Mode, RunRow } from '$lib/agent-threads/live/run';
 import { programName } from '$lib/agent-threads/thread';
+import { PROGRAM_ICONS } from '../../icons/program';
 import { CAN, cannot } from '../draft';
 import { PERMISSION_MODES, type Catalogue, type Choice, type EffortLevel, type PermissionMode } from '../picker/catalogue';
 
@@ -83,7 +84,7 @@ function modelsOf(row: Row, changes: boolean, listed: readonly ProgramModel[]): 
 export function catalogueOf(row: Row, changes: boolean, listed: readonly ProgramModel[] = []): { catalogue: Catalogue; choice: Choice } {
   return {
     catalogue: {
-      providers: [{ id: row.program, name: programName(row.program), icon: 'bot', can: CAN }],
+      providers: [{ id: row.program, name: programName(row.program), icon: PROGRAM_ICONS[row.program], can: CAN }],
       models: modelsOf(row, changes, listed),
       modes: modesOf(row, changes),
     },

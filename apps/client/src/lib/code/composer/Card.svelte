@@ -237,7 +237,7 @@
     <div class="footer">
       <AttachButton can={engine.attach} onFiles={(files) => card.add(files)} />
       <div class="actions">
-        <ModelPicker catalogue={engine.catalogue} value={card.shownChoice(engine.choice)} onChange={(next) => void card.choose(next)} can={engine.pick} shortcut={card.modifier === '⌘' ? '⌘⇧M' : 'Ctrl+Shift+M'} align="end" bind:open={picking} />
+        <ModelPicker catalogue={engine.catalogue} value={card.shownChoice(engine.choice)} onChange={(next) => void card.choose(next)} can={engine.pick} onRetry={engine.retryModels} shortcut={card.modifier === '⌘' ? '⌘⇧M' : 'Ctrl+Shift+M'} align="end" bind:open={picking} />
         <!-- T3 mounts the microphone only where dictation works (`ChatComposer.tsx:3897`); ours has none yet. -->
         {#if engine.dictate.can}<MicButton can={engine.dictate} onStart={() => undefined} />{/if}
         {#if showsSend(card.turn)}<SendButton face={card.face} onPress={(alternate) => pressed(() => card.submit(alternate))} />{/if}

@@ -69,11 +69,21 @@ export interface PermissionMode {
   readonly can: Can;
 }
 
+/** Why the list has fewer models than the programs offer: they have not come yet, or they could not load. */
+export interface ModelsNotice {
+  /** The whole reason, as the runner gave it. */
+  readonly words: string;
+  /** The models could not load: the picker offers to ask again. */
+  readonly failed: boolean;
+}
+
 /** All that the picker offers. The order of `providers` and of `models` is the order shown. */
 export interface Catalogue {
   readonly providers: readonly Provider[];
   readonly models: readonly Model[];
   readonly modes: readonly PermissionMode[];
+  /** Shown on a line of its own under the list, never in a row. */
+  readonly notice?: ModelsNotice;
 }
 
 /** What is picked now. */

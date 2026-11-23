@@ -68,13 +68,6 @@
     white-space: nowrap;
   }
 
-  /* The lit row shows its whole name, on more lines: a keyboard has no hover to read a cut name by. */
-  :global([role='option'].lit) .name {
-    overflow: visible;
-    overflow-wrap: anywhere;
-    white-space: normal;
-  }
-
   .check,
   .mark {
     display: inline-flex;
