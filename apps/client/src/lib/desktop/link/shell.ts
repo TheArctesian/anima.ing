@@ -22,9 +22,10 @@ export interface DeviceLinkStatus {
 }
 
 /** The shell's error codes; any other answer is `failed`. */
-export type LinkProblem = 'ssh-setup' | 'caller' | 'not-carried' | 'busy' | 'no-home' | 'bad-invite' | 'no-answer' | 'refused' | 'folder' | 'failed' | 'unavailable';
+export type LinkProblem = 'desktop-setup' | 'ssh-setup' | 'caller' | 'not-carried' | 'busy' | 'no-home' | 'bad-invite' | 'no-answer' | 'refused' | 'folder' | 'failed' | 'unavailable';
 
 const MESSAGES: Readonly<Record<LinkProblem, string>> = {
+  'desktop-setup': 'Desktop sharing is not ready. Use Set up remote access for installation or system settings.',
   'ssh-setup': 'SSH setup failed or administrator authorization was cancelled. The private port was not opened. Try again after checking the system prompt.',
   caller: 'Only the main window can do this.',
   'not-carried': 'This build does not carry the link program.',
