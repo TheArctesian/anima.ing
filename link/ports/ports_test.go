@@ -66,8 +66,6 @@ func TestHMD049OnlyThePortsOfTheSessionsCanBeOpen(t *testing.T) {
 	}
 }
 
-// The file is the person's, but a port that the system does not allow is
-// not open, also when a hand wrote it in the file.
 func TestHMD049APortThatAHandWroteInTheFileIsNotOpen(t *testing.T) {
 	dir := open(t)
 	if err := dir.Write("open-ports", []uint16{22, 80, 8080, 22}); err != nil {
@@ -81,8 +79,6 @@ func TestHMD049APortThatAHandWroteInTheFileIsNotOpen(t *testing.T) {
 	}
 }
 
-// A second process changes the list while the device link holds the
-// directory: the link reads the change with no restart.
 func TestHMD049AChangeBesideTheRunningLinkAppliesAtOnce(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "s")
 	held, err := statedir.Open(path)

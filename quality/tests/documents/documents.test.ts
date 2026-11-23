@@ -7,20 +7,17 @@ import { check } from "./kit.ts";
 
 const REGISTER = "docs/plan/register.md";
 const INDEX = "docs/work-items/README.md";
-/** The record of the mockup `a.html` for the devices screen, with the cells given. */
 function mockupRecord(more: Partial<Cells> = {}): Document {
   const cells: Cells = { Mockup: "[a.html](a.html)", Owner: "owner", Screens: "[devices](../../apps/client/src/routes/devices)", State: "Built", Compared: "`abc1234`", Differences: "", ...more };
   return { path: "docs/mockup/records/a.md", text: recordText(cells) };
 }
 
-/** The index of the mockups with the table that `records` give, and `extra` text after it. */
 function mockupIndex(records: Document[], extra = ""): Document {
   return { path: "docs/mockup/README.md", text: `# Mockups\n\n## Index\n\n${mockupTable(records)}\n${extra}` };
 }
 
 const PLAN_TEXT = "---\nkind: Plan\nstate: Draft\nevidence: none\n---\n\n# Plan\n";
 
-/** The register with the given text outside its generated list, and the list that agrees with `documents`. */
 function registered(text: string, documents: Document[]): Document {
   return { path: REGISTER, text: `${text}\n${registerRows(documents)}` };
 }

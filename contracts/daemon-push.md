@@ -487,7 +487,7 @@ The hub:
   A daemon that has never pushed is not marked, and `metricsStale` is true for it. Stale changes no check:
   a stale daemon is never a Down check.
 
-### 4.1 Agent thread summaries (TH20, R-NEW-threadsync)
+### 4.1 Agent thread summaries (TH20, R-431)
 
 `agentThreads` is optional. An absent member leaves stored thread data unchanged. The member has
 `count` (zero or more, at most 2³² − 1), `countRevision` and `summaries` (zero to 256 rows).

@@ -3,7 +3,7 @@ import type { Violation } from "../report.ts";
 import type { Document } from "./documents.ts";
 import { replaceBlock } from "./generated.ts";
 
-/** The register: the file that holds the generated list of the plans (PLN-001, PLN-020). */
+/** The generated list of the plans (PLN-001, PLN-020). */
 export const REGISTER = "docs/plan/register.md";
 /** Finished work. It is a record: it has no row in the register. */
 const ARCHIVE = "docs/archive/";
@@ -14,7 +14,6 @@ const LINK = /\]\(([^)\s]+)\)/g;
 const STATE = /^(?:Draft|Direction decided|Approved|In progress|Done|Parked|Withdrawn|Not checked)\b/;
 const KINDS = ["Specification", "Plan", "Build specification", "Task breakdown", "Proposal"];
 
-/** The `key: value` lines between the two `---` lines that start a document. */
 export function header(text: string): Map<string, string> {
   const fields = new Map<string, string>();
   const lines = text.split("\n");
@@ -27,7 +26,6 @@ export function header(text: string): Map<string, string> {
   return fields;
 }
 
-/** `text` of the document `from`, with each relative link made relative to the register. */
 function rebased(text: string, from: string): string {
   return text.replace(LINK, (whole, target: string) => {
     if (/^[a-z][a-z0-9+.-]*:|^#/i.test(target)) return whole;
@@ -41,7 +39,6 @@ function rank(kind: string): number {
   return found === -1 ? KINDS.length : found;
 }
 
-/** The generated list: one row for each document whose header gives a kind and a state. */
 export function registerRows(documents: Document[]): string {
   const rows = documents
     .map((document) => ({ path: document.path, fields: header(document.text) }))
@@ -55,12 +52,10 @@ export function registerRows(documents: Document[]): string {
   return [START, "", "| Document | Kind | State | Evidence |", "| --- | --- | --- | --- |", ...rows, "", END].join("\n");
 }
 
-/** `register` with its generated list replaced by `rows`; undefined when it has no markers. */
 export function withRows(register: string, rows: string): string | undefined {
   return replaceBlock(register, START, END, rows);
 }
 
-/** PLN-020: a plan gives its kind and its state in its header, and the register agrees. */
 export function checkRegister(documents: Document[], isPlan: (path: string) => boolean): Violation[] {
   const violations: Violation[] = [];
   for (const document of documents.filter((each) => isPlan(each.path))) {

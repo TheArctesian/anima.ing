@@ -36,7 +36,6 @@ var verbs = map[string]control.Verb{
 	},
 }
 
-// serve starts a control server on a socket and returns a connection to it.
 func serve(t *testing.T) (conn net.Conn, stopped chan error, stop context.CancelFunc) {
 	t.Helper()
 	dir, err := testpath.MkdirTemp("anima-control-")
@@ -134,8 +133,6 @@ func TestArgumentsRefusesAFieldThatTheVerbDoesNotHave(t *testing.T) {
 	}
 }
 
-// busyListener fails with "too many open files" a number of times before it
-// accepts, as a system does when a process has used its files.
 type busyListener struct {
 	net.Listener
 	failures int
@@ -214,7 +211,6 @@ func TestAVerbThatEndsTheServerStillGetsItsReplyOut(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("Serve still runs 5 s after a verb ended it")
 	}
-	// Serve has returned: the reply must be on its way already.
 	select {
 	case reply := <-replied:
 		if reply != "stopping" {

@@ -10,9 +10,7 @@ const BANNED_FOLDERS = new Set(["utils", "helpers", "common", "components", "ser
 const SKIPPED_PREFIXES = ["docs/", "node_modules/"];
 const TYPE_EXTENSIONS = [".rs", ".ts", ".js", ".svelte", ".go"];
 
-// Casing of TypeScript, JavaScript and Svelte file names (CQ1-18): kebab-case words with dot-separated suffixes
-// (`.svelte.test.ts`, `.fixture.ts`, `.d.ts`); PascalCase components; SvelteKit route files start with `+`.
-// A test named for the component it tests keeps the component's PascalCase stem.
+// CQ1-18: kebab-case scripts with dotted suffixes, PascalCase components, `+` route files; a component test keeps its PascalCase stem.
 const SCRIPT_FILE = /\.(?:ts|mts|cts|js|mjs|cjs)$/;
 const KEBAB_WORDS = String.raw`[a-z0-9]+(?:-[a-z0-9]+)*`;
 const SCRIPT_NAMES = [
@@ -32,7 +30,6 @@ const GO_TYPE = /^\s*type\s+([A-Za-z_]\w*)/gm;
 const GO_TYPE_GROUP = /^\s*type\s*\(([^)]*)\)/gm;
 const GO_GROUP_ENTRY = /^\s*([A-Za-z_]\w*)/gm;
 
-/** Go type names: `type Name ...` and each entry of a `type ( ... )` group. */
 function goTypes(code: string): string[] {
   const single = [...code.matchAll(GO_TYPE)].map((match) => match[1] ?? "");
   const grouped = [...code.matchAll(GO_TYPE_GROUP)].flatMap((group) =>
@@ -41,7 +38,6 @@ function goTypes(code: string): string[] {
   return [...single, ...grouped];
 }
 
-/** Split a name into lowercase word segments: camelCase, PascalCase, snake_case, kebab-case, dots. */
 export function wordSegments(name: string): string[] {
   return name
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
@@ -51,7 +47,6 @@ export function wordSegments(name: string): string[] {
     .filter((segment) => segment !== "");
 }
 
-/** A segment is banned when it equals a banned word or that word plus `s`. */
 export function bannedWordIn(name: string): string | undefined {
   return wordSegments(name).find(
     (segment) => BANNED_WORDS.has(segment) || (segment.endsWith("s") && BANNED_WORDS.has(segment.slice(0, -1))),
@@ -75,7 +70,6 @@ function pathViolations(path: string): Violation[] {
   return violations;
 }
 
-/** CQ1-18: script files are kebab-case, components PascalCase. Rust and other files are not checked here. */
 function casingViolations(path: string): Violation[] {
   const name = path.slice(path.lastIndexOf("/") + 1);
   const isScript = SCRIPT_FILE.test(name);
@@ -84,7 +78,6 @@ function casingViolations(path: string): Violation[] {
   return [{ path, signal: "file-casing", detail: `"${name}" should be ${isScript ? "kebab-case" : "PascalCase"}` }];
 }
 
-/** Source without comments; for Svelte, only the `<script>` blocks. */
 function codeOf(text: string, extension: string): string {
   if (extension !== ".svelte") return stripComments(text, extension);
   const scripts = [...text.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map((match) => match[1] ?? "");
@@ -106,7 +99,7 @@ function typeViolations(file: SourceFile): Violation[] {
   });
 }
 
-/** CQ-030: banned words in file names, folder names and declared type names. CQ1-18: file-name casing. */
+/** CQ-030: banned words in names. CQ1-18: file-name casing. */
 export function checkNames(files: SourceFile[]): Violation[] {
   return files
     .filter((file) => !SKIPPED_PREFIXES.some((prefix) => file.path.startsWith(prefix)))

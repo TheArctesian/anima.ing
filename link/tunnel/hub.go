@@ -19,23 +19,18 @@ var (
 	ErrNoAdmit    = errors.New("tunnel: a hub needs an Admit function")
 	ErrNoIdentity = errors.New("tunnel: the key or the pre-shared key is not set")
 	ErrStart      = errors.New("tunnel: the link did not start")
-	// ErrRelay means that the hub started but its relay does not carry its
-	// messages: the relay is not reachable, or it refuses keys that it does
-	// not know. A relay that refuses gives no other sign (spike K-A, 5).
+	// ErrRelay means that the relay does not carry the hub's messages; a refusing relay gives no other sign (spike K-A, 5).
 	ErrRelay      = errors.New("tunnel: the relay does not carry this hub's messages; it is not reachable or it refuses this hub's key")
 	ErrBadAddress = errors.New("tunnel: the hub address is not valid")
 )
 
-// startError is ErrStart with the library's cause. Its text is fixed: the
-// library's text can name relay hosts and URLs (LNK-008). The cause stays
-// reachable with errors.Is and errors.As.
+// startError has a fixed text: the library's text can name relay hosts and URLs (LNK-008).
 type startError struct{ cause error }
 
 func (startError) Error() string     { return ErrStart.Error() }
 func (e startError) Unwrap() []error { return []error{ErrStart, e.cause} }
 
-// Logf is the library's log sink. It can get text that names keys and
-// network addresses, so it must not go to a normal log (LNK-008).
+// Logf is the library's log sink. Its text can name keys and addresses, so it stays out of a normal log (LNK-008).
 type Logf func(format string, args ...any)
 
 func (l Logf) orDiscard() logger.Logf {
@@ -49,15 +44,11 @@ func (l Logf) orDiscard() logger.Logf {
 type HubConfig struct {
 	Key          PrivateKey
 	PresharedKey PresharedKey
-	// Relay is the saved relay. Zero at the first start only: the hub then
-	// takes the nearest relay of the map at RelayMapURL.
+	// Relay is the saved relay; when it is zero, the hub takes the nearest relay of the map at RelayMapURL.
 	Relay Relay
-	// RelayMapURL is where the relay map is when Relay is zero. Empty means
-	// Tailscale's map of shared relays.
+	// RelayMapURL is empty for Tailscale's map of shared relays.
 	RelayMapURL string
-	// Admit decides if a device key can connect. It is asked when a device
-	// that is not connected announces itself, and not again while it stays
-	// connected (LNK-002).
+	// Admit decides if a device key can connect; it is not asked again while the device stays connected (LNK-002).
 	Admit func(DeviceKey) bool
 	// DebugLogf, if set, gets the library's log.
 	DebugLogf Logf
@@ -67,8 +58,7 @@ type HubConfig struct {
 type Hub struct {
 	server *tailcat.Server
 	relay  Relay
-	// probe is the key of the relay check while it runs.
-	probe atomic.Pointer[key.NodePublic]
+	probe  atomic.Pointer[key.NodePublic]
 }
 
 const relayCheckLimit = 10 * time.Second
@@ -116,8 +106,6 @@ func StartHub(ctx context.Context, cfg HubConfig) (*Hub, error) {
 	return hub, nil
 }
 
-// checkRelay sends a message from a key that exists only for this check to
-// the hub, through the relay, and waits for the hub's answer.
 func (h *Hub) checkRelay(ctx context.Context, debugLogf Logf) error {
 	probeKey := NewPrivateKey()
 	public := probeKey.node.Public()
@@ -143,9 +131,7 @@ func (h *Hub) checkRelay(ctx context.Context, debugLogf Logf) error {
 	return nil
 }
 
-// AddressOn is the address that a hub with these keys has on a relay. A hub
-// uses it to tell its devices where it will be after a relay change
-// (LNK-007).
+// AddressOn is the address that a hub with these keys has on a relay (LNK-007).
 func AddressOn(key PrivateKey, psk PresharedKey, relay Relay) Address {
 	described := tailcat.ConnInfo{
 		ServerPublic:      tailcat.NodePublic{NodePublic: key.node.Public()},
@@ -159,8 +145,7 @@ func AddressOn(key PrivateKey, psk PresharedKey, relay Relay) Address {
 // Address is the address that devices use. It is a secret (LNK-008).
 func (h *Hub) Address() Address { return Address{text: h.server.TailcatAddr()} }
 
-// Relay is the relay in use. Save it and give it back at the next start, or
-// the address changes (LNK-001).
+// Relay is the relay in use. Give it back at the next start, or the address changes (LNK-001).
 func (h *Hub) Relay() Relay { return h.relay }
 
 // Listen accepts streams that devices open to one port of the hub.
@@ -175,13 +160,10 @@ func (h *Hub) DeviceOf(remote net.Addr) (DeviceKey, bool) {
 	return DeviceKey{k}, ok
 }
 
-// Disconnect makes the hub forget a connected device and stops its traffic.
-// It does not close the device's open streams: close them first (LNK-004).
-// Admit must already refuse the key, or the device connects again.
+// Disconnect forgets a device but does not close its streams; Admit must already refuse its key (LNK-004).
 func (h *Hub) Disconnect(device DeviceKey) bool { return h.server.DisconnectClient(device.node) }
 
-// Paths reports the path of each device that the library knows. A device
-// that was disconnected can stay in the result with PathNone.
+// Paths reports the path of each device that the library knows; a disconnected device can stay with PathNone.
 func (h *Hub) Paths() map[DeviceKey]Path {
 	paths := map[DeviceKey]Path{}
 	for k, peer := range h.server.Status().Peer {
@@ -200,7 +182,6 @@ func (h *Hub) Paths() map[DeviceKey]Path {
 // Close stops the hub side.
 func (h *Hub) Close() error { return h.server.Close() }
 
-// The ports of the link.
 const (
 	// HubPort carries the hub's own traffic.
 	HubPort uint16 = 443
@@ -208,16 +189,11 @@ const (
 	EnrolPort uint16 = 444
 	// NoticePort is where a device reads the hub's next address (LNK-007).
 	NoticePort uint16 = 445
-	// ReversePort is where a device keeps a stream open so that the hub
-	// knows it is connected, and where the hub asks it for a local port
-	// (HMD-047, HMD-048).
+	// ReversePort carries a device's presence stream and the hub's dial requests (HMD-047, HMD-048).
 	ReversePort uint16 = 446
-	// OpenPort is where a device gives the hub the connection to one of its
-	// local ports that the hub asked for on the reverse port (HMD-048).
+	// OpenPort is where a device gives the hub a local port's connection (HMD-048).
 	OpenPort uint16 = 447
 )
 
-// Join copies bytes between two streams in both directions until both have
-// ended, then closes both. When one direction ends, the other stays open, so
-// a side can end its request and still read the answer.
+// Join copies bytes both ways until both directions end, then closes both; one direction can end before the other.
 func Join(a, b net.Conn) { tailcat.ProxyConns(a, b) }

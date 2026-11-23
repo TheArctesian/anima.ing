@@ -11,8 +11,6 @@ import (
 	"github.com/TheArctesian/anima/link/presence"
 )
 
-// read gives the lines to Read on one end of a pipe and returns how many
-// times Read saw "here" before it returned.
 func read(t *testing.T, lines string) int {
 	t.Helper()
 	device, hub := net.Pipe()
@@ -79,7 +77,6 @@ func TestHMD047TheBookKeepsOneStreamAndTheLastTimeOfEachDevice(t *testing.T) {
 	if replaced := book.Hold(laptop, second); replaced != first {
 		t.Error("the second stream of a device did not replace its first")
 	}
-	// The first stream ends after the second took its place.
 	book.Release(laptop, first)
 	if replaced := book.Hold(laptop, first); replaced != second {
 		t.Error("the release of a replaced stream removed the stream that replaced it")

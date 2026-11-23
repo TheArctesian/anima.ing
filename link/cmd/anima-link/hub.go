@@ -19,8 +19,7 @@ import (
 
 const (
 	controlSocket = "control.sock"
-	// dialSocket is where the hub gets a connection to a local port of a
-	// device (HMD-048, package dial). It is beside the control socket.
+	// dialSocket gives the hub a connection to a device's local port (HMD-048, package dial).
 	dialSocket = "dial.sock"
 	startLimit = 30 * time.Second
 )
@@ -77,11 +76,7 @@ func runHub(ctx context.Context, args []string, streams stdio) error {
 var errRelayIsSet = errors.New("this hub has a relay already; change it with the verbs relay.announce and relay.switch, so that its devices can follow. " +
 	"If the hub cannot start on its relay, start it with -relay and -replace-relay")
 
-// chooseRelay saves the operator's own relay before the first start
-// (LNK-007). A hub that has a relay keeps it: a different relay is a
-// different address. With replace, the operator takes another relay
-// anyway: the way back for a hub whose saved relay does not work, for
-// example after a relay.switch to a mistyped name.
+// chooseRelay saves the operator's relay before the first start (LNK-007); replace is the way back from a relay that does not work.
 func chooseRelay(dir *statedir.Dir, hostPort string, replace bool) error {
 	if hostPort == "" {
 		return nil
@@ -104,9 +99,6 @@ func chooseRelay(dir *statedir.Dir, hostPort string, replace bool) error {
 	return hub.Save(dir)
 }
 
-// startHubLink starts the link from the saved identity and saves the relay
-// that a first start chose, so that the address stays the same (LNK-001).
-// hubOptions is what the command line gives a hub link.
 type hubOptions struct {
 	target string
 	log    *slog.Logger
@@ -134,6 +126,7 @@ func startHubLink(ctx context.Context, dir *statedir.Dir, options hubOptions) (*
 	if err != nil {
 		return nil, hubLists{}, err
 	}
+	// A first start saves the relay it chose, so that the address stays the same (LNK-001).
 	if hub.Relay.IsZero() {
 		hub.Relay = link.Relay()
 		if err := hub.Save(dir); err != nil {
@@ -144,7 +137,6 @@ func startHubLink(ctx context.Context, dir *statedir.Dir, options hubOptions) (*
 	return link, hubLists{permitted, open}, nil
 }
 
-// hubLists is what a hub link keeps in its state directory beside its identity.
 type hubLists struct {
 	devices *devices.Store
 	invites *invites.Store

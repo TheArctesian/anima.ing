@@ -157,7 +157,7 @@ func TestASocketLeftByAnEarlierProcessIsReplaced(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// A killed process leaves its socket file. Keep the file when the listener closes.
+	// A killed process leaves its socket file.
 	listener.(*net.UnixListener).SetUnlinkOnClose(false)
 	listener.Close()
 	first.Close()

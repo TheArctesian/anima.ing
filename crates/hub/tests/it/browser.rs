@@ -7,6 +7,8 @@ mod catalogue;
 mod cookie;
 mod rotation;
 mod routes;
+#[cfg(unix)]
+mod routes_guards;
 mod sign_in;
 mod sign_out;
 pub(crate) mod socket;

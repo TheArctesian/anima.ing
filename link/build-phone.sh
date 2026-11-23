@@ -1,12 +1,8 @@
 #!/bin/sh
-# Builds the device link as a C library for the phone apps (mobile plan M3-1, MOB-031), with the build
-# tags of link/build.sh: a static archive for iOS (libphonelink.a) and a shared library for Android
-# (libphonelink.so; Go has no static archive for Android). They go to target/phonelink/<Rust target>/,
-# where the build of apps/desktop/src-tauri finds them for an iOS or Android target.
+# Builds the device link for the phone apps (MOB-031) into target/phonelink/<Rust target>/, where apps/desktop/src-tauri finds it.
+# Android gets a shared library: Go has no static archive for Android.
 #
 #   link/build-phone.sh [aarch64-apple-ios-sim aarch64-apple-ios aarch64-linux-android]
-#
-# Android needs NDK_HOME. iOS needs Xcode.
 set -eu
 cd "$(dirname "$0")"
 go mod download github.com/tailscale/tailcat

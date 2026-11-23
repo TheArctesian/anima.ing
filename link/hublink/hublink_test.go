@@ -27,11 +27,8 @@ import (
 
 func TestMain(m *testing.M) { testbed.Main(m) }
 
-// sessionsEndedOnTheHub gets one value each time the fake hub sees a
-// WebSocket end: the connection from the hub link to the hub is closed.
 var sessionsEndedOnTheHub = make(chan struct{}, 64)
 
-// fakeHub stands in for the hub: plain HTTP and a WebSocket echo on loopback.
 func fakeHub(t *testing.T) string {
 	t.Helper()
 	mux := http.NewServeMux()
@@ -62,7 +59,6 @@ func fakeHub(t *testing.T) string {
 	return server.Listener.Addr().String()
 }
 
-// rig is a running hub link with its list of devices, in front of a fake hub.
 type rig struct {
 	link  *hublink.Link
 	store *devices.Store
@@ -73,7 +69,6 @@ func start(t *testing.T) rig {
 	return startInFrontOf(t, fakeHub(t))
 }
 
-// startInFrontOf starts a hub link that sends streams to the given target.
 func startInFrontOf(t *testing.T, target string) rig {
 	t.Helper()
 	dir, err := statedir.Open(filepath.Join(t.TempDir(), "s"))
@@ -100,8 +95,6 @@ func startInFrontOf(t *testing.T, target string) rig {
 	return rig{link, store}
 }
 
-// device makes the device side for a key and an HTTP client that reaches the
-// hub through it.
 func (r rig) device(t *testing.T, key tunnel.PrivateKey) (*tunnel.Device, *http.Client) {
 	t.Helper()
 	device, err := tunnel.NewDevice(tunnel.DeviceConfig{Key: key, Hub: r.link.Address()})
@@ -260,8 +253,6 @@ func TestOneDeviceCannotTakeEveryStream(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	// One stream more than the limit. The hub link closes the stream that is
-	// over the limit; the others stay open and idle.
 	for range hublink.MaxStreamsOfDevice + 1 {
 		stream, err := device.Dial(ctx, tunnel.HubPort)
 		if err != nil {
