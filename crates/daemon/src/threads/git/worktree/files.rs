@@ -11,6 +11,7 @@
 //!
 //! I/O: opens, reads, writes and removes files below one folder.
 
+use std::io::BufRead as _;
 use std::path::{Component, Path, PathBuf};
 
 use super::super::place::walk::{Dir, Make};
@@ -86,6 +87,14 @@ fn listed(folder: &Dir, at: &Path, left: usize, found: &mut Vec<PathBuf>) -> std
     Ok(())
 }
 
+/// A path of the worktree for a text that a person reads: no control character of the name
+/// is shown as it is, and a long name is cut.
+#[must_use]
+pub fn shown(path: &Path) -> String {
+    let text: String = path.to_string_lossy().escape_debug().collect();
+    text.chars().take(200).collect()
+}
+
 /// The least bytes that one file of a snapshot costs: a block of the disk.
 const BLOCK: u64 = 4096;
 
@@ -113,9 +122,57 @@ impl Root {
     pub fn take(&self, path: &Path, into: &Dir, left: &mut u64) -> std::io::Result<bool> {
         match self.take_to(path, (into, path), left) {
             // Two names of the worktree that differ only in the case of a letter are one
-            // name on a disk that does not tell them apart: the copy is there.
-            Err(there) if there.kind() == std::io::ErrorKind::AlreadyExists => Ok(true),
+            // name on a disk that does not tell them apart: the copy is there. Two
+            // different files with such names cannot both be kept there.
+            Err(there) if there.kind() == std::io::ErrorKind::AlreadyExists => {
+                if self.same(path, into)? {
+                    return Ok(true);
+                }
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!(
+                        "the file {} and a different file have names that differ only in the \
+                         case of a letter; give one of them a different name",
+                        shown(path)
+                    ),
+                ))
+            }
             taken => taken,
+        }
+    }
+
+    /// Whether the copy at `path` below `into` has the content of the file or the link at
+    /// `path` of the worktree.
+    fn same(&self, path: &Path, into: &Dir) -> std::io::Result<bool> {
+        let (Some((above, name)), Some((copies, last))) =
+            (self.0.above(path, Make::No)?, into.above(path, Make::No)?)
+        else {
+            return Ok(false);
+        };
+        if let Some(to) = above.link(name) {
+            return Ok(copies.link(last) == Some(to));
+        }
+        let (Some(ours), Some(theirs)) = (above.file(name)?, copies.file(last)?) else {
+            return Ok(false);
+        };
+        if ours.metadata()?.len() != theirs.metadata()?.len() {
+            return Ok(false);
+        }
+        let (mut ours, mut theirs) = (
+            std::io::BufReader::new(ours),
+            std::io::BufReader::new(theirs),
+        );
+        loop {
+            let (one, other) = (ours.fill_buf()?, theirs.fill_buf()?);
+            let most = one.len().min(other.len());
+            if one[..most] != other[..most] {
+                return Ok(false);
+            }
+            if most == 0 {
+                return Ok(one.len() == other.len());
+            }
+            ours.consume(most);
+            theirs.consume(most);
         }
     }
 
@@ -242,124 +299,4 @@ impl Root {
 }
 
 #[cfg(all(test, unix))]
-mod tests {
-    use super::*;
-
-    fn folders() -> (tempfile::TempDir, PathBuf, PathBuf, PathBuf) {
-        let keep = tempfile::tempdir().expect("a folder");
-        let top = std::fs::canonicalize(keep.path()).expect("its real path");
-        let (worktree, own, outside) = (top.join("worktree"), top.join("own"), top.join("outside"));
-        for folder in [&worktree, &own, &outside] {
-            std::fs::create_dir_all(folder).expect("a folder");
-        }
-        std::fs::write(outside.join("secret"), "SECRET\n").expect("a file");
-        (keep, worktree, own, outside)
-    }
-
-    #[test]
-    fn a_path_with_dots_or_a_git_folder_is_not_inside() {
-        for bad in [
-            "",
-            "../x",
-            "/etc/hosts",
-            "a/../b",
-            ".git/config",
-            "a/.GIT/x",
-            "./a",
-        ] {
-            assert!(!inside(Path::new(bad)), "{bad}");
-        }
-        assert!(inside(Path::new("src/a file.rs")));
-        assert!(inside(Path::new("-odd:name")));
-    }
-
-    #[test]
-    fn a_link_is_copied_as_a_link_and_a_folder_that_is_a_link_is_not_passed() {
-        let (_keep, worktree, own, outside) = folders();
-        std::fs::write(worktree.join("plain.txt"), "plain\n").expect("a file");
-        std::os::unix::fs::symlink(outside.join("secret"), worktree.join("link")).expect("a link");
-        std::os::unix::fs::symlink(&outside, worktree.join("dir")).expect("a link");
-        let root = Root::open(&worktree).expect("the worktree");
-        let into = Dir::open(&own).expect("the folder of the runner");
-        let take = |path: &str| root.take(Path::new(path), &into, &mut { u64::MAX });
-        assert!(take("plain.txt").expect("a copy"));
-        // A second name for the same file (a disk that does not tell `A` from `a`) is no
-        // failure: the copy is there.
-        assert!(take("plain.txt").expect("the copy that is there"));
-        assert!(take("link").expect("a copy"));
-        assert!(own.join("link").is_symlink(), "the link was followed");
-        // `dir` is a link: nothing below it is a file of the worktree.
-        assert!(!take("dir/secret").expect("no copy"));
-        assert!(!own.join("dir").exists());
-        assert!(!take("gone").expect("no copy"));
-        // A copy is never written through a link that an earlier copy put there, and never
-        // over a copy that is there.
-        std::fs::create_dir_all(worktree.join("d")).expect("a folder");
-        std::fs::write(worktree.join("d/f"), "PAYLOAD\n").expect("a file");
-        let through = root.take_to(Path::new("d/f"), (&into, Path::new("link")), &mut {
-            u64::MAX
-        });
-        assert!(through.is_err(), "a copy went over a link");
-        let below = root.take_to(Path::new("d/f"), (&into, Path::new("link/f")), &mut {
-            u64::MAX
-        });
-        assert!(below.is_err(), "a copy went through a link");
-        let secret = std::fs::read_to_string(outside.join("secret")).expect("the file");
-        assert_eq!(secret, "SECRET\n");
-        assert!(!outside.join("f").exists());
-        assert!(Root::open(&worktree.join("dir")).is_err());
-    }
-
-    #[test]
-    fn a_file_is_never_written_or_removed_through_a_link() {
-        let (_keep, worktree, own, outside) = folders();
-        std::fs::create_dir_all(own.join("d")).expect("a folder");
-        std::fs::write(own.join("d/f"), "PAYLOAD\n").expect("a file");
-        std::fs::write(own.join("top"), "PAYLOAD\n").expect("a file");
-        // What a process of an agent leaves: a link where a folder and where a file should be.
-        std::os::unix::fs::symlink(&outside, worktree.join("d")).expect("a link");
-        std::os::unix::fs::symlink(outside.join("secret"), worktree.join("top")).expect("a link");
-        let root = Root::open(&worktree).expect("the worktree");
-        root.put(Path::new("d/f"), &own).expect("a write");
-        root.put(Path::new("top"), &own).expect("a write");
-        assert!(!outside.join("f").exists(), "a file was written outside");
-        let secret = std::fs::read_to_string(outside.join("secret")).expect("the file");
-        assert_eq!(
-            secret, "SECRET\n",
-            "a file outside was written through a link"
-        );
-        assert_eq!(
-            std::fs::read_to_string(worktree.join("d/f")).expect("the file"),
-            "PAYLOAD\n"
-        );
-        assert!(
-            worktree
-                .join("d")
-                .symlink_metadata()
-                .expect("a folder")
-                .is_dir()
-        );
-        std::fs::remove_dir_all(worktree.join("d")).expect("the folder");
-        std::os::unix::fs::symlink(&outside, worktree.join("d")).expect("a link");
-        root.remove(Path::new("d/secret"))
-            .expect("nothing to remove");
-        assert!(
-            outside.join("secret").exists(),
-            "a file outside was removed"
-        );
-        root.remove(Path::new("top")).expect("the removal");
-        assert!(!worktree.join("top").exists());
-    }
-
-    #[test]
-    fn a_removed_file_takes_its_empty_folders_with_it() {
-        let (_keep, worktree, _own, _outside) = folders();
-        std::fs::create_dir_all(worktree.join("a/b")).expect("folders");
-        std::fs::write(worktree.join("a/b/f"), "x").expect("a file");
-        std::fs::write(worktree.join("a/keep"), "x").expect("a file");
-        let root = Root::open(&worktree).expect("the worktree");
-        root.remove(Path::new("a/b/f")).expect("the removal");
-        assert!(!worktree.join("a/b").exists());
-        assert!(worktree.join("a/keep").exists());
-    }
-}
+mod tests;

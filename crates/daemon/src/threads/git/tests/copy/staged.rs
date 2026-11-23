@@ -71,3 +71,25 @@ async fn a_large_file_content_that_was_copied_in_part_is_copied_whole() {
     let text = std::fs::read_to_string(part.join("abcd1234")).expect("the content");
     assert_eq!(text, "the large file\n");
 }
+
+#[cfg(unix)]
+#[tokio::test]
+async fn a_folder_that_cannot_be_read_is_not_taken_as_gone() {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let bench = Bench::new().await;
+    std::fs::create_dir_all(bench.project.join("d")).expect("a folder");
+    std::fs::write(bench.project.join("d/f"), "in the folder\n").expect("a file");
+    bench.git_in(&bench.project, &["add", "d/f"]).await;
+    let commit = ["commit", "--quiet", "--message=a folder"];
+    bench.git_in(&bench.project, &commit).await;
+    let folder = bench.worktree().await;
+    let mode = |mode| std::fs::Permissions::from_mode(mode);
+    std::fs::set_permissions(folder.join("d"), mode(0o000)).expect("a mode");
+    let first = bench.call(PERSON, GitAction::Remove).await;
+    std::fs::set_permissions(folder.join("d"), mode(0o755)).expect("a mode");
+    assert!(refused(&first).is_some(), "{first:?}");
+    let said = format!("{first:?}");
+    assert!(said.contains("d/f"), "{said}");
+    assert!(said.contains("cannot be read"), "{said}");
+}

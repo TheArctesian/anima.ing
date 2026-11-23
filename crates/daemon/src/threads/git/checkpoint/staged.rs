@@ -67,8 +67,9 @@ fn unreadable(path: &Path, failed: std::io::Error) -> std::io::Error {
     std::io::Error::new(
         failed.kind(),
         format!(
-            "the file {} of the worktree cannot be read; make it readable or delete it",
-            path.display()
+            "the file {} of the worktree, or a folder above it, cannot be read; make it \
+             readable or delete it",
+            files::shown(path)
         ),
     )
 }
@@ -240,7 +241,7 @@ fn unlisted(folder: &Path) -> GitError {
         said: format!(
             "the files of the repository in the folder {} of the worktree cannot be listed; \
              delete or move that folder, then remove the worktree again",
-            folder.display()
+            files::shown(folder)
         ),
     }
 }

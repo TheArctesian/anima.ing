@@ -215,7 +215,7 @@ async fn nested(git: &Git, list: Run<'_>) -> Result<Vec<String>, GitError> {
         .ok_or_else(|| GitError::Failed {
             code: None,
             said: "the worktree has a nested repository that cannot be left out (its name is \
-                   not text, or there are too many); delete or move it"
+                   not text, or there are too many); commit its removal"
                 .to_owned(),
         })
 }

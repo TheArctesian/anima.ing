@@ -79,7 +79,15 @@ mod held {
         fn step(&self, part: &OsStr, make: Make) -> io::Result<Option<Self>> {
             match openat(&self.0, part, FOLDER, Mode::empty()) {
                 Ok(next) => return Ok(Some(Self(next))),
-                Err(_) if make == Make::No => return Ok(None),
+                // Nothing, a link or a file at the name: no folder. Each other failure (no
+                // right to open it) is a failure: what is below a folder that is there and
+                // is not read would be taken as gone.
+                Err(Errno::NOENT | Errno::NOTDIR | Errno::LOOP | Errno::MLINK)
+                    if make == Make::No =>
+                {
+                    return Ok(None);
+                }
+                Err(failed) if make == Make::No => return Err(failed.into()),
                 Err(_) => {}
             }
             if make == Make::Over {
