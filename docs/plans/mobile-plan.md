@@ -25,7 +25,7 @@ This document obeys the writing rules in Section 0 of the design specification.
 
 ### 1.1 Purpose
 
-This plan makes the Anima client work on a phone. It uses the existing client and the existing Tauri shell. It adds no function to the hub.
+This plan makes the Anima client work on a phone. It uses the existing client and the existing Tauri shell. The agent threads plan owns the shared hub work for Code.
 
 The operator gave the instruction on 2026-11-16: "I want to talk about the android and ios version and eventually start building them". The operator then gave the order of the work: "lets worry about just getting the app to work first".
 
@@ -233,7 +233,7 @@ The test for the end of M3: the operator installs the application on a real iPho
 
 1. Start a new thread in a permitted project on a connected machine. Retry after a network interruption and check that the machine starts one thread.
 2. Open a live thread started on desktop. Check that the thread continues while the app is in the background. Change from Wi-Fi to mobile data, return to Code, and check that the same thread catches up.
-3. Open an approval request, review its details and answer it on the phone. Check that the host observes one answer and that both clients show the result. Exercise both allow and decline.
+3. Use a thread in Supervised mode and give it a task that produces an approval request. Review the request and answer it on the phone. Check that the host observes one answer and that both clients show the result. Exercise both allow and decline.
 4. Check that the phone shows a clear result when the machine is offline or refuses the launch. Use a test machine with remote starts off and then a project outside its permitted folders.
 
 ## 6. Not planned here
