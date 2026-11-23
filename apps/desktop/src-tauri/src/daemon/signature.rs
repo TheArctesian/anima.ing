@@ -85,14 +85,14 @@ pub enum Signer {
     Unknown,
 }
 
-/// The signer from what `codesign -d --verbose=2` showed of the running app and whether it
-/// succeeded, and whether the running code verified.
+/// The signer from what `codesign -d --verbose=3` showed of the running app and whether it
+/// succeeded. It is taken only once the running code verifies against [`pinned`].
 #[cfg_attr(
     all(not(target_os = "macos"), not(test)),
     expect(dead_code, reason = "read only on macOS and by its tests")
 )]
-pub fn signer(success: bool, shown: &str, valid: bool) -> Signer {
-    if !(success && valid) {
+pub fn signer(success: bool, shown: &str) -> Signer {
+    if !success {
         return Signer::Unknown;
     }
     if let Some(team) = team(success, shown) {
@@ -106,16 +106,43 @@ pub fn signer(success: bool, shown: &str, valid: bool) -> Signer {
     }
 }
 
-/// The signer of this running app, read from its process: the team is never taken from the
-/// files of the bundle, which can change after the start.
+/// The requirement that the running code must meet for `signer` to stand: the Developer ID of
+/// its team, or for an ad hoc app the hash of the code that was read (`CDHash=`, 40 hex
+/// digits). One verify against it closes the gap between the read and the check.
+#[cfg_attr(
+    all(not(target_os = "macos"), not(test)),
+    expect(dead_code, reason = "read only on macOS and by its tests")
+)]
+pub fn pinned(signer: &Signer, shown: &str) -> Option<String> {
+    match signer {
+        Signer::Team(team) => Some(developer_id(team)),
+        Signer::AdHoc => shown
+            .lines()
+            .find_map(|line| line.strip_prefix("CDHash="))
+            .map(str::trim)
+            .filter(|hash| hash.len() == 40 && hash.bytes().all(|byte| byte.is_ascii_hexdigit()))
+            .map(|hash| format!("=cdhash H\"{hash}\"")),
+        Signer::Unknown => None,
+    }
+}
+
+/// The signer of this running app, read from its process and then verified against what was
+/// read in one run of codesign: the team is never taken from the files of the bundle, which can
+/// change after the start.
 #[cfg(target_os = "macos")]
 pub fn of_this_app() -> Signer {
     let pid = std::process::id().to_string();
     let process = Path::new(&pid);
-    let valid = codesign(&["--verify"], process).is_some_and(|(success, _)| success);
-    codesign(&["-d", "--verbose=2"], process).map_or(Signer::Unknown, |(success, shown)| {
-        signer(success, &shown, valid)
-    })
+    let Some((success, shown)) = codesign(&["-d", "--verbose=3"], process) else {
+        return Signer::Unknown;
+    };
+    let read = signer(success, &shown);
+    let Some(requirement) = pinned(&read, &shown) else {
+        return Signer::Unknown;
+    };
+    let verified =
+        codesign(&["--verify", "-R", &requirement], process).is_some_and(|(success, _)| success);
+    if verified { read } else { Signer::Unknown }
 }
 
 /// No seals outside macOS.
@@ -230,28 +257,33 @@ mod tests {
     }
 
     #[test]
-    fn hmd_055_only_a_team_or_an_ad_hoc_app_that_verifies_lets_a_part_pass() {
-        let developer_id = "Identifier=ing.anima\nTeamIdentifier=ABCDE12345\n";
-        let ad_hoc = "Identifier=ing.anima\nSignature=adhoc\nTeamIdentifier=not set\n";
-        assert_eq!(
-            signer(true, developer_id, true),
-            Signer::Team("ABCDE12345".to_owned())
+    fn hmd_055_only_a_team_or_an_ad_hoc_app_pinned_to_what_was_read_lets_a_part_pass() {
+        let by_team = "Identifier=ing.anima\nTeamIdentifier=ABCDE12345\n";
+        let hash = "e8ee3a3354352b7eb3bb2766cfe34b880f8b4317";
+        let ad_hoc = format!(
+            "Identifier=ing.anima\nCDHash={hash}\nSignature=adhoc\nTeamIdentifier=not set\n"
         );
-        assert_eq!(signer(true, ad_hoc, true), Signer::AdHoc);
+        let team = signer(true, by_team);
+        assert_eq!(team, Signer::Team("ABCDE12345".to_owned()));
+        assert_eq!(pinned(&team, by_team), Some(developer_id("ABCDE12345")));
+        assert_eq!(signer(true, &ad_hoc), Signer::AdHoc);
         assert_eq!(
-            signer(true, developer_id, false),
-            Signer::Unknown,
-            "running code that does not verify"
+            pinned(&Signer::AdHoc, &ad_hoc),
+            Some(format!("=cdhash H\"{hash}\"")),
+            "an ad hoc app is held to the code that was read"
         );
         assert_eq!(
-            signer(false, developer_id, true),
+            pinned(&Signer::AdHoc, "Signature=adhoc\nCDHash=12\"34\n"),
+            None,
+            "a hash that is not 40 hex digits pins nothing, so nothing passes"
+        );
+        assert_eq!(
+            signer(false, by_team),
             Signer::Unknown,
             "a read that failed falls closed, never to the seal alone"
         );
-        assert_eq!(
-            signer(true, "Identifier=ing.anima\n", true),
-            Signer::Unknown
-        );
+        assert_eq!(signer(true, "Identifier=ing.anima\n"), Signer::Unknown);
+        assert_eq!(pinned(&Signer::Unknown, by_team), None);
         assert!(developer_id_requirement_names_the_team());
     }
 

@@ -146,11 +146,14 @@ fn read(swap: &Swap<'_>, program: &Path) -> Option<Version> {
     version::read(program, swap.env, VERSION_DEADLINE, swap.stop)
 }
 
-/// Whether the installed `copy` may run: its folder and each folder above it, and the copy
-/// itself, a plain file of `user` that no other user can change, as [`update_here`] checks them.
+/// Whether the installed `copy` may run: it is there, and its folder and each folder above it
+/// and the copy itself are as [`update_here`] checks them, a plain file of `user` that no other
+/// user can change. With no copy, no folder is made.
 pub fn copy_trusted(copy: &Path, user: User) -> bool {
-    copy.parent()
-        .is_some_and(|folder| placement::trusted_folder(folder, user).is_ok())
+    fs::symlink_metadata(copy).is_ok()
+        && copy
+            .parent()
+            .is_some_and(|folder| placement::trusted_folder(folder, user).is_ok())
         && placement::file_trusted(copy, user)
 }
 

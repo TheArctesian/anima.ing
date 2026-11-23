@@ -105,6 +105,11 @@ pub fn update_at_start<R: Runtime>(app: &AppHandle<R>) {
         // only a bundle and a new copy of the same team, so a program put in the bundle after
         // the start does not pass, and a signer that cannot be read lets nothing pass.
         let this_app = signature::of_this_app();
+        if this_app == signature::Signer::Unknown {
+            log::warn!(
+                "the signature of this app could not be read and verified: the daemon is not updated at this start"
+            );
+        }
         let signed = |part: &Path| signature::sealed_by(part, &this_app);
         let sealed = bundle_of(&carried).as_deref().is_some_and(signed);
         let swap = update::Swap {
