@@ -47,6 +47,19 @@ impl ThreadEntry {
     fn fits(&self) -> bool {
         (1..=(1_i64 << 53) - 1).contains(&self.sequence)
             && self.content.is_object()
+            && can_store(&self.content)
             && serde_json::to_vec(&self.content).is_ok_and(|wire| wire.len() <= MAX_THREAD_ENTRY)
+    }
+}
+
+// PostgreSQL JSONB cannot store a NUL in a string or in an object key.
+fn can_store(value: &serde_json::Value) -> bool {
+    match value {
+        serde_json::Value::String(text) => !text.contains('\0'),
+        serde_json::Value::Array(values) => values.iter().all(can_store),
+        serde_json::Value::Object(fields) => fields
+            .iter()
+            .all(|(key, value)| !key.contains('\0') && can_store(value)),
+        _ => true,
     }
 }

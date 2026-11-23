@@ -169,9 +169,15 @@ fn content(change: Change) -> Option<Value> {
 
 fn redact(value: &mut Value) {
     match value {
-        Value::String(text) => *text = redaction::redact_document(text),
+        Value::String(text) => {
+            text.retain(|ch| ch != '\0');
+            *text = redaction::redact_document(text);
+        }
         Value::Array(rows) => rows.iter_mut().for_each(redact),
-        Value::Object(fields) => fields.values_mut().for_each(redact),
+        Value::Object(fields) => {
+            fields.retain(|key, _| !key.contains('\0'));
+            fields.values_mut().for_each(redact);
+        }
         _ => (),
     }
 }
@@ -260,7 +266,10 @@ mod tests {
                 files: Vec::new(),
             },
         };
-        journal.record(vec![update(4, "private words"), update(17, "keep private")]);
+        journal.record(vec![
+            update(4, "private\0 words"),
+            update(17, "keep private"),
+        ]);
         assert!(save(&home, &name, &journal));
         let stored = read(&home, &name).unwrap();
         assert_eq!(stored.observed, 17);
