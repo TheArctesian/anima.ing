@@ -177,7 +177,7 @@
       {:else}
         <p>Open the Anima app on the device you want to enroll.</p>
       {/if}
-      <FormButton fill={canScan} size={canScan ? 'lg' : 'md'} aria-disabled={busy} onclick={() => (panel = 'invite')}>Create an invite</FormButton>
+      <FormButton fill={canScan} size={canScan ? 'lg' : 'md'} aria-disabled={busy} onclick={() => (panel = 'invite')}>{canScan ? 'Create an invite' : 'Enroll another device'}</FormButton>
       {#if result === 'added'}<p role="status">Added to Devices.</p>
       {:else if result === 'already-added'}<p role="status">This device is already in Devices.</p>
       {:else if result === 'not-linked'}<p role="alert">Connect this device to this hub before enrolling it.</p>
