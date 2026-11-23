@@ -1,4 +1,4 @@
-//! SEL-005, PULL-001, PULL-007, PULL-009, PULL-012, CMD-030; the server cleans and caps each string from
+//! SEL-005, PULL-001, PULL-007, PULL-009, PULL-012, FIT-005, CMD-030; the server cleans and caps each string from
 //! Hugging Face (MCP-008). A pull and a removal are open to an API key; the hub records the
 //! actor (R-326).
 
@@ -16,6 +16,7 @@ use crate::mcp::outcome::ToolError;
 use crate::model_copies::copies::fetch;
 use crate::model_copies::documents::{ModelCopyRemove, ModelPull, model_copy_remove, model_pull};
 use crate::model_copies::found;
+use crate::model_fits;
 use crate::model_library::documents::{ModelList, ModelShow, model_list, model_show};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -28,6 +29,7 @@ pub enum ModelTool {
     Found,
     Find,
     Use,
+    Fit,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -69,6 +71,17 @@ pub struct UseInput {
     model: String,
 }
 
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FitInput {
+    /// The model's name, an alias, or name:tag for one variant.
+    model: String,
+    /// Only this device: its ID or its exact name.
+    device: Option<String>,
+    /// The context in tokens; the default is 8192, or the context of the model when smaller.
+    context: Option<u32>,
+}
+
 const VARIANT_KEYS: [&str; 6] = [
     "address",
     "tag",
@@ -79,7 +92,7 @@ const VARIANT_KEYS: [&str; 6] = [
 ];
 
 impl ModelTool {
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 9] = [
         Self::List,
         Self::Show,
         Self::Copies,
@@ -88,6 +101,7 @@ impl ModelTool {
         Self::Found,
         Self::Find,
         Self::Use,
+        Self::Fit,
     ];
 
     #[must_use]
@@ -147,6 +161,7 @@ impl ModelTool {
                 "What is left of the copy; null when gone.",
             )]),
             Self::Found | Self::Find | Self::Use => self.found_definition(),
+            Self::Fit => fit_definition(),
         }
     }
 
@@ -201,8 +216,25 @@ impl ModelTool {
             Self::Found => found(hub, arguments).await,
             Self::Find => find(hub, arguments).await,
             Self::Use => use_found(hub, arguments).await,
+            Self::Fit => fit(hub, arguments).await,
         }
     }
+}
+
+/// The tool of the fit of the variants on the machines (FIT-005, task L1-20).
+fn fit_definition() -> Definition {
+    Definition::new::<FitInput>(
+        "anima_model_fit",
+        Access::Read,
+        Effect::Reads,
+        "Whether each variant of a model (name:tag for one) fits each machine that sent \
+         its hardware values, with the memory share of its device policy: state FITS, \
+         REDUCED_CONTEXT (largestContext fits), TOO_LARGE or UNKNOWN (no layer shape); \
+         placement GPU, PARTIAL (part in the system memory, slower) or CPU; the backend, \
+         the context, the sizes in bytes and one sentence. An estimate, not a load. \
+         Next: anima_model_pull.",
+    )
+    .returns(&[("fits", "array", "One fit for each variant on each machine.")])
 }
 
 async fn list(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
@@ -277,4 +309,14 @@ async fn use_found(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, To
     let input: UseInput = parse(arguments)?;
     let copy = found::use_found(hub, &input.device, &input.model).await?;
     Ok(json!({ "copy": json(&copy) }))
+}
+
+async fn fit(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
+    let input: FitInput = parse(arguments)?;
+    let asked = model_fits::Asked {
+        model: input.model,
+        device: input.device,
+        context: input.context,
+    };
+    Ok(json!({ "fits": json(&model_fits::fetch(hub, asked).await?) }))
 }

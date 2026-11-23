@@ -1,5 +1,6 @@
 //! `anima model`: the model library of the hub (LIBM-001 to LIBM-008, SEL-003, SEL-005), and
-//! the copies on the machines (`crate::model_copies`).
+//! the copies on the machines (`crate::model_copies`) and the fit of the variants on them
+//! (`crate::model_fits`).
 
 pub mod add;
 pub mod alias;
@@ -36,6 +37,9 @@ pub enum ModelCommand {
     Find(crate::model_copies::FindArgs),
     /// Use a found model where it is: the machine checks its files at each load.
     Use(crate::model_copies::UseArgs),
+    /// Whether each variant fits each machine: on its GPU, partly in its system memory, or on
+    /// its CPU, and at which context.
+    Fit(crate::model_fits::FitArgs),
 }
 
 impl ModelCommand {
@@ -56,6 +60,7 @@ impl ModelCommand {
             Self::Found(args) => args.run(invocation).await,
             Self::Find(args) => args.run(invocation).await,
             Self::Use(args) => args.run(invocation).await,
+            Self::Fit(args) => args.run(invocation).await,
         }
     }
 }

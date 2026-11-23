@@ -9,6 +9,7 @@ mod engine_records;
 mod engine_repositories;
 mod engine_sources;
 mod listing;
+mod models;
 mod permissions;
 mod reads;
 mod secrets;

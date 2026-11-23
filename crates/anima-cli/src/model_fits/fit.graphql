@@ -1,0 +1,21 @@
+# `anima model fit`: the fit of each variant of a model on each machine (FIT-001 to FIT-005).
+query ModelFits($model: String!, $filter: ModelFitFilter) {
+  modelFits(model: $model, filter: $filter) {
+    variant
+    address
+    place {
+      kind
+      id
+      name
+    }
+    state
+    placement
+    backend
+    contextTokens
+    largestContext
+    sizeBytes
+    neededBytes
+    usableBytes
+    reason
+  }
+}
