@@ -405,12 +405,12 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 </head>
 <body>
 <h1 class="board">Hosting</h1>
-<p class="about">The proposed section Hosting (docs/proposals/hosting-section.md, version 1): what runs on your machines and how it is reached, in one place. Its tabs are Applications, Catalogue and Routes. The list of all applications of all machines with a Machine column and filter is the manner of Arcane (its Projects list, combined across agents); the page of one application with its Domains next to its General settings is the manner of Coolify; the Catalogue is a gallery with search and categories, as Arcane's Templates and Coolify's one-click services. Routes is the section that Settings holds today, moved, with the same frames as routes/index.html. A proposal: nothing here is approved. The names, machines and numbers are examples.</p>
+<p class="about">The proposed section Hosting (docs/proposals/hosting-section.md, version 2): what runs on your machines and how it is reached, in one place. Its tabs are Applications, Catalogue and Routes. The applications in one group for each machine are the manner of Coolify's servers (R-NEW-hostingsection); the page of one application with its Domains next to its General settings is the manner of Coolify; the Catalogue is a gallery with search and categories, as Arcane's Templates and Coolify's one-click services. Routes is the section that Settings holds today, moved, with the same frames as routes/index.html. Hosting sits directly below Code in the bar. A proposal with its direction decided: the requirements are not approved. The names, machines and numbers are examples.</p>
 <figure>
-<div class="v2" data-theme="dark" style="width: 1280px; height: 760px;">
+<div class="v2" data-theme="dark" style="width: 1280px; height: 840px;">
 <aside class="side">
   <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
-  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 14 4.75v6.5L8 14.5 2 11.25v-6.5z"/><path d="M2 4.75 8 8l6-3.25M8 8v6.5"/></svg>Hosting<span class="n bad">2</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M5 7l2 1.5L5 10M8.5 10.5h2.5"/></svg>Code</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13l5-5M9.5 2.5a3 3 0 0 0 4 4L11 9 7 5z"/></svg>Builds</a></nav>
+  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M5 7l2 1.5L5 10M8.5 10.5h2.5"/></svg>Code</a><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 14 4.75v6.5L8 14.5 2 11.25v-6.5z"/><path d="M2 4.75 8 8l6-3.25M8 8v6.5"/></svg>Hosting<span class="n bad">4</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13l5-5M9.5 2.5a3 3 0 0 0 4 4L11 9 7 5z"/></svg>Builds</a></nav>
   <div class="foot">
     <section class="running" aria-label="Running now">
       <span class="label">Running now</span>
@@ -425,74 +425,70 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   <div class="body">
     <nav class="tabs" aria-label="Hosting"><a href="#" class="on" aria-current="page">Applications<span class="n">7</span></a><a href="#">Catalogue<span class="n">41</span></a><a href="#">Routes<span class="n">6</span></a></nav>
     <div class="toolbar">
-      <label class="field" style="width: 280px"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg><input placeholder="Find an application" aria-label="Find an application"></label>
-      <div class="seg" role="group" aria-label="Machine"><button class="on" type="button">All machines <span class="n">7</span></button><button type="button">pop-os <span class="n">3</span></button><button type="button">nas <span class="n">2</span></button><button type="button">atlas <span class="n">2</span></button></div>
+      <label class="field" style="width: 320px"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg><input placeholder="Find an application on any machine" aria-label="Find an application on any machine"></label>
       <span class="grow"></span>
-      <div class="seg" role="group" aria-label="Show"><button class="on" type="button">All</button><button type="button">Needs you <span class="n">2</span></button></div>
+      <div class="seg" role="group" aria-label="Show"><button class="on" type="button">All <span class="n">7</span></button><button type="button">Needs you <span class="n">3</span></button></div>
     </div>
     <ul class="table">
-      <li class="tr th" style="grid-template-columns: minmax(0, 1.1fr) 120px 150px minmax(0, 1.3fr) 120px"><span>Application</span><span>Machine</span><span>State</span><span>Reached at</span><span class="r">Updates</span></li>
-          <li class="tr" style="grid-template-columns: minmax(0, 1.1fr) 120px 150px minmax(0, 1.3fr) 120px">
+      <li class="tr th" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px"><span>Application</span><span>State</span><span>Reached at</span><span class="r">Updates</span></li>
+          <li class="tr group" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px"><span><b class="mono" style="color: var(--text)">pop-os</b> · 3 applications</span><span class="st up">Online</span><span></span><span></span></li>
+          <li class="tr" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px">
             <span class="cell2"><b>Immich</b><span class="sec">Photos · 4 containers</span></span>
-            <span class="mono">pop-os</span>
             <span class="st up">Running</span>
             <span class="routes"><a href="#"><span class="st up" style="gap: var(--space-1)"></span>photos.example.com</a></span>
             <span class="r"><span class="sec">Up to date</span></span>
           </li>
-          <li class="tr" style="grid-template-columns: minmax(0, 1.1fr) 120px 150px minmax(0, 1.3fr) 120px">
-            <span class="cell2"><b>Vaultwarden</b><span class="sec">Passwords · 1 container</span></span>
-            <span class="mono">atlas</span>
-            <span class="st up">Running</span>
-            <span class="routes"><a href="#"><span class="st up" style="gap: var(--space-1)"></span>vault.example.com</a></span>
-            <span class="r"><span class="sec">Up to date</span></span>
-          </li>
-          <li class="tr need" style="grid-template-columns: minmax(0, 1.1fr) 120px 150px minmax(0, 1.3fr) 120px">
-            <span class="cell2"><b>Jellyfin</b><span class="sec">Media · 1 container</span></span>
-            <span class="mono">nas</span>
-            <span class="st up">Running</span>
-            <span class="routes"><a href="#"><span class="st down" style="gap: var(--space-1)"></span>media.example.org</a></span>
-            <span class="r"><span class="st deg">10.10.3 → 10.10.4</span></span>
-          </li>
-          <li class="tr" style="grid-template-columns: minmax(0, 1.1fr) 120px 150px minmax(0, 1.3fr) 120px">
-            <span class="cell2"><b>Wiki.js</b><span class="sec">Wiki · 2 containers</span></span>
-            <span class="mono">nas</span>
-            <span class="st up">Running</span>
-            <span class="routes"><a href="#"><span class="st unk" style="gap: var(--space-1)"></span>wiki.example.com</a></span>
-            <span class="r"><span class="sec">Up to date</span></span>
-          </li>
-          <li class="tr need" style="grid-template-columns: minmax(0, 1.1fr) 120px 150px minmax(0, 1.3fr) 120px">
+          <li class="tr need" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px">
             <span class="cell2"><b>Tracks</b><span class="sec">Workout log · 2 containers</span></span>
-            <span class="mono">pop-os</span>
             <span class="st deg">1 of 2 running</span>
             <span class="routes"><a href="#"><span class="st deg" style="gap: var(--space-1)"></span>tracks.example.com</a></span>
             <span class="r"><span class="sec">Up to date</span></span>
           </li>
-          <li class="tr" style="grid-template-columns: minmax(0, 1.1fr) 120px 150px minmax(0, 1.3fr) 120px">
-            <span class="cell2"><b>PostgreSQL 17</b><span class="sec">Database · 1 container</span></span>
-            <span class="mono">atlas</span>
-            <span class="st up">Running</span>
-            <span class="ter">Only on the machine · <a class="link" href="#">Add a route</a></span>
-            <span class="r"><span class="sec">Up to date</span></span>
-          </li>
-          <li class="tr need" style="grid-template-columns: minmax(0, 1.1fr) 120px 150px minmax(0, 1.3fr) 120px">
+          <li class="tr need" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px">
             <span class="cell2"><b>Uptime Kuma</b><span class="sec">Monitoring · 1 container</span></span>
-            <span class="mono">pop-os</span>
             <span class="st down">Stopped</span>
             <span class="ter">Only on the machine · <a class="link" href="#">Add a route</a></span>
             <span class="r"><span class="sec">Up to date</span></span>
           </li>
+          <li class="tr group" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px"><span><b class="mono" style="color: var(--text)">nas</b> · 2 applications</span><span class="st up">Online</span><span></span><span></span></li>
+          <li class="tr need" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px">
+            <span class="cell2"><b>Jellyfin</b><span class="sec">Media · 1 container</span></span>
+            <span class="st up">Running</span>
+            <span class="routes"><a href="#"><span class="st down" style="gap: var(--space-1)"></span>media.example.org</a></span>
+            <span class="r"><span class="st deg">10.10.3 → 10.10.4</span></span>
+          </li>
+          <li class="tr" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px">
+            <span class="cell2"><b>Wiki.js</b><span class="sec">Wiki · 2 containers</span></span>
+            <span class="st up">Running</span>
+            <span class="routes"><a href="#"><span class="st unk" style="gap: var(--space-1)"></span>wiki.example.com</a></span>
+            <span class="r"><span class="sec">Up to date</span></span>
+          </li>
+          <li class="tr group" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px"><span><b class="mono" style="color: var(--text)">atlas</b> · 2 applications</span><span class="st up">Online</span><span></span><span></span></li>
+          <li class="tr" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px">
+            <span class="cell2"><b>Vaultwarden</b><span class="sec">Passwords · 1 container</span></span>
+            <span class="st up">Running</span>
+            <span class="routes"><a href="#"><span class="st up" style="gap: var(--space-1)"></span>vault.example.com</a></span>
+            <span class="r"><span class="sec">Up to date</span></span>
+          </li>
+          <li class="tr" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px">
+            <span class="cell2"><b>PostgreSQL 17</b><span class="sec">Database · 1 container</span></span>
+            <span class="st up">Running</span>
+            <span class="ter">Only on the machine · <a class="link" href="#">Add a route</a></span>
+            <span class="r"><span class="sec">Up to date</span></span>
+          </li>
+          <li class="tr group" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px"><span><b class="mono" style="color: var(--text)">mini</b> · No applications</span><span class="st unk">Offline 2 h</span><span><a class="link" href="#">Install from the catalogue</a></span><span></span></li>
     </ul>
-    <p class="note">Each application is a project of Compose files on one machine. Containers that no application owns stay in the tab Containers of their device.</p>
+    <p class="note">One group for each machine, as Coolify shows its servers. Each application is a project of Compose files on its machine; containers that no application owns stay in the tab Containers of their device.</p>
   </div>
 </main>
 </div>
-<figcaption>Frame 1, dark, 1280 px: Hosting, tab Applications (HSE-002, HSE-011). One list of the applications of each machine, with the machine as a column and as a filter, as Arcane lists the projects of each agent in one list. The column Reached at shows the routes of each application with the state of each; an application with no route says so and offers to add one. Rows that need you have the wash of their status. The count beside Hosting in the bar is the number of rows that need you.</figcaption>
+<figcaption>Frame 1, dark, 1280 px: Hosting, tab Applications (HSE-002, HSE-011; R-NEW-hostingsection). One group for each machine, as Coolify shows its servers: the header row has the machine, its state and its number of applications. A machine with no applications (mini) is one short row with a link to the catalogue. The search finds an application on any machine. The column Reached at shows the routes of each application with the state of each; an application with no route says so and offers to add one. Rows that need you have the wash of their status. The count beside Hosting in the bar is the number of applications and routes that need you (here 4: three applications and the route wiki.example.com, which waits).</figcaption>
 </figure>
 <figure>
-<div class="v2" data-theme="light" style="width: 1280px; height: 760px;">
+<div class="v2" data-theme="light" style="width: 1280px; height: 840px;">
 <aside class="side">
   <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
-  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 14 4.75v6.5L8 14.5 2 11.25v-6.5z"/><path d="M2 4.75 8 8l6-3.25M8 8v6.5"/></svg>Hosting<span class="n bad">2</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M5 7l2 1.5L5 10M8.5 10.5h2.5"/></svg>Code</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13l5-5M9.5 2.5a3 3 0 0 0 4 4L11 9 7 5z"/></svg>Builds</a></nav>
+  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M5 7l2 1.5L5 10M8.5 10.5h2.5"/></svg>Code</a><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 14 4.75v6.5L8 14.5 2 11.25v-6.5z"/><path d="M2 4.75 8 8l6-3.25M8 8v6.5"/></svg>Hosting<span class="n bad">4</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13l5-5M9.5 2.5a3 3 0 0 0 4 4L11 9 7 5z"/></svg>Builds</a></nav>
   <div class="foot">
     <section class="running" aria-label="Running now">
       <span class="label">Running now</span>
@@ -507,64 +503,60 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   <div class="body">
     <nav class="tabs" aria-label="Hosting"><a href="#" class="on" aria-current="page">Applications<span class="n">7</span></a><a href="#">Catalogue<span class="n">41</span></a><a href="#">Routes<span class="n">6</span></a></nav>
     <div class="toolbar">
-      <label class="field" style="width: 280px"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg><input placeholder="Find an application" aria-label="Find an application"></label>
-      <div class="seg" role="group" aria-label="Machine"><button class="on" type="button">All machines <span class="n">7</span></button><button type="button">pop-os <span class="n">3</span></button><button type="button">nas <span class="n">2</span></button><button type="button">atlas <span class="n">2</span></button></div>
+      <label class="field" style="width: 320px"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg><input placeholder="Find an application on any machine" aria-label="Find an application on any machine"></label>
       <span class="grow"></span>
-      <div class="seg" role="group" aria-label="Show"><button class="on" type="button">All</button><button type="button">Needs you <span class="n">2</span></button></div>
+      <div class="seg" role="group" aria-label="Show"><button class="on" type="button">All <span class="n">7</span></button><button type="button">Needs you <span class="n">3</span></button></div>
     </div>
     <ul class="table">
-      <li class="tr th" style="grid-template-columns: minmax(0, 1.1fr) 120px 150px minmax(0, 1.3fr) 120px"><span>Application</span><span>Machine</span><span>State</span><span>Reached at</span><span class="r">Updates</span></li>
-          <li class="tr" style="grid-template-columns: minmax(0, 1.1fr) 120px 150px minmax(0, 1.3fr) 120px">
+      <li class="tr th" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px"><span>Application</span><span>State</span><span>Reached at</span><span class="r">Updates</span></li>
+          <li class="tr group" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px"><span><b class="mono" style="color: var(--text)">pop-os</b> · 3 applications</span><span class="st up">Online</span><span></span><span></span></li>
+          <li class="tr" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px">
             <span class="cell2"><b>Immich</b><span class="sec">Photos · 4 containers</span></span>
-            <span class="mono">pop-os</span>
             <span class="st up">Running</span>
             <span class="routes"><a href="#"><span class="st up" style="gap: var(--space-1)"></span>photos.example.com</a></span>
             <span class="r"><span class="sec">Up to date</span></span>
           </li>
-          <li class="tr" style="grid-template-columns: minmax(0, 1.1fr) 120px 150px minmax(0, 1.3fr) 120px">
-            <span class="cell2"><b>Vaultwarden</b><span class="sec">Passwords · 1 container</span></span>
-            <span class="mono">atlas</span>
-            <span class="st up">Running</span>
-            <span class="routes"><a href="#"><span class="st up" style="gap: var(--space-1)"></span>vault.example.com</a></span>
-            <span class="r"><span class="sec">Up to date</span></span>
-          </li>
-          <li class="tr need" style="grid-template-columns: minmax(0, 1.1fr) 120px 150px minmax(0, 1.3fr) 120px">
-            <span class="cell2"><b>Jellyfin</b><span class="sec">Media · 1 container</span></span>
-            <span class="mono">nas</span>
-            <span class="st up">Running</span>
-            <span class="routes"><a href="#"><span class="st down" style="gap: var(--space-1)"></span>media.example.org</a></span>
-            <span class="r"><span class="st deg">10.10.3 → 10.10.4</span></span>
-          </li>
-          <li class="tr" style="grid-template-columns: minmax(0, 1.1fr) 120px 150px minmax(0, 1.3fr) 120px">
-            <span class="cell2"><b>Wiki.js</b><span class="sec">Wiki · 2 containers</span></span>
-            <span class="mono">nas</span>
-            <span class="st up">Running</span>
-            <span class="routes"><a href="#"><span class="st unk" style="gap: var(--space-1)"></span>wiki.example.com</a></span>
-            <span class="r"><span class="sec">Up to date</span></span>
-          </li>
-          <li class="tr need" style="grid-template-columns: minmax(0, 1.1fr) 120px 150px minmax(0, 1.3fr) 120px">
+          <li class="tr need" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px">
             <span class="cell2"><b>Tracks</b><span class="sec">Workout log · 2 containers</span></span>
-            <span class="mono">pop-os</span>
             <span class="st deg">1 of 2 running</span>
             <span class="routes"><a href="#"><span class="st deg" style="gap: var(--space-1)"></span>tracks.example.com</a></span>
             <span class="r"><span class="sec">Up to date</span></span>
           </li>
-          <li class="tr" style="grid-template-columns: minmax(0, 1.1fr) 120px 150px minmax(0, 1.3fr) 120px">
-            <span class="cell2"><b>PostgreSQL 17</b><span class="sec">Database · 1 container</span></span>
-            <span class="mono">atlas</span>
-            <span class="st up">Running</span>
-            <span class="ter">Only on the machine · <a class="link" href="#">Add a route</a></span>
-            <span class="r"><span class="sec">Up to date</span></span>
-          </li>
-          <li class="tr need" style="grid-template-columns: minmax(0, 1.1fr) 120px 150px minmax(0, 1.3fr) 120px">
+          <li class="tr need" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px">
             <span class="cell2"><b>Uptime Kuma</b><span class="sec">Monitoring · 1 container</span></span>
-            <span class="mono">pop-os</span>
             <span class="st down">Stopped</span>
             <span class="ter">Only on the machine · <a class="link" href="#">Add a route</a></span>
             <span class="r"><span class="sec">Up to date</span></span>
           </li>
+          <li class="tr group" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px"><span><b class="mono" style="color: var(--text)">nas</b> · 2 applications</span><span class="st up">Online</span><span></span><span></span></li>
+          <li class="tr need" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px">
+            <span class="cell2"><b>Jellyfin</b><span class="sec">Media · 1 container</span></span>
+            <span class="st up">Running</span>
+            <span class="routes"><a href="#"><span class="st down" style="gap: var(--space-1)"></span>media.example.org</a></span>
+            <span class="r"><span class="st deg">10.10.3 → 10.10.4</span></span>
+          </li>
+          <li class="tr" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px">
+            <span class="cell2"><b>Wiki.js</b><span class="sec">Wiki · 2 containers</span></span>
+            <span class="st up">Running</span>
+            <span class="routes"><a href="#"><span class="st unk" style="gap: var(--space-1)"></span>wiki.example.com</a></span>
+            <span class="r"><span class="sec">Up to date</span></span>
+          </li>
+          <li class="tr group" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px"><span><b class="mono" style="color: var(--text)">atlas</b> · 2 applications</span><span class="st up">Online</span><span></span><span></span></li>
+          <li class="tr" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px">
+            <span class="cell2"><b>Vaultwarden</b><span class="sec">Passwords · 1 container</span></span>
+            <span class="st up">Running</span>
+            <span class="routes"><a href="#"><span class="st up" style="gap: var(--space-1)"></span>vault.example.com</a></span>
+            <span class="r"><span class="sec">Up to date</span></span>
+          </li>
+          <li class="tr" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px">
+            <span class="cell2"><b>PostgreSQL 17</b><span class="sec">Database · 1 container</span></span>
+            <span class="st up">Running</span>
+            <span class="ter">Only on the machine · <a class="link" href="#">Add a route</a></span>
+            <span class="r"><span class="sec">Up to date</span></span>
+          </li>
+          <li class="tr group" style="grid-template-columns: minmax(0, 1.1fr) 150px minmax(0, 1.3fr) 140px"><span><b class="mono" style="color: var(--text)">mini</b> · No applications</span><span class="st unk">Offline 2 h</span><span><a class="link" href="#">Install from the catalogue</a></span><span></span></li>
     </ul>
-    <p class="note">Each application is a project of Compose files on one machine. Containers that no application owns stay in the tab Containers of their device.</p>
+    <p class="note">One group for each machine, as Coolify shows its servers. Each application is a project of Compose files on its machine; containers that no application owns stay in the tab Containers of their device.</p>
   </div>
 </main>
 </div>
@@ -574,7 +566,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 <div class="v2" data-theme="dark" style="width: 1280px; height: 620px;">
 <aside class="side">
   <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
-  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 14 4.75v6.5L8 14.5 2 11.25v-6.5z"/><path d="M2 4.75 8 8l6-3.25M8 8v6.5"/></svg>Hosting<span class="n bad">2</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M5 7l2 1.5L5 10M8.5 10.5h2.5"/></svg>Code</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13l5-5M9.5 2.5a3 3 0 0 0 4 4L11 9 7 5z"/></svg>Builds</a></nav>
+  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M5 7l2 1.5L5 10M8.5 10.5h2.5"/></svg>Code</a><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 14 4.75v6.5L8 14.5 2 11.25v-6.5z"/><path d="M2 4.75 8 8l6-3.25M8 8v6.5"/></svg>Hosting<span class="n bad">4</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13l5-5M9.5 2.5a3 3 0 0 0 4 4L11 9 7 5z"/></svg>Builds</a></nav>
   <div class="foot">
     <section class="running" aria-label="Running now">
       <span class="label">Running now</span>
@@ -609,7 +601,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 <div class="v2" data-theme="light" style="width: 1280px; height: 640px;">
 <aside class="side">
   <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
-  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 14 4.75v6.5L8 14.5 2 11.25v-6.5z"/><path d="M2 4.75 8 8l6-3.25M8 8v6.5"/></svg>Hosting<span class="n bad">2</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M5 7l2 1.5L5 10M8.5 10.5h2.5"/></svg>Code</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13l5-5M9.5 2.5a3 3 0 0 0 4 4L11 9 7 5z"/></svg>Builds</a></nav>
+  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M5 7l2 1.5L5 10M8.5 10.5h2.5"/></svg>Code</a><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 14 4.75v6.5L8 14.5 2 11.25v-6.5z"/><path d="M2 4.75 8 8l6-3.25M8 8v6.5"/></svg>Hosting<span class="n bad">4</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13l5-5M9.5 2.5a3 3 0 0 0 4 4L11 9 7 5z"/></svg>Builds</a></nav>
   <div class="foot">
     <section class="running" aria-label="Running now">
       <span class="label">Running now</span>
@@ -667,7 +659,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 <div class="v2" data-theme="dark" style="width: 1280px; height: 760px;">
 <aside class="side">
   <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
-  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 14 4.75v6.5L8 14.5 2 11.25v-6.5z"/><path d="M2 4.75 8 8l6-3.25M8 8v6.5"/></svg>Hosting<span class="n bad">2</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M5 7l2 1.5L5 10M8.5 10.5h2.5"/></svg>Code</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13l5-5M9.5 2.5a3 3 0 0 0 4 4L11 9 7 5z"/></svg>Builds</a></nav>
+  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M5 7l2 1.5L5 10M8.5 10.5h2.5"/></svg>Code</a><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 14 4.75v6.5L8 14.5 2 11.25v-6.5z"/><path d="M2 4.75 8 8l6-3.25M8 8v6.5"/></svg>Hosting<span class="n bad">4</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13l5-5M9.5 2.5a3 3 0 0 0 4 4L11 9 7 5z"/></svg>Builds</a></nav>
   <div class="foot">
     <section class="running" aria-label="Running now">
       <span class="label">Running now</span>
