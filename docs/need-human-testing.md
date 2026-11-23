@@ -5553,7 +5553,9 @@ Result: Open.
 
 State: Open.
 
-Reported failure (2026-11-23): the operator showed Screen Sharing on, but installed commit `0a806e307` rejected authentication and still directed them to turn it on. The build owner supplied an Apple 3.889 banner with methods 30, 33, 36, 35. The compatibility correction is built with synthetic fixtures only; this check is Open again and no actual-Mac success is claimed.
+Reported failure (2026-11-23): the operator showed Screen Sharing on, but installed commit `0a806e307` rejected authentication and still directed them to turn it on. The build owner supplied an Apple 3.889 banner with methods 30, 33, 36, 35. The compatibility correction was built and verified with synthetic fixtures, then delivered for the Mac retest below. The overall check remains Open.
+
+Operator retest (2026-11-23): after installing 0.12.47 (`aa3237c76`), the operator said "okay that works now" about the corrected setup. They separately reported an existing working VNC connection from their iPad; that does not establish a new authenticated session through Anima. After installing 0.12.49 (`3cd1955a`), which corrected the Enable in Anima label and saved registration status, the operator said "thats good" and moved on to Settings layout feedback. This confirms the reported Mac setup issue is resolved for the operator, but does not individually verify keyboard/accessibility, opt-outs across restart, error paths, an authenticated Anima session, or any Windows/Linux case.
 
 Retest with Screen Sharing already on: the recognized Apple offer must permit setup without changing system permissions. Complete a real authenticated screen session from another enrolled computer. If Anima cannot verify the listening server's authentication, it must say Server detected · authentication not verified, retain blocked access, and offer Check again without claiming the service is off.
 

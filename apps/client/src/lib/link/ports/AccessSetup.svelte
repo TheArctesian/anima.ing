@@ -6,7 +6,7 @@
   import Switch from '$lib/forms/switch/Switch.svelte';
   import { openSharingSettings } from '$lib/desktop/system-settings';
   import { localAccess, type Access } from '$lib/desktop/link/access';
-  import { checkAccessHub, publishAccess } from './access';
+  import { checkAccessHub, publishAccess, publishedAccess } from './access';
   import { portRows, systemOf } from './ports';
 
   const { automatic = false, onSaved = () => undefined }: { automatic?: boolean; onSaved?: () => void } = $props();
@@ -24,18 +24,23 @@
   const rows = $derived(portRows(system, selected));
 
   async function read(show: boolean): Promise<void> {
+    published = [];
+    problem = '';
     try {
       await checkAccessHub(hub);
       access = await localAccess();
       if (access === null) return;
       selected = access.selected;
-      published = [];
+      published = access.open.length > 0 ? await publishedAccess(hub) : [];
       waitingSettings = false;
       messages = {};
       problem = '';
       opened = show || !access.configured;
-    } catch {
-      if (show) { opened = true; problem = 'Connect this computer to a hub before setting up remote access.'; }
+    } catch (error) {
+      if (show) {
+        opened = true;
+        problem = error instanceof Error ? error.message : 'Could not read remote access status. Try again.';
+      }
     }
   }
 
@@ -125,7 +130,7 @@
                 {:else if messages[row.port]}{messages[row.port]}
                 {:else if unavailable}No graphical desktop detected.
                 {:else if enabled}Ready in Anima
-                {:else if needsSync}Ready locally · sync with Anima
+                {:else if needsSync}Ready locally · not enabled in Anima
                 {:else if ready}Server ready · not enabled in Anima
                 {:else if unverified}Server detected · authentication not verified
                 {:else}Not enabled{/if}
@@ -139,7 +144,7 @@
                     {#if waitingSettings}<FormButton aria-disabled={busy} onclick={checkSharing}>Check again</FormButton>{/if}
                   </div>
                 {:else}
-                  <FormButton busy={busy && active === row.port} aria-disabled={busy || enabled} aria-label="{enabled ? 'Enabled' : needsSync ? 'Sync' : 'Enable'} {row.port === 22 ? 'SSH' : row.port === 5900 ? 'Screen sharing' : 'Remote Desktop'}" onclick={() => void apply(row.port)}>{busy && active === row.port ? 'Enabling…' : enabled ? 'Enabled' : needsSync ? 'Sync with Anima' : 'Enable'}</FormButton>
+                  <FormButton busy={busy && active === row.port} aria-disabled={busy || enabled} aria-label="{enabled ? 'Enabled' : needsSync ? 'Enable in Anima:' : 'Enable'} {row.port === 22 ? 'SSH' : row.port === 5900 ? 'Screen sharing' : 'Remote Desktop'}" onclick={() => void apply(row.port)}>{busy && active === row.port ? 'Enabling…' : enabled ? 'Enabled' : needsSync ? 'Enable in Anima' : 'Enable'}</FormButton>
                 {/if}
               {/if}
             </div>
