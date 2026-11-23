@@ -31,13 +31,18 @@ async fn credential(webview: &Webview, account: &str) -> Option<Enrolled> {
 }
 
 #[tauri::command]
-pub async fn mobile_metrics_enrolled(webview: Webview, origin: String, device: Uuid) -> bool {
-    let Some(account) = tokens::reporting_link(&webview, &origin).await else {
-        return false;
-    };
-    credential(&webview, &account)
+pub async fn mobile_metrics_enrolled(
+    webview: Webview,
+    origin: String,
+    device: Uuid,
+) -> Result<bool, &'static str> {
+    let account = tokens::reporting_link(&webview, &origin)
         .await
-        .is_some_and(|stored| stored.device == device && stored.expires_at > chrono::Utc::now())
+        .ok_or("no signed-in device link")?;
+    crate::phone_link::metrics_socket(&origin, &account).ok_or("metrics link is unavailable")?;
+    Ok(credential(&webview, &account)
+        .await
+        .is_some_and(|stored| stored.device == device && stored.expires_at > chrono::Utc::now()))
 }
 
 #[tauri::command]

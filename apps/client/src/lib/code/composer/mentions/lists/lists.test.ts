@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { FIXTURE_SOURCES, fixtureFiles } from '../fixture';
 import type { MentionSources } from '../sources';
 import { triggerAt } from '../trigger';
+import { CAN, cannot } from '../../draft';
+import { builtInCommands } from './commands';
 import { mentionEntries } from './entries';
 import { matchScore } from './ranking';
 
@@ -46,10 +48,13 @@ describe('the / list', () => {
     expect(labels('/sk').slice(-3)).toEqual(['/skill:Code review', '/skill:release-notes', '/skill:Test audit']);
   });
 
-  it('shows why a command cannot be used, lists a skill once and hides the skills when asked', () => {
-    const trigger = triggerAt('/clear', 6);
-    const clear = trigger === null ? undefined : mentionEntries(trigger, FIXTURE_SOURCES, [])[0];
-    expect(clear).toMatchObject({ available: { can: false }, description: 'A turn is running; stop it to start a fresh session' });
+  it('leaves out a built-in command that cannot run now', () => {
+    const commands = builtInCommands({ model: cannot('The model is set when a chat starts'), clear: cannot('No fresh session'), side: CAN });
+    expect(labels('/', { ...FIXTURE_SOURCES, commands, skills: [] })).toEqual(['/side', '/btw']);
+    expect(builtInCommands({ model: CAN }).map((command) => command.name)).toEqual(['model']);
+  });
+
+  it('lists a skill once and hides the skills when asked', () => {
     const twice: MentionSources = {
       ...FIXTURE_SOURCES,
       commands: [{ name: 'test-audit', description: 'x', builtIn: false, anywhere: false, effect: 'text', available: { can: true } }],

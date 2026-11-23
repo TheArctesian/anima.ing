@@ -39,7 +39,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (243)
+## 2. Open decisions (244)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -57,6 +57,8 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-C1 | What is the hardware of each compute node? | Open for the values that are missing. The operator said (2026-11-18, through the orchestrating session): "I have a couple other machiens but that is good for no… | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C3 | Level 2, parked: which tolerances does the conformance test use? | Set them from the C4 measurements (RNG-032). | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C4 | Level 2, parked: are the block adapters offered to the Shard project first? | Yes: offer them to the Shard project first. Keep them in `blocks/` only if Shard does not accept them. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C26 | What may Anima copy from LM Studio and Unsloth Studio (R-380)? Open, not decided. | Copy only what the screens and documents of LM Studio show, with our own code and none of its assets; copy the design of Unsloth Studio only, and nobody reads S… | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C27 | How does a coding agent of Anima Code reach a local model (R-380)? Open, put to the operator, not decided. | (C) in steps, `/v1/messages` first. | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-ROL-17 | A machine that is connected and busy (it runs a job, a build or a job of a runner) does not start its update (ROL-028). Does its step wait for it? ROL-039 lets… | Open | [plans/daemon-and-hub-update-plan.md](plans/daemon-and-hub-update-plan.md) |
 | OD-E3 | Aggregator for the US accounts (BofA, Chase, Robinhood, Acorns) | SimpleFIN Bridge. It is for private persons and costs about 15 USD each year (its pages give different prices). Check each institution on bridge.simplefin.org b… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E4 | Hosted vision model for Class B and C extraction | Permit a hosted model for Wardrobe and Library photos, with the operator switch (VIS-003). Use only on-device extraction for Documents. | [plans/extensions-plan.md](plans/extensions-plan.md) |
@@ -112,7 +114,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-HOST-40 | Which limits does each plan have for the public traffic of its applications: bytes each month, connections at one time, new connections each second for each nam… | No recommendation: a decision with the prices. It blocks the build of the limits at the door, not the design. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-41 | One server of PostgreSQL for each machine, with a database and a user for each application, or a server of its own in the project of each application (Section 1… | A. It matches your words "letting one server be the db", uses less memory, and level 2 makes one replica of one server. It needs a change of contract K10 Sectio… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-42 | Must the operator see the password of a database (HOST-041 says "shows its connection text one time")? A: no; the password is made on the machine and stays in t… | A first; B when a tool outside the machine needs the database. With A the hub never holds the password. Made overnight on this recommendation, not yet confirmed… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
-| OD-HOST-43 | Before an application is public on the internet, is a second consent at the machine needed (Section 12.3 of hosted-applications-stage-2.md, SF-232)? A: yes; the… | A. A port that you opened for a look in the hub can be an administration page that must never be on the internet. It blocks the first public route. Made overnig… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-44 | One ACME account for the pool, held by the cloud service, or one for each hub, held by that hub (Section 12.5, SF-228)? | One for each hub, with a limit of new hubs each hour: with one for the pool, the cloud service holds a key that asks for a certificate of each customer's name.… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-45 | May an entry with the mark `network-port` publish a port below 1024 when the machine has "Open to the network" on (R-229)? The rules of task H28 permit publishe… | A. Port 53 is the reason to install Pi-hole; the mark names the exact port, and the setting at the machine stays the gate. It needs a change of contract K10 Sec… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-46 | For your local network, on a hosted hub, where do the bytes go (Section 16.6 of hosted-applications-stage-2.md)? A: no proxy for the local network; the machine'… | A. One proxy; a hub that you host on your local network gives you the names there. Made overnight on this recommendation, not yet confirmed by the operator (R-3… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
@@ -323,10 +324,11 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (117)
+## 4. Checks that only the operator can do (118)
 
 | Check | What |
 | --- | --- |
+| HT-149 | reporting after an iPad update and the phone Code tab |
 | HT-148 | phone Devices, offline notice and Integrations (M2-5) |
 | HT-146 | a process that an agent detached cannot answer an approval (R-315, THR-031) |
 | HT-069 | Anima OS preview hardware and enrollment |

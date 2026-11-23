@@ -1,39 +1,38 @@
-import { type Can } from '../../draft';
+import { cannot, type Can } from '../../draft';
 import type { Command, Skill } from '../sources';
 import { bestScore, byRank, matchScore, normalQuery, type Ranked } from './ranking';
 import { skillScore } from './skills';
 
-/** Whether each built-in command can be used now. Leave `side` out where the product has no side chats. */
+/** Whether each built-in command can be used now. Leave `clear` and `side` out where the product has none. */
 export interface BuiltInCans {
   readonly model: Can;
-  readonly clear: Can;
+  readonly clear?: Can;
   readonly side?: Can;
 }
 
-function builtIn(name: string, words: string, more: Pick<Command, 'anywhere' | 'effect' | 'available'>): Command {
-  // A command that cannot be used says why in place of what it does, as the source does for the side chat.
-  return { name, description: more.available.can ? words : more.available.reason, builtIn: true, ...more };
+function builtIn(name: string, description: string, more: Pick<Command, 'anywhere' | 'effect' | 'available'>): Command {
+  return { name, description, builtIn: true, ...more };
 }
 
 /**
  * The commands of ours that any coding agent has (03 "What / lists"; T3 Code `useComposerMenuItems.ts`): `/model`
  * opens the model picker, `/clear` starts a fresh session, `/side` and its other name `/btw` ask in a side chat.
  * Only `/model` is offered away from the start of the prompt.
+ *
+ * A command that cannot run now is left out, not drawn with its reason: a row that does nothing when chosen reads as
+ * broken, and the reason belongs to the control the command stands for.
  */
 export function builtInCommands(can: BuiltInCans): Command[] {
-  const side: Command[] =
-    can.side === undefined
-      ? []
-      : [
-          builtIn('side', 'Ask a side question in a new side chat', { anywhere: false, effect: 'text', available: can.side }),
-          builtIn('btw', 'Same as /side', { anywhere: false, effect: 'text', available: can.side }),
-        ];
+  const side = can.side ?? NONE;
   return [
     builtIn('model', 'Switch response model for this thread', { anywhere: true, effect: 'act', available: can.model }),
-    ...side,
-    builtIn('clear', 'Start a fresh session; earlier messages stay visible', { anywhere: false, effect: 'act', available: can.clear }),
-  ];
+    builtIn('side', 'Ask a side question in a new side chat', { anywhere: false, effect: 'text', available: side }),
+    builtIn('btw', 'Same as /side', { anywhere: false, effect: 'text', available: side }),
+    builtIn('clear', 'Start a fresh session; earlier messages stay visible', { anywhere: false, effect: 'act', available: can.clear ?? NONE }),
+  ].filter((command) => command.available.can);
 }
+
+const NONE = cannot('Not offered here.');
 
 /** A row of the `/` list before it is drawn: a command, or a skill under its `/skill:` name. */
 export type SlashRow = { readonly command: Command } | { readonly skill: Skill };
