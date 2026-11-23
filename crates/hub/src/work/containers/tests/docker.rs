@@ -93,10 +93,12 @@ fn host_001_the_status_text_gives_the_health_and_an_unknown_state_is_unknown() {
 
 #[test]
 fn host_010_a_shell_with_no_docker_and_a_docker_that_fails_are_told_apart() {
-    assert!(matches!(
-        docker::containers(&output("", Some(127))),
-        Err(Error::NoDocker)
-    ));
+    let missing = docker::containers(&output("", Some(127))).unwrap_err();
+    assert!(matches!(missing, Error::NoDocker));
+    assert_eq!(
+        missing.to_string(),
+        "the device's SSH user cannot find docker in PATH"
+    );
     assert!(matches!(
         docker::containers(&output("", Some(1))),
         Err(Error::DockerFailed)

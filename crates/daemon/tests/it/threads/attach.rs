@@ -35,6 +35,7 @@ async fn idle_thread(kit: &Kit, client: &mut Client) -> Uuid {
     client.call(Action::Watch).await;
     let start = client
         .call(Action::Start {
+            provider_address: None,
             program: Program::ClaudeCode,
             folder: kit.path("work"),
             mode: Mode::FullAccess,

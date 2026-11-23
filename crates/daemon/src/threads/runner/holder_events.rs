@@ -225,11 +225,15 @@ impl Runner {
         let Some(thread) = self.threads.get_mut(&id) else {
             return;
         };
+        let relayed = thread.row.provider_address.is_some();
         let steps = match self.silence.ended(id) {
             Some(why) => thread.ended_because(why),
             None => thread.exited(exit.code, exit.signal),
         };
         let _ = self.apply(id, steps).await;
+        if relayed {
+            self.note(Kind::Relay, Some(id), "pass-through ended");
+        }
         self.save();
         self.command(Action::Forget {
             thread: key.to_owned(),

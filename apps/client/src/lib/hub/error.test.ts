@@ -26,9 +26,9 @@ describe('parseResponse', () => {
     expect(parseResponse(body)).toEqual({ ok: false, error: { code: 'VALIDATION', message: 'Check the form.', fields: [] } });
   });
 
-  it('an error without a K7 code is INTERNAL with its message', () => {
-    const body = { errors: [{ message: 'The query is too deep.' }] };
-    expect(parseResponse(body)).toEqual({ ok: false, error: { code: 'INTERNAL', message: 'The query is too deep.' } });
+  it.each(['The query is too deep.', 'Unknown type "OtherInput"'])('an unrelated uncoded error stays INTERNAL: %s', (message) => {
+    const body = { errors: [{ message }] };
+    expect(parseResponse(body)).toEqual({ ok: false, error: { code: 'INTERNAL', message } });
   });
 
   it.each([

@@ -85,6 +85,7 @@ async fn th98_an_older_holder_is_named_kept_while_a_thread_runs_and_replaced_aft
 
 fn start_action(kit: &Kit) -> Action {
     Action::Start {
+        provider_address: None,
         program: Program::ClaudeCode,
         folder: kit.path("work"),
         mode: Mode::FullAccess,

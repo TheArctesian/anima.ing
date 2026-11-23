@@ -9,7 +9,7 @@
 //!
 //! Sign-in data (`authorization`, `x-api-key`, cookies) passes through in memory. This crate
 //! never writes a header value, a path or a body to a log or a file: a path holds the secret.
-//! Nothing here starts the relay; the daemon has no caller yet.
+//! The thread holder owns the listener and publishes only its public CA to children.
 
 mod forward;
 mod headers;
@@ -17,6 +17,7 @@ mod secrets;
 mod serve;
 #[cfg(test)]
 mod tests;
+mod tls;
 pub mod upstream;
 
 use std::io;
@@ -35,6 +36,7 @@ pub struct Relay {
     address: SocketAddr,
     secrets: Arc<Secrets>,
     listening: JoinHandle<()>,
+    certificate: String,
 }
 
 impl Relay {
@@ -43,10 +45,19 @@ impl Relay {
     /// # Errors
     /// The error of the system when no port can be bound.
     pub async fn start() -> io::Result<Self> {
-        Self::start_with(Upstreams::providers()).await
+        Self::listen(Upstreams::providers(), Some(tls::Identity::generate()?)).await
     }
 
+    #[cfg(test)]
     pub(crate) async fn start_with(upstreams: Upstreams) -> io::Result<Self> {
+        Self::listen(upstreams, None).await
+    }
+
+    async fn listen(upstreams: Upstreams, identity: Option<tls::Identity>) -> io::Result<Self> {
+        let (certificate, acceptor) = identity.map_or_else(
+            || (String::new(), None),
+            |identity| (identity.certificate, Some(identity.acceptor)),
+        );
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).await?;
         let address = listener.local_addr()?;
         let secrets = Arc::new(Secrets::default());
@@ -54,17 +65,19 @@ impl Relay {
             listener,
             secrets.clone(),
             Arc::new(upstreams),
+            acceptor,
         ));
         Ok(Self {
             address,
             secrets,
             listening,
+            certificate,
         })
     }
 
-    /// Opens the relay for one thread and gives the base address for its program: the value
-    /// of `ANTHROPIC_BASE_URL` for Claude Code, of `openai_base_url` for Codex. The address
-    /// holds the secret of the thread, so it must reach only that program.
+    /// Opens one thread and gives its private route material. Claude uses this address;
+    /// the holder moves the Codex path secret into its private authentication header before
+    /// configuring the child. This value must never enter runner records or arguments.
     ///
     /// # Errors
     /// [`SecretError`] when the name is not a name, the thread is open already or the system
@@ -72,10 +85,21 @@ impl Relay {
     pub fn open(&self, thread: &str, program: Program) -> Result<String, SecretError> {
         let secret = self.secrets.open(thread, program)?;
         Ok(format!(
-            "http://{}/{secret}{}",
+            "{}://{}/{secret}{}",
+            if self.certificate.is_empty() {
+                "http"
+            } else {
+                "https"
+            },
             self.address,
             program.base_path()
         ))
+    }
+
+    /// Public trust material for this holder. Contains no private key or thread secret.
+    #[must_use]
+    pub fn certificate(&self) -> &str {
+        &self.certificate
     }
 
     /// Ends the secret of a thread. A request with it gets 404 from now on. An answer that is

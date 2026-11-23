@@ -27,6 +27,10 @@ pub enum Refusal {
     },
     /// A value that becomes an argument is not of its alphabet (THR-040).
     BadValue,
+    /// The experimental provider route cannot safely start (TH118).
+    ProviderAddress {
+        said: String,
+    },
     /// The request is answered, or its process ended (THR-030).
     RequestGone,
     /// The answer does not fit the request.

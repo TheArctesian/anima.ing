@@ -63,18 +63,58 @@ it('G3: an acknowledgement preserves another tab’s new group, membership and c
   });
 });
 
-it('G3: an older hub keeps local groups and leaves existing shared groups usable', async () => {
+it.each([
+  'Unknown type "ProjectGroupImportInput"',
+  'Unknown field "importProjectGroup" on type "Mutation".',
+  'Invalid value for argument "input", unknown field "includeEmpty" of type "ProjectGroupImportInput"',
+])('G3: unsupported import preserves device groups, keeps shared groups usable and pauses automatic retries: %s', async (message) => {
+  const empty = { id: 'empty', name: 'Empty' };
+  const kept = { groups: message.includes('includeEmpty') ? [empty, ...local.groups] : [...local.groups, empty], of: local.of };
+  storeClusters(localStorage, kept);
+  let imports = 0;
+  let supported = false;
+  const answer: typeof fetch = (_url, init) => {
+    const request = JSON.parse(String(init?.body)) as { variables: { input?: { projects: string[] } } };
+    if (request.variables.input === undefined) return Promise.resolve(response({ projectGroups: [shared] }));
+    imports += 1;
+    return Promise.resolve(supported
+      ? response({ importProjectGroup: request.variables.input.projects.filter((id) => id === 'p1') })
+      : new Response(JSON.stringify({ errors: [{ message }] })));
+  };
+  const groups = client(answer);
+  await groups.refresh();
+  expect(groups.problem).toBe('');
+  expect(groups.importUnserved).toBe(true);
+  expect(groups.unserved).toBe(false);
+  expect(groups.ready).toBe(true);
+  expect(groups.of('p1')?.name).toBe('Work');
+  await groups.refresh();
+  await groups.refresh();
+  expect(imports).toBe(1);
+  expect(storedClusters(localStorage)).toEqual(kept);
+  supported = true;
+  const reopened = client(answer);
+  await reopened.refresh();
+  expect(reopened.importUnserved).toBe(false);
+  expect(storedClusters(localStorage)).toEqual({ ...local, of: { foreign: source } });
+});
+
+it.each(['FORBIDDEN', 'UNAUTHENTICATED', 'INTERNAL'])('G3: a coded %s import failure stays an error and can retry', async (code) => {
   storeClusters(localStorage, local);
-  let calls = 0;
-  const groups = client(() => {
-    calls += 1;
-    return Promise.resolve(calls === 1 ? response({ projectGroups: [shared] }) : new Response(JSON.stringify({ errors: [{ message: 'Unknown field "importProjectGroup" on type "Mutation".' }] })));
+  const message = 'Unknown type "ProjectGroupImportInput"';
+  let imports = 0;
+  const groups = client((_url, init) => {
+    const request = JSON.parse(String(init?.body)) as { variables: { input?: unknown } };
+    if (request.variables.input === undefined) return Promise.resolve(response({ projectGroups: [shared] }));
+    imports += 1;
+    return Promise.resolve(new Response(JSON.stringify({ errors: [{ message, extensions: { code } }] })));
   });
   await groups.refresh();
+  expect(groups.importUnserved).toBe(false);
+  expect(groups.problem).toBe(message);
+  await groups.refresh();
+  expect(imports).toBe(2);
   expect(storedClusters(localStorage)).toEqual(local);
-  expect(groups.of('p1')?.name).toBe('Work');
-  expect(groups.unserved).toBe(false);
-  expect(groups.problem).toContain('Sharing earlier groups needs a newer hub');
 });
 
 it('G3: groups over the hub limit use batches', async () => {
@@ -126,15 +166,14 @@ it('G3: an empty legacy group imports into the next hub and refreshes despite no
   expect(sent).toEqual([{ source, name: 'Work', projects: [], includeEmpty: true }]);
 });
 
-it.each(['failed', 'older'] as const)('G3: an empty group stays local after a %s import and retries safely', async (failure) => {
+it('G3: an empty group stays local after a network failure and retries safely', async () => {
   storeClusters(localStorage, { groups: local.groups, of: {} });
-  const failed = failure === 'failed' ? new Response('', { status: 503 }) : new Response(JSON.stringify({ errors: [{ message: 'Invalid value for argument "input", unknown field "includeEmpty" of type "ProjectGroupImportInput"' }] }));
+  const failed = new Response('', { status: 503 });
   const answers = [response({ projectGroups: [] }), failed, response({ projectGroups: [] }), response({ importProjectGroup: [] }), response({ projectGroups: [{ ...shared, projectIds: [] }] })];
   const groups = client(() => Promise.resolve(answers.shift() ?? response({ projectGroups: [] })));
   await groups.refresh();
   expect(storedClusters(localStorage)).toEqual({ groups: local.groups, of: {} });
   expect(groups.problem).not.toBe('');
-  if (failure === 'older') expect(groups.problem).toContain('Sharing earlier groups needs a newer hub');
   await groups.refresh();
   expect(storedClusters(localStorage)).toEqual({ groups: [], of: {} });
 });

@@ -30,7 +30,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
-| HT-NEW-defaultremoteaccess | Default-on remote setup (HM-T41, R-NEW-defaultremoteaccess): OS permission prompts, authenticated connections, headless machines and opt-outs | Open |
+| HT-181 | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
+| HT-182 | Default-on remote setup (HM-T41, R-449): OS permission prompts, authenticated connections, headless machines and opt-outs | Open |
 | HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
 | HT-170-code-handoff | Open and follow a shared Code thread on iOS and Android (TH50, TH51) | A build of this branch on each phone, a hub with TH21, and an enrolled computer with transcript sharing enabled | Open |
 | HT-149 | Reporting after an iPad update and the phone Code tab | A physical iPad with an existing device row, another client, and a phone with the updated app | Open |
@@ -50,7 +51,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
 | HT-003 | The tool inventory in an MCP client | HT-002 | Open |
-| HT-129 | The one-line installation of the link and of the daemon on a computer with no application (task HM-T33, R-240 c) | A hub of the branch `hosted/hm-t33-one-line-install` with a link, `anima` signed in to it, and a Linux computer with no application | Open (not run) |
+| HT-129 | The one-line installation of the link and of the daemon on a computer with no application (task HM-T33, R-240 c) | A hub with the merged HM-T33 calls, `anima` signed in to it, and a Linux computer with no application; the lingering amendment needs its matching installer | Open (not run) |
 | HT-004 | No window of Apple on a Mac without the developer tools | A Mac with no Xcode and no Command Line Tools | Open |
 | HT-005 | The tool inventory of a daemon that runs as a system unit | A Linux computer | Open |
 | HT-006 | The probes of `claude` and `codex` leave the account alone | A computer with the two programs | Open |
@@ -133,6 +134,63 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-104 | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with its own public origin `https://<hub id>.hub.anima.ing` and an image of this build, the door of the pool for that address, an application of this build, and a GitHub account that may get a new App | Open |
 | HT-125 | The window with no frame on Windows and Linux: move it, the three controls, resize, each page (task TC2 of agent threads, R-355) | A Windows computer and the Linux computer `pop-os`, each with a build of the branch `code/shell-window`; a Mac for the last step | Open |
 | HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | A Linux AppImage of this build | Passed |
+
+### HT-181: the runner relay with real agent programs (TH118)
+
+State: Open. Built on `t3/implement-th118-runner-relay-hook`; not verified with a real sign-in.
+Owner: [agent-threads.md](proposals/agent-threads.md), TH118; R-400.
+
+The synthetic tests cover the holder's relay lifetime and its refusal paths. They do not
+prove that a vendor accepts a real forwarded request, token renewal, tool search, streamed
+answers with the installed agents, or the agents' behavior after a daemon update. A separate
+review of the final diff with no High and the operator's explicit word come before step 1.
+The HTTPS and private-header repairs in shortened-answers Section 7.10 are built and require
+new independent review of the complete diff. Installed-client checks cover only this Mac,
+with synthetic credentials and Claude `--bare`; ordinary startup integrations, real OAuth
+renewal and Linux/Windows remain unproved. Do not enable an unproved platform from this
+record. The old `model-relay` standalone `pass_through` example is disabled: it starts nothing
+and is not a substitute for the reviewed holder invocation below. Both security repairs
+must pass the final review before these real-forward steps are authorized.
+Do not use a subscription sign-in for this check until the operator decides OD-SHA8.
+
+1. Build the reviewed daemon. In a terminal, configure the vendor program for an API key using
+   its own instructions. Do not paste the key in a runner call, log, or this record. Start the
+   reviewed daemon as the same user. Use a new empty work folder with no Claude settings.
+2. In that folder on the Mac, send the experimental call below. This is a manual check, not
+   a setting offered by the product. For Linux change the socket path to
+   `~/.config/anima-daemon/threads/runner.sock`; for a custom daemon home use its `threads/runner.sock`.
+
+   ```sh
+   python3 - "$HOME/Library/Application Support/anima-daemon/threads/runner.sock" "$PWD" <<'PYCODE'
+   import json, socket, sys
+   connection = socket.socket(socket.AF_UNIX)
+   connection.settimeout(120)
+   connection.connect(sys.argv[1])
+   call = {"id": 1, "call": "start", "program": "claude_code",
+           "folder": sys.argv[2], "mode": "ask", "provider_address": "relay",
+           "model": None, "effort": None, "prompt": "Reply with the word ready."}
+   connection.sendall((json.dumps(call) + "\n").encode())
+   for line in connection.makefile():
+       reply = json.loads(line)
+       if reply.get("frame") == "done" and reply.get("id") == 1:
+           print(json.dumps(reply["result"]))
+           break
+   PYCODE
+   ```
+
+   Expect a started thread. Open Code and that thread: the notice says pass-through, and the
+   answer arrives. No shortening is claimed. Repeat with `"program": "codex"`; expect the
+   same, including fallback from its WebSocket request to POST.
+3. While each thread is live, restart only the daemon, keeping the holder alive. Send another
+   prompt in Code. Expect the same thread to answer. Stop it in Code. Expect Stopped.
+4. Start an ordinary thread through Code. Expect no relay notice and normal replies. No
+   personal vendor configuration file should have changed because of a relay start.
+5. In the throwaway work folder, put `{"env":{"ANTHROPIC_BASE_URL":"http://127.0.0.1:1"}}`
+   in `.claude/settings.json`. Repeat step 2 for Claude Code. Expect a refusal naming the
+   conflicting setting, with no agent started. Remove that synthetic setting afterward.
+6. Inspect `runner.log` and the thread list. Expect only the route selection and fixed relay
+   lifecycle words, never a relay secret URL, a provider credential, or a request body.
+   Record the program versions, outcomes, and whether renewal and tool search were tested.
 
 ### HT-171-touch: VNC and RDP with touch on iPadOS and Android
 
@@ -1406,6 +1464,23 @@ user must be able to run `docker ps`.
 
 Result: Open.
 
+Mac diagnostic check (2026-11-23, branch `t3/macos-docker-discovery`): the automated fixtures
+use fake executables and synthetic failures only. No real Docker Desktop or Colima engine,
+SSH login environment or socket was tested. This entry remains Open.
+
+14. Use a test Mac with Docker Desktop or Colima already set up, with the SSH user and engine
+    that the operator intends Anima to read. Through a non-interactive SSH command as that user,
+    run `command -v docker`, `docker context show` and `docker ps -a`. Compare the list with
+    `anima containers list <device>` and Hosting > Applications. Expected: the same containers.
+    Do not switch contexts or change socket permissions for this check.
+15. On a test account where Docker is installed but absent from the non-interactive SSH PATH,
+    request the list. Expected: CONFLICT with guidance to check installation and that PATH,
+    not a claim that Docker is absent. The CLI, MCP list and client show the hub's guidance.
+16. On a test account that already has an unavailable engine, denied socket or invalid context,
+    request the list. Expected: UNAVAILABLE with checks for engine, SSH-user access and context;
+    no assertion of the exact cause and no raw Docker diagnostic. If no such account is
+    available, record that case as not tested. Do not change the personal engine or its access.
+
 ### HT-026: the use of AI agent programs from real session files
 
 Built: `crates/daemon-core/src/agent_usage/`, `crates/daemon/src/readers/agent_sessions/`, the hub
@@ -1621,7 +1696,8 @@ On this Mac:
 
 ### HT-129: the one-line installation of the link and of the daemon on a computer with no application (task HM-T33, R-240 c)
 
-Built: on the branch `hosted/hm-t33-one-line-install`. The design is Section 8.1 of
+Built: the earlier installer is merged (`d689ef6fe`, `d2c46760d`). The explicit Linux lingering offer
+(R-447) is built locally on `t3/linux-lingering-consent`, pending review and merge. The design is Section 8.1 of
 [hosted-mode.md](proposals/hosted-mode.md). The hub has two new calls
 (`crates/hub/src/fleet/link/graphql/computer.rs`): `createComputerInstall(name)`, which a signed-in
 operator makes, gives a link invite and a one-time claim; `claimComputerEnrolment(claim, os)`, which only
@@ -1641,14 +1717,21 @@ the claim through the socket of the daemon, a wrong SHA-256 of each program, a s
 a line for a different computer, the unit of the application also when its state folder only starts like
 this one, an answer of `unit show` that is not a plain path, a daemon that the script did not enrol, the
 removal, and no secret in an argument or the output). Not covered: the prompt at a real terminal, the real link,
-the real daemon, `systemd` and `launchd`, a real hub, the release (it does not publish `anima-link`
-alone or the script yet) and the page of the web client (not built).
+the real daemon, `systemd` and `launchd`, a real hub, matching published release artifacts
+(the publication code is present but availability is not checked here) and the page of the web client (not built).
 
 It needs: a hub of this branch with a link (a hub of one's own in the link mode, or a hub of the pool
 with an image of this branch); `anima` of this branch signed in to that hub with a login token; a Linux
 x86_64 computer (a VM is good) with no application of Anima, a user that is not root, and `curl`; the
 AppImage of a trial build of this branch. Do not use a Mac that has the application: the script stops
 there, and it must not touch the units of the application.
+
+The amendment has fixture coverage for exact terminal consent, refusal, EOF, interruption, piped
+input, explicit `--enable-linger`, an already enabled user, unreadable status, command failure,
+a failed verification, the current numeric user, root refusal and the macOS exclusion. The terminal
+fixture uses Python 3 and a pseudo-terminal. All service commands are stand-ins; this is no proof
+of real permissions, systemd behavior, a logout or a reboot. Use an authorized disposable Linux
+VM for those checks. Do not use the disabled Dawarich server.
 
 1. On the Linux computer, as the normal user, make a release folder from the AppImage:
    `./Anima_<version>_amd64.AppImage --appimage-extract usr/bin/anima-link usr/bin/anima-daemon`, then
@@ -1661,8 +1744,8 @@ there, and it must not touch the units of the application.
    `sh ~/anima-install --version 0.0.1 --target linux-x86_64 --link-sha256 <hex> --daemon-sha256 <hex> --from ~/rel`,
    and paste the code at the prompt "Paste the install code". Expected: the code is not shown while you
    paste it, and it is not in `history`; no password is asked; the last lines say that the computer is a
-   device of the hub and how to remove it; on a computer where lingering is off, a line names
-   `loginctl enable-linger`.
+   device of the hub and how to remove it. With lingering off, the prompt explains its effect on
+   all user units. Answer `no`: enrollment stays installed and lingering stays off.
 4. Run `systemctl --user status anima-link.service anima-daemon.service`. Expected: both are active.
    `ps -eo args | grep -c anima-install` shows no code in any process.
 5. Open Devices of the hub. Expected: within one minute a device `build-1`, kind server, Linux, in the site
@@ -1675,10 +1758,22 @@ there, and it must not touch the units of the application.
 8. Change one letter of `--link-sha256` and run step 3 with a new code. Expected: "its SHA-256 differs.
    Nothing was installed." and the two units still run.
 9. Log out of the Linux computer and wait 2 minutes. Expected, when lingering is off: the device goes
-   stale (the units stop at the logout, R-362). Log in again: the metrics come back.
+   stale (the units stop at the logout). Log in again: the metrics come back.
+   Make a new code, repeat step 3 and answer `yes` at the lingering prompt. Expected: no password
+   prompt or sudo; `loginctl show-user "$(id -u)" -p Linger --value` says `yes` before the installer
+   reports enabled. If local policy denies the command, enrollment stays installed, the command
+   exits unsuccessfully and names a separate command to ask an administrator to authorize.
+   With lingering enabled, log out and watch from another computer for 2 minutes. Expected:
+   fresh metrics continue. Reboot the VM without logging in. Expected: fresh metrics resume
+   after the network returns. Record logout and reboot separately; neither is proved by `Linger=yes`.
+   Repeat with a new code on standard input: without `--enable-linger`, it never prompts or changes
+   lingering. With an explicit `--enable-linger`, it attempts the same authorized change and checks
+   its state. A piped code followed by `yes` must not grant consent.
 10. Run `sh "${XDG_DATA_HOME:-$HOME/.local/share}/anima-link/anima-install.sh" --remove`. Expected: no
     unit of Anima in `systemctl --user list-units 'anima-*'`, no `~/.local/bin/anima-daemon`, no folder
     `anima-link` or `anima-daemon`, and the sentence that the hub still lists the computer.
+    Lingering stays as it was: removal must not disable other user units. Restore the VM snapshot
+    after the check if you need to undo this system setting.
 11. Optional, on a Mac with a second user account that has never run the application: steps 1 to 5 and 10
     with `--target darwin-universal`, the two programs of a signed trial build
     (`Anima.ing.app/Contents/MacOS/`) and `shasum -a 256`. Expected: the same, with `launchctl print
@@ -5447,6 +5542,14 @@ existing assignments and client retries. They do not cover two real devices or a
 5. Open Projects on a device that holds an empty earlier group. Expected: the group appears on
    this hub and on the second device, even though it has no projects. If the hub is too old to
    import empty groups, the name stays stored locally until the hub is updated.
+6. Open Projects with earlier device groups against a hub that supports shared groups but not
+   their import. Expected: a quiet note says that earlier groups need a newer hub. Shared groups
+   and project cards still work. Keep Projects visible through two refreshes. Expected: the client
+   does not repeat the unsupported import. After the hub is updated, leave Projects and open it
+   again. Expected: the earlier groups import; only acknowledged memberships leave device storage.
+   This compatibility repair is built on `t3/fix-project-group-sync-compatibility`. Synthetic
+   client tests cover the old schema responses, errors and retries; the installed app and the
+   hub update still need this check.
 
 The old device storage has no hub address. Unknown or foreign-hub memberships remain stored
 on the device; they are not imported into another hub or deleted. The operator chose B on
@@ -5454,7 +5557,7 @@ on the device; they are not imported into another hub or deleted. The operator c
 
 Result: Open.
 
-## HT-NEW-defaultremoteaccess: Default-on remote setup (HM-T41, R-NEW-defaultremoteaccess)
+## HT-182: Default-on remote setup (HM-T41, R-449)
 
 State: Open.
 
