@@ -73,6 +73,18 @@ describe('the parts of the inbox (02 section 5.4, OD-THR55)', () => {
     expect(ids(arranged([back], { ...AT, marks, prompted: new Map([['back', new Date(NOW.getTime() - 5 * MINUTE)]]) }).active)).toEqual(['back']);
   });
 
+  it("settles a session Anima did not start from its last change, as T3 settles what it imports, once the runner says which it started", () => {
+    const rows = [row('ours', 'turn_ended', 5), row('theirs', 'turn_ended', 5), row('runs', 'running', 0), row('pin', 'turn_ended', 5, { pinned: true }), row('back', 'turn_ended', 5), row('wrote', 'turn_ended', 5)];
+    const marks = new Map([['back', { ...NO_MARKS, unsettledAt: new Date(NOW.getTime() - MINUTE) }]]);
+    const at: Arranging = { ...AT, marks, started: new Set(['ours']), prompted: new Map([['wrote', new Date(NOW.getTime() - 5 * MINUTE)]]) };
+    const parts = arranged(rows, at);
+    expect(ids(parts.settled)).toEqual(['theirs']);
+    expect(parts.settled[0]?.since).toEqual(new Date(NOW.getTime() - 5 * MINUTE));
+    expect(ids(parts.active).sort()).toEqual(['back', 'ours', 'wrote']);
+    expect([ids(parts.working), ids(parts.pinned)]).toEqual([['runs'], ['pin']]);
+    expect(arranged(rows, { ...at, started: null }).settled).toEqual([]);
+  });
+
   it('gives the order of the keys: the shelves count only when open', () => {
     const parts = arranged([row('a', 'turn_ended', 5), row('w', 'running', 0), row('old', 'turn_ended', 8 * DAY)], AT);
     expect(ids(inOrder(parts, new Set()))).toEqual(['a']);

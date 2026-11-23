@@ -60,7 +60,7 @@ export class InboxView {
   });
   readonly allProjects = $derived(projectsOf(this.rows));
   readonly parts = $derived.by(() =>
-    arranged(inProjects(this.rows, this.projects), { now: this.moment, seen: this.store.seen, marks: this.engine.marks, prompted: this.prompted }),
+    arranged(inProjects(this.rows, this.projects), { now: this.moment, seen: this.store.seen, marks: this.engine.marks, started: this.engine.started, prompted: this.prompted }),
   );
 
   /** The rows in the order of the list; a search shows its hits in place of the list (02 section 5.10). */

@@ -19,6 +19,11 @@ export interface InboxEngine {
   readonly why: string;
   /** The marks of each thread, by its id. */
   readonly marks: ReadonlyMap<string, Marks>;
+  /**
+   * The threads the runner started, by id; `null` while it is not known: no runner, or a runner older than the mark
+   * (no listing says it started a thread), so no session is taken for one Anima did not start.
+   */
+  readonly started: ReadonlySet<string> | null;
   change(thread: string, change: InboxChange): Promise<CallResult>;
 }
 
@@ -30,6 +35,7 @@ export const WAITING: InboxEngine = {
   ready: false,
   why: WAITING_WHY,
   marks: new Map(),
+  started: null,
   change: () => Promise.resolve({ ok: false, words: WAITING_WHY }),
 };
 
@@ -46,6 +52,10 @@ export function inboxEngine(live: () => LiveThreads | null): InboxEngine {
     get marks() {
       const runner = live();
       return runner === null ? WAITING.marks : new Map([...runner.listings].map(([id, listing]) => [id, listing.marks]));
+    },
+    get started() {
+      const ids = [...(live()?.listings.values() ?? [])].filter((listing) => listing.startedByAnima).map((listing) => listing.thread);
+      return ids.length === 0 ? WAITING.started : new Set(ids);
     },
     change(thread, change) {
       const runner = live();

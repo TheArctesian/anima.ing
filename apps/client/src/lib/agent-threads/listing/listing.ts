@@ -11,6 +11,8 @@ export interface Listing {
   readonly removed: boolean;
   /** When the person settled, took back, snoozed or woke the thread (TH61). */
   readonly marks: Marks;
+  /** The runner started this thread; a session that only the program started has no such listing (T3's import). */
+  readonly startedByAnima: boolean;
 }
 
 /** A change of the listing of one thread, in the form of the socket of the runner. */
@@ -42,6 +44,7 @@ function listingFrom(value: unknown): Listing | null {
     title: typeof fields.title === 'string' ? fields.title : null,
     removed: fields.removed === true,
     marks: marksFrom(fields),
+    startedByAnima: fields.started_by_anima === true,
   };
 }
 
