@@ -203,7 +203,8 @@ fn resolved(path: &Path) -> Option<PathBuf> {
     path.ancestors().find_map(|above| {
         let real = std::fs::canonicalize(above).ok()?;
         let rest = path.strip_prefix(above).ok()?;
-        Some(real.join(rest))
+        // A missing part then `..` would point somewhere else than the path says.
+        super::plain(rest).then(|| real.join(rest))
     })
 }
 

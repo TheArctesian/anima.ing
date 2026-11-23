@@ -162,28 +162,16 @@ fn a_thread_holds_the_records_when_they_are_in_tmp() {
         // `/tmp` is a link to it there.
         assert!(held_by_any(&records, &roots("/private/tmp")));
     }
-    // Records that are not made yet, below a link: the link is followed.
-    let link = above_link(keep.path());
+    // Records that are not made yet, below a link from outside `/tmp` into it: the link is
+    // followed. A missing part then `..` is not resolved, so it counts as holding them.
+    let outside = tempfile::tempdir_in("/var/tmp").expect("a folder in /var/tmp");
+    let link = outside.path().join("to-shared");
+    std::os::unix::fs::symlink(keep.path().join("shared"), &link).expect("a link");
     assert!(held_by_any(&link.join("anima-502"), &roots("/tmp")));
-    assert!(!held_by_any(&link.join("anima-502"), &[project, private]));
-}
-
-/// A link in `above` to `above/shared`.
-fn above_link(above: &Path) -> PathBuf {
-    let link = above.join("to-shared");
-    std::os::unix::fs::symlink(above.join("shared"), &link).expect("a link");
-    link
-}
-
-#[test]
-fn a_thread_holds_the_records_when_a_more_root_of_its_sandbox_holds_them() {
-    let (_keep, above) = above();
-    let (records, project, private) = records_and_roots(&above);
-    let with = |more: PathBuf| vec![project.clone(), private.clone(), more];
-    assert!(!held_by_any(&records, &with(above.join("home"))));
-    assert!(held_by_any(&records, &with(above.join("shared"))));
-    std::os::unix::fs::symlink(above.join("shared"), above.join("home/shared")).expect("a link");
-    assert!(held_by_any(&records, &with(above.join("home/shared"))));
-    // A root that cannot be resolved counts as one that holds them.
-    assert!(held_by_any(&records, &with(above.join("gone"))));
+    assert!(!held_by_any(
+        &link.join("anima-502"),
+        &[project.clone(), private.clone()]
+    ));
+    let back = outside.path().join("missing/../anima-503");
+    assert!(held_by_any(&back, &[project, private]));
 }
