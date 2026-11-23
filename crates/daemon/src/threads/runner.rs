@@ -12,6 +12,7 @@ mod attachments;
 mod calls;
 pub mod codex;
 mod holder_events;
+pub mod launcher;
 mod listings;
 pub mod log;
 pub mod login;
@@ -128,6 +129,8 @@ pub struct Runner {
     walked: calls::Walked,
     /// The files that the person attached for a prompt (TH111).
     attached: attachments::Attachments,
+    /// What the launcher of the Git engine knows of the threads that run.
+    rights: launcher::SharedRights,
 }
 
 /// Whether the daemon in `daemon_dir` serves a person, so that it may run agents in the login
@@ -197,8 +200,10 @@ pub async fn run(
         said: accounts::Said::default(),
         model_asks: models::Asks::default(),
         attached: attachments::Attachments::at(&dir),
+        rights: launcher::SharedRights::default(),
     };
     runner.restore(saved.threads);
+    runner.rights_now();
     let listener = socket::bind(&dir)?;
     runner.serve(listener, &mut stop).await;
     if let Err(error) = std::fs::remove_file(dir.join(agent_threads::control::SOCKET)) {
@@ -322,7 +327,12 @@ impl Runner {
         let Some(thread) = self.threads.get_mut(&id) else {
             return;
         };
+        // A row that changed can change the rights of the launcher: a mode, a stop.
+        let row = matches!(change, agent_threads::control::Change::State { .. });
         let reply = Reply::Update(Box::new(thread.note(change)));
+        if row {
+            self.rights_now();
+        }
         self.watchers
             .retain(|watcher| socket::tell(watcher, &reply));
     }
