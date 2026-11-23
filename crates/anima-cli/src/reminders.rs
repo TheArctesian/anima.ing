@@ -1,5 +1,4 @@
 //! `anima reminder`: the reminder rules and their firings (K-E6 Section 6; REM-001 to REM-007).
-//! A rule has one trigger and can have one `unless`, each as JSON in the form of K-E6 Section 2.
 
 pub mod documents;
 pub mod firings;

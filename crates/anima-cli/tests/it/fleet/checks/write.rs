@@ -1,4 +1,4 @@
-//! `check create|update|delete|pause|resume|defaults|notifications` (CMD-024, CMD-025).
+//! CMD-024, CMD-025.
 
 use serde_json::{Value, json};
 

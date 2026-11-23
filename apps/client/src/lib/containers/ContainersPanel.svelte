@@ -1,99 +1,50 @@
 <script lang="ts">
-  import CatalogueView from '$lib/catalogue/CatalogueView.svelte';
-  import FormButton from '$lib/forms/FormButton.svelte';
+  import { resolve } from '$app/paths';
   import Segmented from '$lib/forms/segmented/Segmented.svelte';
-  import ErrorState from '$lib/states/ErrorState.svelte';
-  import ContainerTable from './ContainerTable.svelte';
-  import ContainerDetailView from './detail/ContainerDetailView.svelte';
-  import ContainerLogView from './log/ContainerLogView.svelte';
-  import { LINE_CHOICES } from './rows';
+  import HostingList from '$lib/hosting/HostingList.svelte';
+  import type { HostingStore } from '$lib/hosting/store.svelte';
   import StorageTables from './storage/StorageTables.svelte';
-  import type { ContainersStore } from './store.svelte';
+  import type { StorageStore } from './storage/storage.svelte';
 
   /**
-   * HOST-013: what Docker has on a device. The containers with the log or the details of the selected one, the
-   * images, the volumes and the networks (HOST-020), and the catalogue that an install would take from (task H38).
-   * No control here changes the device.
+   * HOST-013 and HSE-008: what Docker has on a device. The containers are the one list of Hosting narrowed to this
+   * machine, with the log or the details of the selected one; the images and the networks (HOST-020) stay here. The
+   * volumes are in the section Storage of Hosting (HSE-015). No control here changes the device.
    */
-  const { store }: { store: ContainersStore } = $props();
+  const { hosting, storage }: { hosting: HostingStore; storage: StorageStore } = $props();
 
   const VIEWS = [
     { value: 'containers', label: 'Containers' },
     { value: 'images', label: 'Images' },
-    { value: 'volumes', label: 'Volumes' },
     { value: 'networks', label: 'Networks' },
-    { value: 'catalogue', label: 'Catalogue' },
   ] as const;
   type View = (typeof VIEWS)[number]['value'];
 
   let view = $state<View>('containers');
-  const selected = $derived(store.containers.find((container) => container.id === store.selected) ?? null);
-  const lineOptions = LINE_CHOICES.map((value) => ({ value, label: value }));
-  const SHOWN = [
-    { value: 'log', label: 'Log' },
-    { value: 'detail', label: 'Details' },
-  ] as const;
-
-  /** The pane of the selected container shows its log or its details; the switch reads the other one (R-224). */
-  function showOther(next: (typeof SHOWN)[number]['value']): void {
-    if (store.selected === null) return;
-    void (next === 'log' ? store.select(store.selected) : store.inspect(store.selected));
-  }
 
   /**
    * The lists of HOST-020 are read when the operator first opens one: the read of the sizes is slow. An arrow key only
-   * moves the focus in the two choices here, so passing a choice on the way to a different one starts no read.
+   * moves the focus in the choice here, so passing a choice on the way to a different one starts no read.
    */
   function show(next: View): void {
     view = next;
-    if (next === 'networks') void store.storage.networks.open();
-    else if (next === 'catalogue') void store.catalogue.open();
-    else if (next !== 'containers') void store.storage.storage.open();
+    if (next === 'networks') void storage.networks.open();
+    else if (next !== 'containers') void storage.storage.open();
   }
 </script>
 
 <section class="containers" aria-label="Containers">
-  <div class="views"><Segmented label="What to show" size="sm" arrowsChoose={false} options={[...VIEWS]} value={view} onchange={show} /></div>
+  <div class="views">
+    <Segmented label="What to show" size="sm" arrowsChoose={false} options={[...VIEWS]} value={view} onchange={show} />
+    <span class="to">
+      <a href={resolve('/hosting/storage')}>Volumes in Hosting</a>
+      <a href={resolve('/hosting')}>View in Hosting</a>
+    </span>
+  </div>
   {#if view === 'containers'}
-    <ContainerTable {store} />
-    {#if selected !== null && store.shown === 'log'}
-      <section class="below log" aria-label="Log of {selected.name}">
-        <header class="bar">
-          <h3>Log of {selected.name}</h3>
-          <Segmented label="What to show of {selected.name}" size="sm" arrowsChoose={false} options={[...SHOWN]} value={store.shown} onchange={showOther} />
-          <Segmented label="Lines" size="sm" arrowsChoose={false} options={lineOptions} value={store.lines} onchange={(lines) => void store.setLines(lines)} />
-          <FormButton size="sm" icon="carbon:renew" busy={store.logStatus === 'loading'} onclick={() => void store.readLog()}>Refresh</FormButton>
-          <FormButton size="sm" tone="ghost" icon="carbon:close" label="Close the log" onclick={() => { store.close(); }} />
-        </header>
-        {#if store.logStatus === 'failed'}
-          <ErrorState message={store.logProblem} onRetry={() => void store.readLog()} />
-        {:else if store.log !== null}
-          <ContainerLogView log={store.log} container={selected.name} />
-        {:else}
-          <p class="reading" role="status">Reading the log…</p>
-        {/if}
-      </section>
-    {:else if selected !== null}
-      <section class="below detail" aria-label="Details of {selected.name}">
-        <header class="bar">
-          <h3>Details of {selected.name}</h3>
-          <Segmented label="What to show of {selected.name}" size="sm" arrowsChoose={false} options={[...SHOWN]} value={store.shown} onchange={showOther} />
-          <FormButton size="sm" icon="carbon:renew" busy={store.detailStatus === 'loading'} onclick={() => void store.readDetail()}>Refresh</FormButton>
-          <FormButton size="sm" tone="ghost" icon="carbon:close" label="Close the details" onclick={() => { store.close(); }} />
-        </header>
-        {#if store.detailStatus === 'failed'}
-          <ErrorState message={store.detailProblem} onRetry={() => void store.readDetail()} />
-        {:else if store.detail !== null}
-          <ContainerDetailView detail={store.detail} />
-        {:else}
-          <p class="reading" role="status">Reading the details…</p>
-        {/if}
-      </section>
-    {/if}
-  {:else if view === 'catalogue'}
-    <CatalogueView store={store.catalogue} />
+    <HostingList store={hosting} />
   {:else}
-    <StorageTables store={store.storage} kind={view} />
+    <StorageTables store={storage} kind={view} />
   {/if}
 </section>
 
@@ -105,42 +56,21 @@
     min-inline-size: 0;
   }
 
-  /* The choice of the list keeps its own width at the start of the row. */
+  /* The choice of the list keeps its own width at the start of the row; the links to Hosting are at its end. */
   .views {
     display: flex;
-  }
-
-  .bar {
-    display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: var(--space-3);
   }
 
-  h3 {
-    flex: 1;
-    margin: 0;
-    overflow: hidden;
-    color: var(--text);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-medium);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  /* The pane of the selected container is one raised card under the table, for its log and for its details (R-224). */
-  .below {
+  .to {
     display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    min-inline-size: 0;
-    padding: var(--space-4);
-    border-radius: var(--radius-lg);
-    background: var(--surface-raised);
+    gap: var(--space-4);
+    font-size: var(--text-sm);
   }
 
-  .reading {
-    margin: 0;
-    color: var(--text-secondary);
-    font-size: var(--text-sm);
+  .to a {
+    color: var(--accent);
   }
 </style>

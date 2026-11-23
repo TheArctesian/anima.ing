@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ago, folderName, narrowed, parts, resultWords, rowsFrom, threadFrom, type ThreadRow, type ToolCall } from './thread';
+import { ago, folderName, narrowed, parts, resultWords, rowsFrom, scratchHome, threadFrom, type ThreadRow, type ToolCall } from './thread';
 
 const NOW = new Date(2026, 10, 20, 15, 0, 0);
 
@@ -37,6 +37,13 @@ describe('the threads of this computer', () => {
     expect(ago(null, NOW)).toBe('');
     expect(folderName('/w/anima.ing/')).toBe('anima.ing');
     expect(folderName(null)).toBe('No folder');
+  });
+
+  it('THR-041: the folder of a thread with no project is named "No project", as T3 names it, never by its generated name', () => {
+    expect(folderName('/Users/me/Anima Scratch/2026-11-23-475cde9e')).toBe('No project');
+    expect(scratchHome('/Users/me/Anima Scratch/2026-11-23-475cde9e')).toBe('/Users/me/Anima Scratch');
+    expect(scratchHome('/Users/me/Anima Scratch')).toBeNull();
+    expect(scratchHome('/w/anima.ing')).toBeNull();
   });
 
   it('THR-014: tool calls that follow each other are one block, and an entry of an unknown kind is left out', () => {

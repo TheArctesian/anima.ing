@@ -1,5 +1,4 @@
-//! The daemon's own configuration file: which hub it speaks to and for which device
-//! (MET-002 lets the daemon write its own configuration).
+//! The daemon's own configuration file (MET-002).
 
 pub mod agent_usage;
 pub mod home;
@@ -11,7 +10,7 @@ use uuid::Uuid;
 
 use origin::{Origin, OriginError};
 
-/// What `enrol` stores and `run` reads. The token is not here (MET-013).
+/// The token is not here (MET-013).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Config {
     pub hub: Origin,
@@ -36,8 +35,6 @@ pub enum ConfigError {
 }
 
 impl Config {
-    /// Reads a configuration file. The stored hub is held to the origin rule again.
-    ///
     /// # Errors
     /// [`ConfigError`] when the bytes are not a configuration or name a hub that is not an origin.
     pub fn parse(bytes: &[u8]) -> Result<Self, ConfigError> {
@@ -49,7 +46,6 @@ impl Config {
         })
     }
 
-    /// The file's bytes.
     #[must_use]
     #[expect(
         clippy::missing_panics_doc,

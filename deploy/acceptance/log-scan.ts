@@ -1,33 +1,20 @@
-// Scans a hub log for the never-log shapes of K7 (criterion 22, LOG-007, SEC-009). Run it on the live log
-// or a file, from the repository root, with pipefail so a failed `docker compose` is not an empty clean log:
+// Scans a hub log for the never-log shapes of K7 (LOG-007, SEC-009); it never prints input text (A-3).
 //   bash -o pipefail -c 'docker compose logs --no-color hub | bun deploy/acceptance/log-scan.ts [--needles <file>]'
 //   bun deploy/acceptance/log-scan.ts [--needles <file>] <log file>
-// It prints `line <n>: <kind>` for each kind found on a line, then `scanned <n> lines, <m> hits`. It never
-// prints the matched text, the line or a needle, and no error message holds input (A-3).
-// The hub log is tracing JSON whose `?` fields are Rust Debug strings escaped again, so each line is read in
-// several views: as written; with JSON and Debug escapes undone, once per pass up to four passes; and that
-// last view percent-decoded. A kind found in any view counts once.
-// The needles file holds one exact value per line (surrounding white space and blank lines are ignored); a line
-// that contains one in any view (so also JSON- or Debug-escaped up to four times, or percent-encoded), or for a URL
-// in its normal form with a lower-case host, is a `needle` hit. Other spellings (non-ASCII percent-encoding, a
-// different case in the path) are not found. The file stays on the machine; give it for values only the operator
-// knows (channel URLs, ntfy topics on a server whose host does not say `ntfy`, generic webhook URLs, SMTP
-// passwords).
-// Exit codes: 0 no hit, 1 one or more hits, 2 bad usage, an empty or unreadable log or needles file, or closed
-// output. What each shape skips on purpose is listed in leak-shapes.ts.
+// Prints `line <n>: <kind>` per hit, then `scanned <n> lines, <m> hits`. The needles file holds one value per line.
+// Exit codes: 0 no hit, 1 one or more hits, 2 bad usage, an empty or unreadable log or needles file, or closed output.
+// Hub log fields are Rust Debug strings escaped again in JSON, so each line is also read unescaped and percent-decoded.
 import { createReadStream } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { SHAPE_KINDS, shapeKinds, type ShapeKind } from "./leak-shapes.ts";
 
-/** The stable name of a finding: a shape kind, or `needle` for an operator value. */
 export type LeakKind = ShapeKind | "needle";
 
 const ESC = String.fromCharCode(0x1b);
 const BEL = String.fromCharCode(0x07);
-// CSI sequences (colours, cursor) and OSC sequences (titles, links) that `docker compose logs` may add.
+// CSI and OSC sequences that `docker compose logs` may add.
 const TERMINAL_CODES = new RegExp(`${ESC}\\[[0-9;?]*[ -/]*[@-~]|${ESC}\\][^${BEL}${ESC}]*(?:${BEL}|${ESC}\\\\)`, "g");
-// JSON escapes and Rust Debug escapes (`\u{1f600}`, `\'`, `\0`).
 const ESCAPE = /\\(?:u([0-9A-Fa-f]{4})|u\{([0-9A-Fa-f]{1,6})\}|(["\\/'bfnrt0]))/g;
 const ESCAPED: Readonly<Record<string, string>> = {
   '"': '"', "\\": "\\", "/": "/", "'": "'", b: "\b", f: "\f", n: "\n", r: "\r", t: "\t", 0: "\0",
@@ -36,7 +23,6 @@ const KIND_ORDER: readonly LeakKind[] = [...SHAPE_KINDS, "needle"];
 const PERCENT = /%([0-9A-Fa-f]{2})/g;
 const MAX_PASSES = 4;
 
-/** The line as the scanner reads it: no trailing carriage return, no terminal colour or control sequences. */
 export function plainLine(raw: string): string {
   return raw.replace(/\r$/, "").replace(TERMINAL_CODES, "");
 }
@@ -72,7 +58,6 @@ function settle(text: string, needed: string, pass: (text: string) => string, vi
   return current;
 }
 
-/** The views of one plain line: as written, each unescape pass, then the last of those percent-decoded. */
 export function lineViews(line: string): string[] {
   const views = [line];
   const unescaped = settle(line, "\\", unescapeOnce, views);
@@ -90,7 +75,6 @@ function urlForm(value: string): string | undefined {
   }
 }
 
-/** Each needle as written and, for a URL, its normal form (lower-case host); escaped spellings meet the views. */
 function needleForms(needles: readonly string[]): string[] {
   let forms = needleCache.get(needles);
   if (forms === undefined) {
@@ -101,7 +85,6 @@ function needleForms(needles: readonly string[]): string[] {
   return forms;
 }
 
-/** Every leak kind on one raw log line, in any of its views, each once and in a fixed order. */
 export function leakKinds(raw: string, needles: readonly string[]): LeakKind[] {
   const views = lineViews(plainLine(raw));
   const found = new Set<LeakKind>(views.flatMap(shapeKinds));
@@ -112,7 +95,6 @@ export function leakKinds(raw: string, needles: readonly string[]): LeakKind[] {
   return KIND_ORDER.filter((kind) => found.has(kind));
 }
 
-/** The values of a needles file: one per line, trimmed, blank lines dropped. */
 export function parseNeedles(text: string): string[] {
   return text
     .split("\n")
@@ -120,7 +102,6 @@ export function parseNeedles(text: string): string[] {
     .filter((value) => value !== "");
 }
 
-/** The lines of a stream as they arrive, so a large log is never held whole. */
 async function* streamLines(stream: AsyncIterable<string | Uint8Array>): AsyncGenerator<string> {
   const decoder = new TextDecoder();
   let rest = "";
@@ -152,7 +133,7 @@ function parseRequest(args: string[]): Request {
   try {
     parsed = parseArgs({ args, options: { needles: { type: "string" } }, allowPositionals: true, strict: true });
   } catch {
-    // The parser's message quotes the argument; the argument may be a value, so it is not shown.
+    // The parser's message quotes the argument, which may be a secret value.
     throw new ScanError("usage: log-scan.ts [--needles <file>] [<log file> | -]");
   }
   if (parsed.positionals.length > 1) {
@@ -184,7 +165,6 @@ function errorCode(error: unknown): string {
   return typeof code === "string" && /^[A-Z0-9_]+$/.test(code) ? code : "read error";
 }
 
-/** Writes one line of output; a reader that goes away surfaces as a stdout error event (see stopOnClosedOutput). */
 function report(text: string): void {
   process.stdout.write(`${text}\n`);
 }
@@ -210,12 +190,10 @@ async function scanStream(stream: AsyncIterable<string | Uint8Array>, needles: r
   return hits;
 }
 
-/** True when no log can arrive: no file was given and stdin is a terminal, so reading it would wait for typing. */
 export function needsLog(logPath: string | undefined, stdinIsTTY: boolean | undefined): boolean {
   return logPath === undefined && stdinIsTTY === true;
 }
 
-/** Runs the scan for these arguments and returns the exit code; output goes to stdout, problems to stderr. */
 async function main(args: string[]): Promise<number> {
   try {
     const request = parseRequest(args);
@@ -233,7 +211,6 @@ async function main(args: string[]): Promise<number> {
   }
 }
 
-/** A reader that closes the pipe early may surface as an asynchronous stream error; it ends the run the same way. */
 function stopOnClosedOutput(): void {
   process.stdout.on("error", (error) => {
     process.stderr.write(`log-scan: the output closed (${errorCode(error)})\n`);

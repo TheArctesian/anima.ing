@@ -1,5 +1,4 @@
-//! From each 2-second reading to a point every 10 seconds (MET-014): pure, the time is a
-//! parameter. [`gpu`] gives the GPU readings their series and their place among the GPUs.
+//! From each 2-second reading to a point every 10 seconds (MET-014).
 
 pub mod agent_usage;
 pub mod batteries;
@@ -13,7 +12,6 @@ use chrono::{DateTime, Utc};
 use daemon_core::points::{Point, SeriesKey, Window, samples};
 use daemon_core::readings::{GpuReading, Reading};
 
-/// The previous reading and the open 10-second window.
 #[derive(Debug, Default)]
 pub struct Sampler {
     previous: Option<(DateTime<Utc>, Reading)>,
@@ -26,10 +24,7 @@ impl Sampler {
         Self::default()
     }
 
-    /// Takes the sampling made at `at`: the readings of the device and its GPUs (already placed
-    /// by [`gpu::Placement`]). Returns the point of the window this sampling closed, if any.
-    /// The rates need the reading before, so the first sampling has none; time that did not
-    /// move forward gives none either.
+    /// `gpus` are already placed by [`gpu::Placement`].
     pub fn take(
         &mut self,
         at: DateTime<Utc>,
@@ -79,8 +74,6 @@ mod tests {
     #[test]
     fn met_014_five_samplings_make_one_point_per_10_second_window() {
         let mut sampler = Sampler::new();
-        // 1_000_000_000 is a multiple of 10 seconds: the sampling at +0 is a window of its own,
-        // the five at +2 to +10 make the next, and +12 opens the third and closes that one.
         let mut points = Vec::new();
         for step in 0..=6 {
             let seconds = step * 2;

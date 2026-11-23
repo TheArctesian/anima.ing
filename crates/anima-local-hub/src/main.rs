@@ -248,6 +248,7 @@ fn start_or_stop(place: &Place, start: bool) -> Result<ExitCode, Failure> {
 }
 
 /// Standard input and output carry the secrets, so they pass to the hub as they are.
+/// On a failure only a fixed message is printed, never the hub's own text.
 fn account(place: &Place, verb: AccountVerb, name: Option<Name>) -> Result<ExitCode, Failure> {
     let action = match (verb, name) {
         (AccountVerb::Status, None) => Action::Status,

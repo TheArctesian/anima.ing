@@ -11,7 +11,7 @@ use super::{
 };
 use crate::{Refusal, Step};
 
-/// The kept Compose file and environment file, as read from `files/` of the application.
+/// The kept Compose file and environment file, as read from `files/` of the application; `{:?}` shows only their lengths.
 #[derive(Clone, Copy)]
 pub struct Kept<'a> {
     pub compose: &'a [u8],

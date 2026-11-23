@@ -1,5 +1,4 @@
-//! `anima web`: the web pages of devices, such as admin consoles (CMD-002). Their pixels stay
-//! in the desktop application; these commands manage the list.
+//! `anima web`: the web pages of devices, such as admin consoles (CMD-002).
 
 pub mod accept_certificate;
 pub mod create;

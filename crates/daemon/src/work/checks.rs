@@ -1,7 +1,4 @@
-//! What the daemon does with an item before it starts it (K10 Section 5): it checks the item
-//! and refuses it for the first cause of the fixed list that is true. The hub names no command,
-//! and the machine decides: the switch, the kinds, the repositories and the isolation are the
-//! machine's (K10 Section 3). One pure function; the state of the machine is a parameter.
+//! Checks a claimed item before its start; the machine, not the hub, decides (K10 Sections 3 and 5).
 
 use daemon_core::wire::{WorkJob, WorkKind};
 use serde_json::{Map, Value};
@@ -16,16 +13,14 @@ use super::{
 
 type Object = Map<String, Value>;
 
-/// What the machine is and permits at the moment of the check.
 #[derive(Clone, Copy, Debug)]
 pub struct Machine<'a> {
-    /// The switch at the machine (USE-004). It can go off after the claim.
+    /// The switch at the machine (USE-004).
     pub switch_on: bool,
     /// The device policy permits work now (USE-009).
     pub policy_permits: bool,
     /// The kinds that the owner permits at this machine (PRO-024).
     pub kinds: &'a [WorkKind],
-    /// The kinds whose isolation the machine can make now (task W2).
     pub isolation: &'a [WorkKind],
     /// The last clean-up did not delete each thing (K10 Section 9).
     pub unclean: bool,
@@ -34,18 +29,15 @@ pub struct Machine<'a> {
     pub lowest_runner: Version,
 }
 
-/// What the daemon does with an answer to a claim.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Checked {
-    /// Each check passed.
     Start(Box<WorkJob>),
-    /// The daemon reports `refused` with the cause.
     Refuse {
         id: Uuid,
         attempt: u32,
         cause: Cause,
     },
-    /// The answer names no item and no attempt: there is nothing that a report could name.
+    /// The answer names no item and no attempt, so no report could name it.
     Drop,
 }
 
@@ -57,8 +49,6 @@ fn kind_of(item: &Object) -> Option<WorkKind> {
     }
 }
 
-/// The checks of the item that need its type: the object of the type, the secrets and the
-/// version of the runner program.
 fn typed(item: &Object, work_type: &str, lowest: Version) -> Result<(), Cause> {
     let secrets = shape::purposes(item).ok_or(Cause::MemberUnknown)?;
     let parameters = item
@@ -80,8 +70,7 @@ fn typed(item: &Object, work_type: &str, lowest: Version) -> Result<(), Cause> {
     (version >= lowest).then_some(()).ok_or(Cause::RunnerTooOld)
 }
 
-/// The first cause of K10 Section 5 that is true for the item, in the order of its table but
-/// `runner_too_old`, which is read with the object of the type.
+/// The first true cause of K10 Section 5, in table order except `runner_too_old`, read with the type.
 fn cause(item: &Object, machine: &Machine<'_>) -> Result<WorkJob, Cause> {
     let work_type = shape::text(item, "type")
         .filter(|name| ["build", "runner"].contains(name))
@@ -111,8 +100,6 @@ fn cause(item: &Object, machine: &Machine<'_>) -> Result<WorkJob, Cause> {
     }
 }
 
-/// Checks the answer to a claim. The daemon starts nothing for an answer that is not
-/// [`Checked::Start`].
 #[must_use]
 pub fn check(answer: &Value, machine: &Machine<'_>) -> Checked {
     let Some(item) = answer.as_object() else {

@@ -1,5 +1,4 @@
-// What deploy/compose.yaml passes to the hub: environment, networks and mounts (DNS-002, NET-001, NET-003).
-// Nothing here starts Docker.
+// DNS-002, NET-001, NET-003.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -39,12 +38,10 @@ function cidr(text: string): Block {
   return { first, size, contains: (value) => value >= first && value < first + size };
 }
 
-/** The text of a compose entry with `${NAME:-default}` replaced by its default; other `${...}` become opaque. */
 function resolveDefault(text: string): string {
   return text.replace(/\$\{[A-Z_]+:-([^}]*)\}/g, "$1");
 }
 
-/** The deny entries that are literal or have a default, as blocks. Required variables (`:?`) are opaque and skipped. */
 function denyEntries(hub: Container): Block[] {
   return (hub.environment?.["ANIMA_PROBE_DENY"] ?? "")
     .split(",")
@@ -53,7 +50,6 @@ function denyEntries(hub: Container): Block[] {
     .map(cidr);
 }
 
-/** How many addresses of `subnet` some entry covers. */
 function coveredCount(entries: Block[], subnet: Block): number {
   let count = 0;
   for (let host = 0; host < subnet.size; host += 1) {
@@ -111,12 +107,10 @@ describe("hub deny list, notify network and mounts", () => {
     const entries = denyEntries(hub);
     const attached = Array.isArray(hub.networks) ? hub.networks : Object.keys(hub.networks ?? {});
     expect(attached.sort()).toEqual(["database", "gateway", "localapi", "notify"]);
-    // The hub's own notify address is inside the denied part (172.30.3.2).
     expect(entries.some((entry) => entry.contains(ipv4("172.30.3.2")))).toBe(true);
     for (const name of attached) {
       const subnet = cidr(resolveDefault(compose.networks[name]?.ipam?.config?.[0]?.subnet ?? `${name} has no fixed subnet`));
       const carved = name === "notify";
-      // Every address of the subnet is denied, except the Apprise address on notify.
       expect(coveredCount(entries, subnet)).toBe(subnet.size - (carved ? 1 : 0));
     }
     expect(entries.some((entry) => entry.contains(appriseAddress))).toBe(false);
@@ -168,7 +162,6 @@ describe("hub deny list and default route for the VPS as a device (VP-13)", () =
   test("NET-001 VP-13 the deny list holds the VPS public address as /32 and not the hub VPN address", () => {
     const deny = (compose.services["hub"]?.environment?.["ANIMA_PROBE_DENY"] ?? "").split(",");
     expect(deny).toContain("${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32");
-    // VP-13: the VPS is a device at its VPN address; the host firewall limits the hub to 22/tcp and ping.
     expect(deny.filter((entry) => entry.includes("ANIMA_HUB_ADDRESS"))).toEqual([]);
     expect(denyEntries(compose.services["hub"] as Container).some((entry) => entry.contains(ipv4("100.64.0.1")))).toBe(false);
   });
@@ -332,7 +325,6 @@ describe("hub image build context", () => {
       .filter((line) => line !== "" && !line.startsWith("#"));
     expect(lines[0]).toBe("*");
     const allowed = lines.filter((line) => line.startsWith("!"));
-    // The Rust build, the lock files and the web stage's manifests and client; nothing else (SEC-001).
     expect(allowed.filter((line) => !/^!(Cargo\.(toml|lock)|bun\.lock|package\.json|crates\/|apps\/client\/|apps\/desktop\/((src-tauri|keyboard|account-session|runner)\/|package\.json)|(deploy(\/dns|\/headscale)?|design|quality)\/package\.json)$/.test(line))).toEqual([]);
     expect(allowed).toContain("!crates/");
   });

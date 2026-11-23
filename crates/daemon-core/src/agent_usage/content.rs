@@ -1,24 +1,19 @@
-//! The `content` of a Claude Code message, read for two facts only: whether the operator typed
-//! it, and how many tool calls it holds. The text is looked at where it lies in the line and
-//! never copied or kept (AIS-018).
+//! The `content` of a Claude Code message, read only for whether the operator typed it and its
+//! tool calls. The text is never copied or kept (AIS-018).
 
 use std::fmt;
 
 use serde::Deserialize;
 use serde::de::{Deserializer, IgnoredAny, MapAccess, SeqAccess, Visitor};
 
-/// What a message's `content` holds.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub(super) struct Content {
-    /// Its text is something the operator typed, not text the program wrote in their place.
     pub typed: bool,
-    /// Its `tool_use` and `server_tool_use` blocks.
     pub tool_calls: u64,
 }
 
-/// Whether text was typed by the operator: text that does not start with a tag, or a slash
-/// command or a shell line they typed. Text the program adds in the user's turn (reminders,
-/// notifications, command output) starts with a tag of its own.
+/// Text the program adds in the user's turn starts with a tag of its own; a slash command or a
+/// shell line the operator typed starts with one of `TYPED_TAGS`.
 fn typed(text: &str) -> bool {
     const TYPED_TAGS: [&str; 3] = ["<command-name>", "<command-message>", "<bash-input>"];
     let text = text.trim_start();
@@ -48,8 +43,7 @@ impl<'de> Visitor<'de> for ContentVisitor {
         })
     }
 
-    /// A list of blocks: typed when its first text block is typed and no block is a tool's
-    /// result (a tool's result comes back in the user's turn).
+    /// A tool's result comes back in the user's turn, so a list that holds one is not typed.
     fn visit_seq<A: SeqAccess<'de>>(self, mut blocks: A) -> Result<Content, A::Error> {
         let mut first_text: Option<bool> = None;
         let mut result = false;
@@ -71,7 +65,6 @@ impl<'de> Visitor<'de> for ContentVisitor {
     }
 }
 
-/// One block of a list, by its `type` and, for a text block, whether its text is typed.
 struct Block {
     kind: Kind,
 }
@@ -140,7 +133,6 @@ enum BlockType {
     Other,
 }
 
-/// Whether a text is typed by [`typed`], read where it lies and not kept.
 struct Typed(bool);
 
 impl<'de> Deserialize<'de> for Typed {

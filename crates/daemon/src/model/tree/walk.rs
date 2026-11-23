@@ -1,14 +1,10 @@
-//! The tree of a server as the walk of the parent processes (macOS; R-331): the
-//! process table of `/bin/ps`, and the descendants of the roots. A root is the server, and each
-//! process that an earlier poll saw and that still has its identity: a child that a double
-//! fork gave to `launchd` stays in the tree once it was seen. Best effort: a process that
-//! leaves between two polls is not seen.
+//! The tree of a server as the walk of the parent processes (macOS; R-331).
+//! A root is the server or a process an earlier poll saw, so a double-forked child stays once seen.
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use super::Identity;
 
-/// One row of the process table.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Row {
     pub pid: i32,
@@ -16,7 +12,6 @@ pub struct Row {
     pub start: String,
 }
 
-/// Reads the output of `ps -axo pid=,ppid=,lstart=`.
 #[must_use]
 pub fn read_table(text: &str) -> Vec<Row> {
     text.lines()
@@ -30,7 +25,6 @@ pub fn read_table(text: &str) -> Vec<Row> {
         .collect()
 }
 
-/// The roots that still have their identity, and each of their descendants. Pure.
 #[must_use]
 pub fn descendants(table: &[Row], roots: &[Identity]) -> Vec<Identity> {
     let by_pid: BTreeMap<i32, &Row> = table.iter().map(|row| (row.pid, row)).collect();
@@ -73,13 +67,11 @@ fn ps(arguments: &[&str]) -> Option<String> {
     Some(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
-/// The whole process table now.
 #[must_use]
 pub fn table() -> Option<Vec<Row>> {
     ps(&["-axo", "pid=,ppid=,lstart="]).map(|text| read_table(&text))
 }
 
-/// The start time of process `pid`, as `ps` gives it.
 #[must_use]
 pub fn start_of(pid: i32) -> Option<String> {
     let text = ps(&["-o", "lstart=", "-p", &pid.to_string()])?;

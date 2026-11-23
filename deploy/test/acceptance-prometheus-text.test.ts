@@ -1,6 +1,4 @@
-// deploy/acceptance/prometheus-text.ts and exposition.ts (criterion 12; INT-001, INT-002, D-24, A-2): the strict
-// reader of the hub's Prometheus text and the K7 rules on it. A property test renders random families and reads
-// them back; a fuzz test mutates a K7 text and proves the reader never throws and never quotes the text.
+// deploy/acceptance/prometheus-text.ts and exposition.ts (criterion 12; INT-001, INT-002, D-24, A-2).
 import { describe, expect, test } from "bun:test";
 import { familiesVerdict, labelValuesVerdict, labelsVerdict, steadyLabel } from "../acceptance/exposition.ts";
 import { parseExposition } from "../acceptance/prometheus-text.ts";

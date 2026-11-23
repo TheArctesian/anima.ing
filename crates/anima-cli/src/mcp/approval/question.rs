@@ -1,7 +1,5 @@
-//! The text of the approval question (MCP-013): every argument the agent gave, one per line,
-//! so the person sees all of what the call would do. Nested keys become dotted paths; each
-//! value is cleaned and cut on its own, with the length it had. The identifying arguments come
-//! first. The line breaks are the server's own: a cleaned value cannot hold one.
+//! The approval question (MCP-013) shows every argument, so the person sees all the call would do.
+//! The line breaks are the server's own: a cleaned value cannot hold one.
 
 use rmcp::model::JsonObject;
 use serde_json::Value;

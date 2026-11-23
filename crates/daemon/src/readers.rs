@@ -1,6 +1,4 @@
-//! Reads this computer (MET-002): the `/proc` files and fixed commands, nothing written, and
-//! the probes of the tool inventory (CAP-028) and the hardware values (CAP-032). Parsing is `daemon_core::readings` and
-//! `daemon_core::inventory`; this module only fetches the bytes (MET-016).
+//! Reads this computer and writes nothing (MET-002, CAP-028, CAP-032); parsing is in `daemon_core` (MET-016).
 
 pub mod agent_sessions;
 pub mod command;
@@ -18,7 +16,6 @@ use daemon_core::readings::Reading;
 pub use hardware::hardware;
 pub use inventory::inventory;
 
-/// What this computer is, which decides the commands.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Platform {
     Linux,
@@ -28,7 +25,6 @@ pub enum Platform {
 }
 
 impl Platform {
-    /// The platform the daemon was built for.
     #[must_use]
     pub const fn current() -> Self {
         #[cfg(windows)]
@@ -44,8 +40,7 @@ impl Platform {
     }
 }
 
-/// What the daemon reads: the machine it runs on, or the container of a hosted hub, where a
-/// reading of the machine would show the server (HMD-071, HMD-074).
+/// In the container of a hosted hub a reading of the machine would show the server (HMD-071, HMD-074).
 #[derive(Debug)]
 pub enum Source {
     Machine(Platform),
@@ -53,7 +48,7 @@ pub enum Source {
 }
 
 impl Source {
-    /// One collection at `now` (the wall clock for macOS, the monotonic one for the container).
+    /// The wall clock serves macOS, the monotonic one the container.
     pub async fn reading(&mut self, now: DateTime<Utc>, instant: std::time::Instant) -> Reading {
         match self {
             Self::Machine(platform) => reading(*platform, now).await,
@@ -61,15 +56,14 @@ impl Source {
         }
     }
 
-    /// Whether GPUs are looked for: never in a container, where a GPU would be one of the server.
+    /// Never in a container, where a GPU would be one of the server.
     #[must_use]
     pub const fn has_gpus(&self) -> bool {
         matches!(self, Self::Machine(_))
     }
 }
 
-/// One collection of the CPU, memory, load, uptime, disks and interfaces. A reader that fails
-/// leaves its field empty, so the sample is missing and the daemon carries on.
+/// A reader that fails leaves its field empty, so the sample is missing and the daemon carries on.
 pub async fn reading(platform: Platform, now: DateTime<Utc>) -> Reading {
     match platform {
         Platform::Linux => linux::reading().await,

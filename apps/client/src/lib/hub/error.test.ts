@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MALFORMED, parseResponse } from './error';
+import { MALFORMED, needsNewerHub, parseResponse, UNSERVED } from './error';
 
 function failure(error: unknown): unknown {
   return { data: null, errors: [error] };
@@ -27,8 +27,14 @@ describe('parseResponse', () => {
   });
 
   it('an error without a K7 code is INTERNAL with its message', () => {
-    const body = { errors: [{ message: 'Unknown field "nme" on type "Device".' }] };
-    expect(parseResponse(body)).toEqual({ ok: false, error: { code: 'INTERNAL', message: 'Unknown field "nme" on type "Device".' } });
+    const body = { errors: [{ message: 'The query is too deep.' }] };
+    expect(parseResponse(body)).toEqual({ ok: false, error: { code: 'INTERNAL', message: 'The query is too deep.' } });
+  });
+
+  it('a field the hub does not know is unserved: the hub is older than this client, and its own words are not shown', () => {
+    const answer = parseResponse({ errors: [{ message: 'Unknown field "projectGroups" on type "Query".' }] });
+    expect(answer).toEqual({ ok: false, error: UNSERVED });
+    expect(!answer.ok && needsNewerHub(answer.error)).toBe(true);
   });
 
   it('an unknown code is INTERNAL', () => {

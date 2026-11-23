@@ -1,5 +1,4 @@
-//! Paging over the real hub's cursors (CMD-026): `--limit`, the next-page hint followed exactly
-//! as printed, and `--all`, on more rows than one page.
+//! Paging over the real hub's cursors (CMD-026).
 
 use serde_json::Value;
 use sqlx::PgPool;
@@ -8,8 +7,6 @@ use super::words;
 use crate::kit::real_hub::RealHub;
 use crate::kit::{Anima, Outcome};
 
-/// The command line the next-page hint on standard error prints, after `anima`, as a shell
-/// would read it; none on the last page.
 fn next_page(outcome: &Outcome) -> Option<String> {
     let (_, hint) = outcome.stderr.split_once("Next page: ")?;
     let command = hint.split(" (or --all)").next().unwrap_or_default();
@@ -20,7 +17,6 @@ fn next_page(outcome: &Outcome) -> Option<String> {
     )
 }
 
-/// The `name` of every node in a printed connection.
 fn names(outcome: &Outcome) -> Vec<String> {
     assert_eq!(outcome.code, 0, "{outcome:?}");
     assert!(!outcome.stdout.is_empty(), "{outcome:?}");
@@ -32,8 +28,7 @@ fn names(outcome: &Outcome) -> Vec<String> {
     edges.iter().filter_map(name).collect()
 }
 
-/// Runs `anima <line>` through the shell, as a person pastes a hint, and the same with
-/// `--json` for its rows.
+/// Runs `anima <line>` through the shell, as a person pastes a hint.
 async fn paste(anima: &Anima, line: &str) -> (Outcome, Vec<String>) {
     let bin = env!("CARGO_BIN_EXE_anima");
     let mut outcomes = Vec::new();
@@ -69,7 +64,6 @@ async fn paste(anima: &Anima, line: &str) -> (Outcome, Vec<String>) {
     (outcomes.swap_remove(0), rows)
 }
 
-/// Follows the printed hints from `first` to the last page; the names of each page.
 async fn follow(anima: &Anima, first: &str) -> Vec<Vec<String>> {
     let (mut outcome, rows) = paste(anima, first).await;
     let mut pages = vec![rows];

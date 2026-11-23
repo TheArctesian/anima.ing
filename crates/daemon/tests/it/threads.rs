@@ -14,6 +14,7 @@ mod attach;
 mod connection;
 mod drafts;
 mod files;
+mod git;
 mod holder_update;
 mod listing;
 mod models_projects;
@@ -74,7 +75,19 @@ impl Holder {
 }
 
 impl Drop for Holder {
+    /// `SIGTERM` first, so that the holder ends its programs and what they left (THR-049); a
+    /// `SIGKILL` at once would leave them running. Killed when it still runs after 30 s.
     fn drop(&mut self) {
+        let pid = i32::try_from(self.child.id())
+            .ok()
+            .and_then(rustix::process::Pid::from_raw);
+        if let Some(pid) = pid {
+            let _ = rustix::process::kill_process(pid, rustix::process::Signal::TERM);
+        }
+        let deadline = std::time::Instant::now() + Duration::from_secs(30);
+        while matches!(self.child.try_wait(), Ok(None)) && std::time::Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(50));
+        }
         let _ = self.child.kill();
         let _ = self.child.wait();
     }
@@ -143,19 +156,33 @@ fn made_stand_ins() -> PathBuf {
         return folder;
     }
     let made = tempfile::tempdir_in(env!("CARGO_TARGET_TMPDIR")).expect("a folder");
-    for (name, from) in [
-        ("sh", "/bin/bash"),
-        ("perl", "/usr/bin/perl"),
-        ("sleep", "/bin/sleep"),
-    ] {
+    let checks: [(&str, &str, &[&str]); 3] = [
+        ("sh", "/bin/bash", &["-c", "exit 0"]),
+        ("perl", "/usr/bin/perl", &["-e", "0"]),
+        ("sleep", "/bin/sleep", &["0"]),
+    ];
+    for (name, from, check) in checks {
         let copy = made.path().join(name);
         std::fs::copy(from, &copy).expect("a copy");
-        let signed = Process::new("/usr/bin/codesign")
-            .args(["--force", "--sign", "-"])
+        signed_ad_hoc(&copy);
+        if runs(&copy, check) {
+            continue;
+        }
+        // macOS 15 and earlier run no ad hoc copy of an arm64e program of Apple ("not running
+        // binary built against preview arm64e ABI", run 45131440281); its x86_64 slice runs
+        // under Rosetta. Newer systems run the arm64e copy itself.
+        let thinned = Process::new("/usr/bin/lipo")
+            .arg(from)
+            .args(["-thin", "x86_64", "-output"])
             .arg(&copy)
-            .output()
-            .expect("codesign runs");
-        assert!(signed.status.success(), "{name} is signed");
+            .status()
+            .is_ok_and(|status| status.success());
+        assert!(thinned, "{name}: the x86_64 slice of {from}");
+        signed_ad_hoc(&copy);
+        assert!(
+            runs(&copy, check),
+            "{name}: this Mac runs neither an ad hoc arm64e copy of {from} nor its x86_64 slice (is Rosetta installed?)"
+        );
     }
     // A different test process may have made the folder first: then its copies are used.
     let kept = made.keep();
@@ -164,6 +191,27 @@ fn made_stand_ins() -> PathBuf {
     }
     assert!(folder.join("sleep").exists(), "the stand-ins are in place");
     folder
+}
+
+/// Signs `program` ad hoc, so that it is no program of the system.
+#[cfg(target_os = "macos")]
+fn signed_ad_hoc(program: &Path) {
+    let signed = Process::new("/usr/bin/codesign")
+        .args(["--force", "--sign", "-"])
+        .arg(program)
+        .output()
+        .expect("codesign runs");
+    assert!(signed.status.success(), "{} is signed", program.display());
+}
+
+/// Whether `program` runs with `args` and ends well.
+#[cfg(target_os = "macos")]
+fn runs(program: &Path, args: &[&str]) -> bool {
+    Process::new(program)
+        .args(args)
+        .env_clear()
+        .status()
+        .is_ok_and(|status| status.success())
 }
 
 /// A link with each event it got, so that an event that comes before an answer is not lost.

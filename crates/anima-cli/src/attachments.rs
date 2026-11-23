@@ -1,6 +1,5 @@
 //! `anima file`: the files of a record and the archives of an import (K-E4 Section 9;
-//! FIL-001 to FIL-005). A record is `kind:id`. The bytes stream between a file of this computer
-//! and the hub; they never go to a terminal.
+//! FIL-001 to FIL-005).
 
 pub mod change;
 pub mod documents;

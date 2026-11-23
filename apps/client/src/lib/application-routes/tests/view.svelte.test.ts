@@ -122,7 +122,7 @@ it('H21: the page of a route gives its state, its checks, its traffic and Make p
   expect(text()).toContain('Waits for consent at the machine');
   const checks = document.querySelector('ul[aria-label="Checks"]')?.textContent ?? '';
   expect(checks).toContain('The name is proven');
-  expect(checks).toContain('Not given');
+  expect(checks).toContain('Not needed while the route is private');
   expect(checks).toContain('Valid');
   const makePublic = document.querySelector('section[aria-label="Make public"] button');
   expect(makePublic?.getAttribute('aria-disabled')).toBe('true');

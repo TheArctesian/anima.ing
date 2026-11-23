@@ -1,5 +1,4 @@
-//! The unpack of a `.zip` (R-329) with the rules of the `.tar.gz`, against hostile
-//! archives made in the test.
+//! R-329.
 
 use std::io::{Seek as _, Write as _};
 
@@ -11,7 +10,6 @@ use zip::write::SimpleFileOptions;
 
 use super::kit::{FAKE_RUNTIME, PROGRAM, entry, folders, release};
 
-/// One entry of a test zip.
 enum Part<'a> {
     File(&'a str, u32, &'a [u8]),
     Folder(&'a str),

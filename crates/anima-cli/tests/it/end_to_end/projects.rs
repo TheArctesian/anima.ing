@@ -1,6 +1,4 @@
-//! The engine and Projects together (XP-02; CMD-030): `anima` sets Projects on, connects a
-//! GitHub App with a key from a 0600 file, syncs, lists the projects and leaves one out, and
-//! the MCP read tool sees the same projects. The hub reads a loopback GitHub, never GitHub.
+//! The engine and Projects together (XP-02; CMD-030).
 
 use std::time::Duration;
 
@@ -16,7 +14,7 @@ use super::words;
 use crate::kit::{Anima, github, real_hub::RealHub};
 use crate::mcp::session::Desk;
 
-/// A throwaway 2048-bit App key in a 0600 file of the test's own (CMD-025).
+/// A throwaway App key in a 0600 file (CMD-025).
 fn key_file(folder: &tempfile::TempDir) -> std::path::PathBuf {
     let key = RsaPrivateKey::new(&mut OsRng, 2048).expect("a key");
     let pem = key.to_pkcs1_pem(LineEnding::LF).expect("PEM");
@@ -26,7 +24,6 @@ fn key_file(folder: &tempfile::TempDir) -> std::path::PathBuf {
     path
 }
 
-/// The slugs `anima project list --json` prints, in its order.
 async fn listed(anima: &Anima) -> Vec<String> {
     let list = anima.run(&words("project list --json")).await;
     assert_eq!(list.code, 0, "{list:?}");
@@ -43,7 +40,6 @@ fn slugs(items: &Value, node: impl Fn(&Value) -> &Value) -> Vec<String> {
         .collect()
 }
 
-/// Waits until the account has a finished run and its projects are listed.
 async fn synced(anima: &Anima, want: usize) -> Vec<String> {
     for _ in 0..200 {
         let account = anima.run(&words("source get mine --json")).await;

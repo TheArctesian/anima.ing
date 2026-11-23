@@ -1,4 +1,4 @@
-//! `anima device delete`: removes a device with its credentials, checks and history (DEV-015).
+//! DEV-015.
 
 use super::documents::{DeviceDelete, device_delete};
 use super::get::resolve;

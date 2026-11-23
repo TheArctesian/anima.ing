@@ -1,14 +1,9 @@
-//! What the units' sandboxes hide from the daemon (MET-019): a binary under a hidden folder never
-//! starts, so `install` refuses it. Read from the unit templates' `ProtectHome=yes` and
-//! `PrivateTmp=yes`; the test holds the two together.
+//! What the units' sandboxes hide (MET-019): a binary under a hidden folder never starts.
 
 use std::path::{Path, PathBuf};
 
 use super::render::Unit;
 
-/// The folders `unit`'s sandbox hides: `ProtectHome=yes` hides `/home`, `/root` and
-/// `/run/user`; `PrivateTmp=yes` gives the daemon its own `/tmp` and `/var/tmp`. A
-/// `LaunchAgent` has no sandbox.
 pub(super) const fn hidden_roots(unit: Unit) -> &'static [&'static str] {
     match unit {
         Unit::SystemdSystem => &["/home", "/root", "/run/user", "/tmp", "/var/tmp"],
@@ -17,9 +12,8 @@ pub(super) const fn hidden_roots(unit: Unit) -> &'static [&'static str] {
     }
 }
 
-/// The hidden folder `program` (a real path) is under, if any. `roots` pairs each of
-/// [`hidden_roots`] with its real path (`None` when it does not exist), since a root may be a
-/// link: on Fedora Atomic `/home` is `/var/home`.
+/// `roots` pairs each root with its real path, since a root may be a link: on Fedora Atomic
+/// `/home` is `/var/home`.
 pub(super) fn hidden_root(
     roots: &[(&'static str, Option<PathBuf>)],
     program: &Path,
@@ -56,8 +50,6 @@ mod tests {
                     .lines()
                     .find_map(|line| line.trim().strip_prefix(key)?.strip_prefix('='))
             };
-            // Only these values are understood here: `tmpfs`, say, hides as well, and must be
-            // added to `hidden_roots` before it is allowed.
             let home = value("ProtectHome");
             assert!(
                 matches!(home, None | Some("yes" | "read-only")),

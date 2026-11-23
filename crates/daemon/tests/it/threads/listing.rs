@@ -81,6 +81,8 @@ async fn th46_a_thread_that_runs_is_not_removed_and_a_stopped_one_leaves_the_lis
             program_path: None,
             draft: None,
             attachments: Vec::new(),
+            worktree: false,
+            base: None,
         })
         .await;
     let Outcome::Started { thread, .. } = client.done(start).await else {
@@ -190,6 +192,8 @@ async fn thr_041_a_thread_with_no_project_runs_in_a_new_folder_that_stays_when_i
             program_path: None,
             draft: None,
             attachments: Vec::new(),
+            worktree: false,
+            base: None,
         })
         .await;
     let Outcome::Started { thread, folder } = client.done(start).await else {
@@ -223,6 +227,8 @@ async fn thr_041_a_refused_start_with_no_project_leaves_no_folder() {
             program_path: None,
             draft: None,
             attachments: Vec::new(),
+            worktree: false,
+            base: None,
         })
         .await;
     assert_eq!(
@@ -255,6 +261,8 @@ async fn th61_a_thread_the_runner_started_is_listed_as_started_by_anima_after_a_
             program_path: None,
             draft: None,
             attachments: Vec::new(),
+            worktree: false,
+            base: None,
         })
         .await;
     let Outcome::Started { thread, .. } = client.done(start).await else {

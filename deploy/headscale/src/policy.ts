@@ -1,8 +1,4 @@
-/**
- * Anima's Headscale grants policy (VPN-004), parsed into resolved selectors. Pure. Only
- * the subset of the format Anima uses is accepted; anything else is a `PolicyError`, so
- * the model never silently disagrees with the server about a rule it does not understand.
- */
+/** Anima's Headscale grants policy (VPN-004); any part Anima does not model is a `PolicyError`, so the model never disagrees with the server silently. */
 
 export type PolicyErrorCode =
   | 'invalid-shape'
@@ -79,8 +75,7 @@ export const MAX_PORT = 65_535;
 export function parsePolicy(raw: unknown): Policy {
   const root = record(raw, 'policy');
   onlyKeys(root, SECTIONS, 'policy');
-  // A missing grants list makes Headscale allow everything; an empty one denies
-  // everything. Both are refused because Anima requires the D-4 grants (VPN-004).
+  // Headscale allows everything with no grants list and denies everything with an empty one; Anima requires the D-4 grants (VPN-004).
   const grants = list(root.grants, 'grants');
   if (grants.length === 0) throw new PolicyError('invalid-shape', 'grants is empty; Anima requires the D-4 grants');
   const scope = parseScope(root);
@@ -207,7 +202,6 @@ export function parsePrefix(text: string): Prefix {
   return { base, bits };
 }
 
-/** The prefix in CIDR form, as `parsePrefix` reads it (`10.10.0.0/24`). */
 export function prefixText(prefix: Prefix): string {
   const octets = [24, 16, 8, 0].map((shift) => String(Math.floor(prefix.base / 2 ** shift) % 256));
   return `${octets.join('.')}/${String(prefix.bits)}`;

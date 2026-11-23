@@ -19,6 +19,7 @@ export const KIND_LABELS: Record<ChannelKind, string> = {
   NTFY: 'ntfy',
   EMAIL: 'Email',
   APPRISE: 'Apprise',
+  MOBILE: 'Mobile',
 };
 
 /** NOT-003: a new check starts with the channels the operator marked "on by default". */

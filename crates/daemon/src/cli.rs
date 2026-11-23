@@ -1,8 +1,4 @@
-//! The command line: `anima-daemon enrol <code|-> [--hub <origin>]`, `anima-daemon run`,
-//! `anima-daemon install [--system]` (MET-012, MET-019), `anima-daemon uninstall` (HMD-056),
-//! `anima-daemon stop` (HMD-055),
-//! `anima-daemon key read <name>` and `anima-daemon key forget` (K-E5 Section 2.1), and
-//! `anima-daemon --version`, which the desktop app reads to update the copy it installed (HMD-055).
+//! The command line (MET-012, MET-019, HMD-055, HMD-056, K-E5 Section 2.1).
 
 use std::io::{BufRead, Read as _};
 use std::path::PathBuf;
@@ -24,47 +20,44 @@ pub const USAGE: &str = "usage: anima-daemon enrol <code | -> [--hub <origin>]
        anima-daemon holder <folder> [<bytes kept for each thread>]
        anima-daemon --version";
 
-/// What `--version` prints: the name and the release version (R-122), one line. The desktop app
-/// reads it to decide whether the daemon it carries is newer than the installed copy (HMD-055),
-/// so its form does not change.
+/// The desktop app reads this line to compare versions (R-122, HMD-055), so its form does not
+/// change.
 #[must_use]
 pub fn version_line() -> String {
     format!("anima-daemon {}", env!("CARGO_PKG_VERSION"))
 }
 
-/// Printed when the code is on the command line, where `ps` and the shell history show it.
 pub const ARGV_WARNING: &str = "warning: a code on the command line shows in process lists and shell history; next time run `anima-daemon enrol -` and paste the code at the hidden prompt";
 
-/// What the operator asked for.
 pub enum Command {
-    /// Exchange an enrolment code for a token and store both (K8 Section 3).
-    Enrol { code: CodeSource, hub: Origin },
-    /// Sample and push until stopped (K8 Sections 4 to 7). With `--hosted-hub DIR`, the daemon
-    /// is the one in the container of a hosted hub, whose data is in `DIR` (HMD-071).
-    Run { hosted_hub: Option<PathBuf> },
-    /// Write the unit that starts `run` at login or boot, and start it (MET-019, D-10).
-    Install { target: Target },
-    /// Stop and delete the user unit, then forget the token and the key cache (HMD-056).
+    Enrol {
+        code: CodeSource,
+        hub: Origin,
+    },
+    /// `hosted_hub` is the data folder of the hosted hub whose container runs this daemon
+    /// (HMD-071).
+    Run {
+        hosted_hub: Option<PathBuf>,
+    },
+    Install {
+        target: Target,
+    },
     Uninstall,
-    /// Stop the user unit and keep its file and the token, before the copy is replaced (HMD-055).
     Stop,
-    /// Write the cached value of one operational key to standard output (K-E5 Section 2.1).
-    KeyRead { name: String },
-    /// Delete the whole key cache, as when the daemon leaves the machine.
+    KeyRead {
+        name: String,
+    },
     KeyForget,
-    /// Drive the agent threads of this computer, with no hub and no enrolment (stage 1b of
-    /// the agent threads; `run` drives them too).
     Threads,
-    /// Hold the agent programs of the threads; the daemon starts it (THR-113).
+    /// Started by the daemon, not the operator (THR-113).
     Holder {
         folder: std::path::PathBuf,
         limit: usize,
     },
-    /// Print [`version_line`]: no home, no token and no network.
+    /// Prints [`version_line`]: no home, no token and no network.
     Version,
 }
 
-/// Where the enrolment code comes from: the command line, or standard input for `-`.
 pub enum CodeSource {
     Given(EnrolmentCode),
     Stdin,
@@ -82,10 +75,8 @@ pub enum CliError {
     NotAKeyName,
 }
 
-/// Reads the arguments after the program name.
-///
 /// # Errors
-/// [`CliError`] for a command, option or code that does not read. No error holds the code.
+/// [`CliError`] when the arguments do not read; no error holds the code.
 pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Command, CliError> {
     let mut args = args.into_iter();
     match args.next().as_deref() {
@@ -102,7 +93,7 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Command, CliError
     }
 }
 
-/// `holder <folder> [<bytes>]`: an absolute folder, and the limit of each thread (0: the default).
+/// A limit of 0 means the default.
 fn holder(mut args: impl Iterator<Item = String>) -> Result<Command, CliError> {
     let folder = args
         .next()
@@ -188,16 +179,10 @@ fn enrol(args: impl Iterator<Item = String>) -> Result<Command, CliError> {
 /// The most bytes read for a code from standard input: a code is under 40.
 const CODE_INPUT_LIMIT: usize = 256;
 
-/// The enrolment code on the first line of `input`: at most 256 bytes are read, and the line
-/// may end in LF or CRLF.
-///
 /// # Errors
-/// [`CliError::NotACode`] for an empty line, a line that is not a code (a code split by a
-/// newline leaves only its first part), or 256 bytes with no newline. The error holds none of
-/// the input.
+/// [`CliError::NotACode`] when the first line is not a code; the error holds none of the input.
 ///
-/// The code also stays in the `StdinLock`'s own buffer, which is not wiped (LOG-007); the
-/// process is short-lived, and only reads the one line.
+/// The `StdinLock`'s own buffer is not wiped (LOG-007); the process is short-lived.
 pub fn read_code(mut input: impl BufRead) -> Result<EnrolmentCode, CliError> {
     // The buffer has room for every byte that can come, so it never moves and is wiped whole.
     let mut line = Zeroizing::new(String::with_capacity(CODE_INPUT_LIMIT + 1));
@@ -209,8 +194,6 @@ pub fn read_code(mut input: impl BufRead) -> Result<EnrolmentCode, CliError> {
     code_from_line(&line)
 }
 
-/// The code in `line`, which may end in one LF or CRLF (a terminal read gives none).
-///
 /// # Errors
 /// [`CliError::NotACode`] when the rest is not a code.
 pub fn code_from_line(line: &str) -> Result<EnrolmentCode, CliError> {

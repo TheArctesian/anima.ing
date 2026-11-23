@@ -1,12 +1,9 @@
-// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { HARDEN_TIMEOUT_MS, fakeHost, mutatingCalls, removeHosts, type Host } from "./vps-host.ts";
 
-// VP-13 security review F1 and F6: `harden.sh probe` makes anima-probe, the hub's SSH user, with the
-// fixed uid the firewall confines and one key limited to the hub, and `harden.sh check` reports an
-// anima-probe that is more than that. Neither prints key material (LOG-007).
+// VP-13 security review F1 and F6; LOG-007.
 setDefaultTimeout(HARDEN_TIMEOUT_MS);
 afterEach(removeHosts);
 
@@ -21,7 +18,6 @@ beforeEach(() => {
   host = fakeHost();
 });
 
-/** Write the public key file the operator copied to the VPS; returns the --key option. */
 function keyFile(text: string): string {
   const file = join(host.root, "..", "anima-probe.pub");
   writeFileSync(file, text);

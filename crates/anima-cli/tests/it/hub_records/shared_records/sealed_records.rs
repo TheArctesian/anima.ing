@@ -1,5 +1,4 @@
-//! `anima sealed-record` against the scripted hub (K-E5 Section 3; VLT-001): the commands move
-//! opaque bytes and never print them unless asked.
+//! `anima sealed-record` (K-E5 Section 3; VLT-001).
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use serde_json::{Value, json};

@@ -108,7 +108,7 @@ Environment variables, read once in `main.rs` into a typed `Config` that is pass
 | `ANIMA_KEY_FILE` | File containing the credential encryption key (SEC-004) | `/run/secrets/anima_key` |
 | `ANIMA_GUACD` | Gateway address | `guacd:4822` |
 | `ANIMA_PERMITTED_NETWORKS` | Comma-separated CIDRs (NET-001) | VPN range + site subnets |
-| `ANIMA_PROBE_DENY` | Comma-separated CIDRs that checks must never probe: the hub's own Docker networks and public address (R-030). (Phase 2) Also applies to session and metrics targets (P2-004). (Phase 3) Also applies to notification and RDAP targets (P3-003) | empty; the hub logs a warning at start when empty |
+| `ANIMA_PROBE_DENY` | Comma-separated CIDRs that checks must never probe: the hub's own Docker networks and public address (R-030). (Phase 2) Also applies to session and metrics targets (P2-004). (Phase 3) Also applies to notification and RDAP targets (P3-003) | empty; the hub logs a warning at start when empty. A hosted hub (`ANIMA_HOSTED_CLOUD_KEY_FILE`) does not start when it is empty: the pool gives it the bridge of the containers and the host (R-030; `anima-local-hub run --probe-deny`) |
 | `ANIMA_GUACD_DRIVE_ROOT` (Phase 2) | guacd's path for shared drives; an absolute path, because guacd resolves it in its own file system | `/var/lib/guacd/drives` |
 | `ANIMA_TAILSCALE_LOCALAPI` (Phase 2) | `host:port` of the LocalAPI proxy (D-4); empty: Tailscale ping checks are Unknown with a message | empty |
   | `ANIMA_PUBLIC_ORIGIN` | The origin clients use (`https://hub.anima.ing`). The cookie Origin check and the CSP use it | `https://hub.anima.ing` |

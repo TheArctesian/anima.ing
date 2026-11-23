@@ -1,4 +1,4 @@
-//! The `vpn` tool set: the VPN picture and route approval. No tool makes a VPN key (MCP-004).
+//! No tool makes a VPN key (MCP-004).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

@@ -1,5 +1,4 @@
-//! The device and time refusals, their order, and what the hub takes (K8 Sections 4 and 6,
-//! MET-017).
+//! K8 Sections 4 and 6, MET-017.
 
 use std::collections::BTreeMap;
 
@@ -117,7 +116,6 @@ fn met_014_a_batch_the_daemon_makes_is_one_the_hub_takes_back_unchanged() {
     assert_eq!(read.check(device(), now()).unwrap().points, points);
 }
 
-/// What the hub takes of one GPU column of `kind` whose mean is `value`, or its refusal.
 fn taken_gpu_value(kind: &str, value: f64) -> Result<Option<f64>, RefusalCode> {
     let mut batch = example();
     batch.series = vec![crate::wire::BatchSeries {

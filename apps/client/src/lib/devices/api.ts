@@ -77,24 +77,6 @@ export const Devices = graphql(`
   }
 `);
 
-export const DeviceHosts = graphql(`
-  query DeviceHosts($after: String) {
-    devices(first: 200, after: $after) {
-      pageInfo {
-        hasNextPage
-        endCursor
-      }
-      edges {
-        node {
-          id
-          host
-          metricsSource
-        }
-      }
-    }
-  }
-`);
-
 export const Tags = graphql(`
   query Tags {
     tags

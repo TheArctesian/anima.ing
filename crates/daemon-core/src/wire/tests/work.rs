@@ -1,5 +1,3 @@
-//! The bodies of the work route read and write as the contract K10 spells them.
-
 use serde_json::json;
 
 use crate::wire::{

@@ -2,9 +2,9 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { fakeCalls, type FakeCalls } from '$lib/containers/containers.fixture';
-import ContainersPanel from '$lib/containers/ContainersPanel.svelte';
-import { ContainersStore } from '$lib/containers/store.svelte';
 import { installAnimations } from '$lib/forms/animations.fixture';
+import CatalogueView from './CatalogueView.svelte';
+import { CatalogueStore } from './store.svelte';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -34,10 +34,9 @@ async function settle(): Promise<void> {
 const button = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find((each) => (each.getAttribute('aria-label') ?? each.textContent.trim()) === label);
 
 async function openCatalogue(): Promise<void> {
-  const store = new ContainersStore(calls);
-  app = mount(ContainersPanel, { target: document.body, props: { store } });
-  flushSync();
-  button('Catalogue')?.click();
+  const store = new CatalogueStore(calls);
+  app = mount(CatalogueView, { target: document.body, props: { store } });
+  await store.open();
   await settle();
 }
 

@@ -1,5 +1,4 @@
-//! `anima project group`: the operator's own groups of projects (PRO-059 to PRO-063). A group
-//! is named by its name or its ID; projects by their slugs.
+//! `anima project group` (PRO-059 to PRO-063).
 
 pub mod documents;
 pub mod lookup;

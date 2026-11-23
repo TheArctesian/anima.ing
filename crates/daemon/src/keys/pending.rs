@@ -1,45 +1,34 @@
-//! What the key store still owes after the Keychain made a call wait for the person (R-322):
-//! pure, from the answers and the clock. A save that waited is tried again on the schedule of
-//! [`Tries`]; the cache is only a cache, so it is kept in memory meanwhile. A delete that
-//! waited, as after a refused token (R-147), is tried again at each round until it answers, as
-//! it removes key values; a save that lands late must not leave them.
+//! What the key store owes after the Keychain made a call wait (R-322); the cache stays in memory meanwhile.
+//! A delete that waited (R-147) is tried at each round, as it removes key values.
 
 use chrono::{DateTime, Utc};
 
 use super::store::KeyStoreError;
 use crate::keychain_wait::Tries;
 
-/// The calls of the key store that wait for the Keychain.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Pending {
-    /// A save waited: saves are tried on this schedule only.
     saves: Option<Tries>,
-    /// A delete of the whole cache waited: it is tried at each round until it answers.
     delete: bool,
 }
 
 impl Pending {
-    /// Whether a call of the store waits for the person: the mark for the app is then put.
     #[must_use]
     pub const fn waits(&self) -> bool {
         self.saves.is_some() || self.delete
     }
 
-    /// Whether a delete is owed: it is tried at each round.
     #[must_use]
     pub const fn delete_owed(&self) -> bool {
         self.delete
     }
 
-    /// Whether a save may run at `now`: always, unless saves wait and the next try is later.
     #[must_use]
     pub fn save_due(&self, now: DateTime<Utc>) -> bool {
         self.saves.is_none_or(|tries| tries.due(now))
     }
 
-    /// Takes the answer of a save at `now`. Returns true for the first save that waited, which
-    /// is logged. A save that answers also settles a delete that is owed: the record it wrote
-    /// holds no value of before.
+    /// True for the first save that waited. A save that answers settles an owed delete: its record holds no old value.
     pub fn saved(&mut self, answer: &Result<(), KeyStoreError>, now: DateTime<Utc>) -> bool {
         match answer {
             Ok(()) => {
@@ -58,8 +47,7 @@ impl Pending {
         }
     }
 
-    /// Takes the answer of a delete. Returns true for the first delete that waited, which is
-    /// logged. Any other failure leaves an owed delete owed.
+    /// True for the first delete that waited.
     pub fn deleted(&mut self, answer: &Result<(), KeyStoreError>) -> bool {
         match answer {
             Ok(()) => {

@@ -283,7 +283,9 @@
     font-size: var(--code-text-meta);
   }
 
+  /* The status or the age fades as the hover actions take its place, as T3's time label does. */
   .slot {
+    transition: opacity var(--spring-snappy);
     display: inline-flex;
     flex: none;
     align-items: center;

@@ -1,5 +1,4 @@
-//! The `agentUsage` member of a batch (K8 Section 4; R-135, AIS-018, AIS-019, AIS-024), and the
-//! hub's pure check of it.
+//! The `agentUsage` member of a batch (K8 Section 4; R-135, AIS-018, AIS-019, AIS-024).
 
 use std::collections::BTreeSet;
 
@@ -15,21 +14,17 @@ use crate::agent_usage::{
     UsageState, is_model, is_repository, is_session_id, is_word,
 };
 
-/// The use of the AI agent programs as a batch spells it: what the daemon can read, and the
-/// session days whose counts changed.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BatchAgentUsage {
     pub state: String,
     pub session_days: Vec<BatchSessionDay>,
-    /// The accounts of the programs (AIS-022, R-313). Present, even empty, it asks
-    /// the hub for its account salt (K8 Section 8.2).
+    /// Present, even empty, it asks the hub for its account salt (AIS-022, R-313, K8 Section 8.2).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub accounts: Option<Vec<BatchAccount>>,
 }
 
-/// The counts of one session on one UTC day. `source` is text, so an entry of a source this
-/// hub does not know can be dropped.
+/// One session on one UTC day; `source` is text, so an entry of a source this hub does not know can be dropped.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BatchSessionDay {
@@ -48,7 +43,6 @@ pub struct BatchSessionDay {
     pub models: Vec<BatchModel>,
 }
 
-/// The tokens of one model on one session day.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BatchModel {
@@ -60,8 +54,7 @@ pub struct BatchModel {
 }
 
 impl BatchAgentUsage {
-    /// The member a daemon in `state` sends with `session_days`; the caller gives at most
-    /// [`MAX_SESSION_DAYS`], and none unless it reads.
+    /// The caller gives at most [`MAX_SESSION_DAYS`], and none unless it reads.
     #[must_use]
     pub fn new(state: UsageState, session_days: &[SessionDay]) -> Self {
         Self {
@@ -71,11 +64,7 @@ impl BatchAgentUsage {
         }
     }
 
-    /// What the hub stores: the state when it knows it, and the session days of the sources it
-    /// knows; `None` when the member breaks K8 Section 4: a `state` or a `source` that is not 1
-    /// to 32 bytes of `[a-z_]`; session days with a known `state` other than `reading`; more
-    /// than 16 session days, or two with one source, ID and day; an entry that breaks
-    /// [`BatchSessionDay::fits`].
+    /// What the hub stores, with unknown sources dropped; `None` when the member breaks K8 Section 4.
     #[must_use]
     pub fn accepted(self) -> Option<AgentUsage> {
         let state = UsageState::parse(&self.state);
@@ -111,10 +100,6 @@ impl BatchAgentUsage {
 }
 
 impl BatchSessionDay {
-    /// Whether the entry keeps the K8 rules: a `source` of `[a-z_]`, an ID of 1 to 64 bytes of
-    /// `[0-9A-Za-z_-]`, a start not after the end and a `day` between their dates, a
-    /// repository by [`is_repository`], counts of at most 2^53 − 1, and at most 16 models with
-    /// unique names by [`is_model`].
     #[must_use]
     pub fn fits(&self) -> bool {
         let names: BTreeSet<&str> = self.models.iter().map(|one| one.model.as_str()).collect();
@@ -133,7 +118,6 @@ impl BatchSessionDay {
                 .all(|one| is_model(&one.model) && one.tokens().fits())
     }
 
-    /// The session day of a source this side knows; `None` for any other.
     fn known(self) -> Option<SessionDay> {
         Some(SessionDay {
             source: Source::parse(&self.source)?,

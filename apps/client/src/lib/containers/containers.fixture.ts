@@ -1,5 +1,5 @@
 import type { HubError, HubResult } from '$lib/hub/hub';
-import type { CatalogueEntry } from '$lib/catalogue/api';
+import type { CatalogueCalls, CatalogueEntry } from '$lib/catalogue/api';
 import type { Container, ContainerCalls, ContainerDetail, ContainerLog, ContainerNetwork, ContainerStorage, ImageUpdate } from './api';
 
 // Test support: containers in the hub's shape, and calls that answer with them and record what the screen asked.
@@ -136,7 +136,7 @@ function entry(id: string, name: string, changes: Partial<CatalogueEntry>): Cata
   };
 }
 
-export interface FakeCalls extends ContainerCalls {
+export interface FakeCalls extends ContainerCalls, CatalogueCalls {
   /** Each read of details, in order: the container. */
   readonly detailsAsked: string[];
   storageAsked: number;

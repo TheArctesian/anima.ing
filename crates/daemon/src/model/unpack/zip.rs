@@ -1,7 +1,5 @@
-//! The entries of a `.zip` (R-329), with the rules of the `.tar.gz`: only a regular
-//! file, a folder or a symbolic link (the Unix type bits, when the entry has them, say which;
-//! the bytes of a link are its target, kept for [`super::links`]), no encrypted entry, the declared size and the bytes read both within the limit, so a zip
-//! bomb stops at the limit.
+//! The entries of a `.zip` (R-329), with the rules of the `.tar.gz`.
+//! The declared size and the bytes read are both bounded, so a zip bomb stops at the limit.
 
 use std::fs::File;
 
@@ -9,7 +7,6 @@ use daemon_core::model_work::cause::Cause;
 
 use super::{BAD_ARCHIVE, Kind, Writer};
 
-/// The type bits of a Unix mode, and the two types that an entry may have.
 const TYPE_BITS: u32 = 0o170_000;
 const REGULAR: u32 = 0o100_000;
 const FOLDER: u32 = 0o040_000;

@@ -1,8 +1,4 @@
-//! The three presses through the real hub (PRJ-039, PRJ-041, CMD-030): `anima source connect
-//! github --no-browser` at a terminal prints the one-time link, the browser stand-in follows it
-//! through Create (the stub plays GitHub's conversion), the hub's poll finds the installation,
-//! the command ends with exit 0, and `anima source list` and `anima project list` show the
-//! account and the stub's repositories. The hub reads a loopback GitHub, never GitHub.
+//! `anima source connect github` through the real hub (PRJ-039, PRJ-041, CMD-030).
 
 use std::time::Duration;
 
@@ -28,7 +24,6 @@ const INSTALLATIONS: &str = include_str!(concat!(
 ));
 const LINK_START: &str = "https://hub.anima.ing/connect/github?ticket=";
 
-/// GitHub's reply to the conversion of `CODE`: the App, its owner and a throwaway key.
 fn conversion(stub: &Stub) {
     let key = RsaPrivateKey::new(&mut OsRng, 2048).expect("a key");
     let pem = key.to_pkcs1_pem(LineEnding::LF).expect("PEM");
@@ -57,7 +52,6 @@ fn conversion(stub: &Stub) {
     );
 }
 
-/// The one-time link as the terminal printed it.
 fn link_on(screen: &str) -> String {
     let at = screen.find(LINK_START).expect("the link on the screen");
     screen[at..]
@@ -150,8 +144,6 @@ async fn prj_039_the_command_connects_github_in_three_presses_and_the_projects_a
     );
 }
 
-/// `openGithubConnect` for attempt `id` as the hub's own client sends it, with or without the
-/// agent declaration; the whole answer.
 async fn open_as(hub: &RealHub, token: &str, id: &str, agent: bool) -> Value {
     let body = json!({
         "query": "mutation($id: ID!) { openGithubConnect(id: $id) { expiresAt } }",

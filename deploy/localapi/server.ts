@@ -1,5 +1,4 @@
-// The I/O edge of the LocalAPI proxy (D-4): forwards the allowed calls to tailscaled's unix socket.
-// Config is read once at startup; the fetch handler takes it as a parameter.
+// The I/O edge of the LocalAPI proxy (D-4).
 import { decide } from "./allow.ts";
 
 export interface LocalApiConfig {
@@ -26,7 +25,6 @@ function reply(status: number, body: string, line: string): Response {
   return new Response(body, { status, headers: { "content-type": "text/plain" } });
 }
 
-/** Reads at most MAX_RESPONSE_BYTES; null when the upstream sends more. */
 async function readCapped(response: Response): Promise<Uint8Array | null> {
   const chunks: Uint8Array[] = [];
   let size = 0;

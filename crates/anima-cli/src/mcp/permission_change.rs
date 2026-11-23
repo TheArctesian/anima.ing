@@ -1,7 +1,4 @@
-//! One change to a hub's saved MCP permissions, and the one path that reads and saves them
-//! (MCP-014, MCP-018). `anima mcp permissions` and the desktop Settings panel both go through
-//! here, so the file format and its atomic replace live in one place. Pure apart from `read`,
-//! `edit` and `save`.
+//! The one path that reads and saves a hub's MCP permissions, for the command and the panel (MCP-014, MCP-018).
 
 use std::path::Path;
 
@@ -15,7 +12,6 @@ use crate::contexts::config::Config;
 use crate::failure::Failure;
 use crate::hub::Origin;
 
-/// What the operator asks for. The panel sends it as `{ "type": "choose" | "bulk" | "reset", ... }`.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(
     tag = "type",
@@ -38,8 +34,7 @@ pub enum Change {
 }
 
 impl Change {
-    /// Whether this turns change tools on without a question per call; the operator confirms
-    /// it first (MCP-014, MCP-020).
+    /// Whether this turns change tools on without a question per call, which the operator confirms (MCP-020).
     #[must_use]
     pub fn allows_changes(&self) -> bool {
         matches!(
@@ -48,8 +43,6 @@ impl Change {
         )
     }
 
-    /// Lays the change over `permissions`.
-    ///
     /// # Errors
     /// [`Failure::Usage`] naming a tool or set that does not exist.
     pub fn apply(&self, permissions: &mut Permissions, catalogue: &[Entry]) -> Result<(), Failure> {
@@ -96,7 +89,6 @@ pub struct Shown {
     pub tools: Vec<ShownTool>,
 }
 
-/// Every tool with its saved state for `origin`; with nothing given, the built-in defaults.
 #[must_use]
 pub fn shown(origin: &Origin, permissions: &Permissions) -> Shown {
     let rows = select(catalogue(), None, permissions, &Flags::default());
@@ -119,8 +111,6 @@ fn shown_tool(row: &Row) -> ShownTool {
     }
 }
 
-/// The saved permissions of `origin` in `config`; nothing saved is the built-in defaults.
-///
 /// # Errors
 /// [`Failure`] for a saved name that does not exist.
 pub fn saved_in(config: &Config, origin: &Origin) -> Result<Permissions, Failure> {
@@ -130,9 +120,6 @@ pub fn saved_in(config: &Config, origin: &Origin) -> Result<Permissions, Failure
     }
 }
 
-/// Writes `permissions` for `origin` into the configuration in `dir`, whole, by rename. The
-/// built-in defaults are saved as no entry.
-///
 /// # Errors
 /// [`Failure::Config`] when the file cannot be written.
 pub fn save(
@@ -150,8 +137,6 @@ pub fn save(
     Ok(config.save(dir)?)
 }
 
-/// The saved permissions of `origin`, shown.
-///
 /// # Errors
 /// [`Failure`] for an unreadable configuration or a saved name that does not exist.
 pub fn read(dir: &Path, origin: &Origin) -> Result<Shown, Failure> {
@@ -159,8 +144,6 @@ pub fn read(dir: &Path, origin: &Origin) -> Result<Shown, Failure> {
     Ok(shown(origin, &saved_in(&config, origin)?))
 }
 
-/// Applies `change` to the saved permissions of `origin` and saves them.
-///
 /// # Errors
 /// [`Failure`] for an unreadable or unwritable configuration, or a name that does not exist.
 pub fn edit(dir: &Path, origin: &Origin, change: &Change) -> Result<Shown, Failure> {

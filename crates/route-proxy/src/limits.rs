@@ -83,6 +83,14 @@ impl std::str::FromStr for Network {
 }
 
 impl Network {
+    /// True for a network wider than /8 of IPv4 or /16 of IPv6: never the network of the nodes
+    /// of Anima, and with `0.0.0.0/0` each address of the internet.
+    #[must_use]
+    pub const fn is_wide(&self) -> bool {
+        let least = if self.address.is_ipv4() { 8 } else { 16 };
+        self.prefix < least
+    }
+
     #[must_use]
     pub fn contains(&self, address: IpAddr) -> bool {
         match (self.address, address.to_canonical()) {

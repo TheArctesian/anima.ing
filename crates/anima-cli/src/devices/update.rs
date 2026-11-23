@@ -1,6 +1,3 @@
-//! `anima device update`: changes the fields that have a flag and leaves the rest. A flag of a
-//! settings group is laid over the group's current values, which are read first.
-
 use serde_json::json;
 
 use super::documents::{DeviceCurrent, DeviceUpdate, device_current, device_update};

@@ -7,5 +7,5 @@
   const words = $derived(UNLISTED[page.params['section'] as Unlisted]);
 </script>
 
-<!-- Models, Storage and Machines of Hosting: each says that its list is not built yet, and where the thing is today. -->
+<!-- Models of Hosting: each says that its list is not built yet, and where the thing is today. -->
 <NotYetListed title={words.title} line={words.line} link={words.devices ? { href: '/devices', words: 'Open Devices' } : undefined} />

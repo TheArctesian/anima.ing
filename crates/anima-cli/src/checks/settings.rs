@@ -1,9 +1,7 @@
-//! A check's configuration as label and value pairs, whatever its kind. Reads the `--json`
-//! form of the K1 `CheckConfig` (tagged by `__typename`), so `list` and `get` share it.
+//! Reads the `--json` form of the K1 `CheckConfig`, so `list` and `get` share it.
 
 use serde_json::Value;
 
-/// What identifies a check comes first; the other settings follow in alphabetical order.
 const FIRST: [&str; 13] = [
     "url",
     "domain",
@@ -20,7 +18,6 @@ const FIRST: [&str; 13] = [
     "children",
 ];
 
-/// The settings of `config`, the identifying ones first. Empty values are left out.
 #[must_use]
 pub fn settings(config: &Value) -> Vec<(String, String)> {
     let Some(fields) = config.as_object() else {
@@ -40,7 +37,6 @@ pub fn settings(config: &Value) -> Vec<(String, String)> {
     pairs
 }
 
-/// The settings as `name=value` text for one table cell.
 #[must_use]
 pub fn one_line(config: &Value) -> String {
     settings(config)
@@ -50,7 +46,6 @@ pub fn one_line(config: &Value) -> String {
         .join(" ")
 }
 
-/// A label for people: `timeoutMs` as `Timeout ms`.
 #[must_use]
 pub fn label(name: &str) -> String {
     let mut out = String::new();
@@ -79,7 +74,6 @@ fn render(value: &Value) -> Option<String> {
     }
 }
 
-/// A member of a list: a status range as `200-299`, a header or child as its name or ID.
 fn render_member(member: &Value) -> Option<String> {
     match member {
         Value::Object(fields) => match (fields.get("from"), fields.get("to")) {

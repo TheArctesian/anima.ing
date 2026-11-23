@@ -16,7 +16,7 @@ function oneOf<T extends string>(allowed: readonly T[], value: string): T {
   return found;
 }
 
-export const CHANNEL_KINDS = ['WEBHOOK', 'NTFY', 'EMAIL', 'APPRISE'] as const;
+export const CHANNEL_KINDS = ['WEBHOOK', 'NTFY', 'EMAIL', 'APPRISE', 'MOBILE'] as const;
 export const NOTIFICATION_KINDS = ['DOWN', 'UP', 'STILL_DOWN', 'CERTIFICATE_EXPIRY', 'DOMAIN_EXPIRY', 'TEST', 'REMINDER'] as const;
 export const TOKEN_SCOPES = ['READ', 'WRITE'] as const;
 export const MADE_FOR = ['USER', 'AGENT'] as const;

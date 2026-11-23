@@ -1,8 +1,5 @@
-//! `anima agents start`, `send`, `queue`, `set`, `approve`, `interrupt`, `stop`, `running`,
-//! `watch` and `raise-limit`: the person drives the agent threads of this computer through the runner of
-//! the daemon (TH13, THR-030, THR-049, THR-114). No MCP tool starts a thread or answers a
-//! request: an answer is a trust decision, and a start waits for the count of THR-114
-//! (Section 7 of cli-mcp-plan.md).
+//! The agent threads of this computer, through the daemon's runner (TH13, THR-030, THR-049).
+//! No MCP tool starts a thread or answers a request: an answer is a trust decision (THR-114).
 
 use std::path::PathBuf;
 
@@ -73,6 +70,13 @@ pub struct StartArgs {
     /// copy of an application. The runner takes only a copy that it finds itself.
     #[arg(long)]
     program_path: Option<PathBuf>,
+    /// Run the thread in a new worktree of its own of the repository at `--folder`, on a new
+    /// branch; your checkout does not change (TH116).
+    #[arg(long)]
+    worktree: bool,
+    /// The branch or commit that the worktree starts from (the current one when not named).
+    #[arg(long, requires = "worktree")]
+    base: Option<String>,
     /// The first prompt.
     prompt: String,
 }
@@ -112,9 +116,7 @@ impl StartArgs {
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let mut link = RunnerLink::connect().await?;
         let folder = std::path::absolute(&self.folder).unwrap_or(self.folder);
-        // What the files of the folder make the program do by itself, before the prompt goes
-        // (THR-046, OD-THR21: honoured, with a notice). A check that fails is said and does
-        // not stop the start.
+        // A failed folder check is said and does not stop the start (THR-046, OD-THR21).
         let checked = link
             .call(Action::Folder {
                 folder: folder.clone(),
@@ -140,6 +142,8 @@ impl StartArgs {
                 .map(|path| std::path::absolute(&path).unwrap_or(path)),
             draft: None,
             attachments: Vec::new(),
+            worktree: self.worktree,
+            base: self.base,
         };
         loop {
             match link.call(action.clone()).await? {
@@ -251,8 +255,7 @@ pub async fn running(invocation: &Invocation) -> Result<(), Failure> {
         return Ok(());
     };
     invocation.output.data(&threads, |threads| table(threads))?;
-    // Why a recent thread stopped, and an older holder (TH97, TH98): words the table has no
-    // room for.
+    // Stop reasons and the holder go below the table (TH97, TH98).
     let day_ago = chrono::Utc::now() - chrono::Duration::days(1);
     for row in threads.iter().filter(|row| row.started > day_ago) {
         if let (RunState::Stopped, Some(ended)) = (row.state, &row.ended) {

@@ -1,6 +1,3 @@
-//! A scripted hub: `POST /graphql` answers each operation from its script and records what it
-//! was sent.
-
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 
@@ -11,7 +8,6 @@ use axum::routing::{MethodRouter, post};
 use serde_json::{Value, json};
 use tokio::net::TcpListener;
 
-/// A request the hub received.
 #[derive(Clone, Debug)]
 pub struct Seen {
     pub operation: String,
@@ -23,7 +19,6 @@ pub struct Seen {
 
 #[derive(Default)]
 struct Script {
-    /// Answers by operation name; the last one repeats.
     answers: HashMap<String, VecDeque<Value>>,
     seen: Vec<Seen>,
 }
@@ -40,7 +35,7 @@ impl FakeHub {
         Self::start_with(MethodRouter::new()).await
     }
 
-    /// As [`FakeHub::start`], with `socket` answering `GET /graphql` (a subscription).
+    /// `socket` answers `GET /graphql` (a subscription).
     pub async fn start_with(socket: MethodRouter) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("a port");
         let origin = format!("http://{}", listener.local_addr().expect("an address"));
@@ -53,7 +48,6 @@ impl FakeHub {
         Self { origin, script }
     }
 
-    /// Answers `operation` with `body` (after any answers queued before it).
     pub fn answer(&self, operation: &str, body: Value) -> &Self {
         let mut script = self.script.lock().expect("script");
         script
@@ -69,7 +63,6 @@ impl FakeHub {
     }
 }
 
-/// `{"data": data}`.
 pub fn data(data: Value) -> Value {
     Value::Object(serde_json::Map::from_iter([("data".to_owned(), data)]))
 }
@@ -107,8 +100,7 @@ async fn answer(State(script): State<Shared>, headers: HeaderMap, body: String) 
         .to_string()
 }
 
-/// The name of a document sent without `operationName` (`anima api`): the word after
-/// `query` or `mutation`.
+/// The name of a document sent without `operationName` (`anima api`).
 fn operation_of(query: &Value) -> String {
     let text = query.as_str().unwrap_or_default();
     text.split_whitespace()

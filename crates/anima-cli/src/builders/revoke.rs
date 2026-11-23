@@ -1,4 +1,4 @@
-//! `anima builder revoke <id-or-name>`: deletes a builder and revokes its token (BLD-025).
+//! `anima builder revoke` (BLD-025).
 
 use super::documents::{BuilderList, BuilderRevoke, builder_list, builder_revoke};
 use crate::failure::{Failure, Hint};

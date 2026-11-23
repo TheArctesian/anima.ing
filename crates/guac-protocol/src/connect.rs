@@ -80,6 +80,7 @@ impl FromIterator<(String, String)> for ArgValues {
 
 /// Everything the handshake sends after `select`.
 ///
+/// `display` and `timezone` come from the client; `name`, `audio` and `values` come from the hub.
 /// No `Debug`: `values` holds secrets.
 pub struct ConnectParams {
     pub display: Display,

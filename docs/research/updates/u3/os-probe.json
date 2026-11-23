@@ -1,0 +1,18 @@
+{
+  "os": "omarchy",
+  "version": "4.5.0",
+  "preferred_system_update": [
+    "/usr/share/omarchy/bin/omarchy",
+    "update"
+  ],
+  "arch_package_update": [
+    "/usr/bin/pacman",
+    "-Syu"
+  ],
+  "executed": false,
+  "unverified": [
+    "privileged remote execution",
+    "reboot and reconnect",
+    "operating-system rollback"
+  ]
+}

@@ -1,5 +1,3 @@
-//! `anima maintenance start` and `anima maintenance stop`: a manual window on or off.
-
 use super::documents::{MaintenanceSetActive, maintenance_set_active};
 use super::list::find;
 use crate::failure::Failure;

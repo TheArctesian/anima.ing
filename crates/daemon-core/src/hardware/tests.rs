@@ -1,6 +1,3 @@
-//! Tests of the backend verdicts for a Mac, an NVIDIA Linux PC and a machine with no GPU, of
-//! the parse of the readers' output, and of the check of the batch member.
-
 use super::parse::{ioreg_active, pci_vendor, pmset_thermal, sysctl_number, usable_memory};
 use super::power::{Power, from_pmset};
 use super::*;

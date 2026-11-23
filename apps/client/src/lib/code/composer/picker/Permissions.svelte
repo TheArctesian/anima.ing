@@ -73,7 +73,11 @@
   {#if shown !== undefined}
     <div class="shown" aria-hidden="true">
       <span class="name" class:previewed={shown !== current}>{shown.label}</span>
-      <span class="description">{shown.can.can ? shown.description : shown.can.reason}</span>
+      <span class="descriptions">
+        {#each modes as mode (mode.id)}
+          <span class="description" class:hidden={mode !== shown}>{mode.can.can ? mode.description : mode.can.reason}</span>
+        {/each}
+      </span>
     </div>
   {/if}
 </div>
@@ -158,8 +162,18 @@
     color: var(--code-composer-picker-quiet);
   }
 
-  /* Two lines are kept so that the menu does not move while modes are previewed. */
+  /* Each mode's words stand in one cell, the hidden ones too, so the menu has the height of the longest and does not
+     move while modes are previewed; at least two lines are kept. */
+  .descriptions {
+    display: grid;
+  }
+
+  .description.hidden {
+    visibility: hidden;
+  }
+
   .description {
+    grid-area: 1 / 1;
     min-block-size: var(--code-composer-picker-description);
     color: var(--code-composer-picker-quiet);
     font-size: var(--code-text-meta);

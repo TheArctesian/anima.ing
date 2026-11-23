@@ -1,6 +1,3 @@
-//! The nouns for what every extension shares: the timeline, the links between records, the
-//! files of records and the proposals of an extraction.
-
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::{

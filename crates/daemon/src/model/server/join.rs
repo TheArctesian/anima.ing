@@ -7,13 +7,9 @@ use daemon_core::model_work::cause::{Cause, Containment};
 use super::Running;
 use crate::model::tree;
 
-/// The most time from the start of the launcher to its join of the cgroup of the server.
 pub(super) const JOIN: Duration = Duration::from_secs(5);
 
-/// `running` when its main process is in the cgroup of its server, or has ended. The launcher
-/// joins before it runs the runtime with `exec`, so until the join no code of the runtime runs
-/// and the tree reads empty. A launcher that is not in the cgroup after [`JOIN`] is ended with
-/// the tree, when `running` drops.
+/// The launcher joins before it `exec`s the runtime, so until the join the tree reads empty.
 pub(super) async fn joined(mut running: Running) -> Result<Running, Cause> {
     let Some(cgroup) = running.cgroup.clone() else {
         return Ok(running);

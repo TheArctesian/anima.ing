@@ -1,5 +1,3 @@
-//! `anima notify channel delete <channel>`.
-
 use super::channel::resolve;
 use super::documents::{ChannelDelete, channel_delete};
 use crate::failure::Failure;

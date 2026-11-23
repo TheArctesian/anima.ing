@@ -1,6 +1,4 @@
-//! The daemon documents, typed from K1 at build time (CMD-004). `DaemonEnrol` derives `Serialize`
-//! but not `Debug`: its answer holds the one-time enrolment code, which only `daemon enrol`
-//! prints, on purpose (CMD-014, LOG-007).
+//! `DaemonEnrol` has no `Debug`: its answer holds the one-time enrolment code (CMD-014, LOG-007).
 
 use graphql_client::GraphQLQuery;
 

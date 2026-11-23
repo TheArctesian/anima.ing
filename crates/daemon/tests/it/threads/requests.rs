@@ -41,6 +41,8 @@ async fn start(client: &mut Client, kit: &Kit) -> Uuid {
             program_path: None,
             draft: None,
             attachments: Vec::new(),
+            worktree: false,
+            base: None,
         })
         .await;
     let Outcome::Started { thread, .. } = client.done(start).await else {
@@ -102,6 +104,11 @@ async fn thr_113_a_second_runner_on_the_same_folder_ends_at_once() {
             break;
         }
         tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    if ended.is_none() {
+        // It must not run on, and start a holder, after the test fails.
+        let _ = second.kill();
+        let _ = second.wait();
     }
     assert!(
         ended.is_some_and(|status| !status.success()),

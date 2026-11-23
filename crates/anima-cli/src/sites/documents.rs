@@ -1,5 +1,3 @@
-//! The site documents, typed from K1 at build time (CMD-004).
-
 use graphql_client::GraphQLQuery;
 
 use crate::hub::scalars::Cidr;

@@ -1,5 +1,4 @@
-//! `anima site` and `anima device` against the real hub: each change read back through the hub
-//! (CMD-020, CMD-024, DEV-014).
+//! `anima site` and `anima device` against the real hub (CMD-020, CMD-024, DEV-014).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -8,7 +7,6 @@ use super::words;
 use crate::kit::real_hub::RealHub;
 use crate::kit::terminal::Terminal;
 
-/// The devices on the hub, as `[name, host, site name]`, read by the hub's own query.
 async fn devices_on(hub: &RealHub, reader: &str) -> Vec<[String; 3]> {
     let query = "{ devices(first: 200) { edges { node { name host site { name } } } } }";
     let data = hub.data(reader, query, json!({})).await;

@@ -1,11 +1,9 @@
-//! Whether a file or folder the unit relies on can be changed only by root or the user who
-//! installs it (MET-019): pure; the caller reads the modes and the account files.
+//! Whether a file or folder the unit relies on can be changed only by root or the installing user (MET-019).
 
 use super::plan::Target;
 
-/// A file's mode, owner and group, as `stat` gives them, and whether it has a POSIX access ACL.
-/// With an ACL the group bits of the mode are the ACL's mask, which named users and groups get
-/// too. macOS ACLs (`chmod +a`) do not show in the mode at all and are not read.
+/// With a POSIX ACL the group bits of the mode are the ACL's mask, which named users and groups get too.
+/// macOS ACLs (`chmod +a`) do not show in the mode and are not read.
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Stat {
     pub mode: u32,
@@ -14,23 +12,19 @@ pub(super) struct Stat {
     pub acl: bool,
 }
 
-/// Who installs, and which unit.
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Installer {
     pub target: Target,
     pub uid: u32,
-    /// The user's private group (see [`private_group`]); `None` when there is none.
     pub private_group: Option<u32>,
 }
 
-/// One account line of `/etc/passwd`.
 pub(super) struct Account<'a> {
     pub name: &'a str,
     pub uid: u32,
     pub gid: u32,
 }
 
-/// The account on one `/etc/passwd` line; `None` when it does not read. The IDs are trimmed.
 fn account(line: &str) -> Option<Account<'_>> {
     let mut fields = line.split(':');
     let name = fields.next()?;
@@ -39,19 +33,12 @@ fn account(line: &str) -> Option<Account<'_>> {
     Some(Account { name, uid, gid })
 }
 
-/// The accounts in `passwd` (the text of `/etc/passwd`); a line that does not read is skipped.
 pub(super) fn accounts(passwd: &str) -> impl Iterator<Item = Account<'_>> {
     passwd.lines().filter_map(account)
 }
 
-/// The group only user `uid` is in, from `passwd` and `group` (the text of `/etc/group`;
-/// `None` when it cannot be read): the user's primary group, named as the user, listing no
-/// other member, and no other account's primary group. `umask 002` homes rely on such a group;
-/// any other group may hold other users.
-///
-/// Only the files are seen, not other NSS sources (LDAP, sssd), so an account or a group
-/// member that lives elsewhere is unseen: this fails closed for an account missing from the
-/// files (no private group), and any line that does not read means no private group either.
+/// The group only user `uid` is in; `umask 002` homes rely on such a group.
+/// Only the files are read, not other NSS sources, so a line that does not read means no private group.
 pub(super) fn private_group(uid: u32, passwd: &str, group: Option<&str>) -> Option<u32> {
     let group = group?;
     if passwd
@@ -88,23 +75,12 @@ pub(super) fn private_group(uid: u32, passwd: &str, group: Option<&str>) -> Opti
     found.then_some(user.gid)
 }
 
-/// The group may write to what `stat` describes: it does not, or it is owned by the user, its
-/// group is the user's private one, and no ACL lets anyone else in through the mask.
 fn group_write_safe(stat: Stat, by: Installer) -> bool {
     stat.mode & 0o020 == 0
         || (stat.owner == by.uid && by.private_group == Some(stat.group) && !stat.acl)
 }
 
-/// Whether a folder on the binary's or the unit's path may stay there. For the user unit:
-/// owned by root or the user, and either sticky or not writable by others, and its group may
-/// write only when it is the user's folder in the user's private group. For the system unit,
-/// which runs the binary as another account: owned by root and writable by no one else, sticky
-/// or not.
-///
-/// The desktop shell keeps a stricter copy of the user rule (`apps/desktop/src-tauri/src/daemon/
-/// trust.rs`) that differs in two ways: it refuses a sticky folder others can write (1777), and
-/// a sticky folder whose group may write outside the user's private group (1775). The shell may
-/// be stricter, never looser; `tests/trust-cases.txt` pins both differences and every other case.
+/// The desktop shell keeps a copy of the user rule that may be stricter, not looser (`tests/trust-cases.txt`).
 pub(super) fn folder_trusted(stat: Stat, by: Installer) -> bool {
     match by.target {
         Target::User => {
@@ -116,8 +92,6 @@ pub(super) fn folder_trusted(stat: Stat, by: Installer) -> bool {
     }
 }
 
-/// Whether the binary itself may be started by the unit: owned by root or (user unit) the
-/// user, not writable by others, and writable by its group only as [`folder_trusted`] allows.
 pub(super) fn binary_trusted(stat: Stat, by: Installer) -> bool {
     match by.target {
         Target::User => {

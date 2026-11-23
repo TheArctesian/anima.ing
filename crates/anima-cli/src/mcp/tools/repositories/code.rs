@@ -1,5 +1,4 @@
-//! `anima_code_directory_list` (PRJ-039). Names only: there is no tool for the content of a
-//! file, because a file may hold a secret that nothing here can see (MCP-004).
+//! PRJ-039; no tool reads the content of a file, which may hold a secret (MCP-004).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

@@ -1,4 +1,4 @@
-//! `anima timeline list` against the scripted hub (TML-002, TML-005 to TML-007, CMD-026).
+//! TML-002, TML-005 to TML-007, CMD-026.
 
 use serde_json::{Value, json};
 

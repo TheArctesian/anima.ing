@@ -1,6 +1,5 @@
-//! The API key documents, typed from K1 at build time (CMD-004). `KeyCreate` derives neither
-//! `Debug` nor `Serialize`: its answer holds the new secret (CMD-014), which `key create`
-//! prints once, by hand.
+//! The API key documents (CMD-004). `KeyCreate` derives neither `Debug` nor `Serialize`: its
+//! answer holds the new secret (CMD-014).
 
 use graphql_client::GraphQLQuery;
 

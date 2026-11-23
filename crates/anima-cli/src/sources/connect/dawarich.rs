@@ -1,7 +1,5 @@
-//! `anima source connect dawarich`: connects a Dawarich server with an API key of its account
-//! (R-261). The key is the secret: it is asked for at the terminal with no echo, or comes from
-//! a private file (mode 0600) or from standard input, never from an argument, and is wiped
-//! after the request. It is never printed (CMD-014, CMD-025).
+//! The Dawarich API key never comes from an argument, is wiped after use and is never printed
+//! (R-261, CMD-014, CMD-025).
 
 use std::path::PathBuf;
 

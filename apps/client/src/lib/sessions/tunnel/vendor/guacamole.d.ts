@@ -86,6 +86,7 @@ declare namespace Guacamole {
     getHeight(): number;
     scale(scale: number): void;
     getScale(): number;
+    showCursor?(shown: boolean): void;
     onresize: ((width: number, height: number) => void) | null;
   }
 

@@ -1,6 +1,3 @@
-//! The K1 `WebInterfaceInput` as flags: `--label`, `--url`, `--open-in`. `create` takes them
-//! all with `--url` required; `update` takes each as a change over the current values.
-
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, json};

@@ -1,5 +1,4 @@
-//! The store of originals: private files, a handle that is checked, a limit of age and a
-//! limit of size (SHA-010 to SHA-014).
+//! The store of originals (SHA-010 to SHA-014).
 
 use std::time::{Duration, SystemTime};
 

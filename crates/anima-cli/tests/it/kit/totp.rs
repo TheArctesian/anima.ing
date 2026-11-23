@@ -1,5 +1,4 @@
-//! The authenticator app of the test: RFC 6238 codes from the seed the hub gave, written here
-//! apart from the hub's own code.
+//! The test's authenticator app: RFC 6238 codes, written apart from the hub's own code.
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -29,7 +28,6 @@ pub fn secret_of(uri: &str) -> Vec<u8> {
     out
 }
 
-/// The six-digit code for `secret` now (HMAC-SHA-1, 30 s steps).
 pub fn code_now(secret: &[u8]) -> String {
     let seconds = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -43,7 +41,6 @@ pub fn code_now(secret: &[u8]) -> String {
     format!("{:06}", (word & 0x7fff_ffff) % 1_000_000)
 }
 
-/// A six-digit code that is not `right`.
 pub fn wrong_code(right: &str) -> String {
     let first = if right.starts_with('0') { '1' } else { '0' };
     format!("{first}{}", &right[1..])

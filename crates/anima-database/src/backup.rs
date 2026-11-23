@@ -113,7 +113,7 @@ pub fn restore(tree: &Tree, layout: &Layout, file: &Path) -> Result<(), BackupEr
     // A whole path, so a name that starts with `-` is never read as an option.
     let file = fs::canonicalize(file).map_err(|_| BackupError::NoFile)?;
     let owner = urls::password(layout, Role::Owner)?.ok_or(BackupError::NoOwner)?;
-    // The password goes in a file only this user can read, not the command line (LOG-007).
+    // The password goes in a file only this user can read, never the command line or the environment (LOG-007).
     let password_file = layout.urls_folder().join("restore.pgpass");
     let line = Zeroizing::new(format!(
         "*:*:*:{}:{}\n",

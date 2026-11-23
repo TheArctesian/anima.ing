@@ -10,7 +10,7 @@ use crate::inventory::{
     is_build_target, is_tool_name, is_version,
 };
 
-/// The device's tool inventory as a batch spells it. It replaces the stored one whole.
+/// It replaces the stored inventory whole.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BatchInventory {
@@ -23,8 +23,7 @@ pub struct BatchInventory {
     pub build_targets: Vec<String>,
 }
 
-/// One tool found: a version, or a [`Reason`] as its `state` and no version. A state a newer
-/// daemon knows and this side does not reads as `failed`.
+/// A version, or a [`Reason`] as its `state` and no version.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BatchTool {
     pub name: String,
@@ -59,10 +58,7 @@ impl From<&Tool> for BatchTool {
 
 impl BatchInventory {
     /// The inventory the hub stores, without the tools whose name it does not know; `None` when
-    /// the member breaks K8 Section 4: an `osVersion` or a version that is not 1 to 64 bytes of
-    /// `[0-9A-Za-z.+_-]`; more than 64 tools or two with one name; a name that is not 1 to 64
-    /// bytes of `[0-9a-z_.-]`; a tool with both a version and a state, or neither; more than 128
-    /// build targets, two equal, or one that is not 1 to 64 bytes of `[0-9a-z_.-]`.
+    /// the member breaks K8 Section 4.
     #[must_use]
     pub fn accepted(self) -> Option<Inventory> {
         let names: BTreeSet<&str> = self.tools.iter().map(|tool| tool.name.as_str()).collect();

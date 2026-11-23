@@ -1,6 +1,4 @@
-//! The check of a model item before `preparing` (Section 5, CAG-004, CAG-007): one pure
-//! function. It refuses for the first cause that is true; the state of the machine is a
-//! parameter.
+//! The check of a model item before `preparing` (Section 5, CAG-004, CAG-007).
 
 mod parameters;
 
@@ -31,7 +29,6 @@ const MEMBERS: [&str; 10] = [
     "actor",
 ];
 
-/// What the machine is and permits at the moment of the check.
 #[derive(Clone, Copy, Debug)]
 pub struct ModelMachine<'a> {
     /// The switch at the machine (USE-004).
@@ -42,7 +39,6 @@ pub struct ModelMachine<'a> {
     pub limits: SettingLimits<'a>,
 }
 
-/// A model item that passed each check.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Order {
     pub id: Uuid,
@@ -52,7 +48,6 @@ pub struct Order {
     pub parameters: Parameters,
 }
 
-/// The answer of the check.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Checked {
     Start(Box<Order>),
@@ -79,8 +74,8 @@ fn secrets_hold(item: &Object, work_type: WorkType, parameters: &Parameters) -> 
     (names == wanted).then_some(()).ok_or(Cause::SecretUnknown)
 }
 
-/// The types that only reduce the work of the machine: never refused for the switch or the
-/// device policy (Section 3).
+/// Work that only reduces the machine's load is not refused for the switch or the policy
+/// (Section 3).
 const REDUCING: [WorkType; 5] = [
     WorkType::ServerStop,
     WorkType::ModelUnload,
@@ -134,8 +129,6 @@ fn cause(item: &Object, machine: &ModelMachine<'_>) -> Result<Order, Cause> {
     })
 }
 
-/// Checks the answer to a claim. The daemon does nothing for an answer that is not
-/// [`Checked::Start`].
 #[must_use]
 pub fn check(answer: &Value, machine: &ModelMachine<'_>) -> Checked {
     let Some(item) = answer.as_object() else {

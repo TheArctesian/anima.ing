@@ -1,7 +1,4 @@
-//! One request at a time over the files tunnel (K4 Section 9): a listing, a download of
-//! exactly the announced size, or an upload of exactly the declared size. A `ping` goes out
-//! after 5 quiet seconds; 15 silent seconds lose the tunnel. Byte counts from the hub are
-//! checked, never trusted: a frame past the size, or `done` before it, stops the transfer.
+//! One request at a time over the files tunnel (K4 Section 9); the hub's byte counts are checked, not trusted.
 
 use std::io::{self, Read, Write};
 
@@ -12,7 +9,6 @@ use super::codec::{self, HubMessage, Listing, Refusal, Request, UPLOAD_FRAME};
 use crate::hub::tunnel::{Frame, Socket, TunnelError};
 use crate::sessions::pace::{Due, Pace};
 
-/// How a files request failed.
 #[derive(Debug, thiserror::Error)]
 pub enum FilesError {
     #[error("the hub refused the request ({0:?})")]
@@ -31,13 +27,11 @@ pub enum FilesError {
     Local(io::Error),
 }
 
-/// What came from the hub, pings taken out.
 enum Incoming {
     Message(HubMessage),
     Bytes(Vec<u8>),
 }
 
-/// An open files tunnel.
 pub struct Files {
     socket: Socket,
     pace: Pace,
@@ -52,13 +46,10 @@ impl Files {
         }
     }
 
-    /// Closes the tunnel; best effort.
     pub async fn close(self) {
         self.socket.close().await;
     }
 
-    /// The entries of the directory `path`.
-    ///
     /// # Errors
     /// [`FilesError`]; `Refused` as the device's answer.
     pub async fn list(&mut self, path: &str) -> Result<Listing, FilesError> {
@@ -70,8 +61,6 @@ impl Files {
         }
     }
 
-    /// The file at `path`, written to `sink`; returns its size.
-    ///
     /// # Errors
     /// As [`Files::list`]; `Local` when `sink` fails.
     pub async fn download(&mut self, path: &str, sink: &mut dyn Write) -> Result<u64, FilesError> {
@@ -100,8 +89,6 @@ impl Files {
         }
     }
 
-    /// Uploads `size` bytes from `source` to `path`, which must not exist yet.
-    ///
     /// # Errors
     /// As [`Files::download`]; `Local` when `source` ends early or fails.
     pub async fn upload(
@@ -132,8 +119,6 @@ impl Files {
         }
     }
 
-    /// A message that came while an upload was sending: a refusal stops it; a ping or a
-    /// WebSocket control frame is only a sign of life; anything else is out of turn.
     fn early(&mut self, frame: Result<Frame, TunnelError>) -> Result<(), FilesError> {
         self.pace.heard(Instant::now());
         match frame? {
@@ -155,7 +140,6 @@ impl Files {
         Ok(())
     }
 
-    /// The next message or bytes from the hub, answering the pace meanwhile.
     async fn next(&mut self) -> Result<Incoming, FilesError> {
         loop {
             tokio::select! {

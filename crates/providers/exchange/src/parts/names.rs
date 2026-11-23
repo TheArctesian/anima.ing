@@ -88,7 +88,8 @@ impl fmt::Display for WorkflowId {
     }
 }
 
-/// A branch name git allows (`git check-ref-format --branch`), 1 to 255 bytes; it may hold `/`.
+/// A branch name git allows (`git check-ref-format --branch`), 1 to 255 bytes; it may hold `/`,
+/// so a provider that puts it in a path encodes it; it never holds a `.` or `..` segment.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct BranchName(String);
 

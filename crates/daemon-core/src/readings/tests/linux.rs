@@ -1,4 +1,4 @@
-//! The Linux `/proc` readers (MET-002).
+//! MET-002.
 
 use super::{captures::*, *};
 use crate::readings::linux;

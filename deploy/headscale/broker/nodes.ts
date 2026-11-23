@@ -1,8 +1,4 @@
-/**
- * The broker's view of Headscale 0.29.7 (BD-9): the node list it returns to the hub, and the
- * replies of the steps it runs. Pure. Every key field is dropped here: `parseNodes` keeps no
- * key, and the pre-auth key of a new key is read only to be handed to the caller once.
- */
+/** The broker's view of Headscale (BD-9); no key field passes, but a new pre-auth key goes to the caller once. */
 
 import { InventoryError, parseNode, parseRoutes, type ListedNode, type Tailnet } from '../src/inventory.ts';
 import type { PolicyView } from './verbs.ts';
@@ -24,30 +20,23 @@ export interface NodesReply {
   readonly sites: readonly { readonly name: string; readonly subnet: string }[];
 }
 
-/** The tailnet as the broker reads it: the nodes it could read, and the ones it could not. */
 export interface BrokerTailnet extends Tailnet {
-  /**
-   * One entry for each node the broker could not read (L3): its id when that much is readable,
-   * else null. They count against `max_nodes`; they are never audited or returned.
-   */
+  /** Unreadable nodes count against `max_nodes` and are never audited or returned (L3). */
   readonly unreadable: readonly (number | null)[];
 }
 
-/** A new pre-auth key as `preauthkeys create -o json` returns it (`preauthkey.json`). */
 export interface NewKey {
   readonly id: number;
   readonly key: string;
   readonly expiresAt: Date;
 }
 
-/** What the broker replies for a registered or renewed node. */
 export interface Registered {
   readonly name: string;
   readonly address: string;
   readonly keyExpiry: string | null;
 }
 
-/** The user that owns every personal node (VPN-003). */
 export const OPERATOR = 'operator';
 
 type Json = Readonly<Record<string, unknown>>;
@@ -72,12 +61,7 @@ function idOrNull(entry: unknown): number | null {
   }
 }
 
-/**
- * The tailnet from `nodes list` and `nodes list-routes`. Headscale 0.29.7 prints `null`, not
- * `[]`, for a list with no entries (Build notes), so `null` is an empty list. Each node is read
- * on its own: one node in a shape the broker does not know is set aside, so it cannot stop the
- * audit of the others (L3). A list that is not a list still throws.
- */
+/** Headscale 0.29.7 prints `null` for an empty list; a node in an unknown shape is set aside, not fatal (L3). */
 export function tailnetOf(nodes: unknown, routes: unknown): BrokerTailnet {
   const entries = nodes ?? [];
   if (!Array.isArray(entries)) throw new InventoryError('nodes is not a list');
@@ -94,12 +78,10 @@ export function tailnetOf(nodes: unknown, routes: unknown): BrokerTailnet {
   return { nodes: read, routes: parseRoutes(routes ?? []), unreadable };
 }
 
-/** The node count `max_nodes` is checked against: the read nodes and the unreadable ones. */
 export function nodeCountOf(tailnet: BrokerTailnet): number {
   return tailnet.nodes.length + tailnet.unreadable.length;
 }
 
-/** Every node id in the tailnet, the unreadable nodes' ids included where known. */
 export function nodeIdsOf(tailnet: BrokerTailnet): readonly number[] {
   return [...tailnet.nodes.map((node) => node.id), ...tailnet.unreadable.filter((entry): entry is number => entry !== null)];
 }
@@ -119,7 +101,6 @@ function brokerNode(node: ListedNode, tailnet: Tailnet): BrokerNode {
   };
 }
 
-/** The `nodes` reply: each node without keys, and the policy's sites. */
 export function nodesReply(tailnet: Tailnet, policy: PolicyView): NodesReply {
   return {
     nodes: tailnet.nodes.map((node) => brokerNode(node, tailnet)),
@@ -127,7 +108,6 @@ export function nodesReply(tailnet: Tailnet, policy: PolicyView): NodesReply {
   };
 }
 
-/** The id of the `operator` user from `users list -o json`, or null when there is none. */
 export function operatorIdOf(users: unknown): number | null {
   if (users === null) return null;
   if (!Array.isArray(users)) throw new InventoryError('users is not a list');
@@ -144,12 +124,11 @@ export function newKeyOf(reply: unknown): NewKey {
   return { id: id(body.id, 'pre-auth key id'), key: body.key, expiresAt: new Date(seconds * 1000) };
 }
 
-/** Reads the node id from `auth register -o json`, which returns the node itself (`register.json`). */
+/** `auth register -o json` returns the node itself. */
 export function registeredIdOf(reply: unknown): number {
   return id(object(reply, 'register reply').id, 'node id');
 }
 
-/** The reply for one node: its name, its IPv4 address and its key expiry. */
 export function registered(node: ListedNode): Registered {
   const address = node.ips.find((ip) => !ip.includes(':'));
   if (address === undefined) throw new InventoryError('the node has no IPv4 address');

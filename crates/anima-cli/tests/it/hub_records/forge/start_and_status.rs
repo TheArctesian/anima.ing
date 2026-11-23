@@ -1,5 +1,5 @@
-//! `anima workflow start` and `anima repo status set` against the scripted hub (PRJ-035,
-//! PRO-010, CMD-021, CMD-024). An input's value is sent and never shown (LOG-007).
+//! `anima workflow start` and `anima repo status set` (PRJ-035, PRO-010, CMD-021, CMD-024,
+//! LOG-007).
 
 use serde_json::{Value, json};
 
@@ -17,7 +17,6 @@ fn accepted() -> Value {
     )
 }
 
-/// A hub that lists the workflow `ci.yml` and answers `WorkflowStart` with `start`.
 async fn scripted(start: Value) -> FakeHub {
     let hub = FakeHub::start().await;
     hub.answer("WorkflowList", data(json!({ "workflows": [workflow()] })));

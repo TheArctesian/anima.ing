@@ -1,5 +1,4 @@
-//! `anima device list` against the scripted hub, and the fixtures of the device tests (CMD-020,
-//! CMD-026).
+//! `anima device list` against the scripted hub (CMD-020, CMD-026).
 
 use serde_json::{Value, json};
 
@@ -11,7 +10,6 @@ mod get;
 
 const TOKEN: &str = "login-token-for-device-tests";
 
-/// The K6 Phase 1 devices as `DeviceList` nodes, with their site names.
 pub fn fixture_devices() -> Vec<Value> {
     let text = include_str!("../../../../../contracts/fixtures/phase1.json");
     let fixtures: Value = serde_json::from_str(text).expect("fixtures");
@@ -35,7 +33,6 @@ pub fn fixture_devices() -> Vec<Value> {
         .collect()
 }
 
-/// A `devices` answer holding `nodes`.
 pub fn page(nodes: &[Value], next: Option<&str>, total: usize) -> Value {
     let edges: Vec<Value> = nodes
         .iter()
@@ -48,7 +45,6 @@ pub fn page(nodes: &[Value], next: Option<&str>, total: usize) -> Value {
     }}))
 }
 
-/// A `device` answer for `node` with every field `get.graphql` asks for.
 pub fn detail(node: &Value) -> Value {
     let mut device = node.clone();
     let extra = json!({

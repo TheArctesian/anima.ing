@@ -1,31 +1,26 @@
-//! Which disks and interfaces become series, so a device cannot grow the table without bound
-//! (D-5).
+//! Which disks and interfaces become series, so a device cannot grow the table without bound (D-5).
 
 use crate::readings::{Disk, Interface};
 
-/// The most disk series, the most network series and the most drives one device has, and
-/// the most mounts one drive lists.
+/// The most disk series, network series and drives of one device, and mounts of one drive.
 pub const MAX_LABELS: usize = 32;
 
 const PSEUDO_FILESYSTEMS: [&str; 6] = ["tmpfs", "devtmpfs", "overlay", "squashfs", "devfs", "map"];
 const PSEUDO_MOUNTS: [&str; 5] = ["/dev", "/run", "/sys", "/proc", "/snap"];
-/// Loop devices: Linux snap packages and other mounted images, not disks of their own.
+/// Snap packages and other mounted images, not disks of their own.
 const LOOP_DEVICE: &str = "/dev/loop";
 const DATA_VOLUME: &str = "/System/Volumes/Data";
-/// Mounts of images the system writes, always nearly full and not disks the operator fills:
-/// macOS iOS Simulator runtimes and system cryptexes, the wrappers of iOS apps on a Mac (whose
-/// file system is the app's `Wrapper` and whose numbers are those of the disk under it), and the
-/// `Pop!_OS` recovery partition, which holds a copy of the installer.
+/// Images the system writes (Simulator runtimes, cryptexes, iOS app wrappers, the `Pop!_OS`
+/// recovery partition): always nearly full, and not disks the operator fills.
 const IMAGE_MOUNTS: [&str; 4] = [
     "/Library/Developer/CoreSimulator",
     "/private/var/folders",
     "/private/var/run",
     "/recovery",
 ];
-/// The file system that Xcode mounts for a connected phone in a user's library
-/// (`/Users/<user>/Library/Developer/CoreDevice/DeviceFS`): not a disk of this device.
+/// The file system that Xcode mounts for a connected phone: not a disk of this device.
 const DEVICE_FS: &str = "/Library/Developer/CoreDevice/";
-/// The start of the mount point of a running `AppImage`: its read-only image, always 100% full.
+/// A running `AppImage`: its read-only image, always 100% full.
 const APPIMAGE_MOUNT: &str = "/tmp/.mount_";
 
 fn under(mount: &str, root: &str) -> bool {
@@ -34,16 +29,13 @@ fn under(mount: &str, root: &str) -> bool {
         .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'))
 }
 
-/// Whether a disk is a real file system worth a series.
 fn wanted_disk(disk: &Disk) -> bool {
     !PSEUDO_FILESYSTEMS.contains(&disk.filesystem.as_str())
         && !disk.filesystem.starts_with(LOOP_DEVICE)
         && is_operator_mount(&disk.mount)
 }
 
-/// Whether a mount point holds the operator's files: not a pseudo file system's place, a
-/// system image or a running `AppImage`, and on macOS only the data volume of the system's
-/// volumes. A drive lists only these mounts (MET-027).
+/// Whether a mount point holds the operator's files; a drive lists only these mounts (MET-027).
 pub(crate) fn is_operator_mount(mount: &str) -> bool {
     !PSEUDO_MOUNTS.iter().any(|root| under(mount, root))
         && !IMAGE_MOUNTS.iter().any(|root| under(mount, root))
@@ -56,14 +48,10 @@ fn wanted_interface(interface: &Interface) -> bool {
     !matches!(interface.name.as_str(), "lo" | "lo0")
 }
 
-/// The disks that get series: real file systems only, ordered by mount point (bytewise), the
-/// first of a repeated mount point, and at most [`MAX_LABELS`].
 pub(super) fn kept_disks(disks: &[Disk]) -> Vec<&Disk> {
     kept(disks, wanted_disk, |disk| &disk.mount)
 }
 
-/// The interfaces that get series: not loopback, ordered by name (bytewise), the first of a
-/// repeated name, and at most [`MAX_LABELS`].
 pub(super) fn kept_interfaces(interfaces: &[Interface]) -> Vec<&Interface> {
     kept(interfaces, wanted_interface, |interface| &interface.name)
 }

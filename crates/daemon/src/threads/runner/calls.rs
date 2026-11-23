@@ -118,7 +118,8 @@ impl Runner {
         }
     }
 
-    /// A call whose answer waits for the holder: a start, a prompt, an answer or a stop.
+    /// A call whose answer waits for the holder (a start, a prompt, an answer or a stop) or for
+    /// a task of the Git engine.
     async fn held_call(
         &mut self,
         action: Action,
@@ -144,6 +145,14 @@ impl Runner {
                     .await
             }
             Action::Stop { thread } => self.stop(thread, back).await,
+            Action::Git {
+                thread,
+                repository,
+                action,
+            } => {
+                self.git_call((thread, repository, action), !person, back);
+                Ok(())
+            }
             start => match NewThread::of(start) {
                 Some(new) => self.start(new, back).await,
                 None => Err(Refusal::BadValue),
@@ -261,6 +270,9 @@ impl Runner {
 /// of its model, effort or mode (TH110), and the files of a prompt (TH111). A process of an agent may not, so that an agent never
 /// approves itself, gives itself more rights or hides a thread from the person.
 const fn for_the_person(action: &Action) -> bool {
+    if let Action::Git { action, .. } = action {
+        return action.for_the_person();
+    }
     matches!(
         action,
         Action::Answer { .. }
@@ -298,7 +310,8 @@ const fn thread_of(action: &Action) -> Option<Uuid> {
         | Action::Set { thread, .. }
         | Action::Attach { thread, .. }
         | Action::AttachMore { thread, .. }
-        | Action::Unattach { thread, .. } => Some(*thread),
+        | Action::Unattach { thread, .. }
+        | Action::Git { thread, .. } => Some(*thread),
         _ => None,
     }
 }

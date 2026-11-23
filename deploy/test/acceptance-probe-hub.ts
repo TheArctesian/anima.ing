@@ -1,6 +1,4 @@
-// A synthetic hub on 127.0.0.1 for deploy/acceptance/probe.ts (criteria 4, 12, 13). By default it answers as the
-// real hub does (K7 headers, CORS for the client origins, 401 on an open /metrics, 4403 on a foreign socket,
-// FORBIDDEN for a READ key); each fault makes one answer wrong. Every value is synthetic.
+// A synthetic hub for deploy/acceptance/probe.ts (criteria 4, 12, 13): it answers as the real hub does, and each fault makes one answer wrong.
 import { createHash } from "node:crypto";
 import type { Server } from "bun";
 import { CLIENT_ORIGINS, FOREIGN_ORIGIN, READ_ONLY_MESSAGE, REFUSED_ROOTS } from "../acceptance/refusals.ts";
@@ -35,7 +33,6 @@ const INDEX = `<!doctype html><html><head><link href="/_app/immutable/entry/star
 const DEVICE = 'device_id="0190a000-0000-7000-8001-000000000001",device_name="pve-01",site="0190a000-0000-7000-8000-000000000001"';
 const CHECK = `check_id="0190a000-0000-7000-8003-000000000001",check_name="ping \\"core\\"",check_type="ping",${DEVICE}`;
 
-/** A K7 exposition: every family, two windows, one device; `faults` bend it. */
 export function exposition(faults: ReadonlySet<Fault>): string {
   const family = (name: string, samples: string[]) => [`# HELP ${name} Synthetic.`, `# TYPE ${name} gauge`, ...samples];
   const check = faults.has("metrics-unknown-label") ? `${CHECK},severity="high"` : CHECK;
@@ -87,7 +84,6 @@ function preflight(request: Request, faults: ReadonlySet<Fault>): Response {
 const json = (value: unknown) => Response.json(value);
 const refusal = (code: string, message = "Refused.") => json({ data: null, errors: [{ message, extensions: { code } }] });
 
-/** The answer to an API key's document: `me`, FORBIDDEN by kind or by READ, else a validation error. */
 function keyAnswer(query: string, faults: ReadonlySet<Fault>): Response {
   const [, operation, root] = /^(query|mutation|) ?\{ (\w+)/.exec(query) ?? [];
   if (root === "me") {
@@ -108,18 +104,15 @@ function keyAnswer(query: string, faults: ReadonlySet<Fault>): Response {
 interface HubState {
   origin: string;
   faults: Set<Fault>;
-  /** Every GraphQL document sent with the key. */
   keyDocuments: string[];
-  /** Where `metrics-redirect` sends a scrape with the key: another origin. */
   redirectTo: string;
 }
 
 export interface FakeHub extends HubState {
-  /** Closes the listener and every open connection; Bun's promise for it may never settle, so it is not awaited. */
+  /** Bun's promise for the stop may never settle, so it is not awaited. */
   stop: () => void;
 }
 
-/** Whether a request carries a `__Host-anima` cookie from the foreign origin, as the probe must send it. */
 function foreignCookie(request: Request): boolean {
   const cookie = request.headers.get("cookie") ?? "";
   return request.headers.get("origin") === FOREIGN_ORIGIN && /^__Host-anima=[A-Za-z0-9_-]{43}$/.test(cookie);
@@ -182,7 +175,6 @@ function route(request: Request, server: Server<{ foreign: boolean }>, hub: HubS
   return new Response(asset ? "export const start = () => {};" : INDEX, { headers });
 }
 
-/** Starts the synthetic hub on a free loopback port; `key` is the one API key it knows (a READ key). */
 export function startFakeHub(key: string): FakeHub {
   const state: HubState = { origin: "", faults: new Set(), keyDocuments: [], redirectTo: "" };
   const server = Bun.serve<{ foreign: boolean }>({

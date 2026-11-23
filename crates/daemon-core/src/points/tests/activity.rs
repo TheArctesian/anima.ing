@@ -1,6 +1,3 @@
-//! Drive activity between two readings (MET-028): rates of the drives `lsblk` listed only, no
-//! rate without both readings or after a counter went back.
-
 use std::time::Duration;
 
 use proptest::prelude::*;
@@ -20,7 +17,6 @@ fn counters(name: &str, read_sectors: u64, written_sectors: u64, busy_ms: u64) -
     }
 }
 
-/// A pop-os reading with these counters.
 fn pop_os(drive_counters: Vec<DriveCounters>) -> Reading {
     Reading {
         drives: drives(LSBLK_POP_OS),
@@ -32,7 +28,6 @@ fn pop_os(drive_counters: Vec<DriveCounters>) -> Reading {
 #[test]
 fn met_028_read_write_and_busy_come_from_the_counter_deltas_over_the_elapsed_time() {
     let before = pop_os(vec![counters("nvme1n1", 1000, 2000, 500)]);
-    // 30 seconds later: 60 000 sectors read, 120 000 written, 15 seconds busy.
     let now = pop_os(vec![counters("nvme1n1", 61_000, 122_000, 15_500)]);
     let out = samples(Some(&before), &now, Duration::from_secs(30));
     assert_close(
@@ -68,7 +63,6 @@ fn met_028_no_activity_without_an_earlier_reading_after_a_wrap_or_for_a_new_driv
         counters("sda", 100, 100, 100),
     ]);
     assert_eq!(count(&samples(None, &now, THIRTY), Kind::DiskReadBps), 0);
-    // nvme1n1 went back (a reboot); sda was not there before.
     let before = pop_os(vec![counters("nvme1n1", 200, 100, 100)]);
     let out = samples(Some(&before), &now, THIRTY);
     assert_eq!(count(&out, Kind::DiskReadBps), 0);

@@ -1,5 +1,4 @@
-//! `anima_workflows_list`, `anima_workflow_runs_list` and `anima_workflow_run_get` (PRJ-034,
-//! PRJ-035).
+//! PRJ-034, PRJ-035.
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

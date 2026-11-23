@@ -1,6 +1,4 @@
-//! `anima pr merge <repository> <number>...`: merges one pull request, or up to twenty one after
-//! another, through the hub (PRJ-029, PRJ-033, PRO-013). Each merge sends the head commit the
-//! operator saw, so a pull request that changed since is refused.
+//! Each merge sends the head commit the operator saw, so a pull request that changed since is refused (PRJ-029, PRJ-033, PRO-013).
 
 mod consent;
 mod many;

@@ -1,6 +1,3 @@
-//! The battery list in a batch: sent once after it changed, kept until a 204, and not sent
-//! again after a `MALFORMED` (MET-032, K8 Section 4).
-
 use anima_daemon::push::Event;
 use daemon_core::wire::{BatchBattery, BatteryState, RefusalCode};
 

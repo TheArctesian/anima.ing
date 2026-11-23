@@ -1,10 +1,6 @@
-//! The terminal tunnel's text messages (K4 Section 8.4). Pure.
-//!
-//! The client sends `resize` and `ping`. The hub's messages are a closed set, read strictly:
-//! `{"type":"ping"}` and `{"type":"end","reason":R}` with a K1 `SessionEndReason`, each key
-//! once, nothing else. Anything else is ignored, as the reference client does: a newer hub may
-//! add messages, and the close code still tells how the session ended. Nothing of a message is
-//! ever printed (the caller sees only the parsed value).
+//! The terminal tunnel's text messages (K4 Section 8.4). Text outside the hub's closed set is
+//! ignored: a newer hub may add messages, and the close code still tells how a session ended.
+//! Nothing of a message is ever printed; the caller sees only the parsed value.
 
 use serde::Deserialize;
 
@@ -16,10 +12,8 @@ pub const CELLS: std::ops::RangeInclusive<u16> = 1..=1000;
 pub const MAX_TEXT: usize = 256;
 /// The largest input frame sent; the hub takes up to 64 KiB (K4 Section 8.5).
 pub const MAX_INPUT_FRAME: usize = 32 * 1024;
-/// The client's `ping`.
 pub const PING: &str = r#"{"type":"ping"}"#;
 
-/// A terminal size in character cells.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CellSize {
     pub cols: u16,
@@ -27,10 +21,9 @@ pub struct CellSize {
 }
 
 impl CellSize {
-    /// The size when the terminal does not say: 80 by 24.
+    /// The size when the terminal does not say.
     pub const DEFAULT: Self = Self { cols: 80, rows: 24 };
 
-    /// Each side within [`CELLS`].
     #[must_use]
     pub fn clamped(self) -> Self {
         let side = |value: u16| value.clamp(*CELLS.start(), *CELLS.end());
@@ -41,7 +34,6 @@ impl CellSize {
     }
 }
 
-/// The `resize` message for `size`, clamped.
 #[must_use]
 pub fn resize(size: CellSize) -> String {
     let CellSize { cols, rows } = size.clamped();
@@ -74,7 +66,6 @@ pub fn decode(text: &str) -> Option<HubMessage> {
     }
 }
 
-/// `bytes` cut into frames of at most [`MAX_INPUT_FRAME`], in order.
 pub fn input_frames(bytes: &[u8]) -> impl Iterator<Item = Vec<u8>> + '_ {
     bytes.chunks(MAX_INPUT_FRAME).map(<[u8]>::to_vec)
 }
@@ -160,7 +151,6 @@ mod tests {
         assert_eq!(frames.concat(), bytes);
     }
 
-    /// A small deterministic generator, so the property test needs no extra crate.
     fn next(state: &mut u64) -> u64 {
         *state ^= *state << 13;
         *state ^= *state >> 7;

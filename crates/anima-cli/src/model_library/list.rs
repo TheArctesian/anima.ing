@@ -1,4 +1,4 @@
-//! `anima model list`: the models of the library (SEL-005).
+//! SEL-005.
 
 use super::documents::{ModelList, model_list};
 use super::gib;

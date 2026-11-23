@@ -1,5 +1,3 @@
-//! `anima workflow run <repository> <run>`: one run with its jobs.
-
 use super::documents::{WorkflowRunGet, workflow_run_get};
 use super::render;
 use crate::failure::{Failure, Hint};
