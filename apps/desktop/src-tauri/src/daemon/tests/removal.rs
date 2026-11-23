@@ -1,5 +1,4 @@
-//! The removal (HMD-056) with the stand-in daemon of the rig in a temporary HOME: the real
-//! `~/.local/bin`, unit, `launchctl`, `systemctl` and Keychain are never touched.
+//! The removal of HMD-056.
 
 use std::{fs, path::Path};
 

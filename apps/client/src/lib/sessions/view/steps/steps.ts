@@ -1,20 +1,14 @@
-/** How far a session start has come, from facts the client observes. */
 export interface Progress {
-  /** `startSession` answered with a ticket. */
   readonly ticketed: boolean;
-  /** The hub sent a Wake-on-LAN packet for this start (`SessionTicket.wakeSent`, K4 §1); false until it answers. */
+  /** `SessionTicket.wakeSent` (K4 §1); false until the hub answers. */
   readonly waking: boolean;
-  /** The WebSocket upgrade succeeded (`TunnelState.opened`). */
   readonly opened: boolean;
-  /** The socket is open: the terminal can be used. */
   readonly connected: boolean;
-  /** The start stopped: refused, or the tunnel closed before it was connected. */
   readonly stopped: boolean;
 }
 
 export type StepName = 'request' | 'gateway' | 'device' | 'ready';
 
-/** `waiting` has not begun, `active` is under way, `done` ended well, `failed` is where the start stopped. */
 export type StepMark = 'waiting' | 'active' | 'done' | 'failed';
 
 export interface Step {
@@ -24,12 +18,8 @@ export interface Step {
 }
 
 /**
- * The connection steps (Section 5.7.3) and the observed fact that ends each one:
- * - request: the hub issues a ticket (`startSession` answers);
- * - gateway: the hub upgrades the WebSocket, which it does only after it signed in to the device (K4 §8.2), so the
- *   hub holds the connection;
- * - device: the socket is open; the hub's SSH connection to the device is the one the hub just opened;
- * - ready: the session can be used. No later signal exists, so it ends with `device`.
+ * Section 5.7.3. The hub upgrades the WebSocket only after it signed in to the device (K4 §8.2); no signal follows
+ * `connected`, so `ready` ends with `device`.
  */
 const STEPS: readonly { readonly name: StepName; readonly label: string; readonly ended: (p: Progress) => boolean }[] = [
   { name: 'request', label: 'Request', ended: (p) => p.ticketed },
@@ -38,7 +28,6 @@ const STEPS: readonly { readonly name: StepName; readonly label: string; readonl
   { name: 'ready', label: 'Ready', ended: (p) => p.connected },
 ];
 
-/** Each step's mark: ended steps are done, the first other one is active (or failed once stopped), the rest wait. */
 export function connectionSteps(progress: Progress): readonly Step[] {
   const current = STEPS.findIndex((step) => !step.ended(progress));
   return STEPS.map(({ name, label }, index) => {
@@ -48,16 +37,12 @@ export function connectionSteps(progress: Progress): readonly Step[] {
   });
 }
 
-/** The line under the steps for a start that sent a wake packet (K4 §1): its text and mark. */
 export interface WakeLine {
   readonly label: string;
   readonly mark: StepMark;
 }
 
-/**
- * The wake line, or `undefined` when no packet was sent. The hub opens the socket once the device answers, so the
- * wait ends with `opened`. `deviceName` is text only.
- */
+/** The hub opens the socket once the device answers, so the wait ends with `opened`. */
 export function wakeLine(progress: Progress, deviceName: string): WakeLine | undefined {
   if (!progress.waking) return undefined;
   const mark: StepMark = progress.opened ? 'done' : progress.stopped ? 'failed' : 'active';

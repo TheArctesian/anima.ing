@@ -5,31 +5,22 @@ import { motionPreference, type MotionPreference } from '../preference';
 import { firstDirection, opacity, scaledFade } from './path';
 import { roleScale } from './scales';
 
-/*
- * Each role is one bidirectional transition: use it with `transition:`, not a pair of `in:`
- * and `out:`, so that a reversal mid-flight starts from where the element is (MOT-002).
- * Svelte asks the returned function for the configuration of each direction once the DOM
- * has been updated.
- */
+/* Use each role with `transition:`, not `in:` and `out:`, so a reversal starts from where the element is (MOT-002). */
 
-/** Parameters every role transition takes; the window's preference is the default (MOT-041). */
 export interface RoleParams {
   readonly preference?: MotionPreference;
 }
 
-/** A menu or popover grows from the control that opened it (MOT-005). */
 export interface PopoverParams extends RoleParams {
   readonly from?: Element;
 }
 
-/** A row's place among the rows that come in together (`stagger-list`). */
 export interface ListRowParams extends RoleParams {
   readonly index?: number;
 }
 
 export type RoleTransition = (options?: { direction?: 'in' | 'out' }) => TransitionConfig;
 
-/** `transform-origin` for `surface` at the centre of `control` (MOT-005). */
 function originAt(control: Element, surface: Element): string {
   const from = control.getBoundingClientRect();
   const box = surface.getBoundingClientRect();
@@ -52,12 +43,7 @@ function exit(atZero: number | undefined, reduced: boolean, origin?: string): Tr
   return { duration: modeTokens(reduced).duration.fast, easing: easeCurve('exit'), css };
 }
 
-/**
- * A cross-fade over `duration-base` for page change, status, readings and loaded data (5.7.3,
- * MOT-008); the same under reduced motion. The outgoing and the incoming layer run on one
- * curve, `ease-enter`, so their opacities sum to 1 at every frame and the two layers never
- * show at full strength together. `ease-exit` is for an exit that nothing replaces.
- */
+/** Both layers run on `ease-enter`, so their opacities sum to 1 at every frame (5.7.3, MOT-008). */
 export function crossFade(_node: Element, { preference = motionPreference() }: RoleParams = {}): RoleTransition {
   return () => ({
     duration: modeTokens(preference.reduced).duration.base,
@@ -66,11 +52,6 @@ export function crossFade(_node: Element, { preference = motionPreference() }: R
   });
 }
 
-/**
- * A fade for a layer that nothing replaces, such as a modal's scrim or a banner (5.7.3 Modal
- * and Toast): in over `duration-base` with `ease-enter`, out over `duration-fast` with
- * `ease-exit`. The same under reduced motion.
- */
 export function fade(_node: Element, { preference = motionPreference() }: RoleParams = {}): RoleTransition {
   return ({ direction } = {}) => {
     const { duration } = modeTokens(preference.reduced);
@@ -80,10 +61,6 @@ export function fade(_node: Element, { preference = motionPreference() }: RolePa
   };
 }
 
-/**
- * Menu and popover (5.7.3): enter scales 0.96 to 1 with a fade from the control on
- * `spring-snappy`; exit fades and scales to 0.98 over `duration-fast`. Reduced: fade only.
- */
 export function popover(node: Element, { preference = motionPreference(), from }: PopoverParams = {}): RoleTransition {
   const atZero = firstDirection<number | undefined>();
   return ({ direction } = {}) => {
@@ -94,11 +71,7 @@ export function popover(node: Element, { preference = motionPreference(), from }
   };
 }
 
-/**
- * Modal surface (5.7.3): enter scales 0.98 to 1 with a fade on `spring-default`; exit is the
- * same path in reverse over `duration-fast`. Reduced: fade only. The role's blur is left out
- * because MOT-006 allows only transform and opacity to animate.
- */
+/** The role's blur is left out: MOT-006 allows only transform and opacity to animate. */
 export function modal(_node: Element, { preference = motionPreference() }: RoleParams = {}): RoleTransition {
   const atZero = firstDirection<number | undefined>();
   return ({ direction } = {}) =>
@@ -107,10 +80,6 @@ export function modal(_node: Element, { preference = motionPreference() }: RoleP
       : enter('default', atZero(() => roleScale.modal), preference.reduced);
 }
 
-/**
- * Reorder (5.7.3): a new row fades and scales from 0.98 on `spring-move` after its stagger
- * delay; a leaving row fades over `duration-fast` in its place. Reduced: fade only, no stagger.
- */
 export function listRow(
   _node: Element,
   { preference = motionPreference(), index = 0 }: ListRowParams = {},

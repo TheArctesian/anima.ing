@@ -26,7 +26,6 @@
   });
 </script>
 
-<!-- Each key of T3 Code's table that a key Anima, its window or the browser already takes would meet (clashes.ts). -->
 <table>
   <thead>
     <tr><th scope="col">Keys</th><th scope="col">Client</th><th scope="col">In Code</th><th scope="col">Already</th><th scope="col">Kept because</th></tr>

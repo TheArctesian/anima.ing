@@ -19,7 +19,6 @@ export const browserClock: LoadingClock = {
 };
 
 export interface SkeletonGate {
-  /** A load started. */
   begin(): void;
   /** The load finished; the skeleton leaves once it has been shown for `threshold-loading-min`. */
   end(): void;
@@ -27,11 +26,7 @@ export interface SkeletonGate {
   stop(): void;
 }
 
-/**
- * Decides when the loading skeleton shows (5.7.3, Loading). It appears only when a load is still running after
- * `threshold-loading`, and once shown it stays at least `threshold-loading-min`, so it never flashes.
- * `onChange` hears each change of visibility.
- */
+/** The skeleton shows only after `threshold-loading` and then stays at least `threshold-loading-min`, so it never flashes (5.7.3 Loading). */
 export function skeletonGate(clock: LoadingClock, onChange: (visible: boolean) => void): SkeletonGate {
   let pending: (() => void) | undefined;
   let shownAt: number | undefined;

@@ -2,14 +2,11 @@ import { GraphQLError } from 'graphql';
 import type { Row } from '../fixtures';
 import type { HubState } from '../model';
 
-// The containers of a device, so the Containers tab has something to show (HOST-001, HOST-013). `nas` runs one Compose
-// project and one container with none; `gpu-box` runs one container that is not healthy. Every other device answers as a
-// device with no docker command does. The same containers give the details, the images, volumes and networks, and the
-// answer for a newer image (HOST-017 to HOST-021); no request leaves the browser. Every image and name is an example one (CON-003).
+// No request leaves the browser; every image and name is an example one (CON-003).
 
 const ID_DIGITS = '0123456789abcdef';
 
-/** A 64-digit identifier made from a seed, so each container has the same one at every read. */
+/** Made from a seed, so each container has the same identifier at every read. */
 function identifier(seed: number): string {
   return Array.from({ length: 64 }, (_, index) => ID_DIGITS[(seed * 7 + index * 13) % 16]).join('');
 }

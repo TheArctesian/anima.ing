@@ -1,6 +1,4 @@
-//! One member of a JSON object, set or removed in the text of a file, with every other byte kept
-//! (MCP-030). The files of other programs hold comments, trailing commas and an order that a
-//! parser and a writer would lose, so this module only finds the place; `edit` cuts the text there.
+//! Finds one member of a JSON object in a file's text, so that every other byte, comments and order included, stays (MCP-030).
 
 use std::ops::Range;
 
@@ -22,15 +20,12 @@ const DEPTH_LIMIT: usize = 64;
 
 pub(super) struct Member {
     pub(super) key: String,
-    /// From the opening quote of the key to the end of the value.
     pub(super) span: Range<usize>,
     pub(super) value: Range<usize>,
-    /// The index of the comma after the value, when there is one.
     pub(super) comma: Option<usize>,
 }
 
 pub(super) struct Object {
-    /// The index of `{` and of `}`.
     pub(super) open: usize,
     pub(super) close: usize,
     pub(super) members: Vec<Member>,
@@ -41,7 +36,6 @@ pub(super) struct Scan<'a> {
 }
 
 impl Scan<'_> {
-    /// The index of the first byte at or after `at` that is not space and not a comment.
     fn trivia(&self, mut at: usize) -> Result<usize, JsoncError> {
         loop {
             match (self.bytes.get(at), self.bytes.get(at + 1)) {
@@ -64,7 +58,6 @@ impl Scan<'_> {
         }
     }
 
-    /// The index after the string that starts at `at`.
     fn string(&self, at: usize) -> Result<usize, JsoncError> {
         let mut at = at + 1;
         loop {
@@ -77,7 +70,6 @@ impl Scan<'_> {
         }
     }
 
-    /// The index after the value that starts at `at`.
     fn value(&self, at: usize, depth: usize) -> Result<usize, JsoncError> {
         match self.bytes.get(at).ok_or(JsoncError::Malformed)? {
             b'"' => self.string(at),
@@ -168,8 +160,7 @@ impl Scan<'_> {
     }
 }
 
-/// The member `key` of `object`, or `None`. A key that is there twice is refused: this program
-/// would change the first and the agent would read the last.
+/// A key that is there twice is refused: this program would change the first and the agent read the last.
 pub(super) fn only<'a>(object: &'a Object, key: &str) -> Result<Option<&'a Member>, JsoncError> {
     let mut found = object.members.iter().filter(|member| member.key == key);
     match (found.next(), found.next()) {
@@ -178,7 +169,6 @@ pub(super) fn only<'a>(object: &'a Object, key: &str) -> Result<Option<&'a Membe
     }
 }
 
-/// The object at `path` below the top level, or `None` when a key of the path is not there.
 pub(super) fn object_at(scan: &Scan<'_>, path: &[&str]) -> Result<Option<Object>, JsoncError> {
     let start = scan.trivia(0)?;
     if scan.bytes.get(start) != Some(&b'{') {

@@ -2,7 +2,6 @@
   import { pinnedFingerprintToShow } from './pinned';
 
   interface Props {
-    /** The element's id, so a control can name it as its description. */
     id: string;
     webInterface: { readonly url: string; readonly pinnedFingerprintSha256?: string | null };
   }

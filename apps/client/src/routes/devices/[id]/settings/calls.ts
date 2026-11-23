@@ -15,7 +15,6 @@ import {
   withWebInterface,
 } from './changes';
 
-/** The domain clients the Settings tab calls; the route passes `devicesApi`, `sessionsApi` and `webInterfacesApi` of its hub. */
 export interface SettingsHub {
   readonly devices: Pick<
     ReturnType<typeof devicesApi>,
@@ -25,13 +24,12 @@ export interface SettingsHub {
   readonly webInterfaces: ReturnType<typeof webInterfacesApi>;
 }
 
-/** The device the page shows; it is read again when each answer arrives, so a late answer changes the latest device. */
+/** Read again when each answer arrives, so a late answer changes the latest device. */
 export interface ShownDevice {
   readonly device: DeviceDetail | null;
   setDevice: (next: DeviceDetail) => void;
 }
 
-/** Every hub call the Settings tab makes; each one that succeeds puts what the hub stored into the shown device. */
 export interface SettingsCalls {
   onSave: (values: DeviceFormValues) => Promise<HubResult<unknown>>;
   onAcceptHostKey: (fingerprint: string) => Promise<HubResult<unknown>>;
@@ -52,10 +50,7 @@ function saveCalls(hub: SettingsHub): DeviceSaveCalls {
   };
 }
 
-/**
- * The Settings tab's calls for device `id` (WEB-001, WEB-002, DEV-011, SEC-007, D17). A save, even a half-failed one,
- * puts what the hub stored into the shown device, so the next change is built on it.
- */
+/** WEB-001, WEB-002, DEV-011, SEC-007, D17: a save, even a half-failed one, puts what the hub stored into the shown device. */
 export function settingsCalls(id: string, hub: SettingsHub, shown: ShownDevice): SettingsCalls {
   async function patched<T>(pending: Promise<HubResult<T>>, change: (device: DeviceDetail, value: T) => DeviceDetail): Promise<HubResult<T>> {
     const result = await pending;

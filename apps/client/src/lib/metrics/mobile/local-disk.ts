@@ -8,7 +8,7 @@ export interface LocalDisk {
   readonly percent: number;
 }
 
-/** Reads disk usage for the Devices view. The value stays in this client. */
+/** The disk usage stays in this client. */
 export function watchLocalDisk(hub: Hub, show: (disk: LocalDisk | undefined) => void): () => void {
   let stopped = false;
   let reading = false;

@@ -1,6 +1,5 @@
 import { fingerprintFrom, type Fingerprint } from './fingerprint';
 
-/** What the shell reports about one tab's web view (WP-31 "Shell interface"). */
 export type WebViewEvent =
   | { readonly tabId: string; readonly kind: 'LOADING' | 'LOADED'; readonly url: string }
   | { readonly tabId: string; readonly kind: 'UNTRUSTED'; readonly fingerprintSha256: Fingerprint }
@@ -31,14 +30,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** Whether `value` has exactly the keys `tabId`, `kind` and `fields`, so an unknown shape is never half read. */
+/** An unknown shape is never half read. */
 function hasExactly(value: Record<string, unknown>, fields: readonly string[]): boolean {
   const keys = Object.keys(value);
   const wanted = ['tabId', 'kind', ...fields];
   return keys.length === wanted.length && wanted.every((key) => Object.hasOwn(value, key));
 }
 
-/** `value` as an `http` or `https` URL the shell reported, or `null`. */
 export function webUrlFrom(value: unknown): string | null {
   if (typeof value !== 'string' || value.length === 0 || value.length > URL_MAX) return null;
   if (!URL.canParse(value)) return null;
@@ -69,10 +67,7 @@ function eventOf(tabId: string, kind: Kind, fields: Record<string, unknown>): We
   }
 }
 
-/**
- * The `web-view` event payload as a `WebViewEvent`, or `null` for any other shape. The payload crosses a process
- * boundary, so every field is checked and an extra field drops the event.
- */
+/** The payload crosses a process boundary: every field is checked and an extra field drops the event. */
 export function webViewEventFrom(payload: unknown): WebViewEvent | null {
   if (!isRecord(payload)) return null;
   const { tabId, kind } = payload;

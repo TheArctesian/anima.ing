@@ -31,10 +31,6 @@ const HOSTS_INCOMPLETE: HubError = {
   message: 'The hub did not list every device.',
 };
 
-/**
- * Every device's host, page by page, or an error unless the last page was reached: a page that says there is
- * more but gives no cursor, or more than `MAX_HOST_PAGES` pages, fails rather than returning part of the list.
- */
 export async function readHosts(hub: Hub): Promise<HubResult<readonly DeviceHost[]>> {
   const hosts: DeviceHost[] = [];
   let after: string | null = null;

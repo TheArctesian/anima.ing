@@ -17,7 +17,6 @@
   let drawn = $state('loading');
 </script>
 
-<!-- The trial of the tree library: the files of a project with the search, and the changed files of a diff. -->
 <div class="scenes">
   <section data-kit="tree-project" aria-label="Tree library, the files of a project">
     <LibraryTree label="anima files" paths={PATHS} search {theme} selected="src/routes/sign-in/back.ts" open onpick={say('pick')} ondrawn={(failure) => (drawn = failure ?? 'drawn')} />

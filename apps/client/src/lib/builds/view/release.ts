@@ -38,7 +38,6 @@ export function stateLabel(state: JobView['state']): string {
   return STATE_LABELS[state];
 }
 
-/** The first 7 characters of a commit, as Git shows it. */
 export function shortCommit(commit: string): string {
   return commit.slice(0, SHORT_COMMIT_LENGTH);
 }
@@ -71,10 +70,7 @@ function builds(builder: Builder, target: BuildTarget): boolean {
   }
 }
 
-/**
- * "Waiting for a <target> builder" for a queued job when no online builder can build its target; otherwise `null`.
- * `builders` is `null` until they have loaded once, and then nothing is said (BLD-007).
- */
+/** `null` unless a queued job has no online builder for its target, and while `builders` has not loaded (BLD-007). */
 export function waitingText(job: Pick<JobView, 'state' | 'target'>, builders: readonly Builder[] | null): string | null {
   if (job.state !== 'QUEUED' || builders === null) return null;
   if (builders.some((builder) => builder.online && builds(builder, job.target))) return null;
@@ -86,7 +82,6 @@ export function canCancel(job: Pick<JobView, 'state'>): boolean {
   return job.state === 'QUEUED';
 }
 
-/** `releases` with the changed job replaced where it is listed; a job the list does not hold changes nothing. */
 export function withChange(releases: readonly ReleaseView[], change: JobChange): readonly ReleaseView[] {
   return releases.map((release) =>
     release.id === change.job.releaseId
@@ -113,12 +108,10 @@ export function attemptsByVersion(releases: readonly ReleaseView[]): VersionAtte
   return [...groups.values()];
 }
 
-/** Whether a job has stopped changing: published, failed or cancelled. */
 export function isEnded(job: Pick<JobView, 'state'>): boolean {
   return job.state === 'PUBLISHED' || job.state === 'FAILED' || job.state === 'CANCELLED';
 }
 
-/** How long ago a job reached its state, worded for the state: "for 6 minutes" while it runs, "18 minutes ago" once it ended. */
 export function stateAge(job: Pick<JobView, 'state' | 'stateChangedAt'>, now: Date): string {
   const span = timeInState(job, now);
   if (!isEnded(job)) return `for ${span}`;

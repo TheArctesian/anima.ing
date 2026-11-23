@@ -4,22 +4,13 @@ import { openSignIn, sessionCookie, signInWith } from '../sign-in-steps';
 import { callGraphql } from '../in-page';
 import { COOKIE_MAX_AGE_SECONDS, HUB_ORIGIN, OPERATOR, SESSION_COOKIE } from '../synthetic/access';
 
-// Plan criterion 4, client side and synthetic hub (SEC-002, API-003, D-3, D-4): what a browser does with the K7 cookie, who
-// the hub lets it speak for, what Sign out leaves behind, and the headers on the static files.
-//
-// Not here, and not faked: the real hub's side of criterion 4. That `POST /graphql` and the `GET /graphql` upgrade with the
-// cookie are refused when the request's `Origin` is another one, that `logout` deletes the token, that the real `Set-Cookie`
-// and static headers are as K7 says, and that `CLIENT_ORIGINS` is unchanged belong to WP-43 (hub) and WP-53 (acceptance
-// against the real hub). Playwright cannot show the upgrade's `Origin`, so no spec here can exercise a socket from another
-// origin either; `synthetic/graphql/graphql-socket.ts` says so too.
+// Plan criterion 4, client side (SEC-002, API-003, D-3, D-4); the real hub's side belongs to WP-43 and WP-53.
 
 const OTHER_ORIGIN = 'https://elsewhere.annex.example';
 const ME = 'query Me { me { username } }';
 
 test.describe('the cookie', () => {
   test('SEC-002, D-3: sign-in sets __Host-anima with Secure, HttpOnly, SameSite=Strict, Path=/ and no Domain, for seven days', async ({ page, context }) => {
-    // Playwright answers the request for the hub, so the browser's own handling of `Set-Cookie` is not exercised: the hub puts the
-    // cookie into the jar with these attributes, `pure.spec.ts` holds the `Set-Cookie` text to K7, and the real hub's text is WP-43's.
     await openSignIn(page);
     await signInWith(page, OPERATOR.password);
     await page.waitForURL(`${HUB_ORIGIN}/devices`);
@@ -42,7 +33,6 @@ test.describe('another origin', () => {
     hub,
     browserName,
   }) => {
-    // The hub's own wall has no say over a page the test serves for another origin, so the test route answers it.
     await context.route(`${OTHER_ORIGIN}/**`, (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><p>another site</p>' }));
     const toHub: { cookie: string; origin: string }[] = [];
     await context.route(`${HUB_ORIGIN}/graphql`, async (route) => {
@@ -51,14 +41,12 @@ test.describe('another origin', () => {
       await route.fallback();
     });
 
-    // From the hub's own page the cookie travels; the hub knows the operator.
     await page.goto(`${HUB_ORIGIN}/health`);
     expect((await callGraphql(page, ME)).data).toEqual({ me: { username: OPERATOR.username } });
     expect(toHub.at(-1)?.origin).toBe(HUB_ORIGIN);
     // WebKit does not show the `Cookie` header to a routed request, so only Chromium and Firefox prove the cookie travelled here.
     if (browserName !== 'webkit') expect(toHub.at(-1)?.cookie).toContain(SESSION_COOKIE);
 
-    // From another site the browser sends its own `Origin`, and, SameSite=Strict, no cookie.
     await page.goto(`${OTHER_ORIGIN}/`);
     await page.evaluate(
       async ([target, body]) => {
@@ -87,7 +75,6 @@ test.describe('sign out', () => {
     await page.waitForURL(`${HUB_ORIGIN}/sign-in`);
     expect(await sessionCookie(context)).toBeUndefined();
 
-    // The cookie is gone from the browser; the deletion on the hub is shown by putting the old token back.
     await context.addCookies([
       { name: SESSION_COOKIE, value: oldToken ?? '', url: HUB_ORIGIN, httpOnly: true, secure: true, sameSite: 'Strict' },
     ]);

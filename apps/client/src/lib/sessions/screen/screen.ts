@@ -15,15 +15,10 @@ import { shortcutOf, type ShortcutAction } from './operator/shortcuts';
 import { clearAfterTyping } from './operator/typing';
 import { terminalFont, terminalOptions } from './options';
 
-/** What the screen tells the session view. */
 export interface ScreenHooks extends EscapeHooks {
-  /** What the operator typed or pasted, as bytes for the shell. */
   readonly oninput: (bytes: Uint8Array<ArrayBuffer>) => void;
-  /** The terminal changed size in cells (after a fit). */
   readonly onresize: (size: CellSize) => void;
-  /** The operator asked to copy the selection (Ctrl+Shift+C, Cmd+C). */
   readonly oncopy: (text: string) => void;
-  /** The operator asked to find (Cmd+F, Ctrl+Shift+F). */
   readonly onfind: () => void;
   /** Output arrived faster than it could be drawn, so some is skipped (once per episode). */
   readonly onoverflow: () => void;
@@ -31,29 +26,24 @@ export interface ScreenHooks extends EscapeHooks {
   readonly allows: () => SessionTransfer;
 }
 
-/** The xterm.js terminal of one session pane. It is the only thing that touches xterm.js outside this folder's files. */
+/** The only surface over xterm.js outside this folder. */
 export interface TerminalScreen {
   size(): CellSize;
-  /** Draw terminal output from the hub. */
   write(bytes: Uint8Array): void;
-  /** Clear the screen and the scroll-back (a new session in the same pane). */
   reset(): void;
-  /** Fit the terminal to its host; a changed size reaches `onresize`. */
   fit(): void;
   focus(): void;
   blur(): void;
   /** Paste `text` as the operator's own action; bracketed when the shell asked for it, and nothing while paste is off. */
   paste(text: string): void;
-  /** Select the next (or previous) match of `text`; false when there is none. `incremental` keeps the current match while it still fits. */
   find(text: string, backwards: boolean, incremental: boolean): boolean;
   clearFind(): void;
   dispose(): void;
 }
 
-/** Opens a screen in a host element; the session pane passes it to the view. */
 export type ScreenOpener = (host: HTMLElement, hooks: ScreenHooks) => Promise<TerminalScreen>;
 
-/** Wait for the terminal font so the first cell measure is right; an engine without font loading goes on at once. */
+/** The first cell measure needs the terminal font loaded. */
 async function fontReady(family: string, sizePx: number): Promise<void> {
   if (!('fonts' in document)) return;
   try {
@@ -63,12 +53,7 @@ async function fontReady(family: string, sizePx: number): Promise<void> {
   }
 }
 
-/**
- * WebGL when the engine offers it; otherwise, or when its context is lost, xterm.js's DOM renderer draws. The addon
- * only reports a lost context after a 3 s wait for a restore, which leaves the screen blank; the canvas's own
- * `webglcontextlost` event (which does not bubble, so it is heard in the capture phase) disposes the addon at once,
- * and `onContextLoss` stays as the backstop.
- */
+/** The addon reports a lost context only after a 3 s wait, so the canvas's non-bubbling `webglcontextlost` falls back at once. */
 function enableWebgl(terminal: Terminal): void {
   try {
     const webgl = new WebglAddon();
@@ -91,7 +76,6 @@ function acts(terminal: Terminal, action: ShortcutAction, hooks: ScreenHooks): v
   if (action === 'find') hooks.onfind();
 }
 
-/** Input, size and shortcuts from the terminal to the hooks. */
 function wireEvents(terminal: Terminal, hooks: ScreenHooks): void {
   const encoder = new TextEncoder();
   terminal.onData((text) => {
@@ -116,12 +100,7 @@ function wireEvents(terminal: Terminal, hooks: ScreenHooks): void {
   });
 }
 
-/**
- * Open the session terminal in `host` (RA-003, RA-011): the shipped Nord-themed OpenDyslexicM Nerd Font Mono at
- * the token size, 5000 lines of scroll-back, Unicode 11 widths, search, detected links (confirmed by the view),
- * WebGL with a DOM fallback, and the escapes guarded as K4 §8.7 says. Resolves once the font is ready and the
- * terminal is open and fitted.
- */
+/** The session terminal (RA-003, RA-011), with the escapes guarded as K4 §8.7 says. */
 export const openScreen: ScreenOpener = async (host, hooks) => {
   const font = terminalFont(host);
   await fontReady(font.fontFamily, font.fontSize);
@@ -150,7 +129,6 @@ export const openScreen: ScreenOpener = async (host, hooks) => {
   return screenOf(terminal, fit, search, hooks);
 };
 
-/** The screen over an open `terminal`. */
 function screenOf(terminal: Terminal, fit: FitAddon, search: SearchAddon, hooks: ScreenHooks): TerminalScreen {
   const flow = outputFlow();
   return {

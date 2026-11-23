@@ -1,4 +1,3 @@
-// Test support: a fake desktop shell and hub API for mounting `WebTab` in jsdom, and a ResizeObserver a test drives.
 import { flushSync, mount, unmount } from 'svelte';
 import type { Bounds, Fingerprint, WebViewEvent, WebViewOpening, WebViewShell } from '$lib/web-interfaces/shell/shell';
 import { WebViewError } from '$lib/web-interfaces/shell/shell';
@@ -9,7 +8,6 @@ import WebTab from '../WebTab.svelte';
 
 export const BOUNDS = { x: 0, y: 48, width: 800, height: 552 };
 
-/** One shell command as the fake heard it. */
 export type ShellCall =
   | { readonly command: 'open'; readonly opening: WebViewOpening }
   | { readonly command: 'place'; readonly bounds: Bounds }
@@ -19,7 +17,6 @@ export type ShellCall =
   | { readonly command: 'popOut' | 'close' }
   | { readonly command: 'browser' | 'read'; readonly url: string };
 
-/** A shell that records every command; `answers` sets what it says (`refuse`: command to code), `emit` plays an event. */
 export function fakeShell() {
   const calls: ShellCall[] = [];
   const answers = {
@@ -27,7 +24,6 @@ export function fakeShell() {
     certificate: null as Fingerprint | null,
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- the fake's answers are read by the shell calls, never rendered
     refuse: new Map<ShellCall['command'], string>(),
-    /** When set, a certificate read waits for it before answering. */
     gate: null as Promise<void> | null,
   };
   let listener: ((event: WebViewEvent) => void) | undefined;
@@ -62,12 +58,10 @@ export function fakeShell() {
     calls,
     answers,
     emit: (event: WebViewEvent) => listener?.(event),
-    /** The commands heard, by name only. */
     names: () => calls.map(({ command }) => command),
   };
 }
 
-/** A hub API that pins what it is given, unless `answer` says otherwise. */
 export function fakeApi() {
   const accepts: [string, string][] = [];
   const control = {
@@ -85,7 +79,6 @@ export function fakeApi() {
   return { api, accepts, control };
 }
 
-/** A ResizeObserver that reports only when a test calls `resize`; the view area then measures `rect`. */
 export class FakeResizeObserver {
   static observers: FakeResizeObserver[] = [];
   static rect = { x: 0, y: 48, width: 800, height: 552 };
@@ -108,7 +101,6 @@ export class FakeResizeObserver {
   }
 }
 
-/** Install the fake observer and the view area's measure; returns the function that removes them. */
 export function installLayout(): () => void {
   const saved = globalThis.ResizeObserver;
   const measure = Object.getOwnPropertyDescriptor(Element.prototype, 'getBoundingClientRect');
@@ -127,13 +119,11 @@ export function installLayout(): () => void {
   };
 }
 
-/** Let pending promises settle, then flush Svelte's updates. */
 export async function settle(): Promise<void> {
   for (let turn = 0; turn < 5; turn += 1) await new Promise((resolve) => setTimeout(resolve, 0));
   flushSync();
 }
 
-/** What `showTab` mounts: the interface URL and pin, the device status, the platform and the device certificate. */
 export interface Shown {
   url?: string;
   pinned?: string | null;
@@ -142,7 +132,6 @@ export interface Shown {
   certificate?: Fingerprint;
 }
 
-/** A web tab over a fake shell and hub; `props` changes visibility, overlays and the device status. */
 export async function showTab({ url = 'https://nas.lan:5001/', pinned = null, status = 'UP', pinning = true, certificate }: Shown, cleanups: (() => unknown)[]) {
   const fake = fakeShell();
   fake.answers.pinning = pinning;

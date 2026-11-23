@@ -15,11 +15,9 @@ const OPEN = 1;
 /** What a files link knows; it holds no token, no URL, no path and no device text (SEC-002, LOG-007). */
 export interface FilesLinkState {
   readonly phase: TunnelPhase;
-  /** Whether the WebSocket upgrade succeeded. */
   readonly opened: boolean;
   /** The WebSocket close code, when the socket closed before the client gave up on it. */
   readonly closeCode: number | undefined;
-  /** Why the link ended, once it has; `endText` gives the operator's text. */
   readonly end: FilesEnd | undefined;
 }
 
@@ -41,7 +39,6 @@ export interface FilesLinkOptions {
 /** One files tunnel (K4 §9). One list or transfer at a time; results are typed values, never thrown. */
 export interface FilesLink {
   state(): FilesLinkState;
-  /** The entries of the directory `path` on the device. */
   list(path: string): Promise<FilesResult<Listing>>;
   /** The file at `path` as one `Blob` of exactly the size the hub announced; `progress` hears received bytes. */
   download(path: string, progress?: Progress): Promise<FilesResult<Blob>>;
@@ -73,11 +70,7 @@ const timer: UploadPort['wait'] = (ms, signal) =>
     signal.addEventListener('abort', over);
   });
 
-/**
- * Open the files tunnel for `ticket` at the hub `origin` (K4 §9, §8.1): a WebSocket to the hub address with
- * https→wss (http→ws to loopback) plus `ticket.tunnelPath`, `?token=<token>` and subprotocol `anima-files`.
- * The token lives only in that one expression: the link keeps the events, not the ticket.
- */
+/** Opens the files tunnel (K4 §9, §8.1); the token lives only in the socket URL, never in the link. */
 export function openFilesLink(options: FilesLinkOptions): FilesLinkOpening {
   const { origin, ticket, WebSocket: Socket = globalThis.WebSocket, wait = timer, onchange, onend } = options;
   const url = tunnelUrl(origin, ticket.tunnelPath);
@@ -93,7 +86,6 @@ export function openFilesLink(options: FilesLinkOptions): FilesLinkOpening {
   return { ok: true, value: linkOver(socket, { onchange, onend, wait }) };
 }
 
-/** The two liveness timers: a ping after our own quiet spell, a lost connection after the hub's (K4 §8.4). */
 function liveness(ping: () => void, lost: () => void) {
   let pingTimer: ReturnType<typeof setTimeout> | undefined;
   let silenceTimer: ReturnType<typeof setTimeout> | undefined;
@@ -115,17 +107,14 @@ function liveness(ping: () => void, lost: () => void) {
 
 const refusedLocally = <T>(kind: 'busy' | 'offline' | 'bad-request'): Promise<FilesResult<T>> => Promise.resolve({ ok: false, error: { kind } });
 
-/** The socket and the one request slot, as the requests see them. */
 interface Channel {
   /** Send one frame if the socket is open; false when it was dropped. */
   readonly transmit: (frame: string | ArrayBuffer) => boolean;
   readonly buffered: () => number;
   readonly wait: UploadPort['wait'];
-  /** The request in flight, at most one (K4 §9, D-5). */
   current: InFlight | undefined;
 }
 
-/** The link's requests over `channel`: each is refused locally, without a send, when the link or the slot is not free. */
 function requests(channel: Channel): Pick<FilesLink, 'list' | 'download' | 'upload' | 'cancel'> {
   const ask = <T>(request: FilesRequest, begin: (settle: (result: FilesResult<T>) => void) => InFlight): Promise<FilesResult<T>> => {
     if (channel.current !== undefined) return refusedLocally('busy');
@@ -154,10 +143,7 @@ function requests(channel: Channel): Pick<FilesLink, 'list' | 'download' | 'uplo
   };
 }
 
-/**
- * The channel over `socket`; `sent` hears each frame that went out. An open socket is the one check: the link closes
- * the socket whenever it ends, so an ended link never has one.
- */
+/** An open socket is the one check: an ended link always closes its socket. */
 function channelOn(socket: WebSocket, sent: () => void, wait: Channel['wait']): Channel {
   return {
     transmit: (frame) => {
@@ -172,7 +158,6 @@ function channelOn(socket: WebSocket, sent: () => void, wait: Channel['wait']): 
   };
 }
 
-/** The link on `socket`: state, liveness and the hub's frames against the request in flight. */
 function linkOver(socket: WebSocket, events: Events): FilesLink {
   let state: FilesLinkState = { phase: 'connecting', opened: false, closeCode: undefined, end: undefined };
   const channel = channelOn(socket, () => beats.sent(), events.wait);

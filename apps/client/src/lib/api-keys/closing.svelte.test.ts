@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-// How the shown key leaves: with the page, while the hub is still making it, and never while it is being made (F-8).
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
@@ -51,7 +50,6 @@ function nodeKeeps(element: Element, text: string): boolean {
   });
 }
 
-/** How many times the key appears in the markup, in field values, and in fields' own properties. */
 function places(text: string): { markup: number; values: number; kept: number } {
   const fields = [...document.querySelectorAll('input, textarea')];
   const values = fields.filter((element) => (element as HTMLInputElement).value.includes(text));
@@ -103,7 +101,6 @@ it('F-8: leaving Settings while the key shows empties the field at once, though 
   expect(places(FAKE_SECRET)).toEqual({ markup: 0, values: 0, kept: 0 });
 });
 
-/** Opens the dialog and presses Create; the hub has not answered yet. */
 async function making(): Promise<(result: HubResult<unknown>) => void> {
   const { answer, release } = pending();
   await openDialog(answer);

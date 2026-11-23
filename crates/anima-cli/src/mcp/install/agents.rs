@@ -1,5 +1,4 @@
-//! The coding agents that `anima mcp install` knows, and the way to set each up (plan Section
-//! 12.2). Each row is from the documentation of the product; nothing here touches a file.
+//! The coding agents that `anima mcp install` knows; nothing here touches a file (plan Section 12.2).
 
 use std::path::{Path, PathBuf};
 
@@ -9,16 +8,11 @@ use serde_json::{Value, json};
 /// The name of the entry in each agent: the one member this program ever changes (MCP-030).
 pub const NAME: &str = "anima";
 
-/// How the entry of one agent is written in its file.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Shape {
-    /// `{"command": ..., "args": ["mcp"]}`.
     Plain,
-    /// The same with `"type": "stdio"`.
     Stdio,
-    /// opencode: `{"type": "local", "command": [..., "mcp"]}`.
     Local,
-    /// Zed: with an empty `env`.
     WithEnv,
 }
 
@@ -48,16 +42,13 @@ pub enum Way {
     },
 }
 
-/// Where the file of an agent is, below the home folder.
 #[derive(Clone, Copy, Debug)]
 pub enum Place {
     Fixed(&'static str),
-    /// A different folder on macOS and on Linux.
     BySystem {
         macos: &'static str,
         linux: &'static str,
     },
-    /// The first when it exists, else the second.
     FirstThatExists(&'static str, &'static str),
 }
 
@@ -185,7 +176,6 @@ pub const AGENTS: &[Agent] = &[
     },
 ];
 
-/// The agent with this id.
 #[must_use]
 pub fn agent(id: &str) -> Option<&'static Agent> {
     AGENTS.iter().find(|agent| agent.id == id)
@@ -203,7 +193,6 @@ pub enum State {
 }
 
 impl State {
-    /// The state in words for a person.
     #[must_use]
     pub const fn words(self) -> &'static str {
         match self {
@@ -229,7 +218,6 @@ pub fn entry(shape: Shape, anima: &Path) -> Value {
     }
 }
 
-/// The file of `place` below `home`; `exists` answers for [`Place::FirstThatExists`].
 #[must_use]
 pub fn file(place: Place, home: &Path, macos: bool, exists: impl Fn(&Path) -> bool) -> PathBuf {
     match place {
@@ -247,7 +235,6 @@ pub fn file(place: Place, home: &Path, macos: bool, exists: impl Fn(&Path) -> bo
     }
 }
 
-/// The arguments of an own command with the path of `anima` put in.
 #[must_use]
 pub fn arguments(template: &[&str], anima: &Path) -> Vec<String> {
     template

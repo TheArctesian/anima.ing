@@ -14,17 +14,14 @@
   import { focusAfterRevoke, PLACEHOLDER_KEY } from './listing';
   import NewKeyDialog from './NewKeyDialog.svelte';
 
-  // The Settings page draws the section and its heading (F-10); this is what goes under the heading.
+  // The Settings page draws the heading (F-10).
   interface Props {
-    /** The clock for expiry marks and new keys' expiry dates (CQ-021). */
     now?: () => Date;
-    /** The clock of the loading thresholds; tests pass their own. */
     clock?: LoadingClock;
   }
 
   const { now = () => new Date(), clock }: Props = $props();
   const api = apiKeysApi(useHub());
-  /** `null` while loading or after a failed load. */
   let keys = $state<readonly ApiKey[] | null>(null);
   let loadFailed = $state(false);
   let retrying = $state(false);
@@ -44,7 +41,7 @@
     } else loadFailed = true;
   }
 
-  /** Retry: the button stays mounted, and aria-disabled, while the hub answers; on success focus goes to Create (NAV-005). */
+  /** On success focus goes to Create (NAV-005). */
   async function retry(): Promise<void> {
     if (retrying) return;
     retrying = true;
@@ -74,7 +71,7 @@
     target?.focus();
   }
 
-  /** The confirmed revoke; a new modal for the next one, since a finished one keeps its buttons off. */
+  /** Each revoke gets a new modal, since a finished one keeps its buttons off. */
   async function revoke(): Promise<HubResult<unknown>> {
     if (revoking === null) return { ok: true, value: undefined };
     const { id } = revoking;
@@ -99,9 +96,7 @@
     {/snippet}
     <FormButton tabindex={0} data-create onclick={() => { creating = true; }}>Create API key</FormButton>
   </SettingRow>
-  <!--
-    A hidden row sets the space for the result. Extra keys scroll within it so the VPN section below stays in place (MOT-007).
-  -->
+  <!-- A hidden row reserves the space; extra keys scroll within it so the section below stays in place (MOT-007). -->
   <div class="stack" aria-busy={loading}>
     <ul class="sizer" aria-hidden="true" inert>
       <KeyRow key={PLACEHOLDER_KEY} expiredAt={now()} onRevoke={() => undefined} placeholder />
@@ -175,7 +170,6 @@
     scrollbar-gutter: stable;
   }
 
-  /* The skeleton covers what lies under it with the card's own colour. */
   .skeleton {
     background: var(--surface-overlay);
   }

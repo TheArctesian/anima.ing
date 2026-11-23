@@ -1,8 +1,4 @@
-//! The update of the installed copy with the app (HMD-055), with stand-in daemons in a temporary
-//! HOME: each answers `--version` as told and records each other run with the version of the
-//! installed copy and the inode of `anima-daemon.previous` at that moment, so their `stop` and
-//! `install` are the fake service manager. The real `~/.local/bin`, unit, `launchctl` and
-//! `systemctl` are never touched.
+//! The update of the installed copy with the app (HMD-055); the stand-ins' `stop` and `install` are the service manager.
 
 use std::{
     fs,
@@ -22,18 +18,13 @@ use crate::daemon::{
     version::{Decision, Version, decide, parse},
 };
 
-/// How a stand-in answers `--version`.
 pub(super) const OLD: &str = "echo 'anima-daemon 0.1.9'";
 pub(super) const NEW: &str = "echo 'anima-daemon 0.1.10'";
-/// A daemon from before `--version`: it prints the usage and fails.
 const NO_VERSION: &str = "echo 'usage: anima-daemon run' >&2; exit 2";
-/// What the stand-ins record as the version of the copy.
 pub(super) const OLD_COPY: &str = "copy:anima-daemon 0.1.9";
 pub(super) const NEW_COPY: &str = "copy:anima-daemon 0.1.10";
 
-/// A stand-in daemon named `label` that answers `--version` with `version` and records each
-/// other run as `<label> <args> copy:<version of the copy> prev:<inode of the copy of before>`,
-/// then runs `then`.
+/// Records each run but `--version` as `<label> <args> copy:<version of the copy> prev:<inode of the copy of before>`.
 fn stand_in(rig: &Rig, label: &str, version: &str, then: &str) -> String {
     let copy = rig.installed();
     format!(
@@ -49,8 +40,6 @@ fn write_program(path: &Path, text: &str) {
     fs::set_permissions(path, fs::Permissions::from_mode(0o755)).expect("chmod");
 }
 
-/// A rig whose installed copy (`old`) answers `installed` and whose carried daemon (`new`)
-/// answers `carried` and runs `then` for each other command.
 pub(super) fn installed(installed: &str, carried: &str, then: &str) -> (Rig, String, String) {
     let rig = rig("exit 0");
     rig.local_bin();
@@ -65,7 +54,6 @@ fn update(rig: &Rig) -> Result<Updated, DaemonError> {
     update_with(rig, WIDE)
 }
 
-/// The checks of the update, as the app makes them: by default each passes.
 #[derive(Clone, Copy)]
 pub(super) struct Checks {
     pub restart: Duration,
@@ -85,7 +73,6 @@ impl Default for Checks {
     }
 }
 
-/// The update with `restart` as the deadline of each `stop` and `install`.
 pub(super) fn update_with(rig: &Rig, restart: Duration) -> Result<Updated, DaemonError> {
     update_checked(
         rig,
@@ -96,7 +83,6 @@ pub(super) fn update_with(rig: &Rig, restart: Duration) -> Result<Updated, Daemo
     )
 }
 
-/// The update with `checks`.
 pub(super) fn update_checked(rig: &Rig, checks: &Checks) -> Result<Updated, DaemonError> {
     let env = rig.here().env;
     update_here(&Swap {
@@ -263,7 +249,6 @@ fn hmd_055_a_stop_that_fails_changes_nothing() {
 
 #[test]
 fn hmd_055_a_copy_that_fails_after_the_stop_puts_the_copy_of_before_back_and_starts_it() {
-    // The carried daemon becomes unreadable at its stop: the copy then starts, and fails.
     let (rig, old, _) = installed(OLD, NEW, "[ \"$1\" = stop ] && chmod 000 \"$0\"; exit 0");
     let old_inode = inode(&rig.installed());
 

@@ -29,10 +29,7 @@ export function liveRow(thread: LiveThread): ThreadRow {
   };
 }
 
-/**
- * The rows of the list: each driven thread, then each session file that is not one of them. The session of a driven
- * thread is also a file of its program (Claude Code takes the ID of the thread as its session), so that file is left out.
- */
+/** Driven threads first; a driven thread's own session file is left out, as Claude Code takes the thread's ID as its session. */
 export function mergedRows(files: readonly ThreadRow[], live: readonly LiveThread[]): readonly ThreadRow[] {
   const driven = new Set(live.flatMap((thread) => [thread.row.id, ...(thread.row.session === null ? [] : [thread.row.session])]));
   return [...live.map(liveRow), ...files.filter((row) => !driven.has(row.id))];

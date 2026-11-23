@@ -45,7 +45,6 @@ export interface Extension {
   readonly neededBy: readonly string[];
 }
 
-/** The extension calls of the hub. */
 export interface ExtensionsApi {
   /** All extensions, in the hub's order. */
   list(): Promise<HubResult<readonly Extension[]>>;

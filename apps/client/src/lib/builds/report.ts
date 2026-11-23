@@ -4,10 +4,9 @@ import type { BuildJobState, BuildsApi } from './api';
 
 /** The hub takes at most this many lines in one report (`MAX_LINES_PER_REPORT`). */
 export const LINES_PER_REPORT = 1000;
-/** Lines waiting for a report are capped; the oldest go first, and the next report says how many went. */
 export const PENDING_LINES_MAX = 20_000;
 
-/** What became of one report. `lost`: the hub refused it, so this builder no longer holds the job (BLD-010). */
+/** `lost`: the hub refused the report, so this builder no longer holds the job (BLD-010). */
 export type Sent = 'sent' | 'unreachable' | 'lost';
 
 /** A refusal means the lease, the job or the token is gone; anything else may pass on the next try. */
@@ -24,7 +23,7 @@ function sentOf(error: HubError): Sent {
   }
 }
 
-/** The log lines of one job on their way to the hub, and the reports that carry them (BLD-005, BLD-048). */
+/** BLD-005, BLD-048. */
 export class JobReporter {
   #pending: string[] = [];
   /** The number of lines ever queued before `#pending[0]`, sent or dropped. */
@@ -38,7 +37,7 @@ export class JobReporter {
     this.#jobId = jobId;
   }
 
-  /** Queues one line that has already been cleaned (BLD-049). */
+  /** Takes a line that has already been cleaned (BLD-049). */
   add(line: string): void {
     this.#pending.push(line);
     if (this.#pending.length > PENDING_LINES_MAX) {
@@ -48,18 +47,13 @@ export class JobReporter {
     }
   }
 
-  /** The next report's lines, and the queue position just after the last of them. */
   #batch(): { lines: string[]; end: number } {
     const note = this.#dropped > 0 ? [`[${String(this.#dropped)} earlier lines were not sent]`] : [];
     const taken = this.#pending.slice(0, LINES_PER_REPORT - note.length);
     return { lines: [...note, ...taken], end: this.#first + taken.length };
   }
 
-  /**
-   * Sends every waiting line, `LINES_PER_REPORT` at a time; the last report carries `state` and `failureReason`, so the
-   * lines reach the hub while this builder still holds the job (BLD-010). A line leaves the queue only once a report that
-   * held it was accepted; lines queued meanwhile wait for the next call.
-   */
+  /** The last report carries `state`, so the lines reach the hub while this builder holds the job (BLD-010). */
   async send(state: BuildJobState | null, failureReason: string | null = null): Promise<Sent> {
     const end = this.#first + this.#pending.length;
     for (;;) {
@@ -78,7 +72,6 @@ export class JobReporter {
   }
 }
 
-/** Why a step did not finish: the shell's code, or `hub-refused` when the hub did not take the upload's calls. */
 export type StepCode = BuilderShellCode | 'hub-refused';
 
 const REASONS: Partial<Record<StepCode, string>> = {
@@ -96,7 +89,7 @@ const REASONS: Partial<Record<StepCode, string>> = {
   platform: 'Builder refused: it cannot build this target.',
 };
 
-/** The failure reason the hub shows for a step that ended with `code` (BLD-010); fixed text, never process output. */
+/** Fixed text, never process output (BLD-010). */
 export function failureReason(stepLabel: string, code: StepCode): string {
   if (code === 'step-failed') return `${stepLabel} failed. See the job log.`;
   return REASONS[code] ?? `${stepLabel} could not run.`;

@@ -15,7 +15,6 @@ import type { HubState } from '../model';
 import type { Recording } from '../recorder';
 import { rootValue, type CallContext } from './resolvers';
 
-/** What `POST /graphql` needs: the context holds the cookie jar. */
 export interface GraphqlParts {
   readonly context: BrowserContext;
   readonly schema: GraphQLSchema;
@@ -30,9 +29,7 @@ interface GraphqlBody {
 }
 
 interface Operation {
-  /** The operation's name, or `null` for an unnamed one. */
   readonly name: string | null;
-  /** The root fields, `__typename` aside. */
   readonly fields: string[];
 }
 
@@ -62,7 +59,7 @@ export async function requestFacts(context: BrowserContext, route: Route): Promi
   };
 }
 
-/** Keeps the browser's cookie jar in step with what the hub says; the header is sent too, as the real hub does. */
+/** The header is sent too, as the real hub does. */
 async function applyCookieEffects(context: BrowserContext, reply: CallContext['reply'], now: Date): Promise<Record<string, string>> {
   if (reply.issuedToken !== undefined) {
     const expires = Math.floor(now.getTime() / 1000) + COOKIE_MAX_AGE_SECONDS;

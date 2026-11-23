@@ -3,7 +3,7 @@ import { vi } from 'vitest';
 import { builderPass, buildJob, POLL_MS, startBuilderLoop, type BuilderStatus, type LoopPorts } from '../loop';
 import { BUILDER_TOKEN, FakeBuildsApi, FakeShell, JOB, refused, sleep, SUMS_FILE, UPDATER } from './builds.fixture';
 
-/** The steps of a job that is built and uploaded: the updater file, then `SHA256SUMS`. */
+/** Two uploads: the updater file, then `SHA256SUMS`. */
 const ALL_STEPS = ['checkout', 'gates', 'bundle', 'release-files', 'upload', 'upload'];
 
 /** The hub's limit between two reports of a running job (BLD-005). */
@@ -26,7 +26,6 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** Runs `work` to its end while the fake clock moves on. */
 async function settle<T>(work: Promise<T>): Promise<T> {
   let done = false;
   void work.finally(() => (done = true));

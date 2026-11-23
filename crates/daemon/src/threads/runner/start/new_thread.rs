@@ -6,6 +6,7 @@ use agent_threads::control::{RunState, ThreadRow, Workspace};
 use agent_threads::drive::{Effort, Launch, Mode, Model, Program, SessionStart};
 use uuid::Uuid;
 
+use super::super::accounts::STANDARD;
 use super::super::{Runner, login};
 use super::chosen_folder;
 use crate::threads::wire;
@@ -18,6 +19,8 @@ pub(in crate::threads::runner) struct NewThread {
     pub mode: Mode,
     pub model: Option<String>,
     pub effort: Option<Effort>,
+    /// A speed of the model (TH117).
+    pub speed: Option<String>,
     pub prompt: String,
     pub program_path: Option<PathBuf>,
     /// The draft whose files go with the first prompt (TH111).
@@ -46,6 +49,7 @@ impl NewThread {
                 mode,
                 model,
                 effort,
+                speed,
                 prompt,
                 program_path,
                 draft,
@@ -58,6 +62,7 @@ impl NewThread {
                 mode,
                 model,
                 effort,
+                speed,
                 prompt,
                 program_path,
                 draft,
@@ -116,6 +121,7 @@ impl Runner {
             queued: Vec::new(),
             last_turn: None,
             effort: new.effort,
+            speed: new.speed.clone().filter(|speed| speed != STANDARD),
             workspace: Some(Workspace::of(&folder)),
             usage: None,
         };

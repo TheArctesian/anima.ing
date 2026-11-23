@@ -61,10 +61,9 @@ const updater = vi.hoisted(() => ({
 }));
 vi.mock('$lib/platform/platform', () => ({ capabilities: () => shell.answers }));
 vi.mock('$lib/desktop/updater', () => {
-  // Runs when the updater module is first imported: the count says whether it was loaded at all (UPD-001).
   shell.loads += 1;
   return {
-    // While `broken`, using the loaded module fails: the test simulates a failure when the updater is used, not a failed import.
+    // A failure on use of the loaded module, not a failed import.
     get desktopUpdater() {
       if (shell.broken) throw new Error('the updater did not load');
       return updater;
@@ -133,7 +132,6 @@ describe('provideDesktopUpdates', () => {
   });
 });
 
-/** Lets every pending import and promise run, so a check that was going to start has started. */
 async function settle(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }

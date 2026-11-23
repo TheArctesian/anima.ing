@@ -18,13 +18,11 @@ export type UpdateLine =
 /** Why the last attempt failed (UPD-002); `other` covers the network and the disk. */
 export type FailureReason = 'no-feed' | 'signature' | 'other';
 
-/** The reason a failed port call carries, `other` for any error that carries none. */
 function reasonOf(error: unknown): FailureReason {
   const reason = typeof error === 'object' && error !== null && 'reason' in error ? error.reason : undefined;
   return reason === 'no-feed' || reason === 'signature' ? reason : 'other';
 }
 
-/** Where the schedule records a failure; any other text fails to compile. */
 export interface UpdateLog {
   warn(text: UpdateLine): void;
 }
@@ -37,13 +35,12 @@ export type UpdateState =
   | { readonly kind: 'installed'; readonly version: string }
   | { readonly kind: 'failed'; readonly reason: FailureReason };
 
-/** The state, and when the next scheduled check runs (`null` before the schedule starts and once an update is installed). */
+/** `nextCheckAt` is null before the schedule starts and once an update is installed. */
 export interface UpdateSnapshot {
   readonly state: UpdateState;
   readonly nextCheckAt: number | null;
 }
 
-/** Runs `run` every `ms` until the returned function is called. Injected so tests control time. */
 export type Repeat = (run: () => void, ms: number) => () => void;
 
 export interface ScheduleDeps {
@@ -55,17 +52,16 @@ export interface ScheduleDeps {
 }
 
 export interface UpdateSchedule {
-  /** Checks now and then every 4 hours. Does nothing when already started. */
   start(): void;
-  /** Stops the scheduled checks; an installed update stays installed. Work already running is not aborted. */
+  /** Work already running is not aborted. */
   stop(): void;
-  /** One check now (UPD-006), unless one is running or an update is installed. The 4-hour cadence is not moved. */
+  /** One check now (UPD-006); the 4-hour cadence is not moved. */
   checkNow(): Promise<void>;
 }
 
 /**
- * The update state machine: unchecked (before the first check), idle (checked, current), checking, downloading, installed, failed. A failure is logged once and waits for
- * the next scheduled check (UPD-002, UPD-006); once an update is installed no check runs until restart (UPD-005).
+ * A failure is logged once and waits for the next scheduled check (UPD-002, UPD-006); once an update is installed no
+ * check runs until restart (UPD-005).
  */
 export function createUpdateSchedule({ port, log, repeat, now, onChange }: ScheduleDeps): UpdateSchedule {
   let state: UpdateState = { kind: 'unchecked' };

@@ -2,11 +2,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { BUILD_FOLDER } from '../synthetic/static-files';
 
-// Where the desktop updater lives in the production build, so a spec can tell whether a page asked for it (UPD-001). The
-// build hashes chunk names, so the files are found by what they hold, not by name.
+// The build hashes chunk names, so the updater chunks are found by what they hold, not by name (UPD-001).
 
 const IMMUTABLE = join(BUILD_FOLDER, '_app', 'immutable');
-/** The updater plugin's command prefix: only the chunk that bundles `@tauri-apps/plugin-updater` has it. */
 const PLUGIN_COMMAND = 'plugin:updater|';
 
 function scriptsUnder(folder: string): string[] {
@@ -17,10 +15,7 @@ function scriptsUnder(folder: string): string[] {
   });
 }
 
-/**
- * The URL paths of the chunk that bundles the updater plugin and of every chunk that names it (`$lib/desktop/updater`, the one
- * that loads it). The layout's chunk does not name the plugin, only the updater module, so it is not in the list.
- */
+/** The layout's chunk names only the updater module, not the plugin, so it is not in the list. */
 export function updaterChunkPaths(): string[] {
   const scripts = scriptsUnder(IMMUTABLE).map((path) => ({ path, text: readFileSync(path, 'utf8') }));
   const plugin = scripts.filter((script) => script.text.includes(PLUGIN_COMMAND));

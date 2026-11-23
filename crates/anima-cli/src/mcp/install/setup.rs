@@ -1,6 +1,4 @@
-//! One agent on this computer: whether it is there, what its entry is, what a change would touch,
-//! and the change itself (MCP-027 to MCP-036). This is the edge: it reads files and runs the
-//! agents' own programs; `agents.rs` and `jsonc.rs` decide what to write.
+//! The I/O edge of one agent (MCP-027 to MCP-036); `agents.rs` and `jsonc.rs` decide what to write.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -55,7 +53,7 @@ fn file_of(agent: &Agent, here: &Here) -> Option<PathBuf> {
     }
 }
 
-/// What the agent's entry is now (MCP-027). A file way reads the file; an own way asks the program.
+/// What the agent's entry is now (MCP-027).
 #[must_use]
 pub fn state(agent: &Agent, here: &Here, anima: &Path) -> State {
     if !present(agent, here) {
@@ -89,8 +87,7 @@ pub fn state(agent: &Agent, here: &Here, anima: &Path) -> State {
                 Ran::Missing => return State::NotSetUp,
                 Ran::Failed | Ran::Replaceable { .. } => return State::Unreadable,
             };
-            // The path as one whole word of the output, not as a part of a longer word: a
-            // server at `<anima>-other` is not this one. What else the entry holds is not read.
+            // The path counts only as a whole word: a server at `<anima>-other` is not this one.
             let output_text = String::from_utf8_lossy(&stdout);
             let path = anima.to_string_lossy();
             let words = |text: &str, word: &str| {
@@ -103,7 +100,6 @@ pub fn state(agent: &Agent, here: &Here, anima: &Path) -> State {
                 Check::Get(_) if !success => State::NotSetUp,
                 Check::Get(_) | Check::List(_) if words(&output_text, &path) => State::SetUp,
                 Check::Get(_) => State::Different,
-                // A list that names a server `anima` with a different program: not ours.
                 Check::List(_)
                     if words(&output_text, NAME) || words(&output_text, &format!("{NAME}:")) =>
                 {
@@ -124,7 +120,6 @@ pub enum Step {
         file: PathBuf,
         copy: Option<PathBuf>,
     },
-    /// Runs `program` with `arguments`.
     Run {
         program: PathBuf,
         arguments: Vec<String>,
@@ -137,9 +132,7 @@ pub enum Action {
     Uninstall,
 }
 
-/// Why one agent was not changed. No variant carries text of a file (LOG-007). When a different
-/// user can change the agent's program or file, the error names who and what the person can run
-/// or add themselves (R-442).
+/// Why one agent was not changed. No variant carries text of a file (LOG-007).
 #[derive(Debug, thiserror::Error)]
 pub enum SetupError {
     #[error("its file was refused: {0}")]
@@ -156,8 +149,6 @@ pub enum SetupError {
     ProgramFailed,
 }
 
-/// The refusal of an agent's own program that a different user can change, with the command
-/// that the person can run themselves.
 fn replaceable(action: Action, program: &Path, arguments: &[String], others: Others) -> SetupError {
     SetupError::ProgramReplaceable {
         others,
@@ -165,8 +156,6 @@ fn replaceable(action: Action, program: &Path, arguments: &[String], others: Oth
     }
 }
 
-/// The refusal of an agent's file. When a different user can change it, the refusal names who and
-/// the member that the person can add or take out themselves.
 fn file_refused(
     error: FileError,
     agent: &Agent,
@@ -190,9 +179,7 @@ fn file_refused(
 /// The steps that `action` would take for `agent` in `state`, in order (MCP-029). It reads only.
 ///
 /// # Errors
-/// [`SetupError::NoProgram`] when an own way has no program on `PATH`; the refusals of a file
-/// ([`SetupError::File`], [`SetupError::FileShared`]) or a program that a different user can
-/// change ([`SetupError::ProgramReplaceable`]).
+/// [`SetupError`] when the file or the program is refused, or no program is on `PATH`.
 pub fn steps(
     agent: &Agent,
     here: &Here,
@@ -203,7 +190,6 @@ pub fn steps(
     match agent.way {
         Way::File { .. } => {
             let file = file_of(agent, here).ok_or(SetupError::NoProgram)?;
-            // A file that a different user can change: the list says who, and what to do by hand.
             files::read(here.root(&file), &file)
                 .map_err(|error| file_refused(error, agent, &file, (action, anima)))?;
             // `symlink_metadata`: a link at the name of the copy is not a copy.

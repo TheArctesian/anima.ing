@@ -22,7 +22,6 @@
   const presented = $derived(displayFingerprint(current.presented));
   const expected = $derived(current.step === 'mismatch' ? displayFingerprint(current.expected) : undefined);
   const problem = $derived(current.step === 'accepting' ? undefined : current.problem);
-  // Several web tabs can be mounted at once, so the ids are the component's own.
   const uid = $props.id();
 </script>
 
@@ -169,7 +168,7 @@
     outline-offset: var(--border-focus);
   }
 
-  /* --text on --status-warning-tint is 7.5:1 (UI-002), as the host key warning. */
+  /* --text on --status-warning-tint is 7.5:1 (UI-002). */
   .warning {
     border-color: var(--status-warning);
     background: var(--status-warning-tint);

@@ -9,7 +9,6 @@
   interface Props {
     account: AccountRow;
     now: Date;
-    /** The hub's words for the action it refused on this account; empty when none. */
     refusal: string;
     working: boolean;
     onSync: () => void;

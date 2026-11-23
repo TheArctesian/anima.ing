@@ -36,7 +36,6 @@ interface Sent {
   readonly variables: unknown;
 }
 
-/** A hub that answers each operation from its queue (the last answer repeats), and records every request. */
 function hubWith(answers: Record<string, HubResult<unknown>[]>): Sent[] {
   const sent: Sent[] = [];
   mocks.hub = {
@@ -54,7 +53,7 @@ beforeEach(() => {
   mocks.hub = undefined;
 });
 
-/** Lets the hub round trips of a save finish: `settle` only covers a tick. */
+/** A save's hub round trips outlast `settle`, which covers one tick. */
 const later = () => new Promise((done) => setTimeout(done, 0)).then(() => flushSync());
 const section = () => document.querySelector<HTMLElement>('[data-section="notifications"]');
 const boxes = () => [...(section()?.querySelectorAll<HTMLInputElement>('input[type="checkbox"]') ?? [])];

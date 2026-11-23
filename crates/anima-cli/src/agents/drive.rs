@@ -30,6 +30,16 @@ pub enum ProgramName {
     Codex,
 }
 
+impl ProgramName {
+    #[must_use]
+    pub const fn program(self) -> Program {
+        match self {
+            Self::ClaudeCode => Program::ClaudeCode,
+            Self::Codex => Program::Codex,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
 pub enum ModeName {
     /// The program asks nothing (the default, R-308).
@@ -66,6 +76,9 @@ pub struct StartArgs {
     model: Option<String>,
     #[arg(long, value_parser = parse_effort)]
     effort: Option<Effort>,
+    /// A speed of the model other than the standard one, from `anima agents models`.
+    #[arg(long)]
+    speed: Option<String>,
     /// A different copy of the program than the first on the PATH of your login, such as the
     /// copy of an application. The runner takes only a copy that it finds itself.
     #[arg(long)]
@@ -94,7 +107,7 @@ pub struct WatchArgs {
 
 fn parse_effort(text: &str) -> Result<Effort, String> {
     serde_json::from_value(serde_json::Value::from(text))
-        .map_err(|_| "low, medium, high, xhigh or max".to_owned())
+        .map_err(|_| "none, minimal, low, medium, high, xhigh, max or ultra".to_owned())
 }
 
 /// Gives a result that is not a refusal.
@@ -128,14 +141,12 @@ impl StartArgs {
             _ => invocation.output.message(NOT_CHECKED),
         }
         let action = Action::Start {
-            program: match self.program {
-                ProgramName::ClaudeCode => Program::ClaudeCode,
-                ProgramName::Codex => Program::Codex,
-            },
+            program: self.program.program(),
             folder,
             mode: self.mode.mode(),
             model: self.model,
             effort: self.effort,
+            speed: self.speed,
             prompt: self.prompt,
             program_path: self
                 .program_path
@@ -210,6 +221,21 @@ pub async fn interrupt(args: ThreadIdArgs, invocation: &Invocation) -> Result<()
             thread: args.thread,
         },
         "The turn stopped.",
+    )
+    .await
+}
+
+/// `anima agents compact`: Codex compacts the context of the thread (TH117).
+///
+/// # Errors
+/// [`Failure`] for a refusal of the runner.
+pub async fn compact(args: ThreadIdArgs, invocation: &Invocation) -> Result<(), Failure> {
+    simple(
+        invocation,
+        Action::Compact {
+            thread: args.thread,
+        },
+        "Codex is compacting the context of the thread.",
     )
     .await
 }

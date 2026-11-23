@@ -1,9 +1,6 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
 
-/**
- * The `anima` command line tool on this computer's `PATH`, as the desktop shell reports it (INS-004 to INS-006). The
- * shell proposes the folder; the row shows it and sends it back unchanged when the operator confirms.
- */
+/** The `anima` command line tool on `PATH`, as the desktop shell reports it (INS-004 to INS-006). */
 export type CommandLineStatus =
   | { readonly state: 'unavailable'; readonly reason: CommandLineProblem }
   | {
@@ -17,7 +14,6 @@ export type CommandLineStatus =
   | { readonly state: 'installed'; readonly path: string }
   | { readonly state: 'elsewhere'; readonly folder: string; readonly path: string; readonly pointsAt: string };
 
-/** The shell's error codes. Any other answer is `failed`. */
 export type CommandLineProblem =
   | 'caller'
   | 'unsupported'
@@ -52,7 +48,6 @@ export function problemText(problem: CommandLineProblem): string {
   return PROBLEMS[problem];
 }
 
-/** What blocks an install: the kind of entry, and where a link points. */
 export interface Occupant {
   readonly kind: 'file' | 'folder' | 'link' | 'other';
   readonly linkTarget: string | null;
@@ -79,7 +74,6 @@ function elsewhereOf(value: Record<string, unknown>): CommandLineStatus | null {
   return text(folder) && text(path) && text(pointsAt) ? { state: 'elsewhere', folder, path, pointsAt } : null;
 }
 
-/** The status the shell answered, or `null` for anything that is not one. */
 export function statusOf(value: unknown): CommandLineStatus | null {
   if (!isRecord(value)) return null;
   switch (value.state) {

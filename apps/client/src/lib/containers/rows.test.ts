@@ -55,7 +55,6 @@ it('HOST-021: a row has no mark before the operator asked, and then the answer o
     'tracks-app-1': { newer: true, words: 'Newer image' },
     'tracks-worker-1': { newer: false, words: 'Up to date' },
     recorder: { newer: false, words: 'Built here, or the tag moved' },
-    // The hub gave no answer for this container.
     ollama: null,
   });
 });

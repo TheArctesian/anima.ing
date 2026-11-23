@@ -2,8 +2,7 @@ import { graphql } from '$lib/hub/generated';
 import type { ApiKeyInput, ApiKeysQuery } from '$lib/hub/generated/graphql';
 import type { Hub, HubResult } from '$lib/hub/hub';
 
-// Own documents (WP-50 F-3): the K1 fields are @pending, so a hub without them fails these documents only, and only
-// the API keys section shows an error.
+// Own documents: the K1 fields are @pending, so a hub without them fails only the API keys section.
 const API_KEYS = graphql(`
   query ApiKeys {
     apiKeys {
@@ -48,16 +47,12 @@ export type ApiKey = ApiKeysQuery['apiKeys'][number];
 
 export type { ApiKeyInput };
 
-/**
- * A key the hub has just made. `secret` is the whole key, shown once (INT-003): the caller keeps it only while the
- * dialog that shows it is open and never logs, stores or sends it anywhere (LOG-007).
- */
+/** `secret` is the whole key, shown once (INT-003); it is never logged, stored or sent (LOG-007). */
 interface CreatedApiKey {
   readonly key: ApiKey;
   readonly secret: string;
 }
 
-/** The API key calls of the hub (INT-003, D-23) as plain functions of a `Hub`. */
 export interface ApiKeysApi {
   list(): Promise<HubResult<readonly ApiKey[]>>;
   create(input: ApiKeyInput): Promise<HubResult<CreatedApiKey>>;

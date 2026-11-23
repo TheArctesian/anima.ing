@@ -1,8 +1,7 @@
 import { escapedAttempts } from './escapes';
 import { startedProxies } from './shared-proxy';
 
-// After the last test of every project: the deny-all proxy of each engine must hold nothing the harness does not explain.
-// A throw here fails the run, so a test browser that reaches for a real host cannot pass unseen (WP-44 ruling S3).
+// A request the deny-all proxy refused fails the run, so a test browser cannot reach a real host unseen (WP-44 ruling S3).
 
 export default async function checkNothingEscaped(): Promise<void> {
   const escaped: string[] = [];

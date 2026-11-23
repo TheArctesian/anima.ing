@@ -1,8 +1,6 @@
 import type { HubError, HubResult } from '$lib/hub/hub';
 import type { ApplicationRoute, RouteCalls, RouteList } from '../api';
 
-// Test support: routes in the hub's shape, and calls that answer with them and record what the section asked.
-
 /** The time of each test: the certificates below end 9 and 89 days after it. */
 export const NOW = new Date('2026-11-21T12:00:00Z');
 
@@ -38,7 +36,6 @@ export function route(change: Partial<ApplicationRoute>): ApplicationRoute {
   };
 }
 
-/** The routes of a hosted hub, as in Frame 1: one proven, one with a certificate that ends soon, one waiting, one lost, one redirect. */
 export const ROUTES: readonly ApplicationRoute[] = [
   route({}),
   route({ id: 'route-tracks', name: 'tracks.example.com', deviceId: NAS, port: 3000, certificateNotAfter: '2026-11-30T13:00:00Z', requests: 1900, bytesOut: 84_000_000 }),
@@ -57,13 +54,9 @@ export interface FakeCalls extends RouteCalls {
   checked: string[];
   removed: string[];
   routes: readonly ApplicationRoute[];
-  /** When set, the next list fails with it. */
   listFails?: HubError;
-  /** When set, each check fails with it. */
   checkFails?: HubError;
-  /** When set, each removal fails with it. */
   removeFails?: HubError;
-  /** What a check answers, by the ID of the route; the route as it was by default. */
   checkAnswers: Map<string, ApplicationRoute>;
 }
 
@@ -100,7 +93,6 @@ export const NOT_LINUX_ERROR: HubError = { code: 'UNAVAILABLE', message: 'Routin
 /** The hub's refusal for an account with no second factor (SF-232). */
 export const NO_SECOND_FACTOR: HubError = { code: 'FORBIDDEN', message: 'Turn on the second factor of the account before a route is added or checked.' };
 
-/** The hub's answer to a route that is gone already. */
 export const NO_SUCH_ROUTE: HubError = { code: 'NOT_FOUND', message: 'No such route.' };
 
 /** The hub's refusal of a removal by a token that may not change a route, such as an API key. */

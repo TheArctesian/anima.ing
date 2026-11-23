@@ -44,7 +44,6 @@
   const more = { deviceToolbar: false, appearance: 'system' as const, zoom: 100 };
 </script>
 
-<!-- A stand-in for a web page: fixed words, no web view. The page that mounts the surface draws the real one here. -->
 {#snippet page(size: Viewport | undefined)}
   <div class="stand-in">
     <strong>Sign in</strong>
@@ -56,7 +55,6 @@
   <FindBar words="Find in page" query="sign" find={{ kind: 'matches', index: 1, total: 3 }} onQuery={noop} onNext={say('next')} onPrevious={say('previous')} onRetry={noop} onClose={say('close find')} />
 {/snippet}
 
-<!-- The browser surface of stage 5: a page, the device toolbar, the find bar, the start page and a site that did not answer. -->
 <div class="scenes">
   <section data-kit="browser-live" aria-label="Browser, one that the controls change">
     <BrowserSurface {view} toolbar={bar} start={{ recent: RECENT, servers: SERVERS, onopen: bar.onopen }} {page} {viewport} onviewport={(next) => (viewport = next)} />

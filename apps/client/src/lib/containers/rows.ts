@@ -1,9 +1,8 @@
 import type { Container, ImageUpdate, LogLine } from './api';
 
-/** The group of the containers that no Compose project owns; it is drawn last. */
 export const NO_PROJECT = 'No Compose project';
 
-/** The numbers of log lines the operator can choose; the hub accepts 1 to 1000 (HOST-001). */
+/** The hub accepts 1 to 1000 lines (HOST-001). */
 export const LINE_CHOICES = ['100', '200', '500', '1000'] as const;
 export type LineChoice = (typeof LINE_CHOICES)[number];
 export const DEFAULT_LINES: LineChoice = '200';
@@ -16,10 +15,8 @@ export interface ContainerRow {
   readonly shortId: string;
   readonly name: string;
   readonly image: string;
-  /** The state as a word: "Running", "Exited". */
   readonly state: string;
   readonly tone: Tone;
-  /** Docker's status text: "Up 3 hours (healthy)". */
   readonly status: string;
   readonly ports: string;
   readonly service: string;
@@ -27,19 +24,14 @@ export interface ContainerRow {
   readonly update: UpdateMark | null;
 }
 
-/** What the hub says of a newer image for one container, as the row shows it. */
 export interface UpdateMark {
   readonly newer: boolean;
-  /** "Newer image", "Up to date", or why the hub cannot say. */
   readonly words: string;
 }
 
 export interface ProjectGroup {
-  /** The Compose project, or `NO_PROJECT`. */
   readonly project: string;
-  /** "2 of 3 running". */
   readonly summary: string;
-  /** HOST-019: the one state of the project as words, "Partly running"; empty for the containers with no project. */
   readonly state: string;
   readonly tone: Tone;
   readonly rows: readonly ContainerRow[];
@@ -78,7 +70,6 @@ const NOT_KNOWN: Readonly<Record<NonNullable<ImageUpdate['reason']>, string>> = 
   REGISTRY_NOT_READ: 'Registry did not answer',
 };
 
-/** HOST-021: the answer of the hub for one container, as words. */
 export function updateMark(update: ImageUpdate): UpdateMark {
   if (update.state === 'NEWER_IMAGE') return { newer: true, words: 'Newer image' };
   if (update.state === 'UP_TO_DATE') return { newer: false, words: 'Up to date' };
@@ -116,7 +107,7 @@ function row(container: Container, updates: ReadonlyMap<string, ImageUpdate>): C
   };
 }
 
-/** HOST-013: the containers in groups by Compose project, the projects by name, then the containers with none; in a group by name. */
+/** Projects by name, the containers with none last, each group by name (HOST-013). */
 export function projectGroups(containers: readonly Container[], updates: readonly ImageUpdate[] = []): readonly ProjectGroup[] {
   const byContainer = new Map(updates.map((update) => [update.containerId, update]));
   const groups = new Map<string, Container[]>();
@@ -140,12 +131,10 @@ function projectState(members: readonly Container[]): readonly [string, Tone] {
   return state == null ? ['', 'unknown'] : PROJECT_STATES[state];
 }
 
-/** The text of a log, one line for each line of the container, with no time: what the operator copies. */
 export function logText(lines: readonly LogLine[]): string {
   return lines.map((line) => line.text).join('\n');
 }
 
-/** The time of a log line as the operator's clock shows it, `18:00:04`; empty when the line has no time. */
 export function lineTime(at: string | null | undefined): string {
   if (at == null) return '';
   const time = new Date(at);

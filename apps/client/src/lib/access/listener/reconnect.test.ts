@@ -4,7 +4,7 @@ import { createHub, parseHubAddress, type HubAddress } from '$lib/hub/hub';
 import { acknowledge, FAKE_WEBSOCKET, FakeSocket, FIRST_RETRY_MS, NOW, settle } from '$lib/hub/socket/fake';
 import { listenerGate } from './listener';
 
-// Security re-review MF-1: a dead hub must not hand its token to the program that takes its port. The socket
+// MF-1: a dead hub's token never goes to the program that takes its port. The socket
 // reconnects by itself 1 s after a drop, inside the 5 s an "own" answer stands, so its reader asks the shell afresh.
 
 const parsed = parseHubAddress('http://127.0.0.1:8443');
@@ -26,7 +26,6 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** The hub as the root layout makes it: one gate, a kept answer for requests and a fresh one for each connection. */
 function layoutHub() {
   const gate = listenerGate({ check, now: () => clock });
   const reader = vi.fn(() => Promise.resolve(TOKEN));

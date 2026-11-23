@@ -9,7 +9,6 @@
 
   interface Props {
     heading: string;
-    /** The account's name and password from the account step. */
     name: string;
     password: string;
     /** The hub saved the account with this secret; the code it took cannot sign in (FRN-004). */
@@ -23,7 +22,6 @@
   let uri = $state('');
   let busy = $state(false);
   let problem = $state<string | null>(null);
-  /** Remounts the boxes after a refusal, so the next code starts in the first box. */
   let attempt = $state(0);
   let title: HTMLElement | undefined = $state();
 
@@ -69,7 +67,6 @@
         <QrCode text={uri} label="Authenticator code for Anima" />
         <CopyText label="Authenticator key" text={secret} shown={groupedSecret(secret)} />
       </div>
-      <!-- The heading has focus when the step shows; the boxes take it only after a refused code. -->
       {#key attempt}
         <CodeBoxes disabled={busy} autofocus={attempt > 0} oncomplete={(code) => void create(code)} />
       {/key}
@@ -106,7 +103,6 @@
     line-height: var(--leading-normal);
   }
 
-  /* The QR code (three of space-16), the gap and the code boxes. */
   .code {
     display: grid;
     gap: var(--space-4);

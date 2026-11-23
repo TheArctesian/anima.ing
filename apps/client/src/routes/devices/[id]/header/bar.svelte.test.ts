@@ -39,7 +39,6 @@ function labelled(name: string): HTMLButtonElement {
   return found;
 }
 
-/** Opens the connect button's menu. */
 async function more(): Promise<void> {
   labelled('More ways to connect to nas').click();
   await tick();

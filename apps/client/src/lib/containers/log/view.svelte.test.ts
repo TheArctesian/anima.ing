@@ -50,7 +50,6 @@ it('HOST-015: the search and the level show only the lines that agree, and say h
   expect(texts()).toHaveLength(3);
   type('refused');
   expect(texts()).toEqual(['ERROR <b>connection refused</b>']);
-  // A line of a container is text: it never becomes an element of the page.
   expect(document.querySelector('.lines b')).toBeNull();
   expect(document.querySelector('.shown')?.textContent).toBe('1 of 3 lines');
   type('');
@@ -84,12 +83,10 @@ it('HOST-015: the download is the lines that are shown, in a file named for the 
   expect(saved).toHaveLength(1);
   expect(saved[0]?.[0]).toBe('tracks-app-1.log');
   expect(await saved[0]?.[1].text()).toBe('2026-11-18T18:00:01+00:00 ERROR <b>connection refused</b>\n');
-  // With the timestamps off, the file has no time.
   control('Show timestamps')?.click();
   flushSync();
   button('Download')?.click();
   expect(await saved[1]?.[1].text()).toBe('ERROR <b>connection refused</b>\n');
-  // With no line shown there is nothing to download.
   type('nothing has this');
   button('Download')?.click();
   expect(saved).toHaveLength(2);

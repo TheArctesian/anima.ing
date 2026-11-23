@@ -10,7 +10,6 @@ const DISPLAY: SessionDisplay = { widthPx: 1280, heightPx: 800, dpi: 192, timezo
 const TARGET = { deviceId: 'device-1', protocol: 'RDP', display: DISPLAY } as const;
 const SETUP = { origin: 'https://hub.anima.ing', WebSocket: FAKE_TUNNEL_SOCKET };
 
-/** A sessions API that issues a new ticket per call and records every call. */
 function fakeApi(tunnelPath = '/tunnel', wakeSent = false) {
   const calls: { startSession: [string, string, SessionDisplay][]; endSession: string[] } = { startSession: [], endSession: [] };
   let issued = 0;

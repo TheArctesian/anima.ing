@@ -70,7 +70,6 @@ interface Box {
   readonly bottom: number;
 }
 
-/** The least distance from the window edge, and the gap between the button and the panel. */
 export interface Spacing {
   readonly margin: number;
   readonly gap: number;
@@ -81,10 +80,7 @@ interface Size {
   readonly height: number;
 }
 
-/**
- * Where a fixed panel goes so it lies under its button, or above it when the window ends first, and stays `margin`
- * inside the window on both axes (WEB-003). Fixed, because a card clips what lies outside it.
- */
+/** A fixed panel lies under its button, or above it, and stays `margin` inside the window (WEB-003); fixed, as a card clips its overflow. */
 export function panelPosition(anchor: Box, panel: Size, viewport: Size, spacing: Spacing): Point {
   const { margin, gap } = spacing;
   const below = anchor.bottom + gap;

@@ -1,8 +1,4 @@
-/**
- * The Markdown of a reply or a prompt as parts that the page draws (THR-019). The text of a session is not trusted: this
- * gives parts of plain text, and the page builds its own elements from them. No part is ever markup of the session, so a
- * tag in a reply shows as text.
- */
+/** Session text is not trusted: Markdown becomes parts of plain text, so a tag in a reply shows as text (THR-019). */
 
 export interface Inline {
   readonly kind: 'text' | 'code' | 'bold';
@@ -20,7 +16,6 @@ const HEADING = /^\s{0,3}(#{1,6})\s+(.*)$/;
 const ITEM = /^\s*(?:([-*+])|(\d{1,9})[.)])\s+(.*)$/;
 const INLINE = /(`+)([^`]|[^`].*?[^`])\1(?!`)|\*\*([^*\n]+)\*\*/g;
 
-/** A line of text as parts: code between backticks, bold between two stars, and text. */
 export function inlineParts(line: string): readonly Inline[] {
   const parts: Inline[] = [];
   let from = 0;
@@ -33,7 +28,7 @@ export function inlineParts(line: string): readonly Inline[] {
   return parts;
 }
 
-/** The lines of a fenced code block that opens at `lines[at]`, and the place after its end; a block with no end takes the rest. */
+/** A block with no end takes the rest. */
 function fenced(lines: readonly string[], at: number, fence: string): { readonly text: string; readonly next: number } {
   const body: string[] = [];
   let index = at + 1;
@@ -46,7 +41,7 @@ function fenced(lines: readonly string[], at: number, fence: string): { readonly
   return { text: body.join('\n'), next: index };
 }
 
-/** The blocks of `text`: code blocks, headings, lists and paragraphs. A line break in a paragraph stays a line break. */
+/** A line break in a paragraph stays a line break. */
 export function markdownBlocks(text: string): readonly Block[] {
   const lines = text.replace(/\r\n?/g, '\n').split('\n');
   const blocks: Block[] = [];
@@ -58,7 +53,6 @@ export function markdownBlocks(text: string): readonly Block[] {
     paragraph = [];
     list = null;
   };
-  /** A line that opens no code block: a heading, an item of a list, a blank line, or a line of a paragraph. */
   const take = (line: string): void => {
     const heading = HEADING.exec(line);
     const item = ITEM.exec(line);

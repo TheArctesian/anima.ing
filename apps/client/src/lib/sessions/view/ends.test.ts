@@ -21,7 +21,6 @@ afterEach(async () => {
   vi.useRealTimers();
 });
 
-/** A session whose hub (the fake) ends it as `end` and `code` say, with `recorded` as the hub's row (K4 §8.6). */
 async function endedBy(end: SessionEndReason | undefined, code: number, recorded: SessionEndReason | null = null) {
   const view = showView();
   cleanups.push(view.close);

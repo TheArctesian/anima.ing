@@ -4,13 +4,12 @@ import { tweenMotion } from '$lib/motion/options';
 import { motionPreference, type MotionPreference } from '$lib/motion/preference';
 import { flip, measure, type Places } from '$lib/motion/roles/flip';
 
-/** The row's place one row above where it is: where a row that just arrived comes in from. */
 function above(row: HTMLElement): DOMRectReadOnly {
   const { left, top, width, height } = row.getBoundingClientRect();
   return new DOMRectReadOnly(left, top - height, width, height);
 }
 
-/** The highlight (the row's `data-glow` layer) shows at once and fades over `duration-highlight`; reduced motion keeps it (5.7.3, New log row). */
+/** Reduced motion keeps the highlight (5.7.3, New log row). */
 function lightUp(row: HTMLElement, reduced: boolean): void {
   const glow = row.querySelector<HTMLElement>('[data-glow]');
   if (glow === null) return;
@@ -18,11 +17,7 @@ function lightUp(row: HTMLElement, reduced: boolean): void {
   animate(glow, { opacity: 0 }, tweenMotion('highlight', 'exit', reduced));
 }
 
-/**
- * The new log row role (5.7.3): the row `arrived()` names comes in at the top while the rows below it move down by FLIP
- * (`spring-move`), and its highlight fades. Under reduced motion the rows change at once and the highlight remains.
- * Call during component init; attach the returned function to each row with its id.
- */
+/** The new log row role (5.7.3); call during component init. */
 export function newRowMotion(
   arrived: () => string | null,
   preference: MotionPreference = motionPreference(),

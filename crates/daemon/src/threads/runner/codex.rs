@@ -36,6 +36,8 @@ pub struct Codex {
     mode: Mode,
     model: Option<Model>,
     effort: Option<Effort>,
+    /// The speed that each turn carries, as the effort (TH117).
+    speed: Option<String>,
     next: i64,
     calls: BTreeMap<i64, Call>,
     /// The ID of the thread of Codex, from its answer to `thread/start`.
@@ -76,6 +78,7 @@ impl Codex {
             mode,
             model,
             effort,
+            speed: None,
             next: 1,
             calls: BTreeMap::new(),
             thread: None,
@@ -151,10 +154,31 @@ impl Codex {
         let turn = TurnSettings {
             model: self.changed.model.as_ref(),
             effort: self.effort,
+            speed: self.speed.as_deref(),
             mode: self.changed.mode,
             keeps,
         };
         vec![CodexInput::turn_start(id, &thread, prompt, &turn)]
+    }
+
+    /// Asks for the skills of the folder again (TH117).
+    pub fn skills_again(&mut self) -> String {
+        let id = self.call(Call::Other);
+        CodexInput::skills_list(id, &self.folder)
+    }
+
+    /// Compacts the context of the thread (TH117); `None` before Codex named its thread.
+    pub fn compact(&mut self) -> Option<String> {
+        let thread = self.thread.clone()?;
+        let id = self.call(Call::Other);
+        Some(CodexInput::thread_compact(id, &thread))
+    }
+
+    /// The speed of the next turns (TH117); `None` keeps the one they have.
+    pub fn change_speed(&mut self, speed: Option<String>) {
+        if speed.is_some() {
+            self.speed = speed;
+        }
     }
 
     /// The model, the effort or the mode of the next turns (TH110). A turn that runs keeps its own.
@@ -281,6 +305,7 @@ impl Codex {
                 let account = self.call(Call::Other);
                 let limits = self.call(Call::Other);
                 let models = self.call(Call::Other);
+                let skills = self.call(Call::Other);
                 Ok(vec![
                     CodexInput::initialized(),
                     CodexInput::thread_start(
@@ -296,6 +321,7 @@ impl Codex {
                     CodexInput::account_read(account),
                     CodexInput::account_limits_read(limits),
                     CodexInput::model_list(models),
+                    CodexInput::skills_list(skills, &self.folder),
                 ])
             }
             Call::ThreadStart => {

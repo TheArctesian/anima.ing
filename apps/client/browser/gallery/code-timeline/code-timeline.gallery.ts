@@ -5,18 +5,14 @@ import { HUB_ORIGIN } from '../../synthetic/access';
 import { installSyntheticHub } from '../../synthetic/synthetic-hub';
 import { HEIGHT, MODES, storedSettings } from '../shots';
 
-// The timeline of the Code section (stage 3 of the T3 Code copy), each state of a chat. It needs a build made with
-// `VITE_ANIMA_SPECIMEN=1` and runs only when asked, `GALLERY_CODE_TIMELINE=1`; pictures go to
-// `gallery-shots/code-timeline/<mode>/`.
+// Needs a build made with `VITE_ANIMA_SPECIMEN=1`.
 
 const FOLDER = fileURLToPath(new URL('../../../gallery-shots/code-timeline/', import.meta.url));
 const SETTLE_MS = 300;
 
 interface TimelineShot {
   readonly name: string;
-  /** The scene to frame, by its `data-kit` mark without `timeline-`. */
   readonly scene: string;
-  /** Puts the scene in the state to shoot. */
   readonly act?: (page: Page, scene: Locator) => Promise<void>;
 }
 
@@ -74,8 +70,7 @@ const SHOTS: readonly TimelineShot[] = [
     scene: 'long',
     act: async (_page, scene) => {
       await click('Show full message')(_page, scene);
-      // The timeline follows the end as the message opens; scroll up only once it rests. Only a person's scroll (the
-      // wheel here) releases the follow, so the shot scrolls with the wheel and not with `scrollTo`.
+      // Only a person's scroll releases the timeline's follow of the end, so the shot uses the wheel, not `scrollTo`.
       await _page.waitForTimeout(SETTLE_MS);
       await scene.locator('.scroller').hover();
       await _page.mouse.wheel(0, -4000);

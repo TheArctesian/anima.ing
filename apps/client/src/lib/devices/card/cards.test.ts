@@ -29,7 +29,6 @@ let fake: ReturnType<typeof fakeHub>;
 const added: string[] = [];
 const connected: string[] = [];
 
-/** Lets the pending promises settle and the DOM update. */
 async function settle(): Promise<void> {
   for (let round = 0; round < 5; round += 1) await Promise.resolve();
   flushSync();

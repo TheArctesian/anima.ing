@@ -44,7 +44,6 @@ async function openList(): Promise<void> {
 }
 
 const text = () => document.body.textContent;
-/** Each group head as its name and its count. */
 const heads = () => [...document.querySelectorAll('button[aria-expanded]')].map((each) => each.textContent.replace(/\s+/g, '').replace(/(\d+)$/, ' $1'));
 
 function click(label: string): void {
@@ -140,7 +139,6 @@ it('PRO-062 and PRO-063: rename, remove from a group and delete a group change n
   expect(heads()).toEqual(['Sites 1', 'Ungrouped 2']);
   click('Delete');
   click('Delete group');
-  // The dialog and the head leave with their motion before the section goes.
   for (let turn = 0; turn < 3; turn += 1) await new Promise((resolve) => setTimeout(resolve, 0));
   flushSync();
   expect(heads()).toEqual(['Ungrouped 3']);
@@ -165,7 +163,7 @@ it('PRO-059: a storage that refuses or holds a broken value gives no group, and 
 });
 
 it('PRO-059: a hub older than project groups hides them with a quiet note, not an error with Retry', async () => {
-  // What the hub's error parser makes of 'Unknown field "projectGroups" on type "Query".' (lib/hub/error.test.ts).
+  // The hub error parser's result for an unknown `projectGroups` field.
   const older = { request: () => Promise.resolve({ ok: false, error: { code: 'unserved', message: 'This hub is older than this application.' } }) };
   const shared = new SharedProjectGroups(older as unknown as ConstructorParameters<typeof SharedProjectGroups>[0]);
   await shared.refresh();

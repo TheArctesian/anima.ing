@@ -23,7 +23,6 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-/** A list whose first page waits until `answer()` is called. */
 async function slowList() {
   const fake = deferredHub();
   const feed = new LogFeed(fake.hub, () => NOW);

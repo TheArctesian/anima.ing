@@ -1,15 +1,12 @@
-// What a subscription receives while the test runs: the fixtures hold no live events, so a spec pushes one by hand, as the
-// hub would when a check changes a device's status. Subscribers are the open graphql-ws subscriptions, by operation name.
+// The fixtures hold no live events, so a spec pushes one by hand to the open graphql-ws subscriptions of an operation.
 
 export interface Subscriber {
   readonly operation: string | null;
-  /** Sends one `next` frame to the subscription. */
   deliver(data: Record<string, unknown>): void;
 }
 
 export interface Live {
   join(subscriber: Subscriber): () => void;
-  /** Sends `data` to every open subscription of `operation`; returns how many got it. */
   push(operation: string, data: Record<string, unknown>): number;
 }
 

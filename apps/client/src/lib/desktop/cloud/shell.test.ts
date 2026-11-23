@@ -7,7 +7,6 @@ vi.mock('@tauri-apps/api/core', () => ({ invoke: shell.invoke, isTauri: shell.is
 
 const CODE = { code: 'BCDF-GHJK', page: 'https://auth.example/device?user_code=BCDF-GHJK', interval: 5 };
 
-/** A shell that answers each command from `answers`; a function answer may throw a shell error. */
 function answering(answers: Record<string, unknown>) {
   shell.invoke.mockImplementation((name: string) => {
     const answer = answers[name];

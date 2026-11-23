@@ -36,7 +36,6 @@ async function enable(hub: Hub, host: string): Promise<boolean> {
   return pushMobileReadings(origin);
 }
 
-/** The address registered for the device that owns the current link. */
 export async function currentMobileHost(hub: Hub): Promise<string | undefined> {
   const local = await readLink();
   if (!local.ok) return;

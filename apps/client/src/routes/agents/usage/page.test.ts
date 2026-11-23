@@ -18,7 +18,6 @@ vi.mock('motion', async (importOriginal) => ({
   animate: (await import('$lib/motion/engine.fixture')).fakeRun,
 }));
 
-/** The origin of a hub that the application reaches through its link. */
 const HUB = 'http://127.0.0.1:41001';
 
 let app: ReturnType<typeof mount> | undefined;

@@ -5,7 +5,7 @@ import { motionPreference, type MotionPreference } from '../preference';
 export const RESOLVE_RISE_PX = 4;
 export const RESOLVE_BLUR_PX = 6;
 
-/** The frames one child plays: a short rise out of a blur; under reduced motion, opacity only (MOT-041). */
+/** Under reduced motion, opacity only (MOT-041). */
 export function resolveFrames(reduced: boolean): Keyframe[] {
   if (reduced) return [{ opacity: 0 }, { opacity: 1 }];
   return [
@@ -14,11 +14,7 @@ export function resolveFrames(reduced: boolean): Keyframe[] {
   ];
 }
 
-/**
- * The resolve entrance (UR-7, D12, MOT-053): each child of `node` rises a few pixels out of a short blur, in order,
- * on `duration-base` and `ease-enter`, staggered by `stagger-list`. It plays once, when the node is mounted: on first
- * load and on a route change, never when a list inside re-renders in place. Use it as `{@attach resolve()}`.
- */
+/** The resolve entrance (UR-7, D12, MOT-053): it plays once, when the node is mounted, never when a list inside re-renders. */
 export function resolve(preference: MotionPreference = motionPreference()) {
   return (node: Element): (() => void) => {
     const reduced = preference.reduced;

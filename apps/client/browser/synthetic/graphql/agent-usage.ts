@@ -1,10 +1,7 @@
 import type { Row } from '../fixtures';
 import { deviceOf, type HubState } from '../model';
 
-// The use of the AI agent programs, so the Agent usage page has something to show (AIS-020, AIS-021, AIS-024). A Mac with
-// Claude Code and Codex on several days, models and repositories, one model with no price; a Linux box whose daemon is a system
-// unit; a device with the counts turned off. The devices are the fixture devices by name: without them (an emptied fixture
-// list) no daemon reports, which is the empty case. Every host and repository is an example one (CON-003).
+// AIS-020, AIS-021, AIS-024. Every host and repository is an example one (CON-003).
 
 const DAY_MS = 86_400_000;
 const PRICES_AS_OF = '2026-11-01';
@@ -84,7 +81,6 @@ function sumsView({ sessions, prompts, toolCalls, tokens, cost: estimate, unpric
   return { sessions, prompts, toolCalls, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, estimatedCostUsd: estimate, unpricedTokens: unpriced };
 }
 
-/** The Query fields `agentUsage` and `agentSessions` of the synthetic hub. */
 export function agentUsageFields(state: HubState): Record<string, unknown> {
   return {
     agentUsage: ({ filter, by = [] }: Args): Row => {
@@ -133,10 +129,7 @@ export function agentUsageFields(state: HubState): Record<string, unknown> {
   };
 }
 
-/**
- * The accounts of the programs, as keys only (AIS-022 as R-313 changed it): one Codex account that the mac-mini and the
- * gpu-box share, near its weekly limit, and the Claude Code account of the mac-mini, which reports no limit.
- */
+/** The accounts of the programs, as keys only (AIS-022, R-313). */
 function accountsOf(state: HubState, names: readonly string[]): Row[] {
   const now = state.now().getTime();
   const all = state.fixtures.devices;
@@ -160,15 +153,14 @@ function accountsOf(state: HubState, names: readonly string[]): Row[] {
   return accounts.filter((account) => account.devices.length > 0);
 }
 
-/** The Query field `agentSessions`: the entries of DAYS split into their sessions (AIS-025, AIS-026). */
+/** The entries of DAYS split into their sessions (AIS-025, AIS-026). */
 function sessionsOf(state: HubState, { filter, first = 50 }: Args & { first?: number }): Row {
   const now = state.now().getTime();
   const lastDay = filter?.lastDay ?? dayOf(now);
   const firstDay = filter?.firstDay ?? dayOf(Date.parse(`${lastDay}T00:00:00Z`) - 29 * DAY_MS);
   const devices = state.fixtures.devices.filter((device) => STATES[String(device.name)] !== undefined && (filter?.deviceId == null || device.id === filter.deviceId));
   const idOf = (name: string): string => String(devices.find((device) => device.name === name)?.id ?? '');
-  // Each entry of DAYS is split into its sessions, each with an equal part of the counts. The newest session of today was
-  // last used 10 minutes ago, so the page has one recent session (AIS-026).
+  // The newest session of today was last used 10 minutes ago, so the page has one recent session (AIS-026).
   const sessions = DAYS.flatMap((day) => {
     const when = dayOf(now - day.daysAgo * DAY_MS);
     const admitted = idOf(day.device) !== '' && when >= firstDay && when <= lastDay && (filter?.source == null || day.source === filter.source) && (filter?.repository == null || day.repository === filter.repository);

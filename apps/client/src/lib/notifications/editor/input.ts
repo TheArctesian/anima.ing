@@ -1,9 +1,5 @@
-// The editor's values turned into a `NotificationChannelInput`, or refused with fixed messages before anything is
-// sent. The secret rule of K1 lives here: a secret the operator did not touch is `null` (the hub keeps it), a stored
-// optional secret the operator removed is `""` (the hub clears it), and anything typed is sent as typed. A channel that
-// moves to a new target needs every stored secret again (CR-14.1), so a secret meant for one host is never sent to
-// another. URLs are https only and a server is an origin only (CR-14.6, CR-14.7). No message here ever repeats what
-// was typed into a secret field (LOG-007, F-8).
+// An untouched secret is `null` (the hub keeps it), a removed one is `""` (the hub clears it); a new target needs every stored secret again (CR-14.1).
+// URLs are https only and a server is an origin only (CR-14.6, CR-14.7); no message repeats a secret field (LOG-007, F-8).
 import type { NotificationChannelInput } from '../api';
 import { cleanOrigin, mailHost, mailTarget } from '../channels/target';
 import { templateFine, templateProblems } from '../template/template';
@@ -60,13 +56,11 @@ const ADDRESS = /^[^\s@,]+@[^\s@,]+$/;
 const APPRISE_URL = /^[a-z][a-z0-9+.-]*:\/\/\S+$/i;
 const APPRISE_KEY = /^[A-Za-z0-9_-]{1,128}$/;
 
-/** What was typed, else `""` to clear a stored optional secret, else `null` to keep what is stored (K1). */
 function secretValue(typed: string, clear: boolean): string | null {
   if (typed !== '') return typed;
   return clear ? '' : null;
 }
 
-/** The origin of an https URL, or `null`: webhook URLs are https only (CR-14.6). */
 function httpsOrigin(text: string): string | null {
   try {
     const url = new URL(text);
@@ -77,7 +71,6 @@ function httpsOrigin(text: string): string | null {
   }
 }
 
-/** Values separated by commas, spaces or lines. */
 function listOf(text: string): string[] {
   return text.split(/[\s,]+/).filter((part) => part !== '');
 }
@@ -88,12 +81,10 @@ function refuse(problems: Problems, field: DraftField, message: string): void {
   problems.push({ field, message });
 }
 
-/** Whether a saved channel would send somewhere new, so its stored secrets must come again (CR-14.1). */
 function moved(stored: Stored | null, target: string | null): boolean {
   return stored !== null && (stored.target === null || target !== stored.target);
 }
 
-/** A stored optional secret on a new target: typed again, or removed (`""`); never kept (CR-14.1). */
 function askAgain(problems: Problems, field: DraftField, held: boolean, secret: SecretDraft): void {
   if (held && secret.value === '' && !secret.clear) refuse(problems, field, AGAIN_OR_REMOVE);
 }
@@ -183,10 +174,7 @@ function mobileInput(draft: ChannelDraft, stored: Stored | null, problems: Probl
 
 const SETTINGS_INPUT = { WEBHOOK: webhookInput, NTFY: ntfyInput, EMAIL: emailInput, APPRISE: appriseInput, MOBILE: mobileInput };
 
-/**
- * The input to send, or every problem to show; nothing is sent while there is one. `stored` is `null` for a new
- * channel. `placeholders` are the hub's (D-21).
- */
+/** `stored` is `null` for a new channel; `placeholders` are the hub's (D-21). */
 export function checkDraft(draft: ChannelDraft, stored: Stored | null, placeholders: readonly string[]): DraftCheck {
   const problems: Problems = [];
   const name = draft.name.trim();

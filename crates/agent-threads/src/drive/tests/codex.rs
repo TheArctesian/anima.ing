@@ -151,6 +151,8 @@ fn each_codex_line_the_runner_can_write_names_a_method_of_the_closed_list() {
         CodexInput::turn_interrupt(7, turn),
         CodexInput::account_read(8),
         CodexInput::model_list(9),
+        CodexInput::skills_list(10, &folder),
+        CodexInput::thread_compact(11, "t"),
     ];
     let names: Vec<&str> = CodexMethod::ALL
         .iter()
@@ -204,6 +206,7 @@ fn th110_a_turn_carries_the_model_the_effort_and_the_mode_that_the_person_change
         &TurnSettings {
             model: Some(&model),
             effort: Some(Effort::Medium),
+            speed: Some("fast"),
             mode: Some(Mode::Ask),
             keeps: false,
         },
@@ -211,6 +214,7 @@ fn th110_a_turn_carries_the_model_the_effort_and_the_mode_that_the_person_change
     let params = &changed["params"];
     assert_eq!(params["model"], "gpt-5.6-sol");
     assert_eq!(params["effort"], "medium");
+    assert_eq!(params["serviceTier"], "fast", "the speed of TH117");
     assert_eq!(params["approvalPolicy"], "untrusted");
     assert_eq!(params["sandboxPolicy"], json!({"type": "workspaceWrite"}));
     let kept = line(&CodexInput::turn_start(
@@ -246,6 +250,10 @@ fn th111_a_codex_turn_gets_each_image_as_a_local_image_and_each_other_file_by_it
                 kind: Attached::Pdf { inline: None },
             },
         ],
+        skills: vec![ChosenSkill {
+            name: "review".to_owned(),
+            path: "/home/you/.codex/skills/review/SKILL.md".to_owned(),
+        }],
     };
     let turn = line(&CodexInput::turn_start(
         5,
@@ -254,6 +262,12 @@ fn th111_a_codex_turn_gets_each_image_as_a_local_image_and_each_other_file_by_it
         &TurnSettings::default(),
     ));
     let input = turn["params"]["input"].as_array().expect("an input");
+    assert_eq!(
+        input[0],
+        json!({"type": "skill", "name": "review", "path": "/home/you/.codex/skills/review/SKILL.md"}),
+        "a chosen skill goes first (TH117)"
+    );
+    let input = &input[1..];
     let words = input[0]["text"].as_str().expect("words");
     assert!(words.starts_with("look\n\n"));
     assert!(words.contains("\n- /a/2/notes.pdf"));

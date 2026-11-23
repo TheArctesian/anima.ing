@@ -6,8 +6,7 @@ import { fieldFromFixtures, loadSchema } from './synthetic/graphql/graphql-schem
 import { newHubState } from './synthetic/model';
 import { rootValue, type CallContext } from './synthetic/graphql/resolvers';
 
-// The other half of the K7 cookie model, which a page cannot show: a browser always sends its own Origin. These run in Node
-// against the hub's resolvers, with no browser.
+// A page cannot show the Origin check of the K7 cookie model, so these run in Node against the hub's resolvers.
 
 const SIGN_IN = 'mutation SignIn($input: LoginInput!) { signInBrowser(input: $input) { expiresAt } }';
 

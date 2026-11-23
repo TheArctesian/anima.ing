@@ -9,10 +9,8 @@ const everyInterval: Repeat = (run, ms) => {
   };
 };
 
-/** The update schedule as Svelte state for the banner and the Settings row. */
 export class Updates {
   snapshot = $state<UpdateSnapshot>({ state: { kind: 'unchecked' }, nextCheckAt: null });
-  /** The running app's version, once `loadVersion` has read it. */
   current = $state<string | null>(null);
 
   readonly #port: UpdaterPort;
@@ -31,7 +29,6 @@ export class Updates {
     });
   }
 
-  /** Starts the scheduled checks (UPD-001); the returned function stops them. */
   start(): () => void {
     this.#schedule.start();
     return () => {
@@ -43,7 +40,7 @@ export class Updates {
     return this.#schedule.checkNow();
   }
 
-  /** Restarts into the installed update; call only from the operator's choice (UPD-003). */
+  /** Call only from the operator's choice (UPD-003). */
   restart(): Promise<void> {
     return this.#port.restart();
   }
@@ -60,7 +57,6 @@ export class Updates {
 
 const [getUpdates, setUpdates] = createContext<Updates>();
 
-/** Make `updates` available to every component below; call once in the root layout. */
 export function provideUpdates(updates: Updates): void {
   setUpdates(updates);
 }

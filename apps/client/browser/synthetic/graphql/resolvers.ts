@@ -8,12 +8,10 @@ import { containerFields } from './containers';
 import { vpnFields } from '../vpn';
 import { allDevices, channelView, connection, checkView, deviceEventRows, deviceOf, eventRows, sessionRows, type HubState } from '../model';
 
-/** What one GraphQL call brings to its resolvers, and what they hand back for the answer's headers. */
 export interface CallContext {
   readonly state: HubState;
   readonly caller: Caller;
   readonly origin: string | null;
-  /** The browser session token of the request's cookie, for `logout`. */
   readonly cookie: string | null;
   readonly reply: { issuedToken?: string; cleared?: boolean };
 }
@@ -73,7 +71,7 @@ function endSession(state: HubState, { id }: { id: string }): Row {
   return { ...session, endedAt: state.now().toISOString(), endReason: session.endedAt ?? 'OPERATOR' };
 }
 
-/** The Query and Mutation fields of the synthetic hub. Anything not here answers from the schema's empty values. */
+/** A field not here answers from the schema's empty values. */
 export function rootValue(state: HubState): Record<string, unknown> {
   return {
     me: () => operatorView(state),
@@ -87,7 +85,7 @@ export function rootValue(state: HubState): Record<string, unknown> {
       const row = state.fixtures.checks.find((found) => found.id === id);
       return row === undefined ? null : checkView(state, row);
     },
-    // Like the hub, `filter.deviceId` keeps one device's events: the device page's Logs tab asks for them (LOG-009).
+    // Like the hub, `filter.deviceId` keeps one device's events (LOG-009).
     events: ({ filter, ...page }: Args<{ filter?: { deviceId?: string | null } | null }>) =>
       connection(filter?.deviceId == null ? eventRows(state) : deviceEventRows(state, filter.deviceId), page),
     sessions: ({ live, deviceId, ...page }: Args<{ live?: boolean | null; deviceId?: string | null }>) => {

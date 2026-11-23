@@ -51,13 +51,10 @@ const CATALOGUE_ENTRIES = graphql(`
 
 export type CatalogueEntry = CatalogueEntriesQuery['catalogueEntries'][number];
 
-/** What the catalogue screen asks of the hub (task H38); the screen and its tests take this, not the hub. */
 export interface CatalogueCalls {
-  /** The entries that the hub lists: each recipe that passed the static test. The hub reaches no machine. */
   entries(): Promise<HubResult<readonly CatalogueEntry[]>>;
 }
 
-/** The catalogue calls of the hub. */
 export function catalogueApi(hub: Pick<Hub, 'request'>): CatalogueCalls {
   return {
     entries: async () => {

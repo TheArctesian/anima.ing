@@ -1,7 +1,6 @@
 import type { Row } from './fixtures';
 
-// What the acceptance specs need on a device that `contracts/fixtures` does not give it. The fixtures stay as they are
-// (K6); the synthetic hub adds these on the way out, as a hub whose operator had already set them up would answer.
+// The fixtures stay as they are (K6); the synthetic hub adds these on the way out, as a hub already set up would answer.
 
 const SSH_DEVICE = '0190a000-0000-7000-8012-000000000004';
 const SINGLE_HTTP_DEVICE = '0190a000-0000-7000-8012-000000000003';

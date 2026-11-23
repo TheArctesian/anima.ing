@@ -7,7 +7,7 @@
 
   const updates = useUpdates();
   const snapshot = $derived(updates.snapshot);
-  // A trial bundle has no updater: the row says so and offers no check (DEF-001).
+  // DEF-001: a trial bundle has no updater, so the row offers no check.
   const local = isLocalBuild();
 
   $effect(() => {
@@ -19,7 +19,6 @@
 
 <SettingRow>
   {#snippet label()}
-    <!-- Both lines are always rendered with their height reserved, so nothing moves when they fill (MOT-007). -->
     <p class="version">
       {#if updates.current !== null}Anima.ing <strong>{updates.current}</strong>{/if}
     </p>
@@ -63,7 +62,6 @@
     background: var(--surface-hover);
   }
 
-  /* As FormButton: a control that cannot be pressed must not look like one that can. */
   button:disabled {
     color: var(--text-secondary);
     opacity: var(--opacity-disabled);

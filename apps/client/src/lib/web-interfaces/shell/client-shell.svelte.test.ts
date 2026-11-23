@@ -11,7 +11,6 @@ import { WebViewError, type WebViewShell } from './shell';
 
 const platform = vi.hoisted(() => ({ answers: undefined as Capabilities | undefined, pinnings: 0 }));
 vi.mock('$lib/platform/platform', () => ({ capabilities: () => platform.answers }));
-// The real desktop adapter, counting its `pinning` calls so a test can see whether a tab used it.
 vi.mock('$lib/desktop/web-view/web-view', async (importOriginal) => {
   const { desktopWebView: real } = await importOriginal<typeof import('$lib/desktop/web-view/web-view')>();
   const pinning = () => {
@@ -23,7 +22,7 @@ vi.mock('$lib/desktop/web-view/web-view', async (importOriginal) => {
 
 const OPENING = { tabId: 'tab-1', deviceId: 'device-1', url: 'https://nas.lan/', pin: null, bounds: { x: 0, y: 0, width: 1, height: 1 } };
 
-/** What each call of `shell` comes to: `false`/`true` for an answer, the error code for a refusal. */
+/** `false`/`true` for an answer, the error code for a refusal. */
 async function outcomes(shell: WebViewShell): Promise<unknown[]> {
   const calls: (() => Promise<unknown>)[] = [
     () => shell.pinning(),
@@ -64,7 +63,6 @@ describe('webViewShell (WP-42 D-4)', () => {
 });
 
 describe('WebTab default shell (WP-42 D-4)', () => {
-  /** Mounts a tab, with `shell` when given, and returns the text of what it shows once it has settled. */
   async function shownBy(shell?: WebViewShell): Promise<string> {
     const cleanup = installLayout();
     const props = {

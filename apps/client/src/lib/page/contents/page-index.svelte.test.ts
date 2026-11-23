@@ -9,7 +9,6 @@ const ENTRIES = [
   { id: 'three', title: 'Three', icon: 'carbon:settings' },
 ] as const;
 
-/** Where each section's head sits, in pixels from the top of the window. */
 const tops: Record<string, number> = {};
 
 afterEach(() => {
@@ -50,7 +49,6 @@ it('SET-001, D17: the current section is the last whose head has passed the top 
 
 it('SET-001, D17: at the foot of the page the last section is current, though its head never reaches the top', () => {
   Object.assign(tops, { one: -1200, two: -300, three: 500 });
-  // The page is scrolled as far as it goes: its foot is the window's foot.
   Object.defineProperty(document, 'scrollingElement', { configurable: true, value: { scrollTop: 1000, scrollHeight: 1900 } });
   const close = page();
   expect(current()).toBe('Three');

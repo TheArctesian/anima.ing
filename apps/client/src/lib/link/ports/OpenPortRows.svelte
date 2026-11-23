@@ -5,8 +5,7 @@
   import SettingRow from '$lib/settings/SettingRow.svelte';
   import { portRows, systemOf, type PortRow } from './ports';
 
-  // The ports of this computer that its hub may reach through the link (HMD-048, HMD-049): off until the person turns
-  // one on, one click each. The hub cannot change them. Shown only when this computer has joined a hub.
+  // HMD-048, HMD-049: a port is off until the person turns it on; the hub cannot change them.
   const system = systemOf(navigator.userAgent);
   let rows = $state<readonly PortRow[] | null>(null);
   let busy = $state(false);
@@ -29,7 +28,6 @@
       rows = portRows(system, result.value.open);
       problem = null;
     } else {
-      // The switch shows the list as it was; the person sees why.
       drawn += 1;
       problem = `Could not turn the port ${on ? 'on' : 'off'}. ${result.message}`;
     }

@@ -5,9 +5,7 @@ import { HUB_ORIGIN } from '../../synthetic/access';
 import { installSyntheticHub } from '../../synthetic/synthetic-hub';
 import { HEIGHT, MODES, storedSettings } from '../shots';
 
-// The composer of the Code section (TC4, stage 4 of the T3 Code copy) in each state. It needs a build made with
-// `VITE_ANIMA_SPECIMEN=1` and runs only when asked, `GALLERY_CODE_COMPOSER=1`; pictures go to
-// `gallery-shots/code-composer/<mode>/`.
+// TC4. Needs a build with `VITE_ANIMA_SPECIMEN=1` and runs only with `GALLERY_CODE_COMPOSER=1`.
 
 const FOLDER = fileURLToPath(new URL('../../../gallery-shots/code-composer/', import.meta.url));
 const SETTLE_MS = 300;
@@ -15,9 +13,9 @@ const MARGIN = 12;
 
 interface ComposerShot {
   readonly name: string;
-  /** The part to frame, found by its `data-kit` mark. */
+  /** The `data-kit` mark of the part to frame. */
   readonly part: string;
-  /** Puts the part in the state to shoot; returns the floating layer that the picture must hold too. */
+  /** Returns the floating layer that the picture must hold too. */
   readonly act?: (page: Page, part: Locator) => Promise<Locator | undefined>;
 }
 
@@ -94,7 +92,7 @@ const SHOTS: readonly ComposerShot[] = [
   { name: 'runner-running', part: 'real-running' },
   { name: 'runner-ended', part: 'real-ended' },
   { name: 'runner-read-only', part: 'real-read' },
-  // Added after the first set; at the end, so the numbers of the pictures before them stay.
+  // At the end, so the numbers of the pictures before them stay.
   { name: 'queue-waits', part: 'queue-waits' },
   { name: 'runner-queued', part: 'real-running', act: async (page, part) => {
     await editorOf(part).click();
@@ -122,7 +120,6 @@ const SHOTS: readonly ComposerShot[] = [
     await expect(words).toBeVisible();
     return words;
   } },
-  // The `/` list of today's runner: only what can run, so no row at all without the set call, and /model with it.
   { name: 'runner-no-commands', part: 'real-idle', act: async (page, part) => {
     await editorOf(part).click();
     await page.keyboard.type('/');
@@ -140,7 +137,6 @@ const SHOTS: readonly ComposerShot[] = [
   } },
 ];
 
-/** The smallest box that holds the part and its floating layer, with a margin, inside the window. */
 async function frame(page: Page, part: Locator, layer: Locator | undefined): Promise<{ x: number; y: number; width: number; height: number }> {
   const boxes = [await part.boundingBox(), layer === undefined ? null : await layer.boundingBox()].filter((box) => box !== null);
   const left = Math.max(0, Math.min(...boxes.map((box) => box.x)) - MARGIN);

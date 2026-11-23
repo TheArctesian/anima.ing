@@ -1,5 +1,4 @@
-//! Why the daemon was not installed or not removed, as the client sees it: a stable code and fixed text, never
-//! the code, a path or an OS error (LOG-007).
+//! Daemon install errors as the client sees them: a stable code and fixed text, never the enrolment code, a path or an OS error (LOG-007).
 
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 
@@ -60,7 +59,6 @@ pub enum DaemonError {
 }
 
 impl DaemonError {
-    /// Every error, for the tests that check each one.
     #[cfg(all(test, unix))]
     pub const ALL: [Self; 17] = [
         Self::Caller,
@@ -114,7 +112,6 @@ impl DaemonError {
         }
     }
 
-    /// `failed` is what the step's own failure means; the rest are the same for both steps.
     pub fn of_run(error: RunError, failed: Self) -> Self {
         match error {
             RunError::TimedOut => Self::TimedOut,

@@ -22,7 +22,7 @@ mod shelf;
 mod workspace;
 pub use limits::{Limits, OVER_LIMIT};
 pub use listing::{BadChange, BadTitle, Listing, ListingChange, MAX_TITLE};
-pub use programs::{AccountRow, ModelRow};
+pub use programs::{AccountRow, ListState, ModelRow, ProgramState};
 pub use project::{BadProject, MAX_PROJECTS, Project, ProjectChange, changed as project_changed};
 pub use queue::{LastTurn, MOST_QUEUED, MOST_QUEUED_BYTES, Queued};
 pub use refusal::Refusal;
@@ -77,6 +77,9 @@ pub enum Action {
         mode: Mode,
         model: Option<String>,
         effort: Option<Effort>,
+        /// A speed of the model other than the standard one: one of its `speeds` (TH117).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        speed: Option<String>,
         prompt: String,
         /// A different copy of the program than the first on the `PATH` of the login: one of
         /// the copies the runner finds (TH97).
@@ -103,6 +106,9 @@ pub enum Action {
         text: String,
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         attachments: Vec<Uuid>,
+        /// Codex: skills of the last `commands` answer of the thread (TH117).
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        skills: Vec<crate::drive::ChosenSkill>,
     },
     /// The answer of the person to a request of the program (THR-030).
     Answer {
@@ -128,6 +134,18 @@ pub enum Action {
     ChangeListing { thread: Uuid, change: ListingChange },
     /// The newest list of models that each program named (TH104).
     Models,
+    /// The commands and the skills of a program (TH117): of a thread, or of a program in a
+    /// folder before any thread runs there. Give `thread`, or `program` and `folder`.
+    Commands {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        thread: Option<Uuid>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        program: Option<Program>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        folder: Option<PathBuf>,
+    },
+    /// Codex compacts the context of a thread (TH117). Claude Code takes `/compact` as a prompt.
+    Compact { thread: Uuid },
     /// The updates that the runner keeps of a thread with a number below `before`, at most
     /// `most` of them, the newest of them (TH106).
     Earlier {
@@ -177,6 +195,9 @@ pub enum Action {
         effort: Option<Effort>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         mode: Option<Mode>,
+        /// A speed of the model: one of its `speeds`, or `default` for the standard one (TH117).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        speed: Option<String>,
     },
     /// The first part of a file for a prompt, in base64 (TH111): the whole file has `size`
     /// bytes. Only the person attaches.
@@ -256,8 +277,18 @@ pub enum Outcome {
     Listings {
         listings: Vec<Listing>,
     },
+    /// The commands and the skills of a program (TH117). `pending` when the program did not
+    /// name them yet: ask again later.
+    Commands {
+        #[serde(flatten)]
+        lists: crate::drive::CommandLists,
+        pending: bool,
+    },
     Models {
         models: Vec<ModelRow>,
+        /// Where the list of each program stands (TH117).
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        programs: Vec<ProgramState>,
     },
     /// A file for a prompt took a part: it is complete when `received` is its size (TH111).
     Attached {
@@ -343,6 +374,9 @@ pub struct ThreadRow {
     /// The effort of the model, when the person chose one (TH110).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub effort: Option<Effort>,
+    /// The speed of the model, when the person chose one other than the standard (TH117).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speed: Option<String>,
     /// Where the thread works, read at its start (TH112).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workspace: Option<Workspace>,

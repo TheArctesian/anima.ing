@@ -3,7 +3,6 @@ import { readLocalHub, startLocalHub, stopLocalHub, type LocalHubResult, type Lo
 import { localHubOrigin } from './address';
 import { pollUntilSettled } from './state';
 
-/** The shell calls the hub's state needs; a test passes its own. */
 export interface LocalHubShell {
   readonly read: () => Promise<LocalHubResult<LocalHubStatus>>;
   readonly start: () => Promise<LocalHubResult<null>>;
@@ -21,10 +20,7 @@ export const desktopLocalHubShell: LocalHubShell = {
   forget: forgetListener,
 };
 
-/**
- * The hub on this computer as Settings shows it (FRN-006): its status, read at once and after each Start or Stop until
- * it settles. One change at a time.
- */
+/** The hub on this computer as Settings shows it (FRN-006). */
 export class LocalHubWatch {
   status = $state<LocalHubStatus | null>(null);
   busy = $state(false);
@@ -33,12 +29,10 @@ export class LocalHubWatch {
 
   constructor(private readonly shell: LocalHubShell) {}
 
-  /** The origin of this computer's hub when it is installed and ready, else `null` (AWK-005, FRN-008). */
   get origin(): string | null {
     return this.status === null ? null : localHubOrigin(this.status);
   }
 
-  /** Reads the state once; returns the function that stops any poll. */
   watch(): () => void {
     void this.read();
     return () => {
@@ -57,8 +51,7 @@ export class LocalHubWatch {
     if (this.busy) return;
     this.busy = true;
     this.problem = null;
-    // Another program may take the port while the hub is down: forgotten before the call, so no request in flight
-    // during it uses an old answer, and after it (F-10, M-C, MF-1).
+    // Another program may take the port while the hub is down, so the answer is forgotten before and after the call (F-10, M-C, MF-1).
     const origin = this.origin;
     if (origin !== null) this.shell.forget(origin);
     const done = await call();

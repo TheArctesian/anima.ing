@@ -4,27 +4,18 @@ import { filterCounts, filtered, isNotLinux, type RouteFilter } from './route';
 
 export type ReadStatus = 'idle' | 'loading' | 'ready' | 'failed';
 
-/**
- * The routes of the hub (task H21): the list, the route that is open, and the checks and removals that the operator
- * asks for. The hub says that it cannot route only when it refuses a check (R-366); from then on the section shows
- * that sentence in place of the list.
- */
+/** The hub says that it cannot route only when it refuses a check (R-366); the section then shows that in place of the list. */
 export class RoutesStore {
   status = $state<ReadStatus>('idle');
-  /** Why the list did not load, in the hub's words. */
   problem = $state('');
   routes = $state.raw<readonly ApplicationRoute[]>([]);
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- replaced whole at each read, never changed in place
   deviceNames = $state.raw<ReadonlyMap<string, string>>(new Map());
   filter = $state<RouteFilter>('ALL');
-  /** The ID of the route whose page is open; null for the list. */
   selected = $state<string | null>(null);
-  /** True after the hub refused a check with "Routing needs a hub on Linux." */
   notLinux = $state(false);
-  /** The IDs of the routes that the hub checks now. */
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- replaced whole at each check, never changed in place
   checking = $state.raw<ReadonlySet<string>>(new Set());
-  /** Why the last check of a route failed, by the ID of the route. */
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- replaced whole at each check, never changed in place
   checkProblems = $state.raw<ReadonlyMap<string, string>>(new Map());
   #generation = 0;
@@ -37,12 +28,10 @@ export class RoutesStore {
     private readonly now: () => Date = () => new Date(),
   ) {}
 
-  /** The route whose page is open, if it is still in the list. */
   get shown(): ApplicationRoute | null {
     return this.routes.find((route) => route.id === this.selected) ?? null;
   }
 
-  /** The routes that the filter keeps, in the order of their names. */
   get visible(): ApplicationRoute[] {
     return filtered(this.routes, this.filter, this.now());
   }
@@ -51,7 +40,6 @@ export class RoutesStore {
     return filterCounts(this.routes, this.now());
   }
 
-  /** Reads the list; an answer to an earlier read is dropped. */
   async load(): Promise<void> {
     const generation = ++this.#generation;
     this.status = 'loading';
@@ -68,7 +56,6 @@ export class RoutesStore {
     this.status = 'ready';
   }
 
-  /** Reads when nothing was read yet. */
   async open(): Promise<void> {
     if (this.status === 'idle') await this.load();
   }
@@ -77,7 +64,6 @@ export class RoutesStore {
     this.selected = id;
   }
 
-  /** Asks the hub to read the proof of one name once, and keeps the state that it answers. */
   async check(id: string): Promise<void> {
     if (this.checking.has(id)) return;
     this.checking = new Set([...this.checking, id]); // eslint-disable-line svelte/prefer-svelte-reactivity -- replaced whole, never changed in place
@@ -90,7 +76,6 @@ export class RoutesStore {
     this.checkProblems = new Map(problems); // eslint-disable-line svelte/prefer-svelte-reactivity -- replaced whole, never changed in place
   }
 
-  /** Checks each route, one after the other; stops when the hub says that it cannot route. */
   async checkAll(): Promise<void> {
     for (const route of this.routes) {
       if (this.notLinux) return;
@@ -98,7 +83,6 @@ export class RoutesStore {
     }
   }
 
-  /** Removes a route; when the hub removed it, or has it no more, the list no longer has it and the list is shown again. */
   async remove(id: string): Promise<HubResult<string>> {
     const result = await this.calls.remove(id);
     if (result.ok || result.error.code === 'NOT_FOUND') {

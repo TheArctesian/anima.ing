@@ -21,10 +21,7 @@ async function pinning(): Promise<boolean> {
   }
 }
 
-/**
- * The web view commands of the desktop shell. The event is heard on the main web view only: the shell emits it to
- * `main`, and device web views have no IPC to emit with (D-3).
- */
+/** The event is heard on the main web view only: device web views have no IPC to emit with (D-3). */
 export const desktopWebView: WebViewShell = {
   pinning,
   open: async ({ tabId, deviceId, url, pin, bounds }) => {

@@ -2,8 +2,7 @@ import { graphql } from '$lib/hub/generated';
 import type { RetentionQuery, RetentionSubject } from '$lib/hub/generated/graphql';
 import type { Hub, HubResult } from '$lib/hub/hub';
 
-// Own documents (WP-50 F-3): the K1 retention fields are @pending, so a hub without them fails these documents only,
-// and only the Data retention section shows an error.
+// Own documents (F-3): the K1 retention fields are @pending, so a hub without them fails only these documents.
 const RETENTION = graphql(`
   query Retention {
     retention {
@@ -28,15 +27,12 @@ const SET_RETENTION = graphql(`
   }
 `);
 
-/** How long the hub keeps one kind of data, with the bounds it accepts and its default (HUB-005, D-25). */
 export type RetentionPeriod = RetentionQuery['retention'][number];
 
 export type { RetentionSubject };
 
-/** The retention calls of the hub (HUB-005) as plain functions of a `Hub`. */
 interface RetentionApi {
   list(): Promise<HubResult<readonly RetentionPeriod[]>>;
-  /** The period as the hub now holds it. */
   set(subject: RetentionSubject, days: number): Promise<HubResult<RetentionPeriod>>;
 }
 

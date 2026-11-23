@@ -1,4 +1,3 @@
-//! Programs used by MCP setup: discovery and replacement-safe executable paths.
 use super::super::access::Others;
 #[cfg(windows)]
 use super::super::access::Writer;
@@ -59,8 +58,7 @@ pub fn check_command(anima: &Path, user: u32) -> Result<Checked, CommandError> {
     if !runnable(anima, &program) {
         return Err(CommandError::NotAProgram);
     }
-    // The program may be a link that an installer made (INS-002): each link on the way to the
-    // file and the file are checked, each with every folder above it.
+    // The program may be a link that an installer made (INS-002): each link and folder is checked.
     #[cfg(unix)]
     let others = replaceable(anima, user, &Groups::system());
     #[cfg(windows)]
@@ -74,16 +72,11 @@ pub fn check_command(anima: &Path, user: u32) -> Result<Checked, CommandError> {
     }
 }
 
-/// An agent's own program that may be run: found on `PATH`, and neither it, a link on the way to
-/// its file, its file, a folder above them, nor the interpreter that a script names can be
-/// replaced by a different user (the check of `anima`, MCP-033).
+/// An agent's own program on `PATH`. It runs only when no different user can replace it, a link
+/// to it, a folder above, or the interpreter of a script (MCP-033).
 pub(super) enum Found {
     Fixed(PathBuf),
-    /// On `PATH`, but a different user can replace it: it is not run.
-    Replaceable {
-        program: PathBuf,
-        others: Others,
-    },
+    Replaceable { program: PathBuf, others: Others },
     Missing,
 }
 
@@ -109,7 +102,6 @@ pub(super) fn fixed_program(here: &Here, name: &str) -> Found {
     }
 }
 
-/// The first program named `name` in the folders of `PATH`, as an absolute path.
 pub(super) fn program(here: &Here, name: &str) -> Option<PathBuf> {
     here.path
         .iter()
@@ -125,8 +117,6 @@ pub(super) fn program(here: &Here, name: &str) -> Option<PathBuf> {
         .find(|path| fs::metadata(path).is_ok_and(|metadata| runnable(path, &metadata)))
 }
 
-/// The first part of `path`, from the thing itself up to the root, whose access list lets a
-/// different user change it.
 #[cfg(windows)]
 fn replaceable(path: &Path, _: u32) -> Option<Others> {
     path.ancestors()

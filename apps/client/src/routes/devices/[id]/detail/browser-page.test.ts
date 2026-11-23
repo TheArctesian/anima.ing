@@ -18,7 +18,6 @@ vi.mock('$lib/hub/context', () => ({ useHub: () => current.hub }));
 vi.mock('$lib/sessions/sessions.svelte', () => ({
   useSessions: () => ({ openSession: (request: unknown) => current.opened.push(request), openWeb: (request: unknown) => current.opened.push(request) }),
 }));
-// The platform answers a test sets: the browser's by default (CLI-001), the desktop's for the positive control.
 vi.mock('$lib/platform/platform', () => ({ capabilities: () => current.answers }));
 vi.mock('$app/navigation', () => ({ goto: () => Promise.resolve() }));
 vi.mock('$app/state', async () => {
@@ -58,7 +57,6 @@ async function show(hubAnswers = answers(), search = ''): Promise<ReturnType<typ
 
 const panel = () => document.querySelector('[role="tabpanel"]');
 const NO_EVENTS = { events: { pageInfo: { hasNextPage: false }, edges: [] } };
-/** Every desktop-only control of criterion 2, by the words the operator would read. */
 const DESKTOP_ONLY = /updates?\b|log folder|this mac|system settings|pop.?out|web view/i;
 
 beforeEach(() => {

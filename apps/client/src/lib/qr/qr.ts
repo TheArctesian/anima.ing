@@ -9,12 +9,12 @@ export interface QrDrawing {
   readonly path: string;
 }
 
-/** The dark-module matrix of `text`, row by row. The text may be a secret: it goes nowhere but the encoder. */
+/** The text may be a secret: it goes nowhere but the encoder. */
 export function qrMatrix(text: string): readonly (readonly boolean[])[] {
   return encode(text, { border: 0, ecc: "M" }).data;
 }
 
-/** One `M x y h1 v1 h-1 z` square for each dark module, offset by the quiet zone; `null` for a text too long for a code. */
+/** `null` when the text is too long for a code. */
 export function qrDrawing(text: string): QrDrawing | null {
   let matrix: readonly (readonly boolean[])[];
   try {

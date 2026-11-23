@@ -1,9 +1,6 @@
 import type { Refusal } from './run';
 
-/**
- * The sentence of the operator at the soft limit (THR-114), the same words as `anima agents start` and the runner.
- * Kept word for word.
- */
+/** The soft-limit sentence (THR-114), word for word the same as `anima agents start` and the runner. */
 export const OVER_LIMIT = 'You are over the recommended guidance and at risk of cyberpsychosis from running this many sessions. Do you want to raise the limit?';
 
 /** A refusal of the runner in words for the person; the same words as `anima agents`. */

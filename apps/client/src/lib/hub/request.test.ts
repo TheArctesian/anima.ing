@@ -9,7 +9,6 @@ const ME = parse('query Me($first: Int) { me { username } }') as TypedDocumentNo
   { first?: number }
 >;
 const CONTACT_AT = new Date('2026-11-04T10:00:00Z');
-/** The `createHub` timeout when none is given. */
 const DEFAULT_TIMEOUT_MS = 10_000;
 
 interface Sent {
@@ -35,7 +34,6 @@ function hubAnswering(answer: (signal?: AbortSignal | null) => Promise<Response>
   return { hub, sent };
 }
 
-/** Every hub a test made; each is closed after the test, so no socket or timer outlives it. */
 const hubs: Hub[] = [];
 
 beforeEach(() => {
@@ -46,7 +44,6 @@ afterEach(async () => {
   await Promise.all(hubs.splice(0).map((hub) => hub.close()));
 });
 
-/** An answer that never arrives; it rejects like fetch does when the request is aborted. */
 function stalled(signal?: AbortSignal | null): Promise<Response> {
   return new Promise((_resolve, reject) => {
     signal?.addEventListener('abort', () => reject(new DOMException('The operation was aborted.', 'AbortError')));

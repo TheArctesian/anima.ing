@@ -1,6 +1,4 @@
-//! The exact group check (R-442) as `anima mcp agents` and `install` use it: a program
-//! in a folder that its group can write, as Homebrew installs Claude Code and Codex, is run when
-//! the group has no member but the person and root; else the row names who and what to run.
+//! The exact group check (R-442) of a folder that its group can write.
 
 use std::fs;
 use std::os::unix::fs::PermissionsExt as _;
@@ -29,8 +27,6 @@ fn problem(rows: &[Row], id: &str) -> String {
         .unwrap_or_default()
 }
 
-/// A folder of programs that its group can write, first on `PATH`, with a `codex` that records
-/// an `add` in the file `ran`.
 fn homebrew(here: &mut super::Here) -> std::path::PathBuf {
     let bin = here.home.join("homebrew/bin");
     fs::create_dir_all(&bin).expect("folder");
@@ -81,7 +77,6 @@ fn r_exactgroup_a_group_with_a_different_member_names_it_and_the_command_to_run(
     );
     assert!(problem(&install(&here, &anima, "codex"), "codex").contains("member alice"));
     assert!(!ran.exists(), "the program ran");
-    // A group whose members cannot be read is refused too.
     here.groups =
         super::super::super::access::Groups::new(|group| super::super::super::access::Listing {
             name: group.to_string(),
@@ -97,7 +92,6 @@ fn mcp_033_the_interpreter_that_a_script_names_and_the_path_that_env_searches_ar
     let tools = here.home.join("tools");
     fs::create_dir(&tools).expect("folder");
     let ran = here.home.join("ran");
-    // An agent installed as a script, as npm does: `env` starts the interpreter found on `PATH`.
     script(&tools, "fake-node", &format!(": > {}", ran.display()));
     let bin = here.path[0].clone();
     fs::write(bin.join("codex"), "#!/usr/bin/env fake-node\n").expect("script");
@@ -106,8 +100,6 @@ fn mcp_033_the_interpreter_that_a_script_names_and_the_path_that_env_searches_ar
     assert_eq!(problem(&install(&here, &anima, "codex"), "codex"), "");
     assert!(ran.exists(), "the interpreter did not run");
     fs::remove_file(&ran).expect("reset");
-    // A folder of `PATH` before the interpreter that each user can write, where a different user
-    // put a `fake-node`: it is left out of the `PATH` that the program gets.
     let open = here.home.join("open");
     fs::create_dir(&open).expect("folder");
     fs::set_permissions(&open, fs::Permissions::from_mode(0o777)).expect("mode");
@@ -117,7 +109,6 @@ fn mcp_033_the_interpreter_that_a_script_names_and_the_path_that_env_searches_ar
     assert_eq!(problem(&install(&here, &anima, "codex"), "codex"), "");
     assert!(ran.exists() && !planted.exists(), "the planted program ran");
     fs::remove_file(&ran).expect("reset");
-    // An option or a `PATH` that makes `env` look elsewhere: who can change that is not known.
     here.path.remove(1);
     for line in [
         "-P /tmp fake-node",
@@ -126,7 +117,6 @@ fn mcp_033_the_interpreter_that_a_script_names_and_the_path_that_env_searches_ar
         "-i fake-node",
         "-S 'fake-node'",
         "missing-node",
-        // A line of Windows: `env` looks for `fake-node\r`.
         "fake-node\r",
     ] {
         fs::write(bin.join("codex"), format!("#!/usr/bin/env {line}\n")).expect("script");
@@ -134,14 +124,12 @@ fn mcp_033_the_interpreter_that_a_script_names_and_the_path_that_env_searches_ar
         assert!(refused.contains("cannot be checked"), "{line}: {refused}");
         assert!(!ran.exists(), "the interpreter ran");
     }
-    // A script that the person cannot read, which the system can still start.
     fs::set_permissions(bin.join("codex"), fs::Permissions::from_mode(0o311)).expect("mode");
     let refused = problem(&install(&here, &anima, "codex"), "codex");
     assert!(refused.contains("cannot be checked"), "{refused}");
     fs::write(bin.join("codex"), "#!/usr/bin/env -S fake-node --flag\n").expect("script");
     fs::set_permissions(bin.join("codex"), fs::Permissions::from_mode(0o755)).expect("mode");
     assert_eq!(problem(&install(&here, &anima, "codex"), "codex"), "");
-    // The interpreter's own folder: left out, so that `env` finds no `fake-node`.
     fs::set_permissions(&tools, fs::Permissions::from_mode(0o777)).expect("mode");
     let refused = problem(&install(&here, &anima, "codex"), "codex");
     assert!(refused.contains("fake-node cannot be checked"), "{refused}");
@@ -167,7 +155,6 @@ fn r_exactgroup_a_refused_file_names_who_and_the_member_to_add_by_hand() {
         "{refused}"
     );
     assert!(!folder.join("mcp.json").exists());
-    // The same folder when the group has no member but the person and root.
     here.groups = groups(&[("root", Some(0))]);
     assert_eq!(
         state_of(&install(&here, &anima, "cursor"), "cursor"),
@@ -184,20 +171,16 @@ fn mcp_035_the_program_runs_with_only_the_folders_of_path_that_no_other_user_can
     for folder in [&tools, &skipped] {
         fs::create_dir(folder).expect("folder");
     }
-    // The interpreter writes the `PATH` that it gets.
     script(
         &tools,
         "fake-node",
         &format!("echo \"$PATH\" > {}", ran.display()),
     );
-    // An entry that the person cannot run: `env` goes on to the next folder.
     fs::write(skipped.join("fake-node"), "#!/bin/sh\n").expect("file");
     let bin = here.path[0].clone();
     fs::write(bin.join("codex"), "#!/usr/bin/env fake-node\n").expect("script");
     fs::set_permissions(bin.join("codex"), fs::Permissions::from_mode(0o755)).expect("mode");
-    // A folder with the sticky bit that each user can write, which holds nothing yet: a different
-    // user could make the folder that `PATH` names in it, and a `fake-node` there. As the folders
-    // under `/var/run` that macOS puts on each login `PATH`, it is left out, not refused.
+    // macOS puts a sticky folder that each user can write on each login `PATH`; it is left out, not refused.
     let sticky = here.home.join("sticky");
     fs::create_dir(&sticky).expect("folder");
     fs::set_permissions(&sticky, fs::Permissions::from_mode(0o1777)).expect("mode");
@@ -207,7 +190,6 @@ fn mcp_035_the_program_runs_with_only_the_folders_of_path_that_no_other_user_can
     let path = fs::read_to_string(&ran).expect("the interpreter ran");
     let checked = std::env::join_paths([bin, skipped.clone(), tools]).expect("a PATH");
     assert_eq!(path.trim_end(), checked.to_string_lossy());
-    // An entry whose interpreter the person cannot run: `env` would go on to the next folder.
     fs::remove_file(&ran).expect("reset");
     let plain = here.home.join("plain");
     fs::write(&plain, "").expect("file");

@@ -9,7 +9,6 @@ import { NAME_REFUSED, TICKET_FAILED, problemText } from './problems';
 import { saveBlob, type BlobSaver } from './save';
 import type { SocketConstructor } from '../tunnel/state';
 
-/** What the panel needs from outside; the tests pass fakes (CQ-021). */
 export interface FilesPanelDeps {
   readonly api: FilesApi;
   readonly sessionId: string;
@@ -19,7 +18,6 @@ export interface FilesPanelDeps {
   readonly save?: BlobSaver;
 }
 
-/** The transfer under way: its direction, the name shown for it and the bytes moved. */
 export interface TransferView {
   readonly direction: 'download' | 'upload';
   readonly name: string;
@@ -30,16 +28,14 @@ export interface TransferView {
 
 export type PanelPhase = 'opening' | 'ready' | 'ended';
 
-/** The file panel of one SSH session: its link, the directory shown and the one transfer (RA-032, D-5). */
+/** The file panel of one SSH session (RA-032, D-5). */
 export class FilesPanelState {
   phase: PanelPhase = $state('opening');
   listing: Listing | undefined = $state.raw();
   transfer: TransferView | undefined = $state.raw();
   /** One fixed sentence: the last failure, or the last transfer's outcome. */
   status = $state('');
-  /** A list or transfer is in flight, or the link is not ready: no other action may start. */
   busy = $state(false);
-  /** A directory listing is on its way; the panel shows placeholder rows once it takes long (5.7.3, Loading). */
   listLoading = $state(false);
 
   readonly #deps: FilesPanelDeps;
@@ -50,17 +46,14 @@ export class FilesPanelState {
     this.#deps = deps;
   }
 
-  /** The link is open and nothing is in flight: the only time an action may start. */
   get idle(): boolean {
     return this.phase === 'ready' && !this.busy;
   }
 
-  /** The entries to show: directories first, each group by name. */
   get entries(): FileEntry[] {
     return this.listing === undefined ? [] : sortedEntries(this.listing.entries);
   }
 
-  /** Ask for the ticket, open the link and list the home directory. */
   async open(): Promise<void> {
     const ticket = await this.#deps.api.openFiles(this.#deps.sessionId);
     if (this.#closed) return;
@@ -89,7 +82,7 @@ export class FilesPanelState {
     this.#link = opening.value;
   }
 
-  /** Close the link; nothing is shown after it. Safe to call more than once. */
+  /** Nothing is shown after it. Safe to call more than once. */
   close(): void {
     this.#closed = true;
     this.#link?.close();
@@ -139,7 +132,7 @@ export class FilesPanelState {
     if (result !== undefined && this.phase === 'ready') await this.#list(directory, true);
   }
 
-  /** Stop the transfer in flight; its result settles once the hub confirms. */
+  /** The transfer's result settles once the hub confirms. */
   cancel(): void {
     if (this.transfer !== undefined) this.#link?.cancel();
   }
@@ -163,7 +156,6 @@ export class FilesPanelState {
     return result;
   }
 
-  /** List `path`; `keepStatus` leaves the last transfer's outcome on the status line. */
   async #list(path: string, keepStatus = false): Promise<void> {
     if (this.#link === undefined || this.busy || this.phase !== 'ready') return;
     this.busy = true;

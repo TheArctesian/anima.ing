@@ -67,8 +67,7 @@ describe('compareDevices (E-1, DEV-004)', () => {
   });
 
   it('DEV-004 orders NAME by UTF-8 bytes, not by UTF-16 code units', () => {
-    // U+FF21 is one UTF-16 unit (0xFF21) but three bytes; U+1F600 is a surrogate pair (0xD83D) but four bytes.
-    // Bytes put U+FF21 (EF BC A1) before U+1F600 (F0 9F 98 80); code units would put the emoji first.
+    // Bytes put U+FF21 (EF BC A1) before U+1F600 (F0 9F 98 80); UTF-16 units (0xFF21, 0xD83D) put the emoji first.
     const devices = [device('\u{1F600}'), device('Ａ'), device('B'), device('a')];
     expect(names(devices.toSorted(compareDevices('NAME')))).toEqual(['B', 'a', 'Ａ', '\u{1F600}']);
   });

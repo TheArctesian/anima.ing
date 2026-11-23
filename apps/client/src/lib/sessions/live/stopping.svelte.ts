@@ -8,10 +8,8 @@ export class Stopping {
 
   isStopping = (id: string): boolean => this.#busy.includes(id);
 
-  /** Fixed text for a refused Stop of `id`, else null. */
   failure = (id: string): string | null => (this.#refused.includes(id) ? STOP_REFUSED : null);
 
-  /** Mark `id` busy and clear its failure; false when it was busy already. */
   begin(id: string): boolean {
     if (this.#busy.includes(id)) return false;
     this.#busy = [...this.#busy, id];
@@ -19,7 +17,6 @@ export class Stopping {
     return true;
   }
 
-  /** The hub answered: `id` is no longer busy, and failed unless `ok`. */
   end(id: string, ok: boolean): void {
     this.#busy = this.#busy.filter((busy) => busy !== id);
     if (!ok) this.#refused = [...this.#refused, id];

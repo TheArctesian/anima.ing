@@ -3,38 +3,43 @@
 //! pickers from it. Measured on 2026-11-22: Claude Code 2.x answers `initialize` with no prompt,
 //! with no session file and no hook; `codex app-server` 0.170 answers `model/list` with no thread.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use agent_threads::control::Outcome;
+use agent_threads::control::{ListState, Outcome, ProgramState};
 use agent_threads::drive::{
     ClaudeInput, CodexInput, DriveEvent, ModelChoice, Program, claude_models, codex_models,
 };
+use chrono::{DateTime, Utc};
 use serde_json::Value;
-use tokio::io::{AsyncBufReadExt as _, AsyncReadExt as _, AsyncWriteExt as _};
 
 use super::socket::Caller;
 use super::{Runner, login};
 
-/// The longest wait for a list. Codex loads its plugins first (about 90 s on a busy Mac).
-const ASK_WAIT: Duration = Duration::from_secs(120);
+use super::login::asking;
+use asking::{Fault, Heard};
+
+/// The list of a program, or why the ask gave none.
+pub(super) type Listed = Result<Vec<ModelChoice>, Fault>;
+
 /// How long a program that gave no list is not asked again.
 const ASK_AGAIN: Duration = Duration::from_secs(60);
-/// The most bytes of one line of the program that the ask reads.
-const MOST_LINE: usize = 1 << 20;
-/// The most lines that the ask reads before it gives up.
-const MOST_LINES: usize = 200;
 /// The most calls that wait for the asks; a call past it gets the lists known now.
 const MOST_WAITING: usize = 64;
 
 /// The asks that run, and the calls that wait for them.
 pub(super) struct Asks {
-    pub sender: tokio::sync::mpsc::Sender<(Program, Option<Vec<ModelChoice>>)>,
-    pub receiver: Option<tokio::sync::mpsc::Receiver<(Program, Option<Vec<ModelChoice>>)>>,
+    pub sender: tokio::sync::mpsc::Sender<(Program, Listed)>,
+    pub receiver: Option<tokio::sync::mpsc::Receiver<(Program, Listed)>>,
     /// The programs being asked.
     open: Vec<Program>,
-    /// When each program last gave no list.
-    failed: Vec<(Program, Instant)>,
+    /// When each program last gave no list, and why.
+    failed: Vec<(Program, Instant, Fault)>,
+    /// When the running ask or the last failed ask of each program started or ended, for the
+    /// person (TH117).
+    since: Vec<(Program, DateTime<Utc>)>,
+    /// The programs that are not on this computer, as the last call of the person found.
+    missing: Vec<Program>,
     waiting: Vec<Caller>,
 }
 
@@ -46,6 +51,8 @@ impl Default for Asks {
             receiver: Some(receiver),
             open: Vec::new(),
             failed: Vec::new(),
+            since: Vec::new(),
+            missing: Vec::new(),
             waiting: Vec::new(),
         }
     }
@@ -68,22 +75,28 @@ impl Runner {
                 .model_asks
                 .failed
                 .iter()
-                .any(|(failed, at)| *failed == program && at.elapsed() < ASK_AGAIN);
+                .any(|(failed, at, _)| *failed == program && at.elapsed() < ASK_AGAIN);
             let asked = known.contains(&program) || self.model_asks.open.contains(&program);
             if !of_the_person || asked || failed {
                 continue;
             }
-            let Some(path) = login::find(program, &self.env, login::executable, login::trusted)
-            else {
+            let found = login::find(program, &self.env, login::executable, login::trusted);
+            self.model_asks
+                .missing
+                .retain(|missing| *missing != program);
+            let Some(path) = found else {
+                self.model_asks.missing.push(program);
                 continue;
             };
+            self.model_asks.noted(program);
             let env = environment(program, self.env.clone(), &path);
             let sender = self.model_asks.sender.clone();
             self.model_asks.open.push(program);
             tokio::spawn(async move {
                 let models = ask(program, path, env).await;
-                if models.is_none() {
-                    tracing::info!(?program, "a program gave no list of its models");
+                if let Err(fault) = models {
+                    let why = fault.words();
+                    tracing::info!(?program, why, "a program gave no list of its models");
                 }
                 // A runner that ended does not need the answer.
                 let _ = sender.send((program, models)).await;
@@ -98,14 +111,19 @@ impl Runner {
 
     /// The end of one ask: its list is kept, and when no ask runs each waiting call gets the
     /// lists.
-    pub(super) fn models_asked(&mut self, program: Program, models: Option<Vec<ModelChoice>>) {
+    pub(super) fn models_asked(&mut self, program: Program, models: Listed) {
         self.model_asks.open.retain(|open| *open != program);
         self.model_asks
             .failed
-            .retain(|(failed, _)| *failed != program);
+            .retain(|(failed, _, _)| *failed != program);
         match models {
-            Some(models) => self.said.models.note(program, models, chrono::Utc::now()),
-            None => self.model_asks.failed.push((program, Instant::now())),
+            Ok(models) => self.said.models.note(program, models, Utc::now()),
+            Err(fault) => {
+                self.model_asks
+                    .failed
+                    .push((program, Instant::now(), fault));
+                self.model_asks.noted(program);
+            }
         }
         if self.model_asks.open.is_empty() {
             let outcome = self.models_outcome();
@@ -116,14 +134,57 @@ impl Runner {
     }
 
     fn models_outcome(&self) -> Outcome {
-        Outcome::Models {
-            models: self.said.models.rows(),
-        }
+        let models = self.said.models.rows();
+        let asks = &self.model_asks;
+        let programs = [Program::ClaudeCode, Program::Codex]
+            .into_iter()
+            .map(|program| {
+                let state = if models.iter().any(|row| row.program == program) {
+                    ListState::Listed
+                } else if asks.open.contains(&program) {
+                    ListState::Asking
+                } else if asks.failed.iter().any(|(failed, _, _)| *failed == program) {
+                    ListState::Failed
+                } else if asks.missing.contains(&program) {
+                    ListState::Missing
+                } else {
+                    ListState::NotAsked
+                };
+                let since = matches!(state, ListState::Asking | ListState::Failed)
+                    .then(|| asks.since.iter().find(|(of, _)| *of == program))
+                    .flatten()
+                    .map(|(_, at)| *at);
+                let reason = asks
+                    .failed
+                    .iter()
+                    .find(|(failed, _, _)| *failed == program && state == ListState::Failed)
+                    .map(|(_, _, fault)| fault.words().to_owned());
+                ProgramState {
+                    program,
+                    state,
+                    since,
+                    reason,
+                }
+            })
+            .collect();
+        Outcome::Models { models, programs }
+    }
+}
+
+impl Asks {
+    /// Now is the time of the newest ask of `program`, or of its failure.
+    fn noted(&mut self, program: Program) {
+        self.since.retain(|(of, _)| *of != program);
+        self.since.push((program, Utc::now()));
     }
 }
 
 /// The environment of a start of the program, as a thread gets it (THR-040).
-fn environment(program: Program, env: Vec<(String, String)>, path: &Path) -> Vec<(String, String)> {
+pub(super) fn environment(
+    program: Program,
+    env: Vec<(String, String)>,
+    path: &std::path::Path,
+) -> Vec<(String, String)> {
     let mut env = login::with_folder_of(env, path);
     if program == Program::ClaudeCode {
         env.extend(
@@ -133,92 +194,23 @@ fn environment(program: Program, env: Vec<(String, String)>, path: &Path) -> Vec
     env
 }
 
-/// Starts the program in `/`, which it cannot write and which has no project files, asks for
-/// its list and ends its process group, also after [`ASK_WAIT`]. `None` when it gives no list.
-/// Claude Code reads no settings of the user (no hook) and starts no MCP server.
-async fn ask(
-    program: Program,
-    path: PathBuf,
-    env: Vec<(String, String)>,
-) -> Option<Vec<ModelChoice>> {
-    let args: &[&str] = match program {
-        Program::ClaudeCode => &[
-            "-p",
-            "--input-format",
-            "stream-json",
-            "--output-format",
-            "stream-json",
-            "--verbose",
-            "--permission-mode",
-            "plan",
-            "--strict-mcp-config",
-            "--setting-sources",
-            "project,local",
-            "--no-session-persistence",
-        ],
-        Program::Codex => &["app-server"],
-    };
-    let mut child = tokio::process::Command::new(&path)
-        .args(args)
-        .current_dir("/")
-        .env_clear()
-        .envs(env)
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null())
-        .process_group(0)
-        .kill_on_drop(true)
-        .spawn()
-        .ok()?;
-    crate::threads::priority::lift_async(&mut child).await;
-    let group = child
-        .id()
-        .and_then(|pid| i32::try_from(pid).ok())
-        .and_then(rustix::process::Pid::from_raw);
-    let models = tokio::time::timeout(ASK_WAIT, talk(program, &mut child))
-        .await
-        .ok()
-        .flatten();
-    if let Some(group) = group {
-        // A group that already ended is what this wants: the error is not a fault.
-        let _ = rustix::process::kill_process_group(group, rustix::process::Signal::KILL);
-    }
-    let _ = child.wait().await;
-    models
-}
-
-/// Writes the questions and reads the lines until the list.
-async fn talk(program: Program, child: &mut tokio::process::Child) -> Option<Vec<ModelChoice>> {
-    let mut input = child.stdin.take()?;
-    let output = child.stdout.take()?;
-    let mut lines = tokio::io::BufReader::new(output);
-    let most_line = u64::try_from(MOST_LINE).unwrap_or(u64::MAX);
+/// Asks the program for its list of models: `None` when it gives none.
+async fn ask(program: Program, path: PathBuf, env: Vec<(String, String)>) -> Listed {
     let first = match program {
         Program::ClaudeCode => ClaudeInput::initialize("models"),
         Program::Codex => CodexInput::initialize(1),
     };
-    write_line(&mut input, &first).await?;
-    let mut line = String::new();
-    for _ in 0..MOST_LINES {
-        line.clear();
-        // A line longer than the limit is never held whole.
-        let mut one = (&mut lines).take(most_line + 1);
-        if one.read_line(&mut line).await.ok()? == 0 || line.len() > MOST_LINE {
-            return None;
-        }
-        let Ok(value) = serde_json::from_str::<Value>(&line) else {
-            continue;
-        };
-        match (program, list_in(program, &value)) {
-            (_, Some(models)) => return Some(models),
-            (Program::Codex, None) if value["id"] == 1 && value.get("method").is_none() => {
-                write_line(&mut input, &CodexInput::initialized()).await?;
-                write_line(&mut input, &CodexInput::model_list(2)).await?;
+    let asked = asking::Asked { program, path, env };
+    asking::ask(asked, first, |value| {
+        match (program, list_in(program, value)) {
+            (_, Some(models)) => Heard::Done(models),
+            (Program::Codex, None) if asking::initialized(value) => {
+                Heard::Write(vec![CodexInput::initialized(), CodexInput::model_list(2)])
             }
-            _ => {}
+            _ => Heard::Nothing,
         }
-    }
-    None
+    })
+    .await
 }
 
 /// The list in one line of the program, when the line is the answer that holds it.
@@ -237,10 +229,4 @@ fn list_in(program: Program, value: &Value) -> Option<Vec<ModelChoice>> {
         Some(DriveEvent::Models { models }) => Some(models),
         _ => None,
     }
-}
-
-async fn write_line(input: &mut tokio::process::ChildStdin, line: &str) -> Option<()> {
-    input.write_all(line.as_bytes()).await.ok()?;
-    input.write_all(b"\n").await.ok()?;
-    input.flush().await.ok()
 }

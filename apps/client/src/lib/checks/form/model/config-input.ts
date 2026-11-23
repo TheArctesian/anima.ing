@@ -10,7 +10,7 @@ export function isSecretHeader(name: string): boolean {
   return ['authorization', 'proxy-authorization', 'cookie'].includes(name.trim().toLowerCase());
 }
 
-/** Trimmed text, or nothing when it is empty: the hub reads a missing optional field as "not set". */
+/** The hub reads a missing optional field as "not set". */
 function optional(text: string): string | undefined {
   const trimmed = text.trim();
   return trimmed === '' ? undefined : trimmed;
@@ -22,10 +22,7 @@ function present<K extends string>(key: K, text: string): Partial<Record<K, stri
 }
 
 
-/**
- * HTTP authentication as sent. An empty password or token is sent as is: the hub then keeps the
- * stored one if the address, the kind and the user name are unchanged (SEC-005).
- */
+/** An empty password or token is sent as is: the hub keeps the stored one if address, kind and user name are unchanged (SEC-005). */
 function authInput(http: CheckFormValues['http']): HttpAuthInput | undefined {
   if (http.authKind === 'BASIC') return { basic: { username: http.username.trim(), password: http.password } };
   if (http.authKind === 'BEARER') return { bearerToken: http.bearerToken };
@@ -52,7 +49,6 @@ function httpInput(http: CheckFormValues['http']): HttpConfigInput {
   };
 }
 
-/** The `@oneOf` config of `values.type`; settings of the other types are ignored. */
 export function configInput(values: CheckFormValues): CheckConfigInput {
   switch (values.type) {
     case 'ICMP':
@@ -88,11 +84,7 @@ export function configInput(values: CheckFormValues): CheckConfigInput {
   }
 }
 
-/**
- * Whether the config differs from the initial one. `UpdateCheckInput.config` replaces the whole
- * config, so an unchanged config is left out and every stored secret stays untouched.
- * Both sides are built the same way, so an empty secret on both sides is no change.
- */
+/** `UpdateCheckInput.config` replaces the whole config, so an unchanged one is left out and stored secrets stay untouched. */
 export function configChanged(initial: CheckFormValues, values: CheckFormValues): boolean {
   const same = JSON.stringify(configInput(initial)) === JSON.stringify(configInput({ ...values, type: initial.type }));
   return !same || initial.http.authKind !== values.http.authKind;

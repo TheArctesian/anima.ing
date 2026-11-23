@@ -1,9 +1,7 @@
-// The switches of the open ports (HMD-049): which ports a computer offers, and the system setting each one needs. Pure.
+// The open port switches (HMD-049).
 
-/** The systems that name their settings differently. */
 export type System = 'mac' | 'linux' | 'windows';
 
-/** One port that the person can turn on for the hub. */
 export interface PortRow {
   readonly port: number;
   readonly label: string;
@@ -35,14 +33,12 @@ const LABELS: Readonly<Record<number, string>> = {
   3389: 'Remote Desktop (port 3389)',
 };
 
-/** The system of this computer from the user agent of its web view. */
 export function systemOf(userAgent: string): System {
   if (/Windows/.test(userAgent)) return 'windows';
   if (/Macintosh|Mac OS X/.test(userAgent)) return 'mac';
   return 'linux';
 }
 
-/** The rows for `system`, in port order, each on when `open` holds its port. Remote Desktop on Windows and Linux. */
 export function portRows(system: System, open: readonly number[]): readonly PortRow[] {
   return Object.entries(NEEDS[system]).map(([port, needs]) => {
     const number = Number(port);

@@ -1,9 +1,4 @@
-//! The update of the daemon at each start of the app (HMD-055, R-437), and what the
-//! page is told of it: the update, once, with both versions; a failed update, once, with its
-//! step; and, while it lasts, an installed daemon that stays older than the app.
-//!
-//! I/O: runs the update off the async runtime, asks the runner of the new daemon for its
-//! version, and keeps the notice of the last update in a file of the data folder of the app.
+//! The update of the daemon at each start of the app, and its notices to the page (HMD-055, R-437).
 
 use std::{
     fs,
@@ -24,19 +19,14 @@ use super::{
     version::{self, Version},
 };
 
-/// The file of the notice of the last update, in the data folder of the app.
 const NOTICE_FILE: &str = "daemon-update.json";
-/// How long the new daemon has to answer with its version after its start.
 const HEALTH_LIMIT: Duration = Duration::from_secs(30);
 /// The new daemon must still answer this long after its first answer: one that fails at its
 /// token ends, and its unit starts it again and again.
 const STEADY: Duration = Duration::from_secs(3);
-/// The time of one try to reach the runner.
 const TRY: Duration = Duration::from_secs(2);
-/// The deadline of `--version` of the installed copy.
 const VERSION_DEADLINE: Duration = Duration::from_secs(10);
 
-/// What the page says of the daemon of this computer and the app.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Notice {
@@ -48,8 +38,7 @@ pub enum Notice {
         to: String,
         step: String,
     },
-    /// The installed daemon is older than the app and stays: `why` says why the app did not
-    /// replace it (`not_sealed`, or the code of the error of the update).
+    /// The installed daemon is older than the app and stays: `why` is `not_sealed` or an error code.
     Older {
         installed: Option<String>,
         app: String,
@@ -57,11 +46,9 @@ pub enum Notice {
     },
 }
 
-/// The notice of the last update while it was not shown, and the older daemon while it lasts.
 #[derive(Default)]
 pub struct Notices(Mutex<Option<Notice>>);
 
-/// The notice in the file, and whether the page was given it.
 #[derive(Serialize, Deserialize)]
 struct Kept {
     notice: Notice,
@@ -90,8 +77,7 @@ pub fn update_at_start<R: Runtime>(app: &AppHandle<R>) {
         let user = this_user();
         let env = run::daemon_env(&home, |name| std::env::var_os(name));
         let read = |program: &Path| version::read(program, &env, VERSION_DEADLINE, &claim.stop);
-        // The installed copy runs only when the install would trust it: never from a folder or
-        // a file that a different user can change, nor through a link.
+        // The installed copy runs only when the install would trust it (no shared folder or link).
         let installed = update::copy_trusted(&copy, user)
             .then(|| read(&copy))
             .flatten();
@@ -101,9 +87,8 @@ pub fn update_at_start<R: Runtime>(app: &AppHandle<R>) {
                 "this build has no Developer ID signature: after an update, the Keychain asks the person once for the new daemon"
             );
         }
-        // The signer of the app that runs, read from its process: a Developer ID build takes
-        // only a bundle and a new copy of the same team, so a program put in the bundle after
-        // the start does not pass, and a signer that cannot be read lets nothing pass.
+        // The signer comes from the running process, so a program put in the bundle later does
+        // not pass; a signer that cannot be read lets nothing pass.
         let this_app = signature::of_this_app();
         if this_app == signature::Signer::Unknown {
             log::warn!(
@@ -139,7 +124,6 @@ pub fn update_at_start<R: Runtime>(app: &AppHandle<R>) {
     });
 }
 
-/// The notice to show once and the one that lasts, from what the update did.
 fn notices(
     result: Result<update::Updated, DaemonError>,
     installed: Option<Version>,
@@ -230,7 +214,6 @@ fn answers(version: Version) -> bool {
     })
 }
 
-/// The version that the runner of this computer names, when it answers within [`TRY`].
 async fn runner_version() -> Option<Version> {
     let asked = async {
         let mut link = RunnerLink::connect().await.ok()?;
@@ -244,7 +227,6 @@ async fn runner_version() -> Option<Version> {
     tokio::time::timeout(TRY, asked).await.ok().flatten()
 }
 
-/// Writes `notice` as not shown yet, readable by this user only.
 fn keep(file: &Path, notice: &Notice) {
     let kept = Kept {
         notice: notice.clone(),

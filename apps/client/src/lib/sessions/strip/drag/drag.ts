@@ -8,7 +8,6 @@ import { threshold } from '$lib/motion/tokens';
 import { closeGap, lift, lower, type Lift } from './lift';
 import { VELOCITY_WINDOW_MS, isOutside, shifts, slotIndex, velocityOf, type Bounds, type Sample, type Slot, type Velocity } from './reorder';
 
-/** What a dragged tab needs from its strip. */
 export interface DragOptions {
   /** The tabs in strip order, the dragged one among them. */
   readonly tabs: () => readonly HTMLElement[];
@@ -21,7 +20,6 @@ export interface DragOptions {
   /** Pops the session out; resolves `false` when it stayed, so the tab goes back to its place. */
   readonly dragOut: () => Promise<boolean>;
   readonly preference?: MotionPreference;
-  /** The clock for the release velocity, in milliseconds. */
   readonly now?: () => number;
 }
 
@@ -119,7 +117,6 @@ function release(element: HTMLElement, grab: Grab, drag: Drag, settings: Release
         land(element, drag, drag.from, settings);
         return;
       }
-      // The tab fades out where it was let go; the strip closes its place.
       element.dataset.closing = '';
       if (drag.lift !== undefined) {
         closeGap(
@@ -134,7 +131,6 @@ function release(element: HTMLElement, grab: Grab, drag: Drag, settings: Release
   land(element, drag, slotIndex(drag.slots, drag.centre, settings.velocity.x), settings);
 }
 
-/** Ends a drag: a cancel or a lost capture puts the tab back with no velocity; a release places it. */
 function finish(element: HTMLElement, grab: Grab, cancelled: boolean, settings: Settings): void {
   const { drag } = grab;
   if (drag === undefined) return;
@@ -158,7 +154,6 @@ function follow(element: HTMLElement, grab: Grab, drag: Drag, { options, prefere
   moveAside(drag, over, preference.reduced);
 }
 
-/** Adds `latest` and drops the samples too old to count for the velocity, so the list stays short. */
 function keepRecent(samples: Sample[], latest: Sample): void {
   samples.push(latest);
   const recent = samples.findIndex((sample) => latest.t - sample.t <= VELOCITY_WINDOW_MS);
@@ -169,12 +164,7 @@ function travelled(grab: Grab, event: PointerEvent): number {
   return Math.hypot(event.clientX - grab.downX, event.clientY - grab.downY);
 }
 
-/**
- * Reorder by drag (Section 5.7.4): after `threshold-drag` the tab follows the pointer from the
- * grab point with pointer capture (MOT-030), the others move aside with `spring-move`, and on
- * release the tab goes to the place nearest its projected position (MOT-032). Under reduced
- * motion every change of place is instant (MOT-040).
- */
+/** Reorder by drag (Section 5.7.4; MOT-030, MOT-032, MOT-040). */
 export function dragTab(options: DragOptions): Attachment<HTMLElement> {
   const { preference = motionPreference(), now = () => performance.now() } = options;
   const settings: Settings = { options, preference };

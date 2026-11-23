@@ -1,4 +1,4 @@
-/** jsdom has no pointer capture; call once before a test that drags. Returns the calls to `setPointerCapture`. */
+/** jsdom has no pointer capture. */
 export function stubPointerCapture(): number[] {
   const captured: number[] = [];
   Object.defineProperty(Element.prototype, 'setPointerCapture', {
@@ -8,7 +8,6 @@ export function stubPointerCapture(): number[] {
   return captured;
 }
 
-/** A pointer event of `type` at `clientX`, `clientY`, stamped `at` ms, so a test controls time. */
 export function pointer(
   type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointercancel',
   at: number,

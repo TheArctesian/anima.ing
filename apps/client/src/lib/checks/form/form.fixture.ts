@@ -10,7 +10,7 @@ export const OK: HubResult<unknown> = { ok: true, value: {} };
 
 let app: ReturnType<typeof mount> | undefined;
 
-/** Call once at the top of a component test file: stubs Web Animations and unmounts after each test. */
+/** Call once at the top of a component test file. */
 export function installFormHarness(): void {
   // jsdom has no Web Animations; Svelte's transitions need an animation that never finishes on its own.
   beforeAll(() => {
@@ -37,7 +37,6 @@ export function show({ check = null, siblings = [], onSave = () => Promise.resol
   return document.querySelector('form') as HTMLFormElement;
 }
 
-/** The input, select or textarea whose label reads `label`. */
 export function input(label: string): HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement {
   const found = [...document.querySelectorAll('label')].find((candidate) => candidate.textContent.trim() === label);
   const target = found?.control ?? null;
@@ -80,7 +79,6 @@ export async function submit(form: HTMLFormElement): Promise<void> {
   await settle();
 }
 
-/** The hint text shown for `label`'s input through `aria-describedby`; empty when there is none. */
 export function messageOfHint(label: string): string {
   const described = input(label).getAttribute('aria-describedby') ?? '';
   return described
@@ -91,7 +89,6 @@ export function messageOfHint(label: string): string {
     .join(' ');
 }
 
-/** The message shown for `field`'s input through `aria-describedby`. */
 export function messageOf(label: string): string | undefined {
   const described = input(label).getAttribute('aria-describedby') ?? '';
   return described

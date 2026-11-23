@@ -47,7 +47,7 @@ async function open(...accounts: ReturnType<typeof account>[]): Promise<void> {
 }
 
 function button(label: string): HTMLButtonElement {
-  // The disclosure's button also holds its chevron glyph, so a disclosure is found by the start of its text.
+  // A disclosure's button also holds its chevron glyph, so it matches when its text includes the label.
   const same = (each: HTMLButtonElement) => each.textContent.replace(/\s+/g, ' ').trim() === label || (each.hasAttribute('aria-expanded') && each.textContent.includes(label));
   const found = [...document.querySelectorAll('button')].find(same);
   if (found === undefined) throw new Error(`no button ${label}`);

@@ -3,18 +3,15 @@ import type { HubAddress } from '../address';
 import { TOKEN_UNREADABLE, type HubResult } from '../error';
 import { copiedQuery, copyKey, isShown, type CopyPlace } from './copy';
 
-/** What the copy needs from the hub that it serves; every part is injected (CQ-021). */
+/** Every part is injected (CQ-021). */
 export interface RecentOptions extends CopyPlace {
   readonly address: HubAddress;
   readonly now: () => Date;
-  /** Hears the time of each copy that is given in place of an answer, so that the status can show its age (NET-004). */
+  /** Lets the status show the copy's age (NET-004). */
   readonly served: (at: Date) => void;
 }
 
-/**
- * The read-only copy of what the client showed recently (FND-007). `answer` runs one request through it: a good
- * answer to a copied query is kept, and when the hub does not answer, the kept answer is given in its place.
- */
+/** A read-only copy of recent answers, given in place of an answer when the hub is unreachable (FND-007). */
 export interface RecentCopy {
   answer<TResult>(document: DocumentNode, variables: unknown, send: () => Promise<HubResult<TResult>>): Promise<HubResult<TResult>>;
 }
@@ -23,7 +20,6 @@ function parsed(text: string): unknown {
   try {
     return JSON.parse(text);
   } catch {
-    // A copy that cannot be read is no copy.
     return undefined;
   }
 }
@@ -40,11 +36,11 @@ function keep(options: RecentOptions, key: string, value: unknown): void {
   const text = JSON.stringify(value);
   const { store, limits } = options;
   const done = text.length > limits.longest ? store.remove(key) : store.write({ key, at: options.now().getTime(), text }, limits.most);
-  // The copy is extra: a store that fails must not fail or slow the request that got a good answer.
+  // The copy is extra: a failing store never fails or slows a good answer.
   done.catch(() => undefined);
 }
 
-/** Whether the hub itself refused the token; a token that this computer could not read is not that. */
+/** A token that this computer could not read is not a refusal by the hub. */
 function refusedByHub(result: HubResult<unknown>): boolean {
   return !result.ok && result.error.code === 'UNAUTHENTICATED' && result.error !== TOKEN_UNREADABLE;
 }
@@ -55,7 +51,7 @@ export function createRecentCopy(options: RecentOptions): RecentCopy {
       const sentIn = options.era();
       const result = await send();
       if (refusedByHub(result)) {
-        // The hub ended this sign-in, so its data must not stay here; the answer is the same if the store fails.
+        // The hub ended this sign-in, so its data does not stay here.
         options.store.clear().catch(() => undefined);
         return result;
       }

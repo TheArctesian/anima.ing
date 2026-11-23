@@ -23,7 +23,6 @@ function accepted<T>(result: HubResult<T>): T {
   return result.value;
 }
 
-/** The upload of each file, in the order of `files`; refused unless the hub gave exactly one for each. */
 function uploadsFor(files: readonly JobFile[], uploads: readonly UploadUrl[]): UploadUrl[] {
   const byName = files.map((file) => uploads.filter((upload) => upload.name === file.name));
   // An answer with more uploads than files is not the hub's own; it is refused rather than half used.
@@ -38,11 +37,7 @@ export interface UploadPorts {
   readonly now: () => Date;
 }
 
-/**
- * Uploads the files of a built and verified job with the `SHA256SUMS` the shell wrote, then reports them and the proposed feed; the hub
- * publishes from there (BLD-060 to BLD-063). No file is sent once `stopping` is true (BLD-026). Rejects with the shell's
- * error, or `UploadRefusedError` for the hub's.
- */
+/** The hub publishes from the report (BLD-060 to BLD-063); no file is sent once `stopping` is true (BLD-026). */
 export async function uploadRelease(job: ClaimedJob, ports: UploadPorts, stopping: () => boolean): Promise<void> {
   const release = await ports.shell.releaseFiles(job);
   const files = release.files;

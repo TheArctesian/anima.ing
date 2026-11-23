@@ -1,4 +1,4 @@
-/** jsdom has no Web Animations: a Svelte transition ends at once. Call once at the top of a component test. */
+/** jsdom has no Web Animations, so a Svelte transition ends at once. */
 export function endTransitionsAtOnce(): void {
   Object.defineProperty(Element.prototype, 'animate', {
     configurable: true,

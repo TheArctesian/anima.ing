@@ -32,9 +32,7 @@ describe('generated types', () => {
   });
 
   it('API-008: a document with an unknown field fails generation', async () => {
-    // The root beside the document, as in the test above: on a Windows runner the checkout and the
-    // temporary folder are on different drives, and a document on another drive than the root
-    // matched nothing, so generation passed without it.
+    // The root sits beside the document: on Windows a document on another drive than the root matches nothing.
     const root = join(scratch, 'unknown');
     mkdirSync(root);
     const file = documentFile('unknown.ts', 'query Me { me { nickname } }');

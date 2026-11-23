@@ -12,7 +12,6 @@
   const id = $props.id();
 </script>
 
-<!-- The VPN facts of a device: the card form of the other Overview cards (VPN-005); classes are from overview/geometry.css. -->
 <section class="overview-card vpn" aria-labelledby="{id}-vpn">
   <h2 id="{id}-vpn" class="overview-card-title"><Icon name="carbon:connect" />VPN</h2>
   <dl class="facts">

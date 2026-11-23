@@ -57,7 +57,6 @@ const content = () => document.querySelector<HTMLElement>('.content');
 const valueNow = () => Number(edge()?.getAttribute('aria-valuenow'));
 const button = (text: string) => [...document.querySelectorAll('button')].find((node) => node.textContent.includes(text));
 
-/** Sends pointer events and lets the DOM catch up. */
 function send(...events: PointerEvent[]): void {
   for (const sent of events) edge()?.dispatchEvent(sent);
   flushSync();
@@ -68,7 +67,6 @@ function press(key: string): void {
   flushSync();
 }
 
-/** Rows stand `ROW` px apart in document order; the edge's top is `edgeTop`. */
 function layOut(edgeTop = 0): void {
   vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
     const top = this.classList.contains('row')
@@ -106,7 +104,6 @@ describe('New log row', () => {
     layOut();
     expect(runs).toEqual([]);
     await arrive(event('e3', 0));
-    // The three rows that were there start one row higher; the new row starts one row above its place.
     const slides = springsMoving().filter((run) => run.keyframes[0] === -ROW && run.keyframes[1] === 0);
     expect(slides).toHaveLength(4);
     expect(springsMoving()[0]?.options).toMatchObject({ damping: spring.move.damping });

@@ -15,31 +15,23 @@ export function statusLabel(status: DeviceStatus): string {
   return LABELS[status];
 }
 
-/**
- * Whether the card offers SSH: SSH is on and the operator has accepted a host key. Without a key the hub refuses to
- * start a session (CONFLICT), so the device page's connection test comes first (WP-14 H-1).
- */
+/** Without an accepted host key the hub refuses to start a session (CONFLICT). */
 export function offersSsh(device: Pick<CardDevice, 'ssh'>): boolean {
   return device.ssh.enabled && device.ssh.hostKey != null;
 }
 
 const IPV4 = /^\d{1,3}(?:\.\d{1,3}){3}$/;
 
-/** A host that is an IP address (v4, or v6 with its colons) rather than a name. */
 function isAddress(host: string): boolean {
   return IPV4.test(host) || host.includes(':');
 }
 
-/** The host to show, and the IP address next to it when the host is a name and the IP is known (D-7). */
 export function hostLine(device: Pick<CardDevice, 'host' | 'ip'>): { host: string; ip: string | null } {
   const showIp = device.ip !== null && device.ip !== '' && !isAddress(device.host);
   return { host: device.host, ip: showIp ? device.ip : null };
 }
 
-/**
- * An address short enough for a row: a long IPv6 address keeps its first two groups and its last two, which name the
- * network and the device; each other host is whole. The whole address is the tooltip of the row.
- */
+/** A long IPv6 address keeps its first two groups and its last two, which name the network and the device. */
 export function shortHost(host: string): string {
   const groups = host.split(':');
   if (groups.length < 6 || host.includes('.')) return host;

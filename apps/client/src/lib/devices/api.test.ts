@@ -98,7 +98,6 @@ describe('devicesApi hosts', () => {
     return { devices: { pageInfo: { hasNextPage: next !== null, endCursor: next }, edges: hosts.map((host) => ({ node: { host } })) } };
   }
 
-  /** A hub that answers `DeviceHosts` by its `after` cursor and records the cursors asked for. */
   function pagedHub(pageAt: (after: string | null) => HubResult<unknown>) {
     const asked: (string | null)[] = [];
     const request = (_document: unknown, variables: Variables) => {

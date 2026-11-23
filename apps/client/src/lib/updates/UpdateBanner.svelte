@@ -16,12 +16,7 @@
   }
 </script>
 
-<!--
-  The status region is always in the page and empty until an update is installed, so screen readers announce what is put
-  into it (UPD-004). It is fixed over the page, so it never moves the content (UI-009), and it restarts only when the
-  operator presses the button (UPD-003). The banner uses the `fade` role: it is a status that stays until restart, not a
-  transient toast, so the toast role does not apply.
--->
+<!-- Always in the page, so screen readers announce it (UPD-004); fixed, so it never moves the content (UI-009). -->
 <div class="live" role="status">
   {#if shown.kind === 'installed'}
     <div class="banner" transition:fade>

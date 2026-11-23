@@ -60,7 +60,6 @@ function decodeURIComponentOrNull(text: string): string | null {
   try {
     return decodeURIComponent(text);
   } catch {
-    // A malformed escape names no file.
     return null;
   }
 }
@@ -79,7 +78,6 @@ export interface StaticSite {
   answer(pathname: string): StaticAnswer;
 }
 
-/** Reads the build once. Throws `BUILD_MISSING` when there is none, so a spec never runs against nothing. */
 export function staticSite(): StaticSite {
   const indexPath = join(BUILD_FOLDER, 'index.html');
   if (!existsSync(indexPath)) throw new Error(BUILD_MISSING);

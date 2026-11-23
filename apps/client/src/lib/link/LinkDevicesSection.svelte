@@ -15,7 +15,6 @@
 
   interface Props {
     section: { id: string; title: string; icon: IconName; description: string };
-    /** The clock of the invite countdown; tests pass their own (CQ-021). */
     clock?: { readonly current: Date };
     api?: LinkApi;
   }

@@ -1,13 +1,10 @@
-// Test support: a VPN picture with one routed site, a router, a client and a node Anima.ing does not know.
 import { flushSync } from 'svelte';
 import type { VpnNode, VpnPicture } from './api';
 
 export { fakeHub } from '$lib/devices/hub.fixture';
 
-/** The time the fixture's keys are measured from. */
 export const NOW = new Date('2026-11-10T12:00:00Z');
 
-/** One node; `change` overrides any field. */
 export function node(change: Partial<VpnNode> = {}): VpnNode {
   return {
     name: 'mac',
@@ -49,7 +46,6 @@ export const STRANGER = node({
   device: null,
 });
 
-/** A fresh picture; `change` overrides any field. */
 export function picture(change: Partial<VpnPicture> = {}): VpnPicture {
   return {
     readAt: '2026-11-10T11:59:20Z',

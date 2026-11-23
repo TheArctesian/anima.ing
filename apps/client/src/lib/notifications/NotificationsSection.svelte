@@ -7,10 +7,8 @@
   import SettingsForm from './settings/SettingsForm.svelte';
   import { D21_PLACEHOLDERS } from './template/template';
 
-  // The Settings page draws the section and its heading (F-10); this is what goes under the heading. The channels and
-  // the settings load apart, so one failing leaves the other working (F-3).
+  // The channels and the settings load apart, so one failing leaves the other working (F-3).
   interface Props {
-    /** The clock of the loading thresholds; tests pass their own. */
     clock?: LoadingClock;
   }
 
@@ -45,7 +43,6 @@
   placeholders={settings?.placeholders ?? D21_PLACEHOLDERS}
   {clock}
 />
-<!-- A heading row, inset and ruled like the setting rows around it (SET-001). -->
 <h3>Expiry and default template</h3>
 <SettingsForm {settings} loadFailed={settingsFailed} onRetry={loadSettings} {save} />
 

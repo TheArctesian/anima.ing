@@ -14,7 +14,6 @@ fn mcp_035_an_agent_with_its_own_command_is_set_up_by_that_program_with_fixed_ar
     let (_home, here, anima) = computer();
     let log = here.home.join("codex.log");
     let bin = here.path[0].clone();
-    // A stand-in for the agent: it records its arguments, and `get` fails until `add` ran.
     script(
         &bin,
         "codex",
@@ -53,7 +52,6 @@ fn mcp_035_an_agent_with_its_own_command_is_set_up_by_that_program_with_fixed_ar
         },
     );
     assert_eq!(state_of(&rows, "codex"), State::NotSetUp);
-    // A server at a longer path is not this one.
     fs::write(
         here.home.join("codex.state"),
         format!("{}-other mcp\n", anima.path().display()),
@@ -66,8 +64,6 @@ fn mcp_035_an_agent_with_its_own_command_is_set_up_by_that_program_with_fixed_ar
     assert!(agent("codex").is_some() && agent("nobody").is_none());
 }
 
-/// The part of the path of `anima` that a different user than `user` can change, when the check
-/// refuses it for that reason.
 fn replaced(anima: &Path, user: u32) -> Option<std::path::PathBuf> {
     match check_command(anima, user) {
         Err(CommandError::Replaceable(others)) => Some(others.path),
@@ -106,7 +102,6 @@ fn mcp_033_the_program_of_the_entry_is_absolute_runnable_plain_and_not_replaceab
     );
     mode(&anima, 0o755);
     assert!(replaced(&anima, here.user + 1).is_some());
-    // A folder above the program that all can write, and the folder of what a link points at.
     let shared = here.home.join("shared");
     fs::create_dir_all(shared.join("mine")).expect("folders");
     let inside = script(&shared.join("mine"), "anima", "exit 0");
@@ -115,7 +110,6 @@ fn mcp_033_the_program_of_the_entry_is_absolute_runnable_plain_and_not_replaceab
     assert!(check_command(&inside, here.user).is_ok() && check_command(&link, here.user).is_ok());
     mode(&shared, 0o777);
     assert!(replaced(&inside, here.user).is_some() && replaced(&link, here.user).is_some());
-    // A path that an agent would read as a variable.
     let odd = here.home.join("${workspaceFolder}");
     fs::create_dir(&odd).expect("folder");
     assert_eq!(
@@ -155,7 +149,6 @@ fn mcp_029_035_036_a_different_entry_of_an_own_command_is_shown_before_it_is_rep
         })
         .collect();
     assert_eq!(shown, ["remove", "add"]);
-    // Uninstall leaves the entry of a person.
     let _ = change(
         &here,
         &anima,
@@ -176,7 +169,6 @@ fn mcp_029_035_036_a_different_entry_of_an_own_command_is_shown_before_it_is_rep
         },
     );
     assert_eq!(state_of(&rows, "claude-code"), State::SetUp);
-    // The agent's program ran in the home folder, not in the folder of the caller.
     let ran = fs::read_to_string(&log).expect("log");
     let home = fs::canonicalize(&here.home).expect("home");
     assert!(

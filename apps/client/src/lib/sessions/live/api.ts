@@ -39,17 +39,16 @@ const LiveSessionChanged = graphql(`
   }
 `);
 
-/** A session that is running now, with the computer that holds it (RA-034). */
+/** A running session (RA-034). */
 export type LiveSession = LiveSessionsQuery['sessions']['edges'][number]['node'];
 
-/** A session as `sessionChanged` sends it: ended when `endedAt` is set. */
+/** Ended when `endedAt` is set. */
 export type SessionChange = LiveSessionChangedSubscription['sessionChanged']['session'];
 
-/** The live-session calls through a `Hub` (RA-034). Failures stay the hub's typed K7 errors. */
+/** Failures stay the hub's typed K7 errors. */
 export interface LiveSessionsApi {
-  /** The running sessions, up to `first`. */
   list(first: number): Promise<HubResult<readonly LiveSession[]>>;
-  /** Listen for starts and ends; returns the function that stops listening. Errors reach `sink.error`. */
+  /** Returns the function that stops listening. */
   watch(sink: Sink<SessionChange>): () => void;
   /** End the session (D-4). */
   end(id: string): Promise<HubResult<EndedSession>>;

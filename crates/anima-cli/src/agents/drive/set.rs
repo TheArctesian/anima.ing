@@ -1,4 +1,4 @@
-//! `anima agents set` (TH110).
+//! `anima agents set` (TH110, TH117).
 
 use agent_threads::control::Action;
 use agent_threads::drive::Effort;
@@ -9,7 +9,7 @@ use crate::failure::Failure;
 use crate::invocation::Invocation;
 
 #[derive(Debug, clap::Args)]
-#[command(group = clap::ArgGroup::new("change").required(true).multiple(true).args(["model", "effort", "mode"]))]
+#[command(group = clap::ArgGroup::new("change").required(true).multiple(true).args(["model", "effort", "mode", "speed"]))]
 pub struct SetArgs {
     thread: Uuid,
     /// The model of the next turns: an alias or a full name.
@@ -21,6 +21,9 @@ pub struct SetArgs {
     /// The mode of the next turns (plan is Claude Code only).
     #[arg(long, value_enum)]
     mode: Option<ModeName>,
+    /// The speed of the next turns, from `anima agents models`, or `default` (Codex only).
+    #[arg(long)]
+    speed: Option<String>,
 }
 
 impl SetArgs {
@@ -32,6 +35,7 @@ impl SetArgs {
             model: self.model,
             effort: self.effort,
             mode: self.mode.map(ModeName::mode),
+            speed: self.speed,
         };
         simple(
             invocation,

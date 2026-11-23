@@ -12,14 +12,12 @@ function storedHeaderNames(http: HttpValues): string[] {
   return http.headers.filter((row) => row.stored && isSecretHeader(row.name)).map((row) => row.name.trim().toLowerCase());
 }
 
-/** Every secret-named header that will be sent, stored or new: the hub compares all of them with what it holds. */
 function sentSecretHeaderNames(http: HttpValues): string[] {
   return http.headers
     .filter((row) => isSecretHeader(row.name) && (row.stored || row.value !== ''))
     .map((row) => row.name.trim().toLowerCase());
 }
 
-/** Whether saving would send an empty secret, which the hub fills in from what it holds. */
 function keepsStoredSecret(http: HttpValues): boolean {
   const kept = (http.authKind === 'BASIC' && http.password === '') || (http.authKind === 'BEARER' && http.bearerToken === '');
   const authKept = http.authKind === http.storedAuth && kept;
@@ -32,11 +30,7 @@ function destinationChanged(initial: HttpValues, http: HttpValues): boolean {
   return originOf(initial.url) !== originOf(http.url) || initial.authKind !== http.authKind || (initial.verifyTls && !http.verifyTls) || !sameHeaders;
 }
 
-/**
- * Sentences for the operator when saving would lose a stored HTTP secret. `UpdateCheckInput.config`
- * replaces the whole config, and the hub never returns secrets, so the form cannot resend them.
- * It sends them empty to mean "keep"; this lists the cases where that cannot work or removes them.
- */
+/** `UpdateCheckInput.config` replaces the whole config and the hub never returns secrets, so the form sends them empty to mean "keep". */
 export function secretWarnings(initial: CheckFormValues, values: CheckFormValues): string[] {
   if (initial.type !== 'HTTP' || !configChanged(initial, values)) return [];
   const { http } = values;

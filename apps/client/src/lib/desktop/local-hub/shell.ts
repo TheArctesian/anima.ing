@@ -178,9 +178,8 @@ export function newTotp(name: string): Promise<LocalHubResult<NewTotp>> {
 }
 
 /**
- * Makes the account (FRN-003). When one exists the shell first asks the person at this computer in a native dialog,
- * which script cannot answer, and fails with `cancelled` when they decline (FRN-007, F-9). For 60 s after that it shows
- * no dialog and fails with `busy`. A name outside the rule fails with `argument`.
+ * FRN-003. When an account exists the shell first asks in a native dialog that script cannot answer (FRN-007, F-9):
+ * `cancelled` when declined, `busy` for 60 s after, `argument` for a name outside the rule.
  */
 export function createLocalAccount(account: NewAccount): Promise<LocalHubResult<null>> {
   return call('local_hub_account_create', isNull, { account });

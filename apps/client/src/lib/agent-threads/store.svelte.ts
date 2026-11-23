@@ -5,24 +5,21 @@ import type { SentPrompt } from './live/timeline';
 import { markSeen, needsYouCount, storedSeen, type Seen } from './state';
 import type { Thread, ThreadRow, ThreadsShell } from './thread';
 
-/** No listing: where there is no runner. */
 const NO_LISTINGS: ReadonlyMap<string, Listing> = new Map();
 
-/** The threads of this computer and the one that is open (THR-011). The last answer that was asked for wins. */
+/** The last answer that was asked for wins (THR-011). */
 export class ThreadsStore {
   rows = $state<readonly ThreadRow[] | null>(null);
   listProblem = $state<string | null>(null);
   thread = $state<Thread | null>(null);
   threadProblem = $state<string | null>(null);
-  /** The ID of the thread that is asked for or shown. */
   chosen = $state<string | null>(null);
   loadingThread = $state(false);
-  /** The first prompt of the thread that this page just started, shown until the runner shows it. */
+  /** Shown until the runner shows it. */
   sent = $state<SentPrompt | null>(null);
-  /** When the person last opened each thread: a turn that ended needs the person until the thread is opened (THR-055). */
+  /** A turn that ended needs the person until the thread is opened (THR-055). */
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- replaced whole at each opening, never changed in place
   seen = $state<Seen>(new Map());
-  /** The time of the last read of the list: the states are of this time. */
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- replaced whole at each read, never changed in place
   readAt = $state(new Date());
 
@@ -31,32 +28,26 @@ export class ThreadsStore {
     private readonly storage: Pick<Storage, 'getItem' | 'setItem'> | null = null,
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- the clock: read once at each call, never kept
     private readonly now: () => Date = () => new Date(),
-    /** The threads that the runner of this computer drives; `null` where there is no runner. */
     readonly live: LiveThreads | null = null,
   ) {
     if (storage !== null) this.seen = storedSeen(storage);
   }
 
-  /** The rows of the list: the driven threads, then the session files that are not one of them (THR-056). */
+  /** The driven threads, then the session files that are not one of them (THR-056). */
   readonly allRows = $derived.by(() => (this.rows === null ? null : mergedRows(this.rows, [...(this.live?.threads.values() ?? [])])));
 
-  /** Whether the list shows the archived threads in place of the others (TH46). */
   archived = $state(false);
 
-  /** The rows as the person lists them: no removed thread, and only the archived ones when asked (TH46). */
+  /** No removed thread, and only the archived ones when asked (TH46). */
   readonly listedRows = $derived.by(() => (this.allRows === null ? null : listed(this.allRows, this.live?.listings ?? NO_LISTINGS, this.archived)));
 
-  /** How many threads are archived. */
   readonly archivedCount = $derived.by(() => [...(this.live?.listings.values() ?? [])].filter((listing) => listing.archived && !listing.removed).length);
 
-  /** The driven thread that is open, or `null` when the open thread is a session file. */
   readonly liveThread = $derived.by(() => (this.chosen === null ? null : (this.live?.threads.get(this.chosen) ?? null)));
 
-  /** How many threads need the person (THR-057). */
-  /** An archived or removed thread is not counted: the person put it away (TH46). */
+  /** An archived or removed thread is not counted: the person put it away (THR-057, TH46). */
   readonly needsYou = $derived.by(() => needsYouCount(this.allRows === null ? [] : listed(this.allRows, this.live?.listings ?? NO_LISTINGS, false), this.readAt, this.seen));
 
-  /** Reads the list again; the rows on the screen stay until the new ones come. */
   async loadList(): Promise<void> {
     try {
       this.rows = await this.shell.list(null);
@@ -70,16 +61,11 @@ export class ThreadsStore {
     }
   }
 
-  /** The person sees the thread `id` now: a turn that ended there does not need the person (THR-055). */
   markSeen(id: string): void {
     this.seen = markSeen(this.storage, this.seen, id, this.now());
   }
 
-  /**
-   * Opens the thread `id`; an answer for a thread that is no longer chosen is dropped. A thread the runner just
-   * `started` has no session file under its ID: its row is read from the runner instead, before the watch's first
-   * update of it, and it shows as loading until one of the two comes.
-   */
+  /** A thread the runner just `started` has no session file yet, so its row is read from the runner instead. */
   async open(id: string, started = false, sent: Omit<SentPrompt, 'thread'> | null = null): Promise<void> {
     this.chosen = id;
     if (sent !== null) this.sent = { thread: id, ...sent };

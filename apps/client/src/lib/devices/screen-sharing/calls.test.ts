@@ -6,7 +6,6 @@ import { screenSharingCalls } from './calls';
 
 const shell = vi.hoisted(() => ({ answers: undefined as Capabilities | undefined, invoke: vi.fn() }));
 vi.mock('$lib/platform/platform', () => ({ capabilities: () => shell.answers }));
-// A shell is present, so only the platform's answers decide what the calls do.
 vi.mock('@tauri-apps/api/core', () => ({ isTauri: () => true, invoke: shell.invoke }));
 
 const LOGIN = { VpnLoginServer: { vpnLoginServer: 'https://hs.anima.ing' } };

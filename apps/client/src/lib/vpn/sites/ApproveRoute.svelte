@@ -6,12 +6,9 @@
 
   interface Props {
     site: SitePath['site'];
-    /** The router that offers the site subnet and waits for approval. */
     router: VpnNode;
     approve: (siteId: string) => Promise<HubResult<unknown>>;
-    /** Why the broker actions are off; `null` when the broker is ready. */
     reason: string | null;
-    /** The id of the line that says `reason`. */
     reasonId: string;
   }
 
@@ -22,7 +19,7 @@
   let approved = $state(false);
 </script>
 
-<!-- A router waits for its route to be approved (R-055); the hub shows the result through `vpnChanged` (BD-16). -->
+<!-- Route approval (R-055); the hub reports the result through `vpnChanged` (BD-16). -->
 <div class="approve">
   <p class="waits">{router.name} offers {site.subnet}, awaiting approval.</p>
   <FormButton
@@ -86,7 +83,6 @@
     color: var(--text-secondary);
   }
 
-  /* Two lines below the narrow breakpoint, where the text wraps (MOT-007). */
   @container (max-inline-size: 28rem) {
     .after {
       min-block-size: calc(var(--text-sm) * var(--leading-normal) * 2);

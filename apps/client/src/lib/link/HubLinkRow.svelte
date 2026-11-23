@@ -11,7 +11,6 @@
   import SettingRow from '$lib/settings/SettingRow.svelte';
   import { deviceLinkAddress, deviceLinkText } from './devices';
 
-  // The link of a joined device to its hub (LNK-006, FRN-005): shown only when this device has joined one.
   let status = $state<DeviceLinkStatus | null>(null);
   let leaving = $state(false);
   /** The link's address once this device has left: a retry only forgets what was kept for it. */
@@ -28,10 +27,7 @@
     void read();
   });
 
-  /**
-   * Leaves the hub, then forgets everything this device kept for the link's address: the listener answer, the access
-   * token and the saved address (M-C). The app starts again at the first-run choices.
-   */
+  /** Leaves the hub and forgets what this device kept for it (M-C). */
   async function leave(): Promise<HubResult<unknown>> {
     if (left === null) {
       const address = status?.port === undefined ? null : deviceLinkAddress(status.port);
@@ -51,7 +47,7 @@
       try {
         await clearAccessToken(address);
       } catch {
-        // The device has left; the token must still go before the app starts again, so the person retries.
+        // The token must go before the app starts again, so the person retries.
         return { ok: false, error: { code: 'INTERNAL', message: NOT_CLEARED } };
       }
       forgetHubAddress(localStorage, address.origin);

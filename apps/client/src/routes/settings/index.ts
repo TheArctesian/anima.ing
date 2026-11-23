@@ -11,12 +11,12 @@ export interface IndexShown {
   readonly vpn: boolean;
 }
 
-/** Each section of the page: its anchor, heading, icon and the line under the heading (SET-001). */
+/** SET-001. */
 export const SECTIONS = {
   account: { id: 'settings-account', title: 'Account', icon: 'carbon:user-avatar', description: 'Who is signed in to this hub.' },
   leave: { id: 'settings-leave', title: 'Leave', icon: 'carbon:logout', description: 'Sign out and forget this hub.' },
   hub: { id: 'settings-hub', title: 'Hub', icon: 'carbon:network-enterprise', description: 'The hub this app talks to.' },
-  // Routes is a section of Hosting now (HSE-010); the index still finds it and opens it there.
+  // Routes is a section of Hosting (HSE-010); the index opens it there.
   routes: { id: 'settings-routes', title: 'Routes in Hosting', icon: 'carbon:server-dns', href: '/hosting/routes', description: 'Names of yours that the hub sends to your applications.' },
   // The next two show only when the shell or the hub says they apply, so the index leaves them out (FRN-006, FRN-009).
   localHub: { id: 'settings-local-hub', title: "This computer's hub", icon: 'carbon:bare-metal-server', description: 'The hub on this computer, its database and link.' },
@@ -38,10 +38,10 @@ export const SECTIONS = {
   vpn: { id: 'settings-vpn', title: 'VPN', icon: 'carbon:connect', description: 'How the hub reaches each site, and when each VPN key expires.' },
 } as const satisfies Record<string, IndexEntry & { readonly description: string }>;
 
-/** The groups of the page, in its order: the hub and the account, this computer, Code, what the hub is connected to (R-224, OD-THR61). */
+/** In the page's order (R-224, OD-THR61). */
 export const GROUPS = { hub: 'Hub and account', computer: 'This computer', code: 'Code', connections: 'Connections' } as const;
 
-/** The index of the sections the page shows, in the page's order and in its groups (WP-50 F-10, R-224). */
+/** WP-50 F-10, R-224. */
 export function indexOf(shown: IndexShown): readonly IndexEntry[] {
   const { account, hub, routes, stayAwake, appearance, codeAppearance, runner, notifications, checkDefaults, retention, updates, apiKeys, integrations, mcp, vpn } = SECTIONS;
   const groups: readonly (readonly [string, readonly (IndexEntry | false)[]])[] = [

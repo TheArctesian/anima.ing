@@ -20,7 +20,6 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** A connected tunnel and its socket. */
 function connected() {
   const opening = openTunnel({ origin: 'https://hub.anima.ing', ticket: { tunnelPath: '/tunnel', token: 't'.repeat(43) }, waking: false, WebSocket: FAKE_TUNNEL_SOCKET });
   if (!opening.ok) throw new Error(opening.error.message);
@@ -31,7 +30,6 @@ function connected() {
   return { client: opening.value.client, socket };
 }
 
-/** The `argv`, `blob` and `end` instructions the client sent, the blobs decoded as UTF-8. */
 function streamed(socket: FakeTunnelSocket) {
   return socket
     .sentInstructions()

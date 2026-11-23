@@ -30,13 +30,10 @@
   import { checkValues, type CheckFormValues } from './model/values';
 
   interface Props {
-    /** The check to edit, or null to create one. */
     check: CheckFields | null;
-    /** The device's other checks; a group chooses its children among them. */
     siblings: readonly SiblingCheck[];
-    /** Saves the values; the route builds `createCheckInput` or `updateCheckInput` from them. */
     onSave: (values: CheckFormValues) => Promise<HubResult<unknown>>;
-    /** Called once everything went in, so the owner closes the form; an owner that closes on `onSave` alone would hide a failed channel save. */
+    /** The owner closes the form here, not on `onSave`, which would hide a failed channel save. */
     onDone?: () => void;
     onCancel: () => void;
   }
@@ -57,21 +54,18 @@
     { value: 'TAILSCALE_PING', label: 'Tailscale ping' },
     { value: 'DOMAIN_EXPIRY', label: 'Domain expiry' },
   ];
-  // A hub that Anima.ing hosts has no VPN, so it offers no Tailscale ping; a check that already is one keeps its type (R-222).
+  // A hosted hub has no VPN, so it offers no Tailscale ping; a check that already is one keeps its type (R-222).
   const hosted = contextHubIsHosted();
   const TYPES = ALL_TYPES.filter((entry) => !hosted || entry.value !== 'TAILSCALE_PING' || untrack(() => check?.type) === 'TAILSCALE_PING');
 
-  // Inside a modal the actions go to its footer; the submit button is tied to the form by its ID.
   const footer = modalFooter();
   const formId = $props.id();
   $effect.pre(() => footer?.show(actions));
 
   const initial = untrack(() => checkValues(check, 'ICMP'));
   let values = $state(initial);
-  // D-26: a new check starts from the K1 input defaults at once and takes the hub's defaults when they arrive, so a
-  // slow or failed answer never holds the form. A setting the operator has touched is left as it is.
+  // D-26: the hub's defaults never hold the form, and a setting the operator has touched stays.
   const touched = new SvelteSet<SettingKey>();
-  /** The interval a new check of any other type than domain expiry shows: the K1 default, then the hub's. */
   let ordinaryInterval = untrack(() => initial.intervalSeconds);
   const readDefaults = untrack(() => (check === null ? defaultsReader() : null));
   $effect(() => {
@@ -85,7 +79,7 @@
       Object.assign(values, patch);
     });
   });
-  // D-29: a new domain expiry check proposes 12 hours; any other type takes the ordinary interval back. A touched one stays.
+  // D-29: a new domain expiry check proposes 12 hours.
   $effect(() => {
     const { type } = values;
     untrack(() => {
@@ -95,9 +89,8 @@
   let errors = $state<FieldError[]>([]);
   let saving = $state(false);
   let advancedOpen = $state(false);
-  /** NOT-003, NOT-005: a check reads and saves its own channels apart from the check (F-3); null without a hub. */
+  /** A check reads and saves its own channels apart from the check (NOT-003, NOT-005, F-3). */
   const channels = new ChannelsDraft(untrack(() => check?.id ?? null), untrack(() => contextChannelCalls()));
-  /** The ID of the check this form created whose channels did not save; a further Save then sends only the channels. */
   let addedId = $state<string | null>(null);
   const resendId = `${formId}-resend`;
 
@@ -106,13 +99,11 @@
   const alerts = $derived(unplaced(errors, shownFields(values)));
   const error = (field: string) => messageFor(errors, field);
 
-  /** Shows `found`, and opens Advanced when one of its settings is wrong, so that no error stays hidden. */
   function show(found: FieldError[]): void {
     errors = found;
     if (touchesAdvanced(found)) advancedOpen = true;
   }
 
-  /** The ID of a check the route has just created, read from its answer. */
   function createdId(value: unknown): string | null {
     if (typeof value !== 'object' || value === null || !('id' in value)) return null;
     return typeof value.id === 'string' ? value.id : null;
@@ -123,23 +114,17 @@
     document.getElementById(resendId)?.focus();
   }
 
-  /** The channels of the check just created failed: say so, and focus the resend input when it is the one refused. */
   async function channelsFailed(created: boolean): Promise<void> {
     if (created && !channels.resendInvalid) channels.checkAdded();
     await focusResend();
   }
 
-  /** The check exists already: sends only its channels again. */
   async function retryChannels(id: string): Promise<void> {
     if ((await channels.save(id)) === 'failed') await channelsFailed(true);
     else onDone?.();
   }
 
-  /**
-   * An edit saves the channels first, so a refusal is seen while the form is still open. A new check has no ID yet,
-   * so its channels go in after it; if they fail the check exists, and the next Save sends only the channels
-   * (`addedId`), never a second check. The form tells its owner it is done only when everything went in.
-   */
+  /** A new check saves its channels after it; if they fail, the next Save sends only the channels, never a second check. */
   async function submit(event: SubmitEvent): Promise<void> {
     event.preventDefault();
     if (saving) return;
@@ -183,7 +168,6 @@
 </script>
 
 <form id={formId} onsubmit={submit} novalidate>
-  <!-- Once the check is added only its channels can be sent again, so the check's own fields are read only. -->
   <fieldset class="check" disabled={addedId !== null}>
   <TextField label="Name" bind:value={values.name} error={error('name')} />
 
@@ -225,7 +209,7 @@
     </div>
   {/if}
 
-  <!-- Always mounted, with a line of its own below the fields, so an error nothing else shows moves nothing (MOT-007). -->
+  <!-- Always mounted, so an error moves nothing (MOT-007). -->
   <div class="alert" role="alert">
     {#each alerts as found, index (index)}
       <p>{found.message}</p>

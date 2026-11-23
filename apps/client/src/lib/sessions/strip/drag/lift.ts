@@ -2,7 +2,6 @@ import type { MotionPreference } from '$lib/motion/preference';
 import { flip, measure } from '$lib/motion/roles/flip';
 import type { Slot } from './reorder';
 
-/** A dragged tab drawn above the strip, and the neighbour whose margin holds its place. */
 export interface Lift {
   readonly element: HTMLElement;
   readonly holder: HTMLElement | undefined;
@@ -11,11 +10,7 @@ export interface Lift {
 
 const px = (value: number) => `${String(value)}px`;
 
-/**
- * Takes the tab at `from` out of the strip's flow into a fixed layer at exactly its place on
- * screen, so the strip, which scrolls sideways and so clips, cannot hide it or its shadow. A
- * neighbour's margin keeps the place, so no other tab moves. `baseY` is the tab's translate.
- */
+/** A fixed layer, because the strip clips sideways; a neighbour's margin keeps the place. `baseY` is the tab's translate. */
 export function lift(tabs: readonly HTMLElement[], slots: readonly Slot[], from: number, baseY: number): Lift | undefined {
   const element = tabs[from];
   const slot = slots[from];
@@ -43,13 +38,11 @@ export function lift(tabs: readonly HTMLElement[], slots: readonly Slot[], from:
   return held;
 }
 
-/** Puts the tab back in the strip's flow; the caller then moves it to its place (FLIP). */
 export function lower({ element, holder, margin }: Lift): void {
   Object.assign(element.style, { position: '', left: '', top: '', width: '', height: '' });
   if (holder !== undefined) holder.style[margin] = '';
 }
 
-/** The tab has left the strip: its place closes and the others move into it with `spring-move`. */
 export function closeGap({ holder, margin }: Lift, others: readonly HTMLElement[], preference: MotionPreference): void {
   const places = measure(others);
   if (holder !== undefined) holder.style[margin] = '';

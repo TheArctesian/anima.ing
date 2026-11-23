@@ -19,7 +19,7 @@ function finished(transaction: IDBTransaction): Promise<void> {
   });
 }
 
-/** Opens the database; `lost` hears when the web view closes the connection, so that the next call opens it again. */
+/** `lost` hears when the web view closes the connection. */
 async function open(factory: IDBFactory, lost: () => void): Promise<IDBDatabase> {
   const request = factory.open(DATABASE, 1);
   request.onupgradeneeded = () => {
@@ -34,7 +34,7 @@ async function open(factory: IDBFactory, lost: () => void): Promise<IDBDatabase>
   return database;
 }
 
-/** Deletes the oldest copies until `most` stay; runs in the transaction of the write, so the two succeed or fail together. */
+/** Runs in the transaction of the write, so the two succeed or fail together. */
 function dropOldest(copies: IDBObjectStore, most: number): void {
   const count = copies.count();
   count.onsuccess = () => {
@@ -51,13 +51,13 @@ function dropOldest(copies: IDBObjectStore, most: number): void {
   };
 }
 
-/** The copy store of the application's web view: one IndexedDB database on this computer (FND-007). */
+/** One IndexedDB database on this computer (FND-007). */
 export function indexedCopyStore(factory: IDBFactory): CopyStore {
   let database: Promise<IDBDatabase> | undefined;
   const forget = () => {
     database = undefined;
   };
-  /** A transaction on the open database. A database that cannot open or lost its connection is opened again by the next call. */
+  /** A database that failed to open or lost its connection opens again on the next call. */
   const begin = async (mode: IDBTransactionMode): Promise<IDBTransaction> => {
     database ??= open(factory, forget);
     try {

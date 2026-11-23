@@ -2,8 +2,6 @@ import { expect } from '@playwright/test';
 import type { Screen } from './shots';
 import { DEVICE_IDS, openDevice, openGpuBox, openedDialog } from './steps';
 
-// One device's page: its five tabs and the dialogs and states on them.
-
 const NO_SUCH_DEVICE = '0190a000-0000-7000-8012-0000000000ff';
 
 export const DEVICE_PAGE_SCREENS: readonly Screen[] = [

@@ -10,7 +10,6 @@
   interface Props {
     values: CheckFormValues;
     errors: readonly FieldError[];
-    /** Called when the operator types in one of the four settings. */
     ontouch?: (setting: SettingKey) => void;
   }
 

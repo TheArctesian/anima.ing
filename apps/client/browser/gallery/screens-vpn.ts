@@ -2,8 +2,6 @@ import { expect, type Page } from '@playwright/test';
 import type { Screen } from './shots';
 import { failOperations, holdOperations, openedDialog, openSettings } from './steps';
 
-// The VPN section's dialogs: add a computer by either path, add a router, approve a route, renew a key.
-
 async function addComputer(page: Page): Promise<void> {
   await openSettings(page);
   await page.getByRole('button', { name: 'Add computer' }).click();

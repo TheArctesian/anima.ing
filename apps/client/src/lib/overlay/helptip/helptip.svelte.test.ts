@@ -43,7 +43,6 @@ function key(name: string): void {
   flushSync();
 }
 
-/** Lets an outro finish: the fake animation ends in a microtask, and the element leaves after it. */
 async function settled(): Promise<void> {
   await Promise.resolve();
   await tick();

@@ -36,9 +36,7 @@
   });
 </script>
 
-<!-- The use of the plan on the page of the hub (HMD-073, task HM-T39 of hosted-mode.md). "Data of your hub" and
-     "Disk used of the plan" are two figures and never one: the first is what the hub measures, the second what the
-     quota of the plan counts, the system of the hub included. -->
+<!-- HMD-073: the data the hub measures and the disk the plan's quota counts (the hub's system included) stay two figures. -->
 <section class="overview-card plan-usage" aria-labelledby="overview-plan-usage" aria-busy={answer === null}>
   <h2 id="overview-plan-usage" class="overview-card-title">Plan and usage</h2>
   <dl>

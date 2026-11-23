@@ -65,7 +65,6 @@ describe('D18: why a device needs a look', () => {
   it("UR-7: the worst check's last message, and how long it has not been up", () => {
     const device = look('a', 'DOWN', [check('UP'), { ...check('DOWN', 'Connection refused'), id: 'c1' }]);
     expect(reasonOf(device, beats(['UP', 'UP', 'DOWN', 'DOWN', 'DOWN']), NOW)).toEqual({ text: 'Connection refused', since: '2 min' });
-    // No kept beat is up: the run began before the oldest, so the time is the least it can be.
     expect(reasonOf(device, beats(['DOWN', 'DOWN', 'DOWN']), NOW)?.since).toBe('over 2 min');
   });
 

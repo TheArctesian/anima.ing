@@ -8,7 +8,6 @@
     /** The time the expiry mark is measured against. */
     expiredAt: Date;
     onRevoke: () => void;
-    /** Drawn as a skeleton: the row's geometry with no readable text (5.7.3, Loading). */
     placeholder?: boolean;
   }
 

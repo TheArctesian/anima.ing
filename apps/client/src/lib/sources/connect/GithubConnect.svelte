@@ -7,9 +7,8 @@
   import { linkOpening, type LinkOpening } from './browser';
   import { GithubConnectStore } from './github-connect.svelte';
 
-  // The three-press connection (PRJ-039): the operator presses Connect GitHub here, then Create and Install on GitHub.
   interface Props {
-    /** Makes the opening for a link. It is called inside the click; tests pass their own. */
+    /** It is called inside the click. */
     opener?: () => LinkOpening;
     onKeyFile: () => void;
   }
@@ -18,10 +17,7 @@
   // The hub is fixed for the life of the row.
   const hub = untrack(() => useHub());
   const store = new GithubConnectStore(githubConnectApi(hub));
-  /**
-   * The hub tells whether the browser flow can start (`Source.connectPageUrl`, K-E1 Section 7a). Until it answers, and on
-   * a hub that cannot or does not say, no browser step is offered and no one-time link is asked for.
-   */
+  /** Until the hub says the browser flow can start, no one-time link is asked for (K-E1 Section 7a). */
   const canBrowse = $derived(typeof store.browserPage === 'string');
   const noBrowserAddress = $derived(store.browserPage === null);
   const signIn = $derived(typeof store.browserPage === 'string' ? signInLine(store.browserPage) : '');

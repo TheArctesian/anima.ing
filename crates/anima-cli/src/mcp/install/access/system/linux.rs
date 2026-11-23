@@ -1,7 +1,5 @@
-//! The members of a group on Linux: each entry of `getent group` with its number, and each account
-//! of `getent passwd` whose own group it is. Only when `/etc/nsswitch.conf` takes accounts and
-//! groups from the files of this computer and from systemd, which list each of them: a directory
-//! service (SSSD, LDAP, winbind) need not. The private group of an account is read in each case.
+//! Group members on Linux from `getent`, only when `nsswitch.conf` takes accounts and groups from
+//! files and systemd alone, which list each of them; a private group is read in each case.
 
 use std::fs;
 use std::io;
@@ -12,23 +10,20 @@ use nix::unistd::{Group, Uid, User};
 use super::super::Member;
 use super::{ask, by_name, number};
 
-/// Where Linux systems keep `getent`; the last is NixOS.
+/// The last is NixOS.
 const GETENT: [&str; 3] = [
     "/usr/bin/getent",
     "/bin/getent",
     "/run/current-system/sw/bin/getent",
 ];
 
-/// The file that names where the system takes its accounts and groups.
 const NSSWITCH: &str = "/etc/nsswitch.conf";
 
-/// The sources of accounts and groups that list each of them.
 const LISTED: [&str; 2] = ["files", "systemd"];
 
 pub(super) fn members(group: &Group) -> Option<Vec<Member>> {
-    // The private group of an account (its number, its name and its own group), as each user has
-    // on the usual systems, is read also with a directory service: only the administrator of the
-    // directory, or of the group, can give it a member that `getent` does not list.
+    // Only an administrator can give a private group a member that `getent` does not list, so it
+    // is read also with a directory service.
     let owner = User::from_uid(Uid::from_raw(group.gid.as_raw()))
         .ok()
         .flatten()
@@ -55,8 +50,6 @@ pub(super) fn members(group: &Group) -> Option<Vec<Member>> {
     Some(members)
 }
 
-/// Whether `nsswitch.conf` has one line `passwd` and one line `group`, and at most one line
-/// `initgroups` (the groups given at login), each of which names only sources of [`LISTED`].
 pub(in super::super) fn local_only(text: &str) -> bool {
     let lines = |database: &str| -> Vec<&str> {
         text.lines()
@@ -83,8 +76,7 @@ pub(in super::super) fn local_only(text: &str) -> bool {
         && initgroups.iter().all(listed)
 }
 
-/// From the lines of `getent group`: the names in the list of members of each entry with the
-/// number `group` (a number can have more than one entry). `None` when a line is not a group.
+/// A number can have more than one entry in `getent group`.
 pub(in super::super) fn entries(text: &str, group: u32) -> Option<Vec<String>> {
     let mut names = Vec::new();
     for line in text.lines().filter(|line| !line.is_empty()) {
@@ -104,8 +96,6 @@ pub(in super::super) fn entries(text: &str, group: u32) -> Option<Vec<String>> {
     Some(names)
 }
 
-/// From the lines of `getent passwd`: each account whose own group is `group`. `None` when a line
-/// is not an account.
 pub(in super::super) fn passwd(text: &str, group: u32) -> Option<Vec<Member>> {
     let mut members = Vec::new();
     for line in text.lines().filter(|line| !line.is_empty()) {

@@ -3,7 +3,6 @@ import type { AgentUsageView, UsageRequest } from './api';
 
 export type UsageStatus = 'loading' | 'ready' | 'failed';
 
-/** The reading of the use of the AI agent programs: what the hub last said, and whether it is being read again. */
 export class UsageStore {
   status = $state<UsageStatus>('loading');
   loadProblem = $state('');
@@ -13,7 +12,7 @@ export class UsageStore {
 
   constructor(private readonly read: (request: UsageRequest) => Promise<HubResult<AgentUsageView>>) {}
 
-  /** Reads `request`; an answer for an earlier request is dropped. */
+  /** An answer for an earlier request is dropped. */
   async load(request: UsageRequest): Promise<void> {
     const generation = ++this.#generation;
     this.status = 'loading';

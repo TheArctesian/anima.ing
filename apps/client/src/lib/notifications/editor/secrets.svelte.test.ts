@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
-// The editor's secrets against a new target, a dirty server, Remove, a double submit and a fading dialog
-// (CR-14.1, CR-14.7, F-8, LOG-007). The secret rules themselves are in target-change.test.ts.
+// The editor's secrets (CR-14.1, CR-14.7, F-8, LOG-007).
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';

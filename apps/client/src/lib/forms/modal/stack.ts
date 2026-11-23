@@ -3,11 +3,9 @@ const openDialogs: object[] = [];
 
 export interface OpenDialog {
   isTopmost(): boolean;
-  /** Takes the dialog off the stack; the one below it is topmost again. */
   close(): void;
 }
 
-/** Puts a dialog on top of the stack. */
 export function openDialog(): OpenDialog {
   const entry = {};
   openDialogs.push(entry);

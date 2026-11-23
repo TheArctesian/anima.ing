@@ -9,9 +9,8 @@ const REFUSALS: Readonly<Record<Refusal, string>> = {
   DENIED: 'The device did not allow that.',
 };
 
-/** Shown when the single-use ticket could not be had (the hub's own words are never shown, LOG-007). */
+/** The hub's own words are never shown (LOG-007). */
 export const TICKET_FAILED = 'Could not open the file connection. Check the session is still running.';
-/** Shown when the name cannot be made into a path on the device. */
 export const NAME_REFUSED = 'The device cannot use that file name.';
 
 const OTHERS: Readonly<Record<Exclude<FilesProblem['kind'], 'refused'>, string>> = {

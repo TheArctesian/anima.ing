@@ -1,6 +1,5 @@
 import type { LoadingClock } from './loading';
 
-/** A clock a test moves by hand: `advance` runs what has come due. */
 export function manualClock() {
   let time = 0;
   let fired = 0;
@@ -17,9 +16,7 @@ export function manualClock() {
   };
   return {
     clock,
-    /** Timers set and not yet fired or cancelled. */
     pending: (): number => waiting.filter((entry) => entry.live).length,
-    /** Timers that have fired. */
     fired: (): number => fired,
     advance: (ms: number): void => {
       const target = time + ms;

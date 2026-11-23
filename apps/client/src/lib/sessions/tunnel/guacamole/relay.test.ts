@@ -5,8 +5,6 @@ import { codePoints, encodeInstruction, FAKE_TUNNEL_SOCKET, FakeTunnelSocket } f
 import { openTunnel, type SessionTunnel } from './tunnel';
 
 // The hub relays gateway instructions unchanged, with element lengths in code points (K4 §4, GW-014, R-046).
-// 1.5.0 counted UTF-16 units, so each non-BMP character in an element ended the element one unit early and the
-// rest of the text was parsed as instructions of its own. These probes fail on 1.5.0 and pass on 1.5.5.
 
 /** Text that, cut short by one character, reads as a forged clipboard stream and a forged gateway error. */
 const FORGED = 'x;9.clipboard,1.0,10.text/plain;4.blob,1.0,8.Zm9yZ2Vk;3.end,1.0;5.error,13.forged detail,3.769';
@@ -26,7 +24,6 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** An open tunnel whose client records every `name`, `clipboard` and `error` it hears. */
 function listening() {
   const opening = openTunnel({
     waking: false,

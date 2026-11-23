@@ -28,9 +28,8 @@ function browserLater(run: () => void, milliseconds: number): () => void {
 }
 
 /**
- * The device settings as shown, saved as each change is made (UR-7, D17). A change validates at once and then waits its
- * turn: saves go one at a time, each built on the device as last saved, and a change made again while its earlier save
- * still waits replaces that save. A refused change stays shown, unsaved, with its reasons in `errors`.
+ * Saved as each change is made (D17): saves go one at a time, each on the device as last saved, and a change made again
+ * while its save still waits replaces that save. A refused change stays shown, unsaved, with its reasons in `errors`.
  */
 export class SettingsDraft {
   /** The settings as shown; a deep state, so each field's edit is seen. */
@@ -42,7 +41,6 @@ export class SettingsDraft {
   readonly #later: Later;
   #queue: Promise<void> = Promise.resolve();
   #waiting: Partial<Record<string, Waiting>> = {};
-  /** Saves of each setting that are waiting or on their way. */
   #open: Partial<Record<string, number>> = {};
   #fades: Partial<Record<string, () => void>> = {};
 
@@ -59,20 +57,15 @@ export class SettingsDraft {
     return JSON.parse(JSON.stringify(this.values)) as DeviceFormValues;
   }
 
-  /** The errors of one field path, for its outline and the line under it. */
   errorOf(field: string): FieldError | undefined {
     return this.errors.find((error) => error.field === field);
   }
 
-  /** The errors of a group, for the one line under its fields. */
   errorsIn(group: SettingsGroup): FieldError[] {
     return this.errors.filter((error) => inGroup(error.field, group));
   }
 
-  /**
-   * Saves the setting at `key` as shown, with the rest of its group (D17): a switch, a choice, a step or a tag at once,
-   * a text field when it is left or Return is pressed. A value that does not validate is refused here and never sent.
-   */
+  /** Saves the setting with the rest of its group (D17); a value that does not validate is refused here and never sent. */
   commit(key: SettingKey): Promise<void> {
     const group = groupOf(key);
     const shown = this.#shown();
@@ -99,10 +92,7 @@ export class SettingsDraft {
     });
   }
 
-  /**
-   * Stores a typed secret on its own (D17: a secret is saved on purpose, by Save password). Answers null once stored, or
-   * the sentence that says why not; the caller drops the typed secret either way it is done with it.
-   */
+  /** D17: a secret is saved on purpose, on its own; answers null once stored, or the sentence that says why not. */
   async saveSecret(key: SettingKey, secrets: SecretValues): Promise<string | null> {
     const sent: DeviceFormValues = { ...this.#saved(), ...secrets };
     const invalid = validateDevice(sent).find((error) => error.field.startsWith('credential.'));
@@ -146,12 +136,10 @@ export class SettingsDraft {
     return entry.done;
   }
 
-  /** `key` is shown as saved again: a "Not saved" beside it goes. */
   unmark(key: string): void {
     if (this.marks[key] === 'refused') this.marks[key] = undefined;
   }
 
-  /** Marks `key` as not saved; its reasons are in `errors` or in its own line. */
   refuse(key: string): void {
     this.#mark(key, 'refused');
   }
@@ -178,7 +166,6 @@ export class SettingsDraft {
     }
   }
 
-  /** The group is shown as saved again: its reasons and a refusal go. */
   #forget(key: string, group: SettingsGroup): void {
     this.errors = replaceGroup(this.errors, group, []);
     this.unmark(key);

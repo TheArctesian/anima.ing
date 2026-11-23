@@ -1,7 +1,9 @@
 //! What the copy of the T3 Code screens needs of the runner (TH104 to TH107): the models of a
 //! program, plan mode, the updates read back, and the projects of this computer.
 
-use agent_threads::control::{Action, Outcome, Project, ProjectChange, Refusal, RunState};
+use agent_threads::control::{
+    Action, ListState, Outcome, Project, ProjectChange, Refusal, RunState,
+};
 use agent_threads::drive::{Mode, ModelChoice, Program};
 use uuid::Uuid;
 
@@ -33,6 +35,7 @@ fn start(kit: &Kit, program: Program, mode: Mode) -> Action {
         mode,
         model: None,
         effort: None,
+        speed: None,
         prompt: "Plan the change".to_owned(),
         program_path: None,
         draft: None,
@@ -45,7 +48,7 @@ fn start(kit: &Kit, program: Program, mode: Mode) -> Action {
 /// The list of `program` in the answer to `models`.
 async fn models_of(client: &mut Client, program: Program) -> Vec<ModelChoice> {
     let asked = client.call(Action::Models).await;
-    let Outcome::Models { models } = client.done(asked).await else {
+    let Outcome::Models { models, .. } = client.done(asked).await else {
         panic!("models");
     };
     models
@@ -73,6 +76,14 @@ async fn th104_the_models_of_each_program_are_there_before_any_thread() {
         "Codex names them on `model/list`"
     );
     assert_eq!(codex[0].default_effort.as_deref(), Some("low"));
+    let asked = client.call(Action::Models).await;
+    let Outcome::Models { programs, .. } = client.done(asked).await else {
+        panic!("models");
+    };
+    assert!(
+        programs.iter().all(|row| row.state == ListState::Listed),
+        "each program says where its list stands (TH117): {programs:?}"
+    );
 }
 
 async fn change_project(client: &mut Client, change: ProjectChange) -> Outcome {

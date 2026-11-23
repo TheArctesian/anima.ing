@@ -9,7 +9,7 @@ export class SharedProjectGroups {
   busy = $state(false);
   problem = $state('');
   ready = $state(false);
-  /** The hub is older than project groups (PRO-059): the page hides them and says so, with no error and no Retry. */
+  /** True when the hub is older than project groups (PRO-059). */
   unserved = $state(false);
   readonly groups = $derived(this.#clusters.groups);
 

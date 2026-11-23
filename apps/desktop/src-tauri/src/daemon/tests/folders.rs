@@ -1,5 +1,4 @@
-//! Where the daemon goes: only through folders no other user can change (T6a's rule, with the
-//! group, an ACL and links), and to the real path that was checked, which is the one run.
+//! Where the daemon goes: only through folders no other user can change, to the real path that was checked.
 
 use std::{
     fs,
@@ -32,7 +31,6 @@ fn met_019_a_folder_others_can_write_is_refused_before_anything_runs() {
         assert!(!rig.installed().exists(), "{open}");
         assert_eq!(rig.runs(), "", "{open}");
         if open != ".local/bin" {
-            // Checked before anything is made: no folder goes inside an untrusted one.
             assert!(!rig.home.join(".local/bin").exists(), "{open}");
         }
     }
@@ -48,7 +46,6 @@ fn met_019_a_folder_a_shared_group_can_write_is_refused_and_the_private_group_is
         Ok(rig.installed()),
         "the user's private group"
     );
-    // The same folder when its group is not the user's private one (`chgrp adm`, 0775).
     let shared = Rig {
         user: User {
             private_group: None,
@@ -61,8 +58,7 @@ fn met_019_a_folder_a_shared_group_can_write_is_refused_and_the_private_group_is
     assert_eq!(shared.runs(), "");
 }
 
-/// `setfacl -m u:nobody:rwx` on `folder`, written as the kernel's ACL attribute (version 2, then
-/// tag, permissions and ID per entry), so no `setfacl` is needed.
+/// `setfacl -m u:nobody:rwx`, written as the kernel's ACL attribute so no `setfacl` is needed.
 #[cfg(target_os = "linux")]
 fn grant_nobody_write(folder: &std::path::Path) {
     let mut acl = 2_u32.to_le_bytes().to_vec();

@@ -1,9 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-// The contract fixtures (K6) the synthetic hub answers from. Phase 2 and later are merged by id, the newest file winning per
-// id, so every phase's devices show. Phase 1 supplies only the operator: its devices reuse Phase 2 names under other ids,
-// and the same name would show twice.
+// Phase 1 supplies only the operator: its devices reuse Phase 2 names under other ids (K6).
 
 const FIXTURE_FOLDER = fileURLToPath(new URL('../../../../contracts/fixtures/', import.meta.url));
 const PHASES = ['phase1', 'phase2', 'phase3'] as const;
@@ -17,14 +15,13 @@ export interface Fixtures {
   readonly checks: Row[];
   readonly sessions: Row[];
   readonly metrics: Row[];
-  /** The Settings slices (WP-50): the retention periods, the check defaults, the notification channels and settings, and the API keys. */
   readonly retention: Row[];
   readonly checkDefaults: Row;
   readonly channels: Row[];
   readonly deliveries: Row[];
   readonly notificationSettings: Row;
   readonly apiKeys: Row[];
-  /** The extensions that are on besides the fixed one; none unless a screen sets them on (EXT-001). */
+  /** The extensions on besides the fixed one (EXT-001). */
   readonly extensionsOn?: readonly string[];
 }
 
@@ -50,7 +47,6 @@ function single(files: readonly Row[], name: string): Row {
   return found as Row;
 }
 
-/** Reads `contracts/fixtures/phase*.json`. */
 export function loadFixtures(): Fixtures {
   const files = PHASES.map(readPhase).filter((file): file is Row => file !== undefined);
   const operator = files.map((file) => file.operator).find((found) => found !== undefined);

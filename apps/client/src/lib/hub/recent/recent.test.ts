@@ -15,7 +15,6 @@ const LIMITS: CopyLimits = { most: 2, longest: 200, oldestMs: 60 * 60_000 };
 const START = new Date('2026-11-18T10:00:00Z');
 const minutesLater = (minutes: number) => new Date(START.getTime() + minutes * 60_000);
 
-/** The network of one test: `answer` is what the hub says next, or `null` when it does not answer. */
 function network() {
   const state: { answer: unknown; now: Date } = { answer: null, now: START };
   const fakeFetch: typeof fetch = () =>
@@ -28,7 +27,6 @@ afterEach(async () => {
   await Promise.all(hubs.splice(0).map((hub) => hub.close()));
 });
 
-/** The era of the copy in a test; a test that removes the copy adds one. */
 const era = { current: 0 };
 
 function hubWith(store: CopyStore | undefined, net = network(), address: HubAddress = NO_HUB_ADDRESS, token = () => Promise.resolve('token')) {

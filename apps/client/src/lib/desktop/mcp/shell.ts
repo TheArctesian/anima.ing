@@ -23,7 +23,6 @@ export class McpShellError extends Error {
   }
 }
 
-/** What the section needs from the shell; the store takes it as a parameter, so tests pass their own. */
 export interface McpShell {
   read(hub: string): Promise<McpPermissions>;
   write(hub: string, change: McpChange): Promise<McpPermissions>;
@@ -49,7 +48,7 @@ function toolFrom(row: unknown): McpTool | null {
   return { toolset, tool, kind, needsSignIn, state, description };
 }
 
-/** The shell's answer as permissions, or `null` when it is not one. The answer crosses a process boundary, so every field is checked. */
+/** The answer crosses a process boundary, so every field is checked. */
 export function permissionsFrom(answer: unknown): McpPermissions | null {
   if (!isRecord(answer) || typeof answer.hub !== 'string' || typeof answer.summary !== 'string' || !Array.isArray(answer.tools)) return null;
   const tools = (answer.tools as unknown[]).map(toolFrom);

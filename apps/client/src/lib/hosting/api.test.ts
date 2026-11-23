@@ -4,7 +4,6 @@ import { hostingApi } from './api';
 
 const node = (id: string, enabled: boolean) => ({ node: { id, name: id, status: 'UP', ssh: { enabled } } });
 
-/** Two pages of devices; the second is asked with the cursor of the first. */
 const PAGES: Readonly<Record<string, unknown>> = {
   '': { devices: { pageInfo: { hasNextPage: true, endCursor: 'c1' }, edges: [node('atlas', true), node('phone', false)] } },
   c1: { devices: { pageInfo: { hasNextPage: false, endCursor: null }, edges: [node('nas', true)] } },

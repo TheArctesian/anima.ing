@@ -71,6 +71,7 @@ impl Runner {
             thread: id,
             text: text.clone(),
             attachments: Vec::new(),
+            skills: Vec::new(),
         };
         let went = self.send(send, back, Sender::Queue(queued)).await;
         if went.is_err() {

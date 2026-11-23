@@ -7,20 +7,15 @@ export const PING_AFTER_MS = 5000;
 /** No frame of any kind from the hub for this long counts as a lost connection (K4 §8.5, same limit as the hub's). */
 export const SILENCE_LIMIT_MS = 15_000;
 
-/** A resize is sent once the size has not changed for this long. */
 export const RESIZE_SETTLE_MS = 150;
 
 const OPEN = 1;
 
-/** What the link tells its owner. */
 export interface LinkEvents {
   /** The fitted size in cells, asked once when the socket opens: the first message must be `resize` (K4 §8.4). */
   readonly size: () => CellSize;
-  /** Terminal output from the hub, unchanged. */
   readonly onbytes: (bytes: Uint8Array) => void;
-  /** Hears every change of the state after `openTerminalLink` returned. */
   readonly onchange?: (state: TunnelState) => void;
-  /** Hears the final state once, after the socket closed or the connection was lost. */
   readonly onend?: (state: TunnelState) => void;
 }
 
@@ -35,11 +30,10 @@ export interface LinkOptions extends LinkEvents {
 /** One open terminal tunnel (K4 §8). It holds no token and no URL (SEC-002, LOG-007). */
 export interface TerminalLink {
   state(): TunnelState;
-  /** Send what the operator typed or pasted, as binary frames; dropped unless the socket is open. */
+  /** Dropped unless the socket is open. */
   send(bytes: Uint8Array<ArrayBuffer>): void;
-  /** Tell the hub the new size in cells once it settles; a size the hub already has is not sent again. */
   resize(size: CellSize): void;
-  /** Close the socket (1000) and stop the timers; safe to call more than once. */
+  /** Safe to call more than once. */
   close(): void;
 }
 
@@ -47,11 +41,7 @@ export type LinkOpening =
   | { readonly ok: true; readonly value: TerminalLink }
   | { readonly ok: false; readonly error: TunnelRefusal };
 
-/**
- * Open the terminal tunnel for `ticket` at the hub `origin` (K4 §8.1): a WebSocket to the hub address with
- * https→wss (http→ws to loopback) plus `ticket.tunnelPath`, `?token=<token>` and subprotocol `anima-terminal`.
- * The token lives only in that one expression: the link keeps the events, not the ticket.
- */
+/** The token lives only in the socket URL expression; the link keeps the events, not the ticket (K4 §8.1). */
 export function openTerminalLink(options: LinkOptions): LinkOpening {
   const { origin, ticket, WebSocket: Socket = globalThis.WebSocket, ...events } = options;
   const url = tunnelUrl(origin, ticket.tunnelPath);
@@ -67,17 +57,14 @@ export function openTerminalLink(options: LinkOptions): LinkOpening {
   return { ok: true, value: linkOver(socket, events) };
 }
 
-/** The two liveness timers: a ping after our own quiet spell (K4 §8.4), a lost connection after the hub's (K4 §8.5). */
 function liveness(ping: () => void, lost: () => void) {
   let pingTimer: ReturnType<typeof setTimeout> | undefined;
   let silenceTimer: ReturnType<typeof setTimeout> | undefined;
   return {
-    /** Something was sent: the next ping waits for a new quiet spell. */
     sent: () => {
       clearTimeout(pingTimer);
       pingTimer = setTimeout(ping, PING_AFTER_MS);
     },
-    /** A frame came from the hub: the silence starts over. */
     heard: () => {
       clearTimeout(silenceTimer);
       silenceTimer = setTimeout(lost, SILENCE_LIMIT_MS);
@@ -89,10 +76,7 @@ function liveness(ping: () => void, lost: () => void) {
   };
 }
 
-/**
- * The size the hub holds (K4 §8.4): `now` sends one at once unless it is the one already sent, `later` sends the
- * last one given once it has not changed for `RESIZE_SETTLE_MS`. `send` says whether the frame went out.
- */
+/** A size the hub already holds is not sent again; `later` waits for `RESIZE_SETTLE_MS` of no change (K4 §8.4). */
 function sizing(send: (frame: string) => boolean) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let sent: CellSize | undefined;
@@ -115,10 +99,7 @@ function sizing(send: (frame: string) => boolean) {
   };
 }
 
-/**
- * A frame from the hub (K4 §8.4): binary is terminal output, handed on unchanged; text is a control message, of which
- * only `end` changes the state. A ping, and anything outside the closed set, change nothing.
- */
+/** Only an `end` control message changes the state; a ping or an unknown message changes nothing (K4 §8.4). */
 function fromHub(data: unknown, onbytes: LinkEvents['onbytes']): Partial<TunnelState> | undefined {
   if (data instanceof ArrayBuffer) {
     onbytes(new Uint8Array(data));
@@ -128,7 +109,6 @@ function fromHub(data: unknown, onbytes: LinkEvents['onbytes']): Partial<TunnelS
   return message?.kind === 'end' ? { endReason: message.reason } : undefined;
 }
 
-/** The link on `socket`: state, liveness, size and the message handling. */
 function linkOver(socket: WebSocket, events: LinkEvents): TerminalLink {
   let state: TunnelState = { phase: 'connecting', opened: false, closeCode: undefined };
   let finished = false;
@@ -146,7 +126,6 @@ function linkOver(socket: WebSocket, events: LinkEvents): TerminalLink {
     publish({ phase: 'disconnected', ...change });
     events.onend?.(state);
   };
-  /** Send `frame` if the socket is open; false when it was dropped. */
   const transmit = (frame: string | Uint8Array<ArrayBuffer>): boolean => {
     if (closing || finished || socket.readyState !== OPEN) return false;
     socket.send(frame);

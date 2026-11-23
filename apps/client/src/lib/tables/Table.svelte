@@ -11,14 +11,11 @@
   interface Props {
     columns: readonly Column<Row>[];
     rows: readonly Row[];
-    /** Keeps a row's element when the rows change. */
     rowKey: (row: Row) => string;
-    /** Names the table for assistive technology; it is not drawn. */
     caption: string;
     density?: 'comfortable' | 'dense';
-    /** A group label per row (see `dayLabel`); a header row is drawn wherever it changes. Rows must already be in group order. */
+    /** A header row is drawn wherever the group changes; rows must already be in group order. */
     groupOf?: (row: Row) => string;
-    /** Draws a `custom` column's cell. */
     cell?: Snippet<[Row, Column<Row>]>;
   }
 
@@ -26,7 +23,7 @@
   const entries = $derived(withGroupHeaders(rows, groupOf));
 </script>
 
-<!-- A real table: the header cells are `scope="col"`, group headers are `scope="rowgroup"`. Columns are fixed-width or flexible, so it fits without a horizontal scroll bar (DEV-007). -->
+<!-- Columns are fixed-width or flexible, so the table fits without a horizontal scroll bar (DEV-007). -->
 <table class={density} style:min-inline-size={tableMinWidth(columns)}>
   <caption>{caption}</caption>
   <colgroup>

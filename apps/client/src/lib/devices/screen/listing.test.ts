@@ -57,7 +57,6 @@ it('MET-007: a reading of a device listed with no metrics source loads the list 
   void screen.load(DEFAULT_QUERY);
   held.held[0]?.release([device('a', { metricsSource: 'NONE' })]);
   await settle();
-  // The daemon of `a` enrolled after the list loaded, and its first report comes in.
   held.push('CardReadingsAdded', { metricsAdded: { deviceId: 'a', readings: readings() } });
   await settle();
   expect(held.held).toHaveLength(2);

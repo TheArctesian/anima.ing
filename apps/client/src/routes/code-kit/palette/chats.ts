@@ -5,7 +5,6 @@ export const KIT_NOW = Date.UTC(2026, 10, 21, 12);
 
 const MINUTE = 60_000;
 
-/** Chats of a made-up week, for the palette of the kit. */
 export const KIT_CHATS: readonly PaletteChat[] = [
   { id: 'c1', title: 'Fix the sign-in redirect on the hosted hub', project: 'anima', at: KIT_NOW - 40 * MINUTE },
   { id: 'c2', title: 'Release record for the daemon', project: 'anima', at: KIT_NOW - 5 * MINUTE },
