@@ -4816,3 +4816,64 @@ Built on `os/remote-access`. Installed OS SSH and RDP listen only on loopback an
    Expected: the hub denies access before remote login. Restore your intended permissions afterwards.
 
 Result: Open.
+
+### HT-NEW-draftpage: the draft page of Code and the menu Add project (TC8, TC9)
+
+Built on the branch `code/draft-start` (R-NEW-draftpage). New thread opens the draft page of T3 Code; the first send starts
+the thread; Add project opens the palette of T3 Code, and Local folder lists folders through the runner. The tests run the
+page over a made-up runner in the real order of its answers; nobody has tried it with the real runner and programs.
+
+1. In the desktop application open Code, open a thread that has a folder, and press New thread.
+   Expected: no form. The heading "What should we build in {project}?" over the composer; the model picker is in the composer.
+2. Type a short prompt and send it.
+   Expected: the thread starts and opens by itself, with your prompt as its first bubble. No message "not found".
+3. Press New thread, then "or start without a project".
+   Expected: the heading "What should we work on?" with "No project" under it. A send starts a thread in a new folder under `~/Anima Scratch/`.
+4. Stop the Anima daemon, press New thread, type a prompt and send it.
+   Expected: a line under the composer says why the thread did not start, with Retry; the text stays in the editor. Start the daemon and press Retry: the thread starts.
+5. Press New thread, click the project name, and choose "Add project".
+   Expected: a palette in the middle of the window with the group Sources: New project, Local folder, Git URL, GitHub repository. Three of them are grey and say which call of the runner they need; nothing happens when you press them.
+6. Choose Local folder, go into a folder with Enter, go back with Backspace, then choose "Add this folder".
+   Expected: the folders of your home folder, then of the chosen folder; Backspace goes up one folder; the draft now names the added folder.
+
+Result: Open.
+
+### HT-NEW-codekeys: the keys of Code on Windows (R-NEW-winkeys)
+
+Built in the key table of the client (`apps/client/src/lib/code/palette/keys/web.ts`). The tests read the table; nobody has
+pressed the keys in the desktop application on Windows.
+
+1. On Windows, in the desktop application, open Code and press Ctrl+Shift+U.
+   Expected: a new thread with no project opens ("What should we work on?").
+2. Open a thread and press Ctrl+Shift+Y twice.
+   Expected: the right panel opens, then closes.
+3. Press Ctrl+Shift+B.
+   Expected: the details card opens or closes; the right panel does not change.
+4. On a Polish or Hungarian keyboard layout, type ń (AltGr+N) and { (AltGr+B) in the composer.
+   Expected: the characters are typed; no thread starts and no panel moves.
+
+Result: Open.
+
+### HT-NEW-settledicons: settled threads, outside sessions and the marks of the programs (R-NEW-settledhidden, R-NEW-programmarks)
+
+What the sidebar of Code shows in the installed application. The gallery pictures are made over a made-up runner.
+
+1. Open Code with threads in each state, including threads that you started in a terminal with `claude` or `codex`.
+   Expected: no settled thread and no ended terminal session is in the main list; the shelf Settled at the foot holds them, with their count.
+2. Look at the rows of the main list.
+   Expected: each row shows the mark of its program (Claude or OpenAI), not its name, in the text colour.
+3. Open the model picker of the composer.
+   Expected: each provider has its own mark, in the text colour, and the list of models is there before any thread starts.
+
+Result: Open.
+
+### HT-NEW-devicesicons: the icons of the Devices list (R-NEW-devicesicons, R-NEW-osicons)
+
+Not built yet (Phase I of ui-site-language-plan.md). The entry is here so that the look is checked when it is built.
+
+1. Open Devices in the desktop application with a Mac, a Pop!_OS computer and, if there is one, an Anima OS computer.
+   Expected: each metric of a row has its icon and its word.
+2. Look at the operating system of each row and of each device header.
+   Expected: Pop!_OS and Anima OS have their own marks, in the text colour.
+
+Result: Open.
