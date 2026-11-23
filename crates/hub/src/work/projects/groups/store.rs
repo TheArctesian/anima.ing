@@ -166,3 +166,67 @@ pub(in crate::work::projects) async fn set_group(
     .fetch_all(conn)
     .await
 }
+
+/// The source row serializes retries, including batches that arrive from different clients.
+pub(in crate::work::projects) async fn import_group(
+    conn: &mut PgConnection,
+    source: uuid::Uuid,
+    name: &str,
+    now: DateTime<Utc>,
+) -> Result<(ProjectGroupId, bool), sqlx::Error> {
+    sqlx::query("INSERT INTO projects.group_imports (source) VALUES ($1) ON CONFLICT DO NOTHING")
+        .bind(source)
+        .execute(&mut *conn)
+        .await?;
+    let previous: Option<ProjectGroupId> = sqlx::query_scalar(
+        "SELECT group_id FROM projects.group_imports WHERE source = $1 FOR UPDATE",
+    )
+    .bind(source)
+    .fetch_one(&mut *conn)
+    .await?;
+    if let Some(id) = previous {
+        return Ok((id, false));
+    }
+    let id = sqlx::query_scalar(
+        "INSERT INTO projects.groups (id, name, created_at) VALUES ($1, $2, $3) \
+         ON CONFLICT (lower(name)) DO UPDATE SET name = projects.groups.name RETURNING id",
+    )
+    .bind(ProjectGroupId::from(uuid::Uuid::now_v7()))
+    .bind(name)
+    .bind(now)
+    .fetch_one(&mut *conn)
+    .await?;
+    sqlx::query("UPDATE projects.group_imports SET group_id = $2 WHERE source = $1")
+        .bind(source)
+        .bind(id)
+        .execute(conn)
+        .await?;
+    Ok((id, true))
+}
+
+/// A receipt is recorded even for a project already assigned elsewhere.
+pub(in crate::work::projects) async fn import_members(
+    conn: &mut PgConnection,
+    source: uuid::Uuid,
+    projects: &[ProjectId],
+) -> Result<Vec<ProjectId>, sqlx::Error> {
+    sqlx::query_scalar(
+        "INSERT INTO projects.group_import_members (source, project_id) \
+         SELECT $1, id FROM unnest($2::uuid[]) AS id ORDER BY id \
+         ON CONFLICT DO NOTHING RETURNING project_id",
+    )
+    .bind(source)
+    .bind(projects)
+    .fetch_all(conn)
+    .await
+}
+
+pub(in crate::work::projects) async fn import_unassigned(
+    conn: &mut PgConnection,
+    projects: &[ProjectId],
+    group: ProjectGroupId,
+) -> Result<Vec<ProjectId>, sqlx::Error> {
+    sqlx::query_scalar(
+        "UPDATE projects.projects SET group_id = $2 WHERE id = ANY($1) AND group_id IS NULL RETURNING id")
+        .bind(projects).bind(group).fetch_all(conn).await
+}

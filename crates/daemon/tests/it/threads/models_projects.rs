@@ -30,6 +30,7 @@ while (my $line = <STDIN>) {
 
 fn start(kit: &Kit, program: Program, mode: Mode) -> Action {
     Action::Start {
+        provider_address: None,
         program,
         folder: kit.path("work"),
         mode,

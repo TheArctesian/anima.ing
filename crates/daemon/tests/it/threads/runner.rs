@@ -20,6 +20,7 @@ use super::gone;
 
 mod commands;
 mod made;
+mod relay;
 
 pub(super) use made::CLAUDE;
 use made::{CODEX, SHELL};
@@ -263,6 +264,7 @@ async fn start_and_answer(kit: &Kit) -> (Uuid, Uuid, u32) {
     assert_eq!(client.done(watch).await, Outcome::Ok);
     let start = client
         .call(Action::Start {
+            provider_address: None,
             program: Program::ClaudeCode,
             folder: kit.path("work"),
             mode: Mode::FullAccess,

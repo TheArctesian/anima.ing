@@ -11,6 +11,7 @@ use super::thread::{Step, Thread};
 
 fn row(program: Program) -> ThreadRow {
     ThreadRow {
+        provider_address: None,
         id: Uuid::nil(),
         program,
         folder: PathBuf::from("/w"),

@@ -1,7 +1,8 @@
 //! The holder (THR-113): a small process that owns the agent programs of the threads and the end
 //! of their output, so that the daemon can stop, be updated and start again while agents run.
 //! It is `anima-daemon holder <folder>`, started by the daemon with an empty environment. It
-//! reads no settings, opens no file of the person and speaks to no network.
+//! reads no sign-in files. Opted-in relay threads use a holder-owned loopback listener;
+//! their provider traffic passes through in memory (TH118, R-400).
 //!
 //! Its channel is one socket file in a folder of mode 0700 of the user (THR-128). It checks that
 //! the peer is the same user. It cannot tell the daemon from a different program of the same
@@ -43,6 +44,7 @@ pub enum HolderError {
 
 /// One thread in the holder.
 pub struct Slot {
+    pub(crate) relay: Option<super::program::relay::Lease>,
     pub pid: u32,
     pub started: Option<String>,
     pub input: Input,
@@ -70,6 +72,7 @@ pub fn locked(shared: &Mutex<Shared>) -> std::sync::MutexGuard<'_, Shared> {
 
 /// What the tasks of the holder share.
 pub struct Shared {
+    pub(crate) relays: Arc<super::program::relay::Relays>,
     pub threads: BTreeMap<ThreadKey, Slot>,
     pub dir: PathBuf,
     connection: Option<(u64, mpsc::UnboundedSender<String>)>,
@@ -150,6 +153,7 @@ impl Shared {
     #[must_use]
     pub fn new_slot(&self, pid: u32, started: Option<String>, input: Input) -> Slot {
         Slot {
+            relay: None,
             pid,
             started,
             input,
@@ -178,6 +182,7 @@ pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
     let inherited = record::end_left_over(dir).await;
     let listener = bind(dir)?;
     let shared = Arc::new(Mutex::new(Shared {
+        relays: Arc::default(),
         threads: BTreeMap::new(),
         dir: dir.to_owned(),
         connection: None,

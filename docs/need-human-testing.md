@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-181 | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
 | HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
 | HT-170-code-handoff | Open and follow a shared Code thread on iOS and Android (TH50, TH51) | A build of this branch on each phone, a hub with TH21, and an enrolled computer with transcript sharing enabled | Open |
 | HT-149 | Reporting after an iPad update and the phone Code tab | A physical iPad with an existing device row, another client, and a phone with the updated app | Open |
@@ -132,6 +133,63 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-104 | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with its own public origin `https://<hub id>.hub.anima.ing` and an image of this build, the door of the pool for that address, an application of this build, and a GitHub account that may get a new App | Open |
 | HT-125 | The window with no frame on Windows and Linux: move it, the three controls, resize, each page (task TC2 of agent threads, R-355) | A Windows computer and the Linux computer `pop-os`, each with a build of the branch `code/shell-window`; a Mac for the last step | Open |
 | HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | A Linux AppImage of this build | Passed |
+
+### HT-181: the runner relay with real agent programs (TH118)
+
+State: Open. Built on `t3/implement-th118-runner-relay-hook`; not verified with a real sign-in.
+Owner: [agent-threads.md](proposals/agent-threads.md), TH118; R-400.
+
+The synthetic tests cover the holder's relay lifetime and its refusal paths. They do not
+prove that a vendor accepts a real forwarded request, token renewal, tool search, streamed
+answers with the installed agents, or the agents' behavior after a daemon update. A separate
+review of the final diff with no High and the operator's explicit word come before step 1.
+The HTTPS and private-header repairs in shortened-answers Section 7.10 are built and require
+new independent review of the complete diff. Installed-client checks cover only this Mac,
+with synthetic credentials and Claude `--bare`; ordinary startup integrations, real OAuth
+renewal and Linux/Windows remain unproved. Do not enable an unproved platform from this
+record. The old `model-relay` standalone `pass_through` example is disabled: it starts nothing
+and is not a substitute for the reviewed holder invocation below. Both security repairs
+must pass the final review before these real-forward steps are authorized.
+Do not use a subscription sign-in for this check until the operator decides OD-SHA8.
+
+1. Build the reviewed daemon. In a terminal, configure the vendor program for an API key using
+   its own instructions. Do not paste the key in a runner call, log, or this record. Start the
+   reviewed daemon as the same user. Use a new empty work folder with no Claude settings.
+2. In that folder on the Mac, send the experimental call below. This is a manual check, not
+   a setting offered by the product. For Linux change the socket path to
+   `~/.config/anima-daemon/threads/runner.sock`; for a custom daemon home use its `threads/runner.sock`.
+
+   ```sh
+   python3 - "$HOME/Library/Application Support/anima-daemon/threads/runner.sock" "$PWD" <<'PYCODE'
+   import json, socket, sys
+   connection = socket.socket(socket.AF_UNIX)
+   connection.settimeout(120)
+   connection.connect(sys.argv[1])
+   call = {"id": 1, "call": "start", "program": "claude_code",
+           "folder": sys.argv[2], "mode": "ask", "provider_address": "relay",
+           "model": None, "effort": None, "prompt": "Reply with the word ready."}
+   connection.sendall((json.dumps(call) + "\n").encode())
+   for line in connection.makefile():
+       reply = json.loads(line)
+       if reply.get("frame") == "done" and reply.get("id") == 1:
+           print(json.dumps(reply["result"]))
+           break
+   PYCODE
+   ```
+
+   Expect a started thread. Open Code and that thread: the notice says pass-through, and the
+   answer arrives. No shortening is claimed. Repeat with `"program": "codex"`; expect the
+   same, including fallback from its WebSocket request to POST.
+3. While each thread is live, restart only the daemon, keeping the holder alive. Send another
+   prompt in Code. Expect the same thread to answer. Stop it in Code. Expect Stopped.
+4. Start an ordinary thread through Code. Expect no relay notice and normal replies. No
+   personal vendor configuration file should have changed because of a relay start.
+5. In the throwaway work folder, put `{"env":{"ANTHROPIC_BASE_URL":"http://127.0.0.1:1"}}`
+   in `.claude/settings.json`. Repeat step 2 for Claude Code. Expect a refusal naming the
+   conflicting setting, with no agent started. Remove that synthetic setting afterward.
+6. Inspect `runner.log` and the thread list. Expect only the route selection and fixed relay
+   lifecycle words, never a relay secret URL, a provider credential, or a request body.
+   Record the program versions, outcomes, and whether renewal and tool search were tested.
 
 ### HT-171-touch: VNC and RDP with touch on iPadOS and Android
 
@@ -5426,6 +5484,30 @@ seen it with a real machine.
    Expected: no such line; each container is its own row.
 3. Start a container with `docker run -d`.
    Expected: its row has no such line.
+
+### HT-180: Earlier project groups sync across devices (G3)
+
+Built on `projects/auto-share-groups`. Automated tests cover hub receipts, duplicate names,
+existing assignments and client retries. They do not cover two real devices or application storage upgrades.
+
+1. Use two clients of this build with the same updated hub. On a device that holds earlier local
+   project groups, open Projects in either Status or Group view. Expected: the earlier groups
+   appear without Share buttons. On the second device, open Projects or wait up to 30 seconds
+   while it is visible. Expected: the same shared groups appear.
+2. Put a project in a different shared group on the second device before the first device imports
+   its earlier local group. Expected: the shared assignment stays; no import moves it back.
+3. Open Projects with the hub unavailable, then reconnect. Expected: an error explains the failure;
+   the next refresh imports the group, with no duplicate name and no lost membership.
+4. Keep Projects open on both devices and rename a shared group. Expected: the other device shows
+   the new name after its next visible refresh.
+
+5. Open Projects on a device that holds an empty earlier group. Expected: the group appears on
+   this hub and on the second device, even though it has no projects. If the hub is too old to
+   import empty groups, the name stays stored locally until the hub is updated.
+
+The old device storage has no hub address. Unknown or foreign-hub memberships remain stored
+on the device; they are not imported into another hub or deleted. The operator chose B on
+2026-11-23: empty earlier groups move to the next hub opened.
 
 Result: Open.
 

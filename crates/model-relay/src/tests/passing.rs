@@ -58,21 +58,35 @@ async fn sa6_codex_goes_to_the_host_of_its_sign_in_kind() {
     let (relay, provider) = relay().await;
     let base = relay.open("thread-2", Program::Codex).expect("open");
     assert!(base.ends_with("/v1"), "{base}");
+    let secret = base.split('/').nth(3).expect("secret");
+    let address = base.replace(&format!("/{secret}"), "");
     call(
         Method::POST,
-        &format!("{base}/responses"),
-        &[("authorization", "Bearer k")],
+        &format!("{address}/responses"),
+        &[("authorization", "Bearer k"), ("x-anima-relay", secret)],
         "{}",
     )
     .await;
     call(
         Method::POST,
-        &format!("{base}/responses"),
-        &[("authorization", "Bearer t"), ("chatgpt-account-id", "a")],
+        &format!("{address}/responses"),
+        &[
+            ("authorization", "Bearer t"),
+            ("chatgpt-account-id", "a"),
+            ("x-anima-relay", secret),
+        ],
         "{}",
     )
     .await;
-    let paths: Vec<String> = seen(&provider).into_iter().map(|got| got.path).collect();
+    let got = seen(&provider);
+    assert!(
+        got.iter()
+            .all(|request| !request.headers.contains_key("x-anima-relay"))
+    );
+    assert_eq!(got[0].headers["authorization"], "Bearer k");
+    assert_eq!(got[1].headers["authorization"], "Bearer t");
+    assert_eq!(got[1].headers["chatgpt-account-id"], "a");
+    let paths: Vec<String> = got.into_iter().map(|got| got.path).collect();
     assert_eq!(paths, ["/v1/responses", "/backend-api/codex/responses"]);
     let outside = call(Method::GET, &base.replace("/v1", "/v2/responses"), &[], "").await;
     assert_eq!(outside.status, StatusCode::NOT_FOUND);
