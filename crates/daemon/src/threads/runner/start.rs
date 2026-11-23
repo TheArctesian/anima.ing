@@ -1,10 +1,10 @@
 //! The start of a new thread (TH11, THR-041, THR-114): the checks of the runner, the count
 //! against the soft limit, the start in the holder and its answer.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use agent_threads::control::{Refusal, RunState, ThreadRow, Workspace};
-use agent_threads::drive::{Launch, Model, Program, SessionStart};
+use agent_threads::control::{Refusal, RunState};
+use agent_threads::drive::Program;
 use uuid::Uuid;
 
 use super::calls::codex_of;
@@ -18,8 +18,10 @@ use crate::threads::wire;
 
 mod new_thread;
 mod scratch;
+mod worktree;
 pub(super) use crate::threads::notice::chosen_folder;
 pub(super) use new_thread::NewThread;
+pub(super) use worktree::WorktreeMade;
 
 /// The starts whose copy is being asked for its version (TH97).
 pub(super) struct Asks {
@@ -27,16 +29,31 @@ pub(super) struct Asks {
     pub receiver: Option<tokio::sync::mpsc::Receiver<(u64, super::silence::Answers)>>,
     open: std::collections::BTreeMap<u64, Asking>,
     next: u64,
+    /// The starts whose worktree is being made, by the ID of their thread (TH116).
+    making: std::collections::BTreeMap<Uuid, Asking>,
+    worktrees: tokio::sync::mpsc::Sender<WorktreeMade>,
+    pub made: Option<tokio::sync::mpsc::Receiver<WorktreeMade>>,
+}
+
+impl Asks {
+    /// Whether the worktree of the start of `thread` is being made.
+    pub(super) fn making(&self, thread: Uuid) -> bool {
+        self.making.contains_key(&thread)
+    }
 }
 
 impl Default for Asks {
     fn default() -> Self {
         let (sender, receiver) = tokio::sync::mpsc::channel(16);
+        let (worktrees, made) = tokio::sync::mpsc::channel(16);
         Self {
             sender,
             receiver: Some(receiver),
             open: std::collections::BTreeMap::new(),
             next: 0,
+            making: std::collections::BTreeMap::new(),
+            worktrees,
+            made: Some(made),
         }
     }
 }
@@ -47,6 +64,8 @@ struct Asking {
     back: Caller,
     path: PathBuf,
     copies: Vec<PathBuf>,
+    /// The thread, when it was decided before the start: its worktree is made first.
+    id: Option<Uuid>,
 }
 
 impl Runner {
@@ -64,6 +83,7 @@ impl Runner {
             back,
             path,
             copies,
+            id: None,
         };
         match self.silence.kept(&asking.path) {
             Some(true) => self.start_checked(asking).await,
@@ -189,6 +209,9 @@ impl Runner {
     /// A start with no project gets its new folder here, after each check that needs no folder,
     /// and loses it again when a later check refuses the start (THR-041).
     async fn start_checked(&mut self, mut asking: Asking) -> Result<(), Refusal> {
+        if asking.new.worktree.is_some() && asking.id.is_none() {
+            return self.make_worktree(asking);
+        }
         let no_project = asking.new.folder.as_os_str().is_empty();
         if no_project {
             asking.new.folder = scratch::made(&self.env, chrono::Local::now().date_naive())?;
@@ -207,10 +230,11 @@ impl Runner {
             back,
             path,
             copies,
+            id,
         } = asking;
         // The holder or the count can change while the copy is asked.
         self.may_start(0)?;
-        let id = Uuid::now_v7();
+        let id = id.unwrap_or_else(Uuid::now_v7);
         let (row, action) = self.prepared(&new, id, &path)?;
         let daemon = self.dir.parent().unwrap_or(&self.dir);
         let mut notice = crate::threads::notice::before_start(&row.folder, daemon);
@@ -275,64 +299,5 @@ impl Runner {
         if login::find(program, &env, login::executable, login::trusted).is_some() {
             self.env = env;
         }
-    }
-
-    /// The row of a new thread and the start for the holder: the folder that the person chose
-    /// (THR-041), the program on the `PATH` of the login, the arguments of the closed list
-    /// (THR-040) and the environment of the login (R-308).
-    fn prepared(
-        &self,
-        new: &NewThread,
-        id: Uuid,
-        path: &Path,
-    ) -> Result<(ThreadRow, wire::Action), Refusal> {
-        let folder = chosen_folder(&new.folder, self.dir.parent().unwrap_or(&self.dir))?;
-        let model = new
-            .model
-            .as_deref()
-            .map(Model::new)
-            .transpose()
-            .map_err(|_| Refusal::BadValue)?;
-        let launch = Launch {
-            program: new.program,
-            path: path.to_owned(),
-            mode: new.mode,
-            model: model.clone(),
-            effort: new.effort,
-            session: SessionStart::New(id),
-        };
-        let invocation = launch.invocation().map_err(|_| Refusal::BadValue)?;
-        let mut env = login::with_folder_of(self.env.clone(), path);
-        if new.program == Program::ClaudeCode {
-            env.extend(
-                login::CLAUDE_VARIABLES.map(|(name, value)| (name.to_owned(), value.to_owned())),
-            );
-        }
-        let row = ThreadRow {
-            id,
-            program: new.program,
-            folder: folder.clone(),
-            mode: new.mode,
-            model: model.as_ref().map(|model| model.as_str().to_owned()),
-            state: RunState::Starting,
-            session: None,
-            title: String::new(),
-            started: chrono::Utc::now(),
-            ended: None,
-            open: Vec::new(),
-            queued: Vec::new(),
-            last_turn: None,
-            effort: new.effort,
-            workspace: Some(Workspace::of(&folder)),
-            usage: None,
-        };
-        let action = wire::Action::Start {
-            thread: id.to_string(),
-            program: invocation.program.to_string_lossy().into_owned(),
-            args: invocation.args,
-            env,
-            folder: folder.to_string_lossy().into_owned(),
-        };
-        Ok((row, action))
     }
 }

@@ -64,4 +64,9 @@ pub enum Refusal {
     CannotAttach {
         said: String,
     },
+    /// The worktree of a new thread was not made: `why` is the answer of the Git engine
+    /// (TC7, TH116).
+    Worktree {
+        why: crate::git::GitRefusal,
+    },
 }

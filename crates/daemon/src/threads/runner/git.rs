@@ -10,13 +10,15 @@
 //!
 //! I/O: makes the engine and its records folder; starts the tasks of the calls.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::sync::PoisonError;
 use std::time::{Duration, Instant};
 
 use agent_threads::control::{Outcome, RunState};
 use agent_threads::drive::Mode;
-use agent_threads::git::{GitAction, GitOutcome};
+use agent_threads::git::{GitAction, GitOutcome, GitRefusal};
 use uuid::Uuid;
 
 use super::Runner;
@@ -24,7 +26,7 @@ use super::launcher::{self, SharedRights};
 use super::log::Kind;
 use super::socket::Caller;
 use crate::config::home::HOME_VARIABLE;
-use crate::threads::git::place::records;
+use crate::threads::git::place::{Home, records};
 use crate::threads::git::run::hooks::Access;
 use crate::threads::git::wired::{self, Places, Unwired};
 use crate::threads::git::{Caller as Asker, Engine, Target};
@@ -36,7 +38,11 @@ const TOUCH_EVERY: Duration = Duration::from_hours(24);
 #[derive(Debug)]
 pub(super) struct Gits {
     engine: Result<Engine, Unwired>,
+    /// The home of the worktrees of the engine, to know the folder of a thread.
+    home: Option<Home>,
     touched: Option<Instant>,
+    /// One checkpoint of a thread at a time, so that two ends of a turn never take one number.
+    turns: BTreeMap<Uuid, Arc<tokio::sync::Mutex<()>>>,
 }
 
 impl Gits {
@@ -78,11 +84,36 @@ impl Gits {
                 tracing::warn!(%error, "the runner has no Git engine; each Git call is refused");
             }
         }
+        let home = engine
+            .as_ref()
+            .ok()
+            .and_then(|engine| Home::standard(&places.anima, engine.records_folder()).ok());
         let gits = Self {
             engine,
+            home,
             touched: None,
+            turns: BTreeMap::new(),
         };
         (rights, gits)
+    }
+
+    /// The engine, or the answer to each Git action while there is none.
+    pub(super) fn engine(&self) -> Result<&Engine, GitRefusal> {
+        self.engine.as_ref().map_err(Unwired::refusal)
+    }
+
+    /// The folder that holds the worktrees of `thread`.
+    pub(super) fn thread_folder(&self, thread: Uuid) -> Option<PathBuf> {
+        Some(self.home.as_ref()?.of_thread(thread))
+    }
+
+    /// The repository of the worktree that `folder` is, when it is a worktree of `thread`.
+    fn repository_of(&self, thread: Uuid, folder: &Path) -> Option<String> {
+        let real = |path: &Path| std::fs::canonicalize(path).ok();
+        let above = real(folder.parent()?)?;
+        (Some(above) == real(&self.thread_folder(thread)?))
+            .then(|| folder.file_name()?.to_str().map(str::to_owned))
+            .flatten()
     }
 }
 
@@ -157,6 +188,44 @@ impl Runner {
             let rights = self.rights.lock().unwrap_or_else(PoisonError::into_inner);
             engine.hold(rights.hold(engine.records_folder()));
         }
+    }
+
+    /// Takes the checkpoint of the turn of `thread` that ended, away from the loop, when the
+    /// thread runs in a worktree of the runner. Its number is one more than the last
+    /// checkpoint, so a restart of the runner goes on where it was.
+    pub(super) fn git_turn_ended(&mut self, thread: Uuid) {
+        let (Ok(engine), Some(row)) = (&self.git.engine, self.threads.get(&thread)) else {
+            return;
+        };
+        let Some(repository) = self.git.repository_of(thread, &row.row.folder) else {
+            return;
+        };
+        let engine = engine.clone();
+        let one_at_a_time = Arc::clone(self.git.turns.entry(thread).or_default());
+        tokio::spawn(async move {
+            let _alone = one_at_a_time.lock().await;
+            let target = Target {
+                thread,
+                repository: &repository,
+            };
+            let person = Asker {
+                agent: false,
+                running: false,
+                thread: None,
+                access: Access::Confined,
+            };
+            let last = match engine.call(person, target, GitAction::Checkpoints).await {
+                GitOutcome::Checkpoints { checkpoints } => {
+                    checkpoints.iter().map(|checkpoint| checkpoint.turn).max()
+                }
+                _ => None,
+            };
+            let turn = last.map_or(1, |last| last.saturating_add(1));
+            // The answer of `git` can hold text of the repository: only the fact is logged.
+            if engine.turn_ended(target, turn).await.is_err() {
+                tracing::warn!(%thread, turn, "the checkpoint of a turn was not taken");
+            }
+        });
     }
 
     /// Touches the records once a day, away from the loop.

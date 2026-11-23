@@ -230,31 +230,42 @@ impl Runner {
         let accepting = tokio::spawn(socket::accept(listener, sender, self.dir.clone()));
         tokio::pin!(stop);
         let mut look = tokio::time::interval(Duration::from_secs(10));
-        let Some(mut asked) = self.asks.receiver.take() else {
-            return;
-        };
-        let Some(mut listed) = self.model_asks.receiver.take() else {
+        let (Some(mut asked), Some(mut listed), Some(mut made)) = (
+            self.asks.receiver.take(),
+            self.model_asks.receiver.take(),
+            self.asks.made.take(),
+        ) else {
             return;
         };
         loop {
             tokio::select! {
-                event = self.link.events.recv() => match event {
-                    Some(event) => self.holder_event(event).await,
-                    None => self.reconnect().await,
-                },
+                event = self.link.events.recv() => self.heard_holder(event).await,
                 Some(call) = incoming.recv() => self.call(call).await,
                 Some((id, answers)) = asked.recv() => self.asked(id, answers).await,
                 Some((program, models)) = listed.recv() => self.models_asked(program, models),
-                _ = look.tick() => {
-                    self.end_the_silent().await;
-                    self.attached.expire(std::time::Instant::now());
-                    self.replace_older_holder().await;
-                    self.git_touch();
-                }
+                Some(worktree) = made.recv() => self.worktree_made(worktree).await,
+                _ = look.tick() => self.look_around().await,
                 () = &mut stop => break,
             }
         }
         accepting.abort();
+    }
+
+    /// An event of the holder, or a new link when the old one closed.
+    async fn heard_holder(&mut self, event: Option<crate::threads::wire::Event>) {
+        match event {
+            Some(event) => self.holder_event(event).await,
+            None => self.reconnect().await,
+        }
+    }
+
+    /// What the runner looks at every ten seconds: the silent starts, the old files of prompts,
+    /// an older holder, and the records of the Git engine.
+    async fn look_around(&mut self) {
+        self.end_the_silent().await;
+        self.attached.expire(std::time::Instant::now());
+        self.replace_older_holder().await;
+        self.git_touch();
     }
 
     /// Does a step of a thread that is not a command to the holder.
@@ -310,6 +321,7 @@ impl Runner {
             let Some(action) = step.command(&key) else {
                 if step == Step::Workspace {
                     self.look_at_workspace(id).await;
+                    self.git_turn_ended(id);
                 }
                 self.own_step(id, step, last_write);
                 continue;

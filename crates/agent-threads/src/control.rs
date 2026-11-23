@@ -88,6 +88,13 @@ pub enum Action {
         /// The files of the draft for the first prompt, in the order of the person.
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         attachments: Vec<Uuid>,
+        /// "New worktree": the runner makes a worktree of its own for the thread from the
+        /// repository at `folder`, and starts the program there (TC7, TH116).
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        worktree: bool,
+        /// The branch that the worktree starts from; `HEAD` of the project when `None`.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        base: Option<String>,
     },
     /// A prompt to a thread: to its running turn, or as a new turn, with the files that the
     /// person attached for it (TH111).

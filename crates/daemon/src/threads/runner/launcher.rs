@@ -86,12 +86,14 @@ pub type SharedRights = Arc<Mutex<Rights>>;
 
 impl Rights {
     /// Whether a thread that runs is in a folder that holds `records`: its agent can write them
-    /// ([`crate::threads::git::Engine::hold`]).
+    /// ([`crate::threads::git::Engine::hold`]). A thread whose worktree is being made has no
+    /// agent yet, and its folder is not there yet.
     #[must_use]
     pub fn hold(&self, records: &Path) -> bool {
         self.threads
-            .values()
-            .any(|seat| held_by(records, &seat.folder))
+            .iter()
+            .filter(|(id, _)| !self.coming.contains_key(id))
+            .any(|(_, seat)| held_by(records, &seat.folder))
     }
 
     /// What `run` starts, after the checks of its rights: a read for each thread, a hook only
@@ -180,7 +182,12 @@ impl Rights {
             .env
             .iter()
             .map(|(name, value)| (OsString::from(name), value.clone()));
-        let env = login.chain(own).chain(home).chain([mark]).collect();
+        // No transport at all, whatever a configuration that the thread can write says: a
+        // `git` older than 2.44 does not read `GIT_NO_LAZY_FETCH`, and a `protocol.<name>.allow`
+        // of the repository wins over `protocol.allow`. This list wins over both, and names no
+        // protocol.
+        let closed = (OsString::from("GIT_ALLOW_PROTOCOL"), OsString::from("none"));
+        let env = login.chain(own).chain(home).chain([closed, mark]).collect();
         Ok(Checked {
             program,
             args,
@@ -333,7 +340,10 @@ impl Runner {
             })
             .collect();
         let rights = &mut *rights;
-        rights.coming.retain(|id, _| !self.threads.contains_key(id));
+        // A start whose holder refused it is neither coming nor running any more.
+        rights
+            .coming
+            .retain(|id, _| !self.threads.contains_key(id) && self.asks.making(*id));
         rights
             .copies
             .retain(|id, _| live.contains_key(id) || rights.coming.contains_key(id));

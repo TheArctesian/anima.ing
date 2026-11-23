@@ -49,19 +49,7 @@ async fn th98_an_older_holder_is_named_kept_while_a_thread_runs_and_replaced_aft
         None,
         "the holder of this build"
     );
-    let start = client
-        .call(Action::Start {
-            program: Program::ClaudeCode,
-            folder: kit.path("work"),
-            mode: Mode::FullAccess,
-            model: None,
-            effort: None,
-            prompt: "Run the command".to_owned(),
-            program_path: None,
-            draft: None,
-            attachments: Vec::new(),
-        })
-        .await;
+    let start = client.call(start_action(&kit)).await;
     let Outcome::Started { thread, .. } = client.done(start).await else {
         panic!("the thread started");
     };
@@ -114,6 +102,8 @@ fn start_action(kit: &Kit) -> Action {
         program_path: None,
         draft: None,
         attachments: Vec::new(),
+        worktree: false,
+        base: None,
     }
 }
 

@@ -254,6 +254,8 @@ async fn start_and_answer(kit: &Kit) -> (Uuid, Uuid, u32) {
             program_path: None,
             draft: None,
             attachments: Vec::new(),
+            worktree: false,
+            base: None,
         })
         .await;
     let Outcome::Started { thread, .. } = client.done(start).await else {

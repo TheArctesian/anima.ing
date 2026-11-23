@@ -27,6 +27,8 @@ fn reads() -> Vec<Action> {
             program_path: None,
             draft: None,
             attachments: Vec::new(),
+            worktree: true,
+            base: Some("main".to_owned()),
         },
         Action::Send {
             thread,

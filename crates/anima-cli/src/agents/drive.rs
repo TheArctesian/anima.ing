@@ -71,6 +71,13 @@ pub struct StartArgs {
     /// copy of an application. The runner takes only a copy that it finds itself.
     #[arg(long)]
     program_path: Option<PathBuf>,
+    /// Run the thread in a new worktree of its own of the repository at `--folder`, on a new
+    /// branch; your checkout does not change (TH116).
+    #[arg(long)]
+    worktree: bool,
+    /// The branch or commit that the worktree starts from (the current one when not named).
+    #[arg(long, requires = "worktree")]
+    base: Option<String>,
     /// The first prompt.
     prompt: String,
 }
@@ -160,6 +167,8 @@ impl StartArgs {
                 .map(|path| std::path::absolute(&path).unwrap_or(path)),
             draft: None,
             attachments: Vec::new(),
+            worktree: self.worktree,
+            base: self.base,
         };
         loop {
             match link.call(action.clone()).await? {

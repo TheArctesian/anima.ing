@@ -166,9 +166,34 @@ pub fn refusal(why: &Refusal) -> Failure {
             control::OVER_LIMIT,
             Some(Hint::run("anima agents raise-limit")),
         ),
+        Refusal::Worktree { why } => return worktree_refused(why),
     };
     Failure::Forbidden {
         message: message.to_owned(),
         hint,
     }
+}
+
+/// Why the worktree of a new thread was not made, in words for the person (TH116).
+fn worktree_refused(why: &agent_threads::git::GitRefusal) -> Failure {
+    Failure::Forbidden {
+        message: worktree_words(why),
+        hint: None,
+    }
+}
+
+fn worktree_words(why: &agent_threads::git::GitRefusal) -> String {
+    use agent_threads::git::GitRefusal;
+    let words = match why {
+        GitRefusal::Failed { said } => return format!("The worktree was not made: {said}"),
+        GitRefusal::NotARepository => "That folder is not the top folder of a Git repository.",
+        GitRefusal::UnknownBase => "That branch or commit is not in the repository.",
+        GitRefusal::GitNotFound => "git is not on the PATH of your login.",
+        GitRefusal::NotOnWindows => "Worktrees are not available on Windows yet.",
+        GitRefusal::RecordsHeld => {
+            "A thread runs in a folder that holds the records of Anima's Git: stop that thread first."
+        }
+        _ => "The worktree of the thread was not made.",
+    };
+    words.to_owned()
 }
