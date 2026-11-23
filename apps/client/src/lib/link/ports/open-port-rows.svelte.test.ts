@@ -48,7 +48,7 @@ it('HMD-049: each port is off until the person turns it on, and the row names th
   const target = await shown();
   expect(mocks.linkPorts).toHaveBeenCalledExactlyOnceWith();
   expect(switches(target).map((button) => button.getAttribute('aria-checked'))).toEqual(['false', 'false']);
-  expect(target.textContent).toContain('Remote Login');
+  expect(target.textContent).toContain('administrator approval');
   expect(target.textContent).toContain('Screen Sharing');
 });
 
@@ -73,4 +73,22 @@ it('a computer that has not joined a hub shows no switch', async () => {
   mocks.linkPorts.mockReset().mockResolvedValue({ ok: false, problem: 'folder', message: 'x' });
   const target = await shown();
   expect(switches(target)).toHaveLength(0);
+});
+
+it('SSH setup waits for system approval, prevents duplicate requests and restores off after cancellation', async () => {
+  const target = await shown();
+  let finish!: (value: unknown) => void;
+  mocks.linkPorts.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+  switches(target)[0]?.click();
+  await settle();
+  expect(target.querySelector('[role="status"]')?.textContent).toContain('authorization prompt');
+  expect(switches(target).every((button) => button.getAttribute('aria-disabled') === 'true')).toBe(true);
+  switches(target)[0]?.click();
+  expect(mocks.linkPorts).toHaveBeenCalledTimes(2);
+  finish({ ok: false, problem: 'ssh-setup', message: 'Administrator authorization was cancelled.' });
+  await settle();
+  expect(switches(target)[0]?.getAttribute('aria-checked')).toBe('false');
+  expect(switches(target).every((button) => button.getAttribute('aria-disabled') !== 'true')).toBe(true);
+  expect(target.querySelector('[role="status"]')).toBeNull();
+  expect(target.querySelector('[role="alert"]')?.textContent).toContain('cancelled');
 });

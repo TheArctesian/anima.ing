@@ -1,0 +1,15 @@
+[package]
+name = "remote-login"
+description = "Local, owner-authorized private SSH setup for the CLI and desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+[lints]
+workspace = true
+[dependencies]
+thiserror.workspace = true
+tokio = { workspace = true, features = ["process"] }
+whoami.workspace = true
+[target.'cfg(windows)'.dependencies]
+base64.workspace = true
