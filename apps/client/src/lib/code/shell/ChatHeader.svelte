@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { folderName, type ThreadRow } from '$lib/agent-threads/thread';
+  import { folderName, shownTitle, type ThreadRow } from '$lib/agent-threads/thread';
   import type { Anchor } from '$lib/overlay/helptip/placement';
   import Breadcrumb from './Breadcrumb.svelte';
   import TopBand from './TopBand.svelte';
@@ -43,7 +43,7 @@
     {#if thread !== undefined}
       <Breadcrumb
         {project}
-        title={thread.title ?? 'Untitled thread'}
+        title={shownTitle(thread)}
         {onproject}
         onactions={onactions === undefined
           ? undefined

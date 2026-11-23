@@ -45,14 +45,20 @@ pub fn own_cgroup() -> Option<PathBuf> {
 /// make no cgroup below it, and `pids.max` when the controller is delegated. With `nsdelegate`
 /// these files of the root of the namespace of the runtime are not writable from inside it.
 ///
+/// The unit of the daemon must have `Delegate=yes` (DEF-013): under the systemd user
+/// manager each unit cgroup belongs to the user, so a cgroup that can be made proves nothing.
+///
 /// # Errors
 /// `no_nsdelegate` when the cgroup v2 mount lacks `nsdelegate`; `no_delegation` when the
-/// system has no cgroup v2 or does not delegate it to this user.
+/// system has no cgroup v2, or the unit of the daemon does not delegate its cgroup.
 pub fn make(name: &str) -> Result<PathBuf, Containment> {
     let mountinfo =
         std::fs::read_to_string("/proc/self/mountinfo").map_err(|_| Containment::NoDelegation)?;
     if !super::mounts::cgroup_has_nsdelegate(&mountinfo) {
         return Err(Containment::NoNsdelegate);
+    }
+    if !super::delegation::own_cgroup_delegated() {
+        return Err(Containment::NoDelegation);
     }
     let parent = own_cgroup().ok_or(Containment::NoDelegation)?;
     let start = std::time::SystemTime::now()
