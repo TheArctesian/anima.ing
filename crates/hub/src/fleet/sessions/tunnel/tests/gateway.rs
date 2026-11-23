@@ -10,7 +10,6 @@ fn step(wire: &str) -> GatewayStep {
     relay().on_gateway(decoded(wire))
 }
 
-/// guacd's `error` in `wire` reaches the client as the fixed text with `status`, then ends.
 fn ends_with_error(wire: &str, status: &str, cause: Cause) {
     let send = Instruction::new("error", ["Aborted. See logs.", status]);
     assert_eq!(step(wire), GatewayStep::End { send, cause }, "{wire}");

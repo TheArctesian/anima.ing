@@ -1,5 +1,4 @@
-//! The inputs of the device mutations (K1 `CreateDeviceInput`, `UpdateDeviceInput`,
-//! `SshSettingsInput`). Each converts to the form types the pure rules check.
+//! The inputs of the device mutations (K1).
 
 use async_graphql::{ID, InputObject, Result};
 

@@ -15,7 +15,6 @@ fn stored(report: &[String]) -> Vec<String> {
     log_lines::clean_all(report, None).unwrap().0
 }
 
-/// Keys that name a secret, in the spellings builds print.
 const SECRET_KEYS: [&str; 10] = [
     "password",
     "secret",
@@ -47,9 +46,7 @@ const SPLIT_PIECES: [&str; 13] = [
     "\x1b]0;t\x07",
 ];
 
-/// Escape-sequence pieces a hostile builder may put before a key: whole sequences, sequences
-/// split across the key (`ESC [` then a letter final), bare `ESC`s, C1 introducers and hidden
-/// characters.
+/// Escape-sequence pieces a hostile builder may put before a key.
 const ESCAPE_PIECES: [&str; 20] = [
     "\x1b",
     "\x1b[",
@@ -259,9 +256,7 @@ proptest! {
         second in proptest::sample::select(&SPLIT_PIECES[..]),
         value in "Q[0-9]{8}[a-z0-9]{0,8}",
     ) {
-        // Split points inside the key: before its first letter up to before its last one. An
-        // escape between the key and `=` can take the `=` itself (`ESC =`), and then neither a
-        // terminal nor redaction reads a separator.
+        // An escape between the key and `=` can take the `=` itself (`ESC =`); then nothing reads a separator.
         let (a, b) = (cuts.0 % key.len(), cuts.1 % key.len());
         let (a, b) = (a.min(b), a.max(b));
         let line = format!("{}{first}{}{second}{}={value}", &key[..a], &key[a..b], &key[b..]);

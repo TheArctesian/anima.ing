@@ -18,8 +18,6 @@ const ADD_BATTERIES_SQL: &str = "\
     FROM unnest($3::text[], $4::text[], $5::int4[], $6::int2[]) \
         AS b(name, state, seconds_left, health_percent)";
 
-/// The stored batteries of each of `devices`, by name, in one query; a device with none has no
-/// entry.
 pub(in crate::fleet::metrics) async fn batteries(
     db: &PgPool,
     devices: &[DeviceId],
@@ -42,8 +40,7 @@ pub(in crate::fleet::metrics) async fn batteries(
     Ok(by_device)
 }
 
-/// Replaces the stored batteries of `device` with `batteries`, found at `found_at`, in the
-/// caller's transaction, so a reader sees the old list or the new one, never a mix.
+/// Runs in the caller's transaction, so a reader sees the old list or the new one, never a mix.
 pub(in crate::fleet::metrics) async fn write_batteries(
     conn: &mut PgConnection,
     device: DeviceId,

@@ -1,5 +1,4 @@
-//! The SQL for `credentials.operational_key_consumers`: the grants, and what each daemon holds
-//! and fetched (K-E5 Section 2.1).
+//! The SQL for `credentials.operational_key_consumers` (K-E5 Section 2.1).
 
 use chrono::{DateTime, Utc};
 use sqlx::PgConnection;
@@ -9,16 +8,12 @@ use crate::ids::{DeviceId, OperationalKeyId};
 
 const DEVICE_FKEY: &str = "operational_key_consumers_device_id_fkey";
 
-/// What [`insert`] did.
 pub(in crate::fleet::credentials::operational) enum Granted {
     Made,
-    /// The grant existed already: nothing was written.
     Kept,
-    /// No device has the id.
     NoDevice,
 }
 
-/// Grants the key to `device` for `workload`.
 pub(in crate::fleet::credentials::operational) async fn insert(
     conn: &mut PgConnection,
     (key, device, workload): (OperationalKeyId, DeviceId, &str),
@@ -51,7 +46,6 @@ pub(in crate::fleet::credentials::operational) async fn insert(
     }
 }
 
-/// Ends the grant; whether there was one.
 pub(in crate::fleet::credentials::operational) async fn delete(
     conn: &mut PgConnection,
     (key, device, workload): (OperationalKeyId, DeviceId, &str),
@@ -68,7 +62,6 @@ pub(in crate::fleet::credentials::operational) async fn delete(
     Ok(done.rows_affected() > 0)
 }
 
-/// Records that `device` fetched version `number` of the key at `at`, on each of its rows.
 pub(in crate::fleet::credentials::operational) async fn mark_fetched(
     conn: &mut PgConnection,
     (key, device): (OperationalKeyId, DeviceId),
@@ -87,8 +80,7 @@ pub(in crate::fleet::credentials::operational) async fn mark_fetched(
     Ok(())
 }
 
-/// Records what the daemon of `device` holds at `at`: on each of its rows, the version of that
-/// key in `held` (by name), or none when `held` does not name the key.
+/// A key that `held` does not name gets no held version.
 pub(in crate::fleet::credentials::operational) async fn record_held(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -111,8 +103,6 @@ pub(in crate::fleet::credentials::operational) async fn record_held(
     Ok(())
 }
 
-/// Each key `device` may get at `now`, by name, with its active version: the keys it is a
-/// consumer of that are not removed, not past their expiry, and have an active version.
 pub(in crate::fleet::credentials::operational) async fn current_for(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -131,8 +121,6 @@ pub(in crate::fleet::credentials::operational) async fn current_for(
     .await
 }
 
-/// Ends every grant of `device` and gives, for each key that its daemon fetched or held, the
-/// key, its name and the newest of the two versions, by name.
 pub(in crate::fleet::credentials::operational) async fn delete_of_device(
     conn: &mut PgConnection,
     device: DeviceId,

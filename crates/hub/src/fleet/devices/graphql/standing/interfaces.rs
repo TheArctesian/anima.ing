@@ -1,5 +1,4 @@
-//! Batched reads that join the web interfaces domain into `Device` (R-011, API-005): one call
-//! to the web interfaces face per batch. The domain's types are the GraphQL objects.
+//! Batched web interface reads for `Device` (R-011, API-005).
 
 use std::{collections::HashMap, sync::Arc};
 

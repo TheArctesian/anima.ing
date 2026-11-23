@@ -1,4 +1,3 @@
-//! The reads that build an [`OperationalKey`]: its metadata, its versions and its consumers.
 //! No statement here selects a sealed value (LOG-007).
 
 use std::collections::HashMap;
@@ -55,8 +54,6 @@ struct ConsumerRow {
 const KEY_COLUMNS: &str = "id, name, provider, purpose, instructions, provider_link, \
      rotation_days, expires_at, created_at, created_by";
 
-/// The keys that are not removed, by name (`only` none), or the one named `only`, as they read
-/// at `now`.
 pub(in crate::fleet::credentials::operational) async fn keys(
     conn: &mut PgConnection,
     only: Option<&str>,
@@ -89,7 +86,6 @@ pub(in crate::fleet::credentials::operational) async fn keys(
     Ok(assemble(rows, versions, consumers, now))
 }
 
-/// The consumers of the key whose daemon held version `number` at its last report.
 pub(in crate::fleet::credentials::operational) async fn holders(
     conn: &mut PgConnection,
     key: OperationalKeyId,

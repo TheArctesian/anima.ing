@@ -1,5 +1,5 @@
-//! Every hub fault reaches the process log with its cause chain, coded or not, and never with
-//! SQL text, a value or a token (H-5, API-010, LOG-007).
+//! A hub fault reaches the process log with its cause chain, never with SQL text, a value or a
+//! token (H-5, API-010, LOG-007).
 
 use std::{borrow::Cow, error::Error as StdError, fmt, sync::Arc};
 

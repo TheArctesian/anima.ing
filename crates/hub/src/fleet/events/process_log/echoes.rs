@@ -1,10 +1,5 @@
-//! Error texts that echo what the sender wrote, and the fixed texts that replace them
-//! (H-6 (e) and (f), LOG-007, K7).
-//!
-//! async-graphql quotes the query line in a syntax error, an input value or an unknown input
-//! field name in a validation error, and the value in an argument it could not coerce. Any of
-//! them may be a password typed inline. Each is replaced by a fixed text; only the code, the
-//! position and the schema names of the argument path stay.
+//! Fixed texts that replace error texts echoing what the sender wrote (H-6 (e) and (f), LOG-007, K7).
+//! An echo may be a password typed inline; only the code, the position and the argument path's schema names stay.
 
 use std::collections::BTreeMap;
 

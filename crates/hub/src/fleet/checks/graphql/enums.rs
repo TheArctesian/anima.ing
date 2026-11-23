@@ -1,5 +1,4 @@
-//! The K1 enums of the checks API. The configuration enums of the domain stay free of
-//! GraphQL; these mirror them, and the two directions are `From` conversions.
+//! The K1 enums of the checks API; the domain configuration enums stay free of GraphQL.
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

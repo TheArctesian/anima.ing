@@ -1,6 +1,4 @@
-//! What the outputs of one collection give: a [`Reading`] from the readers of each source, the
-//! device's distribution, and its samples against the device's previous reading (MET-002,
-//! DEV-016, D-4). Pure.
+//! The reading, distribution and samples that one collection's outputs give (MET-002, DEV-016, D-4).
 
 use std::time::Duration;
 
@@ -17,38 +15,28 @@ use crate::fleet::{
     ssh::CommandOutput,
 };
 
-/// The reading of a device's earlier collection and the hub time it was taken.
 #[derive(Clone, Debug, PartialEq)]
 pub(super) struct Previous {
     pub(super) at: DateTime<Utc>,
     pub(super) reading: Reading,
 }
 
-/// The output's bytes when they can be read: complete and exit status 0. Output cut at the
-/// link's cap, a non-zero status or no status means the command did not finish its work, so
-/// its source is left out and the others still count.
 pub(super) fn usable(output: &CommandOutput) -> Option<&[u8]> {
     let finished = !output.cut && output.exit_status == Some(0);
     finished.then_some(output.stdout.as_slice())
 }
 
-/// A reading built one command output at a time, so the collector keeps only what each
-/// output gave and drops its bytes before the next command runs (D-11). Linux and macOS
-/// sources fill the same fields; a device sends only the ones its commands ask for.
+/// Built one output at a time, so each output's bytes drop before the next command runs (D-11).
 #[derive(Debug, Default)]
 pub(super) struct Parts {
     reading: Reading,
     sysctl: Option<Sysctl>,
-    /// macOS memory in use, from `vm_stat`, waiting for the total from `sysctl`.
     used_bytes: Option<u64>,
-    /// The Linux distribution from `/etc/os-release`; not part of the reading (DEV-016).
     distribution: Option<Distribution>,
 }
 
 impl Parts {
-    /// Reads `output` of `source`'s command into its fields. An unusable output leaves them
-    /// empty. `vm_stat` takes the page size from a `sysctl` read before it (the command
-    /// table runs `sysctl` first) when its header has none.
+    /// `vm_stat` may need the page size from `sysctl`, which the command table runs first.
     pub(super) fn add(&mut self, source: Source, output: &CommandOutput) {
         let Some(bytes) = usable(output) else {
             return;
@@ -77,18 +65,15 @@ impl Parts {
         }
     }
 
-    /// Whether `source`'s command is still to run: the older `lsblk` form only when the newer
-    /// one gave no drives (MET-027).
+    /// The older `lsblk` form runs only when the newer one gave no drives (MET-027).
     pub(super) fn needs(&self, source: Source) -> bool {
         source != Source::DrivesOld || self.reading.drives.is_none()
     }
 
-    /// The distribution the device named, taken out so the reading can be built after.
     pub(super) fn take_distribution(&mut self) -> Option<Distribution> {
         self.distribution.take()
     }
 
-    /// The reading of the collection taken at `at`, which dates the macOS boot time.
     pub(super) fn reading(self, at: DateTime<Utc>) -> Reading {
         let Self {
             mut reading,
@@ -113,8 +98,7 @@ impl Parts {
     }
 }
 
-/// The samples of `reading` taken at `at`, with rates over the hub time since `previous`. A
-/// previous reading at or after `at` (the hub clock went back) gives no rates (D-4).
+/// A previous reading at or after `at` (the hub clock went back) gives no rates (D-4).
 pub(super) fn collected(
     previous: Option<&Previous>,
     reading: &Reading,
@@ -126,9 +110,7 @@ pub(super) fn collected(
     samples(previous.map(|previous| &previous.reading), reading, elapsed)
 }
 
-/// The drives of `reading` when they are to be stored: read this time, and not the list the
-/// previous collection read (the first collection after a start always stores its list). An
-/// unread list stores nothing, so the stored one stays (MET-027).
+/// Only a list that differs from the previous one is stored; an unread list keeps the stored one (MET-027).
 pub(super) fn new_drives<'a>(
     previous: Option<&Previous>,
     reading: &'a Reading,

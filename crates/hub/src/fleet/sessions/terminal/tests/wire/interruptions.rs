@@ -1,7 +1,5 @@
 //! The session ends once when it is interrupted during the opening (K4 Section 8.2, MV-003,
-//! SEC-002, D-10): `endSession` while the device stalls in the key exchange or the sign-in,
-//! hub shutdown, and the client leaving. Each ends the session `OPERATOR` or `HUB_SHUTDOWN`
-//! with one row end, audit entry and event, and the hub goes no further on the device.
+//! SEC-002, D-10).
 
 use std::time::Duration;
 
@@ -40,8 +38,6 @@ fn by() -> Actor {
     }
 }
 
-/// `endSession` ends the session in time, the request is answered 503, and the session ends
-/// `OPERATOR` for who asked.
 async fn ended_by_end_session(pool: &PgPool, bench: &Bench, mut raw: tokio::net::TcpStream) {
     let row = timeout(WAIT, end_session(pool, &bench.live, bench.session, &by()))
         .await
@@ -86,7 +82,6 @@ async fn sec_002_d_10_end_session_during_the_sign_in_is_operator_and_opens_no_ch
 async fn sec_002_d_10_end_session_during_the_key_exchange_is_operator(pool: PgPool) {
     let setup = Setup::terminal(|terminal| terminal.timing.opening = Duration::from_secs(60));
     let mut bench = bench(&pool, setup).await;
-    // A device that takes the connection and never says a word.
     let silent = TcpListener::bind((LOOPBACK, 0)).await.unwrap();
     move_device(&pool, LOOPBACK, silent.local_addr().unwrap().port()).await;
     let (accepted_tx, accepted) = oneshot::channel();

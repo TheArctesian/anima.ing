@@ -1,6 +1,4 @@
-//! The terminal over real sockets (K4 Section 7): the hub's `/terminal` route on loopback,
-//! the device's SSH server (a `russh` server in the test) on loopback, and a WebSocket client
-//! with the subprotocol `anima-terminal`. In-crate tests, so the waits stay crate-private.
+//! The terminal over real loopback sockets (K4 Section 7); in-crate, so the waits stay private.
 
 mod bench;
 mod causes;
@@ -25,10 +23,8 @@ use bench::{Bench, Setup, bench};
 use fake_ssh::Heard;
 use socket::Socket;
 
-/// The longest a test waits for any one thing.
 const WAIT: Duration = Duration::from_secs(5);
 
-/// A session opened by the client at 80 × 24, past the PTY and the shell.
 async fn session(pool: &PgPool, setup: Setup) -> (Bench, Socket) {
     let mut bench = bench(pool, setup).await;
     let mut client = socket::open(&bench.url).await;

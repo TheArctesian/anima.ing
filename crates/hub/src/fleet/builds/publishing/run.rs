@@ -1,11 +1,6 @@
-//! One publish of one job, in the order of BLD-064 to BLD-066: check the feed and the file set,
-//! read every file back from the bucket itself and check it, sign the updater file's checked
-//! bytes and write its `.sig` (R-117), copy the stable name by the checked `ETag`, then write
-//! `latest.json` with the signature last (UPD-008, D-28), and read the checked files' `ETag`s
-//! again. Before each write the try checks it still holds the job (D-25). Each step may
-//! run again after a stop: a read changes nothing and a write puts the same bytes. Any refusal
-//! leaves `latest.json` as it was (BLD-070). Once a feed write was sent, a later try only
-//! confirms the feed (D-25).
+//! One publish of one job, in the order of BLD-064 to BLD-066; `latest.json` is the last write (UPD-008, D-28).
+//! Before each write the try checks it still holds the job, and each step is safe to run again (D-25).
+//! Any refusal leaves `latest.json` as it was (BLD-070).
 
 use chrono::{DateTime, TimeDelta, Utc};
 use reqwest::Client;
@@ -30,20 +25,16 @@ use crate::{
     ids::BuildJobId,
 };
 
-/// What one publish ended with.
 pub(super) enum Outcome {
-    /// Published, with the feed folders written (one per platform key, BLD-067, BLD-068) and the checked files
-    /// the bucket held other bytes for afterwards (D-28).
+    /// The feed folders written (BLD-067, BLD-068) and the checked files the bucket later held other bytes for (D-28).
     Published(&'static [&'static str], Vec<String>),
     Refused(String),
     Unavailable(&'static str),
     /// A later try took the job, or the hold ran out; this try records nothing (D-25).
     TakenOver,
-    /// The job's tries were spent before this one ran.
     Spent,
 }
 
-/// What one job brings to its publish.
 pub(super) struct Work {
     pub(super) target: Target,
     pub(super) version: Version,
@@ -54,13 +45,10 @@ pub(super) struct Work {
     pub(super) floor: Option<Version>,
     /// An earlier try sent a feed write for the job (D-25).
     pub(super) feed_sent: bool,
-    /// The time in the signature's trusted comment: when the job reached `uploading`, the same
-    /// on every try (R-117).
+    /// When the job reached `uploading`, so the signature's trusted comment is the same on every try (R-117).
     pub(super) signed_at: DateTime<Utc>,
 }
 
-/// What a publish reaches: the bucket, the HTTP client, and the clock read for each signed
-/// request (D-25).
 #[derive(Clone, Copy)]
 pub(super) struct Reach<'a> {
     pub(super) bucket: &'a Bucket,
@@ -76,8 +64,7 @@ pub(super) struct Tried {
 }
 
 impl Tried {
-    /// Stops unless this try still holds its job in `db` for as long as a write may take: the
-    /// check just before a write.
+    /// Stops unless this try still holds its job for as long as a write may take.
     async fn holds(self, db: &PgPool, clock: &dyn Clock) -> Result<(), Stop> {
         let write = TimeDelta::seconds(transfer::WRITE_LIMIT.as_secs().cast_signed());
         match store::still_held(db, self.job, self.attempt, clock.now() + write).await {
@@ -88,7 +75,6 @@ impl Tried {
     }
 }
 
-/// Publishes `work` as try `tried`, checking its hold in `db` before each write.
 pub(super) async fn publish(reach: Reach<'_>, db: &PgPool, tried: Tried, work: &Work) -> Outcome {
     match steps(reach, (db, tried), work).await {
         Ok((folders, changed)) => Outcome::Published(folders, changed),
@@ -98,16 +84,13 @@ pub(super) async fn publish(reach: Reach<'_>, db: &PgPool, tried: Tried, work: &
     }
 }
 
-/// What the first read of a job's files found: the bytes of `SHA256SUMS`, each file's `ETag` by
-/// name, and the BLAKE2b-512 hash of the updater file's checked bytes.
 struct FirstRead {
     sums: Vec<u8>,
     etags: Vec<(String, String)>,
     digest: [u8; 64],
 }
 
-/// Reads each file back from the bucket and checks it, hashing the updater file's bytes for
-/// its signature as they are counted, then that people can read it (BLD-064, D-28).
+/// Hashes the updater file's bytes for its signature as they are checked (BLD-064, D-28).
 async fn verify_files(reach: Reach<'_>, work: &Work, updater: &str) -> Result<FirstRead, Stop> {
     let (mut sums, mut etags) = (Vec::new(), Vec::new());
     let mut prehash = Prehash::new();
@@ -132,7 +115,6 @@ async fn verify_files(reach: Reach<'_>, work: &Work, updater: &str) -> Result<Fi
     })
 }
 
-/// The `ETag` checked for `name`, empty when it was not checked.
 fn etag_of<'a>(etags: &'a [(String, String)], name: &str) -> &'a str {
     etags
         .iter()
@@ -192,9 +174,6 @@ async fn steps(
     Ok((folders, changed(reach, work, &etags, &watched).await))
 }
 
-/// Confirms the feed an earlier try sent (D-25): every feed folder must hold this job's feed,
-/// signed with the `.sig` that try wrote before it (R-117). A folder that holds another refuses
-/// the job, whose files are kept.
 async fn confirm(reach: Reach<'_>, work: &Work) -> Result<&'static [&'static str], Stop> {
     let folders = feed::platform_keys(work.target);
     let updater = feed::updater_name(work.target, &work.files)
@@ -215,9 +194,7 @@ async fn confirm(reach: Reach<'_>, work: &Work) -> Result<&'static [&'static str
     Ok(folders)
 }
 
-/// The `watched` files whose `ETag` in the bucket is no longer the one checked: a builder's URL
-/// outlived the check, as when the hub's clock runs ahead (D-28). A file that cannot be read
-/// again is logged by its fault word only.
+/// A changed `ETag` means a builder's URL outlived the check (D-28); a failed read logs its fault word only.
 async fn changed(
     reach: Reach<'_>,
     work: &Work,
@@ -241,8 +218,7 @@ async fn changed(
     changed
 }
 
-/// Writes `feed` to `object`. When the bucket's answer is lost, reads the object back: the
-/// write may have landed, and then the job is published (D-25).
+/// When the bucket's answer is lost, the write may have landed, so the object is read back (D-25).
 pub(super) async fn write_feed(reach: Reach<'_>, object: &str, feed: &str) -> Result<(), Stop> {
     let write = Write {
         object,
@@ -262,8 +238,6 @@ pub(super) async fn write_feed(reach: Reach<'_>, object: &str, feed: &str) -> Re
     }
 }
 
-/// Checks that the bucket holds exactly `feed` at `object`: refused when it holds other bytes or
-/// none.
 async fn feed_in(reach: Reach<'_>, object: &str, feed: &str) -> Result<(), Stop> {
     let expected = UploadedFile {
         name: object.to_owned(),

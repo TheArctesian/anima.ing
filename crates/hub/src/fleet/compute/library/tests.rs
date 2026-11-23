@@ -1,7 +1,4 @@
-//! Tests of the library against answers of Hugging Face recorded by hand from two public
-//! repositories on 2026-11-20 (`tests/recorded/`): `unsloth/Qwen3-0.6B-GGUF` at
-//! `50968a44…` and `mlx-community/Qwen3-0.6B-4bit` at `73e3e38d…`, each with its
-//! `config.json`.
+//! Library tests against Hugging Face answers recorded on 2026-11-20 in `tests/recorded/`.
 
 mod aliases;
 mod reads;
@@ -16,8 +13,7 @@ const GGUF_CONFIG: &[u8] = include_bytes!("tests/recorded/unsloth-qwen3-0.6b-ggu
 const MLX_ANSWER: &[u8] = include_bytes!("tests/recorded/mlx-qwen3-0.6b-4bit.json");
 const MLX_CONFIG: &[u8] = include_bytes!("tests/recorded/mlx-qwen3-0.6b-4bit.config.json");
 
-/// The recorded answers. A small file that was not recorded (a tokenizer list) answers with
-/// fixed bytes: the tests check the computed value of `config.json` only.
+/// A small file that was not recorded answers fixed bytes; the tests check `config.json` only.
 #[derive(Default)]
 pub(super) struct Recorded {
     reads: AtomicUsize,

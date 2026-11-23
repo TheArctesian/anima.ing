@@ -1,7 +1,4 @@
-//! A device that stops taking what the hub sends it (K4 Section 8.5): client input waits for
-//! the device under the channel's window, one write at a time and in order, with the hub's
-//! pings going on and the client's silence not counted; a write or a PTY request that waits
-//! past the request wait ends the session `GATEWAY_ERROR`, unless `endSession` comes first.
+//! A device that stops taking what the hub sends it (K4 Section 8.5).
 
 use std::time::Duration;
 
@@ -22,7 +19,6 @@ use crate::fleet::sessions::{
     tests::fixture::{LOOPBACK, address, ended, ended_once, now, operator},
 };
 
-/// The default setup with the server holding `hold` and the route's waits tuned by `tune`.
 fn holding(hold: Hold, tune: impl FnOnce(&mut Terminal) + Send + 'static) -> Setup {
     Setup {
         script: Script {
@@ -33,7 +29,6 @@ fn holding(hold: Hold, tune: impl FnOnce(&mut Terminal) + Send + 'static) -> Set
     }
 }
 
-/// Input bytes the server has read so far, waiting until there are `len` of them.
 async fn input_until(bench: &mut super::Bench, len: usize) -> Vec<u8> {
     let mut input = Vec::new();
     while input.len() < len {
@@ -57,8 +52,7 @@ fn pattern(len: usize) -> Vec<u8> {
     fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn k4_8_5_a_device_that_stops_taking_input_is_gateway_error_and_pings_go_on(pool: PgPool) {
-    // The client's idle wait is shorter than the request wait: if the time the input waits
-    // on the device counted as the client's silence, the session would end `TIMEOUT`.
+    // Counting the device's wait as client silence would end this session `TIMEOUT`.
     let setup = holding(Hold::Input, |terminal| {
         terminal.timing.hub_silence = Duration::from_millis(200);
         terminal.timing.client_idle = Duration::from_millis(500);
@@ -99,8 +93,7 @@ async fn k4_8_5_one_write_at_a_time_keeps_client_input_whole_and_in_order(pool: 
     let second = b"second message".to_vec();
     client.send_binary(&first).await;
     client.send_binary(&second).await;
-    // The server holds after the first packet it reads: what it heard is all it takes until
-    // released.
+    // The server holds after the first packet it reads, until released.
     let Heard::Input(packet) = bench.ssh.next().await else {
         panic!("the first packet of input");
     };

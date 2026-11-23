@@ -1,5 +1,4 @@
-//! Validation of operator input for checks: names, and the configuration a definition
-//! stores. Pure. Errors name the field, never its value (LOG-007).
+//! Validation of operator input for checks; errors name the field, never its value (LOG-007).
 
 use super::{
     config::{
@@ -10,34 +9,28 @@ use super::{
 };
 use crate::{fleet::credentials::Secret, text::is_plain};
 
-/// The secrets a definition seals, of its type.
 pub(super) enum Sealable {
     Http(HttpSecrets),
     Snmp(SnmpSecrets),
 }
 
-/// What a definition stores: the secret-free configuration, the secrets to seal, and the
-/// push token.
 pub(super) struct Prepared {
     pub(super) config: CheckConfig,
     pub(super) secrets: Option<Sealable>,
     pub(super) push_token: Option<PushToken>,
 }
 
-/// The stored HTTP configuration and its opened secrets, for the empty-secret rule.
 pub(super) type StoredHttp = (HttpConfig, HttpSecrets);
 
-/// The stored SNMP configuration and its opened secrets, for the empty-secret rule.
 pub(super) type StoredSnmp = (SnmpConfig, SnmpSecrets);
 
-/// The check's current setup with its secrets opened, for the empty-secret rules.
 pub(super) enum Stored {
     Nothing,
     Http(StoredHttp),
     Snmp(StoredSnmp),
 }
 
-/// A trimmed, plain, non-empty name. The length limit is the database's (`checks_name_check`).
+/// The length limit is the database's (`checks_name_check`).
 pub(super) fn name(text: &str) -> Result<String, FieldError> {
     let name = text.trim();
     if name.is_empty() {
@@ -57,8 +50,7 @@ pub(super) const RETRIES_MESSAGE: &str = "Retries are 0 to 10.";
 pub(super) const RETRY_INTERVAL_MESSAGE: &str = "The retry interval is 5 to 3600 seconds.";
 pub(super) const DEGRADED_MESSAGE: &str = "The Degraded limit is 1 to 600000 milliseconds.";
 
-/// Every one of the four per-check settings that is outside the bounds of `checks.checks`
-/// (the database keeps the same bounds as a backstop and names only the first it meets).
+/// The database keeps the same bounds as a backstop but names only the first it meets.
 pub(super) fn setting_bounds(
     interval_seconds: i32,
     retries: i32,
@@ -96,8 +88,7 @@ pub(super) fn config_error(error: ConfigError) -> FieldError {
     FieldError::new(error.field, format!("This value {}.", error.reason))
 }
 
-/// Validates the definition and separates what is stored from the secrets. `stored` is the
-/// check's current setup, used only for empty secrets (see `CheckChange`).
+/// `stored` is the check's current setup, used only for empty secrets.
 pub(super) fn prepare(definition: Definition, stored: Stored) -> Result<Prepared, FieldError> {
     match definition {
         Definition::Config(CheckConfig::Http(_)) => Err(FieldError::new(
@@ -148,7 +139,6 @@ pub(super) fn prepare(definition: Definition, stored: Stored) -> Result<Prepared
     }
 }
 
-/// Whether the input has an empty secret that must come from the stored setup.
 pub(super) fn needs_stored(input: &HttpInput) -> bool {
     let empty_header = input
         .headers
@@ -162,8 +152,6 @@ pub(super) fn needs_stored(input: &HttpInput) -> bool {
     empty_header || empty_credential
 }
 
-/// Whether the input leaves out a secret of its version, which must come from the stored
-/// setup.
 pub(super) fn snmp_needs_stored(input: &SnmpInput) -> bool {
     let given = |secret: &Option<crate::fleet::credentials::Secret>| {
         secret.as_ref().is_some_and(|s| !s.expose().is_empty())
@@ -177,9 +165,8 @@ pub(super) fn snmp_needs_stored(input: &SnmpInput) -> bool {
     }
 }
 
-/// Fills each secret left out from the stored secrets, only when they were given for the
-/// same version and user name (SEC-005); otherwise the field error asks for it. `stored` holds
-/// only secrets that opened for the device's current host (SEC-010).
+/// Stored secrets fill a gap only for the same version and user name (SEC-005).
+/// `stored` holds only secrets that opened for the device's current host (SEC-010).
 fn keep_snmp(
     config: &SnmpConfig,
     given: SnmpCredentials,
@@ -221,7 +208,6 @@ fn keep_snmp(
     }
 }
 
-/// The origin of a URL as `scheme://host:port`, with the scheme's default port written out.
 pub(super) fn origin(url: &str) -> Option<String> {
     let url = reqwest::Url::parse(url).ok()?;
     let host = url.host_str()?;
@@ -235,9 +221,7 @@ fn secret_names<'a>(names: impl Iterator<Item = &'a str>) -> Vec<String> {
     names
 }
 
-/// Whether stored secrets may go where the input sends them (SEC-005): the same origin, the
-/// same kind of authentication and basic user name, TLS checks not turned off, and the same
-/// secret header names.
+/// Whether stored secrets may go where the input sends them (SEC-005).
 fn same_destination(input: &HttpInput, stored: &HttpConfig) -> bool {
     let origin_kept = origin(&input.url).is_some_and(|o| Some(o) == origin(&stored.url));
     let auth_kept = match (&input.credentials, &stored.auth) {
@@ -262,9 +246,7 @@ fn same_destination(input: &HttpInput, stored: &HttpConfig) -> bool {
     origin_kept && auth_kept && tls_kept && secret_names(given) == secret_names(kept)
 }
 
-/// Fills each empty secret from the stored setup: the n-th secret header with a name takes
-/// the stored value of the n-th stored header with that name.
-/// Stored secrets are kept only for the same destination (see `same_destination`).
+/// The n-th empty secret header of a name takes the n-th stored value of that name.
 fn keep_stored(mut input: HttpInput, stored: Option<StoredHttp>) -> Result<HttpInput, FieldError> {
     if !needs_stored(&input) {
         return Ok(input);

@@ -1,12 +1,5 @@
-//! The last exposition built (D-24). One build serves every scrape for [`FRESH_FOR`], and
-//! scrapes that arrive during a build wait for that build (single flight). The build runs in
-//! its own task, so a scrape the client abandons neither cancels it nor starts another; it
-//! fails after [`BUILD_LIMIT`]. A failed build answers every scrape for [`FAILED_FOR`] without
-//! a rebuild. So the database sees at most one build at a time and one build per
-//! [`FAILED_FOR`] while the builds fail.
-//!
-//! Time comes in as a parameter. No lock is held across an await: the mutex guards only the
-//! swap of the current round, and waiters wait on the round's watch channel.
+//! The last exposition built (D-24): scrapes during a build wait for that build (single flight).
+//! The build runs in its own task, so a scrape the client abandons neither cancels it nor starts another.
 
 use std::{
     future::Future,
@@ -25,28 +18,23 @@ pub(super) const FAILED_FOR: TimeDelta = TimeDelta::seconds(2);
 /// How long a build may run before its round fails, so a hung statement ends.
 pub(super) const BUILD_LIMIT: Duration = Duration::from_secs(30);
 
-/// How a build ended.
 #[derive(Clone, Debug)]
 enum Outcome {
     Built(Bytes),
     Failed,
 }
 
-/// The end of a round's build: `None` while it runs.
 type Ending = watch::Receiver<Option<Outcome>>;
 
-/// One build and everyone waiting for it.
 #[derive(Debug)]
 struct Round {
-    /// The instant the build was asked for.
     at: DateTime<Utc>,
     ending: Ending,
 }
 
 impl Round {
-    /// Whether a scrape at `now` must start a new round: this one is finished and past the time
-    /// its outcome is kept, or its task ended without an outcome (it panicked). A clock that
-    /// moved back by the time kept or more also spends it.
+    /// A task that ended without an outcome (it panicked) spends the round, and so does a clock
+    /// moved back by the time kept.
     fn spent(&self, now: DateTime<Utc>) -> bool {
         let outcome = self.ending.borrow().clone();
         let kept_for = match outcome {
@@ -58,15 +46,13 @@ impl Round {
     }
 }
 
-/// The current round, if any scrape has started one.
 #[derive(Debug, Default)]
 pub(super) struct Cache {
     current: Mutex<Option<Round>>,
 }
 
 impl Cache {
-    /// The body of the current round, whose build `build` starts when the round is spent.
-    /// `None` when that build failed. Dropping the returned future leaves the build running.
+    /// Dropping the returned future leaves the build running.
     pub(super) async fn body<F, Fut>(&self, now: DateTime<Utc>, build: F) -> Option<Bytes>
     where
         F: FnOnce() -> Fut,
@@ -80,8 +66,6 @@ impl Cache {
         }
     }
 
-    /// The end of the round a scrape at `now` joins, after starting it if the current one is
-    /// spent.
     fn join<F, Fut>(&self, now: DateTime<Utc>, build: F) -> Ending
     where
         F: FnOnce() -> Fut,
@@ -102,7 +86,6 @@ impl Cache {
     }
 }
 
-/// Runs one build to its outcome, or to [`BUILD_LIMIT`], and tells the round.
 async fn run(build: impl Future<Output = Option<String>>, sender: watch::Sender<Option<Outcome>>) {
     let outcome = match tokio::time::timeout(BUILD_LIMIT, build).await {
         Ok(Some(text)) => Outcome::Built(Bytes::from(text)),

@@ -1,8 +1,6 @@
-//! The hub's HTTP calls of publishing: a file read back from the bucket itself, the public
-//! address's answer for it, and a signed write or delete (BLD-064, BLD-066, D-28). I/O only. A
-//! response's length is never trusted: a file is read in chunks and refused at the first byte
-//! past its reported size. Nothing here logs; a URL, a header or a response body never reaches
-//! an error (LOG-007).
+//! The hub's HTTP calls of publishing (BLD-064, BLD-066, D-28).
+//! A response's length is never trusted: a read is refused at the first byte past the reported size.
+//! Nothing here logs; a URL, a header or a response body never reaches an error (LOG-007).
 
 use std::time::Duration;
 
@@ -14,44 +12,35 @@ use super::{
 };
 use crate::fleet::builds::model::UploadedFile;
 
-/// The most of a write's response body the hub reads, to see an error inside a 200.
+/// Enough of a write's response body to see an error inside a 200.
 const MAX_REPLY_BYTES: usize = 64 * 1024;
 
 /// The longest `ETag` the hub keeps; R2 sends a quoted MD5 or a multipart digest.
 const MAX_ETAG_BYTES: usize = 128;
 
-/// The longest one write, delete or `HEAD` may take. A try writes only while its hold has at
-/// least this long left (D-25).
+/// A try writes only while its hold has at least this long left (D-25).
 pub(super) const WRITE_LIMIT: Duration = Duration::from_mins(2);
 
-/// The longest the upload of one release file may take.
 const UPLOAD_LIMIT: Duration = Duration::from_mins(30);
 
-/// Why a step of publishing stopped.
 pub(super) enum Stop {
-    /// A check failed: the job fails with this reason (BLD-070).
     Refused(String),
-    /// The bucket or the public address could not be reached; the fault word is for the
-    /// process log, and the publisher tries again later (D-25).
+    /// The fault word is for the process log; the publisher tries again later (D-25).
     Unavailable(&'static str),
-    /// A later try took the job, or this try's hold ran out: this try writes nothing more
-    /// (D-25).
+    /// A later try took the job, or this try's hold ran out: this try writes nothing more (D-25).
     TakenOver,
 }
 
-/// One file as the bucket holds it, checked: the bytes kept for `SHA256SUMS` and the object's
-/// `ETag`.
+/// `kept` is the bytes kept for `SHA256SUMS`.
 pub(super) struct Checked {
     pub(super) kept: Vec<u8>,
     pub(super) etag: String,
 }
 
-/// Whether `status` means the far end is busy or down rather than refusing.
 fn busy(status: StatusCode) -> bool {
     status.is_server_error() || status == StatusCode::TOO_MANY_REQUESTS
 }
 
-/// `signed` as a request with `body`.
 fn request(http: &Client, signed: &Signed, body: Vec<u8>) -> RequestBuilder {
     let method = Method::from_bytes(signed.method.as_bytes()).unwrap_or(Method::GET);
     let mut request = http.request(method, &signed.url).body(body);
@@ -61,10 +50,7 @@ fn request(http: &Client, signed: &Signed, body: Vec<u8>) -> RequestBuilder {
     request
 }
 
-/// Reads `file` from the bucket by the signed `GET` `signed` and checks it as it streams
-/// (BLD-064, D-28): 200, never more than the reported size, then the reported size and SHA-256,
-/// and an `ETag` to copy it by. `tap` is fed the same bytes, each chunk once it is counted, so
-/// it never sees a byte past the reported size.
+/// `tap` gets each chunk once it is counted, so it never sees a byte past the reported size (BLD-064, D-28).
 pub(super) async fn read(
     http: &Client,
     signed: Signed,
@@ -105,8 +91,6 @@ pub(super) async fn read(
     Ok(Checked { kept, etag })
 }
 
-/// Reads the small object `what` by the signed `GET` `signed`: 200 and at most `max` bytes,
-/// refused at the first byte past them (R-117).
 pub(super) async fn read_small(
     http: &Client,
     signed: Signed,
@@ -143,7 +127,6 @@ pub(super) async fn read_small(
     Ok(bytes)
 }
 
-/// The `ETag` of `response`, when it is short visible ASCII.
 fn etag_of(response: &Response) -> Option<String> {
     let value = response
         .headers()
@@ -154,8 +137,7 @@ fn etag_of(response: &Response) -> Option<String> {
     fits.then(|| value.to_owned())
 }
 
-/// Checks that people can read `name` at `url`: 200 from that exact URL (BLD-064). The bytes
-/// are not read; a cache may still hold an older copy, so they prove nothing (D-28).
+/// The bytes are not read: a cache may still hold an older copy, so they prove nothing (BLD-064, D-28).
 pub(super) async fn readable(http: &Client, url: &str, name: &str) -> Result<(), Stop> {
     let response = http
         .get(url)
@@ -176,9 +158,7 @@ pub(super) async fn readable(http: &Client, url: &str, name: &str) -> Result<(),
     Ok(())
 }
 
-/// Sends a signed write or delete with `body`. `what` names the object in a refusal. A 2xx
-/// answer whose body is an S3 `<Error>` (as `CopyObject` may send) counts as unavailable; a 412
-/// means the copy source changed after the hub checked it (D-28).
+/// A 2xx whose body is an S3 `<Error>` (as `CopyObject` may send) is unavailable; a 412 means the copy source changed (D-28).
 pub(super) async fn send(
     http: &Client,
     signed: Signed,
@@ -222,8 +202,6 @@ pub(super) async fn send(
     Ok(())
 }
 
-/// The `ETag` the bucket gives `HEAD` `signed` now, or `None` when it has no such object
-/// (D-28).
 pub(super) async fn etag_now(http: &Client, signed: &Signed) -> Result<Option<String>, Stop> {
     let response = request(http, signed, Vec::new())
         .timeout(WRITE_LIMIT)
@@ -239,8 +217,7 @@ pub(super) async fn etag_now(http: &Client, signed: &Signed) -> Result<Option<St
         .flatten())
 }
 
-/// Puts `body` at the presigned `upload`, with exactly the headers it signed (BLD-060). The
-/// caller reads the object back afterwards: this answer alone proves nothing (BLD-064).
+/// The caller reads the object back afterwards: this answer alone proves nothing (BLD-064).
 pub(super) async fn upload(
     http: &Client,
     upload: UploadUrl,

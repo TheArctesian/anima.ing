@@ -1,5 +1,4 @@
-//! Tests of the vpn domain: the status parser, the picture, the warnings. Fixture expiries are
-//! written relative to the test clock, `2030-05-05T12:00:00Z`.
+//! Fixture expiries are relative to the test clock, `2030-05-05T12:00:00Z`.
 
 mod broker;
 mod close_wait;
@@ -36,7 +35,6 @@ fn now() -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2030, 5, 5, 12, 0, 0).unwrap()
 }
 
-/// The text of the fixture `name`.
 fn fixture(name: &str) -> String {
     let path = format!(
         "{}/src/fleet/vpn/tests/fixtures/{name}",
@@ -45,17 +43,14 @@ fn fixture(name: &str) -> String {
     std::fs::read_to_string(path).unwrap()
 }
 
-/// The parsed fixture `name`.
 fn status(name: &str) -> Status {
     parse(fixture(name).as_bytes()).unwrap()
 }
 
-/// The fixture as JSON, to change one field before parsing.
 fn json(name: &str) -> serde_json::Value {
     serde_json::from_str(&fixture(name)).unwrap()
 }
 
-/// The peer of `json` whose host name is `host`.
 fn peer_mut<'a>(json: &'a mut serde_json::Value, host: &str) -> &'a mut serde_json::Value {
     json["Peer"]
         .as_object_mut()
@@ -78,7 +73,6 @@ fn sites() -> Vec<(SiteId, IpNet)> {
     vec![site(1, "10.10.0.0/24"), site(2, "10.20.0.0/24")]
 }
 
-/// A device with id `n`, name `name`, host `host` and, when it is an address, that IP.
 fn device(n: u128, name: &str, host: &str) -> Device {
     Device {
         id: device_id(n),
@@ -107,7 +101,6 @@ fn device_id(n: u128) -> DeviceId {
     uuid::Uuid::from_u128(n).into()
 }
 
-/// The picture of `status` with `devices`, the two sites and the ping-checked devices.
 fn picture_with(status: &Status, devices: &[Device], ping_checked: &[DeviceId]) -> Picture {
     let ping_checked: HashSet<DeviceId> = ping_checked.iter().copied().collect();
     build(&Inputs {
@@ -126,7 +119,6 @@ fn picture(status: &Status) -> Picture {
     picture_with(status, &[], &[])
 }
 
-/// The node of `picture` named `name`.
 fn node<'a>(picture: &'a Picture, name: &str) -> &'a super::VpnNode {
     picture
         .nodes

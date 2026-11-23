@@ -1,5 +1,4 @@
-//! The domain expiry configuration: its fixed id, stored JSON, defaults and domain rules
-//! (CHK-009, D-29).
+//! The domain expiry configuration (CHK-009, D-29).
 
 use crate::fleet::checks::config::{CheckConfig, CheckType, ConfigError, Reason};
 

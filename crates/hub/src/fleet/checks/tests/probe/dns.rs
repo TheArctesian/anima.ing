@@ -1,5 +1,3 @@
-//! DNS probe against a hand-written local UDP server.
-
 use super::support::{
     LOOPBACK, dns_records, dns_server, env, silent_dns_server, strict_env, target, wire_name,
 };

@@ -1,7 +1,4 @@
-//! The one target rule (Q2-09, R-030, R-032): the policy refuses the gateway's own machine,
-//! link-local neighbours, group and reserved addresses, every IPv6 form that carries one of
-//! them, and the deny list's networks in every form; device ranges pass. The checked resolver
-//! is in `resolver`, and the connect function on a link address in `link_path`.
+//! The one target rule (Q2-09, R-030, R-032).
 
 pub(crate) mod link_path;
 mod resolver;
@@ -16,7 +13,6 @@ fn refused(text: &str) -> bool {
     !AddressPolicy::default().permits(text.parse().unwrap())
 }
 
-/// Every class the policy must refuse, by name, with its edges.
 const REFUSED_CLASSES: &[(&str, &[&str])] = &[
     (
         "loopback",
@@ -170,8 +166,7 @@ fn r_030_the_default_policy_keeps_device_ranges_and_refuses_its_own() {
     ] {
         assert!(!refused(device), "{device}");
     }
-    // Tailscale's own resolver, the Azure wire server, the AWS IPv6 metadata address, the
-    // IETF protocol and reserved ranges and site-local host no device.
+    // Tailscale's resolver, the Azure wire server, AWS IPv6 metadata, IETF reserved, site-local.
     for never in [
         "100.100.100.100",
         "168.63.129.16",
@@ -208,7 +203,6 @@ fn r_032_the_loopback_test_switch_lets_only_plain_loopback_through() {
     );
 }
 
-/// The policy refuses `ip`, with no extra deny and with one (which only refuses more).
 fn refused_by_every_policy(ip: IpAddr) -> Result<(), TestCaseError> {
     prop_assert!(
         !AddressPolicy::default().permits(ip),
@@ -222,13 +216,11 @@ fn refused_by_every_policy(ip: IpAddr) -> Result<(), TestCaseError> {
     Ok(())
 }
 
-/// An IPv6 address made of `prefix` (the first `bits` bits) and random `rest`.
 fn under(prefix: u128, bits: u32, rest: u128) -> IpAddr {
     let mask = u128::MAX.checked_shr(bits).unwrap_or(0);
     IpAddr::V6(Ipv6Addr::from((prefix & !mask) | (rest & mask)))
 }
 
-/// IPv6 prefixes refused whatever follows them, with their lengths.
 const REFUSED_OUTRIGHT: [(u128, u32); 5] = [
     (0x0064_ff9b_0001 << 80, 48), // local-use NAT64
     (0x2001 << 112, 32),          // Teredo
@@ -245,8 +237,7 @@ const EMBEDDING: [(u128, u32); 4] = [
     (0x0064_ff9b << 96, 96), // NAT64
 ];
 
-/// IPv4 addresses that sit in a refused range: loopback, 0/8, link-local, multicast and
-/// broadcast.
+/// IPv4 addresses in loopback, 0/8, link-local, multicast and broadcast.
 fn refused_v4(rest: u32) -> [u32; 5] {
     let low = rest & 0x00ff_ffff;
     [

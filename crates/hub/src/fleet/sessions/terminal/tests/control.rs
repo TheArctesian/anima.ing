@@ -1,5 +1,4 @@
-//! The terminal's text messages (K4 Sections 7, 8.4 and 8.5): exactly the closed set is
-//! accepted, nothing panics, and the hub's own messages have the contract's shape.
+//! K4 Sections 7, 8.4 and 8.5.
 
 use async_graphql::{InputType as _, Value as GraphqlValue};
 use proptest::prelude::*;

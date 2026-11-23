@@ -1,6 +1,4 @@
-//! The pure part of the single sessions (AIS-025, AIS-026): the tokens of a session summed
-//! over its models with the estimate of their cost (AIS-021), and whether its last use is
-//! recent by the clock of the hub.
+//! Session token sums, cost estimates and recency (AIS-021, AIS-025, AIS-026).
 
 use chrono::{DateTime, TimeDelta, Utc};
 
@@ -9,12 +7,10 @@ use super::{
     prices,
 };
 
-/// A session is recent when its last use is at most this long before the clock of the hub:
-/// two count periods of the daemon, which counts every 15 minutes (AIS-026).
+/// Two count periods of the daemon, which counts every 15 minutes (AIS-026).
 pub const RECENT: TimeDelta = TimeDelta::minutes(30);
 
-/// `stored` with its tokens summed and priced: the estimate of each model with a known price,
-/// and the tokens of the models with none (AIS-021). Null estimate when no token has a price.
+/// The estimate is `None` when no token has a price (AIS-021).
 #[must_use]
 pub fn priced(stored: StoredSession) -> Session {
     let mut tokens = TokenSums::default();
@@ -37,7 +33,6 @@ pub fn priced(stored: StoredSession) -> Session {
     }
 }
 
-/// Whether `last_use` is at most [`RECENT`] before `now` (AIS-026).
 #[must_use]
 pub fn is_recent(last_use: DateTime<Utc>, now: DateTime<Utc>) -> bool {
     now - last_use <= RECENT

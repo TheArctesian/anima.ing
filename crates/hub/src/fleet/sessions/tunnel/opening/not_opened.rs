@@ -1,5 +1,3 @@
-//! Why the tunnel did not open, and what the operator is told about it.
-
 use guac_protocol::DecodeError;
 
 use super::super::arguments::BadConnectValue;
@@ -8,8 +6,7 @@ use crate::fleet::{
     sessions::{self, Protocol, connection_test::ReadError},
 };
 
-/// Why the tunnel did not open. The messages are for the process log; none holds a value,
-/// an address, guacd's text or the token (LOG-007).
+/// Process-log messages hold no value, address, guacd text or token (LOG-007).
 #[derive(Debug, thiserror::Error)]
 pub(in crate::fleet::sessions::tunnel) enum NotOpened {
     #[error("the ticket is for a protocol the Guacamole tunnel does not serve")]
@@ -32,8 +29,7 @@ pub(in crate::fleet::sessions::tunnel) enum NotOpened {
     StandardOnly,
     #[error("the device refused the RDP security the hub asked for to read its certificate")]
     SecurityRefused,
-    /// The stored password was entered for another host than the device's host now; guacd was
-    /// never reached (SEC-011).
+    /// Refused before guacd is reached (SEC-011).
     #[error("the stored password was entered for another host of the device")]
     CredentialMoved,
     #[error(transparent)]
@@ -59,8 +55,7 @@ pub(in crate::fleet::sessions::tunnel) enum NotOpened {
 }
 
 impl NotOpened {
-    /// The event message for a `protocol` session: what the operator can do about it, with
-    /// no detail from guacd.
+    /// The operator's event message; it holds no detail from guacd.
     pub(in crate::fleet::sessions::tunnel) const fn message(
         &self,
         protocol: Protocol,
@@ -122,7 +117,6 @@ impl NotOpened {
     }
 }
 
-/// The event message for a server certificate the hub could not read from the device.
 const fn unread_message(error: ReadError) -> &'static str {
     match error {
         ReadError::Unexpected => {

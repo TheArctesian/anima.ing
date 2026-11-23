@@ -1,6 +1,4 @@
-//! The probe's edges (R-032, D-5, R-034): refused targets, a closed port, a host that never
-//! answers, one that does not speak SSH, and a key read with no authentication. The sign-in
-//! runs against the recording server in `tests/it/sessions/host_keys`.
+//! The probe's edges (R-032, D-5, R-034).
 
 use std::{
     sync::{Arc, LazyLock},
@@ -22,7 +20,6 @@ use crate::fleet::{
     trust::PublicKey,
 };
 
-/// A server that only presents its key; every authentication is refused by default.
 struct KeyOnly;
 
 impl server::Handler for KeyOnly {
@@ -52,8 +49,7 @@ async fn r_034_the_probe_returns_the_key_the_host_presents() {
     serve.abort();
 }
 
-/// SSH to a computer of the link: the key exchange runs through the link's dial socket to the
-/// SSH port of the computer, here a server on loopback that only the fake link reaches.
+/// The key exchange runs through the link's dial socket to a loopback server only the fake link reaches.
 #[tokio::test]
 async fn hmd_048_the_probe_reads_the_key_of_a_computer_on_the_link() {
     let host_key = PrivateKey::from(Ed25519Keypair::from_seed(&[5; 32]));
@@ -101,7 +97,6 @@ const SHORT: Duration = Duration::from_millis(300);
 
 /// The hub's policy with no deny list, as the hub's `Live` holds it.
 static STRICT: LazyLock<AddressPolicy> = LazyLock::new(AddressPolicy::default);
-/// The tests' policy, which reaches loopback.
 static LOOPBACK_FOR_TESTS: LazyLock<AddressPolicy> =
     LazyLock::new(|| AddressPolicy::default().allowing_loopback());
 

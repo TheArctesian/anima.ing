@@ -1,9 +1,5 @@
-//! The probe policy the scheduler is given always refuses loopback, link-local and
-//! multicast addresses, whatever the deny list holds. A Docker or systemd check whose SSH link
-//! cannot open records a Down beat with a fixed message that holds no host (D-3, LOG-007). A
-//! Tailscale ping check with no `LocalAPI` proxy records an Unknown beat (D-4). SNMP secrets go
-//! only to the device host they were entered for: after a host change the attempt sends
-//! nothing, removes them and writes one event (SEC-010).
+//! Probe address policy (R-030); SSH-link failures hold no host (D-3, LOG-007); Tailscale ping
+//! without a proxy (D-4); SNMP secrets go only to the host they were entered for (SEC-010).
 
 use std::{net::IpAddr, sync::atomic::Ordering};
 
@@ -191,7 +187,6 @@ fn snmp(agent: &Agent, community: Option<&str>) -> Definition {
     })
 }
 
-/// The operator's update of the check's definition, with the device at `host`.
 async fn enter(pool: &PgPool, (id, host): (CheckId, &str), definition: Definition) {
     let mut conn = pool.acquire().await.unwrap();
     let change = CheckChange {
@@ -207,8 +202,6 @@ async fn enter(pool: &PgPool, (id, host): (CheckId, &str), definition: Definitio
         .unwrap();
 }
 
-/// Runs one attempt of the check at `at`; returns the beat's status and message (empty for
-/// none).
 async fn attempt_at(pool: &PgPool, id: CheckId, at: DateTime<Utc>) -> (String, String) {
     due_at(pool, id, at).await;
     let due = checks::due_checks(pool, at, 10).await.unwrap();
@@ -237,7 +230,6 @@ async fn sealed(pool: &PgPool, id: CheckId) -> bool {
         .unwrap()
 }
 
-/// The device's events about SNMP secrets, as (severity, message).
 async fn secret_events(pool: &PgPool, device: DeviceId) -> Vec<(String, String)> {
     let events = events_of(pool, device).await;
     events
@@ -254,7 +246,6 @@ tick_test! {
         let id = snmp_check(&pool, (device, "127.0.0.1"), &agent).await;
         let now = database_now(&pool).await;
         assert_eq!(attempt_at(&pool, id, now).await.0, "up");
-        // A definition that leaves the community out, same version and user, same host.
         enter(&pool, (id, "127.0.0.1"), snmp(&agent, None)).await;
         assert_eq!(attempt_at(&pool, id, now + TimeDelta::seconds(10)).await.0, "up");
         assert_eq!(requests(&agent), 2);
@@ -291,13 +282,11 @@ tick_test! {
         .unwrap();
         assert_eq!(kinds, [Some("hub".to_owned())]);
 
-        // The next attempt still sends nothing and writes no second event.
         let (_, message) = attempt_at(&pool, id, now + TimeDelta::seconds(10)).await;
         assert_eq!(message, Failure::SecretMissing.to_string());
         assert_eq!(requests(&agent), 0);
         assert_eq!(secret_events(&pool, device).await.len(), 1);
 
-        // The operator enters the community again for the new host: the check probes it.
         enter(&pool, (id, "127.0.0.1"), snmp(&agent, Some(Setup::new().community))).await;
         let (status, _) = attempt_at(&pool, id, now + TimeDelta::seconds(20)).await;
         assert_eq!(status, "up");

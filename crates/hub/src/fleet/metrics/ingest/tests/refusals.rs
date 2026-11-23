@@ -1,5 +1,4 @@
-//! K8 Section 6: a refusal's body is exactly `{"error":"<CODE>"}` with the code's status, and
-//! its event names the route, the address and the code, nothing from the request.
+//! A refusal's event names the route, the address and the code, nothing else (K8 Section 6).
 
 use std::net::{IpAddr, Ipv4Addr};
 

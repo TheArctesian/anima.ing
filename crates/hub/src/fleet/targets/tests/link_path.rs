@@ -1,6 +1,4 @@
-//! The connect function on a link address (HMD-048), against a fake dial socket of the link:
-//! the request line, the connection after `ok`, and the error of each other word. The fake
-//! also serves the tests of the checks and of SSH that go through the link.
+//! The connect function on a link address (HMD-048), against a fake dial socket of the link.
 
 #[cfg(unix)]
 use std::{fs, os::unix::fs::PermissionsExt as _};
@@ -18,17 +16,14 @@ use crate::fleet::targets::{AddressPolicy, LinkPort, Reached, connect, on_link};
 /// The link address of the fake link's one computer.
 pub(crate) const COMPUTER: &str = "fd41:4e49:4d41::7";
 
-/// What the fake link does with a request.
 #[derive(Clone, Copy)]
 pub(crate) enum Link {
-    /// The computer is this one: the link connects to the port on loopback, as the link
-    /// program of a computer does, and says `closed` when nothing listens.
+    /// The link connects to the port on loopback, and says `closed` when nothing listens.
     Carries,
     /// The link says this word and ends the connection.
     Says(&'static str),
 }
 
-/// A policy whose link is a fake dial socket, and the folder that holds the socket.
 pub(crate) fn link(behaviour: Link) -> (tempfile::TempDir, AddressPolicy) {
     let folder = tempfile::tempdir().unwrap();
     #[cfg(unix)]
@@ -79,7 +74,6 @@ async fn hmd_048_a_link_address_is_reached_through_the_link() {
     let port = listener.local_addr().unwrap().port();
     tokio::spawn(async move {
         let (mut stream, _) = listener.accept().await.unwrap();
-        // The first bytes of the device come right after the link's line.
         stream.write_all(b"SSH-2.0-device\r\n").await.unwrap();
         let mut heard = [0; 4];
         stream.read_exact(&mut heard).await.unwrap();

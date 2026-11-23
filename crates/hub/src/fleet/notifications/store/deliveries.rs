@@ -24,8 +24,7 @@ pub(in crate::fleet::notifications) async fn database_now(
         .await?)
 }
 
-/// Creates the delivery partitions of the UTC days from `first` through `days` days after it,
-/// in one statement (DB-004).
+/// Creates the UTC day partitions from `first` through `days` days after it (DB-004).
 pub(in crate::fleet::notifications) async fn create_days_ahead(
     db: &PgPool,
     first: DateTime<Utc>,
@@ -43,8 +42,7 @@ pub(in crate::fleet::notifications) async fn create_days_ahead(
     Ok(())
 }
 
-/// Drops the delivery partitions of the UTC days before `cutoff`; returns their names. The
-/// database refuses a cutoff inside the shortest retention, 7 days (D-25).
+/// The database refuses a cutoff inside the shortest retention, 7 days (D-25).
 pub(in crate::fleet::notifications) async fn drop_days_before(
     db: &PgPool,
     cutoff: NaiveDate,
@@ -59,8 +57,7 @@ pub(in crate::fleet::notifications) async fn drop_days_before(
     )
 }
 
-/// Records a delivery, creating its day's partition first when it is missing. Takes a
-/// connection so the caller can finish the outbox row in the same transaction.
+/// Takes a connection so the caller can finish the outbox row in the same transaction.
 pub(in crate::fleet::notifications) async fn insert_delivery(
     conn: &mut PgConnection,
     delivery: &Delivery,
@@ -87,7 +84,6 @@ pub(in crate::fleet::notifications) async fn insert_delivery(
     Ok(())
 }
 
-/// The newest delivery of each of `channels`; a channel with none has no entry.
 pub(in crate::fleet::notifications) async fn last_deliveries(
     db: impl PgExecutor<'_>,
     channels: &[ChannelId],
@@ -111,7 +107,6 @@ pub(in crate::fleet::notifications) async fn last_deliveries(
         .collect()
 }
 
-/// Up to `limit` deliveries, newest first, after `after`; of one channel when `channel` is set.
 pub(in crate::fleet::notifications) async fn deliveries_page(
     db: impl PgExecutor<'_>,
     channel: Option<ChannelId>,

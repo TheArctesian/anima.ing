@@ -6,8 +6,6 @@
 //! stale row whose tunnel went with the old process) writes the `session.end` audit entry and
 //! no event: the event log records what a tunnel did (K4 §5, D-13).
 //!
-//! An open tunnel ends through the end table (`cause`) and writes its end once (`record`).
-//!
 //! Each end this hub process writes is published on `Live`'s feed of changes once its
 //! transaction commits (RA-034).
 
@@ -166,7 +164,6 @@ pub(super) async fn shut_down(db: &PgPool, live: &Live, now: DateTime<Utc>) -> R
     };
     let ends = tickets.into_iter().map(|ticket| (ticket, end)).collect();
     let ended = end_tickets(db, live, ends, now).await;
-    // Running out of time is not a failure: the next start's `close_stale` ends what is left.
     tokio::time::timeout(live.tunnel_end_wait(), closing.finished())
         .await
         .unwrap_or_default();
@@ -196,7 +193,6 @@ pub(super) async fn close_stale(db: &PgPool, now: DateTime<Utc>) -> Result<u64, 
     Ok(u64::try_from(stale.len()).unwrap_or(u64::MAX))
 }
 
-/// Ends the row with `OPERATOR` and its audit entry, in one transaction, then publishes it.
 async fn end_by_operator(
     db: &PgPool,
     live: &Live,
@@ -235,8 +231,6 @@ pub(super) async fn end_session(
 ) -> Result<Session, Error> {
     match live.end_by(session, by) {
         live::Ending::Signalled(closing) => {
-            // Running out of time is not a failure: the row is returned as it stands either
-            // way, live if the tunnel is stuck.
             tokio::time::timeout(live.tunnel_end_wait(), closing.finished())
                 .await
                 .unwrap_or_default();

@@ -1,4 +1,4 @@
-//! Configuration: fixed ids, stored JSON shape and validation (CHK-009).
+//! CHK-009.
 
 use crate::fleet::checks::config::{
     CheckConfig, CheckType, ConfigError, DnsRecordType, HttpConfig, HttpHeader, IpVersion, Reason,

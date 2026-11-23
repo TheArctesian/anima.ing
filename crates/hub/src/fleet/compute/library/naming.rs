@@ -1,15 +1,12 @@
-//! The names of the library: model names and variant tags in the Ollama form `name:tag`
-//! (LIBM-006), aliases (LIBM-007), and Hugging Face repositories with their organisation
-//! (LIBM-003). Pure rules; the messages hold no input value (LOG-007).
+//! The names of the library (LIBM-003, LIBM-006, LIBM-007); the messages hold no input value
+//! (LOG-007).
 
 use crate::api_errors::FieldError;
 
-/// The longest model name, tag or alias.
 const LONGEST: usize = 64;
 /// The longest organisation or repository name part on Hugging Face.
 const LONGEST_PART: usize = 96;
 
-/// A model name, a tag or an alias: 1 to 64 of `[a-z0-9._-]`, starting with a letter or digit.
 #[must_use]
 pub fn is_name(text: &str) -> bool {
     let bytes = text.as_bytes();
@@ -20,8 +17,6 @@ pub fn is_name(text: &str) -> bool {
             .all(|each| each.is_ascii_lowercase() || each.is_ascii_digit() || b"._-".contains(each))
 }
 
-/// The checked model name.
-///
 /// # Errors
 /// A [`FieldError`] on `field` when the text breaks the name rule.
 pub fn name(field: &'static str, text: &str) -> Result<String, FieldError> {
@@ -36,19 +31,16 @@ pub fn name(field: &'static str, text: &str) -> Result<String, FieldError> {
     }
 }
 
-/// `name:tag`, the address of one variant (LIBM-006).
 #[must_use]
 pub fn address(name: &str, tag: &str) -> String {
     format!("{name}:{tag}")
 }
 
-/// The model name of a request: `name` or `name:tag` give `name`.
 #[must_use]
 pub fn model_part(text: &str) -> &str {
     text.split_once(':').map_or(text, |(name, _)| name)
 }
 
-/// A Hugging Face repository `organisation/name`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Repository {
     pub organisation: String,
@@ -62,7 +54,6 @@ impl Repository {
     }
 }
 
-/// One part of a repository name: 1 to 96 of `[A-Za-z0-9._-]`, not starting with a dot.
 fn is_part(text: &str) -> bool {
     (1..=LONGEST_PART).contains(&text.len())
         && !text.starts_with('.')
@@ -71,8 +62,6 @@ fn is_part(text: &str) -> bool {
             .all(|each| each.is_ascii_alphanumeric() || b"._-".contains(&each))
 }
 
-/// The checked organisation name, as Hugging Face writes it.
-///
 /// # Errors
 /// A [`FieldError`] on `field` when the text is not an organisation name.
 pub fn organisation(field: &'static str, text: &str) -> Result<String, FieldError> {
@@ -87,8 +76,6 @@ pub fn organisation(field: &'static str, text: &str) -> Result<String, FieldErro
     }
 }
 
-/// The checked repository.
-///
 /// # Errors
 /// A [`FieldError`] on `repository` when the text is not `organisation/name`.
 pub fn repository(text: &str) -> Result<Repository, FieldError> {
@@ -109,11 +96,9 @@ pub fn repository(text: &str) -> Result<Repository, FieldError> {
     }
 }
 
-/// The words a repository name adds after the model name, which a model name leaves out.
+/// Format words a repository name adds, which a model name leaves out.
 const SUFFIXES: [&str; 6] = ["-gguf", "-mlx", "-instruct-gguf", "-bf16", "-4bit", "-8bit"];
 
-/// The model name the hub proposes for a repository: its name in lower case, without a format
-/// word at the end, with each other character mapped to a dash.
 #[must_use]
 pub fn proposed(repository: &Repository) -> String {
     let mut text: String = repository
@@ -135,8 +120,7 @@ pub fn proposed(repository: &Repository) -> String {
     text.trim_end_matches(['-', '.']).to_owned()
 }
 
-/// Whether a variant from the repository's organisation can be added: the organisation is in
-/// the approved list (LIBM-003). Hugging Face compares organisation names without case.
+/// Hugging Face compares organisation names without case (LIBM-003).
 #[must_use]
 pub fn is_approved(organisation: &str, approved: &[String]) -> bool {
     approved

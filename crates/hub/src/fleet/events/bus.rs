@@ -9,11 +9,9 @@ use crate::{
     status::Status,
 };
 
-/// A change that live views show.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Signal {
     Event(EventSummary),
-    /// A device's status changed at `at` (R-028).
     DeviceStatus {
         device: DeviceId,
         status: Status,
@@ -26,8 +24,7 @@ pub enum Signal {
     },
 }
 
-/// A bounded broadcast channel. A subscriber that falls more than `capacity` signals behind
-/// receives `RecvError::Lagged` and skips the oldest signals; publishers never wait.
+/// A slow subscriber skips the oldest signals; publishers never wait.
 #[derive(Clone, Debug)]
 pub struct Bus {
     sender: broadcast::Sender<Signal>,
@@ -35,7 +32,6 @@ pub struct Bus {
 
 impl Bus {
     /// # Panics
-    ///
     /// If `capacity` is 0.
     #[must_use]
     pub fn new(capacity: usize) -> Self {
@@ -43,14 +39,11 @@ impl Bus {
         Self { sender }
     }
 
-    /// Sends `signal` to every current subscriber.
     pub fn publish(&self, signal: Signal) {
-        // `send` fails only when nobody is subscribed. A signal is a live update, not a
-        // record, so with no listener there is nothing to deliver and nothing to report.
+        // `send` fails only when nobody is subscribed; a live update with no listener has nothing to report.
         let _ = self.sender.send(signal);
     }
 
-    /// A receiver for every signal published from now on.
     #[must_use]
     pub fn subscribe(&self) -> broadcast::Receiver<Signal> {
         self.sender.subscribe()

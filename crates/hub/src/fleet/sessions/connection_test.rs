@@ -1,6 +1,5 @@
-//! The connection test (DEV-013, SEC-006, SEC-007): whether a device answers over SSH, RDP or
-//! VNC, and the SSH host key or RDP server certificate it presents, recorded in
-//! `trust::Sightings` for `acceptHostKey` and `acceptServerCertificate`.
+//! The connection test (DEV-013, SEC-006, SEC-007). The host key or certificate it sees is
+//! recorded in `trust::Sightings` for `acceptHostKey` and `acceptServerCertificate`.
 
 mod desktop_test;
 mod rdp;

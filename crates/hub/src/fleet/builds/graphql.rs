@@ -1,7 +1,5 @@
-//! The builds GraphQL part (K1; Section 3.10): the operator's `Query`, `Mutation` and
-//! `Subscription`, each field behind `Authenticated`, and the builder's mutations in
-//! [`BuilderMutation`], behind `BuilderSignedIn` (BLD-022, D-1).
-//!
+//! The builds GraphQL part (K1; Section 3.10): operator fields are behind `Authenticated`,
+//! builder mutations behind `BuilderSignedIn` (BLD-022, D-1).
 //! Each operator mutation writes its change and one audit entry in one transaction (BLD-082).
 
 mod builder;

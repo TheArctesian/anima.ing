@@ -12,8 +12,6 @@ pub(in crate::fleet::metrics) async fn database_now(db: &PgPool) -> Result<DateT
         .await?)
 }
 
-/// Creates the sample partitions of the UTC days from `first` through `days` days after it, in
-/// one statement (DB-004).
 pub(in crate::fleet::metrics) async fn create_days_ahead(
     db: &PgPool,
     first: DateTime<Utc>,
@@ -31,8 +29,7 @@ pub(in crate::fleet::metrics) async fn create_days_ahead(
     Ok(())
 }
 
-/// Drops the sample partitions of the UTC days before `cutoff`; returns their names. The
-/// database refuses a cutoff inside the 1-day floor (DB-005).
+/// The database refuses a cutoff inside the 1-day floor (DB-005).
 pub(in crate::fleet::metrics) async fn drop_days_before(
     db: &PgPool,
     cutoff: NaiveDate,
@@ -47,8 +44,6 @@ pub(in crate::fleet::metrics) async fn drop_days_before(
     )
 }
 
-/// Deletes the minute, hour and day buckets that start before their cutoffs; returns how many
-/// of each (DB-009). A bucket that starts exactly at the limit is kept.
 pub(in crate::fleet::metrics) async fn trim_aggregates(
     db: &PgPool,
     cutoffs: &Cutoffs,
@@ -71,7 +66,6 @@ pub(in crate::fleet::metrics) async fn trim_aggregates(
     ])
 }
 
-/// Deletes the samples whose series no longer exists; returns how many (DEV-015).
 pub(in crate::fleet::metrics) async fn delete_orphan_samples(db: &PgPool) -> Result<u64, Error> {
     let deleted = sqlx::query(
         "DELETE FROM metrics.samples m \
@@ -82,10 +76,8 @@ pub(in crate::fleet::metrics) async fn delete_orphan_samples(db: &PgPool) -> Res
     Ok(deleted.rows_affected())
 }
 
-/// Deletes the series that have no minute, hour or day row and no sample since `since`; returns
-/// how many (D-5: a device that renames its mounts cannot grow the table without bound). A
-/// series a collection writes has a sample from the last minute, so it is never idle; one that
-/// is written again later is created again by the upsert of `record`.
+/// A device that renames its mounts cannot grow the table without bound (D-5); a series written
+/// again later is created again by the upsert of `record`.
 pub(in crate::fleet::metrics) async fn delete_idle_series(
     db: &PgPool,
     since: DateTime<Utc>,

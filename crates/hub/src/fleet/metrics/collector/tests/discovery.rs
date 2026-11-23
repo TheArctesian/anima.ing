@@ -1,5 +1,4 @@
-//! When the hub looks for a device's GPUs, how it numbers what it finds and keeps the numbers
-//! (MET-006, MET-007, MET-009), without a device.
+//! MET-006, MET-007, MET-009.
 
 use chrono::{DateTime, TimeDelta, Utc};
 use daemon_core::readings::captures::IOREG_ACCELERATOR;
@@ -17,7 +16,6 @@ use crate::fleet::{
     },
 };
 
-/// Which look is due.
 #[derive(Debug, PartialEq)]
 enum Due {
     No,
@@ -25,7 +23,6 @@ enum Due {
     Only(Vec<GpuVendor>),
 }
 
-/// The look due for `known` at `now` with no boot time.
 fn look(known: Option<&Discovered>, now: DateTime<Utc>) -> Due {
     match due(known, None, now) {
         None => Due::No,
@@ -33,7 +30,6 @@ fn look(known: Option<&Discovered>, now: DateTime<Utc>) -> Due {
     }
 }
 
-/// `answers` with the one of `vendor` replaced by `answer`.
 fn with(
     mut answers: Vec<(GpuVendor, Answer)>,
     vendor: GpuVendor,
@@ -47,7 +43,6 @@ fn with(
     answers
 }
 
-/// Device number, vendor and own number of each known GPU.
 fn numbers(known: &Discovered) -> Vec<(i32, GpuVendor, u32)> {
     known
         .gpus
@@ -56,7 +51,6 @@ fn numbers(known: &Discovered) -> Vec<(i32, GpuVendor, u32)> {
         .collect()
 }
 
-/// What the hub knows after the look due at `now` (no boot time) gave `answers`.
 fn looked(known: &Discovered, answers: &[(GpuVendor, Answer)], now: DateTime<Utc>) -> Discovered {
     due(Some(known), None, now)
         .unwrap()
@@ -229,7 +223,6 @@ fn met_006_an_unknown_vendor_keeps_its_gpus_and_alone_is_looked_at_again() {
     assert_eq!(numbers(&done).len(), 3, "only Intel was looked at");
 }
 
-/// `answers` with NVIDIA's tool exiting `status` with no output.
 pub(super) fn failed(answers: &[(GpuVendor, Answer)], status: u32) -> Vec<(GpuVendor, Answer)> {
     let nvidia = answer(GpuVendor::Nvidia, &output(Some(status), b""));
     with(answers.to_vec(), GpuVendor::Nvidia, &nvidia)
@@ -305,7 +298,6 @@ fn met_009_gpus_keep_their_numbers_and_a_new_one_takes_the_lowest_free() {
     );
 }
 
-/// The vendors whose reads `plan` runs.
 pub(super) fn reads(plan: &Plan) -> Vec<GpuVendor> {
     plan.commands()
         .iter()

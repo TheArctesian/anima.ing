@@ -1,5 +1,4 @@
-//! Builders: enrolment with a builder token, revocation, the list, the check of each builder
-//! request, and the audit of builders that went with their tokens (BLD-021 to BLD-025, D-1).
+//! BLD-021 to BLD-025, D-1.
 
 use std::net::{IpAddr, Ipv4Addr};
 
@@ -21,16 +20,12 @@ use crate::{
     ids::{BuilderId, OperatorId, TokenId},
 };
 
-/// The longest builder name, in characters.
 const MAX_NAME_CHARS: usize = 64;
 
-/// The refusal of a builder request from another address than the enrolment's (BLD-024).
 const WRONG_ADDRESS: &str = "This builder must call from the address it enrolled from.";
 
-/// The refusal of a builder token whose builder record is gone.
 pub(super) const NOT_ENROLLED: &str = "This builder is not enrolled.";
 
-/// What the operator's client sends to enrol its computer (BLD-021).
 #[derive(Clone, Debug)]
 pub struct BuilderInput {
     pub name: String,
@@ -39,22 +34,20 @@ pub struct BuilderInput {
     pub client: IpAddr,
 }
 
-/// A new builder and its token, shown once. No `Debug`: it holds the token (LOG-007).
+/// No `Debug`: it holds the token (LOG-007).
 pub struct Enrolment {
     pub builder: Builder,
     pub token: IssuedToken,
 }
 
 impl Builder {
-    /// Whether it reported within the last 60 seconds at `now` (BLD-007).
     #[must_use]
     pub fn online_at(&self, now: DateTime<Utc>) -> bool {
         queue::online(self.last_seen_at, now)
     }
 }
 
-/// The name as stored: trimmed, 1 to 64 characters, no control or hidden character (a
-/// format or default-ignorable character could make two names look alike).
+/// Hidden characters are refused because they could make two names look alike.
 pub(super) fn name(text: &str) -> Result<String, FieldError> {
     let text = text.trim();
     let count = text.chars().count();
@@ -72,8 +65,7 @@ pub(super) fn name(text: &str) -> Result<String, FieldError> {
     Ok(text.to_owned())
 }
 
-/// Records a builder that calls from the input's address and issues its token, valid 180 days
-/// (BLD-021, BLD-022). The caller commits it with its audit entry.
+/// The caller commits the enrolment with its audit entry (BLD-021, BLD-022).
 ///
 /// # Errors
 ///
@@ -100,8 +92,7 @@ pub async fn enrol(
     Ok(Enrolment { builder, token })
 }
 
-/// Deletes the builder and revokes its token, so it stops working at once (BLD-025). A job it
-/// holds goes back to the queue when its lease ends. Returns the builder.
+/// The builder stops working at once (BLD-025); a held job returns to the queue when its lease ends.
 ///
 /// # Errors
 ///
@@ -125,8 +116,7 @@ pub async fn builders(db: &PgPool) -> Result<Vec<Builder>, Error> {
     store::builders(db).await
 }
 
-/// The builder that holds `token`, if `client` is the address it enrolled from (BLD-024).
-/// Records that it called at `now`.
+/// Only from the address the builder enrolled from (BLD-024); records the call at `now`.
 ///
 /// # Errors
 ///
@@ -150,12 +140,9 @@ pub async fn builder_for(
     })
 }
 
-/// Why builders went with their tokens other than by `revokeBuilder` (BLD-025).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Removal {
-    /// `anima-hub operator set` or `operator totp` deleted every token of the operator.
     CredentialsChanged,
-    /// The daily prune deleted the expired builder token.
     TokenExpired,
 }
 
@@ -168,9 +155,7 @@ impl Removal {
     }
 }
 
-/// Writes one audit entry, by the hub itself, for each builder of `before` that is gone now:
-/// deleting its token deleted it (BLD-025, LOG-004). Read `before` with [`builders`] just ahead
-/// of the deletion. Returns how many builders went.
+/// Audits each builder of `before` that is gone (BLD-025, LOG-004); read `before` just ahead of the deletion.
 ///
 /// # Errors
 ///

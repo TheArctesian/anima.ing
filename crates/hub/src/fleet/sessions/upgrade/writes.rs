@@ -1,6 +1,4 @@
-//! The hub's writes to the client that every WebSocket tunnel makes: one send that races the
-//! end signal, so a client that stops reading cannot hide an `endSession` or a shutdown (the
-//! first cause wins, D-9), and the close, with a short wait of its own.
+//! A send races the end signal, so a client that stops reading cannot hide an end (D-9).
 
 use std::time::Duration;
 
@@ -13,8 +11,7 @@ use crate::fleet::sessions::{
     end::{CLIENT_STOPPED_READING, CLOSE_WAIT, Cause, End},
 };
 
-/// Sends one message to the client, unless the session ends first. A failed send is the
-/// client leaving; one that stalls past `wait` is a timeout (K4 Sections 4 and 8.5).
+/// A send that stalls past `wait` is a timeout (K4 Sections 4 and 8.5).
 pub(in crate::fleet::sessions) async fn send(
     client: &mut WebSocket,
     message: Message,
@@ -31,11 +28,7 @@ pub(in crate::fleet::sessions) async fn send(
     }
 }
 
-/// Sends `last`, when there is one, then the close frame with the cause's code (K4 Sections 5,
-/// 8.6 and 9), then flushes and closes the socket. Best effort within [`CLOSE_WAIT`]: the
-/// client may be gone, and the session ends either way. When the client closed first, the
-/// WebSocket library refuses the sends, and its echo of the client's close is what goes out
-/// (RFC 6455 Section 5.5.1); closing the sink flushes it.
+/// When the client closed first, the library's echo of its close goes out (RFC 6455 Section 5.5.1).
 pub(in crate::fleet::sessions) async fn close(
     mut client: WebSocket,
     last: Option<Message>,
@@ -51,11 +44,8 @@ pub(in crate::fleet::sessions) async fn close(
         }
         let _ = client.send(Message::Close(Some(frame))).await;
         let _ = SinkExt::close(&mut client).await;
-        // Finish a normal closing handshake before dropping a socket with unread input:
-        // Windows can otherwise reset it and discard the outgoing close. Do not read after
-        // a protocol violation: an oversized frame must never be drained into memory.
-        // Keep that socket alive for the bounded closing grace instead, giving the peer
-        // time to read the close before Windows discards unread input with a reset.
+        // A finished closing handshake keeps Windows from resetting the socket and losing the close.
+        // After a protocol violation the hub waits instead: an oversized frame is never read into memory.
         if cause == Cause::InvalidInstruction {
             tokio::time::sleep(CLOSE_WAIT).await;
         } else {

@@ -1,5 +1,3 @@
-//! A fake `LocalAPI` proxy: records each request head and body length, answers as told.
-
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicUsize, Ordering},
@@ -13,7 +11,6 @@ use tokio::{
 #[derive(Clone, Debug)]
 pub enum Reply {
     Answer(u16, String),
-    /// Accepts the request and never answers.
     Hang,
 }
 
@@ -23,7 +20,6 @@ impl Reply {
     }
 }
 
-/// A request as the proxy saw it.
 #[derive(Debug)]
 pub struct Seen {
     pub head: String,

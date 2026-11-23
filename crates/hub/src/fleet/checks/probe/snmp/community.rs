@@ -1,4 +1,4 @@
-//! The SNMP v2c message (RFC 1901): the community, then the PDU. Pure.
+//! The SNMP v2c message (RFC 1901): the community, then the PDU.
 
 use super::{
     ber::{self, Bytes, Malformed, Reader},
@@ -9,7 +9,6 @@ use crate::fleet::checks::probe::Failure;
 /// The version field of an SNMP v2c message.
 const VERSION: i64 = 1;
 
-/// A `GetRequest` for `oid` with the community. `None` when the OID cannot be encoded.
 #[must_use]
 pub(in crate::fleet::checks) fn request(
     community: &[u8],
@@ -33,8 +32,6 @@ fn read(datagram: &[u8]) -> Result<Pdu, Malformed> {
     Pdu::last(&mut message)
 }
 
-/// The Response to the request with this id. `None` for a reply to another request, which
-/// the caller ignores; a datagram that is not an SNMP v2c Response is malformed.
 #[must_use]
 pub(in crate::fleet::checks) fn response(
     datagram: &[u8],

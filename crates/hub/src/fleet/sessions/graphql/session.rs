@@ -1,4 +1,4 @@
-//! `Session` as the GraphQL type K1 describes. It does not expose the operator id.
+//! K1 `Session`; it never exposes the operator id.
 
 use async_graphql::{ID, Object};
 use chrono::{DateTime, Utc};

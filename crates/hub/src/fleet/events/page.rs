@@ -1,11 +1,10 @@
-//! Keyset paging over a log, newest first (API-006, R-014): page sizes and the opaque cursors.
+//! Keyset paging over a log, newest first (API-006, R-014).
 
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use super::retention::Log;
 
-/// The most entries one page may hold.
 pub(super) const MAX_PAGE_SIZE: usize = 200;
 
 /// An entry's place in newest-first order: by `at`, then by `id`, both descending.
@@ -15,26 +14,23 @@ pub(super) struct Position {
     pub(super) id: Uuid,
 }
 
-/// One page of entries and whether more follow.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct Page<T> {
     pub(super) rows: Vec<T>,
     pub(super) has_next_page: bool,
 }
 
-/// The page size the operator asked for (`first`), if it is between 1 and [`MAX_PAGE_SIZE`].
 pub(super) fn page_size(first: i32) -> Option<usize> {
     usize::try_from(first)
         .ok()
         .filter(|size| (1..=MAX_PAGE_SIZE).contains(size))
 }
 
-/// How many rows to fetch for a page of `size`: one more, to learn whether a next page exists.
+/// One more row than `size`, to learn whether a next page exists.
 pub(super) fn fetch_limit(size: usize) -> i64 {
     i64::try_from(size.saturating_add(1)).unwrap_or(i64::MAX)
 }
 
-/// Turns rows fetched with [`fetch_limit`] into a page of at most `size` rows.
 pub(super) fn split_page<T>(mut fetched: Vec<T>, size: usize) -> Page<T> {
     let has_next_page = fetched.len() > size;
     fetched.truncate(size);
@@ -44,7 +40,6 @@ pub(super) fn split_page<T>(mut fetched: Vec<T>, size: usize) -> Page<T> {
     }
 }
 
-/// Each log has its own prefix, so a cursor from one list is refused by the other.
 const fn prefix(log: Log) -> &'static str {
     match log {
         Log::Events => "e1.",
@@ -52,8 +47,6 @@ const fn prefix(log: Log) -> &'static str {
     }
 }
 
-/// The opaque cursor that points just after `position` in `log`: the prefix, the instant in
-/// microseconds since the epoch, a dot, and the id as 32 hex digits.
 pub(super) fn encode_cursor(log: Log, position: Position) -> String {
     format!(
         "{}{}.{}",
@@ -63,9 +56,6 @@ pub(super) fn encode_cursor(log: Log, position: Position) -> String {
     )
 }
 
-/// The position a cursor of `log` points after; `None` for any text [`encode_cursor`] did not
-/// make for that log. Only the exact text it makes is accepted, so no two cursors name one
-/// position.
 pub(super) fn decode_cursor(log: Log, cursor: &str) -> Option<Position> {
     let (micros, id) = cursor.strip_prefix(prefix(log))?.split_once('.')?;
     let at = DateTime::from_timestamp_micros(micros.parse().ok()?)?;

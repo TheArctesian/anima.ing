@@ -1,4 +1,4 @@
-//! The end table (K4 Section 5 as amended by R-032, D-9) and the relay timings.
+//! K4 Section 5 as amended by R-032, D-9.
 
 use std::{io, time::Duration};
 
@@ -51,7 +51,6 @@ fn sec_007_host_key_mismatch_ends_4001_error() {
 fn sec_007_server_certificate_mismatch_ends_4003_error_and_endsession_maps_back() {
     let expected = row(4003, EndReason::ServerCertificateMismatch, Severity::Error);
     assert_eq!(Cause::ServerCertificateMismatch.ending(), expected);
-    // A reason signalled from outside the tunnel names the same cause, for every reason.
     for reason in EndReason::ALL {
         assert_eq!(Cause::from(reason).ending().reason, reason, "{reason:?}");
     }
@@ -124,7 +123,6 @@ fn ra_008_an_end_message_names_the_session_protocol() {
 
 #[test]
 fn log_014_only_the_client_and_the_far_side_end_a_session_as_the_request() {
-    // (cause, decided by the hub): a Hub end keeps the session's operator, with the kind Hub.
     let table = [
         (Cause::OperatorClosed, false),
         (Cause::RemoteClosed, false),
@@ -139,7 +137,6 @@ fn log_014_only_the_client_and_the_far_side_end_a_session_as_the_request() {
     for (cause, by_hub) in table {
         assert_eq!(cause.decided_by_hub(), by_hub, "{cause:?}");
     }
-    // Every reason a session can end with is in the table.
     for reason in EndReason::ALL {
         let cause = Cause::from(reason);
         assert!(table.iter().any(|(row, _)| *row == cause), "{reason:?}");

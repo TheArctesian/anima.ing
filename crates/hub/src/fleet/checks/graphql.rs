@@ -1,10 +1,5 @@
-//! The checks GraphQL part: root `Query`, `Mutation` and `Subscription` (K1; API-003, API-005,
-//! API-006, CHK-005, CHK-007, LOG-005, LOG-007).
-//!
-//! The `Check` type and the types below it live in the sub-modules. A mutation writes its
-//! change, one audit entry and one event in one transaction. No secret is ever returned,
-//! audited, recorded as an event or written to the log; the inputs that can carry one refuse
-//! to quote what they could not read.
+//! K1; API-003, API-005, API-006, CHK-005, CHK-007, LOG-005.
+//! No secret is ever returned, audited, recorded as an event or written to the log (LOG-007).
 
 mod check;
 mod config_view;

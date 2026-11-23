@@ -1,7 +1,5 @@
-//! A hub serving only `/terminal` on a loopback port, with a started session on
-//! `docker-host`. The session starts while the device's host is `10.10.0.21` (a K6 device),
-//! then the device moves to the fake SSH server on loopback, which the tests' target rule
-//! lets the hub reach (R-032).
+//! The session starts on a K6 device host, then the device moves to the fake SSH server on
+//! loopback, which the tests' target rule lets the hub reach (R-032).
 
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
@@ -27,7 +25,6 @@ use crate::{
     ids::SessionId,
 };
 
-/// The seed of the host key the fake SSH server presents.
 const HOST_KEY_SEED: u8 = 5;
 
 /// Waits long enough that only the test's own action ends a session.
@@ -44,13 +41,9 @@ pub(super) fn patient() -> Timing {
     }
 }
 
-/// How long the tests' `endSession` waits for a session to end its row (D-10): far short of
-/// the waits in [`patient`], so only the end signal ends a session within it.
+/// Far short of [`patient`]'s waits, so only the end signal ends a session within it (D-10).
 pub(super) const END_WAIT: Duration = Duration::from_secs(10);
 
-/// How the bench differs from the default: the route's waits, the live state, the address
-/// the ticket is bound to, the accepted host key when it is not the one the server presents,
-/// and how the server behaves.
 pub(super) struct Setup {
     pub(super) terminal: Box<dyn FnOnce(&mut Terminal) + Send>,
     pub(super) ticket_client: ClientAddr,
@@ -72,7 +65,6 @@ impl Default for Setup {
 }
 
 impl Setup {
-    /// The default setup with the route tuned by `tune`.
     pub(super) fn terminal(tune: impl FnOnce(&mut Terminal) + Send + 'static) -> Self {
         Self {
             terminal: Box::new(tune),
@@ -80,7 +72,6 @@ impl Setup {
         }
     }
 
-    /// The default setup with the server behaving as `script`.
     pub(super) fn script(script: Script) -> Self {
         Self {
             script,
@@ -89,10 +80,7 @@ impl Setup {
     }
 }
 
-/// A served terminal route, the device's fake SSH server and one started session's ticket.
-/// `served` is the route's address.
 pub(super) struct Bench {
-    /// The route's dependencies and waits, as served.
     pub(super) terminal: Terminal,
     pub(super) live: Live,
     pub(super) session: SessionId,
@@ -102,8 +90,6 @@ pub(super) struct Bench {
     pub(super) ssh: FakeSsh,
 }
 
-/// Starts a session on `docker-host` at `now()`, moves the device to the fake SSH server on
-/// loopback, and serves the terminal route.
 pub(super) async fn bench(pool: &PgPool, setup: Setup) -> Bench {
     let vault = vault();
     let ssh = fake_ssh(HOST_KEY_SEED, setup.script).await;

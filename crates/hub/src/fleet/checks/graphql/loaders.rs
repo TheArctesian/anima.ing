@@ -1,9 +1,5 @@
-//! Batched reads behind `Check.status`, `Check.lastHeartbeat`, `Check.uptime` and
-//! `Check.notifications`: a fixed number of queries per level of a nested selection, however
-//! many checks it holds (API-005).
-//!
-//! None of the loaders caches, so one instance serves every request. The ones that judge
-//! time read the clock once per batch.
+//! A fixed number of queries per level of a nested selection, however many checks (API-005).
+//! No loader caches, so one instance serves every request.
 
 use std::{collections::HashMap, sync::Arc};
 

@@ -1,9 +1,6 @@
-//! The credentials GraphQL part: the operational keys (K1; K-E5 Section 2.2, R-147).
-//!
-//! The queries give the metadata, the versions, the due state and the consumers; no field holds
-//! a value. Each change needs a login or browser token (D-23): the backstop refuses an API key
-//! before any resolver, and each resolver asks again with `operator_only`. A grant is a trust
-//! decision. Each change writes its rows, one audit entry and one event in one transaction.
+//! The operational keys (K1; K-E5 Section 2.2, R-147); no field holds a value.
+//! Each change needs a login or browser token (D-23), checked by the backstop and again by
+//! `operator_only`, and writes its rows, one audit entry and one event in one transaction.
 
 mod views;
 

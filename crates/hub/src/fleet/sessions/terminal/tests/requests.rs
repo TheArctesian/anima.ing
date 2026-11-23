@@ -1,6 +1,4 @@
-//! Handing a PTY or shell request to the connection (K4 Section 8.5): a hand-off still
-//! waiting at the request wait ends the session `GATEWAY_ERROR`, and the end signal ends it
-//! first. Time is paused, so the waits are exact.
+//! K4 Section 8.5.
 
 use std::time::Duration;
 
@@ -13,7 +11,6 @@ use crate::fleet::sessions::{
     tests::tickets::{CLIENT, client, issue, issued_at, session},
 };
 
-/// A redeemed ticket's tunnel on a live state of its own.
 fn tunnel() -> (Live, Tunnel) {
     let live = Live::default();
     let text = issue(&live, 1, 4);
@@ -49,7 +46,6 @@ async fn d_10_end_session_ends_a_request_still_being_handed_over() {
     };
     live.end_by(session(1), &by);
     let due = tokio::time::Instant::now() + Duration::from_secs(15);
-    // Well before the request wait: only the end signal ends the hand-off within it.
     let handing = handed(&mut tunnel, std::future::pending(), due);
     let end = tokio::time::timeout(Duration::from_secs(1), handing)
         .await

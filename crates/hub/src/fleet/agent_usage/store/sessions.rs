@@ -1,6 +1,4 @@
-//! The SQL of the single sessions (AIS-025): the sessions that have use on the days asked for,
-//! newest use first, and the tokens of each by model. Every text from a device reaches a
-//! statement as a bound value, never as SQL.
+//! Single sessions (AIS-025); text from a device reaches a statement only as a bound value.
 
 use std::collections::HashMap;
 
@@ -39,8 +37,6 @@ struct ModelRow {
     cache_write_tokens: f64,
 }
 
-/// At most `limit` sessions that `ask` admits, the newest last use first (the row ID breaks a
-/// tie), with their sums over the days of `ask`, and how many it admits in all. Two statements.
 pub(in super::super) async fn sessions(
     db: &PgPool,
     ask: &Ask,
@@ -71,8 +67,6 @@ pub(in super::super) async fn sessions(
     Ok(SessionList { sessions, admitted })
 }
 
-/// The sessions with use on the days of `ask`, newest use first, each with its prompts and tool
-/// calls on those days and the count of all that `ask` admits.
 async fn admitted(db: &PgPool, ask: &Ask, limit: usize) -> Result<Vec<SessionRow>, Error> {
     let rows = sqlx::query_as(
         "SELECT s.id, s.device_id, s.source, s.model, s.repository, s.started_at, s.ended_at, \
@@ -99,7 +93,6 @@ async fn admitted(db: &PgPool, ask: &Ask, limit: usize) -> Result<Vec<SessionRow
     Ok(rows)
 }
 
-/// The tokens of each of the sessions `ids` by model, summed over the days of `ask`.
 async fn model_sums(
     db: &PgPool,
     ask: &Ask,

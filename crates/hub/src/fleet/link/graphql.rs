@@ -1,10 +1,6 @@
-//! The link GraphQL part: `Query.linkDevices`, `Mutation.createLinkInvite` and
-//! `Mutation.revokeLinkDevice` (K1; FRN-009, LNK-003, LNK-004, OR-S6-3).
-//!
-//! Both mutations are for a login or browser token only, as `createApiKey` (D-23): the
-//! backstop refuses an API key and a builder token before any resolver, and each resolver asks
-//! again with `operator_only`. Each writes one audit entry and one event, never the invite
-//! (LOG-005, LOG-007).
+//! The link GraphQL part (K1; FRN-009, LNK-003, LNK-004, OR-S6-3).
+//! Both mutations are for a login or browser token only, refused before any resolver and again by `operator_only` (D-23).
+//! Each writes one audit entry and one event, never the invite (LOG-005, LOG-007).
 
 mod change;
 mod computer;

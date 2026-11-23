@@ -1,6 +1,4 @@
-//! `acceptServerCertificate`'s argument rules: the fingerprint the operator pastes may carry
-//! surrounding space, in either form or case, and is stored as lower-case colon pairs (SEC-007,
-//! Q2-10).
+//! `acceptServerCertificate`'s argument rules (SEC-007, Q2-10).
 
 use async_graphql::ID;
 

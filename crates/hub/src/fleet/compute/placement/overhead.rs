@@ -1,9 +1,7 @@
-//! The fixed memory overhead of each runtime and backend (FIT-003): compute buffers, scratch
-//! space and the runtime itself. The defaults are estimates; measurements replace them.
+//! The fixed memory overhead of each runtime and backend (FIT-003); the defaults are estimates.
 
 const MIB: u64 = 1024 * 1024;
 
-/// The overhead of one runtime on one backend.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OverheadEntry {
     pub runtime: String,
@@ -11,7 +9,6 @@ pub struct OverheadEntry {
     pub bytes: u64,
 }
 
-/// The configuration of overheads, with a fallback for a pair it does not list.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OverheadTable {
     pub fallback_bytes: u64,
@@ -39,7 +36,6 @@ impl Default for OverheadTable {
 }
 
 impl OverheadTable {
-    /// The overhead for a runtime and backend, or the fallback when the pair is not listed.
     #[must_use]
     pub fn bytes_for(&self, runtime: &str, backend: &str) -> u64 {
         self.entries
@@ -48,7 +44,6 @@ impl OverheadTable {
             .map_or(self.fallback_bytes, |e| e.bytes)
     }
 
-    /// Replace (or add) the overhead of a pair with a measured value.
     pub fn record_measurement(&mut self, runtime: &str, backend: &str, bytes: u64) {
         match self
             .entries

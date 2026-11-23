@@ -1,9 +1,6 @@
-//! The status filter, the STATUS and UPTIME orders and their cursors (CHK-004, CHK-011,
-//! API-006). Pure: the readings come in as parameters.
-//!
-//! Every order is a (key, name) pair. The key is 0 for NAME, the severity rank for STATUS and
-//! the bits of the uptime ratio for UPTIME (ratios are never negative, so their bits sort like
-//! the numbers; no ratio sorts last). The unique name breaks ties, so a cursor is exact.
+//! The status filter, the STATUS and UPTIME orders and their cursors (CHK-004, CHK-011, API-006).
+//! Uptime ratios are never negative, so their bits sort like the numbers; the unique name breaks
+//! ties, so a cursor is exact.
 
 use std::collections::HashMap;
 
@@ -28,7 +25,6 @@ const ALL: [Status; 5] = [
     Status::Unknown,
 ];
 
-/// What the checks domain says about the devices being ordered.
 pub(super) struct Readings {
     pub(super) statuses: HashMap<DeviceId, Status>,
     pub(super) uptimes: HashMap<DeviceId, f64>,
@@ -43,7 +39,6 @@ impl Readings {
     }
 }
 
-/// Where a page starts: just after the device with this key and name.
 #[derive(Debug, PartialEq, Eq)]
 pub(in crate::fleet::devices::graphql) struct Position {
     key: u64,
@@ -70,7 +65,6 @@ fn key_of(sort: DeviceSort, device: &Device, readings: &Readings) -> u64 {
     }
 }
 
-/// The devices whose status is one of `wanted` (all when it is empty), in the order of `sort`.
 pub(super) fn arrange(
     devices: Vec<Device>,
     sort: DeviceSort,
@@ -86,7 +80,6 @@ pub(super) fn arrange(
     kept
 }
 
-/// One page of arranged devices after `after`, each with its cursor, and whether more follow.
 pub(super) fn page(
     arranged: Vec<(u64, Device)>,
     sort: DeviceSort,
@@ -114,8 +107,7 @@ fn tag(sort: DeviceSort) -> &'static str {
     }
 }
 
-/// The opaque cursor after this device. NAME keeps the cursor of the SQL path, so the two
-/// paths take each other's cursors.
+/// NAME keeps the cursor of the SQL path, so the two paths take each other's cursors.
 pub(super) fn cursor(sort: DeviceSort, key: u64, name: &str) -> String {
     match sort {
         DeviceSort::Name => encode_cursor(name),
@@ -127,8 +119,6 @@ pub(super) fn cursor(sort: DeviceSort, key: u64, name: &str) -> String {
     }
 }
 
-/// The position a cursor points after, if the cursor was made for this sort.
-///
 /// # Errors
 /// An `after` error when the text is not a cursor of this sort.
 pub(in crate::fleet::devices::graphql) fn decode(

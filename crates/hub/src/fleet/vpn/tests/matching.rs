@@ -1,9 +1,8 @@
-//! The match of a node to an Anima device and the node's name (VPN-008, VPN-011, BD-14).
+//! VPN-008, VPN-011, BD-14.
 
 use super::{device, device_id, json, peer_mut, picture_with, reparse};
 use crate::fleet::vpn::Picture;
 
-/// The idle fixture's mac with `dns_name` and `host_name`, matched against `devices`.
 fn mac_matched(
     dns_name: &str,
     host_name: &str,

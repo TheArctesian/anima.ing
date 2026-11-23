@@ -1,8 +1,4 @@
-//! Rounds against a test SSH device on loopback: one link per collection with the exact
-//! commands and nothing else, the samples stored and published, rates on the second round,
-//! one event per change, Windows skipped without a link, a link lost on a GPU read that keeps
-//! the collection, a huge GPU value that fails nothing, and the distribution recorded (MET-001,
-//! MET-002, MET-005, MET-006, CHK-012, DEV-016, P2-003, D-4, D-10, D-11).
+//! Rounds against a loopback SSH device (MET-001, MET-002, MET-005, MET-006, CHK-012, DEV-016, P2-003, D-4, D-10, D-11).
 
 use sqlx::PgPool;
 use tokio::sync::broadcast::error::TryRecvError;
@@ -220,7 +216,6 @@ async fn met_006_a_link_lost_on_a_gpu_read_keeps_the_collection(pool: PgPool) {
     );
 }
 
-/// `docker-host`'s stored distribution and the transaction id that last wrote its row.
 async fn distribution(pool: &PgPool) -> (Option<String>, String) {
     sqlx::query_as("select distribution, xmin::text from devices.devices where id = $1::text::uuid")
         .bind(DOCKER_HOST)

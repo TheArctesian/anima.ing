@@ -1,19 +1,6 @@
 //! `GET /files` (K4 Sections 8.1 and 9, API-009): every refusal happens before the WebSocket
-//! upgrade, with an HTTP status and an empty body.
-//!
-//! 1. The token from the query and the client address, then the files ticket's single-use
-//!    redemption (403). The token is spent before anything else is checked (K4 Section 1).
-//! 2. The ticket's SSH session must still have its tunnel open, and the hub must not be
-//!    shutting down (403). The relay then registers with `Live`, so hub shutdown waits for it
-//!    to write the audit entry of a transfer it cuts short.
-//! 3. The subprotocol `anima-files` (400).
-//! 4. The device side: the device, a link to it (pinned key, stored credential, deny list,
-//!    P2-003, P2-004), the `sftp` subsystem and the SFTP version exchange, unless the session
-//!    ends first (503). A changed host key also writes an Error event (SEC-007).
-//!
-//! No session row belongs to the files tunnel, so this handler, not a task, does the opening:
-//! the client leaving drops it and with it the link. Neither the URI, the query nor the token
-//! reaches a log, a span or an error (LOG-007).
+//! upgrade, with an HTTP status and an empty body; the token is spent first (K4 Section 1).
+//! Neither the URI, the query nor the token reaches a log, a span or an error (LOG-007).
 
 use std::{sync::Arc, time::Duration};
 
@@ -50,7 +37,6 @@ use crate::{
     ids::SiteId,
 };
 
-/// The WebSocket subprotocol the client asks for (K4 Section 9).
 const SUBPROTOCOL: &str = "anima-files";
 /// The device side's whole opening: the link's own 10 s and the subsystem with SFTP's start.
 const OPENING: Duration = Duration::from_secs(15);
@@ -63,7 +49,6 @@ const KEEP_ALIVE: Duration = Duration::from_secs(30);
 /// Most entries in one `entries` message (K4 Section 9); the rest of a directory is not read.
 const MAX_ENTRIES: usize = 10_000;
 
-/// The waits of one files tunnel. Tests shorten them; the hub uses `Timing::default()`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Timing {
     pub(super) opening: Duration,
@@ -87,7 +72,6 @@ impl Default for Timing {
     }
 }
 
-/// What the files route needs: the hub's stores, the live state, the deny list and the waits.
 #[derive(Clone)]
 pub(super) struct Files {
     pub(super) db: PgPool,
@@ -100,8 +84,7 @@ pub(super) struct Files {
     pub(super) max_entries: usize,
 }
 
-/// The `/files` route (K3 with CR-1's `policy`, K4 Section 9). `main.rs` mounts it behind
-/// `access::permitted_networks_layer` (NET-002) and serves it with `ConnectInfo<SocketAddr>`.
+/// `main.rs` mounts this behind `access::permitted_networks_layer` (NET-002).
 #[expect(
     clippy::too_many_arguments,
     reason = "K3 fixes files_router's parameters; CR-1 adds the deny list"
@@ -126,14 +109,13 @@ pub fn files_router(
     })
 }
 
-/// The route over `files`' dependencies and waits.
 pub(super) fn router(files: Files) -> Router {
     Router::new()
         .route(FILES_PATH, get(open))
         .with_state(Arc::new(files))
 }
 
-/// The device side of an opened tunnel. The link must outlive the SFTP session over it.
+/// The link must outlive the SFTP session over it.
 struct Opened {
     link: SshLink,
     remote: device::Remote,
@@ -141,7 +123,7 @@ struct Opened {
     site: SiteId,
 }
 
-/// Why the device side did not open. Holds no host, address or device text (LOG-007).
+/// Holds no host, address or device text (LOG-007).
 #[derive(Debug, thiserror::Error)]
 enum NotOpened {
     #[error("the device is gone")]
@@ -201,10 +183,7 @@ async fn open(
     upgrade.on_upgrade(move |client| relay(client, files, admitted, opened))
 }
 
-/// A link to `device`. A link refused because the device presented another host key, or
-/// because its stored credential was entered for another host (SEC-011), also writes the
-/// event that says so, with the kind of the request that opened the tunnel (`actor`, LOG-013);
-/// no credential was sent either way.
+/// A refusal for a changed host key or a moved credential (SEC-011) also writes its event (LOG-013).
 async fn linked(files: &Files, device: &Device, actor: ActorKind) -> Result<SshLink, NotOpened> {
     let now = files.clock.now();
     let error = match link(&files.db, &files.vault, &files.policy, device, now).await {
@@ -226,7 +205,6 @@ async fn linked(files: &Files, device: &Device, actor: ActorKind) -> Result<SshL
     Err(NotOpened::Link(error))
 }
 
-/// The device, a link to it, its `sftp` subsystem and the SFTP session over it.
 async fn opened(files: &Files, ticket: &FilesTicket) -> Result<Opened, NotOpened> {
     let device = devices::get(&files.db, ticket.device)
         .await
@@ -250,14 +228,12 @@ async fn opened(files: &Files, ticket: &FilesTicket) -> Result<Opened, NotOpened
     })
 }
 
-/// A redeemed files ticket, its SSH session's end signal and the relay's registration.
 struct Admitted {
     ticket: FilesTicket,
     session: SessionEnd,
     registration: FilesRelay,
 }
 
-/// Runs the upgraded tunnel to its end, then leaves the device.
 async fn relay(
     client: axum::extract::ws::WebSocket,
     files: Arc<Files>,
@@ -300,8 +276,7 @@ async fn relay(
     }
     .run()
     .await;
-    // Dropping the link ends the SSH connection.
     drop(link);
-    // Only now, with any transfer's audit entry written, may shutdown stop waiting.
+    // Shutdown waits on the registration until any transfer's audit entry is written.
     drop(registration);
 }

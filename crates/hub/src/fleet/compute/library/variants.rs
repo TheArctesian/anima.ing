@@ -1,5 +1,4 @@
-//! The variants that the files of one repository give (LIBM-002): each GGUF quantisation is
-//! a variant, and the safetensors files at the top of the repository are one variant. Pure.
+//! The variants of one repository (LIBM-002): one per GGUF quantisation, one for top-level safetensors.
 
 use std::collections::BTreeMap;
 
@@ -8,8 +7,7 @@ use super::{
     repository::{Listing, ModelConfig, Sibling},
 };
 
-/// A file of a planned variant. A file outside LFS has no SHA-256 value in the answer; the
-/// hub reads the file and computes it.
+/// A file outside LFS has no SHA-256 in the listing; the hub reads the file and computes it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PlannedFile {
     pub path: String,
@@ -25,15 +23,14 @@ pub struct Planned {
 }
 
 impl Planned {
-    /// The tag of the variant: the quantisation in lower case (LIBM-006).
+    /// The variant's tag (LIBM-006).
     #[must_use]
     pub fn tag(&self) -> String {
         self.quantisation.to_ascii_lowercase()
     }
 }
 
-/// The ends of file names that a safetensors variant needs beside its weights. Code files
-/// (`.py`) are never taken: a runtime must not run code from a repository.
+/// Code files (`.py`) are never taken: a runtime must not run code from a repository.
 const SIDE_FILES: [&str; 6] = [
     ".json",
     ".model",
@@ -56,8 +53,7 @@ fn planned(file: &Sibling) -> PlannedFile {
     }
 }
 
-/// Whether a word of a GGUF file name names a quantisation, such as `Q4_K_M`, `IQ2_XXS`,
-/// `BF16` or the `UD` of Unsloth's dynamic quantisations.
+/// `UD` is the word of Unsloth's dynamic quantisations.
 fn is_quantisation_word(word: &str) -> bool {
     let upper = word.to_ascii_uppercase();
     let numbered = |prefix: &str| {
@@ -72,8 +68,6 @@ fn is_quantisation_word(word: &str) -> bool {
         || ["F16", "BF16", "F32", "UD"].contains(&upper.as_str())
 }
 
-/// The quantisation of a GGUF file: the words at the end of its name that name one. A file
-/// in parts (`-00001-of-00003`) is named without the part.
 fn gguf_quantisation(path: &str) -> Option<String> {
     let name = path.rsplit('/').next()?;
     let name = name.get(..name.len().checked_sub(5)?)?;
@@ -99,8 +93,7 @@ fn strip_part(name: &str) -> &str {
     }
 }
 
-/// A GGUF file of the model, not a vision projector (`mmproj`), which a later task adds
-/// (LIBM-010).
+/// Vision projectors (`mmproj`) are left out (LIBM-010).
 fn is_model_gguf(path: &str) -> bool {
     path.to_ascii_lowercase().ends_with(".gguf")
         && !path
@@ -169,7 +162,6 @@ fn safetensors_variant(listing: &Listing, config: Option<&ModelConfig>) -> Optio
     })
 }
 
-/// Every variant of the repository, GGUF first, each with its files in path order.
 #[must_use]
 pub fn plan(listing: &Listing, config: Option<&ModelConfig>) -> Vec<Planned> {
     let mut found = gguf_variants(listing);

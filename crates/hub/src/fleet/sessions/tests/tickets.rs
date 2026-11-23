@@ -1,5 +1,4 @@
-//! Ticket rules and the in-memory table (K4 §1, API-009, LOG-007), and the end signal of an
-//! open tunnel (D-10). Deterministic: every time comes from a `FixedClock`.
+//! Ticket rules, the in-memory table and the end signal of an open tunnel (K4 §1, API-009, LOG-007, D-10).
 
 use crate::fleet::sessions::Presented;
 use std::net::IpAddr;
@@ -62,12 +61,10 @@ pub(super) fn pending(n: u128) -> PendingTicket {
     }
 }
 
-/// A token made from `seed`, so each test's tokens are fixed and distinct.
 pub(super) fn token(seed: u8) -> TicketToken {
     TicketToken::from_random([seed; TOKEN_BYTES])
 }
 
-/// Issues ticket `n` with the token from `seed` and returns the token's text.
 pub(in crate::fleet::sessions) fn issue(live: &Live, n: u128, seed: u8) -> String {
     let token = token(seed);
     live.issue(token.hash(), pending(n)).unwrap();
@@ -103,8 +100,7 @@ fn api_009_text_that_is_not_one_canonical_token_has_no_hash() {
 }
 
 proptest! {
-    /// K4 §1: refused when `now >= expires_at` (the boundary refuses) or from another
-    /// address; refused or not, the ticket is gone after one presentation.
+    /// K4 §1: the boundary `now >= expires_at` refuses; any presentation removes the ticket.
     #[test]
     fn api_009_redeem_admits_only_before_expiry_from_the_issuing_address(
         offset_ms in -40_000_i64..40_000,
@@ -127,9 +123,7 @@ proptest! {
         if let Ok(redeemed) = &first {
             prop_assert_eq!(&redeemed.ticket, &pending(1));
         }
-        // Single use: valid or not, a second presentation is refused, even in time from the
-        // right address. A refused ticket waits, without its token, for the sweep to end its
-        // row once expired; an admitted one left the table for the tunnel registry.
+        // A refused ticket waits without its token for the sweep; an admitted one moved to the tunnel registry.
         let again = Presented::terminal(&text, client(CLIENT));
         prop_assert_eq!(live.redeem(again, issued_at()).err(), Some(Refused));
         let swept = live.take_expired(expires_at);
@@ -137,7 +131,6 @@ proptest! {
         prop_assert!(live.withdraw(session(1)).is_none());
     }
 
-    /// An unknown or malformed token is refused and leaves the issued ticket in place.
     #[test]
     fn api_009_an_unknown_token_is_refused_and_takes_nothing(text in "[A-Za-z0-9_-]{0,50}") {
         let live = Live::default();

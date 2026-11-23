@@ -1,8 +1,5 @@
-//! The release bucket (BLD-060 to BLD-062, D-24, D-28): where its objects are, the presigned
-//! upload URL of one object for a builder, and the signed requests of the hub's own reads and
-//! writes. The R2 API token is read from its two files once, at start, and held only as
-//! `Zeroizing`, beside the opened updater key (R-117); the type has no `Debug`, and no error or
-//! log names a token, a key, a signature or a presigned URL (LOG-007).
+//! The release bucket (BLD-060 to BLD-062, D-24, D-28). The R2 token is held only as `Zeroizing` (R-117).
+//! The bucket has no `Debug`, and no error or log names a token, a key, a signature or a presigned URL (LOG-007).
 
 use std::path::Path;
 
@@ -28,10 +25,9 @@ pub(super) const NO_CACHE: &str = "no-cache";
 const REGION: &str = "auto";
 const SERVICE: &str = "s3";
 
-/// The largest token file the hub reads.
 const MAX_TOKEN_FILE_BYTES: usize = 1024;
 
-/// Why the bucket cannot be opened at start. Names the setting, never a value (SEC-004).
+/// Names the setting, never a value (SEC-004).
 #[derive(Debug, thiserror::Error)]
 pub enum BucketError {
     #[error("the R2 access key ID file cannot be read ({0})")]
@@ -40,8 +36,7 @@ pub enum BucketError {
     SecretAccessKey(std::io::ErrorKind),
 }
 
-/// One presigned upload: the URL, the headers the `PUT` must send as given, and its end. No
-/// `Debug`: the URL is a credential for its object (LOG-007).
+/// The `PUT` sends `headers` as given. No `Debug`: the URL is a credential for its object (LOG-007).
 pub struct UploadUrl {
     pub name: String,
     pub url: String,
@@ -49,22 +44,18 @@ pub struct UploadUrl {
     pub expires_at: DateTime<Utc>,
 }
 
-/// A write of the hub's own: the object, its headers other than the signature's, and the body.
 pub(super) struct Write<'a> {
     pub(super) object: &'a str,
     pub(super) headers: Vec<(String, String)>,
     pub(super) body: &'a [u8],
 }
 
-/// A request of the hub's own, signed: the method, the URL and every header to send.
 pub(super) struct Signed {
     pub(super) method: &'static str,
     pub(super) url: String,
     pub(super) headers: Vec<(String, String)>,
 }
 
-/// The R2 bucket releases go to, with the key to sign for it and the updater key the hub signs
-/// its updater files with (R-117). No `Debug`.
 pub struct Bucket {
     /// `scheme://host[:port]`.
     endpoint: String,
@@ -76,8 +67,7 @@ pub struct Bucket {
     updater_key: Option<UpdaterKey>,
 }
 
-/// The trimmed text of a token file of at most 1 KiB. The buffer holds the most the file may
-/// have, so it never grows and leaves no copy behind.
+/// The buffer holds the most the file may have, so it never grows and leaves no copy behind.
 fn token(path: &Path) -> std::io::Result<Zeroizing<String>> {
     use std::io::Read as _;
     let mut text = Zeroizing::new(String::with_capacity(MAX_TOKEN_FILE_BYTES + 1));
@@ -92,11 +82,7 @@ fn token(path: &Path) -> std::io::Result<Zeroizing<String>> {
 }
 
 impl Bucket {
-    /// Reads the token files named in `releases` and keeps the opened `updater_key` (I/O at the
-    /// edge).
-    ///
     /// # Errors
-    ///
     /// As [`Bucket::without_key`].
     pub fn open(releases: &Releases, updater_key: UpdaterKey) -> Result<Self, BucketError> {
         let mut bucket = Self::without_key(releases)?;
@@ -104,11 +90,9 @@ impl Bucket {
         Ok(bucket)
     }
 
-    /// As [`Bucket::open`], with no updater key: this bucket signs nothing, and takes only
-    /// files whose signature a job of the release workflow made (R-179).
+    /// Signs nothing; takes only files whose signature a release workflow job made (R-179).
     ///
     /// # Errors
-    ///
     /// A token file that cannot be read or is empty.
     pub fn without_key(releases: &Releases) -> Result<Self, BucketError> {
         let access_key_id =
@@ -133,7 +117,6 @@ impl Bucket {
         self.updater_key.as_ref()
     }
 
-    /// The URL people read `object` at.
     pub(super) fn public_url(&self, object: &str) -> String {
         format!("{}/{}", self.public_base, sigv4::encode(object, true))
     }
@@ -153,14 +136,11 @@ impl Bucket {
             .map_or(self.endpoint.as_str(), |(_, host)| host)
     }
 
-    /// The path of `object` in the S3 API: the bucket, then the key.
     fn path(&self, object: &str) -> String {
         format!("/{}/{object}", self.name)
     }
 
-    /// A presigned `PUT` of `file` in `folder` that must carry exactly its size, the versioned
-    /// `Cache-Control` and `content_type`, valid for 15 minutes from `now` (BLD-060, D-28). It
-    /// names this one object.
+    /// The signature binds the size, `Cache-Control` and type; the URL names one object (BLD-060, D-28).
     pub(super) fn upload_url(
         &self,
         folder: &str,
@@ -190,7 +170,6 @@ impl Bucket {
         }
     }
 
-    /// The hub's own request `method` of `write`, signed at `now`.
     fn signed(&self, method: &'static str, write: Write<'_>, now: DateTime<Utc>) -> Signed {
         let path = self.path(write.object);
         let request = Request {
@@ -208,12 +187,11 @@ impl Bucket {
         }
     }
 
-    /// The hub's own signed `PUT` of `write`.
     pub(super) fn put(&self, write: Write<'_>, now: DateTime<Utc>) -> Signed {
         self.signed("PUT", write, now)
     }
 
-    /// A signed `GET` of `object` from the bucket itself, past any cache (BLD-064, D-28).
+    /// From the bucket itself, past any cache (BLD-064, D-28).
     pub(super) fn get(&self, object: &str, now: DateTime<Utc>) -> Signed {
         let write = Write {
             object,
@@ -223,7 +201,7 @@ impl Bucket {
         self.signed("GET", write, now)
     }
 
-    /// A signed `HEAD` of `object` from the bucket itself: its `ETag` now (D-28).
+    /// From the bucket itself, for its current `ETag` (D-28).
     pub(super) fn head(&self, object: &str, now: DateTime<Utc>) -> Signed {
         let write = Write {
             object,
@@ -233,7 +211,6 @@ impl Bucket {
         self.signed("HEAD", write, now)
     }
 
-    /// A signed `DELETE` of `object` (BLD-070).
     pub(super) fn delete(&self, object: &str, now: DateTime<Utc>) -> Signed {
         let write = Write {
             object,
@@ -243,8 +220,7 @@ impl Bucket {
         self.signed("DELETE", write, now)
     }
 
-    /// `CopyObject` of `from` to the stable name `to` in this bucket, with no caching, only
-    /// while `from` still has the `ETag` the hub checked (BLD-066, D-28).
+    /// Copies only while `from` still has the `ETag` the hub checked (BLD-066, D-28).
     pub(super) fn copy(&self, (from, etag): (&str, &str), to: &str, now: DateTime<Utc>) -> Signed {
         let source = sigv4::encode(&self.path(from), true);
         let headers = vec![

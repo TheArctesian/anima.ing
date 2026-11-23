@@ -1,8 +1,5 @@
-//! The retention GraphQL part: `Query.retention` and `Mutation.setRetention` (K1; HUB-005,
-//! D-25).
-//!
-//! `setRetention` writes the period, one audit entry and one event in one transaction: if any
-//! step fails, nothing is stored.
+//! The retention GraphQL part (K1; HUB-005, D-25).
+//! `setRetention` writes the period, one audit entry and one event in one transaction.
 
 mod trail;
 

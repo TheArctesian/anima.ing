@@ -1,5 +1,4 @@
-//! The due state, the read state of a version, and what the operator may enter (K-E5 Section
-//! 2). Pure: the time is a parameter.
+//! The due state, the read state of a version and the operator's input (K-E5 Section 2).
 
 use chrono::{DateTime, TimeDelta, Utc};
 

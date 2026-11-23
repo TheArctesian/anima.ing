@@ -1,6 +1,4 @@
-//! Each kind of channel sends its encoded notification through the one egress path, and the
-//! send is logged as an ok delivery, worded by the channel's template when it has one (NOT-002,
-//! NOT-004, NOT-007, D-17, P3-003).
+//! NOT-002, NOT-004, NOT-007, D-17, P3-003.
 
 use sqlx::PgPool;
 
@@ -61,7 +59,6 @@ async fn not_002_a_ntfy_notification_is_posted_to_its_topic(pool: PgPool) {
         headers.contains(&"authorization: bearer synthetic-token-secret".to_owned()),
         "{headers:?}"
     );
-    // The installation's default body, as plain text.
     let body = String::from_utf8(server.bodies()[0].clone()).unwrap();
     assert!(
         body.starts_with("web on pve-01 was up and is now down"),

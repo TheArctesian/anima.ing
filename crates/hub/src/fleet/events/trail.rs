@@ -1,6 +1,5 @@
 //! The audit entry and the event of one change, written together in the caller's transaction
-//! (LOG-004, LOG-005, LOG-007). Every domain's mutations write through [`Trail`]; each builds
-//! its own [`TrailEntry`] from the stored rows with pure functions.
+//! (LOG-004, LOG-005, LOG-007). Every domain's mutations write through [`Trail`].
 
 use std::sync::Arc;
 

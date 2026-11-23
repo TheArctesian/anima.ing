@@ -162,9 +162,7 @@ fn bytes_from_hex(hex: &str) -> Vec<u8> {
         .collect()
 }
 
-/// Known answer: a value sealed by the first release with the test key. It pins the
-/// associated-data encoding (format tag, key id, context, length prefixes). If this value
-/// must change, every secret already stored no longer opens.
+/// Known answer: it pins the associated-data encoding that every stored secret depends on.
 #[test]
 fn sec_003_known_sealed_value_still_opens() {
     let stored = bytes_from_hex(concat!(

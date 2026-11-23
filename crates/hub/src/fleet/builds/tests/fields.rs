@@ -1,5 +1,4 @@
-//! The builder's surface: the root fields `access` lets a builder token select, the size of a
-//! live update and the builder name (BLD-022, BLD-081, D-1).
+//! The root fields a builder token may select, and the builder's limits (BLD-022, BLD-081, D-1).
 
 use async_graphql::{EmptySubscription, Schema, SimpleObject};
 

@@ -1,5 +1,4 @@
-//! The checked resolver (P3-003): a name is refused when any of its addresses is, and the
-//! caller gets only checked addresses in canonical form.
+//! The checked resolver (P3-003).
 
 use std::{collections::HashMap, net::SocketAddr};
 

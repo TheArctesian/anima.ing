@@ -1,5 +1,4 @@
 //! The remote access inputs (K1 `RdpSettingsInput`, `VncSettingsInput`, `TransferPolicyInput`).
-//! Each converts to the form types the pure rules check.
 
 use async_graphql::InputObject;
 

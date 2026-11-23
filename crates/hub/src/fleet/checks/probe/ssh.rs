@@ -1,8 +1,5 @@
-//! Listing checks over the SSH link: one command per attempt, run through
-//! [`ssh::link`] and read by the pure parsers of `docker` and `systemd` (D-3).
-//!
-//! The command output is never logged or stored; a link error's text holds no host, address
-//! or secret (LOG-007).
+//! Listing checks over the SSH link, one command per attempt (D-3). The output is never logged
+//! or stored; a link error's text holds no host, address or secret (LOG-007).
 
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
@@ -20,15 +17,12 @@ use crate::fleet::{
     targets::AddressPolicy,
 };
 
-/// What a link needs besides the device.
 pub(in crate::fleet::checks) struct Reach<'a> {
     pub(in crate::fleet::checks) db: &'a PgPool,
     pub(in crate::fleet::checks) vault: &'a Vault,
     pub(in crate::fleet::checks) policy: &'a AddressPolicy,
 }
 
-/// The standard output as text, or the fixed reason it cannot be read: cut at the cap, an
-/// exit status other than 0, or not UTF-8.
 pub(super) fn readable(output: &CommandOutput) -> Result<&str, Failure> {
     if output.cut {
         return Err(Failure::OutputCut);
@@ -60,7 +54,6 @@ async fn run(
         .map_err(|error| link_failure(&error))
 }
 
-/// One attempt of a Docker or systemd check on `device`, within the check's time limit.
 pub(in crate::fleet::checks) async fn observe_listing(
     reach: &Reach<'_>,
     device: &Device,

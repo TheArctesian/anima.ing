@@ -5,7 +5,6 @@ use crate::fleet::rollout::{
     Cause, Machine, Next, Outcome, Pace, Reach, Rollout, Standing, Step, next, standing,
 };
 
-/// A rollout of the machines 1 to 5 in the steps [1], [2, 3], [4, 5], of which `started` began.
 fn rollout(started: usize, pace: Pace) -> Rollout {
     let step = |index: usize, machines: &[u8]| Step {
         machines: machines.iter().copied().map(device).collect(),

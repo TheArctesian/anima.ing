@@ -4,8 +4,7 @@ use sqlx::PgPool;
 
 use crate::fleet::events::Refusal;
 
-/// The first reason the hub's login must not serve, or `None` (K2 "Start check", R-023). Reads
-/// only the catalog and the privilege functions by OID, so it needs no USAGE on `events`.
+/// Reads only the catalog and the privilege functions by OID, so it needs no USAGE on `events`.
 pub(in crate::fleet::events) async fn start_refusal(
     db: &PgPool,
 ) -> Result<Option<Refusal>, sqlx::Error> {
@@ -23,14 +22,8 @@ pub(in crate::fleet::events) async fn start_refusal(
     .transpose()
 }
 
-/// One row: the code of the first refusal, in the order of `Refusal`, or null.
-///
-/// `logs` is both log parents, every partition below them and the links of the audit chain. `roles` is every role the login
-/// (`session_user`, not `current_user`, which a session role or `SET ROLE` changes) is a member
-/// of, itself included, so a right reached by `SET ROLE`, a grant without INHERIT or ADMIN
-/// OPTION counts. Write defaults to `anima_runtime` are 0001's own, for every other domain's
-/// tables; `events.ensure_day_partition` strips every grant from a new partition (0502).
-/// Default privileges set by any creator role count, not only those of the partitions' owner.
+/// `roles` follows `session_user`, which `SET ROLE` cannot change, and counts rights not inherited.
+/// Write defaults to `anima_runtime` are 0001's own; a new partition loses every grant (0502).
 const START_REFUSAL: &str = "\
     with recursive events_schema as ( \
         select n.oid, n.nspowner from pg_catalog.pg_namespace n where n.nspname = 'events' \

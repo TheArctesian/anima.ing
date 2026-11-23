@@ -1,5 +1,4 @@
-//! The SNMP input rules: the secrets of the chosen version, and when a secret
-//! left out keeps the stored one (D-5, SEC-005, LOG-007).
+//! The SNMP secret input rules (D-5, SEC-005, LOG-007).
 
 use crate::fleet::{
     checks::{

@@ -1,5 +1,4 @@
-//! What to tell the operator after one heartbeat (NOT-001, NOT-005, NOT-006, Section 6.5):
-//! pure, no clock and no I/O. Time is the beat's own `at`.
+//! What to tell the operator after one heartbeat (NOT-001, NOT-005, NOT-006); pure, timed by the beat's own `at`.
 
 use chrono::{DateTime, Utc};
 
@@ -9,30 +8,20 @@ use crate::status::Status;
 #[cfg(test)]
 mod tests;
 
-/// One notification to queue. `days` is the whole days left, for the two expiry kinds.
+/// `days` is the whole days left, for the two expiry kinds.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Notice {
     pub kind: NotificationKind,
     pub days: Option<u32>,
 }
 
-/// The state to keep and the notifications to queue.
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct Decision {
     pub state: CheckState,
     pub notices: Vec<Notice>,
 }
 
-/// Decides from one beat.
-///
-/// - Maintenance (the flag or the status) and Unknown change nothing and send nothing, expiry
-///   included. A Down that began in maintenance is therefore sent only when a beat outside
-///   maintenance is still Down.
-/// - Down is sent when the status is Down and Down was not already announced. After that,
-///   every `resend_every_beats` further Down beats send Still-down (0 never).
-/// - Up is sent when Up or Degraded follows an announced Down. Degraded counts as back up and
-///   never sends Down. Without an announced Down nothing is sent.
-/// - Expiry: see `expiry`.
+/// Maintenance and Unknown change nothing, expiry included; Degraded counts as back up and never sends Down.
 pub(super) fn decide(
     o: &Observation,
     state: &CheckState,
@@ -79,10 +68,7 @@ fn back_up(status: Status, state: &mut CheckState, notices: &mut Vec<Notice>) {
     state.down_beats = 0;
 }
 
-/// For the certificate and the domain apart: a threshold is crossed when the whole days left
-/// are fewer than it. One notification when any crossed threshold has no mark; every crossed
-/// threshold is then marked, so first sight at 5 days of 21, 14 and 7 sends one. A different
-/// `notAfter` (a renewal) drops the old marks of that subject. No `notAfter` keeps them.
+/// One notification when any crossed threshold has no mark; a renewal's new `notAfter` drops the subject's old marks.
 fn expiry(
     o: &Observation,
     certificate_days: &[u16],
@@ -130,7 +116,6 @@ fn expiry(
     }
 }
 
-/// Whole days from `at` to `not_after`; 0 once it has passed.
 fn whole_days(not_after: DateTime<Utc>, at: DateTime<Utc>) -> u32 {
     u32::try_from((not_after - at).num_days()).unwrap_or(0)
 }

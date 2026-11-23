@@ -16,8 +16,7 @@ async fn partitions(pool: &PgPool) -> Vec<String> {
     .unwrap()
 }
 
-/// Creates the partition for the UTC day `days_ago` days back, as the owner (a test setup that
-/// the 31-day window of the hub's function would refuse).
+/// As the owner: the hub's function refuses a day outside its 31-day window.
 async fn old_partition(pool: &PgPool, days_ago: i64) -> String {
     let name: String = sqlx::query_scalar(
         "select 'deliveries_' || to_char((now() at time zone 'UTC')::date - $1::int, 'YYYYMMDD')",

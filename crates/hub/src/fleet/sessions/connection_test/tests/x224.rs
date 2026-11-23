@@ -1,5 +1,4 @@
-//! The X.224 exchange that starts an RDP connection (SEC-007, MS-RDPBCGR 2.2.1.1, 2.2.1.2):
-//! the request's bytes, what each confirm means, and that no reply panics the parser.
+//! The X.224 exchange that starts an RDP connection (SEC-007, MS-RDPBCGR 2.2.1.1, 2.2.1.2).
 
 use proptest::prelude::*;
 

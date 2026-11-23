@@ -1,7 +1,3 @@
-//! The address policy `Live` hands the SSH probe (R-030, P2-004, WP-23 H-4): the deny list
-//! applies to the loopback test `Live` in either order, and the probe never connects to a
-//! denied address.
-
 use std::time::Duration;
 
 use tokio::net::TcpListener;
@@ -31,9 +27,7 @@ fn r_030_the_loopback_test_live_still_obeys_the_deny_list_in_either_order() {
     assert!(!strict.policy().permits("127.0.0.1".parse().unwrap()));
 }
 
-/// An SSH session's target obeys the hub's deny list (WP-23 H-4, P2-004): the policy comes
-/// from the `Live` that `main.rs` builds with [`Live::denying`], and the probe never
-/// connects to a denied address, however the host names it.
+/// However the host names a denied address (WP-23 H-4, P2-004).
 #[tokio::test]
 async fn r_030_the_probe_never_connects_to_a_denied_address() {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();

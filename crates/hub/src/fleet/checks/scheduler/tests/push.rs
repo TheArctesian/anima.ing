@@ -1,7 +1,5 @@
-//! A push and a scheduled attempt that run at the same time on one check count every written
-//! failure: both evaluate on the state the row lock leaves them (CHK-002, CHK-003). An attempt
-//! queues its notifications only with a written beat, and in the beat's own transaction
-//! (D-16, NOT-001).
+//! Concurrent pushes and attempts on one check (CHK-002, CHK-003); notifications queue only in a
+//! written beat's own transaction (D-16, NOT-001).
 
 use std::{
     sync::{
@@ -137,8 +135,7 @@ tick_test! {
     }
 }
 
-/// Records one failed attempt at `at` on a connection with no transaction, so the attempt's
-/// own transaction is the one that commits; returns whether the beat was written.
+/// Uses a connection with no transaction, so the attempt's own transaction is the one that commits.
 async fn attempt_alone(pool: PgPool, id: CheckId, at: DateTime<Utc>) -> bool {
     let result = ProbeResult::failed(&Failure::NoPush);
     let device = devices::get(&pool, device(DOCKER_HOST)).await.unwrap();
@@ -156,7 +153,6 @@ async fn attempt_alone(pool: PgPool, id: CheckId, at: DateTime<Utc>) -> bool {
         .is_some()
 }
 
-/// How many notification state rows `check` has.
 async fn states(pool: &PgPool, id: CheckId) -> i64 {
     sqlx::query_scalar("SELECT count(*) FROM notifications.check_state WHERE check_id = $1")
         .bind(id)
@@ -165,7 +161,6 @@ async fn states(pool: &PgPool, id: CheckId) -> i64 {
         .unwrap()
 }
 
-/// Waits until some statement of this database waits for a row lock.
 async fn until_a_statement_waits(pool: &PgPool) {
     for _ in 0..500 {
         let waiting: i64 = sqlx::query_scalar(

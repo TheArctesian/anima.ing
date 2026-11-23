@@ -1,6 +1,3 @@
-//! The only SQL of the tables `agent_usage.salt`, `agent_usage.accounts` and
-//! `agent_usage.account_limits` (migrations 1021 and 1022).
-
 use chrono::{DateTime, Utc};
 use daemon_core::agent_usage::Source;
 use daemon_core::agent_usage::account::{Account, Address, Limit};
@@ -10,8 +7,6 @@ use super::Reported;
 use crate::fleet::agent_usage::Error;
 use crate::ids::DeviceId;
 
-/// Replaces the report of `device` for the source of `account`: its key, address, plan and
-/// time, then its limit windows.
 pub(super) async fn write(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -67,7 +62,6 @@ pub(super) async fn write(
     Ok(())
 }
 
-/// Deletes the report of `device` for each source not in `named`, with its limit windows.
 pub(super) async fn forget_others(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -110,7 +104,6 @@ type LimitRow = (
     bool,
 );
 
-/// Every report with its limit windows, in no set order.
 pub(super) async fn read(db: &PgPool) -> Result<Vec<Reported>, Error> {
     let accounts: Vec<AccountRow> = sqlx::query_as(
         "SELECT device_id, source, key, address, plan, reported_at FROM agent_usage.accounts",

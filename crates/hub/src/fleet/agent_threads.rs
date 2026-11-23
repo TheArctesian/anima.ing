@@ -12,10 +12,7 @@ use sqlx::PgConnection;
 
 use crate::ids::DeviceId;
 
-/// Records announced summaries while the caller holds the device row lock.
-///
-/// # Errors
-/// Returns a database error if the summaries cannot be recorded.
+/// The caller holds the device row lock.
 pub(in crate::fleet) async fn record_announced(
     tx: &mut PgConnection,
     device: DeviceId,

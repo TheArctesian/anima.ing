@@ -1,6 +1,4 @@
-//! Whether a daemon push or renewal may go on: its bearer token's device, while that device
-//! takes its metrics from the daemon, with the device's turn (K8 Sections 5 and 6, MET-013,
-//! MET-017).
+//! Whether a daemon push or renewal may go on (K8 Sections 5 and 6, MET-013, MET-017).
 
 use std::net::IpAddr;
 
@@ -10,9 +8,7 @@ use daemon_core::wire::{DaemonToken, RefusalCode};
 use super::{Error, credential, routes::DaemonState, turns::Turn};
 use crate::ids::DeviceId;
 
-/// Why a daemon push or renewal stopped short of its answer.
 pub(super) enum Stop {
-    /// Refused by K8 Section 6, for the device of a valid token when there was one.
     Refused(RefusalCode, Option<DeviceId>),
     /// The hub cannot answer now (`UNAVAILABLE`).
     Failed(Error),
@@ -20,7 +16,6 @@ pub(super) enum Stop {
     Busy,
 }
 
-/// A device whose daemon may go on: its token is usable and its metrics come from the daemon.
 pub(super) struct Admitted {
     pub(super) device: DeviceId,
     pub(super) name: String,
@@ -28,11 +23,7 @@ pub(super) struct Admitted {
     pub(super) turn: Turn<DeviceId>,
 }
 
-/// The device whose usable token `token` is at `now`, while it takes its metrics from the daemon,
-/// with its turn. The lookups run under a request turn and under the client `address`'s turn;
-/// both end before this returns, so the body that follows arrives holding neither. A
-/// `Stop::Busy` for the device turn comes after the address turn has ended, and leaves the
-/// device turn untaken.
+/// The request and address turns end before this returns, so the body that follows holds neither.
 pub(super) async fn admit(
     state: &DaemonState,
     token: &DaemonToken,
@@ -49,7 +40,6 @@ pub(super) async fn admit(
     Ok(Admitted { device, name, turn })
 }
 
-/// The device whose usable token `token` is at `now`.
 async fn holder(
     state: &DaemonState,
     token: &DaemonToken,
@@ -62,8 +52,7 @@ async fn holder(
     }
 }
 
-/// The device's name while its metrics come from the daemon; `TOKEN_REFUSED` once the operator
-/// switched the source away or deleted the device.
+/// `TOKEN_REFUSED` once the operator switched the source away or deleted the device.
 async fn daemon_name(state: &DaemonState, device: DeviceId) -> Result<String, Stop> {
     match credential::daemon_name(&state.db, device).await {
         Ok(Some(name)) => Ok(name),

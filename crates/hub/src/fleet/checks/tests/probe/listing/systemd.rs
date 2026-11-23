@@ -1,5 +1,4 @@
-//! The systemd reader over `systemctl list-units --all --plain --no-legend --no-pager`
-//! output (D-3).
+//! The systemd unit reader (D-3).
 
 use super::{assert_unreadable_outputs, finished, verdict};
 use crate::fleet::{checks::probe::systemd, ssh::FixedCommand};

@@ -1,7 +1,4 @@
-//! The test server's SFTP: a `russh-sftp` server handler over a temporary directory, as a
-//! device's `sftp-server` would answer. Paths are absolute inside the directory (`/` is its
-//! root); a path with a `denied` component is refused as OpenSSH refuses a permission error;
-//! an exclusive open of an existing file fails as POSIX `O_EXCL` does.
+//! The test server's SFTP over a temporary directory; a `denied` path component is refused.
 
 use std::{
     collections::HashMap,
@@ -21,14 +18,11 @@ use russh_sftp::protocol::{
 
 use super::server::{Heard, Quirks, on};
 
-/// One open handle.
 enum Opened {
     File(fs::File),
-    /// A directory's entries, read once.
     Dir(Option<Vec<File>>),
 }
 
-/// The SFTP server's side of one channel: the directory, the open handles, the shared log.
 #[derive(Clone)]
 pub(super) struct Disk {
     root: PathBuf,
@@ -67,7 +61,6 @@ impl Disk {
         }
     }
 
-    /// The real path of `path`, refusing `..` and any `denied` component.
     fn real(&self, path: &str) -> Result<PathBuf, StatusCode> {
         let mut real = self.root.clone();
         for component in Path::new(path).components() {
@@ -116,8 +109,7 @@ impl Disk {
     }
 }
 
-/// The answers, synchronous: the test directory is local. Each leaves the request id to
-/// the handler.
+/// Synchronous: the test directory is local.
 impl Disk {
     fn resolve(&self, path: &str) -> Result<Vec<File>, StatusCode> {
         let real = self.real(path)?;
