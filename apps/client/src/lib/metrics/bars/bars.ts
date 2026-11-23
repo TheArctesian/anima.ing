@@ -1,4 +1,5 @@
 import type { MetricsSource } from '$lib/hub/generated/graphql';
+import { LEGACY_IOS_DISK_MOUNT } from '../storage/storage';
 import { DEGRADED_ABOVE } from '../units';
 import { hasMetrics } from '../source/has-metrics';
 import type { BatteryBar } from '../battery/battery';
@@ -66,8 +67,9 @@ function barsOf(readings: BarReadings): readonly Bar[] {
   const bars = [
     bar('cpu', 'CPU', readings.cpuPercent),
     bar('memory', 'Memory', readings.memoryPercent),
-    diskBar(readings),
   ];
+  // Older iOS reporters sent raw filesystem blocks under this label.
+  if (readings.diskMount !== LEGACY_IOS_DISK_MOUNT) bars.push(diskBar(readings));
   const gpu = readings.vramGpu;
   if (gpu?.hasVram === true && readings.vramPercent !== null) {
     bars.push(bar('vram', 'VRAM', readings.vramPercent, `VRAM, GPU ${String(gpu.index)}: ${gpu.name}`));

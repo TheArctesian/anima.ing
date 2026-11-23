@@ -24,6 +24,9 @@ pub struct Used {
     pub bytes: u64,
     /// The threads that have a worktree of it.
     pub worktrees: usize,
+    /// The bytes of the checkpoints of the thread that uses the most; one thread can have
+    /// `place::own::ROOM`, or what the person set.
+    pub largest_thread: u64,
 }
 
 /// Writes down in the copy at `shared` which repository it is of.
@@ -34,19 +37,33 @@ pub fn name(shared: &Path, project: &Path) -> std::io::Result<()> {
     std::fs::write(shared.join(OF), project.as_os_str().as_encoded_bytes())
 }
 
-/// The bytes of each file below `folder`; a link is counted as a link, never followed.
-fn bytes(folder: &Path) -> u64 {
+/// The bytes of the disk that the files and folders below `folder` use; a link is not
+/// followed and counts as nothing.
+pub(super) fn bytes(folder: &Path) -> u64 {
     let Ok(listed) = std::fs::read_dir(folder) else {
         return 0;
     };
     listed
         .flatten()
-        .map(|entry| match entry.file_type() {
-            Ok(kind) if kind.is_dir() => bytes(&entry.path()),
-            Ok(kind) if kind.is_file() => entry.metadata().map_or(0, |about| about.len()),
+        .map(|entry| match (entry.file_type(), entry.metadata()) {
+            (Ok(kind), Ok(about)) if kind.is_dir() => on_disk(&about) + bytes(&entry.path()),
+            (Ok(kind), Ok(about)) if kind.is_file() => on_disk(&about),
             _ => 0,
         })
-        .sum()
+        .fold(0, u64::saturating_add)
+}
+
+/// The bytes of the disk that a file or a folder of the runner uses: its blocks, which is
+/// more than its length for a small file. Many small files use the disk by their count.
+#[cfg(unix)]
+fn on_disk(about: &std::fs::Metadata) -> u64 {
+    use std::os::unix::fs::MetadataExt as _;
+    about.blocks().saturating_mul(512).max(about.len())
+}
+
+#[cfg(not(unix))]
+fn on_disk(about: &std::fs::Metadata) -> u64 {
+    about.len()
 }
 
 impl Engine {
@@ -70,6 +87,10 @@ impl Engine {
     /// What each project uses on the disk, the largest first.
     #[must_use]
     pub fn disk(&self) -> Vec<Used> {
+        // While a thread holds the records, nothing in them is read.
+        if self.closed().is_err() {
+            return Vec::new();
+        }
         let records: Vec<Record> = self.records().into_iter().flatten().collect();
         let Ok(copies) = std::fs::read_dir(self.home.projects()) else {
             return Vec::new();
@@ -84,9 +105,10 @@ impl Engine {
                     .iter()
                     .filter(|record| record.project == project)
                     .collect();
-                let own: u64 = of_it.iter().map(|record| bytes(&record.own)).sum();
+                let own: Vec<u64> = of_it.iter().map(|record| bytes(&record.own)).collect();
                 Some(Used {
-                    bytes: bytes(&copy.path()) + own,
+                    bytes: bytes(&copy.path()) + own.iter().sum::<u64>(),
+                    largest_thread: own.iter().copied().max().unwrap_or(0),
                     worktrees: of_it.len(),
                     project,
                 })

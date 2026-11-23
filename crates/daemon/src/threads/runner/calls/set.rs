@@ -30,6 +30,13 @@ impl Runner {
         let Some(thread) = self.threads.get_mut(&id) else {
             return refused(Refusal::UnknownThread);
         };
+        let named = model
+            .as_ref()
+            .map(Model::as_str)
+            .or(thread.row.model.as_deref());
+        if !self.said.models.offers(thread.row.program, named, effort) {
+            return refused(Refusal::BadValue);
+        }
         match thread.set(Changes {
             model,
             effort,

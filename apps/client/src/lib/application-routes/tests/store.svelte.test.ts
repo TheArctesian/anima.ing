@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { RoutesStore } from '../store.svelte';
-import { AGENT_REFUSED, NO_SECOND_FACTOR, NO_SUCH_ROUTE, NOT_LINUX_ERROR, NOW, ROUTES, fakeCalls, route } from './routes.fixture';
+import { KEY_REFUSED, NO_SECOND_FACTOR, NO_SUCH_ROUTE, NOT_LINUX_ERROR, NOW, ROUTES, fakeCalls, route } from './routes.fixture';
 
 const make = (calls = fakeCalls()) => ({ calls, store: new RoutesStore(calls, true, () => NOW) });
 
@@ -64,7 +64,7 @@ it('H21: a removal takes the route out of the list and shows the list again; a r
   const { calls, store } = make();
   await store.open();
   store.select('route-vault');
-  calls.removeFails = AGENT_REFUSED;
+  calls.removeFails = KEY_REFUSED;
   expect((await store.remove('route-vault')).ok).toBe(false);
   expect(store.shown?.id).toBe('route-vault');
   calls.removeFails = undefined;
