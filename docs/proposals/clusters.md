@@ -1,17 +1,17 @@
 ---
 kind: Proposal
 state: Draft
-evidence: Version 1 (2026-11-22). From R-NEW-hostingsections: "oh okay then clusters now" (relayed by the side conversation of the orchestrating session). No requirement of this document is approved and no code exists. The open decisions are OD-CLU1 to OD-CLU5.
+evidence: Version 1.2 (2026-11-22): R-NEW-clustermembers decides OD-CLU1 (B: a machine can be in several clusters); CLU-001, CLU-012, CLU-014 and CLU-015 follow it. Version 1 (2026-11-22). From R-NEW-hostingsections: "oh okay then clusters now" (relayed by the side conversation of the orchestrating session). No requirement of this document is approved and no code exists. The open decisions are OD-CLU2 to OD-CLU5.
 ---
 
 # Proposal: clusters of machines as a place to run things
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this proposal (PLN-005).
 
-Version: 1.1. Date: 2026-11-22. Version 1.1 says for each level whether a daemon acts for other machines and so whether K11 changes (CLU-013), at the request of the model service session.
+Version: 1.2. Date: 2026-11-22. Version 1.2 writes the answer to OD-CLU1 (R-NEW-clustermembers). Version 1.1 (2026-11-22). Version 1.1 says for each level whether a daemon acts for other machines and so whether K11 changes (CLU-013), at the request of the model service session.
 Status: the header of this document holds the state (PLN-020).
 Map: [work-plan.md](../work-plan.md), category Use, row 4.9 of the [priority order](../plan/priorities.md) (hosted applications). It changes HOST-052 of [hosted-applications-plan.md](../plans/hosted-applications-plan.md) when it is approved, and it is shown in the sections Applications, Models and Machines of [hosting-section.md](hosting-section.md).
-Identifiers: CLU-001 to CLU-013, OD-CLU1 to OD-CLU5.
+Identifiers: CLU-001 to CLU-015, OD-CLU1 to OD-CLU5.
 
 ## 1. What the operator decided
 
@@ -22,9 +22,11 @@ He has not said what a cluster is or how much of it Anima builds. This document 
 
 ## 2. What a cluster is, for a person
 
-A cluster is a named group of your machines that you treat as one place to run things. For example, "home" holds `pop-os`, `nas` and `mini`. You install Immich "on home", not "on pop-os". A machine can be in no cluster or in one cluster. A cluster has no machine of its own and no program of its own: it is a name, a list of members and a rule for where things go (OD-CLU1).
+A cluster is a named group of your machines that you treat as one place to run things. For example, "home" holds `pop-os`, `nas` and `mini`. You install Immich "on home", not "on pop-os". A machine can be in no cluster, in one, or in several (R-NEW-clustermembers): `nas` can be in "home" and in "media". A cluster has no machine of its own and no program of its own: it is a name, a list of members and a rule for where things go (OD-CLU1).
 
-- **CLU-001.** A cluster is a named group of machines of one hub. A machine is in one cluster at most.
+- **CLU-001.** A cluster is a named group of machines of one hub. A machine can be in several clusters (R-NEW-clustermembers).
+- **CLU-014.** The room of a machine counts in each cluster that it is in. A cluster keeps no figure of room of its own. A placement on a cluster reads the room of each member at the moment that it places and checks the room of the chosen machine itself, so that two clusters that share a machine cannot both spend the same room. Two placements on one machine at the same time are checked one after the other on the hub.
+- **CLU-015.** The row of a machine in the section Machines of Hosting (HSE-016) and in Devices shows each cluster that the machine is in. The page of a cluster shows its members, and for each member the other clusters that it is in.
 - **CLU-002.** A place is a machine or a cluster (HOST-052). An application, a container or a model names its place. When the place is a cluster, the thing also names the machine where it runs now.
 - **CLU-003.** A person makes a cluster, adds a machine to it and removes a machine from it in the section Machines of Hosting (HSE-016). A machine joins only after a person agrees at that machine (OD-CLU4).
 
@@ -76,11 +78,11 @@ The main point: each engine moves the power to run anything on a machine from th
 - **The model address.** The router behind the model address already finds the node for a request (the Router of [compute-plan.md](../plans/compute-plan.md)). **CLU-008.** A model on a cluster has one model address; the router sends a request to a member that has the model downloaded and validated (CMP-006). The model service session owns this.
 - **The consent at the machine.** Today a public route waits for the consent of the machine that runs the application (OD-HOST-43; R-390 keeps it for public routes). **CLU-009.** A machine joins a cluster only after a person agrees at that machine; OD-CLU4 asks whether that agreement also counts as the consent to serve public routes of the cluster.
 - **The rules for agents (R-384).** One rule for each caller: the person, the app, `anima` and a Full access thread act with no approval; a thread in a restricted mode asks in the thread. **CLU-010.** Putting a thing on a cluster and moving it between members follow the rule of an install for each caller (OD-CLU5). Making a cluster and adding a machine to it need a person (CLU-003).
-- **CLU-011.** The section Machines of Hosting (HSE-016) shows each cluster with its members and their room, and each machine that is in no cluster.
+- **CLU-011.** The section Machines of Hosting (HSE-016) shows each cluster with its members and their room, and each machine that is in no cluster. A machine in several clusters is shown under each of them, with the same room (CLU-015).
 
 ## 6. The smallest first step that is useful by itself
 
-- **CLU-012.** Clusters as named groups, and placement only: when you install from the catalogue or start a model, you can pick a cluster, and Anima picks the member with the most room that can run it and says which one it picked. No move and no restart. It is useful at once (you no longer choose a machine), it changes no machine program, and each later level builds on it.
+- **CLU-012.** Clusters as named groups, and placement only: when you install from the catalogue or start a model, you can pick a cluster, and Anima picks the member with the most room at that moment that can run it (CLU-014) and says which one it picked. No move and no restart. It is useful at once (you no longer choose a machine), it changes no machine program, and each later level builds on it.
 
 It waits for the record of the applications with their machine (task H6) and for the install of stage 2.
 
@@ -97,7 +99,7 @@ It waits for the record of the applications with their machine (task H6) and for
 
 | ID | Question | Recommendation |
 | --- | --- | --- |
-| OD-CLU1 | What is a cluster? A: a named group of your machines that you treat as one place to run things; a machine is in one cluster at most. B: the same, but a machine can be in several clusters. | A. One cluster for each machine keeps "where can this run" simple; B makes the room of a machine count twice. |
+| OD-CLU1 | What is a cluster? A: a named group of your machines that you treat as one place to run things; a machine is in one cluster at most. B: the same, but a machine can be in several clusters. | Decided (R-NEW-clustermembers): B, several clusters. The recommendation was A. The room of a machine counts in each of its clusters and is checked on the machine at each placement (CLU-014). |
 | OD-CLU2 | How much does "run on a cluster" do? A: placement only, with a move by hand (level a). B: A, and a restart on a different machine by itself when a machine goes away (level b). C: B, and one thing on several machines at once (level c). | A now. B needs the data to follow the thing (copies of volumes kept up to date), which is a large piece of work of its own; ask again after A is in use. C is the work of Kubernetes, and few applications gain from it. |
 | OD-CLU3 | Does Anima build the cluster or drive an existing engine? A: build it on the work route of each machine. B: Docker Swarm. C: k3s. D: Incus clustering. E: Nomad. | A. Each engine makes its manager root on each member and skips the check at the machine; k3s and Incus do not run Compose files or run on a Mac; Nomad is not open source. An engine is worth a new look only for level c. |
 | OD-CLU4 | When a machine joins a cluster, does its agreement at the machine also count as its consent to serve public routes of the things of that cluster? A: yes, one agreement at the join. B: no; each machine still gives the consent for public routes on its own, and a public route stops on a machine without it. | A. With B, a move or a restart can stop a public route with no warning until a person goes to the new machine. The join is already a person at the machine, which is what the consent asks for. |
