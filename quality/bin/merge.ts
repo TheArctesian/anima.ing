@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { undoMerge } from "../src/merge/commit.ts";
+import { mergeEach } from "../src/merge/each.ts";
 import { finishMerge } from "../src/merge/finish.ts";
 import { conflictsForAHand, gatesRefusal, GENERATED, parseMergeRule, type CheckRun } from "../src/merge/rules.ts";
 import { REPO_ROOT } from "../src/repository.ts";
@@ -34,7 +35,12 @@ function requireGatesOnGitHub(commit: string): void {
   if (refusal !== undefined) stop(5, `${refusal}; the rule is fullGates "github" (quality/merge-rule.json)`);
 }
 
-const branch = process.argv.slice(2).find((each) => !each.startsWith("--"));
+const named = process.argv.slice(2).filter((each) => !each.startsWith("--"));
+if (process.argv.includes("--each")) {
+  if (named.length === 0) stop(2, "usage: bun quality/bin/merge.ts --each <branch>...");
+  process.exit(mergeEach(REPO_ROOT, named) ? 0 : 1);
+}
+const branch = named[0];
 const push = process.argv.includes("--push");
 if (branch === undefined) stop(2, "usage: bun quality/bin/merge.ts <branch> [--push]");
 const rule = parseMergeRule(readFileSync(join(REPO_ROOT, "quality", "merge-rule.json"), "utf8"));

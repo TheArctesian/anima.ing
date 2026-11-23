@@ -1,6 +1,4 @@
-// deploy/acceptance/ pure parts (criteria 4, 12, 13; SEC-001, SEC-002, D-3, D-23, D-24, R-100, A-2): the probe's
-// copies of hub lists pinned to the Rust source, and each verdict on right and wrong answers. No reason may quote
-// what the hub sent.
+// Criteria 4, 12, 13; SEC-001, SEC-002, D-3, D-23, D-24, R-100, A-2.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

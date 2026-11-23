@@ -1,18 +1,5 @@
-//! Model work at the machine (`contracts/compute/model-work.md` version 0.3; task L1-6): the
-//! I/O edge. The checks are pure, in `daemon_core::model_work`.
-//!
-//! [`cycle`] asks the hub for one model item through the work route and reports it;
-//! [`install`] installs a runtime from its release source ([`fetch`], a child process, and
-//! [`unpack`]); [`modes`] runs the fixed modes of the program before any async runtime;
-//! [`supervise`] starts, stops and supervises the servers ([`server`], [`ring`], [`sockets`]);
-//! [`tree`] is the set of processes of a server and the sweep at the start of the daemon;
-//! [`folders`] makes the folders of Section 10; [`machine_files`] reads `model-work.json` and
-//! `model-sources.json`; [`state`] is the object of `model_report`.
-//!
-//! Built here: `model_report`, `runtime_install`, `server_start`, `server_stop` and
-//! `model_drain` ([`drain`]). Each other model type is left out of the claim and
-//! refused with `type_unknown` until its task builds it: `model_pull` and `copy_delete` (L1-7),
-//! `model_measure` (L1-8), `model_load` and `model_unload` (L1-8, L1-16).
+//! The I/O edge of model work at the machine (`contracts/compute/model-work.md`); the pure
+//! checks are in `daemon_core::model_work`.
 
 pub mod cycle;
 pub mod drain;

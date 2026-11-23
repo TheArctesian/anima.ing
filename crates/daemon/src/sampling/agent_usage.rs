@@ -1,5 +1,4 @@
-//! The agent usage a batch announces: the daemon's state after start, then each session day
-//! whose counts changed since it was last handed to the pusher (AIS-019, K8 Section 4).
+//! The agent usage a batch announces (AIS-019, K8 Section 4).
 
 use std::collections::HashMap;
 
@@ -7,19 +6,16 @@ use agent_threads::drive::AccountFacts;
 use chrono::NaiveDate;
 use daemon_core::agent_usage::{SessionDay, Source, UsageState};
 
-/// What a read of the session files hands the pusher.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UsageReport {
     pub state: UsageState,
     /// The session days whose counts changed; none unless the state is `Reading`.
     pub session_days: Vec<SessionDay>,
-    /// The account of each program as the thread runner of this computer has it (THR-132);
-    /// `None` when no runner answered, so the accounts sent before stay as they are.
+    /// Each program's account from this computer's thread runner (THR-132); `None` keeps those sent before.
     pub accounts: Option<Vec<ProgramAccount>>,
 }
 
-/// The account of one program of this computer. Its identifier stays at the machine: the key
-/// made from it leaves, with the name when that is an address (AIS-022 as THR-149 changed it).
+/// Its identifier stays at the machine; the key made from it leaves (AIS-022, THR-149).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProgramAccount {
     pub source: Source,
@@ -34,7 +30,6 @@ pub fn day_key(day: &SessionDay) -> DayKey {
     (day.source, day.id.clone(), day.day)
 }
 
-/// The session days handed to the pusher last.
 #[derive(Debug, Default)]
 pub struct UsageWatch {
     handed: HashMap<DayKey, SessionDay>,
@@ -46,7 +41,6 @@ impl UsageWatch {
         Self::default()
     }
 
-    /// Of `read`, the session days that differ from the ones handed over before.
     pub fn changed(&mut self, read: Vec<SessionDay>) -> Vec<SessionDay> {
         read.into_iter()
             .filter(|day| {

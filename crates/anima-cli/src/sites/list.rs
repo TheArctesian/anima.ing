@@ -1,12 +1,10 @@
-//! `anima site list`: every site, with its subnet and wake relay. K1 has no pages for sites.
+//! K1 has no pages for sites.
 
 use super::documents::{SiteList, site_list};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::Table;
 
-/// Prints the sites as a table or, with `--json`, as the K1 `Site` fields selected.
-///
 /// # Errors
 /// [`Failure`] for a hub refusal.
 pub async fn run(invocation: &Invocation) -> Result<(), Failure> {

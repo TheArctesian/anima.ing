@@ -1,4 +1,4 @@
-//! `anima key list`, `create` and `revoke` against the scripted hub (INT-003, CMD-024).
+//! INT-003, CMD-024.
 
 use serde_json::{Value, json};
 

@@ -78,7 +78,12 @@ pub(in crate::fleet::notifications) fn outgoing(
 ) -> Result<Outgoing, Failure> {
     match (settings, secrets) {
         (Settings::Webhook(settings), Some(Secrets::Webhook(secrets))) => {
-            webhook(settings, &secrets, notice)
+            let body = encode::webhook(notice.rendered, notice.kind, notice.values);
+            webhook(settings, &secrets, &body)
+        }
+        (Settings::Mobile(settings), Some(Secrets::Webhook(secrets))) => {
+            let body = encode::mobile(notice.rendered, notice.kind);
+            webhook(settings, &secrets, &body)
         }
         (Settings::Ntfy(settings), Some(Secrets::Ntfy(secrets))) => {
             ntfy(settings, &secrets, notice)
@@ -128,16 +133,16 @@ fn json_headers() -> HeaderMap {
 fn webhook(
     settings: &WebhookSettings,
     secrets: &WebhookSecrets,
-    notice: &Notice<'_>,
+    body: &Value,
 ) -> Result<Outgoing, Failure> {
     let url = Url::parse(text(&secrets.url)?).map_err(|_| bad_address())?;
     let mut headers = json_headers();
     for (name, value) in settings.header_names.iter().zip(&secrets.headers) {
         let name = HeaderName::from_bytes(name.as_bytes()).map_err(|_| setup_failed())?;
-        let value = HeaderValue::from_bytes(value.expose()).map_err(|_| setup_failed())?;
+        let mut value = HeaderValue::from_bytes(value.expose()).map_err(|_| setup_failed())?;
+        value.set_sensitive(true);
         headers.insert(name, value);
     }
-    let body = encode::webhook(notice.rendered, notice.kind, notice.values);
     let method = match settings.method {
         WebhookMethod::Post => Method::POST,
         WebhookMethod::Put => Method::PUT,

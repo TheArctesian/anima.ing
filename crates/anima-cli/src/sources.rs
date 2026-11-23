@@ -1,6 +1,6 @@
 //! `anima source`: where the hub reads data from, and the accounts it reads with (ITG-001 to
-//! ITG-004). A source account's credential is never shown, and the GitHub App key is read from
-//! a private file or standard input only (CMD-025, PRJ-018).
+//! ITG-004). A source account's credential is never shown, and the GitHub App key comes from a
+//! private file or standard input only (CMD-025, PRJ-018).
 
 pub mod account;
 pub mod connect;

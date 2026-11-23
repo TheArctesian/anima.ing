@@ -1,11 +1,9 @@
-//! The battery readers (MET-032): the files of a Linux power supply and `pmset -g batt`, on the
-//! forms laptops write and on hostile text. The `pmset` texts follow the lines macOS 14 and 15
-//! print; the sysfs files are those of the kernel's power supply class.
+//! MET-032. The `pmset` texts follow macOS 14 and 15; the sysfs files follow the kernel's
+//! power supply class.
 
 use crate::readings::batteries::{MAX_BATTERIES, batteries, linux_battery, pmset};
 use crate::readings::{Battery, BatteryState};
 
-/// A laptop battery while it discharges, with energy counters.
 const BAT0: [(&str, &str); 9] = [
     ("type", "Battery\n"),
     ("scope", ""),
@@ -28,7 +26,6 @@ fn battery(name: &str, percent: Option<f64>, state: BatteryState) -> Battery {
     }
 }
 
-/// `BAT0` with the file `file` holding `text` in place of what it held.
 fn with(file: &'static str, text: &'static str) -> Vec<(&'static str, &'static str)> {
     let mut files: Vec<(&str, &str)> = BAT0.iter().copied().filter(|(f, _)| *f != file).collect();
     files.push((file, text));

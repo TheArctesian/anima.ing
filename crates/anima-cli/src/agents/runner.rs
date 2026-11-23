@@ -1,5 +1,4 @@
-//! The local socket of the thread runner of this computer (TH12, THR-128): the `anima` command
-//! is a client of the daemon here, not of the hub. Nothing goes to the network.
+//! The local socket of this computer's thread runner (TH12, THR-128); nothing goes to the network.
 
 use std::os::unix::fs::{FileTypeExt as _, MetadataExt as _, PermissionsExt as _};
 use std::path::PathBuf;
@@ -11,7 +10,6 @@ use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
 
 use crate::failure::{Failure, Hint};
 
-/// A connection to the runner.
 pub struct RunnerLink {
     lines: Lines<BufReader<OwnedReadHalf>>,
     write: OwnedWriteHalf,
@@ -25,19 +23,16 @@ fn not_running() -> Failure {
     }
 }
 
-/// The socket file of the runner, as the daemon finds its folder.
 fn socket() -> Option<PathBuf> {
     let folder = control::folder(|name| std::env::var(name).ok(), cfg!(target_os = "macos"))?;
     Some(folder.join(control::SOCKET))
 }
 
 impl RunnerLink {
-    /// Connects, after a check that the socket file is a socket of this user that no one else
-    /// may use (THR-128).
+    /// Connects only to a private socket of this user (THR-128).
     ///
     /// # Errors
-    /// [`Failure::NotFound`] when no runner listens; [`Failure::Forbidden`] for a socket of a
-    /// different user or mode.
+    /// [`Failure::NotFound`] when no runner listens; [`Failure::Forbidden`] for a socket that is not private.
     pub async fn connect() -> Result<Self, Failure> {
         let socket = socket().ok_or_else(not_running)?;
         let meta = std::fs::symlink_metadata(&socket).map_err(|_| not_running())?;
@@ -61,8 +56,6 @@ impl RunnerLink {
         })
     }
 
-    /// Sends a call and gives its ID.
-    ///
     /// # Errors
     /// [`Failure::NotFound`] when the runner is gone.
     pub async fn send(&mut self, action: Action) -> Result<u64, Failure> {
@@ -82,8 +75,6 @@ impl RunnerLink {
         Ok(self.next)
     }
 
-    /// The next frame of the runner; `None` when it closed the connection.
-    ///
     /// # Errors
     /// [`Failure::Input`] for a frame that does not read.
     pub async fn next(&mut self) -> Result<Option<Reply>, Failure> {
@@ -98,22 +89,81 @@ impl RunnerLink {
             })
     }
 
-    /// Sends a call and waits for its answer.
-    ///
     /// # Errors
     /// As [`Self::send`] and [`Self::next`].
+    /// [`Failure::Conflict`] when the runner closed the connection at the call because its daemon
+    /// is older than this program and does not know the call.
     pub async fn call(&mut self, action: Action) -> Result<Outcome, Failure> {
         let id = self.send(action).await?;
         loop {
-            match self.next().await?.ok_or_else(not_running)? {
-                Reply::Done { id: done, result } if done == id => return Ok(result),
-                _ => {}
+            match self.next().await? {
+                Some(Reply::Done { id: done, result }) if done == id => return Ok(result),
+                Some(_) => {}
+                None => return Err(closed().await),
             }
         }
     }
+
+    /// The version of the daemon of the runner; `None` when the runner closed the connection at
+    /// the call, as a runner from before it does.
+    async fn version(&mut self) -> Result<Option<String>, Failure> {
+        let id = self.send(Action::Version).await?;
+        while let Some(reply) = self.next().await? {
+            if let Reply::Done { id: done, result } = reply
+                && done == id
+            {
+                return Ok(match result {
+                    Outcome::Version { version } => Some(version),
+                    _ => None,
+                });
+            }
+        }
+        Ok(None)
+    }
 }
 
-/// A refusal of the runner as a failure of the command, in words for the person.
+/// Why a runner closed the connection with no answer: it asks a new connection for the version
+/// of the daemon. A runner that closes that one too, or names an older version, is older than
+/// this program and did not know the call (HMD-055).
+async fn closed() -> Failure {
+    let Ok(mut link) = RunnerLink::connect().await else {
+        return not_running();
+    };
+    let this = env!("CARGO_PKG_VERSION");
+    match link.version().await {
+        Ok(None) => older(None, this),
+        Ok(Some(version)) if numbers(&version) < numbers(this) => older(Some(&version), this),
+        _ => Failure::NotFound {
+            message: "The thread runner of this computer ended the call with no answer.".to_owned(),
+            hint: Some(Hint::run("anima agents running")),
+        },
+    }
+}
+
+/// The failure of a call that the daemon of this computer does not know, in words for the person.
+#[must_use]
+pub fn older(daemon: Option<&str>, this: &str) -> Failure {
+    let versions = daemon.map_or_else(
+        || format!("this app and command are {this}"),
+        |daemon| format!("the daemon is {daemon}, this app and command are {this}"),
+    );
+    Failure::Conflict {
+        message: format!(
+            "The daemon on this computer is older than this app ({versions}): it does not know this call. Update it: quit Anima and open it again, which updates the daemon at its start; or install it again in the settings of this computer, at Metrics source: Daemon."
+        ),
+    }
+}
+
+/// The three numbers of a version, for an order; a version that does not read is the lowest.
+fn numbers(version: &str) -> [u64; 3] {
+    let mut parts = version.split('.').map(|part| part.parse().unwrap_or(0));
+    [
+        parts.next().unwrap_or(0),
+        parts.next().unwrap_or(0),
+        parts.next().unwrap_or(0),
+    ]
+}
+
 #[must_use]
 pub fn refusal(why: &Refusal) -> Failure {
     let (message, hint) = match why {
@@ -166,9 +216,34 @@ pub fn refusal(why: &Refusal) -> Failure {
             control::OVER_LIMIT,
             Some(Hint::run("anima agents raise-limit")),
         ),
+        Refusal::Worktree { why } => return worktree_refused(why),
     };
     Failure::Forbidden {
         message: message.to_owned(),
         hint,
     }
+}
+
+/// Why the worktree of a new thread was not made, in words for the person (TH116).
+fn worktree_refused(why: &agent_threads::git::GitRefusal) -> Failure {
+    Failure::Forbidden {
+        message: worktree_words(why),
+        hint: None,
+    }
+}
+
+fn worktree_words(why: &agent_threads::git::GitRefusal) -> String {
+    use agent_threads::git::GitRefusal;
+    let words = match why {
+        GitRefusal::Failed { said } => return format!("The worktree was not made: {said}"),
+        GitRefusal::NotARepository => "That folder is not the top folder of a Git repository.",
+        GitRefusal::UnknownBase => "That branch or commit is not in the repository.",
+        GitRefusal::GitNotFound => "git is not on the PATH of your login.",
+        GitRefusal::NotOnWindows => "Worktrees are not available on Windows yet.",
+        GitRefusal::RecordsHeld => {
+            "A thread runs in a folder that holds the records of Anima's Git: stop that thread first."
+        }
+        _ => "The worktree of the thread was not made.",
+    };
+    words.to_owned()
 }

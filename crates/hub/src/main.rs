@@ -164,7 +164,8 @@ fn tls_files(config: &Config) -> Option<listen::TlsFiles> {
     files.map(|(cert, key)| listen::TlsFiles { cert, key })
 }
 
-/// An empty `ANIMA_PROBE_DENY` is allowed but logged at start (R-030, K7).
+/// An empty `ANIMA_PROBE_DENY` is allowed but logged at start (R-030, K7); a hosted hub never
+/// gets here with one, because its configuration refuses it.
 fn warn_without_probe_deny(config: &Config) {
     if config.probe_deny.is_empty() {
         tracing::warn!("ANIMA_PROBE_DENY is empty: checks may probe the hub's own networks");

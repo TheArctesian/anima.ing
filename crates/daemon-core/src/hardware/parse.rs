@@ -1,31 +1,24 @@
-//! The parse of what the hardware readers print or read (CAP-001, CAP-004, CAP-005).
-
 use std::time::Duration;
 
 use super::{ThermalState, UsableMemory, UsableSource};
 use crate::readings::GpuVendor;
 
-/// One mebibyte.
 const MIB: u64 = 1024 * 1024;
 
 /// Above this much memory, macOS lets the GPU wire three quarters of it by default; at or below
 /// it, two thirds.
 const LARGE_MEMORY: u64 = 36 * 1024 * MIB;
 
-/// A person who used the keyboard or the pointer within this time is active (CAP-004).
 pub const ACTIVE_WITHIN: Duration = Duration::from_mins(5);
 
-/// The number on the first line of `sysctl -n <name>`.
 #[must_use]
 pub fn sysctl_number(output: &[u8]) -> Option<u64> {
     let text = std::str::from_utf8(output).ok()?;
     text.lines().next()?.trim().parse().ok()
 }
 
-/// The usable GPU memory of Apple silicon (CAP-005): the value of `iogpu.wired_limit_mb` when
-/// the operator set one, else the default share of macOS: three quarters of a memory larger
-/// than 36 GiB, two thirds of a smaller one. This default is the value Metal gives as
-/// `recommendedMaxWorkingSetSize` on these machines; the daemon does not call Metal.
+/// The default share is the `recommendedMaxWorkingSetSize` that Metal gives on these machines;
+/// the daemon does not call Metal (CAP-005).
 #[must_use]
 pub fn usable_memory(memory_bytes: u64, wired_limit_mb: Option<u64>) -> UsableMemory {
     if let Some(limit) = wired_limit_mb.filter(|limit| *limit > 0) {
@@ -45,9 +38,6 @@ pub fn usable_memory(memory_bytes: u64, wired_limit_mb: Option<u64>) -> UsableMe
     }
 }
 
-/// The thermal state `pmset -g therm` reports: nominal when no thermal warning was recorded or
-/// the CPU speed limit is 100; throttled when the limit is lower; `None` for output of another
-/// shape.
 #[must_use]
 pub fn pmset_thermal(output: &[u8]) -> Option<ThermalState> {
     let text = std::str::from_utf8(output).ok()?;
@@ -65,8 +55,7 @@ pub fn pmset_thermal(output: &[u8]) -> Option<ThermalState> {
     }
 }
 
-/// Whether the operator is active, from `ioreg -c IOHIDSystem -d 4 -r -k HIDIdleTime`: the
-/// first `"HIDIdleTime" = <nanoseconds>` is less than [`ACTIVE_WITHIN`].
+/// Reads `ioreg -c IOHIDSystem -d 4 -r -k HIDIdleTime`.
 #[must_use]
 pub fn ioreg_active(output: &[u8]) -> Option<bool> {
     let text = std::str::from_utf8(output).ok()?;

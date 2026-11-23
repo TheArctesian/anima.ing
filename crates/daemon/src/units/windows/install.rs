@@ -1,4 +1,4 @@
-//! Validate the enrolled daemon before registering its native login task (WIN2, MET-019).
+//! WIN2, MET-019.
 use super::{plan::Target, step::Step};
 use crate::{
     config::{home::Home, private_file},
@@ -34,7 +34,6 @@ pub enum InstallError {
     File(#[from] private_file::PrivateFileError),
 }
 
-/// Install and start a per-user login task only after its binary, state and token pass checks.
 /// # Errors
 /// Refuses an exposed binary, another home, an expired enrolment, or a failed task command.
 pub fn install(

@@ -1,5 +1,4 @@
-//! `anima agents usage`: the use of the AI agent programs summed by the dimensions asked for,
-//! over a range of UTC days, with the estimate of its cost (AIS-020, AIS-021, AIS-024).
+//! `anima agents usage` (AIS-020, AIS-021, AIS-024).
 
 use chrono::{Days, NaiveDate, Utc};
 

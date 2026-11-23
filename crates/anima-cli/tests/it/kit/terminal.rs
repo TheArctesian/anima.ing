@@ -1,6 +1,4 @@
-//! `anima` at a pseudo-terminal, as a person runs it: the system `script` program gives the
-//! command a terminal (standard input, output and `/dev/tty` with echo), and the test answers
-//! each question only once it is on screen. No sleep: every wait has a deadline.
+//! `anima` at a pseudo-terminal from the system `script` program; every wait has a deadline, never a sleep.
 
 use std::process::Stdio;
 use std::sync::{Arc, Mutex};
@@ -13,15 +11,11 @@ use tokio::task::JoinHandle;
 
 use crate::kit::Anima;
 
-/// How long a question or the end of the command may take to appear.
 const DEADLINE: Duration = Duration::from_secs(30);
 
-/// A shell script that prints the terminal's modes (`stty -a`, on one line) before and after it
-/// runs its arguments, and exits with the command's code.
 const SHOWING_MODES: &str = r#"modes() { printf '%s %s\n' "$1" "$(stty -a | tr '\n\t' '  ')"; }; modes modes-before; "$@"; code=$?; modes modes-after; exit $code"#;
 
-/// `script`'s own arguments that run `command` at a new terminal and give back its exit code:
-/// the BSD form on macOS, the util-linux form elsewhere.
+/// `script` takes the BSD form on macOS and the util-linux form elsewhere.
 fn script_arguments(command: &[&str]) -> Vec<String> {
     if cfg!(target_os = "macos") {
         let mut all = vec!["-q".to_owned(), "/dev/null".to_owned()];
@@ -41,7 +35,6 @@ fn script_arguments(command: &[&str]) -> Vec<String> {
     ]
 }
 
-/// One run of `anima` at a terminal.
 pub struct Terminal {
     child: Child,
     /// Kept open until the command ends: `script` ends the terminal at end of input.
@@ -49,7 +42,6 @@ pub struct Terminal {
     screen: Arc<Mutex<String>>,
     changed: Arc<Notify>,
     reader: JoinHandle<()>,
-    /// How much of the screen the test has read past.
     seen: usize,
 }
 
@@ -60,8 +52,6 @@ impl Terminal {
         Self::running(anima, &command)
     }
 
-    /// As [`Terminal::start`], with the terminal's modes shown before and after `anima` runs;
-    /// read them back with [`assert_modes_restored`].
     pub fn start_showing_modes(anima: &Anima, args: &[&str]) -> Self {
         let mut command = vec![
             "/bin/sh",
@@ -105,12 +95,10 @@ impl Terminal {
         }
     }
 
-    /// Everything the terminal showed so far.
     pub fn screen(&self) -> String {
         self.screen.lock().expect("the screen").clone()
     }
 
-    /// Waits until `text` appears after what was already read, and reads past it.
     pub async fn expect(&mut self, text: &str) {
         let waited = tokio::time::timeout(DEADLINE, async {
             loop {
@@ -130,14 +118,11 @@ impl Terminal {
         });
     }
 
-    /// Types `line` and Return.
     pub async fn type_line(&mut self, line: &str) {
         self.press(&format!("{line}\r")).await;
     }
 
-    /// Sends `signal` (such as `INT`) to `anima` as another program would, not from a key. For
-    /// a [`Terminal::start_showing_modes`] run, where `anima` is the child of the shell that
-    /// `script` runs.
+    /// Only for a [`Terminal::start_showing_modes`] run, where `anima` is the child of the shell.
     pub async fn signal(&self, signal: &str) {
         let script = self.child.id().expect("script is running").to_string();
         let shell = tokio::process::Command::new("pgrep")
@@ -154,7 +139,6 @@ impl Terminal {
         assert!(sent.success(), "no anima under the shell {shell:?}");
     }
 
-    /// Types `keys` as they are, without Return: control keys such as Ctrl-C (`\x03`).
     pub async fn press(&mut self, keys: &str) {
         self.keys
             .write_all(keys.as_bytes())
@@ -163,7 +147,6 @@ impl Terminal {
         self.keys.flush().await.expect("keys sent");
     }
 
-    /// Waits for the command to end; its exit code and the whole screen.
     pub async fn finish(mut self) -> (i32, String) {
         let status = tokio::time::timeout(DEADLINE, self.child.wait())
             .await
@@ -180,9 +163,7 @@ impl Terminal {
     }
 }
 
-/// Asserts that the terminal of a [`Terminal::start_showing_modes`] run had the same modes after
-/// `anima` as before it, with echo, line editing and the signal keys on. `pendin` is left out:
-/// the kernel sets it itself when line editing comes back on, until the next read.
+/// `pendin` is left out: the kernel sets it itself when line editing comes back on.
 pub fn assert_modes_restored(screen: &str) {
     let modes = |label: &str| -> Vec<String> {
         screen

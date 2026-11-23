@@ -1,6 +1,5 @@
-// The fixed addresses on deploy/compose.yaml's gateway network (VP-13): the VPS firewall and sshd
-// admit the hub's 172.30.0.10, so no other container may ever hold it. Every Anima network stays in
-// 172.30.0.0/16, which the VPS firewall keeps off the VPN. Nothing here starts Docker.
+// VP-13: the VPS firewall and sshd admit the hub's 172.30.0.10, so no other container may hold it. Every Anima
+// network stays in 172.30.0.0/16, which the VPS firewall keeps off the VPN.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -13,7 +12,6 @@ interface Compose {
 
 const compose = Bun.YAML.parse(readFileSync(join(import.meta.dir, "..", "compose.yaml"), "utf8")) as Compose;
 
-/** `${NAME:-default}` replaced by its default. */
 const resolveDefault = (text: string): string => text.replace(/\$\{[A-Z_]+:-([^}]*)\}/g, "$1");
 
 function ipv4(text: string): number {
@@ -48,7 +46,6 @@ describe("fixed addresses on the gateway network (VP-13)", () => {
   });
 });
 
-/** The first address and size of a CIDR. */
 function block(cidr: string): { first: number; size: number } {
   const [base = "", bits = ""] = cidr.split("/");
   return { first: ipv4(base), size: 2 ** (32 - Number(bits)) };

@@ -1,14 +1,9 @@
 # shellcheck shell=bash
 # The `selinux` command and the checks of the labels Headscale needs (VPS-004, D-9).
-# Sourced by harden.sh; needs its say, refuse, fail, run, path and require_root, and
-# GETENFORCE, SEMANAGE, RESTORECON, STAT, DOCKER, HEADSCALE_DIR and LABEL_SPEC.
 
-# A recorded deviation from D-9 (R-050): while this file holds a reason, SELinux may stay
-# disabled, so that turning it on (a relabel and reboots) does not stop the operator's
-# other services. It is ignored, and reported, once SELinux is on.
+# A recorded deviation from D-9 (R-050): while it holds a reason, SELinux may stay disabled, so a relabel does not stop other services.
 SELINUX_DEVIATION=/etc/anima/selinux-disabled
 
-# Print the recorded reason for keeping SELinux disabled, or nothing.
 selinux_deviation() {
   local file
   file=$(path "$SELINUX_DEVIATION")
@@ -37,7 +32,6 @@ cmd_selinux() {
   say "Labelled $HEADSCALE_DIR/config and lib container_file_t."
 }
 
-# Print each problem with the SELinux labels Headscale's volumes need, or nothing.
 label_problems() {
   local mode dir label
   mode=$($GETENFORCE 2>/dev/null) || mode=unknown
@@ -51,9 +45,7 @@ label_problems() {
   done
 }
 
-# Print a problem unless the Headscale container runs confined (container_t). A container
-# keeps the label it was created with: after daemon.json turns labels on, Headscale stays
-# spc_t until it is recreated.
+# A container keeps the label it was created with, so Headscale stays spc_t until it is recreated.
 headscale_label_problem() {
   local mode id label
   mode=$($GETENFORCE 2>/dev/null) || mode=unknown

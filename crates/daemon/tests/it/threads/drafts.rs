@@ -19,6 +19,8 @@ fn start(kit: &Kit, draft: Uuid, attachments: Vec<Uuid>) -> Action {
         program_path: None,
         draft: Some(draft),
         attachments,
+        worktree: false,
+        base: None,
     }
 }
 

@@ -5,8 +5,9 @@ use std::path::PathBuf;
 
 use uuid::Uuid;
 
-use super::{Action, Call, ListingChange, ProjectChange};
+use super::{Action, Call, ListingChange, Outcome, ProjectChange, Reply};
 use crate::drive::{Answer, Mode, Program};
+use crate::git::{GitAction, GitOutcome, Scope};
 
 /// One of each call that reads, or that starts or drives a thread.
 fn reads() -> Vec<Action> {
@@ -26,6 +27,8 @@ fn reads() -> Vec<Action> {
             program_path: None,
             draft: None,
             attachments: Vec::new(),
+            worktree: true,
+            base: Some("main".to_owned()),
         },
         Action::Send {
             thread,
@@ -41,6 +44,7 @@ fn reads() -> Vec<Action> {
         Action::Stop { thread },
         Action::RaiseLimit,
         Action::Accounts,
+        Action::Version,
         Action::Folder {
             folder: PathBuf::from("/work"),
         },
@@ -127,6 +131,24 @@ fn files() -> Vec<Action> {
             thread,
             attachment: other,
         },
+        Action::Git {
+            thread,
+            repository: "app".to_owned(),
+            action: GitAction::Changes {
+                scope: Scope::Turn { turn: 3 },
+                ignore_whitespace: true,
+            },
+        },
+        Action::Git {
+            thread,
+            repository: "app".to_owned(),
+            action: GitAction::Commit {
+                message: "words".to_owned(),
+                reviewed: "a1".to_owned(),
+                files: Some(vec!["src/a.rs".to_owned()]),
+                new_branch: None,
+            },
+        },
     ]
 }
 
@@ -160,10 +182,12 @@ const fn kind(action: &Action) -> usize {
         Action::AttachMore { .. } => 23,
         Action::Unattach { .. } => 24,
         Action::Folders { .. } => 25,
+        Action::Git { .. } => 26,
+        Action::Version => 27,
     }
 }
 
-const KINDS: usize = 26;
+const KINDS: usize = 28;
 
 #[test]
 fn th109_each_call_reads_back_from_its_frame() {
@@ -183,4 +207,21 @@ fn th109_each_call_reads_back_from_its_frame() {
         named.iter().all(|named| *named),
         "each kind of call is in a list"
     );
+}
+
+#[test]
+fn th116_a_git_answer_reads_back_from_its_frame() {
+    let done = Reply::Done {
+        id: 42,
+        result: Outcome::Git {
+            result: GitOutcome::Reverted {
+                turn: 2,
+                undo: "b2".to_owned(),
+            },
+        },
+    };
+    let frame = serde_json::to_string(&done).expect("a frame");
+    let read: Reply =
+        serde_json::from_str(&frame).unwrap_or_else(|error| panic!("{frame}: {error}"));
+    assert_eq!(read, done, "{frame}");
 }

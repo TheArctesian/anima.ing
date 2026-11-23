@@ -1,6 +1,3 @@
-//! The removal with a temporary HOME and a runner that only notes each command: no real unit,
-//! `launchctl`, `systemctl` or Keychain is touched.
-
 use std::cell::RefCell;
 use std::fs;
 use std::io;
@@ -10,7 +7,6 @@ use super::*;
 
 const UID: u32 = 4242;
 
-/// What happened, in order: each command as one line, then `forget` when it was called.
 #[derive(Default)]
 struct Noted {
     lines: RefCell<Vec<String>>,
@@ -36,8 +32,6 @@ fn env_of(home: &Path, runtime: Option<&str>) -> impl Fn(&str) -> Option<String>
     }
 }
 
-/// Runs the removal for `platform` in `home`; each command answers `answer`. The file of the
-/// unit is noted as there or gone each time a command runs.
 fn remove(
     platform: Platform,
     home: &Path,
@@ -220,7 +214,6 @@ fn hmd_056_with_no_home_nothing_is_run() {
     ));
 }
 
-/// Runs `stop` for `platform` in `home`; each command answers `answer`. Returns the commands.
 fn stop_in(
     platform: Platform,
     home: &Path,

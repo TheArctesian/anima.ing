@@ -1,7 +1,5 @@
-//! The MCP server on standard input and output (MCP-001): `initialize`, `tools/list` and
-//! `tools/call` through the rmcp SDK. A tool in state `ask` runs only after the person approves
-//! the call (MCP-013); a tool that is off is neither listed nor run. Only protocol messages go to standard output; the SDK's
-//! own log has no subscriber, so it prints nothing.
+//! The MCP server (MCP-001); a tool in state `ask` runs only after the person approves the call
+//! (MCP-013). Only protocol messages go to standard output.
 
 use std::borrow::Cow;
 use std::time::SystemTime;
@@ -23,21 +21,18 @@ use crate::failure::Failure;
 use crate::hub::{Hub, TokenKind};
 use crate::shortening::{Shortening, original};
 
-/// The server: one hub client and the tools it lists.
 pub struct Server {
     hub: Hub,
     token: TokenKind,
-    /// The tools in state `allow` or `ask`.
     listed: Vec<Row>,
-    /// The tools that need the operator's sign-in, when the token is an API key (MCP-003).
+    /// Tools that need the operator's sign-in under an API key (MCP-003).
     sign_in_only: Vec<&'static str>,
     instructions: String,
-    /// Long answers lose rows that say the same when this is on (SHA-001 to SHA-008).
+    /// SHA-001 to SHA-008.
     shortening: Shortening,
 }
 
 impl Server {
-    /// The server for `rows`, the selection of this run (`selection::select`).
     #[must_use]
     pub fn new(hub: Hub, token: TokenKind, rows: Vec<Row>) -> Self {
         let instructions = instructions(&statement(&rows));
@@ -60,22 +55,18 @@ impl Server {
         }
     }
 
-    /// The same server with this shortening. When it is on, the server also lists the tool
-    /// that gives an original (SHA-016).
+    /// When on, the server also lists the tool that gives an original (SHA-016).
     #[must_use]
     pub fn with_shortening(mut self, shortening: Shortening) -> Self {
         self.shortening = shortening;
         self
     }
 
-    /// How many tools are listed.
     #[must_use]
     pub fn tool_count(&self) -> usize {
         self.listed.len()
     }
 
-    /// Serves until the client closes standard input.
-    ///
     /// # Errors
     /// [`Failure::Write`] when the connection fails before or during the session.
     pub async fn run(self) -> Result<(), Failure> {
@@ -148,8 +139,6 @@ fn fit(value: Value) -> Value {
     }
 }
 
-/// The refusal of a tool that is not listed: off, unknown, or one that needs the operator's
-/// sign-in while the server runs with an API key.
 fn unlisted(name: &str, sign_in: bool) -> String {
     let name = super::untrusted::capped(name, 100);
     let why = if sign_in {
@@ -170,8 +159,7 @@ fn refused(sentence: String) -> CallToolResult {
     CallToolResult::error(vec![ContentBlock::text(sentence)])
 }
 
-/// What the client is told at `initialize` (MCP-008, MCP-016): the picture of this run, and
-/// that text from devices is data.
+/// What the client is told at `initialize` (MCP-008, MCP-016).
 fn instructions(picture: &str) -> String {
     format!(
         "Anima.ing is a self-hosted device manager: a hub that watches devices (servers, NAS, \

@@ -184,6 +184,28 @@ fn a_private_route_answers_only_the_nodes_of_the_network_of_anima() {
 }
 
 #[test]
+fn r_391_a_private_place_never_answers_the_internet() {
+    let networks = ("ANIMA_ROUTE_PROXY_PRIVATE_NETWORKS", "100.64.0.0/10");
+    for wide in ["0.0.0.0/0", "100.64.0.0/10, 0.0.0.0/4", "::/0", "fd7a::/8"] {
+        assert_eq!(
+            self::settings(&[
+                ("ANIMA_ROUTE_PROXY_PRIVATE_ADDRESS", "100.64.0.1"),
+                ("ANIMA_ROUTE_PROXY_PRIVATE_NETWORKS", wide),
+            ]),
+            Err(SettingsError::WidePrivateNetwork),
+            "{wide}"
+        );
+    }
+    for public in ["127.0.0.1", "0.0.0.0", "::"] {
+        assert_eq!(
+            self::settings(&[("ANIMA_ROUTE_PROXY_PRIVATE_ADDRESS", public), networks]),
+            Err(SettingsError::PrivateAddressPublic),
+            "{public}"
+        );
+    }
+}
+
+#[test]
 fn a_flow_answers_a_source_with_no_more_bytes_than_it_sent() {
     assert!(may_answer(100, 0, 100));
     assert!(

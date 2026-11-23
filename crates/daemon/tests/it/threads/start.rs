@@ -8,6 +8,14 @@ use super::*;
 
 #[tokio::test]
 async fn thr_040_a_program_gets_only_the_given_environment_and_three_descriptors() {
+    // A descriptor left open without close-on-exec by what starts the holder, as the step of a
+    // CI job can: the holder inherits it and keeps it from its programs.
+    let left_open = std::fs::File::open("/dev/null").expect("a descriptor");
+    nix::fcntl::fcntl(
+        std::os::fd::AsRawFd::as_raw_fd(&left_open),
+        nix::fcntl::FcntlArg::F_SETFD(nix::fcntl::FdFlag::empty()),
+    )
+    .expect("left open");
     let holder = Holder::start(0);
     let mut link = holder.link().await;
     let id = link.send(start("env", "/usr/bin/env", &[])).await;
@@ -28,7 +36,9 @@ async fn thr_040_a_program_gets_only_the_given_environment_and_three_descriptors
         .await;
     link.answer(id).await;
     let found = texts(&link.until(exited("fds")).await);
-    // Descriptor 3 is the folder that perl itself opened to list them.
+    // Descriptor 3 is the folder that perl itself opened to list them. It holds also where the
+    // test itself got a descriptor without close-on-exec (the step of GitHub's Mac job passes
+    // some on, run 45131440281): the holder keeps what it inherited from its programs.
     assert_eq!(found, [(1, "0 1 2 3".to_owned())]);
 }
 

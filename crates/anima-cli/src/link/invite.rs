@@ -1,7 +1,5 @@
-//! `anima link invite <name>`: a single-use invite for a new device (LNK-003). The invite is
-//! the one secret this command exists to show: on standard output, once, or with `--to-file`
-//! in a `0600` file and nowhere else. It never goes on a command line, into a log or into a
-//! note (CMD-014, LOG-007).
+//! The invite shows once, on standard output or in a `0600` file only, and never goes on a command
+//! line, into a log or into a note (LNK-003, CMD-014, LOG-007).
 
 use serde_json::json;
 use zeroize::Zeroizing;

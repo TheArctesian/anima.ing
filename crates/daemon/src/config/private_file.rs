@@ -10,38 +10,28 @@ use std::path::Path;
 
 use zeroize::Zeroizing;
 
-/// The only mode a private file has.
 const MODE: u32 = 0o600;
 
 /// The most a private file may hold: a token record or the configuration is a few hundred bytes.
 pub const LIMIT: usize = 64 * 1024;
 
-/// Whether a private file with this `mode` and `owner` is not safe to trust when the daemon runs
-/// as `running`: the mode must be exactly 0600 and the owner the running user.
 #[must_use]
 pub const fn exposed(mode: u32, owner: u32, running: u32) -> bool {
     mode & 0o777 != MODE || owner != running
 }
 
-/// Whether a private folder with this `mode` and `owner` is not safe to trust: no access for
-/// group or others, and the running user as owner.
 #[must_use]
 pub const fn folder_exposed(mode: u32, owner: u32, running: u32) -> bool {
     mode & 0o077 != 0 || owner != running
 }
 
-/// Whether a folder with this `mode` lets any user replace what is in it: others can write
-/// and the sticky bit (which keeps users to their own entries, as in `/tmp`) is not set.
+/// Others can write, and no sticky bit keeps them to their own entries (as in `/tmp`).
 #[must_use]
 pub const fn parent_replaceable(mode: u32) -> bool {
     mode & 0o002 != 0 && mode & 0o1000 == 0
 }
 
-/// Whether `dir` is a folder that only the running user can reach and that no other user can
-/// replace: a real folder (not a link), owned by the running user, with no access for group or
-/// others, below no folder that others can write to without the sticky bit. The folders above
-/// are read as the path stands, not with links resolved; their owner and their group access
-/// are not checked.
+/// The folders above are read with links unresolved; their owner and group access are not checked.
 ///
 /// # Errors
 /// An I/O error when the folder or one above it cannot be read.
@@ -63,7 +53,6 @@ pub fn folder_private(dir: &Path) -> io::Result<bool> {
     Ok(true)
 }
 
-/// Whether a Windows directory and every ancestor refuse replacement by another user.
 /// # Errors
 /// The path or its security descriptor cannot be inspected.
 #[cfg(windows)]
@@ -87,9 +76,6 @@ pub enum PrivateFileError {
     Exposed,
 }
 
-/// Writes `bytes` as `dir/name`: into a temporary file in `dir` that is created `0600` (so the
-/// bytes never sit in a file others can read), flushed to disk, then renamed over `name`.
-///
 /// # Errors
 /// [`PrivateFileError::Io`] when any step fails; the old file is then left as it was.
 pub fn write(dir: &Path, name: &str, bytes: &[u8]) -> Result<(), PrivateFileError> {
@@ -107,17 +93,14 @@ pub fn write(dir: &Path, name: &str, bytes: &[u8]) -> Result<(), PrivateFileErro
     Ok(())
 }
 
-/// Reads `path`; `None` when it does not exist. Refuses a file that is not mode `0600` or not
-/// owned by the user running the daemon, since a token another user could read is already lost.
+/// `None` when `path` does not exist.
 ///
 /// # Errors
-/// [`PrivateFileError::Exposed`] for such a file, [`PrivateFileError::Io`] for a read failure.
+/// [`PrivateFileError::Exposed`] unless `0600` and the running user's; [`PrivateFileError::Io`].
 pub fn read(path: &Path) -> Result<Option<Zeroizing<Vec<u8>>>, PrivateFileError> {
     read_within(path, LIMIT)
 }
 
-/// [`read`] for a file that may hold up to `limit` bytes, such as the key cache.
-///
 /// # Errors
 /// As [`read`]; [`PrivateFileError::Io`] also for a file of more than `limit` bytes.
 pub fn read_within(
@@ -146,8 +129,8 @@ pub fn read_within(
     Ok(Some(read_limited(file, limit)?))
 }
 
-/// Reads at most `limit` bytes from `reader` into one buffer that has room for `limit + 1` from
-/// the start, so it never moves and its wipe on drop covers every byte read (LOG-007).
+/// One buffer with room for `limit + 1` from the start never moves, so its wipe covers every byte
+/// read (LOG-007).
 ///
 /// # Errors
 /// [`io::ErrorKind::FileTooLarge`] when `reader` holds more than `limit` bytes; the read error.
@@ -163,8 +146,7 @@ pub fn read_limited(reader: impl io::Read, limit: usize) -> io::Result<Zeroizing
     Ok(bytes)
 }
 
-/// The user ID of this process: the owner of a file it creates (an unnamed temporary file, so
-/// this works on Linux and macOS alike).
+/// The owner of an unnamed temporary file, which works on Linux and macOS alike.
 ///
 /// # Errors
 /// An I/O error when the temporary file cannot be made.

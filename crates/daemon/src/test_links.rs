@@ -1,5 +1,4 @@
-//! Platform spelling of test-only filesystem links. Windows link tests need Developer Mode
-//! or the symbolic-link privilege, and exercise the same refusal as Unix tests.
+//! Test-only filesystem links; on Windows they need Developer Mode or the symbolic-link privilege.
 use std::{io, path::Path};
 pub(crate) fn symlink(target: impl AsRef<Path>, link: impl AsRef<Path>) -> io::Result<()> {
     #[cfg(unix)]

@@ -1,6 +1,5 @@
-//! The drain of `model_drain` (Section 2, CAP-013): the daemon sends no new request to a
-//! server and waits for the requests in progress for at most `seconds`, never more than
-//! [`DRAIN_LIMIT_SECONDS`]. It stops no server. Pure: the caller gives the count and the clock.
+//! The drain of `model_drain` (CAP-013): the daemon sends a server no new request and stops no
+//! server.
 
 /// The longest wait of a drain (CAP-013).
 pub const DRAIN_LIMIT_SECONDS: u64 = 60;
@@ -11,13 +10,13 @@ pub struct Drain {
     deadline: u64,
 }
 
-/// What the drain does at one look.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Step {
-    /// Requests are in progress and the deadline has not come.
     Wait,
     /// The drain is over; `left` requests were still in progress at the deadline.
-    Done { left: usize },
+    Done {
+        left: usize,
+    },
 }
 
 impl Drain {
@@ -29,7 +28,6 @@ impl Drain {
         }
     }
 
-    /// The step at `now` with `in_progress` requests.
     #[must_use]
     pub const fn step(&self, in_progress: usize, now: u64) -> Step {
         if in_progress == 0 || now >= self.deadline {

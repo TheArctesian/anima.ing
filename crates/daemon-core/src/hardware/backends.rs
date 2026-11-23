@@ -1,6 +1,4 @@
-//! The verdict of each model backend (CAP-002): usable, or not usable with a fixed reason. The
-//! command and the MCP tool give a fixed repair hint for each reason; no text from the device
-//! is sent.
+//! The verdict of each model backend (CAP-002): usable, or a fixed reason; no text from the device is sent.
 
 use serde::{Deserialize, Serialize};
 
@@ -36,7 +34,6 @@ impl BackendName {
         }
     }
 
-    /// The backend of a stored name; `None` for a name this version does not know.
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|one| one.as_str() == text)
@@ -47,15 +44,12 @@ impl BackendName {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BackendReason {
-    /// No GPU of the backend's vendor is present.
     NoDevice,
     /// The GPU is present, but its kernel driver or its user-space driver is not.
     NoDriver,
     /// The driver is present, but the daemon's user may not open the device.
     NoPermission,
-    /// The backend does not exist on this operating system or processor.
     NotSupported,
-    /// A reason this side does not know (a newer daemon's).
     #[serde(other)]
     Failed,
 }
@@ -72,7 +66,6 @@ impl BackendReason {
         }
     }
 
-    /// The reason of a stored text; `Failed` for any other.
     #[must_use]
     pub fn parse(text: &str) -> Self {
         [
@@ -110,11 +103,9 @@ pub enum KfdAccess {
     Granted,
 }
 
-/// What the daemon read that the verdicts depend on.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Facts {
     pub os: Os,
-    /// macOS on an `aarch64` processor.
     pub apple_silicon: bool,
     /// The vendors of the GPUs present: the PCI vendors of `/sys/class/drm` on Linux.
     pub vendors: Vec<GpuVendor>,
@@ -125,7 +116,6 @@ pub struct Facts {
     pub vulkan_driver: bool,
 }
 
-/// The verdict of each backend in [`BackendName::ALL`] order.
 #[must_use]
 pub fn backends(facts: &Facts) -> Vec<Backend> {
     BackendName::ALL

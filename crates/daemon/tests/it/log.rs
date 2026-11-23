@@ -1,5 +1,3 @@
-//! No code and no token reaches a log line or an error message (LOG-007, MET-013).
-
 use std::sync::{Arc, LazyLock, Mutex};
 
 use anima_daemon::cli::{self, CliError};
@@ -19,8 +17,7 @@ use crate::kit::{at, points, rig, token};
 
 const CODE: &str = "anima_enrol_AAAAAAAAAAAAAAAAAAAAAA";
 
-/// One global subscriber for the whole test binary: a per-thread one misses callsites that
-/// another test thread registered first, so a test would see no line at all.
+/// Global, because a per-thread subscriber misses callsites that another test thread registered.
 static LOG: LazyLock<Captured> = LazyLock::new(|| {
     let captured = Captured::default();
     let writer = captured.clone();
@@ -52,8 +49,6 @@ impl std::io::Write for Captured {
     }
 }
 
-/// At TRACE, as `RUST_LOG=trace` gives the binary, through enrolment, a refused push, a
-/// renewal and a recovery.
 #[tokio::test]
 async fn log_007_trace_logs_hold_no_token_and_no_code() {
     LazyLock::force(&LOG);
@@ -164,8 +159,6 @@ async fn met_014_the_log_tells_a_panicked_sampler_from_one_that_returned() {
     );
 }
 
-/// THR-149 point 7: at TRACE, the daemon sends the address of an account to the hub and writes
-/// it in no log line, through the ask for the salt, the batch with the account and a refusal.
 #[tokio::test]
 async fn thr_149_trace_logs_hold_no_address_of_an_account() {
     use anima_daemon::sampling::agent_usage::{ProgramAccount, UsageReport};

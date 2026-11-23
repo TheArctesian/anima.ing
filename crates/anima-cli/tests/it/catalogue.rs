@@ -1,6 +1,4 @@
-//! `anima catalogue list`, `show` and `install`, and the MCP tools `anima_catalogue_list`,
-//! `anima_catalogue_show` and `anima_catalogue_install`, against the scripted hub (task H38,
-//! CMD-030, R-234).
+//! `anima catalogue` and its MCP tools (task H38, CMD-030, R-234).
 
 use serde_json::{Value, json};
 

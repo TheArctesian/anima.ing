@@ -1,4 +1,3 @@
-// The LocalAPI proxy against a fake tailscaled on a unix socket (D-4, VPN-005, LOG-007).
 import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

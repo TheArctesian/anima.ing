@@ -1,10 +1,4 @@
-//! `anima source connect github`: connects a GitHub account. Without `--from-file` the hub
-//! makes the GitHub App and the operator presses Create and Install on GitHub (PRJ-039,
-//! PRJ-040, PRJ-041); the command prints each phase. With `--from-file` the App's private key
-//! is the secret: it comes from a private file (mode 0600) or from standard input, never from
-//! an argument, and is wiped after the request. It is never printed (CMD-025, CMD-014,
-//! PRJ-018). The one-time link is shown once, at a terminal, and is in no other output
-//! (MCP-004, LOG-007).
+//! The App's private key comes from a 0600 file or standard input, is wiped after the request and is never printed (CMD-025, CMD-014, PRJ-018).
 
 pub mod attempt;
 pub mod dawarich;

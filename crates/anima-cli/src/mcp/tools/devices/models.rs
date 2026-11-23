@@ -1,5 +1,4 @@
-//! The `models` tool set: the model library, read only (SEL-005, CMD-030). Names and tags
-//! come from Hugging Face repositories: the server cleans and caps each string (MCP-008).
+//! SEL-005, CMD-030; the server cleans and caps each string from Hugging Face (MCP-008).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

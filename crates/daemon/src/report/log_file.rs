@@ -1,29 +1,21 @@
-//! The daemon's log as a file a person can read, with a size bound (MET-019, R-312).
-//! The `LaunchAgent` sets [`LOG_VARIABLE`]: launchd keeps no standard error of an agent, so the
-//! daemon writes its lines to `~/Library/Logs/Anima/anima-daemon.log` itself. When the file
-//! reaches [`BOUND`], it becomes `anima-daemon.log.1` (the older one goes) and a new file starts.
-//! The lines are the lines of [`report`](crate::report): no token, code or body (LOG-007).
+//! The daemon's log as a file with a size bound (MET-019, R-312).
+//! launchd keeps no standard error of an agent, so the daemon writes the file itself.
 
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
-/// Set to [`TO_FILE`] by the `LaunchAgent`; unset, the log goes to standard error (the journal
-/// of a systemd unit, or the terminal).
+/// Set to [`TO_FILE`] by the `LaunchAgent`; unset, the log goes to standard error.
 pub const LOG_VARIABLE: &str = "ANIMA_DAEMON_LOG";
 
-/// The value of [`LOG_VARIABLE`] that sends the log to [`path`].
 pub const TO_FILE: &str = "file";
 
-/// The size at which the file is rotated: 1 MiB. With the one older file, at most 2 MiB stay.
+/// With the one older file, at most twice this stays on disk.
 pub const BOUND: u64 = 1024 * 1024;
 
 const FOLDER: &str = "Library/Logs/Anima";
 const NAME: &str = "anima-daemon.log";
 
-/// The log file from `env` (a lookup of environment variables): `~/Library/Logs/Anima/
-/// anima-daemon.log` on macOS when [`LOG_VARIABLE`] is [`TO_FILE`] and `HOME` is absolute; else
-/// `None`, and the log goes to standard error.
 #[must_use]
 pub fn path(env: impl Fn(&str) -> Option<String>, macos: bool) -> Option<PathBuf> {
     if !macos || env(LOG_VARIABLE).as_deref() != Some(TO_FILE) {
@@ -33,7 +25,6 @@ pub fn path(env: impl Fn(&str) -> Option<String>, macos: bool) -> Option<PathBuf
     Some(Path::new(&home).join(FOLDER).join(NAME))
 }
 
-/// The older file that a rotation keeps: the same name with `.1` added.
 #[must_use]
 pub fn older(path: &Path) -> PathBuf {
     let mut name = path.as_os_str().to_owned();
@@ -41,7 +32,6 @@ pub fn older(path: &Path) -> PathBuf {
     PathBuf::from(name)
 }
 
-/// A log file that never grows past its bound: a write that would pass it rotates first.
 #[derive(Debug)]
 pub struct LogFile {
     path: PathBuf,
@@ -51,8 +41,6 @@ pub struct LogFile {
 }
 
 impl LogFile {
-    /// Opens `path` to add to it, and makes its folder (mode 0700) when it is not there.
-    ///
     /// # Errors
     /// The I/O error when the folder or the file cannot be made or opened.
     pub fn open(path: PathBuf, bound: u64) -> io::Result<Self> {
@@ -130,8 +118,7 @@ mod tests {
 
     #[test]
     fn met_019_the_launch_agent_log_is_in_the_logs_folder_of_the_user() {
-        // A home that is absolute on each system: `/Users/me` is relative on Windows, where
-        // `path` refuses it as it should.
+        // `/Users/me` is relative on Windows, so the home is under the temporary folder.
         let home = std::env::temp_dir().join("me");
         let home = home.to_str().expect("a home in text");
         let pairs = [(LOG_VARIABLE, TO_FILE), ("HOME", home)];

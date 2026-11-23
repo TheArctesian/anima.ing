@@ -1,5 +1,3 @@
-//! A scripted hub: answers each route from a queue and records what it was sent.
-
 use std::collections::VecDeque;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -21,7 +19,6 @@ mod windows;
 #[cfg(windows)]
 use windows::UnixListener;
 
-/// One canned answer.
 #[derive(Clone)]
 pub enum Reply {
     Status(u16, String),
@@ -42,7 +39,6 @@ impl Reply {
     }
 }
 
-/// A request the hub received.
 #[derive(Clone)]
 #[cfg_attr(not(unix), expect(dead_code, reason = "read only by the unix tests"))]
 pub struct Seen {
@@ -94,8 +90,7 @@ impl FakeHub {
         Self { url, script }
     }
 
-    /// A hub behind the Unix socket at `socket`, as `anima-link device` gives one to the
-    /// daemon (K8 Section 1). Its `url` names no listener.
+    /// Its `url` names no listener.
     pub fn behind_socket(socket: &Path) -> Self {
         let script = Shared::default();
         let app = routes(script.clone());
@@ -105,7 +100,6 @@ impl FakeHub {
         Self { url, script }
     }
 
-    /// Queues the answers to the next pushes; once empty, a push gets 204.
     pub fn queue_push(&self, replies: impl IntoIterator<Item = Reply>) {
         self.script.lock().expect("lock").push.extend(replies);
     }
@@ -126,13 +120,11 @@ impl FakeHub {
         self.script.lock().expect("lock").enrol.push_back(reply);
     }
 
-    /// Queues the answers to the next claims of work; once empty, a claim gets 204.
     #[cfg_attr(not(unix), expect(dead_code, reason = "model work is unix only"))]
     pub fn queue_claim(&self, reply: Reply) {
         self.script.lock().expect("lock").claim.push_back(reply);
     }
 
-    /// The requests of one route, in order.
     pub fn seen(&self, route: &str) -> Vec<Seen> {
         let script = self.script.lock().expect("lock");
         script
@@ -188,7 +180,7 @@ async fn answer(
                 status,
                 [
                     (header::CONTENT_TYPE, "application/json"),
-                    // A hub that sets a cookie must never see it come back.
+                    // Lets the tests check that no cookie comes back.
                     (header::SET_COOKIE, "session=abc"),
                 ],
                 text,

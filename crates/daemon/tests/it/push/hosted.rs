@@ -1,5 +1,4 @@
-//! HM-T35: the daemon of a hosted hub, which reaches its hub on a socket, deletes a token that
-//! the hub refuses and ends, so that `anima-local-hub` enrols it again at its next start.
+//! HM-T35: a hosted daemon ends on a refused token, so `anima-local-hub` enrols it again.
 
 use std::fs::Permissions;
 use std::future::pending;
@@ -19,7 +18,6 @@ use crate::kit::{at, device, token, year};
 /// Longer than one window of points and one push (10 seconds each), with room for a slow machine.
 const LIMIT: Duration = Duration::from_secs(90);
 
-/// A daemon folder enrolled at the hub behind `socket`, and a data folder of a hub to measure.
 fn enrolled_beside(socket: &std::path::Path, dir: &std::path::Path) -> (Home, std::path::PathBuf) {
     let home = Home::at(dir.join("daemon"));
     let hub = Origin::parse_kept(&format!("unix:{}", socket.display())).expect("an origin");
@@ -47,7 +45,7 @@ fn enrolled_beside(socket: &std::path::Path, dir: &std::path::Path) -> (Home, st
 async fn hmd_046_a_hosted_daemon_deletes_a_refused_token_and_ends() {
     for code in [RefusalCode::TokenRefused, RefusalCode::WrongDevice] {
         let dir = tempfile::tempdir().expect("a folder");
-        // The socket's folder must be private, or the daemon sends no token there (K8 Section 1).
+        // The daemon sends a token only to a socket in a private folder (K8 Section 1).
         std::fs::set_permissions(dir.path(), Permissions::from_mode(0o700)).expect("mode");
         let socket = dir.path().join("own.sock");
         let hub = FakeHub::behind_socket(&socket);

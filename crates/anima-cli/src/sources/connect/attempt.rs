@@ -1,6 +1,5 @@
-//! The attempt to connect GitHub as the command line reads it: the K1 `GithubConnectAttempt`
-//! fields a line of output is made from. Every document of the flow answers with the same
-//! shape, so each answer is read through its JSON (CMD-004).
+//! Each document of the flow answers with the same shape, so `Attempt::read` goes through JSON
+//! (CMD-004).
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -33,14 +32,12 @@ pub enum Reason {
     Unknown,
 }
 
-/// The account of a connected attempt.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 pub struct Account {
     pub label: String,
 }
 
-/// One answer about the attempt. `app_slug`, `owner_login` and `message` hold text from
-/// GitHub: they are cleaned where they are printed (`Report`).
+/// `app_slug`, `owner_login` and `message` are GitHub text, cleaned where they are printed.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Attempt {
@@ -57,7 +54,6 @@ pub struct Attempt {
 }
 
 impl Phase {
-    /// The phase in the hub's words.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
@@ -71,7 +67,6 @@ impl Phase {
         }
     }
 
-    /// Whether the attempt has ended: nothing more will change.
     #[must_use]
     pub const fn ended(self) -> bool {
         matches!(self, Self::Connected | Self::Failed | Self::Cancelled)
@@ -79,9 +74,6 @@ impl Phase {
 }
 
 impl Attempt {
-    /// The attempt in `answer`, a typed answer of any document of the flow, and its JSON as
-    /// the hub's field names (for `--json`).
-    ///
     /// # Errors
     /// [`Failure::Input`] when the answer is not the attempt the documents ask for.
     pub fn read<T: Serialize>(answer: &T) -> Result<(Self, Value), Failure> {

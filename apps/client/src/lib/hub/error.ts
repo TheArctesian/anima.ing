@@ -13,13 +13,15 @@ export interface FieldError {
 
 /**
  * Why a hub call has no value. K7 codes come from the hub; `unreachable` means no answer arrived
- * (network failure, NET-004); `malformed` means an answer arrived that is not a GraphQL response.
+ * (network failure, NET-004); `malformed` means an answer arrived that is not a GraphQL response;
+ * `unserved` means the hub does not know a field that the request names: it is older than this client.
  * `message` is a plain sentence for the operator and never holds the token (LOG-007).
  */
 export type HubError =
   | { readonly code: Exclude<HubCode, 'VALIDATION'>; readonly message: string }
   | { readonly code: 'VALIDATION'; readonly message: string; readonly fields: readonly FieldError[] }
-  | { readonly code: 'unreachable' | 'malformed'; readonly message: string };
+  | { readonly code: 'unreachable' | 'malformed'; readonly message: string }
+  | { readonly code: 'unserved'; readonly message: string };
 
 /** The outcome of a hub call: a value, or the typed reason there is none. */
 export type HubResult<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: HubError };
@@ -58,6 +60,16 @@ export const TOKEN_UNREADABLE: HubError = {
 
 const UNCODED_MESSAGE = 'The hub could not run the request.';
 
+/** The hub does not know a field of the request (the parser of async-graphql says so): it is older than this client. */
+export const UNSERVED: HubError = { code: 'unserved', message: 'This hub is older than this application. Update the hub to use this.' };
+
+const UNKNOWN_FIELD = /^Unknown field "[^"]+" on type "[^"]+"/u;
+
+/** True when the hub refused because it is older than this client; show a quiet note, not an error with Retry. */
+export function needsNewerHub(error: HubError): boolean {
+  return error.code === 'unserved';
+}
+
 type JsonObject = Readonly<Record<string, unknown>>;
 
 function isObject(value: unknown): value is JsonObject {
@@ -90,6 +102,7 @@ function parseError(value: unknown): HubError {
     return fields === undefined ? MALFORMED : { code, message, fields };
   }
   if (isHubCode(code) && code !== 'VALIDATION') return { code, message };
+  if (UNKNOWN_FIELD.test(message)) return UNSERVED;
   return { code: 'INTERNAL', message: message === '' ? UNCODED_MESSAGE : message };
 }
 

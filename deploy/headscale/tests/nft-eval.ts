@@ -1,38 +1,17 @@
-/**
- * A minimal packet evaluator for the rule forms in `vps/nftables.conf`: interface name
- * matches (with a trailing `*` wildcard), `fib daddr type local`, the reverse-path test
- * `fib saddr . iif oif exists`, `meta skuid`, `ip saddr` and `ip daddr` prefixes or prefix
- * sets, `ip6` matches (never true: the packets are IPv4), `ct state`, `tcp`/`udp dport`,
- * `icmp type` (by name), `limit rate` (never exceeded), `$name` defines, and the `drop` and
- * `accept` verdicts. An `icmpv6 type` rule never matches (the packets are IPv4). Any other rule
- * form throws, and so does a rule that needs a packet field the test did not give, so nothing
- * is guessed. As in nft, a rule stops at its first match that fails: the rest of the rule is
- * still read (an unsupported form throws) but needs no packet field.
- */
+/** A minimal evaluator for the rule forms of `vps/nftables.conf`; any other form, or a missing packet field, throws. */
 import type { Chain, parseNftables } from "../src/nftables.ts";
 
 export interface Packet {
   iifname: string;
   oifname?: string;
-  /** Source IPv4 address; required by `ip saddr` rules. */
   saddr?: string;
-  /** Destination IPv4 address. */
   daddr: string;
-  /** Whether `fib daddr type local` is true: the destination is one of this host's addresses. */
   daddrIsLocal: boolean;
-  /**
-   * The interface of this host's route back to `saddr`; `fib saddr . iif oif exists` holds when it
-   * is `iifname`. Required by that rule.
-   */
   saddrRoute?: string;
-  /** The uid of the local socket that sent the packet (output only); required by `meta skuid`. */
   skuid?: number;
-  /** Connection tracking state; required by `ct state` rules. */
   ctState?: "new" | "established" | "related" | "invalid";
-  /** Layer 4 protocol; required by port and ICMP rules. */
   protocol?: "tcp" | "udp" | "icmp";
   dport?: number;
-  /** ICMP type by its nft name, such as `echo-request`; required by `icmp type` rules. */
   icmpType?: string;
 }
 
@@ -59,7 +38,6 @@ function inPrefix4(address: string, cidr: string): boolean {
 const matchesName = (pattern: string, name: string): boolean =>
   pattern.endsWith("*") ? name.startsWith(pattern.slice(0, -1)) : pattern === name;
 
-/** Read `a`, `a,b` or `{ a, b }` starting at tokens[at]; returns the values and the next index. */
 function readValues(tokens: string[], at: number): [string[], number] {
   const first = tokens[at];
   if (first === undefined) throw new Error("missing operand");
@@ -79,7 +57,6 @@ function readValues(tokens: string[], at: number): [string[], number] {
   return [values, i + 1];
 }
 
-/** Read an optional `!=`, then the values; returns whether it was negated. */
 function readOperand(tokens: string[], at: number): { negated: boolean; values: string[]; next: number } {
   const negated = tokens[at] === "!=";
   const [values, next] = readValues(tokens, negated ? at + 1 : at);
@@ -88,7 +65,6 @@ function readOperand(tokens: string[], at: number): { negated: boolean; values: 
 
 interface Condition {
   matches: boolean;
-  /** Index of the first token after the condition. */
   next: number;
 }
 
@@ -101,8 +77,7 @@ function interfaceCondition(tokens: string[], at: number, packet: Packet): Condi
   const { negated, values, next } = readOperand(tokens, at + 1);
   if (values.some((value) => !value.startsWith('"'))) throw new Error(`unsupported interface operand: ${values.join(" ")}`);
   const actual = tokens[at] === "oifname" ? packet.oifname : packet.iifname;
-  // As in nft, a packet with no output interface yet (prerouting) has an empty oifname:
-  // `oifname "x"` does not match it and `oifname != "x"` does.
+  // As in nft, a packet with no output interface yet (prerouting) has an empty oifname.
   const hit = values.some((value) => matchesName(value.slice(1, -1), actual ?? ""));
   return { matches: hit !== negated, next };
 }
@@ -140,7 +115,7 @@ function protocolCondition(tokens: string[], at: number, packet: Packet, rule: s
   return { matches: hit !== negated, next };
 }
 
-/** `limit rate N/unit [burst N packets]`: the tests never exceed a rate, so it always holds. */
+/** The tests never exceed a rate, so a limit always holds. */
 function limitCondition(tokens: string[], at: number, rule: string): Condition {
   if (tokens[at + 1] !== "rate" || tokens[at + 2] === undefined) throw new Error(`unsupported limit in rule: ${rule}`);
   const next = tokens[at + 3] === "burst" ? at + 6 : at + 3;
@@ -150,7 +125,6 @@ function limitCondition(tokens: string[], at: number, rule: string): Condition {
 const LOCAL_DESTINATION = "fib daddr type local";
 const REVERSE_PATH = "fib saddr . iif oif exists";
 
-/** `fib daddr type local`, or the reverse-path test `fib saddr . iif oif exists`. */
 function fibCondition(tokens: string[], at: number, packet: Packet, rule: string): Condition {
   if (tokens.slice(at, at + 4).join(" ") === LOCAL_DESTINATION) return { matches: packet.daddrIsLocal, next: at + 4 };
   if (tokens.slice(at, at + 6).join(" ") === REVERSE_PATH) {
@@ -159,7 +133,6 @@ function fibCondition(tokens: string[], at: number, packet: Packet, rule: string
   throw new Error(`unsupported match "fib ${tokens[at + 1] ?? ""}" in rule: ${rule}`);
 }
 
-/** `meta skuid N`, `{ N, M }` or `!= N`: the uid of the sending socket. */
 function metaCondition(tokens: string[], at: number, packet: Packet, rule: string): Condition {
   if (tokens[at + 1] !== "skuid") throw new Error(`unsupported match "meta ${tokens[at + 1] ?? ""}" in rule: ${rule}`);
   const { negated, values, next } = readOperand(tokens, at + 2);
@@ -179,16 +152,12 @@ function condition(tokens: string[], at: number, packet: Packet, rule: string): 
   throw new Error(`unsupported match "${word}" in rule: ${rule}`);
 }
 
-/**
- * A packet with every field a match can need, to read past the conditions after the first that
- * fails without evaluating them.
- */
+/** As in nft, the conditions after the first that fails are still read, but need no packet field. */
 const ANY_PACKET: Packet = {
   iifname: "", oifname: "", saddr: "0.0.0.0", daddr: "0.0.0.0", daddrIsLocal: false, saddrRoute: "",
   skuid: -1, ctState: "new", protocol: "tcp", dport: 0, icmpType: "",
 };
 
-/** Whether the packet meets every condition of the rule, and the verdict (the last token). */
 function ruleMatches(rule: string, packet: Packet): { matches: boolean; verdict: Verdict } {
   const tokens = rule.match(TOKEN) ?? [];
   const verdict = tokens.pop();
@@ -202,7 +171,6 @@ function ruleMatches(rule: string, packet: Packet): { matches: boolean; verdict:
   return { matches, verdict };
 }
 
-/** The verdict of one chain: the first matching rule's, or the chain policy (default accept). */
 export function evaluateChain(chain: Chain, packet: Packet): Verdict {
   for (const rule of chain.rules) {
     if (rule.includes("$")) throw new Error(`unresolved define in rule: ${rule}`);
@@ -214,7 +182,6 @@ export function evaluateChain(chain: Chain, packet: Packet): Verdict {
   throw new Error(`unsupported chain policy: ${chain.policy}`);
 }
 
-/** The values of the file's top-level `define name = value` lines. */
 function defines(ruleset: Ruleset): Map<string, string> {
   const values = new Map<string, string>();
   for (const command of ruleset.commands) {
@@ -224,7 +191,6 @@ function defines(ruleset: Ruleset): Map<string, string> {
   return values;
 }
 
-/** A chain of the ruleset with every `$name` replaced by its define, as nft does on load. */
 export function resolvedChain(ruleset: Ruleset, table: string, name: string): Chain {
   const chain = ruleset.chains.find((candidate) => candidate.table === table && candidate.name === name);
   if (!chain) throw new Error(`no chain ${name} in ${table}`);

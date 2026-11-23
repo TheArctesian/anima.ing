@@ -1,5 +1,4 @@
-//! `anima repo` and `anima code` against the scripted hub (PRJ-036 to PRJ-040, CMD-026,
-//! CMD-031).
+//! PRJ-036 to PRJ-040, CMD-026, CMD-031.
 
 use serde_json::{Value, json};
 
@@ -14,7 +13,6 @@ fn signed_in() -> Anima {
     Anima::new().with("ANIMA_TOKEN", "login-token-for-history-tests")
 }
 
-/// Runs `anima <args> --hub <origin>`.
 async fn ask(hub: &FakeHub, args: &[&str]) -> crate::kit::Outcome {
     let mut all = args.to_vec();
     all.extend(["--hub", &hub.origin]);

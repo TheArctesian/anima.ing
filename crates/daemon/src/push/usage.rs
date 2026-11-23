@@ -1,7 +1,5 @@
-//! The agent usage waiting for the hub (AIS-019, K8 Section 4): the state until a batch with it
-//! is accepted, and the changed session days, at most 16 to a batch, each until a batch with it
-//! is accepted or refused as `MALFORMED`. A newer count of a waiting day replaces it. The
-//! accounts go when they changed since the last accepted batch, as keys with their addresses (AIS-022, THR-149).
+//! The agent usage waiting for the hub (AIS-019, K8 Section 4); a day waits until accepted or refused as `MALFORMED`.
+//! The accounts go, as keys with their addresses, when they changed since the last accepted batch (AIS-022, THR-149).
 
 use std::collections::BTreeMap;
 
@@ -12,25 +10,20 @@ use daemon_core::wire::{BatchAccount, BatchAgentUsage};
 use super::accounts;
 use crate::sampling::agent_usage::{DayKey, ProgramAccount, UsageReport, day_key};
 
-/// What waits, and what the batch in flight carries.
 #[derive(Debug, Default)]
 pub struct UsageBacklog {
     state: Option<UsageState>,
-    /// The state goes in the next batch: after start, and after it changed.
     announce: bool,
     waiting: BTreeMap<DayKey, SessionDay>,
     in_flight: Vec<DayKey>,
-    /// The newest accounts the runner gave; `None` until one answered.
     accounts: Option<Vec<ProgramAccount>>,
-    /// The account salt of the hub, in memory only: a new start or enrolment asks for it again.
+    /// In memory only: a new start or enrolment asks for the salt again.
     salt: Option<[u8; SALT_BYTES]>,
-    /// The accounts member of the last accepted batch, and of the batch in flight.
     accepted: Option<Vec<BatchAccount>>,
     accounts_in_flight: Option<Vec<BatchAccount>>,
 }
 
 impl UsageBacklog {
-    /// Takes what a read of the session files handed over.
     pub fn take(&mut self, report: UsageReport) {
         if self.state != Some(report.state) {
             self.state = Some(report.state);
@@ -44,23 +37,19 @@ impl UsageBacklog {
         }
     }
 
-    /// Keeps the account salt of the hub's answer (K8 Section 8.2); a text that does not read is
-    /// ignored, so the accounts wait for the next answer.
+    /// A salt that does not read is ignored, so the accounts wait for the next answer (K8 Section 8.2).
     pub fn take_salt(&mut self, text: Option<&str>) {
         if let Some(salt) = text.and_then(accounts::salt) {
             self.salt = Some(salt);
         }
     }
 
-    /// The accounts member when it differs from the last accepted one.
     fn changed_accounts(&self) -> Option<Vec<BatchAccount>> {
         let accounts = self.accounts.as_ref()?;
         let now = accounts::outgoing(self.salt.as_ref(), accounts);
         (self.accepted.as_ref() != Some(&now)).then_some(now)
     }
 
-    /// The member of the next batch: the state with the first 16 session days waiting; `None`
-    /// when nothing waits.
     pub fn outgoing(&mut self) -> Option<BatchAgentUsage> {
         let state = self.state?;
         let accounts = self.changed_accounts();
@@ -77,9 +66,7 @@ impl UsageBacklog {
         })
     }
 
-    /// The batch of [`outgoing`](Self::outgoing) is done with: accepted, or refused as `MALFORMED`
-    /// (its days are then dropped until their counts change). Nothing was taken in between,
-    /// so the days in flight are the ones sent.
+    /// The batch of [`outgoing`](Self::outgoing) was accepted or refused as `MALFORMED`; nothing was taken since.
     pub fn done(&mut self) {
         for key in self.in_flight.drain(..) {
             self.waiting.remove(&key);

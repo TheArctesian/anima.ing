@@ -1,14 +1,6 @@
-//! The lines of a Codex rollout file (`~/.codex/sessions/**/rollout-*.jsonl`): the first
-//! `session_meta` names the thread, its working folder, the thread that started it and the
-//! model its instructions are for; each `turn_context` and `thread_settings_applied` names the
-//! model of the lines after it; a prompt is a `UserMessage` item (or
-//! a `user_message` event of an older Codex); a tool call is a call item; the tokens are the
-//! `last_token_usage` of each `token_count` event whose total moved.
-//!
-//! A sub-agent's file starts with a copy of its parent's history, before
-//! `subagent_history_start_ordinal`: those lines count in the parent's file, not again here.
-//! Each line is read twice, once for its kind and once for the fields of that kind, since one
-//! field name holds different things in different kinds. No text is read into the counts.
+//! The lines of a Codex rollout file (`~/.codex/sessions/**/rollout-*.jsonl`).
+//! A sub-agent's file copies its parent's history before `subagent_history_start_ordinal`;
+//! those lines count only in the parent's file.
 
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
@@ -16,7 +8,6 @@ use serde::de::DeserializeOwned;
 use super::Tokens;
 use super::tally::{Counts, time};
 
-/// The response items that are a tool call.
 const TOOL_CALLS: [&str; 4] = [
     "function_call",
     "custom_tool_call",
@@ -24,10 +15,8 @@ const TOOL_CALLS: [&str; 4] = [
     "web_search_call",
 ];
 
-/// The longest chain of sub-agents followed to its root thread.
 const MAX_CHAIN: usize = 16;
 
-/// What the reader keeps between the lines of one file.
 #[derive(Clone, Debug, Default)]
 pub(super) struct Thread {
     id: Option<String>,
@@ -38,9 +27,8 @@ pub(super) struct Thread {
     prompts_from: Option<PromptKind>,
 }
 
-/// Where a file's prompts are read from: a newer Codex writes `UserMessage` items, an older
-/// one `user_message` events. The first kind seen is the one counted, so no prompt counts
-/// twice.
+/// A newer Codex writes `UserMessage` items, an older one `user_message` events; only the
+/// first kind seen counts.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum PromptKind {
     Item,
@@ -98,8 +86,7 @@ struct SettingsApplied {
     thread_settings: Option<TurnContext>,
 }
 
-/// The model the thread's instructions were made for: the model of a thread that names no
-/// other. The text of the instructions is skipped.
+/// The model of a thread whose turns name no other.
 #[derive(Deserialize)]
 struct MetaModel {
     base_instructions: Option<Instructions>,
@@ -183,7 +170,6 @@ pub(super) fn read(thread: &mut Thread, counts: &mut Counts, line: &[u8]) {
     }
 }
 
-/// The model and folder a turn context or applied settings name.
 fn context(thread: &mut Thread, counts: &mut Counts, context: Option<TurnContext>) {
     let Some(context) = context else {
         return;
@@ -194,7 +180,7 @@ fn context(thread: &mut Thread, counts: &mut Counts, context: Option<TurnContext
     }
 }
 
-/// The first `session_meta` of the file; a later one is a copy of the parent's.
+/// A later `session_meta` is a copy of the parent's.
 fn meta(thread: &mut Thread, counts: &mut Counts, line: &[u8]) {
     if thread.id.is_some() {
         return;
@@ -212,8 +198,7 @@ fn meta(thread: &mut Thread, counts: &mut Counts, line: &[u8]) {
     }
 }
 
-/// The tokens of one response: the event's last usage, unless its total did not move (Codex
-/// can write one event twice).
+/// Codex can write one event twice, so an event whose total did not move is skipped.
 fn tokens(
     thread: &mut Thread,
     counts: &mut Counts,
@@ -249,8 +234,7 @@ fn payload<P: DeserializeOwned>(line: &[u8]) -> Option<P> {
         .map(|full| full.payload)
 }
 
-/// The thread a Codex sub-agent's use counts under: the root of the chain of parents that
-/// `parent_of` gives, followed at most 16 steps (a loop stops there too).
+/// The root of the chain of parents that `parent_of` gives, followed at most 16 steps.
 #[must_use]
 pub fn root_thread<'a>(id: &'a str, parent_of: impl Fn(&str) -> Option<&'a str>) -> &'a str {
     let mut root = id;

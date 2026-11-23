@@ -1,6 +1,4 @@
-//! Where the daemon keeps its key cache: where it keeps its token (K-E5 Section 2.1). The macOS
-//! Keychain, or on Linux the file `keys` in the daemon's folder, mode 0600, written to a
-//! temporary file and renamed. An empty cache is stored as no record at all.
+//! The daemon keeps its key cache where it keeps its token (K-E5 Section 2.1).
 
 use zeroize::Zeroizing;
 
@@ -18,7 +16,7 @@ use file::Backend;
 #[cfg(target_os = "macos")]
 use keychain::Backend;
 
-/// Why the key store failed. No message holds a value or a key name (LOG-007).
+/// No message holds a value or a key name (LOG-007).
 #[derive(Debug, thiserror::Error)]
 pub enum KeyStoreError {
     #[error("the key cache file: {0}")]
@@ -28,15 +26,14 @@ pub enum KeyStoreError {
     #[cfg(target_os = "macos")]
     #[error("the Keychain: {0}")]
     Keychain(String),
-    /// macOS asks the person to allow this program to read, write or delete the key cache,
-    /// and nobody answered in time (R-322). Only the Keychain store gives it.
+    /// macOS asks the person to allow this program the key cache, and nobody answered in time
+    /// (R-322).
     #[error(
         "this computer's daemon needs you to allow it in the Keychain: click Always Allow in the window of macOS"
     )]
     KeychainWaits,
 }
 
-/// The daemon's key store for this platform.
 #[derive(Clone)]
 pub struct KeyStore {
     backend: Backend,
@@ -50,8 +47,7 @@ impl KeyStore {
         }
     }
 
-    /// The stored cache; an empty one when none is stored. A record that does not read is
-    /// deleted and read as empty, so a damaged record is never used.
+    /// A record that does not read is deleted and read as empty, so a damaged record is never used.
     ///
     /// # Errors
     /// [`KeyStoreError`] when the store cannot be read, is exposed, or cannot be cleared.
@@ -66,24 +62,19 @@ impl KeyStore {
         Ok(KeyCache::default())
     }
 
-    /// Replaces the stored cache with `cache`; deletes the record when `cache` is empty.
-    ///
     /// # Errors
     /// [`KeyStoreError`] when it cannot be written.
     pub fn save(&self, cache: &KeyCache) -> Result<(), KeyStoreError> {
         self.keep(Self::record(cache).as_deref().map(Vec::as_slice))
     }
 
-    /// The record that [`KeyStore::save`] stores for `cache`; `None` for an empty cache, which
-    /// is stored as no record. Made apart from the store, so that the store call can run on a
-    /// thread of its own with the bytes alone.
+    /// `None` for an empty cache, which is stored as no record. Made apart from the store, so
+    /// that the store call can run on a thread of its own with the bytes alone.
     #[must_use]
     pub fn record(cache: &KeyCache) -> Option<Zeroizing<Vec<u8>>> {
         (!cache.is_empty()).then(|| record::render(cache))
     }
 
-    /// Stores `record`, as [`KeyStore::record`] made it; deletes the record for `None`.
-    ///
     /// # Errors
     /// [`KeyStoreError`] when it cannot be written or deleted.
     pub fn keep(&self, record: Option<&[u8]>) -> Result<(), KeyStoreError> {
@@ -93,8 +84,6 @@ impl KeyStore {
         }
     }
 
-    /// Deletes the whole cache.
-    ///
     /// # Errors
     /// [`KeyStoreError`] when it cannot be deleted.
     pub fn forget(&self) -> Result<(), KeyStoreError> {

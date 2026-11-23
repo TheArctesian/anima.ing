@@ -8,17 +8,14 @@ use chrono::{DateTime, Utc};
 
 use super::{MAX_SERIES, Point, SeriesKey, Summary, sample::kept_value};
 
-/// The length of a window, in seconds (MET-014).
 const WINDOW_SECONDS: i64 = 10;
 
-/// The open window: the samples taken since the last point, per series.
 #[derive(Debug, Default)]
 pub struct Window {
     end: Option<DateTime<Utc>>,
     columns: BTreeMap<SeriesKey, Column>,
 }
 
-/// The running figures of one series in the open window.
 #[derive(Clone, Copy, Debug)]
 struct Column {
     count: u32,
@@ -33,15 +30,8 @@ impl Window {
         Self::default()
     }
 
-    /// Takes the `values` of one sampling taken at `at`. A sample belongs to the window that
-    /// ends at or after it, on a multiple of 10 seconds. When `at` falls in another window than
-    /// the open one (time moved on, or the clock went back), the open window closes first and
-    /// its point is returned; a window in which no value was kept makes no point.
-    ///
-    /// A value that is not finite, is below 0 or is above its kind's
-    /// [`ceiling`](super::ceiling) is left out, and a percent is held to 100, as
-    /// [`Sample::new`](super::Sample::new) and [`Sample::gpu`](super::Sample::gpu) do (CR-17). A window keeps at most [`MAX_SERIES`] series; later new ones are
-    /// left out.
+    /// When `at` falls in another window than the open one (time moved on, or the clock went
+    /// back), the open window closes and its point is returned.
     pub fn add(
         &mut self,
         at: DateTime<Utc>,
@@ -100,8 +90,6 @@ impl Window {
     }
 }
 
-/// The end of the window `at` belongs to: `at` itself when it is a whole multiple of 10
-/// seconds, else the next such time.
 fn window_end(at: DateTime<Utc>) -> DateTime<Utc> {
     if is_window_end(at) {
         return at;
@@ -110,7 +98,6 @@ fn window_end(at: DateTime<Utc>) -> DateTime<Utc> {
     DateTime::from_timestamp(end, 0).unwrap_or(at)
 }
 
-/// Whether `at` is a whole multiple of 10 seconds of UTC, as every point's `at` is (K8 Section 4).
 pub(crate) fn is_window_end(at: DateTime<Utc>) -> bool {
     at.timestamp().rem_euclid(WINDOW_SECONDS) == 0 && at.timestamp_subsec_nanos() == 0
 }

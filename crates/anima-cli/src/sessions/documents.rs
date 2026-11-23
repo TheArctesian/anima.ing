@@ -1,6 +1,5 @@
-//! The session documents, typed from K1 at build time (CMD-004). `SessionStart` and
-//! `SessionOpenFiles` derive neither `Debug` nor `Serialize`: their answers hold a ticket token
-//! (CMD-014, API-009).
+//! `SessionStart` and `SessionOpenFiles` derive neither `Debug` nor `Serialize`: their answers
+//! hold a ticket token (CMD-014, API-009).
 
 use graphql_client::GraphQLQuery;
 

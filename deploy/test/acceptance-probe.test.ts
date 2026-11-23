@@ -1,6 +1,4 @@
-// deploy/acceptance/probe.ts (criteria 4, 12, 13; SEC-001, SEC-002, D-3, D-23, D-24, R-100, A-2). Spawned runs
-// against a synthetic hub on 127.0.0.1 prove that each wrong answer fails exactly its own check, that no key,
-// cookie or body reaches the output, and that TLS, proxies and redirects never take the key elsewhere.
+// Criteria 4, 12, 13; SEC-001, SEC-002, D-3, D-23, D-24, R-100, A-2.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -17,7 +15,6 @@ let hub: FakeHub;
 let dir = "";
 const outputs: string[] = [];
 
-/** This process's environment without any proxy variable, plus `extra`. */
 function environment(extra: Record<string, string> = {}): Record<string, string | undefined> {
   const proxies = /^(?:http|https|all)_proxy$/i;
   return { ...Object.fromEntries(Object.entries(process.env).filter(([name]) => !proxies.test(name))), ...extra };
@@ -68,7 +65,6 @@ describe("spawned probe against a hub that answers right", () => {
   }, 30_000);
 });
 
-// Each fault and the checks it must fail: exactly these, no other.
 const FAULTS: [Fault, string[]][] = [
   ["health-not-ok", ["health"]],
   ["csp-unsafe-script", ["index-csp"]],
@@ -127,11 +123,9 @@ describe("spawned probe against a hub that answers wrong", () => {
   }, 30_000);
 });
 
-/** A loopback https server with a self-signed certificate; it counts requests and keys it receives. */
 async function untrustedHub() {
   const pem = join(dir, "tls.pem");
-  // ecparam writes a named-curve key under both OpenSSL and macOS LibreSSL; `req -newkey ec` under
-  // LibreSSL writes explicit curve parameters, which Bun's BoringSSL refuses.
+  // `req -newkey ec` under LibreSSL writes explicit curve parameters, which BoringSSL refuses; ecparam writes a named curve.
   const git = Bun.which("git");
   const openssl = Bun.which("openssl") ?? (process.platform === "win32" && git !== null ? join(dirname(git), "../usr/bin/openssl.exe") : "openssl");
   const keyed = await finish([openssl, "ecparam", "-name", "prime256v1", "-genkey", "-noout", "-out", join(dir, "tls.key")]);
@@ -159,7 +153,6 @@ describe("S-M1 S-S2: TLS and proxies never take the key elsewhere", () => {
     const refused = await probe([untrusted.origin, "--key-file", keyFile("key", KEY)], { NODE_TLS_REJECT_UNAUTHORIZED: "0" });
     expect(refused).toEqual({ code: 2, out: "", err: "probe: the hub cannot be reached (network, TLS or timeout)\n" });
     expect(untrusted.seen).toEqual({ requests: 0, keys: 0 });
-    // Trusted through --ca, the same server is reached (and fails the checks, as it is no hub).
     const trusted = await probe([untrusted.origin, "--ca", untrusted.pem]);
     untrusted.stop();
     expect(trusted.code).toBe(1);

@@ -1,21 +1,13 @@
 # shellcheck shell=bash
-# `harden.sh probe` and its check (VP-13, VPS-001): anima-probe, the hub's SSH user on this host.
-# It has a fixed uid, which the firewall's output chain confines (nftables.conf `probe_uid`), its
-# own group only, no password, and one key that only the hub holds, usable only from the hub
-# container and with no forwarding. Sourced by harden.sh after sshd.sh; needs harden.sh's say,
-# refuse, fail, dry, run, path and require_root, and ROOT, GETENT, ID, GROUPADD, USERADD, RUNUSER,
-# KEY_LINE_PATTERN and PROBE_KEY, and sshd.sh's PROBE_USER and PROBE_ALLOW.
+# `harden.sh probe` (VP-13, VPS-001): anima-probe, the hub's SSH user, whose uid the firewall's output chain confines.
 
-# The uid and gid. anima-hub, the broker socket's user, is 10001 (broker.sh).
 PROBE_ID=10002
 PROBE_HOME=/home/$PROBE_USER
-# The options of the hub's key: no forwarding of any kind, a terminal, and only from the hub.
 PROBE_KEY_OPTIONS="restrict,pty,from=\"${PROBE_ALLOW#*@}\""
-# A key line as ssh-keygen writes the .pub file: the type first, so it carries no options.
+# The type comes first, so the line carries no options.
 PROBE_KEY_START='^(ssh-|ecdsa-|sk-)'
 
-# Print the one public key line of FILE; refuse anything else. The line is never printed
-# elsewhere, not even in a refusal.
+# The line is printed nowhere else, not even in a refusal.
 probe_key_line() {
   local file=$1 lines line
   [ -n "$file" ] || refuse "pass --key=FILE, the hub's public key (anima-probe.pub)"
@@ -29,7 +21,6 @@ probe_key_line() {
   printf '%s' "$line"
 }
 
-# Make sure the host has anima-probe with uid and gid 10002 and its home; refuse a clash.
 probe_account() {
   local db entry line fields
   for db in group passwd; do
@@ -48,8 +39,7 @@ probe_account() {
       --shell /bin/bash "$PROBE_USER"
 }
 
-# Write ~/.ssh/authorized_keys from standard input, as anima-probe itself: a link the user put in
-# its own home cannot make root write or chown anything.
+# Runs as anima-probe, so a link the user put in its own home cannot make root write or chown anything.
 probe_write_keys() {
   local home
   home=$(path "$PROBE_HOME")
@@ -73,8 +63,6 @@ cmd_probe() {
   say "$PROBE_USER has the hub's key, usable only from ${PROBE_ALLOW#*@}. Store the private key in Anima."
 }
 
-# Print each sudoers file under /etc/sudoers and /etc/sudoers.d that names anima-probe, by name
-# or as #10002, outside a comment.
 probe_sudoers() {
   local file
   for file in "$(path /etc/sudoers)" "$(path /etc/sudoers.d)"/*; do
@@ -87,7 +75,6 @@ probe_sudoers() {
   return 0
 }
 
-# Print each authorized_keys line of anima-probe that is not limited to the hub's options.
 probe_keys() {
   local keys=$1
   [ -f "$keys" ] || return 0
@@ -106,8 +93,6 @@ probe_keys() {
     }' "$keys"
 }
 
-# Print why anima-probe, if it exists, is more than the hub's confined user: another uid, another
-# group, a sudo grant, a usable password, or a key without the hub's options. No user is fine.
 probe_problem() {
   local entry uid home groups group shadow password
   entry=$($GETENT passwd "$PROBE_USER") || return 0

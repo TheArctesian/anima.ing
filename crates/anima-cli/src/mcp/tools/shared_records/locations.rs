@@ -1,5 +1,4 @@
-//! The location tools of the `records` set (K-E4 Sections 11 to 13; R-145). A position is
-//! Class B data of the operator. No tool makes or returns an ingest token: a token is a secret.
+//! The location tools of the `records` set (R-145); no tool makes or returns an ingest token.
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

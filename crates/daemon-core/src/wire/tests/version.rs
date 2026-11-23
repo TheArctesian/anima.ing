@@ -1,6 +1,3 @@
-//! The daemon version of a batch (K8 Section 4, R-122): optional, so an older daemon's batch is
-//! taken as it was, and held to the version rule when it is present.
-
 use super::*;
 
 fn with_version(version: &str) -> impl FnOnce(&mut Batch) {

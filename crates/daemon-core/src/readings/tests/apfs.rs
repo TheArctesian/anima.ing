@@ -1,4 +1,4 @@
-//! The drives of a Mac from its APFS volumes (MET-027, MET-031).
+//! MET-027, MET-031.
 
 use super::{captures::*, *};
 use crate::points::is_operator_mount;

@@ -1,38 +1,26 @@
-//! The line a person types at a prompt in raw mode (CMD-010): the bytes the terminal sends
-//! become keys, and the keys edit one answer. Pure: no terminal, no I/O.
+//! The line a person types at a prompt in raw mode (CMD-010); pure: no terminal, no I/O.
 
 use zeroize::Zeroizing;
 
-/// What the person pressed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Key {
-    /// A character of the answer: printable, from one to four UTF-8 bytes.
     Char(char),
-    /// Backspace or Delete: removes the last character.
     Erase,
-    /// Ctrl-U: removes the whole answer.
     EraseLine,
-    /// Return or Enter: the answer is complete.
     Enter,
-    /// Ctrl-C: the question is cancelled.
     Interrupt,
-    /// Ctrl-D: the end of input, when the answer is empty.
     End,
 }
 
-/// Where the decoder is inside an escape sequence (an arrow or function key).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 enum Escape {
     #[default]
     Outside,
-    /// After `ESC`.
     Started,
-    /// After `ESC [` or `ESC O`, until the final byte.
     Sequence,
 }
 
-/// Turns the terminal's bytes into keys, one byte at a time, across questions: a character
-/// split between reads, and the `\n` of a pasted `\r\n`, are handled where they fall.
+/// One decoder lives across reads and questions, so a split character or a pasted `\r\n` is handled where it falls.
 #[derive(Debug, Default)]
 pub struct Keys {
     pending: [u8; 4],
@@ -43,8 +31,6 @@ pub struct Keys {
 }
 
 impl Keys {
-    /// The key that `byte` completes, if any. Malformed UTF-8, escape sequences and other
-    /// control bytes give no key.
     pub fn push(&mut self, byte: u8) -> Option<Key> {
         let after_return = std::mem::take(&mut self.after_return);
         if self.escape != Escape::Outside {
@@ -79,13 +65,11 @@ impl Keys {
                 self.escape = Escape::Sequence;
                 None
             }
-            // `ESC` and one key (Alt with a key): both are dropped.
             (Escape::Started, 0x20..=0x7e) | (Escape::Sequence, 0x40..=0x7e) => {
                 self.escape = Escape::Outside;
                 None
             }
             (Escape::Sequence, 0x20..=0x3f) => None,
-            // Not an escape sequence after all: the byte counts as itself.
             _ => {
                 self.escape = Escape::Outside;
                 self.push(byte)
@@ -93,7 +77,6 @@ impl Keys {
         }
     }
 
-    /// The first byte of a multi-byte character.
     fn started(&mut self, byte: u8) -> Option<Key> {
         self.expected = match byte {
             0xc2..=0xdf => 2,
@@ -108,7 +91,6 @@ impl Keys {
 
     fn continued(&mut self, byte: u8) -> Option<Key> {
         if !(0x80..=0xbf).contains(&byte) {
-            // The character was cut short: it is dropped and `byte` starts afresh.
             self.pending = [0; 4];
             self.expected = 0;
             return self.push(byte);
@@ -136,20 +118,15 @@ impl Drop for Keys {
     }
 }
 
-/// How a line ended.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Ending {
-    /// Return: the answer is the text.
     Answered,
-    /// Return after more than the limit was typed: refused, never cut short.
     TooLong,
-    /// Ctrl-C.
     Interrupted,
     /// Ctrl-D on an empty line, or the terminal closed.
     Ended,
 }
 
-/// One answer being typed, held in memory that is wiped when it drops.
 pub struct Line {
     text: Zeroizing<String>,
     limit: usize,
@@ -157,8 +134,7 @@ pub struct Line {
 }
 
 impl Line {
-    /// An empty answer of at most `limit` bytes. The space is reserved now, so the text is
-    /// never copied to a larger buffer that would not be wiped.
+    /// Reserves `limit` bytes now, so the text never moves to a larger buffer that is not wiped.
     #[must_use]
     pub fn new(limit: usize) -> Self {
         Self {
@@ -168,7 +144,6 @@ impl Line {
         }
     }
 
-    /// Applies `key`; the ending when the line is over.
     pub fn apply(&mut self, key: Key) -> Option<Ending> {
         match key {
             Key::Char(character) => {
@@ -195,13 +170,11 @@ impl Line {
         }
     }
 
-    /// The answer so far.
     #[must_use]
     pub fn text(&self) -> &str {
         &self.text
     }
 
-    /// The answer, still wiped when it drops.
     #[must_use]
     pub fn into_text(self) -> Zeroizing<String> {
         self.text
@@ -212,13 +185,11 @@ impl Line {
 mod tests {
     use super::*;
 
-    /// The keys `bytes` give.
     fn keys(bytes: &[u8]) -> Vec<Key> {
         let mut keys = Keys::default();
         bytes.iter().filter_map(|&byte| keys.push(byte)).collect()
     }
 
-    /// The answer and how it ended, after `bytes` at a line of `limit` bytes.
     fn typed(bytes: &[u8], limit: usize) -> (String, Option<Ending>) {
         let mut line = Line::new(limit);
         let mut decoder = Keys::default();
@@ -283,8 +254,6 @@ mod tests {
 
     #[test]
     fn cmd_010_malformed_utf8_control_bytes_and_escape_sequences_are_not_part_of_the_answer() {
-        // An arrow key, a function key, Alt-x, a cut-short character, a stray continuation
-        // byte, an invalid lead byte, a C1 control, a tab and a bell.
         let bytes = b"a\x1b[A\x1b[15~\x1bOP\x1bxb\xc3c\x80\xffd\xc2\x85\t\x07e\r";
         assert_eq!(
             typed(bytes, 64),
@@ -299,9 +268,7 @@ mod tests {
             ("abcd".to_owned(), Some(Ending::Answered))
         );
         assert_eq!(typed(b"abcde\r", 4).1, Some(Ending::TooLong));
-        // A character is never split to fit.
         assert_eq!(typed("abcä\r".as_bytes(), 4).1, Some(Ending::TooLong));
-        // Erasing does not hide that more was typed; clearing the line starts afresh.
         assert_eq!(typed(b"abcde\x7f\x7f\r", 4).1, Some(Ending::TooLong));
         assert_eq!(
             typed(b"abcde\x15ok\r", 4),
@@ -309,7 +276,6 @@ mod tests {
         );
     }
 
-    /// A small deterministic generator, so the fuzz run is the same every time.
     fn next(state: &mut u64) -> u8 {
         *state = state
             .wrapping_mul(6_364_136_223_846_793_005)

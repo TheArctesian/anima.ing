@@ -1,6 +1,4 @@
-//! The tools the hub knows by name (CAP-023), and what the daemon found of each (CAP-024). A
-//! name a newer daemon sends that is not here is ignored by the hub, so the two can differ in
-//! version (K8 Section 4).
+//! The tools the hub knows by name (CAP-023, CAP-024); the hub ignores a name it does not know (K8 Section 4).
 
 use serde::{Deserialize, Serialize};
 
@@ -59,40 +57,33 @@ impl ToolName {
         }
     }
 
-    /// The tool named `text`; `None` for a name this version does not know.
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|tool| tool.as_str() == text)
     }
 }
 
-/// One tool the daemon found (CAP-024).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Tool {
     pub name: ToolName,
     pub verdict: Verdict,
 }
 
-/// Whether a found tool can be used: its version, or why not (CAP-024, CAP-002).
+/// A found tool's version, or why it is not usable (CAP-002).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Verdict {
-    /// The probe printed this version.
     Usable(String),
     NotUsable(Reason),
 }
 
-/// Why a found tool is not usable: a fixed code, never text from the device. K8 spells it as
-/// the `state` of a tool; a state this version does not know reads as [`Reason::Failed`].
+/// A fixed code, never text from the device; K8 spells it as the `state` of a tool.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Reason {
-    /// The version probe ran past its time limit.
     TimedOut,
     /// The program could not start, or exited with a failure.
     Exited,
-    /// The program ran but printed no version the parser accepts.
     NoVersion,
-    /// A reason a newer daemon knows and this version does not.
     #[serde(other)]
     Failed,
 }
@@ -109,7 +100,6 @@ impl Reason {
         }
     }
 
-    /// The reason spelled `text`; [`Reason::Failed`] for a code this version does not know.
     #[must_use]
     pub fn parse(text: &str) -> Self {
         [Self::TimedOut, Self::Exited, Self::NoVersion]
@@ -120,7 +110,6 @@ impl Reason {
 }
 
 impl Tool {
-    /// The version, when the tool is usable.
     #[must_use]
     pub fn version(&self) -> Option<&str> {
         match &self.verdict {
@@ -129,7 +118,6 @@ impl Tool {
         }
     }
 
-    /// Why the tool is not usable; `None` when it is.
     #[must_use]
     pub const fn reason(&self) -> Option<Reason> {
         match self.verdict {
@@ -138,7 +126,6 @@ impl Tool {
         }
     }
 
-    /// Whether the tool can be used: its probe gave a version (CAP-024).
     #[must_use]
     pub const fn is_usable(&self) -> bool {
         matches!(self.verdict, Verdict::Usable(_))

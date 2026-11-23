@@ -53,7 +53,7 @@ it('H21: the traffic says why a route that waits passes nothing', () => {
 });
 
 it('H21: the checks are in the order of the hub; the record of the application follows from the step that the route waits for', () => {
-  const checks = routeChecks(route({}), 'atlas', NOW);
+  const checks = routeChecks(route({ access: 'PUBLIC' }), 'atlas', NOW);
   expect(checks.map((each) => [each.title, each.label])).toEqual([
     ['The name is proven', 'Proven'],
     ['Consent at the machine', 'Not given'],
@@ -65,6 +65,11 @@ it('H21: the checks are in the order of the hub; the record of the application f
   expect(routeChecks(route({ waitsFor: null, machineConsent: true }), 'atlas', NOW)[2]?.label).toBe('Recorded');
   expect(routeChecks(route({ kind: 'TCP_STREAM' }), 'atlas', NOW).map((each) => each.title)).not.toContain('Certificate');
   expect(routeChecks(route({ proofRecordName: null }), 'atlas', NOW)[0]?.title).toBe('The name points at this hub');
+});
+
+it('R-390: a private route needs no consent at the machine; a public route still waits for it', () => {
+  expect(routeChecks(route({ access: 'PRIVATE' }), 'atlas', NOW)[1]).toMatchObject({ label: 'Not needed while the route is private', tone: 'up' });
+  expect(routeChecks(route({ access: 'PUBLIC' }), 'atlas', NOW)[1]).toMatchObject({ label: 'Not given', tone: 'unknown' });
 });
 
 it('H21: a hosted hub gives the TXT record; the address of the door and of a hub that a person hosts are not in the API', () => {

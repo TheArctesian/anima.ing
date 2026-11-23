@@ -1,5 +1,4 @@
-//! How a route reads in a terminal. Each document has its own generated type, so the table is
-//! made from the JSON form that each of them serialises to.
+//! Each route document has its own generated type, so a route renders from its JSON.
 
 use serde::Serialize;
 use serde_json::Value;
@@ -24,7 +23,6 @@ fn state(route: &Value) -> Cell {
     }
 }
 
-/// A row for each route.
 pub fn table<T: Serialize>(routes: &[T]) -> Table {
     let mut table = Table::new(vec![
         "ID", "NAME", "KIND", "ACCESS", "DEVICE", "PORT", "LISTEN", "PROOF", "STATE",
@@ -46,7 +44,6 @@ pub fn table<T: Serialize>(routes: &[T]) -> Table {
     table
 }
 
-/// One route with its proof record, its certificate and its counts.
 pub fn record<T: Serialize>(route: &T) -> Table {
     let route = serde_json::to_value(route).unwrap_or_default();
     let mut table = Table::record();

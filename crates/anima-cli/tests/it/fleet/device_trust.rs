@@ -1,5 +1,4 @@
-//! `anima device trust` against the scripted hub: a host key or certificate is accepted only by
-//! the fingerprint the operator gives (SEC-006, SEC-007).
+//! `anima device trust` against the scripted hub (SEC-006, SEC-007).
 
 use serde_json::json;
 

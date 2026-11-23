@@ -1,5 +1,3 @@
-//! `anima extraction list [--owner <record>] [--state proposed|confirmed|rejected]`.
-
 use serde::Serialize;
 
 use super::documents::{ExtractionList, extraction_list};

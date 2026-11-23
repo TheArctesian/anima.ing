@@ -1,5 +1,4 @@
-// Windows PowerShell 5 removes empty environment values. Keep the empty Rust wrapper in
-// the native child's environment so Cargo never tries to execute the Unix cache script.
+// Windows PowerShell 5 drops empty environment values; the empty RUSTC_WRAPPER keeps Cargo off the Unix cache script.
 const command = process.argv.slice(2);
 if (command.length === 0) throw new Error("A native build command is required");
 const child = Bun.spawn(command, {

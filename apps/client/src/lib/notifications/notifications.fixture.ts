@@ -17,6 +17,7 @@ const TYPENAMES = {
   NTFY: 'NtfySettings',
   EMAIL: 'EmailSettings',
   APPRISE: 'AppriseSettings',
+  MOBILE: 'WebhookSettings',
 } as const;
 
 function lastDeliveryOf(id: string): Delivery | null {

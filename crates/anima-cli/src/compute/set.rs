@@ -1,6 +1,4 @@
-//! `anima compute policy set <device>`: changes the named values of the device policy of a
-//! device and keeps the others. It sets no switch: the one switch "takes work" stays at the
-//! machine (USE-004, OD-C8).
+//! The switch "takes work" stays at the machine; this command sets no switch (USE-004, OD-C8).
 
 use super::documents::{SetDevicePolicy, set_device_policy};
 use super::show::{Row, fetch, find};

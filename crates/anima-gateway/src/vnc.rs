@@ -1,6 +1,6 @@
 //! The VNC client (RFB 3.8, RFC 6143).
 //!
-//! The device is not trusted: each length it sends is checked against a limit before use.
+//! The device is not trusted: each length it sends is checked against a limit before use, and no bytes from a device can make this code panic.
 
 mod auth;
 mod drawing;

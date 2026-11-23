@@ -1,11 +1,8 @@
-//! The batteries a batch announces: the whole list after start and each time a battery comes,
-//! goes or changes its state, not when only its charge or its time left moves (MET-032, K8
-//! Section 4). The charge travels as the series `battery_percent`.
+//! The batteries a batch announces (MET-032, K8 Section 4).
 
 use daemon_core::readings::{Battery, BatteryState};
 use daemon_core::wire::BatchBattery;
 
-/// The names and states of the battery list last handed to the pusher.
 #[derive(Debug, Default)]
 pub struct BatteryWatch {
     announced: Option<Vec<(String, BatteryState)>>,
@@ -17,10 +14,6 @@ impl BatteryWatch {
         Self::default()
     }
 
-    /// The `batteries` member to send when the names or states of `read` differ from the list
-    /// announced last; `None` when they are the same or nothing could be read (the hub keeps
-    /// what it has). An empty list is sent only after a list with a battery: a device with no
-    /// battery sends none (K8 Section 4).
     pub fn changed(&mut self, read: Option<&[Battery]>) -> Option<Vec<BatchBattery>> {
         let read = read?;
         let marks: Vec<(String, BatteryState)> = read

@@ -1,5 +1,3 @@
-//! `anima catalogue list`: the entries of the catalogue that the hub lists (task H38).
-
 use super::documents::{CatalogueList, catalogue_list};
 use crate::failure::Failure;
 use crate::hub::Hub;

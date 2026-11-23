@@ -1,5 +1,3 @@
-//! One page of workflow runs, asked the same way by the command and by the MCP tool.
-
 use super::documents::{
     WorkflowRunList, WorkflowRunListJobs, workflow_run_list, workflow_run_list_jobs,
 };

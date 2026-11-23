@@ -1,9 +1,5 @@
-//! `anima_route_list` and `anima_route_get`: the routes of applications (HOST-046, HOST-050,
-//! tasks H21 and H40) with their kind and access, read only. No tool adds, checks or removes a
-//! route: making an application public on the internet or open to the network of Anima, or
-//! opening a stream, is a trust decision for a person with a second factor (Section 7 of the
-//! plan, SF-232). No tool returns a certificate or a key: the hub gives them to no
-//! API.
+//! The route tools are read only (HOST-046, HOST-050): a route change is a trust decision for a
+//! person with a second factor (plan Section 7, SF-232). No tool returns a certificate or a key.
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

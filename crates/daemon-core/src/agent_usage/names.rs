@@ -3,29 +3,22 @@
 
 use super::OTHER_MODEL;
 
-/// The longest `state` or `source`, in bytes.
 const MAX_WORD: usize = 32;
 
-/// The longest session ID or model name, in bytes.
 const MAX_NAME: usize = 64;
 
-/// The longest repository name, in bytes.
 const MAX_REPOSITORY: usize = 200;
 
-/// The longest segment of a repository path, in bytes.
 const MAX_SEGMENT: usize = 100;
 
-/// The fewest and most path segments after the host of a repository: `owner/name` of a forge,
-/// up to two group levels more. A deeper path is more likely a folder on the host.
+/// `owner/name` of a forge and up to two group levels; a deeper path is more likely a host folder.
 const SEGMENTS: std::ops::RangeInclusive<usize> = 2..=4;
 
-/// The root folders of a file system: a remote path that starts with one is a folder on the
-/// host, not a repository of a forge, and is never sent (AIS-018).
+/// A remote path that starts with one is a folder on the host, so it is not sent (AIS-018).
 const ROOT_FOLDERS: [&str; 11] = [
     "users", "home", "root", "var", "srv", "opt", "mnt", "volumes", "tmp", "private", "data",
 ];
 
-/// A `state` or `source`: 1 to 32 bytes of `[a-z_]`.
 #[must_use]
 pub fn is_word(text: &str) -> bool {
     sized(text, MAX_WORD)
@@ -34,7 +27,6 @@ pub fn is_word(text: &str) -> bool {
             .all(|byte| byte.is_ascii_lowercase() || byte == b'_')
 }
 
-/// A session ID: 1 to 64 bytes of `[0-9A-Za-z_-]`.
 #[must_use]
 pub fn is_session_id(text: &str) -> bool {
     sized(text, MAX_NAME)
@@ -43,7 +35,6 @@ pub fn is_session_id(text: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
 }
 
-/// A model name: 1 to 64 bytes of `[0-9A-Za-z._:-]`.
 #[must_use]
 pub fn is_model(text: &str) -> bool {
     sized(text, MAX_NAME)
@@ -52,15 +43,11 @@ pub fn is_model(text: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b':' | b'-'))
 }
 
-/// `name` when it is a model name by [`is_model`], else [`OTHER_MODEL`].
 #[must_use]
 pub fn model_or_other(name: &str) -> &str {
     if is_model(name) { name } else { OTHER_MODEL }
 }
 
-/// A repository: at most 200 bytes, a host of `[a-z0-9.-]`, then 2 to 4 segments of 1 to 100
-/// bytes of `[A-Za-z0-9._-]`, none `.` or `..`, each after one `/`, the first not a root folder
-/// of a file system ([`ROOT_FOLDERS`], any letter case).
 #[must_use]
 pub fn is_repository(text: &str) -> bool {
     let mut parts = text.split('/');

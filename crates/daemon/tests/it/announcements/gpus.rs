@@ -1,5 +1,4 @@
-//! The GPU list in a batch: sent once after a discovery, kept until a 204 or a `MALFORMED`
-//! (K8 Section 4, R-098).
+//! K8 Section 4, R-098.
 
 use anima_daemon::push::Event;
 use daemon_core::wire::RefusalCode;
@@ -77,8 +76,7 @@ async fn k8_4_the_gpu_list_is_kept_when_the_hub_drops_the_batch_for_its_times() 
     );
 }
 
-/// T8 N1: a list the hub refuses (index 64 is past K8's 63) is not sent again, so it cannot
-/// sink every later batch until the next discovery, 24 hours on.
+/// Index 64 is past K8's 63; a resent list would sink every batch until the next discovery.
 #[tokio::test]
 async fn k8_4_a_refused_gpu_list_is_not_resent_with_every_batch() {
     let hub = FakeHub::start().await;

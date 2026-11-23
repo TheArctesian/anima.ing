@@ -1,6 +1,4 @@
-//! `anima event` and `anima audit`: what happened on the hub, who changed what, and whether
-//! the audit log is whole. `watch`
-//! follows the hub's event stream (the crate README shows how a `watch` command is built).
+//! `anima event` and `anima audit`.
 
 pub mod audit;
 pub mod documents;

@@ -1,6 +1,4 @@
-// Runs a command to its end and returns its exit code and output. Bun.spawnSync with piped output
-// can busy-wait on a child that has already exited (Bun 1.3.11, R-112), so every test that needs
-// a child's output awaits this instead.
+// Bun.spawnSync with piped output can busy-wait on a child that has exited (Bun 1.3.11, R-112).
 export interface FinishedProcess {
   exitCode: number;
   stdout: string;
@@ -9,7 +7,6 @@ export interface FinishedProcess {
 
 export interface FinishOptions {
   env?: Record<string, string | undefined>;
-  /** Text for the child's stdin; the child gets no stdin when this is unset. */
   stdin?: string;
 }
 

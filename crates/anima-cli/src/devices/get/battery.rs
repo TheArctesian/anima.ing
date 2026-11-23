@@ -1,6 +1,4 @@
-//! The batteries of a device with their charge (MET-032). K1 gives each battery's last state
-//! with the device and keeps its charge as the series `BATTERY_PERCENT`, labelled with the
-//! battery's name; `anima device get` and `anima_device_get` give both.
+//! Battery charge comes from the series `BATTERY_PERCENT`, labelled with the battery's name (MET-032).
 
 use serde_json::{Value, json};
 
@@ -54,7 +52,6 @@ pub fn with_charges(mut device: Value, charges: &[Option<f64>]) -> Value {
     device
 }
 
-/// One row for each battery: its charge, its state, the time left and its health.
 pub fn rows(
     table: &mut Table,
     batteries: &[device_get::DeviceGetDeviceBatteries],

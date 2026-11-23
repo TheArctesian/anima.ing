@@ -1,7 +1,5 @@
-//! Builds the release version into `anima-daemon` (R-122, ROL-051): the builder sets
-//! `ANIMA_VERSION` to the release version, as it does for `anima` (INS-003, OD-17). The script
-//! sets `CARGO_PKG_VERSION` for this package's compiler runs, so each batch carries it. Unset,
-//! the crate version stays. The rule is the one `anima` uses, from the same file.
+//! Builds the release version from `ANIMA_VERSION` into `anima-daemon` by the rule of `anima`
+//! (R-122, ROL-051, INS-003, OD-17); unset, the crate version stays.
 
 #[path = "../anima-cli/release_version.rs"]
 mod release_version;

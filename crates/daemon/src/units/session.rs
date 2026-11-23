@@ -1,10 +1,8 @@
-//! The session bus `systemctl --user` reaches the user's manager through (MET-019): this
-//! shell's `XDG_RUNTIME_DIR`, else the user's own `/run/user/<uid>`.
+//! The session bus `systemctl --user` reaches the user's manager through (MET-019).
 
 use std::fs;
 use std::os::unix::fs::MetadataExt as _;
 
-/// Where each user's runtime folder (and so their session bus) is, by user ID.
 const RUNTIME_ROOT: &str = "/run/user";
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -13,12 +11,6 @@ const RUNTIME_ROOT: &str = "/run/user";
 )]
 pub struct NoSessionBus;
 
-/// The runtime folder `systemctl --user` finds the user's manager through: `set`
-/// (`XDG_RUNTIME_DIR`) when it is not empty, else `/run/user/<uid>` when `owner` (that folder's
-/// owner; `None` when it is not a folder) is `uid`.
-///
-/// # Errors
-/// [`NoSessionBus`] when neither is there.
 fn session_folder(
     set: Option<String>,
     uid: u32,
@@ -31,12 +23,10 @@ fn session_folder(
     }
 }
 
-/// `/run/user/<uid>`: where logind puts a user's runtime folder.
 fn fallback_session_folder(uid: u32) -> String {
     format!("{RUNTIME_ROOT}/{uid}")
 }
 
-/// The variables `systemctl --user` reaches the user's manager through.
 pub(super) fn session_bus(
     env: impl Fn(&str) -> Option<String>,
     uid: u32,

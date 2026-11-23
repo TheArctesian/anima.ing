@@ -52,6 +52,7 @@ mod tests {
             ("ANIMA_LINK_SOCKET", socket.as_str()),
             ("ANIMA_LINK_CONTROL", control.as_str()),
             ("ANIMA_HOSTED_CLOUD_KEY_FILE", key.as_str()),
+            ("ANIMA_PROBE_DENY", "10.130.6.0/24"),
         ];
         all.extend_from_slice(more);
         env(&all)

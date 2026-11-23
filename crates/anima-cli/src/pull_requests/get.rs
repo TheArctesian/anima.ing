@@ -1,5 +1,3 @@
-//! `anima pr get <repository> <number>`.
-
 use super::documents::{PullRequestGet, pull_request_get};
 use super::render;
 use crate::failure::{Failure, Hint};

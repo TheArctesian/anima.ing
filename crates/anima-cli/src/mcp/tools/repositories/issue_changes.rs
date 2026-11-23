@@ -1,6 +1,5 @@
-//! `anima_issue_create`, `anima_issue_comment_add` and `anima_issue_set_open`: the issue changes
-//! a write key may make (PRJ-028, OD-E14). Change tools, so `off` until the operator allows
-//! them (MCP-002). The answers leave out the body the agent sent.
+//! The issue changes a write key may make (PRJ-028, OD-E14); they are `off` until the operator
+//! allows them (MCP-002).
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;

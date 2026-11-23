@@ -1,4 +1,3 @@
-//! The HTTP fixture listens on the same native private socket as the real link.
 use anima_windows::socket::{Listener, Stream};
 use std::{io, path::Path};
 

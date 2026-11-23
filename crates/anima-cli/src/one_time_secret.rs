@@ -1,7 +1,6 @@
-//! A secret the hub shows once: an API key, an agent code, a VPN pre-auth key, a builder token.
-//! Every command that has one shows it the same way (CMD-014, LOG-007): alone on standard
-//! output as one line, or under its field with `--json`, or in a `0600` file with nothing
-//! secret printed. The note that it is shown one time goes to standard error.
+//! A secret the hub shows once; every command that has one shows it this way (CMD-014, LOG-007):
+//! alone on standard output, under its field with `--json`, or in a `0600` file with nothing secret
+//! printed, and the note that it shows one time goes to standard error.
 
 use std::path::{Path, PathBuf};
 

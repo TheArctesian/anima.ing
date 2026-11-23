@@ -16,7 +16,7 @@ const FINGERPRINT_HASH: &str = "sha256";
 /// The longest domain the gateway takes, in bytes.
 const LONGEST_DOMAIN: usize = 255;
 
-/// How the device must protect the session; standard RDP security has no certificate to check.
+/// How the device must protect the session; standard RDP security is never used, as it has no certificate to check.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Security {
     /// TLS; the device asks for the sign-in itself.

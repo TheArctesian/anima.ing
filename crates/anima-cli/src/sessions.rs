@@ -1,5 +1,4 @@
-//! `anima session`, `anima ssh` and `anima files`: remote sessions through the hub (K4,
-//! CMD-002). `session list|end` work with any token; `ssh` and `files` need the login token.
+//! Remote sessions through the hub (K4, CMD-002); `ssh` and `files` need the login token.
 
 pub mod documents;
 pub mod end;

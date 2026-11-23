@@ -1,4 +1,4 @@
-//! R-122: each batch the daemon pushes carries the version of the daemon.
+//! R-122.
 
 use super::feed;
 use crate::fake_hub::FakeHub;
@@ -21,8 +21,7 @@ async fn r_122_each_batch_carries_the_version_of_the_daemon() {
     assert_eq!(versions, [Some(version.clone()), Some(version)]);
 }
 
-/// HMD-055: the desktop app reads this line to compare the daemon it carries with the copy it
-/// installed; the program needs no home folder, no token and no network for it.
+/// HMD-055: the desktop app reads this line, so it needs no home folder, token or network.
 #[test]
 fn hmd_055_the_program_prints_the_same_version_with_an_empty_environment() {
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_anima-daemon"))

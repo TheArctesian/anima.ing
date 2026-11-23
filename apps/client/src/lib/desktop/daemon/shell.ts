@@ -19,6 +19,8 @@ export type DaemonShellProblem =
   | 'uninstall'
   | 'remove'
   | 'timed-out'
+  | 'unchecked'
+  | 'unhealthy'
   | 'failed';
 
 const MESSAGES: Record<DaemonShellProblem, string> = {
@@ -37,6 +39,8 @@ const MESSAGES: Record<DaemonShellProblem, string> = {
   uninstall: 'The daemon did not take its unit and its token off this computer.',
   remove: 'The copy of the daemon in its installation folder could not be deleted.',
   'timed-out': 'The daemon did not finish in time.',
+  unchecked: 'The new copy of the daemon did not pass its check.',
+  unhealthy: 'The new daemon did not answer after its start.',
   failed: 'The install did not finish.',
 };
 

@@ -1,5 +1,3 @@
-//! The documents for the values a new check starts with (K1 `CheckDefaults`).
-
 use graphql_client::GraphQLQuery;
 
 #[derive(GraphQLQuery)]

@@ -1,4 +1,4 @@
-//! `anima site` and `anima tag` against the scripted hub (CMD-020, CMD-021).
+//! CMD-020, CMD-021.
 
 use serde_json::{Value, json};
 

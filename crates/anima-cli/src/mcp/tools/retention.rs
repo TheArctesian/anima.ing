@@ -1,6 +1,3 @@
-//! The `retention` tool set: how long the hub keeps heartbeats, metrics, events and
-//! deliveries.
-
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

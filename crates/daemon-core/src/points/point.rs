@@ -36,7 +36,6 @@ impl Point {
         self.at
     }
 
-    /// Each series that had a sample in the window, with what its samples came to.
     #[must_use]
     pub const fn values(&self) -> &BTreeMap<SeriesKey, Summary> {
         &self.values

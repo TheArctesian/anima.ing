@@ -1,4 +1,4 @@
-//! `anima device list`: filters, order and pages (CMD-026).
+//! `anima device list` (CMD-026).
 
 use super::documents::{DeviceList, SiteNames, device_list, site_names};
 use crate::failure::{Failure, Hint};

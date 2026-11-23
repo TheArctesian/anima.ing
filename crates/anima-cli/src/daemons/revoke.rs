@@ -1,5 +1,4 @@
-//! `anima daemon revoke`: the daemon's token stops working. The metrics source stays DAEMON, shown
-//! as stale, until the operator changes it (R-092 D-7).
+//! The metrics source stays DAEMON, shown as stale, until the operator changes it (R-092 D-7).
 
 use super::documents::{DaemonRevoke, daemon_revoke};
 use crate::devices::get::resolve;
