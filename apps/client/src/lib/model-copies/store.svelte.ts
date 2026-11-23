@@ -1,5 +1,6 @@
 import type { HubResult } from '$lib/hub/hub';
 import type { CopyCalls, FoundModel, ModelCopy, PullChoices } from './api';
+import { withReasons } from './refusal';
 import { isMoving } from './rows';
 
 export type ReadStatus = 'idle' | 'loading' | 'ready' | 'failed';
@@ -18,6 +19,8 @@ export class CopiesStore {
   found = $state.raw<readonly FoundModel[]>([]);
   /** True from the request to find models until the page has read again for a while: the machines answer later. */
   finding = $state(false);
+  /** Why the last Find models or Use did not complete; each later Pull, Remove, Find models or Use clears it. */
+  refusal = $state('');
   /** The identifier of one machine, or empty for all. */
   machine = $state('');
 
@@ -68,7 +71,8 @@ export class CopiesStore {
 
   /** PULL-001: asks the machine for the variant; the new copy joins the list. The hub's refusal is the answer. */
   async pull(deviceId: string, address: string): Promise<HubResult<ModelCopy>> {
-    const result = await this.calls.pull(deviceId, address);
+    this.refusal = '';
+    const result = withReasons(await this.calls.pull(deviceId, address));
     if (result.ok) {
       this.#generation += 1;
       this.copies = [...this.copies.filter((copy) => copy.id !== result.value.id), result.value];
@@ -79,7 +83,8 @@ export class CopiesStore {
 
   /** PULL-009: a copy that went at once leaves the list; else its row says Removing until the machine deleted it. */
   async remove(id: string): Promise<HubResult<ModelCopy | null>> {
-    const result = await this.calls.remove(id);
+    this.refusal = '';
+    const result = withReasons(await this.calls.remove(id));
     if (result.ok || result.error.code === 'NOT_FOUND') {
       this.#generation += 1;
       const left = result.ok ? result.value : null;
@@ -93,19 +98,29 @@ export class CopiesStore {
    * of the hub, else the number of machines asked; the page then reads again while `finding` is true.
    */
   async findAll(): Promise<HubResult<number>> {
+    this.refusal = '';
     await this.loadChoices();
-    if (this.choicesStatus === 'failed') return { ok: false, error: { code: 'unreachable', message: this.choicesProblem } };
+    if (this.choicesStatus === 'failed') {
+      this.refusal = this.choicesProblem;
+      return { ok: false, error: { code: 'unreachable', message: this.choicesProblem } };
+    }
     const machines = this.choices.machines.filter((machine) => machine.stop !== 'NO_SWITCH');
-    const results = await Promise.all(machines.map((machine) => this.calls.find(machine.id)));
+    const results = await Promise.all(machines.map(async (machine) => withReasons(await this.calls.find(machine.id))));
     const refused = results.find((result) => !result.ok);
-    if (refused !== undefined && !refused.ok) return refused;
+    if (refused !== undefined && !refused.ok) {
+      this.refusal = refused.error.message;
+      return refused;
+    }
+    if (machines.length === 0) this.refusal = 'No machine has asked this hub for work.';
     this.finding = machines.length > 0;
     return { ok: true, value: machines.length };
   }
 
   /** R-444: uses a found model where it is; its copy joins the list and the model leaves the found list. */
   async use(model: FoundModel): Promise<HubResult<ModelCopy>> {
-    const result = await this.calls.use(model.place.id, model.found);
+    this.refusal = '';
+    const result = withReasons(await this.calls.use(model.place.id, model.found));
+    if (!result.ok) this.refusal = result.error.message;
     if (result.ok) {
       this.#generation += 1;
       this.copies = [...this.copies.filter((copy) => copy.id !== result.value.id), result.value];
