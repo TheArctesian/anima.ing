@@ -2,18 +2,19 @@
   import FormButton from '$lib/forms/FormButton.svelte';
   import EmptyState from '$lib/states/EmptyState.svelte';
   import ErrorState from '$lib/states/ErrorState.svelte';
-  import { countWords, imageRows, networkRows, usageLine, volumeRows, type StorageKind } from './rows';
+  import { countWords, imageRows, networkRows, usageLine, type StorageKind } from './rows';
   import type { StorageStore } from './storage.svelte';
 
   /**
-   * HOST-020: the images, the volumes or the networks of a device, read-only, with the size of each image and volume,
-   * the containers that use it, and the space that a clean-up can free. Anima removes nothing in stage 1.
+   * HOST-020: the images or the networks of a device, read-only, with the size of each image, the containers that use
+   * it, and the space that a clean-up can free. The volumes are in the section Storage of Hosting (HSE-015). Anima
+   * removes nothing in stage 1.
    */
   const { store, kind }: { store: StorageStore; kind: StorageKind } = $props();
 
   const read = $derived(kind === 'networks' ? store.networks : store.storage);
   const table = $derived(
-    kind === 'images' ? imageRows(store.storage.value?.images ?? []) : kind === 'volumes' ? volumeRows(store.storage.value?.volumes ?? []) : networkRows(store.networks.value ?? []),
+    kind === 'images' ? imageRows(store.storage.value?.images ?? []) : networkRows(store.networks.value ?? []),
   );
   const usage = $derived(kind === 'networks' ? '' : usageLine(store.storage.value?.usage ?? [], kind));
 </script>

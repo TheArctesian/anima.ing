@@ -5159,3 +5159,28 @@ list, or seen the tab of a real device.
    Expected: Hosting opens on Applications with all machines.
 
 Result: Open.
+
+### HT-NEW-hostingstorage: Hosting > Storage lists the volumes of each machine (task H48; HSE-015)
+
+Built on the branch `hosted/hse-storage`: the page Hosting, section Storage, reads the devices with SSH on and, for each,
+the volumes and the containers through the hub. The device tab Containers no longer has the choice Volumes; it has the
+link "Volumes in Hosting". The tests use a fake hub; nobody has seen the list with real machines.
+
+1. In the desktop application of this build, signed in to a hub with at least two devices that have SSH on with an
+   accepted host key and Docker, open Hosting, then Storage.
+   Expected: one group for each of those devices, by name, with the status of the device as the Devices page shows it
+   and the number of volumes. When Docker gives the space of the volumes, the header also says how much is in use and
+   how much a clean-up can free, with the same numbers as `docker system df` on that machine.
+2. On one machine, run a Compose project that mounts a named volume, and make a volume that no container uses
+   (`docker volume create spare`). Press Refresh.
+   Expected: the volume of the project says the name of the project under Used by; the volume `spare` has the mark
+   "Not used"; the size of each is the size that `docker system df -v` gives.
+3. Type a part of the name of the project in the field.
+   Expected: only the volumes that the project uses are shown, under the header of their machine.
+4. Turn off the SSH credential of a machine in Anima, or stop its Docker, and press Refresh.
+   Expected: its group stays, with the words of the hub that say why; the other groups still show their volumes.
+5. Open Devices, one of those machines, the tab Containers.
+   Expected: the choice has Containers, Images and Networks, no Volumes. The link "Volumes in Hosting" opens Hosting >
+   Storage.
+
+Result: Open.
