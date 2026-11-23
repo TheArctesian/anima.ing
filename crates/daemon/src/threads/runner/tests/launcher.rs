@@ -255,3 +255,62 @@ fn thr_050_a_running_full_access_thread_does_not_hold_the_engine() {
         "a sandboxed thread whose folder holds the records holds the engine"
     );
 }
+
+/// A seat in `mode` in `folder` with the `TMPDIR` `tmp`, both made.
+fn seat(mode: Mode, folder: &Path, tmp: &Path) -> Seat {
+    std::fs::create_dir_all(folder).expect("the folder");
+    std::fs::create_dir_all(tmp).expect("the TMPDIR");
+    let confinement = Confinement {
+        mode,
+        program: Program::ClaudeCode,
+        codex: None,
+        kept: None,
+    };
+    Seat::new(folder.to_owned(), confinement, tmp.to_owned())
+}
+
+#[test]
+fn thr_050_a_sandbox_root_shared_with_a_different_running_thread_is_refused() {
+    let folder = tempfile::tempdir().expect("a folder");
+    // A `TMPDIR` is a real path, as `private_tmp::made` gives it.
+    let home = std::fs::canonicalize(folder.path()).expect("the real path");
+    let at = |name: &str| home.join(name);
+    let records = at("records");
+    std::fs::create_dir(&records).expect("the records");
+    let first = seat(Mode::Ask, &at("project"), &at("runner/tmp/1"));
+
+    let same_folder = seat(Mode::AcceptEdits, &at("project"), &at("runner/tmp/2"));
+    assert_eq!(
+        same_folder.shared([&first], Some(&records)),
+        None,
+        "two threads in one folder are permitted"
+    );
+
+    // A thread whose folder holds the folder of the runner can write the `TMPDIR` of the new one.
+    let above = seat(Mode::Ask, home.as_path(), &at("elsewhere/tmp"));
+    let said = same_folder.shared([&above], None).expect("refused");
+    assert!(said.contains("a different running thread"), "{said}");
+    let full = seat(Mode::FullAccess, home.as_path(), &at("elsewhere/tmp"));
+    assert_eq!(
+        same_folder.shared([&full], None),
+        None,
+        "a thread in Full access is not checked"
+    );
+
+    let nested = seat(Mode::Ask, &at("project/sub"), &at("runner/tmp/3"));
+    let said = nested.shared([&first], None).expect("refused");
+    assert!(
+        said.contains("a different running thread"),
+        "a folder inside a folder: {said}"
+    );
+    // The new thread can write the `TMPDIR` of the running one.
+    let holds_runner = seat(Mode::Ask, &at("runner"), &at("elsewhere/tmp/4"));
+    let said = holds_runner.shared([&first], None).expect("refused");
+    assert!(said.contains("a different running thread"), "{said}");
+
+    let in_records = seat(Mode::Ask, &at("other"), &records.join("tmp"));
+    let said = in_records.shared([], Some(&records)).expect("refused");
+    assert!(said.contains("records of the Git engine"), "{said}");
+    let unsandboxed = seat(Mode::FullAccess, &at("other"), &records.join("tmp"));
+    assert_eq!(unsandboxed.shared([&first], Some(&records)), None);
+}

@@ -77,6 +77,7 @@ pub(in crate::threads::runner) const fn refusal_word(why: &Refusal) -> &'static 
         Refusal::CannotChange { .. } => "the program cannot change that",
         Refusal::TooLarge { .. } => "a file is too large",
         Refusal::CannotAttach { .. } => "a file cannot go",
+        Refusal::FolderShared { .. } => "a folder of the sandbox is shared",
         Refusal::Worktree { .. } => "the worktree was not made",
     }
 }

@@ -23,7 +23,7 @@ Rules:
 | Area | Lists | Items with a box | Revisit |
 | --- | --- | --- | --- |
 | 1. Releases, signing and installation | 1 | 4 | Before the first public release (tasks R5 to R7 of projects-and-builds-plan.md). |
-| 2. Later phases and proposals | 12 | 41 | When the proposal or the phase of the item gets a ruling. Each proposal has a row in the work plan Section 9. |
+| 2. Later phases and proposals | 12 | 44 | When the proposal or the phase of the item gets a ruling. Each proposal has a row in the work plan Section 9. |
 | 3. Ideas from other products | 2 | 17 | When the plan that owns the subject is changed next. |
 | 4. Hub: access, logs and security | 7 | 24 | Before a hub is hosted for a different person, and at the next security review of access. |
 | 5. Hub: devices, checks and metrics | 9 | 20 | When the domain of the item is changed next. |
@@ -173,6 +173,9 @@ Added 2026-11-23. From the security review of branch `threads/private-tmpdir` of
 - [ ] When the daemon ends after an agent started and before the record of its thread was written, the next start of the runner does not know the thread: it removes its `TMPDIR`, and the hold does not count it.
 - [ ] The checks of a program before a start (the check that it is silent, the list of models) and the hooks of a thread in Full access get the `TMPDIR` of the login. They take no prompt.
 - [ ] A Codex thread whose folder holds the folder of the daemon gets that folder as read-only, and its `TMPDIR` is in it: the agent may not be able to write its `TMPDIR`. The start warns about such a folder (THR-041).
+- [ ] A start is refused when a folder that its sandbox could write is in or holds a folder that a different running sandboxed thread can write (two threads in the very same folder are permitted). `/tmp` itself is left out of this check: when the folder of the runner is under `/tmp`, each sandboxed agent can still write each `TMPDIR`. A folder that does not resolve is compared as it is named.
+- [ ] That check refuses also next to a Codex thread whose folder holds the folder of the daemon, though Codex gets that folder as read-only. A thread in Full access is not checked (operator's ruling of 2026-11-23): its agent can write each `TMPDIR`. This is accepted.
+- [ ] No test starts two threads through the runner to show the refusal: the tests check the rule of the seats only.
 
 ## 3. Ideas from other products
 
