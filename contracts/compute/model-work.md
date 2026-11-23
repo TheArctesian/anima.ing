@@ -2,7 +2,10 @@
 
 Status: **accepted** (R-344, operator, 2026-11-22: "all of it review after"; version 0.3 as written). The security review
 SEC-C-012 still runs, after the acceptance and beside the build; SF-298 and SF-300 stay Open until code closes them or the
-operator accepts them ([security-findings.md](../../docs/security-findings.md)). Version 0.4,
+operator accepts them ([security-findings.md](../../docs/security-findings.md)). Version 0.5,
+2026-11-23 (version 0.5 takes R-347, R-NEW-launcherkey and R-NEW-launcherlist: the root-owned model launcher of task
+L1-6c, the cause `runtime_not_signed`, the details `launcher_missing` and `launcher_outdated`, Sections 5 and 9;
+the launcher waits for its own security review before a merge). Version 0.4,
 2026-11-23 (version 0.4 takes R-387: a relative symbolic link to a regular file of the same archive
 is unpacked as a copy of that file, Section 6). Version 0.3,
 2026-11-20 (version 0.3 takes the answers of the operator to OD-C22 to OD-C25: R-346,
@@ -278,9 +281,12 @@ or a reply that is not one of its fixed words; it carries no detail of the child
 no correct answer), `limit_disk`, `program_mismatch` (the SHA-256 of a runtime file), `archive_rejected` (a
 `runtime_install` whose archive breaks a rule of the unpack of Section 6, or has no server program at the path of its
 release source entry; R-328), `containment_failed` (Linux: the tree of the server cannot be contained,
-Section 9; R-331). A `containment_failed` result also has the member `detail`, one of `no_delegation`,
-`no_nsdelegate`, `cgroup_join_failed`, `backstop_failed`, `parent_gone`, `userns_denied`, `exec_failed`. The launcher
-gives each of its steps its own exit code (120 to 124) and writes that code to a failure file in the folder of the
+Section 9; R-331), `runtime_not_signed` (Linux, only where the model launcher of Section 9 is used: the SHA-256 of the
+runtime program is on no valid signed list of runtimes; R-347). A `containment_failed` result also has the member `detail`, one of `no_delegation`,
+`no_nsdelegate`, `cgroup_join_failed`, `backstop_failed`, `parent_gone`, `userns_denied`, `exec_failed`,
+`launcher_missing` (the model launcher is used and it, or its profile, is not installed), `launcher_outdated` (the
+model launcher gives a different protocol number). The launcher
+gives each of its steps its own exit code (120 to 124; 125 for `runtime_not_signed`) and writes that code to a failure file in the folder of the
 server before it exits; the daemon takes an exit code as the launcher's only when that file holds it.
 
 ## 6. The install of a runtime (CAG-008)
@@ -492,8 +498,8 @@ of the batches between.
     the cgroup of the daemon or move a process out of its cgroup. When the namespaces cannot be made, the start
     fails (`containment_failed`), with no fallback. On a system that restricts user namespaces with AppArmor
     (`kernel.apparmor_restrict_unprivileged_userns=1`, the default of Ubuntu 24.04 and later and its family), each
-    start fails with the detail `userns_denied` until the AppArmor profile of task L1-6c is installed
-    (R-327); that is the expected result, not a fault. At each poll the main process, while it runs, must be in the
+    start of the daemon program as the launcher fails with the detail `userns_denied` (R-327). There the
+    daemon uses the model launcher instead (Section 9.1). At each poll the main process, while it runs, must be in the
     cgroup of its server; when it is not, the server ends with `listener`. The loopback check
     reads the sockets of each process of `cgroup.procs` of the cgroup of the server and of each cgroup below it, in
     the network tables of each network namespace that a
@@ -551,6 +557,31 @@ of the batches between.
   `daemon-core`, with a test clock (CAG-007).
 - On a stop of the daemon, the daemon stops each server. At its start it starts no server by itself; the hub
   sends `server_start` again from its record. See open point MW-P5.
+
+## 9.1 The model launcher (task L1-6c; R-327, R-347)
+
+- **Where it is used.** On Linux, when AppArmor is on (`/sys/module/apparmor/parameters/enabled` is `Y`) and
+  `/proc/sys/kernel/apparmor_restrict_unprivileged_userns` is `1`. Elsewhere the daemon program is the launcher, as
+  Section 9 says, and nothing of this section applies.
+- **The program.** `/usr/local/libexec/anima/anima-model-launcher`: owner root, mode 0755, in folders that root owns
+  and that no other user can write. The AppArmor profile `anima-model-launcher` attaches to that path and allows
+  `userns`; each program that the launcher runs goes to the profile `anima-model-runtime`, which does not allow it.
+  The launcher takes the path of the signed list and of its signature, then the arguments of `__model-launch`. It
+  does the steps of Section 9 with the same exit codes. Before it makes the namespaces it opens the runtime program
+  (no symbolic link, a regular file only), checks the signature of the list with the updater public key that is
+  built into it, requires an entry of the list with the SHA-256 of the open file, and else exits with 125. It runs the
+  open file, not its path. `--protocol` writes `anima-model-launcher <n>`.
+- **The checks of the daemon at a start.** The launcher path is a regular file of owner root that no group or other
+  user can write, its folders follow the same rule, and the profile is loaded; else `containment_failed` with
+  `launcher_missing`. `--protocol` gives the number of the daemon; else `launcher_outdated`. The program is on the
+  kept list; else `runtime_not_signed`.
+- **The signed list.** `runtime-list.json`: `sequence` (an integer) and `runtimes`, each entry with `runtime`,
+  `version`, `backend`, `os`, `architecture`, `program` and `sha256` (of the program file after the unpack). The
+  signature is a minisign signature of the updater key whose trusted comment names `file:runtime-list.json` and
+  `version:<sequence>`. The daemon downloads the pair from `https://releases.anima.ing/runtimes/` when it starts and
+  each 24 hours, keeps a pair only when the signature holds and the sequence is not lower than the kept one
+  (`<model-state>/runtime-list.json` and `.sig`, mode 0600), and uses the kept pair offline. With no kept pair, each
+  start where the launcher is used fails with `runtime_not_signed`.
 
 ## 10. The folders that model work writes (CAG-009, MET-002)
 

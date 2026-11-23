@@ -28,6 +28,7 @@ members = [
     "crates/anima-database",
     "crates/anima-local-hub",
     "crates/route-proxy",
+    "crates/model-launcher",
     "apps/desktop/src-tauri",
     "apps/desktop/keyboard",
     "apps/desktop/account-session",

@@ -64,6 +64,12 @@ pub fn contained() -> Option<std::fs::File> {
     let lock = containment_lock();
     #[cfg(target_os = "linux")]
     {
+        if anima_daemon::model::tree::launcher::is_used() {
+            eprintln!(
+                "skipped: AppArmor restricts user namespaces here, so a start needs the root model launcher and a signed runtime (L1-6c; its human check)"
+            );
+            return None;
+        }
         let probe = format!("probe-{}", std::process::id());
         if let Ok(path) = anima_daemon::model::tree::linux::make(&probe) {
             anima_daemon::model::tree::linux::end_cgroup(&path);

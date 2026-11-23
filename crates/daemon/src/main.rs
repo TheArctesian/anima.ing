@@ -163,7 +163,8 @@ fn install(target: Target, home: &Home) -> ExitCode {
     match units::install::install(target, &host, env, |step| run_step(step, STEP_DEADLINE)) {
         Ok(file) => {
             eprintln!("Installed {} and started the daemon.", file.display());
-            ExitCode::SUCCESS
+            units::launcher_after_install(&host)
+                .map_or_else(|error| failure(&error), |()| ExitCode::SUCCESS)
         }
         Err(error) => failure(&error),
     }
@@ -192,14 +193,14 @@ fn uninstall(home: &Home) -> ExitCode {
     match removal::uninstall(user, env, |step| run_step(step, STEP_DEADLINE), forget) {
         Ok(done) if done.was_installed => {
             eprintln!("Removed {} and the daemon's token.", done.file.display());
-            ExitCode::SUCCESS
         }
         Ok(_) => {
             eprintln!("No unit of the daemon was installed; its token is gone.");
-            ExitCode::SUCCESS
         }
-        Err(error) => failure(&error),
+        Err(error) => return failure(&error),
     }
+    units::launcher_after_uninstall(uid)
+        .map_or_else(|error| failure(&error), |()| ExitCode::SUCCESS)
 }
 
 /// `anima-daemon stop` (HMD-055): the user unit stops; its file and the token stay.

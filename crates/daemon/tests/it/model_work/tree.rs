@@ -178,7 +178,7 @@ fn exiting(root: &std::path::Path, script: &str) -> anima_daemon::model::server:
 
 #[tokio::test]
 async fn an_exit_code_of_a_launcher_step_counts_only_with_the_failure_file_of_the_launcher() {
-    use daemon_core::model_work::cause::Containment;
+    use daemon_core::model_work::cause::{Cause, Containment};
     let Some(_isolation) = super::kit::contained() else {
         return;
     };
@@ -198,12 +198,19 @@ async fn an_exit_code_of_a_launcher_step_counts_only_with_the_failure_file_of_th
         .await
         .expect("started");
     let status = launcher.child.wait().await.expect("ended");
+    let denied = Some(Cause::ContainmentFailed(Containment::UsernsDenied));
+    assert_eq!(launcher.launch_failure(status), denied);
+    let written = "sleep 0.5; printf 125 > ../launch-failure; exit 125";
+    let mut unsigned = anima_daemon::model::server::spawn(&exiting(root.path(), written))
+        .await
+        .expect("started");
+    let status = unsigned.child.wait().await.expect("ended");
     assert_eq!(
-        launcher.launch_failure(status),
-        Some(Containment::UsernsDenied)
+        unsigned.launch_failure(status),
+        Some(Cause::RuntimeNotSigned)
     );
     let cap = anima_daemon::model::tree::LAUNCH_FAILURE_BYTES;
-    for (width, found) in [(cap, Some(Containment::UsernsDenied)), (cap + 1, None)] {
+    for (width, found) in [(cap, denied), (cap + 1, None)] {
         let script = format!("sleep 0.5; printf '%-{width}s' 123 > ../launch-failure; exit 123");
         let mut padded = anima_daemon::model::server::spawn(&exiting(root.path(), &script))
             .await
@@ -229,4 +236,22 @@ fn the_cgroup_mount_must_delegate_to_namespaces() {
         "31 24 0:27 / /mnt/other rw shared:5 - cgroup2 cgroup2 rw,nsdelegate\n"
     ));
     assert!(!cgroup_has_nsdelegate(""));
+}
+
+#[test]
+fn each_step_of_the_model_launcher_has_the_exit_code_that_the_daemon_reads() {
+    use daemon_core::model_work::cause::Containment;
+    use model_launcher::code::Step;
+    let steps = [
+        (Step::CgroupJoin, Containment::CgroupJoinFailed),
+        (Step::Backstop, Containment::BackstopFailed),
+        (Step::ParentGone, Containment::ParentGone),
+        (Step::Userns, Containment::UsernsDenied),
+        (Step::Exec, Containment::ExecFailed),
+    ];
+    assert_eq!(steps.len() + 1, Step::ALL.len());
+    for (step, containment) in steps {
+        assert_eq!(Some(step.code()), containment.exit_code(), "{step:?}");
+    }
+    assert_eq!(Step::NotSigned.code(), Containment::NOT_SIGNED_EXIT_CODE);
 }
