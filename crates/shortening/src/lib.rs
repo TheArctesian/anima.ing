@@ -22,8 +22,13 @@ pub use limits::Limits;
 pub use mark::FIELD;
 pub use rows::Cut;
 
-/// The bytes that the mark of a shortened answer takes, about, for the test of the saving.
-const MARK_ROOM: usize = 600;
+/// The bytes that the mark of a shortened answer takes, about, for the test of the saving:
+/// the fixed part, and the part of each list.
+const MARK_ROOM: usize = 450;
+const MARK_ROOM_OF_A_LIST: usize = 160;
+/// The most lists of one answer that lose rows. An answer with more is not touched: its mark
+/// would be long, and it is not a page of rows.
+const MOST_CUTS: usize = 8;
 
 /// An answer with rows left out, before it has its mark.
 #[derive(Debug, Clone, PartialEq)]
@@ -52,7 +57,8 @@ impl Shortened {
 }
 
 /// `answer` with rows left out; `None` when it stays as it is (SHA-007): it is not an object,
-/// it has a field named as the mark, it is small, no list is long, or the saving is small.
+/// it has a field named as the mark, it is small, no list is long, more than 8 lists would
+/// lose rows, or the saving is small.
 #[must_use]
 pub fn shortened(answer: &Value, limits: &Limits) -> Option<Shortened> {
     let fields = answer.as_object()?;
@@ -65,8 +71,10 @@ pub fn shortened(answer: &Value, limits: &Limits) -> Option<Shortened> {
     }
     let mut cut = answer.clone();
     let cuts = rows::cut_lists(&mut cut, limits);
-    let after = cut.to_string().len() + MARK_ROOM;
+    if cuts.is_empty() || cuts.len() > MOST_CUTS {
+        return None;
+    }
+    let after = cut.to_string().len() + MARK_ROOM + MARK_ROOM_OF_A_LIST * cuts.len();
     let saved = before.saturating_sub(after);
-    (!cuts.is_empty() && saved * 100 >= before * limits.least_saving_percent)
-        .then_some(Shortened { answer: cut, cuts })
+    (saved * 100 >= before * limits.least_saving_percent).then_some(Shortened { answer: cut, cuts })
 }

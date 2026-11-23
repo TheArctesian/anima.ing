@@ -44,6 +44,8 @@ pub struct Original {
     pub tool: String,
     /// The whole answer, after MCP-008.
     pub answer: Value,
+    /// The lists that lost rows in the shortened answer, as its mark names them.
+    pub lists: Vec<String>,
 }
 
 /// One file of the store.
@@ -93,18 +95,18 @@ impl Store {
         &self.dir
     }
 
-    /// Stores `answer`, a whole answer of `tool`, and gives its handle. Old originals, and
+    /// Stores `original`, a whole answer of a tool, and gives its handle. Old originals, and
     /// the oldest when there is no room, are removed first.
     ///
     /// # Errors
     /// [`OriginalError`] when the original is too large or the file cannot be written.
-    pub fn put(
-        &self,
-        tool: &str,
-        answer: &Value,
-        now: SystemTime,
-    ) -> Result<String, OriginalError> {
-        let body = json!({ "tool": tool, "answer": answer }).to_string();
+    pub fn put(&self, original: &Original, now: SystemTime) -> Result<String, OriginalError> {
+        let Original {
+            tool,
+            answer,
+            lists,
+        } = original;
+        let body = json!({ "tool": tool, "answer": answer, "lists": lists }).to_string();
         if body.len() > private_file::LIMIT {
             return Err(OriginalError::TooLarge);
         }
@@ -123,17 +125,28 @@ impl Store {
             return Err(OriginalError::NotAHandle);
         }
         let path = self.dir.join(format!("{handle}{ENDING}"));
-        let written = fs::metadata(&path).and_then(|file| file.modified());
-        if written.is_ok_and(|written| too_old(written, now)) {
+        // A link or a folder with the name of an original is not an original.
+        let file = fs::symlink_metadata(&path).map_err(|_| OriginalError::Gone)?;
+        if !file.is_file() {
+            return Err(OriginalError::Gone);
+        }
+        if file.modified().is_ok_and(|written| too_old(written, now)) {
             private_file::remove(&path)?;
             return Err(OriginalError::Gone);
         }
         let bytes = private_file::read(&path)?.ok_or(OriginalError::Gone)?;
-        let mut stored: Value = serde_json::from_slice(&bytes).map_err(|_| OriginalError::Gone)?;
-        let tool = stored["tool"].as_str().unwrap_or_default().to_owned();
+        let stored: Value = serde_json::from_slice(&bytes).map_err(|_| OriginalError::Gone)?;
+        let Value::Object(mut stored) = stored else {
+            return Err(OriginalError::Gone);
+        };
+        let text = |value: &Value| value.as_str().map(str::to_owned);
         Ok(Original {
-            tool,
-            answer: stored["answer"].take(),
+            tool: stored.get("tool").and_then(text).unwrap_or_default(),
+            lists: stored
+                .get("lists")
+                .and_then(Value::as_array)
+                .map_or_default(|lists| lists.iter().filter_map(text).collect()),
+            answer: stored.remove("answer").ok_or(OriginalError::Gone)?,
         })
     }
 
@@ -155,7 +168,11 @@ impl Store {
             let Some(handle) = handle.filter(|handle| is_handle(handle)) else {
                 continue;
             };
+            // `DirEntry::metadata` does not follow a link.
             let file = entry.metadata()?;
+            if !file.is_file() {
+                continue;
+            }
             kept.push(Kept {
                 handle: handle.to_owned(),
                 bytes: file.len(),

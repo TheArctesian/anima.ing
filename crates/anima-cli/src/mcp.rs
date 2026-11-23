@@ -94,7 +94,7 @@ async fn start(flags: StartFlags, invocation: &Invocation) -> Result<(), Failure
     let hub = invocation.hub()?.declaring_agent();
     hub.run::<Me>(me::Variables).await?;
     let token = hub.token().map_or(TokenKind::Login, Token::kind);
-    let shortening = Shortening::from_setting(invocation.config_dir()?, flags.no_shortening);
+    let no_shortening = flags.no_shortening;
     let flags = Flags {
         toolsets: flags.toolsets,
         allow_write: flags.allow_write,
@@ -103,6 +103,7 @@ async fn start(flags: StartFlags, invocation: &Invocation) -> Result<(), Failure
     let rows = select(tools::catalogue(), Some(token), &permissions, &flags);
     let picture = statement(&rows);
     let origin = hub.origin().as_text();
+    let shortening = Shortening::from_setting(invocation.config_dir()?, &origin, no_shortening);
     let server = Server::new(hub, token, rows).with_shortening(shortening);
     invocation.output.note(&format!(
         "anima mcp: {} tools for {origin} on standard input and output. {picture}",

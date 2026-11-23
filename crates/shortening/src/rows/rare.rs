@@ -3,12 +3,14 @@
 // Changed by Anima.ing, 2026: the two rules are cut into small functions, the fractions are
 // whole-number arithmetic, and the result is one flag for each row. A value is rare only when
 // fewer than 10 % of the rows have it: with Headroom's rule alone, one of five values that are
-// equally frequent counts as rare.
+// equally frequent counts as rare. A field with more than five usual values is not skipped as
+// in Headroom: a value that only one row has, or fewer than 2 % of the rows, is rare there.
 // Source: crates/headroom-core/src/transforms/smart_crusher/outliers.rs
 // (`detect_structural_outliers`, `detect_rare_status_values`)
 
 //! The rows that are not like the others: a rare field, or a rare value of a common field
-//! (SHA-001).
+//! (SHA-001). Only the fields of the row itself are compared, not the fields of an object
+//! inside it, and only a field with 2 to 50 different values.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -24,6 +26,8 @@ const MOST_VALUES: usize = 50;
 const MOST_USUAL: usize = 5;
 /// A value that is not usual is rare when fewer than 10 % of the rows have it.
 const RARE_VALUE_PERCENT: usize = 10;
+/// In a field with many usual values, a value is rare below 2 % of the rows, or in one row.
+const VERY_RARE_PERCENT: usize = 2;
 
 /// For each row, whether it has a rare field or a rare value.
 #[must_use]
@@ -87,12 +91,15 @@ fn mark_rare_values(rows: &[Value], name: &str, flags: &mut [bool]) {
     if !(2..=MOST_VALUES).contains(&counts.len()) {
         return;
     }
-    let Some(usual) = usual_values(&counts) else {
-        return;
-    };
+    let usual = usual_values(&counts);
     let total: usize = counts.values().sum();
-    let rare =
-        |value: &str| !usual.contains(value) && counts[value] * 100 < total * RARE_VALUE_PERCENT;
+    let rare = |value: &str| {
+        let count = counts[value];
+        match &usual {
+            Some(usual) => !usual.contains(value) && count * 100 < total * RARE_VALUE_PERCENT,
+            None => count == 1 || count * 100 < total * VERY_RARE_PERCENT,
+        }
+    };
     for (flag, value) in flags.iter_mut().zip(&values) {
         if value.as_deref().is_some_and(rare) {
             *flag = true;

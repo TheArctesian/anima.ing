@@ -5,9 +5,12 @@
 // Source: crates/headroom-core/src/transforms/smart_crusher/analyzer.rs and
 // crates/headroom-core/src/transforms/smart_crusher/stats_math.rs
 
-//! The rows with a number far from the numbers of the other rows (SHA-001).
+//! The rows with a number far from the numbers of the other rows (SHA-001). The measure is
+//! the mean and the deviation, as in Headroom: one number that is very large makes the
+//! deviation large, and then a second number that is only large is not far. A field whose
+//! deviation is not a finite number is not looked at.
 
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 
 use serde_json::Value;
 
@@ -18,24 +21,21 @@ const FAR: f64 = 2.0;
 #[must_use]
 pub fn far_rows(rows: &[Value]) -> Vec<bool> {
     let mut flags = vec![false; rows.len()];
-    let names: BTreeSet<&str> = rows
-        .iter()
-        .filter_map(Value::as_object)
-        .flat_map(|fields| fields.iter())
-        .filter(|(_, value)| value.is_number())
-        .map(|(name, _)| name.as_str())
-        .collect();
-    for name in names {
-        let numbers: Vec<Option<f64>> = rows
-            .iter()
-            .map(|row| row.get(name).and_then(Value::as_f64))
-            .collect();
-        let Some((mean, deviation)) = spread(&numbers) else {
+    let mut fields: BTreeMap<&str, Vec<(usize, f64)>> = BTreeMap::new();
+    for (row, object) in rows.iter().enumerate() {
+        for (name, value) in object.as_object().into_iter().flatten() {
+            if let Some(number) = value.as_f64() {
+                fields.entry(name.as_str()).or_default().push((row, number));
+            }
+        }
+    }
+    for numbers in fields.values() {
+        let Some((mean, deviation)) = spread(numbers) else {
             continue;
         };
-        for (flag, number) in flags.iter_mut().zip(&numbers) {
-            if number.is_some_and(|number| (number - mean).abs() > FAR * deviation) {
-                *flag = true;
+        for (row, number) in numbers {
+            if (number - mean).abs() > FAR * deviation {
+                flags[*row] = true;
             }
         }
     }
@@ -44,8 +44,8 @@ pub fn far_rows(rows: &[Value]) -> Vec<bool> {
 
 /// The mean and the sample deviation of the numbers that are there; `None` for fewer than 5
 /// numbers or numbers that are all equal.
-fn spread(numbers: &[Option<f64>]) -> Option<(f64, f64)> {
-    let present: Vec<f64> = numbers.iter().flatten().copied().collect();
+fn spread(numbers: &[(usize, f64)]) -> Option<(f64, f64)> {
+    let present: Vec<f64> = numbers.iter().map(|(_, number)| *number).collect();
     let count = u32::try_from(present.len())
         .ok()
         .filter(|count| *count >= 5)?;

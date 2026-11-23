@@ -11,7 +11,7 @@ use shortening::{Limits, shortened};
 use super::measure::{self, BYTES_FOR_A_TOKEN, Sizes};
 use super::setting::{self, State};
 use super::store::{OriginalError, Store};
-use super::{FOLDER, original};
+use super::{FOLDER, original, originals_dir};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::Table;
@@ -89,7 +89,12 @@ impl ShorteningCommand {
     /// cannot be read or written.
     pub fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let dir = invocation.config_dir()?.join(FOLDER);
-        let store = Store::new(dir.clone());
+        if let Self::Try { file, answer } = &self {
+            return try_file(invocation, file, *answer);
+        }
+        // The originals are those of the selected hub.
+        let origin = invocation.origin()?.as_text();
+        let store = Store::new(originals_dir(invocation.config_dir()?, &origin));
         match self {
             Self::Show => show(invocation, &store),
             Self::On | Self::Off => {
@@ -131,7 +136,7 @@ impl ShorteningCommand {
                     .note(&format!("Removed {removed} originals."));
                 Ok(())
             }
-            Self::Try { file, answer } => try_file(invocation, &file, answer),
+            Self::Try { .. } => Ok(()),
         }
     }
 }
@@ -139,7 +144,7 @@ impl ShorteningCommand {
 fn show(invocation: &Invocation, store: &Store) -> Result<(), Failure> {
     let kept = store.list().map_err(|error| lost(&error))?;
     let shown = Shown {
-        state: setting::read(store.dir()),
+        state: setting::read(&invocation.config_dir()?.join(FOLDER)),
         folder: store.dir().to_owned(),
         originals: kept.len(),
         bytes: kept.iter().map(|each| each.bytes).sum(),

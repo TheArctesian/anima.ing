@@ -21,4 +21,5 @@ Source files of Headroom that parts were taken from (crates/headroom-core/src/tr
     smart_crusher/crushers.rs         -> src/choice.rs
     smart_crusher/orchestration.rs    -> src/choice.rs
     smart_crusher/crusher.rs          -> src/rows.rs
-    log_compressor.rs                 -> src/lines/level.rs, src/lines/same.rs, src/lines/trace.rs
+    log_compressor.rs                 -> src/lines.rs, src/lines/level.rs, src/lines/same.rs,
+                                         src/lines/trace.rs

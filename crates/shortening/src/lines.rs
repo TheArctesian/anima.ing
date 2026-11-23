@@ -1,3 +1,10 @@
+// Parts of this file are from Headroom (github.com/headroomlabs-ai/headroom), Copyright 2025
+// Headroom Contributors, licensed under the Apache License, Version 2.0.
+// Changed by Anima.ing, 2026: one pass that only says which lines must stay; each error line
+// stays, with no limit of 10; the warnings are told apart by their shape.
+// Source: crates/headroom-core/src/transforms/log_compressor.rs (`select_lines`,
+// `dedupe_similar`)
+
 //! The lines of a log that must stay, with the shape of each line (SHA-001): each line that
 //! reports a fault, the trace below it, and the first warning of each shape.
 

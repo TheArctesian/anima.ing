@@ -19,6 +19,10 @@ pub const TOOL: &str = "anima_original_get";
 
 /// The most bytes of JSON of one part: under the limit of a whole result (MCP-008).
 const PART: usize = 40_000;
+/// The most names of lists in a refusal.
+const MOST_NAMES: usize = 20;
+/// The longest path of a list that is looked for; a deeper list has a longer path.
+const LONGEST_PATH: usize = 400;
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -79,10 +83,15 @@ pub fn call(
     let lists = lists_of(&original.answer);
     let name = input
         .list
+        .or_else(|| original.lists.first().cloned())
         .or_else(|| longest(&lists))
         .ok_or_else(|| ToolError::Refused("The original has no list.".to_owned()))?;
     let Some((_, rows)) = lists.iter().find(|(path, _)| *path == name) else {
-        let names: Vec<&str> = lists.iter().map(|(path, _)| path.as_str()).collect();
+        let names: Vec<&str> = lists
+            .iter()
+            .take(MOST_NAMES)
+            .map(|(path, _)| path.as_str())
+            .collect();
         return Err(ToolError::Refused(format!(
             "The original has no list with this name. Its lists: {}.",
             names.join(", ")
@@ -90,6 +99,12 @@ pub fn call(
     };
     let from = input.from.unwrap_or(0).min(rows.len());
     let part = part(&rows[from..]);
+    if part.is_empty() && from < rows.len() {
+        return Err(ToolError::Refused(format!(
+            "Row {from} of this list is too large to give. Give `from` {} for the rows after it.",
+            from + 1
+        )));
+    }
     let next = Some(from + part.len()).filter(|next| *next < rows.len());
     Ok(json!({
         "tool": original.tool,
@@ -101,14 +116,24 @@ pub fn call(
     }))
 }
 
-/// Each list of `answer` that is a field of an object, with its dotted path, as the mark of a
-/// shortened answer names it.
+/// Each list of `answer` with its path, as the mark of a shortened answer names it: `events`,
+/// `page.entries`, `builds[3].lines`.
 fn lists_of(answer: &Value) -> Vec<(String, &Vec<Value>)> {
     let mut lists = Vec::new();
     let mut open = vec![(String::new(), answer)];
     while let Some((path, value)) = open.pop() {
+        if path.len() > LONGEST_PATH {
+            continue;
+        }
         match value {
-            Value::Array(rows) => lists.push((path, rows)),
+            Value::Array(rows) => {
+                for (row, value) in rows.iter().enumerate().rev() {
+                    if value.is_object() || value.is_array() {
+                        open.push((format!("{path}[{row}]"), value));
+                    }
+                }
+                lists.push((path, rows));
+            }
             Value::Object(fields) => {
                 for (name, value) in fields.iter().rev() {
                     let path = if path.is_empty() {
@@ -134,13 +159,13 @@ fn longest(lists: &[(String, &Vec<Value>)]) -> Option<String> {
         .map(|(path, _)| path.clone())
 }
 
-/// The first rows of `rows` that fit one part; at least one row.
+/// The first rows of `rows` that fit one part; none when the first row alone does not fit.
 fn part(rows: &[Value]) -> Vec<Value> {
     let mut bytes = 0;
     let mut part = Vec::new();
     for row in rows {
         bytes += row.to_string().len() + 1;
-        if bytes > PART && !part.is_empty() {
+        if bytes > PART {
             break;
         }
         part.push(row.clone());

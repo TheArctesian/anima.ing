@@ -119,7 +119,10 @@ The rules that keep it safe:
 
 - **SHA-001.** A row or a line that holds an error word, a rare field, a rare value or a number
   far from the mean is never left out. If such rows are more than the limit, the answer is
-  longer than the limit. This is stricter than Headroom for logs (Section 2).
+  longer than the limit. This is stricter than Headroom for logs (Section 2). The words have
+  an exact sense: an error word is one of the 12 words, in a text value at any depth; a rare
+  field or value is of the row itself, not of an object inside it, and of a field with 2 to 50
+  different values; far is more than 2 deviations from the mean of the field.
 - **SHA-002.** The shortener never changes the message of a person, a system prompt, the name
   or the arguments of a tool call, or an error result (`isError`). In Part 1 it sees only the
   successful answers of Anima's own tools.
@@ -134,7 +137,10 @@ The rules that keep it safe:
 - **SHA-006.** A fault in the shortener or in the store gives the answer unchanged (after
   MCP-008, as today). An answer is shortened only when its original is stored first.
 - **SHA-007.** An answer below the gate (default 2,000 bytes of JSON, a list below 5 rows) is
-  not touched. A change that saves less than 15 % is not made.
+  not touched. A change that saves less than 15 % is not made; the test is made a second
+  time with the real mark. An answer in which more than 8 lists would lose rows is not
+  touched. A marked answer that is above the limit of SHA-008 is not given: the answer stays
+  whole, and the last limit cuts it as today, so no mark is ever cut after it is written.
 - **SHA-008.** The shortener runs after MCP-008 (`mcp/untrusted.rs`): the stored original is
   the cleaned answer. The tool for an original cannot give text that MCP-008 would have
   removed. The limit of 60,000 bytes (`fitted`) stays as the last limit.
@@ -166,8 +172,10 @@ The ways to use it (CMD-030):
   SHA-008. Its own answer is never shortened. It is listed only when the shortening is on, in
   each tool set, and it has no saved permission: it gives only what a listed tool gave, to an
   agent that has the handle. A handle is the hash of the content, so it cannot be guessed
-  without the content. The originals of one user are in one folder for each hub that the user
-  uses: an agent with a handle of hub A can read it in a run for hub B (a point for the review).
+  without the content. The originals of each hub are in a folder of their own, so a run for
+  hub B cannot read an original of hub A. Two runs for one hub with different permissions
+  share the folder: an agent of the second run can read an original of the first only if it
+  has the handle.
 - **SHA-017.** A setting turns the shortening off: `anima mcp shortening off` (saved, with
   `on` and `show`) and the flag `anima mcp --no-shortening` for one run. Default: off until SA3
   shows the table (OD-SHA3). A server that runs keeps the state of its start.
@@ -239,6 +247,29 @@ What the table shows, and its limit: a page of Anima's tools has at most 100 row
 the agent names no limit. So the saving on a default page is small (about 500 tokens), and the
 large numbers need a page of 100 rows. A real hub has more different rows than a built one,
 so the real saving is expected to be lower.
+
+### 6.2 The review of Part 1 (SHA-024)
+
+A session that did not write the code read the diff of the branch `shortener` on 2026-11-22
+(a fresh agent with only the diff, the requirements and the neighbouring files; it built
+nothing). Result: High 0, Medium 4, Low 9.
+
+| Finding | Level | Answer |
+| --- | --- | --- |
+| The last limit of a result (`fitted`) cut rows after the mark was written, so the mark was false | Medium | Corrected: a marked answer above the limit is not given (SHA-007), with a test. |
+| A rare value was left out when its field had more than 5 usual values | Medium | Corrected: one row, or fewer than 2 % of the rows, is rare there; test. SHA-001 now says that only the fields of the row itself are compared. |
+| The mark could be larger than the saving | Medium | Corrected: at most 8 lists, and the saving is tested with the real mark; test. |
+| The tool could not read a list inside a row (`builds[3].lines`) | Medium | Corrected, with a test. |
+| The default list of the tool was the longest, not the one that lost rows | Low | Corrected: the lists that lost rows are stored with the original; test. |
+| A row above the size of a part was skipped | Low | Corrected: the tool says so and names the next row. |
+| A stored file that is not an object made a panic | Low | Corrected; test. |
+| The search for far numbers was slow for rows with free field names | Low | Corrected: one pass. |
+| One very large number hides a second large one | Low | Not changed: the rule of Headroom; written in the file. |
+| A link or a folder in the store with the name of an original | Low | Corrected: only a regular file is an original; test. |
+| One folder for each hub | Low | Corrected: a folder for each hub; test. |
+| `lines.rs` had no notice; the licence field of the crate | Low | Corrected. |
+| The released program does not carry `NOTICE` and `LICENSE-APACHE` | Low | Open: the release packaging must add the two files before the crate is in a release (the proposal of the release owns it; a line for the orchestrating session). |
+| No real answers in the tests (SHA-023) | Low | Open: follow-up, when the command line can sign in. |
 
 ## 7. Part 2: the design note of the relay (task SA5)
 

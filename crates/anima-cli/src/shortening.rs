@@ -9,36 +9,45 @@ pub mod original;
 pub mod setting;
 pub mod store;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use serde_json::{Map, Value};
 use shortening::{Limits, shortened};
 
-use store::Store;
+use crate::mcp::untrusted::RESULT_CAP;
+use store::{Original, Store};
 
 /// The folder of the originals, the setting and the measure, in the configuration folder.
 pub const FOLDER: &str = "shortening";
 
+/// The part of an answer that the marked answer must save, in percent (SHA-007).
+const LEAST_SAVING_PERCENT: usize = 15;
+
 /// The shortening of one run of the server: on with a store, or off.
 pub struct Shortening {
     store: Option<Store>,
+    measure_dir: PathBuf,
 }
 
 impl Shortening {
     /// Off: each answer stays as it is.
     #[must_use]
     pub const fn off() -> Self {
-        Self { store: None }
+        Self {
+            store: None,
+            measure_dir: PathBuf::new(),
+        }
     }
 
-    /// As the setting in `config_dir` says, unless `never` (the flag of this run).
+    /// As the setting in `config_dir` says, unless `never` (the flag of this run), with the
+    /// originals of the hub `origin`.
     #[must_use]
-    pub fn from_setting(config_dir: &Path, never: bool) -> Self {
-        let dir = config_dir.join(FOLDER);
-        let on = !never && setting::read(&dir) == setting::State::On;
+    pub fn from_setting(config_dir: &Path, origin: &str, never: bool) -> Self {
+        let on = !never && setting::read(&config_dir.join(FOLDER)) == setting::State::On;
         Self {
-            store: on.then(|| Store::new(dir)),
+            store: on.then(|| Store::new(originals_dir(config_dir, origin))),
+            measure_dir: config_dir.join(FOLDER),
         }
     }
 
@@ -61,19 +70,41 @@ impl Shortening {
         let Some(store) = &self.store else {
             return fields;
         };
-        let whole = Value::Object(fields);
-        let marked = shortened(&whole, &Limits::default()).and_then(|short| {
-            let original = whole.to_string();
-            let handle = store.put(tool, &whole, now).ok()?;
-            let marked = short.marked(&handle, original::TOOL);
-            measure::record(store.dir(), tool, original.len(), marked.to_string().len());
-            Some(marked)
-        });
-        match marked.unwrap_or(whole) {
-            Value::Object(fields) => fields,
-            _ => unreachable!("an object stays an object"),
+        let Some(short) = shortened(&Value::Object(fields.clone()), &Limits::default()) else {
+            return fields;
+        };
+        let original = Original {
+            tool: tool.to_owned(),
+            lists: short.cuts().iter().map(|cut| cut.list.clone()).collect(),
+            answer: Value::Object(fields),
+        };
+        let before = original.answer.to_string().len();
+        let handle = store::handle_of(&original.answer.to_string());
+        let marked = short.marked(&handle, original::TOOL);
+        let after = marked.to_string().len();
+        // The marked answer must fit whole: the last limit of a result (`fitted`) would cut
+        // rows after the mark was written, and the mark would not be true (SHA-004). And the
+        // saving is tested again with the real mark (SHA-007).
+        let worth = after <= RESULT_CAP && after * 100 <= before * (100 - LEAST_SAVING_PERCENT);
+        match marked {
+            Value::Object(marked) if worth && store.put(&original, now).is_ok() => {
+                measure::record(&self.measure_dir, tool, before, after);
+                marked
+            }
+            _ => match original.answer {
+                Value::Object(fields) => fields,
+                _ => unreachable!("built from an object above"),
+            },
         }
     }
+}
+
+/// The folder of the originals of one hub: an agent of a run for one hub cannot read, by a
+/// handle, an answer of a different hub.
+#[must_use]
+pub fn originals_dir(config_dir: &Path, origin: &str) -> PathBuf {
+    let hub = &store::handle_of(origin)[..16];
+    config_dir.join(FOLDER).join(format!("hub-{hub}"))
 }
 
 #[cfg(test)]
