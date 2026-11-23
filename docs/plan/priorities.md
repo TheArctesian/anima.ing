@@ -158,7 +158,7 @@ The draft [spare-computer OS proposal](../proposals/spare-computer-os.md) also s
 - Tier: 3c
 - Category: Use
 - Work: Hosted applications
-- Work items: none. The tasks are in [hosted-applications-plan.md](../plans/hosted-applications-plan.md). HOST-053 and tasks H43 to H46 (a first-party ARTEX recipe) are proposed and not approved.
+- Work items: none. The tasks are in [hosted-applications-plan.md](../plans/hosted-applications-plan.md). HOST-053 (a first-party ARTEX recipe) has its direction (R-433); OD-HOST-59 to OD-HOST-64 are decided; the requirement is not approved as a whole; task H43 is named.
 - State: Plan, in progress (R-149, 2026-11-18). Stage 1 (see the containers of a machine) is built: tasks H1 to H3. It waits for the check HT-032 on a real machine (task H4). Stage 2 (control, install, the catalogue) waits for task W1 of row 4.7; the ruling that W1 waited for is R-160. The tier is not changed.
 
 ### 4.10 Standby copies of the coordinator database

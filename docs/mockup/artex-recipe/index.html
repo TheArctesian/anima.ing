@@ -76,7 +76,7 @@ pre { margin: 0; padding: var(--space-4); background: var(--surface-raised); bor
 </head>
 <body>
 <h1 class="board">ARTEX catalogue recipe</h1>
-<p class="about">The ARTEX entry uses the Catalogue choice that already exists on the Containers tab. It is not a new screen. Not approved. HOST-053 waits for OD-HOST-59 to OD-HOST-64. Install waits for task H6.</p>
+<p class="about">The ARTEX entry uses the Catalogue choice that already exists on the Containers tab. It is not a new screen. Direction decided (R-433). HOST-053 is not approved as a whole. Install waits for task H6. The card and the install show a short authorised-testing-only notice.</p>
 <div class="frames">
 
 <figure>
@@ -108,6 +108,10 @@ pre { margin: 0; padding: var(--space-4); background: var(--surface-raised); bor
             <span class="btn pri" aria-disabled="true">Install</span>
           </div>
           <p class="muted">Install is refused until task H6 exists. The entry is listed only when each image is named by a digest.</p>
+          <div class="note">
+            <div class="name">Use only on systems you are authorised to test</div>
+            <p class="muted">ARTEX is a penetration-testing platform. It runs on a machine of yours (HOST-011). This is not legal advice.</p>
+          </div>
           <dl class="facts">
             <dt>Author</dt><dd>BaaRai</dd>
             <dt>Tags</dt><dd><span class="chip">security</span> <span class="chip">pentest</span></dd>
@@ -121,7 +125,7 @@ pre { margin: 0; padding: var(--space-4); background: var(--surface-raised); bor
     </div>
   </div>
 </div>
-<figcaption>Frame 1. Dark. The Catalogue list with ARTEX selected. No authorised-testing notice. Ports stay on loopback. The Install button is present and refused until task H6.</figcaption>
+<figcaption>Frame 1. Dark. The Catalogue list with ARTEX selected. A short authorised-testing-only notice is on the card (OD-HOST-63, R-433). Ports stay on loopback. The Install button is present and refused until task H6.</figcaption>
 </figure>
 
 <figure>
@@ -147,6 +151,10 @@ pre { margin: 0; padding: var(--space-4); background: var(--surface-raised); bor
             </div>
             <span class="btn pri">Install on workshop</span>
           </div>
+          <div class="note">
+            <div class="name">Use only on systems you are authorised to test</div>
+            <p class="muted">ARTEX is a penetration-testing platform. It runs on a machine of yours. This is not legal advice.</p>
+          </div>
           <dl class="facts">
             <dt>Image</dt><dd>ghcr.io/baarai/artex@sha256:… (example pin)</dd>
             <dt>Ports</dt><dd>8787 web UI, 8788 recording proxy, both 127.0.0.1</dd>
@@ -171,7 +179,7 @@ pre { margin: 0; padding: var(--space-4); background: var(--surface-raised); bor
     </div>
   </div>
 </div>
-<figcaption>Frame 2. Light. The description and the rewritten Compose file after a public digest exists. The official file is not used as-is: no build key, no short-form ports, no short bind mounts. The ellipsis in the digest is a placeholder; a real entry names 64 hexadecimal digits. The first-run setup token is read from the container log, not shown here.</figcaption>
+<figcaption>Frame 2. Light. The description, the short notice at install, and the rewritten Compose file after a digest is recorded. The official file is not used as-is: no build key, no short-form ports, no short bind mounts. The ellipsis in the digest is a placeholder; a real entry names 64 hexadecimal digits. The first-run setup token is read from the container log, not shown here.</figcaption>
 </figure>
 
 <figure>
@@ -184,17 +192,20 @@ pre { margin: 0; padding: var(--space-4); background: var(--surface-raised); bor
     <div class="main">
       <div class="bar"><h2>Containers</h2><span class="chip">Catalogue</span></div>
       <div class="pane" style="padding: var(--space-8);">
-        <h3>ARTEX is not listed yet</h3>
+        <h3>Install ARTEX on workshop</h3>
         <div class="note">
-          <div class="name">Waiting for a published, digest-pinned image</div>
-          <p class="muted">ghcr.io/baarai/artex has no public image at v0.7.0. The recipe may be on the branch, but the static test refuses a missing digest, so the hub does not list the entry (R-233, task H38). This is the path if OD-HOST-60 is No.</p>
+          <div class="name">Use only on systems you are authorised to test</div>
+          <p class="muted">ARTEX is a penetration-testing platform. It runs on this machine of yours. This is not legal advice.</p>
         </div>
-        <p class="muted">The other path, only if OD-HOST-60 is Yes, is a build from a pinned git commit of BaaRai/ARTEX, with the digest of the built image recorded before the entry is listed. R-233 is not relaxed.</p>
+        <div class="note">
+          <div class="name">Build, then list by digest</div>
+          <p class="muted">A separate step (task H44) builds from a pinned git commit of BaaRai/ARTEX on this machine and records the image digest. The listed Compose file has no build key and names that digest. The entry is listed only after the digest is recorded (R-233). When a public ghcr.io/baarai/artex digest exists, the recipe switches to it.</p>
+        </div>
       </div>
     </div>
   </div>
 </div>
-<figcaption>Frame 3. Dark. The waiting state while no public digest exists. Recommended path: do not reopen R-214; list the entry when the first public GHCR digest exists.</figcaption>
+<figcaption>Frame 3. Dark. The install sheet with the short notice, and the source-build path of R-433: build on the machine, record the digest, list a rewritten Compose file with no build key.</figcaption>
 </figure>
 
 </div>
