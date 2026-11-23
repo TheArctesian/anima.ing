@@ -133,14 +133,16 @@ impl HolderLink {
     }
 }
 
-/// Starts `program holder <dir>` with an empty environment, no open input or output, and a
-/// process group of its own, so that the end of the daemon does not end it (THR-113). The
-/// holder takes the lock of the folder; a second one ends at once. It runs at normal priority,
-/// and so does each agent program it starts ([`super::priority`]).
+/// Starts `program holder <dir>` with an empty environment, no open input or output, no other
+/// descriptor of the daemon, and a process group of its own, so that the end of the daemon does
+/// not end it (THR-113). The holder takes the lock of the folder; a second one ends at once. It
+/// runs at normal priority, and so does each agent program it starts ([`super::priority`]).
 ///
 /// # Errors
 /// The I/O error when the program cannot start.
 pub fn start_holder(program: &Path, dir: &Path) -> io::Result<()> {
+    // Close-on-exec on each descriptor that the daemon inherited without it (DEF-NEW-holderfds).
+    close_fds::set_fds_cloexec(3, &[]);
     let mut child = std::process::Command::new(program)
         .arg("holder")
         .arg(dir)

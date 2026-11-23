@@ -70,6 +70,10 @@ http-body-util.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 rustix = { version = "1.1", features = ["fs", "process", "thread"] }
+# A program of a thread gets only the three standard descriptors (THR-040): a safe call sets
+# close-on-exec on each other one (`close_range` on Linux, else `/proc/self/fd` or `/dev/fd`).
+# rustix has no safe form of it, and the workspace forbids `unsafe`, so no `pre_exec`.
+close_fds = "0.3"
 # HTTP on the socket of the link, on a connection whose peer the daemon checked first (K8 Section 1).
 hyper = { version = "1", features = ["client", "http1"] }
 hyper-util.workspace = true

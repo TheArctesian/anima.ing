@@ -8,6 +8,10 @@ use super::*;
 
 #[tokio::test]
 async fn thr_040_a_program_gets_only_the_given_environment_and_three_descriptors() {
+    // The parent of the holder gives it a descriptor with no close-on-exec, as the terminal of
+    // an application can (DEF-NEW-holderfds); no program of the holder gets it.
+    let inherited = std::fs::File::open("/dev/null").expect("opens");
+    rustix::io::fcntl_setfd(&inherited, rustix::io::FdFlags::empty()).expect("no close-on-exec");
     let holder = Holder::start(0);
     let mut link = holder.link().await;
     let id = link.send(start("env", "/usr/bin/env", &[])).await;

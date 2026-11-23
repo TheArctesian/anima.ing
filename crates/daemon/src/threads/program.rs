@@ -42,12 +42,15 @@ impl Start<'_> {
     }
 
     /// Starts the program: by its path, with no shell, with only this environment, in its
-    /// folder, in a process group of its own, with three descriptors (THR-040). The standard
-    /// library opens each other descriptor of the holder with close-on-exec.
+    /// folder, in a process group of its own, with three descriptors (THR-040).
     ///
     /// # Errors
     /// The error of the system when the program cannot start.
     pub fn spawn(&self) -> io::Result<Child> {
+        // The standard library opens each descriptor of its own with close-on-exec, but one that
+        // the parent of the holder gave without it stays open across each exec: it gets the flag
+        // here (DEF-NEW-holderfds). No descriptor closes, so the holder loses nothing it uses.
+        close_fds::set_fds_cloexec(3, &[]);
         tokio::process::Command::new(self.program)
             .args(self.args)
             .env_clear()

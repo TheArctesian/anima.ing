@@ -126,6 +126,8 @@ pub(super) async fn start(rights: &SharedRights, run: ThreadRun) -> io::Result<E
         Some(file) => Stdio::from(std::fs::File::open(file)?),
         None => Stdio::null(),
     };
+    // Only the three standard descriptors go to the program (THR-040, DEF-NEW-holderfds).
+    close_fds::set_fds_cloexec(3, &[]);
     let mut child = tokio::process::Command::new(&run.program)
         .args(&run.args)
         .env_clear()
