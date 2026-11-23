@@ -1463,6 +1463,23 @@ user must be able to run `docker ps`.
 
 Result: Open.
 
+Mac diagnostic check (2026-11-23, branch `t3/macos-docker-discovery`): the automated fixtures
+use fake executables and synthetic failures only. No real Docker Desktop or Colima engine,
+SSH login environment or socket was tested. This entry remains Open.
+
+14. Use a test Mac with Docker Desktop or Colima already set up, with the SSH user and engine
+    that the operator intends Anima to read. Through a non-interactive SSH command as that user,
+    run `command -v docker`, `docker context show` and `docker ps -a`. Compare the list with
+    `anima containers list <device>` and Hosting > Applications. Expected: the same containers.
+    Do not switch contexts or change socket permissions for this check.
+15. On a test account where Docker is installed but absent from the non-interactive SSH PATH,
+    request the list. Expected: CONFLICT with guidance to check installation and that PATH,
+    not a claim that Docker is absent. The CLI, MCP list and client show the hub's guidance.
+16. On a test account that already has an unavailable engine, denied socket or invalid context,
+    request the list. Expected: UNAVAILABLE with checks for engine, SSH-user access and context;
+    no assertion of the exact cause and no raw Docker diagnostic. If no such account is
+    available, record that case as not tested. Do not change the personal engine or its access.
+
 ### HT-026: the use of AI agent programs from real session files
 
 Built: `crates/daemon-core/src/agent_usage/`, `crates/daemon/src/readers/agent_sessions/`, the hub
