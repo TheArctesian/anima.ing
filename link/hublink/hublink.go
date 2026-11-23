@@ -1,5 +1,4 @@
-// Package hublink is the hub side of the link: it accepts streams from
-// permitted devices and sends each one to the hub on loopback.
+// Package hublink is the hub side of the link: it sends each stream of a permitted device to the hub.
 package hublink
 
 import (
@@ -23,40 +22,28 @@ import (
 	"github.com/TheArctesian/anima/link/tunnel"
 )
 
-// Times of the hub link.
 const (
 	targetDialLimit = 5 * time.Second
-	// closeGrace is the time that the close of a stream gets to reach the
-	// device before the tunnel stops carrying the device's traffic. The
-	// tunnel gives no sign that the close arrived.
+	// closeGrace lets a stream's close reach the device before the tunnel drops it; the tunnel gives no sign of arrival.
 	closeGrace = 500 * time.Millisecond
-	// DefaultSweep is how often connected devices are checked against the
-	// list. A key that expires, or a revocation that was cut before its
-	// disconnect, ends within this time (LNK-004, LNK-005).
+	// DefaultSweep bounds how long an expired key or a cut revocation stays connected (LNK-004, LNK-005).
 	DefaultSweep = 30 * time.Second
 )
 
 // Config is what a hub link needs to start.
 type Config struct {
 	Identity identity.Hub
-	// Target is the path of the hub's socket for the link, or a loopback
-	// address. Only a socket gets the header that names the device (see
-	// deviceheader.go): to a loopback address every device looks the same.
+	// Target is the path of the hub's socket for the link, or a loopback address; only a socket gets the device header.
 	Target string
-	// Devices is the list of permitted devices (LNK-002). It is asked when a
-	// device connects and again for each stream.
+	// Devices is the list of permitted devices, asked when a device connects and for each stream (LNK-002).
 	Devices *devices.Store
-	// Invites lets devices join with an invite (LNK-003). Nil means that no
-	// device can join.
+	// Invites lets devices join with an invite (LNK-003). Nil means that no device can join.
 	Invites *invites.Store
-	// Now is the clock for invites and for the time that a device was last
-	// seen. Nil means the system clock.
+	// Now is the clock. Nil means the system clock.
 	Now func() time.Time
-	// RelayMapURL is where the relay map is at the first start. Empty means
-	// Tailscale's map of shared relays.
+	// RelayMapURL is the relay map at the first start; empty means Tailscale's map of shared relays.
 	RelayMapURL string
-	// Sweep is how often the hub link disconnects devices that are
-	// connected but not permitted any more. Zero means DefaultSweep.
+	// Sweep is how often devices that are no longer permitted are disconnected. Zero means DefaultSweep.
 	Sweep time.Duration
 	// Log gets what the operator must know. Nil means no log.
 	Log       *slog.Logger
@@ -73,29 +60,23 @@ type Link struct {
 	invites *invites.Store
 	now     func() time.Time
 	streams streams
-	// present is what the devices say on the reverse port (HMD-047).
 	present presence.Book
-	// asked is the requests for a local port of a device (HMD-048).
-	asked dial.Desk
+	asked   dial.Desk
 
-	// enrolling limits the enrolments that run at one time; enrolments waits
-	// for them when the hub link stops.
+	// enrolling limits the enrolments that run at one time; enrolments waits for them when the hub link stops.
 	enrolling  chan struct{}
 	enrolments sync.WaitGroup
 
 	identity identity.Hub
-	// next is the address that devices are told for after a relay change.
-	next atomic.Pointer[tunnel.Address]
+	next     atomic.Pointer[tunnel.Address]
 
 	listeners []net.Listener
 	closeOnce sync.Once
-	// stopped closes when Close begins.
 	stopped   chan struct{}
 	accepting chan struct{}
 }
 
-// Start connects the hub link to its relay and starts to accept streams.
-// ctx limits the start only.
+// Start connects the hub link to its relay and starts to accept streams. ctx limits the start only.
 func Start(ctx context.Context, cfg Config) (*Link, error) {
 	to, err := parseTarget(cfg.Target)
 	if err != nil {
@@ -158,9 +139,7 @@ func (l *Link) Address() tunnel.Address { return l.hub.Address() }
 // Relay is the relay in use. The caller saves it with the identity (LNK-001).
 func (l *Link) Relay() tunnel.Relay { return l.hub.Relay() }
 
-// Path reports how the traffic of one device reaches the hub now, with the
-// relay's name when it is relayed (LNK-006). A device that is not connected
-// has no path.
+// Path reports how the traffic of one device reaches the hub now (LNK-006).
 func (l *Link) Path(device tunnel.DeviceKey) tunnel.Path {
 	if path, known := l.hub.Paths()[device]; known {
 		return path
@@ -171,8 +150,7 @@ func (l *Link) Path(device tunnel.DeviceKey) tunnel.Path {
 // Streams is the number of open streams of one device.
 func (l *Link) Streams(device tunnel.DeviceKey) int { return l.streams.count(device) }
 
-// Close stops the hub link. It returns when each stream and each
-// connection to the hub is closed. A second call does nothing.
+// Close stops the hub link and returns when each stream is closed. A second call does nothing.
 func (l *Link) Close() error {
 	var err error
 	l.closeOnce.Do(func() {
@@ -205,8 +183,6 @@ func (l *Link) accept(listener net.Listener, handle func(net.Conn)) {
 	}
 }
 
-// forward sends one stream to the hub. The stream is recorded under the
-// device key that the tunnel authenticated.
 func (l *Link) forward(stream net.Conn) {
 	device, known := l.hub.DeviceOf(stream.RemoteAddr())
 	if !known {
@@ -219,11 +195,7 @@ func (l *Link) forward(stream net.Conn) {
 		return
 	}
 	defer l.streams.remove(device, stream)
-	// The list is asked for each stream, after the stream is recorded: the
-	// tunnel asks the list only when a device connects, and a device can
-	// leave the list while connected. A revocation removes the key and then
-	// closes the recorded streams, so a stream is either closed by it or
-	// refused here.
+	// The list is asked after the stream is recorded, so a revocation either closes the stream or it is refused here.
 	address, permitted := l.devices.AddressOf(device)
 	if !permitted {
 		stream.Close()
@@ -243,15 +215,9 @@ func (l *Link) forward(stream net.Conn) {
 	tunnel.Join(stream, hub)
 }
 
-// Seen is the time of the last "here" line of the device that has a link
-// address (HMD-047). It reports false for a device that wrote none since
-// the hub link started.
+// Seen is the time of the last "here" line of a device since the hub link started (HMD-047).
 func (l *Link) Seen(device netip.Addr) (time.Time, bool) { return l.present.Seen(device) }
 
-// hear serves one stream of the reverse port. The stream is recorded under
-// the device key that the tunnel authenticated and counts as a stream of its
-// device, so a revocation closes it and the stream limits hold. The list is
-// asked after the stream is recorded, as in forward.
 func (l *Link) hear(stream net.Conn) {
 	defer stream.Close()
 	key, known := l.hub.DeviceOf(stream.RemoteAddr())
@@ -270,16 +236,12 @@ func (l *Link) hear(stream net.Conn) {
 	presence.Read(stream, func() { l.present.Saw(device, l.now()) })
 }
 
-// Open asks the device that has a link address for one of its local ports
-// and returns the stream to that port (HMD-048). The device decides: it
-// gives only a port that its person opened. The caller calls release when
-// it has finished with the stream. The errors are those of package dial.
+// Open asks a device for one of its local ports and returns the stream (HMD-048).
+// The caller calls release when it has finished with the stream. The errors are those of package dial.
 func (l *Link) Open(ctx context.Context, device netip.Addr, port uint16) (stream net.Conn, release func(), err error) {
 	return l.asked.Open(ctx, device, port, func(line string) error { return l.present.Write(device, line) })
 }
 
-// give serves one stream of the open port: the answer of a device to a
-// request of Open. The stream is recorded and the list is asked as in hear.
 func (l *Link) give(stream net.Conn) {
 	defer stream.Close()
 	key, known := l.hub.DeviceOf(stream.RemoteAddr())
@@ -294,8 +256,6 @@ func (l *Link) give(stream net.Conn) {
 	l.asked.Deliver(device, stream)
 }
 
-// named writes the header that names the device to the hub, before any
-// byte of the device.
 func named(hub net.Conn, device netip.Addr, stream net.Conn) bool {
 	header := deviceHeader(device, addrPortOf(stream.RemoteAddr()).Port(), addrPortOf(stream.LocalAddr()))
 	_ = hub.SetWriteDeadline(time.Now().Add(targetDialLimit))
@@ -304,8 +264,7 @@ func named(hub net.Conn, device netip.Addr, stream net.Conn) bool {
 	return err == nil
 }
 
-// dialFault says in a fixed word why the hub could not be reached, for the
-// log: the error's own text holds a path.
+// dialFault gives a fixed reason for the log: the error's own text holds a path.
 func dialFault(err error) string {
 	if errors.Is(err, statedir.ErrExposed) {
 		return "other users can reach the hub's socket or its folder"

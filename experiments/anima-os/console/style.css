@@ -60,7 +60,7 @@ html,body{margin:0;background:var(--card);overflow:hidden}
 #anima-console .hint{font-size:12px;color:var(--muted-foreground)}
 #anima-console .numbers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin:24px 0 16px}
 #anima-console .number{font-size:26px;font-weight:300;letter-spacing:-.5px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
-#anima-console footer{grid-column:2;display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid var(--border);padding-top:12px;font-size:12px;color:var(--muted-foreground);position:relative;z-index:1;background:var(--card)}
+#anima-console footer{grid-column:2;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid var(--border);padding-top:12px;font-size:12px;color:var(--muted-foreground);position:relative;z-index:1;background:var(--card)}
 #anima-console .overlay{position:fixed;inset:0;z-index:5;background:#101216bb;display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto}
 #anima-console .dialog{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:28px;width:520px;max-width:100%;max-height:100%;overflow:auto;box-shadow:0 20px 70px #0005}
 #anima-console .dialog h2{display:flex;align-items:center;gap:12px;font-size:24px;font-weight:300;margin-bottom:12px}

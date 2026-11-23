@@ -1,8 +1,3 @@
-// Removes the build output (`target/`) of each linked worktree whose branch has landed:
-// `bun run worktrees:sweep [--plan]`. A worktree loses its `target/` only when the tip of its branch
-// is in `origin/dev`, no process works in its folder and it has no uncommitted change
-// (`quality/src/worktrees/sweep.ts`). It never removes a worktree, a branch or anything but `target/`.
-// With `--plan` it removes nothing and lists what it would remove.
 import { lstatSync, rmSync } from "node:fs";
 import { basename, join } from "node:path";
 import { REPO_ROOT } from "../../src/repository.ts";
@@ -20,7 +15,6 @@ function stop(message: string): never {
   process.exit(2);
 }
 
-/** The working directories of the processes this user can see; the sweep stops when they cannot be read. */
 function workingDirectories(): string[] {
   const listed = run(["lsof", "-a", "-d", "cwd", "-Fn"]);
   // lsof exits 1 when one process cannot be read; its output still lists the others.

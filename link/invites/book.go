@@ -24,8 +24,7 @@ var (
 	ErrNotOpen   = &Refusal{"invite_not_open", "no open invite has this key: it is used, expired, cancelled or wrong"}
 )
 
-// Record is what the hub keeps of one invite. It holds no secret: Key is
-// the public half of the invite's temporary key.
+// Record is what the hub keeps of one invite. It holds no secret: Key is the public half of the temporary key.
 type Record struct {
 	Key tunnel.DeviceKey `json:"key"`
 	// Name is the name that the new device gets.
@@ -33,18 +32,14 @@ type Record struct {
 	Expires time.Time `json:"expires"`
 }
 
-// book is the set of open invites, by temporary key. An invite leaves the
-// book when it is used, cancelled or expired.
+// book is the set of open invites, by temporary key.
 type book map[tunnel.DeviceKey]Record
 
-// open reports whether a temporary key belongs to an invite that can be used.
 func (b book) open(key tunnel.DeviceKey, now time.Time) bool {
 	record, known := b[key]
 	return known && now.Before(record.Expires)
 }
 
-// without returns the book with one invite less: the invite is used or
-// cancelled. It refuses a key with no open invite.
 func (b book) without(key tunnel.DeviceKey, now time.Time) (book, Record, error) {
 	if !b.open(key, now) {
 		return nil, Record{}, ErrNotOpen
@@ -52,7 +47,6 @@ func (b book) without(key tunnel.DeviceKey, now time.Time) (book, Record, error)
 	return b.keeping(func(each Record) bool { return each.Key != key }), b[key], nil
 }
 
-// with returns the book with one more invite, and with no expired invite.
 func (b book) with(record Record, now time.Time) book {
 	next := b.keeping(func(each Record) bool { return now.Before(each.Expires) })
 	next[record.Key] = record
@@ -69,12 +63,10 @@ func (b book) keeping(keep func(Record) bool) book {
 	return next
 }
 
-// openAt returns the invites that are open at a time, the first to expire first.
 func (b book) openAt(now time.Time) []Record {
 	return b.keeping(func(each Record) bool { return now.Before(each.Expires) }).all()
 }
 
-// all returns every invite of the book, the first to expire first.
 func (b book) all() []Record {
 	all := []Record{}
 	for _, record := range b {

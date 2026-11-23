@@ -27,7 +27,6 @@ const RUST_CHAR = /^'(?:\\.[^']*|[^\\'])'/;
 interface Step {
   keep: string;
   next: number;
-  /** The step is a string or char literal. */
   literal?: boolean;
 }
 
@@ -91,10 +90,6 @@ function stepAt(text: string, at: number, syntax: Syntax): Step {
   return { keep: char, next: at + 1 };
 }
 
-/**
- * Remove comments, keeping newlines. With `blankLiterals`, string and char literals are emptied too.
- * Unknown extensions are returned unchanged.
- */
 export function stripComments(text: string, extension: string, blankLiterals = false): string {
   const syntax = SYNTAX[extension];
   if (!syntax) return text;

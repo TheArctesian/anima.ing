@@ -1,6 +1,4 @@
-// Runs a command with DATABASE_URL pointing at a throwaway PostgreSQL server (ruling R-009).
-// If DATABASE_URL is already set, the command uses that server and nothing is started.
-// A missing PostgreSQL installation fails the gate; database tests are never skipped (CQ-024).
+// Runs a command against a throwaway PostgreSQL server (R-009); a missing PostgreSQL fails the gate (CQ-024).
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir, userInfo } from "node:os";
 import { join } from "node:path";
@@ -49,7 +47,6 @@ if (binDir === undefined) {
 
 const root = mkdtempSync(join(tmpdir(), "anima-pg-"));
 
-/** Start a server in `root`, run the command against it, stop the server. Returns the command's exit code. */
 function runWithServer(tools: string): number {
   const dataDir = join(root, "data");
   const user = userInfo().username;

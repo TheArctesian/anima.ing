@@ -11,28 +11,23 @@ import (
 	"github.com/TheArctesian/anima/link/invites"
 )
 
-// inviteRequest is the arguments of "invites.make".
 type inviteRequest struct {
-	// Name is the name that the new device gets.
 	Name string `json:"name"`
 }
 
-// madeInvite is the answer of "invites.make". Invite is a secret until it is
-// used or expires: it goes to the caller only, never to a log (LNK-008).
+// madeInvite.Invite is a secret until used or expired: it goes to the caller only, never to a log (LNK-008).
 type madeInvite struct {
 	Invite  string    `json:"invite"`
 	Expires time.Time `json:"expires"`
 }
 
-// listedInvite is one line of "invites.list". ID is the fingerprint of the
-// invite's temporary key; "invites.cancel" takes it.
+// listedInvite.ID is the fingerprint of the invite's temporary key, which "invites.cancel" takes.
 type listedInvite struct {
 	ID      string    `json:"id"`
 	Name    string    `json:"name"`
 	Expires time.Time `json:"expires"`
 }
 
-// cancelRequest is the arguments of "invites.cancel".
 type cancelRequest struct {
 	ID string `json:"id"`
 }

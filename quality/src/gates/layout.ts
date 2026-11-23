@@ -2,7 +2,6 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import type { Layout, Member } from "./tier.ts";
 
-/** The Rust packages of the workspace, from `cargo metadata`. Throws when cargo cannot say. */
 function crates(root: string): Member[] {
   const run = Bun.spawnSync(["cargo", "metadata", "--no-deps", "--format-version", "1", "--locked"], { cwd: root });
   if (run.exitCode !== 0) throw new Error("cargo metadata failed: the fast tier cannot find the Rust packages");
@@ -16,7 +15,6 @@ function crates(root: string): Member[] {
   }));
 }
 
-/** The folders that one workspace entry of `package.json` names: a folder, or `folder/*`. */
 function workspaceFolders(root: string, entry: string): string[] {
   if (!entry.endsWith("/*")) return [entry];
   const above = entry.slice(0, -2);
@@ -25,7 +23,6 @@ function workspaceFolders(root: string, entry: string): string[] {
     .map((each) => `${above}/${each.name}`);
 }
 
-/** The bun packages of the workspace, from the `workspaces` of the root `package.json`. */
 function packages(root: string): Member[] {
   const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as { workspaces?: string[] };
   return (manifest.workspaces ?? [])
@@ -43,15 +40,10 @@ function packages(root: string): Member[] {
     });
 }
 
-/** The packages of the repository at `root`. */
 export function readLayout(root: string): Layout {
   return { crates: crates(root), packages: packages(root) };
 }
 
-/**
- * The paths that are different from the merge base with `base`: committed, staged, not staged and
- * new files that git does not ignore. `undefined` when `base` is not a commit here.
- */
 export function changedPaths(root: string, base: string): string[] | undefined {
   const git = (...args: string[]) => {
     const run = Bun.spawnSync(["git", ...args], { cwd: root });
@@ -65,11 +57,7 @@ export function changedPaths(root: string, base: string): string[] | undefined {
   return [...new Set(`${tracked}${added}`.split("\0").filter((path) => path !== ""))].sort();
 }
 
-/**
- * The Rust packages whose folders hold `paths`: for each path, the nearest folder above it with a
- * `Cargo.toml` that has a `[package]` and its name. Reads only files, so it needs no Rust toolchain
- * (the job `base` of the workflow `gates` has none).
- */
+/** Reads only files: the job `base` of the workflow `gates` has no Rust toolchain. */
 export function cratesHolding(root: string, paths: readonly string[]): Member[] {
   const found = new Map<string, Member>();
   for (const path of paths) {

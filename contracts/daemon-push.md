@@ -488,7 +488,7 @@ The hub:
   A daemon that has never pushed is not marked, and `metricsStale` is true for it. Stale changes no check:
   a stale daemon is never a Down check.
 
-### 4.1 Agent thread summaries (TH20, R-NEW-threadsync)
+### 4.1 Agent thread summaries (TH20, R-431)
 
 `agentThreads` is optional. An absent member leaves stored thread data unchanged. The member has
 `count` (zero or more, at most 2³² − 1), `countRevision` and `summaries` (zero to 256 rows).
@@ -525,7 +525,8 @@ An approval or transcript entry does not go in `agentThreads`.
 `POST /daemon/v1/threads/entries` takes `device`, `summary` (as in Section 4.1), and
 `entries`, with 1 to 12 entries in sequence order. Each entry has a `sequence` from 1 to
 2⁵³ − 1 and a normalized `content` object, at most 32 KiB as JSON. The daemon assigns
-contiguous sequence numbers. It uploads only while the local transcript switch is on.
+contiguous sequence numbers. On Unix, uploads require a private `thread-sync.json` in the
+daemon's home with `{"shareTranscripts": true}`. Missing or invalid settings leave sharing off.
 The daemon uses a private journal to keep queued entries across restarts. It discards
 queued content when sharing is disabled or a thread is excluded. A placeholder can
 occupy the sequence of an entry whose receipt was lost before sharing was disabled.

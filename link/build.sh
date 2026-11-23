@@ -1,17 +1,10 @@
 #!/bin/sh
-# Builds the release programs of anima-link into link/bin, one for each
-# platform, with the build tags that Tailcat's own releases use (they leave
-# out the parts of the Tailscale library that the link does not need).
-# A program larger than the limit fails the build. The Windows programs (HMD-050)
-# are built here too; the Windows application carries its own amd64 build from
-# deploy/bin/windows-bundle.ps1, which uses the same tags.
-#
-#   link/build.sh
+# Builds the anima-link release programs with the build tags of Tailcat's own releases.
+# deploy/bin/windows-bundle.ps1 builds the Windows application's amd64 program with the same tags (HMD-050).
 set -eu
 cd "$(dirname "$0")"
 LIMIT_BYTES=20000000
-# With an empty module cache `go list -m` prints no folder. The tags leave out the port
-# mapper (UPnP, NAT-PMP, PCP), so a build without them must never come out of this script.
+# With an empty module cache `go list -m` prints no folder.
 go mod download github.com/tailscale/tailcat
 tags_file="$(go list -m -f '{{.Dir}}' github.com/tailscale/tailcat)/build-tags.txt"
 [ -s "$tags_file" ] || { echo "link/build.sh: the build tags of Tailcat are not at $tags_file" >&2; exit 1; }

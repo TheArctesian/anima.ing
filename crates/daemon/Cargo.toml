@@ -15,6 +15,16 @@ name = "anima_daemon"
 name = "anima-daemon"
 path = "src/main.rs"
 
+[features]
+# The integration tests start the daemon as a child of the test and call its runner as the
+# person. On a system that keeps a read of that test from the daemon (the Mac runner of GitHub,
+# 2026-11-23) the rule of R-315 fails closed and takes the test for an agent; with this feature
+# the runner takes the process that started it for the person, unless that process carries the
+# mark of a thread or is below the holder. Only the dev-dependency below turns it on, so each build
+# of tests has it, also the debug `anima-daemon` that such a build leaves in `target/debug`; a
+# release build refuses it (`threads::runner::peer`), so a shipped daemon never has it.
+test-person = []
+
 [dependencies]
 # The protocols of the agent programs and the frames of the local socket of the runner.
 agent-threads = { path = "../agent-threads" }
@@ -55,6 +65,7 @@ zeroize.workspace = true
 keyring.workspace = true
 
 [dev-dependencies]
+anima-daemon = { path = ".", features = ["test-person"] }
 tokio = { workspace = true, features = ["test-util"] }
 daemon-core = { path = "../daemon-core", features = ["test-support"] }
 axum.workspace = true
