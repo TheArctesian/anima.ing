@@ -61,7 +61,7 @@
   let inbox = $state<ReturnType<typeof InboxColumn>>();
   /** The thread the keys opened, said to a screen reader when focus stays where it was (09 finding 13). */
   let said = $state('');
-  const linkWords = $derived(live === null ? null : live.linked === false ? (live.problem ?? 'The thread runner of this computer is not running. Start the Anima daemon to start threads.') : live.holder);
+  const linkWords = $derived(live === null ? null : (live.daemon ?? (live.linked === false ? (live.problem ?? 'The thread runner of this computer is not running. Start the Anima daemon to start threads.') : live.holder)));
   const newOff = $derived(live === null ? 'Threads start in the desktop application.' : live.linked === false ? 'The thread runner is not running.' : null);
   /** The row of the open thread, for the band. */
   const palette = $derived(

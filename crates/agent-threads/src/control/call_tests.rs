@@ -41,6 +41,7 @@ fn reads() -> Vec<Action> {
         Action::Stop { thread },
         Action::RaiseLimit,
         Action::Accounts,
+        Action::Version,
         Action::Folder {
             folder: PathBuf::from("/work"),
         },
@@ -160,10 +161,11 @@ const fn kind(action: &Action) -> usize {
         Action::AttachMore { .. } => 23,
         Action::Unattach { .. } => 24,
         Action::Folders { .. } => 25,
+        Action::Version => 26,
     }
 }
 
-const KINDS: usize = 26;
+const KINDS: usize = 27;
 
 #[test]
 fn th109_each_call_reads_back_from_its_frame() {

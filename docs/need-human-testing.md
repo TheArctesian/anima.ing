@@ -136,6 +136,27 @@ Many entries were written for the hub on the VPS. The operator uses only the hos
 
 The steps for a hub with a user name and a password (the self-host path) stay in each entry.
 
+### HT-NEW-updateall: the application updates the daemon on each build (R-NEW-updateall, HMD-055)
+
+Built: on the branch `daemon/update-updates-everything`, the application replaces an older daemon in
+`~/.local/bin` also on a build with an ad hoc signature, checks the seal of its bundle and of the new copy,
+waits for the new daemon to answer with its version and puts the copy of before back when it does not. The
+tests use stand-in daemons in a folder of their own; no test ran the real LaunchAgent, the Keychain or
+`codesign` on a real bundle.
+
+1. With an installed application whose daemon is older (for example 0.9.29), install a trial build of this
+   branch (an ad hoc signature) and open it. Expected: within a minute macOS asks whether `anima-daemon`
+   may use the Keychain; allow it. The Code page says "The daemon of this computer was updated from
+   0.9.29 to <new version>" one time.
+2. Run `ls ~/.local/bin`. Expected: `anima-daemon` and `anima-daemon.0.9.29`, and no `anima-daemon.previous`.
+3. Run `~/.local/bin/anima-daemon --version`. Expected: the version of the trial build.
+4. Quit the application and open it again. Expected: no message about the daemon, and no Keychain question.
+5. Start a Claude Code thread, then install a second trial build and open it while the thread runs.
+   Expected: the thread keeps running through the update.
+6. Run `anima agents running` in Terminal. Expected: the list of threads, with no error.
+
+Result: Open.
+
 ### HT-146: a process that an agent detached cannot answer an approval (R-315, THR-031)
 
 Built: on the branch `threads/peer-ancestry`, the runner also takes a client for an agent when the

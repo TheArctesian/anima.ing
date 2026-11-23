@@ -3,7 +3,7 @@ import { listen } from '@tauri-apps/api/event';
 import { outcomeFrom, updateFrom, type Action, type Outcome, type Update } from '$lib/agent-threads/live/run';
 
 /** Why a call did not reach the thread runner. The codes are the shell's (THR-128). */
-export type RunnerProblem = 'caller' | 'not_running' | 'foreign' | 'bad_call' | 'notification' | 'failed';
+export type RunnerProblem = 'caller' | 'not_running' | 'foreign' | 'bad_call' | 'notification' | 'older_daemon' | 'failed';
 
 const MESSAGES: Readonly<Record<RunnerProblem, string>> = {
   caller: 'Only the main window can drive the threads.',
@@ -11,6 +11,8 @@ const MESSAGES: Readonly<Record<RunnerProblem, string>> = {
   foreign: 'The socket of the thread runner is not a private socket of this user.',
   bad_call: 'The call did not read.',
   notification: 'The notification was not shown.',
+  older_daemon:
+    'The daemon on this computer is older than this app and does not know this call. Quit Anima and open it again: the app updates the daemon at its start. Or install the daemon again in the settings of this computer, at Metrics source: Daemon.',
   failed: 'The thread runner did not answer.',
 };
 

@@ -218,3 +218,22 @@ describe('the queue of a thread (TH109)', () => {
     expect(outcomeFrom({ outcome: 'refused', why: { refusal: 'queue_full' } })).toEqual({ outcome: 'refused', why: 'queue_full' });
   });
 });
+
+describe('the words of the update of the daemon', () => {
+  it('HMD-055: the words of the update of the daemon are read at the start and again when the watch reaches the runner', async () => {
+    const shell = madeShell();
+    const live = new LiveThreads(shell, () => AWAY, clock().now);
+    const said: (string | null)[] = [null, 'The daemon of this computer was updated from 0.9.29 to 0.10.72.'];
+    live.daemonWords = () => Promise.resolve(said.shift() ?? null);
+    await live.begin();
+    expect(live.daemon).toBeNull();
+    shell.link(true);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(live.daemon).toBe('The daemon of this computer was updated from 0.9.29 to 0.10.72.');
+    shell.link(true);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(live.daemon, 'words said once stay on the page').toContain('0.10.72');
+  });
+});

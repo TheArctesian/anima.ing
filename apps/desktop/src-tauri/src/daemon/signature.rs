@@ -3,8 +3,9 @@
 //! program satisfies the designated requirement that the item recorded. A Developer ID build
 //! names its team, so each later build of the team satisfies it; an ad hoc build names the
 //! hash of its own code, so each build is a new program, and its first read of the token waits
-//! for the person to allow it. The update at the start of the app then swaps the daemon only
-//! when the carried daemon has a team. Linux has no Keychain: there it always keeps its identity.
+//! for the person to allow it: after an update to such a build, the Keychain asks the person once
+//! (R-NEW-updateall). Linux has no Keychain: there it always keeps its identity. The seal of
+//! the bundle and of the new copy is checked here too ([`sealed`]).
 
 use std::path::Path;
 
@@ -43,47 +44,63 @@ pub fn identity(success: bool, shown: &str) -> Identity {
 }
 
 /// The identity of `program` on this system: on macOS from `/usr/bin/codesign`, which must
-/// answer in 10 s; a run that does not is [`Identity::NewEachBuild`], so nothing is swapped.
+/// answer in 10 s; a run that does not is [`Identity::NewEachBuild`].
 #[cfg(target_os = "macos")]
 pub fn of_program(program: &Path) -> Identity {
+    codesign(&["-d", "--verbose=2"], program).map_or(Identity::NewEachBuild, |(success, shown)| {
+        identity(success, &shown)
+    })
+}
+
+/// Whether the seal of `path` (an app bundle, or a program) verifies: its code and its
+/// resources did not change since it was signed. An ad hoc seal says nothing of who signed it.
+#[cfg(target_os = "macos")]
+pub fn sealed(path: &Path) -> bool {
+    codesign(&["--verify", "--strict"], path).is_some_and(|(success, _)| success)
+}
+
+/// No seals outside macOS: the package manager of the system checks the files of the app.
+#[cfg(not(target_os = "macos"))]
+pub const fn sealed(_path: &Path) -> bool {
+    true
+}
+
+/// Runs `/usr/bin/codesign` with `args` on `path`, with no environment: whether it succeeded and
+/// what it showed on standard error. None when it did not run or did not end in 10 s.
+#[cfg(target_os = "macos")]
+fn codesign(args: &[&str], path: &Path) -> Option<(bool, String)> {
     use std::{
         io::Read as _,
         process::{Command, Stdio},
         thread,
         time::{Duration, Instant},
     };
-    let started = Command::new("/usr/bin/codesign")
-        .args(["-d", "--verbose=2"])
-        .arg(program)
+    let mut child = Command::new("/usr/bin/codesign")
+        .args(args)
+        .arg(path)
         .env_clear()
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::piped())
-        .spawn();
-    let Ok(mut child) = started else {
-        return Identity::NewEachBuild;
-    };
+        .spawn()
+        .ok()?;
     let end = Instant::now() + Duration::from_secs(10);
     let status = loop {
         match child.try_wait() {
             Ok(Some(status)) => break status,
             Ok(None) if Instant::now() < end => thread::sleep(Duration::from_millis(20)),
-            // Past the deadline, or the wait failed: the answer is the safe one, and a failed
-            // kill of a program that is ending adds nothing to it.
+            // Past the deadline, or the wait failed: no answer, and a failed kill of a program
+            // that is ending adds nothing to it.
             _ => {
                 let _ = child.kill();
                 let _ = child.wait();
-                return Identity::NewEachBuild;
+                return None;
             }
         }
     };
     let mut shown = String::new();
-    if let Some(mut errors) = child.stderr.take()
-        && errors.read_to_string(&mut shown).is_err()
-    {
-        return Identity::NewEachBuild;
-    }
-    identity(status.success(), &shown)
+    child.stderr.take()?.read_to_string(&mut shown).ok()?;
+    Some((status.success(), shown))
 }
 
 /// No Keychain outside macOS: each build keeps its identity.
