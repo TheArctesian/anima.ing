@@ -97,6 +97,16 @@
             <td class="action">{#if !opens && row.containers[0] !== undefined}{@render actions(group.id, row.containers[0])}{/if}</td>
           </tr>
           {#if opens && open}
+            {#if row.folder !== null || row.files.length > 0}
+              <!-- HOST-030: where the project was started from, as Docker says; read only. -->
+              <tr class="inner started">
+                <th scope="row" colspan="4"><span class="line">
+                  <span class="sub">Started by Compose</span>
+                  {#if row.folder !== null}<span class="path">in <code>{row.folder}</code></span>{/if}
+                  {#if row.files.length > 0}<span class="path">from <code>{row.files.join(', ')}</code></span>{/if}
+                </span></th>
+              </tr>
+            {/if}
             {#each row.containers as container (container.id)}
               <tr class="inner">
                 <th scope="row">{container.name} <span class="sub">Container of {row.name}</span></th>
@@ -238,6 +248,23 @@
 
   .inner th {
     padding-inline-start: var(--space-6);
+  }
+
+  .started .line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+    color: var(--text-secondary);
+  }
+
+  .started .sub {
+    display: inline;
+  }
+
+  code {
+    color: var(--text);
+    font-family: var(--font-mono);
+    overflow-wrap: anywhere;
   }
 
   .sub {

@@ -13,7 +13,7 @@ export const MACHINES: readonly Machine[] = [
 
 export const CONTAINERS: Readonly<Record<string, readonly Container[]>> = {
   'm-pop': [
-    container({ id: 'a'.repeat(64), name: 'immich-server', composeProject: 'immich', composeService: 'server', composeProjectState: 'RUNNING' }),
+    container({ id: 'a'.repeat(64), name: 'immich-server', composeProject: 'immich', composeService: 'server', composeWorkingDir: '/srv/immich', composeFiles: ['/srv/immich/compose.yaml', '/srv/immich/compose.override.yaml'], composeProjectState: 'RUNNING' }),
     container({ id: 'b'.repeat(64), name: 'immich-redis', composeProject: 'immich', composeService: 'redis', composeProjectState: 'RUNNING' }),
     container({ id: 'c'.repeat(64), name: 'watchtower', image: 'containrrr/watchtower', composeProject: null, composeService: null, composeProjectState: null }),
   ],

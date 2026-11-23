@@ -47,6 +47,12 @@ export interface ApplicationRow {
   readonly newer: number | null;
   /** The containers; an application opens to them. */
   readonly containers: readonly ContainerRow[];
+  /**
+   * HOST-030: the folder from which Compose started a project and its files, as Docker says; null and empty for a
+   * container with no project, or when Docker has no such label.
+   */
+  readonly folder: string | null;
+  readonly files: readonly string[];
 }
 
 /** The rows of one machine (HSE-002): its header, then its rows, or one short row when nothing is installed. */
@@ -101,7 +107,22 @@ function applicationRows(place: Place, view: View): readonly ApplicationRow[] {
     const newer = place.updates.length === 0 ? null : group.rows.filter((row) => row.update?.newer === true).length;
     if (group.project !== NO_PROJECT && view === 'applications') {
       const needsYou = group.tone !== 'up';
-      return [{ key: `${place.id}/project/${group.project}`, name: group.project, what: 'Compose project', state: group.state, tone: group.tone, needsYou, managed: false, newer, containers: group.rows }];
+      const started = place.containers.find((container) => container.composeProject === group.project && (container.composeWorkingDir != null || container.composeFiles.length > 0));
+      return [
+        {
+          key: `${place.id}/project/${group.project}`,
+          name: group.project,
+          what: 'Compose project',
+          state: group.state,
+          tone: group.tone,
+          needsYou,
+          managed: false,
+          newer,
+          containers: group.rows,
+          folder: started?.composeWorkingDir ?? null,
+          files: started?.composeFiles ?? [],
+        },
+      ];
     }
     return group.rows.map((row) => ({
       key: `${place.id}/container/${row.id}`,
@@ -113,6 +134,8 @@ function applicationRows(place: Place, view: View): readonly ApplicationRow[] {
       managed: false,
       newer: newer === null ? null : Number(row.update?.newer === true),
       containers: [row],
+      folder: null,
+      files: [],
     }));
   });
 }

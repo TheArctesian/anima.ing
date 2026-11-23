@@ -5410,3 +5410,21 @@ tests use a fake hub; nobody has seen it with real machines.
    Expected: the project is one row again, as before.
 
 Result: Open.
+
+### HT-NEW-hostingprojectfiles: an open Compose project says where it was started from (task H15; HOST-030)
+
+Built on the branch `hosted/h15-project-files`: Hosting > Applications reads the folder and the files of each Compose
+project, as the Docker labels give them, and shows them when the project is open. The tests use a fake hub; nobody has
+seen it with a real machine.
+
+1. On a machine with SSH on and Docker, start a Compose project from a folder, with an override file
+   (`docker compose -f compose.yaml -f compose.override.yaml up -d`). In the desktop application of this build, open
+   Hosting > Applications and open the project with its arrow.
+   Expected: the first line under the project says "Started by Compose in" the folder "from" the two files, with full
+   paths, in the order of the command; the same paths that `anima containers projects` gives.
+2. Choose List: Containers.
+   Expected: no such line; each container is its own row.
+3. Start a container with `docker run -d`.
+   Expected: its row has no such line.
+
+Result: Open.
