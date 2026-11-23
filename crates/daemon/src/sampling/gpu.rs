@@ -149,7 +149,7 @@ pub fn announce(gpus: &[GpuReading]) -> Vec<BatchGpu> {
         .filter_map(|gpu| {
             let (vendor, has_vram) = match gpu.vendor {
                 GpuVendor::Nvidia => (WireVendor::Nvidia, true),
-                GpuVendor::Amd => (WireVendor::Amd, true),
+                GpuVendor::Amd => (WireVendor::Amd, gpu.vram.is_some()),
                 GpuVendor::Intel => (WireVendor::Intel, false),
                 GpuVendor::Apple => (WireVendor::Apple, false),
             };

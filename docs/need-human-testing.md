@@ -5107,3 +5107,22 @@ real program started from the application.
 
 Result: Open.
 
+
+### HT-NEW-amdvram: AMD UMA graphics do not show a dedicated VRAM warning (MET-007)
+
+Built on `fix/amd-integrated-vram`. Synthetic sysfs tests cover the daemon and SSH reader.
+The installed daemon, hub and client still need this check together on real hardware.
+Detection uses the driver's `uma/carveout` interface. Drivers without that interface keep
+existing VRAM reporting; this change does not infer a memory type from the pool size.
+
+1. Install the corrected daemon on an AMD UMA computer with
+   `/sys/class/drm/card*/device/uma/carveout`, then restart that daemon.
+   Expected: after its next GPU discovery and push, the device has GPU usage but no VRAM bar
+   or VRAM chart. A previously stored high VRAM reading does not restore the bar.
+2. Use the corrected hub to collect a test device of the same type through SSH, then allow
+   its next GPU discovery (at restart or within 24 hours).
+   Expected: GPU usage remains and the dedicated VRAM bar is absent.
+3. Collect a discrete AMD GPU with the corrected daemon or hub.
+   Expected: VRAM readings and the VRAM bar remain available.
+
+Result: Open.
