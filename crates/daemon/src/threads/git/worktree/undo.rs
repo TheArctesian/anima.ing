@@ -21,8 +21,8 @@ pub(in super::super) struct Undo {
     pub(super) home: Home,
     pub(super) thread: Uuid,
     pub(super) repository: String,
-    /// The Git folder of the runner for the worktree.
-    pub(super) own: PathBuf,
+    /// The Git folder of the runner for the worktree, when this call made it.
+    pub(super) own: Option<PathBuf>,
     /// The folder of the worktree. It was not there when the call started: what is there now
     /// is of this call.
     pub(super) folder: PathBuf,
@@ -48,8 +48,9 @@ impl Drop for Undo {
         if self.kept {
             return;
         }
-        let _ = std::fs::remove_dir_all(&self.own);
-        self.home.forget(self.thread, &self.repository);
+        // What is in the repository of the person goes first and the record last: an undo
+        // that stops in the middle leaves a record, so the removal of the person finds what
+        // is left.
         let _ = std::fs::remove_dir_all(&self.folder);
         if let Some(entry) = &self.entry {
             let _ = linked::remove(entry);
@@ -57,6 +58,10 @@ impl Drop for Undo {
         if let Some((common, full)) = &self.branch {
             let _ = refs::take_back(common, full, &self.at);
         }
+        if let Some(own) = &self.own {
+            let _ = std::fs::remove_dir_all(own);
+        }
+        self.home.forget(self.thread, &self.repository);
         // The folder of the thread goes when it is empty; one with a second repository stays.
         let _ = self.folder.parent().map(std::fs::remove_dir);
     }
@@ -67,27 +72,30 @@ impl Drop for Undo {
 /// what the call made goes again and nothing is saved (THR-097: it holds no work yet); a
 /// worktree that was there already ([`Made::reused`]) stays.
 ///
-/// While it is there, no other worktree of its thread is made. The undo runs on a blocking
+/// While it is there, no other worktree of its thread is made and no action runs on this one.
+/// The undo runs on a blocking
 /// thread of the tokio runtime of the drop, so a drop never waits for the file system; with no
-/// runtime, it runs at once in the drop. A runtime that shuts down before the undo ran can leave
-/// the worktree; the person removes it then as each other one.
+/// runtime, it runs at once in the drop. A runtime that shuts down before the undo started runs
+/// it in its drop; one that stops it in the middle leaves the record, and the person removes
+/// what is left as each other worktree.
 #[derive(Debug)]
 pub struct Pending {
     made: Made,
     undo: Option<Undo>,
-    alone: Option<OwnedMutexGuard<()>>,
+    /// The locks of making a worktree of the thread and of the actions on this worktree.
+    alone: Vec<OwnedMutexGuard<()>>,
 }
 
 impl Pending {
     pub(in super::super) fn new(
         made: Made,
         undo: Option<Undo>,
-        alone: OwnedMutexGuard<()>,
+        alone: [OwnedMutexGuard<()>; 2],
     ) -> Self {
         Self {
             made,
             undo,
-            alone: Some(alone),
+            alone: alone.into(),
         }
     }
 
@@ -112,7 +120,7 @@ impl Drop for Pending {
         let Some(undo) = self.undo.take() else {
             return;
         };
-        let alone = self.alone.take();
+        let alone = std::mem::take(&mut self.alone);
         match tokio::runtime::Handle::try_current() {
             Ok(runtime) => {
                 runtime.spawn_blocking(move || drop((undo, alone)));

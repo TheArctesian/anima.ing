@@ -1,6 +1,9 @@
 //! How the engine is held to one worktree: an agent reads the thread it runs in and no other,
 //! a folder put in the place of the worktree gets no run, two tasks never change one worktree
-//! at the same time, and a worktree whose start was refused goes again with nothing saved.
+//! at the same time, and a worktree whose start was refused goes again with nothing saved
+//! ([`refused`]).
+
+mod refused;
 
 use agent_threads::git::{GitAction, GitOutcome, GitRefusal};
 use uuid::Uuid;
@@ -8,7 +11,6 @@ use uuid::Uuid;
 use super::trusted::{UNCOMMITTED, commit};
 use super::{Bench, PERSON, THREAD, refused};
 use crate::threads::git::place::Home;
-use crate::threads::git::worktree::Plan;
 use crate::threads::git::{Caller, Engine};
 
 #[tokio::test]
@@ -223,87 +225,4 @@ async fn a_worktree_whose_records_the_system_removed_says_that_they_expired() {
         folder.join("a.txt").exists(),
         "the files of the worktree stay"
     );
-}
-
-/// The worktrees of the project, as `git worktree list` of the person shows them.
-async fn listed(bench: &Bench) -> usize {
-    let list = bench
-        .git_in(&bench.project, &["worktree", "list", "--porcelain"])
-        .await;
-    list.lines()
-        .filter(|line| line.starts_with("worktree "))
-        .count()
-}
-
-#[tokio::test]
-async fn a_worktree_whose_start_is_refused_goes_again_with_nothing_saved() {
-    let bench = Bench::new().await;
-    let plan = Plan {
-        thread: THREAD,
-        project: &bench.project,
-        base: None,
-    };
-    let pending = bench
-        .engine
-        .worktree_pending(plan, None)
-        .await
-        .expect("made");
-    let made = pending.made().clone();
-    assert!(!made.reused);
-    let folder = made.worktree.folder().to_owned();
-    let branch = bench.project.join(".git/refs/heads").join(&made.branch);
-    assert!(folder.is_dir() && branch.is_file());
-    assert_eq!(listed(&bench).await, 2);
-    // Dropped where no runtime is, the undo runs in the drop.
-    std::thread::spawn(move || drop(pending))
-        .join()
-        .expect("the drop");
-    assert!(!folder.exists() && !branch.exists());
-    assert!(!bench.home.join(THREAD.to_string()).exists());
-    assert!(
-        !bench.project.join(".git/refs/anima").exists(),
-        "nothing is saved"
-    );
-    assert_eq!(listed(&bench).await, 1);
-    // Dropped in the runtime, the undo runs on a blocking thread; a new make of the thread
-    // waits for it and makes the worktree new.
-    let pending = bench
-        .engine
-        .worktree_pending(plan, None)
-        .await
-        .expect("made");
-    drop(pending);
-    let again = bench
-        .engine
-        .worktree_pending(plan, None)
-        .await
-        .expect("made");
-    assert!(!again.made().reused, "the dropped worktree was still there");
-    let kept = again.keep();
-    assert!(kept.worktree.folder().is_dir());
-    assert!(!bench.project.join(".git/refs/anima").exists());
-}
-
-#[tokio::test]
-async fn a_worktree_that_was_there_already_stays_when_its_start_is_refused() {
-    let bench = Bench::new().await;
-    let folder = bench.worktree().await;
-    let plan = Plan {
-        thread: THREAD,
-        project: &bench.project,
-        base: None,
-    };
-    let pending = bench
-        .engine
-        .worktree_pending(plan, None)
-        .await
-        .expect("found");
-    assert!(pending.made().reused);
-    std::thread::spawn(move || drop(pending))
-        .join()
-        .expect("the drop");
-    assert!(folder.is_dir());
-    assert_eq!(listed(&bench).await, 2);
-    let outcome = bench.call(PERSON, GitAction::Status).await;
-    assert!(matches!(outcome, GitOutcome::Status(_)), "{outcome:?}");
 }

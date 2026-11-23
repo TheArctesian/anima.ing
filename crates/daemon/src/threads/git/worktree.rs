@@ -122,6 +122,9 @@ pub(super) async fn undoable(
     let (existing, at) = branch_at(&layout, plan, &full)?;
     place::private_folder(&home.of_thread(plan.thread)).map_err(|_| GitRefusal::BadPath)?;
     let own = home.own(plan.thread, &repository)?;
+    // A Git folder of the runner that is there with no record (a record that the system
+    // removed) holds checkpoints of an earlier worktree: an undo never removes it.
+    let own_made = own.symlink_metadata().is_err();
     let shared = home.shared(&project);
     let new = New {
         project: &project,
@@ -135,7 +138,7 @@ pub(super) async fn undoable(
         home: home.clone(),
         thread: plan.thread,
         repository: repository.clone(),
-        own: own.clone(),
+        own: own_made.then(|| own.clone()),
         folder: folder.clone(),
         entry: None,
         branch: None,
@@ -191,12 +194,17 @@ impl super::Engine {
         shown: Shown<'_>,
     ) -> Result<Pending, GitRefusal> {
         self.closed()?;
-        // One worktree of a thread is made at a time, whatever its repository.
-        // It is held until the worktree is kept or gone again.
-        let alone = self.alone(plan.thread, "").await;
+        // One worktree of a thread is made at a time, whatever its repository; and no action
+        // of the person runs on this worktree before it is kept or gone again ([`Pending`]).
+        let real = std::fs::canonicalize(plan.project);
+        let name = real.as_deref().ok().and_then(Path::file_name);
+        let repository = place::folder_name(&name.unwrap_or_default().to_string_lossy());
+        let alone = [
+            self.alone(plan.thread, "").await,
+            self.alone(plan.thread, &repository).await,
+        ];
         // One worktree of a project at a time: the first one copies its history, and the
         // next one finds the copy.
-        let real = std::fs::canonicalize(plan.project);
         let project = real.as_deref().unwrap_or(plan.project).to_string_lossy();
         let _copy = self.alone(Uuid::nil(), &project).await;
         let (made, undo) = undoable(&self.git, &self.home, plan, shown).await?;
