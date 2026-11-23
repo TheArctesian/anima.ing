@@ -23,6 +23,7 @@ fn reads() -> Vec<Action> {
             mode: Mode::Ask,
             model: None,
             effort: None,
+            speed: Some("fast".to_owned()),
             prompt: text(),
             program_path: None,
             draft: None,
@@ -105,6 +106,7 @@ fn changes() -> Vec<Action> {
             model: Some("m".to_owned()),
             effort: None,
             mode: Some(Mode::Ask),
+            speed: None,
         },
     ]
 }

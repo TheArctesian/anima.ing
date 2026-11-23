@@ -40,6 +40,7 @@ async fn idle_thread(kit: &Kit, client: &mut Client) -> Uuid {
             mode: Mode::FullAccess,
             model: None,
             effort: None,
+            speed: None,
             prompt: "first".to_owned(),
             program_path: None,
             draft: None,

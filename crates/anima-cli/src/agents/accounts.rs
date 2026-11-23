@@ -31,7 +31,7 @@ pub async fn accounts(invocation: &Invocation) -> Result<(), Failure> {
 /// [`Failure`] when the runner is not there.
 pub async fn models(invocation: &Invocation) -> Result<(), Failure> {
     let mut link = RunnerLink::connect().await?;
-    let Outcome::Models { models } = accepted(link.call(Action::Models).await?)? else {
+    let Outcome::Models { models, .. } = accepted(link.call(Action::Models).await?)? else {
         return Ok(());
     };
     if models.is_empty() {
@@ -44,7 +44,7 @@ pub async fn models(invocation: &Invocation) -> Result<(), Failure> {
 }
 
 fn model_table(rows: &[ModelRow]) -> Table {
-    let mut table = Table::new(vec!["PROGRAM", "MODEL", "NAME", "EFFORTS"]);
+    let mut table = Table::new(vec!["PROGRAM", "MODEL", "NAME", "EFFORTS", "SPEEDS"]);
     for row in rows {
         let program = super::threads::shown::program_words(program_key(row.program));
         for model in &row.models {
@@ -53,11 +53,18 @@ fn model_table(rows: &[ModelRow]) -> Table {
             } else {
                 model.efforts.join(", ")
             };
+            let speeds: Vec<&str> = model.speeds.iter().map(|speed| speed.id.as_str()).collect();
+            let name = if model.legacy {
+                format!("{} (older)", model.name)
+            } else {
+                model.name.clone()
+            };
             table.row(vec![
                 Cell::new(program),
                 Cell::new(&model.value),
-                Cell::new(&model.name),
+                Cell::new(&name),
                 Cell::toned(&efforts, Tone::Muted),
+                Cell::toned(&speeds.join(", "), Tone::Muted),
             ]);
         }
     }

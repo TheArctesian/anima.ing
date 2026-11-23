@@ -103,11 +103,16 @@ impl Model {
     }
 }
 
-/// The effort of the model, from the closed list of `claude --help`, and `ultra`, which Codex
-/// names for some models: a start or a change takes it only for a model whose program lists it.
+/// The effort of the model, from the closed list of `claude --help`, and `none`, `minimal` and
+/// `ultra`, which Codex names for some models: a start or a change takes one of these three only
+/// for a model whose program lists it (TH110, TH117).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Effort {
+    /// No reasoning: `none` of Codex.
+    #[serde(rename = "none")]
+    Off,
+    Minimal,
     Low,
     Medium,
     High,
@@ -120,6 +125,8 @@ impl Effort {
     #[must_use]
     pub fn as_str(self) -> &'static str {
         match self {
+            Self::Off => "none",
+            Self::Minimal => "minimal",
             Self::Low => "low",
             Self::Medium => "medium",
             Self::High => "high",
@@ -127,6 +134,12 @@ impl Effort {
             Self::Max => "max",
             Self::Ultra => "ultra",
         }
+    }
+
+    /// Whether every program has always taken it, so that a start needs no list to take it.
+    #[must_use]
+    pub fn common(self) -> bool {
+        !matches!(self, Self::Off | Self::Minimal | Self::Ultra)
     }
 }
 

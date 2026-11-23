@@ -204,6 +204,7 @@ fn th110_a_turn_carries_the_model_the_effort_and_the_mode_that_the_person_change
         &TurnSettings {
             model: Some(&model),
             effort: Some(Effort::Medium),
+            speed: Some("fast"),
             mode: Some(Mode::Ask),
             keeps: false,
         },
@@ -211,6 +212,7 @@ fn th110_a_turn_carries_the_model_the_effort_and_the_mode_that_the_person_change
     let params = &changed["params"];
     assert_eq!(params["model"], "gpt-5.6-sol");
     assert_eq!(params["effort"], "medium");
+    assert_eq!(params["serviceTier"], "fast", "the speed of TH117");
     assert_eq!(params["approvalPolicy"], "untrusted");
     assert_eq!(params["sandboxPolicy"], json!({"type": "workspaceWrite"}));
     let kept = line(&CodexInput::turn_start(

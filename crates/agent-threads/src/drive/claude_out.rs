@@ -268,7 +268,7 @@ fn control_response(response: &Value) -> Vec<DriveEvent> {
     let Some(id) = ProgramRequestId::from_json(&response["request_id"]) else {
         return vec![unknown("a control response with no ID", false)];
     };
-    let models = turn_facts::claude_models(&response["response"]);
+    let models = super::claude_models(&response["response"]);
     let reply = DriveEvent::Reply {
         id,
         ok: response["subtype"] == "success",

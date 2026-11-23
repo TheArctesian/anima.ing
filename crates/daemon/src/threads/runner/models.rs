@@ -6,10 +6,11 @@
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use agent_threads::control::Outcome;
+use agent_threads::control::{ListState, Outcome, ProgramState};
 use agent_threads::drive::{
     ClaudeInput, CodexInput, DriveEvent, ModelChoice, Program, claude_models, codex_models,
 };
+use chrono::{DateTime, Utc};
 use serde_json::Value;
 use tokio::io::{AsyncBufReadExt as _, AsyncReadExt as _, AsyncWriteExt as _};
 
@@ -35,6 +36,11 @@ pub(super) struct Asks {
     open: Vec<Program>,
     /// When each program last gave no list.
     failed: Vec<(Program, Instant)>,
+    /// When the running ask or the last failed ask of each program started or ended, for the
+    /// person (TH117).
+    since: Vec<(Program, DateTime<Utc>)>,
+    /// The programs that are not on this computer, as the last call of the person found.
+    missing: Vec<Program>,
     waiting: Vec<Caller>,
 }
 
@@ -46,6 +52,8 @@ impl Default for Asks {
             receiver: Some(receiver),
             open: Vec::new(),
             failed: Vec::new(),
+            since: Vec::new(),
+            missing: Vec::new(),
             waiting: Vec::new(),
         }
     }
@@ -73,10 +81,15 @@ impl Runner {
             if !of_the_person || asked || failed {
                 continue;
             }
-            let Some(path) = login::find(program, &self.env, login::executable, login::trusted)
-            else {
+            let found = login::find(program, &self.env, login::executable, login::trusted);
+            self.model_asks
+                .missing
+                .retain(|missing| *missing != program);
+            let Some(path) = found else {
+                self.model_asks.missing.push(program);
                 continue;
             };
+            self.model_asks.noted(program);
             let env = environment(program, self.env.clone(), &path);
             let sender = self.model_asks.sender.clone();
             self.model_asks.open.push(program);
@@ -104,8 +117,11 @@ impl Runner {
             .failed
             .retain(|(failed, _)| *failed != program);
         match models {
-            Some(models) => self.said.models.note(program, models, chrono::Utc::now()),
-            None => self.model_asks.failed.push((program, Instant::now())),
+            Some(models) => self.said.models.note(program, models, Utc::now()),
+            None => {
+                self.model_asks.failed.push((program, Instant::now()));
+                self.model_asks.noted(program);
+            }
         }
         if self.model_asks.open.is_empty() {
             let outcome = self.models_outcome();
@@ -116,9 +132,42 @@ impl Runner {
     }
 
     fn models_outcome(&self) -> Outcome {
-        Outcome::Models {
-            models: self.said.models.rows(),
-        }
+        let models = self.said.models.rows();
+        let asks = &self.model_asks;
+        let programs = [Program::ClaudeCode, Program::Codex]
+            .into_iter()
+            .map(|program| {
+                let state = if models.iter().any(|row| row.program == program) {
+                    ListState::Listed
+                } else if asks.open.contains(&program) {
+                    ListState::Asking
+                } else if asks.failed.iter().any(|(failed, _)| *failed == program) {
+                    ListState::Failed
+                } else if asks.missing.contains(&program) {
+                    ListState::Missing
+                } else {
+                    ListState::NotAsked
+                };
+                let since = matches!(state, ListState::Asking | ListState::Failed)
+                    .then(|| asks.since.iter().find(|(of, _)| *of == program))
+                    .flatten()
+                    .map(|(_, at)| *at);
+                ProgramState {
+                    program,
+                    state,
+                    since,
+                }
+            })
+            .collect();
+        Outcome::Models { models, programs }
+    }
+}
+
+impl Asks {
+    /// Now is the time of the newest ask of `program`, or of its failure.
+    fn noted(&mut self, program: Program) {
+        self.since.retain(|(of, _)| *of != program);
+        self.since.push((program, Utc::now()));
     }
 }
 

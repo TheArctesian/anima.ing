@@ -267,6 +267,7 @@ async fn start_and_answer(kit: &Kit) -> (Uuid, Uuid, u32) {
             mode: Mode::FullAccess,
             model: None,
             effort: None,
+            speed: None,
             prompt: "Run the command".to_owned(),
             program_path: None,
             draft: None,

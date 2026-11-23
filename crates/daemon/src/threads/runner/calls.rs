@@ -43,10 +43,12 @@ pub(super) fn codex_of(
 ) -> Option<Codex> {
     (row.program == Program::Codex).then(|| {
         let model = row.model.as_deref().and_then(|name| Model::new(name).ok());
-        Codex::new(row.folder.clone(), row.mode, model, effort).keeping(
+        let mut codex = Codex::new(row.folder.clone(), row.mode, model, effort).keeping(
             crate::threads::notice::held_anima(&row.folder, daemon)
                 .map(|anima| KeptFolder::new(anima, row.id)),
-        )
+        );
+        codex.change_speed(row.speed.clone());
+        codex
     })
 }
 

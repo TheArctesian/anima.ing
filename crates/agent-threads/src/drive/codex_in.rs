@@ -140,6 +140,9 @@ impl CodexInput {
         if let Some(model) = turn.model {
             params["model"] = Value::from(model.as_str());
         }
+        if let Some(speed) = turn.speed {
+            params["serviceTier"] = Value::from(speed);
+        }
         if let Some(mode) = turn.mode {
             let (sandbox, approval) = mode.codex();
             params["approvalPolicy"] = Value::from(approval);
@@ -236,6 +239,8 @@ fn call(id: i64, method: CodexMethod, params: &Value) -> String {
 pub struct TurnSettings<'a> {
     pub model: Option<&'a Model>,
     pub effort: Option<Effort>,
+    /// A service tier of the model, or `default` for the standard one (TH117).
+    pub speed: Option<&'a str>,
     pub mode: Option<Mode>,
     /// The thread has the profile that keeps a folder read-only (THR-041): a mode in the sandbox
     /// of the folder goes with its approvals only, so that the profile stays.

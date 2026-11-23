@@ -66,6 +66,9 @@ pub struct StartArgs {
     model: Option<String>,
     #[arg(long, value_parser = parse_effort)]
     effort: Option<Effort>,
+    /// A speed of the model other than the standard one, from `anima agents models`.
+    #[arg(long)]
+    speed: Option<String>,
     /// A different copy of the program than the first on the PATH of your login, such as the
     /// copy of an application. The runner takes only a copy that it finds itself.
     #[arg(long)]
@@ -94,7 +97,7 @@ pub struct WatchArgs {
 
 fn parse_effort(text: &str) -> Result<Effort, String> {
     serde_json::from_value(serde_json::Value::from(text))
-        .map_err(|_| "low, medium, high, xhigh or max".to_owned())
+        .map_err(|_| "none, minimal, low, medium, high, xhigh, max or ultra".to_owned())
 }
 
 /// Gives a result that is not a refusal.
@@ -136,6 +139,7 @@ impl StartArgs {
             mode: self.mode.mode(),
             model: self.model,
             effort: self.effort,
+            speed: self.speed,
             prompt: self.prompt,
             program_path: self
                 .program_path

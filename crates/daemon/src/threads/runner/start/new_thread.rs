@@ -18,6 +18,8 @@ pub(in crate::threads::runner) struct NewThread {
     pub mode: Mode,
     pub model: Option<String>,
     pub effort: Option<Effort>,
+    /// A speed of the model (TH117).
+    pub speed: Option<String>,
     pub prompt: String,
     pub program_path: Option<PathBuf>,
     /// The draft whose files go with the first prompt (TH111).
@@ -46,6 +48,7 @@ impl NewThread {
                 mode,
                 model,
                 effort,
+                speed,
                 prompt,
                 program_path,
                 draft,
@@ -58,6 +61,7 @@ impl NewThread {
                 mode,
                 model,
                 effort,
+                speed,
                 prompt,
                 program_path,
                 draft,
@@ -116,6 +120,7 @@ impl Runner {
             queued: Vec::new(),
             last_turn: None,
             effort: new.effort,
+            speed: new.speed.clone(),
             workspace: Some(Workspace::of(&folder)),
             usage: None,
         };

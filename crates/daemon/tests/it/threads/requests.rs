@@ -37,6 +37,7 @@ async fn start(client: &mut Client, kit: &Kit) -> Uuid {
             mode: Mode::FullAccess,
             model: None,
             effort: None,
+            speed: None,
             prompt: "Run the command".to_owned(),
             program_path: None,
             draft: None,

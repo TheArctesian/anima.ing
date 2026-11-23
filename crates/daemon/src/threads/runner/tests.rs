@@ -25,6 +25,7 @@ fn row(program: Program) -> ThreadRow {
         queued: Vec::new(),
         last_turn: None,
         effort: None,
+        speed: None,
         workspace: None,
         usage: None,
     }

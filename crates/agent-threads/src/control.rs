@@ -22,7 +22,7 @@ mod shelf;
 mod workspace;
 pub use limits::{Limits, OVER_LIMIT};
 pub use listing::{BadChange, BadTitle, Listing, ListingChange, MAX_TITLE};
-pub use programs::{AccountRow, ModelRow};
+pub use programs::{AccountRow, ListState, ModelRow, ProgramState};
 pub use project::{BadProject, MAX_PROJECTS, Project, ProjectChange, changed as project_changed};
 pub use queue::{LastTurn, MOST_QUEUED, MOST_QUEUED_BYTES, Queued};
 pub use refusal::Refusal;
@@ -77,6 +77,9 @@ pub enum Action {
         mode: Mode,
         model: Option<String>,
         effort: Option<Effort>,
+        /// A speed of the model other than the standard one: one of its `speeds` (TH117).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        speed: Option<String>,
         prompt: String,
         /// A different copy of the program than the first on the `PATH` of the login: one of
         /// the copies the runner finds (TH97).
@@ -177,6 +180,9 @@ pub enum Action {
         effort: Option<Effort>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         mode: Option<Mode>,
+        /// A speed of the model: one of its `speeds`, or `default` for the standard one (TH117).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        speed: Option<String>,
     },
     /// The first part of a file for a prompt, in base64 (TH111): the whole file has `size`
     /// bytes. Only the person attaches.
@@ -258,6 +264,9 @@ pub enum Outcome {
     },
     Models {
         models: Vec<ModelRow>,
+        /// Where the list of each program stands (TH117).
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        programs: Vec<ProgramState>,
     },
     /// A file for a prompt took a part: it is complete when `received` is its size (TH111).
     Attached {
@@ -343,6 +352,9 @@ pub struct ThreadRow {
     /// The effort of the model, when the person chose one (TH110).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub effort: Option<Effort>,
+    /// The speed of the model, when the person chose one other than the standard (TH117).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speed: Option<String>,
     /// Where the thread works, read at its start (TH112).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workspace: Option<Workspace>,

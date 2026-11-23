@@ -18,6 +18,7 @@ mod claude_out;
 mod codex_in;
 mod codex_out;
 mod launch;
+mod lists;
 mod prompt;
 mod request;
 mod session_rule;
@@ -31,9 +32,10 @@ pub use claude_out::ClaudeDecoder;
 pub use codex_in::{CodexInput, CodexMethod, CodexPlace, CodexTurn, KeptFolder, TurnSettings};
 pub use codex_out::CodexDecoder;
 pub use launch::{Effort, Invocation, Launch, Mode, Model, Program, SessionStart};
+pub use lists::models::{EffortWords, ModelChoice, SpeedChoice, claude_models, codex_models};
 pub use prompt::{Attached, Attachment, Prompt};
 pub use request::{Answer, ProgramRequestId, Question, Request, RequestKind};
-pub use turn_facts::{ModelChoice, PlanStep, StepState, Usage, claude_models, codex_models};
+pub use turn_facts::{PlanStep, StepState, Usage};
 
 use serde::{Deserialize, Serialize};
 
