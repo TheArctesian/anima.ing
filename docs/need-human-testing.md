@@ -410,8 +410,8 @@ sources, the command line and the environment, the waits of a restart, the loopb
 folders) and `crates/daemon/src/model/` (the claim and the report through the work route,
 `runtime_install`, `server_start`, `server_stop`, the supervision, `model_report`), task L1-6 of
 the compute plan (CAG-001 to CAG-009, RTC-002 to RTC-006, SEC-C-001, SEC-C-007, SEC-C-008). The
-contract is `contracts/compute/model-work.md` version 0.3, which waits for R-344 and the
-security review SEC-C-012. The tests use a scripted hub and a scripted runtime (a Perl program);
+contract is `contracts/compute/model-work.md` version 0.3 (K11), accepted by R-344; the
+security review SEC-C-012 still runs, and SF-298 and SF-300 are Open. The tests use a scripted hub and a scripted runtime (a Perl program);
 no test downloads a real release or starts a real `llama-server`. The claim loop is not yet
 started by the running daemon: the switch at the machine (USE-004) does not exist in the daemon.
 Thus this check needs a small test program or a test build that calls `model::cycle::Node::cycle`.
