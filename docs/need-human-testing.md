@@ -5410,7 +5410,12 @@ existing assignments and client retries. They do not cover two real devices or a
 4. Keep Projects open on both devices and rename a shared group. Expected: the other device shows
    the new name after its next visible refresh.
 
-The old device storage has no hub address. Unknown or foreign-hub memberships and empty local
-names remain stored on the device; they are not imported into another hub or deleted.
+5. Open Projects on a device that holds an empty earlier group. Expected: the group appears on
+   this hub and on the second device, even though it has no projects. If the hub is too old to
+   import empty groups, the name stays stored locally until the hub is updated.
+
+The old device storage has no hub address. Unknown or foreign-hub memberships remain stored
+on the device; they are not imported into another hub or deleted. The operator chose B on
+2026-11-23: empty earlier groups move to the next hub opened.
 
 Result: Open.

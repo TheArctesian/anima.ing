@@ -114,7 +114,7 @@ impl GroupTool {
                 Access::Write,
                 Effect::Sets,
                 "Imports a device group into this hub, reusing a matching name and preserving \
-                 existing shared assignments. Reuse the source UUID on retry. Returns acknowledged project IDs.",
+                 existing shared assignments. An empty project list imports an empty group. Reuse the source UUID on retry. Returns acknowledged project IDs.",
             ).returns(&[("acknowledged", "array", "Project IDs known to this hub.")]),
             Self::Rename => Definition::new::<RenameInput>(
                 "anima_project_group_rename",
@@ -215,6 +215,7 @@ async fn set_projects(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value,
 async fn import(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
     let input: ImportInput = parse(arguments)?;
     let input = project_group_import::ProjectGroupImportInput {
+        include_empty: input.projects.is_empty().then_some(true),
         source: input.source,
         name: input.name,
         projects: input.projects,

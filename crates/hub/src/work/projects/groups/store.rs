@@ -173,7 +173,7 @@ pub(in crate::work::projects) async fn import_group(
     source: uuid::Uuid,
     name: &str,
     now: DateTime<Utc>,
-) -> Result<ProjectGroupId, sqlx::Error> {
+) -> Result<(ProjectGroupId, bool), sqlx::Error> {
     sqlx::query("INSERT INTO projects.group_imports (source) VALUES ($1) ON CONFLICT DO NOTHING")
         .bind(source)
         .execute(&mut *conn)
@@ -185,7 +185,7 @@ pub(in crate::work::projects) async fn import_group(
     .fetch_one(&mut *conn)
     .await?;
     if let Some(id) = previous {
-        return Ok(id);
+        return Ok((id, false));
     }
     let id = sqlx::query_scalar(
         "INSERT INTO projects.groups (id, name, created_at) VALUES ($1, $2, $3) \
@@ -201,7 +201,7 @@ pub(in crate::work::projects) async fn import_group(
         .bind(id)
         .execute(conn)
         .await?;
-    Ok(id)
+    Ok((id, true))
 }
 
 /// A receipt is recorded even for a project already assigned elsewhere.

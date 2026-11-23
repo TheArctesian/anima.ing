@@ -1,6 +1,6 @@
 //! G3: the migration boundary owns concurrency, receipts and same-hub acknowledgement.
 
-use super::{Kit, create, groups, imported, kit, set};
+use super::{Kit, audit_count, create, groups, imported, kit, set};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
@@ -99,4 +99,52 @@ async fn receipts_survive_rename_and_delete_and_empty_foreign_groups_do_not_leak
     );
     assert_eq!(groups(&kit).await, Vec::<(String, i64)>::new());
     assert!(kit.project("docs").await["group"].is_null());
+}
+
+async fn empty(kit: &Kit, source: &str, name: &str) -> Value {
+    kit.post(
+        "mutation($input: ProjectGroupImportInput!) { importProjectGroup(input: $input) }",
+        json!({ "input": { "source": source, "name": name, "projects": [], "includeEmpty": true } }),
+    ).await
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn empty_import_is_explicit_and_receipts_preserve_rename_and_delete(pool: PgPool) {
+    let kit = kit(&pool).await;
+    imported(&kit).await;
+    let source = uuid::Uuid::now_v7().to_string();
+    let foreign = uuid::Uuid::now_v7().to_string();
+    let answer = kit.post(
+        "mutation($input: ProjectGroupImportInput!) { importProjectGroup(input: $input) }",
+        json!({ "input": { "source": source, "name": "Foreign", "projects": [foreign], "includeEmpty": true } }),
+    ).await;
+    assert_eq!(answer["data"]["importProjectGroup"], json!([]));
+    assert_eq!(groups(&kit).await, Vec::<(String, i64)>::new());
+    let (first, retry) = tokio::join!(empty(&kit, &source, "Work"), empty(&kit, &source, "Work"));
+    assert_eq!(first["data"]["importProjectGroup"], json!([]));
+    assert_eq!(retry["data"]["importProjectGroup"], json!([]));
+    assert_eq!(groups(&kit).await, [("Work".to_owned(), 0)]);
+    assert_eq!(audit_count(&pool).await, 1);
+    let second = uuid::Uuid::now_v7().to_string();
+    empty(&kit, &second, "WORK").await;
+    assert_eq!(groups(&kit).await, [("Work".to_owned(), 0)]);
+    let listed = kit.post("{ projectGroups { id } }", json!({})).await;
+    let id = listed["data"]["projectGroups"][0]["id"].clone();
+    kit.post(
+        "mutation($id: ID!) { renameProjectGroup(id: $id, name: \"Renamed\") { id } }",
+        json!({ "id": id }),
+    )
+    .await;
+    empty(&kit, &source, "Work").await;
+    assert_eq!(groups(&kit).await, [("Renamed".to_owned(), 0)]);
+    kit.post(
+        "mutation($id: ID!) { deleteProjectGroup(id: $id) }",
+        json!({ "id": id }),
+    )
+    .await;
+    let count = audit_count(&pool).await;
+    empty(&kit, &source, "Work").await;
+    empty(&kit, &second, "WORK").await;
+    assert_eq!(groups(&kit).await, Vec::<(String, i64)>::new());
+    assert_eq!(audit_count(&pool).await, count);
 }

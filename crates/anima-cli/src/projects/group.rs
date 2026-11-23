@@ -27,7 +27,7 @@ pub enum GroupCommand {
         /// The slugs of the projects to put in it; a project in a different group moves.
         projects: Vec<String>,
     },
-    /// Import a device group without replacing shared assignments.
+    /// Import a device group, including an empty one, without replacing shared assignments.
     Import {
         /// Stable UUID of the device group; reuse on every retry.
         source: String,
@@ -113,6 +113,7 @@ impl GroupCommand {
                 projects,
             } => {
                 let input = project_group_import::ProjectGroupImportInput {
+                    include_empty: projects.is_empty().then_some(true),
                     source,
                     name,
                     projects,

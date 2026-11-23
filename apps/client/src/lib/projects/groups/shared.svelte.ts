@@ -56,9 +56,11 @@ export class SharedProjectGroups {
     let imported = false;
     for (const group of local.groups) {
       const members = Object.keys(local.of).filter((id) => local.of[id] === group.id);
-      for (let offset = 0; offset < members.length; offset += 200) {
+      for (let offset = 0; offset < Math.max(1, members.length); offset += 200) {
         const projects = members.slice(offset, offset + 200);
-        const result = await this.hub.request(IMPORT, { input: { source: group.id, name: group.name, projects } });
+        const empty = members.length === 0;
+        const input = { source: group.id, name: group.name, projects, ...(empty ? { includeEmpty: true } : {}) };
+        const result = await this.hub.request(IMPORT, { input });
         if (!result.ok) {
           this.problem ||= needsNewerHub(result.error)
             ? 'Sharing earlier groups needs a newer hub. Your device groups are kept.'
@@ -66,15 +68,15 @@ export class SharedProjectGroups {
           if (result.error.code === 'VALIDATION') break;
           return imported;
         }
-        this.#acknowledge(group, result.value.importProjectGroup);
-        imported ||= result.value.importProjectGroup.length > 0;
+        this.#acknowledge(group, result.value.importProjectGroup, empty);
+        imported ||= empty || result.value.importProjectGroup.length > 0;
       }
     }
     return imported;
   }
 
-  #acknowledge(group: Group, projects: readonly string[]): void {
-    if (this.storage === undefined || projects.length === 0) return;
+  #acknowledge(group: Group, projects: readonly string[], empty: boolean): void {
+    if (this.storage === undefined || (!empty && projects.length === 0)) return;
     // Read again after the network wait: another tab may have edited the local groups.
     const current = storedClusters(this.storage);
     if (!current.groups.some((each) => each.id === group.id && each.name === group.name)) return;

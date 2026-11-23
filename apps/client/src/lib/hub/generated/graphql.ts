@@ -787,6 +787,8 @@ export type ProjectBrowse = {
 
 /** A stable device-group UUID with up to 200 project IDs to import (G3). */
 export type ProjectGroupImportInput = {
+  /** True imports an explicitly empty group; omitted or false keeps the earlier no-op. Never imports a foreign-only group. */
+  includeEmpty?: boolean | null | undefined;
   name: string;
   projects: Array<string>;
   source: string;

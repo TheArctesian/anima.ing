@@ -98,3 +98,33 @@ async fn g3_group_import_sends_stable_source_and_raw_project_ids() {
         ]
     );
 }
+
+#[tokio::test]
+async fn g3_empty_import_requires_a_hub_that_understands_empty_groups() {
+    let hub = FakeHub::start().await;
+    hub.answer(
+        "ProjectGroupImport",
+        data(json!({ "importProjectGroup": [] })),
+    );
+    let run = signed_in()
+        .run(&[
+            "project",
+            "group",
+            "import",
+            "device-group",
+            "Empty",
+            "--hub",
+            &hub.origin,
+        ])
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    let sent = hub.seen();
+    let import = sent
+        .iter()
+        .find(|seen| seen.operation == "ProjectGroupImport")
+        .unwrap();
+    assert_eq!(
+        import.variables,
+        json!({ "input": { "source": "device-group", "name": "Empty", "projects": [], "includeEmpty": true } })
+    );
+}

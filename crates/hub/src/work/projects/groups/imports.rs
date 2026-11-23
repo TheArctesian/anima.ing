@@ -21,6 +21,8 @@ pub(super) struct ImportInput {
     name: String,
     /// At most 200 IDs. Projects absent from this hub are not acknowledged.
     projects: Vec<ID>,
+    /// True only for an explicitly empty device group; older hubs reject this field.
+    include_empty: Option<bool>,
 }
 
 pub(super) async fn import(ctx: &Context<'_>, input: ImportInput) -> Result<Vec<ID>> {
@@ -34,11 +36,11 @@ pub(super) async fn import(ctx: &Context<'_>, input: ImportInput) -> Result<Vec<
     let trail = Trail::from_context(ctx)?;
     let mut tx = begin(ctx).await?;
     let known = store::existing(&mut tx, &projects).await.map_err(failed)?;
-    if known.is_empty() {
+    if known.is_empty() && (!projects.is_empty() || input.include_empty != Some(true)) {
         commit(tx).await?;
         return Ok(Vec::new());
     }
-    let group = store::import_group(&mut tx, source, &name, trail.now)
+    let (group, first) = store::import_group(&mut tx, source, &name, trail.now)
         .await
         .map_err(failed)?;
     let fresh = store::import_members(&mut tx, source, &known)
@@ -49,7 +51,7 @@ pub(super) async fn import(ctx: &Context<'_>, input: ImportInput) -> Result<Vec<
         let moved = store::import_unassigned(&mut tx, &fresh, group)
             .await
             .map_err(failed)?;
-        if !fresh.is_empty() {
+        if first || !fresh.is_empty() {
             trail
                 .write(
                     &mut tx,

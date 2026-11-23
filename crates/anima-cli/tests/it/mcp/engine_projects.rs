@@ -295,5 +295,20 @@ async fn g3_import_preserves_the_source_and_reports_only_acknowledged_project_id
         sent(&hub, "ProjectGroupImport"),
         [json!({ "input": input })]
     );
+    hub.answer(
+        "ProjectGroupImport",
+        data(json!({ "importProjectGroup": [] })),
+    );
+    let answer = session
+        .call(
+            "anima_project_group_import",
+            json!({ "source": GROUP, "name": "Empty", "projects": [] }),
+        )
+        .await;
+    assert_eq!(structured(&answer)["acknowledged"], json!([]));
+    assert_eq!(
+        sent(&hub, "ProjectGroupImport")[1],
+        json!({ "input": { "source": GROUP, "name": "Empty", "projects": [], "includeEmpty": true } })
+    );
     session.finish().await;
 }

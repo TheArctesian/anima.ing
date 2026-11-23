@@ -77,9 +77,9 @@ it('G3: an older hub keeps local groups and leaves existing shared groups usable
   expect(groups.problem).toContain('Sharing earlier groups needs a newer hub');
 });
 
-it('G3: groups over the hub limit use batches and no empty group is sent', async () => {
+it('G3: groups over the hub limit use batches', async () => {
   const ids = Array.from({ length: 201 }, (_, i) => `p${String(i)}`);
-  storeClusters(localStorage, { groups: [...local.groups, { id: 'empty', name: 'Empty' }], of: Object.fromEntries(ids.map((id) => [id, source])) });
+  storeClusters(localStorage, { groups: local.groups, of: Object.fromEntries(ids.map((id) => [id, source])) });
   const sizes: number[] = [];
   const groups = client((_url, init) => {
     const request = JSON.parse(String(init?.body)) as { variables: { input?: { projects: string[] } } };
@@ -90,7 +90,7 @@ it('G3: groups over the hub limit use batches and no empty group is sent', async
   });
   await groups.refresh();
   expect(sizes).toEqual([200, 1]);
-  expect(storedClusters(localStorage)).toEqual({ groups: [{ id: 'empty', name: 'Empty' }], of: {} });
+  expect(storedClusters(localStorage)).toEqual({ groups: [], of: {} });
 });
 
 
@@ -108,4 +108,50 @@ it('G3: one rejected legacy name does not block later valid groups', async () =>
   expect(groups.of('p1')?.name).toBe('Work');
   expect(groups.problem).toContain('control character');
   expect(storedClusters(localStorage)).toEqual({ groups: [bad], of: { p2: bad.id } });
+});
+
+
+it('G3: an empty legacy group imports into the next hub and refreshes despite no acknowledged project IDs', async () => {
+  storeClusters(localStorage, { groups: local.groups, of: {} });
+  const sent: unknown[] = [];
+  const answers = [response({ projectGroups: [] }), response({ importProjectGroup: [] }), response({ projectGroups: [{ ...shared, projectIds: [] }] })];
+  const groups = client((_url, init) => {
+    const request = JSON.parse(String(init?.body)) as { variables: { input?: unknown } };
+    if (request.variables.input !== undefined) sent.push(request.variables.input);
+    return Promise.resolve(answers.shift() ?? response({ projectGroups: [] }));
+  });
+  await groups.refresh();
+  expect(groups.groups).toEqual([{ id: shared.id, name: 'Work' }]);
+  expect(storedClusters(localStorage)).toEqual({ groups: [], of: {} });
+  expect(sent).toEqual([{ source, name: 'Work', projects: [], includeEmpty: true }]);
+});
+
+it.each(['failed', 'older'] as const)('G3: an empty group stays local after a %s import and retries safely', async (failure) => {
+  storeClusters(localStorage, { groups: local.groups, of: {} });
+  const failed = failure === 'failed' ? new Response('', { status: 503 }) : new Response(JSON.stringify({ errors: [{ message: 'Invalid value for argument "input", unknown field "includeEmpty" of type "ProjectGroupImportInput"' }] }));
+  const answers = [response({ projectGroups: [] }), failed, response({ projectGroups: [] }), response({ importProjectGroup: [] }), response({ projectGroups: [{ ...shared, projectIds: [] }] })];
+  const groups = client(() => Promise.resolve(answers.shift() ?? response({ projectGroups: [] })));
+  await groups.refresh();
+  expect(storedClusters(localStorage)).toEqual({ groups: local.groups, of: {} });
+  expect(groups.problem).not.toBe('');
+  if (failure === 'older') expect(groups.problem).toContain('Sharing earlier groups needs a newer hub');
+  await groups.refresh();
+  expect(storedClusters(localStorage)).toEqual({ groups: [], of: {} });
+});
+
+it.each(['member', 'name'] as const)('G3: empty-group acknowledgement preserves a concurrent local %s change', async (change) => {
+  storeClusters(localStorage, { groups: local.groups, of: {} });
+  const updated = change === 'member' ? { groups: local.groups, of: { added: source } } : { groups: [{ id: source, name: 'Renamed' }], of: {} };
+  let calls = 0;
+  const groups = client(() => {
+    calls += 1;
+    if (calls === 2) {
+      storeClusters(localStorage, updated);
+      return Promise.resolve(response({ importProjectGroup: [] }));
+    }
+    return Promise.resolve(response({ projectGroups: [] }));
+  });
+  await groups.refresh();
+  expect(calls).toBe(3);
+  expect(storedClusters(localStorage)).toEqual(updated);
 });

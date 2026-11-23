@@ -3014,6 +3014,8 @@ input ProjectGroupImportInput {
   source: ID!
   name: String!
   projects: [ID!]!
+  "True imports an explicitly empty group; omitted or false keeps the earlier no-op. Never imports a foreign-only group."
+  includeEmpty: Boolean
 }
 
 """
