@@ -94,6 +94,12 @@ pub struct Git {
     signs: bool,
     /// A push to a folder of this computer is allowed; only the tests have such a remote.
     local_remotes: bool,
+    /// The bytes that the checked copy of a project can hold besides three times its first
+    /// size (`place::shared`).
+    copy_room: u64,
+    /// The bytes that the Git folder of the runner for one worktree can hold
+    /// (`place::own::within`).
+    own_room: u64,
     /// How a program is started with the rights of a thread ([`hooks::AsThread`]): the only
     /// way the repository of the person is read.
     as_thread: Option<hooks::AsThread>,
@@ -135,6 +141,8 @@ impl Git {
             hooks_off: Vec::new(),
             signs: false,
             local_remotes: false,
+            copy_room: super::place::shared::ROOM,
+            own_room: super::place::own::ROOM,
             as_thread: None,
             folder: None,
             bound: Vec::new(),
@@ -159,6 +167,41 @@ impl Git {
         quiet.hooks_off = settings::hooks_off(&found);
         quiet.signs = settings::signs(&found);
         Ok(quiet)
+    }
+
+    /// This `git` with a different size that the copy of a project can always have (a
+    /// setting of the person; the tests use a small one).
+    #[must_use]
+    pub const fn with_copy_room(mut self, bytes: u64) -> Self {
+        self.copy_room = bytes;
+        self
+    }
+
+    /// This `git` with a different size for the checkpoints of one thread (a setting of the
+    /// person; the tests use a small one).
+    #[must_use]
+    pub const fn with_own_room(mut self, bytes: u64) -> Self {
+        self.own_room = bytes;
+        self
+    }
+
+    /// This `git` saves the work of a worktree that is removed: no size holds it back, and
+    /// each file of the worktree is taken, also in a repository inside it.
+    #[must_use]
+    pub const fn removing(&self) -> bool {
+        self.own_room == u64::MAX
+    }
+
+    /// The bytes that the checkpoints of one thread can use.
+    #[must_use]
+    pub const fn own_room(&self) -> u64 {
+        self.own_room
+    }
+
+    /// The bytes that the copy of a project can always have.
+    #[must_use]
+    pub const fn copy_room(&self) -> u64 {
+        self.copy_room
     }
 
     /// This `git` with the way to start a program as the agent of a thread is started.
@@ -199,6 +242,15 @@ impl Git {
     pub(super) fn with_local_remotes(mut self) -> Self {
         self.local_remotes = true;
         self
+    }
+
+    /// This `git` held to no worktree and no Git folder: to make a new Git folder of the runner.
+    #[must_use]
+    pub fn unbound(&self) -> Self {
+        let mut free = self.clone();
+        free.bound = Vec::new();
+        free.folder = None;
+        free
     }
 
     /// This `git` with the Git folder of the runner at `own` and no work folder, for the

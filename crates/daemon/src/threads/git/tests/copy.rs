@@ -12,14 +12,30 @@ use uuid::Uuid;
 use super::trusted::UNCOMMITTED;
 use super::{Bench, PERSON, THREAD, refused, target};
 use crate::threads::git::place::Home;
-use crate::threads::git::run::hooks::{AsThread, Ended};
+use crate::threads::git::place::shared::pack;
+use crate::threads::git::run::hooks::{AsThread, Ended, Kind};
 use crate::threads::git::{Engine, Target, worktree};
 
 /// The launcher of the tests: it starts the program as the person of the test would, in
 /// place of the launcher of a thread. `hooks` counts each start of a program that is not git.
+/// As the launcher of the runner, it starts a read only in the one shape that the engine
+/// makes: each test of the engine proves that each read it sends has that shape.
 pub(super) fn as_the_person(hooks: Option<Arc<AtomicUsize>>) -> AsThread {
     AsThread::new(move |run| {
         let is_git = run.program.file_name().is_some_and(|name| name == "git");
+        let shaped = match run.kind {
+            // The records of the bench: `<top>/records` beside `<top>/worktrees/<thread>/<name>`.
+            Kind::Read => run
+                .dir
+                .ancestors()
+                .nth(3)
+                .is_some_and(|top| pack::is_read(&run, &run.program, &top.join("records"))),
+            Kind::Hook => !is_git,
+        };
+        if !shaped {
+            let refused = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "no shape");
+            return Box::pin(async move { Err(refused) });
+        }
         if let (false, Some(hooks)) = (is_git, &hooks) {
             hooks.fetch_add(1, Ordering::SeqCst);
         }
@@ -43,7 +59,10 @@ pub(super) fn as_the_person(hooks: Option<Arc<AtomicUsize>>) -> AsThread {
     })
 }
 
+mod budget;
+mod removal;
 mod review;
+mod staged;
 
 impl Bench {
     /// An engine on the records of the bench with the launcher `as_thread`, or with none.
@@ -147,9 +166,17 @@ async fn a_cancelled_worktree_leaves_nothing_and_the_steps_are_shown() {
     let seen = Arc::clone(&steps);
     let shown = move |step: Preparing| seen.lock().expect("the steps").push(step);
     let making = slow.worktree_shown(bench.plan(THREAD), Some(&shown));
-    // The person cancels: the runner drops the call.
-    let cancelled = tokio::time::timeout(Duration::from_secs(4), making).await;
-    assert!(cancelled.is_err(), "the copy ended by itself");
+    // The person cancels while the history is copied: the runner drops the call.
+    let copying = async {
+        while steps.lock().expect("the steps").is_empty() {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+        tokio::time::sleep(Duration::from_millis(300)).await;
+    };
+    tokio::select! {
+        ended = making => panic!("the copy ended by itself: {ended:?}"),
+        () = copying => {}
+    }
     assert_eq!(*steps.lock().expect("the steps"), [Preparing::History]);
     assert!(!bench.home.join(THREAD.to_string()).join("engine").exists());
     let branches = ["branch", "--list", "anima/*"];
