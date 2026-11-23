@@ -1,6 +1,3 @@
-// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
-// deploy/bin/preflight on the updater key pair and the secret files' owner and group (R-117, D-44,
-// S-3, S-4, C-7, C-9). Nothing here needs Docker.
 import { describe, expect, test } from "bun:test";
 import { chmodSync, chownSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -74,7 +71,6 @@ describe.skipIf(process.platform === "win32")("preflight updater folder rights a
     });
   });
 
-  // Another group the test's user is in, so one file can leave the stand-in hub group.
   const otherGroup = (process.getgroups?.() ?? []).find((group) => group !== process.getgid?.());
 
   test.skipIf(otherGroup === undefined).each(["updater", "updater/updater_key", "updater/updater_key_password", "r2_secret_access_key"])(

@@ -1,4 +1,3 @@
-// What deploy/compose.yaml gives the optional Apprise service (D-19, NOT-002, SEC-001). Nothing here starts Docker.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -91,7 +90,6 @@ describe("apprise allow list and networks (D-19, NOT-002)", () => {
     expect(address).toBe("172.30.3.2");
     expect(address.startsWith("172.30.3.")).toBe(true);
     expect(address).not.toBe("172.30.3.10");
-    // The carved blocks: .2 lies in 172.30.3.0/29.
     expect(hub.environment?.["ANIMA_PROBE_DENY"]).toContain("172.30.3.0/29");
   });
 

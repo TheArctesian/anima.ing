@@ -1,5 +1,3 @@
-// Shared setup for the backup, restore and restore-check tests: a sample database, the scripts
-// run against the throwaway server in local mode, and small readers.
 import { setDefaultTimeout } from "bun:test";
 import { chmodSync, existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -9,7 +7,7 @@ import { finish, type FinishedProcess } from "./finished-process.ts";
 import { psql, scalar, serverDirectory } from "./postgres.ts";
 import { ROOT, installRoles, migrate } from "./roles-setup.ts";
 
-// Each test makes a database, migrates it and runs a script or two; a loaded machine needs time.
+// Each test makes and migrates a database; a loaded machine needs time.
 setDefaultTimeout(60_000);
 
 export const BACKUP = join(ROOT, "deploy", "backup", "backup.sh");
@@ -22,7 +20,6 @@ export type ScriptResult = FinishedProcess;
 
 export const state = { backupDir: "" };
 
-/** Directory that holds psql, pg_dump and pg_restore. */
 export function toolDirectory(): string {
   const dir = findTools(binaryDirs(process.env["PATH"] ?? ""), ["psql", "pg_dump", "pg_restore"], existsSync);
   if (dir === undefined) throw new Error("psql, pg_dump or pg_restore not found; install PostgreSQL 17 (CQ-024: these tests never skip)");
@@ -38,7 +35,6 @@ function serverEnvironment(): Record<string, string> {
   };
 }
 
-/** Runs a script in local mode. `shimDirectory` goes first on PATH. */
 export async function run(
   script: string,
   args: string[],
@@ -59,12 +55,10 @@ export async function run(
   });
 }
 
-/** Files in the backup folder whose names end with `suffix`. */
 export function backupFiles(suffix: string): string[] {
   return readdirSync(state.backupDir).filter((name) => name.endsWith(suffix)).sort();
 }
 
-/** Runs backup.sh, expects success and returns the dump path. */
 export async function backUp(env: Record<string, string> = {}, shimDirectory?: string): Promise<string> {
   const result = await run(BACKUP, [], env, shimDirectory);
   if (result.exitCode !== 0) throw new Error(`backup.sh failed: ${result.stderr}`);
@@ -80,7 +74,6 @@ export async function count(table: string): Promise<string> {
   return scalar(`select count(*) from ${table}`, { user: "anima_owner", database: DATABASE });
 }
 
-/** Names of databases that start with `prefix`. */
 export async function databasesLike(prefix: string): Promise<string[]> {
   const names = await scalar(`select coalesce(string_agg(datname, ',' order by datname), '') from pg_database where datname like '${prefix}%'`);
   return names.split(",").filter(Boolean);
@@ -97,7 +90,6 @@ export async function createDatabase(name = DATABASE): Promise<void> {
   if (result.exitCode !== 0) throw new Error(result.stderr);
 }
 
-/** A fresh backup folder, and the sample database with rows in several tables. */
 export async function resetSample(): Promise<void> {
   rmSync(state.backupDir, { recursive: true, force: true });
   state.backupDir = mkdtempSync(join(tmpdir(), "anima-backups-"));
@@ -130,17 +122,13 @@ export async function appendLogs(): Promise<void> {
   if (appended.exitCode !== 0) throw new Error(appended.stderr);
 }
 
-/** Removes the folder and every database the suite made. */
 export async function tearDownSample(): Promise<void> {
   rmSync(state.backupDir, { recursive: true, force: true });
   for (const name of await databasesLike(DATABASE)) await psql(["-c", `drop database if exists "${name}" with (force)`]);
   await psql(["-c", "drop database if exists anima_restore_check with (force)"]);
 }
 
-/**
- * A dump that lists fine but fails halfway to restore: it grants a table to a role that the
- * cluster no longer has, so the failure comes after the tables are made.
- */
+/** A dump that grants to a dropped role, so its restore fails after the tables are made. */
 export async function backUpWithMissingRole(): Promise<string> {
   await psql(["-c", "drop role if exists anima_gone"]);
   await psql(["-c", "create role anima_gone"]);
@@ -152,10 +140,7 @@ export async function backUpWithMissingRole(): Promise<string> {
   return path;
 }
 
-/**
- * A directory with a fake `docker`. `ps` lists $FAKE_RUNNING from its $FAKE_RUNNING_FROM-th call on
- * (default the first) and records its arguments in $FAKE_CALLS; `exec` runs the command locally.
- */
+/** A fake `docker`: `ps` lists $FAKE_RUNNING from call $FAKE_RUNNING_FROM on and logs to $FAKE_CALLS. */
 export function dockerShim(): string {
   const folder = mkdtempSync(join(tmpdir(), "anima-docker-"));
   const script = [
@@ -175,7 +160,6 @@ export function dockerShim(): string {
   return folder;
 }
 
-/** A directory with an executable `name` that runs `body` with sh. */
 export function shimDirectory(name: string, body: string): string {
   const folder = mkdtempSync(join(tmpdir(), "anima-shim-"));
   writeFileSync(join(folder, name), `#!/bin/sh\n${body}\n`);

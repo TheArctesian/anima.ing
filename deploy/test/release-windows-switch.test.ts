@@ -1,8 +1,3 @@
-// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
-// The switch of Windows in .github/workflows/release.yml (ANIMA_PUBLIC_WINDOWS): with it not
-// `on`, a release builds, signs and publishes macOS and Linux, and no step needs a file of
-// Windows. The steps here run the scripts of the workflow on files of a temporary folder; none
-// reads a secret or the network.
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -40,7 +35,6 @@ function step(job: string, part: string): Step {
   return found;
 }
 
-/** The jobs that wait for the job `windows`. */
 const AFTER_WINDOWS = Object.entries(jobs).flatMap(([name, found]) => ([found.needs ?? []].flat().includes("windows") ? [name] : []));
 
 let folder = "";
@@ -55,7 +49,6 @@ afterEach(() => {
   rmSync(folder, { recursive: true, force: true });
 });
 
-/** Writes `files` below the folder and gives the SHA-256 of each. */
 function place(files: Record<string, string>): Record<string, string> {
   return Object.fromEntries(
     Object.entries(files).map(([path, text]) => {
@@ -68,10 +61,8 @@ function place(files: Record<string, string>): Record<string, string> {
 
 const GUARD = 'if [ "$WINDOWS" = true ]; then';
 
-/** The lines of `script` that run only while `$WINDOWS` is true: one line `if ...; then ...; fi`, or the body of an `if ...; then` up to its `fi`. */
 function guardedLines(script: string): Set<string> {
   const guarded = new Set<string>();
-  // The indent of the open `if`, or undefined outside one.
   let open: string | undefined;
   for (const line of script.split("\n")) {
     const trimmed = line.trim();
@@ -122,7 +113,6 @@ describe("the switch of Windows (ANIMA_PUBLIC_WINDOWS)", () => {
 
 });
 
-// These run sh; the Windows gates have no sh (as the other deploy tests that run a script).
 describe.skipIf(process.platform === "win32")("the steps of a run with and without Windows", () => {
   test("the sign job compares the Windows installer only when the run built it", () => {
     const compare = step("sign", "Compare each file");

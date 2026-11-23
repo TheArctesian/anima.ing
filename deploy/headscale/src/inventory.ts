@@ -1,7 +1,4 @@
-/**
- * The Headscale node list checked against the policy and the operator's expectations
- * (VPN-013, OD-10). Pure: it reads parsed JSON and a clock, and never keeps a key.
- */
+/** The Headscale node list checked against the policy and the operator's expectations (VPN-013, OD-10). */
 
 import { runPolicyTests, type TailnetNode } from './tailnet.ts';
 import type { Policy } from './policy.ts';
@@ -15,11 +12,10 @@ export interface ListedNode {
   readonly ips: readonly string[];
   readonly online: boolean;
   readonly expiry: Date | null;
-  /** The key's id, never the key (used by the broker, B1). */
+  /** The key's id, never the key (B1). */
   readonly preAuthKeyId: number | null;
 }
 
-/** One entry of `headscale nodes list-routes -o json`. */
 export interface ListedRoutes {
   readonly id: number;
   readonly approved: readonly string[];
@@ -96,7 +92,6 @@ function keyIdOf(value: unknown): number | null {
   return key.id === undefined ? null : count(key.id, 'pre_auth_key.id');
 }
 
-/** Parses one entry of the node list; drops every key field; throws InventoryError on a shape it does not know. */
 export function parseNode(entry: unknown): ListedNode {
   const node = object(entry, 'node');
   return {
@@ -111,12 +106,10 @@ export function parseNode(entry: unknown): ListedNode {
   };
 }
 
-/** Parses the node list; throws InventoryError when the list or any node has a shape it does not know. */
 export function parseNodes(json: unknown): readonly ListedNode[] {
   return array(json, 'nodes').map(parseNode);
 }
 
-/** Parses `headscale nodes list-routes -o json`. */
 export function parseRoutes(json: unknown): readonly ListedRoutes[] {
   return array(json, 'routes').map((entry) => {
     const row = object(entry, 'route entry');
@@ -130,7 +123,7 @@ export function parseRoutes(json: unknown): readonly ListedRoutes[] {
 
 const ipv4Of = (node: ListedNode): string | undefined => node.ips.find((address) => !address.includes(':'));
 
-/** The nodes as the policy evaluator sees them; a node with no IPv4 address is left out (`findings` reports it). */
+/** A node with no IPv4 address is left out; `findings` reports it. */
 export function tailnetNodes(tailnet: Tailnet): readonly TailnetNode[] {
   return tailnet.nodes.flatMap((node) => {
     const ip = ipv4Of(node);
@@ -160,7 +153,6 @@ function nodeFindings(policy: Policy, node: ListedNode, routes: ListedRoutes | u
   return found;
 }
 
-/** Every VPN-013 finding. `expected` is the list of node names; `now` is a parameter. */
 export function findings(policy: Policy, tailnet: Tailnet, expected: readonly string[], now: Date): readonly Finding[] {
   const known = new Set(expected);
   const present = new Set(tailnet.nodes.map((node) => node.name));

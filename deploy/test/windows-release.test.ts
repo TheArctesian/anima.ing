@@ -36,7 +36,6 @@ test("a downloadable trial must pass native gates and installation checks with u
   expect(installed).toBeGreaterThan(install);
   expect(bundle[build]?.run).not.toContain("-Release");
   expect(workflow.jobs["windows-gates"]?.steps.some((step) => step.run?.includes("bun run gates"))).toBe(true);
-  // The trial appears only when the installer was installed and checked and the gates passed.
   const trial = workflow.jobs["windows-trial"];
   expect(trial?.needs?.sort()).toEqual(["windows", "windows-gates"]);
   for (const name of ["windows-trial", "windows-trial-cli"]) {
@@ -59,7 +58,6 @@ test("the PostgreSQL tree is built in a step of its own with a limit, before the
   expect((steps[tree] as { "timeout-minutes"?: number })["timeout-minutes"]).toBe(30);
   const installer = workflow.jobs["windows"]?.steps.find((step) => step.run?.includes("windows-bundle.ps1"));
   expect((installer as { "timeout-minutes"?: number } | undefined)?.["timeout-minutes"]).toBe(90);
-  // The build bounds each program it starts, and the whole build, and tries once more after a failure.
   const script = readFileSync(join(root, "apps/desktop/src-tauri/database-tree/windows.ts"), "utf8");
   expect(script).not.toMatch(/spawnSync\([^)]*\{ stdio: 'inherit', windowsHide: true \}\)/);
   expect(script).toContain("timeout: minutes * MINUTE");
@@ -91,13 +89,11 @@ test("the Windows installer carries the seven programs, and a Windows cargo buil
   const programs = ["anima", "anima-daemon", "anima-hub", "anima-local-hub", "anima-database", "anima-gateway", "anima-link"];
   expect((carried["externalBin"] as string[]).toSorted()).toEqual(programs.map((program) => `binaries/${program}`).toSorted());
   expect(carried["resources"]).toEqual({ "database/": "database/" });
-  // The bundle script builds each program it names under that name, and passes the file to tauri build.
   const script = readFileSync(join(root, "deploy/bin/windows-bundle.ps1"), "utf8");
   expect(script).toContain("'--config', 'src-tauri/tauri.windows-carried.json'");
   expect(script).toContain("$binaries/anima-link-x86_64-pc-windows-msvc.exe");
   const copied = /foreach \(\$program in @\(([^)]*)\)\) \{\s*Copy-Item/.exec(script)?.[1]?.match(/'([\w-]+)'/g)?.map((name) => name.slice(1, -1));
   expect([...(copied ?? []), "anima-link"].toSorted()).toEqual(programs.toSorted());
-  // The gates job of the trial makes no stand-in programs.
   expect(workflow.jobs["windows-gates"]?.steps.some((step) => step.run?.includes("binaries"))).toBe(false);
 });
 
@@ -129,7 +125,6 @@ test.skipIf(process.platform === "win32")("the gates reject failed Windows build
     const ran = Bun.spawnSync(["sh", "-c", script ?? "exit 9"], { env: { ...process.env, RESULTS: JSON.stringify(results) }, stdout: "pipe", stderr: "pipe" });
     expect(ran.exitCode === 0).toBe(success);
   }
-  // A Rust job skipped because the job base said that the changes do not need it passes; any other skip fails.
   const run = (rust: string, results: object) =>
     Bun.spawnSync(["sh", "-c", script ?? "exit 9"], { env: { ...process.env, RUST_NEEDED: rust, RESULTS: JSON.stringify(results) }, stdout: "pipe", stderr: "pipe" }).exitCode;
   expect(run("false", { "rust-test": { result: "skipped" }, "rust-lint": { result: "skipped" } })).toBe(0);

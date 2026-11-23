@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Restore a dump (DB-007). Usage: restore.sh --yes <dump>
-# Loads the dump into a new database, then swaps it in for $ANIMA_DB_NAME. The old database
-# stays under another name. The hub and migrate services must be stopped.
+# Loads the dump into a new database and swaps it in; the old database stays under another name.
 set -euo pipefail
 umask 077
 
@@ -35,7 +34,6 @@ require_services_stopped() {
     [ -z "$running" ] || fail "stop these services first: $(echo "$running" | tr '\n' ' ')"
 }
 
-# The new database goes unless it was swapped in; a failed run leaves the live database alone.
 # shellcheck disable=SC2329 # called by the EXIT trap
 discard_new_database() { [ "$swapped" = 1 ] || drop_database "$new_db"; }
 

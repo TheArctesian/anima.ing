@@ -1,7 +1,3 @@
-// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
-// deploy/bin/cli-formula and deploy/bin/crate-version: the Homebrew formula of a release and
-// the version of the crate `anima-cli` (INS-010 to INS-012; task B8h). Nothing here reaches
-// Homebrew, crates.io or the bucket.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -61,7 +57,6 @@ describe.skipIf(process.platform === "win32")("the Homebrew formula of a release
 const MANIFEST = '[package]\nname = "anima-cli"\nversion.workspace = true\nedition.workspace = true\n\n[dependencies]\ntokio = { version = "1" }\n';
 const LOCK = '[[package]]\nname = "anima-cli"\nversion = "0.1.0"\ndependencies = [\n "tokio",\n]\n\n[[package]]\nname = "anima-hub"\nversion = "0.1.0"\n';
 
-/** A folder shaped as the root of the repository, with the two files that the command changes. */
 function root(manifest: string, lock: string): string {
   const folder = mkdtempSync(join(ROOM, "root-"));
   mkdirSync(join(folder, "crates", "anima-cli"), { recursive: true });

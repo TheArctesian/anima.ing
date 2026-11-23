@@ -1,14 +1,9 @@
-// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseNftables } from "../src/nftables.ts";
 import { HARDEN_TIMEOUT_MS, VPS_DIR, fakeHost, removeHosts, type Host } from "./vps-host.ts";
 
-// VP-13, VPS-001: sshd admits the hub's unprivileged user anima-probe, by key, only from the hub
-// container's address 172.30.0.10, beside the admin user, who may log in only over the VPN
-// (100.64.0.0/10). harden.sh ssh and check accept exactly those entries and report any other user
-// or host part.
 setDefaultTimeout(HARDEN_TIMEOUT_MS);
 afterEach(removeHosts);
 
