@@ -13,6 +13,8 @@ export interface SignOut {
   readonly clearToken: (address: HubAddress) => Promise<void>;
   /** Removes the copy of recent hub answers from this computer; absent where no copy is kept (FND-007). */
   readonly forgetCopy?: () => Promise<void>;
+  /** Signs the `anima` program of this computer out too (R-383); absent where the app carries none. */
+  readonly signOutCommandLine?: (address: HubAddress) => Promise<boolean>;
 }
 
 export const TOKEN_KEPT_AFTER_LOGOUT = 'Signed out, but the key store kept the access token.';
@@ -46,9 +48,12 @@ function cookieGone(answer: HubResult<boolean> | null): boolean {
  * out only once the hub says so, since its cookie is out of script's reach (E-4). Returns the message to show when a
  * token or the copy of recent data may remain, or `null` when the client may go to sign-in.
  */
-export async function signOut({ api, address, desktop, clearToken, forgetCopy }: SignOut): Promise<string | null> {
+export async function signOut({ api, address, desktop, clearToken, forgetCopy, signOutCommandLine }: SignOut): Promise<string | null> {
   const answer = await logoutAnswer(api);
   if (!desktop) return cookieGone(answer) ? null : COOKIE_KEPT;
+  // The hub ended the token of `anima` with the app's token (R-383); this only removes its copy, so the sign-out does
+  // not wait for it (an unreachable hub would make `anima` wait), and its answer changes nothing that is told.
+  void signOutCommandLine?.(address);
   // The copy goes also when the token stays, so both are tried; a token that stayed is the first thing to tell.
   const copyGone = await (forgetCopy?.() ?? Promise.resolve()).then(
     () => true,

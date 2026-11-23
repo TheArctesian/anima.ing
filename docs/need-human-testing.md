@@ -5031,12 +5031,14 @@ Result: Open.
 
 ### HT-153: one sign-in for the app, `anima`, the daemon and the threads (E0-6 T8, cli-mcp T14 and T15, U14, TH114; R-383, R-382)
 
-Not built. The gates cannot prove a fresh computer, the profile of a login shell, the Keychain or a running thread. Do these steps when the tasks are built.
+Partly built on the branch `engine/e0-6-t8-hub-tokens` (E0-6 T8 and T14): the command-line token of the hub, `anima auth adopt`, and the app's calls that sign `anima` in at each sign-in and out at the sign-out. Steps 2 (with the token kind shown as "a login token" until SGN-NEW-status is built), 2a and 7 can be done with that branch and the app built from it, on a computer where `anima` is on `PATH` already. The silent install and the line of `PATH` (T15), the daemon (U14) and the threads (TH114) are not built: steps 1 and 3 to 6 wait. The gates cannot prove a fresh computer, the profile of a login shell, the Keychain or a running thread.
 
 1. On a fresh Mac (or a new user account), install the app and sign in, on a self-hosted hub and then on a hosted hub.
    Expected: with no click, the daemon is installed and enrolled, `anima` is in `~/.local/bin`, and one line names the shell profile that got the line of `PATH`.
 2. Open a new terminal and run `anima auth status`.
    Expected: signed in, the token kind "adopted from the app"; no `anima auth login` was needed.
+2a. On the hosted hub, run `anima context list`, then `anima device list` with no `--hub`.
+   Expected: the context `app` is current and names `http://127.0.0.1:` and the port of the link; the list of devices shows. Signing in to the app again (a new claim) keeps `anima` signed in.
 3. Look at the shell profile.
    Expected: one line, marked as Anima's; signing in again adds no second line.
 4. Start a Full access thread and have it run `anima device list` and add a private route.

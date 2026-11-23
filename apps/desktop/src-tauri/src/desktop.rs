@@ -6,9 +6,9 @@ use std::sync::Arc;
 use tauri::Manager;
 
 use crate::{
-    agent_runner, agent_threads, builder, cloud, command_line, daemon, hub_listener, keystore,
-    link, local_hub, mcp_agents, mcp_permissions, process_log, stay_awake, system_browser,
-    system_settings, this_machine, web_view,
+    agent_runner, agent_threads, builder, cloud, command_line, command_line_sign_in, daemon,
+    hub_listener, keystore, link, local_hub, mcp_agents, mcp_permissions, process_log, stay_awake,
+    system_browser, system_settings, this_machine, web_view,
 };
 
 /// Starts the desktop application and returns when it ends.
@@ -103,6 +103,9 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         command_line::command_line_read,
         command_line::command_line_install,
         command_line::command_line_remove,
+        command_line_sign_in::command_line_computer,
+        command_line_sign_in::command_line_adopt,
+        command_line_sign_in::command_line_sign_out,
         system_browser::system_browser_open,
         stay_awake::stay_awake_read,
         stay_awake::stay_awake_choose,
