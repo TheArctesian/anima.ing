@@ -25,6 +25,11 @@ pub const EXCEPTIONS: &[(&str, &str)] = &[
         "the desktop app's silent join through the link only: returns a token (R-129, HMD-037)",
     ),
     (
+        "Mutation.issueCommandLineToken",
+        "the desktop app only: returns the token that it gives to `anima auth adopt` on standard \
+         input (R-383, SGN-NEW-adopt); a command-line token cannot ask for one",
+    ),
+    (
         "Mutation.claimComputerEnrolment",
         "the install script of a computer with no application only, through its link: returns \
          a daemon enrolment code (HM-T33)",

@@ -1,6 +1,6 @@
-//! K1 access fields: `me`, `login`, `signInBrowser`, `logout` and the API key fields
-//! `apiKeys`, `createApiKey` and `revokeApiKey` (SEC-002, API-003, INT-003, LOG-005, D-3, D-4,
-//! D-23).
+//! K1 access fields: `me`, `login`, `signInBrowser`, `logout`, `issueCommandLineToken` and the
+//! API key fields `apiKeys`, `createApiKey` and `revokeApiKey` (SEC-002, API-003, INT-003,
+//! LOG-005, D-3, D-4, D-23, R-383).
 
 use std::{any::Any, sync::Arc};
 
@@ -152,6 +152,24 @@ impl Mutation {
             ctx.append_http_header(SET_COOKIE, browser::signed_out());
         }
         Ok(true)
+    }
+
+    /// A command-line token for the `anima` program on `computer`, linked to the desktop app's
+    /// login token of this request; it ends with that token (R-383, SGN-NEW-linked). Shown once.
+    #[graphql(guard = "Authenticated")]
+    async fn issue_command_line_token(
+        &self,
+        ctx: &Context<'_>,
+        computer: String,
+    ) -> async_graphql::Result<AuthPayload> {
+        let now = need::<Arc<dyn Clock>>(ctx)?.now();
+        let client = *need::<ClientAddr>(ctx)?;
+        let identity = need::<Identity>(ctx)?;
+        ctx.insert_http_header("cache-control", "no-store");
+        login::command_line::issue(need::<PgPool>(ctx)?, identity, &computer, (client, now))
+            .await
+            .map(AuthPayload)
+            .map_err(Error::into_graphql)
     }
 
     /// Makes an API key and shows its secret once (INT-003, D-23). Login or browser token only.

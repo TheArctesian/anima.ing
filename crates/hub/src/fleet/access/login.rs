@@ -2,6 +2,7 @@
 //! LOG-005, D-3, D-7, D-8). Signing out is in `sign_out`.
 
 pub(super) mod browser_ticket;
+pub(super) mod command_line;
 pub(super) mod hosted;
 mod sign_out;
 

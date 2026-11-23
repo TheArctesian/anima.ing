@@ -237,3 +237,44 @@ async fn r_129_a_hub_that_is_not_hosted_has_neither_call(pool: PgPool) {
     let claim = hub.post(None, CLAIM_CALL, json!({ "c": "x" })).await;
     assert_eq!(code(&claim), "FORBIDDEN");
 }
+
+/// The token that the device `Studio` gets for a new claim of the cloud.
+async fn device_token(cloud: &Hub, device: &Hub) -> String {
+    let made = invite(cloud, CLOUD_KEY).await;
+    let claim = json!({ "c": made["data"]["hostedDeviceInvite"]["claim"] });
+    let signed_in = device.post(None, CLAIM_CALL, claim).await;
+    signed_in["data"]["claimDeviceToken"]["token"]
+        .as_str()
+        .unwrap_or_else(|| panic!("no token: {signed_in}"))
+        .to_owned()
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn sgn_linked_a_new_sign_in_of_the_device_moves_its_command_line_token(pool: PgPool) {
+    let (link, folder) = (hosted_link(), tempfile::tempdir().unwrap());
+    let (cloud, device) = hubs(&pool, &link, &folder);
+    let first = device_token(&cloud, &device).await;
+    let issue = "mutation { issueCommandLineToken(computer: \"studio\") { token } }";
+    let issued = device.post(Some(&first), issue, json!({})).await;
+    let command_line = issued["data"]["issueCommandLineToken"]["token"]
+        .as_str()
+        .unwrap_or_else(|| panic!("no token: {issued}"))
+        .to_owned();
+    let me = "{ me { username } }";
+
+    let second = device_token(&cloud, &device).await;
+    assert_eq!(
+        code(&device.post(Some(&first), me, json!({})).await),
+        "UNAUTHENTICATED"
+    );
+    let moved = device.post(Some(&command_line), me, json!({})).await;
+    assert_eq!(moved["data"]["me"]["username"], "owner", "{moved}");
+    let stored = written(&pool).await;
+    assert!(stored.contains("\"movedTo\""), "{stored}");
+
+    device
+        .post(Some(&second), "mutation { logout }", json!({}))
+        .await;
+    let ended = device.post(Some(&command_line), me, json!({})).await;
+    assert_eq!(code(&ended), "UNAUTHENTICATED", "{ended}");
+}

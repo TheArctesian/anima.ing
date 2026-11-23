@@ -1,5 +1,7 @@
 //! Signing in: identical refusals, the throttle and the records it leaves (SEC-002, LOG-005,
-//! D-8).
+//! D-8). The command-line token of one sign-in is in `command_line` (R-383).
+
+mod command_line;
 
 use anima_hub::fleet::events::{Severity, Signal, Source};
 use chrono::TimeDelta;
