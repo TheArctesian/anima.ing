@@ -1,6 +1,3 @@
-//! The operational keys on the wire: the `keys` member of a batch, `Accepted`, and the fetched
-//! value (K-E5 Section 2.1, R-147, LOG-007).
-
 use std::fmt::{Debug, Display};
 
 use proptest::prelude::*;
@@ -85,8 +82,6 @@ fn r_147_a_value_must_have_1_to_16384_bytes() {
 }
 
 proptest! {
-    /// Any text is either a value or nothing; reading never panics, and a value read back
-    /// writes the same base64.
     #[test]
     fn r_147_reading_any_text_as_a_value_never_panics(text in "\\PC{0,64}") {
         if let Some(value) = KeyValue::from_base64(&text) {
@@ -94,7 +89,6 @@ proptest! {
         }
     }
 
-    /// The name rule and the length: every accepted name has 1 to 80 bytes.
     #[test]
     fn r_147_a_key_name_has_its_one_form(text in "[a-zA-Z0-9_./ -]{0,90}") {
         if is_key_name(&text) {

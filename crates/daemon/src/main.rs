@@ -1,5 +1,3 @@
-//! `anima-daemon`: wires the command line to the library and sets the exit code. No rules here.
-
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
 use std::io::IsTerminal as _;
@@ -22,11 +20,9 @@ use anima_daemon::units::{self, plan::Target};
 use zeroize::Zeroizing;
 
 fn main() -> ExitCode {
-    // The fixed modes (the Linux launcher first, then the fetch child) run before any
-    // runtime or thread; each never returns.
+    // The fixed modes run before any runtime or thread; each never returns.
     #[cfg(unix)]
     anima_daemon::model::modes::dispatch();
-    // The same runtime as `Builder::new_multi_thread().enable_all()`.
     match tokio::runtime::Runtime::new() {
         Ok(runtime) => runtime.block_on(daemon()),
         Err(error) => failure(&error),
@@ -71,8 +67,7 @@ async fn daemon() -> ExitCode {
     }
 }
 
-/// The log to standard error, or to the size-bounded file that the `LaunchAgent` asks for
-/// (MET-019); standard error again when that file cannot be opened.
+/// MET-019.
 fn start_log() {
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"));
@@ -170,7 +165,7 @@ fn install(target: Target, home: &Home) -> ExitCode {
     }
 }
 
-/// `anima-daemon uninstall` (HMD-056): the user unit out first, then the token and the key cache.
+/// HMD-056.
 #[cfg(unix)]
 fn uninstall(home: &Home) -> ExitCode {
     use anima_daemon::units::removal::{self, Leaving, UninstallError};
@@ -183,8 +178,8 @@ fn uninstall(home: &Home) -> ExitCode {
         uid,
     };
     let env = |name: &str| std::env::var(name).ok();
-    // The key cache holds the values: it is deleted first, and also when the token delete
-    // fails (K-E5 Section 2.1).
+    // The key cache holds the values, so it goes even when the token delete fails (K-E5
+    // Section 2.1).
     let forget = || -> Result<(), UninstallError> {
         let keys = KeyStore::open(home).forget();
         TokenStore::open(home).forget()?;
@@ -203,7 +198,7 @@ fn uninstall(home: &Home) -> ExitCode {
         .map_or_else(|error| failure(&error), |()| ExitCode::SUCCESS)
 }
 
-/// `anima-daemon stop` (HMD-055): the user unit stops; its file and the token stay.
+/// HMD-055: the unit's file and the token stay.
 #[cfg(unix)]
 fn stop_unit() -> ExitCode {
     match anima_daemon::units::removal::stop_here() {
@@ -212,23 +207,19 @@ fn stop_unit() -> ExitCode {
     }
 }
 
-/// The task of the daemon on Windows is not stopped by this command yet.
 #[cfg(windows)]
 fn stop_unit() -> ExitCode {
     eprintln!("`anima-daemon stop` is not built for Windows yet");
     ExitCode::FAILURE
 }
 
-/// The task of the daemon on Windows is not taken out by this command yet.
 #[cfg(windows)]
 fn uninstall(_home: &Home) -> ExitCode {
     eprintln!("`anima-daemon uninstall` is not built for Windows yet");
     ExitCode::FAILURE
 }
 
-/// The enrolment code from standard input; with echo off when it is a terminal. The code also
-/// stays in `rpassword`'s buffer (terminal) or the `StdinLock`'s buffer (pipe), neither of which
-/// is wiped (LOG-007); the process is short-lived.
+/// The buffers of `rpassword` and `StdinLock` are not wiped; the process is short-lived (LOG-007).
 fn read_code() -> Result<daemon_core::wire::EnrolmentCode, CliError> {
     if std::io::stdin().is_terminal() {
         eprint!("Enrolment code: ");
@@ -239,7 +230,6 @@ fn read_code() -> Result<daemon_core::wire::EnrolmentCode, CliError> {
     }
 }
 
-/// Completes on Ctrl-C or SIGTERM.
 #[cfg(unix)]
 async fn stop() {
     use tokio::signal::unix::{SignalKind, signal};
@@ -268,9 +258,7 @@ async fn stop() {
     let _ = tokio::signal::ctrl_c().await;
 }
 
-/// The daemon, and beside it the runner of the agent threads. The runner ends with the daemon;
-/// its programs stay in the holder. The system unit and a hosted hub run as an account of their
-/// own and start no agent (THR-128).
+/// The system unit and a hosted hub start no agent (THR-128).
 async fn run(home: &Home, hosted_hub: Option<std::path::PathBuf>) -> ExitCode {
     let runner = (hosted_hub.is_none() && serves_a_person(home.dir()))
         .then(|| tokio::spawn(threads(home.dir().to_owned())));
@@ -287,7 +275,6 @@ async fn run(home: &Home, hosted_hub: Option<std::path::PathBuf>) -> ExitCode {
     outcome
 }
 
-/// The runner of the agent threads (TH11), until `SIGTERM` or Ctrl-C.
 #[cfg(unix)]
 async fn threads(daemon_dir: std::path::PathBuf) -> ExitCode {
     use anima_daemon::threads::runner;
@@ -295,8 +282,8 @@ async fn threads(daemon_dir: std::path::PathBuf) -> ExitCode {
         Ok(program) => program,
         Err(error) => return failure(&error),
     };
-    // A name that is not UTF-8 is left out. A value is read as the login shell's output is
-    // (lossy), so that a secret value that is not UTF-8 is still found and stripped (THR-040).
+    // A value is read lossily, as the login shell's output is, so that a secret value that is
+    // not UTF-8 is still found and stripped (THR-040).
     let daemon: Vec<(String, String)> = std::env::vars_os()
         .filter_map(|(name, value)| {
             Some((
@@ -330,7 +317,7 @@ async fn threads(_: std::path::PathBuf) -> ExitCode {
     ExitCode::FAILURE
 }
 
-/// `anima-daemon holder <folder>`: the holder of the agent programs (THR-113).
+/// THR-113.
 #[cfg(unix)]
 async fn holder(folder: &std::path::Path, limit: usize) -> ExitCode {
     match anima_daemon::threads::holder::hold(folder, limit).await {

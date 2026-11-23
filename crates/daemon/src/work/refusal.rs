@@ -1,10 +1,10 @@
-//! The report of an item that the machine refused (K10 Sections 5 and 7): the state `refused`
-//! with a fixed cause. Nothing was made for the item, so nothing was deleted.
+//! The report of an item that the machine refused (K10 Sections 5 and 7). Nothing was made for
+//! the item, so nothing was deleted.
 
 use daemon_core::wire::{Cleanup, WorkReport, WorkResult, WorkState};
 use uuid::Uuid;
 
-/// Why the machine does not start an item: the fixed causes of K10 Section 5 for a job.
+/// The fixed causes of K10 Section 5 for a job.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Cause {
     TypeUnknown,
@@ -20,7 +20,6 @@ pub enum Cause {
 }
 
 impl Cause {
-    /// The cause as the report spells it.
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -38,7 +37,6 @@ impl Cause {
     }
 }
 
-/// The report that refuses attempt `attempt` of item `id` for `cause`.
 #[must_use]
 pub fn report(id: Uuid, attempt: u32, cause: Cause) -> WorkReport {
     let none = || "none".to_owned();

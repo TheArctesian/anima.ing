@@ -1,6 +1,5 @@
-//! Each probe on what its tool prints (CAP-023, CAP-024, CAP-025). The outputs were captured
-//! from macOS 27 and Linux hosts; the Determinate Nix and nightly lines are their documented
-//! forms.
+//! CAP-023, CAP-024, CAP-025. The outputs are captured from macOS 27 and Linux hosts; the
+//! Determinate Nix and nightly lines are their documented forms.
 
 use proptest::prelude::*;
 
@@ -174,7 +173,6 @@ fn cap_023_xcodebuild_is_probed_on_macos_only() {
 }
 
 proptest! {
-    /// No output makes a probe panic, and any version it gives is of the K8 alphabet.
     #[test]
     fn cap_031_any_output_gives_no_version_or_a_clean_one(
         output in proptest::collection::vec(any::<u8>(), 0..200),

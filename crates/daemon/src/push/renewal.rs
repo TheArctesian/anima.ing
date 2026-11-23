@@ -1,15 +1,11 @@
-//! When the daemon renews its token (MET-013, K8 Section 5): pure, from the clock.
+//! When the daemon renews its token (MET-013, K8 Section 5).
 
 use chrono::{DateTime, TimeDelta, Utc};
 
-/// Renew when fewer than this remain before expiry.
 pub const WINDOW: TimeDelta = TimeDelta::days(30);
 
-/// At most one renewal try per this time.
 pub const MIN_GAP: TimeDelta = TimeDelta::hours(1);
 
-/// Whether to renew at `now`: the token expires within [`WINDOW`], and the last try (if any)
-/// was at least [`MIN_GAP`] ago. An expired token is still tried: the hub decides.
 #[must_use]
 pub fn due(expires_at: DateTime<Utc>, now: DateTime<Utc>, last_try: Option<DateTime<Utc>>) -> bool {
     let inside = expires_at - now < WINDOW;

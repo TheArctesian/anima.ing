@@ -1,7 +1,3 @@
-//! The `accounts` member of `agentUsage` (K8 Section 4; AIS-022, THR-149): a key, an
-//! address, a plan and limit windows only; held to fixed alphabets and sizes; absent keeps what
-//! the hub has; the address is in no `Debug`.
-
 use super::*;
 use crate::agent_usage::account::{Address, account_key};
 use crate::wire::{BatchAccount, BatchLimit};
@@ -93,7 +89,6 @@ fn ais_022_an_account_that_could_name_a_person_is_refused() {
     );
 }
 
-/// An address that is not one does not decode, so its batch is `MALFORMED`.
 #[test]
 fn thr_149_an_address_that_is_not_one_does_not_decode() {
     for bad in [
@@ -123,7 +118,6 @@ fn thr_149_an_address_that_is_not_one_does_not_decode() {
     );
 }
 
-/// THR-149 point 7: a log line or an error made from an account cannot hold its address.
 #[test]
 fn thr_149_the_address_is_in_no_debug_and_no_decoding_error() {
     let batch = account("codex");

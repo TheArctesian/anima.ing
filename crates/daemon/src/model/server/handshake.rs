@@ -1,5 +1,4 @@
-//! The launcher holds a close-on-exec socket until it becomes the runtime. The first
-//! cgroup inspection must not run while the child is still the uncontained launcher.
+//! The first cgroup inspection waits until the launcher has become the runtime.
 
 use std::io;
 use std::os::{fd::OwnedFd, unix::net::UnixStream};

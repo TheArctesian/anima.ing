@@ -1,16 +1,10 @@
 #!/usr/bin/env bash
-# Harden the Anima VPS (AlmaLinux 10): SSH keys only, automatic updates, SELinux labels for
-# Headscale, Docker loopback publishing and the nftables firewall with an automatic rollback.
-# Spec VPS-001, VPS-002, VPS-004, VPS-005, DNS-005; decisions D-9, D-10 and D-11.
-#
-# The operator runs each command by hand on the VPS (VPS-005). This script never prints
-# key material: it only tests that authorized_keys holds a key. The other commands are in
-# sshd.sh, selinux.sh and firewall.sh; open-ports.sh decides which ports are open to the
-# internet, and inventory.sh prints the read-only listing that `check` starts with.
+# Harden the Anima VPS (VPS-001, VPS-002, VPS-004, VPS-005, DNS-005; D-9, D-10, D-11).
+# It never prints key material: it only tests that authorized_keys holds a key.
 # shellcheck source-path=SCRIPTDIR
 set -euo pipefail
 
-# System commands. Override from the environment to test against fakes (D-14).
+# Overridable from the environment to test against fakes (D-14).
 NFT=${HARDEN_NFT:-nft}
 SYSTEMCTL=${HARDEN_SYSTEMCTL:-systemctl}
 SYSTEMD_RUN=${HARDEN_SYSTEMD_RUN:-systemd-run}
@@ -47,7 +41,6 @@ STATE_DIR=/var/lib/anima
 HEADSCALE_DIR=/opt/anima/headscale
 SSHD_DROPIN=/etc/ssh/sshd_config.d/00-anima.conf
 DNF_TIMER_DROPIN=/etc/systemd/system/dnf-automatic.timer.d/anima.conf
-# Headscale's bind mounts (compose.yaml). container_file_t:s0 is the label `:z` would set.
 LABEL_SPEC='/opt/anima/headscale/(config|lib)(/.*)?'
 ADMIN_GROUP=wheel
 USER_NAME_PATTERN='^[a-z_][a-z0-9_-]{0,31}$'
@@ -121,13 +114,11 @@ usage_error() { usage >&2; exit 64; }
 dry() { [ "$DRY_RUN" -eq 1 ]; }
 path() { printf '%s%s' "${ROOT%/}" "$1"; }
 
-# Run a command that changes the system, or only print it in a dry run.
 run() {
   if dry; then say "[dry-run] $*"; else "$@"; fi
 }
 
-# Write standard input to a system path atomically (temporary file, then rename). The
-# temporary file is created in the target folder, so it takes that folder's SELinux type.
+# The temporary file is made in the target folder, so it takes that folder's SELinux type.
 write_file() {
   local target mode=$2 tmp
   target=$(path "$1")
@@ -139,7 +130,6 @@ write_file() {
   mv -f "$tmp" "$target"
 }
 
-# Keep a copy of a system file before replacing it; with "once", keep the first copy.
 save_previous() {
   local source target
   source=$(path "$1")
@@ -184,9 +174,7 @@ os_warnings() {
   fi
 }
 
-# Print a problem unless the Docker daemon is version 28 or newer. Before 28 Docker turns
-# on route_localnet, so a port published on 127.0.0.1 is reachable from the network, and
-# the Anima setup (daemon.json, WP-04's preflight) relies on 28's behaviour.
+# Before 28 Docker turns on route_localnet, so a port published on 127.0.0.1 is reachable from the network.
 docker_version_problem() {
   local version
   if ! version=$($DOCKER version --format '{{.Server.Version}}' 2>/dev/null); then
@@ -198,8 +186,7 @@ docker_version_problem() {
   fi
 }
 
-# Print "ID STARTED_AT" for each running container. A container that Docker stopped and
-# started again keeps its ID but gets a new start time.
+# A container that Docker stopped and started again keeps its ID but gets a new start time.
 container_starts() {
   local ids
   ids=$($DOCKER ps -q --no-trunc) || return 1
@@ -208,8 +195,7 @@ container_starts() {
   $DOCKER inspect -f '{{.Id}} {{.State.StartedAt}}' "${ids[@]}"
 }
 
-# Wait up to LIVE_RESTORE_WAIT seconds for live-restore: dockerd applies a reload after
-# `systemctl reload` returns. Fail unless it is on.
+# dockerd applies a reload after `systemctl reload` returns.
 await_live_restore() {
   local tries=0 state
   while :; do
@@ -223,10 +209,7 @@ await_live_restore() {
   done
 }
 
-# Restart Docker without stopping a container (R-050). A daemon started without
-# live-restore stops every container when it stops, so first reload it (SIGHUP), which
-# turns live-restore on from daemon.json; the other options need the restart. Refuse to
-# restart unless live-restore is on, and fail naming each container that was stopped.
+# A daemon without live-restore stops every container when it stops, so a reload turns it on first (R-050).
 restart_docker_live() {
   local before after line id gone=
   if dry; then say "[dry-run] $SYSTEMCTL reload docker, check live-restore, $SYSTEMCTL restart docker"; return; fi
@@ -256,7 +239,6 @@ cmd_docker() {
     $JQ -e -s 'length == 1 and (.[0] | type == "object")' "$target" >/dev/null 2>&1 \
       || refuse "$target is not a single JSON object; fix it by hand first"
     # The Anima log settings are defaults: the operator's log-driver and log-opts win (R-050).
-    # ip, selinux-enabled, live-restore and userland-proxy are forced.
     merged=$($JQ -s '.[1] * .[0] * (.[1] | del(."log-driver", ."log-opts"))' "$target" "$HERE/daemon.json") \
       || fail "jq could not merge daemon.json"
     save_previous /etc/docker/daemon.json daemon.json.previous

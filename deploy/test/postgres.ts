@@ -1,5 +1,4 @@
-// psql against the throwaway server that quality/bin/with-postgres.ts starts.
-// The server trusts every local connection, so no test passes a password.
+// The throwaway server of quality/bin/with-postgres.ts trusts every local connection, so no test passes a password.
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { binaryDirs, findTools } from "../../quality/src/gates/postgres.ts";
@@ -22,7 +21,6 @@ function connection(): Connection {
   return { socketDir, port: parsed.port || "5432", user: decodeURIComponent(parsed.username) };
 }
 
-/** Directory of the throwaway server; it also holds `server.log`. */
 export function serverDirectory(): string {
   return connection().socketDir;
 }
@@ -35,12 +33,11 @@ function psqlBinary(): string {
 
 export interface PsqlOptions {
   database?: string;
-  /** Role to connect as; defaults to the server's superuser. */
   user?: string;
   env?: Record<string, string>;
 }
 
-/** Runs psql with `args` and never throws on a non-zero exit. */
+/** Never throws on a non-zero exit. */
 export async function psql(args: string[], options: PsqlOptions = {}): Promise<PsqlResult> {
   const { socketDir, port, user } = connection();
   return finish([psqlBinary(), "-X", "-v", "ON_ERROR_STOP=1", ...args], {
@@ -55,7 +52,6 @@ export async function psql(args: string[], options: PsqlOptions = {}): Promise<P
   });
 }
 
-/** Runs one query and returns its single value as text; throws if psql fails. */
 export async function scalar(sql: string, options: PsqlOptions = {}): Promise<string> {
   const result = await psql(["-Atq", "-c", sql], options);
   if (result.exitCode !== 0) throw new Error(`psql failed: ${result.stderr}`);

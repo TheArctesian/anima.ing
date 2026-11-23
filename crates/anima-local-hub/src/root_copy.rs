@@ -5,6 +5,8 @@
 //! <copy>/database.dump  `pg_dump` of the hub's database, made directly before the files
 //! <copy>/copy.json      the list of the entries with their sizes, modes and SHA-256
 //! ```
+//!
+//! The copy holds every secret of the hub: it keeps the owner-only modes of the root, and nothing of a file is printed.
 
 mod database;
 mod entries;

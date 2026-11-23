@@ -1,4 +1,3 @@
-// The reachability table and its VPN-004 properties (VPN-012).
 import { describe, expect, it } from 'bun:test';
 import {
   daemonOverreachRows,

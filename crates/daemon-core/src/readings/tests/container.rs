@@ -1,5 +1,4 @@
-//! The control group readers of the container of a hosted hub (HMD-071, HMD-072). The figures
-//! are those that a hub of the pool showed on 2026-11-20.
+//! The figures are those that a hub of the pool showed on 2026-11-20.
 
 use std::time::Duration;
 
@@ -42,10 +41,8 @@ fn hmd_071_the_processor_time_is_the_usage_counter_of_the_control_group() {
 
 #[test]
 fn hmd_071_the_allowed_processors_are_the_hard_limit_or_the_count_and_never_the_weight() {
-    // The pool: no quota (its 25 % is a weight), one processor.
     assert_eq!(container::allowed_processors(b"max 100000\n", 1), 1000);
     assert_eq!(container::allowed_processors(b"50000 100000\n", 4), 500);
-    // A quota above the processors that the container may run on counts the processors.
     assert_eq!(container::allowed_processors(b"800000 100000\n", 2), 2000);
     assert_eq!(container::allowed_processors(b"", 0), 1000);
 }
@@ -56,7 +53,6 @@ fn hmd_071_the_processor_share_is_the_time_used_against_the_time_of_the_allowed_
         cpu: Some(container::cpu_ticks(0, 0, 500)),
         ..Reading::default()
     };
-    // Half a processor for 10 seconds, of which 1.25 seconds were used: 25 %.
     let now = Reading {
         cpu: Some(container::cpu_ticks(1_250_000, 10_000_000, 500)),
         ..Reading::default()

@@ -1,5 +1,4 @@
-//! `anima-daemon install` refuses a binary or a folder another user could change, and a binary
-//! the unit's sandbox hides, before it writes anything (MET-019).
+//! MET-019.
 
 use std::fs;
 use std::os::unix::fs::PermissionsExt as _;
@@ -114,8 +113,7 @@ fn met_019_install_refuses_a_binary_whose_path_systemd_would_misread() {
 fn met_019_install_refuses_a_bin_folder_another_user_may_write_through_an_acl() {
     let rig = enrolled();
     let bin = rig.dir.path().join("bin");
-    // Without an ACL, a 0775 bin folder is trusted only in the user's private group; with none,
-    // the ACL would change nothing, so there is nothing to test.
+    // A 0775 bin folder is trusted only in the user's private group.
     fs::set_permissions(&bin, fs::Permissions::from_mode(0o775)).expect("chmod");
     if rig.install(true).0.is_err() {
         eprintln!("this user has no private group, so group write is refused anyway: skipped");

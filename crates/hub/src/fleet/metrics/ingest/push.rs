@@ -10,6 +10,7 @@
 
 mod batch;
 mod samples;
+pub(super) mod thread_upload;
 
 use std::net::IpAddr;
 

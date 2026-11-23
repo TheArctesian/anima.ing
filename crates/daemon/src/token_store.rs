@@ -1,6 +1,5 @@
-//! Where the daemon keeps its token: the macOS Keychain, or on Linux a private file (MET-013,
-//! K8 Section 2). The record is the `Renewed` body with the hub origin added, so the expiry and
-//! the hub are stored with the token.
+//! Where the daemon keeps its token (MET-013, K8 Section 2): the `Renewed` body with the hub
+//! origin added, so the expiry and the hub are stored with the token.
 
 use std::time::Duration;
 
@@ -27,8 +26,6 @@ use keychain::Backend;
 /// the hub is capped here and the daemon renews on its own schedule.
 pub const MAX_LIFE: TimeDelta = TimeDelta::days(366);
 
-/// The daemon token, when it expires, and the hub it was issued by. Neither `Debug` nor `Clone`,
-/// as the token is not.
 pub struct Credential {
     pub token: DaemonToken,
     pub expires_at: DateTime<Utc>,
@@ -37,13 +34,11 @@ pub struct Credential {
     pub hub: Origin,
 }
 
-/// The hub as the record names it; a record without one does not read.
 #[derive(Deserialize)]
 struct HubField {
     hub: String,
 }
 
-/// The stored record: the `Renewed` body with the hub beside it.
 #[derive(Serialize)]
 struct Record<'a> {
     #[serde(flatten)]
@@ -68,15 +63,14 @@ pub enum TokenStoreError {
     #[cfg(target_os = "macos")]
     #[error("the Keychain: {0}")]
     Keychain(String),
-    /// macOS asks the person to allow this program to read, write or delete the token, and
-    /// nobody answered in time (R-322). Only the Keychain store gives it.
+    /// macOS asks the person to allow this program the token, and nobody answered in time
+    /// (R-322).
     #[error(
         "this computer's daemon needs you to allow it in the Keychain: click Always Allow in the window of macOS"
     )]
     KeychainWaits,
 }
 
-/// The daemon's token store for this platform.
 #[derive(Clone)]
 pub struct TokenStore {
     backend: Backend,
@@ -86,7 +80,6 @@ pub struct TokenStore {
 }
 
 impl Credential {
-    /// A token the hub just gave: its expiry is capped at `now` plus [`MAX_LIFE`].
     #[must_use]
     pub fn received(
         token: DaemonToken,
@@ -101,8 +94,8 @@ impl Credential {
         }
     }
 
-    /// The credential a stored record holds. The error says only that it does not read: the
-    /// parser's message could quote the token (LOG-007).
+    /// The error says only that the record does not read: the parser's message could quote the
+    /// token (LOG-007).
     ///
     /// # Errors
     /// [`TokenStoreError::Corrupt`] for a record that does not read.
@@ -119,8 +112,8 @@ impl Credential {
         })
     }
 
-    /// The record: the `Renewed` body with the hub origin added. The buffer has room for it
-    /// from the start, so it never moves and its wipe on drop covers the token.
+    /// The buffer has room for the record from the start, so it never moves and its wipe on
+    /// drop covers the token.
     fn render(self) -> Zeroizing<Vec<u8>> {
         let hub = self.hub.as_text();
         let record = Record {
@@ -137,8 +130,6 @@ impl Credential {
 }
 
 impl TokenStore {
-    /// The store of the daemon in `home`, whose Keychain calls wait
-    /// [`keychain_wait::DEADLINE`] at most.
     #[must_use]
     pub fn open(home: &Home) -> Self {
         Self {
@@ -147,8 +138,8 @@ impl TokenStore {
         }
     }
 
-    /// The same store, whose Keychain calls wait `deadline` at most: longer for a person at
-    /// the terminal, who needs time to answer the window of macOS.
+    /// A longer Keychain wait, for a person at the terminal who needs time to answer the window
+    /// of macOS.
     #[must_use]
     pub fn waiting(&self, deadline: Duration) -> Self {
         Self {
@@ -157,8 +148,6 @@ impl TokenStore {
         }
     }
 
-    /// The stored credential; `None` when the daemon holds none.
-    ///
     /// # Errors
     /// [`TokenStoreError`] when the store cannot be read, is exposed, or does not parse.
     pub fn load(&self) -> Result<Option<Credential>, TokenStoreError> {
@@ -168,8 +157,7 @@ impl TokenStore {
         Credential::from_record(&bytes).map(Some)
     }
 
-    /// Replaces the stored credential after a renewal. The old one stays when this fails
-    /// (K8 Section 5).
+    /// The old credential stays when this fails (K8 Section 5).
     ///
     /// # Errors
     /// [`TokenStoreError`] when it cannot be written.
@@ -177,7 +165,7 @@ impl TokenStore {
         self.write(credential, false)
     }
 
-    /// Stores the credential of a new enrolment; the Keychain item is made afresh.
+    /// The Keychain item is made afresh.
     ///
     /// # Errors
     /// [`TokenStoreError`] when it cannot be written.
@@ -185,8 +173,8 @@ impl TokenStore {
         self.write(credential, true)
     }
 
-    /// Deletes the stored credential, as when the daemon leaves this computer (HMD-056). A
-    /// store that holds none is not an error, so a second call ends the same as the first.
+    /// A store that holds none is not an error, so a second call ends the same as the first
+    /// (HMD-056).
     ///
     /// # Errors
     /// [`TokenStoreError`] when it cannot be deleted.

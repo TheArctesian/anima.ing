@@ -11,9 +11,7 @@ use rustix::fs::{Mode, OFlags};
 
 use daemon_core::model_work::folders::Folders;
 
-/// Makes `path` and its missing parents, one part at a time, with mode 0700, and checks each
-/// part that it made, and `path`: a plain folder (not a link) of this user. A parent that was
-/// already there (the home folder, a folder of the system) is used as it is.
+/// Checks each folder that it makes, and `path`; a parent that was already there is used as it is.
 ///
 /// # Errors
 /// An I/O error, or `PermissionDenied` when a folder is a link, not a folder, or owned by a
@@ -37,7 +35,6 @@ pub fn private_folder(path: &Path) -> io::Result<()> {
     own_plain_folder(path)
 }
 
-/// Refuses `path` unless it is a plain folder (not a link) that this user owns.
 fn own_plain_folder(path: &Path) -> io::Result<()> {
     let meta = std::fs::symlink_metadata(path)?;
     let own = meta.uid() == rustix::process::geteuid().as_raw();
@@ -50,9 +47,8 @@ fn own_plain_folder(path: &Path) -> io::Result<()> {
     Ok(())
 }
 
-/// Makes `relative` below the folder `root` (one of the three), each part relative to an open
-/// handle of its parent with `O_NOFOLLOW`, with mode 0700, and owned by this user (Section 10).
-/// A link at any part is refused. Gives the handle of the last folder.
+/// Makes each part relative to an open handle of its parent with `O_NOFOLLOW`, mode 0700 and owned
+/// by this user, and refuses a link at any part. Gives the handle of the last folder (Section 10).
 ///
 /// # Errors
 /// An I/O error; `PermissionDenied` for a part that a different user owns; `InvalidInput` for
@@ -88,8 +84,6 @@ pub fn private_below(root: &Path, relative: &Path) -> io::Result<OwnedFd> {
     Ok(dir)
 }
 
-/// The bytes that this user may still write on the file system of `path`.
-///
 /// # Errors
 /// An I/O error of `statvfs`.
 pub fn free_bytes(path: &Path) -> io::Result<u64> {
@@ -97,8 +91,6 @@ pub fn free_bytes(path: &Path) -> io::Result<u64> {
     Ok(stat.f_bavail.saturating_mul(stat.f_frsize))
 }
 
-/// Makes the three folders.
-///
 /// # Errors
 /// As [`private_folder`].
 pub fn make_all(folders: &Folders) -> io::Result<()> {
@@ -107,7 +99,7 @@ pub fn make_all(folders: &Folders) -> io::Result<()> {
         .try_for_each(|path| private_folder(path))
 }
 
-/// The bytes of the files below `path`, with no link followed.
+/// No link is followed.
 #[must_use]
 pub fn bytes_below(path: &Path) -> u64 {
     let Ok(entries) = std::fs::read_dir(path) else {

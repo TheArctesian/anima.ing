@@ -1,5 +1,4 @@
-//! The activity of each drive between two readings: read and write rates and the busy share
-//! (MET-028). Pure.
+//! The activity of each drive between two readings (MET-028).
 
 use std::time::Duration;
 
@@ -9,9 +8,7 @@ use crate::readings::{DriveCounters, Reading};
 /// The size `/proc/diskstats` counts sectors in, whatever the drive's own sector size.
 const SECTOR_BYTES: u64 = 512;
 
-/// The read, write and busy samples of each drive `current` lists, over the `elapsed` time
-/// since `previous`. A drive without counters in both readings, or with a counter that went
-/// back (a reboot, a device that came back), gets none, as an interface gets no rate.
+/// A drive whose counters are missing from a reading, or went back (a reboot), gets no sample.
 pub(super) fn drive_activity(
     previous: &Reading,
     current: &Reading,
@@ -41,13 +38,10 @@ pub(super) fn drive_activity(
     out
 }
 
-/// The counters of the device named `name` (the first, if a name repeats).
 fn counters<'a>(all: &'a [DriveCounters], name: &str) -> Option<&'a DriveCounters> {
     all.iter().find(|one| one.name == name)
 }
 
-/// Bytes read, bytes written and busy milliseconds from `was` to `now`; `None` when a counter
-/// went back.
 fn deltas(now: &DriveCounters, was: &DriveCounters) -> Option<(f64, f64, f64)> {
     let read = now.read_sectors.checked_sub(was.read_sectors)?;
     let written = now.written_sectors.checked_sub(was.written_sectors)?;

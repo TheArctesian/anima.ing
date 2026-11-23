@@ -1,9 +1,4 @@
-//! The K8 bodies between `anima-daemon` and the hub (`contracts/daemon-push.md`): enrolment,
-//! push, renewal, update and refusals, with the two secrets and the hub's pure check of a batch
-//! (MET-012, MET-013, MET-014, MET-017).
-//!
-//! Member names are camelCase, unknown members are ignored, and times are RFC 3339 UTC with
-//! `Z` and whole seconds (K8 Section 1).
+//! The K8 bodies between `anima-daemon` and the hub (MET-012, MET-013, MET-014, MET-017); unknown members are ignored (K8 Section 1).
 
 mod agent_usage;
 mod batch;
@@ -37,6 +32,10 @@ pub use keys::{
 };
 pub use refusal::{Refusal, RefusalCode};
 pub use secrets::{CODE_BYTES, CodeHash, DaemonToken, EnrolmentCode, TOKEN_BYTES, TokenHash};
+pub use thread_summaries::entries::{
+    MAX_THREAD_ENTRIES, MAX_THREAD_ENTRY, MAX_THREAD_UPLOAD, ThreadEntry, ThreadUpload,
+    ThreadUploadReceipt,
+};
 pub use thread_summaries::{
     ThreadSummaries, ThreadSummariesReceipt, ThreadSummary, ThreadSummaryReceipt,
 };

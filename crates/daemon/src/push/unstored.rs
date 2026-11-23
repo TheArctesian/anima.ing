@@ -1,42 +1,30 @@
-//! A renewed token whose save waits for the person in the Keychain (R-322, K8 Section 5).
-//!
-//! The daemon uses a new token only once it is stored. While its save waits, the daemon keeps
-//! the new token in memory, unused, pushes with the current one (the hub accepts it until the
-//! new one is first used) and tries the save again on the schedule of [`Tries`]. It asks the
-//! hub for no other token meanwhile: that renewal would replace the new token at the hub, and
-//! a save that macOS ends late could still put the replaced one in the Keychain, where the
-//! next start would read a token the hub refuses. For the same reason a token whose save once
-//! waited is never dropped: a later save that fails in another way reads the item back, and
-//! the token is used when the late save stored it, or kept and tried again when it did not.
+//! A renewed token whose save waits for the Keychain (R-322, K8 Section 5); it is used only once stored.
+//! No other renewal runs meanwhile, and a token whose save waited is kept: a late save may still store it.
 
 use chrono::{DateTime, Utc};
 
 use crate::keychain_wait::Tries;
 use crate::token_store::{Credential, TokenStoreError};
 
-/// A renewed token that is not stored yet, and when its save is tried again.
 pub struct Unstored {
     credential: Credential,
     tries: Tries,
 }
 
-/// What a try to store a renewed token ended in.
 pub enum Stored {
-    /// Stored: the daemon uses it from now.
     Yes(Credential),
-    /// Not tried: the next try is later.
     Later(Unstored),
-    /// The save waits for the person; `first` for the first save of this token that waited,
-    /// which is logged.
-    Waits { unstored: Unstored, first: bool },
-    /// Another failure after a save that waited, which may have stored the token: kept, and
-    /// tried again.
+    /// `first` marks the first wait of this token's save, which is logged.
+    Waits {
+        unstored: Unstored,
+        first: bool,
+    },
+    /// Another failure after a wait, which may have stored the token: kept and tried again.
     Unsure(Unstored, TokenStoreError),
     /// Another failure of the first save: nothing can be stored, and the token is dropped.
     No(TokenStoreError),
 }
 
-/// Tries to store `next`, a token the hub just gave, with `save` at `now`.
 pub fn store(
     next: Credential,
     now: DateTime<Utc>,
@@ -56,9 +44,7 @@ pub fn store(
 }
 
 impl Unstored {
-    /// Tries the save again with `save` when it is due at `now`. A failure other than a wait
-    /// reads the item back with `read_back`: when it holds this token, a save that waited
-    /// stored it late.
+    /// After a failure other than a wait, an item that holds this token was stored late by a waited save.
     pub fn retry(
         mut self,
         now: DateTime<Utc>,

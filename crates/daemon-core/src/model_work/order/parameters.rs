@@ -1,5 +1,4 @@
 //! The `parameters` object of each model work type (Section 2): exactly the members of its row.
-//! Identifiers are UUIDs; a runtime, a backend, a format or a probe is a word of a fixed list.
 
 use serde_json::{Map, Value};
 use uuid::Uuid;
@@ -16,7 +15,6 @@ use crate::wire::WorkType;
 
 type Object = Map<String, Value>;
 
-/// The source of a pull: an organisation, a repository and a commit.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PullSource {
     pub organisation: String,
@@ -24,7 +22,6 @@ pub struct PullSource {
     pub revision: String,
 }
 
-/// One file of a pull.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PullFile {
     pub name: String,
@@ -32,7 +29,6 @@ pub struct PullFile {
     pub sha256: String,
 }
 
-/// The typed `parameters` of each type.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Parameters {
     Report,
@@ -228,8 +224,6 @@ fn server_start(object: &Object, machine: &ModelMachine<'_>) -> Result<Parameter
     })
 }
 
-/// Reads the `parameters` of `work_type`.
-///
 /// # Errors
 /// The cause of the first member that does not hold.
 pub fn read(

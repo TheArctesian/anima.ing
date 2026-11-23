@@ -1,7 +1,5 @@
 #!/bin/sh
-# Makes the password of the OwnTracks server and the file that holds the Anima
-# ingest token. Run it one time, in this folder, before `docker compose up -d`.
-# It prints the password one time. It writes only into ./secrets (not in git).
+# Makes the OwnTracks password and the Anima ingest token file in ./secrets; run it once before `docker compose up -d`.
 set -eu
 
 cd "$(dirname "$0")"
@@ -18,8 +16,7 @@ else
     echo "OwnTracks password: $password   (shown one time)"
 fi
 
-# The token comes from `anima location token add owntracks`. Give it on standard
-# input, so that it is not in the shell history:  ./setup.sh < token-file
+# The token comes on standard input, so it is not in the shell history: ./setup.sh < token-file
 if [ ! -t 0 ]; then
     token="$(cat)"
     if [ -n "$token" ]; then

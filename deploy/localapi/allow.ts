@@ -1,5 +1,5 @@
-// The two LocalAPI calls the hub may make (D-4, VPN-005). Pure: no I/O, no globals.
-// An allowed call is rebuilt from validated parts, so the raw request never reaches tailscaled.
+// The two LocalAPI calls the hub may make (D-4, VPN-005). An allowed call is rebuilt from validated parts,
+// so the raw request never reaches tailscaled.
 
 export type Decision =
   | { kind: "forward"; method: "GET" | "POST"; upstream: string; logIp?: string }
@@ -10,14 +10,12 @@ export const PING_PATH = "/localapi/v0/ping";
 
 const refuse = (reason: string): Decision => ({ kind: "refuse", reason });
 
-/** One decimal octet 0-255 without leading zeros, or null. */
 function octet(part: string | undefined): number | null {
   if (part === undefined || !/^(?:0|[1-9]\d{0,2})$/.test(part)) return null;
   const value = Number(part);
   return value > 255 ? null : value;
 }
 
-/** Strict dotted quad inside 100.64.0.0/10 (the tailnet range): no leading zeros, no IPv6. */
 export function tailnetIpv4(text: string): string | null {
   const [first, second, third, fourth, ...extra] = text.split(".");
   if (extra.length > 0) return null;

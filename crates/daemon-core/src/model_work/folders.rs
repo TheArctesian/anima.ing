@@ -1,5 +1,4 @@
-//! The folders that model work writes (Section 10, CAG-009, MET-002): pure, from the kind of
-//! the installation and the environment.
+//! The folders that model work writes (Section 10, CAG-009, MET-002).
 
 use std::path::{Path, PathBuf};
 
@@ -10,18 +9,13 @@ use super::releases::Release;
 
 const FOLDER: &str = "anima-daemon";
 
-/// How the daemon is installed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Installation {
-    /// A launchd agent of the user on macOS.
     MacUser,
-    /// A systemd user unit on Linux.
     LinuxUser,
-    /// A systemd system unit on Linux.
     LinuxSystem,
 }
 
-/// The three folders of model work.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Folders {
     pub runtimes: PathBuf,
@@ -35,9 +29,6 @@ fn absolute(value: Option<String>) -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
-/// The folders for `installation`, from `env` (a lookup of environment variables). With
-/// `ANIMA_DAEMON_HOME` set, the three folders are below it. `None` when a variable that the
-/// layout needs is not set to an absolute path.
 #[must_use]
 pub fn layout(installation: Installation, env: impl Fn(&str) -> Option<String>) -> Option<Folders> {
     let below = |base: &Path, state: &Path| Folders {

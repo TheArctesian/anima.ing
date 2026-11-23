@@ -1,8 +1,3 @@
-// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
-// deploy/bin/anima-install: the one-line installation of the link and of the daemon on a computer
-// with no application (hosted-mode.md HM-T33, R-240 c). It runs against a fake release folder,
-// with stand-ins for anima-link, anima-daemon and curl that write down what they were given: no
-// network, no unit and no hub.
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -22,7 +17,6 @@ let home: string;
 let release: string;
 let log: string;
 
-/** A stand-in program: it writes its name and arguments, then its standard input, to the log. */
 function standIn(name: string, body: string): string {
   return `#!/bin/sh
 printf '%s %s\\n' '${name}' "$*" >> "$STAND_IN_LOG"
@@ -30,11 +24,6 @@ ${body}
 `;
 }
 
-/**
- * anima-link. `unit show` prints the JSON of the real program: `$HOME/unit-json` when a test put
- * one there, else installed or not with the file of the unit. `unit install` writes a unit with
- * the command line of the systemd unit, `"-state" "<folder>" "-listen" …`.
- */
 const LINK = standIn("anima-link", `unit="$HOME/units/anima-link.service"
 case $1 in
   join) printf 'stdin %s\\n' "$(cat)" >> "$STAND_IN_LOG" ;;
@@ -109,10 +98,8 @@ const linkHome = (): string => process.platform === "darwin" ? join(home, "Libra
 const daemonHome = (): string => process.platform === "darwin" ? join(home, "Library/Application Support/anima-daemon") : join(home, ".config/anima-daemon");
 const daemonCopy = (): string => join(home, ".local/bin/anima-daemon");
 const lines = (): string[] => readFileSync(log, "utf8").split("\n").filter((line) => line !== "");
-/** The lines that hold the arguments of a program, not its standard input. */
 const commands = (): string[] => lines().filter((line) => !line.startsWith("stdin "));
 
-/** The unit of the application's link: a LaunchAgent that names a different state folder. */
 function appUnit(state: string): void {
   const file = join(home, "app-unit.plist");
   writeFileSync(file, `<array>\n        <string>/Applications/Anima.app/link</string>\n        <string>-state</string>\n        <string>${state}</string>\n</array>\n`);

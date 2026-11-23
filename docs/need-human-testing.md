@@ -155,6 +155,27 @@ Many entries were written for the hub on the VPS. The operator uses only the hos
 
 The steps for a hub with a user name and a password (the self-host path) stay in each entry.
 
+### HT-166: the application updates the daemon on each build (R-437, HMD-055)
+
+Built: on the branch `daemon/update-updates-everything`, the application replaces an older daemon in
+`~/.local/bin` also on a build with an ad hoc signature, checks the seal of its bundle and of the new copy,
+waits for the new daemon to answer with its version and puts the copy of before back when it does not. The
+tests use stand-in daemons in a folder of their own; no test ran the real LaunchAgent, the Keychain or
+`codesign` on a real bundle.
+
+1. With an installed application whose daemon is older (for example 0.9.29), install a trial build of this
+   branch (an ad hoc signature) and open it. Expected: within a minute macOS asks whether `anima-daemon`
+   may use the Keychain; allow it. The Code page says "The daemon of this computer was updated from
+   0.9.29 to <new version>" one time.
+2. Run `ls ~/.local/bin`. Expected: `anima-daemon` and `anima-daemon.0.9.29`, and no `anima-daemon.previous`.
+3. Run `~/.local/bin/anima-daemon --version`. Expected: the version of the trial build.
+4. Quit the application and open it again. Expected: no message about the daemon, and no Keychain question.
+5. Start a Claude Code thread, then install a second trial build and open it while the thread runs.
+   Expected: the thread keeps running through the update.
+6. Run `anima agents running` in Terminal. Expected: the list of threads, with no error.
+
+Result: Open.
+
 ### HT-146: a process that an agent detached cannot answer an approval (R-315, THR-031)
 
 Built: on the branch `threads/peer-ancestry`, the runner also takes a client for an agent when the
@@ -5124,5 +5145,34 @@ workflow, the launcher in the release files, and the dialog of the desktop appli
 8. Run `anima-daemon uninstall` and answer `y`.
    Expected: the profile is unloaded (not in `profiles` any more), and both files and the folder
    `/usr/local/libexec/anima` are gone.
+
+### HT-167: Hosting > Applications lists the containers of each machine (task H42 stage 1; HSE-002, HSE-009)
+
+Built on the branch `hosted/h42-mount`: the page Hosting, section Applications, reads the devices with SSH on and the
+containers of each through the hub. The tests use a fake hub; nobody has seen the list with real machines.
+
+1. In the desktop application of this build, signed in to a hub with at least two devices that have SSH on with an
+   accepted host key and Docker, open Hosting.
+   Expected: the section Applications shows one group for each of those devices, by name. The header of each group has the
+   name, the number of items, the status of the device as the Devices page shows it (for example Up) and "X of Y running".
+2. On one machine, run a Compose project of two services (`docker compose up -d`) and one container with `docker run -d`.
+   Press Refresh.
+   Expected: the project is one row with "Compose project · 2 containers"; the plain container is a row of its own with its
+   image. Each row has the mark "Not managed" and "Read only".
+3. Press the arrow of the project row.
+   Expected: its two containers show below it, each with its state.
+4. Stop one container of the project (`docker stop`), then press Refresh, then choose "Needs you".
+   Expected: the project shows "Partly running" with a coloured wash; under Needs you only the rows that are not all
+   running are shown.
+5. Choose All, type a part of the name of a container of a different machine in the field.
+   Expected: only the group of that machine is shown, with the row that holds the container.
+6. Choose one machine in Machine.
+   Expected: only the group of that machine is shown.
+7. Add a device with SSH on and Docker but no container, and press Refresh.
+   Expected: its group says "Nothing installed" with the link "Install from the catalogue", which opens the Catalogue.
+8. Turn off the SSH credential of a machine in Anima, or stop its Docker, and press Refresh.
+   Expected: its group stays, with the words of the hub that say why; the other groups still show their rows.
+9. Press "Look for newer images".
+   Expected: the column Updates says "Up to date" or "Newer image" for each row of a machine that answered.
 
 Result: Open.

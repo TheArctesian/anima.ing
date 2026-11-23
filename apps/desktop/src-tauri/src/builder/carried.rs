@@ -36,13 +36,32 @@ const WINDOWS_TRIPLE: &str = "x86_64-pc-windows-msvc";
 const LINUX_TRIPLE: &str = "x86_64-unknown-linux-gnu";
 const MAC_TRIPLES: [&str; 2] = ["aarch64-apple-darwin", "x86_64-apple-darwin"];
 
-/// The `bundle` settings that make Tauri carry the seven programs and the tree, whose folder
-/// `apps/desktop/src-tauri/database` becomes `database` in the resources.
+/// The licence files that each copy of `anima` carries (deploy/release/licences.txt, which
+/// deploy/test/cli-licences.test.ts holds against this list), as `bundle.resources` maps them:
+/// from the folder of the shell to `licences/<name>`. crates/shortening holds parts under
+/// Apache-2.0, whose section 4 asks for the licence and the NOTICE text in each copy.
+const LICENCES: [(&str, &str); 3] = [
+    ("../../../LICENSE", "licences/LICENSE"),
+    ("../../../crates/shortening/NOTICE", "licences/NOTICE"),
+    (
+        "../../../crates/shortening/LICENSE-APACHE",
+        "licences/LICENSE-APACHE",
+    ),
+];
+
+/// The `bundle` settings that make Tauri carry the seven programs, the tree, whose folder
+/// `apps/desktop/src-tauri/database` becomes `database` in the resources, and the licence files.
+/// The platform files of macOS and Linux name the licence files too; Windows reads them only here.
 pub fn bundle_settings() -> serde_json::Value {
     let programs: Vec<String> = programs()
         .map(|program| format!("binaries/{program}"))
         .collect();
-    serde_json::json!({ "externalBin": programs, "resources": { "database": "database" } })
+    let mut resources = serde_json::Map::new();
+    resources.insert("database".to_owned(), "database".into());
+    for (source, target) in LICENCES {
+        resources.insert(source.to_owned(), target.into());
+    }
+    serde_json::json!({ "externalBin": programs, "resources": resources })
 }
 
 /// The Rust targets `tauri build` compiles for `target`.

@@ -1,37 +1,28 @@
-//! One fixed command `install` runs after the unit file is written, and how it is run (MET-019,
-//! D-10): an absolute program, no shell, no input, a deadline, and a child that is killed by its
-//! own handle when the deadline passes.
+//! One fixed command that `install` runs: an absolute program, no shell, no input and a deadline (MET-019, D-10).
 
 use std::io;
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
 
-/// How long `systemctl` or `launchctl` may take before it is killed.
 pub const STEP_DEADLINE: Duration = Duration::from_secs(30);
 
 /// The only search path a command gets: the caller's own environment is not passed on.
 #[cfg(unix)]
 const PATH: &str = "/usr/sbin:/usr/bin:/sbin:/bin";
 
-/// How often a running command is looked at.
 const POLL: Duration = Duration::from_millis(20);
 
-/// One fixed command to run after the file is written.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Step {
     pub program: &'static str,
     pub args: Vec<String>,
     /// A failure is expected and fine (`launchctl bootout` of a daemon that is not loaded).
     pub may_fail: bool,
-    /// The program may also not start, or run past its deadline, without an error for the
-    /// install. Only the two steps that retire the unit of the old program (R-126) set it.
+    /// Not starting, or running past its deadline, is no install error either (R-126).
     pub may_not_run: bool,
-    /// Variables the command gets besides `PATH`: the session bus for `systemctl --user`.
     pub env: Vec<(&'static str, String)>,
-    /// While a run fails, wait the next of these pauses and run it again; empty: one run.
-    /// `launchctl bootstrap` right after `bootout` answers EIO (5) for some seconds while
-    /// launchd still takes the old service out, so it gets several tries.
+    /// `launchctl bootstrap` right after `bootout` answers EIO for some seconds, so it gets several tries.
     pub retries: &'static [Duration],
 }
 
@@ -55,13 +46,10 @@ impl Step {
     }
 }
 
-/// Runs `step` with at most `deadline` per run; while a run fails, waits the next pause of
-/// `step.retries` and runs it again, until a run succeeds or the pauses are spent.
+/// `Ok(false)` is a failure exit.
 ///
 /// # Errors
-/// The I/O error when the program cannot start or cannot be waited on; an error of kind
-/// [`io::ErrorKind::TimedOut`] when it ran past `deadline` (it was then killed). `Ok(false)` is
-/// a failure exit.
+/// The I/O error when the program cannot start or be waited on, or [`io::ErrorKind::TimedOut`] past `deadline`.
 pub fn run_step(step: &Step, deadline: Duration) -> io::Result<bool> {
     let mut ok = run_once(step, deadline)?;
     for pause in step.retries {
@@ -135,7 +123,6 @@ fn run_once(step: &Step, deadline: Duration) -> io::Result<bool> {
 mod tests {
     use super::*;
 
-    /// A pause short enough that a test does not wait.
     const SHORT: Duration = Duration::from_millis(10);
 
     #[test]
@@ -184,8 +171,6 @@ mod tests {
 
     #[test]
     fn met_019_a_bootstrap_that_answers_eio_twice_succeeds_at_the_third_try() {
-        // As launchd at 2026-11-21 15:50 UTC: two answers of error 5 while the old service was
-        // still being taken out, then success.
         let dir = tempfile::tempdir().expect("a folder");
         let count = dir.path().join("count");
         let mut step = Step::new("/bin/sh", &["-c"]);

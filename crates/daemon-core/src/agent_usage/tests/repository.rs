@@ -1,6 +1,3 @@
-//! The repository name (AIS-002, R-134): the remote `origin` of a git configuration, without
-//! credentials, and never a local path.
-
 use std::path::Path;
 
 use proptest::prelude::*;
@@ -96,7 +93,6 @@ fn ais_002_a_worktree_s_link_and_main_folder_are_found() {
 }
 
 proptest! {
-    /// Whatever the URL, a name is one the hub takes, with no `@`, `:` or space in it.
     #[test]
     fn r_134_any_remote_gives_a_valid_name_or_none(url in "\\PC{0,80}") {
         if let Some(name) = remote_name(&url) {
@@ -105,7 +101,6 @@ proptest! {
         }
     }
 
-    /// Credentials in any URL never reach the name.
     #[test]
     fn r_134_credentials_never_reach_the_name(user in "[a-z]{1,8}", secret in "[A-Za-z0-9/_.-]{1,16}") {
         let url = format!("https://{user}:{secret}MARKER@github.com/me/app.git");

@@ -190,6 +190,9 @@ pub enum Action {
     },
     /// Drops a file that did not go with a prompt yet (TH111).
     Unattach { thread: Uuid, attachment: Uuid },
+    /// The version of the daemon of the runner (HMD-055). A runner from before this call closes
+    /// the connection at it, which says that it is older.
+    Version,
 }
 
 /// A frame of the runner to a client.
@@ -264,6 +267,10 @@ pub enum Outcome {
         folders: Vec<String>,
         #[serde(default)]
         more: bool,
+    },
+    /// The version of the daemon of the runner, as its `--version` prints it after the name.
+    Version {
+        version: String,
     },
     Refused {
         why: Refusal,

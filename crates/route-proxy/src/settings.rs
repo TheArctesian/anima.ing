@@ -74,6 +74,10 @@ pub enum SettingsError {
     NoHub,
     #[error("{PRIVATE_ADDRESS} needs {PRIVATE_NETWORKS}")]
     NoPrivateNetworks,
+    #[error("{PRIVATE_NETWORKS} holds a network wider than /8 (IPv4) or /16 (IPv6)")]
+    WidePrivateNetwork,
+    #[error("{PRIVATE_ADDRESS} is unspecified or the public address of {LISTEN}")]
+    PrivateAddressPublic,
 }
 
 /// The settings, or `None` when the proxy is off.
@@ -110,7 +114,7 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Option<Settings>, Sett
             total: positive(env, OPEN_PLAIN)?.unwrap_or(256),
             per_client: positive(env, OPEN_PER_CLIENT)?.unwrap_or(PER_CLIENT),
         },
-        private: private(env)?,
+        private: private(env, listen)?,
         udp_flows: positive(env, UDP_FLOWS)?.unwrap_or(64),
         udp_idle: positive::<u64>(env, UDP_IDLE_SECONDS)?
             .map_or(Duration::from_secs(60), Duration::from_secs),
@@ -119,10 +123,19 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Option<Settings>, Sett
     }))
 }
 
-fn private(env: &BTreeMap<String, String>) -> Result<Option<Private>, SettingsError> {
+/// The private place, when its address is set; its networks are then needed. A private route
+/// may reach a database with no consent at the machine (R-390, R-391), so a network that holds
+/// the internet or an address that is also public is refused.
+fn private(
+    env: &BTreeMap<String, String>,
+    listen: SocketAddr,
+) -> Result<Option<Private>, SettingsError> {
     let Some(address) = read::<IpAddr>(env, PRIVATE_ADDRESS)? else {
         return Ok(None);
     };
+    if address.is_unspecified() || address.to_canonical() == listen.ip().to_canonical() {
+        return Err(SettingsError::PrivateAddressPublic);
+    }
     let networks = env.get(PRIVATE_NETWORKS).map_or(Ok(Vec::new()), |text| {
         text.split(',')
             .map(str::trim)
@@ -135,6 +148,9 @@ fn private(env: &BTreeMap<String, String>) -> Result<Option<Private>, SettingsEr
     })?;
     if networks.is_empty() {
         return Err(SettingsError::NoPrivateNetworks);
+    }
+    if networks.iter().any(Network::is_wide) {
+        return Err(SettingsError::WidePrivateNetwork);
     }
     Ok(Some(Private { address, networks }))
 }

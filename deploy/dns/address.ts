@@ -1,11 +1,9 @@
 type Ipv4 = readonly [number, number, number, number];
 
-/** A CIDR block as its base octets and prefix length. */
 type Block = readonly [Ipv4, number];
 
 const VPN_RANGE: Block = [[100, 64, 0, 0], 10];
 
-/** Ranges that are never a VPS public address: RFC 1918, CGNAT, loopback, link-local, documentation and reserved. */
 const NON_PUBLIC: readonly Block[] = [
   [[0, 0, 0, 0], 8],
   [[10, 0, 0, 0], 8],
@@ -23,14 +21,12 @@ const NON_PUBLIC: readonly Block[] = [
   [[240, 0, 0, 0], 4],
 ];
 
-/** One decimal octet 0–255 without leading zeros, or undefined. */
 function octet(part: string | undefined): number | undefined {
   if (part === undefined || !/^(0|[1-9]\d{0,2})$/.test(part)) return undefined;
   const value = Number(part);
   return value > 255 ? undefined : value;
 }
 
-/** Parses a strict dotted quad: four decimal octets 0–255 without leading zeros. */
 export function parseIpv4(address: string): Ipv4 | undefined {
   const [first, second, third, fourth, ...extra] = address.split('.');
   if (extra.length > 0) return undefined;

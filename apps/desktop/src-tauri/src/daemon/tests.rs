@@ -5,6 +5,7 @@
 
 mod flow;
 mod folders;
+mod guards;
 mod removal;
 mod rig;
 mod stuck;

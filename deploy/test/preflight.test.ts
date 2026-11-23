@@ -1,5 +1,3 @@
-// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
-// deploy/bin/preflight, checked on plain inputs (NET-003, DB-002). Nothing here needs Docker.
 import { describe, expect, test } from "bun:test";
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

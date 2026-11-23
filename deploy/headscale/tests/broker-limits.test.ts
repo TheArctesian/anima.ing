@@ -1,4 +1,3 @@
-// The broker's rate and size limits (vpn-plan.md Section 5.1), with time as a parameter.
 import { describe, expect, it } from 'bun:test';
 import { admit, outstandingKeys, record, type LimitConfig, type LimitState } from '../broker/limits.ts';
 import type { Issued } from '../broker/outcome.ts';

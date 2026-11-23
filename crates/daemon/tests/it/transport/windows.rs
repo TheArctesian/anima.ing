@@ -1,4 +1,3 @@
-//! Windows refuses an ordinary file in place of the link socket.
 use super::*;
 
 #[test]

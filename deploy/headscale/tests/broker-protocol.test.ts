@@ -1,4 +1,4 @@
-// The broker's request parser (R-055, VP-7, VP-10): only the six verbs with valid values parse.
+// The broker's request parser (R-055, VP-7, VP-10).
 import { describe, expect, it } from 'bun:test';
 import { MAX_REQUEST_BYTES, parseRequest } from '../broker/protocol.ts';
 

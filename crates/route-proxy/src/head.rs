@@ -1,6 +1,7 @@
 //! The head of one HTTP/1.1 request, written again before it goes to the application (Section
 //! 12.3, SF-229, SF-332). Pure. One request goes on each connection to the application
 //! (`Connection: close`), so each request of the client is read here (SF-326).
+//! The `Host` must be the TLS SNI name or the answer is 421; a body has one digits-only `Content-Length`, never with a `Transfer-Encoding`.
 
 use std::net::IpAddr;
 

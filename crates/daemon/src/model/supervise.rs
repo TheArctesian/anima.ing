@@ -1,6 +1,4 @@
-//! The servers of the node and their supervision (Section 9, CAG-005, RTC-002, RTC-006): the
-//! start with the listener check, the loopback check in each cycle, the waits of a restart,
-//! the limit of the temporary folder, and the stop.
+//! The servers of the node and their supervision (Section 9, CAG-005, RTC-002, RTC-006).
 
 use std::collections::BTreeMap;
 use std::time::Duration;
@@ -13,12 +11,9 @@ use uuid::Uuid;
 use super::server::{self, Launch, Running};
 use super::{folders, sockets};
 
-/// The most seconds from a start to a listener on loopback (`start_failed`).
 pub const READY_SECONDS: u64 = 120;
-/// The most bytes of the temporary folder of a server (`limit_disk`).
 pub const TEMPORARY_BYTES: u64 = 2 << 30;
 
-/// The state of a server, as the runtime report spells it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ServerState {
     Starting,
@@ -41,10 +36,9 @@ impl ServerState {
     }
 }
 
-/// One server: what starts it, the process, and its record.
 pub struct Server {
     pub runtime: &'static str,
-    /// Makes the launch of each start with a new port; `None` when no port is free.
+    /// Each start gets a new port; `None` when no port is free.
     pub launch: Box<dyn Fn() -> Option<(Launch, u16)> + Send>,
     pub running: Option<(Running, u16)>,
     pub record: Supervision,
@@ -53,14 +47,12 @@ pub struct Server {
     pub restart_at: Option<u64>,
 }
 
-/// The servers of the node.
 #[derive(Default)]
 pub struct Servers {
     pub map: BTreeMap<Uuid, Server>,
 }
 
-/// The verdict over the sockets of each process of the tree, read again now. A tree or a
-/// table that does not read counts as exposed.
+/// A tree or a table that does not read counts as exposed.
 async fn verdict_of(running: &mut Running, port: u16) -> (Verdict, bool) {
     let table = match running.poll().await {
         Ok(members) => sockets::table(&members).await,
@@ -98,13 +90,12 @@ impl Server {
         self.state = state;
     }
 
-    /// One look at a running server: ended, exposed, ready, or too slow. `Some` when it ended.
+    /// `Some` when the server ended.
     async fn look(&mut self, now: u64, temporary_bytes: u64) -> Option<()> {
         let (running, port) = self.running.as_mut()?;
         if let Ok(Some(status)) = running.child.try_wait() {
             let failure = running.launch_failure(status);
-            // The main process ended: each other process of its tree ends with it, so no
-            // child keeps a listener that the loopback check no longer reads.
+            // The whole tree ends, so no child keeps a listener that the loopback check no longer reads.
             if let Some((mut running, _)) = self.running.take() {
                 server::kill(&mut running).await;
             }
@@ -134,7 +125,6 @@ impl Server {
         None
     }
 
-    /// One cycle of the supervision at `now` (each 15 seconds, and while a start waits).
     pub async fn cycle(&mut self, now: u64, temporary_bytes: u64) {
         if matches!(self.state, ServerState::Failed(_) | ServerState::Stopped) {
             return;
@@ -155,9 +145,6 @@ impl Server {
 }
 
 impl Servers {
-    /// `server_start`: starts the server and waits until it listens on loopback, at most
-    /// [`READY_SECONDS`] of the `clock`.
-    ///
     /// # Errors
     /// `listener`, `start_failed` or `limit_disk`.
     pub async fn start(
@@ -188,7 +175,7 @@ impl Servers {
         Ok(())
     }
 
-    /// `server_stop`: `false` when no such server is on this node.
+    /// `false` when no such server is on this node.
     pub async fn stop(&mut self, id: Uuid) -> bool {
         let Some(mut server) = self.map.remove(&id) else {
             return false;
@@ -199,7 +186,6 @@ impl Servers {
         true
     }
 
-    /// One cycle over each server; `temporary` gives the folder of a server.
     pub async fn cycle(&mut self, now: u64, temporary: impl Fn(Uuid) -> std::path::PathBuf) {
         for (id, server) in &mut self.map {
             let bytes = folders::bytes_below(&temporary(*id));
@@ -207,7 +193,6 @@ impl Servers {
         }
     }
 
-    /// Stops each server: the daemon stops.
     pub async fn stop_all(&mut self) {
         let ids: Vec<Uuid> = self.map.keys().copied().collect();
         for id in ids {

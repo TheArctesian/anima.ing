@@ -1,5 +1,4 @@
-// apps/desktop/src-tauri/ios-archive.sh: what a run makes, from its version and its two
-// variables (mobile plan M5-4). `--plan` builds nothing, so no test needs Xcode.
+// `--plan` builds nothing, so no test needs Xcode (mobile plan M5-4).
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 
@@ -13,7 +12,6 @@ function plan(set: Record<string, string>, ...given: string[]): { exitCode: numb
 
 const SIGNED = { IOS_SIGN_IDENTITY: "Apple Distribution: Example LLC (ABCDE12345)", IOS_PROFILE: "/nowhere/app.mobileprovision" };
 
-// This script packages iOS on Unix release hosts.
 describe.skipIf(process.platform === "win32")("the plan of a run", () => {
   test("M5-3: the build number comes from the version, and with no identity there is no signature", () => {
     expect(plan({}, "0.7.95")).toEqual({ exitCode: 0, printed: "version=0.7.95\nbuild=795\nsigned=no", said: "" });
@@ -36,7 +34,6 @@ describe.skipIf(process.platform === "win32")("the plan of a run", () => {
   });
 });
 
-// This script packages iOS on Unix release hosts.
 describe.skipIf(process.platform === "win32")("what is refused before a build", () => {
   test.each([
     [{ IOS_SIGN_IDENTITY: SIGNED.IOS_SIGN_IDENTITY }, "0.1.0", "IOS_PROFILE must name"],

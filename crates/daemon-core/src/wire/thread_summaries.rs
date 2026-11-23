@@ -1,5 +1,7 @@
 //! Thread summaries carried by the daemon's metrics push (K8 Section 4, TH20).
 
+pub(super) mod entries;
+
 use std::collections::BTreeSet;
 
 use chrono::{DateTime, Utc};
@@ -61,7 +63,7 @@ impl ThreadSummaries {
 }
 
 impl ThreadSummary {
-    fn fits(&self) -> bool {
+    pub(super) fn fits(&self) -> bool {
         !self.runner_id.is_nil()
             && Source::parse(&self.program).is_some()
             && matches!(

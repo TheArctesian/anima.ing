@@ -2,11 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-// AlmaLinux 10's awk is gawk 5.3, which refuses a keyword or a built-in function as a
-// `-v` name ("cannot use gawk builtin `include' as variable name") and gives its special
-// variables a meaning. macOS awk accepts all of them, so only this scan catches them here.
-// Lists taken from gawk 5.3.0 on almalinux:10: PROCINFO["identifiers"] for the built-ins
-// and special variables, and `gawk -v WORD=1` (fatal for each keyword below).
+// AlmaLinux 10's gawk 5.3 refuses a keyword or built-in as a `-v` name; macOS awk accepts them.
+// Lists from gawk 5.3.0 on almalinux:10: PROCINFO["identifiers"] and `gawk -v WORD=1`.
 const KEYWORDS =
   "BEGIN BEGINFILE END ENDFILE break case continue default delete do else exit for func function " +
   "getline if in include load namespace next nextfile print printf return switch while";
@@ -29,7 +26,6 @@ function scripts(dir: string): string[] {
   });
 }
 
-/** Each `-v NAME=` and `function NAME(` in a file, with its line number. */
 function awkNames(text: string): { name: string; line: number }[] {
   return text.split("\n").flatMap((line, index) =>
     [...line.matchAll(/(?:^|\s)-v\s+([A-Za-z_][A-Za-z0-9_]*)=|\bfunction\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/g)].map(

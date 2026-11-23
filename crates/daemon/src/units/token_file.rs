@@ -1,6 +1,5 @@
-//! Checks the system unit's token as root (MET-019): the file is opened without following a
-//! link, without blocking on a pipe and without taking a terminal, and is then judged by what
-//! the open file is, so the account cannot swap it between the check and the read.
+//! Checks the system unit's token as root (MET-019). The open file is judged, so the account
+//! cannot swap it between the check and the read.
 
 use std::fs::{self, File, OpenOptions};
 use std::io;
@@ -22,12 +21,7 @@ pub enum SystemTokenError {
     Read { path: PathBuf, source: io::Error },
 }
 
-/// Checks the token file `token` for the system unit: the account in `passwd` must exist and
-/// own it as a regular 0600 file, and it must hold a record that expires after `now`. `program`
-/// is printed in the enrol command. The token's text never reaches an error (LOG-007).
-///
-/// # Errors
-/// [`SystemTokenError::NotReady`] for what is not in order, `Read` when it cannot be read.
+/// The token's text never reaches an error (LOG-007).
 pub(super) fn check(
     token: &Path,
     passwd: &str,
@@ -44,8 +38,7 @@ pub(super) fn check(
             (Some(file), Some((metadata.mode(), metadata.uid())))
         }
         Err(error) if error.kind() == io::ErrorKind::NotFound => (None, None),
-        // A link (ELOOP), a socket (ENXIO) or another file that cannot be opened as one
-        // (EOPNOTSUPP): described as itself, which is no regular file.
+        // A link, a socket or another special file is described as itself: no regular file.
         Err(error) if not_a_file(&error) => {
             let link = fs::symlink_metadata(token).map_err(read)?;
             (None, Some((link.mode(), link.uid())))
@@ -67,15 +60,12 @@ pub(super) fn check(
     Ok(())
 }
 
-/// Whether opening failed because the path is a link, a socket or another special file.
 fn not_a_file(error: &io::Error) -> bool {
     [Errno::LOOP, Errno::NXIO, Errno::OPNOTSUPP]
         .iter()
         .any(|errno| error.raw_os_error() == Some(errno.raw_os_error()))
 }
 
-/// Opens `token` for reading: never through a link at its end, never waiting on a pipe, never
-/// as the controlling terminal.
 fn open(token: &Path) -> io::Result<File> {
     let flags = OFlags::NOFOLLOW | OFlags::NONBLOCK | OFlags::NOCTTY;
     OpenOptions::new()
@@ -96,8 +86,7 @@ mod tests {
 
     const PROGRAM: &str = "/usr/local/bin/anima-daemon";
 
-    /// A folder for the token, and `/etc/passwd` text that names the running user as the
-    /// account, so a file this test writes is the account's own.
+    /// The running user is the account, so a file this test writes is the account's own.
     fn rig() -> (tempfile::TempDir, PathBuf, String) {
         let dir = tempfile::tempdir().expect("a folder");
         let token = dir.path().join("token");

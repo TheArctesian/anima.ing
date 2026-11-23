@@ -1,7 +1,6 @@
 /**
- * Seeded fuzz run for the HuJSON reader. `hujson.test.ts` runs this file in a child
- * process with a timeout, because a synchronous loop that never ends cannot be stopped
- * from inside the test runner. Exit code 0 means every round behaved; 1 names a failure.
+ * `hujson.test.ts` runs this fuzz file in a child process with a timeout, because a synchronous loop
+ * that never ends cannot be stopped from inside the test runner.
  */
 
 import { HujsonError, parseHujson } from '../src/hujson.ts';

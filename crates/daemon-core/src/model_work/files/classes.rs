@@ -1,14 +1,10 @@
-//! The classes that a copy may name in `config.json` (`architectures`) and
-//! `tokenizer_config.json` (`tokenizer_class`) for each runtime (Section 2.2, SEC-C-008). A
-//! class that is not in the list of the runtime could make the runtime load code of the
-//! repository, so the copy is refused (`remote_code`).
+//! The classes a copy may name for each runtime (Section 2.2, SEC-C-008). A class outside the
+//! runtime's list could make the runtime load code of the repository.
 
 use crate::model_work::names::Runtime;
 
-/// The text-generation architectures of vLLM. The daemon pins no vLLM version yet (no release
-/// source has one), so this is the "Text Generation" list of text-only models (native and
-/// Transformers-backend tables) of the stable documentation, vLLM v0.34.0 (read from its source
-/// links), <https://docs.vllm.ai/en/stable/models/supported_models.html>, read on 2026-11-22.
+/// The "Text Generation" list of text-only models of vLLM v0.34.0,
+/// <https://docs.vllm.ai/en/stable/models/supported_models.html>.
 pub const VLLM_ARCHITECTURES: [&str; 131] = [
     "AfmoeForCausalLM",
     "AliceAIForCausalLM",
@@ -143,8 +139,7 @@ pub const VLLM_ARCHITECTURES: [&str; 131] = [
     "VaultGemmaForCausalLM",
 ];
 
-/// The tokenizer classes of the `transformers` library that a copy may name. A choice of the
-/// daemon, not of a document of vLLM: the common fast and slow classes, no custom class.
+/// A choice of the daemon, not of vLLM: the common fast and slow classes, no custom class.
 pub const TOKENIZER_CLASSES: [&str; 15] = [
     "PreTrainedTokenizerFast",
     "TokenizersBackend",
@@ -163,9 +158,8 @@ pub const TOKENIZER_CLASSES: [&str; 15] = [
     "T5TokenizerFast",
 ];
 
-/// The classes that `runtime` loads from `config.json`, or `None` when the runtime does not
-/// read a `config.json` of the copy with class names that this daemon checks:
-/// `llama_server` loads only GGUF, and `mlx_lm` has no list yet (see SF-298).
+/// `None` when no `config.json` class is checked: `llama_server` loads only GGUF, and `mlx_lm`
+/// has no list (SF-298).
 #[must_use]
 pub fn architectures(runtime: Runtime) -> Option<&'static [&'static str]> {
     match runtime {
@@ -174,8 +168,6 @@ pub fn architectures(runtime: Runtime) -> Option<&'static [&'static str]> {
     }
 }
 
-/// Whether `name` is a plain class name on `list`: never a module path or a reference to a
-/// repository (`.`, `/`, `--`, `:`).
 #[must_use]
 pub fn permitted(list: &[&str], name: &str) -> bool {
     !name.contains(['.', '/', ':']) && !name.contains("--") && list.contains(&name)

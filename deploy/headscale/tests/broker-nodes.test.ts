@@ -1,4 +1,3 @@
-// The broker's reading of Headscale 0.29.7 replies (BD-9), against the contract harness captures.
 import { describe, expect, it } from 'bun:test';
 import { newKeyOf, nodeCountOf, nodeIdsOf, nodesReply, operatorIdOf, registered, registeredIdOf, tailnetOf } from '../broker/nodes.ts';
 import { InventoryError } from '../src/inventory.ts';

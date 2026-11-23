@@ -1,10 +1,5 @@
-//! The tool inventory of a device (CAP-020 to CAP-028): which developer tools it has, their
-//! versions, its Rust build targets, its processor architecture and its operating system
-//! version.
-//!
-//! Pure: the fixed probe list ([`PROBES`], [`TARGETS`]), the parse of each probe's output, the
-//! folders a program is looked for in ([`candidates`]) and the inventory those make. The daemon
-//! runs the programs (CAP-028); the hub cannot send a probe or a command line (CAP-021).
+//! The tool inventory of a device (CAP-020 to CAP-028). Pure: the daemon runs the programs
+//! (CAP-028); the hub cannot send a probe or a command line (CAP-021).
 
 mod probes;
 mod search;
@@ -23,19 +18,15 @@ pub use version::{
 
 use serde::{Deserialize, Serialize};
 
-/// The most tools a batch may list (K8 Section 4).
 pub const MAX_TOOLS: usize = 64;
 
-/// The most build targets a batch may list (K8 Section 4).
 pub const MAX_BUILD_TARGETS: usize = 128;
 
-/// What a device's daemon found installed (CAP-020, CAP-026).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Inventory {
     pub remote_access: Option<RemoteAccess>,
     pub architecture: Architecture,
     pub os: Os,
-    /// 1 to 64 bytes of [`is_version`] text, for example `27.0` or `24.04`.
     pub os_version: String,
     /// Each tool found once, in [`ToolName`] order. A tool not found is not listed.
     pub tools: Vec<Tool>,
@@ -76,7 +67,6 @@ pub enum Architecture {
 }
 
 impl Architecture {
-    /// The architecture of the name `std::env::consts::ARCH` gives; `None` for any other.
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         match text {
@@ -105,7 +95,6 @@ pub enum Os {
 }
 
 impl Os {
-    /// The system of the name `std::env::consts::OS` gives; `None` for any other.
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         match text {
@@ -126,12 +115,9 @@ impl Os {
     }
 }
 
-/// What became of one probe, as the daemon's runner saw it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Outcome {
-    /// The program is in none of the folders.
     Missing,
-    /// The program was found but ran past its time limit.
     TimedOut,
     /// The program was found but could not start, or exited with a failure.
     Exited,
@@ -140,10 +126,8 @@ pub enum Outcome {
 }
 
 impl Inventory {
-    /// The inventory of a device of `architecture` and `os` at `os_version`, from the outcome of
-    /// each probe of [`PROBES`] and the output of [`TARGETS`] (CAP-020). A probe whose program is
-    /// missing leaves its tool out; one that failed or printed no version lists it as not usable,
-    /// with the [`Reason`].
+    /// A probe whose program is missing leaves its tool out; one that failed or printed no version
+    /// lists it as not usable, with the [`Reason`] (CAP-020).
     #[must_use]
     pub fn new(
         (architecture, os, os_version): (Architecture, Os, String),

@@ -1,6 +1,3 @@
-//! The child fetch process (task L1-6b): the child in its mode, and the daemon side with a
-//! stalled and a crashed child.
-
 use std::io::{Read as _, Write as _};
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -30,15 +27,12 @@ fn order(root: &Path) -> FetchOrder {
     }
 }
 
-/// Runs the child with `input` and the environment `variables`, and gives its reply. An input
-/// that ends a line stays open until the child ends, as the daemon keeps it.
 fn child(input: &[u8], variables: &[(&str, &str)]) -> String {
     let (reply, code) = child_ending(input, variables);
     assert_eq!(code, Some(0));
     reply
 }
 
-/// The reply and the exit code of the child.
 fn child_ending(input: &[u8], variables: &[(&str, &str)]) -> (String, Option<i32>) {
     let mut child = Command::new(DAEMON)
         .arg(FETCH_MODE)
@@ -103,7 +97,6 @@ async fn the_daemon_reads_the_cause_of_its_child() {
     assert_eq!(outcome, Err(Cause::RuntimeNotConfigured));
 }
 
-/// A program file below `root` with the shell `body`.
 fn script(root: &Path, body: &str) -> std::path::PathBuf {
     use std::os::unix::fs::PermissionsExt as _;
     let path = root.join("child");

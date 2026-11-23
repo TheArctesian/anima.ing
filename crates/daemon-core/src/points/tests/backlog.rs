@@ -1,5 +1,3 @@
-//! The daemon's buffer of unsent points (MET-014, K8 Section 7).
-
 use std::collections::BTreeMap;
 
 use chrono::TimeDelta;
@@ -9,7 +7,6 @@ use crate::points::{Backlog, MAX_POINTS, Outgoing, Point, SeriesKey, Summary};
 
 const START: &str = "2026-11-08T10:00:00Z";
 
-/// The point `n` windows after [`START`], with one CPU value.
 fn point(n: i64) -> Point {
     point_at(window(n))
 }
@@ -27,7 +24,6 @@ fn window(n: i64) -> DateTime<Utc> {
     at(START) + TimeDelta::seconds(10 * n)
 }
 
-/// The windows of `outgoing`, as numbers after [`START`].
 fn windows(outgoing: Outgoing<'_>) -> Vec<i64> {
     seconds(outgoing)
         .into_iter()
@@ -35,7 +31,6 @@ fn windows(outgoing: Outgoing<'_>) -> Vec<i64> {
         .collect()
 }
 
-/// The times of `outgoing`, as seconds after [`START`].
 fn seconds(outgoing: Outgoing<'_>) -> Vec<i64> {
     outgoing
         .points()
@@ -43,14 +38,11 @@ fn seconds(outgoing: Outgoing<'_>) -> Vec<i64> {
         .collect()
 }
 
-/// The point `n` seconds after [`START`]. 360 windows span more than 59 minutes, so the cap
-/// is seen apart from the age rule only on points closer together than windows.
+/// 360 windows span more than 59 minutes, so only points closer than windows show the cap alone.
 fn second(n: i64) -> Point {
     point_at(at(START) + TimeDelta::seconds(n))
 }
 
-/// Sends every waiting batch at `now`, as the daemon does when the hub accepts each, and gives
-/// the times of the points sent, in seconds after [`START`].
 fn send_all(backlog: &mut Backlog, now: DateTime<Utc>) -> Vec<i64> {
     let mut sent = Vec::new();
     loop {
@@ -96,7 +88,6 @@ fn k8_7_points_older_than_59_minutes_are_dropped_before_a_send() {
     for n in 0..10 {
         backlog.push(point(n));
     }
-    // 59 minutes after window 2: window 2 is exactly 59 minutes old and stays.
     let now = window(2) + TimeDelta::minutes(59);
     backlog.drop_stale(now);
     assert_eq!(windows(backlog.batch()), (2..10).collect::<Vec<_>>());
@@ -186,13 +177,11 @@ fn met_014_a_point_kept_after_the_clock_went_back_during_a_send_survives_the_acc
         backlog.push(point(n));
     }
     let receipt = backlog.batch().receipt().unwrap();
-    // The clock went back while the batch of windows 10 to 12 was out.
     backlog.push(point(9));
     backlog.remove_through(receipt);
     assert_eq!(windows(backlog.batch()), [9], "the unsent point stays");
 }
 
-/// A point `n` windows after [`START`] with `count` disk series of its own.
 fn disks(n: i64, count: usize) -> Point {
     let summary = Summary {
         mean: 1.0,
