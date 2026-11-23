@@ -176,22 +176,37 @@ fn r_exactgroup_a_refused_file_names_who_and_the_member_to_add_by_hand() {
 }
 
 #[test]
-fn mcp_035_each_folder_of_path_is_checked_also_one_with_the_sticky_bit() {
+fn mcp_035_env_runs_the_first_program_the_person_can_run_and_each_folder_before_it_is_checked() {
     let (_home, mut here, anima) = computer();
-    let ran = homebrew(&mut here);
-    // A folder that each user can write, after the program on `PATH`: an entry of it is not
-    // replaceable, but each user can make one, here the folder that `PATH` names.
+    let ran = here.home.join("ran");
+    let tools = here.home.join("tools");
+    let skipped = here.home.join("skipped");
+    for folder in [&tools, &skipped] {
+        fs::create_dir(folder).expect("folder");
+    }
+    script(&tools, "fake-node", &format!(": > {}", ran.display()));
+    // An entry that the person cannot run: `env` goes on to the next folder.
+    fs::write(skipped.join("fake-node"), "#!/bin/sh\n").expect("file");
+    let bin = here.path[0].clone();
+    fs::write(bin.join("codex"), "#!/usr/bin/env fake-node\n").expect("script");
+    fs::set_permissions(bin.join("codex"), fs::Permissions::from_mode(0o755)).expect("mode");
+    // A folder with the sticky bit that each user can write: it holds nothing yet, but a
+    // different user could make the folder that `PATH` names in it, and a `fake-node` there.
     let sticky = here.home.join("sticky");
     fs::create_dir(&sticky).expect("folder");
     fs::set_permissions(&sticky, fs::Permissions::from_mode(0o1777)).expect("mode");
-    here.path.push(sticky.join("not-yet/bin"));
+    here.path
+        .extend([skipped, sticky.join("not-yet/bin"), tools]);
     let refused = problem(&install(&here, &anima, "codex"), "codex");
     assert!(
         refused.contains(&format!("{} can be changed by each user", sticky.display())),
         "{refused}"
     );
-    assert!(!ran.exists(), "the program ran");
-    here.path.pop();
+    assert!(!ran.exists(), "the interpreter ran");
+    // After the program that `env` runs, a folder of `PATH` is not one that `env` looks in: macOS
+    // puts folders under `/var/run`, which the group `daemon` can write, on each login `PATH`.
+    let sticky = here.path.remove(2);
+    here.path.push(sticky);
     assert_eq!(problem(&install(&here, &anima, "codex"), "codex"), "");
-    assert!(ran.exists(), "the program did not run");
+    assert!(ran.exists(), "the interpreter did not run");
 }

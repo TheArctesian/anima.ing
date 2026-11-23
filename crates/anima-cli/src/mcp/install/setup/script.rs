@@ -1,15 +1,16 @@
-//! The folders of `PATH` that an agent's program runs with (MCP-035), and the interpreter that the
-//! program names when it is a script (`#!` on its first line): who other than the person and root
-//! can change them (MCP-033). An agent installed with npm is a script that `env` starts with the
-//! `node` it finds on `PATH`; a version manager's `node` can be a script again.
+//! The interpreter that an agent's program names when it is a script (`#!` on its first line), and
+//! who other than the person and root can change it (MCP-033), also through the folders of `PATH`
+//! that `env` looks in (MCP-035). An agent installed with npm is a script that `env` starts with
+//! the `node` it finds on `PATH`; a version manager's `node` can be a script again.
 
 use std::fs;
 use std::io::{self, Read as _};
 use std::path::{Path, PathBuf};
 
+use nix::unistd::{AccessFlags, access};
+
 use super::super::access::{Others, Writer, creatable, replaceable};
 use super::Here;
-use super::program::runnable;
 
 /// The most of the first line that the kernel reads; the rest is not part of the interpreter.
 const FIRST_LINE: u64 = 512;
@@ -22,27 +23,9 @@ const MOST_NESTED: usize = 4;
 /// `PATH`, `env` looks in folders of its own.
 const ENV_OPTIONS: [&str; 3] = ["--", "-S", "-v"];
 
-/// The first folder of `PATH` in which a user other than the person and root can put a program or
-/// replace one. The program runs with this `PATH`, so a program that it or its interpreter starts
-/// by name comes from these folders. A folder that is not there counts by the nearest folder above
-/// it that is, since a user who can write that can make it.
-pub(super) fn open_folder(here: &Here) -> Option<Others> {
-    here.path.iter().find_map(|folder| {
-        // A relative folder is found from the folder the program runs in: the home folder.
-        let folder = here.home.join(folder);
-        let there = folder
-            .ancestors()
-            .find(|part| fs::symlink_metadata(part).is_ok())
-            .unwrap_or(&folder);
-        replaceable(there, here.user, &here.groups)
-            .or_else(|| creatable(there, here.user, &here.groups))
-    })
-}
-
 /// Who other than the person and root can change the interpreter of the script at `program`: the
 /// interpreter that its first line names, or with `env` the program that `env` finds on `PATH`,
 /// and so on while that is a script again. `None` when no one can, or `program` is not a script.
-/// [`open_folder`] checks the folders of `PATH` first.
 pub(super) fn interpreter(here: &Here, program: &Path) -> Option<Others> {
     let mut program = program.to_path_buf();
     for _ in 0..MOST_NESTED {
@@ -120,13 +103,26 @@ fn first_line(program: &Path) -> io::Result<Option<String>> {
     }))
 }
 
-/// The program `name` that `env` finds on `PATH`, when no user but the person and root can change
-/// it or an entry of that name in a different folder of `PATH`: `Err` names who can. A program
-/// that is not found counts as not known.
+/// The program `name` that `env` finds on `PATH`: the first file of that name that the person can
+/// run. `Err` names who other than the person and root can change it, an entry of that name before
+/// it, or a folder that `env` looks in up to it, where they could also make a new entry (the
+/// sticky bit does not stop that). A folder that is not there counts by the nearest folder above
+/// it that is, since a user who can write that can make it. A program that is not found counts as
+/// not known.
 fn on_path(here: &Here, name: &str) -> Result<PathBuf, Others> {
-    let mut first = None;
     for folder in &here.path {
-        let found = here.home.join(folder).join(name);
+        // A relative folder is found from the folder the program runs in: the home folder.
+        let folder = here.home.join(folder);
+        let there = folder
+            .ancestors()
+            .find(|part| fs::symlink_metadata(part).is_ok())
+            .unwrap_or(&folder);
+        let open = replaceable(there, here.user, &here.groups)
+            .or_else(|| creatable(there, here.user, &here.groups));
+        if let Some(others) = open {
+            return Err(others);
+        }
+        let found = folder.join(name);
         // Each entry of the name, also a link that leads nowhere yet and one that cannot be run.
         if fs::symlink_metadata(&found).is_err() {
             continue;
@@ -134,11 +130,13 @@ fn on_path(here: &Here, name: &str) -> Result<PathBuf, Others> {
         if let Some(others) = replaceable(&found, here.user, &here.groups) {
             return Err(others);
         }
-        if first.is_none() && fs::metadata(&found).is_ok_and(|meta| runnable(&found, &meta)) {
-            first = Some(found);
+        if fs::metadata(&found).is_ok_and(|metadata| metadata.is_file())
+            && access(&found, AccessFlags::X_OK).is_ok()
+        {
+            return Ok(found);
         }
     }
-    first.ok_or_else(|| unknown(PathBuf::from(name)))
+    Err(unknown(PathBuf::from(name)))
 }
 
 /// `path`, of which who can change it is not known.

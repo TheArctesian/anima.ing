@@ -26,7 +26,7 @@ pub(super) fn members(group: &Group) -> Option<Vec<Member>> {
     let number = group.gid.as_raw();
     let dscl = Path::new(DSCL);
     if CALCULATED.contains(&number)
-        || !local_search(&ask(dscl, &["/Search", "-read", "/", "CSPSearchPath"])?)
+        || !local_search(&ask(dscl, &["/Search", "-read", "/", "SearchPath"])?)
     {
         return None;
     }
@@ -54,12 +54,13 @@ fn plain(name: &str) -> Option<&str> {
     (!name.is_empty() && !name.starts_with('-') && !name.contains('/')).then_some(name)
 }
 
-/// Whether `dscl /Search -read / CSPSearchPath` names only directories of [`LOCAL_NODES`].
+/// Whether `dscl /Search -read / SearchPath`, the search path in use, names only directories of
+/// [`LOCAL_NODES`].
 pub(in super::super) fn local_search(text: &str) -> bool {
     let mut words = text.split_whitespace();
     let key = words.next();
     let nodes: Vec<&str> = words.collect();
-    key == Some("CSPSearchPath:")
+    key == Some("SearchPath:")
         && !nodes.is_empty()
         && nodes.iter().all(|node| LOCAL_NODES.contains(node))
 }

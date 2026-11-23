@@ -44,17 +44,29 @@ fn r_exactgroup_only_sources_that_list_each_account_and_group_are_read() {
     assert!(!local_only("passwd: files sss\ngroup: files\n"));
     assert!(!local_only("passwd: files\ngroup: files winbind\n"));
     assert!(!local_only("passwd: compat\ngroup: compat\n"));
-    // A line that is not there, or that names no source.
+    // A line that is not there, that names no source, or that comes again (the last one counts).
     assert!(!local_only("passwd: files\n"));
     assert!(!local_only("passwd:\ngroup: files\n"));
-    assert!(local_search("CSPSearchPath: /Local/Default\n"));
-    assert!(local_search(
-        "CSPSearchPath:\n /Local/Default\n /BSD/Local\n"
+    assert!(!local_only(
+        "passwd: files\ngroup: files\npasswd: files sss\n"
     ));
+    // The groups given at login.
+    assert!(local_only(
+        "passwd: files\ngroup: files\ninitgroups: files\n"
+    ));
+    assert!(!local_only(
+        "passwd: files\ngroup: files\ninitgroups: sss files\n"
+    ));
+}
+
+#[test]
+fn r_exactgroup_on_macos_only_a_search_path_of_this_computer_alone_is_read() {
+    assert!(local_search("SearchPath: /Local/Default\n"));
+    assert!(local_search("SearchPath:\n /Local/Default\n /BSD/Local\n"));
     assert!(!local_search(
-        "CSPSearchPath:\n /Local/Default\n /Active Directory/CORP/All Domains\n"
+        "SearchPath:\n /Local/Default\n /Active Directory/CORP/All Domains\n"
     ));
-    assert!(!local_search("CSPSearchPath:\n"));
+    assert!(!local_search("SearchPath:\n"));
     assert!(!local_search(""));
 }
 

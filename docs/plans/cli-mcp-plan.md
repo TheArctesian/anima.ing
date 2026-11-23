@@ -1059,7 +1059,8 @@ library (CMD-030: the command line first).
   each user can write it, or when its group can write it and that group has a member other than the
   person and root: a name in the list of members of the group, or an account whose own (primary)
   group it is. A group whose members cannot be read counts, and so does each group of a computer
-  that also takes accounts or groups from a directory service. A part of root that root's group or, on
+  that also takes accounts or groups from a directory service, but the private group of an account.
+  A part of root that root's group or, on
   macOS, the group `admin` can write counts as root's (R-NEW-exactgroup). The entry holds no environment variable, no token, no key and no hub address: `anima mcp`
   uses the context and the sign-in that the `anima` command already holds (MCP-002).
 - **MCP-034.** The command must refuse a configuration file, and change nothing of it, when: the file
@@ -1074,9 +1075,9 @@ library (CMD-030: the command line first).
   secret. It does not read or parse the agent's file. The program gets the check of MCP-033, and so
   does the interpreter that a script names on its first line; for `env`, each folder of `PATH` that
   `env` looks in until it finds the program; an option of `env` or a `PATH=` that changes which
-  program `env` finds fails the check. The program runs with that `PATH`, and no user other than
-  the person and root may replace a folder of it or make an entry in one (the sticky bit does not
-  stop that). A program that fails
+  program `env` finds fails the check. In each folder that `env` looks in, up to the program that
+  it runs, no user other than the person and root may make an entry (the sticky bit does not stop
+  that). The program runs with that `PATH`. A program that fails
   the check is not run: the list names who can change it and gives the command that the person can
   run themselves.
 - **MCP-036.** `uninstall` removes only an entry that is `set_up`: one that starts the `anima` of
@@ -1227,21 +1228,21 @@ What the check reads, before and after:
 | Part | Before | After |
 | --- | --- | --- |
 | A group that can write a part | Counts, unless the group's number is the person's number, or the group is root's | Counts only when the group has a member other than the person and root: on Linux a name in the list of members of each entry of `getent group` with its number, or an account of `getent passwd` whose own group it is; on macOS a name of the group's record, the account of each member that the record names by identifier, or an account whose `PrimaryGroupID` it is (`dscl`). A name with no account counts. Each group is read once for each listing |
-| A group whose members cannot be read | Not read | Counts: no group entry, a failed or slow (10 s) program, more than 16 MiB, a line that cannot be read, a computer whose `/etc/nsswitch.conf` names a source other than `files` and `systemd` for `passwd` or `group`; and on macOS a search policy that names a directory other than the local one, a group whose members the system calculates (`everyone`, `localaccounts` and five others), a record with no list of members or with a different group number, a nested group, or a member identifier of no local account |
+| A group whose members cannot be read | Not read | Counts: no group entry, a failed or slow (10 s) program, more than 16 MiB, a line that cannot be read, a computer whose `/etc/nsswitch.conf` names a source other than `files` and `systemd` for `passwd`, `group` or `initgroups`, or names one of them twice (the private group of an account is read all the same); and on macOS a search path in use that names a directory other than the local one, a group whose members the system calculates (`everyone`, `localaccounts` and five others), a record with no list of members or with a different group number, a nested group, or a member identifier of no local account |
 | A part of root that root's group, or on macOS the group `admin`, can write | Fixed | Fixed, as before (12.7, row 1) |
 | A different owner (not the person or root), a write bit for each user | Counts | Counts, as before |
 | The program on `PATH` and what it links to | The path and the folders above it, and the real file and the folders above it | Each link of the chain, also a link inside a link, the real file, and the folders above each of them |
-| A script | Not read | The interpreter of its first line, and for `env` each folder of `PATH` that `env` looks in until it finds the program, and that program, and each other entry of that name on `PATH`; up to four scripts that start one another. A script that cannot be read, an option of `env` other than `-S` and `-v`, a `PATH=`, a quote, an escape or a variable before the program, and a program that `env` does not find count as not known |
-| The folders of `PATH` | Not read | Each folder of the `PATH` that the program runs with, for each agent with its own command: no user other than the person and root may replace it or make an entry in it, also when it has the sticky bit. A folder that is not there counts by the nearest folder above it |
-| The programs that read the members | | `/usr/bin/dscl` and `getent` from a fixed path, only when no user but root can change them, with no environment but `LC_ALL=C`. A program, also an agent's, that runs past its time is stopped with each program that it started |
+| A script | Not read | The interpreter of its first line, and for `env` each folder of `PATH` that `env` looks in until it finds the program, and that program: the first file of that name that the person can run, each entry of that name before it, and in each of those folders who can make an entry, also with the sticky bit; up to four scripts that start one another. A script that cannot be read, an option of `env` other than `-S` and `-v`, a `PATH=`, a quote, an escape or a variable before the program, and a program that `env` does not find count as not known |
+| The programs that read the members | | `/usr/bin/dscl` and `getent` from a fixed path, only when no user but root can change them, with no environment but `LC_ALL=C`. A program, also an agent's, that runs past its time is stopped, and its output is not waited for past the limit |
 
 When the check refuses, the row says which part, who can change it (the owner, each user, the group
 and its other member, or a group whose members could not be read) and what the person can do
 themselves: the command of the agent's own program, or the member to add to the file.
 
 What it does not cover: a group administrator or a group password of `/etc/gshadow`, which only
-root can read and set; a library or a module that a program loads when it runs; access lists on Linux
-and macOS; a part that changes between the check and the run.
+root can read and set; a library or a module that a program loads when it runs, and a program that
+it starts by name from a folder of `PATH` after the one that `env` runs; access lists on Linux and
+macOS; a part that changes between the check and the run.
 
 A reviewer that did not write the code read the change (`b10e185f`) and changed no file. It found
 nothing High. It found sound: each source of a member that fails, or a text that cannot be read, gives
@@ -1254,12 +1255,24 @@ Windows check is the same as before. Its findings and what was done:
 | --- | --- | --- |
 | 1 | Medium. A directory service need not list each member: SSSD with `ignore_group_members` or without enumeration, winbind without nested groups, and on macOS Active Directory, whose accounts can have a local own group | Corrected: on a computer that takes accounts or groups from a source other than its files and systemd (Linux), or from a directory other than the local one (macOS), each group counts as unread. Each entry of a group number is read |
 | 2 | Medium. On macOS, the members by identifier were compared with the names only by count: a name listed twice hid a different member by identifier | Corrected: each identifier is named by its local account; one of no local account gives unread |
-| 3 | Medium. A folder with the sticky bit that each user can write was fixed on the `PATH` that `env` searches: a different user can make the program there | Corrected: each folder of `PATH` is checked for who can make an entry in it, also with the sticky bit |
-| 4 | Low. The search of `env` stopped at a file that the person cannot run; `env` goes on to the next folder | Corrected: each folder of `PATH` and each entry of that name in it are checked |
+| 3 | Medium. A folder with the sticky bit that each user can write was fixed on the `PATH` that `env` searches: a different user can make the program there | Corrected: each folder that `env` looks in is checked for who can make an entry in it, also with the sticky bit |
+| 4 | Low. The search of `env` stopped at a file that the person cannot run; `env` goes on to the next folder | Corrected: the program is the first file that the person can run (`access`), and each entry of the name before it is checked |
 | 5 | Low. `env -i` searches folders of its own; a quote or a variable that `env -S` reads changes the name; a program that is not found was accepted | Corrected: each of these counts as not known |
 | 6 | Low. A script that the person cannot read counted as no script, but the system can start it | Corrected: it counts as not known |
 | 7 | Low. Names are split at spaces and colons, and an account is found by its name: a name with a space, or a directory account with the name of the person, could hide a member | Answered: only root or the administrator of a directory can make such a name, and a directory now gives unread (row 1) |
-| 8 | Low. The time limit did not stop a program that a stopped program started and that held its output: `anima mcp agents` and Settings could wait | Corrected: each program runs in a process group of its own, which is stopped at the limit; the output is read only until the limit |
-| 9 | Low. The agent ran with the whole `PATH`, but only the folders up to the interpreter were checked | Corrected: each folder of `PATH` is checked (row 3) |
+| 8 | Low. The time limit did not stop a program that a stopped program started and that held its output: `anima mcp agents` and Settings could wait | Corrected: the output is not waited for past the limit. A program that the stopped program started is not stopped (second review, row 6) |
+| 9 | Low. The agent ran with the whole `PATH`, but only the folders up to the interpreter were checked | Answered: a check of each folder of `PATH` refused each agent on macOS (second review, row 1). A program that the agent starts by name is not covered, as a library that it loads |
 | 10 | Low. The message tells the person to run, by hand, a program that a different user can change | Answered: the task asks for that command; the message first names who can change it, so that the person decides |
 | 11 | Low. On Linux, a member of the group 0 is not root, so a part of root that the group 0 can write could be read | Answered: kept by the ruling, as 12.7, row 1 |
+
+The same reviewer then read the corrections (`aa6c5f02`). It found each of the eleven rows corrected or
+answered, and these new findings:
+
+| # | Finding | Done |
+| --- | --- | --- |
+| 1 | High. The check of each folder of `PATH` (row 9) refused Claude Code and Codex of Homebrew on each Mac: macOS puts folders under `/var/run/com.apple.security.cryptexd` on each login `PATH`; they are not there, and `/private/var/run` belongs to root with the group `daemon` (mode 0775), whose member is the account `daemon` | Corrected: only the folders that `env` looks in, up to the program that it runs, are checked. Shown on the operator's Mac with a temporary home folder: Claude Code and Codex are `not set up`, with the command that `install` runs |
+| 2 | Medium. RHEL names `sss` in `nsswitch.conf` also with no directory, and gives a user with a private group the mask 002: each group, also the private group of the person, was unread, which the check of 12.6 accepted | Corrected: the private group of an account (the number and the name of the account, and its own group) is read also when a directory service gives accounts |
+| 3 | Low. macOS: the search policy of the custom path was read, not the search path in use | Corrected: `SearchPath` is read |
+| 4 | Low. A line of `nsswitch.conf` that comes again counts, and `initgroups` was not read | Corrected: a database named twice, or `initgroups` with a different source, gives unread |
+| 5 | Low. Only the interpreter of the first entry with an execute bit was followed | Corrected with row 4 above: the entry that the person can run is followed |
+| 6 | Low. A process group of its own keeps Ctrl-C from the agent's program, and stops a helper of a program that ended | Corrected: no process group of its own; the output is not waited for past the limit. A program that ended but left its output open past the limit still counts as failed, which is the safe reading |

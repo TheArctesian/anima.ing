@@ -1,13 +1,13 @@
 //! The members of a group on Linux: each entry of `getent group` with its number, and each account
 //! of `getent passwd` whose own group it is. Only when `/etc/nsswitch.conf` takes accounts and
 //! groups from the files of this computer and from systemd, which list each of them: a directory
-//! service (SSSD, LDAP, winbind) need not.
+//! service (SSSD, LDAP, winbind) need not. The private group of an account is read in each case.
 
 use std::fs;
 use std::io;
 use std::path::Path;
 
-use nix::unistd::Group;
+use nix::unistd::{Group, Uid, User};
 
 use super::super::Member;
 use super::{ask, by_name, number};
@@ -26,9 +26,16 @@ const NSSWITCH: &str = "/etc/nsswitch.conf";
 const LISTED: [&str; 2] = ["files", "systemd"];
 
 pub(super) fn members(group: &Group) -> Option<Vec<Member>> {
+    // The private group of an account (its number, its name and its own group), as each user has
+    // on the usual systems: a directory service gives it no member that only the administrator
+    // of the directory could not also give as an account of the same number.
+    let private = User::from_uid(Uid::from_raw(group.gid.as_raw()))
+        .ok()
+        .flatten()
+        .is_some_and(|user| user.name == group.name && user.gid == group.gid);
     // With no such file (as with musl), the system reads only its files.
     match fs::read_to_string(NSSWITCH) {
-        Ok(text) => local_only(&text).then_some(())?,
+        Ok(text) => (private || local_only(&text)).then_some(())?,
         Err(error) if error.kind() == io::ErrorKind::NotFound => {}
         Err(_) => return None,
     }
@@ -42,21 +49,27 @@ pub(super) fn members(group: &Group) -> Option<Vec<Member>> {
     Some(members)
 }
 
-/// Whether the lines `passwd` and `group` of `nsswitch.conf` name only sources of [`LISTED`]. A
-/// missing line, or one with a different source, gives `false`.
+/// Whether `nsswitch.conf` has one line `passwd` and one line `group`, and at most one line
+/// `initgroups` (the groups given at login), each of which names only sources of [`LISTED`].
 pub(in super::super) fn local_only(text: &str) -> bool {
-    ["passwd", "group"].iter().all(|database| {
-        let line = text
-            .lines()
+    let lines = |database: &str| -> Vec<&str> {
+        text.lines()
             .map(|line| line.split('#').next().unwrap_or_default().trim())
-            .find_map(|line| line.strip_prefix(database)?.trim_start().strip_prefix(':'));
-        line.is_some_and(|sources| {
-            let mut sources = sources
-                .split_whitespace()
-                .filter(|word| !(word.starts_with('[') && word.ends_with(']')));
-            sources.clone().next().is_some() && sources.all(|source| LISTED.contains(&source))
-        })
-    })
+            .filter_map(|line| line.strip_prefix(database)?.trim_start().strip_prefix(':'))
+            .collect()
+    };
+    let listed = |line: &&str| {
+        let mut sources = line
+            .split_whitespace()
+            .filter(|word| !(word.starts_with('[') && word.ends_with(']')));
+        sources.clone().next().is_some() && sources.all(|source| LISTED.contains(&source))
+    };
+    let initgroups = lines("initgroups");
+    ["passwd", "group"]
+        .iter()
+        .all(|database| matches!(lines(database).as_slice(), [line] if listed(line)))
+        && initgroups.len() <= 1
+        && initgroups.iter().all(listed)
 }
 
 /// From the lines of `getent group`: the names in the list of members of each entry with the

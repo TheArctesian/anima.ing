@@ -40,9 +40,8 @@ pub(super) fn run(here: &Here, name: &str, arguments: &[String]) -> Ran {
         Found::Replaceable { program, others } => return Ran::Replaceable { program, others },
         Found::Missing => return Ran::Missing,
     };
-    // The `PATH` whose folders the check read: a script that starts `env node`, or the program
-    // when it starts one by name, finds what was checked, also when the caller (the desktop
-    // application) has a different `PATH`.
+    // The `PATH` that the check read: a script that starts `env node` finds the `node` that was
+    // checked, also when the caller (the desktop application) has a different `PATH`.
     let Ok(path) = std::env::join_paths(&here.path) else {
         return Ran::Failed;
     };
