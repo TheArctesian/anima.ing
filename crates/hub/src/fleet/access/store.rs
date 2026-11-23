@@ -1,8 +1,10 @@
 //! The only SQL for `access.operators`, `access.api_tokens` (login, browser and builder tokens
-//! in `store/tokens.rs`, API keys in `store/keys.rs`), `access.login_attempts` (in
+//! in `store/tokens.rs`, API keys in `store/keys.rs`, command-line tokens and their link in
+//! `store/command_line.rs`), `access.login_attempts` (in
 //! `store/attempts.rs`) and `access.permitted_networks` (in `store/permitted.rs`).
 
 mod attempts;
+mod command_line;
 mod keys;
 mod permitted;
 mod tokens;
@@ -13,6 +15,10 @@ use uuid::Uuid;
 
 pub(super) use attempts::{
     AttemptKey, Outcome, delete_attempts_of, failures, finish_attempt, start_attempt,
+};
+pub(super) use command_line::{
+    NewCommandLine, delete_linked, earlier_of_device, insert_command_line, mark_link_device,
+    move_linked,
 };
 pub(super) use keys::{KEY_NAME_INDEX, NewKey, StoredKey, delete_key, insert_key, keys_of};
 pub(super) use permitted::{permitted_networks, replace_labelled_networks};

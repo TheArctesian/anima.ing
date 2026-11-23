@@ -226,7 +226,7 @@ fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option
 /// token must state its own rule here.
 const fn kind_roots(kind: TokenKind) -> Roots<'static> {
     match kind {
-        TokenKind::Login | TokenKind::Browser => Roots::Any,
+        TokenKind::Login | TokenKind::Browser | TokenKind::CommandLine => Roots::Any,
         TokenKind::ApiKey => Roots::AllBut(&API_KEY_REFUSED_ROOTS),
         TokenKind::Builder => BUILDER_ROOTS,
     }
@@ -254,8 +254,8 @@ pub fn operator_only<'a>(ctx: &Context<'a>, root: &str) -> async_graphql::Result
     }
 }
 
-/// The request's identity when the person signed in to it (a login or a browser token);
-/// `FORBIDDEN` for an API key or a builder token. For a field that holds personal data, which
+/// The request's identity when the person signed in to it (a login, a browser or a
+/// command-line token, R-383); `FORBIDDEN` for an API key or a builder token. For a field that holds personal data, which
 /// goes to the person's own clients and not to a key made for a program (THR-149).
 ///
 /// # Errors
@@ -264,7 +264,7 @@ pub fn operator_only<'a>(ctx: &Context<'a>, root: &str) -> async_graphql::Result
 pub fn person_only<'a>(ctx: &Context<'a>) -> async_graphql::Result<&'a Identity> {
     let identity = schema_dependency::<Identity>(ctx)?;
     match identity.kind() {
-        TokenKind::Login | TokenKind::Browser => Ok(identity),
+        TokenKind::Login | TokenKind::Browser | TokenKind::CommandLine => Ok(identity),
         TokenKind::ApiKey | TokenKind::Builder => Err(Error::KindRefused.into_graphql()),
     }
 }
