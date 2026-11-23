@@ -383,7 +383,7 @@ Built, and never run with a switch on. A release of the desktop application can 
 | `tap` | `Formula/anima.rb` in `TheArctesian/homebrew-anima`: `brew install thearctesian/anima/anima` | `HOMEBREW_TAP_DEPLOY_KEY`, `release-tap` |
 | `crate` | The crate `anima-cli` on crates.io, with the version of the release | `CARGO_REGISTRY_TOKEN`, `release-crate` |
 
-The job `cli`, with no secret, makes the files first: each `anima` is the program inside the application that the same run built (the macOS one has its Developer ID signature), and the job starts the Linux program to see that it runs alone. A trial runs `cli` and none of the three jobs above.
+The job `cli`, with no secret, makes the files first: each `anima` is the program inside the application that the same run built (the macOS one has its Developer ID signature), and the job starts the Linux program to see that it runs alone. A trial runs `cli` and none of the three jobs above. Each archive, and the formula, also carries the licence files of `deploy/release/licences.txt` beside `anima` (`LICENSE`, and the `NOTICE` and `LICENSE-APACHE` of `crates/shortening`, whose Apache-2.0 parts need them in each copy); the desktop bundles carry them under `licences/` (task B8k).
 
 **The switch of its own.** The three jobs run only while `ANIMA_PUBLIC_RELEASES` and a second variable, `ANIMA_PUBLIC_CLI`, are both `on`. The second does not exist today. So the first release of the desktop application does not depend on these jobs, and the desktop jobs never wait for them.
 

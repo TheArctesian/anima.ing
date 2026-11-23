@@ -1,0 +1,12 @@
+# The licence files that each copy of `anima` that a release gives out carries: the archives of
+# `anima` alone (deploy/bin/cli-archive, and the Windows zip of release.yml), the Homebrew
+# formula (deploy/bin/cli-formula) and the desktop bundles (`bundle.resources`, under licences/, of
+# apps/desktop/src-tauri/tauri.macos.conf.json, tauri.linux.conf.json and tauri.windows-carried.json). Anima.ing is
+# AGPL-3.0-or-later (LICENSE); crates/shortening holds parts of Headroom under Apache-2.0, whose
+# section 4 asks that each copy carry the licence and the NOTICE text.
+# deploy/test/cli-licences.test.ts holds each of those places against this list.
+#
+#   <file of the repository> <name in the archive>
+LICENSE LICENSE
+crates/shortening/NOTICE NOTICE
+crates/shortening/LICENSE-APACHE LICENSE-APACHE

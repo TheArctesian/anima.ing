@@ -1,0 +1,29 @@
+#!/bin/sh
+# Packs the standalone `anima` of a release with the licence files that each copy must carry
+# (deploy/release/licences.txt): a .tar.gz whose content and bytes depend only on its inputs,
+# so the same files and time give the same SHA-256. The job `cli` of the release workflow
+# runs it for macOS and Linux. It needs GNU tar.
+#
+#   cli-archive <folder that holds anima> <archive to write> <time, seconds since 1970>
+set -eu
+
+refuse() { echo "cli-archive: $1" >&2; exit 1; }
+[ $# -eq 3 ] || refuse "give the folder of anima, the archive and the time"
+[ -f "$1/anima" ] || refuse "$1 holds no anima"
+echo "$3" | grep -Eq '^[0-9]+$' || refuse "the time is not a number of seconds"
+ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+STAGE=$(mktemp -d)
+trap 'rm -rf "$STAGE"' EXIT
+
+cp "$1/anima" "$STAGE/anima"
+chmod 0755 "$STAGE/anima"
+names="anima"
+while read -r source name; do
+    case "$source" in '' | '#'*) continue ;; esac
+    [ -f "$ROOT/$source" ] || refuse "the licence file $source is missing"
+    cp "$ROOT/$source" "$STAGE/$name"
+    chmod 0644 "$STAGE/$name"
+    names="$names $name"
+done < "$ROOT/deploy/release/licences.txt"
+# shellcheck disable=SC2086 # $names is a list of plain names.
+tar --sort=name --mtime="@$3" --owner=0 --group=0 --numeric-owner -cf - -C "$STAGE" $names | gzip -n > "$2"
