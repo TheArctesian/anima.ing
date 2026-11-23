@@ -44,11 +44,12 @@ pub async fn of_an_agent(pid: Option<i32>, holder_dir: &Path) -> bool {
     else {
         return true;
     };
+    let mark = crate::threads::marker::mark_of(pid).await;
     #[cfg(all(feature = "test-person", unix))]
     if pid == std::os::unix::process::parent_id() {
-        return false;
+        return started_the_runner(pid, mark, holder_dir).await;
     }
-    if crate::threads::marker::mark_of(pid).await != Some(false) {
+    if mark != Some(false) {
         return true;
     }
     let Some(table) = commands().await else {
@@ -74,6 +75,17 @@ pub async fn of_an_agent(pid: Option<i32>, holder_dir: &Path) -> bool {
         Some(_) => !comes_from(&table, pid, me, &line_of(&table, me, mine).await),
         None => true,
     }
+}
+
+/// The process that started the runner, with the feature `test-person` (the integration
+/// tests): it is the person, though a read of it fails, unless it is of an agent by what can be
+/// read (the mark of a thread, a place below the holder).
+#[cfg(all(feature = "test-person", unix))]
+async fn started_the_runner(pid: u32, mark: Option<bool>, holder_dir: &Path) -> bool {
+    let below = commands()
+        .await
+        .is_some_and(|table| below_the_holder(&table, pid, &holder_mark(holder_dir)));
+    mark == Some(true) || below
 }
 
 /// The group of origin of the runner, which does not change while it runs; a read that failed

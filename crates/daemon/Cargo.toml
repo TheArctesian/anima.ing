@@ -19,8 +19,10 @@ path = "src/main.rs"
 # The integration tests start the daemon as a child of the test and call its runner as the
 # person. On a system that keeps a read of that test from the daemon (the Mac runner of GitHub,
 # 2026-11-23) the rule of R-315 fails closed and takes the test for an agent; with this feature
-# the runner takes the process that started it for the person. Only the dev-dependency below turns
-# it on, and a release build refuses it (`threads::runner::peer`), so a shipped daemon never has it.
+# the runner takes the process that started it for the person, unless that process carries the
+# mark of a thread or is below the holder. Only the dev-dependency below turns it on, so each build
+# of tests has it, also the debug `anima-daemon` that such a build leaves in `target/debug`; a
+# release build refuses it (`threads::runner::peer`), so a shipped daemon never has it.
 test-person = []
 
 [dependencies]
