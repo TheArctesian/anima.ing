@@ -1,5 +1,6 @@
 //! Owner-initiated SSH setup on this computer; never a hub-controlled operation.
 
+pub mod desktop;
 mod elevation;
 mod probe;
 
@@ -57,4 +58,9 @@ fn valid_user(user: &str) -> bool {
         && user
             .bytes()
             .all(|c| c.is_ascii_alphanumeric() || b"_-.".contains(&c))
+}
+
+/// Whether the local SSH server currently answers with an SSH banner.
+pub async fn ready() -> bool {
+    probe::ready().await
 }

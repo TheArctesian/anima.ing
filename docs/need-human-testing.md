@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-181 | Default-on remote setup (HM-T41, R-446): OS permission prompts, authenticated connections, headless machines and opt-outs | Open |
 | HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
 | HT-170-code-handoff | Open and follow a shared Code thread on iOS and Android (TH50, TH51) | A build of this branch on each phone, a hub with TH21, and an enrolled computer with transcript sharing enabled | Open |
 | HT-149 | Reporting after an iPad update and the phone Code tab | A physical iPad with an existing device row, another client, and a phone with the updated app | Open |
@@ -5452,3 +5453,13 @@ on the device; they are not imported into another hub or deleted. The operator c
 2026-11-23: empty earlier groups move to the next hub opened.
 
 Result: Open.
+
+## HT-181: Default-on remote setup (HM-T41, R-446)
+
+State: Open.
+
+On a newly joined desktop, open Devices. SSH and the desktop protocols supported by that platform must be selected. Turn one off before Continue. It must remain closed. Cancel an administrator prompt; that protocol must remain closed and show a retry path.
+
+On macOS, use Open Sharing settings when Screen Sharing is off, enable it, then Retry. Verify an authenticated SSH and VNC session from another enrolled computer. macOS has no bundled RDP server. On Windows Pro, verify RDP with NLA and existing firewall policy; Windows Home must not be presented as a working RDP host. Windows VNC needs an existing authenticated server. On Debian/Ubuntu with X11 display :0, verify xrdp and x11vnc installation and authenticated sessions; confirm newly installed servers bind only loopback. On Wayland, verify the manual sharing path. Linux package installation and Windows UAC have not been exercised on this Mac.
+
+On a headless Linux machine, only SSH must be selected. Turn every protocol off in Settings, restart the application and upgrade it: choices must stay off and connection attempts through the link must fail. Anima closes its link access; it does not stop an existing operating-system sharing service or change access configured outside Anima.
