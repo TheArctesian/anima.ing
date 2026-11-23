@@ -86,6 +86,7 @@ mod accounts;
 mod kept;
 #[cfg(unix)]
 mod launcher;
+mod profile;
 mod queue;
 mod restart;
 mod settings;
