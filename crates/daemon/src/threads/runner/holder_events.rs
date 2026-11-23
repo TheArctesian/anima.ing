@@ -186,7 +186,8 @@ impl Runner {
         // The record holds the open requests before the holder drops their lines (THR-030); a
         // line that changed nothing of the record does not write it again.
         let after = self.threads.get(&id).map(Thread::record_key);
-        if after != before {
+        let marked = self.mark_started(id);
+        if after != before || marked {
             self.save();
         }
         self.command(Action::Ack {
