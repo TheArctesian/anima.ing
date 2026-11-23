@@ -209,7 +209,6 @@ pub async fn run(
         rights: launcher::SharedRights::default(),
     };
     runner.restore(saved.threads);
-    runner.rights_now();
     let listener = socket::bind(&dir)?;
     runner.serve(listener, &mut stop).await;
     if let Err(error) = std::fs::remove_file(dir.join(agent_threads::control::SOCKET)) {
@@ -356,9 +355,7 @@ impl Runner {
         // A row that changed can change the rights of the launcher: a mode, a stop.
         let row = matches!(change, agent_threads::control::Change::State { .. });
         let reply = Reply::Update(Box::new(thread.note(change)));
-        if row {
-            self.rights_now();
-        }
+        self.rights_if(row);
         self.watchers
             .retain(|watcher| socket::tell(watcher, &reply));
     }

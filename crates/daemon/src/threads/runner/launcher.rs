@@ -207,6 +207,13 @@ async fn read_into(stderr: Option<tokio::process::ChildStderr>, kept: &mut Vec<u
 }
 
 impl Runner {
+    /// The rights again when a row changed: a mode, a stop.
+    pub(super) fn rights_if(&self, row: bool) {
+        if row {
+            self.rights_now();
+        }
+    }
+
     /// The rights of the launcher as the threads and the login are now: each thread that runs,
     /// with its mode and its folder.
     pub(super) fn rights_now(&self) {
