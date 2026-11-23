@@ -1,0 +1,29 @@
+[package]
+name = "model-launcher"
+description = "The root-owned model launcher of Linux (L1-6c; R-327, R-347): it checks a runtime against the signed list of runtimes, contains it and runs it"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "anima-model-launcher"
+path = "src/main.rs"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+updater-signature = { path = "../updater-signature" }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+rustix = { version = "1.1", features = ["fs", "process", "thread"] }
+
+[dev-dependencies]
+base64.workspace = true
+minisign = "0.10"
+serde_json.workspace = true
+tempfile.workspace = true
