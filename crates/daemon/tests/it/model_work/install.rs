@@ -5,6 +5,9 @@ use super::kit::{
     Entry, FAKE_RUNTIME, PROGRAM, archive, entry, folders, linked_archive, node, release, target,
 };
 
+/// The links of a test archive: (path, target).
+type Links<'a> = &'a [(&'a str, &'a str)];
+
 #[test]
 fn a_whole_archive_is_installed_with_plain_modes() {
     let root = tempfile::tempdir().expect("a folder");
@@ -92,7 +95,7 @@ fn a_link_to_a_file_of_the_archive_is_installed_as_a_copy_of_that_file() {
 #[test]
 fn a_link_that_names_no_file_of_the_archive_is_refused_and_leaves_nothing() {
     let file: Entry<'_> = (PROGRAM, 0o755, Some(b"x"));
-    let cases: [(&[(&str, &str)], &[Entry<'_>]); 6] = [
+    let cases: [(Links<'_>, &[Entry<'_>]); 6] = [
         (&[("bin/link", "../../escape")], &[file]),
         (&[("bin/link", "../bin")], &[file]),
         (&[("bin/link", "missing")], &[file]),
