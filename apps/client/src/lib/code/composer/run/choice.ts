@@ -39,7 +39,7 @@ export interface ProgramModel {
 /** The id of each mode of a run in the picker's list of permissions. */
 export const MODE_IDS: Readonly<Record<Mode, string>> = { ask: 'approval-required', accept_edits: 'auto-accept-edits', full_access: 'full-access', plan: 'plan' };
 /** The word of each effort, as the picker shows it. */
-export const EFFORT_WORDS: Readonly<Record<Effort, string>> = { low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Extra high', max: 'Max' };
+export const EFFORT_WORDS: Readonly<Record<Effort, string>> = { low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Extra High', max: 'Max' };
 const EFFORTS = Object.keys(EFFORT_WORDS) as Effort[];
 
 const NO_AUTO = 'The runner has no such mode.';
@@ -48,7 +48,11 @@ const NO_PLAN = 'Codex has no plan mode.';
 /** The runner's own fourth mode, which T3 Code's four do not have (03 A.4.1): the program plans and changes nothing. */
 const PLAN_MODE: PermissionMode = { id: 'plan', label: 'Plan', description: 'Plan the work; change no file and run no command.', icon: 'eye', can: CAN };
 
-const level = (effort: Effort): EffortLevel => ({ id: effort, label: EFFORT_WORDS[effort] });
+/** A level as the picker lists it; the one the model starts with carries the "Default" tag. */
+export const level = (effort: Effort, preset?: string | null): EffortLevel => ({ id: effort, label: EFFORT_WORDS[effort], ...(effort === preset ? { isDefault: true } : {}) });
+
+/** T3 Code's heading of the levels: both programs call their effort reasoning. */
+export const EFFORT_HEAD = 'Reasoning';
 
 /** The modes as the picker lists them. Where they can be changed, one that the runner or the program lacks says so. */
 function modesOf(row: Row, changes: boolean): readonly PermissionMode[] {
@@ -62,18 +66,18 @@ function modesOf(row: Row, changes: boolean): readonly PermissionMode[] {
  * The efforts of a model. Claude Code takes no change of the effort after the start: only the one it runs with is
  * listed. For Codex they are the ones its model names, or each one when the runner gave no list.
  */
-function effortsOf(row: Row, changes: boolean, named?: readonly string[]): readonly EffortLevel[] {
+function effortsOf(row: Row, changes: boolean, named?: ProgramModel): readonly EffortLevel[] {
   if (!changes || row.program !== 'codex') return row.effort === undefined || row.effort === null ? [] : [level(row.effort)];
-  return named === undefined ? EFFORTS.map(level) : EFFORTS.filter((effort) => named.includes(effort)).map(level);
+  return named === undefined ? EFFORTS.map((effort) => level(effort)) : EFFORTS.filter((effort) => named.efforts.includes(effort)).map((effort) => level(effort, named.defaultEffort));
 }
 
 /** The rows of the picker: the program's own models where the runner knows them, with the chat's model among them. */
 function modelsOf(row: Row, changes: boolean, listed: readonly ProgramModel[]): Catalogue['models'] {
   const current = row.model ?? 'default';
-  const blank = { provider: row.program, favourite: false, can: CAN, speeds: [], toggles: [] } as const;
+  const blank = { provider: row.program, favourite: false, can: CAN, speeds: [], toggles: [], effortLabel: EFFORT_HEAD } as const;
   const own = { ...blank, id: current, label: row.model ?? 'Default model', efforts: effortsOf(row, changes) };
   if (!changes || listed.length === 0) return [own];
-  const rows = listed.map((model) => ({ ...blank, id: model.id, label: model.label, efforts: effortsOf(row, changes, model.efforts) }));
+  const rows = listed.map((model) => ({ ...blank, id: model.id, label: model.label, efforts: effortsOf(row, changes, model) }));
   return rows.some((model) => model.id === current) ? rows : [own, ...rows];
 }
 

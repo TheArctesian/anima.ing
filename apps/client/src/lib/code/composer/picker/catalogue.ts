@@ -289,3 +289,17 @@ export function describeEffort(model: Model | undefined, value: Choice, display:
     detail: [reasoning, ...on].filter((part) => part !== '').join(' · '),
   };
 }
+
+/** The families a maker puts before the version of a model; T3 Code's `modelShortName` drops them. */
+const FAMILIES = /^(claude|gpt|gemini|grok)[\s-]+/i;
+
+/**
+ * The short name of a model for the trigger and the head of the levels (T3 Code `modelShortName.ts`): a maker's
+ * "Vendor: " and its family go when what is left names a model, that is, holds a version number. "GPT-5.4-Codex" is
+ * "5.4 Codex"; "Claude Code default" stays whole. Pure.
+ */
+export function shortName(label: string): string {
+  const bare = label.replace(/^[^:]{1,24}:\s+/, '');
+  const rest = bare.replace(FAMILIES, '');
+  return rest !== bare && /\d/.test(rest) ? rest.replace(/-/g, ' ') : bare;
+}

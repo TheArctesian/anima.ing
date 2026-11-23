@@ -3,7 +3,8 @@ import type { Effort, Mode } from '$lib/agent-threads/live/run';
 import { programName, type Program } from '$lib/agent-threads/thread';
 import { CAN, cannot } from '../composer/draft';
 import { PROGRAM_ICONS } from '../icons/program';
-import { PERMISSION_MODES, type Catalogue, type Choice, type EffortLevel, type ModelsNotice, type PermissionMode } from '../composer/picker/catalogue';
+import { PERMISSION_MODES, type Catalogue, type Choice, type ModelsNotice, type PermissionMode } from '../composer/picker/catalogue';
+import { EFFORT_HEAD, EFFORT_WORDS, level } from '../composer/run/choice';
 
 /** What a new thread starts with, as the composer's pickers set it before the first send. */
 export interface DraftChoice {
@@ -19,7 +20,6 @@ export const FIRST_CHOICE: DraftChoice = { program: 'claude_code', model: null, 
 
 const PROGRAMS: readonly Program[] = ['claude_code', 'codex'];
 const MODE_IDS: Readonly<Record<Mode, string>> = { ask: 'approval-required', accept_edits: 'auto-accept-edits', full_access: 'full-access', plan: 'plan' };
-const EFFORT_WORDS: Readonly<Record<Effort, string>> = { low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Extra high', max: 'Max' };
 const EFFORTS = Object.keys(EFFORT_WORDS) as Effort[];
 const DEFAULT = 'default';
 
@@ -44,7 +44,6 @@ const NO_AUTO = 'The runner has no such mode.';
 const NO_PLAN = 'Codex has no plan mode.';
 const PLAN_MODE: PermissionMode = { id: 'plan', label: 'Plan', description: 'Plan the work; change no file and run no command.', icon: 'eye', can: CAN };
 
-const level = (effort: Effort): EffortLevel => ({ id: effort, label: EFFORT_WORDS[effort] });
 
 /** The modes of a program: T3's four, of which the runner has three, and the runner's plan mode, which Codex lacks. */
 function modesOf(program: Program): readonly PermissionMode[] {
@@ -64,10 +63,10 @@ function noticeOf(models: DraftModels): ModelsNotice | undefined {
 /** The models of each program: its default, named for the program, then the ones the runner listed (TH104). */
 function modelsOf(models: DraftModels): Catalogue['models'] {
   return PROGRAMS.flatMap((program) => {
-    const blank = { provider: program, favourite: false, can: CAN, speeds: [], toggles: [] } as const;
+    const blank = { provider: program, favourite: false, can: CAN, speeds: [], toggles: [], effortLabel: EFFORT_HEAD } as const;
     const listed = models.state === 'listed' ? (models.lists[program] ?? []) : [];
-    const own = { ...blank, id: DEFAULT, label: `${programName(program)} default`, efforts: PROGRAM_EFFORTS[program].map(level) };
-    const named = listed.map((model) => ({ ...blank, id: model.id, label: model.label, efforts: EFFORTS.filter((effort) => model.efforts.includes(effort)).map(level) }));
+    const own = { ...blank, id: DEFAULT, label: `${programName(program)} default`, efforts: PROGRAM_EFFORTS[program].map((effort) => level(effort)) };
+    const named = listed.map((model) => ({ ...blank, id: model.id, label: model.label, efforts: EFFORTS.filter((effort) => model.efforts.includes(effort)).map((effort) => level(effort, model.defaultEffort)) }));
     return [own, ...named];
   });
 }

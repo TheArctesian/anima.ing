@@ -51,11 +51,11 @@
           onFavourite(model, !model.favourite);
         }}
       >
-        <CodeIcon name="pin" />
+        <CodeIcon name="star" />
       </button>
     </Tooltip>
   {:else if model.favourite}
-    <span class="mark on" class:quiet={quietMark}><CodeIcon name="pin" /></span>
+    <span class="mark on" class:quiet={quietMark}><CodeIcon name="star" /></span>
   {/if}
   {#if jump !== undefined}<Kbd keys={jump} />{/if}
 </span>

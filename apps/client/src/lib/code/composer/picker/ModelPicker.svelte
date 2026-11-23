@@ -9,12 +9,13 @@
   import Control from '../Control.svelte';
   import type { Can } from '../draft';
   import Bolt from './Bolt.svelte';
-  import { FAVOURITES, chosenModel, describeEffort, jumpKeys, litRow, modelKey, nextRow, nextTab, openingTab, pickModel, rowsOf } from './catalogue';
+  import { FAVOURITES, chosenModel, describeEffort, jumpKeys, litRow, modelKey, nextRow, nextTab, openingTab, pickModel, rowsOf, shortName } from './catalogue';
   import type { Catalogue, Choice, Model, Row } from './catalogue';
   import EffortGlyph from './EffortGlyph.svelte';
   import { composes, jumpLabel, popupIntent, searchIntent } from './keys';
   import EffortColumn from './popup/EffortColumn.svelte';
   import ModelList from './popup/ModelList.svelte';
+  import ModelsNotice from './popup/ModelsNotice.svelte';
   import PickerFooter from './popup/PickerFooter.svelte';
   import ProviderRail from './popup/ProviderRail.svelte';
 
@@ -181,7 +182,7 @@
     onclick={onTrigger}
   >
     {#if provider !== undefined}<CodeIcon name={provider.icon} />{/if}
-    <span class="name">{name}</span>
+    <span class="name">{shortName(name)}</span>
     {#if summary.word !== null || summary.bars !== null || summary.bolt !== null}
       <span class="suffix" class:sm={size === 'sm'}>
         {#if summary.word !== null}<span class="word">{summary.word}</span>{:else if summary.bars !== null}<EffortGlyph bars={summary.bars} {size} />{/if}
@@ -224,13 +225,7 @@
         <EffortColumn {model} {value} {onChange} onSearch={() => list?.focus()} bind:this={column} />
       </div>
       <!-- Why the list is short, on a line of its own under the list with the whole reason, never inside a row. -->
-      {#if catalogue.notice !== undefined}
-        <div class="notice" class:failed={catalogue.notice.failed} role="status">
-          {#if catalogue.notice.failed}<CodeIcon name="triangle-alert" />{/if}
-          <span class="words">{catalogue.notice.words}</span>
-          {#if catalogue.notice.failed && onRetry !== undefined}<button type="button" class="retry" onclick={onRetry}>Retry</button>{/if}
-        </div>
-      {/if}
+      {#if catalogue.notice !== undefined}<ModelsNotice notice={catalogue.notice} {onRetry} />{/if}
       <PickerFooter {model} modes={catalogue.modes} {value} {onChange} />
       <span class="unseen" role="status">{said}</span>
     </div>
@@ -325,56 +320,6 @@
   /* A line between the rail and the list, only while the rail shows (03 A.2.4). */
   .models > :global(.rail + .column) {
     border-inline-start: var(--border-thin) solid var(--code-composer-picker-line);
-  }
-
-  .notice {
-    display: flex;
-    gap: var(--space-2);
-    align-items: flex-start;
-    padding: var(--space-2) var(--space-3);
-    border-block-start: var(--border-thin) solid var(--code-composer-picker-line);
-    color: var(--code-composer-picker-quiet);
-    font-size: var(--code-text-meta);
-    line-height: var(--leading-normal);
-  }
-
-  .notice.failed {
-    color: var(--text);
-  }
-
-  .notice.failed :global(.code-icon) {
-    flex: none;
-    inline-size: var(--code-composer-picker-mark);
-    block-size: var(--code-composer-picker-mark);
-    margin-block-start: var(--space-1);
-    color: var(--status-warning);
-  }
-
-  /* The whole reason wraps between words; a long path or code breaks only where it must. */
-  .words {
-    flex: 1;
-    min-inline-size: 0;
-    overflow-wrap: break-word;
-  }
-
-  .retry {
-    flex: none;
-    padding: var(--space-1) var(--space-2);
-    border: var(--border-thin) solid var(--border-strong);
-    border-radius: var(--radius-sm);
-    background: none;
-    color: var(--text);
-    font: inherit;
-    cursor: pointer;
-  }
-
-  .retry:hover {
-    background: var(--surface-hover);
-  }
-
-  .retry:focus-visible {
-    outline: var(--border-focus) solid var(--focus-ring);
-    outline-offset: var(--border-focus);
   }
 
   .unseen {
