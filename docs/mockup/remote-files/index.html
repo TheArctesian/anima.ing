@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Remote files feel local mockups</title>
+<style>
+/* Layout: a review board for a remote file drop with a rewritten path (agent-tools-as-extensions.md
+   Section 6.12, AXT-090 to AXT-102). Frame 1 is a drop onto a Code thread on a remote machine (dark).
+   Frame 2 is a live SSH session: the built file panel, and a drop onto the session that goes to the inbox (light).
+   Frame 3 is refusals, the audit entry and OSC 52 off (dark). Frame 4 is ASCII.
+   Not approved. No font, script or image comes from a third party. */
+:root {
+  color-scheme: dark;
+  --pg-bg: #101214; --pg-fg: #E6E7E9; --pg-muted: #A4A8B0; --pg-rule: #2C3036;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  color-scheme: light; --pg-bg: #E6E8EB; --pg-fg: #1D2024; --pg-muted: #5A5F68; --pg-rule: #C9CDD3;
+} }
+
+/* The app's own tokens, copied from design/tokens (Graphite palette, status roles, sizes, type), as in the other mockups.
+   A frame is dark (.gd) or light (.gl). Maintenance uses aurora-15 (#B48EAD) in both; the light text value is not checked. */
+.gd {
+  --surface-base: #1B1D21; --surface-raised: #23262B; --surface-hover: #2A2D33; --border-subtle: #34383E; --border-strong: #6C7076;
+  --text: #E6E7E9; --text-secondary: #A4A8B0; --accent: #88C0D0;
+  --status-up: #A3BE8C; --status-down: #BF616A; --status-degraded: #EBCB8B; --status-maintenance: #B48EAD; --status-unknown: #7B8089;
+}
+.gl {
+  --surface-base: #F6F7F8; --surface-raised: #FFFFFF; --surface-hover: #ECEEF0; --border-subtle: #D8DBDF; --border-strong: #86898E;
+  --text: #1D2024; --text-secondary: #5A5F68; --accent: #2E6E80;
+  --status-up: #4F7A3A; --status-down: #A8424C; --status-degraded: #9A7215; --status-maintenance: #B48EAD; --status-unknown: #7B8089;
+}
+.gd, .gl {
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-6: 1.5rem; --space-8: 2rem;
+  --text-sm: 0.8125rem; --text-md: 0.875rem; --text-lg: 1rem; --text-display: 2.25rem;
+  --leading-tight: 1.2; --leading-normal: 1.5; --tracking-tight: -0.03em;
+  --weight-light: 200; --weight-medium: 500; --radius-md: 4px; --radius-pill: 999px; --border-thin: 1px;
+  --control-sm: 1.75rem; --control-md: 2rem;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 16px 48px; background: var(--pg-bg); color: var(--pg-fg); font-family: var(--font-ui); }
+h1.board { margin: 0 0 4px; font-weight: 200; font-size: 28px; }
+p.about { margin: 0 0 24px; color: var(--pg-muted); font-size: 14px; max-width: 70ch; }
+.frames { display: grid; gap: 32px; }
+figure { margin: 0; }
+figcaption { margin-top: 6px; font-size: 12px; color: var(--pg-muted); max-width: 90ch; }
+.frame { max-inline-size: 1040px; border: var(--border-thin) solid var(--pg-rule); background: var(--surface-base); color: var(--text); font-size: var(--text-md); }
+.pad { padding: var(--space-8); display: grid; gap: var(--space-6); }
+h2 { margin: 0; font-weight: var(--weight-light); font-size: var(--text-display); letter-spacing: var(--tracking-tight); line-height: var(--leading-tight); }
+h3 { margin: 0; font-size: var(--text-lg); font-weight: var(--weight-medium); }
+.muted { color: var(--text-secondary); font-size: var(--text-sm); }
+.banner { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius-md); background: var(--surface-raised); border: var(--border-thin) solid var(--border-subtle); }
+.dot { inline-size: 0.75rem; block-size: 0.75rem; border-radius: 50%; flex: none; }
+.up { background: var(--status-up); } .down { background: var(--status-down); } .deg { background: var(--status-degraded); }
+.app { display: grid; grid-template-columns: 13rem 1fr; min-block-size: 30rem; }
+.side { border-inline-end: var(--border-thin) solid var(--border-subtle); padding: var(--space-6) var(--space-4); display: grid; gap: var(--space-2); align-content: start; }
+.nav { color: var(--text-secondary); } .nav.on { color: var(--text); font-weight: var(--weight-medium); }
+.group { font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary); margin-block-start: var(--space-3); }
+.btn { display: inline-flex; align-items: center; block-size: var(--control-sm); padding: 0 var(--space-3); border: var(--border-thin) solid var(--border-strong); border-radius: var(--radius-md); font-size: var(--text-sm); }
+.btn.pri { background: var(--accent); color: var(--surface-base); border-color: var(--accent); }
+.chip { display: inline-block; padding: 0 var(--space-2); border-radius: var(--radius-pill); border: var(--border-thin) solid var(--border-subtle); font-size: 0.75rem; color: var(--text-secondary); }
+.warn { color: var(--status-down); font-size: var(--text-sm); }
+.ok { color: var(--status-up); font-size: var(--text-sm); }
+code { font-family: var(--font-mono); font-size: 0.8125rem; }
+.main { padding: var(--space-6); display: grid; gap: var(--space-4); align-content: start; min-inline-size: 0; }
+.thread { display: grid; gap: var(--space-3); min-block-size: 22rem; }
+.bubble { padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); background: var(--surface-raised); border: var(--border-thin) solid var(--border-subtle); max-inline-size: 44ch; }
+.bubble.op { justify-self: end; }
+.composer { position: relative; border: var(--border-thin) solid var(--border-strong); border-radius: var(--radius-md); padding: var(--space-3); min-block-size: 4.5rem; background: var(--surface-raised); }
+.composer.drop { outline: var(--border-thin) dashed var(--accent); outline-offset: 2px; }
+.drop-hint { position: absolute; inset: 0; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: var(--radius-md); font-weight: var(--weight-medium); }
+.toast { display: grid; gap: var(--space-1); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); background: var(--surface-raised); border-inline-start: 3px solid var(--status-up); }
+.session { display: grid; grid-template-columns: 1fr 16rem; min-block-size: 26rem; border: var(--border-thin) solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; }
+.term { background: #101214; color: #E6E7E9; font-family: var(--font-mono); font-size: 0.75rem; padding: var(--space-4); line-height: 1.45; }
+.term.drop { outline: var(--border-thin) dashed #88C0D0; outline-offset: -4px; }
+.panel { border-inline-start: var(--border-thin) solid var(--border-strong); background: var(--surface-raised); display: flex; flex-direction: column; font-size: var(--text-sm); }
+.pbar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-block-end: var(--border-thin) solid var(--border-subtle); }
+.plist { margin: 0; padding: var(--space-2) 0; list-style: none; flex: 1; }
+.plist li { display: grid; grid-template-columns: 1fr auto; gap: var(--space-2); padding: var(--space-1) var(--space-3); }
+.pfoot { padding: var(--space-2) var(--space-3); border-block-start: var(--border-thin) solid var(--border-subtle); color: var(--text-secondary); }
+table { border-collapse: collapse; inline-size: 100%; }
+th, td { text-align: start; padding: var(--space-2) var(--space-3); border-block-end: var(--border-thin) solid var(--border-subtle); vertical-align: top; }
+th { font-weight: var(--weight-medium); color: var(--text-secondary); font-size: var(--text-sm); }
+.ascii { margin: 0; padding: var(--space-6); font-family: var(--font-mono); font-size: 0.75rem; line-height: 1.4; white-space: pre; overflow: auto; background: var(--surface-raised); color: var(--text); }
+</style>
+</head>
+<body>
+<h1 class="board">Remote files feel local</h1>
+<p class="about">A local file dropped onto a remote session or a Code thread is uploaded to a safe inbox on that machine. The path the agent sees is the path on that machine. Download uses the same files tunnel. A copy between machines is later. The SFTP panel of a live SSH session is already built and stays. OSC 52 stays off. Not approved.</p>
+<div class="frames">
+
+<figure>
+  <div class="frame gd">
+    <div class="app">
+      <nav class="side" aria-label="Navigation">
+        <div class="group">Anima.ing</div>
+        <div class="nav">Devices</div>
+        <div class="nav on">Code</div>
+        <div class="nav">Agents</div>
+        <div class="nav">Projects</div>
+      </nav>
+      <div class="main">
+        <div class="row-head" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+          <h2>Resize photos</h2>
+          <span class="chip">Work machine: mini</span>
+        </div>
+        <p class="muted">Thread on mini, not this computer. A drop uploads to the inbox on mini and rewrites the path.</p>
+        <div class="thread">
+          <div class="bubble">Resize the attached image to 1200 px wide and keep the ratio.</div>
+          <div class="bubble op">Saved to mini as <code>/Users/stephen/.anima/inbox/photo.png</code></div>
+        </div>
+        <div class="toast">
+          <strong class="ok">Saved to mini</strong>
+          <span class="muted">Uploaded 1.8 MB to <code>/Users/stephen/.anima/inbox/photo.png</code>. The agent sees this path. Audit holds the path and the size, not the bytes.</span>
+        </div>
+        <div class="composer drop">
+          <span class="muted">Ask the thread…</span>
+          <div class="drop-hint">Save to the inbox on mini</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <figcaption>Frame 1. Code thread on a remote machine (dark). The operator drops a local file onto the composer. Anima.ing uploads it to <code>.anima/inbox/</code> on that machine and puts the remote path into the composer. If the work machine is this computer, there is no upload.</figcaption>
+</figure>
+
+<figure>
+  <div class="frame gl">
+    <div class="pad">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+        <h2>mini — SSH</h2>
+        <span class="chip">Files on the device</span>
+      </div>
+      <p class="muted">The file panel is already built (RA-032). A drop onto the panel still uploads to the folder it shows. A drop onto the terminal goes to the inbox and rewrites the path.</p>
+      <div class="session">
+        <div class="term drop">stephen@mini ~ % ls<br>Documents  Projects  src<br>stephen@mini ~ % # Drop: save to ~/.anima/inbox/notes.txt<br><span style="color:#88C0D0;">Saved to mini as /Users/stephen/.anima/inbox/notes.txt</span><br>stephen@mini ~ %
+        </div>
+        <div class="panel">
+          <div class="pbar">
+            <span class="muted">↑</span>
+            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;">/var/log</span>
+            <span class="btn">Upload</span>
+          </div>
+          <ul class="plist">
+            <li><span>system.log</span><span class="muted">2.1 MB</span></li>
+            <li><span>install.log</span><span class="muted">420 KB</span></li>
+            <li><span>wifi.log</span><span class="muted">88 KB</span></li>
+          </ul>
+          <div class="pfoot">Drop a file here to upload into /var/log. Never overwrites.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <figcaption>Frame 2. Live SSH session (light). The panel on the right is the built SFTP panel: list, upload, download, drop into the current folder. The new drop is onto the session itself: the file lands in the inbox, not in <code>/var/log</code>, and the operator sees the rewritten path. The remote host does not write the clipboard.</figcaption>
+</figure>
+
+<figure>
+  <div class="frame gd">
+    <div class="pad">
+      <h2>Refusals and the audit</h2>
+      <p class="muted">Each transfer is an explicit act. The audit entry holds the device path and the size. No log holds the content or the local path on this computer. OSC 52 stays off.</p>
+      <table>
+        <thead>
+          <tr><th>Case</th><th>Code</th><th>What the operator sees</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Upload is off on this device</td><td><code>UPLOAD_OFF</code></td><td class="warn">Uploads are off for mini.</td></tr>
+          <tr><td>A file of that name is already in the inbox</td><td><code>EXISTS</code></td><td class="warn">A file named photo.png is already in the inbox. An upload never replaces a file.</td></tr>
+          <tr><td>SSH is not set up</td><td><code>SSH_OFF</code></td><td class="warn">mini has no SSH in Anima.ing, so a file cannot be sent this way.</td></tr>
+          <tr><td>The work machine is this computer</td><td><code>SAME_MACHINE</code></td><td class="ok">This file is already on this computer. The local path is used. Nothing was uploaded.</td></tr>
+          <tr><td>The device cannot be reached</td><td><code>DEVICE_UNREACHABLE</code></td><td class="warn">mini cannot be reached.</td></tr>
+        </tbody>
+      </table>
+      <div class="banner">
+        <span class="dot up"></span>
+        <div>
+          <h3>Audit entry</h3>
+          <p class="muted" style="margin:0;"><code>file.upload</code> · mini · <code>/Users/stephen/.anima/inbox/photo.png</code> · 1.8 MB · done. Event sentence: “An operator uploaded a file to the device.” No content.</p>
+        </div>
+      </div>
+      <p class="muted">A copy between two enrolled machines (<code>anima cp</code>) is not in the first version. Until then, <code>anima files get</code> and <code>anima files put</code> go through this computer.</p>
+    </div>
+  </div>
+  <figcaption>Frame 3. Refusals and the audit (dark). The flags of RA-032 apply. <code>SAME_MACHINE</code> skips the upload. The remote host must not fill the clipboard (OSC 52 off).</figcaption>
+</figure>
+
+<figure>
+  <div class="frame gd">
+    <pre class="ascii">This computer                         Hub                         Remote machine (mini)
+----------------                         ---                         ----------------------
+Drop photo.png  ---- openFiles ------&gt;  files tunnel  -- SFTP --&gt;  ~/.anima/inbox/photo.png
+ onto Code or                           (RA-032,                  (temp name, then rename:
+ a session                              K4 §9)                     RA-038)
+                                        audit: path, size
+                                        no content
+
+If no SSH tab is open, the client starts a short-lived SSH session,
+opens the files tunnel, then ends the session (as anima files does).
+
+Same computer: no upload; the local path stays.
+Shared project folder (R-280): not this path; do not merge.
+Port preview (R-281): already planned; this section does not rebuild it.
+anima cp between machines: later.</pre>
+  </div>
+  <figcaption>Frame 4. The path of a drop (ASCII). There is no second files tunnel. A contract change to K4 or K1 waits for a ruling (CON-001). The Code page drop target is owned with the thread plan; this mockup shows the intended layout only.</figcaption>
+</figure>
+
+</div>
+</body>
+</html>
