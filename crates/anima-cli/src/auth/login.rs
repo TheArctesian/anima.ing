@@ -94,7 +94,8 @@ pub async fn with_password(
     })
 }
 
-fn read_stdin(prompter: Prompter) -> Result<Zeroizing<String>, Failure> {
+/// The token on standard input, as text; never echoed or kept (CMD-014).
+pub(super) fn read_stdin(prompter: Prompter) -> Result<Zeroizing<String>, Failure> {
     let bytes = input::read(prompter, Path::new("-"), "the token", MAX_KEY)?;
     std::str::from_utf8(&bytes)
         .map(|text| Zeroizing::new(text.to_owned()))
