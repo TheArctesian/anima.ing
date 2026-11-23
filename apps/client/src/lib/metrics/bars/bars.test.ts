@@ -60,6 +60,11 @@ it('MET-030: the disk bar is labelled with its mount and counts the other drives
   expect(bars({ diskMount: null, otherDrives: 0 })[2]?.label).toBe('Disk');
 });
 
+it('omits the legacy iOS filesystem percentage and shows a local storage estimate when available', () => {
+  expect(bars({ diskMount: 'App data', diskPercent: 99 }).map((bar) => bar.key)).toEqual(['cpu', 'memory']);
+  expect(bars({ diskMount: null, diskPercent: 51.4 })[2]).toMatchObject({ key: 'disk', text: '51 %', degraded: false });
+});
+
 it('MET-030: one other drive is singular, and none or a broken count is no note', () => {
   expect(otherDrivesText(1)).toBe('+1 drive');
   expect(otherDrivesText(0)).toBeNull();

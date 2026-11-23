@@ -37,6 +37,7 @@ struct RunnerReport: Encodable {
   let physicalMemoryBytes: UInt64
   let availableProcessBytes: Int?
   let availableStorageBytes: Int?
+  let totalStorageBytes: Int?
   let charging: String
   let thermal: String
   let lowPowerMode: Bool
@@ -62,7 +63,9 @@ struct RunnerReport: Encodable {
     simulated = false
     availableProcessBytes = os_proc_available_memory()
     #endif
-    availableStorageBytes = Self.availableStorage()
+    let storage = Self.storageCapacity()
+    availableStorageBytes = storage?.volumeAvailableCapacityForImportantUsage.flatMap(Int.init(exactly:))
+    totalStorageBytes = storage?.volumeTotalCapacity
     charging = Self.charging(device)
     thermal = Self.thermal(process.thermalState)
     lowPowerMode = process.isLowPowerModeEnabled
@@ -78,9 +81,9 @@ struct RunnerReport: Encodable {
     }
   }
 
-  private static func availableStorage() -> Int? {
+  private static func storageCapacity() -> URLResourceValues? {
     let home = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
-    return (try? home.resourceValues(forKeys: [.volumeAvailableCapacityKey]))?.volumeAvailableCapacity
+    return try? home.resourceValues(forKeys: [.volumeTotalCapacityKey, .volumeAvailableCapacityForImportantUsageKey])
   }
 
   @MainActor private static func charging(_ device: UIDevice) -> String {

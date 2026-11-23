@@ -49,10 +49,22 @@ pub enum Access {
     Full,
 }
 
+/// What a run of a thread is for. The launcher checks each kind in its own way.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Kind {
+    /// A read of the history of the repository of the person with the rights of the thread,
+    /// for each thread, also a confined one. It has one exact shape, which
+    /// [`super::super::place::shared::pack::is_read`] checks.
+    Read,
+    /// A hook of the repository: only for a thread in Full access ([`of`]).
+    Hook,
+}
+
 /// One program to start for a thread: `program` with `args` in `dir`, with `env` added and
 /// the file `input`, when there is one, as its standard input.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ThreadRun {
+    pub kind: Kind,
     pub thread: Uuid,
     pub dir: PathBuf,
     pub program: PathBuf,
@@ -239,6 +251,7 @@ impl Hooks<'_> {
         // the repository can change after the check.
         let program_of_run = self.copy(name, &bytes)?;
         let run = ThreadRun {
+            kind: Kind::Hook,
             thread: self.worktree.thread(),
             dir: self.worktree.folder().to_owned(),
             program: program_of_run.clone(),

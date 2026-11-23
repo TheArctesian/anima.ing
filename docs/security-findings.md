@@ -2689,6 +2689,97 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 2.2: a fixed list of files for each format (`file_type`); `auto_map` and `custom_pipelines` refused (`remote_code`); vLLM `--load-format safetensors`; the chat template only from the copy, at most 64 KiB, in the sandboxed renderer of the runtime.
 
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
+
+### SF-370: The check of a copy does not refuse a class that is not in the list of the runtime. Medium
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 30d09f830 (branch `compute/sf-298-model-files`).
+
+The correction: a fixed list of classes for each runtime (`files/classes.rs`): for vLLM the 131 text-generation architectures of vLLM v0.34.0, and a list of tokenizer classes; each entry of `architectures` and `tokenizer_class` must be on it and has no `.`, `/`, `--` or `:`, else `remote_code`. `llama_server` loads only GGUF and reads no `config.json`; `mlx_lm` has no list yet.
+
+State: Closed in 04f5684d8, read again by the separate reviewer on 2026-11-22. Found by a separate reviewer on 2026-11-22 in 30d09f830.
+
+### SF-371: Only `config.json` and `tokenizer_config.json` are checked for remote-code members. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 30d09f830 (branch `compute/sf-298-model-files`).
+
+The correction: `check_copy` walks each JSON file of the Section 2.2 list but `tokenizer.json`: also `generation_config.json`, `special_tokens_map.json`, `preprocessor_config.json` and each `*.safetensors.index.json`.
+
+State: Closed in 04f5684d8, read again by the separate reviewer on 2026-11-22. Found by a separate reviewer on 2026-11-22 in 30d09f830.
+
+### SF-372: An over-long chat template, an unparsable file and an oversized file are all reported as `remote_code`. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 30d09f830 (branch `compute/sf-298-model-files`).
+
+The correction: Waits for the operator: a separate cause word, or the text of `remote_code` in Section 5 made wider. The cause words do not change in this branch.
+
+State: Open; the decision goes to the operator. Found by a separate reviewer on 2026-11-22 in 30d09f830.
+
+### SF-373: The read of the files of a copy is not bounded in the code that reads them. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 30d09f830 (branch `compute/sf-298-model-files`).
+
+The correction: The caller of the checks (`model_load`, task L1-8) must read at most 2 MiB of each file (`MAX_CONFIG_BYTES`) and take the length of `chat_template.jinja` from its metadata before it reads it.
+
+State: Open; owned by the `model_load` caller (L1-8). Found by a separate reviewer on 2026-11-22 in 30d09f830.
+
+### SF-374: Tests are missing for a duplicate key, a long `chat_template.jinja` through `check_copy` and a large real tokenizer configuration. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 30d09f830 (branch `compute/sf-298-model-files`).
+
+The correction: Tests for each, with a fixture of about 1.2 MB of `added_tokens_decoder` (the size of Gemma 3).
+
+State: Built on branch `compute/sf-298-model-files`. Found by a separate reviewer on 2026-11-22 in 30d09f830.
+
+### SF-375: A vLLM copy without `config.json` is not refused. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 04f5684d8 (branch `compute/sf-298-model-files`).
+
+The correction: `check_copy` refuses (`remote_code`) a copy for a runtime with a class list when it has no `config.json`.
+
+State: Built on branch `compute/sf-298-model-files`. Found by a separate reviewer on 2026-11-22 in 04f5684d8.
+
+### SF-376: The tokenizer list is a choice of the builder, and the list of architectures cites a vLLM version (v0.34.0) that was inferred. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 04f5684d8 (branch `compute/sf-298-model-files`).
+
+The correction: When a vLLM release source pins a version, check both lists again against that version, for each vLLM release source (step in the L1-7 row).
+
+State: Open. Found by a separate reviewer on 2026-11-22 in 04f5684d8.
+
+### SF-377: Classes `*ForConditionalGeneration` (for example Gemma 3 4B and larger, Mistral-Small-3.1) are refused by the text-only list. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 04f5684d8 (branch `compute/sf-298-model-files`).
+
+The correction: None for Level 1, whose scope is text. Image input (L1-14) must make the list wider.
+
+State: Open; noted in the L1-14 row. Found by a separate reviewer on 2026-11-22 in 04f5684d8.
+
+### SF-378: `mlx_lm` has no class list. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 04f5684d8 (branch `compute/sf-298-model-files`).
+
+The correction: None now: `mlx_lm` maps `model_type` to its own modules and does not use `auto_map`, and the walk for `auto_map` and `custom_pipelines` still covers its copies.
+
+State: Open as a note. Found by a separate reviewer on 2026-11-22 in 04f5684d8.
 State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`). Correction of 2026-11-22 (SEC-C-012): a fixed file list exists in code (`daemon-core`, `model_work/files.rs`), so "no code exists" is no longer true; a branch that builds the remaining parts is in progress, and the entry stays Open. The memory safety of the GGUF and safetensors parsers is outside the file list: that risk rests on SF-299 (accepted, R-346). R-342 point (3) records that the protections named on its card (the sandbox and the file checks) do not exist by default. Found by a separate reviewer on 2026-11-20.
 
 ### SF-299: A runtime runs with each right of the user of the daemon, so a fault of a parser reads the token and the configuration. High
@@ -2709,6 +2800,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Sections 2.1 and 4: an empty environment with a fixed list of variables (offline, no usage report, no proxy, no `HF_TOKEN`, no `DYLD_*`, no `LD_PRELOAD`, no `PYTHONPATH`); media only as a `data:` URL; no download folder; a row "runtime: no outgoing connection". The isolation of finding b enforces it.
 
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 State: Accepted by the operator (R-379, 2026-11-22, relayed): no network block on a model server by default, as SF-299 under R-346. K11 Sections 4 and 9 no longer say "no outgoing connection". What stays required: loopback only, the offline and no-telemetry variables, the cleaned environment with no token, only GGUF and safetensors with the `remote_code` refusal; the isolation stays a setting at the machine, off by default. Code exists: the environment is cleared (`env_clear`, `crates/daemon/src/model/server.rs:263`) and the variables are a fixed list (`daemon-core`, `command.rs`). Found by a separate reviewer on 2026-11-20.
 
 ### SF-301: The hub gives the SHA-256, so the check proves nothing against a hub that is taken over. High
@@ -2739,7 +2831,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 9: the check after each start, restart and `model_load` and each 15 seconds, over the process tree, TCP and UDP, IPv4 and IPv6; only `::ffff:127.0.0.1` counts as mapped loopback; the time of 15 seconds is stated.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-304: Prompts can reach a log through the output of a runtime and its slots. Medium
 
@@ -2749,7 +2841,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 2.1: the output goes to a ring file of 1 MiB with mode 0600 that is never sent; owned flags `--log-disable`, `--no-slots`, no slot save path, `--disable-log-requests`.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-305: The memory and the disk of a runtime were not limited. Medium
 
@@ -2759,7 +2851,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 9: a server above its share and 10 % is ended (`limit_memory`); `memory.max` or `RLIMIT_AS` on Linux; a temporary folder of 2 GiB, counted as `tempBytes`; the disk reserve checked for each write.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-306: A partial download that nobody continues stays on the disk. Low
 
@@ -2769,7 +2861,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 7: `partial/` counts in the share and in `cacheBytes`; deleted after 7 days or at `copy_delete`; at most 4 partial copies.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-307: The unpack of a runtime archive accepted hard links, devices, setuid bits and very large archives. Medium
 
@@ -2779,7 +2871,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 6: regular files and folders only; modes 0755 and 0644, no setuid, setgid or sticky bit; 8 GiB and 50,000 entries at most; no two names equal in lower case; unpack to a temporary folder, then rename; `sizeBytes` for each release source.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-308: A server that fails late is started again with no end. Medium
 
@@ -2789,7 +2881,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 9: each end that no item asked for counts; 5 in one hour or 20 in 24 hours make it `failed`; an end in a load makes the copy `failed` (`load_crash`).
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-309: A different process can take the port and receive the API key of a probe. Low
 
@@ -2799,7 +2891,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 9: port 0 where the runtime permits it; before each probe the listener must belong to the process tree of the server (`listener`).
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-310: The index of a GPU and the value of `gpuLayers` were not checked against the machine. Low
 
@@ -2809,7 +2901,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 2.1: a GPU that is not in the inventory is refused (`gpu_unknown`); the only string of `gpuLayers` is `all`.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-311: The list of advisories gave no lowest version of a runtime. Low
 
@@ -2819,7 +2911,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 6: a lowest version of each runtime in the daemon program (`runtime_too_old`), changed only by a signed release.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-312: An API key of an AI agent can start each model work. Medium
 
@@ -2839,7 +2931,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 4: the roots of the system or of the program only; no proxy; no downgrade; no redirect to an IP address or a host outside the list; at most 5 redirects; at most `sizeBytes`; the fixed list of hosts of Hugging Face.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-314: The Hugging Face token can have more rights than a read of gated repositories. Note
 
@@ -2849,7 +2941,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 7: the hub asks for a fine-grained token with read access to gated repositories only.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-315: The daemon can follow a link when it makes or deletes a file of model work. Note
 
@@ -2859,7 +2951,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 10: each change relative to an open folder handle with `O_NOFOLLOW`; `copy_delete` follows no link.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ## The security review of the model work at the machine (task L1-6, 2026-11-20)
 
@@ -3514,7 +3606,7 @@ Where: [model-work.md](../contracts/compute/model-work.md) Section 2 and Section
 
 What it is: `revision` had no exact form, and a file name could hold `/`, so a hub that is taken over could choose a branch name or a path that leaves the folder of the copy or meets a link.
 
-The correction: `revision` is exactly 40 lower-case hexadecimal characters. A file name is a flat name from the list of Section 2.2, with no `/`, `..`, `%` or control character. The daemon writes it with `openat`, `O_NOFOLLOW` and `O_EXCL` under a folder of mode 0700, and refuses two names that are equal in lower case, as the unpack does.
+The correction: `revision` is exactly 40 lower-case hexadecimal characters. A file name is a flat name, or one sub-folder and a flat name joined by one `/` (R-408); each of the two parts is checked as a flat name, with no `/`, `..`, `%`, control character or character outside ASCII (SF-362), and the file part is from the list of Section 2.2. The daemon opens each part with `openat` and `O_NOFOLLOW`, flattens the file on write into `copies/<copy>/` with `O_EXCL` under a folder of mode 0700, and refuses two files whose flattened names are equal in lower case, as the unpack does; it never overwrites one.
 
 State: Open. Fixed in the text of K11 (2026-11-22); no code. Found by a separate reviewer on 2026-11-22 (SEC-C-012).
 
@@ -3589,6 +3681,78 @@ What it is: The key is in the environment of the runtime, which a process of the
 The correction: Section 2.1 states that the key protects only against other users and browser pages.
 
 State: Open. Fixed in the text of K11 (2026-11-22). Found by a separate reviewer on 2026-11-22 (SEC-C-012).
+
+### SF-379: The child reports two of its own faults as `source_failed`. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: `crates/daemon/src/model/fetch/child.rs`.
+
+What it is: A child that refused a non-empty environment, or could not build its Tokio runtime, wrote `source_failed`, so a fault of the child read as a fault of the source.
+
+The correction: Both return `fetch_failed`. Tests: `the_child_refuses_to_work_with_any_environment_variable`, `the_reply_of_the_child_reads_back_as_its_cause`.
+
+State: Corrected on the branch `compute/model-causes`. Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-380: The form of a name with a sub-folder is loose. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 2, `files[].name`.
+
+What it is: The text did not say how many `/` a name may hold, that a part may not be empty, `.` or `..`, or whether the limit of 256 characters counts both parts.
+
+The correction: Exactly 0 or 1 `/`; each part has 1 or more characters and is neither `.` nor `..`; at most 256 characters in all.
+
+State: Fixed in the text of K11; no code (task L1-7). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-381: The address of a file in a sub-folder could encode the `/`. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 7, "The source".
+
+What it is: "Each part is encoded as a path segment" read on the whole name gives `%2F`, which a server may read in a different way.
+
+The correction: The folder and the file are each encoded as a path segment, with a literal `/` between them, never `%2F`.
+
+State: Fixed in the text of K11; no code (task L1-7). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-382: Names that Windows reserves are not refused. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 2.2.
+
+What it is: A part such as `nul.gguf`, `COM1`, a name that ends in a dot or a space, or a name with `:` opens a device or a stream on Windows.
+
+The correction: Either part is refused (`file_type`) when it is `CON`, `PRN`, `AUX`, `NUL`, `COM1` to `COM9` or `LPT1` to `LPT9` in any case, with or without an extension, ends in a dot or a space, or holds `:`.
+
+State: Fixed in the text of K11; no code (task L1-7). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-383: Two causes could fire for a file over its size. Note
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 5.
+
+What it is: `size` and `file_rejected` both spoke of a file that is too large.
+
+The correction: `size` fires when the downloaded size differs from the `sizeBytes` given; `file_rejected` fires when a content check of a file finds it too large.
+
+State: Corrected on the branch `compute/model-causes` (text of K11). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-384: A child that exits with code 0 chooses between `source_failed` and the other words. Note
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: `crates/daemon-core/src/model_work/releases/fetch.rs`, `verdict`.
+
+What it is: Only the word of a child that exited with code 0 gives `source_failed`; a child under the control of a hostile archive could write that word in place of `fetch_failed`.
+
+The correction: None needed: the child could already write each word of its fixed list, so the exit-0 path adds no new power, and the cause carries no text of the child.
+
+State: Accepted as reviewed. Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
 
 ## The security review of the browser session of a hosted hub and of the trust in the gateway (task HM-T32, 2026-11-21)
 
@@ -4203,6 +4367,96 @@ What it is: The daemon sends no request to a server yet, so the drain counts zer
 The correction: Task L1-10 must bind the counter to the real requests in progress.
 
 State: Open. Found by a separate reviewer on 2026-11-22 in commit `1440a9ddb`.
+
+## The security reviews of the Git stage (task TC7, 2026-11-22 and 2026-11-23)
+
+Separate reviewers read the Git engine of the runner (`crates/daemon/src/threads/git/`) in more than ten passes; [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md) has each pass, each High and each Medium with its correction. No High is open. These Lows stay. The engine is not connected to the runner, the command or the page, so no person can reach them yet.
+
+### SF-388: A push through Anima sends no large-file (LFS) contents. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git/push.rs`.
+
+What it is: With Git LFS set for all repositories of the person, a snapshot and a commit of the runner hold pointers. A push through Anima sends the pointers and not the contents.
+
+Effect, and who can cause it: No attacker. A person who pushes through Anima gets a branch on the remote whose large files are missing, with no word.
+
+Mitigation now: None. The design record of the question to the remote plans a line that says so.
+
+State: Open. Found by a separate reviewer on 2026-11-22 or 2026-11-23 in the branch `threads/git-copy-limit`; the record is [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md).
+
+### SF-386: Large-file (LFS) contents are outside the budget of a thread. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git/place/own.rs`.
+
+What it is: The budget of the folder of a thread counts the objects of Git. The contents that Git LFS keeps beside them are not counted.
+
+Effect, and who can cause it: An agent with LFS set for the person can fill the disk of the records with large files. The limit of the free disk (1 GiB kept free) still holds.
+
+Mitigation now: The check of the free disk.
+
+State: Open. Found by a separate reviewer on 2026-11-22 or 2026-11-23 in the branch `threads/git-copy-limit`; the record is [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md).
+
+### SF-389: The locks of the engine are in one process only. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git.rs`; also `worktree::make`, which does not hold the lock of the worktree.
+
+What it is: The engine keeps its locks in memory. Two processes that run an engine on the same records (two daemons of one user) do not see the lock of the other.
+
+Effect, and who can cause it: No attacker. Two daemons of one user at the same time can damage a checkpoint or refuse an action.
+
+Mitigation now: One daemon for each user is the rule of the runner.
+
+State: Open. Found by a separate reviewer on 2026-11-22 or 2026-11-23 in the branch `threads/git-copy-limit`; the record is [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md).
+
+### SF-390: The history of a repository inside a worktree is not saved. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git/checkpoint/staged.rs`, `checkpoint.rs`.
+
+What it is: A removal saves the files of a repository that an agent made inside the worktree, as plain files. Its own commits (its Git folder) are not saved. A repository whose name is not text, or more than 512 of them, stops each snapshot until the person commits its removal.
+
+Effect, and who can cause it: The agent of the thread. Effect: commits made only in such a repository are lost at the removal of the worktree; the files are kept.
+
+Mitigation now: The files are saved, and the refusal names the way out.
+
+State: Open. Found by a separate reviewer on 2026-11-22 or 2026-11-23 in the branch `threads/git-copy-limit`; the record is [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md).
+
+### SF-387: A planted entry in the large-file store of the person stops a removal with an error that names nothing. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git/place/own.rs`, `worktree/files.rs`.
+
+What it is: A removal copies large-file contents into `.git/lfs/objects` of the person. A folder or a file that cannot be read at the name of a content makes the removal fail, and the error names no path. Also: two different files with the same content whose names differ only in the case of a letter are saved under one name on a disk that does not tell the case apart.
+
+Effect, and who can cause it: A Full access agent, which can write the `.git` of the person. Effect: the removal of the worktree fails until the person removes the entry; no work is lost.
+
+Mitigation now: No link is followed and a good content is never changed.
+
+State: Open. Found by a separate reviewer on 2026-11-22 or 2026-11-23 in the branch `threads/git-copy-limit`; the record is [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md).
+
+### SF-385: Some failures of a snapshot or a removal name the wrong cause, or no file. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git/checkpoint/staged.rs`, `place/walk.rs`, `project/linked.rs`.
+
+What it is: Seven cases that the last reviews left, each in [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md), "Lows open after the twelfth review". Examples: a full disk of the records is said as a failure of a file of the worktree, with "delete or move it"; a folder that cannot be read is not removed by the runner; on Linux a network disk that answers "not supported" for a real file has that file staged as gone (not reproduced).
+
+Effect, and who can cause it: The agent of the thread for most cases; the disk for the others. Effect: a checkpoint or a removal fails until the person acts, and the text does not always say what to do. No case was found that loses saved work.
+
+Mitigation now: The words of the system are in each text.
+
+Three more from the reviews of step W1 (branch `threads/git-wired`): the copy of the packs of a thread looks at only the first 16 names, so an agent can push its own pack out; a pack run that fails early can leave its folder in the worktree; a repository whose path has `:` cannot make a pack (the refusal says so).
+
+State: Open. Found by separate reviewers on 2026-11-23 in the branch `threads/git-copy-limit` (commits `d44e975e4` to `13bd13b09`) and `threads/git-wired` (`188a196e0`).
 
 ## Closed
 

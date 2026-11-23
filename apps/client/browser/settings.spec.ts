@@ -5,6 +5,10 @@ test.use({ signedIn: true });
 test('PRJ-039: GitHub connection guidance and actions fit at narrow and medium widths', async ({ page }) => {
   await page.route('**/graphql', async (route) => {
     const request = route.request().postDataJSON() as { query: string };
+    if (request.query.startsWith('query GithubBrowserFlow ')) {
+      await route.fulfill({ json: { data: { sources: [{ key: 'github', connectPageUrl: 'https://hub.anima.ing/connect/github' }] } } });
+      return;
+    }
     if (!request.query.startsWith('query GithubConnect ')) return route.fallback();
     await route.fulfill({ json: { data: { githubConnect: {
       id: 'waiting-attempt',

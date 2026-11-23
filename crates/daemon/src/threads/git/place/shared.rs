@@ -37,6 +37,16 @@ const MOST_KNOWN: usize = 64;
 /// The time the copy of a history gets: the first one of a large repository is long.
 pub const LONG: Duration = Duration::from_hours(1);
 
+/// The bytes that the copy of a project can always have. Above them it can have three times
+/// the bytes of the object store of the project ([`room`]).
+pub const ROOM: u64 = 1024 * 1024 * 1024;
+
+/// How many times the size of the object store of the project its copy can have.
+const TIMES: u64 = 3;
+
+/// The bytes that stay free on the disk of the records, whatever a project brings.
+const MIN_FREE: u64 = 1024 * 1024 * 1024;
+
 /// The most bytes of the list of the commits where a shallow clone ends.
 const MOST_SHALLOW: u64 = 16 * 1024 * 1024;
 
@@ -102,10 +112,9 @@ async fn mark(store: &Git, worktree: &Worktree, commit: &str) -> Result<(), GitE
     store.output(keep).await.map(drop)
 }
 
-/// Whether the copy alone has `commit` as a commit with each object of its history, but for
-/// the history of `known`.
-async fn whole(store: &Git, worktree: &Worktree, commit: &str, known: &[&str]) -> bool {
-    let shared = &worktree.record().shared;
+/// Whether the Git folder at `folder` (the `git` of `store` runs with it) has `commit` as a
+/// commit with each object of its history, but for the history of `known`.
+async fn whole(store: &Git, folder: &Path, commit: &str, known: &[&str]) -> bool {
     let itself = format!("{commit}^{{commit}}");
     let is = [
         "rev-parse",
@@ -114,10 +123,10 @@ async fn whole(store: &Git, worktree: &Worktree, commit: &str, known: &[&str]) -
         "--end-of-options",
         &itself,
     ];
-    let is = store.text(Run::new(shared, is)).await;
+    let is = store.text(Run::new(folder, is)).await;
     let mut all = vec!["rev-list", "--objects", "--quiet", commit, "--not"];
     all.extend(known);
-    let all = Run::new(shared, all).with_time(LONG);
+    let all = Run::new(folder, all).with_time(LONG);
     is.ok().as_deref() == Some(commit) && store.output(all).await.is_ok()
 }
 
@@ -143,7 +152,7 @@ pub async fn learn(git: &Git, worktree: &Worktree, commits: &[&str]) -> Result<(
     if wanted.is_empty() {
         return Ok(());
     }
-    shallow(worktree)?;
+    shallow(worktree, mine.is_empty() && others.is_empty())?;
     mine.truncate(MOST_KNOWN);
     // What a different thread brought: one look with the rights of this thread, which reads
     // no content, shows whether this thread can read it too.
@@ -172,56 +181,238 @@ pub async fn learn(git: &Git, worktree: &Worktree, commits: &[&str]) -> Result<(
     Ok(())
 }
 
-/// Has the thread bring the history of `commit` without the history of `known`, and checks
-/// in the copy that each object of it is there. When that fails, the whole history again:
-/// the repository of the person or the copy can have lost what was known.
+/// Brings into the copy of the project a commit that the runner itself made for the thread of
+/// `worktree` (a commit of the person), and writes down that the thread knows it. Its objects
+/// are in the Git folder of the runner for the worktree, on `tip`, the commit before it; no
+/// run of the thread is needed, and
+/// the size of the copy is not asked: the person reviewed these files.
+///
+/// # Errors
+/// A [`GitError`] when the pack cannot be written.
+pub async fn keep(
+    git: &Git,
+    worktree: &Worktree,
+    (commit, tip): (&str, Option<&str>),
+) -> Result<(), GitError> {
+    let record = worktree.record();
+    let base = record.shared.join("objects/pack/pack");
+    // `--local`: what is in the folder of the worktree alone, not what the copy has.
+    let pack: [&std::ffi::OsStr; 5] = [
+        "pack-objects".as_ref(),
+        "--revs".as_ref(),
+        "--local".as_ref(),
+        "--quiet".as_ref(),
+        base.as_os_str(),
+    ];
+    let pack = Run::new(worktree.folder(), pack).with_time(LONG);
+    // `tip` is the commit before it, which the thread knows already.
+    let wanted = tip.map_or_else(
+        || format!("{commit}\n"),
+        |tip| format!("{commit}\n^{tip}\n"),
+    );
+    git.output(pack.with_input(wanted.into_bytes())).await?;
+    let store = &git.in_own(&record.shared).await?;
+    let known: Vec<&str> = tip.into_iter().collect();
+    if !whole(store, &record.shared, commit, &known).await {
+        return Err(forged());
+    }
+    mark(store, worktree, commit).await
+}
+
+/// The file in the copy that says how many bytes the copy had when the first history of the
+/// project was in it.
+const FIRST: &str = "anima-first-size";
+
+/// The bytes that the copy of the project of `worktree` can still take. Each thread of each
+/// project writes to the one disk of the records, and what a thread brings is bytes that its
+/// agent chose. So the copy of a project is held to a size that follows the project: three
+/// times the bytes that it had with the first history that the runner checked, and the room
+/// that each project has ([`ROOM`]). The size of the object store of the person is not asked:
+/// an agent can make it say any size at no cost (files with holes, with many names, or
+/// copies that share their bytes). The first history itself, which the person asks for with
+/// the first thread of a project, is held only by the disk: the disk of the records always
+/// keeps [`MIN_FREE`] free.
+///
+/// # Errors
+/// A [`GitError`] when nothing is left: nothing more is brought.
+fn left(git: &Git, worktree: &Worktree) -> Result<u64, GitError> {
+    let shared = &worktree.record().shared;
+    let first = std::fs::read_to_string(shared.join(FIRST)).ok();
+    let most = first
+        .and_then(|bytes| bytes.trim().parse::<u64>().ok())
+        .map_or(u64::MAX, |first| {
+            first.saturating_mul(TIMES).saturating_add(git.copy_room())
+        });
+    // Only what is in the copy counts: the quarantine of a thread is beside its objects.
+    let used = super::disk::bytes(&shared.join("objects"));
+    match most.saturating_sub(used).min(free_for(shared)) {
+        0 => Err(failed(
+            "the copy of the history of this project reached the size that the project \
+             allows, or the disk of Anima's records is nearly full. Remove the worktrees \
+             of this project, then remove its copy; the next chat builds it again"
+                .to_owned(),
+        )),
+        left => Ok(left),
+    }
+}
+
+/// The bytes that the runner can still write on the disk that holds `folder`: the disk of the
+/// records always keeps [`MIN_FREE`] free.
+#[must_use]
+pub fn free_for(folder: &Path) -> u64 {
+    free_at(folder).saturating_sub(MIN_FREE)
+}
+
+/// The bytes that are free on the disk that holds `folder`.
+#[cfg(unix)]
+#[must_use]
+pub fn free_at(folder: &Path) -> u64 {
+    rustix::fs::statvfs(folder).map_or(0, |disk| disk.f_bavail.saturating_mul(disk.f_frsize))
+}
+
+#[cfg(not(unix))]
+#[must_use]
+pub const fn free_at(_folder: &Path) -> u64 {
+    u64::MAX
+}
+
+/// A Git folder of the runner beside the copy, for one pack of a thread: what the thread left
+/// is named and checked in it, and only what a known commit needs goes on into the copy. It
+/// is removed when the value is dropped, on each way out.
+struct Quarantine(std::path::PathBuf);
+
+impl Drop for Quarantine {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+/// Has the thread bring the history of `commit` without the history of `known`. When that
+/// gives no whole history, the whole history again: the repository of the person or the copy
+/// can have lost what was known.
 async fn brought(
     git: &Git,
     (store, worktree): (&Git, &Worktree),
     commit: &str,
     known: &[&str],
 ) -> Result<(), GitError> {
-    let first: Result<(), GitError> = async {
-        pack::make(git, worktree, (&[commit], known)).await?;
-        pack::take(store, worktree).await
+    let first = once(git, (store, worktree), commit, known).await;
+    if first.is_ok() || known.is_empty() {
+        return first;
     }
-    .await;
-    if first.is_ok() && whole(store, worktree, commit, known).await {
-        return Ok(());
-    }
-    if known.is_empty() {
-        return first.and(Err(forged()));
-    }
-    pack::make(git, worktree, (&[commit], &[])).await?;
-    pack::take(store, worktree).await?;
-    if whole(store, worktree, commit, &[]).await {
-        Ok(())
-    } else {
-        Err(forged())
-    }
+    once(git, (store, worktree), commit, &[]).await
 }
 
-/// Copies the list of the commits where a shallow clone ends into the Git folder of the
-/// runner, so that `git` there does not look for their parents. Only lines that are IDs.
-fn shallow(worktree: &Worktree) -> Result<(), GitError> {
+/// One try of [`brought`]. The pack of the thread goes into a quarantine, never into the
+/// copy: `git index-pack` names its objects there, the history of `commit` is checked there,
+/// and the runner's own `git pack-objects` then writes into the copy only the objects of
+/// that history that the copy lacks. What a thread left besides them never comes into the
+/// copy, and nothing is ever removed from the copy.
+async fn once(
+    git: &Git,
+    (store, worktree): (&Git, &Worktree),
+    commit: &str,
+    known: &[&str],
+) -> Result<(), GitError> {
     let record = worktree.record();
-    let common = Dir::open(&record.common_dir).map_err(GitError::Files)?;
-    let listed = common.read(walk::name("shallow"), MOST_SHALLOW);
-    let listed = listed.map_err(GitError::Files)?.unwrap_or_default();
-    let listed = String::from_utf8_lossy(&listed);
-    let ends: String = listed
-        .lines()
-        .filter_map(refs::id)
-        .flat_map(|id| [id, "\n"])
-        .collect();
-    // The copy of the project and the Git folder of the runner both stop at these commits.
-    for folder in [&record.shared, &record.own] {
-        let file = folder.join("shallow");
-        if ends.is_empty() {
-            let _ = std::fs::remove_file(file);
-        } else {
-            std::fs::write(file, &ends).map_err(GitError::Files)?;
+    let left = left(git, worktree)?;
+    pack::make(git, worktree, (&[commit], known)).await?;
+    let name = format!("quarantine-{}.git", worktree.thread().as_simple());
+    let held = Quarantine(record.shared.join(name));
+    let folder = held.0.as_path();
+    let free = git.unbound();
+    super::own::make(&free, folder, &record.shared, commit.len() == 64).await?;
+    // The copy can end at the commits of a shallow clone: the quarantine ends there too.
+    if let Ok(ends) = std::fs::read(record.shared.join("shallow")) {
+        std::fs::write(folder.join("shallow"), ends).map_err(GitError::Files)?;
+    }
+    let checked = &git.in_own(folder).await?;
+    // Half of what is left: the pack of the thread and what the runner makes of it are on
+    // the disk at the same moment.
+    pack::take(checked, (worktree, folder), left / 2).await?;
+    if !whole(checked, folder, commit, known).await {
+        return Err(forged());
+    }
+    let mut wanted = format!("{commit}\n");
+    for commit in known {
+        wanted.extend(["^", commit, "\n"]);
+    }
+    let out = super::own::fresh(folder, "out")?;
+    let base = out.join("pack");
+    // `--local`: only what is in the quarantine, not what the copy has already.
+    let pack: [&std::ffi::OsStr; 5] = [
+        "pack-objects".as_ref(),
+        "--revs".as_ref(),
+        "--local".as_ref(),
+        "--quiet".as_ref(),
+        base.as_os_str(),
+    ];
+    let pack = Run::new(folder, pack).with_time(LONG);
+    checked.output(pack.with_input(wanted.into_bytes())).await?;
+    if super::disk::bytes(&out) > left {
+        return Err(failed(
+            "the history of this commit is larger than the copy of this project can hold"
+                .to_owned(),
+        ));
+    }
+    let made = std::fs::read_dir(&out).map_err(GitError::Files)?;
+    for file in made.flatten() {
+        let placed = record.shared.join("objects/pack").join(file.file_name());
+        // A pack of this name that is there holds the same bytes: it stays.
+        if !placed.exists() {
+            std::fs::rename(file.path(), placed).map_err(GitError::Files)?;
         }
     }
+    // The copy alone has the whole history now, or the commit is not known.
+    if !whole(store, &record.shared, commit, known).await {
+        return Err(forged());
+    }
+    let first = record.shared.join(FIRST);
+    if !first.exists() {
+        let size = super::disk::bytes(&record.shared.join("objects")).to_string();
+        std::fs::write(first, size).map_err(GitError::Files)?;
+    }
+    Ok(())
+}
+
+/// The list of the commits where a shallow clone ends, so that `git` of the runner does not
+/// look for their parents. The copy of the project takes it from the repository of the person
+/// one time, with the `first` history, before a thread of the project had a worktree: an
+/// agent can write that file later, and the copy is for each thread. The Git folder of the
+/// runner for the worktree has what the copy has. Only lines that are IDs.
+fn shallow(worktree: &Worktree, first: bool) -> Result<(), GitError> {
+    let record = worktree.record();
+    let ends = record.shared.join("shallow");
+    if first {
+        let common = Dir::open(&record.common_dir).map_err(GitError::Files)?;
+        let listed = common.read(walk::name("shallow"), MOST_SHALLOW);
+        let listed = listed.map_err(GitError::Files)?.unwrap_or_default();
+        let listed = String::from_utf8_lossy(&listed);
+        let listed: String = listed
+            .lines()
+            .filter_map(refs::id)
+            .flat_map(|id| [id, "\n"])
+            .collect();
+        if listed.is_empty() {
+            let _ = std::fs::remove_file(&ends);
+        } else {
+            std::fs::write(&ends, listed).map_err(GitError::Files)?;
+        }
+    }
+    self::ends(worktree)
+}
+
+/// Gives the Git folder of the runner for `worktree` the list of shallow ends that the copy
+/// of its project has, or none.
+///
+/// # Errors
+/// A [`GitError`] when the file cannot be written.
+pub fn ends(worktree: &Worktree) -> Result<(), GitError> {
+    let record = worktree.record();
+    let own = record.own.join("shallow");
+    if let Ok(ends) = std::fs::read(record.shared.join("shallow")) {
+        return std::fs::write(own, ends).map_err(GitError::Files);
+    }
+    let _ = std::fs::remove_file(own);
     Ok(())
 }

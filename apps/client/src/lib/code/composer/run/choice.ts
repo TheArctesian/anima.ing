@@ -39,7 +39,7 @@ export interface ProgramModel {
 /** The id of each mode of a run in the picker's list of permissions. */
 export const MODE_IDS: Readonly<Record<Mode, string>> = { ask: 'approval-required', accept_edits: 'auto-accept-edits', full_access: 'full-access', plan: 'plan' };
 /** The word of each effort, as the picker shows it. */
-export const EFFORT_WORDS: Readonly<Record<Effort, string>> = { low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Extra High', max: 'Max' };
+export const EFFORT_WORDS: Readonly<Record<Effort, string>> = { low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Extra High', max: 'Max', ultra: 'Ultra' };
 const EFFORTS = Object.keys(EFFORT_WORDS) as Effort[];
 
 const NO_AUTO = 'The runner has no such mode.';
@@ -64,18 +64,36 @@ function modesOf(row: Row, changes: boolean): readonly PermissionMode[] {
 
 /**
  * The efforts of a model. Claude Code takes no change of the effort after the start: only the one it runs with is
- * listed. For Codex they are the ones its model names, or each one when the runner gave no list.
+ * listed. For Codex they are the ones its model names, or each one when the runner gave no list, but Ultra: the runner
+ * takes it only for a model that lists it.
  */
 function effortsOf(row: Row, changes: boolean, named?: ProgramModel): readonly EffortLevel[] {
   if (!changes || row.program !== 'codex') return row.effort === undefined || row.effort === null ? [] : [level(row.effort)];
-  return named === undefined ? EFFORTS.map((effort) => level(effort)) : EFFORTS.filter((effort) => named.efforts.includes(effort)).map((effort) => level(effort, named.defaultEffort));
+  return named === undefined ? EFFORTS.filter((effort) => effort !== 'ultra').map((effort) => level(effort)) : EFFORTS.filter((effort) => named.efforts.includes(effort)).map((effort) => level(effort, named.defaultEffort));
+}
+
+/** A name's words as an id: "Opus 5.5" is "opus-5-5". */
+const slug = (words: string): string => words.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+/**
+ * The name of the chat's model for the person: the runner's name for it ("Opus 5.5" for `claude-opus-5-5`, whose list
+ * names it `opus`), else an id with a version made readable ("claude-opus-5-5" is "Opus 5.5"); any other id as it is. Pure.
+ */
+export function modelLabel(id: string, listed: readonly ProgramModel[]): string {
+  const same = listed.find((model) => model.id === id) ?? listed.find((model) => model.id !== 'default' && (slug(id) === slug(model.label) || slug(id).endsWith(`-${slug(model.label)}`)));
+  if (same !== undefined) return same.label;
+  const words = id.replace(/^(claude|gpt|gemini|grok)-/i, '').replace(/-\d{8}$/, '').split('-');
+  const name = words.filter((word) => !/^\d+$/.test(word));
+  const version = words.filter((word) => /^\d+$/.test(word)).join('.');
+  if (name.length === 0 || version === '') return id;
+  return [...name.map((word) => word.charAt(0).toUpperCase() + word.slice(1)), version].join(' ');
 }
 
 /** The rows of the picker: the program's own models where the runner knows them, with the chat's model among them. */
 function modelsOf(row: Row, changes: boolean, listed: readonly ProgramModel[]): Catalogue['models'] {
   const current = row.model ?? 'default';
   const blank = { provider: row.program, favourite: false, can: CAN, speeds: [], toggles: [], effortLabel: EFFORT_HEAD } as const;
-  const own = { ...blank, id: current, label: row.model ?? 'Default model', efforts: effortsOf(row, changes) };
+  const own = { ...blank, id: current, label: row.model === null || row.model === undefined ? 'Default model' : modelLabel(row.model, listed), efforts: effortsOf(row, changes) };
   if (!changes || listed.length === 0) return [own];
   const rows = listed.map((model) => ({ ...blank, id: model.id, label: model.label, efforts: effortsOf(row, changes, model) }));
   return rows.some((model) => model.id === current) ? rows : [own, ...rows];

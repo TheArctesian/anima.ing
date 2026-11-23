@@ -17,12 +17,14 @@ export function draftProjects(projects: readonly Project[], added: string | null
 
 /**
  * What the heading of a draft says, as T3's does on a computer that has no folder for a thread with no project:
- * "What should we build in {project}?" with a project; "{Choose a project} to start" with none chosen; "Add a project to
- * start" when there is no project at all.
+ * "What should we build in {project}?" with a project; "What should we work on?" with no project (a scratch thread);
+ * "{Choose a project} to start" with none chosen; "Add a project to start" when there is no project at all.
  */
-export type Heading = { readonly kind: 'build'; readonly name: string } | { readonly kind: 'choose' } | { readonly kind: 'add' };
+export type Heading = { readonly kind: 'build'; readonly name: string } | { readonly kind: 'scratch' } | { readonly kind: 'choose' } | { readonly kind: 'add' };
 
-export function headingOf(folder: string | null, projects: readonly Project[]): Heading {
+/** `scratch`: no project; the heading is T3's "What should we work on?". */
+export function headingOf(folder: string | null, projects: readonly Project[], scratch = false): Heading {
+  if (scratch) return { kind: 'scratch' };
   if (folder !== null) return { kind: 'build', name: folderName(folder) };
   return projects.length === 0 ? { kind: 'add' } : { kind: 'choose' };
 }
