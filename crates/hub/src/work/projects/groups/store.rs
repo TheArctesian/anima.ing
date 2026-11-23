@@ -14,6 +14,7 @@ pub(in crate::work::projects) struct GroupRow {
     pub name: String,
     pub created_at: DateTime<Utc>,
     pub project_count: i64,
+    pub project_ids: Vec<ProjectId>,
 }
 
 /// A project whose group a change moved: its slug and the group that it had before.
@@ -27,7 +28,8 @@ pub(in crate::work::projects) struct MovedRow {
 const GROUP: &str = "SELECT g.id, g.name, g.created_at, \
     (SELECT count(*) FROM projects.projects p WHERE p.group_id = g.id AND EXISTS ( \
         SELECT 1 FROM projects.repositories r WHERE r.project_id = p.id AND r.left_out_at IS NULL \
-    )) AS project_count FROM projects.groups g";
+    )) AS project_count, ARRAY(SELECT p.id FROM projects.projects p WHERE p.group_id = g.id ORDER BY p.id) AS project_ids \
+    FROM projects.groups g";
 
 /// Each group, in name order.
 pub(in crate::work::projects) async fn all(db: &PgPool) -> Result<Vec<GroupRow>, sqlx::Error> {

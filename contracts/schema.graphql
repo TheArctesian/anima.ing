@@ -3012,6 +3012,8 @@ type ProjectGroup {
   name: String!
   "Its projects that have a repository that is not left out (PRO-064)."
   projectCount: Int!
+  "The IDs of all projects in the group, including those left out."
+  projectIds: [ID!]!
   createdAt: DateTime!
 }
 

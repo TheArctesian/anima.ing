@@ -26,6 +26,8 @@ pub(in crate::work::projects) struct GroupView {
     name: String,
     /// The projects of the group that have a repository that is not left out (PRO-064).
     project_count: i32,
+    /// The IDs of all projects in the group, including those left out.
+    project_ids: Vec<ID>,
     created_at: DateTime<Utc>,
 }
 
@@ -35,6 +37,11 @@ impl From<store::GroupRow> for GroupView {
             id: ID(row.id.to_string()),
             name: row.name,
             project_count: i32::try_from(row.project_count).unwrap_or(i32::MAX),
+            project_ids: row
+                .project_ids
+                .into_iter()
+                .map(|id| ID(id.to_string()))
+                .collect(),
             created_at: row.created_at,
         }
     }
