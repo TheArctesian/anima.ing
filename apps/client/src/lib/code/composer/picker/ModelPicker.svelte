@@ -37,11 +37,11 @@
     effortDisplay?: 'label' | 'bars';
     /** Left out, the favourites are shown and cannot be changed. */
     onFavourite?: (model: Model, favourite: boolean) => void;
-    /** Asks for the models again when they could not load; left out, the notice has no Retry. */
-    onRetry?: (() => void) | undefined;
+    /** Asks for the models again, each time the popup opens (as T3's picker does) and from the notice's Retry. */
+    onAsk?: (() => void) | undefined;
   }
 
-  let { catalogue, value, onChange, can, shortcut, open = $bindable(false), align = 'start', size = 'sm', effortDisplay = 'label', onFavourite, onRetry }: Props = $props();
+  let { catalogue, value, onChange, can, shortcut, open = $bindable(false), align = 'start', size = 'sm', effortDisplay = 'label', onFavourite, onAsk }: Props = $props();
   const id = $props.id();
   const mac = typeof navigator !== 'undefined' && isMac(navigator.userAgent);
   let root: HTMLElement | undefined;
@@ -70,7 +70,10 @@
   /* Each opening after the first drawing starts on its tab with an empty search, and focus goes to the search field. */
   let drawn = false;
   $effect(() => {
-    if (open && drawn) untrack(() => void enter());
+    if (open && drawn) untrack(() => {
+      onAsk?.();
+      void enter();
+    });
     drawn = true;
   });
 
@@ -225,7 +228,7 @@
         <EffortColumn {model} {value} {onChange} onSearch={() => list?.focus()} bind:this={column} />
       </div>
       <!-- Why the list is short, on a line of its own under the list with the whole reason, never inside a row. -->
-      {#if catalogue.notice !== undefined}<ModelsNotice notice={catalogue.notice} {onRetry} />{/if}
+      {#if catalogue.notice !== undefined}<ModelsNotice notice={catalogue.notice} onRetry={onAsk} />{/if}
       <PickerFooter {model} modes={catalogue.modes} {value} {onChange} />
       <span class="unseen" role="status">{said}</span>
     </div>

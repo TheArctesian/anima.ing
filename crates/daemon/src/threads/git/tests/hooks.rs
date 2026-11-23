@@ -299,3 +299,32 @@ async fn a_hook_that_a_different_thread_changed_runs_only_after_a_new_yes() {
     // A confined thread is asked nothing about hooks, and its yes accepts none.
     assert_eq!(bench.status(PERSON).await.changed, Vec::<String>::new());
 }
+
+#[tokio::test]
+async fn a_hook_changed_after_its_check_does_not_run_its_new_text() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    let ran = bench.home.parent().expect("the root").join("RAN");
+    let hook = bench.project.join(".git/hooks/pre-commit");
+    let planted = format!("#!/bin/sh\ntouch \"{}\"\n", ran.display());
+    // A thread that writes the hook in the moment between its check and its start.
+    let person = super::copy::as_the_person(None);
+    let swapping = crate::threads::git::run::hooks::AsThread::new(move |run| {
+        if run.program.file_name().is_some_and(|name| name != "git") {
+            std::fs::write(&hook, &planted).expect("the planted hook");
+        }
+        let person = person.clone();
+        Box::pin(async move { person.start(run).await })
+    });
+    let records = bench.home.with_file_name("records");
+    let home = Home::at(&bench.home, &records).expect("a home");
+    let engine = Engine::new(bench.git.clone(), home).with_launcher(swapping);
+    let checked = bench.home.parent().expect("the root").join("CHECKED");
+    bench.one_hook("pre-commit", &format!("touch \"{}\"", checked.display()));
+    accept(&engine).await;
+    std::fs::write(folder.join("a.txt"), "changed\n").expect("a file");
+    let reviewed = bench.reviewed().await;
+    let _ = engine.call(FULL, target(), commit(&reviewed, None)).await;
+    assert!(checked.exists(), "the text that was checked ran");
+    assert!(!ran.exists(), "the text written after the check ran");
+}

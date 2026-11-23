@@ -156,6 +156,8 @@ impl Runner {
                 }
             }
         }
+        // The launcher knows the restored threads also when none changed.
+        self.rights_now();
     }
 
     /// Reads where a thread works again; the clients get the row when it changed (TH112). The

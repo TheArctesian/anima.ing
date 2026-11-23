@@ -63,7 +63,7 @@ export class ThreadDraft {
       sendQueued: refused(NO_QUEUE),
       pick: CAN,
       ...draftCatalogue(this.choice, models),
-      ...(retry === undefined ? {} : { retryModels: retry }),
+      ...(retry === undefined ? {} : { askModels: retry }),
       choose: (next) => {
         this.choice = chosen(this.choice, next);
         return Promise.resolve({ ok: true });
