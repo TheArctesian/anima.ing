@@ -40,7 +40,8 @@ class Machine:
             '-serial', 'stdio', '-device', 'i6300esb', '-watchdog-action', 'reset',
             '-drive', 'if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.4m.fd',
             '-drive', f'if=pflash,format=raw,file={directory / "vars.fd"}',
-            '-drive', f'file={image},format=qcow2,if=virtio',
+            '-drive', f'file={image},format=qcow2,if=none,id=installed',
+            '-device', 'virtio-blk-pci,drive=installed,bootindex=1',
             '-drive', f'file={directory / "sentinel.raw"},format=raw,if=virtio',
             '-nic', 'none',
         ]
@@ -49,7 +50,8 @@ class Machine:
         if (directory / 'update-origin.raw').exists():
             args.extend(['-device', 'pcie-root-port,id=update-port'])
         if boot_iso is not None:
-            args.extend(["-cdrom", str(boot_iso), "-boot", "once=d"])
+            args.extend(['-drive', f'file={boot_iso},format=raw,media=cdrom,if=none,id=installer',
+                         '-device', 'ide-cd,drive=installer,bootindex=0'])
         self.process = subprocess.Popen(args, stdin=slave, stdout=slave, stderr=slave)
         os.close(slave)
 
