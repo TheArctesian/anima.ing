@@ -26,6 +26,6 @@ go -C link test -race ./statedir/...
 packages=""
 for package in $PACKAGES; do packages="$packages -p $package"; done
 # shellcheck disable=SC2086 # the list is words, one for each package
-bun quality/bin/with-postgres.ts cargo nextest run $packages -E 'not package(anima-hub) | test(/fleet::link/)'
+bun quality/bin/with-postgres.ts cargo nextest run --no-fail-fast $packages -E 'not package(anima-hub) | test(/fleet::link/)'
 cargo test -p anima-app --test pinning
 echo "macos-tests: pass"
