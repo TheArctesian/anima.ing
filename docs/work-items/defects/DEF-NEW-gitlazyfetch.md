@@ -1,0 +1,44 @@
+# DEF-NEW-gitlazyfetch: each copy of a project for a thread fails on a computer with `git` 2.43
+
+Progress: the index [README.md](../README.md) holds the state of this item (PLN-006). The plan register in [work-plan.md](../../work-plan.md) Section 9 lists the index.
+
+| Item | Value |
+| --- | --- |
+| Identifier | DEF-NEW-gitlazyfetch |
+| Kind | Defect |
+| Owner | [agent-threads.md](../../proposals/agent-threads.md) THR-050 |
+| Serves | Row 4.24 of the work plan (agent threads) |
+| Version | 1.0 |
+| Date | 2026-11-22 |
+| Origin | `bun run gates:fast` on `pop-os` (Pop!_OS 24.04, `/usr/bin/git` 2.43.0) on 2026-11-22: 16 tests of `crates/daemon/src/threads/git/tests` failed with "the repository could not be read: unknown option: --no-lazy-fetch". Not a GitHub issue (PLN-012). |
+
+## Cause
+
+- Each run of `git` with the rights of a thread (`crates/daemon/src/threads/git/place/shared/pack.rs`, `CLOSED`) started with the option `--no-lazy-fetch`. It came with commit `6791fb123` (TC7, finding H1). `git` added this option in version 2.44. A `git` 2.43 stops at the option, so each read of the repository by a thread failed, and the thread got no worktree.
+- Ubuntu 24.04 and the systems made from it have `git` 2.43. The same failure occurs in the daemon of each person on such a system. GitHub CI has a later `git`, so the gates passed there.
+
+## What the option protects
+
+A partial clone gets a missing object from its promisor remote when it is needed: `git rev-list` and `git pack-objects` start `git fetch <remote>`. The configuration of the repository names that remote, and each thread of the project can write that configuration, also a confined thread. Without protection, a confined thread can name a remote whose transport starts a program (`core.sshCommand`, `ext::`, a remote helper, `uploadpack` of a local remote). That program then runs with the rights of a thread that has more rights (H1 of TC7).
+
+## Correction
+
+On the branch `fix/git-no-lazy-fetch`:
+
+- [x] The run of a thread no longer gets `--no-lazy-fetch`. The fetch of a missing object stays closed by two parts that `git` 2.43 accepts:
+  1. The environment variable `GIT_NO_LAZY_FETCH=1`, which the run already had (`QUIET`). `git` 2.44 and later sets this same variable for `--no-lazy-fetch`, so on these versions the run is as before. Each `git` that the run starts reads it too.
+  2. `-c protocol.allow=never`, `-c core.sshCommand=false` and `GIT_SSH_COMMAND=false`, which the run already had. A `git` that does not read the variable starts `git fetch`, and this `git fetch` refuses each transport before it starts a program. The runs of the runner have the same protection (`crates/daemon/src/threads/git/run/fixed.rs`).
+- [x] Measured on `pop-os` with `git` 2.43.0 (`GIT_TRACE=1`), with a repository whose configuration names a promisor remote, and an object that is not there:
+  - With the variable: `git` says "lazy fetching disabled" and starts no program. The `git` 2.43.0 of Ubuntu has the variable: Ubuntu added it with the correction of CVE-2024-32465 (package `1:2.43.0-1ubuntu7.4`).
+  - Without the variable, with the closed configuration: `git` starts `git fetch`, which stops with "transport '<name>' not allowed" for `ssh`, `file` (path and `file://`), `ext`, `https` and a remote helper. The program of `core.sshCommand` and of `remote.<name>.uploadpack` did not run.
+  - Without either: the program of `core.sshCommand` ran. This is the attack that the protection stops.
+- [x] The test `a_run_of_the_thread_starts_no_program_that_the_configuration_names` (`crates/daemon/src/threads/git/tests/copy/review.rs`) plants this configuration and passes on `git` 2.43.
+
+## Why this way
+
+- **Not a check of the version with a fallback.** The variable already gives the same protection as the option on 2.44 and later. A check of the version adds one more run of `git` and a path that the gates on GitHub never run, and it protects nothing more.
+- **Not only the refusal of a partial clone.** The refusal (`ProjectError::Partial` in `crates/daemon/src/threads/git/project.rs`) looks for a `.promisor` pack before the copy. A thread can write `extensions.partialClone` and `remote.<name>.promisor` in the configuration at each time, also after the look, and that makes the repository a partial clone for `git` with no `.promisor` pack. So the refusal tells the person why a partial clone cannot be copied, but it is not the protection.
+
+## Limit
+
+On a `git` older than 2.44 that does not read the variable, the run of a thread can start `git fetch`, the same program, with the same closed configuration. It refuses the transport and starts nothing more. The object stays missing, so the read fails, as a read of an object that the thread cannot read fails.
