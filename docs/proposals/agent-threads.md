@@ -1230,7 +1230,7 @@ verification remain in TH50 and TH51.
 
 | Task | Work | Needs | Check | State |
 | --- | --- | --- | --- | --- |
-| TH30 | Contract: the work type `agent_thread` of K10 and the long poll of THR-026. Specify one launch result per request, the hub thread ID after launch, and the result of answering an open approval. | OD-THR12, OD-THR20, R-353 | Contract review and ruling (CON-001) | Not started |
+| TH30 | Contract: the work type `agent_thread` of K10 and the long poll of THR-026. Specify one launch result per request, the hub thread ID after launch, and the result of answering an open approval. | OD-THR12, OD-THR20, R-353 | Contract review and ruling (CON-001) | In progress: local review draft in Section 6.4.2, branch `contract/th30-preparation`. No ruling and no implementation. |
 | TH31 | The hub: the queue item, the commands of an open thread, the audit events | TH30; W3 | Hub tests and separate security review (R-353) | Not started |
 | TH32 | The daemon: claim, check, run, report (W4 for the run, without a container: an agent program needs the files of the person) | TH30; W4. R-292 (OD-THR12) removes W7 from stage 3. | Tests of Section 8 and separate security review (R-353) | Not started |
 | TH33 | The switch "Threads may start here" at the machine, off by default (USE-004 is on by default; this one is not), and the list of folders where a thread of the hub may run. They are the guards that the operator kept (OD-THR20). They are kept in the settings of the daemon of the user; a program of the same user can change them (accepted, OD-THR18) | TH32 | Tests for the switch and permitted folders | Not started |
@@ -1240,6 +1240,372 @@ verification remain in TH50 and TH51.
 - A signed-in operator selects a connected machine, a project that machine offers for remote starts, and an agent program. The hub queues an `agent_thread` work item for that machine under K10. Specify the stable launch request ID, the status a retry returns, how a claim survives a lost response, and how the result gives the hub thread ID from TH21. The daemon checks its own settings under THR-129 and gives a refusal when the machine or folder is ineligible.
 - Follow-up prompts and approval answers use the daemon's poll under THR-026. An approval answer identifies the thread and the exact request shown in the transcript. The daemon reports a recorded answer or a refusal for an unknown, expired or already resolved request. Check retries and concurrent answers from desktop and phone under THR-030.
 - Review operator access, device ownership and the audit events before the contract ruling. The audit records who acted, the machine, the thread, the action and its result under THR-044 and LOG-007. Keep the request text and transcript out of logs.
+
+#### 6.4.2 TH30: proposed wire contract for review
+
+Version 0.1, 2026-11-23. **Draft, not accepted.** This is the proposed addition to K10,
+with the K1 operations and K8 concurrency change that it needs. It changes no frozen
+contract and grants no new power. TH30 stays In progress until its separate contract
+and security reviews and the ruling required by CON-001. R-353 removes a further
+approval of the product direction; it does not mark this wire text accepted. R-429
+sets the launch scope. TH21 and TH50 to TH52 stay with their existing owners.
+
+**A. Scope and identities**
+
+The first surface is a signed-in operator starting and controlling a thread on a
+selected, enrolled machine. It does not add a general API-key or MCP start surface,
+a clone, a client signature, a W7 dependency, pool placement or an agent-tree grant.
+OD-THR8 and the later orchestration tasks keep their accepted scope. The hub remains
+trusted under OD-THR20; an approval through it has the accepted risk of OD-THR5.
+
+| Name | Meaning and binding |
+| --- | --- |
+| `requestId` | A non-nil UUID made by the calling client before its first send. A retry key, not a hub entity ID or authority. Its namespace is the hub and authenticated operator. The client persists it until the result is known. |
+| `workId` | The K10 item UUID made by the hub, with one selected device and attempt 1. It is distinct from the request and thread IDs. |
+| `runnerId` | The stable UUID made and persisted by the runner before a launch side effect. It is scoped to the enrolled device, as in TH20. It is never the vendor's session ID. |
+| `threadId` | The hub UUID for `(authenticated device, runnerId)`, using TH21's existing row. No second identity or parallel transcript store. |
+| `commandId` | The hub UUID of one accepted prompt, answer or stop. The client supplies a `requestId` for this operation too. |
+| `approvalId` | The exact runner request ID in the open approval entry under TH20. It identifies one request of one process, not its title, position or text. |
+
+A hub retry lookup checks access before it returns a receipt. The first transaction
+binds a `requestId` to the operation and all supplied input fields, including the
+device, project offer, mode and content. The same input returns the same receipt;
+a changed input is `CONFLICT`, with no echoed content. Concurrent identical requests
+create one row and one queue entry. A new `requestId` is a new intent, never an
+automatic remedy for a timeout. Results are stored before their acknowledgement.
+Retention of retry records is a review point in F below; deleting a receipt must not
+turn a retry into a new launch.
+
+**B. Proposed K1 operations**
+
+These names describe additions for TH31. They are not edits to `schema.graphql` in
+TH30. UUIDs use `ID`; times and errors use K7. Request content is never part of an
+error or audit record. Each operation requires the operator login and hub access,
+including the same network restrictions as other GraphQL calls. An API key, a daemon
+token and an unauthenticated caller cannot use these operator operations.
+
+| Operation | Input | Return |
+| --- | --- | --- |
+| `agentThreadStartTargets(device: ID!)` | An accessible device | Its most recent offers: `offerId`, `revision`, `name`, supported `programs`, and whether the device is connected. No local path. This is an offer, not permission to start. |
+| `startAgentThread(input)` | `requestId`, `deviceId`, `offerId`, `offerRevision`, `program`, `mode`, nullable `model` and `effort`, `prompt` | `AgentThreadLaunchReceipt` |
+| `agentThreadLaunch(requestId: ID!)` | The caller's launch retry key | The same receipt or null; never enqueue from a read |
+| `sendAgentThreadPrompt(input)` | `requestId`, `threadId`, `text` | `AgentThreadCommandReceipt` |
+| `answerAgentThreadRequest(input)` | `requestId`, `threadId`, `approvalId`, `answer` | `AgentThreadCommandReceipt` |
+| `stopAgentThread(input)` | `requestId`, `threadId`, `action` (`interrupt_turn` or `end_thread`) | `AgentThreadCommandReceipt` |
+| `agentThreadCommand(requestId: ID!)` | The caller's command retry key | The same receipt or null |
+
+`program` is `claude_code` or `codex`. `mode` is explicit on the wire:
+`full_access`, `accept_edits`, `ask` or `plan`. A client resolves the person's saved
+default, otherwise Full access (THR-033), before it sends. The daemon refuses an
+unsupported combination; it never silently widens a mode. `model` and `effort` use
+the checked vocabulary of `agent-threads::drive::launch`; neither becomes shell text.
+`answer` is a tagged choice: `allow`, `allow_for_session` with the index of a rule
+offered by that exact request, `deny` with optional feedback, or `choose` with question
+key/answer pairs. The runner validates it against the live request (THR-030). No rule
+or tool input can be supplied by the client in place of the offered rule.
+
+A launch receipt has `requestId`, `workId`, `deviceId`, `state`, nullable `threadId`,
+nullable `cause`, and `updatedAt`. The states are `queued`, `claimed`, `starting`,
+`reconciling`, `started`, `refused`, `failed`, `cancelled`. The last four are final
+for the launch request. `threadId` is present exactly for `started`. `started` means
+that the runner recorded the creation of the thread and acceptance of its first
+prompt, not that the turn succeeded. A subsequent failure is the state of that
+thread; it never changes the launch receipt or causes a second launch.
+
+A command receipt has `requestId`, `commandId`, `threadId`, `state`, nullable `cause`,
+and `updatedAt`; an answer also has `approvalId`. Its states are `queued`,
+`delivered`, `reconciling`, `recorded`, `refused`, `cancelled`. The last three are
+final. `delivered` means that the daemon took the envelope, not that the runner acted.
+`recorded` means that the runner durably accepted that command for the intended live
+thread/request. It does not claim that the program finished a tool or turn. The
+client shows the receipt separately from TH21's transcript; either can arrive first.
+For a stop, the transcript confirms when the turn or thread actually ended.
+
+An inaccessible device or thread is refused before queueing, using the existing
+access errors without returning another operator's receipt. Recheck device and
+thread ownership before delivery and before accepting the result. Revoked access,
+a deleted device or a tombstoned thread cancels undelivered commands. A late report
+cannot recreate a deleted thread or make its content readable again.
+
+**C. Proposed K10 launch item and recovery**
+
+K10 gains `agent_thread` with kind `host`, explicitly distinct from container work.
+It has no job isolation, checkout, repository token or secret purpose. `repository`
+is absent, `project` is null in the K10 envelope, and `secrets` is empty. The offered
+project is the machine-local offer in `parameters`, not a grant on a hub project.
+The existing build and container types keep their current rules.
+
+`Claim` gains `agentThreads: { enabled, offersRevision }`; absent means disabled.
+A daemon advertises `agent_thread` only when it implements this contract. Offers are
+published with a proposed daemon-authenticated `POST /work/v1/threads/offers`:
+`{ device, revision, offers: [{ offerId, revision, name, programs }] }`. Its receipt
+is `{ revision }`, after storage; older revisions cannot replace newer ones. Removing
+an offer removes eligibility, not an existing thread. A daemon keeps its local
+mapping from an opaque `offerId` to a real folder. A revision changes when that
+mapping or its eligibility changes. The hub cannot set the mapping or enable it.
+The daemon authenticates through K8, and the body device must match its token.
+
+`parameters` is exactly `{ requestId, offerId, offerRevision, program, mode, model,
+effort, prompt }`, with the B meanings. No program path, command line, environment,
+URL, trust override or settings file is accepted. Unknown item members are refused,
+as in K10 Section 5. The hub selects only the named device; it never falls back to
+another device or project after a refusal. The local switch of TH33 is off by
+default, independent of USE-004. The daemon checks it and the offer revision at
+claim and again immediately before the program starts. It resolves links and `..`
+and checks the real folder against the local list at both points (THR-129); it does
+not use a textual path prefix. A replaced or removed folder is refused. AIS-008
+exclusions prevent an offer or a summary from being published. A hub offer does not
+override local exclusions, repository trust or the runner's existing folder guards.
+The environment comes from that machine's login, never from the hub (THR-040).
+
+Before a side effect, the daemon durably records `(workId, attempt, requestId,
+runnerId)` and the exact accepted parameters. The holder must accept a launch by
+this identity idempotently. Recovery asks the holder and the durable runner record;
+it never infers that no process started from a missing hub receipt. A crash between
+writing intent and recording the process leaves `reconciling` until the holder can
+prove the outcome. If it cannot prove it, no automatic start is permitted. This is
+at-most-one launch intent with an explicit unknown result, not a claim of exactly-once
+process execution without a durable holder handshake.
+
+For this type only, omission from `Claim.holds` does **not** end the attempt or
+requeue it. The hub returns the same outstanding item and attempt to its device for
+reconciliation. The daemon restores `holds` from its durable journal before claiming
+more work. Repeated claim responses and lease loss never increment the attempt or
+move the item. No automatic retry creates a new work item. Claims, reports and the
+holder record are keyed by the same identity; a mismatch is refused.
+
+Add `launch` to the report of this type: absent while unresolved, otherwise either
+`{ outcome: "started", summary }` or `{ outcome: "refused" | "failed" | "cancelled",
+cause }`. `summary` is the TH20 record with the journal's `runnerId`. The hub checks
+the report's authenticated holder, attempt and binding; in one transaction it upserts
+the TH21 row and stores the final launch receipt and audit entry. The report response
+adds `launch: { requestId, state, threadId, cause }`. A summary uploaded before this
+report and one uploaded after it refer to the same row. A late launch summary cannot
+replace a newer TH21 revision. No transcript opt-in is enabled by a launch.
+
+A lost result receipt is retried with the identical report. For this type only,
+an identical final report is acknowledged even when the launch result is already
+final; a different outcome is a conflict, never an overwrite. This exception to K10
+Section 7 must be in the accepted amendment. The launch receipt is distinct from the
+K10 work lifetime: a launched thread can still be working or waiting for approval.
+The lifetime of its work lease and the effect of lease expiry are unresolved in F;
+this draft does not silently apply build clean-up or container expiry to a thread.
+
+**D. Proposed long poll and command receipts**
+
+Add `POST /work/v1/threads/poll`, authenticated by the daemon token. Body:
+`{ device, receipts: [{ commandId, state, cause }] }`; here `state` is `recorded`,
+`refused` or `reconciling`. Return `200` with `{ accepted: [commandId], command }`.
+`command` is null on a normal wait timeout, or one envelope:
+`{ commandId, workId, attempt, runnerId, action, input }`. `action` is `prompt`,
+`answer`, `interrupt_turn` or `end_thread`; `input` has only the B fields for that
+action (without the client retry key or hub thread ID). The hub derives the runner
+binding from its stored thread and device; it never trusts a caller's runner ID.
+The receipt and command contain no transcript. Responses use `Cache-Control: no-store`.
+
+Store receipts before acknowledging them. Retrying a receipt repeats its acknowledgement;
+a conflicting final receipt is refused. Removing a command from delivery requires
+a stored terminal receipt, not a successful HTTP write. `reconciling` keeps it
+unresolved. The hub can redeliver an unacknowledged envelope; the daemon consults its
+journal and sends the stored receipt without replaying the side effect. The holder
+must deduplicate commands across daemon restarts too. The crash window between a
+write to a program pipe and its durable receipt cannot be solved by HTTP retries:
+when the holder cannot resolve it, report `reconciling`, not success or an automatic
+resend. A command's state does not regress on a stale report.
+
+The hub orders accepted commands for one thread. Concurrent answers with distinct
+request IDs can both queue, but the runner's atomic check of the live `approvalId`
+accepts at most one. The winner gets `recorded`; the other gets `refused` with
+`already_resolved`. An identical retry of the winning command gets its original
+receipt. `unknown_request` means the runner never made that ID;
+`request_ended` means its process ended. No elapsed time answers an approval, changes
+it to allow, or makes a new approval use the same identity. Allow-for-session is
+limited to the offered rule. THR-031 still bars an API key from answering.
+
+The poll is independent of transcript opt-in and does not turn it on. Without shared
+entries, a client cannot invent an approval to display or answer; local use remains.
+A disconnected client retries its request ID and reads its receipt. A disconnected
+daemon retains receipts, sends them first on reconnect, then resumes polling. It
+checks the local switch, folder eligibility and live request again before dispatch.
+Switch off refuses new starts and prompts; the existing choice of whether to stop a
+running turn stays as in THR-129. It must not prevent the operator from sending a
+denial or a stop. The policy for a positive approval after switch off is a review
+point in F, not an implied permission in this draft.
+
+K8 transport, token validation, renewal, link-socket peer checks and refusal logging
+remain in force. No redirect, cookie, URL credential, inbound daemon port or hub-opened
+connection is added. Use the K8 backoff for failures; a normal empty poll is not a
+failure. An old hub's 404 means unsupported, not an empty queue; the daemon uses
+K10's one-hour unsupported retry and does not fall back to a less guarded route.
+
+A long poll must release its database and ordinary per-device request slots before
+waiting. It holds a separate, bounded one-poll-per-device slot. Authenticate and
+validate before registering the wait; register and check the queue without a lost
+wake-up window. After wake-up, recheck the token, ownership and command status before
+returning content. Never hold a transaction or pool connection for the wait. K8
+metrics, renewal, transcript uploads and K10 lease reports retain their existing
+short-request limits and deadlines. A disconnect releases the poll slot; a second
+poll is `503 UNAVAILABLE`. The wait deadline, body limits and queue bounds require
+review in F; they are not inherited from a 10-second K8 request by accident.
+
+**E. Refusals, audit and acceptance cases**
+
+Transport errors keep K10's fixed body and status codes. No error echoes input.
+Semantic causes in receipts are a closed list for review: `switch_off`,
+`folder_not_permitted`, `offer_stale`, `program_unavailable`, `mode_not_permitted`,
+`policy`, `member_unknown`, `unknown_request`, `request_ended`, `already_resolved`,
+`answer_not_permitted`, `thread_ended`, `access_revoked`, `deleted`, `start_failed`.
+An unknown cause is displayed as a generic refusal, never interpreted as success.
+An undetermined delivery is `reconciling`, not `start_failed`.
+
+The hub records the authenticated actor, device, work ID, thread ID when known,
+request/command ID, action, time and fixed result code. The runner records what it
+can itself see, namely source `hub`, with the fields and permissions of THR-044.
+Neither logs prompts, answer feedback, question text, rules, transcript content,
+local paths or credentials. Command content belongs in the protected command store,
+not the audit/event log, request tracing, SQL parameter logs or exceptions. This
+introduces no exception to LOG-007. The hub's source label and the user's writable
+local log do not become a proof against a compromised hub or same-user process.
+
+The independent reviews must trace these cases against the proposed text before a
+ruling; later TH31 and TH32 must prove them with tests of behavior:
+
+- Lost client response, concurrent identical launch, changed-input retry, and retry
+  after deletion: one identity, no second start, no content restored.
+- Lost claim response, omitted `holds`, daemon restart before/after spawn, holder
+  restart and lost result receipt: same attempt, resolved record or explicit unknown.
+- Summary-before-result and result-before-summary: one TH21 hub ID; lower revisions
+  cannot replace current state. Two devices with equal runner IDs stay separate.
+- Desktop and phone answer together, repeated winning answer, stale request after
+  process exit and crash after writing to the agent: at most one accepted answer;
+  uncertain delivery is visible and never replayed blindly.
+- Disabled switch, removed offer, changed symlink, excluded folder, unsupported mode,
+  wrong device bearer, revoked operator and deletion during a poll: no unauthorized
+  dispatch, no fallback folder, no resurrection and no leaked content.
+- Empty poll, disconnect, second poll, renewal and lease report during a wait,
+  enqueue during registration, old hub and old daemon: no lost command or starvation.
+- Transcript opt-out, queue refusal and secret-like prompt/answer: no automatic
+  sharing and no content in logs. No approval is answered by a timer.
+
+**F. Review handoff: unresolved choices, not rulings**
+
+The parent session receives these points for the contract owners and independent
+reviewer. This section records no new operator decision and does not change the
+open decisions or rulings of other streams. Do not implement or publish this draft
+as an accepted contract while these points remain unresolved.
+
+| Point | Required resolution |
+| --- | --- |
+| Work lifetime and loss of the hub | THR-025 says the K10 lease, stop and report apply; K10 ends a build on lease loss and has maximum job lifetimes, while THR-095/096 preserve turns across reconnect/restart. Specify whether the item covers launch only or the live thread, and the exact stop/expiry behavior, `limits`, `cleanup`, update-busy behavior and reconciliation after expiry. No new timeout, forced termination or indefinite lease is selected here. |
+| Poll and queue bounds | Approve finite poll wait, request/response sizes, prompt/answer sizes, offer count, pending command count and per-operator/device rate limits. Specify dispatch fairness with existing K10 work and stop priority. Keep resource bounds distinct from the soft agent-tree limits of THR-114. |
+| Retry retention and sensitive content | Specify how long launch/command receipts and retry tombstones survive, when queued prompt/answer bodies are erased, and how receipt recovery works after thread/device deletion without retaining transcript content or allowing replay. THR-130 is the transcript policy, not an automatic command-queue policy. |
+| Approval when the local switch is off | THR-129 names starts and prompts. Decide the handling of a positive answer that would resume execution after this switch goes off, including an answer already queued. Denials and stops must remain available. Do not invent a default in the daemon. |
+| Contract ownership | TH21's owner confirms row creation/tombstones, offers and result integration; the K10 owner confirms the claim/report exceptions and lifetime; the K8 owner confirms the poll slot change. The separate security review identifies any new accepted-risk decision needed before the CON-001 ruling. |
+
+**F1. Work lifetime and loss of the hub — unselected policy choice**
+
+Constraints: THR-025 puts the start in K10 and says its claim, lease, stop and report
+apply, but puts later turns outside items. THR-026 puts later stops in the poll.
+K10 Section 7 renews a lease to 90 seconds, reports each 15 seconds, ends a build
+on lease loss, and ends an attempt after `limits.seconds` plus five minutes. Its
+`runner` and container exceptions do not cover `agent_thread`. Sections 9 and 12
+assume job clean-up and busy/update behavior. THR-095 and THR-096 protect an existing
+turn across client reconnect and daemon restart, not an unlimited offline grant.
+THR-030 forbids timer approval. OD-THR12/20 (R-292) remove W7/client signatures, not
+these lifecycle ambiguities; R-429 does not settle them.
+
+| Option | Concrete behavior | Tradeoff |
+| --- | --- | --- |
+| A — recommended for review | The work item covers launch only. Keep the 15-second report and 90-second lease while launching. Before dispatch, an expired lease prevents a start. Once dispatch is durable, lease loss means reconciliation, never reissue or a claim that nothing ran. The confirmed launch report completes the item; `cleanup` fields are `none`, since no job folder or isolation is removed. The live thread then follows the local runner lifecycle, and later prompts/stops use the poll. K10 update-busy covers the launch only; THR-095 and the holder govern later daemon updates. A queued launch has a proposed 10-minute expiry; expiry cancels only an undispatched intent. A possibly dispatched launch stays reconciling until the holder proves its outcome. | No long-lived work lease is tied to an open approval; a network outage does not kill a confirmed thread. Requires an explicit THR-025/K10 amendment and an accepted risk that a confirmed thread can continue while the hub is unavailable or its token is revoked. A queued stop cannot be promised while offline. |
+| B | Keep a work item for the live thread, with reports each 15 seconds and a 90-second lease. Lease loss blocks later remote commands but lets the current turn finish; the holder stops accepting turns until reconciliation restores authority. Open approvals stay unanswered. Final thread end completes the item, with all clean-up fields `none`. The amendment removes job maximum-lifetime termination for this type; a live thread counts busy unless the holder can preserve it through an update. | Closer to the literal THR-025 lifecycle, but adds a durable remote-authority state for the whole thread, permits a turn to continue offline, and needs a bounded reconciliation/storage design without killing an approval by time. |
+| C | Keep the live-thread item and stop its process on loss of the 90-second lease, also on token refusal; retain the existing configured maximum lifetime. No automatic replacement. | Gives the hub a short revocation bound while the daemon can measure the lease, but a network outage kills work and an open request. This is a new termination policy, not implied by the rule that an approval is never automatically answered, and must be reconciled explicitly with THR-095. |
+
+The first report after successful creation must still bind to one TH21 ID in every
+option. The parent must select the lifetime and offline/expiry policy; the writer
+cannot select them as retry implementation details. Holder deduplication, atomic
+identity binding and no automatic replacement of an uncertain launch are correctness
+requirements of the requested one-result/retry behavior, not new actor permissions.
+After selection, the final contract must specify the race between stop and dispatch:
+a stop acknowledged before dispatch cancels the launch; after dispatch it targets
+the recorded thread and does not rewrite a successful launch as never started.
+
+**F2. Poll and queue bounds — engineering choices with contract review**
+
+Constraints: K8 Sections 1 and 6 give a 5-second body deadline, a 10-second ordinary
+request deadline, one ordinary device slot, two unauthenticated requests per address,
+and four database requests at a time with at most a 2-second wait. K10 Section 2
+inherits those bounds and one concurrent claim. TH20/21 keeps metrics independent
+of entry uploads. THR-026 requires a daemon-initiated poll, not a listener. THR-114
+and OD-THR25/39 make tree limits soft: a queue capacity cannot become a new maximum
+number of live threads. K10 Section 4 gives container stops first priority.
+
+| Option | Concrete behavior | Tradeoff |
+| --- | --- | --- |
+| A — recommended for review | One poll per device, at most 25 seconds of waiting, a 30-second client response deadline, and the existing 5-second body deadline. Poll request and response at most 96 KiB each; at most 64 receipts and one command. Prompt or answer payload at most 64 KiB of UTF-8 JSON, including feedback/choices. Offer upload at most 64 KiB, at most 128 offers, names at most 80 characters; response at most 8 KiB. At most 64 undelivered commands per device, 16 per thread; at most 60 new commands per minute per operator/device. Duplicate requests do not consume new queue entries. Of the 64 device slots, reserve 16 for stops and use at most 48 for prompts/answers; at most one pending stop of each kind per thread. Return `UNAVAILABLE` when the relevant capacity is full. Dispatch stops before other thread commands; for non-stop commands rotate across threads, oldest first within a thread. Keep the existing K10 work-type order unchanged and place new launch items after its currently eligible work; this can delay a launch on a busy machine. A full queue returns `UNAVAILABLE`, keeps no request, and reports no acceptance. | Finite memory and payloads with prompt delivery as soon as an event wakes the poll. Rejects very large messages and bursts; these are transport refusals the client must show, not silently truncate. The poll has a deliberate deadline exception while ordinary K8 calls keep theirs. |
+| B | Keep each poll within the existing 10-second response deadline: at most 5 seconds waiting, then reconnect immediately; use the same payload and queue limits as A. | Smaller deadline change, but more requests and idle network use. It still needs a separate wait slot and must not hold a database connection or block metrics. |
+
+These numbers are proposals, not existing requirements. The contract/resource owners
+can normally choose measured transport bounds as engineering details under the
+contract review; no change of accepted actor rights or default mode follows. If a
+limit would cap live threads, discard a queued prompt silently, expire an approval,
+or stop work, that is a new policy choice and must go to the parent instead. The
+implementation must account for a launch prompt in the K10 claim response bound;
+add the same 96 KiB response cap for `agent_thread`, without enlarging other work
+types. A full `holds` list must be reconciled without truncating identities: the
+selected lifetime in F1 determines its required bound. The final draft must fix
+that bound before a ruling. A different priority among existing K10 work types would
+need its owner's explicit review; this draft proposes no such change.
+
+**F3. Retry records and content deletion — unselected retention policy**
+
+Constraints: THR-130 and OD-THR44 (R-309) retain shared transcript content until the
+thread/device is deleted. TH20/21 forbids a retry from restoring a deleted thread.
+LOG-007 and THR-044 exclude prompts and outputs from logs. K10 Sections 7 and 10
+retain item/attempt results and audit actors but do not define retention for queued
+prompt or approval bodies. A retry that starts a second process violates the launch
+scope of Section 6.4.1. These rules determine deletion safety, not a new time-to-live
+for a command queue or its client retry key.
+
+| Option | Concrete behavior | Tradeoff |
+| --- | --- | --- |
+| A — recommended for review | Erase prompt/answer bodies from hub and delivery journals when a terminal receipt is stored, or on explicit cancellation or thread/device deletion. This does not erase independently opted-in TH21 entries. Keep content-free receipts while the thread exists. After deletion, retain only a retry tombstone scoped to the operator and request ID, the operation kind and a deleted marker for the life of the hub account. Return a generic deleted receipt to a retry and never enqueue it. Persist a private keyed input fingerprint while a full receipt exists to detect changed-input reuse without keeping text; no fingerprint enters an audit log. An unresolved delivery is not terminal, so its body remains until reconciliation or explicit deletion/cancellation. | Avoids a duplicate from an arbitrarily late retry, without permanent command text. Minimal identifiers still remain after deletion; an offline unresolved command can retain sensitive content indefinitely. Both are new retention choices and must be disclosed and selected by the parent. |
+| B | Retain bodies as in A, but permit retry keys only for a 30-day window. Keep receipts/tombstones through that window. Thereafter reject every key from an expired, server-issued retry namespace; never treat an expired key as a new intent. | Bounds retry metadata. Requires a new server-issued namespace and an issuance step, and loses old result recovery. It cannot be implemented merely by deleting UUID rows and accepting the UUID again; the namespace and expiry check need a revised K1 contract. |
+
+For either option, cancellation of a possibly delivered command does not claim
+that the effect was undone. The minimal tombstone prevents redispatch; the holder
+can later report a prior outcome without restoring content. A shared transcript is
+not a backup of the command queue, and turning sharing off neither loses a command
+receipt nor enables a content upload. Key storage/rotation for a private fingerprint,
+transaction ordering and duplicate indexes are engineering details; retention length,
+erasure semantics and treatment of unresolved content are new policy choices.
+
+**F4. Positive approvals after switch off — unselected policy choice**
+
+Constraints: THR-129 explicitly bars new starts and prompts after switch off and
+lets the person choose what to do with a running turn (default: finish the turn and
+take no more). It does not say whether a queued positive answer may resume a waiting
+tool. THR-030 binds an answer to one live request and prohibits a timer answer.
+THR-031 and OD-THR18 permit the operator login, not an API key, to answer. OD-THR5
+accepts the hub as the approval channel; OD-THR20 keeps the local guards. R-353
+removes a further product approval, not the need to resolve this guard boundary.
+
+| Option | Concrete behavior | Tradeoff |
+| --- | --- | --- |
+| A — recommended for review | At dispatch, refuse remote `allow`, `allow_for_session` and `choose` while the local switch is off, including queued answers. Return `refused` with `switch_off`; leave the request unanswered. Continue to take `deny`, `interrupt_turn` and `end_thread`. Local answers retain their existing rules. After re-enabling, the person can submit a new command for the still-open request; an old refused command is never replayed. | Clear local guard on remote resumption. A request can wait until a local answer or re-enable; a person who intended the switch to block new threads only may find that stricter. This is a new remote-answer restriction, not something THR-129 already states. |
+| B | Continue to accept all answers for an already-live request while the switch is off, with the existing identity, ownership and one-answer checks. Still bar new starts and prompts and apply the person's running-turn stop setting. | An existing turn can be completed remotely with fewer interruptions. A remote allow can start a tool after switch off; the operator must accept that boundary explicitly. |
+
+In both options the runner checks the switch at the dispatch boundary, serializes
+that check with the answer acceptance, and reports the actual result. If an answer
+was already accepted before switch off, no retry revokes it or sends it again. Those
+race and receipt rules are implementation details; the permission to resume after
+the switch is off is the policy decision. No selection is recorded here.
+
+After those reviews, the accepted text must be placed in K10 with its version and
+ruling, with the required K8 concurrency amendment and a precise K1 delta. Then TH31
+builds the hub API, CLI and permitted MCP coverage under CMD-030; TH32 and TH33 build
+the daemon and local guards. R-353 still requires separate security review of the
+implementation with no High finding open. TH52 and the R-429 mobile launch checks
+are not completed by this document.
 
 ### 6.5 Stage 4: each other function on this computer (built directly after stage 1b)
 
