@@ -1,5 +1,4 @@
-//! Audit entries describe the rows as they were under the mutation's lock, not as they were
-//! when the request arrived (LOG-005).
+//! Audit entries describe the rows under the mutation's lock, not as the request saw them (LOG-005).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -38,8 +37,6 @@ fixture_test! {
     async fn log_005_an_update_audits_against_the_row_under_its_lock_not_the_one_it_first_saw(pool: PgPool) {
         let (schema, _) = schema_with_bus(&pool);
         let id = create(&schema, input(PVE_01, "ssh", tcp())).await;
-        // Another transaction holds the row, changes the interval and commits while the
-        // rename waits.
         let mut other = pool.begin().await.unwrap();
         sqlx::query("UPDATE checks.checks SET interval_seconds = 120 WHERE id = $1::text::uuid")
             .bind(&id)
@@ -66,7 +63,6 @@ fixture_test! {
         let kept = create(&schema, input(PVE_01, "kept", tcp())).await;
         let gone = create(&schema, input(PVE_01, "gone", tcp())).await;
         let group = create(&schema, input(PVE_01, "group", group_of(&[&kept, &gone]))).await;
-        // Another transaction takes one child out of the group, and commits while the delete waits.
         let mut other = pool.begin().await.unwrap();
         sqlx::query("UPDATE checks.checks SET parent_id = NULL, parent_type = NULL WHERE id = $1::text::uuid")
             .bind(&gone)

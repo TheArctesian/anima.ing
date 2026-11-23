@@ -1,5 +1,4 @@
-//! No secret of a channel reaches a delivery, an event or the process log, whatever the
-//! outcome of the send (LOG-007, NOT-002, SEC-005).
+//! No channel secret reaches a delivery, an event or the process log (LOG-007, NOT-002, SEC-005).
 
 use sqlx::PgPool;
 

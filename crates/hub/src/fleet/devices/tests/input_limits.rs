@@ -1,5 +1,4 @@
-//! Size and character limits on operator text, which reaches logs that cannot be cleaned
-//! (LOG-004, DEV-010).
+//! Operator text reaches logs that cannot be cleaned (LOG-004, DEV-010).
 
 use super::*;
 use super::{fields, new_device, ssh};

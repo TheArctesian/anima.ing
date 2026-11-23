@@ -1,7 +1,4 @@
-//! The compute GraphQL part: `Query.devicePolicies` and `Mutation.setDevicePolicy` (K1; waits
-//! for R-335; CMP-002, CAP-010 to CAP-012). The mutation writes the policy, one
-//! audit entry and one event in one transaction. It sets no switch: the one switch "takes
-//! work" stays at the machine and in `setDeviceWork` (USE-004, OD-C8, R-165, R-270).
+//! K1 (CMP-002, CAP-010 to CAP-012): the "takes work" switch stays in `setDeviceWork` (USE-004, OD-C8, R-165, R-270).
 
 mod types;
 

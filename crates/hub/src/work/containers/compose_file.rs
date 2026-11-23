@@ -1,14 +1,6 @@
-//! The text of a Compose file before an install (HOST-022, R-150): the check of its syntax,
-//! and the change of a `docker run` command into a Compose file.
-//!
-//! Both are pure functions of the text that the caller gives. They run nothing, reach no
-//! machine and no network, and keep nothing. An environment value in a Compose file or in a
-//! command is a secret of the operator (LOG-007): a problem of the check holds a fixed code,
-//! a position and at most the name of a service and of a key, never a value of the file. The
-//! hub writes neither text to a log.
-//!
-//! The check is of the syntax only. It does not say that a machine accepts the file: the
-//! rules of HOST-028 (`compose-rules`) are a different check.
+//! Pure syntax check of Compose text and conversion of `docker run` (HOST-022, R-150).
+//! A problem holds a fixed code, a position and at most a service and key name, never a value of
+//! the file; the hub logs neither text (LOG-007).
 
 mod docker_run;
 mod draft;

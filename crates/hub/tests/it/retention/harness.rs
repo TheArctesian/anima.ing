@@ -1,5 +1,3 @@
-//! The retention GraphQL part with a test clock, and requests from a signed-in operator.
-
 use std::sync::Arc;
 
 use anima_hub::{

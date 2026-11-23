@@ -149,14 +149,13 @@ fn git_takes_the_list_read_as_the_engine_sends_it() {
 
 #[test]
 fn the_engine_is_made_with_its_records_and_its_home() {
-    let keep = tempfile::tempdir().expect("a folder");
+    // Not in `/tmp`, where records are refused.
+    let keep = tempfile::tempdir_in("/var/tmp").expect("a folder in /var/tmp");
     let top = std::fs::canonicalize(keep.path()).expect("its real path");
     let records = top.join("records");
     let places = Places {
         anima: top.join("anima"),
         records: Some(records.clone()),
-        // The folder of this test may be in `/tmp`.
-        private_tmp: true,
         ..Places::default()
     };
     let path = std::env::var_os("PATH").unwrap_or_default();
@@ -191,14 +190,13 @@ fn the_engine_is_made_with_its_records_and_its_home() {
 }
 
 #[test]
-fn records_in_a_temporary_folder_are_refused_until_each_agent_has_its_own() {
+fn records_in_a_temporary_folder_that_agents_share_are_refused() {
     let keep = tempfile::tempdir_in("/tmp").expect("a folder in /tmp");
     let in_tmp = keep.path().join("records");
     // Not in `/tmp`, so that only the name of the login refuses the records below.
     let keep_home = tempfile::tempdir_in("/var/tmp").expect("a folder in /var/tmp");
     let home = std::fs::canonicalize(keep_home.path()).expect("its real path");
-    let real_tmp = std::fs::canonicalize("/tmp").expect("/tmp");
-    assert!(!home.starts_with(&real_tmp));
+    assert!(!home.starts_with(std::fs::canonicalize("/tmp").expect("/tmp")));
     let path = std::env::var_os("PATH").unwrap_or_default();
     let login_with = |name: &str, tmpdir: &Path| {
         [
@@ -245,10 +243,16 @@ fn records_in_a_temporary_folder_are_refused_until_each_agent_has_its_own() {
         &places(&in_tmpdir),
         nothing(),
     ));
-    // When the runner gives each agent its own `TMPDIR`, the root check of each thread holds.
-    let private = Places {
+    // When the runner gives each agent its own `TMPDIR`, `TMP` and `TEMP`, those of the login
+    // are no temporary folder of an agent; `/tmp` and `XDG_RUNTIME_DIR` are still shared.
+    let private = |records: &Path| Places {
         private_tmp: true,
-        ..places(&in_tmpdir)
+        ..places(records)
     };
-    engine(login(&shared), &private, nothing()).expect("an engine");
+    refused(engine(login(home.as_path()), &private(&in_tmp), nothing()));
+    let shared_dir = login_with("XDG_RUNTIME_DIR", &shared);
+    refused(engine(shared_dir, &private(&in_tmpdir), nothing()));
+    for name in ["TMPDIR", "TMP", "TEMP"] {
+        engine(login_with(name, &shared), &private(&in_tmpdir), nothing()).expect("an engine");
+    }
 }

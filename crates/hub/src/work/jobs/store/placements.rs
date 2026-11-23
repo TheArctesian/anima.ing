@@ -1,6 +1,3 @@
-//! What the placement reads and writes in schema `jobs`: what each machine said in its last
-//! claim, the pins and the exclusions of the operator, and the last decision for each job.
-
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
@@ -21,12 +18,11 @@ fn words<T: serde::Serialize>(all: &[T]) -> Result<Vec<String>, Error> {
     all.iter().map(word).collect()
 }
 
-/// The words that this hub knows; a word of a newer daemon is dropped, so it fits no job.
+/// A word of a newer daemon is dropped, so it fits no job.
 fn known<T: serde::de::DeserializeOwned>(all: &[String]) -> Vec<T> {
     all.iter().filter_map(|text| read_word(text).ok()).collect()
 }
 
-/// Writes what the machine `name` said in its claim at `now`, for the claims of the others.
 pub(in crate::work::jobs) async fn save_said(
     conn: &mut PgConnection,
     (device, name): (DeviceId, &str),
@@ -81,7 +77,7 @@ fn offer(
 const SELECT_OFFER: &str = "SELECT device_id, types, kinds, os, architecture, free_memory_bytes, \
      free_disk_bytes, excluded FROM jobs.machines ";
 
-/// What the last claim of the machine said; `None` before its first claim.
+/// `None` before the machine's first claim.
 pub(in crate::work::jobs) async fn offer_of(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -94,8 +90,6 @@ pub(in crate::work::jobs) async fn offer_of(
     row.map(offer).transpose()
 }
 
-/// The machines but `device` whose last claim is not older than `since` and that can take a
-/// job at `now`: the two switches are on, the machine is clean and it has a free slot.
 pub(in crate::work::jobs) async fn others_asking(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -115,7 +109,6 @@ pub(in crate::work::jobs) async fn others_asking(
     rows.into_iter().map(offer).collect()
 }
 
-/// The machine that the operator pinned for each project.
 pub(in crate::work::jobs) async fn pins(
     conn: &mut PgConnection,
 ) -> Result<HashMap<ProjectId, DeviceId>, Error> {
@@ -126,8 +119,7 @@ pub(in crate::work::jobs) async fn pins(
     Ok(rows.into_iter().collect())
 }
 
-/// Pins `device` for the project. Returns false when there is no such device: nothing is
-/// written then.
+/// `false` when there is no such device; nothing is written then.
 pub(in crate::work::jobs) async fn pin(
     conn: &mut PgConnection,
     project: ProjectId,
@@ -145,7 +137,6 @@ pub(in crate::work::jobs) async fn pin(
     Ok(done.rows_affected() == 1)
 }
 
-/// Removes the pin of the project and returns the machine that was pinned.
 pub(in crate::work::jobs) async fn unpin(
     conn: &mut PgConnection,
     project: ProjectId,
@@ -159,7 +150,7 @@ pub(in crate::work::jobs) async fn unpin(
     Ok(old.map(|(device,)| device))
 }
 
-/// Sets the exclusion of the machine. Returns false for a machine that never asked for work.
+/// `false` for a machine that never asked for work.
 pub(in crate::work::jobs) async fn set_excluded(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -173,8 +164,8 @@ pub(in crate::work::jobs) async fn set_excluded(
     Ok(done.rows_affected() == 1)
 }
 
-/// Writes the decision of the machine of `offer` for each job at `now`. A decision that did not
-/// change is written again only after 1 minute, so that a machine that asks often writes little.
+/// An unchanged decision is written again only after 1 minute, so a machine that asks often
+/// writes little.
 pub(in crate::work::jobs) async fn save_decisions(
     conn: &mut PgConnection,
     (offer, machine): (&Offer, &str),
@@ -208,7 +199,6 @@ pub(in crate::work::jobs) async fn save_decisions(
 
 type DecisionRow = (DeviceId, String, String, i64, i64, DateTime<Utc>);
 
-/// The last decision of each machine for the job, the newest first.
 pub(in crate::work::jobs) async fn decisions_of(
     conn: &mut PgConnection,
     job: JobId,

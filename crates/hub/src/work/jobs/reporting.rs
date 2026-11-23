@@ -1,5 +1,4 @@
-//! The report of a holder (K10 Section 7), and the end of what a machine lost: a lease that
-//! ran out and an attempt that is too long.
+//! A holder's report (K10 Section 7), and the end of leases that ran out and attempts too long.
 
 use chrono::{DateTime, Utc};
 use daemon_core::wire::{Lease, Reported, StopOrder, WorkReport, WorkState};
@@ -16,8 +15,7 @@ use crate::{
     ids::{DeviceId, JobId},
 };
 
-/// Answers the report of `device` at `now` (K10 Section 7): the new state, the log part, the
-/// new lease and a stop when there is one.
+/// Answers the report of `device` at `now` (K10 Section 7).
 ///
 /// # Errors
 /// `Database` or `Events` when a change cannot be written; nothing is changed then.
@@ -90,8 +88,8 @@ async fn fault(
     Ok(())
 }
 
-/// Ends each lease that ran out by `now` and each attempt that holds a job for longer than its
-/// limit (K10 Section 7); the upkeep calls it every 30 seconds. Returns how many jobs changed.
+/// Ends each lease that ran out by `now` and each attempt over its limit (K10 Section 7); returns
+/// how many jobs changed.
 ///
 /// # Errors
 /// `Database` or `Events` when a change cannot be written; nothing is changed then.

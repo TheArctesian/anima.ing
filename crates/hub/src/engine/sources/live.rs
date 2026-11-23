@@ -1,12 +1,5 @@
-//! Live reads and named changes of a source, for the Work, Code and History tabs of a project
-//! (K-E1 Section 13; PRJ-027 to PRJ-035, OD-E14).
-//!
-//! A live read is a `GET` through the transport with the account's installation token, served
-//! from a short cache in hub memory while it is fresh. A change is a checked [`Change`] the
-//! provider renders and the transport sends; the caller names nothing else. Neither touches a
-//! sync: the live path never claims an account, never writes `sources.accounts` or
-//! `sources.sync_runs`, and changes no schedule, failure count or health. A 401 drops the
-//! in-memory token, as a sync's does, and writes nothing.
+//! Live reads and named changes of a source (K-E1 Section 13; PRJ-027 to PRJ-035, OD-E14).
+//! The live path never claims an account, writes no sync table and changes no schedule or health.
 
 mod budget;
 mod model;
@@ -35,8 +28,7 @@ use super::{
 };
 use crate::ids::SourceAccountId;
 
-/// The live path's state, held by the transport beside its tokens: the cache, the budget and
-/// the pace of every account. Cheap to clone; clones share it.
+/// Clones share the cache, the budget and the pace of every account.
 #[derive(Clone, Default)]
 pub(in crate::engine::sources) struct Live {
     replies: Arc<Mutex<Replies>>,
@@ -54,24 +46,19 @@ impl Live {
     }
 }
 
-/// Drops the held answers of `account` whose path is `path_prefix` or lies below it, after a
-/// change made them old (K-E1 Section 13.6). `/repos/o/r/pulls` drops `/repos/o/r/pulls/12`
-/// but not `/repos/o/r/pulls2`.
+/// `/repos/o/r/pulls` drops `/repos/o/r/pulls/12` but not `/repos/o/r/pulls2` (K-E1 Section 13.6).
 pub fn forget(transport: &Transport, account: SourceAccountId, path_prefix: &str) {
     transport
         .live()
         .replies(|replies| replies.forget(account, path_prefix));
 }
 
-/// Drops every held answer of `account`, once it is removed.
 pub(in crate::engine::sources) fn forget_account(transport: &Transport, account: SourceAccountId) {
     transport
         .live()
         .replies(|replies| replies.forget_account(account));
 }
 
-/// Whether each of `accounts` can be read now, from the stored rows; nothing is written.
-///
 /// # Errors
 /// [`LiveFailure::Store`] when the rows cannot be read.
 pub async fn standing(
@@ -88,8 +75,7 @@ pub async fn standing(
     Ok(standings)
 }
 
-/// The standing of a stored account, in the order the health uses: paused first, then a
-/// refused key.
+/// In the order the health uses: paused first, then a refused key.
 fn standing_of(account: Option<&Account>) -> Standing {
     match account {
         None => Standing::NotFound,
@@ -103,7 +89,6 @@ fn standing_of(account: Option<&Account>) -> Standing {
     }
 }
 
-/// The stored account and its source's declaration, when the account may be read now.
 async fn reachable(
     s: &Scheduling,
     id: SourceAccountId,
@@ -122,7 +107,6 @@ async fn reachable(
     Ok((account, declaration))
 }
 
-/// What a failure of the token function means for a live request.
 const fn failed(failure: super::run::Failure, now: chrono::DateTime<chrono::Utc>) -> LiveFailure {
     match failure.kind {
         ErrorKind::Auth => LiveFailure::KeyRefused,

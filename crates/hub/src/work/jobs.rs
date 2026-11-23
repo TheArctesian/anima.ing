@@ -1,10 +1,5 @@
-//! The jobs of the work route (K10, `contracts/work-route.md`, accepted by R-209; PRO-050,
-//! PRO-051; task W3): the queue from which the hub gives work to the daemon of a machine.
-//!
-//! A job is what the contract calls an item of work. The hub never names a command: a job has a
-//! type of a fixed list and the object of that type. The rules are pure (`lifecycle`,
-//! `placement`); this file runs them in one transaction with their audit entry (K10 Section 10).
-//! The HTTP routes are the daemon's edge in `fleet::metrics::ingest`.
+//! The job queue of the work route (K10, R-209; PRO-050, PRO-051).
+//! The hub never names a command: a job has a type of a fixed list and that type's object.
 
 mod claiming;
 mod lifecycle;
@@ -38,11 +33,9 @@ use crate::{
     ids::JobId,
 };
 
-/// How often the upkeep ends the leases that ran out and the attempts that are too long.
 pub const LEASE_SWEEP: std::time::Duration = std::time::Duration::from_secs(30);
 
-/// What the hub knows of each machine for work (the switch "takes work", USE-004); a device
-/// that never asked for work has no entry. The device policy of compute reads it (CMP-002).
+/// A device that never asked for work has no entry (USE-004, CMP-002).
 ///
 /// # Errors
 /// `Database` when the query fails; `Unreadable` for a stored row this version does not read.
@@ -52,19 +45,15 @@ pub async fn machines(
     store::machines(db).await
 }
 
-/// Why an operation on the jobs failed.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    /// The job that a caller wants in the queue breaks a rule of K10; the text names the rule.
     #[error("the job is not valid: {0}")]
     Invalid(&'static str),
-    /// The machine that the job names, or that is pinned for its project, can never run it;
-    /// the text is the reason. No different machine is taken in its place (ROU-006, JOB-014).
+    /// No different machine is taken in its place (ROU-006, JOB-014).
     #[error("the job names a machine that cannot run it: {0}")]
     NoFit(String),
     #[error("database error")]
     Database(#[from] sqlx::Error),
-    /// A stored row is not in a form this version reads.
     #[error("a stored job row cannot be read")]
     Unreadable,
     #[error("the event log cannot be written")]
@@ -82,17 +71,14 @@ pub type PolicyGate = std::sync::Arc<
         + Sync,
 >;
 
-/// What the jobs need to work: the database and the bus of the events.
 #[derive(Clone, Copy)]
 pub struct Queue<'a> {
     pub db: &'a PgPool,
     pub bus: &'a Bus,
 }
 
-/// Who asks, for the audit entry: the operator (or the hub) and the address of the request.
 pub type Asker = (Operator, ClientAddr);
 
-/// The answer to a claim.
 #[derive(Debug, PartialEq)]
 pub enum Claimed {
     /// No job for this machine now (`204`).
@@ -102,7 +88,6 @@ pub enum Claimed {
     Job(Box<Work>),
 }
 
-/// The answer to a report.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Reporting {
     Reported(Reported),
@@ -130,7 +115,7 @@ pub(super) async fn ended<T>(
     }
 }
 
-/// The purposes that a job of each type can name (K10 Sections 6 and 8).
+/// The secret purposes each job type may name (K10 Sections 6 and 8).
 fn secrets_permitted(job: &NewJob) -> bool {
     let permitted: &[&str] = match job.work_type {
         WorkType::Runner => &["jit_config"],
@@ -187,12 +172,10 @@ fn validate(job: &NewJob) -> Result<(), Error> {
     Ok(())
 }
 
-/// Puts a job in the queue at `now`, with its audit entry (K10 Section 10). The callers are the
-/// functions of the hub that make work: the runners of a project and the builds.
+/// Puts a job in the queue at `now`, with its audit entry (K10 Section 10).
 ///
 /// # Errors
-/// [`Error::Invalid`] for a job that breaks a rule of K10; [`Error::NoFit`] for a job whose
-/// named or pinned machine can never run it; `Database` or `Events` when it cannot be written.
+/// `Invalid`, `NoFit` for a named or pinned machine that can never run it, `Database`, `Events`.
 pub async fn enqueue(
     queue: Queue<'_>,
     wanted: NewJob,
@@ -250,9 +233,7 @@ pub async fn jobs_of(conn: &mut PgConnection, ids: &[JobId]) -> Result<Vec<Job>,
     store::jobs_of(conn, ids).await
 }
 
-/// Asks for the stop of a job at `now` (K10 Section 7). A queued job stops at once; the holder
-/// of a held job gets the stop in the answer to its next report. `None` for a job that is not
-/// there or has ended.
+/// A queued job stops at once; a held job's holder gets it in its next report (K10 Section 7).
 ///
 /// # Errors
 /// `Database` or `Events` when the change cannot be written; nothing is changed then.
@@ -289,8 +270,6 @@ pub async fn stop_in(
     Ok(Some(next))
 }
 
-/// The job and the log that the hub holds of it; `None` when there is no such job.
-///
 /// # Errors
 /// `Database` when it cannot be read.
 pub async fn job_with_log(queue: Queue<'_>, id: JobId) -> Result<Option<(Job, String)>, Error> {

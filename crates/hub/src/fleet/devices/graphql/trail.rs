@@ -1,8 +1,5 @@
-//! What a device mutation leaves behind: one event and one audit entry, written in the
-//! mutation's own transaction (LOG-004, LOG-005, LOG-007).
-//!
-//! The messages and the `change` objects are built by pure functions from the stored rows and the
-//! validated input. They hold names, hosts and settings, never a secret.
+//! A device mutation's event and audit entry, written in its transaction; they never hold a
+//! secret (LOG-004, LOG-005, LOG-007).
 
 use std::num::NonZeroU8;
 
@@ -102,7 +99,6 @@ pub(in crate::fleet::devices) fn device_added(
     }
 }
 
-/// Only the fields the operator sent appear in `change`.
 pub(super) fn device_updated(device: &Device, change: &DeviceChange) -> TrailEntry {
     let mut fields = serde_json::Map::new();
     let mut put = |key: &str, value: Option<Value>| {
@@ -120,7 +116,6 @@ pub(super) fn device_updated(device: &Device, change: &DeviceChange) -> TrailEnt
     put("ssh", change.ssh.as_ref().map(ssh_json));
     put("rdp", change.remote.rdp.as_ref().map(rdp_json));
     put("vnc", change.remote.vnc.as_ref().map(vnc_json));
-    // A cleared address is recorded as null.
     put(
         "macAddress",
         change
@@ -136,7 +131,6 @@ pub(super) fn device_updated(device: &Device, change: &DeviceChange) -> TrailEnt
             .map(|source| json!(source.as_str())),
     );
     put("transfer", change.remote.transfer.map(transfer_json));
-    // A cleared limit is recorded as null.
     put(
         "sessionLimit",
         change
@@ -172,8 +166,7 @@ pub(super) fn device_deleted(device: &Device) -> TrailEntry {
     }
 }
 
-/// Names the kind of secret and whether the key is encrypted, never the secret. The flag is
-/// called `encrypted` because the audit log hides the value of any key that names a passphrase.
+/// Never the secret; `encrypted`, because the audit log hides any key that names a passphrase.
 pub(super) fn credential_set(device: &Device, kind: CredentialKind) -> TrailEntry {
     let change = match kind {
         CredentialKind::Password => json!({ "kind": "password" }),

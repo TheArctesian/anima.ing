@@ -1,6 +1,4 @@
-//! `MaintenanceWindow` and `WindowTarget` as the GraphQL types K1 describes.
-//!
-//! A field of a kind the window is not returns null (MW-004).
+//! `MaintenanceWindow` and `WindowTarget` (K1); a field of another kind returns null (MW-004).
 
 use std::sync::Arc;
 

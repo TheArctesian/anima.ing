@@ -1,8 +1,4 @@
-//! Tests of Wake-on-LAN against the link's test SSH server on loopback: `docker-host` is the
-//! home site's wake relay, `pve-01` the device it wakes. What the relay hears and sends
-//! (`sending`), each refusal (`refusals`), the mutation with its audit entry (`mutation`),
-//! and a session start that wakes the device first (`start`). In-crate, for the loopback
-//! policy.
+//! In-crate tests, for the loopback policy.
 
 mod mutation;
 mod refusals;
@@ -21,11 +17,8 @@ use crate::{
     ids::DeviceId,
 };
 
-/// `pve-01`, on the home site, the device the tests wake.
 const PVE: &str = "0190a000-0000-7000-8002-000000000001";
-/// The home site of `pve-01` and of the relay `docker-host`.
 const HOME: &str = "0190a000-0000-7000-8001-000000000001";
-/// `pve-01`'s MAC address, as the relay must hear it.
 const MAC: &str = "aa:bb:cc:dd:ee:ff";
 /// The relay's own MAC address, which no packet for `pve-01` may carry.
 const RELAY_MAC: &str = "02:1b:3c:4d:5e:6f";
@@ -36,7 +29,6 @@ fn pve() -> DeviceId {
     PVE.parse().unwrap()
 }
 
-/// An answer that writes [`OUTPUT`] to both streams and exits with `status`.
 fn exiting(status: u32) -> Answer {
     Answer::Exit {
         stdout: OUTPUT.as_bytes().to_vec(),
@@ -45,8 +37,6 @@ fn exiting(status: u32) -> Answer {
     }
 }
 
-/// A bench whose relay answers `answer`, with `pve-01`'s and the relay's MAC addresses set
-/// and `docker-host` as the home site's wake relay.
 async fn relay(pool: &PgPool, answer: Answer) -> Bench {
     let bench = bench(pool, answer).await;
     set_mac(pool, PVE, Some(MAC)).await;
@@ -73,13 +63,11 @@ async fn set_relay(pool: &PgPool, relay: Option<&str>) {
         .unwrap();
 }
 
-/// Wakes `device` under the loopback policy at [`now`].
 async fn woken(bench: &Bench, device: DeviceId) -> Result<WakeSent, Error> {
     let stores = (&bench.db, &bench.vault, &reaching(), &Bus::new(16));
     wake(stores, device, ActorKind::User, now()).await
 }
 
-/// Wakes `pve-01`, which must fail; the error's message and debug form are quiet.
 async fn refused(bench: &Bench) -> Error {
     match woken(bench, pve()).await {
         Ok(sent) => panic!("the packet was sent: {sent:?}"),
@@ -92,7 +80,6 @@ async fn refused(bench: &Bench) -> Error {
     }
 }
 
-/// The command lines the relay was asked to run.
 fn execs(server: &Server) -> Vec<String> {
     server
         .heard()
@@ -104,7 +91,6 @@ fn execs(server: &Server) -> Vec<String> {
         .collect()
 }
 
-/// `(severity, source, device name, message)` of each stored event.
 async fn events(pool: &PgPool) -> Vec<(String, String, Option<String>, String)> {
     sqlx::query_as("select severity, source, device_name, message from events.event_log")
         .fetch_all(pool)
@@ -112,7 +98,6 @@ async fn events(pool: &PgPool) -> Vec<(String, String, Option<String>, String)> 
         .unwrap()
 }
 
-/// The one stored event: an Error for `pve-01` with `message`.
 async fn one_error_event(pool: &PgPool, message: &str) {
     let error = (
         "error".to_owned(),
@@ -132,9 +117,7 @@ fn decimal_octets(mac: &str) -> String {
     octets.join(", ")
 }
 
-/// If `text` holds `number` as a whole number: no digit stands directly before or after it.
-/// A port of five digits is also a part of many timings and times in a log line (sqlx writes
-/// `"elapsed_secs":0.000372311`, which holds the port 37231), so a plain `contains` fails at random.
+/// A five-digit port also appears inside timings in a log line, so a plain `contains` is not enough.
 fn holds_number(text: &str, number: &str) -> bool {
     text.match_indices(number).any(|(at, _)| {
         let before = text[..at].chars().next_back();
@@ -152,8 +135,7 @@ fn a_port_is_found_as_a_whole_number_and_not_inside_a_timing() {
     assert!(!holds_number("372310 and 137231", "37231"));
 }
 
-/// `text` holds no address, port, MAC address (in hex or decimal octets), relay output or
-/// secret (LOG-007).
+/// `text` holds no address, port, MAC address (in hex or decimal octets), relay output or secret (LOG-007).
 fn assert_quiet(text: &str, server: &Server) {
     let port = server.port.to_string();
     assert!(
@@ -173,7 +155,6 @@ fn assert_quiet(text: &str, server: &Server) {
     }
 }
 
-/// Everything stored about sessions, audit and events is quiet.
 async fn assert_stored_quiet(bench: &Bench) {
     assert_quiet(&stored_text(&bench.db).await, &bench.server);
 }

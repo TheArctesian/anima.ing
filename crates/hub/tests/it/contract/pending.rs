@@ -1,6 +1,5 @@
-//! The `@pending` rule: K1 may declare a name before the hub serves it (CON-002, D-1, P2-002).
-//! While the hub lacks the name, K1's declaration is not compared; once the hub has it, the
-//! comparison fails until K1 drops the mark.
+//! The `@pending` rule (CON-002, D-1, P2-002): K1 may declare a name before the hub serves it;
+//! once the hub has it, the comparison fails until K1 drops the mark.
 
 use std::collections::BTreeSet;
 

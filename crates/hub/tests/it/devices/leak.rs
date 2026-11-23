@@ -1,7 +1,4 @@
-//! What the credential mutations let out (LOG-007, API-010). In a query that parses, a
-//! credential of the wrong shape or type is refused without quoting it, in the response or in
-//! the process log. A query that does not parse gets a fixed text (H-6 (e)). Missing wiring
-//! shows only `INTERNAL`, and its cause goes to the log (H-5).
+//! Credential mutations quote no credential in a response or the log (LOG-007, API-010, H-5, H-6 (e)).
 
 use std::{
     future::Future,
@@ -105,8 +102,7 @@ fn malformed() -> Vec<(Request, &'static str)> {
             signed_in(SET).variables(variables(&json!({ "privateKey": VARIABLE_KEY }))),
             VARIABLE_KEY,
         ),
-        // Arguments are parsed before the guard runs, so a caller without an operator reaches
-        // the parser too.
+        // Arguments are parsed before the guard runs, so a caller with no operator reaches the parser.
         (
             Request::new(SET).variables(variables(&json!(VARIABLE_PASSWORD))),
             VARIABLE_PASSWORD,
@@ -148,8 +144,7 @@ async fn secret_rows(pool: &PgPool) -> i64 {
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
 async fn api_010_without_the_vault_or_a_loader_the_operator_gets_internal(pool: PgPool) {
-    // Everything the mutation and the fields need except the vault and the loaders, behind the
-    // API boundary as `schema.rs` builds it.
+    // Everything but the vault and the loaders, behind the API boundary.
     let (bus, clock) = (Bus::new(4), Arc::new(FixedClock(now())) as Arc<dyn Clock>);
     let builder = Schema::build(Query, Mutation, EmptySubscription)
         .data(pool.clone())

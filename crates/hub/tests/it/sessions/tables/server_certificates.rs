@@ -1,6 +1,5 @@
-//! Migration 0610's `server_certificates` (in schema `trust` since 0920): its columns and
-//! checks, the device delete that removes a certificate, and a runtime role that may upsert but
-//! never delete one (K2, SEC-007, R-016).
+//! `trust.server_certificates`: a runtime role may upsert a certificate but not delete one (K2,
+//! SEC-007, R-016).
 
 use sqlx::{PgConnection, PgPool};
 

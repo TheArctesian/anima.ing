@@ -1,10 +1,3 @@
-//! DNS probe: asks one resolver for a record and compares the answer with what is expected.
-//!
-//! Only answers of the asked record type count. `expected` is compared without case and
-//! without a trailing dot, against each answer: A and AAAA by address; CNAME, NS and PTR by
-//! name; MX by the exchange or by `preference exchange`; SRV by the target only; TXT by its
-//! character strings joined, compared case-insensitively. Any answer matching is a success.
-
 use std::{
     net::IpAddr,
     time::{Duration, Instant},
@@ -23,7 +16,6 @@ use super::{
 };
 use crate::fleet::checks::config::DnsRecordType;
 
-/// One DNS question and, optionally, the answer that is expected.
 pub(super) struct DnsQuery<'a> {
     pub name: &'a str,
     pub record_type: DnsRecordType,
@@ -44,12 +36,10 @@ const fn record_type(kind: DnsRecordType) -> RecordType {
     }
 }
 
-/// Lower case, no trailing dot: the form answers are compared in.
 fn normal(text: &str) -> String {
     text.trim_end_matches('.').to_ascii_lowercase()
 }
 
-/// The texts an answer can be written as: an MX or SRV answer also matches its bare target.
 fn spellings(data: &RData) -> Vec<String> {
     match data {
         RData::A(a) => vec![a.0.to_string()],

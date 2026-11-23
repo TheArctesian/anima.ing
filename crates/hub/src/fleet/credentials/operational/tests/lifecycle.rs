@@ -1,5 +1,4 @@
-//! The versions of a key: one active, a new one supersedes the old at once, a revocation ends
-//! it, an expiry ends it, and an ended value goes after 30 days (R-147, K-E5 Section 2).
+//! The lifecycle of key versions (R-147, K-E5 Section 2).
 
 use chrono::TimeDelta;
 use sqlx::PgPool;

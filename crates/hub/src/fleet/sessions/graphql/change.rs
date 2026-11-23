@@ -1,5 +1,4 @@
-//! `SessionChange` as the GraphQL type K1 describes, and the stream of them from `Live`'s
-//! feed (RA-034).
+//! The `SessionChange` GraphQL type and its stream (K1, RA-034).
 
 use async_graphql::{
     Object,

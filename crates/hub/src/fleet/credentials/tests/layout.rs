@@ -39,8 +39,6 @@ fn sec_003_malformed_sealed_bytes_are_rejected() {
     }
 }
 
-/// Property: every prefix and every single-byte change of a valid value either fails to
-/// parse or fails to open; nothing panics and nothing opens to other plaintext.
 #[test]
 fn sec_003_any_altered_sealed_bytes_never_open() {
     let vault = vault_from(test_key());

@@ -12,12 +12,10 @@ const BEATS: i32 = 6000;
 const LIMIT: i64 = 20;
 const LIMIT_ROWS: f64 = 20.0;
 
-/// When the newest beat is written: just after and just before midnight UTC, so one history
-/// spans two days and the other one.
+/// Just after and just before midnight UTC, so one history spans two days and the other one.
 const NEWEST_AT: [&str; 2] = ["00:00:30", "23:59:30"];
 
-/// `time` on the UTC day two days before the database's: in the past, and inside the window
-/// `checks.ensure_day_partition` accepts, whatever the hour.
+/// Two days back is inside the window `checks.ensure_day_partition` accepts, whatever the hour.
 async fn two_days_ago_at(pool: &PgPool, time: &str) -> DateTime<Utc> {
     let now: DateTime<Utc> = sqlx::query_scalar("SELECT pg_catalog.now()")
         .fetch_one(pool)
@@ -27,8 +25,6 @@ async fn two_days_ago_at(pool: &PgPool, time: &str) -> DateTime<Utc> {
     day.and_time(time.parse::<NaiveTime>().unwrap()).and_utc()
 }
 
-/// A check with `BEATS` heartbeats a second apart, the newest at `newest`, in the partitions
-/// of every day they cover.
 async fn check_with_history(pool: &PgPool, newest: DateTime<Utc>) -> Uuid {
     let id = Uuid::now_v7();
     sqlx::query(
@@ -67,7 +63,6 @@ async fn check_with_history(pool: &PgPool, newest: DateTime<Utc>) -> Uuid {
     id
 }
 
-/// The rows every node of the plan returned, times its loops, summed over the tree.
 fn rows_read(plan: &Value) -> f64 {
     let own =
         plan["Actual Rows"].as_f64().unwrap_or(0.0) * plan["Actual Loops"].as_f64().unwrap_or(1.0);

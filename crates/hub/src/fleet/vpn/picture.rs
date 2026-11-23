@@ -1,5 +1,4 @@
-//! The picture from one status reply: each node's role, path and key, its Anima device, and
-//! the router of each site (VPN-009 to VPN-011). Pure: the reader brings the inputs.
+//! The picture from one status reply (VPN-009 to VPN-011); pure, the reader brings the inputs.
 
 use std::{
     collections::HashSet,
@@ -21,7 +20,6 @@ use crate::{
     ids::{DeviceId, SiteId},
 };
 
-/// How long before its expiry a key is `Expiring` (VPN-010).
 const EXPIRING_DAYS: i64 = 30;
 /// Reads that keep a node's last known path after its traffic stops (BD-13).
 const KEPT_READS: u8 = 3;
@@ -34,39 +32,30 @@ const TAILNET_V6: IpNet = IpNet::new_assert(
     48,
 );
 
-/// The hub's own container networks on its host (`deploy/compose.yaml`; the deploy preflight
-/// keeps every `ANIMA_*_SUBNET` inside it). The host firewall drops this range from the VPN.
+/// The hub's container networks (`deploy/compose.yaml`); the host firewall drops this range from the VPN.
 const HUB_NETWORKS: IpNet = IpNet::new_assert(IpAddr::V4(Ipv4Addr::new(172, 30, 0, 0)), 16);
 
-/// Whether a site's `subnet` is reached directly over the VPN, so it has no subnet router.
-/// True for a subnet inside the tailnet range and for one that overlaps it (contains it, for
-/// example `0.0.0.0/0` or `100.0.0.0/8`): a router could not serve such a subnet separately
-/// from the tailnet's own addresses. A subnet entirely outside the range is a router site.
+/// A router could not serve a subnet that overlaps the tailnet range apart from the tailnet's own addresses.
 pub(super) fn on_tailnet(subnet: IpNet) -> bool {
     [TAILNET_V4, TAILNET_V6]
         .iter()
         .any(|range| overlaps(*range, subnet))
 }
 
-/// Whether a site's `subnet` overlaps the hub's own container networks (VP-13). A router that
-/// served it could send from the hub's addresses, which the hub's host trusts, so such a site
-/// gets no router: the host drops that range from the VPN in any case.
+/// A router serving such a subnet could send from addresses the hub's host trusts, so the site gets no router (VP-13).
 pub(super) fn on_hub_networks(subnet: IpNet) -> bool {
     overlaps(HUB_NETWORKS, subnet)
 }
 
-/// Two prefixes overlap when one contains the other.
 fn overlaps(range: IpNet, subnet: IpNet) -> bool {
     range.contains(&subnet) || subnet.contains(&range)
 }
 
-/// Whether a site can have a subnet router: it is neither on the tailnet range nor over the
-/// hub's own networks.
 fn is_router_site(subnet: IpNet) -> bool {
     !on_tailnet(subnet) && !on_hub_networks(subnet)
 }
 
-/// What one picture is built from. A site is its id and subnet, in site name order.
+/// `sites` is in site name order.
 pub(super) struct Inputs<'a> {
     pub status: &'a Status,
     pub sites: &'a [(SiteId, IpNet)],
@@ -79,11 +68,7 @@ pub(super) struct Inputs<'a> {
     pub broker: Option<&'a BrokerView>,
 }
 
-/// The picture of `inputs`, fresh, read at `now`. A site on the tailnet range (`on_tailnet`) or
-/// over the hub's own networks (`on_hub_networks`) is left out: it has no router.
-///
-/// # Errors
-/// `Unreadable` when the hub's own node has no IPv4 address (it is not on the VPN).
+/// `Unreadable` when the hub's own node has no IPv4 address, as it is not on the VPN.
 pub(super) fn build(inputs: &Inputs<'_>) -> Result<Picture, Error> {
     let hub = node(&inputs.status.own, inputs).ok_or(Error::Unreadable)?;
     let mut nodes: Vec<VpnNode> = peers(inputs.status)
@@ -116,7 +101,6 @@ pub(super) fn build(inputs: &Inputs<'_>) -> Result<Picture, Error> {
     })
 }
 
-/// The devices of the peers that serve a site, so the reader reads only their checks.
 pub(super) fn router_devices(
     status: &Status,
     sites: &[(SiteId, IpNet)],
@@ -137,9 +121,7 @@ pub(super) fn router_devices(
     found
 }
 
-/// BD-13: a node whose path is Unknown in `next` keeps its path from `previous` while
-/// `unknown_reads` < 3; the counter goes up by one each such read and to 0 on a known path.
-/// A node that is offline in `next` keeps nothing: offline is always Unknown (VPN-009).
+/// An Unknown path keeps the last known one for a few reads; an offline node keeps nothing (BD-13, VPN-009).
 pub(super) fn carry(previous: &Picture, mut next: Picture) -> Picture {
     let earlier = |key: &str| {
         std::iter::once(&previous.hub)
@@ -166,7 +148,6 @@ fn peers(status: &Status) -> impl Iterator<Item = &Peer> {
     status.peer.iter().flat_map(|peers| peers.values())
 }
 
-/// The node of `peer`, or none when it has no IPv4 address.
 fn node(peer: &Peer, inputs: &Inputs<'_>) -> Option<VpnNode> {
     let address = first_ipv4(peer)?;
     let role = role(&peer.tags);
@@ -196,8 +177,6 @@ fn node(peer: &Peer, inputs: &Inputs<'_>) -> Option<VpnNode> {
     })
 }
 
-/// The first label of the control server's unique name; the node's own host name only when
-/// that is empty (BD-14).
 fn name(peer: &Peer) -> String {
     match peer.dns_name.split('.').next() {
         Some(label) if !label.is_empty() => shown(label, 63),
@@ -212,7 +191,6 @@ fn first_ipv4(peer: &Peer) -> Option<Ipv4Addr> {
     })
 }
 
-/// BD-5: the first role whose tag the node has; no tags is a client.
 pub(super) fn role(tags: &[String]) -> Role {
     let has = |wanted: &str| tags.iter().any(|tag| tag == wanted);
     if has("tag:hub") {
@@ -228,7 +206,6 @@ pub(super) fn role(tags: &[String]) -> Role {
     }
 }
 
-/// VPN-009: the path, and the DERP region when the traffic is relayed.
 fn path(peer: &Peer) -> (VpnPath, Option<String>) {
     if !peer.online {
         (VpnPath::Unknown, None)
@@ -259,14 +236,11 @@ pub(super) fn key_state(
     }
 }
 
-/// BD-14: the device whose address is the node's IPv4, else whose host is the node's unique
-/// name, else whose dotless host is that name's first label. The host name the node chose is
-/// never used: a node cannot hide behind a device's name.
+/// The host name the node chose is never used, so a node cannot hide behind a device's name (BD-14).
 fn device_of(peer: &Peer, devices: &[Device]) -> Option<(DeviceId, String)> {
     device_by(first_ipv4(peer), &peer.dns_name, devices)
 }
 
-/// The device of a node with the IPv4 `address` and the unique name `dns_name` (BD-14).
 pub(super) fn device_by(
     address: Option<Ipv4Addr>,
     dns_name: &str,
@@ -296,7 +270,6 @@ pub(super) fn device_by(
         .map(|device| (device.id, device.name.clone()))
 }
 
-/// The name in lower case without its trailing dot.
 fn unqualified(name: &str) -> String {
     name.strip_suffix('.').unwrap_or(name).to_lowercase()
 }
@@ -306,7 +279,6 @@ fn serves(routes: &[IpNet], subnet: IpNet) -> bool {
     routes.iter().any(|route| route.trunc() == subnet.trunc())
 }
 
-/// The first router by name that serves `subnet`, and whether its device has a ping check.
 fn site_path(
     site: SiteId,
     subnet: IpNet,

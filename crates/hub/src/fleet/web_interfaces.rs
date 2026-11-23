@@ -1,10 +1,6 @@
-//! Web interfaces: the web addresses an operator keeps for a device, the HTTP checks offered
-//! as new ones, and the certificate the operator accepted for an `https` one (spec 6.9,
-//! WEB-001, WEB-002, WEB-008).
-//!
-//! Reads take the pool. Writes take the caller's connection so the GraphQL layer adds its audit
-//! entry in the same transaction (LOG-005). Messages in [`Error`] hold no input value
-//! (LOG-007).
+//! Spec 6.9, WEB-001, WEB-002, WEB-008.
+//! Writes take the caller's connection so the audit entry shares the transaction (LOG-005).
+//! Messages in [`Error`] hold no input value (LOG-007).
 
 pub mod graphql;
 mod model;
@@ -31,7 +27,6 @@ pub use model::{
     WebInterfaceInput,
 };
 
-/// Why a web interface operation failed.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("{0} not found")]
@@ -40,15 +35,13 @@ pub enum Error {
     Validation(Vec<FieldError>),
     #[error("database error")]
     Database(#[from] sqlx::Error),
-    /// A stored row is not in a form this version reads.
     #[error("a stored web interface cannot be read")]
     Unreadable,
     #[error("the checks cannot be read")]
     Checks(#[source] checks::Error),
 }
 
-/// The interfaces of each device in creation order, in one query (API-005). A device with
-/// none is absent.
+/// Each device's interfaces in creation order, in one query (API-005); a device with none is absent.
 ///
 /// # Errors
 /// `Database` when the query fails.
@@ -99,11 +92,8 @@ fn born(device: DeviceId, at: DateTime<Utc>) -> store::Born {
     }
 }
 
-/// Adds an interface to a device.
-///
 /// # Errors
-/// `Validation` (`url`, `label`) when the input breaks a rule; `NotFound` when there is no
-/// such device.
+/// `Validation` (`url`, `label`) when the input breaks a rule; `NotFound` when there is no such device.
 pub async fn create(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -114,7 +104,7 @@ pub async fn create(
     store::insert(conn, born(device, now), &new).await
 }
 
-/// Replaces an interface's fields. A new scheme, host or port drops its pin (D-6).
+/// A new scheme, host or port drops the pin (D-6).
 ///
 /// # Errors
 /// `Validation` (`url`, `label`); `NotFound` when there is no such interface.
@@ -128,15 +118,12 @@ pub async fn update(
     Ok(Updated { before, after })
 }
 
-/// Deletes an interface and its pin; returns the device it belonged to.
-///
 /// # Errors
 /// `NotFound` when there is no such interface.
 pub async fn delete(conn: &mut PgConnection, id: WebInterfaceId) -> Result<DeviceId, Error> {
     store::delete(conn, id).await
 }
 
-/// The URL of an HTTP check, and its device.
 async fn http_check(db: &PgPool, id: CheckId) -> Result<(DeviceId, String), Error> {
     let check = checks::get(db, id).await.map_err(|error| match error {
         checks::Error::NotFound(checks::Missing::Check(id)) => Error::NotFound(Missing::Check(id)),
@@ -148,12 +135,10 @@ async fn http_check(db: &PgPool, id: CheckId) -> Result<(DeviceId, String), Erro
     }
 }
 
-/// Makes an interface of an HTTP check's URL (`AnimaTab`, labelled with the host). When the
-/// device already has an interface at that URL, returns it and creates nothing (D-7).
+/// An interface already at that URL is returned and nothing is created (D-7).
 ///
 /// # Errors
-/// `NotFound` when the check does not exist or is not an HTTP check; `Validation` (`url`)
-/// when its URL breaks the URL rule.
+/// `NotFound` when the check does not exist or is not HTTP; `Validation` (`url`) for a bad URL.
 pub async fn accept_suggestion(
     db: &PgPool,
     conn: &mut PgConnection,
@@ -188,8 +173,7 @@ pub async fn accept_suggestion(
     })
 }
 
-/// Hides an HTTP check's suggestion; a second dismissal changes nothing. Returns the check's
-/// device.
+/// A second dismissal changes nothing; returns the check's device.
 ///
 /// # Errors
 /// `NotFound` when the check does not exist or is not an HTTP check.
@@ -204,14 +188,10 @@ pub async fn dismiss_suggestion(
     Ok(device)
 }
 
-/// Pins the certificate of an `https` interface, replacing an earlier pin (D-5). Returns the
-/// interface with its new pin. The interface row stays locked from the check to the pin, so a
-/// concurrent update cannot move it to another origin in between; inside the caller's
-/// transaction the lock lasts to its end.
+/// Replaces an earlier pin (D-5); the row stays locked from the check to the pin.
 ///
 /// # Errors
-/// `NotFound` when there is no such interface; `Validation` (`fingerprintSha256`) when the
-/// fingerprint is badly formed or the interface is `http`.
+/// `NotFound` when there is no such interface; `Validation` (`fingerprintSha256`) for a bad fingerprint or `http`.
 pub async fn accept_certificate(
     conn: &mut PgConnection,
     id: WebInterfaceId,

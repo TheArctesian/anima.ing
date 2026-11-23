@@ -1,9 +1,6 @@
-//! What the hub writes when a redeemed session ends (K4 Section 5, D-9, LOG-005): the row's
-//! end, the `session.end` audit entry and the session event, in one transaction, once.
-//!
-//! Both tunnels write their end here. Nothing here holds session content, the connection ID,
-//! a token or the far side's text (RA-008, LOG-007): the event message is a fixed sentence and
-//! the audit change is the reason.
+//! A session's end is written once, in one transaction (K4 Section 5, D-9, LOG-005).
+//! Nothing here holds session content, the connection ID, a token or the far side's text
+//! (RA-008, LOG-007).
 
 use std::sync::Arc;
 
@@ -24,8 +21,6 @@ use crate::{
     ids::SessionId,
 };
 
-/// Where an end is written: the database, the bus its event goes out on, and the clock that
-/// stamps it.
 #[derive(Clone)]
 pub(in crate::fleet::sessions) struct Records {
     pub(in crate::fleet::sessions) db: PgPool,
@@ -34,7 +29,6 @@ pub(in crate::fleet::sessions) struct Records {
 }
 
 impl Records {
-    /// The records of a route that holds the three parts itself.
     pub(in crate::fleet::sessions) fn new(db: &PgPool, bus: &Bus, clock: &Arc<dyn Clock>) -> Self {
         Self {
             db: db.clone(),
@@ -44,15 +38,8 @@ impl Records {
     }
 }
 
-/// A redeemed session whose end is not written yet. The session task holds it from the
-/// moment it owns the ticket; [`Unfinished::finish`] writes the end. If the task stops
-/// before that (a panic), dropping this writes the end from a new task (MV-003, LOG-005):
-/// the cause `endSession` or shutdown had already signalled, with who asked, else
-/// `GATEWAY_ERROR` (D-9).
-///
-/// A runtime that is shutting down drops that new task unrun, and so does a drop with no
-/// runtime at all; the row then stays live until the hub's next start ends it
-/// `HUB_SHUTDOWN` (`close_stale`, handoff H-2).
+/// Dropped before [`Unfinished::finish`] (a panic), it writes the end from a new task (MV-003).
+/// Without a running runtime the row stays live until the hub's next start ends it (`close_stale`).
 pub(in crate::fleet::sessions) struct Unfinished {
     records: Records,
     redeemed: Option<Redeemed>,
@@ -66,14 +53,12 @@ impl Unfinished {
         }
     }
 
-    /// The session, until it is finished.
     pub(in crate::fleet::sessions) fn redeemed(&mut self) -> &mut Redeemed {
         self.redeemed
             .as_mut()
             .expect("only `finish` takes the session, and it consumes the guard")
     }
 
-    /// Writes `end` (see [`finish`]).
     pub(in crate::fleet::sessions) async fn finish(mut self, end: &End) {
         if let Some(redeemed) = self.redeemed.take() {
             finish(&self.records, redeemed, end).await;
@@ -99,10 +84,8 @@ impl Drop for Unfinished {
     }
 }
 
-/// Writes the end of `redeemed`'s session and publishes the ended row, then drops its tunnel
-/// registration, so `endSession` reads the ended row once it sees the tunnel gone. A
-/// failed write is tried once more, then logged; the row then stays live until the hub's next
-/// start ends it `HUB_SHUTDOWN` (`close_stale`).
+/// The tunnel registration drops after the ended row is published, so `endSession` reads the
+/// ended row once it sees the tunnel gone.
 pub(in crate::fleet::sessions) async fn finish(records: &Records, redeemed: Redeemed, end: &End) {
     let Redeemed { ticket, tunnel } = redeemed;
     let reason = end.cause.ending().reason;
@@ -143,10 +126,8 @@ fn log_unwritten(session: SessionId, reason: EndReason, error: &Error) {
     );
 }
 
-/// Who `end` of `ticket`'s session is recorded as, at `now`: the `endSession` operator and
-/// address when there is one; else the ticket's operator and client, as Hub when the hub
-/// decided the end (LOG-014 rule 1, [`Cause::decided_by_hub`]). A Hub end keeps the operator
-/// who started the session on the entry.
+/// A hub-decided end is recorded as Hub and keeps the operator who started the session
+/// (LOG-014 rule 1).
 fn ended_by(end: &End, ticket: &PendingTicket, now: DateTime<Utc>) -> Actor {
     if let Some(by) = &end.by {
         return by.clone();
@@ -163,8 +144,6 @@ fn ended_by(end: &End, ticket: &PendingTicket, now: DateTime<Utc>) -> Actor {
     }
 }
 
-/// The end row and its audit entry and, when this call ended the row, its event; returns the
-/// committed row, or `None` when it had already ended. Both name who ended it ([`ended_by`]).
 async fn write(
     records: &Records,
     ticket: &PendingTicket,

@@ -1,4 +1,4 @@
-//! The version parser and order (BLD-002), with property tests over arbitrary text.
+//! The version parser and order (BLD-002).
 
 use proptest::prelude::*;
 

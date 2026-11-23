@@ -1,7 +1,5 @@
-//! Hub library face: module tree, HTTP router and the serving steps around it, so integration
-//! tests can reach them.
-// The schema's merged roots nest one future in another for each merged object; the default limit
-// of 128 is too small for them (OD-E14).
+// The merged schema roots nest one future per merged object, past the default limit of 128
+// (OD-E14).
 #![recursion_limit = "256"]
 
 pub mod api_errors;

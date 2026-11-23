@@ -1,7 +1,4 @@
-//! A device's SSH server on loopback, a `russh` server in the test: it presents its host key,
-//! accepts one password, answers each `exec` line from a table the test can change (or never
-//! answers it), and records the connections, the lines and any request a collection must
-//! never send.
+//! A device's SSH server on loopback, scripted by the test.
 
 use std::{
     collections::HashMap,
@@ -22,25 +19,19 @@ use tokio::net::TcpListener;
 /// The user the devices fixture names, and the password the test stores for it.
 const USER: &str = "operator";
 pub(super) const PASSWORD: &str = "metrics test password";
-/// The seed of the server's ed25519 host key.
 const SEED: u8 = 11;
 
-/// What each command line prints; a line not in it exits 127 with no output.
+/// A line not in the table exits 127 with no output.
 pub(super) type Answers = Arc<Mutex<HashMap<String, Vec<u8>>>>;
 
-/// How the server misbehaves on a line instead of answering it.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Fault {
-    /// Accepts the line and never prints, exits or closes, as a hung tool.
     Stall,
-    /// Ends the whole connection, as a device that goes away.
     HangUp,
 }
 
-/// The lines the server misbehaves on.
 type Faults = Arc<Mutex<HashMap<String, Fault>>>;
 
-/// The server's port, the table it answers from, and what it saw.
 pub(super) struct Server {
     pub(super) port: u16,
     pub(super) answers: Answers,
@@ -50,7 +41,6 @@ pub(super) struct Server {
 }
 
 impl Server {
-    /// The TCP connections accepted so far.
     pub(super) fn connections(&self) -> usize {
         self.connections.load(Ordering::SeqCst)
     }
@@ -60,7 +50,6 @@ impl Server {
         self.heard.lock().unwrap().clone()
     }
 
-    /// Sets what `line` prints.
     pub(super) fn answer(&self, line: &str, stdout: &[u8]) {
         self.answers
             .lock()
@@ -68,7 +57,6 @@ impl Server {
             .insert(line.to_owned(), stdout.to_vec());
     }
 
-    /// Makes `line` run without ever printing, exiting or closing, as a hung tool.
     pub(super) fn stall(&self, line: &str) {
         self.faults
             .lock()
@@ -76,7 +64,6 @@ impl Server {
             .insert(line.to_owned(), Fault::Stall);
     }
 
-    /// Makes `line` end the connection, as a device that goes away.
     pub(super) fn hang_up_on(&self, line: &str) {
         self.faults
             .lock()
@@ -84,14 +71,12 @@ impl Server {
             .insert(line.to_owned(), Fault::HangUp);
     }
 
-    /// Makes `line` answer from the table again.
     pub(super) fn unstall(&self, line: &str) {
         self.faults.lock().unwrap().remove(line);
     }
 }
 
-/// The host key the server presents. `metrics` may not import `trust`, so the test reads its
-/// stored form with `ssh-key`, not with the hub's own key type.
+/// `metrics` may not import `trust`, so the test uses `ssh-key`, not the hub's key type.
 pub(super) fn host_key() -> PublicKey {
     private().public_key().clone()
 }
@@ -139,7 +124,6 @@ pub(super) async fn serve() -> Server {
     }
 }
 
-/// The server's side of one connection.
 #[derive(Clone)]
 struct Device {
     answers: Answers,
@@ -163,7 +147,6 @@ impl Device {
     }
 }
 
-/// Sends `stdout`, the exit status, EOF and close on `channel`.
 async fn reply(handle: server::Handle, channel: ChannelId, stdout: Option<Vec<u8>>) {
     let status = if stdout.is_some() { 0 } else { 127 };
     let sent = async {

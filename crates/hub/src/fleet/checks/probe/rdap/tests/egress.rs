@@ -1,6 +1,4 @@
-//! RDAP egress (P3-003, P-6, D-29): HTTPS only, each hop a new checked target, at most 3
-//! redirects, TLS verified, the body capped. Local servers stand in for the registries; the
-//! test policy allows loopback.
+//! RDAP egress (P3-003, P-6, D-29): HTTPS only, each hop checked, at most 3 redirects, TLS verified, body capped.
 
 use std::{
     net::{IpAddr, Ipv6Addr, SocketAddr},
@@ -21,7 +19,6 @@ fn local(root: &[u8]) -> Egress {
     Egress::new(AddressPolicy::default().allowing_loopback()).trusting(root.to_vec())
 }
 
-/// Each `/hop/<n>` redirects to `/hop/<n + 1>` until `/hop/<last>`, which answers.
 fn chain(last: usize) -> impl Fn(&str, u16) -> Vec<u8> + Send + Sync {
     move |path, port| {
         let n: usize = path.trim_start_matches("/hop/").parse().unwrap_or(0);
@@ -75,9 +72,7 @@ async fn p_6_a_redirect_to_http_is_refused() {
 
 #[tokio::test]
 async fn p3_003_a_redirect_to_a_denied_address_is_refused_with_no_connection() {
-    // The second hop names ::1, which the deny list covers while the first hop's 127.0.0.1 stays
-    // allowed; the server there would answer, so a connection would show in its lines. ::1, not
-    // a second 127/8 address, because macOS binds only 127.0.0.1 on loopback.
+    // ::1, not a second 127/8 address, because macOS binds only 127.0.0.1 on loopback.
     let answer: Answer = Arc::new(|_, _| reply("200 OK", b"{}"));
     let denied = serve_on(IpAddr::from(Ipv6Addr::LOCALHOST), answer).await;
     let target = denied.port;
@@ -97,8 +92,7 @@ async fn p3_003_a_redirect_to_a_denied_address_is_refused_with_no_connection() {
 
 #[tokio::test]
 async fn p3_003_a_redirect_to_loopback_is_refused_under_the_default_policy() {
-    // The default policy refuses loopback, so the hub cannot even reach the first hop here; a
-    // redirect named by a registry is checked by the same rule.
+    // Loopback is refused at the first hop; a registry's redirect is checked by the same rule.
     let server = serve(|_, _| reply("200 OK", b"{}")).await;
     let egress = Egress::new(AddressPolicy::default()).trusting(server.root.clone());
 
@@ -176,8 +170,7 @@ async fn p3_003_the_pinned_client_resolves_no_name_of_its_own() {
         .unwrap();
     let pinned_url = reqwest::Url::parse(&format!("https://pinned.invalid:{}/", server.port));
 
-    // `.invalid` never resolves: the pinned name reaches the pinned address only because the
-    // client looked nothing up, and `localhost`, which resolves, is not looked up at all.
+    // `.invalid` never resolves, so a reply proves the client looked nothing up.
     let pinned_reply = client.get(pinned_url.unwrap()).send().await.unwrap();
     let unpinned = client.get(server.url("/")).send().await.unwrap_err();
 

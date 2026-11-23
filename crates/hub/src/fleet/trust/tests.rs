@@ -1,14 +1,10 @@
-//! Unit tests of the pure trust rules and of the store's crate-private writes. Public
-//! behaviour is tested through GraphQL in `tests/it/sessions/host_keys` and
-//! `tests/it/sessions/server_certificates`.
-
 mod certificate;
 mod observations;
 mod public_key;
 mod store;
 
-/// Two real OpenSSH public keys (throwaway, made with `ssh-keygen`; the private halves were
-/// deleted) and the fingerprints `ssh-keygen -l` printed for them.
+/// Throwaway OpenSSH public keys whose private halves were deleted, and the fingerprints
+/// `ssh-keygen -l` printed for them.
 pub(crate) const ED25519: &str =
     "AAAAC3NzaC1lZDI1NTE5AAAAIPTJnBUBJyxtaF5R3VPI+WZbUsZP0DeocOVAgFsBtx/m";
 pub(crate) const ED25519_FINGERPRINT: &str = "SHA256:4eECQSeWmB0ww/ND7ZkydOxBUAgciI4AwfhKt8R8Nbk";
@@ -35,7 +31,6 @@ impl Inputs {
         (0..len).map(|_| self.next().to_le_bytes()[0]).collect()
     }
 
-    /// Text over `alphabet`, up to `max_len` characters.
     pub(crate) fn text(&mut self, alphabet: &[u8], max_len: usize) -> String {
         let len = self.below(max_len + 1);
         (0..len)

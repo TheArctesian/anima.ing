@@ -143,7 +143,6 @@ async fn bld_046_a_signature_of_another_key_or_another_version_is_refused() {
     );
     assert_eq!(workflow.writes(), Vec::<String>::new());
 
-    // The right key, but the signature names 0.2.2 and the release says 0.2.3.
     let files = linux_files("0.2.2");
     let renamed = File::new("Anima_0.2.3_amd64.AppImage", files[0].bytes.clone());
     let sums = format!(

@@ -1,5 +1,3 @@
-//! Each form that the converter refuses, with its fixed code and the position.
-
 use super::super::{LARGEST_COMMAND, LARGEST_FILE, Refusal, RefusalCode, convert};
 
 /// A command, the code of its refusal and the position where the converter stops.
@@ -149,8 +147,7 @@ fn host_022_a_command_of_more_than_64_kib_is_not_read() {
     assert!(convert(&fits).is_ok());
 }
 
-/// Expansions that a shell does with no `$`: each is refused, so that the file never holds
-/// a text that the shell would have changed.
+/// Expansions a shell does with no `$`: refused, so the file never holds text a shell would change.
 const EXPANDED: [(&str, RefusalCode, u32); 11] = [
     (
         "docker run -p {80,443}:80 nginx",
@@ -202,7 +199,6 @@ fn host_022_each_expansion_of_a_shell_with_no_dollar_is_refused() {
     for (command, code, at) in EXPANDED {
         assert_eq!(convert(command), Err(Refusal { code, at }), "{command:?}");
     }
-    // The same characters in quotes, or where a shell keeps them, stay as text.
     let kept = "docker run -e 'A={80,443}' -e \"B=~/x\" -e C='*?[' -e D={} -e E={a} -e F=a~b nginx";
     let done = convert(kept).expect("converted");
     for text in ["A={80,443}", "B=~/x", "C=*?[", "D={}", "E={a}", "F=a~b"] {
@@ -214,7 +210,6 @@ fn host_022_each_expansion_of_a_shell_with_no_dollar_is_refused() {
     }
 }
 
-/// The words that `word` gives for each number below `count`, each after a space.
 fn each(count: usize, word: impl Fn(usize) -> String) -> String {
     (0..count).fold(String::new(), |mut line, number| {
         line.push(' ');
@@ -245,8 +240,7 @@ fn host_022_more_than_32_networks_or_aliases_is_refused() {
 
 #[test]
 fn host_022_a_file_larger_than_the_check_reads_is_refused() {
-    // Each alias is written for each network: 32 aliases of 1,900 characters on 32 networks
-    // is a command of about 62 KiB and a file of about 2 MiB.
+    // Each alias is written for each network: a command of about 62 KiB gives a file of about 2 MiB.
     let networks = each(32, |n| format!("--net n{n}"));
     let aliases = each(32, |n| format!("--network-alias {n}{}", "a".repeat(1_900)));
     let command = format!("docker run{networks}{aliases} nginx");
@@ -256,7 +250,6 @@ fn host_022_a_file_larger_than_the_check_reads_is_refused() {
         at: 1,
     };
     assert_eq!(convert(&command), Err(refusal));
-    // A file that is converted always passes the check of its size.
     let fits = format!("docker run -e A={} nginx", "\u{2028}".repeat(20_000));
     let done = convert(&fits).expect("converted");
     assert!(done.compose_file.len() <= LARGEST_FILE);

@@ -1,6 +1,5 @@
-//! The audit entries and events of the files domain (LOG-004, LOG-005, LOG-007). Pure. An entry
-//! holds the owner, the name, the size and the hash of a file: never a byte of it, never a key
-//! and never the value of an extracted field. An event names the owner only.
+//! An entry holds a file's owner, name, size and hash, never a byte of it, a key or the value
+//! of an extracted field; an event names the owner only (LOG-004, LOG-005, LOG-007).
 
 use serde_json::{Value, json};
 
@@ -22,7 +21,6 @@ fn entry(action: AuditAction, target: AuditTarget, message: String, change: Valu
     }
 }
 
-/// What the audit entry of a file holds.
 pub(super) fn file_change(attachment: &Attachment) -> Value {
     json!({
         "owner": attachment.owner.as_str(),
@@ -44,7 +42,6 @@ pub(super) fn uploaded(attachment: &Attachment) -> TrailEntry {
     )
 }
 
-/// One entry for each attachment that a delete removed.
 pub(super) fn removed(removed: &Removed) -> Vec<TrailEntry> {
     removed
         .attachments
@@ -101,8 +98,6 @@ pub(super) fn archive_deleted(archive: &Archive, removed: &Removed) -> TrailEntr
     )
 }
 
-/// The entry of a proposal: its form, origin, state and the names and types of its fields,
-/// never their values.
 pub(super) fn proposal(proposal: &Proposal) -> TrailEntry {
     let (action, verb) = match proposal.state {
         ProposalState::Proposed => (AuditAction::Create, "proposed"),

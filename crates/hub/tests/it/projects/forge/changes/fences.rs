@@ -1,9 +1,5 @@
-//! K-E1 Sections 13.3 and 13.6, PRJ-034, PRJ-035, PRO-010, PRO-013: a run control, a start or
-//! a status the hub refuses before sending sends nothing to GitHub and records nothing. A run
-//! that has not finished is not run again; a finished one is not cancelled; a fork's run, a run
-//! older than 30 days and a run whose head moved are not run again; a start takes at most 25
-//! inputs, each name once, of an active workflow; a status is under `anima/`, links only below
-//! the hub and says at most 140 characters. The words never hold a value given (LOG-007).
+//! K-E1 Sections 13.3 and 13.6, PRJ-034, PRJ-035, PRO-010, PRO-013: a refused run control,
+//! start or status sends nothing to GitHub; its words never hold a value given (LOG-007).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -20,7 +16,6 @@ use crate::{
 
 const MARK: &str = "REFUSED-VALUE-4417";
 
-/// Requests below the repository that would change something.
 fn changes_sent(forge: &Forge) -> usize {
     forge.kit.stub.with(|s| {
         s.heard
@@ -30,7 +25,6 @@ fn changes_sent(forge: &Forge) -> usize {
     })
 }
 
-/// The fields a `VALIDATION` error names.
 fn fields(response: &Value) -> Vec<String> {
     assert_eq!(error(response).1, "VALIDATION", "{response}");
     let listed = response["errors"][0]["extensions"]["fields"]

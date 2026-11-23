@@ -1,6 +1,3 @@
-//! Cursor pages of both lists: walking them, and refusing bad sizes, cursors and ids or a
-//! signed-out caller (API-006, API-003).
-
 use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -30,9 +27,6 @@ pub fn instant(value: &Value) -> DateTime<Utc> {
     DateTime::parse_from_rfc3339(text).unwrap().to_utc()
 }
 
-/// Walks every page of `query` (whose root field is `list`) at `first` entries a page; returns
-/// the node ids in order and the `hasNextPage` of each page. Each page's `endCursor` must be
-/// its last edge's cursor, and a walk of more than 20 pages fails.
 pub async fn walk(
     hub: &Hub,
     token: &str,
@@ -64,7 +58,6 @@ pub async fn walk(
     }
 }
 
-/// The fields a `VALIDATION` error names; the response carries no data.
 fn fields(response: &Value) -> Vec<String> {
     assert_eq!(
         response["errors"][0]["extensions"]["code"], "VALIDATION",

@@ -1,6 +1,5 @@
-//! One broker change with its audit entry and event, run to the end in a task of its own: a
-//! client that goes away while the broker works still leaves the audit entry of the change the
-//! broker made (LOG-005, R-055). The value comes back only to the resolver that asked for it.
+//! A broker change and its audit entry run to the end in a task of their own, so a client that
+//! goes away still leaves the audit entry of the change the broker made (LOG-005, R-055).
 
 use std::{future::Future, sync::Arc};
 

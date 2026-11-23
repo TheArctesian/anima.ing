@@ -16,7 +16,6 @@ async fn store(pool: &PgPool, kind: &str, rule: Value) -> Result<(), sqlx::Error
     .map(|_| ())
 }
 
-/// The constraint that refused the write.
 fn refused_by(result: Result<(), sqlx::Error>) -> Option<String> {
     let error = result.unwrap_err();
     error

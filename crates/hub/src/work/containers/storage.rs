@@ -1,17 +1,12 @@
-//! The images, the volumes and the networks of a device, read-only (HOST-020): the two
-//! `docker` command lines and the pure reading of their output.
+//! The images, the volumes and the networks of a device, read-only (HOST-020).
 //!
-//! Each command line writes one JSON object on a line, with a `kind` that says what the line
-//! describes. Docker counts the containers that use an image or a volume; the names of those
-//! containers come from the list of the containers in the same answer. A size is the text
-//! that Docker writes (`13.6MB`): Docker gives no exact number here.
+//! A size is the text that Docker writes (`13.6MB`): Docker gives no exact number here.
 
 use serde::Deserialize;
 
 use super::{Error, docker::failure};
 use crate::fleet::ssh::{CommandOutput, FixedCommand};
 
-/// The images and the volumes with their sizes, from `docker system df -v`.
 const DETAILED_FORMAT: &str = concat!(
     r#"'{{range .Images}}{"kind":"image","id":{{json .ID}},"repository":{{json .Repository}},"#,
     r#""tag":{{json .Tag}},"size":{{json .Size}},"shared":{{json .SharedSize}},"#,
@@ -21,13 +16,12 @@ const DETAILED_FORMAT: &str = concat!(
     r#""size":{{json .Size}},"count":{{json .Links}}}{{println}}{{end}}'"#,
 );
 
-/// One line for each type of `docker system df`, with the space that a clean-up can free.
 const USAGE_FORMAT: &str = concat!(
     r#"'{"kind":"usage","type":{{json .Type}},"total":{{json .TotalCount}},"#,
     r#""active":{{json .Active}},"size":{{json .Size}},"reclaimable":{{json .Reclaimable}}}'"#,
 );
 
-/// What each container uses: its image, its mounts and its networks. No label is asked for.
+/// No label is asked for.
 const USERS_FORMAT: &str = concat!(
     r#"'{"kind":"container","names":{{json .Names}},"image":{{json .Image}},"#,
     r#""mounts":{{json .Mounts}},"networks":{{json .Networks}}}'"#,
@@ -38,57 +32,40 @@ const NETWORKS_FORMAT: &str = concat!(
     r#""scope":{{json .Scope}},"internal":{{json .Internal}}}'"#,
 );
 
-/// The image tag and the repository that Docker writes for an image with none.
+/// What Docker writes for an image with no tag or no repository.
 const NONE: &str = "<none>";
 
-/// One image of a device.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Image {
-    /// `sha256:` and 64 digits.
     pub id: String,
-    /// `None` for an image with no name.
     pub repository: Option<String>,
     pub tag: Option<String>,
-    /// The size as Docker writes it, for example `13.6MB`.
     pub size: String,
-    /// The part of the size that other images share.
     pub shared_size: String,
-    /// The part that a removal of this image frees.
     pub unique_size: String,
-    /// The time as Docker writes it.
     pub created: String,
-    /// How many containers use the image, as Docker counts them; `None` when Docker gives
-    /// no number.
     pub container_count: Option<u32>,
-    /// The names of the containers that name this image.
     pub containers: Vec<String>,
 }
 
-/// One volume of a device.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Volume {
     pub name: String,
     pub driver: String,
     pub size: String,
-    /// How many containers use the volume, as Docker counts them; `None` when Docker gives
-    /// no number.
     pub container_count: Option<u32>,
     pub containers: Vec<String>,
 }
 
-/// The space of one type of thing that Docker keeps, and what a clean-up can free.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DiskUsage {
-    /// `Images`, `Containers`, `Local Volumes` or `Build Cache`, as Docker writes it.
     pub kind: String,
     pub total_count: u32,
     pub active_count: u32,
     pub size: String,
-    /// The space that a clean-up can free, for example `49.63MB (10%)`.
     pub reclaimable: String,
 }
 
-/// The images and the volumes of a device, with the space each type uses.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Storage {
     pub images: Vec<Image>,
@@ -96,19 +73,16 @@ pub struct Storage {
     pub usage: Vec<DiskUsage>,
 }
 
-/// One network of Docker on a device.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Network {
     pub id: String,
     pub name: String,
     pub driver: String,
     pub scope: String,
-    /// The network has no route to outside the device.
     pub internal: bool,
     pub containers: Vec<String>,
 }
 
-/// Adds `&& docker ps` for what each container uses.
 fn and_users(command: FixedCommand) -> FixedCommand {
     command
         .arg("&&")
@@ -120,7 +94,6 @@ fn and_users(command: FixedCommand) -> FixedCommand {
         .arg(USERS_FORMAT)
 }
 
-/// `docker system df`, twice, and the list of the containers, from static text only.
 pub(super) fn storage_command() -> FixedCommand {
     let sizes = FixedCommand::new("docker")
         .arg("system")
@@ -137,7 +110,6 @@ pub(super) fn storage_command() -> FixedCommand {
     and_users(sizes)
 }
 
-/// `docker network ls` and the list of the containers, from static text only.
 pub(super) fn networks_command() -> FixedCommand {
     let networks = FixedCommand::new("docker")
         .arg("network")
@@ -148,7 +120,7 @@ pub(super) fn networks_command() -> FixedCommand {
     and_users(networks)
 }
 
-/// One line of either command line. Docker writes each number and each truth value as text.
+/// Docker writes each number and each truth value as text.
 #[derive(Deserialize)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 enum Line {
@@ -251,7 +223,6 @@ impl NetworkLine {
     }
 }
 
-/// What one container uses.
 #[derive(Deserialize)]
 struct User {
     names: String,
@@ -269,10 +240,8 @@ impl User {
         text.split(',').any(|name| name.trim() == wanted)
     }
 
-    /// Whether the container names this image: by 12 or more digits of the identifier, by
-    /// `repository:tag`, or by the repository alone for the tag `latest`. A container that
-    /// names a digest (`name@sha256:...`) is found by the identifier only: the name can be
-    /// of a newer image now.
+    /// A container that names a digest matches by identifier only: the name can now be of a
+    /// newer image.
     fn runs(&self, image: &Image) -> bool {
         let digits = image.id.trim_start_matches("sha256:");
         let by_id = self.image.trim_start_matches("sha256:");
@@ -290,7 +259,6 @@ impl User {
     }
 }
 
-/// The lines of an answer that exited 0.
 fn lines(output: &CommandOutput) -> Result<Vec<Line>, Error> {
     if output.cut {
         return Err(Error::Unreadable);
@@ -321,11 +289,8 @@ fn using(users: &[User], wanted: impl Fn(&User) -> bool) -> Vec<String> {
         .collect()
 }
 
-/// The images, the volumes and the space of each type.
-///
 /// # Errors
-/// `Unreadable` when the output was cut or a line is not what the formats write; `NoDocker`
-/// or `DockerFailed` when a command did not exit 0.
+/// `Unreadable` for cut or unexpected output; `NoDocker` or `DockerFailed` for a failed command.
 pub(super) fn storage(output: &CommandOutput) -> Result<Storage, Error> {
     let mut read = Storage {
         images: Vec::new(),
@@ -351,8 +316,6 @@ pub(super) fn storage(output: &CommandOutput) -> Result<Storage, Error> {
     Ok(read)
 }
 
-/// The networks, each with the containers on it.
-///
 /// # Errors
 /// As [`storage`].
 pub(super) fn networks(output: &CommandOutput) -> Result<Vec<Network>, Error> {

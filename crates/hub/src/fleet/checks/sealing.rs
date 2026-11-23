@@ -1,5 +1,4 @@
-//! The secrets of a check write: the stored ones a change keeps, and the sealed bytes the
-//! write stores (SEC-003, SEC-005, SEC-010).
+//! SEC-003, SEC-005, SEC-010.
 
 use super::{
     Error,
@@ -10,12 +9,8 @@ use super::{
 };
 use crate::ids::CheckId;
 
-/// The sealed bytes of the prepared secrets, bound to the check and to the configuration
-/// they go with, SNMP secrets also to the sealer's host; `None` when there are none.
-///
-/// # Errors
-/// `Validation` (`url`) when the HTTP URL has no origin to bind the secrets to;
-/// `Credentials` (`Random`) when the OS random source fails.
+/// The seal binds the secrets to the check and its configuration, SNMP secrets also to the
+/// sealer's host.
 pub(super) fn sealed(
     sealer: Sealer<'_>,
     id: CheckId,
@@ -39,10 +34,8 @@ fn unopened() -> FieldError {
     )
 }
 
-/// Prepares a new definition of the same type, filling empty secrets from the stored ones.
-/// Stored secrets that do not open for this check give a field error that asks for every
-/// secret again. SNMP secrets entered for another device host are not kept: each one left
-/// out is a field error that asks for it (SEC-010).
+/// SNMP secrets sealed for another device host are not kept; each one left out is asked for
+/// again (SEC-010).
 pub(super) fn prepare_change(
     sealer: Sealer<'_>,
     id: CheckId,

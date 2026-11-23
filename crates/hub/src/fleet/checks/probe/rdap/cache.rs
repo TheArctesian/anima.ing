@@ -1,7 +1,6 @@
 //! The last bootstrap file read, kept for [`FRESH_FOR`] (D-29).
 //!
-//! Time comes in as a parameter. The mutex guards only the swap of the kept file and is never
-//! held across an await. Attempts that find the file stale at the same moment each read it
+//! The mutex guards only the swap of the kept file and is never held across an await. Attempts that find the file stale at the same moment each read it
 //! once; the probe permits of the scheduler bound how many, and the next read is a day later.
 
 use std::sync::{Arc, Mutex, PoisonError};
@@ -29,7 +28,6 @@ impl Cache {
             .map(|(_, bootstrap)| Arc::clone(bootstrap))
     }
 
-    /// Keeps `bootstrap`, read at `now`, in place of the file kept before.
     pub(super) fn keep(&self, now: DateTime<Utc>, bootstrap: Arc<Bootstrap>) {
         let mut kept = self.kept.lock().unwrap_or_else(PoisonError::into_inner);
         *kept = Some((now, bootstrap));

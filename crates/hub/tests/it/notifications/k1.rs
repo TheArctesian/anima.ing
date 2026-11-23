@@ -1,5 +1,4 @@
-//! The notifications part and K1 agree where they share a declaration with another part
-//! (CON-002; the exact schema comparison is `contract`).
+//! The notifications part and K1 agree on declarations shared with another part (CON-002).
 
 use anima_hub::fleet::{checks, notifications};
 use async_graphql::{EmptySubscription, Schema};

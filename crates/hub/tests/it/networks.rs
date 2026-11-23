@@ -1,6 +1,4 @@
-//! The NET-002 layer in front of the router, as `main.rs` mounts it: refusals before any
-//! GraphQL work with one `ACCESS` warning event a minute per address, and the `ClientAddr`
-//! of every request that passes (NET-001, NET-002, D-10, D-11).
+//! The NET-002 layer in front of the router, as `main.rs` mounts it (NET-001, NET-002, D-10, D-11).
 
 mod budget;
 mod permit;
@@ -36,7 +34,6 @@ use tower::ServiceExt as _;
 
 use crate::hub::{dependencies, start};
 
-/// A clock the test moves forward.
 struct StepClock(Mutex<DateTime<Utc>>);
 
 impl Clock for StepClock {
@@ -57,7 +54,6 @@ struct Edge {
     bus: Bus,
 }
 
-/// The hub router behind the layer, plus `/client` answering with the request's `ClientAddr`.
 async fn edge(pool: &PgPool, permitted: &[&str]) -> Edge {
     permit(pool, permitted).await;
     let clock = Arc::new(StepClock(Mutex::new(start())));
@@ -99,7 +95,6 @@ fn get_path(path: &str) -> Request<Body> {
 }
 
 impl Edge {
-    /// Sends `request` from TCP peer `peer`; returns the status and the body text.
     async fn send_from(&self, peer: &str, mut request: Request<Body>) -> (StatusCode, String) {
         let peer: SocketAddr = peer.parse().unwrap();
         request.extensions_mut().insert(ConnectInfo(peer));
@@ -114,7 +109,6 @@ impl Edge {
     }
 }
 
-/// `(severity, source, message)` of every stored event, oldest first.
 async fn events(pool: &PgPool) -> Vec<(String, String, String)> {
     sqlx::query_as("select severity, source, message from events.event_log order by at, id")
         .fetch_all(pool)

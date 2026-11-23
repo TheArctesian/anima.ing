@@ -1,6 +1,4 @@
-//! The sign-in with a stored credential (OD-9, D-5): one try of the password or the private
-//! key, and keyboard-interactive answered with the password only when the device offers that
-//! and not `password`. Nothing here logs; no error holds the device's text or a secret.
+//! OD-9, D-5. Nothing here logs; no error holds the device's text or a secret.
 
 use std::sync::Arc;
 
@@ -13,20 +11,12 @@ use russh::{
 use super::{Observer, SshError};
 use crate::fleet::credentials::{Secret, SshSecret};
 
-/// The most keyboard-interactive rounds the hub answers before it counts the sign-in as
-/// refused, so a device cannot keep it answering prompts (D-5).
+/// Bounds the rounds answered, so a device cannot keep the hub answering prompts (D-5).
 const PROMPT_ROUNDS: usize = 4;
-/// The most prompts the hub answers in one round; a round with more is a refusal, so a
-/// device cannot have the password copied without end (D-5).
+/// A round with more is a refusal, so a device cannot have the password copied without end (D-5).
 const PROMPTS_PER_ROUND: usize = 4;
 
-/// Signs in as `username` with `secret`: a password (answering keyboard-interactive prompts
-/// with it when the device offers that and not `password`, D-5), or a private key with its
-/// passphrase. russh copies what it sends into buffers of its own, which this cannot wipe.
-///
-/// # Errors
-/// [`SshError::AuthFailed`] when the device refuses, [`SshError::UnreadableKey`] when the key
-/// or passphrase does not decode, [`SshError::Protocol`] when the connection fails meanwhile.
+/// russh copies what it sends into buffers of its own, which this cannot wipe.
 pub(crate) async fn authenticate(
     handle: &mut Handle<Observer>,
     username: &str,
@@ -62,8 +52,6 @@ pub(crate) async fn authenticate(
     }
 }
 
-/// The `password` method, then, when the device refused it and offers `keyboard-interactive`
-/// but not `password`, the password as the answer to each of its prompts (D-5).
 async fn sign_in_with_password(
     handle: &mut Handle<Observer>,
     username: &str,
@@ -87,9 +75,7 @@ async fn sign_in_with_password(
     answer_prompts(handle, username, password).await
 }
 
-/// Answers every keyboard-interactive prompt with the password, for at most
-/// [`PROMPT_ROUNDS`] rounds of at most [`PROMPTS_PER_ROUND`] prompts. The prompts are the
-/// device's text: never read, logged or kept.
+/// The prompts are the device's text: never read, logged or kept.
 async fn answer_prompts(
     handle: &mut Handle<Observer>,
     username: &str,
@@ -120,7 +106,6 @@ async fn answer_prompts(
     }
 }
 
-/// Decodes an `OpenSSH`, PEM or `PuTTY` private key; the decoder's error is dropped unread.
 fn private_key(key: &[u8], passphrase: Option<&[u8]>) -> Result<russh::keys::PrivateKey, SshError> {
     let key = std::str::from_utf8(key).map_err(|_| SshError::UnreadableKey)?;
     let passphrase = passphrase

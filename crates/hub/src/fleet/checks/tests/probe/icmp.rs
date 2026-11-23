@@ -1,5 +1,4 @@
-//! ICMP probe. Unprivileged ICMP sockets may be unavailable (sandbox, Linux
-//! `ping_group_range`); then the probe must fail with a clear message instead of panicking.
+//! Unprivileged ICMP sockets may be unavailable (sandbox, Linux `ping_group_range`).
 
 use std::time::Duration;
 
@@ -99,7 +98,6 @@ async fn chk_001_other_checks_still_time_out_at_their_limit() {
     assert_eq!(result.message.as_deref(), Some("the check timed out"));
 }
 
-/// The link carries TCP only: the hub says so and does not report the computer as Down.
 #[tokio::test]
 async fn hmd_048_an_icmp_check_on_a_computer_of_the_link_is_unknown_and_says_why() {
     let computer = target("fd41:4e49:4d41::7");

@@ -1,5 +1,4 @@
-//! The bearer layer judges a token at the hub's clock, and a lookup that fails for any reason
-//! but an unreachable database gets an empty 500 (A-9, K3, K7).
+//! The bearer layer's clock and lookup faults (A-9, K3, K7).
 
 use std::sync::{
     Arc,
@@ -16,7 +15,6 @@ use sqlx::PgPool;
 
 use super::{READ_KEY, WRITE_KEY, assert_refused, database_now, scrape_with, stored};
 
-/// `/metrics` behind a READ bearer at `now`; counts the requests that reached the route.
 fn guarded(pool: &PgPool, now: DateTime<Utc>) -> (Router, Arc<AtomicUsize>) {
     let reached = Arc::new(AtomicUsize::new(0));
     let counter = Arc::clone(&reached);
@@ -52,7 +50,6 @@ async fn a_9_a_lookup_fault_gets_an_empty_500_and_no_route(pool: PgPool) {
     let now = database_now(&pool).await;
     let key = stored(&pool, READ_KEY, now + TimeDelta::days(1)).await;
     let (app, reached) = guarded(&pool, now);
-    // The control: the key passes while its table is there.
     assert_eq!(scrape_with(&app, &key).await.status, StatusCode::OK);
     sqlx::query("ALTER TABLE access.api_tokens RENAME TO api_tokens_moved")
         .execute(&pool)

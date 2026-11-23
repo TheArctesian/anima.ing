@@ -1,5 +1,4 @@
-//! CR-15, K8 Sections 3 and 6: a refusal with no valid credential is written at most once a
-//! minute per client address, in bounded memory.
+//! Refusal throttling (CR-15, K8 Sections 3 and 6).
 
 use std::net::{IpAddr, Ipv4Addr};
 

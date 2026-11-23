@@ -1,5 +1,4 @@
-//! Credential writes and device deletes on one device, at the same time, take their locks in
-//! one order, so neither fails with a deadlock (DEV-012, DEV-015).
+//! Credential writes and device deletes take their locks in one order (DEV-012, DEV-015).
 
 use std::time::Duration;
 
@@ -44,8 +43,7 @@ fn codes(response: &async_graphql::Response) -> Vec<Value> {
 async fn dev_015_a_set_credential_racing_a_device_delete_is_not_found_not_a_deadlock(pool: PgPool) {
     store_password(&pool, PVE_01, "an-earlier-password").await;
     let schema = schema_for(&pool);
-    // A third session holds the device's SSH settings row, so the delete stops inside its
-    // cascade after it has locked the device row.
+    // Holding the SSH settings row stops the delete in its cascade after it locks the device row.
     let mut blocker = pool.begin().await.unwrap();
     sqlx::query("SELECT 1 FROM devices.ssh_settings WHERE device_id = $1::text::uuid FOR UPDATE")
         .bind(PVE_01)

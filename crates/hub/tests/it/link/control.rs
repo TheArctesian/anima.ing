@@ -1,6 +1,3 @@
-//! A fake control socket of `anima-link hub` in a private folder, and a signed-in hub in the
-//! link mode that uses it.
-
 use crate::local_socket::{Listener as UnixListener, Stream as UnixStream};
 use std::{
     collections::BTreeMap,
@@ -27,7 +24,6 @@ use crate::{
 pub const INVITE: &str = "anima-invite.1.ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 pub const KEY: &str = "nodekey:5c1a0000000000000000000000000000000000000000000000000000000000aa";
 
-/// The `devices.list` reply line of one relayed device, `laptop`.
 pub fn one_device() -> String {
     ok(&json!([{
         "key": KEY, "fingerprint": "1a2b3c4d", "name": "laptop",
@@ -47,8 +43,6 @@ pub fn refusal(code: &str) -> String {
     )
 }
 
-/// A fake control socket: it answers each request line with `answer(request)` and records
-/// the requests.
 pub struct FakeLink {
     _folder: tempfile::TempDir,
     pub path: PathBuf,
@@ -60,7 +54,6 @@ impl FakeLink {
         Self::slow(Duration::ZERO, answer)
     }
 
-    /// A link that waits `delay` before each answer.
     pub fn slow(
         delay: Duration,
         answer: impl Fn(&Value) -> String + Send + Sync + 'static,
@@ -69,8 +62,7 @@ impl FakeLink {
         crate::local_socket::protect(folder.path());
         let path = folder.path().join("control.sock");
         let listener = UnixListener::bind(&path).unwrap();
-        // Windows' listener verifies the socket's inherited private ACL. Its
-        // AF_UNIX reparse point must not go through the regular-file protector.
+        // On Windows the socket keeps its inherited private ACL; its reparse point is not a regular file.
         #[cfg(unix)]
         crate::local_socket::protect(&path);
         let seen = Arc::new(Mutex::new(Vec::new()));
@@ -87,12 +79,10 @@ impl FakeLink {
         }
     }
 
-    /// Every request the link got.
     pub fn requests(&self) -> Vec<Value> {
         self.seen.lock().unwrap().clone()
     }
 
-    /// The requests the link got, other than `devices.list`.
     pub fn changes(&self) -> Vec<Value> {
         (self.seen.lock().unwrap().iter())
             .filter(|request| request["verb"] != "devices.list")
@@ -103,7 +93,6 @@ impl FakeLink {
 
 type Answer = Arc<dyn Fn(&Value) -> String + Send + Sync>;
 
-/// Answers each request line of one connection.
 async fn serve(
     stream: UnixStream,
     delay: Duration,
@@ -120,7 +109,6 @@ async fn serve(
     }
 }
 
-/// A hub in the link mode whose control socket is `link`'s, with the operator's token.
 pub async fn hub_over(pool: &PgPool, link: &FakeLink) -> (Hub, String) {
     let env = BTreeMap::from([
         (
@@ -144,7 +132,6 @@ pub async fn hub_over(pool: &PgPool, link: &FakeLink) -> (Hub, String) {
     (hub, token)
 }
 
-/// The operator's token from a sign-in with the password and `one_time_code`.
 async fn signed_in(hub: &Hub, one_time_code: &str) -> String {
     let query = "mutation($input: LoginInput!) { login(input: $input) { token } }";
     let input = json!({ "username": USERNAME, "password": PASSWORD, "totpCode": one_time_code });
@@ -155,7 +142,6 @@ async fn signed_in(hub: &Hub, one_time_code: &str) -> String {
         .to_owned()
 }
 
-/// An API key of `scope` made with the operator's `token`.
 pub async fn api_key(hub: &Hub, token: &str, scope: &str) -> String {
     let query = "mutation($input: ApiKeyInput!) { createApiKey(input: $input) { secret } }";
     let input = json!({ "name": format!("script-{scope}"), "scope": scope, "madeFor": "USER",
@@ -169,7 +155,6 @@ pub async fn api_key(hub: &Hub, token: &str, scope: &str) -> String {
         .to_owned()
 }
 
-/// A builder token enrolled with the operator's `token`.
 pub async fn builder_token(hub: &Hub, token: &str) -> String {
     let query = "mutation { enrolBuilder(name: \"mini\", platform: { os: LINUX, arch: X86_64 }) \
                  { token } }";
@@ -180,7 +165,6 @@ pub async fn builder_token(hub: &Hub, token: &str) -> String {
         .to_owned()
 }
 
-/// Runs `query` and returns its data; panics on errors.
 pub async fn data(hub: &Hub, token: &str, query: &str, variables: Value) -> Value {
     let response = hub.post(Some(token), query, variables).await;
     assert!(response["errors"].is_null(), "{response}");
@@ -191,7 +175,6 @@ pub fn code(response: &Value) -> &Value {
     &response["errors"][0]["extensions"]["code"]
 }
 
-/// Every audit change and event message the hub wrote, as one text.
 pub async fn written(pool: &PgPool) -> String {
     sqlx::query_scalar(
         "select coalesce((select string_agg(change::text || ' ' || target_type || ' ' || action, ' ') \
@@ -203,7 +186,6 @@ pub async fn written(pool: &PgPool) -> String {
     .unwrap()
 }
 
-/// Makes every later audit write of the test database fail, as a full disk would.
 pub async fn break_the_audit_log(pool: &PgPool) {
     sqlx::query(
         "create function events.refuse_audit() returns trigger language plpgsql as \

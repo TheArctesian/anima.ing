@@ -20,11 +20,9 @@ pub enum State {
     UpToDate,
 }
 
-/// What the rollouts want for one machine.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Aimed {
-    /// The version that the hub wants the machine to have now: that of the newest rollout that
-    /// includes it and whose step for it started.
+    /// The version of the newest rollout that includes the machine and whose step for it started.
     pub now: Option<Version>,
     /// The version that the hub wanted before, when it wants none now or a different one.
     pub before: Option<Version>,
@@ -34,7 +32,6 @@ pub struct Aimed {
     pub newest: Option<Version>,
 }
 
-/// The state of `machine`: the first row of the table that is true.
 #[must_use]
 pub fn state(machine: &Machine, aimed: Aimed) -> State {
     if machine.reach == Reach::TokenEnded {

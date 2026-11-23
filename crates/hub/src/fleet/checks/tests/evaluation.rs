@@ -31,7 +31,6 @@ fn failed() -> ProbeResult {
     ProbeResult::failed(&Failure::TimedOut)
 }
 
-/// Runs the probes in order from a fresh state; returns each heartbeat status and the last state.
 fn run(cfg: &CheckSettings, probes: Vec<ProbeResult>) -> (Vec<Status>, CheckState) {
     let mut state = CheckState::default();
     let mut beats = Vec::new();

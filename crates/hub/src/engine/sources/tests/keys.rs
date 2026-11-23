@@ -1,5 +1,4 @@
-//! PRJ-018: the App key is checked before anything is sent, signs a short RS256 token that its
-//! public key verifies, and opens from its stored form only for its own installation.
+//! PRJ-018: the App key is checked before anything is sent and opens only for its own installation.
 
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{TimeZone as _, Utc};

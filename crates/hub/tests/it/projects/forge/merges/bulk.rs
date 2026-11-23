@@ -1,7 +1,4 @@
-//! PRJ-033, K-E1 Section 13.3: a bulk merge takes each pull request in the order given, one at a
-//! time; a failure does not stop the rest; only CLEAN ones merge and never one from a fork; the
-//! hub stops starting merges 90 seconds after the request began. One audit entry for each merge
-//! that was sent.
+//! PRJ-033, K-E1 Section 13.3: a bulk merge of pull requests.
 
 use std::{sync::Arc, time::Duration};
 
@@ -26,7 +23,6 @@ async fn merge_many(forge: &Forge, targets: Vec<Value>) -> Value {
     forge.kit.post(MERGE_MANY, variables).await
 }
 
-/// `(number, outcome, mergeSha)` of each result, in order.
 fn outcomes(response: &Value) -> Vec<(u64, String, Value)> {
     response["data"]["mergePullRequests"]
         .as_array()

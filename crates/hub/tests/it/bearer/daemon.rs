@@ -1,6 +1,4 @@
-//! R-092 D-1: a daemon token or an enrolment code is signed out on `/graphql`, the socket, the
-//! tunnel and `/metrics`, while an API key whose text begins `daemon_` or `enrol_` still works
-//! (MET-012, MET-013, K8).
+//! Daemon secrets sign in nowhere; an API key spelled like one does (R-092 D-1, MET-012, MET-013, K8).
 
 use anima_hub::fleet::access;
 use axum::{
@@ -17,7 +15,6 @@ use super::{
     stored_bytes,
 };
 
-/// `{ me { username } }` on `/graphql` with `Authorization: Bearer <token>`.
 async fn me(app: &axum::Router, token: &str) -> Value {
     let request = Request::post("/graphql")
         .header("content-type", "application/json")
@@ -32,11 +29,9 @@ async fn r_092_met_013_daemon_secrets_are_signed_out_everywhere(pool: PgPool) {
     let now = database_now(&pool).await;
     let login = stored(&pool, LOGIN, now + TimeDelta::days(1)).await;
     let (app, _web) = app(&pool, now).await;
-    // The control: the stored login token signs in.
     assert_eq!(me(&app, &login).await["data"]["me"]["username"], "operator");
 
-    // A daemon token whose 43 characters are a stored login token's text: refused by its
-    // spelling, and by the token length rule too (55 characters are neither token nor key).
+    // Refused by its spelling and by the length rule: 55 characters are neither token nor key.
     let daemon = format!("anima_daemon_{login}");
     let enrolment = format!("anima_enrol_{}", URL_SAFE_NO_PAD.encode([3_u8; 16]));
     for secret in [daemon, enrolment] {

@@ -1,5 +1,4 @@
-//! A channel whose stored settings this version cannot read: the list leaves it out and logs
-//! only its id, and the operator can still delete it (NOT-002, LOG-005, LOG-007).
+//! A channel with unreadable settings is left out, logged by id only, and still deletable (NOT-002, LOG-005, LOG-007).
 
 use std::{
     future::Future,
@@ -13,7 +12,6 @@ use sqlx::PgPool;
 
 use super::harness::{DELETE, channels, create, data, schema_for, webhook};
 
-/// Settings no kind reads: a database writer or a later version put them there.
 const UNREADABLE: &str = r#"{"not-a-setting": "settings-s3cr3t"}"#;
 
 async fn break_settings(pool: &PgPool, id: &Value) {
@@ -40,7 +38,6 @@ impl io::Write for Capture {
     }
 }
 
-/// The process log this thread writes while `run` runs, and its result.
 pub(super) async fn logged<R>(run: impl Future<Output = R>) -> (String, R) {
     let capture = Capture::default();
     let writer = capture.clone();

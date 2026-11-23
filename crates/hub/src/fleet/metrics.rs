@@ -1,15 +1,6 @@
-//! Resource metrics of a device: CPU, memory, disk, network, uptime and load, read from the
-//! output of fixed read-only commands run over SSH (spec 6.6, HUB-004, MET-001, MET-002), and
-//! the device's GPUs with their usage (MET-006).
+//! Resource metrics of a device (spec 6.6, HUB-004, MET-001, MET-002, MET-006).
 //!
-//! The pure part: [`daemon_core::readings`] turns command output into a [`Reading`], and
-//! [`samples`] turns two readings and the time between them into [`Sample`]s. The device is
-//! not trusted, so no reader panics and none fails on a bad line. [`spawn_collector`] runs the
-//! commands every 30 seconds and publishes each collection on the [`Feed`]. A device may push
-//! its metrics from the Anima daemon instead ([`daemon_router`], K8); [`spawn_stale_watch`] marks
-//! a daemon that stopped pushing (MET-018). [`storage`] shows a device's storage drive by drive
-//! (MET-026), and [`batteries`] the batteries its daemon listed (MET-032). [`capabilities`]
-//! gives the tool inventory each daemon sent (CAP-020 to CAP-031).
+//! The device is not trusted, so no reader panics and none fails on a bad line.
 
 mod capabilities;
 mod collector;
@@ -62,17 +53,14 @@ const DAYS_AHEAD: i32 = 7;
 pub enum Error {
     #[error("database error")]
     Database(#[from] sqlx::Error),
-    /// The device was deleted before its samples were written.
     #[error("the device does not exist")]
     NoDevice,
-    /// A stored row holds a kind or vendor this version does not know.
     #[error("a stored metric row cannot be read")]
     Unreadable,
 }
 
-/// Writes the `samples` of one collection of `device` taken at `at`: the series they belong to
-/// (created on first use), the samples, and the minute, hour and day aggregates, together
-/// (DB-008). A sample already stored for its series and time is left as it is.
+/// Writes one collection with its series and aggregates together (DB-008); a sample already
+/// stored for its series and time is left as it is.
 ///
 /// # Errors
 /// `NoDevice` when the device does not exist; `Database` when a query fails or `at` is outside
@@ -89,9 +77,8 @@ pub async fn record_collection(
     store::record(db, device, at, samples).await
 }
 
-/// The current readings of each of `devices` that has a sample taken in the last 2 minutes
-/// before `now`, with the mount of the fullest disk and the count of the device's other drives
-/// (MET-004, MET-030, D-8). A device without one has no entry.
+/// The current readings of each of `devices` with a sample in [`READING_WINDOW`] before `now`
+/// (MET-004, MET-030, D-8); a device without one has no entry.
 ///
 /// # Errors
 /// `Database` when a query fails; `Unreadable` for a stored kind this version does not know.
@@ -107,8 +94,8 @@ pub async fn readings(
     Ok(readings)
 }
 
-/// The storage of `device` drive by drive, with the samples of the last 2 minutes before `now`
-/// (MET-026, MET-029, D-8). A device whose drives the hub does not know lists its mounts.
+/// The storage of `device` drive by drive (MET-026, MET-029, D-8); a device whose drives the hub
+/// does not know lists its mounts.
 ///
 /// # Errors
 /// `Database` when a query fails; `Unreadable` for a stored kind or drive kind this version
@@ -121,8 +108,7 @@ pub async fn storage(db: &PgPool, device: DeviceId, now: DateTime<Utc>) -> Resul
     Ok(storage::storage(&drives.unwrap_or_default(), &latest))
 }
 
-/// The series of `device` over `range` ending at `now`, with their points oldest first (MET-003,
-/// D-7). A series without a point in the range is left out.
+/// Points are oldest first; a series without a point in the range is left out (MET-003, D-7).
 ///
 /// # Errors
 /// `Database` when the query fails; `Unreadable` for a stored kind this version does not know.
@@ -135,7 +121,7 @@ pub async fn series(
     store::chart(db, device, range::window(range, now)).await
 }
 
-/// The GPUs stored for each of `devices`, by index; a device with none has no entry (MET-006).
+/// A device with no GPU has no entry (MET-006).
 ///
 /// # Errors
 /// `Database` when the query fails; `Unreadable` for a stored vendor this version does not know.
@@ -143,8 +129,7 @@ pub async fn gpus(db: &PgPool, devices: &[DeviceId]) -> Result<HashMap<DeviceId,
     store::gpus(db, devices).await
 }
 
-/// The batteries stored for each of `devices`, by name; a device with none has no entry
-/// (MET-032).
+/// A device with no battery has no entry (MET-032).
 ///
 /// # Errors
 /// `Database` when the query fails; `Unreadable` for a stored state this version does not know.
@@ -155,8 +140,7 @@ pub async fn batteries(
     store::batteries(db, devices).await
 }
 
-/// The tool inventory of each device whose daemon sent one and that `filter` admits, with its
-/// hardware values when the daemon sent them, in no set order (CAP-030, CAP-032).
+/// The tool inventories that `filter` admits, in no set order (CAP-030, CAP-032).
 ///
 /// # Errors
 /// `Database` when the query fails; `Unreadable` for a stored architecture or system this
@@ -174,8 +158,7 @@ pub async fn capabilities(
     Ok(found)
 }
 
-/// The hardware values of each device whose daemon sent them, with when the hub stored them
-/// (CAP-001 to CAP-005). The device policy reads the power source and the operator activity.
+/// The hardware values each daemon sent, with when the hub stored them (CAP-001 to CAP-005).
 ///
 /// # Errors
 /// `Database` when the query fails; `Unreadable` for a stored row this version does not read.
@@ -185,9 +168,8 @@ pub async fn hardware(
     store::hardware(db).await
 }
 
-/// Of `devices`, those whose daemon's metrics are stale: its token was revoked, it has sent no
-/// batch yet, or it was marked stale after 30 seconds with none (MET-018). Ask only for the
-/// devices whose metrics source is `daemon`; for any other the answer means nothing.
+/// Of `devices`, those whose daemon's metrics are stale (MET-018). The answer means something
+/// only for a device whose metrics source is `daemon`.
 ///
 /// # Errors
 /// `Database` when the query fails.
@@ -195,8 +177,8 @@ pub async fn stale_daemons(db: &PgPool, devices: &[DeviceId]) -> Result<HashSet<
     Ok(ingest::without_fresh_daemon(db, devices).await?)
 }
 
-/// The version of the daemon of each of `devices`, from its last batch; a device whose daemon
-/// sent none (older than R-122), or that has no daemon, has no entry (R-122, ROL-051).
+/// The daemon version from each device's last batch; a device without one has no entry (R-122,
+/// ROL-051).
 ///
 /// # Errors
 /// `Database` when the query fails.
@@ -207,8 +189,8 @@ pub async fn daemon_versions(
     Ok(ingest::daemon_versions(db, devices).await?)
 }
 
-/// What the daemon of each of `devices` waits for from a person at the device; a device whose
-/// daemon needs nothing, or that has no daemon, has no entry (R-364).
+/// What each daemon waits for from a person at the device; a device without a need has no entry
+/// (R-364).
 ///
 /// # Errors
 /// `Database` when the query fails; `Unreadable` for a stored need this version does not know.
@@ -231,21 +213,19 @@ pub async fn daemon_needs(
         .collect()
 }
 
-/// The distribution that the text of an `os-release` file names (DEV-016); `None` when it names
-/// none that reads. The hosted hub reads its own with it (HMD-046).
+/// The distribution an `os-release` file names (DEV-016, HMD-046).
 #[must_use]
 pub fn distribution_of(os_release: &[u8]) -> Option<crate::fleet::devices::Distribution> {
     collector::os_release::distribution(os_release)
 }
 
-/// Why the code of the hub's own daemon was not made (HMD-071).
+/// HMD-071.
 #[derive(Debug, thiserror::Error)]
 #[error("the enrolment code of the hub's own daemon cannot be made")]
 pub struct OwnCodeError(#[source] ingest::Error);
 
-/// A one-use enrolment code for the daemon in the container of a hosted hub, whose device is
-/// `device`, the hub's own (HMD-071, HM-T35). The OS random source makes it; earlier unused codes
-/// of the device stop working.
+/// A one-use enrolment code for the hosted hub's own daemon; earlier unused codes of the device
+/// stop working (HMD-071, HM-T35).
 ///
 /// # Errors
 /// [`OwnCodeError`] when the random source or the database fails, or the device is gone.
@@ -263,17 +243,13 @@ pub async fn own_daemon_code(
 /// Creates the sample partitions of today (UTC) and the next 7 days (DB-004).
 ///
 /// # Errors
-/// `Database` when a query fails, for instance when `now` is later than the database clock by
-/// more than the partition window allows.
+/// `Database` when a query fails or `now` is past the database clock's partition window.
 pub async fn create_partitions_ahead(db: &PgPool, now: DateTime<Utc>) -> Result<(), Error> {
     store::create_days_ahead(db, retention::start_of_day(now), DAYS_AHEAD).await
 }
 
-/// The daily retention run: drops sample partitions past `retention.samples` (DB-005), deletes
-/// aggregate rows past their periods (DB-009), the samples of deleted series (DEV-015) and the
-/// series that went idle (D-5).
-/// `now` is held to the database clock, so a caller cannot ask for more to go than the
-/// database's own time allows (CQ-021).
+/// The daily retention run (DB-005, DB-009, DEV-015, D-5). `now` is held to the database clock,
+/// so a caller cannot ask for more to go than the database's own time allows (CQ-021).
 ///
 /// # Errors
 /// `Database` when a query fails, or when the database refuses to drop a partition still
@@ -311,9 +287,8 @@ impl Error {
     }
 }
 
-/// The daily job: creates the partitions ahead, then drops what retention allows (DB-004,
-/// DB-005, D-5, D-25). Samples are kept `samples_keep` (the operator's period); the aggregates
-/// stay at their fixed periods (DB-009). Run by `upkeep.rs` with the other retention jobs.
+/// Samples are kept `samples_keep`; the aggregates stay at their fixed periods (DB-004, DB-005,
+/// DB-009, D-5, D-25).
 ///
 /// # Errors
 /// What [`create_partitions_ahead`] or [`drop_expired_partitions`] returns.

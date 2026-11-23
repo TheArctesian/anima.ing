@@ -1,6 +1,3 @@
-//! The K1 types of builds. The domain types are the output objects; the enums are the domain
-//! enums themselves.
-
 use std::sync::Arc;
 
 use async_graphql::{Context, ID, InputObject, Object, Result, SimpleObject};

@@ -25,7 +25,6 @@ fn now() -> DateTime<Utc> {
     "2026-11-04T09:00:00Z".parse().unwrap()
 }
 
-/// Beats in one bucket: (up, down, degraded, maintenance, unknown).
 type Counts = (i32, i32, i32, i32, i32);
 
 async fn aggregate(

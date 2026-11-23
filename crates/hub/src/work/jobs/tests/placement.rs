@@ -28,7 +28,6 @@ pub(super) fn offer(claim: &Claim) -> Offer {
     Offer::of(claim, &machine(claim.device.into()), true)
 }
 
-/// The verdict of each job for the machine of `claim`, with the other machines that asked.
 pub(super) fn verdicts(
     jobs: &[Job],
     claim: &Offer,
@@ -45,8 +44,6 @@ pub(super) fn verdicts(
         .collect()
 }
 
-/// The job that the machine of `claim` gets when no other machine asked, long after the jobs
-/// came into the queue.
 fn got<'a>(jobs: &'a [Job], claim: &Claim) -> Option<&'a Job> {
     if !placement::can_take(claim) {
         return None;

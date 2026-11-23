@@ -1,5 +1,4 @@
-//! The K1 object types of the check of a Compose file and of the `docker run` converter
-//! (HOST-022).
+//! The K1 objects of the Compose file check and the `docker run` converter (HOST-022).
 
 use async_graphql::{Object, Result};
 

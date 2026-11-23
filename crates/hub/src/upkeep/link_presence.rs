@@ -1,13 +1,4 @@
-//! A hosted hub keeps the check `Connected` for each device whose host is the link address
-//! of a computer on its link (HMD-047, R-143). Each 15 seconds it asks the link when it last
-//! saw each computer: a computer seen in the last 45 seconds is reported Up. A computer that
-//! was seen and is not seen any more is reported Down one time; after that the check gets
-//! no report, as a PUSH check whose device is off. A computer that the link never saw gets
-//! no check: its link program does not say that it is connected.
-//!
-//! The time in which the hub slept or did not run is not a Down. At a start and after a
-//! sleep, each check waits one whole interval again, and no computer is reported Down until
-//! the hub has watched for 45 seconds: the computers need that time to connect again.
+//! Keeps the check `Connected` of each computer on a hosted hub's link (HMD-047, R-143).
 
 use std::{collections::HashSet, net::IpAddr, path::PathBuf, sync::Arc, time::Duration};
 
@@ -29,30 +20,22 @@ use tokio::time::MissedTickBehavior;
 use super::job_failed;
 
 const JOB: &str = "link_presence";
-/// The time between two questions to the link. A computer says that it is connected each
-/// 15 seconds.
+/// A computer signs that it is connected each 15 seconds.
 const EVERY: Duration = Duration::from_secs(15);
-/// How old the last sign of a computer can be while the computer counts as connected:
-/// three of its signs.
+/// Three of a computer's signs.
 const FRESH: TimeDelta = TimeDelta::seconds(45);
-/// A wait between two passes longer than this means that the hub slept.
+/// A longer wait between two passes means that the hub slept.
 const ASLEEP: TimeDelta = TimeDelta::seconds(45);
-/// What the history of the check shows for a computer that left the link.
 const GONE: &str = "Not connected";
 
-/// What the link's last sign of a computer means now.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Sign {
-    /// The computer is connected.
     Here,
-    /// The computer was connected and is not any more.
     Gone,
     /// The link never saw the computer, or the hub did not watch long enough to know.
     Unknown,
 }
 
-/// What `seen`, the time of the last sign of a computer, means at `now` for a hub that
-/// watches since `watching_since`.
 pub(super) fn sign(
     seen: Option<DateTime<Utc>>,
     now: DateTime<Utc>,
@@ -65,8 +48,6 @@ pub(super) fn sign(
     }
 }
 
-/// The devices of the hub that are computers of the link, each with the time of its last
-/// sign: a device whose host is an IP address that the link lists.
 pub(super) fn computers(
     devices: &[Device],
     presence: &[Presence],
@@ -79,22 +60,19 @@ pub(super) fn computers(
     devices.iter().filter_map(on_link).collect()
 }
 
-/// The watch of a hosted hub on the computers of its link.
 pub struct Watch {
     control: PathBuf,
     db: PgPool,
     bus: Bus,
     clock: Arc<dyn Clock>,
-    /// When the hub started to watch: its start, or the end of its last sleep.
+    /// Its start, or the end of its last sleep.
     since: DateTime<Utc>,
-    /// The time of the last pass.
     last: DateTime<Utc>,
     /// The checks reported Down since their computer was last connected.
     gone: HashSet<CheckId>,
 }
 
-/// In the hosted mode, makes each check `Connected` wait one whole interval, before the
-/// scheduler can find it due, and returns the watch. `None` for a hub that is not hosted.
+/// Makes each check `Connected` wait one whole interval, before the scheduler finds it due.
 pub async fn start(
     config: &Config,
     db: &PgPool,
@@ -109,7 +87,6 @@ pub async fn start(
 }
 
 impl Watch {
-    /// A watch that has reported nothing yet, on the link at the control socket `control`.
     pub(super) fn new(control: PathBuf, (db, bus): (PgPool, Bus), clock: Arc<dyn Clock>) -> Self {
         let now = clock.now();
         Self {
@@ -123,7 +100,6 @@ impl Watch {
         }
     }
 
-    /// Starts to watch at `now`: after a start or a sleep.
     pub(super) async fn begin(&mut self, now: DateTime<Utc>) {
         self.since = now;
         if let Err(error) = checks::own::await_reports(&self.db, OwnCheck::Connected, now).await {
@@ -131,8 +107,6 @@ impl Watch {
         }
     }
 
-    /// Asks the link and reports the checks, for as long as the hub runs. A link that does
-    /// not answer is logged by its fault word, and nothing is reported.
     pub async fn keep(mut self) {
         let mut ticks = tokio::time::interval(EVERY);
         ticks.set_missed_tick_behavior(MissedTickBehavior::Delay);
@@ -153,7 +127,6 @@ impl Watch {
         }
     }
 
-    /// One pass at `now` over what the link said.
     pub(super) async fn pass(
         &mut self,
         presence: &[Presence],
@@ -171,7 +144,6 @@ impl Watch {
         Ok(())
     }
 
-    /// The computer is connected: its check is there and Up.
     async fn here(&mut self, device: DeviceId, now: DateTime<Utc>) -> Result<(), checks::Error> {
         let mut conn = self.db.acquire().await?;
         let check = checks::own::ensure(&mut conn, device, OwnCheck::Connected).await?;
@@ -181,7 +153,6 @@ impl Watch {
         Ok(())
     }
 
-    /// The computer left the link: its check, if it has one, gets one Down report.
     async fn gone(&mut self, device: DeviceId, now: DateTime<Utc>) -> Result<(), checks::Error> {
         let Some(check) = checks::own::find(&self.db, device, OwnCheck::Connected).await? else {
             return Ok(());

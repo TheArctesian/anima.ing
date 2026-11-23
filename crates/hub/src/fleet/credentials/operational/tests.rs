@@ -1,6 +1,3 @@
-//! Tests of the operational keys against a real database, grouped by concept; the shared
-//! fixtures live here. The pure parts are tested beside them in `lifecycle` and `rules` tests.
-
 mod disclosure;
 mod lifecycle;
 mod pure;
@@ -101,7 +98,6 @@ impl Desk {
         self.try_rotate(name, value, now).await.unwrap()
     }
 
-    /// A rotation that may be refused; a refused one writes nothing.
     async fn try_rotate(
         &self,
         name: &str,
@@ -141,7 +137,6 @@ impl Desk {
     }
 }
 
-/// The value of a fetched key as text.
 fn text_of(fetched: &FetchedKey) -> &str {
     std::str::from_utf8(fetched.value.expose()).unwrap()
 }

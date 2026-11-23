@@ -1,5 +1,3 @@
-//! What a probe reports, and the typed reasons a probe fails.
-
 use std::{io, net::IpAddr, time::Duration};
 
 use chrono::{DateTime, Utc};
@@ -7,7 +5,6 @@ use chrono::{DateTime, Utc};
 /// Longest failure message kept (CHK-003).
 pub const MESSAGE_MAX: usize = 512;
 
-/// A message as stored: control, format and separator characters removed, at most [`MESSAGE_MAX`] characters.
 #[must_use]
 pub fn clean_message(text: &str) -> String {
     crate::text::clean(text, MESSAGE_MAX)
@@ -16,33 +13,27 @@ pub fn clean_message(text: &str) -> String {
 /// How a probe judged its own attempt (D-2).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Judgement {
-    /// The probe tested the target and `ok` is its answer.
     #[default]
     Answered,
-    /// An ok result that is not settled yet: Docker `health: starting`. The evaluation
-    /// records it as Degraded.
+    /// Docker `health: starting`; the evaluation records Degraded.
     Starting,
-    /// An ok result near its end: a domain registration that expires within the check's
-    /// warning days (D-29). The evaluation records Degraded.
+    /// Expires within the check's warning days (D-29); the evaluation records Degraded.
     Expiring,
-    /// The hub could not test the target (for example, no `LocalAPI` proxy). The evaluation records Unknown.
+    /// The hub could not test the target; the evaluation records Unknown.
     Unjudged,
 }
 
-/// The raw result of one probe. Invert, retries and status are applied later.
-///
-/// A failed network attempt is `ok: false` with a short message; the message never holds a
-/// header value, a body or a secret (LOG-007).
+/// Invert, retries and status are applied later. The message never holds a header value, a
+/// body or a secret (LOG-007).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProbeResult {
     pub ok: bool,
     pub response_time: Option<Duration>,
     pub message: Option<String>,
-    /// The address the probe used, for ICMP, TCP, TLS and HTTP.
     pub resolved_ip: Option<IpAddr>,
-    /// Leaf certificate expiry, for TLS and HTTPS (CHK-007).
+    /// For TLS and HTTPS (CHK-007).
     pub cert_not_after: Option<DateTime<Utc>>,
-    /// Registration expiry from the RDAP reply, for domain expiry checks (D-29).
+    /// From the RDAP reply (D-29).
     pub domain_not_after: Option<DateTime<Utc>>,
     pub judgement: Judgement,
 }
@@ -61,8 +52,7 @@ impl ProbeResult {
         }
     }
 
-    /// A success that has no response time worth keeping: a listing read over SSH measures
-    /// the link, not the thing checked.
+    /// A listing read over SSH measures the link, not the thing checked.
     #[must_use]
     pub fn up_unmeasured() -> Self {
         Self {
@@ -71,7 +61,6 @@ impl ProbeResult {
         }
     }
 
-    /// An ok result that is still starting: the message says what is pending (D-2).
     #[must_use]
     pub fn starting(failure: &Failure) -> Self {
         Self {
@@ -82,7 +71,6 @@ impl ProbeResult {
         }
     }
 
-    /// A probe the hub could not run; the evaluation records Unknown with the message (D-2).
     #[must_use]
     pub fn unjudged(failure: &Failure) -> Self {
         Self {
@@ -91,7 +79,6 @@ impl ProbeResult {
         }
     }
 
-    /// A failed probe. The message is stripped of control characters and capped.
     #[must_use]
     pub fn failed(failure: &Failure) -> Self {
         let text = clean_message(&failure.to_string());
@@ -140,7 +127,7 @@ pub enum Failure {
     CertificateNotYetValid,
     #[error("the certificate cannot be read")]
     CertificateUnreadable,
-    /// The device is a computer of the link, and the check needs ICMP or UDP (HMD-048).
+    /// HMD-048.
     #[error("a computer of the link is reached with TCP only; this check needs ICMP or UDP")]
     TcpOnly,
     #[error("no ICMP reply")]
@@ -173,28 +160,24 @@ pub enum Failure {
     DnsMismatch,
     #[error("this check type is not probed by the hub")]
     NotProbed,
-    /// The sealed secrets do not open for the check (SEC-003).
+    /// SEC-003.
     #[error("the check secrets cannot be opened")]
     Secrets,
-    /// The sealed secrets were given for another destination (HTTP), or another version or
-    /// user name (SNMP), than the stored configuration names, so they are not sent (SEC-005).
+    /// Secrets given for another destination, version or user name are not sent (SEC-005).
     #[error("the check secrets do not match its configuration")]
     SecretsUnbound,
-    /// The SNMP secrets were entered for another device host, so nothing was sent (SEC-010).
-    /// The text names no host (LOG-007).
+    /// Nothing is sent (SEC-010), and the text names no host (LOG-007).
     #[error(
         "the device host changed after the SNMP secrets were entered, so they are not sent: \
          enter the community or the v3 passwords again"
     )]
     SecretsForOtherHost,
-    /// A PUSH check got no push within its interval (CHK-002).
+    /// CHK-002.
     #[error("no push received")]
     NoPush,
-    /// Docker and systemd checks run through the SSH link, which the generic probe has not.
     #[error("this check runs through the SSH link")]
     NeedsLink,
-    /// The link did not open or the command did not run. The error's text holds no host,
-    /// address, device text or secret (LOG-007).
+    /// The text holds no host, address, device text or secret (LOG-007).
     #[error("the SSH link failed: {0}")]
     Link(String),
     #[error("the command output was longer than the hub reads")]
@@ -215,7 +198,7 @@ pub enum Failure {
     /// The state class is one of the fixed words of the systemd parser, never device text.
     #[error("the unit is {0}")]
     UnitState(&'static str),
-    /// No `LocalAPI` proxy is configured, so the hub cannot test (D-4).
+    /// D-4.
     #[error("Tailscale ping needs the LocalAPI proxy (ANIMA_TAILSCALE_LOCALAPI)")]
     NeedsLocalApi,
     #[error("the target has no Tailscale address the hub may ping")]
@@ -228,7 +211,6 @@ pub enum Failure {
     ProxyReplyUnreadable,
     #[error("the LocalAPI proxy reply was longer than the hub reads")]
     ProxyReplyTooLong,
-    /// The datagram is not the SNMP answer the request expects.
     #[error("the SNMP reply cannot be read")]
     SnmpMalformed,
     /// The RFC 3416 name of the error status, from a fixed table.

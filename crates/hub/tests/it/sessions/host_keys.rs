@@ -1,7 +1,5 @@
-//! The connection test and accepting a host key (WP-10 T3; DEV-013, SEC-006, SEC-007, D-5,
-//! D-6), against an in-process SSH server on the loopback interface. The hub's probe refuses
-//! loopback, so these schemas share a `Live` built with the test-only loopback rule; the
-//! refusal itself is tested with `Live::default()`.
+//! The connection test and accepting a host key (WP-10 T3; DEV-013, SEC-006, SEC-007, D-5, D-6).
+//! The hub's probe refuses loopback, so these schemas share a `Live` that may reach it.
 
 mod accept;
 mod connection_test;

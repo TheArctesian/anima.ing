@@ -49,7 +49,6 @@ impl Extension for RequestSpan {
     ) -> BoxStream<'s, Response> {
         let (span, _) = request_span();
         let mut inner = next.run(ctx, stream);
-        // Every poll runs inside the span, so the resolver's own log lines carry the ID.
         Box::pin(poll_fn(move |cx| {
             let _entered = span.enter();
             inner.poll_next_unpin(cx)

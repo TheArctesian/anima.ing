@@ -13,7 +13,6 @@ use tokio::{io::AsyncWriteExt as _, net::TcpStream, time::timeout};
 use super::super::ending::{CLOSE_WAIT, End, gateway_written};
 use crate::fleet::sessions::{Tunnel, upgrade::send};
 
-/// What the hub tells guacd when it leaves first.
 const DISCONNECT: &[u8] = b"10.disconnect;";
 
 /// Sends one instruction to the client as one text message, unless the session ends first

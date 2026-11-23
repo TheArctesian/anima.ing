@@ -1,10 +1,5 @@
-//! `sendTestNotification`: one notification of kind `TEST` sent through a channel at once, on
-//! the path every notification takes (NOT-004, D-17, P3-003).
-//!
-//! It never queues: the send happens while the request waits, within the egress time limit (8 s,
-//! from the lookup to the last reply byte read), and its outcome is written as a delivery with
-//! one audit entry and one event in one transaction. A failed send is answered as a delivery with
-//! its reason, not as an error, so the operator sees what the target did.
+//! `sendTestNotification` sends at once, on the path every notification takes (NOT-004, D-17, P3-003).
+//! A failed send answers as a delivery with its reason, not as an error.
 
 use std::sync::Arc;
 

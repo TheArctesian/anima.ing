@@ -1,5 +1,4 @@
-//! `GroupConfigInput.childIds` sets the parent of its children in the mutation's own
-//! transaction (CHK-004, CHK-005).
+//! `GroupConfigInput.childIds` sets its children's parent in the mutation's transaction (CHK-004, CHK-005).
 
 use anima_hub::status::Status;
 use serde_json::{Value, json};

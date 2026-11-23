@@ -1,12 +1,6 @@
-//! `setSshCredential` and `clearSshCredential`: the secret goes to `credentials`, sealed, and
-//! the audit entry and the event say only what kind of secret changed (DEV-012, SEC-003,
-//! SEC-005, LOG-005, LOG-007).
-//!
-//! Each runs in one transaction. `credentials` takes its per-device lock first, before this
-//! domain locks the device row, the lock order `credentials` asks of its callers. A set reads
-//! the device first, without a lock, to bind the secret to the device's host now (SEC-011): a
-//! host changed in between leaves the secret bound to the earlier host, so it is refused, never
-//! sent to the new one.
+//! The secret goes to `credentials` sealed; the audit entry and the event name only its kind (DEV-012, SEC-003, SEC-005, LOG-005, LOG-007).
+//! `credentials` takes its per-device lock before this domain locks the device row.
+//! A set binds the secret to the host it reads first; a host changed in between gets it refused, never sent to the new one (SEC-011).
 
 use async_graphql::{Context, Error as GraphQlError, ID, Result};
 

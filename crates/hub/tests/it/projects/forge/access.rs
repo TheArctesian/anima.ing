@@ -1,5 +1,4 @@
-//! PRJ-032: `ProjectRepository.access` names why a repository cannot be read, and a list root
-//! on a repository that is not READY answers `CONFLICT` without asking GitHub.
+//! `ProjectRepository.access` and the `CONFLICT` of a repository that is not READY (PRJ-032).
 
 use serde_json::json;
 use sqlx::PgPool;

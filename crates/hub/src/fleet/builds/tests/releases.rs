@@ -72,7 +72,6 @@ fn bld_002_a_version_not_above_a_published_one_of_a_selected_target_is_refused()
         );
     }
     assert!(release::check_new(Version::new(0, 1, 12), &targets, &published).is_ok());
-    // The other target's published versions do not count.
     let darwin_only = [Target::DarwinUniversal];
     assert!(release::check_new(Version::new(0, 1, 2), &darwin_only, &published).is_ok());
 }

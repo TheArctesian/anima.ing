@@ -1,5 +1,3 @@
-//! `sourceAccountChanged`: each change the feed announces, as the account is then (K1).
-
 use async_graphql::{Context, ID, Result, Subscription as SubscriptionObject};
 use futures_util::{Stream, stream};
 use tokio::sync::broadcast::{Receiver, error::RecvError};

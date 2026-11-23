@@ -13,7 +13,6 @@ use source_exchange::Minted;
 
 use crate::{fleet::credentials::Secret, ids::SourceAccountId};
 
-/// A token with less than this left is minted again.
 const REMINT_BEFORE: TimeDelta = TimeDelta::minutes(5);
 
 struct Held {
@@ -24,8 +23,6 @@ struct Held {
 #[derive(Default)]
 struct Map {
     held: HashMap<SourceAccountId, Held>,
-    /// How many times a token was forgotten. A mint takes a [`Ticket`] of it before it opens
-    /// the key; a keep whose ticket is older stores nothing.
     forgets: u64,
 }
 
@@ -34,7 +31,6 @@ struct Map {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Ticket(u64);
 
-/// The installation token of each account, in memory. Cheap to clone; clones share the map.
 #[derive(Clone, Default)]
 pub struct Tokens(Arc<Mutex<Map>>);
 
@@ -43,7 +39,6 @@ impl Tokens {
         f(&mut self.0.lock().unwrap_or_else(PoisonError::into_inner))
     }
 
-    /// The account's token when more than five minutes of it are left at `now`.
     #[must_use]
     pub fn fresh(&self, account: SourceAccountId, now: DateTime<Utc>) -> Option<Arc<Secret>> {
         self.with(|map| {
@@ -54,17 +49,13 @@ impl Tokens {
         })
     }
 
-    /// The ticket a mint takes before it opens the key.
     #[must_use]
     pub fn ticket(&self) -> Ticket {
         self.with(|map| Ticket(map.forgets))
     }
 
-    /// Keeps `minted` as the account's token, unless any token was forgotten since `ticket` was
-    /// taken (the account may have been removed meanwhile), and returns it. The check and the
-    /// insert hold the one lock `forget` takes, so a removal's `forget` either comes after this
-    /// keep and drops the token, or comes before it and this keep stores nothing. A refused
-    /// keep costs one more mint at the next request.
+    /// The check and the insert hold the one lock that `forget` takes, so a `forget` either drops
+    /// the token after this keep or makes this keep store nothing.
     #[must_use]
     pub fn keep(&self, account: SourceAccountId, minted: Minted, ticket: Ticket) -> Arc<Secret> {
         let token = Arc::new(Secret::from(minted.token));
@@ -80,7 +71,6 @@ impl Tokens {
         token
     }
 
-    /// Drops the account's token: it was refused, or the account was removed.
     pub fn forget(&self, account: SourceAccountId) {
         self.with(|map| {
             map.forgets = map.forgets.wrapping_add(1);

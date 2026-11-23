@@ -1,5 +1,3 @@
-//! Parsing of every variable from a map, without the process environment (K7).
-
 use super::*;
 
 pub(super) fn env(pairs: &[(&str, &str)]) -> BTreeMap<String, String> {
@@ -301,7 +299,6 @@ fn non_unicode(prefix: &str) -> OsString {
     }
 }
 
-/// An absolute fixture path on the host running the tests.
 pub(super) fn host_path(path: &str) -> String {
     if cfg!(windows) {
         format!("C:{path}")

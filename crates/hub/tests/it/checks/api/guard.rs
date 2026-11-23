@@ -1,5 +1,4 @@
-//! Every root field and both subscriptions refuse a request without a signed-in operator, and
-//! store nothing (API-003).
+//! Check fields refuse a request without a signed-in operator (API-003).
 
 use async_graphql::{Request, Variables, futures_util::StreamExt as _};
 use serde_json::json;
@@ -72,8 +71,7 @@ async fn api_003_both_subscriptions_refuse_a_request_without_an_operator(pool: P
         "subscription { heartbeatAdded { checkId } }",
     ];
     for query in queries {
-        // Without the guard the stream waits for a signal forever; the timeout makes that a
-        // failed test instead of a hung one.
+        // The timeout turns a stream that waits forever into a failed test.
         let mut stream = schema.execute_stream(Request::new(query));
         let first = tokio::time::timeout(std::time::Duration::from_secs(5), stream.next())
             .await

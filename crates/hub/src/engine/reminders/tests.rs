@@ -1,5 +1,4 @@
-//! The evaluation of a rule, the instants of a time rule and the place state (REM-001,
-//! REM-003, REM-004, REM-006; K-E6 Sections 2 to 4).
+//! REM-001, REM-003, REM-004, REM-006; K-E6 Sections 2 to 4.
 
 use chrono::{DateTime, NaiveTime, Utc, Weekday};
 use chrono_tz::Tz;
@@ -88,7 +87,6 @@ fn workout() -> Trigger {
     }
 }
 
-/// Stores `rule` as it is, enabled, with no channels.
 async fn add(pool: &sqlx::PgPool, rule: Rule) {
     let stored = StoredRule {
         created_at: rule.updated_at,

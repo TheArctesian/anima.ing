@@ -1,5 +1,4 @@
-//! How many operations one signed-in socket may run: at most 32 at once, and each id once
-//! (H-6(b), API-004).
+//! Operations on one socket: at most 32 at once, each id once (H-6(b), API-004).
 
 use std::sync::Arc;
 
@@ -20,7 +19,6 @@ fn subscribe_events(id: &str) -> Value {
         "payload": { "query": "subscription { eventAdded { message } }" } })
 }
 
-/// Sends a ping and returns the answer: a pong while the connection serves.
 async fn ping(socket: &mut Socket) -> Received {
     send(socket, &json!({ "type": "ping" })).await;
     receive(socket).await

@@ -12,8 +12,7 @@ use super::{
 };
 use crate::fleet::targets::{self, Reached};
 
-/// Connects to the first allowed address that accepts; returns the stream, the address and
-/// the connect time. A computer of the link is reached through the link (HMD-048).
+/// A computer of the link is reached through the link (HMD-048).
 pub(super) async fn connect(
     host: &str,
     port: u16,

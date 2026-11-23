@@ -1,5 +1,4 @@
-//! Each `refused` reason (K4 Section 9): the transfer flags read at each request, a missing or
-//! refused path, and an upload that would replace a file, each with its audit entry.
+//! Each `refused` reason with its audit entry (K4 Section 9).
 
 use std::sync::atomic::Ordering;
 
@@ -104,7 +103,6 @@ async fn ra_032_an_upload_never_replaces_a_file(pool: PgPool) {
     client.send_binary(b"new").await;
     assert_eq!(client.text().await, refused("EXISTS"));
     assert_eq!(bench.server.read("kept.txt").unwrap(), b"original");
-    // The refused upload's bytes were dropped, so the next request is read as one.
     client.send(r#"{"type":"list","path":"/"}"#).await;
     assert_eq!(client.text().await["type"], "entries");
     let (action, _, _, change) = bench.audits().await.remove(0);

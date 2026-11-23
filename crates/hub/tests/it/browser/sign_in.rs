@@ -184,8 +184,7 @@ async fn sec_002_the_desktop_app_still_signs_in_from_its_web_view(pool: PgPool) 
     );
 }
 
-/// Signed out, these documents select `signInBrowser` beside another root field or through a
-/// root fragment: the backstop refuses each before it runs (API-003).
+/// The backstop refuses each hidden `signInBrowser` before it runs (API-003).
 const HIDDEN_SIGN_INS: [&str; 3] = [
     "mutation($input: LoginInput!) { \
         signInBrowser(input: $input) { expiresAt } login(input: $input) { token } }",

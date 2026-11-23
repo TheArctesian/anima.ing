@@ -1,10 +1,7 @@
 //! The session task the Guacamole tunnel and the terminal tunnel share (K4 Sections 2 and 8.1,
-//! MV-003): one task per redeemed ticket that checks the subprotocol, opens the far side while
-//! the request waits, unless the session ends first, answers the request with the upgrade,
-//! hands over to the tunnel's own part ([`FarSide`]) and ends the session once. Beside it, the
-//! sends and the close every WebSocket tunnel makes (`writes`).
+//! MV-003).
 //!
-//! The session task, not the request handler, runs all of this, so the client leaving (seen
+//! The session task, not the request handler, runs the session, so the client leaving (seen
 //! as the handler dropped) ends the session instead of dropping it. It holds the ticket in an
 //! `end::Unfinished` guard, so even a panic ends the row.
 
@@ -27,10 +24,8 @@ use super::{
 pub(super) use writes::{close, send};
 
 /// One tunnel's own part of the session task: how its far side opens for a ticket and what
-/// the session does once the request is answered. The terminal (`terminal::session`) and the
-/// Guacamole tunnel (`tunnel::relaying`) each have one.
+/// the session does once the request is answered.
 pub(super) trait FarSide {
-    /// What a successful opening hands to [`FarSide::connected`].
     type Opening;
     /// The event message when the request did not offer the tunnel's subprotocol.
     const NOT_OFFERED: &'static str;
@@ -62,8 +57,6 @@ pub(super) async fn run_session<F: FarSide>(
     unfinished.finish(&end).await;
 }
 
-/// The session up to its first cause: refusals before the upgrade answer 400 or 503
-/// ([`handed_over`]).
 async fn session<F: FarSide>(
     far: &F,
     redeemed: &mut Redeemed,

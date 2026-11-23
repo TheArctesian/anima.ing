@@ -118,8 +118,10 @@ impl Runner {
     }
 
     fn validate_start(&self, new: &NewThread) -> Result<(), Refusal> {
-        // A start whose copy is being asked counts against the soft limit too.
-        self.may_start(u32::try_from(self.asks.open.len()).unwrap_or(u32::MAX))?;
+        // A start whose copy is being asked, or whose worktree is being made, counts against the
+        // soft limit too (THR-114).
+        let asking = self.asks.open.len() + self.asks.making.len();
+        self.may_start(u32::try_from(asking).unwrap_or(u32::MAX))?;
         let no_project = new.folder.as_os_str().is_empty();
         if !no_project {
             chosen_folder(&new.folder, self.dir.parent().unwrap_or(&self.dir))?;
@@ -253,6 +255,7 @@ impl Runner {
         }
         let Some(command) = self.command(action).await else {
             self.threads.remove(&id);
+            self.rights_now();
             return Err(Refusal::Holder);
         };
         let files = self.adopt_draft(&new, id);

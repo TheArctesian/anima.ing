@@ -36,7 +36,6 @@ fn prj_032_the_last_answer_wins_and_no_total_is_assumed() {
     let mut budget = Budget::default();
     let id = account();
     budget.note(id, limits(400, 600), now());
-    // A larger installation, or another region: the count may rise.
     budget.note(id, limits(12_000, 600), now());
     assert_eq!(budget.read(id, now()), Ok(()));
 

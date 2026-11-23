@@ -1,6 +1,3 @@
-//! The read of one digest at a registry, against a local stand-in (HOST-021): the requests
-//! the hub sends, and what each answer becomes.
-
 use super::registry::{NEW, OLD, TOKEN, answer, known, reference, serve};
 use crate::work::containers::updates::egress::{Egress, FetchError};
 
@@ -16,7 +13,6 @@ async fn host_021_the_hub_asks_for_a_token_with_no_account_then_for_the_head_of_
     assert_eq!(heads.len(), 2, "{heads:?}");
     let asked = "GET /token?service=registry.docker.io&scope=repository%3Alibrary%2Falpine%3Apull ";
     assert!(heads[0].starts_with(asked), "{heads:?}");
-    // The request for a token sends no credential.
     assert!(
         !heads[0].to_lowercase().contains("authorization"),
         "{heads:?}"
@@ -76,8 +72,7 @@ async fn host_021_a_private_or_unknown_tag_is_not_there_and_no_redirect_is_follo
 #[tokio::test]
 async fn host_021_a_registry_at_an_address_the_policy_refuses_is_not_connected_to() {
     let registry = known().await;
-    // The same server and the same trusted certificate as the tests that reach it: only the
-    // policy differs. The default policy refuses loopback, where the stand-in listens.
+    // Only the policy differs: the default one refuses loopback, where the stand-in listens.
     let (origin, root) = registry.place();
     let refused =
         Egress::new(crate::fleet::targets::AddressPolicy::default()).standing_in(origin, root);

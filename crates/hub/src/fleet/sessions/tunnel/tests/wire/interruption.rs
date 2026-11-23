@@ -1,5 +1,4 @@
-//! Interrupted sessions end once (MV-003): one row end, one `session.end` entry, one event,
-//! whichever side goes away and however two causes race.
+//! Interrupted sessions end once (MV-003).
 
 use std::time::Duration;
 
@@ -83,7 +82,6 @@ async fn mv_003_end_session_racing_a_client_close_ends_once(pool: PgPool) {
     let ended = ended(&pool, bench.session).await;
     assert_eq!(ended.reason, "operator");
     assert_eq!((ended.audits.len(), ended.events.len()), (1, 1));
-    // Nothing more is written later.
     tokio::time::sleep(Duration::from_millis(200)).await;
     let again = super::records::ended(&pool, bench.session).await;
     assert_eq!((again.audits.len(), again.events.len()), (1, 1));
@@ -108,7 +106,7 @@ async fn d_9_a_row_already_ended_elsewhere_gets_no_second_end_or_event(pool: PgP
     );
     assert_eq!(client.close().await, Some(1000));
     assert_eq!(heard(&mut guacd).await.opcode, "disconnect");
-    // The tunnel's end write comes after it leaves guacd; give it a moment.
+    // The tunnel's end write comes after it leaves guacd.
     tokio::time::sleep(Duration::from_millis(200)).await;
     let ended = ended(&pool, bench.session).await;
     assert_eq!(ended.reason, "hub_shutdown", "the first end wins");
@@ -118,11 +116,8 @@ async fn d_9_a_row_already_ended_elsewhere_gets_no_second_end_or_event(pool: PgP
     );
 }
 
-/// `endSession` returned within its end wait, which is far short of the idle waits: the end
-/// signal, not a timeout, ended the stalled session (D-9). The budget is the injected end
-/// wait, not a fixed figure: the hub's close to the stalled side alone waits out
-/// `CLOSE_WAIT`, and the end write follows, so a fixed bound near that raced a loaded
-/// machine.
+/// The end signal, not an idle timeout, ended the stalled session (D-9).
+/// The bound is the injected end wait, because the close alone waits out `CLOSE_WAIT`.
 fn within_end_wait(took: Duration) {
     let idle = patient();
     assert!(END_WAIT < idle.client_idle.min(idle.gateway_silence));
@@ -134,9 +129,7 @@ fn within_end_wait(took: Duration) {
     fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn d_9_end_session_wins_over_a_client_that_stopped_reading(pool: PgPool) {
-    // The client reads nothing more while guacd sends far more than the sockets hold, so the
-    // hub's write to the client stalls; the idle wait is long, so only the end signal can
-    // end it within the end wait.
+    // The hub's write to the client stalls; only the end signal can end it within the end wait.
     let (guacd, bench, _client) = session(&pool, ending_within_end_wait()).await;
     let blob = format!("4.blob,1.0,8000.{};", "A".repeat(8_000));
     guacd.act.send(Act::Send(blob.repeat(4_000))).ok();
@@ -165,9 +158,7 @@ async fn d_9_end_session_wins_over_a_client_that_stopped_reading(pool: PgPool) {
     fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn d_9_end_session_wins_over_a_guacd_that_stopped_reading(pool: PgPool) {
-    // guacd reads nothing more while the client sends clipboard data, so the hub's write to
-    // guacd stalls; the idle wait is long, so only the end signal can end it within the end
-    // wait.
+    // The hub's write to guacd stalls; only the end signal can end it within the end wait.
     let (guacd, bench, mut client) = session(&pool, ending_within_end_wait()).await;
     guacd.act.send(Act::Stall).ok();
     client.send("9.clipboard,1.0,10.text/plain;").await;
@@ -202,8 +193,7 @@ async fn k4_5_a_client_write_stalled_past_the_idle_wait_is_4002_timeout(pool: Pg
     let (guacd, bench, mut client) = session(&pool, setup).await;
     let blob = format!("4.blob,1.0,8000.{};", "A".repeat(8_000));
     guacd.act.send(Act::Send(blob.repeat(4_000))).ok();
-    // The client reads nothing until the hub's write has stalled past the idle wait, then
-    // drains while the hub's close is still on its way.
+    // The client reads nothing until the hub's write has stalled past the idle wait.
     tokio::time::sleep(idle + Duration::from_millis(500)).await;
     assert_eq!(client.close_code().await, Some(4002));
     let ended = ended(&pool, bench.session).await;

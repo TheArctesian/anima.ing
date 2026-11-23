@@ -1,5 +1,4 @@
-//! Turns a host into addresses the policy allows. The caller connects to one of the returned
-//! addresses and never resolves the name again, so DNS rebinding cannot change the target.
+//! The caller connects to a returned address and never resolves the name again, so DNS rebinding cannot change the target.
 
 use std::net::IpAddr;
 
@@ -9,12 +8,6 @@ use crate::fleet::{
     targets::{self, TargetError},
 };
 
-/// Resolves `host` once and keeps only the addresses of `family` (if given) that the policy
-/// allows.
-///
-/// # Errors
-/// [`Failure::Unresolved`] when the name has no address, [`Failure::NoAddress`] when none
-/// is of `family`, [`Failure::NotPermitted`] when the policy refuses all of them.
 pub(super) async fn allowed_addresses(
     host: &str,
     family: Option<IpVersion>,
@@ -40,11 +33,6 @@ pub(super) async fn allowed_addresses(
     }
 }
 
-/// `ip`, unless it is a link address: the link carries TCP only, so a check that needs ICMP
-/// or UDP cannot run on a computer of the link (HMD-048).
-///
-/// # Errors
-/// [`Failure::TcpOnly`] for a link address.
 pub(super) fn off_link(ip: IpAddr) -> Result<IpAddr, Failure> {
     if targets::on_link(ip) {
         Err(Failure::TcpOnly)
@@ -53,8 +41,7 @@ pub(super) fn off_link(ip: IpAddr) -> Result<IpAddr, Failure> {
     }
 }
 
-/// The hub's one lookup ([`targets::lookup`]) with the test host overrides. An IP literal in
-/// any number of brackets is read as the check editor accepts it (`config::rules::host`).
+/// An IP literal in any number of brackets is read as the check editor accepts it.
 async fn lookup(host: &str, env: &ProbeEnv) -> Result<Vec<IpAddr>, Failure> {
     let bare = host.trim_start_matches('[').trim_end_matches(']');
     let host = if bare.parse::<IpAddr>().is_ok() {

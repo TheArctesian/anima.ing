@@ -1,6 +1,5 @@
-//! Remote access settings of a device: RDP, VNC, the transfer policy and where metrics come
-//! from (RA-030..033, DEV-010). Every `Default` equals the column defaults of migration 0110
-//! and the K1 input defaults (DB-011).
+//! Remote access settings of a device (RA-030..033, DEV-010).
+//! Every `Default` equals the column defaults of migration 0110 and the K1 input defaults (DB-011).
 
 #![expect(
     clippy::unused_async_trait_impl,

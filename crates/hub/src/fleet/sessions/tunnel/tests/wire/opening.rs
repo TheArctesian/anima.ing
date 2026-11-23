@@ -1,7 +1,5 @@
-//! The session task owns the ticket from redeem to end (MV-003, SEC-002): a client that
-//! leaves during the opening, an `endSession` during the opening, and a task that panics
-//! each end the session once; the known gap of a client that leaves after a stray byte; and
-//! the end's write is retried once (LOG-005).
+//! The session task owns the ticket from redeem to end, and ends the session once (MV-003,
+//! SEC-002); the end's write is retried once (LOG-005).
 
 mod waking;
 
@@ -31,15 +29,13 @@ use crate::fleet::sessions::{
     end::{Records, Unfinished, end_session, finish},
 };
 
-/// A guacd that takes `select` and then says nothing until told, and a bench in front of it.
 async fn stalled(pool: &PgPool, setup: Setup) -> (FakeGuacd, Bench) {
     let guacd = fake_guacd(Script::StallBeforeArgs { args: RDP_ARGS }).await;
     let bench = bench(pool, &guacd.address, setup).await;
     (guacd, bench)
 }
 
-/// Sends the upgrade request as guacamole-common-js would and keeps the connection, then
-/// waits until the hub has sent guacd `select`: the opening is under way.
+/// A raw upgrade request, kept open until the hub has sent guacd `select`.
 async fn request_reaching_guacd(bench: &Bench, guacd: &mut FakeGuacd) -> TcpStream {
     let mut raw = TcpStream::connect(bench.served).await.unwrap();
     let request = format!(
@@ -56,7 +52,6 @@ async fn request_reaching_guacd(bench: &Bench, guacd: &mut FakeGuacd) -> TcpStre
     raw
 }
 
-/// The status line of the response on `raw`.
 async fn status_line(raw: &mut TcpStream) -> String {
     let mut response = [0; 64];
     let read = timeout(Duration::from_secs(5), raw.read(&mut response))
@@ -77,8 +72,6 @@ async fn mv_003_a_client_that_leaves_during_the_opening_ends_the_session_operato
     let (mut guacd, bench) = stalled(&pool, setup).await;
     let raw = request_reaching_guacd(&bench, &mut guacd).await;
     drop(raw);
-    // The client left first, so the session ends `OPERATOR` as for any client that leaves;
-    // the opening stops and guacd gets no credential.
     let ended = ended(&pool, bench.session).await;
     ended_once(&ended, "operator", "info", LOOPBACK);
     assert_eq!(
@@ -92,10 +85,8 @@ async fn mv_003_a_client_that_leaves_during_the_opening_ends_the_session_operato
     fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn sec_002_d_10_end_session_during_the_opening_sends_guacd_no_credential(pool: PgPool) {
-    // `endSession` waits for the tunnel to end its row (D-10), up to `END_WAIT`; the handshake
-    // wait is far longer, so a hub that ignored the signal would still be in its handshake
-    // when guacd answers below. A fixed short wait here raced the tunnel's end write on a
-    // loaded machine.
+    // `endSession` waits up to `END_WAIT` (D-10); the far longer handshake keeps a hub that
+    // ignored the signal in it when guacd answers below.
     let handshake = Duration::from_secs(60);
     assert!(END_WAIT < handshake);
     let setup = Setup {
@@ -112,8 +103,7 @@ async fn sec_002_d_10_end_session_during_the_opening_sends_guacd_no_credential(p
     let row = end_session(&pool, &bench.live, bench.session, &by)
         .await
         .unwrap();
-    // Only now does guacd offer its `args`: a hub still in the handshake would answer with
-    // the credential.
+    // Only now does guacd offer `args`: a hub still in the handshake would send the credential.
     guacd.act.send(Act::Close).ok();
     let after_args = timeout(Duration::from_secs(5), guacd.handshake)
         .await
@@ -146,7 +136,6 @@ async fn mv_003_a_session_task_that_panics_still_ends_the_session(pool: PgPool) 
     let bench = bench(&pool, "127.0.0.1:9", Setup::default()).await;
     let redeemed = bench.live.redeem(on_tunnel(&bench.token), now()).unwrap();
     let records = Records::new(&bench.route.db, &bench.route.bus, &bench.route.clock);
-    // As `upgrade::run_session` holds the session from its first line.
     let task = tokio::spawn(async move {
         let _unfinished = Unfinished::new(records, redeemed);
         panic!("the session task fails");
@@ -190,8 +179,7 @@ async fn d_9_a_session_task_that_panics_after_end_session_ends_with_the_enders_c
 async fn sec_002_known_gap_a_client_that_leaves_after_a_stray_byte_is_seen_only_at_the_wait(
     pool: PgPool,
 ) {
-    // Pins today's behaviour (issue #1): hyper does not notice an EOF while it holds an
-    // unread byte, so the opening carries on until its own wait runs out.
+    // hyper does not notice an EOF while it holds an unread byte (issue #1).
     let setup = Setup::route(|route| route.timing.handshake = Duration::from_millis(500));
     let (mut guacd, bench) = stalled(&pool, setup).await;
     let mut raw = request_reaching_guacd(&bench, &mut guacd).await;
@@ -205,7 +193,6 @@ async fn sec_002_known_gap_a_client_that_leaves_after_a_stray_byte_is_seen_only_
     );
 }
 
-/// Makes the first transaction that updates a session row fail at commit, and only that one.
 async fn fail_first_commit_on_update(pool: &PgPool) {
     for statement in [
         "create sequence public.refusals",

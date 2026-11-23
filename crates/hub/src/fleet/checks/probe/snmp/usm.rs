@@ -1,7 +1,4 @@
-//! The user-based security model's cryptography for SNMP v3 authPriv (RFC 3414, RFC 7860,
-//! RFC 3826): password to key, key localisation, HMAC-SHA-256-192 and AES-128-CFB. Pure:
-//! the salt comes in as a parameter.
-//!
+//! SNMP v3 authPriv cryptography of the user-based security model (RFC 3414, RFC 7860, RFC 3826).
 //! Every key and every buffer that held a password is zeroized when it drops.
 
 use aes::{
@@ -19,11 +16,9 @@ pub(in crate::fleet::checks) const DIGEST_LEN: usize = 24;
 /// The length of the AES salt carried in `msgPrivacyParameters` (RFC 3826 Section 3.1.2.1).
 pub(in crate::fleet::checks) const SALT_LEN: usize = 8;
 
-/// A 32-byte SHA-256 key, wiped on drop.
 pub(in crate::fleet::checks) type Key = Zeroizing<[u8; 32]>;
 
-/// The password's key `Ku`: SHA-256 over the password repeated to 1 MiB (RFC 3414 A.2.2 with
-/// SHA-256, RFC 7860 Section 4.2.2). `None` for an empty password, which has no key.
+/// The password's key `Ku` (RFC 3414 A.2.2 with SHA-256, RFC 7860 Section 4.2.2).
 #[must_use]
 pub(in crate::fleet::checks) fn password_key(password: &[u8]) -> Option<Key> {
     if password.is_empty() {
@@ -56,14 +51,12 @@ pub(in crate::fleet::checks) fn localise(key: &Key, engine_id: &[u8]) -> Key {
     local
 }
 
-/// The localised keys of one engine for one user.
 pub(in crate::fleet::checks) struct Keys {
     pub(in crate::fleet::checks) auth: Key,
     pub(in crate::fleet::checks) privacy: Key,
 }
 
 impl Keys {
-    /// Both keys of the passwords, localised to the engine. `None` when a password is empty.
     #[must_use]
     pub(in crate::fleet::checks) fn localised(
         auth: &[u8],
@@ -81,8 +74,7 @@ fn mac(key: &Key) -> Hmac<Sha256> {
     Hmac::<Sha256>::new_from_slice(key.as_slice()).expect("HMAC takes a key of any length")
 }
 
-/// The first 24 bytes of HMAC-SHA-256 over the whole message, whose authentication
-/// parameters are 24 zero bytes (RFC 7860 Section 4.2.4).
+/// HMAC-SHA-256 cut to 24 bytes, over the message with zeroed authentication parameters (RFC 7860 Section 4.2.4).
 #[must_use]
 pub(in crate::fleet::checks) fn digest(key: &Key, message: &[u8]) -> [u8; DIGEST_LEN] {
     let mut mac = mac(key);
@@ -114,15 +106,13 @@ pub(in crate::fleet::checks) fn iv(boots: u32, time: u32, salt: [u8; SALT_LEN]) 
     iv
 }
 
-/// Whether CFB feeds back the ciphertext it writes or the ciphertext it reads.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Direction {
     Encrypt,
     Decrypt,
 }
 
-/// AES-128 in CFB with 128-bit segments over `data`, in place. The key is the first 16 bytes
-/// of the localised privacy key (RFC 3826 Section 3.1.2.1).
+/// The key is the first 16 bytes of the localised privacy key (RFC 3826 Section 3.1.2.1).
 fn cfb(key: &Key, iv: [u8; 16], data: &mut [u8], direction: Direction) {
     let mut cipher_key = Zeroizing::new([0_u8; 16]);
     cipher_key.copy_from_slice(&key[..16]);
@@ -145,12 +135,10 @@ fn cfb(key: &Key, iv: [u8; 16], data: &mut [u8], direction: Direction) {
     }
 }
 
-/// Encrypts the scoped PDU in place.
 pub(in crate::fleet::checks) fn encrypt(key: &Key, iv: [u8; 16], data: &mut [u8]) {
     cfb(key, iv, data, Direction::Encrypt);
 }
 
-/// Decrypts the scoped PDU in place.
 pub(in crate::fleet::checks) fn decrypt(key: &Key, iv: [u8; 16], data: &mut [u8]) {
     cfb(key, iv, data, Direction::Decrypt);
 }

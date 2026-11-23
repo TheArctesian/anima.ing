@@ -28,11 +28,7 @@ fn facts(account: &Account, interval: TimeDelta) -> HealthFacts {
     }
 }
 
-/// Ends the run of `claim` as `stop` says. A run that lost its claim writes nothing, and so
-/// does one whose claim was taken while it ended.
-///
-/// # Errors
-/// `Database` when the end cannot be written.
+/// Ends the run of `claim` as `stop` says; a run whose claim is lost or taken writes nothing.
 pub(super) async fn finish(
     scheduling: &Scheduling,
     claim: &Claim,
@@ -75,8 +71,6 @@ pub(super) async fn finish(
     Ok(Some(outcome))
 }
 
-/// What the account is written as: the claim ends; a success clears the count, a failure adds
-/// one, and a stopped run keeps it. The next sync follows `schedule::next`.
 fn ending(
     claim: &Claim,
     (failure, counted): (Option<Failure>, bool),

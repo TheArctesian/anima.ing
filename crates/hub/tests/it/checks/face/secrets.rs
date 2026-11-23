@@ -1,5 +1,4 @@
-//! HTTP check secrets: sealed apart from `config`, bound to their check, opened only for the
-//! probe, and kept on update when left empty (SEC-003, SEC-005, LOG-007).
+//! HTTP check secrets are sealed apart from `config` and opened only for the probe (SEC-003, SEC-005, LOG-007).
 
 use anima_hub::{
     fleet::{
@@ -62,7 +61,6 @@ fn text(secret: &Secret) -> &str {
     std::str::from_utf8(secret.expose()).unwrap()
 }
 
-/// The check's secrets as its probe opens them, without the configuration they go with.
 async fn open_secrets(
     pool: &PgPool,
     vault: &Vault,

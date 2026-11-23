@@ -1,13 +1,11 @@
-//! The canonical form of a JSON value of RFC 8785 (JCS), which the hash of a link covers
-//! (LOG-022). A second implementation of RFC 8785 gives the same bytes.
+//! RFC 8785 (JCS) canonical JSON, which the hash of a link covers (LOG-022).
+//! A second implementation of RFC 8785 gives the same bytes.
 
 use std::fmt::Write;
 
 use serde_json::{Number, Value};
 
-/// `value` in the canonical form of RFC 8785: no white space, the members of each object in
-/// the order of their names as UTF-16 code units, strings with the escapes of RFC 8785 Section
-/// 3.2.2.2, and numbers as ECMAScript writes them.
+/// Members sort by UTF-16 code units; strings take the escapes of RFC 8785 Section 3.2.2.2.
 pub(super) fn canonical(value: &Value) -> String {
     let mut text = String::new();
     write_value(&mut text, value);

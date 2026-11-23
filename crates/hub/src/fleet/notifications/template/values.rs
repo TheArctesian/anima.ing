@@ -1,5 +1,4 @@
-//! The values of one notification as a template shows them: read from the outbox payload that
-//! `observe` writes, and cleaned again with `text::clean` (Q2-11, D-21).
+//! The values a notification template shows (Q2-11, D-21).
 
 use serde_json::Value;
 
@@ -11,8 +10,7 @@ const MESSAGE_CHARS: usize = 500;
 const STATUS_CHARS: usize = 20;
 const AT_CHARS: usize = 40;
 
-/// What one notification says. A value the payload lacks is `None` and renders as an empty
-/// string; `days` is set for the two expiry kinds only.
+/// `days` is set for the two expiry kinds only.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(in crate::fleet::notifications) struct Values {
     pub(in crate::fleet::notifications) device: Option<String>,
@@ -28,9 +26,7 @@ pub(in crate::fleet::notifications) struct Values {
 }
 
 impl Values {
-    /// The values of an outbox payload (keys `device`, `check`, `status`, `previous`,
-    /// `message`, `at`, `days`). Every text is cleaned and cut again, whatever wrote the row;
-    /// a key of another type is a missing value.
+    /// Every text is cleaned and cut again, whatever wrote the row.
     #[must_use]
     pub(in crate::fleet::notifications) fn from_payload(payload: &Value) -> Self {
         let text = |key: &str, max: usize| {

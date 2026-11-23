@@ -1,6 +1,5 @@
-//! The hub's client of the link's control socket: one connection for each request, checked
-//! before it opens (private path and ACL), and on Unix after it connects (peer UID), the request line out and the
-//! reply line in, all within [`CALL_LIMIT`].
+//! The hub's client of the link's control socket. Each call checks the socket before it opens
+//! (private path and ACL) and, on Unix, the peer UID after it connects.
 
 use std::{io::ErrorKind, path::PathBuf, time::Duration};
 
@@ -19,15 +18,12 @@ use super::{
     wire::{MAX_LINE, Request, parse_reply},
 };
 
-/// How long one call may take, from the check to the reply line. The link answers from memory;
-/// a link that takes longer is stuck.
+/// The link answers from memory; a link that takes longer is stuck.
 pub(super) const CALL_LIMIT: Duration = Duration::from_secs(5);
 
-/// The first size of the reply buffer: a reply that is not a long device list fits.
 const FIRST_READ: usize = 8 * 1024;
 
-/// The link's control socket at one path, which the user `uid` (the hub's own) must own and
-/// serve.
+/// The user `uid` (the hub's own) must own and serve the socket.
 #[derive(Clone, Debug)]
 pub(super) struct Control {
     path: PathBuf,
@@ -41,7 +37,6 @@ impl Control {
         Self { path, uid }
     }
 
-    /// The control socket at `path`, which the hub's own user must own and serve.
     pub fn of_hub(path: PathBuf) -> Self {
         #[cfg(unix)]
         return Self::new(path, rustix::process::geteuid().as_raw());
@@ -49,11 +44,8 @@ impl Control {
         Self { path }
     }
 
-    /// Sends `request` and reads its reply.
-    ///
     /// # Errors
-    /// [`Error`] for an exposed or absent socket, a failed or slow exchange, an unreadable
-    /// reply, or the link's refusal.
+    /// An exposed or absent socket, a failed or slow exchange, an unreadable reply, or a refusal.
     pub async fn call<T: DeserializeOwned>(&self, request: Request<'_>) -> Result<T, Error> {
         let line = tokio::time::timeout(CALL_LIMIT, self.exchange(request))
             .await
@@ -88,10 +80,6 @@ impl Control {
     }
 }
 
-/// The process at the other end of `stream` runs as the user `uid`.
-///
-/// # Errors
-/// `Exposed` for another user's process; `Connection` when the system does not say.
 #[cfg(unix)]
 pub(super) fn peer_is(stream: &UnixStream, uid: u32) -> Result<(), Error> {
     let peer = stream.peer_cred().map_err(|_| Error::Connection)?;
@@ -102,10 +90,7 @@ pub(super) fn peer_is(stream: &UnixStream, uid: u32) -> Result<(), Error> {
     }
 }
 
-/// The first line of `stream`, at most [`MAX_LINE`] bytes; EOF before any byte, or a longer
-/// line, is unreadable. The buffer grows by doubling up to the cap; each larger buffer is a
-/// fresh copy and the old one is zeroed when it drops, so no copy of an invite is left
-/// (LOG-007).
+/// Every buffer is zeroed when it drops, so growing it leaves no copy of an invite (LOG-007).
 pub(super) async fn read_line(stream: &mut UnixStream) -> Result<Zeroizing<Vec<u8>>, Error> {
     let mut line = Zeroizing::new(vec![0_u8; FIRST_READ]);
     let mut filled = 0;
@@ -135,7 +120,6 @@ pub(super) async fn read_line(stream: &mut UnixStream) -> Result<Zeroizing<Vec<u
     Ok(line)
 }
 
-/// A zeroed buffer of `size` bytes that starts with `old`.
 fn grown(old: &[u8], size: usize) -> Zeroizing<Vec<u8>> {
     let mut next = Zeroizing::new(vec![0_u8; size]);
     next[..old.len()].copy_from_slice(old);

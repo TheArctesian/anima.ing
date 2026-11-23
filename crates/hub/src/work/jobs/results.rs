@@ -1,6 +1,5 @@
-//! The result of an attempt as the hub keeps it (K10 Section 7): fixed codes and numbers, never
-//! text from the job or from the machine. A machine, or a person with its daemon token, could
-//! otherwise put text of its choice where a screen or an MCP tool shows it. Pure.
+//! The result of an attempt as the hub keeps it (K10 Section 7): fixed codes and numbers, never text from the job or the machine.
+//! A machine, or a person with its daemon token, could otherwise put text of its choice where a screen or an MCP tool shows it.
 
 use daemon_core::model_work::cause::Cause;
 use daemon_core::wire::{Cleanup, CopyOutcome, WorkKind, WorkResult};
@@ -33,7 +32,6 @@ const CAUSES: [&str; 18] = [
 /// What the hub stores for a cause that it does not know (K10 Section 7).
 pub(super) const UNKNOWN_CAUSE: &str = "failed";
 
-/// What each member of `cleanup` can say.
 const CLEANED: [&str; 3] = ["deleted", "failed", "none"];
 
 /// The states of a copy (K11 Section 11).

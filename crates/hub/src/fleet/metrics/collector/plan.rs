@@ -11,18 +11,14 @@ pub(super) fn is_collected(device: &Device) -> bool {
         && matches!(device.os, OperatingSystem::Linux | OperatingSystem::Macos)
 }
 
-/// The devices of `listed` that a round collects, in list order.
 pub(super) fn due(listed: Vec<Device>) -> Vec<Device> {
     listed.into_iter().filter(is_collected).collect()
 }
 
-/// Whether a round asks `device` for its operating system: its metrics come over SSH and its
-/// operating system is Other (DEV-025).
 fn awaits_os(device: &Device) -> bool {
     device.metrics_source == MetricsSource::Ssh && device.os == OperatingSystem::Other
 }
 
-/// The devices of `listed` whose operating system a round detects, in list order.
 pub(super) fn awaiting_os(listed: &[Device]) -> Vec<Device> {
     listed
         .iter()

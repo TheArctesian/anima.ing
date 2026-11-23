@@ -1,5 +1,5 @@
-//! The sources' GraphQL types: `Source`, `SourceAccount`, `SyncRun`, `SyncProblem` (K1).
-//! An account shows that a key is stored, never the key (KEY-002, PRJ-018).
+//! The sources' GraphQL types (K1). An account shows that a key is stored, never the key
+//! (KEY-002, PRJ-018).
 
 use std::collections::HashSet;
 

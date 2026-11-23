@@ -1,14 +1,9 @@
-//! A device row locked for another domain's transaction can be neither changed nor deleted
-//! until that transaction ends; locking a missing device is `NotFound`.
-
 use sqlx::{Connection, PgConnection, PgPool};
 
 use super::*;
 
 const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
 
-/// Whether `sql` on the device runs on another connection while the row is locked, waiting at
-/// most a moment for the lock.
 async fn runs_beside(pool: &PgPool, sql: &str) -> bool {
     let mut other = pool.acquire().await.unwrap();
     let mut tx = other.begin().await.unwrap();

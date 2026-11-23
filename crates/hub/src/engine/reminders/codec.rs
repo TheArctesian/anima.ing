@@ -1,6 +1,4 @@
-//! The stored form of a trigger and of `unless` (K-E6 Section 2): JSON in
-//! `reminders.rule.trigger` and `reminders.rule.unless`. Pure. A value that the hub cannot read
-//! gives the field to fix, never a part of the value.
+//! An unreadable value gives the field to fix, never a part of the value (K-E6 Section 2).
 
 use chrono::{DateTime, Utc, Weekday};
 use serde::{Deserialize, Serialize};
@@ -12,7 +10,6 @@ pub use reading::{trigger, unless};
 
 use super::model::{Comparison, Crossing, TimeTrigger, Trigger, Unless};
 
-/// One field of a rule to fix, with what to give.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Fault {
     pub field: &'static str,
@@ -125,7 +122,7 @@ fn day(name: &str) -> Option<Weekday> {
     .find(|day| day_name(*day) == name)
 }
 
-/// The stored form of `trigger`. A trigger that [`trigger`] gave is written back equal.
+/// A trigger that [`trigger`] gave is written back equal.
 #[must_use]
 pub fn trigger_json(trigger: &Trigger) -> Value {
     let stored = match trigger {
@@ -180,7 +177,6 @@ pub fn trigger_json(trigger: &Trigger) -> Value {
     serde_json::to_value(stored).unwrap_or(Value::Null)
 }
 
-/// The stored form of `unless`.
 #[must_use]
 pub fn unless_json(unless: &Unless) -> Value {
     let stored = match unless {

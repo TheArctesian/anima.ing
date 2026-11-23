@@ -1,7 +1,4 @@
-//! The intake of the Dawarich pull (K-E4 Section 11; K-E1 Section 3; R-261): each point of a
-//! page is one location sample of the provider `dawarich`, stored through the one storing path.
-//! The intake is of the engine, so its consumer is the entry that is always on; the operator
-//! stops the pull with the pause of the account.
+//! The consumer is the always-on entry; the account's pause stops the pull (K-E4 Section 11; K-E1 Section 3; R-261).
 
 use std::sync::Arc;
 
@@ -25,7 +22,6 @@ struct DawarichIntake {
     seal: Seal,
 }
 
-/// The intake that the wiring gives to the source framework.
 #[must_use]
 pub fn dawarich_intake(seal: Seal) -> Arc<dyn Intake> {
     Arc::new(DawarichIntake { seal })

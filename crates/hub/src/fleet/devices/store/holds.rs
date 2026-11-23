@@ -1,5 +1,4 @@
-//! SQL that holds a device row for another domain's transaction until it ends, so that
-//! transaction takes the device row before its own rows, the order `delete_device` takes them in.
+//! Another domain's transaction locks the device row before its own rows, as `delete_device` does.
 
 use sqlx::PgConnection;
 
@@ -8,7 +7,6 @@ use crate::{
     ids::DeviceId,
 };
 
-/// Locks the device row `FOR UPDATE` until the transaction ends.
 pub(in crate::fleet::devices) async fn lock_device(
     conn: &mut PgConnection,
     id: DeviceId,
@@ -21,7 +19,6 @@ pub(in crate::fleet::devices) async fn lock_device(
     row.map(|_| ()).ok_or(Error::NotFound(Missing::Device(id)))
 }
 
-/// Locks the device row `FOR UPDATE` until the transaction ends, and reads its metrics source.
 pub(in crate::fleet::devices) async fn lock_metrics_source(
     conn: &mut PgConnection,
     id: DeviceId,

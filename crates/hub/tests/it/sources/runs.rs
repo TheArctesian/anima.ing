@@ -1,6 +1,4 @@
-//! Sync runs: the run row (SRC-005), the slice that moves only with its stored page (SRC-007),
-//! a rerun that writes nothing (SRC-012), a superseded claim that writes nothing, and a consumer
-//! switched off that stops polling (EXT-002).
+//! Sync runs (SRC-005, SRC-007, SRC-012, EXT-002).
 
 use anima_hub::engine::sources::{Outcome, start_due};
 use chrono::TimeDelta;

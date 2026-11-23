@@ -1,6 +1,4 @@
-//! The release commands of the workflow, run as the real `anima-hub` against an in-process R2
-//! (R-179; BLD-002, BLD-045, BLD-046, BLD-064 to BLD-069, UPD-008, UPD-010): a job signs, and a
-//! second job publishes with no hub and no database. Every key and token is made here.
+//! The release commands against an in-process R2 (R-179; BLD-002, BLD-045, BLD-046, BLD-064 to BLD-069, UPD-008, UPD-010).
 
 use std::path::Path;
 
@@ -17,14 +15,12 @@ use super::{
 
 const MAC_FEEDS: [&str; 2] = ["darwin-aarch64/latest.json", "darwin-x86_64/latest.json"];
 
-/// The fake bucket, the throwaway secrets and the settings the workflow gives the commands.
 pub struct Workflow {
     pub fake: FakeR2,
     pub secrets: tempfile::TempDir,
     pub pair: KeyPair,
 }
 
-/// What one run of `anima-hub release` ended with: whether it passed, and all it printed.
 pub struct Ran {
     pub passed: bool,
     pub printed: String,
@@ -40,8 +36,6 @@ impl Workflow {
         }
     }
 
-    /// Runs `anima-hub release <verb> <target> <version> <folder>` with the settings of the
-    /// job that has `signer`'s key files, and the fake as the bucket.
     pub async fn run(&self, verb: &str, release: (&str, &str), folder: &Path) -> Ran {
         let secrets = self.secrets.path();
         let mut command = crate::transport::process::hub();
@@ -76,7 +70,6 @@ impl Workflow {
         }
     }
 
-    /// Signs the files of `folder` and publishes them; the publish run.
     pub async fn release(&self, release: (&str, &str), folder: &Path) -> Ran {
         let signed = self.run("sign", release, folder).await;
         assert!(signed.passed, "{}", signed.printed);
@@ -96,7 +89,6 @@ impl Workflow {
     }
 }
 
-/// A folder with `files`, as the publish job has it after it took the artifacts.
 pub fn folder_of(files: &[File]) -> tempfile::TempDir {
     let folder = tempfile::tempdir().unwrap();
     for file in files {
@@ -105,7 +97,6 @@ pub fn folder_of(files: &[File]) -> tempfile::TempDir {
     folder
 }
 
-/// The files of a macOS job of `version`: the updater file, the DMG and `SHA256SUMS`.
 fn mac_files(version: &str) -> Vec<File> {
     let app = File::new("Anima.app.tar.gz", format!("app {version} ").repeat(300));
     let dmg = File::new(

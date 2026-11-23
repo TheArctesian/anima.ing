@@ -1,6 +1,4 @@
-//! Which job a machine gets, and why (PRO-051, USE-003, USE-007; ROU-004 to ROU-007, R-259):
-//! pure functions of the queue, of what the machine said in its claim and of what the hub
-//! knows of the machines. The time is a parameter (CQ-021).
+//! Which job a machine gets, and why (PRO-051, USE-003, USE-007; ROU-004 to ROU-007, R-259).
 
 use std::collections::HashMap;
 
@@ -10,8 +8,7 @@ use daemon_core::wire::{Claim, Switch, WorkArchitecture, WorkKind, WorkOs, WorkT
 use super::model::{Job, Machine};
 use crate::ids::{DeviceId, ProjectId};
 
-/// Jobs that a machine may refuse or lose in [`FAULT_WINDOW`] before the hub gives it no work
-/// for [`OFF_FOR`] (K10 Section 11, SF-011).
+/// Faults in [`FAULT_WINDOW`] before a machine gets no work for [`OFF_FOR`] (K10 Section 11).
 pub(super) const MOST_FAULTS: usize = 5;
 pub(super) const FAULT_WINDOW: TimeDelta = TimeDelta::hours(1);
 pub(super) const OFF_FOR: TimeDelta = TimeDelta::hours(1);
@@ -21,7 +18,6 @@ pub(super) const HOLD: TimeDelta = TimeDelta::seconds(20);
 /// The most age of the last claim of a machine that a job can wait for.
 pub(super) const FRESH: TimeDelta = TimeDelta::seconds(30);
 
-/// What a machine said that it is and has, in a claim.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Offer {
     pub device: DeviceId,
@@ -82,8 +78,6 @@ pub(super) fn rank(job: &Job) -> u8 {
     }
 }
 
-/// The decision of the placement for one job and one machine: it fits, or the one requirement
-/// that failed first.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Verdict {
     Fits,
@@ -93,7 +87,6 @@ pub enum Verdict {
     Architecture,
     Memory,
     Disk,
-    /// The machine refused this job before (K10 Section 5).
     RefusedBefore,
     /// The job, or the pin of its project, names a different machine (ROU-006).
     NamesOther,
@@ -145,29 +138,21 @@ impl Verdict {
     }
 }
 
-/// What a claim is decided against, but the queue and the machine that asks.
 pub(super) struct Around<'a> {
-    /// The machine that the operator pinned for a project.
     pub pins: &'a HashMap<ProjectId, DeviceId>,
-    /// The other machines that asked for work a short time ago and can take a job.
     pub others: &'a [Offer],
     pub now: DateTime<Utc>,
 }
 
-/// Whether the hub gives `machine` no work at `now`: the operator set it off, or its hour with
-/// no work has not ended (`WORK_OFF`).
 pub(super) fn is_off(machine: &Machine, now: DateTime<Utc>) -> bool {
     machine.off_by_operator || machine.off_until.is_some_and(|until| now < until)
 }
 
-/// The end of the hour with no work for a machine with `faults` jobs refused or lost in the
-/// last hour; `None` below the limit.
 pub(super) fn off_until(faults: usize, now: DateTime<Utc>) -> Option<DateTime<Utc>> {
     (faults >= MOST_FAULTS).then(|| now + OFF_FOR)
 }
 
-/// Whether a claim can get a job at all: the switch at the machine is on, the machine is
-/// clean and it has a free slot (K10 Section 4).
+/// Whether a claim can get a job at all (K10 Section 4).
 pub(super) fn can_take(claim: &Claim) -> bool {
     claim.switch == Switch::On && !claim.unclean && claim.free.slots >= 1
 }
@@ -232,9 +217,7 @@ pub(super) fn named(job: &Job, pins: &HashMap<ProjectId, DeviceId>) -> Option<De
     job.asked.machine.or_else(|| pinned().copied())
 }
 
-/// Whether the machine of `offer` can run `job`, with no look at a different machine: the name
-/// or the exclusion, the type, the kind, the operating system, the architecture, the memory and
-/// the disk, and that it did not refuse the job before.
+/// Whether the machine of `offer` can run `job`, with no look at a different machine.
 pub(super) fn alone(job: &Job, named: Option<DeviceId>, offer: &Offer) -> Verdict {
     let asked = &job.asked;
     let checks = [
@@ -272,9 +255,7 @@ pub(super) fn alone(job: &Job, named: Option<DeviceId>, offer: &Offer) -> Verdic
         .unwrap_or(Verdict::Fits)
 }
 
-/// The decision for `job` and the machine of `offer`. The free memory is a tie-break only: for
-/// [`HOLD`] after the job came into the queue, a machine that fits does not get it when a
-/// different machine that fits said that it has more free memory (R-259, ROU-002).
+/// Free memory is a tie-break only, for [`HOLD`] after the job was queued (R-259, ROU-002).
 pub(super) fn verdict(job: &Job, offer: &Offer, around: &Around<'_>) -> Verdict {
     let named = named(job, around.pins);
     let own = alone(job, named, offer);
@@ -313,9 +294,7 @@ pub(super) fn choose<'a>(
         .or(Some(first))
 }
 
-/// Why the machine that a new job names can never run it, from what its last claim said; `None`
-/// when it can, or when only its free memory or disk is too small now, which can change
-/// (ROU-006, JOB-014). `known` is `None` for a machine that never asked this hub for work.
+/// `None` also when only free memory or disk is too small now, which can change (ROU-006, JOB-014).
 pub(super) fn never_fits(
     job: &Job,
     known: Option<(&Machine, &Offer)>,
@@ -337,12 +316,9 @@ pub(super) fn never_fits(
     fixed.contains(&found).then_some(Unfit::Requirement(found))
 }
 
-/// Why a named machine can never run a job.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Unfit {
-    /// The machine never asked this hub for work.
     NeverAsked,
-    /// The switch at the machine or in the hub is off.
     TakesNoWork,
     Requirement(Verdict),
 }

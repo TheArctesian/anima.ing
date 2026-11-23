@@ -1,5 +1,4 @@
-//! `GET /metrics` takes a READ bearer token or better and refuses everything else with an empty
-//! 401 before the exposition runs (INT-001, INT-003, D-24, NET-002, WP-43 A-9).
+//! `GET /metrics` takes a READ bearer or better; all else gets an empty 401 (INT-001, INT-003, D-24, NET-002, WP-43 A-9).
 
 use std::{
     io,
@@ -34,7 +33,6 @@ const PROMETHEUS: &str = "text/plain; version=0.0.4; charset=utf-8";
 /// On `pve-01` in the fixtures; its stored status is unknown until a test sets it.
 const PVE_01_PING: &str = "0190a000-0000-7000-8003-000000000001";
 
-/// The value of `anima_check_status` for `check` in an exposition.
 fn check_status(text: &str, check: &str) -> Option<String> {
     let label = format!("check_id=\"{check}\"");
     text.lines()
@@ -61,8 +59,7 @@ async fn d_24_int_001_metrics_without_a_token_answers_401_and_starts_no_build(po
     let (app, _web) = app(&pool, now).await;
 
     assert_refused(&scrape(&app, &[]).await, "no token");
-    // A build started by the refused scrape would serve this second for ten seconds, with
-    // the status as it was then.
+    // A build started by the refused scrape would serve the old status for ten seconds.
     set_status(&pool, PVE_01_PING, "down").await;
     let first = scrape_with(&app, &key).await;
 
@@ -87,7 +84,6 @@ async fn int_001_a_read_key_a_write_key_and_a_login_token_scrape_prometheus_text
     }
 }
 
-/// `{ me { username } }` on `/graphql` with `headers`.
 async fn me(app: &Router, headers: &[(&str, &str)]) -> Value {
     let mut request = Request::post("/graphql").header("content-type", "application/json");
     for (name, value) in headers {
@@ -116,7 +112,6 @@ async fn int_003_a_9_every_other_bearer_and_the_browser_cookie_get_an_empty_401(
         ("origin", PUBLIC.to_owned()),
     ];
     let cookie: Vec<(&str, &str)> = cookie.iter().map(|(n, v)| (*n, v.as_str())).collect();
-    // The control: the cookie signs the browser in on /graphql.
     assert_eq!(
         me(&app, &cookie).await["data"]["me"]["username"],
         "operator"
@@ -166,8 +161,7 @@ async fn net_002_the_bearer_check_covers_metrics_and_nothing_else(pool: PgPool) 
     );
     assert_refused(&scrape(&app, &[]).await, "with a web root");
 
-    // Without a web root, the hub's fallback stays the default 404. `all_routes` merges the
-    // empty web router after `/metrics`, so its default fallback is the one kept here.
+    // `all_routes` merges the empty web router after `/metrics`, so its default 404 fallback is kept.
     let app = app_at(&pool, now, None).await;
 
     let health = send(&app, PERMITTED, get("/health")).await;
@@ -193,8 +187,7 @@ async fn net_002_the_bearer_check_covers_metrics_and_nothing_else(pool: PgPool) 
     .await;
     assert_eq!(outside.status, StatusCode::FORBIDDEN, "{outside:?}");
 
-    // Merged last, `/metrics` gives the router its fallback: the bearer check must not wrap
-    // it, or every unknown path would answer 401 (axum keeps the last merged default fallback).
+    // axum keeps the last merged default fallback, so the bearer check must not wrap it.
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
     let last = Router::new().merge(exposition(pool.clone(), clock));
     let unknown = send(&last, PERMITTED, get("/nothing-here")).await;
@@ -219,7 +212,6 @@ async fn int_003_a_read_key_is_refused_where_write_is_asked(pool: PgPool) {
     }
 }
 
-/// Collects everything the process log writes.
 #[derive(Clone, Default)]
 struct Capture(Arc<Mutex<Vec<u8>>>);
 
@@ -239,8 +231,7 @@ async fn log_007_a_scrape_is_logged_by_its_route_never_its_token(pool: PgPool) {
     let capture = Capture::default();
     let writer = capture.clone();
     let subscriber = process_log::subscriber("trace", move || writer.clone()).unwrap();
-    // As in wiring::uri_log: a second dispatcher keeps another test thread from caching this
-    // test's callsites as disabled.
+    // A second dispatcher keeps another test thread from caching this test's callsites as disabled.
     let _second = tracing::Dispatch::new(tracing::subscriber::NoSubscriber::default());
     let _default = tracing::subscriber::set_default(subscriber);
     tracing::callsite::rebuild_interest_cache();

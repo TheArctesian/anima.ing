@@ -1,11 +1,7 @@
 //! `POST /daemon/v1/keys/fetch` and the `keys` member of a push (K8; K-E5 Section 2.1, R-147).
-//!
-//! The daemon token is the credential: to be on the network is not enough. The checks run in
-//! the order of a renewal: the bearer before the body, the size, the JSON, the device. A key
-//! that does not exist, has no active version, or is not granted to the token's device is one
-//! answer, `404 NO_KEY`, from one lookup, so a server cannot learn which keys exist. The value
-//! leaves only in the `200` answer, which no cache keeps; the body is built in a buffer wiped on
-//! drop and never logged (LOG-007).
+//! The daemon token is the credential; checks run in renewal order: bearer, size, JSON, device.
+//! A missing, inactive or ungranted key is one `404 NO_KEY` from one lookup, so none can be probed.
+//! The value leaves only in a `no-store` `200`, in a buffer wiped on drop, never logged (LOG-007).
 
 use std::net::IpAddr;
 
@@ -32,11 +28,9 @@ use crate::{
     ids::DeviceId,
 };
 
-/// A fetch body is one small JSON object.
 const BODY_LIMIT: usize = 4 * 1024;
 
-/// Answers a fetch from the daemon of the bearer token: `200` with the active version, or the
-/// first refusal, written to the event log without the token or the key's name.
+/// A refusal goes to the event log without the token or the key's name.
 pub(super) async fn serve_fetch(state: DaemonState, request: Request) -> Response {
     let Some(client) = client_of(&request) else {
         return unmounted();
@@ -88,9 +82,7 @@ async fn fetched(
     found.ok_or_else(|| refused(RefusalCode::NoKey))
 }
 
-/// `200` with the key, `Cache-Control: no-store`. The body is written into room made at the
-/// start, so it never moves, and handed over as `Bytes` that own it, so it is wiped when the
-/// answer is dropped. (hyper's own buffers are not wiped: a known remainder.)
+/// Room is reserved first so the body never moves, and `Bytes` owns it so it is wiped on drop.
 fn answer(key: &FetchedKey) -> Response {
     let room = 128 + key.name.len() + key.value.expose().len() * 2;
     let mut bytes = Zeroizing::new(Vec::with_capacity(room));
@@ -109,9 +101,7 @@ fn answer(key: &FetchedKey) -> Response {
         .into_response()
 }
 
-/// What the hub tells the daemon of `device` after a batch with a `keys` member that held
-/// `held`: it records the held versions, then lists the current ones. `None` when either
-/// fails: the batch stays stored, and the daemon, told no keys, changes nothing in its cache.
+/// `None` when either step fails: the batch stays stored, and a daemon told no keys keeps its cache.
 pub(super) async fn current(
     state: &DaemonState,
     device: DeviceId,

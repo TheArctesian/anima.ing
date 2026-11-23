@@ -1,11 +1,7 @@
-//! The two calls of the installation of a computer with no application (hosted-mode.md HM-T33,
-//! R-240 c): `createComputerInstall`, which a signed-in operator makes, and
-//! `claimComputerEnrolment`, which only the computer that joined with that invite can make,
-//! through its link. Together they let one line of a shell join the link, add the computer to
-//! the devices and enrol its daemon, with no application and no sign-in on the computer. The
-//! claim gives a daemon enrolment code only: never a token of an operator.
-//!
-//! Neither call writes an invite, a claim or a code to a log or an entry (LOG-007).
+//! Installing a computer with no application (HM-T33, R-240 c). Only the computer that joined
+//! with the invite can claim, through its link; the claim gives a daemon enrolment code, never
+//! an operator's token. Neither call writes an invite, a claim or a code to a log or an entry
+//! (LOG-007).
 
 use std::sync::Arc;
 
@@ -130,9 +126,8 @@ impl ComputerMutation {
         let now = schema_dependency::<Arc<dyn Clock>>(ctx)?.now();
         let claims = &schema_dependency::<ComputerClaims>(ctx)?.0;
         let hash = ClaimHash::of(&claim);
-        // The claim is spent before the sender is compared, so a wrong sender of the link
-        // cannot try it twice. It goes back only when the right computer then fails on the
-        // hub's side, so that the computer can try again.
+        // Spent before the sender is compared, so a wrong sender cannot try it twice; restored
+        // only when the right computer then fails on the hub's side.
         let open = claims.use_claim(hash, now).ok_or_else(refused)?;
         let sender = match sender_of(ctx, client).await {
             Ok(sender) => sender,

@@ -1,7 +1,4 @@
-//! After the reply line the hub keeps the turn until the broker closes the connection, at most
-//! the close wait and never past the call limit, so systemd's `MaxConnections=1` does not close
-//! the next call's connection (BD-15). A broker that does not close fails no call. Time is
-//! paused, so the waits take no real time.
+//! The turn lasts until the broker closes, so systemd's `MaxConnections=1` does not close the next call's connection (BD-15).
 
 use std::time::Duration;
 
@@ -18,8 +15,6 @@ use crate::fleet::vpn::{
 const KEY_REPLY: &str =
     r#"{"ok":true,"value":{"key":"REDACTED","expiresAt":"2030-05-05T13:00:00.000Z","keyId":7}}"#;
 
-/// A broker that replies after `delay`, then keeps the connection open for `open` (forever
-/// when `None`) before it closes.
 fn broker_closing(folder: &tempfile::TempDir, delay: Duration, open: Option<Duration>) -> Broker {
     let path = folder.path().join("broker.sock");
     #[cfg(windows)]

@@ -1,10 +1,7 @@
 //! A newer image for a container (HOST-021): the digest of the image on the device against
 //! the digest of the same tag at its registry.
 //!
-//! One fixed read-only command line gives the image that each container names and the digest
-//! that Docker keeps for each tag. The hub then asks the registry of each tag for its digest
-//! now ([`egress`]). It reads four public registries and sends no credential. It updates
-//! nothing (ETH-004): the answer only says that a newer image exists.
+//! It sends no credential to a registry and updates nothing (ETH-004).
 
 pub(super) mod egress;
 pub(super) mod registry;
@@ -25,40 +22,32 @@ use super::{
 };
 use crate::fleet::ssh::{CommandOutput, FixedCommand};
 
-/// What each container names as its image. No label is asked for.
+/// No label is asked for.
 const USERS_FORMAT: &str = concat!(
     r#"'{"kind":"container","id":{{json .ID}},"names":{{json .Names}},"#,
     r#""image":{{json .Image}}}'"#,
 );
 
-/// The digest that Docker keeps for each tag of each image.
 const DIGESTS_FORMAT: &str = concat!(
     r#"'{"kind":"image","repository":{{json .Repository}},"tag":{{json .Tag}},"#,
     r#""digest":{{json .Digest}}}'"#,
 );
 
-/// The most different tags one read asks the registries for.
 pub(super) const MOST_TAGS: usize = 40;
-/// The longest the read of one tag may take: the token and the manifest.
 const READ_LIMIT: Duration = Duration::from_secs(25);
 
-/// Whether a newer image exists for one container.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ImageUpdate {
     pub container_id: String,
     pub container: String,
-    /// The image as the container names it.
     pub image: String,
     pub state: UpdateState,
     /// `Some` when the state is `NotKnown`.
     pub reason: Option<NotKnown>,
-    /// The digest that the device has for the tag.
     pub local_digest: Option<String>,
-    /// The digest that the registry gives for the tag now.
     pub registry_digest: Option<String>,
 }
 
-/// `docker ps` and `docker image ls --digests`, from static text only.
 pub(super) fn command() -> FixedCommand {
     FixedCommand::new("docker")
         .arg("ps")
@@ -91,20 +80,15 @@ enum Line {
     },
 }
 
-/// What the device says: the image each container names, and the digest of each tag.
 pub(super) struct Found {
-    /// `(identifier, name, image)` of each container, in Docker's order.
     containers: Vec<(String, String, String)>,
-    /// The digests of each tag. Docker can keep more than one for a tag, for example when
-    /// an index was published again with the same image.
+    /// Docker can keep more than one digest for a tag, for example when an index was published
+    /// again.
     digests: HashMap<Reference, Vec<String>>,
 }
 
-/// Reads the answer of [`command`].
-///
 /// # Errors
-/// `Unreadable` when the output was cut or a line is not what the formats write; `NoDocker`
-/// or `DockerFailed` when a command did not exit 0.
+/// `Unreadable` for cut or unexpected output; `NoDocker` or `DockerFailed` for a failed command.
 pub(super) fn found(output: &CommandOutput) -> Result<Found, Error> {
     if output.cut {
         return Err(Error::Unreadable);
@@ -138,8 +122,6 @@ pub(super) fn found(output: &CommandOutput) -> Result<Found, Error> {
 }
 
 impl Found {
-    /// The different tags to ask the registries for: those a container names and the device
-    /// has a digest for, at most [`MOST_TAGS`], in the order of the containers.
     fn wanted(&self) -> Vec<Reference> {
         let mut wanted: Vec<Reference> = Vec::new();
         for (_, _, image) in &self.containers {
@@ -153,7 +135,6 @@ impl Found {
         wanted
     }
 
-    /// The answer for each container, from what the registries gave.
     fn compared(self, read: &HashMap<Reference, Result<String, FetchError>>) -> Vec<ImageUpdate> {
         let Self {
             containers,
@@ -196,8 +177,6 @@ fn not_known(reason: NotKnown, local: Option<String>) -> Verdict {
     (UpdateState::NotKnown, Some(reason), local, None)
 }
 
-/// The verdict for a tag the device has the digests `local` for: up to date when the
-/// registry gives one of them.
 fn judged(local: &[String], read: Option<&Result<String, FetchError>>) -> Verdict {
     let first = local.first().cloned();
     match read {
@@ -213,9 +192,6 @@ fn judged(local: &[String], read: Option<&Result<String, FetchError>>) -> Verdic
     }
 }
 
-/// Asks the registries for each wanted tag, all at the same time, and gives the answer for
-/// each container. A read that does not end in [`READ_LIMIT`], the look-up of its host
-/// included, is a registry that was not read; the other reads keep their answers.
 pub(super) async fn compare(found: Found, egress: &Egress) -> Vec<ImageUpdate> {
     let wanted = found.wanted();
     let answers = join_all(wanted.iter().map(|reference| async move {

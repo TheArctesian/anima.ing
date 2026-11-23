@@ -1,11 +1,8 @@
 //! The places the hub reads records from, and its accounts with them (SRC-001 to SRC-012,
 //! SRC-021, PRJ-018, K-E1).
 //!
-//! An account holds a reference to its sealed App key; the installation token it mints lives
-//! in memory only. The scheduler runs each due account whose consumer extension is on (EXT-002)
-//! and hands each page to the consumer's [`Intake`]; the cursor moves only in the transaction
-//! that stored the page (SRC-007). There is one hub: the database row's generation fences a
-//! run, and a second server with failover is deferred (GitHub issue 5).
+//! The installation token lives in memory only. The cursor moves only in the transaction that
+//! stored the page (SRC-007). The database row's generation fences a run.
 
 pub mod acquisition;
 mod connect;

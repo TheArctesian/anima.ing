@@ -1,6 +1,5 @@
-//! What the caller gives to merge, checked into parts before the hub reads or sends anything
-//! (K1 `MergePullRequestInput`, `PullRequestTargetInput`). A refusal names the field, never its
-//! value (LOG-007). Pure.
+//! What the caller gives to merge, checked into parts before the hub reads or sends anything.
+//! A refusal names the field, never its value (LOG-007).
 
 use async_graphql::{ID, InputObject, Result};
 use source_exchange::{CommitSha, Number};

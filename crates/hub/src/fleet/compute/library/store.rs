@@ -1,6 +1,4 @@
-//! All SQL on schema `compute` for the library: I/O only. Time comes in as a parameter.
-//! Writes take the caller's connection so the caller adds its audit entry in the same
-//! transaction.
+//! Writes take the caller's connection so the caller adds its audit entry in one transaction.
 
 mod writes;
 
@@ -19,7 +17,6 @@ use super::{
     publisher::PublisherApproval,
 };
 
-/// The approved organisations in name order.
 pub(super) async fn sources(db: impl PgExecutor<'_>) -> Result<Vec<String>, Error> {
     Ok(sqlx::query_scalar(
         "SELECT organisation FROM compute.approved_sources ORDER BY lower(organisation)",
@@ -28,7 +25,7 @@ pub(super) async fn sources(db: impl PgExecutor<'_>) -> Result<Vec<String>, Erro
     .await?)
 }
 
-/// Adds an organisation; returns false when it was there already (in any case).
+/// Returns false when the organisation was there already, in any letter case.
 pub(super) async fn add_source(
     conn: &mut PgConnection,
     organisation: &str,
@@ -67,7 +64,6 @@ pub(super) async fn set_publisher_approval(
     Ok(())
 }
 
-/// The id and the name of the model with this name or alias.
 pub(super) async fn resolve(
     db: impl PgExecutor<'_>,
     name: &str,
@@ -173,8 +169,7 @@ fn model(row: ModelRow, variants: Vec<Variant>, aliases: Vec<String>) -> Result<
     })
 }
 
-/// The models with their variants, files and aliases, in name order: every model when `only`
-/// is `None`. Four queries, whatever the count of models.
+/// Four queries, whatever the count of models.
 pub(super) async fn load(conn: &mut PgConnection, only: Option<Uuid>) -> Result<Vec<Model>, Error> {
     let filter = "WHERE $1::uuid IS NULL OR model_id = $1";
     let models: Vec<ModelRow> = sqlx::query_as(

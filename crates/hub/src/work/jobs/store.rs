@@ -1,5 +1,4 @@
-//! All SQL on schema `jobs`: I/O only (CQ-032). Ids and time come in as parameters. Writes take
-//! the caller's connection, so a change commits with its audit entry or event.
+//! I/O only (CQ-032): writes take the caller's connection, so a change commits with its audit entry or event.
 
 mod logs;
 mod machines;
@@ -25,7 +24,6 @@ use super::{
 };
 use crate::ids::{DeviceId, JobId, ProjectId};
 
-/// How many queued jobs one claim looks at, oldest first.
 const CLAIM_LOOKS_AT: i64 = 50;
 
 const SELECT_JOB: &str = "SELECT id, work_type, kind, os, architecture, project_id, forge, owner, \
@@ -72,7 +70,6 @@ struct JobRow {
     progress: Option<serde_json::Value>,
 }
 
-/// A word of the contract as the database holds it: the JSON string of its type.
 pub(super) fn word<T: serde::Serialize>(value: &T) -> Result<String, Error> {
     match serde_json::to_value(value) {
         Ok(serde_json::Value::String(text)) => Ok(text),
@@ -199,15 +196,13 @@ pub(super) async fn jobs_of(conn: &mut PgConnection, ids: &[JobId]) -> Result<Ve
     rows.into_iter().map(Job::try_from).collect()
 }
 
-/// The job; its row stays locked until the connection's transaction ends.
 pub(super) async fn job_locked(conn: &mut PgConnection, id: JobId) -> Result<Option<Job>, Error> {
     let sql = format!("{SELECT_JOB}WHERE id = $1 FOR UPDATE");
     let row: Option<JobRow> = sqlx::query_as(&sql).bind(id).fetch_optional(conn).await?;
     row.map(Job::try_from).transpose()
 }
 
-/// The oldest queued jobs, locked; a job that a different transaction has locked is skipped,
-/// so two claims never take one job (BLD-004).
+/// A job that a different transaction has locked is skipped, so two claims never take one job (BLD-004).
 pub(super) async fn oldest_queued(conn: &mut PgConnection) -> Result<Vec<Job>, Error> {
     let condition = format!(
         "WHERE state = 'queued' AND $1::timestamptz IS NULL AND $2::uuid IS NULL \
@@ -216,13 +211,11 @@ pub(super) async fn oldest_queued(conn: &mut PgConnection) -> Result<Vec<Job>, E
     jobs_where(conn, &condition, None, None).await
 }
 
-/// The jobs that `device` holds, locked.
 pub(super) async fn held_by(conn: &mut PgConnection, device: DeviceId) -> Result<Vec<Job>, Error> {
     let condition = "WHERE device_id = $2 AND $1::timestamptz IS NULL ORDER BY id FOR UPDATE";
     jobs_where(conn, condition, None, Some(device)).await
 }
 
-/// The jobs whose lease ended by `now`, locked; one that a report holds is skipped.
 pub(super) async fn ended_leases(
     conn: &mut PgConnection,
     now: DateTime<Utc>,
@@ -232,8 +225,7 @@ pub(super) async fn ended_leases(
     jobs_where(conn, condition, Some(now), None).await
 }
 
-/// The held jobs whose attempt started at least its time limit and 5 minutes before `now`,
-/// locked (SF-011).
+/// The 5 minutes past the time limit come from SF-011.
 pub(super) async fn over_time(
     conn: &mut PgConnection,
     now: DateTime<Utc>,
@@ -244,7 +236,6 @@ pub(super) async fn over_time(
     jobs_where(conn, condition, Some(now), None).await
 }
 
-/// Writes a new job.
 pub(super) async fn insert(conn: &mut PgConnection, job: &Job) -> Result<(), Error> {
     let asked = &job.asked;
     let (repository, actor) = match &asked.target {
@@ -284,7 +275,6 @@ pub(super) async fn insert(conn: &mut PgConnection, job: &Job) -> Result<(), Err
     Ok(())
 }
 
-/// Writes each part of the job that a rule can change.
 pub(super) async fn save(conn: &mut PgConnection, job: &Job) -> Result<(), Error> {
     let result = job
         .result

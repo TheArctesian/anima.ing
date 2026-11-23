@@ -1,8 +1,6 @@
 //! Location samples and the context of a transfer event (K-E4 Sections 11 and 12; R-145).
-//! A sample is one observation of the position of the operator's phone, from Dawarich,
-//! OwnTracks or an Anima phone app; its position is sealed with the sealing key `locations`
-//! (Class B, VLT-003, R-146). Every way in stores through [`store_samples`]. The newest sample
-//! is not "the position": no code replaces an older sample.
+//! A position is sealed with the sealing key `locations` (Class B, VLT-003, R-146). Every way in
+//! stores through [`store_samples`], and no code replaces an older sample.
 
 mod context;
 mod dawarich;
@@ -38,16 +36,11 @@ use crate::{
     ids::{DeviceId, EventId, SampleId, SiteId},
 };
 
-/// The name of the sealing key of the positions.
 const KEY_NAME: &str = "locations";
-/// The longest span one read of samples covers.
 pub const MAX_SPAN: TimeDelta = TimeDelta::days(31);
-/// The most samples one read gives.
 pub const MAX_READ: i64 = 1000;
-/// The most samples a phone app gives in one call.
 pub const MAX_BATCH: usize = 500;
-/// The most samples near one event that a match reads: far more than a phone gives in the 20
-/// minutes around an event.
+/// Far more than a phone gives in the 20 minutes around an event.
 const NEAR_LIMIT: i64 = 5000;
 
 /// Why a locations operation failed. No message holds a position, a token or a key (LOG-007).
@@ -61,18 +54,15 @@ pub enum Error {
     Key(#[from] SealingKeyError),
     #[error("the places cannot be read")]
     Places(#[from] places::Error),
-    /// A stored position that does not open with its key and its ID.
     #[error("a stored position does not open")]
     Damaged,
-    /// Input to fix: each field and what to give.
     #[error("{} is not valid", .0.iter().map(|bad| bad.field.as_str()).collect::<Vec<_>>().join(", "))]
     Invalid(Vec<Bad>),
     #[error("no such ingest token")]
     NotFound,
 }
 
-/// The sealing keys of the hub, from which the positions take the key `locations`. Without a
-/// folder of keys every write and every read of a position is `Key(Unavailable)`.
+/// Without a folder of keys every write and every read of a position is `Key(Unavailable)`.
 #[derive(Clone)]
 pub struct Seal {
     keys: SealingKeys,
@@ -93,10 +83,8 @@ fn sealing_context(id: SampleId) -> String {
     format!("locations.sample:{id}")
 }
 
-/// Stores `samples` of `origin` in the caller's transaction and says how many were new. A
-/// sample that the hub has (the same provider, account and key) stays as it is, so the same
-/// batch again changes nothing. `observed_at` is kept as the provider gave it; `at` is the
-/// time of the hub.
+/// A sample that the hub has (the same provider, account and key) stays as it is, so the same
+/// batch again changes nothing.
 ///
 /// # Errors
 /// `Invalid` with each field to fix, and then nothing is stored; `Key`; `Database`.
@@ -162,8 +150,7 @@ async fn between(
     rows.into_iter().map(|row| opened(&key, row)).collect()
 }
 
-/// The samples observed from `from` to `to`, oldest first, at most `first` (1 to
-/// [`MAX_READ`]). A sample with no time is in no span.
+/// A sample with no time is in no span.
 ///
 /// # Errors
 /// `Invalid` when `to` is not after `from`, the span is longer than 31 days or `first` is out
@@ -190,8 +177,7 @@ pub async fn samples(
 }
 
 /// The samples that the hub got after `after` and not after `until`, in the order of their
-/// arrival, at most `limit`: for a reader that follows the new samples with a cursor (K-E6
-/// Section 4).
+/// arrival, at most `limit` (K-E6 Section 4).
 ///
 /// # Errors
 /// `Key`, `Damaged`, `Database`.
@@ -209,15 +195,12 @@ pub async fn received(
     rows.into_iter().map(|row| opened(&key, row)).collect()
 }
 
-/// The start of the hour of `at`.
 fn hour_of(at: DateTime<Utc>) -> DateTime<Utc> {
     at.duration_trunc(TimeDelta::hours(1)).unwrap_or(at)
 }
 
-/// Writes one audit entry for each ingest token and each hour that ended before `now`, with
-/// the count of the fixes that the hub stored for the token in that hour, in the caller's
-/// transaction (R-262). An hour is written one time: its count leaves the table with the entry.
-/// Gives how many entries it wrote.
+/// One audit entry for each ingest token and each hour that ended before `now` (R-262). An hour
+/// is written one time: its count leaves the table with the entry.
 ///
 /// # Errors
 /// `Database`, `Trail`.
@@ -238,8 +221,6 @@ pub async fn audit_closed_hours(conn: &mut PgConnection, now: DateTime<Utc>) -> 
     Ok(written)
 }
 
-/// [`audit_closed_hours`] in a transaction of its own, for the upkeep of the hub.
-///
 /// # Errors
 /// `Database`, `Trail`.
 pub async fn audit_ended_hours(db: &PgPool, now: DateTime<Utc>) -> Result<u64, Error> {
@@ -249,8 +230,6 @@ pub async fn audit_ended_hours(db: &PgPool, now: DateTime<Utc>) -> Result<u64, E
     Ok(written)
 }
 
-/// Counts `stored` for the hour of `now` of the ingest token `token`, whose post came from
-/// `client`. A batch that stored nothing counts nothing.
 pub(crate) async fn count_stored(
     conn: &mut PgConnection,
     token: crate::ids::IngestTokenId,
@@ -264,8 +243,6 @@ pub(crate) async fn count_stored(
     Ok(())
 }
 
-/// One transfer at the SSH and SFTP boundary, as `sessions` saw it: the event that the event
-/// log holds, the device with its site, and who started it.
 #[derive(Clone, Debug)]
 pub struct Transfer {
     pub event: EventId,
@@ -275,10 +252,8 @@ pub struct Transfer {
     pub actor: Actor,
 }
 
-/// Stores the context of `transfer` in the caller's transaction, which also holds its event.
-/// The side of the device gets the site of the device and the place of that site as they are
-/// now; the other side is the computer of the client, which is no device of the hub, so it
-/// stays unknown. The place of the hub is never written.
+/// The device side gets its site and the place of that site as they are now; the other side,
+/// the computer of the client, stays unknown. The place of the hub is never written.
 ///
 /// # Errors
 /// `Places`, `Database`.
@@ -304,9 +279,8 @@ pub async fn record_transfer(conn: &mut PgConnection, transfer: Transfer) -> Res
     Ok(store::insert_context(conn, &stored).await?)
 }
 
-/// The stored roles of the transfer event `event` and the evidence for the position of the
-/// operator, computed now from the samples near the time of the event (R-145). `None` when
-/// the event is not a transfer.
+/// The evidence for the position of the operator is computed now from the samples near the
+/// time of the event (R-145).
 ///
 /// # Errors
 /// `Key`, `Damaged`, `Places`, `Database`.

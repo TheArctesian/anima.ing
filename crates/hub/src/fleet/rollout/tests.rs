@@ -1,5 +1,3 @@
-//! Tests of the pure rules of a rollout.
-
 mod instruction;
 mod membership;
 mod progress;
@@ -28,7 +26,6 @@ fn device(number: u8) -> DeviceId {
         .unwrap()
 }
 
-/// A connected Linux machine with `OLD`, with the update function, that never tried an update.
 fn machine(number: u8) -> Machine {
     Machine {
         device: device(number),
@@ -61,7 +58,6 @@ fn tried(machine: Machine, text: &str, outcome: Outcome, tries: u8) -> Machine {
     })
 }
 
-/// The machine after a good update to `text`: it has the version and wrote `installed`.
 fn updated(mut machine: Machine, text: &str) -> Machine {
     machine.installed = Some(version(text));
     tried(machine, text, Outcome::Installed, 1)
@@ -71,7 +67,6 @@ fn rolled_back(machine: Machine, text: &str, tries: u8) -> Machine {
     tried(machine, text, Outcome::RolledBack(Cause::NoCheck), tries)
 }
 
-/// A Linux release that can replace each version from `from`.
 fn release(text: &str, from: &str) -> Release {
     Release {
         version: version(text),

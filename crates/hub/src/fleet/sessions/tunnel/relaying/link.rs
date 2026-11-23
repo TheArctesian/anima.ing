@@ -1,10 +1,6 @@
-//! The open tunnel (K4 Sections 4 and 5): relays instructions both ways under the pure rules
-//! in `relay`, `client` and `gateway` until the first cause, then closes both sockets.
-//!
-//! One `select!` over the end signal, the client socket, the guacd socket and two timers; each
-//! branch is cancel safe (`recv`, `read`, `ended`, `sleep_until`), writes happen in the branch
-//! body under `writes`' limits, and no lock is held. Memory is bounded: one read buffer, the
-//! decoders' one partial instruction each, and one 64 KiB client message at a time.
+//! The open tunnel (K4 Sections 4 and 5). Each `select!` branch is cancel safe, writes happen in
+//! the branch body under `writes`' limits, and no lock is held. Memory is bounded: one read
+//! buffer, one partial instruction per decoder, and one 64 KiB client message at a time.
 
 use std::io;
 
@@ -31,8 +27,6 @@ use super::{
 };
 use crate::fleet::sessions::{EndCause, Tunnel, end::unreadable, quiet::Quiet, upgrade::close};
 
-/// Relays between the client and guacd under the opened session's policy until the first
-/// cause, then closes both.
 pub(super) async fn relay(
     client: WebSocket,
     opened: Opened,
@@ -65,7 +59,6 @@ pub(super) async fn relay(
     end
 }
 
-/// One step of the loop: whichever came first.
 enum Turn {
     Signalled(EndCause),
     Client(Option<Result<Message, axum::Error>>),
@@ -74,7 +67,6 @@ enum Turn {
     ClientIdle,
 }
 
-/// The two sockets of one open tunnel, its end signal and the relay state between them.
 struct Link<'a> {
     client: WebSocket,
     gateway: TcpStream,
@@ -83,11 +75,8 @@ struct Link<'a> {
     from_gateway: Decoder,
     relay: Relay,
     timing: Timing,
-    /// The one buffer guacd is read into.
     buffer: Vec<u8>,
-    /// When guacd's silence earns the client a `nop`.
     gateway_quiet: Quiet,
-    /// When the client's silence ends the session.
     client_quiet: Quiet,
     /// The client's own `disconnect` already went to guacd.
     told_gateway: bool,
@@ -96,9 +85,8 @@ struct Link<'a> {
 }
 
 impl Link<'_> {
-    /// Relays until the first cause to end. The client gets the open instruction first, with
-    /// a new UUID that is not guacd's connection ID (K4 Section 4, GW-014), then whatever
-    /// guacd sent with `ready` (WP-08 H-5).
+    /// The client's open instruction carries a new UUID, never guacd's connection ID (K4
+    /// Section 4, GW-014).
     async fn run(&mut self, after_ready: Vec<Instruction>) -> End {
         let opened = tunnel_opened(&Uuid::now_v7().to_string());
         if let Err(end) = self.tell_client(&opened).await {
@@ -115,7 +103,6 @@ impl Link<'_> {
         }
     }
 
-    /// Waits for whichever comes first. Every branch is cancel safe.
     async fn next_turn(&mut self) -> Turn {
         tokio::select! {
             signal = self.tunnel.ended() => Turn::Signalled(signal),
@@ -126,11 +113,8 @@ impl Link<'_> {
         }
     }
 
-    /// Acts on one turn; `Some` when the session ends. Any client message restarts the idle
-    /// wait, a WebSocket ping or pong included (the browser's keep-alive counts as activity);
-    /// any guacd read restarts the silence wait, and so does the `nop` it causes. Each
-    /// wait restarts once the turn is handled, so the time the hub spends writing to the
-    /// other side, held back by it, never counts as this side's silence.
+    /// Each wait restarts once the turn is handled, so time spent writing to the other side
+    /// never counts as this side's silence.
     async fn on_turn(&mut self, turn: Turn) -> Option<End> {
         match turn {
             Turn::Signalled(signal) => Some(End::from(signal)),
@@ -153,8 +137,7 @@ impl Link<'_> {
         }
     }
 
-    /// One WebSocket message from the client. Text carries instructions; anything else that
-    /// is not a ping, pong or close breaks the protocol (GW-011).
+    /// GW-011.
     async fn on_client(&mut self, message: Option<Result<Message, axum::Error>>) -> Option<End> {
         let text = match message {
             Some(Ok(Message::Text(text))) => text,
@@ -185,8 +168,6 @@ impl Link<'_> {
         None
     }
 
-    /// One read from guacd: EOF is the remote end closing, a read error or bytes that do not
-    /// decode are a gateway error.
     async fn on_gateway(&mut self, read: io::Result<usize>) -> Option<End> {
         let count = match read {
             Ok(0) => return Some(Cause::RemoteClosed.into()),
@@ -199,7 +180,6 @@ impl Link<'_> {
         }
     }
 
-    /// guacd's instructions to the client, each as one text message, under the gateway rule.
     async fn relay_gateway(&mut self, instructions: Vec<Instruction>) -> Option<End> {
         for instruction in instructions {
             match self.relay.on_gateway(instruction) {
@@ -224,23 +204,18 @@ impl Link<'_> {
         None
     }
 
-    /// Sends one instruction to the client (`writes::send_text`).
     async fn tell_client(&mut self, instruction: &Instruction) -> Result<(), End> {
         let wait = self.timing.client_idle;
         send_text(&mut self.client, instruction, self.tunnel, wait).await
     }
 
-    /// Writes one instruction to guacd (`writes::write_gateway`). The encoded copy may
-    /// hold what the operator typed, so it is zeroed once written; the decoded instruction
-    /// is dropped by the caller without zeroing.
+    /// The encoded copy may hold what the operator typed, so it is zeroed once written.
     async fn forward(&mut self, instruction: &Instruction) -> Result<(), End> {
         let wire = Zeroizing::new(encode(instruction));
         let wait = self.timing.client_idle;
         write_gateway(&mut self.gateway, wire.as_bytes(), self.tunnel, wait).await
     }
 
-    /// Closes both sockets side by side: guacd is told to disconnect unless the client
-    /// already did, and the client gets the end table's close code.
     async fn close(self, cause: Cause) {
         let Self {
             client,

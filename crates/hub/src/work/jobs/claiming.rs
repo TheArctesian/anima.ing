@@ -1,6 +1,3 @@
-//! The claim of a machine (K10 Section 4): what the machine said is recorded, the attempts
-//! whose answer was lost end, and the placement chooses the job.
-
 use chrono::{DateTime, Utc};
 use daemon_core::model_work::names::Word as _;
 use daemon_core::wire::{Claim, Lease, Limits, Switch, WorkJob, WorkKind, WorkType};
@@ -124,9 +121,6 @@ async fn claim_in(
     place(conn, (&offer, name, &room), (client, now)).await
 }
 
-/// Decides each queued item that `room` admits for the machine of `offer`, records each
-/// decision, and gives the machine the item that the placement chooses, in the order of K11
-/// Section 3, with the audit entry of the decision (ROU-005).
 async fn place(
     conn: &mut PgConnection,
     (offer, name, room): (&Offer, &str, &Room),

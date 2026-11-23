@@ -2,12 +2,10 @@
 
 use std::{fmt, str::FromStr};
 
-/// A unicast hardware address. `Display` renders lower-case `aa:bb:cc:dd:ee:ff` for the wake
-/// command; `Debug` hides it, so a `?mac` in a log line shows no address (LOG-007).
+/// `Debug` hides the address, so a `?mac` in a log line shows none (LOG-007).
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct MacAddress([u8; 6]);
 
-/// Why text is not a Wake-on-LAN target.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum MacAddressError {
     #[error("a hardware address is six pairs of hex digits, such as aa:bb:cc:dd:ee:ff")]
@@ -28,7 +26,6 @@ impl MacAddress {
 impl FromStr for MacAddress {
     type Err = MacAddressError;
 
-    /// Six hex pairs split by `:` or `-` (not both), in any case.
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         let separator = if text.contains(':') { ':' } else { '-' };
         let mut octets = [0_u8; 6];

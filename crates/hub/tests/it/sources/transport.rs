@@ -1,5 +1,4 @@
-//! The transport sends only to the source's own address (SRC-008, PRJ-018): a request path that
-//! names another place is refused before it leaves, and a redirect is never followed.
+//! The transport sends only to the source's own address and follows no redirect (SRC-008, PRJ-018).
 
 use anima_hub::engine::sources::Outcome;
 use source_exchange::{Method, Request};

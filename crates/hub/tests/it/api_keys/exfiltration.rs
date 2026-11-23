@@ -1,8 +1,4 @@
-//! The review's exfiltration chain with a WRITE key: move a device to a host the key holder
-//! runs, accept that host's key, and test the connection so that the hub signs in there with
-//! the stored password. An API key may neither move the device nor pin a host key, so the
-//! chain stops at its first step and the stored host, its pin and its password stay put
-//! (D-23, R-100, SEC-006).
+//! An API key may neither move a device nor pin a host key, so its stored password stays put (D-23, R-100, SEC-006).
 
 use std::sync::{
     Arc,
@@ -27,12 +23,10 @@ use crate::hub::{Hub, dependencies, error, host_of, set_operator, start, test_va
 
 const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
 
-/// A real OpenSSH public key (throwaway; the private half was deleted) and the fingerprint
-/// `ssh-keygen -l` printed for it: the pin of the device the operator trusts.
+/// A throwaway OpenSSH public key (private half deleted) and its `ssh-keygen -l` fingerprint.
 const PINNED: &str = "AAAAC3NzaC1lZDI1NTE5AAAAIPTJnBUBJyxtaF5R3VPI+WZbUsZP0DeocOVAgFsBtx/m";
 const PINNED_FINGERPRINT: &str = "SHA256:4eECQSeWmB0ww/ND7ZkydOxBUAgciI4AwfhKt8R8Nbk";
 
-/// The fingerprint the key holder's own host shows.
 const THEIRS: &str = "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
 const MOVE: &str = "mutation($id: ID!, $input: UpdateDeviceInput!) { \
@@ -44,7 +38,6 @@ const ACCEPT: &str = "mutation($id: ID!, $fingerprint: String!) { \
 const TEST: &str = "mutation($input: ConnectionTestInput!) { \
     testConnection(input: $input) { reachable authenticated } }";
 
-/// A loopback listener that counts the connections it accepts and drops each one.
 struct Listener {
     port: u16,
     accepted: Arc<AtomicUsize>,
@@ -70,8 +63,6 @@ impl Listener {
     }
 }
 
-/// PVE-01 as the operator set it up: at `port` on the loopback interface, signing in with a
-/// stored password, its host key pinned.
 async fn trusted_device(pool: &PgPool, port: u16) {
     sqlx::query("update devices.devices set host = '127.0.0.1' where id = $1::text::uuid")
         .bind(PVE_01)
@@ -108,7 +99,6 @@ async fn trusted_device(pool: &PgPool, port: u16) {
         .unwrap();
 }
 
-/// What the chain would change: the device, its SSH settings and its pin.
 async fn identity_of_device(pool: &PgPool) -> Vec<String> {
     let mut stored = Vec::new();
     for table in ["devices.devices", "devices.ssh_settings", "trust.host_keys"] {

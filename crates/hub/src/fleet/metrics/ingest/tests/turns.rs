@@ -1,8 +1,5 @@
 //! MET-017, K8 Section 6: a daemon request that gets no turn is `UNAVAILABLE` before it waits
-//! for the database. One push or renewal per device, so one token cannot queue pushes on its
-//! device row; two requests per address until their credential is known, so one node's junk
-//! cannot keep honest daemons out; at most `DAEMON_REQUESTS` using the database at once, waited
-//! for in order, and never held while a body arrives.
+//! for the database.
 
 use std::{sync::Arc, time::Duration};
 
@@ -42,12 +39,10 @@ fn device(n: u8) -> DeviceId {
         .unwrap()
 }
 
-/// The VPN address `100.64.0.<n>`.
 fn address(n: u8) -> ClientAddr {
     ClientAddr(format!("100.64.0.{n}").parse().unwrap())
 }
 
-/// A batch of `device` with one CPU point at `now`.
 fn batch(device: DeviceId, now: DateTime<Utc>) -> String {
     let at = now.duration_trunc(TimeDelta::seconds(10)).unwrap();
     json!({
@@ -58,7 +53,6 @@ fn batch(device: DeviceId, now: DateTime<Utc>) -> String {
     .to_string()
 }
 
-/// Posts `body` to `path` from `from`, with `bearer` when there is one; the status and body.
 async fn post(
     router: Router,
     (path, from): (&str, ClientAddr),
@@ -77,7 +71,6 @@ async fn post(
     (status, String::from_utf8(bytes.to_vec()).unwrap())
 }
 
-/// Pushes `body` with `token` from `from`.
 async fn send(
     router: Router,
     from: ClientAddr,
@@ -98,15 +91,13 @@ fn spawn_push(
     tokio::spawn(async move { send(router, from, &token, body).await })
 }
 
-/// Deadlines far past every bound these tests check, so an answer within [`at_once`] waited for
-/// no turn, row or body, however slow the machine.
+/// Far past every bound these tests check, so an answer within [`at_once`] waited for nothing.
 const PATIENT: Deadlines = Deadlines {
     answer: Duration::from_mins(1),
     body: Duration::from_secs(30),
     request: Duration::from_secs(30),
 };
 
-/// A wait or deadline short enough to pass in a test, and far inside [`at_once`].
 const SHORT: Duration = Duration::from_millis(200);
 
 fn router_within(pool: &PgPool, now: DateTime<Utc>, deadlines: Deadlines) -> Router {
@@ -118,7 +109,6 @@ fn router(pool: &PgPool, now: DateTime<Utc>) -> Router {
     router_within(pool, now, PATIENT)
 }
 
-/// Holds the row `sql` selects for `id` in a transaction of its own until it is dropped.
 async fn hold_row(
     pool: &PgPool,
     sql: &str,
@@ -133,8 +123,7 @@ async fn hold_row(
     holder
 }
 
-/// A ten-connection pool of the test's database, as the hub's, for the routes; the test's own
-/// pool keeps the rows held and watches the locks.
+/// A pool as the hub's for the routes; the test's own pool holds the rows and watches the locks.
 async fn hub_pool(pool: &PgPool) -> PgPool {
     PgPoolOptions::new()
         .max_connections(10)
@@ -146,8 +135,7 @@ async fn hub_pool(pool: &PgPool) -> PgPool {
 
 const DAEMON_ROW: &str = "SELECT 1 FROM metrics.daemons WHERE device_id = $1 FOR UPDATE";
 
-/// pve-01 enrolled with a renewed token not yet used; that token. Its first uses wait to promote
-/// it while the daemon row is held, before their device is known.
+/// The renewed token's first uses wait to promote it, before their device is known.
 async fn renewed_pve(pool: &PgPool, now: DateTime<Utc>) -> DaemonToken {
     let current = enrolled_pve(pool, now, 1).await;
     let next = DaemonToken::from_random([9; 32]);
@@ -163,7 +151,6 @@ fn unavailable() -> (StatusCode, String) {
     )
 }
 
-/// What the request answered within `limit`; a request still waiting fails the test here.
 async fn within(
     limit: Duration,
     answer: impl Future<Output = (StatusCode, String)>,
@@ -173,8 +160,6 @@ async fn within(
         .expect("answered in time")
 }
 
-/// Answered at once: well inside the [`PATIENT`] deadlines, so without waiting for a turn, a row
-/// or a body.
 async fn at_once(answer: impl Future<Output = (StatusCode, String)>) -> (StatusCode, String) {
     within(Duration::from_secs(5), answer).await
 }
@@ -267,10 +252,8 @@ async fn met_017_a_second_push_of_a_device_is_unavailable_at_once_and_others_are
     );
 }
 
-/// The reviewer's pool probe at its worst: ten pushes from ten nodes with a renewed token wait
-/// to promote it while a write holds the daemon row. Only `DAEMON_REQUESTS` take a connection;
-/// the rest wait for a turn without one, then are `UNAVAILABLE` after their [`SHORT`] wait, and
-/// a ten-connection pool keeps room throughout.
+/// Ten pushes wait to promote a renewed token while the daemon row is held; only
+/// `DAEMON_REQUESTS` take a connection, the rest wait for a turn without one.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))

@@ -1,6 +1,4 @@
-//! A hub served over TLS from one `tls.pem` as a runtime login: it seeds
-//! `ANIMA_PERMITTED_NETWORKS`, refuses other addresses, and `anima-hub health` finds it
-//! (SEC-001, NET-001, NET-002, WP-04 H-2 and the healthcheck).
+//! A hub served over TLS as a runtime login (SEC-001, NET-001, NET-002, WP-04 H-2).
 
 use std::{
     io::{BufRead as _, BufReader, Read as _, Write as _},
@@ -41,7 +39,6 @@ async fn runtime_login(pool: &PgPool) -> String {
     role
 }
 
-/// `DATABASE_URL` with its user replaced by `role` and its database by `database`.
 fn url_as(role: &str, database: &str) -> String {
     let url = std::env::var("DATABASE_URL").expect("tests run with DATABASE_URL (R-009)");
     let (scheme, rest) = url.split_once("://").unwrap();
@@ -54,7 +51,6 @@ fn url_as(role: &str, database: &str) -> String {
     format!("{scheme}://{role}:{role}@{server}/{database}{query}")
 }
 
-/// The files a served hub reads, in one temporary folder.
 struct Secrets {
     dir: tempfile::TempDir,
     der: Vec<u8>,
@@ -83,7 +79,6 @@ fn tls_env(secrets: &Secrets) -> [(&'static str, String); 2] {
     ]
 }
 
-/// Whether `anima-hub health` finds the hub on `addr` healthy, and its standard error.
 fn health(secrets: &Secrets, addr: SocketAddr) -> (bool, String) {
     let listen = addr.to_string();
     let tls = tls_env(secrets);
@@ -96,8 +91,6 @@ fn path_text(dir: &Path, name: &str) -> String {
     dir.join(name).to_str().unwrap().to_owned()
 }
 
-/// Starts a hub over TLS permitting `networks`; returns it and the address it listens on,
-/// read from its `hub started` log line.
 fn serve(secrets: &Secrets, networks: &str) -> (Running, SocketAddr) {
     let dir = secrets.dir.path();
     let files = [
@@ -135,7 +128,6 @@ fn serve(secrets: &Secrets, networks: &str) -> (Running, SocketAddr) {
     }
 }
 
-/// The status line and body of `POST /graphql { __typename }` over TLS, trusting `der`.
 async fn post_over_tls(addr: SocketAddr, der: &[u8]) -> String {
     let mut roots = RootCertStore::empty();
     roots.add(CertificateDer::from(der.to_vec())).unwrap();
@@ -178,9 +170,7 @@ async fn net_002_sec_001_the_served_hub_refuses_outside_networks_over_tls(pool: 
     let role = runtime_login(&pool).await;
     let secrets = secrets(&url_as(&role, &database));
 
-    // The peer is the hub's own listen address, as for the compose healthcheck run inside the
-    // container (WP-04): it passes the accept-time check (which closes 172.16/12 and outside
-    // peers, `access::listen::tests::edge`), reaches `GET /health` and gets 403 on `/graphql`.
+    // The hub's own address passes the accept-time check, as the compose healthcheck does (WP-04).
     let (hub, addr) = serve(&secrets, "10.0.0.0/8");
     let refused = tokio::time::timeout(DEADLINE, post_over_tls(addr, &secrets.der))
         .await

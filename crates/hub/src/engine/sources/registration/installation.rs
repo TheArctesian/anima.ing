@@ -1,14 +1,5 @@
-//! Finding the installation of the App the attempt made, and the task that watches the attempt
-//! (K-E1 Section 10a).
-//!
-//! An installation ID from a browser redirect is not trusted: the hub asks GitHub about it with
-//! the App's own token, and takes it only when GitHub found it, it belongs to this App and to
-//! the App's owner, and it is not suspended. Anything else is ignored. While the App waits for
-//! Install, the watch also asks for the App's installations every few seconds, so a closed tab
-//! does not stop the flow. It backs off while GitHub does not answer, and a wake (the bound
-//! browser back on `/installed`) never makes it ask more often than its [`Pace`] allows. The
-//! bound browser's page then waits a bounded time for the attempt to end, so it shows how the
-//! attempt ended even when the watch, not that request, stored the connection.
+//! Finding the installation of the App the attempt made, and the task that watches the attempt (K-E1 Section 10a).
+//! An installation ID from a browser redirect is not trusted: the hub takes it only when GitHub, asked with the App's own token, says it `fits`.
 
 use std::time::Duration;
 
@@ -36,18 +27,15 @@ use crate::{
     },
 };
 
-/// Whether `found` is an installation of `app` in its owner's account that works.
 #[must_use]
 pub fn fits(found: &Installation, app: &App) -> bool {
     found.app_id == app.id && found.account_id == app.owner.id && !found.suspended
 }
 
-/// The App's own signer, from the key GitHub gave it; `None` for a key that cannot sign.
 fn signer(app: &App, key: &Zeroizing<String>) -> Option<AppSigner> {
     AppSigner::read(app.id, key.as_bytes()).ok()
 }
 
-/// The installation `id` from a redirect, when GitHub says it [`fits`] `app`.
 async fn verified(
     scheduling: &Scheduling,
     (app, key): (&App, &Zeroizing<String>),
@@ -70,12 +58,7 @@ async fn verified(
     }
 }
 
-/// The phase attempt `id` ends in after the bound browser came back from Install with
-/// `installation`, while the App and its key were `waiting`: the installation is stored when
-/// GitHub verifies it. When this request does not end the attempt (GitHub does not show the
-/// installation yet, the watch holds the store, or the store must be tried again), it wakes the
-/// watch and waits for the attempt to end, up to the bound of [`Attempts::ended_within`]; `None`
-/// when it has not ended by then.
+/// When this request does not end the attempt, it wakes the watch and waits up to [`Attempts::ended_within`], so the page shows how the attempt ended.
 pub async fn after_install(
     scheduling: &Scheduling,
     attempts: &Attempts,
@@ -102,8 +85,6 @@ pub async fn after_install(
     }
 }
 
-/// The first installation of `app` that [`fits`] it, from the App's list: `NotFound` when none
-/// does, `Unusable` when the hub cannot ask.
 async fn listed(scheduling: &Scheduling, (app, key): (&App, &Zeroizing<String>)) -> Lookup<u64> {
     let (Some(declaration), Some(signer)) = (
         scheduling.registry.declaration(GITHUB).copied(),
@@ -122,13 +103,9 @@ async fn listed(scheduling: &Scheduling, (app, key): (&App, &Zeroizing<String>))
     }
 }
 
-/// The longest the watch waits between two asks while GitHub does not answer.
 pub const BACKOFF_CAP: Duration = Duration::from_secs(300);
 
-/// When the watch may ask GitHub. A scheduled ask comes one wait after the last: the poll
-/// interval, doubled for each ask in a row that GitHub did not answer (a rate limit included),
-/// at most [`BACKOFF_CAP`]; an answer sets it back. A wake asks sooner, but never sooner than
-/// one wait after the last ask. Pure: the time is a parameter.
+/// The poll interval doubles for each unanswered ask, up to [`BACKOFF_CAP`]; a wake never asks sooner than one wait after the last ask.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Pace {
     poll: Duration,
@@ -137,7 +114,6 @@ pub struct Pace {
 }
 
 impl Pace {
-    /// No ask yet, with the poll interval `poll`.
     #[must_use]
     pub const fn new(poll: Duration) -> Self {
         Self {
@@ -147,7 +123,6 @@ impl Pace {
         }
     }
 
-    /// How long the next scheduled ask waits.
     #[must_use]
     pub fn wait(&self) -> Duration {
         let doubled = (1_u32.checked_shl(self.misses))
@@ -155,7 +130,6 @@ impl Pace {
         doubled.min(BACKOFF_CAP.max(self.poll))
     }
 
-    /// Whether a wake at `now` may ask GitHub.
     #[must_use]
     pub fn woken_may_ask(&self, now: DateTime<Utc>) -> bool {
         let wait = TimeDelta::from_std(self.wait()).unwrap_or(TimeDelta::MAX);
@@ -165,7 +139,6 @@ impl Pace {
         })
     }
 
-    /// The watch asked at `now`; `answered` unless GitHub was unreachable.
     pub const fn asked(&mut self, now: DateTime<Utc>, answered: bool) {
         self.last = Some(now);
         self.misses = if answered {
@@ -176,7 +149,6 @@ impl Pace {
     }
 }
 
-/// Resolves at the next scheduled ask of `pace`, or at a wake it allows by `clock`.
 async fn next_ask(attempts: &Attempts, pace: &Pace, clock: &dyn Clock) {
     let due = tokio::time::Instant::now() + pace.wait();
     loop {
@@ -191,9 +163,6 @@ async fn next_ask(attempts: &Attempts, pace: &Pace, clock: &dyn Clock) {
     }
 }
 
-/// Starts the task that watches attempt `id`: at each ask of its [`Pace`], it expires the
-/// attempt when its time is over and, while the App waits for Install, asks GitHub for its
-/// installations. It ends when the attempt ends or is replaced; tasks end with the hub.
 pub fn watch(scheduling: Scheduling, attempts: Attempts, id: Uuid) -> JoinHandle<()> {
     tokio::spawn(async move {
         let mut pace = Pace::new(attempts.poll());

@@ -1,7 +1,4 @@
-//! One full session, and the relay rules on the wire: the open instruction first, guacd's
-//! instructions sent with `ready`, ping, `size`, `nop` after silence, the client's
-//! `disconnect`, the messages the WebSocket refuses (over the size cap, not UTF-8), and
-//! non-BMP text that guacamole-common-js 1.5.0 would misread (R-046).
+//! Relay rules on the wire, and non-BMP text guacamole-common-js 1.5.0 misreads (R-046).
 
 use std::time::Duration;
 
@@ -39,8 +36,7 @@ async fn gw_010_gw_011_gw_014_ra_008_one_full_rdp_session(pool: PgPool) {
     opened(&mut client).await;
     assert_eq!(client.text().await, "4.sync,1.7;", "sent with ready (H-5)");
 
-    // The handshake: the display, zone and operator from the ticket; connect values from the
-    // database and the credential store, with the checked address as hostname (R-032).
+    // The checked address is the hostname (R-032).
     let handshake = (&mut guacd.handshake).await.unwrap();
     let opcodes: Vec<&str> = handshake.iter().map(|i| i.opcode.as_str()).collect();
     assert_eq!(opcodes, OPCODES);
@@ -58,7 +54,6 @@ async fn gw_010_gw_011_gw_014_ra_008_one_full_rdp_session(pool: PgPool) {
         "pinned to the certificate the operator accepted (SEC-007)"
     );
 
-    // Input reaches guacd; the internal ping comes back and does not.
     client.send("3.key,5.65307,1.1;").await;
     assert_eq!(
         heard(&mut guacd).await,
@@ -73,7 +68,6 @@ async fn gw_010_gw_011_gw_014_ra_008_one_full_rdp_session(pool: PgPool) {
         Instruction::new("size", ["1024", "768"])
     );
 
-    // guacd's output reaches the client unchanged, one instruction per message.
     guacd
         .act
         .send(Act::Send("4.sync,4.1234;5.mouse,1.0,1.0;".to_owned()))
@@ -236,8 +230,7 @@ async fn k4_5_the_clients_disconnect_reaches_guacd_once(pool: PgPool) {
     fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn r_046_gw_014_r_035_a_non_bmp_title_cannot_forge_client_instructions(pool: PgPool) {
-    // A terminal title the remote host chose: emoji that 1.5.0 counts twice, then a `;` and
-    // the instructions 1.5.0 would read after it.
+    // Emoji that 1.5.0 counts twice, then the instructions 1.5.0 would read after the `;`.
     let forged = "9.clipboard,1.0,10.text/plain;4.blob,1.0,8.SGVsbG8=;3.end,1.0;\
                   5.error,13.forged detail,3.769";
     let k = forged.chars().count() + 1;

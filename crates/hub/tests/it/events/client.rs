@@ -1,5 +1,4 @@
-//! A hub served on a loopback port and a `graphql-transport-ws` client for it. Every read and
-//! connect has a deadline, so a hanging socket fails the test instead of stalling the suite.
+//! Every socket step has a deadline, so a hanging socket fails the test instead of stalling the suite.
 
 use std::{
     net::SocketAddr,
@@ -209,7 +208,6 @@ pub async fn subscribe_events(socket: &mut Socket, bus: &Bus, token: &str, min_s
             publish(bus, Severity::Error, READY);
             let wait = tokio::time::timeout(Duration::from_millis(100), socket.next()).await;
             match wait {
-                // Nothing yet: the subscription may not hold its receiver; publish again.
                 Err(_) | Ok(Some(Ok(Message::Ping(_) | Message::Pong(_)))) => {}
                 Ok(Some(Ok(Message::Text(text)))) => {
                     let message: Value = serde_json::from_str(&text).unwrap();

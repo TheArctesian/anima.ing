@@ -1,5 +1,4 @@
-//! What the web client refuses: missing build output, traversal, dotfiles, methods other than
-//! `GET` and `HEAD`, and every path when `index.html` cannot be read (SEC-001, K7).
+//! SEC-001, K7: no traversal, dotfile, other method or missing build output gets an answer.
 
 use axum::http::{Method, StatusCode};
 
@@ -44,7 +43,6 @@ async fn d_2_an_app_file_the_file_system_cannot_look_up_is_never_html() {
 async fn sec_001_traversal_never_leaves_the_root() {
     let web = WebRoot::new();
     let router = web.router();
-    // Every spelling is a URI the hub can receive: `get` fails the test on one that is not.
     for path in [
         "/../outside.txt",
         "/%2e%2e/outside.txt",

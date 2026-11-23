@@ -99,7 +99,6 @@ pub(super) fn public_key_id_colon(text: &str) -> Option<usize> {
     (hex > 0 && ended).then_some(colon)
 }
 
-/// A byte of standard base64.
 fn is_base64(byte: u8) -> bool {
     byte.is_ascii_alphanumeric() || matches!(byte, b'+' | b'/' | b'=')
 }
@@ -111,7 +110,6 @@ fn word_starts<'a>(text: &'a str, prefix: &'a str) -> impl Iterator<Item = usize
         .filter(|&start| start == 0 || !is_base64(text.as_bytes()[start - 1]))
 }
 
-/// Whether `text` holds a word that starts like a minisign secret key's base64 line.
 fn holds_minisign_secret_line(text: &str) -> bool {
     MINISIGN_SECRET_WORDS
         .iter()

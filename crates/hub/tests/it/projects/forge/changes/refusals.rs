@@ -1,6 +1,4 @@
-//! K-E1 Section 13.6: a change refused before sending (its input, the repository's access,
-//! Projects off) sends nothing to GitHub and records nothing. A `VALIDATION` error names the
-//! field, never its value (LOG-007).
+//! K-E1 Section 13.6: a refused change sends and records nothing; a `VALIDATION` error names the field, never its value (LOG-007).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -14,7 +12,6 @@ use crate::{
 
 const MARK: &str = "REFUSED-VALUE-3301";
 
-/// Requests below the repository that would change something.
 fn changes_sent(forge: &Forge) -> usize {
     forge.kit.stub.with(|s| {
         s.heard
@@ -24,7 +21,6 @@ fn changes_sent(forge: &Forge) -> usize {
     })
 }
 
-/// The fields a `VALIDATION` error names.
 fn fields(response: &Value) -> Vec<String> {
     assert_eq!(error(response).1, "VALIDATION", "{response}");
     let listed = response["errors"][0]["extensions"]["fields"]

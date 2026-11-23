@@ -1,5 +1,4 @@
-//! The timeline's rules over evidence from made-up adapters: nothing is copied or dropped,
-//! and two sources of one event are both kept (TML-001, TML-003 to TML-006).
+//! TML-001, TML-003 to TML-006.
 
 use chrono::{DateTime, TimeDelta, TimeZone as _, Utc};
 

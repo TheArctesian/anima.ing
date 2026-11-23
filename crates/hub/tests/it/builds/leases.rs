@@ -59,7 +59,6 @@ async fn bld_029_a_builder_holding_a_lease_claims_nothing_more(pool: PgPool) {
     assert_eq!(second["claimBuildJob"], Value::Null);
 }
 
-/// How many sessions of this database wait for a row lock.
 async fn lock_waiters(pool: &PgPool) -> i64 {
     sqlx::query_scalar(
         "SELECT count(*) FROM pg_stat_activity \

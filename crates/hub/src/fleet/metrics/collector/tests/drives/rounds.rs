@@ -1,5 +1,4 @@
-//! Rounds against the test SSH device with the pop-os `lsblk` and `/proc/diskstats` (MET-027,
-//! MET-028, MET-029).
+//! Rounds with the pop-os `lsblk` and `/proc/diskstats` (MET-027, MET-028, MET-029).
 
 use chrono::{DateTime, Utc};
 use daemon_core::readings::captures::{LSBLK_OLD, PROC_DISKSTATS};
@@ -11,7 +10,6 @@ use crate::{
     fleet::metrics::{DriveKind, MetricKind, MetricsAdded, storage},
 };
 
-/// The stored drives of `docker-host`: name, kind, size, mounts and when they were found.
 async fn stored(pool: &PgPool) -> Vec<(String, String, i64, Vec<String>, DateTime<Utc>)> {
     sqlx::query_as(
         "SELECT name, kind, size_bytes, mounts, found_at FROM metrics.drives \
@@ -71,7 +69,6 @@ async fn met_027_the_first_round_stores_the_drives_and_an_unchanged_list_is_not_
     assert!(now[2].4 > first[2].4, "found again");
 }
 
-/// The pop-os capture, for a test that changes it.
 const LSBLK_POP_OS_TEXT: &[u8] = daemon_core::readings::captures::LSBLK_POP_OS;
 
 #[sqlx::test(

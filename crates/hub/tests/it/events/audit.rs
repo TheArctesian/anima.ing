@@ -87,7 +87,6 @@ async fn api_006_audit_pages_keep_entries_that_share_an_instant(pool: PgPool) {
     let hub = Hub::new(&pool, start());
     let token = hub.token().await;
     let mut conn = pool.acquire().await.unwrap();
-    // Three entries share an instant: the id decides their order.
     for minutes in [5, 10, 10, 10, 15] {
         let at = start() + TimeDelta::minutes(minutes);
         let entry = audit_entry(json!({ "minutes": minutes }));

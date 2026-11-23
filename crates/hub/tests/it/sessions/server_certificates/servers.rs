@@ -1,7 +1,4 @@
-//! In-process RDP and VNC servers on the loopback interface for the connection test. The RDP
-//! server answers the X.224 request as it is told and, for TLS, presents a throwaway
-//! certificate made by rcgen (never a real key), self-signed or with its issuer after it; both
-//! record every byte the hub sends.
+//! In-process RDP and VNC servers on the loopback interface that record every byte the hub sends.
 
 use std::{sync::Arc, time::Duration};
 
@@ -21,31 +18,25 @@ use tokio::{
 };
 use tokio_rustls::TlsAcceptor;
 
-/// How the RDP server answers the Connection Request.
 #[derive(Clone, Debug)]
 pub enum Answer {
     /// Chooses `HYBRID` (NLA), then a TLS handshake with its certificate.
     Tls,
-    /// Chooses standard RDP security: no TLS.
     Standard,
-    /// An RDP Negotiation Failure with this code.
     Failure(u32),
     /// These bytes, then the connection closes.
     Raw(Vec<u8>),
 }
 
-/// What one connection sent the server.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Visit {
     /// The bytes before the server answered: the Connection Request, or the whole visit.
     pub request: Vec<u8>,
-    /// Whether the TLS handshake finished.
     pub handshake: bool,
     /// Every byte after the handshake (RDP) or after the banner (VNC), until the hub closed.
     pub after: Vec<u8>,
 }
 
-/// A running server; dropping it stops it.
 pub struct Server {
     pub port: u16,
     visits: mpsc::UnboundedReceiver<Visit>,
@@ -61,7 +52,6 @@ impl Server {
             .expect("the server runs")
     }
 
-    /// Whether any connection reached the server, waiting a moment for one.
     pub async fn was_visited(&mut self) -> bool {
         timeout(Duration::from_millis(300), self.visits.recv())
             .await
@@ -75,14 +65,12 @@ impl Drop for Server {
     }
 }
 
-/// A throwaway certificate with common name `name`, the DER of the leaf the server presents
-/// first.
+/// A throwaway certificate; `der` is the leaf the server presents first.
 pub struct Certificate {
     pub der: Vec<u8>,
     acceptor: TlsAcceptor,
 }
 
-/// The leaf's parameters: `name` and `name.lan`, valid until 2031.
 fn leaf_params(name: &str) -> CertificateParams {
     let mut params = CertificateParams::new(vec![format!("{name}.lan")]).unwrap();
     params.distinguished_name.push(DnType::CommonName, name);
@@ -91,14 +79,12 @@ fn leaf_params(name: &str) -> CertificateParams {
 }
 
 impl Certificate {
-    /// A self-signed leaf, presented alone.
     pub fn new(name: &str) -> Self {
         let key = KeyPair::generate().unwrap();
         let leaf = leaf_params(name).self_signed(&key).unwrap();
         Self::serving(vec![leaf.der().to_vec()], &key)
     }
 
-    /// A leaf signed by a throwaway issuer, presented as the chain leaf then issuer.
     pub fn issued(name: &str) -> Self {
         let issuer_key = KeyPair::generate().unwrap();
         let mut issuer_params = CertificateParams::new(Vec::new()).unwrap();
@@ -117,7 +103,6 @@ impl Certificate {
         Self::serving(vec![leaf.der().to_vec(), issuer_der], &key)
     }
 
-    /// A TLS server presenting `chain`, whose first entry is signed for `key`.
     fn serving(chain: Vec<Vec<u8>>, key: &KeyPair) -> Self {
         let der = chain[0].clone();
         let chain = chain.into_iter().map(Into::into).collect();
@@ -150,7 +135,6 @@ fn confirm(kind: u8, value: u32) -> Vec<u8> {
     bytes
 }
 
-/// Every byte until the peer closes, or until 5 s pass.
 async fn rest(mut stream: impl AsyncRead + Unpin) -> Vec<u8> {
     let mut bytes = Vec::new();
     let _ended = timeout(Duration::from_secs(5), stream.read_to_end(&mut bytes)).await;
@@ -198,7 +182,6 @@ async fn rdp_visit(mut stream: TcpStream, answer: Answer, acceptor: TlsAcceptor)
     }
 }
 
-/// Serves `run` for every connection on a free loopback port.
 async fn serve<F, Fut>(run: F) -> Server
 where
     F: Fn(TcpStream) -> Fut + Send + 'static,
@@ -216,13 +199,11 @@ where
     Server { port, visits, task }
 }
 
-/// An RDP server that answers `answer`, presenting `certificate` for TLS.
 pub async fn rdp(answer: Answer, certificate: &Certificate) -> Server {
     let acceptor = certificate.acceptor.clone();
     serve(move |stream| rdp_visit(stream, answer.clone(), acceptor.clone())).await
 }
 
-/// A VNC server that sends `banner` first.
 pub async fn vnc(banner: &'static [u8]) -> Server {
     serve(move |mut stream| async move {
         let _sent = stream.write_all(banner).await;

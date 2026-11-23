@@ -1,7 +1,5 @@
 //! What a tunnel request must pass before its session task starts, shared by `/tunnel` and
-//! `/terminal` (K4 Sections 1, 2 and 8.1, API-009): the lazy sweep of expired tickets
-//! (D-2), the token from the query, the client address and the path, the single-use
-//! redemption, and the subprotocol the WebSocket upgrade must offer.
+//! `/terminal` (K4 Sections 1, 2 and 8.1, API-009).
 //!
 //! Neither the URI, the query nor the token reaches a log, a span or an error (LOG-007).
 
@@ -63,8 +61,6 @@ pub(super) fn redeem(
         .map_err(|_| StatusCode::FORBIDDEN)
 }
 
-/// What a tunnel request brings to its redemption: the raw query, the request's extensions
-/// (the client address) and when it came.
 #[derive(Clone, Copy)]
 pub(super) struct Request<'a> {
     pub(super) query: &'a str,

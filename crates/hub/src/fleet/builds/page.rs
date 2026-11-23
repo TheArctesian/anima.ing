@@ -1,7 +1,4 @@
-//! Keyset paging over releases, newest first (API-006, R-014): the page size and the opaque
-//! cursor.
-//!
-//! Pure.
+//! Keyset paging over releases, newest first (API-006, R-014).
 
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
@@ -9,20 +6,17 @@ use uuid::Uuid;
 use super::model::{FieldError, Release};
 use crate::ids::ReleaseId;
 
-/// The most releases one page may hold.
 const MAX_PAGE_SIZE: usize = 100;
 
 /// The cursor prefix, so a cursor of another list is refused.
 const PREFIX: &str = "r1.";
 
-/// One page of releases and whether more follow.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ReleasePage {
     pub releases: Vec<Release>,
     pub has_next_page: bool,
 }
 
-/// The page size the operator asked for (`first`), between 1 and 100.
 pub(super) fn page_size(first: i32) -> Result<usize, FieldError> {
     usize::try_from(first)
         .ok()
@@ -30,8 +24,6 @@ pub(super) fn page_size(first: i32) -> Result<usize, FieldError> {
         .ok_or_else(|| FieldError::new("first", "Ask for 1 to 100 releases."))
 }
 
-/// The opaque cursor just after this release: the prefix, its creation instant in
-/// microseconds, a dot, and its id as 32 hex digits.
 #[must_use]
 pub fn cursor(release: &Release) -> String {
     format!(
@@ -41,7 +33,6 @@ pub fn cursor(release: &Release) -> String {
     )
 }
 
-/// The position a cursor points after. Only the exact text [`cursor`] makes is accepted.
 pub(super) fn position(text: &str) -> Result<(DateTime<Utc>, ReleaseId), FieldError> {
     let refused = || FieldError::new("after", "That cursor is not valid.");
     let (micros, id) = text

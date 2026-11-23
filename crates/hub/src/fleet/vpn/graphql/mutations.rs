@@ -1,8 +1,6 @@
-//! The VPN mutations: keys, registration and renewal through the broker (R-055, VP-7, VP-10,
-//! D-23). Each checks the token kind again behind the backstop, calls the broker, then writes
-//! one audit entry and one event in its own transaction (`change`); if that write fails the
-//! broker's change stays and the broker's log has it. Neither entry, no error and no log line
-//! holds a pre-auth key or an auth ID (LOG-007).
+//! The VPN mutations through the broker (R-055, VP-7, VP-10, D-23). Each checks the token kind
+//! again behind the backstop. No audit entry, event, error or log line holds a pre-auth key or
+//! an auth ID (LOG-007).
 
 use async_graphql::{Context, Error as GraphQlError, ID, Object, Result, dataloader::DataLoader};
 use chrono::{DateTime, SecondsFormat, Utc};

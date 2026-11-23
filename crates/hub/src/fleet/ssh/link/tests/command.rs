@@ -1,5 +1,4 @@
-//! The command line (CHK-012, D-3, HOST-001): static words, and a MAC, hex digits and numbers
-//! rendered by the hub, joined by single spaces.
+//! CHK-012, D-3, HOST-001: a command line holds only static words and values the hub renders.
 
 use proptest::prelude::*;
 
@@ -83,8 +82,6 @@ fn host_001_hex_digits_take_only_one_to_sixty_four_lower_case_hex_digits() {
 }
 
 proptest! {
-    /// HOST-001: whatever text is offered, a word made of hex digits is that text exactly, and
-    /// it is only `0-9a-f`.
     #[test]
     fn host_001_hex_digits_render_as_the_text_they_were_read_from(text in "[0-9a-f]{0,66}|.{0,70}") {
         let parsed = HexDigits::parse(&text);
@@ -96,15 +93,12 @@ proptest! {
         }
     }
 
-    /// HOST-001: a number renders as its decimal digits only.
     #[test]
     fn host_001_a_number_renders_in_decimal(number in any::<u32>()) {
         let line = FixedCommand::new("docker").number(number).line();
         prop_assert_eq!(line, format!("docker {number}"));
     }
 
-    /// D-3: the MAC word is the six parsed bytes as two hex digits each, so it is always 17
-    /// characters of `0-9a-f:` and nothing a shell reads specially.
     #[test]
     fn d_3_the_mac_word_is_rendered_from_its_bytes(bytes in any::<[u8; 6]>()) {
         let mut bytes = bytes;

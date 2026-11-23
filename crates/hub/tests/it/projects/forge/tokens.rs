@@ -43,7 +43,6 @@ const ROOTS: [(&str, &str); 8] = [
     ),
 ];
 
-/// The secret of a key of `scope` made by the signed-in operator.
 pub async fn key(forge: &Forge, scope: &str) -> String {
     let query = "mutation($input: ApiKeyInput!) { createApiKey(input: $input) { secret } }";
     let input = json!({ "input": { "name": scope, "scope": scope, "madeFor": "USER",

@@ -1,6 +1,5 @@
-//! WP-10 handoffs 5–7: the hub ends stale sessions before it serves, serves over TCP with the
-//! socket peer as the client address, and on the stop signal ends its sessions with
-//! `HUB_SHUTDOWN` and drains for a bounded time before serving returns (R-040, D-13, NET-002).
+//! The hub ends stale sessions before it serves, takes the socket peer as the client address,
+//! and on the stop signal drains for a bounded time (R-040, D-13, NET-002).
 
 use std::{
     net::SocketAddr,
@@ -65,7 +64,6 @@ async fn r_040_opening_sessions_ends_a_row_a_previous_hub_left_live(pool: PgPool
     assert_eq!(audit_clients(&pool, STALE, "end").await.len(), 1);
 }
 
-/// One HTTP/1.1 `POST /graphql` over a new connection to `addr`; returns the body as JSON.
 async fn post(addr: SocketAddr, headers: &[(&str, &str)], body: &Value) -> Value {
     let body = body.to_string();
     let mut request = format!(
@@ -97,7 +95,6 @@ async fn login(addr: SocketAddr) -> String {
         .to_owned()
 }
 
-/// Starts a session on PVE-01 as `token`, claiming another address in `X-Forwarded-For`.
 async fn start_spoofed(addr: SocketAddr, token: &str) -> String {
     let query = "mutation($input: StartSessionInput!) { startSession(input: $input) { \
                  sessionId } }";
@@ -130,8 +127,6 @@ async fn stored_client(pool: &PgPool, id: &str) -> String {
         .unwrap()
 }
 
-/// A hub serving on a free local port until the returned sender fires, then draining for at
-/// most `drain_limit`.
 struct Served {
     addr: SocketAddr,
     stop: oneshot::Sender<()>,
@@ -172,7 +167,6 @@ async fn serve(pool: &PgPool, live: Live, drain_limit: Duration) -> Served {
 }
 
 impl Served {
-    /// Fires the stop signal; returns how long serving took to return.
     async fn stop(self) -> Duration {
         let began = Instant::now();
         self.stop.send(()).unwrap();
@@ -223,7 +217,6 @@ async fn r_040_a_request_held_open_cannot_hold_the_drain_past_its_limit(pool: Pg
     let limit = Duration::from_millis(300);
     let hub = serve(&pool, Live::default(), limit).await;
     let mut client = TcpStream::connect(hub.addr).await.unwrap();
-    // A body announced at 1000 bytes, one sent, the connection kept open.
     let partial = "POST /graphql HTTP/1.1\r\nhost: hub\r\ncontent-type: application/json\r\n\
                    content-length: 1000\r\n\r\n{";
     client.write_all(partial.as_bytes()).await.unwrap();
@@ -232,7 +225,6 @@ async fn r_040_a_request_held_open_cannot_hold_the_drain_past_its_limit(pool: Pg
 
     let took = hub.stop().await;
 
-    // At least the limit: the drain waited for the open request, then gave up.
     assert!(
         took >= limit,
         "returned after {took:?}, before the drain limit"

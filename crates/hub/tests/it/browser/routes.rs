@@ -1,9 +1,4 @@
-//! Who may change a route (R-384): one rule for each caller. A browser token, a login
-//! token, which the `anima` command and an agent hold, and the same token declared as an agent
-//! (MCP) all pass the check of the caller, for a public and a private route; an API key is
-//! refused. No route is stored: the account has no second factor, so each caller stops at that
-//! check. Removing a route needs only a signed-in token, never an API key, and leaves one audit
-//! entry that names what it took away.
+//! Who may change a route (R-384): a signed-in token may, an API key may not.
 
 use axum::Router;
 use serde_json::{Value, json};
@@ -18,7 +13,6 @@ const CREATE_KEY: &str =
     "mutation($input: ApiKeyInput!) { createApiKey(input: $input) { secret } }";
 const NEEDS_SECOND_FACTOR: &str = "Turn on the second factor";
 
-/// The message and the code of the one error of adding a route of `access` with `headers`.
 async fn refusal(hub: &Router, headers: &[(&str, &str)], access: &str) -> (String, String) {
     let input = json!({ "name": "photos.example.com", "port": 3000, "access": access,
         "applicationId": "0190a000-0000-7000-8009-000000000001",
@@ -105,7 +99,6 @@ const DOCKER_HOST: &str = "0190a000-0000-7000-8002-000000000002";
 const PRIVATE_ROUTE: &str = "0190a000-0000-7000-8030-000000000001";
 const PUBLIC_ROUTE: &str = "0190a000-0000-7000-8030-000000000002";
 
-/// Stores a route of `access` on the docker host, as an addition would.
 async fn stored_route(pool: &PgPool, id: &str, name: &str, access: &str) {
     sqlx::query(
         "INSERT INTO routes.route (id, name, application_id, device_id, port, token, access, \
@@ -128,7 +121,6 @@ async fn routes_left(pool: &PgPool) -> Vec<String> {
         .unwrap()
 }
 
-/// The `change` of each removal in the audit log of the docker host.
 async fn removals(pool: &PgPool) -> Vec<Value> {
     sqlx::query_scalar(
         "SELECT change FROM events.audit_log WHERE target_id = $1 AND action LIKE '%delete%' \
@@ -182,7 +174,6 @@ async fn sf_revroutestepup_a_signed_in_token_removes_a_route_with_no_second_fact
         "an API key removes nothing"
     );
 
-    // The account has no second factor: removing needs only a signed-in token.
     let cookie = cookie(&browser_token(&hub).await);
     let person = [("origin", PUBLIC), ("cookie", cookie.as_str())];
     let removed = post(&hub, &person, REMOVE, json!({ "id": PRIVATE_ROUTE }))

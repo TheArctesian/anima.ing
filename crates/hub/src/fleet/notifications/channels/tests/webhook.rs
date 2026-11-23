@@ -1,5 +1,4 @@
-//! The webhook rules: an https URL whose origin alone is shown, and headers that cannot frame
-//! or redirect the request (CR-14 items 1, 3, 6 and 7; SEC-003, SEC-005).
+//! The webhook channel rules (CR-14 items 1, 3, 6 and 7; SEC-003, SEC-005).
 
 use std::collections::BTreeSet;
 
@@ -66,7 +65,6 @@ fn parts(prepared: &Prepared) -> (&WebhookSettings, &WebhookSecrets) {
     }
 }
 
-/// A stored webhook at `hooks.example.test` with one header.
 fn stored() -> (Settings, Kept<Secrets>) {
     let settings = WebhookSettings {
         origin: "https://hooks.example.test".to_owned(),

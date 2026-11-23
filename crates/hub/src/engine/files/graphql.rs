@@ -1,7 +1,4 @@
-//! The files GraphQL part (K1; K-E4 Section 13): `Query.attachments`,
-//! `Mutation.deleteAttachment`, `Mutation.createArchive` and `Mutation.deleteArchive`; the
-//! extraction proposals are in `proposals`. The bytes of a file go through `/files/v1`.
-//!
+//! The files GraphQL part (K1; K-E4 Section 13). The bytes of a file go through `/files/v1`.
 //! Each change writes its rows, one audit entry and one event in one transaction.
 
 mod proposals;

@@ -1,5 +1,3 @@
-//! SQL on `builds.releases`, and the job reads that span releases.
-
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgExecutor};
 
@@ -22,7 +20,6 @@ struct ReleaseRow {
     created_at: DateTime<Utc>,
 }
 
-/// The release row; the jobs go in with `insert_job`.
 pub(in crate::fleet::builds) async fn insert_release(
     conn: &mut PgConnection,
     release: &Release,
@@ -44,8 +41,7 @@ pub(in crate::fleet::builds) async fn insert_release(
     Ok(())
 }
 
-/// Takes the release lock until the transaction ends, so two new releases are checked one
-/// after the other (BLD-002).
+/// Two new releases are checked one after the other (BLD-002).
 pub(in crate::fleet::builds) async fn lock_releases(conn: &mut PgConnection) -> Result<(), Error> {
     sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended('builds:releases', 0))")
         .execute(conn)
@@ -72,8 +68,7 @@ pub(in crate::fleet::builds) async fn built(db: impl PgExecutor<'_>) -> Result<V
         .collect()
 }
 
-/// Up to `limit` releases, newest first, after the release at `after` (API-006). Their
-/// `jobs` are empty; [`jobs_of`] reads them.
+/// `jobs` stays empty; [`jobs_of`] reads them (API-006).
 pub(in crate::fleet::builds) async fn releases_after(
     db: impl PgExecutor<'_>,
     after: Option<(DateTime<Utc>, ReleaseId)>,
@@ -104,7 +99,7 @@ pub(in crate::fleet::builds) async fn releases_after(
         .collect()
 }
 
-/// The jobs of these releases in one query (API-005), each release's in target order.
+/// One query for all releases (API-005).
 pub(in crate::fleet::builds) async fn jobs_of(
     db: impl PgExecutor<'_>,
     releases: &[ReleaseId],

@@ -1,5 +1,4 @@
-//! An open subscription ends when its token does: at expiry by the hub clock, after logout or
-//! `operator set`, and when the token cannot be checked (R-020, API-003, D-6).
+//! An open subscription ends when its token does (R-020, API-003, D-6).
 
 use std::{sync::Arc, time::Duration};
 
@@ -34,7 +33,6 @@ async fn r_020_the_stream_ends_at_token_expiry_by_the_hub_clock(pool: PgPool) {
     let mut socket = open(served.addr).await;
     subscribe_events(&mut socket, &served.bus, &token, "INFO").await;
 
-    // Several re-checks pass while the token holds.
     clock.set(start() + TimeDelta::days(30) - TimeDelta::seconds(1));
     tokio::time::sleep(RECHECK * 4).await;
     publish(&served.bus, Severity::Info, "still signed in");

@@ -1,5 +1,4 @@
-//! `createApiKey` and `apiKeys`: the secret's spelling, shown once, stored as a hash, and the
-//! name and expiry rules (INT-003, D-23, P3-004).
+//! `createApiKey`: the secret is shown once and stored as a hash (INT-003, D-23, P3-004).
 
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{Months, TimeDelta};
@@ -105,7 +104,6 @@ async fn int_003_p3_004_only_the_sha_256_of_the_secret_is_stored(pool: PgPool) {
     assert_eq!((kind.as_str(), prefix.as_str()), ("api_key", &secret[..12]));
 }
 
-/// The `expiresAt` refusal, and that no key was made.
 async fn refused_expiry(hub: &Hub, pool: &PgPool, token: &str, expires_at: Value) {
     let input =
         json!({ "name": "late", "scope": "READ", "madeFor": "USER", "expiresAt": expires_at });

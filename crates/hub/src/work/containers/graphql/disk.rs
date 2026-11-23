@@ -1,5 +1,4 @@
-//! The K1 object types of the images, the volumes and the networks of a device (HOST-020),
-//! and of a newer image for a container (HOST-021).
+//! Types of a device's images, volumes and networks, and a newer image (HOST-020, HOST-021).
 
 use async_graphql::Object;
 

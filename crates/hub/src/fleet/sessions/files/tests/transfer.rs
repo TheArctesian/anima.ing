@@ -1,5 +1,4 @@
-//! The byte counts of a transfer (K4 Section 9): an upload takes exactly its size, a
-//! download reads at most what is left and fails when the device's file does not match.
+//! The byte counts of a transfer (K4 Section 9).
 
 use super::device_path;
 use crate::fleet::events::Severity;

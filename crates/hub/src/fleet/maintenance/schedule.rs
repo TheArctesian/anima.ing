@@ -1,16 +1,6 @@
-//! When a window is active: pure rule evaluation (MW-001, MW-002, MW-004).
-//!
-//! Nothing here reads a clock or the database; the caller passes `now`.
-//!
-//! Rules for local times:
-//! - An occurrence starts on a local calendar day at a local time in the window's time zone.
-//! - If that local time does not exist (a spring-forward gap), the occurrence starts at the
-//!   first instant after the gap.
-//! - If it exists twice (a fall-back repeat), the occurrence starts at the earlier instant.
-//! - An occurrence lasts `duration_minutes` of elapsed time, so on a daylight-saving change
-//!   its wall-clock end moves by the change.
-//! - An occurrence may end after midnight, or days later: every day that could still hold a
-//!   running occurrence is checked.
+//! When a window is active (MW-001, MW-002, MW-004); the caller passes `now`.
+//! A start in a clock-change gap moves to the gap's end, a repeated one to the earlier instant;
+//! an occurrence lasts `duration_minutes` of elapsed time.
 
 use chrono::{
     DateTime, Datelike, Days, NaiveDate, NaiveDateTime, TimeDelta, TimeZone, Timelike, Utc,
@@ -23,13 +13,10 @@ use super::{
 };
 
 const MINUTES_PER_DAY: u32 = 24 * 60;
-/// The longest spring-forward gap the search steps over (two days; Samoa once skipped one).
+/// Two days, so a skipped calendar day (Samoa) is stepped over.
 const GAP_SEARCH_MINUTES: u32 = 2 * MINUTES_PER_DAY;
 
-/// Whether the rule is in force at `now` for a window in time zone `tz`.
-///
-/// A manual rule is never active here: the on/off state of a manual window is stored with the
-/// window, so use `Window::is_active` for one.
+/// A manual rule is never active here; `Window::is_active` reads its stored state.
 #[must_use]
 pub fn is_active(rule: &WindowRule, tz: Tz, now: DateTime<Utc>) -> bool {
     match rule {
@@ -41,11 +28,9 @@ pub fn is_active(rule: &WindowRule, tz: Tz, now: DateTime<Utc>) -> bool {
     }
 }
 
-/// Checks the local day of `now` and every earlier day an occurrence could still run from: as
-/// many days as the duration spans, plus one because a day with a clock change is shorter.
+/// One extra day back because a day with a clock change is shorter.
 fn recurring_is_active(rule: &WindowRule, tz: Tz, now: DateTime<Utc>, minutes: u32) -> bool {
-    // A stored duration is bounded like the form's, so a bad row cannot cost a scan of
-    // millions of days on every attempt (MW-004, API-005).
+    // Bounded like the form's, so a bad row cannot cost a scan of millions of days (MW-004, API-005).
     let minutes = minutes.min(DURATION_MAX_MINUTES);
     let length = TimeDelta::minutes(i64::from(minutes));
     let today = now.with_timezone(&tz).date_naive();
@@ -61,7 +46,6 @@ fn recurring_is_active(rule: &WindowRule, tz: Tz, now: DateTime<Utc>, minutes: u
         })
 }
 
-/// The instant the occurrence that starts on local `date` begins, if the rule has one then.
 fn occurrence_start(rule: &WindowRule, tz: Tz, date: NaiveDate) -> Option<DateTime<Utc>> {
     match rule {
         WindowRule::RecurringWeekday {
@@ -87,8 +71,7 @@ fn occurrence_start(rule: &WindowRule, tz: Tz, date: NaiveDate) -> Option<DateTi
             let due = elapsed >= 0 && elapsed.checked_rem(i64::from(*every_days)) == Some(0);
             match (due, elapsed) {
                 (false, _) => None,
-                // The first occurrence is exactly the instant the operator gave, even when
-                // that local time is the later of two.
+                // The first occurrence is the exact instant given, even when that local time repeats.
                 (true, 0) => Some(*first_start_at),
                 (true, _) => Some(local_instant(tz, date.and_time(first.time()))),
             }
@@ -97,7 +80,6 @@ fn occurrence_start(rule: &WindowRule, tz: Tz, date: NaiveDate) -> Option<DateTi
     }
 }
 
-/// Whether `date` is one of the listed days; `-1` is the last day of its month.
 fn on_day_of_month(days: &[i8], date: NaiveDate) -> bool {
     let is_last = date
         .succ_opt()
@@ -111,16 +93,13 @@ fn on_day_of_month(days: &[i8], date: NaiveDate) -> bool {
     })
 }
 
-/// The instant of a local time: the earlier one when it repeats, the end of the gap when it
-/// does not exist.
 fn local_instant(tz: Tz, local: NaiveDateTime) -> DateTime<Utc> {
     tz.from_local_datetime(&local)
         .earliest()
         .map_or_else(|| after_gap(tz, local), |instant| instant.to_utc())
 }
 
-/// The first instant after the gap that holds `local`. Gaps begin on a whole minute, so
-/// stepping by minutes lands exactly on the change. If no end is found, `local` is read as UTC.
+/// Gaps begin on a whole minute, so stepping by minutes lands exactly on the change.
 fn after_gap(tz: Tz, local: NaiveDateTime) -> DateTime<Utc> {
     let mut probe = local
         .with_second(0)

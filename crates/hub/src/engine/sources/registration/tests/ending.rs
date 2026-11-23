@@ -1,5 +1,4 @@
-//! PRJ-039: how an attempt ends (expiry, the store, a cancel, a failed exchange), with the time
-//! as a parameter. Every end drops the key.
+//! How a registration attempt ends (PRJ-039).
 
 use super::{app, app_created, at, at_github, exchanging, key, phase, t0, value, waiting};
 use crate::{

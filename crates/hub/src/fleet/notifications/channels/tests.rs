@@ -1,5 +1,4 @@
-//! The channel rules, by kind (NOT-002, NOT-003, SEC-005, CR-14, N-4). Every value here is
-//! synthetic.
+//! The channel rules, by kind (NOT-002, NOT-003, SEC-005, CR-14, N-4); every value is synthetic.
 
 mod apprise;
 mod apprise_url;
@@ -13,7 +12,6 @@ use super::{
 };
 use crate::{api_errors::FieldError, fleet::credentials::Secret};
 
-/// No field refused, no secret field touched: what an empty list is compared with.
 const NONE: [&str; 0] = [];
 
 fn secret(text: &str) -> Secret {
@@ -33,7 +31,6 @@ fn draft(settings: SettingsDraft) -> Draft {
     }
 }
 
-/// The prepared channel; a refusal fails the test with the fields it names.
 fn accepted(result: Result<Prepared, Vec<FieldError>>) -> Prepared {
     match result {
         Ok(prepared) => prepared,
@@ -52,14 +49,12 @@ fn fields(errors: &[FieldError]) -> Vec<&'static str> {
     errors.iter().map(|error| error.field).collect()
 }
 
-/// The fields a new channel is refused on; empty when accepted.
 fn errors_of(draft: Draft) -> Vec<&'static str> {
     prepare_new(draft)
         .err()
         .map_or_else(Vec::new, |errors| fields(&errors))
 }
 
-/// The fields a new channel with these settings is refused on; empty when accepted.
 fn new_errors(settings: SettingsDraft) -> Vec<&'static str> {
     errors_of(draft(settings))
 }

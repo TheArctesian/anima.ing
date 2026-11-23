@@ -1,5 +1,4 @@
-//! An SNMP check created, read and updated through the API, with every place a secret could
-//! leak searched for the planted ones (SEC-003, LOG-007).
+//! An SNMP check through the API, with every place a secret could leak searched (SEC-003, LOG-007).
 
 use std::fmt::Write as _;
 

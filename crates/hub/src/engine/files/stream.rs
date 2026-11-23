@@ -1,4 +1,4 @@
-//! The stream form of a sealed piece (K-E4 Section 9, FIL-002). Pure: bytes in, bytes out.
+//! The stream form of a sealed piece (K-E4 Section 9, FIL-002).
 //!
 //! ```text
 //! piece  = 0x01 ‖ len(key id) ‖ key id ‖ part ‖ part ‖ …     (at least one part)
@@ -14,11 +14,9 @@ use zeroize::Zeroizing;
 
 use crate::engine::sealing_keys::SealingKey;
 
-/// Plain bytes in one part.
 pub const PART: usize = 64 * 1024;
 const NONCE_LEN: usize = 24;
 const TAG_LEN: usize = 16;
-/// The bytes of one full part as stored.
 pub const RECORD: usize = NONCE_LEN + PART + TAG_LEN;
 const LAYOUT_V1: u8 = 0x01;
 const PART_TAG: &[u8] = b"anima/files/part/v1";
@@ -32,7 +30,6 @@ pub enum StreamError {
     Damaged,
 }
 
-/// What a part is sealed for: one key and one piece.
 #[derive(Clone, Copy)]
 pub struct Binding<'a> {
     pub key: &'a SealingKey,
@@ -41,8 +38,6 @@ pub struct Binding<'a> {
 }
 
 impl Binding<'_> {
-    /// The header that starts the piece: the layout and the identifier of the key.
-    ///
     /// # Panics
     /// Never: a key identifier is 16 bytes.
     #[must_use]
@@ -55,8 +50,6 @@ impl Binding<'_> {
         header
     }
 
-    /// The length of the header that `bytes` starts with, when it names this key.
-    ///
     /// # Errors
     /// `WrongKey` for the header of a different key; `Damaged` for a header that is cut or of
     /// an unknown layout.
@@ -76,8 +69,6 @@ impl Binding<'_> {
         Ok(2 + id.len())
     }
 
-    /// One part: a fresh nonce, then `plain` sealed for its number and mark.
-    ///
     /// # Panics
     /// When the OS gives no random nonce, or for more than [`PART`] plain bytes.
     #[must_use]
@@ -96,8 +87,6 @@ impl Binding<'_> {
         record
     }
 
-    /// The plain bytes of one part, sealed for this number and mark.
-    ///
     /// # Errors
     /// `Damaged` when the part is cut, changed, of another piece, number or mark.
     pub fn open_part(
@@ -143,7 +132,6 @@ impl Binding<'_> {
     }
 }
 
-/// The whole piece of `plain`, for the tests; the hub seals as a stream.
 #[cfg(test)]
 #[must_use]
 pub fn seal_all(binding: Binding<'_>, plain: &[u8]) -> Vec<u8> {
@@ -160,9 +148,6 @@ pub fn seal_all(binding: Binding<'_>, plain: &[u8]) -> Vec<u8> {
     piece
 }
 
-/// The plain bytes of a whole piece, read as the stream reader reads it: a part is the last
-/// one exactly when no byte follows it.
-///
 /// # Errors
 /// As [`Binding::header_len`] and [`Binding::open_part`]; `Damaged` for a piece with no part.
 #[cfg(test)]

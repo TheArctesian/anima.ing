@@ -12,16 +12,13 @@ use super::{
 };
 use crate::fleet::credentials::Secret;
 
-/// How the request authenticates, with the secret in hand.
 pub enum HttpCredentials {
     None,
     Basic { username: String, password: Secret },
     Bearer(Secret),
 }
 
-/// An HTTP check as an operator supplies it: every header value and the credentials are
-/// still in hand. It prints nothing (it has no `Debug`); [`HttpInput::split`] separates the
-/// stored part from the secrets.
+/// It has no `Debug`, so it prints nothing.
 pub struct HttpInput {
     pub url: String,
     pub method: HttpMethod,
@@ -37,10 +34,8 @@ pub struct HttpInput {
     pub timeout_ms: u32,
 }
 
-/// The secrets of an HTTP check, kept apart from the stored JSON.
-///
-/// Like [`Secret`] it has no `Debug`, `Display`, `Clone` or `Serialize`. `headers` holds the
-/// values of the secret headers in the order of the `None` values of [`HttpConfig::headers`].
+/// Like [`Secret`] it has no `Debug`, `Display`, `Clone` or `Serialize`.
+/// `headers` holds the secret header values in the order of the `None` values of [`HttpConfig::headers`].
 #[derive(Default)]
 pub struct HttpSecrets {
     pub password: Option<Secret>,
@@ -48,7 +43,6 @@ pub struct HttpSecrets {
     pub headers: Vec<Secret>,
 }
 
-/// The sealed layout of [`HttpSecrets`]; copies are transient and short-lived.
 #[derive(Serialize, Deserialize)]
 struct Wire<'a> {
     #[serde(borrow)]
@@ -59,12 +53,11 @@ struct Wire<'a> {
     headers: Vec<Cow<'a, str>>,
 }
 
-/// The secret as text, for a field that must be UTF-8. The error names the field only.
+/// The error names the field only.
 fn text<'a>(field: &'static str, secret: &'a Secret) -> Result<&'a str, ConfigError> {
     std::str::from_utf8(secret.expose()).map_err(|_| err(field, Reason::Invalid))
 }
 
-/// The secret as text for sealing; bytes that are not UTF-8 are replaced, never dropped.
 fn lossy(secret: &Secret) -> Cow<'_, str> {
     String::from_utf8_lossy(secret.expose())
 }
@@ -75,9 +68,7 @@ impl HttpSecrets {
         self.password.is_none() && self.bearer_token.is_none() && self.headers.is_empty()
     }
 
-    /// The bytes to seal into the `secrets_sealed` column. They are written into a zeroized
-    /// buffer sized for the worst case (every byte escaped), so it never grows and leaves no
-    /// copy behind.
+    /// Written into a zeroized buffer sized for the worst case, so it never grows and leaves no copy.
     #[must_use]
     pub fn encode(&self) -> Secret {
         let wire = Wire {
@@ -97,8 +88,6 @@ impl HttpSecrets {
         Secret::new(std::mem::take(&mut *bytes))
     }
 
-    /// Reads back what [`HttpSecrets::encode`] wrote.
-    ///
     /// # Errors
     /// The bytes are not in the sealed layout; the error holds no content.
     pub fn decode(bytes: &Secret) -> Result<Self, ConfigError> {
@@ -114,8 +103,6 @@ impl HttpSecrets {
 }
 
 impl HttpInput {
-    /// Separates the stored configuration from the secrets and validates both.
-    ///
     /// # Errors
     /// The first refused field; the error never repeats the value.
     pub fn split(self) -> Result<(HttpConfig, HttpSecrets), ConfigError> {
@@ -165,8 +152,6 @@ impl HttpInput {
         Ok((config, secrets))
     }
 
-    /// The reverse of [`HttpInput::split`], to edit a stored check.
-    ///
     /// # Errors
     /// A secret that the configuration needs is missing.
     pub fn join(config: HttpConfig, secrets: HttpSecrets) -> Result<Self, ConfigError> {

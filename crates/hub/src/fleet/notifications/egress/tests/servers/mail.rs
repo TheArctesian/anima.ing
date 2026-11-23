@@ -1,6 +1,3 @@
-//! The SMTP side of the test servers: a scripted conversation, in plain text, over TLS from the
-//! first byte, or upgraded by STARTTLS.
-
 use std::time::Duration;
 
 use tokio::{
@@ -11,23 +8,17 @@ use tokio_rustls::TlsAcceptor;
 
 use super::{Seen, handshake};
 
-/// How an SMTP server answers.
 #[derive(Clone, Copy)]
 pub(super) struct Script {
-    /// Whether it writes the 220 greeting first (not after STARTTLS).
     pub(super) greet: bool,
-    /// What it answers to STARTTLS; `None` when it does not offer it.
     pub(super) starttls: Option<&'static [u8]>,
-    /// What it answers to AUTH.
     pub(super) auth: &'static [u8],
-    /// What it answers to QUIT; `None` when it never answers and waits for the client to go.
+    /// `None` never answers QUIT and waits for the client to go.
     pub(super) quit: Option<&'static [u8]>,
-    /// How long it takes to queue a message before it answers the end of DATA.
     pub(super) queuing: Duration,
 }
 
 pub(super) const GO_AHEAD: &[u8] = b"220 go ahead\r\n";
-/// A plain conversation with no STARTTLS and every login accepted.
 pub(super) const PLAIN: Script = Script {
     greet: true,
     starttls: None,
@@ -35,13 +26,11 @@ pub(super) const PLAIN: Script = Script {
     quit: Some(b"221 bye\r\n"),
     queuing: Duration::ZERO,
 };
-/// The conversation after STARTTLS: no new greeting, no second STARTTLS.
 const AFTER_STARTTLS: Script = Script {
     greet: false,
     ..PLAIN
 };
 
-/// SMTP over TLS from the first byte, answering as `script` says.
 pub(super) async fn implicit(
     acceptor: &TlsAcceptor,
     stream: TcpStream,
@@ -53,7 +42,6 @@ pub(super) async fn implicit(
     }
 }
 
-/// SMTP that offers STARTTLS, answers it with `go_ahead` and upgrades.
 pub(super) async fn starttls(
     acceptor: &TlsAcceptor,
     stream: TcpStream,
@@ -72,8 +60,7 @@ pub(super) async fn starttls(
     }
 }
 
-/// One SMTP conversation answered as `script` says. Records every command line but the message
-/// content; returns the stream when the client asks for STARTTLS.
+/// Returns the stream when the client asks for STARTTLS; message content is not recorded.
 pub(super) async fn smtp<S: AsyncRead + AsyncWrite + Unpin>(
     stream: S,
     script: Script,
@@ -117,7 +104,6 @@ pub(super) async fn smtp<S: AsyncRead + AsyncWrite + Unpin>(
     }
 }
 
-/// Answers DATA: takes the message content, then answers that it is queued after `queuing`.
 async fn queue_message<S: AsyncRead + AsyncWrite + Unpin>(
     reader: &mut BufReader<S>,
     queuing: Duration,
@@ -128,7 +114,6 @@ async fn queue_message<S: AsyncRead + AsyncWrite + Unpin>(
     Some(b"250 queued\r\n")
 }
 
-/// Reads the message content up to the line holding a single dot.
 async fn skip_content<S: AsyncRead + Unpin>(reader: &mut BufReader<S>) -> Option<()> {
     loop {
         let mut line = String::new();

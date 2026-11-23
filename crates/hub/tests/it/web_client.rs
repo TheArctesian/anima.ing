@@ -1,5 +1,4 @@
-//! The web client mounted as the hub's fallback, as `main.rs` wires it (D-2, K7): explicit
-//! routes win, the fallback is logged without its path and sits behind the NET-002 layer.
+//! The web client as the hub's fallback (D-2, K7): logged without its path, behind NET-002.
 
 use std::{
     io,
@@ -36,7 +35,6 @@ use crate::hub::dependencies;
 const INDEX_HTML: &str = "<!doctype html><script>start()</script>";
 const MARKER: &str = "SECRET-PATH-MARKER";
 
-/// A web root holding only `index.html`.
 fn web_root() -> TempDir {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("index.html"), INDEX_HTML).unwrap();
@@ -47,14 +45,12 @@ fn origin() -> PublicOrigin {
     PublicOrigin::new("https://hub.anima.ing".to_owned())
 }
 
-/// The hub's routes on `pool` with the web client at `root`, merged as `main.rs` merges them.
 fn hub(pool: &PgPool, root: Option<&Path>) -> Router {
     let clock: Arc<dyn Clock> = Arc::new(SystemClock);
     let schema = build_schema(dependencies(pool, clock.clone(), Bus::new(1)));
     router(schema, pool.clone(), clock).merge(web_fallback(root, &origin()))
 }
 
-/// A pool that never connects: these requests need no database.
 fn no_database() -> PgPool {
     PgPoolOptions::new()
         .connect_lazy("postgres://nobody@127.0.0.1:1/none")
@@ -106,7 +102,6 @@ async fn d_2_post_graphql_still_reaches_graphql_with_a_web_root() {
 async fn d_2_explicit_routes_keep_their_method_answers_with_a_web_root() {
     let root = web_root();
     let app = hub(&no_database(), Some(root.path()));
-    // `GET /graphql` that is not an upgrade, and `POST /health`: the routes answer 405.
     assert_eq!(
         send(&app, get("/graphql")).await.0,
         StatusCode::METHOD_NOT_ALLOWED
@@ -159,7 +154,6 @@ async fn net_002_the_layer_covers_the_web_client(pool: PgPool) {
     assert_eq!((permitted, body.as_str()), (StatusCode::OK, INDEX_HTML));
 }
 
-/// Collects everything the process log writes.
 #[derive(Clone, Default)]
 struct Capture(Arc<Mutex<Vec<u8>>>);
 
@@ -179,8 +173,7 @@ async fn log_007_a_web_client_request_is_logged_without_its_path() {
     let capture = Capture::default();
     let writer = capture.clone();
     let subscriber = process_log::subscriber("trace", move || writer.clone()).unwrap();
-    // As in wiring::uri_log: a second dispatcher keeps other test threads from caching this
-    // test's callsites as disabled.
+    // A second dispatcher keeps other test threads from caching these callsites as disabled.
     let _second = tracing::Dispatch::new(tracing::subscriber::NoSubscriber::default());
     let _default = tracing::subscriber::set_default(subscriber);
     tracing::callsite::rebuild_interest_cache();

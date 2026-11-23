@@ -1,5 +1,4 @@
-//! The tool inventory of each device: replaced whole when a daemon batch brings one
-//! (CAP-020, CAP-029).
+//! Each daemon batch that brings an inventory replaces the stored one whole (CAP-020, CAP-029).
 
 use chrono::{DateTime, Utc};
 use daemon_core::inventory::{Inventory, Reason, Tool};
@@ -11,8 +10,7 @@ use crate::{
     ids::DeviceId,
 };
 
-/// Every stored inventory, read in one statement so its tools and targets belong to it. The
-/// tools of a name this version does not know are left out.
+/// One statement, so each inventory's tools and targets are read together.
 pub(in crate::fleet::metrics) async fn inventories(
     db: &PgPool,
 ) -> Result<Vec<Capabilities>, Error> {
@@ -34,8 +32,6 @@ pub(in crate::fleet::metrics) async fn inventories(
     rows.into_iter().map(Capabilities::try_from).collect()
 }
 
-/// Replaces the stored inventory of `device` with `inventory`, found at `found_at`, in the
-/// caller's transaction: three inserts whatever the number of tools and targets.
 pub(in crate::fleet::metrics) async fn write_inventory(
     conn: &mut PgConnection,
     device: DeviceId,

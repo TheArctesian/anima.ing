@@ -1,6 +1,4 @@
-//! K-E1 Section 13.3, "Pre-read is a fresh GET": the read a change acts on is never a held
-//! answer. When GitHub's read fails for a passing reason (a 5xx, a limit, a full queue), the
-//! change is refused and sends nothing, where a plain read would serve the held answer stale.
+//! K-E1 Section 13.3: a change acts on a fresh read, never a held answer, and a failed read refuses it.
 
 use serde_json::json;
 use sqlx::PgPool;

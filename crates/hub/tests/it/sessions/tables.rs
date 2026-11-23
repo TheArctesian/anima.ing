@@ -1,7 +1,4 @@
-//! Migrations 0600 and 0610: columns, session checks and what a device delete does (K2,
-//! RA-008, SEC-006); the server certificate table is `server_certificates`. Migration 0920
-//! moved `host_keys` and `server_certificates` to schema `trust` (D-31). Migrations 0121, 0662
-//! and 0901 removed what recording left (R-113).
+//! Session tables and what a device delete does (K2, RA-008, SEC-006, D-31, R-113).
 
 mod server_certificates;
 
@@ -136,7 +133,6 @@ async fn ra_030_protocol_is_ssh_rdp_or_vnc(pool: PgPool) {
     }
 }
 
-/// Runs `update … set {set}` on session 1.
 async fn update(pool: &PgPool, set: &str) -> Result<(), sqlx::Error> {
     sqlx::query(&format!("update sessions.sessions set {set} where id = $1"))
         .bind(session_id(1))
@@ -178,8 +174,7 @@ async fn ra_008_session_history_survives_device_delete_and_host_key_does_not(poo
     assert_eq!(keys, [DOCKER_HOST]);
 }
 
-/// R-113 (RA-008, RA-040 deferred): after every migration the hub has no table for session
-/// content, no recording flag on a device and no recordings retention period.
+/// R-113.
 #[sqlx::test(migrations = "./migrations")]
 async fn ra_008_no_recording_table_flag_or_period_is_left_after_migrate(pool: PgPool) {
     let table: Option<String> =

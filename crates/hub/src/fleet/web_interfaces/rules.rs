@@ -1,5 +1,4 @@
-//! What a web interface may be: the URL, label and fingerprint rules, and the origin
-//! comparison. Pure; no I/O (WEB-001, WEB-008, D-4 to D-6).
+//! The URL, label and fingerprint rules of a web interface (WEB-001, WEB-008, D-4 to D-6).
 
 use reqwest::Url;
 
@@ -9,14 +8,12 @@ use crate::{fingerprint::CertificateFingerprint, text::is_invisible};
 const URL_MAX_BYTES: usize = 2048;
 const LABEL_MAX_CHARS: usize = 100;
 
-/// An input that passed the rules: the URL trimmed, the label filled in.
 pub(super) struct NewInterface {
     pub label: String,
     pub url: String,
     pub open_in: OpenIn,
 }
 
-/// Checks an interface to create or to replace one with; every field in error, all at once.
 pub(super) fn validate(input: &WebInterfaceInput) -> Result<NewInterface, Vec<FieldError>> {
     let parsed = parse_url(&input.url);
     let label = parsed.as_ref().map_or_else(
@@ -33,7 +30,7 @@ pub(super) fn validate(input: &WebInterfaceInput) -> Result<NewInterface, Vec<Fi
     }
 }
 
-/// The trimmed text and its parse, when it is a plain `http` or `https` address (D-4).
+/// A plain `http` or `https` address (D-4).
 pub(super) fn parse_url(text: &str) -> Result<(String, Url), FieldError> {
     let text = text.trim();
     let invalid = |message: &str| FieldError::new("url", message);
@@ -76,7 +73,6 @@ pub(super) fn parse_url(text: &str) -> Result<(String, Url), FieldError> {
     Ok((text.to_owned(), url))
 }
 
-/// The typed label trimmed, or the host when it is empty or missing.
 fn label(typed: Option<&str>, host: Option<&str>) -> Result<String, FieldError> {
     let typed = typed.map(str::trim).filter(|text| !text.is_empty());
     let Some(text) = typed else {
@@ -97,7 +93,6 @@ fn label(typed: Option<&str>, host: Option<&str>) -> Result<String, FieldError> 
     }
 }
 
-/// The label an interface gets from its host.
 pub(super) fn host_label(host: &str) -> String {
     host.chars().take(LABEL_MAX_CHARS).collect()
 }
@@ -106,8 +101,7 @@ fn is_unsafe_in_label(c: char) -> bool {
     c.is_control() || is_invisible(c)
 }
 
-/// The fingerprint in 64 hex digits, colons between byte pairs allowed, any case, nothing
-/// around it (D-5).
+/// 64 hex digits, colons between byte pairs allowed, any case, nothing around it (D-5).
 pub(super) fn fingerprint(text: &str) -> Result<CertificateFingerprint, FieldError> {
     text.parse().map_err(|_| {
         FieldError::new(
@@ -117,8 +111,7 @@ pub(super) fn fingerprint(text: &str) -> Result<CertificateFingerprint, FieldErr
     })
 }
 
-/// Whether both addresses have the same scheme, host and port (D-6). An address that does
-/// not parse has no origin, so it matches nothing.
+/// An address that does not parse has no origin, so it matches nothing (D-6).
 pub(super) fn same_origin(a: &str, b: &str) -> bool {
     match (Url::parse(a), Url::parse(b)) {
         (Ok(a), Ok(b)) => a.origin() == b.origin(),
@@ -126,7 +119,6 @@ pub(super) fn same_origin(a: &str, b: &str) -> bool {
     }
 }
 
-/// Whether the address is `https`.
 pub(super) fn is_https(text: &str) -> bool {
     Url::parse(text).is_ok_and(|url| url.scheme() == "https")
 }

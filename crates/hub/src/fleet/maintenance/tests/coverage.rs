@@ -23,7 +23,6 @@ fn tags(names: &[&str]) -> Vec<String> {
     names.iter().map(|name| (*name).to_owned()).collect()
 }
 
-/// A manual window that is on or off, applying to `targets`.
 fn manual(active: bool, targets: Vec<Target>) -> Window {
     Window {
         id: WindowId::from(uuid::Uuid::nil()),

@@ -1,8 +1,4 @@
-//! `startSession` and the device's session limit (RA-036, K4 §1 step 1): a device with as many
-//! live sessions as its limit refuses the next start with CONFLICT until one ends, two starts
-//! at the limit cannot both pass, files tickets hold no session, and a device with
-//! no limit, or another device, is never refused. A refused start tries no wake, an expired
-//! unredeemed ticket frees its slot, and a limit lowered below the live count refuses.
+//! `startSession` and the device's session limit (RA-036, K4 §1 step 1).
 
 use std::sync::Arc;
 

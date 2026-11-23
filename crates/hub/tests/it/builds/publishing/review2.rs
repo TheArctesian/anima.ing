@@ -1,7 +1,4 @@
-//! The security re-review's cases (T3 round 2), as regression tests: once a feed write was sent
-//! the job's files stay and a later try confirms the feed (D-25); a try writes only while its
-//! hold outlasts the write; and a checked file that changed after publishing is reported
-//! (D-28).
+//! Publishing after a lost, late or overtaken write (D-25, D-28).
 
 use std::sync::Arc;
 
@@ -24,7 +21,6 @@ use super::{
 };
 use crate::{builds::harness::data, hub::start};
 
-/// The job's `AppImage` object.
 const APP: &str = "linux-x86_64/0.1.12/Anima_0.1.12_amd64.AppImage";
 
 async fn set_attempts(publishing: &Publishing, job: &str, attempts: i32) {
@@ -36,7 +32,6 @@ async fn set_attempts(publishing: &Publishing, job: &str, attempts: i32) {
         .unwrap();
 }
 
-/// The warnings in the event log.
 async fn warnings(publishing: &Publishing) -> Vec<String> {
     sqlx::query_scalar("SELECT message FROM events.event_log WHERE severity = 'warning'")
         .fetch_all(&publishing.pool)
@@ -44,8 +39,7 @@ async fn warnings(publishing: &Publishing) -> Vec<String> {
         .unwrap()
 }
 
-/// The review's case: on the last try the feed write lands, but its answer and the read-back
-/// are both lost. The job fails as unknown, and the files the feed names stay.
+/// On the last try the feed write lands, but its answer and the read-back are both lost.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_job_that_fails_after_its_feed_was_sent_keeps_its_files(pool: PgPool) {
     let publishing = Publishing::start(&pool).await;
@@ -71,8 +65,6 @@ async fn d_25_a_job_that_fails_after_its_feed_was_sent_keeps_its_files(pool: PgP
     assert!(publishing.fake.with(|store| store.deletes.is_empty()));
 }
 
-/// A try whose feed write and read-back were both lost leaves the job; the next try reads the
-/// feed that landed and publishes without writing it again.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_later_try_publishes_a_sent_feed_that_landed(pool: PgPool) {
     let publishing = Publishing::start(&pool).await;
@@ -94,8 +86,6 @@ async fn d_25_a_later_try_publishes_a_sent_feed_that_landed(pool: PgPool) {
     assert_eq!(feeds, 1, "the feed is confirmed, not written again");
 }
 
-/// The review's case: a try's feed write is in flight when a later try takes the job. The later
-/// try finds another feed, so the job fails, and the files stay for the write that lands after.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_feed_in_flight_past_a_takeover_names_files_that_stay(pool: PgPool) {
     let publishing = Arc::new(Publishing::start(&pool).await);
@@ -126,8 +116,7 @@ async fn d_25_a_feed_in_flight_past_a_takeover_names_files_that_stay(pool: PgPoo
     assert!(publishing.fake.with(|store| store.deletes.is_empty()));
 }
 
-/// A try writes only while its hold outlasts a write: with a minute of hold left after its
-/// reads, it copies nothing.
+/// With a minute of hold left after its reads, the try copies nothing.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_try_writes_only_while_its_hold_outlasts_the_write(pool: PgPool) {
     let publishing = Arc::new(Publishing::start(&pool).await);
@@ -150,7 +139,6 @@ async fn d_25_a_try_writes_only_while_its_hold_outlasts_the_write(pool: PgPool) 
     assert!(publishing.fake.object(LINUX_FEED).is_none());
 }
 
-/// One publisher sweep with the hub's clock at `hub` and R2's at `r2`.
 async fn sweep_apart(publishing: &Publishing, hub: DateTime<Utc>, r2: DateTime<Utc>) -> usize {
     publishing.clock.set(hub);
     publishing.fake.with(|store| store.now = Some(r2));
@@ -166,9 +154,7 @@ async fn sweep_apart(publishing: &Publishing, hub: DateTime<Utc>, r2: DateTime<U
         .unwrap()
 }
 
-/// The review's case: the hub's clock runs 3 minutes ahead of R2's, so a builder's URL still
-/// works while the hub publishes and rewrites the `AppImage`. The hub reads the checked files'
-/// `ETag`s again after the feed and warns.
+/// The hub's clock runs ahead of R2's, so a builder's URL still works while the hub publishes.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_28_a_file_changed_after_its_check_is_reported(pool: PgPool) {
     let publishing = Arc::new(Publishing::start(&pool).await);
@@ -210,7 +196,6 @@ async fn d_28_a_file_changed_after_its_check_is_reported(pool: PgPool) {
     assert!(!warned[0].contains("SHA256SUMS"));
 }
 
-/// A publish whose files did not change after the check warns of nothing.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_28_an_unchanged_publish_warns_of_nothing(pool: PgPool) {
     let publishing = Publishing::start(&pool).await;

@@ -1,9 +1,4 @@
-//! A hosted hub is a device of its own list (HMD-045, R-137): at the start it makes sure that
-//! its device and the check `Hub running` exist, reports the check as Up, and then reports it
-//! again at each half of the check's interval, so the device is Up while the hub runs. It records
-//! the Linux distribution of its container on its device (HMD-046). When the
-//! daemon of its container is not enrolled yet, it writes one enrolment code of its device to
-//! the private file that `anima-local-hub` named (HMD-071, HM-T35).
+//! A hosted hub is a device of its own list (HMD-045, R-137, HMD-046, HMD-071, HM-T35).
 
 use std::{path::Path, sync::Arc, time::Duration};
 
@@ -18,10 +13,8 @@ use sqlx::PgPool;
 use super::job_failed;
 
 const JOB: &str = "hub_device";
-/// The wait before the next report when the check is gone or a report failed.
 const RETRY: Duration = Duration::from_secs(30);
 
-/// What the reports of the hub's own check need.
 pub struct Alive {
     db: PgPool,
     bus: Bus,
@@ -29,16 +22,13 @@ pub struct Alive {
     check: CheckId,
 }
 
-/// The wait before the next report: half of the interval in which the check waits for one, so
-/// one late report does not make the check Down. [`RETRY`] when there is no interval.
+/// Half of the check's interval, so one late report does not make the check Down.
 pub(super) fn next_report(interval: Option<Duration>) -> Duration {
     interval.map_or(RETRY, |interval| interval / 2)
 }
 
-/// In the hosted mode, adds the hub's device and its check when they are not there, and
-/// reports the check once, before the scheduler can find it due. `None` for a hub that is not
-/// hosted. A failure is logged by its fault word and does not stop the start: the hub serves
-/// without its own row, and the next start tries again.
+/// Reports the check once, before the scheduler can find it due. A failure does not stop the
+/// start: the hub serves without its own row, and the next start tries again.
 pub async fn start(
     config: &Config,
     db: &PgPool,
@@ -77,11 +67,9 @@ pub async fn start(
     Some(alive)
 }
 
-/// The files that name the distribution, in the order of os-release(5).
+/// In the order of os-release(5).
 const OS_RELEASE: [&str; 2] = ["etc/os-release", "usr/lib/os-release"];
 
-/// The distribution of the system under `root` (`/` for the container of the hub): the first
-/// file of [`OS_RELEASE`] that reads; `None` when it names none.
 pub(super) async fn own_distribution(root: &Path) -> Option<devices::Distribution> {
     for file in OS_RELEASE {
         if let Ok(text) = tokio::fs::read(root.join(file)).await {
@@ -91,9 +79,7 @@ pub(super) async fn own_distribution(root: &Path) -> Option<devices::Distributio
     None
 }
 
-/// Makes a code for the daemon of the container and writes it to `file`, mode 0600, in place of
-/// a file that an earlier start left. A failure is logged by its fault word: the daemon then
-/// does not enrol, and the next start tries again. The code reaches no log (LOG-007).
+/// The code goes only to `file`, mode 0600, and reaches no log (LOG-007).
 async fn write_own_code(db: &PgPool, device: DeviceId, clock: &dyn Clock, file: &Path) {
     let Ok(code) = metrics::own_daemon_code(db, device, clock.now()).await else {
         return job_failed(JOB, "own_daemon_code");
@@ -114,7 +100,6 @@ async fn write_own_code(db: &PgPool, device: DeviceId, clock: &dyn Clock, file: 
     }
 }
 
-/// The device and its check, added in one transaction or not at all.
 async fn ensure(
     db: &PgPool,
     bus: &Bus,
@@ -138,7 +123,6 @@ async fn ensure(
 }
 
 impl Alive {
-    /// Reports the check as Up now and returns the wait before the next report.
     async fn report(&self) -> Duration {
         let now = self.clock.now();
         let up = checks::OwnReport::Up;
@@ -150,7 +134,6 @@ impl Alive {
         next_report(interval)
     }
 
-    /// Reports the check for as long as the hub runs.
     pub async fn keep_reporting(self) {
         loop {
             let wait = self.report().await;

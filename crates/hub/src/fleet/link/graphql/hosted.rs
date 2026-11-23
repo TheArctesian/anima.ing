@@ -1,10 +1,5 @@
-//! The two calls of a hosted hub (hosted-mode.md HMD-037, R-129): `hostedDeviceInvite`, which
-//! only the Anima.ing cloud can make, and `claimDeviceToken`, which only the device that joined
-//! with that invite can make. Together they let a device join and sign in with no invite typed
-//! and no password: the account is the only way in. The cloud never sees the device's token.
-//!
-//! Neither call writes an invite, a claim, a token or the cloud key to a log or an entry
-//! (LOG-007).
+//! The calls of a hosted hub (HMD-037, R-129); the cloud never sees a device's token.
+//! `hostedDeviceInvite` and `claimDeviceToken` write no invite, claim, token or cloud key to a log or an entry (LOG-007).
 
 use std::{path::Path, sync::Arc};
 

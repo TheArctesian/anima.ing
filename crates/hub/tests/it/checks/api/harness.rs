@@ -1,5 +1,3 @@
-//! The checks schema as `schema.rs` will build it, and requests from a signed-in operator.
-
 use std::{
     future::Future,
     io::{self, Write as _},

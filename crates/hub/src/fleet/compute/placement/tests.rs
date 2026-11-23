@@ -1,6 +1,3 @@
-//! The fit estimate against known public model shapes and common memory sizes. Each expected
-//! number is computed here from the formula, so the table shows its own arithmetic.
-
 use super::{FitError, FitRequest, FitVerdict, KvShape, OverheadTable, estimate_fit};
 
 const GIB: u64 = 1024 * 1024 * 1024;
@@ -15,17 +12,13 @@ fn shape(layers: u32, kv_heads: u32, head_dim: u32) -> KvShape {
     }
 }
 
-// meta-llama/Llama-3.1-8B-Instruct config.json: 32 layers, 8 KV heads, head dim 4096/32 = 128.
-// Weights: bartowski/Meta-Llama-3.1-8B-Instruct-GGUF, Q4_K_M file, about 4.92 GB.
+// meta-llama/Llama-3.1-8B-Instruct: 32 layers, 8 KV heads, head dim 128; Q4_K_M GGUF about 4.92 GB.
 const LLAMA_8B_Q4: u64 = 4_920_000_000;
-// Qwen/Qwen2.5-32B-Instruct config.json: 64 layers, 8 KV heads, head dim 5120/40 = 128.
-// Weights: bartowski/Qwen2.5-32B-Instruct-GGUF, Q4_K_M file, about 19.85 GB.
+// Qwen/Qwen2.5-32B-Instruct: 64 layers, 8 KV heads, head dim 128; Q4_K_M GGUF about 19.85 GB.
 const QWEN_32B_Q4: u64 = 19_850_000_000;
-// meta-llama/Llama-3.1-70B-Instruct config.json: 80 layers, 8 KV heads, head dim 8192/64 = 128.
-// Weights: bartowski/Meta-Llama-3.1-70B-Instruct-GGUF, Q4_K_M file, about 42.52 GB.
+// meta-llama/Llama-3.1-70B-Instruct: 80 layers, 8 KV heads, head dim 128; Q4_K_M GGUF about 42.52 GB.
 const LLAMA_70B_Q4: u64 = 42_520_000_000;
-// Qwen/Qwen2.5-7B-Instruct config.json: 28 layers, 4 KV heads, head dim 3584/28 = 128.
-// Weights: bartowski/Qwen2.5-7B-Instruct-GGUF, Q4_K_M file, about 4.68 GB.
+// Qwen/Qwen2.5-7B-Instruct: 28 layers, 4 KV heads, head dim 128; Q4_K_M GGUF about 4.68 GB.
 const QWEN_7B_Q4: u64 = 4_680_000_000;
 
 fn overhead() -> u64 {

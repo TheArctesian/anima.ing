@@ -2,7 +2,7 @@
 //! kept and closed to every API key (K-E1 Section 13.8, D-23).
 //!
 //! Neither a path nor a file's content reaches a log line, an error message, the audit log or
-//! an event (LOG-007): errors carry fixed words only, and a read writes no audit entry.
+//! an event (LOG-007).
 
 use async_graphql::{Context, ID, Object, Result};
 use provider_github::live::contents::{self as github, DirectoryRead, FileRead};

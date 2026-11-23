@@ -1,5 +1,4 @@
-//! The notifications GraphQL part with a test clock and vault, and requests from a signed-in
-//! operator. Every secret here is synthetic.
+//! Every secret here is synthetic.
 
 use std::sync::Arc;
 

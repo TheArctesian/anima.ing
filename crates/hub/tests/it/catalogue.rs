@@ -1,6 +1,4 @@
-//! The catalogue through the hub's router (task H38, R-234): the list and the description are
-//! open to each token, the install is open to a write key and an agent, and the install is
-//! refused with a fixed reason. No request reaches a machine.
+//! The catalogue through the hub's router (task H38, R-234): no request reaches a machine.
 
 use serde_json::{Value, json};
 use sqlx::PgPool;

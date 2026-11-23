@@ -1,7 +1,5 @@
-//! The K7 error plumbing every domain's `graphql` part shares: the code names, the generic
-//! `INTERNAL` answer, the `VALIDATION` answer and the schema reads that fail as `INTERNAL`
-//! (K7, API-010, CQ-050, CQ-051). A domain keeps its own `to_graphql(Error)`, the mapping
-//! from its error enum.
+//! The K7 error plumbing every domain's `graphql` part shares (K7, API-010, CQ-050, CQ-051).
+//! A domain keeps its own `to_graphql(Error)`, the mapping from its error enum.
 
 use std::{fmt, sync::Arc};
 

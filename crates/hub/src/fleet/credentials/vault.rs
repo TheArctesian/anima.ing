@@ -18,7 +18,6 @@ const SEALED_TAG: &[u8] = b"anima/credentials/sealed/v1";
 const LAYOUT_V1: u8 = 0x01;
 
 /// The hub's credential key: seals and opens secrets with XChaCha20-Poly1305.
-///
 /// Each clone holds its own copy of the key, zeroized on drop. `Debug` prints only the key id.
 #[derive(Clone)]
 pub struct Vault {
@@ -27,13 +26,10 @@ pub struct Vault {
 }
 
 impl Vault {
-    /// Reads the key from `ANIMA_KEY_FILE`: 32 bytes as standard base64, surrounding
-    /// whitespace ignored (SEC-004).
+    /// Reads the key from `ANIMA_KEY_FILE`: 32 bytes as standard base64 (SEC-004).
     ///
     /// # Errors
-    ///
-    /// [`Error::KeyFile`] when the file cannot be read, [`Error::KeyFormat`] when it does
-    /// not hold exactly one base64-encoded 32-byte key.
+    /// [`Error::KeyFile`] when the file cannot be read, [`Error::KeyFormat`] when it holds no valid key.
     pub fn from_key_file(path: &Path) -> Result<Self, Error> {
         let text =
             Zeroizing::new(std::fs::read(path).map_err(|error| Error::KeyFile(error.kind()))?);
@@ -48,24 +44,18 @@ impl Vault {
         Ok(Self::from_key(key))
     }
 
-    /// Builds a vault from raw key bytes: the core of `from_key_file`, and the test entry
-    /// point that skips writing a key file.
     pub(super) fn from_key(key: Zeroizing<[u8; KEY_LEN]>) -> Self {
         let key_id = key_id(&key);
         Self { key, key_id }
     }
 
-    /// Seals a secret with a fresh random nonce, bound to `context` (for example a device
-    /// and credential kind; may be empty), so the value opens only with the same context.
+    /// Seals a secret bound to `context`, so the value opens only with the same context.
     ///
     /// # Errors
-    ///
     /// [`Error::Random`] when the OS random source yields no nonce.
     ///
     /// # Panics
-    ///
-    /// Only if the secret exceeds the cipher's 256 GiB limit, which no secret held in memory
-    /// reaches.
+    /// Only if the secret exceeds the cipher's 256 GiB limit.
     pub fn seal(&self, plaintext: &Secret, context: &[u8]) -> Result<Sealed, Error> {
         let mut nonce = XNonce::default();
         getrandom::fill(&mut nonce).map_err(Error::Random)?;
@@ -85,12 +75,8 @@ impl Vault {
         })
     }
 
-    /// Opens a value sealed by [`Vault::seal`] with the same `context`.
-    ///
     /// # Errors
-    ///
-    /// [`Error::WrongKey`] when another key sealed it, [`Error::Decrypt`] when authentication
-    /// fails (changed nonce, ciphertext or key id, a different key, or another context).
+    /// [`Error::WrongKey`] when another key sealed it, [`Error::Decrypt`] when authentication fails.
     pub fn open(&self, sealed: &Sealed, context: &[u8]) -> Result<Secret, Error> {
         if sealed.key_id != self.key_id {
             return Err(Error::WrongKey);
@@ -106,8 +92,7 @@ impl Vault {
         Ok(Secret::new(std::mem::take(&mut *buffer)))
     }
 
-    /// The identifier of the key (not the key): the data keys compare theirs with it at start,
-    /// so that no data key is the credential key (VLT-003).
+    /// Not the key; data keys compare theirs with it so that none is the credential key (VLT-003).
     #[must_use]
     pub fn key_id(&self) -> &str {
         &self.key_id
@@ -141,8 +126,7 @@ fn key_id(key: &[u8; KEY_LEN]) -> String {
     id
 }
 
-/// Format tag ‖ key id ‖ context, each prefixed with its length as a big-endian `u64`,
-/// so no two different inputs encode to the same bytes.
+/// Tag ‖ key id ‖ context, each prefixed with its big-endian `u64` length, so no two inputs collide.
 fn associated_data(key_id: &str, context: &[u8]) -> Vec<u8> {
     let parts = [SEALED_TAG, key_id.as_bytes(), context];
     let mut aad = Vec::with_capacity(parts.iter().map(|part| 8 + part.len()).sum());
@@ -153,8 +137,6 @@ fn associated_data(key_id: &str, context: &[u8]) -> Vec<u8> {
     aad
 }
 
-/// A sealed secret: nonce, ciphertext (with tag) and the id of the key that sealed it.
-///
 /// Holds no plaintext, so it may be printed, copied and compared.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Sealed {
@@ -164,12 +146,8 @@ pub struct Sealed {
 }
 
 impl Sealed {
-    /// Rebuilds a sealed value from stored columns.
-    ///
     /// # Errors
-    ///
-    /// [`Error::Malformed`] when the nonce is not 24 bytes, the ciphertext is shorter than
-    /// the tag, or the key id is empty or longer than 255 bytes.
+    /// [`Error::Malformed`] when the nonce, the ciphertext or the key id has a wrong length.
     pub fn from_parts(nonce: &[u8], ciphertext: Vec<u8>, key_id: String) -> Result<Self, Error> {
         let nonce = <[u8; NONCE_LEN]>::try_from(nonce).map_err(|_| Error::Malformed)?;
         if ciphertext.len() < TAG_LEN || key_id.is_empty() || key_id.len() > usize::from(u8::MAX) {
@@ -200,7 +178,6 @@ impl Sealed {
     /// One-column layout: `0x01 ‖ len(key_id) ‖ key_id ‖ nonce ‖ ciphertext`.
     ///
     /// # Panics
-    ///
     /// Never: [`Sealed::from_parts`] and [`Vault`] keep key ids within 255 bytes.
     #[must_use]
     pub fn to_bytes(&self) -> Vec<u8> {
@@ -214,10 +191,7 @@ impl Sealed {
         bytes
     }
 
-    /// Parses the layout written by [`Sealed::to_bytes`]; lengths are checked, never trusted.
-    ///
     /// # Errors
-    ///
     /// [`Error::Malformed`] for an unknown version, a truncated value or a key id that is not UTF-8.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error> {
         let (&version, rest) = bytes.split_first().ok_or(Error::Malformed)?;

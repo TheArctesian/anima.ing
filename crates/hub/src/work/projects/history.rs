@@ -1,6 +1,4 @@
-//! A repository's history, read live from GitHub (PRJ-030, PRJ-031): its commits with their
-//! checks when selected, its branches and its releases; and a commit status Anima writes
-//! (OD-E14, PRO-010).
+//! History read live from GitHub (PRJ-030, PRJ-031) and commit statuses (OD-E14, PRO-010).
 
 mod changes;
 mod graphql;

@@ -1,7 +1,4 @@
 //! Keyset paging of sessions, newest first by `(started_at, id)` (API-006).
-//!
-//! Pure. The cursor is opaque to the client: a version prefix and base64url of the start time
-//! in microseconds and the session id, which together are unique and fixed for a row.
 
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{DateTime, Utc};
@@ -13,13 +10,10 @@ use crate::ids::SessionId;
 const CURSOR_PREFIX: &str = "s1.";
 const CURSOR_BYTES: usize = 8 + 16;
 const MAX_PAGE_SIZE: usize = 200;
-/// The start times a cursor may hold, in microseconds: `0001-01-01T00:00:00Z` to
-/// `9999-12-31T23:59:59.999999Z`. Narrower than PostgreSQL's `timestamptz` (4713 BC to
-/// 294276 AD), so every cursor that decodes binds as a query parameter (API-010).
+/// Narrower than PostgreSQL's `timestamptz`, so every cursor that decodes binds as a query parameter (API-010).
 const CURSOR_MICROS: std::ops::RangeInclusive<i64> =
     -62_135_596_800_000_000..=253_402_300_799_999_999;
 
-/// The row a page starts after.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Cursor {
     pub(super) started_at: DateTime<Utc>,
@@ -35,17 +29,12 @@ impl Cursor {
     }
 }
 
-/// One page of rows and whether more follow.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct Page<T> {
     pub(super) rows: Vec<T>,
     pub(super) has_next_page: bool,
 }
 
-/// The page size the operator asked for (`first`), 1 to 200.
-///
-/// # Errors
-/// A `first` error when it is outside that range.
 pub(super) fn page_size(first: i32) -> Result<usize, FieldError> {
     match usize::try_from(first) {
         Ok(size) if (1..=MAX_PAGE_SIZE).contains(&size) => Ok(size),
@@ -64,10 +53,6 @@ pub(super) fn encode_cursor(cursor: Cursor) -> String {
     format!("{CURSOR_PREFIX}{}", URL_SAFE_NO_PAD.encode(bytes))
 }
 
-/// The row a cursor points after.
-///
-/// # Errors
-/// An `after` error when the text is not a cursor this module made.
 pub(super) fn decode_cursor(text: &str) -> Result<Cursor, FieldError> {
     let bad = || {
         FieldError::new(

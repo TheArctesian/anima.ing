@@ -1,9 +1,6 @@
-//! SQL for the remote access settings and the wake relay: `rdp_settings`, `vnc_settings`, the
-//! remote columns of `devices` and `sites.wake_relay_device_id`. A device row always has its
-//! `rdp_settings` and `vnc_settings` rows (a trigger adds them), so a write only updates.
-//!
-//! A relay change locks the device row before the site row, the order `update_device` and
-//! `delete_device` take them in, so the two cannot deadlock.
+//! A trigger adds each device's `rdp_settings` and `vnc_settings` rows, so a write only updates.
+//! A relay change locks the device row before the site row, as `update_device` and
+//! `delete_device` do, so they cannot deadlock.
 
 use std::num::NonZeroU8;
 
@@ -22,7 +19,6 @@ use crate::{
     ids::{DeviceId, SiteId},
 };
 
-/// Writes the remote access part of a device just inserted.
 pub(in crate::fleet::devices) async fn write_new(
     conn: &mut PgConnection,
     id: DeviceId,
@@ -43,7 +39,6 @@ pub(in crate::fleet::devices) async fn write_new(
     write_transfer(conn, id, remote.transfer).await
 }
 
-/// Writes the parts of the update that are present; each settings object is replaced wholly.
 pub(in crate::fleet::devices) async fn write_change(
     conn: &mut PgConnection,
     id: DeviceId,
@@ -80,8 +75,7 @@ pub(in crate::fleet::devices) async fn write_change(
     Ok(())
 }
 
-/// Sets the metrics source to `daemon` and returns the device's name; the update locks the
-/// device row first, the order `delete_device` takes it in.
+/// The update locks the device row first, the order `delete_device` takes it in.
 pub(in crate::fleet::devices) async fn set_daemon_source(
     conn: &mut PgConnection,
     id: DeviceId,
@@ -150,8 +144,7 @@ async fn write_transfer(
     Ok(())
 }
 
-/// Clears every relay role the device can no longer fill: at a site other than `site` (when
-/// the device moved) and at any site when its SSH was turned off (the relay works over SSH).
+/// A device that turned SSH off can fill no relay role: the relay works over SSH.
 pub(in crate::fleet::devices) async fn release_relay(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -184,7 +177,6 @@ pub(in crate::fleet::devices) async fn session_limit<'e>(
     Ok(records::session_limit(stored)?)
 }
 
-/// The site's wake relay device, if one is set.
 pub(in crate::fleet::devices) async fn wake_relay(
     db: &PgPool,
     site: SiteId,
@@ -205,7 +197,6 @@ pub(in crate::fleet::devices) async fn wake_relay(
     }
 }
 
-/// The devices with these ids, for `Site.wakeRelay`; unknown ids are left out.
 pub(in crate::fleet::devices) async fn devices_by_ids(
     db: &PgPool,
     ids: &[DeviceId],
@@ -217,9 +208,7 @@ pub(in crate::fleet::devices) async fn devices_by_ids(
     to_devices(rows)
 }
 
-/// The device, with its row and its SSH settings row share-locked until the transaction ends,
-/// so it cannot move to another site or turn SSH off before the relay is written, and a
-/// concurrent change is read as committed; `None` when there is none.
+/// The share locks keep the device from moving or turning SSH off before the relay is written.
 pub(in crate::fleet::devices) async fn share_device(
     conn: &mut PgConnection,
     id: DeviceId,
@@ -231,7 +220,6 @@ pub(in crate::fleet::devices) async fn share_device(
     Ok(row.map(Device::try_from).transpose()?)
 }
 
-/// The site, with its row locked until the transaction ends.
 pub(in crate::fleet::devices) async fn lock_site(
     conn: &mut PgConnection,
     site: SiteId,
@@ -246,7 +234,6 @@ pub(in crate::fleet::devices) async fn lock_site(
     .ok_or(Error::NotFound(Missing::Site(site)))
 }
 
-/// Sets or, with `None`, clears the site's wake relay.
 pub(in crate::fleet::devices) async fn set_wake_relay(
     conn: &mut PgConnection,
     site: SiteId,

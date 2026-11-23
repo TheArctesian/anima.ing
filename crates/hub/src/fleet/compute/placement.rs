@@ -1,5 +1,4 @@
-//! Where a model can run: the pure fit estimate (FIT-001 to FIT-005, CMP-011). It reads no
-//! store and no clock; the caller gives the inventory, the measurements and the configuration.
+//! Where a model can run: the fit estimate (FIT-001 to FIT-005, CMP-011).
 
 mod fit;
 mod overhead;

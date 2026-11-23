@@ -1,5 +1,4 @@
-//! The use of the AI agent programs through the hub's routes (R-135; AIS-018 to AIS-024; K8
-//! Section 4): a daemon pushes `agentUsage` in its batch, and `agentUsage` sums it.
+//! Agent usage through the hub's routes (R-135; AIS-018 to AIS-024; K8 Section 4).
 
 mod account_access;
 mod accounts;
@@ -27,14 +26,11 @@ pub const USAGE: &str = "query($filter: AgentUsageFilter, $by: [AgentUsageDimens
 const CREATE_KEY: &str =
     "mutation($input: ApiKeyInput!) { createApiKey(input: $input) { secret } }";
 
-/// One model's tokens of a session day: input, output, cache read, cache write.
 pub fn tokens(model: &str, [input, output, cache_read, cache_write]: [u64; 4]) -> Value {
     json!({ "model": model, "inputTokens": input, "outputTokens": output,
             "cacheReadTokens": cache_read, "cacheWriteTokens": cache_write })
 }
 
-/// One session day of the session `(source, id)` on `day` with its prompts and tool calls, the
-/// session from 08:00 to 09:00 of that day.
 pub fn entry(
     (source, id): (&str, &str),
     day: NaiveDate,
@@ -50,13 +46,11 @@ pub fn entry(
     entry
 }
 
-/// `entry` with its repository.
 pub fn in_repository(mut entry: Value, repository: &str) -> Value {
     entry["repository"] = json!(repository);
     entry
 }
 
-/// The daemon of `device` and its token, with the hub's clock.
 pub struct Pusher<'a> {
     pub daemons: &'a Daemons,
     pub device: &'a str,
@@ -77,7 +71,6 @@ impl<'a> Pusher<'a> {
         }
     }
 
-    /// Pushes a batch with one CPU point and `usage`; the status. Each batch has a later point.
     pub async fn push(&self, state: &str, session_days: Value) -> StatusCode {
         let step = self.sent.get();
         self.sent.set(step + 1);
@@ -87,7 +80,6 @@ impl<'a> Pusher<'a> {
         self.daemons.push(&self.token, &batch).await.0
     }
 
-    /// As `push`, and asserts that the hub took the batch.
     pub async fn reading(&self, session_days: Value) {
         assert_eq!(
             self.push("reading", session_days).await,
@@ -96,7 +88,6 @@ impl<'a> Pusher<'a> {
     }
 }
 
-/// The `agentUsage` answer to the signed-in operator, or the whole response when it failed.
 pub async fn usage(daemons: &Daemons, filter: Value, by: &[&str]) -> Value {
     let answer = daemons
         .operate(USAGE, json!({ "filter": filter, "by": by }))
@@ -107,7 +98,6 @@ pub async fn usage(daemons: &Daemons, filter: Value, by: &[&str]) -> Value {
     answer["data"]["agentUsage"].clone()
 }
 
-/// A read key's secret, made by the signed-in operator.
 pub async fn read_key(daemons: &Daemons, now: DateTime<Utc>) -> String {
     let input = json!({ "name": "usage reader", "scope": "READ", "madeFor": "AGENT",
                         "expiresAt": now + TimeDelta::days(30) });
@@ -118,7 +108,6 @@ pub async fn read_key(daemons: &Daemons, now: DateTime<Utc>) -> String {
         .to_owned()
 }
 
-/// The counts of a row, without its keys and estimate.
 pub fn counts(row: &Value) -> [f64; 7] {
     [
         "prompts",

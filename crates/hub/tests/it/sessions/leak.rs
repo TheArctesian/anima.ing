@@ -1,5 +1,4 @@
-//! The ticket token reaches the client once and nowhere else: not a stored row, an audit
-//! entry, an event, an error or the process log (LOG-007, K4 §1).
+//! The ticket token reaches only the client: no row, log, event or error holds it (LOG-007, K4 §1).
 
 use std::{
     io,
@@ -17,7 +16,6 @@ use super::{
     starting::{end_request, ready, redeem, start_request, started},
 };
 
-/// Collects everything the process log writes.
 #[derive(Clone, Default)]
 struct Capture(Arc<Mutex<Vec<u8>>>);
 
@@ -35,7 +33,6 @@ impl io::Write for Capture {
     }
 }
 
-/// Every text column of the sessions table and both logs, as one string.
 async fn stored_text(pool: &PgPool) -> String {
     let rows: Vec<String> = sqlx::query_scalar(
         "select row_to_json(s)::text from sessions.sessions s \
@@ -56,10 +53,7 @@ async fn log_007_the_ticket_token_is_never_stored_logged_or_in_an_error(pool: Pg
     let capture = Capture::default();
     let writer = capture.clone();
     let subscriber = process_log::subscriber("trace", move || writer.clone()).unwrap();
-    // While exactly one dispatcher is registered, tracing-core builds a callsite's interest
-    // from the registering thread's own default, so another test thread with no subscriber
-    // would cache the sessions callsites as disabled for this one too. A second registered
-    // dispatcher makes every registration ask all of them.
+    // A second dispatcher keeps another test thread from caching these callsites as disabled.
     let _second = tracing::Dispatch::new(tracing::subscriber::NoSubscriber::default());
     let _default = tracing::subscriber::set_default(subscriber);
     tracing::callsite::rebuild_interest_cache();
@@ -76,7 +70,6 @@ async fn log_007_the_ticket_token_is_never_stored_logged_or_in_an_error(pool: Pg
         .map(|ticket| ticket["token"].as_str().unwrap().to_owned())
         .collect();
 
-    // A refused redemption, an operator end, a sweep, and a refused start afterwards.
     assert!(redeem(&live, &refused, now() + TimeDelta::minutes(1)).is_none());
     let end = schema
         .execute(end_request(ended["sessionId"].as_str().unwrap()))

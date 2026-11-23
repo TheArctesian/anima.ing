@@ -15,13 +15,11 @@ use crate::engine::sources::{
     model::ErrorKind,
 };
 
-/// The address of an account that the address policy of the hub refuses.
 const REFUSED_ADDRESS: Failure = Failure::new(
     ErrorKind::Provider,
     "The address of this account is one that the hub does not connect to.",
 );
 
-/// A server of an account that does not answer.
 const UNREACHED_ADDRESS: Failure = Failure::new(
     ErrorKind::Network,
     "The hub cannot reach the address of this account. A hub outside your network reaches only \
@@ -33,10 +31,8 @@ const REFUSED_PATH: Failure = Failure::new(
     "The source asked for an address the hub does not send to.",
 );
 
-/// Fetches `request` for the claimed account: refused before anything is sent when its
-/// address could leave the source's API base; a 401 drops the token and is `auth`; a rate
-/// limit is `rate_limit` until its end. Any other reply is the provider's to read, including one
-/// larger than the hub reads: the provider decides what that means for its request.
+/// Refuses before anything is sent when the address could leave the source's API base. A reply
+/// larger than the hub reads is still the provider's to judge.
 pub(super) async fn fetch(
     scheduling: &Scheduling,
     (claim, declaration): (&Claim, &Declaration),
@@ -68,8 +64,7 @@ pub(super) async fn fetch(
     }
 }
 
-/// Fetches `request` from the server of the account with its key (K-E1 Section 7b). The key
-/// is opened for this request only. A 401 or a 403 with no rate limit is `auth`.
+/// Fetches from the account's own server (K-E1 Section 7b); its key is open for this request only.
 async fn fetch_at_account(
     scheduling: &Scheduling,
     claim: &Claim,

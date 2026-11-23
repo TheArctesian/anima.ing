@@ -1,5 +1,4 @@
-//! `NotificationChannel.lastDelivery`: the newest delivery of each channel, batched, with the
-//! reason as a fixed word (NOT-004, API-005, CR-14).
+//! `NotificationChannel.lastDelivery`, batched, with the reason as a fixed word (NOT-004, API-005, CR-14).
 
 use std::{
     sync::{Arc, atomic::Ordering},

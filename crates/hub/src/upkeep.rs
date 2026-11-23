@@ -1,5 +1,4 @@
-//! Starts the hub's background work: periodic jobs and the check, metrics and notification
-//! loops (R-072). Each only calls its domains (D-4, DB-004, DB-005, D-25; WP-36 D-2).
+//! Starts the hub's background work; each job only calls its domains (R-072, D-4, DB-004).
 
 mod hub_device;
 mod link_presence;
@@ -26,15 +25,13 @@ use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use tokio::time::MissedTickBehavior;
 
-/// The checks that a hosted hub reports itself: `Hub running` on its own device (HMD-045) and
-/// `Connected` on each computer of its link (HMD-047).
+/// The checks that a hosted hub reports itself (HMD-045, HMD-047).
 pub struct Hosted {
     alive: Option<hub_device::Alive>,
     watch: Option<link_presence::Watch>,
 }
 
-/// Makes the hub's own checks ready, before the scheduler can find one due. Both parts are
-/// `None` for a hub that is not hosted.
+/// Makes the hub's own checks ready, before the scheduler can find one due.
 pub async fn hosted(config: &Config, db: &PgPool, bus: &Bus, clock: &Arc<dyn Clock>) -> Hosted {
     Hosted {
         alive: hub_device::start(config, db, bus, clock).await,
@@ -43,7 +40,6 @@ pub async fn hosted(config: &Config, db: &PgPool, bus: &Bus, clock: &Arc<dyn Clo
 }
 
 impl Hosted {
-    /// Starts the reports, which run for as long as the hub runs.
     fn spawn(self) -> Vec<tokio::task::JoinHandle<()>> {
         let alive = self.alive.map(|alive| tokio::spawn(alive.keep_reporting()));
         let watch = self.watch.map(|watch| tokio::spawn(watch.keep()));
@@ -51,11 +47,7 @@ impl Hosted {
     }
 }
 
-/// Starts the scheduled jobs: the daily ones, each run now and then daily (`retention` makes the
-/// day partitions ahead and drops the expired ones, `access_prune` deletes old login attempts
-/// and expired tokens, and audits each builder that went with its token, and `audit_chain`
-/// checks the hash chain of the audit log; D-4, DB-004, DB-005, D-25, BLD-025, LOG-028), every 30 seconds the end of build leases that ran out (WP-36 D-2), and, when
-/// the hub has a release bucket, every 10 seconds the publisher (WP-36 D-25).
+/// Starts the scheduled jobs (D-4, DB-004, DB-005, D-25, BLD-025, LOG-028; WP-36 D-2, D-25).
 pub fn spawn(dependencies: &Dependencies, hosted: Hosted) -> Vec<tokio::task::JoinHandle<()>> {
     let (pool, clock) = (&dependencies.pool, &dependencies.clock);
     let retention = {
@@ -119,9 +111,7 @@ pub fn spawn(dependencies: &Dependencies, hosted: Hosted) -> Vec<tokio::task::Jo
     jobs
 }
 
-/// Starts the loops that watch the devices and send: the check scheduler, the metrics
-/// collector and stale watch, the notification dispatcher, the source scheduler (SRC-021)
-/// and, with a `LocalAPI` proxy, the VPN reader (R-072, VPN-008).
+/// Starts the loops that watch the devices and send (R-072, SRC-021, VPN-008).
 fn loops(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
     let (pool, bus, clock) = (&dependencies.pool, &dependencies.bus, &dependencies.clock);
     let (probing, collecting, sending) = reaching(
@@ -174,8 +164,8 @@ fn loops(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
     loops
 }
 
-/// What checks, metrics and notifications need to reach the outside: the vault and the one
-/// address policy (P2-004, D-16).
+/// Checks, metrics and notifications reach the outside through the one address policy (P2-004,
+/// D-16).
 fn reaching(
     vault: &Vault,
     policy: &AddressPolicy,
@@ -196,7 +186,6 @@ fn reaching(
     )
 }
 
-/// What the build jobs of the upkeep share.
 #[derive(Clone)]
 struct Builds {
     db: PgPool,
@@ -215,11 +204,7 @@ impl Builds {
     }
 }
 
-/// Reads the periods once, then runs each domain's retention job with its own, and empties the
-/// sealed values of the operational key versions that ended 30 days ago, and writes the audit
-/// entries of the hours of the ingest tokens that ended. A failed read
-/// skips the run, so a period is never guessed. A failed job does not stop the others; the
-/// first fault is returned and the whole run is retried.
+/// A failed read of the periods skips the run, so a period is never guessed.
 async fn keep(db: &PgPool, now: DateTime<Utc>) -> Result<(), &'static str> {
     let periods = retention::periods(db).await.map_err(|e| e.fault())?;
     let checks = checks::drop_expired(db, now, periods.keep(Subject::Heartbeats))
@@ -239,8 +224,7 @@ async fn keep(db: &PgPool, now: DateTime<Utc>) -> Result<(), &'static str> {
         .await
         .map(drop)
         .map_err(|_| "credentials");
-    // Each hour of an ingest token that ended gets its audit entry, also when the phone sent
-    // nothing after it (R-262).
+    // Each ended hour of an ingest token gets its audit entry, even with no later fix (R-262).
     let fix_hours = locations::audit_ended_hours(db, now)
         .await
         .map(drop)
@@ -253,9 +237,7 @@ async fn keep(db: &PgPool, now: DateTime<Utc>) -> Result<(), &'static str> {
         .and(fix_hours)
 }
 
-/// Every 30 seconds, ends the build leases that ran out, so the Builds view is true without a
-/// claim (D-2). A failure is written to the process log by its fault word only, and the next
-/// tick tries again.
+/// Ends the build leases that ran out, so the Builds view is true without a claim (D-2).
 async fn build_leases(builds: Builds) {
     let mut ticks = tokio::time::interval(builds::LEASE_SWEEP);
     ticks.set_missed_tick_behavior(MissedTickBehavior::Delay);
@@ -268,9 +250,7 @@ async fn build_leases(builds: Builds) {
     }
 }
 
-/// Every 30 seconds, ends the leases of the jobs of the work route that ran out and the
-/// attempts that hold a job for longer than its limit (K10 Section 7). A failure is written to
-/// the process log by a fixed word only, and the next tick tries again.
+/// Ends lapsed job leases and attempts over their limit (K10 Section 7).
 async fn job_leases(db: PgPool, bus: Bus, clock: Arc<dyn Clock>) {
     let mut ticks = tokio::time::interval(jobs::LEASE_SWEEP);
     ticks.set_missed_tick_behavior(MissedTickBehavior::Delay);
@@ -283,10 +263,7 @@ async fn job_leases(db: PgPool, bus: Bus, clock: Arc<dyn Clock>) {
     }
 }
 
-/// Every 10 seconds, publishes the build jobs whose files are in (WP-36 D-25), or, with no
-/// bucket, fails the jobs handed over before publishing was turned off. The client follows no
-/// redirect, so the public check is of the public address itself (BLD-064). A failure is
-/// logged by its fault word only; the job is taken again after its hold.
+/// Publishes the build jobs whose files are in (WP-36 D-25).
 async fn publishing(builds: Builds, bucket: Option<Arc<builds::Bucket>>) {
     let Ok(http) = publishing_client() else {
         job_failed("build_publishing", "http client");
@@ -308,12 +285,12 @@ async fn publishing(builds: Builds, bucket: Option<Arc<builds::Bucket>>) {
     }
 }
 
-/// Writes a failed run of `job` to the process log by its fault word only (LOG-007).
+/// Logs a failed run by its fault word only (LOG-007).
 fn job_failed(job: &'static str, fault: &'static str) {
     tracing::warn!(job, fault, "scheduled job failed");
 }
 
-/// The HTTP client of the publisher: no redirect, and a stalled read ends the request.
+/// No redirect, so the public check is of the public address itself (BLD-064).
 pub(crate) fn publishing_client() -> reqwest::Result<reqwest::Client> {
     reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())

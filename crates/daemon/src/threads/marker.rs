@@ -11,7 +11,7 @@ use std::collections::BTreeSet;
 
 use rustix::process::Signal;
 
-use super::tree::{self, Ended};
+use super::tree::{self, Ended, Killed};
 
 /// The name of the mark: no name of Anima reaches an agent (THR-040). Its value is the key of
 /// the thread, which is no secret.
@@ -57,14 +57,19 @@ pub struct Found {
 /// `all` is false when the environments or the table could not be read, or a marked process
 /// still runs after its `SIGKILL`.
 pub async fn end_marked(thread: &str, keep: &Keep<'_>) -> Ended {
+    kill_marked(thread, keep).await.settled().await
+}
+
+/// As [`end_marked`], with no wait for the killed processes to be gone.
+pub async fn kill_marked(thread: &str, keep: &Keep<'_>) -> Killed {
     let Some(Found {
         pids: mut marked,
         unsure,
     }) = carrying(thread).await
     else {
-        return Ended {
-            count: 0,
-            all: false,
+        return Killed {
+            sure: false,
+            ..Killed::nothing()
         };
     };
     let mut unproven = unsure;
@@ -97,13 +102,10 @@ pub async fn end_marked(thread: &str, keep: &Keep<'_>) -> Ended {
     for pid in &marked {
         tree::signal(*pid, Signal::KILL);
     }
-    if !marked.is_empty() {
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-    }
-    let left = marked.iter().filter(|pid| tree::alive(**pid)).count();
-    Ended {
+    Killed {
         count: u32::try_from(marked.len()).unwrap_or(u32::MAX),
-        all: left == 0 && !unproven,
+        sure: !unproven,
+        pids: marked,
     }
 }
 

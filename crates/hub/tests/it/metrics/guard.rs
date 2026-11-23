@@ -1,5 +1,4 @@
-//! `capabilities` answers a signed-in caller only, even without the hub-wide sign-in check
-//! (API-003, CAP-030): the schema here holds the metrics queries alone.
+//! `capabilities` refuses an unsigned caller even without the hub-wide check (API-003, CAP-030).
 
 use std::sync::Arc;
 

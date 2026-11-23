@@ -1,5 +1,3 @@
-//! SQL on `builds.builders`.
-
 use std::net::IpAddr;
 
 use chrono::{DateTime, Utc};
@@ -27,7 +25,6 @@ struct Row {
     last_seen_at: Option<DateTime<Utc>>,
 }
 
-/// A deleted builder's row and its token.
 #[derive(sqlx::FromRow)]
 struct Deleted {
     #[sqlx(flatten)]
@@ -71,7 +68,6 @@ pub(in crate::fleet::builds) async fn insert_builder(
     Ok(())
 }
 
-/// The builder that holds this token.
 pub(in crate::fleet::builds) async fn builder_by_token(
     db: impl PgExecutor<'_>,
     token: TokenId,
@@ -95,7 +91,6 @@ pub(in crate::fleet::builds) async fn touch(
     Ok(())
 }
 
-/// Deletes the builder; returns it and its token, or `None` when there is no such builder.
 pub(in crate::fleet::builds) async fn delete_builder(
     conn: &mut PgConnection,
     id: BuilderId,
@@ -112,9 +107,7 @@ pub(in crate::fleet::builds) async fn delete_builder(
         .transpose()
 }
 
-/// Locks the builder's row until the transaction ends, so one builder's claims run one at a
-/// time (BLD-029); `false` when there is no such builder. `NO KEY UPDATE` leaves the foreign
-/// keys from `builds.jobs` free.
+/// One builder's claims run one at a time (BLD-029); `NO KEY UPDATE` leaves foreign keys from `builds.jobs` free.
 pub(in crate::fleet::builds) async fn lock_builder(
     conn: &mut PgConnection,
     id: BuilderId,
@@ -127,7 +120,6 @@ pub(in crate::fleet::builds) async fn lock_builder(
     Ok(locked.is_some())
 }
 
-/// Every builder, in enrolment order.
 pub(in crate::fleet::builds) async fn builders(
     db: impl PgExecutor<'_>,
 ) -> Result<Vec<Builder>, Error> {

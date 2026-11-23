@@ -1,5 +1,4 @@
-//! The reader: one read through a fake proxy, the picture it publishes and the warnings it
-//! writes (VPN-008, VPN-010). No paused clock: real sockets and a real pool.
+//! The reader (VPN-008, VPN-010); real sockets and a real pool, so no paused clock.
 
 use std::{
     sync::{
@@ -42,7 +41,6 @@ async fn answering(name: &'static str) -> proxy::Proxy {
     proxy::start(move || Reply::json(200, &body)).await
 }
 
-/// The `vpn` events whose message starts with `prefix`.
 async fn events_like(pool: &PgPool, prefix: &str) -> i64 {
     sqlx::query_scalar(
         "select count(*) from events.event_log where source = 'vpn' and message like $1 || '%'",

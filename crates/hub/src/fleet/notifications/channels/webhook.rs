@@ -1,6 +1,6 @@
-//! The webhook channel: a POST or PUT to an https URL, with optional headers (NOT-002, D-17,
-//! D-18). The whole URL is a secret, because Discord and Slack keep the credential in its path,
-//! and so is every header value; only the origin and the header names are shown.
+//! The webhook channel (NOT-002, D-17, D-18). The whole URL is a secret, as Discord and Slack
+//! keep the credential in its path, and so is every header value; only the origin and the
+//! header names are shown.
 
 use serde::{Deserialize, Serialize};
 
@@ -14,16 +14,13 @@ use crate::{api_errors::FieldError, fleet::credentials::Secret};
 const URL: &str = "settings.webhook.url";
 const HEADERS: &str = "settings.webhook.headers";
 
-/// The most headers one webhook sends.
 const HEADERS_MAX: usize = 20;
-/// The longest header name, and the longest header value in bytes.
+/// The longest header name, and the longest header value, in bytes.
 const NAME_MAX: usize = 128;
 const VALUE_MAX: usize = 4096;
 
-/// Header names the hub refuses (compared case-insensitively): the ones that frame the message
-/// or the connection, which the HTTP client sets, and the ones a proxy in front of the target
-/// reads to route the request elsewhere, rewrite its path or change its method. Only the URL
-/// and the method field say where the request goes and what it does.
+/// Headers the HTTP client sets or a proxy reads to reroute the request: only the URL and the
+/// method say where the request goes and what it does.
 pub(super) const REFUSED_NAMES: [&str; 28] = [
     "host",
     "content-length",
@@ -55,24 +52,20 @@ pub(super) const REFUSED_NAMES: [&str; 28] = [
     "x-http-method-override",
 ];
 
-/// What the API shows of a webhook.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(in crate::fleet::notifications) struct WebhookSettings {
-    /// `https://host[:port]` of the sealed URL.
     pub(in crate::fleet::notifications) origin: String,
     pub(in crate::fleet::notifications) method: WebhookMethod,
-    /// As the operator wrote them, in order; the values are sealed in the same order.
     pub(in crate::fleet::notifications) header_names: Vec<String>,
 }
 
-/// The whole URL and the header values, in the order of [`WebhookSettings::header_names`].
+/// The header values are in the order of [`WebhookSettings::header_names`].
 pub(in crate::fleet::notifications) struct WebhookSecrets {
     pub(in crate::fleet::notifications) url: Secret,
     pub(in crate::fleet::notifications) headers: Vec<Secret>,
 }
 
-/// A webhook as the operator sent it.
 pub(in crate::fleet::notifications) struct WebhookDraft {
     /// `None` on update keeps the stored URL.
     pub(in crate::fleet::notifications) url: Option<Secret>,
@@ -81,7 +74,6 @@ pub(in crate::fleet::notifications) struct WebhookDraft {
     pub(in crate::fleet::notifications) headers: Option<Vec<(String, Secret)>>,
 }
 
-/// The URL's origin, after the URL passed the rules.
 fn checked_url(url: &Secret) -> Result<String, FieldError> {
     let text = secret_text(URL, url)?;
     if text.is_empty() {
@@ -107,7 +99,7 @@ fn checked_name(name: &str) -> Result<(), &'static str> {
     }
 }
 
-/// A value with no control character but a tab (no line break, so no header injection).
+/// No control character but a tab, so no header injection.
 fn checked_value(value: &Secret) -> Result<(), &'static str> {
     let text = std::str::from_utf8(value.expose()).map_err(|_| "Enter text.")?;
     if text.len() > VALUE_MAX {
@@ -119,7 +111,6 @@ fn checked_value(value: &Secret) -> Result<(), &'static str> {
     }
 }
 
-/// The names and values of a header list that passed the rules.
 fn checked_headers(list: Vec<(String, Secret)>) -> Result<(Vec<String>, Vec<Secret>), FieldError> {
     let refuse = |message: &str| FieldError::new(HEADERS, message);
     if list.len() > HEADERS_MAX {
@@ -147,7 +138,6 @@ fn outcome(settings: WebhookSettings, secrets: WebhookSecrets, touched: Touched)
     }
 }
 
-/// The rules for a new webhook: a URL is required; headers are optional.
 pub(super) fn new(draft: WebhookDraft) -> Result<Outcome, Vec<FieldError>> {
     let mut problems = Problems::default();
     let url = draft.url.unwrap_or_else(|| Secret::new(Vec::new()));
@@ -169,8 +159,7 @@ pub(super) fn new(draft: WebhookDraft) -> Result<Outcome, Vec<FieldError>> {
     Ok(outcome(settings, WebhookSecrets { url, headers }, touched))
 }
 
-/// The rules for a changed webhook (CR-14): a new origin needs the headers again; a null URL
-/// or header list keeps the stored one.
+/// A new origin needs the headers again (CR-14).
 pub(super) fn change(
     before: &WebhookSettings,
     stored: Kept<WebhookSecrets>,
