@@ -150,9 +150,12 @@ pub fn start_holder(program: &Path, dir: &Path) -> io::Result<()> {
         .stderr(Stdio::null())
         .process_group(0)
         .spawn()?;
-    super::priority::lift(child.id());
-    // The daemon reaps the holder when it ends, so that it leaves no zombie.
-    std::thread::spawn(move || child.wait());
+    // The thread lifts the holder before it waits for it, so the pid stays the holder's; then
+    // the daemon reaps the holder when it ends, so that it leaves no zombie.
+    std::thread::spawn(move || {
+        super::priority::lift(&mut child);
+        child.wait()
+    });
     Ok(())
 }
 

@@ -170,9 +170,7 @@ async fn ask(
         .kill_on_drop(true)
         .spawn()
         .ok()?;
-    if let Some(pid) = child.id() {
-        crate::threads::priority::lift_async(pid).await;
-    }
+    crate::threads::priority::lift_async(&mut child).await;
     let group = child
         .id()
         .and_then(|pid| i32::try_from(pid).ok())

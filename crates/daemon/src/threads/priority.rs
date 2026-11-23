@@ -18,36 +18,43 @@ use std::time::Duration;
 #[cfg(target_os = "macos")]
 const TASKPOLICY: &str = "/usr/sbin/taskpolicy";
 
-/// The longest wait for a lift.
+/// The longest wait for a lift. `taskpolicy` itself starts at background priority, so on a
+/// busy Mac it can be slow to start.
 #[cfg(target_os = "macos")]
-const LIFT_WAIT: Duration = Duration::from_secs(5);
+const LIFT_WAIT: Duration = Duration::from_secs(15);
 
 /// A lift failed since the daemon started.
 static FAILED: AtomicBool = AtomicBool::new(false);
 /// The runner log said so.
 static SAID: AtomicBool = AtomicBool::new(false);
 
-/// Lifts the child `pid` that the caller started and holds. Blocks for at most 5 seconds; a
-/// failure is kept for [`failure_to_say`].
-pub fn lift(pid: u32) {
-    lifted(run(pid));
-}
-
-/// [`lift`] for async callers.
-pub async fn lift_async(pid: u32) {
-    let ran = tokio::task::spawn_blocking(move || run(pid)).await;
-    lifted(ran.unwrap_or(false));
-}
-
-/// Whether the runner log must say now that a lift failed: true one time only.
-pub fn failure_to_say() -> bool {
-    FAILED.load(Ordering::Relaxed) && !SAID.swap(true, Ordering::Relaxed)
-}
-
-fn lifted(done: bool) {
-    if !done {
+/// Lifts `child`, which the caller started and holds and has not waited for, so that its pid
+/// cannot be one of a different process. Blocks for at most [`LIFT_WAIT`]: call it from a
+/// thread that may block. A lift that fails while the child still runs is kept for
+/// [`failure_to_say`]; a child that ended before the lift needs none.
+pub fn lift(child: &mut std::process::Child) {
+    if !run(child.id()) && matches!(child.try_wait(), Ok(None)) {
         FAILED.store(true, Ordering::Relaxed);
     }
+}
+
+/// [`lift`] for a child of tokio. The child is held, not waited for, while the lift runs.
+pub async fn lift_async(child: &mut tokio::process::Child) {
+    let Some(pid) = child.id() else {
+        return;
+    };
+    let done = tokio::task::spawn_blocking(move || run(pid))
+        .await
+        .unwrap_or(false);
+    if !done && matches!(child.try_wait(), Ok(None)) {
+        FAILED.store(true, Ordering::Relaxed);
+    }
+}
+
+/// Whether the runner log must say now that a lift failed: true one time for each start of
+/// the daemon.
+pub fn failure_to_say() -> bool {
+    FAILED.load(Ordering::Relaxed) && !SAID.swap(true, Ordering::Relaxed)
 }
 
 #[cfg(target_os = "macos")]
@@ -92,20 +99,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn r_new_agentpriority_a_child_of_this_test_is_lifted_and_a_pid_that_is_gone_is_not() {
+    fn r_new_agentpriority_a_held_child_is_lifted_and_a_pid_of_no_process_is_not() {
         let mut child = std::process::Command::new("/bin/sleep")
             .arg("5")
             .spawn()
             .expect("a child");
-        lift(child.id());
-        assert!(!failure_to_say(), "a child of this user is lifted");
+        assert!(run(child.id()), "a child of this user is lifted");
+        lift(&mut child);
         let _ = child.kill();
         let _ = child.wait();
-        lift(child.id());
-        assert!(
-            failure_to_say(),
-            "a child that ended is not, and that is said"
-        );
-        assert!(!failure_to_say(), "once");
+        // Above the highest pid of macOS (99 999), so no process can have it.
+        assert!(!run(4_000_000), "a pid of no process is not");
     }
 }
