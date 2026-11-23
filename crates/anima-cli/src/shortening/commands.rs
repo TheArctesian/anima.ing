@@ -6,12 +6,11 @@ use std::time::SystemTime;
 
 use serde::Serialize;
 use serde_json::Value;
-use shortening::{Limits, shortened};
 
 use super::measure::{self, BYTES_FOR_A_TOKEN, Sizes};
 use super::setting::{self, State};
 use super::store::{OriginalError, Store};
-use super::{FOLDER, original, originals_dir};
+use super::{FOLDER, originals_dir, worth_it};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::Table;
@@ -89,14 +88,8 @@ impl ShorteningCommand {
     /// cannot be read or written.
     pub fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let dir = invocation.config_dir()?.join(FOLDER);
-        if let Self::Try { file, answer } = &self {
-            return try_file(invocation, file, *answer);
-        }
-        // The originals are those of the selected hub.
-        let origin = invocation.origin()?.as_text();
-        let store = Store::new(originals_dir(invocation.config_dir()?, &origin));
         match self {
-            Self::Show => show(invocation, &store),
+            Self::Show => show(invocation),
             Self::On | Self::Off => {
                 let state = if matches!(self, Self::On) {
                     State::On
@@ -104,7 +97,7 @@ impl ShorteningCommand {
                     State::Off
                 };
                 setting::write(&dir, state).map_err(|error| written(&error))?;
-                show(invocation, &store)
+                show(invocation)
             }
             Self::Measure => {
                 let rows: Vec<Measured> = measure::read(&dir)
@@ -116,13 +109,13 @@ impl ShorteningCommand {
                 Ok(())
             }
             Self::Original { handle } => {
-                let original = store
+                let original = store(invocation)?
                     .get(&handle, SystemTime::now())
                     .map_err(|error| lost(&error))?;
                 invocation.output.raw(&original.answer)
             }
             Self::Originals => {
-                let kept = store.list().map_err(|error| lost(&error))?;
+                let kept = store(invocation)?.list().map_err(|error| lost(&error))?;
                 let rows: Vec<(String, u64, u64)> = kept
                     .iter()
                     .map(|each| (each.handle.clone(), each.bytes, age_minutes(each.written)))
@@ -130,34 +123,42 @@ impl ShorteningCommand {
                 invocation.output.data(&rows, |rows| originals_table(rows))
             }
             Self::Clear => {
-                let removed = store.clear().map_err(|error| lost(&error))?;
-                invocation
-                    .output
-                    .note(&format!("Removed {removed} originals."));
+                let removed = store(invocation)?.clear().map_err(|error| lost(&error))?;
+                let note = format!("Removed {removed} originals of the selected hub.");
+                invocation.output.note(&note);
                 Ok(())
             }
-            Self::Try { .. } => Ok(()),
+            Self::Try { file, answer } => try_file(invocation, &file, answer),
         }
     }
 }
 
-fn show(invocation: &Invocation, store: &Store) -> Result<(), Failure> {
-    let kept = store.list().map_err(|error| lost(&error))?;
+/// The originals of the selected hub.
+fn store(invocation: &Invocation) -> Result<Store, Failure> {
+    let origin = invocation.origin()?.as_text();
+    Ok(Store::new(originals_dir(invocation.config_dir()?, &origin)))
+}
+
+/// The state, and what the store of the selected hub holds when a hub is selected.
+fn show(invocation: &Invocation) -> Result<(), Failure> {
+    let kept = match store(invocation) {
+        Ok(store) => store.list().map_err(|error| lost(&error))?,
+        Err(_) => Vec::new(),
+    };
+    let folder = invocation.config_dir()?.join(FOLDER);
     let shown = Shown {
-        state: setting::read(&invocation.config_dir()?.join(FOLDER)),
-        folder: store.dir().to_owned(),
+        state: setting::read(&folder),
+        folder,
         originals: kept.len(),
         bytes: kept.iter().map(|each| each.bytes).sum(),
     };
     invocation.output.data(&shown, |shown| {
+        let folder = shown.folder.display().to_string();
         let mut table = Table::default();
         table.row(vec!["Shortening".into(), shown.state.word().into()]);
+        table.row(vec!["Folder".into(), folder.as_str().into()]);
         table.row(vec![
-            "Folder".into(),
-            shown.folder.display().to_string().as_str().into(),
-        ]);
-        table.row(vec![
-            "Originals".into(),
+            "Originals of this hub".into(),
             shown.originals.to_string().as_str().into(),
         ]);
         table.row(vec![
@@ -168,7 +169,7 @@ fn show(invocation: &Invocation, store: &Store) -> Result<(), Failure> {
     })?;
     invocation.output.note(
         "A running `anima mcp` keeps the state it started with. Originals stay on this \
-         computer, at most 24 hours and 64 MB.",
+         computer, for each hub at most 24 hours and 64 MB.",
     );
     Ok(())
 }
@@ -224,25 +225,20 @@ fn try_file(invocation: &Invocation, file: &std::path::Path, answer: bool) -> Re
     };
     let text = std::fs::read_to_string(file).map_err(|error| input(error.to_string()))?;
     let whole: Value = serde_json::from_str(&text).map_err(|error| input(error.to_string()))?;
-    let before = whole.to_string();
-    let after = shortened(&whole, &Limits::default())
-        .map(|short| short.marked(&super::store::handle_of(&before), original::TOOL));
+    let worth = worth_it("try", &whole);
     if answer {
-        return invocation.output.raw(after.as_ref().unwrap_or(&whole));
+        let shown = worth.as_ref().map_or(&whole, |worth| &worth.marked);
+        return invocation.output.raw(shown);
     }
+    let before = whole.to_string().len();
     let mut sizes = Sizes::default();
-    let after_bytes = after
-        .as_ref()
-        .map_or(before.len(), |after| after.to_string().len());
-    sizes.add(before.len(), after_bytes);
-    let row = Measured::of(
-        if after.is_some() {
-            "shortened"
-        } else {
-            "not shortened"
-        },
-        sizes,
-    );
+    sizes.add(before, worth.as_ref().map_or(before, |worth| worth.after));
+    let name = if worth.is_some() {
+        "shortened"
+    } else {
+        "not shortened"
+    };
+    let row = Measured::of(name, sizes);
     invocation.output.data(&[row], |rows| measure_table(rows))?;
     invocation.output.note(&format!(
         "{ESTIMATE} ({BYTES_FOR_A_TOKEN} bytes for a token.)"

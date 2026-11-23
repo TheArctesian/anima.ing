@@ -53,7 +53,9 @@ impl Walk<'_> {
         }
         match value {
             Value::Object(fields) => {
-                for (name, value) in fields.iter_mut() {
+                // The path of a list under a name with `.` or `[` could name two lists.
+                let clear = |name: &str| !name.contains(['.', '[']);
+                for (name, value) in fields.iter_mut().filter(|(name, _)| clear(name)) {
                     let path = if path.is_empty() {
                         name.clone()
                     } else {

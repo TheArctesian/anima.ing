@@ -283,4 +283,5 @@ fn sha_007_an_answer_with_many_small_lists_inside_kept_rows_is_not_touched() {
     );
 }
 
+mod gates;
 mod lines;

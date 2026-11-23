@@ -168,8 +168,11 @@ impl Store {
             let Some(handle) = handle.filter(|handle| is_handle(handle)) else {
                 continue;
             };
-            // `DirEntry::metadata` does not follow a link.
-            let file = entry.metadata()?;
+            // `DirEntry::metadata` does not follow a link. A second server can remove the file
+            // between the two reads; then it is not an original any more.
+            let Ok(file) = entry.metadata() else {
+                continue;
+            };
             if !file.is_file() {
                 continue;
             }
@@ -195,6 +198,14 @@ impl Store {
             self.remove(each)?;
         }
         Ok(kept.len())
+    }
+
+    /// Removes the originals that are too old, in this folder.
+    ///
+    /// # Errors
+    /// [`OriginalError`] when the folder cannot be read or a file cannot be removed.
+    pub fn remove_old(&self, now: SystemTime) -> Result<(), OriginalError> {
+        self.make_room(0, now)
     }
 
     /// Removes the originals that are too old, then the oldest until `incoming` more bytes fit.

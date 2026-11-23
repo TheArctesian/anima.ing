@@ -230,17 +230,19 @@ These seven answers were built by a script with the field names of the tools (th
 documents of `anima-cli`), 4 % error rows, 6 % warning rows, and a page of 25, 100 or 10 rows.
 They are not answers of a real hub: the `anima` command cannot sign in with SSO yet. The table
 is here to show the method. The real table is a follow-up, and OD-SHA3 (on by default) waits
-for it. Measured with `anima mcp shortening try <file> --json` on the branch `shortener`. Tokens
+for it. Measured with `anima mcp shortening try <file> --json` on the branch `shortener`, after
+the corrections of the two reviews (the numbers of three rows went down a little, because
+more rare rows stay). Tokens
 are an estimate: bytes of JSON divided by 4.
 
 | Built answer (shape of the tool) | Rows | Bytes before | Bytes after | Tokens before (estimate) | Tokens after (estimate) | Saved |
 | --- | --- | --- | --- | --- | --- | --- |
-| Events, `anima_events_search`, limit 100 | 100 | 24,912 | 4,329 | 6,228 | 1,082 | 82 % |
+| Events, `anima_events_search`, limit 100 | 100 | 24,912 | 6,783 | 6,228 | 1,695 | 72 % |
 | Events, the default page | 25 | 6,139 | 4,196 | 1,534 | 1,049 | 31 % |
-| Audit trail, `anima_audit_list`, limit 100 | 100 | 29,561 | 9,918 | 7,390 | 2,479 | 66 % |
+| Audit trail, `anima_audit_list`, limit 100 | 100 | 29,561 | 11,078 | 7,390 | 2,769 | 62 % |
 | Devices, `anima_devices_search`, limit 100 | 100 | 19,199 | 3,411 | 4,799 | 852 | 82 % |
 | Devices, 10 rows | 10 | 1,945 | 1,945 | 486 | 486 | 0 % (below the gate, not touched) |
-| Metric samples of one device | 100 | 10,823 | 2,179 | 2,705 | 544 | 79 % |
+| Metric samples of one device | 100 | 10,823 | 2,390 | 2,705 | 597 | 77 % |
 | Lines of a build log | 100 | 9,636 | 2,008 | 2,409 | 502 | 79 % |
 
 What the table shows, and its limit: a page of Anima's tools has at most 100 rows, and 25 when
@@ -271,6 +273,24 @@ nothing). Result: High 0, Medium 4, Low 9.
 | The released program does not carry `NOTICE` and `LICENSE-APACHE` | Low | Open: the release packaging must add the two files before the crate is in a release (the proposal of the release owns it; a line for the orchestrating session). |
 | No real answers in the tests (SHA-023) | Low | Open: follow-up, when the command line can sign in. |
 
+A second session, which wrote neither the code nor the corrections, read the corrections on
+2026-11-22. Result: High 0, Medium 1, Low 8.
+
+| Finding of the second review | Level | Answer |
+| --- | --- | --- |
+| The correction for rare values stopped each list of 16 to 50 rows with an identifier of its own from being shortened | Medium | Corrected: a field with more different values than half of its rows is a name or an identifier; test at 30, 50, 51 and 100 rows. |
+| The tool looked for lists by the length of a path, the shortener by depth | Low | Corrected: both by depth 50. |
+| A name with `.` or `[` could give two lists one path | Low | Corrected: a list under such a name is not cut; test. |
+| A row above the size of a part can only be read by the operator | Low | The refusal now says so. |
+| `on`, `off`, `show` and `measure` needed a selected hub | Low | Corrected: only the commands that read originals need it. |
+| The originals of a hub that is not used any more stayed | Low | Corrected: the server removes the old originals of each hub at its start; test. The limit of 64 MB is for each hub; the note of `show` says so. |
+| A link put in place after the check is followed | Low | Not changed: only the same user can write in the folder. |
+| A file removed by a second server made a store fail | Low | Corrected. |
+| `try` could say "shortened" for an answer that the server gives whole | Low | Corrected: one function decides for both. |
+| The test of the limit of 8 lists passed for a different reason | Low | Corrected: a test at 8 and at 9 lists. |
+
+These last corrections were read by no reviewer. The tests of the two crates pass (19 and 17).
+
 ## 7. Part 2: the design note of the relay (task SA5)
 
 State: a design, for an answer of the orchestrating session and a ruling. No code of Part 2 exists.
@@ -297,9 +317,8 @@ The thread runner starts each program with an empty environment and a list that 
 - Claude Code: the environment variable `ANTHROPIC_BASE_URL`.
 - Codex: the argument `-c openai_base_url="..."`.
 - The address is `http://127.0.0.1:<port>/<secret>/`, where `<secret>` is 32 random bytes of
-  this thread in hexadecimal. Not tested: that both programs keep a path before `/v1/...`. If
-  one does not, its secret goes in a header (`ANTHROPIC_CUSTOM_HEADERS`; for Codex
-  `model_providers.<name>.env_http_headers`).
+  this thread in hexadecimal. Measured on 2026-11-22 with the listener below: both programs
+  keep a path before `/v1/...` (`/prefix/v1/messages`, `/prefix/v1/responses`).
 
 Measured on 2026-11-22 on the build computer (Claude Code 2.1.311, Codex 0.170.0), with a
 listener on 127.0.0.1 that answers 401 to each request, forwards nothing, and prints only the

@@ -4,7 +4,8 @@
 // whole-number arithmetic, and the result is one flag for each row. A value is rare only when
 // fewer than 10 % of the rows have it: with Headroom's rule alone, one of five values that are
 // equally frequent counts as rare. A field with more than five usual values is not skipped as
-// in Headroom: a value that only one row has, or fewer than 2 % of the rows, is rare there.
+// in Headroom: a value that only one row has, or fewer than 2 % of the rows, is rare there,
+// unless the field has more different values than half of its rows (a name, an identifier).
 // Source: crates/headroom-core/src/transforms/smart_crusher/outliers.rs
 // (`detect_structural_outliers`, `detect_rare_status_values`)
 
@@ -97,6 +98,8 @@ fn mark_rare_values(rows: &[Value], name: &str, flags: &mut [bool]) {
         let count = counts[value];
         match &usual {
             Some(usual) => !usual.contains(value) && count * 100 < total * RARE_VALUE_PERCENT,
+            // A field in which most values are of one row is a name or an identifier.
+            None if counts.len() * 2 > total => false,
             None => count == 1 || count * 100 < total * VERY_RARE_PERCENT,
         }
     };

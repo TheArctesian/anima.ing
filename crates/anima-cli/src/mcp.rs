@@ -22,8 +22,8 @@ use crate::auth::documents::{Me, me};
 use crate::failure::Failure;
 use crate::hub::{Token, TokenKind};
 use crate::invocation::Invocation;
-use crate::shortening::Shortening;
 use crate::shortening::commands::ShorteningCommand;
+use crate::shortening::{Shortening, remove_old_of_each_hub};
 use catalogue::ToolSet;
 use install::InstallCommand;
 use permission_commands::{PermissionsCommand, saved};
@@ -104,6 +104,9 @@ async fn start(flags: StartFlags, invocation: &Invocation) -> Result<(), Failure
     let picture = statement(&rows);
     let origin = hub.origin().as_text();
     let shortening = Shortening::from_setting(invocation.config_dir()?, &origin, no_shortening);
+    if shortening.store().is_some() {
+        remove_old_of_each_hub(invocation.config_dir()?, std::time::SystemTime::now());
+    }
     let server = Server::new(hub, token, rows).with_shortening(shortening);
     invocation.output.note(&format!(
         "anima mcp: {} tools for {origin} on standard input and output. {picture}",

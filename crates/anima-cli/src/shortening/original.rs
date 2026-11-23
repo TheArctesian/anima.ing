@@ -21,8 +21,8 @@ pub const TOOL: &str = "anima_original_get";
 const PART: usize = 40_000;
 /// The most names of lists in a refusal.
 const MOST_NAMES: usize = 20;
-/// The longest path of a list that is looked for; a deeper list has a longer path.
-const LONGEST_PATH: usize = 400;
+/// The deepest list that is looked for, as deep as the shortener looks.
+const DEEPEST: usize = 50;
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -101,7 +101,8 @@ pub fn call(
     let part = part(&rows[from..]);
     if part.is_empty() && from < rows.len() {
         return Err(ToolError::Refused(format!(
-            "Row {from} of this list is too large to give. Give `from` {} for the rows after it.",
+            "Row {from} of this list is too large for a tool answer; only the operator can read \
+             it, with `anima mcp shortening original`. Give `from` {} for the rows after it.",
             from + 1
         )));
     }
@@ -120,16 +121,16 @@ pub fn call(
 /// `page.entries`, `builds[3].lines`.
 fn lists_of(answer: &Value) -> Vec<(String, &Vec<Value>)> {
     let mut lists = Vec::new();
-    let mut open = vec![(String::new(), answer)];
-    while let Some((path, value)) = open.pop() {
-        if path.len() > LONGEST_PATH {
+    let mut open = vec![(String::new(), answer, 0_usize)];
+    while let Some((path, value, depth)) = open.pop() {
+        if depth > DEEPEST {
             continue;
         }
         match value {
             Value::Array(rows) => {
                 for (row, value) in rows.iter().enumerate().rev() {
                     if value.is_object() || value.is_array() {
-                        open.push((format!("{path}[{row}]"), value));
+                        open.push((format!("{path}[{row}]"), value, depth + 1));
                     }
                 }
                 lists.push((path, rows));
@@ -141,7 +142,7 @@ fn lists_of(answer: &Value) -> Vec<(String, &Vec<Value>)> {
                     } else {
                         format!("{path}.{name}")
                     };
-                    open.push((path, value));
+                    open.push((path, value, depth + 1));
                 }
             }
             _ => {}

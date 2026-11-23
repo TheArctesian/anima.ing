@@ -210,3 +210,48 @@ fn sha_016_an_original_of_one_hub_is_not_read_in_a_run_for_a_different_hub() {
     );
     assert!(matches!(read, Err(ToolError::Refused(_))));
 }
+
+#[test]
+fn sha_016_each_list_that_the_mark_names_is_read_by_the_tool_also_inside_a_row() {
+    let config = tempfile::tempdir().expect("a folder");
+    let shortening = on(config.path());
+    let now = SystemTime::now();
+    let lines: Vec<String> = (0..200)
+        .map(|line| format!("compiled unit {line} of the build"))
+        .collect();
+    let Value::Object(whole) =
+        json!({ "builds": [{ "id": 1 }, { "id": 2, "log": { "lines": lines } }] })
+    else {
+        unreachable!()
+    };
+    let short = shortening.applied("t", whole.clone(), now);
+    let mark = &short["shortened"];
+    let named = mark["lists"][0]["list"].as_str().expect("a list");
+    assert_eq!(named, "builds[1].log.lines");
+    let store = shortening.store().expect("on");
+    let part = original::call(
+        store,
+        arguments(json!({ "handle": mark["handle"], "list": named })),
+        now,
+    )
+    .expect("a part");
+    assert_eq!(part["rows"], whole["builds"][1]["log"]["lines"]);
+}
+
+#[test]
+fn sha_012_the_old_originals_of_a_hub_that_is_not_used_go_at_the_next_start() {
+    let config = tempfile::tempdir().expect("a folder");
+    let shortening = on(config.path());
+    let now = SystemTime::now();
+    let short = shortening.applied("t", long_answer(), now);
+    assert!(short.contains_key("shortened"));
+    let store = shortening.store().expect("on");
+    assert_eq!(store.list().expect("listed").len(), 1);
+    super::remove_old_of_each_hub(config.path(), now + std::time::Duration::from_hours(25));
+    assert_eq!(store.list().expect("listed"), []);
+    assert_eq!(
+        setting::read(&config.path().join(FOLDER)),
+        setting::State::On,
+        "only originals go"
+    );
+}

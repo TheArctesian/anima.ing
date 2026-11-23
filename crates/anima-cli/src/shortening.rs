@@ -70,41 +70,80 @@ impl Shortening {
         let Some(store) = &self.store else {
             return fields;
         };
-        let Some(short) = shortened(&Value::Object(fields.clone()), &Limits::default()) else {
-            return fields;
-        };
-        let original = Original {
-            tool: tool.to_owned(),
-            lists: short.cuts().iter().map(|cut| cut.list.clone()).collect(),
-            answer: Value::Object(fields),
-        };
-        let before = original.answer.to_string().len();
-        let handle = store::handle_of(&original.answer.to_string());
-        let marked = short.marked(&handle, original::TOOL);
-        let after = marked.to_string().len();
-        // The marked answer must fit whole: the last limit of a result (`fitted`) would cut
-        // rows after the mark was written, and the mark would not be true (SHA-004). And the
-        // saving is tested again with the real mark (SHA-007).
-        let worth = after <= RESULT_CAP && after * 100 <= before * (100 - LEAST_SAVING_PERCENT);
-        match marked {
-            Value::Object(marked) if worth && store.put(&original, now).is_ok() => {
-                measure::record(&self.measure_dir, tool, before, after);
-                marked
-            }
-            _ => match original.answer {
-                Value::Object(fields) => fields,
-                _ => unreachable!("built from an object above"),
-            },
+        let whole = Value::Object(fields);
+        let given = worth_it(tool, &whole).and_then(|worth| {
+            // The original is stored before the shortened answer is given (SHA-006).
+            store.put(&worth.original, now).ok()?;
+            measure::record(&self.measure_dir, tool, worth.before, worth.after);
+            Some(worth.marked)
+        });
+        match given.unwrap_or(whole) {
+            Value::Object(fields) => fields,
+            _ => unreachable!("an object stays an object"),
         }
     }
 }
+
+/// A shortened answer that is worth giving, with what must be stored first.
+pub struct Worth {
+    /// The answer with its mark.
+    pub marked: Value,
+    /// The whole answer, with the lists that lost rows.
+    pub original: Original,
+    /// The bytes of JSON of the whole answer and of the marked answer.
+    pub before: usize,
+    pub after: usize,
+}
+
+/// `whole` shortened and marked; `None` when it stays as it is. The marked answer must fit
+/// whole: the last limit of a result (`fitted`) would cut rows after the mark was written, and
+/// the mark would not be true (SHA-004). And the saving is tested with the real mark (SHA-007).
+#[must_use]
+pub fn worth_it(tool: &str, whole: &Value) -> Option<Worth> {
+    let short = shortened(whole, &Limits::default())?;
+    let text = whole.to_string();
+    let lists = short.cuts().iter().map(|cut| cut.list.clone()).collect();
+    let marked = short.marked(&store::handle_of(&text), original::TOOL);
+    let (before, after) = (text.len(), marked.to_string().len());
+    let worth = after <= RESULT_CAP && after * 100 <= before * (100 - LEAST_SAVING_PERCENT);
+    worth.then(|| Worth {
+        marked,
+        original: Original {
+            tool: tool.to_owned(),
+            answer: whole.clone(),
+            lists,
+        },
+        before,
+        after,
+    })
+}
+
+/// Removes the originals that are too old in the folder of each hub, so that the originals of
+/// a hub that is not used any more do not stay. A fault leaves them for the next start.
+pub fn remove_old_of_each_hub(config_dir: &Path, now: SystemTime) {
+    let Ok(folders) = std::fs::read_dir(config_dir.join(FOLDER)) else {
+        return;
+    };
+    for folder in folders.flatten() {
+        let hub = folder
+            .file_name()
+            .to_str()
+            .is_some_and(|name| name.starts_with(HUB));
+        if hub && folder.file_type().is_ok_and(|kind| kind.is_dir()) {
+            // The next start tries again (SHA-006: this never stops an answer).
+            let _left = Store::new(folder.path()).remove_old(now);
+        }
+    }
+}
+
+const HUB: &str = "hub-";
 
 /// The folder of the originals of one hub: an agent of a run for one hub cannot read, by a
 /// handle, an answer of a different hub.
 #[must_use]
 pub fn originals_dir(config_dir: &Path, origin: &str) -> PathBuf {
     let hub = &store::handle_of(origin)[..16];
-    config_dir.join(FOLDER).join(format!("hub-{hub}"))
+    config_dir.join(FOLDER).join(format!("{HUB}{hub}"))
 }
 
 #[cfg(test)]
