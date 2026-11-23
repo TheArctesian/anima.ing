@@ -1,20 +1,20 @@
 ---
 kind: Proposal
 state: Direction decided
-evidence: Version 4.5 (2026-11-22). R-432 (first-hand on a question card, 11:39 PM PT, America/Los_Angeles) decides OD-THR69 to OD-THR74. Version 4.4 (2026-11-22). Adds Section 4.15, Section 6.10 and OD-THR69 to OD-THR74: a persistent attachable session layer on the holder (THR-150 to THR-164, tasks TH120 to TH130). Nothing of it is approved; no R-nnn. Version 4.3 (2026-11-22). R-429 makes remote starts, handoff and approvals one iOS and Android launch scope. R-431 approves the hub sync contract for TH20 in Section 6.3.1. Version 4.0, a draft (2026-11-21). The operator rejected the result of versions 1 to 3 on 2026-11-21 and ruled that the UI of T3 Code is copied "pretty much to a T", then "Their layout, our skin" (the layout and the behaviour of T3 Code in the colours, the font and the corners of Anima), and that the function is named Code (Section 0; relayed). Section 0 corrects the order of the build, lists each wait as a question for him, and says which rulings hold. The text below Section 0 is the text of version 3.3 and still says Threads. Version 3.1 (2026-11-20). The operator answered each open decision that was put to him: 36 on question cards (the four rulings that Section 1.3 names) and the last seven the same day (R-309); all relayed through the orchestrating session. No decision of his holds stage 1b (drive Claude Code and Codex on this computer); his standing rule stays, so code that starts an agent merges only after a separate security review of that code (the list of Section 6.2.1). The requirements THR-001 to THR-141 are not approved as a whole: a requirement is in force where a ruling names its decision. Parity with the inventory of T3 Code: 101 functions; 15 built on a branch, 3 partly built, 77 not started, 5 owned by a different document, 1 not copied. Built and pushed, not merged: tasks TH1 to TH5 and TH8 (they read and start no program). A different session builds stage 1b. Three separate security reads are recorded (28, 19 and 24 findings; Section 9). No reviewer read version 3.1. Risks that he accepted are in Section 8.2 with his words. Not designed: the store of the tokens of THR-131. Version 3.3 (2026-11-21): the ruling R-320, made overnight and not yet confirmed, frees task TH46 (pin, archive, rename, remove from the list) before his approval of Section 8; the rest of stage 4 still waits for it.
+evidence: Version 4.6 (2026-11-23). Adds Section 4.16, Section 6.11 and OD-THR75 to OD-THR82: agent device leasing (THR-165 to THR-184, tasks TH131 to TH147), proposed, not approved. Three choices that an agent relayed are open decisions (OD-THR75 to OD-THR77), not rulings; no R-nnn. Version 4.5 (2026-11-22). R-432 (first-hand on a question card, 11:39 PM PT, America/Los_Angeles) decides OD-THR69 to OD-THR74. Version 4.4 (2026-11-22). Adds Section 4.15, Section 6.10 and OD-THR69 to OD-THR74: a persistent attachable session layer on the holder (THR-150 to THR-164, tasks TH120 to TH130). Nothing of it is approved; no R-nnn. Version 4.3 (2026-11-22). R-429 makes remote starts, handoff and approvals one iOS and Android launch scope. R-431 approves the hub sync contract for TH20 in Section 6.3.1. Version 4.0, a draft (2026-11-21). The operator rejected the result of versions 1 to 3 on 2026-11-21 and ruled that the UI of T3 Code is copied "pretty much to a T", then "Their layout, our skin" (the layout and the behaviour of T3 Code in the colours, the font and the corners of Anima), and that the function is named Code (Section 0; relayed). Section 0 corrects the order of the build, lists each wait as a question for him, and says which rulings hold. The text below Section 0 is the text of version 3.3 and still says Threads. Version 3.1 (2026-11-20). The operator answered each open decision that was put to him: 36 on question cards (the four rulings that Section 1.3 names) and the last seven the same day (R-309); all relayed through the orchestrating session. No decision of his holds stage 1b (drive Claude Code and Codex on this computer); his standing rule stays, so code that starts an agent merges only after a separate security review of that code (the list of Section 6.2.1). The requirements THR-001 to THR-141 are not approved as a whole: a requirement is in force where a ruling names its decision. Parity with the inventory of T3 Code: 101 functions; 15 built on a branch, 3 partly built, 77 not started, 5 owned by a different document, 1 not copied. Built and pushed, not merged: tasks TH1 to TH5 and TH8 (they read and start no program). A different session builds stage 1b. Three separate security reads are recorded (28, 19 and 24 findings; Section 9). No reviewer read version 3.1. Risks that he accepted are in Section 8.2 with his words. Not designed: the store of the tokens of THR-131. Version 3.3 (2026-11-21): the ruling R-320, made overnight and not yet confirmed, frees task TH46 (pin, archive, rename, remove from the list) before his approval of Section 8; the rest of stage 4 still waits for it.
 ---
 
 # Proposal: agent threads (the behaviour of T3 Code, as a native part of Anima)
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this proposal (PLN-005).
 
-Version: 4.5. Date: 2026-11-22.
+Version: 4.6. Date: 2026-11-23.
 Status: the header of this document holds the state (PLN-020).
 Map: [work-plan.md](../work-plan.md), categories Use and See, row 4.24 of [priorities.md](../plan/priorities.md).
 From: R-286, R-287, R-288, R-293, R-289, R-297, R-295, R-291, R-349, R-350, R-351, R-352, R-353, R-354, R-429, R-432.
-Identifiers: THR-001 to THR-164, OD-THR1 to OD-THR44 (each decided), OD-THR45 to OD-THR67 (each decided, Section 0.5 and Section 0.10), OD-THR68 (open, TH119), OD-THR69 to OD-THR74 (decided, R-432, Section 4.15), tasks TH0 to TH119 and TC1 to TC12, TH120 to TH130 (attachable sessions, Section 6.10).
+Identifiers: THR-001 to THR-184, OD-THR1 to OD-THR44 (each decided), OD-THR45 to OD-THR67 (each decided, Section 0.5 and Section 0.10), OD-THR68 (open, TH119), OD-THR69 to OD-THR74 (decided, R-432, Section 4.15), OD-THR75 to OD-THR82 (open, Section 4.16), tasks TH0 to TH119 and TC1 to TC12, TH120 to TH130 (attachable sessions, Section 6.10), TH131 to TH147 (agent device leasing, Section 6.11, proposed).
 Language: Simplified Technical English (design specification, Section 0).
-Mockup: [agent-threads/index.html](../mockup/agent-threads/index.html). Attachable sessions (proposed): [attachable-sessions/index.html](../mockup/attachable-sessions/index.html).
+Mockup: [agent-threads/index.html](../mockup/agent-threads/index.html). Attachable sessions (proposed): [attachable-sessions/index.html](../mockup/attachable-sessions/index.html). Agent device leasing (proposed): [agent-device-leasing/index.html](../mockup/agent-device-leasing/index.html).
 Inventory of T3 Code: [t3-code-inventory.md](../research/agent-threads/t3-code-inventory.md) (a record; it adds no requirement).
 
 ## The queue of the runner session (2026-11-23)
@@ -785,6 +785,170 @@ Trust and blast radius:
 - **THR-163.** Security review. Code that starts a program of this layer, or that sends input to a held session, merges only after a separate security review of that code, with no High finding open (the standing rule of stage 1b). The review must cover the risk that a program of the user types into a session (SF-117), the same-user socket, and the hub path of a remote attach.
 - **THR-164.** Failure and restart. A dropped client leaves the program running. A later attach of the same operator succeeds while the program runs. If the holder exits, the sessions show as stopped and nothing starts again without the person. After a restart of the daemon, the daemon finds the holder and the sessions again (THR-113). A session on a machine that is off cannot be attached until the machine is back.
 
+### 4.16 Agent device leasing (proposed, 2026-11-23)
+
+This section is a plan change. Nothing in it is approved. No ruling decides OD-THR75 to OD-THR82, and no R-nnn exists for it. Three choices came to the planning session through a different agent (the brief of 2026-11-23: row 4.24, an own lease layer, and an MCP tool for the lease holder). A relayed answer is not a ruling here, so they are OD-THR75 to OD-THR77, each with a recommendation. The requirements THR-165 to THR-184 are proposed. No task of TH131 to TH147 starts before a first-hand ruling names it (PLN-007).
+
+Goal: each coding agent holds one test device at a time, alone. In the first version a device is an iOS simulator or an Android emulator on an enrolled machine. A lease ends when the holder stops renewing it, so a crashed holder frees its device. A returned device is wiped before any other agent gets it. The person sees the device in a panel beside the thread and can tap it. The agent that holds the lease may drive only that device (OD-THR77).
+
+Serves row 4.24, beside TH68, if OD-THR75 is A. Owner: this document (PLN-004), for these reasons:
+
+- The device panel is TH68 of this document (Section 6.6), and the parity table says "No owner yet" for it. This section gives it an owner.
+- The holder of a lease is an agent. In Anima that is a Code thread (THR-113, THR-031), or an agent with a grant (AXT-096).
+- The queue, the placement and the limits stay owned by [jobs.md](jobs.md) (ROU-001 to ROU-016) and by K10 ([work-route.md](../../contracts/work-route.md)). This section uses them. It does not add a second queue (ROU-007).
+- The MCP rules stay owned by [cli-mcp-plan.md](../plans/cli-mcp-plan.md). The exception that OD-THR77 asks for is written there by the ruling, not here.
+
+#### 4.16.1 Overlap (PLN-004)
+
+Checked on anima origin/dev `058a67afc` (2026-11-23) and anima-cloud `0935d85`. Searches: lease, simulator, emulator, `simctl`, `adb`, device panel, grant, wipe, in `docs/`, `contracts/` and `crates/`.
+
+- [ownership.md](../plan/ownership.md): no owner for a device lease, a simulator or an emulator. This document owns TH68. [jobs.md](jobs.md) owns the queue and routing. [cli-mcp-plan.md](../plans/cli-mcp-plan.md) owns MCP. [compute-plan.md](../plans/compute-plan.md) owns the inventory probe (CAP-023).
+- [register.md](../plan/register.md): this document is Direction decided. [jobs.md](jobs.md) is Direction decided; RT1 (the approval of ROU-001 to ROU-016) is Not started.
+- [deferred.md](../deferred.md) and [rulings.md](../rulings.md): no item and no ruling about a device lease, a simulator or an emulator.
+- Neighbours that this section uses and does not change:
+  - BLD-005, BLD-006, BLD-010 ([design-spec.md](../spec/design-spec.md) Section 3.10): claim, renew, lapse, and "refuse a report from a holder that does not hold the lease". THR-168 and THR-169 copy this pattern for a device.
+  - K10 (accepted, R-209): the hub gives an item of a fixed type to the daemon; the hub never names a command. The device steps become new K10 work types (THR-171). That is a contract change (CON-001).
+  - ROU-007 (the one queue) and ROU-010 (the limit for each caller): not approved, no code of RT3 to RT5. OD-THR81 asks how leases ship before them.
+  - AXT-096 (R-435): a grant of the operator names an agent. OD-AXT44 (the scope of a grant) is open. THR-167 uses a grant for the identity of the holder (OD-THR78).
+  - MCP-006 and AXT-012: no tool opens a session or runs a command on a device. The exceptions are routed work (R-243, R-244, behind RT7) and file transfer (R-435). OD-THR77 asks for a third, narrow one.
+  - INT-003: an API key cannot open sessions or files. It also must not hold a lease (THR-167).
+  - THR-155: held sessions have no idle end. A device lease must have a TTL, so a lease is not a held session.
+  - THR-152: held sessions draw text. A device screen is video, so it uses a different path (THR-178).
+  - CAP-023: the probe of Xcode, SDKs and simulator runtimes was left out of the first build. Leasing needs it (THR-172).
+  - CVM-012: the wipe of a rented machine. A phone wipe would need the same kind of person-confirmed step; phones are not in the first version (OD-THR80).
+- anima-cloud `0935d85`: "pool" there means the pool of hosted hubs (`src/incus.rs`). It has nothing on devices, simulators or leases.
+- Not a Folded brief: TH68 is a placeholder with no requirement, and leasing is in no plan.
+
+#### 4.16.2 Code state on origin/dev `058a67afc`
+
+Verified by a read of these paths on this commit.
+
+- No code creates, boots, wipes or deletes a simulator or an emulator. A search for `simctl`, `xcrun`, `adb` and `avdmanager` in `crates/`, `apps/` and `link/` finds nothing.
+- Job leases exist. Builds: `crates/hub/src/fleet/builds/jobs.rs` (`claim` gives a 90-second lease; `expire_leases`; BLD-005, BLD-006). K10 work: `crates/hub/src/work/jobs.rs` and `crates/hub/src/work/jobs/` (claiming, placement, reporting, trail), `LEASE_SWEEP` 30 seconds, swept by `crates/hub/src/upkeep.rs`. The wire type `Lease { until }` is in `crates/daemon-core/src/wire/work.rs`. `WorkType` has `Build`, `Runner` and the model types; no device type.
+- Placement: `crates/hub/src/work/jobs/placement.rs` is a pure function of the queue and the machines (PRO-051, ROU-004 to ROU-007 named in its header). Routing for agents (RT3 to RT5) is Not started in [jobs.md](jobs.md).
+- Inventory: `crates/daemon-core/src/inventory/tools.rs` probes `xcodebuild` as a tool. No probe of simulator runtimes, device types, Android SDK, emulator or system images was found. `crates/daemon-core/src/points/labels.rs` only labels the CoreSimulator mount points.
+- MCP: `crates/anima-cli/src/mcp/tools/sessions.rs` lists and ends sessions, and says "No tool opens a session (MCP-006)". No device tool exists.
+- Grants: the AXT-096 grant (R-435) is a plan. No grant store for agents was found in `crates/hub/src`. Not verified that none exists under a different name.
+- Screen paths: SSH, RDP and VNC go through the hub (`crates/hub/src/fleet/sessions/`, `crates/guac-protocol`). No video stream of a simulator exists.
+- `apps/desktop/runner/ios` is the iOS runner report (a probe of the phone's hardware), not a device lease.
+- No `THIRD_PARTY_NOTICES` file exists at the root. `crates/shortening/LICENSE-APACHE` is the one copied licence text found.
+- anima-cloud `0935d85`: nothing on devices.
+
+#### 4.16.3 Scope, design and engineering
+
+The narrowest version that proves it: on one enrolled Mac, two Code threads each ask for "an iPhone simulator". Each gets a different booted simulator. A third request waits in the queue and shows its stage. Closing a thread releases its lease, and the simulator is deleted. Killing the client frees the simulator one TTL later. The person sees each thread's simulator in a device tab and can tap it. Each request, grant, release, lapse and wipe writes an audit entry.
+
+Scope of the first version (recommended, OD-THR80): iOS simulators on enrolled Macs, and Android emulators on enrolled Macs, Linux and Windows machines. Not in it: enrolled phones, whole machines, a warm pool, baselines, files for each lease, a Simlock gateway as a source (OD-THR76), rotation and appearance controls.
+
+Design (recommended). The build order is CMD-030: the hub API, then the `anima` command, then the MCP tool, then the client.
+
+1. A lease is a record of the hub, not a job and not a held session. It names one device, one holder, one generation number and an end time. Only a renew moves the end time. There is no ledger of time; the audit log records the events.
+2. The device steps run on the daemon as fixed K10 work types, `device_prepare` and `device_reclaim`. The steps are code of the daemon. The hub never sends a command line (K10 Section 3, JOB-015).
+3. The daemon touches only devices that Anima made. Each one has a name with a fixed prefix and a record in the daemon. A simulator or an emulator of the person is never listed, leased, wiped or deleted.
+4. One queue: a lease request is an item of the K10 queue. Its stages are `queued`, `downloading`, `reclaiming`, `provisioning`, `booting`, then `ready`, each with an ETA when one is known.
+5. The screen is an H.264 (AVCC) stream, and input is touch, key and button messages, in the formats of serve-sim. It goes through the hub's tunnel with a single-use ticket (K4 Section 1), not through a new open port. Only a visible tab streams.
+6. The agent tool `anima_device_open` is bound to the caller's own lease. It has no device selector and no command line.
+
+ASCII wireframes (the HTML mockup is [agent-device-leasing/index.html](../mockup/agent-device-leasing/index.html)):
+
+```text
+Frame 1: Code thread with the device tab
++--------------+------------------------------------------------------+
+| Code         | auth flow · thread         [Diff] [Files] [Device*]  |
+|  auth flow * |------------------------------------------------------|
+|  login fix   | iPhone 16 · iOS 18 · on studio-mac    lease 4:12 left|
+|              | held by: auth flow (this thread)                     |
+| Devices      |   +-----------+                                      |
+|  studio-mac  |   |  [screen] |   Tap, swipe, type go to the device  |
+|   2 leased   |   |           |                                      |
+|   1 waiting  |   +-----------+                                      |
+|              | [Home] [Lock] [Screenshot]   [Return device to pool] |
++--------------+------------------------------------------------------+
+
+Frame 2: device picker and stages
++----------------------------------------------+
+| Get a device for this thread                  |
+| (o) iPhone 16 · iOS 18      studio-mac  free  |
+| ( ) Pixel 9 · Android 15    studio-mac  make  |
+| ( ) iPad Air · iOS 18       none fits  why?   |
+|                                    [Get one]  |
+|----------------------------------------------|
+| queued > reclaiming > provisioning > booting  |
+|            ^ now          about 40 s left     |
++----------------------------------------------+
+
+Frame 3: the command line
+$ anima device lease request --platform ios --model "iPhone 16"
+lease l-7f2c  queued -> booting -> ready  (iPhone 16, studio-mac)
+$ anima device lease list
+l-7f2c  ready  iPhone 16  studio-mac  4m left  auth flow
+$ anima device lease release l-7f2c
+released; reclaiming (delete) ... clean
+```
+
+Types and contracts (blast radius):
+
+- K1 (`contracts/schema.graphql`): new types `DeviceLease`, `DeviceLeaseStage`, `LeasedDeviceSpec`; mutations to request, renew and release; a query of own leases; an event of the stage. Additive. A client that does not know them is not changed.
+- K10 ([work-route.md](../../contracts/work-route.md), accepted): two new work types and their reports. `WorkType` has `#[serde(other)]`, so an older daemon reads an unknown type and refuses it; the hub must not send a device type to a daemon that did not say in its claim that it can (as K10 Section 4 `free.slots`). This needs a ruling (CON-001).
+- K4 ([tunnel.md](../../contracts/tunnel.md)): a new kind of tunnel for the device stream and input, with a ticket bound to the lease generation. This needs a ruling (CON-001).
+- MCP ([cli-mcp-plan.md](../plans/cli-mcp-plan.md)): new tools only after the ruling of OD-THR77 writes the exception into MCP-006 and AXT-012, and after TH145.
+- No change to the build lease, the job lease, held sessions, SSH, RDP or VNC.
+
+Failure modes and races:
+
+- Lapse against renew: the sweep and a renew run in one transaction on the lease row. A renew that comes after the sweep ended the lease is refused ("lease ended"); it never revives the lease. Each renew, input and stream ticket carries the generation number; an older generation is refused (as BLD-010).
+- Lapse against input: when a lease ends, the hub closes its stream tickets and the daemon drops input for that generation before the reclaim starts.
+- Reuse before wipe: a device goes back to the pool only after `device_reclaim` reports clean. A failed or partial wipe puts the device in "Needs attention"; it is never leased again until it is deleted.
+- Daemon offline: its leases lapse at the TTL. When the daemon comes back, it reclaims each device of an ended lease before it offers the device.
+- Hub restart: leases are rows with an end time; the sweep continues. Nothing is in memory only.
+- Boot fails: one retry, then the request fails with the reason, and the half-made device is deleted.
+- A device was deleted by hand: the daemon reports it gone; the lease ends with the reason.
+- Clock: end times use the hub clock only. The holder renews at a fixed share of the TTL (THR-168).
+
+Trust boundaries (OD-THR77, THR-180, THR-181):
+
+- An agent with the tool can see the screen of the device and send input to it. It can install an app. An installed app runs inside the simulator or emulator, but the simulator runs as the user of the daemon on the Mac. The upstream project says that its agent token is "like shell access" to the worker. This design must not be that:
+  - no command line in any tool (MCP-006 stays for each other case);
+  - the tool reaches only the device of the caller's own lease;
+  - an install takes only an app bundle or an APK from the thread's own worktree on the same machine, by a path that the daemon resolves and checks (no `..`, no link out of the worktree);
+  - no file of the device or of the machine is read through the tool, except the screen image;
+  - no secret in or out (MCP-004).
+- API keys cannot hold a lease (INT-003 stays).
+- The review TH145 must pass with no High finding open before TH146 or any input path for an agent merges.
+
+Licence (THR-182). The code copied comes from three projects. The facts below were checked by the brief on 2026-11-23 and are Not verified by this planning session.
+
+- Simlock (MIT) and agent-device (MIT): keep the copyright line and the permission text. List each copied or ported file in `THIRD_PARTY_NOTICES.md`.
+- serve-sim (Apache-2.0): ship the licence text, mark each changed file as changed, and keep any NOTICE file (none was found; check again at copy time).
+- Anima is AGPL-3.0-or-later. MIT and Apache-2.0 code may go into it.
+- Copy the code: the `simctl` and `adb` and emulator command sequences, ported to Rust in the daemon; the client stream decoder; the touch, key and button messages. Copy the design only: the lease API and stages, TTL with no ledger, one lease for each requester, the MCP tool shapes, the device panel, the picker and "Return device to the pool". Do not copy: the gateway and worker split, the shell-level agent token, the web consoles, or any code of the T3 Code client (its licence was not checked for this).
+- Do not use an upstream product name as the name of this function.
+
+Kill criteria: drop this section if one person rarely runs more than one mobile agent at a time, so collisions do not happen. Drop the agent tool (TH146) if TH145 cannot pass; keep the person's panel alone only if it is still worth it. In either case TH68 stays as it is.
+
+#### 4.16.4 Requirements (proposed, not approved)
+
+- **THR-165.** A device lease. A lease gives one device to one holder, alone. No other holder may see the screen, send input, install or release it. States: `requested`, `queued`, `downloading`, `reclaiming`, `provisioning`, `booting`, `ready`, `releasing`, `ended`. The caller may give a lease id; a second request with the same id returns the same lease.
+- **THR-166.** Kinds of device (OD-THR80). The first version leases iOS simulators on enrolled Macs, and Android emulators on enrolled Macs, Linux and Windows machines. [NEEDS CLARIFICATION: OD-THR80, enrolled phones and whole machines.]
+- **THR-167.** The holder (OD-THR78). The requester is an agent identity of the hub: a grant of the operator that names the agent (the model of AXT-096), or the Code thread that Anima runs. A shared API key is not a requester and must not hold a lease (INT-003). One lease for each requester and platform at a time, by default. [NEEDS CLARIFICATION: OD-THR78; OD-AXT44, the scope of a grant.]
+- **THR-168.** TTL and renew (OD-THR79). Only a renew keeps a lease. A lease that is not renewed ends one TTL after the last renew. There is no ledger. A lease also has a longest age; at that age it ends. For a Code thread the daemon renews while the thread's program runs. [NEEDS CLARIFICATION: OD-THR79, the TTL and the longest age.]
+- **THR-169.** Fencing. Each lease has a generation number. The hub refuses a renew, an input, a stream ticket or a release that names an ended lease or an older generation. The sweep and a renew of one lease run in one transaction. A late renew never revives a lease.
+- **THR-170.** Wipe on return. A release, a lapse, a cancel and the longest age all go to `device_reclaim`. A simulator or an emulator is deleted (or erased, if the ruling of the warm pool later says so). The device goes back to the pool only after the daemon reports it clean. If the reclaim fails, the device is "Needs attention" and is not leased again until it is deleted.
+- **THR-171.** The steps on the machine. Create, boot, check, wipe, delete and idle clean-up run on `anima-daemon` as fixed K10 work types (`device_prepare`, `device_reclaim`). The steps are code of the daemon. The hub never names a command. The daemon touches only devices that Anima made (a fixed name prefix and a record of the daemon). [NEEDS CLARIFICATION: the K10 text needs a ruling, CON-001.]
+- **THR-172.** Inventory. The probe of CAP-023 adds, for Apple: the Xcode version, the simulator runtimes and the device types; for Android: the SDK, the emulator, the system images. Placement uses them.
+- **THR-173.** One queue (OD-THR81). A lease request is an item of the K10 queue, not of a second queue (ROU-007). Each stage has an ETA when one is known. A queued request counts against the limit of the caller (ROU-010) when that limit exists. [NEEDS CLARIFICATION: OD-THR81; OD-ROU7, the time after which queued work is refused.]
+- **THR-174.** Audit. One entry for each request, grant, release, lapse, longest-age end, reclaim result, `device_open` start and end, and app install. Not one for each renew or tap; the entry at the end gives the count of renews.
+- **THR-175.** The hub API (CMD-030, step 1). Request, renew, release, list own leases, and an event of the stage. The operator sees each lease of his agents. An agent sees only its own.
+- **THR-176.** The command (step 2). `anima device lease request|list|renew|release|watch`. Output follows the rules of the command line plan.
+- **THR-177.** The agent tool (step 3; OD-THR77). `anima_device_lease`, `anima_device_release` and `anima_device_open`. `anima_device_open` is bound to the caller's lease and has no device selector. Its actions: read the screen (an image), tap, swipe, type text, press a key or a button, install an app. It has no command line. The states of MCP-002 apply. An install is a destructive action for MCP-025. [NEEDS CLARIFICATION: OD-THR77.]
+- **THR-178.** Screen and input. An H.264 (AVCC) stream and touch, key and button messages, in the formats of serve-sim, through the hub's tunnel with a single-use ticket bound to the lease generation (K4 Section 1). No new open port. Only a visible tab streams.
+- **THR-179.** The device panel (TH68). A device tab beside the thread, which can also float over the chat. A picker of the models that the machines can make, and of free devices, with Start next to a stopped one. The stages with their ETA. A control "Return device to the pool" that releases the lease. The person may watch and tap a device that an agent holds (OD-THR82).
+- **THR-180.** Limits of the agent tool. It reaches only the device of the caller's lease. An install takes only an app bundle or an APK inside the thread's own worktree on the same machine; the daemon resolves the path and refuses `..` and links that leave the worktree. No tool reads a file of the device or of the machine other than the screen image. No secret in or out (MCP-004). MCP-006 stays for every other case.
+- **THR-181.** Security review. Code of the agent tool, of input for an agent, and of the stream merges only after a separate security review with no High finding open (TH145). The review covers: input from one agent to the device of another, the stream ticket, lapse races, the install path, wipe completeness, devices of the person that Anima did not make, and the rights of `simctl` and `adb` as the user of the daemon.
+- **THR-182.** Licence. Copied or ported code keeps its notices. `THIRD_PARTY_NOTICES.md` at the root lists each file, its source project, its licence and its copyright line. The Apache-2.0 licence text ships in the repository, and each changed Apache-2.0 file says that it was changed. A NOTICE file of a source is kept if one exists at copy time. The commit message credits the source. No upstream product name names this function. Public marketing text does not discuss these licences.
+- **THR-183.** Failure. A daemon that goes offline loses its leases at the TTL; when it is back it reclaims those devices before it offers them. A hub restart keeps leases (they are rows). A boot that fails is retried once, then the request fails with the reason and the half-made device is deleted. A device that was deleted by hand ends its lease with the reason.
+- **THR-184.** Not in the first version: a warm pool and baselines (copy the design later), files for each lease (AXT-090 to AXT-102 may serve later), a Simlock gateway as a source (OD-THR76), enrolled phones and whole machines (OD-THR80), rotation and appearance.
+
 ## 5. Requirements of stage 1a (the read side)
 
 - **THR-003.** the crate `agent-threads` must read the lines of one session file of Claude Code (`~/.claude/projects/<project>/<id>.jsonl`) or Codex (`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`) into a thread: the prompts the person typed, the replies, the reasoning, the tool calls with their results and the patch of an edit, the ends of the turns and the compaction marks, in the order of the file. Lines of a sub-agent and lines that the program wrote for itself are not entries. It is pure; it reads no file. It reads a Codex rollout in both forms that Codex writes: the `user_message` and `agent_message` events, and the newer `item_completed` items (`UserMessage`, `AgentMessage`, `CommandExecution`, `FileChange`). A script of the `exec` tool is one tool call named for the first tool it calls, with the command or the patch of that tool and the output of the script. The file is written by the agent, so its text is only read: nothing in it names a file that is read.
@@ -1100,7 +1264,7 @@ Stages 1 to 4 hold each function marked must or should in Section 3.3. Stage 5 h
 | TH65 | Clean-up rules of worktrees, the copy-on-write cache, sparse checkout, submodules | Not started |
 | TH66 | The pull request page, merge, stacks, watches, other forges | Not started |
 | TH67 | The file picker, the search of a project, the file viewer and editor, open in an editor | Not started |
-| TH68 | Project scripts with keys, terminal splits; the servers and the preview of AXT-079 to AXT-088 shown in the thread; the device panel | Not started |
+| TH68 | Project scripts with keys, terminal splits; the servers and the preview of AXT-079 to AXT-088 shown in the thread; the device panel (its lease, picker and tab: Section 4.16 and tasks TH131 to TH147, proposed) | Not started |
 | TH69 | The rest: the suggested next prompt, cite a reply, the prompt stash, dictation, prompt links, a thread reference, key rules of the person, fast mode, more than one account, guest links, scheduled tasks, secret providers, managed policy, diagnostics, the use of a machine by thread | Not started |
 
 | Function of the inventory (section) | Stage | Owner, when it is not this proposal |
@@ -1117,7 +1281,7 @@ Stages 1 to 4 hold each function marked must or should in Section 3.3. Stage 5 h
 | The pull request page (review, comment, merge, auto-merge, stacks), watches of a pull request, other forges, issues (6.4, 14) | 5 | The forge domain and Projects (PRO requirements); PRO-007 for a second forge |
 | A terminal for each thread, splits, kept scroll-back; project scripts and set-up scripts (7) | 5 | The terminal of Anima (design specification Section 6.3) |
 | The list of local servers of a thread; the preview browser (7, 14) | 5 | [agent-tools-as-extensions.md](agent-tools-as-extensions.md) Section 6.10, AXT-079 to AXT-088 (R-281) |
-| The device panel (iOS Simulator, Android Emulator), screen capture (7, 14) | 5 | No owner yet |
+| The device panel (iOS Simulator, Android Emulator), screen capture (7, 14) | 5 | Section 4.16 of this document (proposed, OD-THR75) |
 | The whole keyboard table and keys that the person can change (8); the settings of Section 9 of the inventory | 1b to 4 for the keys of the functions of each stage; 5 for the file of key rules | Settings |
 | Fast mode, more than one account of a program, the picker of the program (10) | 1b (model, effort); 5 (the rest; more than one account needs a ruling on BOT-025) | — |
 | Files as attachments, a large paste as a file, excerpts of a terminal (11) | 4 (images); 5 (the rest) | Attachments of the hub (FIL requirements) |
@@ -1245,7 +1409,7 @@ Tasks of the three functions of other tools (stage 5): TH70, navigation in code 
 | 7 | A set-up script when a worktree is made | should | 4 | TH49 | Not started |
 | 7 | Project scripts with keys; splits; kept scroll-back | later | 5 | TH68 | Not started |
 | 7 | The local servers of a thread; the preview browser | later | 5 | AXT-079 to AXT-088; shown by TH68 | Owned by a different document |
-| 7 | The device panel (simulators), screen capture | later | 5 | TH68 | Not started |
+| 7 | The device panel (simulators), screen capture | later | 5 | TH68; TH131 to TH147 (Section 4.16, proposed) | Not started |
 | 8 | Keys of the list and the thread | must | 1a | TH4 | Built on a branch |
 | 8 | Keys of the composer, the pickers, the diff, the terminal | must | 1b, 4 | TH14, TH43, TH49 | Not started |
 | 8 | Key rules that the person can change | should | 5 | TH69 | Not started |
@@ -1304,6 +1468,40 @@ Out of scope of this section: the Code copy (Section 6.0); file transfer and por
 | TH128 | On an enrolled machine that runs the holder, the in-app SSH terminal starts a holder-backed shell, so a closed SSH tab keeps the program (THR-154). Unenrolled SSH devices keep K4 Section 8.6. | TH124, TH126; TH120; the exact K4 sentences that R-432 defers to this task | Close an SSH tab on an enrolled machine, open it again, and the shell is the same live program. An unenrolled SSH device still ends the shell when the client leaves. Tests of both paths. | Not started |
 | TH129 | The explicit Stop control and the visible list of running held sessions (THR-155, R-432, OD-THR73). A held session of this layer has no idle end; it runs until the operator stops it or the holder ends. The list must be visible without opening a tab, and Stop must end the program. A short notice may say that the session runs until it is stopped. | TH124, TH120 | Tests: the list shows a session after the tab is closed; Stop ends the program; a session left for longer than 60 minutes with no input is still running. A human check in the commit that builds it (`HT-nnn`). | Not started |
 | TH130 | MCP tools for the attach API, only after a ruling names a narrow exception to MCP-006 and a separate security review of those tools is done, with no High finding open (THR-159). Not in the first version. | TH123, TH126; a ruling that names the exception | The tools match the command verbs; they refuse a caller that is not permitted; the review has no High finding open. `bun run quality:documents` passes. | Not started |
+
+### 6.11 Agent device leasing (tasks TH131 to TH147)
+
+Proposed, not approved. No ruling decides OD-THR75 to OD-THR82. No task of this section starts before a first-hand ruling names it (PLN-007). Each task is one pull request of a few hours to 3 days. TH131 is the record of that ruling. TH145, the security review, gates TH146 (the MCP device tool) and the merge of the agent input path.
+
+Waves: 0 (TH131 to TH134, documents) → 1 (TH135 to TH137, the daemon) → 2 (TH138 to TH140, the hub) → 3 (TH141 to TH144, the command, the stream and the panel) → 4 (TH145 review, then TH146 the MCP tool) → 5 (TH147, the human check).
+
+Always, for each task of this section: follow [AGENTS.md](../../AGENTS.md); work in a worktree from origin/dev; claim the task first (PLN-022); keep the build order of CMD-030; touch only devices that Anima made; keep the notices of copied code (THR-182); write "Not verified" for a step that was not run; run `bun run quality:register` and `bun run quality:documents` before a commit that changes a document; merge into `dev`, never `main`; do not copy a private vault fact into the public repository.
+
+Ask, before you do it: a change to a sentence of K1, K4 or K10 beyond what the ruling names (CON-001); any MCP tool (MCP-006, OD-THR77); enrolled phones or whole machines (OD-THR80); a warm pool or baselines (THR-184); a new open port; copying code from a project that is not named in THR-182.
+
+Never: force-push; push to `main`; give an MCP tool a command line or a device selector; list, lease, wipe or delete a simulator or an emulator that Anima did not make; let an API key hold a lease; revive an ended lease; give a device to a second holder before its reclaim reports clean; drop or change an upstream copyright or licence text; copy T3 Code client code; read secrets.
+
+Out of scope of this section: a Simlock gateway as a source; the queue rules of ROU-007 and ROU-010 themselves (owned by [jobs.md](jobs.md)); file transfer for a lease; the rest of TH68 (scripts, splits, servers).
+
+| ID | Task | Needs | Acceptance (pass or fail) | State |
+| --- | --- | --- | --- | --- |
+| TH131 | Record the answers of OD-THR75 to OD-THR82, and write the texts the ruling names: the MCP-006 and AXT-012 exception in [cli-mcp-plan.md](../plans/cli-mcp-plan.md) and [agent-tools-as-extensions.md](agent-tools-as-extensions.md), ownership, priorities. No code. | A first-hand ruling | Each of OD-THR75 to OD-THR82 starts with "Decided". The exception text names only the tools of THR-177 and the limits of THR-180. `bun run quality:register` and `bun run quality:documents` pass. | Not started |
+| TH132 | Licence: add `THIRD_PARTY_NOTICES.md` and the Apache-2.0 licence text; write the rule of THR-182 in [AGENTS.md](../../AGENTS.md) or the contributor notes; check each source for a NOTICE file at that time. No copied code yet. | TH131 | The notices file names the three source projects, their licences and copyright lines, and an empty table of files. The Apache-2.0 text is in the repository. `bun run quality:documents` passes. | Not started |
+| TH133 | Contracts: K10 work types `device_prepare` and `device_reclaim` and their reports; K1 types and operations of THR-175; the K4 device tunnel of THR-178 with a ticket bound to the lease generation. Text only. | TH131 and a ruling that names the contract change (CON-001) | The three texts name each field, each refusal (ended lease, older generation, API key) and the stage list of THR-165. `bun run quality:documents` passes. | Not started |
+| TH134 | Threat model record for TH145: each power of THR-177 and THR-178, each trust boundary of Section 4.16.3, a proposed control for each. No code. | TH131 | Each item of THR-181 has a threat and a control. `bun run quality:documents` passes. | Not started |
+| TH135 | Inventory: probe the Xcode version, simulator runtimes and device types; the Android SDK, emulator and system images (THR-172). | TH131 | Table tests with recorded outputs of `xcrun simctl list -j` and of the Android tools, and with each tool missing. `cargo test -p daemon-core`. | Not started |
+| TH136 | Daemon: the iOS simulator steps (create, boot, check, delete, idle clean-up), ported from the upstream `simctl` sequence with its MIT notice (THR-171, THR-182). Only devices with the Anima prefix and a record. | TH132, TH133, TH135 | Tests with a fake `xcrun` on the path: each step in order; a device without the prefix is never touched; a boot failure retries once, then deletes; the reclaim reports clean only after the delete. `cargo test -p anima-daemon --test it`. The file is listed in `THIRD_PARTY_NOTICES.md`. | Not started |
+| TH137 | Daemon: the Android emulator steps (create an AVD, boot, wait for boot, wipe or delete, idle clean-up), ported with notices. | TH132, TH133, TH135 | Tests with a fake `adb`, `emulator` and `avdmanager`: as TH136. `cargo test -p anima-daemon --test it`. | Not started |
+| TH138 | Hub: the lease store and its rules: request, renew, release, lapse sweep, longest age, one lease for each requester, generation fencing, audit entries (THR-165, THR-168, THR-169, THR-174). Pure rules with the time as a parameter. | TH133 | Table tests: a renew after the sweep is refused and does not revive; an older generation is refused; two requests of one requester give one lease; the audit has one entry per event of THR-174. `cargo test -p anima-hub`. | Not started |
+| TH139 | Hub: lease requests in the K10 queue with stages and ETA; dispatch of `device_prepare` and `device_reclaim` only to a daemon that claims it can; a device returns to the pool only after a clean reclaim; "Needs attention" on a failed reclaim (THR-170, THR-173, THR-183). | TH136 or TH137, TH138 | Integration tests: a third request waits; a lapse starts a reclaim; a failed reclaim never gives the device again; a daemon that did not claim the type gets no device item. `cargo test -p anima-hub --test it`. | Not started |
+| TH140 | Hub API (K1): the operations of THR-175; the holder from a grant or a Code thread; an API key refused (THR-167). | TH138, TH139 | Tests: an API key gets a refusal; an agent lists only its own leases; the operator lists all. `cargo test -p anima-hub --test it`. | Not started |
+| TH141 | The command `anima device lease` with the verbs `request`, `list`, `renew`, `release` and `watch` (THR-176). No MCP tool. | TH140 | `cargo test -p anima-cli`. `anima device lease --help` names each verb. | Not started |
+| TH142 | Daemon and hub: the iOS simulator stream (H.264, AVCC) and input (touch, key, button) through the K4 device tunnel, with a ticket bound to the lease generation; input dropped after a lapse (THR-178, THR-169). | TH133, TH139 | Tests: a ticket of an older generation is refused; input after the lapse is dropped; no new port is opened. `cargo test -p anima-daemon --test it` and `cargo test -p anima-hub --test it`. | Not started |
+| TH143 | As TH142, for the Android emulator. | TH142, TH137 | As TH142. | Not started |
+| TH144 | Client: the device tab and float (TH68 part), the picker, the stages with ETA, "Return device to the pool"; the stream decoder and input messages copied with their notices (THR-179, THR-182). Only a visible tab streams. Mockup [agent-device-leasing/index.html](../mockup/agent-device-leasing/index.html). | TH141, TH142 | `bun run --cwd apps/client check` and `bun run --cwd apps/client test` pass. Frames 1 and 2 of the mockup are compared and the record names the commit (PLN-019). | Not started |
+| TH145 | Security review of TH136 to TH144 and of the design of TH146, against THR-180 and THR-181; entries in `need-human-testing.md`. | TH134, TH144 | Pass when no High finding is open and each finding has a state; fail otherwise. `bun run quality:documents` passes. | Not started |
+| TH146 | MCP tools `anima_device_lease`, `anima_device_release`, `anima_device_open` (THR-177, THR-180). Bound to the caller's lease; no command line; install only from the worktree. | TH145 passed; TH131 with OD-THR77 decided yes | Tests: a caller without a lease is refused; a path with `..` or a link out of the worktree is refused; the tool follows `allow`, `ask` and `off`; an install is `ask` when MCP-025 is on. `cargo test -p anima-cli`. | Not started |
+| TH147 | Human check: on one Mac, two Code threads each get a simulator; a third waits; closing a thread deletes its simulator; killing the client frees it one TTL later; the person taps a device in the panel. | TH146 (or TH144 if OD-THR77 is no) | Pass when the operator sets the `HT-nnn` entry to Passed; fail otherwise. | Not started |
 
 ## 7. Requirements of the drive side (stages 1b to 4; not approved)
 
@@ -1613,6 +1811,14 @@ Each row is one question for the operator with the options, the strength and the
 | OD-THR72 | Does the first version change the shipped in-app SSH terminal on an enrolled machine, so a closed SSH tab keeps the remote shell? | (A) Yes: on a machine that runs the holder, that SSH terminal becomes a client of this layer; a plain SSH device with no daemon keeps K4 Section 8.6. The exact sentences of K4 change only by a ruling (CON-001). Strength: one attach layer. Weakness: a frozen contract changes, and the files tunnel of K4 Section 9 ends when its SSH session ends (a sibling plan owns that text). (B) No: only a new holder-backed session, and Code, persist; the SSH tab stays as shipped. Strength: no K4 change in the first version. Weakness: a closed SSH tab still ends the shell. | **Decided** (R-432, first-hand on a question card, 2026-11-22, 11:39 PM PT, America/Los_Angeles: "Yes, change the SSH tab on enrolled machines only."). On an enrolled machine that runs the holder, the SSH tab becomes a client of this layer. A plain SSH device is unchanged. The recommendation was A. |
 | OD-THR73 | If a session outlives the tab, does the idle limit of RA-037 still end it after 60 minutes with no keystroke or paste (the operator can change the limit or set it off)? | (A) Yes: keep RA-037 for held sessions. Closing the tab is not input and is not the end. Strength: a forgotten session does not run without limit. Weakness: a long build can meet the limit unless the operator raises it or sets it off. (B) No: a held session runs until the operator stops it or the holder ends. Strength: a long job is not cut. Weakness: a forgotten session stays; RA-037 is reopened. | **Decided** (R-432, first-hand on a question card, 2026-11-22, 11:39 PM PT, America/Los_Angeles: "No, sessions run until stopped."). Against the recommendation (A, keep RA-037). A held session of this layer is not ended by RA-037; it runs until the operator stops it or the holder ends. The client must show a Stop control and a visible list of running sessions. RA-037 stays for an SSH session that is not holder-backed. |
 | OD-THR74 | May more than one signed-in client of the same operator attach to one live session at the same time? | (A) Yes: each draws the screen and may send input. This is reattach, not sharing (RA-035 stays). Strength: the phone and the desktop can both drive it. Weakness: two typists at once; the security review must cover it. (B) Yes, but only one client may send input at a time; the others read the screen. Strength: no mixed input. Weakness: a second device is view-only, which is close to a viewer, even for the same operator. (C) No: a new attach replaces the previous client (as the holder socket does today). Strength: one writer, simple. Weakness: opening the phone would drop the desktop. | **Decided** (R-432, first-hand on a question card, 2026-11-22, 11:39 PM PT, America/Los_Angeles: "Both of my clients can type."). More than one signed-in client of the same operator may attach and may send input. This is reattach, not RA-035 sharing. The recommendation was A. |
+| OD-THR75 | Which row of Section 4 does agent device leasing serve, and which document owns it? | (A) Row 4.24, beside TH68: this document owns the lease and the panel (Section 4.16); [jobs.md](jobs.md) keeps the queue and routing. Strength: TH68 is here and has no owner; the holder is a Code thread. Weakness: this document is already long. (B) Row 4.7, [jobs.md](jobs.md) owns the lease; this document keeps only the panel. Strength: the queue and the lease live together. Weakness: two owners for one function (PLN-004). | Open. Relayed by an agent on 2026-11-23 as the operator's choice of A; not a ruling here. Recommendation: A, row 4.24 beside TH68, owned by this document. |
+| OD-THR76 | Do we build our own lease layer from the start, copying the upstream design and code with their notices, with no Simlock gateway as a device source in the first version? | (A) Yes, our own layer, copy where reasonable (THR-182). Strength: one product to self-host, the hub's audit and grants, no shell-level token. Weakness: effort L, and Anima owns the `simctl` and emulator changes. (B) First plug in a gateway that the person runs, as an optional source, then build our own. Strength: faster (M). Weakness: two products, an unreleased upstream, a token that is shell access. | Open. Relayed as the operator's choice of A; not a ruling here. Recommendation: A, our own layer from the start, copying with notices. |
+| OD-THR77 | May the agent that holds a lease drive that one device (screen, tap, type, install) through an MCP tool, as a narrow exception to MCP-006 and AXT-012? | (A) Yes, narrow: one tool bound to the caller's lease, no device selector, no command line, install only from the thread's worktree; ships only after TH145 with no High finding open (THR-177, THR-180, THR-181). Strength: agents can test their own apps. Weakness: a new power over a machine; review cost. (B) No: in the first version only the person drives the device in the panel. Strength: MCP-006 stays whole. Weakness: the agent cannot check its own work on a device. | Open. Relayed as the operator's choice of A; not a ruling here. Recommendation: A, yes, narrow, with the limits of THR-180, after TH145. |
+| OD-THR78 | Who is the holder that "one lease per agent" counts? | (A) An agent identity of the hub: a grant of the operator that names the agent (AXT-096 model), or a Code thread that Anima runs; API keys refused. Strength: real identity, audited. Weakness: needs the grant scope of OD-AXT44. (B) The hub token of the caller. Strength: exists today. Weakness: one token is often many agents, so the limit means nothing. | Open. Recommendation: A, a grant that names the agent, or the Code thread. |
+| OD-THR79 | What TTL and longest age does a lease have? | (A) A TTL of 5 minutes, renewed each minute; a longest age of 4 hours, which the operator can change. Strength: a crashed holder frees the device in 5 minutes. Weakness: more renews. (B) A TTL of 15 minutes, renewed each 2 minutes (the upstream example). Strength: fewer renews. Weakness: a crash holds a device 15 minutes. (C) 90 seconds, as BLD-005. Weakness: a slow network drops leases. | Open. Recommendation: A, 5 minutes renewed each minute, at most 4 hours. |
+| OD-THR80 | Which devices does the first version lease? | (A) iOS simulators and Android emulators on enrolled machines only. Strength: wipe is a delete; no person's data. Weakness: no real-phone tests. (B) Also enrolled phones, with a wipe that the person confirms each time (as CVM-012). Weakness: a wipe of a real phone; more review. (C) Also whole machines. Weakness: overlaps routing and is a different risk. | Open. Recommendation: A, simulators and emulators only. |
+| OD-THR81 | May leasing ship before routing (RT1 to RT7 of [jobs.md](jobs.md)) is approved? | (A) Yes: use the shipped K10 queue and placement as the one queue; ROU-007 and ROU-010 apply when they land; a queued request waits at most 10 minutes, then it is refused with the reason. Strength: no wait on a different plan. Weakness: a fixed wait until OD-ROU7 is decided. (B) No: wait for RT1 and RT3 to RT5. Strength: one set of rules from the start. Weakness: leasing waits on work that is Not started. | Open. Recommendation: A, yes, on the K10 queue, with a 10-minute wait. |
+| OD-THR82 | May the person watch and tap a device that an agent holds? | (A) Yes: both may send input at the same time, and "Return device to the pool" ends the lease. Strength: the T3 Code behaviour; the person can help. Weakness: mixed input. (B) Yes, but the agent's input pauses while the person taps. Weakness: more state. (C) Watch only. | Open. Recommendation: A, both may tap; Return ends the lease. |
 
 | OD-THR14 | Do you approve the mockup [agent-threads/index.html](../mockup/agent-threads/index.html), frames 1 and 2, for stage 1a? | (A) Yes. (B) Changes. | **Decided** (R-296, the answer that he selected: "Approve (Recommended)"): the mockup frames 1 and 2 are approved. The list of the frames changes with OD-THR24 (a folded group "Earlier"). The recommendation before the answer: A |
 
@@ -1656,6 +1862,11 @@ Not made in this version; each needs the ruling named.
 | [cli-mcp-plan.md](../plans/cli-mcp-plan.md) MCP-006; [AGENTS.md](../../AGENTS.md) "Command line first" | A later MCP tool for the attach API needs a ruled exception (THR-159, OD-THR71). Not in the first version. | TH130 |
 | [agent-layer.md](agent-layer.md) AGL-023 to AGL-027; [bots.md](bots.md) BOT-069 | Those `tmux` paths are not the engine of this layer (THR-162). A short pointer, after a ruling, is enough; this commit does not edit those documents. | TH120 |
 | [ownership.md](../plan/ownership.md); [priorities.md](../plan/priorities.md) row 4.24 | The attachable session layer is a concern of this document (THR-150 to THR-164), if OD-THR69 is A. | TH120 |
+| [cli-mcp-plan.md](../plans/cli-mcp-plan.md) MCP-006; [agent-tools-as-extensions.md](agent-tools-as-extensions.md) AXT-012 | A third, narrow exception: the holder of a device lease may use `anima_device_open` on that device only (THR-177, THR-180). Not in force before TH145. | TH131 (OD-THR77) |
+| [contracts/work-route.md](../../contracts/work-route.md) K10 Section 6; [contracts/schema.graphql](../../contracts/schema.graphql) K1; [contracts/tunnel.md](../../contracts/tunnel.md) K4 | New work types `device_prepare` and `device_reclaim`; lease types and operations; a device tunnel with a ticket bound to the lease generation (CON-001). | TH133 |
+| [compute-plan.md](../plans/compute-plan.md) CAP-023 | The probe adds simulator runtimes, device types and the Android tools (THR-172). | TH135 |
+| [jobs.md](jobs.md) ROU-007, ROU-010 | A pointer: device lease requests are items of the one queue (THR-173). No rule of jobs.md changes. | TH131 (OD-THR81) |
+| [ownership.md](../plan/ownership.md); [priorities.md](../plan/priorities.md) row 4.24 | Agent device leasing is a concern of this document (THR-165 to THR-184), if OD-THR75 is A. This commit already adds a "proposed" pointer to both. | TH131 |
 
 ## 12. What could not be verified
 
@@ -1668,8 +1879,11 @@ Not made in this version; each needs the ruling named.
 - How T3 Code shows a read and a search of Codex (inventory).
 
 - Persistent attachable sessions (Section 4.15), checked on origin/dev `45a78433f`: the 60-minute operator idle of RA-037, the "Stay connected" notice, and a setting for that limit were not found in the hub or the client; whether RA-037 is implemented is Not verified as present. Whether a second WebSocket can attach to one shipped SSH PTY without a change of the ticket rules of K4 Section 1 was not tried (the recommended path does not keep the hub's SSH connection as the store of the program). The unmerged holder branches named in older task rows were not compared with this commit file by file; the files named in Section 4.15.2 are on this commit.
+- Agent device leasing (Section 4.16), checked on origin/dev `058a67afc`: no grant store for agents was found under the names searched (Not verified that none exists); the licence facts of the three source projects come from the brief of 2026-11-23 and were not checked again by this session; no simulator, emulator or stream was run; the ETA of each stage is not measured.
+
 ## 13. History
 
+- 2026-11-23, version 4.6. Section 4.16, Section 6.11 and OD-THR75 to OD-THR82: agent device leasing (THR-165 to THR-184, tasks TH131 to TH147), from the Planner brief of 2026-11-23. Proposed, not approved. The three choices that an agent relayed are OD-THR75 to OD-THR77; no R-nnn. Mockup agent-device-leasing/index.html.
 - 2026-11-22, version 4.5. R-432 (first-hand on a question card at 11:39 PM PT, America/Los_Angeles) decides OD-THR69 to OD-THR74. OD-THR73 is against the recommendation: held sessions of this layer have no RA-037 idle end; they run until stopped. THR-155 and TH129 change to a Stop control and a visible list of running sessions.
 - 2026-11-22, version 4.4. Section 4.15, Section 6.10 and OD-THR69 to OD-THR74: a persistent attachable session layer on the holder (THR-150 to THR-164, tasks TH120 to TH130), from the Planner brief. Nothing of it is approved; no R-nnn. Relayed answers are not rulings.
 - 2026-11-21. THR-149, point 3: his answer "Send the address" (R-368): the address of a provider account and its plan go to the hub and to each of his clients, with the keyed hash as the identifier for grouping.
