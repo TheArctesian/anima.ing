@@ -17,12 +17,14 @@ use crate::upstream::Upstream;
 
 /// The longest wait for the connection to a provider. An answer has no limit: it is a stream.
 const CONNECT_WAIT: Duration = Duration::from_secs(15);
+/// The longest wait for the head of an answer.
+const HEAD_WAIT: Duration = Duration::from_mins(20);
 
 #[derive(Debug, thiserror::Error)]
 pub enum ForwardError {
     #[error("no connection to the provider: {0}")]
     Connect(#[from] io::Error),
-    #[error("no connection to the provider in {} seconds", CONNECT_WAIT.as_secs())]
+    #[error("the provider did not answer in time")]
     Slow,
     #[error("the provider did not speak HTTP: {0}")]
     Http(#[from] hyper::Error),
@@ -38,30 +40,49 @@ pub async fn forward(
 ) -> Result<Response<Incoming>, ForwardError> {
     let host = HeaderValue::from_str(&upstream.host).map_err(|_| ForwardError::Tls)?;
     request.headers_mut().insert(HOST, host);
-    let connecting = TcpStream::connect((upstream.host.as_str(), upstream.port));
-    let stream = tokio::time::timeout(CONNECT_WAIT, connecting)
+    // One wait for the connection, TLS and the start of HTTP: a host that accepts and then
+    // says nothing must not hold the request.
+    let sender = tokio::time::timeout(CONNECT_WAIT, connect(upstream))
         .await
         .map_err(|_| ForwardError::Slow)??;
+    send(sender, request).await
+}
+
+type Sender = hyper::client::conn::http1::SendRequest<Incoming>;
+
+async fn connect(upstream: &Upstream) -> Result<Sender, ForwardError> {
+    let stream = TcpStream::connect((upstream.host.as_str(), upstream.port)).await?;
     if upstream.tls {
         let name = ServerName::try_from(upstream.host.clone()).map_err(|_| ForwardError::Tls)?;
         let secure = tokio_rustls::TlsConnector::from(tls_config()?)
             .connect(name, stream)
             .await?;
-        send(secure, request).await
+        handshake(secure).await
     } else {
-        send(stream, request).await
+        handshake(stream).await
     }
 }
 
-async fn send<S>(stream: S, request: Request<Incoming>) -> Result<Response<Incoming>, ForwardError>
+async fn handshake<S>(stream: S) -> Result<Sender, ForwardError>
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
-    let (mut sender, connection) =
-        hyper::client::conn::http1::handshake(TokioIo::new(stream)).await?;
+    let (sender, connection) = hyper::client::conn::http1::handshake(TokioIo::new(stream)).await?;
     // The connection lives until the answer has passed; its fault ends the stream of the answer.
     tokio::spawn(connection);
-    Ok(sender.send_request(request).await?)
+    Ok(sender)
+}
+
+/// Sends the request and waits for the head of the answer. A model can think for minutes
+/// before its first byte, so the wait is long.
+async fn send(
+    mut sender: Sender,
+    request: Request<Incoming>,
+) -> Result<Response<Incoming>, ForwardError> {
+    tokio::time::timeout(HEAD_WAIT, sender.send_request(request))
+        .await
+        .map_err(|_| ForwardError::Slow)?
+        .map_err(ForwardError::Http)
 }
 
 /// rustls with ring and the web PKI roots, HTTP/1.1 only.

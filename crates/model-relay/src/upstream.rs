@@ -67,7 +67,7 @@ impl Upstreams {
     }
 
     /// Where a request of `program` goes, and its path there. `rest` is the path and the query
-    /// after the secret. `None` when the path is not one of that program.
+    /// after the secret. `None` when the path is not one of that program, or has a `..` part.
     #[must_use]
     pub fn target(
         &self,
@@ -86,7 +86,12 @@ impl Upstreams {
                 }
             }
         };
-        (rest.starts_with('/') || rest.is_empty() || rest.starts_with('?'))
-            .then(|| (upstream, format!("{}{rest}", upstream.prefix)))
+        let path = rest.split('?').next().unwrap_or(rest);
+        // A `..` could leave the part of the host that the prefix names.
+        let stays = !path
+            .split('/')
+            .any(|part| part == ".." || part.eq_ignore_ascii_case("%2e%2e"));
+        let starts = rest.starts_with('/') || rest.is_empty() || rest.starts_with('?');
+        (stays && starts).then(|| (upstream, format!("{}{rest}", upstream.prefix)))
     }
 }

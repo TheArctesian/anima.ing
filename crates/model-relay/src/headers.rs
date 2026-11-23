@@ -3,8 +3,8 @@
 
 use hyper::HeaderMap;
 use hyper::header::{
-    CONNECTION, HOST, HeaderName, PROXY_AUTHENTICATE, PROXY_AUTHORIZATION, TE, TRAILER,
-    TRANSFER_ENCODING, UPGRADE,
+    CONNECTION, CONTENT_LENGTH, HOST, HeaderName, PROXY_AUTHENTICATE, PROXY_AUTHORIZATION, TE,
+    TRAILER, TRANSFER_ENCODING, UPGRADE,
 };
 
 const ONE_CONNECTION: [HeaderName; 7] = [
@@ -16,6 +16,18 @@ const ONE_CONNECTION: [HeaderName; 7] = [
     TRANSFER_ENCODING,
     UPGRADE,
 ];
+
+/// The headers of a request for the provider: as [`passed`], and without `content-length`
+/// when the request named a `transfer-encoding`. The body is then sent in parts, and a length
+/// that the program also sent would not agree with it.
+#[must_use]
+pub fn passed_on(headers: &HeaderMap) -> HeaderMap {
+    let mut passed = passed(headers);
+    if headers.contains_key(TRANSFER_ENCODING) {
+        passed.remove(CONTENT_LENGTH);
+    }
+    passed
+}
 
 /// `headers` for the other side: without the headers of one connection, without the headers
 /// that `connection` names, without `keep-alive` and without `host`.

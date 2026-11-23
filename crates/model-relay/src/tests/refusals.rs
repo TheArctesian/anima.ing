@@ -102,3 +102,40 @@ async fn sa6_a_request_cannot_name_a_different_host_and_no_redirect_is_followed(
         ]
     );
 }
+
+#[tokio::test]
+async fn sa6_a_path_that_leaves_its_prefix_and_a_name_that_is_not_a_name_are_refused() {
+    let (relay, provider) = relay().await;
+    let base = relay.open("thread-9", Program::Codex).expect("open");
+    for path in ["/../../x", "/a/../../x", "/%2e%2e/x", "/%2E%2E/x?y=1"] {
+        let answer = call(Method::GET, &format!("{base}{path}"), &[], "").await;
+        assert_eq!(answer.status, StatusCode::NOT_FOUND, "{path}");
+    }
+    let dotted = call(Method::GET, &format!("{base}/models?next=..%2F.."), &[], "").await;
+    assert_eq!(
+        dotted.status,
+        StatusCode::OK,
+        "dots in a query are not a path"
+    );
+    assert_eq!(seen(&provider).len(), 1);
+    for name in ["", "a b", "line\nforged=1", &"x".repeat(129)] {
+        assert!(relay.open(name, Program::Codex).is_err(), "{name:?}");
+    }
+}
+
+#[tokio::test]
+async fn sa6_a_relay_that_is_dropped_listens_no_more_and_its_secrets_are_dead() {
+    let (relay, provider) = relay().await;
+    let base = relay.open("thread-10", Program::ClaudeCode).expect("open");
+    let address = base
+        .trim_start_matches("http://")
+        .split('/')
+        .next()
+        .expect("an address")
+        .to_owned();
+    drop(relay);
+    tokio::task::yield_now().await;
+    let connected = tokio::net::TcpStream::connect(&address).await;
+    assert!(connected.is_err(), "nothing listens at {address}");
+    assert!(seen(&provider).is_empty());
+}

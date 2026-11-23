@@ -67,7 +67,8 @@ impl Relay {
     /// holds the secret of the thread, so it must reach only that program.
     ///
     /// # Errors
-    /// [`SecretError`] when the thread is open already or the system gives no random bytes.
+    /// [`SecretError`] when the name is not a name, the thread is open already or the system
+    /// gives no random bytes.
     pub fn open(&self, thread: &str, program: Program) -> Result<String, SecretError> {
         let secret = self.secrets.open(thread, program)?;
         Ok(format!(
@@ -77,7 +78,8 @@ impl Relay {
         ))
     }
 
-    /// Ends the secret of a thread. A request with it gets 404 from now on.
+    /// Ends the secret of a thread. A request with it gets 404 from now on. An answer that is
+    /// on its way goes on to its end; the runner ends the program of the thread.
     pub fn close(&self, thread: &str) {
         self.secrets.close(thread);
     }
@@ -85,6 +87,8 @@ impl Relay {
 
 impl Drop for Relay {
     fn drop(&mut self) {
+        // The connections are tasks of the listener: they stop with it.
         self.listening.abort();
+        self.secrets.close_all();
     }
 }

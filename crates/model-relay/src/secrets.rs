@@ -17,15 +17,23 @@ pub enum SecretError {
     AlreadyOpen,
     #[error("The system gave no random bytes for the secret of the thread.")]
     NoRandomBytes,
+    #[error("The name of a thread is 1 to 128 characters: letters, digits and . _ : -")]
+    NotAName,
 }
 
-/// A thread that the relay serves.
-#[derive(Clone)]
-pub struct Open {
-    /// The name that the runner gave; it is the only thing of a thread that a log line holds.
-    pub thread: String,
-    pub program: Program,
+/// A thread that the relay serves, with its secret. It has no `Debug` and no `Clone`: the
+/// secret stays in the list.
+struct Open {
+    thread: String,
+    program: Program,
     secret: String,
+}
+
+/// Whether `thread` can be the name of a thread. A log line holds the name, so it has no
+/// character that could start a new line or look like a field.
+fn is_name(thread: &str) -> bool {
+    let fits = |each: char| each.is_ascii_alphanumeric() || matches!(each, '.' | '_' | ':' | '-');
+    (1..=128).contains(&thread.len()) && thread.chars().all(fits)
 }
 
 #[derive(Default)]
@@ -42,6 +50,9 @@ impl Secrets {
     }
 
     pub fn open(&self, thread: &str, program: Program) -> Result<String, SecretError> {
+        if !is_name(thread) {
+            return Err(SecretError::NotAName);
+        }
         let mut open = self.locked();
         if open.iter().any(|each| each.thread == thread) {
             return Err(SecretError::AlreadyOpen);
@@ -65,13 +76,19 @@ impl Secrets {
         self.locked().retain(|each| each.thread != thread);
     }
 
-    /// The thread whose secret is `given`. Each live secret is compared, each in constant
-    /// time, so the time says nothing of how much of a secret was right.
-    pub fn thread_of(&self, given: &str) -> Option<Open> {
+    /// Ends each secret.
+    pub fn close_all(&self) {
+        self.locked().clear();
+    }
+
+    /// The name and the program of the thread whose secret is `given`. Each live secret is
+    /// compared, each in constant time, so the time says nothing of how much of a secret was
+    /// right.
+    pub fn thread_of(&self, given: &str) -> Option<(String, Program)> {
         let mut found = None;
         for each in self.locked().iter() {
             if bool::from(each.secret.as_bytes().ct_eq(given.as_bytes())) {
-                found = Some(each.clone());
+                found = Some((each.thread.clone(), each.program));
             }
         }
         found

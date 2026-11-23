@@ -3,6 +3,7 @@
 
 use std::convert::Infallible;
 use std::sync::Arc;
+use std::time::Duration;
 
 use bytes::Bytes;
 use http_body_util::combinators::BoxBody;
@@ -11,41 +12,48 @@ use hyper::body::Incoming;
 use hyper::header::{ORIGIN, UPGRADE};
 use hyper::service::service_fn;
 use hyper::{Request, Response, StatusCode, Uri};
-use hyper_util::rt::TokioIo;
+use hyper_util::rt::{TokioIo, TokioTimer};
 use tokio::net::TcpListener;
-use tokio::sync::Semaphore;
+use tokio::task::JoinSet;
 
 use crate::forward::forward;
-use crate::headers::passed;
+use crate::headers::{passed, passed_on};
 use crate::secrets::{SECRET_LENGTH, Secrets};
 use crate::upstream::Upstreams;
 
 /// The most connections at one time; one thread uses a few.
 const MOST_CONNECTIONS: usize = 128;
+/// The longest wait for the head of a request, so that an idle connection does not stay.
+const HEAD_WAIT: Duration = Duration::from_secs(30);
+/// The wait after a fault of the listener.
+const ACCEPT_PAUSE: Duration = Duration::from_millis(50);
 
 type Body = BoxBody<Bytes, hyper::Error>;
 
-/// Accepts connections until the task is stopped.
+/// Accepts connections until the task is stopped. The connections are tasks of this task:
+/// when it stops, each of them stops, also in the middle of an answer.
 pub async fn accept(listener: TcpListener, secrets: Arc<Secrets>, upstreams: Arc<Upstreams>) {
-    let room = Arc::new(Semaphore::new(MOST_CONNECTIONS));
+    let mut connections = JoinSet::new();
     loop {
-        let Ok(permit) = room.clone().acquire_owned().await else {
-            return;
-        };
         let Ok((stream, peer)) = listener.accept().await else {
+            // A fault such as "too many open files" would come again at once.
+            tokio::time::sleep(ACCEPT_PAUSE).await;
             continue;
         };
-        if !peer.ip().is_loopback() {
+        while connections.try_join_next().is_some() {}
+        // Above the limit the connection is closed at once; the listener never waits.
+        if !peer.ip().is_loopback() || connections.len() >= MOST_CONNECTIONS {
             continue;
         }
         let (secrets, upstreams) = (secrets.clone(), upstreams.clone());
-        tokio::spawn(async move {
+        connections.spawn(async move {
             let service = service_fn(|request| answer(request, &secrets, &upstreams));
             // A connection that ends with a fault is the business of the program that made it.
             let _ended = hyper::server::conn::http1::Builder::new()
+                .timer(TokioTimer::new())
+                .header_read_timeout(HEAD_WAIT)
                 .serve_connection(TokioIo::new(stream), service)
                 .await;
-            drop(permit);
         });
     }
 }
@@ -65,17 +73,17 @@ async fn answer(
         .path_and_query()
         .map_or("", |path| path.as_str());
     let (given, rest) = split(path);
-    let Some(open) = secrets.thread_of(given) else {
+    let Some((thread, program)) = secrets.thread_of(given) else {
         return Ok(refusal(StatusCode::NOT_FOUND, "not found"));
     };
     if request.headers().contains_key(UPGRADE) {
-        tracing::info!(thread = %open.thread, "relay: an upgrade of the connection was refused");
+        tracing::info!(thread = %thread, "relay: an upgrade of the connection was refused");
         return Ok(refusal(
             StatusCode::NOT_IMPLEMENTED,
             "the relay passes no upgraded connection",
         ));
     }
-    let target = upstreams.target(open.program, request.headers(), rest);
+    let target = upstreams.target(program, request.headers(), rest);
     let Some((upstream, path)) = target else {
         return Ok(refusal(StatusCode::NOT_FOUND, "not a path of this program"));
     };
@@ -84,17 +92,17 @@ async fn answer(
     };
     let (mut parts, body) = request.into_parts();
     parts.uri = uri;
-    parts.headers = passed(&parts.headers);
+    parts.headers = passed_on(&parts.headers);
     let method = parts.method.clone();
     match forward(upstream, Request::from_parts(parts, body)).await {
         Ok(response) => {
             let (mut parts, body) = response.into_parts();
             parts.headers = passed(&parts.headers);
-            tracing::info!(thread = %open.thread, %method, status = parts.status.as_u16(), "relay: passed");
+            tracing::info!(thread = %thread, %method, status = parts.status.as_u16(), "relay: passed");
             Ok(Response::from_parts(parts, body.boxed()))
         }
         Err(error) => {
-            tracing::warn!(thread = %open.thread, %method, %error, "relay: the provider was not reached");
+            tracing::warn!(thread = %thread, %method, %error, "relay: the provider was not reached");
             Ok(refusal(
                 StatusCode::BAD_GATEWAY,
                 "the relay did not reach the provider",
