@@ -1,4 +1,4 @@
-import { CAN, cannot } from '../draft';
+import { CAN } from '../draft';
 import { builtInCommands } from './lists/commands';
 import { bestScore, byRank, matchScore } from './lists/ranking';
 import type { Command, FoundPath, MentionSources, Skill, ThreadRef } from './sources';
@@ -23,7 +23,7 @@ export const FIXTURE_SKILLS: readonly Skill[] = [
 ];
 
 export const FIXTURE_COMMANDS: readonly Command[] = [
-  ...builtInCommands({ model: CAN, clear: cannot('A turn is running; stop it to start a fresh session'), side: CAN }),
+  ...builtInCommands({ model: CAN, clear: CAN, side: CAN }),
   { name: 'compact', description: 'Shorten the history of this session', builtIn: false, anywhere: false, effect: 'text', available: CAN },
   { name: 'review', description: 'Review the changes of the branch', builtIn: false, anywhere: false, effect: 'text', available: CAN },
 ];
