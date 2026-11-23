@@ -196,16 +196,17 @@ because a different program, and each user who can write its folder, can change 
   `usable` false and cannot be adopted (open point MW-P10). The file names follow Section 2.2 (`*.gguf`) and
   the length and character rules of Section 2, applied to the name of each file as the daemon reads it.
 - **The key.** The daemon gives each found model a key: the SHA-256, in lower-case hexadecimal, of the tool word,
-  a zero byte, and the location of the model in that folder (the Ollama name and tag, the repository folder and
-  the commit of the Hugging Face cache, or the path of the first file below the folder). The key is stable while
+  a zero byte, and the location of the model in that folder (the host, namespace, model and tag of the Ollama
+  manifest; the repository folder, the commit and the first file of the Hugging Face cache, since one commit can
+  hold several quantisations; or the path of the first file below the folder). The key is stable while
   the model stays where it is. The hub only stores it and sends it back.
 - **`copy_adopt`.** In `preparing` the daemon walks the folders of Section 10.2 again and finds the model with
   the key (else `found_unknown`). It checks the layout of each file (below), reads each file from byte 0, and
   computes its size and SHA-256. Where the program names a file by its SHA-256 (a blob of Ollama,
   `sha256-<hex>`, and a blob of the Hugging Face cache whose name has 64 hexadecimal characters), a different
   value is refused (`checksum`). It writes the record of the copy to `<model-state>/found/<copy>.json` (mode
-  0600, with `openat` and `O_EXCL`; Section 10): the tool word, the folder of Section 10.2 by its index in the
-  fixed list or in `modelFolders`, the location below that folder, and for each file its location, its size,
+  0600, with `openat` and `O_EXCL`; Section 10): the tool word, the key, the absolute folder of Section 10.2 (a
+  load refuses it, `copy_missing`, when the walk no longer reads that folder), and for each file its location, its size,
   its SHA-256, its device and inode numbers and its modification time. The result is that of a pull
   (`copyState` `downloaded`, `bytes`, `files`), with `origin` `found`. The copy is `downloaded`, not
   `validated`: only `model_measure` validates it (PULL-011).
