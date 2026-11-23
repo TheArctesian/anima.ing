@@ -13,10 +13,11 @@ use uuid::Uuid;
 use super::super::launcher::Seat;
 use super::super::launcher::read::Confinement;
 use super::{Asking, Runner};
-use crate::threads::git::worktree::{Made, Plan};
+use crate::threads::git::worktree::{Pending, Plan};
 
-/// What the task that makes a worktree answers.
-pub(in crate::threads::runner) type WorktreeMade = (Uuid, Result<Made, GitRefusal>);
+/// What the task that makes a worktree answers. The worktree stays only when its start passed:
+/// a [`Pending`] that is dropped takes back what the engine made (THR-097).
+pub(in crate::threads::runner) type WorktreeMade = (Uuid, Result<Pending, GitRefusal>);
 
 impl Runner {
     /// Decides the thread of a start in a new worktree and makes its worktree in a task; the
@@ -71,8 +72,8 @@ impl Runner {
                 project: &project,
                 base: base.as_deref(),
             };
-            let made = engine.worktree(plan).await;
-            // A runner that ended does not need the answer.
+            let made = engine.worktree_pending(plan, None).await;
+            // A runner that ended does not need the answer: the dropped worktree goes again.
             let _ = sender.send((id, made)).await;
         });
         Ok(())
@@ -85,10 +86,12 @@ impl Runner {
             return;
         };
         let back = asking.back.clone();
+        // No turn and no Git action runs in the worktree before it is kept: the start is the
+        // first, and a refused start takes the worktree back.
         let started = match made {
-            Ok(made) => {
-                asking.new.folder = made.worktree.folder().to_owned();
-                self.start_in(asking).await
+            Ok(pending) => {
+                asking.new.folder = pending.made().worktree.folder().to_owned();
+                self.start_in(asking).await.map(|()| pending.keep())
             }
             Err(why) => Err(Refusal::Worktree { why }),
         };

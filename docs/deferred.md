@@ -23,7 +23,7 @@ Rules:
 | Area | Lists | Items with a box | Revisit |
 | --- | --- | --- | --- |
 | 1. Releases, signing and installation | 1 | 4 | Before the first public release (tasks R5 to R7 of projects-and-builds-plan.md). |
-| 2. Later phases and proposals | 12 | 40 | When the proposal or the phase of the item gets a ruling. Each proposal has a row in the work plan Section 9. |
+| 2. Later phases and proposals | 12 | 39 | When the proposal or the phase of the item gets a ruling. Each proposal has a row in the work plan Section 9. |
 | 3. Ideas from other products | 2 | 17 | When the plan that owns the subject is changed next. |
 | 4. Hub: access, logs and security | 7 | 24 | Before a hub is hosted for a different person, and at the next security review of access. |
 | 5. Hub: devices, checks and metrics | 9 | 20 | When the domain of the item is changed next. |
@@ -167,7 +167,6 @@ Added 2026-11-22. From the security reviews of task TH111 of [agent-threads.md](
 
 Added 2026-11-23. From the second security review of task TH116 of [agent-threads.md](proposals/agent-threads.md) (branch `threads/launcher-read-runs`) and from the leak of test holders (branch `threads/test-holder-leak`). None of them is High.
 
-- [ ] A start that is refused after its worktree is made leaves the worktree and its record. The Git engine adds a guard that undoes the worktree unless the runner keeps it at the start; the runner then uses it.
 - [ ] After a start of the runner again, a confined Codex thread gets no Read runs until it starts again: the runner does not keep the copy of Codex of each thread in its record. This fails closed.
 - [ ] The Read runs of Codex share one home folder (`codex-reads/`) for all threads. One home for each thread would keep the threads apart.
 - [ ] A warning of the Git engine of the runner may name a home path in the text of an I/O error. It is not text of the person (LOG-007), but the warning can say less.
