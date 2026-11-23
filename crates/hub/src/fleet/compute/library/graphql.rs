@@ -38,7 +38,7 @@ fn person_only(ctx: &Context<'_>) -> Result<()> {
 }
 
 /// The GraphQL error with its `extensions.code`; the message holds no input value.
-fn to_graphql(error: Error) -> GraphQlError {
+pub(crate) fn to_graphql(error: Error) -> GraphQlError {
     match error {
         Error::NotFound(Missing::Model) => coded("No such model.", ErrorCode::NotFound),
         Error::NotFound(Missing::Repository) => coded("No such repository.", ErrorCode::NotFound),

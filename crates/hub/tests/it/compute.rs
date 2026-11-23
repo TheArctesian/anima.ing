@@ -9,6 +9,8 @@ use chrono::TimeDelta;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
+mod fits;
+
 use crate::daemon::{
     batches::cpu_batch,
     harness::{DOCKER_HOST, Daemons, PERMITTED, PVE_01, pushing_now},

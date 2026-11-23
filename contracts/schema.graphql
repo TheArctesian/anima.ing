@@ -1768,6 +1768,51 @@ type FoundModel {
   readAt: DateTime!
 }
 
+"Whether a variant fits a machine (FIT-005). REDUCED_CONTEXT: only a smaller context fits (FIT-004). UNKNOWN: the model files do not give the layer shape (FIT-002)."
+enum ModelFitState {
+  FITS
+  REDUCED_CONTEXT
+  TOO_LARGE
+  UNKNOWN
+}
+
+"Where the weights of a model are: in the memory of the GPU (or the unified memory of Apple silicon), partly in the system memory, or in the system memory of a machine with no usable GPU."
+enum ModelPlacement {
+  GPU
+  PARTIAL
+  CPU
+}
+
+"The fit of one variant on one machine (FIT-001 to FIT-005; compute plan task L1-20). The sizes are bytes. placement, backend, contextTokens, neededBytes and usableBytes are null when state is UNKNOWN; largestContext is set only for REDUCED_CONTEXT."
+type ModelFit {
+  "The tag of the variant."
+  variant: String!
+  "name:tag, as a pull takes it."
+  address: String!
+  place: HostPlace!
+  state: ModelFitState!
+  placement: ModelPlacement
+  "cuda, rocm, metal, vulkan or cpu."
+  backend: String
+  contextTokens: Int
+  largestContext: Int
+  sizeBytes: Float!
+  "The weights, the KV cache and the overhead at the context of the estimate."
+  neededBytes: Float
+  "The share of the memory that the device policy gives to models (CAP-011)."
+  usableBytes: Float
+  "One sentence for a person."
+  reason: String!
+}
+
+"The machines and the context of modelFits. Null parts admit all machines and the default context."
+input ModelFitFilter {
+  "Only this machine."
+  deviceId: ID
+  "The tokens of context to estimate; the default is 8192, or the context of the model when it is smaller."
+  contextTokens: Int
+}
+
 "The progress of a pull that runs (PULL-007)."
 type PullProgress {
   bytes: Float!
@@ -4293,6 +4338,9 @@ type Query {
   # The models that a machine finds where a different program keeps them (PULL-012, R-444; compute plan task L1-22).
   "Each model that a machine found where a different program keeps it (Ollama, LM Studio, the Hugging Face cache, a folder of the owner), from its last model report, with no copy that uses it (PULL-012), in the order of the machine and the name. Open to a read key."
   foundModels: [FoundModel!]!
+  # The fit of the model variants on the machines (FIT-001 to FIT-005; compute plan task L1-20).
+  "The fit of each variant of model (a name:tag gives one variant) on each machine that sent its hardware values, with the memory share of its device policy, in the order of the machine name and the variants. NOT_FOUND for an unknown model; VALIDATION for an unknown tag, a bad deviceId or a context of less than one token. Open to a read key."
+  modelFits(model: String!, filter: ModelFitFilter): [ModelFit!]!
 
   # The use of the AI agent programs (R-135; AIS-020, AIS-021, AIS-024)
   "The use of the AI agent programs (Claude Code, Codex) on the devices whose daemon sends it, summed by the dimensions of by over the UTC days of filter (default: the 30 days that end today), with an estimate of the cost from public list prices and each daemon's usage state. by empty: one row of everything. VALIDATION for a bad deviceId, repository or day, a first day after the last, more than 366 days, or more than 20000 groups before the rows are cut to 1000. Open to a read key."

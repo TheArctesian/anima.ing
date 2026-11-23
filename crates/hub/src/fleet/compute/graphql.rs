@@ -1,5 +1,6 @@
 //! K1 (CMP-002, CAP-010 to CAP-012): the "takes work" switch stays in `setDeviceWork` (USE-004, OD-C8, R-165, R-270).
 
+mod fits;
 mod types;
 
 use std::sync::Arc;
@@ -7,10 +8,12 @@ use std::sync::Arc;
 use async_graphql::{Context, ID, Object, Result};
 use serde_json::json;
 
+pub use fits::{ModelFitFilter, ModelFitState, ModelFitView, ModelPlacement};
 pub use types::{
     DevicePolicyInput, DevicePolicyView, ModelWorkStop, QuietHoursInput, QuietHoursView,
 };
 
+use super::library;
 use super::policy::{self, DevicePolicy, StoreError};
 use crate::{
     api_errors::{
@@ -48,6 +51,29 @@ impl Query {
             .zip(statuses)
             .map(|(device, status)| DevicePolicyView { device, status })
             .collect())
+    }
+
+    /// The fit of each variant of a model (a `name:tag` gives one variant) on each machine
+    /// that sent its hardware values, in machine-name order (FIT-001 to FIT-005, task L1-20).
+    /// An unknown model is `NOT_FOUND`; an unknown tag, a bad `deviceId` or a context of less
+    /// than one token is `VALIDATION`.
+    #[graphql(guard = "Authenticated")]
+    async fn model_fits(
+        &self,
+        ctx: &Context<'_>,
+        model: String,
+        filter: Option<ModelFitFilter>,
+    ) -> Result<Vec<ModelFitView>> {
+        let asked = fits::Asked::of(model, &filter.unwrap_or_default())
+            .map_err(|error| invalid(&[error]))?;
+        let now = schema_dependency::<Arc<dyn Clock>>(ctx)?.now();
+        fits::gather(pool(ctx)?, &asked, now)
+            .await
+            .map_err(|error| match error {
+                fits::FitsError::Library(error) => library::graphql::to_graphql(error),
+                fits::FitsError::Validation(field) => invalid(&[field]),
+                other => internal(other),
+            })
     }
 }
 

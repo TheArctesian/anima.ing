@@ -26,6 +26,7 @@ use crate::api_errors::{FieldError, field_names};
 pub use capability::Capability;
 pub use fetch::{Fetch, FetchError, HuggingFace};
 pub use model::{Alias, Facts, Format, LayerShape, Missing, Model, Refusal, Variant, VariantFile};
+pub use naming::address;
 pub use publisher::{PublisherApproval, Widening};
 pub use reading::Read;
 
