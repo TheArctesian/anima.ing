@@ -2506,7 +2506,7 @@ What it is: A hosted hub has no TOTP of the hub (R-129), so `addApplicationRoute
 
 Where: `crates/hub/src/work/routes/graphql.rs` (`signed_in_for_routes`).
 
-Effect, and who can cause it: A person or an agent with the login or browser token of a hosted account. Effect: a private route, which waits for no consent at the machine (R-390), reaches a port of a machine for each device of the network of Anima, guarded by the sign-in alone.
+Effect, and who can cause it: A person or an agent with the login or browser token of a hosted account. Effect: a route is added with the sign-in alone. Today each route, private or public, still waits for the consent at the machine, which nothing sets (SF-NEW-consentsetter). When R-390 is built, a private route waits for no consent and reaches a port of a machine for each device of the network of Anima, guarded by the sign-in alone.
 
 Mitigation now: The hub knows that it is hosted only from how it was started (`ANIMA_HOSTED_CLOUD_KEY_FILE`), never from a request. API keys and builder tokens stay refused. A public route still waits for the consent at the machine.
 

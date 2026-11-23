@@ -9,10 +9,8 @@ use anima_hub::{
     clock::{Clock, FixedClock},
     config,
     fleet::{access::PublicOrigin, events::Bus},
-    ids::ApplicationId,
     router_at,
     schema::{Dependencies, build_schema},
-    work::routes,
 };
 use axum::Router;
 use serde_json::{Value, json};
@@ -73,7 +71,7 @@ async fn routes_stored(pool: &PgPool) -> i64 {
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn sf_newhostedroutes_an_agent_adds_a_route_on_a_hosted_hub_that_waits_for_the_machine(
+async fn sf_newhostedroutes_an_agent_adds_a_public_route_on_a_hosted_hub_that_waits_for_the_machine(
     pool: PgPool,
 ) {
     set_operator(&pool).await;
@@ -83,13 +81,14 @@ async fn sf_newhostedroutes_an_agent_adds_a_route_on_a_hosted_hub_that_waits_for
     let agent = [("authorization", bearer.as_str()), ("anima-actor", "agent")];
     let hub = hosted_hub(&pool);
 
-    let added = post(&hub, &agent, ADD, private_route()).await.json();
+    let public = json!({ "input": { "name": "photos.example.com", "port": 3000,
+        "access": "PUBLIC", "applicationId": APPLICATION, "deviceId": DOCKER_HOST } });
+    let added = post(&hub, &agent, ADD, public).await.json();
     let route = &added["data"]["addApplicationRoute"]["route"];
     assert_eq!(route["waitsFor"], "PROOF", "{added}");
     let id = route["id"].as_str().unwrap().to_owned();
 
-    // Proven and recorded, the route still waits for the consent at the machine, and the
-    // proxy is given no target for it.
+    // Proven and recorded, the public route still waits for the consent at the machine.
     sqlx::query("UPDATE routes.route SET proof = 'proven', application_recorded = true")
         .execute(&pool)
         .await
@@ -99,9 +98,17 @@ async fn sf_newhostedroutes_an_agent_adds_a_route_on_a_hosted_hub_that_waits_for
         waits["data"]["applicationRoute"]["waitsFor"], "MACHINE_CONSENT",
         "{waits}"
     );
-    let application: ApplicationId = APPLICATION.parse().unwrap();
-    let target = routes::target_of(&pool, application, "photos.example.com", start()).await;
-    assert!(target.is_err(), "{target:?}");
+    // The consent is the one thing it waits for here: with it, the route waits only for its
+    // certificate.
+    sqlx::query("UPDATE routes.route SET machine_consent = true")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let waits = post(&hub, &agent, WAITS, json!({ "id": id })).await.json();
+    assert_eq!(
+        waits["data"]["applicationRoute"]["waitsFor"], "CERTIFICATE",
+        "{waits}"
+    );
 }
 
 #[sqlx::test(
