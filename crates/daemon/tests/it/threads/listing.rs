@@ -72,6 +72,7 @@ async fn th46_a_thread_that_runs_is_not_removed_and_a_stopped_one_leaves_the_lis
     let mut client = kit.client().await;
     let start = client
         .call(Action::Start {
+            provider_address: None,
             program: Program::ClaudeCode,
             folder: kit.path("work"),
             mode: Mode::FullAccess,
@@ -184,6 +185,7 @@ async fn thr_041_a_thread_with_no_project_runs_in_a_new_folder_that_stays_when_i
     client.call(Action::Watch).await;
     let start = client
         .call(Action::Start {
+            provider_address: None,
             program: Program::ClaudeCode,
             folder: std::path::PathBuf::new(),
             mode: Mode::FullAccess,
@@ -220,6 +222,7 @@ async fn thr_041_a_refused_start_with_no_project_leaves_no_folder() {
     let mut client = kit.client().await;
     let start = client
         .call(Action::Start {
+            provider_address: None,
             program: Program::ClaudeCode,
             folder: std::path::PathBuf::new(),
             mode: Mode::FullAccess,
@@ -255,6 +258,7 @@ async fn th61_a_thread_the_runner_started_is_listed_as_started_by_anima_after_a_
     change(&mut client, other, ListingChange::Pin { on: true }).await;
     let start = client
         .call(Action::Start {
+            provider_address: None,
             program: Program::ClaudeCode,
             folder: kit.path("work"),
             mode: Mode::FullAccess,

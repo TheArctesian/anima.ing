@@ -10,6 +10,7 @@ use super::runner::{Kit, change};
 
 fn start(kit: &Kit, draft: Uuid, attachments: Vec<Uuid>) -> Action {
     Action::Start {
+        provider_address: None,
         program: Program::ClaudeCode,
         folder: kit.path("work"),
         mode: Mode::FullAccess,

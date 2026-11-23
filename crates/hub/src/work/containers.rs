@@ -62,7 +62,7 @@ pub enum Error {
     InvalidLineCount,
     #[error("the SSH link to the device failed")]
     Link(#[source] LinkError),
-    #[error("docker is not installed on the device")]
+    #[error("the device's SSH user cannot find docker in PATH")]
     NoDocker,
     #[error("docker on the device did not succeed")]
     DockerFailed,

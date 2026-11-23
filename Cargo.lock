@@ -273,6 +273,7 @@ dependencies = [
  "hyperlocal-with-windows",
  "keyring",
  "model-launcher",
+ "model-relay",
  "nix 0.29.0",
  "plist",
  "redaction",

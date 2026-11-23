@@ -60,6 +60,7 @@ impl RefusalLines {
 /// The fixed word of a refusal for the logs (LOG-007): never text of the person or of the program.
 pub(in crate::threads::runner) const fn refusal_word(why: &Refusal) -> &'static str {
     match why {
+        Refusal::ProviderAddress { .. } => "provider route refused",
         Refusal::UnknownThread => "unknown thread",
         Refusal::FromAnAgent => "from a process of an agent",
         Refusal::Running => "the thread runs",

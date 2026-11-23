@@ -21,6 +21,7 @@ while (my $line = <STDIN>) {
 
 fn start(kit: &Kit) -> Action {
     Action::Start {
+        provider_address: None,
         program: Program::ClaudeCode,
         folder: kit.path("work"),
         mode: Mode::FullAccess,

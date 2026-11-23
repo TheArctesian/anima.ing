@@ -114,6 +114,7 @@ async fn th116_a_thread_in_a_new_worktree_runs_there_and_each_turn_leaves_a_chec
     client.done(watch).await;
     let started = client
         .call(Action::Start {
+            provider_address: None,
             program: Program::ClaudeCode,
             folder: work.clone(),
             mode: Mode::Ask,

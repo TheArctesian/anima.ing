@@ -4,10 +4,12 @@
 # password: the link as a unit of the user (HMD-058), joined to the hub with the invite of the
 # install code, and the daemon enrolled at the socket of that link (HMD-053, HMD-054).
 #
-#   anima-install --version <version> --target <target> --link-sha256 <hex> --daemon-sha256 <hex> [--from <folder>]
+#   anima-install --version <version> --target <target> --link-sha256 <hex> --daemon-sha256 <hex> [--from <folder>] [--enable-linger]
 #       The install code (`anima link install <name>`) is asked at the terminal, with no echo,
 #       or read from standard input when that is not a terminal. It is never an argument, which
 #       other users of the computer can read (LNK-008), and never in the history of the shell.
+#       --enable-linger explicitly permits Linux lingering for this user (all user units):
+#       start at boot and continue after logout. No password or elevation is attempted.
 #   anima-install --remove
 #       Stops and removes the two units, the two programs, the token and the key of the link,
 #       when this script installed them.
@@ -160,8 +162,8 @@ link_port() {
 read_code() {
     CODE=""
     if [ -t 0 ]; then
+        stty -echo < /dev/tty 2> /dev/null || refuse "cannot hide the install code at this terminal"
         printf 'Paste the install code and press Return: ' > /dev/tty
-        stty -echo < /dev/tty 2> /dev/null || true
         IFS= read -r CODE < /dev/tty || true
         stty echo < /dev/tty 2> /dev/null || true
         printf '\n' > /dev/tty
@@ -190,6 +192,58 @@ remove() {
     fi
     rm -rf "$LINK_HOME"
     say "removed. The hub still lists this computer: remove it in the devices of the hub."
+}
+
+linger_state() {
+    loginctl --no-ask-password show-user "$LINGER_UID" -p Linger --value 2> /dev/null
+}
+
+linger_action() {
+    say "enrollment remains installed. To configure lingering separately, run: loginctl enable-linger $LINGER_UID"
+    say "if permission is denied, ask an administrator to authorize that command for this user; do not run this installer as root."
+}
+
+offer_linger() {
+    if [ "$SYSTEM" != linux ]; then
+        [ "$ENABLE_LINGER" = no ] || say "--enable-linger is Linux only; macOS uses LaunchAgents while you are logged in."
+        return 0
+    fi
+    LINGER_UID=$(id -u) || refuse "cannot identify the current user for lingering"
+    case $LINGER_UID in ''|0|*[!0-9]*) refuse "cannot identify the current user for lingering" ;; esac
+    LINGER_STATE=$(linger_state) || LINGER_STATE=unknown
+    case $LINGER_STATE in
+        yes) say "lingering is already enabled for this user; no change made."; return 0 ;;
+        no) ;;
+        *) say "could not read the Linux lingering state; no change made."
+           linger_action
+           if [ "$ENABLE_LINGER" = yes ]; then return 1; fi
+           return 0 ;;
+    esac
+    say "lingering starts the user service manager at boot and keeps it after logout. It affects all user units, not only Anima."
+    if [ "$ENABLE_LINGER" = no ] && [ -t 0 ]; then
+        printf 'Type yes to enable lingering: ' >&2
+        LINGER_ANSWER=""
+        if IFS= read -r LINGER_ANSWER && [ "$LINGER_ANSWER" = yes ]; then
+            ENABLE_LINGER=yes
+        fi
+    fi
+    if [ "$ENABLE_LINGER" = no ]; then
+        say "lingering was not enabled. The units can stop at logout. Automation must opt in with --enable-linger; an install code is not consent."
+        linger_action
+        return 0
+    fi
+    if ! loginctl --no-ask-password enable-linger "$LINGER_UID" > /dev/null 2>&1; then
+        say "could not enable lingering; no additional authorization was requested."
+        linger_action
+        return 1
+    fi
+    LINGER_STATE=$(linger_state) || LINGER_STATE=unknown
+    if [ "$LINGER_STATE" != yes ]; then
+        say "could not confirm lingering after the command; logout and boot operation are not confirmed."
+        linger_action
+        return 1
+    fi
+    say "lingering is enabled for this user. Check Anima from another computer after logout and reboot; those checks have not run here."
 }
 
 install_here() {
@@ -264,10 +318,8 @@ install_here() {
         cp "$0" "$LINK_HOME/anima-install.sh" 2> /dev/null || true
     fi
     say "this computer is a device of the hub, and its daemon reports while you are logged in."
-    if [ "$SYSTEM" = linux ] && [ "$(loginctl show-user "$(id -un)" -p Linger --value 2> /dev/null || true)" != yes ]; then
-        say "on Linux the two units stop when you log out. To keep them running, run: loginctl enable-linger"
-    fi
     say "to remove it: sh \"$LINK_HOME/anima-install.sh\" --remove"
+    offer_linger
 }
 
 # value <option> <count of the arguments left>: refuses an option with no value.
@@ -281,6 +333,7 @@ LINK_SHA256=""
 DAEMON_SHA256=""
 FROM=""
 ACTION=install
+ENABLE_LINGER=no
 while [ $# -gt 0 ]; do
     case $1 in
         --version) value "$1" $#; VERSION=$2; shift 2 ;;
@@ -288,6 +341,7 @@ while [ $# -gt 0 ]; do
         --link-sha256) value "$1" $#; LINK_SHA256=$2; shift 2 ;;
         --daemon-sha256) value "$1" $#; DAEMON_SHA256=$2; shift 2 ;;
         --from) value "$1" $#; FROM=$2; shift 2 ;;
+        --enable-linger) ENABLE_LINGER=yes; shift ;;
         --remove) ACTION=remove; shift ;;
         *) refuse "unknown argument $1" ;;
     esac
