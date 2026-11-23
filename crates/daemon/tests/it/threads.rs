@@ -14,6 +14,7 @@ mod attach;
 mod connection;
 mod drafts;
 mod files;
+mod git;
 mod holder_update;
 mod listing;
 mod models_projects;

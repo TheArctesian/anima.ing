@@ -17,6 +17,7 @@ mod listing;
 mod programs;
 mod project;
 mod queue;
+mod refusal;
 mod shelf;
 mod workspace;
 pub use limits::{Limits, OVER_LIMIT};
@@ -24,6 +25,7 @@ pub use listing::{BadChange, BadTitle, Listing, ListingChange, MAX_TITLE};
 pub use programs::{AccountRow, ModelRow};
 pub use project::{BadProject, MAX_PROJECTS, Project, ProjectChange, changed as project_changed};
 pub use queue::{LastTurn, MOST_QUEUED, MOST_QUEUED_BYTES, Queued};
+pub use refusal::Refusal;
 pub use shelf::{Activity, MOST_SNOOZE, Marks, SETTLE_AFTER, Shelf};
 pub use workspace::{Workspace, WorkspaceKind};
 
@@ -86,6 +88,13 @@ pub enum Action {
         /// The files of the draft for the first prompt, in the order of the person.
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         attachments: Vec<Uuid>,
+        /// "New worktree": the runner makes a worktree of its own for the thread from the
+        /// repository at `folder`, and starts the program there (TC7, TH116).
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        worktree: bool,
+        /// The branch that the worktree starts from; `HEAD` of the project when `None`.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        base: Option<String>,
     },
     /// A prompt to a thread: to its running turn, or as a new turn, with the files that the
     /// person attached for it (TH111).
@@ -190,6 +199,14 @@ pub enum Action {
     },
     /// Drops a file that did not go with a prompt yet (TH111).
     Unattach { thread: Uuid, attachment: Uuid },
+    /// An action on the worktree of one repository of a thread (TC7, TH116): the Git engine of
+    /// the runner does it.
+    Git {
+        thread: Uuid,
+        repository: String,
+        #[serde(flatten)]
+        action: crate::git::GitAction,
+    },
     /// The version of the daemon of the runner (HMD-055). A runner from before this call closes
     /// the connection at it, which says that it is older.
     Version,
@@ -268,70 +285,17 @@ pub enum Outcome {
         #[serde(default)]
         more: bool,
     },
+    /// The answer of the Git engine to [`Action::Git`].
+    Git {
+        #[serde(flatten)]
+        result: crate::git::GitOutcome,
+    },
     /// The version of the daemon of the runner, as its `--version` prints it after the name.
     Version {
         version: String,
     },
     Refused {
         why: Refusal,
-    },
-}
-
-/// Why the runner did not do a call.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "refusal", rename_all = "snake_case")]
-pub enum Refusal {
-    UnknownThread,
-    /// The folder is not an absolute folder of this computer (THR-041).
-    FolderNotPermitted,
-    /// The program is not on the `PATH` of the login of the person.
-    ProgramNotFound,
-    /// The program did not answer `--version` in time: `said` names it, its path and what to
-    /// try, in words for the person; `answered` holds the other copies that answered, which a
-    /// start can name (TH97).
-    ProgramDoesNotAnswer {
-        said: String,
-        #[serde(default, skip_serializing_if = "Vec::is_empty")]
-        answered: Vec<PathBuf>,
-    },
-    /// A value that becomes an argument is not of its alphabet (THR-040).
-    BadValue,
-    /// The request is answered, or its process ended (THR-030).
-    RequestGone,
-    /// The answer does not fit the request.
-    AnswerDoesNotFit,
-    /// The thread is not running.
-    NotRunning,
-    /// The holder did not take the command.
-    Holder,
-    /// The holder is older than the daemon and speaks a different protocol: `said` tells when
-    /// it is replaced, in words for the person (TH98).
-    HolderOlder {
-        said: String,
-    },
-    /// The call came from a process of an agent: only the person answers a request, raises the
-    /// limit or starts a thread.
-    FromAnAgent,
-    /// The thread runs: it is removed from the list only after it stopped (TH46).
-    Running,
-    /// A start would pass the soft limit: the person must answer first (THR-114).
-    OverLimit {
-        limits: Limits,
-    },
-    /// The queue of the thread holds [`MOST_QUEUED`] prompts (TH109).
-    QueueFull,
-    /// The program of the thread cannot change that after its start: `said` tells what and
-    /// why, in words for the person (TH110).
-    CannotChange {
-        said: String,
-    },
-    /// A file is over a limit of [`attach`]: `said` names the file and the limit (TH111).
-    TooLarge {
-        said: String,
-    },
-    /// The runner cannot take or send that file: `said` names the file and why (TH111).
-    CannotAttach {
-        said: String,
     },
 }
 

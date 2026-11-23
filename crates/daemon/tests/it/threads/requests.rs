@@ -41,6 +41,8 @@ async fn start(client: &mut Client, kit: &Kit) -> Uuid {
             program_path: None,
             draft: None,
             attachments: Vec::new(),
+            worktree: false,
+            base: None,
         })
         .await;
     let Outcome::Started { thread, .. } = client.done(start).await else {
