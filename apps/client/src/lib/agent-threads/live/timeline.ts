@@ -3,7 +3,8 @@
  * that wait, and the row (TH14, THR-014, THR-030). Pure: the time of each update is a parameter.
  */
 
-import type { Entry, Program, ToolCall, ToolKind } from '../thread';
+import { cellOf, readExec, waited } from '../codex/exec';
+import type { Entry, Program, Thread, ToolCall, ToolKind } from '../thread';
 import type { Ask, RunRow, Said, Update } from './run';
 
 /** The most characters of the output of one tool call that the page keeps. */
@@ -64,6 +65,37 @@ function capped(text: string): string {
 
 function heldAsk(ask: Ask): Ask {
   return { ...ask, subject: capped(ask.subject), diff: ask.diff === null ? null : held(ask.diff) };
+}
+
+/**
+ * A thread read from its session file, as the timeline of a driven thread shows it, so a thread not started in Anima
+ * reads as a chat too (T3 Code's timeline). An entry with no time takes the time of the one before it; a Codex `exec`
+ * call reads as the command or the edit it runs, and a poll of a running script brings its output to that call.
+ */
+export function storedTimeline(thread: Thread): LiveEntry[] {
+  let at = thread.started ?? new Date(0);
+  const shown: LiveEntry[] = [];
+  /** The shown call that left each script cell running: a `wait` on that cell brings its output there. */
+  const running = new Map<string, number>();
+  thread.entries.forEach((entry, index) => {
+    at = entry.at ?? at;
+    if (entry.kind !== 'tool') {
+      shown.push({ ...entry, at });
+      return;
+    }
+    const cell = thread.program === 'codex' ? cellOf(entry.tool) : null;
+    const owner = entry.tool.name === 'wait' && cell !== null ? running.get(cell) : undefined;
+    const ran = owner === undefined ? undefined : shown[owner];
+    if (owner !== undefined && ran?.kind === 'tool') {
+      shown[owner] = { ...ran, tool: waited(ran.tool, entry.tool) };
+      return;
+    }
+    const tool = thread.program === 'codex' ? readExec(entry.tool) : entry.tool;
+    if (tool === null) return;
+    if (cell !== null && entry.tool.name !== 'wait') running.set(cell, shown.length);
+    shown.push({ kind: 'tool', at, tool, call: `stored-${String(index)}` });
+  });
+  return shown;
 }
 
 /** A new thread from its first row. */
