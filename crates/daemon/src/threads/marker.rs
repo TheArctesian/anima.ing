@@ -97,10 +97,7 @@ pub async fn end_marked(thread: &str, keep: &Keep<'_>) -> Ended {
     for pid in &marked {
         tree::signal(*pid, Signal::KILL);
     }
-    if !marked.is_empty() {
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-    }
-    let left = marked.iter().filter(|pid| tree::alive(**pid)).count();
+    let left = tree::left_running(&marked).await;
     Ended {
         count: u32::try_from(marked.len()).unwrap_or(u32::MAX),
         all: left == 0 && !unproven,

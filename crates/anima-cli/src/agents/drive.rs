@@ -176,14 +176,27 @@ fn one(text: &str) -> Table {
 /// Sends one call whose answer is only that it was done.
 async fn simple(invocation: &Invocation, action: Action, done: &str) -> Result<(), Failure> {
     let mut link = RunnerLink::connect().await?;
-    if let Outcome::Stopped { all_ended: false } = accepted(link.call(action).await?)? {
-        invocation.output.message(
-            "The program ended, but a process below it could not be proved to have ended.",
-        );
+    let stopped = match &action {
+        Action::Stop { thread } => Some(*thread),
+        _ => None,
+    };
+    if let (Outcome::Stopped { all_ended: false }, Some(thread)) =
+        (accepted(link.call(action).await?)?, stopped)
+    {
+        invocation.output.message(&not_proved(thread));
     } else {
         invocation.output.message(done);
     }
     Ok(())
+}
+
+/// What the person does when a stop could not prove that each process of the thread ended
+/// (THR-049): the holder sweeps it again at its next start; until then, the person can find what
+/// still runs by the mark of the thread.
+fn not_proved(thread: Uuid) -> String {
+    format!(
+        "The program ended, but a process below it could not be proved to have ended. The next start of the holder looks for it again. To look now: `ps axeww | grep -F AGENT_THREAD={thread} | grep -v grep` shows a process of the thread, and `kill` with its process ID ends it. On a Mac this cannot show a program signed by Apple, such as /bin/sh, because macOS hides its environment."
+    )
 }
 
 /// `anima agents interrupt`: the running turn stops; the program stays.

@@ -245,7 +245,19 @@ fn forget(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey) -> Outcome {
         None => refused(Refusal::UnknownThread),
         Some(false) => refused(Refusal::Busy),
         Some(true) => {
-            state.threads.remove(thread);
+            // What the program left and its sweep could not prove ended stays in the record, so
+            // that the next start of a holder sweeps it again (THR-049).
+            if let Some(slot) = state.threads.remove(thread)
+                && slot.left_behind
+            {
+                state.inherited.push(super::record::Entry {
+                    thread: thread.clone(),
+                    pid: slot.pid,
+                    started: slot.started,
+                    left: Some(slot.seen),
+                });
+                state.write_record();
+            }
             Outcome::Ok
         }
     }

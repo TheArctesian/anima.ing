@@ -112,10 +112,14 @@ async fn end_after_exit(
     };
     let marked = super::marker::end_marked(thread, &ending.keep(None)).await;
     let all = swept.all && marked.all;
-    if ending.left_behind
-        && let Some(slot) = locked(shared).threads.get_mut(thread)
-    {
-        program::settle_sweep(slot, all);
+    if ending.left_behind {
+        let mut state = locked(shared);
+        if let Some(slot) = state.threads.get_mut(thread) {
+            program::settle_sweep(slot, all);
+        }
+        // A leftover that is proved ended leaves the record; one that is not stays for the
+        // next holder.
+        state.write_record();
     }
     Outcome::Stopped {
         ended: swept.count.saturating_add(marked.count),
