@@ -143,6 +143,8 @@ impl Runner {
             } else {
                 self.threads.remove(&thread);
                 self.attached.give_back(thread);
+                // The launcher lets go of the seat of the thread at once.
+                self.rights_now();
                 refused(Refusal::Holder)
             };
             self.answer_late(Some(&back), Some(thread), result);

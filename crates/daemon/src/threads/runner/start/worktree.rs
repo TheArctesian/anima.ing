@@ -25,6 +25,9 @@ impl Runner {
         let Some(base) = asking.new.worktree.clone().map(|worktree| worktree.base) else {
             return Err(Refusal::BadValue);
         };
+        // The worktrees being made count against the soft limit, before a history is copied for
+        // a start that would be refused after (THR-114).
+        self.may_start(u32::try_from(self.asks.making.len()).unwrap_or(u32::MAX))?;
         // A worktree is of a repository: a start with no project has none.
         if asking.new.folder.as_os_str().is_empty() {
             return Err(Refusal::BadValue);
@@ -89,21 +92,24 @@ impl Runner {
             }
             Err(why) => Err(Refusal::Worktree { why }),
         };
-        if let Err(why) = started {
-            {
-                let mut rights = self
-                    .rights
-                    .lock()
-                    .unwrap_or_else(std::sync::PoisonError::into_inner);
-                rights.coming.remove(&id);
-            }
+        let Err(why) = started else {
+            // The seat of the thread that started takes the folder of its row.
             self.rights_now();
-            self.note(
-                super::super::log::Kind::Refusal,
-                Some(id),
-                super::super::calls::refusal_word(&why),
-            );
-            back.answer(super::super::holder_events::refused(why));
+            return;
+        };
+        {
+            let mut rights = self
+                .rights
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            rights.coming.remove(&id);
         }
+        self.rights_now();
+        self.note(
+            super::super::log::Kind::Refusal,
+            Some(id),
+            super::super::calls::refusal_word(&why),
+        );
+        back.answer(super::super::holder_events::refused(why));
     }
 }
