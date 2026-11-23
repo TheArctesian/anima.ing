@@ -181,6 +181,44 @@ pub async fn learn(git: &Git, worktree: &Worktree, commits: &[&str]) -> Result<(
     Ok(())
 }
 
+/// Brings into the copy of the project a commit that the runner itself made for the thread of
+/// `worktree` (a commit of the person), and writes down that the thread knows it. Its objects
+/// are in the Git folder of the runner for the worktree, on `tip`, the commit before it; no
+/// run of the thread is needed, and
+/// the size of the copy is not asked: the person reviewed these files.
+///
+/// # Errors
+/// A [`GitError`] when the pack cannot be written.
+pub async fn keep(
+    git: &Git,
+    worktree: &Worktree,
+    (commit, tip): (&str, Option<&str>),
+) -> Result<(), GitError> {
+    let record = worktree.record();
+    let base = record.shared.join("objects/pack/pack");
+    // `--local`: what is in the folder of the worktree alone, not what the copy has.
+    let pack: [&std::ffi::OsStr; 5] = [
+        "pack-objects".as_ref(),
+        "--revs".as_ref(),
+        "--local".as_ref(),
+        "--quiet".as_ref(),
+        base.as_os_str(),
+    ];
+    let pack = Run::new(worktree.folder(), pack).with_time(LONG);
+    // `tip` is the commit before it, which the thread knows already.
+    let wanted = tip.map_or_else(
+        || format!("{commit}\n"),
+        |tip| format!("{commit}\n^{tip}\n"),
+    );
+    git.output(pack.with_input(wanted.into_bytes())).await?;
+    let store = &git.in_own(&record.shared).await?;
+    let known: Vec<&str> = tip.into_iter().collect();
+    if !whole(store, &record.shared, commit, &known).await {
+        return Err(forged());
+    }
+    mark(store, worktree, commit).await
+}
+
 /// The file in the copy that says how many bytes the copy had when the first history of the
 /// project was in it.
 const FIRST: &str = "anima-first-size";
@@ -205,9 +243,9 @@ fn left(git: &Git, worktree: &Worktree) -> Result<u64, GitError> {
         .map_or(u64::MAX, |first| {
             first.saturating_mul(TIMES).saturating_add(git.copy_room())
         });
-    let used = super::disk::bytes(shared);
-    let free = free_at(shared).saturating_sub(MIN_FREE);
-    match most.saturating_sub(used).min(free) {
+    // Only what is in the copy counts: the quarantine of a thread is beside its objects.
+    let used = super::disk::bytes(&shared.join("objects"));
+    match most.saturating_sub(used).min(free_for(shared)) {
         0 => Err(failed(
             "the copy of the history of this project reached the size that the project \
              allows, or the disk of Anima's records is nearly full. Remove the worktrees \
@@ -216,6 +254,13 @@ fn left(git: &Git, worktree: &Worktree) -> Result<u64, GitError> {
         )),
         left => Ok(left),
     }
+}
+
+/// The bytes that the runner can still write on the disk that holds `folder`: the disk of the
+/// records always keeps [`MIN_FREE`] free.
+#[must_use]
+pub fn free_for(folder: &Path) -> u64 {
+    free_at(folder).saturating_sub(MIN_FREE)
 }
 
 /// The bytes that are free on the disk that holds `folder`.
@@ -322,7 +367,7 @@ async fn once(
     }
     let first = record.shared.join(FIRST);
     if !first.exists() {
-        let size = super::disk::bytes(&record.shared).to_string();
+        let size = super::disk::bytes(&record.shared.join("objects")).to_string();
         std::fs::write(first, size).map_err(GitError::Files)?;
     }
     Ok(())
@@ -352,8 +397,18 @@ fn shallow(worktree: &Worktree, first: bool) -> Result<(), GitError> {
             std::fs::write(&ends, listed).map_err(GitError::Files)?;
         }
     }
+    self::ends(worktree)
+}
+
+/// Gives the Git folder of the runner for `worktree` the list of shallow ends that the copy
+/// of its project has, or none.
+///
+/// # Errors
+/// A [`GitError`] when the file cannot be written.
+pub fn ends(worktree: &Worktree) -> Result<(), GitError> {
+    let record = worktree.record();
     let own = record.own.join("shallow");
-    if let Ok(ends) = std::fs::read(&ends) {
+    if let Ok(ends) = std::fs::read(record.shared.join("shallow")) {
         return std::fs::write(own, ends).map_err(GitError::Files);
     }
     let _ = std::fs::remove_file(own);

@@ -24,7 +24,7 @@ const MOST_PACKS: usize = 16;
 
 /// What each run of a thread gets before its own arguments, where it wins over each file of
 /// configuration.
-const CLOSED: [&str; 14] = [
+const CLOSED: [&str; 22] = [
     "--no-lazy-fetch",
     "--no-optional-locks",
     "--no-pager",
@@ -39,6 +39,16 @@ const CLOSED: [&str; 14] = [
     "-c",
     "core.alternateRefsCommand=",
     "--no-replace-objects",
+    // How a pack is made is not for the repository to say: a pack that is not packed is
+    // many times larger.
+    "-c",
+    "core.compression=-1",
+    "-c",
+    "pack.compression=-1",
+    "-c",
+    "pack.window=10",
+    "-c",
+    "pack.depth=50",
 ];
 
 /// The environment of each run of a thread: no fetch of a missing object, no prompt.

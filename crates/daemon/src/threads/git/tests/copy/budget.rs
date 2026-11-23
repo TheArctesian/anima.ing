@@ -63,7 +63,9 @@ async fn a_thread_over_its_size_is_refused_until_old_checkpoints_are_removed() {
         rewritten(&folder, turn, 200 * 1024);
         if let Err(why) = engine.turn_ended(target(), u32::from(turn)).await {
             let said = format!("{why:?}");
-            assert!(said.contains("Remove old checkpoints"), "{said}");
+            let lower = said.to_lowercase();
+            assert!(lower.contains("remove old checkpoints"), "{said}");
+            assert!(!lower.contains("git ended"), "{said}");
             refused_at = Some(u32::from(turn));
             break;
         }
@@ -129,4 +131,153 @@ async fn making_the_folder_small_loses_nothing_of_a_checkpoint_taken_at_the_same
     let last = checkpoint::turn_ref(THREAD, 6);
     let size = ["cat-file", "-s", &format!("{last}:large.bin")];
     assert_eq!(bench.git_own(&size).await, (64 * 1024).to_string());
+}
+
+/// The Git folder of the runner for the worktree of the thread of the bench.
+fn own_of(bench: &Bench) -> std::path::PathBuf {
+    let records = bench.home.with_file_name("records");
+    records.join(THREAD.to_string()).join("engine.git")
+}
+
+#[tokio::test]
+async fn what_a_failed_snapshot_left_and_a_file_with_a_hole_do_not_lock_the_thread() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    let engine = engine_with_budget(&bench, 600 * 1024);
+    // What a snapshot that failed left behind: it is no checkpoint and counts for nothing.
+    let staging = own_of(&bench).join("staging");
+    std::fs::create_dir_all(&staging).expect("a folder");
+    std::fs::write(staging.join("left.bin"), noise(4 * 1024 * 1024)).expect("a file");
+    let status = engine.call(PERSON, target(), GitAction::Status).await;
+    assert!(matches!(status, GitOutcome::Status(_)), "{status:?}");
+    // A file that says a large size and uses no disk is not copied to its end.
+    let hole = std::fs::File::create(folder.join("hole.bin")).expect("a file");
+    hole.set_len(64 * 1024 * 1024).expect("a size");
+    let refusal = engine.call(PERSON, target(), GitAction::Status).await;
+    let said = format!("{refusal:?}");
+    assert!(said.contains("larger than what the checkpoints"), "{said}");
+    assert!(!staging.exists(), "the copies of the snapshot stayed");
+    assert!(engine.disk()[0].largest_thread < 1024 * 1024);
+    // The worktree is removed all the same, and the work is kept.
+    std::fs::remove_file(folder.join("hole.bin")).expect("the file");
+    std::fs::write(folder.join("work.txt"), "work\n").expect("a file");
+    let tiny = engine_with_budget(&bench, 1);
+    let removed = tiny.call(PERSON, target(), GitAction::Remove).await;
+    let GitOutcome::Removed { kept: Some(kept) } = removed else {
+        panic!("not removed: {removed:?}");
+    };
+    let saved = ["show", &format!("{kept}:work.txt")];
+    assert_eq!(bench.git_in(&bench.project, &saved).await, "work");
+}
+
+#[tokio::test]
+async fn a_worktree_whose_last_commit_cannot_be_brought_is_removed_with_its_files_kept() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    std::fs::write(folder.join("work.txt"), "work\n").expect("a file");
+    // The branch of the thread names a commit that the repository does not have.
+    let branch = bench.project.join(".git/refs/heads/anima/12345678");
+    std::fs::write(branch, format!("{}\n", "1".repeat(40))).expect("the ref");
+    let status = bench.call(PERSON, GitAction::Status).await;
+    assert!(super::super::refused(&status).is_some(), "{status:?}");
+    let removed = bench.call(PERSON, GitAction::Remove).await;
+    let GitOutcome::Removed { kept: Some(kept) } = removed else {
+        panic!("not removed: {removed:?}");
+    };
+    assert!(!folder.exists());
+    for (file, text) in [("work.txt", "work"), ("a.txt", "one")] {
+        let saved = ["show", &format!("{kept}:{file}")];
+        assert_eq!(bench.git_in(&bench.project, &saved).await, text);
+    }
+}
+
+#[tokio::test]
+async fn a_commit_of_the_person_needs_no_room_in_a_copy_that_is_full() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    let records = bench.home.with_file_name("records");
+    let home = Home::at(&bench.home, &records).expect("a home");
+    let git = bench.git.clone().with_copy_room(64 * 1024);
+    let engine = Engine::new(git, home).with_launcher(as_the_person(None));
+    // The copy of the project is over its size.
+    let projects = std::fs::read_dir(records.join("projects")).expect("the projects");
+    let copy = projects
+        .flatten()
+        .map(|entry| entry.path())
+        .find(|path| path.extension().is_some_and(|kind| kind == "git"));
+    let junk = copy.expect("the copy").join("objects/kept.bin");
+    std::fs::write(junk, noise(512 * 1024)).expect("a file");
+    std::fs::write(folder.join("a.txt"), "changed\n").expect("a file");
+    let reviewed = bench.reviewed().await;
+    let commit = GitAction::Commit {
+        message: "by the person".to_owned(),
+        reviewed,
+        files: None,
+        new_branch: None,
+    };
+    let committed = engine.call(PERSON, target(), commit).await;
+    assert!(
+        matches!(committed, GitOutcome::Committed { .. }),
+        "{committed:?}"
+    );
+    // The next actions work: the runner itself brought the commit into the copy.
+    let status = engine.call(PERSON, target(), GitAction::Status).await;
+    assert!(matches!(status, GitOutcome::Status(_)), "{status:?}");
+    engine.turn_ended(target(), 1).await.expect("a checkpoint");
+}
+
+#[tokio::test]
+async fn a_shallow_project_keeps_its_ends_when_the_folder_of_a_thread_is_made_small() {
+    let bench = Bench::new().await;
+    std::fs::write(bench.project.join("a.txt"), "two\n").expect("a file");
+    let second = ["commit", "--quiet", "--all", "--message=second"];
+    bench.git_in(&bench.project, &second).await;
+    let root = bench.home.parent().expect("the root");
+    let shallow = root.join("shallow");
+    let from = format!("file://{}", bench.project.display());
+    let place = shallow.to_string_lossy().into_owned();
+    let clone = [
+        "clone",
+        "--quiet",
+        "--depth=1",
+        from.as_str(),
+        place.as_str(),
+    ];
+    bench.git_in(root, &clone).await;
+    let engine = engine_with_budget(&bench, 600 * 1024);
+    let plan = crate::threads::git::worktree::Plan {
+        thread: THREAD,
+        project: &shallow,
+        base: None,
+    };
+    let made = engine.worktree(plan).await.expect("a worktree");
+    let folder = made.worktree.folder().to_owned();
+    let of = crate::threads::git::Target {
+        thread: THREAD,
+        repository: "shallow",
+    };
+    let ends = made.worktree.record().own.join("shallow");
+    let before = std::fs::read_to_string(&ends).expect("the ends of the shallow clone");
+    // The person removes each checkpoint, which makes the folder small.
+    let forgot = engine
+        .call(PERSON, of, GitAction::Forget { before: 99 })
+        .await;
+    assert!(
+        matches!(forgot, GitOutcome::Checkpoints { .. }),
+        "{forgot:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(&ends).ok().as_deref(),
+        Some(before.as_str())
+    );
+    // Snapshots that go over the size, and so make the folder small, work after it.
+    for round in 1..=6_u8 {
+        rewritten(&folder, round, 200 * 1024);
+        let status = engine.call(PERSON, of, GitAction::Status).await;
+        assert!(
+            matches!(status, GitOutcome::Status(_)),
+            "{round}: {status:?}"
+        );
+    }
+    engine.turn_ended(of, 1).await.expect("a checkpoint");
 }

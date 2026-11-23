@@ -73,6 +73,10 @@ impl Engine {
     /// What each project uses on the disk, the largest first.
     #[must_use]
     pub fn disk(&self) -> Vec<Used> {
+        // While a thread holds the records, nothing in them is read.
+        if self.closed().is_err() {
+            return Vec::new();
+        }
         let records: Vec<Record> = self.records().into_iter().flatten().collect();
         let Ok(copies) = std::fs::read_dir(self.home.projects()) else {
             return Vec::new();

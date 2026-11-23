@@ -281,12 +281,20 @@ fn start_of(layout: &Layout, base: Option<&str>) -> Result<String, GitRefusal> {
 /// A [`GitRefusal`] when the work could not be saved (nothing is removed then) or a step
 /// fails.
 pub async fn remove(git: &Git, home: &Home, worktree: &Worktree) -> Result<String, GitRefusal> {
-    let held = &git.for_worktree(worktree).await?;
+    // The work is saved whatever the size of the checkpoints of the thread is: it goes to
+    // the repository of the person, and the folder of the runner is removed after.
+    let held = &git.for_worktree(worktree).await?.with_own_room(u64::MAX);
     let layout = worktree.layout();
     let record = worktree.record();
     let kept = checkpoint::kept_ref(worktree.thread());
-    let commit = checkpoint::snapshot(held, worktree).await?;
-    let tip = own::tip(held, worktree).await?.commit;
+    // A last commit that cannot be brought (the copy of the project is full, or the branch
+    // names a commit that is not there) does not keep the worktree: the saved commit then
+    // holds each file and has no parent.
+    let tip = own::tip(held, worktree)
+        .await
+        .ok()
+        .and_then(|head| head.commit);
+    let commit = checkpoint::snapshot_on(held, worktree, tip.clone()).await?;
     own::give(held, worktree, &commit, tip.as_deref()).await?;
     refs::put(&layout.common_dir, &kept, &commit, Was::Any)?;
     // The folder is still the one that the runner made, not one put in its place (P12).

@@ -77,11 +77,14 @@ impl Root {
 
     /// Copies the file or the link at `path` of the worktree to the same path below `into`,
     /// a folder of the runner. A link is copied as a link, never followed. `false` when
-    /// there is no file and no link at the path.
+    /// there is no file and no link at the path. At most `left` bytes are copied; `left` gets
+    /// smaller by what was copied.
     ///
     /// # Errors
-    /// The error of the system when the copy cannot be written.
-    pub fn take(&self, path: &Path, into: &Path) -> std::io::Result<bool> {
+    /// The error of the system when the copy cannot be written, or the file is larger than
+    /// `left`.
+    pub fn take(&self, path: &Path, into: &Path, left: &mut u64) -> std::io::Result<bool> {
+        use std::io::Read as _;
         let Some((above, name)) = self.0.above(path, Make::No)? else {
             return Ok(false);
         };
@@ -92,12 +95,21 @@ impl Root {
         if let Some(to) = above.link(name) {
             return link(&to, &copy).map(|()| true);
         }
-        let Some(mut found) = above.file(name)? else {
+        let Some(found) = above.file(name)? else {
             return Ok(false);
         };
         let runs = runs(&found.metadata()?);
         let mut written = std::fs::File::create(&copy)?;
-        std::io::copy(&mut found, &mut written)?;
+        // One byte more than what is left shows a file that is too large. A file with a
+        // hole is read as the bytes that it says it has.
+        let taken = std::io::copy(&mut found.take(left.saturating_add(1)), &mut written)?;
+        *left = left.checked_sub(taken).ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::FileTooLarge,
+                "the changed files are larger than what the checkpoints of this chat can still \
+                 hold; remove old checkpoints of the chat or make the files smaller",
+            )
+        })?;
         if runs {
             let mut can = written.metadata()?.permissions();
             #[cfg(unix)]
@@ -195,13 +207,27 @@ mod tests {
         std::os::unix::fs::symlink(outside.join("secret"), worktree.join("link")).expect("a link");
         std::os::unix::fs::symlink(&outside, worktree.join("dir")).expect("a link");
         let root = Root::open(&worktree).expect("the worktree");
-        assert!(root.take(Path::new("plain.txt"), &own).expect("a copy"));
-        assert!(root.take(Path::new("link"), &own).expect("a copy"));
+        assert!(
+            root.take(Path::new("plain.txt"), &own, &mut { u64::MAX })
+                .expect("a copy")
+        );
+        assert!(
+            root.take(Path::new("link"), &own, &mut { u64::MAX })
+                .expect("a copy")
+        );
         assert!(own.join("link").is_symlink(), "the link was followed");
         // `dir` is a link: nothing below it is a file of the worktree.
-        assert!(!root.take(Path::new("dir/secret"), &own).expect("no copy"));
+        assert!(
+            !root
+                .take(Path::new("dir/secret"), &own, &mut { u64::MAX })
+                .expect("no copy")
+        );
         assert!(!own.join("dir").exists());
-        assert!(!root.take(Path::new("gone"), &own).expect("no copy"));
+        assert!(
+            !root
+                .take(Path::new("gone"), &own, &mut { u64::MAX })
+                .expect("no copy")
+        );
         assert!(Root::open(&worktree.join("dir")).is_err());
     }
 

@@ -45,6 +45,8 @@ impl From<GitError> for GitRefusal {
     fn from(error: GitError) -> Self {
         match error {
             GitError::NotFound => Self::GitNotFound,
+            // Words of the runner itself, not of `git`: they are the reason as they are.
+            GitError::Failed { code: None, said } => Self::Failed { said },
             other => Self::Failed {
                 said: other.to_string(),
             },

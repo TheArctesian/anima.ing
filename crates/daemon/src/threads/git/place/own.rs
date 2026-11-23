@@ -63,55 +63,66 @@ pub const ROOM: u64 = 2 * 1024 * 1024 * 1024;
 /// it has that size, making it small again gives nothing.
 const SMALL_AT: &str = "anima-small-at";
 
-/// Checks that the Git folder of the runner for `worktree` is within its size, before a
-/// snapshot writes more into it. Each status and each list of changes writes the changed
-/// files as objects, and the bytes are the ones that the agent chose: without a size, one
-/// thread fills the disk of the records for each project. A folder that is over is made small
-/// first: the objects that no checkpoint, no reviewed snapshot and no kept ref of the thread
-/// needs go. The caller holds the lock of the index of the worktree, so no snapshot of this
-/// worktree is in the middle of its work.
+/// The bytes that a snapshot can still write into the Git folder of the runner for
+/// `worktree`. Each status and each list of changes writes the changed files as objects, and
+/// the bytes are the ones that the agent chose: without a size, one thread fills the disk of
+/// the records for each project. Only the objects count: what a call left in a work folder
+/// goes here first. A folder that is over is made small before: the objects that no
+/// checkpoint, no reviewed snapshot and no kept ref of the thread needs go. The caller holds
+/// the lock of the index of the worktree, so no snapshot of this worktree is in the middle of
+/// its work. The disk of the records keeps free what [`shared::free_for`] says.
 ///
 /// # Errors
 /// A [`GitError`] when the folder is over its size also after that; the words say what the
 /// person can do.
-pub async fn within(git: &Git, worktree: &Worktree) -> Result<(), GitError> {
+pub async fn within(git: &Git, worktree: &Worktree) -> Result<u64, GitError> {
     let own = &worktree.record().own;
+    for left_over in ["staging", "restore", "outgoing"] {
+        let _ = std::fs::remove_dir_all(own.join(left_over));
+    }
+    let objects = own.join("objects");
     let room = git.own_room();
-    let used = super::disk::bytes(own);
-    if used <= room {
-        return Ok(());
-    }
-    let at = std::fs::read_to_string(own.join(SMALL_AT)).ok();
-    if at.and_then(|at| at.trim().parse::<u64>().ok()) != Some(used) {
-        small(git, worktree).await?;
-    }
-    let used = super::disk::bytes(own);
-    if used <= room {
-        return Ok(());
+    let mut used = super::disk::bytes(&objects);
+    if used >= room {
+        let at = std::fs::read_to_string(own.join(SMALL_AT)).ok();
+        if at.and_then(|at| at.trim().parse::<u64>().ok()) != Some(used) {
+            small(git, worktree).await?;
+            used = super::disk::bytes(&objects);
+        }
     }
     let mib = |bytes: u64| bytes / (1024 * 1024);
-    Err(GitError::Failed {
-        code: None,
-        said: format!(
-            "the checkpoints of this chat use {} MiB of the disk of Anima's records, more than \
-             the {} MiB that one chat can have. Remove old checkpoints of the chat, remove \
-             the worktree of the chat, or set a larger size in the settings",
-            mib(used),
-            mib(room)
-        ),
-    })
+    match room.saturating_sub(used).min(shared::free_for(own)) {
+        0 => Err(GitError::Failed {
+            code: None,
+            said: format!(
+                "the checkpoints of this chat use {} MiB of the disk of Anima's records; one \
+                 chat can have {} MiB, and the disk must keep some room. Remove old \
+                 checkpoints of the chat, or remove the worktree of the chat",
+                mib(used),
+                mib(room)
+            ),
+        }),
+        left => Ok(left),
+    }
 }
 
 /// Removes from the Git folder of the runner for `worktree` each object that no ref of it and
 /// no file of its index needs, and writes down the size after it.
 ///
+/// `git prune` also drops from the list of shallow ends each commit that no ref of the folder
+/// reaches. That list is of the project, not of the refs of one thread: it is put back as
+/// the copy of the project has it before `git` reads it and after `git` changed it.
+///
 /// # Errors
 /// A [`GitError`] when `git prune` fails.
 pub async fn small(git: &Git, worktree: &Worktree) -> Result<(), GitError> {
     let own = &worktree.record().own;
-    let prune = Run::new(worktree.folder(), ["prune", "--expire=now"]);
-    git.output(prune.with_time(shared::LONG)).await?;
-    let used = super::disk::bytes(own).to_string();
+    shared::ends(worktree)?;
+    let prune = Run::new(worktree.folder(), ["prune", "--expire=now"]).with_time(shared::LONG);
+    let pruned = git.output(prune).await;
+    shared::ends(worktree)?;
+    pruned?;
+    let used = super::disk::bytes(&own.join("objects")).to_string();
     std::fs::write(own.join(SMALL_AT), used).map_err(GitError::Files)
 }
 

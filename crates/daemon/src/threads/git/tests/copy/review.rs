@@ -313,7 +313,7 @@ async fn a_copy_that_is_full_takes_nothing_more_and_loses_nothing() {
     let engine = engine_with_room(&bench, 64 * 1024, as_the_person(None));
     let copy = copy_of(&bench);
     // The copy is over its size.
-    std::fs::write(copy.join("kept.bin"), noise(512 * 1024)).expect("a file");
+    std::fs::write(copy.join("objects/kept.bin"), noise(512 * 1024)).expect("a file");
     let who = [
         "-c",
         "user.name=Agent",
