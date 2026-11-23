@@ -224,7 +224,7 @@ What this decides in the note of the UI session (`t3-copy-design-system-fit.md` 
 Consequences for this document:
 
 1. THR-143 is changed. OD-THR45 is decided, against the recommendation of this document. OD-THR65 is no longer a question.
-2. The working line of T3 Code ("Working for" with a timer, on a line that shimmers) is kept as a line with a timer and no shimmer. The pulse of a skeleton and of a status dot is left out.
+2. The working line of T3 Code ("Working for" with a timer, on a line that shimmers) is kept as a line with a timer and no shimmer. The pulse of a skeleton is left out. R-NEW-t3working changes this for two motions only: the status mark of a thread that works or sets up pulses, and the live work line of a running turn shines, both as T3 Code does them; D8 stays for each other motion.
 3. The grain of T3 Code (a still texture over the surfaces) is a part of its skin and is not copied.
 4. He said which appearance settings of T3 Code are copied (R-354: "All that apply"): the width of the chat, a contrast control and the font size. The glass opacity, the panel speed, the font family and the themes are not copied. Task TC6 has the rule for the contrast and the size.
 5. The licence duties of Section 3.1 do not change: the layout and the parts are still ported from the source.
