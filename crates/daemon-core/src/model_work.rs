@@ -8,10 +8,11 @@
 //! release sources and the versions that the program accepts (Section 6), [`command`] the
 //! command line and the environment of a runtime (Section 2.1), [`supervision`] the waits and
 //! the counts of a restart (Section 9), [`loopback`] the verdict over a socket table
-//! (Section 9), and [`folders`] the layout of the folders (Section 10).
+//! (Section 9), [`drain`] the wait of `model_drain` (CAP-013), and [`folders`] the layout of the folders (Section 10).
 
 pub mod cause;
 pub mod command;
+pub mod drain;
 pub mod files;
 pub mod folders;
 pub mod loopback;

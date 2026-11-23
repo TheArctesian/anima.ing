@@ -1,4 +1,4 @@
-import type { ModelLists } from '$lib/agent-threads/live/models';
+import type { ModelLists, ProgramModel } from '$lib/agent-threads/live/models';
 import type { Effort, Mode } from '$lib/agent-threads/live/run';
 import { programName, type Program } from '$lib/agent-threads/thread';
 import { CAN, cannot } from '../composer/draft';
@@ -34,7 +34,8 @@ const PROGRAM_EFFORTS: Readonly<Record<Program, readonly Effort[]>> = {
 
 /** The runner's answer to `models`, as far as it came: the picker says why it shows only the default (TH104). */
 export type DraftModels =
-  | { readonly state: 'waiting' }
+  /** `since`: when the first unanswered ask went out, in milliseconds since the epoch. */
+  | { readonly state: 'waiting'; readonly since?: number }
   | { readonly state: 'failed'; readonly words: string }
   | { readonly state: 'listed'; readonly lists: ModelLists };
 
@@ -54,20 +55,27 @@ function modesOf(program: Program): readonly PermissionMode[] {
 
 /** Why a program has only its default: the picker shows it on a line of its own; `undefined` once each listed models. */
 function noticeOf(models: DraftModels): ModelsNotice | undefined {
-  if (models.state === 'waiting') return { words: 'Models load when the programs answer.', failed: false };
+  if (models.state === 'waiting') return { words: 'Models load when the programs answer.', failed: false, ...(models.since === undefined ? {} : { since: models.since }) };
   if (models.state === 'failed') return { words: `Models could not load: ${models.words}`, failed: true };
   const none = PROGRAMS.filter((program) => (models.lists[program] ?? []).length === 0).map(programName);
   return none.length === 0 ? undefined : { words: `${none.join(' and ')} listed no models.`, failed: false };
 }
 
-/** The models of each program: its default, named for the program, then the ones the runner listed (TH104). */
+/**
+ * The models of each program: its default, named for the program, then the ones the runner listed (TH104). Claude Code
+ * lists its own "default"; it is the same choice as ours, so its levels go to our row and it is not listed twice. A
+ * model listed twice is shown once: the list is keyed by model.
+ */
 function modelsOf(models: DraftModels): Catalogue['models'] {
   return PROGRAMS.flatMap((program) => {
     const blank = { provider: program, favourite: false, can: CAN, speeds: [], toggles: [], effortLabel: EFFORT_HEAD } as const;
     const listed = models.state === 'listed' ? (models.lists[program] ?? []) : [];
-    const own = { ...blank, id: DEFAULT, label: `${programName(program)} default`, efforts: PROGRAM_EFFORTS[program].map((effort) => level(effort)) };
-    const named = listed.map((model) => ({ ...blank, id: model.id, label: model.label, efforts: EFFORTS.filter((effort) => model.efforts.includes(effort)).map((effort) => level(effort, model.defaultEffort)) }));
-    return [own, ...named];
+    const levels = (model: ProgramModel): Catalogue['models'][number]['efforts'] => EFFORTS.filter((effort) => model.efforts.includes(effort)).map((effort) => level(effort, model.defaultEffort));
+    const theirs = listed.find((model) => model.id === DEFAULT);
+    const efforts = theirs === undefined || theirs.efforts.length === 0 ? PROGRAM_EFFORTS[program].map((effort) => level(effort)) : levels(theirs);
+    const own = { ...blank, id: DEFAULT, label: `${programName(program)} default`, efforts };
+    const named = [...new Map(listed.filter((model) => model.id !== DEFAULT).map((model) => [model.id, model])).values()];
+    return [own, ...named.map((model) => ({ ...blank, id: model.id, label: model.label, efforts: levels(model) }))];
   });
 }
 

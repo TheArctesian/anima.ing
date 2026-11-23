@@ -434,8 +434,10 @@ What is not known until the first run: if the Linux program starts on a computer
 The branch workflow [TestFlight](../../.github/workflows/testflight.yml) runs on a push to
 `dev` or `main`. Once the workflow is on `main`, GitHub enables manual dispatch and
 the scheduled check. The check runs every 20 minutes and dispatches any new `dev`
-revision that the merge train pushed with GitHub's workflow token. Each build gets a unique number from the workflow run sequence. The iOS release version still comes
-from the first-parent history of `main`.
+revision that the merge train pushed with GitHub's workflow token. Each build gets a
+unique number from the workflow run sequence. Public builds take their version from
+the first-parent history of `main`. Internal builds use the same number with a minimum
+version of 0.8.40, which sorts above the old manual build 0.8.39.
 The job uses GitHub's `xcode-27` image and checks for iOS SDK 27 or later before
 building. The generated project targets iOS 17, which meets Apple's minimum deployment
 target of iOS 15 for uploads from April 2027.
@@ -457,7 +459,10 @@ Keep automatic distribution off for Anima Internal. Xcode marks `dev` uploads as
 TestFlight Internal Only. The signed archive carries the export exemption recorded for
 build 900.0.4. Review that declaration before releasing changes that affect the app's
 encryption or its linked libraries. After processing, the workflow checks Apple's recorded
-build audience and testing status, then adds the build to Anima Internal. The `main` job
+build audience and testing status, then adds the build to Anima Internal. When it
+publishes the newest internal build, it keeps that build and one rollback in the group.
+Older internal iOS builds are removed from the group and can be added back in App Store
+Connect before they expire. The `main` job
 looks up the external group by the public invite URL used on the Anima website. It assigns the processed build, enables automatic tester notification and
 submits it for Beta App Review when Apple requires it. The operator supplies the app's beta review
 contact, sign-in instructions and export compliance answers in App Store Connect.
