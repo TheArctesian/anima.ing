@@ -1,5 +1,3 @@
-//! The name of an image as a place at a public registry (HOST-021).
-
 use crate::work::containers::updates::registry::{Named, Reference, Registry, named};
 
 const OLD: &str = "sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf";
@@ -53,7 +51,6 @@ fn host_021_a_name_the_hub_does_not_read_reaches_no_registry() {
         "localhost:5000/app",
         "lscr.io/linuxserver/sonarr",
         "10.0.0.5:5000/app:1",
-        // A host that only looks like one the hub reads.
         "ghcr.io.example.com/a/b",
     ] {
         assert_eq!(named(other), Named::OtherRegistry, "{other}");

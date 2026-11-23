@@ -1,12 +1,7 @@
-//! HTTP probe: one request, every address and redirect hop judged by the address policy.
-//!
-//! The probe never decompresses a body, stores a cookie or uses an environment proxy. It
-//! reads at most [`BODY_CAP`] bytes, and only when a keyword or JSON check needs them.
+//! HTTP probe: every address and redirect hop passes the address policy.
+//! It uses no environment proxy, cookie store or body decompression.
 //! Header values, the body and credentials never reach a message (LOG-007).
-//!
-//! The caller validates the configuration (`probe` does). With `verify_tls = true` an
-//! untrusted or expired certificate fails the request, so that result carries no
-//! `cert_not_after`; with `verify_tls = false` the expiry is reported (CHK-007).
+//! With `verify_tls = false` the certificate expiry is still reported (CHK-007).
 
 use std::{
     error::Error,
@@ -37,7 +32,6 @@ use crate::fleet::{
     targets::AddressPolicy,
 };
 
-/// The most body bytes read (1 MiB).
 pub const BODY_CAP: usize = 1024 * 1024;
 
 /// Resolves host names through the address policy; reqwest connects only to what it returns.
@@ -55,8 +49,7 @@ impl Resolve for PolicyResolver {
     }
 }
 
-/// Whether a URL may be requested: http or https, and an IP-literal host passes the policy.
-/// Host names are judged when the resolver resolves them.
+/// Host names are judged by the resolver, not here.
 fn url_permitted(url: &Url, policy: &AddressPolicy) -> bool {
     matches!(url.scheme(), "http" | "https")
         && url.host_str().is_some_and(|host| {
@@ -66,9 +59,8 @@ fn url_permitted(url: &Url, policy: &AddressPolicy) -> bool {
         })
 }
 
-/// Follows at most `max` redirects to permitted addresses. With secrets attached it refuses
-/// a hop from HTTPS to HTTP: reqwest drops the secret headers on a change of host or port,
-/// but not on a change of scheme alone (SEC-005).
+/// With secrets it refuses an HTTPS-to-HTTP hop: reqwest drops secret headers on a change of
+/// host or port, not of scheme alone (SEC-005).
 fn redirect_policy(max: u8, policy: Arc<AddressPolicy>, secrets: bool) -> Policy {
     if max == 0 {
         return Policy::none();
@@ -88,7 +80,6 @@ fn redirect_policy(max: u8, policy: Arc<AddressPolicy>, secrets: bool) -> Policy
     })
 }
 
-/// The failure a reqwest error carries: ours (from the resolver or redirect policy) first.
 fn classify(error: &reqwest::Error) -> Failure {
     let mut source: Option<&(dyn Error + 'static)> = Some(error);
     while let Some(cause) = source {
@@ -107,7 +98,6 @@ fn classify(error: &reqwest::Error) -> Failure {
     }
 }
 
-/// Whether the request carries a secret: authentication or a secret header.
 fn has_secrets(config: &HttpConfig) -> bool {
     config.auth != HttpAuth::None || config.headers.iter().any(|header| header.value.is_none())
 }
@@ -116,8 +106,6 @@ fn client(config: &HttpConfig, env: &ProbeEnv) -> Result<Client, Failure> {
     Client::builder()
         .use_rustls_tls()
         .user_agent("anima-hub")
-        // Never take a proxy from the environment: it would send the request to a host the
-        // address policy never judged. A child-process test sets the variable to prove it.
         .no_proxy()
         .redirect(redirect_policy(
             config.max_redirects,
@@ -193,7 +181,6 @@ fn request(
     })
 }
 
-/// Reads at most [`BODY_CAP`] bytes, stopping as soon as the cap is reached.
 async fn read_capped(response: &mut Response) -> Result<Vec<u8>, Failure> {
     let mut body = Vec::new();
     while body.len() < BODY_CAP {
@@ -223,7 +210,6 @@ fn check_json(body: &[u8], query: &str, expected: Option<&str>) -> Result<(), Fa
     }
 }
 
-/// Status, keyword and JSON checks on an answered request.
 async fn judge(response: &mut Response, config: &HttpConfig) -> Result<(), Failure> {
     let code = response.status().as_u16();
     if !config

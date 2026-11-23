@@ -1,8 +1,4 @@
-//! systemd service check: the command and the pure reading of its output (D-3, CHK-012).
-//!
-//! The hub runs `systemctl list-units --all --plain --no-legend --no-pager` through the SSH
-//! link and looks for the unit among the first words of the rows. Nothing of the output is
-//! kept: the result holds only fixed words (LOG-007).
+//! systemd service check (D-3, CHK-012); the result holds only fixed words, never output (LOG-007).
 
 use super::{
     outcome::{Failure, ProbeResult},
@@ -10,7 +6,7 @@ use super::{
 };
 use crate::fleet::ssh::{CommandOutput, FixedCommand};
 
-/// The command, from static text only: the unit name is never part of it.
+/// Static text only: the unit name is never part of the command.
 pub(in crate::fleet::checks) fn command() -> FixedCommand {
     FixedCommand::new("systemctl")
         .arg("list-units")
@@ -35,7 +31,6 @@ const SUFFIXES: [&str; 11] = [
     ".device",
 ];
 
-/// The unit name as `systemctl` lists it: a bare name gets `.service`.
 fn full_name(unit: &str) -> String {
     if SUFFIXES.iter().any(|suffix| unit.ends_with(suffix)) {
         unit.to_owned()
@@ -44,7 +39,6 @@ fn full_name(unit: &str) -> String {
     }
 }
 
-/// What the row's ACTIVE column says: Up only for `active`.
 fn judge(load: &str, active: &str) -> ProbeResult {
     if load == "not-found" {
         return ProbeResult::failed(&Failure::UnitNotFound);
@@ -62,8 +56,7 @@ fn judge(load: &str, active: &str) -> ProbeResult {
     ProbeResult::failed(&Failure::UnitState(class))
 }
 
-/// The first three columns of a row (UNIT, LOAD, ACTIVE), after the bullet that marks a unit
-/// in a bad state when the output is not plain.
+/// Skips the bullet that marks a unit in a bad state when the output is not plain.
 fn columns(row: &str) -> Option<(&str, &str, &str)> {
     let mut words = row
         .split_whitespace()
@@ -71,7 +64,6 @@ fn columns(row: &str) -> Option<(&str, &str, &str)> {
     Some((words.next()?, words.next()?, words.next()?))
 }
 
-/// The result for `unit`: its row, or not found.
 pub(in crate::fleet::checks) fn read(output: &CommandOutput, unit: &str) -> ProbeResult {
     let text = match readable(output) {
         Ok(text) => text,

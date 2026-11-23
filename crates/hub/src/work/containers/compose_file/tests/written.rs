@@ -1,5 +1,3 @@
-//! The writer: each text that it writes reads back as the same text, and as a text.
-
 use super::super::{
     writer::{Value, write},
     yaml::{Node, Shape},
@@ -50,7 +48,6 @@ const HARD: [&str; 40] = [
     "next\u{85}line \u{2028} \u{2029} \u{feff} \u{7f}",
 ];
 
-/// What the reader must give for `value`: a truth value and a number are plain scalars.
 fn read_back(value: &Value) -> Shape {
     let node = |shape| Node {
         place: super::super::Place { line: 0, column: 0 },
@@ -70,7 +67,6 @@ fn read_back(value: &Value) -> Shape {
     }
 }
 
-/// Whether two trees are the same but for the positions.
 fn same(read: &Node, expected: &Shape) -> bool {
     match (&read.shape, expected) {
         (Shape::List(read), Shape::List(expected)) => {
@@ -97,7 +93,6 @@ fn host_022_each_text_reads_back_as_the_same_text() {
     };
     let mut inner = Value::map();
     for (index, text) in HARD.iter().enumerate() {
-        // Each hard text also as a key, with the hard text as its value.
         inner.set(&format!("{text}{index}"), Value::text(text));
         inner.set(text, Value::text(text));
     }
@@ -118,7 +113,6 @@ fn host_022_each_text_reads_back_as_the_same_text() {
     let Shape::Map(mut expected) = read_back(&file) else {
         unreachable!()
     };
-    // An empty list and an empty map read back as they are.
     let scalars = &mut expected[3].1.shape;
     if let Shape::Map(entries) = scalars {
         entries[2].1.shape = Shape::List(Vec::new());
@@ -178,7 +172,6 @@ fn host_022_each_character_that_yaml_does_not_print_is_an_escape() {
         "{written}"
     );
     assert_eq!(super::text(&tree(&written), &["odd"]), text);
-    // A character that YAML prints stays as it is.
     let mut file = Value::map();
     file.set("kept", Value::text("é中😀"));
     assert!(write(&file).contains("é中😀"));

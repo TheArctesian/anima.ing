@@ -1,5 +1,4 @@
-//! The hub's own waits and SSH settings (K4 Sections 8.2 and 8.5): the values the K3
-//! `terminal_router` uses, which the wire tests shorten.
+//! K4 Sections 8.2 and 8.5: the hub's own waits and SSH settings, which the wire tests shorten.
 
 use std::time::Duration;
 

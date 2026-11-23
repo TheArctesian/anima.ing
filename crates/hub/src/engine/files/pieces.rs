@@ -1,5 +1,4 @@
-//! Where the sealed pieces are kept (FIL-001, R-145): one interface, so that the place can
-//! change later, and its one form now, a folder of the hub (`ANIMA_FILES_DIR`).
+//! Where the sealed pieces are kept (FIL-001, R-145).
 
 use std::{
     io,
@@ -19,10 +18,9 @@ use tokio::{
 use super::parts::SealedStream;
 use crate::engine::sealing_keys::is_name;
 
-/// Bytes read from a stored piece at a time.
 const READ_SIZE: usize = 64 * 1024;
 
-/// Why the store cannot do what was asked. Holds no byte of a piece and no path.
+/// Holds no byte of a piece and no path.
 #[derive(Debug, thiserror::Error)]
 pub enum StoreError {
     #[error("no piece has this key and hash")]
@@ -47,8 +45,7 @@ impl From<io::Error> for StoreError {
 /// hexadecimal; a piece is one file of one key.
 #[async_trait]
 pub trait Pieces: Send + Sync {
-    /// Stores the piece; a piece that exists is replaced by the same bytes. Returns the sealed
-    /// size.
+    /// A piece that exists is replaced by the same bytes. Returns the sealed size.
     async fn put(
         &self,
         key_name: &str,
@@ -56,7 +53,7 @@ pub trait Pieces: Send + Sync {
         sealed: SealedStream,
     ) -> Result<u64, StoreError>;
     async fn get(&self, key_name: &str, hash: &str) -> Result<SealedStream, StoreError>;
-    /// Removes the piece; a piece that does not exist is not an error.
+    /// A piece that does not exist is not an error.
     async fn remove(&self, key_name: &str, hash: &str) -> Result<(), StoreError>;
 }
 
@@ -90,7 +87,6 @@ impl FolderPieces {
     }
 }
 
-/// Makes `folder` and its parents for the hub user only.
 pub(super) async fn private_folder(folder: &Path) -> io::Result<()> {
     let folder = folder.to_path_buf();
     tokio::task::spawn_blocking(move || {
@@ -129,14 +125,12 @@ pub(super) async fn new_file(path: &Path) -> io::Result<File> {
     }
 }
 
-/// A name in `folder` that no other write uses.
 pub(super) fn temporary_name(folder: &Path, stem: &str) -> io::Result<PathBuf> {
     let mut marker = [0_u8; 12];
     getrandom::fill(&mut marker).map_err(io::Error::other)?;
     Ok(folder.join(format!(".{stem}.{}.tmp", super::hex(&marker))))
 }
 
-/// The bytes of `file` as a stream, in parts of [`READ_SIZE`].
 pub(super) fn file_stream(file: File) -> SealedStream {
     Box::pin(stream::try_unfold(file, |mut file| async move {
         let mut buffer = vec![0_u8; READ_SIZE];
@@ -149,8 +143,6 @@ pub(super) fn file_stream(file: File) -> SealedStream {
     }))
 }
 
-/// Writes `sealed` to the new file `path` and gives its size; the file is removed when a
-/// write fails.
 pub(super) async fn write_new(path: &Path, mut sealed: SealedStream) -> io::Result<u64> {
     let written = async {
         let mut file = new_file(path).await?;

@@ -1,7 +1,5 @@
-//! How the hub gets a token for a source and sends requests with it (SRC-002, PRJ-018, K-E1
-//! Sections 7 and 7b). Built: the token pull with an App key, with the reads that let the hub
-//! make that App for the operator (PRJ-039), and the key of an account whose server is of the
-//! operator (R-261).
+//! How the hub gets a token for a source and sends requests with it
+//! (SRC-002, PRJ-018, K-E1 Sections 7 and 7b).
 
 pub mod account_key;
 pub mod app_key;
@@ -25,14 +23,12 @@ use self::{
 /// Why no token was minted. Fixed words (LOG-007).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum MintFailure {
-    /// The source refused the key: 401, or another 4xx such as an installation that is gone.
     #[error("the source refused the key")]
     Refused,
     #[error("the source limits requests")]
     RateLimited(DateTime<Utc>),
     #[error("the source could not be reached")]
     Unreachable,
-    /// A 5xx, a reply too large, or a reply the provider could not read.
     #[error("the source's reply to the token request could not be used")]
     Unusable,
     #[error("the source does not take a token pull with an App key")]
@@ -41,7 +37,6 @@ pub enum MintFailure {
     Unsigned,
 }
 
-/// How the source of `declaration` makes an App for the operator; `None` when it cannot.
 pub(super) fn registration(declaration: &Declaration) -> Option<Registration> {
     // Acquisition and Minting are non_exhaustive: a later variant has no App to make.
     let Acquisition::TokenPull(Minting::AppKey(app)) = declaration.acquisition else {
@@ -50,17 +45,14 @@ pub(super) fn registration(declaration: &Declaration) -> Option<Registration> {
     app.registration
 }
 
-/// Mints an installation token for `key` at the source of `declaration`, at `now`.
-///
 /// # Errors
-/// [`MintFailure`] for each way it can fail.
+/// [`MintFailure`].
 pub async fn mint(
     transport: &Transport,
     declaration: &Declaration,
     key: &AppKey,
     (now, random): (DateTime<Utc>, &(dyn SecureRandom + Sync)),
 ) -> Result<Minted, MintFailure> {
-    // Acquisition and Minting are non_exhaustive: a later variant is not an App key.
     let Acquisition::TokenPull(Minting::AppKey(app)) = declaration.acquisition else {
         return Err(MintFailure::NotAppKey);
     };

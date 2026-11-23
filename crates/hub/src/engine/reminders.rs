@@ -1,10 +1,7 @@
-//! Reminders: the evaluation of a rule, as a pure function (K-E6 Sections 1 to 4; REM-001,
-//! REM-003, REM-004, REM-006). An extension gives occurrences and never changes this code
-//! (ENG-001). `notice` evaluates the rules that wait for occurrences in the transaction that
-//! stores them, `sweep` evaluates the time rules and the place rules, and `send_waiting` sends each
-//! firing through the outbox of `notifications` after the check at send time (REM-002, REM-005,
-//! REM-006, REM-010). A firing goes to the applications that have `Subscription.reminderFirings`
-//! open, and to a channel only when none is open (`Live`).
+//! Reminders: the evaluation of a rule, as a pure function (K-E6 Sections 1 to 4; REM-001 to
+//! REM-006, REM-010). An extension gives occurrences and never changes this code (ENG-001).
+//! A firing goes to the applications that have `Subscription.reminderFirings` open, and to a
+//! channel only when none is open (`Live`).
 
 mod codec;
 mod delivery;
@@ -43,7 +40,7 @@ pub use sending::{RULE_CHANGED, Sendable, claim_send, notice, waiting};
 pub use store::StoredRule;
 pub use sweep::{Reading, Swept, sweep};
 
-/// Why a reminders operation failed. The message holds no text of a rule or of a record.
+/// The message holds no text of a rule or of a record.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("database error")]
@@ -64,12 +61,10 @@ pub enum Error {
     Sources(#[from] crate::engine::sources::Error),
     #[error("the extension switches cannot be read")]
     Switches(#[from] crate::engine::extensions::Error),
-    /// Input to fix: each field and what to give.
     #[error("the reminder input is not valid")]
     Invalid(Vec<Fault>),
     #[error("no such {0}")]
     NotFound(&'static str),
-    /// A snooze or an acknowledge of a firing that was not sent, or that is decided.
     #[error("the firing was not sent or is decided")]
     NotSent,
 }

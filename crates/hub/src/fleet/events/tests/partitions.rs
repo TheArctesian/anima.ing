@@ -18,7 +18,6 @@ pub(super) async fn table_exists(conn: &mut PgConnection, name: &str) -> bool {
         .unwrap()
 }
 
-/// Counts `event_log` rows on a fresh connection that waits at most one second for a lock.
 async fn count_with_lock_timeout(pool: &PgPool) -> Result<i64, sqlx::Error> {
     let mut reader = pool.acquire().await.unwrap();
     sqlx::query("set lock_timeout = '1s'")
@@ -121,7 +120,6 @@ async fn db_004_ensure_partition_succeeds_after_a_racing_creator_commits(pool: P
             .map(|_| ())
     });
 
-    // Wait until the second call is blocked behind the first one's uncommitted partition.
     let mut observer = pool.acquire().await.unwrap();
     let mut waiting = false;
     for _ in 0..500 {
@@ -170,7 +168,7 @@ async fn db_004_concurrent_records_on_a_new_day_all_succeed(pool: PgPool) {
     }
 }
 
-/// Ends the transaction at once (rollback on error), so the other side is not left waiting.
+/// Ends the transaction at once, so the other side is not left waiting.
 async fn finish<T>(tx: Transaction<'_, Postgres>, outcome: Result<T, Error>) -> Option<String> {
     match outcome {
         Ok(_) => {
@@ -187,8 +185,6 @@ async fn finish<T>(tx: Transaction<'_, Postgres>, outcome: Result<T, Error>) -> 
     }
 }
 
-/// One transaction writes event then audit, the other audit then event, on the same day; the
-/// second statements run concurrently. Returns each side's SQLSTATE, or `None` on success.
 async fn write_in_opposite_orders(pool: &PgPool) -> [Option<String>; 2] {
     let (bus, at) = (Bus::new(4), day(2030, 3, 1));
     let mut first = pool.begin().await.unwrap();

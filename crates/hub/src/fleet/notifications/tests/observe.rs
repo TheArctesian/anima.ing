@@ -1,5 +1,4 @@
-//! `observe`, `adopt_defaults` and `for_checks` against a real database (D-16, NOT-001,
-//! NOT-003, NOT-005, API-005).
+//! `observe`, `adopt_defaults` and `for_checks` (D-16, NOT-001, NOT-003, NOT-005, API-005).
 
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;

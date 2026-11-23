@@ -1,7 +1,5 @@
-//! What a library mutation leaves behind: one audit entry and one event, written in the
-//! mutation's own transaction (LOG-004, LOG-005, LOG-007). The library has no id of its own
-//! in the audit log; the target is the setting `compute.library`, and the change names the
-//! model, the alias or the organisation.
+//! One audit entry and one event per library mutation, in its own transaction (LOG-004, LOG-005, LOG-007).
+//! The library has no id of its own, so the audit target is the setting `compute.library`.
 
 use serde_json::json;
 

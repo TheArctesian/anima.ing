@@ -1,6 +1,4 @@
-//! Each refusal (RA-031, VPN-006, D-4, SEC-006, SEC-007): before the relay is reached when the
-//! hub's records already refuse, and through the link's own refusals; each with one Error
-//! event and a fixed sentence.
+//! Each refusal has one Error event and a fixed sentence (RA-031, VPN-006, D-4, SEC-006, SEC-007).
 
 use sqlx::PgPool;
 

@@ -1,5 +1,4 @@
-//! The pure decisions: first-run spread, the domain expiry floor, lateness, missed pushes
-//! and event wording (CHK-001, CHK-002, CHK-010, DB-005, R-102).
+//! The pure scheduling decisions (CHK-001, CHK-002, CHK-010, DB-005, R-102).
 
 use std::{collections::HashSet, time::Duration};
 
@@ -54,8 +53,6 @@ fn tcp() -> CheckConfig {
     }
 }
 
-/// Whether a check due `ago` seconds before `now()` is late, with the scheduler started
-/// `started` seconds before.
 fn late(ago: i64, started: i64) -> bool {
     let check = due(tcp(), Some(now() - seconds(ago)));
     is_late(Timing::from(&check), now() - seconds(started), now())
@@ -100,8 +97,6 @@ fn domain() -> CheckConfig {
     }
 }
 
-/// A check of `config` due at `next_due_at`, with an hourly interval and its last beat
-/// `ago` seconds before `now()`.
 fn hourly(config: CheckConfig, next_due_at: Option<DateTime<Utc>>, ago: Option<i64>) -> Due {
     let mut check = due(config, next_due_at);
     check.settings.interval_seconds = 3600;
@@ -225,9 +220,7 @@ fn chk_002_a_missed_push_is_a_failed_attempt_that_waits_for_the_retries() {
     assert_eq!(missed.message.as_deref(), Some("no push received"));
 }
 
-/// How long after its last Up beat a device that stopped right after it is known to be
-/// Down, by `evaluate` alone: each attempt starts when the previous one asked, and the
-/// Down result is known when the last attempt's probe ends, `probe_time` after its start.
+/// Time from the last Up beat until `evaluate` knows Down, the last probe taking `probe_time`.
 fn known_down_after(settings: &CheckSettings, probe_time: TimeDelta) -> TimeDelta {
     let up = ProbeResult::up(Duration::from_millis(5));
     let (mut state, _) = evaluate(&CheckState::default(), &up, settings, now());
@@ -242,15 +235,12 @@ fn known_down_after(settings: &CheckSettings, probe_time: TimeDelta) -> TimeDelt
     panic!("never Down: {state:?}");
 }
 
-/// The default timeout of a check type, from its JSON form with only the required keys.
 fn default_timeout(json: serde_json::Value) -> TimeDelta {
     let config: CheckConfig = serde_json::from_value(json).unwrap();
     TimeDelta::from_std(config.timeout()).unwrap()
 }
 
-/// CHK-002 with the default settings (spec 6.4): a refused
-/// connect fails at once, so the device is Down exactly 2 intervals after its last Up
-/// beat; a device that drops packets adds one probe timeout to the last attempt.
+/// CHK-002 with the default settings (spec 6.4).
 #[test]
 fn chk_002_with_the_defaults_a_stopped_device_is_down_within_2_intervals_plus_a_timeout() {
     let defaults = CheckSettings::default();

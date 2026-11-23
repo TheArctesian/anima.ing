@@ -1,7 +1,5 @@
-//! What builders do to jobs, and the end of their leases: claim, report, report the upload
-//! (BLD-004 to BLD-010, BLD-048, BLD-063, D-2 to D-5, D-25). Each runs in its own transaction,
-//! which it always commits or rolls back, and sends the changed jobs to the live view after it
-//! commits.
+//! What builders do to jobs, and the end of their leases (BLD-004 to BLD-010, BLD-048, BLD-063,
+//! D-2 to D-5, D-25). Each runs in its own transaction and announces changed jobs after it commits.
 
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgPool, Postgres, Transaction};
@@ -17,8 +15,7 @@ use crate::{
     ids::BuildJobId,
 };
 
-/// The build queue's database and where its changes are announced: failed jobs to the event
-/// log's bus, every change to the Builds view (BLD-081, BLD-082).
+/// Failed jobs go to the event bus, every change to the Builds view (BLD-081, BLD-082).
 #[derive(Clone, Copy)]
 pub struct BuildQueue<'a> {
     pub db: &'a PgPool,
@@ -37,8 +34,7 @@ impl BuildQueue<'_> {
     }
 }
 
-/// A builder's report that the job's files are uploaded (BLD-063, D-5). No `Debug`: its feed is
-/// builder text (LOG-007).
+/// No `Debug`: its feed is builder text (LOG-007).
 #[derive(Clone)]
 pub struct Upload {
     pub job: BuildJobId,
@@ -62,10 +58,8 @@ impl From<Refusal> for Error {
     }
 }
 
-/// Commits `tx` when `outcome` is a value and rolls it back when it is an error, so no row lock
-/// outlives the call: a dropped transaction rolls back only later, from a task, and until then
-/// a claim or the publisher's take (`SKIP LOCKED`) passes its rows by. A rollback that fails is
-/// returned in place of `outcome`'s error.
+/// Ends `tx` at once: a dropped transaction rolls back only later, from a task, and until then
+/// a claim or the publisher's take (`SKIP LOCKED`) passes its rows by.
 pub(super) async fn ended<T>(
     tx: Transaction<'_, Postgres>,
     outcome: Result<T, Error>,
@@ -82,7 +76,7 @@ pub(super) async fn ended<T>(
     }
 }
 
-/// Writes the event of a job that failed (BLD-082). Its reason is redacted by `record`.
+/// The reason is redacted by `events::record` (BLD-082).
 pub(super) async fn record_failure(
     conn: &mut PgConnection,
     bus: &Bus,
@@ -103,8 +97,6 @@ pub(super) async fn record_failure(
     Ok(())
 }
 
-/// Returns each job whose lease ended to the queue, or fails it on the third time (BLD-006),
-/// in the caller's transaction. Returns the changed jobs.
 async fn expire_in(
     conn: &mut PgConnection,
     bus: &Bus,
@@ -122,11 +114,7 @@ async fn expire_in(
     Ok(changed)
 }
 
-/// Ends every lease that ran out by `now` (D-2); the upkeep job calls it every 30 seconds.
-/// Returns how many jobs changed.
-///
 /// # Errors
-///
 /// `Database` or `Events` when a change cannot be written; nothing is changed then.
 pub async fn expire_leases(
     build_queue: BuildQueue<'_>,
@@ -140,14 +128,10 @@ pub async fn expire_leases(
     Ok(count)
 }
 
-/// Gives `builder` the oldest queued job it can build, with a 90-second lease, after ending the
-/// leases that ran out (BLD-003 to BLD-005, D-2, D-3). `None` when no job waits, or when the
-/// builder still holds a lease: it runs one job at a time (BLD-029).
+/// `None` when no job waits or the builder still holds a lease: it runs one job at a time (BLD-029).
 ///
 /// # Errors
-///
-/// `Forbidden` when the builder is no longer enrolled; `Database` or `Events` when the claim
-/// cannot be written. Nothing is changed then.
+/// `Forbidden` when the builder is no longer enrolled; `Database` or `Events` when the claim fails.
 pub async fn claim(
     build_queue: BuildQueue<'_>,
     builder: &Builder,
@@ -161,15 +145,13 @@ pub async fn claim(
     Ok(claimed)
 }
 
-/// [`claim`] in the caller's transaction: the jobs whose leases ended, and the claimed job.
 async fn claim_in(
     conn: &mut PgConnection,
     bus: &Bus,
     builder: &Builder,
     now: DateTime<Utc>,
 ) -> Result<(Vec<BuildJob>, Option<BuildJob>), Error> {
-    // First: a second claim of the same builder waits here until this one commits, so it sees
-    // the lease this one takes (BLD-029).
+    // A second claim of the same builder waits here until this one commits, so it sees this lease (BLD-029).
     if !store::lock_builder(conn, builder.id).await? {
         return Err(Error::Forbidden(builders::NOT_ENROLLED));
     }
@@ -183,13 +165,11 @@ async fn claim_in(
     };
     let claimed = queue::claim(&job, builder, now);
     store::save(conn, &claimed).await?;
-    // A key block an earlier attempt left open must not hide this attempt's log.
+    // A key block an earlier attempt left open would hide this attempt's log.
     store::set_open_key_block(conn, claimed.id, None).await?;
     Ok((changed, Some(claimed)))
 }
 
-/// Adds the lines to the job's log after its last line, then trims the log to 2 MB (BLD-048).
-/// Returns them as stored.
 async fn append(
     conn: &mut PgConnection,
     job: &mut BuildJob,
@@ -210,14 +190,10 @@ async fn append(
     Ok(stored)
 }
 
-/// Records the holder's report: the state change it names, the lease extended to 90 seconds
-/// from `now`, and its log lines redacted (BLD-005, BLD-010, BLD-049).
+/// Extends the lease and redacts the log lines (BLD-005, BLD-010, BLD-049).
 ///
 /// # Errors
-///
-/// `NotFound` for no such job; `Forbidden` when `builder` does not hold its lease; `Conflict`
-/// for a lease that ended, a change the diagram does not permit or a job the hub publishes;
-/// `Validation` (`logLines`) for too many lines.
+/// `NotFound`, `Forbidden` for a non-holder, `Conflict`, or `Validation` for too many lines.
 pub async fn report(
     build_queue: BuildQueue<'_>,
     builder: &Builder,
@@ -234,7 +210,6 @@ pub async fn report(
     Ok(next)
 }
 
-/// [`report`] in the caller's transaction: the job as reported, and its new log lines.
 async fn report_in(
     conn: &mut PgConnection,
     bus: &Bus,
@@ -262,11 +237,10 @@ async fn report_in(
     Ok((next, stored))
 }
 
-/// The refusal of a builder call on a job whose files are in: the hub owns it now (D-25).
+/// Once its files are in, the hub owns the job (D-25).
 const PUBLISHING: &str = "The hub is publishing this job.";
 
-/// The `uploading` job `id`, locked, as its holder `builder` extends the lease at `now`; not yet
-/// saved. Refused once the hub publishes it.
+/// The returned job is not yet saved.
 pub(super) async fn extend_uploading(
     conn: &mut PgConnection,
     builder: &Builder,
@@ -294,20 +268,15 @@ pub(super) async fn extend_uploading(
     Ok(next)
 }
 
-/// Whether `reported` names exactly the files of the grant, each with its size and SHA-256.
 fn same_files(mut reported: Vec<UploadedFile>, granted: &[UploadedFile]) -> bool {
     reported.sort_by(|a, b| a.name.cmp(&b.name));
     reported == granted
 }
 
-/// Records the holder's proposed feed for an `uploading` job whose files are the grant of its
-/// upload URLs, ends the builder's lease and gives the job to the publisher (BLD-063, D-25,
-/// D-26). The job stays `uploading` until the publisher ends it.
+/// Hands the job to the publisher; it stays `uploading` until the publisher ends it (BLD-063, D-25, D-26).
 ///
 /// # Errors
-///
-/// As [`report`], and `Conflict` when the job is not `uploading` or the hub publishes it;
-/// `Validation` (`files`, `feed`) for a bad feed or files other than the grant.
+/// As [`report`]; `Validation` (`files`, `feed`) for a bad feed or files other than the grant.
 pub async fn report_uploaded(
     build_queue: BuildQueue<'_>,
     builder: &Builder,
@@ -326,8 +295,6 @@ pub async fn report_uploaded(
     Ok(next)
 }
 
-/// [`report_uploaded`] in the caller's transaction, with the files and feed already read: the
-/// job as handed to the publisher.
 async fn hand_over(
     conn: &mut PgConnection,
     builder: &Builder,

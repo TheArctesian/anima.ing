@@ -1,6 +1,5 @@
-//! How the enrol route answers when it cannot finish: past its deadline it is `UNAVAILABLE`
-//! and the code it marked used stays used (MET-012, K8 Section 3); without the
-//! permitted-networks layer it serves nothing (NET-002).
+//! The enrol route past its deadline (MET-012, K8 Section 3) and without the
+//! permitted-networks layer (NET-002).
 
 use std::{sync::Arc, time::Duration};
 
@@ -38,7 +37,6 @@ fn router(pool: &PgPool, now: DateTime<Utc>, answer_time: Duration) -> Router {
     daemon_router_within(pool.clone(), Bus::new(16), clock, deadlines)
 }
 
-/// Posts the code to `/daemon/v1/enrol`, from a permitted address when `addressed`.
 async fn enrol(router: &Router, code: &str, addressed: bool) -> (StatusCode, String) {
     let body = json!({ "code": code }).to_string();
     let mut request = Request::post("/daemon/v1/enrol")
@@ -55,7 +53,6 @@ async fn enrol(router: &Router, code: &str, addressed: bool) -> (StatusCode, Str
     (status, String::from_utf8(bytes.to_vec()).unwrap())
 }
 
-/// A stored code for pve-01, made at `now`; its text.
 async fn code_for_pve(pool: &PgPool, now: DateTime<Utc>) -> String {
     let code = EnrolmentCode::from_random([3; 16]);
     let text = code.expose().to_owned();
@@ -78,14 +75,7 @@ async fn daemons(pool: &PgPool) -> i64 {
 async fn met_012_a_code_stays_used_when_its_exchange_failed_after_the_mark(pool: PgPool) {
     let now = database_now(&pool).await;
     let code = code_for_pve(&pool, now).await;
-    // A slow writer holds the device row, so the exchange's second step waits for it, after
-    // the code was marked; the wait is seen in pg_stat_activity, not guessed.
-    //
-    // Residual risk: the 3 s deadline also covers the work before the wait (redeeming the code,
-    // reaching the lock). A machine stalled for 3 s before the exchange waits fails the
-    // assertion below instead of proving anything. Removing it is not cheap: the deadline is
-    // tokio's timer, and pausing tokio's clock would also fire it during the database round
-    // trips; a longer deadline only adds its length to every run.
+    // A slow writer holds the device row, so the exchange waits after the code was marked.
     let mut holder = pool.begin().await.unwrap();
     sqlx::query("SELECT 1 FROM devices.devices WHERE id = $1 FOR UPDATE")
         .bind(pve())
@@ -142,6 +132,5 @@ async fn net_002_a_route_without_the_permitted_networks_layer_serves_nothing(poo
     let (status, body) = enrol(&router, &code, false).await;
     assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
     assert_eq!(body, r#"{"error":"UNAVAILABLE"}"#);
-    // The code was not touched, so it still works behind the layer.
     assert_eq!(enrol(&router, &code, true).await.0, StatusCode::OK);
 }

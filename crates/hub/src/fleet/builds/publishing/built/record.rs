@@ -1,7 +1,5 @@
-//! `anima-hub release record <target> <version> <folder>`: the signed release record of the
-//! program files in a folder (ROL-003 to ROL-005; task U2). The job of the release workflow that
-//! holds the updater key runs it (R-173). It writes `release-record.json` and its `.sig` beside
-//! the files, and checks them with the public key before it ends (ROL-010).
+//! `anima-hub release record`: the signed release record of a folder (ROL-003 to ROL-005, ROL-010).
+//! Only the release job that holds the updater key runs it (R-173).
 
 use std::{collections::BTreeMap, path::Path};
 
@@ -15,7 +13,7 @@ const COMMIT: &str = "ANIMA_RELEASE_COMMIT";
 /// The lowest version that the release can replace (ROL-041).
 const REPLACES_FROM: &str = "ANIMA_RELEASE_REPLACES_FROM";
 
-/// Why no record was written. Names a file or a rule, never a key.
+/// Names a file or a rule, never a key.
 #[derive(Debug, thiserror::Error)]
 pub enum RecordError {
     #[error("{0} in the folder is not the file of a program of Anima")]
@@ -28,7 +26,7 @@ pub enum RecordError {
     Refused(#[from] release_record::SignError),
 }
 
-/// The target of the record; `None` for a target with no daemon release (OD-ROL-8).
+/// `None` for a target with no daemon release (OD-ROL-8).
 const fn target_of(target: Target) -> Option<release_record::Target> {
     match target {
         Target::LinuxX86_64 => Some(release_record::Target::LinuxX8664),
@@ -37,12 +35,10 @@ const fn target_of(target: Target) -> Option<release_record::Target> {
     }
 }
 
-/// The text of a version in the form of the record.
 fn version_of(text: &str, name: &'static str) -> Result<release_record::Version, ReleaseError> {
     text.parse().map_err(|_| ReleaseError::Setting(name))
 }
 
-/// Writes the signed record of the program files in `folder`.
 pub(super) fn record(
     env: &BTreeMap<String, String>,
     target: Target,

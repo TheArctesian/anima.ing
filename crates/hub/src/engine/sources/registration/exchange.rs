@@ -1,14 +1,11 @@
 //! The return from "Create GitHub App": the code becomes the App's facts and key (K-E1
 //! Section 7a, PRJ-039).
 //!
-//! The bound browser's cookie and the state S1 are checked, and S1 is spent, before the code is
-//! converted, so a replay converts nothing. The key moves at once into the attempt; GitHub's
-//! two other secrets are never read. "App created" is audited as soon as GitHub made an App, so
-//! the operator can still delete it after a cancel or a restart.
-//!
-//! The conversion, the audit entry and the step to `APP_CREATED` run in a task of their own, so
-//! a browser that leaves does not stop them; a [`Settle`] fails the attempt if that task is
-//! dropped or panics before the App is kept.
+//! The cookie and S1 are checked, and S1 is spent, before the code is converted, so a replay
+//! converts nothing. The key moves at once into the attempt; GitHub's two other secrets are
+//! never read. "App created" is audited as soon as GitHub made an App, so the operator can still
+//! delete it after a cancel or a restart.
+//! The exchange runs in a task of its own, so a browser that leaves does not stop it.
 
 use source_exchange::{Converted, Declaration};
 use uuid::Uuid;
@@ -32,19 +29,14 @@ use crate::{
     fleet::events::Trail,
 };
 
-/// Where the browser goes after `/created`.
 pub enum Created {
-    /// To GitHub's install page with the state S2; the URL holds S2.
     Install(Zeroizing<String>),
-    /// The App is made and the request did not bring the spent S1: the waiting page, no change.
+    /// The App is made and the request did not bring the spent S1: no change.
     Waiting,
-    /// Refused; the attempt is as it was.
     Refused(Refusal),
-    /// The App could not be made or used; the attempt failed.
     Failed,
 }
 
-/// The browser with `cookie` came back with `code` and `state`.
 pub async fn created(
     scheduling: &Scheduling,
     attempts: &Attempts,
@@ -81,14 +73,12 @@ pub async fn created(
     }
 }
 
-/// The exchange for attempt `id`, in its own task: convert, audit, keep the App.
 async fn exchanged(
     scheduling: Scheduling,
     attempts: Attempts,
     (id, by): (Uuid, Starter),
     (code, s2): (Zeroizing<String>, Minted),
 ) -> Created {
-    // Does nothing once the exchange has ended; fails it if this task is lost before then.
     let _settle = Settle::new(
         attempts.clone(),
         id,
@@ -99,7 +89,6 @@ async fn exchanged(
     made(&scheduling, &attempts, (id, by), (converted, &s2)).await
 }
 
-/// The App and its key from GitHub's reply, or the failure.
 async fn converted(scheduling: &Scheduling, code: &str) -> Result<Converted, Failure> {
     let declaration: Declaration = *scheduling
         .registry
@@ -126,8 +115,6 @@ async fn converted(scheduling: &Scheduling, code: &str) -> Result<Converted, Fai
     })
 }
 
-/// Keeps the App made for attempt `id` and sends the browser to Install with `s2`; or fails
-/// the attempt.
 async fn made(
     scheduling: &Scheduling,
     attempts: &Attempts,
@@ -177,8 +164,6 @@ fn failed(
     Created::Failed
 }
 
-/// GitHub's install page for the App `slug`, with the state `s2`; `None` when the hub cannot
-/// make Apps on GitHub.
 fn location(scheduling: &Scheduling, slug: &str, s2: &Minted) -> Option<Zeroizing<String>> {
     let registration = super::github(&scheduling.registry)?;
     Some(Zeroizing::new(format!(
@@ -189,8 +174,7 @@ fn location(scheduling: &Scheduling, slug: &str, s2: &Minted) -> Option<Zeroizin
     )))
 }
 
-/// Writes "App created" for the operator who started the attempt. A failed write is logged
-/// with fixed words and the flow goes on: the attempt still shows the App.
+/// A failed write does not stop the flow: the attempt still shows the App.
 async fn audit(scheduling: &Scheduling, by: Starter, app: &App) {
     let now = scheduling.clock.now();
     let trail = Trail::new(&scheduling.bus, (by.operator, by.client), now);

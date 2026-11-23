@@ -1,5 +1,4 @@
-//! Running commands on a link (D-3, CHK-012, MET-002): one channel and one `exec` with the
-//! exact line per run, standard error unread, the exit status, the output cap and the limit.
+//! D-3, CHK-012, MET-002.
 
 use std::time::Duration;
 
@@ -11,7 +10,6 @@ use super::{
 };
 use crate::fleet::ssh::link::{Error, FixedCommand, OUTPUT_CAP};
 
-/// What the server hears for a sign-in and one command with `line`.
 fn one_command(line: &str) -> Vec<Heard> {
     vec![
         Heard::Auth("password"),
@@ -20,7 +18,6 @@ fn one_command(line: &str) -> Vec<Heard> {
     ]
 }
 
-/// An answer that writes `stdout`, `stderr` and exits with `status`.
 fn exit(stdout: &[u8], stderr: &[u8], status: u32) -> Answer {
     Answer::Exit {
         stdout: stdout.to_vec(),

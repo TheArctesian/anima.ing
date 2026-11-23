@@ -10,10 +10,7 @@ use super::{
 };
 use crate::ids::CheckId;
 
-/// One suggestion for each HTTP check of a device that is not dismissed, whose address is
-/// not already an interface of the device (compared as parsed URLs), and whose address the
-/// URL rule accepts; an address with a user name would show it (LOG-007). The label is
-/// the host.
+/// Addresses compare as parsed URLs; one the URL rule refuses is left out, as a user name in it would show (LOG-007).
 pub(super) fn filter(
     http_checks: &[(CheckId, String)],
     interfaces: &[WebInterface],
@@ -38,7 +35,6 @@ pub(super) fn filter(
         .collect()
 }
 
-/// Whether two addresses are the same URL once parsed.
 pub(super) fn same_url(a: &str, b: &str) -> bool {
     matches!((Url::parse(a), Url::parse(b)), (Ok(a), Ok(b)) if a == b)
 }

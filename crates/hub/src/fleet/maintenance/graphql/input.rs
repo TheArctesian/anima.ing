@@ -1,5 +1,4 @@
 //! The inputs of the window mutations (K1 `MaintenanceWindowInput`, `WindowTargetInput`).
-//! Each converts to the form types the pure rules check.
 
 use async_graphql::{ID, InputObject};
 use chrono::{DateTime, Utc};

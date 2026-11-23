@@ -12,7 +12,6 @@ fn kept(change: &Value) {
     assert_eq!(&redact(change.clone()), change);
 }
 
-/// Asserts that the value of every listed key is redacted.
 fn hidden(keys: &[&str]) {
     let change: serde_json::Map<String, Value> = keys
         .iter()

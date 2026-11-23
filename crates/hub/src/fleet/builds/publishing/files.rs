@@ -1,7 +1,5 @@
-//! The files of one job as the hub checks them (BLD-061, BLD-063, BLD-064, UPD-010): which names
-//! a job may upload and as which content type, which must be there, which one gets the stable
-//! name, the bytes read back from the bucket, and the content of `SHA256SUMS`. Pure: the bytes
-//! come in chunks from the caller.
+//! The files of one job as the hub checks them (BLD-061, BLD-063, BLD-064, UPD-010). Pure: the
+//! bytes come in chunks from the caller.
 
 use sha2::{Digest as _, Sha256};
 
@@ -11,9 +9,7 @@ use crate::fleet::builds::{
     version::Version,
 };
 
-/// The `Content-Type` of `name` when it is a file a job of `target` and `version` uploads: the
-/// updater file, the DMG on macOS, or `SHA256SUMS`; `None` for any other name (BLD-061, BLD-063).
-/// The upload URL signs it, so a builder cannot publish a page or a script.
+/// The upload URL signs this type, so a builder cannot publish a page or a script (BLD-061, BLD-063).
 pub(super) fn content_type(target: Target, version: Version, name: &str) -> Option<&'static str> {
     match target {
         _ if name == SUMS => Some("text/plain; charset=utf-8"),
@@ -31,7 +27,7 @@ pub(super) fn content_type(target: Target, version: Version, name: &str) -> Opti
 /// The largest `SHA256SUMS` the hub reads: one line of at most 196 bytes per file.
 const MAX_SUMS_BYTES: i64 = 4096;
 
-/// The stable name for people of `target`'s file that ends with the returned suffix (UPD-010).
+/// The stable name for people of `target`'s file (UPD-010).
 const fn stable(target: Target) -> (&'static str, &'static str) {
     match target {
         Target::LinuxX86_64 => (".AppImage", "Anima-x86_64.AppImage"),
@@ -40,8 +36,7 @@ const fn stable(target: Target) -> (&'static str, &'static str) {
     }
 }
 
-/// The copy the hub makes for people: the job's one file with the target's ending, and its
-/// stable name (BLD-066). Refused unless `SHA256SUMS` is there too, small enough to read.
+/// The copy the hub makes for people under the stable name (BLD-066).
 pub(super) fn stable_copy(
     target: Target,
     files: &[UploadedFile],
@@ -63,8 +58,7 @@ pub(super) fn stable_copy(
     }
 }
 
-/// Checks `SHA256SUMS`: one `<sha256>  <name>` line for each other file of the job, with the
-/// digest the builder reported, and nothing else (UPD-010).
+/// One `<sha256>  <name>` line for each other file of the job, and nothing else (UPD-010).
 pub(super) fn check_sums(bytes: &[u8], files: &[UploadedFile]) -> Result<(), String> {
     let refused = || format!("{SUMS} does not list each file of the job with its SHA-256.");
     let text = std::str::from_utf8(bytes).map_err(|_| refused())?;
@@ -83,8 +77,7 @@ pub(super) fn check_sums(bytes: &[u8], files: &[UploadedFile]) -> Result<(), Str
     (listed == wanted).then_some(()).ok_or_else(refused)
 }
 
-/// One file as it comes back from the public address, checked as it streams: never more bytes
-/// than reported, then the reported SHA-256 (BLD-064). Keeps the bytes only of `SHA256SUMS`.
+/// One file checked as it streams back from the public address (BLD-064).
 pub(super) struct Received<'a> {
     file: &'a UploadedFile,
     read: i64,
@@ -102,7 +95,6 @@ impl<'a> Received<'a> {
         }
     }
 
-    /// Takes the next chunk; refused once the file is longer than reported.
     pub(super) fn push(&mut self, chunk: &[u8]) -> Result<(), String> {
         let length = i64::try_from(chunk.len()).unwrap_or(i64::MAX);
         self.read = self.read.saturating_add(length);
@@ -123,7 +115,6 @@ impl<'a> Received<'a> {
         )
     }
 
-    /// The kept bytes once the file had exactly the reported size and SHA-256.
     pub(super) fn finish(self) -> Result<Vec<u8>, String> {
         if self.read != self.file.size {
             return Err(self.wrong_size());

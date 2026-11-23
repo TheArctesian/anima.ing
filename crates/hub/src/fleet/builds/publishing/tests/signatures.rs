@@ -1,7 +1,4 @@
-//! The hub's updater key and its signature (R-117, BLD-045, BLD-046, UPD-002): the key opens
-//! only with its password and only as the key of `ANIMA_UPDATER_PUBLIC_KEY`, its signature is
-//! accepted by the reference minisign for the version, and no key text reaches an error. Every
-//! key is made here; no real key file is read.
+//! The hub's updater key and its signature (R-117, BLD-045, BLD-046, UPD-002).
 
 use std::io::Cursor;
 
@@ -196,8 +193,6 @@ fn log_007_the_key_has_no_debug_and_no_error_carries_key_text() {
     }
 }
 
-/// R-108, R-117: `ANIMA_UPDATER_PUBLIC_KEY` must be the app's `plugins.updater.pubkey`, so the
-/// app's value must be a key the hub reads: the operator's, never the old placeholder.
 #[test]
 fn r_108_the_app_updater_key_is_one_the_hub_reads() {
     let config: serde_json::Value = serde_json::from_str(include_str!(
@@ -211,8 +206,6 @@ fn r_108_the_app_updater_key_is_one_the_hub_reads() {
     );
 }
 
-/// R-117, T6 review: the trusted comment's time is the job's upload time in Unix seconds; a time
-/// before 1970 is refused, never signed as 1970.
 #[test]
 fn r_117_a_job_time_before_1970_is_refused_not_signed_as_1970() {
     let at = DateTime::from_timestamp(1_888_000_000, 0).unwrap();

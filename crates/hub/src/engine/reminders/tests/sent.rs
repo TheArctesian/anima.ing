@@ -1,6 +1,3 @@
-//! The sender against the database: the check at send time, the words for a lock screen and
-//! the outbox of the notifications (REM-005, REM-008, REM-009, REM-010).
-
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -22,8 +19,7 @@ fn sending(pool: &PgPool) -> Sending {
     }
 }
 
-/// A webhook channel that is on by default. Its settings are not read before the dispatcher
-/// sends, so the row is enough for the outbox.
+/// Settings are not read before the dispatcher sends, so the row is enough for the outbox.
 async fn default_channel(pool: &PgPool) {
     sqlx::query(
         "insert into notifications.channels (id, name, kind, on_by_default, settings) \
@@ -71,7 +67,6 @@ fn rem_009_the_words_for_a_lock_screen_hold_no_private_value() {
 async fn rem_010_a_firing_is_queued_one_time_with_the_words_of_its_class(pool: PgPool) {
     default_channel(&pool).await;
     add(&pool, rule(workout())).await;
-    // The record of `record` is Class B: its title must not leave the hub.
     noticed(
         &pool,
         &[record("strava", "workout", "1", "Morning run")],
@@ -199,7 +194,6 @@ async fn rem_008_an_open_application_gets_the_firing_and_no_channel_is_queued(po
         .unwrap();
     assert_eq!(events, ["A reminder was sent."]);
 
-    // The application closed: the next firing goes to the channel.
     drop(application);
     assert_eq!(sending.live.open(), 0);
     noticed(

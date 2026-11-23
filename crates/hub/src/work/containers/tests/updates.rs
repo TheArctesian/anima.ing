@@ -1,6 +1,3 @@
-//! A newer image for a container (HOST-021): the read of a registry against a local
-//! stand-in, and the comparison for each container of a device.
-
 use sqlx::PgPool;
 
 use super::{
@@ -12,7 +9,6 @@ use crate::{
     work::containers::{Error, ImageUpdate, NotKnown, UpdateState, image_updates_through, updates},
 };
 
-/// What the device writes: seven containers and the digests of four tags.
 fn listed() -> String {
     let container = |id: &str, name: &str, image: &str| {
         format!(
@@ -99,8 +95,6 @@ async fn host_021_each_container_has_the_answer_for_the_tag_it_names() {
         (&read[3].local_digest, &read[3].registry_digest),
         (&None, &None)
     );
-    // Only the tags a container names and the device has a digest for are asked for, and
-    // no request names the registry the hub does not read.
     let lines = registry.lines().join("\n");
     assert_eq!(lines.matches("HEAD ").count(), 3, "{lines}");
     assert!(
@@ -125,8 +119,7 @@ async fn host_021_a_registry_that_is_not_read_is_no_error_and_one_tag_is_asked_f
 #[tokio::test]
 async fn host_021_a_tag_with_two_digests_is_up_to_date_when_the_registry_gives_one_of_them() {
     let registry = known().await;
-    // Docker writes one line for each digest it keeps for a tag. The registry gives OLD for
-    // `alpine:3` and NEW for `freikin/dawarich`; each is the second digest of its tag here.
+    // Docker writes one line for each digest it keeps for a tag.
     let more = concat!(
         r#"{"kind":"image","repository":"alpine","tag":"3","digest":"NEW"}"#,
         "\n",

@@ -1,6 +1,5 @@
-//! The pins and the exclusions of the operator, and the reason of a placement (ROU-004,
-//! ROU-006; R-259): a job or a project can name one machine, and then no different machine
-//! ever gets the work; an excluded machine gets only work that names it.
+//! Pins, exclusions and the reason of a placement (ROU-004, ROU-006; R-259): work that names
+//! one machine goes to no other, and an excluded machine gets only work that names it.
 
 use chrono::{DateTime, Utc};
 use serde_json::json;
@@ -9,8 +8,7 @@ use sqlx::PgConnection;
 use super::{Asker, Error, Queue, ended, model::Job, placement, reasons, store, trail};
 use crate::ids::{DeviceId, JobId, ProjectId};
 
-/// Refuses a new job whose named or pinned machine can never run it, with the reason. A
-/// machine that only has too little free memory or disk now is not refused: the job waits.
+/// A machine that only has too little free memory or disk now is not refused: the job waits.
 pub(super) async fn named_can_run(
     conn: &mut PgConnection,
     job: &Job,
@@ -29,8 +27,7 @@ pub(super) async fn named_can_run(
     }
 }
 
-/// Pins `device` for each job of the project that names no machine. Returns false when there
-/// is no such device.
+/// False when there is no such device.
 ///
 /// # Errors
 /// `Database` or `Events` when the change cannot be written; nothing is changed then.
@@ -53,7 +50,7 @@ pub async fn pin_project(
     ended(tx, outcome).await
 }
 
-/// Removes the pin of the project. Returns false when the project had none.
+/// False when the project had no pin.
 ///
 /// # Errors
 /// `Database` or `Events` when the change cannot be written; nothing is changed then.
@@ -76,8 +73,7 @@ pub async fn unpin_project(
     ended(tx, outcome).await
 }
 
-/// Excludes the machine from work that names no machine, or takes the exclusion away. Returns
-/// false for a machine that never asked this hub for work.
+/// False for a machine that never asked this hub for work.
 ///
 /// # Errors
 /// `Database` or `Events` when the change cannot be written; nothing is changed then.
@@ -100,8 +96,7 @@ pub async fn exclude(
     ended(tx, outcome).await
 }
 
-/// The reason of the placement of the job as one line, from the last decision of each machine
-/// that asked; `None` when there is no such job. The line is data (MCP-008).
+/// The line is data (MCP-008).
 ///
 /// # Errors
 /// `Database` when it cannot be read.

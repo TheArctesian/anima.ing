@@ -15,7 +15,6 @@ use uuid::Uuid;
 use super::{ChannelFields, ChannelKind, store as sql};
 use crate::ids::{ChannelId, CheckId};
 
-/// A fixture check (K6): the first one on the first fixture device.
 const PING: &str = "0190a000-0000-7000-8003-000000000001";
 const SSH_PORT: &str = "0190a000-0000-7000-8003-000000000002";
 
@@ -35,7 +34,6 @@ fn fields(name: &str) -> ChannelFields {
     }
 }
 
-/// Stores a channel named `name` and returns its id.
 async fn channel(pool: &PgPool, name: &str) -> ChannelId {
     let id = ChannelId::from(Uuid::now_v7());
     let mut conn = pool.acquire().await.unwrap();
@@ -52,7 +50,6 @@ async fn now(pool: &PgPool) -> DateTime<Utc> {
         .unwrap()
 }
 
-/// A pool whose every connection runs as `anima_runtime`.
 async fn runtime_pool(pool: &PgPool) -> PgPool {
     PgPoolOptions::new()
         .max_connections(4)
@@ -67,7 +64,6 @@ async fn runtime_pool(pool: &PgPool) -> PgPool {
         .unwrap()
 }
 
-/// The SQLSTATE of the error `sql` fails with, if it fails.
 async fn refusal(pool: &PgPool, sql: &str) -> Option<String> {
     let error = sqlx::query(sql).execute(pool).await.err()?;
     error

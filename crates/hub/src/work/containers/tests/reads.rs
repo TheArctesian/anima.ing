@@ -1,5 +1,4 @@
-//! The two reads against the test SSH server: what the device hears, and what the hub gives
-//! back (HOST-001, CHK-012).
+//! The two reads against the test SSH server (HOST-001, CHK-012).
 
 use sqlx::PgPool;
 

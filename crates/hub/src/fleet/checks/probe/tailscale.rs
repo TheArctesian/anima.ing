@@ -1,10 +1,7 @@
-//! Tailscale ping: a disco ping the hub asks the `LocalAPI` proxy to send (D-4, CHK-009).
-//!
-//! The proxy is operator infrastructure: it sits on the deny list on purpose, so its address
-//! is never judged by the [`AddressPolicy`](crate::fleet::targets::AddressPolicy). The ping target is
-//! judged: only an address of 100.64.0.0/10 that the policy permits is sent, because the proxy
-//! accepts nothing else. The proxy's reply is never logged or stored; the result holds only
-//! fixed words and the latency (LOG-007, WP-23 H-5).
+//! Tailscale ping through the `LocalAPI` proxy (D-4, CHK-009). The proxy is operator
+//! infrastructure on the deny list, so its address is never judged by the `AddressPolicy`; the
+//! target must be a permitted 100.64.0.0/10 address. The proxy's reply is never logged or
+//! stored (LOG-007, WP-23 H-5).
 
 use std::{
     net::{IpAddr, Ipv4Addr},
@@ -21,26 +18,21 @@ use super::{
 };
 use crate::fleet::checks::config::IpVersion;
 
-/// The most reply bytes read (64 KiB); a `PingResult` is far smaller.
 pub(super) const REPLY_CAP: usize = 64 * 1024;
 
-/// The part of the proxy's `PingResult` the check reads.
 #[derive(Deserialize)]
 struct PingReply {
-    /// Empty when the peer answered; the text is never kept.
     #[serde(rename = "Err", default)]
     error: Option<String>,
     #[serde(rename = "LatencySeconds", default)]
     latency_seconds: Option<f64>,
 }
 
-/// Whether the address is in 100.64.0.0/10, the range Tailscale assigns.
 fn in_tailnet(ip: Ipv4Addr) -> bool {
     let [first, second, ..] = ip.octets();
     first == 100 && second & 0b1100_0000 == 0b0100_0000
 }
 
-/// The one address to ping: resolved once, IPv4, inside the tailnet range, permitted.
 async fn tailnet_address(host: &str, env: &ProbeEnv) -> Result<Ipv4Addr, Failure> {
     let found = match allowed_addresses(host, Some(IpVersion::V4), env).await {
         Ok(found) => found,
@@ -58,7 +50,6 @@ async fn tailnet_address(host: &str, env: &ProbeEnv) -> Result<Ipv4Addr, Failure
         .ok_or(Failure::NoTailnetAddress)
 }
 
-/// Reads at most [`REPLY_CAP`] bytes; one more byte than that is a failure.
 async fn read_capped(response: &mut Response) -> Result<Vec<u8>, Failure> {
     let mut body = Vec::new();
     while let Some(chunk) = response.chunk().await.map_err(|_| Failure::Request)? {
@@ -70,7 +61,6 @@ async fn read_capped(response: &mut Response) -> Result<Vec<u8>, Failure> {
     Ok(body)
 }
 
-/// The latency of an answered ping, or the fixed reason the reply is not one.
 fn read_reply(body: &[u8]) -> Result<Duration, Failure> {
     let reply: PingReply =
         serde_json::from_slice(body).map_err(|_| Failure::ProxyReplyUnreadable)?;
@@ -106,8 +96,7 @@ async fn ask(localapi: &str, ip: Ipv4Addr) -> Result<Duration, Failure> {
     }
 }
 
-/// One attempt. `target` is the configured target, else `host` of the device. The caller
-/// cuts the attempt off at the check's time limit.
+/// The caller cuts the attempt off at the check's time limit.
 pub(super) async fn probe(
     target: Option<&str>,
     host: &str,

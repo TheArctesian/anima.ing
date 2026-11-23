@@ -1,6 +1,4 @@
-//! The whole probe against a local bootstrap file and RDAP service (D-29, P3-003): the
-//! bootstrap read once a day by the clock given, the expiry read and judged, and the fixed
-//! results of a registry that cannot be reached or read.
+//! D-29, P3-003.
 
 use std::time::Duration;
 
@@ -18,7 +16,6 @@ use crate::fleet::{
     targets::AddressPolicy,
 };
 
-/// What the RDAP service answers for a domain name.
 type RdapAnswer = fn(&str) -> Vec<u8>;
 
 const NOT_AFTER: &str = "2026-11-20T12:00:00Z";
@@ -72,7 +69,6 @@ async fn d_29_the_bootstrap_file_is_read_once_a_day_by_the_clock_given() {
     observe(&rdap, "a.test", now() + TimeDelta::hours(24)).await;
     assert_eq!(server.requests_for("/dns.json"), 2);
 
-    // A clock moved back by a day spends the file too.
     observe(&rdap, "a.test", now()).await;
     assert_eq!(server.requests_for("/dns.json"), 3);
     assert_eq!(server.requests_for("/rdap/domain/a.test"), 4);

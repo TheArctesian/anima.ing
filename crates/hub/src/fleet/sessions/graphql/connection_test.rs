@@ -1,9 +1,4 @@
-//! `testConnection`'s input and result as K1 describes them (`ConnectionTestInput`,
-//! `ConnectionTestResult`; DEV-013, SEC-007, LOG-007).
-//!
-//! async-graphql's derived parse error quotes the whole value it could not parse, credential
-//! included (WP-06 H-4). So [`ConnectionTestInput`] parses through a derived shape and drops
-//! that error unread, replacing it with a fixed one that quotes nothing.
+//! `testConnection`'s input and result (K1; DEV-013, SEC-007, LOG-007).
 
 use std::borrow::Cow;
 
@@ -70,7 +65,7 @@ impl InputType for ConnectionTestInput {
     }
 
     fn parse(value: Option<Value>) -> InputValueResult<Self> {
-        // The derived error is dropped unread: its message quotes the input.
+        // The derived error quotes the input, credential included, so it is dropped (WP-06 H-4).
         ConnectionTestShape::parse(value)
             .map(Self)
             .map_err(|_| unreadable())
@@ -112,8 +107,7 @@ impl ConnectionTestInput {
             password,
         } = self.0;
         let protocol = protocol.unwrap_or(Protocol::Ssh);
-        // `password` is never read and drops here, zeroed: no credential leaves the hub in an
-        // RDP or VNC test.
+        // `password` is never read: no credential leaves the hub in an RDP or VNC test.
         let stray = [
             ("ssh", ssh.is_some(), protocol == Protocol::Ssh),
             (

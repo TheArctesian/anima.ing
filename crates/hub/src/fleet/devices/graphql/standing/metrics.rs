@@ -1,6 +1,4 @@
-//! Batched reads that join the metrics domain into `Device` (API-005, MET-004, MET-006,
-//! MET-018, MET-032, R-122, R-364): one call to the metrics face per batch. `readings` is judged at the schema clock, read once
-//! per batch.
+//! Batched metrics reads for `Device` (API-005, MET-004, MET-006, MET-018, MET-032, R-122, R-364).
 
 use std::{collections::HashMap, sync::Arc};
 

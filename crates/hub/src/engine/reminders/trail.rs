@@ -1,6 +1,5 @@
-//! The audit entries and events of a change of a rule (LOG-004, LOG-005, LOG-007). Pure. An
-//! entry holds the name of the rule, the type of its trigger and its limits: never its message
-//! and never a title or a value of a record.
+//! An entry holds the rule's name, trigger type and limits, never its message or a record's
+//! title or value (LOG-004, LOG-005, LOG-007).
 
 use serde_json::{Value, json};
 

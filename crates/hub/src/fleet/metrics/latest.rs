@@ -8,20 +8,16 @@ use daemon_core::readings::Drive;
 use super::{Gpu, MetricKind, Readings};
 use crate::ids::DeviceId;
 
-/// The newest sample of one series.
 #[derive(Clone, Debug, PartialEq)]
 pub(super) struct Latest {
     pub(super) device: DeviceId,
     pub(super) kind: MetricKind,
-    /// The mount point, interface or drive name; empty for the kinds without one.
     pub(super) label: String,
     pub(super) at: DateTime<Utc>,
     pub(super) value: f64,
-    /// The stored GPU of a GPU series; `None` for the other series.
     pub(super) gpu: Option<Gpu>,
 }
 
-/// The kinds the card shows.
 pub(super) const READ_KINDS: [MetricKind; 4] = [
     MetricKind::CpuPercent,
     MetricKind::MemoryPercent,
@@ -29,10 +25,8 @@ pub(super) const READ_KINDS: [MetricKind; 4] = [
     MetricKind::VramPercent,
 ];
 
-/// One `Readings` per device that has a latest sample. Its time is the newest of them, and its
-/// disk is the fullest mount, named by its mount point (a tie keeps the first mount bytewise).
-/// VRAM is that of the GPU with VRAM whose usage is the highest; without one it stays empty,
-/// never 0 (MET-007, MET-008, MET-030). The other drives are counted by [`count_other_drives`].
+/// Disk is the fullest mount; VRAM is the busiest GPU with VRAM, and empty, never 0, without
+/// one (MET-007, MET-008, MET-030).
 pub(super) fn readings(latest: Vec<Latest>) -> HashMap<DeviceId, Readings> {
     let mut by_device: HashMap<DeviceId, Readings> = HashMap::new();
     for Latest {
@@ -61,8 +55,7 @@ pub(super) fn readings(latest: Vec<Latest>) -> HashMap<DeviceId, Readings> {
                 }
             }
             MetricKind::VramPercent => {
-                // The store also drops a series without VRAM, so it cannot set `Readings.at`; this
-                // keeps the rule true of the function on its own. A tie keeps the lower index.
+                // The store also drops a series without VRAM; the filter keeps this rule on its own.
                 if let Some(gpu) = gpu.filter(|gpu| gpu.has_vram)
                     && readings
                         .vram_percent
@@ -84,9 +77,7 @@ pub(super) fn readings(latest: Vec<Latest>) -> HashMap<DeviceId, Readings> {
     by_device
 }
 
-/// Sets each device's `other_drives`: its `drives` other than the one that holds the fullest
-/// mount, unmounted ones counted, so the card can say "+N drives" (MET-030). A device whose
-/// fullest mount is on no known drive counts all its drives.
+/// Counts the drives other than the one holding the fullest mount, unmounted ones too (MET-030).
 pub(super) fn count_other_drives(
     readings: &mut HashMap<DeviceId, Readings>,
     drives: &HashMap<DeviceId, Vec<Drive>>,

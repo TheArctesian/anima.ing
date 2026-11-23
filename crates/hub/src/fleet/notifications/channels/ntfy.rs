@@ -1,6 +1,5 @@
-//! The ntfy channel: a message to a topic on an ntfy server (NOT-002). On a public server the
-//! topic is the credential, so it is sealed with the access token; the server and priority
-//! are shown.
+//! The ntfy channel (NOT-002). On a public server the topic is the credential, so it is
+//! sealed with the access token.
 
 use serde::{Deserialize, Serialize};
 
@@ -20,24 +19,19 @@ const PRIORITY: &str = "settings.ntfy.priority";
 const TOPIC_MAX: usize = 64;
 const TOKEN_MAX: usize = 256;
 
-/// What the API shows of an ntfy channel.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(in crate::fleet::notifications) struct NtfySettings {
-    /// `https://host[:port]`.
     pub(in crate::fleet::notifications) server: String,
-    /// 1 (min) to 5 (max).
     pub(in crate::fleet::notifications) priority: u8,
     pub(in crate::fleet::notifications) token_stored: bool,
 }
 
-/// The topic and the optional access token.
 pub(in crate::fleet::notifications) struct NtfySecrets {
     pub(in crate::fleet::notifications) topic: Secret,
     pub(in crate::fleet::notifications) token: Option<Secret>,
 }
 
-/// An ntfy channel as the operator sent it.
 pub(in crate::fleet::notifications) struct NtfyDraft {
     pub(in crate::fleet::notifications) server: String,
     /// `None` on update keeps the stored topic.
@@ -47,8 +41,7 @@ pub(in crate::fleet::notifications) struct NtfyDraft {
     pub(in crate::fleet::notifications) priority: i32,
 }
 
-/// ntfy's own topic rule: letters, digits, `_` and `-`. The topic goes into the URL path, so
-/// nothing else may reach it.
+/// ntfy's topic rule; the topic goes into the URL path, so nothing else may reach it.
 fn checked_topic(topic: &Secret) -> Result<(), FieldError> {
     let text = secret_text(TOPIC, topic)?;
     let allowed = |b: u8| b.is_ascii_alphanumeric() || b == b'_' || b == b'-';
@@ -92,7 +85,6 @@ fn outcome(settings: NtfySettings, secrets: NtfySecrets, touched: Touched) -> Ou
     }
 }
 
-/// The rules for a new ntfy channel: the topic is required, the token optional.
 pub(super) fn new(draft: NtfyDraft) -> Result<Outcome, Vec<FieldError>> {
     let mut problems = Problems::default();
     let server = problems.take(server_origin(SERVER, &draft.server));
@@ -120,8 +112,7 @@ pub(super) fn new(draft: NtfyDraft) -> Result<Outcome, Vec<FieldError>> {
     Ok(outcome(settings, NtfySecrets { topic, token }, touched))
 }
 
-/// The rules for a changed ntfy channel (CR-14): a new server needs the topic again, and the
-/// token again or cleared; otherwise a null secret keeps the stored one.
+/// A new server needs the topic again, and the token again or cleared (CR-14).
 pub(super) fn change(
     before: &NtfySettings,
     stored: Kept<NtfySecrets>,

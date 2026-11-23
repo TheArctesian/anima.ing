@@ -1,6 +1,5 @@
-//! A pull request read from GitHub around a merge: the pull request and the merge methods just
-//! before it, never from the cache and never stale, and the pull request read back once GitHub
-//! merged it (K1 returns it; K-E1 Section 13.3).
+//! A pull request read from GitHub around a merge: never from the cache before it, and read back
+//! once GitHub merged it (K-E1 Section 13.3).
 
 use async_graphql::{Context, Result};
 use provider_github::live::pulls::{self as github, PullDetail};

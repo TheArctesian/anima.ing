@@ -1,14 +1,10 @@
-//! The URL of a request below a declared base, refused when its path could leave that base
-//! (K-E1 Section 7). Pure.
+//! The URL of a request, refused when its path could leave the declared base (K-E1 Section 7).
 
 use reqwest::Url;
 
 use super::Fault;
 
-/// Whether `path` stays below the base: one leading slash, no scheme, no user, no query or
-/// fragment of its own, no backslash, no control or space character, no `.` or `..` segment
-/// and no percent-encoded dot (the URL parser resolves both, so the token would go to another
-/// path on the same host).
+/// The URL parser resolves `.`, `..` and `%2e` segments, so the token would go to another path.
 fn path_is_plain(path: &str) -> bool {
     path.starts_with('/')
         && !path.starts_with("//")
@@ -25,12 +21,9 @@ fn path_is_plain(path: &str) -> bool {
             .any(|w| w[0] == b'%' && w[1] == b'2' && w[2].eq_ignore_ascii_case(&b'e'))
 }
 
-/// `base` with `path` appended and `query` set. Refused when the path could leave the base, or
-/// when the result's scheme, host or port is not the base's, or its path is not below the
-/// base's path.
-///
 /// # Errors
-/// [`Fault::Refused`].
+/// [`Fault::Refused`] when the path could leave the base, or the scheme, host, port or path of
+/// the result is not the base's.
 pub fn address(base: &Url, path: &str, query: &[(String, String)]) -> Result<Url, Fault> {
     if !path_is_plain(path) || !base.username().is_empty() || base.password().is_some() {
         return Err(Fault::Refused);

@@ -1,6 +1,3 @@
-//! All SQL on schema `maintenance`: I/O only; rows are mapped in `records`. Ids and time come
-//! in as parameters.
-
 use chrono::{DateTime, Utc};
 use sqlx::{Connection, PgConnection, PgExecutor, PgPool, types::Json};
 
@@ -11,7 +8,6 @@ use super::{
 };
 use crate::ids::WindowId;
 
-/// A window with its targets in one row, targets in byte order of type then value.
 macro_rules! select_window {
     ($($tail:expr),*) => {
         concat!(
@@ -28,7 +24,6 @@ macro_rules! select_window {
     };
 }
 
-/// Every window, in byte order of the name.
 pub(super) async fn all(db: &PgPool) -> Result<Vec<Window>, Error> {
     let rows = sqlx::query_as(select_window!("ORDER BY w.name COLLATE \"C\""))
         .fetch_all(db)
@@ -81,7 +76,6 @@ async fn insert_targets(
     Ok(())
 }
 
-/// Replaces the name, time zone, rule and targets; returns the window as it was and as it is.
 /// A window that stays manual keeps its on/off state; any other kind starts off.
 pub(super) async fn replace(
     conn: &mut PgConnection,
@@ -114,7 +108,7 @@ pub(super) async fn replace(
     Ok((before, after))
 }
 
-/// Deletes the window and, by foreign key, its targets. Returns the window as it was.
+/// Its targets go by foreign key.
 pub(super) async fn delete(conn: &mut PgConnection, id: WindowId) -> Result<Window, Error> {
     let mut tx = conn.begin().await?;
     let window = lock(&mut tx, id).await?;
@@ -126,10 +120,6 @@ pub(super) async fn delete(conn: &mut PgConnection, id: WindowId) -> Result<Wind
     Ok(window)
 }
 
-/// Switches a manual window on or off.
-///
-/// # Errors
-/// `Validation` when the window is not a manual one.
 pub(super) async fn set_manual(
     conn: &mut PgConnection,
     id: WindowId,
@@ -155,7 +145,6 @@ pub(super) async fn set_manual(
     Ok(changed)
 }
 
-/// Reads the window and locks its row until the transaction ends.
 async fn lock(conn: &mut PgConnection, id: WindowId) -> Result<Window, Error> {
     let row = sqlx::query_as::<_, WindowRow>(select_window!("WHERE w.id = $1 FOR UPDATE OF w"))
         .bind(id)

@@ -1,8 +1,6 @@
 //! Local start times on the days the clocks change (MW-001, MW-002).
-//!
-//! Dates: Auckland springs forward at 14:00 UTC on 26 September 2026 (02:00 to 03:00) and falls
-//! back at 14:00 UTC on 4 April 2026 (03:00 to 02:00). New York springs forward at 07:00 UTC on
-//! 8 March 2026 and falls back at 06:00 UTC on 1 November 2026. All four are Sundays locally.
+//! Auckland changes at 14:00 UTC on 26 September and 4 April 2026; New York at 07:00 UTC on
+//! 8 March and 06:00 UTC on 1 November 2026. All four are Sundays locally.
 
 use super::*;
 
@@ -140,8 +138,7 @@ fn mw_001_a_day_of_month_window_in_the_gap_also_starts_when_the_gap_ends() {
 
 #[test]
 fn mw_002_a_seven_day_window_that_crosses_a_short_day_is_found_eight_local_days_later() {
-    // 5 March 23:30 EST for 168 elapsed hours; the clocks spring forward on 8 March, so the
-    // window ends at 00:30 EDT on 13 March, which is eight local days after it began.
+    // 5 March 23:30 EST plus 168 elapsed hours is 00:30 EDT on 13 March, eight local days later.
     let rule = monthly(&[5], "23:30", 10_080);
     assert_eq!(
         states(

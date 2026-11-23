@@ -4,15 +4,13 @@ use chrono::{DateTime, DurationRound, TimeDelta, Utc};
 
 use super::MetricRange;
 
-/// The aggregate table a chart reads.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Resolution {
     Minute,
     Hour,
 }
 
-/// The buckets of one chart: aggregate rows from `start` to `end` inclusive, merged into bins of
-/// `bin` (a whole number of seconds that divides an hour or is one).
+/// `bin` is a whole number of seconds that divides an hour or is one.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Window {
     pub(super) resolution: Resolution,
@@ -21,9 +19,7 @@ pub(super) struct Window {
     pub(super) bin: TimeDelta,
 }
 
-/// The window of `range` ending at `now`: the last 60 minutes (60 points), the last 24 hours
-/// in 10-minute bins (144) or the last 7 days of hours (168). The oldest bin starts on a bin
-/// boundary, so every bin holds all of its minutes.
+/// The oldest bin starts on a bin boundary, so every bin holds all of its minutes.
 pub(super) fn window(range: MetricRange, now: DateTime<Utc>) -> Window {
     let (resolution, bin, points) = match range {
         MetricRange::Hour => (Resolution::Minute, TimeDelta::minutes(1), 60),

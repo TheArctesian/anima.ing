@@ -18,7 +18,7 @@ fn uuids<T: Copy + Into<Uuid>>(ids: &[T]) -> Vec<Uuid> {
     ids.iter().map(|id| (*id).into()).collect()
 }
 
-/// Makes `channels` the only channels `check` notifies. The channels must exist.
+/// The channels must exist.
 pub(in crate::fleet::notifications) async fn set_check_channels(
     conn: &mut PgConnection,
     check: CheckId,
@@ -39,7 +39,6 @@ pub(in crate::fleet::notifications) async fn set_check_channels(
     Ok(())
 }
 
-/// The channels each of `checks` notifies, by name; a check with none has no entry.
 pub(in crate::fleet::notifications) async fn check_channels(
     db: impl PgExecutor<'_>,
     checks: &[CheckId],
@@ -59,9 +58,7 @@ pub(in crate::fleet::notifications) async fn check_channels(
     Ok(by_check)
 }
 
-/// Whether `check` still exists and no longer notifies `channel`: the operator turned the
-/// channel off for the check after a notification was queued. A check that is gone has no
-/// state row (its foreign key cascades), so this is false for it and its rows still go out.
+/// False for a deleted check: its state row cascades away, so its queued rows still go out.
 pub(in crate::fleet::notifications) async fn channel_turned_off(
     db: impl PgExecutor<'_>,
     check: CheckId,
@@ -78,7 +75,6 @@ pub(in crate::fleet::notifications) async fn channel_turned_off(
     .await?)
 }
 
-/// The settings of each of `checks`; a check with no row has no entry (the default applies).
 pub(in crate::fleet::notifications) async fn check_settings(
     db: impl PgExecutor<'_>,
     checks: &[CheckId],
@@ -98,7 +94,6 @@ pub(in crate::fleet::notifications) async fn check_settings(
         .collect()
 }
 
-/// Stores the settings of `check`.
 pub(in crate::fleet::notifications) async fn write_check_settings(
     conn: &mut PgConnection,
     check: CheckId,
@@ -116,8 +111,7 @@ pub(in crate::fleet::notifications) async fn write_check_settings(
     Ok(())
 }
 
-/// The state of `check`, locked until the caller's transaction ends, so two beats of one check
-/// decide one after the other. A check with no state yet gets the empty one.
+/// The lock makes two beats of one check decide one after the other.
 pub(in crate::fleet::notifications) async fn lock_check_state(
     conn: &mut PgConnection,
     check: CheckId,
@@ -138,7 +132,6 @@ pub(in crate::fleet::notifications) async fn lock_check_state(
     CheckState::try_from(row)
 }
 
-/// Stores the state of `check`.
 pub(in crate::fleet::notifications) async fn write_check_state(
     conn: &mut PgConnection,
     check: CheckId,

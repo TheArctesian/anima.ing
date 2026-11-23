@@ -153,9 +153,7 @@ fn bld_049_the_updater_secret_key_is_redacted_and_its_public_key_kept() {
     assert_eq!(log_lines::clean(&config), config);
 }
 
-/// BLD-049, LOG-007 (T6 security review C-5): a minisign secret key's base64 line printed on
-/// its own, with no comment line before it, is redacted as the client redacts it; a word that
-/// only holds those letters inside it is kept.
+/// A bare minisign secret key line is redacted as the client redacts it (BLD-049, LOG-007, C-5).
 #[test]
 fn bld_049_a_bare_minisign_secret_key_line_is_redacted() {
     for kdf in [&b"Sc"[..], &[0, 0][..]] {

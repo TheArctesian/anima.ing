@@ -1,6 +1,4 @@
-//! Pure: the sums by model folded into the groups the operator asked for, each with the
-//! estimate of its cost (AIS-021); and the groups joined to their devices in the order the
-//! answer lists them.
+//! Usage sums folded into the operator's groups, each with its cost estimate (AIS-021).
 
 use std::{cmp::Reverse, collections::HashMap};
 
@@ -13,9 +11,7 @@ use super::{
 };
 use crate::{fleet::devices::Device, ids::DeviceId};
 
-/// The groups of `grains` by the dimensions of `by`. The cost is estimated for each model
-/// before the models are folded, so a group of several models has the sum of their estimates;
-/// the tokens of a model with no price are counted in `unpriced_tokens` instead.
+/// Each model is estimated before folding, so a group of several models sums their estimates.
 #[must_use]
 pub fn fold(grains: Vec<Grain>, by: DimensionSet) -> Vec<Group> {
     let mut groups: HashMap<GroupKey, Group> = HashMap::new();
@@ -47,16 +43,13 @@ pub fn fold(grains: Vec<Grain>, by: DimensionSet) -> Vec<Group> {
     groups.into_values().collect()
 }
 
-/// A group with its device, when the query groups by device.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Placed {
     pub device: Option<Device>,
     pub group: Group,
 }
 
-/// `groups` with their devices, newest day first, then by device name (byte order, then ID),
-/// source, model and repository, a missing model or repository last. A group whose device is
-/// not in `devices` (deleted meanwhile) is left out.
+/// A group whose device is not in `devices` (deleted meanwhile) is left out.
 #[must_use]
 pub fn arranged(groups: Vec<Group>, devices: &[Device]) -> Vec<Placed> {
     let by_id: HashMap<DeviceId, &Device> = devices.iter().map(|one| (one.id, one)).collect();
@@ -95,8 +88,6 @@ fn order(row: &Placed) -> Order<'_> {
     )
 }
 
-/// Each of `states` with its device, by device name (byte order, then ID); a state whose
-/// device is not in `devices` is left out.
 #[must_use]
 pub fn states_with_devices(
     states: &[DeviceState],

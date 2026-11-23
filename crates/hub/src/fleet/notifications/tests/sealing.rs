@@ -1,5 +1,4 @@
-//! Sealed channel secrets open only for their channel, kind, target and header names
-//! (SEC-003, SEC-005, D-17). The key and every secret are synthetic.
+//! Channel secrets bind to their channel, kind, target and header names (SEC-003, SEC-005, D-17).
 
 use std::io::Write as _;
 

@@ -1,6 +1,4 @@
-//! A device's SSH settings as the GraphQL type K1 calls `SshSettings`, with whether the hub
-//! holds a secret for it (DEV-012, SEC-005, API-005) and the host key accepted for it
-//! (SEC-006; the R-011 composition edge to `trust`).
+//! `SshSettings` (K1; DEV-012, SEC-005, SEC-006, API-005, R-011).
 
 use std::{collections::HashMap, sync::Arc};
 

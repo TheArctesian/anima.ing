@@ -1,5 +1,3 @@
-//! Captures the process log of one test thread as JSON lines.
-
 use std::{
     io,
     sync::{Arc, Mutex, Once},
@@ -37,10 +35,8 @@ impl Capture {
     }
 }
 
-/// The test binary's global subscriber: it records nothing, but answers "sometimes" for
-/// every callsite. Callsite interest is cached for the whole process, so without it a test
-/// thread with no subscriber can cache "never" for a callsite while another thread is
-/// capturing, and the capturing thread then loses the event.
+/// Answers "sometimes" for every callsite: interest is cached per process, so a thread with no
+/// subscriber must not cache "never" while another thread captures.
 struct Undecided;
 
 impl Subscriber for Undecided {
@@ -67,8 +63,7 @@ impl Subscriber for Undecided {
     fn exit(&self, _: &span::Id) {}
 }
 
-/// Routes this thread's log to a buffer. Rebuilding the callsite cache after the scoped
-/// subscriber is set makes callsites first seen before it ask again.
+/// Rebuilding the interest cache after the scoped subscriber is set makes earlier callsites ask again.
 pub(crate) fn capture_log(filter: &str) -> (Capture, tracing::subscriber::DefaultGuard) {
     static UNDECIDED: Once = Once::new();
     UNDECIDED.call_once(|| {

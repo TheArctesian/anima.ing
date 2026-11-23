@@ -1,5 +1,3 @@
-//! The instants of a time rule.
-
 use std::collections::HashSet;
 
 use chrono::Weekday;
@@ -11,7 +9,6 @@ use super::*;
 fn rem_002_a_time_rule_that_was_missed_fires_one_time_for_its_latest_instant() {
     let rule = rule(daily((9, 0), Vec::new(), Tz::UTC));
     let known = Known::default();
-    // The hub was stopped for three days.
     let due = evaluate(
         &rule,
         &History::default(),

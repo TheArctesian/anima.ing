@@ -9,10 +9,8 @@ use crate::{
     ids::DeviceId,
 };
 
-/// One lateral index scan per series: `(series_id, at)` is the primary key of every partition,
-/// so each scan reads one row (API-005). A GPU series joins its stored GPU (the join reads the
-/// primary key of `metrics.gpus`); a VRAM series whose GPU is gone or has no VRAM is left out
-/// (MET-007).
+/// `(series_id, at)` is every partition's primary key, so each lateral scan reads one row (API-005).
+/// A VRAM series whose GPU is gone or has no VRAM is left out (MET-007).
 const LATEST_SQL: &str = "\
     SELECT s.device_id, s.kind, s.label, l.at, l.value, \
            g.index AS gpu_index, g.name AS gpu_name, g.vendor AS gpu_vendor, \
@@ -24,10 +22,8 @@ const LATEST_SQL: &str = "\
         WHERE series_id = s.id AND at >= $3 AND at <= $4 \
         ORDER BY at DESC LIMIT 1) l \
     WHERE s.device_id = ANY($1) AND s.kind = ANY($2) \
-        AND (s.kind <> $5 OR g.has_vram)"; // not a reading, so it cannot set `Readings.at`
+        AND (s.kind <> $5 OR g.has_vram)";
 
-/// The newest sample of each series of `kinds` of `devices` taken in `[now - within, now]`, in
-/// one query.
 pub(in crate::fleet::metrics) async fn latest(
     db: &PgPool,
     (devices, kinds): (&[DeviceId], &[MetricKind]),

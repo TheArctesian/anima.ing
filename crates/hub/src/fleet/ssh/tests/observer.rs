@@ -22,7 +22,6 @@ fn stored(key: &PrivateKey) -> PublicKey {
     PublicKey::from_blob(key.public_key().to_bytes().unwrap()).unwrap()
 }
 
-/// What the observer expecting `expected` says to `presented`, and the key it reports.
 async fn checked(
     expected: &PrivateKey,
     presented: &PublicKeyOrCertificate,

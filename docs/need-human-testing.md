@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
 | HT-170-code-handoff | Open and follow a shared Code thread on iOS and Android (TH50, TH51) | A build of this branch on each phone, a hub with TH21, and an enrolled computer with transcript sharing enabled | Open |
 | HT-149 | Reporting after an iPad update and the phone Code tab | A physical iPad with an existing device row, another client, and a phone with the updated app | Open |
 | HT-148 | Phone Devices, offline notice and Integrations fit the screen (M2-5) | An iPhone with a current build and a test hub | Open |
@@ -130,6 +131,14 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-104 | Connect GitHub on a hosted hub through the gateway at `hub.anima.ing` (HMD-068, HMD-069; task HM-T29) | A hub of the pool started with its own public origin `https://<hub id>.hub.anima.ing` and an image of this build, the door of the pool for that address, an application of this build, and a GitHub account that may get a new App | Open |
 | HT-125 | The window with no frame on Windows and Linux: move it, the three controls, resize, each page (task TC2 of agent threads, R-355) | A Windows computer and the Linux computer `pop-os`, each with a build of the branch `code/shell-window`; a Mac for the last step | Open |
 | HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | A Linux AppImage of this build | Passed |
+
+### HT-171-touch: VNC and RDP with touch on iPadOS and Android
+
+- State: Open.
+- Connect to a test desktop. Move the pointer with one finger, tap to click, tap with two fingers for a secondary click, and hold one finger before moving to drag. Confirm the button releases when touch cancels.
+- Pinch to zoom and move both fingers to pan. Check that the desktop stays under the fingers, that lifting a finger does not click, and that Fit restores the original view.
+- Tap the text field. Type ordinary text, one accented character and one IME composition, then use Enter and Backspace. Confirm each appears once on the remote desktop.
+- Background the app and interrupt its network. Reopen the app, check the session reconnect behavior, and use the pointer again.
 
 ### HT-170-code-handoff: shared Code threads on a phone (TH50, TH51)
 
@@ -5169,6 +5178,24 @@ containers of each through the hub. The tests use a fake hub; nobody has seen th
 
 Result: Open.
 
+### HT-OS5-A1: automatic Anima OS staging on installed hardware
+
+Status: Open. Task OS5-A1, AOS-016. Build: `os/automatic-update-staging`.
+
+The Rust updater and disposable VM exercise signed staging, pending-state preservation,
+and refusal to automatically retry a rolled-back release. They do not qualify physical
+network/storage behavior or a real published release on an installed machine.
+
+1. Install an image carrying OS5-A1 on a designated test machine. Leave it connected.
+   Expect `anima-update-check.timer` to be active and a check within 15 to 30 minutes.
+2. Offer a newer signed preview through the existing release procedure. Expect the update
+   to download and stage without changing the running system or rebooting it.
+3. Disconnect the network with that update staged and run the automatic service again.
+   Expect the pending update and previous system to remain intact.
+4. Complete the existing activation/recovery test, then offer the same rolled-back release.
+   Expect automatic checks to hold it; a newer signed release can be considered again.
+
+Automatic activation, workload drain and unattended reboots are not part of OS5-A1.
 ### HT-168: Log and Details in the one list, and the device tab Containers narrowed to its machine (task H42; HSE-008)
 
 Built on the branch `hosted/h42-device-tab`. The tests use a fake hub; nobody has read a real log or real details from the
@@ -5187,5 +5214,63 @@ list, or seen the tab of a real device.
    Expected: the same log tools and details as in HT-042.
 5. Press View in Hosting.
    Expected: Hosting opens on Applications with all machines.
+
+Result: Open.
+
+### HT-174: Hosting > Storage lists the volumes of each machine (task H48; HSE-015)
+
+Built on the branch `hosted/hse-storage`: the page Hosting, section Storage, reads the devices with SSH on and, for each,
+the volumes and the containers through the hub. The device tab Containers no longer has the choice Volumes; it has the
+link "Volumes in Hosting". The tests use a fake hub; nobody has seen the list with real machines.
+
+1. In the desktop application of this build, signed in to a hub with at least two devices that have SSH on with an
+   accepted host key and Docker, open Hosting, then Storage.
+   Expected: one group for each of those devices, by name, with the status of the device as the Devices page shows it
+   and the number of volumes. When Docker gives the space of the volumes, the header also says how much is in use and
+   how much a clean-up can free, with the same numbers as `docker system df` on that machine.
+2. On one machine, run a Compose project that mounts a named volume, and make a volume that no container uses
+   (`docker volume create spare`). Press Refresh.
+   Expected: the volume of the project says the name of the project under Used by; the volume `spare` has the mark
+   "Not used"; the size of each is the size that `docker system df -v` gives.
+3. Type a part of the name of the project in the field.
+   Expected: only the volumes that the project uses are shown, under the header of their machine.
+4. Turn off the SSH credential of a machine in Anima, or stop its Docker, and press Refresh.
+   Expected: its group stays, with the words of the hub that say why; the other groups still show their volumes.
+5. Open Devices, one of those machines, the tab Containers.
+   Expected: the choice has Containers, Images and Networks, no Volumes. The link "Volumes in Hosting" opens Hosting >
+   Storage.
+
+Result: Open.
+
+### HT-173: Hosting > Applications and Storage on a phone (task H42; HSE-012)
+
+Built on the branch `hosted/h42-phone`: below a width of 768 px, the rows of the lists of Applications and Storage put
+the state and the other cells below the name. The tests do not measure a layout; nobody has seen it on a phone.
+
+1. Open Hosting > Applications in the web client of this build on a phone, or in the desktop application with its
+   window made narrower than 768 px, signed in to a hub with a machine that has SSH on and Docker with a Compose project.
+   Expected: each machine is a header with its name, the number of items and its status (for example Up); each row has
+   its name, below it what it is, its state with a dot and "Read only"; Details and Log are at the end of a container
+   row. No text is cut and the page does not scroll to the side.
+2. Open the project with its arrow and press Log on one of its containers.
+   Expected: the log shows below the list and fits the width.
+3. Open Hosting > Storage.
+   Expected: each volume has its name, below it what uses it (or the mark Not used) and its size at the end of the line.
+
+Result: Open.
+
+### HT-172: Hosting > Machines lists the machines that can host (task H49; HSE-016)
+
+Built on the branch `hosted/hse-machines`: the page Hosting, section Machines, reads the devices of the hub and lists those
+with SSH on. The tests use a fake hub; nobody has seen the list with real devices.
+
+1. In the desktop application of this build, signed in to a hub with devices of which some have SSH on, open Hosting,
+   then Machines.
+   Expected: each device with SSH on is a row, by name, with the status that the Devices page shows for it (for example
+   Up or Down); a device with SSH off is not listed. There is no column for the engine or the free room.
+2. Press the name of a machine.
+   Expected: its device page opens.
+3. Turn SSH off for one of those devices on its page, go back to Hosting > Machines and press Refresh.
+   Expected: that device is no longer listed.
 
 Result: Open.

@@ -3,14 +3,12 @@
 
 use std::fmt::Write as _;
 
-/// One value of the file that the converter writes.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) enum Value {
     Text(String),
     Truth(bool),
     Number(i64),
     List(Vec<Self>),
-    /// The keys in the order in which the file has them.
     Map(Vec<(String, Self)>),
 }
 
@@ -23,7 +21,6 @@ impl Value {
         Self::Text(text.to_owned())
     }
 
-    /// The value of `key` in a map, made with `empty` when the map does not have it.
     fn at(&mut self, key: &str, empty: Self) -> &mut Self {
         if !matches!(self, Self::Map(_)) {
             *self = Self::map();
@@ -39,17 +36,14 @@ impl Value {
         &mut entries[index].1
     }
 
-    /// Sets `key` of a map: a second value for a key takes the place of the first.
     pub(super) fn set(&mut self, key: &str, value: Self) {
         *self.at(key, Self::map()) = value;
     }
 
-    /// The map that is the value of `key`.
     pub(super) fn child(&mut self, key: &str) -> &mut Self {
         self.at(key, Self::map())
     }
 
-    /// Adds `value` to the list that is the value of `key`.
     pub(super) fn push(&mut self, key: &str, value: Self) {
         let list = self.at(key, Self::List(Vec::new()));
         if let Self::List(items) = list {
@@ -67,10 +61,8 @@ impl Value {
     }
 }
 
-/// Whether YAML may hold `character` as it is in a text in double quotes: the printable set
-/// of YAML 1.2 (`c-printable`), less the characters that a reader can take as a line break
-/// (U+0085, U+2028, U+2029) or as a mark of the order of the bytes (U+FEFF). Each other
-/// character is written as an escape.
+/// YAML 1.2 `c-printable`, less what a reader can take as a line break (U+0085, U+2028, U+2029)
+/// or a byte order mark (U+FEFF).
 const fn printable(character: char) -> bool {
     matches!(
         character,
@@ -83,7 +75,6 @@ const fn printable(character: char) -> bool {
     )
 }
 
-/// A text in double quotes, as YAML reads it back to the same characters.
 fn quoted(text: &str) -> String {
     let mut out = String::with_capacity(text.len() + 2);
     out.push('"');
@@ -104,7 +95,6 @@ fn quoted(text: &str) -> String {
     out
 }
 
-/// A key as the file writes it: a fixed key of Compose as it is, each other key in quotes.
 fn key(name: &str) -> String {
     let fixed = !name.is_empty() && name.bytes().all(|b| b.is_ascii_lowercase() || b == b'_');
     let other_type = matches!(
@@ -122,7 +112,6 @@ fn pad(out: &mut String, indent: usize) {
     out.extend(std::iter::repeat_n(' ', indent));
 }
 
-/// What comes after `key:` or after `-`: a scalar on the same line, a list or a map below.
 fn after(out: &mut String, value: &Value, indent: usize) {
     let scalar = match value {
         Value::Map(entries) if !entries.is_empty() => {
@@ -170,7 +159,6 @@ fn list(out: &mut String, items: &[Value], indent: usize) {
     }
 }
 
-/// The YAML text of `file`, which is the map of the top level.
 pub(super) fn write(file: &Value) -> String {
     let mut out = String::new();
     if let Value::Map(entries) = file {

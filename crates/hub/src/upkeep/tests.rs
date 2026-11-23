@@ -1,5 +1,4 @@
-//! The daily retention run reads the operator's periods once and gives each domain its own
-//! (HUB-005, D-25), also a period the operator set through `setRetention`.
+//! The daily retention run gives each domain its own period (HUB-005, D-25).
 
 mod link_presence;
 
@@ -190,7 +189,6 @@ fn hmd_045_the_hub_reports_its_check_twice_in_each_interval() {
 
     let minute = Duration::from_secs(60);
     assert_eq!(next_report(Some(minute)), Duration::from_secs(30));
-    // The check is gone: the hub asks again later, and a new start adds it.
     assert_eq!(next_report(None), Duration::from_secs(30));
 }
 

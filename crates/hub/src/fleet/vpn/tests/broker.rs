@@ -1,5 +1,4 @@
-//! The broker's reply lines and their merge into the picture (R-055, VP-7, BD-9, BD-16,
-//! LOG-007). The socket itself is tested in `tests/it/vpn/broker.rs`.
+//! The broker's reply lines and their merge into the picture (R-055, VP-7, BD-9, BD-16, LOG-007).
 
 use std::collections::HashSet;
 
@@ -29,8 +28,6 @@ fn broker_node(id: u64, name: &str, (ip, tags): (&str, &[&str]), routes: [&[&str
             "online": true, "expiry": null, "approved": approved, "available": available })
 }
 
-/// `router-home` serving home with a second route waiting, and `router-office` waiting for
-/// the office1 subnet; the policy names both sites.
 fn view() -> BrokerView {
     let reply = json!({
         "nodes": [
@@ -113,7 +110,6 @@ fn vp_7_a_reply_of_another_shape_is_unreadable() {
 }
 
 proptest! {
-    /// Any bytes: no panic, and an error never repeats the line (LOG-007).
     #[test]
     fn log_007_any_reply_line_parses_or_fails_without_its_text(line in proptest::collection::vec(any::<u8>(), 0..512)) {
         if let Err(error) = parse_reply::<BrokerView>(&line) {
@@ -123,7 +119,6 @@ proptest! {
         }
     }
 
-    /// A key reply of any key text with a bad expiry never shows the key in the error.
     #[test]
     fn log_007_a_bad_key_reply_never_shows_the_key(key in "[A-Za-z0-9_-]{8,64}") {
         let line = ok(&json!({ "key": key, "expiresAt": key }));

@@ -16,7 +16,6 @@ const POLICY: &str = "default-src 'self'; \
 const NO_CACHE: &str = "no-cache";
 const IMMUTABLE: &str = "public, max-age=31536000, immutable";
 
-/// The headers every web client answer carries, whatever its status, and its cache rule.
 fn assert_k7_headers(answer: &Answer, cache: &str) {
     assert_eq!(answer.header("content-security-policy"), POLICY);
     assert_eq!(answer.header("x-content-type-options"), "nosniff");
@@ -84,7 +83,6 @@ async fn d_2_a_conditional_or_range_answer_keeps_the_headers_and_its_cache_rule(
     let router = web.router();
     let future = "Fri, 01 Jan 2100 00:00:00 GMT";
     let past = "Fri, 01 Jan 1971 00:00:00 GMT";
-    // A 304 and a 206 are the immutable file itself; a 416 and a 412 are refusals.
     let cases = [
         (
             "if-modified-since",

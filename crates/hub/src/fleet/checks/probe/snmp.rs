@@ -1,10 +1,7 @@
-//! SNMP probe (D-5, D-13): a GET of one OID over UDP, v2c with a community or v3 authPriv
-//! (HMAC-SHA-256-192, AES-128-CFB).
-//!
-//! The device host is resolved once and only an address the policy permits is used. One
-//! socket is bound per attempt and only replies from the target's address and port with the
-//! request's ids are read. The community and passwords go only into the request; no message,
-//! log or error holds them or anything the agent sent (LOG-007).
+//! SNMP probe (D-5, D-13). Only an address the policy permits is used, and only replies from
+//! the target's address and port with the request's ids are read. The community and passwords
+//! go only into the request; no message, log or error holds them or anything the agent sent
+//! (LOG-007).
 
 pub(in crate::fleet::checks) mod ber;
 pub(in crate::fleet::checks) mod community;
@@ -30,7 +27,6 @@ use super::{
 };
 use crate::fleet::checks::config::{SnmpConfig, SnmpSecrets, oid_arcs};
 
-/// The random values of one attempt: the ids of each request and the AES salt.
 #[derive(Clone, Copy, Debug)]
 pub(in crate::fleet::checks) struct Draws {
     pub(in crate::fleet::checks) discovery: Ids,
@@ -38,21 +34,15 @@ pub(in crate::fleet::checks) struct Draws {
     pub(in crate::fleet::checks) salt: [u8; SALT_LEN],
 }
 
-/// How many random bytes one attempt's [`Draws`] take.
 pub(in crate::fleet::checks) const DRAWS_LEN: usize = 16 + SALT_LEN;
 
 impl Draws {
-    /// Fresh values from the operating system's random source: the I/O edge of the randomness.
-    ///
-    /// # Errors
-    /// The random source's error when it yields no bytes.
     pub(in crate::fleet::checks) fn fresh() -> Result<Self, getrandom::Error> {
         let mut bytes = [0_u8; DRAWS_LEN];
         getrandom::fill(&mut bytes)?;
         Ok(Self::from_bytes(&bytes))
     }
 
-    /// The values these random bytes give: four 31-bit ids from the first 16, then the salt.
     pub(in crate::fleet::checks) fn from_bytes(bytes: &[u8; DRAWS_LEN]) -> Self {
         let id = |at: usize| {
             let raw = u32::from_be_bytes([bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]]);
@@ -74,8 +64,7 @@ impl Draws {
     }
 }
 
-/// One attempt of the SNMP check, within its time limit, with the attempt's random values
-/// given (CQ-021): the caller draws them at its I/O edge.
+/// The caller draws the attempt's random values at its I/O edge (CQ-021).
 pub(in crate::fleet::checks) async fn observe(
     target: &ProbeTarget,
     (config, secrets): (&SnmpConfig, &SnmpSecrets),
@@ -99,7 +88,6 @@ pub(in crate::fleet::checks) async fn observe(
         .unwrap_or_else(|_| ProbeResult::failed(&Failure::TimedOut))
 }
 
-/// Resolves the target, asks for the OID and judges the answer.
 async fn get(
     target: &ProbeTarget,
     (config, secrets): (&SnmpConfig, &SnmpSecrets),
@@ -134,9 +122,7 @@ async fn get(
     Ok((peer, elapsed))
 }
 
-/// The localised keys, derived on the blocking pool: two SHA-256 passes over 1 MiB would
-/// otherwise hold an async worker for milliseconds. The copies are zeroized on drop, also
-/// when the attempt's time limit drops the wait first.
+/// On the blocking pool: two SHA-256 passes over 1 MiB would hold an async worker for milliseconds.
 async fn localised(auth: &[u8], privacy: &[u8], engine_id: &[u8]) -> Result<Keys, Failure> {
     let auth = Zeroizing::new(auth.to_vec());
     let privacy = Zeroizing::new(privacy.to_vec());
@@ -148,7 +134,6 @@ async fn localised(auth: &[u8], privacy: &[u8], engine_id: &[u8]) -> Result<Keys
         .ok_or(Failure::SecretMissing)
 }
 
-/// Discovers the engine, localises the keys to it, and sends the authPriv `GetRequest`.
 async fn v3(
     link: &mut Link,
     user: &[u8],

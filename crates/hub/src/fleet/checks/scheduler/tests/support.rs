@@ -1,5 +1,3 @@
-//! Devices, checks, listeners and readers that the tick tests share.
-
 use std::{
     io::Write as _,
     sync::{
@@ -41,20 +39,17 @@ pub fn device(text: &str) -> DeviceId {
     text.parse().unwrap()
 }
 
-/// A vault whose key is 32 bytes of `byte`.
 pub fn vault_with(byte: u8) -> Vault {
     let mut key_file = tempfile::NamedTempFile::new().unwrap();
     writeln!(key_file, "{}", STANDARD.encode([byte; 32])).unwrap();
     Vault::from_key_file(key_file.path()).unwrap()
 }
 
-/// The vault the test schedulers use.
 pub fn vault() -> Vault {
     vault_with(7)
 }
 
-/// Seals with `vault` for the loopback host. Only SNMP secrets are bound to a host (SEC-010);
-/// a test of them names its host itself.
+/// Only SNMP secrets are bound to a host (SEC-010); their tests name the host.
 pub fn sealer(vault: &Vault) -> Sealer<'_> {
     Sealer {
         vault,
@@ -66,7 +61,6 @@ pub fn rng() -> StdRng {
     StdRng::seed_from_u64(7)
 }
 
-/// What the attempts of a test share, with this policy.
 fn context_with(pool: &PgPool, bus: &Bus, policy: AddressPolicy) -> Context {
     Context::new(
         pool.clone(),
@@ -79,7 +73,6 @@ fn context_with(pool: &PgPool, bus: &Bus, policy: AddressPolicy) -> Context {
     )
 }
 
-/// What one attempt needs to reach the local listeners.
 pub fn context(pool: &PgPool) -> Context {
     context_with(
         pool,
@@ -88,7 +81,6 @@ pub fn context(pool: &PgPool) -> Context {
     )
 }
 
-/// A scheduler with this policy.
 pub fn scheduler_with(pool: &PgPool, bus: &Bus, policy: AddressPolicy) -> Scheduler {
     let ctx = context_with(pool, bus, policy);
     Scheduler::new(
@@ -100,12 +92,10 @@ pub fn scheduler_with(pool: &PgPool, bus: &Bus, policy: AddressPolicy) -> Schedu
     )
 }
 
-/// A scheduler whose probes may reach the local listeners.
 pub fn scheduler(pool: &PgPool, bus: &Bus) -> Scheduler {
     scheduler_with(pool, bus, AddressPolicy::default().allowing_loopback())
 }
 
-/// A scheduler that reaches the local listeners within these limits.
 pub fn limited(pool: &PgPool, limits: Limits) -> Scheduler {
     let ctx = Context::new(
         pool.clone(),
@@ -119,8 +109,7 @@ pub fn limited(pool: &PgPool, limits: Limits) -> Scheduler {
     Scheduler::new(ctx, limits)
 }
 
-/// The database clock, truncated to the second: the partition functions accept only
-/// instants near it.
+/// The partition functions accept only instants near the database clock.
 pub async fn database_now(pool: &PgPool) -> DateTime<Utc> {
     let now: DateTime<Utc> = sqlx::query_scalar("select pg_catalog.now()")
         .fetch_one(pool)
@@ -129,7 +118,6 @@ pub async fn database_now(pool: &PgPool) -> DateTime<Utc> {
     now.duration_trunc(TimeDelta::seconds(1)).unwrap()
 }
 
-/// Points the device at 127.0.0.1.
 pub async fn on_loopback(pool: &PgPool, text: &str) -> DeviceId {
     sqlx::query("UPDATE devices.devices SET host = '127.0.0.1' WHERE id = $1")
         .bind(device(text))
@@ -139,7 +127,6 @@ pub async fn on_loopback(pool: &PgPool, text: &str) -> DeviceId {
     device(text)
 }
 
-/// Settings with a 10-second interval, a 5-second retry interval and these retries.
 pub fn settings(retries: u8) -> CheckSettings {
     CheckSettings {
         interval_seconds: 10,
@@ -156,7 +143,6 @@ pub fn tcp(port: u16) -> Definition {
     })
 }
 
-/// A check named `name` with [`settings`] and no group.
 pub fn new_check(device: DeviceId, name: &str, definition: Definition, retries: u8) -> NewCheck {
     NewCheck {
         device,
@@ -167,7 +153,6 @@ pub fn new_check(device: DeviceId, name: &str, definition: Definition, retries: 
     }
 }
 
-/// Adds a check named "Service port"; its first due time is unset.
 pub async fn add(pool: &PgPool, device: DeviceId, definition: Definition, retries: u8) -> CheckId {
     add_check(pool, new_check(device, "Service port", definition, retries)).await
 }
@@ -180,7 +165,6 @@ pub async fn add_check(pool: &PgPool, new: NewCheck) -> CheckId {
         .id
 }
 
-/// Makes the check due at `at`.
 pub async fn due_at(pool: &PgPool, id: CheckId, at: DateTime<Utc>) {
     sqlx::query("UPDATE checks.checks SET next_due_at = $2 WHERE id = $1")
         .bind(id)
@@ -194,7 +178,6 @@ pub async fn stored(pool: &PgPool, id: CheckId) -> Check {
     checks::get(pool, id).await.unwrap()
 }
 
-/// The statuses of the check's heartbeats, oldest first.
 pub async fn beats(pool: &PgPool, id: CheckId) -> Vec<String> {
     sqlx::query_scalar("SELECT status FROM checks.heartbeats WHERE check_id = $1 ORDER BY at")
         .bind(id)
@@ -203,7 +186,6 @@ pub async fn beats(pool: &PgPool, id: CheckId) -> Vec<String> {
         .unwrap()
 }
 
-/// The device's events as (severity, source, message), oldest first.
 pub async fn events_of(pool: &PgPool, device: DeviceId) -> Vec<(String, String, String)> {
     sqlx::query_as(
         "SELECT severity, source, message FROM events.event_log WHERE device_id = $1 \
@@ -215,7 +197,6 @@ pub async fn events_of(pool: &PgPool, device: DeviceId) -> Vec<(String, String, 
     .unwrap()
 }
 
-/// A port nothing listens on.
 pub fn closed_port() -> u16 {
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     listener.local_addr().unwrap().port()
@@ -247,7 +228,6 @@ impl Listener {
         self.accepted.load(Ordering::SeqCst)
     }
 
-    /// Waits until `count` connections were accepted; panics after 5 seconds.
     pub async fn wait_for(&self, count: usize) {
         let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
         while self.accepted() < count {
@@ -275,7 +255,6 @@ pub async fn settle_briefly() {
     tokio::time::sleep(Duration::from_millis(300)).await;
 }
 
-/// Makes every event write fail until [`allow_event_writes`].
 pub async fn fail_event_writes(pool: &PgPool) {
     for sql in [
         "CREATE FUNCTION events.refuse() RETURNS trigger LANGUAGE plpgsql AS \
@@ -294,7 +273,6 @@ pub async fn allow_event_writes(pool: &PgPool) {
         .unwrap();
 }
 
-/// Selects a new channel for `check`.
 pub async fn notify_on(pool: &PgPool, check: CheckId) {
     let channel = uuid::Uuid::now_v7();
     sqlx::query("INSERT INTO notifications.channels (id, name, kind) VALUES ($1, $2, 'webhook')")
@@ -311,7 +289,6 @@ pub async fn notify_on(pool: &PgPool, check: CheckId) {
         .unwrap();
 }
 
-/// The kinds queued for `check`, oldest first.
 pub async fn queued(pool: &PgPool, check: CheckId) -> Vec<String> {
     sqlx::query_scalar(
         "SELECT kind FROM notifications.outbox WHERE check_id = $1 ORDER BY created_at, id",

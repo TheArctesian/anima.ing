@@ -1,5 +1,4 @@
-//! Beats from any writer reach the status bookkeeping: pushes near a tick, a failed read,
-//! devices seen first after the start and deleted devices (LOG-004, LOG-010).
+//! Beats from any writer reach the status bookkeeping (LOG-004, LOG-010).
 
 use std::time::Duration;
 
@@ -29,7 +28,6 @@ fn device_statuses(receiver: &mut Receiver<Signal>) -> Vec<Status> {
         .collect()
 }
 
-/// A PUSH check on `docker-host` that is not due for an hour.
 async fn push_check(pool: &PgPool, now: DateTime<Utc>) -> (DeviceId, CheckId) {
     let device = on_loopback(pool, DOCKER_HOST).await;
     let push = Definition::Push(PushToken::from_random(&[5; 32]));
@@ -38,7 +36,6 @@ async fn push_check(pool: &PgPool, now: DateTime<Utc>) -> (DeviceId, CheckId) {
     (device, id)
 }
 
-/// Records a push at `at`, as the push route does.
 async fn push(pool: &PgPool, id: CheckId, at: DateTime<Utc>) {
     let beat = Beat {
         at,

@@ -1,5 +1,3 @@
-//! The fake server's keyboard-interactive rounds: what it asks and when it accepts.
-
 use russh::server::{Auth, Response};
 
 use super::{
@@ -8,7 +6,6 @@ use super::{
 };
 
 impl Device {
-    /// The script's prompts in one round.
     fn prompt_count(&self) -> usize {
         match self.script.prompts {
             Prompts::Round(count) => count,
@@ -16,7 +13,6 @@ impl Device {
         }
     }
 
-    /// A round of prompts.
     pub(super) fn prompts(&self) -> Auth {
         let prompt = ("Password: ".into(), false);
         Auth::Partial {
@@ -26,7 +22,6 @@ impl Device {
         }
     }
 
-    /// The verdict on one round's answers: another round while the script has more.
     pub(super) fn answered_round(&mut self, user: &str, response: Response<'_>) -> Auth {
         let answers: Vec<_> = response.collect();
         let password = self.script.password.as_bytes();

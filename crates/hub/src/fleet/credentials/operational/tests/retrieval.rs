@@ -1,5 +1,4 @@
-//! Retrieval by a consumer's daemon: who gets a key, what the hub records of each daemon, and
-//! what a removed device leaves (R-147, K-E5 Section 2.1).
+//! Key retrieval by a consumer's daemon (R-147, K-E5 Section 2.1).
 
 use daemon_core::wire::KeyVersion;
 use sqlx::PgPool;

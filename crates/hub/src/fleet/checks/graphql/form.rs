@@ -1,7 +1,6 @@
 //! Turns the parsed check inputs into domain values and checks the range of every number.
-//! Pure: the source of a new push token comes in as a parameter, and is called only for a
-//! push configuration once the whole input is valid, so a failed draw never hides a field
-//! error (CQ-021). Errors name the field, never its value (LOG-007).
+//! The push token is drawn only once the whole input is valid, so a failed draw never hides a
+//! field error (CQ-021). Errors name the field, never its value (LOG-007).
 
 mod http;
 mod snmp;

@@ -1,5 +1,4 @@
-//! SQL for the distribution read from a device: the `distribution` column of `devices`
-//! (DEV-016). Only the metrics collection writes it; the operator never does.
+//! The `distribution` column of `devices` (DEV-016); only the metrics collection writes it.
 
 use sqlx::PgPool;
 
@@ -8,7 +7,6 @@ use crate::{
     ids::DeviceId,
 };
 
-/// Sets the distribution read from the device; a value equal to the stored one writes nothing.
 pub(in crate::fleet::devices) async fn set_distribution(
     db: &PgPool,
     id: DeviceId,

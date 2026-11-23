@@ -1,11 +1,5 @@
-//! The terminal's part of the session task (K4 Section 8, `upgrade::FarSide`): it opens the
-//! device side, and once the `/terminal` request is answered waits for the upgraded socket,
-//! runs the shell (`shell`) or tells the client why there is none. The shared task
-//! (`upgrade::run_session`) owns the ticket from redeem to end.
-//!
-//! The known gap of the Guacamole tunnel holds here too (SEC-002, issue #1): a client that
-//! sends a byte after the request headers and then leaves is not seen until the upgrade
-//! never comes, so the opening, the sign-in included, carries on for that session.
+//! The terminal's part of the session task (K4 Section 8); `upgrade::run_session` owns the ticket from redeem to end.
+//! A client that sends a byte after the headers and leaves is not seen until the upgrade never comes (SEC-002).
 
 use axum::extract::ws::WebSocket;
 use tokio::sync::oneshot;
@@ -45,8 +39,6 @@ impl FarSide for Terminal {
     }
 }
 
-/// The session after the response: waits for the upgraded socket, then runs the shell or
-/// tells the client why there is none.
 pub(super) async fn connected(
     timing: Timing,
     tunnel: &mut Tunnel,
@@ -72,7 +64,6 @@ pub(super) async fn connected(
     }
 }
 
-/// Tells the client, once upgraded, why there is no shell, and closes with the end's code.
 /// The end is the cause even if the upgrade fails: it came first (K4 Section 8.3).
 async fn refused(
     end: End,

@@ -1,20 +1,8 @@
 //! Who may use the database for a daemon now (K8 Section 6, MET-017).
 //!
-//! - At most [`ADDRESS_REQUESTS`] requests per client address until the request's credential is
-//!   known, so one VPN node with junk bearers or codes cannot keep the hub busy for the others.
-//!   All requests from one address share its turns.
-//! - At most [`DAEMON_REQUESTS`] daemon requests using the database at once, well under the pool.
-//!   A request waits for its turn in order, up to the wait it is given, and holds it only
-//!   around its database work, never while a body arrives. A valid token's store holds its turn
-//!   until it ends, at most until the answer's deadline.
-//! - One push or renewal per device, so one token cannot queue requests on its device's rows.
-//!
-//! A request that gets no turn is answered `UNAVAILABLE` before it waits for a connection or a
-//! row. Each turn ends when its guard drops, also when the answer's future is dropped at its
-//! deadline. The locks here are never held across an await.
-//!
-//! A refusal's event is written after the request's turns end, at most once a minute per
-//! client address, or per device when its token was valid (`throttle`).
+//! A request holds its turn only around its database work, never while a body arrives. A
+//! request that gets no turn is answered `UNAVAILABLE` before it waits for a connection or a
+//! row. The locks here are never held across an await.
 
 use std::{
     collections::HashMap,
@@ -28,16 +16,12 @@ use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
 use crate::ids::DeviceId;
 
-/// The most daemon requests that use the database at once: well under the hub's pool of 10
-/// connections (`PgPool::connect`'s default), so the operator's requests and the checks always
-/// find one.
+/// Well under the hub's pool of 10 connections, so the operator's requests and the checks find one.
 pub(super) const DAEMON_REQUESTS: usize = 4;
 
-/// The most requests of one client address before their credentials are known: the node's
-/// daemon, which sends one at a time, and an enrolment beside it (MET-012).
+/// The node's daemon sends one at a time, and an enrolment may run beside it (MET-012).
 pub(super) const ADDRESS_REQUESTS: usize = 2;
 
-/// The daemon requests in progress.
 #[derive(Clone)]
 pub(super) struct Turns {
     requests: Arc<Semaphore>,
@@ -47,7 +31,6 @@ pub(super) struct Turns {
 }
 
 impl Turns {
-    /// Room for `requests` daemon requests at once, each waiting up to `wait` for its turn.
     pub(super) fn new(requests: usize, wait: Duration) -> Self {
         Self {
             requests: Arc::new(Semaphore::new(requests)),
@@ -63,19 +46,18 @@ impl Turns {
         tokio::time::timeout(self.wait, waited).await.ok()?.ok()
     }
 
-    /// One of the address's turns; `None` while [`ADDRESS_REQUESTS`] of its requests are in
-    /// progress.
+    /// Limits an address until the credential is known, so one node with junk bearers cannot
+    /// keep the hub busy for the others.
     pub(super) fn address(&self, address: IpAddr) -> Option<Turn<IpAddr>> {
         self.addresses.take(address)
     }
 
-    /// The device's one turn; `None` while another push or renewal of the device is in progress.
+    /// One turn per device, so one token cannot queue requests on its device's rows.
     pub(super) fn device(&self, device: DeviceId) -> Option<Turn<DeviceId>> {
         self.devices.take(device)
     }
 }
 
-/// How many requests of each key are in progress, up to a limit.
 #[derive(Clone)]
 struct InFlight<K> {
     counts: Arc<Mutex<HashMap<K, usize>>>,
@@ -103,7 +85,6 @@ impl<K: Copy + Eq + Hash> InFlight<K> {
     }
 }
 
-/// A turn of one address or device; it ends when this drops.
 pub(super) struct Turn<K: Copy + Eq + Hash> {
     key: K,
     counts: Arc<Mutex<HashMap<K, usize>>>,

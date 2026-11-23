@@ -1,6 +1,4 @@
-//! Sealed HTTP secrets (SEC-003, SEC-005, Q2-14): the frame and the context values sealed
-//! before must keep, the binding each open checks, and a seal that has nothing to bind to.
-//! Through the database they are tested in `tests/it/checks/face/secrets.rs`.
+//! Sealed HTTP secrets (SEC-003, SEC-005, Q2-14).
 
 use std::io::Write as _;
 
@@ -34,8 +32,6 @@ fn check() -> CheckId {
     CheckId::from(Uuid::now_v7())
 }
 
-/// A check of PVE-01's web interface with basic authentication, a secret `Cookie` header
-/// (written in upper case) and a plain `Accept` header.
 fn config() -> HttpConfig {
     let mut config = HttpConfig::new("https://pve-01.home.lan:8006/api2/json?x=1");
     config.headers = vec![
@@ -62,10 +58,8 @@ fn secrets() -> HttpSecrets {
     }
 }
 
-/// The binding `config()` seals, as JSON.
 const BINDING: &[u8] = br#"{"origin":"https://pve-01.home.lan:8006","headers":["cookie"],"auth":{"kind":"BASIC","username":"monitor"},"verify_tls":true}"#;
 
-/// A plaintext in the sealed layout: the binding's length, the binding, the secrets.
 fn framed(binding: &[u8], secrets: &[u8]) -> Vec<u8> {
     let mut plain = u32::try_from(binding.len()).unwrap().to_be_bytes().to_vec();
     plain.extend_from_slice(binding);

@@ -1,34 +1,11 @@
 //! Device credentials: secrets sealed with the hub key before they reach storage (SEC-003).
 //!
-//! [`Vault`] holds the key from `ANIMA_KEY_FILE` (SEC-004) and seals each [`Secret`] with
-//! XChaCha20-Poly1305 into a [`Sealed`] value. Plaintext never leaves this module except
-//! through [`Secret::expose`]; secret types implement no format or serialise traits, and
-//! this module writes no logs (LOG-007).
-//!
-//! SSH credentials and RDP and VNC passwords live in `credentials.secrets`, one sealed row per
-//! SSH part or password, each bound to its device and kind, so a value moved to another row
-//! does not open. Each function sees only its own kinds: an RDP or VNC password never counts
-//! as, opens as, or is deleted with an SSH secret, nor the reverse. Only sessions read secrets
-//! back ([`load_ssh`], [`load_password`]); the API sees only whether one exists ([`has_ssh`],
-//! [`with_ssh`], [`with_password`]) (SEC-005).
-//!
-//! Each secret is bound to the device host it was entered for, sealed inside the value with it
-//! (SEC-011). The readers take the host they are about to connect to and open a secret only for
-//! that host, letter case aside; for any other host they return
-//! [`Error::EnteredForOtherHost`] and the caller sends nothing. The host is the device's host
-//! text, never a resolved address. A refused secret stays stored: it opens again if the device
-//! goes back to its host, and storing it again binds it to the new one.
-//!
-//! Writers of every kind take one advisory lock per device, so the lock order documented on
-//! each writer holds for all of them.
-//!
-//! A source account's credential (an App key, a token) lives in `credentials.source_secrets`,
-//! one sealed row per account, bound to the account id so a row moved or copied to another
-//! account does not open (SRC-008, PRJ-018). Only the source token minter reads it back
-//! ([`load_source_secret`]).
-//!
-//! The operational keys of the operator's servers, with their versions and consumers, are in
-//! [`operational`]; their K1 part is in [`graphql`] (R-147, K-E5 Section 2).
+//! Plaintext leaves this module only through [`Secret::expose`]; secret types implement no
+//! format or serialise traits, and this module writes no logs (LOG-007).
+//! Each secret is bound to its device, its kind and the host it was entered for, and opens only
+//! for that host (SEC-011). Only sessions read device secrets back; the API sees only whether one
+//! exists (SEC-005). Only the source token minter reads a source secret back (SRC-008).
+//! Writers of every kind take one advisory lock per device.
 
 pub mod graphql;
 mod host;
@@ -43,8 +20,7 @@ mod vault;
 #[cfg(test)]
 mod tests;
 
-/// A vault over a fixed throwaway key, for the tests of the domains that seal or open with it;
-/// never a real key (SEC-004).
+/// A fixed throwaway key for tests; never a real key (SEC-004).
 #[cfg(test)]
 pub(crate) fn test_vault() -> Vault {
     Vault::from_key(zeroize::Zeroizing::new([7_u8; 32]))
@@ -66,56 +42,38 @@ pub use vault::{Sealed, Vault};
 /// Why a credential operation failed. Messages name no path, key, nonce or plaintext.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    /// The key file could not be read.
     #[error("the credential key file cannot be read ({0})")]
     KeyFile(std::io::ErrorKind),
-    /// The key file does not hold a base64-encoded 32-byte key.
     #[error("the credential key file does not hold a base64-encoded 32-byte key")]
     KeyFormat,
-    /// The sealed value names a key other than the vault's.
     #[error("the secret was sealed with a different key")]
     WrongKey,
-    /// Authentication failed: the key, nonce, ciphertext or context does not match.
     #[error("the secret cannot be decrypted")]
     Decrypt,
-    /// The sealed value is not in a known layout.
     #[error("the sealed secret is malformed")]
     Malformed,
-    /// The secret store failed; the source holds the database error, never a secret.
+    /// The source holds the database error, never a secret.
     #[error("the credential store is unavailable")]
     Database(#[from] sqlx::Error),
-    /// No device has the given id.
     #[error("the device does not exist")]
     UnknownDevice,
-    /// The OS random source yielded no nonce, so nothing was sealed.
     #[error("the OS random source failed")]
     Random(#[source] getrandom::Error),
-    /// The secret was entered for another host than the one the caller connects to; the
-    /// opened secret was dropped (SEC-011). Names neither host (LOG-007).
+    /// Names neither host (SEC-011, LOG-007).
     #[error("the credential was entered for another host of the device")]
     EnteredForOtherHost,
-    /// No source secret has the given id (SRC-008).
     #[error("the source secret does not exist")]
     UnknownSourceSecret,
 }
 
-/// Replaces every SSH secret of the device with `secret`, sealed per part and bound to `host`,
-/// the device's host it was entered for (SEC-011), in the caller's connection. Runs in its own
-/// transaction (a savepoint inside the caller's), so a failure leaves the previous secret in
-/// place.
+/// Replaces every SSH secret of the device, bound to `host` (SEC-011), in a savepoint, so a
+/// failure leaves the previous secret in place.
 ///
-/// Concurrent stores and clears for one device are serialised: each waits for this domain's
-/// per-device advisory lock, held until the caller's transaction ends, so two writers never
-/// leave a mixed row set.
-///
-/// Lock order for callers: call this before taking `FOR UPDATE` on, or deleting, the device
-/// row in the same transaction. Otherwise a concurrent store can deadlock, which PostgreSQL
-/// detects and reports as [`Error::Database`] (SQLSTATE 40P01).
+/// Lock order: call this before taking `FOR UPDATE` on, or deleting, the device row in the same
+/// transaction, or a concurrent store can deadlock (SQLSTATE 40P01).
 ///
 /// # Errors
-///
-/// [`Error::Random`] when the OS random source fails, [`Error::UnknownDevice`] when no device
-/// has this id, [`Error::Database`] otherwise.
+/// [`Error::Random`], [`Error::UnknownDevice`] or [`Error::Database`].
 pub async fn store_ssh(
     conn: &mut PgConnection,
     vault: &Vault,
@@ -142,15 +100,11 @@ pub async fn store_ssh(
     Ok(())
 }
 
-/// Opens the device's SSH secret for a connection to `host`, the device's host the caller is
-/// about to connect to; `None` when none is stored.
+/// Opens the device's SSH secret for a connection to `host`; `None` when none is stored.
 ///
 /// # Errors
-///
-/// [`Error::EnteredForOtherHost`] when it was entered for another host (SEC-011);
-/// [`Error::WrongKey`] or [`Error::Decrypt`] when a row does not open with this vault for this
-/// device, [`Error::Malformed`] for a stored row set no [`SshSecret`] produces, and
-/// [`Error::Database`].
+/// [`Error::EnteredForOtherHost`] for another host (SEC-011); otherwise a row that does not
+/// open, or [`Error::Database`].
 pub async fn load_ssh(
     db: &PgPool,
     vault: &Vault,
@@ -171,34 +125,23 @@ pub async fn load_ssh(
     SshSecret::from_parts(parts).map(Some)
 }
 
-/// Whether the device has an SSH secret stored.
-///
 /// # Errors
-///
 /// [`Error::Database`] when the store cannot be read.
 pub async fn has_ssh(db: &PgPool, device: DeviceId) -> Result<bool, Error> {
     store::exists_of_kinds(db, device, &SshKind::SQL_KINDS).await
 }
 
-/// Which of the given devices have an SSH secret stored, in one query, so a list of devices
-/// costs one round trip (API-005). Devices without a secret, and unknown ids, are left out.
+/// Which of the given devices have an SSH secret stored, in one query (API-005).
 ///
 /// # Errors
-///
 /// [`Error::Database`] when the store cannot be read.
 pub async fn with_ssh(db: &PgPool, devices: &[DeviceId]) -> Result<HashSet<DeviceId>, Error> {
     store::devices_with_kinds(db, devices, &SshKind::SQL_KINDS).await
 }
 
-/// Deletes every SSH secret of the device in the caller's connection. Returns true if a
-/// secret was removed. Waits for a concurrent [`store_ssh`] for the device, as that does.
-///
-/// Lock order for callers: call this before taking `FOR UPDATE` on, or deleting, the device
-/// row in the same transaction. Otherwise a concurrent store can deadlock, which PostgreSQL
-/// detects and reports as [`Error::Database`] (SQLSTATE 40P01).
+/// Returns true if a secret was removed. Same lock order as [`store_ssh`].
 ///
 /// # Errors
-///
 /// [`Error::Database`] when the store cannot be written.
 pub async fn clear_ssh(conn: &mut PgConnection, device: DeviceId) -> Result<bool, Error> {
     let mut tx = conn.begin().await?;
@@ -208,19 +151,11 @@ pub async fn clear_ssh(conn: &mut PgConnection, device: DeviceId) -> Result<bool
     Ok(removed > 0)
 }
 
-/// Replaces the device's password of `kind` with `secret`, sealed and bound to `host`, the
-/// device's host it was entered for (SEC-011), in the caller's connection.
-/// Runs in its own transaction (a savepoint inside the caller's), so a failure leaves the
-/// previous password in place. Other kinds, SSH included, are left as they are.
-///
-/// Serialised with every other store and clear for the device, of any kind, by the same
-/// per-device lock as [`store_ssh`], and with the same lock order for callers: call this before
-/// taking `FOR UPDATE` on, or deleting, the device row in the same transaction.
+/// Replaces the device's password of `kind`, bound to `host` (SEC-011), in a savepoint; other
+/// kinds stay. Same lock order as [`store_ssh`].
 ///
 /// # Errors
-///
-/// [`Error::Random`] when the OS random source fails, [`Error::UnknownDevice`] when no device
-/// has this id, [`Error::Database`] otherwise.
+/// [`Error::Random`], [`Error::UnknownDevice`] or [`Error::Database`].
 pub async fn store_password(
     conn: &mut PgConnection,
     vault: &Vault,
@@ -237,15 +172,11 @@ pub async fn store_password(
     Ok(())
 }
 
-/// Opens the device's password of `kind` for a connection to `host`, the device's host the
-/// caller is about to connect to; `None` when none is stored.
+/// Opens the device's password of `kind` for a connection to `host`; `None` when none is stored.
 ///
 /// # Errors
-///
-/// [`Error::EnteredForOtherHost`] when it was entered for another host (SEC-011);
-/// [`Error::WrongKey`] or [`Error::Decrypt`] when the row does not open with this vault for
-/// this device and kind, [`Error::Malformed`] for a row not in the sealed layout, and
-/// [`Error::Database`].
+/// [`Error::EnteredForOtherHost`] for another host (SEC-011); otherwise a row that does not
+/// open, or [`Error::Database`].
 pub async fn load_password(
     db: &PgPool,
     vault: &Vault,
@@ -264,10 +195,8 @@ pub async fn load_password(
 }
 
 /// Which of the given devices have a password of `kind` stored, in one query (API-005).
-/// Devices without one, and unknown ids, are left out.
 ///
 /// # Errors
-///
 /// [`Error::Database`] when the store cannot be read.
 pub async fn with_password(
     db: &PgPool,
@@ -277,12 +206,9 @@ pub async fn with_password(
     store::devices_with_kinds(db, devices, &[kind.as_sql()]).await
 }
 
-/// Deletes the device's password of `kind` in the caller's connection. Returns true if a
-/// password was removed. Takes the per-device lock, as [`store_password`] does, with the same
-/// lock order for callers.
+/// Returns true if a password was removed. Same lock order as [`store_ssh`].
 ///
 /// # Errors
-///
 /// [`Error::Database`] when the store cannot be written.
 pub async fn clear_password(
     conn: &mut PgConnection,
@@ -296,13 +222,11 @@ pub async fn clear_password(
     Ok(removed > 0)
 }
 
-/// Stores `secret` as the credential of the source `account`, sealed and bound to the account
-/// id, in the caller's connection; returns its id. Storing again for the account replaces the
+/// Stores the source `account`'s credential bound to the account; storing again replaces the
 /// value and keeps the id (SRC-008, PRJ-018).
 ///
 /// # Errors
-///
-/// [`Error::Random`] when the OS random source fails, [`Error::Database`] otherwise.
+/// [`Error::Random`] or [`Error::Database`].
 pub async fn store_source_secret(
     conn: &mut PgConnection,
     vault: &Vault,
@@ -317,10 +241,7 @@ pub async fn store_source_secret(
 /// Opens the source secret `id` for `account`, the source account the caller acts for.
 ///
 /// # Errors
-///
-/// [`Error::UnknownSourceSecret`] when no source secret has this id; [`Error::Decrypt`] when it
-/// was sealed for another account or changed, [`Error::WrongKey`] when another key sealed it,
-/// [`Error::Malformed`] for a row not in the sealed layout, and [`Error::Database`].
+/// [`Error::UnknownSourceSecret`]; [`Error::Decrypt`] when it was sealed for another account.
 pub async fn load_source_secret(
     db: &PgPool,
     vault: &Vault,
@@ -332,12 +253,9 @@ pub async fn load_source_secret(
     source::open(vault, row, account)
 }
 
-/// Deletes the source secret `id` of `account`, the source account the caller acts for, in the
-/// caller's connection. Returns true if it was removed; a secret of another account is never
-/// removed.
+/// Returns true if it was removed; a secret of another account is never removed.
 ///
 /// # Errors
-///
 /// [`Error::Database`] when the store cannot be written.
 pub async fn clear_source_secret(
     conn: &mut PgConnection,

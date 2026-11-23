@@ -1,6 +1,5 @@
-//! Reads one [`Snapshot`] in a fixed number of statements, however many checks and devices
-//! there are (D-24, API-005), and applies the status rules that `Check.status` and
-//! `Device.status` use, so the exposition never disagrees with the API (CHK-004, CHK-006).
+//! A [`Snapshot`] in a fixed number of statements (D-24, API-005), judged by the API's status
+//! rules so the exposition never disagrees with the API (CHK-004, CHK-006).
 
 use std::collections::HashMap;
 
@@ -18,7 +17,6 @@ use crate::{
     status::Status,
 };
 
-/// What [`take`] read, before the rules apply.
 struct Reads {
     now: DateTime<Utc>,
     devices: Vec<Device>,
@@ -29,11 +27,8 @@ struct Reads {
     uptimes: [HashMap<CheckId, f64>; 3],
 }
 
-/// Every device and check as the exposition shows them at `now`, in eight statements however
-/// many there are: devices, maintenance windows, standings, checks, newest heartbeats and one
-/// uptime sum per window. Uptime comes from the aggregate tables only (CHK-011). The eight
-/// reads are not one transaction, so a write between two of them can show in one and not the
-/// other until the next build.
+/// Uptime comes from the aggregate tables only (CHK-011). The reads share no transaction, so a
+/// write between two of them can show in one and not the other until the next build.
 ///
 /// # Errors
 /// `Database`, `Devices`, `Maintenance` or `Unreadable` when a read fails.
@@ -81,8 +76,7 @@ fn labels(device: &Device) -> DeviceLabels {
     }
 }
 
-/// The samples: devices in name order, checks by device in that order, then by name. A
-/// check's status is `status::of_check`, a device's is `status::by_device`, as in the API.
+/// Devices in name order, checks by device in that order, then by name.
 fn assemble(reads: &Reads) -> Snapshot {
     let ids: Vec<DeviceId> = reads.devices.iter().map(|device| device.id).collect();
     let shown = status::by_device(&ids, &reads.standings, &reads.devices, &reads.active);

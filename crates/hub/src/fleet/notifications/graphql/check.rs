@@ -1,7 +1,5 @@
 //! `Mutation.setCheckNotifications` and the `CheckNotifications` type (NOT-003, NOT-005, D-22).
-//! The mutation replaces the check's channels and resend setting, writes one audit entry on the
-//! check and one event, all in one transaction (API-003, LOG-005). The `Check.notifications`
-//! field that returns this type lives with `checks`.
+//! The change, its audit entry and its event share one transaction (API-003, LOG-005).
 
 use async_graphql::{Context, ID, InputObject, Object, Result};
 use serde_json::json;

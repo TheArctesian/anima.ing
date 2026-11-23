@@ -1,6 +1,5 @@
-//! The builder's mutations: claim a job, report on it, get its upload URLs, report its upload
-//! (BLD-004 to BLD-010, BLD-060, BLD-063). Each is behind `BuilderSignedIn` and then checks the builder record and the
-//! address it enrolled from (BLD-022, BLD-024).
+//! The builder's mutations (BLD-004 to BLD-010, BLD-060, BLD-063). Each is behind
+//! `BuilderSignedIn`, then checks the builder record and its enrolment address (BLD-022, BLD-024).
 
 use std::sync::Arc;
 

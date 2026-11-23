@@ -89,7 +89,6 @@ fn d_2_other_paths_are_pages() {
 }
 
 proptest! {
-    /// Any path: no panic; a path whose plain segments start with `.` is always hidden.
     #[test]
     fn sec_001_any_path_is_classified_and_dot_segments_stay_hidden(
         before in "[a-z/]{0,10}",

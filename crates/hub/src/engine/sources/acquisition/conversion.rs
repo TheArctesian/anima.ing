@@ -1,11 +1,6 @@
-//! Turning the one-time code a source hands back after "Create GitHub App" into the App's
-//! facts and key (PRJ-039, K-E1 Section 7).
-//!
-//! The code is untrusted text from a browser redirect: it enters a path only when it is 1 to
-//! 200 letters, digits, `-` or `_`, and the path then goes through the same check and the same
-//! allowed hosts as every provider request. The POST carries no credential and no body. The
-//! reply holds the App's private key and two secrets the hub never reads: it is wiped on drop,
-//! and no error or log quotes it (LOG-007).
+//! Converts the code from "Create GitHub App" into the App's facts and key (PRJ-039).
+//! The code is untrusted; the reply holds the App's key, and no error or log quotes it (LOG-007).
+//! The POST carries no credential and no body, and the reply is wiped on drop.
 
 use std::time::Duration;
 
@@ -18,30 +13,24 @@ use super::{
     verdict::{Verdict, judge},
 };
 
-/// How long the hub waits before its one more try after an unreachable source or a 5xx.
 pub const RETRY_AFTER: Duration = Duration::from_secs(2);
-/// The longest code, in characters.
 const MAX_CODE: usize = 200;
 
 /// Why no App came back. Fixed words: never the code or the reply (LOG-007).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum ConvertFailure {
-    /// A 4xx, including a code that is not plain text, which is refused before it is sent.
     #[error("the source refused the code")]
     Refused,
     #[error("the source limits requests")]
     RateLimited(DateTime<Utc>),
-    /// No answer, or a 5xx, twice.
     #[error("the source could not be reached")]
     Unreachable,
-    /// A reply too large, of a status that is not 201, or one the provider could not read.
     #[error("the source's reply to the conversion could not be used")]
     Unusable,
     #[error("the source cannot make an App for the operator")]
     NotRegistrable,
 }
 
-/// One try that did not give an App: worth one more try, or final.
 enum Miss {
     Again(ConvertFailure),
     Final(ConvertFailure),
@@ -55,7 +44,7 @@ impl Miss {
     }
 }
 
-/// Whether `code` may enter a path: 1 to 200 ASCII letters, digits, `-` or `_`.
+/// Whether `code` may enter a path.
 #[must_use]
 pub fn is_code(code: &str) -> bool {
     (1..=MAX_CODE).contains(&code.len())
@@ -64,12 +53,10 @@ pub fn is_code(code: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_'))
 }
 
-/// Converts `code` at the source of `declaration` at `now`. An unreachable source or a 5xx is
-/// tried once more after `retry_after` ([`RETRY_AFTER`]; a parameter so tests do not sleep).
+/// An unreachable source or a 5xx is tried once more after `retry_after`.
 ///
 /// # Errors
-/// [`ConvertFailure`] for each way it can fail; a code that is not plain is
-/// [`ConvertFailure::Refused`] before any request.
+/// [`ConvertFailure`]; a code that is not plain is `Refused` before any request.
 pub async fn convert(
     transport: &Transport,
     declaration: &Declaration,
@@ -96,7 +83,6 @@ pub async fn convert(
     outcome.map_err(Miss::failure)
 }
 
-/// One POST and what its reply says. The reply is dropped, and so wiped, on every path.
 async fn once(
     transport: &Transport,
     registration: &Registration,

@@ -1,6 +1,4 @@
-//! Between the response and the upgraded socket (K4 Section 5, D-9): a client that never
-//! completes the upgrade, `endSession` or shutdown before it, and no upgrade in time. guacd
-//! is told to disconnect whenever it was reached; a changed certificate stays the cause.
+//! Between the response and the upgraded socket (K4 Section 5, D-9).
 
 use std::time::Duration;
 
@@ -27,7 +25,6 @@ use crate::fleet::sessions::{
     end::{Records, finish},
 };
 
-/// A session redeemed and opened to a guacd past `ready`, with no client socket yet.
 async fn opened(pool: &PgPool, setup: Setup) -> (FakeGuacd, Bench, Redeemed, Opening) {
     let guacd = fake_guacd(Script::Serve {
         args: RDP_ARGS,
@@ -42,7 +39,6 @@ async fn opened(pool: &PgPool, setup: Setup) -> (FakeGuacd, Bench, Redeemed, Ope
     (guacd, bench, redeemed, opening)
 }
 
-/// Runs the tunnel after the response with `socket` as the upgrade.
 async fn after_response(
     bench: &Bench,
     redeemed: &mut Redeemed,
@@ -112,8 +108,6 @@ async fn k4_3_no_upgrade_within_the_handshake_wait_is_timeout(pool: PgPool) {
     assert_eq!(heard(&mut guacd).await.opcode, "disconnect");
 }
 
-/// A changed certificate, then a client that leaves (`leaves`) or never upgrades: the session
-/// ends `SERVER_CERTIFICATE_MISMATCH` with its Error event, not as the upgrade ended.
 async fn mismatch_without_upgrade(pool: &PgPool, leaves: bool) {
     let setup = Setup {
         route: Box::new(|route| route.timing.handshake = Duration::from_millis(300)),

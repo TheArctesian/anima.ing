@@ -31,7 +31,6 @@ const fn check_tallies_sql(resolution: Resolution) -> &'static str {
     }
 }
 
-/// The beats of each of the checks in `[start, end)`, from one aggregate table, in one query.
 pub(in crate::fleet::checks) async fn check_tallies(
     db: &PgPool,
     checks: &[CheckId],
@@ -50,8 +49,6 @@ pub(in crate::fleet::checks) async fn check_tallies(
         .collect())
 }
 
-/// Up, down and degraded beats per device over the non-group checks, for the buckets that
-/// start in `[$2, $3)`.
 macro_rules! tally {
     ($table:literal) => {
         concat!(
@@ -75,7 +72,6 @@ const fn tally_sql(resolution: Resolution) -> &'static str {
     }
 }
 
-/// The beats of each device's non-group checks in `[start, end)`, from one aggregate table.
 pub(in crate::fleet::checks) async fn tallies(
     db: &PgPool,
     devices: &[DeviceId],

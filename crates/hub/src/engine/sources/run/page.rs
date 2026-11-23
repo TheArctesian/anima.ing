@@ -1,6 +1,5 @@
-//! One page in one transaction: check the claim, let the intake store the records, write the
-//! new slice and the counts, extend the claim, commit (SRC-007). The slice moves only when the
-//! records of its page are stored.
+//! One page in one transaction (SRC-007): the slice moves only when the records of its page are
+//! stored.
 
 use serde_json::Value;
 use source_exchange::{Body, Request, Response};
@@ -16,24 +15,19 @@ use crate::engine::sources::{
     },
 };
 
-/// A fetched page and the slice it was asked from.
 pub(super) struct Fetched<'a> {
     pub request: &'a Request,
     pub answer: &'a Answer,
     pub slice: &'a Value,
 }
 
-/// What came of storing a page.
 pub(super) enum Stored {
-    /// Committed; the intake's slice is now this.
     Moved(Value),
-    /// Nothing was stored, and the run stops so.
     Stop(Stop),
 }
 
-/// Stores one page for `intake`. Paused since the claim: nothing is written and the run stops.
-/// A claim another run took: nothing is written and the run loses it. A failure of the intake
-/// or of a write rolls the whole page back, so the stored slice still asks for this page.
+/// A failure of the intake or of a write rolls the whole page back, so the stored slice still asks
+/// for this page.
 pub(super) async fn store(
     scheduling: &Scheduling,
     claim: &Claim,

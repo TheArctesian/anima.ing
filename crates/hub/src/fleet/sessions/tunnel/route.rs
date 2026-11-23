@@ -3,19 +3,7 @@
 //!
 //! It serves RDP and VNC tickets only: an SSH ticket belongs to `/terminal` (K4 Section 8,
 //! R-062), so it is refused and spent like a ticket for any other path (403).
-//!
-//! The order of the checks (`admission`):
-//!
-//! 1. The lazy sweep of expired tickets (D-2); if it cannot run, 503 before any token is read.
-//! 2. The token from the query and the client address, then `Live::redeem` (403). A presented
-//!    token is spent whatever happens next, valid or not (K4 Section 1), so the ticket is
-//!    redeemed before the subprotocol is checked: a request without `guacamole` still spends
-//!    it, and cannot be used to test a token without spending it. A ticket whose `tunnelPath`
-//!    is not `/tunnel` is refused and spent in the same redemption (403).
-//! 3. From here the session task owns the redeemed ticket (`upgrade`), so the session ends
-//!    exactly once even when the client leaves and this handler is dropped (MV-003). The task
-//!    answers this handler: 400 without the subprotocol `guacamole` (the session ends
-//!    `PROTOCOL_ERROR`), 503 when the opening fails (`GATEWAY_ERROR`), else the upgrade.
+//! The token is spent before the subprotocol is checked, so no request tests a token without spending it (K4 Section 1).
 //!
 //! Neither the URI, the query nor the token reaches a log, a span or an error (LOG-007).
 
@@ -58,7 +46,6 @@ const SUBPROTOCOL: &str = "guacamole";
 /// D-7).
 const HANDSHAKE_WAIT: Duration = Duration::from_secs(10);
 
-/// The waits of one tunnel. Tests shorten them; the hub uses `Timing::default()`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Timing {
     /// Each of: resolving the device host, reading its RDP server certificate, connecting to
@@ -91,8 +78,6 @@ impl Default for Timing {
     }
 }
 
-/// What the tunnel route needs: the hub's stores, the gateway and its drive root, the live
-/// state and the waits.
 #[derive(Clone)]
 pub(super) struct Route {
     pub(super) db: PgPool,
@@ -125,7 +110,6 @@ pub fn tunnel_router(serving: &Serving) -> Router {
     })
 }
 
-/// The route over `route`'s dependencies and waits.
 pub(super) fn router(route: Route) -> Router {
     Router::new()
         .route(PATH, get(open))

@@ -1,5 +1,4 @@
-//! The K7 cursors over GitHub's pages: a hub page is cut from one GitHub page, every cursor
-//! gives back its place, and any other text is an `after` error, never a panic (API-006).
+//! The cursors over GitHub's pages (K7, API-006).
 
 use proptest::prelude::*;
 

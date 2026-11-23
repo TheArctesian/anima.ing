@@ -1,5 +1,4 @@
-//! The sources GraphQL part (K1; K-E1): the sources and accounts, connect, sync now, pause,
-//! remove, and `sourceAccountChanged`.
+//! The sources GraphQL part (K1; K-E1).
 //!
 //! `connectGithubApp` and `removeSourceAccount` are closed to API keys by the access guard
 //! (D-23). A key never reaches a log, an audit entry, an event or an error (PRJ-018).

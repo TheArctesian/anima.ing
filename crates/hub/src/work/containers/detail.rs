@@ -1,10 +1,8 @@
-//! The details of one container, read-only (HOST-017): the `docker` command line and the pure
-//! reading of its output.
+//! The details of one container, read-only (HOST-017).
 //!
 //! The format asks Docker for named values only. For the environment it asks for the text
 //! before the first `=` of each entry, so no value of an environment variable leaves the
-//! device (LOG-007). The output of a health check is not asked for. One command line reads
-//! the container and then its processes; a container that does not run has no process.
+//! device (LOG-007). The output of a health check is not asked for.
 
 use std::collections::BTreeMap;
 
@@ -21,7 +19,6 @@ use super::{
 };
 use crate::fleet::ssh::{CommandOutput, FixedCommand};
 
-/// One JSON object for the container, made by Docker's template from static text.
 const DETAIL_FORMAT: &str = concat!(
     r#"'{"id":{{json .Id}},"name":{{json .Name}},"image":{{json .Config.Image}},"#,
     r#""imageId":{{json .Image}},"path":{{json .Path}},"args":{{json .Args}},"#,
@@ -39,8 +36,6 @@ const DETAIL_FORMAT: &str = concat!(
     r#"{{json (index (split $e "=") 0)}}{{end}}]}'"#,
 );
 
-/// `docker container inspect` for the named values of one container, then `docker top` for
-/// its processes. The second command runs only when the first succeeded.
 pub(super) fn command(container: &ContainerId) -> FixedCommand {
     FixedCommand::new("docker")
         .arg("container")
@@ -56,10 +51,8 @@ pub(super) fn command(container: &ContainerId) -> FixedCommand {
         .arg("2>&1")
 }
 
-/// The container, as [`DETAIL_FORMAT`] writes it. Docker writes `null` for a list or a map
-/// that is empty.
-/// Only the identifier and the name must be there: a value that a Docker does not write is
-/// empty, so one such value does not hide the rest.
+/// Docker writes `null` for an empty list or map. Only `id` and `name` must be there, so a value
+/// that a Docker does not write does not hide the rest.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Inspected {
@@ -165,17 +158,10 @@ struct Endpoint {
     mac: String,
 }
 
-/// How the line starts that [`DETAIL_FORMAT`] writes.
 const DETAIL_START: &str = r#"{"id":"#;
 
-/// The details the command line wrote: the line of the container, then the table of
-/// `docker top`, or Docker's error when the container does not run. Both commands also write
-/// standard error to the output, so a warning of Docker can be before either part.
-///
-/// # Errors
-/// `NoContainer` when Docker says it knows no such container; `Unreadable` when the output
-/// was cut or the line of the container is not what the format writes; `NoDocker` or
-/// `DockerFailed` when the first command wrote no such line and did not succeed.
+/// Both commands also write standard error to the output, so a warning of Docker can be before
+/// either part.
 pub(super) fn detail(output: &CommandOutput) -> Result<ContainerDetail, Error> {
     if output.cut {
         return Err(Error::Unreadable);
@@ -246,7 +232,6 @@ fn container(read: Inspected, processes: Vec<Process>) -> ContainerDetail {
     }
 }
 
-/// `no`, `always`, `unless-stopped`, or `on-failure` with its limit, as `docker run` takes it.
 fn restart_policy(restart: &Restart) -> String {
     match (restart.name.as_str(), restart.maximum_retry_count) {
         ("", _) => "no".to_owned(),
@@ -255,7 +240,6 @@ fn restart_policy(restart: &Restart) -> String {
     }
 }
 
-/// The health check of the image or of the container; `None` when it is turned off.
 fn health_check(check: Check) -> Option<HealthCheck> {
     let test = check.test.filter(|test| !test.is_empty())?;
     if test.first().map(String::as_str) == Some("NONE") {
@@ -278,8 +262,7 @@ fn health_of(status: &str) -> Health {
     }
 }
 
-/// A time of Docker; `None` for the year 1, which Docker writes for "never", and for text
-/// that is not a time.
+/// `None` for the year 1, which Docker writes for "never", and for text that is not a time.
 fn instant(text: &str) -> Option<DateTime<Utc>> {
     DateTime::parse_from_rfc3339(text)
         .ok()
@@ -308,9 +291,6 @@ fn address(network: String, endpoint: Endpoint) -> NetworkAddress {
     }
 }
 
-/// The rows of the table of `docker top`: the columns `PID`, `UID` or `USER`, and the last
-/// column, which is the command. The table starts at the first line that has a column `PID`;
-/// with no such line there is no process.
 fn processes<'a>(mut lines: impl Iterator<Item = &'a str>) -> Vec<Process> {
     let header = lines.find(|line| line.split_whitespace().any(|column| column == "PID"));
     let columns: Vec<&str> = header.unwrap_or_default().split_whitespace().collect();
@@ -325,7 +305,6 @@ fn processes<'a>(mut lines: impl Iterator<Item = &'a str>) -> Vec<Process> {
         .collect()
 }
 
-/// One row of `columns` columns; the last column takes the rest of the line.
 fn process(line: &str, columns: usize, (pid, user): (usize, Option<usize>)) -> Option<Process> {
     let mut rest = line.trim_start();
     let mut words = Vec::with_capacity(columns);

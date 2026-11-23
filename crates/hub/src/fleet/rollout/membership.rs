@@ -1,10 +1,8 @@
-//! Which machines a rollout includes (ROL-028, ROL-043, ROL-044). A machine that it leaves out
-//! has a reason that the client shows.
+//! Which machines a rollout includes (ROL-028, ROL-043, ROL-044).
 
 use super::model::{Machine, Reach, Release};
 use crate::fleet::builds::Version;
 
-/// Why a rollout leaves a machine out.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LeftOut {
     /// Its daemon token ended (ROL-043).

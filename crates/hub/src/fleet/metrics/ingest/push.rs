@@ -1,12 +1,8 @@
 //! `POST /daemon/v1/push` (K8 Sections 4 and 6; MET-015, MET-017, MET-018).
-//!
-//! The checks run in K8's order and stop at the first refusal: the bearer, before the body is
-//! read; the size; the JSON; the device; the shape; the times. The bearer check includes the
-//! device's metrics source: once the operator switches it away from `daemon`, the daemon's role
-//! is over and its pushes are `TOKEN_REFUSED` (package ruling, WP-54 T3b). The body is held in a
-//! buffer wiped on drop and never logged; a parse error is dropped unread, since its text may
-//! quote the body (LOG-007). The token is looked up by its hash only and never reaches an
-//! event, a log or an answer.
+//! The checks run in K8's order, the bearer before the body is read, and stop at the first refusal.
+//! A device whose metrics source is not `daemon` refuses the token (WP-54 T3b).
+//! The body is wiped on drop and never logged; a parse error, which may quote it, is dropped
+//! unread; the token is matched by hash and never reaches an event, a log or an answer (LOG-007).
 
 mod batch;
 mod samples;
@@ -78,8 +74,7 @@ async fn push(
 ) -> Result<Option<PushAccepted>, Stop> {
     let token =
         credential::bearer(headers).ok_or(Stop::Refused(RefusalCode::TokenRefused, None))?;
-    // One push per device at a time: a second one would wait for the device row holding a
-    // connection (MET-017). The body arrives under this turn only.
+    // One push per device at a time, and the body is read only under this turn (MET-017).
     let Admitted {
         device,
         name,

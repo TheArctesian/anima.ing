@@ -7,7 +7,6 @@ use crate::fleet::builds::{
     queue::{self, Refusal, STOPPED_REASON},
 };
 
-/// A report of `state` (none: only the lease) with `reason`.
 fn says(state: Option<JobState>, reason: &str) -> Report {
     Report {
         job: queued_job().id,

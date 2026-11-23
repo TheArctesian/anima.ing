@@ -1,5 +1,4 @@
-//! R-099, R-092 D-6: a GPU series stores its GPU index and the index as its label, every other
-//! kind stores none, and a `gpu_memory_bytes` series is stored and read back.
+//! R-099, R-092 D-6.
 
 use daemon_core::points::{Kind, Sample};
 use sqlx::PgPool;
@@ -7,7 +6,6 @@ use sqlx::PgPool;
 use super::database::{PVE_01, database_now, device};
 use crate::fleet::metrics::{MetricKind, MetricRange, record_collection, series};
 
-/// Inserts one series row of pve-01 as a writer could, and whether the database took it.
 async fn stored(pool: &PgPool, kind: &str, label: &str, gpu_index: Option<i32>) -> bool {
     sqlx::query(
         "INSERT INTO metrics.series (id, device_id, kind, label, gpu_index, created_at) \

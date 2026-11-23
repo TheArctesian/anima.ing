@@ -1,6 +1,4 @@
-//! The K1 types of web interfaces: `WebInterface`, `WebInterfaceSuggestion`, `OpenIn` and
-//! `WebInterfaceInput`. The domain types are the output objects, so `Device.webInterfaces`
-//! returns them as they are.
+//! The K1 types of web interfaces; the domain types are the output objects.
 
 use std::str::FromStr;
 

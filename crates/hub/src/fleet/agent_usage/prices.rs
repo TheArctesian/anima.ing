@@ -1,20 +1,12 @@
-//! The estimate of the cost of tokens: the tokens of a model times the public list price of
-//! the model per million tokens (AIS-021). The table is fixed in the hub; the hub never looks
-//! a price up on the network. A model that is not in the table gives no estimate, never a
-//! guess.
-//!
-//! The estimate is not the bill of a subscription: a subscription is a fixed price, and the
-//! providers bill more in cases the counts do not show (Claude prompts past 200 000 tokens of
-//! context on the long-context models, and cache writes kept for one hour). Each cache write is
-//! priced as a write kept for five minutes. The models of `OpenAI` bill no cache write apart
-//! from the input, so they price a cache write as input.
+//! Token cost estimates from a fixed table of list prices (AIS-021); the hub never looks a price up on the network.
+//! The estimate is not the bill: each cache write is priced as a five-minute write, and long-context surcharges are not counted.
 
 use super::model::TokenSums;
 
 /// The day on which the prices of [`PRICES`] were the public list prices, `YYYY-MM-DD`.
 pub const PRICES_AS_OF: &str = "2026-11-17";
 
-/// The list price of one model in US dollars per million tokens.
+/// US dollars per million tokens.
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct Price {
     /// The model name with no date suffix.
@@ -25,8 +17,7 @@ struct Price {
     cache_write: f64,
 }
 
-/// A model of Anthropic: a cache read costs a tenth of the input, a five-minute cache write a
-/// quarter more than the input.
+/// Anthropic: a cache read costs a tenth of the input, a five-minute cache write a quarter more.
 const fn claude(model: &'static str, input: f64, output: f64) -> Price {
     Price {
         model,
@@ -37,7 +28,6 @@ const fn claude(model: &'static str, input: f64, output: f64) -> Price {
     }
 }
 
-/// A model of Anthropic whose cache read has its own list price, not a tenth of the input.
 const fn claude_read(model: &'static str, input: f64, output: f64, cache_read: f64) -> Price {
     Price {
         model,
@@ -48,7 +38,6 @@ const fn claude_read(model: &'static str, input: f64, output: f64, cache_read: f
     }
 }
 
-/// A model of `OpenAI`: a cache write costs what input costs.
 const fn openai(model: &'static str, input: f64, output: f64, cache_read: f64) -> Price {
     Price {
         model,
@@ -59,10 +48,8 @@ const fn openai(model: &'static str, input: f64, output: f64, cache_read: f64) -
     }
 }
 
-/// Only the models whose price is known for sure. A newer model has no entry until its price is
-/// added here, with a new [`PRICES_AS_OF`]. Claude Haiku 5.5 has no entry: its price depends on
-/// the length of each prompt, which the counts do not hold. The prices of the short context
-/// apply to the models of `OpenAI`.
+/// Only prices known for sure, as of [`PRICES_AS_OF`]. Claude Haiku 5.5 has no entry: its price
+/// depends on prompt length, which the counts do not hold. `OpenAI` models take short-context prices.
 const PRICES: [Price; 43] = [
     claude_read("claude-fable-5-2", 8.0, 40.0, 0.2),
     claude_read("claude-fable-5-1", 10.0, 50.0, 0.25),
@@ -111,9 +98,7 @@ const PRICES: [Price; 43] = [
 
 const MILLION: f64 = 1_000_000.0;
 
-/// The estimated cost in US dollars of `tokens` of `model` at the prices of [`PRICES_AS_OF`];
-/// `None` for a model not in the table. A name with a date suffix (`-20250929`,
-/// `-2025-08-07`) has the price of its name without it.
+/// `None` for a model not in the table; a dated name (`-20250929`, `-2025-08-07`) takes its undated price.
 #[must_use]
 pub fn estimate(model: &str, tokens: TokenSums) -> Option<f64> {
     let base = undated(model);
@@ -125,7 +110,6 @@ pub fn estimate(model: &str, tokens: TokenSums) -> Option<f64> {
     Some(cost / MILLION)
 }
 
-/// `model` without a trailing `-YYYYMMDD` or `-YYYY-MM-DD`.
 fn undated(model: &str) -> &str {
     let digits = |text: &str| !text.is_empty() && text.bytes().all(|byte| byte.is_ascii_digit());
     if let Some((base, date)) = model.rsplit_once('-')

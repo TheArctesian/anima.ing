@@ -1,15 +1,10 @@
-//! The value of `--mount` of `docker run` as a volume of a Compose file in its long form.
-
 use super::writer::Value;
 
-/// One `--mount` as Compose writes it.
 pub(super) struct Mount {
     pub volume: Value,
-    /// The name of the volume of Docker, for a mount of the type `volume` that names one.
     pub named: Option<String>,
 }
 
-/// Whether `name` is a name of a volume or of a network of Docker.
 pub(super) fn is_name(name: &str) -> bool {
     let mut characters = name.chars();
     let first = characters.next().is_some_and(|c| c.is_ascii_alphanumeric());
@@ -17,7 +12,6 @@ pub(super) fn is_name(name: &str) -> bool {
     first && name.len() > 1 && characters.all(rest)
 }
 
-/// A truth value as Docker reads it.
 pub(super) fn truth(text: &str) -> Option<bool> {
     match text {
         "true" | "True" | "TRUE" | "t" | "T" | "1" => Some(true),
@@ -32,12 +26,10 @@ struct Fields {
     source: Option<String>,
     target: Option<String>,
     read_only: bool,
-    /// The keys of the part of the long form that is for one type: `bind`, `volume`, `tmpfs`.
     typed: Vec<(&'static str, &'static str, Value)>,
 }
 
 impl Fields {
-    /// Reads one field; `None` for a field that the converter does not know.
     fn read(&mut self, key: &str, value: Option<&str>) -> Option<()> {
         match key {
             "type" => self.kind = Some(value?.to_owned()),
@@ -85,9 +77,8 @@ impl Fields {
     }
 }
 
-/// The value of one `--mount`; `None` for a form that the converter does not convert.
 pub(super) fn mount(text: &str) -> Option<Mount> {
-    // Docker reads the fields as one line of CSV. A quoted field is not converted.
+    // Docker reads the fields as CSV; a quoted field is not converted.
     if text.contains('"') {
         return None;
     }

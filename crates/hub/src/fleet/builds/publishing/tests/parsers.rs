@@ -1,6 +1,4 @@
-//! Property tests of the parsers that read builder and bucket bytes (BLD-064, BLD-065, UPD-010):
-//! none panics on arbitrary input, and a file read back passes only with exactly its reported
-//! size and digest, however its bytes are split into chunks.
+//! Property tests of the parsers that read builder and bucket bytes (BLD-064, BLD-065, UPD-010).
 
 use proptest::prelude::*;
 use serde_json::json;
@@ -32,7 +30,6 @@ fn expected(files: &[UploadedFile]) -> Expected<'_> {
     }
 }
 
-/// Reads `bytes` as the reply for `reported`, in chunks cut at `cuts`.
 fn read_back(reported: &UploadedFile, bytes: &[u8], cuts: &[usize]) -> Result<Vec<u8>, String> {
     let mut received = Received::new(reported);
     let mut start = 0;

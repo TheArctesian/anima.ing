@@ -1,6 +1,4 @@
-//! The capabilities of each device: its tool inventory and its hardware values, as its daemon
-//! last sent them (CAP-001 to CAP-005, CAP-020 to CAP-032). Pure: which inventories a filter
-//! keeps, and their join with the devices in device-name order.
+//! Device capabilities as the daemon last sent them (CAP-001 to CAP-005, CAP-020 to CAP-032).
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

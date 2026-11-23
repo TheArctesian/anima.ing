@@ -1,5 +1,4 @@
-//! K1 `AgentAccount`: an account of an AI agent program and the devices that use it (THR-149,
-//! AIS-022).
+//! K1 `AgentAccount`: an AI agent account and the devices that use it (THR-149, AIS-022).
 
 use async_graphql::SimpleObject;
 use chrono::{DateTime, Utc};

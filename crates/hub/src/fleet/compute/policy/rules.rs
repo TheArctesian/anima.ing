@@ -1,34 +1,25 @@
-//! The device policy of a compute node (CAP-010 to CAP-012): the limits and the times in which
-//! the node takes model work. Pure: the defaults and the checks of a new policy.
+//! The device policy of a compute node (CAP-010 to CAP-012). Pure.
 
 use chrono::{DateTime, NaiveTime, Timelike, Utc};
 use chrono_tz::Tz;
 use thiserror::Error;
 
-/// The memory share of a node with no policy, in percent of the usable memory that the node
-/// reports (CAP-005): all of it. The fit estimate keeps its own overhead, so the share adds no
-/// second margin; the operator can lower it for each device (R-335).
+/// All of the usable memory (CAP-005): the fit estimate keeps its own overhead, so the share
+/// adds no second margin (R-335).
 pub const DEFAULT_MEMORY_SHARE: u8 = 100;
-/// The disk share for models of a node with no policy, in percent of the free disk
-/// (R-335). The disk reserve of the daemon always wins: the usable disk is the
-/// smaller of this share of the free disk and the free disk less the reserve (model-work
+/// In percent of the free disk (R-335); the disk reserve of the daemon always wins (model-work
 /// contract, Section 7).
 pub const DEFAULT_DISK_SHARE: u8 = 75;
 
-/// The device policy of one node.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DevicePolicy {
-    /// The largest part of the usable memory that models may use, 1 to 100 percent.
     pub memory_share: u8,
-    /// The largest part of the free disk that model files may use, 1 to 100 percent; the disk
-    /// reserve of the daemon always wins.
     pub disk_share: u8,
-    /// The hours in which the node takes no new model work.
     pub quiet_hours: Option<QuietHours>,
     /// Model work only on mains power (CAP-011). On by default: a computer with no battery
     /// always reads mains, so the default changes nothing for it.
     pub mains_only: bool,
-    /// No new model work while the operator is active at the node (CAP-012). Off by default.
+    /// No new model work while the operator is active at the node (CAP-012).
     pub idle_only: bool,
 }
 
@@ -44,8 +35,7 @@ impl Default for DevicePolicy {
     }
 }
 
-/// The quiet hours of a node: from `start` to `end` in the time zone `zone`. When `end` is not
-/// after `start`, the hours go past midnight.
+/// When `end` is not after `start`, the hours go past midnight.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct QuietHours {
     pub start: NaiveTime,
@@ -54,7 +44,7 @@ pub struct QuietHours {
 }
 
 impl QuietHours {
-    /// Whether `now` is inside the quiet hours; `start` is inside, `end` is not.
+    /// `start` is inside the quiet hours, `end` is not.
     #[must_use]
     pub fn contain(&self, now: DateTime<Utc>) -> bool {
         let local = now.with_timezone(&self.zone).time();
@@ -68,7 +58,6 @@ impl QuietHours {
     }
 }
 
-/// Why a new policy is refused.
 #[derive(Clone, Copy, Debug, Error, PartialEq, Eq)]
 pub enum PolicyError {
     #[error("the memory share must be 1 to 100 percent")]
@@ -84,8 +73,6 @@ pub enum PolicyError {
 }
 
 impl DevicePolicy {
-    /// The policy when its values are in range.
-    ///
     /// # Errors
     /// [`PolicyError`] names the first value out of range.
     pub fn checked(self) -> Result<Self, PolicyError> {

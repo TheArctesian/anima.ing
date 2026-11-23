@@ -1,6 +1,5 @@
 //! The daemon token a request presents, and the device it speaks for (K8 Sections 2, 4 and 5,
-//! MET-013). Renewal and push both authenticate here, and both ask whether the device still
-//! takes its metrics from the daemon (CR-18).
+//! MET-013, CR-18).
 
 use axum::http::{HeaderMap, header::AUTHORIZATION};
 use chrono::{DateTime, Utc};

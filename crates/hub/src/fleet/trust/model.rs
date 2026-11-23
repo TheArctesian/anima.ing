@@ -1,17 +1,12 @@
-//! Domain types of trust: accepted host keys (SEC-006) and accepted RDP server certificates
-//! (SEC-007 for RDP), and who accepts one.
-
 use chrono::{DateTime, Utc};
 
 use super::public_key::PublicKey;
 use crate::fleet::events::{ClientAddr, Operator};
 
-/// The host key the operator accepted for a device (SEC-006). Its algorithm and fingerprint
-/// are read from the key itself, so they always agree with the key the hub pins (SEC-007).
+/// The host key the operator accepted for a device (SEC-006).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HostKey {
     pub public_key: PublicKey,
-    /// When the hub first saw this key.
     pub first_seen_at: DateTime<Utc>,
 }
 
@@ -25,11 +20,9 @@ pub struct ServerCertificate {
     /// The certificate's subject, as the device chose it; never trusted.
     pub subject: Option<String>,
     pub not_after: Option<DateTime<Utc>>,
-    /// When the hub first saw this certificate.
     pub first_seen_at: DateTime<Utc>,
 }
 
-/// Who accepts, from where and when, as the schema data of a signed-in request gives it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(in crate::fleet::trust) struct Actor {
     pub(in crate::fleet::trust) operator: Operator,

@@ -1,11 +1,6 @@
-//! A builder call the hub refuses after it locked the job leaves the job's row unlocked when
-//! it returns, so the next claim or publisher take (`FOR UPDATE SKIP LOCKED`) is not passed by
-//! (D-43, D-25).
-//!
-//! The lock is checked from another thread with its own runtime and connection while this
-//! test's thread is blocked. A transaction that was dropped instead of ended rolls back only
-//! once a task of this test's single-thread runtime runs, so it still holds the lock during the
-//! check: the result does not depend on load.
+//! A refused builder call leaves the job's row unlocked for the next claim or publisher take
+//! (D-43, D-25). A dropped transaction rolls back only once this single-thread runtime runs a
+//! task, so the lock check from another thread does not depend on load.
 
 use chrono::{DateTime, Utc};
 use sqlx::{Connection as _, PgConnection, PgPool, postgres::PgConnectOptions};
@@ -25,8 +20,7 @@ fn now() -> DateTime<Utc> {
     DateTime::from_timestamp(1_900_000_000, 0).unwrap()
 }
 
-/// A queued Linux job `job`, of a release that operator `OPERATOR` started at `now()`; no
-/// builder holds it, so every builder call on it is refused after the job is locked.
+/// No builder holds the job, so every builder call on it is refused after the lock.
 pub(in crate::fleet::builds) async fn queued_job(pool: &PgPool, job: &str) {
     sqlx::query(
         "insert into access.operators (id, username, password_hash, created_at) \
@@ -61,8 +55,6 @@ pub(in crate::fleet::builds) async fn queued_job(pool: &PgPool, job: &str) {
     .unwrap();
 }
 
-/// Whether a transaction still locks the row of job `job`, asked from another thread while
-/// this one is blocked, so no task of this test runs meanwhile.
 pub(in crate::fleet::builds) fn row_locked(options: PgConnectOptions, job: &str) -> bool {
     let job = job.to_owned();
     std::thread::spawn(move || {
@@ -136,8 +128,6 @@ async fn d_43_a_refused_uploaded_report_leaves_the_job_unlocked(pool: PgPool) {
     assert!(!row_locked((*pool.connect_options()).clone(), JOB));
 }
 
-/// Whether another connection to this test's database is still inside a transaction, asked
-/// from another thread while this one is blocked, as [`row_locked`] asks.
 fn transaction_left_open(options: PgConnectOptions) -> bool {
     std::thread::spawn(move || {
         let runtime = tokio::runtime::Builder::new_current_thread()
@@ -161,8 +151,6 @@ fn transaction_left_open(options: PgConnectOptions) -> bool {
     .unwrap()
 }
 
-/// D-43 (T6 review): a claim refused because the builder is not enrolled ends its transaction
-/// before it returns, so the builder row it asked to lock and the queue stay free.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_43_a_claim_refused_as_not_enrolled_leaves_no_transaction_open(pool: PgPool) {
     queued_job(&pool, JOB).await;

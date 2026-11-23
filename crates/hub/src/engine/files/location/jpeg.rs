@@ -1,9 +1,8 @@
-//! The location metadata of a JPEG, removed while the file streams (FIL-003). Pure: it walks
-//! the segments before the image data, holds at most one segment (64 KiB) at a time, and passes
-//! the rest of the file as it is.
+//! The location metadata of a JPEG, removed while the file streams (FIL-003). Pure: it holds at
+//! most one segment (64 KiB) at a time.
 //!
-//! The EXIF GPS IFD becomes zero bytes (`exif::remove_gps`), and each XMP segment is left out,
-//! because XMP can hold the same position.
+//! The EXIF GPS IFD becomes zero bytes, and each XMP segment is left out, because XMP can hold
+//! the same position.
 
 use super::exif::{self, Position};
 
@@ -16,17 +15,14 @@ const APP1: u8 = 0xE1;
 /// Start of scan and end of image: the segments end here.
 const LAST_HEADER_MARKERS: [u8; 2] = [0xDA, 0xD9];
 
-/// The media types whose location the hub removes; it also cleans any file that starts as a
-/// JPEG, whatever its stated type.
+/// The hub also cleans any file that starts as a JPEG, whatever its stated type.
 pub const CLEANED_TYPES: [&str; 2] = ["image/jpeg", "image/pjpeg"];
 
-/// Whether `start`, the first bytes of a file, is the start of a JPEG.
 #[must_use]
 pub fn is_jpeg(start: &[u8]) -> bool {
     start.starts_with(&[0xFF, 0xD8, 0xFF])
 }
 
-/// The bytes do not have the form of a JPEG before its image data.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 #[error("the file is not a JPEG that the hub can clean")]
 pub struct Malformed;
@@ -41,7 +37,6 @@ enum State {
     Pass,
 }
 
-/// Walks one JPEG and gives a copy without its location metadata.
 #[derive(Debug)]
 pub struct Cleaner {
     state: State,
@@ -65,24 +60,20 @@ impl Cleaner {
         }
     }
 
-    /// The first GPS position that the walk read, before it removed it.
     #[must_use]
     pub const fn position(&self) -> Option<Position> {
         self.position
     }
 
-    /// Whether the walk has reached the image data: no more metadata comes.
     #[must_use]
     pub fn passed(&self) -> bool {
         self.state == State::Pass
     }
 
-    /// The cleaned bytes of `input`. A segment that is not complete yet waits for the next
-    /// call.
+    /// A segment that is not complete yet waits for the next call.
     ///
     /// # Errors
-    /// [`Malformed`] when the bytes before the image data are not JPEG segments; give nothing
-    /// more of the file then.
+    /// [`Malformed`] when the header is not JPEG segments; give nothing more of the file then.
     pub fn feed(&mut self, mut input: &[u8]) -> Result<Vec<u8>, Malformed> {
         let mut out = Vec::with_capacity(input.len());
         while !input.is_empty() {
@@ -112,7 +103,6 @@ impl Cleaner {
         Ok(out)
     }
 
-    /// The bytes the current state needs in `pending`.
     fn needed(&self) -> usize {
         match self.state {
             State::Start | State::Marker => 2,
@@ -122,14 +112,12 @@ impl Cleaner {
         }
     }
 
-    /// Moves what the state still needs from `input` to `pending`, and gives the rest.
     fn take<'a>(&mut self, input: &'a [u8]) -> &'a [u8] {
         let take = (self.needed() - self.pending.len()).min(input.len());
         self.pending.extend_from_slice(&input[..take]);
         &input[take..]
     }
 
-    /// Acts on a complete `pending`.
     fn step(&mut self, out: &mut Vec<u8>) -> Result<(), Malformed> {
         let pending = std::mem::take(&mut self.pending);
         match self.state {
@@ -191,7 +179,6 @@ impl Cleaner {
         Ok(())
     }
 
-    /// One whole APP1 segment: the EXIF GPS part becomes zeros and XMP is left out.
     fn segment(&mut self, mut segment: Vec<u8>, out: &mut Vec<u8>) {
         let payload = &mut segment[4..];
         if XMP.iter().any(|header| payload.starts_with(header)) {

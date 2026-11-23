@@ -1,7 +1,5 @@
-//! The device's SSH server on loopback, a `russh` server in the test: it presents its host
-//! key, accepts one password, serves the `sftp` subsystem over a temporary directory with
-//! `russh-sftp`'s server half, and records everything the hub asked of it, so a test can show
-//! the hub asked for the `sftp` subsystem and nothing else.
+//! The device's SSH server on loopback; it records each request so a test can show the hub
+//! asks for the `sftp` subsystem and nothing else.
 
 use std::{
     future::ready,
@@ -25,35 +23,23 @@ use crate::fleet::{sessions::tests::fixture::PASSWORD, trust::PublicKey};
 /// The user `docker-host`'s SSH settings name in the devices fixture.
 const USER: &str = "operator";
 
-/// What the hub asked of the server, in order.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) enum Heard {
-    /// A sign-in by this method.
     Auth(&'static str),
-    /// A session channel opened.
     Session,
-    /// A subsystem request by name.
     Subsystem(String),
-    /// An SFTP open of this path with these SFTP flags.
     Open { path: String, flags: u32 },
-    /// A request or channel the files tunnel must never send, by its SSH name.
     Forbidden(&'static str),
 }
 
-/// How the server misbehaves, switched by a test while it runs.
 #[derive(Default)]
 pub(super) struct Quirks {
-    /// `lstat` says nothing is there, whatever is there.
     pub(super) hide_files: AtomicBool,
-    /// Reads are never answered.
     pub(super) stall_reads: AtomicBool,
-    /// Each read waits 100 ms before it is answered.
     pub(super) slow_reads: AtomicBool,
-    /// Each open makes its file at once and answers 500 ms later.
     pub(super) slow_opens: AtomicBool,
 }
 
-/// The server's port and host key, its directory and what it heard.
 pub(super) struct Server {
     pub(super) port: u16,
     pub(super) key: PublicKey,
@@ -63,19 +49,16 @@ pub(super) struct Server {
 }
 
 impl Server {
-    /// Everything heard so far.
     pub(super) fn heard(&self) -> Vec<Heard> {
         self.heard.lock().unwrap().clone()
     }
 
-    /// Everything heard but sign-ins and SFTP opens: the SSH requests and channels.
     pub(super) fn requests(&self) -> Vec<Heard> {
         let mut heard = self.heard();
         heard.retain(|heard| !matches!(heard, Heard::Auth(_) | Heard::Open { .. }));
         heard
     }
 
-    /// The SFTP opens heard so far.
     pub(super) fn opens(&self) -> Vec<(String, u32)> {
         self.heard()
             .into_iter()
@@ -86,12 +69,10 @@ impl Server {
             .collect()
     }
 
-    /// Writes `bytes` to `name` in the served directory.
     pub(super) fn put(&self, name: &str, bytes: &[u8]) {
         std::fs::write(self.root.path().join(name), bytes).unwrap();
     }
 
-    /// The bytes of `name` in the served directory, if it is there.
     pub(super) fn read(&self, name: &str) -> Option<Vec<u8>> {
         std::fs::read(self.root.path().join(name)).ok()
     }
@@ -101,7 +82,6 @@ fn private(seed: u8) -> PrivateKey {
     PrivateKey::from(Ed25519Keypair::from_seed(&[seed; 32]))
 }
 
-/// Starts a server presenting the key made from `seed`, serving a new empty directory.
 pub(super) async fn serve(seed: u8) -> Server {
     let key = private(seed);
     let public = PublicKey::from_blob(key.public_key().to_bytes().unwrap()).unwrap();
@@ -143,11 +123,9 @@ pub(super) async fn serve(seed: u8) -> Server {
     }
 }
 
-/// The server's side of one connection.
 struct Device {
     disk: Disk,
     heard: Arc<Mutex<Vec<Heard>>>,
-    /// Session channels not yet given a subsystem.
     channels: Vec<Channel<Msg>>,
 }
 
@@ -164,7 +142,6 @@ impl Device {
         self.heard.lock().unwrap().push(heard);
     }
 
-    /// Records a forbidden channel request and refuses it.
     fn forbidden(
         &self,
         name: &'static str,
@@ -312,7 +289,6 @@ impl server::Handler for Device {
     }
 }
 
-/// Whether `quirk` is switched on.
 pub(super) fn on(quirk: &AtomicBool) -> bool {
     quirk.load(Ordering::SeqCst)
 }

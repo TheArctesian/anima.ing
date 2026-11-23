@@ -1,8 +1,5 @@
-//! `Delivery` as the API returns it, and the batched read behind
-//! `NotificationChannel.lastDelivery`: one query per batch of channels (API-005, NOT-004).
-//!
 //! A delivery holds a reason word and a status or reply code, never the target's reply text
-//! (CR-14, LOG-007).
+//! (API-005, NOT-004, CR-14, LOG-007).
 
 use std::{collections::HashMap, sync::Arc};
 

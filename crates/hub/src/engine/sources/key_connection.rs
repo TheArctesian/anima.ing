@@ -1,7 +1,4 @@
-//! Connecting an account whose server is of the operator, with a key of that server (K-E1
-//! Section 7b, R-261): the base and the key are checked, the key is proved with one read at
-//! the server, then the account and its sealed key are stored, audited and published. A bad
-//! address, a refused key or a server that does not answer stores nothing.
+//! Connecting an account on the operator's own server with a key of that server (K-E1 Section 7b, R-261).
 
 use source_exchange::Acquisition;
 use uuid::Uuid;
@@ -23,26 +20,17 @@ use crate::{
     ids::SourceAccountId,
 };
 
-/// What to connect: the input of the operator. The key is wiped on drop.
 pub struct KeyConnection {
-    /// The key of the source, for example `dawarich`.
     pub source: &'static str,
     pub label: String,
     pub base: String,
     pub api_key: Zeroizing<String>,
 }
 
-/// Checks and proves `input`, stores the account with its sealed key, writes the audit entry
-/// and the event of `trail` in the same transaction, publishes the change, and starts the
-/// first run when a consumer of the source is on. The same base again replaces the stored key
-/// and keeps the account and its records.
+/// The same base again replaces the stored key and keeps the account and its records.
 ///
 /// # Errors
-/// `Label`, `Base` or `ApiKey` for bad input, before anything is sent; `AddressRefused` for an
-/// address that the hub does not connect to; `ApiKeyRefused` when the server refuses the key;
-/// `Unreachable` when it does not answer with 2xx; `UnknownSource` when the source takes no
-/// key of the account; `Database`, `Credentials` or `Extensions` when the hub's own store
-/// fails. Nothing is stored unless it returns `Ok`.
+/// Bad input, a refused address or key, an unreachable server or a failed store; nothing is stored unless it returns `Ok`.
 pub async fn connect_with_key(
     s: &Scheduling,
     trail: Trail<'_>,

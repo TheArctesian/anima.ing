@@ -1,5 +1,4 @@
-//! The settings of the routes: the ports of streams and the limit of the streams of one device
-//! (HOST-050, task H40; SF-327).
+//! The settings of the routes (HOST-050, task H40; SF-327).
 
 use super::tests::env;
 use super::*;

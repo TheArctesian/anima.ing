@@ -1,6 +1,5 @@
-//! Extraction proposals (K-E4 Section 10; VIS-001 to VIS-004). An extraction gives typed fields,
-//! each with a confidence or none; nothing of it is a record until the operator confirms it,
-//! and a decided proposal does not change. The engine has no extractor.
+//! Extraction proposals (K-E4 Section 10; VIS-001 to VIS-004).
+//! Nothing of an extraction is a record until the operator confirms it, and a decided proposal does not change.
 
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
@@ -15,10 +14,8 @@ use crate::{
     ids::{AttachmentId, ProposalId},
 };
 
-/// The most fields in one proposal, and the longest value in characters.
 const MAX_FIELDS: usize = 100;
 const MAX_VALUE: usize = 2000;
-/// The most proposals one list gives.
 pub(super) const MAX_PROPOSALS: i64 = 200;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -31,8 +28,7 @@ pub enum FieldType {
     Reference,
 }
 
-/// One typed field (VIS-004). `value` is text in the form of its type; a `None` confidence is
-/// unknown, not certain.
+/// A `None` confidence is unknown, not certain (VIS-004).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Field {
     pub name: String,
@@ -89,8 +85,7 @@ pub struct Proposal {
     pub decided_at: Option<DateTime<Utc>>,
 }
 
-/// A proposal to store. `extension` is the extension that asked for `form`: its data class
-/// decides where the extraction may run (VIS-002, VLT-001).
+/// The data class of `extension` decides where the extraction may run (VIS-002, VLT-001).
 #[derive(Clone, Debug)]
 pub struct NewProposal {
     pub owner: Reference,
@@ -101,12 +96,10 @@ pub struct NewProposal {
     pub fields: Vec<Field>,
 }
 
-/// Whether `text` can name a form or a field: lower snake case, 1 to 40 characters.
 fn is_form(text: &str) -> bool {
     crate::engine::sealing_keys::is_name(text)
 }
 
-/// Whether `value` has the form of `kind`.
 fn has_form(kind: FieldType, value: &str) -> bool {
     match kind {
         FieldType::Text => !value.chars().any(|c| c.is_control() && c != '\n'),
@@ -117,10 +110,6 @@ fn has_form(kind: FieldType, value: &str) -> bool {
     }
 }
 
-/// The fields as they are stored, or each one the operator must fix: a name in lower snake case
-/// once in the list, a value of at most 2 000 characters in the form of its type, a confidence
-/// of 0 to 1 or none. A `None` confidence stays `None` (VIS-004).
-///
 /// # Errors
 /// The bad fields, named `fields.<index>.<part>`.
 pub fn checked_fields(fields: &[Field]) -> Result<(), Vec<Bad>> {
@@ -152,9 +141,7 @@ pub fn checked_fields(fields: &[Field]) -> Result<(), Vec<Bad>> {
     if bad.is_empty() { Ok(()) } else { Err(bad) }
 }
 
-/// Where an extraction for an extension of `class` may come from. A Class A image never
-/// reaches the hub in a form it can read (VLT-001): the hub refuses its own extraction for it,
-/// and a client proposal waits for the client sealing of K-E5 Section 3 (E0-6).
+/// A Class A image never reaches the hub in a form it can read (VLT-001); a client proposal waits for client sealing (K-E5 Section 3, E0-6).
 fn admitted(origin: Origin, class: Sensitivity) -> Result<(), Bad> {
     match (class, origin) {
         (Sensitivity::A, Origin::Hub) => Err(Bad::new(
@@ -169,11 +156,8 @@ fn admitted(origin: Origin, class: Sensitivity) -> Result<(), Bad> {
     }
 }
 
-/// Stores a proposal in the caller's transaction.
-///
 /// # Errors
-/// `Invalid` for a bad form, bad fields, a refused origin or an attachment of another owner;
-/// `Database`.
+/// `Invalid` for a bad form, bad fields, a refused origin or an attachment of another owner; `Database`.
 pub async fn propose(
     conn: &mut PgConnection,
     new: NewProposal,
@@ -214,8 +198,6 @@ pub async fn propose(
     Ok(proposal)
 }
 
-/// Confirms a proposal with the fields as the operator left them (VIS-001).
-///
 /// # Errors
 /// `Invalid` for bad fields; `NotFound`; `Decided` for a proposal that is decided; `Database`.
 pub async fn confirm(
@@ -234,8 +216,6 @@ pub async fn confirm(
     .await
 }
 
-/// Rejects a proposal; its fields stay as the extraction gave them.
-///
 /// # Errors
 /// `NotFound`; `Decided` for a proposal that is decided; `Database`.
 pub async fn reject(
@@ -261,9 +241,6 @@ async fn decided(
     }
 }
 
-/// The confirmed proposals of `owner`, newest first: what the owner extension makes its
-/// records from (VIS-001).
-///
 /// # Errors
 /// `Database` when the read fails.
 pub async fn confirmed(db: &PgPool, owner: &Reference) -> Result<Vec<Proposal>, Error> {
@@ -276,8 +253,6 @@ pub async fn confirmed(db: &PgPool, owner: &Reference) -> Result<Vec<Proposal>, 
     .await?)
 }
 
-/// The proposals of `owner` (or of every owner) in `state` (or any), newest first, at most 200.
-///
 /// # Errors
 /// `Database` when the read fails.
 pub async fn list(

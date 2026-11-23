@@ -1,5 +1,4 @@
-//! Secrets in GraphQL errors never reach the response or the process log: argument values
-//! async-graphql echoes, and credentials in a resolver's message (LOG-007, API-010, K7).
+//! Secrets in GraphQL errors never reach the response or the process log (LOG-007, API-010, K7).
 
 use async_graphql::{
     EmptyMutation, EmptySubscription, InputObject, InputValueError, InputValueResult, Object,
@@ -125,7 +124,6 @@ fn malformed() -> [(Request, Pos, &'static str); 6] {
             at(14),
             "pin",
         ),
-        // Inside a named fragment and an inline fragment.
         (
             Request::new(
                 "query($input: SignIn!) { ...F } fragment F on Query { login(input: $input) }",

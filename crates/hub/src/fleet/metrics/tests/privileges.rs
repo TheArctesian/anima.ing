@@ -1,5 +1,4 @@
-//! K2 "Roles", DB-005: the runtime role writes and reads metrics and manages partitions only
-//! through the owner's functions.
+//! The runtime role reaches metrics only through the owner's functions (K2 "Roles", DB-005).
 
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::{PgPool, postgres::PgPoolOptions};
@@ -10,7 +9,6 @@ use crate::fleet::metrics::{
     readings, series,
 };
 
-/// A pool whose every connection runs as `anima_runtime`.
 async fn runtime_pool(pool: &PgPool) -> PgPool {
     PgPoolOptions::new()
         .max_connections(2)

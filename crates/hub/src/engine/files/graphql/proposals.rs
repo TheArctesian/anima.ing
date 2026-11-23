@@ -1,5 +1,4 @@
-//! `Query.extractionProposals`, `Mutation.proposeExtraction`, `Mutation.confirmExtraction` and
-//! `Mutation.rejectExtraction` (K-E4 Section 10; VIS-001 to VIS-004).
+//! The extraction proposals of the API (K-E4 Section 10; VIS-001 to VIS-004).
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

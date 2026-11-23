@@ -1,5 +1,4 @@
-//! `Query.checkDefaults` and `Mutation.setCheckDefaults` (D-26, DB-011). The mutation writes
-//! the row, one audit entry and one event in one transaction (API-003, LOG-005).
+//! The mutation writes the row, audit entry and event in one transaction (D-26, DB-011, API-003, LOG-005).
 
 use async_graphql::{Context, InputObject, Object, Result};
 use serde_json::json;

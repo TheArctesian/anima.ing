@@ -1,4 +1,4 @@
-//! The SQL of `sources.sync_runs`: one row per run, its counts and problems (SRC-005).
+//! The SQL of `sources.sync_runs` (SRC-005).
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -12,12 +12,10 @@ use crate::{
     ids::{SourceAccountId, SyncRunId},
 };
 
-/// How many runs of an account are kept.
 const KEPT: i64 = 200;
-/// How many problems one run keeps.
 const MAX_PROBLEMS: i64 = 100;
 
-/// A problem as stored: fixed words from the provider, never its reply (LOG-007).
+/// Fixed words from the provider, never its reply (LOG-007).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StoredProblem {
     pub code: String,
@@ -25,7 +23,6 @@ pub struct StoredProblem {
     pub message: String,
 }
 
-/// One stored run.
 #[derive(Clone, Debug, sqlx::FromRow)]
 pub struct Run {
     pub id: SyncRunId,
@@ -41,7 +38,6 @@ pub struct Run {
     pub error: Option<String>,
 }
 
-/// Ends every run of the account that is still open: a newer claim took it over.
 pub(in crate::engine::sources) async fn supersede(
     conn: &mut PgConnection,
     account: SourceAccountId,
@@ -76,7 +72,6 @@ pub(in crate::engine::sources) async fn start(
     .map(drop)
 }
 
-/// Adds a page's counts and problems to the run; problems beyond the first 100 are dropped.
 pub(in crate::engine::sources) async fn add(
     conn: &mut PgConnection,
     id: SyncRunId,
@@ -102,7 +97,6 @@ pub(in crate::engine::sources) async fn add(
     .map(drop)
 }
 
-/// Ends the run, then deletes the account's runs beyond the newest 200.
 pub(in crate::engine::sources) async fn finish(
     conn: &mut PgConnection,
     (id, account): (SyncRunId, SourceAccountId),
@@ -130,7 +124,6 @@ pub(in crate::engine::sources) async fn finish(
     .map(drop)
 }
 
-/// The newest `first` runs of the account, newest first.
 pub(in crate::engine::sources) async fn newest(
     db: impl PgExecutor<'_>,
     account: SourceAccountId,

@@ -1,8 +1,5 @@
-//! Where releases are published (R-107, R-108; BLD-060 to BLD-066): the R2 S3 endpoint, the
-//! bucket, its public address, the files that hold the R2 API token, the files that hold the
-//! updater key and its password (R-117), and the updater public key. Publishing is off when the
-//! endpoint is unset or empty. Only paths are read here; the token and key files are opened by
-//! `builds` at start (SEC-004, BLD-062).
+//! Where releases are published (R-107, R-108; BLD-060 to BLD-066).
+//! Only paths are read here; `builds` opens the token and key files at start (SEC-004, BLD-062).
 
 use std::{collections::BTreeMap, path::PathBuf};
 
@@ -17,22 +14,17 @@ const UPDATER_PUBLIC_KEY: &str = "ANIMA_UPDATER_PUBLIC_KEY";
 const UPDATER_KEY_FILE: &str = "ANIMA_UPDATER_KEY_FILE";
 const UPDATER_KEY_PASSWORD_FILE: &str = "ANIMA_UPDATER_KEY_PASSWORD_FILE";
 
-/// The release bucket's settings. No secret: the token is in the files named here.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Releases {
-    /// The S3 API origin, `https://<account>.r2.cloudflarestorage.com`; `http` only for a
-    /// loopback host, so tests can point at a local fake.
+    /// `http` only for a loopback host.
     pub endpoint: String,
     pub bucket: String,
-    /// The origin people and the hub read published files from, `https://releases.anima.ing`.
     pub public_base: String,
     pub access_key_id_file: PathBuf,
     pub secret_access_key_file: PathBuf,
-    /// `plugins.updater.pubkey` of `tauri.conf.json`; the two must be the same, and the key in
-    /// `updater_key_file` must open to it. `None` when unset or empty: publishing is then off
-    /// (R-108, R-117).
+    /// Equals `plugins.updater.pubkey` in `tauri.conf.json`; `None`: publishing off (R-108, R-117).
     pub updater_public_key: Option<String>,
-    /// The minisign secret key file `tauri signer generate` writes, sealed with scrypt (R-117).
+    /// The minisign secret key file, sealed with scrypt (R-117).
     pub updater_key_file: PathBuf,
     /// The file that holds the updater key's password; empty for a key with none (R-117).
     pub updater_key_password_file: PathBuf,
@@ -49,7 +41,6 @@ fn bucket_name(text: &str) -> bool {
         && edge(bytes.last())
 }
 
-/// The release settings in `env`; `None` when `ANIMA_RELEASES_ENDPOINT` is unset or empty.
 pub(super) fn from_env(env: &BTreeMap<String, String>) -> Result<Option<Releases>, Error> {
     let Some(endpoint) = env.get(ENDPOINT).filter(|text| !text.is_empty()) else {
         return Ok(None);

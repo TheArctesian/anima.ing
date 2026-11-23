@@ -8,8 +8,6 @@ use crate::fleet::{
     vpn::warnings::{Kind, Warning, due},
 };
 
-/// The warnings for the idle fixture, with the mac's key expiring `days` after the clock and
-/// both peers known to Anima.
 fn mac_warnings(expiry: Duration) -> Vec<Warning> {
     let mut raw = json("status-idle.json");
     let at = (now() + expiry).to_rfc3339();

@@ -1,5 +1,3 @@
-//! The count and summary rows accepted in the daemon push transaction.
-
 use daemon_core::wire::{ThreadEntry, ThreadSummaries, ThreadSummary, ThreadSummaryReceipt};
 use sqlx::{PgConnection, PgPool, Postgres, Transaction};
 use uuid::Uuid;

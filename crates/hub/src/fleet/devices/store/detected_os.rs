@@ -1,5 +1,4 @@
-//! SQL for the operating system detected on a device: the `os` column of `devices`, written
-//! only while it is `other` (DEV-025). The operator's choice is never overwritten.
+//! The detected operating system never overwrites the operator's choice (DEV-025).
 
 use sqlx::PgPool;
 
@@ -8,8 +7,6 @@ use crate::{
     ids::DeviceId,
 };
 
-/// Sets the operating system detected on the device while its stored one is Other; returns
-/// whether it was written.
 pub(in crate::fleet::devices) async fn set_detected_os(
     db: &PgPool,
     id: DeviceId,

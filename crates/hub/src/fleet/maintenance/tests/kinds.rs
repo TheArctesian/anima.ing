@@ -75,14 +75,14 @@ fn mw_004_an_interval_window_repeats_every_n_days_from_its_first_start() {
             &rule,
             UTC,
             &[
-                "2026-10-29T00:30:00Z", // a due day, but before the first start
-                "2026-11-01T00:00:00Z", // first start, inclusive
+                "2026-10-29T00:30:00Z",
+                "2026-11-01T00:00:00Z",
                 "2026-11-01T00:59:59Z",
-                "2026-11-01T01:00:00Z", // end, exclusive
-                "2026-11-02T00:30:00Z", // not a due day
-                "2026-11-04T00:30:00Z", // 3 days later
-                "2026-11-07T00:30:00Z", // 6 days later
-                "2026-11-08T00:30:00Z", // not a due day
+                "2026-11-01T01:00:00Z",
+                "2026-11-02T00:30:00Z",
+                "2026-11-04T00:30:00Z",
+                "2026-11-07T00:30:00Z",
+                "2026-11-08T00:30:00Z",
             ]
         ),
         [false, true, true, false, false, true, true, false]
@@ -91,8 +91,7 @@ fn mw_004_an_interval_window_repeats_every_n_days_from_its_first_start() {
 
 #[test]
 fn mw_001_an_interval_window_keeps_its_local_time_across_a_daylight_saving_change() {
-    // Daily at 09:00 NZST (21:00 UTC the day before). Auckland moves to NZDT (+13) at 14:00 UTC
-    // on 26 September 2026, so later starts are at 20:00 UTC, not 21:00.
+    // Auckland moves to NZDT (+13) at 14:00 UTC on 26 September 2026: starts move to 20:00 UTC.
     let rule = WindowRule::RecurringInterval {
         first_start_at: at("2026-09-24T21:00:00Z"),
         every_days: 1,
@@ -103,8 +102,8 @@ fn mw_001_an_interval_window_keeps_its_local_time_across_a_daylight_saving_chang
             &rule,
             AUCKLAND,
             &[
-                "2026-09-26T20:30:00Z", // 09:30 NZDT
-                "2026-09-26T21:30:00Z", // 10:30 NZDT
+                "2026-09-26T20:30:00Z",
+                "2026-09-26T21:30:00Z",
                 "2026-09-27T20:30:00Z",
                 "2026-09-27T21:30:00Z",
             ]
@@ -155,9 +154,9 @@ fn mw_002_a_window_that_starts_at_23_30_for_90_minutes_runs_into_the_next_day() 
             &[
                 "2026-11-04T10:29:59Z",
                 "2026-11-04T10:30:00Z",
-                "2026-11-04T11:30:00Z", // 00:30 on the 5th
+                "2026-11-04T11:30:00Z",
                 "2026-11-04T11:59:59Z",
-                "2026-11-04T12:00:00Z", // 01:00, exclusive
+                "2026-11-04T12:00:00Z",
             ]
         ),
         [false, true, true, true, false]
@@ -166,8 +165,6 @@ fn mw_002_a_window_that_starts_at_23_30_for_90_minutes_runs_into_the_next_day() 
 
 #[test]
 fn mw_002_a_window_past_midnight_belongs_to_the_day_it_started_on() {
-    // Fridays 23:00 for two hours (UTC). Saturday 00:30 is inside it; Saturday 23:30 is not,
-    // because Saturday is not listed.
     let rule = weekly(&[Weekday::Fri], "23:00", 120);
     assert_eq!(
         states(
@@ -188,15 +185,14 @@ fn mw_002_a_window_past_midnight_belongs_to_the_day_it_started_on() {
 
 #[test]
 fn mw_002_a_window_can_run_for_several_days() {
-    // Fridays 22:00 for three days (4320 minutes) ends Monday 22:00.
     let rule = weekly(&[Weekday::Fri], "22:00", 4320);
     assert_eq!(
         states(
             &rule,
             UTC,
             &[
-                "2026-11-08T12:00:00Z", // Sunday
-                "2026-11-09T21:59:59Z", // Monday, last second
+                "2026-11-08T12:00:00Z",
+                "2026-11-09T21:59:59Z",
                 "2026-11-09T22:00:00Z",
             ]
         ),
@@ -206,8 +202,6 @@ fn mw_002_a_window_can_run_for_several_days() {
 
 #[test]
 fn mw_002_a_seven_day_window_that_started_seven_days_ago_is_still_found() {
-    // Tuesdays 23:59: the occurrence that started on 3 November lasts until 23:59 on the 10th,
-    // so on the 10th its start is seven days back. One minute shorter and it has just ended.
     let week = weekly(&[Weekday::Tue], "23:59", 10_080);
     let almost_week = weekly(&[Weekday::Tue], "23:59", 10_079);
     assert!(is_active(&week, UTC, at("2026-11-10T23:58:00Z")));
@@ -217,8 +211,7 @@ fn mw_002_a_seven_day_window_that_started_seven_days_ago_is_still_found() {
 
 #[test]
 fn mw_001_the_weekday_is_the_local_one_not_the_utc_one() {
-    // Sundays 03:00 for an hour in Auckland. 03:00 NZDT on Sunday 8 November 2026 is
-    // Saturday 7 November 14:00 UTC.
+    // 03:00 NZDT on Sunday 8 November 2026 is 14:00 UTC on Saturday 7 November.
     let rule = weekly(&[Weekday::Sun], "03:00", 60);
     assert_eq!(
         states(

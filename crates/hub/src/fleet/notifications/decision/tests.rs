@@ -38,7 +38,6 @@ fn kinds(notices: &[Notice]) -> Vec<Kind> {
     notices.iter().map(|n| n.kind).collect()
 }
 
-/// Runs beats in order and returns the kinds sent at each.
 fn run(beats: &[Observation], resend: u16) -> Vec<Vec<Kind>> {
     let mut state = CheckState::default();
     beats
@@ -189,7 +188,6 @@ fn at_days_before(mut o: Observation, days: i64) -> Observation {
     o
 }
 
-/// The not-after of `with_cert(30, 0)`, seen from `day` days after `t0`.
 fn expiring(day: i64) -> Observation {
     at_days_before(with_cert(30, 0), day)
 }
@@ -279,7 +277,6 @@ fn not_006_certificate_and_domain_are_marked_and_sent_apart() {
             .count(),
         1
     );
-    // The domain is marked at 21 only; a certificate renewal leaves that mark alone.
     let renewed = Observation {
         certificate_not_after: Some(t0() + TimeDelta::days(100)),
         ..o

@@ -1,5 +1,4 @@
-//! Retrieval by the daemon of a consumer: the fetch of one key, the versions a device may get,
-//! and what its cache holds (K-E5 Section 2.1, R-147). The metrics ingest calls these three.
+//! Operational key retrieval by a consumer's daemon (K-E5 Section 2.1, R-147).
 
 use chrono::{DateTime, Utc};
 use daemon_core::wire::{FetchedKey, KeyValue, KeyVersion};
@@ -15,10 +14,7 @@ use crate::{
     ids::DeviceId,
 };
 
-/// The active version of the key named `name` for the daemon of `device` at `now`, with one
-/// audit entry and the fetch recorded on its consumer rows; `None` when the key does not exist,
-/// has no active version, or `device` is no consumer of it. The three cases are one answer
-/// and take one path (K-E5 Section 2.1).
+/// Audited; a missing key, no active version and a non-consumer are one `None` (K-E5 Section 2.1).
 ///
 /// # Errors
 /// `Sealing` when the stored value does not open, `Database`, `Trail`.
@@ -53,9 +49,6 @@ pub async fn fetch(
     }))
 }
 
-/// Each key the daemon of `device` may get at `now`, by name, with its active version (K-E5
-/// Section 2.1, `current`).
-///
 /// # Errors
 /// `Database` when the read fails.
 pub async fn current_for(
@@ -74,8 +67,7 @@ pub async fn current_for(
         .collect())
 }
 
-/// Records the versions in the cache of the daemon of `device` at `now` on its consumer rows; a
-/// key the daemon does not name holds no version (K-E5 Section 2.1, `held`).
+/// A key the daemon does not name holds no version (K-E5 Section 2.1).
 ///
 /// # Errors
 /// `Database` when the write fails.
@@ -95,7 +87,7 @@ pub async fn record_held(
     Ok(())
 }
 
-/// A version number as K8 carries it; the column's check keeps it at least 1.
+/// The column's check keeps the number at least 1.
 fn version_number(number: i32) -> u32 {
     u32::try_from(number).unwrap_or_default()
 }

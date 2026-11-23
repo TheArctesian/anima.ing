@@ -278,4 +278,42 @@
   .warning .dot {
     background: var(--status-warning);
   }
+
+  /* HSE-012: on a phone a row is the name, with its state and its updates below it, under the header of its machine; the
+     column heads are not shown, and Details and Log stay at the end of the row. */
+  @media (max-width: 767.98px) {
+    thead {
+      display: none;
+    }
+
+    tbody tr:not(.group) {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      border-block-end: var(--border-thin) solid var(--border-subtle);
+    }
+
+    tbody tr:not(.group) > * {
+      grid-column: 1;
+      padding-block: 0;
+      border: 0;
+    }
+
+    tbody tr:not(.group) > th {
+      padding-block-start: var(--space-2);
+    }
+
+    tbody tr:not(.group) > td:nth-last-child(2) {
+      padding-block-end: var(--space-2);
+    }
+
+    tbody tr:not(.group) > .action {
+      grid-row: 1 / span 3;
+      grid-column: 2;
+      align-self: center;
+    }
+
+    .group th {
+      display: block;
+    }
+  }
 </style>

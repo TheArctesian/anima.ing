@@ -1,5 +1,4 @@
-//! The socket client against a fake control socket: the request and reply lines, the 1 MiB
-//! cap, the time limit and the peer's user (FRN-009, LNK-003).
+//! The socket client against a fake control socket (FRN-009, LNK-003).
 
 use std::{fs, os::unix::fs::PermissionsExt as _};
 

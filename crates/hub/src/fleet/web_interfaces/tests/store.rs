@@ -1,5 +1,4 @@
-//! The store and the face against PostgreSQL: reads, writes, pins, cascades, idempotence and
-//! the runtime role's privileges (WEB-001, WEB-002, WEB-008, R-016).
+//! The store and the face against PostgreSQL (WEB-001, WEB-002, WEB-008, R-016).
 
 use super::*;
 

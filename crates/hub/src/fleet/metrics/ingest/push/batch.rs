@@ -1,10 +1,6 @@
-//! One accepted batch written in one transaction: the daemon's mark and version, the GPU set,
-//! the drives, the batteries, the tool inventory, the agent usage, the series, the samples and their
-//! aggregates, and the event of a daemon that is fresh again (K8 Section 4; MET-006, MET-015,
-//! MET-018, MET-032, CAP-029; R-098 a, b, e; R-122; R-135).
-//!
-//! The device row is taken first, the order a device delete and a revoke take the rows in, so
-//! none of them deadlock, and two batches of one device are written one after the other.
+//! One accepted batch written in one transaction (K8 Section 4; MET-006, MET-015, MET-018,
+//! MET-032, CAP-029; R-098 a, b, e; R-122; R-135).
+//! The device row is taken first, the order a device delete and a revoke use, so none deadlock.
 
 use chrono::{DateTime, TimeDelta, Utc};
 use daemon_core::{
@@ -31,24 +27,15 @@ use crate::{
     ids::DeviceId,
 };
 
-/// The span in which a device may create at most [`MAX_NEW_SERIES`] series.
 const NEW_SERIES_SPAN: TimeDelta = TimeDelta::hours(1);
 
-/// The most series one device may create in any hour, a batch's new ones included (R-098 e,
-/// CR-20). Counted by the hub's creation time, so the times of a batch's points cannot reset it.
-/// One daemon has at most 623 series (at most 256 in one batch): one per plain kind, `MAX_LABELS`
-/// per disk, network and drive kind, one per GPU kind for each of the 64 GPU indexes K8 allows,
-/// and one per battery (at most 8); the rest is room for disks, interfaces, drives and batteries
-/// that come and go within the hour.
+/// Per device per hour (R-098 e, CR-20), counted by the hub's creation time so point times cannot reset it.
+/// One daemon has at most 623 series; the rest is room for parts that come and go within the hour.
 pub(super) const MAX_NEW_SERIES: i64 = 1024;
 
-/// The batch's device and credential, and its GPUs, drives, batteries, inventory and agent usage
-/// when it listed them.
 pub(super) struct Push<'a> {
     pub(super) device: DeviceId,
-    /// The device's name, for the event of a daemon that is fresh again.
     pub(super) name: &'a str,
-    /// The token the batch came with; it must still be the device's usable token.
     pub(super) token: TokenHash,
     /// `None`: the GPU set is unchanged; `Some(&[])`: the device has no GPUs now (R-098 b).
     pub(super) gpus: Option<&'a [Gpu]>,
@@ -67,20 +54,13 @@ pub(super) struct Push<'a> {
     pub(super) agent_threads: Option<&'a ThreadSummaries>,
 }
 
-/// What became of a batch that reached the store.
 pub(super) enum Written {
     /// Stored, with how many of its samples were new.
     Kept(i64, Option<ThreadSummariesReceipt>),
-    /// Not stored: the source or the token changed since the batch was checked
-    /// (`TOKEN_REFUSED`), or it would pass [`MAX_NEW_SERIES`] (`MALFORMED`).
+    /// The source or token changed since the check (`TOKEN_REFUSED`), or it would pass [`MAX_NEW_SERIES`] (`MALFORMED`).
     Refused(RefusalCode),
 }
 
-/// Writes the batch accepted at `now`, or nothing when it is refused here.
-///
-/// # Errors
-/// `Database`, `Devices`, `Metrics`, `AgentUsage` or `Events` when a read or write fails;
-/// nothing is stored.
 pub(super) async fn write(
     db: &PgPool,
     bus: &Bus,
@@ -88,8 +68,7 @@ pub(super) async fn write(
     now: DateTime<Utc>,
 ) -> Result<Written, Error> {
     let mut tx = db.begin().await?;
-    // Checked again under the device row lock: an operator's switch away from the daemon that
-    // committed after the first check, while this batch waited for the row, must refuse it.
+    // Checked again under the row lock: a switch away from the daemon that committed meanwhile refuses the batch.
     match devices::lock_metrics_source(&mut tx, push.device).await {
         Ok(MetricsSource::Daemon) => {}
         Ok(MetricsSource::None | MetricsSource::Ssh) | Err(devices::Error::NotFound(_)) => {
@@ -134,8 +113,6 @@ pub(super) async fn write(
     Ok(Written::Kept(kept, receipt))
 }
 
-/// Writes the lists the batch announced, each in place of the stored one: the GPU set, the
-/// drives, the batteries, the tool inventory, the hardware values and the agent usage (K8 Section 4). An absent list is unchanged.
 async fn write_announcements(
     tx: &mut PgConnection,
     push: &Push<'_>,
@@ -143,8 +120,7 @@ async fn write_announcements(
 ) -> Result<bool, Error> {
     let mut changed = false;
     if let Some(gpus) = push.gpus {
-        // The daemon sends no boot time: its own discovery cadence (MET-006) replaces the
-        // collector's boot check, which never runs for a daemon device.
+        // No boot time: the daemon's own discovery cadence replaces the collector's boot check (MET-006).
         let discovery = Discovery {
             found_at: now,
             boot_at: None,

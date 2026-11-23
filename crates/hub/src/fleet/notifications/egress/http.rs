@@ -1,9 +1,5 @@
-//! HTTP egress: one request (POST or PUT) over a client pinned to the checked addresses of one
-//! host, always over TLS (CR-14).
-//!
-//! The client resolves no name itself, follows no redirect, uses no proxy, keeps no cookie,
-//! decompresses nothing and verifies TLS with the built-in roots. It reads at most
-//! [`REPLY_CAP`] bytes of the reply body and discards them.
+//! HTTP egress (CR-14): one request over a client pinned to the checked addresses of one host,
+//! always over TLS. The client resolves no name, follows no redirect and uses no proxy.
 
 use std::{error::Error, future, net::SocketAddr, sync::Arc};
 
@@ -21,14 +17,12 @@ use crate::fleet::targets::{TargetError, resolve_checked};
 /// The most reply body bytes read; the rest is never read (D-17).
 pub(super) const REPLY_CAP: usize = 4 * 1024;
 
-/// What the client's resolver answers for every name: the client looks up nothing, so a host
-/// is reached only at the addresses pinned for it.
+/// The client looks up nothing, so a host is reached only at the addresses pinned for it.
 #[derive(Debug, thiserror::Error)]
 #[error("the notification client resolves no names")]
 struct LookupRefused;
 
-/// One HTTP request to send: method, https URL, headers and body. No `Debug`: the URL and the
-/// header values may be secrets (LOG-007).
+/// No `Debug`: the URL and the header values may be secrets (LOG-007).
 pub(crate) struct HttpRequest {
     pub(crate) method: Method,
     pub(crate) url: Url,
@@ -36,7 +30,6 @@ pub(crate) struct HttpRequest {
     pub(crate) body: Vec<u8>,
 }
 
-/// A resolver that refuses every name.
 struct NoLookup;
 
 impl Resolve for NoLookup {
@@ -48,22 +41,13 @@ impl Resolve for NoLookup {
 }
 
 impl Egress {
-    /// Sends `request` (its body with its headers to its URL by its method), within [`TIME_LIMIT`] from
-    /// the lookup to the last reply byte read: one deadline covers the lookup, the connection,
-    /// the answer's head and the body read, and the body read never gets a limit of its own
-    /// (N-8). The host is resolved once and every address checked; the request goes only to
-    /// those addresses. Every header value is marked sensitive, so none is printed in a debug
-    /// view.
-    ///
-    /// Once a status arrives it decides: a 2xx is success even when the body then stalls or
-    /// never ends, so an answered send never turns into a retry and a duplicate (S-B).
+    /// One deadline of [`TIME_LIMIT`] covers the lookup, the connection, the head and the body
+    /// read (N-8). A 2xx status decides success even when the body then stalls, so an answered
+    /// send never turns into a retry and a duplicate (S-B).
     ///
     /// # Errors
-    /// [`SendError::Url`] for a URL that is not https (CR-14); [`SendError::Target`] when the
-    /// host does not resolve or names a refused address, with no connection made;
-    /// [`SendError::TimedOut`] when no answer arrives within the limit;
-    /// [`SendError::HttpStatus`] for an answer outside 2xx (a redirect included); otherwise
-    /// the setup, connection or TLS failure.
+    /// [`SendError::Target`] with no connection made for a refused or unresolved host; else the
+    /// [`SendError`] of the failed step.
     pub(crate) async fn send_http(&self, request: HttpRequest) -> Result<(), SendError> {
         let deadline = Instant::now() + TIME_LIMIT;
         let response = timeout_at(deadline, self.request(request))
@@ -72,8 +56,6 @@ impl Egress {
         judge(response, deadline).await
     }
 
-    /// Resolves and checks the host of the request's URL, then sends the request and waits
-    /// for the answer's head.
     async fn request(&self, request: HttpRequest) -> Result<Response, SendError> {
         let HttpRequest {
             method,
@@ -101,8 +83,7 @@ impl Egress {
             .map_err(|error| classify(&error))
     }
 
-    /// A client that reaches `domain` only at `addresses` and resolves no other name. An
-    /// IP-literal host (`domain` is `None`) is reached at the address it names.
+    /// An IP-literal host (`domain` is `None`) is reached at the address it names.
     pub(super) fn pinned_client(
         &self,
         domain: Option<&str>,
@@ -130,21 +111,15 @@ impl Egress {
     }
 }
 
-/// Success for a 2xx answer, after reading and discarding at most [`REPLY_CAP`] body bytes
-/// before `deadline`.
 async fn judge(mut response: Response, deadline: Instant) -> Result<(), SendError> {
     let status = response.status();
     if !status.is_success() {
         return Err(SendError::HttpStatus(status.as_u16()));
     }
-    // The status has decided; a body still arriving at the deadline is left unread.
     let _ = timeout_at(deadline, discard_reply(&mut response)).await;
     Ok(())
 }
 
-/// Reads and drops body chunks until [`REPLY_CAP`] bytes are read or the body ends, and
-/// returns how many were read. The status has already decided the outcome, so a body that
-/// breaks off ends the read and changes nothing.
 pub(super) async fn discard_reply(response: &mut Response) -> usize {
     let mut read = 0;
     while read < REPLY_CAP {
@@ -156,8 +131,7 @@ pub(super) async fn discard_reply(response: &mut Response) -> usize {
     read
 }
 
-/// The [`SendError`] a reqwest error stands for, judged from its causes, never its text (the
-/// text holds the URL).
+/// Judged from the error's causes, never its text, which holds the URL.
 pub(super) fn classify(error: &reqwest::Error) -> SendError {
     if causes(error).any(<dyn Error>::is::<LookupRefused>) {
         SendError::Target(TargetError::Unresolved)

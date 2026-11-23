@@ -1,5 +1,4 @@
-//! What the web client serves: files from the root and `index.html` for client-side routes
-//! (D-2, A-1).
+//! What the web client serves (D-2, A-1).
 
 use axum::http::{Method, StatusCode};
 

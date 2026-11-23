@@ -1,6 +1,4 @@
-//! A repository's workflows and their runs, read live from GitHub (PRJ-031, PRJ-034,
-//! PRJ-035), with the jobs of a run counted when they are selected; and the changes to them:
-//! the run controls and a workflow started by hand (OD-E14, PRJ-028).
+//! The workflows of a repository and their runs (PRJ-031, PRJ-034, PRJ-035, PRJ-028, OD-E14).
 
 mod changes;
 mod controls;

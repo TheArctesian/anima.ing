@@ -1,16 +1,6 @@
-//! The running terminal (K4 Sections 8.4 to 8.6): relays bytes both ways and the client's
-//! `resize` as a window change until the first cause.
-//!
-//! One `select!` over the end signal, the client socket, the one write in flight to the
-//! device, the device's channel and three timers; each branch is cancel safe, sends to the
-//! client happen in the branch body under `writes`' limits, and no lock is held.
-//!
-//! Backpressure (K4 Section 8.5): the next channel message is read only after the previous
-//! frame was sent, and the channel's buffer is bounded (`opening`), so a client that reads
-//! slowly stalls the device's channel. The next client message is read only after the
-//! previous one was written to the channel, under its window; the time a write waits on the
-//! device is not the client's silence, but a write that waits past the request wait ends
-//! the session `GATEWAY_ERROR`; the hub's pings go on meanwhile.
+//! The running terminal (K4 Sections 8.4 to 8.6); each `select!` branch is cancel safe and no lock is held.
+//! Backpressure (K4 Section 8.5): one frame and one client write in flight, so a slow client stalls the channel.
+//! A write waiting on the device is not the client's silence; one past the request wait ends `GATEWAY_ERROR`.
 
 use std::{pin::Pin, sync::Arc};
 
@@ -30,10 +20,8 @@ use crate::fleet::sessions::{
 };
 use crate::fleet::ssh::Observer;
 
-/// One client message being written to the device's channel.
 pub(super) type Writing = Pin<Box<dyn Future<Output = Result<(), russh::Error>> + Send>>;
 
-/// One step of the loop: whichever came first.
 enum Turn {
     Signalled(EndCause),
     Client(Option<Result<Message, axum::Error>>),
@@ -45,8 +33,6 @@ enum Turn {
 }
 
 impl Link<'_> {
-    /// Relays until the first cause. `handle` tells, when the channel ends with the
-    /// connection, whether the device left or the connection failed.
     pub(super) async fn relay(&mut self, handle: &mut Handle<Observer>) -> End {
         self.client_quiet.restart(Instant::now());
         loop {
@@ -57,8 +43,7 @@ impl Link<'_> {
         }
     }
 
-    /// Waits for whichever comes first. Every branch is cancel safe: the write in flight
-    /// stays in `writing` when another branch wins.
+    /// Cancel safe: the write in flight stays in `writing` when another branch wins.
     async fn next_turn(&mut self) -> Turn {
         let writing = self.writing.is_some();
         tokio::select! {
@@ -72,9 +57,7 @@ impl Link<'_> {
         }
     }
 
-    /// Acts on one turn; `Some` when the session ends. Any client message restarts the
-    /// client's idle wait, a WebSocket ping or pong included; so does the end of a write the
-    /// device held back. The hub's silence restarts with each send (`Link::send`).
+    /// A WebSocket ping or pong and the end of a held-back write also restart the client's idle wait.
     async fn on_turn(&mut self, turn: Turn, handle: &mut Handle<Observer>) -> Option<End> {
         match turn {
             Turn::Signalled(signal) => Some(End::from(signal)),
@@ -93,9 +76,6 @@ impl Link<'_> {
         }
     }
 
-    /// One WebSocket message from the client: binary is what the operator typed, text is a
-    /// K4 Section 8.4 message; anything else that is not a ping, pong or close breaks the
-    /// protocol.
     fn on_client(&mut self, message: Option<Result<Message, axum::Error>>) -> Option<End> {
         self.client_quiet.restart(Instant::now());
         let text = match message {
@@ -123,15 +103,13 @@ impl Link<'_> {
         }
     }
 
-    /// Starts `write` as the one write in flight; the client is not read until it is done.
     fn write(&mut self, write: Writing) -> Option<End> {
         self.writing = Some(write);
         self.write_due = Instant::now() + self.timing.request;
         None
     }
 
-    /// The client's idle wait ran out. A message that arrived while the hub was sending to
-    /// the client is read first, so time spent held back by the client is not its silence.
+    /// A message that arrived while the hub was sending is read first, so time held back is not silence.
     fn client_idle(&mut self) -> Option<End> {
         match self.client.recv().now_or_never() {
             Some(message) => self.on_client(message),
@@ -140,7 +118,6 @@ impl Link<'_> {
     }
 }
 
-/// The write in flight, or never when there is none.
 async fn written(writing: &mut Option<Writing>) -> Result<(), russh::Error> {
     match writing {
         Some(write) => write.as_mut().await,
@@ -148,9 +125,7 @@ async fn written(writing: &mut Option<Writing>) -> Result<(), russh::Error> {
     }
 }
 
-/// The channel ended with its connection: the device leaving with an SSH disconnect is the
-/// remote closing; a transport or protocol failure, or no answer within [`CLOSE_WAIT`], is a
-/// failed connection (K4 Section 8.6).
+/// An SSH disconnect is the remote closing; anything else is a failed connection (K4 Section 8.6).
 async fn gone(handle: &mut Handle<Observer>) -> End {
     match timeout(CLOSE_WAIT, handle).await {
         Ok(Ok(())) => ended(Cause::RemoteClosed),

@@ -1,17 +1,9 @@
-//! Operational keys: the credentials and runtime secrets a server of the operator needs, with
-//! one active version each, and their retrieval by the daemon of an admitted server (R-147;
+//! Operational keys: the credentials and runtime secrets a server of the operator needs (R-147;
 //! K-E5 Section 2; SEC-003).
 //!
-//! A value is sealed with the credential vault under the context
-//! `credentials.operational_key_versions:<version id>` before it reaches storage, and leaves the
-//! hub only through [`fetch`], to the daemon of a consumer. No metadata, audit entry, event,
-//! error text or `Debug` output holds a value (LOG-007). Each change writes its rows, one audit
-//! entry and one event in the caller's transaction. The time is a parameter (CQ-021).
-//!
-//! A new value makes the next version active and supersedes the old one at once; `revoke` ends
-//! the active version with no new one; a key past its expiry is given no more and its version
-//! reads as expired. A version that ended is never active again, and [`forget_ended`] empties its
-//! sealed value 30 days after it ended. A device's consumer rows go with the device.
+//! A value is sealed before storage and leaves the hub only through [`fetch`], to a consumer's
+//! daemon. No metadata, audit entry, event, error text or `Debug` output holds a value (LOG-007).
+//! Each change writes its rows, one audit entry and one event in the caller's transaction.
 
 mod lifecycle;
 mod model;
@@ -44,8 +36,7 @@ use store::{
     reads,
 };
 
-/// Why an operational key operation failed. Messages are fixed text: no value, no name and no
-/// SQL (LOG-007).
+/// Messages are fixed text: no value, no name and no SQL (LOG-007).
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("the operational key store is unavailable")]
@@ -64,24 +55,20 @@ pub enum Error {
     UnknownDevice,
     #[error("the key is not granted to this device for this workload")]
     NoGrant,
-    /// The key passed its expiry: a new value would be given to no server and would read as
-    /// expired at once. The operator sets a later expiry first.
+    /// A new value would read as expired at once; the operator sets a later expiry first.
     #[error("the key passed its expiry")]
     Expired,
-    /// A revoke of a key that has no active version: there is nothing to end.
     #[error("the key has no active version")]
     NoActiveVersion,
 }
 
-/// A key to make: its name, its metadata and its first value. No `Debug`: it holds the value.
+/// No `Debug`: it holds the value.
 pub struct NewKey {
     pub name: String,
     pub metadata: Metadata,
     pub value: Secret,
 }
 
-/// The keys that are not removed, by name, as they read at `now`.
-///
 /// # Errors
 /// `Database` when the read fails.
 pub async fn keys(db: &PgPool, now: DateTime<Utc>) -> Result<Vec<OperationalKey>, Error> {
@@ -89,8 +76,6 @@ pub async fn keys(db: &PgPool, now: DateTime<Utc>) -> Result<Vec<OperationalKey>
     Ok(reads::keys(&mut conn, None, now).await?)
 }
 
-/// The key named `name` that is not removed, as it reads at `now`.
-///
 /// # Errors
 /// `Database` when the read fails.
 pub async fn key(
@@ -102,8 +87,6 @@ pub async fn key(
     Ok(reads::keys(&mut conn, Some(name), now).await?.pop())
 }
 
-/// Makes the key with its value as version 1, in the caller's transaction.
-///
 /// # Errors
 /// `Invalid`, `NameTaken` (a removed key keeps its name), `Sealing`, `Database`, `Trail`.
 pub async fn create(
@@ -136,8 +119,6 @@ pub async fn create(
     read_back(conn, &new.name, now).await
 }
 
-/// Replaces the metadata of the key, in the caller's transaction.
-///
 /// # Errors
 /// `UnknownKey`, `Invalid`, `Database`, `Trail`.
 pub async fn update(
@@ -161,13 +142,11 @@ pub async fn update(
     read_back(conn, name, now).await
 }
 
-/// Makes `value` the active version and supersedes the old one at once (R-147), in the
-/// caller's transaction. `rotated_at_provider` records what the operator said; the hub changes
-/// nothing at the provider.
+/// Supersedes the active version at once (R-147); `rotated_at_provider` only records what the
+/// operator said, and the hub changes nothing at the provider.
 ///
 /// # Errors
-/// `UnknownKey`, `Invalid` for a value of a length a key cannot have, `Expired` for a key that
-/// passed its expiry (set a later expiry first), `Sealing`, `Database`, `Trail`.
+/// `UnknownKey`, `Invalid` for a bad value length, `Expired`, `Sealing`, `Database`, `Trail`.
 pub async fn rotate(
     conn: &mut PgConnection,
     vault: &Vault,
@@ -190,8 +169,6 @@ pub async fn rotate(
     ending(conn, (id, name, ended), now).await
 }
 
-/// Ends the active version with no new one, in the caller's transaction.
-///
 /// # Errors
 /// `UnknownKey`, `NoActiveVersion` when no version is active, `Database`, `Trail`.
 pub async fn revoke(
@@ -213,8 +190,7 @@ pub async fn revoke(
     ending(conn, (id, name, ended), now).await
 }
 
-/// Removes the key: ends its active version and its retrieval, in the caller's transaction.
-/// Its name stays taken. The answer holds the key as it was at the removal.
+/// Ends the active version and its retrieval; the name stays taken.
 ///
 /// # Errors
 /// `UnknownKey`, `Database`, `Trail`.
@@ -234,8 +210,7 @@ pub async fn remove(
     Ok(ending)
 }
 
-/// Lets the daemon of `grant.device` fetch the key for `grant.workload` (a trust decision of the
-/// operator), in the caller's transaction. A grant that exists writes nothing.
+/// A trust decision of the operator; a grant that exists writes nothing.
 ///
 /// # Errors
 /// `UnknownKey`, `Invalid` for a workload that is not a label, `UnknownDevice`, `Database`,
@@ -257,7 +232,7 @@ pub async fn grant(
     read_back(conn, &grant.name, now).await
 }
 
-/// Ends a grant, in the caller's transaction. The daemon drops the key at its next report.
+/// The daemon drops the key at its next report.
 ///
 /// # Errors
 /// `UnknownKey`, `NoGrant`, `Database`, `Trail`.
@@ -275,9 +250,7 @@ pub async fn ungrant(
     read_back(conn, &grant.name, now).await
 }
 
-/// Ends the versions of the keys past their expiry at `now`, then empties the sealed value of
-/// each version that ended more than 30 days before `now`; how many it emptied. The daily
-/// retention run calls it.
+/// Ends expired versions, then empties each sealed value that ended over 30 days ago; how many.
 ///
 /// # Errors
 /// `Database` when a write fails.
@@ -315,7 +288,6 @@ async fn read_back(
         .ok_or(Error::UnknownKey)
 }
 
-/// Seals `value` for a new version of the key and stores it as the active one; its number.
 async fn add_version(
     conn: &mut PgConnection,
     vault: &Vault,

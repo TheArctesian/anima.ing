@@ -1,14 +1,5 @@
-//! The sealed form of channel secrets (SEC-003, D-17, K3): one JSON document per channel,
-//! sealed with the hub key under the context `notifications.channels:<channel_id>`, so a value
-//! copied to another channel does not open.
-//!
-//! The plaintext also binds the secrets to where they go: the channel kind, the target (the
-//! webhook origin, the ntfy server, the mail server's host and port, or the Apprise server) and
-//! the webhook header names. Opening checks the binding against the stored settings, so a
-//! database writer who points a channel at another server gets an error, not the secrets, and
-//! nothing is sent (as checks does, D-5).
-//!
-//! Plaintext layout: `{"kind": .., "target": .., "names": [..], "secrets": Wire}`.
+//! Channel secrets sealed per channel and bound to kind, target and header names (SEC-003, D-17, K3).
+//! A channel pointed at another target opens to an error, never the secrets, and nothing is sent (D-5).
 
 use std::borrow::Cow;
 
@@ -24,10 +15,8 @@ use crate::{
     ids::ChannelId,
 };
 
-/// The context prefix of sealed channel secrets (K3).
 const CONTEXT: &str = "notifications.channels";
 
-/// The associated data that binds sealed secrets to their channel.
 fn context(channel: ChannelId) -> Vec<u8> {
     format!("{CONTEXT}:{channel}").into_bytes()
 }
@@ -45,10 +34,6 @@ struct Envelope<'a> {
     secrets: Wire<'a>,
 }
 
-/// Seals the channel's secrets, bound to its kind, target and header names.
-///
-/// # Errors
-/// `Credentials` (`Random`) when the OS random source fails.
 pub(super) fn seal(
     vault: &Vault,
     channel: ChannelId,
@@ -66,8 +51,7 @@ pub(super) fn seal(
             .collect(),
         secrets: secrets.to_wire(),
     };
-    // Sized for the worst case (every byte escaped as `\uXXXX`), so the buffer never grows
-    // and leaves no copy of a secret behind.
+    // Sized for worst-case escaping so the buffer never grows and leaves no copy of a secret.
     let clear: usize = [target.len(), names.iter().map(String::len).sum()]
         .iter()
         .sum();
@@ -79,13 +63,6 @@ pub(super) fn seal(
     Ok(vault.seal(&plain, &context(channel))?.to_bytes())
 }
 
-/// Opens the channel's secrets, if they were sealed for this channel and for where `settings`
-/// sends them.
-///
-/// # Errors
-/// `Credentials` when the value does not open or is malformed; `SecretsUnbound` when the
-/// settings name another kind, target or header names than the secrets were given for, or
-/// the secrets do not have the shape the settings need.
 pub(super) fn open(
     vault: &Vault,
     channel: ChannelId,
@@ -109,7 +86,6 @@ pub(super) fn open(
     Secrets::from_wire(settings, envelope.secrets).ok_or(Error::SecretsUnbound)
 }
 
-/// The stored secrets as an update finds them: nothing, opened, or present and unreadable.
 pub(super) fn kept(
     vault: &Vault,
     channel: ChannelId,

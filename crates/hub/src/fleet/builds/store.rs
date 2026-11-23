@@ -1,6 +1,5 @@
-//! All SQL on schema `builds`: I/O only (CQ-032). Ids and time come in as parameters. Writes
-//! take the caller's connection, so a change commits with its audit entry or event. Jobs are
-//! here; releases, builders and logs are in the submodules.
+//! All SQL on schema `builds` (CQ-032). Writes take the caller's connection, so a change commits
+//! with its audit entry or event.
 
 mod builders;
 mod logs;
@@ -173,8 +172,7 @@ pub(super) async fn insert_job(conn: &mut PgConnection, job: &BuildJob) -> Resul
     Ok(())
 }
 
-/// Writes every field of the job that a change can touch. A job that left `uploading` is no
-/// longer the publisher's (D-25).
+/// A job that leaves `uploading` is no longer the publisher's (D-25).
 pub(super) async fn save(conn: &mut PgConnection, job: &BuildJob) -> Result<(), Error> {
     sqlx::query(
         "UPDATE builds.jobs SET state = $2, failure_reason = $3, attempts = $4, builder_id = $5, \

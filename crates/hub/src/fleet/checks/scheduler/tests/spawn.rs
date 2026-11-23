@@ -1,5 +1,4 @@
-//! The spawned scheduler: it ticks at the clock's time until its handle is aborted
-//! (HUB-003). Real time, because paused tokio time would also jump the database waits.
+//! Real time (HUB-003): paused tokio time would also jump the database waits.
 
 use std::{
     sync::{Arc, Mutex},
@@ -20,7 +19,6 @@ use crate::{
     },
 };
 
-/// A clock the test moves forward.
 struct SteppedClock(Mutex<DateTime<Utc>>);
 
 impl Clock for SteppedClock {

@@ -1,5 +1,4 @@
-//! All SQL on schema `web_interfaces`: I/O only. Ids and time come in as parameters. Writes
-//! take the caller's connection so the caller can add its audit entry in the same transaction.
+//! Writes take the caller's connection, so the caller's audit entry shares the transaction.
 
 use std::collections::HashSet;
 
@@ -51,8 +50,6 @@ impl TryFrom<Row> for WebInterface {
     }
 }
 
-/// The error for a write that broke the foreign key `constraint`: the row it points at is
-/// gone.
 fn missing_or_database(error: sqlx::Error, constraint: &str, missing: Missing) -> Error {
     match error.as_database_error() {
         Some(failure)
@@ -64,7 +61,6 @@ fn missing_or_database(error: sqlx::Error, constraint: &str, missing: Missing) -
     }
 }
 
-/// The interfaces of the devices in one query, each device's in creation order.
 pub(super) async fn for_devices(
     db: impl PgExecutor<'_>,
     devices: &[DeviceId],
@@ -75,8 +71,7 @@ pub(super) async fn for_devices(
     rows.into_iter().map(WebInterface::try_from).collect()
 }
 
-/// The interface; the row stays locked until the connection's transaction ends, so no
-/// update or delete can commit between the caller's check and its write.
+/// The row stays locked until the transaction ends, so no write commits between the caller's check and its write.
 pub(super) async fn get_locked(
     conn: &mut PgConnection,
     id: WebInterfaceId,
@@ -87,8 +82,7 @@ pub(super) async fn get_locked(
         .try_into()
 }
 
-/// Takes the device's lock until the transaction ends, so two accepts for one device run
-/// one after the other.
+/// Two accepts for one device run one after the other.
 pub(super) async fn lock_device(conn: &mut PgConnection, device: DeviceId) -> Result<(), Error> {
     sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended('web_interfaces:' || $1::text, 0))")
         .bind(device)
@@ -97,7 +91,6 @@ pub(super) async fn lock_device(conn: &mut PgConnection, device: DeviceId) -> Re
     Ok(())
 }
 
-/// What a new interface is given besides the operator's input.
 pub(super) struct Born {
     pub id: WebInterfaceId,
     pub device: DeviceId,
@@ -135,8 +128,7 @@ pub(super) async fn insert(
     })
 }
 
-/// Replaces label, URL and `open_in`, and drops the pin when the origin changed (D-6), in one
-/// transaction. Returns the interface before and after.
+/// A changed origin drops the pin (D-6); returns the interface before and after.
 pub(super) async fn update(
     conn: &mut PgConnection,
     id: WebInterfaceId,
@@ -180,7 +172,6 @@ pub(super) async fn update(
     Ok((before, after))
 }
 
-/// Deletes the interface (its pin goes with it) and returns its device.
 pub(super) async fn delete(conn: &mut PgConnection, id: WebInterfaceId) -> Result<DeviceId, Error> {
     let device: Option<DeviceId> = sqlx::query_scalar(
         "DELETE FROM web_interfaces.interfaces WHERE id = $1 RETURNING device_id",
@@ -217,7 +208,6 @@ pub(super) async fn set_pin(
     Ok(())
 }
 
-/// Which of these checks have a dismissed suggestion.
 pub(super) async fn dismissed_among(
     db: impl PgExecutor<'_>,
     checks: &[CheckId],
@@ -231,7 +221,6 @@ pub(super) async fn dismissed_among(
     Ok(ids.into_iter().collect())
 }
 
-/// Records the dismissal; a second one for the same check changes nothing.
 pub(super) async fn insert_dismissed(
     conn: &mut PgConnection,
     check: CheckId,

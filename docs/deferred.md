@@ -23,7 +23,7 @@ Rules:
 | Area | Lists | Items with a box | Revisit |
 | --- | --- | --- | --- |
 | 1. Releases, signing and installation | 1 | 4 | Before the first public release (tasks R5 to R7 of projects-and-builds-plan.md). |
-| 2. Later phases and proposals | 12 | 44 | When the proposal or the phase of the item gets a ruling. Each proposal has a row in the work plan Section 9. |
+| 2. Later phases and proposals | 12 | 50 | When the proposal or the phase of the item gets a ruling. Each proposal has a row in the work plan Section 9. |
 | 3. Ideas from other products | 2 | 17 | When the plan that owns the subject is changed next. |
 | 4. Hub: access, logs and security | 7 | 24 | Before a hub is hosted for a different person, and at the next security review of access. |
 | 5. Hub: devices, checks and metrics | 9 | 20 | When the domain of the item is changed next. |
@@ -167,7 +167,6 @@ Added 2026-11-22. From the security reviews of task TH111 of [agent-threads.md](
 
 Added 2026-11-23. From the security review of branch `threads/private-tmpdir` of [agent-threads.md](proposals/agent-threads.md). None of them is High.
 
-- [ ] The flag `private_tmp` of the Git engine stops all of its check of records in a temporary folder, `/tmp` and `XDG_RUNTIME_DIR` too. Each sandboxed agent can write `/tmp`, so records there can get a Git setting from an agent while its thread runs; the hold ends when the thread stops. The flag should stop only the check of `TMPDIR`, `TMP` and `TEMP` of the login. The Git stage owns that check.
 - [ ] The roots of a sandboxed thread are its folder, its `TMPDIR` and `/tmp`, as written in the launcher. A folder that the person adds to the sandbox (the writable roots of Codex, the folders that Claude Code may write) is not read, so a thread that can write the records there does not hold the engine.
 - [ ] Not checked: whether the sandbox of Codex or of Claude Code on macOS lets an agent write the temporary folder of the user under `/var/folders` when `TMPDIR` names a different folder.
 - [ ] When the daemon ends after an agent started and before the record of its thread was written, the next start of the runner does not know the thread: it removes its `TMPDIR`, and the hold does not count it.

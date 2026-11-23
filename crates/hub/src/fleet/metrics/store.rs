@@ -1,6 +1,3 @@
-//! All SQL on schema `metrics`: I/O only; rows are mapped in `rows`. Ids and time come in as
-//! parameters.
-
 mod batteries;
 mod chart;
 mod drives;

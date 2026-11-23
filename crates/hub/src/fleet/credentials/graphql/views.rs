@@ -1,5 +1,4 @@
-//! The K1 types of the operational keys (K-E5 Section 2.2). No field holds a value: the value
-//! goes in through an argument and never comes out (CLI-004, SEC-005, LOG-007).
+//! No field holds a key value: a value only goes in through an argument (CLI-004, SEC-005, LOG-007).
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

@@ -1,6 +1,3 @@
-//! Unit tests of the pure rules. Behaviour against the database and GraphQL is tested in
-//! `tests/it/maintenance`.
-
 mod coverage;
 mod daylight_saving;
 mod form_text;
@@ -44,7 +41,6 @@ fn monthly(days: &[i8], start: &str, minutes: u32) -> WindowRule {
     }
 }
 
-/// Whether the rule is active at each instant, in the order given.
 fn states(rule: &WindowRule, zone: Tz, instants: &[&str]) -> Vec<bool> {
     instants
         .iter()

@@ -1,5 +1,4 @@
-//! The store's writes: a session row starts live and ends once; the runtime role can do all
-//! of it through migration 0001's default privileges alone (RA-008, R-016, K2 "Roles").
+//! RA-008, R-016, K2 "Roles".
 
 use std::net::IpAddr;
 

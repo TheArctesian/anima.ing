@@ -1,11 +1,10 @@
-//! The SQL on `places.site_place`: which site is at which place (PLC-006).
+//! PLC-006.
 
 use sqlx::{PgConnection, PgExecutor};
 use uuid::Uuid;
 
 use crate::ids::{PlaceId, SiteId};
 
-/// Moves the site rows of `from` (all, or only those in `only`) to `to`; returns how many.
 pub(in crate::engine::places) async fn move_sites(
     conn: &mut PgConnection,
     (from, to): (PlaceId, PlaceId),
@@ -60,7 +59,6 @@ pub(in crate::engine::places) async fn drop_site(
         .map(drop)
 }
 
-/// The sites that point at each place, for the places shown.
 pub(in crate::engine::places) async fn sites_of(
     db: impl PgExecutor<'_>,
     places: &[Uuid],

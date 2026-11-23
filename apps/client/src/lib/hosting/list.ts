@@ -61,7 +61,8 @@ export interface PlaceGroup {
   readonly empty: boolean;
 }
 
-const MACHINE_TONES: Readonly<Record<Machine['state'], Tone>> = { UP: 'up', DOWN: 'down', DEGRADED: 'warning', MAINTENANCE: 'warning', UNKNOWN: 'unknown' };
+/** The colour of the status of a machine, beside its word (MAT-005). */
+export const MACHINE_TONES: Readonly<Record<Machine['state'], Tone>> = { UP: 'up', DOWN: 'down', DEGRADED: 'warning', MAINTENANCE: 'warning', UNKNOWN: 'unknown' };
 
 /** HSE-002: the rows of each machine, the machines by name, narrowed by the field, the machine and the choice. */
 export function placeGroups(places: readonly Place[], narrowing: Narrowing): readonly PlaceGroup[] {

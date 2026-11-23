@@ -9,20 +9,16 @@ use daemon_core::readings::{
 use super::sysfs;
 use crate::fleet::{metrics::GpuVendor, ssh::CommandOutput};
 
-/// The most bytes of one GPU tool's output the hub reads. Honest output is a few kilobytes: a
-/// line per NVIDIA GPU, three short lines per AMD card, a few `intel_gpu_top` samples, one
-/// registry entry per accelerator. Longer output is not read, so a device cannot make the
-/// readers build large values from the 4 MiB the link keeps.
+/// The most bytes of one GPU tool's output the hub reads; honest output is a few kilobytes, so
+/// a device cannot make the readers build large values from the 4 MiB the link keeps.
 pub(in crate::fleet::metrics::collector) const OUTPUT_LIMIT: usize = 256 * 1024;
 
-/// What one vendor's read told the hub in one collection.
 #[derive(Clone, Debug, PartialEq)]
 pub(in crate::fleet::metrics::collector) enum Answer {
     /// The GPUs it reported; none when the tool or files are missing or it found no GPU.
     Gpus(Vec<GpuReading>),
-    /// The tool ran and failed: an exit status other than 0 and 127, so its output is not
-    /// read. It may not read the GPU, or its driver broke. Discovery decides what this means
-    /// from the GPUs known before (D-30).
+    /// The tool ran and exited other than 0 and 127, so its output is not read. Discovery
+    /// decides what this means from the GPUs known before (D-30).
     Failed,
     /// The read did not finish, so the hub cannot tell: it timed out, the device refused it,
     /// the link was lost, or the output was cut or too long.

@@ -1,6 +1,4 @@
-//! The hub's connection to guacd up to `ready` (K4 Section 3, GW-010): connect, then run the
-//! `guac-protocol` handshake over the socket.
-//!
+//! The hub's connection to guacd up to `ready` (K4 Section 3, GW-010).
 //! The handshake's `connect` holds the credential: it is written once, then wiped, and never
 //! logged (WP-08 H-9, LOG-007). guacd's error text stays here (D-11).
 
@@ -17,20 +15,16 @@ use zeroize::{Zeroize, Zeroizing};
 
 use super::{opening::NotOpened, route::Timing};
 
-/// Bytes read from guacd at a time: one of its largest instructions.
 pub(super) const READ_BYTES: usize = MAX_INSTRUCTION_BYTES;
 
-/// guacd's ID for the connection, from `ready`. Anyone who reaches guacd with it can join
-/// the session, so it is kept with the live tunnel only, never sent, logged or stored
-/// (GW-014). No `Debug`, `Display` or `Clone`.
+/// Anyone who reaches guacd with this ID can join the session: it is never sent, logged or stored (GW-014).
 #[expect(
     dead_code,
     reason = "GW-014: held for the tunnel's life and never read; session sharing, which would join with it, is deferred (R-111)"
 )]
 pub(super) struct ConnectionId(String);
 
-/// guacd after `ready`: the socket, its decoder, the instructions that arrived in the same
-/// read as `ready` (WP-08 H-5) and the connection ID.
+/// `after_ready` holds the instructions that arrived in the same read as `ready` (WP-08 H-5).
 pub(super) struct Connected {
     pub(super) stream: TcpStream,
     pub(super) decoder: Decoder,
@@ -38,12 +32,6 @@ pub(super) struct Connected {
     pub(super) connection_id: ConnectionId,
 }
 
-/// Connects to guacd at `address` within `timing.connect`, then completes the handshake that
-/// selects `protocol` (a hub constant: `rdp` or `vnc`) for `params` within
-/// `timing.handshake`.
-///
-/// # Errors
-/// [`NotOpened::Unreachable`], [`NotOpened::HandshakeTimeout`], or how the handshake failed.
 pub(super) async fn connect(
     address: &str,
     protocol: &'static str,
@@ -54,7 +42,7 @@ pub(super) async fn connect(
         .await
         .map_err(|_| NotOpened::Unreachable)?
         .map_err(|_| NotOpened::Unreachable)?;
-    // Keystrokes and screen updates are small; do not hold them back (Nagle).
+    // Keystrokes and screen updates are small; Nagle would hold them back.
     stream
         .set_nodelay(true)
         .map_err(|_| NotOpened::Unreachable)?;
@@ -103,8 +91,7 @@ async fn handshake(
     }
 }
 
-/// Writes `instructions` to guacd in order, wiping each one and its wire text once written.
-/// (The `ArgValues` copy inside the handshake is not wiped: guac-protocol, issue #1.)
+/// The `ArgValues` copy inside the handshake is not wiped (guac-protocol issue #1).
 async fn send(stream: &mut TcpStream, instructions: Vec<Instruction>) -> Result<(), NotOpened> {
     for mut instruction in instructions {
         let wire = Zeroizing::new(encode(&instruction));
@@ -117,7 +104,6 @@ async fn send(stream: &mut TcpStream, instructions: Vec<Instruction>) -> Result<
     Ok(())
 }
 
-/// The handshake error without guacd's text (D-11): only its status survives.
 fn refusal(error: &HandshakeError) -> NotOpened {
     match error {
         HandshakeError::Gateway { status, .. } => NotOpened::Refused { status: *status },

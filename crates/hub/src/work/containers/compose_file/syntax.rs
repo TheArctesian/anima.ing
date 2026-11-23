@@ -1,5 +1,4 @@
-//! The check of the syntax of a Compose file (HOST-022): is the text YAML, and does it have
-//! the form of a Compose file. It does not say that a machine accepts the file.
+//! The check of the syntax of a Compose file (HOST-022); it does not say that a machine accepts the file.
 
 #![expect(
     clippy::unused_async_trait_impl,
@@ -288,8 +287,7 @@ fn one_service(service: &Entry<'_>, number: u32, check: &mut Check) {
         let problem = Problem::at(code, entry.key.place);
         check.add(problem.in_service(name).of_key(entry.name));
     }
-    // An image can come from a merge, from the service that this one extends, or from a
-    // provider: the check does not follow them.
+    // An image can come from a merge, an extended service or a provider: the check does not follow them.
     let source = ["image", "build", "extends", "provider", "<<"];
     if !found.iter().any(|entry| source.contains(&entry.name)) {
         let problem = Problem::at(ProblemCode::NoImageOrBuild, service.key.place);

@@ -1,5 +1,4 @@
-//! From command outputs to a reading and its samples: unreadable sources, partial
-//! collections, the first reading and rates over the hub time (MET-002, D-4).
+//! From command outputs to a reading and its samples (MET-002, D-4).
 
 use chrono::{DateTime, TimeDelta, Utc};
 
@@ -23,7 +22,6 @@ fn at() -> DateTime<Utc> {
     "2026-11-06T09:00:00Z".parse().unwrap()
 }
 
-/// The reading of `outputs`, each added in order as the collector does.
 fn reading(outputs: &[(Source, CommandOutput)], at: DateTime<Utc>) -> Reading {
     let mut parts = Parts::default();
     for (source, output) in outputs {
@@ -61,7 +59,6 @@ fn macos_outputs() -> Vec<(Source, CommandOutput)> {
     ]
 }
 
-/// The outputs with `source`'s replaced by `output`.
 fn with(
     mut outputs: Vec<(Source, CommandOutput)>,
     source: Source,
@@ -238,8 +235,7 @@ fn d4_the_first_macos_reading_has_its_cpu_share() {
     assert_close(value(&out, MetricKind::CpuPercent, ""), 15.78);
 }
 
-/// The Linux reading 30 seconds later: 600 more ticks with 150 idle, eth0 3 MB in and 600 kB
-/// out more.
+/// The Linux reading 30 s later: 600 more ticks, 150 idle; eth0 3 MB in, 600 kB out more.
 fn later_linux() -> Reading {
     let stat = b"cpu  5155 356 584 3849 23 23 0 0 0 0\n";
     let net_dev = b"Inter-|   Receive\n face |bytes\n  \

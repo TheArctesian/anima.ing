@@ -5,7 +5,7 @@ use sqlx::{PgConnection, PgExecutor};
 use super::rows::SettingsRow;
 use crate::fleet::notifications::{Error, model::InstallationSettings};
 
-/// The settings. The migration seeds the row, so it always exists.
+/// The migration seeds the row, so it always exists.
 pub(in crate::fleet::notifications) async fn installation_settings(
     db: impl PgExecutor<'_>,
 ) -> Result<InstallationSettings, Error> {
@@ -17,7 +17,6 @@ pub(in crate::fleet::notifications) async fn installation_settings(
     InstallationSettings::try_from(row)
 }
 
-/// Replaces the settings.
 pub(in crate::fleet::notifications) async fn write_installation_settings(
     conn: &mut PgConnection,
     settings: &InstallationSettings,

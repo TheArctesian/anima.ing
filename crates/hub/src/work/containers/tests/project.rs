@@ -1,12 +1,9 @@
-//! The one state of a Compose project (HOST-019).
-
 use super::LISTED;
 use crate::{
     fleet::ssh::CommandOutput,
     work::containers::{ProjectState, docker},
 };
 
-/// The states of the containers that `docker ps` lists for these `(project, state, status)`.
 fn marked(rows: &[(&str, &str, &str)]) -> Vec<Option<ProjectState>> {
     let first = LISTED.lines().next().unwrap();
     let text: String = rows
@@ -34,7 +31,6 @@ fn marked(rows: &[(&str, &str, &str)]) -> Vec<Option<ProjectState>> {
         .collect()
 }
 
-/// The state of one project with these `(state, status)` containers.
 fn project(rows: &[(&str, &str)]) -> ProjectState {
     let rows: Vec<_> = rows
         .iter()
@@ -61,8 +57,7 @@ fn host_019_one_stopped_container_of_three_makes_the_project_partly_running() {
 
 #[test]
 fn host_019_a_container_that_ended_with_status_0_is_one_that_does_not_run() {
-    // Docker's list cannot tell a set-up step that finished from a service that was stopped
-    // with `docker stop`, which also ends with status 0.
+    // Docker's list cannot tell a finished set-up step from a service stopped with `docker stop`.
     let rows = [
         ("running", "Up 3 hours"),
         ("exited", "Exited (0) 3 hours ago"),
@@ -90,7 +85,6 @@ fn host_019_the_rules_apply_in_one_order() {
         ]),
         ProjectState::Paused
     );
-    // A container that restarts or is dead decides the state before every other rule.
     for failing in [
         ("restarting", "Restarting (1) 5 seconds ago"),
         ("dead", "Dead"),

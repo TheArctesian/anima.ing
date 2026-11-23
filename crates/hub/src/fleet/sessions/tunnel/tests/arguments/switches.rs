@@ -1,5 +1,4 @@
-//! Each device switch reaches the one guacd argument K4 Section 3 maps it to, with guacd's
-//! text: security and resize names, and booleans as `true` or empty (RA-021, RA-033).
+//! Device switches to guacd arguments (K4 Section 3, RA-021, RA-033).
 
 use super::super::super::arguments::pinned_security;
 use super::{DRIVE_ROOT, Desktop, Sources, TARGET, connect_for, connect_values, device};

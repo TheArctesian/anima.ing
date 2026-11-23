@@ -1,4 +1,4 @@
-//! The text filter of the event log: the message or the device name, with case ignored (LOG-011).
+//! The text filter of the event log (LOG-011).
 
 use chrono::{TimeZone as _, Utc};
 use sqlx::PgPool;
@@ -39,7 +39,6 @@ async fn log_011_the_text_filter_finds_the_message_with_case_ignored(pool: PgPoo
         .unwrap();
     assert_eq!(found.len(), 1);
     assert_eq!(found[0].message, "Backup complete: 41 MB");
-    // `%` and `_` are plain characters, not patterns.
     let percent = list_events(&pool, &search("0%"), None, 10).await.unwrap();
     assert_eq!(percent.len(), 1);
     let pattern = list_events(&pool, &search("b_ckup"), None, 10)

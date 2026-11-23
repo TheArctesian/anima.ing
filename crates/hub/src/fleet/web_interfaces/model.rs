@@ -11,7 +11,6 @@ use crate::{
 
 pub use crate::api_errors::FieldError;
 
-/// Where the client opens an interface.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OpenIn {
     AnimaTab,
@@ -19,7 +18,6 @@ pub enum OpenIn {
 }
 
 impl OpenIn {
-    /// The `lower_snake` text stored in `interfaces.open_in`.
     pub(super) const fn as_str(self) -> &'static str {
         match self {
             Self::AnimaTab => "anima_tab",
@@ -36,15 +34,13 @@ impl OpenIn {
     }
 }
 
-/// The certificate the operator accepted for an interface, and when. It is stored and shown
-/// as 64 lower-case hex digits (D-5).
+/// The fingerprint is stored and shown as 64 lower-case hex digits (D-5).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Pin {
     pub fingerprint: CertificateFingerprint,
     pub at: DateTime<Utc>,
 }
 
-/// A web address kept for a device.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WebInterface {
     pub id: WebInterfaceId,
@@ -63,7 +59,7 @@ pub struct Suggestion {
     pub label: String,
 }
 
-/// What the operator typed for an interface. The label defaults to the URL's host.
+/// The label defaults to the URL's host.
 #[derive(Clone, Debug)]
 pub struct WebInterfaceInput {
     pub label: Option<String>,
@@ -71,7 +67,7 @@ pub struct WebInterfaceInput {
     pub open_in: OpenIn,
 }
 
-/// The operator's accept of a certificate: the fingerprint as typed, who, and when.
+/// The fingerprint is as the operator typed it.
 #[derive(Clone, Copy, Debug)]
 pub struct Acceptance<'a> {
     pub fingerprint: &'a str,
@@ -79,21 +75,18 @@ pub struct Acceptance<'a> {
     pub at: DateTime<Utc>,
 }
 
-/// An interface before and after an update, for the audit entry.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Updated {
     pub before: WebInterface,
     pub after: WebInterface,
 }
 
-/// The result of accepting a suggestion: the interface, and whether this call made it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Accepted {
     pub interface: WebInterface,
     pub created: bool,
 }
 
-/// What a lookup could not find.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Missing {
     Interface(WebInterfaceId),

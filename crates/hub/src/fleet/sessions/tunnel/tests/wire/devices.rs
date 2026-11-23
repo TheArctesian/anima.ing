@@ -1,6 +1,4 @@
-//! The device as the opening finds it (K4 Sections 2 and 3, R-032): each protocol turned
-//! off after the start, the accepted certificate gone, a host that does not resolve, and the
-//! checked address, values, drive and audio guacd gets for RDP and VNC.
+//! The device as the opening finds it (K4 Sections 2 and 3, R-032).
 
 use std::collections::HashMap;
 
@@ -27,8 +25,6 @@ async fn serving(args: &'static [u8]) -> FakeGuacd {
     .await
 }
 
-/// After `change` to the started session's device, opening the tunnel is 503
-/// `GATEWAY_ERROR` with `message`, and guacd is never reached.
 async fn refused_after(pool: &PgPool, protocol: Protocol, change: &str, message: &str) {
     let mut guacd = serving(RDP_ARGS).await;
     let bench = super::bench(pool, &guacd.address, Setup::protocol(protocol)).await;
@@ -70,7 +66,7 @@ async fn k4_2_vnc_turned_off_after_start_is_503_gateway_error(pool: PgPool) {
     fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn sec_007_an_rdp_session_without_an_accepted_certificate_is_503(pool: PgPool) {
-    // A changed device record: deleting the device would cascade the certificate too.
+    // Deleting the device would cascade the certificate too.
     let gone = "delete from trust.server_certificates where device_id = $1";
     let message = "The device has no accepted server certificate. Test the connection and \
                    accept its certificate.";
@@ -98,8 +94,6 @@ async fn r_032_a_host_that_does_not_resolve_is_503_gateway_error(pool: PgPool) {
     assert!(guacd.selected.try_recv().is_err(), "guacd is never reached");
 }
 
-/// Starts the bench's session, applies `changes` (each bound to `docker-host`), opens it,
-/// then returns what guacd was sent.
 async fn handshake_of(
     pool: &PgPool,
     setup: Setup,
@@ -232,7 +226,7 @@ async fn r_032_an_ipv4_mapped_host_reaches_guacd_as_the_ipv4_address_it_is(pool:
     fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn sec_007_standard_rdp_security_opens_without_a_certificate(pool: PgPool) {
-    // No TLS, so no certificate to pin: the tunnel opens and guacd gets no fingerprint.
+    // No TLS, so no certificate to pin.
     let changes = [
         "update devices.rdp_settings set security = 'rdp' where device_id = $1",
         "delete from trust.server_certificates where device_id = $1",

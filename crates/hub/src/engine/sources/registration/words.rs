@@ -1,8 +1,7 @@
-//! What the operator reads about an attempt: the fixed sentence of each phase and failure, and
-//! the GitHub pages it links to (K-E1 Section 7a; the words of the design's Section E). Pure.
+//! The fixed sentences and GitHub links the operator reads about an attempt (K-E1 Section 7a).
 //!
-//! A sentence may name the App's slug, which is text from GitHub; it never holds a key, a code,
-//! a ticket or a state (LOG-007).
+//! A sentence may name the App's slug, text from GitHub; it never holds a key, a code, a ticket or
+//! a state (LOG-007).
 
 use source_exchange::Registration;
 
@@ -11,7 +10,6 @@ use super::attempt::{Failure, Phase, Snapshot};
 /// The fixed path of the confirm page a signed-in operator opens.
 pub const PAGE_PATH: &str = "/connect/github";
 
-/// The sentence for `snapshot`.
 #[must_use]
 pub fn message(snapshot: &Snapshot) -> String {
     let slug = snapshot.app.as_ref().map(|app| app.slug.as_str());
@@ -42,7 +40,6 @@ pub fn message(snapshot: &Snapshot) -> String {
     }
 }
 
-/// The sentence of a failure.
 fn failed(failure: Failure, slug: Option<&str>) -> String {
     const LISTED: &str = "If GitHub lists a new App that starts with \"anima-\", delete it.";
     match (failure, slug) {
@@ -81,7 +78,6 @@ pub fn page_url(origin: &str) -> String {
     format!("{origin}{PAGE_PATH}")
 }
 
-/// Where the operator presses Install, while the App waits for it.
 #[must_use]
 pub fn install_url(snapshot: &Snapshot, registration: &Registration) -> Option<String> {
     let app = snapshot.app.as_ref()?;
@@ -94,8 +90,6 @@ pub fn install_url(snapshot: &Snapshot, registration: &Registration) -> Option<S
     })
 }
 
-/// Where the operator deletes an App the hub does not use: set when the attempt failed or was
-/// cancelled and an App may exist on GitHub. Without the App's facts, the list of Apps.
 #[must_use]
 pub fn settings_url(snapshot: &Snapshot, registration: &Registration) -> Option<String> {
     let may_exist = match (snapshot.phase, snapshot.failure) {

@@ -1,6 +1,3 @@
-//! Commands as people write them: each becomes a Compose file that passes the syntax check
-//! and reads back to the values of the command.
-
 use super::super::Note;
 use super::{converted, list, text, tree};
 
@@ -40,7 +37,6 @@ fn host_022_postgres_with_a_password_a_volume_and_a_restart_policy() {
         list(&file, &[db[0], db[1], "ports"]),
         ["127.0.0.1:5432:5432"]
     );
-    // The volume keeps the name that `docker run` gave it.
     assert_eq!(text(&file, &["volumes", "pgdata", "name"]), "pgdata");
     assert_eq!(done.notes, [Note::DetachNotNeeded, Note::VolumeNameKept]);
 }

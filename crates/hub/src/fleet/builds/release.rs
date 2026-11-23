@@ -1,14 +1,11 @@
-//! The rules of a new release (BLD-001, BLD-002): its version, commit and targets, the
-//! refusal of a version that is not new for a target, and the version the form proposes.
-//!
-//! Pure: the versions already built come in as a parameter.
+//! The rules of a new release (BLD-001, BLD-002). Pure: the versions already built come in as
+//! a parameter.
 
 use super::{
     model::{Commit, FieldError, JobState, Target},
     version::Version,
 };
 
-/// A release as the operator asked for it, before the rules.
 #[derive(Clone, Debug)]
 pub struct ReleaseInput {
     pub version: String,
@@ -16,7 +13,7 @@ pub struct ReleaseInput {
     pub targets: Vec<Target>,
 }
 
-/// A release that passed the rules: the targets are sorted and each named once.
+/// The targets are sorted and each named once.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct NewRelease {
     pub(super) version: Version,
@@ -24,7 +21,6 @@ pub(super) struct NewRelease {
     pub(super) targets: Vec<Target>,
 }
 
-/// A job that holds a version of a target: published, or queued or under way.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Built {
     pub(super) target: Target,
@@ -32,14 +28,12 @@ pub(super) struct Built {
     pub(super) state: JobState,
 }
 
-/// The commit as 40 lower-case hex digits; upper-case digits are lowered.
 fn commit(text: &str) -> Option<Commit> {
     let text = text.trim();
     (text.len() == 40 && text.bytes().all(|b| b.is_ascii_hexdigit()))
         .then(|| Commit(text.to_ascii_lowercase()))
 }
 
-/// Checks the form of a release: every field in error is listed.
 pub(super) fn validate(input: &ReleaseInput) -> Result<NewRelease, Vec<FieldError>> {
     let mut errors = Vec::new();
     let version = input.version.trim().parse::<Version>().map_err(|_| {
@@ -70,9 +64,8 @@ pub(super) fn validate(input: &ReleaseInput) -> Result<NewRelease, Vec<FieldErro
     }
 }
 
-/// Refuses `version` for a target that has published it or a later version, or that has it
-/// queued or under way: a version is built at most once for a target (BLD-002). A failed or
-/// cancelled job does not count.
+/// A version is built at most once for a target; a failed or cancelled job does not count
+/// (BLD-002).
 pub(super) fn check_new(
     version: Version,
     targets: &[Target],
@@ -104,8 +97,7 @@ pub(super) fn check_new(
     Ok(())
 }
 
-/// The version the release form proposes: the highest version published or under way, with
-/// the patch number plus 1; `None` before the first release (Section 3.10).
+/// The version the release form proposes (Section 3.10).
 pub(super) fn next_version(built: &[Built]) -> Option<Version> {
     built
         .iter()

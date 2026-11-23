@@ -11,11 +11,9 @@ use crate::{
     ids::DeviceId,
 };
 
-/// The bins of every series of a device: the mean weighted by sample count (each row's share of
-/// the bin's samples, so a huge average cannot overflow a sum of products), the lowest minimum
-/// and the highest maximum of the rows in each bin. Bins are aligned to 2000-01-01 UTC, so
-/// 10-minute and hourly bins start on the clock. A GPU series carries its GPU's stored name, for
-/// the label (R-099).
+/// Each row weighs by its share of the bin's samples, so a large average cannot overflow a sum.
+/// Bins align to 2000-01-01 UTC, so 10-minute and hourly bins start on the clock.
+/// A GPU series carries its GPU's stored name for the label (R-099).
 macro_rules! chart {
     ($table:literal) => {
         concat!(
@@ -48,7 +46,6 @@ const fn chart_sql(resolution: Resolution) -> &'static str {
     }
 }
 
-/// One `MetricSeries` per series of `device` that has a bucket in the window, in one query.
 pub(in crate::fleet::metrics) async fn chart(
     db: &PgPool,
     device: DeviceId,

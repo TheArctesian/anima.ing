@@ -1,7 +1,4 @@
-//! The deny list on the Guacamole tunnel (security): an RDP or VNC session whose device host
-//! is, or resolves into, an `ANIMA_PROBE_DENY` network is 503 `GATEWAY_ERROR` before any
-//! connection to the device or to guacd, whatever form the address takes; a host outside the
-//! list still opens.
+//! A tunnel to a host in an `ANIMA_PROBE_DENY` network is refused before it reaches the device or guacd.
 
 use std::time::Duration;
 
@@ -23,7 +20,6 @@ use crate::fleet::{
     targets::AddressPolicy,
 };
 
-/// The tests' loopback rule, with `cidr` denied, for a `protocol` session.
 fn denying(cidr: &str, protocol: Protocol) -> Setup {
     let policy = AddressPolicy::new(vec![cidr.parse().unwrap()]);
     Setup {
@@ -34,7 +30,6 @@ fn denying(cidr: &str, protocol: Protocol) -> Setup {
     }
 }
 
-/// The guacd 1.6.0 arguments for `protocol`.
 fn args(protocol: Protocol) -> &'static [u8] {
     if protocol == Protocol::Vnc {
         VNC_ARGS
@@ -43,7 +38,6 @@ fn args(protocol: Protocol) -> &'static [u8] {
     }
 }
 
-/// Points the started session's `protocol` port of `docker-host` at `port`.
 async fn move_port(pool: &PgPool, protocol: Protocol, port: u16) {
     let change = if protocol == Protocol::Vnc {
         "update devices.vnc_settings set port = $2 where device_id = $1"
@@ -58,8 +52,6 @@ async fn move_port(pool: &PgPool, protocol: Protocol, port: u16) {
         .unwrap();
 }
 
-/// The device moved to `host` on a listener of its own while loopback is denied: opening
-/// is 503 `GATEWAY_ERROR`, the listener never sees a connection and guacd is never reached.
 async fn refused_at(pool: &PgPool, protocol: Protocol, host: &str) {
     let mut guacd = fake_guacd(Script::Serve {
         args: args(protocol),

@@ -1,5 +1,3 @@
-//! The projects domain's nouns: the hosting kinds a project can use, the state of a proposal,
-//! the signs a repository shows, and a repository's fields as the forge gives them.
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

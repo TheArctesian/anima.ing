@@ -9,8 +9,7 @@ use crate::{
     ids::CheckId,
 };
 
-/// One lateral index scan per check: `(check_id, at)` is the primary key of every partition, so
-/// each scan stops after `$3` rows instead of reading the check's whole history (API-005).
+/// The primary key `(check_id, at)` lets each lateral scan stop after `$3` rows (API-005).
 pub(in crate::fleet::checks) const PAGES_SQL: &str = "\
     SELECT c.id, h.at, h.status, h.response_time_ms, h.message \
     FROM unnest($1::uuid[]) AS c(id) \
@@ -20,7 +19,6 @@ pub(in crate::fleet::checks) const PAGES_SQL: &str = "\
         ORDER BY at DESC LIMIT $3) h \
     ORDER BY c.id, h.at DESC";
 
-/// The newest heartbeat of each check, by the same lateral scan with `LIMIT 1` (API-005).
 pub(in crate::fleet::checks) const LATEST_SQL: &str = "\
     SELECT c.id, h.at, h.status, h.response_time_ms, h.message \
     FROM unnest($1::uuid[]) AS c(id) \
@@ -39,8 +37,7 @@ fn heartbeat((at, status, response_time_ms, message): Row) -> Result<Heartbeat, 
     })
 }
 
-/// Up to `limit` heartbeats of each of the checks strictly before `before`, newest first, in
-/// one statement. The primary key makes `at` unique per check, so it is the cursor.
+/// The primary key makes `at` unique per check, so it is the cursor.
 pub(in crate::fleet::checks) async fn pages(
     db: &PgPool,
     checks: &[CheckId],
@@ -59,7 +56,6 @@ pub(in crate::fleet::checks) async fn pages(
         .collect()
 }
 
-/// The newest heartbeat of each of the checks that has one, in one query.
 pub(in crate::fleet::checks) async fn latest(
     db: &PgPool,
     checks: &[CheckId],

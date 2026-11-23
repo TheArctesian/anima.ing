@@ -1,12 +1,10 @@
-//! The operator's choices: leave a repository out, restore it, confirm a resource (PRO-002,
-//! PRO-004). I/O only.
+//! The operator's choices (PRO-002, PRO-004).
 
 use chrono::{DateTime, Utc};
 use sqlx::PgConnection;
 
 use crate::ids::{ProjectId, RepositoryId, ResourceId, SourceAccountId};
 
-/// A repository as a choice about it reads it.
 #[derive(Clone, Copy, Debug, sqlx::FromRow)]
 pub(in crate::work::projects) struct Chosen {
     pub project_id: ProjectId,
@@ -17,7 +15,6 @@ pub(in crate::work::projects) struct Chosen {
 const CHOSEN: &str = "SELECT project_id, account_id, left_out_at IS NOT NULL AS left_out \
     FROM projects.repositories WHERE id = $1";
 
-/// The repository `id`, locked until the transaction ends.
 pub(in crate::work::projects) async fn repository(
     conn: &mut PgConnection,
     id: RepositoryId,
@@ -28,8 +25,8 @@ pub(in crate::work::projects) async fn repository(
         .await
 }
 
-/// The repository `id` as it is now, not locked: what a choice reads before it locks the
-/// account row, so it takes the locks in the sync's order (account, then repository).
+/// Not locked: a choice reads it before it locks the account row, in the sync's lock order
+/// (account, then repository).
 pub(in crate::work::projects) async fn peek(
     conn: &mut PgConnection,
     id: RepositoryId,
@@ -37,7 +34,6 @@ pub(in crate::work::projects) async fn peek(
     sqlx::query_as(CHOSEN).bind(id).fetch_optional(conn).await
 }
 
-/// Sets the repository left out at `at`, or not left out when `at` is `None`.
 pub(in crate::work::projects) async fn set_left_out(
     conn: &mut PgConnection,
     id: RepositoryId,
@@ -51,7 +47,6 @@ pub(in crate::work::projects) async fn set_left_out(
         .map(drop)
 }
 
-/// The project, the kind and the state of resource `id`, locked until the transaction ends.
 pub(in crate::work::projects) async fn resource(
     conn: &mut PgConnection,
     id: ResourceId,
@@ -64,7 +59,6 @@ pub(in crate::work::projects) async fn resource(
     .await
 }
 
-/// Confirms resource `id` as the operator's, at `at`.
 pub(in crate::work::projects) async fn confirm(
     conn: &mut PgConnection,
     id: ResourceId,
@@ -81,7 +75,6 @@ pub(in crate::work::projects) async fn confirm(
     .map(drop)
 }
 
-/// The slug of project `id`.
 pub(in crate::work::projects) async fn slug(
     conn: &mut PgConnection,
     id: ProjectId,
@@ -92,7 +85,6 @@ pub(in crate::work::projects) async fn slug(
         .await
 }
 
-/// The slug of the project that holds repository `id`, for the record of a change made there.
 pub(in crate::work::projects) async fn repository_slug(
     conn: &mut PgConnection,
     id: RepositoryId,

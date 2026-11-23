@@ -1,8 +1,3 @@
-//! The world both tunnels' wire tests start from, and what a session leaves behind: the
-//! operator, `docker-host` with an accepted host key and a stored password, the display a
-//! client asks for, the end row with its audit entries and events, and a capture of the
-//! process log (LOG-007).
-
 use std::{
     io,
     sync::{Arc, Mutex},
@@ -24,7 +19,6 @@ use crate::{
     ids::{OperatorId, SessionId},
 };
 
-/// The world `ssh` tests start from is this one's start too.
 pub(in crate::fleet::sessions) use crate::fleet::ssh::tests::fixture::{
     DOCKER_HOST, LOOPBACK, OPERATOR, PASSWORD, add_operator, docker_host, move_device, now,
     prepare, vault,
@@ -42,9 +36,8 @@ pub(in crate::fleet::sessions) fn address(text: &str) -> ClientAddr {
     ClientAddr(text.parse().unwrap())
 }
 
-/// A pool of its own on the test database for the route. sqlx test pools share 20 connections
-/// across all running tests; the session task writes while the test reads, and two
-/// connections per test starve that share when many tests run at once.
+/// sqlx test pools share 20 connections across all running tests; the session task writes
+/// while the test reads, and two connections per test starve that share under load.
 pub(in crate::fleet::sessions) async fn own_pool(pool: &PgPool) -> PgPool {
     PgPoolOptions::new()
         .max_connections(2)
@@ -53,11 +46,8 @@ pub(in crate::fleet::sessions) async fn own_pool(pool: &PgPool) -> PgPool {
         .unwrap()
 }
 
-/// A loopback port nothing listens on, as a device that is still waking up, and the sender
-/// that wakes it: once the test sends, the port accepts, and forwards each connection to the
-/// loopback port `forward` when there is one. The device answers when the test says, not
-/// after a time, so a loaded machine cannot move the answer across an opening limit. Dropping
-/// the sender leaves the device asleep.
+/// The device answers when the test says, not after a time, so a loaded machine cannot move
+/// the answer across an opening limit.
 pub(in crate::fleet::sessions) fn waking_port(forward: Option<u16>) -> (u16, oneshot::Sender<()>) {
     let reserved = std::net::TcpListener::bind((LOOPBACK, 0)).unwrap();
     let port = reserved.local_addr().unwrap().port();
@@ -81,9 +71,8 @@ pub(in crate::fleet::sessions) fn waking_port(forward: Option<u16>) -> (u16, one
     (port, answer)
 }
 
-/// Wakes the device `pause` after the opening began, then returns. The opening signals
-/// `began` in the poll that starts its limit, so the device answers at least `pause` after the
-/// limit started, however late the machine schedules either side.
+/// `began` fires in the poll that starts the opening's limit, so the device answers at least
+/// `pause` after the limit started, however late the machine schedules either side.
 pub(in crate::fleet::sessions) async fn answer_after(
     began: oneshot::Receiver<()>,
     pause: Duration,
@@ -94,8 +83,6 @@ pub(in crate::fleet::sessions) async fn answer_after(
     answer.send(()).unwrap();
 }
 
-/// Puts `session`'s pending ticket back as one whose start sent a Wake-on-LAN packet, under
-/// a new token, and returns the token's text.
 pub(in crate::fleet::sessions) fn reissued_woken(live: &Live, session: SessionId) -> String {
     let ticket = live.withdraw(session).unwrap();
     let token = TicketToken::from_random([3; TOKEN_BYTES]);
@@ -107,7 +94,6 @@ pub(in crate::fleet::sessions) fn reissued_woken(live: &Live, session: SessionId
     token.expose().to_owned()
 }
 
-/// The SSH session a client asks for on `docker-host`.
 pub(in crate::fleet::sessions) fn request() -> StartRequest {
     StartRequest {
         device: docker_host(),
@@ -122,7 +108,6 @@ pub(in crate::fleet::sessions) fn request() -> StartRequest {
     }
 }
 
-/// What a session left behind once its row ended.
 #[derive(Debug)]
 pub(in crate::fleet::sessions) struct Ended {
     pub(in crate::fleet::sessions) reason: String,
@@ -132,7 +117,6 @@ pub(in crate::fleet::sessions) struct Ended {
     pub(in crate::fleet::sessions) events: Vec<(String, String, Option<String>, String)>,
 }
 
-/// Waits up to five seconds for the session's row to end, then reads what the end wrote.
 pub(in crate::fleet::sessions) async fn ended(pool: &PgPool, session: SessionId) -> Ended {
     for _ in 0..250 {
         let reason: Option<String> =
@@ -172,7 +156,6 @@ async fn events(pool: &PgPool) -> Vec<(String, String, Option<String>, String)> 
         .unwrap()
 }
 
-/// The end row's reason and its one audit entry (by `client`) and one event (`severity`).
 pub(in crate::fleet::sessions) fn ended_once(
     ended: &Ended,
     reason: &str,
@@ -195,8 +178,7 @@ pub(in crate::fleet::sessions) fn ended_once(
     assert_eq!(device.as_deref(), Some("docker-host"));
 }
 
-/// The `(operator_name, actor_kind)` of the session's `session.end` entries and the
-/// `actor_kind` of every event (LOG-012, LOG-013).
+/// The actor kinds of the session's `session.end` entries and of every event (LOG-012, LOG-013).
 pub(in crate::fleet::sessions) async fn end_kinds(
     pool: &PgPool,
     session: SessionId,
@@ -216,7 +198,6 @@ pub(in crate::fleet::sessions) async fn end_kinds(
     (audits, events)
 }
 
-/// Every text the database holds about sessions, audit and events, as one string.
 pub(in crate::fleet::sessions) async fn stored_text(pool: &PgPool) -> String {
     let rows: Vec<String> = sqlx::query_scalar(
         "select row_to_json(s)::text from sessions.sessions s \
@@ -229,7 +210,6 @@ pub(in crate::fleet::sessions) async fn stored_text(pool: &PgPool) -> String {
     rows.join("\n")
 }
 
-/// Collects everything the process log writes.
 #[derive(Clone, Default)]
 pub(in crate::fleet::sessions) struct Capture(pub(in crate::fleet::sessions) Arc<Mutex<Vec<u8>>>);
 

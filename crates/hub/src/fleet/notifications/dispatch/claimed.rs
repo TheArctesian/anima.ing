@@ -1,23 +1,7 @@
-//! What happens to one claimed outbox row (D-16, NOT-001, NOT-002).
-//!
-//! The row's channel is read without a lock and the send happens outside any transaction, so
-//! no database lock is held while a target answers. Then one transaction writes the delivery,
-//! finishes or reschedules the row and, when the row is given up, writes one Warning event.
-//!
-//! - A channel deleted since the row was queued takes the row with it (cascade); a row whose
-//!   channel is gone by the time it is read is ended unsent.
-//! - A channel the operator turned off for the row's check since it was queued ends the row
-//!   unsent, with no delivery and no event. Channels have no on/off switch of their own (K1,
-//!   K2): unlinking is how a channel is turned off. A row whose check is gone is still sent, as
-//!   K2 says (it was decided while the check existed).
-//! - A channel whose settings or secrets cannot be read sends nothing and gets a delivery with
-//!   the reason, then the row is given up with a Warning event: `notificationChannels` hides
-//!   such a channel, so the delivery and the event are how the operator learns of it.
-//! - A row claimed once more than it has tries (every earlier claim sent, or may have sent,
-//!   and wrote no outcome) is given up unsent with a Warning event and no delivery.
-//!
-//! Every write matches the claim's lease end (`Outbox::lease_end`): a claimer whose lease
-//! ended, and whose row another claimer took, changes nothing but its own delivery.
+//! One claimed outbox row (D-16, NOT-001, NOT-002); no database lock is held while a target answers.
+//! A row whose check is gone is still sent: it was decided while the check existed (K2).
+//! An unreadable channel gets a delivery and a Warning event, since `notificationChannels` hides it.
+//! Every write matches the claim's lease end, so a claimer that lost its lease changes only its delivery.
 
 use chrono::{DateTime, Utc};
 use sqlx::PgConnection;
@@ -38,24 +22,16 @@ use crate::{
     ids::DeliveryId,
 };
 
-/// What became of a claimed row.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Finished {
     Sent,
-    /// Sent nothing and wrote nothing: the channel is gone or turned off for the check.
     Ended,
-    /// The send failed; the row is rescheduled or given up.
     Failed(Failure),
-    /// Sent nothing: the row had no try left and is given up.
     OutOfTries,
 }
 
 impl Dispatcher {
-    /// Sends `row` at `now` as worded by its channel or `defaults`, and records the outcome.
-    ///
-    /// # Errors
-    /// A database or event write failed; the row stays claimed and comes back when its lease
-    /// ends.
+    /// On error the row stays claimed and comes back when its lease ends.
     pub(super) async fn finish(
         &self,
         row: &Outbox,
@@ -93,10 +69,6 @@ impl Dispatcher {
         Ok(sent.map_or_else(Finished::Failed, |()| Finished::Sent))
     }
 
-    /// Writes `delivery`, the outcome of sending `row`, and finishes, reschedules or gives up
-    /// the row, in one transaction, at the delivery's time. A row another claimer finished
-    /// meanwhile (its lease ended during this send) is left as it is; the delivery still
-    /// records this send.
     async fn record(
         &self,
         row: &Outbox,
@@ -122,8 +94,7 @@ impl Dispatcher {
         Ok(())
     }
 
-    /// Gives up `row` at `now` and, only when this claim still held it, writes `warning`: a
-    /// row is given up once, with one Warning event.
+    /// A row is given up once, with one Warning event.
     async fn give_up(
         &self,
         tx: &mut PgConnection,
@@ -141,7 +112,6 @@ fn store_fault(error: sqlx::Error) -> Fault {
     Fault::Store(error.into())
 }
 
-/// The kind as the operator reads it in an event.
 const fn kind_words(kind: NotificationKind) -> &'static str {
     match kind {
         NotificationKind::Down => "Down",
@@ -154,9 +124,7 @@ const fn kind_words(kind: NotificationKind) -> &'static str {
     }
 }
 
-/// The Warning event of a row given up: the channel's name, the kind, the check and device it was
-/// about, the tries and the `last` failure's reason, or that no outcome of the last try was
-/// written. Never a target, URL, topic, header or reply (NOT-002, LOG-007).
+/// Never a target, URL, topic, header or reply (NOT-002, LOG-007).
 pub(super) fn given_up(channel_name: &str, row: &Outbox, last: Option<Failure>) -> NewEvent {
     let values = Values::from_payload(&row.payload);
     let about = match (values.check, values.device) {
@@ -185,7 +153,6 @@ pub(super) fn given_up(channel_name: &str, row: &Outbox, last: Option<Failure>) 
     }
 }
 
-/// A failure as an event names it: its reason word and code.
 fn failure_words(failure: Failure) -> String {
     match failure.code {
         Some(code) => format!("{} {code}", failure.reason.as_str()),

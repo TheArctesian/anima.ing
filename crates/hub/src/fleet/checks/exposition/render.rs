@@ -1,5 +1,4 @@
-//! The Prometheus text format 0.0.4 of a [`Snapshot`] (INT-001, INT-002). Pure: samples in,
-//! text out.
+//! The Prometheus text format 0.0.4 of a [`Snapshot`] (INT-001, INT-002).
 
 use super::{
     labels::label_value,
@@ -7,7 +6,7 @@ use super::{
 };
 use crate::status::Status;
 
-/// The value of a status series: 0 Down, 1 Up, 2 Degraded, 3 Maintenance, 4 Unknown (K7).
+/// The status series value (K7).
 pub(super) const fn status_value(status: Status) -> u8 {
     match status {
         Status::Down => 0,
@@ -18,7 +17,7 @@ pub(super) const fn status_value(status: Status) -> u8 {
     }
 }
 
-/// 1 when the check answers (Up or Degraded), else 0 (K7).
+/// The up series value (K7).
 const fn up_value(status: Status) -> u8 {
     match status {
         Status::Up | Status::Degraded => 1,
@@ -26,7 +25,6 @@ const fn up_value(status: Status) -> u8 {
     }
 }
 
-/// One metric family: its HELP and TYPE lines, then one line per `(labels, value)`.
 fn family(
     out: &mut String,
     name: &str,
@@ -64,8 +62,6 @@ fn check_labels(check: &CheckSample) -> String {
     )
 }
 
-/// The exposition of `snapshot`: every K7 family with its HELP and TYPE lines, a family's
-/// samples in snapshot order. A family with no samples keeps its HELP and TYPE lines.
 pub(super) fn render(snapshot: &Snapshot) -> String {
     let checks: Vec<(String, &CheckSample)> = snapshot
         .checks
