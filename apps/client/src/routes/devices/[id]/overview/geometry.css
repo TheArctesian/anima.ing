@@ -86,6 +86,15 @@
   gap: var(--space-4);
 }
 
+.overview-facts .overview-card-title {
+  font-size: var(--text-md);
+}
+
+.overview-facts .overview-card-title > .icon {
+  inline-size: 1em;
+  block-size: 1em;
+}
+
 @container (min-inline-size: 34rem) {
   .overview-facts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -95,14 +104,14 @@
 /* All four in one row from 56rem, so the facts are one strip at a 1280 px window and the metrics start higher (R-224). */
 @container (min-inline-size: 56rem) {
   .overview-facts {
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.9fr) minmax(0, 0.8fr) minmax(0, 1.8fr);
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 1.8fr);
   }
 }
 
 /* Without the host key card, which then stands beside the Overview: three facts in one row from 36rem (R-224). */
 @container (min-inline-size: 36rem) {
   .overview-facts.three {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.9fr) minmax(0, 0.8fr);
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 0.8fr);
   }
 
   .overview-facts.three .overview-figures {
@@ -111,7 +120,7 @@
   }
 
   .overview-facts.three .overview-figure dd {
-    font-size: var(--overview-figure-size, var(--text-lg));
+    font-size: var(--text-lg);
     white-space: nowrap;
   }
 }
@@ -125,12 +134,6 @@
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.overview-uptime {
-  --overview-figure-size: var(--text-sm);
-
-  min-block-size: auto;
 }
 
 .overview-figure {
@@ -150,14 +153,14 @@
 .overview-figure dd {
   margin: 0;
   color: var(--text);
-  font-size: var(--overview-figure-size, var(--text-2xl));
+  font-size: var(--text-2xl);
   font-weight: var(--weight-medium);
   font-variant-numeric: tabular-nums;
   letter-spacing: var(--tracking-display);
   line-height: var(--leading-tight);
 }
 
-/* In the one-row strip the figures are one size down and closer, so the three uptimes stay on one line (R-224). */
+/* In the one-row strip the check counts use a smaller size and closer spacing (R-224). */
 @container (min-inline-size: 56rem) {
   .overview-facts .overview-figures {
     flex-wrap: nowrap;
@@ -165,7 +168,7 @@
   }
 
   .overview-facts .overview-figure dd {
-    font-size: var(--overview-figure-size, var(--text-lg));
+    font-size: var(--text-lg);
     white-space: nowrap;
   }
 }

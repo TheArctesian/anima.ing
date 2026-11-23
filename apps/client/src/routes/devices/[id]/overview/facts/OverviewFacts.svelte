@@ -36,9 +36,9 @@
     </section>
     <section class="overview-card" aria-labelledby="{id}-uptime">
       <h2 id="{id}-uptime" class="overview-card-title"><Icon name="carbon:timer" />Uptime</h2>
-      <dl class="overview-figures overview-uptime">
+      <dl class="uptime">
         {#each uptimeReadings(device) as reading (reading.label)}
-          <div class="overview-figure">
+          <div>
             <dt>{reading.label}</dt>
             <dd><Reading value={reading.text}>{reading.text}</Reading></dd>
           </div>
@@ -91,6 +91,31 @@
     gap: var(--space-2);
     margin: 0;
     color: var(--text);
+  }
+
+  .uptime {
+    display: grid;
+    max-inline-size: calc(var(--space-16) * 3);
+    margin: 0;
+    font-size: var(--text-md);
+    line-height: var(--leading-normal);
+  }
+
+  .uptime div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: var(--space-3);
+  }
+
+  .uptime dt {
+    color: var(--text-secondary);
+  }
+
+  .uptime dd {
+    margin: 0;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
   }
 
   .none {
