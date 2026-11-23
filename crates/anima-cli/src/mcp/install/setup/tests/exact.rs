@@ -124,13 +124,21 @@ fn mcp_033_the_interpreter_that_a_script_names_and_the_path_that_env_searches_ar
         "-P /tmp fake-node",
         "-u HOME fake-node",
         "PATH=/tmp fake-node",
+        "-i fake-node",
+        "-S 'fake-node'",
+        "missing-node",
     ] {
         fs::write(bin.join("codex"), format!("#!/usr/bin/env {line}\n")).expect("script");
         let refused = problem(&install(&here, &anima, "codex"), "codex");
         assert!(refused.contains("cannot be checked"), "{line}: {refused}");
         assert!(!ran.exists(), "the interpreter ran");
     }
+    // A script that the person cannot read, which the system can still start.
+    fs::set_permissions(bin.join("codex"), fs::Permissions::from_mode(0o311)).expect("mode");
+    let refused = problem(&install(&here, &anima, "codex"), "codex");
+    assert!(refused.contains("cannot be checked"), "{refused}");
     fs::write(bin.join("codex"), "#!/usr/bin/env -S fake-node --flag\n").expect("script");
+    fs::set_permissions(bin.join("codex"), fs::Permissions::from_mode(0o755)).expect("mode");
     assert_eq!(problem(&install(&here, &anima, "codex"), "codex"), "");
     // The interpreter's own folder.
     fs::set_permissions(&tools, fs::Permissions::from_mode(0o777)).expect("mode");
@@ -165,4 +173,25 @@ fn r_exactgroup_a_refused_file_names_who_and_the_member_to_add_by_hand() {
         state_of(&install(&here, &anima, "cursor"), "cursor"),
         State::SetUp
     );
+}
+
+#[test]
+fn mcp_035_each_folder_of_path_is_checked_also_one_with_the_sticky_bit() {
+    let (_home, mut here, anima) = computer();
+    let ran = homebrew(&mut here);
+    // A folder that each user can write, after the program on `PATH`: an entry of it is not
+    // replaceable, but each user can make one, here the folder that `PATH` names.
+    let sticky = here.home.join("sticky");
+    fs::create_dir(&sticky).expect("folder");
+    fs::set_permissions(&sticky, fs::Permissions::from_mode(0o1777)).expect("mode");
+    here.path.push(sticky.join("not-yet/bin"));
+    let refused = problem(&install(&here, &anima, "codex"), "codex");
+    assert!(
+        refused.contains(&format!("{} can be changed by each user", sticky.display())),
+        "{refused}"
+    );
+    assert!(!ran.exists(), "the program ran");
+    here.path.pop();
+    assert_eq!(problem(&install(&here, &anima, "codex"), "codex"), "");
+    assert!(ran.exists(), "the program did not run");
 }

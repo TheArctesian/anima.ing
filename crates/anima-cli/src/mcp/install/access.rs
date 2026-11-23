@@ -163,6 +163,26 @@ fn above(path: &Path, user: u32, groups: &Groups) -> Option<Others> {
     })
 }
 
+/// Who other than `user` and root can make a new entry in `folder`, as a program of the same name
+/// as one further on `PATH`. The sticky bit does not stop that: it only keeps an entry that is
+/// there. A folder that cannot be read counts as open.
+#[cfg(unix)]
+#[must_use]
+pub fn creatable(folder: &Path, user: u32, groups: &Groups) -> Option<Others> {
+    let writer = fs::metadata(folder).map_or(Some(Writer::Unknown), |metadata| {
+        let part = Part::of(&metadata);
+        let part = Part {
+            mode: part.mode & !0o1000,
+            ..part
+        };
+        program_writer(part, user, cfg!(target_os = "macos"), groups)
+    });
+    writer.map(|writer| Others {
+        path: folder.to_path_buf(),
+        writer,
+    })
+}
+
 /// Each path that decides what runs at the absolute `path`, in order: each symbolic link met while
 /// the path resolves, also a link inside a link, and the file it resolves to at the end. `None`
 /// when it does not resolve or passes more than [`MOST_LINKS`] links.

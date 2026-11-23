@@ -1,13 +1,13 @@
-//! The interpreter that an agent's program names when it is a script (`#!` on its first line), and
-//! who other than the person and root can change it (MCP-033). An agent installed with npm is a
-//! script that `env` starts with the `node` it finds on `PATH`; a version manager's `node` can be
-//! a script again.
+//! The folders of `PATH` that an agent's program runs with (MCP-035), and the interpreter that the
+//! program names when it is a script (`#!` on its first line): who other than the person and root
+//! can change them (MCP-033). An agent installed with npm is a script that `env` starts with the
+//! `node` it finds on `PATH`; a version manager's `node` can be a script again.
 
 use std::fs;
-use std::io::Read as _;
+use std::io::{self, Read as _};
 use std::path::{Path, PathBuf};
 
-use super::super::access::{Others, Writer, replaceable};
+use super::super::access::{Others, Writer, creatable, replaceable};
 use super::Here;
 use super::program::runnable;
 
@@ -18,19 +18,45 @@ const FIRST_LINE: u64 = 512;
 const MOST_NESTED: usize = 4;
 
 /// The options of `env` that change neither where it looks for the program nor which word names
-/// it: `-S` splits the rest of the line into words, as this reading does.
-const ENV_OPTIONS: [&str; 6] = ["-", "--", "-i", "--ignore-environment", "-S", "-v"];
+/// it: `-S` splits the rest of the line into words, as this reading does. `-i` is not one: with no
+/// `PATH`, `env` looks in folders of its own.
+const ENV_OPTIONS: [&str; 3] = ["--", "-S", "-v"];
+
+/// The first folder of `PATH` in which a user other than the person and root can put a program or
+/// replace one. The program runs with this `PATH`, so a program that it or its interpreter starts
+/// by name comes from these folders. A folder that is not there counts by the nearest folder above
+/// it that is, since a user who can write that can make it.
+pub(super) fn open_folder(here: &Here) -> Option<Others> {
+    here.path.iter().find_map(|folder| {
+        // A relative folder is found from the folder the program runs in: the home folder.
+        let folder = here.home.join(folder);
+        let there = folder
+            .ancestors()
+            .find(|part| fs::symlink_metadata(part).is_ok())
+            .unwrap_or(&folder);
+        replaceable(there, here.user, &here.groups)
+            .or_else(|| creatable(there, here.user, &here.groups))
+    })
+}
 
 /// Who other than the person and root can change the interpreter of the script at `program`: the
 /// interpreter that its first line names, or with `env` the program that `env` finds on `PATH`,
 /// and so on while that is a script again. `None` when no one can, or `program` is not a script.
+/// [`open_folder`] checks the folders of `PATH` first.
 pub(super) fn interpreter(here: &Here, program: &Path) -> Option<Others> {
     let mut program = program.to_path_buf();
     for _ in 0..MOST_NESTED {
-        let line = first_line(&program)?;
+        let line = match first_line(&program) {
+            Ok(Some(line)) => line,
+            Ok(None) => return None,
+            Err(_) => return Some(unknown(program)),
+        };
         let mut words = line.split_whitespace();
+        let Some(first) = words.next() else {
+            return Some(unknown(program));
+        };
         // A relative interpreter is found from the folder the program runs in: the home folder.
-        let named = here.home.join(words.next()?);
+        let named = here.home.join(first);
         if let Some(others) = replaceable(&named, here.user, &here.groups) {
             return Some(others);
         }
@@ -39,10 +65,7 @@ pub(super) fn interpreter(here: &Here, program: &Path) -> Option<Others> {
             continue;
         }
         let Some(name) = env_program(words) else {
-            return Some(Others {
-                path: named,
-                writer: Writer::Unknown,
-            });
+            return Some(unknown(named));
         };
         program = if name.contains('/') {
             let path = here.home.join(name);
@@ -52,24 +75,24 @@ pub(super) fn interpreter(here: &Here, program: &Path) -> Option<Others> {
             path
         } else {
             match on_path(here, name) {
-                Ok(Some(found)) => found,
-                Ok(None) => return None,
+                Ok(found) => found,
                 Err(others) => return Some(others),
             }
         };
     }
-    first_line(&program).map(|_| Others {
-        path: program,
-        writer: Writer::Unknown,
-    })
+    match first_line(&program) {
+        Ok(None) => None,
+        _ => Some(unknown(program)),
+    }
 }
 
 /// The program that `env` runs, from the words after `env` on the first line: the first word that
-/// is not an option or an assignment. `None` when there is none, or when an option or a new
-/// `PATH` could change which program `env` finds (as `-P` or `-u NAME`).
+/// is not an option or an assignment. `None` when there is none, or when an option, a new `PATH`,
+/// or a quote, an escape or a variable (which `env -S` reads) could change which program `env`
+/// finds.
 fn env_program<'a>(words: impl Iterator<Item = &'a str>) -> Option<&'a str> {
     for word in words {
-        if word.starts_with("PATH=") {
+        if word.starts_with("PATH=") || word.contains(['"', '\'', '\\', '$']) {
             return None;
         } else if word.starts_with('-') {
             ENV_OPTIONS.contains(&word).then_some(())?;
@@ -80,39 +103,48 @@ fn env_program<'a>(words: impl Iterator<Item = &'a str>) -> Option<&'a str> {
     None
 }
 
-/// The text after `#!` on the first line of the file at `program`, or `None` for a file that is
-/// not a script.
-fn first_line(program: &Path) -> Option<String> {
+/// The text after `#!` on the first line of the file at `program`: `None` for a file that is not a
+/// script, an error when it cannot be read, since the system can still start it.
+fn first_line(program: &Path) -> io::Result<Option<String>> {
     // Only a regular file: opening a pipe would wait for a writer.
-    if !fs::metadata(program).is_ok_and(|metadata| metadata.is_file()) {
-        return None;
+    if !fs::metadata(program)?.is_file() {
+        return Ok(None);
     }
     let mut head = Vec::new();
-    fs::File::open(program)
-        .and_then(|file| file.take(FIRST_LINE).read_to_end(&mut head))
-        .ok()?;
-    let line = head.strip_prefix(b"#!")?;
-    let line = line.split(|byte| *byte == b'\n').next().unwrap_or_default();
-    Some(String::from_utf8_lossy(line).into_owned())
+    fs::File::open(program)?
+        .take(FIRST_LINE)
+        .read_to_end(&mut head)?;
+    Ok(head.strip_prefix(b"#!").map(|line| {
+        let line = line.split(|byte| *byte == b'\n').next().unwrap_or_default();
+        String::from_utf8_lossy(line).into_owned()
+    }))
 }
 
 /// The program `name` that `env` finds on `PATH`, when no user but the person and root can change
-/// it or a folder that `env` looks in before it: `Err` names who can. A folder that is not there
-/// counts by the nearest folder above it that is, since a user who can write that can make it.
-fn on_path(here: &Here, name: &str) -> Result<Option<PathBuf>, Others> {
+/// it or an entry of that name in a different folder of `PATH`: `Err` names who can. A program
+/// that is not found counts as not known.
+fn on_path(here: &Here, name: &str) -> Result<PathBuf, Others> {
+    let mut first = None;
     for folder in &here.path {
-        let folder = here.home.join(folder);
-        let there = folder
-            .ancestors()
-            .find(|part| fs::symlink_metadata(part).is_ok())
-            .unwrap_or(&folder);
-        if let Some(others) = replaceable(there, here.user, &here.groups) {
+        let found = here.home.join(folder).join(name);
+        // Each entry of the name, also a link that leads nowhere yet and one that cannot be run.
+        if fs::symlink_metadata(&found).is_err() {
+            continue;
+        }
+        if let Some(others) = replaceable(&found, here.user, &here.groups) {
             return Err(others);
         }
-        let found = folder.join(name);
-        if fs::metadata(&found).is_ok_and(|metadata| runnable(&found, &metadata)) {
-            return replaceable(&found, here.user, &here.groups).map_or(Ok(Some(found)), Err);
+        if first.is_none() && fs::metadata(&found).is_ok_and(|meta| runnable(&found, &meta)) {
+            first = Some(found);
         }
     }
-    Ok(None)
+    first.ok_or_else(|| unknown(PathBuf::from(name)))
+}
+
+/// `path`, of which who can change it is not known.
+fn unknown(path: PathBuf) -> Others {
+    Others {
+        path,
+        writer: Writer::Unknown,
+    }
 }

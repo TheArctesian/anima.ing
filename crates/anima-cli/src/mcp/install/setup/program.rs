@@ -93,8 +93,9 @@ pub(super) fn fixed_program(here: &Here, name: &str) -> Found {
         return Found::Missing;
     };
     #[cfg(unix)]
-    let others =
-        replaceable(&path, here.user, &here.groups).or_else(|| script::interpreter(here, &path));
+    let others = replaceable(&path, here.user, &here.groups)
+        .or_else(|| script::open_folder(here))
+        .or_else(|| script::interpreter(here, &path));
     #[cfg(windows)]
     let others = {
         let real = fs::canonicalize(&path).unwrap_or_else(|_| path.clone());

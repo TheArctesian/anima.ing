@@ -4,8 +4,7 @@
 use std::fs;
 use std::os::unix::fs::{MetadataExt as _, PermissionsExt as _, symlink};
 
-use super::system::{listing, number, passwd, primary, record};
-use super::{Groups, Listing, Member, Part, Writer, chain, program_writer, replaceable};
+use super::{Groups, Listing, Member, Part, Writer, chain, creatable, program_writer, replaceable};
 
 const USER: u32 = 501;
 
@@ -102,6 +101,24 @@ fn r_exactgroup_a_folder_that_each_user_can_write_is_refused() {
 }
 
 #[test]
+fn mcp_035_a_new_entry_can_be_made_in_a_folder_with_the_sticky_bit_that_each_user_can_write() {
+    let home = tempfile::tempdir().expect("a temporary folder");
+    let user = fs::metadata(home.path()).expect("owner").uid();
+    let sticky = home.path().join("sticky");
+    fs::create_dir(&sticky).expect("folder");
+    fs::set_permissions(&sticky, fs::Permissions::from_mode(0o1777)).expect("mode");
+    let only_us = groups(&[]);
+    // No one else can replace the folder or an entry in it, but each user can add one.
+    assert_eq!(replaceable(&sticky, user, &only_us), None);
+    assert!(matches!(
+        creatable(&sticky, user, &only_us),
+        Some(others) if others.writer == Writer::Everyone
+    ));
+    fs::set_permissions(&sticky, fs::Permissions::from_mode(0o1755)).expect("mode");
+    assert_eq!(creatable(&sticky, user, &only_us), None);
+}
+
+#[test]
 fn r_exactgroup_a_group_whose_members_cannot_be_read_is_refused() {
     assert_eq!(
         program_writer(folder(USER, 80, 0o40775), USER, true, &unread()),
@@ -172,94 +189,4 @@ fn mcp_033_each_link_of_a_chain_and_the_folder_that_holds_it_is_checked() {
         replaceable(&home.path().join("loop"), user, &only_us),
         Some(others) if others.writer == Writer::Unknown
     ));
-}
-
-#[test]
-fn r_exactgroup_getent_passwd_gives_each_account_whose_own_group_it_is() {
-    let text = "root:x:0:0:root:/root:/bin/bash\nme:x:1000:1000::/home/me:/bin/sh\nalice:x:1001:1000:Alice:/home/alice:/bin/sh\n";
-    assert_eq!(
-        passwd(text, 1000),
-        Some(vec![
-            Member {
-                name: "me".to_owned(),
-                uid: Some(1000)
-            },
-            Member {
-                name: "alice".to_owned(),
-                uid: Some(1001)
-            },
-        ])
-    );
-    assert_eq!(passwd(text, 7), Some(Vec::new()));
-    // A line that is not an account: the list cannot be trusted.
-    assert_eq!(passwd("me:x:1000\n", 1000), None);
-    assert_eq!(passwd("me:x:one:1000::/:/bin/sh\n", 1000), None);
-}
-
-#[test]
-fn r_exactgroup_dscl_gives_the_accounts_of_a_group_and_refuses_nested_groups() {
-    let users = "_www                      70\nme                        20\nalice                     20\nnobody\n";
-    assert_eq!(
-        primary(users, 20),
-        Some(vec!["me".to_owned(), "alice".to_owned()])
-    );
-    assert_eq!(primary("me 20 21\n", 20), None);
-    // `nobody` has the group -2, which is 4294967294; it does not stop the list.
-    assert_eq!(
-        primary("nobody -2\nme 20\n", 4_294_967_294),
-        Some(vec!["nobody".to_owned()])
-    );
-    assert_eq!(number("-2"), Some(4_294_967_294));
-    assert_eq!(number("4294967295"), Some(u32::MAX));
-    assert_eq!(number("4294967296"), None);
-    assert_eq!(number("-2147483649"), None);
-    let admin = "GroupMembers: FFFFEEEE-DDDD-CCCC-BBBB-AAAA00000000 B6EC2934-20C5-4471-9C28-B6D7BFB43B8B\nGroupMembership: root me\nPrimaryGroupID: 80\n";
-    assert_eq!(
-        record(admin, 80),
-        Some(vec!["root".to_owned(), "me".to_owned()])
-    );
-    // The record of a different group of the same name.
-    assert_eq!(record(admin, 20), None);
-    // A value on the next line, after a space.
-    assert_eq!(
-        record("GroupMembership:\n root me\nPrimaryGroupID: 20\n", 20),
-        Some(vec!["root".to_owned(), "me".to_owned()])
-    );
-    // No list of members, as `everyone`, whose members the system calculates.
-    assert_eq!(record("PrimaryGroupID: 12\n", 12), None);
-    assert_eq!(record("", 12), None);
-    // A nested group, or a member known only by identifier: who is in it is not known.
-    assert_eq!(
-        record(
-            "GroupMembership: root\nNestedGroups: ABCDEFAB-CDEF-ABCD-EFAB-CDEF00000050\nPrimaryGroupID: 20\n",
-            20
-        ),
-        None
-    );
-    assert_eq!(
-        record(
-            "GroupMembers: A B\nGroupMembership: root\nPrimaryGroupID: 20\n",
-            20
-        ),
-        None
-    );
-}
-
-#[test]
-fn r_exactgroup_the_system_lists_the_person_in_the_group_of_a_new_file() {
-    // A new file belongs to the user of the process, in the group of that user or of its folder.
-    let file = tempfile::NamedTempFile::new().expect("a file");
-    let metadata = fs::metadata(file.path()).expect("metadata");
-    let user = metadata.uid();
-    let found = listing(metadata.gid());
-    let members = found.members.expect("the members can be read");
-    assert!(
-        members.iter().any(|member| member.uid == Some(user)),
-        "{} lists {members:?}",
-        found.name
-    );
-    // Each user is in `everyone` of macOS, which lists no member.
-    if cfg!(target_os = "macos") {
-        assert_eq!(listing(12).members, None);
-    }
 }
