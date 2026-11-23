@@ -1,5 +1,4 @@
-//! SRC-007: a listing with no end does not grow the stored slice without limit. A listed
-//! repository's text cannot hold U+0000, which no PostgreSQL text or JSON value takes.
+//! No PostgreSQL text or JSON value takes U+0000 (SRC-011).
 
 use super::*;
 
@@ -35,7 +34,6 @@ fn full_page_without_a_total(first_id: u64) -> Vec<u8> {
     serde_json::to_vec(&json!({ "repositories": entries })).unwrap()
 }
 
-/// A slice part-way through a listing, at `page`, with `listed` ids already seen.
 fn listing_at(page: u32, listed: usize) -> Value {
     let ids: Vec<String> = (0..listed).map(|id| id.to_string()).collect();
     json!({ "v": 1, "phase": "list", "page": page, "listed": ids, "pending": [], "seen": {} })

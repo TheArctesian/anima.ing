@@ -1,13 +1,7 @@
-//! The knowledge of the PostgreSQL entry as pure functions (R-216, Section 14 of the proposal,
-//! task H24): the names of the database and of the user of an application, the fixed
-//! statements that make and delete them, the connection values in the variables that a
-//! recipe names, and the commands of the copy, the way back and the test of the way back.
+//! The PostgreSQL entry as pure functions; the applications program runs what they give (R-216, OD-HOST-42 A).
 //!
-//! Nothing here runs a command, reaches a machine or makes a password. The applications
-//! program on the machine makes the password and runs the statements and the commands
-//! (OD-HOST-42 A): here the password is only an input value. No statement holds text of the
-//! hub: each identifier is a checked name, quoted, each extension is of a fixed list, and the
-//! password is a quoted literal of letters and digits. There is no replica (OD-HOST-38 is open).
+//! No statement holds hub text: each identifier is a checked, quoted name, each extension is
+//! of a fixed list, and the password is a quoted literal of letters and digits.
 
 mod connection;
 mod copies;

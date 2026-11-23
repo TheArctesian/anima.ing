@@ -1,6 +1,5 @@
-//! Builds the recipes of `entries/` into the crate (task H38): one `include_str!` for each file
-//! of each recipe folder, so that the hub carries the catalogue with no file on the disk. The
-//! static test runs on these texts when the hub reads them; nothing is checked here.
+//! Builds the recipes of `entries/` into the crate (task H38): the hub carries the catalogue
+//! with no file on the disk.
 
 use std::{env, fmt::Write as _, fs, path::Path};
 

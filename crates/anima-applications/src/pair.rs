@@ -1,5 +1,4 @@
-//! The one hub that the settings are made for (contract K10 Section 6.4.2): the pair of the
-//! origin of the hub and the device identifier, which the daemon sends with each request.
+//! The one hub that the settings are made for (contract K10 Section 6.4.2).
 
 use crate::{
     forms::{is_origin, is_uuid},
@@ -29,9 +28,7 @@ impl Pair {
 /// The record of the first pair, in a file of the applications program.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PairRecord {
-    /// The time of "Manage applications" that the record was made for. The administrator
-    /// who sets the setting on again gives it a new time, and the record is then not valid:
-    /// this is how the record "is deleted".
+    /// The time of "Manage applications" that the record was made for; a new time makes the record not valid.
     pub set_on_at: u64,
     pub first: Pair,
     /// True when a request had a different pair. Each container item is then refused until
@@ -42,21 +39,15 @@ pub struct PairRecord {
 /// The file of the record of the pair, as the caller found it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PairFile<'a> {
-    /// The program has no such file.
     Missing,
-    /// The file is there, but the caller cannot read it, or [`PairRecord::read`] does not
-    /// accept its text. Each container item is then refused (`applications_off`): a file that
-    /// cannot be read is never taken as no record, which would accept a different hub. The
-    /// file must be deleted when the administrator sets "Manage applications" on again.
+    /// The file cannot be read or parsed: each item is refused, as no record would accept a different hub.
     Unreadable,
-    /// The record in the file.
     Read(&'a PairRecord),
 }
 
 /// What the pair of one request means.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PairDecision {
-    /// The pair is the recorded one.
     Recorded,
     /// No valid record exists: the pair is the first, and the program writes this record
     /// before it does the work.
@@ -66,8 +57,6 @@ pub enum PairDecision {
     Different(Option<PairRecord>),
 }
 
-/// Decides what `sent` means with the file of the record that the program has, for the time
-/// `set_on_at` of "Manage applications".
 #[must_use]
 pub fn decided(file: PairFile<'_>, set_on_at: u64, sent: &Pair) -> PairDecision {
     let record = match file {
@@ -91,7 +80,6 @@ pub fn decided(file: PairFile<'_>, set_on_at: u64, sent: &Pair) -> PairDecision 
 }
 
 impl PairRecord {
-    /// The text of the file of the record.
     #[must_use]
     pub fn written(&self) -> String {
         // The origin and the device have forms with no character that JSON escapes.
@@ -101,8 +89,7 @@ impl PairRecord {
         )
     }
 
-    /// Reads the text of the file of the record; `None` for text that [`Self::written`] does
-    /// not write. The caller then has no record that it can trust and refuses each item.
+    /// Reads the text of the file of the record; `None` for text that [`Self::written`] does not write.
     #[must_use]
     pub fn read(text: &str) -> Option<Self> {
         let mut members = Members::of(strict::read(text)?)?;

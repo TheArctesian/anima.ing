@@ -1,5 +1,3 @@
-//! A stop request while the group starts, and a migration that is given up.
-
 use std::fs;
 use std::time::Duration;
 
@@ -26,8 +24,6 @@ async fn a_stop_that_was_asked_before_the_start_starts_nothing() {
     assert_eq!(rig.state(), Some(State::Stopped));
 }
 
-/// Runs the group, asks it to stop when `event` is in the events, and tells how long the
-/// run took from there.
 async fn run_until_event(rig: &Rig, event: &str) -> (Ended, Duration) {
     let (ask, stop) = Stop::new();
     let asking = async {

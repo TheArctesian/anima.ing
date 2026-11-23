@@ -11,8 +11,7 @@ import (
 	"github.com/TheArctesian/anima/link/statedir"
 )
 
-// privateFolder is a folder that only this user can reach, with a short
-// path: a socket path has a limit of about 100 bytes.
+// privateFolder has a short path: a socket path has a limit of about 100 bytes.
 func privateFolder(t *testing.T) string {
 	t.Helper()
 	folder, err := testpath.MkdirTemp("anima-own-")

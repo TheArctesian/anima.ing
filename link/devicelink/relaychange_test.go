@@ -11,7 +11,7 @@ import (
 func TestLNK007AConnectedDeviceFollowsTheHubToANewRelayWithNoNewInvite(t *testing.T) {
 	hub := startInvitingHub(t)
 	device := hub.joined(t)
-	absent := hub.joined(t) // a second device, which is off during the change
+	absent := hub.joined(t)
 	saved := &kept{device: device}
 	names := &zone{}
 	link, err := devicelink.Start(devicelink.Config{
@@ -24,7 +24,6 @@ func TestLNK007AConnectedDeviceFollowsTheHubToANewRelayWithNoNewInvite(t *testin
 	defer link.Close()
 	getUntil(t, link, 30*time.Second)
 
-	// Step 1: the hub announces the address that it will have.
 	newRelay := testbed.StartRelay(t)
 	announced := hub.link.Announce(newRelay)
 	if announced == hub.link.Address() {
@@ -39,7 +38,6 @@ func TestLNK007AConnectedDeviceFollowsTheHubToANewRelayWithNoNewInvite(t *testin
 		t.Fatal("the device changed its hub address before the hub moved")
 	}
 
-	// Step 2: the hub link starts again on the new relay.
 	hub.link.Close()
 	hub.identity.Relay = newRelay
 	moved := hub.startLink(t)
@@ -59,7 +57,6 @@ func TestLNK007AConnectedDeviceFollowsTheHubToANewRelayWithNoNewInvite(t *testin
 		t.Errorf("the relay change changed the list of devices: %d", hub.devices.Count())
 	}
 
-	// The device that was off still has the old address only.
 	old, err := devicelink.Start(devicelink.Config{Identity: absent, Listen: "127.0.0.1:0", Keepalive: 300 * time.Millisecond, AnswerLimit: time.Second, Save: (&kept{}).save})
 	if err != nil {
 		t.Fatal(err)

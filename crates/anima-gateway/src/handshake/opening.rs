@@ -1,5 +1,4 @@
-//! What the hub asked for in `connect`: the device, the sign-in, the clipboard switches and
-//! the client's view (K4 Section 3).
+//! What the hub asked for in `connect` (K4 Section 3).
 
 use std::fmt;
 use std::net::{IpAddr, SocketAddr};
@@ -11,7 +10,6 @@ use super::rdp::Rdp;
 use crate::frames::Formats;
 use crate::screen::MAX_SIDE;
 
-/// The longest user name or password the gateway takes, in bytes.
 pub(super) const LONGEST_SECRET: usize = 4096;
 
 /// A user name or password. Zeroed when dropped; `Debug` does not show it (LOG-007).
@@ -22,7 +20,6 @@ impl Secret {
         Self(Zeroizing::new(text))
     }
 
-    /// The text, to sign in with.
     #[must_use]
     pub fn expose(&self) -> &str {
         &self.0
@@ -35,18 +32,15 @@ impl fmt::Debug for Secret {
     }
 }
 
-/// Which kind of device the session shows, with what only that kind has.
 #[derive(Debug)]
 pub enum Desktop {
     Vnc,
     Rdp(Rdp),
 }
 
-/// One session, as the hub opened it.
 #[derive(Debug)]
 pub struct Opening {
-    /// The device's address. The hub resolved and checked it (R-032); the gateway takes an
-    /// IP address only, so it never resolves a name itself.
+    /// The hub resolved and checked it (R-032); the gateway never resolves a name itself.
     pub device: SocketAddr,
     pub username: Option<Secret>,
     pub password: Option<Secret>,
@@ -54,15 +48,12 @@ pub struct Opening {
     pub copy: bool,
     /// The client's clipboard may go to the device (RA-033).
     pub paste: bool,
-    /// The client's view, in pixels.
     pub view: (usize, usize),
     pub formats: Formats,
     pub desktop: Desktop,
 }
 
 impl Opening {
-    /// Reads the arguments of `connect`: the hub's version, then one value for each name
-    /// in `args`, in that order.
     pub(super) fn from_connect(
         mut args: Vec<String>,
         rdp: bool,
@@ -70,10 +61,8 @@ impl Opening {
         formats: Formats,
     ) -> Result<Self, Refused> {
         let bad = |argument| Refused::BadValue { argument };
-        // The values may hold a password: each is zeroed when this function ends, however
-        // it ends.
+        // The values may hold a password: they are zeroed however this function ends.
         let values = Zeroizing::new(args.split_off(args.len().min(1)));
-        // One value for each name in `ARGUMENTS`, in its order, then those of RDP.
         let Some(([hostname, port, username, password, no_copy, no_paste], more)) =
             values.split_first_chunk()
         else {
@@ -106,7 +95,6 @@ impl Opening {
     }
 }
 
-/// A `connect` value as a secret: `None` when it is empty, refused when it is too long.
 fn secret(text: &str) -> Result<Option<Secret>, ()> {
     match text.len() {
         0 => Ok(None),
@@ -115,9 +103,7 @@ fn secret(text: &str) -> Result<Option<Secret>, ()> {
     }
 }
 
-/// Whether `address` can be a device. The hub has already applied its own rule (R-032) and
-/// sends an address in its plain form. The gateway refuses again what is never a device:
-/// no address, every address, a group of hosts, and an IPv4 address written as IPv6.
+/// The hub applied its own rule (R-032); the gateway refuses again what is never a device.
 fn may_be_a_device(address: IpAddr) -> bool {
     match address {
         IpAddr::V4(v4) => !(v4.is_unspecified() || v4.is_multicast() || v4.is_broadcast()),

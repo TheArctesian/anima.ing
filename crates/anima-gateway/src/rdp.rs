@@ -1,6 +1,3 @@
-//! An RDP device, on `IronRDP`: the opening of its session, the open session (`device`), its
-//! clipboard channel, and what the client's keys and pointer mean for it.
-
 mod certificate;
 mod channels;
 mod clipboard;

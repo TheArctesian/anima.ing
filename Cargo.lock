@@ -257,6 +257,7 @@ name = "anima-daemon"
 version = "0.1.0"
 dependencies = [
  "agent-threads",
+ "anima-daemon",
  "anima-windows",
  "axum",
  "base64 0.23.1",
@@ -270,7 +271,9 @@ dependencies = [
  "hyper-util",
  "hyperlocal-with-windows",
  "keyring",
+ "nix 0.29.0",
  "plist",
+ "redaction",
  "reqwest 0.12.28",
  "rpassword",
  "rustix",

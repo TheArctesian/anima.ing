@@ -1,5 +1,3 @@
-//! The gates of an answer: which lists are cut at all (SHA-001, SHA-004, SHA-007).
-
 use serde_json::{Value, json};
 
 use crate::{Limits, shortened};

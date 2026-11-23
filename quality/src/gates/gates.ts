@@ -1,17 +1,14 @@
 import { delimiter, join } from "node:path";
 
-/** An executable a gate needs on `PATH`, how to install it, and the folder that install puts it in. */
 export interface Requirement {
   executable: string;
   install: string;
   folder: string;
 }
 
-/** The part of the repository a gate checks. A job on GitHub runs one or more groups (`--group`). */
 export type Group = "rust" | "go" | "bun" | "quality";
 export const GROUPS: readonly Group[] = ["rust", "go", "bun", "quality"];
 
-/** One local gate: a name, its group, the argv that runs it from the repository root, and what it needs on `PATH`. */
 export interface Gate {
   name: string;
   group: Group;
@@ -19,7 +16,7 @@ export interface Gate {
   requires?: Requirement[];
 }
 
-/** What happened while running gates, in order. `code` is the exit code (1 when killed by a signal). */
+/** `code` is 1 when a signal killed the gate. */
 export type GateEvent =
   | { kind: "start"; position: number; total: number; gate: Gate }
   | { kind: "pass"; position: number; total: number; gate: Gate; seconds: number }
@@ -29,20 +26,15 @@ export type GateEvent =
 export interface GateOutcome {
   exitCode: number;
   stoppedAt?: Gate;
-  /** With `keepGoing`: each gate that failed, in order. */
   failed?: Gate[];
 }
 
-/**
- * How to run the list. `keepGoing` (`--keep-going`, for a proof run only) runs each gate after a
- * failure and lists the failures at the end; the gates stop at the first failure without it.
- */
+/** `keepGoing` is for a proof run only. */
 export interface GateRun {
   now?: () => number;
   keepGoing?: boolean;
 }
 
-/** Runs one gate to completion and returns its exit code. Throws when it cannot start. */
 export type RunProcess = (gate: Gate) => number;
 export type ReportGateEvent = (event: GateEvent) => void;
 
@@ -54,18 +46,13 @@ const NEXTEST: Requirement = {
 const GO: Requirement = { executable: "go", install: "brew install go", folder: "/opt/homebrew/bin, or /usr/local/go/bin" };
 const GOFMT: Requirement = { ...GO, executable: "gofmt" };
 
-/** The Go module of the link (LNK). `go -C` runs each command in it. */
 const GO_MODULE = "link";
 
 function goGate(name: string, ...args: string[]): Gate {
   return { name, group: "go", argv: ["go", "-C", GO_MODULE, ...args], requires: [GO] };
 }
 
-/**
- * The twenty gates in the order they run (CQ-010, CQ-011). Gates 3 to 5 together run every test
- * `cargo test` runs (R-112): nextest the libtest tests, then the doctests, then the one non-libtest target.
- * Gates 6 to 11 are the Go gates of the `link/` module; its lint tools are pinned in `link/go.mod`.
- */
+/** CQ-010, CQ-011. Gates 3 to 5 together run every test that `cargo test` runs (R-112). */
 export function gateList(baseRef: string): Gate[] {
   return [
     { name: "fmt", group: "rust", argv: ["cargo", "fmt", "--check"] },
@@ -100,12 +87,11 @@ export function gateList(baseRef: string): Gate[] {
   ];
 }
 
-/** The gates of `groups`, in the order of the list. A job on GitHub runs a part of the list this way. */
 export function ofGroups(gates: Gate[], groups: readonly Group[]): Gate[] {
   return gates.filter((gate) => groups.includes(gate.group));
 }
 
-/** Runs one gate: its exit code, 1 with the message when the runner throws (CQ-024: a failure, never a skip). */
+/** A runner that throws is a failure, never a skip (CQ-024). */
 function runOne(gate: Gate, run: RunProcess): { code: number; message?: string } {
   try {
     return { code: run(gate) };
@@ -114,10 +100,6 @@ function runOne(gate: Gate, run: RunProcess): { code: number; message?: string }
   }
 }
 
-/**
- * Run gates in order and stop at the first failure. With `keepGoing`, run each gate and fail at the
- * end with the exit code of the first failure, naming each gate that failed.
- */
 export function runGates(gates: Gate[], run: RunProcess, report: ReportGateEvent, { now = Date.now, keepGoing = false }: GateRun = {}): GateOutcome {
   const total = gates.length;
   const failed: Gate[] = [];
@@ -147,10 +129,6 @@ export function runGates(gates: Gate[], run: RunProcess, report: ReportGateEvent
   return { exitCode, failed };
 }
 
-/**
- * The list for `--keep-going`: each cargo command also goes on after a failure inside it, so one run
- * shows each lint of each crate (`--keep-going`) and each failing test (`--no-fail-fast`).
- */
 export function keptGoing(gates: Gate[]): Gate[] {
   return gates.map((gate) => {
     if (gate.name === "clippy") {
@@ -162,10 +140,7 @@ export function keptGoing(gates: Gate[]): Gate[] {
   });
 }
 
-/**
- * Why `gate` cannot run: the first required executable missing from every `PATH` folder.
- * A missing tool fails its gate, never skips it (CQ-024).
- */
+/** A missing tool fails its gate, never skips it (CQ-024). */
 export function missingRequirement(gate: Gate, pathEnv: string, exists: (path: string) => boolean): string | undefined {
   const dirs = pathEnv.split(delimiter).filter((dir) => dir !== "");
   const missing = (gate.requires ?? []).find((need) => !dirs.some((dir) => exists(join(dir, process.platform === "win32" ? `${need.executable}.exe` : need.executable))));

@@ -1,5 +1,3 @@
-//! What stops an update from harm: a failed start, an older set, two changes at once, a kill.
-
 use std::fs;
 
 use anima_database::Platform;

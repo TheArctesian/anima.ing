@@ -1,6 +1,3 @@
-//! What a device or a listener on the way may not get from the gateway: the account's
-//! name before TLS, and room in the worker's memory for channel data without end.
-
 use anima_gateway::handshake::{Certificate, Security};
 use anima_gateway::rdp::{Device as Session, Malformed};
 use anima_gateway::screen::Screen;
@@ -43,7 +40,6 @@ async fn the_first_message_which_is_not_encrypted_does_not_name_the_account() {
     assert!(!first.is_empty() && !names_the_account);
 }
 
-/// A part of a clipboard channel message from the device.
 fn part(channel: u16, whole: u32, flags: u32, bytes: usize) -> Vec<u8> {
     let mut data = whole.to_le_bytes().to_vec();
     data.extend_from_slice(&flags.to_le_bytes());
@@ -56,7 +52,6 @@ fn part(channel: u16, whole: u32, flags: u32, bytes: usize) -> Vec<u8> {
     encode_vec(&X224(message)).expect("encodes")
 }
 
-/// A session on the test device, its screen, and the number of its clipboard channel.
 async fn signed_in() -> (Device, Session, Screen, u16) {
     let device = Device::start(TLS);
     let opened = opened(device.address, wanted(Security::Tls, Certificate::Any))
@@ -84,14 +79,12 @@ async fn packed_channel_data_ends_the_session_because_no_packing_was_agreed() {
 #[tokio::test]
 async fn a_channel_message_longer_than_a_clipboard_text_may_be_ends_the_session() {
     let (_device, mut session, mut screen, clipboard) = signed_in().await;
-    // Declared too long.
     let declared = part(clipboard, 64 << 20, FIRST, 1000);
     assert_eq!(
         session.receive(Action::X224, &declared, &mut screen),
         Err(Malformed)
     );
 
-    // Declared short, and then it does not end.
     let (_device, mut session, mut screen, clipboard) = signed_in().await;
     let first = part(clipboard, 1 << 20, FIRST, 60_000);
     assert!(session.receive(Action::X224, &first, &mut screen).is_ok());
@@ -100,8 +93,7 @@ async fn a_channel_message_longer_than_a_clipboard_text_may_be_ends_the_session(
     assert!(ended);
 }
 
-/// A fast-path message with one part of a drawing update: 2 is the first part, 3 one
-/// between.
+/// Fragmentation 2 is the first part of a drawing update, 3 one between.
 fn update_part(fragmentation: u8, bytes: u16) -> Vec<u8> {
     let length = (6 + bytes) | 0x8000;
     let mut message = vec![0x00];

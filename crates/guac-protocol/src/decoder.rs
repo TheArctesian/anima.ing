@@ -1,33 +1,19 @@
-//! Incremental decoder for the Guacamole wire format (GW-011).
-//!
-//! The decoder reads one byte at a time, so a feed may end anywhere: inside a
-//! length prefix, inside a value, or inside a multibyte UTF-8 character. It
-//! keeps at most [`MAX_INSTRUCTION_BYTES`] of an incomplete instruction.
+//! Incremental decoder for the Guacamole wire format (GW-011); a feed may end anywhere.
 
 use std::fmt;
 
 use crate::instruction::Instruction;
 
-/// Largest encoded instruction, in bytes, including lengths and separators.
-///
-/// This is guacd's own parser limit (`GUAC_INSTRUCTION_MAX_LENGTH`), so guacd
-/// never accepts a larger instruction and the hub never needs to buffer one.
+/// Largest encoded instruction in bytes, with lengths and separators: guacd's `GUAC_INSTRUCTION_MAX_LENGTH`.
 pub const MAX_INSTRUCTION_BYTES: usize = 8192;
 
-/// Largest number of elements in one instruction, the opcode included.
-///
-/// This is guacd's own parser limit (`GUAC_INSTRUCTION_MAX_ELEMENTS`).
+/// Largest number of elements in one instruction, opcode included: guacd's `GUAC_INSTRUCTION_MAX_ELEMENTS`.
 pub const MAX_ELEMENTS: usize = 128;
 
-/// Largest number of decimal digits in one element length.
-///
-/// This is guacd's own parser limit (`GUAC_INSTRUCTION_MAX_DIGITS`).
+/// Largest number of digits in one element length: guacd's `GUAC_INSTRUCTION_MAX_DIGITS`.
 pub const MAX_LENGTH_DIGITS: usize = 5;
 
-/// Why a byte stream is not a valid Guacamole instruction stream.
-///
-/// Positions are zero-based byte offsets in the whole stream fed to the
-/// decoder. No variant carries instruction content (LOG-007).
+/// Positions are zero-based byte offsets in the whole stream; no variant carries content (LOG-007).
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum DecodeError {
     #[error("expected a length digit or '.' at byte {position}")]
@@ -36,8 +22,7 @@ pub enum DecodeError {
     TooManyLengthDigits { position: u64, limit: usize },
     #[error("expected ',' or ';' after an element at byte {position}")]
     MissingSeparator { position: u64 },
-    /// guacd ends an element at its first NUL byte, so a value with a NUL would
-    /// mean one thing to the hub and another to guacd.
+    /// guacd ends an element at its first NUL, so a NUL means different values to the hub and guacd.
     #[error("element contains a NUL byte at byte {position}")]
     NulByte { position: u64 },
     #[error("element ending at byte {position} is not valid UTF-8")]
@@ -48,21 +33,21 @@ pub enum DecodeError {
     TooManyElements { position: u64, limit: usize },
 }
 
-/// Where the decoder is inside the current element.
 #[derive(Debug, Clone, Copy)]
 enum Element {
-    /// Reading the decimal length before `.`.
-    Length { length: usize, digits: usize },
+    Length {
+        length: usize,
+        digits: usize,
+    },
     /// Reading the value; `chars` code points have started so far.
-    Value { length: usize, chars: usize },
+    Value {
+        length: usize,
+        chars: usize,
+    },
 }
 
-/// Turns a byte stream into complete instructions, across arbitrary splits.
-///
-/// After the first error the decoder stays failed: every later `feed` returns
-/// the same error, because the tunnel closes (GW-011).
-///
-/// `Debug` prints the stream position and the error only, never buffered bytes.
+/// After the first error every later `feed` returns it, because the tunnel closes (GW-011).
+/// `Debug` never prints buffered bytes.
 pub struct Decoder {
     element: Element,
     value: Vec<u8>,
@@ -104,15 +89,11 @@ impl Decoder {
         }
     }
 
-    /// Consumes `bytes` and returns every instruction they complete, in order.
-    ///
-    /// Bytes of an incomplete instruction are kept for the next call.
+    /// Returns every instruction `bytes` complete; bytes of an incomplete one are kept.
     ///
     /// # Errors
     ///
-    /// Returns a [`DecodeError`] when the stream breaks the grammar or a limit.
-    /// Instructions completed earlier in the same call are dropped, and the
-    /// decoder returns the same error from then on.
+    /// A [`DecodeError`] when the stream breaks the grammar or a limit; that call's instructions are dropped.
     pub fn feed(&mut self, bytes: &[u8]) -> Result<Vec<Instruction>, DecodeError> {
         if let Some(error) = &self.failed {
             return Err(error.clone());
@@ -238,7 +219,6 @@ impl Decoder {
     }
 }
 
-/// True for a byte that starts a code point (anything but a UTF-8 continuation byte).
 fn starts_char(byte: u8) -> bool {
     byte & 0xC0 != 0x80
 }

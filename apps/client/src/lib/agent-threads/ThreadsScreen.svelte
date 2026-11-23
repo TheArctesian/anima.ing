@@ -36,7 +36,7 @@
   let field = $state<HTMLInputElement>();
   let starting = $state(false);
   const live = $derived(store.live);
-  const linkWords = $derived(live === null ? null : live.linked === false ? (live.problem ?? 'The thread runner of this computer is not running. Start the Anima daemon to start threads.') : live.holder);
+  const linkWords = $derived(live === null ? null : (live.daemon ?? (live.linked === false ? (live.problem ?? 'The thread runner of this computer is not running. Start the Anima daemon to start threads.') : live.holder)));
   let screen = $state<HTMLElement>();
   const shown = $derived(narrowed(store.listedRows ?? [], program, search));
   /** The row of the open thread as the list shows it, for its title. */

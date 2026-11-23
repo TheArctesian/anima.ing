@@ -1,6 +1,4 @@
-//! The generator over a recipe that exists (SF-244, SF-255): it changes
-//! an entry only by its digest or its version, keeps the review state, resets a passed test on a
-//! machine when the digest changes, and never writes over a recipe that a person wrote.
+//! The generator over a recipe that exists (SF-244, SF-255).
 
 use std::path::Path;
 
@@ -12,7 +10,6 @@ use crate::{
     read,
 };
 
-/// The pin of radarr with a new digest and a new version.
 fn newer() -> Pin {
     let mut newer = pin("radarr");
     newer.tag = "7.0.4.11000-ls330".to_owned();

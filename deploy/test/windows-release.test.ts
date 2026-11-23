@@ -90,7 +90,8 @@ test("the Windows installer carries the seven programs, and a Windows cargo buil
   const carried = conf("tauri.windows-carried.json").bundle;
   const programs = ["anima", "anima-daemon", "anima-hub", "anima-local-hub", "anima-database", "anima-gateway", "anima-link"];
   expect((carried["externalBin"] as string[]).toSorted()).toEqual(programs.map((program) => `binaries/${program}`).toSorted());
-  expect(carried["resources"]).toEqual({ "database/": "database/" });
+  // The tree of the database, and the licence files of deploy/release/licences.txt (cli-licences.test.ts).
+  expect(Object.entries(carried["resources"] as Record<string, string>).filter(([, to]) => !to.startsWith("licences/"))).toEqual([["database/", "database/"]]);
   // The bundle script builds each program it names under that name, and passes the file to tauri build.
   const script = readFileSync(join(root, "deploy/bin/windows-bundle.ps1"), "utf8");
   expect(script).toContain("'--config', 'src-tauri/tauri.windows-carried.json'");

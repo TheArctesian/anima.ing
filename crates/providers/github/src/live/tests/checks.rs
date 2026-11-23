@@ -1,5 +1,3 @@
-//! PRJ-032: check runs and the combined status of a ref, counted together.
-
 use super::{fixture, ok, path_and_query};
 use crate::live::checks::{
     CheckRuns, ChecksState, CombinedStatus, StatusState, check_runs_parse, check_runs_request,

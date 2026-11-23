@@ -1,4 +1,4 @@
-//! The pure functions of the Dawarich provider (SRC-006, SRC-012; K-E4 Section 11).
+//! Dawarich provider (K-E4 Section 11).
 
 use serde_json::{Value, json};
 use source_exchange::{Acquisition, Body, Response};

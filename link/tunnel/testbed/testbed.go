@@ -1,5 +1,4 @@
-// Package testbed gives tests a relay on loopback, so that no test of the
-// link needs the internet.
+// Package testbed gives tests a relay on loopback, so that no link test needs the internet.
 package testbed
 
 import (
@@ -23,8 +22,7 @@ import (
 	"tailscale.com/types/logger"
 )
 
-// Main is the TestMain of each package that starts a tunnel. It stops the
-// library's checks of the outside network, then runs the tests.
+// Main is the TestMain of each package that starts a tunnel; it stops the library's outside network checks.
 func Main(m *testing.M) {
 	envknob.Setenv("IN_TS_TEST", "true")
 	netcheck.HookStartCaptivePortalDetection.SetForTest(func(context.Context, *netcheck.Client, *tailcfg.DERPMap, tailcfg.DERPRegionID, func(bool)) (<-chan struct{}, func()) {
@@ -48,8 +46,7 @@ func StartRelay(t testing.TB) tunnel.Relay {
 	return relay
 }
 
-// StartRefusingRelay starts a relay on loopback that refuses each key, as a
-// relay does that accepts only the keys of its own network.
+// StartRefusingRelay starts a relay on loopback that refuses each key, like a relay of another network.
 func StartRefusingRelay(t testing.TB) tunnel.Relay {
 	t.Helper()
 	refuse := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -80,9 +77,7 @@ func StartRefusingRelay(t testing.TB) tunnel.Relay {
 	return out
 }
 
-// ForceRelay stops direct paths for one test, so that all traffic uses the
-// relay. Call it before the test starts a hub or a device. Tests that use it
-// must not run in parallel with other tunnel tests.
+// ForceRelay sends all traffic through the relay; call it before a hub or device starts, outside parallel tests.
 func ForceRelay(t testing.TB) {
 	t.Helper()
 	envknob.Setenv("TS_DEBUG_ALWAYS_USE_DERP", "true")

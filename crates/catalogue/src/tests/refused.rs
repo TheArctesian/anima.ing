@@ -1,5 +1,3 @@
-//! A sound recipe passes; each fault gives its fixed code.
-
 use compose_rules::{Refusal, Rule};
 
 use super::{COMPOSE, ENTRY, ENVIRONMENT, IMAGE, codes, replaced, sound, with_compose, with_entry};

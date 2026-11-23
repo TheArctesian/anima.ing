@@ -1,4 +1,4 @@
-//! Minting an installation token: the path to post to and how to read the reply (SRC-002).
+//! Minting an installation token (SRC-002).
 
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
@@ -14,7 +14,7 @@ struct Reply {
     expires_at: DateTime<Utc>,
 }
 
-/// Reads the `201` reply. The problem never quotes the reply: it holds a token (LOG-007).
+/// The problem never quotes the reply: it holds a token (LOG-007).
 pub(crate) fn parse_minted(body: &[u8]) -> Result<Minted, Problem> {
     serde_json::from_slice::<Reply>(body)
         .ok()

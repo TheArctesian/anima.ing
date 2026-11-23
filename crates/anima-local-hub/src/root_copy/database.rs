@@ -1,5 +1,4 @@
-//! The dump of the database of a stopped hub: `anima-database serve` runs alone for the time of
-//! one `pg_dump`, then stops, so the files of the cluster are at rest when they are copied.
+//! `anima-database serve` runs alone for one `pg_dump`, then stops: the copied files are at rest.
 
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
@@ -21,7 +20,6 @@ const READY_LIMIT: Duration = Duration::from_secs(300);
 const STOP_LIMIT: Duration = Duration::from_secs(45);
 const PAUSE: Duration = Duration::from_millis(100);
 
-/// The database program while it serves for the dump. A drop that comes before `stop` kills it.
 struct Serving(Child);
 
 impl Drop for Serving {
@@ -31,7 +29,6 @@ impl Drop for Serving {
     }
 }
 
-/// Starts the database of `folders` alone, writes its dump to `file` and stops the database.
 pub(super) fn dump(carried: &Carried, folders: &Folders, file: &Path) -> Result<(), RootCopyError> {
     let tree = Tree::at(carried.tree())?;
     let spec = members::database(carried, folders);
@@ -93,7 +90,6 @@ fn wait_until_ready(
     }
 }
 
-/// Asks the database to stop and waits for it: the files must be at rest before the copy.
 fn stop(mut serving: Serving) -> Result<(), RootCopyError> {
     #[cfg(unix)]
     {

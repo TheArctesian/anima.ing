@@ -1,6 +1,3 @@
-//! The request a provider renders for a change: a verb the change fixes, a path made only of
-//! fixed segments and checked parts, and a JSON body.
-
 use std::fmt::Write as _;
 
 use serde_json::Value;
@@ -14,8 +11,7 @@ pub struct Fixed(&'static str);
 
 impl Fixed {
     /// # Panics
-    /// When `segment` is empty, `.`, `..` or holds anything but letters, digits, `.`, `-` and
-    /// `_`. Make it a `const` so a bad segment fails the build.
+    /// When `segment` is not a plain segment; a `const` makes that fail the build.
     #[must_use]
     pub const fn new(segment: &'static str) -> Self {
         assert!(
@@ -26,14 +22,11 @@ impl Fixed {
     }
 }
 
-/// An absolute path of fixed segments and checked parts. Every segment is letters, digits, `.`,
-/// `-` and `_`, never `.` or `..`, so the path holds no query, fragment, encoding or host and
-/// a URL parser leaves it as it is.
+/// An absolute path of plain segments, which a URL parser leaves as it is.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChangePath(String);
 
 impl ChangePath {
-    /// A path that starts with `first`.
     #[must_use]
     pub fn new(first: Fixed) -> Self {
         Self(String::new()).fixed(first)
@@ -85,8 +78,6 @@ impl ChangePath {
     }
 }
 
-/// A change as the provider sends it. Built only by [`Rendered::new`], which takes the verb
-/// from the change.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Rendered {
     verb: Verb,
@@ -95,8 +86,6 @@ pub struct Rendered {
 }
 
 impl Rendered {
-    /// The request that makes `change`: its verb, `path` below the source's `api_base` and the
-    /// JSON `body`.
     #[must_use]
     pub const fn new(change: &Change, path: ChangePath, body: Option<Value>) -> Self {
         Self {

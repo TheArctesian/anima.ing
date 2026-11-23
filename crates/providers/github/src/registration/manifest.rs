@@ -6,7 +6,6 @@ use source_exchange::{ManifestFacts, Webhook};
 const BASE32: &[u8; 32] = b"abcdefghijklmnopqrstuvwxyz234567";
 const PLACEHOLDER_HOOK: &str = "https://example.com/anima-webhook-off";
 
-/// What the App can do: read metadata, write everything else the hand-made App has.
 const WRITE_PERMISSIONS: [&str; 23] = [
     "contents",
     "administration",
@@ -33,7 +32,6 @@ const WRITE_PERMISSIONS: [&str; 23] = [
     "repository_custom_properties",
 ];
 
-/// `anima-` and 10 lowercase base32 characters from the first 50 bits of `entropy`.
 #[expect(
     clippy::trivially_copy_pass_by_ref,
     reason = "the signature is the one of `Registration::name`, which the hub calls with a borrowed buffer"
@@ -51,8 +49,7 @@ pub(crate) fn name(entropy: &[u8; 7]) -> String {
     out
 }
 
-/// The manifest as JSON text. No events and no callback URLs: the App is private, asks for no
-/// sign-in, and its webhook is off.
+/// No events and no callback URLs: the App is private, asks for no sign-in, and its webhook is off.
 pub(crate) fn manifest(facts: &ManifestFacts<'_>) -> String {
     let origin = facts.origin;
     let mut permissions = serde_json::Map::new();

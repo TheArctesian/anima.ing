@@ -90,6 +90,7 @@
       "credentials",
       "events",
       "agent_usage",
+      "agent_threads",
       "jobs"
     ],
     "notifications": [
@@ -128,6 +129,7 @@
       "events"
     ],
     "link": [],
+    "agent_threads": [],
     "agent_usage": [
       "devices"
     ],
@@ -241,6 +243,9 @@
       "events",
       "devices",
       "metrics"
+    ],
+    "agent_threads": [
+      "access"
     ],
     "agent_usage": [
       "access"

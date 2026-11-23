@@ -1,5 +1,4 @@
-//! An RDP session opens only on the accepted certificate, with the security the session
-//! asks for, and sends the account only after the certificate is checked (SEC-007).
+//! The account goes to the device only after its certificate is checked (SEC-007).
 
 use anima_gateway::handshake::{Certificate, Security};
 use anima_gateway::rdp::{ClipboardNotes, OpenError, Opened, Wanted, open};
@@ -10,7 +9,6 @@ use super::device::{Device, Offered, Seen, Setup, WAIT};
 
 const SIZE: (u16, u16) = (320, 240);
 pub(super) const USERNAME: &str = "operator";
-/// Made up for the tests.
 pub(super) const PASSWORD: &str = "correct horse battery";
 const DOMAIN: &str = "WORKGROUP";
 
@@ -26,8 +24,7 @@ const NLA: Setup = Setup {
     },
 };
 
-/// The session's wishes: the account, a screen larger than the device's, and this
-/// security and certificate rule.
+/// Asks for a screen larger than the device's.
 pub(super) fn wanted(security: Security, certificate: Certificate) -> Wanted<'static> {
     Wanted {
         username: USERNAME,
@@ -39,7 +36,6 @@ pub(super) fn wanted(security: Security, certificate: Certificate) -> Wanted<'st
     }
 }
 
-/// Opens a session on a new connection to `address`.
 pub(super) async fn opened(
     address: std::net::SocketAddr,
     wanted: Wanted<'_>,
@@ -83,7 +79,6 @@ async fn another_certificate_ends_the_opening_before_any_credential_is_sent() {
 
     assert_eq!(refused.err(), Some(OpenError::Certificate));
     assert_eq!(device.next().await, Seen::Ended);
-    // The device still serves the next client after a connection that stopped at TLS.
     let accepted = Certificate::Accepted(device.fingerprint);
     let opened = opened(device.address, wanted(Security::Tls, accepted)).await;
     assert_eq!(opened.err(), None);
@@ -98,7 +93,6 @@ async fn any_certificate_opens_when_the_operator_ignores_the_certificate() {
     assert_eq!(opened.err(), None);
 }
 
-/// A server on a loopback port that sends `answer` to its first client, then closes.
 async fn not_rdp(answer: &'static [u8]) -> std::net::SocketAddr {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("a port");
     let address = listener.local_addr().expect("an address");

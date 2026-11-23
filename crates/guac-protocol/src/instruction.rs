@@ -1,12 +1,7 @@
-//! One Guacamole instruction and its wire encoding.
-
 use std::{borrow::Cow, fmt};
 
 /// A Guacamole instruction: an opcode and its arguments, in wire order.
-///
-/// `Debug` prints the opcode (at most 32 characters, then `…`) and the
-/// argument count only: `connect` carries passwords and keys, and
-/// no argument value may reach a log (LOG-007).
+/// `Debug` prints the opcode and the argument count only: no argument value may reach a log (LOG-007).
 #[derive(Clone, PartialEq, Eq)]
 pub struct Instruction {
     pub opcode: String,
@@ -29,10 +24,7 @@ impl Instruction {
         }
     }
 
-    /// This instruction with every character outside the Basic Multilingual Plane replaced
-    /// by U+FFFD, so each element's length is the same in code points and in UTF-16 units.
-    ///
-    /// Borrowed when every element is already BMP text. For the client-bound encode only:
+    /// Each character outside the BMP becomes U+FFFD, for the client-bound encode only:
     /// guacamole-common-js before 1.5.2 counts lengths in UTF-16 units (K4 Section 4, R-046).
     #[must_use]
     pub fn with_bmp_text(&self) -> Cow<'_, Self> {
@@ -46,13 +38,11 @@ impl Instruction {
     }
 }
 
-/// Whether `text` has no character outside the BMP: in UTF-8 only those start with a byte
-/// of 0xF0 or more.
+/// In UTF-8 only characters outside the BMP start with a byte of 0xF0 or more.
 fn is_bmp(text: &str) -> bool {
     text.bytes().all(|byte| byte < 0xF0)
 }
 
-/// `text` with each character outside the BMP replaced by U+FFFD.
 fn bmp_text(text: &str) -> String {
     text.chars()
         .map(|c| {
@@ -74,10 +64,7 @@ impl fmt::Debug for Instruction {
     }
 }
 
-/// The first `max_chars` characters of `text`, then `…` when it is longer.
-///
-/// Opcodes, names and messages come from the peer, so they are bounded before
-/// they reach `Debug` or an error message.
+/// Peer opcodes, names and messages are bounded before they reach `Debug` or an error message.
 pub(crate) fn truncated(text: &str, max_chars: usize) -> String {
     let mut prefix: String = text.chars().take(max_chars).collect();
     if text.chars().nth(max_chars).is_some() {

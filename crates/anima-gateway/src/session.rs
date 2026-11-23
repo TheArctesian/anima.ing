@@ -1,9 +1,5 @@
-//! One session of the gateway: the hub's connection on one side, the device on the other.
-//! `serve` runs it from the hub's first byte to the end; a worker process runs one session
-//! and nothing else, so a fault ends that session only.
-//!
-//! I/O edge. Nothing here logs; the caller logs how the session ended. No end reason holds
-//! a value from the hub, the device or an account (LOG-007).
+//! A worker process runs one session and nothing else, so a fault ends that session only.
+//! Nothing here logs. No end reason holds a value from the hub, the device or an account (LOG-007).
 
 mod hub;
 mod input;
@@ -25,9 +21,7 @@ use crate::handshake::Desktop;
 use hub::Hub;
 use opening::First;
 
-/// Guacamole statuses the gateway sends (guacamole-server `protocol-types.h`). The hub
-/// ends the session `AUTH_FAILED` for `CLIENT_UNAUTHORIZED` and `GATEWAY_ERROR` for the
-/// others (K4 Section 5).
+/// Guacamole statuses (guacamole-server `protocol-types.h`, K4 Section 5).
 mod status {
     pub(super) const SERVER_ERROR: u16 = 0x0200;
     pub(super) const UPSTREAM_ERROR: u16 = 0x0203;
@@ -36,7 +30,6 @@ mod status {
     pub(super) const CLIENT_TIMEOUT: u16 = 0x0308;
 }
 
-/// The waits and limits of a session.
 #[derive(Clone, Debug)]
 pub struct Settings {
     /// From the hub's first byte to `connect`.
@@ -45,14 +38,12 @@ pub struct Settings {
     pub device_wait: Duration,
     /// For the operator to answer a prompt for a credential.
     pub answer_wait: Duration,
-    /// The longest one write to the hub or to the device may take. A peer that stops
-    /// reading ends the session; it cannot hold it.
+    /// The longest one write may take, so a peer that stops reading cannot hold the session.
     pub write_wait: Duration,
     pub pace: Pace,
     /// Another gateway (guacd) that serves the protocols this one does not, as `host:port`.
     pub other_gateway: Option<String>,
-    /// Protocols that go to the other gateway though this one serves them, as `select`
-    /// names them: `rdp` for a hub that needs guacd's sound or shared drive.
+    /// Protocols sent to the other gateway though this one serves them: `rdp` for guacd's sound.
     pub passed: Vec<String>,
 }
 
@@ -70,7 +61,6 @@ impl Default for Settings {
     }
 }
 
-/// How a session ended.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum Ended {
     #[error("the hub closed the session")]
@@ -107,8 +97,7 @@ pub enum Ended {
     ByOtherGateway,
 }
 
-/// Runs one session on the hub's connection. `connection_id` is the session's ID for
-/// `ready`: new and random for each session (GW-014).
+/// `connection_id` is the session's ID for `ready`: new and random for each session (GW-014).
 pub async fn serve<S>(stream: S, connection_id: &str, settings: &Settings) -> Ended
 where
     S: AsyncRead + AsyncWrite + Send + 'static,
@@ -135,8 +124,6 @@ where
     }
 }
 
-/// Passes a session of another protocol to the other gateway, when there is one: the
-/// hub's instructions as they are, and the other gateway's bytes as they are.
 async fn other_gateway<S>(hub: &mut Hub<S>, select: &Instruction, settings: &Settings) -> Ended
 where
     S: AsyncRead + AsyncWrite + Send + 'static,
@@ -157,8 +144,7 @@ where
         let passed = tokio::select! {
             instruction = hub.next() => {
                 let Some(mut instruction) = instruction else { return Ended::ByHub };
-                // `connect` of another protocol holds its credential: both copies are
-                // zeroed once written.
+                // `connect` of another protocol holds its credential, so both copies are zeroed.
                 let wire = Zeroizing::new(encode(&instruction));
                 instruction.args.iter_mut().for_each(Zeroize::zeroize);
                 hub::write_unless_stalled(&mut other, wire.as_bytes(), settings.write_wait).await.is_ok()

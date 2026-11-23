@@ -1,5 +1,3 @@
-//! A device's updates arrive on the screen copy, and a device cannot break the gateway.
-
 mod limits;
 pub(crate) mod rfb;
 mod sign_in;
@@ -23,7 +21,7 @@ pub(crate) fn screen() -> Screen {
     Screen::new(SIZE.0, SIZE.1).expect("a valid size")
 }
 
-/// A picture of `colours` colours in bands and blocks, so tiles have runs and several colours.
+/// Bands and blocks, so tiles have runs and several colours.
 fn picture(area: Area, colours: usize) -> Vec<u8> {
     (0..area.width * area.height)
         .flat_map(|pixel| {
@@ -141,7 +139,6 @@ fn a_copied_rectangle_and_a_new_size_are_followed() {
         .collect();
     assert_eq!(copied, source);
 
-    // A new size and pixels for it in one update.
     let update = rfb::update(&[
         rfb::desktop_size(20, 10),
         rfb::raw(small, &picture(small, 3)),
@@ -178,7 +175,6 @@ fn input_goes_to_the_device_with_guacamoles_numbers() {
 }
 
 proptest! {
-    /// The same bytes in pieces of any size give the same screen and events.
     #[test]
     fn bytes_may_arrive_in_any_pieces(cuts in prop::collection::vec(1..400usize, 1..40)) {
         let rgb = picture(ALL, 16);
@@ -204,7 +200,6 @@ proptest! {
         prop_assert_eq!(events, expected_events);
     }
 
-    /// No bytes from a device make the gateway panic, and the screen stays a valid size.
     #[test]
     fn no_bytes_break_the_gateway(
         pieces in prop::collection::vec(prop::collection::vec(any::<u8>(), 0..200), 0..20),

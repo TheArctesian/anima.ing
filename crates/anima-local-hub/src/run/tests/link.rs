@@ -1,5 +1,3 @@
-//! The link (F-6): started after the hub, started again alone, stopped first and at once.
-
 use std::fs;
 use std::time::{Duration, Instant};
 
@@ -115,7 +113,6 @@ async fn f_6_a_link_change_that_cannot_be_written_does_not_stop_the_group() {
         while link_of(&rig).is_none() {
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
-        // The state file cannot be replaced from now on.
         fs::set_permissions(&root, fs::Permissions::from_mode(0o500)).unwrap();
         let starts = rig.count(LINK_START);
         while rig.count(LINK_START) < starts + 3 {

@@ -1,5 +1,4 @@
-//! The fields about a database (R-216, task H24): the need of an application and the server
-//! of an entry of kind `database`.
+//! R-216.
 
 use super::{COMPOSE, codes, replaced, sound, with_entry};
 use crate::{
@@ -19,7 +18,6 @@ const SERVER: &str = r#""kind": "database",
     "server": { "engine": "postgresql", "major": 18, "extensions": ["pg_trgm"] },
     "images""#;
 
-/// [`sound`] as an entry of kind `database` whose server exposes 8080 and publishes nothing.
 fn server() -> Recipe {
     let exposed = replaced(
         COMPOSE,

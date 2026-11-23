@@ -40,8 +40,12 @@ export class LiveThreads {
   listings = $state<ReadonlyMap<string, Listing>>(new Map());
   /** A start that the runner refused at the soft limit: it is sent again when the person raises the limit. */
   overLimit = $state<Action | null>(null);
+  /** Words of the update of the daemon of this computer at the start of the app (HMD-055); read again each time the watch reaches the runner. */
+  daemon = $state<string | null>(null);
   /** Called with the ID of a thread that changed while the person looks at it: it does not need the person (THR-055). */
   seenOpen: ((id: string) => void) | null = null;
+  /** Reads the words of the update of the daemon; an update said once stays on the page. */
+  daemonWords: (() => Promise<string | null>) | null = null;
   private quietUntil = 0;
 
   constructor(
@@ -61,8 +65,10 @@ export class LiveThreads {
         (linked) => {
           this.linked = linked;
           if (linked) this.quietUntil = this.now().getTime() + REPLAY_MS;
+          if (linked) void this.readDaemon();
         },
       );
+      void this.readDaemon();
       await this.readRows();
       await this.readListings();
       return stop;
@@ -71,6 +77,12 @@ export class LiveThreads {
       this.problem = reason instanceof Error ? reason.message : 'The thread runner did not answer.';
       return () => undefined;
     }
+  }
+
+  /** The update of the daemon ends after the app started; words of an earlier read stay until new words come. */
+  private async readDaemon(): Promise<void> {
+    const words = await this.daemonWords?.().catch(() => null);
+    if (words !== null && words !== undefined) this.daemon = words;
   }
 
   /** The holder is replaced when no thread runs: its words go when the list no longer has them. */

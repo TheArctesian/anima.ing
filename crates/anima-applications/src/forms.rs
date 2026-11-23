@@ -1,7 +1,5 @@
-//! The forms of the single values of a request and of the settings: an identifier, a name, a
-//! path, an origin. Each value that goes into a list of arguments has one of these forms.
+//! Each value of a request or the settings that goes into a list of arguments has one of these forms.
 
-/// `length` lower-case hexadecimal characters.
 pub(crate) fn is_lower_hex(text: &str, length: usize) -> bool {
     text.len() == length
         && text
@@ -9,7 +7,7 @@ pub(crate) fn is_lower_hex(text: &str, length: usize) -> bool {
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
-/// A UUID in the form of 36 lower-case characters (K10 Section 6.4.6).
+/// A lower-case UUID (K10 Section 6.4.6).
 pub(crate) fn is_uuid(text: &str) -> bool {
     let parts: Vec<&str> = text.split('-').collect();
     let lengths = [8, 4, 4, 4, 12];
@@ -20,16 +18,12 @@ pub(crate) fn is_uuid(text: &str) -> bool {
             .all(|(part, length)| is_lower_hex(part, length))
 }
 
-/// The digest of an image as the engine writes it: `sha256:` and 64 hexadecimal characters.
 pub(crate) fn is_digest(text: &str) -> bool {
     text.strip_prefix("sha256:")
         .is_some_and(|hex| is_lower_hex(hex, 64))
 }
 
-/// The name of a Compose project: 1 to 63 characters of `a-z`, `0-9`, `-` and `_`, and the
-/// first is a letter or a digit. The contract gives no form for the name of an adopted
-/// project; this is the form that Compose itself permits, with the length of a name of
-/// Section 6.4.4.
+/// The contract gives no form for an adopted project's name: this is Compose's, with the length of Section 6.4.4.
 pub(crate) fn is_project_name(text: &str) -> bool {
     let first = text
         .bytes()
@@ -42,9 +36,7 @@ pub(crate) fn is_project_name(text: &str) -> bool {
             .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || b"-_".contains(&byte))
 }
 
-/// A name of a container, a network or a volume as the engine permits it: a letter or a digit,
-/// then letters, digits, `_`, `.` and `-`; 255 characters at most. It can never be read as an
-/// option of a command.
+/// A first letter or digit means the name is never read as an option of a command.
 pub(crate) fn is_engine_name(text: &str) -> bool {
     let first = text
         .bytes()
@@ -57,9 +49,7 @@ pub(crate) fn is_engine_name(text: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || b"_.-".contains(&byte))
 }
 
-/// An absolute path of the machine with no `.` part, no `..` part, no empty part and no
-/// control character; 4,096 bytes at most. An address of a different machine has a scheme and
-/// is thus never such a path.
+/// An address of a different machine has a scheme, so it is never such a path.
 pub(crate) fn is_path(text: &str) -> bool {
     let Some(below) = text.strip_prefix('/') else {
         return false;
@@ -72,10 +62,7 @@ pub(crate) fn is_path(text: &str) -> bool {
             .all(|part| !part.is_empty() && part != "." && part != "..")
 }
 
-/// The host of an origin, in one text for each address: a name in lower case, an IPv4
-/// address in its usual form, or an IPv6 address in brackets in its canonical short form
-/// (RFC 5952). An IPv4 address written as an IPv6 address is refused, so that one address
-/// never has two texts.
+/// One text for each address: IPv6 in RFC 5952 short form, never IPv4-mapped.
 fn is_host(text: &str) -> bool {
     if let Some(inner) = text
         .strip_prefix('[')
@@ -108,8 +95,7 @@ fn is_host(text: &str) -> bool {
     text.len() <= 253 && text.split('.').all(label_sound) && last_is_a_name
 }
 
-/// The origin of a hub: the scheme, the host in lower case and the port, always written
-/// (K10 Section 6.4.2), as `https://hub.example:443`.
+/// The port is always written (K10 Section 6.4.2), as `https://hub.example:443`.
 pub(crate) fn is_origin(text: &str) -> bool {
     let Some((scheme, rest)) = text.split_once("://") else {
         return false;
@@ -124,8 +110,7 @@ pub(crate) fn is_origin(text: &str) -> bool {
     matches!(scheme, "http" | "https") && is_host(host) && port_sound
 }
 
-/// The name of the project of an application that Anima installed: `anima-` and the 32
-/// hexadecimal digits of its UUID (K10 Section 6.4.6).
+/// `anima-` and the 32 hexadecimal digits of the UUID (K10 Section 6.4.6).
 pub(crate) fn project_of(application: &str) -> String {
     format!("anima-{}", application.replace('-', ""))
 }
