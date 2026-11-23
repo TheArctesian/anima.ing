@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import type { LiveThreads } from '$lib/agent-threads/live/live.svelte';
   import Card from '../composer/Card.svelte';
   import type { Project } from '../inbox/inbox';
@@ -28,18 +29,25 @@
   const engine = $derived(draft.engine((action) => live.call(action), onStarted, models, loadModels));
   const notice = $derived(draft.notice !== null && draft.notice.folder === draft.folder && draft.notice.lines.length > 0 ? draft.notice.lines : null);
 
-  /** Asks the runner for the models of each program (TH104); until they come, the picker says why it has only the default. */
+  let asks = 0;
+
+  /**
+   * Asks the runner for the models of each program (TH104): when the page opens, each time the picker opens, and from
+   * Retry. A list stays shown while it asks again and when a later ask fails; until one comes, the picker says why it has only the default and how
+   * long it has waited. An older answer does not replace a list that a newer one gave.
+   */
   function loadModels(): void {
-    models = MODELS_WAITING;
+    const ask = ++asks;
+    if (models.state !== 'listed') models = { state: 'waiting', since: models.state === 'waiting' ? (models.since ?? Date.now()) : Date.now() };
     void live.call({ call: 'models' }).then((answer) => {
-      if (!answer.ok) models = { state: 'failed', words: answer.words };
-      else if (answer.outcome.outcome === 'models') models = { state: 'listed', lists: answer.outcome.models };
-      else models = { state: 'failed', words: 'the runner gave no list' };
+      const listed = answer.ok && answer.outcome.outcome === 'models' ? answer.outcome.models : null;
+      if (listed !== null && (ask === asks || models.state !== 'listed')) models = { state: 'listed', lists: listed };
+      else if (listed === null && models.state !== 'listed') models = { state: 'failed', words: answer.ok ? 'the runner gave no list' : answer.words };
     });
   }
 
   $effect(() => {
-    loadModels();
+    untrack(loadModels);
   });
 
   function choose(folder: string): void {
