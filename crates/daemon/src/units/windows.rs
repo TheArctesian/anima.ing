@@ -18,10 +18,7 @@ pub mod plan {
 ///
 /// # Errors
 /// None; the type matches the Unix one.
-#[expect(
-    clippy::unnecessary_wraps,
-    reason = "one signature with the Linux admin step"
-)]
+#[must_use]
 pub fn launcher_after_install(_host: &install::Host<'_>) -> Result<(), std::convert::Infallible> {
     Ok(())
 }
