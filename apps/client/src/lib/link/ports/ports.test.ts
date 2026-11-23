@@ -7,7 +7,7 @@ describe('the switches of the open ports (HMD-049)', () => {
     const mac = portRows('mac', []);
     expect(mac.map((row) => row.port)).toEqual([22, 5900]);
     expect(mac.map((row) => row.on)).toEqual([false, false]);
-    expect(mac[0]?.needs).toContain('Remote Login');
+    expect(mac[0]?.needs).toContain('administrator approval');
     expect(mac[1]?.needs).toContain('Screen Sharing');
   });
 

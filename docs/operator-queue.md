@@ -39,7 +39,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (225)
+## 2. Open decisions (228)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -57,6 +57,8 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-C1 | What is the hardware of each compute node? | Open for the values that are missing. The operator said (2026-11-18, through the orchestrating session): "I have a couple other machiens but that is good for no… | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C3 | Level 2, parked: which tolerances does the conformance test use? | Set them from the C4 measurements (RNG-032). | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C4 | Level 2, parked: are the block adapters offered to the Shard project first? | Yes: offer them to the Shard project first. Keep them in `blocks/` only if Shard does not accept them. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C26 | What may Anima copy from LM Studio and Unsloth Studio (R-380)? Open, not decided. | Copy only what the screens and documents of LM Studio show, with our own code and none of its assets; copy the design of Unsloth Studio only, and nobody reads S… | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C27 | How does a coding agent of Anima Code reach a local model (R-380)? Open, put to the operator, not decided. | (C) in steps, `/v1/messages` first. | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-ROL-17 | A machine that is connected and busy (it runs a job, a build or a job of a runner) does not start its update (ROL-028). Does its step wait for it? ROL-039 lets… | Open | [plans/daemon-and-hub-update-plan.md](plans/daemon-and-hub-update-plan.md) |
 | OD-E3 | Aggregator for the US accounts (BofA, Chase, Robinhood, Acorns) | SimpleFIN Bridge. It is for private persons and costs about 15 USD each year (its pages give different prices). Check each institution on bridge.simplefin.org b… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E4 | Hosted vision model for Class B and C extraction | Permit a hosted model for Wardrobe and Library photos, with the operator switch (VIS-003). Use only on-device extraction for Documents. | [plans/extensions-plan.md](plans/extensions-plan.md) |
@@ -167,6 +169,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-AGL18 | Which identifier does a row have at the hub? (SF-122) | A | [proposals/agent-layer.md](proposals/agent-layer.md) |
 | OD-AGL19 | What does an alert give a channel of a different party? (SF-125) | A for ntfy and a webhook; B and C for a channel that the person runs | [proposals/agent-layer.md](proposals/agent-layer.md) |
 | OD-AGL20 | Which gate is before the first code? (SF-130) | A. The rows and the alert go to a hub of a different party too | [proposals/agent-layer.md](proposals/agent-layer.md) |
+| OD-THR68 | Anima Code adds the other agent programs that T3 Code supports (R-416, TH119). How are they added? | Open. Recommendation of the orchestrating side: (a), ACP first, then native drivers for the programs that you use most. Each new program has its own separate se… | [proposals/agent-threads.md](proposals/agent-threads.md) |
 | OD-AXT25 | Does the rule "No MCP tool returns file content" (operator, 2026-11-14) get one exception for the files of a shared project folder, with the read tools `allow`… | Open. Recommendation: yes, an exception for the folder only. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT26 | Do folder tokens follow JOB-010 and MCP-004: minted on the hub, given over the relay as a secret for one job, deleted at the end, and never in a prompt, a URL o… | Open. Recommendation: yes. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT27 | How do short-lived file links work (wave 2)? (one choice: only through the gateway or the relay, to a signed-in caller or a valid folder token; no file links; p… | Open. Recommendation: only through the gateway or the relay, to a signed-in caller or a token. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
@@ -306,7 +309,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
 
-## 4. Checks that only the operator can do (118)
+## 4. Checks that only the operator can do (121)
 
 | Check | What |
 | --- | --- |
@@ -319,6 +322,9 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-001 | `anima snapshot` against GitHub |
 | HT-002 | the tool inventory from a daemon to the command line |
 | HT-003 | the tool inventory in an MCP client |
+| HT-161 | a stopped node drains its model servers |
+| HT-162 | the checks of the files of a copy on real copies |
+| HT-160 | a fault of the child fetch process has its own cause |
 | HT-124 | the child fetch process downloads a real release |
 | HT-119 | the cgroup of each model server on `pop-os` |
 | HT-120 | the model work of the daemon on the Mac and on `pop-os` |

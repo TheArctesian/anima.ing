@@ -10,6 +10,7 @@ pub mod own;
 pub mod records;
 pub mod shared;
 pub mod walk;
+pub mod wired;
 
 use std::path::{Component, Path, PathBuf};
 
@@ -231,6 +232,30 @@ impl Home {
         let file = self.record_file(thread, repository)?;
         let text = std::fs::read(file).map_err(|_| BadPlace::NotOurWorktree)?;
         serde_json::from_slice(&text).map_err(|_| BadPlace::NotOurWorktree)
+    }
+
+    /// The worktree of `repository` of `thread` for its removal alone, when it is not whole
+    /// any more (its `.git` file or its entry in the repository of the person is gone): the
+    /// record, the Git folder of the runner, and the folder at its planned place, which is
+    /// still the folder that the runner made. The `git` of the runner needs no more to save
+    /// the files.
+    #[must_use]
+    pub fn for_removal(&self, thread: Uuid, repository: &str) -> Option<Worktree> {
+        let record = self.recorded(thread, repository).ok()?;
+        let planned = Self::at(&record.home, &self.records)
+            .and_then(|home| home.planned(thread, repository))
+            .ok()?;
+        let real = std::fs::canonicalize(planned).ok()?;
+        let home = std::fs::canonicalize(&record.home).ok()?;
+        let same = record.folder_id.is_none()
+            || super::run::folder::FolderId::of(&real) == record.folder_id;
+        let ours = real == record.folder
+            && real.starts_with(&home)
+            && real != home
+            && same
+            && record.own == self.own(thread, repository).ok()?
+            && record.own.is_dir();
+        ours.then_some(Worktree { thread, record })
     }
 
     /// The worktree of `repository` of `thread`, after each check: the runner has a record of
