@@ -178,6 +178,9 @@ pub enum GitRefusal {
     /// The worktree of the thread is there, but the system removed its checkpoints and its
     /// record after a long time without use. The files of the worktree are as they were.
     Expired,
+    /// Worktrees, checkpoints and the other Git actions of a thread are not built for Windows
+    /// yet (ruling of the operator).
+    NotOnWindows,
     Failed {
         said: String,
     },

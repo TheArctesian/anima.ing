@@ -13,7 +13,7 @@
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 
-use super::super::super::run::hooks::{AsThread, ThreadRun};
+use super::super::super::run::hooks::{AsThread, Kind, ThreadRun};
 use super::super::super::run::{Git, GitError, Run, said};
 use super::super::Worktree;
 use super::super::walk::{Dir, Make};
@@ -72,6 +72,64 @@ pub fn folder(worktree: &Worktree) -> OsString {
 /// The start of the name of each such folder.
 pub const PREFIX: &str = ".anima-pack-";
 
+/// The start of each read of a thread, after [`CLOSED`]: it lists the objects of commits.
+const LIST: [&str; 4] = ["rev-list", "--objects", "--quiet", "--end-of-options"];
+
+/// The start of each read of a thread that makes a pack, after [`CLOSED`].
+const PACK: [&str; 3] = ["pack-objects", "--revs", "--quiet"];
+
+/// Whether `run` is a read of a thread as this engine makes it, and nothing else: the kind
+/// [`Kind::Read`], `program` as given, the closed options first, the environment of
+/// [`QUIET`], and one of the two reads. The launcher of the runner asks it before it starts a
+/// read, also for a confined thread; a read runs no program of the repository.
+#[must_use]
+pub fn is_read(run: &ThreadRun, program: &Path) -> bool {
+    let quiet = run.env.len() == QUIET.len()
+        && run
+            .env
+            .iter()
+            .zip(QUIET)
+            .all(|((name, value), (quiet, set))| *name == quiet && value == set);
+    let Some(rest) = run.args.strip_prefix(CLOSED.map(OsString::from).as_slice()) else {
+        return false;
+    };
+    run.kind == Kind::Read
+        && run.program == program
+        && quiet
+        && (lists(rest) && run.input.is_none() || packs(rest, run) && run.input.is_some())
+}
+
+/// `rev-list` of commits, then `--not` and the commits that are known: each an ID.
+fn lists(args: &[OsString]) -> bool {
+    let Some(rest) = args.strip_prefix(LIST.map(OsString::from).as_slice()) else {
+        return false;
+    };
+    let not = rest.iter().position(|arg| arg == "--not");
+    let Some(not) = not else {
+        return false;
+    };
+    let ids = rest[..not].iter().chain(&rest[not + 1..]);
+    not > 0 && ids.clone().all(|arg| is_id(arg))
+}
+
+/// `pack-objects` into the folder of the pack of the thread, in its worktree.
+fn packs(args: &[OsString], run: &ThreadRun) -> bool {
+    let Some([base]) = args.strip_prefix(PACK.map(OsString::from).as_slice()) else {
+        return false;
+    };
+    let name = format!("{PREFIX}{}", run.thread.as_simple());
+    *base == run.dir.join(name).join("p").into_os_string()
+}
+
+/// An object ID of `git`: 40 or 64 small hex digits.
+fn is_id(arg: &OsStr) -> bool {
+    let id = arg.as_encoded_bytes();
+    matches!(id.len(), 40 | 64)
+        && id
+            .iter()
+            .all(|byte| matches!(byte, b'0'..=b'9' | b'a'..=b'f'))
+}
+
 /// Runs `git <args>` with the rights of the thread of `worktree`, in its worktree, with the
 /// file `input` as standard input. `false` when `git` ended with a code that is not 0.
 ///
@@ -91,6 +149,7 @@ async fn as_thread(
     })?;
     let closed = CLOSED.iter().map(OsString::from);
     let run = ThreadRun {
+        kind: Kind::Read,
         thread: worktree.thread(),
         dir: worktree.folder().to_owned(),
         program: git.program().to_owned(),
@@ -120,9 +179,7 @@ pub async fn reads(
     worktree: &Worktree,
     (commits, known): (&[&str], &[&str]),
 ) -> Result<bool, GitError> {
-    let mut args: Vec<OsString> = ["rev-list", "--objects", "--quiet", "--end-of-options"]
-        .map(Into::into)
-        .into();
+    let mut args: Vec<OsString> = LIST.map(Into::into).into();
     args.extend(commits.iter().map(OsString::from));
     args.push("--not".into());
     args.extend(known.iter().map(OsString::from));
@@ -156,7 +213,7 @@ pub async fn make(
     let made = top.remove_all(&name).and_then(|()| top.new_folder(&name));
     made.map_err(GitError::Files)?;
     let base = worktree.folder().join(&name).join("p");
-    let args = ["pack-objects", "--revs", "--quiet"].map(OsString::from);
+    let args = PACK.map(OsString::from);
     let args = args.into_iter().chain([base.into_os_string()]).collect();
     let packed = as_thread(git, worktree, args, Some(&want)).await;
     let packed = packed.and_then(|ended| {

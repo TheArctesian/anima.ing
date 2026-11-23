@@ -19,6 +19,7 @@ pub mod changes;
 pub mod checkpoint;
 pub mod commit;
 pub mod place;
+pub use place::wired;
 pub mod project;
 pub mod push;
 pub mod revert;
@@ -131,12 +132,7 @@ impl Engine {
     /// Refuses while the records can be written by a thread, or are not a folder of this
     /// user alone any more.
     fn closed(&self) -> Result<(), GitRefusal> {
-        if self.held.load(Ordering::SeqCst) {
-            return Err(GitRefusal::RecordsHeld);
-        }
-        place::records::checked(self.home.records()).map_err(|bad| GitRefusal::Failed {
-            said: bad.to_string(),
-        })
+        place::records::open_for_actions(self.home.records(), self.held.load(Ordering::SeqCst))
     }
 
     /// This engine with the way to start a hook of a repository as the agent of a thread is

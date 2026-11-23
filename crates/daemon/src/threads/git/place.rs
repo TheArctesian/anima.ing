@@ -10,6 +10,7 @@ pub mod own;
 pub mod records;
 pub mod shared;
 pub mod walk;
+pub mod wired;
 
 use std::path::{Component, Path, PathBuf};
 
