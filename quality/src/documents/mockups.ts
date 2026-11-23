@@ -8,7 +8,6 @@ export { MOCKUPS } from "./mockup-records.ts";
 const LINK = /\]\(([^)\s#]+)\)/g;
 const COMMIT = /`([0-9a-f]{7,40})`/;
 
-/** One mockup: its record, the screens of the application, the state and the commit of the last comparison. */
 export interface MockupRow {
   path: string;
   name: string;
@@ -21,7 +20,6 @@ function targets(cell: string): string[] {
   return [...cell.matchAll(LINK)].map((match) => posix.normalize(posix.join(posix.dirname(MOCKUPS), match[1] ?? "")));
 }
 
-/** The mockups that the records give, one for each record (PLN-019). */
 export function mockupRows(documents: Document[]): MockupRow[] {
   return documents
     .filter((document) => isRecord(document.path))
@@ -40,7 +38,6 @@ export function mockupRows(documents: Document[]): MockupRow[] {
     });
 }
 
-/** The index has its generated table, and the table is the one that the records give (PLN-019, like PLN-020). */
 function tableFaults(documents: Document[]): Violation[] {
   const index = documents.find((document) => document.path === MOCKUPS);
   if (index === undefined) return [];
@@ -51,11 +48,7 @@ function tableFaults(documents: Document[]): Violation[] {
   return [...broken, ...(stale ? [{ path: MOCKUPS, signal: "mockup-table-stale", detail: "the table is not the one of docs/mockup/records/; run bun run quality:register" }] : [])];
 }
 
-/**
- * PLN-019: a mockup that is Built names the commit it was compared at, and no layout file of
- * its screens changed after that one. `changedSince` gives the number of those files,
- * or undefined when the repository does not have the commit.
- */
+/** PLN-019: a Built mockup names the commit it was compared at, and no layout file of its screens changed after it. */
 export function checkMockups(documents: Document[], changedSince: (screen: string, commit: string) => number | undefined): Violation[] {
   const violations = tableFaults(documents);
   for (const row of mockupRows(documents)) {
@@ -76,17 +69,11 @@ export function checkMockups(documents: Document[], changedSince: (screen: strin
   return violations;
 }
 
-/** Whether `path` is a layout file (Svelte or CSS) below `screen`: a file that the comparison of a mockup watches. */
 function isScreenLayout(path: string, screen: string): boolean {
   return path.startsWith(`${screen}/`) && (path.endsWith(".svelte") || path.endsWith(".css"));
 }
 
-/**
- * PLN-019 and PLN-021: no placeholder of a number in a layout file of a screen that a record
- * lists. The merge gives the placeholder its number in the merge commit, so the screen changes
- * after the commit at which its mockup was compared, and the mockup check fails on the merge.
- * `paths` are the files of the repository; `read` gives the text of one.
- */
+/** PLN-019, PLN-021: the merge numbers a placeholder after the mockup was compared, so the mockup check would fail on the merge. */
 export function placeholdersInScreens(records: Document[], paths: string[], read: (path: string) => string): Violation[] {
   const screens = mockupRows(records).flatMap((row) => row.screens);
   return paths
