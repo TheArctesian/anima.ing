@@ -39,7 +39,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (229)
+## 2. Open decisions (233)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -202,6 +202,11 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-BOT21 | Does MCP-006 (no tool runs a command on a device) get a narrow exception, so that an MCP tool can ask the daemon to run a recipe of the catalog (BOT-075)? (yes/… | Open | [proposals/bots.md](proposals/bots.md) |
 | OD-BOT22 | May an AI agent start a recipe before the operator confirmed its terms row on that machine (BOT-041, BOT-065)? (yes/no) | Open | [proposals/bots.md](proposals/bots.md) |
 | OD-BOT23 | May the operator type a key that lasts (Gemini CLI, Pi, OpenCode; Pi replaces Aider, R-196) in the secret-entry pane, when R-153 covers a one-time code only (BO… | Open | [proposals/bots.md](proposals/bots.md) |
+| OD-CLU1 | What is a cluster? A: a named group of your machines that you treat as one place to run things; a machine is in one cluster at most. B: the same, but a machine… | A. One cluster for each machine keeps "where can this run" simple; B makes the room of a machine count twice. | [proposals/clusters.md](proposals/clusters.md) |
+| OD-CLU2 | How much does "run on a cluster" do? A: placement only, with a move by hand (level a). B: A, and a restart on a different machine by itself when a machine goes… | A now. B needs the data to follow the thing (copies of volumes kept up to date), which is a large piece of work of its own; ask again after A is in use. C is th… | [proposals/clusters.md](proposals/clusters.md) |
+| OD-CLU3 | Does Anima build the cluster or drive an existing engine? A: build it on the work route of each machine. B: Docker Swarm. C: k3s. D: Incus clustering. E: Nomad. | A. Each engine makes its manager root on each member and skips the check at the machine; k3s and Incus do not run Compose files or run on a Mac; Nomad is not op… | [proposals/clusters.md](proposals/clusters.md) |
+| OD-CLU4 | When a machine joins a cluster, does its agreement at the machine also count as its consent to serve public routes of the things of that cluster? A: yes, one ag… | A. With B, a move or a restart can stop a public route with no warning until a person goes to the new machine. The join is already a person at the machine, whic… | [proposals/clusters.md](proposals/clusters.md) |
+| OD-CLU5 | Who can put a thing on a cluster or move it between members? A: the same rule as an install (R-384): the person, the app, `anima` and a Full access thread with… | A. A move does no more than an install and a remove, which that rule already allows. | [proposals/clusters.md](proposals/clusters.md) |
 | OD-PNL1 | Are Agents and Projects a part of the foundation, or extensions that are on by default? OD-E13 (operator, 2026-11-13) ruled that Projects is not a part of the f… | Proposed, not ruled: extensions that are on by default (PNL-006). It keeps EXT-005 and OD-E13, and the operator can still turn them off. Only EXT-001 and EXT-00… | [proposals/default-panels.md](proposals/default-panels.md) |
 | OD-PNL2 | What does "runner" mean in "add runners on easily": an agent runner (BOT-039), a build runner of GitHub Actions (PRO-027), or both? | Proposed, not ruled: both, in one choice on "Add runner" (PNL-005). The two flows stay separate. | [proposals/default-panels.md](proposals/default-panels.md) |
 | OD-PNL3 | Which features move out of the foundation as extensions? | Proposed, not ruled: none. Bookshelf (Library, Section 4.14), Maps (Map, Section 4.1) and the others are extensions already. The map canvas component stays shar… | [proposals/default-panels.md](proposals/default-panels.md) |
@@ -217,7 +222,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HM-D11 | How does the device list offer "Add this computer" for a computer that reaches its hosted hub only through the link (step 8 of Section 4.1)? | Add a path from the hub to the device through the link, then offer the computer by its link key. Not ruled. The operator saw the empty device list after the fir… | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D12 | What must the phone app have before a phone can use "Sign in"? | Build M5-1 with M3-1. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D20 | Which address does the web client of a hosted hub give for the download of the application, and are the words of its two new texts right? | A link to the download page of the account site, when the operator names its address; the words as built until he changes them. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
-| OD-HSE5 | Do Storage (the volumes) and Machines become sections of Hosting? A: not now; volumes stay in the tab Containers of the device page and the machines stay in Dev… | A. Devices already owns the machines, and a section of volumes has no action before stage 2. Ask again when stage 2 adds the actions on a volume. | [proposals/hosting-section.md](proposals/hosting-section.md) |
 | OD-ROU7 | After how long is queued work refused? (one choice: 1 hour; 24 hours; never, until cancelled) | Open. Recommendation: 24 hours, then refused with the reasons and one notification. Strength: no work starts days late; a nightly window still fits. Weakness: a… | [proposals/jobs.md](proposals/jobs.md) |
 | OD-ROU8 | Where are queued items seen and cancelled? (one choice: the list of what runs (PRO-052) with the state Queued, plus `anima work list --queued` and an MCP read;… | Open. Recommendation: the list of what runs, the command and MCP, with Cancel for the operator and the caller that queued it. Strength: CMD-030 order; one list.… | [proposals/jobs.md](proposals/jobs.md) |
 | OD-ROU9 | Does the audit entry of a routed command line keep the command text? (yes/no) | Open. Recommendation: no; the entry keeps the caller, the machine, the times and the exit state (LOG-007). Strength: no secret in the log. Weakness: the log can… | [proposals/jobs.md](proposals/jobs.md) |
@@ -273,7 +277,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-PAL3 | What does the palette show before a letter is typed? | The pages, then the devices that need a look, at most 8 rows. | [work-items/device-manager/PAL-1.md](work-items/device-manager/PAL-1.md) |
 | OD-PAL4 | What is there on a phone, and in the bar that is collapsed to icons? | On a phone: no field and no shortcut; the Devices page keeps its own search. In the collapsed bar: one icon button with the same accessible name. | [work-items/device-manager/PAL-1.md](work-items/device-manager/PAL-1.md) |
 
-## 3. Documents that wait for an approval (33)
+## 3. Documents that wait for an approval (34)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -289,6 +293,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/ai-direction.md](proposals/ai-direction.md) | Proposal | Draft |
 | [proposals/bots.md](proposals/bots.md) | Proposal, with a task table | Draft |
 | [proposals/cloud-machines.md](proposals/cloud-machines.md) | Proposal | Draft |
+| [proposals/clusters.md](proposals/clusters.md) | Proposal | Draft |
 | [proposals/coordinator-standby.md](proposals/coordinator-standby.md) | Proposal | Direction decided |
 | [proposals/cve-watch-and-network-awareness.md](proposals/cve-watch-and-network-awareness.md) | Proposal | Draft |
 | [proposals/default-panels.md](proposals/default-panels.md) | Proposal | Draft |
