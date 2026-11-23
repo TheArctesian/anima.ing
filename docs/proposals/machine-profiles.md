@@ -17,7 +17,7 @@ Status: the header of this document holds the state (PLN-020). History: Draft. T
 Map: [work-plan.md](../work-plan.md), category Foundation, next to "Add this machine"
 ([add-this-machine.md](add-this-machine.md)) and first-run setup. A rented cloud computer
 ([cloud-machines.md](cloud-machines.md)) can take a profile in one confirmation. A profile
-can also install the agent tools (Herdr, Hermes Agent, T3 Code: [agent-tools-as-extensions.md](agent-tools-as-extensions.md), R-196) and the agents of [bots.md](bots.md).
+can also install the agent tools (Hermes Agent: [agent-tools-as-extensions.md](agent-tools-as-extensions.md), R-196; Herdr and T3 Code left the tools by R-NEW-hermesextension) and the agents of [bots.md](bots.md).
 Identifiers: REP-001 to REP-025.
 
 This is a new proposal. The "whatdog" plan is Watchdog, a service restarter planned with the

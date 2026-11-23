@@ -944,6 +944,8 @@ result gives them in named fields with a length limit (MCP-008).
 
 **Withdrawn (R-196, operator, 2026-11-18, first-hand; OD-AXT2 of [agent-tools-as-extensions.md](../proposals/agent-tools-as-extensions.md)).** AIS-009 to AIS-017 are withdrawn. Anima.ing hosts Herdr as a terminal tool extension in their place. AIS-018 to AIS-024 (Section 4.12.0) stay. Review: if Herdr Cloud (a hosted relay of the maker of Herdr) ships, or the Herdr project stalls, the operator reviews this decision, and native panes can come back with a new ruling. The open decisions 1 to 3 below are superseded. The text below is kept as a record of the direction of 2026-11-16.
 
+**Amended (R-NEW-hermesextension, operator, 2026-11-23, relayed; a reading of the orchestrating session).** AIS-009 to AIS-017 stay withdrawn. Anima.ing does not host Herdr in their place: Code ([agent-threads.md](../proposals/agent-threads.md)) is the native function for coding agents, and the review about Herdr Cloud has no subject. Where a line below says "replaced by the Herdr tool extension", read "replaced by Code".
+
 **Purpose.** Do everything [Herdr](https://herdr.dev) does for a herd of coding agents, inside this
 extension and free: background terminal panes that stay alive, one view of every agent on every
 device, and an alert when an agent needs the operator. The operator's words: "build hrdr into the
