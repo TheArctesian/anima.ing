@@ -5201,3 +5201,19 @@ the state and the other cells below the name. The tests do not measure a layout;
    Expected: each volume has its name, below it what uses it (or the mark Not used) and its size at the end of the line.
 
 Result: Open.
+
+### HT-NEW-hostingmachines: Hosting > Machines lists the machines that can host (task H49; HSE-016)
+
+Built on the branch `hosted/hse-machines`: the page Hosting, section Machines, reads the devices of the hub and lists those
+with SSH on. The tests use a fake hub; nobody has seen the list with real devices.
+
+1. In the desktop application of this build, signed in to a hub with devices of which some have SSH on, open Hosting,
+   then Machines.
+   Expected: each device with SSH on is a row, by name, with the status that the Devices page shows for it (for example
+   Up or Down); a device with SSH off is not listed. There is no column for the engine or the free room.
+2. Press the name of a machine.
+   Expected: its device page opens.
+3. Turn SSH off for one of those devices on its page, go back to Hosting > Machines and press Refresh.
+   Expected: that device is no longer listed.
+
+Result: Open.
