@@ -2697,7 +2697,7 @@ Where: `crates/daemon-core/src/model_work/files/`, commit 30d09f830 (branch `com
 
 The correction: a fixed list of classes for each runtime (`files/classes.rs`): for vLLM the 131 text-generation architectures of vLLM v0.34.0, and a list of tokenizer classes; each entry of `architectures` and `tokenizer_class` must be on it and has no `.`, `/`, `--` or `:`, else `remote_code`. `llama_server` loads only GGUF and reads no `config.json`; `mlx_lm` has no list yet.
 
-State: Built on branch `compute/sf-298-model-files`, pending a re-read. Found by a separate reviewer on 2026-11-22 in 30d09f830.
+State: Closed in 04f5684d8, read again by the separate reviewer on 2026-11-22. Found by a separate reviewer on 2026-11-22 in 30d09f830.
 
 ### SF-NEW-sf298b: Only `config.json` and `tokenizer_config.json` are checked for remote-code members. Low
 
@@ -2707,7 +2707,7 @@ Where: `crates/daemon-core/src/model_work/files/`, commit 30d09f830 (branch `com
 
 The correction: `check_copy` walks each JSON file of the Section 2.2 list but `tokenizer.json`: also `generation_config.json`, `special_tokens_map.json`, `preprocessor_config.json` and each `*.safetensors.index.json`.
 
-State: Built on branch `compute/sf-298-model-files`, pending a re-read. Found by a separate reviewer on 2026-11-22 in 30d09f830.
+State: Closed in 04f5684d8, read again by the separate reviewer on 2026-11-22. Found by a separate reviewer on 2026-11-22 in 30d09f830.
 
 ### SF-NEW-sf298c: An over-long chat template, an unparsable file and an oversized file are all reported as `remote_code`. Low
 
@@ -2738,6 +2738,46 @@ Where: `crates/daemon-core/src/model_work/files/`, commit 30d09f830 (branch `com
 The correction: Tests for each, with a fixture of about 1.2 MB of `added_tokens_decoder` (the size of Gemma 3).
 
 State: Built on branch `compute/sf-298-model-files`. Found by a separate reviewer on 2026-11-22 in 30d09f830.
+
+### SF-NEW-sf298f: A vLLM copy without `config.json` is not refused. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 04f5684d8 (branch `compute/sf-298-model-files`).
+
+The correction: `check_copy` refuses (`remote_code`) a copy for a runtime with a class list when it has no `config.json`.
+
+State: Built on branch `compute/sf-298-model-files`. Found by a separate reviewer on 2026-11-22 in 04f5684d8.
+
+### SF-NEW-sf298g: The tokenizer list is a choice of the builder, and the list of architectures cites a vLLM version (v0.34.0) that was inferred. Low
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 04f5684d8 (branch `compute/sf-298-model-files`).
+
+The correction: When a vLLM release source pins a version, check both lists again against that version, for each vLLM release source (step in the L1-7 row).
+
+State: Open. Found by a separate reviewer on 2026-11-22 in 04f5684d8.
+
+### SF-NEW-sf298h: Classes `*ForConditionalGeneration` (for example Gemma 3 4B and larger, Mistral-Small-3.1) are refused by the text-only list. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 04f5684d8 (branch `compute/sf-298-model-files`).
+
+The correction: None for Level 1, whose scope is text. Image input (L1-14) must make the list wider.
+
+State: Open; noted in the L1-14 row. Found by a separate reviewer on 2026-11-22 in 04f5684d8.
+
+### SF-NEW-sf298i: `mlx_lm` has no class list. Note
+
+Requirements: task L1-6 of [compute-plan.md](plans/compute-plan.md); SEC-C-008.
+
+Where: `crates/daemon-core/src/model_work/files/`, commit 04f5684d8 (branch `compute/sf-298-model-files`).
+
+The correction: None now: `mlx_lm` maps `model_type` to its own modules and does not use `auto_map`, and the walk for `auto_map` and `custom_pipelines` still covers its copies.
+
+State: Open as a note. Found by a separate reviewer on 2026-11-22 in 04f5684d8.
 
 ### SF-299: A runtime runs with each right of the user of the daemon, so a fault of a parser reads the token and the configuration. High
 

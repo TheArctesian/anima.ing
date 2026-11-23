@@ -7,11 +7,15 @@ use crate::model_work::names::Runtime;
 
 const REFUSED: Result<(), Cause> = Err(Cause::RemoteCode);
 
+const CONFIG: (&str, &[u8]) = ("config.json", br#"{"architectures":["LlamaForCausalLM"]}"#);
+
 fn vllm(json: &[(&str, &[u8])]) -> Result<(), Cause> {
+    let mut all = vec![CONFIG];
+    all.extend_from_slice(json);
     check_copy(
         Runtime::Vllm,
         &CopyFiles {
-            json,
+            json: &all,
             template_file: None,
         },
     )
@@ -108,4 +112,21 @@ fn a_tokenizer_config_of_gemma_3_size_passes() {
         ("tokenizer_config.json", text.as_bytes()),
     ];
     assert_eq!(vllm(&json), Ok(()));
+}
+
+#[test]
+fn a_vllm_copy_without_config_is_refused() {
+    let only = CopyFiles {
+        json: &[("tokenizer_config.json", b"{}")],
+        template_file: None,
+    };
+    assert_eq!(check_copy(Runtime::Vllm, &only), REFUSED);
+    assert_eq!(check_copy(Runtime::Vllm, &CopyFiles::default()), REFUSED);
+    assert_eq!(check_copy(Runtime::MlxLm, &only), Ok(()));
+}
+
+#[test]
+fn a_null_tokenizer_class_is_the_same_as_none() {
+    let tokenizer: &[u8] = br#"{"tokenizer_class":null}"#;
+    assert_eq!(vllm(&[("tokenizer_config.json", tokenizer)]), Ok(()));
 }

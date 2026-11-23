@@ -89,7 +89,7 @@ fn a_chat_template_is_at_most_64_kib() {
         json: &[],
         template_file: Some(MAX_TEMPLATE_BYTES + 1),
     };
-    assert_eq!(check_copy(Runtime::Vllm, &over), REFUSED);
+    assert_eq!(check_copy(Runtime::MlxLm, &over), REFUSED);
 }
 
 #[test]

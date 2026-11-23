@@ -44,10 +44,17 @@ pub struct CopyFiles<'a> {
 /// # Errors
 ///
 /// `remote_code` when a file asks for remote code or names a class that is not in the list of
-/// the runtime, a file does not read or is too large, a name is not a checked JSON file, or a
+/// the runtime, a runtime with a class list has no `config.json`, a file does not read or is too large, a name is not a checked JSON file, or a
 /// chat template is longer than [`MAX_TEMPLATE_BYTES`].
 pub fn check_copy(runtime: Runtime, files: &CopyFiles<'_>) -> Result<(), Cause> {
     let list = classes::architectures(runtime);
+    let has_config = files
+        .json
+        .iter()
+        .any(|(name, _)| name.rsplit('/').next() == Some("config.json"));
+    if list.is_some() && !has_config {
+        return Err(Cause::RemoteCode);
+    }
     for (name, bytes) in files.json {
         let base = name.rsplit('/').next().unwrap_or_default();
         match base {
@@ -84,7 +91,7 @@ fn check_classes(
         ("architectures", Some(Value::Array(names))) => {
             !names.is_empty() && names.iter().all(allowed)
         }
-        ("tokenizer_class", None) => true,
+        ("tokenizer_class", None | Some(Value::Null)) => true,
         ("tokenizer_class", Some(value)) => allowed(value),
         _ => false,
     };
