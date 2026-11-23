@@ -46,6 +46,11 @@ impl Kit {
     /// A kit with no runner yet.
     pub(super) fn unstarted(claude: &str) -> Self {
         use std::os::unix::fs::PermissionsExt as _;
+        // On Linux the temporary folder is `/tmp`, where the Git engine refuses its records while
+        // each agent gets the `TMPDIR` of the login (THR-050): the kit lives in the build folder.
+        #[cfg(target_os = "linux")]
+        let home = tempfile::tempdir_in(env!("CARGO_TARGET_TMPDIR")).expect("a folder");
+        #[cfg(not(target_os = "linux"))]
         let home = tempfile::tempdir().expect("a folder");
         let bin = home.path().join("bin");
         std::fs::create_dir(&bin).expect("bin");
