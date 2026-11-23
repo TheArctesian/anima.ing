@@ -261,21 +261,22 @@ code { font-family: var(--font-mono); font-size: .92em; }
 
 /* 5 device */
 .screen .setup-action { min-block-size: 44px; align-self: start; padding-inline: 8px; border: 0; background: transparent; color: var(--accent); font-size: 13px; }
-.devname { margin: 2px 0 8px; font-size: 24px; font-weight: 400; letter-spacing: -0.01em; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.device-section { margin: 0; padding-block: 16px 8px; border-top: 1px solid var(--border-subtle); font-size: 14px; font-weight: 500; }
+.devname { margin: 0; font-size: 24px; font-weight: 500; letter-spacing: -0.01em; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .statline { display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 14px; }
-.hostline { display: flex; align-items: center; gap: 4px; margin-top: 2px; color: var(--text-secondary); font-size: 14px; }
-.figs { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 8px; border-block: 1px solid var(--border-subtle); }
-.figs div { padding: 10px 0 10px 12px; border-left: 1px solid var(--border-subtle); }
+.hostline { display: flex; align-items: center; gap: 4px; color: var(--text-secondary); font-size: 14px; }
+.figs { display: grid; grid-template-columns: repeat(3, 1fr); border-block: 1px solid var(--border-subtle); }
+.figs div { padding: 8px 0 8px 12px; border-left: 1px solid var(--border-subtle); }
 .figs div:first-child { padding-left: 0; border-left: 0; }
-.figs small { display: block; color: var(--text-tertiary); font-size: 12px; }
-.figs b { font-size: 16px; font-weight: 400; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
-.beats { display: flex; gap: 2px; block-size: 22px; margin-top: 6px; }
+.figs small { display: block; color: var(--text-secondary); font-size: 14px; }
+.figs b { font-size: 14px; font-weight: 400; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.beats { display: flex; gap: 2px; block-size: 12px; margin-top: 6px; }
 .beats i { flex: 1; background: var(--status-up); border-radius: 1px; opacity: .85; }
 .beats i.d { background: var(--status-degraded); opacity: 1; } .beats i.x { background: var(--status-down); opacity: 1; }
 .beatcap { display: flex; justify-content: space-between; margin-top: 10px; color: var(--text-tertiary); font-size: 12px; }
 .dtabs { position: relative; margin: 10px -20px 0; border-bottom: 1px solid var(--border-subtle); }
-.dtabs .in { display: flex; gap: 4px; padding-left: 12px; overflow: hidden; white-space: nowrap; }
-.dtabs span { display: grid; place-items: center; block-size: 46px; padding: 0 12px; color: var(--text-secondary); font-size: 15px; flex: none; }
+.dtabs .in { display: flex; gap: 4px; padding-inline: 8px; overflow: hidden; white-space: nowrap; }
+.dtabs span { display: grid; place-items: center; block-size: 44px; padding: 0 12px; color: var(--text-secondary); font-size: 14px; flex: none; }
 .dtabs span.on { color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); }
 .dtabs::after { content: ""; position: absolute; inset: 0 0 1px auto; inline-size: 56px; background: linear-gradient(90deg, transparent, var(--surface-base)); }
 .chk { display: flex; align-items: center; gap: 12px; block-size: 46px; border-bottom: 1px solid var(--border-subtle); font-size: 15px; }
@@ -522,13 +523,16 @@ a:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid 
         <div class="navrow"><button class="back"><svg class="i"><use href="#i-left"/></svg>Devices</button><button class="iconbtn" aria-label="More"><svg class="i"><use href="#i-more"/></svg></button></div>
         <h3 class="devname">proxmox-ve-cluster-node-03.lab.okita.internal</h3>
         <div class="statline"><span class="badge degraded">Degraded</span>CPU 93%</div>
-        <div class="hostline"><span class="mono">10.0.20.3</span><button class="iconbtn" aria-label="Copy address" style="margin-block:-6px"><svg class="i sm"><use href="#i-copy"/></svg></button></div>
+        <div class="hostline"><span class="mono">10.0.20.3</span><button class="iconbtn" aria-label="Copy address" ><svg class="i sm"><use href="#i-copy"/></svg></button></div>
         <div class="figs"><div><small>Uptime 24 h</small><b>99.9%</b></div><div><small>30 d</small><b>99.7%</b></div><div><small>Response</small><b>12 ms</b></div></div>
         <div class="beatcap"><span>Last 50 checks</span><span>now</span></div>
         <div class="beats" data-beats></div>
-        <div class="dtabs"><div class="in"><span class="on">Overview</span><span>Checks</span><span>Metrics</span><span>Events</span><span>Sessions</span><span>Settings</span></div></div>
+        <div class="dtabs"><div class="in"><span class="on">Overview</span><span>Checks</span><span>Containers</span><span>Sessions</span><span>Logs</span><span>Settings</span></div></div>
         <button class="setup-action">+ Set up RDP</button>
         <div class="scroll">
+          <h4 class="device-section">Metrics</h4>
+          <div class="chk"><span class="nm">CPU</span><span class="v">93%</span></div>
+          <h4 class="device-section">Checks</h4>
           <div class="chk"><i class="dot up"></i><span class="nm">Ping</span><span class="v">12 ms</span></div>
           <div class="chk"><i class="dot up"></i><span class="nm">SSH 22</span><span class="v">3 ms</span></div>
           <div class="chk"><i class="dot up"></i><span class="nm">Web 8006</span><span class="v">84 ms</span></div>
@@ -539,7 +543,7 @@ a:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid 
         </div>
         <div class="connect"><button class="btn pri"><svg class="i"><use href="#i-term"/></svg>SSH</button><button class="btn"><svg class="i"><use href="#i-screen"/></svg>VNC</button></div>
       </div></div>
-        <figcaption><b>5 · Device page</b><span class="tag">dark, iOS</span><p>Ready connections stay in the dock. Setup is an inline action under the tabs. The name wraps to two lines. Tabs scroll.</p></figcaption></figure>
+        <figcaption><b>5 · Device page</b><span class="tag">dark, iOS</span><p>Ready connections stay in the dock. Setup is an inline action under the tabs. The name wraps to two lines. Tabs scroll and Metrics leads the Overview.</p></figcaption></figure>
 
       <figure class="shot"><div class="phone gd ios"><div class="screen" data-tabs="logs"><div class="body tabsroom">
         <div class="pagehead"><h3 class="display">Logs</h3><button class="iconbtn fill" aria-label="Search logs"><svg class="i"><use href="#i-search"/></svg></button></div>

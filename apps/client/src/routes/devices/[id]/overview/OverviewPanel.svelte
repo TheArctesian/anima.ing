@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import { isHubDevice } from '$lib/devices/actions/actions';
   import type { DeviceStatus } from '$lib/devices/card/card';
   import type { DaemonNeed, MetricsSource } from '$lib/hub/generated/graphql';
@@ -46,9 +47,10 @@
     onSection?: ((section: SettingsSection | null) => void) | undefined;
     /** Asks the hub what it keeps; the card is drawn only for the hub's own device (HMD-073). */
     readKept?: (() => Promise<HubKept>) | undefined;
+    checksSummary?: Snippet | undefined;
   }
 
-  const { device, checks, metrics, range, vpn = null, now, clock, onRange, onRetry, onSettings, onConnect, onOpenWeb, onSection, readKept }: Props = $props();
+  const { device, checks, metrics, range, vpn = null, now, clock, onRange, onRetry, onSettings, onConnect, onOpenWeb, onSection, readKept, checksSummary }: Props = $props();
 </script>
 
 <!-- Facts and metrics lead the Overview. On narrow layouts, connection and device details move below them. -->
@@ -58,6 +60,8 @@
       <OverviewFacts {device} {checks} hostKey={false} />
 
       <MetricsSection source={device.metricsSource} {metrics} {range} {now} {clock} {onRange} {onRetry} {onSettings} container={isHubDevice(device)} needLine={daemonNeedLine(device, thisComputerDevice.id)} />
+
+      {@render checksSummary?.()}
 
       <!-- The hub's own device lists no drives: its disk is the bytes of its data, in "Plan and usage" (HMD-072). -->
       {#if !isHubDevice(device)}
@@ -73,6 +77,7 @@
       {#if onConnect !== undefined && onSection !== undefined}
         <ConnectCard {device} {onConnect} {onOpenWeb} onSettings={onSection} />
       {/if}
+      <AboutCard {device} />
       {#if isHubDevice(device)}
         <!-- HMD-073: the page of the hub asks the account for the figures of its plan; the hub holds none. -->
         <PlanUsageCard read={() => readAccountUsage()} dataBytes={hubDataBytes(metrics.view?.series ?? [])} {now} />
@@ -80,7 +85,6 @@
       {/if}
       <!-- No session reaches the container of the hub, so it has no host key to show (HMD-046). -->
       {#if !isHubDevice(device)}<HostKeyCard ssh={device.ssh} />{/if}
-      <AboutCard {device} />
     </aside>
   </div>
 </div>

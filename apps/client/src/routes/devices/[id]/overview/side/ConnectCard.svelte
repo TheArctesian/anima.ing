@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '$lib/icons/Icon.svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
   import type { SessionProtocol } from '$lib/sessions/tabs';
   import type { WebInterface } from '$lib/web-interfaces/api';
@@ -27,7 +28,7 @@
 
 <!-- Each way in to the device as a row: its name, one line of detail and its button (R-224, DEV-022, WEB-001). -->
 <section class="overview-card connect" aria-labelledby="overview-connect">
-  <h2 id="overview-connect" class="overview-card-title">Connect</h2>
+  <h2 id="overview-connect" class="overview-card-title"><Icon name="carbon:login" />Connect</h2>
   <ul>
     {#each ways as way (way.key)}
       <li>
@@ -60,6 +61,11 @@
     min-block-size: var(--space-12);
     padding-block: var(--space-2);
     border-block-start: var(--border-thin) solid var(--border-subtle);
+  }
+
+  li:first-child {
+    border-block-start: 0;
+    padding-block-start: 0;
   }
 
   .way {

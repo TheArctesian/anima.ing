@@ -36,20 +36,22 @@
     <button type="button" class="iconbtn" aria-label="Settings of {device.name}" onclick={onSettings} {@attach press()}><Icon name="carbon:overflow-menu-vertical" /></button>
   </div>
   <h1 class="name">{device.name}</h1>
-  <p class="status" aria-live="polite">
-    {#if device.status === 'UP'}
-      <span class="dot up" aria-hidden="true"></span>{statusLabel(device.status)}
-    {:else}
-      <span class="badge {device.status.toLowerCase()}">{statusLabel(device.status)}</span>
-    {/if}
-    {#if reason !== null}<span class="why">{reason}</span>{/if}
-  </p>
-  <p class="host">
-    <span class="mono">{device.host}</span>
-    <button type="button" class="iconbtn" aria-label={copied ? 'Address copied' : 'Copy address'} onclick={() => void copyHost()} {@attach press()}
-      ><Icon name="carbon:copy" size="sm" /></button
-    >
-  </p>
+  <div class="device-meta">
+    <p class="status" aria-live="polite">
+      {#if device.status === 'UP'}
+        <span class="dot up" aria-hidden="true"></span>{statusLabel(device.status)}
+      {:else}
+        <span class="badge {device.status.toLowerCase()}">{statusLabel(device.status)}</span>
+      {/if}
+      {#if reason !== null}<span class="why">{reason}</span>{/if}
+    </p>
+    <p class="host">
+      <span class="mono">{device.host}</span>
+      <button type="button" class="iconbtn" aria-label={copied ? 'Address copied' : 'Copy address'} onclick={() => void copyHost()} {@attach press()}
+        ><Icon name="carbon:copy" size="sm" /></button
+      >
+    </p>
+  </div>
   <dl class="figs">
     <div><dt>Uptime 24 h</dt><dd>{uptimeText(device.day ?? null, true)}</dd></div>
     <div><dt>30 d</dt><dd>{uptimeText(device.month ?? null, true)}</dd></div>

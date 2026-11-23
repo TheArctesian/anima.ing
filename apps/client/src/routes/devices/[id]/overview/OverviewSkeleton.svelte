@@ -60,9 +60,9 @@
     </div>
     <div class="overview-side" aria-hidden="true">
       <div class="overview-card side-ghost"></div>
+      <div class="overview-card side-ghost"></div>
       <!-- The host key card with the loaded card's text, hidden, so it wraps to the same lines (MOT-007). -->
       <div class="ghost" inert><HostKeyCard ssh={shape.ssh} /></div>
-      <div class="overview-card side-ghost"></div>
     </div>
   </div>
 </div>

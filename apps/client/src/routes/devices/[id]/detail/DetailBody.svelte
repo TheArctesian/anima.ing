@@ -159,6 +159,10 @@
   <Tabs items={TAB_ITEMS} selected={place.tab} label="Device" idPrefix="device" onSelect={(tab) => { if (isTab(tab)) go({ tab, section: null, range: 'HOUR' }); }} />
 {/snippet}
 
+{#snippet phoneChecks()}
+  <PhoneChecks checks={detail.checks ?? []} />
+{/snippet}
+
 {#snippet overviewSkeleton()}
   <OverviewSkeleton range={place.range} source={metricsSource ?? 'NONE'} ssh={device?.ssh ?? null} {now} />
 {/snippet}
@@ -189,7 +193,6 @@
         {#if detail.checksError !== null}
           {@render checksFailure(detail.checksError.message)}
         {:else if device !== null}
-          {#if phone}<PhoneChecks checks={detail.checks ?? []} />{/if}
           <OverviewPanel
             {device}
             checks={detail.checks ?? []}
@@ -204,6 +207,7 @@
             onOpenWeb={openWeb}
             onSection={settings}
             readKept={() => readKept(hub)}
+            checksSummary={phone ? phoneChecks : undefined}
           />
         {/if}
       </TabPanel>

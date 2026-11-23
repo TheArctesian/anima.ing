@@ -1,6 +1,6 @@
 /*
  * The device page in the phone layout, with the sizes of mockup 5 (docs/mockup/mobile/index.html): a back row of
- * 44 px, a name of 24 px on two lines at most, figures of 20 px, a bar of 22 px, tabs of 46 px that scroll, check rows
+ * 44 px, a name of 24 px on two lines at most, uniform figures, a narrow heartbeat strip, scrollable touch tabs, check rows
  * of 46 px, and connect buttons of 48 px docked above the navigation bar. The selectors start at `:root` so they win
  * over the scoped rules of the shared components they restyle.
  */
@@ -13,17 +13,17 @@
   align-items: center;
   justify-content: space-between;
   block-size: var(--target-min-touch);
-  margin-inline: calc(var(--space-2) * -1 - var(--border-focus));
+  margin-inline: calc(var(--space-1) * -1);
 }
 
 :root .phone-device-head .back {
   display: inline-flex;
   align-items: center;
-  gap: var(--border-focus);
+  gap: var(--space-1);
   block-size: var(--target-min-touch);
-  padding: 0 var(--space-2) 0 var(--space-1);
+  padding: 0 var(--space-2) 0 0;
   color: var(--text-secondary);
-  font-size: var(--text-lg);
+  font-size: var(--text-md);
   text-decoration: none;
 }
 
@@ -42,16 +42,23 @@
 
 :root .phone-device-head .name {
   display: -webkit-box;
-  margin: var(--border-focus) 0 var(--space-2);
+  margin: 0;
   overflow: hidden;
   font-size: var(--text-2xl);
-  font-weight: var(--weight-regular);
+  font-weight: var(--weight-medium);
   line-height: 1.25;
   letter-spacing: var(--tracking-small);
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
+}
+
+:root .phone-device-head .device-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-3);
 }
 
 :root .phone-device-head .status,
@@ -68,6 +75,11 @@
   min-inline-size: 0;
 }
 
+:root .phone-device-head .status:has(.why) {
+  flex-basis: 100%;
+  padding-block-start: var(--space-2);
+}
+
 :root .phone-device-head .why {
   min-inline-size: 0;
   overflow: hidden;
@@ -77,26 +89,29 @@
 
 :root .phone-device-head .host {
   gap: var(--space-1);
-  margin-block-start: var(--border-focus);
+  min-inline-size: 0;
 }
 
 :root .phone-device-head .host .iconbtn {
-  margin-block: calc(var(--space-2) * -1 + var(--border-focus) * -1);
+  flex: none;
 }
 
 :root .phone-device-head .mono {
+  overflow: hidden;
   font-family: var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 :root .phone-device-head .figs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  margin: var(--space-2) 0 0;
+  margin: 0;
   border-block: var(--border-thin) solid var(--border-subtle);
 }
 
 :root .phone-device-head .figs div {
-  padding: calc(var(--space-2) + var(--border-focus)) 0 calc(var(--space-2) + var(--border-focus)) var(--space-3);
+  padding: var(--space-2) 0 var(--space-2) var(--space-3);
   border-inline-start: var(--border-thin) solid var(--border-subtle);
 }
 
@@ -106,13 +121,13 @@
 }
 
 :root .phone-device-head .figs dt {
-  color: var(--text-tertiary);
-  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-size: var(--text-md);
 }
 
 :root .phone-device-head .figs dd {
   margin: 0;
-  font-size: var(--text-lg);
+  font-size: var(--text-md);
   font-variant-numeric: tabular-nums;
   letter-spacing: var(--tracking-small);
 }
@@ -128,7 +143,7 @@
 /* The bar spans the page and its cells share the width (mockup 5). */
 :root .phone-device-head .bar {
   inline-size: 100%;
-  block-size: calc(var(--space-5) + var(--border-focus));
+  block-size: var(--space-3);
   margin-block-start: calc(var(--space-1) + var(--border-focus));
 }
 
@@ -203,13 +218,13 @@
 
 :root .phone-device-tabs .tabs {
   gap: var(--space-1);
-  padding-inline-start: var(--space-3);
+  padding-inline: max(0px, var(--page-gutter) - var(--space-3));
 }
 
 :root .phone-device-tabs .tabs button {
-  min-block-size: calc(var(--space-12) - var(--border-focus));
+  min-block-size: var(--target-min-touch);
   padding: 0 var(--space-3);
-  font-size: var(--text-phone-row);
+  font-size: var(--text-md);
 }
 
 :root .phone-device-tabs .tabs button :is(svg, .count) {
@@ -217,7 +232,7 @@
 }
 
 :root .phone-device-checks {
-  margin: 0 0 var(--space-4);
+  margin: 0;
   padding: 0;
   list-style: none;
 }

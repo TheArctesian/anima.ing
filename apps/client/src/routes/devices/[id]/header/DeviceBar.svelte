@@ -110,7 +110,7 @@
   {/if}
 {/snippet}
 
-<!-- The device's detail bar (D16, DEV-020): Devices / its OS mark and name, its status and address, one split button
+<!-- The device's detail bar (D16, DEV-020): back to Devices, the OS mark and name, its status and address, one split button
      to connect and Edit, the reason it is not up, and the tabs. -->
 <DetailBar
   back={{ to: '/devices', label: 'Devices' }}
@@ -125,6 +125,9 @@
 
 <style>
   .status {
+    --status-slot-width: auto;
+    --status-label-align: start;
+
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);

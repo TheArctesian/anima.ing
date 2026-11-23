@@ -14,6 +14,10 @@
   gap: var(--space-8) var(--space-5);
 }
 
+.chart-grid > :only-child {
+  grid-column: 1 / -1;
+}
+
 /*
  * The Overview in two columns from a panel of 68rem: the main column, and a column of fixed width for the sections
  * "Connect" and "About". The widths are fixed, so a card that arrives moves nothing (R-224, MOT-007).
@@ -28,14 +32,23 @@
 .overview-side {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
   min-inline-size: 0;
+}
+
+@container (42rem <= inline-size < 68rem) {
+  .overview-side {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-5);
+    align-items: start;
+  }
 }
 
 @container (min-inline-size: 68rem) {
   .overview-columns {
     display: grid;
     grid-template-columns: minmax(0, 1fr) calc(var(--space-16) * 4.5);
+    column-gap: var(--space-6);
     align-items: start;
   }
 }
@@ -48,7 +61,7 @@
   gap: var(--space-3);
   min-inline-size: 0;
   margin: 0;
-  padding-block: var(--space-4);
+  padding-block: var(--space-4) var(--space-5);
   border-block-start: var(--border-thin) solid var(--border-subtle);
   background: transparent;
 }
@@ -61,12 +74,14 @@
   min-block-size: calc(var(--text-lg) * var(--leading-normal));
   margin: 0;
   color: var(--text);
-  font-size: var(--text-lg);
+  font-size: var(--text-md);
   font-weight: var(--weight-medium);
   line-height: var(--leading-normal);
 }
 
 .overview-card-title > .icon {
+  inline-size: 1em;
+  block-size: 1em;
   color: var(--text-secondary);
 }
 
@@ -84,15 +99,6 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   column-gap: var(--space-5);
-}
-
-.overview-facts .overview-card-title {
-  font-size: var(--text-md);
-}
-
-.overview-facts .overview-card-title > .icon {
-  inline-size: 1em;
-  block-size: 1em;
 }
 
 @container (min-inline-size: 34rem) {

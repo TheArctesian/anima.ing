@@ -132,7 +132,7 @@
 
   .range {
     display: flex;
-    gap: var(--space-1);
+    gap: 0;
   }
 
   .range button {
@@ -194,7 +194,7 @@
   }
 
   .tile-now {
-    font-size: var(--text-lg);
+    font-size: inherit;
     color: var(--text);
     font-weight: var(--weight-medium);
     font-variant-numeric: tabular-nums;
