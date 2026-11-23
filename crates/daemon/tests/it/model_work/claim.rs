@@ -115,7 +115,10 @@ async fn cap_013_a_model_drain_succeeds_within_its_seconds_and_stops_no_server()
     let client = HubClient::new(hub.url.clone(), TIMEOUT).expect("a client");
     let root = tempfile::tempdir().expect("a folder");
     let mut node = node(root.path());
-    hub.queue_claim(Reply::json(200, &item("model_drain", &json!({ "seconds": 60 }))));
+    hub.queue_claim(Reply::json(
+        200,
+        &item("model_drain", &json!({ "seconds": 60 })),
+    ));
     let start = std::time::Instant::now();
     node.cycle(&client, &token()).await.expect("a cycle");
     assert!(start.elapsed() <= std::time::Duration::from_secs(60));
