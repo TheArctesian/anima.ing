@@ -133,9 +133,14 @@
     }
   }
 
+  /* Reduced motion follows the Settings choice (MOT-043): On reduces whatever the OS says, Off keeps full motion. */
   @media (prefers-reduced-motion: reduce) {
-    .chevron {
+    :global(:root:not([data-motion='full'])) .chevron {
       transition: none;
     }
+  }
+
+  :global(:root[data-motion='reduce']) .chevron {
+    transition: none;
   }
 </style>

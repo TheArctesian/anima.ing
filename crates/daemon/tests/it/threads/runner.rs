@@ -46,9 +46,11 @@ impl Kit {
     /// A kit with no runner yet.
     pub(super) fn unstarted(claude: &str) -> Self {
         use std::os::unix::fs::PermissionsExt as _;
-        // Git records must stay outside the shared agent temporary directory.
-        let root = std::fs::canonicalize("/var/tmp").expect("the persistent temporary directory");
-        let home = tempfile::tempdir_in(root).expect("a folder");
+        // Keep Git records outside shared `/tmp` and socket paths short in deep checkouts.
+        #[cfg(target_os = "linux")]
+        let home = tempfile::tempdir_in("/var/tmp").expect("a folder");
+        #[cfg(not(target_os = "linux"))]
+        let home = tempfile::tempdir().expect("a folder");
         let bin = home.path().join("bin");
         std::fs::create_dir(&bin).expect("bin");
         for (name, text) in [("claude", claude), ("codex", CODEX), ("login-shell", SHELL)] {

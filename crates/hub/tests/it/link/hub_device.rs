@@ -94,7 +94,8 @@ impl Home {
         if let Some(control) = control {
             hub.env("ANIMA_LINK_SOCKET", file("link.sock"))
                 .env("ANIMA_LINK_CONTROL", control)
-                .env("ANIMA_HOSTED_CLOUD_KEY_FILE", file("cloud_key"));
+                .env("ANIMA_HOSTED_CLOUD_KEY_FILE", file("cloud_key"))
+                .env("ANIMA_PROBE_DENY", "192.0.2.0/24");
         }
         Running(hub.spawn().unwrap())
     }

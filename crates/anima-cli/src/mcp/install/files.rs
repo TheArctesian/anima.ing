@@ -12,6 +12,10 @@ use std::os::unix::fs::{
 };
 use std::path::{Path, PathBuf};
 
+use super::access::{Groups, Others, Writer};
+#[cfg(unix)]
+use super::access::{account, mode_writer};
+
 /// The most a configuration file may hold: a hostile file cannot make the reader use more.
 pub const LIMIT: u64 = 1024 * 1024;
 
@@ -25,8 +29,9 @@ pub enum FileError {
     Link,
     #[error("it is not a regular file")]
     NotAFile,
-    #[error("a different user owns it or can write it or its folder")]
-    Shared,
+    /// A different user owns it or can write it or its folder (R-442).
+    #[error("{0}")]
+    Shared(Others),
     #[error("it is larger than 1 MiB")]
     TooLarge,
     #[error("it is not UTF-8 text")]
@@ -37,11 +42,13 @@ pub enum FileError {
     Io(#[from] io::Error),
 }
 
-/// The home folder that every configuration file is below, and the user that must own each part.
+/// The home folder that every configuration file is below, the user that must own each part, and
+/// the groups whose members decide who else can write a part.
 #[derive(Clone, Copy, Debug)]
 pub struct Root<'a> {
     pub home: &'a Path,
     pub user: u32,
+    pub groups: &'a Groups,
 }
 
 /// The folder and the name of `path`; a path with neither is refused as not a file.
@@ -80,8 +87,8 @@ fn check_path(root: Root<'_>, path: &Path) -> Result<(), FileError> {
         if last != metadata.is_file() {
             return Err(FileError::NotAFile);
         }
-        if shared(&at, &metadata, root.user)? {
-            return Err(FileError::Shared);
+        if let Some(others) = shared(&at, &metadata, root)? {
+            return Err(FileError::Shared(others));
         }
     }
     Ok(())
@@ -111,8 +118,11 @@ pub fn read(root: Root<'_>, path: &Path) -> Result<Option<String>, FileError> {
         return Err(FileError::NotAFile);
     }
     #[cfg(unix)]
-    if open_to_others(&metadata, root.user) {
-        return Err(FileError::Shared);
+    if let Some(writer) = writer(&metadata, root.user, root.groups) {
+        return Err(FileError::Shared(Others {
+            path: path.to_path_buf(),
+            writer,
+        }));
     }
     let mut bytes = Vec::new();
     file.take(LIMIT + 1).read_to_end(&mut bytes)?;
@@ -130,14 +140,16 @@ fn no_follow() -> i32 {
     i32::try_from(rustix::fs::OFlags::NOFOLLOW.bits()).unwrap_or_default()
 }
 
-/// Whether a different user can change what `metadata` describes: a different owner, a write bit
-/// for all, or a write bit for a group that is not the private group of the user (the group
-/// with the user's own number, which the usual Linux systems give each user).
+/// Who other than `user` can change what `metadata` describes: a different owner, each user, or a
+/// member other than `user` and root of a group that can write it (R-442).
 #[cfg(unix)]
 #[must_use]
-pub fn open_to_others(metadata: &fs::Metadata, user: u32) -> bool {
-    let mode = metadata.permissions().mode();
-    metadata.uid() != user || mode & 0o002 != 0 || (mode & 0o020 != 0 && metadata.gid() != user)
+pub fn writer(metadata: &fs::Metadata, user: u32, groups: &Groups) -> Option<Writer> {
+    if metadata.uid() == user {
+        mode_writer(metadata.permissions().mode(), metadata.gid(), user, groups)
+    } else {
+        Some(Writer::Owner(account(metadata.uid())))
+    }
 }
 
 /// The path of the copy of `path` as it was (MCP-032).
@@ -198,11 +210,12 @@ fn keep_copy(root: Root<'_>, path: &Path, mode: u32, before: &str) -> Result<(),
     let (folder, _) = parts(path)?;
     let copy = copy_path(path);
     match fs::symlink_metadata(&copy) {
-        Ok(metadata) if metadata.is_file() && !shared(&copy, &metadata, root.user)? => {
-            return Ok(());
+        Ok(metadata) if metadata.is_file() => {
+            return shared(&copy, &metadata, root)?
+                .map_or(Ok(()), |others| Err(FileError::Shared(others)));
         }
         Ok(metadata) if metadata.file_type().is_symlink() => return Err(FileError::Link),
-        Ok(_) => return Err(FileError::Shared),
+        Ok(_) => return Err(FileError::NotAFile),
         Err(error) if error.kind() == io::ErrorKind::NotFound => {}
         Err(error) => return Err(error.into()),
     }
@@ -225,12 +238,22 @@ mod tests;
     clippy::unnecessary_wraps,
     reason = "Windows ACL inspection can fail; both platforms share this fallible boundary"
 )]
-fn shared(_: &Path, metadata: &fs::Metadata, user: u32) -> io::Result<bool> {
-    Ok(open_to_others(metadata, user))
+fn shared(path: &Path, metadata: &fs::Metadata, root: Root<'_>) -> io::Result<Option<Others>> {
+    Ok(
+        writer(metadata, root.user, root.groups).map(|writer| Others {
+            path: path.to_path_buf(),
+            writer,
+        }),
+    )
 }
 #[cfg(windows)]
-fn shared(path: &Path, _: &fs::Metadata, _: u32) -> io::Result<bool> {
-    anima_windows::files::secure(path, false).map(|secure| !secure)
+fn shared(path: &Path, _: &fs::Metadata, _: Root<'_>) -> io::Result<Option<Others>> {
+    anima_windows::files::secure(path, false).map(|secure| {
+        (!secure).then(|| Others {
+            path: path.to_path_buf(),
+            writer: Writer::AccessList,
+        })
+    })
 }
 #[cfg(unix)]
 fn permissions(path: &Path) -> u32 {
