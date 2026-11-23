@@ -5,7 +5,7 @@
 use std::io::Write as _;
 use std::path::Path;
 
-use agent_threads::control::{Change, Limits, Listing, Project, RunState, Workspace};
+use agent_threads::control::{Change, Limits, Listing, Project, Queued, RunState, Workspace};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -224,5 +224,41 @@ impl Runner {
                 false
             }
         }
+    }
+}
+
+impl Runner {
+    /// Whether `line` of thread `id` is held back. A turn that leaves the profile may be taken
+    /// while the runner is down: the record says that the profile is gone before its line goes,
+    /// or the line does not go and the turn ends (THR-041).
+    pub(super) fn held_back(&mut self, id: Uuid, line: &str) -> bool {
+        let leaves = self
+            .threads
+            .get(&id)
+            .is_some_and(|thread| thread.leaves_with(line));
+        if !leaves || self.written() {
+            return false;
+        }
+        let ended = self
+            .threads
+            .get_mut(&id)
+            .map(|thread| thread.held_back(line));
+        for step in ended.unwrap_or_default() {
+            self.own_step(id, step, None);
+        }
+        true
+    }
+
+    /// The prompt of the queue whose line was held back waits again, first; whether it does.
+    pub(super) fn waits_first(&mut self, id: Uuid, queued: &Queued) -> bool {
+        let back = self
+            .threads
+            .get_mut(&id)
+            .and_then(|thread| thread.put_back(queued.id, queued.text.clone()));
+        let waits = back.is_some();
+        if let Some(back) = back {
+            self.own_step(id, back, None);
+        }
+        waits
     }
 }

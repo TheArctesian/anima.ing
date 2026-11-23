@@ -62,7 +62,7 @@ async fn th98_an_older_holder_is_named_kept_while_a_thread_runs_and_replaced_aft
             attachments: Vec::new(),
         })
         .await;
-    let Outcome::Started { thread } = client.done(start).await else {
+    let Outcome::Started { thread, .. } = client.done(start).await else {
         panic!("the thread started");
     };
     let first = holder_pid(&kit.threads()).expect("a holder");

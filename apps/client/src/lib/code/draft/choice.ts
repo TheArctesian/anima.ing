@@ -2,6 +2,7 @@ import type { ModelLists } from '$lib/agent-threads/live/models';
 import type { Effort, Mode } from '$lib/agent-threads/live/run';
 import { programName, type Program } from '$lib/agent-threads/thread';
 import { CAN, cannot } from '../composer/draft';
+import { PROGRAM_ICONS } from '../icons/program';
 import { PERMISSION_MODES, type Catalogue, type Choice, type EffortLevel, type PermissionMode } from '../composer/picker/catalogue';
 
 /** What a new thread starts with, as the composer's pickers set it before the first send. */
@@ -22,6 +23,23 @@ const EFFORT_WORDS: Readonly<Record<Effort, string>> = { low: 'Low', medium: 'Me
 const EFFORTS = Object.keys(EFFORT_WORDS) as Effort[];
 const DEFAULT = 'default';
 
+/**
+ * The efforts each program takes when no model names its own: Claude Code the closed list of `claude --help`, Codex
+ * the reasoning efforts of its app server that the runner can name (it has no "max").
+ */
+const PROGRAM_EFFORTS: Readonly<Record<Program, readonly Effort[]>> = {
+  claude_code: ['low', 'medium', 'high', 'xhigh', 'max'],
+  codex: ['low', 'medium', 'high', 'xhigh'],
+};
+
+/** The runner's answer to `models`, as far as it came: the picker says why it shows only the default (TH104). */
+export type DraftModels =
+  | { readonly state: 'waiting' }
+  | { readonly state: 'failed'; readonly words: string }
+  | { readonly state: 'listed'; readonly lists: ModelLists };
+
+export const MODELS_WAITING: DraftModels = { state: 'waiting' };
+
 const NO_AUTO = 'The runner has no such mode.';
 const NO_PLAN = 'Codex has no plan mode.';
 const PLAN_MODE: PermissionMode = { id: 'plan', label: 'Plan', description: 'Plan the work; change no file and run no command.', icon: 'eye', can: CAN };
@@ -35,22 +53,31 @@ function modesOf(program: Program): readonly PermissionMode[] {
   return [...offered, program === 'codex' ? { ...PLAN_MODE, can: cannot(NO_PLAN) } : PLAN_MODE];
 }
 
-/** The models of each program: the ones the runner listed (TH104), else the program's default model alone. */
-function modelsOf(lists: ModelLists): Catalogue['models'] {
+/** Why the default stands alone, under its name; `undefined` once the program listed its models. */
+function defaultNote(models: DraftModels, listed: number): string | undefined {
+  if (models.state === 'waiting') return 'Models load when the program answers';
+  if (models.state === 'failed') return `Models could not load: ${models.words}`;
+  return listed === 0 ? 'The program listed no models' : undefined;
+}
+
+/** The models of each program: its default, named for the program, then the ones the runner listed (TH104). */
+function modelsOf(models: DraftModels): Catalogue['models'] {
   return PROGRAMS.flatMap((program) => {
     const blank = { provider: program, favourite: false, can: CAN, speeds: [], toggles: [] } as const;
-    const listed = lists[program] ?? [];
-    if (listed.length === 0) return [{ ...blank, id: DEFAULT, label: 'Default model', efforts: EFFORTS.map(level) }];
-    return listed.map((model) => ({ ...blank, id: model.id, label: model.label, efforts: EFFORTS.filter((effort) => model.efforts.includes(effort)).map(level) }));
+    const listed = models.state === 'listed' ? (models.lists[program] ?? []) : [];
+    const note = defaultNote(models, listed.length);
+    const own = { ...blank, id: DEFAULT, label: `${programName(program)} default`, efforts: PROGRAM_EFFORTS[program].map(level) };
+    const named = listed.map((model) => ({ ...blank, id: model.id, label: model.label, efforts: EFFORTS.filter((effort) => model.efforts.includes(effort)).map(level) }));
+    return [note === undefined ? own : { ...own, subLabel: note }, ...named];
   });
 }
 
 /** The picker's catalogue and choice for a thread that has not started: both programs, each with its models. */
-export function draftCatalogue(choice: DraftChoice, lists: ModelLists): { catalogue: Catalogue; choice: Choice } {
+export function draftCatalogue(choice: DraftChoice, models: DraftModels): { catalogue: Catalogue; choice: Choice } {
   return {
     catalogue: {
-      providers: PROGRAMS.map((program) => ({ id: program, name: programName(program), icon: 'bot', can: CAN })),
-      models: modelsOf(lists),
+      providers: PROGRAMS.map((program) => ({ id: program, name: programName(program), icon: PROGRAM_ICONS[program], can: CAN })),
+      models: modelsOf(models),
       modes: modesOf(choice.program),
     },
     choice: { provider: choice.program, model: choice.model ?? DEFAULT, effort: choice.effort, speed: null, toggles: [], mode: MODE_IDS[choice.mode] },

@@ -159,7 +159,7 @@ pub async fn send(
     ];
     // A push needs the history, which only the repository of the person has; the remote
     // checks each object that it gets.
-    let push = own::borrowing(Run::new(dir, push), &worktree.record().common_dir)
+    let push = Run::new(dir, push)
         .for_the_person()
         .with_time(REMOTE_TIME)
         // In the environment: a URL can hold a credential, and each user reads arguments.

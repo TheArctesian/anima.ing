@@ -13,6 +13,8 @@
 
 use std::path::{Component, Path, PathBuf};
 
+use super::super::place::walk::{Dir, Make};
+
 /// The path of a file inside a worktree as `git` printed it.
 #[cfg(unix)]
 #[must_use]
@@ -38,196 +40,119 @@ pub fn inside(path: &Path) -> bool {
         )
 }
 
+/// Whether a file with these properties can run.
 #[cfg(unix)]
-pub use held::Root;
-
-#[cfg(unix)]
-mod held {
-    use std::ffi::OsStr;
-    use std::fs::File;
-    use std::io;
-    use std::os::fd::OwnedFd;
-    use std::os::unix::fs::PermissionsExt as _;
-    use std::path::Path;
-
-    use rustix::fs::{AtFlags, Mode, OFlags, mkdirat, openat, readlinkat, symlinkat, unlinkat};
-
-    const FOLDER: OFlags = OFlags::DIRECTORY
-        .union(OFlags::NOFOLLOW)
-        .union(OFlags::CLOEXEC);
-    const FILE: OFlags = OFlags::NOFOLLOW
-        .union(OFlags::NONBLOCK)
-        .union(OFlags::CLOEXEC);
-
-    /// Makes the folder `part` in the open folder `at` and opens it. A link or a file that is
-    /// in the way goes first; a link is never followed.
-    fn made(at: &OwnedFd, part: &OsStr) -> io::Result<OwnedFd> {
-        let _ = unlinkat(at, part, AtFlags::empty());
-        match mkdirat(at, part, Mode::from_raw_mode(0o755)) {
-            Ok(()) | Err(rustix::io::Errno::EXIST) => {}
-            Err(failed) => return Err(failed.into()),
-        }
-        Ok(openat(at, part, FOLDER, Mode::empty())?)
-    }
-
-    /// The open folder of a worktree. Each path is found from it, part by part.
-    #[derive(Debug)]
-    pub struct Root(OwnedFd);
-
-    impl Root {
-        /// Opens the folder of a worktree; a link at its place is not opened.
-        ///
-        /// # Errors
-        /// The error of the system.
-        pub fn open(folder: &Path) -> io::Result<Self> {
-            Ok(Self(openat(
-                rustix::fs::CWD,
-                folder,
-                FOLDER,
-                Mode::empty(),
-            )?))
-        }
-
-        /// The open folder that holds the last part of `path`, and that part. With `make`, a
-        /// folder that is missing is made, and a file or a link in the place of a folder is
-        /// removed first. Without it, `None` when a part is no folder.
-        fn above<'a>(
-            &self,
-            path: &'a Path,
-            make: bool,
-        ) -> io::Result<Option<(OwnedFd, &'a OsStr)>> {
-            let name = path.file_name().ok_or(io::ErrorKind::InvalidInput)?;
-            let mut at = self.0.try_clone()?;
-            for part in path.parent().into_iter().flat_map(Path::components) {
-                let part = part.as_os_str();
-                let next = match openat(&at, part, FOLDER, Mode::empty()) {
-                    Ok(next) => next,
-                    Err(_) if make => made(&at, part)?,
-                    Err(_) => return Ok(None),
-                };
-                at = next;
-            }
-            Ok(Some((at, name)))
-        }
-
-        /// Copies the file or the link at `path` of the worktree to the same path below
-        /// `into`, a folder of the runner. A link is copied as a link, never followed. `false`
-        /// when there is no file and no link at the path.
-        ///
-        /// # Errors
-        /// The error of the system when the copy cannot be written.
-        pub fn take(&self, path: &Path, into: &Path) -> io::Result<bool> {
-            let Some((above, name)) = self.above(path, false)? else {
-                return Ok(false);
-            };
-            let copy = into.join(path);
-            if let Some(folder) = copy.parent() {
-                std::fs::create_dir_all(folder)?;
-            }
-            let Ok(found) = openat(&above, name, FILE | OFlags::RDONLY, Mode::empty()) else {
-                // Not opened: a link (its text is the copy), or nothing.
-                return match readlinkat(&above, name, Vec::new()) {
-                    Ok(to) => {
-                        let to: &OsStr = std::os::unix::ffi::OsStrExt::from_bytes(to.to_bytes());
-                        std::os::unix::fs::symlink(to, &copy).map(|()| true)
-                    }
-                    Err(_) => Ok(false),
-                };
-            };
-            let mut found = File::from(found);
-            let about = found.metadata()?;
-            if !about.is_file() {
-                return Ok(false);
-            }
-            let mut written = File::create(&copy)?;
-            io::copy(&mut found, &mut written)?;
-            let runs = about.permissions().mode() & 0o111 != 0;
-            let mode = if runs { 0o755 } else { 0o644 };
-            written.set_permissions(std::fs::Permissions::from_mode(mode))?;
-            Ok(true)
-        }
-
-        /// Writes the file or the link at `path` below `from`, a folder of the runner, to the
-        /// same path of the worktree. What was at the path is removed first; the new file is
-        /// made new, so a link put there in between is not written through.
-        ///
-        /// # Errors
-        /// The error of the system.
-        pub fn put(&self, path: &Path, from: &Path) -> io::Result<()> {
-            let source = from.join(path);
-            let about = std::fs::symlink_metadata(&source)?;
-            let (above, name) = self.above(path, true)?.ok_or(io::ErrorKind::InvalidInput)?;
-            if unlinkat(&above, name, AtFlags::empty()).is_err() {
-                // A folder at the place of a file: it goes when it is empty.
-                let _ = unlinkat(&above, name, AtFlags::REMOVEDIR);
-            }
-            if about.is_symlink() {
-                let to = std::fs::read_link(&source)?;
-                return Ok(symlinkat(to, &above, name)?);
-            }
-            let runs = about.permissions().mode() & 0o111 != 0;
-            let mode = Mode::from_raw_mode(if runs { 0o755 } else { 0o644 });
-            let new = OFlags::WRONLY | OFlags::CREATE | OFlags::EXCL | FILE;
-            let mut written = File::from(openat(&above, name, new, mode)?);
-            io::copy(&mut File::open(&source)?, &mut written)?;
-            Ok(())
-        }
-
-        /// Removes the file or the link at `path` of the worktree, and each folder above it
-        /// that is empty after. Nothing at the path is the wanted state.
-        ///
-        /// # Errors
-        /// The error of the system for a file that is there and cannot be removed.
-        pub fn remove(&self, path: &Path) -> io::Result<()> {
-            let Some((above, name)) = self.above(path, false)? else {
-                return Ok(());
-            };
-            match unlinkat(&above, name, AtFlags::empty()) {
-                Ok(()) | Err(rustix::io::Errno::NOENT) => {}
-                Err(failed) => return Err(failed.into()),
-            }
-            let mut folder = path.parent();
-            while let Some(empty) = folder.filter(|folder| folder.file_name().is_some()) {
-                let Some((above, name)) = self.above(empty, false)? else {
-                    break;
-                };
-                if unlinkat(&above, name, AtFlags::REMOVEDIR).is_err() {
-                    break;
-                }
-                folder = empty.parent();
-            }
-            Ok(())
-        }
-    }
+fn runs(about: &std::fs::Metadata) -> bool {
+    std::os::unix::fs::PermissionsExt::mode(&about.permissions()) & 0o111 != 0
 }
 
-/// A system where a path cannot be walked without following a link has no safe copy yet.
 #[cfg(not(unix))]
+const fn runs(_about: &std::fs::Metadata) -> bool {
+    false
+}
+
+/// Makes a link with the text `to` at `at`, a path in a folder of the runner.
+#[cfg(unix)]
+fn link(to: &std::ffi::OsStr, at: &Path) -> std::io::Result<()> {
+    std::os::unix::fs::symlink(to, at)
+}
+
+#[cfg(not(unix))]
+fn link(_to: &std::ffi::OsStr, _at: &Path) -> std::io::Result<()> {
+    Err(std::io::ErrorKind::Unsupported.into())
+}
+
+/// The open folder of a worktree. Each path is found from it, part by part.
 #[derive(Debug)]
-pub struct Root;
+pub struct Root(Dir);
 
-#[cfg(not(unix))]
 impl Root {
-    fn none<T>() -> std::io::Result<T> {
-        Err(std::io::Error::other(
-            "the files of a worktree cannot be read safely on this system yet",
-        ))
+    /// Opens the folder of a worktree; a link at its place is not opened.
+    ///
+    /// # Errors
+    /// The error of the system.
+    pub fn open(folder: &Path) -> std::io::Result<Self> {
+        Dir::open(folder).map(Self)
     }
 
-    pub fn open(_folder: &Path) -> std::io::Result<Self> {
-        Self::none()
+    /// Copies the file or the link at `path` of the worktree to the same path below `into`,
+    /// a folder of the runner. A link is copied as a link, never followed. `false` when
+    /// there is no file and no link at the path.
+    ///
+    /// # Errors
+    /// The error of the system when the copy cannot be written.
+    pub fn take(&self, path: &Path, into: &Path) -> std::io::Result<bool> {
+        let Some((above, name)) = self.0.above(path, Make::No)? else {
+            return Ok(false);
+        };
+        let copy = into.join(path);
+        if let Some(folder) = copy.parent() {
+            std::fs::create_dir_all(folder)?;
+        }
+        if let Some(to) = above.link(name) {
+            return link(&to, &copy).map(|()| true);
+        }
+        let Some(mut found) = above.file(name)? else {
+            return Ok(false);
+        };
+        let runs = runs(&found.metadata()?);
+        let mut written = std::fs::File::create(&copy)?;
+        std::io::copy(&mut found, &mut written)?;
+        if runs {
+            let mut can = written.metadata()?.permissions();
+            #[cfg(unix)]
+            std::os::unix::fs::PermissionsExt::set_mode(&mut can, 0o755);
+            written.set_permissions(can)?;
+        }
+        Ok(true)
     }
 
-    pub fn take(&self, _path: &Path, _into: &Path) -> std::io::Result<bool> {
-        Self::none()
+    /// Writes the file or the link at `path` below `from`, a folder of the runner, to the
+    /// same path of the worktree. What was at the path is removed first; the new file is made
+    /// new, so a link put there in between is not written through.
+    ///
+    /// # Errors
+    /// The error of the system.
+    pub fn put(&self, path: &Path, from: &Path) -> std::io::Result<()> {
+        let source = from.join(path);
+        let about = std::fs::symlink_metadata(&source)?;
+        let (above, name) = self
+            .0
+            .above(path, Make::Over)?
+            .ok_or(std::io::ErrorKind::InvalidInput)?;
+        if above.remove(name, false).is_err() {
+            // A folder at the place of a file: it goes when it is empty.
+            let _ = above.remove(name, true);
+        }
+        if about.is_symlink() {
+            return above.new_link(name, std::fs::read_link(&source)?.as_os_str());
+        }
+        let mut written = above.new_file(name, runs(&about))?;
+        std::io::copy(&mut std::fs::File::open(&source)?, &mut written)?;
+        Ok(())
     }
 
-    pub fn put(&self, _path: &Path, _from: &Path) -> std::io::Result<()> {
-        Self::none()
-    }
-
-    pub fn remove(&self, _path: &Path) -> std::io::Result<()> {
-        Self::none()
+    /// Removes the file or the link at `path` of the worktree, and each folder above it that
+    /// is empty after. Nothing at the path is the wanted state.
+    ///
+    /// # Errors
+    /// The error of the system for a file that is there and cannot be removed.
+    pub fn remove(&self, path: &Path) -> std::io::Result<()> {
+        let Some((above, name)) = self.0.above(path, Make::No)? else {
+            return Ok(());
+        };
+        above.remove(name, false)?;
+        let mut folder = path.parent();
+        while let Some(empty) = folder.filter(|folder| folder.file_name().is_some()) {
+            let Some((above, name)) = self.0.above(empty, Make::No)? else {
+                break;
+            };
+            if above.remove(name, true).is_err() {
+                break;
+            }
+            folder = empty.parent();
+        }
+        Ok(())
     }
 }
 

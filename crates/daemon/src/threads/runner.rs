@@ -15,6 +15,7 @@ mod holder_events;
 mod listings;
 pub mod log;
 pub mod login;
+mod models;
 pub mod peer;
 pub mod record;
 mod silence;
@@ -128,6 +129,7 @@ pub struct Runner {
     /// What the programs said of their accounts (THR-051) and their models (TH104): in memory
     /// only.
     said: accounts::Said,
+    model_asks: models::Asks,
     /// The last walk of the folder of each thread, for the `@` list (TH108): in memory only.
     walked: calls::Walked,
     /// The files that the person attached for a prompt (TH111).
@@ -199,6 +201,7 @@ pub async fn run(
         sign_in_told: BTreeMap::new(),
         walked: calls::Walked::default(),
         said: accounts::Said::default(),
+        model_asks: models::Asks::default(),
         attached: attachments::Attachments::at(&dir),
     };
     runner.restore(saved.threads);
@@ -221,6 +224,9 @@ impl Runner {
         let Some(mut asked) = self.asks.receiver.take() else {
             return;
         };
+        let Some(mut listed) = self.model_asks.receiver.take() else {
+            return;
+        };
         loop {
             tokio::select! {
                 event = self.link.events.recv() => match event {
@@ -229,6 +235,7 @@ impl Runner {
                 },
                 Some(call) = incoming.recv() => self.call(call).await,
                 Some((id, answers)) = asked.recv() => self.asked(id, answers).await,
+                Some((program, models)) = listed.recv() => self.models_asked(program, models),
                 _ = look.tick() => {
                     self.end_the_silent().await;
                     self.attached.expire(std::time::Instant::now());
@@ -301,36 +308,14 @@ impl Runner {
         let mut last_write = None;
         let (mut held, mut put_back) = (false, false);
         for step in steps {
-            // A turn that leaves the profile may be taken while the runner is down: the record
-            // says that the profile is gone before its line goes, or the line does not go
-            // (THR-041).
             if let Step::Write(line) = &step
-                && self
-                    .threads
-                    .get(&id)
-                    .is_some_and(|thread| thread.leaves_with(line))
-                && !self.written()
+                && self.held_back(id, line)
             {
-                let ended = self
-                    .threads
-                    .get_mut(&id)
-                    .map(|thread| thread.held_back(line));
-                for step in ended.unwrap_or_default() {
-                    self.own_step(id, step, None);
-                }
                 held = true;
                 continue;
             }
-            // The prompt of the queue whose line was held back waits again, first.
             if let (true, Step::Queued(queued)) = (held, &step) {
-                let back = self
-                    .threads
-                    .get_mut(&id)
-                    .and_then(|thread| thread.put_back(queued.id, queued.text.clone()));
-                if let Some(back) = back {
-                    self.own_step(id, back, None);
-                    put_back = true;
-                }
+                put_back |= self.waits_first(id, queued);
                 continue;
             }
             // The row of the queue after the prompt left it is not true now: the row of the

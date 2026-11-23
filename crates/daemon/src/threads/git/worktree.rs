@@ -12,10 +12,10 @@ pub mod files;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
-use agent_threads::git::GitRefusal;
+use agent_threads::git::{GitRefusal, Preparing};
 use uuid::Uuid;
 
-use super::place::{self, Home, Record, Worktree, own};
+use super::place::{self, Home, Record, Worktree, own, shared};
 use super::project::refs::{self, Was};
 use super::project::{self, Layout, linked};
 use super::run::folder::FolderId;
@@ -57,13 +57,23 @@ fn repository(home: &Home, project: &Path) -> Result<(PathBuf, Layout), GitRefus
     Ok((real, layout))
 }
 
+/// What the runner is doing while it makes a worktree, for the page to show.
+pub type Shown<'a> = Option<&'a (dyn Fn(Preparing) + Sync)>;
+
 /// Makes the worktree of `plan.thread` for the repository at `plan.project`, or gives the one
 /// that is there. The checkout of the person is not switched and no file of it changes.
+/// `shown` hears each step. When the call is dropped before its end (the person cancels the
+/// copy of a large history), what it made goes again.
 ///
 /// # Errors
 /// A [`GitRefusal`] when the project is not a repository, the base is unknown, the branch name
 /// is taken by something the runner did not make, or a step fails.
-pub async fn make(git: &Git, home: &Home, plan: Plan<'_>) -> Result<Made, GitRefusal> {
+pub async fn make(
+    git: &Git,
+    home: &Home,
+    plan: Plan<'_>,
+    shown: Shown<'_>,
+) -> Result<Made, GitRefusal> {
     let (project, layout) = repository(home, plan.project)?;
     let name = project.file_name().map(|name| name.to_string_lossy());
     let repository = place::folder_name(name.as_deref().unwrap_or_default());
@@ -82,24 +92,13 @@ pub async fn make(git: &Git, home: &Home, plan: Plan<'_>) -> Result<Made, GitRef
             Err(GitRefusal::BadPath)
         };
     }
-    let folder = home.planned(plan.thread, &repository)?;
-    if folder.symlink_metadata().is_ok() {
-        // Something is at the place and it is not a worktree of the runner: it is not touched.
-        return Err(GitRefusal::BadPath);
-    }
+    let folder = free_place(home, plan.thread, &repository)?;
     let common = layout.common_dir.as_path();
-    let start = start_of(&layout, plan.base)?;
     let full = format!("refs/heads/{branch}");
-    let existing = refs::resolve(common, &full)?;
-    // A branch of this name that the runner did not keep for this thread is never taken over.
-    let kept = checkpoint::kept_ref(plan.thread);
-    if existing.is_some() && refs::resolve(common, &kept)?.is_none() {
-        return Err(GitRefusal::BranchExists);
-    }
-    let at = existing.clone().unwrap_or(start);
+    let (existing, at) = branch_at(&layout, plan, &full)?;
     place::private_folder(&home.of_thread(plan.thread)).map_err(|_| GitRefusal::BadPath)?;
     let own = home.own(plan.thread, &repository)?;
-    own::make(git, &own, at.len() == 64).await?;
+    let shared = home.shared(&project);
     let new = New {
         project: &project,
         folder: &folder,
@@ -107,17 +106,67 @@ pub async fn make(git: &Git, home: &Home, plan: Plan<'_>) -> Result<Made, GitRef
         branch: &branch,
         at: &at,
     };
-    let target = (plan.thread, repository.as_str());
-    match placed((git, home), target, (common, existing.is_none()), new).await {
-        Ok(worktree) => Ok(made(worktree, false)),
-        Err(failed) => {
-            // What this call made holds no work of a thread: it goes, the failure is the
-            // answer.
-            let _ = std::fs::remove_dir_all(&own);
-            home.forget(plan.thread, &repository);
-            Err(failed)
-        }
+    // From here each thing that this call makes goes again unless the call comes to its end.
+    let mut undo = Undo {
+        home,
+        target: (plan.thread, repository.as_str()),
+        new,
+        entry: None,
+        branch: None,
+        kept: false,
+    };
+    shared::ensure(git, (&shared, &project), at.len() == 64).await?;
+    own::make(git, &own, &shared, at.len() == 64).await?;
+    if existing.is_none() {
+        refs::put(common, &full, &at, Was::Absent)?;
+        undo.branch = Some((common, full.as_str()));
     }
+    let entry = format!("anima-{}", plan.thread.as_simple());
+    let layout = linked::add(common, &entry, &folder, &branch)?;
+    undo.entry = Some(layout.clone());
+    let worktree = filled((git, home), undo.target, (&layout, new), shown).await?;
+    undo.kept = true;
+    Ok(made(worktree, false))
+}
+
+/// Where the worktree of `repository` of `thread` will be, when nothing is there and the
+/// runner made none before.
+fn free_place(home: &Home, thread: Uuid, repository: &str) -> Result<PathBuf, GitRefusal> {
+    if home.recorded(thread, repository).is_ok() {
+        // The runner made this worktree before and it is not whole now (its folder is gone or
+        // was replaced). Its checkpoints are in the folder of the runner: nothing is made
+        // new over them.
+        return Err(GitRefusal::Failed {
+            said: "the worktree of this chat is gone or was replaced; its checkpoints are \
+                   kept. Remove the worktree of the chat before a new one is made"
+                .to_owned(),
+        });
+    }
+    let folder = home.planned(thread, repository)?;
+    if folder.symlink_metadata().is_ok() {
+        // Something is at the place and it is not a worktree of the runner: it is not touched.
+        return Err(GitRefusal::BadPath);
+    }
+    Ok(folder)
+}
+
+/// Whether the branch `full` of the thread is there already, and the commit that the worktree
+/// starts at: that branch, or the base of the plan.
+fn branch_at(
+    layout: &Layout,
+    plan: Plan<'_>,
+    full: &str,
+) -> Result<(Option<String>, String), GitRefusal> {
+    let common = layout.common_dir.as_path();
+    let start = start_of(layout, plan.base)?;
+    let existing = refs::resolve(common, full)?;
+    // A branch of this name that the runner did not keep for this thread is never taken over.
+    let kept = checkpoint::kept_ref(plan.thread);
+    if existing.is_some() && refs::resolve(common, &kept)?.is_none() {
+        return Err(GitRefusal::BranchExists);
+    }
+    let at = existing.clone().unwrap_or(start);
+    Ok((existing, at))
 }
 
 /// The parts of a worktree that is being made.
@@ -131,52 +180,51 @@ struct New<'a> {
     at: &'a str,
 }
 
-/// Writes the branch (when `fresh`) and the entry of the worktree in the repository of the
-/// person, then fills the worktree. What it wrote goes again when a later step fails.
-async fn placed(
-    (git, home): (&Git, &Home),
-    target: (Uuid, &str),
-    (common, fresh): (&Path, bool),
-    new: New<'_>,
-) -> Result<Worktree, GitRefusal> {
-    // The start is a commit of the repository.
-    let git = &git.in_own(new.own).await?;
-    let kind = own::borrowing(Run::new(new.own, ["cat-file", "-t", new.at]), common);
-    if git.text(kind).await.ok().as_deref() != Some("commit") {
-        return Err(GitRefusal::UnknownBase);
-    }
-    let full = format!("refs/heads/{}", new.branch);
-    if fresh {
-        refs::put(common, &full, new.at, Was::Absent)?;
-    }
-    let entry = format!("anima-{}", target.0.as_simple());
-    let filled = match linked::add(common, &entry, new.folder, new.branch) {
-        Ok(layout) => {
-            let filled = filled(git, home, target, (&layout, new)).await;
-            if filled.is_err() {
-                // The folder and the entry were made a moment ago and hold no work.
-                let _ = std::fs::remove_dir_all(new.folder);
-                let _ = linked::remove(&layout);
-            }
-            filled
-        }
-        Err(failed) => Err(failed.into()),
-    };
-    if filled.is_err() && fresh {
-        // The branch was made a moment ago for this worktree and holds no work.
-        let _ = refs::take_back(common, &full, new.at);
-    }
-    filled
+/// What a call that makes a worktree made so far. When it is dropped before the worktree is
+/// whole (a step failed, or the call was cancelled), each of them goes again: they hold no
+/// work of a thread.
+struct Undo<'a> {
+    home: &'a Home,
+    target: (Uuid, &'a str),
+    new: New<'a>,
+    /// The entry of the worktree in the Git folder of the person.
+    entry: Option<Layout>,
+    /// The branch that this call made: the shared Git folder and the name of its ref.
+    branch: Option<(&'a Path, &'a str)>,
+    kept: bool,
 }
 
-/// Writes the record of a worktree whose entry was made a moment ago, checks out its files
-/// and takes the checkpoint of the start.
+impl Drop for Undo<'_> {
+    fn drop(&mut self) {
+        if self.kept {
+            return;
+        }
+        let _ = std::fs::remove_dir_all(self.new.own);
+        self.home.forget(self.target.0, self.target.1);
+        // The folder was not there when the call started: what is there now is of this call.
+        let _ = std::fs::remove_dir_all(self.new.folder);
+        if let Some(entry) = &self.entry {
+            let _ = linked::remove(entry);
+        }
+        if let Some((common, full)) = self.branch {
+            let _ = refs::take_back(common, full, self.new.at);
+        }
+    }
+}
+
+/// Writes the record of a worktree whose entry was made a moment ago, copies the history of
+/// its start, checks out its files and takes the checkpoint of the start.
 async fn filled(
-    git: &Git,
-    home: &Home,
+    (git, home): (&Git, &Home),
     (thread, repository): (Uuid, &str),
     (layout, new): (&Layout, New<'_>),
+    shown: Shown<'_>,
 ) -> Result<Worktree, GitRefusal> {
+    let say = |step| {
+        if let Some(shown) = shown {
+            shown(step);
+        }
+    };
     // The record is written now, before an agent runs in the worktree: each later run of
     // `git` is held to these places, whatever the files of the worktree say then.
     let folder = std::fs::canonicalize(new.folder).map_err(|_| GitRefusal::NoWorktree)?;
@@ -188,6 +236,7 @@ async fn filled(
         git_dir: layout.git_dir.clone(),
         common_dir: layout.common_dir.clone(),
         own: new.own.to_owned(),
+        shared: home.shared(new.project),
         branches: vec![new.branch.to_owned()],
         // Only what the person accepted for this repository before counts as accepted: an
         // earlier agent can have changed the remote of the repository, which each worktree
@@ -197,7 +246,9 @@ async fn filled(
     home.keep(thread, repository, &record)?;
     let worktree = home.worktree(thread, repository)?;
     let git = &git.for_worktree(&worktree).await?;
-    own::learn(git, &worktree, new.at).await?;
+    say(Preparing::History);
+    shared::learn(git, &worktree, &[new.at]).await?;
+    say(Preparing::Files);
     let files = ["reset", "--hard", "--quiet", new.at, "--"];
     git.output(Run::new(worktree.folder(), files)).await?;
     own::follow(git, &worktree, new.at).await?;
