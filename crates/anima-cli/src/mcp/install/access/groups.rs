@@ -1,5 +1,4 @@
-//! The members of each group, read once from a reader: the system's account database, or the
-//! groups that a test gives (R-442).
+//! The members of each group, read once (R-442).
 
 use std::collections::HashMap;
 use std::fmt;
@@ -7,17 +6,14 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use super::Writer;
 
-/// One member of a group: a name in the group's list of members, or an account whose own
-/// (primary) group it is. `uid` is the number of the account with that name; `None` when no
-/// account has the name, which then counts as a different user.
+/// `uid` is `None` when no account has the name; such a member counts as a different user.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Member {
     pub name: String,
     pub uid: Option<u32>,
 }
 
-/// A group as the system lists it: its name (its number when it has none) and its members, or
-/// `None` when the system cannot say who is in it.
+/// `members` is `None` when the system cannot say who is in the group.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Listing {
     pub name: String,
@@ -26,7 +22,6 @@ pub struct Listing {
 
 type Reader = dyn Fn(u32) -> Listing + Send + Sync;
 
-/// The groups of this computer, each read once by its number.
 #[derive(Clone)]
 pub struct Groups {
     read: Arc<Reader>,
@@ -40,7 +35,6 @@ impl fmt::Debug for Groups {
 }
 
 impl Groups {
-    /// The groups as `read` lists them.
     #[must_use]
     pub fn new(read: impl Fn(u32) -> Listing + Send + Sync + 'static) -> Self {
         Self {
@@ -49,7 +43,7 @@ impl Groups {
         }
     }
 
-    /// The groups as this computer lists them. Windows has no groups of this kind: each is unread.
+    /// Windows has no groups of this kind: each is unread.
     #[must_use]
     pub fn system() -> Self {
         #[cfg(unix)]
@@ -62,9 +56,6 @@ impl Groups {
         Self::new(read)
     }
 
-    /// Who other than `user` and root can write through the group `group`: its first member that
-    /// is neither, or the group itself when its members cannot be read. `None`: only `user` and
-    /// root are in it.
     #[must_use]
     pub fn writer(&self, group: u32, user: u32) -> Option<Writer> {
         let Listing { name, members } = self.listing(group);

@@ -1,5 +1,4 @@
-//! The corrections of the review of the Settings part (MI5, 12.7 of the plan): an agent's program
-//! that a different user can replace. Who can replace a folder is tested in `access`.
+//! An agent's program that a different user can replace (MI5).
 
 use std::fs;
 use std::os::unix::fs::PermissionsExt as _;
@@ -12,7 +11,6 @@ use super::{computer, script, state_of};
 #[test]
 fn mcp_035_an_agent_program_that_a_different_user_can_replace_is_not_run() {
     let (_home, mut here, anima) = computer();
-    // A folder of `PATH` that every user can write, with no sticky bit.
     let shared = here.home.join("shared-bin");
     fs::create_dir(&shared).expect("folder");
     fs::set_permissions(&shared, fs::Permissions::from_mode(0o777)).expect("mode");

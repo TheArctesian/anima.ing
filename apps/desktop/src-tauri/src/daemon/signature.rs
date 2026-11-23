@@ -1,26 +1,14 @@
-//! Whether the daemon that the app carries keeps its identity in the macOS Keychain from one
-//! build to the next (R-321). The Keychain lets a program read an item when the
-//! program satisfies the designated requirement that the item recorded. A Developer ID build
-//! names its team, so each later build of the team satisfies it; an ad hoc build names the
-//! hash of its own code, so each build is a new program, and its first read of the token waits
-//! for the person to allow it: after an update to such a build, the Keychain asks the person once
-//! (R-437). Linux has no Keychain: there it always keeps its identity. The seal of
-//! the bundle and of the new copy is checked here too ([`sealed_by`]).
+//! Whether the carried daemon keeps its Keychain identity across builds (R-321, R-437): a
+//! Developer ID requirement names the team, an ad hoc one the code hash.
 
 use std::path::Path;
 
-/// What the Keychain sees in a new build of the carried daemon.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Identity {
-    /// A signature with a team (Developer ID), or a system with no Keychain.
     Kept,
-    /// An ad hoc signature, no signature, or one that could not be read.
     NewEachBuild,
 }
 
-/// The identity from what `codesign -d --verbose=2` showed of the program (on standard error)
-/// and whether it succeeded. Only a `TeamIdentifier=` of ten capital letters and digits keeps
-/// the identity; anything else, `not set` (ad hoc) included, does not.
 #[cfg_attr(
     all(not(target_os = "macos"), not(test)),
     expect(dead_code, reason = "read only on macOS and by its tests")
@@ -33,8 +21,6 @@ pub fn identity(success: bool, shown: &str) -> Identity {
     }
 }
 
-/// The team that signed, from what `codesign -d --verbose=2` showed and whether it succeeded:
-/// a `TeamIdentifier=` of ten capital letters and digits, else none.
 #[cfg_attr(
     all(not(target_os = "macos"), not(test)),
     expect(dead_code, reason = "read only on macOS and by its tests")
@@ -51,8 +37,6 @@ pub fn team(success: bool, shown: &str) -> Option<String> {
     (success && is_team).then(|| team.to_owned())
 }
 
-/// The identity of `program` on this system: on macOS from `/usr/bin/codesign`, which must
-/// answer in 10 s; a run that does not is [`Identity::NewEachBuild`].
 #[cfg(target_os = "macos")]
 pub fn of_program(program: &Path) -> Identity {
     codesign(&["-d", "--verbose=2"], program).map_or(Identity::NewEachBuild, |(success, shown)| {
@@ -60,27 +44,21 @@ pub fn of_program(program: &Path) -> Identity {
     })
 }
 
-/// Whether the seal of `path` (an app bundle, or a program) verifies: its code and its
-/// resources did not change since it was signed. An ad hoc seal says nothing of who signed it.
+/// An ad hoc seal says nothing of who signed it.
 #[cfg(target_os = "macos")]
 fn sealed(path: &Path) -> bool {
     codesign(&["--verify", "--strict"], path).is_some_and(|(success, _)| success)
 }
 
-/// Who signed the app that runs, as the code in memory shows it: a program put in the bundle
-/// after the start does not change it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Signer {
-    /// A team with a Developer ID: each part must be signed by it.
     Team(String),
     /// An ad hoc signature (a build of a person): each part needs only its seal.
     AdHoc,
-    /// The signature could not be read or is neither: no part passes.
     Unknown,
 }
 
-/// The signer from what `codesign -d --verbose=3` showed of the running app and whether it
-/// succeeded. It is taken only once the running code verifies against [`pinned`].
+/// It stands only once the running code verifies against [`pinned`].
 #[cfg_attr(
     all(not(target_os = "macos"), not(test)),
     expect(dead_code, reason = "read only on macOS and by its tests")
@@ -100,9 +78,7 @@ pub fn signer(success: bool, shown: &str) -> Signer {
     }
 }
 
-/// The requirement that the running code must meet for `signer` to stand: the Developer ID of
-/// its team, or for an ad hoc app the hash of the code that was read (`CDHash=`, 40 hex
-/// digits). One verify against it closes the gap between the read and the check.
+/// One verify against this requirement closes the gap between the read and the check.
 #[cfg_attr(
     all(not(target_os = "macos"), not(test)),
     expect(dead_code, reason = "read only on macOS and by its tests")
@@ -120,9 +96,7 @@ pub fn pinned(signer: &Signer, shown: &str) -> Option<String> {
     }
 }
 
-/// The signer of this running app, read from its process and then verified against what was
-/// read in one run of codesign: the team is never taken from the files of the bundle, which can
-/// change after the start.
+/// The team is never taken from the files of the bundle, which can change after the start.
 #[cfg(target_os = "macos")]
 pub fn of_this_app() -> Signer {
     let pid = std::process::id().to_string();
@@ -145,10 +119,7 @@ pub const fn of_this_app() -> Signer {
     Signer::AdHoc
 }
 
-/// Whether the seal of `path` (the bundle or a program) verifies for `signer`: for a team, also
-/// that the team signed it with a Developer ID, so a program of a different signer, also one
-/// with a seal of its own, does not pass; for an ad hoc app only the seal; for an unknown
-/// signer nothing passes.
+/// For a team the seal must also be its Developer ID, so a program sealed by another signer fails.
 #[cfg(target_os = "macos")]
 pub fn sealed_by(path: &Path, signer: &Signer) -> bool {
     match signer {
@@ -162,14 +133,12 @@ pub fn sealed_by(path: &Path, signer: &Signer) -> bool {
     }
 }
 
-/// No seals outside macOS.
 #[cfg(not(target_os = "macos"))]
 pub const fn sealed_by(_path: &Path, _signer: &Signer) -> bool {
     true
 }
 
-/// The requirement of a Developer ID Application certificate of `team`: Apple's chain, the
-/// Developer ID intermediate, the Developer ID Application leaf and the team.
+/// Apple's chain, the Developer ID intermediate, the Developer ID Application leaf and `team`.
 #[cfg_attr(
     all(not(target_os = "macos"), not(test)),
     expect(dead_code, reason = "read only on macOS and by its tests")
@@ -180,8 +149,6 @@ fn developer_id(team: &str) -> String {
     )
 }
 
-/// Runs `/usr/bin/codesign` with `args` on `path`, with no environment: whether it succeeded and
-/// what it showed on standard error. None when it did not run or did not end in 10 s.
 #[cfg(target_os = "macos")]
 fn codesign(args: &[&str], path: &Path) -> Option<(bool, String)> {
     use std::{
@@ -204,8 +171,7 @@ fn codesign(args: &[&str], path: &Path) -> Option<(bool, String)> {
         match child.try_wait() {
             Ok(Some(status)) => break status,
             Ok(None) if Instant::now() < end => thread::sleep(Duration::from_millis(20)),
-            // Past the deadline, or the wait failed: no answer, and a failed kill of a program
-            // that is ending adds nothing to it.
+            // No answer; a failed kill of a program that is ending adds nothing.
             _ => {
                 let _ = child.kill();
                 let _ = child.wait();

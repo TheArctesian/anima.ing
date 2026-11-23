@@ -4,14 +4,12 @@ const ENTRY: &str =
     "{\n  \"command\": \"/usr/local/bin/anima\",\n  \"args\": [\n    \"mcp\"\n  ]\n}";
 const PATH: &[&str] = &["mcpServers"];
 
-/// The entry as it is written at the indent of the member `anima` in `after`.
 fn reindented(after: &str) -> String {
     let at = after.rfind("\"anima\"").expect("member");
     let line = after[..at].rfind('\n').map_or(0, |newline| newline + 1);
     ENTRY.replace('\n', &format!("\n{}", &after[line..at]))
 }
 
-/// Setting, then removing, gives the file back byte for byte.
 fn round_trip(before: &str) -> String {
     let after = set(before, PATH, "anima", ENTRY).expect("set");
     assert_eq!(

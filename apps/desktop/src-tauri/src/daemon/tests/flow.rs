@@ -1,5 +1,4 @@
-//! The daemon runs: copied, then enrolled with the code on standard input, then installed; a
-//! failure, a deadline or the app's exit stops the chain and leaves no process behind.
+//! The daemon is copied, enrolled and installed; a failure, a deadline or the app's exit leaves no process.
 
 use std::{
     fs,
@@ -30,7 +29,6 @@ fn met_019_the_daemon_is_copied_then_enrolled_with_the_code_on_stdin_then_instal
     assert_eq!(mode & 0o7777, 0o755);
     let enrol = rig.run_of("enrol --hub https://hub.test -", &format!("{CODE}\n"));
     assert_eq!(rig.runs(), enrol + &rig.run_of("install", ""));
-    // The copy went in by rename: no part file is left beside it.
     assert_eq!(
         names_in(installed.parent().expect("a folder")),
         ["anima-daemon"]
@@ -51,7 +49,6 @@ fn met_019_a_failed_install_after_enrolment_is_its_own_error() {
     assert!(rig.runs().contains("args:enrol"), "{}", rig.runs());
 }
 
-/// A stand-in that writes its pid to `pid` and then sleeps.
 fn slow_rig() -> (Rig, PathBuf) {
     let rig = rig("");
     let pid_file = rig.dir.path().join("pid");
@@ -64,7 +61,7 @@ fn slow_rig() -> (Rig, PathBuf) {
     (rig, pid_file)
 }
 
-/// Whether the process in `pid_file` is gone; one only killed would still be a zombie.
+/// A process that is killed but not reaped is still listed, as a zombie.
 fn reaped(pid_file: &Path) -> bool {
     let pid = fs::read_to_string(pid_file).expect("the stand-in wrote its pid");
     let listed = Command::new("/bin/ps")
@@ -74,8 +71,6 @@ fn reaped(pid_file: &Path) -> bool {
     listed.stdout.is_empty()
 }
 
-/// A stand-in whose enrol starts `sleep 30` in the background, writes that grandchild's pid to
-/// `pid`, and waits for it.
 fn parent_rig() -> (Rig, PathBuf) {
     let rig = rig("");
     let pid_file = rig.dir.path().join("pid");
@@ -88,10 +83,7 @@ fn parent_rig() -> (Rig, PathBuf) {
     (rig, pid_file)
 }
 
-/// Whether the grandchild in `pid_file` stops running within a few seconds: gone, or a zombie.
-/// A killed orphan goes to the nearest subreaper, and the builder's tests make this test process
-/// one, which does not reap it; a zombie runs nothing. One still running is killed by its own
-/// pid, so a failed test leaves nothing behind.
+/// A zombie counts as gone: under the builder this test process is a subreaper that does not reap orphans.
 fn grandchild_gone(pid_file: &Path) -> bool {
     let pid = fs::read_to_string(pid_file).expect("the stand-in wrote its pid");
     let end = Instant::now() + Duration::from_secs(5);

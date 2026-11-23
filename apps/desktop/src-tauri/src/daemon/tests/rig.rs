@@ -1,6 +1,4 @@
-//! A temporary HOME in the crate's own `target/`, outside `/tmp` (as T6a's rig), and a stand-in
-//! daemon: a shell script that records the path it was started as, its arguments, the variables
-//! it got, its folder and its standard input. No real home is written.
+//! A temporary HOME under the crate's `target/`, outside `/tmp`, and a stand-in daemon that records each run.
 
 use std::{
     ffi::OsString,
@@ -33,8 +31,7 @@ pub struct Rig {
     pub user: User,
 }
 
-/// Panics when a folder above `path` lets others write: the install would rightly refuse it,
-/// and every test would fail as a misleading `Untrusted`.
+/// A world-writable ancestor would make every install fail as a misleading `Untrusted`.
 fn require_private_checkout(path: &Path) {
     for folder in path.ancestors() {
         let mode = fs::metadata(folder).expect("a folder").mode();
@@ -46,8 +43,7 @@ fn require_private_checkout(path: &Path) {
     }
 }
 
-/// A HOME and a stand-in daemon that records each run, then runs `then`. The user's private
-/// group is taken to be the HOME's group, so a folder made under umask 002 is trusted.
+/// The user's private group is the HOME's group, so a folder made under umask 002 is trusted.
 pub fn rig(then: &str) -> Rig {
     let scratch = concat!(env!("CARGO_MANIFEST_DIR"), "/target/daemon-rig");
     fs::create_dir_all(scratch).expect("the scratch folder");
@@ -125,7 +121,6 @@ impl Rig {
         )
     }
 
-    /// Makes `~/.local/bin` (and `~/.local`) before the install.
     pub fn local_bin(&self) -> PathBuf {
         let bin = self.home.join(".local/bin");
         fs::create_dir_all(&bin).expect("bin");

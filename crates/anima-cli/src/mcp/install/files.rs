@@ -42,8 +42,6 @@ pub enum FileError {
     Io(#[from] io::Error),
 }
 
-/// The home folder that every configuration file is below, the user that must own each part, and
-/// the groups whose members decide who else can write a part.
 #[derive(Clone, Copy, Debug)]
 pub struct Root<'a> {
     pub home: &'a Path,
@@ -51,7 +49,6 @@ pub struct Root<'a> {
     pub groups: &'a Groups,
 }
 
-/// The folder and the name of `path`; a path with neither is refused as not a file.
 fn parts(path: &Path) -> Result<(&Path, &std::ffi::OsStr), FileError> {
     match (path.parent(), path.file_name()) {
         (Some(folder), Some(name)) => Ok((folder, name)),
@@ -134,7 +131,6 @@ pub fn read(root: Root<'_>, path: &Path) -> Result<Option<String>, FileError> {
         .map_err(|_| FileError::NotText)
 }
 
-/// `O_NOFOLLOW`: the open fails when the last part of the path is a symbolic link.
 #[cfg(unix)]
 fn no_follow() -> i32 {
     i32::try_from(rustix::fs::OFlags::NOFOLLOW.bits()).unwrap_or_default()
@@ -152,7 +148,6 @@ pub fn writer(metadata: &fs::Metadata, user: u32, groups: &Groups) -> Option<Wri
     }
 }
 
-/// The path of the copy of `path` as it was (MCP-032).
 #[must_use]
 pub fn copy_path(path: &Path) -> PathBuf {
     let mut name = path.as_os_str().to_os_string();
@@ -203,9 +198,8 @@ pub fn replace(
     Ok(())
 }
 
-/// Keeps `before` beside `path` as the copy of MCP-032, unless a copy is there. A copy that is
-/// there must be a regular file of the user: a link or a file of a different user is refused, so
-/// that "a copy is kept" is never said of something else. The copy appears whole or not at all.
+/// Keeps `before` as the copy of MCP-032 unless one is there; that one must be a regular file of
+/// the user.
 fn keep_copy(root: Root<'_>, path: &Path, mode: u32, before: &str) -> Result<(), FileError> {
     let (folder, _) = parts(path)?;
     let copy = copy_path(path);

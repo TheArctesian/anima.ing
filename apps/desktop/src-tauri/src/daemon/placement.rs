@@ -1,8 +1,5 @@
-//! Where the daemon binary goes and how it gets there (MET-019, D-10 d): `~/.local/bin` on both
-//! systems, the folder the page's install command uses, so either way of installing replaces the
-//! same file and the unit or `LaunchAgent` that points at it stays right. The copy is atomic,
-//! mode 0755, and refused when the folder or any folder above it can be changed by another user
-//! ([`super::trust`]).
+//! Places the daemon binary in `~/.local/bin`, the folder of the page's install command, so both ways replace one file (MET-019, D-10 d).
+//! The copy is atomic and refused when any folder on the way can be changed by another user ([`super::trust`]).
 
 use std::{
     fs::{self, DirBuilder, File, OpenOptions},
@@ -13,22 +10,16 @@ use std::{
 
 use super::trust::{self, Stat, User};
 
-/// The daemon's file name, in the app bundle and in the destination folder. The bundle step
-/// names the sidecar `binaries/anima-daemon` with the other carried programs (HMD-052); Tauri
-/// drops the target triple and puts it beside the app's own executable.
+/// The bundle names the sidecar `binaries/anima-daemon` (HMD-052); Tauri drops the target triple and puts it beside the app.
 pub const DAEMON_FILE: &str = "anima-daemon";
 
-/// The installed binary's mode: the user runs it, everyone may read and run it.
 const BINARY_MODE: u32 = 0o755;
-/// A folder made on the way to the destination: public, and only its owner may change it.
 const FOLDER_MODE: u32 = 0o755;
-/// No daemon binary is this large; a larger file is not the daemon.
 const SIZE_LIMIT: u64 = 256 * 1024 * 1024;
 
-/// Why the binary was not put in place. Fixed text: no path, no OS error.
+/// Fixed text: no path and no OS error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum PlacementError {
-    /// A folder on the way is not the user's or root's, or another user may write to it.
     #[error("a folder on the way to the daemon can be changed by another user")]
     Untrusted,
     #[error("the bundled daemon is not a regular file of a sane size")]
@@ -39,8 +30,6 @@ pub enum PlacementError {
     Refused,
 }
 
-/// Whether `file` is a regular file, not a link, that only `by` (or root) can change: a file the
-/// update may move aside and run again.
 pub fn file_trusted(file: &Path, by: User) -> bool {
     fs::symlink_metadata(file).is_ok_and(|metadata| {
         let stat = Stat {
@@ -53,8 +42,7 @@ pub fn file_trusted(file: &Path, by: User) -> bool {
     })
 }
 
-/// The real path of the folder `dir` after the checks of each folder above it, made when it is
-/// missing ([`place`] makes it the same way).
+/// The real path of `dir`, made when missing, after the checks of each folder above it.
 ///
 /// # Errors
 /// [`PlacementError::Untrusted`] or [`PlacementError::Write`].
@@ -62,20 +50,15 @@ pub fn trusted_folder(dir: &Path, by: User) -> Result<PathBuf, PlacementError> {
     make_folder(dir, by)
 }
 
-/// `~/.local/bin/anima-daemon` under `home`.
 pub fn destination(home: &Path) -> PathBuf {
     home.join(".local/bin").join(DAEMON_FILE)
 }
 
-/// The bundled daemon beside `executable` (the app's own binary): Tauri's sidecar place.
 pub fn bundled_beside(executable: &Path) -> Option<PathBuf> {
     executable.parent().map(|folder| folder.join(DAEMON_FILE))
 }
 
-/// Makes the destination folder through checked folders only, then copies `source` beside the
-/// destination under a fresh name and renames it into place, under the file name of
-/// `destination` (the daemon, or the link program that a unit of the user runs, HMD-058). Returns the real path of the
-/// installed binary: the path that was checked, and the one to run.
+/// Copies `source` under a fresh name into a checked folder and renames it to `destination`; returns the real path that was checked and is to be run.
 ///
 /// # Errors
 /// [`PlacementError`] for the first step that fails; nothing is left at the destination then.
@@ -83,9 +66,7 @@ pub fn place(source: &Path, destination: &Path, by: User) -> Result<PathBuf, Pla
     place_checked(source, destination, by, &|_| true)
 }
 
-/// As [`place`], but the new file is renamed into place only when `check` accepts it under its
-/// fresh name: the check is on the bytes that will run, not on the source, which can change
-/// after it was read.
+/// As [`place`], renaming only when `check` accepts the new file: the bytes that will run, not the source, which can change.
 ///
 /// # Errors
 /// As [`place`]; [`PlacementError::Refused`] when `check` refused the new file.
@@ -101,7 +82,6 @@ pub fn place_checked(
     let part = folder.join(part_name()?);
     let installed = folder.join(name);
     let refused = |error: PlacementError| {
-        // The part file may not exist (the create failed); the error that matters is the copy's.
         let _ = fs::remove_file(&part);
         error
     };
@@ -115,10 +95,7 @@ pub fn place_checked(
     Ok(installed)
 }
 
-/// Makes `dir` and returns its real path, as T6a's `make_folder` does: the deepest part that
-/// exists is resolved and checked with every folder above it first, then each missing part is
-/// made in that checked folder, resolved and checked in turn. No folder is made through a link
-/// to a folder another user may write.
+/// Each existing and each new part is resolved and checked with every folder above it, so no folder is made through a link to a folder another user may write.
 fn make_folder(dir: &Path, by: User) -> Result<PathBuf, PlacementError> {
     let existing = dir
         .ancestors()
@@ -141,7 +118,6 @@ fn make_folder(dir: &Path, by: User) -> Result<PathBuf, PlacementError> {
     Ok(real)
 }
 
-/// Checks `folder` (a real path) and every folder above it.
 fn check_chain(folder: &Path, by: User) -> Result<(), PlacementError> {
     for each in folder.ancestors() {
         let metadata = fs::symlink_metadata(each).map_err(|_| PlacementError::Untrusted)?;
@@ -158,10 +134,7 @@ fn check_chain(folder: &Path, by: User) -> Result<(), PlacementError> {
     Ok(())
 }
 
-/// Whether `path` carries a POSIX access ACL (`system.posix_acl_access`); a file system without
-/// ACLs has none. One that cannot be read is not trusted. ACLs of other kinds are not seen: NFS version 4
-/// ACLs (`system.nfs4_acl`), CIFS ACLs (`system.cifs_acl`) and the native ACLs of ZFS can
-/// let another user write a folder whose mode does not show it. T6a has the same limit.
+/// An ACL that cannot be read is not trusted; NFS version 4, CIFS and ZFS native ACLs are not seen.
 #[cfg(target_os = "linux")]
 fn has_acl(path: &Path) -> Result<bool, PlacementError> {
     use rustix::io::Errno;
@@ -172,7 +145,7 @@ fn has_acl(path: &Path) -> Result<bool, PlacementError> {
     }
 }
 
-/// macOS ACLs (`chmod +a`) do not show in the mode and are not read here; T6a has the same limit.
+/// macOS ACLs (`chmod +a`) do not show in the mode and are not read.
 #[cfg(not(target_os = "linux"))]
 #[expect(
     clippy::unnecessary_wraps,
@@ -182,7 +155,6 @@ fn has_acl(_path: &Path) -> Result<bool, PlacementError> {
     Ok(false)
 }
 
-/// The bundled binary, opened; refused when it is a link, not a regular file, or too large.
 fn open_source(source: &Path) -> Result<File, PlacementError> {
     let linked = fs::symlink_metadata(source).map_err(|_| PlacementError::Source)?;
     let file = File::open(source).map_err(|_| PlacementError::Source)?;
@@ -194,7 +166,6 @@ fn open_source(source: &Path) -> Result<File, PlacementError> {
     Ok(file)
 }
 
-/// A name no other file has: the create below refuses an existing name or a link.
 fn part_name() -> Result<String, PlacementError> {
     let mut salt = [0_u8; 8];
     getrandom::fill(&mut salt).map_err(|_| PlacementError::Write)?;
@@ -204,7 +175,6 @@ fn part_name() -> Result<String, PlacementError> {
     ))
 }
 
-/// Writes `input` to the new file `part` with the binary's mode, and flushes it to disk.
 fn copy_to(input: &mut File, part: &Path) -> io::Result<()> {
     // `create_new` is O_CREAT|O_EXCL: an existing file or a planted link is refused, not followed.
     let mut output = OpenOptions::new()

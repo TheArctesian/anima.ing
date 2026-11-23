@@ -1,6 +1,3 @@
-//! This computer as the install needs it: the home folder, `PATH`, the user that runs the command
-//! and the groups that decide who else can change a part of a path.
-
 #[cfg(unix)]
 use std::fs;
 #[cfg(unix)]
@@ -10,15 +7,11 @@ use std::path::{Path, PathBuf};
 use super::super::access::Groups;
 use super::super::files::Root;
 
-/// This computer as the install needs it. Tests give a temporary home and their own `PATH`.
 #[derive(Clone, Debug)]
 pub struct Here {
     pub home: PathBuf,
-    /// The folders of `PATH`, in order.
     pub path: Vec<PathBuf>,
-    /// The user that runs the command.
     pub user: u32,
-    /// The members of each group that can write a folder of a program or of a file.
     pub groups: Groups,
     pub macos: bool,
     /// Windows roaming application settings, including redirected user profiles.
@@ -62,7 +55,6 @@ impl Here {
         })
     }
 
-    /// The root of the files below `path`: the home folder, or on Windows the roaming folder.
     pub(super) fn root(&self, path: &Path) -> Root<'_> {
         let home = self.home.as_path();
         #[cfg(windows)]

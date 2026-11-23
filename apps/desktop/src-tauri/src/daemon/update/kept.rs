@@ -1,5 +1,5 @@
-//! The copy of before after a good update (R-437): it stays beside the new copy as
-//! `anima-daemon.<its version>`, so the person can go back by hand. Only the last one stays.
+//! After a good update the copy of before stays as `anima-daemon.<version>`, so the person can
+//! go back by hand; only the last one stays (R-437).
 
 use std::{
     fs::{self, File},
@@ -9,11 +9,6 @@ use std::{
 
 use super::super::{DaemonError, version::Version};
 
-/// Renames the copy of before at `aside` to `<copy>.<version>` and deletes the copies kept by
-/// earlier updates. A copy of before whose version is not known is deleted.
-///
-/// # Errors
-/// [`DaemonError::Remove`] when the copy of before could not be renamed or deleted.
 pub(super) fn keep(copy: &Path, aside: &Path, before: Option<Version>) -> Result<(), DaemonError> {
     let (Some(folder), Some(name)) = (copy.parent(), copy.file_name()) else {
         return Err(DaemonError::Remove);
@@ -36,7 +31,6 @@ pub(super) fn keep(copy: &Path, aside: &Path, before: Option<Version>) -> Result
                 .strip_prefix(&*base)
                 .and_then(|rest| rest.strip_prefix('.'))
                 .is_some_and(is_version);
-        // Only a plain file is deleted; a link or a folder with such a name stays.
         if earlier && entry.file_type().is_ok_and(|kind| kind.is_file()) {
             let _ = fs::remove_file(entry.path());
         }
@@ -46,7 +40,6 @@ pub(super) fn keep(copy: &Path, aside: &Path, before: Option<Version>) -> Result
         .map_err(|_| DaemonError::Remove)
 }
 
-/// Whether `text` is three numbers with dots between them.
 fn is_version(text: &str) -> bool {
     let parts: Vec<&str> = text.split('.').collect();
     parts.len() == 3
