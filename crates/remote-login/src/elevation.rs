@@ -4,7 +4,19 @@ use tokio::{io::AsyncWriteExt as _, process::Command};
 use crate::{Error, Prompt};
 
 pub(super) async fn install(prompt: Prompt, user: &str, existing: bool) -> Result<(), Error> {
-    let (mut command, input) = invocation(prompt, user, existing)?;
+    #[cfg(target_os = "linux")]
+    let source = include_str!("linux.sh");
+    #[cfg(target_os = "macos")]
+    let source = include_str!("macos.sh");
+    #[cfg(target_os = "windows")]
+    let source = include_str!("windows.ps1");
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    let source = "";
+    run_source(prompt, &script(source, user, existing)).await
+}
+
+pub(super) async fn run_source(prompt: Prompt, source: &str) -> Result<(), Error> {
+    let (mut command, input) = invocation(prompt, source)?;
     let mut child = command
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
@@ -28,7 +40,6 @@ pub(super) async fn install(prompt: Prompt, user: &str, existing: bool) -> Resul
     }
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
 fn script(source: &str, user: &str, existing: bool) -> String {
     source
         .replace("ANIMA_LOGIN_USER", user)
@@ -36,7 +47,7 @@ fn script(source: &str, user: &str, existing: bool) -> String {
 }
 
 #[cfg(target_os = "linux")]
-fn invocation(prompt: Prompt, user: &str, existing: bool) -> Result<(Command, String), Error> {
+fn invocation(prompt: Prompt, source: &str) -> Result<(Command, String), Error> {
     let candidates = match prompt {
         Prompt::Desktop => ["/usr/bin/pkexec", "/run/current-system/sw/bin/pkexec"],
         Prompt::Terminal => ["/usr/bin/sudo", "/run/current-system/sw/bin/sudo"],
@@ -47,19 +58,19 @@ fn invocation(prompt: Prompt, user: &str, existing: bool) -> Result<(Command, St
         .ok_or(Error::Setup)?;
     let mut command = Command::new(program);
     command.args(["/bin/sh", "-s"]);
-    Ok((command, script(include_str!("linux.sh"), user, existing)))
+    Ok((command, source.to_owned()))
 }
 
 #[cfg(target_os = "macos")]
-fn invocation(prompt: Prompt, user: &str, existing: bool) -> Result<(Command, String), Error> {
+fn invocation(prompt: Prompt, source: &str) -> Result<(Command, String), Error> {
     if !std::path::Path::new("/usr/sbin/sshd").is_file() {
         return Err(Error::Unsupported);
     }
-    let script = script(include_str!("macos.sh"), user, existing);
+    let script = source;
     if matches!(prompt, Prompt::Terminal) {
         let mut command = Command::new("/usr/bin/sudo");
         command.args(["/bin/sh", "-s"]);
-        return Ok((command, script));
+        return Ok((command, script.to_owned()));
     }
     let escaped = script
         .replace('\\', "\\\\")
@@ -72,9 +83,8 @@ fn invocation(prompt: Prompt, user: &str, existing: bool) -> Result<(Command, St
 }
 
 #[cfg(target_os = "windows")]
-fn invocation(_prompt: Prompt, user: &str, existing: bool) -> Result<(Command, String), Error> {
+fn invocation(_prompt: Prompt, source: &str) -> Result<(Command, String), Error> {
     use base64::Engine as _;
-    let source = script(include_str!("windows.ps1"), user, existing);
     let bytes: Vec<u8> = source.encode_utf16().flat_map(u16::to_le_bytes).collect();
     let encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
     let root = std::env::var_os("SystemRoot").ok_or(Error::Unsupported)?;
@@ -89,6 +99,6 @@ fn invocation(_prompt: Prompt, user: &str, existing: bool) -> Result<(Command, S
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
-fn invocation(_prompt: Prompt, _user: &str, _existing: bool) -> Result<(Command, String), Error> {
+fn invocation(_prompt: Prompt, _source: &str) -> Result<(Command, String), Error> {
     Err(Error::Unsupported)
 }

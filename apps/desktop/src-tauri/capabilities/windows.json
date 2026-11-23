@@ -17,6 +17,8 @@
     "allow-this-machine-read",
     "allow-link-join",
     "allow-link-status",
+    "allow-link-access",
+    "allow-link-ports",
     "allow-link-leave",
     "allow-hub-listener-check",
     "allow-system-browser-open",

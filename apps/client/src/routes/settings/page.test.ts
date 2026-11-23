@@ -248,7 +248,7 @@ it('CLI-002, F-10: desktop shows Hub after Account and before Notifications, wit
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   const headings = sectionHeadings(target);
   expect(headings.slice(0, 3)).toEqual(['Account', 'Hub', 'Notifications']);
-  expect(sectionTexts(target, 'Hub')).toEqual(['Hub', 'The hub this app talks to.', `Hub address${hub.hub.address.origin}`, 'Test connection', 'Change hub', '']);
+  expect(sectionTexts(target, 'Hub')).toEqual(['Hub', 'The hub this app talks to.', `Hub address${hub.hub.address.origin}`, 'Test connection', 'Change hub', '', 'Set up remote access']);
   expect(hubStatus(target)?.textContent).toBe('');
 });
 
