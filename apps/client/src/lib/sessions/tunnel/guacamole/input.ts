@@ -44,9 +44,10 @@ const MOUSE_EVENTS: readonly Guacamole.Mouse.EventType[] = ['mousedown', 'mouseu
  * Send mouse and touch input on the client's display element to the gateway (D-8). The wheel arrives as presses
  * of the `up` and `down` buttons, which scroll guacd's scroll-back (RA-003). Returns the function that stops it.
  */
-export function forwardPointer(client: Client): () => void {
+export function forwardPointer(client: Client, directTouch = true): () => void {
   const element = client.getDisplay().getElement();
-  const pointers = [new Guacamole.Mouse(element), new Guacamole.Mouse.Touchscreen(element)];
+  const pointers: (Guacamole.Mouse | Guacamole.Mouse.Touchscreen)[] = [new Guacamole.Mouse(element)];
+  if (directTouch) pointers.push(new Guacamole.Mouse.Touchscreen(element));
   const send = (event: Guacamole.Mouse.Event) => {
     client.sendMouseState(event.state, true);
   };
