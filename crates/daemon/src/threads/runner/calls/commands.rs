@@ -2,7 +2,7 @@
 //! `/` and `$` lists of the composer, and a compact of the context of a Codex thread. Only the
 //! person makes them: the lists name files of the person.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use agent_threads::control::{Action, Outcome, Refusal};
 use agent_threads::drive::{CommandLists, Program};
@@ -29,7 +29,7 @@ impl Runner {
         };
         match (thread, program, folder) {
             (Some(id), None, None) => self.thread_commands(id).await,
-            (None, Some(program), Some(folder)) => self.folder_commands(program, &folder),
+            (None, Some(program), Some(folder)) => self.folder_commands(program, folder).await,
             _ => refused(Refusal::BadValue),
         }
     }
@@ -44,18 +44,15 @@ impl Runner {
         answer(lists)
     }
 
-    fn folder_commands(&self, program: Program, folder: &Path) -> Outcome {
-        let daemon = self.dir.parent().unwrap_or(&self.dir);
-        let real = match super::super::start::chosen_folder(folder, daemon) {
-            Ok(real) => real,
-            Err(why) => return refused(why),
-        };
+    async fn folder_commands(&self, program: Program, folder: PathBuf) -> Outcome {
+        let daemon = self.dir.parent().unwrap_or(&self.dir).to_owned();
         match program {
-            Program::ClaudeCode => answer(Some(CommandLists {
-                commands: claude_files::commands(&real, self.home().as_deref()),
-                skills: Vec::new(),
-            })),
+            Program::ClaudeCode => self.claude_files(folder, daemon).await,
             Program::Codex => {
+                let real = match super::super::start::chosen_folder(&folder, &daemon) {
+                    Ok(real) => real,
+                    Err(why) => return refused(why),
+                };
                 let found = login::find(program, &self.env, login::executable, login::trusted);
                 let Some(path) = found else {
                     return refused(Refusal::ProgramNotFound);
@@ -67,6 +64,24 @@ impl Runner {
                 }
                 answer(now.lists)
             }
+        }
+    }
+
+    /// The command files of Claude Code in `folder` and the home, read off the loop of the
+    /// runner: a folder that does not answer in time (a hung mount) gives `pending`.
+    async fn claude_files(&self, folder: PathBuf, daemon: PathBuf) -> Outcome {
+        let home = self.home();
+        let read = tokio::task::spawn_blocking(move || {
+            let real = super::super::start::chosen_folder(&folder, &daemon)?;
+            Ok(claude_files::commands(&real, home.as_deref()))
+        });
+        match tokio::time::timeout(READ_TIME, read).await {
+            Ok(Ok(Ok(commands))) => answer(Some(CommandLists {
+                commands,
+                skills: Vec::new(),
+            })),
+            Ok(Ok(Err(why))) => refused(why),
+            Ok(Err(_)) | Err(_) => answer(None),
         }
     }
 
@@ -96,6 +111,9 @@ impl Runner {
         }
     }
 }
+
+/// How long the runner waits for the command files of a folder.
+const READ_TIME: std::time::Duration = std::time::Duration::from_secs(5);
 
 const fn refused(why: Refusal) -> Outcome {
     Outcome::Refused { why }

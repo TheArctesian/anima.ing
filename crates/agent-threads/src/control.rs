@@ -8,9 +8,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::drive::{
-    Answer, ChosenSkill, CommandLists, DriveEvent, Effort, Mode, Program, Request, Usage,
-};
+use crate::drive::{Answer, DriveEvent, Effort, Mode, Program, Request, Usage};
 use crate::files::FoundPath;
 
 pub mod attach;
@@ -110,7 +108,7 @@ pub enum Action {
         attachments: Vec<Uuid>,
         /// Codex: skills of the last `commands` answer of the thread (TH117).
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
-        skills: Vec<ChosenSkill>,
+        skills: Vec<crate::drive::ChosenSkill>,
     },
     /// The answer of the person to a request of the program (THR-030).
     Answer {
@@ -283,7 +281,7 @@ pub enum Outcome {
     /// name them yet: ask again later.
     Commands {
         #[serde(flatten)]
-        lists: CommandLists,
+        lists: crate::drive::CommandLists,
         pending: bool,
     },
     Models {

@@ -36,11 +36,15 @@ impl Runner {
             .as_ref()
             .map(Model::as_str)
             .or(thread.row.model.as_deref());
-        // The thread takes what it has with what changes: a new model must list both.
+        // A new model must list what changes and what the thread keeps; with the same model,
+        // only what changes is asked.
+        let keeps = model.is_some();
         let asked = Asked {
             model: named,
-            effort: effort.or(thread.row.effort),
-            speed: speed.as_deref().or(thread.row.speed.as_deref()),
+            effort: effort.or(thread.row.effort.filter(|_| keeps)),
+            speed: speed
+                .as_deref()
+                .or(thread.row.speed.as_deref().filter(|_| keeps)),
         };
         if !self.said.models.offers(thread.row.program, &asked) {
             return refused(Refusal::BadValue);

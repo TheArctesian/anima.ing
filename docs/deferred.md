@@ -23,7 +23,7 @@ Rules:
 | Area | Lists | Items with a box | Revisit |
 | --- | --- | --- | --- |
 | 1. Releases, signing and installation | 1 | 4 | Before the first public release (tasks R5 to R7 of projects-and-builds-plan.md). |
-| 2. Later phases and proposals | 13 | 44 | When the proposal or the phase of the item gets a ruling. Each proposal has a row in the work plan Section 9. |
+| 2. Later phases and proposals | 13 | 49 | When the proposal or the phase of the item gets a ruling. Each proposal has a row in the work plan Section 9. |
 | 3. Ideas from other products | 2 | 17 | When the plan that owns the subject is changed next. |
 | 4. Hub: access, logs and security | 7 | 24 | Before a hub is hosted for a different person, and at the next security review of access. |
 | 5. Hub: devices, checks and metrics | 9 | 20 | When the domain of the item is changed next. |
@@ -181,6 +181,11 @@ Added 2026-11-23. From task TH117 of [agent-threads.md](proposals/agent-threads.
 - [ ] The programs of access of a Codex model (`cyber`) are only listed: Codex 0.170 takes no choice of one on `thread/start` or `turn/start`.
 - [ ] After a restart of the runner, a Claude Code thread that still runs lists no commands until it starts again: the runner does not send `initialize` a second time. The composer can ask with the program and the folder instead.
 - [ ] The commands of Claude Code that come from plugins are listed only when a thread runs: the files of the plugins are not read for a folder.
+- [ ] A background ask for the Codex skills of a folder that panics leaves the folder marked as asked; after two, no folder is asked again until the runner starts again. No panic path is known. A guard that ends the ask on drop would remove it.
+- [ ] The walk of the Claude Code files checks that a folder is not a link, then opens `SKILL.md` in it by its path: a process that changes the folder between the two can put a link in the path. The read stays a plain file of at most 8 KiB. Opening the folder first and the file relative to it would close the gap.
+- [ ] A skill chosen from the list of a folder before a thread starts cannot go with the first prompt: the start takes no skill, and a prompt takes only skills of the list of its own thread.
+- [ ] Links in `~/.claude/commands` and `~/.claude/skills` are left out, as in a repository. Many people keep these folders as links to their dotfiles.
+- [ ] The Claude Code files of a folder that does not answer in 5 seconds (a hung mount) give `pending`, and each later call starts one more read that waits.
 
 ## 3. Ideas from other products
 

@@ -11,6 +11,8 @@ use super::{Driver, Step, Thread};
 /// How long the skills of a Codex thread stay fresh, and how soon a thread with none asks again.
 const FRESH: Duration = Duration::from_secs(60);
 const AGAIN: Duration = Duration::from_secs(10);
+/// The most skills that one prompt names.
+const MOST_SKILLS: usize = 16;
 
 impl Thread {
     /// The lists that the program last named at `now`, with the commands that the runner runs
@@ -23,7 +25,7 @@ impl Thread {
             .lists_asked
             .is_none_or(|asked| now.saturating_duration_since(asked) >= wait);
         let again = match &mut self.driver {
-            Driver::Codex(codex) if self.held && due => {
+            Driver::Codex(codex) if self.held && due && codex.thread.is_some() => {
                 self.lists_asked = Some(now);
                 vec![Step::Write(codex.skills_again())]
             }
@@ -39,7 +41,8 @@ impl Thread {
     }
 
     /// Whether each skill is one that the program of the thread listed, by its name and its path:
-    /// a prompt never names a file that the program did not give (TH117).
+    /// a prompt never names a file that the program did not give (TH117). A prompt names at most
+    /// 16 skills, each once.
     ///
     /// # Errors
     /// [`Refusal::BadValue`] for a skill that is not in the last list, or any skill for Claude
@@ -47,6 +50,13 @@ impl Thread {
     pub fn takes(&self, skills: &[ChosenSkill]) -> Result<(), Refusal> {
         if skills.is_empty() {
             return Ok(());
+        }
+        let once = skills
+            .iter()
+            .enumerate()
+            .all(|(at, chosen)| !skills[..at].contains(chosen));
+        if skills.len() > MOST_SKILLS || !once {
+            return Err(Refusal::BadValue);
         }
         let listed = match (&self.driver, &self.lists) {
             (Driver::Codex(_), Some(lists)) => &lists.skills,

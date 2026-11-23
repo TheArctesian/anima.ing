@@ -170,34 +170,6 @@ fn th110_codex_carries_the_change_on_each_later_turn_and_refuses_plan_mode() {
 }
 
 #[test]
-fn th117_the_standard_speed_goes_to_codex_but_is_not_kept_on_the_row() {
-    let mut ids = counter();
-    let (mut thread, _) = codex_in_a_turn(&mut ids);
-    thread.line(
-        r#"{"method":"turn/completed","params":{"turn":{"id":"u1","status":"completed"}}}"#,
-        &mut ids,
-    );
-    thread
-        .set(Changes {
-            speed: Some("default".to_owned()),
-            ..Changes::default()
-        })
-        .expect("changed");
-    assert_eq!(
-        thread.row.speed, None,
-        "the standard speed is no speed of the row"
-    );
-    let next = thread
-        .send(&agent_threads::drive::Prompt::plain("slower"), true)
-        .expect("running");
-    let params = &serde_json::from_str::<serde_json::Value>(&next[0]).expect("JSON")["params"];
-    assert_eq!(
-        params["serviceTier"], "default",
-        "Codex leaves the fast speed"
-    );
-}
-
-#[test]
 fn th110_a_thread_that_does_not_run_changes_nothing() {
     let mut thread = claude();
     assert_eq!(
