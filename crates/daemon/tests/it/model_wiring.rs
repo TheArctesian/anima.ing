@@ -15,7 +15,7 @@ use serde_json::{Value, json};
 
 use crate::fake_hub::{FakeHub, Reply};
 use crate::kit::{at, origin, token, year};
-use crate::model_work::kit::{contained, node, release};
+use crate::model_work::kit::{assert_k10_states, contained, node, release};
 use crate::model_work::servers::{SERVER, gone, installed_node};
 
 fn hub(fake: &FakeHub, home: &Home) -> Hub {
@@ -154,8 +154,9 @@ async fn sf_259_each_server_ends_when_the_model_work_ends() {
     fake.queue_claim(Reply::json(200, &start_item()));
 
     let work = ModelWork::start(node, hub, home);
-    let reports = seen(&fake, "report", 2).await;
-    assert_eq!(reports[1]["state"], json!("succeeded"), "{reports:?}");
+    let reports = seen(&fake, "report", 4).await;
+    assert_k10_states(&reports);
+    assert_eq!(reports[3]["state"], json!("done"), "{reports:?}");
     let child = child_in(&child_file);
     work.end().await;
 

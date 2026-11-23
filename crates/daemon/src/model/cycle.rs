@@ -13,13 +13,14 @@ use daemon_core::model_work::order::{self, Checked, ModelMachine, Order, Paramet
 use daemon_core::model_work::releases::{self, Release, Sources};
 use daemon_core::model_work::settings::{ServerSettings, SettingLimits};
 use daemon_core::wire::{
-    Claim, DaemonToken, Free, Switch, WorkArchitecture, WorkKind, WorkOs, WorkType,
+    Claim, DaemonToken, Free, Switch, WorkArchitecture, WorkKind, WorkOs, WorkState, WorkType,
 };
 use serde_json::{Value, json};
 use uuid::Uuid;
 
 use super::install::{self, Place};
-use super::pull::watch::{self, Watched};
+use super::pull::watch::Watched;
+use super::reports::{self, ended, refused};
 use super::server::{self, Launch};
 use super::state;
 use super::supervise::{Server, ServerState, Servers, Shared};
@@ -58,31 +59,18 @@ pub struct Node {
     pub tool_folders: Vec<Root>,
 }
 
-/// The JSON report of attempt `attempt` of item `id` (K10 Section 7, with `model`).
-#[must_use]
-pub fn report(
-    id: Uuid,
-    attempt: u32,
-    outcome: Result<Option<Value>, Cause>,
-    seconds: u64,
-) -> Value {
-    let detail = outcome.as_ref().err().and_then(|cause| cause.detail());
-    let (state, cause, model) = match outcome {
-        Ok(model) => ("succeeded", None, model),
-        Err(cause) if cause.is_refusal() => ("refused", Some(cause.as_str()), None),
-        Err(cause) => ("failed", Some(cause.as_str()), None),
-    };
-    let mut result = json!({
-        "outcome": state, "cause": cause, "seconds": seconds,
-        "cleanup": { "isolation": "none", "checkout": "none", "secrets": "none", "keychain": "none" },
-    });
-    if let Some(model) = model {
-        result["model"] = model;
+/// A report of a step of the attempt with no result (K10 Section 7).
+async fn moved(
+    client: &HubClient,
+    token: &DaemonToken,
+    order: &Order,
+    state: WorkState,
+) -> Result<(), HubCause> {
+    let body = json!({ "id": order.id, "attempt": order.attempt, "state": state.as_str() });
+    match client.report_work(token, &body).await {
+        Answer::Failed(cause) => Err(cause),
+        Answer::Accepted(_) | Answer::Refused(_) => Ok(()),
     }
-    if let Some(detail) = detail {
-        result["detail"] = json!(detail);
-    }
-    json!({ "id": id, "attempt": attempt, "state": state, "result": result })
 }
 
 fn api_key() -> Option<zeroize::Zeroizing<String>> {
@@ -302,21 +290,23 @@ impl Node {
         let start = Instant::now();
         let body = match order::check(&item, &machine) {
             Checked::Drop => return Ok(None),
-            Checked::Refuse { id, attempt, cause } => report(id, attempt, Err(cause), 0),
+            Checked::Refuse { id, attempt, cause } => refused(id, attempt, cause),
             // TODO(L1-8, L1-16): the types that this build does not do yet.
             Checked::Start(order) if !BUILT.contains(&order.work_type) => {
-                report(order.id, order.attempt, Err(Cause::TypeUnknown), 0)
+                refused(order.id, order.attempt, Cause::TypeUnknown)
             }
             Checked::Start(order) => {
-                let running =
-                    json!({ "id": order.id, "attempt": order.attempt, "state": "running" });
-                if let Answer::Failed(cause) = client.report_work(token, &running).await {
-                    return Err(cause);
-                }
+                // K11 Section 3: `preparing` is the check of the item, `running` the step and
+                // `finishing` its clean-up, in the diagram of K10 Section 7.
+                moved(client, token, &order, WorkState::Preparing).await?;
+                moved(client, token, &order, WorkState::Running).await?;
                 let seconds = || start.elapsed().as_secs();
                 match super::pull::watch::run(self, &order, client, token).await {
-                    Watched::Ended(outcome) => report(order.id, order.attempt, outcome, seconds()),
-                    Watched::Stopped => watch::stopped(order.id, order.attempt, seconds()),
+                    Watched::Ended(outcome) => {
+                        moved(client, token, &order, WorkState::Finishing).await?;
+                        ended(order.id, order.attempt, outcome, seconds())
+                    }
+                    Watched::Stopped => reports::stopped(order.id, order.attempt, seconds()),
                     Watched::Lost => return Ok(None),
                 }
             }

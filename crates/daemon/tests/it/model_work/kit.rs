@@ -222,3 +222,30 @@ pub fn node_on(root: &Path, ports: std::ops::RangeInclusive<u16>) -> Node {
         tool_folders: Vec::new(),
     }
 }
+
+/// The reports of one attempt, from its claim: each change is one that the hub permits (K10
+/// Section 7, `WorkState::may_become`, which the hub checks), the last one is final, and its
+/// outcome is the word of its final state.
+pub fn assert_k10_states<'a>(bodies: impl IntoIterator<Item = &'a serde_json::Value>) {
+    use daemon_core::wire::WorkState;
+    let mut from = WorkState::Claimed;
+    let mut last = &serde_json::Value::Null;
+    for body in bodies {
+        let to: WorkState =
+            serde_json::from_value(body["state"].clone()).expect("a state of K10 Section 7");
+        assert!(from.may_become(to), "{from:?} to {to:?}: {body}");
+        (from, last) = (to, body);
+    }
+    let outcome = match from {
+        WorkState::Done => "succeeded",
+        WorkState::Refused => "refused",
+        WorkState::Stopped => "stopped",
+        WorkState::Failed => "failed",
+        other => panic!("the attempt ends in {other:?}, not a final state"),
+    };
+    assert_eq!(
+        last["result"]["outcome"],
+        serde_json::json!(outcome),
+        "{last}"
+    );
+}

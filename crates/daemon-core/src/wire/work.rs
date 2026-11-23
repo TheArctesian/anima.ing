@@ -231,6 +231,21 @@ pub enum WorkState {
 }
 
 impl WorkState {
+    /// Whether a report may change an item from `self` to `to` (K10 Section 7): the diagram of the
+    /// states, or the same state again. A refusal is final only from `claimed`.
+    #[must_use]
+    pub const fn may_become(self, to: Self) -> bool {
+        use WorkState::{Claimed, Done, Failed, Finishing, Preparing, Refused, Running, Stopped};
+        matches!(
+            (self, to),
+            (Claimed, Claimed | Preparing | Refused)
+                | (Preparing, Preparing | Running)
+                | (Running, Running | Finishing)
+                | (Finishing, Finishing | Done)
+                | (Preparing | Running | Finishing, Failed | Stopped)
+        )
+    }
+
     #[must_use]
     pub const fn is_final(self) -> bool {
         matches!(

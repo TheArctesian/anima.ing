@@ -41,16 +41,6 @@ const fn ends(code: RefusalCode) -> bool {
     )
 }
 
-/// The report of an item that ended at a stop of the hub.
-#[must_use]
-pub fn stopped(id: uuid::Uuid, attempt: u32, seconds: u64) -> Value {
-    let result = json!({
-        "outcome": "stopped", "cause": null, "seconds": seconds,
-        "cleanup": { "isolation": "none", "checkout": "none", "secrets": "none", "keychain": "none" },
-    });
-    json!({ "id": id, "attempt": attempt, "state": "stopped", "result": result })
-}
-
 /// Runs the step of `order`; a `model_pull` sends its progress while it runs. A stop or the
 /// loss of the item drops the step, which ends the pull process; its partial files stay for
 /// the next pull of the copy.

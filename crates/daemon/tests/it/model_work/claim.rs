@@ -2,7 +2,7 @@ use anima_daemon::hub::{HubClient, TIMEOUT};
 use daemon_core::wire::DaemonToken;
 use serde_json::json;
 
-use super::kit::node;
+use super::kit::{assert_k10_states, node};
 use crate::fake_hub::{FakeHub, Reply};
 
 fn token() -> DaemonToken {
@@ -57,14 +57,12 @@ async fn work_outside_the_list_is_refused() {
     ] {
         let parameters = json!({ "server": "0192f6aa-0000-7000-8000-000000000001", "copy": "0192f6aa-0000-7000-8000-000000000002", "probe": "text_short" });
         hub.queue_claim(Reply::json(200, &item(work_type, &parameters)));
+        let before = hub.seen("report").len();
         node.cycle(&client, &token()).await.expect("a cycle");
-        let reports = hub.seen("report");
-        assert!(
-            reports
-                .iter()
-                .all(|report| report.body["state"] != json!("running"))
-        );
-        let report = &reports.last().expect("a report").body;
+        let reports = hub.seen("report").split_off(before);
+        assert_k10_states(reports.iter().map(|report| &report.body));
+        assert_eq!(reports.len(), 1, "{work_type}");
+        let report = &reports[0].body;
         assert_eq!(report["state"], json!("refused"), "{work_type}");
         assert_eq!(report["result"]["cause"], json!(cause), "{work_type}");
     }
@@ -79,12 +77,13 @@ async fn a_model_report_gives_the_state_and_the_settings() {
     hub.queue_claim(Reply::json(200, &item("model_report", &json!({}))));
     node.cycle(&client, &token()).await.expect("a cycle");
     let reports = hub.seen("report");
-    assert_eq!(reports[0].body["state"], json!("running"));
-    let model = &reports[1].body["result"]["model"];
-    assert_eq!(reports[1].body["state"], json!("succeeded"));
+    assert_k10_states(reports.iter().map(|report| &report.body));
+    let done = reports.last().expect("a report");
+    let model = &done.body["result"]["model"];
+    assert_eq!(done.body["state"], json!("done"));
     assert_eq!(model["settings"]["sandbox"], json!(false));
     assert_eq!(model["installed"], json!([]));
-    assert_eq!(reports[1].bearer.as_deref(), Some(token().expose()));
+    assert_eq!(done.bearer.as_deref(), Some(token().expose()));
 }
 
 #[tokio::test]
@@ -126,8 +125,11 @@ async fn cap_013_a_model_drain_succeeds_within_its_seconds_and_stops_no_server()
     node.cycle(&client, &token()).await.expect("a cycle");
     assert!(start.elapsed() <= std::time::Duration::from_secs(60));
     let reports = hub.seen("report");
-    assert_eq!(reports[0].body["state"], json!("running"));
-    assert_eq!(reports[1].body["state"], json!("succeeded"));
+    assert_k10_states(reports.iter().map(|report| &report.body));
+    assert_eq!(
+        reports.last().expect("a report").body["state"],
+        json!("done")
+    );
 }
 
 #[tokio::test]
@@ -145,16 +147,20 @@ async fn pull_009_a_pulled_copy_is_downloaded_and_a_copy_delete_removes_it() {
     let pull = json!({ "copy": copy, "variant": copy, "source": source, "format": "gguf", "files": [file], "gated": false });
     hub.queue_claim(Reply::json(200, &item("model_pull", &pull)));
     node.cycle(&client, &token()).await.expect("a cycle");
+    let pulled = hub.seen("report");
     hub.queue_claim(Reply::json(
         200,
         &item("copy_delete", &json!({ "copy": copy })),
     ));
     node.cycle(&client, &token()).await.expect("a cycle");
+    let deleted = hub.seen("report").split_off(pulled.len());
 
-    let reports = hub.seen("report");
-    assert_eq!(reports[1].body["state"], json!("succeeded"));
+    assert_k10_states(pulled.iter().map(|report| &report.body));
     let model = json!({ "copy": copy, "copyState": "downloaded", "bytes": 5, "files": 1 });
-    assert_eq!(reports[1].body["result"]["model"], model);
-    assert_eq!(reports[3].body["state"], json!("succeeded"));
+    assert_eq!(
+        pulled.last().expect("a report").body["result"]["model"],
+        model
+    );
+    assert_k10_states(deleted.iter().map(|report| &report.body));
     assert!(!folder.exists());
 }
