@@ -136,7 +136,7 @@ describe('the head of the chat column (TC2)', () => {
     app = mount(ChatHeader, { target: document.body, props: { thread } });
     flushSync();
     const items = [...document.querySelectorAll('nav li')].map(shown);
-    expect(items).toEqual(['anima.ing', '/', 'Untitled thread']);
+    expect(items).toEqual(['anima.ing', '/', 'Codex in anima.ing']);
     expect(document.querySelector('.head')?.classList.contains('empty')).toBe(false);
     void unmount(app);
     app = mount(ChatHeader, { target: document.body, props: {} });

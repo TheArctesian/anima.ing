@@ -58,7 +58,6 @@ chrono.workspace = true
 daemon-core = { path = "../../../crates/daemon-core" }
 uuid.workspace = true
 
-[target.'cfg(target_os = "android")'.dependencies]
 rustix = { version = "1.1", default-features = false, features = ["std", "fs"] }
 
 # The dependencies of the desktop application. A phone has the window, the access token, the link and the account sign-in only, so it
