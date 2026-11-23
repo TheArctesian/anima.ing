@@ -7,19 +7,11 @@ use std::time::Duration;
 use agent_threads::control::{Action, Outcome};
 use agent_threads::drive::{Mode, Program};
 
-use super::runner::{CLAUDE, Client, Kit};
+use super::runner::{CLAUDE, Client, Kit, holders_of};
 
-/// The process ID of the holder of `dir`, from `ps`.
+/// The process ID of the holder of `dir`.
 fn holder_pid(dir: &Path) -> Option<u32> {
-    let output = std::process::Command::new("/bin/ps")
-        .args(["-axww", "-o", "pid=,command="])
-        .output()
-        .ok()?;
-    let mark = format!(" holder {}", dir.display());
-    String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .find(|line| line.trim_end().ends_with(&mark))
-        .and_then(|line| line.split_whitespace().next()?.parse().ok())
+    holders_of(dir).first().copied()
 }
 
 /// A copy of the daemon at `path`, as an update writes it: a new file put in place.

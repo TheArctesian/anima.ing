@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use agent_threads::control::{Action, Call, Change, Outcome, Reply, RunState, SOCKET};
 use agent_threads::drive::{Answer, Mode, Program};
-use anima_daemon::threads::{holder, tree};
+use anima_daemon::threads::tree;
 use rustix::process::{Pid, Signal};
 use tokio::io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader, Lines};
 use tokio::net::UnixStream;
@@ -125,47 +125,60 @@ impl Kit {
 const HOLDER_END: Duration = Duration::from_secs(30);
 
 impl Drop for Kit {
-    /// Ends the runner, then the holder with its programs. The holder outlives the runner
-    /// (THR-113) and refuses a `Quit` while a thread runs, so it gets `SIGTERM`, which ends each
-    /// program it holds (THR-049). A holder that still runs after that fails the test: it would
-    /// stay behind with its folder deleted.
+    /// Ends the runner, then each holder of its folder with its programs. The holder outlives
+    /// the runner (THR-113) and refuses a `Quit` while a thread runs, so it gets `SIGTERM`, which
+    /// ends each program it holds (THR-049). The holders are found by their command line, not by
+    /// the socket: on a busy computer a holder may not listen yet when a short test ends, and an
+    /// older holder may have given the socket up (TH98). One missed would run on with its folder
+    /// deleted and its made programs. A holder that still runs after the wait fails the test and
+    /// is killed, so that a failing test leaves nothing behind either.
     fn drop(&mut self) {
         self.end_runner();
-        let Some(pid) = holder_of(&self.threads()) else {
-            return;
-        };
-        let _ = rustix::process::kill_process(pid, Signal::TERM);
-        let raw = pid.as_raw_nonzero().get().unsigned_abs();
+        let holders = holders_of(&self.threads());
+        for pid in &holders {
+            signal(*pid, Signal::TERM);
+        }
         let deadline = std::time::Instant::now() + HOLDER_END;
-        while tree::alive(raw) && std::time::Instant::now() < deadline {
+        while holders.iter().any(|pid| tree::alive(*pid)) && std::time::Instant::now() < deadline {
             std::thread::sleep(Duration::from_millis(50));
+        }
+        // Looked up again, so that a process that took the ID of an ended holder is not killed.
+        let left: Vec<u32> = holders_of(&self.threads())
+            .into_iter()
+            .filter(|pid| holders.contains(pid))
+            .collect();
+        for pid in &left {
+            signal(*pid, Signal::KILL);
         }
         // A second panic while the test already fails would abort the whole test binary.
         assert!(
-            std::thread::panicking() || !tree::alive(raw),
-            "the holder {raw} of the test still runs {HOLDER_END:?} after SIGTERM"
+            std::thread::panicking() || left.is_empty(),
+            "the holders {left:?} of the test still ran {HOLDER_END:?} after SIGTERM"
         );
     }
 }
 
-/// The process that answers on the socket of the holder in `dir`, from the peer of a
-/// connection. A thread of its own, as a drop runs inside the runtime of the test.
-fn holder_of(dir: &Path) -> Option<Pid> {
-    let socket = dir.join(holder::SOCKET);
-    std::thread::spawn(move || {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("a runtime");
-        runtime.block_on(async move {
-            let stream = UnixStream::connect(&socket).await.ok()?;
-            stream.peer_cred().ok()?.pid()
-        })
-    })
-    .join()
-    .ok()
-    .flatten()
-    .and_then(Pid::from_raw)
+fn signal(pid: u32, signal: Signal) {
+    if let Some(pid) = i32::try_from(pid).ok().and_then(Pid::from_raw) {
+        let _ = rustix::process::kill_process(pid, signal);
+    }
+}
+
+/// The processes that run `anima-daemon holder <dir>`, from `ps`; none when `ps` cannot run, as
+/// a panic in a drop while the test already fails would abort each test of the binary.
+pub(super) fn holders_of(dir: &Path) -> Vec<u32> {
+    let Ok(output) = Process::new("/bin/ps")
+        .args(["-axww", "-o", "pid=,command="])
+        .output()
+    else {
+        return Vec::new();
+    };
+    let mark = format!(" holder {}", dir.display());
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter(|line| line.trim_end().ends_with(&mark))
+        .filter_map(|line| line.split_whitespace().next()?.parse().ok())
+        .collect()
 }
 
 pub(super) struct Client {
