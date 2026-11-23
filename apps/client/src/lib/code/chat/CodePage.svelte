@@ -70,6 +70,7 @@
       failed: store.listProblem !== null || live?.linked === false,
       chosen: store.chosen,
       newThread: newOff === null ? newThread : undefined,
+      addProject: newOff === null ? () => (draft = (draft ?? new ThreadDraft(open?.folder ?? null)).addProject()) : undefined,
       open: (id) => void choose(id),
       settings: () => void goto(resolve('/settings')),
     }),

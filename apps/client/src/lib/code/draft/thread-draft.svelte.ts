@@ -58,6 +58,15 @@ export class ThreadDraft {
   }
 
   /** The draft starts with no project, in a scratch folder the runner makes. */
+  /** The "Add project" palette is open over the draft. */
+  adding = $state(false);
+
+  /** Opens the "Add project" palette (T3's Sources); the draft is kept. */
+  addProject(): this {
+    this.adding = true;
+    return this;
+  }
+
   withoutProject(): void {
     this.folder = null;
     this.scratch = true;

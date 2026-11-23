@@ -7,6 +7,9 @@
   import { noticeParts } from './notice';
   import { draftProjects, headingOf } from './project';
   import ProjectPicker from './ProjectPicker.svelte';
+  import AddProject from '../add-project/AddProject.svelte';
+  import { startFolder } from '../add-project/sources';
+  import { folderListOf } from '../add-project/walk.svelte';
   import type { ThreadDraft } from './thread-draft.svelte';
 
   interface Props {
@@ -68,19 +71,19 @@
         {#if heading.kind === 'build'}
           <span>What should we build in</span>
           <!-- The mark follows the name with no space, as T3's suffix does. -->
-          <span class="project"><ProjectPicker projects={known} folder={draft.folder} words={heading.name} onChoose={choose} open={picking} /><span>?</span></span>
+          <span class="project"><ProjectPicker projects={known} folder={draft.folder} words={heading.name} onChoose={choose} onAdd={() => draft.addProject()} open={picking} /><span>?</span></span>
         {:else if heading.kind === 'scratch'}
           <span>What should we work on?</span>
         {:else if heading.kind === 'choose'}
-          <span><ProjectPicker projects={known} folder={null} words="Choose a project" onChoose={choose} open={picking} /> to start</span>
+          <span><ProjectPicker projects={known} folder={null} words="Choose a project" onChoose={choose} onAdd={() => draft.addProject()} open={picking} /> to start</span>
         {:else}
-          <span><ProjectPicker projects={known} folder={null} words="Add a project" onChoose={choose} open={picking} /> to start</span>
+          <span><ProjectPicker projects={known} folder={null} words="Add a project" onChoose={choose} onAdd={() => draft.addProject()} open={picking} /> to start</span>
         {/if}
       </h1>
       <!-- T3: under a scratch draft its project picker says "No project"; under any other, the way to one. -->
       <p class="sub">
         {#if heading.kind === 'scratch'}
-          <ProjectPicker projects={known} folder={null} words="No project" onChoose={choose} open={picking} />
+          <ProjectPicker projects={known} folder={null} words="No project" onChoose={choose} onAdd={() => draft.addProject()} open={picking} />
         {:else}
           <button type="button" class="quiet" onclick={() => draft.withoutProject()}>or start without a project</button>
         {/if}
@@ -97,6 +100,8 @@
     {#key draft}<Card {engine} title="New thread" />{/key}
   </div>
 </div>
+
+<AddProject bind:open={draft.adding} list={(folder) => live.call({ call: 'folders', folder }).then(folderListOf)} start={startFolder(known)} onAdd={choose} />
 
 <style>
   /* The composer in the middle of the canvas, low when the window is short (T3: items-center, items-end under 34rem). */

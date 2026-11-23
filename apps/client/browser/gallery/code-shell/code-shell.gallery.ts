@@ -6,6 +6,7 @@ import { installSyntheticHub } from '../../synthetic/synthetic-hub';
 import { HEIGHT, MODES, storedSettings, type Mode } from '../shots';
 import { installDesktopShell, type Scenario } from '../threads/desktop-shell';
 import { EVERY_STATE as UNMARKED, IDS } from '../threads/scenario';
+import { addProject, card, newThread, openModels } from './draft';
 
 // Stage 2 of the T3 Code copy (TC2): the inbox of the page Code in each state, and the whole page. The page is only in
 // the desktop application, so the gallery stands in for its shell with the made-up threads of the threads gallery. It
@@ -55,6 +56,7 @@ const MODELS: Scenario = {
 };
 /** A long reason, as the installed app showed one: the line under the list must hold it whole. */
 const MODELS_SAID = 'claude exited before it answered: the session could not start because the account has no access to the requested model list';
+const DISK: Scenario = { ...EVERY_STATE, disk: { '/Users/you': ['anima', 'notes', 'spikes', 'site'], '/Users/you/site': ['public', 'src'] } };
 const EMPTY: Scenario = { ...EVERY_STATE, rows: [], running: [], listings: [], updates: [] };
 const TALKED = 'Why does the gates run stop at limits?';
 /** The idle thread works in a linked worktree on a branch, with the context window its program last said (TH112). */
@@ -94,7 +96,6 @@ interface Shot {
   readonly act?: (page: Page, inbox: Locator) => Promise<readonly Locator[]>;
 }
 
-const card = (inbox: Locator, title: string): Locator => inbox.getByRole('button', { name: new RegExp(title) }).first();
 
 async function openCode(page: Page): Promise<Locator> {
   await page.goto(`${HUB_ORIGIN}/code`);
@@ -235,33 +236,22 @@ const SHOTS: readonly Shot[] = [
       return [];
     },
   },
+  // T3's draft with no project: "What should we work on?" over "No project"; a send starts a scratch thread.
+  {
+    name: 'new-thread-scratch',
+    window: true,
+    act: async (page, inbox) => {
+      await newThread(page, inbox, false);
+      await page.getByRole('button', { name: 'or start without a project' }).click();
+      await expect(page.getByRole('heading', { name: 'What should we work on?' })).toBeVisible();
+      return [];
+    },
+  },
+  // T3's "Add project" palette: its Sources, then the folders of "Local folder" from the runner's `folders`.
+  { name: 'add-project-sources', window: true, scenario: DISK, act: (page, inbox) => addProject(page, inbox, false) },
+  { name: 'add-project-folder', window: true, scenario: DISK, act: (page, inbox) => addProject(page, inbox, true) },
 ];
 
-/** Opens a new thread from the open "Review the sign-in flow"; `picking` opens its project picker too. */
-async function newThread(page: Page, inbox: Locator, picking: boolean): Promise<readonly Locator[]> {
-  await card(inbox, 'Review the sign-in flow').click();
-  await inbox.getByRole('button', { name: 'New thread' }).click();
-  await page.mouse.move(1000, HEIGHT / 2);
-  const heading = page.getByRole('heading', { name: /What should we build in/ });
-  await expect(heading).toBeVisible();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  if (picking) {
-    await heading.getByRole('button').click();
-    await expect(page.getByRole('listbox', { name: 'Projects' })).toBeVisible();
-  }
-  return [];
-}
-
-/** Opens the draft's model picker; `program` opens that program's tab of the rail. */
-async function openModels(page: Page, inbox: Locator, program: string | null, listed = true): Promise<readonly Locator[]> {
-  await newThread(page, inbox, false);
-  await page.getByRole('button', { name: /^Claude Code default/ }).click();
-  const picker = page.getByRole('dialog', { name: 'Model' });
-  await expect(listed ? picker.getByText('Opus 4.7') : picker.getByRole('button', { name: 'Retry' })).toBeVisible();
-  if (program !== null) await picker.getByRole('button', { name: program, exact: true }).click();
-  await page.mouse.move(1000, HEIGHT - 20);
-  return [picker];
-}
 
 /** The box of the inbox column with its floating layers, in the page. */
 async function frame(inbox: Locator, layers: readonly Locator[]): Promise<{ x: number; y: number; width: number; height: number }> {
