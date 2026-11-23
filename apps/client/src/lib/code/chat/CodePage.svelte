@@ -6,6 +6,7 @@
   import { moved, type KeyAction } from '$lib/agent-threads/keys';
   import type { CallResult, LiveThreads } from '$lib/agent-threads/live/live.svelte';
   import type { ThreadsStore } from '$lib/agent-threads/store.svelte';
+  import { shownTitle, UNTITLED } from '$lib/agent-threads/thread';
   import LimitDialog from '$lib/agent-threads/view/LimitDialog.svelte';
   import { isMac } from '$lib/platform/mac';
   import { fillRoom } from '$lib/scroll/room';
@@ -53,7 +54,6 @@
   const held = $derived(sizes.held);
   let renaming = $state(false);
   const visits = new Visits();
-  let toolsOpen = $state(false);
   /** The new thread that is not started yet (T3's draft): the chat column shows it in place of a thread. */
   let draft = $state<ThreadDraft | null>(null);
   let field = $state<HTMLInputElement>();
@@ -95,12 +95,17 @@
     page?.querySelector<HTMLElement>(`[data-thread="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' });
   }
 
+  function openedTitle(id: string): string {
+    const row = (store.listedRows ?? []).find((each) => each.id === id);
+    return row === undefined ? UNTITLED : shownTitle(row);
+  }
+
   /** After a key opened `id`: focus follows in the list; elsewhere the title is said (09 finding 13). */
   async function follow(id: string, from: EventTarget | null): Promise<void> {
     await choose(id);
     const row = page?.querySelector<HTMLElement>(`.inbox [data-thread="${CSS.escape(id)}"] > .main`);
     if (row !== null && row !== undefined && from instanceof Element && from.closest('.inbox [data-thread]') !== null) row.focus();
-    else said = `Opened ${(store.listedRows ?? []).find((each) => each.id === id)?.title ?? 'Untitled thread'}`;
+    else said = `Opened ${openedTitle(id)}`;
   }
 
   /** Shows or hides the list; focus moves to the toggle in its new place (09 finding 14). */
@@ -137,9 +142,8 @@
       case 'leave':
         if (target instanceof HTMLElement) target.blur();
         return true;
+      // The timeline folds each work group by itself (T3 Code): there is no switch of every tool call.
       case 'tools':
-        toolsOpen = !toolsOpen;
-        return true;
       case 'find':
       case 'help':
         return false;
@@ -222,7 +226,7 @@
     {/snippet}
     {#snippet aside()}{#if detailed !== undefined}<ThreadAside row={detailed} shown={details} />{/if}{/snippet}
     {#snippet notice()}{#if linkWords !== null}<p class="link" role="status">{linkWords}</p>{/if}{/snippet}
-    {#if draft !== null && live !== null}<DraftThread {draft} {live} projects={projectsOf(store.listedRows ?? [])} onStarted={(id) => void choose(id)} />{:else}<ThreadBody {store} now={view.moment} {toolsOpen} />{/if}
+    {#if draft !== null && live !== null}<DraftThread {draft} {live} projects={projectsOf(store.listedRows ?? [])} onStarted={(id) => void choose(id)} />{:else}<ThreadBody {store} now={view.moment} />{/if}
     {#snippet composer()}{#if draft === null && store.chosen !== null && (store.liveThread?.row.id === store.chosen || store.thread?.id === store.chosen)}<ChatFoot thread={store.liveThread?.row.id === store.chosen ? store.liveThread : null} {live} id={store.chosen} />{/if}{/snippet}
   </ChatColumn>
 </div>
