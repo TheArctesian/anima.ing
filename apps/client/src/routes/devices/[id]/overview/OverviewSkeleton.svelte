@@ -1,108 +1,40 @@
 <script lang="ts">
   import type { MetricsSource } from '$lib/hub/generated/graphql';
-  import Icon from '$lib/icons/Icon.svelte';
   import type { MetricRange } from '$lib/metrics/api';
-  import '$lib/metrics/bars/geometry.css';
   import { hasMetrics } from '$lib/metrics/source/has-metrics';
   import './geometry.css';
-  import HostKeyCard from './facts/HostKeyCard.svelte';
-  import OverviewFacts from './facts/OverviewFacts.svelte';
   import MetricsSkeleton from './MetricsSkeleton.svelte';
-  import type { OverviewDevice } from './overview';
 
-  interface Props {
-    range: MetricRange;
-    source: MetricsSource;
-    now: () => Date;
-    /** The device's SSH facts when it is known; `null` reserves the longest case, a host key. */
-    ssh: OverviewDevice['ssh'] | null;
-  }
-
-  const { range, source, now, ssh }: Props = $props();
-  /** What a key looks like when the device is not known: algorithm, then "SHA256:" and 43 base64 characters. */
-  const REPRESENTATIVE_KEY = { algorithm: 'ssh-ed25519', fingerprintSha256: `SHA256:${'x'.repeat(43)}`, firstSeenAt: '' };
-  /** The facts cards with values of the widest text; the text is hidden and only the cards show. */
-  const shape = $derived({
-    status: 'UNKNOWN' as const,
-    maintenance: false,
-    day: null,
-    week: null,
-    month: null,
-    ssh: ssh ?? { enabled: true, hostKey: REPRESENTATIVE_KEY },
-  });
+  const { range, source, now }: { range: MetricRange; source: MetricsSource; now: () => Date } = $props();
 </script>
 
-<!--
-  The loaded Overview with no text (D-9): the same facts cards, drawn by the same component with each card's content
-  hidden, so a host key wraps to the same lines at every width; then the Metrics card (MOT-007).
--->
-<!-- The two columns of the loaded panel, so the main column keeps its width when the cards beside it arrive (R-224). -->
-<div class="overview-fit">
-  <div class="overview-columns">
-    <div class="overview-main">
-      <div class="ghost" aria-hidden="true" inert>
-        <OverviewFacts device={shape} checks={[]} hostKey={false} />
-      </div>
-      <div class="overview-card metrics" aria-hidden="true">
-        <div class="head" class:ssh={hasMetrics(source)}><div class="overview-card-title">&nbsp;</div></div>
-        {#if hasMetrics(source)}
-          <div class="bars"></div>
-          <MetricsSkeleton {range} {now} />
-        {:else}
-          <!-- The block the loaded section has when metrics are off, with its icon, sentence and button hidden. -->
-          <div class="metrics-off ghost-text">
-            <span class="off-icon"><Icon name="carbon:chart-line" size="lg" /></span>
-            <p>&nbsp;</p>
-            <span class="settings"></span>
-          </div>
-        {/if}
-      </div>
-    </div>
-    <div class="overview-side" aria-hidden="true">
-      <div class="overview-card side-ghost"></div>
-      <div class="overview-card side-ghost"></div>
-      <!-- The host key card with the loaded card's text, hidden, so it wraps to the same lines (MOT-007). -->
-      <div class="ghost" inert><HostKeyCard ssh={shape.ssh} /></div>
-    </div>
+<div class="overview-fit" aria-hidden="true">
+  <div class="health"></div>
+  <div class="overview-card metrics">
+    <div class="overview-card-title"></div>
+    {#if hasMetrics(source)}
+      <div class="readings"></div>
+      <MetricsSkeleton {range} {now} />
+    {:else}
+      <div class="empty"></div>
+    {/if}
   </div>
 </div>
 
 <style>
-  /* The cards "Connect" and "About" before their rows are known: about four rows each. */
-  .side-ghost {
-    min-block-size: calc(var(--space-16) * 3);
-  }
+  .health { min-block-size: var(--target-min-touch); }
 
-  /* Each card keeps its box; what it says is not drawn. */
-  .ghost :global(.overview-card > *),
-  .ghost-text > * {
-    visibility: hidden;
-  }
-
-  /* The gaps and heights of `MetricsSection`: its head holds the range buttons, then the bars row. */
   .metrics {
-    gap: var(--space-4);
+    padding: var(--space-3);
+    border: var(--border-thin) solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    background: var(--surface-base);
   }
 
-  .head {
-    display: flex;
-    align-items: center;
-  }
-
-  .ssh {
+  .readings,
+  .empty {
     min-block-size: var(--target-min-touch);
-  }
-
-  .bars {
-    block-size: var(--metric-bars-block-size);
-  }
-
-  .off-icon {
-    font-size: var(--text-2xl);
-    line-height: var(--leading-tight);
-  }
-
-  .settings {
-    block-size: var(--target-min-touch);
+    border-radius: var(--radius-md);
+    background: var(--surface-sunken);
   }
 </style>

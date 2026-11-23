@@ -129,9 +129,20 @@ it('D-10: with no key the card says why, and offers no Copy', () => {
   expect(button('Copy')).toBeUndefined();
 });
 
-it('MET-003: the data shows one chart per metric group with its title, and the current bars', () => {
+it('MET-003: a selected resource has one trend and the comparison still contains every chart', async () => {
   show(LOADED);
-  const titles = [...document.querySelectorAll('h3')].map((one) => one.textContent);
+  const primary = document.querySelector('[aria-label="Selected resource trend"]');
+  expect(primary?.querySelector('h3')?.textContent).toBe('CPU');
+  expect(document.querySelectorAll('svg[role="img"]')).toHaveLength(1);
+  const memory = document.querySelector<HTMLButtonElement>('button[aria-label^="Memory:"]');
+  memory?.click();
+  flushSync();
+  expect(memory?.getAttribute('aria-pressed')).toBe('true');
+  expect(primary?.querySelector('h3')?.textContent).toBe('Memory');
+  const comparison = [...document.querySelectorAll('summary')].find((one) => one.textContent === 'All resource charts');
+  comparison?.click();
+  await vi.waitFor(() => expect(comparison?.parentElement?.querySelectorAll('h3').length).toBeGreaterThan(0));
+  const titles = [...(comparison?.parentElement?.querySelectorAll('h3') ?? [])].map((one) => one.textContent);
   expect(titles).toEqual([
     'CPU',
     'Memory',
@@ -143,8 +154,7 @@ it('MET-003: the data shows one chart per metric group with its title, and the c
     `GPU 0 ${NVIDIA.name} VRAM`,
     `GPU 1 ${INTEGRATED.name} usage`,
   ]);
-  expect(document.querySelectorAll('svg[role="img"]')).toHaveLength(titles.length);
-  expect(document.querySelectorAll('[role="meter"]').length).toBeGreaterThan(0);
+  expect(comparison?.parentElement?.querySelectorAll('svg[role="img"]')).toHaveLength(titles.length);
 });
 
 it('MET-003: the range control marks the current choice and reports a change', () => {
@@ -185,21 +195,21 @@ it('MET-029: the Storage section follows Metrics with a row per drive; it is abs
   expect(card('Storage')).toBeUndefined();
 });
 
-it('D-3: a slow load shows the chart grid skeleton after threshold-loading, with no line', () => {
+it('D-3: a slow load shows the selected trend skeleton after threshold-loading, with no line', () => {
   const { time } = show(WAITING);
   expect(document.querySelector('.chart-grid')).toBeNull();
   time.advance(threshold.loading);
   flushSync();
-  expect(document.querySelectorAll('.chart-grid > .cell')).toHaveLength(4);
+  expect(document.querySelectorAll('.chart-grid > .cell')).toHaveLength(1);
   expect(document.querySelector('polyline')).toBeNull();
 });
 
-it('MOT-007, 5.7.3 Loading: the skeleton draws as many cells as the last answer had, and four before any', () => {
-  const { time } = show({ ...WAITING, chartShape: [1, 2, 1, 1, 1, 1, 2] });
+it('MOT-007, 5.7.3 Loading: the skeleton reserves the legend of the first chart when known', () => {
+  const { time } = show({ ...WAITING, chartShape: [2, 1] });
   time.advance(threshold.loading);
   flushSync();
-  expect(document.querySelectorAll('.chart-grid > .cell').length).toBe(7);
-  expect(document.querySelectorAll('.chart-grid > .cell .legend').length).toBe(2);
+  expect(document.querySelectorAll('.chart-grid > .cell').length).toBe(1);
+  expect(document.querySelectorAll('.chart-grid > .cell .legend').length).toBe(1);
 });
 
 it('D-7: an error shows the hub message and Retry in the chart area', () => {
@@ -238,38 +248,13 @@ it('MET-007: a range with no samples while the bars have readings says the range
 });
 
 it.each([
-  ['NONE', 0, 1],
-  ['SSH', 4, 0],
-] as const)('D-9: the Overview skeleton for %s draws %i chart cells and %i "off" blocks, and the loaded cards', (source, cells, off) => {
-  app = mount(OverviewSkeleton, { target: document.body, props: { range: 'HOUR', source, ssh: null, now: () => NOW } });
+  ['NONE', 0],
+  ['SSH', 1],
+] as const)('D-9: the Overview skeleton for %s reserves %i trends', (source, trendCount) => {
+  app = mount(OverviewSkeleton, { target: document.body, props: { range: 'HOUR', source, now: () => NOW } });
   flushSync();
-  expect(document.querySelectorAll('.chart-grid > .cell')).toHaveLength(cells);
-  expect(document.querySelectorAll('.metrics-off')).toHaveLength(off);
-  const skeletonCards = [...document.querySelectorAll('.overview-facts > .overview-card')].map((one) => words(one.querySelector('h2')));
-  void unmount(app);
-  document.body.replaceChildren();
-  show(WAITING, source);
-  expect([...document.querySelectorAll('.overview-facts > .overview-card')].map((one) => words(one.querySelector('h2')))).toEqual(skeletonCards);
-});
-
-it.each([
-  ['a host key', { enabled: true, hostKey: device().ssh.hostKey }],
-  ['no key yet', { enabled: true, hostKey: null }],
-  ['SSH off', { enabled: false, hostKey: null }],
-])('MOT-007: the skeleton host key card for %s holds the loaded card\'s text, so it wraps to the same lines', (_case, ssh) => {
-  app = mount(OverviewSkeleton, { target: document.body, props: { range: 'HOUR', source: 'SSH', ssh, now: () => NOW } });
-  flushSync();
-  const ghost = words(card('SSH host key'));
-  void unmount(app);
-  document.body.replaceChildren();
-  show(LOADED, 'SSH', 'HOUR', ssh);
-  expect(words(card('SSH host key'))).toBe(ghost);
-});
-
-it('MOT-007: with no device known the skeleton key card holds a full-length key', () => {
-  app = mount(OverviewSkeleton, { target: document.body, props: { range: 'HOUR', source: 'SSH', ssh: null, now: () => NOW } });
-  flushSync();
-  expect(words(document.querySelector('.key-card .overview-key'))).toMatch(/^SHA256:x{43}$/);
+  expect(document.querySelectorAll('.chart-grid > .cell')).toHaveLength(trendCount);
+  expect(document.querySelectorAll('svg[role="img"]')).toHaveLength(0);
 });
 
 it('MET-003: while a switch is pending the old chart keeps its own range in the label and its own gap', () => {

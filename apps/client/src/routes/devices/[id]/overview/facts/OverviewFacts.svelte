@@ -11,9 +11,10 @@
     checks: readonly { readonly status: DeviceStatus }[];
     /** False where the host key card is drawn beside the Overview, with the ways in (R-224). */
     hostKey?: boolean;
+    checksKnown?: boolean;
   }
 
-  const { device, checks, hostKey = true }: Props = $props();
+  const { device, checks, hostKey = true, checksKnown = true }: Props = $props();
   const id = $props.id();
   const counts = $derived(checkCounts(checks));
 </script>
@@ -45,22 +46,24 @@
         {/each}
       </dl>
     </section>
-    <section class="overview-card" aria-labelledby="{id}-checks">
-      <h2 id="{id}-checks" class="overview-card-title"><Icon name="carbon:task-complete" />Checks</h2>
-      {#if counts.length > 0}
-        <!-- Worst first (R-044); each count is labelled with its status in words beside its dot (UI-003). -->
-        <dl class="facts">
-          {#each counts as entry (entry.status)}
-            <div>
-              <dt><StatusDot status={entry.status} /></dt>
-              <dd><Reading value={entry.count}>{entry.count}</Reading></dd>
-            </div>
-          {/each}
-        </dl>
-      {:else}
-        <p class="no-checks">No checks yet</p>
-      {/if}
-    </section>
+    {#if checksKnown}
+      <section class="overview-card" aria-labelledby="{id}-checks">
+        <h2 id="{id}-checks" class="overview-card-title"><Icon name="carbon:task-complete" />Checks</h2>
+        {#if counts.length > 0}
+          <!-- Worst first (R-044); each count is labelled with its status in words beside its dot (UI-003). -->
+          <dl class="facts">
+            {#each counts as entry (entry.status)}
+              <div>
+                <dt><StatusDot status={entry.status} /></dt>
+                <dd><Reading value={entry.count}>{entry.count}</Reading></dd>
+              </div>
+            {/each}
+          </dl>
+        {:else}
+          <p class="no-checks">No checks yet</p>
+        {/if}
+      </section>
+    {/if}
     {#if hostKey}<HostKeyCard ssh={device.ssh} />{/if}
   </div>
 </div>

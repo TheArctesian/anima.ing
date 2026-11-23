@@ -20,8 +20,8 @@
 
 <!-- After Metrics, a device's drives one row each (MET-029); hidden when metrics are off, as Metrics says why. -->
 {#if hasMetrics(source)}
-  <section class="overview-card storage" aria-labelledby="overview-storage">
-    <h2 id="overview-storage" class="overview-card-title"><Icon name="carbon:vmdk-disk" />Storage</h2>
+  <section class="overview-card storage" id="overview-storage" aria-labelledby="overview-storage-heading">
+    <h2 id="overview-storage-heading" class="overview-card-title"><Icon name="carbon:vmdk-disk" />Storage</h2>
     {#if error !== null}
       <p class="quiet">Not available until metrics load.</p>
     {:else if drives === null}
@@ -76,6 +76,8 @@
 <style>
   .storage {
     container-type: inline-size;
+    margin-block-start: var(--space-3);
+    scroll-margin-block-start: calc(var(--space-16) * 3);
   }
 
   .columns {

@@ -218,9 +218,10 @@ Do not use a subscription sign-in for this check until the operator decides OD-S
 
 - State: Open.
 - Open the Hub and Pop!_OS Overview pages in landscape and portrait. Check that the charts have room and the Connect explanation stays within the page.
-- Check that the device name, address and connection actions fit above the tabs in both orientations. Switch tabs and return to Overview. On a phone, verify that the tabs scroll and that Metrics appears before the check summary.
+- Check that the device name, address and connection actions fit above the tabs in both orientations. Switch tabs and return to Overview. On a phone, verify that the health summary appears before Metrics and its Details disclosure holds the check history.
 - Select each time range. Check that the charts keep their values and that axis labels fit. Check that percent charts have a subtle dashed threshold guide. Check that uptime shows one row per time window, with the labels and values at the same size and the timer icon sized to the heading. 100% appears without decimal zeros. On the health strip, Status, Uptime, and Checks use matching spacing. Maintenance reads On or Off.
-- Check that the current reading and a different peak remain visible. Check that the lines for read and write are distinguishable.
+- Check that the latest reading and the peak of the selected range are labeled separately. Check that the lines for read and write are distinguishable.
+- On a short phone and an iPad, switch resources and ranges, expand All resource charts, and follow View storage on a device with a full volume. Confirm Storage is already expanded and shows each volume's usage and free capacity when known. Open Settings by a direct link and verify the selected destination is visible in the phone tab row or More.
 
 ### HT-148: phone Devices, offline notice and Integrations (M2-5)
 

@@ -77,7 +77,7 @@
   .frame {
     display: grid;
     /* The value column fits the longest axis label, "1023.9 KiB/s", in the axis font. */
-    grid-template-columns: calc(var(--space-16) + var(--space-6)) minmax(0, 1fr);
+    grid-template-columns: var(--chart-value-gutter, calc(var(--space-16) + var(--space-6))) minmax(0, 1fr);
     column-gap: var(--space-2);
     row-gap: var(--space-1);
     padding-block-start: var(--space-2);
@@ -102,7 +102,7 @@
   .plot {
     position: relative;
     grid-column: 2;
-    block-size: calc(var(--space-16) * 2);
+    block-size: var(--chart-plot-height, calc(var(--space-16) * 2));
     overflow: hidden;
   }
 

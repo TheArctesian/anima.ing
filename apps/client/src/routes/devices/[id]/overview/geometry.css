@@ -18,10 +18,6 @@
   grid-column: 1 / -1;
 }
 
-/*
- * The Overview in two columns from a panel of 68rem: the main column, and a column of fixed width for the sections
- * "Connect" and "About". The widths are fixed, so a card that arrives moves nothing (R-224, MOT-007).
- */
 .overview-fit {
   container-type: inline-size;
   min-inline-size: 0;
@@ -35,20 +31,11 @@
   min-inline-size: 0;
 }
 
-@container (42rem <= inline-size < 68rem) {
+@container (min-inline-size: 42rem) {
   .overview-side {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: var(--space-5);
-    align-items: start;
-  }
-}
-
-@container (min-inline-size: 68rem) {
-  .overview-columns {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) calc(var(--space-16) * 4.5);
-    column-gap: var(--space-6);
     align-items: start;
   }
 }
