@@ -11,12 +11,12 @@ use http_body_util::{BodyExt as _, Full};
 use hyper::body::Incoming;
 use hyper::header::{CONNECTION, HeaderValue, ORIGIN, UPGRADE};
 use hyper::service::service_fn;
-use hyper::{Request, Response, StatusCode, Uri};
+use hyper::{Method, Request, Response, StatusCode, Uri};
 use hyper_util::rt::{TokioIo, TokioTimer};
 use tokio::net::TcpListener;
 use tokio::task::JoinSet;
 
-use crate::forward::forward;
+use crate::forward::{ForwardError, forward};
 use crate::headers::passed_on;
 use crate::secrets::{SECRET_LENGTH, Secrets};
 use crate::upstream::{Upstream, Upstreams};
@@ -110,17 +110,27 @@ async fn passed(
         Ok(response) => {
             let (mut parts, body) = response.into_parts();
             parts.headers = passed_on(&parts.headers);
-            tracing::info!(thread = %thread, %method, status = parts.status.as_u16(), "relay: passed");
+            log_passed(thread, &method, parts.status);
             Response::from_parts(parts, body.boxed())
         }
         Err(error) => {
-            tracing::warn!(thread = %thread, %method, %error, "relay: the provider was not reached");
+            log_not_reached(thread, &method, &error);
             refusal(
                 StatusCode::BAD_GATEWAY,
                 "the relay did not reach the provider",
             )
         }
     }
+}
+
+/// The log line of one passed request: the thread, the method and the status only.
+fn log_passed(thread: &str, method: &Method, status: StatusCode) {
+    tracing::info!(thread = %thread, %method, status = status.as_u16(), "relay: passed");
+}
+
+/// The log line of one request whose provider was not reached.
+fn log_not_reached(thread: &str, method: &Method, error: &ForwardError) {
+    tracing::warn!(thread = %thread, %method, %error, "relay: the provider was not reached");
 }
 
 /// The first part of a path, when it has the length of a secret, and what follows it.
