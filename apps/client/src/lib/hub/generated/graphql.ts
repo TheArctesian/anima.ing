@@ -712,6 +712,57 @@ export type MobileRelayInput = {
   url?: string | null | undefined;
 };
 
+/** What a model can do, as the files of its repository say (LIBM-008). A tag is not evidence that a runtime of Anima runs the model, and it selects no runtime (LIBM-009). */
+export type ModelCapability =
+  | 'AUDIO_CLASSIFICATION'
+  | 'AUDIO_GENERATION'
+  | 'AUDIO_TO_AUDIO'
+  | 'AUDIO_UNDERSTANDING'
+  | 'CHAT'
+  | 'CODING'
+  | 'CONVERSATIONAL_VOICE'
+  | 'DEPTH_ESTIMATION'
+  | 'DOCUMENT_FIELD_EXTRACTION'
+  /** Table and document question answering. */
+  | 'DOCUMENT_QUESTION_ANSWERING'
+  | 'EMBEDDINGS'
+  | 'IMAGE_CLASSIFICATION'
+  | 'IMAGE_EDITING'
+  | 'IMAGE_GENERATION'
+  /** Image segmentation and background masks. */
+  | 'IMAGE_SEGMENTATION'
+  | 'IMAGE_UNDERSTANDING'
+  /** Music and sound-effects generation. */
+  | 'MUSIC_GENERATION'
+  | 'OBJECT_DETECTION'
+  | 'OCR'
+  /** Reinforcement-learning policies: a tag of the catalogue only. */
+  | 'POLICY'
+  /** Keypoint and pose detection. */
+  | 'POSE_DETECTION'
+  | 'REASONING'
+  | 'RERANKING'
+  | 'SPOKEN_TRANSLATION'
+  | 'STRUCTURED_EXTRACTION'
+  | 'SUMMARIZATION'
+  | 'TABULAR_CLASSIFICATION'
+  | 'TABULAR_REGRESSION'
+  | 'TEXT_CLASSIFICATION'
+  | 'TEXT_TO_SPEECH'
+  /** 3D object, mesh and scene generation (later). */
+  | 'THREE_DIMENSIONAL_GENERATION'
+  | 'TOKEN_CLASSIFICATION'
+  /** Calls the tools that a request names. */
+  | 'TOOLS'
+  | 'TRANSCRIPTION'
+  | 'TRANSLATION'
+  | 'UPSCALING'
+  | 'VIDEO_CLASSIFICATION'
+  | 'VIDEO_EDITING'
+  | 'VIDEO_GENERATION'
+  | 'VIDEO_UNDERSTANDING'
+  | 'VISUAL_DOCUMENT_RETRIEVAL';
+
 /** How a copy came to its machine: pulled from its source, or found where a different program keeps it and used there (K11 Section 2.3). */
 export type ModelCopyOrigin =
   | 'FOUND'
@@ -727,11 +778,32 @@ export type ModelCopyState =
   | 'VALIDATED'
   | 'VALIDATING';
 
+/** The machines and the context of modelFits. Null parts admit all machines and the default context. */
+export type ModelFitFilter = {
+  /** The tokens of context to estimate; the default is 8192, or the context of the model when it is smaller. */
+  contextTokens?: number | null | undefined;
+  /** Only this machine. */
+  deviceId?: string | null | undefined;
+};
+
+/** Whether a variant fits a machine (FIT-005). REDUCED_CONTEXT: only a smaller context fits (FIT-004). UNKNOWN: the model files do not give the layer shape (FIT-002). */
+export type ModelFitState =
+  | 'FITS'
+  | 'REDUCED_CONTEXT'
+  | 'TOO_LARGE'
+  | 'UNKNOWN';
+
 /** The file format of a variant. */
 export type ModelFormat =
   | 'GGUF'
   | 'MLX'
   | 'SAFETENSORS';
+
+/** Where the weights of a model are: in the memory of the GPU (or the unified memory of Apple silicon), partly in the system memory, or in the system memory of a machine with no usable GPU. */
+export type ModelPlacement =
+  | 'CPU'
+  | 'GPU'
+  | 'PARTIAL';
 
 /** Why a device takes no model work now. */
 export type ModelWorkStop =
@@ -1859,6 +1931,19 @@ export type HostingUseFoundModelMutationVariables = Exact<{
 
 export type HostingUseFoundModelMutation = { useFoundModel: { id: string, address: string, origin: ModelCopyOrigin, format: ModelFormat, quantisation: string, repository: string, sizeBytes: number, fileCount: number, state: ModelCopyState, reason: string | null, createdAt: string, place: { kind: HostPlaceKind, id: string, name: string }, progress: { bytes: number, totalBytes: number, bytesPerSecond: number, secondsLeft: number | null } | null } };
 
+export type HostingLibraryQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type HostingLibraryQuery = { libraryModels: Array<{ name: string, family: string | null, parameterCount: number | null, contextLength: number | null, capabilities: Array<ModelCapability>, licence: string | null, publisher: string | null, aliases: Array<string>, variants: Array<{ address: string, tag: string, format: ModelFormat, quantisation: string, sizeBytes: number }> }> };
+
+export type HostingModelFitsQueryVariables = Exact<{
+  model: string;
+  filter?: ModelFitFilter | null | undefined;
+}>;
+
+
+export type HostingModelFitsQuery = { modelFits: Array<{ variant: string, address: string, state: ModelFitState, placement: ModelPlacement | null, backend: string | null, contextTokens: number | null, largestContext: number | null, sizeBytes: number, neededBytes: number | null, usableBytes: number | null, reason: string, place: { kind: HostPlaceKind, id: string, name: string } }> };
+
 export type DeliveryFieldsFragment = { id: string, channelId: string | null, kind: NotificationKind, at: string, ok: boolean, reason: DeliveryReason | null, code: number | null };
 
 export type NotificationChannelFieldsFragment = { id: string, name: string, kind: ChannelKind, onByDefault: boolean, settings:
@@ -2617,6 +2702,8 @@ export const HostingRemoveModelCopyDocument = {"kind":"Document","definitions":[
 export const HostingFoundModelsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"HostingFoundModels"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"foundModels"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"found"}},{"kind":"Field","name":{"kind":"Name","value":"place"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}},{"kind":"Field","name":{"kind":"Name","value":"tool"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"format"}},{"kind":"Field","name":{"kind":"Name","value":"fileCount"}},{"kind":"Field","name":{"kind":"Name","value":"sizeBytes"}},{"kind":"Field","name":{"kind":"Name","value":"usable"}},{"kind":"Field","name":{"kind":"Name","value":"readAt"}}]}}]}}]} as unknown as DocumentNode<HostingFoundModelsQuery, HostingFoundModelsQueryVariables>;
 export const HostingFindModelsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"HostingFindModels"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"deviceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"findModels"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"deviceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"deviceId"}}}]}]}}]} as unknown as DocumentNode<HostingFindModelsMutation, HostingFindModelsMutationVariables>;
 export const HostingUseFoundModelDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"HostingUseFoundModel"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"deviceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"found"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"useFoundModel"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"deviceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"deviceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"found"},"value":{"kind":"Variable","name":{"kind":"Name","value":"found"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"CopyFields"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"CopyFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ModelCopy"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"place"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}},{"kind":"Field","name":{"kind":"Name","value":"address"}},{"kind":"Field","name":{"kind":"Name","value":"origin"}},{"kind":"Field","name":{"kind":"Name","value":"format"}},{"kind":"Field","name":{"kind":"Name","value":"quantisation"}},{"kind":"Field","name":{"kind":"Name","value":"repository"}},{"kind":"Field","name":{"kind":"Name","value":"sizeBytes"}},{"kind":"Field","name":{"kind":"Name","value":"fileCount"}},{"kind":"Field","name":{"kind":"Name","value":"state"}},{"kind":"Field","name":{"kind":"Name","value":"progress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"bytes"}},{"kind":"Field","name":{"kind":"Name","value":"totalBytes"}},{"kind":"Field","name":{"kind":"Name","value":"bytesPerSecond"}},{"kind":"Field","name":{"kind":"Name","value":"secondsLeft"}}]}},{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]} as unknown as DocumentNode<HostingUseFoundModelMutation, HostingUseFoundModelMutationVariables>;
+export const HostingLibraryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"HostingLibrary"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"libraryModels"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"family"}},{"kind":"Field","name":{"kind":"Name","value":"parameterCount"}},{"kind":"Field","name":{"kind":"Name","value":"contextLength"}},{"kind":"Field","name":{"kind":"Name","value":"capabilities"}},{"kind":"Field","name":{"kind":"Name","value":"licence"}},{"kind":"Field","name":{"kind":"Name","value":"publisher"}},{"kind":"Field","name":{"kind":"Name","value":"aliases"}},{"kind":"Field","name":{"kind":"Name","value":"variants"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"address"}},{"kind":"Field","name":{"kind":"Name","value":"tag"}},{"kind":"Field","name":{"kind":"Name","value":"format"}},{"kind":"Field","name":{"kind":"Name","value":"quantisation"}},{"kind":"Field","name":{"kind":"Name","value":"sizeBytes"}}]}}]}}]}}]} as unknown as DocumentNode<HostingLibraryQuery, HostingLibraryQueryVariables>;
+export const HostingModelFitsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"HostingModelFits"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"model"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ModelFitFilter"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"modelFits"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"model"},"value":{"kind":"Variable","name":{"kind":"Name","value":"model"}}},{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"variant"}},{"kind":"Field","name":{"kind":"Name","value":"address"}},{"kind":"Field","name":{"kind":"Name","value":"place"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}},{"kind":"Field","name":{"kind":"Name","value":"state"}},{"kind":"Field","name":{"kind":"Name","value":"placement"}},{"kind":"Field","name":{"kind":"Name","value":"backend"}},{"kind":"Field","name":{"kind":"Name","value":"contextTokens"}},{"kind":"Field","name":{"kind":"Name","value":"largestContext"}},{"kind":"Field","name":{"kind":"Name","value":"sizeBytes"}},{"kind":"Field","name":{"kind":"Name","value":"neededBytes"}},{"kind":"Field","name":{"kind":"Name","value":"usableBytes"}},{"kind":"Field","name":{"kind":"Name","value":"reason"}}]}}]}}]} as unknown as DocumentNode<HostingModelFitsQuery, HostingModelFitsQueryVariables>;
 export const NotificationChannelsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"NotificationChannels"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"notificationChannels"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"NotificationChannelFields"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"DeliveryFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Delivery"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channelId"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"at"}},{"kind":"Field","name":{"kind":"Name","value":"ok"}},{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"code"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"NotificationChannelFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"NotificationChannel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"onByDefault"}},{"kind":"Field","name":{"kind":"Name","value":"settings"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"WebhookSettings"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"origin"}},{"kind":"Field","name":{"kind":"Name","value":"method"}},{"kind":"Field","name":{"kind":"Name","value":"headerNames"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"NtfySettings"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"server"}},{"kind":"Field","name":{"kind":"Name","value":"priority"}},{"kind":"Field","name":{"kind":"Name","value":"tokenStored"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"EmailSettings"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"host"}},{"kind":"Field","name":{"kind":"Name","value":"port"}},{"kind":"Field","name":{"kind":"Name","value":"security"}},{"kind":"Field","name":{"kind":"Name","value":"username"}},{"kind":"Field","name":{"kind":"Name","value":"from"}},{"kind":"Field","name":{"kind":"Name","value":"to"}},{"kind":"Field","name":{"kind":"Name","value":"passwordStored"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AppriseSettings"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"server"}},{"kind":"Field","name":{"kind":"Name","value":"mode"}},{"kind":"Field","name":{"kind":"Name","value":"tags"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"template"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"body"}}]}},{"kind":"Field","name":{"kind":"Name","value":"lastDelivery"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"DeliveryFields"}}]}}]}}]} as unknown as DocumentNode<NotificationChannelsQuery, NotificationChannelsQueryVariables>;
 export const NotificationSettingsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"NotificationSettings"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"notificationSettings"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"NotificationSettingsFields"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"NotificationSettingsFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"NotificationSettings"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"certificateDays"}},{"kind":"Field","name":{"kind":"Name","value":"template"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"body"}}]}},{"kind":"Field","name":{"kind":"Name","value":"placeholders"}}]}}]} as unknown as DocumentNode<NotificationSettingsQuery, NotificationSettingsQueryVariables>;
 export const CreateNotificationChannelDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateNotificationChannel"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"NotificationChannelInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createNotificationChannel"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"NotificationChannelFields"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"DeliveryFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Delivery"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channelId"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"at"}},{"kind":"Field","name":{"kind":"Name","value":"ok"}},{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"code"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"NotificationChannelFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"NotificationChannel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"onByDefault"}},{"kind":"Field","name":{"kind":"Name","value":"settings"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"WebhookSettings"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"origin"}},{"kind":"Field","name":{"kind":"Name","value":"method"}},{"kind":"Field","name":{"kind":"Name","value":"headerNames"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"NtfySettings"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"server"}},{"kind":"Field","name":{"kind":"Name","value":"priority"}},{"kind":"Field","name":{"kind":"Name","value":"tokenStored"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"EmailSettings"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"host"}},{"kind":"Field","name":{"kind":"Name","value":"port"}},{"kind":"Field","name":{"kind":"Name","value":"security"}},{"kind":"Field","name":{"kind":"Name","value":"username"}},{"kind":"Field","name":{"kind":"Name","value":"from"}},{"kind":"Field","name":{"kind":"Name","value":"to"}},{"kind":"Field","name":{"kind":"Name","value":"passwordStored"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AppriseSettings"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"server"}},{"kind":"Field","name":{"kind":"Name","value":"mode"}},{"kind":"Field","name":{"kind":"Name","value":"tags"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"template"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"body"}}]}},{"kind":"Field","name":{"kind":"Name","value":"lastDelivery"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"DeliveryFields"}}]}}]}}]} as unknown as DocumentNode<CreateNotificationChannelMutation, CreateNotificationChannelMutationVariables>;

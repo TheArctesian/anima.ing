@@ -1,14 +1,14 @@
 import type { IconName } from '$lib/icons/icons';
 
 /** The address of a section of Hosting: each section has its own, so a link and the back button open it (HSE-001). */
-export type HostingPath = '/hosting' | '/hosting/catalogue' | '/hosting/models' | '/hosting/storage' | '/hosting/routes' | '/hosting/machines';
+export type HostingPath = '/hosting' | '/hosting/catalogue' | '/hosting/models' | '/hosting/library' | '/hosting/storage' | '/hosting/routes' | '/hosting/machines';
 
 export interface HostingSection {
   readonly path: HostingPath;
   readonly title: string;
   readonly icon: IconName;
   readonly description: string;
-  /** A page below the section before it in the list: the Catalogue below Applications (HSE-004). */
+  /** A page below the section before it in the list: the Catalogue below Applications (HSE-004), the Library below Models. */
   readonly below?: true;
   /** The body has no heading of its own: its action is in the page header (Routes, mockup routes Frame 1). */
   readonly bare?: true;
@@ -19,6 +19,7 @@ export const HOSTING_SECTIONS: readonly HostingSection[] = [
   { path: '/hosting', title: 'Applications', icon: 'carbon:grid', description: 'The applications and containers of each machine.' },
   { path: '/hosting/catalogue', title: 'Catalogue', icon: 'carbon:catalog', description: 'The applications that ship with Anima.', below: true },
   { path: '/hosting/models', title: 'Models', icon: 'carbon:chip', description: 'The models that run on your machines.' },
+  { path: '/hosting/library', title: 'Library', icon: 'carbon:catalog', description: 'The models of the library and where each one fits.', below: true },
   { path: '/hosting/storage', title: 'Storage', icon: 'carbon:vmdk-disk', description: 'The volumes of each machine.' },
   { path: '/hosting/routes', title: 'Routes', icon: 'carbon:server-dns', description: 'Names of yours that the hub sends to your applications.', bare: true },
   { path: '/hosting/machines', title: 'Machines', icon: 'carbon:bare-metal-server', description: 'The places where things can run.' },

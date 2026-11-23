@@ -5289,6 +5289,40 @@ installed daemon of the operator; set `ANIMA_DAEMON_HOME` to a new test folder.
    Expected: each row says Removing, then goes; the folders of each copy in `copies/` and `partial/` are gone, and the
    download process has ended (`pgrep -f __model-pull` gives nothing).
 
+### HT-NEW-modelfit: the fit of each variant on each machine, and the Library of Hosting > Models
+
+Built on the branch `compute/l1-20` (task L1-20; FIT-001, FIT-004, FIT-005, CAP-011): `Query.modelFits` in the hub
+(`crates/hub/src/fleet/compute/graphql/fits.rs`, over the estimate of `crates/hub/src/fleet/compute/placement/machine.rs`),
+`anima model fit`, the MCP tool `anima_model_fit`, and the page Hosting > Models > Library
+(`apps/client/src/lib/model-library/`, Frame 9 of `docs/mockup/hosting/index.html`). The tests use made hardware values of
+two machines and a fake hub. They do not read the hardware values that a real daemon sends, and no test loads a model, so
+no test shows that a model that the page says fits does load and run in that memory.
+
+1. On `pop-os`, with its daemon enrolled and a library that has at least one GGUF model with two variants of different
+   size (`anima model add`), run `anima model fit <model>`.
+   Expected: one row for each variant on each machine that sent its hardware values, in the order of the machine name;
+   on `pop-os` the GPU of `nvidia-smi` gives "Fits on the GPU" (CUDA) for a variant smaller than its video memory, and
+   "Partly on the GPU" for a variant larger than its video memory but smaller than the video and system memory together.
+2. Run `anima model fit <model>:<tag> --device pop-os --context 32768`, then the MCP tool `anima_model_fit` with the same
+   model, machine and context.
+   Expected: one row each, with the same fit and reason; a context larger than the model allows is held to the context of
+   the model.
+3. Set the memory share of the device policy of `pop-os` to 10 percent, and run step 1 again.
+   Expected: the larger variant is Too large, with "Needs ... more than the ... that this machine gives to models."
+   Set the share back.
+4. In the desktop application, open Hosting > Models > Library.
+   Expected: each model of the library with its mark, name, facts line, capability chips and its best fit; the selected
+   model shows its variants with the quantisation, the size and a fit badge, and a row for each machine with the fit
+   and the reason of step 1. The layout agrees with Frame 9.
+5. Choose 32K, then Fits a machine.
+   Expected: the badges change to the fits of step 2 for a 32K context; a model that fits no machine leaves the list.
+6. Press Pull on a variant that fits `pop-os`.
+   Expected: the copy appears in Hosting > Models in the group of `pop-os` with the state Waiting (HT-NEW-modelpull
+   continues from there).
+7. Load a variant that the page says fits on the GPU of `pop-os`, at the context of step 4, in llama.cpp or Ollama on
+   that machine.
+   Expected: the model loads with all its layers on the GPU and does not run out of memory.
+
 ### HT-NEW-foundmodels: the models of Ollama, LM Studio and Hugging Face on `pop-os`, used where they are
 
 Built on the branch `compute/l1-22` (task L1-22; PULL-012, R-444; contract K11 Sections 2.3, 8 and 10.2): in the daemon

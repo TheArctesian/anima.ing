@@ -402,6 +402,20 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 .v2 .cats a { display: flex; align-items: center; height: var(--control-sm); padding: 0 var(--space-3); border-radius: var(--radius-md); color: var(--text-secondary); font-size: var(--t-sm); }
 .v2 .cats a.on { background: var(--surface-raised); color: var(--text); font-weight: 500; }
 .v2 .cats .n { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+/* ---------- The library of the models (Frame 9, task L1-20). Only tokens; no new value. ---------- */
+.v2 .tag.down { background: var(--status-down-tint); color: var(--status-down-text); }
+.v2 .tag.deg { background: var(--status-degraded-tint); color: var(--status-degraded-text); }
+.v2 .lib { display: grid; grid-template-columns: var(--control-md) minmax(0, 1fr) auto; gap: var(--space-1) var(--space-3); align-items: center; padding: var(--space-3) var(--space-4); border-top: var(--border-thin) solid var(--border-subtle); font-size: var(--t-sm); }
+.v2 .lib.on { background: var(--surface-selected); }
+.v2 .lib .mark, .v2 .modelhead .mark { align-self: start; width: var(--control-md); height: var(--control-md); border-radius: var(--radius-md); background: var(--accent-tint); color: var(--accent); display: grid; place-items: center; font-weight: 500; grid-row: span 3; }
+.v2 .lib .chips, .v2 .chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.v2 .modelhead { display: grid; grid-template-columns: var(--control-md) minmax(0, 1fr) auto; gap: var(--space-1) var(--space-3); align-items: center; padding: var(--space-4); }
+.v2 .variant { display: grid; grid-template-columns: var(--icon-sm) minmax(0, 1fr) auto; gap: var(--space-3); align-items: center; padding: var(--space-2) var(--space-4); border-top: var(--border-thin) solid var(--border-subtle); font-size: var(--t-sm); }
+.v2 .variant::before { content: ""; width: var(--icon-sm); height: var(--icon-sm); border-radius: var(--radius-pill); border: var(--border-thin) solid var(--border-strong); box-sizing: border-box; }
+.v2 .variant.on::before { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 var(--space-1) var(--surface-raised); }
+.v2 .variant.on { background: var(--surface-selected); }
+.v2 .fitrow { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: var(--space-3); align-items: center; padding: var(--space-2) var(--space-4); border-top: var(--border-thin) solid var(--border-subtle); font-size: var(--t-sm); }
 </style>
 </head>
 <body>
@@ -955,6 +969,59 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 </main>
 </div>
 <figcaption>Frame 8, dark, 1280 px: Hosting, section Models (HSE-013, HSE-014; task L1-7 of compute-plan.md, PULL-001, PULL-007, PULL-009). The copies of the models in one group for each machine, as Applications: the header row has the machine, its number of models and their size. A row names the variant name:tag with its format, quantisation, files and size; its state (Waiting, Downloading, Downloaded, Checking, Ready, Failed, Removing); the progress of a pull that runs; the reason of a failure in words. Remove asks first; a pull that waits stops at once, else the machine deletes the files. Pull a model opens a dialog with a machine and a variant of the library; a machine that never asked the hub for work is not offered. Below the copies, Found on the machines (task L1-22, PULL-012, R-444): the models that each machine found where Ollama, LM Studio, the Hugging Face cache or a folder of its settings keeps them, with no copy that uses them, one group for each machine. A row names the model as its program shows it, with the program, the format, the files and the size. Use asks the machine to read each file and keep its SHA-256 where it is; the copy then joins the list above, its row says where the model is in place of its quantisation. Only a GGUF model has Use. Find models asks each machine to read its folders again. The names, machines and numbers are examples.</figcaption>
+</figure>
+<figure>
+<div class="v2" data-theme="dark" style="width: 1280px; height: 760px;">
+<aside class="side">
+  <div class="brand"><i aria-hidden="true"></i>Anima.ing</div>
+  <nav class="nav" aria-label="Main"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg>Devices<span class="n">12</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M5 7l2 1.5L5 10M8.5 10.5h2.5"/></svg>Code</a><a href="#" class="on" aria-current="page"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 14 4.75v6.5L8 14.5 2 11.25v-6.5z"/><path d="M2 4.75 8 8l6-3.25M8 8v6.5"/></svg>Hosting<span class="n bad">4</span></a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13.5h12M4 11V8M8 11V4M12 11V6"/></svg>Agent usage</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13l5-5M9.5 2.5a3 3 0 0 0 4 4L11 9 7 5z"/></svg>Builds</a></nav>
+  <div class="foot">
+    <section class="running" aria-label="Running now">
+      <span class="label">Running now</span>
+      <a href="#">anima-site<span>Building, 2 min</span></a>
+    </section>
+    <div class="hubcard"><span class="st up"><b>Connected</b></span><span class="sec">Hosted by Anima.ing · 0.8.14</span></div>
+    <nav class="nav" aria-label="Settings"><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>Extensions</a><a href="#"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg>Settings</a></nav>
+  </div>
+</aside>
+<main class="page">
+  <header class="head"><h1 class="display">Hosting</h1><div class="actions"><button class="btn" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>Add from Hugging Face</button></div></header>
+  <div class="body">
+    <div class="cols" style="grid-template-columns: 184px minmax(0, 1fr); gap: var(--space-6); flex: 1; min-height: 0"><nav class="subnav" aria-label="Hosting sections"><a href="#">Applications</a><a href="#" style="padding-left: var(--space-6)">Catalogue</a><a href="#">Models</a><a href="#" class="on" aria-current="page" style="padding-left: var(--space-6)">Library</a><a href="#">Storage</a><a href="#">Routes</a><a href="#">Machines</a></nav>
+    <div class="split" style="grid-template-columns: 296px minmax(0, 1fr)">
+      <section class="pane" aria-label="The models of the library">
+        <div class="pane-head"><label class="field" style="flex: 1"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg><input placeholder="Find a model" aria-label="Find a model of the library"></label></div>
+        <div class="pane-tools"><div class="seg sm" role="group" aria-label="Show"><button class="on" type="button">All<span class="n">4</span></button><button type="button">Fits a machine<span class="n">3</span></button></div></div>
+        <ul>
+          <li class="lib on"><span class="mark" aria-hidden="true">Q</span><b class="mono">qwen3</b><span class="tag up">Fits on the GPU</span><span class="sec" style="grid-column: 2 / -1">Qwen · 8.2B · 32K</span><span class="chips" style="grid-column: 2 / -1"><span class="tag">Chat</span><span class="tag">Tools</span><span class="tag">Reasoning</span></span></li>
+          <li class="lib"><span class="mark" aria-hidden="true">G</span><b class="mono">gemma3</b><span class="tag deg">Partly on the GPU</span><span class="sec" style="grid-column: 2 / -1">Google · 27B · 128K</span><span class="chips" style="grid-column: 2 / -1"><span class="tag">Chat</span><span class="tag">Image understanding</span></span></li>
+          <li class="lib"><span class="mark" aria-hidden="true">M</span><b class="mono">llama3.3</b><span class="tag down">Too large</span><span class="sec" style="grid-column: 2 / -1">Meta · 70B · 128K</span><span class="chips" style="grid-column: 2 / -1"><span class="tag">Chat</span><span class="tag">Tools</span></span></li>
+          <li class="lib"><span class="mark" aria-hidden="true">N</span><b class="mono">nomic-embed</b><span class="tag">Fit not known</span><span class="sec" style="grid-column: 2 / -1">Nomic · 137M · 8K</span><span class="chips" style="grid-column: 2 / -1"><span class="tag">Embeddings</span></span></li>
+        </ul>
+      </section>
+      <section class="pane" aria-label="qwen3" style="overflow: auto">
+        <div class="modelhead"><span class="mark" aria-hidden="true">Q</span><span><b class="mono" style="font-size: var(--t-lg)">qwen3</b> <span class="sec">alias coder</span></span><button class="btn primary" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10"/></svg>Pull to pop-os</button><span class="sec" style="grid-column: 2 / -1">Qwen · family qwen3 · 8.2B parameters · 32,768 tokens of context · Apache-2.0</span></div>
+        <div class="pane-tools"><span class="chips"><span class="tag">Chat</span><span class="tag">Tools</span><span class="tag">Reasoning</span><span class="tag">Coding</span></span></div>
+        <div class="pane-head" style="min-height: var(--space-8)"><b style="color: var(--text)">Variants</b><span class="grow"></span><span class="sec">Best fit on any machine</span></div>
+        <ul>
+          <li class="variant"><span><b class="mono">8b-q8_0</b> <span class="sec">GGUF · Q8_0 · 8.1 GiB</span></span><span class="tag deg">Fits at 16K</span></li>
+          <li class="variant on"><span><b class="mono">8b-q4_k_m</b> <span class="sec">GGUF · Q4_K_M · 4.7 GiB</span></span><span class="tag up">Fits on the GPU</span></li>
+          <li class="variant"><span><b class="mono">8b-mlx-4bit</b> <span class="sec">MLX · 4bit · 4.3 GiB</span></span><span class="tag">Fit not known</span></li>
+        </ul>
+        <div class="pane-head" style="min-height: var(--space-8)"><b style="color: var(--text)">8b-q4_k_m on the machines</b><span class="grow"></span><span class="sec">Context</span><div class="seg sm" role="group" aria-label="Context"><button type="button">4K</button><button class="on" type="button">8K</button><button type="button">32K</button></div></div>
+        <ul>
+          <li class="fitrow"><b class="mono">pop-os</b><span class="sec">Fits in the memory of the GPU (CUDA) at 8192 tokens of context.</span><span class="tag up">Fits on the GPU</span></li>
+          <li class="fitrow"><b class="mono">mac-mini</b><span class="sec">Fits in the memory of the GPU (Metal) at 8192 tokens of context.</span><span class="tag up">Fits on the GPU</span></li>
+          <li class="fitrow"><b class="mono">nas</b><span class="sec">Fits in the system memory; this machine has no usable GPU, so it runs slower.</span><span class="tag">CPU only</span></li>
+          <li class="fitrow"><b class="mono">pi</b><span class="sec">Needs 1.9 GB more than the 4.3 GB that this machine gives to models.</span><span class="tag down">Too large</span></li>
+        </ul>
+        <p class="note" style="padding: var(--space-3) var(--space-4)">An estimate from the size, the layers and the memory that each machine reports, with the memory share of its policy. The machine checks again when it loads the model.</p>
+      </section>
+    </div></div>
+  </div>
+</main>
+</div>
+<figcaption>Frame 9, dark, 1280 px: Hosting, Models, the Library below Models (task L1-20 of compute-plan.md, FIT-001 to FIT-005, SEL-005), drawn from the model pages of Unsloth Studio and LM Studio. The list on the left has each model of the library with the mark of its publisher, its name, its publisher, its parameters and its context, its capability tags (LIBM-008), and the best fit of its variants on any machine; Fits a machine leaves out each model that fits no machine. The pane on the right is the selected model: its facts, its tags and its variants, each with its format, quantisation, size and its best fit; the selected variant has one row for each machine that sent its hardware values, with the fit and the reason in words (modelFits). The fit words: Fits on the GPU, Partly on the GPU (part in the system memory, slower), CPU only, Fits at a smaller context, Too large, Fit not known (the files give no layer shape). Context changes the context of the estimate. Pull takes the selected variant to the machine with the best fit; the dialog of Frame 8 changes the machine. Add from Hugging Face is anima model add. The names, machines and numbers are examples.</figcaption>
 </figure>
 </body>
 </html>

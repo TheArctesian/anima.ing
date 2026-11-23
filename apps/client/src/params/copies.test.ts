@@ -9,7 +9,7 @@ describe('the address of Hosting > Models', () => {
   });
 
   it('HSE-001: each section of Hosting has a page of its own', () => {
-    const own = new Set(['/hosting', '/hosting/catalogue', '/hosting/storage', '/hosting/routes', '/hosting/machines']);
+    const own = new Set(['/hosting', '/hosting/catalogue', '/hosting/library', '/hosting/storage', '/hosting/routes', '/hosting/machines']);
     const served = HOSTING_SECTIONS.filter((section) => !own.has(section.path)).map((section) => section.path.replace('/hosting/', ''));
     expect(served.every(match)).toBe(true);
   });
