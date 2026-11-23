@@ -7,9 +7,7 @@ use crate::model_work::cause::Cause;
 use crate::model_work::found::huggingface::{blob_of_link, repository};
 use crate::model_work::found::ollama::{layers, shown_name};
 use crate::model_work::found::record::{Observed, Record, RecordFile, named_hash_holds};
-use crate::model_work::found::{
-    FoundFile, FoundModel, Tool, gguf_models, is_shown_name, key, owner_permits,
-};
+use crate::model_work::found::{FoundFile, FoundModel, Tool, gguf_models, is_shown_name, key};
 use crate::model_work::machine::{MachineSettings, SettingsError};
 use crate::model_work::order::{Checked, ModelMachine, Parameters, check};
 use crate::model_work::settings::SettingLimits;
@@ -98,6 +96,21 @@ fn pull_012_split_gguf_parts_are_one_model_and_a_missing_part_is_none() {
 }
 
 #[test]
+fn pull_012_the_one_projector_of_a_folder_joins_each_model_and_is_no_model_alone() {
+    let one = ["Qwen3-Q5_K_M.gguf", "mmproj-F16.gguf", "Qwen3-Q8_0.gguf"];
+    assert_eq!(
+        gguf_models(&one),
+        vec![
+            vec!["Qwen3-Q5_K_M.gguf", "mmproj-F16.gguf"],
+            vec!["Qwen3-Q8_0.gguf", "mmproj-F16.gguf"]
+        ]
+    );
+    let two = ["a.gguf", "mmproj-F16.gguf", "MMPROJ-BF16.gguf"];
+    assert_eq!(gguf_models(&two), vec![vec!["a.gguf"]]);
+    assert_eq!(gguf_models(&["mmproj-F16.gguf"]), Vec::<Vec<&str>>::new());
+}
+
+#[test]
 fn pull_012_an_ollama_manifest_gives_its_model_and_projector_layers() {
     let manifest = json!({ "schemaVersion": 2, "layers": [
         { "mediaType": "application/vnd.ollama.image.model", "digest": format!("sha256:{SHA_A}"), "size": 5 },
@@ -169,17 +182,6 @@ fn pull_012_the_hugging_face_cache_follows_only_a_link_to_its_own_blobs() {
     ] {
         assert_eq!(blob_of_link(text.as_bytes()), None, "{text}");
     }
-}
-
-#[test]
-fn pull_012_an_entry_that_another_user_can_write_is_not_read() {
-    let (daemon, ollama) = (1000, 996);
-
-    assert!(owner_permits(daemon, false, daemon, daemon));
-    assert!(owner_permits(ollama, false, daemon, ollama));
-    assert!(owner_permits(0, false, daemon, daemon));
-    assert!(!owner_permits(1001, false, daemon, daemon));
-    assert!(!owner_permits(daemon, true, daemon, daemon));
 }
 
 fn record() -> Record {

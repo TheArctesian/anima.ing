@@ -1,6 +1,7 @@
 //! The cache of `huggingface_hub` (Section 10.2): `models--<organisation>--<repository>/` holds
 //! `snapshots/<commit>/<file>`, each a link to `../../blobs/<name>`; the name of a blob of an LFS
-//! file is its SHA-256.
+//! file is its SHA-256. A blob can itself be a link to the shared store `blobs/<xx>/<name>` of the
+//! cache (see [`stored_of_link`]).
 
 use crate::model_work::names::{is_lower_hex, is_source_name};
 
@@ -27,6 +28,18 @@ pub fn is_commit(name: &str) -> bool {
 pub fn blob_of_link(text: &[u8]) -> Option<&str> {
     let name = std::str::from_utf8(text).ok()?.strip_prefix(LINK_PREFIX)?;
     (is_lower_hex(name, 64) || is_lower_hex(name, 40)).then_some(name)
+}
+
+/// The file of the shared store that the text of a link of `blobs/` names, as its folder and
+/// its name: `../../blobs/<xx>/<name>`, with a name of 64 lower-case hexadecimal characters that
+/// starts with `<xx>`. The downloader of Unsloth Studio keeps each large file once there, in the
+/// folder `blobs/` of the cache, and links each repository to it. `None` for each other text, so
+/// no other link is followed (Section 2.3).
+#[must_use]
+pub fn stored_of_link(text: &[u8]) -> Option<(&str, &str)> {
+    let rest = std::str::from_utf8(text).ok()?.strip_prefix(LINK_PREFIX)?;
+    let (shard, name) = rest.split_once('/')?;
+    (shard.len() == 2 && is_lower_hex(name, 64) && name.starts_with(shard)).then_some((shard, name))
 }
 
 /// The SHA-256 that names a blob, for the blob of an LFS file only.

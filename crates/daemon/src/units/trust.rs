@@ -39,7 +39,7 @@ pub(super) fn accounts(passwd: &str) -> impl Iterator<Item = Account<'_>> {
 
 /// The group only user `uid` is in; `umask 002` homes rely on such a group.
 /// Only the files are read, not other NSS sources, so a line that does not read means no private group.
-pub(super) fn private_group(uid: u32, passwd: &str, group: Option<&str>) -> Option<u32> {
+pub(crate) fn private_group(uid: u32, passwd: &str, group: Option<&str>) -> Option<u32> {
     let group = group?;
     if passwd
         .lines()

@@ -14,7 +14,7 @@ mod sandbox;
 pub mod session;
 pub mod step;
 pub mod token_file;
-mod trust;
+pub(crate) mod trust;
 #[cfg(test)]
 mod trust_cases;
 

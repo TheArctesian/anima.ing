@@ -2,6 +2,7 @@ mod claim;
 mod fetch;
 mod files;
 mod found;
+mod found_store;
 mod install;
 mod kit;
 mod pull;

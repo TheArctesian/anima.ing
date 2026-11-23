@@ -9,9 +9,12 @@ use std::os::unix::fs::MetadataExt as _;
 use std::path::Path;
 
 use daemon_core::model_work::cause::Cause;
-use daemon_core::model_work::found::{MAX_ENTRIES, is_part, owner_permits};
+use daemon_core::model_work::found::owner::{Entry, Reader, owner_permits};
+use daemon_core::model_work::found::{MAX_ENTRIES, is_part};
 use rustix::fs::{AtFlags, FileType, Mode, OFlags, Stat};
 use sha2::{Digest as _, Sha256};
+
+use crate::units::trust::private_group;
 
 fn folder_flags() -> OFlags {
     OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::NONBLOCK | OFlags::RDONLY | OFlags::CLOEXEC
@@ -25,8 +28,26 @@ fn kind(stat: &Stat) -> FileType {
     FileType::from_raw_mode(stat.st_mode)
 }
 
-fn others_write(stat: &Stat) -> bool {
-    Mode::from_raw_mode(stat.st_mode).intersects(Mode::WGRP | Mode::WOTH)
+fn entry(stat: &Stat) -> Entry {
+    Entry {
+        owner: stat.st_uid,
+        group: stat.st_gid,
+        mode: stat.st_mode,
+    }
+}
+
+/// The user of the daemon and its private group by the rule of the installer, read from
+/// `/etc/passwd` and `/etc/group`; with a file that does not read, no group is private.
+fn reader() -> Reader {
+    let user = rustix::process::geteuid().as_raw();
+    let groups = std::fs::read_to_string("/etc/group").ok();
+    let private = std::fs::read_to_string("/etc/passwd")
+        .ok()
+        .and_then(|passwd| private_group(user, &passwd, groups.as_deref()));
+    Reader {
+        user,
+        private_group: private,
+    }
 }
 
 /// A folder of Section 10.2, or a folder below one, open to read.
@@ -34,6 +55,7 @@ pub struct Folder {
     fd: OwnedFd,
     /// The owner of the folder of Section 10.2 that holds it.
     owner: u32,
+    reader: Reader,
 }
 
 /// A regular file open to read, with what `fstat` said of it.
@@ -48,17 +70,17 @@ impl Folder {
     pub fn root(path: &Path) -> Option<Self> {
         let fd = rustix::fs::open(path, folder_flags(), Mode::empty()).ok()?;
         let stat = rustix::fs::fstat(&fd).ok()?;
-        let daemon = rustix::process::geteuid().as_raw();
-        let permits = owner_permits(stat.st_uid, others_write(&stat), daemon, stat.st_uid);
+        let reader = reader();
+        let permits = owner_permits(entry(&stat), reader, stat.st_uid);
         (kind(&stat) == FileType::Directory && permits).then_some(Self {
             fd,
             owner: stat.st_uid,
+            reader,
         })
     }
 
     fn permits(&self, stat: &Stat) -> bool {
-        let daemon = rustix::process::geteuid().as_raw();
-        owner_permits(stat.st_uid, others_write(stat), daemon, self.owner)
+        owner_permits(entry(stat), self.reader, self.owner)
     }
 
     /// The folder `name` in this folder; `None` for a link or any other entry.
@@ -69,6 +91,7 @@ impl Folder {
         (kind(&stat) == FileType::Directory && self.permits(&stat)).then_some(Self {
             fd,
             owner: self.owner,
+            reader: self.reader,
         })
     }
 
@@ -118,9 +141,12 @@ impl Folder {
             .map_err(|_| Cause::CopyMissing)?;
         let file = File::from(fd);
         let meta = file.metadata().map_err(|_| Cause::CopyMissing)?;
-        let daemon = rustix::process::geteuid().as_raw();
-        let others_write = meta.mode() & 0o022 != 0;
-        if meta.is_file() && owner_permits(meta.uid(), others_write, daemon, self.owner) {
+        let file_entry = Entry {
+            owner: meta.uid(),
+            group: meta.gid(),
+            mode: meta.mode(),
+        };
+        if meta.is_file() && owner_permits(file_entry, self.reader, self.owner) {
             Ok(Opened {
                 fd: file.into(),
                 meta,

@@ -4,6 +4,7 @@
 
 pub mod huggingface;
 pub mod ollama;
+pub mod owner;
 pub mod record;
 
 use std::path::{Path, PathBuf};
@@ -158,14 +159,36 @@ fn split_part(name: &str) -> Option<(&str, u32, u32)> {
     (part >= 1 && part <= count).then_some((base, part, count))
 }
 
+/// Whether the GGUF file `name` is a projector (`mmproj*.gguf`), which is never a model alone.
+#[must_use]
+pub fn is_projector(name: &str) -> bool {
+    name.get(..6)
+        .is_some_and(|start| start.eq_ignore_ascii_case("mmproj"))
+}
+
 /// The GGUF models of one folder: each file alone, or the parts of one split model in the order
-/// of their numbers. A split model with a missing part is not a model.
+/// of their numbers, and the projector of the folder last when it has exactly one. A split model
+/// with a missing part is not a model.
 #[must_use]
 pub fn gguf_models<'a>(names: &[&'a str]) -> Vec<Vec<&'a str>> {
-    let mut models: Vec<Vec<&str>> = Vec::new();
-    let mut names: Vec<&str> = names.iter().copied().filter(|name| is_gguf(name)).collect();
+    let (projectors, mut names): (Vec<&str>, Vec<&str>) = names
+        .iter()
+        .copied()
+        .filter(|name| is_gguf(name))
+        .partition(|name| is_projector(name));
     names.sort_unstable();
-    for name in &names {
+    let mut models = models_of(&names);
+    if let [projector] = projectors.as_slice() {
+        for model in &mut models {
+            model.push(*projector);
+        }
+    }
+    models
+}
+
+fn models_of<'a>(names: &[&'a str]) -> Vec<Vec<&'a str>> {
+    let mut models: Vec<Vec<&str>> = Vec::new();
+    for name in names {
         match split_part(name) {
             None => models.push(vec![name]),
             Some((base, 1, count)) => {
@@ -183,14 +206,6 @@ pub fn gguf_models<'a>(names: &[&'a str]) -> Vec<Vec<&'a str>> {
         }
     }
     models
-}
-
-/// Whether the daemon may read an entry: owned by its user, by root or by the owner of the
-/// folder of Section 10.2 it is in, and writable by no group or other user (Section 2.3).
-#[must_use]
-pub const fn owner_permits(owner: u32, others_write: bool, daemon: u32, folder_owner: u32) -> bool {
-    let owner_holds = owner == daemon || owner == 0 || owner == folder_owner;
-    owner_holds && !others_write
 }
 
 /// A model that the walk found (Section 8).

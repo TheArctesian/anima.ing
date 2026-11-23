@@ -167,7 +167,7 @@ fn huggingface_models(folder: &Folder, base: &Base) -> Vec<FoundModel> {
             else {
                 continue;
             };
-            let files = snapshot_files(&snapshot, blobs.as_ref(), [&repository, &commit]);
+            let files = snapshot_files(folder, &snapshot, blobs.as_ref(), [&repository, &commit]);
             for (first, files) in grouped(&files) {
                 let shown = huggingface::shown_name(organisation, name, first);
                 models.push(base.model(&[&repository, &commit, first], shown, files));
@@ -179,6 +179,7 @@ fn huggingface_models(folder: &Folder, base: &Base) -> Vec<FoundModel> {
 
 /// The files of a snapshot: each a link to `../../blobs/<name>`, or a regular file.
 fn snapshot_files(
+    cache: &Folder,
     snapshot: &Folder,
     blobs: Option<&Folder>,
     [repository, commit]: [&str; 2],
@@ -187,9 +188,10 @@ fn snapshot_files(
     for name in snapshot.names() {
         let file = match snapshot.link(&name) {
             Some(text) => huggingface::blob_of_link(&text).and_then(|blob| {
+                let (location, size_bytes) = blob_file(cache, blobs?, repository, blob)?;
                 Some(FoundFile {
-                    location: [repository, "blobs", blob].map(str::to_owned).to_vec(),
-                    size_bytes: blobs?.file_size(blob)?,
+                    location,
+                    size_bytes,
                     named_sha256: huggingface::blob_sha256(blob).map(str::to_owned),
                 })
             }),
@@ -206,6 +208,23 @@ fn snapshot_files(
         }
     }
     files
+}
+
+/// The location below the cache and the size of the blob `blob` of `repository`: the regular file
+/// `<repository>/blobs/<blob>`, or the file of the shared store that its link names.
+fn blob_file(
+    cache: &Folder,
+    blobs: &Folder,
+    repository: &str,
+    blob: &str,
+) -> Option<(Vec<String>, u64)> {
+    let Some(text) = blobs.link(blob) else {
+        let location = [repository, "blobs", blob].map(str::to_owned).to_vec();
+        return Some((location, blobs.file_size(blob)?));
+    };
+    let (shard, stored) = huggingface::stored_of_link(&text)?;
+    let size = cache.below(["blobs", shard])?.file_size(stored)?;
+    Some((["blobs", shard, stored].map(str::to_owned).to_vec(), size))
 }
 
 /// The GGUF models among `files` by [`gguf_models`], each by the name of its first file; the

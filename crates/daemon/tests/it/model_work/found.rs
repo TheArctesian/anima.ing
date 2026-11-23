@@ -19,13 +19,13 @@ use uuid::Uuid;
 
 use super::kit::node;
 
-const COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
+pub(super) const COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
 
-fn sha(bytes: &[u8]) -> String {
+pub(super) fn sha(bytes: &[u8]) -> String {
     anima_daemon::model::fetch::hex(&Sha256::digest(bytes))
 }
 
-fn put(path: &Path, bytes: &[u8]) {
+pub(super) fn put(path: &Path, bytes: &[u8]) {
     std::fs::create_dir_all(path.parent().expect("parent")).expect("folders");
     std::fs::write(path, bytes).expect("written");
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o644)).expect("mode");
@@ -58,7 +58,7 @@ fn huggingface(root: &Path, model: &[u8]) {
 }
 
 /// A folder of each tool below `base`, with the node that reads them.
-fn fixture(base: &Path) -> (Node, Vec<Root>) {
+pub(super) fn fixture(base: &Path) -> (Node, Vec<Root>) {
     let roots = vec![
         Root {
             tool: Tool::Ollama,
@@ -103,7 +103,7 @@ fn order(work_type: WorkType, parameters: Parameters) -> Order {
     }
 }
 
-async fn report(node: &mut Node) -> Vec<Value> {
+pub(super) async fn report(node: &mut Node) -> Vec<Value> {
     let state = node
         .run(&order(WorkType::ModelReport, Parameters::Report))
         .await;
@@ -111,7 +111,7 @@ async fn report(node: &mut Node) -> Vec<Value> {
     state["found"].as_array().expect("found").clone()
 }
 
-fn key_of(found: &[Value], name: &str) -> String {
+pub(super) fn key_of(found: &[Value], name: &str) -> String {
     let entry = found
         .iter()
         .find(|entry| entry["name"] == name)
@@ -119,7 +119,11 @@ fn key_of(found: &[Value], name: &str) -> String {
     entry["found"].as_str().expect("key").to_owned()
 }
 
-async fn adopt(node: &mut Node, copy: Uuid, found: String) -> Result<Option<Value>, Cause> {
+pub(super) async fn adopt(
+    node: &mut Node,
+    copy: Uuid,
+    found: String,
+) -> Result<Option<Value>, Cause> {
     node.run(&order(
         WorkType::CopyAdopt,
         Parameters::Adopt { copy, found },
@@ -128,7 +132,7 @@ async fn adopt(node: &mut Node, copy: Uuid, found: String) -> Result<Option<Valu
 }
 
 /// Each path below `root` with its size, mode and modification time.
-fn snapshot(root: &Path) -> BTreeMap<PathBuf, (u64, u32, i64)> {
+pub(super) fn snapshot(root: &Path) -> BTreeMap<PathBuf, (u64, u32, i64)> {
     let mut seen = BTreeMap::new();
     let mut queue = vec![root.to_path_buf()];
     while let Some(path) = queue.pop() {

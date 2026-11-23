@@ -5300,13 +5300,16 @@ the walk of the fixed folders and of `modelFolders` (`crates/daemon/src/model/fo
 The tests use made folders of each program in a temporary folder and a fake hub. They do not read the real folders of
 Ollama, LM Studio or Hugging Face, the system folder of Ollama, or a model of several gigabytes. The running daemon does
 not claim model work yet (the wiring task of L1-6), so steps 2 to 6 wait for it; no server starts with a copy before
-task L1-8, so step 5 also waits for L1-8.
+task L1-8, so step 5 also waits for L1-8. A probe of the library of the daemon on the real folders of `pop-os` (2026-11-23)
+did the walk and `copy_adopt` of steps 2 and 3 with no hub: see the row of L1-22. It found the models of the Hugging Face
+cache only after the corrections of R-NEW-privategroup (umask 002) and of the shared store of Unsloth Studio.
 
 1. On `pop-os`, note the models that `ollama list`, LM Studio and `ls ~/.cache/huggingface/hub` show, and the modification
    time of each of their folders (`stat -c %y`).
 2. With the claim loop running, open Hosting > Models in the desktop application and press Find models. Wait one minute.
-   Expected: Found on the machines has a group `pop-os` with each GGUF model of step 1 (an Ollama model as `name:tag`) and
-   Use, and each safetensors model with "GGUF only". No row shows a path. `anima model found` and the MCP tool
+   Expected: Found on the machines has a group `pop-os` with each GGUF model of step 1 (an Ollama model as `name:tag`; a
+   model of Unsloth Studio as `unsloth/<repository>/<file>`, its `mmproj` file not a row of its own) and Use, and each
+   safetensors model with "GGUF only". No row shows a path. `anima model found` and the MCP tool
    `anima_model_found` list the same models.
 3. Press Use on one Ollama model.
    Expected: the model leaves the found list; a copy of it joins the group `pop-os` above with "where Ollama keeps it",

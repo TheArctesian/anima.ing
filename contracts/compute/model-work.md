@@ -191,8 +191,10 @@ The operator decided that a model that is already on the machine is used where i
 because a different program, and each user who can write its folder, can change or delete it. Thus:
 
 - **Formats.** A found model is GGUF only in this version: one `.gguf` file, or the parts of one split GGUF
-  (`<name>-00001-of-0000N.gguf` to `-0000N-of-0000N`), and at most one projector file of Ollama
-  (`application/vnd.ollama.image.projector`, also GGUF). A found model of safetensors is listed with
+  (`<name>-00001-of-0000N.gguf` to `-0000N-of-0000N`), and at most one projector file: the layer of Ollama
+  (`application/vnd.ollama.image.projector`, also GGUF), or the file `mmproj*.gguf` of the same folder when that
+  folder has exactly one. A projector file is never a found model alone; the one projector of a folder is the last
+  file of each model of that folder. A found model of safetensors is listed with
   `usable` false and cannot be adopted (open point MW-P10). The file names follow Section 2.2 (`*.gguf`) and
   the length and character rules of Section 2, applied to the name of each file as the daemon reads it.
 - **The key.** The daemon gives each found model a key: the SHA-256, in lower-case hexadecimal, of the tool word,
@@ -222,9 +224,16 @@ because a different program, and each user who can write its folder, can change 
 - **The layout rules.** The daemon opens each folder and file of Section 10.2 relative to an open handle, with
   `O_NOFOLLOW`, `O_NONBLOCK` and no write access. It follows a symbolic link only in the Hugging Face cache, and
   only a link of `snapshots/<commit>/` whose text is `../../blobs/<name>` with a flat name, read with
-  `readlinkat` and opened relative to the `blobs` folder of the same repository folder; it follows no other link.
-  Each file and folder it uses must belong to the user of the daemon, to root, or to the owner of the folder of
-  Section 10.2 it is in, and no group or other user may write it; else it is not listed. A walk reads at most
+  `readlinkat` and opened relative to the `blobs` folder of the same repository folder. When that blob is itself a
+  link, it follows it only when its text is `../../blobs/<xx>/<name>`, with a name of 64 lower-case hexadecimal
+  characters that starts with `<xx>`, and opens it relative to the folder of Section 10.2: the shared store
+  `blobs/<xx>/` of the cache, where the downloader of Unsloth Studio keeps each large file once (R-443). It follows
+  no other link. Each file and folder it uses must belong to the user of the daemon, to root, or to the owner of the
+  folder of Section 10.2 it is in, and no other user may write it. Its group may write it only when that group is
+  the private group of the user of the daemon, by the rule that `anima-daemon install` uses: the primary group of
+  that user in `/etc/passwd`, with the name of the user, no other user and no other member in `/etc/group`, and each
+  line of both files readable. A home folder
+  made with the umask 002 of Ubuntu and Pop!_OS is such a case (R-NEW-privategroup). Else it is not listed. A walk reads at most
   6 levels, 4096 entries in one folder and 256 found models.
 - **Never written.** The daemon never writes, renames, deletes, locks or changes the mode of a file or folder of
   Section 10.2, also not at `copy_delete`, at a `failed` state or at the end of a found model. It runs no file of
@@ -724,7 +733,7 @@ daemon of the system unit reads only the Ollama folder of the system and `modelF
 | Tool | Folders (each that exists) | What a found model is |
 | --- | --- | --- |
 | `ollama` | `~/.ollama/models/`; on Linux also `/usr/share/ollama/.ollama/models/` (the service of the Ollama installer) | A manifest below `manifests/` (at most 4 levels: host, namespace, model, tag) that names one layer of the type `application/vnd.ollama.image.model`, a file `blobs/sha256-<hex>` |
-| `huggingface` | `~/.cache/huggingface/hub/` (the cache of `huggingface_hub`, which Unsloth Studio and the Hugging Face tools use) | A folder `models--<organisation>--<repository>/snapshots/<commit>/` with GGUF files, each a link to `../../blobs/<name>` (Section 2.3) |
+| `huggingface` | `~/.cache/huggingface/hub/` (the cache of `huggingface_hub`, which Unsloth Studio and the Hugging Face tools use) | A folder `models--<organisation>--<repository>/snapshots/<commit>/` with GGUF files, each a link to `../../blobs/<name>`, which can link once more to the shared store `blobs/<xx>/<name>` of the cache (Section 2.3) |
 | `lm_studio` | `~/.lmstudio/models/` and `~/.cache/lm-studio/models/` | A GGUF file at `<publisher>/<repository>/<file>` |
 | `folder` | Each folder of `modelFolders` (Section 10.1) | A GGUF file at most 3 levels below the folder |
 
