@@ -29,6 +29,8 @@ export interface Scenario {
   readonly startAnswer?: Record<string, unknown>;
   /** The models each program lists, as the call `models` answers (TH104); none when left out. */
   readonly models?: readonly Record<string, unknown>[];
+  /** The program's words when `models` fails, as a runner that could not ask it answers. */
+  readonly modelsSaid?: string;
 }
 
 /** What the first script leaves on the window for the second: the scenario with its times, and the runner's answers. */
@@ -52,7 +54,8 @@ function seedRunner(made: Scenario): void {
     listings: () => ({ outcome: 'listings', listings: world.listings }),
     change_listing: () => ({ outcome: 'listings', listings: world.listings }),
     folder: (action) => ({ outcome: 'folder', notice: world.notices?.[String(action['folder'])] ?? [] }),
-    models: () => ({ outcome: 'models', models: world.models ?? [] }),
+    models: () =>
+      world.modelsSaid === undefined ? { outcome: 'models', models: world.models ?? [] } : { outcome: 'refused', refusal: 'program_does_not_answer', said: world.modelsSaid },
     start: () => world.startAnswer ?? { outcome: 'started', thread: String(world.running[0]?.['id'] ?? '') },
   };
   const gallery: Gallery = { world, runner: (action) => answers[String(action['call'])]?.(action) ?? { outcome: 'ok' } };

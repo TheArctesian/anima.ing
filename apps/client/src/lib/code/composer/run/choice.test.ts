@@ -14,7 +14,7 @@ describe('the choice of a chat that the runner drives', () => {
   });
 
   it('offers each effort to Codex, and to Claude Code only the one it runs with', () => {
-    expect(catalogueOf(row, true).catalogue.models[0]?.efforts.map((level) => level.label)).toEqual(['Low', 'Medium', 'High', 'Extra high', 'Max']);
+    expect(catalogueOf(row, true).catalogue.models[0]?.efforts.map((level) => level.label)).toEqual(['Low', 'Medium', 'High', 'Extra High', 'Max']);
     expect(catalogueOf({ ...row, program: 'claude_code' }, true).catalogue.models[0]?.efforts.map((level) => level.id)).toEqual(['medium']);
     expect(catalogueOf(row, false).catalogue.models[0]?.efforts.map((level) => level.id)).toEqual(['medium']);
     expect(catalogueOf({ ...row, effort: null }, false).catalogue.models[0]?.efforts).toEqual([]);

@@ -2584,6 +2584,12 @@ It needs: the computer `pop-os`, a terminal as your own user (not root), the int
 After the check you can remove everything again: `podman system reset` removes the images and the
 containers of your user, and `sudo apt remove podman` removes the program.
 
+Run on 2026-11-23 by a session on `pop-os`, with Podman already installed: steps 1 to 4 gave the expected output, after an
+empty login file for Podman (its stored login for Docker Hub was refused). The log is in the record, with the name of
+the user removed, and the results are its Section 3.5.
+
+Result: Open.
+
 ### HT-133: the public names of applications through the route proxy (task H21)
 
 Built on the branch `hosted/apps-h21`: the routes domain of the hub (`crates/hub/src/work/routes/`), the

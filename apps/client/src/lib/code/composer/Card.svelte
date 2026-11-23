@@ -7,6 +7,7 @@
   import { LIMITS, pasteDecision } from './attachments/attach';
   import { dropZone } from './attachments/drop';
   import { CardState } from './card-state.svelte';
+  import { Favourites } from './favourites/favourites.svelte';
   import type { CaretAt } from './draft';
   import Editor from './editor/Editor.svelte';
   import type { ComposerEngine } from './engine';
@@ -48,6 +49,7 @@
   // The chat column mounts one composer for each chat (`{#key}` in Composer.svelte), so the key is read once.
   // svelte-ignore state_referenced_locally
   const card = new CardState(() => engine, draft, isMac(navigator.userAgent) ? '⌘' : 'Ctrl');
+  const favourites = new Favourites(localStorage);
   // svelte-ignore state_referenced_locally
   if (start !== undefined) card.prompt = start;
   // One reader while the skills are the same list: a new one makes the editor draw the whole prompt again.
@@ -237,7 +239,7 @@
     <div class="footer">
       <AttachButton can={engine.attach} onFiles={(files) => card.add(files)} />
       <div class="actions">
-        <ModelPicker catalogue={engine.catalogue} value={card.shownChoice(engine.choice)} onChange={(next) => void card.choose(next)} can={engine.pick} shortcut={card.modifier === '⌘' ? '⌘⇧M' : 'Ctrl+Shift+M'} align="end" bind:open={picking} />
+        <ModelPicker catalogue={favourites.apply(engine.catalogue)} onFavourite={favourites.set} value={card.shownChoice(engine.choice)} onChange={(next) => void card.choose(next)} can={engine.pick} onAsk={engine.askModels} shortcut={card.modifier === '⌘' ? '⌘⇧M' : 'Ctrl+Shift+M'} align="end" bind:open={picking} />
         <!-- T3 mounts the microphone only where dictation works (`ChatComposer.tsx:3897`); ours has none yet. -->
         {#if engine.dictate.can}<MicButton can={engine.dictate} onStart={() => undefined} />{/if}
         {#if showsSend(card.turn)}<SendButton face={card.face} onPress={(alternate) => pressed(() => card.submit(alternate))} />{/if}
