@@ -205,6 +205,7 @@ impl Runner {
         let mut notice = crate::threads::notice::before_start(&row.folder, daemon);
         let named = new.program_path.is_some();
         notice.extend(super::silence::chosen(new.program, &path, named, &copies));
+        self.rights_copy(id, path.clone());
         self.silence.started(id, new.program, path);
         let codex = codex_of(&row, new.effort, daemon);
         self.threads.insert(id, Thread::new(row, new.effort, codex));

@@ -2,13 +2,15 @@
 //! thread, for the Git engine ([`AsThread`]), so a hook of a repository never runs with the
 //! rights of the runner (THR-050).
 //!
-//! A program runs only for a thread of this runner that runs in Full access, so with the rights
-//! that its agent has already. A confined thread runs nothing: the engine runs no hook for it
+//! Two runs. A read of the repository ([`read`], TH116) runs for each thread of this runner, in
+//! the confinement of that thread; the launcher checks its whole shape itself. Each other run
+//! is a hook, and runs only for a thread in Full access, so with the rights that its agent has
+//! already: the engine runs no hook for a confined thread
 //! ([`crate::threads::git::run::hooks::of`]), and this launcher refuses it again, so no change
-//! of the engine can widen it. The program gets the environment of the login that the agents
-//! get, with no name of Anima (THR-040), the mark of its thread (THR-049) and only the names
-//! of the Git engine that [`ADDED`] lists. It runs in a process group of its own, which ends
-//! at its time limit and when the run is dropped.
+//! of the engine can widen it. A hook gets the environment of the login that the agents get,
+//! with no name of Anima (THR-040), the mark of its thread (THR-049) and only the names of the
+//! Git engine that [`ADDED`] lists. A run has a process group of its own, which ends at its time
+//! limit and when the run is dropped.
 //!
 //! I/O: starts the program and reads its standard error.
 
@@ -24,10 +26,14 @@ use agent_threads::drive::Mode;
 use tokio::io::AsyncReadExt as _;
 use uuid::Uuid;
 
+use read::{Confinement, Reading};
+
 use super::Runner;
 use crate::threads::git::place::records::held_by;
 use crate::threads::git::run::hooks::{AsThread, Ended, ThreadRun};
 use crate::threads::marker;
+
+pub mod read;
 
 /// The names that the Git engine may add to the environment of a run.
 const ADDED: [&str; 1] = ["GIT_INDEX_FILE"];
@@ -44,8 +50,32 @@ const SAID_AFTER_END: std::time::Duration = std::time::Duration::from_secs(1);
 pub struct Rights {
     /// The environment of the login that the agents get.
     pub(super) env: Vec<(String, String)>,
-    /// Each thread that runs: its mode and its folder.
-    pub(super) threads: BTreeMap<Uuid, (Mode, PathBuf)>,
+    /// Each thread that runs, or whose worktree the runner makes: its folder and its rights.
+    pub(super) threads: BTreeMap<Uuid, Seat>,
+    /// The `git` of the Git engine: the one program of a read.
+    pub(super) git: Option<PathBuf>,
+    /// The copy of the program that started each thread of this runner.
+    pub(super) copies: BTreeMap<Uuid, PathBuf>,
+    /// The threads whose worktree the runner makes before they start: known from that moment.
+    pub(super) coming: BTreeMap<Uuid, Seat>,
+    /// The home of Codex for the reads of confined Codex threads ([`read::codex_home`]).
+    pub(super) codex_home: Option<PathBuf>,
+}
+
+/// A thread for the launcher: its folder, and how its agent is confined.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Seat {
+    pub folder: PathBuf,
+    pub confinement: Confinement,
+}
+
+/// A run after its checks: what the launcher starts.
+struct Checked {
+    program: PathBuf,
+    args: Vec<OsString>,
+    dir: PathBuf,
+    env: Vec<(OsString, OsString)>,
+    input: Option<std::fs::File>,
 }
 
 /// The rights, shared by the runner and each clone of its launcher.
@@ -58,27 +88,33 @@ impl Rights {
     pub fn hold(&self, records: &Path) -> bool {
         self.threads
             .values()
-            .any(|(_, folder)| held_by(records, folder))
+            .any(|seat| held_by(records, &seat.folder))
     }
 
-    /// The environment of `run`, after the checks of its rights.
-    fn checked(&self, run: &ThreadRun) -> io::Result<(PathBuf, Vec<(OsString, OsString)>)> {
-        let Some((mode, folder)) = self.threads.get(&run.thread) else {
+    /// What `run` starts, after the checks of its rights: a read for each thread, a hook only
+    /// for a thread in Full access.
+    fn checked(&self, run: &ThreadRun) -> io::Result<Checked> {
+        let Some(seat) = self.threads.get(&run.thread) else {
             return Err(denied("the thread does not run in this runner"));
         };
-        if *mode != Mode::FullAccess {
+        let dir = std::fs::canonicalize(&run.dir)?;
+        if !dir.starts_with(std::fs::canonicalize(&seat.folder)?) {
             return Err(denied(
-                "a thread that is not in Full access runs no program",
+                "the folder of the run is not in the folder of the thread",
+            ));
+        }
+        let (mark, key) = marker::entry(&run.thread.to_string());
+        let mark = (OsString::from(mark), OsString::from(key));
+        if self.git.as_deref() == Some(run.program.as_path()) {
+            return self.read(run, seat, (dir, mark));
+        }
+        if seat.confinement.mode != Mode::FullAccess {
+            return Err(denied(
+                "a thread that is not in Full access runs no program but a read",
             ));
         }
         if !run.program.is_absolute() {
             return Err(denied("the program is not named by its full path"));
-        }
-        let dir = std::fs::canonicalize(&run.dir)?;
-        if !dir.starts_with(std::fs::canonicalize(folder)?) {
-            return Err(denied(
-                "the folder of the run is not in the folder of the thread",
-            ));
         }
         if let Some((name, _)) = run.env.iter().find(|(name, _)| !ADDED.contains(name)) {
             return Err(denied(&format!(
@@ -94,12 +130,54 @@ impl Rights {
             .env
             .iter()
             .map(|(name, value)| (OsString::from(name), value.clone()));
-        let (mark, key) = marker::entry(&run.thread.to_string());
-        let env = login
-            .chain(added)
-            .chain([(OsString::from(mark), OsString::from(key))])
-            .collect();
-        Ok((dir, env))
+        let env = login.chain(added).chain([mark]).collect();
+        let input = run.input.as_ref().map(std::fs::File::open).transpose()?;
+        Ok(Checked {
+            program: run.program.clone(),
+            args: run.args.clone(),
+            dir,
+            env,
+            input,
+        })
+    }
+
+    /// A read of the repository ([`read`]), for each thread in its confinement.
+    fn read(
+        &self,
+        run: &ThreadRun,
+        seat: &Seat,
+        (dir, mark): (PathBuf, (OsString, OsString)),
+    ) -> io::Result<Checked> {
+        let reading = read::shape(run, self.git.as_deref())?;
+        let git = (run.program.as_path(), dir.as_path(), run.args.as_slice());
+        let (program, args, sandboxed) = read::confined(run.thread, &seat.confinement, git)?;
+        let home = if sandboxed {
+            let Some(home) = &self.codex_home else {
+                return Err(denied("the runner has no home of Codex for reads"));
+            };
+            read::codex_home(home)?;
+            Some((OsString::from("CODEX_HOME"), home.clone().into_os_string()))
+        } else {
+            None
+        };
+        let input = match (reading, &run.input) {
+            (Reading::Pack, Some(file)) => Some(read::listed(file)?),
+            _ => None,
+        };
+        let login = self
+            .env
+            .iter()
+            .filter(|(name, _)| read::login_env(name.as_ref()) && name != "CODEX_HOME")
+            .map(|(name, value)| (OsString::from(name), OsString::from(value)));
+        let quiet = read::QUIET.map(|(name, value)| (name.into(), value.into()));
+        let env = login.chain(quiet).chain(home).chain([mark]).collect();
+        Ok(Checked {
+            program,
+            args,
+            dir,
+            env,
+            input,
+        })
     }
 }
 
@@ -118,19 +196,16 @@ pub fn launcher(rights: SharedRights) -> AsThread {
 
 /// Starts `run` after the checks of its rights, and waits for its end or its time limit.
 pub(super) async fn start(rights: &SharedRights, run: ThreadRun) -> io::Result<Ended> {
-    let (dir, env) = rights
+    let checked = rights
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
         .checked(&run)?;
-    let input = match &run.input {
-        Some(file) => Stdio::from(std::fs::File::open(file)?),
-        None => Stdio::null(),
-    };
-    let mut child = tokio::process::Command::new(&run.program)
-        .args(&run.args)
+    let input = checked.input.map_or_else(Stdio::null, Stdio::from);
+    let mut child = tokio::process::Command::new(&checked.program)
+        .args(&checked.args)
         .env_clear()
-        .envs(env)
-        .current_dir(dir)
+        .envs(checked.env)
+        .current_dir(checked.dir)
         .stdin(input)
         .stdout(Stdio::null())
         .stderr(Stdio::piped())
@@ -215,16 +290,49 @@ impl Runner {
     }
 
     /// The rights of the launcher as the threads and the login are now: each thread that runs,
-    /// with its mode and its folder.
+    /// or whose worktree the runner makes, with its folder and its rights.
     pub(super) fn rights_now(&self) {
-        let threads = self
+        let daemon = self.dir.parent().unwrap_or(&self.dir);
+        let mut rights = self.rights.lock().unwrap_or_else(PoisonError::into_inner);
+        let live: BTreeMap<Uuid, Seat> = self
             .threads
             .values()
             .filter(|thread| thread.row.state != RunState::Stopped)
-            .map(|thread| (thread.row.id, (thread.row.mode, thread.row.folder.clone())))
+            .map(|thread| {
+                let row = &thread.row;
+                let confinement = Confinement {
+                    mode: row.mode,
+                    program: row.program,
+                    codex: rights.copies.get(&row.id).cloned(),
+                    kept: crate::threads::notice::held_anima(&row.folder, daemon),
+                };
+                let folder = row.folder.clone();
+                (
+                    row.id,
+                    Seat {
+                        folder,
+                        confinement,
+                    },
+                )
+            })
             .collect();
-        let mut rights = self.rights.lock().unwrap_or_else(PoisonError::into_inner);
+        let rights = &mut *rights;
+        rights.coming.retain(|id, _| !self.threads.contains_key(id));
+        rights
+            .copies
+            .retain(|id, _| live.contains_key(id) || rights.coming.contains_key(id));
+        rights.threads = live;
+        rights
+            .threads
+            .extend(rights.coming.iter().map(|(id, seat)| (*id, seat.clone())));
         rights.env.clone_from(&self.env);
-        rights.threads = threads;
+        rights.codex_home = Some(self.dir.join("codex-reads"));
+    }
+
+    /// The copy of the program that started `thread`: a read of a confined Codex thread runs in
+    /// the sandbox of that copy.
+    pub(super) fn rights_copy(&self, thread: Uuid, copy: PathBuf) {
+        let mut rights = self.rights.lock().unwrap_or_else(PoisonError::into_inner);
+        rights.copies.insert(thread, copy);
     }
 }
