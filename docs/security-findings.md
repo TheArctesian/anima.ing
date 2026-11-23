@@ -2687,7 +2687,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 2.2: a fixed list of files for each format (`file_type`); `auto_map` and `custom_pipelines` refused (`remote_code`); vLLM `--load-format safetensors`; the chat template only from the copy, at most 64 KiB, in the sandboxed renderer of the runtime.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-299: A runtime runs with each right of the user of the daemon, so a fault of a parser reads the token and the configuration. High
 
@@ -2707,7 +2707,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Sections 2.1 and 4: an empty environment with a fixed list of variables (offline, no usage report, no proxy, no `HF_TOKEN`, no `DYLD_*`, no `LD_PRELOAD`, no `PYTHONPATH`); media only as a `data:` URL; no download folder; a row "runtime: no outgoing connection". The isolation of finding b enforces it.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-301: The hub gives the SHA-256, so the check proves nothing against a hub that is taken over. High
 
@@ -2737,7 +2737,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 9: the check after each start, restart and `model_load` and each 15 seconds, over the process tree, TCP and UDP, IPv4 and IPv6; only `::ffff:127.0.0.1` counts as mapped loopback; the time of 15 seconds is stated.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-304: Prompts can reach a log through the output of a runtime and its slots. Medium
 
@@ -2747,7 +2747,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 2.1: the output goes to a ring file of 1 MiB with mode 0600 that is never sent; owned flags `--log-disable`, `--no-slots`, no slot save path, `--disable-log-requests`.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-305: The memory and the disk of a runtime were not limited. Medium
 
@@ -2757,7 +2757,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 9: a server above its share and 10 % is ended (`limit_memory`); `memory.max` or `RLIMIT_AS` on Linux; a temporary folder of 2 GiB, counted as `tempBytes`; the disk reserve checked for each write.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-306: A partial download that nobody continues stays on the disk. Low
 
@@ -2767,7 +2767,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 7: `partial/` counts in the share and in `cacheBytes`; deleted after 7 days or at `copy_delete`; at most 4 partial copies.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-307: The unpack of a runtime archive accepted hard links, devices, setuid bits and very large archives. Medium
 
@@ -2777,7 +2777,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 6: regular files and folders only; modes 0755 and 0644, no setuid, setgid or sticky bit; 8 GiB and 50,000 entries at most; no two names equal in lower case; unpack to a temporary folder, then rename; `sizeBytes` for each release source.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-308: A server that fails late is started again with no end. Medium
 
@@ -2787,7 +2787,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 9: each end that no item asked for counts; 5 in one hour or 20 in 24 hours make it `failed`; an end in a load makes the copy `failed` (`load_crash`).
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-309: A different process can take the port and receive the API key of a probe. Low
 
@@ -2797,7 +2797,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 9: port 0 where the runtime permits it; before each probe the listener must belong to the process tree of the server (`listener`).
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-310: The index of a GPU and the value of `gpuLayers` were not checked against the machine. Low
 
@@ -2807,7 +2807,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 2.1: a GPU that is not in the inventory is refused (`gpu_unknown`); the only string of `gpuLayers` is `all`.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-311: The list of advisories gave no lowest version of a runtime. Low
 
@@ -2817,7 +2817,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 6: a lowest version of each runtime in the daemon program (`runtime_too_old`), changed only by a signed release.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-312: An API key of an AI agent can start each model work. Medium
 
@@ -2837,7 +2837,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 4: the roots of the system or of the program only; no proxy; no downgrade; no redirect to an IP address or a host outside the list; at most 5 redirects; at most `sizeBytes`; the fixed list of hosts of Hugging Face.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-314: The Hugging Face token can have more rights than a read of gated repositories. Note
 
@@ -2847,7 +2847,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 7: the hub asks for a fine-grained token with read access to gated repositories only.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ### SF-315: The daemon can follow a link when it makes or deletes a file of model work. Note
 
@@ -2857,7 +2857,7 @@ Where: [model-work.md](../contracts/compute/model-work.md), version 0.1.
 
 The correction: Section 10: each change relative to an open folder handle with `O_NOFOLLOW`; `copy_delete` follows no link.
 
-State: Open. Fixed in the text of version 0.2 (branch `compute/l1-3`); no code exists. Found by a separate reviewer on 2026-11-20.
+State: Open, pending the separate review. Fixed in the text of version 0.2 (branch `compute/l1-3`). Built on branch `compute/sf-298-model-files`, pending the separate review: the pure checks in `crates/daemon-core/src/model_work/files/code.rs` (`remote_code` for the member `auto_map` or `custom_pipelines` at each depth of `config.json` and `tokenizer_config.json`, for a file larger than 2 MiB and for a file that is not a JSON object; a chat template of more than 64 KiB, also refused with `remote_code`, because Section 5 has no other cause for it), and `vllm_arguments` in `command.rs` with `--load-format safetensors` and no `--trust-remote-code`. Not built: the call of the checks before a load (`model_load`, L1-8) and after a pull (L1-7), the read of GGUF metadata, the list of permitted classes of each runtime, and a start of vLLM. Found by a separate reviewer on 2026-11-20.
 
 ## The security review of the model work at the machine (task L1-6, 2026-11-20)
 
