@@ -11,6 +11,8 @@ pub struct CardFiles<'a> {
     pub busy_percent: &'a [u8],
     /// `mem_info_vram_used`.
     pub vram_used: &'a [u8],
+    /// The driver exposes UMA carveout controls for shared system memory.
+    pub unified_memory: bool,
     /// `mem_info_vram_total`.
     pub vram_total: &'a [u8],
 }
@@ -25,6 +27,7 @@ pub fn vram_bytes(content: &[u8]) -> Option<u64> {
     lines(content).next()?.trim().parse().ok()
 }
 
+/// UMA carveouts are system memory, not dedicated VRAM (MET-007).
 /// A `name` that cannot name a series becomes "AMD GPU", since the card exists whatever its name.
 #[must_use]
 pub fn card(index: u32, name: &str, files: CardFiles<'_>) -> GpuReading {
@@ -35,7 +38,8 @@ pub fn card(index: u32, name: &str, files: CardFiles<'_>) -> GpuReading {
             .to_owned(),
         vendor: GpuVendor::Amd,
         busy_percent: busy_percent(files.busy_percent),
-        vram: vram(vram_bytes(files.vram_used), vram_bytes(files.vram_total)),
+        vram: vram(vram_bytes(files.vram_used), vram_bytes(files.vram_total))
+            .filter(|_| !files.unified_memory),
         temperature_c: None,
         power_w: None,
         shared_memory_bytes: None,

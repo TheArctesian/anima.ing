@@ -210,8 +210,8 @@ fn nvidia_smi() -> FixedCommand {
         .arg("--format=csv,noheader,nounits")
 }
 
-/// The three `amdgpu` files of every card, each line `<path>:<value>` (`-H`), so each card's
-/// values stay apart. Three plain globs: the device's shell may be `dash`, which has no brace
+/// The `amdgpu` counters and optional UMA carveout setting, each line `<path>:<value>`
+/// (`-H`), so each card's values stay apart. Plain globs: `dash` has no brace
 /// expansion. A glob that matches nothing makes `grep` exit 2 with the other files printed.
 fn amd_sysfs() -> FixedCommand {
     FixedCommand::new("grep")
@@ -220,6 +220,7 @@ fn amd_sysfs() -> FixedCommand {
         .arg("/sys/class/drm/card*/device/gpu_busy_percent")
         .arg("/sys/class/drm/card*/device/mem_info_vram_used")
         .arg("/sys/class/drm/card*/device/mem_info_vram_total")
+        .arg("/sys/class/drm/card*/device/uma/carveout")
 }
 
 /// `intel_gpu_top -J` sampling every 500 ms, interrupted after 2 seconds and killed 1 second

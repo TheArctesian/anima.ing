@@ -32,7 +32,8 @@ fn thr_132_codex_is_asked_for_its_account_and_limits_after_it_starts() {
             "thread/start",
             "account/read",
             "account/rateLimits/read",
-            "model/list"
+            "model/list",
+            "skills/list"
         ]
     );
 }

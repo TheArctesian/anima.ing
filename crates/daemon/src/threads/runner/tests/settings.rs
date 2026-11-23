@@ -104,6 +104,11 @@ fn th110_claude_code_refuses_a_change_of_the_effort_with_words_and_nothing_chang
         "a call with a refused part changes nothing"
     );
     assert_eq!(thread.row.effort, None);
+    let speed = thread.set(Changes {
+        speed: Some("fast".to_owned()),
+        ..Changes::default()
+    });
+    assert!(matches!(speed, Err(Refusal::CannotChange { said }) if said.contains("speed")));
 }
 
 #[test]
@@ -122,6 +127,7 @@ fn th110_codex_carries_the_change_on_each_later_turn_and_refuses_plan_mode() {
             model: Some(model("gpt-5.6-sol")),
             effort: Some(Effort::Medium),
             mode: Some(Mode::Ask),
+            speed: Some("fast".to_owned()),
         })
         .expect("changed");
     assert_eq!(writes(&steps).len(), 0, "nothing goes to the running turn");
@@ -140,6 +146,7 @@ fn th110_codex_carries_the_change_on_each_later_turn_and_refuses_plan_mode() {
         "the change landed with the end of the turn"
     );
     assert_eq!(thread.row.effort, Some(Effort::Medium));
+    assert_eq!(thread.row.speed.as_deref(), Some("fast"));
     let saved = thread.saved();
     assert_eq!(
         saved.codex_changed.mode,
@@ -153,6 +160,7 @@ fn th110_codex_carries_the_change_on_each_later_turn_and_refuses_plan_mode() {
         let params = &serde_json::from_str::<serde_json::Value>(&next[0]).expect("JSON")["params"];
         assert_eq!(params["model"], "gpt-5.6-sol");
         assert_eq!(params["effort"], "medium");
+        assert_eq!(params["serviceTier"], "fast", "the speed of TH117");
         assert_eq!(params["approvalPolicy"], "untrusted");
         thread.line(
             r#"{"method":"turn/completed","params":{"turn":{"id":"u1","status":"completed"}}}"#,

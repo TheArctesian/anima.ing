@@ -42,11 +42,20 @@ impl Attached {
     }
 }
 
-/// The words of a prompt and its files.
+/// The words of a prompt, its files and the skills that the person chose for it (TH117).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Prompt {
     pub text: String,
     pub attachments: Vec<Attachment>,
+    /// Codex only: each is a skill that the program listed for the thread.
+    pub skills: Vec<ChosenSkill>,
+}
+
+/// A skill that a prompt names, as the program listed it (TH117).
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ChosenSkill {
+    pub name: String,
+    pub path: String,
 }
 
 impl Prompt {
@@ -55,7 +64,7 @@ impl Prompt {
     pub fn plain(text: &str) -> Self {
         Self {
             text: text.to_owned(),
-            attachments: Vec::new(),
+            ..Self::default()
         }
     }
 

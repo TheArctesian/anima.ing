@@ -132,6 +132,8 @@ pub struct Runner {
     /// only.
     said: accounts::Said,
     model_asks: models::Asks,
+    /// The skills of Codex in the folders of new threads (TH117): in memory only.
+    folder_skills: calls::FolderSkills,
     /// The last walk of the folder of each thread, for the `@` list (TH108): in memory only.
     walked: calls::Walked,
     /// The files that the person attached for a prompt (TH111).
@@ -209,6 +211,7 @@ pub async fn run(
         walked: calls::Walked::default(),
         said: accounts::Said::default(),
         model_asks: models::Asks::default(),
+        folder_skills: calls::FolderSkills::default(),
         attached: attachments::Attachments::at(&dir),
         rights,
         git: gits,

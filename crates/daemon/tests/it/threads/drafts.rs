@@ -15,6 +15,7 @@ fn start(kit: &Kit, draft: Uuid, attachments: Vec<Uuid>) -> Action {
         mode: Mode::FullAccess,
         model: None,
         effort: None,
+        speed: None,
         prompt: "look".to_owned(),
         program_path: None,
         draft: Some(draft),

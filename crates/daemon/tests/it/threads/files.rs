@@ -27,6 +27,7 @@ async fn started(client: &mut Client, work: std::path::PathBuf) -> Uuid {
             mode: Mode::FullAccess,
             model: None,
             effort: None,
+            speed: None,
             prompt: "Look at the code".to_owned(),
             program_path: None,
             draft: None,

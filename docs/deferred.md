@@ -23,7 +23,7 @@ Rules:
 | Area | Lists | Items with a box | Revisit |
 | --- | --- | --- | --- |
 | 1. Releases, signing and installation | 1 | 4 | Before the first public release (tasks R5 to R7 of projects-and-builds-plan.md). |
-| 2. Later phases and proposals | 13 | 55 | When the proposal or the phase of the item gets a ruling. Each proposal has a row in the work plan Section 9. |
+| 2. Later phases and proposals | 14 | 64 | When the proposal or the phase of the item gets a ruling. Each proposal has a row in the work plan Section 9. |
 | 3. Ideas from other products | 2 | 17 | When the plan that owns the subject is changed next. |
 | 4. Hub: access, logs and security | 7 | 24 | Before a hub is hosted for a different person, and at the next security review of access. |
 | 5. Hub: devices, checks and metrics | 9 | 20 | When the domain of the item is changed next. |
@@ -172,6 +172,20 @@ Added 2026-11-23. From the second security review of task TH116 of [agent-thread
 - [ ] The Read runs of Codex share one home folder (`codex-reads/`) for all threads. One home for each thread would keep the threads apart.
 - [ ] A warning of the Git engine of the runner may name a home path in the text of an I/O error. It is not text of the person (LOG-007), but the warning can say less.
 - [ ] A test process that is killed (SIGKILL, for example at the time limit of a command) runs no drop, and its holder and its made programs stay. Clean them with `ps` and SIGTERM; never the holder of the installed application.
+
+### TH117: the commands and the picker extras
+
+Added 2026-11-23. From task TH117 of [agent-threads.md](proposals/agent-threads.md) (branch `threads/composer-commands`).
+
+- [ ] Claude Code has a fast mode for some models (`supportsFastMode` in its answer to `initialize`), but only a hidden flag `--fast-mode` and its settings turn it on. The runner gives Claude Code no `--settings` and no flag outside the closed list (THR-040), so Claude Code lists no speed. It waits for a documented flag or a ruling of the operator.
+- [ ] The programs of access of a Codex model (`cyber`) are only listed: Codex 0.170 takes no choice of one on `thread/start` or `turn/start`.
+- [ ] After a restart of the runner, a Claude Code thread that still runs lists no commands until it starts again: the runner does not send `initialize` a second time. The composer can ask with the program and the folder instead.
+- [ ] The commands of Claude Code that come from plugins are listed only when a thread runs: the files of the plugins are not read for a folder.
+- [ ] A background ask for the Codex skills of a folder that panics leaves the folder marked as asked; after two, no folder is asked again until the runner starts again. No panic path is known. A guard that ends the ask on drop would remove it.
+- [ ] The walk of the Claude Code files checks that a folder is not a link, then opens `SKILL.md` in it by its path: a process that changes the folder between the two can put a link in the path. The read stays a plain file of at most 8 KiB. Opening the folder first and the file relative to it would close the gap.
+- [ ] A skill chosen from the list of a folder before a thread starts cannot go with the first prompt: the start takes no skill, and a prompt takes only skills of the list of its own thread.
+- [ ] Links in `~/.claude/commands` and `~/.claude/skills` are left out, as in a repository. Many people keep these folders as links to their dotfiles.
+- [ ] The Claude Code files of a folder that does not answer in 5 seconds (a hung mount) give `pending`; one read runs at a time, so a read that never ends makes each later call of a Claude Code folder answer `pending` until the runner starts again. The Codex path still checks its folder on the loop of the runner, as `start` does.
 
 ### THR-050: the private `TMPDIR` of each agent
 

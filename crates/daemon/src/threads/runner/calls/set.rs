@@ -5,6 +5,7 @@ use agent_threads::control::{Action, Outcome, Refusal};
 use agent_threads::drive::Model;
 
 use super::super::Runner;
+use super::super::accounts::Asked;
 use super::super::log::Kind;
 use super::super::thread::Changes;
 
@@ -16,6 +17,7 @@ impl Runner {
             model,
             effort,
             mode,
+            speed,
         } = action
         else {
             return refused(Refusal::BadValue);
@@ -24,7 +26,7 @@ impl Runner {
         let Ok(model) = model.as_deref().map(Model::new).transpose() else {
             return refused(Refusal::BadValue);
         };
-        if model.is_none() && effort.is_none() && mode.is_none() {
+        if model.is_none() && effort.is_none() && mode.is_none() && speed.is_none() {
             return refused(Refusal::BadValue);
         }
         let Some(thread) = self.threads.get_mut(&id) else {
@@ -34,16 +36,31 @@ impl Runner {
             .as_ref()
             .map(Model::as_str)
             .or(thread.row.model.as_deref());
-        if !self.said.models.offers(thread.row.program, named, effort) {
+        // A new model must list what changes and what the thread keeps; with the same model,
+        // only what changes is asked.
+        let keeps = model.is_some();
+        let asked = Asked {
+            model: named,
+            effort: effort.or(thread.row.effort.filter(|_| keeps)),
+            speed: speed
+                .as_deref()
+                .or(thread.row.speed.as_deref().filter(|_| keeps)),
+        };
+        if !self.said.models.offers(thread.row.program, &asked) {
             return refused(Refusal::BadValue);
         }
         match thread.set(Changes {
             model,
             effort,
             mode,
+            speed,
         }) {
             Ok(steps) => {
-                self.note(Kind::Change, Some(id), "model, effort or mode changed");
+                self.note(
+                    Kind::Change,
+                    Some(id),
+                    "model, effort, speed or mode changed",
+                );
                 if self.apply(id, steps).await.is_err() {
                     return refused(Refusal::Holder);
                 }
@@ -68,6 +85,7 @@ mod tests {
             model: None,
             effort: None,
             mode: Some(Mode::FullAccess),
+            speed: None,
         };
         assert!(super::super::for_the_person(&set));
     }

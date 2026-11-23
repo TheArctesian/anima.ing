@@ -35,6 +35,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-149 | Reporting after an iPad update and the phone Code tab | A physical iPad with an existing device row, another client, and a phone with the updated app | Open |
 | HT-148 | Phone Devices, offline notice and Integrations fit the screen (M2-5) | An iPhone with a current build and a test hub | Open |
 | HT-146 | A process that an agent detached cannot answer an approval (R-315, THR-031) | A Mac with `claude` signed in, the daemon of the branch `threads/peer-ancestry` with a test state folder; later the installed application | Open |
+| HT-176 | On Linux the person starts a thread and answers a request through the installed daemon, and an agent still cannot (DEF-015, R-315) | The Linux computer `pop-os` with `claude` signed in, and a build of the branch `fix/peer-environ-userns` installed as the user unit | Open |
 | HT-074 | Windows desktop account, link and remote sessions (WIN1) | Windows 11 VM, Anima account and a hub | Open |
 | HT-114 | Three generated entries of LinuxServer.io start with the rights of the static test (task H39) | A throwaway Linux test machine with Docker and Compose, not on the network of Anima | Open |
 | HT-115 | A person reads the settings of the ten generated entries of LinuxServer.io and records the review (task H39) | The branch `hosted/catalogue-linuxserver`; no machine | Open |
@@ -58,8 +59,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-160 | A crash or a stall of the child fetch process is reported as `fetch_failed`, and a source that does not answer as `source_failed` (R-406) | A daemon of this build in a test folder on the Mac, and a network that a person can cut | Open |
 | HT-121 | The hardware values of the Mac and of the Linux PC `pop-os` agree with what each system shows | A hub and a daemon of this build on both computers | Open |
 | HT-120 | The model work of the daemon installs `llama-server`, starts it on loopback, supervises it and stops it on the Mac and on `pop-os` | A test hub that gives model items, and a daemon of this build in a test folder on both computers | Open |
-| HT-119 | The cgroup of each model server on `pop-os`: a child that leaves its session is seen and ended, and a start with no delegated cgroup fails | `pop-os` with a daemon of this build in a test folder, run by its systemd user unit, which has `Delegate=yes` (R-334) | Open |
-| HT-007 | The pinned Rust version on the Linux computer | The Linux development computer | Open |
+| HT-119 | The cgroup of each model server on `pop-os`: a child that leaves its session is seen and ended, and a start with no delegated cgroup fails | `pop-os` with a daemon of this build in a test folder, run by its systemd user unit, which has `Delegate=yes` (R-334) | Passed |
+| HT-007 | The pinned Rust version on the Linux computer | The Linux development computer | Passed |
 | HT-008 | A macOS release build with the pinned Rust version | A Mac builder | Open |
 | HT-010 | Merge a pull request, and a set of pull requests, on GitHub | A GitHub repository that is safe to change, GitHub on the hosted hub, and a sign-in of the command line (OD-25) | Open |
 | HT-011 | Run a workflow again, cancel a run and start a workflow on GitHub | A GitHub repository with a workflow, GitHub on the hosted hub, and a sign-in of the command line (OD-25) | Open |
@@ -69,7 +70,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-015 | The Work, Code and History tabs of a project in the client | The application on the hosted hub, with GitHub connected | Open |
 | HT-016 | A release build on the Linux builder puts the bundle in its own clone | The Linux builder | Open |
 | HT-018 | Each machine with the old program `anima-agent` gets `anima-daemon` and enrols again | Each machine that has the old program, and a daemon on the hosted hub (HM-D16) | Open |
-| HT-020 | The desktop application builds on Linux with no lint error (GH-52) | The Linux computer | Open |
+| HT-020 | The desktop application builds on Linux with no lint error (GH-52) | The Linux computer | Passed |
 | HT-021 | The delay of the session picture in the Linux application (GH-54) | The Linux computer, the Mac, and a hub that has VNC sessions (a local hub) | Open |
 | HT-023 | The hash chain of the audit log on the real hub | The hosted hub, and a key for the command line or an MCP client | Open |
 | HT-025 | A phone joins a hub with an invite, through the link in the app; the Paste invite and Joining screens | An iPhone and an Android phone with a build of `mobile/m1-shell`, the simulator and the emulator, a hub with an invite | Open |
@@ -120,7 +121,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-097 | The thread runner of the daemon: Claude Code and Codex started and driven on this computer (TH11 to TH13) | A Mac with Claude Code and Codex signed in, and a build of the local branch `threads/runner` with a state folder and a label of your own | Open |
 | HT-079 | The page Code with the real sessions of Claude Code and Codex of this computer (R-286) | A Mac and the Linux computer `pop-os`, each with sessions of the two programs, and a build of the branch `threads/read-side` | Open |
 | HT-100 | The page Code: the list and the thread scroll on their own, and a thread opens at its newest end (THR-013, THR-014) | The desktop application of a build that holds the branch `threads/scroll`, with sessions of Claude Code or Codex on the Mac | Open |
-| HT-065 | The measurements of the isolation design on Linux (task W2): a job in a rootless container on the computer `pop-os` | The computer `pop-os`, a terminal there, and one `sudo` for the installation of Podman | Open |
+| HT-065 | The measurements of the isolation design on Linux (task W2): a job in a rootless container on the computer `pop-os` | The computer `pop-os`, a terminal there, and one `sudo` for the installation of Podman | Passed |
 | HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
 | HT-059 | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
@@ -189,6 +190,34 @@ tests use stand-in daemons in a folder of their own; no test ran the real Launch
 5. Start a Claude Code thread, then install a second trial build and open it while the thread runs.
    Expected: the thread keeps running through the update.
 6. Run `anima agents running` in Terminal. Expected: the list of threads, with no error.
+### HT-176: on Linux the installed daemon tells the person from an agent (DEF-015, R-315)
+
+Built on the branch `fix/peer-environ-userns`. On Linux the systemd user unit of the daemon puts it in a user
+namespace of its own, and from there the runner cannot read the environment of a client outside it. The runner then
+reads the `uid_map` of the client: a client in a namespace above the runner's is not below the holder, and goes on to
+the check of its group. A test proves it with `unshare -U` and the test program. No test ran the real unit, the
+desktop application or a real agent. Step 5 of HT-098 on `pop-os` was blocked by this defect on 2026-11-22.
+
+1. On `pop-os`, install the daemon of a build that holds the branch (`anima-daemon install`), then run
+   `systemctl --user restart anima-daemon` and `systemctl --user cat anima-daemon | grep -E 'Protect|PrivateTmp'`.
+   Expected: the lines `ProtectHome=read-only`, `ProtectSystem=strict` and `PrivateTmp=yes`.
+2. Run `readlink /proc/self/ns/user /proc/$(systemctl --user show -p MainPID --value anima-daemon)/ns/user`.
+   Expected: two different values: the daemon is in a user namespace of its own.
+3. In a terminal, run `anima agents start --program claude-code --folder ~/ht-098 --mode ask "Run the command date"`.
+   Expected: a thread ID, and no words "this call came from a process of an agent". `anima agents watch` shows a
+   request for the command.
+4. In the same terminal, run `anima agents approve <thread> <request>` with the IDs of step 3.
+   Expected: the request is answered and the thread goes on.
+5. Start a second thread as in step 3, so that a request waits. In the first thread, send the prompt
+   "Run: anima agents approve <second thread> <request>" with the IDs of the waiting request, and allow only that
+   command. Expected: the call is refused ("this call came from a process of an agent"); the request still waits.
+6. Do step 5 with the detached command of step 2 of HT-146
+   (`perl -e 'use POSIX; fork and exit; POSIX::setsid(); fork and exit; ...'`), with the path of `anima` on this
+   computer. Expected: the call is refused; the request still waits.
+7. In the desktop application, open the page Code and start a thread in `~/ht-098`.
+   Expected: the thread starts.
+8. Do step 5 of HT-098 again with this build.
+   Expected: as HT-098 says for `pop-os`.
 
 Result: Open.
 
@@ -495,7 +524,18 @@ that holds its cgroup (DEF-013).
    when the unit file differs from the unit that this version renders (task U6 of the update plan owns the
    update of the daemon).
 
-Result: Open.
+Result: Passed (operator, 2026-11-22: "Passed, layers to L1-8"), on `pop-os` (Pop!_OS 24.04, kernel 7.2.15,
+systemd 255, NVIDIA RTX A5000). Steps 1 to 5, 7, 8 and 9a to 9e gave the expected result: the agent run of
+2026-11-21 and the run on `dev` 2d24b1269 of 2026-11-22. In the first run, step 4 started the server without
+`Delegate=yes`. The run on 2d24b1269, with DEF-013, gave `containment_failed` and `no_delegation`. Steps 6 and 9:
+the operator ran `anima-daemon install` of `dev` 2d24b1269 on 2026-11-22, and `systemctl --user show anima-daemon
+-p Delegate` gave `Delegate=yes`. Step 8: `pids.max` is not there, because the unit enables no controller (the L1-6
+row says so). Step 9d values: no `kernel.apparmor_restrict_unprivileged_userns`, no
+`kernel.unprivileged_userns_clone`, `user.max_user_namespaces` 384318, AppArmor enabled. Step 9f, NVIDIA only:
+`/dev/nvidia0`, `/dev/nvidiactl`, `/dev/nvidia-modeset` and `/dev/dri/renderD128` were open in the runtime.
+The layers on the GPU were not seen, because no model can be loaded before `model_load`. The operator moved
+that part, and the ROCm machine, to the human check of task L1-8 of
+[compute-plan.md](plans/compute-plan.md).
 
 ### HT-120: the model work of the daemon on the Mac and on `pop-os`
 
@@ -539,6 +579,17 @@ Do not use the installed daemon of the operator. Set `ANIMA_DAEMON_HOME` to a ne
    `failed` with `isolation_failed` (the isolation is not built).
 7. Write `{"agentTypes": ["model_report"]}` and give a `server_start` item with `actor` `Agent`.
    Expected: `refused` with `actor_not_permitted`.
+
+Partial results on `pop-os` (operator, 2026-11-23: "Record partial results"). The Mac is not run. A session ran the
+steps with a test program that calls `Node::cycle` against a scripted hub, in a transient user unit with
+`Delegate=yes`. The release was llama.cpp `b12613`, the `.tar.gz` for Ubuntu x64.
+
+- Step 1, on `dev` 2d24b1269, 2026-11-22: `succeeded`. 61 files and no link; the links of the archive are
+  regular files with mode 0755. Not as expected: the top folder `b12613-cpu` was 0775. The correction is in `dev`
+  at 648ac9a77; step 1 was not run again after it.
+- Steps 2 to 7, on 2026-11-21: as expected. Step 3 used a runtime placed by hand, because step 1 failed on that day
+  (R-387 was not yet built). This release accepts `--verbosity 0`, `--no-slots` and the router mode with no model.
+  Step 5: the folder `model-state/servers/<server>/` (`output.log`, `tmp/`) stays after each stop.
 
 Result: Open.
 
@@ -661,9 +712,10 @@ Clippy on the Mac, so the two computers used different versions.
 
 1. On the Linux development computer, get `main` and run `cargo --version` in the repository.
    Expected: `cargo 1.100.0`. rustup can download it first.
-2. Run `bun run gates`. Expected: `gates: 20/20 pass`.
+2. Run `bun run gates`. Expected: the last line is `gates: N/N pass`, with N the number of gates (21 on 2026-11-22).
 
-Result: Open.
+Result: Passed (operator, 2026-11-23: "All three Passed"), on `pop-os` with `main` at `abfffd8cf`, on 2026-11-22:
+`cargo 1.100.0` and `gates: 21/21 pass` (the baseline gate against `phase-2`).
 
 ### HT-008: a macOS release build with the pinned Rust version
 
@@ -954,7 +1006,10 @@ No gate runs on Linux, and the Mac has no Linux target.
    Expected: the bundles are built. If the error of GH-52 comes again, copy it into GH-52 with the
    output of step 1.
 
-Result: Open.
+Result: Passed (operator, 2026-11-23: "All three Passed"), on `pop-os` with `main` at `abfffd8cf` and `rustc 1.100.0`.
+Step 2: no error, only two manifest warnings about `tauri-plugin-updater`. Step 3, with `RUSTFLAGS` not set: the
+AppImage was built (96.64 MiB). The build then stopped at the updater signature, "A public key has been found,
+but no private key", because `TAURI_SIGNING_PRIVATE_KEY` is not set on that computer. That is not the error of GH-52.
 
 ### HT-021: the delay of the session picture in the Linux application (GH-54)
 
@@ -2687,7 +2742,8 @@ Run on 2026-11-23 by a session on `pop-os`, with Podman already installed: steps
 empty login file for Podman (its stored login for Docker Hub was refused). The log is in the record, with the name of
 the user removed, and the results are its Section 3.5.
 
-Result: Open.
+Result: Passed (operator, 2026-11-23: "All three Passed"). The operator ran steps 3 to 5 again on `pop-os` on 2026-11-23,
+and the log agreed with the log in Section 3.5 of the record.
 
 ### HT-133: the public names of applications through the route proxy (task H21)
 
@@ -3656,12 +3712,27 @@ the agents) is found. An agent can also remove the mark from its own environment
    Expected on the Mac (the known limit: `/usr/bin/perl` is a program of the system): the `perl` process still runs,
    and the stop said that all ended. Kill it by hand with `kill <pid>`. Expected on `pop-os`: no `sleep 600` is left
    (found by its mark).
+   On `pop-os` on 2026-11-22, with the installed daemon of `dev` at `2d24b1269`, this step was blocked: the runner
+   refused the start of the thread from the terminal (DEF-015). Do it again with a build that holds the
+   correction (step 8 of HT-176).
 5a. On the Mac, do step 5 with `/opt/homebrew/bin/python3 -c 'import os,time; os.fork() and os._exit(0); os.setsid();
    os.fork() and os._exit(0); time.sleep(600)'` as the program (or any `python3` that is not in `/usr/bin`).
    Expected: no `time.sleep(600)` process is left after the stop: it was found by its mark.
 6. Start a thread whose program runs `(perl -e 'setpgrp(0,0); sleep 600' & sleep 5) & sleep 600`. Wait 10 seconds,
    then stop the thread.
    Expected: no `sleep 600` is left: the holder saw the child before it left the tree.
+
+Partial results on `pop-os`, 2026-11-22, with a checkout of `dev` (operator, 2026-11-23: "Record partial results").
+The Mac steps (3, 4 and 5a) are not run.
+
+- Step 1: 259 passed and 1 failed. `thr_040` found descriptors `0 1 103 2 3`. Descriptor 103 came from the
+  terminal of the Claude desktop application: the holder passes on a descriptor that it inherited without
+  close-on-exec. The correction is on the branch `fix/holder-fds`. With `103<&-`: 260 passed, 403 skipped.
+- Step 2: the `tree` tests passed (30 and 8), and each line of `ps` had a number, a number and a date of five words.
+- Steps 5 and 6: not run. `anima agents start` was refused: "Only the person can answer a request", because the
+  call came from a process of an agent. Under the systemd user unit, the runner cannot read
+  `/proc/<pid>/environ` of the caller, and it counts a caller that it cannot read as an agent. The correction is on
+  the branch `fix/peer-environ-userns`.
 
 Result: Open.
 
@@ -5147,6 +5218,22 @@ real program started from the application.
 Result: Open.
 
 
+### HT-177: AMD UMA graphics do not show a dedicated VRAM warning (MET-007)
+
+Built on `fix/amd-integrated-vram`. Synthetic sysfs tests cover the daemon and SSH reader.
+The installed daemon, hub and client still need this check together on real hardware.
+Detection uses the driver's `uma/carveout` interface. Drivers without that interface keep
+existing VRAM reporting; this change does not infer a memory type from the pool size.
+
+1. Install the corrected daemon on an AMD UMA computer with
+   `/sys/class/drm/card*/device/uma/carveout`, then restart that daemon.
+   Expected: after its next GPU discovery and push, the device has GPU usage but no VRAM bar
+   or VRAM chart. A previously stored high VRAM reading does not restore the bar.
+2. Use the corrected hub to collect a test device of the same type through SSH, then allow
+   its next GPU discovery (at restart or within 24 hours).
+   Expected: GPU usage remains and the dedicated VRAM bar is absent.
+3. Collect a discrete AMD GPU with the corrected daemon or hub.
+   Expected: VRAM readings and the VRAM bar remain available.
 ### HT-167: Hosting > Applications lists the containers of each machine (task H42 stage 1; HSE-002, HSE-009)
 
 Built on the branch `hosted/h42-mount`: the page Hosting, section Applications, reads the devices with SSH on and the
@@ -5214,6 +5301,37 @@ list, or seen the tab of a real device.
    Expected: the same log tools and details as in HT-042.
 5. Press View in Hosting.
    Expected: Hosting opens on Applications with all machines.
+
+Result: Open.
+
+### HT-175: the commands, the skills and the picker extras of real programs (task TH117)
+
+Built on the branch `threads/composer-commands`: the runner reads the commands of Claude Code from its answer to
+`initialize`, the skills of Codex from `skills/list`, and the speeds, the flags and the efforts `none` and `minimal`
+of each Codex model from `model/list`; `start` and `set` send a speed to Codex as `serviceTier`, and the call `compact`
+sends `thread/compact/start`. The tests use made programs and the schema of Codex 0.170; nobody has run them against a
+real account.
+
+1. On this Mac, with Claude Code and Codex signed in, run `anima agents models`.
+   Expected: each Codex model that Codex shows with a fast speed has it in the column SPEEDS; a model that Codex
+   replaces says "(older)".
+2. Start a Codex thread with `anima agents start --program codex --folder <a repository> --prompt "Say hi"` and the
+   `--model` and `--speed` of a model of step 1 that has a speed.
+   Expected: the thread starts and the turn ends well; Codex shows the speed in its own session file for the turn.
+3. Run `anima agents set <thread> --speed default`, then send a prompt.
+   Expected: Codex takes the speed `default` with no error, and the turn ends well at the standard speed.
+4. Put a skill in `<the repository>/.codex/skills/hello/SKILL.md`, start a new Codex thread there, and run
+   `anima agents commands --thread <thread>`.
+   Expected: the skill `hello` is listed with its words.
+5. Run `anima agents commands --program codex --folder <the repository>`, wait 30 seconds, and run it again.
+   Expected: the first run says that the program has not named its commands yet; the second lists `hello`.
+   While the first run asks, run `ps -ax -o pid,ppid,command` and look below the `codex app-server` of the runner.
+   Expected: Codex starts no MCP server of the person to list the skills of the folder.
+6. Run `anima agents compact <the thread of step 4>`.
+   Expected: the answer says that Codex is compacting; the thread shows that its context was compacted.
+7. Start a Claude Code thread in a folder that has `.claude/commands/deploy.md`, and run
+   `anima agents commands --thread <thread>`.
+   Expected: the built-in commands of Claude Code and `deploy` are listed, one line each.
 
 Result: Open.
 

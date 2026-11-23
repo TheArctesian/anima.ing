@@ -34,6 +34,7 @@ impl SendArgs {
                 thread: self.thread,
                 text: self.text,
                 attachments: Vec::new(),
+                skills: Vec::new(),
             };
             return simple(invocation, action, "Sent.").await;
         }
@@ -58,6 +59,7 @@ impl SendArgs {
             thread: self.thread,
             text: self.text,
             attachments: attachments.clone(),
+            skills: Vec::new(),
         };
         if let Err(failure) = link.call(send).await.and_then(accepted) {
             unattach(&mut link, self.thread, attachments).await;

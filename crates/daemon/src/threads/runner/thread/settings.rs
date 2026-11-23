@@ -1,4 +1,5 @@
-//! A change of the model, the effort or the mode of a thread after its start (TH110). The row
+//! A change of the model, the effort, the speed or the mode of a thread after its start (TH110,
+//! TH117). The row
 //! says a change only when the program has it, so the person never sees a mode that the program
 //! does not run in. Pure.
 
@@ -8,6 +9,7 @@ use agent_threads::control::{Refusal, RunState};
 use agent_threads::drive::{ClaudeInput, DriveEvent, Effort, Mode, Model, ProgramRequestId};
 use serde::{Deserialize, Serialize};
 
+use super::super::accounts::STANDARD;
 use super::{Driver, Step, Thread, said};
 
 /// The first words of the ID of a control request of a change.
@@ -19,6 +21,9 @@ pub struct Changes {
     pub model: Option<Model>,
     pub effort: Option<Effort>,
     pub mode: Option<Mode>,
+    /// A speed of the model, or `default` (TH117). Codex only.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speed: Option<String>,
 }
 
 impl Changes {
@@ -28,6 +33,7 @@ impl Changes {
             model: later.model.or(self.model),
             effort: later.effort.or(self.effort),
             mode: later.mode.or(self.mode),
+            speed: later.speed.or(self.speed),
         }
     }
 }
@@ -70,6 +76,9 @@ impl Thread {
             Driver::Claude(_) if changes.effort.is_some() => Err(cannot(
                 "Claude Code cannot change the effort of a session that runs: start a new thread with the effort you want.",
             )),
+            Driver::Claude(_) if changes.speed.is_some() => {
+                Err(cannot("Claude Code has no speed that the runner can set."))
+            }
             Driver::Claude(_) => Ok(self.claude_lines(changes)),
         }
     }
@@ -113,6 +122,7 @@ impl Thread {
             return Vec::new();
         };
         codex.change(changes.model.clone(), changes.effort, changes.mode);
+        codex.change_speed(changes.speed.clone());
         self.note_changes(changes);
         vec![self.row_change()]
     }
@@ -151,6 +161,10 @@ impl Thread {
         }
         if let Some(mode) = changes.mode {
             self.row.mode = mode;
+        }
+        if let Some(speed) = changes.speed {
+            // The standard speed is no speed of the row: a start again sends none.
+            self.row.speed = Some(speed).filter(|speed| speed != STANDARD);
         }
     }
 }

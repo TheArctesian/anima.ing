@@ -108,6 +108,7 @@ fn met_016_amd_files_give_busy_and_vram_for_one_card() {
         amd::CardFiles {
             busy_percent: AMD_GPU_BUSY_PERCENT,
             vram_used: AMD_VRAM_USED,
+            unified_memory: false,
             vram_total: AMD_VRAM_TOTAL,
         },
     );
@@ -128,6 +129,7 @@ fn met_007_amd_vram_needs_both_files_and_a_total_above_zero() {
     let files = |used: &'static [u8], total: &'static [u8]| amd::CardFiles {
         busy_percent: b"5\n",
         vram_used: used,
+        unified_memory: false,
         vram_total: total,
     };
     assert_eq!(amd::card(0, "c", files(b"1\n", b"")).vram, None);
@@ -154,6 +156,7 @@ fn met_016_amd_card_with_an_unusable_name_keeps_its_readings_under_a_fixed_name(
     let files = amd::CardFiles {
         busy_percent: b"5\n",
         vram_used: b"",
+        unified_memory: false,
         vram_total: b"",
     };
     assert_eq!(amd::card(0, "bad\u{7}name", files).name, "AMD GPU");

@@ -16,6 +16,7 @@ use send::Sender;
 
 mod answer;
 mod attach;
+mod commands;
 mod files;
 mod folders;
 mod queue;
@@ -23,6 +24,7 @@ mod reads;
 mod refusal_lines;
 mod send;
 mod set;
+pub(super) use commands::FolderSkills;
 pub(super) use files::Walked;
 use refusal_lines::Say;
 pub(super) use refusal_lines::{RefusalLines, refusal_word};
@@ -43,10 +45,12 @@ pub(super) fn codex_of(
 ) -> Option<Codex> {
     (row.program == Program::Codex).then(|| {
         let model = row.model.as_deref().and_then(|name| Model::new(name).ok());
-        Codex::new(row.folder.clone(), row.mode, model, effort).keeping(
+        let mut codex = Codex::new(row.folder.clone(), row.mode, model, effort).keeping(
             crate::threads::notice::held_anima(&row.folder, daemon)
                 .map(|anima| KeptFolder::new(anima, row.id)),
-        )
+        );
+        codex.change_speed(row.speed.clone());
+        codex
     })
 }
 
@@ -81,6 +85,8 @@ impl Runner {
                 | Action::Requeue { .. }
                 | Action::Unqueue { .. }) => self.queue_call(queued).await,
                 set @ Action::Set { .. } => self.set(set).await,
+                listed @ Action::Commands { .. } => self.commands_call(listed).await,
+                Action::Compact { thread } => self.compact(thread).await,
                 attach @ (Action::Attach { .. }
                 | Action::AttachMore { .. }
                 | Action::Unattach { .. }) => self.attach_call(attach),
@@ -287,6 +293,8 @@ const fn for_the_person(action: &Action) -> bool {
             | Action::Unqueue { .. }
             | Action::SendQueued { .. }
             | Action::Set { .. }
+            | Action::Commands { .. }
+            | Action::Compact { .. }
             | Action::Attach { .. }
             | Action::AttachMore { .. }
             | Action::Unattach { .. }
@@ -308,6 +316,7 @@ const fn thread_of(action: &Action) -> Option<Uuid> {
         | Action::Unqueue { thread, .. }
         | Action::SendQueued { thread, .. }
         | Action::Set { thread, .. }
+        | Action::Compact { thread }
         | Action::Attach { thread, .. }
         | Action::AttachMore { thread, .. }
         | Action::Unattach { thread, .. }

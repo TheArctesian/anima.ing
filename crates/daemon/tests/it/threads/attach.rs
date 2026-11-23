@@ -40,6 +40,7 @@ async fn idle_thread(kit: &Kit, client: &mut Client) -> Uuid {
             mode: Mode::FullAccess,
             model: None,
             effort: None,
+            speed: None,
             prompt: "first".to_owned(),
             program_path: None,
             draft: None,
@@ -161,6 +162,7 @@ async fn th111_an_image_goes_inside_the_line_and_a_file_goes_by_its_path() {
             thread,
             text: "look".to_owned(),
             attachments: vec![image, notes],
+            skills: Vec::new(),
         })
         .await;
     // The prompt is shown when the holder took its line, before the call is answered.
@@ -192,6 +194,7 @@ async fn th111_an_image_goes_inside_the_line_and_a_file_goes_by_its_path() {
             thread,
             text: "again".to_owned(),
             attachments: vec![notes],
+            skills: Vec::new(),
         })
         .await;
     assert!(

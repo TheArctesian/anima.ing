@@ -144,6 +144,7 @@ pub async fn amd_cards(drm: &Path) -> Vec<GpuReading> {
             busy_percent: &busy,
             vram_used: &used,
             vram_total: &total,
+            unified_memory: file("uma/carveout").await.is_ok(),
         };
         found.push(amd::card(index, name.trim(), files));
     }

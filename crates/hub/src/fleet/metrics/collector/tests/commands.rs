@@ -150,6 +150,7 @@ fn chk_012_gpu_reads_are_the_static_spec_forms_per_system() {
         "/sys/class/drm/card*/device/gpu_busy_percent",
         "/sys/class/drm/card*/device/mem_info_vram_used",
         "/sys/class/drm/card*/device/mem_info_vram_total",
+        "/sys/class/drm/card*/device/uma/carveout",
     ]);
     let intel = fixed(&[
         "timeout",
