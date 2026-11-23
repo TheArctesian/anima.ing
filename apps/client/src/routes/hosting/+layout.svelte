@@ -1,9 +1,9 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { page } from '$app/state';
-  import { provideHead } from '$lib/hosting/head.svelte';
-  import HostingSections from '$lib/hosting/HostingSections.svelte';
-  import { sectionOf } from '$lib/hosting/sections';
+  import { provideHead } from '$lib/hosting/sections/head.svelte';
+  import HostingSections from '$lib/hosting/sections/HostingSections.svelte';
+  import { sectionOf } from '$lib/hosting/sections/sections';
   import { resolve as entrance } from '$lib/motion/roles/resolve';
   import PageHeader from '$lib/page/PageHeader.svelte';
   import SettingsSection from '$lib/settings/SettingsSection.svelte';

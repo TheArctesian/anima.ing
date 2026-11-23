@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HOSTING_SECTIONS } from '$lib/hosting/sections';
+import { HOSTING_SECTIONS } from '$lib/hosting/sections/sections';
 import { match } from './unlisted';
 
 describe('the sections of Hosting that one page serves', () => {

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import NotYetListed from '$lib/hosting/NotYetListed.svelte';
+  import NotYetListed from '$lib/hosting/sections/NotYetListed.svelte';
 </script>
 
 <!-- Applications (HSE-002): the one list of applications and containers belongs to the hosted applications plan (H42). -->
