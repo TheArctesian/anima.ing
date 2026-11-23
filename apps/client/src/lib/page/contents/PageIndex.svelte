@@ -80,11 +80,13 @@
   }
 
   .heading {
+    flex: none;
     padding: 0 var(--space-3) var(--space-2);
   }
 
   /* The name of a group of links; each group after the first has space above it (R-224). */
   .group {
+    flex: none;
     padding: var(--space-2) var(--space-3) var(--space-1);
   }
 
@@ -93,6 +95,7 @@
   }
 
   a {
+    flex: none;
     display: flex;
     align-items: center;
     gap: var(--space-3);
