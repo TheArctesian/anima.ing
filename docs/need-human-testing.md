@@ -54,6 +54,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-161 | A policy that stops a node ends its model servers within 60 seconds, and a machine that is off gets no model work (task L1-5) | A hub of this build with the hand-out of model work, and a daemon of this build in a test folder on `pop-os` | Open |
 | HT-162 | A real Hugging Face copy with remote code, or with a long chat template, is refused before a server starts, and a clean copy starts in vLLM with `--load-format safetensors` (SF-298) | A daemon of this build in a test folder on `pop-os` with an NVIDIA GPU and vLLM | Open |
 | HT-160 | A crash or a stall of the child fetch process is reported as `fetch_failed`, and a source that does not answer as `source_failed` (R-406) | A daemon of this build in a test folder on the Mac, and a network that a person can cut | Open |
+| HT-NEW-launcher | The model launcher where AppArmor restricts user namespaces: the admin step of `anima-daemon install`, the checks of the daemon, the refusal of a runtime that is not signed, the runtime profile, and `anima-daemon uninstall` (task L1-6c; R-327, R-347) | An Ubuntu 24.04 computer (not `pop-os`, which has no restriction) with `kernel.apparmor_restrict_unprivileged_userns = 1`, sudo, and a daemon of this build in a test folder | Open |
 | HT-121 | The hardware values of the Mac and of the Linux PC `pop-os` agree with what each system shows | A hub and a daemon of this build on both computers | Open |
 | HT-120 | The model work of the daemon installs `llama-server`, starts it on loopback, supervises it and stops it on the Mac and on `pop-os` | A test hub that gives model items, and a daemon of this build in a test folder on both computers | Open |
 | HT-119 | The cgroup of each model server on `pop-os`: a child that leaves its session is seen and ended, and a start with no delegated cgroup fails | `pop-os` with a daemon of this build in a test folder, run by its systemd user unit, which has `Delegate=yes` (R-334) | Open |
@@ -5064,3 +5065,42 @@ real program started from the application.
 
 Result: Open.
 
+### HT-NEW-launcher: the model launcher where AppArmor restricts user namespaces
+
+Built on the branch `compute/l1-6c` (task L1-6c; R-327, R-347; contract K11 Section 9.1): the program
+`anima-model-launcher` (`crates/model-launcher`), its profile, the checks of the daemon
+(`crates/daemon/src/model/tree/launcher.rs`) and the admin step (`crates/daemon/src/units/launcher.rs`). The tests run the
+launcher program and refuse lists that a test key signed; they cannot load a profile, run `sudo`, or start a runtime from a
+list that the release key signed. `pop-os` has no restriction, so the tests that start a server there use the daemon
+program as the launcher. Not built yet, so not in this check: the fetch of the signed list, its signing in the release
+workflow, the launcher in the release files, and the dialog of the desktop application.
+
+1. On the Ubuntu computer, run `sysctl kernel.apparmor_restrict_unprivileged_userns` and
+   `cat /sys/module/apparmor/parameters/enabled`.
+   Expected: `= 1` and `Y`.
+2. Build the branch (`cargo build -p anima-daemon -p model-launcher`), copy `target/debug/anima-daemon` and
+   `target/debug/anima-model-launcher` into one test folder, enrol the daemon, and run `anima-daemon install` from that
+   folder in a terminal. Answer `n` to `Install the model launcher with sudo? [y/N]`.
+   Expected: the three commands are shown before the question; after `n` the unit is installed, nothing is written to
+   `/usr/local/libexec/anima` or `/etc/apparmor.d`, and the message names `launcher_missing`.
+3. Run `anima-daemon install` again and answer `y`, then give the sudo password.
+   Expected: `ls -l /usr/local/libexec/anima/anima-model-launcher /etc/apparmor.d/anima-model-launcher` shows owner root,
+   modes `-rwxr-xr-x` and `-rw-r--r--`; `sudo grep anima /sys/kernel/security/apparmor/profiles` lists
+   `anima-model-launcher` and `anima-model-runtime`; `/usr/local/libexec/anima/anima-model-launcher --protocol` prints
+   `anima-model-launcher 1`.
+4. Run `anima-daemon install` a third time.
+   Expected: no question; the launcher is current.
+5. The running daemon does not take model work yet, so start the launcher as the daemon does, by hand: run
+   `d=$(mktemp -d); touch $d/cgroup.procs; /usr/local/libexec/anima/anima-model-launcher $d/list $d/sig $d/cgroup.procs $$ $d/failure /usr/bin/sleep 5; echo $?; cat $d/failure`.
+   Expected: `125` twice (`runtime_not_signed`: there is no signed list), and no sleep of 5 seconds.
+6. Read `/sys/kernel/security/apparmor/profiles` as the daemon user (no sudo).
+   Expected: it reads. If it does not read, write that here: the daemon then reads `launcher_missing` for an installed
+   launcher.
+7. When a signed list is published (a later step of L1-6c): start the same server again, then read
+   `cat /proc/<pid of llama-server>/attr/current`.
+   Expected: the server starts; the line names `anima-model-runtime`, not `anima-model-launcher` and not `unconfined`.
+8. Run `anima-daemon uninstall` and answer `y`.
+   Expected: the profile is unloaded (not in `profiles` any more), and both files and the folder
+   `/usr/local/libexec/anima` are gone.
+
+Result: Open.
