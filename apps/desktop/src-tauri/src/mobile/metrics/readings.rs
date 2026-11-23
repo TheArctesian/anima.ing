@@ -35,78 +35,61 @@ fn storage(path: &Path) -> Option<(u64, u64)> {
     Some((total, used))
 }
 
-#[expect(
-    clippy::cast_precision_loss,
-    reason = "the metrics wire carries byte counts as floats"
-)]
-fn add(
-    series: &mut Vec<BatchSeries>,
-    values: &mut Vec<Option<f64>>,
-    kinds: (Kind, Kind),
-    label: Option<&str>,
-    (total, used): (u64, u64),
-) {
-    if total == 0 {
-        return;
-    }
-    for (kind, value) in [
-        (kinds.0, used as f64),
-        (kinds.1, 100.0 * used as f64 / total as f64),
-    ] {
-        series.push(BatchSeries {
+#[derive(Default)]
+struct Samples {
+    series: Vec<BatchSeries>,
+    mean: Vec<Option<f64>>,
+}
+
+impl Samples {
+    fn push(&mut self, kind: Kind, label: Option<&str>, value: f64) {
+        self.series.push(BatchSeries {
             kind: kind.as_str().to_owned(),
             label: label.map(str::to_owned),
             gpu: None,
         });
-        values.push(Some(value));
+        self.mean.push(Some(value));
+    }
+
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "the metrics wire carries byte counts as floats"
+    )]
+    fn add_usage(&mut self, kinds: (Kind, Kind), label: Option<&str>, (total, used): (u64, u64)) {
+        if total > 0 {
+            self.push(kinds.0, label, used as f64);
+            self.push(kinds.1, label, 100.0 * used as f64 / total as f64);
+        }
     }
 }
 
 pub(super) fn batch(device: Uuid, now: DateTime<Utc>, path: &Path) -> Option<Batch> {
-    let mut series = Vec::new();
-    let mut mean = Vec::new();
+    let mut samples = Samples::default();
     #[cfg(target_os = "ios")]
     {
         let _ = path;
         if let Some(percent) = cpu_percent() {
-            series.push(BatchSeries {
-                kind: Kind::CpuPercent.as_str().to_owned(),
-                label: None,
-                gpu: None,
-            });
-            mean.push(Some(percent));
+            samples.push(Kind::CpuPercent, None, percent);
         }
     }
     #[cfg(target_os = "android")]
     if let Some(reading) = storage(path) {
-        add(
-            &mut series,
-            &mut mean,
-            (Kind::DiskBytes, Kind::DiskPercent),
-            Some("/data"),
-            reading,
-        );
+        samples.add_usage((Kind::DiskBytes, Kind::DiskPercent), Some("/data"), reading);
     }
     if let Some(reading) = memory() {
-        add(
-            &mut series,
-            &mut mean,
-            (Kind::MemoryBytes, Kind::MemoryPercent),
-            None,
-            reading,
-        );
+        samples.add_usage((Kind::MemoryBytes, Kind::MemoryPercent), None, reading);
     }
-    if series.is_empty() {
+    if samples.series.is_empty() {
         return None;
     }
     let seconds = now.timestamp();
     let at = DateTime::from_timestamp(seconds - seconds.rem_euclid(10), 0)?;
     Some(Batch {
         device,
-        series,
+        series: samples.series,
         points: vec![BatchPoint {
             at,
-            mean,
+            mean: samples.mean,
             max: None,
         }],
         gpus: None,
