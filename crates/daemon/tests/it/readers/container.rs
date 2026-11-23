@@ -13,10 +13,8 @@ fn write(root: &Path, path: &str, text: &str) {
     std::fs::write(path, text).unwrap();
 }
 
-/// The files of a server beside those of the container of a hub, and 123 bytes of data of the
-/// hub with a link out of its folder that must not count.
+/// The hub's link out of its folder does not count toward its 123 bytes.
 fn lay_out(root: &Path) {
-    // The server: 64 GiB of memory, a load, its interfaces and its time since boot.
     let meminfo = "MemTotal: 67108864 kB\nMemAvailable: 33554432 kB\n";
     write(root, "proc/meminfo", meminfo);
     write(root, "proc/loadavg", "7.50 6.00 5.00 3/900 4242\n");
@@ -24,7 +22,6 @@ fn lay_out(root: &Path) {
     let net = "Inter-|\n face |\n  eth0: 999999 9 0 0 0 0 0 0 888888 8 0 0 0 0 0 0\n";
     write(root, "proc/net/dev", net);
     write(root, "proc/stat", "cpu 100 0 100 100000 0 0 0 0 0 0\n");
-    // The container: 1.5 GiB of memory, one processor with no quota, its own processor time.
     write(root, "sys/fs/cgroup/memory.max", "1610612736\n");
     write(root, "sys/fs/cgroup/memory.current", "359116800\n");
     let stat = "anon 99278848\ninactive_file 159383552\n";
@@ -37,8 +34,6 @@ fn lay_out(root: &Path) {
     std::os::unix::fs::symlink(root.join("proc/meminfo"), out).unwrap();
 }
 
-/// HMD-074: the daemon of a hosted hub is given the files of a server beside those of its
-/// container, and no figure of the server is in what it reads or sends.
 #[tokio::test]
 async fn hmd_074_a_hosted_hub_reads_its_container_and_nothing_of_the_server() {
     let root = tempfile::tempdir().unwrap();
@@ -79,7 +74,6 @@ async fn hmd_074_a_hosted_hub_reads_its_container_and_nothing_of_the_server() {
         "disk_bytes",
     ];
     assert_eq!(kinds, only);
-    // 2.5 seconds of one processor in 10 seconds.
     assert!((made[0].value - 25.0).abs() < 1e-6);
     let server = [64.0 * 1024.0 * 1024.0 * 1024.0, 7.5, 9_000_000.0, 999_999.0];
     assert!(made.iter().all(|sample| !server.contains(&sample.value)));

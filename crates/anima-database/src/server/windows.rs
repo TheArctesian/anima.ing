@@ -1,4 +1,5 @@
 //! One owned job holds the server tree; `pg_ctl` does the fast shutdown.
+//! Never signal a recycled PID from an unproved stale file.
 use super::{Limits, Lock, Server, ServerError, Stopped, io_error};
 use crate::{Layout, Program, Tree};
 use std::{

@@ -1,6 +1,4 @@
-// Rules for the jobs of the iOS application in .github/workflows/release.yml (R-203; task
-// B8i): its switches, and which job holds which key. Nothing here runs the workflow, builds
-// the application or reads a secret; no run has proved these jobs.
+// R-203; task B8i.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

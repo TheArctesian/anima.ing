@@ -1,17 +1,11 @@
 # shellcheck shell=sh
-# The fake sshd for the harden.sh tests (D-14). `sshd -T [-C user=U,host=H,addr=A]` reads
-# $FAKE_ROOT/etc/ssh/sshd_config and the files it includes, as sshd does: in the global
-# section the first value wins and AllowUsers adds up; without -C Match blocks are skipped;
-# with -C each Match block that matches (All, User, Address; other criteria count as
-# matching) overrides the global values, the first matching value winning. FAKE_SSHD_C_CONF
-# holds lines that only -C sees, as if from a source the Match scan cannot read.
-# Any other call (sshd -t) exits $FAKE_SSHD_SYNTAX.
+# Fake sshd for the harden.sh tests (D-14): `sshd -T [-C user=U,host=H,addr=A]` resolves $FAKE_ROOT/etc/ssh/sshd_config.
+# FAKE_SSHD_C_CONF holds lines that only -C sees; any other call exits $FAKE_SSHD_SYNTAX.
 [ "$1" = -T ] || exit "${FAKE_SSHD_SYNTAX:-0}"
 connection=
 [ "${2:-}" != -C ] || connection=$3
 includes=0
 
-# Print the lines of standard input with each Include replaced by the files it names.
 expand() {
   while IFS= read -r line || [ -n "$line" ]; do
     set -f

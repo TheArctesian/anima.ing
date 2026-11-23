@@ -1,11 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { unitValues } from "./backup-fixture.ts";
 
-// VPS-006 / D-12: the systemd units that run the backup (VPS) and receive and prune it (home PC).
+// VPS-006, D-12.
 
 const UNITS = ["headscale-backup.unit", "rest-server.unit", "restic-prune.unit"];
 
-/** The sandbox every backup unit shares. */
 function expectSandboxed(file: string): void {
   const value = (key: string) => unitValues(file, "Service", key);
   for (const key of ["NoNewPrivileges", "ProtectHome", "PrivateTmp", "PrivateDevices", "MemoryDenyWriteExecute"]) {

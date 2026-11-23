@@ -46,8 +46,7 @@ impl Local {
         read_ok: impl FnOnce(u16, &[u8]) -> Option<T>,
     ) -> Answer<T> {
         let uri: hyper::Uri = Uri::new(&self.socket, &format!("/{}", call.route)).into();
-        // The socket connector encodes its path in the URI authority. It is not the
-        // HTTP host: the hub's link-mode guard requires a loopback Host on every request.
+        // The URI authority holds the socket path; the hub's link-mode guard needs a loopback Host.
         let mut request = Request::post(uri)
             .header(HOST, "127.0.0.1")
             .header(CONTENT_TYPE, "application/json");

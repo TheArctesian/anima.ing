@@ -1,5 +1,4 @@
-// Each broker request as Headscale argv (R-055, BD-9, VP-7, VP-10). The flag names and forms are
-// the ones Headscale 0.29.7 accepts (contract harness and the Build notes in vpn-build.md).
+// R-055, BD-9, VP-7, VP-10: the flag names and forms are the ones Headscale 0.29.7 accepts (vpn-build.md).
 import { describe, expect, it } from 'bun:test';
 import { nodesReply } from '../broker/nodes.ts';
 import type { Request } from '../broker/protocol.ts';
@@ -84,7 +83,6 @@ describe('plan', () => {
     expect(plan({ verb: 'approve-route', node: 5, site: 'home' }, view, withRouter, moment)).toBe('not-allowed');
     expect(plan({ verb: 'router-key', site: 'home' }, view, withRouter, moment)).toBe('not-allowed');
     expect(plan({ verb: 'router-key', site: 'office1' }, view, withRouter, moment)).not.toBeString();
-    // Approving the same router again is not a second router.
     expect(plan({ verb: 'approve-route', node: 2, site: 'home' }, view, withRouter, moment)).toEqual([['nodes', 'approve-routes', '--identifier=2', '--routes=10.10.0.0/24']]);
   });
 });

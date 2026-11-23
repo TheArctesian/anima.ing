@@ -1,5 +1,4 @@
-//! Where the power comes from (CAP-004): the parse is in the crate `power`, which the desktop's
-//! stay-awake control also uses; this module gives its result as the batch's `PowerSource`.
+//! Where the power comes from (CAP-004), as the batch's `PowerSource`; the parse is in the crate `power`.
 
 pub use ::power::{Power, Supply, from_pmset, from_supplies};
 

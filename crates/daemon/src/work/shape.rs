@@ -1,6 +1,4 @@
-//! The members of an item and their values (K10 Sections 4 and 5): the daemon refuses an item
-//! that has a member which it does not know, because a newer hub can send a member that makes
-//! an item more narrow.
+//! The members of an item (K10 Sections 4 and 5); an unknown member is refused, as it can narrow the item.
 
 use serde_json::{Map, Value};
 
@@ -8,7 +6,6 @@ use super::permitted::{FORGES, is_name, is_owner};
 
 type Object = Map<String, Value>;
 
-/// The members of an `Item`. Each is always present.
 const ITEM: [&str; 10] = [
     "id",
     "type",
@@ -29,12 +26,10 @@ const LIMITS: [&str; 5] = [
     "orphanSeconds",
 ];
 
-/// Whether `object` has each member of `members` and no other.
 pub(super) fn has_exactly(object: &Object, members: &[&str]) -> bool {
     object.len() == members.len() && members.iter().all(|member| object.contains_key(*member))
 }
 
-/// The member as an object with exactly `members`.
 pub(super) fn object_of<'a>(
     parent: &'a Object,
     name: &str,
@@ -50,7 +45,6 @@ pub(super) fn text<'a>(object: &'a Object, name: &str) -> Option<&'a str> {
     object.get(name)?.as_str()
 }
 
-/// Each limit is a whole number above 0.
 fn limits_hold(item: &Object) -> bool {
     object_of(item, "limits", &LIMITS).is_some_and(|limits| {
         limits
@@ -59,7 +53,6 @@ fn limits_hold(item: &Object) -> bool {
     })
 }
 
-/// The repository has a forge of the fixed list and two names with permitted characters.
 fn repository_holds(item: &Object) -> bool {
     object_of(item, "repository", &["forge", "owner", "name"]).is_some_and(|repository| {
         text(repository, "forge").is_some_and(|forge| FORGES.contains(&forge))
@@ -76,7 +69,6 @@ fn project_holds(item: &Object) -> bool {
     }
 }
 
-/// The purposes of the secrets of the item; `None` when `secrets` is not a list of text.
 pub(super) fn purposes(item: &Object) -> Option<Vec<&str>> {
     item.get("secrets")?
         .as_array()?
@@ -85,8 +77,7 @@ pub(super) fn purposes(item: &Object) -> Option<Vec<&str>> {
         .collect()
 }
 
-/// Whether the item has exactly the members of K10 Section 4, each with a value that the
-/// contract permits. The object of the work type is checked by its type.
+/// The `parameters` object is checked by its work type.
 pub(super) fn holds(item: &Object) -> bool {
     has_exactly(item, &ITEM)
         && object_of(item, "lease", &["until"]).is_some()

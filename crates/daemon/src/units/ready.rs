@@ -1,5 +1,4 @@
-//! Whether the daemon the unit starts will find a token it can use (MET-019, D-10): a daemon
-//! without one fails and restarts for ever. Pure: the caller reads the files.
+//! Whether the unit's daemon will find a usable token (MET-019, D-10); without one it restarts for ever.
 
 use std::path::{Path, PathBuf};
 
@@ -10,7 +9,6 @@ use super::trust;
 use crate::config::private_file;
 use crate::token_store::Credential;
 
-/// The file type bits of an `st_mode`, and their value for a regular file.
 const REGULAR_MASK: u32 = 0o170_000;
 const REGULAR: u32 = 0o100_000;
 
@@ -52,11 +50,7 @@ pub enum NotReady {
     SystemTokenCorrupt,
 }
 
-/// The folder this shell found (`found`) must be the one the unit's daemon finds (`unit`): the
-/// unit sets no `ANIMA_DAEMON_HOME` and the user unit may write only its default folder.
-///
-/// # Errors
-/// [`NotReady::OtherHome`] when they differ.
+/// The unit sets no `ANIMA_DAEMON_HOME`, and the user unit may write only its default folder.
 pub(super) fn same_home(found: &Path, unit: &Path) -> Result<(), NotReady> {
     if found == unit {
         Ok(())
@@ -68,10 +62,6 @@ pub(super) fn same_home(found: &Path, unit: &Path) -> Result<(), NotReady> {
     }
 }
 
-/// The stored token's expiry (`None` when there is no token) must be after `now`.
-///
-/// # Errors
-/// [`NotReady::NotEnrolled`] or [`NotReady::Expired`].
 pub(super) fn token_usable(
     expires_at: Option<DateTime<Utc>>,
     now: DateTime<Utc>,
@@ -83,14 +73,8 @@ pub(super) fn token_usable(
     }
 }
 
-/// The system unit's daemon runs as [`ACCOUNT`]: it must exist in `passwd` (the text of
-/// `/etc/passwd`), and its token file (`token`: its `st_mode`, file type bits included, and its
-/// owner; `None` when there is none) must be the account's own regular 0600 file, or the daemon
-/// cannot read it. Only then does the caller
-/// read the token, as root, for [`system_token`]. `program` is printed in the enrol command.
-///
-/// # Errors
-/// [`NotReady::MissingAccount`], [`NotReady::SystemNotEnrolled`] or [`NotReady::TokenOwner`].
+/// `token` is the token file's `st_mode` and owner; it must be the account's own regular 0600 file.
+/// Only after this passes does the caller read it, as root.
 pub(super) fn system(
     passwd: &str,
     token: Option<(u32, u32)>,
@@ -106,11 +90,7 @@ pub(super) fn system(
     Ok(())
 }
 
-/// The system unit's stored token (`record`, the file's bytes) must read and expire after
-/// `now`. The record's text never reaches an error (LOG-007).
-///
-/// # Errors
-/// [`NotReady::SystemTokenCorrupt`] or [`NotReady::SystemExpired`].
+/// The record's text never reaches an error (LOG-007).
 pub(super) fn system_token(
     record: &[u8],
     now: DateTime<Utc>,
@@ -125,8 +105,6 @@ pub(super) fn system_token(
     }
 }
 
-/// The user ID of the account `name` in `passwd`; `None` when it is missing or its line does
-/// not read.
 fn account_uid(passwd: &str, name: &str) -> Option<u32> {
     trust::accounts(passwd)
         .find(|account| account.name == name)

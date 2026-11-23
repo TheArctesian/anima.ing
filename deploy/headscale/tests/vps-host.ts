@@ -1,16 +1,9 @@
-/**
- * A fake VPS for the harden.sh tests (D-14): a temporary root, a copy of `vps/`, and fake
- * system commands that log every call and act on FAKE_* variables.
- */
+/** A fake VPS for the harden.sh tests (D-14): fake system commands log every call and act on FAKE_* variables. */
 import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-/**
- * Per-test timeout for the harden.sh tests. Each test runs harden.sh in bash with a dozen
- * fake commands; `check` alone starts some hundred processes, which takes more than bun's
- * 5 s default on a loaded machine. bun applies setDefaultTimeout per test file.
- */
+/** `check` alone starts some hundred processes, more than bun's 5 s default allows on a loaded machine. */
 export const HARDEN_TIMEOUT_MS = 30_000;
 
 export const VPS_DIR = join(import.meta.dir, "..", "vps");
@@ -36,8 +29,7 @@ const SSHD_CONFIG =
   "# stock comments\nInclude /etc/ssh/sshd_config.d/*.conf\nAuthorizedKeysFile .ssh/authorized_keys\n" +
   "#Match User anoncvs\n#\tPermitTTY no\nSubsystem sftp /usr/libexec/openssh/sftp-server\n";
 
-// `firewall-cmd --info-policy` of a running firewalld 2.4.3 on AlmaLinux 10: " (active)"
-// after the name, trailing blanks kept.
+// `firewall-cmd --info-policy` of firewalld 2.4.3 on AlmaLinux 10, trailing blanks kept.
 const KEYS = "  services: \n  ports: \n  protocols: \n  masquerade: no\n  forward-ports: \n  source-ports: \n  icmp-blocks: \n  rich rules: \n";
 const ICMP = ["mld-listener-done", "mld-listener-query", "mld-listener-report", "mld2-listener-report",
   "neighbour-advertisement", "neighbour-solicitation", "redirect", "router-advertisement"];
@@ -47,8 +39,7 @@ const POLICIES: Record<string, string> = {
   "docker-forwarding": `docker-forwarding (active)\n  disable: no\n  priority: -1\n  target: ACCEPT\n  ingress-zones: ANY\n  egress-zones: docker\n${KEYS}`,
 };
 
-// `systemctl show -p ... nftables.service` on AlmaLinux 10 (systemd 257), stock and with the
-// Anima drop-in; systemd prints no line for an empty command list.
+// `systemctl show` on AlmaLinux 10 (systemd 257); systemd prints no line for an empty command list.
 const exec = (name: string, argv: string): string =>
   `${name}={ path=/sbin/nft ; argv[]=${argv} ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }\n`;
 const START = exec("ExecStart", "/sbin/nft -f /etc/sysconfig/nftables.conf");
@@ -60,7 +51,6 @@ const NFT_UNIT = {
     `${FRAGMENT}DropInPaths=/etc/systemd/system/nftables.service.d/anima.conf\n`,
 };
 
-// `ip -o -4 addr show` on a VPS with Docker and the VPN: loopback, public, docker0, tailnet.
 const ADDRS = [
   "1: lo    inet 127.0.0.1/8 scope host lo",
   "2: eth0    inet 203.0.113.7/24 brd 203.0.113.255 scope global eth0",
@@ -167,7 +157,6 @@ export interface Run {
 
 export interface Host {
   root: string;
-  /** The copy of `vps/` the script runs from. */
   vps: string;
   run(args: string[], env?: Record<string, string>): Run;
   write(path: string, text: string, mode?: number): void;
@@ -175,15 +164,11 @@ export interface Host {
   exists(path: string): boolean;
   tree(): string[];
   setListeners(lines: string[]): void;
-  /** Replace what `nft list table inet anima_filter` prints (default: the real listing of nftables.conf). */
   setTable(text: string): void;
-  /** The rules `firewall` last passed to `nft -c` (with the local accepts in place). */
   checkedRules(): string;
-  /** Install what `ssh`, `updates`, `selinux` and `confirm` install, so `check` sees a hardened host. */
   harden(): void;
 }
 
-/** Write the fake system commands and the outputs they replay into the work folder. */
 function installFakes(work: string): void {
   mkdirSync(join(work, "bin"));
   for (const [name, body] of Object.entries(FAKES)) {
@@ -197,7 +182,6 @@ function installFakes(work: string): void {
   for (const [name, text] of Object.entries(NFT_UNIT)) writeFileSync(join(work, `nft-unit-${name}`), text);
 }
 
-/** Run the copy of harden.sh in `work` against the fakes and the temporary root. */
 function runHarden(work: string, args: string[], env: Record<string, string>): Run {
   const log = join(work, "calls.log");
   const root = join(work, "root");
@@ -223,7 +207,6 @@ function runHarden(work: string, args: string[], env: Record<string, string>): R
 
 const works: string[] = [];
 
-/** Removes every fake host made so far; call from `afterEach` in each test file. */
 export function removeHosts(): void {
   for (const work of works.splice(0)) rmSync(work, { recursive: true, force: true });
 }
@@ -273,7 +256,6 @@ export function fakeHost(): Host {
   return host;
 }
 
-/** Mutating commands: a dry run must call none of these. */
 export function mutatingCalls(run: Run): string[] {
   return run.calls.filter(
     (call) =>

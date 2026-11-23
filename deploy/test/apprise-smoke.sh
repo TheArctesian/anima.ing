@@ -1,19 +1,6 @@
 #!/bin/sh
-# Manual smoke test for the optional Apprise service in deploy/compose.yaml (D-19, NOT-002). Needs
-# Docker. Not a gate.
-#
-# It copies only compose.yaml to a temporary folder and starts only `apprise`, with the hardening
-# exactly as in the file (read-only root, no capabilities, user 1000, tmpfs mounts). No secret file
-# is read or needed. A throwaway container on the same `notify` network then asks
-# GET /status at the fixed address 172.30.3.10, and posts stateless /notify calls with json://, xml:// and
-# form:// URLs to a listener in that container: all must be refused (APPRISE_ALLOW_SERVICES). It
-# then posts an allowed discord:// URL with an http `attach` (refused, listener silent), and checks
-# that dummy discord://, tgram:// and slack:// URLs pass the allow list (424, not 400).
-#
-# The temporary copy of compose.yaml makes `notify` internal, so nothing leaves this machine: an
-# allowed URL cannot reach its service and ends as a delivery failure (424).
-#
-#   sh deploy/test/apprise-smoke.sh
+# Manual smoke test of the Apprise service in deploy/compose.yaml (D-19, NOT-002); needs Docker, not a gate.
+# The copy of compose.yaml makes `notify` internal, so an allowed URL ends as a delivery failure (424).
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -33,10 +20,8 @@ step() { printf '\n== %s\n' "$1"; }
 fail() { echo "apprise-smoke: $1" >&2; exit 1; }
 
 cp "$repo/deploy/compose.yaml" "$work/compose.yaml"
-# No route out for the smoke run (temporary copy only). The step fails if the line is not found.
 perl -0pi -e 's/(\n  notify:\n)(    ipam:)/$1    internal: true\n$2/ or exit 1' "$work/compose.yaml" || fail "could not make notify internal"
 cd "$work"
-# Dummy values for the variables that compose.yaml requires. Nothing here is a real address.
 export ANIMA_HUB_ADDRESS=127.0.0.1
 export ANIMA_ACME_EMAIL=smoke@example.invalid
 export ANIMA_VPS_PUBLIC_ADDRESS=203.0.113.9
@@ -57,14 +42,12 @@ echo "ports:    '$(docker port "$container")'"
 
 step "GET /status from a throwaway container on the notify network"
 network="${project}_notify"
-# Same image, so nothing else is pulled. `curl` exists in it.
 probe() { docker run --rm --network "$network" --entrypoint "$@"; }
 probe curl "$image" -fsS http://172.30.3.10:8000/status
 echo
 
 step "A json:// URL to any host is refused, and the listener gets nothing (S-1)"
-# Apprise sits outside the hub's deny list, so only cloud services are allowed. The listener
-# stands for a host on a protected network. The single quotes are meant: the container expands them.
+# Apprise sits outside the hub's deny list, so only cloud services are allowed; the container expands the single quotes.
 # shellcheck disable=SC2016
 docker run --rm --network "$network" --entrypoint sh "$image" -c '
     ip=$(hostname -i)

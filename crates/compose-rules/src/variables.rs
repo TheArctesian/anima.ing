@@ -66,6 +66,7 @@ fn fill(text: &str, values: &BTreeMap<String, String>) -> Result<String, Refusal
     Ok(filled)
 }
 
+/// A key is never filled: a key that holds `$` is refused.
 pub(crate) fn filled(node: Node, values: &BTreeMap<String, String>) -> Result<Node, Refusal> {
     Ok(match node {
         Node::Null => Node::Null,

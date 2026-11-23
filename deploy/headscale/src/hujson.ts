@@ -1,8 +1,4 @@
-/**
- * Reads HuJSON, the JSON-with-comments format of Headscale's policy file: `//` and
- * `/* *\/` comments and trailing commas are removed outside strings, then the text is
- * read as plain JSON. Pure; malformed input throws `HujsonError`.
- */
+/** Reads HuJSON, Headscale's policy format: comments and trailing commas outside strings are removed. */
 
 export class HujsonError extends Error {
   constructor(message: string, options?: ErrorOptions) {
@@ -24,9 +20,7 @@ export function parseHujson(text: string): unknown {
 
 function standardize(text: string): string {
   const out: string[] = [];
-  // Index in `out` of a comma that follows a value and is not yet followed by another;
-  // dropped if `}` or `]` comes next. A comma after `{`, `[`, `,` or `:` is left for
-  // JSON.parse to refuse.
+  // A comma after `{`, `[`, `,` or `:` is left for JSON.parse to refuse.
   let comma = -1;
   let previous = '';
   let at = 0;

@@ -1,4 +1,4 @@
-//! `anima-daemon enrol` against the fake hub (MET-012, K8 Section 3).
+//! MET-012, K8 Section 3.
 
 use anima_daemon::config::home::Home;
 use anima_daemon::config::origin::Origin;
@@ -152,8 +152,7 @@ async fn met_012_a_device_name_with_control_characters_is_refused_and_nothing_is
     assert!(home.read_config().expect("reads").is_none());
 }
 
-/// T8 S1: a name the hub's device rule takes (64 characters, here 192 bytes) is kept, so the
-/// spent code is never thrown away for its name.
+/// 64 characters, here 192 bytes; a refused name would throw away the spent code.
 #[tokio::test]
 async fn met_012_every_name_the_hub_takes_is_kept() {
     let name = "漢".repeat(64);

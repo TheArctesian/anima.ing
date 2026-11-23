@@ -59,7 +59,7 @@ impl Password {
         )
     }
 
-    /// The text for the URL file and the sign-in.
+    /// The text for the URL file and the sign-in; never log it (LOG-007).
     #[must_use]
     pub fn expose(&self) -> &str {
         &self.0

@@ -5,7 +5,6 @@ use super::kit::{
     Entry, FAKE_RUNTIME, PROGRAM, archive, entry, folders, linked_archive, node, release, target,
 };
 
-/// The links of a test archive: (path, target).
 type Links<'a> = &'a [(&'a str, &'a str)];
 
 #[test]

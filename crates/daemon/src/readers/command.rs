@@ -1,7 +1,4 @@
-//! Runs one fixed read-only command (MET-002, CAP-022): fixed argv, no shell, no input, a time
-//! limit, a cap on the output kept, and a failure that is an error value rather than a crash.
-//! The command runs in a process group of its own, and the whole group is killed when it ends,
-//! so nothing it started outlives it.
+//! Runs one fixed read-only command: no shell, a time limit, an output cap, and its process group dies with it (MET-002, CAP-022).
 
 use std::io;
 use std::process::{ExitStatus, Stdio};
@@ -13,26 +10,21 @@ use tokio::io::{AsyncRead, AsyncReadExt as _};
 use tokio::process::{Child, Command};
 use tokio::time::timeout;
 
-/// The most output kept from one command.
 const OUTPUT_LIMIT: u64 = 1024 * 1024;
 
 /// The only search path a command gets: the daemon's own environment is not passed on.
 #[cfg(unix)]
 const PATH: &str = "/run/current-system/sw/bin:/usr/sbin:/usr/bin:/sbin:/bin";
 
-/// How long a command that closed its output may take to report its exit status.
 const EXIT_GRACE: Duration = Duration::from_secs(1);
 
-/// How long output still buffered is read after the command exits. A program it started in
-/// the background may hold the output open; it is not waited for.
+/// A program started in the background may hold the output open; it is not waited for.
 const DRAIN: Duration = Duration::from_millis(200);
 
-/// A command the daemon runs: the program and its arguments are fixed text.
 #[derive(Clone, Copy, Debug)]
 pub struct FixedCommand {
     pub program: &'static str,
     pub args: &'static [&'static str],
-    /// The longest the command may run; it is then killed.
     pub limit: Duration,
     /// `intel_gpu_top -J` never ends by itself: its output up to the limit is the answer.
     pub keep_cut_output: bool,
@@ -52,13 +44,10 @@ pub enum CommandError {
 }
 
 impl FixedCommand {
-    /// Runs the command and returns what it printed (at most 1 MiB). It gets no input and its
-    /// error output is thrown away; it gets a fixed `PATH` and `LC_ALL=C` (the number format its parser
-    /// expects) and nothing else from the environment.
+    /// The command gets only a fixed `PATH` and `LC_ALL=C`, the number format its parser expects.
     ///
     /// # Errors
-    /// [`CommandError`] when it cannot start, runs past its limit (unless
-    /// [`FixedCommand::keep_cut_output`]) or exits with a failure.
+    /// [`CommandError`] when it cannot start, runs past its limit (unless `keep_cut_output`) or fails.
     pub async fn run(&self) -> Result<Vec<u8>, CommandError> {
         let mut command = Command::new(self.program);
         command.args(self.args).env_clear().env("LC_ALL", "C");
@@ -99,26 +88,17 @@ fn windows_environment(command: &mut Command) {
     }
 }
 
-/// How long a command may run and how much of what it prints is kept.
 #[derive(Clone, Copy, Debug)]
 pub struct Bounds {
-    /// The longest the command may run; it is then killed.
     pub limit: Duration,
-    /// Whether the output up to the limit is the answer (see [`FixedCommand::keep_cut_output`]).
     pub keep_cut_output: bool,
-    /// The most bytes of output kept.
     pub output_limit: u64,
 }
 
-/// Runs `command`, set up by the caller with its arguments and environment, with no input and
-/// its error output thrown away, and returns what it printed within `bounds`. `program` names
-/// it in an error. Reading stops when the command exits. The command and every process it
-/// started in its group are killed when it ends, when the time runs out or when the caller is
-/// dropped.
+/// Runs `command` within `bounds`; it and every process of its group die when it ends, times out or is dropped.
 ///
 /// # Errors
-/// [`CommandError`] when it cannot start, runs past its limit (unless
-/// [`Bounds::keep_cut_output`]) or exits with a failure.
+/// [`CommandError`] when it cannot start, runs past its limit (unless `keep_cut_output`) or fails.
 pub async fn capture(
     command: &mut Command,
     program: &'static str,
@@ -167,7 +147,6 @@ pub async fn capture(
     }
 }
 
-/// Reads `reader` into `output` until the command exits, then only what is already buffered.
 async fn until_exit(
     child: &mut Child,
     reader: &mut (impl AsyncRead + Unpin),
@@ -188,7 +167,6 @@ async fn until_exit(
     }
 }
 
-/// The process group of a running command; dropping it kills every process in the group.
 #[cfg(unix)]
 struct Group(Option<Pid>);
 
@@ -202,11 +180,9 @@ impl Group {
         Self(leader)
     }
 
-    /// Kills every process left in the group, once.
     fn kill(&mut self) {
         if let Some(group) = self.0.take() {
-            // The group is often empty by now: the kill then fails with "no such process",
-            // which is the outcome wanted, so the result is not needed.
+            // The group is often empty by now, so "no such process" is the wanted outcome.
             kill_process_group(group, Signal::KILL).ok();
         }
     }
@@ -249,7 +225,6 @@ mod tests {
 
     #[tokio::test]
     async fn met_002_a_command_gives_its_output_with_no_shell() {
-        // A shell would expand `$HOME`; the program gets the text.
         let out = command("echo", &["$HOME"]).run().await.expect("runs");
         assert_eq!(out, b"$HOME\n");
     }

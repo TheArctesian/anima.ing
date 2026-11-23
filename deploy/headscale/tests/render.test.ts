@@ -1,6 +1,4 @@
-// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
-// config/render.sh refuses unsafe input and never writes a partial config
-// (WP-03 T2; VPS-002, VPS-003). Runs the script with fake `ip` and `envsubst`.
+// WP-03 T2; VPS-002, VPS-003.
 import { afterAll, describe, expect, test } from 'bun:test';
 import { chmodSync, existsSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -25,7 +23,6 @@ function executable(name: string, body: string): string {
   return path;
 }
 
-// Like envsubst limited to the variables named in its argument.
 const fakeEnvsubst = executable(
   'envsubst',
   `#!/usr/bin/env bun

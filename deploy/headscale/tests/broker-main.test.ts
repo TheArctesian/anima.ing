@@ -1,4 +1,3 @@
-// One broker request end to end against a fake Headscale (R-055, VP-7, VP-10, LOG-007, BD-9).
 import { afterEach, describe, expect, it } from 'bun:test';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

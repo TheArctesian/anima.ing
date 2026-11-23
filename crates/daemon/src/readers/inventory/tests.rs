@@ -1,5 +1,4 @@
-//! The probes run against small `sh` scripts in a temporary folder, never the developer tools of
-//! the machine that runs the tests.
+//! The probes run against `sh` scripts in a temporary folder, never the machine's own tools.
 
 use std::fs;
 use std::time::Instant;
@@ -9,10 +8,9 @@ use rustix::process::{Pid, test_kill_process};
 
 use super::*;
 
-/// The `PATH` the scripts get: enough for `sleep`, `env` and `ls`.
+/// Enough for `sleep`, `env` and `ls`.
 const SCRIPT_PATH: &str = "/bin:/usr/bin";
 
-/// An executable `sh` script `name` in `folder` that runs `body`.
 fn script(folder: &Path, name: &str, body: &str) -> PathBuf {
     let path = folder.join(name);
     fs::write(&path, format!("#!/bin/sh\n{body}\n")).expect("written");
@@ -20,7 +18,6 @@ fn script(folder: &Path, name: &str, body: &str) -> PathBuf {
     path
 }
 
-/// A search of only `folders`, on Linux.
 fn search(folders: &[&Path]) -> Search {
     Search {
         folders: folders.iter().map(|folder| folder.to_path_buf()).collect(),
@@ -44,7 +41,6 @@ async fn printed(name: &'static str, own_home: bool, search: &Search) -> String 
     }
 }
 
-/// Whether the process whose id is in `pid_file` stops running within 3 seconds.
 async fn stopped(pid_file: &Path) -> bool {
     let text = fs::read_to_string(pid_file).expect("the script wrote its pid");
     let pid = Pid::from_raw(text.trim().parse().expect("a pid")).expect("not 0");
@@ -57,8 +53,7 @@ async fn stopped(pid_file: &Path) -> bool {
     false
 }
 
-/// The Linux desktop builder adopts orphaned children. An exited child may keep its PID
-/// until that builder reaps it, so also read the kernel's process state.
+/// The Linux desktop builder adopts orphans, so an exited child may keep its PID until reaped.
 #[cfg(target_os = "linux")]
 fn exited_child(pid: Pid) -> bool {
     fs::read_to_string(format!("/proc/{}/stat", pid.as_raw_pid())).is_ok_and(|stat| {

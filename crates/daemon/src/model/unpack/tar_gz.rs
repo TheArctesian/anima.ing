@@ -1,6 +1,3 @@
-//! The entries of a `.tar.gz`: a regular file, a folder or a symbolic link (kept for
-//! [`super::links`]); each other type is refused.
-
 use std::fs::File;
 
 use daemon_core::model_work::cause::Cause;

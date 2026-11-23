@@ -1,7 +1,5 @@
-//! The daemon side of the fetch process: it starts the child with an empty environment, writes
-//! its order as one line, keeps its input open while it runs, reads its one word and ends it at
-//! the deadline. A stall or a fault of the child ends the child, never the daemon, and reads as
-//! `fetch_failed` (R-406).
+//! The daemon side of the fetch process: a stall or a fault of the child ends the child, never
+//! the daemon, and reads as `fetch_failed` (R-406).
 
 use std::path::Path;
 use std::process::Stdio;
@@ -14,12 +12,8 @@ use tokio::process::{Child, Command};
 
 use super::child::FETCH_MODE;
 
-/// Runs `order` in a child made from `program`, and waits at most `deadline`.
-///
 /// # Errors
-/// The cause that the child gave back (`source_failed` only when the child says so: the source
-/// refused or did not answer); `fetch_failed` for a stall, a signal, a nonzero exit, a child
-/// that did not start or a reply that is not a word of its list.
+/// The cause that the child gave back, or `fetch_failed` for each other end.
 pub async fn fetch_in_child(
     program: &Path,
     order: &FetchOrder,
@@ -40,9 +34,8 @@ pub async fn fetch_in_child(
     }
 }
 
-/// Starts `program` in the fetch mode with an empty environment. Called on a worker of the
-/// async runtime, never in `spawn_blocking`: on Linux the parent-death signal of the child
-/// fires when the spawning thread exits.
+/// Called on a worker of the async runtime, not in `spawn_blocking`: on Linux the parent-death
+/// signal of the child fires when the spawning thread exits.
 fn start(program: &Path) -> Option<Child> {
     Command::new(program)
         .arg(FETCH_MODE)
@@ -56,12 +49,11 @@ fn start(program: &Path) -> Option<Child> {
         .ok()
 }
 
-/// The reply of a child that exited with code 0; `None` for each other end.
 async fn reply_of(child: &mut Child, order: &FetchOrder) -> Option<String> {
     let mut text = serde_json::to_vec(order).ok()?;
     text.push(b'\n');
-    // The input stays open while the child runs: the child ends when it closes (the daemon
-    // ended). A child that ends before it reads its order is a fault; its exit says so.
+    // The input stays open while the child runs, as the child ends when it closes; a failed
+    // write shows in the child's exit.
     let mut input = child.stdin.take()?;
     let _ = input.write_all(&text).await;
     let mut reply = String::new();

@@ -1,5 +1,4 @@
-//! The agent usage in a batch: the state and at most 16 session days in the next batch, kept
-//! until a 204, dropped after a `MALFORMED` (AIS-019, K8 Section 4).
+//! AIS-019, K8 Section 4.
 
 use anima_daemon::push::Event;
 use anima_daemon::sampling::agent_usage::UsageReport;
@@ -38,7 +37,6 @@ fn reading(count: u32) -> Event {
     })
 }
 
-/// The number of session days in each push, `None` for a push without `agentUsage`.
 fn days_of(hub: &FakeHub) -> Vec<Option<usize>> {
     hub.seen("push")
         .iter()

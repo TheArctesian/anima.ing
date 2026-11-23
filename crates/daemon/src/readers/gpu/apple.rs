@@ -1,8 +1,5 @@
-//! The Apple GPU reader: one run of `ioreg -r -d 1 -c IOAccelerator` per 2 s sample, read by
-//! `daemon_core::readings::gpu::apple` (MET-006, MET-007, MET-016, R-092 D-4). No `unsafe`.
-//!
-//! `ioreg` runs on any Unix, so nothing here is behind `cfg(target_os = "macos")`; only a Mac
-//! answers with an `IOAccelerator` entry. `IOReport` GPU power stays out (issue #1).
+//! MET-006, MET-007, MET-016, R-092 D-4.
+//! `ioreg` runs on any Unix, so nothing here is behind a macOS `cfg`; only a Mac answers.
 
 use std::time::Duration;
 
@@ -18,7 +15,6 @@ const IOREG: FixedCommand = FixedCommand {
     keep_cut_output: false,
 };
 
-/// The Apple GPUs, numbered from 0. A failed run gives none.
 pub async fn read() -> Vec<GpuReading> {
     let answer = IOREG.run().await;
     if let Err(error) = &answer {
@@ -27,9 +23,6 @@ pub async fn read() -> Vec<GpuReading> {
     readings(answer)
 }
 
-/// The GPUs in one `ioreg` answer: none when the run failed or printed no accelerator. A GPU
-/// whose entry has no memory figure is kept, with no `shared_memory_bytes` (MET-007: absent,
-/// never zero, never VRAM).
 fn readings(answer: Result<Vec<u8>, CommandError>) -> Vec<GpuReading> {
     answer.map_or_default(|bytes| apple::gpus(&bytes))
 }

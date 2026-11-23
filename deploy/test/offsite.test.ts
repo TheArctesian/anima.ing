@@ -11,7 +11,6 @@ const PASSWORD = "very-secret-restic-password";
 let folder = "";
 let calls = "";
 
-// A fake restic records its arguments, and fails when FAKE_RESTIC_FAIL is set.
 function setUp(): void {
   folder = mkdtempSync(join(tmpdir(), "anima-offsite-"));
   calls = join(folder, "calls");
@@ -42,7 +41,6 @@ async function offsite(args: string[], env: Record<string, string> = {}) {
 
 if (process.platform !== "win32") beforeEach(setUp);
 
-// The offsite script targets Unix hosts. The static backup contract below runs everywhere.
 describe.skipIf(process.platform === "win32")("offsite.sh (VPS-006)", () => {
   test("VPS-006: sends the newest dump and its manifest with the secret files named, not read", async () => {
     const result = await offsite([]);

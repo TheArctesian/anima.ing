@@ -1,8 +1,5 @@
-//! What one collection read from a device, before any rate is worked out.
-
 use super::{Battery, Drive};
 
-/// CPU as the device reports it.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Cpu {
     /// Linux: counters since boot (`/proc/stat`). `idle` includes waiting for I/O.
@@ -24,7 +21,6 @@ pub struct Load {
     pub fifteen: f64,
 }
 
-/// One mounted file system, as `df` lists it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Disk {
     pub filesystem: String,
@@ -55,8 +51,8 @@ pub struct DriveCounters {
     pub busy_ms: u64,
 }
 
-/// The bytes of the data of a hosted hub (HMD-072): its database and its files, which it measures
-/// itself. It has no total: the file system that holds it is the one of the pool.
+/// The bytes of a hosted hub's database and files (HMD-072); no total, as the file system that
+/// holds them is the pool's.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HubStorage {
     /// The folder of the data, the label of its series: a path that starts with `/`.
@@ -64,7 +60,7 @@ pub struct HubStorage {
     pub bytes: u64,
 }
 
-/// Everything read in one collection. A field is empty when its command gave nothing usable.
+/// A field is empty when its command gave nothing usable.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Reading {
     pub cpu: Option<Cpu>,
@@ -73,13 +69,12 @@ pub struct Reading {
     pub uptime_seconds: Option<f64>,
     pub disks: Vec<Disk>,
     pub interfaces: Vec<Interface>,
-    /// The drives `lsblk` listed (MET-027); `None` when it gave nothing readable (macOS, a
-    /// device without `lsblk`, a failed read), which is not the same as a device with none.
+    /// The drives `lsblk` listed (MET-027); `None` when nothing was readable, which is not the
+    /// same as a device with none.
     pub drives: Option<Vec<Drive>>,
     pub drive_counters: Vec<DriveCounters>,
     /// The data of a hosted hub (HMD-072); `None` on each other device.
     pub hub_storage: Option<HubStorage>,
-    /// The batteries that power the device (MET-032); `None` when nothing could be read (the
-    /// container of a hosted hub, a failed read), which is not the same as a device with none.
+    /// `None` when nothing could be read, which is not the same as a device with none (MET-032).
     pub batteries: Option<Vec<Battery>>,
 }

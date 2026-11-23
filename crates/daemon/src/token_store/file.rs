@@ -9,8 +9,7 @@ use super::TokenStoreError;
 use crate::config::home::Home;
 use crate::config::private_file;
 
-/// A file never waits for the person, so each call takes the deadline of the Keychain store
-/// and leaves it unused.
+/// A file never waits for the person, so each call takes the Keychain store's deadline unused.
 #[derive(Clone)]
 pub struct Backend {
     home: Home,
@@ -41,8 +40,6 @@ impl Backend {
         Ok(())
     }
 
-    /// Deletes the token file; a file that is not there is not an error. The folder is not
-    /// made for it.
     pub fn delete(&self, _deadline: Duration) -> Result<(), TokenStoreError> {
         match std::fs::remove_file(&self.path) {
             Ok(()) => Ok(()),

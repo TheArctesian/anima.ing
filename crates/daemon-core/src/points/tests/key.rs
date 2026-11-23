@@ -1,4 +1,4 @@
-//! Which series a value belongs to (K8 Section 4).
+//! K8 Section 4.
 
 use super::*;
 use crate::points::SeriesKey;

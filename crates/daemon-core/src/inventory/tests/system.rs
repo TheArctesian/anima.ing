@@ -1,5 +1,3 @@
-//! The operating system version (CAP-026), and the inventory the outcomes make (CAP-020).
-
 use crate::inventory::{
     Architecture, Inventory, Os, Outcome, Probe, Reason, Tool, ToolName, Verdict, build_targets,
     kernel_release, macos_version, os_release_version,

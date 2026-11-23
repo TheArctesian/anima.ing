@@ -1,5 +1,3 @@
-//! The Linux readers on the machine that runs the tests: read only (MET-002).
-
 use anima_daemon::readers::{Platform, reading};
 use chrono::Utc;
 use daemon_core::points::samples;
@@ -101,7 +99,6 @@ async fn met_027_a_linux_reading_lists_drives_and_their_counters() {
 #[tokio::test]
 async fn met_032_a_linux_reading_lists_only_batteries_with_a_charge_of_0_to_100() {
     let read = reading(Platform::Linux, Utc::now()).await;
-    // A server or a container lists no battery, and one without the folder reads none.
     for battery in read.batteries.iter().flatten() {
         assert!(!battery.name.is_empty() && battery.name.len() <= 128);
         assert!(

@@ -3,6 +3,7 @@
   import CodeIcon from '../icons/CodeIcon.svelte';
   import type { RowAction } from './actions';
   import { SHELF_TITLES, type InboxParts, type InboxRow, type ShelfKey } from './inbox';
+  import { rowMotion } from './rows/motion.svelte';
   import Row from './rows/Row.svelte';
   import Shelf from './rows/Shelf.svelte';
 
@@ -28,6 +29,11 @@
   let settledShown = $state(10);
   /** Working and Snoozed show when they hold a thread; Settled always shows, as the foot of the list (08 inbox 21). */
   const keys = $derived((['working', 'snoozed', 'settled'] as const).filter((key) => key === 'settled' || parts[key].length > 0));
+  /** Rows come, go and slide as T3's do; opening a shelf shows its rows at once. */
+  const motion = rowMotion(
+    () => [...parts.pinned, ...parts.active, ...parts.working, ...parts.snoozed, ...parts.settled.slice(0, settledShown)].map((item) => item.row.id).join(' '),
+    () => [...shelves].join(' '),
+  );
 </script>
 
 {#snippet row(item: InboxRow, kind: 'card' | 'slim', shelf: 'list' | 'snoozed' | 'settled')}
@@ -59,7 +65,7 @@
 {/snippet}
 
 <!-- The flat list (02 section 5.4): pinned and active cards with no heading, then the shelves at the foot. -->
-<ul class="list" aria-label="Threads">
+<ul class="list" aria-label="Threads" {@attach motion}>
   {#each parts.pinned as item (item.row.id)}{@render row(item, 'card', 'list')}{/each}
   {#each parts.active as item (item.row.id)}{@render row(item, 'card', 'list')}{/each}
   {#each keys as key, at (key)}
@@ -111,6 +117,7 @@
   }
 
   .list {
+    position: relative;
     flex: 1;
     padding: var(--space-2);
   }

@@ -6,7 +6,7 @@
 import type { ListedRow } from '$lib/agent-threads/listing/listing';
 import { NO_MARKS, shelfOf, type Activity, type Marks } from '$lib/agent-threads/listing/shelf';
 import { needsYou, threadState, type Seen, type ThreadState } from '$lib/agent-threads/state';
-import { folderName } from '$lib/agent-threads/thread';
+import { folderName, scratchHome } from '$lib/agent-threads/thread';
 import type { ChatStatus } from '../status/status';
 
 /** One row of the inbox with what its look needs. */
@@ -155,10 +155,15 @@ export interface Project {
   readonly count: number;
 }
 
-/** The projects of the rows, by name; threads with no folder make one project "No folder". */
+/** The project of a folder: the threads with no project share one, the folder that holds their folders. */
+function projectOf(folder: string | null): string | null {
+  return scratchHome(folder) ?? folder;
+}
+
+/** The projects of the rows, by name; threads with no folder make one project "No folder", those with no project one "No project". */
 export function projectsOf(rows: readonly ListedRow[]): readonly Project[] {
   const counts = new Map<string | null, number>();
-  for (const row of rows) counts.set(row.folder, (counts.get(row.folder) ?? 0) + 1);
+  for (const row of rows) counts.set(projectOf(row.folder), (counts.get(projectOf(row.folder)) ?? 0) + 1);
   return [...counts]
     .map(([folder, count]) => ({ folder, name: folderName(folder), count }))
     .sort((a, b) => a.name.localeCompare(b.name) || (a.folder ?? '').localeCompare(b.folder ?? ''));
@@ -166,7 +171,7 @@ export function projectsOf(rows: readonly ListedRow[]): readonly Project[] {
 
 /** The rows in the chosen projects; all of them when none is chosen. */
 export function inProjects(rows: readonly ListedRow[], chosen: ReadonlySet<string | null>): readonly ListedRow[] {
-  return chosen.size === 0 ? rows : rows.filter((row) => chosen.has(row.folder));
+  return chosen.size === 0 ? rows : rows.filter((row) => chosen.has(projectOf(row.folder)));
 }
 
 /** The words of an empty inbox (02 section 5.10); `filtered` names the chosen projects when a filter hides everything. */

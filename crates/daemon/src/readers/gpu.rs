@@ -1,5 +1,5 @@
 //! The GPU readers: `nvidia-smi`, the `amdgpu` sysfs files, `intel_gpu_top -J` (MET-006,
-//! MET-016). Apple's GPU belongs to T5 and has its own place, [`apple`].
+//! MET-016).
 
 use std::path::Path;
 use std::time::Duration;
@@ -31,11 +31,10 @@ const INTEL_GPU_TOP: FixedCommand = FixedCommand {
 
 const DRM: &str = "/sys/class/drm";
 
-/// The AMD vendor ID in `/sys/class/drm/cardN/device/vendor`.
 const AMD_VENDOR: &str = "0x1002";
 
-/// Which GPU sources answered at the last discovery; later samplings read only those, so a
-/// computer without an NVIDIA GPU does not start `nvidia-smi` every 2 seconds.
+/// Later samplings read only the sources that answered at discovery, so a computer without an
+/// NVIDIA GPU does not start `nvidia-smi` every 2 seconds.
 #[expect(
     clippy::struct_excessive_bools,
     reason = "one flag per GPU vendor; a state machine would only rename them"
@@ -49,7 +48,6 @@ pub struct Sources {
 }
 
 impl Sources {
-    /// Every source: what a discovery tries.
     pub const ALL: Self = Self {
         nvidia: true,
         amd: true,
@@ -57,7 +55,6 @@ impl Sources {
         apple: true,
     };
 
-    /// The sources that gave a reading in `found`.
     #[must_use]
     pub fn seen(found: &[GpuReading]) -> Self {
         use daemon_core::readings::GpuVendor::{Amd, Apple, Intel, Nvidia};
@@ -71,8 +68,6 @@ impl Sources {
     }
 }
 
-/// Reads the GPUs of `sources`, each numbered from 0 within its vendor. A source that fails
-/// gives no reading.
 pub async fn read(sources: Sources, macos: bool) -> Vec<GpuReading> {
     let mut found = Vec::new();
     if macos {
@@ -111,9 +106,7 @@ async fn output(command: &FixedCommand) -> Option<Vec<u8>> {
     }
 }
 
-/// One reading per AMD card under `drm` that has a `gpu_busy_percent` file. A card is numbered
-/// by its `/sys/class/drm/cardN` number, not its place in the list, so its index does not move
-/// when another card appears or goes.
+/// A card's index is its `cardN` number, so it does not move when another card appears or goes.
 pub async fn amd_cards(drm: &Path) -> Vec<GpuReading> {
     let Ok(mut entries) = tokio::fs::read_dir(drm).await else {
         return Vec::new();

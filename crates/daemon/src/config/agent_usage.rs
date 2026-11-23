@@ -1,13 +1,4 @@
-//! The operator's settings of the agent usage counts: `agent-usage.json` in the daemon's folder
-//! (AIS-008, AIS-023, K8 Section 4). The operator writes it; the daemon only reads it, at start.
-//!
-//! ```json
-//! { "off": true, "excludedFolders": ["/Users/me/private"], "excludedRepositories": ["github.com/me/secret"], "sendAccounts": true }
-//! ```
-//!
-//! `sendAccounts` is on by default, as T3 Code sends the account with no switch (THR-149): the
-//! account of each program goes to the hub, for the person's clients. `"sendAccounts": false`
-//! keeps it at the machine.
+//! The operator's agent usage settings (AIS-008, AIS-023); the daemon only reads them, at start.
 
 use std::io;
 use std::path::{Path, PathBuf};
@@ -18,31 +9,24 @@ use serde::Deserialize;
 use super::home::Home;
 use super::private_file::{LIMIT, read_limited};
 
-/// The settings file in the daemon's folder.
 pub const SETTINGS_FILE: &str = "agent-usage.json";
 
-/// The most entries of each list.
 const MAX_ENTRIES: usize = 256;
 
-/// What the operator chose; the default reads every session and sends the accounts.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UsageSettings {
     /// No session file is read and no counts are sent.
     pub off: bool,
-    /// A session whose working folder, or the main folder of its repository, is under one of
-    /// these is not counted.
+    /// A session whose working folder, or its repository's main folder, is under one is not counted.
     pub excluded_folders: Vec<PathBuf>,
-    /// A session of one of these repositories (`host/owner/name`) is not counted, nor, when
-    /// any is listed, a session whose repository name cannot be read.
+    /// A session of one of these (`host/owner/name`), or of an unreadable one when any is listed, is not counted.
     pub excluded_repositories: Vec<String>,
     /// Folders compare without letter case, as the file system of macOS does.
     pub fold_case: bool,
-    /// The key, the address, the plan and the limit windows of each program's account are sent
-    /// (AIS-022, THR-149). On unless the operator writes `"sendAccounts": false`.
+    /// The key, address, plan and limit windows of each program's account are sent (AIS-022, THR-149).
     pub send_accounts: bool,
 }
 
-/// The settings of an empty file: each member at its default.
 impl Default for UsageSettings {
     fn default() -> Self {
         Self::parse(b"{}").expect("the empty settings are of the form")
@@ -58,7 +42,6 @@ struct Stored {
     excluded_folders: Vec<String>,
     #[serde(default)]
     excluded_repositories: Vec<String>,
-    // Absent is on; `null` is not a bool, so a file with it is refused, as for each member.
     #[serde(default = "on")]
     send_accounts: bool,
 }
@@ -86,13 +69,10 @@ pub enum SettingsError {
 }
 
 impl UsageSettings {
-    /// The settings of `home`; the default when the file is not there. Each excluded folder
-    /// is kept as written and, when it exists, with its links resolved; on macOS folders
-    /// compare without letter case.
+    /// The settings of `home`, or the default when the file is absent.
     ///
     /// # Errors
-    /// [`SettingsError`] when the file cannot be read or parsed. The caller then turns the
-    /// function off: an exclusion it cannot read must not let a session through.
+    /// [`SettingsError`] when the file cannot be read or parsed; the caller then turns the function off.
     pub fn read(home: &Home) -> Result<Self, SettingsError> {
         let file = match std::fs::File::open(home.dir().join(SETTINGS_FILE)) {
             Ok(file) => file,
@@ -110,12 +90,10 @@ impl UsageSettings {
         Ok(settings)
     }
 
-    /// The settings in a file's bytes. A member it does not know is refused, so a misspelt
-    /// exclusion is never silently ignored.
+    /// An unknown member is refused, so a misspelt exclusion is not ignored.
     ///
     /// # Errors
-    /// [`SettingsError`] for bytes that are not the form, a relative folder, a repository that
-    /// is not written as the K8 `repository` is (it would never match), or a long list.
+    /// [`SettingsError`] when the bytes are not of the form or break a limit.
     pub fn parse(bytes: &[u8]) -> Result<Self, SettingsError> {
         let stored: Stored =
             serde_json::from_slice(bytes).map_err(|_| SettingsError::Unreadable)?;
@@ -149,11 +127,7 @@ impl UsageSettings {
         })
     }
 
-    /// Whether a session in `folders` (its working folder and the main folder of its
-    /// repository) or of `repository` is excluded. Folders compare by whole components, so
-    /// `/a/private` does not exclude `/a/private-not`, and without letter case when
-    /// `fold_case`; repositories compare without case. When any repository is excluded, a
-    /// session whose repository name is not known is excluded too (AIS-023).
+    /// When any repository is excluded, a session of an unknown repository is excluded too (AIS-023).
     #[must_use]
     pub fn excludes(&self, folders: &[&Path], repository: Option<&str>) -> bool {
         let folder_excluded = folders.iter().any(|folder| {
@@ -269,8 +243,6 @@ mod tests {
         ));
     }
 
-    /// With a repository excluded, a session whose repository name cannot be read (a clone in
-    /// a guarded folder, a remote that is not sent) may be that repository (AU-5 review).
     #[test]
     fn ais_023_an_unknown_repository_is_excluded_when_any_repository_is() {
         let listed = UsageSettings::parse(br#"{"excludedRepositories":["github.com/me/secret"]}"#)
@@ -302,8 +274,6 @@ mod tests {
         );
     }
 
-    /// An excluded folder written through a link (`/tmp` on macOS is `/private/tmp`) matches
-    /// the folder a session records (AU-5 review).
     #[test]
     fn ais_008_an_excluded_folder_matches_with_its_links_resolved() {
         let dir = tempfile::tempdir().expect("a folder");

@@ -9,11 +9,9 @@ export const policy = parsePolicy(raw);
 export const SITES = { home: '10.10.0.0/24', office1: '10.20.0.0/24', office2: '10.30.0.0/24' };
 export const TAILNET_IPV4 = '100.64.0.0/10';
 export const nodes: TailnetNode[] = [
-  // The Mac the operator added as a device (R-061): `device-stephens-mac` in the policy.
   { name: 'mac', identity: { user: 'operator' }, ip: '100.64.0.2' },
   { name: 'laptop', identity: { user: 'operator' }, ip: '100.64.0.11' },
   { name: 'hub', identity: { tags: ['tag:hub'] }, ip: '100.64.0.1' },
-  // A daemon-only device (MET-020): tagged, not a personal node.
   { name: 'daemon', identity: { tags: ['tag:daemon'] }, ip: '100.64.0.30' },
   { name: 'router-home', identity: { tags: ['tag:router', 'tag:site-home'] }, ip: '100.64.0.20', routes: [SITES.home] },
   { name: 'router-office2', identity: { tags: ['tag:router', 'tag:site-office2'] }, ip: '100.64.0.21', routes: [SITES.office2] },
@@ -26,23 +24,17 @@ export const allowed = (connection: Connection, under: Policy = policy, inventor
 export const withGrants = (grants: unknown[]): Policy => parsePolicy({ ...raw, grants });
 export const withTests = (tests: unknown[]): Policy => parsePolicy({ ...raw, tests });
 
-/**
- * Test rows that need a router node. Headscale refuses the policy while a row names a tag no node
- * has, so each group moves into the policy's tests block once its router is enrolled.
- */
+/** Headscale refuses a policy whose tests name a tag no node has, so these rows wait for their node. */
 export const ROUTER_ROWS = [
-  // The home router (tag:router, tag:site-home).
   { src: 'tag:site-home', proto: 'tcp', accept: ['10.10.0.5:22'], deny: ['10.20.0.5:22', '10.30.0.5:22', 'operator@:22', 'tag:hub:443'] },
   { src: '10.10.0.5', deny: ['operator@:22', 'tag:hub:443', '10.30.0.5:22'] },
   { src: 'tag:router', proto: 'tcp', deny: ['operator@:22', 'operator@:443', 'tag:hub:443', 'tag:hub:22'] },
   { src: 'operator@', proto: 'tcp', deny: ['tag:router:22'] },
   { src: 'tag:hub', proto: 'tcp', deny: ['tag:router:22'] },
-  // The office 2 router (tag:router, tag:site-office2).
   { src: 'tag:site-office2', proto: 'tcp', accept: ['10.30.0.5:22'], deny: ['10.10.0.5:22', '10.20.0.5:22', 'operator@:22', 'tag:hub:443'] },
   { src: '10.30.0.5', deny: ['operator@:22', 'tag:hub:443', '10.10.0.5:22'] },
 ];
 
-/** Rows for the daemon tag. Headscale refuses the policy while no node carries tag:daemon, so they move into the policy's tests block once one is enrolled. */
 export const DAEMON_ROWS = [
   { src: 'tag:daemon', proto: 'tcp', accept: ['tag:hub:443'], deny: ['tag:hub:22', 'tag:hub:80', 'tag:hub:5432', '10.10.0.5:22', '10.20.0.5:443', '10.30.0.5:3389', '100.64.0.2:22', '100.64.0.3:5900', 'operator@:443'] },
   { src: 'tag:daemon', proto: 'udp', deny: ['tag:hub:443', 'tag:hub:53'] },
@@ -50,6 +42,5 @@ export const DAEMON_ROWS = [
   { src: 'operator@', proto: 'tcp', deny: ['tag:daemon:22', 'tag:daemon:443'] },
 ];
 
-// A second daemon node, so the tests show that one daemon cannot reach another (daemon-to-daemon isolation, MET-020).
 export const secondDaemon: TailnetNode = { name: 'daemon2', identity: { tags: ['tag:daemon'] }, ip: '100.64.0.31' };
 export const everyone = [...nodes, secondDaemon];

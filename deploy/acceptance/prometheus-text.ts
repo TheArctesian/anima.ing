@@ -1,18 +1,12 @@
-// A strict reader of the Prometheus text format 0.0.4, as the hub's `GET /metrics` writes it (INT-001, INT-002).
-// Pure: text in, families and problems out. It never throws. A line with a problem is skipped and the read goes
-// on, so the K7 rules still see the rest. A problem names a line number and a fixed kind, never the text of the
-// line, so the probe can print it (A-2).
-// Strict beyond the format where the hub is: every family has one `# HELP` and one `# TYPE`, the `# TYPE` comes
-// before its samples, a family's lines stand together, no series repeats, and the text ends with a line feed.
+// A strict reader of the Prometheus text format 0.0.4 as the hub writes it (INT-001, INT-002); it never throws.
+// A problem names a line number and a fixed kind, never the text of the line, so the probe can print it (A-2).
 
-/** One sample line: the metric name, its labels in written order, and the value. */
 export interface Sample {
   name: string;
   labels: [string, string][];
   value: number;
 }
 
-/** A family declared by `# HELP` and `# TYPE`, with its samples in written order. */
 export interface Family {
   name: string;
   type: string | undefined;
@@ -20,13 +14,11 @@ export interface Family {
   samples: Sample[];
 }
 
-/** One problem and its line number (1-based). */
 export interface TextProblem {
   problem: string;
   line: number;
 }
 
-/** The families of a text and its problems, in line order. */
 export interface Exposition {
   families: Map<string, Family>;
   problems: TextProblem[];
@@ -49,7 +41,6 @@ class Problem {
   constructor(readonly kind: string) {}
 }
 
-/** The value of a sample, or undefined when the text is not a Prometheus float. */
 function sampleValue(text: string): number | undefined {
   if (text in SPECIAL) {
     return SPECIAL[text];
@@ -57,7 +48,6 @@ function sampleValue(text: string): number | undefined {
   return NUMBER.test(text) ? Number(text) : undefined;
 }
 
-/** A quoted label value from `text[start]` (just after the opening quote): the value and the index after its quote. */
 function labelValue(text: string, start: number): [string, number] {
   let value = "";
   for (let at = start; at < text.length; at += 1) {
@@ -79,7 +69,6 @@ function labelValue(text: string, start: number): [string, number] {
   throw new Problem("a label value is not closed");
 }
 
-/** The labels between `{` and `}` from `text[start]` (just after `{`): the pairs and the index after `}`. */
 function labelSet(text: string, start: number): [[string, string][], number] {
   const labels: [string, string][] = [];
   let at = start;
@@ -102,7 +91,6 @@ function labelSet(text: string, start: number): [[string, string][], number] {
   return [labels, at + 1];
 }
 
-/** One sample line, or a thrown problem. */
 function parseSample(line: string): Sample {
   const name = METRIC_NAME.exec(line)?.[0];
   if (name === undefined) {
@@ -121,7 +109,6 @@ function parseSample(line: string): Sample {
   return { name, labels, value };
 }
 
-/** The family a sample of `name` belongs to: the name itself, or a histogram or summary name and suffix. */
 function familyOf(families: Map<string, Family>, name: string): Family | undefined {
   const exact = families.get(name);
   if (exact !== undefined) {
@@ -136,7 +123,6 @@ function familyOf(families: Map<string, Family>, name: string): Family | undefin
   return undefined;
 }
 
-/** What one exposition read has seen so far: the families, the family of the last line, the closed groups. */
 class Reading {
   readonly families = new Map<string, Family>();
   readonly series = new Set<string>();
@@ -191,7 +177,7 @@ class Reading {
 
 function readLine(reading: Reading, line: string): void {
   if (line === "" || (line.startsWith("#") && !/^# (?:HELP|TYPE)(?: |$)/.test(line))) {
-    return; // A blank line or a plain comment; the format allows both.
+    return;
   }
   if (line.startsWith("#")) {
     const match = METADATA.exec(line);
@@ -204,7 +190,6 @@ function readLine(reading: Reading, line: string): void {
   reading.sample(line);
 }
 
-/** Reads a whole exposition. */
 export function parseExposition(text: string): Exposition {
   const lines = text.split("\n");
   const problems: TextProblem[] = [];

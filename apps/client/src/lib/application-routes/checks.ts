@@ -36,7 +36,10 @@ export function routeChecks(route: ApplicationRoute, device: string, now: Date, 
   const proof = proofStatus(route);
   const consent: RouteCheck = route.machineConsent
     ? { title: 'Consent at the machine', label: 'Given', tone: 'up', detail: `${device} lets the hub reach this port.` }
-    : { title: 'Consent at the machine', label: 'Not given', tone: 'unknown', detail: `Nothing can give it yet: the consent at ${device} is not built (OD-HOST-43).` };
+    : route.access === 'PRIVATE'
+      ? // R-390: a private route needs only the approval of the person who adds it.
+        { title: 'Consent at the machine', label: 'Not needed while the route is private', tone: 'up', detail: `Only your devices reach a private route; ${device} is asked when the route is made public.` }
+      : { title: 'Consent at the machine', label: 'Not given', tone: 'unknown', detail: `Nothing can give it yet: the consent at ${device} is not built (OD-HOST-43).` };
   const checks: RouteCheck[] = [{ title: route.proofRecordName === null ? 'The name points at this hub' : 'The name is proven', ...proof }, consent, recordCheck(route)];
   if (!isStream(route.kind)) {
     const certificate = certificateStatus(route, now, locale);

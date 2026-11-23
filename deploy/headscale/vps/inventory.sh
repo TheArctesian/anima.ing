@@ -1,21 +1,12 @@
 # shellcheck shell=bash
-# The read-only inventory that `check` prints first (VPS-002, VPS-005): listeners and their
-# units, containers, Docker networks, extra enabled units, firewalld and nftables tables.
-# Nothing here changes the system: the operator sends this to the programme before the
-# first change, because the VPS may already host other services. Sourced by harden.sh;
-# needs its say and path, and SS, PS, DOCKER, SYSTEMCTL, FIREWALL_CMD, NFT and HERE.
+# The read-only inventory that `check` prints first, because the VPS may already host other services (VPS-002, VPS-005).
 
-# The operator's services that the programme has agreed to keep (R-050), one per line:
-# "service NAME.service" or "container NAME"; "#" starts a comment. The inventory marks
-# them "=" instead of "!". The list changes no check: it only records what was agreed.
+# Services the programme agreed to keep (R-050); the list changes no check, it only records what was agreed.
 KNOWN_WORKLOADS=/etc/anima/known-workloads
 
-# Programs expected to listen on the VPS (ss shows at most 15 characters of a name).
-# Headscale uses the host network, so any docker-proxy is a port another container
-# publishes, and dockerd or containerd should not listen on the network at all.
+# ss shows at most 15 characters of a name; Headscale uses the host network, so a docker-proxy is another container's port.
 EXPECTED_PROGRAMS=" sshd headscale tailscaled chronyd systemd-resolve "
 
-# Print each listening socket with its program and unit; mark the unexpected ones.
 listener_inventory() {
   local sockets netid local_address rest program pid unit mark
   sockets=$($SS -Htulpn) || { say "(ss -Htulpn failed)"; return; }
@@ -29,14 +20,12 @@ listener_inventory() {
   done <<<"$sockets"
 }
 
-# Exit 0 if the known-workloads file lists KIND NAME.
 known_workload() {
   [ -f "$(path "$KNOWN_WORKLOADS")" ] || return 1
   awk -v kind="$1" -v name="$2" '{ sub(/#.*/, "") } $1 == kind && $2 == name && NF == 2 { found = 1 } END { exit !found }' \
     "$(path "$KNOWN_WORKLOADS")"
 }
 
-# Print each running container; mark it unless it is Headscale or a known workload.
 container_inventory() {
   local containers name image ports mark
   containers=$($DOCKER ps --format '{{.Names}} {{.Image}} {{.Ports}}' 2>/dev/null) || { say "(docker ps failed)"; return; }
@@ -50,7 +39,6 @@ container_inventory() {
   done <<<"$containers"
 }
 
-# Print each Docker network with its bridge; mark bridges the forward chain does not allow.
 network_inventory() {
   local networks name driver id bridge mark
   networks=$($DOCKER network ls --no-trunc --format '{{.Name}} {{.Driver}} {{.ID}}' 2>/dev/null) \
@@ -67,7 +55,6 @@ network_inventory() {
   done <<<"$networks"
 }
 
-# Print the enabled services that a stock AlmaLinux 10 VPS with Anima does not have.
 unit_inventory() {
   local unit
   while read -r unit _; do

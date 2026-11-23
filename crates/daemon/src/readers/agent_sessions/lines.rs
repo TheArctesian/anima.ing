@@ -1,6 +1,4 @@
-//! Reads the complete lines a session file gained since the last read (AIS-001): from an
-//! offset to the last newline, so a line the program is still writing waits for the next read.
-//! A line longer than [`MAX_LINE`] (a pasted image, a huge tool result) is skipped unread.
+//! Reads the complete lines a session file gained since the last read (AIS-001); a line still being written waits.
 
 use std::io::{self, BufRead, BufReader, Read as _, Seek as _, SeekFrom};
 use std::path::Path;
@@ -9,15 +7,10 @@ use daemon_core::agent_usage::Tally;
 
 use super::files::open_no_link;
 
-/// The longest line read; the longest line of a real session is a few MiB.
+/// The longest line of a real session is a few MiB.
 const MAX_LINE: u64 = 16 * 1024 * 1024;
 
-/// Feeds `tally` each complete line of the file at `path` after `offset`, and gives the offset
-/// the next read starts at. Before each line `halt` may stop the read (an excluded session, or
-/// the daemon stopping): the offset reached is given then.
-///
-/// # Errors
-/// The I/O error of opening, seeking or reading the file.
+/// Gives the offset the next read starts at; `halt`, asked before each line, may stop the read there.
 pub(super) fn read_new(
     path: &Path,
     offset: u64,
@@ -45,15 +38,13 @@ pub(super) fn read_new(
                 // The long line has no end yet: it waits for the next read.
                 None => break,
             },
-            // A line the program is still writing.
             _ => break,
         }
     }
     Ok(offset)
 }
 
-/// Skips past the next newline: the bytes passed, the newline included, or `None` when the
-/// file ends first.
+/// The bytes passed, the newline included; `None` when the file ends first.
 fn skip_line(reader: &mut impl BufRead) -> io::Result<Option<u64>> {
     let mut passed: u64 = 0;
     loop {
