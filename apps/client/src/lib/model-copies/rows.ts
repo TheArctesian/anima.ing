@@ -1,0 +1,139 @@
+import type { Tone } from '$lib/containers/rows';
+import { formatBytes, formatBytesPerSecond } from '$lib/metrics/units';
+import type { CopyState, ModelCopy, PullMachine } from './api';
+
+/** One row of the section Models: one copy of a variant on its machine (HSE-013). */
+export interface CopyRow {
+  readonly id: string;
+  readonly address: string;
+  /** "GGUF · Q4_K_M · 1 file · 4.7 GiB". */
+  readonly what: string;
+  readonly state: string;
+  readonly tone: Tone;
+  /** "40 % · 1.9 GiB of 4.7 GiB · 12.0 MiB/s · 4 min left" while a pull runs; empty in each other state. */
+  readonly progress: string;
+  /** The share of the pull that is done, 0 to 100; null when no pull runs. */
+  readonly percent: number | null;
+  /** Why the copy failed, or why its removal failed, in words; empty when nothing failed. */
+  readonly reason: string;
+  /** A removal is asked for already: the row offers no second one. */
+  readonly removing: boolean;
+}
+
+/** The copies of one machine (HSE-013 as HSE-002): its header, then its rows. */
+export interface MachineGroup {
+  readonly id: string;
+  readonly name: string;
+  /** "2 models · 9.4 GiB". */
+  readonly summary: string;
+  readonly rows: readonly CopyRow[];
+}
+
+const STATES: Readonly<Record<CopyState, { readonly word: string; readonly tone: Tone }>> = {
+  QUEUED: { word: 'Waiting', tone: 'unknown' },
+  DOWNLOADING: { word: 'Downloading', tone: 'warning' },
+  DOWNLOADED: { word: 'Downloaded', tone: 'up' },
+  VALIDATING: { word: 'Checking', tone: 'warning' },
+  VALIDATED: { word: 'Ready', tone: 'up' },
+  FAILED: { word: 'Failed', tone: 'down' },
+  REMOVING: { word: 'Removing', tone: 'unknown' },
+};
+
+/** The states in which the hub changes the copy without the operator: the section reads again while one is shown. */
+const MOVING: ReadonlySet<CopyState> = new Set(['QUEUED', 'DOWNLOADING', 'VALIDATING', 'REMOVING']);
+
+/** The words of the causes that a pull or a removal can end with (K11 Section 5); a code not here is shown as it is. */
+const REASONS: Readonly<Record<string, string>> = {
+  checksum: 'A file did not match its SHA-256 value.',
+  size: 'A file did not have its size.',
+  source_failed: 'The source did not answer.',
+  fetch_failed: 'The download process stopped.',
+  disk_share: 'The machine has no room for it in its disk share.',
+  limit_disk: 'The download went over its disk limit.',
+  source_not_permitted: 'The machine does not take files from this source.',
+  file_rejected: 'The machine refused a file of it.',
+  file_type: 'The machine refused the type of a file.',
+  copy_unknown: 'The machine does not have this copy.',
+  actor_not_permitted: 'The machine does not take this work from who asked.',
+  isolation_failed: 'The machine could not isolate the download.',
+  unknown: 'The work ended with no reason.',
+};
+
+export function stateWord(state: CopyState): string {
+  return STATES[state].word;
+}
+
+export function reasonWords(reason: string | null): string {
+  if (reason === null) return '';
+  return REASONS[reason] ?? reason;
+}
+
+/** Whether a copy changes on its own: the section reads the hub again while one does (PULL-007). */
+export function isMoving(copies: readonly ModelCopy[]): boolean {
+  return copies.some((copy) => MOVING.has(copy.state));
+}
+
+function progressOf(copy: ModelCopy): Pick<CopyRow, 'progress' | 'percent'> {
+  const progress = copy.progress;
+  if (progress === null || progress.totalBytes <= 0) return { progress: '', percent: null };
+  const percent = Math.min(100, Math.floor((progress.bytes / progress.totalBytes) * 100));
+  const parts = [`${String(percent)} %`, `${formatBytes(progress.bytes)} of ${formatBytes(progress.totalBytes)}`];
+  if (progress.bytesPerSecond > 0) parts.push(formatBytesPerSecond(progress.bytesPerSecond));
+  if (progress.secondsLeft !== null) parts.push(timeLeft(progress.secondsLeft));
+  return { progress: parts.join(' · '), percent };
+}
+
+function timeLeft(seconds: number): string {
+  if (seconds < 60) return 'less than a minute left';
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 120) return `${String(minutes)} min left`;
+  return `${String(Math.round(minutes / 60))} h left`;
+}
+
+const plural = (n: number, word: string) => `${String(n)} ${word}${n === 1 ? '' : 's'}`;
+
+function row(copy: ModelCopy): CopyRow {
+  const { word, tone } = STATES[copy.state];
+  return {
+    id: copy.id,
+    address: copy.address,
+    what: [copy.format, copy.quantisation, plural(copy.fileCount, 'file'), formatBytes(copy.sizeBytes)].join(' · '),
+    state: word,
+    tone,
+    ...progressOf(copy),
+    reason: reasonWords(copy.reason),
+    removing: copy.state === 'REMOVING',
+  };
+}
+
+/** HSE-013: the copies in one group for each machine, the machines by name, the copies by address; `machine` narrows to one. */
+export function machineGroups(copies: readonly ModelCopy[], machine: string): readonly MachineGroup[] {
+  const byPlace = new Map<string, { name: string; copies: ModelCopy[] }>();
+  for (const copy of copies) {
+    if (machine !== '' && copy.place.id !== machine) continue;
+    const group = byPlace.get(copy.place.id) ?? { name: copy.place.name, copies: [] };
+    group.copies.push(copy);
+    byPlace.set(copy.place.id, group);
+  }
+  return [...byPlace]
+    .map(([id, group]) => {
+      const sorted = group.copies.toSorted((a, b) => a.address.localeCompare(b.address));
+      const bytes = sorted.reduce((sum, copy) => sum + copy.sizeBytes, 0);
+      return { id, name: group.name, summary: `${plural(sorted.length, 'model')} · ${formatBytes(bytes)}`, rows: sorted.map(row) };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+const STOPS: Readonly<Record<NonNullable<PullMachine['stop']>, string>> = {
+  NO_SWITCH: 'never asked this hub for work',
+  SWITCH_OFF: 'its switch "takes work" is off',
+  OFF_IN_HUB: 'off in the hub',
+  QUIET_HOURS: 'in its quiet hours',
+  ON_BATTERY: 'on battery',
+  OPERATOR_ACTIVE: 'in use',
+};
+
+/** The name of a machine in the choice of a pull, with why it takes no model work now. */
+export function machineChoice(machine: PullMachine): string {
+  return machine.stop === null ? machine.name : `${machine.name} (${STOPS[machine.stop]})`;
+}

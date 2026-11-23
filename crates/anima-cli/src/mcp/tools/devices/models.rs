@@ -7,12 +7,12 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
+use crate::devices::get::resolve;
 use crate::hub::Hub;
 use crate::mcp::arguments::{json, object, parse, short};
 use crate::mcp::catalogue::Access;
 use crate::mcp::definition::{Definition, Effect};
 use crate::mcp::outcome::ToolError;
-use crate::devices::get::resolve;
 use crate::model_copies::copies::fetch;
 use crate::model_copies::documents::{ModelCopyRemove, ModelPull, model_copy_remove, model_pull};
 use crate::model_library::documents::{ModelList, ModelShow, model_list, model_show};
@@ -118,7 +118,11 @@ impl ModelTool {
                  stops and the copy goes at once; else the machine deletes the files. Returns \
                  the copy in state REMOVING, or null when it is gone.",
             )
-            .returns(&[("copy", "object", "What is left of the copy; null when gone.")]),
+            .returns(&[(
+                "copy",
+                "object",
+                "What is left of the copy; null when gone.",
+            )]),
         }
     }
 

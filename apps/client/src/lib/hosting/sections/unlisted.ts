@@ -6,14 +6,8 @@ export interface UnlistedWords {
   readonly devices: boolean;
 }
 
-// One page serves these three, so that no folder of the client is named for the banned word "models".
+// One page serves these two until their owners build their lists. Models has its page (`[section=copies]`, task L1-7).
 export const UNLISTED = {
-  // Models (HSE-013): what a row of a model holds belongs to the model service of compute-plan.md.
-  models: {
-    title: 'Models are not listed here yet',
-    line: 'The models that run on your machines will be listed here, in one group for each machine.',
-    devices: false,
-  },
   // Storage (HSE-015): the volumes of each place belong to the hosted applications plan.
   storage: {
     title: 'Volumes are not listed here yet',
