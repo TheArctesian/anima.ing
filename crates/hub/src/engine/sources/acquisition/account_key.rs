@@ -1,6 +1,5 @@
-//! A key of the account: the base address of the operator's server and the key that the
-//! server gave (K-E1 Section 7b, R-261). The base rule and the sealed layout are pure; `held`
-//! opens the stored key for one request and keeps it in no cache.
+//! A key of the account and the base of the operator's server (K-E1 Section 7b, R-261).
+//! `held` opens the stored key for one request and keeps it in no cache.
 
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
@@ -16,12 +15,10 @@ use crate::{
 };
 
 const VERSION: u8 = 1;
-/// The longest key, in characters.
 const MAX_KEY: usize = 512;
-/// The longest base address that the operator gives, in characters.
 const MAX_BASE: usize = 300;
 
-/// Why a base address or a key is refused. Fixed words: never the address or the key.
+/// Fixed words: never the address or the key.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum Refusal {
     #[error("the address is not https://host[:port]")]
@@ -30,9 +27,7 @@ pub enum Refusal {
     Key,
 }
 
-/// The origin of the base that `text` names: `https://host[:port]`, the host in lower case and
-/// no default port. Refused with a user, a password, a path other than `/`, a query or a
-/// fragment. `plain_http` permits `http` too: only a transport of the tests sets it.
+/// `plain_http` permits `http`: only a transport of the tests sets it.
 ///
 /// # Errors
 /// [`Refusal::Base`].
@@ -54,14 +49,11 @@ pub fn base(text: &str, plain_http: bool) -> Result<Url, Refusal> {
     Url::parse(&url.origin().ascii_serialization()).map_err(|_| Refusal::Base)
 }
 
-/// The text of the base as `sources.accounts.instance_key` holds it: its origin.
 #[must_use]
 pub fn instance_key(base: &Url) -> String {
     base.origin().ascii_serialization()
 }
 
-/// The key as the operator gave it, when it can be a key.
-///
 /// # Errors
 /// [`Refusal::Key`].
 pub fn key(text: &str) -> Result<&str, Refusal> {
@@ -86,7 +78,7 @@ struct Opened {
     api_key: String,
 }
 
-/// The plaintext to seal: `{"v":1,"base","api_key"}`, in a buffer that is wiped on drop.
+/// The plaintext to seal: `{"v":1,"base","api_key"}`.
 ///
 /// # Panics
 /// Never: strings and a number always serialise.
@@ -105,9 +97,7 @@ pub fn to_secret(base: &Url, api_key: &str) -> Secret {
     Secret::new(std::mem::take(&mut *plain))
 }
 
-/// The base and the key of a stored secret, checked against the account: the base must be the
-/// `instance_key`, so a database writer cannot point the key at a different server. `None`
-/// for an unknown layout or a base of a different account.
+/// The base must be the `instance_key`, so a database writer cannot point the key elsewhere.
 #[must_use]
 pub fn from_secret(secret: &Secret, instance_key: &str, plain_http: bool) -> Option<(Url, Secret)> {
     let opened: Opened = serde_json::from_slice(secret.expose()).ok()?;
@@ -119,7 +109,6 @@ pub fn from_secret(secret: &Secret, instance_key: &str, plain_http: bool) -> Opt
     Some((url, Secret::new(api_key.as_bytes().to_vec())))
 }
 
-/// The base and the key of `account`, opened for one request.
 pub(in crate::engine::sources) async fn held(
     scheduling: &Scheduling,
     account: &Account,

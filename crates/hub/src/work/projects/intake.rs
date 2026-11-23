@@ -1,5 +1,4 @@
-//! The Projects intake of the GitHub source: it runs the provider over each page and carries
-//! out the import rule in the engine's transaction (K-E1 Section 3; PRO-001 to PRO-004).
+//! The import rule runs in the engine's transaction (K-E1 Section 3; PRO-001 to PRO-004).
 
 use std::collections::BTreeSet;
 
@@ -24,7 +23,6 @@ use crate::{
     ids::SourceAccountId,
 };
 
-/// Reads the repositories of a GitHub installation for Projects.
 pub(super) struct RepositoryIntake;
 
 fn canonical(repository: &Repository) -> Canonical {
@@ -40,7 +38,6 @@ fn canonical(repository: &Repository) -> Canonical {
     }
 }
 
-/// Carries out the import rule for one listed repository; `None` when its name is unusable.
 async fn take_repository(
     conn: &mut PgConnection,
     account: SourceAccountId,
@@ -70,8 +67,7 @@ async fn take_repository(
     Ok(Some(step))
 }
 
-/// Stores the signs of one origin of a repository and restates its project's proposals.
-/// Returns whether they changed. A left-out or unknown repository gets nothing (PRO-002).
+/// A left-out or unknown repository gets nothing (PRO-002).
 async fn take_signs(
     conn: &mut PgConnection,
     (external_id, origin): (&str, Origin),
@@ -110,7 +106,6 @@ fn unusable(repository: &Repository) -> Problem {
     }
 }
 
-/// Stores one record; adds what it did to `counts`.
 async fn take_record(
     conn: &mut PgConnection,
     page: &Page<'_>,
@@ -185,8 +180,7 @@ impl Intake for RepositoryIntake {
         provider_github::next_request(slice)
     }
 
-    /// Stores the page's records, then takes every left-out repository out of the new slice,
-    /// so the run asks for none of its files (PRO-002) and a restore reads them again.
+    /// Left-out repositories leave the slice, so the run asks for none of their files (PRO-002).
     async fn take(&self, conn: &mut PgConnection, page: Page<'_>) -> Result<Taken, IntakeError> {
         let normalised = provider_github::normalise(page.request, &page.response, page.slice);
         let mut counts = Counts::default();

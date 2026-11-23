@@ -1,5 +1,4 @@
-//! What the Connect GitHub API shows and takes: the attempt with its links, the start input and
-//! the one-time link. No key, code, cookie or state (LOG-007).
+//! No Connect GitHub view holds a key, a code, a cookie or a state (LOG-007).
 
 use std::sync::Arc;
 

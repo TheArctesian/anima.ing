@@ -1,6 +1,5 @@
-//! The result of an attempt as the hub keeps it (K10 Section 7): fixed codes and numbers, never
-//! text from the job or from the machine. A machine, or a person with its daemon token, could
-//! otherwise put text of its choice where a screen or an MCP tool shows it. Pure.
+//! The result of an attempt as the hub keeps it (K10 Section 7): fixed codes and numbers, never text from the job or the machine.
+//! A machine, or a person with its daemon token, could otherwise put text of its choice where a screen or an MCP tool shows it.
 
 use daemon_core::wire::{Cleanup, WorkResult};
 
@@ -32,12 +31,9 @@ const CAUSES: [&str; 18] = [
 /// What the hub stores for a cause that it does not know (K10 Section 7).
 const UNKNOWN_CAUSE: &str = "failed";
 
-/// What each member of `cleanup` can say.
 const CLEANED: [&str; 3] = ["deleted", "failed", "none"];
 
-/// The result with only codes of the fixed lists: a cause that the hub does not know becomes
-/// `failed`. `None` when the outcome or a member of `cleanup` is not of its list: the report
-/// is `MALFORMED`.
+/// `None` when the outcome or a member of `cleanup` is not of its list: the report is `MALFORMED`.
 pub(super) fn checked(result: &WorkResult) -> Option<WorkResult> {
     let Cleanup {
         isolation,

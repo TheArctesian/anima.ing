@@ -1,6 +1,3 @@
-//! SRC-021: the poll interval's floor, the backoff after failures, the rate-limit wait, which
-//! due accounts run, and the sync-now rules.
-
 use chrono::{DateTime, TimeDelta, TimeZone as _, Utc};
 use reqwest::header::{HeaderMap, HeaderValue};
 use uuid::Uuid;

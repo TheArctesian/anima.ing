@@ -1,5 +1,3 @@
-//! The triggers that read occurrences, `unless`, the cooldown and the daily limit.
-
 use std::collections::HashSet;
 
 use chrono_tz::Tz;
@@ -188,7 +186,6 @@ fn rem_001_an_expiry_fires_one_time_for_each_number_of_days_and_each_record() {
         &moment("2026-11-01T00:00:00Z", &new, &known),
     );
     assert_eq!(far, [], "30 days away");
-    // First seen 10 days before: only the nearest number that applies fires, not 21 and 14.
     let due = evaluate(
         &rule,
         &History::default(),

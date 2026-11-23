@@ -7,18 +7,14 @@ use chrono::NaiveDate;
 
 use crate::ids::{PersonId, PlaceId};
 
-/// The longest record kind, in characters.
 const MAX_KIND: usize = 40;
-/// The longest record identifier, in characters.
 const MAX_ID: usize = 200;
 
-/// The text is not a record reference.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 #[error("a record reference is a kind, a colon and an identifier, such as person:1234")]
 pub struct BadReference;
 
-/// The name of one record: `kind:id`. The kind says which sort of record it is; the
-/// identifier is the owner's and nothing else reads meaning into it.
+/// `kind:id`; the identifier is the owner's and nothing else reads meaning into it.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Reference(String);
 
@@ -37,12 +33,9 @@ fn is_id(id: &str) -> bool {
 }
 
 impl Reference {
-    /// The reference with this exact text.
-    ///
     /// # Errors
     /// [`BadReference`] when the kind is not lower snake case of at most 40 characters, or the
-    /// identifier is empty, longer than 200 characters, starts or ends with a space, or holds
-    /// a control character.
+    /// identifier is empty, over 200 characters, padded with spaces or holds a control character.
     pub fn parse(text: &str) -> Result<Self, BadReference> {
         let (kind, id) = text.split_once(':').ok_or(BadReference)?;
         if is_kind(kind) && is_id(id) {
@@ -52,8 +45,6 @@ impl Reference {
         }
     }
 
-    /// The reference to the record `id` of `kind`.
-    ///
     /// # Errors
     /// [`BadReference`], as [`Reference::parse`].
     pub fn new(kind: &str, id: &str) -> Result<Self, BadReference> {
@@ -65,13 +56,11 @@ impl Reference {
         &self.0
     }
 
-    /// The part before the first colon.
     #[must_use]
     pub fn kind(&self) -> &str {
         self.0.split_once(':').map_or("", |(kind, _)| kind)
     }
 
-    /// The part after the first colon.
     #[must_use]
     pub fn id(&self) -> &str {
         self.0.split_once(':').map_or("", |(_, id)| id)
@@ -111,7 +100,6 @@ impl Subject {
     pub const PERSON: &'static str = "person";
     pub const DATE: &'static str = "date";
 
-    /// The repository `owner/name`, in any letter case; `None` for other text.
     #[must_use]
     pub fn repository(name: &str) -> Option<Self> {
         let (owner, repository) = name.split_once('/')?;
@@ -119,8 +107,6 @@ impl Subject {
             .then(|| Self::Repository(name.to_ascii_lowercase()))
     }
 
-    /// The one reference that names this subject.
-    ///
     /// # Panics
     /// Never: each subject's text is a valid identifier.
     #[must_use]
@@ -134,8 +120,7 @@ impl Subject {
         Reference::new(kind, &id).expect("a subject's text is a valid identifier")
     }
 
-    /// The subject `reference` names. `None` when its kind is not a subject kind, or its
-    /// identifier is not the exact text [`Subject::reference`] makes.
+    /// `None` unless the identifier is the exact text that [`Subject::reference`] makes.
     #[must_use]
     pub fn of(reference: &Reference) -> Option<Self> {
         let id = reference.id();
@@ -149,7 +134,6 @@ impl Subject {
         (subject.reference() == *reference).then_some(subject)
     }
 
-    /// True for a reference whose kind is a subject kind.
     #[must_use]
     pub fn owns(reference: &Reference) -> bool {
         [Self::REPOSITORY, Self::PLACE, Self::PERSON, Self::DATE].contains(&reference.kind())

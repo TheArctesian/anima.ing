@@ -1,4 +1,4 @@
-//! The SQL of the sweep: its lock, its cursors and the place states (K-E6 Sections 3 and 4).
+//! K-E6 Sections 3 and 4.
 
 use chrono::{DateTime, Utc};
 use sqlx::PgConnection;
@@ -79,7 +79,6 @@ pub(in crate::engine::reminders) async fn put_place_state(
     .map(drop)
 }
 
-/// The last health that the sweep saw of each source account, as `(account, state)`.
 pub(in crate::engine::reminders) async fn states(
     conn: &mut PgConnection,
 ) -> Result<Vec<(String, String)>, sqlx::Error> {

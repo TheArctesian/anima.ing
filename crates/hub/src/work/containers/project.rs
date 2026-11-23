@@ -1,23 +1,11 @@
 //! The one state of a Compose project, made from the states of its containers (HOST-019).
-//!
-//! One rule, in this order; the first that applies gives the state:
-//!
-//! 1. A container restarts, or is dead: `Failing`.
-//! 2. Some containers run and some do not: `PartlyRunning`. A container that ended counts as
-//!    one that does not run, with any exit status: the list of Docker cannot tell a set-up
-//!    step that finished from a service that was stopped.
-//! 3. Every container runs, and one fails its health check: `Unhealthy`.
-//! 4. Every container runs: `Running`.
-//! 5. No container runs and one is paused: `Paused`.
-//! 6. No container runs: `Stopped`.
-//!
-//! A state the hub does not know makes the project `Unknown`, unless rule 1 applies.
+//! An exited container counts as not running, with any exit status: the Docker list cannot tell
+//! a set-up step that finished from a service that was stopped.
 
 use std::collections::BTreeMap;
 
 use super::model::{Container, ContainerState, Health, ProjectState};
 
-/// What one container adds to the state of its project.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Part {
     Failing,
@@ -41,7 +29,6 @@ fn part(container: &Container) -> Part {
     }
 }
 
-/// The state of a project that has these containers.
 fn state(parts: &[Part]) -> ProjectState {
     let has = |wanted: fn(&Part) -> bool| parts.iter().any(wanted);
     let runs = |part: &Part| matches!(part, Part::Running { .. });
@@ -64,7 +51,6 @@ fn state(parts: &[Part]) -> ProjectState {
     }
 }
 
-/// Writes on each container of a Compose project the state of that project.
 pub(super) fn mark(containers: &mut [Container]) {
     let mut parts: BTreeMap<String, Vec<Part>> = BTreeMap::new();
     for container in containers.iter() {

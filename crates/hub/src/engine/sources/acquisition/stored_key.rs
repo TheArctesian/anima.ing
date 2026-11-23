@@ -1,8 +1,6 @@
 //! The plaintext of a sealed App key and its check against the account (K-E1 Section 6).
-//!
-//! Layout: `{"v":1,"app_id","installation_id","private_key_pem"}`, built in a buffer that is
-//! wiped on drop and never grows, as `notifications/sealing.rs` does. `credentials` seals it
-//! as opaque bytes, bound to the account id.
+//! Built in a buffer that is wiped on drop and never grows; `credentials` seals it as opaque
+//! bytes, bound to the account id.
 
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
@@ -39,8 +37,6 @@ pub enum StoredKeyError {
     Refused(KeyRefusal),
 }
 
-/// The plaintext to seal for an App key.
-///
 /// # Panics
 /// Never: strings and a number always serialise.
 #[must_use]
@@ -59,12 +55,11 @@ pub fn to_secret(app_id: &str, installation_id: &str, pem: &str) -> Secret {
     Secret::new(std::mem::take(&mut *plain))
 }
 
-/// Opens the plaintext into a key, and checks that it is the key of `instance_key`, so a
-/// database writer cannot point an account at another installation's key.
+/// Checks that it is the key of `instance_key`, so a database writer cannot point an account
+/// at the key of another installation.
 ///
 /// # Errors
-/// [`StoredKeyError`] for an unknown layout, a key of another installation, or a key that no
-/// longer passes the checks.
+/// [`StoredKeyError`].
 pub fn from_secret(secret: &Secret, instance_key: &str) -> Result<AppKey, StoredKeyError> {
     let opened: Opened =
         serde_json::from_slice(secret.expose()).map_err(|_| StoredKeyError::Layout)?;

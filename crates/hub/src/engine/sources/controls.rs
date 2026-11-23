@@ -1,5 +1,4 @@
-//! The operator's controls on an account: sync now, pause and remove (ITG-003, ITG-004; K-E1
-//! Section 10).
+//! The operator's controls on an account (ITG-003, ITG-004; K-E1 Section 10).
 
 use chrono::{DateTime, Utc};
 use sqlx::PgConnection;
@@ -7,8 +6,7 @@ use sqlx::PgConnection;
 use super::{Error, intake::Registry, model::Account, store};
 use crate::{fleet::credentials::clear_source_secret, ids::SourceAccountId};
 
-/// Whether "Sync now" starts a run: refused while the account is paused or no consumer of its
-/// source is on; no second run while one holds the account. Pure.
+/// Whether "Sync now" starts a run.
 ///
 /// # Errors
 /// `Paused` or `NoConsumer` (`CONFLICT` at the API).
@@ -22,8 +20,7 @@ pub fn sync_now(account: &Account, consumer_on: bool, now: DateTime<Utc>) -> Res
     }
 }
 
-/// Pauses or resumes the account in `conn`; resuming makes it due at `now`. Returns the
-/// account before and after.
+/// Resuming makes the account due at `now`; returns the account before and after.
 ///
 /// # Errors
 /// `NotFound` when there is no such account; `Database` when a write fails.
@@ -39,14 +36,11 @@ pub async fn set_paused(
     Ok((before, after))
 }
 
-/// Deletes the account, its runs and its sealed key in `conn`. With `delete_records` each
-/// intake of its source deletes the records it imported for it, whether its extension is on
-/// or not; otherwise they are kept (ITG-004). A run that holds the account loses its claim and
-/// writes nothing more. Returns the removed account and how many records were deleted.
+/// Deletes the account, its runs and its sealed key. With `delete_records` each intake deletes
+/// its records, extension on or not (ITG-004). A run that holds the account loses its claim.
 ///
 /// # Errors
-/// `NotFound` when there is no such account; `Intake`, `Credentials` or `Database` when a
-/// step fails, and the caller rolls back.
+/// `NotFound`; `Intake`, `Credentials` or `Database` when a step fails, and the caller rolls back.
 pub async fn remove(
     conn: &mut PgConnection,
     registry: &Registry,

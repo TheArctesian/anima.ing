@@ -1,7 +1,5 @@
-//! An issue or a comment read from GitHub around a change: the issue before it is closed or
-//! opened, and what GitHub made, read back once the change was made (K1 returns it). The read
-//! before never comes from the cache, fresh or stale; the read back is fresh: the change
-//! dropped the held answers.
+//! An issue or a comment read from GitHub around a change; the read back is fresh because the
+//! change dropped the held answers.
 
 use async_graphql::{Context, Result};
 use provider_github::live::{

@@ -1,6 +1,5 @@
-//! The `anima-hub operator` commands: the one operator account and its second factor, made on
-//! the hub computer only (D-9, OD-2, FRN-003, FRN-004). Secrets come in on standard input and
-//! go out on standard output only, never in an argument or the process log (LOG-007).
+//! The `anima-hub operator` commands, run on the hub computer only (D-9, OD-2, FRN-003, FRN-004).
+//! Secrets come in on standard input and go out on standard output only, never in an argument or the process log (LOG-007).
 
 use std::io::{BufRead, IsTerminal as _, Read as _};
 
@@ -13,11 +12,10 @@ use zeroize::Zeroizing;
 
 use crate::{StartError, connect, link_audit_entries, vault};
 
-/// Bytes `operator create` reads at most: a password of up to 1024 bytes, a 32-character
-/// secret and a 6-digit code, each with its line end, fit; longer input is cut and refused.
+/// Fits a password of up to 1024 bytes, a 32-character secret and a 6-digit code; longer input is refused.
 const CREATE_INPUT_LIMIT: usize = 2048;
 
-/// Reads the password (without echo on a terminal, one line when piped) and sets the operator.
+/// Reads the password without echo on a terminal, one line when piped.
 pub(crate) async fn set(config: &Config, username: &str) -> Result<(), StartError> {
     let typed = read_password().map_err(|_| StartError::Stdin)?;
     let pool = connect(config).await?;
@@ -30,11 +28,8 @@ pub(crate) async fn set(config: &Config, username: &str) -> Result<(), StartErro
     Ok(())
 }
 
-/// Reads the password, a secret from `operator totp --new` and a code of it from standard
-/// input, and creates or replaces the operator with both factors only when all three pass
-/// (FRN-004). The builders that went with the tokens are audited, as `operator set` audits
-/// them. A terminal on standard input is refused before anything is read: it would echo the
-/// password and the secret (LOG-007).
+/// Sets the operator only when the password, the secret and the code all pass (FRN-004).
+/// A terminal on standard input is refused before anything is read: it would echo the password and the secret (LOG-007).
 pub(crate) async fn create(config: &Config, username: &str) -> Result<(), StartError> {
     if std::io::stdin().is_terminal() {
         return Err(StartError::CreateFromTerminal);
@@ -60,8 +55,7 @@ pub(crate) async fn show(config: &Config) -> Result<(), StartError> {
     Ok(())
 }
 
-/// Enrols TOTP and writes the `otpauth://` URI once, to the terminal only: never to a pipe,
-/// a file or the process log (LOG-007).
+/// Writes the `otpauth://` URI to the terminal only, never to a pipe, a file or the process log (LOG-007).
 pub(crate) async fn enrol_totp(config: &Config, username: &str) -> Result<(), StartError> {
     if !std::io::stdout().is_terminal() {
         return Err(StartError::NotATerminal);
@@ -80,12 +74,10 @@ pub(crate) async fn enrol_totp(config: &Config, username: &str) -> Result<(), St
     Ok(())
 }
 
-/// Prints a new TOTP secret and its URI as one JSON line and saves nothing (FRN-004). The
-/// line goes to standard output, the caller's pipe, and nowhere else (LOG-007).
+/// Saves nothing (FRN-004); the secret goes to standard output and nowhere else (LOG-007).
 pub(crate) fn new_totp(username: &str) -> Result<(), StartError> {
     let made = access::new_totp(username)?;
-    // Base32 and the URI of a checked username (D-9) need no JSON escaping, and a string built
-    // here is wiped on drop, as a serializer's buffer is not.
+    // Built by hand so the string is wiped on drop; base32 and a checked username (D-9) need no escaping.
     let line = Zeroizing::new(format!(
         "{{\"secret\":\"{}\",\"uri\":\"{}\"}}",
         made.secret(),
@@ -95,8 +87,8 @@ pub(crate) fn new_totp(username: &str) -> Result<(), StartError> {
     Ok(())
 }
 
-/// Turns TOTP off and signs every client out. Outside the link mode the password alone signs
-/// in again; in the link mode no sign-in passes until a new secret is set (FRN-007).
+/// Signs every client out. Outside the link mode the password alone signs in again; in the link
+/// mode no sign-in passes until a new secret is set (FRN-007).
 pub(crate) async fn disable_totp(config: &Config, username: &str) -> Result<(), StartError> {
     let pool = connect(config).await?;
     link_audit_entries(&pool).await?;
@@ -115,7 +107,6 @@ pub(crate) async fn disable_totp(config: &Config, username: &str) -> Result<(), 
     Ok(())
 }
 
-/// The password from standard input: prompted without echo on a terminal, else one line.
 fn read_password() -> std::io::Result<String> {
     if std::io::stdin().is_terminal() {
         return rpassword::prompt_password("Password: ");
@@ -127,8 +118,6 @@ fn read_password() -> std::io::Result<String> {
     Ok(typed)
 }
 
-/// The password, the secret and the code, one line each, from at most [`CREATE_INPUT_LIMIT`]
-/// bytes of standard input. Nothing is echoed: the caller pipes them in.
 fn read_new_operator(username: &str) -> std::io::Result<access::NewOperator> {
     let limit = u64::try_from(CREATE_INPUT_LIMIT).unwrap_or(u64::MAX);
     let mut input = std::io::stdin().lock().take(limit);
@@ -143,8 +132,7 @@ fn read_new_operator(username: &str) -> std::io::Result<access::NewOperator> {
     })
 }
 
-/// One line without its line end. The buffer holds the whole limit, so it never moves, and
-/// is wiped on drop.
+/// The buffer holds the whole limit so it never reallocates, and is wiped on drop.
 fn read_secret_line(input: &mut impl BufRead) -> std::io::Result<Zeroizing<String>> {
     let mut line = Zeroizing::new(String::with_capacity(CREATE_INPUT_LIMIT));
     input.read_line(&mut line)?;

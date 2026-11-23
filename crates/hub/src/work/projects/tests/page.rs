@@ -1,5 +1,3 @@
-//! The page cursor: any name and id come back as they went in; anything else is refused.
-
 use proptest::prelude::*;
 use uuid::Uuid;
 

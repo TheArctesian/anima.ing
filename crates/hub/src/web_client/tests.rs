@@ -1,4 +1,4 @@
-//! The web client through its router, on a web root in a temporary folder (D-2, K7).
+//! The web client through its router (D-2, K7).
 
 mod headers;
 mod path;
@@ -20,17 +20,14 @@ use tower::ServiceExt as _;
 use super::web_client;
 use crate::fleet::access::PublicOrigin;
 
-/// Two inline scripts (one with attributes) and one loaded by `src`.
 const INDEX_HTML: &str = "<!doctype html><html><head>\
     <script src=\"/_app/immutable/entry/start.js\"></script>\
     <script>first()</script>\
     </head><body><script type=\"module\" data-x='a>b'>second()</script></body></html>";
 const START_JS: &str = "export const start = 1;";
-/// Text that must never reach a client: a dotfile in the root and a file beside the root.
 const DOTFILE: &str = "SECRET-IN-DOTFILE";
 const OUTSIDE: &str = "SECRET-OUTSIDE-ROOT";
 
-/// A folder holding the web root `web/` and, beside it, `outside.txt`.
 struct WebRoot {
     dir: TempDir,
 }
@@ -60,12 +57,10 @@ impl WebRoot {
     }
 }
 
-/// The web client at `root` for the public origin `https://hub.anima.ing`.
 fn router_at(root: &Path) -> Router {
     web_client(root, &PublicOrigin::new("https://hub.anima.ing".to_owned()))
 }
 
-/// One answer: status, headers and body text.
 struct Answer {
     status: StatusCode,
     headers: HeaderMap,
@@ -89,7 +84,6 @@ async fn send(router: &Router, method: Method, path: &str) -> Answer {
     answer_to(router, request).await
 }
 
-/// The answer to a `GET` of `path` with one request header.
 async fn get_with(router: &Router, path: &str, name: &str, value: &str) -> Answer {
     let request = Request::get(path)
         .header(name, value)

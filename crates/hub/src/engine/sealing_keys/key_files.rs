@@ -1,4 +1,3 @@
-//! Private key files: enumerate, read, and atomically create each named key.
 use super::{KEY_LEN, KEY_SUFFIX, SealingKey, SealingKeyError, hex, is_name, key_id};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 #[cfg(unix)]
@@ -62,9 +61,8 @@ pub(super) fn read_key(folder: &Path, name: &str) -> Result<SealingKey, SealingK
     })
 }
 
-/// Writes a new key file that only the hub user can read: first under a temporary name, then
-/// linked to its name, so that no reader sees a file that is half written. A file that another
-/// request made first is kept: the caller reads it.
+/// Writes a key file only the hub user can read under a temporary name, then links it, so no
+/// reader sees a half-written file; a file that another request made first is kept.
 pub(super) fn make_key(folder: &Path, name: &str) -> Result<(), SealingKeyError> {
     let failed = |error: io::Error| SealingKeyError::KeyFile {
         name: name.to_owned(),
@@ -88,7 +86,6 @@ pub(super) fn make_key(folder: &Path, name: &str) -> Result<(), SealingKeyError>
     }
 }
 
-/// A new file with mode 0600 that holds `bytes`, flushed to the disk.
 fn write_private(path: &Path, bytes: &[u8]) -> io::Result<()> {
     #[cfg(unix)]
     let mut file = OpenOptions::new()

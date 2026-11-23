@@ -1,6 +1,3 @@
-//! The web folder, the data keys and the file pieces must be absolute, not `/`, and free of
-//! `..` parts (D-2, VLT-003, FIL-001).
-
 use super::tests::{env, host_path};
 use super::*;
 

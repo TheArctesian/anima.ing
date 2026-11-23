@@ -1,5 +1,4 @@
-//! The merge rule (K-E1 Section 13.3; PRJ-033, PRO-013) as a table, and its promises over every
-//! combination.
+//! K-E1 Section 13.3; PRJ-033, PRO-013.
 
 use chrono::{DateTime, Utc};
 use provider_github::live::pulls::{MergeableState, PullDetail, PullRequest, PullState};
@@ -19,7 +18,6 @@ pub(super) fn at() -> DateTime<Utc> {
     DateTime::from_timestamp(1_900_000_000, 0).unwrap()
 }
 
-/// A pull request as GitHub's single read gives it, from this repository.
 fn pull(state: PullState, draft: bool, merge: (MergeableState, Option<bool>)) -> PullDetail {
     let text = |s: &str| s.to_owned();
     PullDetail {
@@ -153,7 +151,6 @@ fn ask(merging: Merging<'_>, agent: bool) -> Ask<'_> {
     }
 }
 
-/// state × draft × `mergeable_state` × method allowed × fork × confirmation × agent.
 const TABLE: [&str; 30] = [
     "open   - clean    y all   own  one   -    user  => merge",
     "open   - clean    y all   own  bulk  -    user  => merge",
@@ -222,7 +219,6 @@ fn prj_033_a_head_other_than_the_one_seen_is_head_moved_in_any_case_of_hex() {
     assert_eq!(decide(&read, &ALL, &same), Decision::Merge);
 }
 
-/// The case numbered `n` of every combination of what GitHub can say and a caller can ask.
 fn case(mut n: usize) -> Row {
     let mut pick = |len: usize| {
         let i = n % len;

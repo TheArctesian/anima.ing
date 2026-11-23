@@ -1,5 +1,5 @@
-//! What happens when occurrences arrive, and the check at send time (K-E6 Section 3; REM-002,
-//! REM-005). `notice` runs in the transaction that stores the new records.
+//! Occurrences that arrive, and the check at send time (K-E6 Section 3; REM-002, REM-005).
+//! `notice` runs in the transaction that stores the new records.
 
 use std::collections::{HashMap, HashSet};
 
@@ -14,14 +14,11 @@ use super::{
 };
 use crate::ids::{ChannelId, FiringId, ReminderRuleId};
 
-/// How far back the known records are read: more than one local day in any zone.
+/// More than one local day in any zone.
 const KNOWN_BACK: TimeDelta = TimeDelta::hours(50);
 
-/// The reason of a firing that is not sent because its rule changed, was set off or is gone.
 pub const RULE_CHANGED: &str = "rule_changed";
 
-/// What the hub knew before a moment, as the store keeps it: the newest time of each sort of
-/// record and the newest measure of each key.
 pub(super) struct WasKnown {
     records: Vec<(String, String, DateTime<Utc>)>,
     measures: HashMap<String, f64>,
@@ -48,7 +45,6 @@ impl WasKnown {
         Ok(known)
     }
 
-    /// What `rule` can read: the records since the start of its day.
     fn since(&self, start: DateTime<Utc>) -> Known {
         let records_today: HashSet<(String, String)> = self
             .records
@@ -63,8 +59,6 @@ impl WasKnown {
     }
 }
 
-/// Evaluates `rule` at `now` with the new occurrences and the place changes, and stores each
-/// firing; gives how many were new.
 pub(super) async fn fire(
     conn: &mut PgConnection,
     (rule, was_known): (&Rule, &WasKnown),
@@ -87,9 +81,7 @@ pub(super) async fn fire(
     Ok(stored)
 }
 
-/// Evaluates the rules that wait for occurrences, in the transaction of the caller, and stores
-/// each firing: `pending`, or `suppressed` with its reason. Then it keeps the new records and
-/// measures as known. The same occurrences again give no second firing.
+/// The same occurrences again give no second firing.
 ///
 /// # Errors
 /// `Database`.
@@ -125,8 +117,7 @@ pub async fn notice(
     Ok(())
 }
 
-/// A firing that passed the check at send time: what the delivery sends, and to which
-/// channels of the rule (none means each channel that is on by default).
+/// No channels means each channel that is on by default.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Sendable {
     pub firing: FiringId,
@@ -137,8 +128,6 @@ pub struct Sendable {
     pub channels: Vec<ChannelId>,
 }
 
-/// The firings that wait for a send at `now`, oldest first, at most `limit`.
-///
 /// # Errors
 /// `Database`.
 pub async fn waiting(
@@ -149,11 +138,7 @@ pub async fn waiting(
     Ok(store::waiting(conn, now, limit).await?)
 }
 
-/// The check at send time, in the transaction that sends (REM-005): reads the rule again and
-/// marks the firing `sent` only when the rule is enabled and has the revision of the firing.
-/// Else the firing becomes `suppressed` with the reason `rule_changed` and nothing is sent.
-/// `None` also for a firing that does not wait: one that is gone with its rule, was sent, or
-/// is snoozed until a later time.
+/// Marks the firing `sent` only when its rule is enabled and has the firing's revision, else `suppressed` (REM-005).
 ///
 /// # Errors
 /// `Database`.

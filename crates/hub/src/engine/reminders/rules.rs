@@ -16,15 +16,11 @@ use crate::ids::{ChannelId, FiringId, ReminderRuleId};
 
 const NAME_MAX: usize = 80;
 const MESSAGE_MAX: usize = 200;
-/// The longest snooze and the longest cooldown: one week of minutes.
 pub const MINUTES_MAX: u32 = 10_080;
 const LIMIT_MAX: u32 = 100;
-/// The most channels one rule names.
 const CHANNELS_MAX: usize = 20;
-/// The most firings one read gives.
 pub const FIRINGS_MAX: i64 = 200;
 
-/// A rule as the operator gives it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Draft {
     pub name: String,
@@ -43,7 +39,6 @@ fn one_line(text: &str, most: usize) -> Option<String> {
     valid.then(|| text.to_owned())
 }
 
-/// The draft with its texts cleaned, or each field to fix.
 fn checked(draft: Draft) -> Result<Draft, Vec<Fault>> {
     let fault = |field, message| Fault { field, message };
     let mut faults = Vec::new();
@@ -92,8 +87,6 @@ fn stored(id: ReminderRuleId, draft: Draft, revision: i32, at: DateTime<Utc>) ->
     }
 }
 
-/// Makes a rule in the caller's transaction.
-///
 /// # Errors
 /// `Invalid` with each field to fix; `Database`.
 pub async fn create_rule(
@@ -107,8 +100,6 @@ pub async fn create_rule(
     Ok(rule)
 }
 
-/// Replaces the fields of the rule `id` with `draft` and adds 1 to its revision.
-///
 /// # Errors
 /// `NotFound`; `Invalid` with each field to fix; `Database`.
 pub async fn update_rule(
@@ -129,8 +120,7 @@ pub async fn update_rule(
     Ok(rule)
 }
 
-/// Sets the rule `id` on or off. A change adds 1 to its revision; no change writes nothing.
-/// Gives the rule and whether it changed.
+/// A change adds 1 to the revision; no change writes nothing.
 ///
 /// # Errors
 /// `NotFound`, `Database`.
@@ -153,7 +143,7 @@ pub async fn set_enabled(
     Ok((rule, true))
 }
 
-/// Deletes the rule `id` with its firings, and gives the rule as it was.
+/// Deletes the rule with its firings.
 ///
 /// # Errors
 /// `NotFound`, `Database`.
@@ -165,16 +155,12 @@ pub async fn remove_rule(conn: &mut PgConnection, id: ReminderRuleId) -> Result<
     Ok(rule)
 }
 
-/// Every rule, by name.
-///
 /// # Errors
 /// `Database`.
 pub async fn rules(db: &PgPool) -> Result<Vec<StoredRule>, Error> {
     Ok(store::rules(db).await?)
 }
 
-/// The rule `id`.
-///
 /// # Errors
 /// `Database`.
 pub async fn rule(db: &PgPool, id: ReminderRuleId) -> Result<Option<StoredRule>, Error> {
@@ -193,9 +179,6 @@ pub async fn activity(
     Ok(store::activity(db, since).await?)
 }
 
-/// The firings of `rule` (or of every rule) in `state` (or any), newest first, at most `first`
-/// (1 to [`FIRINGS_MAX`]).
-///
 /// # Errors
 /// `Invalid` for a `first` out of range; `Database`.
 pub async fn firings(
@@ -212,9 +195,8 @@ pub async fn firings(
     Ok(store::firings(db, filter, first).await?)
 }
 
-/// Makes one firing of the rule `id` that the sender sends at its next pass, with the subject
-/// `test:<time>`. No cooldown and no limit apply, and none is used up: the history of a rule
-/// does not count a test.
+/// No cooldown and no limit apply, and none is used up: the history of a rule does not count
+/// a test.
 ///
 /// # Errors
 /// `NotFound`, `Database`.
@@ -247,7 +229,6 @@ pub async fn test_rule(
     made.ok_or(Error::NotFound("reminder firing"))
 }
 
-/// Writes the answer of the operator to a firing that was sent, and gives the firing.
 async fn answered(
     conn: &mut PgConnection,
     id: FiringId,
@@ -269,8 +250,7 @@ async fn answered(
     })
 }
 
-/// Snoozes a firing that was sent: the sender sends it again after `minutes` (1 to 10 080),
-/// with the check at send time (REM-007).
+/// The sender sends it again after `minutes`, with the check at send time (REM-007).
 ///
 /// # Errors
 /// `Invalid` for the minutes; `NotFound`; `NotSent` for a firing that was not sent or is
@@ -291,7 +271,7 @@ pub async fn snooze(
     answered(conn, id, (FiringState::Snoozed, Some(until)), now).await
 }
 
-/// Acknowledges a firing that was sent: it is not sent again (REM-007).
+/// It is not sent again (REM-007).
 ///
 /// # Errors
 /// `NotFound`; `NotSent`; `Database`.

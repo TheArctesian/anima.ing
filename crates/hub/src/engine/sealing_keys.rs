@@ -1,9 +1,7 @@
-//! The data keys: one key for each extension and engine part, which seals its records and its
-//! files on the hub (K-E5 Section 1; VLT-003, R-146). A leaf: it imports no domain.
-//!
-//! A data key is never the credential key: at start [`SealingKeys::open`] compares the identifier
-//! of each key with the identifier of the credential key and with each other, and refuses two
-//! that are equal. No error text and no `Debug` output holds a key or a plain value (LOG-007).
+//! The data keys that seal the records and files of each extension and engine part
+//! (K-E5 Section 1; VLT-003, R-146). A leaf: it imports no domain.
+//! A data key is never the credential key: [`SealingKeys::open`] refuses two equal key identifiers.
+//! No error text and no `Debug` output holds a key or a plain value (LOG-007).
 
 use std::{
     fmt, io,
@@ -25,20 +23,16 @@ mod tests;
 const KEY_LEN: usize = 32;
 const NONCE_LEN: usize = 24;
 const TAG_LEN: usize = 16;
-/// The longest key name, in characters.
 const MAX_NAME: usize = 40;
 const KEY_ID_BYTES: usize = 8;
-/// The same domain as the credential key's identifier, so that equal bytes give equal
-/// identifiers and the start check can compare them (VLT-003).
+/// The credential key's domain, so equal bytes give equal identifiers (VLT-003).
 const KEY_ID_DOMAIN: &[u8] = b"anima/credentials/key-id/v1";
 const SEALED_TAG: &[u8] = b"anima/data/sealed/v1";
 const LAYOUT_V1: u8 = 0x01;
 const KEY_SUFFIX: &str = ".key";
 
-/// Why a data key cannot be used. No variant holds a key or a plain value (LOG-007).
 #[derive(Debug, thiserror::Error)]
 pub enum SealingKeyError {
-    /// The hub has no `ANIMA_DATA_KEY_DIR`: a domain that seals answers `UNAVAILABLE`.
     #[error("the hub has no folder of data keys (ANIMA_DATA_KEY_DIR)")]
     Unavailable,
     #[error("a data key name is 1 to 40 lower-case letters, digits or underscores")]
@@ -59,23 +53,19 @@ pub enum SealingKeyError {
     Damaged,
 }
 
-/// The folder of data keys; `None` when the hub has none.
 #[derive(Clone, Debug)]
 pub struct SealingKeys {
     folder: Option<PathBuf>,
 }
 
 impl SealingKeys {
-    /// No data keys: a hub with no `ANIMA_DATA_KEY_DIR`.
     #[must_use]
     pub const fn none() -> Self {
         Self { folder: None }
     }
 
-    /// The data keys of `folder`, checked: each key file that exists must hold a key, and no
-    /// key may equal the credential key (`credential_key_id`, the text of
-    /// `Vault::key_id`) or another data key (VLT-003). Makes the folder (mode 0700) when it
-    /// does not exist. With no folder the hub has no data keys.
+    /// No key may equal the credential key (`credential_key_id`, the text of `Vault::key_id`)
+    /// or another data key (VLT-003).
     ///
     /// # Errors
     /// `Folder`, `KeyFile`, `KeyFormat`, `CredentialKey`, `SameKey`.
@@ -116,18 +106,15 @@ impl SealingKeys {
         })
     }
 
-    /// Whether the hub has a folder of data keys.
     #[must_use]
     pub const fn available(&self) -> bool {
         self.folder.is_some()
     }
 
-    /// The key `name`. A key with no file is made now (32 random bytes, mode 0600); a file that
-    /// exists is never written again.
+    /// A key with no file is made now; a key file that exists is never written again.
     ///
     /// # Errors
-    /// `Unavailable` with no folder; `BadName`; `KeyFile`, `KeyFormat` for a file that cannot
-    /// be read or made.
+    /// `Unavailable`, `BadName`, or `KeyFile` and `KeyFormat` for a file not read or made.
     pub fn key(&self, name: &str) -> Result<SealingKey, SealingKeyError> {
         let folder = self.folder.as_deref().ok_or(SealingKeyError::Unavailable)?;
         if !is_name(name) {
@@ -146,7 +133,6 @@ impl SealingKeys {
     }
 }
 
-/// One data key: 32 bytes, zeroed on drop. `Debug` shows the name and the identifier only.
 pub struct SealingKey {
     name: String,
     key: Zeroizing<[u8; KEY_LEN]>,
@@ -159,20 +145,19 @@ impl SealingKey {
         &self.name
     }
 
-    /// The identifier of the key, not the key: the first 8 bytes of a SHA-256, in hexadecimal.
+    /// Not the key: the first 8 bytes of a SHA-256, in hexadecimal.
     #[must_use]
     pub fn id(&self) -> &str {
         &self.id
     }
 
-    /// The cipher of this key, for the stream form of a file (K-E4 Section 9).
+    /// For the stream form of a file (K-E4 Section 9).
     #[must_use]
     pub fn cipher(&self) -> XChaCha20Poly1305 {
         XChaCha20Poly1305::new((&*self.key).into())
     }
 
-    /// Seals `plain` for `context` (for a record `<schema>.<table>:<id>`): the layout of the
-    /// credential vault, `0x01 ‖ len(id) ‖ id ‖ nonce ‖ ciphertext`.
+    /// The layout of the credential vault: `0x01 ‖ len(id) ‖ id ‖ nonce ‖ ciphertext`.
     ///
     /// # Panics
     /// When the OS gives no random nonce, which a running hub does not see.
@@ -195,9 +180,6 @@ impl SealingKey {
         sealed
     }
 
-    /// Opens a value that [`SealingKey::seal`] sealed for the same `context`. Lengths are checked,
-    /// never trusted.
-    ///
     /// # Errors
     /// `WrongKey` when a different key sealed it; `Damaged` for a value that is cut, changed or
     /// of a different context.
@@ -250,7 +232,7 @@ impl fmt::Debug for SealingKey {
     }
 }
 
-/// Whether `name` can name a data key: `^[a-z][a-z0-9_]{0,39}$`. Thus it is never a path.
+/// `^[a-z][a-z0-9_]{0,39}$`, so a name is never a path.
 #[must_use]
 pub fn is_name(name: &str) -> bool {
     let mut chars = name.chars();
@@ -259,9 +241,7 @@ pub fn is_name(name: &str) -> bool {
         && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
 }
 
-/// The names of the key files in `folder`, sorted. Other files are not keys and are left.
-/// Names a key without showing it: the first 8 bytes of SHA-256(domain ‖ key), in hexadecimal,
-/// as the credential vault names its key.
+/// The first 8 bytes of SHA-256(domain ‖ key) in hex, as the credential vault names its key.
 fn key_id(key: &[u8; KEY_LEN]) -> String {
     let digest = Sha256::new()
         .chain_update(KEY_ID_DOMAIN)
@@ -270,7 +250,6 @@ fn key_id(key: &[u8; KEY_LEN]) -> String {
     hex(&digest[..KEY_ID_BYTES])
 }
 
-/// `bytes` in lower-case hexadecimal.
 #[must_use]
 pub fn hex(bytes: &[u8]) -> String {
     const HEX: &[u8; 16] = b"0123456789abcdef";

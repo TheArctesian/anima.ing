@@ -42,8 +42,7 @@ pub struct Config {
     pub key_file: PathBuf,
     /// Gateway `host:port`; the host is a DNS name, so this is not a `SocketAddr`.
     pub guacd: String,
-    /// Where guacd stores shared drives (RA-021): a path inside the guacd container, not the
-    /// hub's filesystem, so it must be absolute.
+    /// A path inside the guacd container, not the hub's filesystem, so it must be absolute (RA-021).
     pub guacd_drive_root: PathBuf,
     /// `host:port` of the Tailscale `LocalAPI` proxy (D-4). `None` when unset or empty: Tailscale
     /// ping checks then report Unknown.
@@ -53,21 +52,17 @@ pub struct Config {
     pub vpn_broker: Option<PathBuf>,
     /// In the link mode: this computer and the devices of the link.
     pub permitted_networks: Vec<ipnet::IpNet>,
-    /// The Unix socket `anima-link` reaches the hub through; set means the link mode (see
-    /// `link`). `None` when unset or empty.
+    /// The Unix socket `anima-link` reaches the hub through; set means the link mode.
     pub link_socket: Option<PathBuf>,
     /// The control socket of `anima-link hub`: the hub makes invites, lists the link's devices
     /// and revokes one through it (FRN-009). Only in the link mode; `None` when unset or empty.
     pub link_control: Option<PathBuf>,
-    /// The file of the Anima.ing cloud's key; set means the hosted mode (hosted-mode.md HMD-037,
-    /// R-129): the cloud asks this hub for device invites, and no one signs in with a password.
-    /// Only with the link's control socket; `None` when unset or empty.
+    /// Set means the hosted mode (HMD-037, R-129): the cloud asks this hub for device invites, and no one signs in with a password.
     pub hosted_cloud_key_file: Option<PathBuf>,
     /// The socket of the hub's own daemon and the file of its code, in the hosted mode only
     /// (HMD-071, HM-T35). `None` when unset or empty.
     pub own_daemon: Option<OwnDaemon>,
-    /// Networks checks must never probe: the hub's own Docker networks and public address
-    /// (R-030). Empty when unset; `main.rs` warns at start.
+    /// Networks checks must never probe: the hub's own Docker networks and public address (R-030).
     pub probe_deny: Vec<ipnet::IpNet>,
     pub log: String,
     pub tls_cert_file: Option<PathBuf>,
@@ -93,9 +88,7 @@ pub struct Config {
 }
 
 impl Config {
-    /// Whether browsers reach this hub through the gateway of the pool, at the public origin
-    /// that the pool gave it (HMD-061, HMD-069). The default origin is the old shared address of
-    /// every hub, so a hosted hub that was given none takes no browser (review HM-T32).
+    /// The default origin is shared by every hub, so a hosted hub that was given none takes no browser (HMD-061, HMD-069).
     #[must_use]
     pub const fn gateway_given(&self) -> bool {
         self.hosted_cloud_key_file.is_some() && self.public_origin_given
@@ -169,7 +162,6 @@ pub enum Error {
     },
 }
 
-/// Both TLS files or neither: half of the pair is refused.
 const fn tls_pair(cert: bool, key: bool) -> Result<(), Error> {
     match (cert, key) {
         (true, false) => Err(Error::TlsIncomplete {
@@ -184,7 +176,6 @@ const fn tls_pair(cert: bool, key: bool) -> Result<(), Error> {
     }
 }
 
-/// Read `name`, falling back to `default`; a variable that is set but empty is an error.
 fn value<'a>(
     env: &'a BTreeMap<String, String>,
     name: &'static str,
@@ -197,7 +188,6 @@ fn value<'a>(
     }
 }
 
-/// `host:port` where an IPv6 host must be bracketed.
 fn host_port(variable: &'static str, text: &str) -> Result<String, Error> {
     let invalid = || Error::HostPort {
         variable,
@@ -211,7 +201,6 @@ fn host_port(variable: &'static str, text: &str) -> Result<String, Error> {
     Ok(text.to_owned())
 }
 
-/// The permitted networks: the link mode's own, or `ANIMA_PERMITTED_NETWORKS`.
 fn permitted_networks(
     env: &BTreeMap<String, String>,
     link_mode: bool,
@@ -225,7 +214,6 @@ fn permitted_networks(
     )
 }
 
-/// Comma-separated CIDR networks from `variable`.
 fn networks(variable: &'static str, text: &str) -> Result<Vec<ipnet::IpNet>, Error> {
     text.split(',')
         .map(|entry| {
@@ -242,8 +230,7 @@ fn networks(variable: &'static str, text: &str) -> Result<Vec<ipnet::IpNet>, Err
         .collect()
 }
 
-/// Collect process variables into a map. A non-unicode `ANIMA_*` name or value is an error;
-/// other non-unicode variables are skipped.
+/// A non-unicode `ANIMA_*` name or value is an error; other non-unicode variables are skipped.
 ///
 /// # Errors
 /// Returns [`Error::NotUnicode`] naming the offending `ANIMA_*` variable.
@@ -267,8 +254,7 @@ pub fn collect_env(
     Ok(env)
 }
 
-/// The release settings alone, for the `anima-hub release` commands, which need no other
-/// setting of the hub (R-179); `None` when `ANIMA_RELEASES_ENDPOINT` is unset or empty.
+/// For the `anima-hub release` commands, which need no other setting of the hub (R-179).
 ///
 /// # Errors
 /// Returns the first release variable that is malformed.
@@ -276,8 +262,6 @@ pub fn releases_from_env(env: &BTreeMap<String, String>) -> Result<Option<Releas
     releases::from_env(env)
 }
 
-/// Build the configuration from `env`, applying defaults for unset variables.
-///
 /// # Errors
 /// Returns the first variable that is empty, malformed, or half of a TLS pair.
 pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {

@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 
 use crate::ids::{PlaceId, RecordLinkId, SiteId};
 
-/// What sort of place it is. The hub keeps this closed list; the client chooses the words.
+/// The hub keeps this closed list; the client chooses the words.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Category {
     Home,
@@ -51,7 +51,7 @@ impl Category {
     }
 }
 
-/// Where a top-level place is, and how far it reaches. A child place has none (PLC-002).
+/// A child place has none (PLC-002).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Centre {
     pub latitude: f64,
@@ -59,28 +59,22 @@ pub struct Centre {
     pub radius_m: u32,
 }
 
-/// A stored place.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Place {
     pub id: PlaceId,
-    /// The place this one is inside; `None` for a top-level place.
     pub parent: Option<PlaceId>,
-    /// The name the operator gave. It is the title of the place; a geocoder never changes it
-    /// (PLC-003).
+    /// The name the operator gave; a geocoder never changes it (PLC-003).
     pub name: String,
     pub centre: Option<Centre>,
     pub category: Category,
     pub icon: String,
     pub aliases: Vec<String>,
-    /// A name from a geocoder, kept beside `name`.
     pub geocoder_name: Option<String>,
-    /// Set when the place was merged into another (PLC-004).
     pub merged_into: Option<PlaceId>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
-/// A place that passed every check and is ready to store.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Draft {
     pub name: String,
@@ -92,7 +86,6 @@ pub struct Draft {
     pub geocoder_name: Option<String>,
 }
 
-/// The input of a new place, as the operator typed it: nothing is checked yet.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Entry {
     pub name: String,
@@ -106,7 +99,7 @@ pub struct Entry {
     pub geocoder_name: Option<String>,
 }
 
-/// What the operator wants to change. A field left `None` keeps its value.
+/// A field left `None` keeps its value.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Patch {
     pub name: Option<String>,
@@ -122,7 +115,6 @@ pub struct Patch {
     pub geocoder_name: Option<Option<String>>,
 }
 
-/// The new top-level place of a split and what moves into it (PLC-004).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Split {
     pub new: Entry,
@@ -131,20 +123,18 @@ pub struct Split {
     pub links: Vec<RecordLinkId>,
 }
 
-/// One input field that the operator must fix.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Fault {
     pub field: &'static str,
     pub message: &'static str,
 }
 
-/// How many references a place has, by sort (PLC-005).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct References {
     pub links: u64,
     pub sites: u64,
     pub children: u64,
-    /// One count for each later domain that holds a `PlaceId`, by the domain's name.
+    /// One count for each later domain that holds a `PlaceId`.
     pub held: Vec<(&'static str, u64)>,
 }
 
@@ -155,7 +145,6 @@ impl References {
     }
 }
 
-/// What a merge moved. `held` is the same shape as in [`References`].
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Moved {
     pub links: u64,
@@ -164,7 +153,6 @@ pub struct Moved {
     pub held: Vec<(&'static str, u64)>,
 }
 
-/// The result of a merge: the remaining place and what moved to it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Merged {
     pub from: Place,
@@ -172,7 +160,6 @@ pub struct Merged {
     pub moved: Moved,
 }
 
-/// The result of a split: the new place and what moved to it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Divided {
     /// The place that was split, as it was.
@@ -181,16 +168,12 @@ pub struct Divided {
     pub moved: Moved,
 }
 
-/// What a delete did.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Removal {
-    /// The place had no reference and is gone.
     Deleted(Place),
-    /// The place had references: the call merged it into the replacement.
     Replaced(Box<Merged>),
 }
 
-/// What `set_site` changed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Siting {
     pub site: SiteId,

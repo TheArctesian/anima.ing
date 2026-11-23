@@ -1,5 +1,4 @@
-//! The device manager's event log as a timeline source (TML-007). It reads the log through
-//! the events domain and stores nothing.
+//! Reads the log through the events domain and stores nothing (TML-007).
 
 use std::sync::Arc;
 
@@ -17,26 +16,21 @@ use crate::{
     fleet::events::{self, EventSummary, Source},
 };
 
-/// The record kind of an event, and the name of this adapter and of its source.
 pub(super) const KIND: &str = "event";
-/// Every event reference starts with this; any other reference sorts before or after all of
-/// them.
 const EVENT_PREFIX: &str = "event:";
 const NAME: &str = "event_log";
 /// The hub saw these events itself.
 const RANK: u16 = 100;
-/// An event is one instant in the log, so every entry carries this note (TML-006).
+/// An event is one instant, so every entry carries this note (TML-006).
 const NO_END: &str = "End time not given by the source.";
 
 struct EventLog;
 
-/// The event log's adapter.
 #[must_use]
 pub fn event_log() -> Arc<dyn Adapter> {
     Arc::new(EventLog)
 }
 
-/// A session event is about a session; every other event is about a device or the hub.
 fn category(source: Source) -> Category {
     if source == Source::Session {
         Category::Session
@@ -45,7 +39,6 @@ fn category(source: Source) -> Category {
     }
 }
 
-/// The event sources `categories` let through: `None` for all of them.
 fn sources(categories: Option<&[Category]>) -> Option<Vec<Source>> {
     let wanted = categories?;
     let all = [
@@ -65,10 +58,7 @@ fn sources(categories: Option<&[Category]>) -> Option<Vec<Source>> {
     )
 }
 
-/// The place in the log (instant and event ID) that `ask` reads before. Events sort by
-/// instant, then by ID; the text of an event reference sorts as its ID does. A mark that is
-/// not an event keeps its place by its reference text: all events at its instant come after
-/// it or none does.
+/// Events sort by instant, then ID; a mark that is not an event sorts by its reference text.
 fn before(ask: &Ask) -> (DateTime<Utc>, Uuid) {
     let window_end = (ask.to, Uuid::nil());
     let Some(Mark { start, reference }) = &ask.after else {
@@ -159,8 +149,6 @@ mod tests {
             before(&ask(Some((&format!("event:{id}"), 5)))),
             (hour(5), id.parse().unwrap())
         );
-        // Newest first, a workout comes before every event of its instant, so those events
-        // are still to come; a book comes after them all. `event1` sorts as a book does.
         assert_eq!(before(&ask(Some(("workout:1", 5)))), (hour(5), Uuid::max()));
         assert_eq!(before(&ask(Some(("book:1", 5)))), (hour(5), Uuid::nil()));
         assert_eq!(before(&ask(Some(("event1:1", 5)))), (hour(5), Uuid::nil()));

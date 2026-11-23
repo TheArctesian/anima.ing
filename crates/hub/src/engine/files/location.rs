@@ -1,5 +1,4 @@
-//! The location metadata of a file (FIL-003): read at upload when the operator keeps it, and
-//! removed from each copy that the hub sends.
+//! Location metadata of a file (FIL-003): read at upload when kept, removed from each copy sent.
 
 mod exif;
 mod jpeg;

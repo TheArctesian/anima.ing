@@ -1,6 +1,3 @@
-//! The images, the volumes and the networks of a device (HOST-020): the command lines the
-//! device hears and the pure reading of what Docker 29 writes for them.
-
 use sqlx::PgPool;
 
 use super::{SECRET, device, execs, exiting, policy, reach};
@@ -83,12 +80,10 @@ fn host_020_each_image_has_its_sizes_and_the_containers_that_name_it() {
         containers: names(&["dawarich_app"]),
     };
     assert_eq!(read.images[0], dawarich);
-    // An image with no name is found by the digits of its identifier, and the name a link
-    // of another container gives (`web/db`) is not the container's own.
+    // `web/db` is a link name that another container gives, not the container's own.
     let unnamed = &read.images[1];
     assert_eq!((&unnamed.repository, &unnamed.tag), (&None, &None));
     assert_eq!(unnamed.containers, ["old-db"]);
-    // A container that names a repository with no tag uses its tag `latest`.
     assert_eq!(read.images[2].containers, ["cache"]);
     assert_eq!(read.images.len(), 3);
 }
@@ -113,7 +108,6 @@ fn host_020_a_count_that_docker_does_not_give_and_a_short_identifier_hide_no_row
 
 #[test]
 fn host_020_a_container_that_names_a_digest_is_found_by_the_identifier_only() {
-    // `redis@sha256:...` was made from an older image; the name `redis` is now of a new one.
     let users = USERS.replace(
         r#""image":"redis""#,
         r#""image":"redis@sha256:0000000000000000000000000000000000000000000000000000000000000000""#,
@@ -251,7 +245,6 @@ async fn host_020_both_reads_run_fixed_read_only_docker_commands_and_ask_for_no_
     for line in &heard {
         assert!(line.ends_with(users), "{line}");
         assert!(!line.contains("Label"), "{line}");
-        // Every docker word of the line is one of three that only read.
         let read_only = line.matches("docker ").count()
             == line.matches("docker system df ").count()
                 + line.matches("docker network ls ").count()

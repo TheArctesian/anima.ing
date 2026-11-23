@@ -1,10 +1,7 @@
-//! The locations GraphQL part (K1; K-E4 Section 13): `Query.locationSamples`,
-//! `Query.locationIngestTokens`, `Query.transferContext`, `Mutation.recordLocationSamples`,
-//! `Mutation.createLocationIngestToken` and `Mutation.revokeLocationIngestToken`.
+//! The locations GraphQL part (K1; K-E4 Section 13).
 //!
-//! A change of an ingest token writes its row, one audit entry and one event in one
-//! transaction. A stored sample writes no event (R-262). A read of samples writes one audit
-//! entry with the span and the count. No entry holds a position.
+//! A token change writes its row, one audit entry and one event in one transaction. A stored
+//! sample writes no event (R-262). No audit entry holds a position.
 
 mod views;
 
@@ -152,7 +149,6 @@ impl Mutation {
             .await
             .map_err(refused)?;
         if stored.added > 0 {
-            // One audit entry for the batch, and no event: a stored fix writes none (R-262).
             let entry = NewAudit {
                 operator: operator.clone(),
                 action: AuditAction::Create,

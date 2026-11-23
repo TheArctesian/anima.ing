@@ -1,8 +1,7 @@
-//! The install of an entry: present, and refused with a fixed reason until task H6 exists
-//! (R-299). Before that reason, an entry of the class shell needs a person signed in to the
-//! Anima app in a browser (OD-HOST-54), and a generated entry needs the digest of its image in
-//! the request and, from anything but that app, a passed test on a machine with that image
-//! (OD-HOST-50, SF-252). No machine is reached.
+//! The install of a catalogue entry: refused with a fixed reason until task H6 exists (R-299).
+//! Before that, a shell entry needs a person signed in to the Anima app in a browser (OD-HOST-54),
+//! and a generated entry needs its image digest and, from anything but that app, a passed test on
+//! a machine with that image (OD-HOST-50, SF-252). No machine is reached.
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

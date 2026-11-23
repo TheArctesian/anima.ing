@@ -1,5 +1,3 @@
-//! Good files, and each problem with its code, its position and its names.
-
 use super::super::{Place, ProblemCode, Severity, check};
 use super::codes;
 

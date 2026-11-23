@@ -1,5 +1,4 @@
-//! The JSON answers of `/files/v1`: the attachment, and a refusal with its K7 code. A refusal
-//! names the field to fix, never the value that was sent (LOG-007).
+//! A refusal names the field to fix, never the value that was sent (LOG-007).
 
 use axum::{
     Json,
@@ -10,7 +9,6 @@ use serde_json::{Value, json};
 
 use crate::engine::files::{Error, model::Attachment, pieces::StoreError};
 
-/// The attachment as the upload answers it.
 pub(super) fn attachment(attachment: &Attachment) -> Value {
     json!({
         "id": attachment.id.to_string(),
@@ -27,13 +25,12 @@ pub(super) fn attachment(attachment: &Attachment) -> Value {
     })
 }
 
-/// `{ "code": …, "message": … }` with `status`.
 pub(super) fn coded(status: StatusCode, code: &str, message: &str) -> Response {
     (status, Json(json!({ "code": code, "message": message }))).into_response()
 }
 
-/// The answer to a failed request. A fault of the hub is logged by its fixed text, which holds
-/// no value, and answered `INTERNAL` with no detail (API-010).
+/// A fault of the hub is logged by its fixed text, which holds no value, and answered
+/// `INTERNAL` with no detail (API-010).
 pub(super) fn refused(error: &Error) -> Response {
     match error {
         Error::Invalid(bad) => {

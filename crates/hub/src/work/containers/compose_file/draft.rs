@@ -1,5 +1,3 @@
-//! The service that the converter builds while it reads the options of `docker run`.
-
 use super::{
     docker_run::Note,
     mounts::{self, is_name, truth},
@@ -7,16 +5,12 @@ use super::{
     writer::Value,
 };
 
-/// The most characters of the name of the service.
 const LONGEST_SERVICE: usize = 63;
-/// The most networks, and the most aliases, of one command. Each alias is written for each
-/// network, so the two limits also limit the size of the file.
+/// Each alias is written for each network, so the two limits also limit the size of the file.
 pub(super) const MOST_NETWORKS: usize = 32;
-/// The name in the list of the options that are not converted of an option that Docker does
-/// not have: its name is the operator's own text, which can be a secret.
+/// Names an option Docker does not have: its name is the operator's text, which can be a secret.
 pub(super) const UNKNOWN_OPTION: &str = "(an unknown option)";
 
-/// The keys of a service that come first in the file, in this order.
 const FIRST_KEYS: [&str; 11] = [
     "image",
     "container_name",
@@ -37,7 +31,6 @@ pub(super) struct Draft {
     networks: Vec<String>,
     aliases: Vec<Value>,
     volumes: Vec<String>,
-    /// More networks or aliases than [`MOST_NETWORKS`] were given.
     too_many_networks: bool,
     pub notes: Vec<Note>,
     pub not_converted: Vec<String>,
@@ -68,8 +61,6 @@ fn digits(text: &str) -> bool {
     !text.is_empty() && text.bytes().all(|b| b.is_ascii_digit())
 }
 
-/// `name` as the name of a service: lower-case letters, digits, `.`, `_` and `-`, with a
-/// letter or a digit first.
 fn service_name(name: &str) -> String {
     let safe = |c: char| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-');
     let kept: String = name
@@ -85,7 +76,6 @@ fn service_name(name: &str) -> String {
     }
 }
 
-/// The last part of the name of an image, with no tag and no digest.
 fn image_name(image: &str) -> &str {
     let no_digest = image.split('@').next().unwrap_or(image);
     let last = no_digest.rsplit('/').next().unwrap_or(no_digest);
@@ -97,20 +87,17 @@ impl Draft {
         add(&mut self.notes, note);
     }
 
-    /// Records an option that is not in the file, by its name only: its value can be a secret.
-    /// It is only called for an option of Docker, whose name is fixed.
+    /// By name only: the value can be a secret. Only an option of Docker, whose name is fixed.
     pub(super) fn skip(&mut self, option: &str) {
         add(&mut self.not_converted, option.to_owned());
     }
 
-    /// Whether the command has more networks or aliases than the file may have.
     pub(super) const fn too_many_networks(&self) -> bool {
         self.too_many_networks
     }
 
-    /// An option that Docker does not have, listed with no name. With no `=`, the converter
-    /// cannot know whether the next word is its value: it reads the option as one with no
-    /// value, and says so.
+    /// With no `=`, the next word may be its value: the option is read as one with no value,
+    /// and the result says so.
     pub(super) fn unknown(&mut self, alone: bool) {
         add(&mut self.not_converted, UNKNOWN_OPTION.to_owned());
         if alone {
@@ -118,7 +105,6 @@ impl Draft {
         }
     }
 
-    /// An option with no value. `given` is the text after `=`, as in `--init=false`.
     pub(super) fn flag(&mut self, reads: Reads, option: &str, given: Option<&str>) {
         let Some(on) = given.map_or(Some(true), truth) else {
             return self.skip(option);
@@ -135,7 +121,6 @@ impl Draft {
         }
     }
 
-    /// An option with its value.
     pub(super) fn apply(&mut self, reads: Reads, option: &str, value: &str) {
         let health = |draft: &mut Self, key: &str, value: Value| {
             draft.service.child("healthcheck").set(key, value);
@@ -192,7 +177,6 @@ impl Draft {
         true
     }
 
-    /// Sets `key` when `value` is one of the values that Compose also has.
     fn only(&mut self, key: &str, value: &str, known: &[&str]) -> bool {
         let fits = known.contains(&value);
         if fits {
@@ -263,7 +247,6 @@ impl Draft {
         true
     }
 
-    /// `name=soft` or `name=soft:hard`, each a whole number.
     fn ulimit(&mut self, value: &str) -> bool {
         let Some((name, limits)) = value.split_once('=').filter(|(name, _)| is_name(name)) else {
             return false;
@@ -284,7 +267,7 @@ impl Draft {
         true
     }
 
-    /// The networks of the service, and those of the top level: each is one that exists.
+    /// Each network of the top level is one that exists.
     fn networks(&mut self) -> Option<Value> {
         if self.networks.is_empty() {
             if !self.aliases.is_empty() {
@@ -311,8 +294,7 @@ impl Draft {
         Some(top)
     }
 
-    /// The volumes of the top level. Each keeps the name that it has in Docker, so that
-    /// Compose uses the volume that `docker run` used.
+    /// Each volume keeps its name in Docker, so Compose uses the volume `docker run` used.
     fn volumes(&mut self) -> Option<Value> {
         if self.volumes.is_empty() {
             return None;
@@ -325,7 +307,6 @@ impl Draft {
         Some(top)
     }
 
-    /// The Compose file of the service, with its name.
     pub(super) fn file(&mut self, image: &str, command: Vec<Value>) -> (String, Value) {
         self.service.set("image", Value::text(image));
         if !command.is_empty() {

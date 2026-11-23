@@ -1,5 +1,3 @@
-//! The sweep against the database: the time rules and the place rules (REM-002, REM-006).
-
 use chrono_tz::Tz;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -26,7 +24,6 @@ fn seal() -> (Reading, tempfile::TempDir) {
     (reading, folder)
 }
 
-/// A top-level place of 100 m around 52.0, 4.0.
 async fn add_home(pool: &PgPool) -> PlaceId {
     sqlx::query(
         "insert into places.place \
@@ -40,7 +37,6 @@ async fn add_home(pool: &PgPool) -> PlaceId {
     PlaceId::from(Uuid::from_u128(HOME))
 }
 
-/// Stores one fix that the phone made at `observed` and that the hub got at `received`.
 async fn fix(pool: &PgPool, seal: &Reading, at_home: bool, (observed, received): (&str, &str)) {
     let sample = NewSample {
         key: format!("{observed}:{received}"),
@@ -140,7 +136,6 @@ async fn rem_006_the_sweep_fires_an_arrival_one_time_and_not_for_a_late_import(p
         "where the operator is, is Class B"
     );
 
-    // A second fix at home is no arrival, and the same sweep again reads nothing.
     fix(
         &pool,
         &seal,
@@ -157,8 +152,7 @@ async fn rem_006_the_sweep_fires_an_arrival_one_time_and_not_for_a_late_import(p
         .unwrap();
     assert_eq!(again, Swept::default());
 
-    // The operator leaves. Then an old fix from before the departure arrives late: it changes
-    // no state, so the next arrival is still an arrival.
+    // An old fix from before the departure arrives late and changes no state.
     fix(
         &pool,
         &seal,
@@ -197,7 +191,6 @@ async fn rem_006_an_arrival_that_the_hub_reads_late_changes_the_state_and_fires_
         }),
     )
     .await;
-    // The phone was offline: the fix of 12:00 reaches the hub at 12:30.
     fix(
         &pool,
         &seal,

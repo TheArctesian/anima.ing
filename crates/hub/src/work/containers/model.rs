@@ -1,5 +1,4 @@
-//! Domain types of the containers of a device (HOST-001, HOST-010): what `docker ps` says of a
-//! container, the last lines of its log, and the two values the operator gives, checked.
+//! Domain types of the containers of a device (HOST-001, HOST-010).
 
 #![expect(
     clippy::unused_async_trait_impl,

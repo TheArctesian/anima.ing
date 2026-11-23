@@ -1,7 +1,5 @@
-//! The link mode (one-click plan, item S5): the hub is reached through `anima-link`, which
-//! permits devices by key, and not through a VPN. `ANIMA_LINK_SOCKET` turns it on. The hub then
-//! listens on loopback and on that socket only (NET-003), and its permitted clients are this
-//! computer and the devices of the link (NET-001).
+//! The link mode (S5), on with `ANIMA_LINK_SOCKET`: the hub listens on loopback and that socket
+//! only (NET-003), and permits this computer and the devices of the link (NET-001).
 
 use std::{
     collections::BTreeMap,
@@ -17,14 +15,13 @@ pub(super) const LINK_SOCKET: &str = "ANIMA_LINK_SOCKET";
 pub(super) const LINK_CONTROL: &str = "ANIMA_LINK_CONTROL";
 pub(super) const HOSTED_CLOUD_KEY_FILE: &str = "ANIMA_HOSTED_CLOUD_KEY_FILE";
 
-/// Every link address: the name `anima-link` gives a permitted device key in place of a
-/// network address (`link/devices/address.go` holds the same range). No packet goes to one.
+/// The names `anima-link` gives permitted device keys; no packet goes to one.
+/// `link/devices/address.go` holds the same range.
 pub const LINK_DEVICES: Ipv6Net =
     Ipv6Net::new_assert(Ipv6Addr::new(0xfd41, 0x4e49, 0x4d41, 0, 0, 0, 0, 0), 48);
 
-/// The socket of the link mode, or `None` when the hub is not in it. In the link mode a
-/// `listen` address off loopback is refused, and so is a list of permitted networks: the link
-/// permits devices by key.
+/// In the link mode a `listen` address off loopback is refused, and so is a list of permitted
+/// networks: the link permits devices by key.
 pub(super) fn socket(
     env: &BTreeMap<String, String>,
     listen: SocketAddr,
@@ -44,8 +41,7 @@ pub(super) fn socket(
     Ok(Some(socket))
 }
 
-/// The control socket of `anima-link hub`, or `None` when unset or empty. It is refused outside
-/// the link mode: a hub that no link reaches has no devices of a link to manage (FRN-009).
+/// Refused outside the link mode: a hub that no link reaches has no link devices (FRN-009).
 pub(super) fn control(
     env: &BTreeMap<String, String>,
     link_mode: bool,
@@ -57,16 +53,13 @@ pub(super) fn control(
     Ok(control)
 }
 
-/// The dial socket of `anima-link hub`, through which the hub reaches a local port of a
-/// computer on its link (HMD-048): `dial.sock` in the folder of the control socket `control`,
-/// where the link makes both (`link/cmd/anima-link/hub.go`).
+/// Beside the control socket, where the link makes both (HMD-048, `link/cmd/anima-link/hub.go`).
 #[must_use]
 pub fn dial_socket(control: &Path) -> Option<PathBuf> {
     Some(control.parent()?.join("dial.sock"))
 }
 
-/// The cloud key file of the hosted mode, or `None` when unset or empty. It is refused without
-/// the control socket: the hub makes the invites that the cloud asks for through it (R-129).
+/// Refused without the control socket, through which the hub makes the cloud's invites (R-129).
 pub(super) fn hosted(
     env: &BTreeMap<String, String>,
     control_set: bool,
@@ -78,7 +71,6 @@ pub(super) fn hosted(
     Ok(file)
 }
 
-/// The permitted networks of the link mode: this computer and the devices of the link.
 pub(super) fn permitted_networks() -> Vec<IpNet> {
     vec![
         IpNet::V4(Ipv4Net::new_assert(Ipv4Addr::new(127, 0, 0, 0), 8)),
@@ -87,7 +79,6 @@ pub(super) fn permitted_networks() -> Vec<IpNet> {
     ]
 }
 
-/// The messages of the link mode's two refusals, for [`Error`].
 pub(super) const LISTEN_RULE: &str = "with ANIMA_LINK_SOCKET the hub listens on loopback and \
                                       the link only (NET-003)";
 pub(super) const NETWORKS_RULE: &str = "must not be set with ANIMA_LINK_SOCKET: the link \

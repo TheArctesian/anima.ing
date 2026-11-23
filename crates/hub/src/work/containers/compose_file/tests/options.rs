@@ -1,10 +1,6 @@
-//! The options one at a time: the forms of an option, the options with a form of their own,
-//! and the options that are not converted.
-
 use super::super::Note;
 use super::{converted, keys, list, text, tree};
 
-/// The text at `path` of the one service of the file of `command`.
 fn of_service(command: &str, path: &[&str]) -> String {
     let done = converted(command);
     let file = tree(&done.compose_file);
@@ -13,7 +9,6 @@ fn of_service(command: &str, path: &[&str]) -> String {
     text(&file, &whole).to_owned()
 }
 
-/// A command, a path in its one service, and the text there.
 const FORMS: [(&str, &[&str], &str); 31] = [
     ("docker run --name=a nginx", &["container_name"], "a"),
     ("docker run --name a nginx", &["container_name"], "a"),
@@ -185,7 +180,6 @@ fn host_022_a_named_network_is_external_and_a_mode_is_not() {
         assert_eq!(keys(&file, &[]), ["services"], "{mode}");
         assert!(done.notes.is_empty(), "{mode}");
     }
-    // An alias with no network of a name has no place in the file.
     let alone = converted("docker run --network-alias web --network host nginx");
     assert_eq!(alone.not_converted, ["--network-alias"]);
 }
@@ -228,7 +222,7 @@ fn host_022_an_option_with_no_key_is_listed_and_is_not_an_error() {
 #[test]
 fn host_022_an_option_that_docker_does_not_have_is_read_as_one_with_no_value() {
     let done = converted("docker run --frobnicate --level=9 -Z nginx echo");
-    // An option that Docker does not have is the operator's own text: it has no name here.
+    // An unknown option is the operator's own text, so the list does not name it.
     assert_eq!(done.not_converted, ["(an unknown option)"]);
     assert_eq!(done.notes, [Note::UnknownOptionReadAsFlag]);
     assert_eq!(

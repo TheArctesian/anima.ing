@@ -1,5 +1,4 @@
-//! The pure rules of the locations domain: the match of an event with a sample (R-145), the
-//! OwnTracks form and the check of a sample.
+//! The match of an event with a sample (R-145), the OwnTracks form and a sample's check.
 
 use chrono::{DateTime, TimeDelta, Utc};
 use uuid::Uuid;
@@ -16,7 +15,6 @@ fn event_at() -> DateTime<Utc> {
     DateTime::from_timestamp(1_794_830_400, 0).unwrap()
 }
 
-/// A sample `seconds` from the event at the centre of Home, with `accuracy`.
 fn sample(number: u128, seconds: i64, accuracy: Option<f64>) -> Sample {
     Sample {
         id: SampleId::from(Uuid::from_u128(number)),
@@ -123,7 +121,6 @@ fn r_145_a_late_or_newer_sample_does_not_change_the_evidence_of_an_older_event()
         &home(),
         &RULE,
     );
-    // A newer position at a different place, and the same sample received a day late.
     let newer = Sample {
         position: Position {
             latitude: Some(48.0),

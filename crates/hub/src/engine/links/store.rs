@@ -1,5 +1,3 @@
-//! All SQL on schema `links`: I/O only.
-
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgExecutor};
 use uuid::Uuid;
@@ -35,7 +33,6 @@ impl TryFrom<LinkRow> for Link {
     }
 }
 
-/// Inserts the link; `None` when a link with the same source, target and kind exists.
 pub(super) async fn insert(
     conn: &mut PgConnection,
     new: &NewLink,
@@ -58,8 +55,6 @@ pub(super) async fn insert(
     row.map(Link::try_from).transpose()
 }
 
-/// The stored link with the source, target and kind of `new`, locked until the transaction
-/// ends.
 pub(super) async fn existing(
     conn: &mut PgConnection,
     new: &NewLink,
@@ -76,7 +71,6 @@ pub(super) async fn existing(
     row.map(Link::try_from).transpose()
 }
 
-/// Writes the label of one link.
 pub(super) async fn set_label(
     conn: &mut PgConnection,
     id: RecordLinkId,
@@ -90,7 +84,6 @@ pub(super) async fn set_label(
         .map(drop)
 }
 
-/// Up to `limit` links that start or end at `record`, newest first.
 pub(super) async fn touching(
     db: impl PgExecutor<'_>,
     record: &Reference,
@@ -107,7 +100,6 @@ pub(super) async fn touching(
     rows.into_iter().map(Link::try_from).collect()
 }
 
-/// Deletes one link and returns it; `None` when there is no such link.
 pub(super) async fn delete(
     conn: &mut PgConnection,
     id: RecordLinkId,
@@ -121,7 +113,6 @@ pub(super) async fn delete(
     row.map(Link::try_from).transpose()
 }
 
-/// How many links start or end at `record`.
 pub(super) async fn count(conn: &mut PgConnection, record: &Reference) -> Result<i64, sqlx::Error> {
     sqlx::query_scalar("SELECT count(*) FROM links.record_link WHERE source = $1 OR target = $1")
         .bind(record.as_str())
@@ -129,9 +120,8 @@ pub(super) async fn count(conn: &mut PgConnection, record: &Reference) -> Result
         .await
 }
 
-/// Moves the links of `from` to `to` (all of them, or only those in `only`). Links that would
-/// become a link to itself, or a second copy of one that `to` has, are deleted first. Returns
-/// how many links moved.
+/// Links that would become a link to itself, or a second copy of one that `to` has, are
+/// deleted first.
 pub(super) async fn retarget(
     conn: &mut PgConnection,
     (from, to): (&Reference, &Reference),

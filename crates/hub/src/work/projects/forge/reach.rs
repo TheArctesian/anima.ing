@@ -1,5 +1,4 @@
-//! Whether the hub can read a project repository on GitHub now, from the operator's choices and
-//! the standing of the account that holds it (PRJ-032). Pure.
+//! Whether the hub can read a project repository on GitHub now (PRJ-032).
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"

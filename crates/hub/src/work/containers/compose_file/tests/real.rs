@@ -1,9 +1,7 @@
-//! Real `docker run` commands from the documents of published images: each becomes a
-//! Compose file with one service that passes the syntax check.
+//! Real `docker run` commands from the documents of published images.
 
 use super::{converted, keys, tree};
 
-/// A command, the name of its service, and the keys of the service in the file.
 const COMMANDS: [(&str, &str, &[&str]); 24] = [
     ("docker run hello-world", "hello-world", &["image"]),
     (

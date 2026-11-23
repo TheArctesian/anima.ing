@@ -1,9 +1,5 @@
-//! Reading the installations of an App, signed in as the App before an installation is chosen
-//! (PRJ-039, K-E1 Sections 7 and 10a).
-//!
-//! An installation id is untrusted text from a browser redirect: it enters a path only when it
-//! is 1 to 20 digits. The App token is the bearer of an ordinary provider `GET`, is never kept
-//! and has no `Debug`. A reply is read by the provider and never quoted (LOG-007).
+//! Reading the installations of an App, signed in as the App (PRJ-039, K-E1 Sections 7 and 10a).
+//! An installation id from a browser redirect enters a path only when it is 1 to 20 digits; the App token is never kept; a reply is never quoted (LOG-007).
 
 use chrono::{DateTime, Utc};
 use ring::rand::SecureRandom;
@@ -17,24 +13,18 @@ use super::{
 };
 use crate::fleet::credentials::Secret;
 
-/// The most installations one list asks for.
 const PER_PAGE: &str = "100";
 
-/// What the source said about an installation, or the list of them.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Lookup<T> {
-    /// What the source holds. A suspended installation is found, with `suspended` set.
+    /// A suspended installation is found, with `suspended` set.
     Found(T),
-    /// A 404, or an id that is not 1 to 20 digits and so was never asked for.
     NotFound,
-    /// No answer, a 5xx or a rate limit: worth asking again later.
+    /// Worth asking again later.
     Unreachable,
-    /// A refused App token, another status, a reply too large or one the provider could not
-    /// read; or a source that cannot make an App.
     Unusable,
 }
 
-/// The installation `id` of the App that `signer` signs for, at the source of `declaration`.
 pub async fn installation(
     transport: &Transport,
     declaration: &Declaration,
@@ -52,7 +42,6 @@ pub async fn installation(
     read(asked, |body| (registration.parse_installation)(body))
 }
 
-/// The first 100 installations of the App that `signer` signs for.
 pub async fn installations(
     transport: &Transport,
     declaration: &Declaration,
@@ -78,8 +67,6 @@ pub async fn installations(
     read(asked, parse_installations)
 }
 
-/// Sends a `GET` of `path` with `query`, signed in as the App, and judges the status: a 200 is
-/// the answer, anything else is already the outcome.
 async fn ask<T>(
     transport: &Transport,
     declaration: &Declaration,
@@ -109,7 +96,6 @@ async fn ask<T>(
     }
 }
 
-/// The provider's reading of a 200 reply.
 fn read<T>(
     asked: Result<Answer, Lookup<T>>,
     parse: impl FnOnce(&[u8]) -> Result<T, Problem>,

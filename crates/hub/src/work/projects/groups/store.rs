@@ -1,13 +1,11 @@
-//! The only SQL of the table of groups and of the group of a project (PRO-059 to PRO-063).
-//! I/O only.
+//! PRO-059 to PRO-063.
 
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgPool};
 
 use crate::ids::{ProjectGroupId, ProjectId};
 
-/// A group with the number of its projects that have a repository that is not left out
-/// (PRO-064).
+/// `project_count` counts projects with a repository that is not left out (PRO-064).
 #[derive(Clone, Debug, sqlx::FromRow)]
 pub(in crate::work::projects) struct GroupRow {
     pub id: ProjectGroupId,
@@ -17,7 +15,6 @@ pub(in crate::work::projects) struct GroupRow {
     pub project_ids: Vec<ProjectId>,
 }
 
-/// A project whose group a change moved: its slug and the group that it had before.
 #[derive(Clone, Debug, sqlx::FromRow)]
 pub(in crate::work::projects) struct MovedRow {
     pub id: ProjectId,
@@ -31,7 +28,6 @@ const GROUP: &str = "SELECT g.id, g.name, g.created_at, \
     )) AS project_count, ARRAY(SELECT p.id FROM projects.projects p WHERE p.group_id = g.id ORDER BY p.id) AS project_ids \
     FROM projects.groups g";
 
-/// Each group, in name order.
 pub(in crate::work::projects) async fn all(db: &PgPool) -> Result<Vec<GroupRow>, sqlx::Error> {
     sqlx::query_as(&format!(
         "{GROUP} ORDER BY lower(g.name) COLLATE \"C\", g.id"
@@ -40,7 +36,6 @@ pub(in crate::work::projects) async fn all(db: &PgPool) -> Result<Vec<GroupRow>,
     .await
 }
 
-/// The group of each of `projects` that has one: `(project, group)`.
 pub(in crate::work::projects) async fn of_projects(
     db: &PgPool,
     projects: &[ProjectId],
@@ -70,7 +65,6 @@ pub(in crate::work::projects) async fn of_projects(
         .collect())
 }
 
-/// The group `id`.
 pub(in crate::work::projects) async fn one(
     conn: &mut PgConnection,
     id: ProjectGroupId,
@@ -81,7 +75,6 @@ pub(in crate::work::projects) async fn one(
         .await
 }
 
-/// Locks the group `id` for the change of this transaction; false when there is none.
 pub(in crate::work::projects) async fn lock(
     conn: &mut PgConnection,
     id: ProjectGroupId,
@@ -94,7 +87,6 @@ pub(in crate::work::projects) async fn lock(
     Ok(found.is_some())
 }
 
-/// Whether a group other than `except` has this name, with the case of the letters ignored.
 pub(in crate::work::projects) async fn name_taken(
     conn: &mut PgConnection,
     name: &str,
@@ -137,7 +129,7 @@ pub(in crate::work::projects) async fn rename(
         .map(drop)
 }
 
-/// Deletes the group `id`; its projects keep each repository and get no group (PRO-062).
+/// Its projects keep each repository and get no group (PRO-062).
 pub(in crate::work::projects) async fn delete(
     conn: &mut PgConnection,
     id: ProjectGroupId,
@@ -149,7 +141,6 @@ pub(in crate::work::projects) async fn delete(
         .map(drop)
 }
 
-/// The ids of `projects` that exist.
 pub(in crate::work::projects) async fn existing(
     conn: &mut PgConnection,
     projects: &[ProjectId],
@@ -160,7 +151,6 @@ pub(in crate::work::projects) async fn existing(
         .await
 }
 
-/// Puts each of `projects` in `group`, or in no group; returns each project that moved.
 pub(in crate::work::projects) async fn set_group(
     conn: &mut PgConnection,
     projects: &[ProjectId],

@@ -1,6 +1,5 @@
-//! The reason of a placement as one line that a person reads (ROU-004, R-259), for example
-//! "studio: fits, 22 GB of memory and 180 GB of disk free; laptop refused: 2 GB of memory free,
-//! the job needs 8 GB". The line is data: it holds names of machines (MCP-008).
+//! The reason of a placement as one line that a person reads (ROU-004, R-259). The line is data:
+//! it holds names of machines (MCP-008).
 
 use chrono::{DateTime, Utc};
 
@@ -10,11 +9,9 @@ use super::{
 };
 use crate::ids::DeviceId;
 
-/// The last decision of the placement for one job and one machine.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Decision {
     pub device: DeviceId,
-    /// The name of the machine when it asked.
     pub machine: String,
     pub verdict: Verdict,
     /// What the machine said that it has free.
@@ -26,7 +23,6 @@ pub struct Decision {
 const GB: u64 = 1 << 30;
 const MB: u64 = 1 << 20;
 
-/// A count of bytes in whole GB, or in whole MB below 1 GB.
 fn size(bytes: u64) -> String {
     if bytes >= GB {
         format!("{} GB", bytes / GB)
@@ -42,7 +38,6 @@ fn spelled<T: serde::Serialize>(word: &T) -> String {
     }
 }
 
-/// Why a machine does not get the job, without its name.
 fn refusal(job: &Job, decision: &Decision) -> String {
     let asked = &job.asked;
     match decision.verdict {
@@ -70,8 +65,7 @@ fn refusal(job: &Job, decision: &Decision) -> String {
     }
 }
 
-/// The one line for `job` from the last decision of each machine: the machines that fit first,
-/// then each machine that was refused with its reason.
+/// The machines that fit come first, then each refused machine with its reason.
 #[must_use]
 pub fn line(job: &Job, decisions: &[Decision]) -> String {
     if decisions.is_empty() {
@@ -94,7 +88,6 @@ pub fn line(job: &Job, decisions: &[Decision]) -> String {
     fits.chain(refused).collect::<Vec<_>>().join("; ")
 }
 
-/// Why the machine that a job names can never run it, as one sentence.
 #[must_use]
 pub fn unfit(job: &Job, why: Unfit) -> String {
     let asked = &job.asked;

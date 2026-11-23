@@ -10,7 +10,6 @@ use crate::{
     engine::sources::live::pace::{Pace, gap},
 };
 
-/// Long enough for a waiting task to have run, short enough to keep the test quick.
 const SETTLE: Duration = Duration::from_millis(50);
 
 #[test]

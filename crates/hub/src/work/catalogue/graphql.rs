@@ -1,8 +1,5 @@
-//! The K1 roots of the catalogue (HOST-047, task H38): `catalogueEntries`, `catalogueEntry`
-//! and `installCatalogueEntry`. Each is open to an API key: a key and an agent may ask for the
-//! install of an entry of the tested catalogue (R-234), but not of a shell (OD-HOST-54) or of a
-//! generated entry with no passed test on a machine. The install is refused with a fixed
-//! reason, reaches no machine and keeps nothing.
+//! The K1 roots of the catalogue (HOST-047, task H38).
+//! An API key may ask for the install of a tested entry (R-234), but not of a shell (OD-HOST-54) or of a generated entry with no passed test on a machine.
 
 use async_graphql::{Context, ID, Object, Result};
 

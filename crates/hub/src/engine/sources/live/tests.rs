@@ -1,4 +1,4 @@
-//! The pure parts of the live path: the cache, the budget and the pace (K-E1 Section 13.1).
+//! The pure parts of the live path (K-E1 Section 13.1).
 
 mod budget;
 mod pace;

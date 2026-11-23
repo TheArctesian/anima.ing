@@ -1,4 +1,3 @@
-//! Which pull requests or issues a list asks GitHub for. Pure.
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"
