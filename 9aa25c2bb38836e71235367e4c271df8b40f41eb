@@ -1,2 +1,2 @@
-2026-11-23T20:11:03.778Z
-a conflict in Cargo.lock, crates/daemon-core/src/model_work.rs, crates/daemon-core/src/model_work/cause.rs, crates/daemon/src/model/server.rs, crates/daemon/src/model/tree/linux.rs
+2026-11-23T21:44:58.625Z
+a conflict in Cargo.lock, crates/daemon-core/src/model_work.rs, crates/daemon-core/src/model_work/cause.rs, crates/daemon/src/model/server.rs, crates/daemon/src/model/tree/linux.rs, docs/plans/compute-plan.md
