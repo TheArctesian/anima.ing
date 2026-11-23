@@ -57,7 +57,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-121 | The hardware values of the Mac and of the Linux PC `pop-os` agree with what each system shows | A hub and a daemon of this build on both computers | Open |
 | HT-120 | The model work of the daemon installs `llama-server`, starts it on loopback, supervises it and stops it on the Mac and on `pop-os` | A test hub that gives model items, and a daemon of this build in a test folder on both computers | Open |
 | HT-119 | The cgroup of each model server on `pop-os`: a child that leaves its session is seen and ended, and a start with no delegated cgroup fails | `pop-os` with a daemon of this build in a test folder, run by its systemd user unit, which has `Delegate=yes` (R-334) | Passed |
-| HT-007 | The pinned Rust version on the Linux computer | The Linux development computer | Open |
+| HT-007 | The pinned Rust version on the Linux computer | The Linux development computer | Passed |
 | HT-008 | A macOS release build with the pinned Rust version | A Mac builder | Open |
 | HT-010 | Merge a pull request, and a set of pull requests, on GitHub | A GitHub repository that is safe to change, GitHub on the hosted hub, and a sign-in of the command line (OD-25) | Open |
 | HT-011 | Run a workflow again, cancel a run and start a workflow on GitHub | A GitHub repository with a workflow, GitHub on the hosted hub, and a sign-in of the command line (OD-25) | Open |
@@ -67,7 +67,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-015 | The Work, Code and History tabs of a project in the client | The application on the hosted hub, with GitHub connected | Open |
 | HT-016 | A release build on the Linux builder puts the bundle in its own clone | The Linux builder | Open |
 | HT-018 | Each machine with the old program `anima-agent` gets `anima-daemon` and enrols again | Each machine that has the old program, and a daemon on the hosted hub (HM-D16) | Open |
-| HT-020 | The desktop application builds on Linux with no lint error (GH-52) | The Linux computer | Open |
+| HT-020 | The desktop application builds on Linux with no lint error (GH-52) | The Linux computer | Passed |
 | HT-021 | The delay of the session picture in the Linux application (GH-54) | The Linux computer, the Mac, and a hub that has VNC sessions (a local hub) | Open |
 | HT-023 | The hash chain of the audit log on the real hub | The hosted hub, and a key for the command line or an MCP client | Open |
 | HT-025 | A phone joins a hub with an invite, through the link in the app; the Paste invite and Joining screens | An iPhone and an Android phone with a build of `mobile/m1-shell`, the simulator and the emulator, a hub with an invite | Open |
@@ -118,7 +118,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-097 | The thread runner of the daemon: Claude Code and Codex started and driven on this computer (TH11 to TH13) | A Mac with Claude Code and Codex signed in, and a build of the local branch `threads/runner` with a state folder and a label of your own | Open |
 | HT-079 | The page Code with the real sessions of Claude Code and Codex of this computer (R-286) | A Mac and the Linux computer `pop-os`, each with sessions of the two programs, and a build of the branch `threads/read-side` | Open |
 | HT-100 | The page Code: the list and the thread scroll on their own, and a thread opens at its newest end (THR-013, THR-014) | The desktop application of a build that holds the branch `threads/scroll`, with sessions of Claude Code or Codex on the Mac | Open |
-| HT-065 | The measurements of the isolation design on Linux (task W2): a job in a rootless container on the computer `pop-os` | The computer `pop-os`, a terminal there, and one `sudo` for the installation of Podman | Open |
+| HT-065 | The measurements of the isolation design on Linux (task W2): a job in a rootless container on the computer `pop-os` | The computer `pop-os`, a terminal there, and one `sudo` for the installation of Podman | Passed |
 | HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
 | HT-059 | The application hands its link to a unit of the user on a hosted hub (HMD-058, task HM-T24 parts b and c) | This Mac, an application of this build that carries `anima-link`, the sign-in to the hosted hub | Open |
@@ -634,9 +634,10 @@ Clippy on the Mac, so the two computers used different versions.
 
 1. On the Linux development computer, get `main` and run `cargo --version` in the repository.
    Expected: `cargo 1.100.0`. rustup can download it first.
-2. Run `bun run gates`. Expected: `gates: 20/20 pass`.
+2. Run `bun run gates`. Expected: the last line is `gates: N/N pass`, with N the number of gates (21 on 2026-11-22).
 
-Result: Open.
+Result: Passed (operator, 2026-11-23: "All three Passed"), on `pop-os` with `main` at `abfffd8cf`, on 2026-11-22:
+`cargo 1.100.0` and `gates: 21/21 pass` (the baseline gate against `phase-2`).
 
 ### HT-008: a macOS release build with the pinned Rust version
 
@@ -927,7 +928,10 @@ No gate runs on Linux, and the Mac has no Linux target.
    Expected: the bundles are built. If the error of GH-52 comes again, copy it into GH-52 with the
    output of step 1.
 
-Result: Open.
+Result: Passed (operator, 2026-11-23: "All three Passed"), on `pop-os` with `main` at `abfffd8cf` and `rustc 1.100.0`.
+Step 2: no error, only two manifest warnings about `tauri-plugin-updater`. Step 3, with `RUSTFLAGS` not set: the
+AppImage was built (96.64 MiB). The build then stopped at the updater signature, "A public key has been found,
+but no private key", because `TAURI_SIGNING_PRIVATE_KEY` is not set on that computer. That is not the error of GH-52.
 
 ### HT-021: the delay of the session picture in the Linux application (GH-54)
 
@@ -2660,7 +2664,8 @@ Run on 2026-11-23 by a session on `pop-os`, with Podman already installed: steps
 empty login file for Podman (its stored login for Docker Hub was refused). The log is in the record, with the name of
 the user removed, and the results are its Section 3.5.
 
-Result: Open.
+Result: Passed (operator, 2026-11-23: "All three Passed"). The operator ran steps 3 to 5 again on `pop-os` on 2026-11-23,
+and the log agreed with the log in Section 3.5 of the record.
 
 ### HT-133: the public names of applications through the route proxy (task H21)
 
