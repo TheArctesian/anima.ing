@@ -47,6 +47,7 @@ for (const chosen of MODES.filter((mode) => !mode.dyslexic && mode.width === 128
         await opened(page, each.path, storedSettings(chosen));
         await expect(page.getByRole('navigation', { name: 'Hosting sections' })).toBeVisible();
         await expect(page.getByRole('heading', { name: each.heading }).first()).toBeVisible();
+        if (each.path === '/hosting/routes') await expect(page.locator('main header').getByRole('button', { name: 'Add a route' })).toBeVisible();
         await shot(page, `${FOLDER}${chosen.folder}/${each.name}.png`);
       });
     }
