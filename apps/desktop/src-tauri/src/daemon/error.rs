@@ -49,6 +49,13 @@ pub enum DaemonError {
     #[error("the new copy of the daemon did not pass its check; the copy of before stays")]
     Unchecked,
     #[error("the new daemon did not answer in time after its start; the copy of before runs again")]
+    #[cfg_attr(
+        not(unix),
+        expect(
+            dead_code,
+            reason = "only the update of a Unix system starts a new daemon"
+        )
+    )]
     Unhealthy,
 }
 
