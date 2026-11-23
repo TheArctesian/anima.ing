@@ -13,3 +13,15 @@ pub mod plan {
     }
     pub(crate) const SYSTEM_HOME: &str = "/var/lib/anima-daemon";
 }
+
+/// The admin step of the model launcher is Linux only (L1-6c): on Windows it does nothing.
+///
+/// # Errors
+/// None; the type matches the Unix one.
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "one signature with the Linux admin step"
+)]
+pub fn launcher_after_install(_host: &install::Host<'_>) -> Result<(), std::convert::Infallible> {
+    Ok(())
+}
