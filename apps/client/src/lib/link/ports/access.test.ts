@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import { fakeHub } from '$lib/devices/hub.fixture';
-import { publishAccess } from './access';
+import { publishAccess, publishedAccess } from './access';
 
 const calls = vi.hoisted(() => ({ update: vi.fn().mockResolvedValue({ ok: true }) }));
 vi.mock('$lib/desktop/link/shell', () => ({ readLink: () => ({ ok: true, value: { publicKey: 'local-key', port: 1234 } }) }));
@@ -9,7 +9,7 @@ vi.mock('$lib/link/api', () => ({ linkApi: () => ({ devices: () => ({ ok: true, 
 vi.mock('$lib/devices/client', () => ({ devicesApi: () => ({
   deviceHosts: () => ({ ok: true, value: [{ host: 'device.test', id: 'device-id' }] }),
   get: () => ({ ok: true, value: {
-    os: 'MACOS', ssh: { username: 'ssh-user', auth: 'PASSWORD' },
+    os: 'MACOS', ssh: { enabled: true, port: 22, username: 'ssh-user', auth: 'PASSWORD' },
     vnc: { enabled: true, port: 5902, username: 'other-vnc-user' },
   } }),
   update: calls.update,
@@ -24,4 +24,10 @@ it('publishes SSH alone without rewriting another account or port used by VNC', 
   expect(calls.update).toHaveBeenCalledExactlyOnceWith('device-id', {
     ssh: { enabled: true, port: 22, username: 'ssh-user', auth: 'PASSWORD' },
   });
+});
+
+
+it('recognizes the saved SSH connection without claiming VNC configured on another port', async () => {
+  const { hub } = fakeHub();
+  expect(await publishedAccess(hub)).toEqual([22]);
 });

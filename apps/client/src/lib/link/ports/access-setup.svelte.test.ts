@@ -4,9 +4,9 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
 import AccessSetup from './AccessSetup.svelte';
 
-const calls = vi.hoisted(() => ({ localAccess: vi.fn(), publishAccess: vi.fn(), checkAccessHub: vi.fn(), settings: vi.fn() }));
+const calls = vi.hoisted(() => ({ localAccess: vi.fn(), publishAccess: vi.fn(), publishedAccess: vi.fn(), checkAccessHub: vi.fn(), settings: vi.fn() }));
 vi.mock('$lib/desktop/link/access', () => ({ localAccess: calls.localAccess }));
-vi.mock('./access', () => ({ publishAccess: calls.publishAccess, checkAccessHub: calls.checkAccessHub }));
+vi.mock('./access', () => ({ publishAccess: calls.publishAccess, publishedAccess: calls.publishedAccess, checkAccessHub: calls.checkAccessHub }));
 vi.mock('$lib/desktop/system-settings', () => ({ openSharingSettings: calls.settings }));
 vi.mock('$lib/hub/context', () => ({ useHub: () => ({}) }));
 vi.mock('motion', async (original) => ({ ...(await original<typeof import('motion')>()), animate: (await import('$lib/motion/engine.fixture')).fakeRun }));
@@ -27,6 +27,7 @@ async function show(): Promise<void> {
 
 beforeEach(() => {
   installAnimations();
+  calls.publishedAccess.mockReset().mockResolvedValue([]);
   calls.settings.mockReset().mockResolvedValue(undefined);
   calls.checkAccessHub.mockReset().mockResolvedValue('local-key');
   vi.stubGlobal('navigator', { userAgent: 'Macintosh' });
@@ -150,7 +151,7 @@ it('retries failed publication without preparing protocols and never calls unpub
   await settle();
   expect(document.body.textContent).toContain('Hub update failed. Retry.');
   expect(document.body.textContent).not.toContain('Ready in Anima');
-  const sync = document.querySelector<HTMLButtonElement>('[aria-label="Sync SSH"]');
+  const sync = document.querySelector<HTMLButtonElement>('[aria-label="Enable in Anima: SSH"]');
   expect(sync?.getAttribute('aria-disabled')).toBe('false');
   sync?.click();
   await settle();
@@ -173,4 +174,19 @@ it('distinguishes a listening server from verified authentication and retries wi
   expect(calls.localAccess).toHaveBeenLastCalledWith([22, 5900], 5900);
   expect(calls.settings).not.toHaveBeenCalled();
   expect(document.body.textContent).not.toContain('Ready in Anima');
+});
+
+
+it('reads saved hub access when reopening without requiring another enable action', async () => {
+  calls.localAccess.mockResolvedValue({ ...fresh, configured: true, open: [22, 5900], ready: [22, 5900] });
+  calls.publishedAccess.mockResolvedValue([22, 5900]);
+  const target = document.createElement('div');
+  document.body.append(target);
+  app = mount(AccessSetup, { target });
+  target.querySelector<HTMLButtonElement>('button')?.click();
+  await settle();
+  expect(document.querySelector('[aria-label="Enabled SSH"]')).not.toBeNull();
+  expect(document.querySelector('[aria-label="Enabled Screen sharing"]')).not.toBeNull();
+  expect(calls.publishAccess).not.toHaveBeenCalled();
+  expect(calls.localAccess).toHaveBeenCalledExactlyOnceWith();
 });
