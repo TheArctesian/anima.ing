@@ -80,6 +80,11 @@ pub async fn within(git: &Git, worktree: &Worktree) -> Result<u64, GitError> {
     for left_over in ["staging", "restore", "outgoing"] {
         let _ = std::fs::remove_dir_all(own.join(left_over));
     }
+    // A `git` that was ended in the middle leaves its lock. The caller holds the lock of
+    // this worktree, so no `git` of the runner works in this folder now.
+    for lock in ["index.lock", "shallow.lock"] {
+        let _ = std::fs::remove_file(own.join(lock));
+    }
     let objects = own.join("objects");
     let room = git.own_room();
     let mut used = super::disk::bytes(&objects);
@@ -91,8 +96,16 @@ pub async fn within(git: &Git, worktree: &Worktree) -> Result<u64, GitError> {
         }
     }
     let mib = |bytes: u64| bytes / (1024 * 1024);
-    match room.saturating_sub(used).min(shared::free_for(own)) {
-        0 => Err(GitError::Failed {
+    // A removal saves the work also when the disk is nearly full: it frees the disk after.
+    let free = if room == u64::MAX {
+        shared::free_at(own)
+    } else {
+        shared::free_for(own)
+    };
+    match room.saturating_sub(used) {
+        // Not the thread but the disk has no room: a snapshot with no changed file works.
+        left if left > 0 => Ok(left.min(free)),
+        _ => Err(GitError::Failed {
             code: None,
             said: format!(
                 "the checkpoints of this chat use {} MiB of the disk of Anima's records; one \
@@ -102,7 +115,6 @@ pub async fn within(git: &Git, worktree: &Worktree) -> Result<u64, GitError> {
                 mib(room)
             ),
         }),
-        left => Ok(left),
     }
 }
 
@@ -118,6 +130,10 @@ pub async fn within(git: &Git, worktree: &Worktree) -> Result<u64, GitError> {
 pub async fn small(git: &Git, worktree: &Worktree) -> Result<(), GitError> {
     let own = &worktree.record().own;
     shared::ends(worktree)?;
+    // The index of the runner holds the files of the last snapshot: they are no checkpoint.
+    // The next snapshot fills it again.
+    let empty = Run::new(worktree.folder(), ["read-tree", "--empty"]);
+    git.output(empty).await?;
     let prune = Run::new(worktree.folder(), ["prune", "--expire=now"]).with_time(shared::LONG);
     let pruned = git.output(prune).await;
     shared::ends(worktree)?;
@@ -188,7 +204,7 @@ pub async fn give(
         "--quiet".as_ref(),
         named.as_os_str(),
     ];
-    let run = Run::new(worktree.folder(), pack);
+    let run = Run::new(worktree.folder(), pack).with_time(shared::LONG);
     git.output(run.with_input(wanted.into_bytes())).await?;
     for pack in packs_in(&outgoing)? {
         // The pack first: git reads a pack only when its list of names is beside it.

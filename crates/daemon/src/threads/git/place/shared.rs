@@ -265,12 +265,14 @@ pub fn free_for(folder: &Path) -> u64 {
 
 /// The bytes that are free on the disk that holds `folder`.
 #[cfg(unix)]
-fn free_at(folder: &Path) -> u64 {
+#[must_use]
+pub fn free_at(folder: &Path) -> u64 {
     rustix::fs::statvfs(folder).map_or(0, |disk| disk.f_bavail.saturating_mul(disk.f_frsize))
 }
 
 #[cfg(not(unix))]
-const fn free_at(_folder: &Path) -> u64 {
+#[must_use]
+pub const fn free_at(_folder: &Path) -> u64 {
     u64::MAX
 }
 

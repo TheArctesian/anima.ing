@@ -62,6 +62,9 @@ fn link(_to: &std::ffi::OsStr, _at: &Path) -> std::io::Result<()> {
     Err(std::io::ErrorKind::Unsupported.into())
 }
 
+/// The least bytes that one file of a snapshot costs: a block of the disk.
+const BLOCK: u64 = 4096;
+
 /// The open folder of a worktree. Each path is found from it, part by part.
 #[derive(Debug)]
 pub struct Root(Dir);
@@ -92,24 +95,35 @@ impl Root {
         if let Some(folder) = copy.parent() {
             std::fs::create_dir_all(folder)?;
         }
-        if let Some(to) = above.link(name) {
-            return link(&to, &copy).map(|()| true);
-        }
-        let Some(found) = above.file(name)? else {
-            return Ok(false);
-        };
-        let runs = runs(&found.metadata()?);
-        let mut written = std::fs::File::create(&copy)?;
-        // One byte more than what is left shows a file that is too large. A file with a
-        // hole is read as the bytes that it says it has.
-        let taken = std::io::copy(&mut found.take(left.saturating_add(1)), &mut written)?;
-        *left = left.checked_sub(taken).ok_or_else(|| {
+        let too_large = || {
             std::io::Error::new(
                 std::io::ErrorKind::FileTooLarge,
                 "the changed files are larger than what the checkpoints of this chat can still \
                  hold; remove old checkpoints of the chat or make the files smaller",
             )
-        })?;
+        };
+        // Each file and each link uses at least one block of the disk of the records.
+        let pay = |left: &mut u64, bytes: u64| {
+            *left = left.checked_sub(bytes.max(BLOCK)).ok_or_else(too_large)?;
+            Ok::<_, std::io::Error>(())
+        };
+        if let Some(to) = above.link(name) {
+            pay(left, u64::try_from(to.len()).unwrap_or(u64::MAX))?;
+            return link(&to, &copy).map(|()| true);
+        }
+        let Some(found) = above.file(name)? else {
+            return Ok(false);
+        };
+        let about = found.metadata()?;
+        let runs = runs(&about);
+        // A file that says a size over what is left is not read at all.
+        if about.len() > *left {
+            return Err(too_large());
+        }
+        let mut written = std::fs::File::create(&copy)?;
+        // One byte more than what is left shows a file that grew while it was read.
+        let taken = std::io::copy(&mut found.take(left.saturating_add(1)), &mut written)?;
+        pay(left, taken)?;
         if runs {
             let mut can = written.metadata()?.permissions();
             #[cfg(unix)]

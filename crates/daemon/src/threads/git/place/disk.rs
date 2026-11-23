@@ -37,19 +37,33 @@ pub fn name(shared: &Path, project: &Path) -> std::io::Result<()> {
     std::fs::write(shared.join(OF), project.as_os_str().as_encoded_bytes())
 }
 
-/// The bytes of each file below `folder`; a link is counted as a link, never followed.
+/// The bytes of the disk that the files and folders below `folder` use; a link is not
+/// followed and counts as nothing.
 pub(super) fn bytes(folder: &Path) -> u64 {
     let Ok(listed) = std::fs::read_dir(folder) else {
         return 0;
     };
     listed
         .flatten()
-        .map(|entry| match entry.file_type() {
-            Ok(kind) if kind.is_dir() => bytes(&entry.path()),
-            Ok(kind) if kind.is_file() => entry.metadata().map_or(0, |about| about.len()),
+        .map(|entry| match (entry.file_type(), entry.metadata()) {
+            (Ok(kind), Ok(about)) if kind.is_dir() => on_disk(&about) + bytes(&entry.path()),
+            (Ok(kind), Ok(about)) if kind.is_file() => on_disk(&about),
             _ => 0,
         })
-        .sum()
+        .fold(0, u64::saturating_add)
+}
+
+/// The bytes of the disk that a file or a folder of the runner uses: its blocks, which is
+/// more than its length for a small file. Many small files use the disk by their count.
+#[cfg(unix)]
+fn on_disk(about: &std::fs::Metadata) -> u64 {
+    use std::os::unix::fs::MetadataExt as _;
+    about.blocks().saturating_mul(512).max(about.len())
+}
+
+#[cfg(not(unix))]
+fn on_disk(about: &std::fs::Metadata) -> u64 {
+    about.len()
 }
 
 impl Engine {

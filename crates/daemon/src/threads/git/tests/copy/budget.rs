@@ -281,3 +281,59 @@ async fn a_shallow_project_keeps_its_ends_when_the_folder_of_a_thread_is_made_sm
     }
     engine.turn_ended(of, 1).await.expect("a checkpoint");
 }
+
+#[cfg(unix)]
+#[tokio::test]
+async fn a_removal_that_stops_in_the_middle_keeps_the_whole_work_at_the_next_try() {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    std::fs::write(folder.join("work.txt"), "work\n").expect("a file");
+    // What an agent can leave: a folder that cannot be emptied.
+    let locked = folder.join("zz/locked");
+    std::fs::create_dir_all(&locked).expect("a folder");
+    std::fs::write(locked.join("f"), "x").expect("a file");
+    let mode = |mode| std::fs::Permissions::from_mode(mode);
+    std::fs::set_permissions(&locked, mode(0o555)).expect("a mode");
+    let first = bench.call(PERSON, GitAction::Remove).await;
+    assert!(super::super::refused(&first).is_some(), "{first:?}");
+    // The person makes the folder removable and tries again: some files are gone already.
+    std::fs::set_permissions(&locked, mode(0o755)).expect("a mode");
+    let second = bench.call(PERSON, GitAction::Remove).await;
+    let GitOutcome::Removed { kept: Some(kept) } = second else {
+        panic!("not removed: {second:?}");
+    };
+    assert!(!folder.exists());
+    for (file, text) in [("work.txt", "work"), ("a.txt", "one"), ("zz/locked/f", "x")] {
+        let saved = ["show", &format!("{kept}:{file}")];
+        assert_eq!(bench.git_in(&bench.project, &saved).await, text, "{file}");
+    }
+    assert_eq!(bench.engine.disk()[0].worktrees, 0);
+}
+
+#[tokio::test]
+async fn a_worktree_that_is_not_whole_is_removed_and_its_files_are_not_touched() {
+    let bench = Bench::new().await;
+    let folder = bench.worktree().await;
+    std::fs::write(folder.join("work.txt"), "work\n").expect("a file");
+    // A lock that a `git` left when it was ended does not stop the next snapshot.
+    std::fs::write(own_of(&bench).join("index.lock"), "").expect("a lock");
+    let status = bench.call(PERSON, GitAction::Status).await;
+    assert!(matches!(status, GitOutcome::Status(_)), "{status:?}");
+    // The agent removes the file that makes the folder a worktree.
+    std::fs::remove_file(folder.join(".git")).expect("the file");
+    let status = bench.call(PERSON, GitAction::Status).await;
+    assert!(super::super::refused(&status).is_some(), "{status:?}");
+    let removed = bench.call(PERSON, GitAction::Remove).await;
+    assert_eq!(removed, GitOutcome::Removed { kept: None });
+    let text = std::fs::read_to_string(folder.join("work.txt")).expect("the file stays");
+    assert_eq!(text, "work\n");
+    assert!(!own_of(&bench).exists(), "the folder of the runner stayed");
+    // Nothing holds the project now.
+    assert_eq!(bench.engine.disk()[0].worktrees, 0);
+    bench
+        .engine
+        .forget_project(&bench.project)
+        .expect("the copy of the project");
+}

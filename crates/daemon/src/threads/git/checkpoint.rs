@@ -94,7 +94,10 @@ pub async fn tree_now(
     };
     let staged = fitted(git, worktree, (&held.0, &lists), left).await?;
     if !staged.is_empty() {
-        let add = Run::new(&held.0, ADD).with_env("GIT_WORK_TREE", &held.0);
+        // Large files take long to pack; a `git` that is ended in the middle helps nobody.
+        let add = Run::new(&held.0, ADD)
+            .with_env("GIT_WORK_TREE", &held.0)
+            .with_time(shared::LONG);
         git.output(add.with_input(staged)).await?;
     }
     drop(held);
@@ -120,7 +123,13 @@ async fn fitted(
     staged.map_err(|failed| match failed.kind() {
         std::io::ErrorKind::FileTooLarge => GitError::Failed {
             code: None,
-            said: failed.to_string(),
+            said: if shared::free_for(&worktree.record().own) == 0 {
+                "the disk of Anima's records is nearly full: no checkpoint and no list of \
+                 changes can be made until there is room on it"
+                    .to_owned()
+            } else {
+                failed.to_string()
+            },
         },
         _ => GitError::Files(failed),
     })
@@ -355,12 +364,13 @@ pub async fn forget_before(
     before: u32,
 ) -> Result<Vec<Checkpoint>, GitError> {
     forget(git, worktree, |turn| turn < before).await?;
-    // The undo of the last revert and the last reviewed snapshot are old too: the next
-    // look at the changes makes a new one.
-    for old in [
-        before_revert_ref(worktree.thread()),
-        reviewed_ref(worktree.thread()),
-    ] {
+    // The last reviewed snapshot goes: the next look at the changes makes a new one. The
+    // undo of the last revert goes only with the last checkpoint.
+    let mut old = vec![reviewed_ref(worktree.thread())];
+    if list(git, worktree).await?.is_empty() {
+        old.push(before_revert_ref(worktree.thread()));
+    }
+    for old in old {
         let gone = ["update-ref", "--no-deref", "-d", old.as_str()];
         git.output(Run::new(worktree.folder(), gone)).await?;
     }

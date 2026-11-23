@@ -95,10 +95,11 @@ pub async fn make(
         refs::point_head(&layout, &branch)?;
     }
     // The index of the worktree follows the branch; its files stay as they are.
-    // The copy of the project has the commit too: the next action needs no run of the
-    // thread to bring what the runner itself made.
-    shared::keep(git, worktree, (&commit, tip)).await?;
     own::follow(git, worktree, &commit).await?;
+    // The copy of the project gets the commit too, so that the next action needs no run of
+    // the thread to bring what the runner itself made. The commit is done: when this step
+    // fails, the next action brings the commit as each other one.
+    let _ = shared::keep(git, worktree, (&commit, tip)).await;
     if let Some(hooks) = asked.hooks {
         hooks.after_commit().await;
     }
