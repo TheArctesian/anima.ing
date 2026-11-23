@@ -5,7 +5,7 @@
 use std::{ffi::OsString, path::Path, time::Duration};
 
 use serde::{Deserialize, Serialize};
-use tauri::{Runtime, Webview};
+use tauri::{Runtime, State, Webview};
 
 use super::{LinkError, PROGRAM, environment, folders, from_main};
 
@@ -68,11 +68,18 @@ pub fn ask(
 #[tauri::command]
 pub async fn link_ports<R: Runtime>(
     webview: Webview<R>,
+    changing: State<'_, super::Changing>,
     port: Option<u16>,
     on: Option<bool>,
 ) -> Result<OpenPorts, LinkError> {
     from_main(webview.label())?;
+    let _claim = changing.claim()?;
     let change = port.zip(on);
+    if change.is_some_and(|(port, _)| {
+        !may_open(port, cfg!(any(target_os = "windows", target_os = "linux")))
+    }) {
+        return Err(LinkError::Failed);
+    }
     let program = crate::carried::program(PROGRAM).ok_or(LinkError::NotCarried)?;
     let folders = folders()?;
     if !folders.device.is_dir() {
@@ -82,6 +89,14 @@ pub async fn link_ports<R: Runtime>(
         remote_login::enable(remote_login::Prompt::Desktop)
             .await
             .map_err(|_| LinkError::SshSetup)?;
+    }
+    if let Some((port @ (3389 | 5900), true)) = change {
+        remote_login::desktop::enable(port, remote_login::Prompt::Desktop)
+            .await
+            .map_err(|_| LinkError::DesktopSetup)?;
+    }
+    if let Some((port, on)) = change {
+        super::access::remember(&folders.device, port, on)?;
     }
     tauri::async_runtime::spawn_blocking(move || ask(&program, &folders.device, change))
         .await

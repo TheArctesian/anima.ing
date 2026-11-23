@@ -37,13 +37,14 @@ const fn stated(error: &Error) -> Option<(ErrorCode, &'static str)> {
         )),
         Error::NoDocker => Some((
             ErrorCode::Conflict,
-            "Docker was not read: the device's SSH user finds no docker command. Anima \
-             reads Docker only.",
+            "Docker was not read: the device's SSH user finds no docker command in PATH. \
+             Check that Docker is installed and its command is in PATH for non-interactive SSH commands.",
         )),
         Error::DockerFailed => Some((
             ErrorCode::Unavailable,
-            "Docker was not read: docker did not succeed on the device. Check that \
-             Docker runs and that the device's SSH user may use it.",
+            "Docker was not read: docker did not succeed on the device. Check that the engine \
+             (Docker Desktop, Colima or Docker Engine) runs, that the device's SSH user may use it, \
+             and that Docker's context and environment for that SSH user select the intended engine.",
         )),
         Error::Unreadable => Some((
             ErrorCode::Unavailable,
