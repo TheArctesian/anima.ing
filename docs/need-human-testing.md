@@ -5436,7 +5436,10 @@ State: Open. Operator check required.
 
 Built: the local Grok ACP adapter, its model picker, Ask and Full access, streamed tool and reply
 entries, interruption, queued turns and changes of model or effort while idle. Protocol tests
-use synthetic frames; they do not prove the real account or desktop behavior.
+use synthetic frames. Local checks on Linux (2026-11-23, agent, c07e8fe11): the installed
+app lists Grok models, a prompt and follow-up show replies, and navigation away from Code
+and back keeps the thread current. An isolated runner continued after a daemon restart.
+These checks do not close the operator check or prove macOS behavior.
 
 1. Open Code on a machine signed in with `grok`. Select Grok: its installed model list and
    reasoning levels appear, without Max or Ultra unless Grok reports them.
