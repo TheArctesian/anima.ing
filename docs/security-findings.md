@@ -4278,6 +4278,20 @@ Mitigation now: No link is followed and a good content is never changed.
 
 State: Open. Found by a separate reviewer on 2026-11-22 or 2026-11-23 in the branch `threads/git-copy-limit`; the record is [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md).
 
+### SF-NEW-giterrors: Some failures of a snapshot or a removal name the wrong cause, or no file. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git/checkpoint/staged.rs`, `place/walk.rs`, `project/linked.rs`.
+
+What it is: Seven cases that the last reviews left, each in [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md), "Lows open after the twelfth review". Examples: a full disk of the records is said as a failure of a file of the worktree, with "delete or move it"; a folder that cannot be read is not removed by the runner; on Linux a network disk that answers "not supported" for a real file has that file staged as gone (not reproduced).
+
+Effect, and who can cause it: The agent of the thread for most cases; the disk for the others. Effect: a checkpoint or a removal fails until the person acts, and the text does not always say what to do. No case was found that loses saved work.
+
+Mitigation now: The words of the system are in each text.
+
+State: Open. Found by separate reviewers on 2026-11-23 in the branch `threads/git-copy-limit` (commits `d44e975e4` to `13bd13b09`).
+
 ## Closed
 
 | Entry | Subject | Area | State |

@@ -827,14 +827,14 @@ The steps (CMD-030 order). The record of the steps says what a person can do aft
 
 | Step | What | State |
 | --- | --- | --- |
-| Engine | Worktree, checkpoints, changes, revert, commit, push, pull request, removal with the work saved | Built and in `dev`: design C (`56e0132c6`), the two Mediums (`6791fb123`). The limit of the copy and of the folder of a thread: built on the branch `threads/git-copy-limit`, not merged; it merges after a separate review with no High and no Medium |
+| Engine | Worktree, checkpoints, changes, revert, commit, push, pull request, removal with the work saved | Built and in `dev`: design C (`56e0132c6`), the two Mediums (`6791fb123`). The limit of the copy and of the folder of a thread: built on the branch `threads/git-copy-limit` (`13bd13b09`), not merged; its twelfth separate review found no High and no Medium |
 | W1 | The runner gives the engine its launcher for each thread, also a confined one and before the first turn, and calls it: `worktree_shown` at the start of a thread, `turn_ended`, `hold`, the daily touch of the records, and each Git frame to `Engine::call`. The part of the Git stage: `kind: Read or Hook` in the run of the launcher, a face `git::wired::engine`, the refusal on Windows, tests with a launcher that stands in. The launcher of the runner is in `dev` (`42cc708c8`) | Not started. The operator of the sessions permitted its start |
 | The remote | `ask_remote` after the design record, with `hooks_skipped` in the answers of a commit and a push, and a line when large-file (LFS) contents were not pushed | Not started |
 | W2 | The `anima` command for each Git action | Not started |
 | W3 | The MCP tools, without the actions that only the person may do | Not started |
 | W4 | The page: the Git rows of the details card, the changes, the trust list (`Status.changed`) | Not started. It does not start before the orchestrating session says so |
 
-Open after the last review: the Lows SF-NEW-gitlfspush, SF-NEW-gitlfsbudget, SF-NEW-gitlocks, SF-NEW-gitnested and SF-NEW-gitlfsplanted of [security-findings.md](../security-findings.md). What only a person can check: HT-NEW-gitengine of [need-human-testing.md](../need-human-testing.md).
+Open after the last review: the Lows SF-NEW-gitlfspush, SF-NEW-gitlfsbudget, SF-NEW-gitlocks, SF-NEW-gitnested, SF-NEW-gitlfsplanted and SF-NEW-giterrors of [security-findings.md](../security-findings.md). What only a person can check: HT-NEW-gitengine of [need-human-testing.md](../need-human-testing.md).
 
 ### 6.1 Stage 1a: the threads of this computer, read only (before the launch)
 

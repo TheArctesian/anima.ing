@@ -483,4 +483,29 @@ Result of the review: no High open; two Mediums, both fixed in d44e975e4.
   that names nothing (open); the way out that the refusal for a nested repository named was
   wrong (fixed: "commit its removal"); names in refusals are now escaped and cut.
 
-A tenth review (d44e975e4) runs; its result is below when it is there.
+## Branch `threads/git-copy-limit`, tenth to twelfth review (2026-11-23)
+
+- **Tenth review (on d44e975e4): no High, one Medium, fixed in 9b056d9fe.** A commit can name
+  a path part that is too long for the disk. The walk took it as a failure with no name, so
+  each checkpoint and each removal failed. Such a name is now "nothing there".
+- **Eleventh review (on 9b056d9fe): no High, one Medium, fixed in 13bd13b09.** On macOS a
+  socket at a committed name failed each checkpoint with an error that named nothing. A socket
+  is now no file on each system, and each failure to copy one file names the file and says
+  what the person can do.
+- **Twelfth review (on 13bd13b09): no High open, no Medium open.** This is the round that the
+  merge of the branch waited for.
+- Lows open after the twelfth review:
+  - A failure of the disk of the records while a copy is written (full, read-only) is said as
+    a failure of the file of the worktree, with "delete or move it". The words of the system
+    are in the text, so the cause is not hidden.
+  - On Linux a network or FUSE disk can answer "not supported" for a real file; that file would
+    be staged as gone. Not reproduced.
+  - A folder that cannot be read is not removed by the runner.
+  - A planted entry in the large-file store of the person stops a removal with an error that
+    names no path.
+  - A repository inside the worktree with two names that differ only in case, with a records
+    disk that does not tell the case apart, gives an error with no name at the removal.
+  - The last clean-up of a removed worktree (`.git/worktrees` not readable) fails with an error
+    that names no folder.
+  - A records disk with a shorter limit for a name than the disk of the worktree gives a raw
+    error.
