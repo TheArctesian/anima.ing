@@ -20,8 +20,9 @@ export interface InboxEngine {
   /** The marks of each thread, by its id. */
   readonly marks: ReadonlyMap<string, Marks>;
   /**
-   * The threads the runner started, by id; `null` while it is not known: no runner, or a runner older than the mark
-   * (no listing says it started a thread), so no session is taken for one Anima did not start.
+   * The threads the runner started or drives, by id (the runner's and the program's); `null` while it is not known: no
+   * runner, or a runner older than the mark (no listing says it started a thread), so no session is taken for one Anima
+   * did not start.
    */
   readonly started: ReadonlySet<string> | null;
   change(thread: string, change: InboxChange): Promise<CallResult>;
@@ -54,8 +55,12 @@ export function inboxEngine(live: () => LiveThreads | null): InboxEngine {
       return runner === null ? WAITING.marks : new Map([...runner.listings].map(([id, listing]) => [id, listing.marks]));
     },
     get started() {
-      const ids = [...(live()?.listings.values() ?? [])].filter((listing) => listing.startedByAnima).map((listing) => listing.thread);
-      return ids.length === 0 ? WAITING.started : new Set(ids);
+      const runner = live();
+      const ids = [...(runner?.listings.values() ?? [])].filter((listing) => listing.startedByAnima).map((listing) => listing.thread);
+      if (runner === null || ids.length === 0) return WAITING.started;
+      // A thread the runner drives is Anima's: the mark of a Codex thread is on the session of Codex, not on its row.
+      const driven = [...runner.threads.values()].flatMap((thread) => [thread.row.id, ...(thread.row.session === null ? [] : [thread.row.session])]);
+      return new Set([...ids, ...driven]);
     },
     change(thread, change) {
       const runner = live();

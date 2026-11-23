@@ -3,7 +3,8 @@ import type { ListedRow } from '$lib/agent-threads/listing/listing';
 import type { Tail } from '$lib/agent-threads/thread';
 import type { MenuEntry } from '../kit/menu';
 import { intentOf, manyMenu, rowMenu, snoozeItems, type Able } from './actions';
-import { customWake, snoozePresets } from './engine';
+import { customWake, inboxEngine, snoozePresets } from './engine';
+import type { LiveThreads } from '$lib/agent-threads/live/live.svelte';
 import { NO_MARKS, type Marks } from '$lib/agent-threads/listing/shelf';
 import { arranged, emptyWords, inOrder, inProjects, projectsOf, type Arranging } from './inbox';
 import { clicked, kept, NO_SELECTION } from './selection';
@@ -234,5 +235,17 @@ describe('the sessions Anima did not start (T3 Code\'s import)', () => {
     expect(ids(parts.active).sort()).toEqual(['back', 'ours', 'wrote']);
     expect([ids(parts.working), ids(parts.pinned)]).toEqual([['runs'], ['pin']]);
     expect(arranged(rows, { ...at, started: null }).settled).toEqual([]);
+  });
+
+  it('counts the threads the runner drives as Anima\'s, by its ID and the program\'s, once a listing carries the mark', () => {
+    const listing = (thread: string, startedByAnima: boolean) => ({ thread, pinned: false, archived: false, title: null, removed: false, marks: NO_MARKS, startedByAnima });
+    const runner = (marked: boolean) =>
+      ({
+        listings: new Map([['claude-1', listing('claude-1', marked)]]),
+        threads: new Map([['run-2', { row: { id: 'run-2', session: 'codex-2' } }]]),
+      }) as unknown as LiveThreads;
+    expect(inboxEngine(() => runner(true)).started).toEqual(new Set(['claude-1', 'run-2', 'codex-2']));
+    expect(inboxEngine(() => runner(false)).started).toBeNull();
+    expect(inboxEngine(() => null).started).toBeNull();
   });
 });
