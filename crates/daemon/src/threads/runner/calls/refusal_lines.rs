@@ -67,6 +67,7 @@ pub(in crate::threads::runner) const fn refusal_word(why: &Refusal) -> &'static 
         Refusal::FolderNotPermitted => "folder not permitted",
         Refusal::ProgramNotFound => "program not found",
         Refusal::ProgramDoesNotAnswer { .. } => "program did not answer",
+        Refusal::CannotCreateProject { .. } => "project creation failed",
         Refusal::BadValue => "bad value",
         Refusal::RequestGone => "request gone",
         Refusal::AnswerDoesNotFit => "answer does not fit",

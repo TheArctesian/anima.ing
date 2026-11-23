@@ -78,6 +78,10 @@ fn changes() -> Vec<Action> {
             most: 3,
         },
         Action::Projects,
+        Action::CreateProject {
+            folder: PathBuf::from("/work/new"),
+            name: None,
+        },
         Action::ChangeProject {
             change: ProjectChange::Remove {
                 folder: PathBuf::from("/work"),
@@ -211,10 +215,11 @@ const fn kind(action: &Action) -> usize {
         Action::Version => 27,
         Action::Commands { .. } => 28,
         Action::Compact { .. } => 29,
+        Action::CreateProject { .. } => 30,
     }
 }
 
-const KINDS: usize = 30;
+const KINDS: usize = 31;
 
 #[test]
 fn th109_each_call_reads_back_from_its_frame() {

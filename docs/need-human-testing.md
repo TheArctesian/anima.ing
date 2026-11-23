@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-NEW-project-create | Create a local Code project (TH60A) | CLI and daemon from code/project-create on Linux or macOS | Open |
 | HT-181 | The runner relay with real Claude Code and Codex (TH118) | Final security review with no High, operator permission for the first forward, API-key sign-in first | Open |
 | HT-171-touch | Use a VNC or RDP session with touch and return after a disconnect (M4-2, MOB-021, MOB-022) | iPadOS and Android builds with this branch and a VNC or RDP test device | Open |
 | HT-170-code-handoff | Open and follow a shared Code thread on iOS and Android (TH50, TH51) | A build of this branch on each phone, a hub with TH21, and an enrolled computer with transcript sharing enabled | Open |
@@ -5528,5 +5529,23 @@ existing assignments and client retries. They do not cover two real devices or a
 The old device storage has no hub address. Unknown or foreign-hub memberships remain stored
 on the device; they are not imported into another hub or deleted. The operator chose B on
 2026-11-23: empty earlier groups move to the next hub opened.
+
+Result: Open.
+
+
+## HT-NEW-project-create — Create a local Code project (TH60A)
+
+State: Open. Built on `code/project-create`; the TC9 New project UI is owned separately.
+Automated checks exercise repository creation, preservation of existing files, rejected paths,
+and registration across a runner restart. This check covers the installed CLI and system Git.
+
+1. Choose an existing writable parent and an unused child path. Run `anima agents projects create /absolute/parent/new-project --name "New project"`.
+   Expected: the command lists the new project; `git -C /absolute/parent/new-project status` shows an empty repository on `main`.
+2. Run the same create command again.
+   Expected: a refusal, with the original repository unchanged.
+3. Restart the daemon, then run `anima agents projects`.
+   Expected: New project remains listed once.
+4. Open Code and choose that local project for a new thread.
+   Expected: the thread uses the new folder. This task does not enable the New project palette action.
 
 Result: Open.

@@ -27,6 +27,10 @@ pub enum Refusal {
     },
     /// A value that becomes an argument is not of its alphabet (THR-040).
     BadValue,
+    /// Creating or registering a project failed (TH60A).
+    CannotCreateProject {
+        said: String,
+    },
     /// The experimental provider route cannot safely start (TH118).
     ProviderAddress {
         said: String,
