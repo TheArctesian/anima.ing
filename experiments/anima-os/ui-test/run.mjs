@@ -28,7 +28,15 @@ try{
  const click=async selector=>{if(!await until(`!!document.querySelector(${JSON.stringify(selector)})`))throw Error('Missing control '+selector);await js(`document.querySelector(${JSON.stringify(selector)}).focus();document.querySelector(${JSON.stringify(selector)}).click()`);await until('fixture.pending <= (fixture.download?1:0)');await Bun.sleep(50);};
  const assert=async(expression,message)=>{if(!await until(expression))throw Error(message);};
  await cmd('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
- await Bun.sleep(300);await js(`document.querySelector('[name=password]').value='synthetic';document.querySelector('#unlock-form').requestSubmit()`);await Bun.sleep(200);
+ await Bun.sleep(300);
+ await assert(`!!document.querySelector('.overlay [data-action=screen-off]')?.checkVisibility()`,'Locked console exposes a visible screen-off action without a password');
+ await cmd('Emulation.setDeviceMetricsOverride',{width:320,height:480,deviceScaleFactor:1,mobile:false});
+ await assert(`(()=>{const r=document.querySelector('.overlay [data-action=screen-off]').getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight&&r.left>=0&&r.right<=innerWidth})()`,'Locked screen-off control fits a 320px display without scrolling');
+ const lockedShot=await cmd('Page.captureScreenshot',{format:'png'});writeFileSync(join(out,'locked-320x480.png'),Buffer.from(lockedShot.data,'base64'));
+ await click('.overlay [data-action=screen-off]');
+ await cmd('Emulation.setDeviceMetricsOverride',{width:1280,height:800,deviceScaleFactor:1,mobile:false});
+ await assert(`fixture.screenOff===1&&!!document.querySelector('#unlock-form')&&!fixture.calls.includes('unlock')&&!fixture.calls.includes('shutdown')&&!fixture.calls.includes('restart')`,'Screen-off while locked needs no unlock or power operation');
+ await js(`document.querySelector('[name=password]').value='synthetic';document.querySelector('#unlock-form').requestSubmit()`);await Bun.sleep(200);
  await assert(`JSON.stringify([...document.querySelectorAll('nav [data-page]')].map(e=>e.dataset.page))===JSON.stringify(['Overview','Network','Storage','Settings'])`,'Four destinations');
  await click('[data-action=sign-in]');await assert(`fixture.calls.includes('sign-in')`,'One action starts sign-in');await click('[data-action=cancel-sign-in]');
  await click('[data-action=selfhost]');await assert(`fixture.enrollments.length===0`,'Opening enrollment does not connect');
@@ -60,7 +68,8 @@ try{
    const shot=await cmd('Page.captureScreenshot',{format:'png'});writeFileSync(join(out,`${page.toLowerCase()}-${width}x${height}.png`),Buffer.from(shot.data,'base64'));records.push({width,height,page,...geometry});
   }
  }
- await click('[data-action=screen-off]');await assert(`fixture.screenOff===1&&!!document.querySelector('#unlock-form')&&!fixture.calls.includes('shutdown')&&!fixture.calls.includes('restart')`,'Screen-off uses the native display action and locks without a power operation');
+ await assert(`document.querySelector('footer [data-action=screen-off]').textContent.includes('Turn screen off')`,'Footer screen-off action has a visible text label');
+ await click('footer [data-action=screen-off]');await assert(`fixture.screenOff===2&&!!document.querySelector('#unlock-form')&&!fixture.calls.includes('shutdown')&&!fixture.calls.includes('restart')`,'Screen-off uses the native display action and locks without a power operation');
  await js(`document.querySelector('[name=password]').value='synthetic';document.querySelector('#unlock-form').requestSubmit()`);await until('fixture.pending===0');
  await cmd('Input.dispatchKeyEvent',{type:'keyDown',key:'l',code:'KeyL',modifiers:3});await assert(`!!document.querySelector('#unlock-form')`,'Keyboard lock remains available');
  writeFileSync(join(out,'results.json'),JSON.stringify({status:'passed',fontDirectory:fontDirectory||'Host font fallback; installed appliance uses IBM Plex',networkChecks:['adapter absence','radio off and automatic scan','inline scan failure','scan navigation','strongest access point','escaped SSID','secured and open connection','adapter loss and reattach','lock during scan','320px row bounds'],scope:'Synthetic transport, real product HTML/CSS/JS in headless Chromium; not appliance or hardware acceptance',checks:records},null,2));

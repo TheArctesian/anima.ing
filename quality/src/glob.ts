@@ -1,4 +1,3 @@
-/** Turn a repo-relative glob into a RegExp. `**` crosses folders, `*` and `?` do not. */
 export function globToRegExp(glob: string): RegExp {
   let source = "";
   for (let i = 0; i < glob.length; i++) {
@@ -17,7 +16,6 @@ export function globToRegExp(glob: string): RegExp {
   return new RegExp(`^${source}$`);
 }
 
-/** Read `generated.txt`: one glob per line, `#` starts a comment line. */
 export function parseGeneratedList(text: string): string[] {
   return text
     .split("\n")

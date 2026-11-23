@@ -1,11 +1,5 @@
-//! The digest of a carried set: what the update compares to see whether the copy that the
-//! unit runs is the copy of the programs that the application carries (D-6).
-//!
-//! The digest is a SHA-256 over every entry in the layout of the installed copy (`bin/` and
-//! `database-tree/`), in the order of the entries' relative names, so that the source
-//! folders and a faithful copy give the same digest. Each entry gives its kind, its name, and
-//! for a file whether it runs, its length and its bytes, and for a link its target. The
-//! refusals and the limits are those of the copy.
+//! The digest that tells the update whether the unit runs the carried programs (D-6). Entries
+//! hash in the order of their installed names, so a faithful copy gives the same digest.
 
 use std::fmt::Write as _;
 use std::fs;
@@ -34,8 +28,7 @@ impl Digest {
         &self.0
     }
 
-    /// Whether the copy in `programs/current` has this digest. A copy that an older version
-    /// made has no digest file, and then it differs.
+    /// A copy from an older version has no digest file, so it differs.
     #[must_use]
     pub fn is_stored_in(&self, folders: &Folders) -> bool {
         crate::plain_file::read_text(&folders.programs().join(FILE), 128)
@@ -55,17 +48,14 @@ enum Kind {
 struct Entry {
     /// The name in the installed layout.
     name: PathBuf,
-    /// Where the entry is now.
     from: PathBuf,
     kind: Kind,
 }
 
-/// The digest of `carried`, which is either what the application carries or a copy.
+/// The digest of `carried`, either what the application carries or a copy.
 ///
 /// # Errors
-/// As [`super::copy`] for the same set: a program that is missing, an entry that is not a
-/// file, a folder or a link that stays beside its own folder, a set larger than a tree can
-/// be, or an entry that cannot be read.
+/// As [`super::copy`] for the same set.
 pub fn of(carried: &Carried) -> Result<Digest, CopyError> {
     let layout = Carried::installed_in(Path::new(""));
     let mut walk = Walk {
@@ -211,7 +201,6 @@ fn file(
     Ok(())
 }
 
-/// The digest file of the copy that `copy` made at `next`, in the mode of the copy's files.
 pub(super) fn write(next: &Path, digest: &Digest) -> Result<(), CopyError> {
     use std::io::Write as _;
     let path = next.join(FILE);

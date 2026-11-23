@@ -1,5 +1,3 @@
-//! Frames go out only as fast as the limit allows and the client draws them.
-
 use std::time::Duration;
 
 use anima_gateway::frames::{Formats, Next, Pace, Pacing, frame};
@@ -114,8 +112,6 @@ fn frames_sent_in_the_same_millisecond_get_rising_timestamps() {
     assert_eq!(stamps, [7, 8, 9, 10]);
 }
 
-/// A device that changes its screen every 10 ms, and a client that takes `draw` ms to
-/// answer each frame. Returns the frames sent and whether the client ends with the screen.
 fn session(draw: u64) -> (usize, bool) {
     let mut screen = Screen::new(64, 64).expect("a valid size");
     let mut pacing = Pacing::new(PACE);
@@ -169,12 +165,9 @@ fn a_slow_client_gets_fewer_frames_and_still_ends_with_the_screen() {
     assert!(slow_frames <= 14, "{slow_frames} frames to the slow client");
 }
 
-/// What can happen to the pacing of a session.
 #[derive(Clone, Debug)]
 enum Event {
-    /// Time passes, then a frame is sent if one may be.
     Tick(u64),
-    /// The client answers the frame sent this many frames ago, or sends other text.
     Answer(usize),
     Noise(String),
 }
@@ -188,8 +181,6 @@ fn event() -> impl Strategy<Value = Event> {
 }
 
 proptest! {
-    /// Whatever the client does: never more unanswered frames than the limit, never two
-    /// frames closer than the interval, and timestamps always rise.
     #[test]
     fn the_limits_hold_for_any_client(events in prop::collection::vec(event(), 0..200)) {
         let mut pacing = Pacing::new(PACE);

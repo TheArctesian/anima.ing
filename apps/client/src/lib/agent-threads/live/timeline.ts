@@ -194,3 +194,19 @@ export function waitingWords(program: Program, started: Date, now: Date): string
   const first = program === 'claude_code' ? 'Claude Code reads its sign-in first' : 'Codex loads its plugins first';
   return `Waiting for the first answer of the program: ${waited}. ${first}; on a busy computer this can take minutes. The runner ends it after ${String(FIRST_ANSWER_MINUTES)} minutes with no answer.`;
 }
+
+/** The first prompt of a thread that the page started, before the runner shows it (TH97). */
+export interface SentPrompt {
+  readonly thread: string;
+  readonly text: string;
+  readonly at: Date;
+}
+
+/**
+ * The entries with the person's first prompt in front until the runner shows its own: the runner says a prompt only
+ * when the program took it, which on a busy computer is many seconds after the send. Pure.
+ */
+export function withSent(entries: readonly LiveEntry[], sent: SentPrompt | null): readonly LiveEntry[] {
+  if (sent === null || entries.some((entry) => entry.kind === 'prompt')) return entries;
+  return [{ kind: 'prompt', at: sent.at, text: held(sent.text), images: 0 }, ...entries];
+}

@@ -1,5 +1,3 @@
-//! The text of the unit file, and where it goes. Pure.
-
 use std::path::{Path, PathBuf};
 
 use anima_database::Platform;
@@ -7,18 +5,13 @@ use anima_database::Platform;
 #[cfg(all(test, unix))]
 mod tests;
 
-/// The launchd label, which is also the file name without `.plist`.
 pub const LABEL: &str = "ing.anima.hub";
-/// The systemd unit.
 pub const SYSTEMD_UNIT: &str = "anima-hub.service";
 
-/// Seconds the unit gives the program to stop the group in order before it kills it. More
-/// than the sum of the members' stop limits (`group::LIMITS`), the link's included.
+/// More than the sum of the members' stop limits (`group::LIMITS`), the link's included.
 pub const STOP_SECONDS: u32 = 90;
-/// Seconds between a failure and the next start.
 const RESTART_SECONDS: u32 = 10;
 
-/// What the unit runs.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Launch {
     pub program: PathBuf,
@@ -34,26 +27,21 @@ pub enum RenderError {
     Identity,
 }
 
-/// Where the unit file of this user is.
 #[must_use]
 pub fn file(platform: Platform, home: &Path) -> PathBuf {
     match platform {
         Platform::MacOs => home
             .join("Library/LaunchAgents")
             .join(format!("{LABEL}.plist")),
-        // As the agent: `XDG_CONFIG_HOME` is not read, so the file is where the next
-        // `install` or `remove` looks for it whatever the environment of that day.
+        // `XDG_CONFIG_HOME` is not read, so `install` and `remove` find the same file.
         Platform::Linux => home.join(".config/systemd/user").join(SYSTEMD_UNIT),
         #[cfg(windows)]
         Platform::Windows => home.join("AppData/Local/Anima/hub/task.xml"),
     }
 }
 
-/// The unit file's text for `launch`.
-///
 /// # Errors
-/// [`RenderError::Path`] when the program or an argument is not text, or has a character
-/// that would change the meaning of the file.
+/// [`RenderError::Path`] when a word is not text or holds a character that changes the file.
 pub fn render(platform: Platform, launch: &Launch) -> Result<String, RenderError> {
     let program = launch
         .program
@@ -73,7 +61,6 @@ pub fn render(platform: Platform, launch: &Launch) -> Result<String, RenderError
     }
 }
 
-/// Start at login; start again only after a failure; no core file.
 fn launch_agent(words: &[&str]) -> String {
     let arguments = words.iter().fold(String::new(), |all, word| {
         format!("{all}        <string>{}</string>\n", xml_text(word))
@@ -150,8 +137,7 @@ WantedBy=default.target
     ))
 }
 
-/// One word of `ExecStart` in double quotes. systemd reads `%` and `$` as the start of a
-/// specifier and of a variable; doubled, each is itself.
+/// systemd reads `%` and `$` as a specifier and a variable; doubled, each is itself.
 fn systemd_word(word: &str) -> Result<String, RenderError> {
     if word.contains(['"', '\\', '\'']) {
         return Err(RenderError::Path(word.to_owned()));

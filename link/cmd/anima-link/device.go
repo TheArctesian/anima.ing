@@ -16,10 +16,8 @@ import (
 	"github.com/TheArctesian/anima/link/tunnel"
 )
 
-// deviceStatus is the answer of the device's "status" verb.
 type deviceStatus struct {
-	Role string `json:"role"`
-	// Local is the loopback address that reaches the hub.
+	Role      string           `json:"role"`
 	Local     string           `json:"local"`
 	PublicKey tunnel.DeviceKey `json:"publicKey"`
 	// Path is "direct", "relayed" or "none" (LNK-006).
@@ -29,14 +27,11 @@ type deviceStatus struct {
 	OpenPorts []uint16 `json:"openPorts"`
 }
 
-// openPorts is the answer of the command "ports".
 type openPorts struct {
 	Open []uint16 `json:"open"`
 }
 
-// runPorts shows the list of open ports of the device on a state directory,
-// or turns one port on or off (HMD-049). The device link may run: it reads
-// the list at each request of the hub, so a change needs no restart.
+// runPorts shows or turns the device's open ports (HMD-049); a running link rereads them, so no restart is needed.
 func runPorts(_ context.Context, args []string, streams stdio) error {
 	flags, statePath := stateFlags("ports")
 	if err := flags.Parse(args); err != nil || *statePath == "" || (flags.NArg() != 0 && flags.NArg() != 2) {
@@ -67,10 +62,7 @@ func runPorts(_ context.Context, args []string, streams stdio) error {
 	return err
 }
 
-// listenForDaemon makes the socket of the metrics daemon at path; an empty
-// path means no socket. The daemon sends its token there, so the socket is
-// made before the link starts: a path that other users can reach stops the
-// start.
+// listenForDaemon makes the daemon's token socket before the link starts; an empty path means none.
 func listenForDaemon(path string) (net.Listener, error) {
 	if path == "" {
 		return nil, nil

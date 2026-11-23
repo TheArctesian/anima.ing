@@ -1,5 +1,4 @@
-//! Pull requests of a repository, one pull request with its mergeability, and the merge
-//! methods the repository allows (PRJ-030, PRJ-033).
+//! Pull requests, their mergeability and the merge methods a repository allows (PRJ-030, PRJ-033).
 
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
@@ -77,7 +76,6 @@ pub struct PullRequest {
     pub body: Option<String>,
 }
 
-/// One pull request as the single read gives it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PullDetail {
     pub pull: PullRequest,

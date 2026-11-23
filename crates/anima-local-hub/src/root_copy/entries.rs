@@ -1,6 +1,3 @@
-//! The files of a copy: the walk of the hub root that copies each entry, and the check of one
-//! entry against the list.
-
 use std::fmt::Write as _;
 use std::fs::{self, File};
 use std::io::{self, Read as _, Write as _};
@@ -12,14 +9,12 @@ use super::list::{Entry, Kind, List};
 use super::{RootCopyError, io_error};
 use crate::Folders;
 
-/// What a copy leaves out: the programs (a hub of the pool runs them from its image, ROL-053),
-/// and the two locks, which belong to the processes of the root.
+/// A pool hub runs the programs from its image (ROL-053); the locks belong to the root's processes.
 const LEFT_OUT: [&str; 3] = ["programs", "lock", "change.lock"];
 
 mod access;
 
-/// Copies each entry of the root of `folders` to the new folder `to` and returns their list.
-/// A socket is left out: it belongs to a process. A link is copied as a link.
+/// A socket is left out: it belongs to a process.
 pub(super) fn copy(folders: &Folders, to: &Path) -> Result<List, RootCopyError> {
     let root = folders.root();
     let cluster = folders.database().cluster();
@@ -56,7 +51,6 @@ pub(super) fn copy(folders: &Folders, to: &Path) -> Result<List, RootCopyError> 
     Ok(list)
 }
 
-/// Copies one entry; `None` for a socket or a thing that is no file, folder or link.
 fn copy_one(from: &Path, to: &Path, path: &Path) -> Result<Option<Entry>, RootCopyError> {
     let found = fs::symlink_metadata(from).map_err(io_error("look at a file of the hub root"))?;
     let mode = access::mode(&found);
@@ -102,8 +96,6 @@ fn set_mode(path: &Path, mode: u32) -> Result<(), RootCopyError> {
     access::set_mode(path, mode).map_err(io_error("set the mode of an entry of the copy"))
 }
 
-/// Reads `source` to its end, writes it to `to` when there is one, and returns the count of
-/// the bytes and their SHA-256 in hex.
 fn pass(source: &mut File, mut to: Option<&mut File>) -> io::Result<(u64, String)> {
     let mut hasher = Sha256::new();
     let mut buffer = vec![0; 1 << 16];
@@ -127,7 +119,6 @@ fn pass(source: &mut File, mut to: Option<&mut File>) -> io::Result<(u64, String
     Ok((bytes, hex))
 }
 
-/// The entry of the file `file`, listed as `path`.
 pub(super) fn file_entry(file: &Path, path: &Path) -> Result<Entry, RootCopyError> {
     let mut source = access::open(file).map_err(io_error("open a file of the copy"))?;
     let mode = access::mode(
@@ -143,7 +134,6 @@ pub(super) fn file_entry(file: &Path, path: &Path) -> Result<Entry, RootCopyErro
     })
 }
 
-/// Checks that `entry` is below `folder` as the list says. The fault names the path only.
 pub(super) fn verify(folder: &Path, entry: &Entry) -> Result<(), RootCopyError> {
     let fault = |what: &str| {
         Err(RootCopyError::Damaged(format!(

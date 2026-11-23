@@ -1,5 +1,4 @@
-// Package tunnel is the encrypted transport of the link. It is the only
-// package that imports the Tailcat library (docs/plans/one-click/one-click-plan.md, S1).
+// Package tunnel is the encrypted transport of the link, and the only package that imports Tailcat (one-click plan S1).
 package tunnel
 
 import (
@@ -13,8 +12,7 @@ import (
 	"tailscale.com/types/key"
 )
 
-// ErrBadKey means that a text is not a key. The error never holds the text,
-// because the text can be a damaged secret (LNK-008).
+// ErrBadKey means that a text is not a key. It omits the text, which can be a damaged secret (LNK-008).
 var ErrBadKey = errors.New("tunnel: the text is not a key")
 
 // PrivateKey is the secret identity of a hub or a device.
@@ -26,9 +24,7 @@ type PrivateKey struct {
 // NewPrivateKey makes a new identity.
 func NewPrivateKey() PrivateKey { return PrivateKey{node: key.NewNode()} }
 
-// PrivateKeyFromSeed makes the key that 32 secret bytes give. Two sides that
-// have the same bytes get the same key: an invite code gives a temporary key
-// in this way (LNK-003).
+// PrivateKeyFromSeed makes the key that 32 secret bytes give; an invite code gives a temporary key so (LNK-003).
 func PrivateKeyFromSeed(seed [32]byte) PrivateKey {
 	// The form of a Curve25519 private key.
 	seed[0] &= 248
@@ -61,8 +57,7 @@ func (k PrivateKey) IsZero() bool { return k.node.IsZero() }
 // Public returns the key that a hub puts in its list of permitted devices.
 func (k PrivateKey) Public() DeviceKey { return DeviceKey{k.node.Public()} }
 
-// DeviceKey is the public key of a hub or a device. It is not a secret, but
-// it prints and logs as its fingerprint (LNK-008). Its JSON form is the key.
+// DeviceKey is the public key of a hub or a device. It prints and logs as its fingerprint (LNK-008).
 type DeviceKey struct{ node key.NodePublic }
 
 // IsZero reports whether the key was never set.
@@ -134,19 +129,14 @@ func ParseAddress(text string) (Address, error) {
 	return Address{text: tailcat.Addr(text)}, nil
 }
 
-// Reveal gives the address as text: for the state file, and for the operator
-// who gives it to a device.
+// Reveal gives the address as text, for the state file and for the operator.
 func (a Address) Reveal() string { return string(a.text) }
 
 // IsZero reports whether the address was never set.
 func (a Address) IsZero() bool { return a.text == "" }
 
-// SameHub reports whether two addresses name one hub: the same public key,
-// the same path-discovery key and the same pre-shared key. Only the relay
-// can differ. A device moves to
-// a new address only when this holds: a new address can come from DNS,
-// which anybody can answer, and an address with another key is another
-// hub (LNK-007).
+// SameHub reports whether two addresses differ only in relay. A device moves only to such an address,
+// because a new address can come from DNS, which anybody can answer (LNK-007).
 func (a Address) SameHub(b Address) bool {
 	one, errOne := tailcat.ParseAddr(a.text)
 	other, errOther := tailcat.ParseAddr(b.text)

@@ -1,5 +1,4 @@
-//! The reader of the settings file: strict, so that a member that this program does not know
-//! is never ignored (contract K10 Section 6.4.2).
+//! The strict reader of the settings file: an unknown member is refused (contract K10 Section 6.4.2).
 
 use super::{Adopted, EngineKind, Limits, Managed, Settings};
 use crate::{
@@ -7,15 +6,12 @@ use crate::{
     strict::{self, Members, Value},
 };
 
-/// The most bytes of a settings file.
 pub const LARGEST_SETTINGS: usize = 1 << 20;
-/// The most entries of one list of the settings, and the most files of one adopted project.
 const MOST_ENTRIES: usize = 256;
 const MOST_FILES: usize = 16;
-/// The one version of the form of the file.
 const VERSION: u64 = 1;
 
-/// Why a settings file is not read. No variant holds text of the file.
+/// No variant holds text of the file.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum SettingsFault {
     #[error("the settings file is too large")]
@@ -38,7 +34,6 @@ fn finished(members: &Members) -> Result<(), SettingsFault> {
     }
 }
 
-/// A whole number above zero, or `null` where the value of the machine is permitted.
 fn limit(members: &mut Members, name: &str, machine: bool) -> Result<Option<u64>, SettingsFault> {
     match members.take(name) {
         Some(Value::Whole(whole)) if whole > 0 => Ok(Some(whole)),
@@ -89,8 +84,7 @@ fn managed(value: Value) -> Result<Option<Managed>, SettingsFault> {
     Ok(Some(managed))
 }
 
-/// One adopted project. A project whose name starts with `anima-` cannot be adopted
-/// (Section 6.4.3).
+/// A project whose name starts with `anima-` cannot be adopted (Section 6.4.3).
 fn adopted(value: Value) -> Result<Adopted, SettingsFault> {
     let mut members = Members::of(value).ok_or(WRONG)?;
     let name = members
@@ -110,7 +104,6 @@ fn adopted(value: Value) -> Result<Adopted, SettingsFault> {
     })
 }
 
-/// A list of texts of one form, each there one time.
 fn list(
     members: &mut Members,
     name: &str,
@@ -127,7 +120,6 @@ fn list(
     Ok(texts)
 }
 
-/// A registry: a host in lower case, with or without a port.
 fn is_registry(text: &str) -> bool {
     let sound =
         |byte: u8| byte.is_ascii_lowercase() || byte.is_ascii_digit() || b".-:".contains(&byte);
@@ -139,7 +131,7 @@ fn is_registry(text: &str) -> bool {
             .is_some_and(|byte| byte.is_ascii_alphanumeric())
 }
 
-/// A prefix of labels: it is never a prefix of the labels of Compose itself (SF-043).
+/// Never a prefix of the labels of Compose itself (SF-043).
 fn is_label_prefix(text: &str) -> bool {
     (1..=255).contains(&text.len())
         && text
@@ -153,12 +145,8 @@ fn truth(members: &mut Members, name: &str) -> Result<bool, SettingsFault> {
     members.truth(name).ok_or(WRONG)
 }
 
-/// Reads the text of a settings file.
-///
 /// # Errors
-/// The [`SettingsFault`], when the text is too large or not strict JSON, has a member that
-/// this program does not know, lacks a member, or has a value that is not permitted. The
-/// caller then treats "Manage applications" as off.
+/// The [`SettingsFault`] that the text breaks.
 pub fn read(text: &str) -> Result<Settings, SettingsFault> {
     if text.len() > LARGEST_SETTINGS {
         return Err(SettingsFault::TooLarge);

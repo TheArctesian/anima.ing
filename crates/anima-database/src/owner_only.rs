@@ -12,8 +12,7 @@ mod tests;
 /// there already with a wider mode.
 ///
 /// # Errors
-/// When the folder cannot be made, or `path` is a symbolic link, not a folder, or a folder of
-/// another user: each could put the database's files where somebody else can read or swap them.
+/// When the folder cannot be made, or `path` is a symbolic link, not a folder, or another user's folder.
 pub fn folder(path: &Path) -> io::Result<()> {
     DirBuilder::new().recursive(true).mode(0o700).create(path)?;
     let found = fs::symlink_metadata(path)?;

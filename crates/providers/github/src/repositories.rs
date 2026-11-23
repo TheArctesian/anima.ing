@@ -1,5 +1,3 @@
-//! The listing phase: every repository the installation can see, 100 to a page.
-
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::Deserialize;
 use serde_json::Value;
@@ -13,7 +11,6 @@ use crate::state::{Pending, Phase, Slice, Step};
 const PER_PAGE: usize = 100;
 /// The most listing pages one listing reads (SRC-007).
 const MAX_PAGES: u32 = 1000;
-/// The most repositories one listing gathers.
 const MAX_REPOSITORIES: usize = 100_000;
 const SUBJECT: &str = "repositories";
 
@@ -44,7 +41,7 @@ struct Entry {
     pushed_at: Option<DateTime<Utc>>,
 }
 
-/// `text` without U+0000, which no PostgreSQL text or JSON value can hold.
+/// PostgreSQL text and JSON values cannot hold U+0000.
 fn nul_free(text: String) -> String {
     if text.contains('\0') {
         text.replace('\0', "")
@@ -53,8 +50,7 @@ fn nul_free(text: String) -> String {
     }
 }
 
-/// `value` with U+0000 taken out of every string and key, and nothing else changed, so one
-/// entry cannot make its page fail to store. The parser's depth limit bounds the recursion.
+/// The parser's depth limit bounds the recursion.
 fn without_nul(value: Value) -> Value {
     match value {
         Value::String(text) => Value::String(nul_free(text)),
@@ -86,8 +82,7 @@ fn to_repository(original: Value) -> Option<Repository> {
     })
 }
 
-/// The page's repositories and whether it is the last page. `None`: any entry is unreadable,
-/// so none is trusted: a missing id would read as a repository that is gone.
+/// `None` when any entry is unreadable: a missing id would read as a repository that is gone.
 fn read_page(body: &[u8], page: u32) -> Option<(Vec<Repository>, bool)> {
     let listing = serde_json::from_slice::<Listing>(body).ok()?;
     let last = listing.repositories.len() < PER_PAGE
@@ -106,8 +101,6 @@ fn stamp(pushed_at: Option<DateTime<Utc>>) -> Option<String> {
     pushed_at.map(|at| at.to_rfc3339_opts(SecondsFormat::Secs, true))
 }
 
-/// Reads one listing page: a record for each repository, and the slice with the repositories
-/// whose `pushed_at` differs from the one their signs were read at queued for the signs phase.
 pub(crate) fn normalise(response: &Response<'_>, slice: &Slice) -> Normalised<Record> {
     if response.status != 200 {
         return unexpected_status(slice, response.status, SUBJECT);
@@ -168,9 +161,7 @@ pub(crate) fn normalise(response: &Response<'_>, slice: &Slice) -> Normalised<Re
     }
 }
 
-/// The listing went past the cap: the page's repositories are reported, the run stops with a
-/// problem, and the slice drops what this listing gathered so the next run lists from page 1.
-/// No `Listed` record: an unfinished listing must not read as one that left repositories out.
+/// No `Listed` record: an unfinished listing would read as one that left repositories out.
 fn too_long(slice: &Slice, records: Vec<Record>) -> Normalised<Record> {
     let mut next = slice.clone();
     next.listed.clear();
@@ -188,8 +179,6 @@ fn too_long(slice: &Slice, records: Vec<Record>) -> Normalised<Record> {
     }
 }
 
-/// `None`: the repository has no branch yet, so there is nothing to read. A problem: its name
-/// or its branch cannot go into a path, so its signs are not read.
 fn queue(repository: &Repository, pushed_at: Option<String>) -> Result<Option<Pending>, Problem> {
     name::check(&repository.full_name).map_err(|name::UnusableName| {
         problem(

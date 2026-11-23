@@ -1,6 +1,4 @@
-//! Tests of the rules of a Compose file from the hub (HOST-028; K10 Section 6.4.4): the reader
-//! of YAML (`reading`), the variables (`filling`), the permitted keys (`listed`), and the
-//! rules of the values (`values`, `touching`).
+//! Tests of the rules of a Compose file from the hub (HOST-028; K10 Section 6.4.4).
 
 mod filling;
 mod listed;
@@ -10,8 +8,7 @@ mod values;
 
 use crate::{Checked, Refusal, Rule, Settings, check};
 
-/// A file that passes each rule: two services, one volume, one bind mount, one network, one
-/// config, and a variable.
+/// A file that passes each rule.
 const SOUND: &str = r#"
 services:
   app:
@@ -72,18 +69,15 @@ fn checked(file: &str) -> Result<Checked, Refusal> {
     check(file, ENVIRONMENT, &Settings::default())
 }
 
-/// The refusal of `file`, which must be refused.
 fn refusal(file: &str) -> Refusal {
     checked(file).expect_err("the file must be refused")
 }
 
-/// [`SOUND`] with one line of the service `app` (position 0) replaced.
 fn with(old: &str, new: &str) -> String {
     assert!(SOUND.contains(old), "{old}");
     SOUND.replacen(old, new, 1)
 }
 
-/// The refusal of the service at position 0 for `rule`.
 const fn app(rule: Rule) -> Refusal {
     Refusal::File {
         rule,

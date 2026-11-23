@@ -1,6 +1,5 @@
 /**
- * Phase 3 acceptance, criterion 24 (CON-002, CQ-010, P3-002): K1 holds no `@pending`
- * and the quality baseline is empty. An on-demand check, not a gate.
+ * Phase 3 acceptance, criterion 24 (CON-002, CQ-010, P3-002). An on-demand check, not a gate.
  *
  *   bun quality/acceptance/phase-3.ts [repo-root]
  *
@@ -28,13 +27,12 @@ export class AcceptanceInputError extends Error {
 const PENDING_USE = /@pending(?![A-Za-z0-9_])/;
 const PENDING_DECLARATION = /directive\s+@pending(?![A-Za-z0-9_])/;
 
-/** `text` with string contents and `#` comments replaced by spaces; newlines stay, so line numbers hold. */
+/** Newlines stay, so line numbers hold. */
 function blankStringsAndComments(text: string): string {
   const blank = (span: string): string => span.replace(/[^\n]/g, " ");
   return text.replace(/"""[\s\S]*?(?:"""|$)|"(?:\\.|[^"\\\n])*"?|#[^\n]*/g, blank);
 }
 
-/** Every `@pending` in K1 text except its declaration, comments and string contents. */
 export function pendingUses(schema: string): Finding[] {
   const code = blankStringsAndComments(schema).replace(PENDING_DECLARATION, (span) => " ".repeat(span.length));
   const findings: Finding[] = [];
@@ -46,7 +44,7 @@ export function pendingUses(schema: string): Finding[] {
   return findings;
 }
 
-/** One finding per key of the baseline; the baseline must be `{}` (CQ-010). */
+/** The baseline must be `{}` (CQ-010). */
 export function baselineEntries(baselineText: string): Finding[] {
   let parsed: unknown;
   try {
@@ -72,7 +70,6 @@ function readInput(root: string, path: string): string {
   }
 }
 
-/** Run both checks against the repository at `root`. */
 export function checkPhase3(root: string): Finding[] {
   return [
     ...pendingUses(readInput(root, SCHEMA_PATH)),

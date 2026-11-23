@@ -12,20 +12,15 @@ const LABEL_LONGEST: usize = 50;
 const LABELS_MOST: usize = 20;
 const INPUT_NAME_LONGEST: usize = 100;
 const INPUT_VALUE_LONGEST: usize = 1024;
-/// The most inputs a dispatch may carry. With the name and value caps above, 25 inputs hold
-/// at most 28,100 characters, under the 65,535 GitHub allows in all (decisions item 11).
+/// 25 inputs hold at most 28,100 characters, under the 65,535 GitHub allows (decisions item 11).
 const INPUTS_MOST: usize = 25;
 
-/// Whether text may span lines: tab, line feed and carriage return are its only control
-/// characters. Text on one line has none.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Lines {
     One,
     Many,
 }
 
-/// Whether `text` has `least` to `most` characters and no control character but those `lines`
-/// allows. NUL is a control character, so it is always refused.
 fn is_bounded(text: &str, least: usize, most: usize, lines: Lines) -> bool {
     if text.len() > most.saturating_mul(4) {
         return false;

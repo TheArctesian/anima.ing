@@ -1,4 +1,4 @@
-//! Which files say where a repository runs (PRO-003). Pure rules over paths and creators.
+//! Which files say where a repository runs (PRO-003).
 
 use std::collections::BTreeMap;
 
@@ -41,8 +41,6 @@ fn is_skipped(segment: &str) -> bool {
             .any(|skipped| skipped.eq_ignore_ascii_case(segment))
 }
 
-/// The signs among `paths` (files only): at most five paths per kind, shortest first, in
-/// the order of [`SignKind`].
 pub(crate) fn from_paths<'a>(paths: impl IntoIterator<Item = &'a str>) -> Vec<Sign> {
     let mut found: BTreeMap<SignKind, Vec<&str>> = BTreeMap::new();
     for path in paths {
@@ -71,7 +69,6 @@ pub(crate) fn from_paths<'a>(paths: impl IntoIterator<Item = &'a str>) -> Vec<Si
     signs
 }
 
-/// The deployment sign, when one of the creators is Vercel's bot.
 pub(crate) fn from_creators<'a>(logins: impl IntoIterator<Item = &'a str>) -> Vec<Sign> {
     if logins.into_iter().any(|login| login == VERCEL_BOT) {
         vec![Sign {

@@ -1,5 +1,3 @@
-//! The plan of an `application_apply` (K10 Sections 6.4.4 to 6.4.6).
-
 use super::{COMPOSE, ENVIRONMENT, digests, plan, prepare};
 use crate::{
     Refusal, Step,
@@ -22,7 +20,6 @@ fn k10_6_4_4_a_service_with_no_digest_of_its_pull_is_never_started() {
         planned(&prepared, &wrong, &facts).err(),
         Some(Refusal::NoDigest)
     );
-    // An image that the file names by a digest is started by that digest only.
     let other = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
     let by_digest = COMPOSE.replacen("postgres:17", &format!("postgres@{other}"), 1);
     let prepared = prepare(&world, &by_digest).expect("the files pass");
@@ -67,7 +64,6 @@ fn k10_6_4_5_the_plan_writes_the_files_below_files_and_makes_each_folder_of_bind
             _ => None,
         })
     };
-    // The records of the new version are written under staged names before the start.
     assert_eq!(
         written("new-compose-as-it-came.yaml").as_deref(),
         Some(COMPOSE.as_bytes())
@@ -88,7 +84,6 @@ fn k10_6_4_5_the_plan_writes_the_files_below_files_and_makes_each_folder_of_bind
         pulled,
         format!("[\"example/tracks@{DIGEST}\",\"postgres@{DIGEST}\"]\n")
     );
-    // Each path of a step is below the folder of the application, and none is `.env`.
     for step in &planned.plan.steps {
         if let Step::Write { path, .. } | Step::Folder { path } = step {
             assert!(
@@ -128,7 +123,6 @@ fn k10_6_4_4_the_project_starts_from_the_final_form_only() {
         ]
     );
     assert_eq!(up.folder.as_deref(), Some(FILES));
-    // The environment file is never an argument, and no variable of it is in the environment.
     assert!(
         !up.arguments
             .iter()
@@ -140,7 +134,6 @@ fn k10_6_4_4_the_project_starts_from_the_final_form_only() {
         .map(|(name, _)| name.as_str())
         .collect();
     assert_eq!(names, ["DOCKER_HOST", "DOCKER_CONFIG"]);
-    // Directly before the start: `files/` holds no `.env`, and each folder of `binds/` is real.
     let last = steps
         .iter()
         .position(|step| matches!(step, Step::Run(_)))
@@ -184,7 +177,6 @@ fn k10_6_4_6_the_records_say_the_new_version_runs_only_after_its_start() {
         "environment-of-the-application",
         "digests.json",
     ];
-    // First the current version becomes the kept one, then the staged one the current one.
     let mut expected: Vec<(String, String)> = names
         .iter()
         .map(|name| (file(name), file(&format!("kept-{name}"))))
@@ -199,7 +191,6 @@ fn k10_6_4_6_the_records_say_the_new_version_runs_only_after_its_start() {
         .map(|(from, to)| (from.as_str(), to.as_str()))
         .collect();
     assert_eq!(moved, expected);
-    // No step before the start writes or moves a record of the current or the kept version.
     for step in &steps[..start] {
         if let Step::Write { path, .. } | Step::Move { to: path, .. } = step {
             assert!(
@@ -256,7 +247,6 @@ fn k10_6_4_6_keep_1_keeps_the_version_before_this_apply_and_keep_0_keeps_none() 
         .position(|step| matches!(step, Step::Delete { .. }));
     assert!(start < first_delete);
     assert_eq!((moves(&none), deletes(&none)), (0, 3));
-    // The first install has no version to keep.
     world.records.applications.clear();
     world.inventory.containers.remove(0);
     let first = plan(&world, true);
@@ -279,7 +269,6 @@ fn k10_6_4_6_the_plan_checks_the_project_again_after_the_pulls() {
         Some(Refusal::NameTaken)
     );
     world.inventory.containers[0].folder = Some(FILES.to_owned());
-    // `busy` means a different item runs; the item itself does not count.
     world.busy = true;
     assert_eq!(
         planned(&prepared, &digests(), &world.facts()).err(),

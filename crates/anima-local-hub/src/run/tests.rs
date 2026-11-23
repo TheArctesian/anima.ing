@@ -18,8 +18,6 @@ mod stopping;
 
 const SOON: Duration = Duration::from_secs(20);
 
-/// Stand-ins for the four programs. Each writes what it does to `events`, and a file in the
-/// rig's folder changes what it does.
 const DATABASE: &str = r#"#!/bin/sh
 here=$(dirname "$0")/..
 trap 'echo "database stop" >> "$here/events"; exit 0' TERM
@@ -64,7 +62,6 @@ echo 'time=2026-11-15T10:00:00Z level=INFO msg="the hub link is ready" relay=r d
 while :; do sleep 0.05; done
 "#;
 
-/// The time of each change of the link in a test.
 fn clock() -> SystemTime {
     UNIX_EPOCH + Duration::from_hours(500_000)
 }
@@ -140,7 +137,6 @@ impl Rig {
         self.plan.folders.vault_key()
     }
 
-    /// Runs the group and asks it to stop as soon as it is ready.
     async fn run_until_ready(&self) -> Result<Ended, RunError> {
         let (ask, stop) = Stop::new();
         self.run_with(stop, move || {
@@ -155,13 +151,11 @@ impl Rig {
             .expect("the run ends")
     }
 
-    /// Runs the group, waits until its state is `wanted`, then asks it to stop.
     async fn run_until_state(&self, wanted: &State) -> Result<Ended, RunError> {
         self.run_until(|rig| rig.state().as_ref() == Some(wanted))
             .await
     }
 
-    /// Runs the group, waits until `done` holds, then asks it to stop.
     async fn run_until(&self, done: impl Fn(&Self) -> bool) -> Result<Ended, RunError> {
         let (ask, stop) = Stop::new();
         let asking = async {
@@ -250,7 +244,7 @@ async fn when_a_member_ends_the_others_are_stopped_in_order_and_the_run_fails() 
     let ended = rig.run_with(stop, || {}).await.unwrap();
 
     assert_eq!(ended, Ended::Failed);
-    // The link, started after the hub, is stopped before the gateway.
+    // The link starts after the hub, so it stops before the gateway.
     let events = rig.events();
     assert_eq!(
         events[events.len() - 2..],

@@ -1,5 +1,4 @@
-//! Key files as `tauri signer generate` and minisign write them: opened with their password,
-//! refused when damaged, and never made to cost more scrypt work than N = 2^20, p = 1 (BLD-045).
+//! BLD-045: a key file costs no more scrypt work than N = 2^20, p = 1.
 
 use base64::{Engine, engine::general_purpose::STANDARD};
 use minisign::KeyPair;
@@ -56,7 +55,6 @@ fn bld_045_a_wrong_or_missing_password_is_named() {
     );
 }
 
-/// The minisign key bytes of an unencrypted reference key, to damage.
 fn unencrypted_key_bytes() -> Vec<u8> {
     let pair = KeyPair::generate_unencrypted_keypair().unwrap();
     let text = pair.sk.to_box(None).unwrap().into_string();

@@ -1,6 +1,4 @@
-//! `anima-local-hub update`: the application starts it at each start, and it replaces the
-//! programs of the installed hub only when the application carries other ones (D-6) and
-//! not older ones.
+//! `anima-local-hub update`: replaces the hub's programs only with other, not older ones (D-6).
 
 use std::io;
 
@@ -55,15 +53,11 @@ impl Outcome {
     }
 }
 
-/// Replaces the programs of the installed hub by those of `source` when their digest is not
-/// the digest of the copy that runs and their version (`request.version`) is not lower than
-/// the version of that copy. It starts the unit, unless the operator stopped the hub, and
-/// writes the unit file with the address that `install` recorded. The database, the key, the
-/// link's state and the logs are not touched.
+/// Replaces the hub's programs when their digest differs and their version is not lower.
+/// The database, the key, the link's state and the logs are not touched.
 ///
-/// A hub that is not installed runs no step. A same digest never rewrites the unit file. When the copy is the same, the unit is started
-/// if nothing runs, the operator did not stop the hub and the last start failed: a start that
-/// failed after a replacement is tried again.
+/// A same digest never rewrites the unit file; a unit that does not run and was not stopped by the
+/// operator is started, so a failed start is tried again.
 ///
 /// # Errors
 /// [`InstallError::Busy`] when another change runs; when the digest cannot be made; or as

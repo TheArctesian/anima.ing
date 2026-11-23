@@ -1,5 +1,4 @@
-//! The picture a session sends: the copy of the device's screen, scaled to the client's
-//! view, as frames no faster than the client draws them. VNC and RDP sessions share it.
+//! The picture a session sends, as frames no faster than the client draws them.
 
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::time::Instant;
@@ -12,7 +11,6 @@ use crate::screen::{BadSize, Screen};
 use crate::view::View;
 
 pub(super) struct Picture {
-    /// The copy of the device's screen, which the device's updates are drawn into.
     pub(super) screen: Screen,
     view: View,
     pacing: Pacing,
@@ -21,7 +19,6 @@ pub(super) struct Picture {
 }
 
 impl Picture {
-    /// A black screen of the device's `size`.
     pub(super) fn new(
         size: (usize, usize),
         allowed: &Allowed,
@@ -37,8 +34,7 @@ impl Picture {
         })
     }
 
-    /// When a frame that the frame rate holds back may go. A frame that the client holds
-    /// back goes after the client's next `sync`, which is an instruction.
+    /// A frame that the client holds back goes after the client's next `sync` instruction.
     pub(super) fn due(&self) -> Option<Instant> {
         match self.pacing.next(self.started.elapsed()) {
             Next::At(time) if self.view.has_changes(&self.screen) => Some(self.started + time),
@@ -46,24 +42,20 @@ impl Picture {
         }
     }
 
-    /// The client drew the frame with this timestamp.
     pub(super) fn drawn(&mut self, timestamp: &str) {
         self.pacing.answered(timestamp);
     }
 
-    /// The client's view has this size now.
     pub(super) fn set_view(&mut self, view: (usize, usize)) {
         self.view.set_client(view, &mut self.screen);
     }
 
-    /// The pixel of the device's screen under a pixel of the client's view.
     pub(super) fn to_device(&self, at: (usize, usize)) -> (u16, u16) {
         let (x, y) = self.view.to_device(at, &self.screen);
         let on_wire = |at: usize| u16::try_from(at).unwrap_or(u16::MAX);
         (on_wire(x), on_wire(y))
     }
 
-    /// Sends a frame when the screen changed and one may go.
     pub(super) async fn send_frame<S>(&mut self, hub: &mut Hub<S>) -> Result<(), Ended>
     where
         S: AsyncRead + AsyncWrite + Send + 'static,

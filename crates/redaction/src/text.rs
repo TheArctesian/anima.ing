@@ -1,5 +1,4 @@
-//! Secrets inside free text: event messages, device names and audit string values (LOG-007,
-//! D-3 *Values*).
+//! Secrets inside free text (LOG-007, D-3 *Values*).
 
 use super::{
     REDACTED,
@@ -7,17 +6,12 @@ use super::{
     provider_keys::mask_provider_keys,
 };
 
-/// Text that marks a whole string as a secret, compared case-sensitively.
 const SECRET_MARKERS: [&str; 1] = ["PuTTY-User-Key-File-"];
 
-/// Text that marks a whole string as a secret, compared ignoring ASCII case.
 const SECRET_MARKERS_ANY_CASE: [&str; 2] = ["otpauth://", "authorization:"];
 
-/// Words that introduce a credential (`Bearer eyJ…`, `token: abc…`), compared ignoring ASCII
-/// case and followed by whitespace or `:`.
 const SCHEMES: [&str; 3] = ["bearer", "basic", "token"];
 
-/// The shortest text that counts as a credential after a scheme word or as a URL user.
 const CREDENTIAL_MIN_LEN: usize = 8;
 
 /// `"[redacted]"` if `text` holds a private key, an `otpauth://` URI or an `Authorization:`
@@ -29,8 +23,7 @@ pub fn redact_text(text: &str) -> String {
         return REDACTED.to_owned();
     }
     let masked = mask_url_userinfo(text);
-    // Schemes before keys: a key value ends at whitespace, so masking `authorization=Basic`
-    // first would hide the scheme word and leave the credential after it.
+    // Schemes before keys: masking `authorization=Basic` as a key value leaves the credential after it.
     let masked = mask_after_words(&masked, &SCHEMES, scheme_credential);
     let masked = mask_key_values(&masked);
     let masked = mask_jwts(&masked);
@@ -46,14 +39,10 @@ fn is_secret_text(text: &str) -> bool {
             .any(|marker| lower.contains(marker))
 }
 
-/// A byte of base64, base64url or a JWT.
 fn is_credential_byte(byte: u8) -> bool {
     byte.is_ascii_alphanumeric() || matches!(byte, b'+' | b'/' | b'=' | b'-' | b'_' | b'.')
 }
 
-/// Credential-shaped: 8 or more credential bytes with a digit, one of `+/=_`, or a capital
-/// after the first letter, so `connectivity`, `Required` and `deploy-user` are words, while
-/// `dXNlcjpodW50ZXIy`, `ghp_AAAA…` and `eyJ…` are credentials.
 fn looks_like_credential(token: &str) -> bool {
     let bytes = token.as_bytes();
     bytes.len() >= CREDENTIAL_MIN_LEN
@@ -65,14 +54,11 @@ fn looks_like_credential(token: &str) -> bool {
         })
 }
 
-/// Whether a word may start at byte `index`: at the start or after a byte that is not an ASCII
-/// letter or digit.
 pub(super) fn starts_word(text: &str, index: usize) -> bool {
     index == 0 || !text.as_bytes()[index - 1].is_ascii_alphanumeric()
 }
 
-/// Replaces, after each of `words` that starts a word (ignoring ASCII case), the part of the
-/// rest that `secret` finds: `secret(rest)` gives its byte range in `rest`.
+/// `secret(rest)` gives the byte range to mask in the text after each of `words` that starts a word.
 fn mask_after_words(
     text: &str,
     words: &[&str],
@@ -102,17 +88,10 @@ fn mask_after_words(
     masked
 }
 
-/// A byte of a key in `key=value` text: ASCII letters, digits, `_`, `-` and `.`
-/// (`spring.datasource.password`).
 fn is_key_byte(byte: u8) -> bool {
     byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-' | b'.')
 }
 
-/// Masks the value of every `key=value` and `key: value` whose key names a secret by the same
-/// rules as a JSON key (`password`, `PGPASSWORD`, `dbPassword`, `accessToken`, `api_key`,
-/// `client_secret`, …), including embedded JSON (`{"password":"…"}`). The separator is `=` or
-/// `:` with optional spaces around it and an optional quote before it; a quoted value is masked
-/// inside its quotes. `true` and `false` are never masked, like JSON booleans.
 fn mask_key_values(text: &str) -> String {
     let mut masked = String::with_capacity(text.len());
     let (mut copied, mut index) = (0, 0);
@@ -131,8 +110,6 @@ fn mask_key_values(text: &str) -> String {
     masked
 }
 
-/// The key that ends before the separator at `separator`: optional spaces, an optional quote,
-/// then key bytes.
 fn key_before(text: &str, separator: usize) -> Option<&str> {
     let bytes = text.as_bytes();
     let mut end = separator;
@@ -149,18 +126,13 @@ fn key_before(text: &str, separator: usize) -> Option<&str> {
     (start < end).then(|| &text[start..end])
 }
 
-/// The byte range of the value that starts at `from`: optional spaces, then the inside of a
-/// quoted value, or an unquoted value up to whitespace, `&`, `;`, `,`, `}` or a quote (also
-/// after an unterminated quote). An empty value, `true`, `false`, or an object or array (`{`,
-/// `[`) gives `None`.
 fn value_after(text: &str, from: usize) -> Option<(usize, usize)> {
     let bytes = text.as_bytes();
     let mut start = from;
     while start < bytes.len() && matches!(bytes[start], b' ' | b'\t' | b'\r' | b'\n') {
         start += 1;
     }
-    // A found closing quote ends a masked value and the caller resumes after it; a search fails
-    // only from the last quote of its kind. So the searches stay linear in the text's length.
+    // A search fails only from the last quote of its kind, so the searches stay linear.
     if let Some(&quote @ (b'"' | b'\'')) = bytes.get(start) {
         start += 1;
         if let Some(close) = bytes[start..].iter().position(|byte| *byte == quote) {
@@ -178,7 +150,6 @@ fn value_after(text: &str, from: usize) -> Option<(usize, usize)> {
     (len > 0 && !boolean).then_some((start, start + len))
 }
 
-/// After a scheme word: whitespace or `:`, an optional quote, then a credential-shaped token.
 fn scheme_credential(rest: &str) -> Option<(usize, usize)> {
     let gap = rest
         .bytes()
@@ -195,14 +166,11 @@ fn scheme_credential(rest: &str) -> Option<(usize, usize)> {
     looks_like_credential(&rest[start..start + len]).then_some((start, start + len))
 }
 
-/// Replaces every JWT: `eyJ` starting a word, then three base64url segments split by `.`, the
-/// payload not empty and the signature possibly empty (unsigned); a `.` right after it is kept.
 fn mask_jwts(text: &str) -> String {
     let mut masked = String::with_capacity(text.len());
     let (mut copied, mut scanned_to) = (0, 0);
     for (start, _) in text.match_indices("eyJ") {
-        // An `eyJ` inside a run already scanned is part of that run: skipping it keeps the
-        // pass linear (`"eyJ.".repeat(…)`).
+        // Skipping an `eyJ` inside a scanned run keeps the pass linear (`"eyJ.".repeat(…)`).
         if start < scanned_to || !starts_word(text, start) {
             continue;
         }
@@ -229,13 +197,6 @@ fn mask_jwts(text: &str) -> String {
     masked
 }
 
-/// Masks the userinfo secret of every `scheme://userinfo@host`. The authority ends at the first
-/// `/`, `?`, `#` or whitespace after `://`, and the userinfo at the last `@` inside it. With a
-/// `:`, the part after the first `:` is masked (`user:[redacted]@host`); without one, the
-/// whole userinfo is masked when it is credential-shaped (`[redacted]@github.com`), so plain
-/// users such as `root@host` stay. When the authority has no `@` but a `:` that does not start
-/// a port, an unencoded `/`, `?` or `#` may sit in the password (`u:pa/ss@h`): it is masked up
-/// to the next `@` in the same word.
 fn mask_url_userinfo(text: &str) -> String {
     let mut masked = String::with_capacity(text.len());
     let mut rest = text;
@@ -255,9 +216,8 @@ fn mask_url_userinfo(text: &str) -> String {
     masked
 }
 
-/// The byte range of the secret in the userinfo at the start of `url` (the text after `://`).
-/// It reads only the authority and, for an unencoded password, the text up to the next `@`,
-/// whitespace or `://`, so the scan over all URLs stays linear (`"://".repeat(…)`).
+/// Without an `@` in the authority, a non-port `:` may start an unencoded password (`u:pa/ss@h`).
+/// That scan stops at whitespace or `://`, so the pass over all URLs stays linear.
 fn userinfo_secret(url: &str) -> Option<(usize, usize)> {
     let authority_len = url
         .find(|c: char| matches!(c, '/' | '?' | '#') || c.is_whitespace())

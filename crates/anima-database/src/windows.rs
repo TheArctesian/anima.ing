@@ -1,6 +1,5 @@
-//! The Windows database transport: IPv4 loopback with a private, pinned TLS identity.
-//! `SQLx` has no Windows Unix-socket connector. TLS authenticates the server before any
-//! password is sent, so another local process cannot impersonate a stopped database.
+//! IPv4 loopback with a pinned TLS identity: `SQLx` has no Windows Unix-socket connector.
+//! TLS authenticates the server before any password is sent.
 mod identity;
 
 use crate::{Layout, Password};
@@ -17,7 +16,6 @@ pub(crate) struct Endpoint {
 }
 
 impl Endpoint {
-    /// Create once, publishing the whole private identity directory atomically.
     pub(crate) fn create(layout: &Layout) -> io::Result<Self> {
         let folder = layout.root().join("connection");
         if folder.exists() {
@@ -29,8 +27,7 @@ impl Endpoint {
         anima_windows::files::protect(temporary.path())?;
         let listener = TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))?;
         let port = listener.local_addr()?.port();
-        // This reservation is released before PostgreSQL starts. If another process takes
-        // it, startup fails; clients still require our TLS identity before authentication.
+        // Another process may take the port first; clients still require the TLS identity.
         identity::write(temporary.path(), port)?;
         fs::rename(temporary.path(), &folder)?;
         Self::load(layout)

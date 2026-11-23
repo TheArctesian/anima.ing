@@ -69,9 +69,8 @@ fn rol_054_a_copy_of_a_stopped_hub_passes_its_check_and_a_hub_reads_its_data_fro
     assert!(checked.status.success(), "{checked:?}");
     assert_eq!(checked.stdout, made.stdout);
 
-    // The way back: the copy takes the place of the root. The files of the database name the
-    // socket folder, so the hub must get the same one. ROL-053: the copy has no programs, and
-    // the hub runs on it with programs from outside the root.
+    // The database files name the socket folder, so the restored hub gets the same one.
+    // The copy has no programs; the hub runs on it with programs from outside the root (ROL-053).
     std::fs::rename(
         rig.root(),
         rig.folder.path().join("root of the failed update"),

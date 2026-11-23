@@ -1,13 +1,4 @@
-//! Backups of the hub's database, and a check that the cluster is not damaged.
-//!
-//! A backup is `pg_dump`'s custom format of the `anima` database, as `deploy/backup/backup.sh`
-//! makes it on the VPS (DB-007). It holds everything the hub knows, so the file has mode 0600
-//! and nothing of it is printed. A copy of the cluster folder while the server runs is not a
-//! backup.
-//!
-//! Each function needs the server to run. `write` and `check` sign in as the superuser through
-//! the socket; `restore` signs in as the owner. None takes the lock: a backup is made while
-//! the hub serves.
+//! Backups of the hub's database (DB-007), and a check that the cluster is not damaged.
 
 use std::collections::BTreeSet;
 use std::fs;
@@ -58,15 +49,12 @@ fn io_error(step: &'static str) -> impl FnOnce(io::Error) -> BackupError {
     move |source| BackupError::Io { step, source }
 }
 
-/// Writes a backup of the hub's database to `file`, with mode 0600. The file appears whole or
-/// not at all: it is written beside its place and moved in.
+/// Writes a backup of the hub's database to `file`, with mode 0600; it appears whole or not at all.
 ///
 /// # Errors
-/// When the file cannot be written or `pg_dump` fails. Nothing `pg_dump` prints is passed
-/// on: an error of it can quote a row.
+/// When the file cannot be written or `pg_dump` fails; its output is dropped, as it can quote a row.
 pub fn write(tree: &Tree, layout: &Layout, file: &Path) -> Result<(), BackupError> {
-    // In a folder that others can write, another user could put a file of their own in the
-    // backup's place between the dump and the move.
+    // Another user who can write the folder could swap the file between the dump and the move.
     let folder = file
         .parent()
         .filter(|parent| !parent.as_os_str().is_empty());
@@ -91,8 +79,7 @@ pub fn write(tree: &Tree, layout: &Layout, file: &Path) -> Result<(), BackupErro
     let new = owner_only::new_file(beside).map_err(io_error("make the backup file"))?;
     let dumped = command
         .args(["--username", SUPERUSER, "--format", "custom"])
-        // `check` puts the `amcheck` extension into each database. It is a tool of this
-        // program, not a part of the hub's database, so a backup does not carry it.
+        // `check` adds the `amcheck` extension; it is not a part of the hub's database.
         .args(["--exclude-extension", "amcheck", DATABASE])
         .stdin(Stdio::null())
         .stdout(new.try_clone().map_err(io_error("make the backup file"))?)
@@ -107,7 +94,6 @@ pub fn write(tree: &Tree, layout: &Layout, file: &Path) -> Result<(), BackupErro
         }
     });
     if let Err(error) = finished {
-        // A part of a backup is of no use and holds the hub's rows.
         fs::remove_file(beside).ok();
         return Err(error);
     }
@@ -117,24 +103,17 @@ pub fn write(tree: &Tree, layout: &Layout, file: &Path) -> Result<(), BackupErro
     })
 }
 
-/// Restores the backup in `file` into the hub's database, which must be empty: a new cluster
-/// after its first start. All of it is restored or nothing: one object that is there already
-/// ends the restore and undoes it.
+/// Restores the backup in `file` into the hub's database, which must be empty; all or nothing.
 ///
-/// The restore signs in as the owner login, not as the superuser. A backup file is a program:
-/// it holds statements, and a check or a default in it runs while the rows load. As the
-/// superuser such a file could run a program on the computer or make itself a superuser. As
-/// the owner it can do what a migration can do, and the hub's database needs no more.
+/// It signs in as the owner, not the superuser: a backup holds statements that run as it loads.
 ///
 /// # Errors
-/// When the file is not there, the owner's URL file is not there, or `pg_restore` cannot run
-/// or fails.
+/// When the file or the owner's URL file is not there, or `pg_restore` cannot run or fails.
 pub fn restore(tree: &Tree, layout: &Layout, file: &Path) -> Result<(), BackupError> {
     // A whole path, so a name that starts with `-` is never read as an option.
     let file = fs::canonicalize(file).map_err(|_| BackupError::NoFile)?;
     let owner = urls::password(layout, Role::Owner)?.ok_or(BackupError::NoOwner)?;
-    // The password goes to `pg_restore` in a file only this user can read, never in the
-    // command line or the environment (LOG-007).
+    // The password goes in a file only this user can read, not the command line (LOG-007).
     let password_file = layout.urls_folder().join("restore.pgpass");
     let line = Zeroizing::new(format!(
         "*:*:*:{}:{}\n",
@@ -169,8 +148,7 @@ pub fn restore(tree: &Tree, layout: &Layout, file: &Path) -> Result<(), BackupEr
     }
 }
 
-/// Whether `file` reads as a backup: `pg_restore --list` reads its table of contents. No
-/// server is needed and nothing is restored. For a copy of a hub that is kept for a way back.
+/// Whether `file` reads as a backup, by `pg_restore --list`; no server is needed.
 ///
 /// # Errors
 /// When the file is not there or `pg_restore` cannot run.
@@ -197,9 +175,7 @@ pub enum Checked {
     Damaged(BTreeSet<String>),
 }
 
-/// Checks every table and B-tree index of the cluster with `pg_amcheck`, for use after an
-/// upgrade and after a recovery from a kill or a power cut. The first check adds the `amcheck`
-/// extension to each database; it changes nothing else.
+/// Checks every table and B-tree index with `pg_amcheck`, which adds `amcheck` to each database.
 ///
 /// # Errors
 /// When `pg_amcheck` cannot run or could not check.
@@ -220,9 +196,7 @@ pub fn check(tree: &Tree, layout: &Layout) -> Result<Checked, BackupError> {
     }
 }
 
-/// The relations `pg_amcheck` names as damaged. Its lines start with the kind and the quoted
-/// name, as `btree index "anima.checks.checks_pkey":`; the detail after it is not kept. A name
-/// with a quotation mark in it would be cut there; no name of the hub has one.
+/// A `pg_amcheck` line starts with the kind and the quoted name, as `btree index "anima.checks.checks_pkey":`.
 fn damaged_in(report: &str) -> BTreeSet<String> {
     report
         .lines()

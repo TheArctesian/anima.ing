@@ -1,5 +1,4 @@
-//! The ports, the mounts, the networks and the configs of a service: where a container
-//! touches the machine and the other parts of the file (K10 Section 6.4.4).
+//! Where a container touches the machine and the other parts of the file (K10 Section 6.4.4).
 
 use crate::{
     Node, Refusal, Rule, Settings,
@@ -8,9 +7,7 @@ use crate::{
     project::Names,
 };
 
-/// The address of the machine itself.
 const LOCAL: &str = "127.0.0.1";
-/// The lowest port of the machine that a file may publish.
 const LOWEST_PORT: u64 = 1024;
 
 fn items<'a>(service: &Declared<'a>, key: &str) -> &'a [Node] {
@@ -25,12 +22,7 @@ fn port(text: Option<&str>, lowest: u64) -> bool {
         .is_some_and(|port| (lowest..=65535).contains(&port))
 }
 
-/// Each port has a target and a published port as one whole number each. With "Open to the
-/// network" off, the address is the machine itself.
-///
-/// # Errors
-/// `port_not_permitted` for a port that breaks the form; `not_at_machine` for an address
-/// other than the machine itself while the setting is off.
+/// With "Open to the network" off, the address is the machine itself.
 pub(crate) fn ports(service: &Declared<'_>, settings: &Settings) -> Result<(), Refusal> {
     for entry in items(service, "ports") {
         let text = |key: &str| entry.get(key).and_then(Node::text);
@@ -56,7 +48,6 @@ pub(crate) fn ports(service: &Declared<'_>, settings: &Settings) -> Result<(), R
     Ok(())
 }
 
-/// One mount: its target, when the mount is permitted.
 fn mount<'a>(entry: &'a Node, all: &Names<'_>) -> Option<&'a str> {
     let text = |key: &str| entry.get(key).and_then(Node::text);
     let source = text("source")?;
@@ -72,7 +63,6 @@ fn mount<'a>(entry: &'a Node, all: &Names<'_>) -> Option<&'a str> {
     (sound_source && read_only).then_some(target)
 }
 
-/// One config of a service: its target, when the config is permitted.
 fn config<'a>(entry: &'a Node, all: &Names<'_>) -> Option<&'a str> {
     let text = |key: &str| entry.get(key).and_then(Node::text);
     let known = all.configs.contains(&text("source")?);
@@ -83,7 +73,6 @@ fn config<'a>(entry: &'a Node, all: &Names<'_>) -> Option<&'a str> {
     (known && mode).then_some(target)
 }
 
-/// The networks of a service are networks of this file; an alias is a name.
 fn networks(service: &Declared<'_>, all: &Names<'_>) -> bool {
     let known = |name: &str| all.networks.contains(&name);
     match service.node.get("networks") {
@@ -107,12 +96,6 @@ fn networks(service: &Declared<'_>, all: &Names<'_>) -> bool {
     }
 }
 
-/// Checks the mounts, the configs and the networks of a service. Two mounts of one service
-/// never have one target.
-///
-/// # Errors
-/// `mount_not_permitted` for a mount or a config that breaks a rule; `value_not_permitted`
-/// for a network that is not of this file.
 pub(crate) fn checked(service: &Declared<'_>, all: &Names<'_>) -> Result<(), Refusal> {
     let refused = service.refusal(Rule::MountNotPermitted);
     let mut targets: Vec<&str> = Vec::new();

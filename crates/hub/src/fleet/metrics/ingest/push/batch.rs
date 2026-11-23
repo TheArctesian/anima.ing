@@ -12,14 +12,14 @@ use daemon_core::{
     hardware::Hardware,
     inventory::Inventory,
     readings::Drive,
-    wire::{RefusalCode, TokenHash},
+    wire::{RefusalCode, ThreadSummaries, ThreadSummariesReceipt, TokenHash},
 };
 use sqlx::{PgConnection, PgPool};
 
 use super::samples::Rows;
 use crate::{
     fleet::{
-        agent_usage,
+        agent_threads, agent_usage,
         devices::{self, MetricsSource},
         events::{self, ActorKind, Bus, NewEvent, Severity, Source},
         metrics::{
@@ -64,12 +64,13 @@ pub(super) struct Push<'a> {
     pub(super) daemon_version: Option<&'a str>,
     /// `None`: nothing new; `Some`: its state and session days are stored (R-135, AIS-020).
     pub(super) agent_usage: Option<&'a AgentUsage>,
+    pub(super) agent_threads: Option<&'a ThreadSummaries>,
 }
 
 /// What became of a batch that reached the store.
 pub(super) enum Written {
     /// Stored, with how many of its samples were new.
-    Kept(i64),
+    Kept(i64, Option<ThreadSummariesReceipt>),
     /// Not stored: the source or the token changed since the batch was checked
     /// (`TOKEN_REFUSED`), or it would pass [`MAX_NEW_SERIES`] (`MALFORMED`).
     Refused(RefusalCode),
@@ -105,7 +106,21 @@ pub(super) async fn write(
     if created > MAX_NEW_SERIES {
         return Ok(Written::Refused(RefusalCode::Malformed));
     }
-    write_announcements(&mut tx, &push, now).await?;
+    if write_announcements(&mut tx, &push, now).await? {
+        events::record(
+            &mut tx,
+            bus,
+            now,
+            NewEvent {
+                severity: Severity::Info,
+                source: Source::Metrics,
+                device: Some((push.device, push.name.to_owned())),
+                message: format!("Private remote access configured for {}.", push.name),
+                actor: ActorKind::Hub,
+            },
+        )
+        .await?;
+    }
     metrics_store::add_series(&mut tx, push.device, &rows.series, now).await?;
     let kept = metrics_store::add_points(&mut tx, push.device, &rows.values).await?;
     if taken.was_stale {
@@ -114,8 +129,9 @@ pub(super) async fn write(
     if taken.needed {
         events::record(&mut tx, bus, now, need_gone(push.device, push.name)).await?;
     }
+    let receipt = agent_threads::record_announced(&mut tx, push.device, push.agent_threads).await?;
     tx.commit().await?;
-    Ok(Written::Kept(kept))
+    Ok(Written::Kept(kept, receipt))
 }
 
 /// Writes the lists the batch announced, each in place of the stored one: the GPU set, the
@@ -124,7 +140,8 @@ async fn write_announcements(
     tx: &mut PgConnection,
     push: &Push<'_>,
     now: DateTime<Utc>,
-) -> Result<(), Error> {
+) -> Result<bool, Error> {
+    let mut changed = false;
     if let Some(gpus) = push.gpus {
         // The daemon sends no boot time: its own discovery cadence (MET-006) replaces the
         // collector's boot check, which never runs for a daemon device.
@@ -143,6 +160,9 @@ async fn write_announcements(
     }
     if let Some(inventory) = push.inventory {
         metrics_store::write_inventory(&mut *tx, push.device, inventory, now).await?;
+        if let Some(access) = &inventory.remote_access {
+            changed = devices::configure_private_access(&mut *tx, push.device, access).await?;
+        }
     }
     if let Some(hardware) = push.hardware {
         metrics_store::write_hardware(&mut *tx, push.device, hardware, now).await?;
@@ -150,7 +170,7 @@ async fn write_announcements(
     if let Some(usage) = push.agent_usage {
         agent_usage::record(&mut *tx, push.device, usage, now).await?;
     }
-    Ok(())
+    Ok(changed)
 }
 
 /// The one event of a daemon that sends again after it was marked stale (MET-018).

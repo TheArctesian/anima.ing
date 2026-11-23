@@ -6,7 +6,6 @@ use super::{BackupError, Checked, check, damaged_in, restore, write};
 use crate::roles;
 use crate::scratch::{Database, private_folder};
 
-/// A database with the roles and some of the owner's rows.
 fn database_with_rows() -> (Database, crate::Server) {
     let database = Database::new();
     let server = database.start();
@@ -164,8 +163,7 @@ fn a_restore_that_fails_late_leaves_nothing_of_what_it_had_made() {
     let (source, _source_server) = database_with_rows();
     let folder = private_folder();
     let file = folder.path().join("anima.backup");
-    // The source has a grant to a role that the target lacks: the schema and the table are
-    // made and filled first, then the grant fails.
+    // The target lacks the auditor role, so the restore fails after the table is filled.
     source.sql("create role auditor").unwrap();
     source
         .sql_in("anima", "grant select on devices.devices to auditor")
@@ -261,7 +259,6 @@ fn a_backup_cannot_act_as_the_superuser_when_it_is_restored() {
     let (source, _source_server) = database_with_rows();
     let folder = private_folder();
     let marker = folder.path().join("ran-as-superuser");
-    // A check that runs a program when a superuser loads the rows, as a tampered backup would.
     let probe = format!(
         "set role anima_owner; \
          create function public.probe() returns boolean language plpgsql as $f$ \

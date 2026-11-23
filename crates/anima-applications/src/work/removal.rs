@@ -1,5 +1,4 @@
-//! `application_remove` (contract K10 Section 6.4.8): stops and removes the containers and
-//! the networks of one application that Anima installed.
+//! `application_remove` (contract K10 Section 6.4.8).
 
 use super::{Facts, free, managed};
 use crate::{
@@ -9,8 +8,7 @@ use crate::{
     plan::Project,
 };
 
-/// The steps that remove what the engine has of `project`, by the project label, when the
-/// folder of the application is gone.
+/// Removes by the project label, for an application whose folder is gone.
 fn by_the_label(project: &str, volumes: bool, facts: &Facts<'_>) -> Vec<Step> {
     let inventory = facts.inventory;
     let of_the_project = |label: &Option<String>| label.as_deref() == Some(project);
@@ -53,9 +51,7 @@ fn by_the_label(project: &str, volumes: bool, facts: &Facts<'_>) -> Vec<Step> {
         .collect()
 }
 
-/// The removal of each image that the program pulled for `application`. The engine refuses
-/// to remove an image that a container uses; no step forces it. A refused removal does not
-/// stop the plan. An image that a version of a different application holds is left out.
+/// The engine refuses to remove an image that a container uses; no step forces it.
 fn image_steps(application: &str, facts: &Facts<'_>) -> Vec<Step> {
     let installed = facts.records.installed(application);
     let pulled = installed.map_or_default(|installed| installed.pulled.as_slice());
@@ -69,14 +65,10 @@ fn image_steps(application: &str, facts: &Facts<'_>) -> Vec<Step> {
         .collect()
 }
 
-/// The plan of `application_remove`. It deletes `files/` of the application in each case,
-/// directly after the stop and also when the stop failed, and `binds/` only with `volumes`
-/// and only after a stop that did not fail.
+/// `binds/` goes only with `volumes`, after a stop that did not fail.
 ///
 /// # Errors
-/// `applications_off`; `not_at_machine` for `volumes` while "The hub may delete volumes" is
-/// off; `not_adopted` when the program has no record of the application and the engine has
-/// no container of its project; `protected`; `busy`.
+/// `applications_off`, `not_at_machine`, `not_adopted`, `protected` or `busy`.
 pub fn removed(removal: &Removal, facts: &Facts<'_>) -> Result<Plan, Refusal> {
     managed(facts)?;
     if removal.volumes && !facts.settings.hub_may_delete_volumes {
@@ -118,8 +110,7 @@ pub fn removed(removal: &Removal, facts: &Facts<'_>) -> Result<Plan, Refusal> {
     } else {
         by_the_label(&project, removal.volumes, facts)
     };
-    // `files/` holds the environment file and the final form: it is deleted directly after
-    // the stop, also when a step before failed (Section 6.4.8, "in each case").
+    // `files/` goes also when a step before failed (Section 6.4.8, "in each case").
     steps.push(Step::DeleteFolderInEachCase {
         path: folders.files(),
     });

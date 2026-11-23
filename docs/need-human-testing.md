@@ -40,9 +40,9 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
 | HT-133 | The public names of applications through the route proxy, on a real network (task H21) | A hub that a person hosts with ports 80 and 443 open, a domain name with its DNS, a machine on the link with a web application, and a second hub | Open |
 | HT-134 | Streams of TCP and UDP and the access of a route on a real network (task H40) | A hub that a person hosts, a machine on its network with a test TCP service and an IMAPS server, a device of the network of Anima and a device that is not on it | Open |
-| HT-136 | The section Routes of Settings beside its mockup, and against a real hub (task H21) | The client of the branch `hosted/routes-section` signed in to a test hub on Linux, a second factor on the account, a domain name with its DNS | Open |
+| HT-136 | The section Routes of Hosting beside its mockup, and against a real hub (task H21) | The client of the branch `hosted/routes-section` signed in to a test hub on Linux, a second factor on the account, a domain name with its DNS | Open |
 | HT-145 | A Codex thread in the home folder cannot write in the folder of the daemon (THR-041) | A Mac with `codex` 0.170 signed in, the daemon of the branch `threads/start-warns` with a test state folder in the home folder | Open |
-| HT-135 | The mockup of the section Routes of the hub (tasks H21 and H40), approved overnight by the orchestrator | A browser | Open |
+| HT-135 | The mockup of the section Routes of Hosting (tasks H21 and H40), approved overnight by the orchestrator | A browser | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
 | HT-003 | The tool inventory in an MCP client | HT-002 | Open |
@@ -2879,7 +2879,7 @@ The tests did not cover: the real gateway, the sign-in at the gateway, the real 
 7. Connect the application of this build to a hub of this computer that has no public origin (the one-click
    installation), and open the same row.
    Expected: "Coming soon: Connect GitHub in your browser for this hub." and "Use key file"; no "Connect GitHub".
-### HT-135: the mockup of the section Routes of the hub (tasks H21 and H40)
+### HT-135: the mockup of the section Routes of Hosting (tasks H21 and H40)
 
 Made on the branch `hosted/routes-screen` and brought to `hosted/routes-screen-2`: [routes/index.html](mockup/routes/index.html), with its record
 [records/routes.md](mockup/records/routes.md). The orchestrator approved it overnight after a separate design
@@ -2887,8 +2887,8 @@ reviewer read it (R-324). No person looked at it. Nothing of the screen is built
 approve it, or say what to change, before the client screen is built.
 
 1. Open `docs/mockup/routes/index.html` in a browser, in a window of at least 1320 px.
-   Expected: a board of ten frames at 1280 px. The first paragraph says why Routes is a section of Settings, in the
-   group Hub, and not an item of the navigation bar.
+   Expected: a board of ten frames at 1280 px. The first paragraph says that Routes is a section of Hosting, in the
+   list on the left with Applications, Catalogue, Models, Storage and Machines, and that Hosting is in the bar below Code.
 2. Frame 1 (the list) and Frame 1b (empty).
    Expected: each row shows the name, the kind and the access, the application on its machine with its port, the
    proof and the certificate, and the traffic of 24 hours. Rows that need you have a wash. The empty state says that a
@@ -2902,7 +2902,7 @@ approve it, or say what to change, before the client screen is built.
 5. Frame 3 (the details of one route).
    Expected: Make public is disabled with the warning that the consent at the machine is not given. The checks are in
    order. Remove asks for the six digits of your authenticator.
-6. Frame 4 (a TCP stream on a hub that you host) and Frame 6 (from the page of an application).
+6. Frame 4 (a TCP stream on a hub that you host) and Frame 6 (the tab Domains of the page of an application).
    Expected: the port of the hub with the refused ports; a database and a protocol with no TLS are "Private only";
    UDP is disabled with its reason. Frame 6 has a button that adds a route for the port of the application.
 7. Frames 5a and 5b.
@@ -2929,16 +2929,18 @@ VoiceOver in WebKit, and how often it speaks during a long turn.
    Expected: VoiceOver says "Approval needed to run a command:" and the command at once, and the focus is on Approve.
 5. Press Enter on Approve.
    Expected: the focus goes to the conversation, not to the top of the window.
-### HT-136: the section Routes of Settings (task H21)
+### HT-136: the section Routes of Hosting (task H21)
 
-Built on the branch `hosted/routes-section`: the section Routes of the Settings page, in the group Hub and account
-(`apps/client/src/lib/application-routes/`). The vitest tests use fake calls of the hub: they prove each state of the
+Built on the branch `hosted/routes-section`: the section Routes (`apps/client/src/lib/application-routes/`), first in
+Settings; the move to the section Routes of Hosting (`/hosting/routes`, hosting-section.md) is the work of the session
+of the Hosting screen. The vitest tests use fake calls of the hub: they prove each state of the
 list, the page of a route, the refusals of the hub that the section shows, Check now, Check all and Remove. No person
 looked at the screen, and no picture of it was compared with the frames of [routes/index.html](mockup/routes/index.html):
 the screen was not run on this computer. No test used a real hub, a real DNS or a real second factor.
 
-1. Open Settings at 1280 px in the dark appearance, then in the light appearance, and put
-   `docs/mockup/routes/index.html` beside it. Expected: the index has Routes in the group Hub and account, after Hub.
+1. Open Hosting > Routes at 1280 px in the dark appearance, then in the light appearance, and put
+   `docs/mockup/routes/index.html` beside it. Expected: the list on the left has Applications, Catalogue, Models,
+   Storage, Routes and Machines, with Routes selected, and the page title is Hosting with Add a route in its header.
    The list has the parts of Frame 1 in the same order: the choice All, Needs you, Public and Private, Check all, the
    summary line, and one row for each route with its name, kind and access, target, proof and certificate, and
    traffic. Rows that need you have a wash. Write each difference that is not in the record
@@ -4728,7 +4730,7 @@ Built: four-destination graphical console and native session/update/install cont
 
 OS3-R6: On 2026-11-22 the operator rejected the Network layout in the VM and asked for the corrected preview to reopen after validation. Review the revised installer and installed Network pages: Ethernet status, Wi-Fi list, contextual connection controls, password entry, and adapter/radio/scan states. Automated fixture checks do not qualify real Wi-Fi hardware. The same review requested compact icon-led installer Settings, a clearer disk Review summary, and door artwork with a stationary-progress note on Install; these remain subject to the operator’s graphical acceptance.
 
-OS3-R7: Scan the sign-in QR with a real phone, open/copy its link on another computer, and confirm the account before explicitly adding this computer. Separately paste an enrollment code and hub address generated on another machine. Check expiry/cancel and failed enrollment. Turn the installed console screen off, wake with keyboard/mouse/touch, and confirm that background compute remains active and the local console stays locked. Hardware panel power-off and touch wake require physical checks; VM black-screen tests do not prove them.
+OS3-R7: Scan the sign-in QR with a real phone, open/copy its link on another computer, and confirm the account before explicitly adding this computer. Separately paste an enrollment code and hub address generated on another machine. Check expiry/cancel and failed enrollment. From the locked console, use the labelled Turn screen off button without unlocking. Also check the labelled footer action after unlocking. Wake with keyboard/mouse/touch, and confirm that background compute remains active and the local console stays locked. Hardware panel power-off and touch wake require physical checks; VM black-screen tests do not prove them.
 
 Result: Open; deferred to the final step by the operator. No production release is authorized.
 
@@ -4881,6 +4883,26 @@ Built on `os/remote-access`. Installed OS SSH and RDP listen only on loopback an
 
 Result: Open.
 
+
+### HT-165-private-access: Automatic OS remote access and simple SSH setup (OS3-R11)
+
+State: Open
+
+Built on `access/automatic-setup`. Automated hub tests exercise authenticated announcements,
+private-address scope and owner overrides; the client test covers the minimal setup submission.
+Actual account/device and service startup timing remain for acceptance after deploying the matching
+hub and OS versions. This is not included in the already published 20261123013635 image.
+
+1. Upgrade an enrolled OS whose device has never had SSH/RDP configured. Keep the hub online.
+   Expected: both connections appear with user admin and standard ports without re-enrollment or editing settings.
+2. Connect from the CLI and GUI using the OS admin password and existing trust confirmation.
+   Expected: terminal and graphical sessions work through the private server; no LAN forwarding is needed.
+3. Disable SSH in the device settings, restart the OS, and wait for its next report.
+   Expected: SSH stays disabled. Custom RDP settings and saved credentials also remain unchanged.
+4. On another device with SSH available, choose Set up, enter its login name and optionally its password, then Enable SSH.
+   Expected: the connection is configured and tested; connection failures are shown. Advanced settings remain available for keys/nonstandard ports.
+5. For a device without an SSH server, run the same setup.
+   Expected: a connection failure, never a false claim that the server was installed. Installing/enabling host SSH on arbitrary operating systems is not implemented by this connection-settings change.
 ### HT-163: the Git actions of a thread, when a person can reach them (TC7, steps W1 to W4)
 
 Built: the Git engine of the runner (`crates/daemon/src/threads/git/`; in `dev` at `56e0132c6` and `6791fb123`). Nothing reaches it yet: this check cannot start before step W2 (the command) or W4 (the page) of Section 6.0.2 of [agent-threads.md](proposals/agent-threads.md). The tests use made repositories in temporary folders, a launcher that stands in, and no remote on the network. They do not cover: a real remote with the credentials of the person, a real hook of a repository, the records folder on a shared Mac or without Full Disk Access, Windows, and the words on the page.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { HubStatus } from '$lib/hub/hub';
-import { AGENT_USAGE, DEVICES, SETTINGS, hubName, isActive, statusLabel, unreachableBanner } from './nav';
+import { AGENT_USAGE, DEVICES, HOSTING, hubName, isActive, SETTINGS, statusLabel, unreachableBanner } from './nav';
 
 const NOW = new Date('2026-11-04T10:00:00Z');
 const status = (connection: HubStatus['connection'], lastContactAt: Date | null = null): HubStatus => ({
@@ -22,6 +22,12 @@ describe('navigation view logic', () => {
     expect(isActive(DEVICES, '/devices/d1')).toBe(true);
     expect(isActive(DEVICES, '/devices-old')).toBe(false);
     expect(isActive(SETTINGS, '/devices')).toBe(false);
+  });
+
+  it('HSE-001: Hosting is active on each of its sections', () => {
+    expect(isActive(HOSTING, '/hosting')).toBe(true);
+    expect(isActive(HOSTING, '/hosting/routes')).toBe(true);
+    expect(isActive(SETTINGS, '/hosting/routes')).toBe(false);
   });
 
   it('AIS-020: Agent usage is active on its page, which is two segments deep', () => {

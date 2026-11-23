@@ -1,9 +1,4 @@
-//! Client input never reaches a `connect` value or adds an instruction (GW-013).
-//!
-//! The client controls only `Display` and the time zone (GW-012). Whatever
-//! they hold, every `connect` value is the hub's value for that name (or `""`),
-//! and the encoded reply decodes back to exactly the instructions sent. A time
-//! zone outside the zone-name charset is refused before anything is sent.
+//! Client input never reaches a `connect` value or adds an instruction (GW-012, GW-013).
 
 use std::collections::HashMap;
 
@@ -47,18 +42,14 @@ fn timezone() -> impl Strategy<Value = String> {
         Just("private-key/password".to_owned()),
         Just("Etc/GMT+5".to_owned()),
         Just("Etc/GMT-14".to_owned()),
-        // A letter, then up to three non-empty `/` segments: at most 63 characters.
         "[A-Za-z][A-Za-z0-9_+-]{0,20}(/[A-Za-z0-9_+-]{1,20}){0,2}",
     ]
 }
 
-/// True for a character a zone name may hold.
 fn zone_char(c: char) -> bool {
     c.is_ascii_alphanumeric() || matches!(c, '_' | '+' | '-' | '/')
 }
 
-/// Time zones that are not zone names: hostile shapes, zone characters in a
-/// non-IANA shape, more than 64 characters, or any character outside the charset.
 fn bad_timezone() -> impl Strategy<Value = String> {
     prop_oneof![
         Just(String::new()),
@@ -68,8 +59,7 @@ fn bad_timezone() -> impl Strategy<Value = String> {
         Just("8.hostname,9.evil.host;7.connect;".to_owned()),
         Just("Europe/Zürich 東京 😀".to_owned()),
         "[A-Za-z0-9_+/-]{65,80}",
-        // Zone characters in a non-IANA shape: leading `/` (a glibc file path),
-        // leading non-letter, empty segment, trailing `/`.
+        // Non-IANA shapes; a leading `/` is a glibc file path.
         "/[A-Za-z0-9_+/-]{0,20}",
         "[0-9_+-][A-Za-z0-9_+/-]{0,20}",
         "[A-Za-z][A-Za-z0-9_+-]{0,10}//[A-Za-z0-9_+/-]{0,10}",
@@ -82,7 +72,6 @@ fn fixture() -> impl Strategy<Value = Instruction> {
     prop::sample::select(all_fixtures().map(|(args, _)| args).to_vec())
 }
 
-/// Hub values: names from the fixtures or arbitrary, short values. Later pairs win.
 fn hub_pairs() -> impl Strategy<Value = Vec<(String, String)>> {
     let names: Vec<String> = decode_args(AGENT_ARGS_1_6_0).args[1..].to_vec();
     let name = prop_oneof![prop::sample::select(names), text(16)];

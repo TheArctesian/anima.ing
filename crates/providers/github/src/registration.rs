@@ -1,5 +1,4 @@
-//! Making the operator's GitHub App from a manifest: the name, the manifest, the pages the
-//! operator presses on and the readers for GitHub's replies (PRJ-039, SRC-006). Pure.
+//! Making the operator's GitHub App from a manifest (PRJ-039, SRC-006).
 
 mod converted;
 mod installation;

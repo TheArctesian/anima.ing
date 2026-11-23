@@ -278,3 +278,20 @@ describe('settings tab: RDP server certificate (SEC-007)', () => {
     expect(shown).not.toContain('AA:BB:CC');
   });
 });
+
+describe('simple SSH setup', () => {
+  it('enables SSH with only a login name and leaves advanced settings out of the initial form', async () => {
+    const unconfigured = device({ ssh: { ...device().ssh, enabled: false, username: '', credentialStored: false } });
+    const fake = await show(answers({ Device: { device: unconfigured } }), '?tab=settings&section=ssh');
+    expect(document.getElementById('device-ssh-port')).toBeNull();
+    const user = document.getElementById('device-ssh-username');
+    if (!(user instanceof HTMLInputElement)) throw new Error('no user name input');
+    user.value = 'operator';
+    user.dispatchEvent(new Event('input', { bubbles: true }));
+    button('Enable SSH').click();
+    await settle();
+    const updates = sent(fake, 'UpdateDevice');
+    expect(updates).toHaveLength(1);
+    expect(updates[0]?.variables).toMatchObject({ input: { ssh: { enabled: true, port: 22, username: 'operator', auth: 'PASSWORD' } } });
+  });
+});

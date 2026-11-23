@@ -1,5 +1,3 @@
-//! The gateway's key and pointer events as RDP fast-path input events.
-
 use ironrdp_pdu::input::MousePdu;
 use ironrdp_pdu::input::fast_path::{FastPathInputEvent, KeyboardFlags, SynchronizeFlags};
 use ironrdp_pdu::input::mouse::PointerFlags;
@@ -7,8 +5,7 @@ use ironrdp_pdu::input::mouse::PointerFlags;
 use super::keys::KeyEvent;
 use super::pointer::{Button, PointerEvent};
 
-/// The device's locks as the key table needs them: Num Lock on, so the keypad makes
-/// digits, and Caps Lock off, so a key makes the character the table says.
+/// Num Lock on so the keypad makes digits; Caps Lock off so each key makes its table character.
 pub(super) fn locks() -> FastPathInputEvent {
     FastPathInputEvent::SyncEvent(SynchronizeFlags::NUM_LOCK)
 }

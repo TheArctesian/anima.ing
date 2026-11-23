@@ -20,25 +20,21 @@ const known = parseKnown(readRepoFile(REPO_ROOT, "quality/duplicate-identifiers.
 
 const exists = (path: string): boolean => existsSync(join(REPO_ROOT, path));
 const violations = checkDocuments(documents, exists, known, (screen, commit) => layoutChangedSince(REPO_ROOT, screen, commit));
-// The generated parts are checked inside `checkDocuments`; a file that does not exist is not in its list.
+// A file that does not exist is not in the list of `checkDocuments`.
 for (const [path, signal] of [[REGISTER, "register-without-list"], [QUEUE, "queue-without-list"]] as const) {
   if (!exists(path)) violations.push({ path, signal, detail: "the file is missing" });
 }
-// PLN-019 and PLN-021: a layout file of a screen of a mockup record holds no placeholder, also on a branch.
 violations.push(...placeholdersInScreens(documents, paths, (path) => readRepoFile(REPO_ROOT, path)));
-// PLN-021: a branch can hold a placeholder of a number; `dev` and `main` cannot. The merge script
-// (quality/bin/merge.ts) gives each placeholder its number.
+// PLN-021: a branch can hold a placeholder of a number; `dev` and `main` cannot.
 const head = spawnSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], { cwd: REPO_ROOT, encoding: "utf8" }).stdout.trim();
 if (isShared(head) || isShared(process.env["GITHUB_REF_NAME"] ?? "")) {
   for (const placeholder of placeholders(documents)) {
     violations.push({ path: "docs", signal: "number-not-assigned", detail: `${placeholder}: run the merge script` });
   }
 }
-// The decisions table merges by union: a row that two branches changed is there two times.
 for (const id of rowsTwice(documents.find((document) => document.path === DECISIONS)?.text ?? "")) {
   violations.push({ path: DECISIONS, signal: "decision-row-twice", detail: `${id}: keep one row` });
 }
-// The findings list and the owners table merge by union too: an entry that two branches changed is there two times.
 const textOf = (path: string): string => documents.find((document) => document.path === path)?.text ?? "";
 for (const id of [...twiceInOneTable(textOf(FINDINGS), findingKey), ...headingsTwice(textOf(FINDINGS))]) {
   violations.push({ path: FINDINGS, signal: "finding-twice", detail: `${id}: keep one row and one entry` });

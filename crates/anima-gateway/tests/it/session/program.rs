@@ -1,5 +1,3 @@
-//! The real program: the listener, and one worker process for each session.
-
 use std::process::Stdio;
 use std::time::Duration;
 
@@ -12,9 +10,7 @@ use super::draw_frame;
 use super::hub_side::{HubSide, values};
 use crate::drawn::Drawn;
 
-/// Starts the program on a port that it chooses, and returns it with the port from its first line.
-/// A port chosen here and freed first could be taken by a different test before the program binds
-/// it; the test then spoke to that listener (seen under load: `InvalidLength` at byte 0).
+/// The program chooses its port: a port chosen here and freed could be taken by another test first.
 async fn start_program() -> (Child, u16) {
     let mut program = Command::new(crate::program())
         .args(["listen", "127.0.0.1:0"])
@@ -68,7 +64,6 @@ async fn each_session_has_its_own_worker_and_a_failed_one_leaves_the_others() {
     draw_frame(&mut second, &mut second_client).await;
     assert_eq!(first_client.rgb, [200, 0, 0].repeat(SIZE.0 * SIZE.1));
 
-    // The first session's device breaks the protocol: that session ends.
     first_device
         .tell
         .send(Tell::Bytes(vec![99]))
@@ -77,7 +72,6 @@ async fn each_session_has_its_own_worker_and_a_failed_one_leaves_the_others() {
     assert_eq!(first.next_of("error").await.args[1], "515");
     assert!(first.next().await.is_none());
 
-    // The second goes on, and a third can open.
     let blue = [0, 0, 200].repeat(SIZE.0 * SIZE.1);
     let update = crate::vnc::rfb::update(&[crate::vnc::rfb::raw(super::ALL, &blue)]);
     second_device
