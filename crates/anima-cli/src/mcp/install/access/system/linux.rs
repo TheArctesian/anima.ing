@@ -64,7 +64,7 @@ pub(in super::super) fn local_only(text: &str) -> bool {
             .filter_map(|line| {
                 // glibc ends the name of the database at a colon or a blank.
                 let rest = line.strip_prefix(database)?;
-                rest.starts_with([':', ' ', '\t'])
+                rest.starts_with(|part: char| part == ':' || part.is_whitespace())
                     .then(|| rest.trim_start().trim_start_matches(':'))
             })
             .collect()

@@ -47,6 +47,10 @@ pub(super) fn run(here: &Here, name: &str, arguments: &[String]) -> Ran {
     let folders = super::script::folders(here);
     #[cfg(windows)]
     let folders = here.path.clone();
+    // With no folder, the system would look in the folder the program is in at the time.
+    if folders.is_empty() {
+        return Ran::Failed;
+    }
     let Ok(path) = std::env::join_paths(&folders) else {
         return Ran::Failed;
     };

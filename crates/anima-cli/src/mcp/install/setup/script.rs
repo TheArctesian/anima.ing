@@ -23,24 +23,25 @@ const MOST_NESTED: usize = 4;
 /// `PATH`, `env` looks in folders of its own.
 const ENV_OPTIONS: [&str; 3] = ["--", "-S", "-v"];
 
-/// The folders of `PATH` that the agent's program runs with (MCP-035): each one in which no user
-/// other than the person and root can replace a program or make one, in the order of `PATH`. A
-/// folder that is not there counts by the nearest folder above it that is, since a user who can
-/// write that can make it. The others are left out: neither `env` nor the program looks there.
+/// The folders of `PATH` that the agent's program runs with (MCP-035), as absolute paths: each one
+/// in which no user other than the person and root can replace a program or make one, in the order
+/// of `PATH`. A folder that is not there counts by the nearest folder above it that is, since a
+/// user who can write that can make it. The others are left out: neither `env` nor the program
+/// looks there.
 pub(super) fn folders(here: &Here) -> Vec<PathBuf> {
     here.path
         .iter()
+        // A relative folder is checked from the folder the program runs in, the home folder, and
+        // given as an absolute path: a program that changes its folder must not find a different one.
+        .map(|folder| here.home.join(folder))
         .filter(|folder| {
-            // A relative folder is found from the folder the program runs in: the home folder.
-            let folder = here.home.join(folder);
             let there = folder
                 .ancestors()
                 .find(|part| fs::symlink_metadata(part).is_ok())
-                .unwrap_or(&folder);
+                .unwrap_or(folder);
             replaceable(there, here.user, &here.groups).is_none()
                 && creatable(there, here.user, &here.groups).is_none()
         })
-        .cloned()
         .collect()
 }
 
@@ -158,13 +159,12 @@ fn first_line(program: &Path) -> io::Result<Option<String>> {
 }
 
 /// The program `name` that `env` finds in the [`folders`] of `PATH`: the first file of that name
-/// that the person can run. `Err` names who other than the person and root can change an entry of
-/// that name in one of them, which `env` could reach when a program before it fails to start. A
-/// program that is not found counts as not known.
+/// that the person can run. `Err` names who other than the person and root can change it, or an
+/// entry of that name before it, which `env` tries first. A program that is not found counts as not
+/// known.
 fn on_path(here: &Here, name: &str) -> Result<PathBuf, Others> {
-    let mut first = None;
     for folder in folders(here) {
-        let found = here.home.join(folder).join(name);
+        let found = folder.join(name);
         // Each entry of the name, also a link that leads nowhere yet and one that cannot be run.
         if fs::symlink_metadata(&found).is_err() {
             continue;
@@ -172,11 +172,11 @@ fn on_path(here: &Here, name: &str) -> Result<PathBuf, Others> {
         if let Some(others) = replaceable(&found, here.user, &here.groups) {
             return Err(others);
         }
-        if first.is_none() && runnable(&found) {
-            first = Some(found);
+        if runnable(&found) {
+            return Ok(found);
         }
     }
-    first.ok_or_else(|| unknown(PathBuf::from(name)))
+    Err(unknown(PathBuf::from(name)))
 }
 
 /// `path`, of which who can change it is not known.

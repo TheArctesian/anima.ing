@@ -54,6 +54,7 @@ fn r_exactgroup_only_sources_that_list_each_account_and_group_are_read() {
     assert!(!local_only(
         "passwd: files\ngroup: files\npasswd files sss\n"
     ));
+    assert!(!local_only("passwd: files\ngroup: files\npasswd\u{b}sss\n"));
     // The groups given at login.
     assert!(local_only(
         "passwd: files\ngroup: files\ninitgroups: files\n"
