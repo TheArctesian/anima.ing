@@ -42,7 +42,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-134 | Streams of TCP and UDP and the access of a route on a real network (task H40) | A hub that a person hosts, a machine on its network with a test TCP service and an IMAPS server, a device of the network of Anima and a device that is not on it | Open |
 | HT-136 | The section Routes of Hosting beside its mockup, and against a real hub (task H21) | The client of the branch `hosted/routes-section` signed in to a test hub on Linux, a second factor on the account, a domain name with its DNS | Open |
 | HT-145 | A Codex thread in the home folder cannot write in the folder of the daemon (THR-041) | A Mac with `codex` 0.170 signed in, the daemon of the branch `threads/start-warns` with a test state folder in the home folder | Open |
-| HT-135 | The mockup of the section Routes of the hub (tasks H21 and H40), approved overnight by the orchestrator | A browser | Open |
+| HT-135 | The mockup of the section Routes of Hosting (tasks H21 and H40), approved overnight by the orchestrator | A browser | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
 | HT-003 | The tool inventory in an MCP client | HT-002 | Open |
@@ -2879,7 +2879,7 @@ The tests did not cover: the real gateway, the sign-in at the gateway, the real 
 7. Connect the application of this build to a hub of this computer that has no public origin (the one-click
    installation), and open the same row.
    Expected: "Coming soon: Connect GitHub in your browser for this hub." and "Use key file"; no "Connect GitHub".
-### HT-135: the mockup of the section Routes of the hub (tasks H21 and H40)
+### HT-135: the mockup of the section Routes of Hosting (tasks H21 and H40)
 
 Made on the branch `hosted/routes-screen` and brought to `hosted/routes-screen-2`: [routes/index.html](mockup/routes/index.html), with its record
 [records/routes.md](mockup/records/routes.md). The orchestrator approved it overnight after a separate design
@@ -2902,7 +2902,7 @@ approve it, or say what to change, before the client screen is built.
 5. Frame 3 (the details of one route).
    Expected: Make public is disabled with the warning that the consent at the machine is not given. The checks are in
    order. Remove asks for the six digits of your authenticator.
-6. Frame 4 (a TCP stream on a hub that you host) and Frame 6 (from the page of an application).
+6. Frame 4 (a TCP stream on a hub that you host) and Frame 6 (the tab Domains of the page of an application).
    Expected: the port of the hub with the refused ports; a database and a protocol with no TLS are "Private only";
    UDP is disabled with its reason. Frame 6 has a button that adds a route for the port of the application.
 7. Frames 5a and 5b.
