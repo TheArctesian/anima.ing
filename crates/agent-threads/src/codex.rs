@@ -4,12 +4,34 @@
 //! person saw them; the `response_item` lines hold the reasoning and the tool calls with their
 //! outputs; `task_complete` and `turn_aborted` end a turn. The `response_item` messages repeat
 //! the prompts and replies with the text the program adds, so they are not read.
+//!
+//! The newer rollouts write `item_completed` events in place of `user_message` and
+//! `agent_message` ([`items`]), and their tool calls go through the `exec` tool, a short script
+//! that calls the tools of Codex ([`exec`]). A file is read in either form, or in both.
+//!
+//! The file is written by the agent, so it is read as untrusted text: each line is held to a
+//! size by whoever reads the file, JSON nests at most 128 deep, each entry is held to its
+//! limit, and nothing in a line names a file that this reader opens.
+
+mod exec;
+mod items;
+#[cfg(test)]
+mod tests;
 
 use serde::Deserialize;
 use serde_json::Value;
 
 use super::tool;
 use super::{EntryKind, ThreadReader, Time, time};
+
+/// The open call of a script of `exec` (or of a `wait` for one), and what the tool calls in it
+/// gave, which the output of the script carries.
+#[derive(Debug)]
+pub(super) struct Script {
+    call: String,
+    output: String,
+    failed: bool,
+}
 
 #[derive(Deserialize)]
 struct Line {
@@ -72,10 +94,17 @@ fn event(reader: &mut ThreadReader, at: Option<Time>, payload: &Value) {
             );
         }
         "agent_message" => reader.text(at, false, field("message")),
+        "item_completed" => {
+            if let Some(item) = payload.get("item") {
+                items::completed(reader, at, item);
+            }
+        }
         "task_complete" => {
+            reader.script = None;
             reader.end(at, false);
         }
         "turn_aborted" => {
+            reader.script = None;
             reader.end(at, true);
         }
         "thread_name_updated" => reader.name(field("thread_name")),
@@ -109,7 +138,11 @@ fn response(reader: &mut ThreadReader, at: Option<Time>, payload: &Value) {
                 .and_then(Value::as_str)
                 .unwrap_or_default();
             let input = serde_json::from_str(raw).unwrap_or(Value::Null);
-            reader.call(at, tool::call(field("call_id"), field("name"), &input, raw));
+            if is_script(field("name"), &input) {
+                script(reader, at, field("call_id"), raw);
+            } else {
+                reader.call(at, tool::call(field("call_id"), field("name"), &input, raw));
+            }
         }
         "local_shell_call" => {
             let input = payload.get("action").cloned().unwrap_or(Value::Null);
@@ -136,20 +169,16 @@ fn output(reader: &mut ThreadReader, payload: &Value) {
         return;
     };
     let value = payload.get("output").unwrap_or(&Value::Null);
-    let text = match value {
-        Value::String(text) => text.clone(),
-        Value::Array(parts) => parts
-            .iter()
-            .filter_map(|part| part.get("text").and_then(Value::as_str))
-            .collect::<Vec<_>>()
-            .join("\n"),
-        Value::Object(_) => value
-            .get("content")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_owned(),
-        _ => String::new(),
-    };
+    let text = text_of(value);
+    if let Some(script) = reader.script.take_if(|script| script.call == call) {
+        let (shown, failed) = exec::ended(&text);
+        if script.output.is_empty() {
+            reader.result(call, &shown, failed);
+        } else {
+            reader.result(call, &script.output, failed || script.failed);
+        }
+        return;
+    }
     // Codex wraps the output of a command as `{"output": "...", "metadata": {...}}`. Only an
     // object of that exact form is read as the wrapper: text that a command printed must not
     // choose what is shown or whether the call failed.
@@ -165,6 +194,48 @@ fn output(reader: &mut ThreadReader, payload: &Value) {
         .and_then(|wrapper| wrapper.get("output").and_then(Value::as_str))
         .map_or(text.clone(), str::to_owned);
     reader.result(call, &shown, failed);
+}
+
+/// Whether a call is a script of `exec`, or a `wait` for a script that still runs (it names
+/// the `cell_id` of the script; a `wait` for a sub-agent does not).
+fn is_script(name: &str, input: &Value) -> bool {
+    name == "exec" || (name == "wait" && input.get("cell_id").is_some())
+}
+
+/// The call of a script, named for the first tool it calls; its raw text is what it shows.
+fn script(reader: &mut ThreadReader, at: Option<Time>, id: &str, raw: &str) {
+    let mut call = match exec::first_tool(raw) {
+        Some((name, input)) => {
+            let patch = input.get("input").and_then(Value::as_str).unwrap_or(raw);
+            tool::call(id, name, &input, patch)
+        }
+        None => tool::call(id, "exec", &Value::Null, raw),
+    };
+    call.input = super::held(raw, super::MAX_TEXT);
+    reader.script = Some(Script {
+        call: id.to_owned(),
+        output: String::new(),
+        failed: false,
+    });
+    reader.call(at, call);
+}
+
+/// The text of an output: a text, the text of a list of parts, or the `content` of an object.
+fn text_of(value: &Value) -> String {
+    match value {
+        Value::String(text) => text.clone(),
+        Value::Array(parts) => parts
+            .iter()
+            .filter_map(|part| part.get("text").and_then(Value::as_str))
+            .collect::<Vec<_>>()
+            .join("\n"),
+        Value::Object(_) => value
+            .get("content")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_owned(),
+        _ => String::new(),
+    }
 }
 
 /// Whether `value` is the wrapper Codex puts around the output of a command: an object with a

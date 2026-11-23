@@ -166,6 +166,8 @@ pub struct ThreadReader {
     kept: usize,
     /// The tool calls that have no result yet, by the ID of the call.
     open: HashSet<String>,
+    /// The script of `exec` that runs, in a Codex rollout.
+    script: Option<codex::Script>,
 }
 
 impl ThreadReader {
@@ -178,6 +180,7 @@ impl ThreadReader {
             named: None,
             kept: 0,
             open: HashSet::new(),
+            script: None,
         }
     }
 
