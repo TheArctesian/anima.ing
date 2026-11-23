@@ -8,10 +8,10 @@ evidence: Version 1 (2026-11-22). From R-NEW-hostingsections: "oh okay then clus
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this proposal (PLN-005).
 
-Version: 1. Date: 2026-11-22.
+Version: 1.1. Date: 2026-11-22. Version 1.1 says for each level whether a daemon acts for other machines and so whether K11 changes (CLU-013), at the request of the model service session.
 Status: the header of this document holds the state (PLN-020).
 Map: [work-plan.md](../work-plan.md), category Use, row 4.9 of the [priority order](../plan/priorities.md) (hosted applications). It changes HOST-052 of [hosted-applications-plan.md](../plans/hosted-applications-plan.md) when it is approved, and it is shown in the sections Applications, Models and Machines of [hosting-section.md](hosting-section.md).
-Identifiers: CLU-001 to CLU-012, OD-CLU1 to OD-CLU5.
+Identifiers: CLU-001 to CLU-013, OD-CLU1 to OD-CLU5.
 
 ## 1. What the operator decided
 
@@ -38,6 +38,17 @@ There are three levels. Each level includes the level before it. The cost grows 
 | (b) Restart elsewhere | (a), and when a machine goes away (off, broken, gone from the network for a time that you set), Anima starts its things on a different member by itself. | The data must already be on the other machine when the first one goes away: a copy of each volume kept up to date on a second member (HOST-005), or storage that all members share. A model must already be downloaded on the other member. A rule against two copies running at the same time when the first machine comes back. | Large. This is where the real work is: copies of volumes kept up to date, a check of each copy, and a way to know that a machine is really gone and not only out of reach. A database that runs twice can lose data. |
 | (c) Spread | One thing on several machines at the same time: copies of a web application behind one route, or one model split across machines (Level 2 of [compute-plan.md](../plans/compute-plan.md), which is parked). | A scheduler: a program that decides, all the time, how many copies run and where, and moves them. Applications that can run as several copies (most self-hosted applications cannot: they keep their data in one place). For a split model, the framework of Level 2. | Very large. It is the work of Kubernetes or Nomad. Few applications of the catalogue gain from it. |
 
+Does a daemon act for other machines? This decides whether the contract of model work, K11 ([model-work.md](../../contracts/compute/model-work.md), R-344), needs a new version. The model service session uses the place in the hub API, `anima`, the MCP tool and the client, and changes K11 only if a daemon must act for other machines, then as a new version with its own review.
+
+| Level | Does a daemon act for other machines? | K11 |
+| --- | --- | --- |
+| (a) Placement | No. The hub chooses the machine and sends work to the daemon of that machine. A move is two requests from the hub: stop and send the volumes on the first machine, receive and start on the second; each daemon acts only for its own machine. | No change |
+| (b) Restart elsewhere | No, if the hub decides that a machine is gone and sends the start to the daemon of a different member. It would be yes only if the members decided it among themselves, which this proposal does not do. | No change |
+| (c) Spread, copies of an application | No: the hub starts each copy on the daemon of its machine. | No change |
+| (c) Spread, one model split across machines | Yes. One daemon sends the blocks of layers of the model to the daemons of other machines and runs the request across them (Level 2 of the compute plan). | A new version, with its own review |
+
+- **CLU-013.** At levels (a) and (b), the hub chooses and acts across the machines of a cluster, and each daemon acts only for its own machine. No daemon acts for another machine before Level 2 of the compute plan, and then only through a new version of K11.
+
 - **CLU-004.** Anima builds level (a) first (OD-CLU2). Level (b) is a later step for each kind of thing, and only for a thing whose data can follow it. Level (c) is not built for applications; for models it stays Level 2 of the compute plan.
 
 ## 4. Build it, or drive an existing engine
@@ -51,6 +62,8 @@ An engine is a program that already runs things on a group of machines. Four cou
 | k3s (Kubernetes) | Apache-2.0 | No: each file must be converted to Kubernetes objects | About 512 MB of memory on a member, more on a server; its own container engine (containerd), not Docker | No | The same as Swarm: the API server controls each member. New ports (6443, 10250, 8472). A large program to keep up to date. |
 | Incus clustering | Apache-2.0 | No: it runs system containers, virtual machines and OCI images, not Compose | Moderate; Linux only; it replaces Docker as the engine | No | A member of the cluster trusts each other member fully. It is the candidate for the shared pool server ([shared-pool-hosting.md](shared-pool-hosting.md)), not for the operator's machines. |
 | Nomad | Business Source License 1.1 since 2023, not open source | No: its own job files | One program, small | Only as a client, with limits | Its server controls each member; it needs its access lists turned on. The licence forbids a product that competes with HashiCorp. |
+
+With an engine, the manager of the engine acts for the other machines, not the daemon of Anima. If Anima drove an engine for models, the daemon on the manager would ask the engine to run on other members: that is a daemon that acts for other machines, and K11 would need a new version. Building it in Anima (the first row) keeps each daemon on its own machine.
 
 The main point: each engine moves the power to run anything on a machine from that machine to a manager. Anima's model so far is the other way round: a machine runs only what its applications program checks (R-226, tasks H28 and H31), and a public route waits for the consent at the machine (OD-HOST-43, R-390). An engine would end that model for each member of a cluster.
 
@@ -76,7 +89,7 @@ It waits for the record of the applications with their machine (task H6) and for
 | Part | Owner |
 | --- | --- |
 | The place (HOST-052), clusters as groups, the placement of an application, the move of an application and its volumes, routes that follow it | The hosted applications plan (this session) |
-| The placement of a model, the model address on a cluster, the files of a model on each member | The model service session ([compute-plan.md](../plans/compute-plan.md)) |
+| The placement of a model, the model address on a cluster, the files of a model on each member, and K11 (the place in its hub API, `anima`, MCP tool and client; K11 unchanged unless CLU-013 changes) | The model service session ([compute-plan.md](../plans/compute-plan.md)) |
 | What a machine reports about its room, how a machine joins and agrees at the machine, the machine of the spare-computer image | The OS stream ([spare-computer-os.md](spare-computer-os.md)) |
 | The screens: the section Machines and the choice of a place | The hosted applications plan for the content, the UI session for the shell (HSE-001) |
 
