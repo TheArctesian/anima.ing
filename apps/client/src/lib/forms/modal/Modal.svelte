@@ -229,11 +229,13 @@
     grid-template-rows: minmax(0, 1fr);
     justify-items: center;
     align-items: start;
-    padding: var(--space-4);
+    --dialog-gutter: var(--space-4);
+    padding-block: calc(var(--safe-block-start) + var(--dialog-gutter)) calc(var(--safe-block-end) + var(--space-4));
+    padding-inline: calc(var(--safe-inline-start) + var(--space-4)) calc(var(--safe-inline-end) + var(--space-4));
   }
 
   .lowered {
-    padding-block-start: var(--space-16);
+    --dialog-gutter: var(--space-16);
   }
 
   .surface {
