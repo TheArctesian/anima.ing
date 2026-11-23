@@ -106,19 +106,21 @@ impl Thread {
     /// record could not say so first (THR-041): the turn ends as one that Codex refused, so
     /// nothing waits for it and the profile stays.
     pub fn held_back(&mut self, line: &str) -> Vec<Step> {
-        let Driver::Codex(codex) = &self.driver else {
+        let Driver::Codex(codex) = &mut self.driver else {
             return Vec::new();
         };
         let Some(number) = codex.leaving_line(line) else {
             return Vec::new();
         };
-        let why = "Anima could not write its record, so this turn, which leaves the sandbox of the \
-                   folder, did not go. Make room on the disk, then send again.";
-        self.reply(
-            &ProgramRequestId::Number(number),
-            false,
-            &serde_json::json!({ "message": why }),
-        )
+        // Codex never saw the line: its call ends as a refused one, with no lines to write.
+        let _ = codex.reply(number, false, &serde_json::json!({}));
+        let _ = codex.refused_turn();
+        self.turn_ended(agent_threads::drive::TurnOutcome::Failed);
+        vec![said(DriveEvent::Notice {
+            text: "Anima could not write its record, so this turn, which leaves the sandbox of \
+                   the folder, did not go. Make room on the disk, then send again."
+                .to_owned(),
+        })]
     }
 
     fn reply(&mut self, id: &ProgramRequestId, ok: bool, result: &serde_json::Value) -> Vec<Step> {

@@ -28,7 +28,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use agent_threads::control::{Limits, Reply};
+use agent_threads::control::{Change, Limits, Reply};
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
@@ -79,9 +79,15 @@ struct Pending {
     back: Caller,
 }
 
-/// The link to the holder was lost while a command was sent.
+/// Why steps of a thread did not all go.
 #[derive(Debug)]
-struct LinkDown;
+enum NotSent {
+    /// The link to the holder was lost while a command was sent.
+    LinkDown,
+    /// The record was not written, so a turn that leaves the profile of the folder of Anima did
+    /// not go (THR-041); the other steps went.
+    Held,
+}
 
 /// The runner: its threads, its link to the holder and its clients.
 pub struct Runner {
@@ -288,11 +294,12 @@ impl Runner {
     }
 
     /// Does the steps of a thread, in order. Gives the ID of the command of the last line
-    /// written, or [`LinkDown`] when a command did not reach the holder.
-    async fn apply(&mut self, id: Uuid, steps: Vec<Step>) -> Result<Option<u64>, LinkDown> {
+    /// written, [`NotSent::LinkDown`] when a command did not reach the holder, or
+    /// [`NotSent::Held`] when a line was held back.
+    async fn apply(&mut self, id: Uuid, steps: Vec<Step>) -> Result<Option<u64>, NotSent> {
         let key = id.to_string();
         let mut last_write = None;
-        let mut held = false;
+        let (mut held, mut put_back) = (false, false);
         for step in steps {
             // A turn that leaves the profile may be taken while the runner is down: the record
             // says that the profile is gone before its line goes, or the line does not go
@@ -322,7 +329,13 @@ impl Runner {
                     .and_then(|thread| thread.put_back(queued.id, queued.text.clone()));
                 if let Some(back) = back {
                     self.own_step(id, back, None);
+                    put_back = true;
                 }
+                continue;
+            }
+            // The row of the queue after the prompt left it is not true now: the row of the
+            // put back is.
+            if put_back && matches!(step, Step::Change(Change::State { .. })) {
                 continue;
             }
             let Some(action) = step.command(&key) else {
@@ -333,10 +346,13 @@ impl Runner {
                 continue;
             };
             let write = matches!(action, Action::Write { .. });
-            let command = self.command(action).await.ok_or(LinkDown)?;
+            let command = self.command(action).await.ok_or(NotSent::LinkDown)?;
             if write {
                 last_write = Some(command);
             }
+        }
+        if held {
+            return Err(NotSent::Held);
         }
         Ok(last_write)
     }

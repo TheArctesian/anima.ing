@@ -76,8 +76,19 @@ pub fn write(dir: &Path, record: &Record) -> std::io::Result<()> {
     file.write_all(&text)?;
     file.sync_all()?;
     std::fs::rename(new, dir.join(FILE))?;
-    // The new name is on the disk only when the folder is too.
-    std::fs::File::open(dir)?.sync_all()
+    // The new name is on the disk only when the folder is too. A disk that cannot sync a
+    // folder (some network and FAT disks) keeps the record as its files are kept.
+    match std::fs::File::open(dir)?.sync_all() {
+        Err(error)
+            if matches!(
+                error.kind(),
+                std::io::ErrorKind::Unsupported | std::io::ErrorKind::InvalidInput
+            ) =>
+        {
+            Ok(())
+        }
+        synced => synced,
+    }
 }
 
 /// Makes the folder of the threads, and checks that it is a private folder of this user.
