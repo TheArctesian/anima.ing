@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { FIXTURE_SOURCES } from './fixture';
+import { cannot } from '../draft';
+import { FIXTURE_COMMANDS, FIXTURE_SOURCES } from './fixture';
 import MentionMenu from './MentionMenu.svelte';
 import { drawerPlace, emptyWords, FILE_SEARCH_DELAY_MS, optionId } from './menu';
-import type { MentionEntry, MentionSources } from './sources';
+import type { Command, MentionEntry, MentionSources } from './sources';
 import { triggerAt } from './trigger';
 
 describe('where the mention menu hangs', () => {
@@ -121,14 +122,16 @@ describe('the mention menu', () => {
   });
 
   it('takes a second choice in the same frame for the same press, and does not choose a row that cannot be used', () => {
-    const menu = open('/');
+    // The agent's own list can hold a command that cannot run now (a runner that lists it during a turn).
+    const busy: Command = { name: 'busy', description: 'x', builtIn: false, anywhere: false, effect: 'text', available: cannot('A turn is running') };
+    const menu = open('/', { ...FIXTURE_SOURCES, commands: [...FIXTURE_COMMANDS.slice(0, 3), busy] });
     press(menu, 'Enter');
     press(menu, 'Enter');
     expect(chosen).toHaveLength(1);
     vi.advanceTimersToNextFrame();
-    const clear = rows()[3];
-    expect(clear?.getAttribute('aria-disabled')).toBe('true');
-    clear?.click();
+    const unusable = rows()[3];
+    expect(unusable?.getAttribute('aria-disabled')).toBe('true');
+    unusable?.click();
     expect(chosen).toHaveLength(1);
   });
 

@@ -16,3 +16,29 @@ export function filesFrom(value: unknown): FoundFile[] | null {
   }
   return paths;
 }
+
+/** What the runner says of a folder: its notice (THR-046), the files that match (TH108), or the folders in it (TH113). */
+export type FolderOutcome =
+  | { readonly outcome: 'folder'; readonly notice: readonly string[] }
+  /** The best match first; `more` when more matched. */
+  | { readonly outcome: 'files'; readonly paths: readonly FoundFile[]; readonly more: boolean }
+  /** `folder` is its real path; the names are sorted; `more` when it held more than the answer gives. */
+  | { readonly outcome: 'folders'; readonly folder: string; readonly folders: readonly string[]; readonly more: boolean };
+
+function names(value: unknown): readonly string[] | null {
+  return Array.isArray(value) && value.every((name) => typeof name === 'string') ? (value as string[]) : null;
+}
+
+/** A `folder`, `files` or `folders` answer of the runner, or `null` when it does not read. */
+export function folderOutcomeFrom(value: Readonly<Record<string, unknown>>): FolderOutcome | null {
+  if (value.outcome === 'folders') {
+    const folders = names(value.folders);
+    return folders === null || typeof value.folder !== 'string' ? null : { outcome: 'folders', folder: value.folder, folders, more: value.more === true };
+  }
+  if (value.outcome === 'files') {
+    const paths = filesFrom(value.paths);
+    return paths === null ? null : { outcome: 'files', paths, more: value.more === true };
+  }
+  const notice = names(value.notice);
+  return notice === null ? null : { outcome: 'folder', notice };
+}

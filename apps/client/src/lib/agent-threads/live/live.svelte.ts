@@ -69,7 +69,7 @@ export class LiveThreads {
         },
       );
       void this.readDaemon();
-      await this.seed();
+      await this.readRows();
       await this.readListings();
       return stop;
     } catch (reason) {
@@ -91,7 +91,8 @@ export class LiveThreads {
     if (listed?.outcome === 'threads') this.holder = listed.holder ?? null;
   }
 
-  private async seed(): Promise<void> {
+  /** Reads the rows of the runner's threads; a thread the page has no update of yet comes in from its row (TH14). */
+  async readRows(): Promise<void> {
     const listed = await this.shell.call({ call: 'list' });
     if (listed.outcome !== 'threads') return;
     this.holder = listed.holder ?? null;

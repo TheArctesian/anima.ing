@@ -4,9 +4,11 @@
   interface Props {
     /** Words at the end of the footer while the chats load or fail, so the list keeps its height. */
     note?: string | undefined;
+    /** Backspace goes back a step: in a view of the "Add project" palette. */
+    back?: boolean;
   }
 
-  const { note }: Props = $props();
+  const { note, back = false }: Props = $props();
 </script>
 
 <!-- T3 Code's `CommandPaletteContent` footer: the hints, then the note; on a narrow window the two stack. -->
@@ -14,6 +16,7 @@
   <div class="hints">
     <span class="hint"><Kbd keys="↑" /><Kbd keys="↓" /> Navigate</span>
     <span class="hint"><Kbd keys="Enter" /> Select</span>
+    {#if back}<span class="hint"><Kbd keys="Backspace" /> Back</span>{/if}
     <span class="hint"><Kbd keys="Esc" /> Close</span>
   </div>
   <!-- The palette's status line says the note to a screen reader. -->

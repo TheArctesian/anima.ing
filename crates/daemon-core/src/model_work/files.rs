@@ -1,6 +1,9 @@
 //! The files that a copy may have (Section 2.2, SEC-C-008, SEC-C-009). Each format has a fixed
 //! list of names; each other file of `files` is refused before a byte is downloaded.
 
+pub mod classes;
+pub mod code;
+
 use super::names::{Format, is_source_name};
 
 /// The most files of one pull, and the longest name of a file.
