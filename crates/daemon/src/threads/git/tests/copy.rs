@@ -44,6 +44,7 @@ pub(super) fn as_the_person(hooks: Option<Arc<AtomicUsize>>) -> AsThread {
 }
 
 mod budget;
+mod removal;
 mod review;
 
 impl Bench {

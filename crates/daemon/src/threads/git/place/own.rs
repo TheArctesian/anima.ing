@@ -83,11 +83,12 @@ pub async fn within(git: &Git, worktree: &Worktree) -> Result<u64, GitError> {
     let own = &worktree.record().own;
     // The work of a worktree whose removal started is saved as it was then: no snapshot is
     // made of what is left of its files.
-    if own.join(SAVED).exists() {
+    if own.join(SAVED).exists() && git.own_room() != u64::MAX {
         return Err(GitError::Failed {
             code: None,
-            said: "the removal of the worktree of this chat started and did not end; remove \
-                   the worktree of the chat again"
+            said: "the removal of the worktree of this chat started and did not end. Its \
+                   files were saved when it started; remove the worktree of the chat again, \
+                   and what changed since is saved apart"
                 .to_owned(),
         });
     }

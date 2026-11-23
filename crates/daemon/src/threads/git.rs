@@ -239,7 +239,9 @@ impl Engine {
             Ok(_) => Err(GitRefusal::NoWorktree),
             // A worktree that is not whole is still removed, so that it holds nothing.
             Err(_) if own_thread && action == GitAction::Remove && !caller.running => {
-                worktree::remove_broken(&self.home, target.thread, target.repository)
+                let of = (target.thread, target.repository);
+                worktree::remove_broken(&self.git, &self.home, of)
+                    .await
                     .map(|kept| GitOutcome::Removed { kept })
             }
             Err(bad) => Err(bad.into()),
