@@ -2,7 +2,7 @@ import type { ModelLists } from '$lib/agent-threads/live/models';
 import type { Effort, Mode } from '$lib/agent-threads/live/run';
 import { programName, type Program } from '$lib/agent-threads/thread';
 import { CAN, cannot } from '../composer/draft';
-import type { CodeIconName } from '../icons/icons';
+import { PROGRAM_ICONS } from '../icons/program';
 import { PERMISSION_MODES, type Catalogue, type Choice, type EffortLevel, type PermissionMode } from '../composer/picker/catalogue';
 
 /** What a new thread starts with, as the composer's pickers set it before the first send. */
@@ -31,9 +31,6 @@ const PROGRAM_EFFORTS: Readonly<Record<Program, readonly Effort[]>> = {
   claude_code: ['low', 'medium', 'high', 'xhigh', 'max'],
   codex: ['low', 'medium', 'high', 'xhigh'],
 };
-
-/** T3 Code's `ProviderInstanceIcon.tsx`: each program by the mark of its maker. */
-const PROGRAM_ICONS: Readonly<Record<Program, CodeIconName>> = { claude_code: 'claude', codex: 'openai' };
 
 /** The runner's answer to `models`, as far as it came: the picker says why it shows only the default (TH104). */
 export type DraftModels =

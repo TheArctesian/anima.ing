@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { programName } from '$lib/agent-threads/thread';
   import type { Anchor } from '$lib/overlay/helptip/placement';
   import CodeIcon from '../../icons/CodeIcon.svelte';
+  import ProgramMark from '../../icons/ProgramMark.svelte';
   import StatusMark from '../../status/StatusMark.svelte';
   import { shortAge, STATUS_LOOKS } from '../../status/status';
   import type { RowAction } from '../actions';
@@ -37,7 +37,9 @@
   const age = $derived(item.since === null ? '' : shortAge(item.since.getTime(), now.getTime()));
   /** The time left until a snoozed thread wakes, as T3 Code writes it: "now", "45m", "3h", "2d" (08 inbox 7). */
   const wakes = $derived(item.wakes === null ? '' : shortAge(now.getTime(), item.wakes.getTime()));
-  const meta = $derived(kind === 'card' && row.branch !== null);
+  /** A branch by its name; "HEAD", a checkout on no branch, says nothing and is not shown. */
+  const branch = $derived(row.branch === null || row.branch === 'HEAD' ? null : row.branch);
+  const meta = $derived(kind === 'card' && branch !== null);
   /** What the slot shows, in words: the slot itself is hidden while the row has focus, so the name keeps this copy (09 finding 5). */
   const said = $derived(kind === 'slim' && shelf === 'snoozed' ? (wakes === 'now' ? 'Wakes now' : `Wakes in ${wakes}`) : item.status !== null && (kind === 'card' || item.status === 'woke') ? STATUS_LOOKS[item.status].label : age);
 
@@ -91,12 +93,12 @@
       </span>
       <span class="line two">
         <RowTitle {title} {renaming} {onRename} />
-        {#if !meta}<span class="program">{programName(row.program)}</span>{/if}
+        {#if !meta}<span class="program"><ProgramMark program={row.program} /></span>{/if}
       </span>
       {#if meta}
         <span class="line three">
-          <CodeIcon name="git-branch" /><span class="branch">{row.branch}</span>
-          <span class="program">{programName(row.program)}</span>
+          <CodeIcon name="git-branch" /><span class="branch">{branch}</span>
+          <span class="program"><ProgramMark program={row.program} /></span>
         </span>
       {/if}
     {:else}
