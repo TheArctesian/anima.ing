@@ -47,6 +47,8 @@ export interface PageForPalette {
   readonly failed: boolean;
   readonly chosen: string | null;
   readonly newThread: (() => void) | undefined;
+  /** Opens a draft with the "Add project" palette. */
+  readonly addProject: (() => void) | undefined;
   readonly open: (id: string) => void;
   /** Goes to the Settings page, where Code has its appearance group. */
   readonly settings: () => void;
@@ -63,6 +65,7 @@ export function paletteHost(page: PageForPalette): PaletteHost {
       'settings.open': page.settings,
       'usage.open': () => void goto(resolve('/agents/usage')),
       ...(page.newThread === undefined ? {} : { 'chat.new': page.newThread }),
+      ...(page.addProject === undefined ? {} : { 'project.add': page.addProject }),
     },
     openChatById: page.open,
     returnFocus: focusComposerAtEnd,
