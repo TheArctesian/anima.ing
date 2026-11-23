@@ -132,18 +132,13 @@ select {
 }
 
 /* On a Mac the window draws under its title bar (tauri.macos.conf.json). The three window buttons sit at the start of
-   the bar's top row: 16 px in, 12 px each, 8 px apart, then a gap; the collapsed bar keeps room for them and the toggle. */
+   the bar's top row: 16 px in, 12 px each, 8 px apart, then a gap. The collapsed bar is the same rail on every page:
+   its top row keeps room for the window buttons alone, and its mark opens it (`lib/nav/Nav.svelte`). */
 :root[data-titlebar="overlay"] {
   --titlebar-buttons-inline-size: var(--space-16);
 }
 
 :root[data-titlebar="overlay"][data-nav="icons"] {
-  --nav-inline-size: calc(var(--space-3) * 2 + var(--titlebar-buttons-inline-size) + var(--target-min-touch));
-}
-
-/* On the page Code the bar has no fold toggle (Code's own toggle hides its column of threads), so the folded bar keeps
-   room for the window buttons alone. */
-:root[data-titlebar="overlay"][data-nav="icons"]:has([data-code-page]) {
   --nav-inline-size: calc(var(--space-3) * 2 + var(--titlebar-buttons-inline-size));
 }
 
