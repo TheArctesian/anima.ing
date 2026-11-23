@@ -36,16 +36,15 @@ async function enable(hub: Hub, host: string): Promise<boolean> {
   return pushMobileReadings(origin);
 }
 
-/** A device enrolled before reporting was supported may have a row but no native credential yet. */
-async function recover(hub: Hub): Promise<void> {
+/** The address registered for the device that owns the current link. */
+export async function currentMobileHost(hub: Hub): Promise<string | undefined> {
   const local = await readLink();
   if (!local.ok) return;
   const key = activeLinkKey(hub.address.origin, local.value);
   if (key === undefined) return;
   const linked = await linkApi(hub).devices();
   if (!linked.ok) return;
-  const device = linked.value.find((entry) => entry.key === key);
-  if (device?.address) await enableMobileMetrics(hub, device.address);
+  return linked.value.find((entry) => entry.key === key)?.address;
 }
 
 export function watchMobileMetrics(hub: Hub): () => void {
@@ -55,7 +54,8 @@ export function watchMobileMetrics(hub: Hub): () => void {
   async function send(): Promise<void> {
     if (await pushMobileReadings(hub.address.origin) || stopped || Date.now() < nextRecovery) return;
     nextRecovery = Date.now() + RECOVERY_INTERVAL;
-    await recover(hub);
+    const host = await currentMobileHost(hub);
+    if (host && !stopped) await enableMobileMetrics(hub, host);
   }
   function report(): void {
     if (document.visibilityState !== 'visible' || inFlight) return;

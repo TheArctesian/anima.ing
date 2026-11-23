@@ -39,7 +39,7 @@ export interface ProgramModel {
 /** The id of each mode of a run in the picker's list of permissions. */
 export const MODE_IDS: Readonly<Record<Mode, string>> = { ask: 'approval-required', accept_edits: 'auto-accept-edits', full_access: 'full-access', plan: 'plan' };
 /** The word of each effort, as the picker shows it. */
-export const EFFORT_WORDS: Readonly<Record<Effort, string>> = { low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Extra High', max: 'Max' };
+export const EFFORT_WORDS: Readonly<Record<Effort, string>> = { low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Extra High', max: 'Max', ultra: 'Ultra' };
 const EFFORTS = Object.keys(EFFORT_WORDS) as Effort[];
 
 const NO_AUTO = 'The runner has no such mode.';
@@ -64,11 +64,12 @@ function modesOf(row: Row, changes: boolean): readonly PermissionMode[] {
 
 /**
  * The efforts of a model. Claude Code takes no change of the effort after the start: only the one it runs with is
- * listed. For Codex they are the ones its model names, or each one when the runner gave no list.
+ * listed. For Codex they are the ones its model names, or each one when the runner gave no list, but Ultra: the runner
+ * takes it only for a model that lists it.
  */
 function effortsOf(row: Row, changes: boolean, named?: ProgramModel): readonly EffortLevel[] {
   if (!changes || row.program !== 'codex') return row.effort === undefined || row.effort === null ? [] : [level(row.effort)];
-  return named === undefined ? EFFORTS.map((effort) => level(effort)) : EFFORTS.filter((effort) => named.efforts.includes(effort)).map((effort) => level(effort, named.defaultEffort));
+  return named === undefined ? EFFORTS.filter((effort) => effort !== 'ultra').map((effort) => level(effort)) : EFFORTS.filter((effort) => named.efforts.includes(effort)).map((effort) => level(effort, named.defaultEffort));
 }
 
 /** The rows of the picker: the program's own models where the runner knows them, with the chat's model among them. */

@@ -36,7 +36,7 @@ pub enum Cause {
     Size,
     SourceFailed,
     /// The child fetch process itself failed: a stall past its deadline, an end by a signal,
-    /// a nonzero exit, or a reply word not on its fixed list (R-NEW-fetchcause). It carries
+    /// a nonzero exit, or a reply word not on its fixed list (R-406). It carries
     /// nothing of the child.
     FetchFailed,
     Listener,

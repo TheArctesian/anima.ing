@@ -60,6 +60,13 @@ impl Runner {
             chosen_folder(&new.folder, self.dir.parent().unwrap_or(&self.dir))?;
         }
         self.draft_ready(&new)?;
+        if !self
+            .said
+            .models
+            .offers(new.program, new.model.as_deref(), new.effort)
+        {
+            return Err(Refusal::BadValue);
+        }
         if login::find(new.program, &self.env, login::executable, login::trusted).is_none() {
             self.ask_login_again(new.program).await;
         }
@@ -215,6 +222,7 @@ impl Runner {
         self.silence.started(id, new.program, path);
         let codex = codex_of(&row, new.effort, daemon);
         self.threads.insert(id, Thread::new(row, new.effort, codex));
+        self.say_priority();
         if !notice.is_empty() {
             // The thread keeps the notice as its first line (THR-046).
             let text = notice.join("\n");

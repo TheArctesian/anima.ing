@@ -3606,7 +3606,7 @@ Where: [model-work.md](../contracts/compute/model-work.md) Section 2 and Section
 
 What it is: `revision` had no exact form, and a file name could hold `/`, so a hub that is taken over could choose a branch name or a path that leaves the folder of the copy or meets a link.
 
-The correction: `revision` is exactly 40 lower-case hexadecimal characters. A file name is a flat name, or one sub-folder and a flat name joined by one `/` (R-NEW-subfolders); each of the two parts is checked as a flat name, with no `/`, `..`, `%`, control character or character outside ASCII (SF-362), and the file part is from the list of Section 2.2. The daemon opens each part with `openat` and `O_NOFOLLOW`, flattens the file on write into `copies/<copy>/` with `O_EXCL` under a folder of mode 0700, and refuses two files whose flattened names are equal in lower case, as the unpack does; it never overwrites one.
+The correction: `revision` is exactly 40 lower-case hexadecimal characters. A file name is a flat name, or one sub-folder and a flat name joined by one `/` (R-408); each of the two parts is checked as a flat name, with no `/`, `..`, `%`, control character or character outside ASCII (SF-362), and the file part is from the list of Section 2.2. The daemon opens each part with `openat` and `O_NOFOLLOW`, flattens the file on write into `copies/<copy>/` with `O_EXCL` under a folder of mode 0700, and refuses two files whose flattened names are equal in lower case, as the unpack does; it never overwrites one.
 
 State: Open. Fixed in the text of K11 (2026-11-22); no code. Found by a separate reviewer on 2026-11-22 (SEC-C-012).
 
@@ -3682,9 +3682,9 @@ The correction: Section 2.1 states that the key protects only against other user
 
 State: Open. Fixed in the text of K11 (2026-11-22). Found by a separate reviewer on 2026-11-22 (SEC-C-012).
 
-### SF-NEW-causesa: The child reports two of its own faults as `source_failed`. Low
+### SF-379: The child reports two of its own faults as `source_failed`. Low
 
-Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-NEW-fetchcause, R-NEW-filecause, R-NEW-subfolders; SEC-C-012.
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
 
 Where: `crates/daemon/src/model/fetch/child.rs`.
 
@@ -3694,9 +3694,9 @@ The correction: Both return `fetch_failed`. Tests: `the_child_refuses_to_work_wi
 
 State: Corrected on the branch `compute/model-causes`. Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
 
-### SF-NEW-causesb: The form of a name with a sub-folder is loose. Low
+### SF-380: The form of a name with a sub-folder is loose. Low
 
-Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-NEW-fetchcause, R-NEW-filecause, R-NEW-subfolders; SEC-C-012.
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
 
 Where: [model-work.md](../contracts/compute/model-work.md) Section 2, `files[].name`.
 
@@ -3706,9 +3706,9 @@ The correction: Exactly 0 or 1 `/`; each part has 1 or more characters and is ne
 
 State: Fixed in the text of K11; no code (task L1-7). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
 
-### SF-NEW-causesc: The address of a file in a sub-folder could encode the `/`. Low
+### SF-381: The address of a file in a sub-folder could encode the `/`. Low
 
-Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-NEW-fetchcause, R-NEW-filecause, R-NEW-subfolders; SEC-C-012.
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
 
 Where: [model-work.md](../contracts/compute/model-work.md) Section 7, "The source".
 
@@ -3718,9 +3718,9 @@ The correction: The folder and the file are each encoded as a path segment, with
 
 State: Fixed in the text of K11; no code (task L1-7). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
 
-### SF-NEW-causesd: Names that Windows reserves are not refused. Low
+### SF-382: Names that Windows reserves are not refused. Low
 
-Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-NEW-fetchcause, R-NEW-filecause, R-NEW-subfolders; SEC-C-012.
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
 
 Where: [model-work.md](../contracts/compute/model-work.md) Section 2.2.
 
@@ -3730,9 +3730,9 @@ The correction: Either part is refused (`file_type`) when it is `CON`, `PRN`, `A
 
 State: Fixed in the text of K11; no code (task L1-7). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
 
-### SF-NEW-causese: Two causes could fire for a file over its size. Note
+### SF-383: Two causes could fire for a file over its size. Note
 
-Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-NEW-fetchcause, R-NEW-filecause, R-NEW-subfolders; SEC-C-012.
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
 
 Where: [model-work.md](../contracts/compute/model-work.md) Section 5.
 
@@ -3742,9 +3742,9 @@ The correction: `size` fires when the downloaded size differs from the `sizeByte
 
 State: Corrected on the branch `compute/model-causes` (text of K11). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
 
-### SF-NEW-causesf: A child that exits with code 0 chooses between `source_failed` and the other words. Note
+### SF-384: A child that exits with code 0 chooses between `source_failed` and the other words. Note
 
-Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-NEW-fetchcause, R-NEW-filecause, R-NEW-subfolders; SEC-C-012.
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
 
 Where: `crates/daemon-core/src/model_work/releases/fetch.rs`, `verdict`.
 

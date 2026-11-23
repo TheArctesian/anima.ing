@@ -179,7 +179,7 @@ pub enum Ending<'a> {
 }
 
 /// The outcome of the work from the way the child ended. A fault or a stall of the child is
-/// `fetch_failed`, and so is a reply that is not a word of [`CHILD_CAUSES`] (R-NEW-fetchcause).
+/// `fetch_failed`, and so is a reply that is not a word of [`CHILD_CAUSES`] (R-406).
 /// Only the word `source_failed` from a child that exited with code 0 is `source_failed`: the
 /// source refused or did not answer. No text of the child goes into the cause.
 ///

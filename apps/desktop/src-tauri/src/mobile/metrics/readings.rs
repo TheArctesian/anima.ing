@@ -24,6 +24,7 @@ fn memory() -> Option<(u64, u64)> {
     Some((total, total.checked_sub(available)?))
 }
 
+#[cfg(target_os = "android")]
 fn storage(path: &Path) -> Option<(u64, u64)> {
     let stats = rustix::fs::statvfs(path).ok()?;
     let total = stats.f_blocks.checked_mul(stats.f_frsize)?;
@@ -64,17 +65,15 @@ fn add(
 pub(super) fn batch(device: Uuid, now: DateTime<Utc>, path: &Path) -> Option<Batch> {
     let mut series = Vec::new();
     let mut mean = Vec::new();
-    let mount = if cfg!(target_os = "android") {
-        "/data"
-    } else {
-        "App data"
-    };
+    #[cfg(target_os = "ios")]
+    let _ = path;
+    #[cfg(target_os = "android")]
     if let Some(reading) = storage(path) {
         add(
             &mut series,
             &mut mean,
             (Kind::DiskBytes, Kind::DiskPercent),
-            Some(mount),
+            Some("/data"),
             reading,
         );
     }

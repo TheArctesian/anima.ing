@@ -39,7 +39,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | Mobile clients (Phase 5) and site operations (Phase 6) | Operator: HT-055 (the account sign-in on a phone, task M3-4), HT-025 (the join through the link) HT-053 (the iOS archive with a signature) and HT-054 (the sign-in inside the iPhone application, with one address to add in WorkOS) in need-human-testing.md, and OD-M9 and OD-M10 of mobile-plan.md Section 3. Agent: M5-1, then M1-3, of mobile-plan.md Section 5. No session holds its tasks in progress (claims deleted, 2026-11-18); each row says what is built. Phase 6 waits for rows 4.4 to 4.8 |
 
-## 2. Open decisions (244)
+## 2. Open decisions (227)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -169,25 +169,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-AGL18 | Which identifier does a row have at the hub? (SF-122) | A | [proposals/agent-layer.md](proposals/agent-layer.md) |
 | OD-AGL19 | What does an alert give a channel of a different party? (SF-125) | A for ntfy and a webhook; B and C for a channel that the person runs | [proposals/agent-layer.md](proposals/agent-layer.md) |
 | OD-AGL20 | Which gate is before the first code? (SF-130) | A. The rows and the alert go to a hub of a different party too | [proposals/agent-layer.md](proposals/agent-layer.md) |
-| OD-THR54 | Section 11: design-spec.md NAV-001 and AXT-049 change at "the approval of this proposal"; R-287 (3) | Not asked on a card. Taken as yes, because OD-THR50 and R-353 leave no approval of this proposal to wait for: the changes are made now, with the name Code. He c… | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR57 | R-296 (11): "Several repos per thread now" | The ruling and the copy agree: the form of T3 Code is built | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR65 | The tokens of Anima; `00-gap-and-plan.md`, decision 2 | No longer a question (R-352): Code has the skin of Anima, so no page takes the skin of T3 Code | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR60 | "Anima's bar folds to icons" | Code is not the whole window. A rail of icons of Anima stands at the left of the sidebar of T3 Code. It is one strip that T3 Code does not have | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR64 | "Copy it" | Code reads the sign-in token of Claude Code from its file, where the system is not macOS, and calls Anthropic with it under the name of the Claude program. Anth… | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR63 | "Copy, off by default" | The telemetry of T3 Code is built. It sends nothing until the person turns it on. Before the switch can be turned on, a text for the person and a row in the pri… | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR56 | "Move it to `anima code`", then "`anima repo` (Recommended)" | The commands of this function change from `anima agents` to `anima code`. `anima code ls` and `anima code show` of today become `anima repo ls` and `anima repo… | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR59 | "A file in the app bundle only" | No page of licences in the application. The notices are a text file in each built copy | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR61 | "Replace Anima's now" | The page Agent usage is replaced by the Usage page of T3 Code, with the machines of Anima in it. The settings of Code are a group of the Settings of Anima, so t… | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR58 | "Alongside the copy" | The additions of Anima are built while the copy is built. A copied screen can change while he judges it | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR3 | "No we can use account methods everyone else is doing it" | `codex app-server` is used with its account methods; the ban of BOT-033 is lifted. Anima can then read which account and plan Codex uses and its limits, and can… | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR4 | "On the hub", then "Yes, plain on the hub" | The prompts, the code and each secret that an agent prints are kept on the hosted hub in plain form. Whoever controls that server, its database or its copies ca… | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR18 | "Accept it across any device. If my other desicons are contridicarty to this I want them changed." | A program of the same user, also an agent that was steered by text it read, can do what the person can do in Anima: answer an approval, choose a folder, start a… | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR36 | "Yes, like any device" | A machine that an agent started in the pool can open a connection to each other device of the person. THR-106 is changed | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR13 | "Yes, cleaned and capped" | The first line of a prompt, as the title of a thread, goes to the hub, to notifications and to the result of an MCP tool | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR34 | "Yes, from the start" | The holder process is a part of stage 1b and of the launch | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR40 | "Yes, Anima holds them" | Anima stores the tokens of the Codex login of the person, on the hosted hub, to sign other machines in. A party that controls the hub can use his ChatGPT accoun… | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR41 | "Yes, with auto-upgrade on" | With the automatic change of the plan on, text that steers an agent can raise his bill (THR-108) | [proposals/agent-threads.md](proposals/agent-threads.md) |
-| OD-THR42 | "Count, state and title" | The title of each thread of each machine goes to the hosted hub with no switch (THR-126) | [proposals/agent-threads.md](proposals/agent-threads.md) |
 | OD-AXT25 | Does the rule "No MCP tool returns file content" (operator, 2026-11-14) get one exception for the files of a shared project folder, with the read tools `allow`… | Open. Recommendation: yes, an exception for the folder only. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT26 | Do folder tokens follow JOB-010 and MCP-004: minted on the hub, given over the relay as a secret for one job, deleted at the end, and never in a prompt, a URL o… | Open. Recommendation: yes. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
 | OD-AXT27 | How do short-lived file links work (wave 2)? (one choice: only through the gateway or the relay, to a signed-in caller or a valid folder token; no file links; p… | Open. Recommendation: only through the gateway or the relay, to a signed-in caller or a token. | [proposals/agent-tools-as-extensions.md](proposals/agent-tools-as-extensions.md) |
@@ -259,6 +240,8 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-RCL14 | The output of a command comes back to an agent that can start the next command (SF-103) | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
 | OD-RCL15 | The click rules that R-196 made absolute (SF-106): an install of a tool on a machine "always needs the click", "in any MCP state". A command line can install wi… | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
 | OD-RCL16 | The gate (SF-112): "he has decided its findings", or "no finding of severity High is open" as ROU-014 says for routing? | Open | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) |
+| OD-SHA8 | Part 2: may a relay on the computer change the requests of a subscription sign-in (the terms of the provider) | Open. | [proposals/shortened-answers.md](proposals/shortened-answers.md) |
+| OD-SHA5 | The number of rows kept: fixed (15, plus each row of SHA-001), or Headroom's adaptive number | Open. | [proposals/shortened-answers.md](proposals/shortened-answers.md) |
 | OD-AOS1 | Confirm NixOS as the base and a separate OS repository? | Open; no repository created | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-AOS2 | Retain this proposal under priority 4.16 or assign a new priority row? | Open; mapping only, no reprioritization | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
 | OD-AOS4 | Which named PCs, Intel Macs and ARM boards can be used for validation? | Open; no hardware access or result assumed | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) |
@@ -288,7 +271,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-PAL3 | What does the palette show before a letter is typed? | The pages, then the devices that need a look, at most 8 rows. | [work-items/device-manager/PAL-1.md](work-items/device-manager/PAL-1.md) |
 | OD-PAL4 | What is there on a phone, and in the bar that is collapsed to icons? | On a phone: no field and no shortcut; the Devices page keeps its own search. In the collapsed bar: one icon button with the same accessible name. | [work-items/device-manager/PAL-1.md](work-items/device-manager/PAL-1.md) |
 
-## 3. Documents that wait for an approval (31)
+## 3. Documents that wait for an approval (32)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -320,6 +303,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/routed-command-lines.md](proposals/routed-command-lines.md) | Proposal | Draft |
 | [proposals/shared-pool-hosting.md](proposals/shared-pool-hosting.md) | Proposal | Draft |
 | [proposals/shell-prompt.md](proposals/shell-prompt.md) | Proposal | Draft |
+| [proposals/shortened-answers.md](proposals/shortened-answers.md) | Proposal | Draft |
 | [proposals/spare-computer-os.md](proposals/spare-computer-os.md) | Proposal | Draft |
 | [proposals/user-documentation.md](proposals/user-documentation.md) | Proposal, with a task table | Direction decided |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |

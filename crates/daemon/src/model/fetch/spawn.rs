@@ -1,7 +1,7 @@
 //! The daemon side of the fetch process: it starts the child with an empty environment, writes
 //! its order as one line, keeps its input open while it runs, reads its one word and ends it at
 //! the deadline. A stall or a fault of the child ends the child, never the daemon, and reads as
-//! `fetch_failed` (R-NEW-fetchcause).
+//! `fetch_failed` (R-406).
 
 use std::path::Path;
 use std::process::Stdio;

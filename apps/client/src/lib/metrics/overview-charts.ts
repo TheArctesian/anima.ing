@@ -1,3 +1,4 @@
+import { LEGACY_IOS_DISK_MOUNT } from './storage/storage';
 import type { ChartPoint, ChartSeries, SeriesColour } from '$lib/charts/plot';
 import type { ValueAxis } from '$lib/charts/scales';
 import type { DeviceGpu, MetricKind, MetricSeries } from './api';
@@ -57,7 +58,7 @@ function byLabel(all: readonly MetricSeries[], kind: MetricKind): MetricSeries[]
 }
 
 function diskCharts(all: readonly MetricSeries[]): Chart[] {
-  return byLabel(all, 'DISK_PERCENT').flatMap((mount) => percentChart(`disk:${mount.label}`, `Disk ${mount.label}`, mount.label, mount));
+  return byLabel(all, 'DISK_PERCENT').filter((mount) => mount.label !== LEGACY_IOS_DISK_MOUNT).flatMap((mount) => percentChart(`disk:${mount.label}`, `Disk ${mount.label}`, mount.label, mount));
 }
 
 /** One chart of two rates per label, ordered by label: a network interface's in and out, a drive's read and write. */
