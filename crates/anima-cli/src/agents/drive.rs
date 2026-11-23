@@ -141,6 +141,7 @@ impl StartArgs {
             _ => invocation.output.message(NOT_CHECKED),
         }
         let action = Action::Start {
+            provider_address: None,
             program: self.program.program(),
             folder,
             mode: self.mode.mode(),

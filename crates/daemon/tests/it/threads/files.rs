@@ -22,6 +22,7 @@ async fn files(client: &mut Client, thread: Uuid, query: &str) -> Outcome {
 async fn started(client: &mut Client, work: std::path::PathBuf) -> Uuid {
     let start = client
         .call(Action::Start {
+            provider_address: None,
             program: Program::ClaudeCode,
             folder: work,
             mode: Mode::FullAccess,

@@ -15,6 +15,7 @@ use agent_threads::control::Refusal;
 /// A new thread as the client named it.
 pub(in crate::threads::runner) struct NewThread {
     pub program: Program,
+    pub provider_address: Option<agent_threads::control::ProviderAddress>,
     pub folder: PathBuf,
     pub mode: Mode,
     pub model: Option<String>,
@@ -45,6 +46,7 @@ impl NewThread {
         match action {
             agent_threads::control::Action::Start {
                 program,
+                provider_address,
                 folder,
                 mode,
                 model,
@@ -58,6 +60,7 @@ impl NewThread {
                 base,
             } if !(program == Program::Codex && mode == Mode::Plan) => Some(Self {
                 program,
+                provider_address,
                 folder,
                 mode,
                 model,
@@ -113,6 +116,7 @@ impl Runner {
             );
         }
         let row = ThreadRow {
+            provider_address: new.provider_address,
             id,
             program: new.program,
             folder: folder.clone(),
@@ -132,6 +136,7 @@ impl Runner {
             usage: None,
         };
         let action = wire::Action::Start {
+            relay: new.provider_address.map(|_| new.program),
             thread: id.to_string(),
             program: invocation.program.to_string_lossy().into_owned(),
             args: invocation.args,
