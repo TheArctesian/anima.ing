@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { createHub, NO_HUB_ADDRESS, type Hub } from '$lib/hub/hub';
 import { FAKE_WEBSOCKET } from '$lib/hub/socket/fake';
-import { storedClusters, storeClusters } from './clusters';
+import { storedClusters, storeClusters, type Clusters } from './clusters';
 import { SharedProjectGroups } from './shared.svelte';
 
 const hubs: Hub[] = [];
@@ -141,7 +141,7 @@ it.each(['failed', 'older'] as const)('G3: an empty group stays local after a %s
 
 it.each(['member', 'name'] as const)('G3: empty-group acknowledgement preserves a concurrent local %s change', async (change) => {
   storeClusters(localStorage, { groups: local.groups, of: {} });
-  const updated = change === 'member' ? { groups: local.groups, of: { added: source } } : { groups: [{ id: source, name: 'Renamed' }], of: {} };
+  const updated: Clusters = change === 'member' ? { groups: local.groups, of: { added: source } } : { groups: [{ id: source, name: 'Renamed' }], of: {} };
   let calls = 0;
   const groups = client(() => {
     calls += 1;

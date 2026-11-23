@@ -285,6 +285,10 @@ async fn g3_import_preserves_the_source_and_reports_only_acknowledged_project_id
         "ProjectGroupImport",
         data(json!({ "importProjectGroup": ["p-1"] })),
     );
+    hub.answer(
+        "ProjectGroupImport",
+        data(json!({ "importProjectGroup": [] })),
+    );
     let mut session = writing(&hub, &Desk::new()).await;
     let input = json!({ "source": GROUP, "name": "Work", "projects": ["p-1", "foreign"] });
     let answer = session
@@ -294,10 +298,6 @@ async fn g3_import_preserves_the_source_and_reports_only_acknowledged_project_id
     assert_eq!(
         sent(&hub, "ProjectGroupImport"),
         [json!({ "input": input })]
-    );
-    hub.answer(
-        "ProjectGroupImport",
-        data(json!({ "importProjectGroup": [] })),
     );
     let answer = session
         .call(
