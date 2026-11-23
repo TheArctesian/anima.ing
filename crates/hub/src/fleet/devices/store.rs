@@ -44,6 +44,7 @@ macro_rules! device_filter {
     };
 }
 
+pub(super) mod automatic;
 mod detected_os;
 mod distribution;
 mod holds;

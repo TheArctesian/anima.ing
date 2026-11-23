@@ -3,6 +3,7 @@
 //! their edges, the stale mark at its edges, and the turns that keep daemons off the pool.
 
 mod answering;
+mod automatic_access;
 mod credential;
 mod enrolment;
 mod refusals;

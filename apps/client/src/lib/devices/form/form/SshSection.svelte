@@ -21,14 +21,16 @@
   SSH enabled
 </label>
 {#if values.ssh.enabled}
-  <Field label="Port" field="ssh.port" {errors}>
-    {#snippet control(attributes)}
-      <input {...attributes} bind:value={values.ssh.port} inputmode="numeric" autocomplete="off" />
-    {/snippet}
-  </Field>
   <Field label="User name" field="ssh.username" {errors}>
     {#snippet control(attributes)}
       <input {...attributes} bind:value={values.ssh.username} autocomplete="off" spellcheck="false" />
+    {/snippet}
+  </Field>
+  <details open={values.ssh.auth === 'PRIVATE_KEY' || values.ssh.port !== '22'}>
+    <summary>Advanced SSH settings</summary>
+  <Field label="Port" field="ssh.port" {errors}>
+    {#snippet control(attributes)}
+      <input {...attributes} bind:value={values.ssh.port} inputmode="numeric" autocomplete="off" />
     {/snippet}
   </Field>
   <fieldset>
@@ -38,6 +40,7 @@
       <input type="radio" name="device-ssh-auth" value="PRIVATE_KEY" bind:group={values.ssh.auth} />Private key
     </label>
   </fieldset>
+  </details>
   {#if values.ssh.auth === 'PASSWORD'}
     <Field label="Password" field="credential.password" {errors}>
       {#snippet control(attributes)}

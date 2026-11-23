@@ -14,6 +14,8 @@ use crate::inventory::{
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BatchInventory {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remote_access: Option<crate::inventory::RemoteAccess>,
     pub architecture: Architecture,
     pub os: Os,
     pub os_version: String,
@@ -35,6 +37,7 @@ pub struct BatchTool {
 impl From<&Inventory> for BatchInventory {
     fn from(inventory: &Inventory) -> Self {
         Self {
+            remote_access: inventory.remote_access.clone(),
             architecture: inventory.architecture,
             os: inventory.os,
             os_version: inventory.os_version.clone(),
@@ -64,7 +67,11 @@ impl BatchInventory {
     pub fn accepted(self) -> Option<Inventory> {
         let names: BTreeSet<&str> = self.tools.iter().map(|tool| tool.name.as_str()).collect();
         let targets: BTreeSet<&str> = self.build_targets.iter().map(String::as_str).collect();
-        let fits = is_version(&self.os_version)
+        let fits = self
+            .remote_access
+            .as_ref()
+            .is_none_or(crate::inventory::RemoteAccess::accepted)
+            && is_version(&self.os_version)
             && self.tools.len() <= MAX_TOOLS
             && names.len() == self.tools.len()
             && self.tools.iter().all(BatchTool::fits)
@@ -92,6 +99,7 @@ impl BatchInventory {
         let mut build_targets = self.build_targets;
         build_targets.sort_unstable();
         Some(Inventory {
+            remote_access: self.remote_access,
             architecture: self.architecture,
             os: self.os,
             os_version: self.os_version,

@@ -4795,3 +4795,24 @@ Built on `os/remote-access`. Installed OS SSH and RDP listen only on loopback an
    Expected: the hub denies access before remote login. Restore your intended permissions afterwards.
 
 Result: Open.
+
+
+### HT-NEW-automatic-private-access: Automatic OS remote access and simple SSH setup (OS3-R11)
+
+State: Open
+
+Built on `access/automatic-setup`. Automated hub tests exercise authenticated announcements,
+private-address scope and owner overrides; the client test covers the minimal setup submission.
+Actual account/device and service startup timing remain for acceptance after deploying the matching
+hub and OS versions. This is not included in the already published 20261123013635 image.
+
+1. Upgrade an enrolled OS whose device has never had SSH/RDP configured. Keep the hub online.
+   Expected: both connections appear with user admin and standard ports without re-enrollment or editing settings.
+2. Connect from the CLI and GUI using the OS admin password and existing trust confirmation.
+   Expected: terminal and graphical sessions work through the private server; no LAN forwarding is needed.
+3. Disable SSH in the device settings, restart the OS, and wait for its next report.
+   Expected: SSH stays disabled. Custom RDP settings and saved credentials also remain unchanged.
+4. On another device with SSH available, choose Set up, enter its login name and optionally its password, then Enable SSH.
+   Expected: the connection is configured and tested; connection failures are shown. Advanced settings remain available for keys/nonstandard ports.
+5. For a device without an SSH server, run the same setup.
+   Expected: a connection failure, never a false claim that the server was installed. Installing/enabling host SSH on arbitrary operating systems is not implemented by this connection-settings change.

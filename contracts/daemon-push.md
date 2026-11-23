@@ -263,6 +263,15 @@ Request:
   `DIR`: the bytes of the files of the data of the hub, which the daemon measures, with no `disk_percent`: the
   total and the free space of that file system are those of the pool. It sends no `load_1`, `load_5`,
   `load_15`, `uptime_seconds`, network kind, drive kind or GPU kind, `gpus` as `[]`, and no `drives`.
+- `inventory.remoteAccess` (OS3-R11): optional `{ "sshUser": "admin", "rdpUser": "admin" }`;
+  either user may be null. Each supplied user is 1–64 ASCII letters, digits, underscores, dots or hyphens.
+  The daemon reads the root-installed `/etc/anima/remote-access.json` and announces only services accepting
+  a loopback connection on standard ports 22/3389. Missing configuration advertises nothing. Older hubs
+  ignore this member. The authenticated batch can initialize only its own device, whose host must be an
+  Anima private-link IPv6 address. The hub initializes untouched settings once; existing settings and later
+  owner changes win. No credential, host-key acceptance or certificate bypass is supplied by this member.
+  This is shared by CLI and GUI device connections; no new GraphQL operation or MCP secret tool is added.
+
 - `inventory`: optional; the tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be
   assigned). The daemon probes its tools at start and every 15 minutes and sends the whole inventory in its
   first batch after start, again whenever a probe result changes, and again when 24 hours have passed since it
