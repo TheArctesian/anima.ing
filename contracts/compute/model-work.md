@@ -85,9 +85,11 @@ a command, an argument, a flag or an environment variable.
   (SEC-C-012, SF-NEW-k11c).
 - `files[].name` is a flat file name at the root of the repository, or one sub-folder and a flat file name
   joined by one `/` (R-NEW-subfolders: the GGUF repositories of Unsloth and others keep one folder for each
-  quantisation). Each part is a flat name: only the characters above, no `/`, no `..`, no `%`, no control
-  character, no character outside ASCII (SF-NEW-k11f); the file part is permitted by the list of Section 2.2 for
-  the format; at most 256 characters, at most 64 files. The daemon flattens each file on write into
+  quantisation). The name has exactly 0 or 1 `/`. Each part has 1 or more characters, is neither `.` nor `..`,
+  and is a flat name: only the characters above, no `/`, no `..`, no `%`, no control character, no character
+  outside ASCII (SF-NEW-k11f), and no name that Windows reserves (Section 2.2); the file part is permitted by the
+  list of Section 2.2 for the format; at most 256 characters in all (both parts and the `/`), at most 64 files
+  (SF-NEW-causesb). The daemon flattens each file on write into
   `copies/<copy>/` under its file part. Two names whose flattened names are equal when they are in lower case are
   refused, never overwritten (as in the unpack of Section 6) (SEC-C-012, SF-NEW-k11c). `sizeBytes` is above 0. The daemon makes each
   address from a fixed pattern (Section 7).
@@ -153,6 +155,9 @@ daemon, and the daemon refuses each other file of `files` (`file_type`) before i
 
 - Each `.bin`, `.pt`, `.pth`, `.pkl`, `.py`, `.npz`, `.ckpt` and `.h5` file is refused (`file_type`). A name in more than
   one sub-folder is refused (Section 2, R-NEW-subfolders).
+- A name that Windows reserves is refused in either part (`file_type`): `CON`, `PRN`, `AUX`, `NUL`, `COM1` to
+  `COM9` and `LPT1` to `LPT9`, in any case, with or without an extension (`nul.gguf`, `Com1.json`); a part that
+  ends in a dot or a space; a part with `:` (SF-NEW-causesd).
 - Before a load, the daemon reads `config.json` and `tokenizer_config.json` of the copy with a JSON parser. It
   refuses the copy (`remote_code`) when one of them has the member `auto_map` or `custom_pipelines`, or names a
   class that is not in the list of the runtime. A file refused for another reason, such as a chat template over
@@ -252,7 +257,7 @@ the causes of K10 Section 5, and these:
 | `copy_unknown` | The copy, the server or the variant is not on this node |
 | `copy_not_ready` | `model_load` or `model_measure` names a copy that is not `downloaded` or `validated` |
 | `remote_code` | The copy needs remote code to load: `auto_map`, `custom_pipelines`, or a class that is not on the list of the runtime (SEC-C-008) |
-| `file_rejected` | A file of the copy is refused for a reason that is not remote code: a chat template over 64 KiB, a JSON file that does not parse or is not an object, a file over its size cap (Section 2.2; R-NEW-filecause). Not retryable with the same copy; the operator and the actor see it |
+| `file_rejected` | A file of the copy is refused for a reason that is not remote code: a chat template over 64 KiB, a JSON file that does not parse or is not an object, a file that a content check finds too large (Section 2.2; R-NEW-filecause; a downloaded size that differs from `sizeBytes` is `size`, SF-NEW-causese). Not retryable with the same copy; the operator and the actor see it |
 | `disk_share` | The copy does not fit in the disk share of the device policy after the removal that the hub permitted (PULL-008) |
 | `memory_share` | The load does not fit in the memory share of the device policy |
 | `file_type` | `files` names a file that the format does not permit (Section 2.2) |
@@ -261,8 +266,9 @@ the causes of K10 Section 5, and these:
 | `actor_not_permitted` | `actor` is `Agent` and the setting `agentTypes` does not name the type |
 | `revision_too_new` | The commit of the source is newer than the lowest age that the machine holds (Section 7) |
 
-Causes after `preparing`, reported with the state `failed`: `checksum` (a SHA-256 is different), `size` (a file is
-larger than `sizeBytes`), `source_failed` (the source refused or did not answer after the retries), `fetch_failed` (the child fetch
+Causes after `preparing`, reported with the state `failed`: `checksum` (a SHA-256 is different), `size` (the downloaded size of a file
+differs from the `sizeBytes` that the order gave; a file over the cap of a content check of Section 2.2 is
+`file_rejected` instead; SF-NEW-causese), `source_failed` (the source refused or did not answer after the retries), `fetch_failed` (the child fetch
 process of Section 4 itself failed: a stall past its deadline, an end by a signal, an exit with a code that is not 0,
 or a reply that is not one of its fixed words; it carries no detail of the child; retryable; R-NEW-fetchcause), `listener`
 (Section 9), `isolation_failed` (the daemon cannot make the isolation of Section 9), `limit_memory` (Section 9),
@@ -313,7 +319,8 @@ server before it exits; the daemon takes an exit code as the launcher's only whe
 - **The source.** The daemon downloads each file directly from Hugging Face to its model cache. The files do not
   go through the hub (PULL-004). The address is
   `https://huggingface.co/<organisation>/<repository>/resolve/<revision>/<file>`, made by the fetch process from
-  the parameters; each part is encoded as a path segment. `revision` and each file name are checked by the
+  the parameters; each part is encoded as a path segment. For a name in a sub-folder, the folder and the file
+  are each encoded as a path segment, with a literal `/` between them, never `%2F` (SF-NEW-causesc). `revision` and each file name are checked by the
   rules of Section 2 before the address is made. The daemon writes each file, flattened to its file part, with
   `openat` relative to the folder of the copy, a folder of mode 0700, with `O_NOFOLLOW` and `O_EXCL`, so a name
   never leaves that folder and never opens a file that is there (SEC-C-012, SF-NEW-k11c, R-NEW-subfolders).

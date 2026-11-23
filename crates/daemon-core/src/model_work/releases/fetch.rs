@@ -161,7 +161,8 @@ pub fn reply(outcome: Result<(), Cause>) -> &'static str {
     match outcome {
         Ok(()) => DONE,
         Err(cause) if CHILD_CAUSES.contains(&cause) => cause.as_str(),
-        // Not on the list, so the daemon reads it as `fetch_failed`.
+        // `fetch_failed` is not on the list, and the daemon reads each word off it as
+        // `fetch_failed`.
         Err(_) => Cause::FetchFailed.as_str(),
     }
 }

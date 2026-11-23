@@ -72,11 +72,11 @@ fn the_child_refuses_to_work_with_any_environment_variable() {
     let text = line(&order(root.path()));
     assert_eq!(
         child(&text, &[("ANIMA_DAEMON_TOKEN", "x")]),
-        "source_failed\n"
+        "fetch_failed\n"
     );
     assert_eq!(
         child(&text, &[("HTTPS_PROXY", "http://127.0.0.1:1")]),
-        "source_failed\n"
+        "fetch_failed\n"
     );
 }
 

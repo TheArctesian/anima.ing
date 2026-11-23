@@ -3588,6 +3588,78 @@ The correction: Section 2.1 states that the key protects only against other user
 
 State: Open. Fixed in the text of K11 (2026-11-22). Found by a separate reviewer on 2026-11-22 (SEC-C-012).
 
+### SF-NEW-causesa: The child reports two of its own faults as `source_failed`. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-NEW-fetchcause, R-NEW-filecause, R-NEW-subfolders; SEC-C-012.
+
+Where: `crates/daemon/src/model/fetch/child.rs`.
+
+What it is: A child that refused a non-empty environment, or could not build its Tokio runtime, wrote `source_failed`, so a fault of the child read as a fault of the source.
+
+The correction: Both return `fetch_failed`. Tests: `the_child_refuses_to_work_with_any_environment_variable`, `the_reply_of_the_child_reads_back_as_its_cause`.
+
+State: Corrected on the branch `compute/model-causes`. Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-NEW-causesb: The form of a name with a sub-folder is loose. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-NEW-fetchcause, R-NEW-filecause, R-NEW-subfolders; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 2, `files[].name`.
+
+What it is: The text did not say how many `/` a name may hold, that a part may not be empty, `.` or `..`, or whether the limit of 256 characters counts both parts.
+
+The correction: Exactly 0 or 1 `/`; each part has 1 or more characters and is neither `.` nor `..`; at most 256 characters in all.
+
+State: Fixed in the text of K11; no code (task L1-7). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-NEW-causesc: The address of a file in a sub-folder could encode the `/`. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-NEW-fetchcause, R-NEW-filecause, R-NEW-subfolders; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 7, "The source".
+
+What it is: "Each part is encoded as a path segment" read on the whole name gives `%2F`, which a server may read in a different way.
+
+The correction: The folder and the file are each encoded as a path segment, with a literal `/` between them, never `%2F`.
+
+State: Fixed in the text of K11; no code (task L1-7). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-NEW-causesd: Names that Windows reserves are not refused. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-NEW-fetchcause, R-NEW-filecause, R-NEW-subfolders; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 2.2.
+
+What it is: A part such as `nul.gguf`, `COM1`, a name that ends in a dot or a space, or a name with `:` opens a device or a stream on Windows.
+
+The correction: Either part is refused (`file_type`) when it is `CON`, `PRN`, `AUX`, `NUL`, `COM1` to `COM9` or `LPT1` to `LPT9` in any case, with or without an extension, ends in a dot or a space, or holds `:`.
+
+State: Fixed in the text of K11; no code (task L1-7). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-NEW-causese: Two causes could fire for a file over its size. Note
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-NEW-fetchcause, R-NEW-filecause, R-NEW-subfolders; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 5.
+
+What it is: `size` and `file_rejected` both spoke of a file that is too large.
+
+The correction: `size` fires when the downloaded size differs from the `sizeBytes` given; `file_rejected` fires when a content check of a file finds it too large.
+
+State: Corrected on the branch `compute/model-causes` (text of K11). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-NEW-causesf: A child that exits with code 0 chooses between `source_failed` and the other words. Note
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-NEW-fetchcause, R-NEW-filecause, R-NEW-subfolders; SEC-C-012.
+
+Where: `crates/daemon-core/src/model_work/releases/fetch.rs`, `verdict`.
+
+What it is: Only the word of a child that exited with code 0 gives `source_failed`; a child under the control of a hostile archive could write that word in place of `fetch_failed`.
+
+The correction: None needed: the child could already write each word of its fixed list, so the exit-0 path adds no new power, and the cause carries no text of the child.
+
+State: Accepted as reviewed. Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
 ## The security review of the browser session of a hosted hub and of the trust in the gateway (task HM-T32, 2026-11-21)
 
 Task HM-T32 of [hosted-mode.md](proposals/hosted-mode.md) is the review that HMD-067 asks for before a person other than the operator uses `hub.anima.ing`. This part of it is the side of this repository: the browser session of a hosted hub (`hostedBrowserTicket`, `hostedBrowserSignIn`, the cookie, its life, the sign-out), the web client behind the gateway (HM-T27, HM-T30, HM-T31), Connect GitHub on a hosted hub (HM-T29), and what the hub trusts from the gateway: the public origin, the guard of the host name, the check of `Origin`, the cookies, CORS, the security headers and the paths below `/_door/`. It also looks at the move to one address for each hub (`https://<hub id>.hub.anima.ing`, HMD-068, HMD-069). The review read the code on `dev` of 2026-11-21 (`crates/hub/src/fleet/link/graphql/hosted.rs`, `crates/hub/src/fleet/access/`, `crates/hub/src/lib.rs`, `crates/hub/src/config.rs`, `crates/hub/src/web_client/`, `crates/hub/src/engine/sources/registration*`, `crates/hub/src/fleet/sessions/`, `apps/client/src/lib/hub/gateway/`, `apps/client/src/lib/hosted/`). It read the gateway of the private repository to know what the hub may assume; the findings of the gateway are recorded there, not here. It ran the hub tests of `crates/hub/tests/it/link/hosted_origin.rs`; it contacted no server. An agent did it, and a second agent read the same code with only the list of the flows; this list holds the findings of both. "Severity" is the word of the reviewers.

@@ -121,6 +121,10 @@ fn the_reply_of_the_child_reads_back_as_its_cause() {
     // A cause that the child may not give reads as `fetch_failed`.
     assert_eq!(reply(Err(Cause::Listener)), "fetch_failed");
     assert_eq!(
+        verdict(Ending::Exited(reply(Err(Cause::FetchFailed)))),
+        Err(Cause::FetchFailed)
+    );
+    assert_eq!(
         verdict(Ending::Exited("fetch_failed")),
         Err(Cause::FetchFailed)
     );
