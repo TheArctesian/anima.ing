@@ -58,8 +58,11 @@ pub async fn end_left_over(dir: &Path) -> Vec<Entry> {
         return Vec::new();
     };
     let mut kept = Vec::new();
-    for entry in old.threads {
+    for mut entry in old.threads {
         if !ended(&entry).await {
+            // A program whose end is not proved may be gone at the next start while what it
+            // left still runs: from then on its thread is swept by its mark.
+            entry.left.get_or_insert_with(tree::Known::new);
             kept.push(entry);
         }
     }
