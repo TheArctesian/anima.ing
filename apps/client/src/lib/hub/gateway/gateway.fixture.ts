@@ -1,5 +1,4 @@
-// A stand-in for the gateway of the hosted hubs as a browser page meets it: the answers of `anima-cloud door` to a
-// request that is not a person opening a page, with what each request sent.
+// Answers as `anima-cloud door` does to a request that is not a person opening a page.
 
 export interface GatewayRequest {
   readonly path: string;
@@ -10,10 +9,6 @@ function refusal(status: number, code: string): Response {
   return new Response(JSON.stringify({ error: { code, message: 'words of the gateway' } }), { status });
 }
 
-/**
- * A `fetch` that answers as the gateway does. `session`: whether the browser has an open session of the gateway.
- * `hub`: what the hub behind it answers to `/graphql` when there is a session.
- */
 export function fakeGateway(state: { session: boolean; hub?: () => Response }) {
   const requests: GatewayRequest[] = [];
   const send: typeof fetch = (input, init) => {
@@ -32,6 +27,5 @@ export function fakeGateway(state: { session: boolean; hub?: () => Response }) {
   return { send, requests, state };
 }
 
-/** A `fetch` that answers as a hub with no gateway: its web client page for a path it does not know. */
 export const hubAlone: typeof fetch = () =>
   Promise.resolve(new Response('<!doctype html><title>Anima.ing</title>', { status: 200, headers: { 'content-type': 'text/html' } }));

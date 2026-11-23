@@ -2,19 +2,12 @@ import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import type { DocumentNode, OperationDefinitionNode } from 'graphql';
 import type { Hub, HubError, HubResult, Sink, Variables } from '$lib/hub/hub';
 
-/** One request or subscription the fake hub received. */
 export interface Recorded {
   readonly operation: string;
   readonly variables: Variables;
 }
 
-/**
- * A fake `Hub` for tests of any domain client (D-13).
- * `answers` maps an operation name to the value `request` returns, or to a `HubError` it returns as a failure;
- * an operation without an answer is `unreachable`. `requests` and `subscriptions` list what arrived, in order.
- * `hub.close()` completes every live sink and makes later subscriptions complete at once, as the real hub does.
- * `push` and `fail` reach the sinks of an operation that are still subscribed; `listeners` counts them.
- */
+/** A fake `Hub` for domain client tests (D-13): an operation without an answer fails as `unreachable`. */
 export function fakeHub(answers: Readonly<Record<string, unknown>> = {}) {
   const requests: Recorded[] = [];
   const subscriptions: Recorded[] = [];
@@ -58,15 +51,12 @@ export function fakeHub(answers: Readonly<Record<string, unknown>> = {}) {
     hub,
     requests,
     subscriptions,
-    /** Deliver `value` to every live sink of `operation`. */
     push: (operation: string, value: unknown): void => {
       for (const sink of sinks.get(operation) ?? []) sink.next(value as never);
     },
-    /** Send `error` to every live sink of `operation`. */
     fail: (operation: string, error: HubError): void => {
       for (const sink of sinks.get(operation) ?? []) sink.error(error);
     },
-    /** How many sinks of `operation` are still subscribed. */
     listeners: (operation: string): number => sinks.get(operation)?.size ?? 0,
   };
 }
@@ -79,7 +69,6 @@ function answerFor<R>(answer: unknown): HubResult<R> {
   return { ok: true, value: answer as R };
 }
 
-/** A hub error has a string `code` and `message`; no query result does. */
 function isHubError(answer: unknown): answer is HubError {
   return typeof answer === 'object' && answer !== null && 'code' in answer && 'message' in answer;
 }

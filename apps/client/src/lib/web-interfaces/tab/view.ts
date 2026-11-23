@@ -3,7 +3,6 @@ import { codeOf, type Bounds, type Fingerprint, type WebViewShell, type WebViewS
 /** Where the tab's native web view stands. `popped` lives in its own window; `closed` takes no more commands. */
 export type ViewState = 'none' | 'opening' | 'open' | 'popped' | 'closed';
 
-/** What opening the view needs besides the tab and the bounds. */
 export interface ViewTarget {
   readonly deviceId: string;
   readonly url: string;
@@ -51,7 +50,6 @@ export function boundsOf(rect: DOMRectReadOnly): Bounds {
 
 type Run = (command: () => Promise<void>) => void;
 
-/** A command that sends only the latest wanted value, and only when it differs from the last one sent. */
 function coalesced<T>(run: Run, live: () => boolean, same: (sent: T | undefined, wanted: T) => boolean, send: (value: T) => Promise<void>) {
   let sent: T | undefined;
   let wanted: T | undefined;
@@ -69,7 +67,6 @@ function coalesced<T>(run: Run, live: () => boolean, same: (sent: T | undefined,
         sent = to;
       });
     },
-    /** What the shell holds now, as the open set it. */
     sent(value: T | undefined) {
       sent = value;
     },
@@ -79,7 +76,6 @@ function coalesced<T>(run: Run, live: () => boolean, same: (sent: T | undefined,
 /** The shell's code for a tab it holds no web view for (T3). */
 export const UNKNOWN_TAB = 'unknown_tab';
 
-/** Runs each command after the ones before it; a failure is reported with its code and the chain goes on. */
 function chained(onfail: (code: string) => void): Run {
   let chain: Promise<void> = Promise.resolve();
   return (command) => {
@@ -101,10 +97,7 @@ export function nativeView({ shell, tabId, onfail, onstate }: NativeViewOptions)
     if (code === UNKNOWN_TAB && state !== 'closed') become('none');
     onfail(code);
   });
-  /**
-   * Leave the view for `next` and close it in the shell, on the chain: an open still running finishes first, so the
-   * view it makes is the one closed, and a new open runs after. A popped-out view stays only when the tab closes.
-   */
+  /** Closes in the shell on the chain, so a running open finishes first and its view is the one closed; a popped-out view stays only when the tab closes. */
   const end = (next: 'none' | 'closed') => {
     const was = state;
     become(next);
@@ -119,8 +112,7 @@ export function nativeView({ shell, tabId, onfail, onstate }: NativeViewOptions)
       if (state !== 'none') return;
       become('opening');
       const mine = (opens += 1);
-      // Only the latest open counts: one a restart superseded must not open this run's view or fail it (H-4). A
-      // failure is told first, so the tab leaves its loading step before a new open could start.
+      // Only the latest open counts (H-4); a failure is told first, so the tab leaves its loading step before a new open.
       const current = () => state === 'opening' && mine === opens;
       run(async () => {
         const opened = await shell.open({ tabId, ...target, bounds }).then(() => true, (reason: unknown) => (current() && onfail(codeOf(reason)), false));

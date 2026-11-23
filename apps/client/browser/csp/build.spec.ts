@@ -5,9 +5,7 @@ import { inlineScripts, inlineScriptHashes } from '../synthetic/inline-scripts';
 import { BUILD_FOLDER } from '../synthetic/static-files';
 import { builtIndex } from './k7-policy';
 
-// The production build, read as files (E-6): what the browser specs cannot reach on every code path. The hub allows by
-// hash only the inline scripts of index.html (A-2) and serves every other file under that same policy, and K7 has no
-// 'unsafe-eval', no 'unsafe-inline' for scripts and no blob: for workers or frames. These rules keep the build inside it.
+// E-6: the build is read as files, to cover the code paths the browser specs cannot reach (A-2).
 
 function filesUnder(folder: string): string[] {
   return readdirSync(folder, { withFileTypes: true }).flatMap((entry) =>
@@ -19,17 +17,13 @@ const FILES = filesUnder(BUILD_FOLDER);
 const named = (extension: string): { name: string; text: string }[] =>
   FILES.filter((file) => file.endsWith(extension)).map((file) => ({ name: relative(BUILD_FOLDER, file), text: readFileSync(file, 'utf8') }));
 
-/** Places in `text` that match `pattern`, with a little context, for the failure message. */
 function places(text: string, pattern: RegExp): string[] {
   return [...text.matchAll(new RegExp(pattern.source, `${pattern.flags.replace('g', '')}g`))].map((found) =>
     text.slice(Math.max(0, found.index - 40), found.index + found[0].length + 40),
   );
 }
 
-/** Code K7 refuses at run time, in any script of the build. */
-// `eval` and `Function` count bare and on a global object, with or without `?.`: the minifier writes
-// `(globalThis as …)[['ev','al'].join('')]?.('1')` as `globalThis.eval?.(`. A member of anything else (`a.evaluate(`,
-// `x.isFunction(`) is not the global.
+// The minifier writes a global `eval` as `globalThis.eval?.(`; a member of anything else is not the global.
 const GLOBAL_CALL = String.raw`(?:^|[^\w$.]|\b(?:globalThis|window|self)\s*\.\s*)`;
 const FORBIDDEN_CODE: Record<string, RegExp> = {
   eval: new RegExp(String.raw`${GLOBAL_CALL}eval\s*(?:\?\.\s*)?\(`),
@@ -76,7 +70,6 @@ test('SEC-001: no script in the build evals, makes a worker or a frame, or write
 });
 
 test('SEC-001: the rules above find each breach they name', () => {
-  // A rule that matches nothing proves nothing: each one must catch its own example.
   const examples: Record<string, readonly string[]> = {
     eval: ['x=eval("1")', 'eval?.("1")', 'globalThis.eval?.(`1`)', 'window.eval("1")', 'self . eval ("1")'],
     'Function constructor': ['new Function("return 1")', 'self.Function("")', 'globalThis.Function?.("")', 'window.Function("")'],

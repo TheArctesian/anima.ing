@@ -7,10 +7,6 @@ import { SettingsDraft } from './draft.svelte';
 
 const OK: HubResult<unknown> = { ok: true, value: null };
 
-/**
- * A hub whose answers the test releases one at a time: `stored` is what it holds, each request waits in `waiting`
- * until `answer` lets the oldest one through.
- */
 function slowHub() {
   let stored = formValues(device());
   const sent: DeviceFormValues[] = [];
@@ -28,9 +24,7 @@ function slowHub() {
         });
       });
     },
-    /** Lets the draft carry on until it waits for the hub again. */
     flush: () => new Promise((resolve) => setTimeout(resolve, 0)),
-    /** Answers the oldest waiting request, then lets the draft carry on. */
     answer: async (result: HubResult<unknown> = OK) => {
       await new Promise((resolve) => setTimeout(resolve, 0));
       waiting.shift()?.(result);
@@ -42,7 +36,6 @@ function slowHub() {
   };
 }
 
-/** A clock whose waits run only when the test says. */
 function manualClock() {
   const waits: { run: () => void; milliseconds: number; cancelled: boolean }[] = [];
   return {

@@ -8,7 +8,7 @@
   import { checkConnect, EMPTY_FORM, KEY_FILE_UNREADABLE, keyFileProblem, restorePem, type ConnectField, type ConnectProblem } from './connect';
 
   interface Props {
-    /** Sends the connection; the dialog keeps no copy of what it passes (PRJ-018). */
+    /** The dialog keeps no copy of what it passes (PRJ-018). */
     onConnect: (input: GithubAppInput) => Promise<HubResult<unknown>>;
     onClose: () => void;
   }
@@ -23,10 +23,7 @@
 
   const problemOf = (field: ConnectField): string => problems.find((problem) => problem.field === field)?.message ?? '';
 
-  /**
-   * Empties the field the moment it starts to leave. A closing dialog keeps its last content on screen until the fade
-   * ends; the key must not stay in the DOM for that time (F-8).
-   */
+  /** A closing dialog keeps its content on screen until the fade ends; the key must not stay in the DOM that long (F-8). */
   function drop(node: HTMLInputElement): { duration: number } {
     node.value = '';
     return { duration: duration.instant };
@@ -39,7 +36,7 @@
     flushSync();
   }
 
-  /** Reads a chosen `.pem` file in the browser into the key field; the file goes nowhere else. */
+  /** The chosen `.pem` file is read in the browser and goes nowhere else. */
   async function choose(event: Event & { currentTarget: HTMLInputElement }): Promise<void> {
     const file = event.currentTarget.files?.[0];
     if (file === undefined) return;
@@ -71,7 +68,6 @@
     }
     problems = [];
     busy = true;
-    // The key is on its way: the dialog holds none, whatever the hub answers.
     forgetKey();
     const result = await onConnect(checked.input);
     busy = false;

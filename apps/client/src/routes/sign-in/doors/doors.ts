@@ -1,8 +1,4 @@
-/**
- * The doors mark as points (UR-7, D13): five nested door frames receding to the right, standing on a hill, with the
- * lines that join each frame to the next. Coordinates are in mark units, about -1 to 1 across; `depth` runs from 0
- * (the nearest frame) to 4 (the farthest), and the drawing colours and fades each point by it.
- */
+/** A point of the doors mark (UR-7, D13), in mark units of about -1 to 1; `depth` runs from 0 (nearest frame) to 4 (farthest). */
 export interface DoorDot {
   readonly x: number;
   readonly y: number;

@@ -20,8 +20,7 @@ export async function settle(): Promise<void> {
   flushSync();
 }
 
-/** Mounts the panel for device d1 on the hub's origin, with the fixture's clock. */
-/** Where the panel runs: the device's host, and the desktop shell (`null`, a browser, by default). */
+/** `shell` null is a browser, the default. */
 export interface Place {
   readonly host?: string;
   readonly shell?: ThisComputerShell | null;
@@ -40,7 +39,7 @@ function mountPanel(calls: DaemonCalls, source: 'NONE' | 'DAEMON', setup: Setup)
   });
 }
 
-/** Mounts a panel whose `call` waits; returns the function that answers it with `value`. */
+/** The panel's `call` waits; the returned function answers it. */
 export async function showPending(call: 'daemonStatus' | 'enrolDaemon', source: 'NONE' | 'DAEMON'): Promise<(value: unknown) => Promise<void>> {
   let answer: (value: unknown) => void = () => undefined;
   const calls = { ...metricsApi(fakeHub({}).hub), [call]: () => new Promise<never>((resolve) => { answer = resolve as typeof answer; }) };
@@ -93,14 +92,12 @@ export const command = () => document.querySelector('pre')?.textContent ?? '';
 export const enrolment = (code = CODE) => ({ EnrolDaemon: { enrolDaemon: { code, expiresAt: '2026-11-09T10:15:00Z' } } });
 export const ENROLMENT = enrolment();
 
-/** Moves the injected clock and lets the panel's one-second timer run. */
 export async function pass(seconds: number): Promise<void> {
   clock = new Date(clock.getTime() + seconds * 1000);
   await vi.advanceTimersByTimeAsync(seconds * 1000);
   await settle();
 }
 
-/** Call from `beforeEach`. */
 export function setUp(): void {
   installAnimations();
   clock = START;
@@ -109,7 +106,6 @@ export function setUp(): void {
   Object.defineProperty(navigator, 'userAgent', { configurable: true, value: 'Mozilla/5.0 (X11; Linux x86_64)' });
 }
 
-/** Call from `afterEach`. */
 export async function tearDown(): Promise<void> {
   if (app) await unmount(app);
   app = undefined;

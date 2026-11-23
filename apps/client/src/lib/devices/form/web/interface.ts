@@ -13,7 +13,6 @@ export const OPEN_IN_CHOICES: readonly { readonly value: OpenIn; readonly text: 
   { value: 'SYSTEM_BROWSER', text: 'System browser' },
 ];
 
-/** The values of a stored interface, or the defaults for a new one (Anima.ing tab). */
 export function webValuesFrom(saved?: WebInterface): WebValues {
   return { label: saved?.label ?? '', url: saved?.url ?? '', openIn: saved?.openIn ?? 'ANIMA_TAB' };
 }
@@ -35,7 +34,6 @@ export function webInput(values: WebValues): WebInterfaceInput {
   return { label: label === '' ? null : label, url: values.url.trim(), openIn: values.openIn };
 }
 
-/** Whether `values` differ from the stored interface (a missing one is a new row, which is always ready to save). */
 export function webChanged(values: WebValues, saved?: WebInterface): boolean {
   if (saved === undefined) return true;
   const before = webValuesFrom(saved);

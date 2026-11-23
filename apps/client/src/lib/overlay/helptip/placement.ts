@@ -3,17 +3,12 @@ export interface Size {
   readonly height: number;
 }
 
-/** A rectangle in viewport coordinates, as `getBoundingClientRect` gives it. */
+/** In viewport coordinates, as `getBoundingClientRect` gives it. */
 export interface Anchor extends Size {
   readonly left: number;
   readonly top: number;
 }
 
-/**
- * Where the top-left corner of a panel of `panel` size goes, so that it stays inside a window of `viewport` size: under
- * `anchor` and level with its left edge, moved left until it fits; above `anchor` when there is no room below and
- * more above. The left and top edges win when the panel is larger than the window.
- */
 export function placeInside(anchor: Anchor, panel: Size, viewport: Size): { left: number; top: number } {
   const below = anchor.top + anchor.height;
   const above = anchor.top - panel.height;

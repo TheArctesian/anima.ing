@@ -6,13 +6,10 @@ export interface Connection<T> {
   readonly edges: readonly { readonly node: T }[];
 }
 
-/** Loads one page after `after` (null for the first); a `null` value means the owner is gone, so the list is empty. */
+/** A `null` value means the owner is gone, so the list is empty. */
 export type PageLoader<T> = (after: string | null) => Promise<HubResult<Connection<T> | null>>;
 
-/**
- * A history read in pages, newest first, with "Load older" (D-10): the heartbeats of a check, the sessions of a
- * device. Live items join at the top through `prepend`. An answer that arrives after `stop` is dropped.
- */
+/** A history read in pages, newest first, with "Load older" (D-10). */
 export class Pages<T> {
   items = $state.raw<readonly T[] | null>(null);
   error = $state.raw<HubError | null>(null);
@@ -28,7 +25,6 @@ export class Pages<T> {
     this.#load = load;
   }
 
-  /** Loads the first page; again after a failure. */
   async load(): Promise<void> {
     this.#generation += 1;
     // A Load older still on its way is dropped, so its flag must not stay on.
@@ -56,7 +52,6 @@ export class Pages<T> {
     if (result.ok) this.#append(result.value);
   }
 
-  /** Puts a live item on top unless `same` finds it there already; nothing happens before the first page. */
   prepend(item: T, same: (a: T, b: T) => boolean): void {
     if (this.items === null || this.items.some((known) => same(known, item))) return;
     this.items = [item, ...this.items];

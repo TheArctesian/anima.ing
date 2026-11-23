@@ -40,7 +40,6 @@ async function open(answers: Parameters<typeof fakeHub>[0], clock?: LoadingClock
   return target;
 }
 
-/** The listed keys' names, in order. */
 function names(target: HTMLElement): (string | null)[] {
   return [...target.querySelectorAll('.list > li')].map((element) => element.getAttribute('aria-label'));
 }
@@ -59,7 +58,6 @@ function row(target: HTMLElement, name: string): HTMLElement {
   return found;
 }
 
-/** The row's values by their labels. */
 function values(element: HTMLElement): Record<string, string> {
   const pairs = [...element.querySelectorAll('dl > div')].map((pair) => [
     pair.querySelector('dt')?.textContent.trim() ?? '',
@@ -175,7 +173,6 @@ it('INT-003: a refused revoke keeps the row and the question says why', async ()
   expect(names(target)).toHaveLength(2);
 });
 
-/** Opens the revoke question for `name` and confirms it. */
 async function revokeRow(target: HTMLElement, name: string): Promise<void> {
   row(target, name).querySelector('button')?.click();
   flushSync();

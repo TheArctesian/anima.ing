@@ -1,4 +1,4 @@
-/** An answer of the pool in the form of `contracts/account-usage.md`, for the tests. */
+/** An answer of the pool in the form of `contracts/account-usage.md`. */
 export const POOL_ANSWER = {
   account: 'cus_test',
   period: '2026-11',
@@ -14,5 +14,4 @@ export const POOL_ANSWER = {
   hubs: [{ id: 'h1', state: 'running', size: 'solo', plan: 'hobby', disk_limit_bytes: 10_000_000_000, disk_used_bytes: 2_500_000_000 }],
 };
 
-/** The one hub of `POOL_ANSWER` with other members. */
 export const withHub = (hub: Record<string, unknown>) => ({ ...POOL_ANSWER, hubs: [{ ...POOL_ANSWER.hubs[0], ...hub }] });

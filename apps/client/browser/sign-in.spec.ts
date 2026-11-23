@@ -4,13 +4,13 @@ import { consoleLines, openSignIn, scriptReach, sessionCookie, signInWith } from
 import { HUB_ORIGIN, OPERATOR } from './synthetic/access';
 import type { RecordedRequest } from './synthetic/recorder';
 
-// Browser sign-in and sign-out (WP-44 E-4): the page sends signInBrowser and never login, no token or password is ever in
-// reach of script, and each change of the cookie loads a new page, so no socket keeps the old cookie (CLI-003, D-3).
+// WP-44 E-4, CLI-003, D-3: the page sends signInBrowser and never login, no token or password is in reach of
+// script, and each cookie change loads a new page.
 
 const WRONG_PASSWORD = 'wrong-horse-synthetic';
 const OLD_PAGE_MARK = 'animaOldPage';
 
-/** Marks the page now shown; a full load starts a new one without the mark, a router move keeps it. */
+/** A full load starts a page without the mark; a router move keeps it. */
 async function markPage(page: Page): Promise<void> {
   await page.evaluate((mark) => Reflect.set(window, mark, true), OLD_PAGE_MARK);
 }
@@ -19,7 +19,6 @@ async function isOldPage(page: Page): Promise<boolean> {
   return page.evaluate((mark) => mark in window, OLD_PAGE_MARK);
 }
 
-/** Whether `requests` hold a graphql-ws socket the hub signed in by the cookie alone, with no Authorization in its payload. */
 function cookieSocketAcknowledged(requests: readonly RecordedRequest[]): boolean {
   const opened = requests.filter((request) => request.channel === 'graphql-socket' && request.operation === 'connection_init');
   return opened.some((socket) => socket.signedIn && socket.hadCookie && !socket.hadAuthorization);
@@ -49,7 +48,7 @@ test.describe('signed out, a good sign-in', () => {
     expect(hub.recording.requests.every((request) => !request.hadAuthorization)).toBe(true);
     await expect.poll(() => cookieSocketAcknowledged(hub.recording.requests.slice(loadedAt))).toBe(true);
     expect(hub.recording.where({ operation: 'Devices' }).every((request) => request.signedIn)).toBe(true);
-    // The form submits by script under the K7 `form-action 'none'`; nothing in the flow breaks the policy.
+    // K7 `form-action 'none'`: the form submits by script.
     expect(watch.cspViolations).toEqual([]);
   });
 
@@ -84,7 +83,6 @@ test.describe('signed out, one attempt at a time', () => {
     const answered = new Promise<void>((resolve) => {
       release = resolve;
     });
-    // The page route holds the sign-in until the test lets it through to the synthetic hub, which records it then.
     await page.route('**/graphql', async (route) => {
       if ((route.request().postData() ?? '').includes('signInBrowser')) await answered;
       await route.fallback();

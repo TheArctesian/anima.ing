@@ -3,7 +3,7 @@ import { callGraphql, talkOnSocket } from './in-page';
 import { expect, test } from './test-hub';
 import { BEARER_TOKEN, HUB_ORIGIN, OPERATOR, SESSION_COOKIE } from './synthetic/access';
 
-// The synthetic hub itself: authentication per K7, tickets per K4, and the wall around other origins. Later specs trust this.
+// The synthetic hub: K7 authentication, K4 tickets and the wall around other origins.
 
 const ME = 'query Me { me { username } }';
 const SIGN_IN = 'mutation SignIn($input: LoginInput!) { signInBrowser(input: $input) { operator { username } expiresAt } }';

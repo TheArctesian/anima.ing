@@ -1,7 +1,6 @@
 import type { MetricsSource, RdpResizeMethod, RdpSecurity } from '$lib/hub/generated/graphql';
 import type { DeviceDetail } from '$lib/devices/api';
 
-/** The device fields the remote sections read: the served K1 part of a `DeviceDetail`. */
 export type RemoteDeviceFields = Pick<DeviceDetail, 'rdp' | 'vnc' | 'macAddress' | 'metricsSource' | 'transfer' | 'accessWarnings'>;
 
 /** The K1 device fields as the form reads them; each may be missing (D-3). */
@@ -10,7 +9,7 @@ export type RemoteFields = Partial<RemoteDeviceFields>;
 export const DEFAULT_RDP_PORT = '3389';
 export const DEFAULT_VNC_PORT = '5900';
 
-/** What the operator typed for remote desktop, Wake-on-LAN, metrics and transfer (Section 6.2). Ports stay text. */
+/** Section 6.2; ports stay text. */
 export interface RemoteValues {
   readonly rdp: {
     readonly enabled: boolean;
@@ -41,7 +40,6 @@ export function emptyRemoteSecrets(): RemoteSecrets {
   return { rdpPassword: '', vncPassword: '' };
 }
 
-/** The values of a device that has no K1 fields: the K1 defaults. */
 export function defaultRemoteValues(): RemoteValues {
   return {
     rdp: {
@@ -63,7 +61,7 @@ export function defaultRemoteValues(): RemoteValues {
   };
 }
 
-/** The remote values of a saved device; a K1 field the device lacks reads as its default (D-3). */
+/** A K1 field the device lacks reads as its default (D-3). */
 export function remoteValues(fields: RemoteFields): RemoteValues {
   const base = defaultRemoteValues();
   const { rdp, vnc } = fields;
@@ -107,7 +105,7 @@ export function normalizedMac(text: string): string {
   return MAC_PATTERN.test(typed) ? typed.toLowerCase().replaceAll('-', ':') : typed;
 }
 
-/** Remote values as they will be sent: trimmed text, normalized address. Secrets are not part of it. */
+/** Secrets are not part of it. */
 export function normalizedRemote(values: RemoteValues): RemoteValues {
   return {
     metricsSource: values.metricsSource,

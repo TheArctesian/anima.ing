@@ -37,7 +37,6 @@ afterEach(async () => {
 
 const CREATED = ok({ createApiKey: { key: MADE_KEY, secret: FAKE_SECRET } });
 
-/** Opens the create dialog as the operator first sees it, with nothing chosen for "Used by". */
 async function openBlankDialog(answers: Parameters<typeof fakeHub>[0] = {}): Promise<HTMLElement> {
   hub = fakeHub({ ApiKeys: ok({ apiKeys: FIXTURE_KEYS }), ...answers });
   mocks.hub = hub.hub;
@@ -72,7 +71,6 @@ async function create(): Promise<void> {
   await settled();
 }
 
-/** Every place in the document the key could be: markup, text, attributes and field values. */
 function documentHolds(text: string): boolean {
   const values = [...document.querySelectorAll('input, textarea')].map((element) => (element as HTMLInputElement).value);
   return document.documentElement.outerHTML.includes(text) || values.some((value) => value.includes(text)) || document.title.includes(text);

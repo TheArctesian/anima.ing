@@ -1,6 +1,6 @@
 import type { ITheme } from '@xterm/xterm';
 
-/** The Nord palette number behind each of the 16 ANSI colours: the mapping in `design/tokens/terminal.tokens.json` (RA-010). */
+/** The mapping in `design/tokens/terminal.tokens.json` (RA-010). */
 export const ANSI_NORD = [1, 11, 14, 13, 9, 15, 8, 5, 3, 11, 14, 13, 9, 15, 7, 6] as const;
 const BACKGROUND_NORD = 0;
 const FOREGROUND_NORD = 4;
@@ -11,19 +11,12 @@ const SELECTION_INACTIVE_NORD = 2;
 /** Selected text, and the active find match, is nord6 on nord3: 6.4 to 1, whatever colour the text had. */
 const SELECTION_TEXT_NORD = 6;
 
-/**
- * The least contrast xterm.js keeps between a cell's text and its background (UI-002, WCAG AA for text). It lifts
- * the ANSI colours that fail on nord0 (black, bright black, red, magenta) just enough, and leaves the others alone.
- */
+/** WCAG AA for text (UI-002); xterm.js lifts only the ANSI colours that fail on nord0. */
 export const MINIMUM_CONTRAST_RATIO = 4.5;
 
-/** Reads a CSS custom property (`--nord-0`) as the page resolves it; an unset one gives an empty string. */
 export type TokenReader = (name: string) => string;
 
-/**
- * The xterm.js theme from the Nord tokens (RA-010, TOK-003): every colour is a CSS variable read at the time of
- * the call, so no colour value is written in code.
- */
+/** Every colour is a CSS variable read at the time of the call, so no colour value is written in code (RA-010, TOK-003). */
 export function terminalTheme(read: TokenReader): ITheme {
   const nord = (index: number) => read(`--nord-${String(index)}`);
   return {
@@ -53,16 +46,11 @@ export function terminalTheme(read: TokenReader): ITheme {
   };
 }
 
-/** The reader for the tokens `element` sees. */
 export function tokensOf(element: Element): TokenReader {
   const style = getComputedStyle(element);
   return (name) => style.getPropertyValue(name).trim();
 }
 
-/**
- * A size token (`0.75rem`, `12px`) in CSS px; `rootPx` is the root font size. A value that is neither falls back
- * to `fallback`, so a missing token still gives a readable terminal.
- */
 export function sizeInPx(token: string, rootPx: number, fallback: number): number {
   const match = /^(\d*\.?\d+)(rem|px)$/.exec(token);
   if (match === null) return fallback;

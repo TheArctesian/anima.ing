@@ -112,7 +112,6 @@
 <Modal {open} title={label} preset="md" dismissible onClose={close}>
   <div class="scanner">
     {#if active}
-      <!-- The camera preview does not record audio. -->
       <video bind:this={video} muted playsinline aria-label="QR camera preview"></video>
     {/if}
     {#if note}<p role="status">{note}</p>{/if}

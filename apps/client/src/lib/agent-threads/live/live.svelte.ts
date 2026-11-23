@@ -6,45 +6,32 @@ import { REFUSAL_WORDS } from './refusals';
 import type { Action, Outcome, Update } from './run';
 import { applied, begun, type LiveThread } from './timeline';
 
-/**
- * After the watch reaches the runner, the runner sends the updates it keeps again; for this long no notification is
- * sent, so that an old request does not notify a second time (THR-059).
- */
+/** The runner replays its kept updates when the watch reaches it; no notification goes out this long after (THR-059). */
 export const REPLAY_MS = 2_000;
 /** While the replay goes on, each update keeps the page quiet this long again. */
 export const REPLAY_GAP_MS = 500;
-/** The most stopped threads that the page keeps; the oldest go first. */
 export const STOPPED_KEPT = 50;
 
-/** What a call came to: its outcome, or the refusal in words for the person. */
 export type CallResult =
   | { readonly ok: true; readonly outcome: Outcome }
   /** `answered`: the copies of a program that answered when the chosen one did not (TH97). */
   | { readonly ok: false; readonly words: string; readonly answered?: readonly string[] };
 
-/**
- * The threads that the runner of this computer drives, as the page shows them (TH14): the watch folds each update into
- * its thread, and each call goes to the runner. A start over the soft limit waits for the person to raise it (THR-114).
- */
+/** The threads that this computer's runner drives (TH14); a start over the soft limit waits for the person to raise it (THR-114). */
 export class LiveThreads {
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- replaced whole at each update, never changed in place
   threads = $state<ReadonlyMap<string, LiveThread>>(new Map());
-  /** Whether the watch reaches the runner; `null` before the first answer. */
   linked = $state<boolean | null>(null);
-  /** A failure of the watch or of a notification, as fixed text. */
   problem = $state<string | null>(null);
-  /** Words while the holder of the programs is older than the daemon (TH98); read again when a thread stops. */
+  /** Words while the holder of the programs is older than the daemon (TH98). */
   holder = $state<string | null>(null);
-  /** How the person lists each thread (TH46), by thread. */
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- replaced whole at each answer, never changed in place
   listings = $state<ReadonlyMap<string, Listing>>(new Map());
-  /** A start that the runner refused at the soft limit: it is sent again when the person raises the limit. */
   overLimit = $state<Action | null>(null);
-  /** Words of the update of the daemon of this computer at the start of the app (HMD-055); read again each time the watch reaches the runner. */
+  /** Words of the update of this computer's daemon (HMD-055). */
   daemon = $state<string | null>(null);
-  /** Called with the ID of a thread that changed while the person looks at it: it does not need the person (THR-055). */
+  /** Called with a thread that changed while the person looks at it (THR-055). */
   seenOpen: ((id: string) => void) | null = null;
-  /** Reads the words of the update of the daemon; an update said once stays on the page. */
   daemonWords: (() => Promise<string | null>) | null = null;
   private quietUntil = 0;
 
@@ -55,7 +42,6 @@ export class LiveThreads {
     private readonly now: () => Date = () => new Date(),
   ) {}
 
-  /** Starts the watch, then reads the rows of the threads that have no kept update. Gives the stop. */
   async begin(): Promise<() => void> {
     try {
       const stop = await this.shell.watch(
@@ -91,7 +77,6 @@ export class LiveThreads {
     if (listed?.outcome === 'threads') this.holder = listed.holder ?? null;
   }
 
-  /** Reads the rows of the runner's threads; a thread the page has no update of yet comes in from its row (TH14). */
   async readRows(): Promise<void> {
     const listed = await this.shell.call({ call: 'list' });
     if (listed.outcome !== 'threads') return;
@@ -103,7 +88,6 @@ export class LiveThreads {
     this.threads = next;
   }
 
-  /** One thread's listing, set whole as the new state; `undefined` takes it out. */
   #setListing(thread: string, listing: Listing | undefined): void {
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a copy set whole as the new state
     const next = new Map(this.listings);
@@ -112,17 +96,13 @@ export class LiveThreads {
     this.listings = next;
   }
 
-  /** Reads how the person lists each thread again; the listings on the screen stay when the runner does not answer. */
   async readListings(): Promise<void> {
     const read = await this.shell.call({ call: 'listings' }).catch(() => null);
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- built here, then set whole as the new state
     if (read?.outcome === 'listings') this.listings = new Map(read.listings.map((listing) => [listing.thread, listing]));
   }
 
-  /**
-   * Changes how the person lists a thread (TH46). The row moves at once, as the runner will keep it, and goes back when
-   * the runner refuses; the runner's answer then sets each listing. A thread that the runner forgot leaves the page too.
-   */
+  /** Changes how the person lists a thread (TH46): the row moves at once and goes back when the runner refuses. */
   async changeListing(thread: string, change: ListingChange): Promise<CallResult> {
     const before = this.listings.get(thread);
     const next = foreseen(before, thread, change, this.now());
@@ -150,7 +130,6 @@ export class LiveThreads {
     return result.outcome.outcome === 'files' ? { ok: true, paths: result.outcome.paths, more: result.outcome.more } : { ok: false, words: 'The thread runner did not answer with files.' };
   }
 
-  /** One update of the watch; an update of a thread that the page does not know yet waits for its row. */
   take(update: Update): void {
     const at = this.now();
     const before = this.threads.get(update.thread);
@@ -164,7 +143,6 @@ export class LiveThreads {
     const looking = this.looking();
     if (looking.front && looking.chosen === update.thread) this.seenOpen?.(update.thread);
     if (at.getTime() < this.quietUntil) {
-      // A replay comes as a burst: the page stays quiet until the burst ends.
       this.quietUntil = Math.max(this.quietUntil, at.getTime() + REPLAY_GAP_MS);
       return;
     }
@@ -176,7 +154,6 @@ export class LiveThreads {
     }
   }
 
-  /** One call to the runner. A start over the soft limit is kept for [`raiseLimit`]. */
   async call(action: Action): Promise<CallResult> {
     let outcome: Outcome;
     try {
@@ -190,10 +167,7 @@ export class LiveThreads {
     return outcome.answered === undefined ? { ok: false, words } : { ok: false, words, answered: outcome.answered };
   }
 
-  /**
-   * The person raised the soft limit: the runner raises it, and the start that waited goes again. When the raise fails,
-   * the start still waits, so that the dialog can say why.
-   */
+  /** When the raise fails, the start still waits, so that the dialog can say why. */
   async raiseLimit(): Promise<CallResult> {
     const waiting = this.overLimit;
     const raised = await this.call({ call: 'raise_limit' });
@@ -202,13 +176,11 @@ export class LiveThreads {
     return this.call(waiting);
   }
 
-  /** The person did not raise the limit: the start that waited is dropped. */
   keepLimit(): void {
     this.overLimit = null;
   }
 }
 
-/** `threads` with at most `STOPPED_KEPT` stopped threads: the oldest by their last update go. */
 function pruned(threads: Map<string, LiveThread>): Map<string, LiveThread> {
   const stopped = [...threads.values()].filter((thread) => thread.row.state === 'stopped').sort((a, b) => a.last.getTime() - b.last.getTime());
   for (const thread of stopped.slice(0, Math.max(0, stopped.length - STOPPED_KEPT))) threads.delete(thread.row.id);

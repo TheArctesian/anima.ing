@@ -3,7 +3,6 @@ import { ending, isEndReason, recordedEnding, type SessionEndReason, type Tunnel
 
 const opened = (closeCode: number | undefined, gatewayError?: number): TunnelClose => ({ closeCode, gatewayError, opened: true });
 
-/** The K4 §5 table, plus the codes the client sees when it closed first after a gateway `error`. */
 const table: readonly [string, TunnelClose, SessionEndReason | undefined, string][] = [
   ['1000', opened(1000), 'REMOTE_CLOSED', 'The device closed the session.'],
   ['1001', opened(1001), 'HUB_SHUTDOWN', 'The hub shut down.'],
@@ -32,9 +31,7 @@ describe('ending (K4 §5, D-4, RA-007)', () => {
   }
 
   it('D-4: the recorded endReason wins over the provisional one', () => {
-    // 1000 alone reads as the device; the hub recorded that the operator ended it elsewhere.
     expect(recordedEnding(ending(opened(1000)), 'OPERATOR')).toEqual({ reason: 'OPERATOR', opened: true, text: 'You ended the session.' });
-    // The client closed first on 0x0303, so it guessed AUTH_FAILED; the hub knows it was the host key.
     expect(recordedEnding(ending(opened(1000, 0x0303)), 'HOST_KEY_MISMATCH').reason).toBe('HOST_KEY_MISMATCH');
   });
 

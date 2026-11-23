@@ -84,7 +84,6 @@ export type VpnNode = VpnPicture['nodes'][number];
 export type { BrokerState } from '$lib/hub/generated/graphql';
 export type SitePath = VpnPicture['sites'][number];
 
-/** The VPN picture and its live updates through a `Hub` (CQ-045). */
 export function vpnApi(hub: Hub) {
   return {
     /** The picture now; `null` when the hub has no LocalAPI proxy or has not read it yet. */
@@ -97,7 +96,6 @@ export function vpnApi(hub: Hub) {
       const result = await hub.request(VpnLoginServer, {});
       return result.ok ? { ok: true, value: result.value.vpnLoginServer } : result;
     },
-    /** Listen for each new picture; returns the function that stops listening. */
     watch: (sink: Sink<VpnPicture>): (() => void) =>
       hub.subscribe(
         VpnChanged,

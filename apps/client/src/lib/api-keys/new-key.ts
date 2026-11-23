@@ -1,5 +1,4 @@
-// The create-key form as plain values: what the operator chose, turned into an `ApiKeyInput` or refused with fixed
-// messages before anything is sent (INT-003, D-23). Time is a parameter, so every rule here is deterministic.
+// The create-key form, checked before anything is sent (INT-003, D-23).
 import type { HubError } from '$lib/hub/hub';
 import type { ApiKeyInput } from './api';
 
@@ -7,10 +6,7 @@ const MINUTE_MS = 60_000;
 const DAY_MS = 24 * 60 * MINUTE_MS;
 /** The hub refuses an expiry more than 365 days after its own clock (D-23). */
 const HUB_BOUND_MS = 365 * DAY_MS;
-/**
- * "1 year" and the latest date stay five minutes inside the hub's bound: the time the request takes and a small
- * difference between this machine's clock and the hub's must not push a key the operator chose past 365 days.
- */
+/** Request time and clock skew must not push a chosen key past the hub's 365 days. */
 const BOUND_MARGIN_MS = 5 * MINUTE_MS;
 
 const NAME_MAX = 64;
@@ -35,16 +31,13 @@ export const SCOPES: readonly { readonly id: ApiKeyInput['scope']; readonly labe
   { id: 'WRITE', label: 'Write', hint: 'Queries and changes.' },
 ];
 
-/** Who will use the key (LOG-015). The hub records each change made with an AI agent's key as Agent; it cannot change later. */
+/** The hub records each change made with an agent's key as Agent, and this cannot change later (LOG-015). */
 export const MADE_FOR: readonly { readonly id: ApiKeyInput['madeFor']; readonly label: string }[] = [
   { id: 'USER', label: 'A script I run' },
   { id: 'AGENT', label: 'An AI agent' },
 ];
 
-/**
- * What the operator typed and chose. `date` is an `<input type="date">` value (`YYYY-MM-DD`), `''` when empty.
- * `madeFor` is `null` until the operator chooses: the operator must set it (LOG-015), so the form never guesses.
- */
+/** `madeFor` is `null` until the operator chooses: the form never guesses it (LOG-015). */
 export interface NewKeyForm {
   name: string;
   scope: ApiKeyInput['scope'];
@@ -71,7 +64,6 @@ export interface NewKeyProblem {
 
 type NewKeyCheck = { readonly ok: true; readonly input: ApiKeyInput } | { readonly ok: false; readonly problems: readonly NewKeyProblem[] };
 
-/** Local midnight at the start of a `YYYY-MM-DD` day, or `null` when the text is not a real calendar day. */
 function startOfDay(text: string): Date | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
   if (match === null) return null;
@@ -81,21 +73,16 @@ function startOfDay(text: string): Date | null {
   return real ? date : null;
 }
 
-/** The latest expiry the client offers: just inside the hub's bound. */
 export function latestExpiry(now: Date): Date {
   return new Date(now.getTime() + HUB_BOUND_MS - BOUND_MARGIN_MS);
 }
 
-/**
- * When a key made now would expire, or `null` when "On a date" has no valid date. A chosen date means the key
- * stops working when that day begins, in this machine's time zone.
- */
+/** A chosen date expires the key when that day begins, in this machine's time zone. */
 export function expiryOf(form: Pick<NewKeyForm, 'expiry' | 'date'>, now: Date): Date | null {
   if (form.expiry === 'date') return startOfDay(form.date);
   return new Date(now.getTime() + PRESET_MS[form.expiry]);
 }
 
-/** A local `YYYY-MM-DD`, for the date field's `min` and `max`. */
 export function dayText(date: Date): string {
   const pad = (value: number) => String(value).padStart(2, '0');
   return `${String(date.getFullYear())}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -118,7 +105,7 @@ function expiryProblem(expiresAt: Date | null, now: Date): NewKeyProblem | null 
   return expiresAt.getTime() > latestExpiry(now).getTime() ? { field: 'expiry', message: DATE_TOO_FAR } : null;
 }
 
-/** The input to send, or every problem to show; nothing is sent while there is a problem (D-23). */
+/** Nothing is sent while there is a problem (D-23). */
 export function checkNewKey(form: NewKeyForm, now: Date): NewKeyCheck {
   const name = form.name.trim();
   const expiresAt = expiryOf(form, now);
@@ -127,10 +114,7 @@ export function checkNewKey(form: NewKeyForm, now: Date): NewKeyCheck {
   return { ok: true, input: { name, scope: form.scope, madeFor: form.madeFor, expiresAt: expiresAt.toISOString() } };
 }
 
-/**
- * The fixed sentence for a refused create. The hub's own text is not shown: fixed sentences are what the tests can
- * hold to, and a fixed sentence can never carry anything the operator did not type (LOG-007).
- */
+/** The hub's own text is not shown: a fixed sentence never carries anything the operator did not type (LOG-007). */
 export function createFailure(error: HubError): string {
   switch (error.code) {
     case 'CONFLICT':

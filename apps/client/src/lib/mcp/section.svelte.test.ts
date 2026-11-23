@@ -114,7 +114,6 @@ it('MCP-021: arrow keys alone cause no write and never wrap between Off and Allo
   const target = await open();
   await click(target.querySelectorAll<HTMLElement>('h3 button')[1] as HTMLElement);
   const focused = () => document.activeElement;
-  // Allow, Ask, Off from left to right; Check update is on Off, the rightmost.
   await press(radio('Check update', 'Off'), 'ArrowRight');
   expect(focused()).toBe(radio('Check update', 'Off'));
   await press(radio('Check update', 'Off'), 'ArrowLeft');

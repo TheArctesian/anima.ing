@@ -15,10 +15,6 @@ function quiet(): TunnelEvents {
   return { size: () => ({ cols: 80, rows: 24 }), onbytes: vi.fn(), onchange: vi.fn(), onend: vi.fn() };
 }
 
-/**
- * A hub whose starts give `session-1`, `session-2`, ... with a stand-in tunnel. `hold()` makes the next start wait
- * until the function it returns is called; `events` holds what each start was told to report to.
- */
 function fakeHub() {
   let count = 0;
   const held: ((answer: () => void) => void)[] = [];
@@ -106,7 +102,6 @@ it('a tab closed while its start is in flight ends the late session once', async
   await sessions.close(id);
   expect(hub.port.end).not.toHaveBeenCalled();
   release();
-  // The view has gone and closes the late tunnel it is handed (T2); the store ends the session.
   await expect(starting).resolves.toMatchObject({ ok: true, value: { sessionId: 'session-1' } });
   expect(hub.port.end).toHaveBeenCalledExactlyOnceWith('session-1');
 });

@@ -18,9 +18,8 @@ vi.mock('$lib/sessions/sessions.svelte', () => ({
   useSessions: () => ({ openSession: (request: unknown) => current.opened.push(request), openWeb: (request: unknown) => current.opened.push(request) }),
 }));
 const browser = vi.hoisted(() => vi.fn(() => Promise.resolve()));
-// The desktop shell's web view, as `webViewShell` gives it where the platform has web view tabs (WP-42 D-4).
 vi.mock('$lib/web-interfaces/shell/client-shell', () => ({ webViewShell: () => ({ openSystemBrowser: browser }) }));
-// ...and so these paths run with the desktop's answers: a browser opens a tab of its own instead (WEB-011).
+// These paths run with the desktop's answers: a browser opens a tab of its own instead (WEB-011).
 vi.mock('$lib/platform/platform', async () => {
   const { DESKTOP_MAC } = await import('$lib/platform/answers.fixture');
   return { capabilities: () => DESKTOP_MAC };
@@ -66,7 +65,7 @@ async function show(hubAnswers = answers(), search = ''): Promise<ReturnType<typ
   return fake;
 }
 
-/** The button with this text (icon glyphs left out) or this accessible label, inside `within` when given. */
+/** Private-use characters in the text are icon glyphs. */
 function button(label: string, within = 'body'): HTMLButtonElement {
   const found = [...document.querySelectorAll<HTMLButtonElement>(`${within} button`)].find((candidate) => candidate.textContent.replace(/\p{Co}/gu, '').trim() === label || candidate.getAttribute('aria-label') === label);
   if (!found) throw new Error(`no button ${label}`);

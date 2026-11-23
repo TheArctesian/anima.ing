@@ -155,7 +155,6 @@ export type ContainerVolume = ContainerStorage['volumes'][number];
 export type ContainerNetwork = ContainerNetworksQuery['containerNetworks'][number];
 export type ImageUpdate = ContainerImageUpdatesQuery['containerImageUpdates'][number];
 
-/** What the container screens ask of the hub for one device. */
 export interface ContainerCalls {
   list(): Promise<HubResult<readonly Container[]>>;
   log(containerId: string, lines: number): Promise<HubResult<ContainerLog>>;
@@ -168,7 +167,7 @@ export interface ContainerCalls {
   updates(): Promise<HubResult<readonly ImageUpdate[]>>;
 }
 
-/** The container calls of the hub for one device (HOST-001, HOST-017 to HOST-021). The hub reads the device at each call and keeps nothing. */
+/** HOST-001, HOST-017 to HOST-021: the hub reads the device at each call and keeps nothing. */
 export function containersApi(hub: Pick<Hub, 'request'>, deviceId: string): ContainerCalls {
   return {
     list: async () => {

@@ -78,7 +78,6 @@ describe('D-5: RDP follows the pane (RA-004)', () => {
   });
 });
 
-/** A `matchMedia` whose queries a test can fire; `devicePixelRatio` is set by the test. */
 function fakeResolutionQueries() {
   const listeners: (() => void)[] = [];
   Object.defineProperty(window, 'matchMedia', {
@@ -154,7 +153,6 @@ describe('displayScale (D-5)', () => {
   });
 });
 
-/** The rules of a component's stylesheet as Svelte compiles it, by selector without the scoping class. */
 function componentRules(file: string): Map<string, Map<string, string>> {
   const source = readFileSync(new URL(file, import.meta.url), 'utf8');
   const code = (compile(source, { filename: file, css: 'external' }).css?.code ?? '').replaceAll(/\/\*[\s\S]*?\*\//g, '');

@@ -12,7 +12,6 @@
   import { CARDS, CHANGES, CHECKPOINTS, DIRTY, FILES, ON_DEFAULT, OVER_LIMIT, STAGES } from './scenes';
 
   const { data }: { data: { dialog: string | null } } = $props();
-  // `?dialog=commit` opens one dialog at the start, for the pictures.
   let dialog = $derived(data.dialog);
   let asked = $state('none');
   let scope = $state<Scope>({ scope: 'thread' });
@@ -25,7 +24,6 @@
   };
 </script>
 
-<!-- Stage 7 of the T3 Code copy: each Git part of a chat in each state, for the gallery. -->
 <div class="kit">
   <PageHeader title="Code kit: Git" detail="T3 Code's Git parts in Anima's skin" eyebrow={{ text: 'Stage 7', icon: 'carbon:branch' }} />
 

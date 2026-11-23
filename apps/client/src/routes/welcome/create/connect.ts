@@ -10,7 +10,6 @@ export interface ConnectParts {
   readonly read: () => Promise<LocalHubResult<LocalHubStatus>>;
   readonly check: (origin: string) => Promise<ListenerResult>;
   readonly saveAddress: (origin: string) => void;
-  /** Waits between reads while the hub is not ready yet. */
   readonly wait: (ms: number) => Promise<void>;
 }
 
@@ -21,7 +20,6 @@ const NOT_READY = 'The hub on this computer is not ready. Retry shortly.';
 /** How many times a hub that is not ready yet is read, one second apart, before the step says so. */
 export const READY_READS = 15;
 
-/** The local hub's address, read again each second while the hub is not ready, for up to `READY_READS` reads. */
 async function readyAddress(parts: ConnectParts): Promise<Connected> {
   for (let read = 1; ; read += 1) {
     const status = await parts.read();
@@ -33,20 +31,14 @@ async function readyAddress(parts: ConnectParts): Promise<Connected> {
   }
 }
 
-/**
- * The hub address of the local hub: `http://127.0.0.1:<port>` only (F-1), or `null` for anything else. The address
- * rules permit plain `http` for the host `127.0.0.1` alone, so any other host fails to parse.
- */
+/** `http://127.0.0.1:<port>` only (F-1): the address rules allow plain `http` for that host alone. */
 export function localHubAddress(status: LocalHubStatus): HubAddress | null {
   if (status.state !== 'ready' || status.hub === undefined) return null;
   const parsed = parseHubAddress(`http://${status.hub}`);
   return parsed.ok ? parsed.value : null;
 }
 
-/**
- * Finds the hub on this computer, checks that a program of this user listens at its address (F-10), and only then saves
- * the address. On "other" or "none" nothing is saved and nothing is sent.
- */
+/** Saves the address only once a program of this user listens there (F-10); otherwise nothing is saved and nothing is sent. */
 export async function connectLocalHub(parts: ConnectParts): Promise<Connected> {
   const found = await readyAddress(parts);
   if (!found.ok) return found;

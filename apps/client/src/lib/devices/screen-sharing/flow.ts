@@ -15,11 +15,7 @@ type Answer = { readonly kind: 'reachable' } | { readonly kind: 'unreachable' } 
 
 const SETTINGS_NOT_OPENED = 'System Settings did not open.';
 
-/**
- * The one-button flow of R-079 for one device at a time: test port 5900, turn VNC on and hand the device over; for
- * this computer, open Sharing and test again every interval until it answers. `cancel` stops everything, and an
- * answer from an earlier run is dropped.
- */
+/** The one-button flow of R-079 for one device at a time; an answer from an earlier run is dropped. */
 export class SetupFlow {
   readonly #calls: ScreenSharingCalls;
   readonly #notify: (state: SetupState) => void;
@@ -52,7 +48,6 @@ export class SetupFlow {
     await this.#settle(run, device, user, answer);
   }
 
-  /** Opens Sharing again while the flow waits, after a failure to open it. */
   reopenSharing(): Promise<void> {
     return this.#open(this.#run);
   }
@@ -64,7 +59,7 @@ export class SetupFlow {
     } catch (reason) {
       problem = reason instanceof SystemSettingsError ? reason.message : SETTINGS_NOT_OPENED;
     }
-    // A retest may have moved the flow on while System Settings was opening; the late answer must not undo that.
+    // A retest may move the flow on while System Settings opens; a late answer does not undo that.
     if (run === this.#run && this.#kind === 'waiting') this.#show({ kind: 'waiting', problem });
   }
 

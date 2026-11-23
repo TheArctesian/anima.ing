@@ -42,10 +42,7 @@ export interface ReleaseFile {
   readonly size: number;
 }
 
-/**
- * The files of the last bundle, `SHA256SUMS` last as the shell wrote it, and the name of its updater file (BLD-063,
- * UPD-010). Unsigned: the hub signs the updater file it checked (R-117).
- */
+/** `SHA256SUMS` comes last; unsigned, as the hub signs the updater file it checked (BLD-063, UPD-010, R-117). */
 export interface ReleaseFiles {
   readonly files: readonly ReleaseFile[];
   readonly updater: string;
@@ -58,24 +55,17 @@ export interface PresignedUpload {
   readonly headers: readonly { readonly name: string; readonly value: string }[];
 }
 
-/**
- * The fixed build steps of the desktop shell (BLD-026, BLD-027). No call names a program, a path or an argument list.
- * Each step rejects with a `BuilderShellError`.
- */
+/** Fixed build steps (BLD-026, BLD-027): no call names a program, a path or an argument list; each rejects with a `BuilderShellError`. */
 export interface BuilderShell {
   checkTools(): Promise<ToolCheck>;
   /** Fetches and checks out `commit` with a clean tree; `not-on-main` when it is not on main (BLD-040, BLD-041). */
   checkout(commit: string): Promise<void>;
-  /** Runs the gates at `commit` (BLD-042). */
   runGates(commit: string): Promise<void>;
   /** Compiles and bundles the job; resolves with the updater file's name (BLD-043). */
   bundle(job: StepJob): Promise<string>;
   /** The files of the job's bundle with their sizes and SHA-256, read by the shell (BLD-063, D-22). */
   releaseFiles(job: StepJob): Promise<ReleaseFiles>;
-  /**
-   * Sends one file of the job's bundle, or the `SHA256SUMS` the shell writes, to its presigned URL (BLD-060, BLD-063).
-   * The shell checks the URL is for that file of this job, checks its headers and follows no redirect.
-   */
+  /** Sends one bundle file or `SHA256SUMS` to its presigned URL (BLD-060, BLD-063); the shell checks the URL and headers and follows no redirect. */
   upload(job: StepJob, upload: PresignedUpload): Promise<void>;
   /** Stops the running step and every process it started. */
   cancel(): Promise<void>;
@@ -160,7 +150,6 @@ export function releaseFilesFrom(answer: unknown): ReleaseFiles {
   return { files: answer.files.map(releaseFileFrom), updater };
 }
 
-/** The `builder-line` events of the main web view (BLD-048). */
 async function onLine(listener: (line: string) => void): Promise<() => void> {
   if (!isTauri()) return () => undefined;
   return listen<unknown>('builder-line', (event) => {

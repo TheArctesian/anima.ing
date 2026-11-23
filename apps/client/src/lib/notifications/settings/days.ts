@@ -1,5 +1,4 @@
-// The certificate expiry thresholds as the operator types them, "21, 14, 7", checked against D-22 before sending:
-// whole days from 1 to 365, at most five, largest first and each once (NOT-006).
+// Certificate expiry thresholds, checked against D-22 before sending (NOT-006).
 const DAYS_MIN = 1;
 const DAYS_MAX = 365;
 const COUNT_MAX = 5;
@@ -13,7 +12,6 @@ export const DAYS_NOT_DESCENDING = 'List the largest first, each once.';
 
 type ThresholdsCheck = { readonly ok: true; readonly days: number[] } | { readonly ok: false; readonly message: string };
 
-/** Commas, spaces or both separate the values. */
 function parts(text: string): string[] {
   return text.split(/[\s,]+/).filter((part) => part !== '');
 }

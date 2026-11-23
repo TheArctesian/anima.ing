@@ -1,18 +1,13 @@
 import type { Program } from '../thread';
 
-/**
- * A model that a program named at the start of its newest thread (TH104), for the model picker: `id` is the value that
- * a start or a `set` names, `label` the name for the person.
- */
+/** A model the program named at the start of its newest thread (TH104); `id` is what a start or a `set` names. */
 export interface ProgramModel {
   readonly id: string;
   readonly label: string;
-  /** The efforts the model takes; empty when it takes none. */
   readonly efforts: readonly string[];
   readonly defaultEffort: string | null;
 }
 
-/** The models of each program, as the runner's answer to `models` gives them. */
 export type ModelLists = Partial<Readonly<Record<Program, readonly ProgramModel[]>>>;
 
 const PROGRAMS: readonly string[] = ['claude_code', 'codex'];
@@ -25,7 +20,6 @@ function modelFrom(value: unknown): ProgramModel | null {
   return { id, label: name, efforts: named, defaultEffort: typeof defaultEffort === 'string' ? defaultEffort : null };
 }
 
-/** The lists of a `models` answer; a program that named none is left out, and a model that does not read is left out. */
 export function modelListsFrom(value: unknown): ModelLists | null {
   if (!Array.isArray(value)) return null;
   const lists: Partial<Record<Program, ProgramModel[]>> = {};

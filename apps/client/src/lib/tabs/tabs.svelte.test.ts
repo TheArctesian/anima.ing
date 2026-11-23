@@ -114,7 +114,6 @@ describe('Tabs (UI redesign, DEV-020)', () => {
 describe('a strip too narrow for its tabs (NAV-005, UI-003)', () => {
   const ICONS: readonly TabSpec[] = ITEMS.map((item) => ({ ...item, icon: 'carbon:dashboard' }));
 
-  /** Gives the strip a visible width and a content width, as layout would, then lets it measure again. */
   function measure(strip: HTMLElement, client: number, content: number): void {
     Object.defineProperty(strip, 'clientWidth', { value: client, configurable: true });
     Object.defineProperty(strip, 'scrollWidth', { value: content, configurable: true });

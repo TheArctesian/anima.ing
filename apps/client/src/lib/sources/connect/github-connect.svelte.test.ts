@@ -57,7 +57,7 @@ async function settled(): Promise<void> {
   flushSync();
 }
 
-/** `connectPageUrl` of the hub; 'before': a hub of before the field. */
+/** `'before'` stands for a hub older than the `connectPageUrl` field. */
 async function show(current: ReturnType<typeof attempt> | null = null, page: string | null = 'https://hub.example/connect/github'): Promise<void> {
   hub = fakeHub([account('a', 'Personal')]);
   hub.connectPage = page === 'before' ? undefined : page;

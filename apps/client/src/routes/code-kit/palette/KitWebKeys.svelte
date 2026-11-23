@@ -5,13 +5,11 @@
 
   const PLATFORMS = { mac: 'Mac', other: 'Windows and Linux' } as const;
 
-  /** A key on one platform, written for it; `web` keys take ⌃⇧ on the Mac and Alt+Shift elsewhere. */
   function on(key: string, mac: boolean, web: boolean): string {
     const chord = parseChord(web ? webKeyOn(key, mac) : key);
     return chord === null ? key : chordText(chord, mac);
   }
 
-  /** A key on the Mac and elsewhere, "⌘N · Ctrl+N", or on the one platform the row is for. */
   function written(key: string | null, only: 'mac' | 'other' | undefined, web: boolean): string {
     if (key === null) return 'None';
     if (only !== undefined) return on(key, only === 'mac', web);
@@ -30,7 +28,6 @@
   }));
 </script>
 
-<!-- The web keys (keys/web.ts): each T3 Code key a browser keeps, the key in its place, and what the browser does with it. -->
 <table>
   <thead>
     <tr><th scope="col">Command</th><th scope="col">T3 Code</th><th scope="col">Web client</th><th scope="col">Platform</th><th scope="col">The browser's key</th></tr>

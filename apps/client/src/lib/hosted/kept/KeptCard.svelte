@@ -2,7 +2,6 @@
   import { countText, historyText, type HubKept } from './kept';
 
   interface Props {
-    /** Asks the hub for its counts and its retention periods (`read.ts`). */
     read: () => Promise<HubKept>;
   }
 
@@ -22,8 +21,7 @@
   });
 </script>
 
-<!-- What the hub keeps (HMD-073, task HM-T36 of hosted-mode.md): the figures of the hub itself, beside the figures of the
-     account in "Plan and usage". -->
+<!-- HMD-073: the hub's own figures, beside the account's in "Plan and usage". -->
 <section class="overview-card hub-kept" aria-labelledby="overview-hub-kept" aria-busy={kept === null}>
   <h2 id="overview-hub-kept" class="overview-card-title">What the hub keeps</h2>
   <dl>

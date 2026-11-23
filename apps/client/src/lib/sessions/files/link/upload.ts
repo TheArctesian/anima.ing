@@ -2,10 +2,8 @@ import { FRAME_MAX_BYTES } from './codec';
 
 /** The upload waits while the socket holds more than this many unsent bytes (K4 §8.5 backpressure, D-3). */
 export const HOLD_BACK_BYTES = 1_048_576;
-/** How often a held-back upload looks at the socket's buffer again. */
 export const DRAIN_POLL_MS = 50;
 
-/** What an upload reads its bytes from: a `File` or `Blob` (`slice` then `arrayBuffer`). */
 export interface UploadSource {
   readonly size: number;
   slice(start: number, end: number): { arrayBuffer(): Promise<ArrayBuffer> };
@@ -14,29 +12,20 @@ export interface UploadSource {
 /** Bytes the socket has taken so far and the upload's size (MOT-009: real progress, never above `size`). */
 export type Progress = (done: number, size: number) => void;
 
-/** The socket as the upload sees it. */
 export interface UploadPort {
   /** Send one binary frame; false when the link can no longer send. */
   readonly send: (frame: ArrayBuffer) => boolean;
-  /** The socket's unsent bytes (`WebSocket.bufferedAmount`). */
   readonly buffered: () => number;
-  /** Resolves after `ms`, or at once when `signal` aborts, leaving no timer; tests pass a fake clock (CQ-021). */
+  /** Resolves after `ms`, or at once when `signal` aborts, leaving no timer (CQ-021). */
   readonly wait: (ms: number, signal: AbortSignal) => Promise<void>;
 }
 
-/** One upload's frames on their way out. */
 export interface UploadPump {
-  /** Send no further frame, at once; safe to call more than once. */
   stop(): void;
-  /** Whether every byte was handed to the socket. */
   sent(): boolean;
 }
 
-/**
- * Send `source` as frames of at most `FRAME_MAX_BYTES`, `source.size` bytes in all, holding back while the socket's
- * buffer is above `HOLD_BACK_BYTES`. `progress` hears the bytes the socket has taken (sent minus buffered), rising
- * only. `unreadable` is called once when a slice cannot be read or reads short; no frame follows it.
- */
+/** `progress` hears the bytes the socket has taken, rising only; after `unreadable` no frame follows. */
 export function pumpUpload(source: UploadSource, port: UploadPort, progress: Progress, unreadable: () => void): UploadPump {
   const size = source.size;
   let stopped = false;

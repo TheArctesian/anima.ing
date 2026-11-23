@@ -59,7 +59,6 @@ async function show(hubAnswers = answers(), search = ''): Promise<ReturnType<typ
   return fake;
 }
 
-/** The button with this text (icon glyphs left out) or this accessible label, inside `within` when given. */
 function button(label: string, within = 'body'): HTMLButtonElement {
   const found = [...document.querySelectorAll<HTMLButtonElement>(`${within} button`)].find(
     (candidate) => candidate.textContent.replace(/\p{Co}/gu, '').trim() === label || candidate.getAttribute('aria-label') === label,
@@ -68,27 +67,23 @@ function button(label: string, within = 'body'): HTMLButtonElement {
   return found;
 }
 
-/** The input with this id. */
 function field(id: string): HTMLInputElement {
   const found = document.getElementById(id);
   if (!(found instanceof HTMLInputElement)) throw new Error(`no input ${id}`);
   return found;
 }
 
-/** Types `text` into the input, as each key press would leave it. */
 function type(id: string, text: string): void {
   field(id).value = text;
   field(id).dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-/** Leaves the input, as Tab or a click elsewhere would. */
 function leave(id: string): void {
   field(id).dispatchEvent(new FocusEvent('blur'));
 }
 
 const sent = (fake: ReturnType<typeof fakeHub>, operation: string) => fake.requests.filter((request) => request.operation === operation);
 
-/** The SSH row's switch. */
 function sshSwitch(): HTMLButtonElement {
   const found = document.querySelector<HTMLButtonElement>('[data-connection="ssh"] [role="switch"]');
   if (found === null) throw new Error('no SSH switch');

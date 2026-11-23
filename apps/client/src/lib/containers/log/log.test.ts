@@ -16,9 +16,7 @@ it('HOST-015: the level of a line is its first level word, in any case and any f
   expect(LINES.map((each) => levelOf(each.text))).toEqual(['info', 'warning', 'error', 'debug', null]);
   expect(levelOf('FATAL: database is gone')).toBe('error');
   expect(levelOf('TRACE enter')).toBe('debug');
-  // A word that only holds a level word is not one.
   expect(levelOf('information desk, terror, warned')).toBeNull();
-  // A level word far into a long line is text of the message, not its level.
   expect(levelOf(`${'x'.repeat(130)} error`)).toBeNull();
 });
 
@@ -41,7 +39,7 @@ it('HOST-015: the forms that common programs write are read, also inside the col
 
 it('HOST-015: a word in small letters in the text of a line is not its level', () => {
   for (const text of ['GET /debug/vars 200', 'GET /api/info 200', 'open /var/log/nginx/error.log', 'trace-id=ab12 served', 'no errors found']) expect(levelOf(text)).toBeNull();
-  // A word that the limit of 120 characters would cut into a level word is not one.
+  // The 120-character limit would cut this word into a level word.
   expect(levelOf(`${'x'.repeat(113)} ERRORS`)).toBeNull();
 });
 
@@ -49,14 +47,12 @@ it('HOST-015: a line with no level has the level of the line before it, so a sta
   const trace = [line('INFO started'), line('ERROR boom'), line('    at main (app.js:1)'), line('    at run (app.js:9)'), line('INFO again'), line('plain')];
   expect(shownLines(trace, { search: '', level: 'error' }).map((each) => each.text)).toEqual(['ERROR boom', '    at main (app.js:1)', '    at run (app.js:9)']);
   expect(shownLines(trace, { search: '', level: 'info' }).map((each) => each.text)).toEqual(['INFO started', 'INFO again', 'plain']);
-  // A line before the first level word has no level.
   expect(shownLines([line('banner'), line('WARN x')], { search: '', level: 'warning' })).toHaveLength(1);
 });
 
 it('HOST-015: the filter shows the lines of one level, and all shows each line', () => {
   expect(shownLines(LINES, { search: '', level: 'all' })).toHaveLength(5);
   expect(shownLines(LINES, { search: '', level: 'error' }).map((each) => each.text)).toEqual(['{"level":"error","msg":"connection refused"}']);
-  // `GET /health 200` states no level and follows the debug line.
   expect(shownLines(LINES, { search: '', level: 'debug' })).toHaveLength(2);
   expect(shownLines(LINES, { search: '', level: 'info' })).toHaveLength(1);
 });
@@ -64,7 +60,6 @@ it('HOST-015: the filter shows the lines of one level, and all shows each line',
 it('HOST-015: the search finds text in any case, together with the level', () => {
   expect(shownLines(LINES, { search: ' QUERY ', level: 'all' }).map((each) => each.text)).toEqual(['[warn] slow query 1200 ms']);
   expect(shownLines(LINES, { search: 'query', level: 'error' })).toEqual([]);
-  // The search text is text, not a pattern.
   expect(shownLines(LINES, { search: '.*', level: 'all' })).toEqual([]);
 });
 

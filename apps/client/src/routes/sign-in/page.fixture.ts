@@ -1,4 +1,3 @@
-// Test support: finding and driving the sign-in page's fields.
 import { flushSync } from 'svelte';
 import { vi } from 'vitest';
 
@@ -23,7 +22,6 @@ export async function submit(target: HTMLElement, formIndex: number): Promise<vo
   flushSync();
 }
 
-/** The text of the message under a field, without its icon. */
 export function problemOf(target: HTMLElement, id: string): string {
   const problem = target.querySelector(`#${id}-problem`)?.cloneNode(true);
   if (!(problem instanceof HTMLElement)) return '';
@@ -31,7 +29,6 @@ export function problemOf(target: HTMLElement, id: string): string {
   return problem.textContent.trim();
 }
 
-/** The six code boxes of step 2, in order. */
 export function boxes(target: HTMLElement): HTMLInputElement[] {
   return [...target.querySelectorAll<HTMLInputElement>('[role="group"] input')];
 }
@@ -44,14 +41,12 @@ export async function settle(): Promise<void> {
   flushSync();
 }
 
-/** Step 1's Continue, with the two fields filled. */
 export async function continueWith(target: HTMLElement, username: string, password: string): Promise<void> {
   type(target, 'username', username);
   type(target, 'password', password);
   await submit(target, 0);
 }
 
-/** A key pressed in box `index`; returns the event so a test can see whether the page took it. */
 export function press(target: HTMLElement, index: number, key: string): KeyboardEvent {
   const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
   boxes(target)[index]?.dispatchEvent(event);
@@ -59,7 +54,6 @@ export function press(target: HTMLElement, index: number, key: string): Keyboard
   return event;
 }
 
-/** `text` pasted into box `index`. */
 export async function pasteInto(target: HTMLElement, index: number, text: string): Promise<void> {
   const event = new Event('paste', { bubbles: true, cancelable: true });
   Object.defineProperty(event, 'clipboardData', { value: { getData: () => text } });
@@ -67,7 +61,6 @@ export async function pasteInto(target: HTMLElement, index: number, text: string
   await settle();
 }
 
-/** A whole code typed digit by digit, as the operator would. */
 export async function typeCode(target: HTMLElement, code: string): Promise<void> {
   [...code].forEach((digit, index) => press(target, index, digit));
   await settle();

@@ -34,17 +34,13 @@ export function parseFailure(text: string | null): StandInFailure | null {
   return step === undefined || found === undefined ? null : { at: step, problem: found };
 }
 
-/**
- * A cloud and a link join that are not there: it walks through the steps of the sign-in with delays like the real
- * ones, and fails where the plan says. It holds no token and talks to no network. It is for tests and for `VITE_ANIMA_HOSTED=stand-in`.
- */
+/** A cloud and link join that are not there, for tests and `VITE_ANIMA_HOSTED=stand-in`; it holds no token and talks to no network. */
 export function standInAccount(plan: StandInPlan = {}): HostedAccount & { readonly join: () => Promise<Answer<void>> } {
   const { hub = 'making', polls = 3, starts = 3, delay = 600, wait = (ms) => new Promise((done) => setTimeout(done, ms)) } = plan;
   let failure = plan.fail ?? null;
   let pollsLeft = polls;
   let startsLeft = hub === 'ready' ? 0 : starts;
 
-  /** Waits like a network call, then fails once if the plan says so. */
   async function call(step: StandInStep): Promise<Problem | null> {
     await wait(delay);
     if (failure?.at !== step) return null;
@@ -82,7 +78,6 @@ export function standInAccount(plan: StandInPlan = {}): HostedAccount & { readon
       const problem = await call('access');
       return problem === null ? answer(sealAccess({ invite: null, claim: 'stand-in' })) : refusal(problem);
     },
-    /** The link join of the stand-in: it joins nothing and keeps nothing. */
     join: async () => {
       const problem = await call('join');
       return problem === null ? answer(undefined) : refusal(problem);

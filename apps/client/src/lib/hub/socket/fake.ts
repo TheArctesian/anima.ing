@@ -1,4 +1,3 @@
-// Test support: a hub whose socket is a fake graphql-transport-ws server that tests drive by hand.
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { parse } from 'graphql';
 import { vi } from 'vitest';
@@ -9,12 +8,9 @@ export const STATUS_CHANGED = parse('subscription S($deviceId: ID) { deviceStatu
   { deviceId?: string }
 >;
 export const NOW = new Date('2026-11-04T10:00:00Z');
-/** The `createHub` timeout when none is given. */
 export const DEFAULT_TIMEOUT_MS = 10_000;
-/** The first reconnect waits 1 s. */
 export const FIRST_RETRY_MS = 1000;
 
-/** The hub side of one fake graphql-transport-ws connection. */
 export class FakeSocket {
   static readonly CONNECTING = 0;
   static readonly OPEN = 1;
@@ -41,7 +37,6 @@ export class FakeSocket {
     this.sent.push(JSON.parse(text) as Record<string, unknown>);
   }
 
-  /** When set, the client's `close()` throws it, as a broken WebSocket implementation might. */
   closeFailure: Error | undefined;
 
   close(code = 1000, reason = ''): void {
@@ -79,14 +74,12 @@ export function recordingSink() {
   return { events, sink };
 }
 
-/** `FakeSocket` as the WebSocket constructor `createHub` takes. */
 export const FAKE_WEBSOCKET = FakeSocket as unknown as typeof WebSocket;
 
 export function newHub(token: TokenProvider = () => Promise.resolve('s3cret-token')) {
   return createHub({ address: NO_HUB_ADDRESS, token, WebSocket: FAKE_WEBSOCKET, now: () => NOW });
 }
 
-/** Run pending promise callbacks and timers due by `ms`. */
 export async function settle(ms = 0): Promise<void> {
   await vi.advanceTimersByTimeAsync(ms);
 }
@@ -97,7 +90,6 @@ export function onlySocket(): FakeSocket {
   return socket;
 }
 
-/** Open `socket` and answer its `connection_init` with `connection_ack`. */
 export async function acknowledge(socket: FakeSocket): Promise<void> {
   socket.accept();
   await settle();
@@ -105,7 +97,6 @@ export async function acknowledge(socket: FakeSocket): Promise<void> {
   await settle();
 }
 
-/** Subscribe and acknowledge the hub's first socket; returns the socket. */
 export async function liveSubscription(hub: ReturnType<typeof newHub>, sink: Sink<unknown>) {
   const stop = hub.subscribe(STATUS_CHANGED, { deviceId: 'd1' }, sink);
   await settle();

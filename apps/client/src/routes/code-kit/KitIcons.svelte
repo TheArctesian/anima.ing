@@ -5,7 +5,7 @@
   const NAMES = Object.keys(CODE_ICONS) as CodeIconName[];
 </script>
 
-<!-- Every Lucide icon the Code section draws, at stroke 1.5 (D4): the list to redraw in our own set later. -->
+<!-- Lucide icons at stroke 1.5 (D4). -->
 <ul class="icons">
   {#each NAMES as name (name)}
     <li><CodeIcon {name} /><code>{name}</code></li>

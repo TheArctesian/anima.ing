@@ -12,13 +12,13 @@
     shell?: StayAwakeShell;
     /** A Mac has the set-up step of the lid-closed level (AWK-003). */
     mac?: boolean;
-    /** The origin of the hub that runs on this computer, or `null` when there is none (AWK-005). */
+    /** The origin of the hub on this computer (AWK-005). */
     localHub?: string | null;
   }
 
   const { shell = desktopStayAwakeShell, mac = isMac(navigator.userAgent), localHub = null }: Props = $props();
 
-  // Desktop only; the page decides (AWK-004). The rows keep the shell they were mounted with.
+  // The rows keep the shell they were mounted with.
   // svelte-ignore state_referenced_locally
   const control = new StayAwakeControl(shell);
   const hub = useHub();
@@ -34,7 +34,7 @@
 
   const NO_FLOOR = 'none';
 
-  // After each change the select shows the state that is, also when the shell refused the change.
+  // The select shows the actual state, also after a refused change.
   async function choose(event: Event & { currentTarget: HTMLSelectElement }): Promise<void> {
     const select = event.currentTarget;
     await control.choose(select.value as Level);
@@ -48,7 +48,7 @@
   }
 </script>
 
-<!-- The three states (AWK-001). A choice saves at once (SET-005); the hint says what the computer does now. -->
+<!-- AWK-001; a choice saves at once (SET-005). -->
 <SettingRow label="Stay awake" for="stay-awake-level">
   {#snippet hint()}
     <p class="hint state" aria-live="polite">
@@ -64,7 +64,7 @@
       {/if}
     </p>
     {#if thisComputerIsHub}
-      <!-- Always there on a hub computer: its line is reserved (MOT-007) and a new text is announced. -->
+      <!-- Always rendered: its line is reserved (MOT-007) and new text is announced. -->
       <p class="hint notice" class:shown={notice !== null} role="status">{notice ?? ''}</p>
     {/if}
   {/snippet}
@@ -99,7 +99,7 @@
   </SettingRow>
 {/if}
 
-<!-- The battery floor (AWK-006). -->
+<!-- AWK-006 -->
 <SettingRow label="On battery" for="stay-awake-floor">
   {#snippet hint()}
     <p class="hint">Below this charge, off until mains power returns.</p>

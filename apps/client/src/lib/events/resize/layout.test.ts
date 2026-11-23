@@ -1,11 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
 
-/**
- * jsdom does not load a component's styles, so this reads the rule from the source. It guards one invariant that a
- * browser measurement would only catch by chance: the clearance never follows the live height (MOT-006). The rest of
- * the panel layout is measured in WebKit and Chromium by the interface review.
- */
+/** jsdom does not load a component's styles, so this reads the rule from the source. */
 function rule(file: string, selector: string): string {
   const text = readFileSync(new URL(file, import.meta.url), 'utf8');
   // The last rule of the selector: a grouped rule above it may end with the same selector.

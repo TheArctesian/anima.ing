@@ -7,7 +7,6 @@
     error?: string | undefined;
     hint?: string;
     disabled?: boolean;
-    /** Called after each edit by the operator. */
     oninput?: () => void;
   }
 

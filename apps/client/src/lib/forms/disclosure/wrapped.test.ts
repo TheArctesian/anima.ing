@@ -22,7 +22,6 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-/** `<form><div wrapper><Disclosure/></div><div below/></form>`: the section is the last child of its wrapper. */
 function wrapped(level?: 3) {
   const form = document.createElement('form');
   const wrapper = document.createElement('div');
@@ -57,10 +56,6 @@ it('5.7.3 disclosure: inside a wrapper the elements after the wrapper move by FL
   ]);
 });
 
-/**
- * The device Settings tab: `<div><form><div wrapper><Disclosure/></div><div actions/></form><p note/><section delete/></div>`.
- * The section's height moves the form's actions and everything after the form; `still` sits beside and does not move.
- */
 function settingsTab() {
   const page = document.createElement('div');
   const form = document.createElement('form');
@@ -107,7 +102,6 @@ it('5.7.3 disclosure: an element whose place does not change gets no translate',
   expect(still.style.translate).toBe('');
 });
 
-/** The vertical `translate` written on `element`, as the engine draws it. */
 function shiftOf(element: HTMLElement): number {
   const [, y = '0'] = element.style.translate.split(' ');
   return Number.parseFloat(y);

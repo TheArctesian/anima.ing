@@ -1,10 +1,8 @@
 import type { MotionValue } from 'motion';
 
-/** One call to the fake spring engine; `frame` draws a value the way the engine would. */
 export interface Run {
   readonly keyframes: readonly number[];
   readonly options: Readonly<Record<string, unknown>>;
-  /** How many times the engine was asked to stop this run. */
   stops: number;
   frame(value: number): void;
   finish(): void;

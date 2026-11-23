@@ -1,7 +1,4 @@
-/**
- * What this client can do: one yes/no answer per desktop-only feature (WP-42 D-4). Every desktop-only control reads
- * these answers through `$lib/platform/platform`, so the web build turns the features off in one place (CLI-001).
- */
+/** One answer per desktop-only feature; every desktop-only control reads it through `$lib/platform/platform` (WP-42 D-4, CLI-001). */
 export interface Capabilities {
   /** The OS key store holds the access token (CLI-003). */
   readonly keyStore: boolean;
@@ -17,7 +14,7 @@ export interface Capabilities {
   readonly thisMachine: boolean;
   /** The shell can open System Settings at Sharing, for Remote Login and Screen Sharing (R-059, R-079). */
   readonly systemSettings: boolean;
-  /** This computer can build releases: the shell runs the build steps and keeps the builder token (BLD-020, BLD-026). */
+  /** The shell runs the build steps and keeps the builder token (BLD-020, BLD-026). */
   readonly builds: boolean;
   /** The shell reads and saves the `anima mcp` permissions in the command line's configuration file (MCP-018, MCP-023). */
   readonly mcpPermissions: boolean;
@@ -27,22 +24,11 @@ export interface Capabilities {
   readonly stayAwake: boolean;
   /** The shell installs, starts and stops the hub on this computer and joins this device to a hub over the link (FRN-002, FRN-005). */
   readonly localHub: boolean;
-  /**
-   * The shell joins this device to a hub over the link with `link_join`, `link_status` and `link_leave` (FRN-005,
-   * MOB-002): the hosted sign-in needs it (R-129). The desktop shell runs `anima-link`; the mobile shell turns it on when
-   * the link library is in the app (MOB-031, mobile plan M3-1).
-   */
+  /** The shell joins this device to a hub over the link; the hosted sign-in needs it (FRN-005, MOB-002, R-129, MOB-031). */
   readonly deviceLink: boolean;
-  /**
-   * The shell signs in to the Anima.ing account with `cloud_sign_in_start` and the other cloud commands (HM-T1 to
-   * HM-T7): the hosted sign-in needs it with `deviceLink`. The mobile shell has these commands too (mobile plan M3-4),
-   * but not `cloud_device`: that one reads a computer, so it goes with `thisMachine`.
-   */
+  /** The shell signs in to the Anima.ing account (HM-T1 to HM-T7); `cloud_device` reads a computer, so it goes with `thisMachine`. */
   readonly cloudAccount: boolean;
-  /**
-   * The shell shows the sign-in page of the account inside the app, with `cloud_sign_in_session`: no browser to go
-   * to and no code to compare (mobile plan M3-5). Only the iPhone app has it; the other shells use the code.
-   */
+  /** The shell shows the account sign-in page inside the app, with no code to compare (mobile plan M3-5). */
   readonly accountSession: boolean;
   /** The shell reads the sessions of Claude Code and Codex of this computer as threads (THR-011). */
   readonly agentThreads: boolean;
@@ -50,10 +36,7 @@ export interface Capabilities {
   readonly runnerReport: boolean;
   /** The window draws its content under the OS title bar, with the window buttons over the navigation bar (macOS). */
   readonly overlayTitleBar: boolean;
-  /**
-   * The system gives the window no frame, so the client draws the window controls and the top of the window moves it
-   * (Windows and Linux; task TC2 of agent-threads.md, "Both together").
-   */
+  /** The client draws the window controls and the top of the window moves it (Windows and Linux; agent-threads.md TC2). */
   readonly framelessWindow: boolean;
   /** The app keeps a read-only copy of recent hub answers on this computer and shows it when the hub does not answer (FND-007). */
   readonly recentCopy: boolean;

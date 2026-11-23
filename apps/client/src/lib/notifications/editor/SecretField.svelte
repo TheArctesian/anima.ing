@@ -9,7 +9,6 @@
     problem: string;
     /** `hidden` masks the text (passwords, tokens, keys); `lines` is one value per line (Apprise URLs). */
     shape?: 'line' | 'hidden' | 'lines';
-    /** The hub holds a value: an empty field keeps it. */
     stored?: boolean;
     /** Offered for a stored optional secret: checked sends `""`, which removes it (K1). */
     clear?: boolean;
@@ -21,20 +20,14 @@
 
   const shownHint = $derived(stored ? `Stored. Empty keeps it.${hint === undefined ? '' : ` ${hint}`}` : hint);
 
-  /**
-   * Empties the field the moment it starts to leave. A closing dialog, or a page left while the editor is open,
-   * keeps its last content on screen until the fade ends; a secret must not stay in the DOM for that time (F-8).
-   */
+  /** A secret leaves the DOM as the field starts to leave, not after the fade (F-8). */
   function drop(node: HTMLInputElement | HTMLTextAreaElement): { duration: number } {
     node.value = '';
     return { duration: duration.instant };
   }
 </script>
 
-<!--
-  No `name` attribute: a form that were ever submitted by the browser would put named fields in the URL (F-8).
-  No spell check, no autocapitalisation, no autofill: what is typed here goes to the hub and nowhere else.
--->
+<!-- No `name`: a browser-submitted form would put named fields in the URL (F-8); typed text goes only to the hub. -->
 <Field {label} hint={shownHint} {problem}>
   {#snippet control(attributes)}
     {#if shape === 'lines'}

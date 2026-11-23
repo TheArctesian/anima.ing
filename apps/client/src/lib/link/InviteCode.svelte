@@ -7,7 +7,6 @@
   interface Props {
     /** The invite. Its text is drawn and copied only: never logged, put in an attribute or announced (LOG-007). */
     invite: LinkInvite;
-    /** The device it is for. */
     name: string;
     now: Date;
   }

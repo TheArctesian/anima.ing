@@ -3,7 +3,6 @@ import type { DeviceStatus } from '../card/card';
 /** The one status a device shows (DEV-006): the hub's five, and Warning, which only the precedence below produces. */
 export type CombinedStatus = DeviceStatus | 'WARNING';
 
-/** One check as the precedence reads it. A paused check is not enabled. */
 export interface CheckState {
   readonly name: string;
   readonly status: DeviceStatus;
@@ -12,14 +11,12 @@ export interface CheckState {
 
 export type SecurityWarning = 'HOST_KEY_CHANGED' | 'CERTIFICATE_CHANGED';
 
-/** A certificate or domain registration and the whole days left before it expires. */
 export interface Expiry {
   readonly kind: 'CERTIFICATE' | 'DOMAIN';
   readonly name: string;
   readonly daysLeft: number;
 }
 
-/** Everything DEV-006 reads. The caller fills in what the hub tells it and leaves the rest empty. */
 export interface StatusFacts {
   /** The device is inside a maintenance window, or its manual flag is set. */
   readonly maintenance: boolean;
@@ -28,20 +25,16 @@ export interface StatusFacts {
   readonly expiries: readonly Expiry[];
   /** The shortest NOT-006 threshold in days (default 7): an expiry fewer days away is a warning. */
   readonly warnWithinDays: number;
-  /** The names of the metrics over their threshold. */
   readonly metricsOverThreshold: readonly string[];
 }
 
-/** Why a status applied, in words the badge's HelpTip can show as they are. */
 export interface StatusReason {
   readonly status: CombinedStatus;
   readonly text: string;
 }
 
 export interface CombinedResult {
-  /** The first status in the precedence that applies. */
   readonly status: CombinedStatus;
-  /** Every reason that applied, in precedence order; the first belongs to `status`. */
   readonly reasons: readonly StatusReason[];
 }
 
@@ -82,7 +75,6 @@ function degradedReasons(facts: StatusFacts): StatusReason[] {
   return reasons('DEGRADED', [...slow, ...facts.metricsOverThreshold.map((metric) => `${metric} over threshold`)]);
 }
 
-/** Up or Unknown, which apply only when nothing above does. */
 function restingReason(facts: StatusFacts): StatusReason {
   const checks = enabled(facts);
   if (checks.some((check) => check.status === 'UP')) return { status: 'UP', text: 'At least one check is up' };
@@ -90,10 +82,7 @@ function restingReason(facts: StatusFacts): StatusReason {
   return { status: 'UNKNOWN', text };
 }
 
-/**
- * DEV-006: Maintenance, Down, Warning, Degraded, Up, Unknown; the first that applies wins. Every reason that
- * applied is returned in that order, so the badge's HelpTip can list them. Pure: the same facts give the same result.
- */
+/** DEV-006: Maintenance, Down, Warning, Degraded, Up, Unknown; the first that applies wins. */
 export function combinedStatus(facts: StatusFacts): CombinedResult {
   const applied = [maintenanceReasons, downReasons, warningReasons, degradedReasons].flatMap((rule) => rule(facts));
   const [first] = applied;

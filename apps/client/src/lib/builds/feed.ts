@@ -1,13 +1,9 @@
-// The release feed the builder proposes (UPD-009, UPD-010, BLD-063, DNS-007): what latest.json lists, which stable
-// names the release carries and what SHA256SUMS says. No signature: the hub signs the updater file it checked and fills
-// each entry's `signature` (R-117). Pure: the date and the file digests are parameters.
+// No signature: the hub signs the updater file it checked and fills each entry's `signature` (R-117).
 
 export interface UpdateFile {
-  /** File name of the updater bundle in the release. */
   readonly file: string;
 }
 
-/** The updater files of the platforms whose build passed. */
 export interface BuiltPlatforms {
   readonly macos?: UpdateFile | undefined;
   readonly linux?: UpdateFile | undefined;
@@ -35,7 +31,6 @@ const FEED_KEYS = {
   windows: ['windows-x86_64'],
 } as const;
 
-/** A stable name for people, chosen by the file's extension. */
 const STABLE_NAMES: readonly (readonly [suffix: string, name: string])[] = [
   ['.dmg', 'Anima.dmg'],
   ['-setup.exe', 'Anima-x86_64-setup.exe'],
@@ -63,7 +58,6 @@ export function buildFeed(input: { version: string; baseUrl: string; date: Date;
   };
 }
 
-/** The stable name for a release file, or undefined when the file has none. */
 export function stableName(file: string): string | undefined {
   return STABLE_NAMES.find(([suffix]) => file.endsWith(suffix))?.[1];
 }

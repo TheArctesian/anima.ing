@@ -10,7 +10,6 @@
   };
 </script>
 
-<!-- Stage 3 of the T3 Code copy: the timeline of a chat in each state, for the gallery. -->
 <div class="kit">
   <PageHeader title="Code kit: timeline" detail="T3 Code's timeline in Anima's skin" eyebrow={{ text: 'Stage 3', icon: 'carbon:code' }} />
   {#each Object.entries(SCENES) as [name, scene] (name)}

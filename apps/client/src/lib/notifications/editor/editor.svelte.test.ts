@@ -57,7 +57,6 @@ function expectSilentConsole(): void {
   expect(consoleSpies.flatMap((spy) => spy.mock.calls)).toEqual([]);
 }
 
-/** Opens Add channel and types a webhook whose URL and header value are secrets. */
 async function typeNewWebhook(answers: Parameters<typeof fakeHub>[0]): Promise<void> {
   await open(loaded(answers));
   button('Add channel').click();
@@ -146,7 +145,6 @@ it('F-8, LOG-007: after a save no secret is in the DOM, a field, storage, the UR
   inDialog('Save').click();
   await settled();
   expect(sentInput()).toMatchObject({ settings: { webhook: { url: FAKE_WEBHOOK_URL, headers: [{ name: 'Authorization', value: FAKE_SECRET }] } } });
-  // The dialog is still fading out, and holds nothing.
   expect(document.querySelector('.portal')).not.toBeNull();
   expect(places(FAKE_SECRET)).toEqual(NOWHERE);
   expect(document.querySelector('.list > li[aria-label="new-hook"] dd.mono')?.textContent).toBe('https://hooks.example.net');

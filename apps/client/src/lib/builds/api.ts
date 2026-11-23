@@ -92,13 +92,13 @@ export interface Builder {
   readonly online: boolean;
 }
 
-/** What `enrolBuilder` returns: the builder's ID and its token, shown once (BLD-021, BLD-023). */
+/** The token is shown once (BLD-021, BLD-023). */
 export interface Enrolment {
   readonly builderId: string;
   readonly token: string;
 }
 
-/** A claimed job, as the hub sent it. Its fields are checked again by the shell before any process starts. */
+/** The shell checks these fields again before any process starts. */
 export interface ClaimedJob {
   readonly id: string;
   readonly target: BuildTarget;
@@ -127,10 +127,7 @@ export interface UploadUrl {
   readonly headers: readonly { readonly name: string; readonly value: string }[];
 }
 
-/**
- * The builds calls of the hub. `builders`, `enrol` and `revoke` need the operator's session (BLD-021, BLD-025); `claim`,
- * `report`, `uploadUrls` and `reportUploaded` need the builder token (D-1), so the builder loop sends them through a hub that reads that token.
- */
+/** `builders`, `enrol` and `revoke` need the operator's session (BLD-021, BLD-025); the rest need the builder token (D-1). */
 export interface BuildsApi {
   builders(): Promise<HubResult<readonly Builder[]>>;
   enrol(name: string, platform: BuilderPlatformInput): Promise<HubResult<Enrolment>>;

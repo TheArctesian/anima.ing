@@ -19,7 +19,6 @@ function pair(text: string, rest: number): [number, number] {
   return [x, y];
 }
 
-/** An element whose on-screen box is its layout box moved by `translate` and sized by `scale` about its centre. */
 function row(top: number, left = 0) {
   const node = document.createElement('li');
   document.body.append(node);
@@ -151,7 +150,6 @@ it('5.7.3 disclosure: an element inside another moving one moves by the differen
   const inner = row(300);
   outer.node.append(inner.node);
   const own = inner.node.getBoundingClientRect.bind(inner.node);
-  // On screen the inner element is carried by the outer one's translate.
   inner.node.getBoundingClientRect = () => {
     const [, y] = pair(outer.node.style.translate, 0);
     const box = own();

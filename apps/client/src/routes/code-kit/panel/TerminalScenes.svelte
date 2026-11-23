@@ -25,12 +25,10 @@
   }
 </script>
 
-<!-- A stand-in for a terminal: fixed text, no shell. The page that mounts the surface draws the real one here. -->
 {#snippet pane(terminal: TerminalPane, active: boolean)}
   <pre class:active>{terminal.id === 'failed' ? failureWords() : `${OUTPUT}${active ? '█' : ''}`}</pre>
 {/snippet}
 
-<!-- The terminal surface of stage 5: one terminal, the two splits, the limit, no permission and the empty tab. -->
 <div class="scenes">
   <section data-kit="terminal-live" aria-label="Terminal, one that the buttons change">
     <TerminalSurface group={live} {pane} keys={KEYS} onsplit={split} onnew={say('new terminal tab')} onactivate={(id) => (live = activated(live, id))} onclose={close} />

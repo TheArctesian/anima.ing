@@ -1,7 +1,6 @@
 import type { Row } from './fixtures';
 
-// A VPN picture and the broker's answers, so the Settings VPN section and its dialogs have something to show. Every host is an
-// example host and every key a placeholder (CON-003, LOG-007).
+// Every host is an example host and every key a placeholder (CON-003, LOG-007).
 
 const ONE_HOUR_MS = 3_600_000;
 
@@ -39,7 +38,6 @@ function sitePath(id: string, name: string, subnet: string, change: Row): Row {
   };
 }
 
-/** The hub, a client, a router that serves one site, a router that waits for approval, and a node Anima does not know. */
 export function vpnPicture(): Row {
   const unkeyed = { keyState: 'NEVER', keyExpiry: null };
   const router = node('router-lab', '100.64.0.2', { role: 'ROUTER', routes: ['10.40.0.0/24'], ...unkeyed });
@@ -61,7 +59,6 @@ export function vpnPicture(): Row {
 
 const KEY_STEPS = ['curl -fsSL https://hub.anima.ing/vpn/join.sh -o join.sh', 'sudo sh join.sh'];
 
-/** The Query and Mutation fields the VPN needs; each key is a placeholder that is no credential. */
 export function vpnFields(now: () => Date): Record<string, unknown> {
   const key = (): Row => ({ key: 'tskey-synthetic-not-a-secret', expiresAt: new Date(now().getTime() + ONE_HOUR_MS).toISOString(), steps: KEY_STEPS });
   return {

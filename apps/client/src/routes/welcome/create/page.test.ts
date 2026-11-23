@@ -23,7 +23,6 @@ const mocks = vi.hoisted(() => ({
   writeAccessToken: vi.fn(),
   loadClientAt: vi.fn(),
   sent: [] as { operation: string; variables: unknown }[],
-  /** The readers `tokenFor` made, and the token each request hub was given (F-10). */
   gated: [] as { origin: string; desktop: boolean; reader: unknown }[],
   hubTokens: [] as unknown[],
   stayAwake: vi.fn(),
@@ -42,7 +41,6 @@ vi.mock('$lib/access/listener/check', () => ({
     return reader;
   },
 }));
-// The hub the page signs in to answers Login and CreateLinkInvite and records what it was sent.
 vi.mock('$lib/hub/hub', async (importOriginal) => ({
   ...(await importOriginal<typeof import('$lib/hub/hub')>()),
   createRequestHub: ({ address, token }: { address: unknown; token: unknown }) => {
@@ -136,7 +134,7 @@ it('FRN-002, FRN-004, F-10, AWK-005: install, account, authenticator, sign-in wi
   expect(mocks.shell.createLocalAccount).toHaveBeenCalledWith({ name: 'ann', password: PASSWORD, secret: 'JBSWY3DPEHPK3PXP', code: '111111' });
 
   expect(heading()).toBe('Sign in to your hub');
-  // The step heading keeps focus: the code boxes do not take it when they show (NAV-005).
+  // NAV-005: the step heading keeps focus when the code boxes show.
   expect(document.activeElement).toBe(document.querySelector('h2'));
   expect(mocks.check).toHaveBeenCalledWith('http://127.0.0.1:8443');
   expect(localStorage.getItem('anima.hubAddress')).toBe('http://127.0.0.1:8443');

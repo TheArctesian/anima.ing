@@ -7,12 +7,11 @@ export type Places = ReadonlyMap<Animatable, DOMRectReadOnly>;
 export interface FlipOptions {
   /** The spring to the new place; reorder and shared items use `move` (5.7.3). */
   readonly spring?: SpringName;
-  /** Also animate size by scale, for disclosure; reorder moves without scale. */
   readonly scale?: boolean;
   readonly preference?: MotionPreference;
 }
 
-/** Where each element is on screen now, including any motion still in flight. Call before the DOM changes. */
+/** Includes motion still in flight; call before the DOM changes. */
 export function measure(elements: Iterable<Animatable>): Map<Animatable, DOMRectReadOnly> {
   return new Map([...elements].map((element) => [element, element.getBoundingClientRect()]));
 }
@@ -26,10 +25,7 @@ interface Offset {
   readonly y: number;
 }
 
-/**
- * How far an element moved on screen: by its centre when it also scales, else by its top-left corner,
- * which is what a translate restores when its size changed too.
- */
+/** By the centre when it also scales, else by the top-left corner, which a translate restores when the size changed too. */
 function offset(before: DOMRectReadOnly, after: DOMRectReadOnly, scale: boolean): Offset {
   if (!scale) return { x: before.left - after.left, y: before.top - after.top };
   return {
@@ -47,12 +43,7 @@ function carried(element: Animatable, offsets: ReadonlyMap<Animatable, Offset>):
   return { x: 0, y: 0 };
 }
 
-/**
- * Moves each measured element from its old place to its new one after a DOM change (FLIP).
- * An element inside another measured one moves by the difference only, as the outer one's
- * translate carries it. A second call mid-flight starts from where the element is on screen
- * (MOT-002); under reduced motion the elements are in place at once.
- */
+/** FLIP after a DOM change; a second call mid-flight starts from where the element is on screen (MOT-002). */
 export function flip(first: Places, options: FlipOptions = {}): Playback {
   const { spring = 'move', scale = false, preference = motionPreference() } = options;
   const moving = [...first].filter(([element]) => element.isConnected);

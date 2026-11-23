@@ -6,9 +6,6 @@ import { attempt, connectAnswer } from './connect/connect.fixture';
 
 export { attempt };
 
-// Test support: source accounts in the hub's shape and a hub that answers the source calls from memory. The hub does not
-// serve these fields yet (K-E1 is pending), so the section's tests run against this one.
-
 export function run(id: string, more: Partial<SyncRun> = {}): SyncRun {
   return {
     id,
@@ -44,26 +41,16 @@ export function account(id: string, label: string, more: Partial<SourceAccount> 
 export const NOW = new Date('2026-11-13T12:00:00Z');
 
 export interface FakeHub extends Pick<Hub, 'request' | 'subscribe'> {
-  /**
-   * What `Source.connectPageUrl` of GitHub answers: a page, null for a hub that cannot start the flow in a browser, or
-   * undefined for a hub of before the field, which refuses the document as a hub refuses an unknown field.
-   */
+  /** Null for a hub that cannot start the flow in a browser; undefined for a hub that refuses the field. */
   connectPage: string | null | undefined;
-  /** Each call sent, as `Operation` and its variables, in order. */
   readonly sent: { readonly operation: string; readonly variables: Record<string, unknown> }[];
-  /** What the next mutation answers instead of doing anything. */
   refuse: HubError | null;
-  /** Hands an event to every open `sourceAccountChanged` subscription. */
   emit(account: SourceAccount): void;
-  /** The GitHub connection the hub holds; `githubConnect` answers it and `startGithubConnect` sets it. */
   connect: ConnectAttempt | null;
-  /** The one-time link `openGithubConnect` answers. */
   link: string;
-  /** Hands an attempt to every open `githubConnectChanged` subscription. */
   emitAttempt(attempt: ConnectAttempt): void;
 }
 
-/** The answer to `GithubBrowserFlow`; a hub of before the field refuses the document. */
 function browserFlow<T>(page: string | null | undefined): Promise<HubResult<T>> {
   if (page === undefined) {
     const refused: HubResult<T> = { ok: false, error: { code: 'INTERNAL', message: 'The hub could not run the request.' } };
@@ -73,7 +60,6 @@ function browserFlow<T>(page: string | null | undefined): Promise<HubResult<T>> 
   return Promise.resolve({ ok: true, value } as HubResult<T>);
 }
 
-/** A hub with one GitHub source that lists `start`, applies the account calls and sends `sourceAccountChanged`. */
 export function fakeHub(start: readonly SourceAccount[]): FakeHub {
   let accounts = [...start];
   const sinks = new Set<{ next(value: unknown): void }>();

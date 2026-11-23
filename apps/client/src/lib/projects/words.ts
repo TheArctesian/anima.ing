@@ -1,6 +1,5 @@
 import type { Project, ProjectRepository, ProjectResource, ResourceEvidence, ResourceKind, RepositorySign } from './api';
 
-/** Where a repository stands with the hub (PRO-002). Each has its own words. */
 export type RepositoryState = 'left_out' | 'gone' | 'archived' | 'imported';
 
 /** Left out wins over gone, gone over archived: the first that is true is the one the operator needs to see. */
@@ -32,7 +31,6 @@ export function projectStatusWords(project: Pick<Project, 'repositories'>): stri
   return first === undefined ? 'No repository' : repositoryStateWords(first);
 }
 
-/** The repository the project opens on GitHub: the first one still listed, else the first. */
 export function primaryRepository(project: Pick<Project, 'repositories'>): ProjectRepository | undefined {
   return project.repositories.find((repository) => !repository.gone) ?? project.repositories[0];
 }
@@ -57,7 +55,6 @@ export function resourceKindWords(kind: ResourceKind): string {
   return KIND_WORDS[kind];
 }
 
-/** The sign that produced a proposal: the file path when there is one, else the name of the sign (PRO-003). */
 export function evidenceWords(evidence: ResourceEvidence): string {
   return evidence.path ?? SIGN_WORDS[evidence.sign];
 }

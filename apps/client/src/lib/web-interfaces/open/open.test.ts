@@ -57,7 +57,6 @@ describe('openWebInterface (WEB-003, WEB-011)', () => {
   });
 });
 
-/** Runs the tests of a describe with browser answers and a `window.open` that records its calls. */
 function inBrowser(): typeof window.open {
   const opened = vi.fn<typeof window.open>(() => null);
   beforeEach(() => {

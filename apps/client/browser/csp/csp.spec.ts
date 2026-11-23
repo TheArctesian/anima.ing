@@ -5,8 +5,7 @@ import { HUB_ORIGIN } from '../synthetic/access';
 import { k7Policy } from './k7-policy';
 import { expectNoViolations, servePolicy, violationsSoFar, type PolicyReports } from './violations';
 
-// The production build under the exact K7 policy, with the script hashes the hub computes from index.html (WP-43 A-2):
-// each screen boots and works with no `securitypolicyviolation` in the page and no CSP report from the browser (E-6).
+// E-6: each screen of the production build runs under the exact K7 policy, with the hashes of WP-43 A-2.
 
 const MAC_MINI = '0190a000-0000-7000-8012-000000000003';
 const DETAIL_TABS = ['Checks', 'Sessions', 'Logs', 'Settings', 'Overview'];
@@ -27,12 +26,10 @@ async function openDevices(page: Page): Promise<void> {
   await expect(page.getByText('mac-mini', { exact: true }).first()).toBeVisible();
 }
 
-/** Serves each test of the enclosing group under K7 with the report channel, and re-checks both channels after it. */
 function eachTestUnderK7(): void {
   test.beforeEach(async ({ context }) => {
     policy = await servePolicy(context, k7Policy());
   });
-  // A violation after the explicit check, while the page keeps running, still fails the test.
   test.afterEach(({ watch }) => {
     expect(violationsSoFar(watch, policy)).toEqual({ events: [], reports: [] });
   });

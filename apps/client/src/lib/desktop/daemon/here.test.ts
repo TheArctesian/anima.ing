@@ -22,7 +22,6 @@ const denied: HubResult<never> = { ok: false, error: { code: 'FORBIDDEN', messag
 
 type Answers = { readonly [Part in Exclude<keyof DaemonHereParts, 'origin' | 'wait' | 'log' | 'keychainWaits'>]?: Awaited<ReturnType<DaemonHereParts[Part]>> };
 
-/** A hosted hub that lists this Mac with no daemon, and a build that carries the daemon. */
 function parts(answers: Answers = {}) {
   return {
     bundled: vi.fn(() => Promise.resolve(answers.bundled ?? true)),

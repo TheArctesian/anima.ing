@@ -2,7 +2,6 @@ import { networkAdvice } from '$lib/hosted/mark';
 import { dataAge, type HubStatus } from '$lib/hub/hub';
 import type { IconName } from '$lib/icons/icons';
 
-/** One destination of the navigation bar. */
 export interface NavDestination {
   readonly href: '/devices' | '/code' | '/hosting' | '/agents/usage' | '/projects' | '/builds' | '/logs' | '/extensions' | '/settings';
   readonly label: string;
@@ -10,28 +9,21 @@ export interface NavDestination {
 }
 
 export const DEVICES: NavDestination = { href: '/devices', label: 'Devices', icon: 'carbon:bare-metal-server' };
-/** The use of the AI agent programs (AIS-020); always there, because the page explains itself when no daemon reports. */
+/** Always shown: the page explains itself when no daemon reports (AIS-020). */
 export const AGENT_USAGE: NavDestination = { href: '/agents/usage', label: 'Agent usage', icon: 'carbon:chart-line' };
-/** The sessions of Claude Code and Codex of this computer as threads; only in the desktop application (THR-017). */
+/** Only in the desktop application (THR-017). */
 export const THREADS: NavDestination = { href: '/code', label: 'Code', icon: 'carbon:terminal' };
-/**
- * What runs on the machines and how it is reached (HSE-001): directly below Code, or below Devices where Code is not shown.
- * Its count waits for the hub's record of the applications (task H6). Carbon's box is not in the icon set yet.
- */
+/** Directly below Code, or below Devices where Code is not shown (HSE-001). */
 export const HOSTING: NavDestination = { href: '/hosting', label: 'Hosting', icon: 'carbon:data-base' };
-/** Shown only while the Projects extension is on (EXT-002). */
 export const PROJECTS: NavDestination = { href: '/projects', label: 'Projects', icon: 'carbon:folder' };
 export const BUILDS: NavDestination = { href: '/builds', label: 'Builds', icon: 'carbon:tool-kit' };
 /** A page in the phone layout only; a computer has the logs panel on each page (MOB-013). */
 export const LOGS: NavDestination = { href: '/logs', label: 'Logs', icon: 'carbon:catalog' };
-/** The switches of the extensions: its own page, directly above Settings in the bar; a phone reaches it from Settings (EXT-001). */
+/** Directly above Settings in the bar; a phone reaches it from Settings (EXT-001). */
 export const EXTENSIONS: NavDestination = { href: '/extensions', label: 'Extensions', icon: 'carbon:grid' };
 export const SETTINGS: NavDestination = { href: '/settings', label: 'Settings', icon: 'carbon:settings' };
 
-/**
- * The destinations between Devices and Settings that are not always there, in the bar's order: Projects only while its
- * extension is on (EXT-002), Builds only in the desktop app, because a browser has no builder (BLD-080).
- */
+/** Projects only while its extension is on (EXT-002); Builds only in the desktop app, as a browser has no builder (BLD-080). */
 export function optionalDestinations(projectsOn: boolean, builds: boolean): readonly NavDestination[] {
   return [...(projectsOn ? [PROJECTS] : []), ...(builds ? [BUILDS] : [])];
 }
@@ -46,16 +38,12 @@ export function statusLabel(status: HubStatus): string {
   return status.connection === 'connected' ? 'Connected' : 'Disconnected';
 }
 
-/**
- * The name of the hub at the foot of the bar (R-224): a hub that Anima.ing hosts is reached at a port of this computer,
- * which says nothing, so it is named by who hosts it; each other hub is named by its host.
- */
+/** A hosted hub is at a port of this computer, which says nothing, so it is named by who hosts it (R-224). */
 export function hubName(origin: string, hosted: boolean): string {
   if (hosted) return 'Hosted by Anima.ing';
   return URL.canParse(origin) ? new URL(origin).host : origin;
 }
 
-/** What the operator reads when the hub cannot be reached (NET-004). */
 export interface UnreachableBanner {
   readonly title: string;
   readonly origin: string;
@@ -63,7 +51,7 @@ export interface UnreachableBanner {
   readonly age: string;
 }
 
-/** The banner for `status`, or `null` when the hub is not unreachable. `now` dates the data age; a hosted hub has no VPN to check (R-222). */
+/** A hosted hub has no VPN to check (R-222). */
 export function unreachableBanner(status: HubStatus, origin: string, now: Date, hosted: boolean): UnreachableBanner | null {
   if (status.connection !== 'unreachable') return null;
   // A copy on the screen may be older than the last contact, and is all there is after a start with no hub (FND-007).
@@ -72,5 +60,5 @@ export function unreachableBanner(status: HubStatus, origin: string, now: Date, 
   return { title: 'Not on the network', origin, advice: networkAdvice(hosted), age };
 }
 
-/** How often the data age in the banner is recomputed; `dataAge` changes at most once a minute. */
+/** `dataAge` changes at most once a minute. */
 export const DATA_AGE_REFRESH_MS = 30_000;

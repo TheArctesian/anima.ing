@@ -20,7 +20,7 @@ function sshErrors(values: DeviceFormValues): FieldError[] {
   return errors;
 }
 
-/** DEV-010, DEV-012: every reason the form cannot be saved, with stable field paths. A password credential is optional. */
+/** DEV-010, DEV-012: a password credential is optional. */
 export function validateDevice(values: DeviceFormValues): FieldError[] {
   const errors: FieldError[] = [];
   if (values.name.trim() === '') errors.push({ field: 'name', message: 'Enter a name.' });

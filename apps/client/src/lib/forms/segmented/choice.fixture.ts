@@ -1,12 +1,8 @@
-// Test support: reading and driving a labelled `Segmented` choice the way the tests once drove a <select>.
 import { flushSync } from 'svelte';
 
 export interface Choice {
-  /** The options, in order, as the radios that show them. */
   readonly options: readonly HTMLButtonElement[];
-  /** The chosen option's value. */
   readonly value: string;
-  /** Clicks the option with this value. */
   pick(value: string): void;
 }
 

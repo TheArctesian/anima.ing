@@ -17,7 +17,6 @@
   const { job, lines, failed }: Props = $props();
   const text = $derived(shownLines(lines));
 
-  /** How near the end, in px, still counts as reading the newest line. */
   const FOLLOW_SLACK_PX = 24;
 
   let scroller: HTMLElement | undefined = $state();
@@ -37,7 +36,6 @@
     if (scroller) scroller.scrollTop = scroller.scrollHeight;
   }
 
-  // A new job starts at its newest line.
   $effect(() => {
     void job.id;
     following = true;

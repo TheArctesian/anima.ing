@@ -2,19 +2,14 @@
   import { press } from '$lib/motion/roles/press';
 
   interface Props {
-    /** Whether the switch is on. */
     checked: boolean;
-    /** The accessible name when no visible label names the switch; otherwise pass `labelledby`. */
     label?: string | undefined;
-    /** The id of the visible text that names the switch. */
     labelledby?: string | undefined;
     id?: string | undefined;
-    /** The id of a line that says more about the setting, such as its hint. */
     describedby?: string | undefined;
     /** The switch cannot change now; it keeps focus and says so (`aria-disabled`). */
     disabled?: boolean;
-    /** Runs with the new state after each flip by click, Space or Enter; `false` puts the switch back, for a change that
-     *  waits on a confirmation. */
+    /** A `false` return puts the switch back, for a change that waits on a confirmation. */
     onchange?: (next: boolean) => unknown;
   }
 
@@ -27,8 +22,7 @@
   }
 </script>
 
-<!-- An on/off setting that takes effect at once (UR-7, D17): a switch, not a checkbox, so a screen reader says "on" or
-     "off" rather than "checked". A button gives it Space and Enter for free. -->
+<!-- A switch, not a checkbox, so a screen reader says "on" or "off" (UR-7, D17). -->
 <button
   type="button"
   role="switch"
@@ -58,7 +52,6 @@
     transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
-  /* The knob: a circle that slides to the end when on. */
   button::after {
     content: '';
     position: absolute;

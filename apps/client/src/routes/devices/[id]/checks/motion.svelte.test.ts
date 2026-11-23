@@ -6,8 +6,7 @@ import { installAnimations, played } from '$lib/forms/animations.fixture';
 import { check } from '../page.fixture.svelte';
 import ChecksPanel from './ChecksPanel.svelte';
 
-// How the rows of the Checks tab come and go (5.7.3, Reorder): a row fades where it stands. The reduced form of the
-// fade is the role's own (`listRow`), tested with the role.
+// Spec 5.7.3, Reorder. The reduced fade belongs to the role (`listRow`) and is tested there.
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -62,7 +61,6 @@ it('a deleted check fades out in its own row, and the row stays until the fade e
   shown.checks = [check({ id: 'b', name: 'web' })];
   flushSync();
   expect(played.some((each) => each.element === leaving)).toBe(true);
-  // The row stays in the list while it fades, and is gone when the fade ends.
   expect(leaving?.isConnected).toBe(true);
 });
 

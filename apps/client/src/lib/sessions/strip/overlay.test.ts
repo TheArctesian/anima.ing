@@ -19,7 +19,6 @@ vi.mock('motion', async (importOriginal) => ({
   animate: (await import('$lib/motion/engine.fixture')).fakeRun,
 }));
 
-// Records every web tab's props, so a test reads the `overlayOpen` the pane passes now.
 const webTabs: { readonly overlayOpen: boolean }[] = [];
 vi.mock('$lib/web-interfaces/tab/WebTab.svelte', async (importOriginal) => {
   const actual = await importOriginal<typeof import('$lib/web-interfaces/tab/WebTab.svelte')>();
@@ -50,14 +49,12 @@ vi.mock('$lib/hub/hub', async (importOriginal) => ({
     ({
       address: { origin: 'https://hub.anima.ing', http: '', socket: '' },
       status: { current: { connection: 'connected', lastContactAt: null } },
-      // The nav's live-session item asks the hub; nothing answers here.
       request: () => new Promise(() => undefined),
       subscribe: () => () => undefined,
       close: () => Promise.resolve(),
     }) as unknown as Hub,
 }));
 
-// The layout's sessions API is the fixture's fake hub; its port is spied on.
 vi.mock('$lib/sessions/api', async (importOriginal) => {
   const { fake: state } = await import('./layout.fixture');
   return {
@@ -105,7 +102,6 @@ const menuControl = () => {
   return control;
 };
 
-/** An SSH tab, then a web tab in front of it. */
 function withWebTab() {
   const sessions = mountLayout(Layout, popOut);
   sessions.openSession(request);

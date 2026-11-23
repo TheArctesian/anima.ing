@@ -2,8 +2,6 @@ import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import type { Project, ProjectRepository, ProjectResource } from './api';
 import type { Hub, HubError, HubResult } from '$lib/hub/hub';
 
-// Test support: projects in the hub's shape and a hub that keeps them in memory.
-
 export function repository(id: string, fullName: string, more: Partial<ProjectRepository> = {}): ProjectRepository {
   return { id, fullName, url: `https://github.com/${fullName}`, private: false, archived: false, fork: false, leftOut: false, gone: false, ...more };
 }
@@ -20,15 +18,13 @@ export const FIXTURE_PROJECTS: readonly Project[] = [
 ];
 
 export interface FakeHub extends Pick<Hub, 'request'> {
-  /** The operations sent, in order, as `Name:id`. */
   readonly sent: string[];
-  /** What the next change answers instead of changing anything. */
   refuse: HubError | null;
 }
 
 const ok = <T>(value: unknown): Promise<HubResult<T>> => Promise.resolve({ ok: true, value } as HubResult<T>);
 
-/** A hub that answers the project calls from `start` and applies the changes as the hub does (PRO-002, PRO-004). */
+/** Applies the changes as the hub does (PRO-002, PRO-004). */
 export function fakeHub(start: readonly Project[] = FIXTURE_PROJECTS): FakeHub {
   let all = start;
   const everyLeftOut = (project: Project) => project.repositories.every((each) => each.leftOut);

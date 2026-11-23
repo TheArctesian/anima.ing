@@ -5,16 +5,13 @@ const HUB_CODES = ['UNAUTHENTICATED', 'FORBIDDEN', 'NOT_FOUND', 'VALIDATION', 'C
 
 export type HubCode = (typeof HUB_CODES)[number];
 
-/** One rejected input field of a `VALIDATION` error. */
 export interface FieldError {
   readonly field: string;
   readonly message: string;
 }
 
 /**
- * Why a hub call has no value. K7 codes come from the hub; `unreachable` means no answer arrived
- * (network failure, NET-004); `malformed` means an answer arrived that is not a GraphQL response;
- * `unserved` means the hub does not know a field that the request names: it is older than this client.
+ * `unreachable`: no answer arrived (NET-004); `malformed`: not a GraphQL response; `unserved`: the hub is older than this client.
  * `message` is a plain sentence for the operator and never holds the token (LOG-007).
  */
 export type HubError =
@@ -23,7 +20,6 @@ export type HubError =
   | { readonly code: 'unreachable' | 'malformed'; readonly message: string }
   | { readonly code: 'unserved'; readonly message: string };
 
-/** The outcome of a hub call: a value, or the typed reason there is none. */
 export type HubResult<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: HubError };
 
 /** No answer arrived from a hub that is not hosted: the advice names the VPN client (NET-004). */
@@ -38,10 +34,9 @@ const UNREACHABLE_HOSTED: HubError = {
   message: `The hub did not answer. ${networkAdvice(true)}.`,
 };
 
-/** The address of the settings is the address of the hosted hubs in a browser now: no hub answers the application there (HM-T31). */
+/** The settings address serves the hosted hubs in a browser, so no hub answers the application there (HM-T31). */
 const ADDRESS_MOVED: HubError = { code: 'unreachable', message: HOSTED_ADDRESS_MOVED };
 
-/** The error of a call that got no answer from the hub at `origin`. */
 export function noAnswer(origin: string): HubError {
   if (holdsMovedAddressHere(origin)) return ADDRESS_MOVED;
   return hubIsHosted(origin) ? UNREACHABLE_HOSTED : UNREACHABLE;
@@ -60,12 +55,11 @@ export const TOKEN_UNREADABLE: HubError = {
 
 const UNCODED_MESSAGE = 'The hub could not run the request.';
 
-/** The hub does not know a field of the request (the parser of async-graphql says so): it is older than this client. */
 export const UNSERVED: HubError = { code: 'unserved', message: 'This hub is older than this application. Update the hub to use this.' };
 
 const UNKNOWN_FIELD = /^Unknown field "[^"]+" on type "[^"]+"/u;
 
-/** True when the hub refused because it is older than this client; show a quiet note, not an error with Retry. */
+/** Shown as a quiet note, not as an error with Retry. */
 export function needsNewerHub(error: HubError): boolean {
   return error.code === 'unserved';
 }
@@ -91,7 +85,6 @@ function parseFields(value: unknown): FieldError[] | undefined {
   return fields.length === value.length ? fields : undefined;
 }
 
-/** One GraphQL error object as a typed error. An error without a K7 code (for example a query the hub refused to parse) is `INTERNAL`. */
 function parseError(value: unknown): HubError {
   if (!isObject(value) || typeof value.message !== 'string') return MALFORMED;
   const message = value.message;
@@ -106,24 +99,20 @@ function parseError(value: unknown): HubError {
   return { code: 'INTERNAL', message: message === '' ? UNCODED_MESSAGE : message };
 }
 
-/** The first error of a GraphQL `errors` list; `malformed` when the list is not one. */
 export function parseErrors(value: unknown): HubError {
   if (!Array.isArray(value) || value.length === 0) return MALFORMED;
   const first: unknown = value[0];
   return parseError(first);
 }
 
-/**
- * A GraphQL response body (already parsed from JSON) as a result. Errors win over partial data:
- * a caller never sees half an answer as a value.
- */
+/** Errors win over partial data: a caller never sees half an answer as a value. */
 export function parseResponse(body: unknown): HubResult<JsonObject> {
   if (!isObject(body)) return { ok: false, error: MALFORMED };
   if (body.errors !== undefined) return { ok: false, error: parseErrors(body.errors) };
   return isObject(body.data) ? { ok: true, value: body.data } : { ok: false, error: MALFORMED };
 }
 
-/** Whether `body` has the shape of a GraphQL response, so that an HTTP answer counts as contact (NET-004). */
+/** An HTTP answer of this shape counts as contact (NET-004). */
 export function isGraphQLResponse(body: unknown): boolean {
   return isObject(body) && (Array.isArray(body.errors) || isObject(body.data));
 }

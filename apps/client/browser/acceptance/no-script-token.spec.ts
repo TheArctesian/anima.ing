@@ -3,13 +3,10 @@ import { expect, test } from '../test-hub';
 import { consoleLines, openSignIn, scriptReach, sessionCookie, signInWith } from '../sign-in-steps';
 import { HUB_ORIGIN, OPERATOR } from '../synthetic/access';
 
-// Plan criterion 1, client side: the operator signs in with password and TOTP, and afterwards the browser holds only an
-// HttpOnly cookie, with no token in reach of script. `sign-in.spec.ts` covers the cookie string, both web storages, the DOM and
-// the console after a good sign-in; these add the authenticator code and the stores that spec does not list.
+// Plan criterion 1, client side: after sign-in no token is in reach of script.
 
 const WRONG_CODE = '000000';
 
-/** Names of every store a page can keep data in, beyond cookies and the two web storages. */
 function otherStores(page: Page): Promise<{ databases: string[]; caches: string[]; workers: number }> {
   return page.evaluate(async () => ({
     databases: (await indexedDB.databases()).map((database) => database.name ?? ''),
@@ -62,7 +59,6 @@ test.describe('signed out', () => {
       expect(stores, stage).toEqual({ databases: [], caches: [], workers: 0 });
     };
     await expectNothingReadable('after sign-in');
-    // A reload starts a new page: the secrets must be absent from it too, not only from the page that took the password.
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expectNothingReadable('after a reload');
     for (const secret of [token ?? 'missing', OPERATOR.password]) expect(lines.filter((line) => line.includes(secret))).toEqual([]);

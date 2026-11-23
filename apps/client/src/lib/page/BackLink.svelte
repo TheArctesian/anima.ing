@@ -5,16 +5,14 @@
   import { press } from '$lib/motion/roles/press';
 
   interface Props {
-    /** The place it goes to, a path of the app such as "/devices". */
     to: Pathname;
-    /** The place it returns to, for example "Devices". */
     label: string;
   }
 
   const { to, label }: Props = $props();
 </script>
 
-<!-- A ghost link: a chevron and the word, with a target of at least 24 px (UI-013, finding O8). -->
+<!-- UI-013: a target of at least 24 px. -->
 <a href={resolve(to)} {@attach press()}><Icon name="carbon:chevron-left" size="sm" />{label}</a>
 
 <style>

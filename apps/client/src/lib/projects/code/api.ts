@@ -33,7 +33,7 @@ const CODE_FILE = graphql(`
   }
 `);
 
-/** The hub's calls for the Code tab: a directory is open to a read key, a file's bytes only to a signed-in operator (PRJ-035). */
+/** PRJ-035: a directory is open to a read key, a file's bytes only to a signed-in operator. */
 export const codeApi = (hub: Asker) => ({
   directory: (repository: string, ref: string | null, path: string, fresh = false) =>
     field(hub, CODE_DIRECTORY, 'codeDirectory', { repository, ref, path, fresh }),

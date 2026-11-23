@@ -7,9 +7,7 @@ import { HEIGHT, MODES, storedSettings } from '../shots';
 import { installDesktopShell, type Scenario } from './desktop-shell';
 import { EVERY_STATE, HOOKED_FOLDER, OLDER_HOLDER, RUNNER_DOWN, STARTS } from './scenario';
 
-// The page Code (once Threads) in each state that the person meets (THR-011 to THR-017, TH14, TH46, TH97, TH98). Only the desktop
-// application shows the page, so the gallery stands in for its shell (`desktop-shell.ts`) with made-up threads
-// (`scenario.ts`). They run only when asked, `GALLERY_THREADS=1`; pictures go to `gallery-shots/threads/<mode>/`.
+// Only the desktop application shows the page Code, so the gallery stands in for its shell (THR-011 to THR-017).
 
 const FOLDER = fileURLToPath(new URL('../../../gallery-shots/threads/', import.meta.url));
 const SETTLE_MS = 400;
@@ -20,7 +18,6 @@ interface ThreadsScreen {
   readonly name: string;
   readonly scenario: Scenario;
   readonly open: (page: Page) => Promise<void>;
-  /** Shoots the window, not the whole page: a dialog, or a page that fills the window. */
   readonly windowOnly?: true;
 }
 

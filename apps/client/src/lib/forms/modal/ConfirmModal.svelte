@@ -7,9 +7,7 @@
     open: boolean;
     title: string;
     body: string;
-    /** Short lines under the body, such as what the change lets a program do; none for most confirmations. */
     lines?: readonly string[];
-    /** For example "Delete nas". */
     confirmLabel: string;
     /** Runs once; on success the buttons stay off, so the owner leaves or sets `open` to false. */
     onConfirm: () => Promise<HubResult<unknown>>;

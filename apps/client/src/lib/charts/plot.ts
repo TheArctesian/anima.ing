@@ -1,6 +1,5 @@
 import { timeScale, valueY, type TimeWindow, type ValueScale } from './scales';
 
-/** One reading on a chart: `value` is missing when there was no reading; `min` and `max` bound an aggregate. */
 export interface ChartPoint {
   readonly at: number;
   readonly value: number | null;
@@ -8,28 +7,24 @@ export interface ChartPoint {
   readonly max?: number | null;
 }
 
-/** A K5 series colour, `--chart-series-1` to `--chart-series-6`. */
+/** Maps to `--chart-series-1` to `--chart-series-6` (K5). */
 export type SeriesColour = 1 | 2 | 3 | 4 | 5 | 6;
 
-/** How a series is drawn besides its colour, so colour is never the only cue (UI-003): series 1, 4 solid; 2, 5 dashed; 3, 6 dotted. */
+/** Colour is never the only cue (UI-003). */
 export type SeriesPattern = 'solid' | 'dash' | 'dot';
 
 export function seriesPattern(colour: SeriesColour): SeriesPattern {
   return (['solid', 'dash', 'dot'] as const)[(colour - 1) % 3] ?? 'solid';
 }
 
-/** One line on a chart, named in the legend and the text alternative. */
 export interface ChartSeries {
   readonly label: string;
   readonly colour: SeriesColour;
   readonly points: readonly ChartPoint[];
 }
 
-/** What to draw for one series, in viewBox units. */
 interface SeriesPlot {
-  /** One SVG `points` attribute per unbroken run of readings. */
   readonly lines: readonly string[];
-  /** One SVG `points` attribute per run of readings with a min and a max: the max edge, then the min edge back. */
   readonly bands: readonly string[];
 }
 
@@ -48,10 +43,6 @@ function pair(x: number, y: number): string {
   return `${round(x)},${round(y)}`;
 }
 
-/**
- * Splits `points` (in time order) into runs where `keep` holds. A point that fails `keep` ends the run, and so does a
- * time gap wider than `gap`.
- */
 function runs<T extends Placed>(points: readonly T[], keep: (point: T) => boolean, gap: number): T[][] {
   const found: T[][] = [];
   let run: T[] = [];
@@ -67,11 +58,7 @@ function runs<T extends Placed>(points: readonly T[], keep: (point: T) => boolea
   return found;
 }
 
-/**
- * The polylines and min–max bands of one series over `span`. Points are put in time order first; a point without a
- * usable value breaks the line, and so does a gap wider than `gap` (in the `at` unit; no limit by default). Points
- * outside the window are kept: the plot clips them, and the Chart update slide shows them coming in.
- */
+/** Points outside the window are kept: the plot clips them, and the Chart update slide shows them coming in. */
 export function seriesPlot(
   points: readonly ChartPoint[],
   span: TimeWindow,
@@ -95,13 +82,11 @@ export function seriesPlot(
   return { lines, bands };
 }
 
-/** The highest value, min or max among `points`, for an open axis; 0 when there is none. */
 export function highestOf(points: readonly ChartPoint[]): number {
   const values = points.flatMap((point) => [point.value, point.max, point.min]).filter(usable);
   return values.length === 0 ? 0 : Math.max(...values);
 }
 
-/** The newest usable value among `points`, or null when there is none. */
 export function latestOf(points: readonly ChartPoint[]): number | null {
   let latest: ChartPoint | undefined;
   for (const point of points) {
@@ -110,7 +95,7 @@ export function latestOf(points: readonly ChartPoint[]): number | null {
   return latest?.value ?? null;
 }
 
-/** The y of the threshold line (the 85 % line, MET-004), or null when it is not inside the plot. */
+/** The 85 % line (MET-004). */
 export function thresholdY(scale: ValueScale, threshold: number | undefined): number | null {
   if (threshold === undefined || !Number.isFinite(threshold) || threshold < 0 || threshold > scale.top) return null;
   return valueY(scale, threshold);

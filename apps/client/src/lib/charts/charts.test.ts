@@ -8,7 +8,6 @@ const HOUR = 3_600_000;
 const span = { start: 0, end: HOUR };
 const percent = valueScale('percent', 0);
 
-/** The x and y of each point in an SVG `points` attribute. */
 function coordinates(points: string | undefined): number[][] {
   return (points ?? '').split(' ').map((pair) => pair.split(',').map(Number));
 }

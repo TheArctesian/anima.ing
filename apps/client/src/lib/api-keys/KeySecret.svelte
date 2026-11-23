@@ -5,7 +5,6 @@
   interface Props {
     /** The whole key. Shown here and nowhere else: never in a title, a live region, a URL, storage or the console (INT-003, LOG-007). */
     secret: string;
-    /** What the key is called above the field; an API key by default. */
     label?: string;
   }
 
@@ -22,27 +21,21 @@
       await navigator.clipboard.writeText(secret);
       copy = 'copied';
     } catch {
-      // No clipboard, or the system refused it; the reason is not shown, and the field stays selectable.
       copy = 'failed';
     }
   }
 
-  /**
-   * Empties the field the moment it starts to leave. A closing dialog, or a page left while the key shows, keeps its
-   * last content on screen until the fade ends; the key must not stay in the DOM for that time (INT-003, F-8).
-   */
+  /** The key must not stay in the DOM while the field fades out (INT-003, F-8). */
   function drop(node: HTMLTextAreaElement): { duration: number } {
     node.value = '';
     return { duration: duration.instant };
   }
 
-  // Written by hand rather than as `value={secret}`: Svelte keeps an attribute's last value on the node, where it would
-  // outlive `drop` (F-8).
+  // Not `value={secret}`: Svelte keeps an attribute's last value on the node, where it would outlive `drop` (F-8).
   $effect(() => {
     if (field !== undefined) field.value = secret;
   });
 
-  // The field takes focus when it appears, with the key selected, so the system's own copy works at once.
   $effect(() => {
     field?.focus();
   });
@@ -51,7 +44,7 @@
 <div class="secret">
   <label for={fieldId}>{label}</label>
   <div class="row">
-    <!-- A text area, so the whole key wraps into view on a narrow screen; it breaks between any two characters. -->
+    <!-- A text area, so the whole key wraps into view on a narrow screen. -->
     <textarea
       bind:this={field}
       out:drop|global
@@ -115,7 +108,6 @@
       field-sizing: content;
     }
 
-    /* Without field-sizing the two rows would clip: hold room for five lines instead. */
     @supports not (field-sizing: content) {
       textarea {
         min-block-size: calc(var(--text-sm) * var(--leading-normal) * 5 + var(--space-4) + var(--border-thin) * 2);

@@ -3,17 +3,15 @@
   import Modal from '$lib/forms/modal/Modal.svelte';
 
   interface Props {
-    /** The account being disconnected, named in the dialog. */
     label: string;
     sourceName: string;
-    /** Sends the choice; `deleteRecords` false keeps the records the account brought in. */
     onConfirm: (deleteRecords: boolean) => void;
     onCancel: () => void;
   }
 
   const { label, sourceName, onConfirm, onCancel }: Props = $props();
   const ids = $props.id();
-  // Keeping is the choice that loses nothing, so it is the one that is set first.
+  // Keep is the default: it loses nothing.
   let choice = $state<'keep' | 'delete'>('keep');
 </script>
 

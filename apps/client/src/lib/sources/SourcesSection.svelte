@@ -11,12 +11,9 @@
   import type { LinkOpening } from './connect/browser';
   import { SourcesStore, type AccountRow as Account } from './store.svelte';
 
-  // The Settings page draws the section and its heading; these are its rows (ITG-001). The operator makes the GitHub App
-  // in their own account; Anima.ing only keeps its key (PRJ-018).
+  // The operator makes the GitHub App in their own account; Anima.ing only keeps its key (PRJ-018).
   interface Props {
-    /** The clock for "Synced 4 min ago"; tests pass their own. */
     now?: () => Date;
-    /** Makes the opening for the one-time GitHub link, inside the click; tests pass their own. */
     opener?: () => LinkOpening;
   }
 

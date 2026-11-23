@@ -9,19 +9,15 @@
   interface Shape extends Omit<HTMLButtonAttributes, 'class' | 'children'> {
     /** Primary is the view's one main action (UI-029); `danger` is for the button that destroys something. */
     tone?: 'primary' | 'secondary' | 'ghost' | 'danger';
-    /** Height: `control-sm` (dense rows), `control-md` (default) or `control-lg` (sign-in, empty states). */
     size?: 'sm' | 'md' | 'lg';
-    /** A danger button is an outline; `fill` makes it solid, for the last step of a destructive flow. */
     fill?: boolean;
-    /** The hub is working on this button's action: it keeps focus and its label, but a click does nothing. */
     busy?: boolean;
-    /** For a button that starts hub work: its label gives way to `pendingLabel`, then to a check and `doneLabel`. */
     feedback?: ActionState;
     pendingLabel?: string;
     doneLabel?: string;
   }
 
-  /** A labelled button may lead with an icon (UI-026); an icon-only button has no children, so it needs `label` (UI-015). */
+  /** UI-026, UI-015. */
   type Props = Shape & ({ children: Snippet; icon?: IconName; label?: undefined } | { children?: undefined; icon: IconName; label: string });
 
   const {
@@ -163,7 +159,7 @@
     cursor: progress;
   }
 
-  /* UI-004: accent fill, on-accent label; hover and pressed step along the accent ramp. */
+  /* UI-004. */
   .primary {
     background: var(--accent);
     color: var(--on-accent);
@@ -179,7 +175,7 @@
     background: var(--accent-pressed);
   }
 
-  /* A quiet raised fill with a hairline edge (UR-7); hover lifts it to the overlay surface. */
+  /* UR-7. */
   .secondary {
     background: var(--surface-raised);
     border-color: var(--border-subtle);

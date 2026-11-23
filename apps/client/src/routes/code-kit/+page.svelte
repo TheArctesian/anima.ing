@@ -9,13 +9,11 @@
   import KitPrimitives from './KitPrimitives.svelte';
   import KitSizes from './KitSizes.svelte';
 
-  // The reader settings of D12, here only to see the kit at each value; the settings page is stage 6.
   let width = $state<'comfortable' | 'wide' | 'full'>('comfortable');
   let text = $state<'normal' | 'large' | 'larger'>('normal');
   let contrast = $state<'normal' | 'more'>('normal');
 </script>
 
-<!-- Stage 1 of the T3 Code copy: each size and primitive of the Code section, in each state, for the gallery. -->
 <div class="kit" data-code-width={width} data-code-text={text} data-code-contrast={contrast}>
   <PageHeader title="Code kit" detail="T3 Code's layout in Anima's skin" eyebrow={{ text: 'Stage 1', icon: 'carbon:code' }} />
   <div class="settings">

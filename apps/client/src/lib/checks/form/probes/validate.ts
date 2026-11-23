@@ -5,12 +5,8 @@ import type { ProbeCheckType, ProbeValues } from './values';
 
 /** CHK-012, defence in depth: the characters Docker allows in a container name. The hub is the real guard. */
 const CONTAINER_NAME = /^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/;
-/**
- * CHK-012: the characters systemd allows in a unit name. A bare name ("nginx") is accepted, as
- * `systemctl` reads it as a service. It cannot start with "-", so it is never read as an option.
- */
+/** CHK-012: systemd unit characters; no leading "-", so it is never read as an option. */
 const UNIT_NAME = /^[A-Za-z0-9:_.@\\][A-Za-z0-9:_.@\\-]*$/;
-/** A dotted numeric OID with at least two arcs, such as 1.3.6.1.2.1.1.3.0. */
 const OID = /^\d+(\.\d+)+$/;
 const NAME_BYTES = 255;
 const SECRET_BYTES = 256;
@@ -45,7 +41,6 @@ function tailscaleErrors({ target, timeoutMs }: ProbeValues['tailscalePing']): F
   return [...found, ...timeoutError(timeoutMs)];
 }
 
-/** A stored secret may stay empty ("keep") while the version is the stored one; a new one must be entered. */
 function secretError(field: string, text: string, label: string, snmp: ProbeValues['snmp']): FieldError[] {
   if (text === '') {
     return snmp.storedVersion === snmp.version ? [] : [{ field, message: `Enter the ${label}.` }];
@@ -72,7 +67,7 @@ function snmpErrors(snmp: ProbeValues['snmp'], configSent: boolean): FieldError[
   ];
 }
 
-/** Section 6.4 (Phase 2 types): every reason the settings cannot be saved. Secrets are checked only when the config is sent. */
+/** Section 6.4: secrets are checked only when the config is sent. */
 export function probeErrors(values: ProbeValues, type: ProbeCheckType, configSent: boolean): FieldError[] {
   switch (type) {
     case 'DOCKER':

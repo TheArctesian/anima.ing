@@ -10,7 +10,7 @@
   interface Props {
     api: Pick<ApiKeysApi, 'create'>;
     now: () => Date;
-    /** The key the hub made, without its secret, for the list. */
+    /** The key without its secret. */
     onCreated: (key: ApiKey) => void;
     onClose: () => void;
   }
@@ -54,17 +54,13 @@
       return;
     }
     onCreated(result.value.key);
-    // No guard for an answer that comes late: a dialog that is gone, or fading out with its page, renders nothing new;
-    // one whose page returns before its fade ends is the same dialog, still the operator's.
+    // No late-answer guard: a gone or fading dialog renders nothing new, and one whose page returns is still the operator's.
     reserved = views?.getBoundingClientRect().height ?? null;
     created = result.value.key;
     secret = result.value.secret;
   }
 
-  /**
-   * Drops the key from this dialog's state and, in the same task, from the DOM, before the dialog fades (`KeySecret`
-   * empties its field as it leaves). Refused while the hub is making the key, so a made key's secret is never lost unseen.
-   */
+  /** Drops the secret from state and DOM before the fade; refused while the hub makes the key, so no secret is lost unseen. */
   function close(): void {
     if (busy) return;
     secret = null;

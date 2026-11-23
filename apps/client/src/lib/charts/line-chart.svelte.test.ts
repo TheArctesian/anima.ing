@@ -42,7 +42,6 @@ function chart(reduced = false) {
   return props;
 }
 
-/** Moves the chart's window forward by `minutes`, with a new point at the right edge. */
 function moveOn(props: ReturnType<typeof chart>, minutes: number): void {
   const step = minutes * 60_000;
   props.span = { start: props.span.start + step, end: props.span.end + step };
@@ -136,7 +135,6 @@ describe('LineChart: text and legend (D-1)', () => {
   });
 });
 
-/** The frame's markup without its lines and its text alternative: what sets the box, grid, axes and legend. */
 function geometry(target: Element): string {
   const frame = target.querySelector('.frame')?.cloneNode(true) as Element;
   frame.querySelector('.lines')?.remove();

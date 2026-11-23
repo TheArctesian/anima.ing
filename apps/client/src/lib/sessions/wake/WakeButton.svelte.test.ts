@@ -29,7 +29,6 @@ afterEach(async () => {
   document.body.innerHTML = '';
 });
 
-/** A wake call that stays pending until `answer` is called. */
 function pendingApi() {
   const calls: string[] = [];
   let answer: (result: HubResult<WakeSent>) => void = () => undefined;

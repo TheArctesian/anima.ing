@@ -5,8 +5,6 @@ import { installSyntheticHub } from '../synthetic/synthetic-hub';
 import { SCREENS } from './screens';
 import { HEIGHT, MODES, storedSettings, type Mode, type Screen } from './shots';
 
-// One runner for every screen and every mode (`bun run --cwd apps/client gallery`). Pictures go to `apps/client/gallery-shots/`.
-
 const SHOTS_FOLDER = fileURLToPath(new URL('../../gallery-shots/', import.meta.url));
 const SETTLE_MS = 400;
 
@@ -21,7 +19,7 @@ async function prepare(context: BrowserContext, chosen: Mode, screen: Screen): P
   if (screen.signedOut !== true) await hub.signIn();
 }
 
-/** Fonts loaded, requests quiet (unless the screen holds one) and animations off, so two runs of one screen give the same picture. */
+/** Fonts loaded and requests quiet, so two runs of one screen give the same picture. */
 async function settle(page: Page, screen: Screen): Promise<void> {
   if (screen.loading !== true) await page.waitForLoadState('networkidle');
   await page.evaluate(() => document.fonts.ready);

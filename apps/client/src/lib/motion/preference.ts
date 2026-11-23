@@ -9,10 +9,7 @@ const reducedMotionQuery = '(prefers-reduced-motion: reduce)';
 const noPreference: MotionPreference = { reduced: false };
 let shared: MotionPreference | undefined;
 
-/**
- * The Settings choice wins over the OS (MOT-043): `data-motion="reduce"` is reduced and `"full"` is not, whatever
- * the OS says; without the attribute (System) the OS decides. The generated `tokens.css` reads the same attribute.
- */
+/** The Settings choice wins over the OS (MOT-043); the generated `tokens.css` reads the same attribute. */
 function reduces(choice: string | undefined, systemReduces: boolean): boolean {
   if (choice === 'reduce') return true;
   if (choice === 'full') return false;
@@ -37,11 +34,7 @@ function follow(root: HTMLElement, media: MediaQueryList | undefined): MotionPre
   };
 }
 
-/**
- * The operator's reduced-motion setting: the Settings choice on `<html data-motion>`, else the window's
- * `prefers-reduced-motion`, kept current by the attribute and the query's `change` event, so a change applies
- * without a reload (MOT-041, MOT-043). Without a document there is no preference.
- */
+/** Kept current by the attribute and the query's `change` event, so a change applies without a reload (MOT-041, MOT-043). */
 export function motionPreference(): MotionPreference {
   if (shared) return shared;
   if (typeof document === 'undefined') return noPreference;

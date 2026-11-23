@@ -1,7 +1,7 @@
 import type { DeviceCheck } from '$lib/checks/api';
 import type { CheckType } from '$lib/hub/generated/graphql';
 
-/** The K1 check shapes the check form reads and writes, from the generated types (T4, API-008). */
+/** Check shapes from the generated types (API-008). */
 export type {
   CheckConfigInput,
   CreateCheckInput,
@@ -15,10 +15,8 @@ export type {
   UpdateCheckInput,
 } from '$lib/hub/generated/graphql';
 
-/** The part of K1 `CheckConfig` the form reads, discriminated like the GraphQL union (T5). */
 export type CheckConfigFields = DeviceCheck['config'];
 
-/** The part of K1 `Check` the form edits. */
 export type CheckFields = Pick<
   DeviceCheck,
   'id' | 'name' | 'intervalSeconds' | 'retries' | 'retryIntervalSeconds' | 'degradedThresholdMs' | 'invert' | 'domainDaysLeft'

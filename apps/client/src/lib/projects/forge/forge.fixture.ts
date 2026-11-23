@@ -2,7 +2,7 @@ import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import type { Hub, HubError, HubResult } from '$lib/hub/hub';
 import type { Branch, CodeEntry, Commit, Issue, IssueComment, PullRequest, RepositoryAccess, WorkflowRun } from './types';
 
-// Test support: a hub that answers the draft work, code and history calls (PRJ-027 to PRJ-035) from memory.
+// A hub that answers the calls of PRJ-027 to PRJ-035 from memory.
 
 export const NOW = new Date('2026-11-14T12:00:00Z');
 const at = (minutes: number) => new Date(NOW.getTime() - minutes * 60_000).toISOString();
@@ -122,9 +122,7 @@ const FILES: Record<string, { content: 'TEXT' | 'BINARY'; text: string | null }>
 
 export interface FakeForgeHub extends Pick<Hub, 'request'> {
   readonly data: FakeRepository;
-  /** Each call as `Operation` with its variables, in order. */
   readonly calls: { name: string; variables: Record<string, unknown> }[];
-  /** Operation names that answer with `failure`. */
   readonly failing: Set<string>;
   failure: HubError;
 }

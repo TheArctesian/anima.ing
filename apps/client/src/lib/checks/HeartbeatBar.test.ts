@@ -111,7 +111,6 @@ it('MOT-040: with reduced motion a new beat is instant', () => {
 
 const PITCH = 12;
 
-/** Gives every cell a place `PITCH` pixels after the cell before it, as a laid-out page would. */
 function layOutCells(): void {
   vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
     const left = this.classList.contains('cell') ? cells().indexOf(this) * PITCH : 0;

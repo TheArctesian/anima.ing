@@ -1,4 +1,4 @@
-/** Why the files link ended, as the operator reads it. Every text is fixed: no path, address, token or device text. */
+/** Every text is fixed: no path, address, token or device text. */
 export type FilesEnd = 'closed' | 'hub-restarting' | 'refused-message' | 'failed' | 'went-quiet' | 'not-opened' | 'lost' | 'misread' | 'ended';
 
 const TEXTS: Readonly<Record<FilesEnd, string>> = {
@@ -13,7 +13,7 @@ const TEXTS: Readonly<Record<FilesEnd, string>> = {
   ended: 'The file connection ended unexpectedly.',
 };
 
-/** The hub's close codes for the files tunnel (K4 §9, WP-27 handoff). */
+/** The hub's close codes for the files tunnel (K4 §9). */
 const BY_CODE: Readonly<Partial<Record<number, FilesEnd>>> = {
   1000: 'closed',
   1001: 'hub-restarting',
@@ -22,13 +22,12 @@ const BY_CODE: Readonly<Partial<Record<number, FilesEnd>>> = {
   4002: 'went-quiet',
 };
 
-/** The end a close with `code` means; before the upgrade succeeded every close is a refused opening (K4 §8.1). */
+/** Before the upgrade succeeds, every close is a refused opening (K4 §8.1). */
 export function endOfClose(code: number, opened: boolean): FilesEnd {
   if (!opened) return 'not-opened';
   return BY_CODE[code] ?? 'ended';
 }
 
-/** The fixed operator text of `end`. */
 export function endText(end: FilesEnd): string {
   return TEXTS[end];
 }

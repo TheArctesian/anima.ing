@@ -5,7 +5,6 @@
   import { BAR_LENGTH, barSummary, cellsOf, shiftedByNewBeat, type Beat } from './heartbeats';
 
   interface Props {
-    /** The device's last heartbeats, oldest first (`latestBeats`, `addBeat`). */
     beats: readonly Beat[];
   }
 
@@ -16,14 +15,13 @@
   let row: HTMLElement | undefined;
   let before: readonly Beat[] | undefined;
 
-  /** The distance between two neighbouring cells, gap included. */
   function pitchOf(track: HTMLElement): number {
     const [first, second] = track.children;
     if (first === undefined || second === undefined) return 0;
     return second.getBoundingClientRect().left - first.getBoundingClientRect().left;
   }
 
-  /** The cells are already in their new places; start one cell to the right and spring back (MOT-002: from where the row is now). */
+  /** The cells are already in their new places: start one cell to the right and spring back (MOT-002). */
   $effect(() => {
     const now = beats;
     const was = before;
@@ -44,10 +42,7 @@
 </div>
 
 <style>
-  /*
-   * A fixed size from tokens: the number of beats moves nothing (MOT-007). Where the card is narrower than the bar, the
-   * bar shrinks to the card and the row stays against the end, so the oldest cells are the ones that are cut.
-   */
+  /* A fixed size: the number of beats moves nothing (MOT-007); a narrow card cuts the oldest cells. */
   .bar {
     box-sizing: border-box;
     display: flex;

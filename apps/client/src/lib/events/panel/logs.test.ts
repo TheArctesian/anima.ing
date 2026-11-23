@@ -67,7 +67,6 @@ function chip(severity: string): void {
   flushSync();
 }
 
-/** Opens the menu whose button says `menu` and checks or chooses `option`. */
 function pick(menu: string, option: string): void {
   button(menu)?.click();
   flushSync();
@@ -288,7 +287,6 @@ describe('when live logs stop (NET-004, MOT-007)', () => {
     await settle();
     const notice = document.querySelector('.notice[role="status"]') as HTMLElement | null;
     expect(notice?.textContent).toBe('Live logs stopped: The connection closed');
-    // Fades to 1 over duration-base: an instant mount has no such run.
     expect(runs.filter((run) => run.keyframes[0] === 0 && run.keyframes.at(-1) === 1)).toHaveLength(1);
   });
 

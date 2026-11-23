@@ -11,7 +11,6 @@ vi.mock('motion', async (importOriginal) => ({
 
 const ROOM = 80;
 
-/** A page with a bar and a main whose children sit ROOM lower while the root has `data-hub-banner`. */
 function page() {
   document.body.innerHTML = `
     <nav data-shifts-with-banner><a id="item">Devices</a><div id="host" data-holds-banner></div></nav>
@@ -60,7 +59,6 @@ it('MOT-002: when the strip appears the bar items and the page move from where t
   strip.show(false);
   strip.show(true);
   expect(document.documentElement.hasAttribute('data-hub-banner')).toBe(true);
-  // The item and the stage each start ROOM above their new place and spring to it.
   expect([lifted(item), lifted(stage)]).toEqual(['0px -80px', '0px -80px']);
   expect(runs.filter((run) => run.keyframes.at(-1) === 0)).not.toHaveLength(0);
   expect(runs.at(-1)?.options).toMatchObject({ stiffness: spring.default.stiffness, damping: spring.default.damping });
@@ -82,7 +80,6 @@ it('MOT-002: a change mid-flight starts from the place on screen, not from the l
   strip.show(true);
   for (const run of runs) run.frame(run.keyframes[0] === 0 ? 0 : -ROOM / 2);
   strip.show(false);
-  // Halfway through, the strip goes: the elements are ROOM / 2 below where they now belong.
   expect([lifted(item), lifted(stage)]).toEqual(['0px 40px', '0px 40px']);
 });
 

@@ -8,7 +8,6 @@
   const { updates, commandLine, processLog, builds } = capabilities();
 </script>
 
-<!-- The desktop app alone updates itself, puts its command line on the PATH, keeps a process log and builds releases; the web and iOS clients show none of them (UPD-006, INS-006, LOG-008, BLD-020). -->
 {#if updates}
   <UpdatesRow />
 {/if}

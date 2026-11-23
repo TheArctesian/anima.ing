@@ -3,10 +3,7 @@
   import { enterGateway, leftGateway, mayEnterByItself } from '$lib/hosted/gateway/here';
   import { press } from '$lib/motion/roles/press';
 
-  // The sign-in of a hosted hub in a browser (HMD-059, HMD-063): the hub has no password that a person knows (HMD-038),
-  // so this page has no form. The entry of the gateway makes the session of the hub again, or leads to the sign-in of
-  // the Anima.ing account. The browser goes there by itself once; after a sign-out, or when the entry just failed, the
-  // person presses the button.
+  // A hosted hub has no password that a person knows (HMD-038), so this sign-in page has no form (HMD-059, HMD-063).
   const left = leftGateway();
   let going = $state(false);
 

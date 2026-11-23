@@ -9,33 +9,25 @@ export const SAVE_SENTENCE = 'Channels were not saved.';
 export const ADDED_SENTENCE = 'Check added; channels were not.';
 export const PARTIAL_SENTENCE = 'Channels saved; check was not.';
 
-/** `loading` and `failed` keep the controls disabled and send nothing; `absent`: no hub to ask. */
+/** `absent`: no hub to ask. */
 type ChannelsPhase = 'ready' | 'loading' | 'failed' | 'absent';
 
-/** What `save` did: `sent` means the hub took new values; `failed` means it did not. */
 type ChannelsSaved = 'sent' | 'skipped' | 'failed';
 
-/**
- * The channels and resend interval of one check in the form (NOT-003, NOT-005). A new check starts from the channels
- * that are on by default; a saved one reads its own through `calls.load`. Both go through their own documents (F-3).
- */
+/** NOT-003, NOT-005: a check's channels go through their own documents (F-3). */
 export class ChannelsDraft {
   channels = $state<readonly NotificationChannel[]>([]);
   values = $state<ChannelValues>({ channelIds: [], resend: '0' });
   phase = $state<ChannelsPhase>('absent');
-  /** The fixed sentence for the last failure or refusal; empty when there is none. */
   message = $state('');
-  /** The sentence is about the resend input, which then takes focus. */
   resendInvalid = $state(false);
   /** Retry stays mounted from the first failure until a load succeeds, so its focus survives the reload. */
   retryShown = $state(false);
   readonly #checkId: string | null;
   readonly #calls: ChannelCalls | null;
-  /** What the hub holds; null until read, and for a new check. */
   #stored: StoredChannels | null = null;
   /** The read in progress, so a save pressed meanwhile waits for it instead of skipping the channels (NOT-003). */
   #loading: Promise<void> = Promise.resolve();
-  /** The hub took new channels in this form, so a check that then fails is the part that was not saved. */
   #savedHere = false;
 
   constructor(checkId: string | null, calls: ChannelCalls | null) {
@@ -46,7 +38,6 @@ export class ChannelsDraft {
     void this.load();
   }
 
-  /** Reads the channels, and the check's own choice when it is saved; a failure disables only this part. */
   load(): Promise<void> {
     this.#loading = this.#read();
     return this.#loading;
@@ -89,20 +80,17 @@ export class ChannelsDraft {
     return problem === null;
   }
 
-  /** Says the check was created but its channels were not, so the next Save sends only the channels. */
   checkAdded(): void {
     this.message = ADDED_SENTENCE;
     this.resendInvalid = false;
   }
 
-  /** Says the channels went in but the check did not; says nothing when the channels were never saved here. */
   checkNotSaved(): void {
     if (!this.#savedHere) return;
     this.message = PARTIAL_SENTENCE;
     this.resendInvalid = false;
   }
 
-  /** Saves the channels of a check: only when they changed (or the check is new) and only once they have loaded. */
   async save(checkId: string): Promise<ChannelsSaved> {
     if (this.phase === 'loading') await this.#loading;
     if (this.#calls === null || this.phase !== 'ready') return 'skipped';

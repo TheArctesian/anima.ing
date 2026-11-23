@@ -24,7 +24,7 @@ describe('parseHubAddress', () => {
     ['http://10.0.0.5:8443', 'not-https'],
     ['ws://127.0.0.1:8443', 'not-https'],
     ['http://[::1]:8443', 'not-https'],
-    // F-1, security review of T6: `localhost` may resolve to ::1 first, where another user can bind the same port.
+    // F-1: `localhost` may resolve to ::1 first, where another user can bind the same port.
     ['http://localhost:9000', 'not-https'],
     ['http://user:pw@127.0.0.1:8443', 'has-credentials'],
     ['http://127.0.0.1:8443/graphql', 'has-path'],

@@ -6,18 +6,17 @@ import { isGraphQLResponse, MALFORMED, noAnswer, parseResponse, TOKEN_UNREADABLE
 import type { StatusSignal } from './status/status';
 
 /**
- * Reads the operator's access token for one hub, or `null` before login. The token is read per call, never stored here.
- * The hub passes its own address, so a provider cannot be bound to a different hub than the one it is sent to (CLI-002, CLI-003).
+ * The token is read per call, never stored here; the address binds a provider to the hub it is sent to (CLI-002, CLI-003).
  */
 export type TokenProvider = (address: HubAddress) => Promise<string | null>;
 
-/** What one HTTP GraphQL call needs; every part is injected so that tests need no network (CQ-021). */
+/** Every part is injected so that tests need no network (CQ-021). */
 interface HttpTransport {
   readonly address: HubAddress;
   readonly fetch: typeof fetch;
   readonly token: TokenProvider;
   readonly signal: (signal: StatusSignal) => void;
-  /** How long to wait for a complete answer before the hub counts as unreachable (NET-004). */
+  /** The wait for a complete answer before the hub counts as unreachable (NET-004). */
   readonly timeoutMs: number;
 }
 
@@ -40,7 +39,6 @@ function headersFor(token: string | null): Record<string, string> {
   return headers;
 }
 
-/** The answer text, or `undefined` when no complete answer arrived within the timeout. */
 async function answerText(transport: HttpTransport, token: string | null, body: string): Promise<string | undefined> {
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), transport.timeoutMs);
@@ -60,15 +58,11 @@ function parseJson(text: string): unknown {
   try {
     return JSON.parse(text);
   } catch {
-    // Not JSON: the caller reports `malformed`.
     return undefined;
   }
 }
 
-/**
- * POST `document` with `variables` to the hub (HTTP status is ignored; the GraphQL body decides).
- * Always resolves, with a typed result for every hub, network and token outcome.
- */
+/** The HTTP status is ignored and the GraphQL body decides; always resolves with a typed result. */
 export async function sendRequest<TResult, TVariables>(
   transport: HttpTransport,
   document: TypedDocumentNode<TResult, TVariables>,

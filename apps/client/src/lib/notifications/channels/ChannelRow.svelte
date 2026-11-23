@@ -8,7 +8,7 @@
 
   interface Props {
     channel: NotificationChannel;
-    /** Sends a test through the channel (NOT-004); the list records the delivery. */
+    /** NOT-004; the list records the delivery. */
     onSendTest: () => Promise<HubResult<Delivery>>;
     onEdit: () => void;
     onDelete: () => void;
@@ -17,7 +17,7 @@
   const { channel, onSendTest, onEdit, onDelete }: Props = $props();
   const last = $derived(channel.lastDelivery);
   let testing = $state(false);
-  /** What the last Send test came to: the delivery's fixed sentence, or a fixed sentence for a refused call. */
+  /** A fixed sentence: the delivery's, or one for a refused call. */
   let outcome = $state('');
 
   async function sendTest(): Promise<void> {
@@ -57,7 +57,7 @@
   </dl>
   <p class="outcome" role="status">{outcome}</p>
   <div class="actions">
-    <!-- The label stays while the hub works, so the buttons keep their width and focus (MOT-007); aria-busy says it is busy. -->
+    <!-- The label stays while the hub works, so the buttons keep their width and focus (MOT-007). -->
     <FormButton tabindex={0} aria-label="Send test through {channel.name}" aria-disabled={testing} aria-busy={testing} onclick={sendTest}>Send test</FormButton>
     <FormButton tabindex={0} aria-label="Edit {channel.name}" data-edit={channel.id} onclick={onEdit}>Edit</FormButton>
     <FormButton tabindex={0} tone="danger" aria-label="Delete {channel.name}" data-delete={channel.id} onclick={onDelete}>Delete</FormButton>
@@ -139,7 +139,6 @@
     line-height: var(--leading-normal);
   }
 
-  /* Narrower than the longest "time · kind · word" line: the time takes a line of its own, and two are kept. */
   @container (inline-size < 32rem) {
     .when {
       min-block-size: calc(var(--text-sm) * var(--leading-normal) * 2);

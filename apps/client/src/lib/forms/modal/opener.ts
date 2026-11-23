@@ -1,21 +1,16 @@
 import { FOCUSABLE } from './focus';
 
-/** The control a click landed on, if any: the focusable element at or around its target. */
 export function clickedControl(target: EventTarget | null): HTMLElement | null {
   return target instanceof Element ? target.closest<HTMLElement>(FOCUSABLE) : null;
 }
 
-/**
- * The control that opened a dialog, for focus to go back to. WebKit does not focus a button on click,
- * so `active` is then the body or a container around the button; the clicked control is taken when it
- * is inside `active` (or is it), else `active` (a dialog opened from the keyboard or by the app).
- */
+/** WebKit does not focus a button on click, so `active` may be a container; a clicked control inside it wins. */
 export function openerOf(active: Element | null, clicked: HTMLElement | null): HTMLElement | null {
   if (clicked?.isConnected === true && (active === null || active.contains(clicked))) return clicked;
   return active instanceof HTMLElement ? active : null;
 }
 
-/** The control of the latest click; a key press forgets it, so a dialog opened from the keyboard never takes an old click. */
+/** A key press forgets the click, so a dialog opened from the keyboard never takes an old click. */
 let clicked: HTMLElement | null = null;
 let watchers = 0;
 
@@ -26,11 +21,7 @@ const forget = () => {
   clicked = null;
 };
 
-/**
- * Watches clicks on the document while at least one dialog is mounted; one pair of listeners serves
- * every dialog. It must run while the dialog is closed, because the click that opens it comes first.
- * Returns the function that stops this dialog's watch.
- */
+/** It runs while the dialog is closed, because the click that opens it comes first. */
 export function watchClicks(): () => void {
   if (watchers === 0) {
     document.addEventListener('click', record, { capture: true });
@@ -46,7 +37,6 @@ export function watchClicks(): () => void {
   };
 }
 
-/** The opener for a dialog that opens now; the click is used once. */
 export function takeOpener(active: Element | null): HTMLElement | null {
   const opener = openerOf(active, clicked);
   clicked = null;

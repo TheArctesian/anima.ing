@@ -25,7 +25,6 @@ afterEach(async () => {
   vi.useRealTimers();
 });
 
-/** A connected view whose device has `transfer` as its policy. */
 async function connected(transfer: SessionTransfer | 'unread') {
   const view = showRemote();
   cleanups.push(view.close);
@@ -36,7 +35,6 @@ async function connected(transfer: SessionTransfer | 'unread') {
 
 const pasteItem = () => [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((item) => item.querySelector('.label')?.textContent === 'Paste');
 const policyText = (target: HTMLElement) => target.querySelector('[data-policy]')?.textContent;
-/** The text of every clipboard stream the client sent, decoded from its blobs. */
 const pasted = (socket: FakeTunnelSocket) => sentOf(socket, 'blob').map(([, data]) => new TextDecoder().decode(Uint8Array.from(atob(data ?? ''), (c) => c.charCodeAt(0))));
 const CTRL_V: [number, number][] = [
   [1, 0xffe3],

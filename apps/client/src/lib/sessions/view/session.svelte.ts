@@ -7,34 +7,31 @@ import type { SessionPolicy } from '../transfer';
 import type { ViewStartResult } from './start';
 import type { Progress } from './steps/steps';
 
-/** The K4 §5 close codes of a host key change and of an RDP certificate change. */
+/** Close codes from K4 §5. */
 const HOST_KEY_CLOSE = 4001;
 const CERTIFICATE_CLOSE = 4003;
 
-/** What a connection reads from a tunnel's state: its phase and what it saw when it closed. */
 export interface FollowedState extends TunnelClose {
   readonly phase: string;
 }
 
-/** A tunnel a connection follows, whose state is `State`. */
 export interface FollowedTunnel<State extends FollowedState> {
   state(): State;
   close(): void;
 }
 
-/** Where one attempt stands: asking for a ticket, with an open tunnel, or ended. */
 export type Stage<Tunnel = TerminalLink, State extends FollowedState = FollowedState> =
   | { readonly kind: 'starting' }
   | {
       readonly kind: 'open';
-      /** The hub's id of this attempt's session, for the file panel (RA-032). */
+      /** The hub's session id (RA-032). */
       readonly sessionId: string;
-      /** The hub sent a Wake-on-LAN packet with this attempt's ticket (K4 §1); the ticket itself is not kept. */
+      /** The ticket itself is not kept (K4 §1). */
       readonly wakeSent: boolean;
       readonly tunnel: Tunnel;
       readonly state: State;
       readonly connected: boolean;
-      /** The copy and paste flags read with this attempt's ticket (RA-033). */
+      /** Copy and paste flags from the ticket (RA-033). */
       readonly policy: SessionPolicy;
     }
   | { readonly kind: 'ending'; readonly ending: SessionEnding; readonly progress: Progress }
@@ -48,19 +45,17 @@ export type Stage<Tunnel = TerminalLink, State extends FollowedState = FollowedS
       readonly certificateChanged: boolean;
     };
 
-/** What a connection hears from its tunnel; a view adds its tunnel's own hooks (size, output) to them. */
 export interface ConnectionEvents<State> {
   readonly onchange: (state: State) => void;
   readonly onend: (state: State) => void;
 }
 
-/** Starts one attempt: asks for a ticket and opens the tunnel, reporting to `events` (see `SessionStart`). */
 export type ConnectionStart<Tunnel, State extends FollowedState> = (
   display: SessionDisplay,
   events: ConnectionEvents<State>,
 ) => Promise<ViewStartResult<Tunnel>>;
 
-/** Fixed text for a start the hub or the tunnel refused; never the hub's own message (LOG-007, R-035). */
+/** Never the hub's own message (LOG-007, R-035). */
 const REFUSED: Readonly<Record<string, string>> = {
   CONFLICT: 'Could not open the session. No accepted host key: run the connection test first.',
   NOT_FOUND: 'Could not open the session. The device no longer exists.',
@@ -76,13 +71,11 @@ function refusedEnding(error: HubError | TunnelRefusal, conflict: string | undef
   return { reason: undefined, opened: false, text };
 }
 
-/** Tunnel states heard before the start answered. */
 interface Early<State> {
   state?: State;
   ended?: State;
 }
 
-/** The steps' progress for `stage`. */
 export function progressOf(stage: Stage<unknown, FollowedState>): Progress {
   if (stage.kind === 'starting') return { ticketed: false, waking: false, opened: false, connected: false, stopped: false };
   if (stage.kind === 'open') {
@@ -91,12 +84,7 @@ export function progressOf(stage: Stage<unknown, FollowedState>): Progress {
   return stage.progress;
 }
 
-/**
- * One session view's connection (D-4, D-5): it starts through the `SessionStart` seam, follows the tunnel, and on
- * the end asks `endSession` for the recorded reason, which wins over the close code. Each `connect` is a new
- * attempt with a new ticket; events of an older attempt, or after `close`, are ignored. `conflict` is the text
- * for a `CONFLICT` refusal of the start; without it the host key text is shown.
- */
+/** The hub's recorded end reason wins over the close code; events of an older attempt or after `close` are ignored (D-4, D-5). */
 export class SessionConnection<Tunnel extends FollowedTunnel<State>, State extends FollowedState> {
   /** Raw, so the tunnel's state keeps its identity: a view compares `required` arrays by reference. */
   stage: Stage<Tunnel, State> = $state.raw({ kind: 'starting' });
@@ -106,7 +94,6 @@ export class SessionConnection<Tunnel extends FollowedTunnel<State>, State exten
   readonly #api: Pick<SessionsApi, 'endSession'>;
   readonly #onended: (ending: SessionEnding) => void;
   readonly #conflict: string | undefined;
-  /** The text `stop` gave for the open attempt. */
   #stoppedWith: string | undefined;
 
   constructor(
@@ -121,20 +108,16 @@ export class SessionConnection<Tunnel extends FollowedTunnel<State>, State exten
     this.#conflict = conflict;
   }
 
-  /** The open tunnel, while there is one. */
   get tunnel(): Tunnel | undefined {
     return this.stage.kind === 'open' ? this.stage.tunnel : undefined;
   }
 
-  /** Whether the socket is open, so the terminal can be shown and typed into (D-7). */
+  /** The terminal shows only once the socket is open (D-7). */
   get ready(): boolean {
     return this.stage.kind === 'open' && this.stage.connected;
   }
 
-  /**
-   * Start the first attempt, or a new one once the last has ended ("Reconnect"), with `display`. Does nothing
-   * after `close` or while an attempt is under way, so a double click asks for one ticket only.
-   */
+  /** Does nothing after `close` or during an attempt, so a double click asks for one ticket. */
   async connect(display: SessionDisplay): Promise<void> {
     if (this.#closed || (this.#attempt > 0 && this.stage.kind !== 'ended')) return;
     const attempt = ++this.#attempt;
@@ -157,17 +140,14 @@ export class SessionConnection<Tunnel extends FollowedTunnel<State>, State exten
     this.#started(attempt, result, early);
   }
 
-  /**
-   * End the open attempt on the operator's side, as when a sign-in prompt is cancelled: close its tunnel, and when
-   * it has ended (and `endSession` answered), show `text` instead of the reason the close would give.
-   */
+  /** Once the attempt ends, `text` shows instead of the reason the close would give. */
   stop(text: string): void {
     if (this.stage.kind !== 'open') return;
     this.#stoppedWith = text;
     this.stage.tunnel.close();
   }
 
-  /** Close the open tunnel and ignore everything after; the hub records the end (K4 §5). */
+  /** The hub records the end (K4 §5). */
   close(): void {
     this.#closed = true;
     this.tunnel?.close();
@@ -185,7 +165,6 @@ export class SessionConnection<Tunnel extends FollowedTunnel<State>, State exten
       return;
     }
     const { tunnel, sessionId, policy, wakeSent } = result.value;
-    // The view went away (or a newer attempt began) while the hub answered: this tunnel has no one to show it.
     if (attempt !== this.#attempt || this.#closed) {
       tunnel.close();
       return;

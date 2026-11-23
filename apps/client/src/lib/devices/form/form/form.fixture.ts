@@ -22,7 +22,6 @@ export const KEY = '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH P
 
 let app: ReturnType<typeof mount> | undefined;
 
-/** Unmounts the form and empties the page; call it after each test. */
 export function leave(): void {
   if (app) void unmount(app);
   app = undefined;

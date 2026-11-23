@@ -47,7 +47,6 @@ const button = (label: string) =>
   [...document.querySelectorAll('button')].find((each) => each.getAttribute('aria-label') === label || each.textContent.trim() === label);
 const dialog = () => document.querySelector('[role="dialog"]');
 
-/** The dialog's yes: the last button of its footer. */
 async function yes(): Promise<void> {
   ([...(dialog()?.querySelectorAll('button') ?? [])].at(-1) as HTMLButtonElement).click();
   await settled();

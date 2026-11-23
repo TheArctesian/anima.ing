@@ -6,7 +6,6 @@ import { createCheckInput, updateCheckInput } from '../model/input';
 import { validateCheck } from '../model/validate';
 import { checkValues } from '../model/values';
 
-/** The update input is typed by the generated schema, which has no SNMP config yet (D-1). */
 const sentSnmp = (input: UpdateCheckInput) => input.config?.snmp;
 const fields = (errors: readonly { field: string }[]) => errors.map((error) => error.field);
 

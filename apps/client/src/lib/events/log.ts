@@ -56,10 +56,7 @@ export function minSeverity(filter: LogFilter): Severity {
   );
 }
 
-/**
- * Whether `event` belongs in the list the filter describes (LOG-009).
- * An unparseable `at` does not match when a time window applies.
- */
+/** Whether `event` belongs in the filtered list (LOG-009); an unparseable `at` fails any time window. */
 export function matches(event: LogEvent, filter: LogFilter, now: Date): boolean {
   const since = sinceTime(filter.since, now);
   return (
@@ -77,10 +74,7 @@ function holdsText(event: LogEvent, text: string): boolean {
   return wanted === '' || `${event.message} ${event.deviceName ?? ''}`.toLowerCase().includes(wanted);
 }
 
-/**
- * The rows on screen, newest first, at most `LOG_CAP`. A full list has no "Load older":
- * `hasNextPage` is false at 500 rows, and `endCursor` never points past rows the list does not show.
- */
+/** Newest first, at most `LOG_CAP`; a full list has no "Load older", and `endCursor` never points past rows it does not show. */
 export interface EventLog {
   readonly rows: readonly LogEvent[];
   readonly endCursor: string | null;
@@ -89,7 +83,6 @@ export interface EventLog {
 
 const EMPTY_LOG: EventLog = { rows: [], endCursor: null, hasNextPage: false };
 
-/** A log made of the first page. */
 export function fromPage(page: EventPage): EventLog {
   return appendOlder(EMPTY_LOG, page);
 }

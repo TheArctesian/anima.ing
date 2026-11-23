@@ -1,7 +1,4 @@
-/**
- * The mockup's twelve devices (UR-7, D18), synthetic: name, host, OS, distribution, status, 24-hour uptime, readings
- * (CPU, memory, disk, VRAM), the ways to connect, and the last heartbeat's message.
- */
+/** Synthetic (UR-7, D18): name, host, OS, distribution, status, 24-hour uptime, readings, connections, heartbeat message. */
 export const SAMPLE: readonly (readonly [
   string,
   string,

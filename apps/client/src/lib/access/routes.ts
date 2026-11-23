@@ -1,4 +1,3 @@
-/** The sign-in page path. */
 export const SIGN_IN_PATH = '/sign-in';
 
 /** The sign-in of a hosted hub in a browser: the way to the gateway and the account, with no password (HMD-059). */
@@ -10,26 +9,16 @@ export const WELCOME_PATH = '/welcome';
 /** The sign-in with the Anima.ing account (HMD-022). */
 export const HOSTED_PATH = '/welcome/hosted';
 
-/**
- * Where a device that must sign in goes: the hub password page, or, for a hub hosted by Anima.ing, the account sign-in,
- * which first renews the session silently (R-129, HMD-041, HMD-043). Never the password page for a hosted hub.
- */
+/** A hosted hub signs in with the account, never with the hub password page (R-129, HMD-041, HMD-043). */
 export function signInPathFor(hosted: boolean): typeof SIGN_IN_PATH | typeof HOSTED_PATH {
   return hosted ? HOSTED_PATH : SIGN_IN_PATH;
 }
 
-/** Whether `route` is `parent` or below it by whole segment: `/sign-in/x` is below `/sign-in`, `/sign-inx` is not. */
 function within(route: string, parent: string): boolean {
   return route === parent || route.startsWith(`${parent}/`);
 }
 
-/**
- * The path the router matches for `pathname`: below the `base` path and percent-decoded as SvelteKit decodes it
- * (`%25` stays, and reserved escapes such as `%2F` stay), so `/sign-%69n` counts as `/sign-in` exactly when the router
- * shows the sign-in page there. A path the router cannot decode stays as it is; the router shows its error page for it.
- * `page.route.id` would carry the router's answer itself, but it also names layout groups, and every router stand-in
- * of the layout's tests gives a URL only; the copy is one line.
- */
+/** Decodes as SvelteKit does (`%25` and reserved escapes stay), so the sign-in check sees the path the router matches. */
 export function routePath(pathname: string, base: string): string {
   const below = base !== '' && within(pathname, base) ? pathname.slice(base.length) : pathname;
   try {
@@ -40,10 +29,7 @@ export function routePath(pathname: string, base: string): string {
   }
 }
 
-/**
- * Whether the route path (see `routePath`) needs no sign-in: only the two sign-in pages, the first-run pages and below them
- * (API-003, E-3, FRN-001). Every other route, `/shared` included, needs sign-in (R-111).
- */
+/** Only the sign-in and first-run pages need no sign-in; every other route, `/shared` included, does (API-003, FRN-001, R-111). */
 export function isSignedOut(route: string): boolean {
   return within(route, SIGN_IN_PATH) || within(route, WELCOME_PATH) || within(route, GATEWAY_SIGN_IN_PATH);
 }

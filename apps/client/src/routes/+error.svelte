@@ -5,8 +5,7 @@
   import FormButton from '$lib/forms/FormButton.svelte';
   import EmptyState from '$lib/states/EmptyState.svelte';
 
-  // An address the app has no page for, or a page that failed to open, inside the shell: the same look as every other
-  // empty state, and one way on (UI-030).
+  // UI-030: the same look as every other empty state, and one way on.
   const missing = $derived(page.status === 404);
 </script>
 

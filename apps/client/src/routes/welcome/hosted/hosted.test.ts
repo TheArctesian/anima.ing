@@ -15,7 +15,6 @@ function account(plan: StandInPlan = {}): HostedParts {
   return { account: standIn, join: standIn.join };
 }
 
-/** Runs from the first step until a step waits for the person, and gives each step it passed. */
 async function walk(cloud: HostedParts, from: HostedStep = FIRST): Promise<HostedStep[]> {
   const steps = [from];
   let step = from;

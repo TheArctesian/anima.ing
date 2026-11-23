@@ -83,19 +83,18 @@ const BUILD_JOB_UPDATED = graphql(`
 
 export type { BuildTarget };
 
-/** One release with its jobs, as the Builds view lists it (BLD-001, BLD-080). */
+/** BLD-001, BLD-080. */
 export type ReleaseView = ReleasesQuery['releases']['edges'][number]['node'];
 
-/** One job of a release (BLD-080). */
+/** BLD-080. */
 export type JobView = ReleaseView['jobs'][number];
 
 /** What the subscription sends: the job as it is now and the log lines the change added (BLD-081). */
 export type JobChange = BuildJobUpdatedSubscription['buildJobUpdated'];
 
-/** One stored log line (BLD-081). */
+/** BLD-081. */
 export type LogLineView = JobChange['logLines'][number];
 
-/** How many releases the view asks for; the list is a history, not a feed. */
 const RELEASES_SHOWN = 50;
 
 /** The log lines asked for at one time; the view pages until a page comes back short (BLD-081). */
@@ -105,7 +104,7 @@ function mapValue<T, U>(result: HubResult<T>, pick: (value: T) => U): HubResult<
   return result.ok ? { ok: true, value: pick(result.value) } : result;
 }
 
-/** The operator's builds calls: releases, a new release, cancel, job logs and live job changes (BLD-001, BLD-008, BLD-080, BLD-081). */
+/** BLD-001, BLD-008, BLD-080, BLD-081. */
 export function releasesApi(hub: Pick<Hub, 'request' | 'subscribe'>) {
   return {
     list: async (): Promise<HubResult<readonly ReleaseView[]>> =>

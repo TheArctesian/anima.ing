@@ -78,7 +78,6 @@
   <LibraryTree label="anima files" paths={PROJECT_PATHS} marks={[{ path: 'node_modules/', status: 'ignored' }]} compact {query} theme={dark ? 'dark' : 'light'} selected="src/routes/sign-in/+page.svelte" onpick={say('open file')} />
 {/snippet}
 
-<!-- Stage 5 of the T3 Code copy: the details card, the find bar and the right panel with its file surfaces, for the gallery. -->
 <div class="kit">
   <PageHeader title="Code kit: details and panel" detail="T3 Code's details card and right panel in Anima's skin" eyebrow={{ text: 'Stage 5', icon: 'carbon:code' }} />
   <div class="cards">

@@ -10,7 +10,6 @@ vi.mock('motion', async (importOriginal) => ({
 }));
 
 const content = createRawSnippet(() => ({ render: () => '<p>settings</p>' }));
-/** The section's height when open. */
 const SECTION = 32;
 let app: ReturnType<typeof mount> | undefined;
 
@@ -32,10 +31,8 @@ function translateY(element: HTMLElement): number {
 type Clamp = 'none' | 'at close' | 'when hidden';
 
 /**
- * A modal's scroll body at its scroll end: `<div body><div form><div wrapper><Disclosure/></div><div next/></div></div>`.
- * Closing the section moves `next` up by its height; a clamp moves the whole form down by the same amount,
- * so on screen `next` ends where it started. Each box on screen is its layout box moved by its own
- * `translate` and by the form's.
+ * Closing the section moves `next` up by its height; a clamp moves the whole form down by the same amount.
+ * Each box on screen is its layout box moved by its own `translate` and by the form's.
  */
 function scrolledToEnd(clamp: Clamp) {
   const body = document.createElement('div');
@@ -64,7 +61,6 @@ async function settle(): Promise<void> {
   flushSync();
 }
 
-/** Ends the content's fade, as the engine would after `duration-base`. */
 async function endFade(): Promise<void> {
   for (const run of runs.filter((candidate) => candidate.options.type !== 'spring')) run.finish();
   await settle();
@@ -78,7 +74,6 @@ it('MOT-007: when a close moves the scroll position back, the content springs fr
   button.click();
   await settle();
 
-  // The form starts where it was (the clamp undone by its translate) and springs to its new place.
   expect(form.getBoundingClientRect().top).toBe(0);
   expect(springs()).toContainEqual([-SECTION, 0]);
   // The row below did not move on screen: it gets a translate of its own against the form's, so it is not carried.

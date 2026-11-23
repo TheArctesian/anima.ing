@@ -38,20 +38,18 @@ const EventAdded = graphql(`
   }
 `);
 
-/** One page of the event log, as the hub answers it. */
 export type EventPage = EventsQuery['events'];
 
-/** One log row. */
 export type LogEvent = EventPage['edges'][number]['node'];
 
-/** The event log and live events through a `Hub` (CQ-045). */
+/** CQ-045. */
 export function eventsApi(hub: Hub) {
   return {
     list: async (variables: EventsQueryVariables): Promise<HubResult<EventPage>> => {
       const result = await hub.request(Events, variables);
       return result.ok ? { ok: true, value: result.value.events } : result;
     },
-    /** Listen for events of `minSeverity` and above (LOG-010); returns the function that stops listening. */
+    /** Events of `minSeverity` and above (LOG-010). */
     watch: (minSeverity: Severity, sink: Sink<LogEvent>): (() => void) =>
       hub.subscribe(
         EventAdded,

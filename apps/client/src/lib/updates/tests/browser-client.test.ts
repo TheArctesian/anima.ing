@@ -6,8 +6,7 @@ import type { Capabilities } from '$lib/platform/platform';
 import { isLocalBuild } from '../local-build';
 import DesktopProbe from './DesktopProbe.svelte';
 
-// A file of its own: the updater mock below counts imports of the module, and the module registry is per file, so
-// no other test can have loaded it first.
+// The updater mock counts imports, and the module registry is per file, so no other test may load it first.
 
 const shell = vi.hoisted(() => ({ loads: 0, checks: 0 }));
 const platform = vi.hoisted(() => ({ answers: undefined as Capabilities | undefined }));

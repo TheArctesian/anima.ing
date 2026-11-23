@@ -1,4 +1,3 @@
-// Test support: a fake desktop shell and a fake builds API that record what the builder loop asks of them.
 import {
   BuilderShellError,
   type BuilderShell,
@@ -26,19 +25,17 @@ export function refused(code: HubError['code']): HubResult<never> {
 
 export type StepCall = 'checkout' | 'gates' | 'bundle' | 'release-files' | 'upload';
 
-/** The updater file of `JOB`, unsigned: the hub signs it (R-117). */
+/** Unsigned: the hub signs it (R-117). */
 export const UPDATER: ReleaseFile = { name: 'Anima_0.1.12_amd64.AppImage', sha256: 'b'.repeat(64), size: 5 };
-/** The `SHA256SUMS` the shell writes for the job's files. */
 export const SUMS_FILE: ReleaseFile = { name: 'SHA256SUMS', sha256: 'd'.repeat(64), size: 94 };
 
-/** What one step does when it runs: print lines, wait, then end or fail. */
 export interface StepScript {
   readonly lines?: readonly string[];
   readonly ms?: number;
   readonly fails?: BuilderShellCode;
 }
 
-/** A shell whose steps follow `scripts`; time passes through the injected `sleep`, so fake timers drive it. */
+/** Time passes through the injected `sleep`, so fake timers drive it. */
 export class FakeShell implements BuilderShell {
   calls: StepCall[] = [];
   cancels = 0;
@@ -79,7 +76,6 @@ export class FakeShell implements BuilderShell {
     return 'Anima_0.1.12_amd64.AppImage';
   };
   release: ReleaseFiles = { files: [UPDATER, SUMS_FILE], updater: UPDATER.name };
-  /** The name of each file whose upload started. */
   uploads: string[] = [];
   releaseFiles = async () => {
     await this.#run('release-files');
@@ -107,17 +103,14 @@ export interface SentReport extends JobReport {
   readonly at: number;
 }
 
-/** A builds API for the builder token: claims hand out `jobs` in turn, reports are recorded with the fake time. */
 export class FakeBuildsApi implements Pick<BuildsApi, 'claim' | 'report' | 'uploadUrls' | 'reportUploaded'> {
   jobs: ClaimedJob[] = [];
   claims = 0;
   claimAnswer: HubResult<ClaimedJob | null> | null = null;
   reports: SentReport[] = [];
   reportAnswer: (report: JobReport) => HubResult<BuildJobState> = (report) => ok(report.state ?? 'BUILDING');
-  /** The files of each `uploadUrls` call. */
   granted: (readonly JobFile[])[] = [];
   urlsAnswer: ((files: readonly JobFile[]) => HubResult<readonly UploadUrl[]>) | null = null;
-  /** The files and feed of each accepted `reportUploaded`. */
   uploaded: { files: readonly JobFile[]; feed: string }[] = [];
   uploadedAnswer: HubResult<BuildJobState> = ok('UPLOADING');
 
@@ -143,7 +136,6 @@ export class FakeBuildsApi implements Pick<BuildsApi, 'claim' | 'report' | 'uplo
     return Promise.resolve(answer);
   }
 
-  /** Every line the hub accepted, in order. */
   lines(): string[] {
     return this.reports.flatMap((report) => report.logLines);
   }

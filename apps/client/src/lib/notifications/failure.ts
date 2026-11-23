@@ -1,8 +1,6 @@
-// Fixed sentences for a refused notification call. The hub's own text is never shown here: a fixed sentence is what
-// the tests can hold to, and it can never carry a secret the operator typed or a target's reply (LOG-007, F-8).
+// The hub's own text is never shown: a fixed sentence cannot carry a secret the operator typed or a target's reply (LOG-007).
 import type { HubError } from '$lib/hub/hub';
 
-/** What the operator was doing, for the sentence of a code that has no sentence of its own. */
 type Action = 'save' | 'delete' | 'test' | 'settings';
 
 const OTHER: Record<Action, string> = {
@@ -12,7 +10,6 @@ const OTHER: Record<Action, string> = {
   settings: 'Settings not saved. Retry.',
 };
 
-/** Input names the hub may list in a VALIDATION error, by the last part of their path, as the form labels them. */
 // A map, not an object, so a hub path such as `constructor` finds nothing.
 const FIELD_LABELS = new Map<string, string>([
   ['name', 'Name'],
@@ -36,7 +33,6 @@ const FIELD_LABELS = new Map<string, string>([
   ['certificateDays', 'Certificate expiry days'],
 ]);
 
-/** The labels of the fields the hub refused, from its field paths; a path the form does not know adds nothing. */
 function refusedLabels(error: HubError): string[] {
   if (error.code !== 'VALIDATION') return [];
   const labels = error.fields.map((field) => FIELD_LABELS.get(field.field.split('.').at(-1) ?? '') ?? '');

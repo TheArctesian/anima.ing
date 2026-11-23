@@ -14,9 +14,7 @@
 
   const api = checkDefaultsApi(useHub());
   const id = $props.id();
-  /** What the operator sees in the four fields; empty while loading. */
   let draft = $state({ intervalSeconds: '', retries: '', retryIntervalSeconds: '', degradedThresholdMs: '' });
-  /** `null` while loading or after a failed load. */
   let loaded = $state<CheckDefaults | null>(null);
   let loadFailed = $state(false);
   let errors = $state<FieldError[]>([]);
@@ -27,7 +25,6 @@
   let form: HTMLFormElement | undefined = $state();
   const notice = $derived(loadFailed ? 'Could not load the defaults.' : saveFailed ? 'Could not save the defaults.' : '');
 
-  /** Shows `defaults` as the hub holds them, in the fields and as the saved state. */
   function show(defaults: CheckDefaults): void {
     loaded = defaults;
     draft = defaultsText(defaults);
@@ -41,7 +38,6 @@
     } else loadFailed = true;
   }
 
-  /** Retry: the button stays where it is, and aria-disabled, while the hub answers; on success focus goes to the first field. */
   async function retry(): Promise<void> {
     if (retrying) return;
     retrying = true;
@@ -82,7 +78,7 @@
   }
 </script>
 
-<!-- A group, not a form landmark; Enter still submits. The Settings page says what the section is for (SET-001). -->
+<!-- A group, not a form landmark; Enter still submits. -->
 <form bind:this={form} role="group" aria-label="Default check settings" novalidate onsubmit={submit}>
   {#each SETTING_FIELDS as { key, label, bounds } (key)}
     <SettingRow {label} for="{id}-{key}">
@@ -110,8 +106,7 @@
       {/snippet}
     </SettingRow>
   {/each}
-  <!-- The footer holds the section's notice and Save on one line in every state. The notice's icon and Retry stay
-       mounted and are hidden unless needed, so the footer keeps its height and focus stays put (MOT-007, MV-005, UI-015). -->
+  <!-- The notice's icon and Retry stay mounted and hidden, so the footer keeps its height and focus stays put (MOT-007, MV-005, UI-015). -->
   <div class="footer">
     <div class="note-block">
       <span class="mark" class:hidden={notice === ''}><Icon name="carbon:warning" size="sm" /></span>

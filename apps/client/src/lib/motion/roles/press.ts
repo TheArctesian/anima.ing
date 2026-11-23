@@ -6,10 +6,7 @@ import { roleScale } from './scales';
 
 const releases = ['pointerup', 'pointercancel', 'pointerleave'] as const;
 
-/**
- * The press role (5.7.3): scale down on pointer-down, not on click (MOT-001), and spring back
- * on release. Under reduced motion nothing moves; the colour change in CSS is the feedback.
- */
+/** The press role (5.7.3): scale down on pointer-down, not on click (MOT-001); under reduced motion the CSS colour change is the feedback. */
 export function press(preference: MotionPreference = motionPreference()): Attachment<HTMLElement> {
   return (element) => {
     let pressed = false;

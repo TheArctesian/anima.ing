@@ -16,30 +16,19 @@
     title: string;
     /** Called for Escape and for a click on the scrim; the owner sets `open` to false. */
     onClose: () => void;
-    /**
-     * `content` sizes the surface to what it holds. `form` gives it a fixed block size, for a form whose
-     * sections open and close: the surface's edge never moves and the body scrolls inside it.
-     */
+    /** `form` has a fixed block size, so its edge never moves while sections open and close. */
     size?: 'content' | 'form';
-    /** A warning the operator must read: the surface is an `alertdialog` with a warning edge and icon. */
     warning?: boolean;
-    /** The id of the element that describes the dialog, for assistive technology. */
     describedBy?: string;
-    /** False when a click on the scrim must not close the dialog; Escape still calls `onClose`. */
     closeOnScrim?: boolean;
-    /** Where focus goes when the dialog closes; the opener when absent or when it gives no element. */
     returnTo?: () => HTMLElement | undefined;
     /** The surface's width in steps of `--space-16` (a `content` surface is 8 wide). */
     width?: number;
-    /** A size preset: `sm` for a confirmation, `md` for a form, `lg` for a wide task. It sets the width. */
     preset?: 'sm' | 'md' | 'lg';
-    /** The actions below the body, secondary first and primary last; wins over a form's own footer. */
+    /** Secondary first, primary last; wins over a form's own footer. */
     footer?: Snippet;
-    /** Lowers the surface by `--space-16` from the top edge, for a warning that sits over the page's own controls. */
     lowered?: boolean;
-    /** An icon before the title, for a dialog that is a task (Add device); a warning's icon wins over it. */
     icon?: IconName;
-    /** Shows a Close button at the end of the title row; it calls `onClose`, as Escape does. */
     dismissible?: boolean;
     /** Solid, not frosted: for a dialog that can open over a live remote display (MAT-008). */
     solid?: boolean;
@@ -52,11 +41,7 @@
   const titleId = $props.id();
   coverWhile(() => open);
 
-  /**
-   * A form's actions, shown below the body by the form inside (see `footer.ts`). Each showing is its own
-   * entry, so a form that is replaced takes out its own actions and never those of the form after it.
-   * Raw, so `shown` is the entry itself; a deep proxy never equals its value.
-   */
+  /** Each showing is its own entry, so a replaced form removes only its own actions; raw, as a deep proxy never equals its value. */
   let shown = $state.raw<{ readonly actions: Snippet }>();
   /** The same entry, kept plain: a teardown reads `$state` as it was before, so it would find its own entry still shown. */
   let latest: { readonly actions: Snippet } | undefined;
@@ -79,10 +64,7 @@
   let surface: HTMLElement | undefined = $state();
   let stacked: OpenDialog | undefined;
 
-  /**
-   * The opener is read before the dialog is in the DOM. The dialog leaves the stack as soon as `open` is
-   * false, even while it fades out, and only then does focus go back to the opener.
-   */
+  /** Reads the opener before the dialog is in the DOM; focus returns to it only once the dialog leaves the stack. */
   $effect.pre(() => {
     if (!open) return;
     const entry = openDialog();
@@ -104,10 +86,6 @@
     }
   }
 
-  /**
-   * Focus starts inside the dialog. While it is the topmost dialog, keys pressed outside it (on the body,
-   * after a click that took the focus away) are handled here too, and focus that lands outside goes back in.
-   */
   $effect(() => {
     const dialog = surface;
     const entry = stacked;
@@ -129,10 +107,7 @@
     };
   });
 
-  /**
-   * Moves the dialog's root to `body`, so that a dialog opened from inside another one is not clipped by the
-   * outer surface (which is a containing block for fixed children). The root is the block's only node.
-   */
+  /** A dialog opened inside another is not clipped by the outer surface, a containing block for fixed children. */
   function toBody(root: HTMLElement): () => void {
     const focused = document.activeElement;
     document.body.append(root);
@@ -187,7 +162,6 @@
           <span class="mark"><Icon name={icon} /></span>
         {/if}
         {#if dismissible}
-          <!-- Not the first stop: focus still starts in the body (see `initialFocusIn`). UI-015: a label and a tooltip. -->
           <button type="button" class="close" data-dismiss aria-label="Close" title="Close" onclick={onClose} {@attach press()}>
             <Icon name="carbon:close" />
           </button>
@@ -218,11 +192,7 @@
     background: var(--scrim);
   }
 
-  /*
-   * The surface's top is fixed, so a section that opens inside it never moves the control the operator
-   * clicked (MOT-007). A `content` surface grows downward to the window's height; a `form` surface has a
-   * fixed height, so its edge never moves while a section opens or closes. Past that the body scrolls.
-   */
+  /* The surface's top is fixed, so an opening section never moves the clicked control (MOT-007). */
   .frame {
     display: grid;
     /* One row of the window's height, not of the surface's content, so `100%` below is the window. */
@@ -262,12 +232,7 @@
     block-size: min(100%, calc(var(--space-16) * 12));
   }
 
-  /*
-   * The scroll container, so a section's FLIP stays inside it (5.7.3 Disclosure). It reaches into the
-   * surface's padding, so focus rings at its edges are not clipped and the scrollbar sits at the edge.
-   * Scroll anchoring is off: the content below a section moves by FLIP alone, and the browser does not
-   * shift the scroll position to follow it, which would move the control the operator clicked.
-   */
+  /* The scroll container for a section's FLIP (5.7.3 Disclosure); no scroll anchoring, so the clicked control stays put. */
   .body {
     display: flex;
     flex: 1 1 auto;
@@ -298,7 +263,6 @@
     flex: none;
   }
 
-  /* The secondary action first, the primary last at the end of the row. */
   .actions {
     display: flex;
     justify-content: flex-end;
@@ -328,10 +292,6 @@
     color: var(--status-warning);
   }
 
-  /*
-   * A task's title row: as tall as the Close button, with the task's icon in the padding at its start and
-   * the Close button in the padding at its end, both laid over the surface's padding box.
-   */
   .marked h2,
   .dismissible h2 {
     min-block-size: var(--space-8);

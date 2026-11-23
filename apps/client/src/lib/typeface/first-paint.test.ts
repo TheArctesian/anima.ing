@@ -13,7 +13,6 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** Whether the promise has settled, without waiting for it. */
 async function settled(promise: Promise<void>): Promise<boolean> {
   let done = false;
   void promise.then(() => {

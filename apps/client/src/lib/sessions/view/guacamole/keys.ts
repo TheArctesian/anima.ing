@@ -22,22 +22,14 @@ const INSERT = 0xff63;
 /** One key event: 1 is a press, 0 a release (the values `sendKeyEvent` takes). */
 export type KeyStroke = readonly [pressed: 0 | 1, keysym: number];
 
-/** A key combination of the Keys menu (RA-006). */
 export interface KeyCombination {
   readonly id: string;
-  /** The name the menu shows, which is also the item's accessible name. */
   readonly label: string;
-  /** What the combination usually does on a desktop. */
   readonly hint: string;
-  /** The keys, pressed in this order and released in the reverse order. */
   readonly keysyms: readonly number[];
 }
 
-/**
- * The Keys menu of an RDP or VNC session, in menu order (RA-006): the combinations the operator's own system keeps
- * (Ctrl+Alt+Delete, Alt+Tab, the Windows key) or that a laptop lacks. "Paste" is not a combination: it sends the
- * clipboard.
- */
+/** The combinations the operator's own system keeps or that a laptop lacks, in menu order (RA-006). */
 export const KEY_COMBINATIONS: readonly KeyCombination[] = [
   {
     id: 'ctrl-alt-delete',
@@ -53,37 +45,26 @@ export const KEY_COMBINATIONS: readonly KeyCombination[] = [
   { id: 'tab', label: 'Tab', hint: 'Next field', keysyms: [KEYSYM.tab] },
 ];
 
-/** The press and release sequence of `combination`: every key pressed in order, then released in reverse. */
 export function keyStrokes(combination: KeyCombination): readonly KeyStroke[] {
   const presses = combination.keysyms.map((keysym): KeyStroke => [1, keysym]);
   const releases = [...combination.keysyms].reverse().map((keysym): KeyStroke => [0, keysym]);
   return [...presses, ...releases];
 }
 
-/**
- * The desktop paste shortcut, Ctrl+V, for a device that holds the keys in `held`: sent after a clipboard stream, it
- * pastes the text the device now holds (RA-005). A Ctrl the device already holds (the operator's own Ctrl+V) is
- * neither pressed again nor released, so it stays down on the device.
- */
+/** A Ctrl the device already holds is neither pressed again nor released, so it stays down (RA-005). */
 export function pasteStrokes(held: ReadonlySet<number>): readonly KeyStroke[] {
   const holdsControl = [...CONTROL].some((key) => held.has(key));
   return keyStrokes({ id: 'paste', label: 'Paste', hint: 'Send clipboard', keysyms: [...(holdsControl ? [] : [KEYSYM.controlLeft]), KEYSYM.v] });
 }
 
-/** The paste shortcut when the device holds no key. */
 export const PASTE_STROKES: readonly KeyStroke[] = pasteStrokes(new Set());
 
-/** Decides which keyboard events reach the device. */
 export interface KeyFilter {
-  /** Whether to send this press; false leaves the key to the browser. */
   down(keysym: number): boolean;
-  /** Whether to send this release: only keys whose press was sent are released. */
   up(keysym: number): boolean;
-  /** The keys the device holds down: every press sent and not yet released. */
   readonly held: ReadonlySet<number>;
 }
 
-/** Whether `keysym`, pressed while `held` are down, is a paste shortcut (Ctrl+V, Ctrl+Shift+V or Shift+Insert). */
 function isPasteShortcut(keysym: number, held: ReadonlySet<number>): boolean {
   const any = (keys: ReadonlySet<number>) => [...keys].some((key) => held.has(key));
   if (keysym === INSERT) return any(SHIFT);
@@ -91,17 +72,11 @@ function isPasteShortcut(keysym: number, held: ReadonlySet<number>): boolean {
 }
 
 /**
- * Every key reaches the device except the operator's own shortcuts, which go to the browser:
- * - any key while a Meta or Super key is held (Command+V pastes through the `paste` event);
- * - with `paste` on, the paste shortcuts Ctrl+V, Ctrl+Shift+V and Shift+Insert. Left to the browser, they fire
- *   `paste` with the current system clipboard, which the view sends before it presses Ctrl+V on the device; sent
- *   to the device, they would paste whatever the device last held. With `paste` off they reach the device, which
- *   pastes its own clipboard (RA-033).
- * A release is sent only for a press that was sent, so the device never sees a key go up that never went down.
+ * With `paste` on, the paste shortcuts go to the browser, whose `paste` event sends the system clipboard; with it off,
+ * the device pastes its own clipboard (RA-033).
  */
 export function keyFilter(options: { readonly paste: boolean }): KeyFilter {
   const system = new Set<number>();
-  // The keys the device holds down: every press sent and not yet released.
   const sent = new Set<number>();
   return {
     down: (keysym) => {

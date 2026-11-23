@@ -83,7 +83,6 @@ it('MOT-007: a row of the list has one line: a small Wake only while the device 
     ['', 'RDP'],
     ['', 'VNC'],
   ]);
-  // Two ways in and Wake are three buttons: icons alone.
   expect(row({ status: 'DOWN', rdp: on, vnc: on })?.querySelector('.device-action')?.getAttribute('title')).toBe('RDP');
   expect(three?.querySelector('[aria-label="SSH to Device a"]')).not.toBeNull();
 });

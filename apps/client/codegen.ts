@@ -1,4 +1,3 @@
-// Entry: `bun run graphql` writes the typed documents; `bun codegen.ts --check` fails if they are not current (API-008).
 import { checkTypes, clientLayout, writeTypes } from './src/lib/hub/generation.ts';
 
 const layout = clientLayout(import.meta.dirname);

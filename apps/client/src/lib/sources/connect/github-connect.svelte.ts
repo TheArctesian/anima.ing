@@ -3,30 +3,20 @@ import type { ConnectAttempt, GithubConnectApi } from './api';
 import { isOpen } from './attempt';
 import type { LinkOpening } from './browser';
 
-/**
- * The one GitHub connection the hub holds (PRJ-039). `attempt` follows `githubConnectChanged` with no reload. The
- * one-time link lives in a local variable between the hub's answer and the browser: it is not a field, not stored,
- * not logged and not in a message (PRJ-041).
- */
+/** The one-time link stays in a local variable: never a field, stored, logged or in a message (PRJ-039, PRJ-041). */
 export class GithubConnectStore {
   attempt = $state.raw<ConnectAttempt | null>(null);
-  /**
-   * Where a browser continues the flow; null: the hub cannot start it in a browser (HMD-070, or a hub of before the field);
-   * undefined until the hub answered. The client has no rule of its own for it.
-   */
+  /** `null` when the hub cannot start the flow in a browser (HMD-070); the client has no rule of its own. */
   browserPage = $state<string | null | undefined>(undefined);
-  /** The hub dropped an attempt that the client held open (it restarted). */
   restarted = $state(false);
-  /** The browser did not show the link: the page offers `attempt.pageUrl` instead. */
   blocked = $state(false);
-  /** The hub's words for the last refused action. */
   refusal = $state('');
   busy = $state(false);
   #unwatch: (() => void) | null = null;
 
   constructor(private readonly api: GithubConnectApi) {}
 
-  /** Reads the open attempt; null after an open one means the hub restarted. */
+  /** `null` after an open attempt means the hub restarted. */
   async load(): Promise<void> {
     const held = this.attempt !== null && isOpen(this.attempt);
     const result = await this.api.current();
@@ -35,7 +25,6 @@ export class GithubConnectStore {
     this.attempt = result.value;
   }
 
-  /** Reads the attempt and whether the browser flow can start, and listens for changes (once). */
   async ensureLoaded(): Promise<void> {
     const [page] = await Promise.all([this.api.browserPage(), this.load()]);
     this.browserPage = page;
@@ -54,7 +43,6 @@ export class GithubConnectStore {
     this.#unwatch = null;
   }
 
-  /** Press 1: starts an attempt for the personal account and opens its link. */
   async start(opening: LinkOpening): Promise<void> {
     this.#begin();
     const result = await this.api.start();
@@ -64,7 +52,6 @@ export class GithubConnectStore {
     await this.#open(result.value.id, opening);
   }
 
-  /** Asks for a new one-time link for the open attempt and opens it. */
   async continueInBrowser(opening: LinkOpening): Promise<void> {
     if (this.attempt === null) return opening.close();
     this.#begin();

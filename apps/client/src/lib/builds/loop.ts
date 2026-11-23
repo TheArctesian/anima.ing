@@ -8,10 +8,7 @@ import { uploadRelease, UploadRefusedError } from './upload';
 export const POLL_MS = 20_000;
 /** How often a running job reports; the hub needs one at least each 15 s (BLD-005). */
 export const REPORT_MS = 10_000;
-/**
- * The longest a builder call may take: with `REPORT_MS` between reports, a report that the hub accepts still arrives
- * within the 15 s it needs (BLD-005).
- */
+/** With `REPORT_MS` between reports, an accepted report still arrives within the hub's 15 s (BLD-005). */
 export const BUILDER_CALL_TIMEOUT_MS = 4_000;
 /** Reports that may fail in a row before the lease (90 s, BLD-005) has surely ended. */
 const MISSED_REPORTS_MAX = 8;
@@ -32,7 +29,6 @@ export type StepName = 'checkout' | 'gates' | 'bundle' | 'upload';
 
 interface Step {
   readonly name: StepName;
-  /** The step's name in a failure reason. */
   readonly label: string;
   run(shell: BuilderShell, job: StepJob): Promise<unknown>;
 }
@@ -54,7 +50,6 @@ export interface LoopPorts {
   readonly shell: BuilderShell;
   /** The values removed from every line before it is sent: the builder and operator tokens (BLD-049). */
   readonly secrets: () => readonly string[];
-  /** Resolves after `ms`. */
   readonly sleep: (ms: number) => Promise<void>;
   /** The time now; it dates the proposed feed. */
   readonly now: () => Date;
@@ -68,10 +63,7 @@ function codeOf(reason: unknown): StepCode {
   return reason instanceof BuilderShellError ? reason.code : 'failed';
 }
 
-/**
- * Runs `work` and reports every `REPORT_MS` while it runs, with the lines it printed (BLD-005, BLD-048). When the hub
- * refuses a report, or too many fail in a row, the job is no longer this builder's: the step is cancelled.
- */
+/** Reports every `REPORT_MS` while `work` runs (BLD-005, BLD-048); a refused report, or too many failures in a row, cancels the step. */
 async function withReports(work: Promise<unknown>, reporter: JobReporter, ports: LoopPorts): Promise<Outcome> {
   let outcome: Outcome | undefined;
   const settled = work.then(
@@ -175,10 +167,7 @@ export async function builderPass(ports: LoopPorts, stopping: () => boolean = ()
   return 0;
 }
 
-/**
- * Runs passes until stopped, one job at a time (BLD-029). The returned function stops the loop: it cancels a running
- * step, which ends its processes, and resolves once the loop has finished its last report.
- */
+/** One job at a time (BLD-029); the returned function cancels a running step and resolves once the last report is sent. */
 export function startBuilderLoop(ports: LoopPorts): () => Promise<void> {
   let running = true;
   let wake = (): void => undefined;

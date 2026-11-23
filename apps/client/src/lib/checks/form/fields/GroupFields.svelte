@@ -2,7 +2,6 @@
   import type { SiblingCheck } from '../model/group';
 
   interface Props {
-    /** Already filtered by `groupCandidates`. */
     candidates: readonly SiblingCheck[];
     childIds: string[];
     error?: string | undefined;

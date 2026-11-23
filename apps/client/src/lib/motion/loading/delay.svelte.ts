@@ -1,10 +1,7 @@
 import { untrack } from 'svelte';
 import { browserClock, skeletonGate, type LoadingClock } from './loading';
 
-/**
- * Whether a loading skeleton shows now (5.7.3, Loading): `loading` must stay true past `threshold-loading` first, and
- * the skeleton then stays `threshold-loading-min`. Call during component init; read `visible` in the template.
- */
+/** Whether a loading skeleton shows now (5.7.3, Loading); call during component init. */
 export function skeletonDelay(loading: () => boolean, clock: LoadingClock = browserClock): { readonly visible: boolean } {
   let visible = $state(false);
   const gate = skeletonGate(clock, (shown) => {

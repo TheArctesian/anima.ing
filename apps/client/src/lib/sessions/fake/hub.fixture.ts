@@ -1,35 +1,27 @@
-// Test support: a real `Hub` whose HTTP endpoint is a fake hub answering the session operations as K1 and K4
-// describe, the Phase 2 additions included. It records every request. Close `hub` after each test.
-// No vitest import here.
+// Close `hub` after each test.
 import { parse, type OperationDefinitionNode } from 'graphql';
 import { createHub, NO_HUB_ADDRESS, type Hub } from '$lib/hub/hub';
 import { FAKE_WEBSOCKET } from '$lib/hub/socket/fake';
 import { sessionsApi, type SessionsApi, type ServerCertificate } from '../api';
 import type { SessionEndReason } from '../ending';
 
-/** One request as the hub received it. */
 export interface Sent {
   readonly operation: string;
   readonly query: string;
   readonly variables: Readonly<Record<string, unknown>>;
 }
 
-/** What the fake hub knows about its one device; tests change it between steps. */
 export interface FakeDevice {
   id: string;
   /** `unserved`: a hub without K1 refuses the field, as the Phase 1 hub does; `gone`: the device was deleted. */
   transfer: { copy: boolean; paste: boolean } | 'unserved' | 'gone';
-  /** The RDP certificate the device presents now (K4 §3). */
   certificate: ServerCertificate;
-  /** The fingerprint `acceptServerCertificate` recorded, if any. */
   acceptedFingerprint: string | null;
   /** RDP `security: RDP` or `ignoreCertificate`: no accepted certificate needed (K4 §1). */
   certificateExempt: boolean;
-  /** What `endSession` answers as the recorded reason (K4 §5). */
   endReason: SessionEndReason | null;
   /** A refusal for a credential or a test that quotes the sent secret back, to test that it is never shown. */
   refuseCredential: boolean;
-  /** The K7 code of that refusal. */
   refusalCode: 'VALIDATION' | 'CONFLICT';
 }
 
@@ -49,7 +41,6 @@ function operationOf(query: string): string {
   return definition?.name?.value ?? '';
 }
 
-/** `startSession`: a new ticket per call on the protocol's path (K4 §1), or the refusals K4 names. */
 function ticket(device: FakeDevice, input: Record<string, unknown>, issued: number): Body {
   if (input.deviceId !== device.id) return error('NOT_FOUND', 'No such device.');
   const protocol = String(input.protocol);
@@ -147,7 +138,6 @@ function answer(device: FakeDevice, request: Sent, issued: number): Body {
   }
 }
 
-/** A fake hub with one device, `desk` (`device-1`): copy and paste on, its certificate not yet accepted. */
 export function fakeHub(changes: Partial<FakeDevice> = {}) {
   const device: FakeDevice = {
     id: 'device-1',
@@ -171,7 +161,6 @@ export function fakeHub(changes: Partial<FakeDevice> = {}) {
   };
   const hub: Hub = createHub({ address: NO_HUB_ADDRESS, token: () => Promise.resolve('operator-token'), fetch, WebSocket: FAKE_WEBSOCKET });
   const api: SessionsApi = sessionsApi(hub);
-  /** The requests named `operation`, in order. */
   const named = (operation: string) => sent.filter((request) => request.operation === operation);
   return { hub, api, device, sent, named };
 }

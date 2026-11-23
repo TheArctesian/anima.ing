@@ -3,7 +3,6 @@ import type { IconName } from '$lib/icons/icons';
 /** The address of a section of Hosting: each section has its own, so a link and the back button open it (HSE-001). */
 export type HostingPath = '/hosting' | '/hosting/catalogue' | '/hosting/models' | '/hosting/storage' | '/hosting/routes' | '/hosting/machines';
 
-/** One section of Hosting: its address, its name, its icon and the line under its heading. */
 export interface HostingSection {
   readonly path: HostingPath;
   readonly title: string;
@@ -25,14 +24,12 @@ export const HOSTING_SECTIONS: readonly HostingSection[] = [
   { path: '/hosting/machines', title: 'Machines', icon: 'carbon:bare-metal-server', description: 'The places where things can run.' },
 ];
 
-/** The section whose address is `pathname`, or one below it; Applications for any other address of Hosting. */
 export function sectionOf(pathname: string): HostingSection {
   const path = pathname.replace(/\/+$/, '') || '/';
   const [applications] = HOSTING_SECTIONS;
   return HOSTING_SECTIONS.find((section) => section.path !== '/hosting' && (path === section.path || path.startsWith(`${section.path}/`))) ?? (applications as HostingSection);
 }
 
-/** The section named `path`. */
 export function section(path: HostingPath): HostingSection {
   return HOSTING_SECTIONS.find((each) => each.path === path) as HostingSection;
 }
