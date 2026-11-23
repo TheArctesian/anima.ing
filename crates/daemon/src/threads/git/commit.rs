@@ -15,7 +15,7 @@ use std::time::Duration;
 use agent_threads::git::GitRefusal;
 
 use super::checkpoint;
-use super::place::{self, Worktree, own};
+use super::place::{self, Worktree, own, shared};
 use super::project::refs::{self, Head, Was};
 use super::run::hooks::Hooks;
 use super::run::settings::Person;
@@ -96,6 +96,10 @@ pub async fn make(
     }
     // The index of the worktree follows the branch; its files stay as they are.
     own::follow(git, worktree, &commit).await?;
+    // The copy of the project gets the commit too, so that the next action needs no run of
+    // the thread to bring what the runner itself made. The commit is done: when this step
+    // fails, the next action brings the commit as each other one.
+    let _ = shared::keep(git, worktree, (&commit, tip)).await;
     if let Some(hooks) = asked.hooks {
         hooks.after_commit().await;
     }

@@ -3606,7 +3606,7 @@ Where: [model-work.md](../contracts/compute/model-work.md) Section 2 and Section
 
 What it is: `revision` had no exact form, and a file name could hold `/`, so a hub that is taken over could choose a branch name or a path that leaves the folder of the copy or meets a link.
 
-The correction: `revision` is exactly 40 lower-case hexadecimal characters. A file name is a flat name from the list of Section 2.2, with no `/`, `..`, `%` or control character. The daemon writes it with `openat`, `O_NOFOLLOW` and `O_EXCL` under a folder of mode 0700, and refuses two names that are equal in lower case, as the unpack does.
+The correction: `revision` is exactly 40 lower-case hexadecimal characters. A file name is a flat name, or one sub-folder and a flat name joined by one `/` (R-408); each of the two parts is checked as a flat name, with no `/`, `..`, `%`, control character or character outside ASCII (SF-362), and the file part is from the list of Section 2.2. The daemon opens each part with `openat` and `O_NOFOLLOW`, flattens the file on write into `copies/<copy>/` with `O_EXCL` under a folder of mode 0700, and refuses two files whose flattened names are equal in lower case, as the unpack does; it never overwrites one.
 
 State: Open. Fixed in the text of K11 (2026-11-22); no code. Found by a separate reviewer on 2026-11-22 (SEC-C-012).
 
@@ -3681,6 +3681,78 @@ What it is: The key is in the environment of the runtime, which a process of the
 The correction: Section 2.1 states that the key protects only against other users and browser pages.
 
 State: Open. Fixed in the text of K11 (2026-11-22). Found by a separate reviewer on 2026-11-22 (SEC-C-012).
+
+### SF-379: The child reports two of its own faults as `source_failed`. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: `crates/daemon/src/model/fetch/child.rs`.
+
+What it is: A child that refused a non-empty environment, or could not build its Tokio runtime, wrote `source_failed`, so a fault of the child read as a fault of the source.
+
+The correction: Both return `fetch_failed`. Tests: `the_child_refuses_to_work_with_any_environment_variable`, `the_reply_of_the_child_reads_back_as_its_cause`.
+
+State: Corrected on the branch `compute/model-causes`. Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-380: The form of a name with a sub-folder is loose. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 2, `files[].name`.
+
+What it is: The text did not say how many `/` a name may hold, that a part may not be empty, `.` or `..`, or whether the limit of 256 characters counts both parts.
+
+The correction: Exactly 0 or 1 `/`; each part has 1 or more characters and is neither `.` nor `..`; at most 256 characters in all.
+
+State: Fixed in the text of K11; no code (task L1-7). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-381: The address of a file in a sub-folder could encode the `/`. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 7, "The source".
+
+What it is: "Each part is encoded as a path segment" read on the whole name gives `%2F`, which a server may read in a different way.
+
+The correction: The folder and the file are each encoded as a path segment, with a literal `/` between them, never `%2F`.
+
+State: Fixed in the text of K11; no code (task L1-7). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-382: Names that Windows reserves are not refused. Low
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 2.2.
+
+What it is: A part such as `nul.gguf`, `COM1`, a name that ends in a dot or a space, or a name with `:` opens a device or a stream on Windows.
+
+The correction: Either part is refused (`file_type`) when it is `CON`, `PRN`, `AUX`, `NUL`, `COM1` to `COM9` or `LPT1` to `LPT9` in any case, with or without an extension, ends in a dot or a space, or holds `:`.
+
+State: Fixed in the text of K11; no code (task L1-7). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-383: Two causes could fire for a file over its size. Note
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: [model-work.md](../contracts/compute/model-work.md) Section 5.
+
+What it is: `size` and `file_rejected` both spoke of a file that is too large.
+
+The correction: `size` fires when the downloaded size differs from the `sizeBytes` given; `file_rejected` fires when a content check of a file finds it too large.
+
+State: Corrected on the branch `compute/model-causes` (text of K11). Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
+
+### SF-384: A child that exits with code 0 chooses between `source_failed` and the other words. Note
+
+Requirements: task L1-6b of [compute-plan.md](plans/compute-plan.md); R-406, R-407, R-408; SEC-C-012.
+
+Where: `crates/daemon-core/src/model_work/releases/fetch.rs`, `verdict`.
+
+What it is: Only the word of a child that exited with code 0 gives `source_failed`; a child under the control of a hostile archive could write that word in place of `fetch_failed`.
+
+The correction: None needed: the child could already write each word of its fixed list, so the exit-0 path adds no new power, and the cause carries no text of the child.
+
+State: Accepted as reviewed. Found by a separate reviewer on 2026-11-22 in `756d64aa6`.
 
 ## The security review of the browser session of a hosted hub and of the trust in the gateway (task HM-T32, 2026-11-21)
 
@@ -4295,6 +4367,96 @@ What it is: The daemon sends no request to a server yet, so the drain counts zer
 The correction: Task L1-10 must bind the counter to the real requests in progress.
 
 State: Open. Found by a separate reviewer on 2026-11-22 in commit `1440a9ddb`.
+
+## The security reviews of the Git stage (task TC7, 2026-11-22 and 2026-11-23)
+
+Separate reviewers read the Git engine of the runner (`crates/daemon/src/threads/git/`) in more than ten passes; [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md) has each pass, each High and each Medium with its correction. No High is open. These Lows stay. The engine is not connected to the runner, the command or the page, so no person can reach them yet.
+
+### SF-388: A push through Anima sends no large-file (LFS) contents. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git/push.rs`.
+
+What it is: With Git LFS set for all repositories of the person, a snapshot and a commit of the runner hold pointers. A push through Anima sends the pointers and not the contents.
+
+Effect, and who can cause it: No attacker. A person who pushes through Anima gets a branch on the remote whose large files are missing, with no word.
+
+Mitigation now: None. The design record of the question to the remote plans a line that says so.
+
+State: Open. Found by a separate reviewer on 2026-11-22 or 2026-11-23 in the branch `threads/git-copy-limit`; the record is [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md).
+
+### SF-386: Large-file (LFS) contents are outside the budget of a thread. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git/place/own.rs`.
+
+What it is: The budget of the folder of a thread counts the objects of Git. The contents that Git LFS keeps beside them are not counted.
+
+Effect, and who can cause it: An agent with LFS set for the person can fill the disk of the records with large files. The limit of the free disk (1 GiB kept free) still holds.
+
+Mitigation now: The check of the free disk.
+
+State: Open. Found by a separate reviewer on 2026-11-22 or 2026-11-23 in the branch `threads/git-copy-limit`; the record is [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md).
+
+### SF-389: The locks of the engine are in one process only. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git.rs`; also `worktree::make`, which does not hold the lock of the worktree.
+
+What it is: The engine keeps its locks in memory. Two processes that run an engine on the same records (two daemons of one user) do not see the lock of the other.
+
+Effect, and who can cause it: No attacker. Two daemons of one user at the same time can damage a checkpoint or refuse an action.
+
+Mitigation now: One daemon for each user is the rule of the runner.
+
+State: Open. Found by a separate reviewer on 2026-11-22 or 2026-11-23 in the branch `threads/git-copy-limit`; the record is [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md).
+
+### SF-390: The history of a repository inside a worktree is not saved. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git/checkpoint/staged.rs`, `checkpoint.rs`.
+
+What it is: A removal saves the files of a repository that an agent made inside the worktree, as plain files. Its own commits (its Git folder) are not saved. A repository whose name is not text, or more than 512 of them, stops each snapshot until the person commits its removal.
+
+Effect, and who can cause it: The agent of the thread. Effect: commits made only in such a repository are lost at the removal of the worktree; the files are kept.
+
+Mitigation now: The files are saved, and the refusal names the way out.
+
+State: Open. Found by a separate reviewer on 2026-11-22 or 2026-11-23 in the branch `threads/git-copy-limit`; the record is [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md).
+
+### SF-387: A planted entry in the large-file store of the person stops a removal with an error that names nothing. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git/place/own.rs`, `worktree/files.rs`.
+
+What it is: A removal copies large-file contents into `.git/lfs/objects` of the person. A folder or a file that cannot be read at the name of a content makes the removal fail, and the error names no path. Also: two different files with the same content whose names differ only in the case of a letter are saved under one name on a disk that does not tell the case apart.
+
+Effect, and who can cause it: A Full access agent, which can write the `.git` of the person. Effect: the removal of the worktree fails until the person removes the entry; no work is lost.
+
+Mitigation now: No link is followed and a good content is never changed.
+
+State: Open. Found by a separate reviewer on 2026-11-22 or 2026-11-23 in the branch `threads/git-copy-limit`; the record is [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md).
+
+### SF-385: Some failures of a snapshot or a removal name the wrong cause, or no file. Low
+
+Requirements: task TC7 of [agent-threads.md](proposals/agent-threads.md), Section 6.0.2; THR-050, THR-097.
+
+Where: `crates/daemon/src/threads/git/checkpoint/staged.rs`, `place/walk.rs`, `project/linked.rs`.
+
+What it is: Seven cases that the last reviews left, each in [tc7-git-security-reviews.md](research/agent-threads/tc7-git-security-reviews.md), "Lows open after the twelfth review". Examples: a full disk of the records is said as a failure of a file of the worktree, with "delete or move it"; a folder that cannot be read is not removed by the runner; on Linux a network disk that answers "not supported" for a real file has that file staged as gone (not reproduced).
+
+Effect, and who can cause it: The agent of the thread for most cases; the disk for the others. Effect: a checkpoint or a removal fails until the person acts, and the text does not always say what to do. No case was found that loses saved work.
+
+Mitigation now: The words of the system are in each text.
+
+Three more from the reviews of step W1 (branch `threads/git-wired`): the copy of the packs of a thread looks at only the first 16 names, so an agent can push its own pack out; a pack run that fails early can leave its folder in the worktree; a repository whose path has `:` cannot make a pack (the refusal says so).
+
+State: Open. Found by separate reviewers on 2026-11-23 in the branch `threads/git-copy-limit` (commits `d44e975e4` to `13bd13b09`) and `threads/git-wired` (`188a196e0`).
 
 ## Closed
 

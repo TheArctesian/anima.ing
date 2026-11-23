@@ -1,9 +1,9 @@
-//! Who may add a public route (SF-330): only a person in the Anima app in a
-//! browser, with no agent declared. A login token, which the `anima` command and an agent hold,
-//! the same token declared as an agent (MCP), and an API key are refused; a private route keeps
-//! the rule of a login token. No route is stored: the account has no second factor, so even the
-//! person stops at that check. Removing a route needs only a signed-in person, never an API key,
-//! and leaves one audit entry that names what it took away (ruling of 2026-11-22).
+//! Who may change a route (operator ruling of 2026-11-22 on adding a route): one rule for each caller. A browser token, a login
+//! token, which the `anima` command and an agent hold, and the same token declared as an agent
+//! (MCP) all pass the check of the caller, for a public and a private route; an API key is
+//! refused. No route is stored: the account has no second factor, so each caller stops at that
+//! check. Removing a route needs only a signed-in token, never an API key, and leaves one audit
+//! entry that names what it took away.
 
 use axum::Router;
 use serde_json::{Value, json};
@@ -16,8 +16,6 @@ const ADD: &str = "mutation($input: ApplicationRouteInput!) { \
     addApplicationRoute(input: $input) { route { id } } }";
 const CREATE_KEY: &str =
     "mutation($input: ApiKeyInput!) { createApiKey(input: $input) { secret } }";
-#[cfg(unix)]
-const NEEDS_PERSON: &str = "only by a person in the Anima app in a web browser";
 const NEEDS_SECOND_FACTOR: &str = "Turn on the second factor";
 
 /// The message and the code of the one error of adding a route of `access` with `headers`.
@@ -42,50 +40,38 @@ async fn refusal(hub: &Router, headers: &[(&str, &str)], access: &str) -> (Strin
 // A hub that is not on Unix refuses every route before it asks who adds it (R-366).
 #[cfg(unix)]
 #[sqlx::test(migrations = "./migrations")]
-async fn sf_revroutestepup_only_a_person_in_the_browser_adds_a_public_route(pool: PgPool) {
+async fn sf_revroutestepup_each_signed_in_caller_passes_to_the_second_factor(pool: PgPool) {
     set_operator(&pool).await;
     let hub = browser_hub(&pool, start());
     let cookie = cookie(&browser_token(&hub).await);
-    let person = [("origin", PUBLIC), ("cookie", cookie.as_str())];
-    let (message, _) = refusal(&hub, &person, "PUBLIC").await;
-    if !cfg!(unix) {
-        // A hub that is not on Unix refuses each route before it asks who adds it (R-366).
-        assert!(
-            message.contains("Routing needs a hub on Linux."),
-            "{message}"
-        );
-        return;
-    }
-    assert!(
-        message.contains(NEEDS_SECOND_FACTOR),
-        "the person passes: {message}"
-    );
-    let agent = [person[0], person[1], ("anima-actor", "agent")];
-    let (message, code) = refusal(&hub, &agent, "PUBLIC").await;
-    assert!(
-        message.contains(NEEDS_PERSON) && code == "FORBIDDEN",
-        "{message}"
-    );
-
     let login = Hub::new(&pool, start()).token().await;
     let login = format!("Bearer {login}");
     for (holder, headers) in [
+        (
+            "browser",
+            vec![("origin", PUBLIC), ("cookie", cookie.as_str())],
+        ),
+        (
+            "browser agent",
+            vec![
+                ("origin", PUBLIC),
+                ("cookie", cookie.as_str()),
+                ("anima-actor", "agent"),
+            ],
+        ),
         ("login token", vec![("authorization", login.as_str())]),
         (
             "MCP",
             vec![("authorization", login.as_str()), ("anima-actor", "agent")],
         ),
     ] {
-        let (message, code) = refusal(&hub, &headers, "PUBLIC").await;
-        assert!(
-            message.contains(NEEDS_PERSON) && code == "FORBIDDEN",
-            "{holder}: {message}"
-        );
-        let (message, _) = refusal(&hub, &headers, "PRIVATE").await;
-        assert!(
-            message.contains(NEEDS_SECOND_FACTOR),
-            "{holder} private: {message}"
-        );
+        for access in ["PUBLIC", "PRIVATE"] {
+            let (message, code) = refusal(&hub, &headers, access).await;
+            assert!(
+                message.contains(NEEDS_SECOND_FACTOR) && code == "FORBIDDEN",
+                "{holder} {access}: {message}"
+            );
+        }
     }
 }
 
@@ -158,7 +144,7 @@ async fn removals(pool: &PgPool) -> Vec<Value> {
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn sf_revroutestepup_a_signed_in_person_removes_a_route_with_no_second_factor(pool: PgPool) {
+async fn sf_revroutestepup_a_signed_in_token_removes_a_route_with_no_second_factor(pool: PgPool) {
     set_operator(&pool).await;
     stored_route(&pool, PRIVATE_ROUTE, "nas.example.com", "private").await;
     stored_route(&pool, PUBLIC_ROUTE, "photos.example.com", "public").await;
@@ -196,7 +182,7 @@ async fn sf_revroutestepup_a_signed_in_person_removes_a_route_with_no_second_fac
         "an API key removes nothing"
     );
 
-    // The account has no second factor: removing needs only the signed-in person.
+    // The account has no second factor: removing needs only a signed-in token.
     let cookie = cookie(&browser_token(&hub).await);
     let person = [("origin", PUBLIC), ("cookie", cookie.as_str())];
     let removed = post(&hub, &person, REMOVE, json!({ "id": PRIVATE_ROUTE }))
@@ -209,17 +195,7 @@ async fn sf_revroutestepup_a_signed_in_person_removes_a_route_with_no_second_fac
 
     let bearer = format!("Bearer {token}");
     let by_agent = [("authorization", bearer.as_str()), ("anima-actor", "agent")];
-    let refused = post(&hub, &by_agent, REMOVE, json!({ "id": PUBLIC_ROUTE }))
-        .await
-        .json();
-    assert_eq!(
-        refused["errors"][0]["extensions"]["code"], "FORBIDDEN",
-        "an agent removes nothing: {refused}"
-    );
-    assert_eq!(routes_left(&pool).await, ["photos.example.com"]);
-
-    let by_login = [("authorization", bearer.as_str())];
-    let removed = post(&hub, &by_login, REMOVE, json!({ "id": PUBLIC_ROUTE }))
+    let removed = post(&hub, &by_agent, REMOVE, json!({ "id": PUBLIC_ROUTE }))
         .await
         .json();
     assert_eq!(

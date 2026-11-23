@@ -19,6 +19,7 @@ pub mod changes;
 pub mod checkpoint;
 pub mod commit;
 pub mod place;
+pub use place::wired;
 pub mod project;
 pub mod push;
 pub mod revert;
@@ -37,26 +38,16 @@ use agent_threads::git::{GitAction, GitOutcome, GitRefusal};
 use uuid::Uuid;
 
 use place::{BadPlace, Home, Record, Worktree};
-use project::ProjectError;
 use push::pull_request;
 use run::hooks::{self, Access, AsThread};
 use run::{Git, GitError};
-
-impl From<ProjectError> for GitRefusal {
-    fn from(error: ProjectError) -> Self {
-        match error {
-            ProjectError::NotARepository => Self::NotARepository,
-            other => Self::Failed {
-                said: other.to_string(),
-            },
-        }
-    }
-}
 
 impl From<GitError> for GitRefusal {
     fn from(error: GitError) -> Self {
         match error {
             GitError::NotFound => Self::GitNotFound,
+            // Words of the runner itself, not of `git`: they are the reason as they are.
+            GitError::Failed { code: None, said } => Self::Failed { said },
             other => Self::Failed {
                 said: other.to_string(),
             },
@@ -141,12 +132,7 @@ impl Engine {
     /// Refuses while the records can be written by a thread, or are not a folder of this
     /// user alone any more.
     fn closed(&self) -> Result<(), GitRefusal> {
-        if self.held.load(Ordering::SeqCst) {
-            return Err(GitRefusal::RecordsHeld);
-        }
-        place::records::checked(self.home.records()).map_err(|bad| GitRefusal::Failed {
-            said: bad.to_string(),
-        })
+        place::records::open_for_actions(self.home.records(), self.held.load(Ordering::SeqCst))
     }
 
     /// This engine with the way to start a hook of a repository as the agent of a thread is
@@ -247,6 +233,13 @@ impl Engine {
                 action => self.act(caller, &worktree, action).await,
             },
             Ok(_) => Err(GitRefusal::NoWorktree),
+            // A worktree that is not whole is still removed, so that it holds nothing.
+            Err(_) if own_thread && action == GitAction::Remove && !caller.running => {
+                let of = (target.thread, target.repository);
+                worktree::remove_broken(&self.git, &self.home, of)
+                    .await
+                    .map(|kept| GitOutcome::Removed { kept })
+            }
             Err(bad) => Err(bad.into()),
         };
         done.unwrap_or_else(|why| GitOutcome::Refused { why })
@@ -331,6 +324,9 @@ impl Engine {
             GitAction::PullRequest => GitOutcome::PullRequest(
                 pull_request::prepare(git, worktree, &listed().await?).await?,
             ),
+            GitAction::Forget { before } => GitOutcome::Checkpoints {
+                checkpoints: checkpoint::forget_before(git, worktree, before).await?,
+            },
             GitAction::Remove => GitOutcome::Removed {
                 kept: Some(worktree::remove(&self.git, &self.home, worktree).await?),
             },

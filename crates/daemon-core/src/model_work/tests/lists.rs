@@ -154,3 +154,13 @@ fn each_failed_step_of_containment_has_its_own_detail_and_launcher_code() {
     assert_eq!(Containment::of_exit_code(125), None);
     assert_eq!(Cause::Listener.detail(), None);
 }
+
+#[test]
+fn the_new_causes_have_their_words_and_their_states() {
+    assert_eq!(Cause::FetchFailed.as_str(), "fetch_failed");
+    assert!(!Cause::FetchFailed.is_refusal());
+    assert_eq!(Cause::FetchFailed.detail(), None);
+    assert_eq!(Cause::FileRejected.as_str(), "file_rejected");
+    assert!(Cause::FileRejected.is_refusal());
+    assert_eq!(Cause::FileRejected.detail(), None);
+}
