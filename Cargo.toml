@@ -14,6 +14,7 @@ members = [
     "crates/updater-signature",
     "crates/release-record",
     "crates/redaction",
+    "crates/shortening",
     "crates/compose-rules",
     "crates/power",
     "crates/catalogue",
