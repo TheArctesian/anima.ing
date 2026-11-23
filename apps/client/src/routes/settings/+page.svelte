@@ -51,9 +51,9 @@
   const hubState = localHub ? new LocalHubWatch(desktopLocalHubShell) : null;
   $effect(() => hubState?.watch());
   const desktopRows = updates || commandLine || processLog || builds;
-  const index = $derived(indexOf({ keyStore: phone || keyStore, extensions: phone, leave: phone && keyStore, stayAwake, desktopRows, mcpPermissions, runnerReport, vpn: vpnShown, remoteAccess: localHub && keyStore, localHub: hubState?.status?.installed === true, linkDevices: linkDevicesShown }));
   // The phone layout has the rows of mockup 7 for Account and Hub, and Leave hub at the end.
   const phone = $derived(phoneLayout());
+  const index = $derived(indexOf({ keyStore: phone || keyStore, extensions: phone, leave: phone && keyStore, stayAwake, desktopRows, mcpPermissions, runnerReport, vpn: vpnShown, remoteAccess: localHub && keyStore, localHub: hubState?.status?.installed === true, linkDevices: linkDevicesShown }));
   // Routes moved to Hosting (HSE-010): an old link to its place in Settings opens it there.
   $effect(() => {
     if (['#routes', '#settings-routes'].includes(location.hash)) void goto(resolve('/hosting/routes'), { replaceState: true });
