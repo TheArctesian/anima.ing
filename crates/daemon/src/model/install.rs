@@ -113,15 +113,20 @@ pub fn place_archive(archive: std::fs::File, target: &Target) -> Result<(), Caus
     settle(temporary, target)
 }
 
-/// A new empty folder below `runtimes/<runtime>/`, deleted when it is dropped.
+/// A new empty folder of mode 0755 below `runtimes/<runtime>/`, deleted when it is dropped.
 fn unpack_folder(target: &Target) -> Result<TempDir, Cause> {
+    use std::os::unix::fs::PermissionsExt as _;
     let runtime = target.release.runtime.as_str();
     folders::private_below(&target.folders.runtimes, Path::new(runtime))
         .map_err(|_| Cause::LimitDisk)?;
-    tempfile::Builder::new()
+    let temporary = tempfile::Builder::new()
         .prefix(".unpack-")
         .tempdir_in(target.folders.runtimes.join(runtime))
-        .map_err(|_| Cause::LimitDisk)
+        .map_err(|_| Cause::LimitDisk)?;
+    // The folder becomes `<version>-<backend>/`; its mode must not follow the umask (Section 6).
+    std::fs::set_permissions(temporary.path(), std::fs::Permissions::from_mode(0o755))
+        .map_err(|_| Cause::LimitDisk)?;
+    Ok(temporary)
 }
 
 /// Checks the program of the unpacked `temporary` folder and renames it into place. Blocking.

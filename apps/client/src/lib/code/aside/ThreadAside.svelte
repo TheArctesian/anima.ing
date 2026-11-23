@@ -2,7 +2,6 @@
   import { untrack } from 'svelte';
   import type { RunRow } from '$lib/agent-threads/live/run';
   import DetailsCard from '../details/DetailsCard.svelte';
-  import { keepChoices, storedChoices, type ShownChoices } from '../details/shown';
   import { detailsOf, fitsInline, laneRoom } from './place';
   import type { DetailsShown } from './shown.svelte';
 
@@ -14,7 +13,6 @@
   }
 
   const { row, shown }: Props = $props();
-  let choices = $state<ShownChoices>(storedChoices(globalThis.localStorage));
   let frame = $state<HTMLElement>();
   /** The width of the canvas, in px, as last measured. */
   let width = $state(0);
@@ -88,11 +86,8 @@
     <div class="place" class:popover={shown.mode === 'popover'} {@attach (node) => (shown.mode === 'popover' ? dismiss(node) : undefined)}>
       <DetailsCard
         {details}
-        {choices}
-        onChoices={(next) => {
-          choices = next;
-          keepChoices(globalThis.localStorage, next);
-        }}
+        choices={shown.choices}
+        onChoices={(next) => shown.choose(next)}
         on={{ copy: (text) => void navigator.clipboard.writeText(text).catch(() => undefined) }}
       />
     </div>

@@ -14,7 +14,7 @@ import { lastTurnFrom, queuedFrom, type LastTurn, type QueuedPrompt } from './qu
 
 export type RunState = 'starting' | 'working' | 'needs_you' | 'idle' | 'stopped' | 'unknown';
 export type Mode = 'full_access' | 'accept_edits' | 'ask' | 'plan';
-export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'ultra';
 export type RequestKind = 'command' | 'file_change' | 'tool' | 'question';
 
 /** A thread that the runner started. */
@@ -163,7 +163,7 @@ const STATES: readonly string[] = ['starting', 'working', 'needs_you', 'idle', '
 const MODES: readonly string[] = ['full_access', 'accept_edits', 'ask', 'plan'];
 const KINDS: readonly string[] = ['command', 'file_change', 'tool', 'question'];
 const REFUSALS = ['unknown_thread', 'folder_not_permitted', 'program_not_found', 'program_does_not_answer', 'bad_value', 'request_gone', 'answer_does_not_fit', 'not_running', 'holder', 'from_an_agent', 'running', 'over_limit', 'queue_full', 'cannot_change', 'too_large', 'cannot_attach'] as const;
-const EFFORTS: readonly string[] = ['low', 'medium', 'high', 'xhigh', 'max'];
+const EFFORTS: readonly string[] = ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'];
 
 type Fields = Record<string, unknown>;
 

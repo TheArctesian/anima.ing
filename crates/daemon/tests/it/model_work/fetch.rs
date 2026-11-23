@@ -72,11 +72,11 @@ fn the_child_refuses_to_work_with_any_environment_variable() {
     let text = line(&order(root.path()));
     assert_eq!(
         child(&text, &[("ANIMA_DAEMON_TOKEN", "x")]),
-        "source_failed\n"
+        "fetch_failed\n"
     );
     assert_eq!(
         child(&text, &[("HTTPS_PROXY", "http://127.0.0.1:1")]),
-        "source_failed\n"
+        "fetch_failed\n"
     );
 }
 
@@ -121,7 +121,7 @@ async fn a_stalled_child_is_ended_at_the_deadline_and_the_daemon_goes_on() {
     );
     let started = Instant::now();
     let outcome = fetch_in_child(&program, &order(root.path()), Duration::from_secs(2)).await;
-    assert_eq!(outcome, Err(Cause::SourceFailed));
+    assert_eq!(outcome, Err(Cause::FetchFailed));
     assert!(started.elapsed() < Duration::from_secs(10));
     let pid = std::fs::read_to_string(root.path().join("pid")).expect("a pid");
     let gone = (0..50).any(|_| {
@@ -136,18 +136,27 @@ async fn a_stalled_child_is_ended_at_the_deadline_and_the_daemon_goes_on() {
 }
 
 #[tokio::test]
-async fn a_crashed_child_or_one_with_a_false_reply_is_source_failed() {
+async fn a_crashed_child_or_one_with_a_false_reply_is_fetch_failed() {
     let root = tempfile::tempdir().expect("a folder");
     let cases = [
         "echo done; kill -SEGV $$",
-        "echo done; exit 3",
+        "echo source_failed; exit 3",
         "echo listener",
+        "echo '/home/x/evil.tar.gz: boom' >&2; echo 'archive /x'",
     ];
     for body in cases {
         let program = script(root.path(), body);
         let outcome = fetch_in_child(&program, &order(root.path()), Duration::from_secs(10)).await;
-        assert_eq!(outcome, Err(Cause::SourceFailed), "{body}");
+        assert_eq!(outcome, Err(Cause::FetchFailed), "{body}");
     }
+}
+
+#[tokio::test]
+async fn a_source_error_that_the_child_reports_stays_source_failed() {
+    let root = tempfile::tempdir().expect("a folder");
+    let program = script(root.path(), "echo source_failed");
+    let outcome = fetch_in_child(&program, &order(root.path()), Duration::from_secs(10)).await;
+    assert_eq!(outcome, Err(Cause::SourceFailed));
 }
 
 #[test]

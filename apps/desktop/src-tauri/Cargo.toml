@@ -21,6 +21,7 @@ path = "src/main.rs"
 tauri-build.workspace = true
 
 [dependencies]
+remote-login = { path = "../../../crates/remote-login" }
 # `unstable`: child web views in the main window and moving them to a window of their own
 # (`Window::add_child`, `Webview::reparent`) for device web views (WEB-004, D-3).
 # `tray-icon`: the menu bar or tray item of the stay-awake control (AWK-004).
@@ -57,6 +58,7 @@ chrono.workspace = true
 daemon-core = { path = "../../../crates/daemon-core" }
 uuid.workspace = true
 
+[target.'cfg(target_os = "android")'.dependencies]
 rustix = { version = "1.1", default-features = false, features = ["std", "fs"] }
 
 # The dependencies of the desktop application. A phone has the window, the access token, the link and the account sign-in only, so it

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import type { HubError, HubResult } from '$lib/hub/hub';
   import FormButton from '../../../forms/FormButton.svelte';
   import HostKeyModal from '../../../forms/modal/HostKeyModal.svelte';
@@ -16,6 +17,7 @@
   import { isWarning, outcomeText } from './errors';
 
   interface Props {
+    autoStart?: boolean;
     initial: DeviceFormValues | null;
     values: DeviceFormValues;
     /** Null for a device that is not saved yet. */
@@ -26,7 +28,7 @@
     onAcceptHostKey: (fingerprint: string) => Promise<HubResult<unknown>>;
   }
 
-  const { initial, values, deviceId, canTest, onTest, onAcceptHostKey }: Props = $props();
+  const { autoStart = false, initial, values, deviceId, canTest, onTest, onAcceptHostKey }: Props = $props();
   let testing = $state(false);
   let outcome = $state<TestOutcome | null>(null);
   let failure = $state<HubError | null>(null);
@@ -41,6 +43,14 @@
   const shownFailure = $derived(fresh ? failure : null);
   const acceptable = $derived(fresh && tested !== null && tested.saved);
   const advice = $derived(deviceId !== null && !testsStoredCredential(initial, values, deviceId) && credentialInput(values) === null);
+
+  let started = false;
+  $effect(() => {
+    if (autoStart && !started) {
+      started = true;
+      untrack(() => { void test(); });
+    }
+  });
 
   async function test(): Promise<void> {
     if (testing || !canTest()) return;

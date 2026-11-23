@@ -33,7 +33,7 @@ pub fn run() -> ! {
 
 fn work() -> Result<(), Cause> {
     if !environment_empty(std::env::vars_os().map(|(name, _)| name)) {
-        return Err(Cause::SourceFailed);
+        return Err(Cause::FetchFailed);
     }
     let mut input = BufReader::new(std::io::stdin());
     let mut line = String::new();
@@ -49,7 +49,7 @@ fn work() -> Result<(), Cause> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
-        .map_err(|_| Cause::SourceFailed)?;
+        .map_err(|_| Cause::FetchFailed)?;
     let fetched = super::download(
         &order.address,
         checked.hosts,

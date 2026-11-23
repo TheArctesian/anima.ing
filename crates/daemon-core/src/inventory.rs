@@ -32,6 +32,7 @@ pub const MAX_BUILD_TARGETS: usize = 128;
 /// What a device's daemon found installed (CAP-020, CAP-026).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Inventory {
+    pub remote_access: Option<RemoteAccess>,
     pub architecture: Architecture,
     pub os: Os,
     /// 1 to 64 bytes of [`is_version`] text, for example `27.0` or `24.04`.
@@ -40,6 +41,30 @@ pub struct Inventory {
     pub tools: Vec<Tool>,
     /// The installed Rust targets, unique, in byte order.
     pub build_targets: Vec<String>,
+}
+
+/// Private services installed and enabled by this computer's owner.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RemoteAccess {
+    pub ssh_user: Option<String>,
+    pub rdp_user: Option<String>,
+}
+
+impl RemoteAccess {
+    #[must_use]
+    pub fn accepted(&self) -> bool {
+        [&self.ssh_user, &self.rdp_user]
+            .into_iter()
+            .flatten()
+            .all(|user| {
+                !user.is_empty()
+                    && user.len() <= 64
+                    && user
+                        .bytes()
+                        .all(|c| c.is_ascii_alphanumeric() || b"_-.".contains(&c))
+            })
+    }
 }
 
 /// The processor architecture, as Rust names it (CAP-026).
@@ -132,6 +157,7 @@ impl Inventory {
         tools.sort_by_key(|tool| tool.name);
         tools.dedup_by_key(|tool| tool.name);
         Self {
+            remote_access: None,
             architecture,
             os,
             os_version,

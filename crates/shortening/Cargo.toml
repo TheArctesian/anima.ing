@@ -1,0 +1,14 @@
+[package]
+name = "shortening"
+description = "The shortener of long answers for an AI agent: rows of a JSON list and lines of a log are left out, never an error or an anomaly (SHA-001 to SHA-009). Parts are from Headroom (Apache-2.0); see NOTICE"
+version.workspace = true
+edition.workspace = true
+# The crate as a whole is under the licence of Anima; the parts from Headroom stay under theirs.
+license = "AGPL-3.0-or-later AND Apache-2.0"
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+serde_json.workspace = true
