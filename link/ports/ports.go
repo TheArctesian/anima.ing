@@ -14,7 +14,7 @@ import (
 )
 
 // ErrNotAllowed means that the port cannot be in the list on this system.
-var ErrNotAllowed = errors.New("ports: only 22 (SSH), 5900 (screen sharing) and, on Windows, 3389 (remote desktop) can be open")
+var ErrNotAllowed = errors.New("ports: only 22 (SSH), 5900 (screen sharing) and, on Windows or Linux, 3389 (remote desktop) can be open")
 
 // fileName is the file of the list: a JSON array of port numbers.
 const fileName = "open-ports"
@@ -26,7 +26,7 @@ func Allowed(port uint16, goos string) bool {
 	case 22, 5900:
 		return true
 	case 3389:
-		return goos == "windows"
+		return goos == "windows" || goos == "linux"
 	default:
 		return false
 	}
