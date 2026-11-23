@@ -1,31 +1,47 @@
 #!/bin/sh
-# Runs the tests that only a Mac runs. The Linux jobs of the gates skip them or do not compile
-# them; the job macos of .github/workflows/gates.yml runs this file for `dev`, a train and a run
-# started by hand, and the release runs it on a Mac before it signs (BLD-042). On the Mac of a person: run it from the
-# repository, with PostgreSQL 17, cargo-nextest and Go on PATH.
-#
-# What it runs:
-#   1. the bun tests that skip off macOS: check-mach-o.sh, and the refusal of a release build
-#      with no signing identity;
-#   2. the Go tests of link/statedir (the access lists of macOS);
-#   3. the Rust tests of each package that holds code for macOS only (PACKAGES; a test holds
-#      the list against the source). Of the hub, only the tests of fleet::link: its other
-#      tests have no macOS code and ran on Linux;
-#   4. the pinning test of the desktop shell, with the trust hook of WKWebView.
-set -eu
-
-PACKAGES="anima-app anima-cli anima-daemon anima-database anima-hub remote-login"
-
+# A diagnostic run, never merged: why the holder tests of anima-daemon fail on GitHub's Mac
+# (run 45118796881). It prints what the step holds open and whether ad hoc copies of the
+# programs of the system run here, then runs only the tests of the holder.
+set -u
 cd "$(dirname "$0")/../.."
-[ "$(uname -s)" = Darwin ] || { echo "macos-tests: this is not a Mac" >&2; exit 2; }
 unset DATABASE_URL
 
-bun install --frozen-lockfile
-bun test deploy/test/check-mach-o.test.ts deploy/test/release-workflow.test.ts
-go -C link test -race ./statedir/...
-packages=""
-for package in $PACKAGES; do packages="$packages -p $package"; done
-# shellcheck disable=SC2086 # the list is words, one for each package
-bun quality/bin/with-postgres.ts cargo nextest run $packages -E 'not package(anima-hub) | test(/fleet::link/)'
-cargo test -p anima-app --test pinning
-echo "macos-tests: pass"
+echo "=== the machine"
+sw_vers; uname -a; sysctl -n machdep.cpu.brand_string; sysctl hw.optional.arm64e hw.optional.arm.FEAT_FPAC 2>&1
+csrutil status 2>&1; pgrep -l oahd || echo "no oahd (Rosetta) process"
+/usr/bin/arch; nvram boot-args 2>&1
+
+echo "=== the descriptors of this step"
+ls -l /dev/fd/ 2>&1
+lsof -a -p $$ -d 0-30 2>&1
+perl -e 'opendir D, "/dev/fd"; print "perl here sees: ", join(" ", sort grep { /^\d+$/ } readdir D), "\n"'
+
+echo "=== ad hoc copies of the programs of the system"
+d=$(mktemp -d)
+for p in /bin/bash /usr/bin/perl /bin/sleep; do cp "$p" "$d/"; done
+codesign --force --sign - "$d/bash" "$d/perl" "$d/sleep" 2>&1
+codesign -dv "$d/bash" 2>&1 | head -8
+file "$d/bash"
+"$d/bash" -c 'echo "bash copy ran as $(uname -m)"'; echo "bash copy exit $?"
+"$d/sleep" 0; echo "sleep copy exit $?"
+"$d/perl" -e 'print "perl copy ok\n"'; echo "perl copy exit $?"
+arch -arm64e "$d/bash" -c 'echo arm64e slice ok'; echo "arm64e slice exit $?"
+arch -x86_64 "$d/bash" -c 'echo x86_64 slice ok'; echo "x86_64 slice exit $?"
+for slice in arm64e x86_64; do
+  lipo "$d/bash" -thin "$slice" -output "$d/bash-$slice" && codesign --force --sign - "$d/bash-$slice" 2>&1
+  "$d/bash-$slice" -c "echo thin $slice ok"; echo "thin $slice exit $?"
+done
+log show --last 3m --style compact --predicate 'process == "kernel" AND (eventMessage CONTAINS[c] "bash" OR eventMessage CONTAINS[c] "arm64e" OR eventMessage CONTAINS[c] "code signature" OR eventMessage CONTAINS[c] "ptrauth")' 2>&1 | tail -30
+ls -l /Library/Logs/DiagnosticReports/ ~/Library/Logs/DiagnosticReports/ 2>&1 | tail -10
+for r in ~/Library/Logs/DiagnosticReports/bash*.ips /Library/Logs/DiagnosticReports/bash*.ips; do [ -f "$r" ] && head -c 3000 "$r"; done
+echo "=== non-Apple programs here"
+which -a bash perl sleep gsleep 2>&1; for p in /opt/homebrew/bin/bash /opt/homebrew/bin/perl /opt/homebrew/bin/gsleep; do [ -x "$p" ] && file "$p"; done
+
+echo "=== the tests of the holder"
+bun install --frozen-lockfile > /dev/null
+bun quality/bin/with-postgres.ts cargo nextest run -p anima-daemon --no-fail-fast -E 'test(/^threads::(start|stop|connection)::/)'
+echo "=== after the tests: the stand-ins and the reports"
+s=$(find target -type d -name mac-stand-ins | head -1); echo "stand-ins: $s"; [ -n "$s" ] && { file "$s"/*; "$s/sh" -c 'echo stand-in sh ran'; echo "stand-in sh exit $?"; }
+ls -l ~/Library/Logs/DiagnosticReports/ 2>&1 | tail -15
+for r in ~/Library/Logs/DiagnosticReports/sh-*.ips ~/Library/Logs/DiagnosticReports/sleep-*.ips ~/Library/Logs/DiagnosticReports/perl*.ips; do [ -f "$r" ] && { echo "--- $r"; head -c 4000 "$r"; }; done
+exit 1
