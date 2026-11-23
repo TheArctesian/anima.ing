@@ -169,13 +169,15 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 .v2 button, .v2 input { font: inherit; color: inherit; }
 .v2 .mono { font-family: var(--font-mono); font-size: var(--t-sm); }
 .v2 .num { font-variant-numeric: tabular-nums; }
-.v2 .uptime { padding: var(--space-3) var(--space-4); font-size: 0.875rem; line-height: 1.5; }
-.v2 .uptime-title { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-2); font-size: inherit; font-weight: 500; }
-.v2 .uptime-title .ic { width: 1em; height: 1em; color: var(--text-secondary); }
-.v2 .uptime dl { max-width: 12rem; margin: 0; }
-.v2 .uptime dl div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-3); }
-.v2 .uptime dt { color: var(--text-secondary); }
-.v2 .uptime dd { margin: 0; font-variant-numeric: tabular-nums; }
+.v2 .health { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--space-5); }
+.v2 .health > section { border-top: var(--border-thin) solid var(--border-subtle); padding-block: var(--space-4); font-size: 0.875rem; line-height: 1.5; }
+.v2 .health h3 { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-3); font-size: inherit; font-weight: 500; }
+.v2 .health h3 .ic { width: 1em; height: 1em; color: var(--text-secondary); }
+.v2 .health dl { display: grid; gap: var(--space-1); margin: 0; }
+.v2 .health dl div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); }
+.v2 .health dt, .v2 .health p { color: var(--text-secondary); }
+.v2 .health dd { margin: 0; font-variant-numeric: tabular-nums; text-align: end; }
+.v2 .health p { margin: 0; }
 .v2 .sec { color: var(--text-secondary); }
 .v2 .ter { color: var(--text-tertiary); }
 .v2 .ic { width: var(--icon-sm); height: var(--icon-sm); flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
@@ -391,18 +393,26 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   <div class="body" style="padding-top: var(--space-4)">
     <div class="cols" style="grid-template-columns: minmax(0, 1fr) 280px; gap: var(--space-4)">
       <div style="display: flex; flex-direction: column; gap: var(--space-4); min-width: 0">
-        <section class="card" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))" aria-label="Health">
-          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Checks</span><span><span class="st up">1 of 1 up</span></span><span class="note">Ping, every 60 s</span></div>
-          <div class="uptime">
-            <h3 class="uptime-title"><svg aria-hidden="true" class="ic" viewBox="0 0 16 16"><circle cx="8" cy="9" r="5"/><path d="M6 2h4M8 4V2m0 7V6m4-1 1-1"/></svg>Uptime</h3>
+        <section class="health" aria-label="Health">
+          <section>
+            <h3><svg aria-hidden="true" class="ic" viewBox="0 0 16 16"><path d="M1 9h3l2-5 3 8 2-5h4"/></svg>Status</h3>
+            <dl>
+              <div><dt>Status</dt><dd><span class="st up">Up</span></dd></div>
+              <div><dt>Maintenance</dt><dd>Off</dd></div>
+            </dl>
+          </section>
+          <section>
+            <h3><svg aria-hidden="true" class="ic" viewBox="0 0 16 16"><circle cx="8" cy="9" r="5"/><path d="M6 2h4M8 4V2m0 7V6m4-1 1-1"/></svg>Uptime</h3>
             <dl>
               <div><dt>24 hours</dt><dd>100%</dd></div>
               <div><dt>7 days</dt><dd>97.7%</dd></div>
               <div><dt>30 days</dt><dd>97.7%</dd></div>
             </dl>
-          </div>
-          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Reached by</span><span>The link, direct</span><span class="note">Last seen 4 s ago</span></div>
-          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Host key</span><span><span class="st up">Trusted</span></span><span class="note">Checked at the last session</span></div>
+          </section>
+          <section>
+            <h3><svg aria-hidden="true" class="ic" viewBox="0 0 16 16"><path d="M10 14H3V3h3m4 0h3v5M6 2h4v3H6zm3 9 2 2 4-4"/></svg>Checks</h3>
+            <dl><div><dt><span class="st up">Up</span></dt><dd>1</dd></div></dl>
+          </section>
         </section>
         <div class="toolbar"><span class="label grow">Resources</span>
           <div class="seg sm" role="group" aria-label="Range"><button class="on" type="button">1 hour</button><button type="button">24 hours</button><button type="button">7 days</button></div></div>
@@ -485,18 +495,26 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   <div class="body" style="padding-top: var(--space-4)">
     <div class="cols" style="grid-template-columns: minmax(0, 1fr) 280px; gap: var(--space-4)">
       <div style="display: flex; flex-direction: column; gap: var(--space-4); min-width: 0">
-        <section class="card" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))" aria-label="Health">
-          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Checks</span><span><span class="st up">1 of 1 up</span></span><span class="note">Ping, every 60 s</span></div>
-          <div class="uptime">
-            <h3 class="uptime-title"><svg aria-hidden="true" class="ic" viewBox="0 0 16 16"><circle cx="8" cy="9" r="5"/><path d="M6 2h4M8 4V2m0 7V6m4-1 1-1"/></svg>Uptime</h3>
+        <section class="health" aria-label="Health">
+          <section>
+            <h3><svg aria-hidden="true" class="ic" viewBox="0 0 16 16"><path d="M1 9h3l2-5 3 8 2-5h4"/></svg>Status</h3>
+            <dl>
+              <div><dt>Status</dt><dd><span class="st up">Up</span></dd></div>
+              <div><dt>Maintenance</dt><dd>Off</dd></div>
+            </dl>
+          </section>
+          <section>
+            <h3><svg aria-hidden="true" class="ic" viewBox="0 0 16 16"><circle cx="8" cy="9" r="5"/><path d="M6 2h4M8 4V2m0 7V6m4-1 1-1"/></svg>Uptime</h3>
             <dl>
               <div><dt>24 hours</dt><dd>100%</dd></div>
               <div><dt>7 days</dt><dd>97.7%</dd></div>
               <div><dt>30 days</dt><dd>97.7%</dd></div>
             </dl>
-          </div>
-          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Reached by</span><span>The link, direct</span><span class="note">Last seen 4 s ago</span></div>
-          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Host key</span><span><span class="st up">Trusted</span></span><span class="note">Checked at the last session</span></div>
+          </section>
+          <section>
+            <h3><svg aria-hidden="true" class="ic" viewBox="0 0 16 16"><path d="M10 14H3V3h3m4 0h3v5M6 2h4v3H6zm3 9 2 2 4-4"/></svg>Checks</h3>
+            <dl><div><dt><span class="st up">Up</span></dt><dd>1</dd></div></dl>
+          </section>
         </section>
         <div class="toolbar"><span class="label grow">Resources</span>
           <div class="seg sm" role="group" aria-label="Range"><button class="on" type="button">1 hour</button><button type="button">24 hours</button><button type="button">7 days</button></div></div>
@@ -573,16 +591,26 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   <div class="body" style="padding-top: var(--space-4)">
     <div class="cols" style="grid-template-columns: minmax(0, 1fr) 280px; gap: var(--space-4)">
       <div style="display: flex; flex-direction: column; gap: var(--space-4); min-width: 0">
-        <section class="card" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr))" aria-label="Health">
-          <div style="display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4)"><span class="label">Checks</span><span class="note">None</span></div>
-          <div class="uptime">
-            <h3 class="uptime-title"><svg aria-hidden="true" class="ic" viewBox="0 0 16 16"><circle cx="8" cy="9" r="5"/><path d="M6 2h4M8 4V2m0 7V6m4-1 1-1"/></svg>Uptime</h3>
+        <section class="health" aria-label="Health">
+          <section>
+            <h3><svg aria-hidden="true" class="ic" viewBox="0 0 16 16"><path d="M1 9h3l2-5 3 8 2-5h4"/></svg>Status</h3>
+            <dl>
+              <div><dt>Status</dt><dd><span class="st up">Up</span></dd></div>
+              <div><dt>Maintenance</dt><dd>Off</dd></div>
+            </dl>
+          </section>
+          <section>
+            <h3><svg aria-hidden="true" class="ic" viewBox="0 0 16 16"><circle cx="8" cy="9" r="5"/><path d="M6 2h4M8 4V2m0 7V6m4-1 1-1"/></svg>Uptime</h3>
             <dl>
               <div><dt>24 hours</dt><dd>100%</dd></div>
               <div><dt>7 days</dt><dd>100%</dd></div>
               <div><dt>30 days</dt><dd>100%</dd></div>
             </dl>
-          </div>
+          </section>
+          <section>
+            <h3><svg aria-hidden="true" class="ic" viewBox="0 0 16 16"><path d="M10 14H3V3h3m4 0h3v5M6 2h4v3H6zm3 9 2 2 4-4"/></svg>Checks</h3>
+            <p>No checks yet</p>
+          </section>
         </section>
         <div class="toolbar"><span class="label grow">Resources</span>
           <div class="seg sm" role="group" aria-label="Range"><button class="on" type="button">1 hour</button><button type="button">24 hours</button><button type="button">7 days</button></div></div>
