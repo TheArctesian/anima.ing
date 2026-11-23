@@ -516,6 +516,9 @@ no live account, credential, cloud write or deployment.
 ### 6.14 Concrete Pipes pilot contract proposal
 
 **Status: proposed, not accepted.** R-NEW-workospilot permits this design, not its implementation.
+On 2026-11-23 the operator asked to use another provider because GitHub is already set up.
+The GitHub-specific example below is superseded as a pilot recommendation; it remains design
+background only until a different provider and operation are selected. No replacement is selected.
 Every choice below remains subject to the provider decision, the existing owners' review and
 separate approval of the complete contract under CON-001. No route, schema or deployment is
 created by this text. The base checked again on 2026-11-23 is `536d92dff`; origin/dev and its
@@ -549,8 +552,10 @@ connection does not carry an older broader grant. Do not silently reuse the exis
 **Account and project binding.** Recommend a private-cloud broker that also owns the pilot
 grant records. Its repository, service placement and storage are still open. At connect, it
 validates the account session under HMD-033 and derives the WorkOS subject; the caller cannot
-choose it. Use person-bound completion from the WorkOS authorization guide, CSRF protection,
-a single-use pending record and an exact registered callback. Keep the verifier server-side.
+choose it. Use `completion: finish_required`, verify returned state, and bind the server-held verifier
+and single-use pending record to the initiating authenticated account session. Possession of
+a completion code alone is insufficient. Require CSRF protection and an exact registered
+callback, following the WorkOS authorization guide.
 List connections with multiple-connection support and bind the selected connected account ID,
 provider and owner to the verified account. The pilot uses a user-owned connection with no
 organization scope; do not fall back to organization or compatibility connections.
@@ -575,18 +580,37 @@ unmanaged external agents wait for a separate enrollment design. This depends on
 owner proving run isolation and holder identity. Do not claim the existing Code relay already
 provides that proof, and do not reuse device-lease token authority as a provider grant.
 
+The owner map also includes [vault Section 3b](../../contracts/extensions/vault.md),
+R-381 to R-384 and Code OD-THR18. Their accepted same-user/sign-in direction is not reversed
+here. Process separation and an in-memory key do not prevent another same-user process from
+calling the holder, using the person's sign-in, or invoking enrollment/grant endpoints.
+The draft therefore makes no claim of hostile same-user isolation or a technically human-only
+grant path. Before acceptance, the owners must reconcile these endpoint rules with that
+existing policy and explicitly state the supported caller/threat boundary. If exclusive
+run authority against same-user processes is required, obtain an operator policy decision
+and a proven enforcement mechanism; do not infer it from a run ID or process boundary.
+
 **Proposed operations and lifecycle.** Names below describe semantics, not accepted API names.
 
 | Operation | Caller and result |
 | --- | --- |
 | Connect/status | Person starts and completes connect. Status returns an opaque connection reference and safe state; no credentials or authorization URL goes to an agent. |
-| Grant | Person confirms the exact project resource, connected account, Code run and one read action. Proposed duration: 15 minutes, one successful dispatch, no renewal by the agent. The broker stores the binding version and grant generation. A second action needs a new grant. |
-| Read | Run-bound tool submits only opaque grant and request IDs. The broker derives every other field. Atomically admit at most one request, durably record dispatch intent, then call Relay with the environment key and explicit user, provider and `X-Relay-Connected-Account`. |
+| Grant | Person confirms the exact project resource, connected account, Code run and one read action. Proposed duration: 15 minutes from the broker transaction that creates the grant, one admitted attempt, no renewal by the agent. The broker stores the binding version and grant generation. A second action needs a new grant. |
+| Read | Run-bound tool submits only opaque grant and request IDs. The broker derives every other field. Atomically admit at most one request and durably record dispatch intent. Separately commit dispatch authorization serialized with revoke/disconnect, then call Relay with the environment key and explicit user, provider and `X-Relay-Connected-Account`. |
 | Result | After parsing and bounding output, serialize the release decision with revoke, recheck account/run/binding/grant state, and durably record the result decision before releasing a response. No response content is stored in the audit. |
-| Revoke | Person revokes a grant; the transaction increments its generation and denies pending dispatch and release. Run end, account termination or binding change invalidates it too. A grant never becomes active again; issue a new one after reconnect. |
+| Revoke | Person revokes a grant; the transaction increments its generation and denies dispatch authorizations and release decisions that have not yet committed. Run end, account termination or binding change invalidates it too. A grant never becomes active again; issue a new one after reconnect. |
 | Disconnect | First block new use of the connection and invalidate all its grants. Then request deletion of that exact Pipes connection. A failed external delete remains visibly pending and locally blocked; it never re-enables access. |
 
-Admission consumes the one dispatch even when the outcome is ambiguous. A duplicate request
+Admission consumes the one attempt even when the outcome is ambiguous. Dispatch intent alone
+is not authorization to send. Immediately before sending, the worker commits authorization
+under the same grant/connection serialization used by revoke/disconnect, checking current
+state, binding, run and expiry. A revoke that wins this ordering prevents authorization;
+a worker must never send solely from an earlier intent. An authorization committed first
+may physically send after revoke; the UI and audit must not promise cancellation of it.
+Each authorization permits at most one send; crashes or uncertain sends are not retried.
+Use the broker authority's clock for the stored creation and expiry times, never caller time.
+Check expiry at admission, dispatch authorization and release; refuse when authority time or
+state cannot be established. Expiry does not undo a send already authorized. A duplicate request
 ID returns safe operation status, not a second provider call or a cached content response.
 The person can inspect the audit and issue a fresh grant. No automatic replay after a timeout
 or process restart. A provider-side revoke may only become visible through a provider response
@@ -614,8 +638,11 @@ of the project/resource fields sent to the cloud, and a way to unlink. None is a
 
 **Before an implementation task.** Resolve OD-W-NEW-workosaction, obtain the private-cloud,
 Projects, Code, CLI and audit owners' review, and approve the complete binding, grant, holder,
-storage and callback contract. Record the source-credential ownership exception to SRC-008
-if the accepted design needs one. The account CLI path and holder enrollment are prerequisites,
+storage and callback contract. Reconcile both SRC-008 credential ownership and SRC-020's desktop-loopback redirect/hub
+code-exchange path with the Extensions owner. The proposed cloud callback is not that path.
+Acceptance must explicitly classify broker connections outside that source contract with
+owner agreement, or record narrowly scoped SRC-008/SRC-020 amendments. Until then the owning
+source requirements remain unchanged and cloud callback implementation is blocked. The account CLI path and holder enrollment are prerequisites,
 not deferred implementation details. Require independent security review of the final design
 and implementation, plus non-live cross-tenant, replay, revoke-race, disconnect-failure,
 scope and output-bound tests. Real provider behavior needs a human check when built. This
@@ -626,7 +653,7 @@ document specifies no deployed host and authorizes no WorkOS configuration chang
 | ID | Decision | Facts | Proposal |
 | --- | --- | --- | --- |
 | OD-W-NEW-workospilot | Which bounded Pipes and Relay direction should be designed next? | Section 6.13: HMD-035 keeps the environment key in the private cloud; source connection is not identity or a project grant. | Decided: A, design one project-bound read-only action through a trusted private-cloud broker, then separately approve the concrete provider, policy and contract (R-NEW-workospilot). No provider, deployment, grant policy or executable integration is approved. |
-| OD-W-NEW-workosaction | Which provider and read operation should the pilot contract target? | Section 6.14 proposes GitHub public-repository metadata with no OAuth scopes. Public reads exercise the Anima authority path but do not demonstrate private-data access. GitHub's classic `repo` OAuth scope includes writes. | Open. A (recommended): GitHub public-repository summary, no scopes, no private records. B: private GitHub repository summary; more useful for private projects, but wait for verified fine-grained credential support rather than approve broad `repo`. C: name another provider and one read operation; research its scope and resource boundary before proceeding. This decision selects the design target only; the complete contract and deployment still need separate approval. |
+| OD-W-NEW-workosaction | Which non-GitHub provider and read operation should the pilot contract target? | On 2026-11-23 the operator said GitHub is already set up and requested another provider. The prior GitHub example in Section 6.14 is superseded as the recommendation. | Open: select another provider and one useful read operation, then verify supported Pipes integration, scopes and resource boundaries. Slack channel summary and Google Drive selected-document summary were suggested in chat, not selected or verified as least-privilege designs. This selects a design target only; the complete contract and deployment need separate approval. |
 | HM-D1 | How can each free hub cost less than the paid hubs earn? | Estimates: a paid Solo hub earns about $13 a month after its hardware and the payment fee. A free always-on slice costs about $2 to $3. At a conversion of 1% to 3%, one paid hub carries 33 to 99 free hubs, so a free hub must cost less than about $0.13 to $0.40 a month. | Decided: HM-R6. The free hub sleeps. |
 | HM-D8 | What does a hub that sleeps cost, and how fast does it start? | The cost is the disk of the hub and its share of memory while it is on. One hub with no device, on the first pool host on 2026-11-17 (the private service's plan, T5): 308 MiB of memory and 56 MiB of disk in use, a sleep in 1.3 seconds, a wake in 0.2 seconds, and about 10 seconds from a make to a ready hub. Not measured: a hub with devices, and many hubs on one host. | Measure on one pool host in step 5. Change the 15 minutes of HMD-024 and the 30 seconds of HMD-026 from the result. |
 | HM-D2 | Where does the usage line sit? | Hub memory is not measured. | Set it after the load test of [shared-pool-hosting.md](shared-pool-hosting.md). |
