@@ -3,7 +3,8 @@ import type { ListedRow } from '$lib/agent-threads/listing/listing';
 import type { Tail } from '$lib/agent-threads/thread';
 import type { MenuEntry } from '../kit/menu';
 import { intentOf, manyMenu, rowMenu, snoozeItems, type Able } from './actions';
-import { customWake, snoozePresets } from './engine';
+import { customWake, inboxEngine, snoozePresets } from './engine';
+import type { LiveThreads } from '$lib/agent-threads/live/live.svelte';
 import { NO_MARKS, type Marks } from '$lib/agent-threads/listing/shelf';
 import { arranged, emptyWords, inOrder, inProjects, projectsOf, type Arranging } from './inbox';
 import { clicked, kept, NO_SELECTION } from './selection';
@@ -220,5 +221,31 @@ describe('a custom snooze (08 inbox 6)', () => {
     expect(customWake({ mode: 'date', date: '2026-11-18', time: '09:00' }, now)).toBeNull();
     expect(customWake({ mode: 'date', date: 'tomorrow', time: '09:00' }, now)).toBeNull();
     expect(customWake({ mode: 'duration', amount: '0', unit: 'days' }, now)).toBeNull();
+  });
+});
+
+describe('the sessions Anima did not start (T3 Code\'s import)', () => {
+  it("settles a session Anima did not start from its last change, as T3 settles what it imports, once the runner says which it started", () => {
+    const rows = [row('ours', 'turn_ended', 5), row('theirs', 'turn_ended', 5), row('runs', 'running', 0), row('pin', 'turn_ended', 5, { pinned: true }), row('back', 'turn_ended', 5), row('wrote', 'turn_ended', 5)];
+    const marks = new Map([['back', { ...NO_MARKS, unsettledAt: new Date(NOW.getTime() - MINUTE) }]]);
+    const at: Arranging = { ...AT, marks, started: new Set(['ours']), prompted: new Map([['wrote', new Date(NOW.getTime() - 5 * MINUTE)]]) };
+    const parts = arranged(rows, at);
+    expect(ids(parts.settled)).toEqual(['theirs']);
+    expect(parts.settled[0]?.since).toEqual(new Date(NOW.getTime() - 5 * MINUTE));
+    expect(ids(parts.active).sort()).toEqual(['back', 'ours', 'wrote']);
+    expect([ids(parts.working), ids(parts.pinned)]).toEqual([['runs'], ['pin']]);
+    expect(arranged(rows, { ...at, started: null }).settled).toEqual([]);
+  });
+
+  it('counts the threads the runner drives as Anima\'s, by its ID and the program\'s, once a listing carries the mark', () => {
+    const listing = (thread: string, startedByAnima: boolean) => ({ thread, pinned: false, archived: false, title: null, removed: false, marks: NO_MARKS, startedByAnima });
+    const runner = (marked: boolean) =>
+      ({
+        listings: new Map([['claude-1', listing('claude-1', marked)]]),
+        threads: new Map([['run-2', { row: { id: 'run-2', session: 'codex-2' } }]]),
+      }) as unknown as LiveThreads;
+    expect(inboxEngine(() => runner(true)).started).toEqual(new Set(['claude-1', 'run-2', 'codex-2']));
+    expect(inboxEngine(() => runner(false)).started).toBeNull();
+    expect(inboxEngine(() => null).started).toBeNull();
   });
 });
