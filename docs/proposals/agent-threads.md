@@ -1230,7 +1230,7 @@ verification remain in TH50 and TH51.
 
 | Task | Work | Needs | Check | State |
 | --- | --- | --- | --- | --- |
-| TH30 | Contract: the work type `agent_thread` of K10 and the long poll of THR-026. Specify one launch result per request, the hub thread ID after launch, and the result of answering an open approval. | OD-THR12, OD-THR20, R-353 | Contract review and ruling (CON-001) | In progress: local review draft in Section 6.4.2, branch `contract/th30-preparation`. Offline behavior decided by R-NEW-th30offline; remaining contract choices and CON-001 acceptance open. No implementation. |
+| TH30 | Contract: the work type `agent_thread` of K10 and the long poll of THR-026. Specify one launch result per request, the hub thread ID after launch, and the result of answering an open approval. | OD-THR12, OD-THR20, R-353 | Contract review and ruling (CON-001) | In progress: local review draft in Section 6.4.2, branch `contract/th30-preparation`. Offline behavior and switch-off answers decided by R-NEW-th30offline and R-NEW-th30switchoff. Local draft held for coordination with the operator's Code work on other computers; remaining contract choices and CON-001 acceptance open. No implementation. |
 | TH31 | The hub: the queue item, the commands of an open thread, the audit events | TH30; W3 | Hub tests and separate security review (R-353) | Not started |
 | TH32 | The daemon: claim, check, run, report (W4 for the run, without a container: an agent program needs the files of the person) | TH30; W4. R-292 (OD-THR12) removes W7 from stage 3. | Tests of Section 8 and separate security review (R-353) | Not started |
 | TH33 | The switch "Threads may start here" at the machine, off by default (USE-004 is on by default; this one is not), and the list of folders where a thread of the hub may run. They are the guards that the operator kept (OD-THR20). They are kept in the settings of the daemon of the user; a program of the same user can change them (accepted, OD-THR18) | TH32 | Tests for the switch and permitted folders | Not started |
@@ -1712,7 +1712,7 @@ as an accepted contract while these points remain unresolved.
 | Work lifetime and loss of the hub | THR-025 says the K10 lease, stop and report apply; K10 ends a build on lease loss and has maximum job lifetimes, while THR-095/096 preserve turns across reconnect/restart. Specify whether the item covers launch only or the live thread, and the exact stop/expiry behavior, `limits`, `cleanup`, update-busy behavior and reconciliation after expiry. R-NEW-th30offline selects continuing local operation after start; wire mechanics and queued-start expiry still need resolution. |
 | Poll and queue bounds | Approve finite poll wait, request/response sizes, prompt/answer sizes, offer count, pending command count and per-operator/device rate limits. Specify dispatch fairness with existing K10 work and stop priority. Keep resource bounds distinct from the soft agent-tree limits of THR-114. |
 | Retry retention and sensitive content | Specify how long launch/command receipts and retry tombstones survive, when queued prompt/answer bodies are erased, and how receipt recovery works after thread/device deletion without retaining transcript content or allowing replay. THR-130 is the transcript policy, not an automatic command-queue policy. |
-| Approval when the local switch is off | THR-129 names starts and prompts. Decide the handling of a positive answer that would resume execution after this switch goes off, including an answer already queued. Denials and stops must remain available. Do not invent a default in the daemon. |
+| Approval when the local switch is off | THR-129 names starts and prompts. R-NEW-th30switchoff permits answers to existing live requests after switch-off, including queued answers that remain valid. Denials and stops must remain available. Do not invent a default in the daemon. |
 | Contract ownership | TH21's owner confirms row creation/tombstones, offers and result integration; the K10 owner confirms the claim/report exceptions and lifetime; the K8 owner confirms the poll slot change. The separate security review identifies any new accepted-risk decision needed before the CON-001 ruling. |
 
 **F1. Work lifetime and loss of the hub — offline behavior decided**
@@ -1726,7 +1726,7 @@ This selects A's continuing-local-lifecycle policy, not a grant to accept unauth
 remote commands. The local switch and existing local controls still apply. The
 proposed launch-only wire mechanics require contract-owner reconciliation and
 CON-001 acceptance; the proposed ten-minute queued-start expiry was not in the
-question and is not approved by this answer. F3, F4, D1 and WORK_OFF choices remain open.
+question and is not approved by this answer. F3, D1 and WORK_OFF choices remain open; F4 is separately decided below.
 
 Constraints: THR-025 puts the start in K10 and says its claim, lease, stop and report
 apply, but puts later turns outside items. THR-026 puts later stops in the poll.
@@ -1842,7 +1842,15 @@ receipt nor enables a content upload. Key storage/rotation for a private fingerp
 transaction ordering and duplicate indexes are engineering details; retention length,
 erasure semantics and treatment of unresolved content are new policy choices.
 
-**F4. Positive approvals after switch off — unselected policy choice**
+**F4. Positive approvals after switch off — B selected**
+
+**R-NEW-th30switchoff.** Operator, first-hand in the main orchestrator,
+2026-11-23: selected B. Remote answers to existing live approval requests remain
+allowed after the local switch is turned off, including queued answers that still
+match that live request. New starts and prompts stay blocked. Existing identity,
+ownership, operator-login and one-answer checks, and the person's running-turn
+stop setting, still apply. This permits a remote allow to start a tool after
+switch-off; it grants no authority over a stale or different request.
 
 Constraints: THR-129 explicitly bars new starts and prompts after switch off and
 lets the person choose what to do with a running turn (default: finish the turn and
@@ -1861,7 +1869,8 @@ In both options the runner checks the switch at the dispatch boundary, serialize
 that check with the answer acceptance, and reports the actual result. If an answer
 was already accepted before switch off, no retry revokes it or sends it again. Those
 race and receipt rules are implementation details; the permission to resume after
-the switch is off is the policy decision. No selection is recorded here.
+the switch is off is selected by R-NEW-th30switchoff. This does not accept
+the complete proposed wire contract under CON-001.
 
 After those reviews, the accepted text must be placed in K10 with its version and
 ruling, with the required K8 concurrency amendment and a precise K1 delta. Then TH31
