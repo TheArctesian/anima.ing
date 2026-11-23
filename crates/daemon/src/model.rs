@@ -5,6 +5,7 @@ pub mod cycle;
 pub mod drain;
 pub mod fetch;
 pub mod folders;
+pub mod found;
 pub mod install;
 pub mod machine_files;
 pub mod modes;

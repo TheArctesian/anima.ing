@@ -36,6 +36,7 @@ async fn the_claim_names_only_the_built_model_types() {
             "runtime_install",
             "model_pull",
             "copy_delete",
+            "copy_adopt",
             "server_start",
             "server_stop"
         ])

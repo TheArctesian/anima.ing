@@ -219,5 +219,6 @@ pub fn node_on(root: &Path, ports: std::ops::RangeInclusive<u16>) -> Node {
         reserve: 0,
         launcher: std::path::PathBuf::from(env!("CARGO_BIN_EXE_anima-daemon")),
         ports,
+        tool_folders: Vec::new(),
     }
 }

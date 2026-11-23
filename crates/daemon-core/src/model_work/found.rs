@@ -6,10 +6,14 @@ pub mod huggingface;
 pub mod ollama;
 pub mod record;
 
+use std::path::{Path, PathBuf};
+
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
 
+use super::folders::Installation;
+use super::machine::MachineSettings;
 use super::names::{Word, is_source_name};
 
 /// The most found models that one walk lists (Section 2.3).
@@ -49,6 +53,52 @@ impl Word for Tool {
             Self::Folder => "folder",
         }
     }
+}
+
+/// A folder of Section 10.2 and the tool that keeps it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Root {
+    pub tool: Tool,
+    pub path: PathBuf,
+}
+
+const OLLAMA_SYSTEM: &str = "/usr/share/ollama/.ollama/models";
+
+/// The fixed folders of Section 10.2 for this installation: below the home folder of the user of
+/// the daemon, and the Ollama folder of the system on Linux. No environment variable of a tool is
+/// read (Section 10.2).
+#[must_use]
+pub fn tool_folders(installation: Installation, home: Option<&Path>) -> Vec<Root> {
+    let root = |tool, path: PathBuf| Root { tool, path };
+    let mut list = Vec::new();
+    if installation != Installation::LinuxSystem
+        && let Some(home) = home.filter(|home| home.is_absolute())
+    {
+        list.extend([
+            root(Tool::Ollama, home.join(".ollama/models")),
+            root(Tool::Huggingface, home.join(".cache/huggingface/hub")),
+            root(Tool::LmStudio, home.join(".lmstudio/models")),
+            root(Tool::LmStudio, home.join(".cache/lm-studio/models")),
+        ]);
+    }
+    if installation != Installation::MacUser {
+        list.push(root(Tool::Ollama, PathBuf::from(OLLAMA_SYSTEM)));
+    }
+    list
+}
+
+/// The folders that a walk reads now: none while `findModels` is false, else the fixed folders
+/// and each folder of `modelFolders`.
+#[must_use]
+pub fn roots(fixed: &[Root], settings: &MachineSettings) -> Vec<Root> {
+    if !settings.find_models {
+        return Vec::new();
+    }
+    let named = settings.model_folders.iter().map(|path| Root {
+        tool: Tool::Folder,
+        path: PathBuf::from(path),
+    });
+    fixed.iter().cloned().chain(named).collect()
 }
 
 /// The key of a found model: stable while the model stays where it is, and never a path that
@@ -138,9 +188,9 @@ pub fn gguf_models<'a>(names: &[&'a str]) -> Vec<Vec<&'a str>> {
 /// Whether the daemon may read an entry: owned by its user, by root or by the owner of the
 /// folder of Section 10.2 it is in, and writable by no group or other user (Section 2.3).
 #[must_use]
-pub const fn owner_permits(owner: u32, mode: u32, daemon: u32, folder_owner: u32) -> bool {
+pub const fn owner_permits(owner: u32, others_write: bool, daemon: u32, folder_owner: u32) -> bool {
     let owner_holds = owner == daemon || owner == 0 || owner == folder_owner;
-    owner_holds && mode & 0o022 == 0
+    owner_holds && !others_write
 }
 
 /// A model that the walk found (Section 8).

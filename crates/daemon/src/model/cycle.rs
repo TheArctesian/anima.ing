@@ -6,6 +6,7 @@ use std::time::Instant;
 use daemon_core::model_work::cause::Cause;
 use daemon_core::model_work::command;
 use daemon_core::model_work::folders::Folders;
+use daemon_core::model_work::found::{self, Root};
 use daemon_core::model_work::machine::MachineSettings;
 use daemon_core::model_work::names::{Runtime, Word as _};
 use daemon_core::model_work::order::{self, Checked, ModelMachine, Order, Parameters};
@@ -25,12 +26,13 @@ use super::supervise::{Server, ServerState, Servers};
 use crate::hub::HubClient;
 use crate::hub::answer::{Answer, Cause as HubCause};
 
-pub const BUILT: [WorkType; 7] = [
+pub const BUILT: [WorkType; 8] = [
     WorkType::ModelReport,
     WorkType::ModelDrain,
     WorkType::RuntimeInstall,
     WorkType::ModelPull,
     WorkType::CopyDelete,
+    WorkType::CopyAdopt,
     WorkType::ServerStart,
     WorkType::ServerStop,
 ];
@@ -49,6 +51,8 @@ pub struct Node {
     /// The daemon program: the launcher of a runtime on Linux (R-331).
     pub launcher: PathBuf,
     pub ports: std::ops::RangeInclusive<u16>,
+    /// The fixed folders of Section 10.2 for this installation (`found::tool_folders`).
+    pub tool_folders: Vec<Root>,
 }
 
 /// The JSON report of attempt `attempt` of item `id` (K10 Section 7, with `model`).
@@ -98,6 +102,25 @@ fn architecture_word(architecture: WorkArchitecture) -> &'static str {
     }
 }
 
+/// The found models of a walk, on a blocking thread.
+async fn found_list(roots: Vec<Root>) -> Vec<Value> {
+    tokio::task::spawn_blocking(move || super::found::listed(&roots))
+        .await
+        .unwrap_or_default()
+}
+
+/// `copy_adopt` on a blocking thread: it reads each file of the model.
+async fn adopt(
+    roots: Vec<Root>,
+    state: PathBuf,
+    copy: Uuid,
+    found: String,
+) -> Result<Value, Cause> {
+    tokio::task::spawn_blocking(move || super::found::adopt(&roots, &state, copy, &found))
+        .await
+        .map_err(|_| Cause::CopyMissing)?
+}
+
 impl Node {
     /// Ends each server of an earlier run (R-331); the daemon calls it once at start, before any claim.
     ///
@@ -105,6 +128,12 @@ impl Node {
     /// An I/O error of the state folder.
     pub fn sweep(&self) -> std::io::Result<usize> {
         super::tree::sweep(&self.folders.state.join("servers"))
+    }
+
+    /// The folders of Section 10.2 that a walk reads now.
+    #[must_use]
+    pub fn found_roots(&self) -> Vec<Root> {
+        found::roots(&self.tool_folders, &self.settings)
     }
 
     #[must_use]
@@ -195,6 +224,33 @@ impl Node {
         })
     }
 
+    fn place(&self) -> Place<'_> {
+        Place {
+            folders: &self.folders,
+            sources: &self.sources,
+            os: os_word(self.os),
+            architecture: architecture_word(self.architecture),
+            reserve: self.reserve,
+            program: &self.launcher,
+        }
+    }
+
+    fn cache(&self) -> super::pull::Cache<'_> {
+        super::pull::Cache {
+            models: &self.folders.models,
+            reserve: self.reserve,
+            program: &self.launcher,
+            settings: &self.settings,
+        }
+    }
+
+    /// The result of `model_report` with the list `found` of a walk.
+    fn model_state(&self, found: Vec<Value>) -> Value {
+        let mut model = state::model_state(&self.folders, &self.servers, &self.settings);
+        model["found"] = Value::Array(found);
+        model
+    }
+
     /// # Errors
     /// The cause of Section 5 of the step.
     pub async fn run(&mut self, order: &Order) -> Result<Option<Value>, Cause> {
@@ -202,22 +258,19 @@ impl Node {
             return Err(Cause::TypeUnknown);
         }
         match &order.parameters {
-            Parameters::Report => Ok(Some(state::model_state(
-                &self.folders,
-                &self.servers,
-                &self.settings,
-            ))),
-            Parameters::Install(release) => {
-                let place = Place {
-                    folders: &self.folders,
-                    sources: &self.sources,
-                    os: os_word(self.os),
-                    architecture: architecture_word(self.architecture),
-                    reserve: self.reserve,
-                    program: &self.launcher,
-                };
-                install::install(release, &place).await.map(|()| None)
+            Parameters::Report => {
+                let found = found_list(self.found_roots()).await;
+                Ok(Some(self.model_state(found)))
             }
+            Parameters::Adopt { copy, found } => {
+                let state = self.folders.state.clone();
+                adopt(self.found_roots(), state, *copy, found.clone())
+                    .await
+                    .map(Some)
+            }
+            Parameters::Install(release) => install::install(release, &self.place())
+                .await
+                .map(|()| None),
             Parameters::Start {
                 server,
                 release,
@@ -236,16 +289,11 @@ impl Node {
                 super::drain::drain(*seconds, || 0).await;
                 Ok(None)
             }
-            Parameters::Pull { .. } => {
-                let cache = super::pull::Cache {
-                    models: &self.folders.models,
-                    reserve: self.reserve,
-                    program: &self.launcher,
-                    settings: &self.settings,
-                };
-                super::pull::pull(&order.parameters, &cache).await
+            Parameters::Pull { .. } => super::pull::pull(&order.parameters, &self.cache()).await,
+            Parameters::CopyDelete { copy } => {
+                super::found::record::forget(&self.folders.state, *copy)?;
+                super::pull::delete(&self.folders.models, *copy)
             }
-            Parameters::CopyDelete { copy } => super::pull::delete(&self.folders.models, *copy),
             Parameters::Stop { server } => {
                 if self.servers.stop(*server).await {
                     Ok(None)

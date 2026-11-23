@@ -1,6 +1,7 @@
 mod claim;
 mod fetch;
 mod files;
+mod found;
 mod install;
 mod kit;
 mod pull;

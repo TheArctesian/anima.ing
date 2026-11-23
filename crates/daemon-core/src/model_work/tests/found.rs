@@ -175,12 +175,11 @@ fn pull_012_the_hugging_face_cache_follows_only_a_link_to_its_own_blobs() {
 fn pull_012_an_entry_that_another_user_can_write_is_not_read() {
     let (daemon, ollama) = (1000, 996);
 
-    assert!(owner_permits(daemon, 0o644, daemon, daemon));
-    assert!(owner_permits(ollama, 0o755, daemon, ollama));
-    assert!(owner_permits(0, 0o755, daemon, daemon));
-    assert!(!owner_permits(1001, 0o644, daemon, daemon));
-    assert!(!owner_permits(daemon, 0o664, daemon, daemon));
-    assert!(!owner_permits(daemon, 0o646, daemon, daemon));
+    assert!(owner_permits(daemon, false, daemon, daemon));
+    assert!(owner_permits(ollama, false, daemon, ollama));
+    assert!(owner_permits(0, false, daemon, daemon));
+    assert!(!owner_permits(1001, false, daemon, daemon));
+    assert!(!owner_permits(daemon, true, daemon, daemon));
 }
 
 fn record() -> Record {
