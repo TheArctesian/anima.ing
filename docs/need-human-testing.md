@@ -143,6 +143,10 @@ The synthetic tests cover the holder's relay lifetime and its refusal paths. The
 prove that a vendor accepts a real forwarded request, token renewal, tool search, streamed
 answers with the installed agents, or the agents' behavior after a daemon update. A separate
 review of the final diff with no High and the operator's explicit word come before step 1.
+The holder-crash/port-rebind blocker in shortened-answers Section 7.10 must be resolved first.
+The proposed TLS repair is not approved or built. Its installed-client checks cover only this
+Mac with synthetic keys and Claude `--bare`; ordinary startup integrations and Linux/Windows
+remain unproved. Do not treat those platforms or the proposed repair as safe to enable.
 Do not use a subscription sign-in for this check until the operator decides OD-SHA8.
 
 1. Build the reviewed daemon. In a terminal, configure the vendor program for an API key using

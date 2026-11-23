@@ -172,6 +172,12 @@ fn write(shared: &Arc<Mutex<Shared>>, thread: &ThreadKey, mut line: String) -> O
     let Some(slot) = state.threads.get(thread) else {
         return refused(Refusal::UnknownThread);
     };
+    if let Some(lease) = &slot.relay {
+        line = match lease.input(line) {
+            Ok(line) => line,
+            Err(why) => return refused(why),
+        };
+    }
     match slot.input.as_ref().map(|input| input.try_send(line)) {
         Some(Ok(())) => Outcome::Ok,
         Some(Err(TrySendError::Full(_))) => refused(Refusal::InputFull),

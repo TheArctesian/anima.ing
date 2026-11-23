@@ -156,6 +156,8 @@ pub enum Refusal {
     ProviderConflict,
     /// The input of the program is closed, or the program ended.
     InputClosed,
+    /// A relayed program cannot receive this input without bypassing its route.
+    BadInput,
     /// The program does not read its input: the queue in front of it is full.
     InputFull,
     /// A program of a thread still runs.

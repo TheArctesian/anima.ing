@@ -188,5 +188,58 @@ async fn th118_a_failed_spawn_releases_the_lease_for_a_retry() {
             .1
             .starts_with("openai_base_url=\"http://127.0.0.1:")
     );
-    assert!(lines[1].1.ends_with("/[relay]/v1\""));
+    assert_eq!(lines[1].1, "openai_base_url=\"http://127.0.0.1:0/v1\"");
+}
+
+#[tokio::test]
+async fn th118_codex_receives_private_routing_on_start_resume_and_fork() {
+    let holder = Holder::start(0);
+    let mut connection = holder.link().await;
+    let id = connection
+        .send(relayed(
+            "private",
+            "while IFS= read -r line; do printf '%s\\n' \"$line\"; done",
+            Program::Codex,
+        ))
+        .await;
+    assert!(matches!(
+        connection.answer(id).await,
+        Outcome::Started { .. }
+    ));
+    for method in ["thread/start", "thread/resume", "thread/fork"] {
+        let line = serde_json::json!({"id":1,"method":method,"params":{"config":{"unrelated":"kept","openai_base_url":"http://127.0.0.1:1"}}}).to_string();
+        let id = connection
+            .send(Action::Write {
+                thread: "private".into(),
+                line,
+            })
+            .await;
+        assert_eq!(connection.answer(id).await, Outcome::Ok);
+    }
+    drop(connection);
+    let mut connection = holder.link().await;
+    let id = connection
+        .send(Action::Write {
+            thread: "private".into(),
+            line: r#"{"id":2,"method":"thread/resume","params":{}}"#.into(),
+        })
+        .await;
+    assert_eq!(connection.answer(id).await, Outcome::Ok);
+    connection
+        .send(Action::CloseInput {
+            thread: "private".into(),
+        })
+        .await;
+    let lines = texts(&connection.until(exited("private")).await);
+    assert_eq!(lines.len(), 4);
+    for (index, (_, line)) in lines.iter().enumerate() {
+        let message: serde_json::Value = serde_json::from_str(line).expect("child input");
+        let config = &message["params"]["config"];
+        let address = config["openai_base_url"].as_str().expect("private URL");
+        assert!(address.starts_with("http://127.0.0.1:"));
+        assert!(address.ends_with("/[relay]/v1"));
+        if index < 3 {
+            assert_eq!(config["unrelated"], "kept");
+        }
+    }
 }

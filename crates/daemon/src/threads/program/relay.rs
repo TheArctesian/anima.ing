@@ -9,6 +9,7 @@ use tokio::sync::OnceCell;
 use super::Start;
 use crate::threads::wire::Refusal;
 
+mod input;
 mod settings;
 
 /// Started lazily: ordinary threads open no TCP listener.
@@ -20,6 +21,7 @@ pub struct Lease {
     relay: Arc<Relay>,
     thread: String,
     address: String,
+    program: upstream::Program,
 }
 
 impl Relays {
@@ -44,6 +46,7 @@ impl Relays {
             relay: Arc::clone(relay),
             thread: thread.to_owned(),
             address,
+            program,
         })
     }
 }
@@ -67,11 +70,11 @@ impl Lease {
                 env.push(("ANTHROPIC_BASE_URL".to_owned(), self.address.clone()));
             }
             Program::Codex => {
-                // The generated URL has only ASCII letters, digits, ':' and '/'. JSON quoting
-                // is also TOML string quoting for that alphabet; no caller supplies this URL.
+                // Before a thread exists, provider requests must not use the default vendor
+                // endpoint. Port zero cannot host a listener; this value contains no bearer.
                 args.extend([
                     "-c".to_owned(),
-                    format!("openai_base_url=\"{}\"", self.address),
+                    "openai_base_url=\"http://127.0.0.1:0/v1\"".to_owned(),
                 ]);
             }
         }

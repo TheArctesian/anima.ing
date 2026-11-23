@@ -315,7 +315,9 @@ The thread runner starts each program with an empty environment and a list that 
 `codex` that the person starts in a terminal never sees the relay.
 
 - Claude Code: the environment variable `ANTHROPIC_BASE_URL`.
-- Codex: the argument `-c openai_base_url="..."`.
+- Codex: the holder supplies `config.openai_base_url` on the private input of
+  `thread/start`, `thread/resume` and `thread/fork`. The startup argument names a closed
+  loopback address with no secret. This replaces the earlier measured argument form (TH118).
 - The address is `http://127.0.0.1:<port>/<secret>/`, where `<secret>` is 32 random bytes of
   this thread in hexadecimal. Measured on 2026-11-22 with the listener below: both programs
   keep a path before `/v1/...` (`/prefix/v1/messages`, `/prefix/v1/responses`).
@@ -446,7 +448,7 @@ the relay never shortens a result with that mark, so the model is never in a loo
 ### 7.10 What is needed from the runner (its session owns `agent-threads` and `threads/`)
 
 1. At the start of a thread with the setting on: a call to the relay that gives the address,
-   and the address in the environment of Claude Code or the argument of Codex.
+   and the address in the environment of Claude Code or the private input of Codex.
 2. At the end of the thread: a call that ends the secret.
 3. The setting of the thread in the start command, off when it is left out, fixed for the thread.
 4. An event kind in the thread log for the lines of 7.9.
@@ -463,20 +465,80 @@ tool offers it. Local-model routing is not part of TH118 (R-385).
 The earlier answer put open and close in the runner and proposed an opaque holder value in
 Hello; it left the survival of the listening port open. TH118 instead gives the holder the
 listener and its per-thread leases. A daemon restart replaces neither the listener nor the
-secret. No secret travels in Hello or goes to disk. The holder revokes the secret when it
+secret. No secret travels in Hello or goes to holder or runner disk records. The holder revokes it when it
 reaps the agent, including while the daemon is absent. Failed starts release their lease.
 The wire version changes so an old holder cannot silently start a thread without its relay.
-Claude Code gets its child environment value; Codex gets the measured `-c openai_base_url`
-argument. Settings that set `ANTHROPIC_BASE_URL`, or cannot be checked, refuse a Claude start;
-the check includes the folder's ancestors and home settings. These checks do not lock the
-settings against a later change by the same user. The holder removes the secret from agent
-output before it reaches the outbox. Relay log entries use fixed lifecycle words.
+Claude Code gets its child environment value. Codex gets `config.openai_base_url` only in
+its private input queue, on start, resume and fork. Other configuration is kept. Malformed
+frames are refused. The startup argument uses `http://127.0.0.1:0/v1`, which has no secret
+and cannot reach a listener. The runner, Hello, and holder records never receive the address.
+Settings that set `ANTHROPIC_BASE_URL`, or cannot be checked, refuse a Claude start; the
+check includes the folder's ancestors and home settings. These checks do not lock settings
+against a later change by the same user. Before output reaches the outbox, the holder removes
+literal secrets within a logical line, including ordinary read-buffer splits. This is not
+redaction of arbitrary encodings or secrets split across logical lines. Relay log entries
+use fixed lifecycle words.
 
-Review risk, not operator acceptance: the measured Codex `-c` form puts the relay URL in
-process arguments, which another local user may be able to read. The relay keeps no vendor
-credential of its own, but the exposed secret can permit traffic attributed to that thread
-or use of its resources. The final review must assess this separately from the same-user,
-Full access threat. No unmeasured environment-variable substitute is used here.
+The first independent review of `f3c5b3e67` found no High and one Medium: the Codex argument
+exposed its relay bearer to another local user. The private input change addresses that
+finding; it needs a new review of the final diff. Two holder regression checks failed before
+the correction and pass after it. A confined Codex 0.170.0 check on this Mac also accepted
+private input for a non-ephemeral session and resume after a process restart. No literal URL
+was found in that successful check's temporary home. This does not prove failure paths.
+
+**Merge blocker, 2026-11-23:** a synthetic child survives a holder crash, then sends its
+provider credential to a different listener that binds the freed relay port. The reproduction
+kills the real holder, binds the same port, and receives the made credential and bearer after
+the child waits 0.4 seconds from input EOF. It does not establish that either real agent
+retries in that window. It establishes that the current HTTP transport has no fail-closed
+invariant if a child does. The branch must not merge with this boundary unresolved.
+
+#### Proposed transport repair — NOT APPROVED
+
+No product TLS change has been made. The following is a proposal for the operator, not an
+active requirement or an acceptance of the remaining risk:
+
+- In 7.2, replace the HTTP address with HTTPS on `127.0.0.1`. Keep private Codex input and the
+  thread-only Claude environment. Keep the per-thread path secret and fixed upstreams.
+- In 7.3, give each holder a fresh private CA and a certificate with the IP SAN `127.0.0.1`.
+  Keep signing and server private keys only in memory. Give each child only the public CA
+  file, in a mode 0700 folder with a mode 0600 file, through `CODEX_CA_CERTIFICATE` or
+  `NODE_EXTRA_CA_CERTS`. Do not change personal configuration or a global trust store, and
+  do not disable certificate or hostname verification.
+- In 7.8, keep the certificate with the listener across daemon reconnects. Keep its public
+  file while a client may need to reload it, and clean it after the clients end. A crash can
+  leave a public certificate file; it must not leave a private key on disk.
+
+These CA mechanisms add trust; they do not pin one certificate. The proposed boundary is
+another Unix user who has no signing key for a CA that the agent already trusts. A valid
+certificate for the loopback IP signed by such a preexisting trusted CA could still be
+accepted. Same-user or administrator changes of the trust store exceed this boundary.
+A socket custodian merely moves the crash boundary to another process. Inheriting the
+listener also depends on clients retaining an undocumented descriptor.
+
+Confined feasibility checks on this Mac used Codex 0.170.0 and Claude Code 2.1.311, fresh
+homes, synthetic keys, and an OS policy that permits network traffic only to localhost.
+Claude used `--bare` to exclude personal keychain and settings reads. Both programs accepted
+the made CA, rejected a certificate with a wrong SAN signed by that CA, and rejected a
+same-port replacement listener with an independent CA before sending any HTTP. Both also
+resumed a persistent session through the correct certificate after a process restart. This
+is not proof of ordinary Claude startup integrations, Linux, Windows, or a real forward.
+The probe writes only synthetic private keys; the proposed product must generate keys in
+memory. Existing workspace dependencies are `rustls`, `tokio-rustls`, and `rcgen`; the last
+would become a runtime dependency for certificate generation.
+
+The checks exposed a second blocker: on TLS failure Codex writes the literal relay URL into
+`logs_2.sqlite-wal` in its own home. Child-scoped `RUST_LOG=off` did not stop this on wrong-SAN
+or rebind failures. The holder cannot redact a file that Codex writes itself. A successful
+session's absence of a URL on disk is not a guarantee for error or retry paths. This must be
+resolved or returned for a separate contract decision before transport implementation.
+A second check included resume after failure: normal stderr had 2464 or 2468 bytes, and
+`RUST_LOG=off` had none, but SQLite retained 150 to 154 log rows and the literal URL in each
+case. The switch loses observed stderr diagnostics without fixing persistence; it is not a
+proposed security control. The database and WAL were mode 0644 inside the deliberately
+mode 0700 synthetic home. That directory blocks other users in the fixture only; no real
+home permissions were inspected. The durable local scripts, results and limitations are in
+`/Users/stephenokita/.t3/evidence/th118-2026-11-23/README.md`.
 
 R-400 still holds: pass-through only, off by default, no offer in a setting, a separate final
 security review before merge or real forwarding, and the first real forward only on the
@@ -516,6 +578,7 @@ then the measure of 7.6 with shortening on for the operator alone; then the ruli
 | OD-SHA3 | Shortening of MCP answers on or off by default | On, after SA3 shows the table. Until then off in `dev`. | Decided (relayed, 2026-11-22): off in `dev` until the table exists. |
 | OD-SHA4 | The limits of the store: 64 MB and 24 hours, or different numbers | 64 MB and 24 hours. | Decided (relayed, 2026-11-22): 64 MB and 24 hours, as named defaults. |
 | OD-SHA7 | Part 2: build the relay in pass-through first (Section 7.12), to make the checks of Section 7.2 with a real sign-in | Yes, after a review of the pass-through code by a session that did not write it. | Decided (R-400, operator, relayed, 2026-11-22): yes, with the conditions of the ruling. |
+| OD-W-NEW-relaytransport | TH118: authorize the proposed HTTPS transport repair in Section 7.10, or retain the HTTP contract and stop the hook. The port-rebind boundary and Codex failure-log URL persistence block merge | Authorize bounded TLS work under the stated other-Unix-user threat scope, while keeping merge and real forwarding blocked until failure-path persistence is resolved and a new independent review passes. No logging toggle or risk acceptance is proposed | Open. NOT APPROVED; the orchestrating session takes the decision to the operator. |
 | OD-SHA8 | Part 2: may a relay on the computer change the requests of a subscription sign-in (the terms of the provider) | The operator reads the terms; until then only the API key kind is offered. | Open. |
 | OD-SHA9 | Part 2: the originals of tool results can hold a secret that the agent read (T5): redact before the write, keep them in memory only, or store them as Part 1 does | In memory only, for the life of the thread. | Decided (the orchestrating session, 2026-11-22): in memory only, for the life of the thread. |
 | OD-SHA5 | The number of rows kept: fixed (15, plus each row of SHA-001), or Headroom's adaptive number | Fixed first. Look again with the measure of SA3. | Open. |
