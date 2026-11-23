@@ -8,7 +8,7 @@ evidence: Approved by R-149 (operator, 2026-11-18): stage 1 (the containers of a
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
-Version: 7.4. Date: 2026-11-22. Version 7.4 records the restart on a different member of a cluster and the direction of HOST-005 for it (R-NEW-clusterrestart). Version 7.3 records that a machine can be in several clusters (R-NEW-clustermembers). Version 7.2 points HOST-052 to the cluster proposal (R-NEW-hostingsections). Version 7.1 adds HOST-051 and HOST-052 and the task H42 from R-NEW-hostedsection (one list of applications and containers; the place where a thing runs). Version 7 records the direction of stage 3 (R-302, R-300, R-301, R-298, R-299, R-319). Version 5 records the build of task H8 and moves HOST-021 from H8 to the new task H13. Version 1 (2026-11-12) was the proposal. Version 2 is the plan: R-149
+Version: 7.5. Date: 2026-11-22. Version 7.5 records that Anima builds clustering itself (R-NEW-clusterbuild). Version 7.4 records the restart on a different member of a cluster and the direction of HOST-005 for it (R-NEW-clusterrestart). Version 7.3 records that a machine can be in several clusters (R-NEW-clustermembers). Version 7.2 points HOST-052 to the cluster proposal (R-NEW-hostingsections). Version 7.1 adds HOST-051 and HOST-052 and the task H42 from R-NEW-hostedsection (one list of applications and containers; the place where a thing runs). Version 7 records the direction of stage 3 (R-302, R-300, R-301, R-298, R-299, R-319). Version 5 records the build of task H8 and moves HOST-021 from H8 to the new task H13. Version 1 (2026-11-12) was the proposal. Version 2 is the plan: R-149
 approves it in two stages and decides the open decisions of version 1. Version 3 adds the comparison
 with Arcane and the proposed requirements HOST-015 to HOST-025 (operator, 2026-11-18: "find more of
 their features and styling components that we could use, and expand our plan"). Version 4 records
@@ -182,7 +182,9 @@ for the approval of that proposal.
   runs is a notion of its own: a machine today, a cluster of machines later. A row and a call name the
   place, not a device identifier wired through each of them. A change of a contract that adds a field
   for where a thing runs names the place (its kind, `machine` for now, and its identifier). R-NEW-hostingsections
-  changes the rest: clusters are designed now, in [clusters.md](../proposals/clusters.md); R-NEW-clustermembers
+  changes the rest: clusters are designed now, in [clusters.md](../proposals/clusters.md); R-NEW-clusterbuild
+  decides that Anima builds clustering itself on the link of each machine to the hub, with no engine,
+  and that the restart and the copies of the data are its own work on that link. R-NEW-clustermembers
   decides that a machine can be in several clusters, so the room of a machine is checked on the machine
   at each placement (CLU-014). Until the other decisions of that proposal are taken, no kind other than
   `machine` is built.
