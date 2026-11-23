@@ -44,7 +44,6 @@ describe('inventory findings', () => {
       return findings(policy, { ...clean, nodes }, cleanExpected, NOW).filter((finding) => finding.kind === 'long-expiry');
     };
     expect(longExpiry(180 * 24 * MS_PER_HOUR)).toEqual([]);
-    // The days are floored: 180 days and an hour counts as 180.
     expect(longExpiry(180 * 24 * MS_PER_HOUR + MS_PER_HOUR)).toEqual([]);
     expect(longExpiry(181 * 24 * MS_PER_HOUR)).toEqual([{ kind: 'long-expiry', node: 'mac', days: 181 }]);
   });

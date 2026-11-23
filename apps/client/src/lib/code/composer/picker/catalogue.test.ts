@@ -171,6 +171,11 @@ describe('the permission modes (03 A.4.1)', () => {
     expect(PERMISSION_MODES.map((mode) => `${mode.id}/${mode.label}`)).toEqual(['approval-required/Supervised', 'auto-accept-edits/Auto-accept edits', 'auto/Auto', 'full-access/Full access']);
   });
 
+  it('says that only Full access can change the checkpoints of Anima, which the Git stage guards in the other modes', () => {
+    const naming = PERMISSION_MODES.filter((mode) => mode.description.includes('checkpoints')).map((mode) => mode.id);
+    expect(naming).toEqual(['full-access']);
+  });
+
   it('falls back to the first offered mode when the asked one is not offered', () => {
     const offered = PERMISSION_MODES.slice(0, 2);
     expect(settledMode(offered, 'auto-accept-edits')?.id).toBe('auto-accept-edits');

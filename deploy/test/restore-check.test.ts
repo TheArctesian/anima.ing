@@ -1,4 +1,3 @@
-// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

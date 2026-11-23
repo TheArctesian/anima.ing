@@ -1,23 +1,16 @@
-import { CatalogueStore } from '$lib/catalogue/store.svelte';
-import type { Container, ContainerCalls, ContainerDetail, ContainerLog, ImageUpdate } from './api';
+import type { ContainerCalls, ContainerDetail, ContainerLog } from './api';
 import { DEFAULT_LINES, type LineChoice } from './rows';
-import { StorageStore } from './storage/storage.svelte';
 
 export type ReadStatus = 'idle' | 'loading' | 'ready' | 'failed';
 
-/** What the section below the table shows of the selected container. */
+/** What the pane below the list shows of the selected container. */
 export type Shown = 'log' | 'detail';
 
 /**
- * The containers of one device and the log of the one the operator selected (HOST-013). The hub reads the device at
- * each call, so nothing here reads again by itself: the operator asks.
+ * The log or the details of the one container of a machine that the operator selected (HOST-001, HOST-017). The hub
+ * reads the machine at each call, so nothing here reads again by itself: the operator asks.
  */
 export class ContainersStore {
-  status = $state<ReadStatus>('idle');
-  /** Why the list did not load, in the hub's words: it says what to do (no SSH credential, no Docker). */
-  problem = $state('');
-  containers = $state.raw<readonly Container[]>([]);
-
   /** The identifier of the container whose log or details are shown; null when none is. */
   selected = $state<string | null>(null);
   shown = $state<Shown>('log');
@@ -31,43 +24,10 @@ export class ContainersStore {
   detailProblem = $state('');
   detail = $state.raw<ContainerDetail | null>(null);
 
-  /** HOST-021: empty until the operator asks; the hub then asks public registries, which takes time. */
-  updatesStatus = $state<ReadStatus>('idle');
-  updatesProblem = $state('');
-  updates = $state.raw<readonly ImageUpdate[]>([]);
-
-  #listGeneration = 0;
   #detailGeneration = 0;
-  #updatesGeneration = 0;
   #logGeneration = 0;
 
-  /** HOST-020: the images, the volumes and the networks of the same device. */
-  readonly storage: StorageStore;
-
-  /** Task H38: the catalogue that an install on this device would take from. */
-  readonly catalogue: CatalogueStore;
-
-  constructor(private readonly calls: ContainerCalls) {
-    this.storage = new StorageStore(calls);
-    this.catalogue = new CatalogueStore(calls);
-  }
-
-  /** Reads the list; an answer to an earlier read is dropped. The last list stays on screen while the next one loads. */
-  async load(): Promise<void> {
-    const generation = ++this.#listGeneration;
-    this.status = 'loading';
-    const result = await this.calls.list();
-    if (generation !== this.#listGeneration) return;
-    if (!result.ok) {
-      this.problem = result.error.message;
-      this.status = 'failed';
-      return;
-    }
-    this.containers = result.value;
-    this.problem = '';
-    this.status = 'ready';
-    if (this.selected !== null && !result.value.some((container) => container.id === this.selected)) this.close();
-  }
+  constructor(private readonly calls: Pick<ContainerCalls, 'log' | 'detail'>) {}
 
   /** Shows the log of a container and reads it. */
   async select(id: string): Promise<void> {
@@ -101,24 +61,6 @@ export class ContainersStore {
     this.detail = result.value;
     this.detailProblem = '';
     this.detailStatus = 'ready';
-  }
-
-  /** HOST-021: asks the hub whether a newer image exists for each container. Anima updates nothing. */
-  async checkUpdates(): Promise<void> {
-    const generation = ++this.#updatesGeneration;
-    this.updatesStatus = 'loading';
-    const result = await this.calls.updates();
-    if (generation !== this.#updatesGeneration) return;
-    if (!result.ok) {
-      // An old answer beside the reason would read as the answer of this try.
-      this.updates = [];
-      this.updatesProblem = result.error.message;
-      this.updatesStatus = 'failed';
-      return;
-    }
-    this.updates = result.value;
-    this.updatesProblem = '';
-    this.updatesStatus = 'ready';
   }
 
   /** Changes how many lines the log shows and reads it again. */

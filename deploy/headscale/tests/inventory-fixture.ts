@@ -1,5 +1,4 @@
-// `headscale nodes list -o json` and `nodes list-routes -o json` (0.29.7) with invented names.
-// Keys use the placeholders of vpn-build.md rule 0.6.
+// `headscale nodes list` and `nodes list-routes` JSON (0.29.7), with invented names and the keys of rule 0.6.
 import { parseNodes, parseRoutes, type Tailnet } from '../src/inventory.ts';
 
 export const NOW = new Date('2026-11-10T00:00:00Z');
@@ -35,7 +34,6 @@ export const rawRoutes = [
 export const tailnet: Tailnet = { nodes: parseNodes(rawNodes), routes: parseRoutes(rawRoutes) };
 export const expected = ['hub', 'mac', 'router-home', 'router-office1', 'daemon-nas', 'mac2'];
 
-/** The tailnet without its bad nodes: hub, a client within 180 days, the home router. */
 export const clean: Tailnet = {
   nodes: tailnet.nodes.filter((entry) => ['hub', 'mac', 'router-home'].includes(entry.name)),
   routes: tailnet.routes.filter((entry) => entry.id === 3),

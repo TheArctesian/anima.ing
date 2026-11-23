@@ -4,9 +4,7 @@ import { join } from "node:path";
 import { parseNftables, type Chain } from "../src/nftables.ts";
 import { evaluateChain, resolvedChain, type Packet } from "./nft-eval.ts";
 
-// VP-13 security review F1: anima-probe, the hub's SSH user, is a shell on this host. The output
-// chain keeps it off the host's own addresses, every container and the VPN; it may still reach
-// the internet. Every other user is unaffected.
+// VP-13 security review F1.
 const VPS_DIR = join(import.meta.dir, "..", "vps");
 const ruleset = parseNftables(readFileSync(join(VPS_DIR, "nftables.conf"), "utf8"));
 const output: Chain = resolvedChain(ruleset, "inet anima_filter", "output");

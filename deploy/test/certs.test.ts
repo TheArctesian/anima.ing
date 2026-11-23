@@ -1,5 +1,3 @@
-// Unix certificate-container scripts are exercised by the Linux/macOS gates.
-// deploy/certs/install.sh, the lego hook (DNS-002, SEC-001), run in a temporary folder.
 import { afterEach, describe, expect, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -81,7 +79,6 @@ describe.skipIf(process.platform === "win32")("install.sh", () => {
       const real = Bun.which(tool, { PATH: "/bin:/usr/bin:/usr/sbin:/sbin" });
       if (real === null) throw new Error(`${tool} not found`);
       const shim = join(shims, tool);
-      // The shim records the call and does nothing else; the order is what is tested.
       writeFileSync(shim, `#!/bin/sh\necho "${tool} $*" >>"${log}"\n[ "${tool}" = chmod ] && exec "${real}" "$@"\nexit 0\n`);
       chmodSync(shim, 0o755);
     }

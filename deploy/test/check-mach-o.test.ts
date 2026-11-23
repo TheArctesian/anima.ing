@@ -1,5 +1,3 @@
-// The refusals of apps/desktop/src-tauri/check-mach-o.sh (UPD-011), the check of each Mach-O
-// file that the job `macos` of the release workflow runs before the notary step.
 import { describe, expect, test } from "bun:test";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -7,7 +5,6 @@ import { join } from "node:path";
 
 const MACH_O_CHECK = join(import.meta.dir, "..", "..", "apps", "desktop", "src-tauri", "check-mach-o.sh");
 
-/** A folder shaped as an application whose programs are copies of one universal file with an ad hoc signature. */
 function adHocApp(programs: string[]): { folder: string; app: string } {
   const folder = mkdtempSync(join(tmpdir(), "anima-mach-o-"));
   const app = join(folder, "Anima.ing.app");
@@ -36,7 +33,6 @@ function machOCheck(app: string): { exitCode: number; errors: string } {
 
 const PROGRAMS = ["anima", "anima-daemon", "anima-database", "anima-desktop", "anima-gateway", "anima-hub", "anima-link", "anima-local-hub"];
 
-// The checked programs are of macOS (codesign, lipo); the pinning gate is skipped elsewhere in the same way.
 describe.skipIf(process.platform !== "darwin")("check-mach-o.sh (UPD-011)", () => {
   test("an application whose programs have an ad hoc signature is refused", () => {
     const { folder, app } = adHocApp(PROGRAMS);

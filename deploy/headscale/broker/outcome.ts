@@ -1,10 +1,4 @@
-/**
- * Checks what a broker change left in Headscale and undoes a wrong result (vpn-plan.md
- * Section 5.1, VPN-003): a personal node must have no tag and an expiry of at most 180 days; a
- * router node must have exactly its two tags and no expiry. Only nodes that joined with a key
- * this broker issued, and the nodes a `register` request may have made, are checked. Pure;
- * time is a parameter.
- */
+/** Checks what a broker change left in Headscale and undoes a wrong result (VPN-003). */
 
 import type { ListedNode, Tailnet } from '../src/inventory.ts';
 import type { Step } from './verbs.ts';
@@ -13,15 +7,10 @@ export interface Issued {
   readonly keyId: number;
   readonly verb: 'personal-key' | 'router-key';
   readonly site?: string;
-  /** ISO time the key was made. */
   readonly at: string;
   readonly passed: boolean;
 }
 
-/**
- * What a `register` request leaves to check, saved before its step runs (H1): the node ids
- * before the step, and the node `auth register` returned once its reply was read.
- */
 export interface Registering {
   readonly before: readonly number[];
   readonly node: number | null;
@@ -36,7 +25,6 @@ export interface Audit {
   readonly issued: readonly Issued[];
 }
 
-/** The fields of a node that the stagger reads. */
 export type Expiring = Pick<ListedNode, 'user' | 'tags' | 'expiry'>;
 
 const DAY_MS = 86_400_000;
@@ -47,27 +35,19 @@ const ISSUED_WAIT_MS = 2 * 3_600_000;
 const OPERATOR = 'operator';
 const ROUTER_TAG = 'tag:router';
 
-/**
- * A key expiry 180, 150, 120 or 90 days after `now`: the first that is not within 30 days of
- * the expiry of another untagged `operator` node, so two computers do not expire together
- * (vpn.md 6B step 5). 90 days if none is free.
- */
+/** Spreads expiries 30 days apart so two computers do not expire together (vpn.md 6B step 5). */
 export function staggered(now: Date, nodes: readonly Expiring[]): Date {
   const taken = nodes.flatMap((node) => (node.user === OPERATOR && node.tags.length === 0 && node.expiry !== null ? [node.expiry.getTime()] : []));
   const free = STAGGER_DAYS.map((days) => now.getTime() + days * DAY_MS).find((candidate) => taken.every((time) => Math.abs(time - candidate) >= STAGGER_GAP_DAYS * DAY_MS));
   return new Date(free ?? now.getTime() + (STAGGER_DAYS.at(-1) ?? MAX_EXPIRY_DAYS) * DAY_MS);
 }
 
-/**
- * The `--expiry` value: RFC 3339 in UTC, whole seconds. Never empty: an empty `--expiry`
- * expires the node at once (vpn.md 6B step 4).
- */
+/** An empty `--expiry` expires the node at once (vpn.md 6B step 4). */
 export function expiryValue(expiry: Date): string {
   if (Number.isNaN(expiry.getTime())) throw new RangeError('the expiry is not a time');
   return expiry.toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
-/** The Headscale step that applies a fix. */
 export function fixStep(fix: Fix): Step {
   const node = `--identifier=${String(fix.node)}`;
   return fix.kind === 'delete' ? ['nodes', 'delete', node, '--force'] : ['nodes', 'expire', node, `--expiry=${expiryValue(fix.expiry)}`];
@@ -75,7 +55,6 @@ export function fixStep(fix: Fix): Step {
 
 interface Check {
   readonly now: Date;
-  /** Every node, with the expiries already set by earlier fixes of this audit. */
   readonly nodes: ListedNode[];
 }
 
@@ -102,18 +81,13 @@ function issuedFix(entry: Issued, node: ListedNode, check: Check): Fix | null {
   return entry.verb === 'personal-key' ? personalFix(node, check) : routerFix(node, entry.site);
 }
 
-/**
- * The nodes a `register` request may have made: the node its reply named, or, when the reply
- * was never read (the step was cut off), every node that is new since the step and joined
- * without a pre-auth key, as `auth register` does.
- */
+/** Without a reply, the candidates are new nodes without a pre-auth key, as `auth register` makes them. */
 function registeredNodes(tailnet: Tailnet, registering: Registering): readonly ListedNode[] {
   if (registering.node !== null) return tailnet.nodes.filter((node) => node.id === registering.node);
   const before = new Set(registering.before);
   return tailnet.nodes.filter((node) => !before.has(node.id) && node.preAuthKeyId === null);
 }
 
-/** Checks the nodes that joined with keys this broker issued, and the nodes of a `register` request. */
 export function audit(tailnet: Tailnet, issued: readonly Issued[], registering: Registering | null, now: Date): Audit {
   const check: Check = { now, nodes: [...tailnet.nodes] };
   const fixes = new Map<number, Fix>();

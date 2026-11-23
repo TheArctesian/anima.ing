@@ -5088,6 +5088,28 @@ Built on the branch `threads/codex-rollout-items`. The tests read rollouts that 
    Expected: one command row `sleep 20 && echo done` with the output `done`; no separate rows for its waits.
 4. On the page of a new thread, choose a Codex model whose efforts list Ultra, and choose Ultra.
    Expected: the thread starts. A model whose list has no Ultra does not offer it.
+### HT-169: a thread in a worktree of its own, and its checkpoints (TH116)
+
+Built on the branch `threads/launcher-read-runs`. The runner makes the Git engine at its start, makes a worktree for a start
+with `--worktree`, starts the program in it, and takes a checkpoint at each end of a turn. The tests use a made Claude Code,
+a made repository in a temporary folder and a daemon with a state folder of its own. They do not cover: a real Claude Code
+or Codex, a large repository (the first worktree of a project copies its history), a confined Codex thread (its reads run
+in `codex sandbox`), and the records folder of the installed daemon (`/Users/Shared/anima-<uid>` on a Mac).
+
+1. In a terminal, in a repository of yours with no uncommitted change, run
+   `anima agents start --program claude-code --folder <the repository> --mode ask --worktree "add a line to the README"`.
+   Expected: one thread ID. Your checkout stays on its branch, with no new file.
+2. Run `anima agents running`.
+   Expected: the folder of the thread is `~/.anima/worktrees/<thread>/<name of the repository>`.
+3. In that folder, run `git branch --show-current` and `git status`.
+   Expected: a branch `anima/` and 8 characters; the change of the agent is there and not in your checkout.
+4. Repeat step 1 with `--program codex`.
+   Expected: as steps 1 to 3. The first start of a large repository takes longer; no window asks for a permission.
+5. Look at `/Users/Shared` with `ls -ld /Users/Shared/anima-*`.
+   Expected: one folder `anima-<your user number>`, with access for you only (`drwx------`).
+
+Result: Open.
+
 ### HT-159: an agent from Anima is as fast as from a terminal (R-403)
 
 Built on the branch `threads/agents-priority`. The runner lifts the holder of the agent programs, and its own questions to a
@@ -5136,5 +5158,26 @@ containers of each through the hub. The tests use a fake hub; nobody has seen th
    Expected: its group stays, with the words of the hub that say why; the other groups still show their rows.
 9. Press "Look for newer images".
    Expected: the column Updates says "Up to date" or "Newer image" for each row of a machine that answered.
+
+Result: Open.
+
+### HT-168: Log and Details in the one list, and the device tab Containers narrowed to its machine (task H42; HSE-008)
+
+Built on the branch `hosted/h42-device-tab`. The tests use a fake hub; nobody has read a real log or real details from the
+list, or seen the tab of a real device.
+
+1. In the desktop application of this build, signed in to a hub with a machine that has SSH on, an accepted host key and
+   Docker with a Compose project, open Hosting. Open the project with its arrow and press Log on one of its containers.
+   Expected: the log of that container shows below the list, with the 200 last lines; Log on that row is pressed.
+2. Press Details on a different container of a different machine.
+   Expected: the log closes and the details of that container show below the list, with the names of its environment
+   variables and no value.
+3. Open the device page of the machine of step 1, tab Containers.
+   Expected: the list has one group, that machine, with no choice Machine, and the link View in Hosting; the choices of the
+   tab are Containers, Images, Volumes and Networks, with no Catalogue.
+4. Press Log on a container in the tab, choose 1000 lines, then Details in the pane.
+   Expected: the same log tools and details as in HT-042.
+5. Press View in Hosting.
+   Expected: Hosting opens on Applications with all machines.
 
 Result: Open.

@@ -1,7 +1,6 @@
 /**
- * The broker's wire format (R-055, VP-7, VP-10): one JSON request line in, one JSON reply
- * line out. Pure. The request comes from the hub's user, so every byte is hostile: anything
- * that is not exactly one of the six verbs with valid values is `bad-request`.
+ * The broker's wire format (R-055, VP-7, VP-10). The request comes from the hub's user, so anything
+ * that is not exactly one verb with valid values is `bad-request`.
  */
 
 export type Request =
@@ -18,7 +17,7 @@ export type Refusal = 'bad-request' | 'unknown-site' | 'rate-limited' | 'node-li
 
 export type Reply<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly refusal: Refusal; readonly detail: string };
 
-/** The longest request line, in UTF-8 bytes, without the newline. */
+/** In UTF-8 bytes, without the newline. */
 export const MAX_REQUEST_BYTES = 1024;
 
 const SITE = /^[a-z0-9-]{1,32}$/;
@@ -59,7 +58,6 @@ function decode(line: string): Readonly<Record<string, unknown>> | null {
   return value as Readonly<Record<string, unknown>>;
 }
 
-/** Parses one request line; `bad-request` for anything else. Max 1 KiB. */
 export function parseRequest(line: string): Request | Refusal {
   const body = decode(line);
   if (body === null || !Object.hasOwn(body, 'verb') || !isVerb(body.verb)) return 'bad-request';
@@ -74,7 +72,6 @@ export function parseRequest(line: string): Request | Refusal {
   return request as Request;
 }
 
-/** The reply detail of each refusal, unless the step that refuses gives a sharper one. */
 export const DETAILS: Readonly<Record<Refusal, string>> = {
   'bad-request': 'the request is not one of the broker verbs',
   'unknown-site': 'the site or its tag is not in the VPN policy',
@@ -85,7 +82,6 @@ export const DETAILS: Readonly<Record<Refusal, string>> = {
   'headscale-failed': 'Headscale or a broker file failed',
 };
 
-/** A refusal thrown inside a request; `serve` turns it into the reply. */
 export class Refused extends Error {
   readonly refusal: Refusal;
 

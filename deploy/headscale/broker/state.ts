@@ -1,9 +1,6 @@
 /**
- * The broker's files (R-055, VP-8): its config, the policy it reads, and the state that
- * survives between requests. One process at a time reads and writes the state: the socket
- * (`MaxConnections=1`) and the audit timer both run the broker under `flock` on
- * /var/lib/anima-broker/lock (H2). The state is written to a temporary file and renamed, so a
- * kill never leaves half.
+ * The broker's files (R-055, VP-8). One process at a time holds the state: the socket and the audit
+ * timer both run the broker under `flock` on /var/lib/anima-broker/lock (H2).
  */
 
 import { open, readFile, rename, rm } from 'node:fs/promises';
@@ -14,16 +11,14 @@ import type { Issued, Registering } from './outcome.ts';
 import { policyView, type PolicyView } from './verbs.ts';
 
 export interface BrokerFiles {
-  /** `/etc/anima/broker.conf`: `max_nodes=<n>` and nothing else. */
   readonly config: string;
   readonly policy: string;
-  /** `/var/lib/anima-broker/state.json`. */
   readonly state: string;
 }
 
 export interface BrokerState extends LimitState {
   readonly issued: readonly Issued[];
-  /** What a `register` request left unchecked; set before its step runs, cleared after the audit. */
+  /** Set before a `register` step runs, cleared after the audit. */
   readonly pendingRegister: Registering | null;
 }
 
@@ -38,7 +33,6 @@ export const EMPTY_STATE: BrokerState = { keys: [], registrations: [], issued: [
 
 const MAX_NODES = /^max_nodes=([1-9]\d{0,4})$/;
 
-/** Reads `max_nodes` from the config text; any other line is an error. */
 export function maxNodesOf(text: string): number {
   const lines = text.split('\n').map((line) => line.trim()).filter((line) => line !== '' && !line.startsWith('#'));
   const match = lines.length === 1 ? MAX_NODES.exec(lines[0] ?? '') : null;
@@ -67,7 +61,6 @@ function isRegistering(value: unknown): value is Registering {
   return fields && Array.isArray(entry.before) && entry.before.every(isId) && (entry.node === null || isId(entry.node));
 }
 
-/** Parses the state file text; a state the broker did not write is an error, never "empty". */
 export function parseState(text: string): BrokerState {
   let value: unknown;
   try {
@@ -83,7 +76,6 @@ export function parseState(text: string): BrokerState {
   return { keys, registrations, issued, pendingRegister } as BrokerState;
 }
 
-/** The saved state, or the empty state when the broker has never run. */
 export async function readState(path: string): Promise<BrokerState> {
   let text: string;
   try {
@@ -95,7 +87,7 @@ export async function readState(path: string): Promise<BrokerState> {
   return parseState(text);
 }
 
-/** Writes the state to a temporary file, flushes it, then renames it over the old one. */
+/** A kill never leaves half a state file. */
 export async function writeState(path: string, state: BrokerState): Promise<void> {
   const temporary = `${path}.${String(process.pid)}.tmp`;
   const file = await open(temporary, 'w', 0o600);

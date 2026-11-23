@@ -1,4 +1,3 @@
-// These fixtures execute the Linux deployment shell scripts; Linux/macOS gates cover them.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -12,8 +11,7 @@ const ruleset = parseNftables(readVps("nftables.conf"));
 const hooked = (hook: string): Chain => ruleset.chains.find((chain) => chain.hook === hook) as Chain;
 const input = hooked("input");
 
-// VP-13: the hub container's SSH and ping to this host's VPN address, the one exception to DNS-005,
-// each only when the route back to the hub is the bridge the packet came in on.
+// VP-13: the hub container's SSH and ping to this host's VPN address are the one exception to DNS-005.
 const HUB = 'iifname "br-*" ip saddr $hub_source ip daddr $hub_vpn_address';
 const REVERSE_PATH = "fib saddr . iif oif exists";
 const HUB_SSH = `${HUB} tcp dport 22 ${REVERSE_PATH} accept`;
@@ -29,7 +27,7 @@ describe.skipIf(process.platform === "win32")("nftables.conf", () => {
 
   test("VPS-002: public accepts are exactly 443/tcp, 3478/udp and 41641/udp", () => {
     expect(publicPorts(input).sort()).toEqual(["3478/udp", "41641/udp", "443/tcp"]);
-    // VP-13: the hub's ping is the one ICMP accept tied to an interface (vps-hub.test.ts).
+    // VP-13: the hub's ping is the one ICMP accept tied to an interface.
     expect(unexplainedAccepts(input)).toEqual([HUB_ECHO_INPUT]);
   });
 
@@ -47,8 +45,6 @@ describe.skipIf(process.platform === "win32")("nftables.conf", () => {
 
   test("VPS-002: replaces only its own table and never flushes the ruleset", () => {
     expect(ruleset.commands.slice(0, 2)).toEqual(["table inet anima_filter", "delete table inet anima_filter"]);
-    // NOT-002, VP-13: the only other top-level lines are the Apprise, hub and anima-probe defines
-    // (vps-apprise.test.ts, vps-hub.test.ts, vps-probe-egress.test.ts).
     expect(ruleset.commands.slice(2).filter((command) => !/^define \w+ = /.test(command))).toEqual([]);
     expect(readVps("nftables.conf")).not.toMatch(/^\s*flush\s+ruleset/m);
   });
@@ -57,11 +53,7 @@ describe.skipIf(process.platform === "win32")("nftables.conf", () => {
     expect(ruleset.chains.filter((chain) => chain.hook === "forward" && chain.policy === "drop")).toEqual([]);
   });
 
-  // These tests read the rules as text; they cannot prove what packets do. The packet
-  // behaviour (neighbour blocked, VPN peer reaches a DNAT-published port, container
-  // reaches a tailnet peer) was checked in network namespaces on ubuntu:24.04 (T3) and
-  // again on almalinux:10 with nftables 1.1.5 and Docker 29.9 (T7). The Apprise rules were
-  // checked the same way on alpine:3.22 with nftables 1.1.3, br_netfilter off and on (WP-52 T5).
+  // These tests read the rules as text; they cannot prove what packets do.
 });
 
 describe.skipIf(process.platform === "win32")("nftables.conf keeps the VPN addresses on tailscale0 (DNS-005)", () => {
@@ -97,7 +89,6 @@ describe.skipIf(process.platform === "win32")("nftables.conf keeps the VPN addre
     expect(forward.table).toBe("inet anima_filter");
     expect(forward.policy).toBe("accept");
     expect(forward.rules[0]).toBe('oifname "tailscale0" iifname != { "lo", "tailscale0", "docker0", "br-*" } drop');
-    // NOT-002: every later rule only narrows what Apprise may send (vps-apprise.test.ts).
     expect(forward.rules.slice(1).filter((rule) => !rule.startsWith("ip saddr $apprise "))).toEqual([]);
   });
 

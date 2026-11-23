@@ -1,8 +1,4 @@
-// Unix deployment/release scripts run in the Linux/macOS gates. Windows uses its native bundle/runtime.
-// deploy/bin/affected-applications and deploy/bin/release-decision: which push to `main` is a
-// release of the desktop application (R-184, R-198, R-200, R-201). Each repository here is made
-// in a temporary folder; the commands under test are the files of this repository, and the map
-// is deploy/release/applications.txt.
+// R-184, R-198, R-200, R-201.
 import { afterAll, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -41,7 +37,6 @@ function git(folder: string, ...given: string[]): string {
   return ran.printed;
 }
 
-/** A commit on the branch that is checked out that changes `paths`; it gives the commit. */
 function change(folder: string, ...paths: string[]): string {
   for (const path of paths) {
     mkdirSync(dirname(join(folder, path)), { recursive: true });

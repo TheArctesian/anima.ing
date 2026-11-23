@@ -96,6 +96,7 @@
   .acts > :global(.anchor:not(:has(.woke))) {
     opacity: 0;
     pointer-events: none;
+    transition: opacity var(--spring-snappy);
   }
 
   .card {

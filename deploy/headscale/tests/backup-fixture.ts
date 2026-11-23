@@ -2,15 +2,13 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSyn
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-// VPS-006 / D-12: backup.sh and prune.sh run against a temporary Headscale folder with fake
-// sqlite3 and restic. The dummy files are placeholders, never real keys.
+// VPS-006 / D-12.
 
 export const BACKUP = resolve(import.meta.dir, "..", "backup");
 export const PASSWORD = "pw-SENTINEL-7f3a";
 export const REPOSITORY_SECRET = "repo-SENTINEL-91c2";
 export const REPOSITORY = `rest:http://headscale-vps:${REPOSITORY_SECRET}@10.10.0.5:8000/headscale-vps/headscale`;
 
-// Each call logs "CALL <name>", one "ARG <value>" line per argument and one "ENV <k=v>" line per variable.
 const RECORD = String.raw`log="$FAKE_DIR/calls.log"
 printf 'CALL %s\n' "$(basename "$0")" >> "$log"
 for a in "$@"; do printf 'ARG %s\n' "$a" >> "$log"; done
@@ -30,7 +28,6 @@ case "$sql" in
 esac
 `;
 
-// backup: lists the folder (names, then `ls -l` modes) and may sleep; snapshots --json: prints $FAKE_SNAPSHOTS.
 const FAKE_RESTIC = String.raw`#!/bin/bash
 ${RECORD}
 while [[ $# -gt 0 ]]; do
@@ -74,7 +71,6 @@ export interface Run {
 
 const roots: string[] = [];
 
-/** Removes every fixture made so far; call from `afterEach` in each test file. */
 export function removeFixtures(): void {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 }
@@ -85,7 +81,6 @@ function write(path: string, text: string, mode = 0o600): void {
   chmodSync(path, mode);
 }
 
-/** A temporary root with fake commands, a dummy Headscale folder, secret files and a TMPDIR. */
 export function fixture(): string {
   const root = mkdtempSync(join(tmpdir(), "anima-backup-test-"));
   roots.push(root);
@@ -103,7 +98,6 @@ export function fixture(): string {
   return root;
 }
 
-/** Writes a `restic snapshots --json` answer for the fake and returns its path. */
 export function snapshotList(root: string, times: string[]): string {
   const path = join(root, "snapshots.json");
   write(path, JSON.stringify(times.map((time) => ({ time, hostname: "anima-vps", tags: ["headscale"] }))));
@@ -161,7 +155,6 @@ export function resticCommands(calls: Call[]): string[][] {
   return calls.filter((call) => call.name === "restic").map((call) => call.argv);
 }
 
-/** Values of `key` in `[section]` of a systemd unit file, in order. */
 export function unitValues(file: string, section: string, key: string): string[] {
   let current = "";
   const values: string[] = [];
