@@ -163,54 +163,8 @@ fn install(target: Target, home: &Home) -> ExitCode {
     match units::install::install(target, &host, env, |step| run_step(step, STEP_DEADLINE)) {
         Ok(file) => {
             eprintln!("Installed {} and started the daemon.", file.display());
-            #[cfg(target_os = "linux")]
-            return launcher_install(&program, host.uid);
-            #[cfg(not(target_os = "linux"))]
-            ExitCode::SUCCESS
-        }
-        Err(error) => failure(&error),
-    }
-}
-
-/// The admin step of the model launcher after an install (L1-6c): only where `AppArmor`
-/// restricts user namespaces and the launcher is missing or outdated.
-#[cfg(target_os = "linux")]
-fn launcher_install(program: &std::path::Path, uid: u32) -> ExitCode {
-    use anima_daemon::units::launcher::offer::{self, Offer};
-    let program = program
-        .canonicalize()
-        .unwrap_or_else(|_| program.to_owned());
-    match offer::install(&program, uid) {
-        Ok(Offer::NotNeeded) => ExitCode::SUCCESS,
-        Ok(Offer::Done) => {
-            eprintln!("Installed the model launcher at {}.", model_launcher::PATH);
-            ExitCode::SUCCESS
-        }
-        Ok(Offer::Declined | Offer::NoTerminal) => {
-            eprintln!(
-                "The model launcher is not installed: each model start here fails with containment_failed (launcher_missing). Run `anima-daemon install` in a terminal to install it."
-            );
-            ExitCode::SUCCESS
-        }
-        Err(error) => failure(&error),
-    }
-}
-
-/// The removal of the model launcher in `anima-daemon uninstall` (L1-6c), when it is there.
-#[cfg(target_os = "linux")]
-fn launcher_uninstall(uid: u32) -> ExitCode {
-    use anima_daemon::units::launcher::offer::{self, Offer};
-    match offer::uninstall(uid) {
-        Ok(Offer::NotNeeded) => ExitCode::SUCCESS,
-        Ok(Offer::Done) => {
-            eprintln!("Removed the model launcher and its profile.");
-            ExitCode::SUCCESS
-        }
-        Ok(Offer::Declined | Offer::NoTerminal) => {
-            eprintln!(
-                "The model launcher and its profile stay: run `anima-daemon uninstall` in a terminal to remove them."
-            );
-            ExitCode::SUCCESS
+            units::launcher_after_install(&host)
+                .map_or_else(|error| failure(&error), |()| ExitCode::SUCCESS)
         }
         Err(error) => failure(&error),
     }
@@ -245,10 +199,8 @@ fn uninstall(home: &Home) -> ExitCode {
         }
         Err(error) => return failure(&error),
     }
-    #[cfg(target_os = "linux")]
-    return launcher_uninstall(uid);
-    #[cfg(not(target_os = "linux"))]
-    ExitCode::SUCCESS
+    units::launcher_after_uninstall(uid)
+        .map_or_else(|error| failure(&error), |()| ExitCode::SUCCESS)
 }
 
 /// `anima-daemon stop` (HMD-055): the user unit stops; its file and the token stay.

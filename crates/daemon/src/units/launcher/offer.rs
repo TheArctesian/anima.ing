@@ -82,6 +82,36 @@ pub fn uninstall(uid: u32) -> Result<Offer, OfferError> {
     )
 }
 
+/// [`install`], with a line on standard error for each answer but [`Offer::NotNeeded`].
+///
+/// # Errors
+/// As [`install`].
+pub fn install_and_say(program: &Path, uid: u32) -> Result<(), OfferError> {
+    match install(program, uid)? {
+        Offer::NotNeeded => {}
+        Offer::Done => eprintln!("Installed the model launcher at {}.", model_launcher::PATH),
+        Offer::Declined | Offer::NoTerminal => eprintln!(
+            "The model launcher is not installed: each model start here fails with containment_failed (launcher_missing). Run `anima-daemon install` in a terminal to install it."
+        ),
+    }
+    Ok(())
+}
+
+/// [`uninstall`], with a line on standard error for each answer but [`Offer::NotNeeded`].
+///
+/// # Errors
+/// As [`uninstall`].
+pub fn uninstall_and_say(uid: u32) -> Result<(), OfferError> {
+    match uninstall(uid)? {
+        Offer::NotNeeded => {}
+        Offer::Done => eprintln!("Removed the model launcher and its profile."),
+        Offer::Declined | Offer::NoTerminal => eprintln!(
+            "The model launcher and its profile stay: run `anima-daemon uninstall` in a terminal to remove them."
+        ),
+    }
+    Ok(())
+}
+
 /// Shows `steps`, asks `question` for `sudo`, and runs them in order.
 fn confirmed_run(
     elevation: Elevation,
