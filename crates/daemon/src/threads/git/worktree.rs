@@ -273,10 +273,6 @@ fn start_of(layout: &Layout, base: Option<&str>) -> Result<String, GitRefusal> {
     found.ok_or(GitRefusal::UnknownBase)
 }
 
-/// The file in the Git folder of the runner that says that the work of the worktree is saved
-/// and its removal started.
-const SAVED: &str = "anima-saved";
-
 /// Saves the files of the worktree to the private ref of its thread in the repository of the
 /// person, then removes the worktree, its entry and the Git folder of the runner with the
 /// checkpoints of the thread. The branch stays. Gives the name of the ref.
@@ -291,7 +287,7 @@ const SAVED: &str = "anima-saved";
 pub async fn remove(git: &Git, home: &Home, worktree: &Worktree) -> Result<String, GitRefusal> {
     let record = worktree.record();
     let kept = checkpoint::kept_ref(worktree.thread());
-    if !record.own.join(SAVED).exists() {
+    if !record.own.join(own::SAVED).exists() {
         // The work is saved whatever the size of the checkpoints of the thread is: it goes
         // to the repository of the person, and the folder of the runner is removed after.
         let held = &git.for_worktree(worktree).await?.with_own_room(u64::MAX);
@@ -305,7 +301,7 @@ pub async fn remove(git: &Git, home: &Home, worktree: &Worktree) -> Result<Strin
         let commit = checkpoint::snapshot_on(held, worktree, tip.clone()).await?;
         own::give(held, worktree, &commit, tip.as_deref()).await?;
         refs::put(&worktree.layout().common_dir, &kept, &commit, Was::Any)?;
-        std::fs::write(record.own.join(SAVED), &commit).map_err(|failed| gone(&failed))?;
+        std::fs::write(record.own.join(own::SAVED), &commit).map_err(|failed| gone(&failed))?;
     }
     // The folder is still the one that the runner made, not one put in its place (P12).
     if record.folder_id.is_some() && FolderId::of(&record.folder) != record.folder_id {
@@ -362,7 +358,7 @@ pub fn remove_broken(
     repository: &str,
 ) -> Result<Option<String>, GitRefusal> {
     let record = home.recorded(thread, repository)?;
-    let saved = record.own.join(SAVED).exists();
+    let saved = record.own.join(own::SAVED).exists();
     // Only a folder at the place that the runner planned, never one that a record names.
     let planned = Home::at(&record.home, home.records())?.planned(thread, repository)?;
     if saved && planned == record.folder && !planned.is_symlink() {

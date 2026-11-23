@@ -35,10 +35,13 @@ async fn a_file_that_changes_between_calls_does_not_fill_the_disk_of_the_records
     for round in 0..12 {
         rewritten(&folder, round, 200 * 1024);
         let status = engine.call(PERSON, target(), GitAction::Status).await;
-        assert!(
-            matches!(status, GitOutcome::Status(_)),
-            "{round}: {status:?}"
-        );
+        let GitOutcome::Status(status) = status else {
+            panic!("{round}: {status:?}");
+        };
+        // Also when the folder was made small in the middle of the snapshot: the one new
+        // file is the one change, and each other file is as the last commit has it.
+        let changed: Vec<&str> = status.files.iter().map(|file| file.path.as_str()).collect();
+        assert_eq!(changed, ["large.bin"], "round {round}");
     }
     let used = engine.disk()[0].largest_thread;
     assert!(
@@ -298,6 +301,13 @@ async fn a_removal_that_stops_in_the_middle_keeps_the_whole_work_at_the_next_try
     std::fs::set_permissions(&locked, mode(0o555)).expect("a mode");
     let first = bench.call(PERSON, GitAction::Remove).await;
     assert!(super::super::refused(&first).is_some(), "{first:?}");
+    // The work is saved as it was. Until the removal ends, nothing takes a snapshot of what
+    // is left of the files, also not a page that asks for the status.
+    if folder.join(".git").exists() {
+        let status = format!("{:?}", bench.call(PERSON, GitAction::Status).await);
+        assert!(status.contains("did not end"), "{status}");
+        assert!(bench.engine.turn_ended(target(), 9).await.is_err());
+    }
     // The person makes the folder removable and tries again: some files are gone already.
     std::fs::set_permissions(&locked, mode(0o755)).expect("a mode");
     let second = bench.call(PERSON, GitAction::Remove).await;

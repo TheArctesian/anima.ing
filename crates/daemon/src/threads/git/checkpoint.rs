@@ -374,7 +374,7 @@ pub async fn forget_before(
         let gone = ["update-ref", "--no-deref", "-d", old.as_str()];
         git.output(Run::new(worktree.folder(), gone)).await?;
     }
-    own::small(git, worktree).await?;
+    own::emptied(git, worktree).await?;
     list(git, worktree).await
 }
 

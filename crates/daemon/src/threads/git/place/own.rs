@@ -59,6 +59,10 @@ pub async fn make(git: &Git, own: &Path, shared: &Path, long_ids: bool) -> Resul
 /// no other size: its checkpoints, and each file that changed in each of them.
 pub const ROOM: u64 = 2 * 1024 * 1024 * 1024;
 
+/// The file in the Git folder of the runner that says that the work of the worktree is saved
+/// and its removal started.
+pub const SAVED: &str = "anima-saved";
+
 /// The file that says how large the folder was after the last time it was made small. While
 /// it has that size, making it small again gives nothing.
 const SMALL_AT: &str = "anima-small-at";
@@ -77,6 +81,16 @@ const SMALL_AT: &str = "anima-small-at";
 /// person can do.
 pub async fn within(git: &Git, worktree: &Worktree) -> Result<u64, GitError> {
     let own = &worktree.record().own;
+    // The work of a worktree whose removal started is saved as it was then: no snapshot is
+    // made of what is left of its files.
+    if own.join(SAVED).exists() {
+        return Err(GitError::Failed {
+            code: None,
+            said: "the removal of the worktree of this chat started and did not end; remove \
+                   the worktree of the chat again"
+                .to_owned(),
+        });
+    }
     for left_over in ["staging", "restore", "outgoing"] {
         let _ = std::fs::remove_dir_all(own.join(left_over));
     }
@@ -91,7 +105,7 @@ pub async fn within(git: &Git, worktree: &Worktree) -> Result<u64, GitError> {
     if used >= room {
         let at = std::fs::read_to_string(own.join(SMALL_AT)).ok();
         if at.and_then(|at| at.trim().parse::<u64>().ok()) != Some(used) {
-            small(git, worktree).await?;
+            emptied(git, worktree).await?;
             used = super::disk::bytes(&objects);
         }
     }
@@ -118,6 +132,18 @@ pub async fn within(git: &Git, worktree: &Worktree) -> Result<u64, GitError> {
     }
 }
 
+/// [`small`], after the index of the runner was emptied: it holds the files of the last
+/// snapshot, which are no checkpoint. Only for a moment when no snapshot is being made: a
+/// snapshot fills the index again before it uses it.
+///
+/// # Errors
+/// As [`small`].
+pub async fn emptied(git: &Git, worktree: &Worktree) -> Result<(), GitError> {
+    let empty = Run::new(worktree.folder(), ["read-tree", "--empty"]);
+    git.output(empty).await?;
+    small(git, worktree).await
+}
+
 /// Removes from the Git folder of the runner for `worktree` each object that no ref of it and
 /// no file of its index needs, and writes down the size after it.
 ///
@@ -130,10 +156,6 @@ pub async fn within(git: &Git, worktree: &Worktree) -> Result<u64, GitError> {
 pub async fn small(git: &Git, worktree: &Worktree) -> Result<(), GitError> {
     let own = &worktree.record().own;
     shared::ends(worktree)?;
-    // The index of the runner holds the files of the last snapshot: they are no checkpoint.
-    // The next snapshot fills it again.
-    let empty = Run::new(worktree.folder(), ["read-tree", "--empty"]);
-    git.output(empty).await?;
     let prune = Run::new(worktree.folder(), ["prune", "--expire=now"]).with_time(shared::LONG);
     let pruned = git.output(prune).await;
     shared::ends(worktree)?;
