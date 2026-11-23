@@ -27,6 +27,7 @@ name = "anima"
 path = "src/main.rs"
 
 [dependencies]
+remote-login = { path = "../remote-login" }
 # One body type for every request: the serialised document is wiped when it drops.
 bytes.workspace = true
 # API-key expiry from a number of days (`key create --expires 90d`).

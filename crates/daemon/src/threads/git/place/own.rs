@@ -55,6 +55,116 @@ pub async fn make(git: &Git, own: &Path, shared: &Path, long_ids: bool) -> Resul
     std::fs::write(own.join("objects/info/alternates"), borrowed).map_err(GitError::Files)
 }
 
+/// The bytes that the Git folder of the runner for one worktree can hold, when the person set
+/// no other size: its checkpoints, and each file that changed in each of them.
+pub const ROOM: u64 = 2 * 1024 * 1024 * 1024;
+
+/// The file in the Git folder of the runner that says that the work of the worktree is saved
+/// and its removal started.
+pub const SAVED: &str = "anima-saved";
+
+/// The file that says how large the folder was after the last time it was made small. While
+/// it has that size, making it small again gives nothing.
+const SMALL_AT: &str = "anima-small-at";
+
+/// The bytes that a snapshot can still write into the Git folder of the runner for
+/// `worktree`. Each status and each list of changes writes the changed files as objects, and
+/// the bytes are the ones that the agent chose: without a size, one thread fills the disk of
+/// the records for each project. Only the objects count: what a call left in a work folder
+/// goes here first. A folder that is over is made small before: the objects that no
+/// checkpoint, no reviewed snapshot and no kept ref of the thread needs go. The caller holds
+/// the lock of the index of the worktree, so no snapshot of this worktree is in the middle of
+/// its work. The disk of the records keeps free what [`shared::free_for`] says.
+///
+/// # Errors
+/// A [`GitError`] when the folder is over its size also after that; the words say what the
+/// person can do.
+pub async fn within(git: &Git, worktree: &Worktree) -> Result<u64, GitError> {
+    let own = &worktree.record().own;
+    // The work of a worktree whose removal started is saved as it was then: no snapshot is
+    // made of what is left of its files.
+    if own.join(SAVED).exists() && git.own_room() != u64::MAX {
+        return Err(GitError::Failed {
+            code: None,
+            said: "the removal of the worktree of this chat started and did not end. Its \
+                   files were saved when it started; remove the worktree of the chat again, \
+                   and what changed since is saved apart"
+                .to_owned(),
+        });
+    }
+    for left_over in ["staging", "restore", "outgoing"] {
+        let _ = std::fs::remove_dir_all(own.join(left_over));
+    }
+    // A `git` that was ended in the middle leaves its lock. The caller holds the lock of
+    // this worktree, so no `git` of the runner works in this folder now.
+    for lock in ["index.lock", "shallow.lock"] {
+        let _ = std::fs::remove_file(own.join(lock));
+    }
+    let objects = own.join("objects");
+    let room = git.own_room();
+    let mut used = super::disk::bytes(&objects);
+    if used >= room {
+        let at = std::fs::read_to_string(own.join(SMALL_AT)).ok();
+        if at.and_then(|at| at.trim().parse::<u64>().ok()) != Some(used) {
+            emptied(git, worktree).await?;
+            used = super::disk::bytes(&objects);
+        }
+    }
+    let mib = |bytes: u64| bytes / (1024 * 1024);
+    // A removal saves the work also when the disk is nearly full: it frees the disk after.
+    let free = if room == u64::MAX {
+        shared::free_at(own)
+    } else {
+        shared::free_for(own)
+    };
+    match room.saturating_sub(used) {
+        // Not the thread but the disk has no room: a snapshot with no changed file works.
+        left if left > 0 => Ok(left.min(free)),
+        _ => Err(GitError::Failed {
+            code: None,
+            said: format!(
+                "the checkpoints of this chat use {} MiB of the disk of Anima's records; one \
+                 chat can have {} MiB, and the disk must keep some room. Remove old \
+                 checkpoints of the chat, or remove the worktree of the chat",
+                mib(used),
+                mib(room)
+            ),
+        }),
+    }
+}
+
+/// [`small`], after the index of the runner was emptied: it holds the files of the last
+/// snapshot, which are no checkpoint. Only for a moment when no snapshot is being made: a
+/// snapshot fills the index again before it uses it.
+///
+/// # Errors
+/// As [`small`].
+pub async fn emptied(git: &Git, worktree: &Worktree) -> Result<(), GitError> {
+    let empty = Run::new(worktree.folder(), ["read-tree", "--empty"]);
+    git.output(empty).await?;
+    small(git, worktree).await
+}
+
+/// Removes from the Git folder of the runner for `worktree` each object that no ref of it and
+/// no file of its index needs, and writes down the size after it.
+///
+/// `git prune` also drops from the list of shallow ends each commit that no ref of the folder
+/// reaches. That list is of the project, not of the refs of one thread: it is put back as
+/// the copy of the project has it before `git` reads it and after `git` changed it.
+///
+/// # Errors
+/// A [`GitError`] when `git prune` fails.
+pub async fn small(git: &Git, worktree: &Worktree) -> Result<(), GitError> {
+    let own = &worktree.record().own;
+    shared::ends(worktree)?;
+    let prune = Run::new(worktree.folder(), ["prune", "--expire=now"]).with_time(shared::LONG);
+    let pruned = git.output(prune).await;
+    shared::ends(worktree)?;
+    pruned?;
+    let used = super::disk::bytes(&own.join("objects")).to_string();
+    std::fs::write(own.join(SMALL_AT), used).map_err(GitError::Files)
+}
+
 /// Where the worktree is, with the history of its last commit in the checked copy of the
 /// project ([`shared::learn`]).
 ///
@@ -117,7 +227,7 @@ pub async fn give(
         "--quiet".as_ref(),
         named.as_os_str(),
     ];
-    let run = Run::new(worktree.folder(), pack);
+    let run = Run::new(worktree.folder(), pack).with_time(shared::LONG);
     git.output(run.with_input(wanted.into_bytes())).await?;
     for pack in packs_in(&outgoing)? {
         // The pack first: git reads a pack only when its list of names is beside it.
@@ -127,6 +237,44 @@ pub async fn give(
         }
     }
     let _ = std::fs::remove_dir_all(&outgoing);
+    large_files(&common, &worktree.record().own).map_err(GitError::Files)
+}
+
+/// Copies the contents that Git LFS keeps for the runner's folder at `own` into the store of
+/// the repository of the person. When the person uses Git LFS for all their repositories, a
+/// snapshot holds only a short pointer for each such file and the content is beside the Git
+/// folder (`lfs/objects`). A commit or a saved worktree without that content would name
+/// files that are nowhere. Each content is a file named by its hash; one that is there stays.
+fn large_files(common: &Dir, own: &Path) -> std::io::Result<()> {
+    let mut folders = vec![(
+        own.join("lfs/objects"),
+        std::path::PathBuf::from("lfs/objects"),
+    )];
+    while let Some((from, to)) = folders.pop() {
+        let Ok(listed) = std::fs::read_dir(&from) else {
+            continue;
+        };
+        for entry in listed.flatten() {
+            let (path, kind) = (entry.path(), entry.file_type()?);
+            let at = to.join(entry.file_name());
+            if kind.is_dir() {
+                folders.push((path, at));
+            } else if kind.is_file() {
+                let Some((into, name)) = common.above(&at, Make::Missing)? else {
+                    continue;
+                };
+                // A content with its whole length is there already. A shorter one is what
+                // a copy that was stopped left: it is written again.
+                let whole = match into.file(name)? {
+                    Some(there) => there.metadata()?.len() == entry.metadata()?.len(),
+                    None => false,
+                };
+                if !whole {
+                    placed(&into, name, &path)?;
+                }
+            }
+        }
+    }
     Ok(())
 }
 
