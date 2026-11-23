@@ -19,7 +19,8 @@ pub struct Origin(Spelled);
 enum Spelled {
     Https(Url),
     LinkSocket(PathBuf),
-    /// The link origin before R-172, which a stored file can still hold (ROL-018).
+    /// The link origin before R-172, which a stored file can still hold (ROL-018); the daemon never
+    /// sends to the port.
     OldLinkPort(Url),
 }
 

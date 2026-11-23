@@ -62,6 +62,7 @@ pub fn environment(temporary: &Path, bin: &Path, key: &str) -> Vec<(String, Stri
 }
 
 /// Never `--trust-remote-code`, only safetensors weights and no request logs (Section 2.1, SEC-C-008).
+/// The API key is in the environment, never on the command line.
 #[must_use]
 pub fn vllm_arguments(copy: &Path, port: u16) -> Vec<String> {
     let copy = copy.display().to_string();

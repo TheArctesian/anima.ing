@@ -1,4 +1,5 @@
 //! Moves an enrolment with the old link origin to the link socket once its peer passes the check (R-172, R-317).
+//! After the move the path is kept with the token, so no value of the environment decides it again.
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;

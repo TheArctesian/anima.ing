@@ -1,4 +1,5 @@
 //! The output ring of a runtime: never sent to the hub nor copied into a log line (Section 2.1, SEC-C-010).
+//! Its standard output and standard error go to one file of mode 0600 of at most 1 MiB.
 
 use std::fs::{File, OpenOptions};
 use std::io::{self, Seek as _, SeekFrom, Write as _};

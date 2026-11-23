@@ -1,6 +1,7 @@
 //! The operational keys between a daemon and its hub (K-E5 Section 2.1, R-147).
 //! [`KeyValue`] is the one type that holds a value: it implements neither `Debug`, `Display`,
-//! `Clone` nor `PartialEq`, and wipes on drop (LOG-007).
+//! `Clone` nor `PartialEq`, and wipes on drop (LOG-007). It leaves only through
+//! [`KeyValue::expose`], and through the `value` member of [`FetchedKey`] as base64.
 
 use std::collections::BTreeSet;
 
@@ -30,6 +31,7 @@ pub fn is_key_name(text: &str) -> bool {
             .all(|byte| matches!(byte, b'a'..=b'z' | b'0'..=b'9' | b'_' | b'.' | b'-'))
 }
 
+/// It names a value; it never holds one.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct KeyVersion {
     pub name: String,

@@ -1,4 +1,5 @@
 //! The bodies of the work route (K10); no job holds a command, an argument, a path, an address, an image name or an environment variable.
+//! No body holds a secret but the answer to a secret request, which this file does not type.
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

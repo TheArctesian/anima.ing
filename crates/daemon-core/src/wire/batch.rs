@@ -14,6 +14,7 @@ use crate::readings::{self, Drive};
 /// `POST /daemon/v1/push` (K8 Section 4); [`Batch::check`] says whether the hub takes it.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Batch {
+    /// It must be the token's device (MET-017).
     pub device: Uuid,
     pub series: Vec<BatchSeries>,
     pub points: Vec<BatchPoint>,

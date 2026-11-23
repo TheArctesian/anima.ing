@@ -1,5 +1,7 @@
 //! The download runs in a child of the daemon in the mode [`child::FETCH_MODE`], with an empty
-//! environment and no token, hub origin or proxy (Section 4, R-336).
+//! environment and no token, hub origin or proxy (Section 4, R-336). Its HTTPS client uses no
+//! proxy and the roots of the program, follows at most 5 redirects and only to a host of the fixed
+//! list, never to an IP address, and reads at most `sizeBytes`.
 
 pub mod child;
 pub mod spawn;

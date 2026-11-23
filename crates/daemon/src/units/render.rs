@@ -21,6 +21,7 @@ pub enum RenderError {
     Template,
 }
 
+/// Absolute, and made only of characters that systemd and XML never treat as syntax.
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct Program<'a>(&'a str);
 

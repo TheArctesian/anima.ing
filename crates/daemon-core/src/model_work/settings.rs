@@ -5,6 +5,7 @@ use serde_json::{Map, Value};
 use super::cause::Cause;
 use super::names::Runtime;
 
+/// The daemon owns these values: a member with one of these names, or whose name starts with `-`, is refused with `flag_owned`.
 pub const OWNED: [&str; 14] = [
     "host",
     "port",

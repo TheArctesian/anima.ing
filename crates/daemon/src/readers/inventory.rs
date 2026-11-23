@@ -1,5 +1,7 @@
 //! Runs the probes of the tool inventory (CAP-020 to CAP-028); nothing a probe prints is logged.
-//! `RUSTUP_AUTO_INSTALL=0` keeps a rustup proxy from downloading a toolchain.
+//! A probe gets no input and an environment of only `PATH`, `LC_ALL=C` and `RUSTUP_AUTO_INSTALL=0`,
+//! which keeps a rustup proxy from downloading a toolchain; the operator's `~/.claude` and
+//! `~/.codex` are never read or changed (CAP-025).
 
 use std::env;
 #[cfg(unix)]

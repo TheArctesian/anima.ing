@@ -1,6 +1,8 @@
 //! The process tree of a server (Section 9, R-331): the processes that the loopback check reads
 //! and that a stop ends. Before each signal the daemon checks the id and the start time of the
 //! process, so a process id that the system gave to a different program is never signalled.
+//! When the cgroup of a server cannot be made, the start is refused (`containment_failed`), with
+//! no fallback.
 
 #[cfg(target_os = "linux")]
 pub mod delegation;
@@ -38,7 +40,8 @@ fn open_folder(path: &Path) -> Option<OwnedFd> {
 }
 
 /// `O_NOFOLLOW` checks the last part of the folder and the file only; the parent folders are
-/// trusted because the daemon made them with [`super::folders::private_below`].
+/// trusted because the daemon made them with [`super::folders::private_below`]. A runtime may have
+/// replaced the file, so a FIFO, a device or a file over `cap` bytes is refused.
 #[must_use]
 pub fn read_capped(path: &Path, cap: usize) -> Option<Vec<u8>> {
     read_capped_at(&open_folder(path.parent()?)?, path.file_name()?, cap)

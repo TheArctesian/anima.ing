@@ -54,6 +54,7 @@ pub enum Command {
         folder: std::path::PathBuf,
         limit: usize,
     },
+    /// Prints [`version_line`]: no home, no token and no network.
     Version,
 }
 

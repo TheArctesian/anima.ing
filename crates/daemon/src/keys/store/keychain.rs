@@ -1,4 +1,5 @@
-//! The macOS key store: one generic password in the login Keychain (K-E5 Section 2.1).
+//! The macOS key store: one generic password in the login Keychain (K-E5 Section 2.1). Each read,
+//! write and delete is bounded ([`crate::keychain_wait`]).
 
 use keyring::Entry;
 use zeroize::Zeroizing;

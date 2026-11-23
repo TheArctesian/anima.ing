@@ -87,6 +87,7 @@ fn start_log() {
     }
 }
 
+/// `anima-daemon key read <name>`: the value to standard output, never to a terminal.
 fn key_read(name: &str, home: &Home) -> ExitCode {
     let mut out = std::io::stdout().lock();
     let to_terminal = out.is_terminal();

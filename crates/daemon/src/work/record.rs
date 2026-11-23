@@ -1,6 +1,6 @@
 //! The machine's own log of the work that it took (K10 Section 9, SF-012): one entry for each
-//! item, also each refused one, written before the state `preparing`. An entry holds no member
-//! of the item that this file does not name.
+//! item, also each refused one, written before the state `preparing`. An entry holds no secret,
+//! and no member of the item that this file does not name.
 
 use chrono::{DateTime, Utc};
 use daemon_core::wire::WorkJob;

@@ -1,6 +1,8 @@
 //! The operational keys of this machine and the local reader `anima-daemon key read` (K-E5
 //! Section 2.1, R-147). No type that holds a value implements `Debug` or `Display`, and no log
-//! line holds a value or a key name (LOG-007).
+//! line holds a value or a key name (LOG-007). The cache is kept where the token is kept, and is
+//! deleted after 7 days with no answer that named the keys, on a refused token, and when the
+//! daemon leaves the machine.
 
 pub mod cache;
 pub mod keeper;

@@ -1,6 +1,8 @@
 //! The unpack of a runtime archive (Section 6, F10). Each file and folder is made relative to an
 //! open handle of its folder with `O_NOFOLLOW`; only regular files, folders and the links that
-//! [`links`] turns into copies. Blocking: the caller runs it on a blocking thread.
+//! [`links`] turns into copies; no hard link, device, FIFO, absolute path or `..`. Folders and
+//! program files get 0755, other files 0644, with no setuid, setgid or sticky bit. Blocking: the
+//! caller runs it on a blocking thread.
 
 mod links;
 mod tar_gz;

@@ -47,7 +47,8 @@ fn own_plain_folder(path: &Path) -> io::Result<()> {
     Ok(())
 }
 
-/// Gives the handle of the last folder (Section 10).
+/// Makes each part relative to an open handle of its parent with `O_NOFOLLOW`, mode 0700 and owned
+/// by this user, and refuses a link at any part. Gives the handle of the last folder (Section 10).
 ///
 /// # Errors
 /// An I/O error; `PermissionDenied` for a part that a different user owns; `InvalidInput` for

@@ -85,8 +85,10 @@ impl Home {
         self.dir.join(TOKEN_FILE)
     }
 
-    /// Files in the folder decide where the bearer goes. Unlike OpenSSH `StrictModes`, a
-    /// group-writable folder above it passes, so homes made with `umask 002` work.
+    /// Makes the folder (mode 0700) when it is missing, and refuses one that is a link, is not the
+    /// running user's, gives group or others any access, or lies below a folder others can write
+    /// to without the sticky bit. Files in the folder decide where the bearer goes. Unlike OpenSSH
+    /// `StrictModes`, a group-writable folder above it passes, so homes made with `umask 002` work.
     ///
     /// # Errors
     /// [`HomeError::Exposed`] for such a folder, [`HomeError::Io`] when it cannot be made.
@@ -105,7 +107,8 @@ impl Home {
         }
     }
 
-    /// `None` when the daemon was never enrolled.
+    /// `None` when the daemon was never enrolled. The folder and the file are held to the same
+    /// rules as the token file.
     ///
     /// # Errors
     /// [`HomeError`] when the folder or file is exposed, or the file cannot be read or parsed.

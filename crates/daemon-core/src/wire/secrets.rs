@@ -1,6 +1,7 @@
 //! The daemon's two secrets (K8 Section 2, MET-012, MET-013). Only the canonical spelling is
 //! accepted, so a value has one text and one hash. Neither type implements `Debug`, `Display`,
-//! `Clone`, `Serialize` or `Deserialize` (LOG-007).
+//! `Clone`, `Serialize` or `Deserialize` (LOG-007): the text leaves only through `expose`, for the
+//! one body or header that carries it, and through the fields of the K8 bodies in this module's parent.
 
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use serde::{Deserialize as _, Deserializer, Serializer, de::Error as _};

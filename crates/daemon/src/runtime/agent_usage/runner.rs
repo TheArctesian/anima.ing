@@ -1,4 +1,5 @@
-//! The accounts of the programs, asked of this computer's thread runner (THR-128, THR-132).
+//! The accounts of the programs, asked of this computer's thread runner (THR-128, THR-132). The
+//! socket must be a socket of this user that no one else may use (THR-128).
 //! The answer is not logged, and the identifier never leaves the machine (AIS-022, THR-149).
 
 use std::os::unix::fs::{FileTypeExt as _, MetadataExt as _, PermissionsExt as _};

@@ -1,4 +1,6 @@
 //! Keychain calls bounded by [`DEADLINE`]: macOS can wait for a click that never comes (R-322).
+//! One OS call is in flight for each item, reads and writes together; a write runs only after the
+//! call in flight ends, as its bytes may be newer.
 
 use std::io;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};

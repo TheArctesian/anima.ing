@@ -1,5 +1,6 @@
 //! The macOS token store: one generic password in the login Keychain (MET-013).
-//! A call that macOS holds for the person is [`TokenStoreError::KeychainWaits`].
+//! Each read, write and delete is bounded ([`crate::keychain_wait`]): a call that macOS holds for
+//! the person is [`TokenStoreError::KeychainWaits`].
 
 use std::time::Duration;
 

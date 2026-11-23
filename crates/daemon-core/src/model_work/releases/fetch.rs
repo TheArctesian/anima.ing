@@ -151,7 +151,8 @@ pub enum Ending<'a> {
 }
 
 /// A fault, a stall and a reply that is not a word of [`CHILD_CAUSES`] are `fetch_failed`
-/// (R-406); no text of the child goes into the cause.
+/// (R-406); no text of the child goes into the cause. Only the word `source_failed` from a child
+/// that exited with code 0 is `source_failed`.
 ///
 /// # Errors
 /// The cause of the child, or `fetch_failed`.

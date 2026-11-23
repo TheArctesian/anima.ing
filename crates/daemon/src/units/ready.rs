@@ -73,7 +73,8 @@ pub(super) fn token_usable(
     }
 }
 
-/// `token` is the token file's `st_mode` and owner; only after this passes does the caller read it, as root.
+/// `token` is the token file's `st_mode` and owner; it must be the account's own regular 0600 file.
+/// Only after this passes does the caller read it, as root.
 pub(super) fn system(
     passwd: &str,
     token: Option<(u32, u32)>,

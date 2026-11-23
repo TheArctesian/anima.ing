@@ -1,3 +1,5 @@
+//! The Linux token store: `token` in the daemon's folder, mode 0600, replaced by rename.
+
 use std::path::PathBuf;
 use std::time::Duration;
 

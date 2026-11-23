@@ -1,5 +1,5 @@
 //! The repositories this machine works for, set by its owner at the machine (K10 Section 3;
-//! R-185, SF-003).
+//! R-185, SF-003). A machine with no list refuses each item that names a repository.
 
 use daemon_core::wire::WorkRepository;
 
