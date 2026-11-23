@@ -136,3 +136,17 @@ fn a_name_that_is_too_long_for_the_disk_is_no_file_and_no_failure() {
     }
     assert!(shown(Path::new(&format!("{long}/end\n"))).ends_with("/end\\n"));
 }
+
+#[test]
+fn a_socket_at_the_name_of_a_file_is_no_file_and_no_failure() {
+    let (_keep, worktree, own, _outside) = folders();
+    // A short path: the name of a socket has a small limit.
+    let short = tempfile::tempdir_in("/tmp").expect("a folder");
+    let at = short.path().join("s");
+    let _socket = std::os::unix::net::UnixListener::bind(&at).expect("a socket");
+    std::fs::rename(&at, worktree.join("socket")).expect("the move");
+    let root = Root::open(&worktree).expect("the worktree");
+    let into = Dir::open(&own).expect("the folder of the runner");
+    let taken = root.take(Path::new("socket"), &into, &mut { u64::MAX });
+    assert!(!taken.expect("no failure"));
+}

@@ -61,8 +61,19 @@ pub(super) struct Staged {
 
 /// The error of a file that the runner cannot read, with its name and what to do.
 fn unreadable(path: &Path, failed: std::io::Error) -> std::io::Error {
-    if failed.kind() != std::io::ErrorKind::PermissionDenied {
-        return failed;
+    use std::io::ErrorKind as Kind;
+    match failed.kind() {
+        Kind::PermissionDenied => {}
+        // These have their own words already.
+        Kind::FileTooLarge | Kind::InvalidData => return failed,
+        // Each other failure of one file is named too, so that the person can act on it.
+        _ => {
+            let said = format!(
+                "the file {} of the worktree cannot be saved ({failed}); delete or move it",
+                files::shown(path)
+            );
+            return std::io::Error::new(Kind::InvalidData, said);
+        }
     }
     std::io::Error::new(
         failed.kind(),

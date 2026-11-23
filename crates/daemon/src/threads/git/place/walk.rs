@@ -149,6 +149,7 @@ mod held {
                     | Errno::MLINK
                     | Errno::NOTDIR
                     | Errno::NXIO
+                    | Errno::OPNOTSUPP
                     | Errno::NAMETOOLONG,
                 ) => {
                     return Ok(None);
@@ -231,7 +232,7 @@ mod held {
                 AtFlags::empty()
             };
             match unlinkat(&self.0, name, how) {
-                Ok(()) | Err(Errno::NOENT) => Ok(()),
+                Ok(()) | Err(Errno::NOENT | Errno::NAMETOOLONG) => Ok(()),
                 Err(failed) => Err(failed.into()),
             }
         }
