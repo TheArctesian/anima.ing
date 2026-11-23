@@ -1,6 +1,6 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
-  import type { Beat } from '$lib/checks/heartbeats';
+  import { uptimeText, type Beat } from '$lib/checks/heartbeats';
   import type { CardDevice } from '$lib/devices/api';
   import Icon from '$lib/icons/Icon.svelte';
   import type { IconName } from '$lib/icons/icons';
@@ -8,8 +8,13 @@
   import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
   import { listRow } from '$lib/motion/roles/transitions';
   import type { SessionProtocol } from '$lib/sessions/tabs';
-  import { connectLabel, connectProtocols, hasWaysIn } from '../actions/actions';
-  import { hostLine, statusLabel } from '../card/card';
+  import { connectLabel, connectProtocols, hasWaysIn, isHubDevice } from '../actions/actions';
+  import OsIcon from '../os/OsIcon.svelte';
+  import Meters from '../list/Meters.svelte';
+  import { batteryBar } from '$lib/metrics/battery/battery';
+  import type { LiveCharges } from '$lib/metrics/battery/charges.svelte';
+  import type { LiveMemory } from '$lib/metrics/container/memory.svelte';
+  import { statusLabel } from '../card/card';
   import { listItems, reasonOf, UNGROUPED, type ListEntry } from '../list/look';
   import type { ListQuery } from '../query';
   import './list.css';
@@ -17,13 +22,15 @@
   interface Props {
     devices: readonly CardDevice[];
     beats: ReadonlyMap<string, readonly Beat[]>;
+    charges?: Pick<LiveCharges, 'of'>;
+    memory?: Pick<LiveMemory, 'of'>;
     /** The order and the status filter, which decide whether the rows are grouped (D18). */
     query?: Pick<ListQuery, 'sort' | 'statuses'>;
     /** The button is passed so the session tab can grow from it (MOT-005). */
     onConnect: (device: CardDevice, protocol: SessionProtocol, button: HTMLElement) => void;
   }
 
-  const { devices, beats, query = UNGROUPED, onConnect }: Props = $props();
+  const { devices, beats, query = UNGROUPED, onConnect, charges, memory }: Props = $props();
   const items: readonly ListEntry<CardDevice>[] = $derived(listItems(devices, query));
   const track = reorderMotion(() => items.map((item) => item.key).join('\n'));
   const ICONS: Record<SessionProtocol, IconName> = { SSH: 'carbon:terminal', RDP: 'carbon:remote-connection', VNC: 'carbon:screen' };
@@ -43,16 +50,22 @@
         {@const reason = device.status === 'UP' ? null : reasonOf(device, beats.get(device.id), Date.now())}
         <div class="dev" role="listitem" data-edge={device.status === 'UP' ? undefined : device.status.toLowerCase()}>
           <a class="what" href="{resolve('/devices')}/{encodeURIComponent(device.id)}" tabindex="0" data-device-id={device.id} {@attach press()}>
-            <span class="name">{device.name}</span>
+            <span class="identity">
+              <OsIcon os={device.os} distribution={device.distribution} />
+              <span class="name">{device.name}</span>
+            </span>
             <span class="line">
               {#if device.status === 'UP'}
                 <span class="dot up" aria-hidden="true"></span>{statusLabel(device.status)}
               {:else}
                 <span class="badge {device.status.toLowerCase()}">{statusLabel(device.status)}</span>
               {/if}
-              <span class="host">{hostLine(device).host}</span>
+              {#if device.uptime !== null}<span class="uptime">Uptime {uptimeText(device.uptime)} <span class="period">24 h</span></span>{/if}
             </span>
             {#if reason !== null}<span class="why">{reason.text}</span>{/if}
+            {#if (device.metricsSource !== 'NONE' && device.metricsSource != null) || device.batteries?.length}
+              <Meters readings={device.readings ?? null} source={device.metricsSource} battery={batteryBar(device.batteries, charges?.of(device.id))} container={isHubDevice(device)} memoryBytes={memory?.of(device.id) ?? null} />
+            {/if}
           </a>
           {#if protocol !== undefined}
             <button

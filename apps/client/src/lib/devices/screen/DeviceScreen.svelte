@@ -161,7 +161,7 @@
           {/if}
         </div>
       {:else if phoneLayout()}
-        <PhoneRows devices={list.devices} beats={listing.beats} {query} {onConnect} />
+        <PhoneRows devices={list.devices} beats={listing.beats} {query} {onConnect} charges={listing.charges} memory={listing.memory} />
       {:else if query.view === 'table'}
         <DeviceTable devices={list.devices} beats={listing.beats} {query} {onConnect} {onOpenWeb} {wake} screenSharing={sharing} charges={listing.charges} memory={listing.memory} />
       {:else}
