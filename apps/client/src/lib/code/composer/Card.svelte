@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ProblemLine from './ProblemLine.svelte';
   import { onDestroy, tick, untrack } from 'svelte';
   import { isMac } from '$lib/platform/mac';
   import AttachButton from './attachments/AttachButton.svelte';
@@ -235,7 +236,7 @@
         onLongPaste={longPaste}
       />
     </div>
-    {#if card.problem !== null}<p class="problem" role="alert">{card.problem}</p>{/if}
+    {#if card.problem !== null}<ProblemLine words={card.problem} onRetry={card.unsent ? () => void card.submit(false) : undefined} busy={card.busy} />{/if}
     <div class="footer">
       <AttachButton can={engine.attach} onFiles={(files) => card.add(files)} />
       <div class="actions">
@@ -299,13 +300,6 @@
     position: relative;
     padding: var(--code-composer-pad-start) var(--code-composer-pad-inline) var(--code-composer-pad-end);
     font-size: var(--code-text-body);
-  }
-
-  .problem {
-    margin: 0;
-    padding: 0 var(--code-composer-pad-inline) var(--space-2);
-    color: var(--status-down-text);
-    font-size: var(--code-text-meta);
   }
 
   .footer {
