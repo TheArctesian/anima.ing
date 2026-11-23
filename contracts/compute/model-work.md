@@ -302,7 +302,9 @@ Rules of the fetch process (both sources):
 - No proxy. No `http`. No redirect to `http`, to an address written as an IP address, or to a host outside the
   list. At most 5 redirects.
 - The hosts of Hugging Face are a fixed list in the daemon program: `huggingface.co`, `cdn-lfs.hf.co`,
-  `cdn-lfs-us-1.hf.co`, `cas-bridge.xethub.hf.co`. A change of that set comes with a release of the daemon.
+  `cdn-lfs-us-1.hf.co`, `cas-bridge.xethub.hf.co`, `us.aws.cdn.hf.co`. A change of that set comes with a release of
+  the daemon. (`us.aws.cdn.hf.co`: on 2026-11-23 a `/resolve/` request of each repository that was tried from `pop-os`
+  went there, to `xet-bridge-us/`; the hosts of the other regions are not known yet.)
 - It reads at most `sizeBytes` of a file, and at most the `sizeBytes` of a release source entry (Section 6).
 
 The fetch process and the probe process are child processes of the daemon, made from the same program file with a

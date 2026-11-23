@@ -5315,6 +5315,13 @@ systemd, the real hub, or a wait of an hour.
    Expected: the found list comes again, with no restart of the daemon.
 5. With a server running (after L1-8), run `systemctl --user stop anima-daemon.service`.
    Expected: within 15 seconds no process of the runtime runs (`pgrep -a llama-server` prints nothing).
+6. Adopt a found model of more than 20 GB (Found on the machines > Use in Anima).
+   Expected: the item stays Running while the daemon reads the file, with a report about each 15 seconds in the log of
+   the hub, and ends Done; it is not lost after 90 seconds and given to a second claim.
+7. From a network outside the United States (a VPN in Europe or Asia is enough), pull a variant of 1 GB or more.
+   Expected: the pull ends Downloaded. If it fails with "fetch failed", note the host of the redirect
+   (`curl -sI https://huggingface.co/<repository>/resolve/main/<file> | grep -i location`): the fixed list of hosts in
+   K11 Section 7 has only `us.aws.cdn.hf.co` for the Xet store, and each region may need its own host.
 
 Result: Open.
 

@@ -31,7 +31,7 @@ pub(super) fn put(path: &Path, bytes: &[u8]) {
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o644)).expect("mode");
 }
 
-fn ollama(root: &Path, model: &[u8]) {
+pub(super) fn ollama(root: &Path, model: &[u8]) {
     let digest = sha(model);
     let manifest = format!(
         r#"{{"schemaVersion":2,"layers":[{{"mediaType":"application/vnd.ollama.image.model","digest":"sha256:{digest}","size":{}}}]}}"#,

@@ -108,6 +108,7 @@ pub fn node(
         launcher: std::env::current_exe().map_err(NodeError::Program)?,
         ports: PORTS,
         tool_folders: found::tool_folders(installation, user_home.as_deref()),
+        report_every: crate::model::pull::watch::EVERY,
     })
 }
 

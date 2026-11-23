@@ -1,15 +1,17 @@
 use anima_daemon::hub::{HubClient, TIMEOUT};
 use daemon_core::wire::DaemonToken;
-use serde_json::json;
+use serde_json::{Value, json};
+use uuid::Uuid;
 
+use super::found::{fixture, key_of, ollama, report};
 use super::kit::{assert_k10_states, node};
 use crate::fake_hub::{FakeHub, Reply};
 
-fn token() -> DaemonToken {
+pub(super) fn token() -> DaemonToken {
     DaemonToken::from_random([7; 32])
 }
 
-fn item(work_type: &str, parameters: &serde_json::Value) -> String {
+pub(super) fn item(work_type: &str, parameters: &serde_json::Value) -> String {
     json!({
         "id": "0192f6aa-0000-7000-8000-000000000009", "type": work_type, "kind": "model", "attempt": 1,
         "lease": { "until": "2026-11-20T10:01:30Z" },
@@ -163,4 +165,32 @@ async fn pull_009_a_pulled_copy_is_downloaded_and_a_copy_delete_removes_it() {
     );
     assert_k10_states(deleted.iter().map(|report| &report.body));
     assert!(!folder.exists());
+}
+
+#[tokio::test]
+async fn a_long_adopt_keeps_its_lease_with_a_report_at_each_interval() {
+    let base = tempfile::tempdir().expect("temporary");
+    let (mut node, roots) = fixture(base.path());
+    ollama(&roots[0].path, &vec![7; 32 << 20]);
+    let found = report(&mut node).await;
+    let adopt = json!({ "copy": Uuid::now_v7(), "found": key_of(&found, "qwen3:8b") });
+    node.report_every = std::time::Duration::from_millis(2);
+    let hub = FakeHub::start().await;
+    let client = HubClient::new(hub.url.clone(), TIMEOUT).expect("a client");
+    hub.queue_claim(Reply::json(200, &item("copy_adopt", &adopt)));
+    node.cycle(&client, &token()).await.expect("a cycle");
+
+    let reports: Vec<Value> = hub
+        .seen("report")
+        .into_iter()
+        .map(|seen| seen.body)
+        .collect();
+    assert_k10_states(&reports);
+    let running = reports
+        .iter()
+        .filter(|body| body["state"] == "running")
+        .count();
+    assert!(running >= 2, "no report while the hash ran: {reports:?}");
+    assert!(reports.iter().all(|body| body.get("progress").is_none()));
+    assert_eq!(reports.last().expect("a report")["state"], "done");
 }

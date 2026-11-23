@@ -57,6 +57,8 @@ pub struct Node {
     pub ports: std::ops::RangeInclusive<u16>,
     /// The fixed folders of Section 10.2 for this installation (`found::tool_folders`).
     pub tool_folders: Vec<Root>,
+    /// How often a held item is reported while its step runs: `watch::EVERY`.
+    pub report_every: std::time::Duration,
 }
 
 /// A report of a step of the attempt with no result (K10 Section 7).

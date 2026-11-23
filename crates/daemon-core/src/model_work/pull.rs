@@ -13,11 +13,12 @@ use super::order::{PullFile, PullSource};
 use crate::wire::Progress;
 
 /// Hugging Face and its file hosts; only a release of the daemon changes them (Section 4).
-pub const HOSTS: [&str; 4] = [
+pub const HOSTS: [&str; 5] = [
     "huggingface.co",
     "cdn-lfs.hf.co",
     "cdn-lfs-us-1.hf.co",
     "cas-bridge.xethub.hf.co",
+    "us.aws.cdn.hf.co",
 ];
 
 /// A resume continues from the last complete part (PULL-006).

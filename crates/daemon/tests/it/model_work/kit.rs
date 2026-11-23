@@ -220,6 +220,7 @@ pub fn node_on(root: &Path, ports: std::ops::RangeInclusive<u16>) -> Node {
         launcher: std::path::PathBuf::from(env!("CARGO_BIN_EXE_anima-daemon")),
         ports,
         tool_folders: Vec::new(),
+        report_every: anima_daemon::model::pull::watch::EVERY,
     }
 }
 
