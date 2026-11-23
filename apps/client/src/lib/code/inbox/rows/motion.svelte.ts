@@ -39,14 +39,18 @@ function travelOf(place: Place): number {
 /** A copy of a row that left, where it stood, fading as it goes; nothing can reach it, and it is gone at the end. */
 function ghost(list: HTMLElement, place: Place, easing: string): void {
   const copy = place.node.cloneNode(true) as HTMLElement;
+  // The copy is no row: the next change neither measures it nor stops its fading.
+  delete copy.dataset['thread'];
   copy.setAttribute('aria-hidden', 'true');
   copy.inert = true;
   Object.assign(copy.style, { position: 'absolute', top: `${String(place.top)}px`, left: `${String(place.left)}px`, width: `${String(place.width)}px`, pointerEvents: 'none', margin: '0' });
   list.append(copy);
   const fading = copy.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: `translateY(${String(travelOf(place))}px)` }], { duration: duration.fast, easing, fill: 'forwards' });
-  fading.onfinish = () => {
+  const gone = (): void => {
     copy.remove();
   };
+  fading.onfinish = gone;
+  fading.oncancel = gone;
 }
 
 function play(list: HTMLElement, before: ReadonlyMap<string, Place>): void {

@@ -69,6 +69,7 @@ it('MOT-040: a row that leaves fades where it stood, and nothing of it stays to 
   change(['a']);
   const ghost = list.querySelector('li[aria-hidden="true"]');
   expect(ghost?.textContent).toBe('b');
+  expect(list.querySelectorAll('li[data-thread]')).toHaveLength(1);
   await Promise.resolve();
   expect(list.querySelector('li[aria-hidden="true"]')).toBeNull();
   stop();
