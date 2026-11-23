@@ -1,17 +1,17 @@
 ---
 kind: Proposal
 state: Draft
-evidence: Version 1.3 (2026-11-22): R-NEW-clusterrestart decides OD-CLU2 (B: placement and restart on a different member); Section 7 designs the restart (CLU-016 to CLU-030), with OD-CLU6 to OD-CLU8. Version 1.2 (2026-11-22): R-NEW-clustermembers decides OD-CLU1 (B: a machine can be in several clusters); CLU-001, CLU-012, CLU-014 and CLU-015 follow it. Version 1 (2026-11-22). From R-NEW-hostingsections: "oh okay then clusters now" (relayed by the side conversation of the orchestrating session). No requirement of this document is approved and no code exists. The open decisions are OD-CLU3 to OD-CLU8.
+evidence: Version 1.4 (2026-11-22): the operator leans to our own ("maybe we just keep with our own", not a ruling); Sections 4.1 and 4.2 and CLU-031. Version 1.3 (2026-11-22): R-NEW-clusterrestart decides OD-CLU2 (B: placement and restart on a different member); Section 7 designs the restart (CLU-016 to CLU-030), with OD-CLU6 to OD-CLU8. Version 1.2 (2026-11-22): R-NEW-clustermembers decides OD-CLU1 (B: a machine can be in several clusters); CLU-001, CLU-012, CLU-014 and CLU-015 follow it. Version 1 (2026-11-22). From R-NEW-hostingsections: "oh okay then clusters now" (relayed by the side conversation of the orchestrating session). No requirement of this document is approved and no code exists. The open decisions are OD-CLU3 to OD-CLU8.
 ---
 
 # Proposal: clusters of machines as a place to run things
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this proposal (PLN-005).
 
-Version: 1.3. Date: 2026-11-22. Version 1.3 writes the answer to OD-CLU2 (R-NEW-clusterrestart) and designs the restart in Section 7. Version 1.2 writes the answer to OD-CLU1 (R-NEW-clustermembers). Version 1.1 (2026-11-22). Version 1.1 says for each level whether a daemon acts for other machines and so whether K11 changes (CLU-013), at the request of the model service session.
+Version: 1.4. Date: 2026-11-22. Version 1.4 records the operator's leaning to our own (not a ruling), orders the steps, says what our own must build (Section 4.1, CLU-031) and keeps the options that he raised (Section 4.2). Version 1.3 writes the answer to OD-CLU2 (R-NEW-clusterrestart) and designs the restart in Section 7. Version 1.2 writes the answer to OD-CLU1 (R-NEW-clustermembers). Version 1.1 (2026-11-22). Version 1.1 says for each level whether a daemon acts for other machines and so whether K11 changes (CLU-013), at the request of the model service session.
 Status: the header of this document holds the state (PLN-020).
 Map: [work-plan.md](../work-plan.md), category Use, row 4.9 of the [priority order](../plan/priorities.md) (hosted applications). It changes HOST-052 of [hosted-applications-plan.md](../plans/hosted-applications-plan.md) when it is approved, and it is shown in the sections Applications, Models and Machines of [hosting-section.md](hosting-section.md).
-Identifiers: CLU-001 to CLU-030, OD-CLU1 to OD-CLU8.
+Identifiers: CLU-001 to CLU-031, OD-CLU1 to OD-CLU8.
 
 ## 1. What the operator decided
 
@@ -51,7 +51,7 @@ Does a daemon act for other machines? This decides whether the contract of model
 
 - **CLU-013.** At levels (a) and (b), the hub chooses and acts across the machines of a cluster, and each daemon acts only for its own machine. No daemon acts for another machine before Level 2 of the compute plan, and then only through a new version of K11.
 
-- **CLU-004.** Anima builds level (b): placement, and a restart on a different member when a machine goes away (R-NEW-clusterrestart). Placement (level a, CLU-012) is built first and the restart on it (the reading of the orchestrating session, not confirmed by the operator). The restart is for a thing whose data has a copy that is new enough (Section 7). Level (c) is not built for applications; for models it stays Level 2 of the compute plan.
+- **CLU-004.** Anima builds level (b): placement, and a restart on a different member when a machine goes away (R-NEW-clusterrestart). Placement (level a, CLU-012) is built first and the restart on it (the reading of the orchestrating session, not confirmed by the operator). The restart is for a thing whose data has a copy that is new enough (Section 7). Level (c) is built only if a real need appears (CLU-005); a model split across machines stays Level 2 of the compute plan and belongs to the model service session.
 
 ## 4. Build it, or drive an existing engine
 
@@ -69,7 +69,38 @@ With an engine, the manager of the engine acts for the other machines, not the d
 
 The main point: each engine moves the power to run anything on a machine from that machine to a manager. Anima's model so far is the other way round: a machine runs only what its applications program checks (R-226, tasks H28 and H31), and a public route waits for the consent at the machine (OD-HOST-43, R-390). An engine would end that model for each member of a cluster.
 
-- **CLU-005.** For level (a), Anima builds the cluster itself on the work route of each machine and uses no engine (OD-CLU3). An engine is a choice again only for level (c).
+- **CLU-005.** Anima builds the cluster itself and uses no engine (OD-CLU3). The hub knows the free processor, memory and disk of each machine and chooses; the daemon of the chosen machine runs the container through its applications program. There is no Kubernetes or k3s underneath. The steps, in this order:
+  1. A named group of machines; Anima picks the one with room; the person moves a thing by hand (level a, CLU-012).
+  2. A restart on a different member when one goes away, once the data can follow (level b, Section 7; ruled by R-NEW-clusterrestart).
+  3. One thing spread over several machines, only if a real need appears (level c).
+
+The operator's leaning, 2026-11-22, after a talk about Kubernetes, relayed by the side conversation of the orchestrating session: "maybe we just keep with our own". It is a leaning, not a ruling (his word was "maybe"); OD-CLU3 puts the final choice to him.
+
+### 4.1 What "our own" means we build
+
+Kubernetes would give these; with our own, Anima builds each of them:
+
+- Placement: the choice of a member with room, checked at the moment of the placement (CLU-014).
+- Health and restart: the reports of each member, the test of "gone" (CLU-024), the lease and the number of each start (CLU-021, CLU-022), and the restart (Section 7).
+- Moving data: the copies of volumes kept up to date, consistent for each kind of entry (CLU-016 to CLU-019), and the move by hand (CLU-007).
+- Not needed for our levels: the networks between containers on different machines, service discovery inside the cluster, and the scaling of copies (level c).
+
+- **CLU-031.** The place (HOST-052, CLU-002) stays the only way that a row or a call names where a thing runs. A different engine could then sit under a place later without a change to the screens, the hub API, `anima` or the MCP tools.
+
+A model split across several machines is done by the model runtimes (Level 2 of [compute-plan.md](../plans/compute-plan.md)), not by a container scheduler. That part belongs to the model service session, whatever OD-CLU3 decides.
+
+### 4.2 Considered and not chosen
+
+What the operator raised in the talk about Kubernetes, kept with its cost so that the choice can be made again without doing the work again:
+
+| Option | What it is | Cost |
+| --- | --- | --- |
+| k3s hidden under the Hosting screens | Anima installs k3s on a group of machines of the Anima OS image only, and the screens of Hosting drive it; the person never sees Kubernetes. | Only machines of the Anima OS image (no Mac, no machine that the person set up himself). About 0.5 GB of memory on each member. The Compose files of the catalogue must be converted to Kubernetes objects. The leader of k3s can run anything on each member, so the check of each request at the machine (tasks H28 and H31) is skipped. A large program to keep up to date on each member. |
+| The hub as the leader of a group | The hub is always on, so it is the k3s leader; k3s can keep its state in the PostgreSQL of the hub. | A hosted hub has 1.5 GiB of memory, and a leader of k3s wants about 0.5 to 1 GB of it. A leader decides what runs on each machine, so for the hubs that Anima hosts, the hub could reach into each machine alone; that weakens the rule that a hub cannot run something on a machine by itself (R-226, the check at the machine). |
+| Agents that repair the faults of a cluster | An AI agent reads the state of the cluster and acts when something fails. | An agent with the power of a leader is the same risk as the leader, with less predictable choices. With our own, an agent uses the same hub API, `anima` and MCP tools as a person, under the rules for callers (R-384), and the restart of Section 7 needs no agent. |
+| Work with Kubernetes: show a cluster that Anima did not make | Anima reads an existing Kubernetes cluster of the person and shows its workloads in Hosting, read only. | A reader of the Kubernetes API with its own credentials and its own mapping to applications and places. Possible later as a kind of place that is read only (CLU-031); no part of it is needed for our own clusters. |
+| Work with Kubernetes: reach an Anima group with standard tools | A group of Anima is reachable with `kubectl` and the other tools of Kubernetes. | It needs the API of Kubernetes, that is, Kubernetes itself or a large copy of its API. It is the k3s option above with all its costs. |
+
 
 ## 5. What a cluster does to the rest
 
@@ -147,7 +178,7 @@ Each member keeps its own volumes, so two copies of a thing never write to the s
 | --- | --- | --- |
 | OD-CLU1 | What is a cluster? A: a named group of your machines that you treat as one place to run things; a machine is in one cluster at most. B: the same, but a machine can be in several clusters. | Decided (R-NEW-clustermembers): B, several clusters. The recommendation was A. The room of a machine counts in each of its clusters and is checked on the machine at each placement (CLU-014). |
 | OD-CLU2 | How much does "run on a cluster" do? A: placement only, with a move by hand (level a). B: A, and a restart on a different machine by itself when a machine goes away (level b). C: B, and one thing on several machines at once (level c). | Decided (R-NEW-clusterrestart): B, placement and a restart on a different member. The recommendation was A. Section 7 is the design. |
-| OD-CLU3 | Does Anima build the cluster or drive an existing engine? A: build it on the work route of each machine. B: Docker Swarm. C: k3s. D: Incus clustering. E: Nomad. | A. Each engine makes its manager root on each member and skips the check at the machine; k3s and Incus do not run Compose files or run on a Mac; Nomad is not open source. An engine is worth a new look only for level c. |
+| OD-CLU3 | Does Anima build the cluster or drive an existing engine? A: build it on the work route of each machine. B: Docker Swarm. C: k3s. D: Incus clustering. E: Nomad. | A. The operator leaned the same way ("maybe we just keep with our own", 2026-11-22, not a ruling). Each engine makes its manager root on each member and skips the check at the machine; k3s and Incus do not run Compose files or run on a Mac; Nomad is not open source. Section 4.2 keeps the options that he raised, with their costs. |
 | OD-CLU4 | When a machine joins a cluster, does its agreement at the machine also count as its consent to serve public routes of the things of that cluster? A: yes, one agreement at the join. B: no; each machine still gives the consent for public routes on its own, and a public route stops on a machine without it. | A. With B, a move or a restart can stop a public route with no warning until a person goes to the new machine. The join is already a person at the machine, which is what the consent asks for. |
 | OD-CLU5 | Who can put a thing on a cluster or move it between members? A: the same rule as an install (R-384): the person, the app, `anima` and a Full access thread with no approval; a restricted thread asks. B: a move always needs a person. | A. A move does no more than an install and a remove, which that rule already allows. |
 | OD-CLU6 | By default, how old may the copy of the data of a thing with restart on be (the person can change it for each thing)? A: 15 minutes (a copy each 7.5 minutes). B: 5 minutes. C: 1 hour. | A. It keeps the loss of a failure to minutes with little load; B doubles the copies for a few minutes less; C loses up to an hour of writes. |
