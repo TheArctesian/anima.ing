@@ -15,7 +15,8 @@ use crate::{
 };
 
 const SETTINGS: &str = "thread-sync.json";
-const JOURNAL_ROOM: usize = 512 * 1024;
+const MAX_PENDING: usize = 384;
+const JOURNAL_ROOM: usize = (MAX_THREAD_ENTRY + 128) * MAX_PENDING + 128;
 const PAGE: usize = 64;
 
 #[derive(Deserialize)]
@@ -69,7 +70,7 @@ async fn send_thread(
     let Some(mut journal) = read(home, &name) else {
         return;
     };
-    if journal.pending.is_empty() {
+    if journal.pending.len() < MAX_PENDING {
         let updates = earlier(row.runner_id, journal.observed).await;
         if !authorized(home, policy) {
             return;
@@ -82,7 +83,12 @@ async fn send_thread(
     let upload = ThreadUpload {
         device: target.device,
         summary: row.clone(),
-        entries: journal.pending.clone(),
+        entries: journal
+            .pending
+            .iter()
+            .take(MAX_THREAD_ENTRIES)
+            .cloned()
+            .collect(),
     };
     let Answer::Accepted(receipt) = target.hub.upload_thread(&credential.token, &upload).await
     else {
@@ -132,15 +138,15 @@ async fn earlier(thread: Uuid, observed: u64) -> Vec<Update> {
 impl Journal {
     fn record(&mut self, updates: Vec<Update>) {
         for update in updates {
+            if self.pending.len() == MAX_PENDING {
+                break;
+            }
             self.observed = self.observed.max(update.seq);
             let Some(content) = content(update.change) else {
                 continue;
             };
             let sequence = self.accepted + i64::try_from(self.pending.len()).unwrap_or(0) + 1;
             self.pending.push(ThreadEntry { sequence, content });
-            if self.pending.len() == MAX_THREAD_ENTRIES {
-                break;
-            }
         }
     }
 }
@@ -229,5 +235,48 @@ fn discard(home: &Home, name: &str) {
     }
     if !save(home, name, &journal) {
         tracing::warn!("unshared thread entries could not be cleared");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn disabled_sharing_clears_journal_content_without_reusing_sequences() {
+        let folder = tempfile::tempdir().unwrap();
+        let home = Home::at(folder.path().to_owned());
+        let device = Uuid::parse_str("62d8691d-647f-4ea1-a1bc-5b9fc74b7397").unwrap();
+        let thread = Uuid::parse_str("51082d8c-9d0e-4283-ba9f-c47e2a7277ae").unwrap();
+        let name = journal_name(device, thread);
+        let mut journal = Journal::default();
+        let update = |seq, words: &str| Update {
+            thread,
+            seq,
+            change: Change::Prompt {
+                text: words.into(),
+                source: "local".into(),
+                images: 0,
+                files: Vec::new(),
+            },
+        };
+        journal.record(vec![update(4, "private words"), update(17, "keep private")]);
+        assert!(save(&home, &name, &journal));
+        let stored = read(&home, &name).unwrap();
+        assert_eq!(stored.observed, 17);
+        assert_eq!(stored.pending[1].sequence, 2);
+        assert_eq!(stored.pending[0].content["text"], "private words");
+
+        discard_unshared(&home, device, &[]);
+        let mut resumed = read(&home, &name).unwrap();
+        assert!(
+            resumed
+                .pending
+                .iter()
+                .all(|entry| entry.content.get("text").is_none())
+        );
+        resumed.record(vec![update(29, "new consent")]);
+        assert_eq!(resumed.pending[2].sequence, 3);
+        assert_eq!(resumed.pending[2].content["text"], "new consent");
     }
 }

@@ -24,7 +24,7 @@ use crate::config::home::HOME_VARIABLE;
 use crate::units::plan::SYSTEM_HOME;
 use files::{Found, Stamp};
 use git::Bounds;
-pub(crate) use git::Repository;
+use git::Repository;
 
 /// The most working folders whose repository is remembered between reads.
 const MAX_REMEMBERED: usize = 4096;
@@ -42,6 +42,7 @@ pub fn user_home(env: impl Fn(&str) -> Option<String>) -> Option<PathBuf> {
 }
 
 /// Resolves the session exclusion across its working folder and main repository.
+#[cfg(unix)]
 pub(crate) fn shared_repository(
     home: &Path,
     folder: &Path,

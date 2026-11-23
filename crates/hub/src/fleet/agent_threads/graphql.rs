@@ -47,7 +47,7 @@ struct AgentThreadSnapshot {
 #[derive(Default)]
 pub struct Query;
 
-#[Object]
+#[Object(name = "AgentThreadsQuery")]
 impl Query {
     #[graphql(guard = "Authenticated")]
     #[expect(
