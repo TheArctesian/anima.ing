@@ -30,6 +30,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
+| HT-149 | Reporting after an iPad update and the phone Code tab | A physical iPad with an existing device row, another client, and a phone with the updated app | Open |
 | HT-148 | Phone Devices, offline notice and Integrations fit the screen (M2-5) | An iPhone with a current build and a test hub | Open |
 | HT-146 | A process that an agent detached cannot answer an approval (R-315, THR-031) | A Mac with `claude` signed in, the daemon of the branch `threads/peer-ancestry` with a test state folder; later the installed application | Open |
 | HT-074 | Windows desktop account, link and remote sessions (WIN1) | Windows 11 VM, Anima account and a hub | Open |
@@ -126,6 +127,12 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-125 | The window with no frame on Windows and Linux: move it, the three controls, resize, each page (task TC2 of agent threads, R-355) | A Windows computer and the Linux computer `pop-os`, each with a build of the branch `code/shell-window`; a Mac for the last step | Open |
 | HT-045 | The Linux app opens the account sign-in screen when no hub is chosen (HMD-022) | A Linux AppImage of this build | Passed |
 
+### HT-149: reporting after an iPad update and the phone Code tab
+
+- State: Open.
+- On an enrolled iPad that previously showed No metrics, open Anima and wait for a new reading. Confirm from another client that memory and storage show for the existing device row.
+- On a phone, tap Code in the bottom bar. It opens the Code screen. Open a device page and check that the device's sessions are still available there.
+
 ### HT-148: phone Devices, offline notice and Integrations (M2-5)
 
 - State: Open.
@@ -138,7 +145,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 Many entries were written for the hub on the VPS. The operator uses only the hosted hub (R-130) and starts fresh on it (R-140). An entry that R-169 changed has a paragraph "On the hosted hub (R-169)". Those paragraphs use these four terms.
 
 - The application on the hosted hub: the desktop application, signed in with the Anima.ing account as in HT-022. It replaces `https://hub.anima.ing/` and a browser on the VPN.
-- A key for the command line: `anima auth login` asks for a user name, a password and an authenticator code, and a hosted hub has no such account (OD-25 of the [design specification](spec/design-spec.md), open). Make an API key in Settings of the application, and give it to the command line with `anima auth login --with-token` or in `ANIMA_TOKEN`. How the command line finds the address of a hosted hub is not verified: write down what you used. An API key cannot make a change that D-23 refuses (a merge, a run control, a commit status, the content of a file). A step with such a change waits for OD-25.
+- A key for the command line: `anima auth login` asks for a user name, a password and an authenticator code, and a hosted hub has no such account. R-381 decides OD-25 of the [design specification](spec/design-spec.md): a sign-in by a one-time code (HT-151); until task T16 of [cli-mcp-plan.md](plans/cli-mcp-plan.md) is built, use an API key. Make an API key in Settings of the application, and give it to the command line with `anima auth login --with-token` or in `ANIMA_TOKEN`. How the command line finds the address of a hosted hub is not verified: write down what you used. An API key cannot make a change that D-23 refuses (a merge, a run control, a commit status, the content of a file). A step with such a change waits for OD-25.
 - GitHub on the hosted hub: connect GitHub on the hosted hub first. The connection of the hub on the VPS does not move (R-140). No check connected GitHub on a hosted hub: not verified.
 - A daemon on the hosted hub: the `anima-daemon` of a computer, enrolled at the hosted hub. No document shows such an enrolment and no check ran one (HM-D16 of [hosted-mode.md](proposals/hosted-mode.md), open). If the hub refuses the enrolment, write that in the entry and in HM-D16. Where the entry permits a local hub, do the check with a local hub.
 
@@ -4789,6 +4796,30 @@ branch is in the build.
 
 Result: Open.
 
+### HT-150: the `/` list of the composer of Code (TC4S)
+
+Built on the branch `code/slash-runnable`. The `/` list of the composer shows only a command that can run now. With
+the runner of today it is `/model` when the runner can change the model of a chat, and nothing else: the program's
+own commands and skills wait for a call of the runner (row TC4S). The tests run it over made-up lists; nobody has
+tried it in the installed application.
+
+1. In the desktop application open a chat of Code with Claude Code. In the composer type `/` as the first character.
+   Expected: a list over the composer with `/model` and its words, or, with a runner that cannot change the model,
+   the words "No matching command." There is no row `/clear` and no row that says that the runner has no such
+   command.
+2. If `/model` shows, press Enter.
+   Expected: the `/` goes from the editor and the model picker opens.
+3. Type `see /` (a `/` after other words).
+   Expected: only `/model`, or "No matching command."
+4. Do steps 1 to 3 in a chat with Codex.
+   Expected: the same as for Claude Code.
+5. Open the page of a new thread (no thread yet) and type `/` in its composer.
+   Expected: `/model` only.
+6. Press Escape.
+   Expected: the list closes, and the `/` stays in the editor.
+
+Result: Open.
+
 ### HT-147: Anima OS private SSH and graphical remote desktop (OS3-R8)
 
 Built on `os/remote-access`. Installed OS SSH and RDP listen only on loopback and are reached through the existing private link. Disposable-VM acceptance covers the services and protocol boundary. A real private hub, GUI trust flow and physical screen behavior still require operator acceptance.
@@ -4807,5 +4838,64 @@ Built on `os/remote-access`. Installed OS SSH and RDP listen only on loopback an
    Expected: new RDP connections are refused before and after restart; SSH remains available. Restore with the same command using `on`.
 7. Revoke the requesting user's device/session permissions in your hub and retry.
    Expected: the hub denies access before remote login. Restore your intended permissions afterwards.
+
+Result: Open.
+
+### HT-152: an approval by a device for a reveal (E0-6 T6; K-E5 Section 3a; OD-E20, OD-E27 to OD-E31)
+
+Not built. The hub part is task T6 of [extensions-plan.md](plans/extensions-plan.md); the key, the notification and the approve screen are of the mobile and desktop streams. The gates cannot prove the check of the operating system (Face ID, Touch ID, the password, polkit), the notification on a phone, or a second device. Do these steps when T6 and the clients are built.
+
+1. On a hosted hub, with the app on a Mac and on a phone, and no approval key yet, open the app on the phone.
+   Expected: the phone enrols its approval key with no email; the Mac shows the new enrolment and the device list shows its kind of check (Secure Enclave).
+2. On the Mac, ask to reveal a password record.
+   Expected: the Mac says that it waits for a device; the phone and the Mac get a notification that names the action, "a password", the asking device and the time, and no record name or value.
+3. On the phone, open the request and approve it with Face ID or the passcode.
+   Expected: the request shows the asking device and its address first; after the check the Mac shows the value.
+4. Ask again, and deny on the phone.
+   Expected: the Mac says the request was denied, and the phone offers to sign the asking session out.
+5. Ask again and answer nothing for 5 minutes.
+   Expected: the request expires; the Mac says so.
+6. On a Linux computer with the app, approve a request.
+   Expected: the polkit password prompt of the desktop shows; the device list shows TPM or key ring.
+
+Result: Open.
+
+### HT-151: `anima auth login` by a one-time code (cli-mcp T16 and T17, HM-T40; R-381)
+
+Not built. The gates cannot prove a browser on a second device, the hosted cloud or a real server. Do these steps when the tasks are built.
+
+1. On a computer with only `anima`, run `anima auth login`, choose "Self-hosted" and give the address of your hub.
+   Expected: the command shows a code `XXXX-XXXX`, the address of the page `/device`, and "It ends in 10 minutes"; no password is asked.
+2. Open the page in a browser where you are signed in, and type the code.
+   Expected: the page shows the name of the computer, its address, the time and the plain words of what the command line will get; after Approve the terminal prints `✓ Signed in to <hub> as <user> (command line on <computer>)`.
+3. Run `anima auth status`.
+   Expected: the hub, the user, "approved on <day> from <device>", and no token, not even masked.
+4. Repeat step 1 with "Hosted by Anima.ing", and approve at `anima.ing/device`.
+   Expected: no address is asked; the command signs in to the hub of the account.
+5. Type a wrong code 6 times in the page.
+   Expected: the sixth is refused for 10 minutes.
+6. Run `anima auth logout`, then `anima auth status`.
+   Expected: signed out, exit code 4; the list of sign-ins in the app no longer shows that computer.
+
+Result: Open.
+
+### HT-153: one sign-in for the app, `anima`, the daemon and the threads (E0-6 T8, cli-mcp T14 and T15, U14, TH114; R-383, R-382)
+
+Not built. The gates cannot prove a fresh computer, the profile of a login shell, the Keychain or a running thread. Do these steps when the tasks are built.
+
+1. On a fresh Mac (or a new user account), install the app and sign in, on a self-hosted hub and then on a hosted hub.
+   Expected: with no click, the daemon is installed and enrolled, `anima` is in `~/.local/bin`, and one line names the shell profile that got the line of `PATH`.
+2. Open a new terminal and run `anima auth status`.
+   Expected: signed in, the token kind "adopted from the app"; no `anima auth login` was needed.
+3. Look at the shell profile.
+   Expected: one line, marked as Anima's; signing in again adds no second line.
+4. Start a Full access thread and have it run `anima device list` and add a private route.
+   Expected: both work with no approval; the audit shows the thread and its mode.
+5. Change the thread to Ask, and have it add a route again.
+   Expected: the thread asks you to approve; after Approve the route is added.
+6. Have a thread ask to reveal a password record.
+   Expected: the request goes to the device approval (HT-152); the thread cannot approve it.
+7. Sign out of the app, then run `anima auth status`.
+   Expected: `anima` is signed out too.
 
 Result: Open.

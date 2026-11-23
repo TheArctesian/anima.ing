@@ -25,11 +25,10 @@
   }
 </script>
 
-<!-- The open thread in T3 Code's timeline: as the runner drives it, or as its session file holds it. -->
+<!-- The open thread in T3 Code's timeline: as the runner drives it (which wins over an earlier failed read of a file), or
+     as its session file holds it. -->
 <div class="body" aria-busy={store.loadingThread}>
-  {#if store.threadProblem !== null}
-    <ErrorState message={store.threadProblem} onRetry={() => (store.chosen === null ? undefined : void store.open(store.chosen))} />
-  {:else if store.liveThread !== null && live !== null}
+  {#if store.liveThread !== null && live !== null}
     {@const thread = store.liveThread}
     {#key thread.row.id}
       <Timeline
@@ -43,6 +42,8 @@
         }}
       />
     {/key}
+  {:else if store.threadProblem !== null}
+    <ErrorState message={store.threadProblem} onRetry={() => (store.chosen === null ? undefined : void store.open(store.chosen))} />
   {:else if store.thread !== null && store.thread.id === store.chosen}
     {@const thread = store.thread}
     {#key thread.id}
