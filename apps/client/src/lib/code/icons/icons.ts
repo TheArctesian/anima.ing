@@ -106,6 +106,7 @@ import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
 import Sparkles from '@lucide/svelte/icons/sparkles';
 import Square from '@lucide/svelte/icons/square';
 import SquareArrowOutUpRight from '@lucide/svelte/icons/square-arrow-out-up-right';
+import Star from '@lucide/svelte/icons/star';
 import SquareMenu from '@lucide/svelte/icons/square-menu';
 import SquarePen from '@lucide/svelte/icons/square-pen';
 import SquareSplitHorizontal from '@lucide/svelte/icons/square-split-horizontal';
@@ -264,6 +265,7 @@ export const CODE_ICONS = {
   sparkles: Sparkles,
   square: Square,
   'square-arrow-out-up-right': SquareArrowOutUpRight,
+  star: Star,
   'square-menu': SquareMenu,
   'square-pen': SquarePen,
   'square-split-horizontal': SquareSplitHorizontal,

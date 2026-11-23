@@ -13,6 +13,10 @@ pub const MAX_TITLE: usize = 200;
 
 /// How one thread is listed. A thread that has no listing is listed as its files say.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "each bool is a field of its own on the socket that the clients read"
+)]
 pub struct Listing {
     pub thread: Uuid,
     #[serde(default)]
@@ -28,6 +32,10 @@ pub struct Listing {
     /// When the person settled, un-settled, snoozed or woke the thread (TH61).
     #[serde(default, flatten)]
     pub marks: Marks,
+    /// The runner of this computer started this thread (TH61): only the runner sets it,
+    /// from its own threads, never a change of the person, an agent or a session file.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub started_by_anima: bool,
 }
 
 /// A change of the listing of a thread by the person.
@@ -67,6 +75,7 @@ impl Listing {
             && self.title.is_none()
             && !self.removed
             && self.marks == Marks::default()
+            && !self.started_by_anima
     }
 
     /// The listing after `change`, made at `now`. A removed thread keeps no pin, archive, title
@@ -100,6 +109,7 @@ impl Listing {
                 return Ok(Self {
                     thread: self.thread,
                     removed: true,
+                    started_by_anima: self.started_by_anima,
                     ..Self::default()
                 });
             }

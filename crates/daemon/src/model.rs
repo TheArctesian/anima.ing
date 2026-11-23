@@ -9,12 +9,13 @@
 //! [`folders`] makes the folders of Section 10; [`machine_files`] reads `model-work.json` and
 //! `model-sources.json`; [`state`] is the object of `model_report`.
 //!
-//! Built here: `model_report`, `runtime_install`, `server_start`, `server_stop`. Each other
-//! model type is left out of the claim and refused with `type_unknown` until its task builds
-//! it: `model_pull` and `copy_delete` (L1-7), `model_measure` (L1-8), `model_load`,
-//! `model_unload` and `model_drain` (L1-8, L1-16).
+//! Built here: `model_report`, `runtime_install`, `server_start`, `server_stop` and
+//! `model_drain` ([`drain`]). Each other model type is left out of the claim and
+//! refused with `type_unknown` until its task builds it: `model_pull` and `copy_delete` (L1-7),
+//! `model_measure` (L1-8), `model_load` and `model_unload` (L1-8, L1-16).
 
 pub mod cycle;
+pub mod drain;
 pub mod fetch;
 pub mod folders;
 pub mod install;

@@ -215,3 +215,16 @@ it('a picker that cannot be used keeps focus, says so, and does not open', async
   await settle();
   expect(document.querySelector('[role="dialog"]')).toBeNull();
 });
+
+it('says why the list is short on a line of its own under the list, with the whole reason and a Retry when it failed', () => {
+  let retried = 0;
+  const words = 'Models could not load: the runner answered "spawn claude ENOENT" for the program at /usr/local/bin/claude.';
+  const props = { catalogue: { ...pickerCatalogue, notice: { words, failed: true } }, value: pickerChoice, can: CAN, open: true, onChange: () => undefined, onAsk: () => (retried += 1) };
+  app = mount(ModelPicker, { target: document.body, props });
+  flushSync();
+  const notice = one('.popup .notice');
+  expect(notice.querySelector('.words')?.textContent).toBe(words);
+  expect(notice.closest('[role="option"]')).toBeNull();
+  notice.querySelector<HTMLButtonElement>('button')?.click();
+  expect(retried).toBe(1);
+});

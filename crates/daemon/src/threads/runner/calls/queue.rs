@@ -111,7 +111,8 @@ impl Runner {
 
     async fn queue_steps(&mut self, id: Uuid, steps: Vec<Step>, word: &'static str) -> Outcome {
         self.note(Kind::Prompt, Some(id), word);
-        if self.apply(id, steps).await.is_err() {
+        // A queued prompt whose turn was held back waits again first: the change itself went.
+        if let Err(super::super::NotSent::LinkDown) = self.apply(id, steps).await {
             return refused(Refusal::Holder);
         }
         Outcome::Ok
