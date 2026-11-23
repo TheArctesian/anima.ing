@@ -9,6 +9,7 @@ use crate::model_work::files::code::{
 use crate::model_work::names::Runtime;
 
 const REFUSED: Result<(), Cause> = Err(Cause::RemoteCode);
+const REJECTED: Result<(), Cause> = Err(Cause::FileRejected);
 
 #[test]
 fn a_plain_config_is_accepted() {
@@ -39,12 +40,12 @@ fn a_member_of_remote_code_is_refused_at_any_depth() {
 #[test]
 fn a_file_that_does_not_read_as_an_object_is_refused() {
     for text in ["", "[]", "\"auto\"", "{", "{\"a\":1} x", "\u{feff}{}"] {
-        assert_eq!(check_config(text.as_bytes()), REFUSED, "{text:?}");
+        assert_eq!(check_config(text.as_bytes()), REJECTED, "{text:?}");
     }
     let deep = format!("{}{}", "[".repeat(200), "]".repeat(200));
     assert_eq!(
         check_config(format!("{{\"a\":{deep}}}").as_bytes()),
-        REFUSED
+        REJECTED
     );
 }
 
@@ -53,8 +54,8 @@ fn an_oversized_file_is_refused_before_it_is_parsed() {
     let mut big = b"{\"a\":\"".to_vec();
     big.resize(MAX_CONFIG_BYTES, b'x');
     big.extend_from_slice(b"\"}");
-    assert_eq!(check_config(&big), REFUSED);
-    assert_eq!(check_tokenizer_config(&big), REFUSED);
+    assert_eq!(check_config(&big), REJECTED);
+    assert_eq!(check_tokenizer_config(&big), REJECTED);
 }
 
 #[test]
@@ -64,7 +65,7 @@ fn a_chat_template_is_at_most_64_kib() {
     assert_eq!(check_tokenizer_config(template(limit).as_bytes()), Ok(()));
     assert_eq!(
         check_tokenizer_config(template(limit + 1).as_bytes()),
-        REFUSED
+        REJECTED
     );
     let list = |length: usize| {
         let half = "a".repeat(length / 2);
@@ -74,22 +75,22 @@ fn a_chat_template_is_at_most_64_kib() {
         )
     };
     assert_eq!(check_tokenizer_config(list(limit - 2).as_bytes()), Ok(()));
-    assert_eq!(check_tokenizer_config(list(limit).as_bytes()), REFUSED);
+    assert_eq!(check_tokenizer_config(list(limit).as_bytes()), REJECTED);
     for odd in [
         r#"{"chat_template":5}"#,
         r#"{"chat_template":[{"name":"x"}]}"#,
         r#"{"chat_template":{"template":"x"}}"#,
     ] {
-        assert_eq!(check_tokenizer_config(odd.as_bytes()), REFUSED, "{odd}");
+        assert_eq!(check_tokenizer_config(odd.as_bytes()), REJECTED, "{odd}");
     }
     assert_eq!(check_tokenizer_config(br#"{"chat_template":null}"#), Ok(()));
     assert_eq!(check_template_length(MAX_TEMPLATE_BYTES), Ok(()));
-    assert_eq!(check_template_length(MAX_TEMPLATE_BYTES + 1), REFUSED);
+    assert_eq!(check_template_length(MAX_TEMPLATE_BYTES + 1), REJECTED);
     let over = CopyFiles {
         json: &[],
         template_file: Some(MAX_TEMPLATE_BYTES + 1),
     };
-    assert_eq!(check_copy(Runtime::MlxLm, &over), REFUSED);
+    assert_eq!(check_copy(Runtime::MlxLm, &over), REJECTED);
 }
 
 #[test]

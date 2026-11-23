@@ -1,8 +1,8 @@
 //! The checks of the files of a copy before a load (Section 2.2, SEC-C-008): a copy whose
 //! `config.json` or `tokenizer_config.json` asks for remote code is refused, and a chat template
 //! is at most 64 KiB. Pure: the daemon reads the bytes (at most [`MAX_CONFIG_BYTES`]) and gives
-//! them here; nothing is run. A file that does not read as a JSON object is refused too, so
-//! the check fails closed.
+//! them here; nothing is run. A file that does not read as a JSON object is refused too
+//! (`file_rejected`, R-407), so the check fails closed.
 
 use serde_json::Value;
 
@@ -43,9 +43,10 @@ pub struct CopyFiles<'a> {
 ///
 /// # Errors
 ///
-/// `remote_code` when a file asks for remote code or names a class that is not in the list of
-/// the runtime, a runtime with a class list has no `config.json`, a file does not read or is too large, a name is not a checked JSON file, or a
-/// chat template is longer than [`MAX_TEMPLATE_BYTES`].
+/// `remote_code` when a file asks for remote code, names a class that is not in the list of the
+/// runtime, or a runtime with a class list has no `config.json` to check. `file_rejected`
+/// (R-407) when a file does not read as a JSON object or is too large, a name is not a checked
+/// JSON file, or a chat template is longer than [`MAX_TEMPLATE_BYTES`] or has no text.
 pub fn check_copy(runtime: Runtime, files: &CopyFiles<'_>) -> Result<(), Cause> {
     let list = classes::architectures(runtime);
     let has_config = files
@@ -64,7 +65,7 @@ pub fn check_copy(runtime: Runtime, files: &CopyFiles<'_>) -> Result<(), Cause> 
                 check_classes(&read_object(bytes)?, list, "tokenizer_class")?;
             }
             _ if CHECKED_JSON.contains(&base) || is_index(base) => check_config(bytes)?,
-            _ => return Err(Cause::RemoteCode),
+            _ => return Err(Cause::FileRejected),
         }
     }
     files.template_file.map_or(Ok(()), check_template_length)
@@ -102,7 +103,7 @@ fn check_classes(
 ///
 /// # Errors
 ///
-/// `remote_code` as for [`check_copy`].
+/// `remote_code` for such a member; `file_rejected` as for [`check_copy`].
 pub fn check_config(bytes: &[u8]) -> Result<(), Cause> {
     read_object(bytes).map(|_| ())
 }
@@ -112,7 +113,7 @@ pub fn check_config(bytes: &[u8]) -> Result<(), Cause> {
 ///
 /// # Errors
 ///
-/// `remote_code` as for [`check_copy`].
+/// `remote_code` and `file_rejected` as for [`check_copy`].
 pub fn check_tokenizer_config(bytes: &[u8]) -> Result<(), Cause> {
     let object = read_object(bytes)?;
     match object.get("chat_template") {
@@ -123,12 +124,12 @@ pub fn check_tokenizer_config(bytes: &[u8]) -> Result<(), Cause> {
             for entry in list {
                 match entry.get("template") {
                     Some(Value::String(text)) => total = total.saturating_add(length(text)),
-                    _ => return Err(Cause::RemoteCode),
+                    _ => return Err(Cause::FileRejected),
                 }
             }
             check_template_length(total)
         }
-        Some(_) => Err(Cause::RemoteCode),
+        Some(_) => Err(Cause::FileRejected),
     }
 }
 
@@ -136,10 +137,10 @@ pub fn check_tokenizer_config(bytes: &[u8]) -> Result<(), Cause> {
 ///
 /// # Errors
 ///
-/// `remote_code` when `bytes` is larger than [`MAX_TEMPLATE_BYTES`].
+/// `file_rejected` when `bytes` is larger than [`MAX_TEMPLATE_BYTES`].
 pub fn check_template_length(bytes: u64) -> Result<(), Cause> {
     if bytes > MAX_TEMPLATE_BYTES {
-        Err(Cause::RemoteCode)
+        Err(Cause::FileRejected)
     } else {
         Ok(())
     }
@@ -151,11 +152,12 @@ fn length(text: &str) -> u64 {
 
 fn read_object(bytes: &[u8]) -> Result<serde_json::Map<String, Value>, Cause> {
     if bytes.len() > MAX_CONFIG_BYTES {
-        return Err(Cause::RemoteCode);
+        return Err(Cause::FileRejected);
     }
     match serde_json::from_slice::<Value>(bytes) {
-        Ok(Value::Object(object)) if !asks_remote_code(&object) => Ok(object),
-        _ => Err(Cause::RemoteCode),
+        Ok(Value::Object(object)) if asks_remote_code(&object) => Err(Cause::RemoteCode),
+        Ok(Value::Object(object)) => Ok(object),
+        _ => Err(Cause::FileRejected),
     }
 }
 

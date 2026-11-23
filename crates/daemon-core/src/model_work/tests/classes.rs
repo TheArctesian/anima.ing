@@ -83,8 +83,10 @@ fn each_checked_json_file_is_walked_and_no_other_name_is_taken() {
         assert_eq!(vllm(&[(name, bad)]), REFUSED, "{name}");
         assert_eq!(vllm(&[(name, b"{}")]), Ok(()), "{name}");
     }
-    assert_eq!(vllm(&[("tokenizer.json", b"{}")]), REFUSED);
-    assert_eq!(vllm(&[(".safetensors.index.json", b"{}")]), REFUSED);
+    let rejected = Err(Cause::FileRejected);
+    assert_eq!(vllm(&[("tokenizer.json", b"{}")]), rejected);
+    assert_eq!(vllm(&[(".safetensors.index.json", b"{}")]), rejected);
+    assert_eq!(vllm(&[("generation_config.json", b"[]")]), rejected);
 }
 
 #[test]
