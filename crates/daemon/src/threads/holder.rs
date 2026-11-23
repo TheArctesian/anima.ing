@@ -9,7 +9,7 @@
 //! A new connection takes the place of the one before it, so that a daemon that starts again
 //! is never locked out by the one that died.
 
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -82,6 +82,9 @@ pub struct Shared {
     pub limit: usize,
     /// What an older holder left that this one could not prove ended: kept in the record.
     pub inherited: Vec<record::Entry>,
+    /// The commands being done now: a stop waits without the turn, and the same command sent
+    /// again in that time is not done a second time (H10).
+    pub acting: BTreeSet<u64>,
 }
 
 impl Shared {
@@ -184,6 +187,7 @@ pub async fn hold(dir: &Path, limit: usize) -> Result<(), HolderError> {
         closing: false,
         limit: if limit == 0 { LIMIT } else { limit },
         inherited,
+        acting: BTreeSet::new(),
     }));
     // One command at a time, from any connection: the check that a command was done and the
     // command itself are one step, so a command sent again on a new connection while the first
@@ -337,12 +341,11 @@ async fn serve(shared: Arc<Mutex<Shared>>, stream: UnixStream, connection: Conne
             break;
         };
         let ends = matches!(command.action, Action::Quit);
-        let one = turn.lock().await;
+        let one = Arc::clone(&turn).lock_owned().await;
         if !shared.lock().is_ok_and(|state| state.serves(me)) {
             break;
         }
-        let outcome = super::commands::run(&shared, command).await;
-        drop(one);
+        let outcome = super::commands::run(&shared, command, one).await;
         if ends && outcome == Outcome::Ok {
             // A command after the Quit would start a program in a holder that ends.
             quitting = true;
